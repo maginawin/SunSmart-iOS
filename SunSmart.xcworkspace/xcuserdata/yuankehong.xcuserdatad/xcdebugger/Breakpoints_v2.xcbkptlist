@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Bucket
+   uuid = "B4282572-12E9-4705-8986-E54D720116CD"
+   type = "0"
+   version = "2.0">
+   <Breakpoints>
+      <BreakpointProxy
+         BreakpointExtensionID = "Xcode.Breakpoint.FileBreakpoint">
+         <BreakpointContent
+            uuid = "48145442-B29E-4775-9B61-725DB3FF0433"
+            shouldBeEnabled = "Yes"
+            ignoreCount = "0"
+            continueAfterRunningActions = "No"
+            filePath = "../../Library/Developer/Xcode/DerivedData/SunSmart-bsknqvobukouwgfvklwtoruhrcgz/SourcePackages/checkouts/nordic-sig-mesh-sdk/Sources/NordicSigMeshSDK/MeshLib/Manager/MeshLibManager.swift"
+            startingColumnNumber = "9223372036854775807"
+            endingColumnNumber = "9223372036854775807"
+            startingLineNumber = "126"
+            endingLineNumber = "126"
+            landmarkName = "setMeshNetworkConnected(meshNetworkInfo:_:)"
+            landmarkType = "7">
+         </BreakpointContent>
+      </BreakpointProxy>
+      <BreakpointProxy
+         BreakpointExtensionID = "Xcode.Breakpoint.FileBreakpoint">
+         <BreakpointContent
+            uuid = "2A29F7D7-C222-4DAD-B1D0-4FBEDB7168EE"
+            shouldBeEnabled = "Yes"
+            ignoreCount = "0"
+            continueAfterRunningActions = "No"
+            filePath = "../../Library/Developer/Xcode/DerivedData/SunSmart-bsknqvobukouwgfvklwtoruhrcgz/SourcePackages/checkouts/nordic-sig-mesh-sdk/Sources/NordicSigMeshSDK/MeshLib/Manager/MeshNodeKeyBindManager.swift"
+            startingColumnNumber = "9223372036854775807"
+            endingColumnNumber = "9223372036854775807"
+            startingLineNumber = "114"
+            endingLineNumber = "114"
+            landmarkName = "startKeyBind(nodes:startKeyBind:keyBindSuccess:keyBindFail:keyBindFinish:)"
+            landmarkType = "7">
+            <Locations>
+               <Location
+                  uuid = "2A29F7D7-C222-4DAD-B1D0-4FBEDB7168EE - 70bf1204942721f9"
+                  shouldBeEnabled = "Yes"
+                  ignoreCount = "0"
+                  continueAfterRunningActions = "No"
+                  symbolName = "NordicSigMeshSDK.MeshNodeKeyBindManager.startKeyBind(nodes: Swift.Array&lt;NordicSigMeshSDK.Node&gt;, startKeyBind: Swift.Optional&lt;(NordicSigMeshSDK.Node) -&gt; ()&gt;, keyBindSuccess: Swift.Optional&lt;(NordicSigMeshSDK.Node) -&gt; ()&gt;, keyBindFail: Swift.Optional&lt;(NordicSigMeshSDK.Node, __C.NSError) -&gt; ()&gt;, keyBindFinish: Swift.Optional&lt;(Swift.Array&lt;NordicSigMeshSDK.Node&gt;, Swift.Array&lt;NordicSigMeshSDK.Node&gt;) -&gt; ()&gt;) -&gt; ()"
+                  moduleName = "SunSmart"
+                  usesParentBreakpointCondition = "Yes"
+                  urlString = "file:///Users/yuankehong/Library/Developer/Xcode/DerivedData/SunSmart-bsknqvobukouwgfvklwtoruhrcgz/SourcePackages/checkouts/nordic-sig-mesh-sdk/Sources/NordicSigMeshSDK/MeshLib/Manager/MeshNodeKeyBindManager.swift"
+                  startingColumnNumber = "9223372036854775807"
+                  endingColumnNumber = "9223372036854775807"
+                  startingLineNumber = "114"
+                  endingLineNumber = "114"
+                  offsetFromSymbolStart = "2192">
+               </Location>
+               <Location
+                  uuid = "2A29F7D7-C222-4DAD-B1D0-4FBEDB7168EE - 70bf120494272018"
+                  shouldBeEnabled = "Yes"
+                  ignoreCount = "0"
+                  continueAfterRunningActions = "No"
+                  symbolName = "NordicSigMeshSDK.MeshNodeKeyBindManager.startKeyBind(nodes: Swift.Array&lt;NordicSigMeshSDK.Node&gt;, startKeyBind: Swift.Optional&lt;(NordicSigMeshSDK.Node) -&gt; ()&gt;, keyBindSuccess: Swift.Optional&lt;(NordicSigMeshSDK.Node) -&gt; ()&gt;, keyBindFail: Swift.Optional&lt;(NordicSigMeshSDK.Node, __C.NSError) -&gt; ()&gt;, keyBindFinish: Swift.Optional&lt;(Swift.Array&lt;NordicSigMeshSDK.Node&gt;, Swift.Array&lt;NordicSigMeshSDK.Node&gt;) -&gt; ()&gt;) -&gt; ()"
+                  moduleName = "SunSmart"
+                  usesParentBreakpointCondition = "Yes"
+                  urlString = "file:///Users/yuankehong/Library/Developer/Xcode/DerivedData/SunSmart-bsknqvobukouwgfvklwtoruhrcgz/SourcePackages/checkouts/nordic-sig-mesh-sdk/Sources/NordicSigMeshSDK/MeshLib/Manager/MeshNodeKeyBindManager.swift"
+                  startingColumnNumber = "9223372036854775807"
+                  endingColumnNumber = "9223372036854775807"
+                  startingLineNumber = "115"
+                  endingLineNumber = "115"
+                  offsetFromSymbolStart = "2192">
+               </Location>
+            </Locations>
+         </BreakpointContent>
+      </BreakpointProxy>
+   </Breakpoints>
+</Bucket>
