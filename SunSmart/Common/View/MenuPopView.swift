@@ -127,18 +127,6 @@ class MenuPopView: UIView {
             make.edges.equalToSuperview()
         }
         
-//        let effect = UIBlurEffect(style: .dark)
-//        effectView = UIVisualEffectView(effect: effect)
-//        effectView.alpha = 0.9
-//        effectView.layer.cornerRadius = 8
-//        effectView.layer.masksToBounds = true
-//        bubbleView.addSubview(effectView)
-//        effectView.snp.makeConstraints { make in
-////            make.margins.equalTo(UIEdgeInsets(top: SCRYFrom(12), left: 4, bottom: 7, right: 4))
-//            make.top.equalTo(6)
-//            make.left.right.bottom.equalToSuperview()
-//        }
-        
         tableView = UITableView()
         tableView.separatorStyle = .none
         tableView.rowHeight = itemHeight

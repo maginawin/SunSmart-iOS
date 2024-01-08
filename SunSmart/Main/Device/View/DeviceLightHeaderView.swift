@@ -28,24 +28,38 @@ class DeviceLightHeaderView: UIView {
 //            lightGrayBgView.isHidden = true
             controlBtn.isSelected = node.isOn
             var bgImage = UIImage(named: "device_light_bg")
+            
+            var lightness100 = node.lightness100
+            if node.isOn, node.lightness == 0, let trunOffLightness = node.trunOffLightness { // 开灯并且亮度0，设备亮度未上报；先显示设备关灯前的亮度值
+                lightness100 = Node.getLightness100(lightness: trunOffLightness)
+            }
+            
             if node.isOn {
-                let alpha = CGFloat(node.lightness100) / 100.0
+                let alpha = CGFloat(lightness100) / 100.0
                 lightBgView.alpha = max(alpha, 0.1)
-                brightnessBtn.setTitle("| \(node.lightness100)%", for: .normal)
-                bgImage = bgImage?.withTintColor(node.getCctMixColor())
-                if node.temperature100 >= 45 && node.temperature100 <= 58 {
-                    garyBgAlpha = 1
+                brightnessBtn.setTitle("| \(lightness100)%", for: .normal)
+                if node.temperatureModel != nil {
+                    bgImage = bgImage?.withTintColor(Node.getCctMixColor(temperature100: node.temperature100))
+                    if node.temperature100 >= 45 && node.temperature100 <= 58 {
+                        garyBgAlpha = 1
+                    }
                 }
+                lightImageView.image = UIImage(named: "device_light_on_big")
             }else {
                 bgImage = bgImage?.withTintColor(RGB(216, 216, 216))
                 lightBgView.alpha = 1
                 brightnessBtn.setTitle("| \("off_state".localizedString)", for: .normal)
+                lightImageView.image = UIImage(named: "device_light_big")
             }
             
             lightBgView.image = bgImage
-            rssiBtn.setTitle("| \(node.rssi)dB", for: .normal)
-            
-            cctBtn.setTitle("| \(node.temperature100)%", for: .normal)
+            rssiBtn.setTitle(node.rssi != nil ? "| \(node.rssi!)dB" : "--", for: .normal)
+            if node.temperatureModel != nil {
+                cctBtn.isHidden = false
+                cctBtn.setTitle("| \(node.temperature100)%", for: .normal)
+            }else {
+                cctBtn.isHidden = true
+            }
             
             if garyBgAlpha != lightGrayBgView.alpha {
                 UIView.animate(withDuration: 0.25) {

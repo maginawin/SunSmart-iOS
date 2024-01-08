@@ -184,7 +184,7 @@ class CustomTableViewCell: UITableViewCell {
     
 }
 
-struct CustomCellModel {
+class CustomCellModel {
     
     /// 图标
     var icon: UIImage?
@@ -212,5 +212,25 @@ struct CustomCellModel {
     /// cell样式
     var style: CustomCellStyle = .none
    
+    init(icon: UIImage? = nil, iconUrl: String? = nil, title: String, titleColor: UIColor? = nil, titleFont: UIFont? = nil, content: String? = nil, contentColor: UIColor? = nil, contentFont: UIFont? = nil, showLine: Bool = true, style: CustomCellStyle = .none) {
+        self.icon = icon
+        self.iconUrl = iconUrl
+        self.title = title
+        if titleColor != nil {
+            self.titleColor = titleColor!
+        }
+        if titleFont != nil {
+            self.titleFont = titleFont!
+        }
+        self.content = content
+        if contentColor != nil {
+            self.contentColor = contentColor!
+        }
+        if contentFont != nil {
+            self.contentFont = contentFont!
+        }
+        self.showLine = showLine
+        self.style = style
+    }
     
 }

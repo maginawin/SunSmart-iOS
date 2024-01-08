@@ -9,17 +9,29 @@ import UIKit
 
 class EmptyDataView: UIView {
 
+    enum ContentPosition {
+    case center
+    case bottomCenter
+    }
+    
     var contentView: UIView!
     var imageView: UIImageView!
     var titleLabel: UILabel!
     var tipLabel: UILabel!
     var button: UIButton!
     
+    private var position: ContentPosition = .bottomCenter
+    private var bottomMargin: CGFloat = 0
+    
     private var btnClickBack: (()->())?
     
     
-    convenience init(frame: CGRect, imageName: String = "empty", title: String?, tipText: String?, buttomWidth: CGFloat = SCRXFrom(180), bottomMargin: CGFloat = 0, buttonText: String? = nil, btnClickBack: (()->())? = nil) {
-        self.init(frame: frame)
+    init(frame: CGRect, imageName: String = "empty", title: String?, tipText: String?, buttomWidth: CGFloat = SCRXFrom(180), bottomMargin: CGFloat = 0, position: ContentPosition = .bottomCenter, buttonText: String? = nil, btnClickBack: (()->())? = nil) {
+        
+        super.init(frame: frame)
+        self.position = position
+        self.bottomMargin = bottomMargin
+        setupUI()
         
         imageView.image = UIImage(named: imageName)
         titleLabel.text = title
@@ -42,15 +54,19 @@ class EmptyDataView: UIView {
             }
             self.btnClickBack = btnClickBack
         }
-        if bottomMargin > 0 {
-            contentView.snp.updateConstraints { make in
-                if UIDevice.current.model == "iPad" {
-                    make.centerY.equalToSuperview().offset(-bottomMargin - SCRYFit(100))
-                }else {
-                    make.bottom.equalTo(self.snp.centerY).offset(-bottomMargin)
-                }
-            }
-        }
+//        if bottomMargin > 0 {
+//            contentView.snp.updateConstraints { make in
+//                if UIDevice.current.model == "iPad" {
+//                    make.centerY.equalToSuperview().offset(-bottomMargin - SCRYFit(100))
+//                }else {
+//                    if position == .bottomCenter {
+//                        make.bottom.equalTo(self.snp.centerY).offset(-bottomMargin)
+//                    }else {
+//                        make.centerY.equalTo(self).offset(-bottomMargin)
+//                    }
+//                }
+//            }
+//        }
     }
     
     override init(frame: CGRect) {
@@ -74,16 +90,31 @@ class EmptyDataView: UIView {
         
         contentView = UIView()
         addSubview(contentView)
+//        contentView.snp.makeConstraints { make in
+//            
+//            if UIDevice.current.model == "iPad" {
+//                make.centerY.equalToSuperview().offset(-SCRYFit(100))
+//            }else {
+//                make.bottom.equalTo(self.snp.centerY)
+//            }
+//            make.left.equalTo(SCRXFrom(20))
+//            make.right.equalTo(-SCRXFrom(20))
+//        }
         contentView.snp.makeConstraints { make in
-            
             if UIDevice.current.model == "iPad" {
-                make.centerY.equalToSuperview().offset(-SCRYFit(100))
+                make.centerY.equalToSuperview().offset(-bottomMargin - SCRYFit(100))
             }else {
-                make.bottom.equalTo(self.snp.centerY)
+                if position == .bottomCenter {
+                    make.bottom.equalTo(self.snp.centerY).offset(-bottomMargin)
+                }else {
+                    make.centerY.equalTo(self).offset(-bottomMargin)
+                }
             }
             make.left.equalTo(SCRXFrom(20))
             make.right.equalTo(-SCRXFrom(20))
         }
+        
+        
         
         imageView = UIImageView()
         contentView.addSubview(imageView)
@@ -92,7 +123,7 @@ class EmptyDataView: UIView {
             make.centerX.equalToSuperview()
         }
         
-        titleLabel = UILabel(text: "", textColor: RGB(100, 116, 139), fontSize: 14)
+        titleLabel = UILabel(text: "", textColor: RGB(100, 116, 139), fontSize: 15)
         titleLabel.textAlignment = .center
         titleLabel.numberOfLines = 0
         contentView.addSubview(titleLabel)
@@ -101,28 +132,30 @@ class EmptyDataView: UIView {
             make.top.equalTo(imageView.snp.bottom).offset(SCRYFrom(2))
         }
         
-        tipLabel = UILabel(text: "", textColor: RGB(100, 136, 139), fontSize: 14)
+        tipLabel = UILabel(text: "", textColor: RGB(100, 136, 139), fontSize: 15, fontWeight: .light)
         tipLabel.textAlignment = .center
         tipLabel.numberOfLines = 0
         contentView.addSubview(tipLabel)
         tipLabel.snp.makeConstraints { make in
             make.left.right.equalToSuperview()
-            make.top.equalTo(titleLabel.snp.bottom).offset(SCRYFrom(8))
+            make.top.equalTo(titleLabel.snp.bottom).offset(SCRYFrom(16))
             make.bottom.equalToSuperview()
         }
         
-        button = UIButton(title: "", titleSize: 16, titleColor: .white, target: self, action: #selector(buttonClick))
+        button = UIButton(title: "", titleSize: 16, titleWeight: .light, titleColor: .white, target: self, action: #selector(buttonClick))
         button.titleLabel?.font = Font_Medium_Size(16)
         button.backgroundColor = Bar_Color
         button.layer.cornerRadius = SCRYFrom(10)
         button.isHidden = true
         contentView.addSubview(button)
         button.snp.makeConstraints { make in
-            make.top.equalTo(tipLabel.snp.bottom).offset(SCRYFrom(56))
+            make.top.equalTo(tipLabel.snp.bottom).offset(SCRYFrom(78))
             make.centerX.equalToSuperview()
             make.width.equalTo(SCRXFrom(128))
             make.height.equalTo(SCRYFrom(44))
         }
+        
+        
     }
     
 }
@@ -130,7 +163,7 @@ class EmptyDataView: UIView {
 
 extension UIView {
     
-    private static var emptyViewKey = "emptyView"
+    private static var emptyViewKey = 1
     
     var emptyView: EmptyDataView? {
         get {
@@ -141,11 +174,11 @@ extension UIView {
         }
     }
     
-    func showEmptyDataView(frame: CGRect? = nil, imageName: String? = nil, title: String? = nil, tipText: String? = nil, buttonText: String? = nil, buttomWidth: CGFloat = SCRXFrom(180), bottomMargin: CGFloat = 0, btnClickBack: (()->())? = nil) {
+    func showEmptyDataView(frame: CGRect? = nil, imageName: String? = nil, title: String? = nil, tipText: String? = nil, buttonText: String? = nil, buttomWidth: CGFloat = SCRXFrom(180), position: EmptyDataView.ContentPosition = .bottomCenter, bottomMargin: CGFloat = 0, btnClickBack: (()->())? = nil) {
         
         hideEmptyDataView()
         
-        let emptyView = EmptyDataView(frame: frame ?? self.bounds, imageName: imageName ?? "data_empty", title: title, tipText: tipText, buttomWidth: buttomWidth, bottomMargin: bottomMargin, buttonText: buttonText, btnClickBack: btnClickBack)
+        let emptyView = EmptyDataView(frame: frame ?? self.bounds, imageName: imageName ?? "data_empty", title: title, tipText: tipText, buttomWidth: buttomWidth, bottomMargin: bottomMargin, position: position, buttonText: buttonText, btnClickBack: btnClickBack)
         addSubview(emptyView)
         self.emptyView = emptyView
     }

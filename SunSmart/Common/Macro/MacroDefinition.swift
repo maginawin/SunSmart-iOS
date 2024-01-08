@@ -55,7 +55,12 @@ let Background_Color = RGB(248, 250, 252)
 // 白色
 let White_Color = UIColor.white
 /**普通文本黑色*/
-let TextBlack_Color = RGB(39, 37, 54)
+let TextBlack_Color = RGB(30, 35, 41)
+
+let TextBlack_Color1 = RGB(13, 16, 36)
+
+let Title_Color = RGB(64, 79, 102)
+
 /// 常规的黑色
 let Default_Black_Color = RGB(28, 28, 35)
 
@@ -70,6 +75,8 @@ let Line_Color = RGB(236, 236, 236)    //RGB(126, 126, 126, 0.1)
 let Blue_Color = RGB(0, 122, 255)
 /// 按钮红色
 let Red_Color = RGB(235, 78, 78)
+
+let SubText_Color = RGB(100, 136, 139)
 
 
 /// RGB颜色

@@ -213,7 +213,7 @@ class MainMenuView: UIView {
             make.width.equalToSuperview().multipliedBy(288.0 / 375.0)
         }
         
-        logoImageView = UIImageView()
+        logoImageView = UIImageView(image: UIImage(named: "launch_logo"))
         logoImageView.backgroundColor = Background_Color
         contentView.addSubview(logoImageView)
         logoImageView.snp.makeConstraints { make in

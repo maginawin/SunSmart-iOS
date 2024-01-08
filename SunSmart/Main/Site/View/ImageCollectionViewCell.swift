@@ -10,6 +10,7 @@ import UIKit
 class ImageCollectionViewCell: UICollectionViewCell {
     
     var imageView: UIImageView!
+//    var cornerRadius: CGFloat = SCRXFrom(8)
     
     override init(frame: CGRect) {
         super.init(frame: frame)

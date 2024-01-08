@@ -42,10 +42,11 @@ class SpaceViewController: WMPageController {
     }
     
     override func viewDidLoad() {
-        
+//        self.selectIndex = 3
         MeshLibManager.manager.setMeshNetworkConnected(meshUUID: space.meshUUID)
         if let manager = MeshLibManager.manager.meshNetworkManager {
             space.meshManager = manager
+            manager.loadExtensionData()
         }
         
         super.viewDidLoad()
@@ -56,12 +57,13 @@ class SpaceViewController: WMPageController {
         view.addSubview(mainMenuView)
         
         navigationItem.rightBarButtonItem = UIBarButtonItem(image: UIImage(named: "more_vertical")?.withRenderingMode(.alwaysOriginal), style: .done, target: self, action: #selector(moreClick))
-//        let mainNavVc = NavigationViewController(rootViewController: BluetoothRequiredViewController())
+
         MeshLibManager.manager.addObserver(self, forKeyPath: "bluetoothState", context: nil)
         
+        MeshLibManager.manager.supportModelIDs = [.genericOnOffServerModelId, .lightLightnessServerModelId, .lightCTLServerModelId, .lightCTLTemperatureServerModelId, .sceneServerModelId, .sceneSetupServerModelId]
+        MeshLibManager.manager.publishModelIDs = []
         checkBluetoothState()
     }
-    
     
     deinit {
         if MeshLibManager.manager.meshNetworkManager?.meshNetwork?.uuid.uuidString == space.meshUUID {
@@ -92,11 +94,13 @@ class SpaceViewController: WMPageController {
                 MenuPopView.hide()
                 navigationController?.pushViewController(BluetoothRequiredViewController(), animated: false)
 //            }
+            
         }
     }
     
     @objc private func moreClick() {
-        if XWHUDManager.isVisible() {
+        // mesh网络连接中
+        if !MeshLibManager.manager.isMeshNetworkConnected && XWHUDManager.isVisible() {
             return
         }
         MenuPopView.show(items: [
@@ -136,7 +140,7 @@ class SpaceViewController: WMPageController {
         
         SRAlertView(title: "notification".localizedString, message: "space_delete_message".localizedString, actions: [.cancelAction, SRAlertAction(title: "alert_item_delete".localizedString, style: .destructive, actionHandler: { _ in
             // 提示1s
-            XWHUDManager.showCustomHUD(withMessage: "deleting".localizedString, isWindiw: true)
+            XWHUDManager.showCustomHUD(withMessage: "deleting".localizedString, isWindow: true)
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {[weak self] in
                 XWHUDManager.hide()
                 guard let self = self else { return }
@@ -151,6 +155,7 @@ class SpaceViewController: WMPageController {
                 NotificationCenter.default.post(name: .init(rawValue: SitesDataRefreshNotifiacationName), object: nil)
             }
         })]).show()
+        
     }
     
 }
@@ -166,6 +171,15 @@ extension SpaceViewController {
         switch index {
         case 0:
             let vc = DevicesViewController(space: space)
+            return vc
+        case 1:
+            let vc = GroupsViewController(space: space)
+            return vc
+        case 2:
+            let vc = ScenesViewController(space: space)
+            return vc
+        case 3:
+            let vc = TimedViewController(space: space)
             return vc
         default:
             return UIViewController()

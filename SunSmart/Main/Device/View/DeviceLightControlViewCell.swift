@@ -40,7 +40,7 @@ class DeviceLightControlViewCell: UITableViewCell {
     var type: DeviceSliderFunctionView.FunctionType = .level() {
         didSet {
             
-            var title = "light_level".localizedString
+            var title = "brightness".localizedString
             switch type {
             case .cct:
                 title = "color_temperature".localizedString
@@ -100,7 +100,7 @@ class DeviceLightControlViewCell: UITableViewCell {
     
     private func setupUI() {
         
-        var title = "light_level".localizedString
+        var title = "brightness".localizedString
         switch type {
         case .cct:
             title = "color_temperature".localizedString

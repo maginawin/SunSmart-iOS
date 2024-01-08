@@ -54,6 +54,7 @@
     if (!result) {
         NSLog(@"打开数据库失败，错误原因:%s", sqlite3_errmsg(db));
     }
+    self.isOpen = result;
     return result;
 }
 
@@ -62,6 +63,7 @@
     if (!result) {
         NSLog(@"关闭数据库失败，错误原因:%s", sqlite3_errmsg(db));
     }
+    self.isOpen = !result;
     return result;
 }
 

@@ -76,7 +76,7 @@ class SpacesViewCell: UITableViewCell {
             make.bottom.equalTo(SCRYFrom(-16))
         }
         
-        nameLabel = UILabel(text: "Frist Floor", textColor: TextBlack_Color, fontSize: 14, fontName: FontName_Medium)
+        nameLabel = UILabel(text: "Frist Floor", textColor: TextBlack_Color, fontSize: 14)
         bgView.addSubview(nameLabel)
         nameLabel.snp.makeConstraints { make in
             make.left.equalTo(SCRXFrom(16))
@@ -99,8 +99,9 @@ class SpacesViewCell: UITableViewCell {
         }
         
         iconImageView = UIImageView()
-        iconImageView.backgroundColor = Background_Color
+        iconImageView.backgroundColor = RGB(247, 247, 255)
         iconImageView.contentMode = .center
+        iconImageView.layer.cornerRadius = SCRYFrom(8)
         bgView.addSubview(iconImageView)
         iconImageView.snp.makeConstraints { make in
             make.left.equalTo(SCRXFrom(16))
@@ -110,7 +111,7 @@ class SpacesViewCell: UITableViewCell {
             make.width.equalTo(iconImageView.snp.height).multipliedBy(160 / 120.0)
         }
         
-        luminairesLabel = UILabel(text: "Luminaires: 20", textColor: RGB(100, 136, 139), fontSize: 13)
+        luminairesLabel = UILabel(text: "Luminaires: 20", textColor: RGB(100, 136, 139), fontSize: 13, fontWeight: .light)
         bgView.addSubview(luminairesLabel)
         luminairesLabel.snp.makeConstraints { make in
             make.top.equalTo(iconImageView)
@@ -118,35 +119,35 @@ class SpacesViewCell: UITableViewCell {
             make.right.equalTo(SCRXFrom(-10))
         }
         
-        switchesLabel = UILabel(text: "Switches: 20", textColor: RGB(100, 136, 139), fontSize: 13)
+        switchesLabel = UILabel(text: "Switches: 20", textColor: RGB(100, 136, 139), fontSize: 13, fontWeight: .light)
         bgView.addSubview(switchesLabel)
         switchesLabel.snp.makeConstraints { make in
             make.top.equalTo(luminairesLabel.snp.bottom).offset(SCRYFrom(4))
             make.left.right.equalTo(luminairesLabel)
         }
         
-        groupsLabel = UILabel(text: "Groups: 4", textColor: RGB(100, 136, 139), fontSize: 13)
+        groupsLabel = UILabel(text: "Groups: 4", textColor: RGB(100, 136, 139), fontSize: 13, fontWeight: .light)
         bgView.addSubview(groupsLabel)
         groupsLabel.snp.makeConstraints { make in
             make.top.equalTo(switchesLabel.snp.bottom).offset(SCRYFrom(9))
             make.left.right.equalTo(switchesLabel)
         }
         
-        scenesLabel = UILabel(text: "Scenes: 2", textColor: RGB(100, 136, 139), fontSize: 13)
+        scenesLabel = UILabel(text: "Scenes: 2", textColor: RGB(100, 136, 139), fontSize: 13, fontWeight: .light)
         bgView.addSubview(scenesLabel)
         scenesLabel.snp.makeConstraints { make in
             make.top.equalTo(groupsLabel.snp.bottom).offset(SCRYFrom(4))
             make.left.right.equalTo(groupsLabel)
         }
         
-        schedulesLabel = UILabel(text: "Schedules: 2", textColor: RGB(100, 136, 139), fontSize: 13)
+        schedulesLabel = UILabel(text: "Schedules: 2", textColor: RGB(100, 136, 139), fontSize: 13, fontWeight: .light)
         bgView.addSubview(schedulesLabel)
         schedulesLabel.snp.makeConstraints { make in
             make.top.equalTo(scenesLabel.snp.bottom).offset(SCRYFrom(4))
             make.left.right.equalTo(scenesLabel)
         }
         
-        timeLabel = UILabel(text: "8/7/2023 12:00 AM", textColor: RGB(100, 136, 139), fontSize: 13)
+        timeLabel = UILabel(text: "8/7/2023 12:00 AM", textColor: RGB(100, 136, 139), fontSize: 13, fontWeight: .light)
         bgView.addSubview(timeLabel)
         timeLabel.snp.makeConstraints { make in
             make.left.right.equalTo(scenesLabel)

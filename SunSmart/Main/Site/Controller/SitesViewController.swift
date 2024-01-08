@@ -99,6 +99,7 @@ class SitesViewController: UIViewController {
             self.navigationController?.pushViewController(AboutViewController(), animated: true)
             self.showMenu = true
         }
+            
     }
     
     /// 添加场所
@@ -156,7 +157,7 @@ class SitesViewController: UIViewController {
         
         SRAlertView(title: "notification".localizedString, message: "alert_delete_message".localizedString, actions: [.cancelAction, SRAlertAction(title: "alert_item_delete".localizedString, style: .destructive, actionHandler: { _ in
             // 提示1s，
-            XWHUDManager.showCustomHUD(withMessage: "deleting".localizedString, isWindiw: true)
+            XWHUDManager.showCustomHUD(withMessage: "deleting".localizedString, isWindow: true)
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {[weak self] in
                 XWHUDManager.hide()
                 guard let self = self else { return }
@@ -309,9 +310,36 @@ class SitesViewController: UIViewController {
         
         allSitesTableView.contentInset = UIEdgeInsets(top: 0, left: 0, bottom: SCRYFrom(38) + 20, right: 0)
         favouritesTableView.contentInset = allSitesTableView.contentInset
+        
+//        buoySliderView = BuoySliderView(frame: .zero, functionType: .level())
+//        view.addSubview(buoySliderView)
+//        buoySliderView.snp.makeConstraints { make in
+//            make.left.equalTo(SCRXFrom(30))
+//            make.right.equalTo(SCRXFrom(-29))
+//            make.bottom.equalTo(-173)
+//            make.height.equalTo(SCRYFrom(40) + 36)
+//        }
     }
     
     @objc private func moreClick() {
+        
+//        if let space = SiteData.loadAll()[1].spaces.last {
+//            
+//            let vc = GroupAddViewController(space: space)
+//            
+//            present(NavigationViewController(rootViewController: vc), animated: true)
+//        }
+        
+        
+        
+//        let vc = GroupViewController()
+//        let navVc = NavigationViewController(rootViewController: vc)
+//        navVc.popoverPresentationController?.sourceRect = CGRectMake(0, kSafeAreaTopHeight + SCRYFrom(12), SCREEN_WIDTH, SCREEN_HEIGHT - kSafeAreaTopHeight + SCRYFrom(12))
+        
+ 
+//        vc.modalPresentationStyle = .formSheet
+//        vc.definesPresentationContext = true
+//        present(vc, animated: true)
         
 //        MenuPopView.show(items: [
 //            .init(icon: UIImage(named: "edit"), title: "edit_site".localizedString, tapItemBack: { item in
@@ -326,6 +354,13 @@ class SitesViewController: UIViewController {
     }
     
 
+}
+
+extension SitesViewController {
+    
+    override func size(forChildContentContainer container: UIContentContainer, withParentContainerSize parentSize: CGSize) -> CGSize {
+        return CGSize(width: 0, height: 0)
+    }
 }
 
 extension SitesViewController: NavigationViewControllerBackItemDelegate {
@@ -380,7 +415,7 @@ extension SitesViewController: UITableViewDataSource, UITableViewDelegate {
         }
         cell.nameLabel.text = site.name
         cell.iconImageView.image = UIImage(named: "site_image\(site.imageId)")
-        cell.timeLabel.text = String.dateConvert(timestamp: site.create, dateFormat: "M/d/yyyy hh:mm a")
+//        cell.timeLabel.text = String.dateConvert(timestamp: site.create, dateFormat: "M/d/yyyy hh:mm a")
         cell.spaceNumLabel.text = "\(site.spaces.count) \("spaces".localizedString)"
         cell.favoriteBtn.isSelected = site.isFavourite
         cell.clickMoreCallback = {[weak self] point in

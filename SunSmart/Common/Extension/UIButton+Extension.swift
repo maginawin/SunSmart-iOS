@@ -16,14 +16,24 @@ public enum ImagePosition {
 
 extension UIButton {
     
-    convenience init(title: String? = nil, titleSize: CGFloat? = nil, titleColor: UIColor? = nil, normalImageName: String? = nil, selectedImageName: String? = nil, target: AnyObject? = nil, action: Selector? = nil) {
+//    private static var showsTouchHighlightedKey = "showsTouchHighlighted"
+//    
+//    var showsTouchHighlighted: Bool {
+//        get {
+//            objc_getAssociatedObject(self, &UIButton.showsTouchHighlightedKey) as? Bool ?? false
+//        } set {
+//            objc_setAssociatedObject(self, &UIButton.showsTouchHighlightedKey, newValue, .OBJC_ASSOCIATION_ASSIGN)
+//        }
+//    }
+    
+    convenience init(title: String? = nil, titleSize: CGFloat? = nil, titleWeight: UIFont.Weight? = nil, titleColor: UIColor? = nil, normalImageName: String? = nil, selectedImageName: String? = nil, target: AnyObject? = nil, action: Selector? = nil) {
         self.init()
-
+        
         if title != nil {
             self.setTitle(title!, for: .normal)
         }
         if titleSize != nil {
-            self.titleLabel?.font = FONTS(SCRYFrom(titleSize!))
+            self.titleLabel?.font = UIFont.systemFont(ofSize: SCRYFrom(titleSize!), weight: titleWeight ?? .regular)
         }
         if titleColor != nil {
             self.setTitleColor(titleColor!, for: .normal)
@@ -39,7 +49,7 @@ extension UIButton {
         }
     }
     
-    
+
     func setImagePosition(position: ImagePosition, spacing: CGFloat) {
         
         let imageWidth = self.currentImage?.size.width ?? 0
@@ -103,9 +113,11 @@ extension UIButton {
                 break
         }
         
-        self.imageEdgeInsets = imageEdgeInsets;
-        self.titleEdgeInsets = titleEdgeInsets;
-        self.contentEdgeInsets = contentEdgeInsets;
+        self.imageEdgeInsets = imageEdgeInsets
+        self.titleEdgeInsets = titleEdgeInsets
+        if self.contentEdgeInsets == .zero {
+            self.contentEdgeInsets = contentEdgeInsets
+        }
         
     }
     

@@ -99,7 +99,7 @@ class SiteViewController: UIViewController {
         
         SRAlertView(title: "notification".localizedString, message: "alert_delete_message".localizedString, actions: [.cancelAction, SRAlertAction(title: "alert_item_delete".localizedString, style: .destructive, actionHandler: { _ in
             // 提示1s
-            XWHUDManager.showCustomHUD(withMessage: "deleting".localizedString, isWindiw: true)
+            XWHUDManager.showCustomHUD(withMessage: "deleting".localizedString, isWindow: true)
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {[weak self] in
                 XWHUDManager.hide()
                 guard let self = self else { return }
@@ -205,7 +205,7 @@ class SiteViewController: UIViewController {
         
         SRAlertView(title: "notification".localizedString, message: "alert_delete_message".localizedString, actions: [.cancelAction, SRAlertAction(title: "alert_item_delete".localizedString, style: .destructive, actionHandler: { _ in
             // 提示1s
-            XWHUDManager.showCustomHUD(withMessage: "deleting".localizedString, isWindiw: true)
+            XWHUDManager.showCustomHUD(withMessage: "deleting".localizedString, isWindow: true)
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {[weak self] in
                 XWHUDManager.hide()
                 guard let self = self else { return }

@@ -45,6 +45,13 @@ static XWHUDManagerType kXWHUDManagerType = XWHUDManagerTypeDark;
     [self p_hideHUDForView:[self p_getCurrentUIVC].view];
 }
 
+/**
+ 隐藏当前View上的蒙版
+ */
++ (void)hideInViewWith:(UIView *)view {
+    [self p_hideHUDForView:view];
+}
+
 /// 隐藏当前window上的HUD
 + (void)hideInWindow {
     [self p_hideHUDForView:[self p_getKeyWindow]];
@@ -69,11 +76,11 @@ static XWHUDManagerType kXWHUDManagerType = XWHUDManagerTypeDark;
     [self p_showActivityMessage:@"" isWindow:NO timer:HUGE_VALF];
 }
 
-+ (void)showCustomHUDWithMessage:(nullable NSString*)message isWindiw:(BOOL)isWindow {
-    [self showCustomHUDWithMessage:message isWindiw:isWindow afterDelay:HUGE_VALF];
++ (void)showCustomHUDWithMessage:(nullable NSString*)message isWindow:(BOOL)isWindow {
+    [self showCustomHUDWithMessage:message isWindow:isWindow afterDelay:HUGE_VALF];
 }
 
-+ (void)showCustomHUDWithMessage:(nullable NSString*)message isWindiw:(BOOL)isWindow afterDelay:(NSTimeInterval)afterSecond {
++ (void)showCustomHUDWithMessage:(nullable NSString*)message isWindow:(BOOL)isWindow afterDelay:(NSTimeInterval)afterSecond {
     
     [self hide];
     
@@ -114,6 +121,50 @@ static XWHUDManagerType kXWHUDManagerType = XWHUDManagerTypeDark;
     animation.fillMode = kCAFillModeForwards;
     animation.repeatCount = 9999;
     [hud.customView.layer addAnimation:animation forKey:nil];
+}
+
++ (void)showCustomHUDWithMessage:(nullable NSString*)message view:(UIView *)view afterDelay:(NSTimeInterval)afterSecond {
+    
+    [self hide];
+    
+    WYProgressHUD *hud  =  [self p_createWYProgressHUDviewWithView:view message:message];
+    if (message.length > 0) {
+        hud.minSize = CGSizeMake(164, 140);
+    }else {
+        hud.minSize = CGSizeMake(88, 88);
+    }
+    hud.margin = 16;
+    hud.mode = WYProgressHUDModeCustomView;
+    hud.detailsLabel.font = [UIFont systemFontOfSize:15];
+    hud.bezelView.backgroundColor = [[UIColor whiteColor] colorWithAlphaComponent:0.5];
+//    if (isWindow) {
+//        hud.backgroundView.color = [[UIColor blackColor] colorWithAlphaComponent:0.3];
+//    }else {
+        hud.bezelView.clipsToBounds = NO;
+        hud.bezelView.style = WYProgressHUDBackgroundStyleSolidColor;
+        hud.bezelView.backgroundColor = [UIColor colorWithRed:254/255.0 green:254/255.0 blue:254/255.0 alpha:1];
+        hud.bezelView.layer.shadowColor = [UIColor colorWithRed:0/255.0 green:0/255.0 blue:0/255.0 alpha:0.2].CGColor;
+        hud.bezelView.layer.shadowOffset = CGSizeMake(0,0);
+        hud.bezelView.layer.shadowOpacity = 1;
+        hud.bezelView.layer.shadowRadius = 8;
+//    }
+    
+    NSString *normalImgName = [NSString stringWithFormat:@"XWHUDManager_%@@2x.png", @"loading"];
+    hud.customView = [[UIImageView alloc] initWithImage:[UIImage imageNamed:normalImgName]];
+    
+    [hud hideAnimated:YES afterDelay:afterSecond];
+    
+    CABasicAnimation *animation = [CABasicAnimation animation];
+    //旋转必须在前面加上transform
+    animation.keyPath = @"transform.rotation.z";
+    animation.fromValue = @0;
+    animation.toValue = @(M_PI * 2);
+    animation.duration = 2;
+    animation.removedOnCompletion = NO;
+    animation.fillMode = kCAFillModeForwards;
+    animation.repeatCount = 9999;
+    [hud.customView.layer addAnimation:animation forKey:nil];
+    
 }
 
 /// 在当前View展示一个小菊花 (延时 afterSecond 秒 结束)
@@ -397,10 +448,13 @@ static XWHUDManagerType kXWHUDManagerType = XWHUDManagerTypeDark;
 //    hud.userInteractionEnabled = NO;
     hud.minSize = CGSizeZero;
     hud.mode = WYProgressHUDModeText;
-    hud.bezelView.style = WYProgressHUDBackgroundStyleSolidColor;
-    hud.bezelView.backgroundColor = [UIColor blackColor];
+    hud.bezelView.style = WYProgressHUDBackgroundStyleBlur;
+    hud.bezelView.blurEffectStyle = UIBlurEffectStyleSystemMaterialDark;
+    hud.backgroundView.color = [UIColor clearColor];
     hud.label.textColor = [UIColor whiteColor];
     hud.label.font = [UIFont systemFontOfSize:15];
+    hud.detailsLabel.textColor = [UIColor whiteColor];
+    hud.detailsLabel.font = [UIFont systemFontOfSize:15];
     if (isLineFeed) {
         hud.label.text = nil;
         hud.detailsLabel.text = message ?: @"加载中...";
@@ -538,26 +592,20 @@ static XWHUDManagerType kXWHUDManagerType = XWHUDManagerTypeDark;
 }
 
 /// 全局统一生成提示框对象
-+ (WYProgressHUD *) p_createWYProgressHUDviewWithMessage:(NSString*)message isWindiw:(BOOL)isWindow {
-    UIView *view = isWindow ? [self p_getKeyWindow] : [self p_getCurrentUIVC].view;
++ (WYProgressHUD *) p_createWYProgressHUDviewWithView:(UIView *)view message:(NSString*)message {
+    
     WYProgressHUD *hud = [WYProgressHUD showHUDAddedTo:view animated:YES];
     hud.defaultMotionEffectsEnabled = NO;
     hud.removeFromSuperViewOnHide = YES;
     hud.minSize = CGSizeMake(96, 96);
     hud.detailsLabel.text = message;
     hud.detailsLabel.font = hud.label.font = [UIFont systemFontOfSize:kXWHUDDefaultFontSize];
-    if (isWindow) {
-        hud.backgroundView.color = [[UIColor blackColor] colorWithAlphaComponent:0.3];
-    }else {
-        hud.backgroundView.color = [UIColor clearColor];
-    }
+    hud.backgroundView.color = [UIColor clearColor];
+    
     hud.backgroundView.style = WYProgressHUDBackgroundStyleSolidColor;
     hud.bezelView.blurEffectStyle = UIBlurEffectStyleSystemThickMaterialLight;
     hud.bezelView.style = WYProgressHUDBackgroundStyleBlur; // WYProgressHUDBackgroundStyleBlur
-    // 设置偏移量（屏幕居中显示） 导航条isTranslucent=NO时controller view高度 = 屏幕高度 - 导航条高度
-    if (!isWindow && ![self p_getCurrentUIVC].navigationController.navigationBar.isTranslucent) {
-        hud.offset = CGPointMake(0, -(UIApplication.sharedApplication.statusBarFrame.size.height + 44) * 0.5);
-    }
+   
     // 注释下面配置代码默认显示浅灰->
     if (kXWHUDManagerType == XWHUDManagerTypeDark) {
         hud.bezelView.color = [UIColor blackColor];
@@ -570,6 +618,23 @@ static XWHUDManagerType kXWHUDManagerType = XWHUDManagerTypeDark;
         hud.detailsLabel.textColor = [UIColor blackColor];
         hud.contentColor = [UIColor blackColor];
     }
+    return hud;
+}
+
+/// 全局统一生成提示框对象
++ (WYProgressHUD *) p_createWYProgressHUDviewWithMessage:(NSString*)message isWindiw:(BOOL)isWindow {
+    UIView *view = isWindow ? [self p_getKeyWindow] : [self p_getCurrentUIVC].view;
+    WYProgressHUD *hud = [self p_createWYProgressHUDviewWithView:view message:message];
+    if (isWindow) {
+        hud.backgroundView.color = [[UIColor blackColor] colorWithAlphaComponent:0.3];
+    }else {
+//        hud.backgroundView.color = [[UIColor blackColor] colorWithAlphaComponent:0.3];
+        // 设置偏移量（屏幕居中显示） 导航条isTranslucent=NO时controller view高度 = 屏幕高度 - 导航条高度
+        if (![self p_getCurrentUIVC].navigationController.navigationBar.isTranslucent) {
+            hud.offset = CGPointMake(0, -(UIApplication.sharedApplication.statusBarFrame.size.height + 44) * 0.5);
+        }
+    }
+    
     return hud;
 }
 

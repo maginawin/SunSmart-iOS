@@ -19,7 +19,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         window = UIWindow(frame: UIScreen.main.bounds)
         
         
-//        let space = SiteData.loadAll().first?.spaces.first
+//        let space = SiteData.loadAll()[1].spaces.last
 //        let mainNavVc = NavigationViewController(rootViewController: SpaceViewController(space: space!)) //SitesViewController
         let mainNavVc = NavigationViewController(rootViewController: SitesViewController())
 //        let mainNavVc = NavigationViewController(rootViewController: DeviceAddViewController())

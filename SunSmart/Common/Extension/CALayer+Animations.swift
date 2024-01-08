@@ -54,13 +54,23 @@ extension CALayer {
     /// - parameter fromScale 起始比例 0~1
     /// - parameter toScale 结束比例 0~1
     /// - parameter duration 动画时长 默认0.3
+    /// - parameter repeatCount 重复次数
+    /// - parameter timingName 动画过渡效果
     /// - parameter animationKey 动画key
-    func addScaleAnimation(fromScale: CGFloat, toScale: CGFloat, duration: TimeInterval, animationKey: String? = nil) {
+    func addScaleAnimation(fromScale: CGFloat, toScale: CGFloat, duration: TimeInterval, repeatCount: Int = 1, timingName: CAMediaTimingFunctionName = .linear, animationKey: String? = nil) {
         let scaleAnimation = CABasicAnimation(keyPath: "transform.scale.xy")
         scaleAnimation.fromValue = fromScale
         scaleAnimation.toValue = toScale
         scaleAnimation.duration = duration
-        scaleAnimation.autoreverses = false
+        if repeatCount > 1 {
+            scaleAnimation.isRemovedOnCompletion = false
+            scaleAnimation.autoreverses = true
+            scaleAnimation.fillMode = .forwards
+            scaleAnimation.timingFunction = CAMediaTimingFunction(name: timingName)
+            scaleAnimation.repeatCount = Float(repeatCount)
+        }else {
+            scaleAnimation.autoreverses = false
+        }
         self.add(scaleAnimation, forKey: animationKey)
     }
     

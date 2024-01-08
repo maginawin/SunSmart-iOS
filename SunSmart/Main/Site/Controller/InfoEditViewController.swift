@@ -18,8 +18,8 @@ class InfoEditViewController: UIViewController {
     
     private var footerView: UIView!
     private var doneBtn: UIButton!
-    private var cancelBtn: UIButton!
-    private var lineView: UIView!
+//    private var cancelBtn: UIButton!
+//    private var lineView: UIView!
     
     private let name: String
     private let imageNames: [String]
@@ -30,6 +30,12 @@ class InfoEditViewController: UIViewController {
     /// 最大输入文本
     private var maxInputLength = 32
     private let isAdd: Bool
+    
+//    var radius: CGFloat = SCRXFrom(8)
+    /// item是否圆型展示
+    var itemRound: Bool = false
+    
+    
     /// 名称编辑回调（当前输入名称->是否重名）
     var nameEditChangedCallback: ((String)->(Bool))?
     
@@ -57,6 +63,16 @@ class InfoEditViewController: UIViewController {
             title = name
         }
         view.backgroundColor = Background_Color
+        
+        let appearance = UINavigationBarAppearance()
+        appearance.configureWithOpaqueBackground()
+        appearance.backgroundColor = .clear
+//        appearance.backgroundImage = UIImage(named: "nav_bar_corner")
+        appearance.shadowImage = UIImage.image(size: CGSize(width: 1, height: 1), color: .clear)
+        navigationController?.navigationBar.standardAppearance = appearance
+        navigationController?.navigationBar.scrollEdgeAppearance = appearance
+//        navigationController?.navigationBar.layer.cornerRadius = 20
+//        navigationController?.navigationBar.layer.masksToBounds = true
         
         if presentationController != nil {
             navigationItem.rightBarButtonItem = UIBarButtonItem(image: UIImage(named: "close")?.withRenderingMode(.alwaysOriginal), style: .done, target: self, action: #selector(close))
@@ -163,7 +179,7 @@ class InfoEditViewController: UIViewController {
         nameField.layer.borderWidth = 1
         nameField.clearButtonMode = .whileEditing
         nameField.rightViewMode = .whileEditing
-        nameField.leftView = UIView(frame: CGRect(x: 0, y: 0, width: SCRXFrom(5), height: 0))
+        nameField.leftView = UIView(frame: CGRect(x: 0, y: 0, width: SCRXFrom(8), height: 0))
         nameField.leftViewMode = .always
         nameField.returnKeyType = .done
         nameField.backgroundColor = .white
@@ -193,34 +209,36 @@ class InfoEditViewController: UIViewController {
             make.height.equalTo(SCRYFrom(56) + kSafeAreaBottomHeight)
         }
         
-        lineView = UIView()
-        lineView.backgroundColor = Line_Color
-        footerView.addSubview(lineView)
-        lineView.snp.makeConstraints { make in
-            make.centerX.equalToSuperview()
-            make.top.equalTo(SCRYFrom(8))
-            make.width.equalTo(1)
-            make.bottom.equalTo(-kSafeAreaTopHeight - SCRYFrom(8))
-//            make.height.equalTo(SCRYFrom(40))
-        }
+//        lineView = UIView()
+//        lineView.backgroundColor = Line_Color
+//        footerView.addSubview(lineView)
+//        lineView.snp.makeConstraints { make in
+//            make.centerX.equalToSuperview()
+//            make.top.equalTo(SCRYFrom(8))
+//            make.width.equalTo(1)
+//            make.bottom.equalTo(-kSafeAreaTopHeight - SCRYFrom(8))
+////            make.height.equalTo(SCRYFrom(40))
+//        }
         
-        cancelBtn = UIButton(title: "cancel".localizedString, titleSize: 16, titleColor: TextBlack_Color, target: self, action: #selector(cancelBtnClick))
-        cancelBtn.titleLabel?.textAlignment = .center
-        footerView.addSubview(cancelBtn)
-        cancelBtn.snp.makeConstraints { make in
-            make.right.equalTo(lineView.snp.left).offset(SCRXFrom(-33))
-            make.centerY.equalTo(lineView)
-            make.width.equalTo(SCRXFrom(120))
-            make.height.equalTo(SCRYFrom(30))
-        }
+//        cancelBtn = UIButton(title: "cancel".localizedString, titleSize: 16, titleColor: TextBlack_Color, target: self, action: #selector(cancelBtnClick))
+//        cancelBtn.titleLabel?.textAlignment = .center
+//        footerView.addSubview(cancelBtn)
+//        cancelBtn.snp.makeConstraints { make in
+//            make.right.equalTo(lineView.snp.left).offset(SCRXFrom(-33))
+//            make.centerY.equalTo(lineView)
+//            make.width.equalTo(SCRXFrom(120))
+//            make.height.equalTo(SCRYFrom(30))
+//        }
         
-        doneBtn = UIButton(title: "done".localizedString, titleSize: 16, titleColor: Bar_Color, target: self, action: #selector(doneBtnClick))
+        doneBtn = UIButton(title: "done".localizedString, titleSize: 16, titleColor: Title_Color, target: self, action: #selector(doneBtnClick))
         doneBtn.setTitleColor(RGB(139, 139, 139), for: .disabled)
         doneBtn.titleLabel?.textAlignment = .center
         footerView.addSubview(doneBtn)
         doneBtn.snp.makeConstraints { make in
-            make.left.equalTo(lineView.snp.left).offset(SCRXFrom(33))
-            make.centerY.height.width.equalTo(cancelBtn)
+//            make.left.equalTo(lineView.snp.left).offset(SCRXFrom(33))
+            make.left.right.top.equalToSuperview()
+            make.height.equalTo(SCRYFrom(56))
+//            make.centerY.height.width.equalTo(cancelBtn)
         }
         
         flowLayout = UICollectionViewFlowLayout()
@@ -257,6 +275,9 @@ extension InfoEditViewController: UICollectionViewDataSource, UICollectionViewDe
         let cell = collectionView.dequeueReusableCell(withReuseIdentifier: "cell", for: indexPath) as! ImageCollectionViewCell
         cell.imageView.image = UIImage(named: imageNames[indexPath.item])
         cell.layer.borderWidth = selectImageIndex == indexPath.item ? 1 : 0
+        if itemRound {
+            cell.layer.cornerRadius = cell.height * 0.5
+        }
         return cell
     }
     
@@ -278,6 +299,10 @@ extension InfoEditViewController: UICollectionViewDataSource, UICollectionViewDe
         var itemW = (collectionView.width - flowLayout.minimumInteritemSpacing * CGFloat(columnNum - 1)) / CGFloat(columnNum)
         itemW = CGFloat(floorf(Float(itemW) * 100) / 100.0)
         return CGSize(width: itemW, height: itemW)
+    }
+    
+    func scrollViewWillBeginDragging(_ scrollView: UIScrollView) {
+        view.endEditing(true)
     }
     
 }

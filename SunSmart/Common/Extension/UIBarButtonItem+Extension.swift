@@ -11,7 +11,7 @@ import UIKit
 
 extension UIBarButtonItem {
     
-    convenience init(title: String, color: UIColor, font: UIFont = FONTS(17), target: AnyObject?, sel: Selector?) {
+    convenience init(title: String, color: UIColor, font: UIFont = UIFont.systemFont(ofSize: 16, weight: .light), target: AnyObject?, sel: Selector?) {
         //        let barButtonItem = UIBarButtonItem(title: title, style: .done, target: tagter, action: sel)
         self.init()
         self.title = title
@@ -24,7 +24,8 @@ extension UIBarButtonItem {
         self.setTitleTextAttributes(attributes, for: .normal)
         self.setTitleTextAttributes(attributes, for: .highlighted)
         
-        self.setTitleTextAttributes(attributes.updateValue(color.withAlphaComponent(0.5), forKey: .foregroundColor) as? [NSAttributedString.Key : Any], for: .disabled)
+        attributes.updateValue(color.withAlphaComponent(0.5), forKey: .foregroundColor)
+        self.setTitleTextAttributes(attributes, for: .disabled)
         
     }
     

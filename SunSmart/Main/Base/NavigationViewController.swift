@@ -25,8 +25,8 @@ class NavigationViewController: UINavigationController {
         super.viewDidLoad()
 
         self.navigationBar.barTintColor = .white
-        let titleFont = Font_Medium_Size(18)
-        let titleTextAttributes = [NSAttributedString.Key.font: titleFont,NSAttributedString.Key.foregroundColor: RGB(0, 0, 0, 0.85)]
+        let titleFont = FONTS(18)
+        let titleTextAttributes = [NSAttributedString.Key.font: titleFont,NSAttributedString.Key.foregroundColor: RGB(35, 35, 41)]
         self.navigationBar.titleTextAttributes = titleTextAttributes
         self.navigationBar.shadowImage = UIImage()
         

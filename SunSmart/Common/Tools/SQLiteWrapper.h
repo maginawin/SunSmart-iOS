@@ -15,6 +15,7 @@
 
 @interface SQLiteWrapper : NSObject
 
+@property(nonatomic, assign)BOOL isOpen;
 
 /**
  *  单例

@@ -57,6 +57,11 @@ typedef NS_ENUM(NSUInteger, XWHUDManagerType) {
 + (void)hideInView;
 
 /**
+ 隐藏当前View上的蒙版
+ */
++ (void)hideInViewWith:(UIView *)view;
+
+/**
  隐藏当前KeyWindow上的蒙版
  */
 + (void)hideInWindow;
@@ -91,10 +96,11 @@ typedef NS_ENUM(NSUInteger, XWHUDManagerType) {
 + (void)showHUDInViewAfterDelay:(NSTimeInterval)afterSecond;
 
 /// 自定义加载框 - 不自动消失
-+ (void)showCustomHUDWithMessage:(nullable NSString*)message isWindiw:(BOOL)isWindow;
++ (void)showCustomHUDWithMessage:(nullable NSString*)message isWindow:(BOOL)isWindow;
 /// 自定义加载框 - 可选时间自动消失
-+ (void)showCustomHUDWithMessage:(nullable NSString*)message isWindiw:(BOOL)isWindow afterDelay:(NSTimeInterval)afterSecond;
-
++ (void)showCustomHUDWithMessage:(nullable NSString*)message isWindow:(BOOL)isWindow afterDelay:(NSTimeInterval)afterSecond;
+/// 自定义加载框-传入展示的view
++ (void)showCustomHUDWithMessage:(nullable NSString*)message view:(UIView *)view afterDelay:(NSTimeInterval)afterSecond;
 /**
  在KeyWindow展示一个 loading... 小菊花
  */

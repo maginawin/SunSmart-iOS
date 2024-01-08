@@ -77,7 +77,7 @@ class CustomDeviceSlider: UISlider {
     
     private var trackRect: CGRect?
     
-    private var lastBounds: CGRect?
+    var lastBounds: CGRect?
     
     override init(frame: CGRect) {
         super.init(frame: frame)

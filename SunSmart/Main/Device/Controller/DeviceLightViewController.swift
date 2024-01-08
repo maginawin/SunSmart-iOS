@@ -53,6 +53,18 @@ class DeviceLightViewController: WMPageController {
         
         menuView?.backgroundColor = .white
         navigationItem.rightBarButtonItem = UIBarButtonItem(image: UIImage(named: "more_vertical")?.withRenderingMode(.alwaysOriginal), style: .done, target: self, action: #selector(moreClick))
+        
+        updateUI()
+//        self.node.addObserver(self, forKeyPath: "state", options: .new, context: nil)
+    }
+    
+    func updateUI() {
+        if node.isKeybindComplete && node.state {
+            pageTitles = ["basic".localizedString, "advanced".localizedString]
+        }else {
+            pageTitles = ["basic".localizedString]
+        }
+        reloadData()
     }
     
     @objc private func moreClick() {
@@ -95,7 +107,7 @@ class DeviceLightViewController: WMPageController {
         
         SRAlertView(title: "notification".localizedString, message: "device_delete_message".localizedString, actions: [.cancelAction, SRAlertAction(title: "alert_item_continue".localizedString, actionHandler: {[weak self] _ in
             guard let self = self else { return }
-            XWHUDManager.showCustomHUD(withMessage: "deleting".localizedString, isWindiw: true)
+            XWHUDManager.showCustomHUD(withMessage: "deleting".localizedString, isWindow: true)
             
             MeshAPI.resetNode(address: self.node.primaryUnicastAddress) {[weak self] _ in
                 XWHUDManager.hide()
@@ -112,7 +124,10 @@ class DeviceLightViewController: WMPageController {
                     self.space.meshManager?.meshNetwork?.remove(node: self.node)
                     _ = self.space.meshManager?.save()
                     self.space.save()
-                    self.navigationController?.popViewController(animated: true)
+                    XWHUDManager.showSuccessTipHUD("done!".localizedString)
+                    DispatchQueue.main.asyncAfter(wallDeadline: .now() + 1) {
+                        self.navigationController?.popViewController(animated: true)
+                    }
                 })])
                 let messageAttStr = NSMutableAttributedString(string: "device_force_delete_message".localizedString, attributes: [.foregroundColor: TextBlack_Color])
                 messageAttStr.append(NSAttributedString(string: "device_force_delete_note".localizedString, attributes: [.foregroundColor: Message_Color]))
@@ -129,19 +144,18 @@ class DeviceLightViewController: WMPageController {
 extension DeviceLightViewController {
     
     override func numbersOfChildControllers(in pageController: WMPageController) -> Int {
-        if node.isKeybindComplete {
-            return pageTitles.count
-        }
-        return 1
+        return pageTitles.count
     }
     
     override func pageController(_ pageController: WMPageController, viewControllerAt index: Int) -> UIViewController {
         
         switch index {
         case 0:
-            let vc = DeviceLightBasicController(node: node)
-            lightBasicVc = vc
-            return vc
+            if lightBasicVc == nil {
+                let vc = DeviceLightBasicController(node: node)
+                lightBasicVc = vc
+            }
+            return lightBasicVc!
         default:
             return DeviceLightAdvancedController(node: node)
         }
@@ -149,14 +163,14 @@ extension DeviceLightViewController {
     
     override func pageController(_ pageController: WMPageController, preferredFrameForContentView contentView: WMScrollView) -> CGRect {
         var y = kNavigationHeight
-        if node.isKeybindComplete {
+        if pageTitles.count > 1 {
             y += SCRYFrom(44)
         }
         return CGRect(x: 0, y: y, width: view.width, height: view.height - y)
     }
     
     override func pageController(_ pageController: WMPageController, preferredFrameFor menuView: WMMenuView) -> CGRect {
-        if node.isKeybindComplete {
+        if pageTitles.count > 1 {
             return CGRect(x: 0, y: kNavigationHeight, width: view.width, height: SCRYFrom(44))
         }
         return .zero

@@ -59,6 +59,10 @@ class DeviceAddViewController: UIViewController {
     var deviceAddCallback: (([Node])->Void)?
     /// 添加成功的节点
     private var addSuccessNodes: [Node] = []
+    /// 设备添加到的对应组
+    private var addToGroup: Group?
+    /// 外部传入指定添加该到group
+    var appointGroup: Group?
     
     init(space: SpaceData) {
         self.space = space
@@ -84,6 +88,7 @@ class DeviceAddViewController: UIViewController {
         
         filterRSSI = filterRSSIRange.lowerBound
         
+        addToGroup = appointGroup
         setupUI()
     }
     
@@ -116,6 +121,8 @@ class DeviceAddViewController: UIViewController {
                 }
                 self.deviceAddCallback?(self.addSuccessNodes)
             }
+        // 关闭设置屏幕常亮
+        UIApplication.shared.isIdleTimerDisabled = false
 //        }
     }
     
@@ -135,6 +142,8 @@ class DeviceAddViewController: UIViewController {
         tableView.reloadData()
         
         updateUIState()
+        // 扫描中设置屏幕常亮
+        UIApplication.shared.isIdleTimerDisabled = true
         
         MeshAPI.startScanDevice(.max, deviceScan: {[weak self] device in
             guard let self = self else { return }
@@ -164,7 +173,7 @@ class DeviceAddViewController: UIViewController {
         scanAnimationView.layer.removeAnimation(forKey: "scan")
         scanBtn.isSelected = false
         MeshAPI.stopScan()
-        
+        UIApplication.shared.isIdleTimerDisabled = false
         state = .none
         // 停止扫描设备状态设置为空状态
         scanDevices.forEach({ 
@@ -202,6 +211,7 @@ class DeviceAddViewController: UIViewController {
             emptyView.contentView.layer.cornerRadius = SCRYFrom(20)
             emptyView.contentView.backgroundColor = .white
             emptyView.tipLabel.textAlignment = .left
+//            emptyView.tipLabel.lineBreakMode = .byClipping
             emptyView.tipLabel.textColor = RGB(148, 163, 184)
             emptyView.tipLabel.snp.remakeConstraints { make in
                 make.left.equalTo(SCRXFrom(20))
@@ -232,16 +242,16 @@ class DeviceAddViewController: UIViewController {
     /// 扫描
     @objc private func scanBtnClick(sender: UIButton) {
         
-        if self.state == .adding {
+        if self.state == .adding || self.state == .identifying {
             // 提示设备正在操作中，不能扫描
-            XWHUDManager.showTipHUD(inView: "scan_disable_adding".localizedString, isLineFeed: true)
+//            XWHUDManager.showTipHUD(inView: "scan_disable_adding".localizedString, isLineFeed: true)
             return
         }
-        if self.state == .identifying {
-            // 提示设备正在操作中，不能扫描
-            XWHUDManager.showTipHUD(inView: "scan_disable_identify".localizedString, isLineFeed: true)
-            return
-        }
+//        if self.state == .identifying {
+//            // 提示设备正在操作中，不能扫描
+//            XWHUDManager.showTipHUD(inView: "scan_disable_identify".localizedString, isLineFeed: true)
+//            return
+//        }
         
         sender.isSelected = !sender.isSelected
         if sender.isSelected {
@@ -300,6 +310,33 @@ class DeviceAddViewController: UIViewController {
         updateUIState()
     }
     
+    /// 添加目标选择事件
+    @objc private func addDeviceTargetBtnClick(sender: UIButton) {
+        
+        if state == .adding || appointGroup != nil {
+            return
+        }
+        
+        var titles: [String] = [space.name]
+        for group in space.groups {
+            titles.append(group.name)
+        }
+        var selectIndex = 0
+        if let selectGroup = addToGroup, let index = space.groups.firstIndex(where: { $0.address == selectGroup.address }) {
+            selectIndex = index + 1
+        }
+        
+        TitleSelectView.show(titles: titles, anchorPoint: CGPoint(x: sender.x, y: sender.frame.maxY + kNavigationHeight + SCRYFrom(2)), selectIndex: selectIndex) {[weak self] index in
+            guard let self = self else { return }
+            if index == 0 {
+                self.addToGroup = nil
+            }else {
+                self.addToGroup = space.groups[index - 1]
+            }
+            sender.setTitle(titles[index], for: .normal)
+        }
+    }
+    
     // MARK: - Mesh API
     
     /// 设备identify
@@ -337,7 +374,7 @@ class DeviceAddViewController: UIViewController {
         
         DispatchQueue.main.async {
             NSObject.cancelPreviousPerformRequests(withTarget: self, selector: #selector(self.identifyConnectTimeout), object: nil)
-            self.perform(#selector(self.identifyConnectTimeout), with: nil, afterDelay: 5)
+            self.perform(#selector(self.identifyConnectTimeout), with: nil, afterDelay: 10)
         }
     }
     
@@ -358,14 +395,15 @@ class DeviceAddViewController: UIViewController {
     }
     
     /// 停止设备identify
-    private func stopDeviceIdentify() {
+    private func stopDeviceIdentify(close: Bool = true) {
         if let device = identifyDevice {
             device.addState = .none
             reloadDeviceState(device)
             identifyDevice = nil
         }
-        
-        identifyBearer?.close()
+        if close {
+            identifyBearer?.close()
+        }
         identifyBearer = nil
         if state == .identifying {
             updateUIState()
@@ -389,7 +427,12 @@ class DeviceAddViewController: UIViewController {
                 device.identifyAttentionTimer = 0
             }
             if device == identifyDevice {
-                stopDeviceIdentify()
+//                if let bearer = identifyBearer { // 将identify连接的设备数据传入添加设备操作，避免二次连接
+//                    device.gattBearer = PBGattBearer(bearer: bearer)
+//                    stopDeviceIdentify(close: false)
+//                }else {
+                    stopDeviceIdentify()
+//                }
             }
         }
        
@@ -406,11 +449,46 @@ class DeviceAddViewController: UIViewController {
             addDevice.addState = .adding
             self?.reloadDeviceState(addDevice)
             self?.updateUIState()
+        } appendMessagesBack: {[weak self] addDevice in
+            guard let self = self, let group = self.addToGroup, let node = self.space.meshManager?.meshNetwork?.node(withAddress: addDevice.address) else { return [] }
+            // 需要追加发送的消息
+            var appendMessages: [MeshMessageHandle] = []
+            // 设备入组
+            node.getSubscribeToGroupMessages(group).forEach({
+                appendMessages.append(MeshMessageHandle(message: $0, address: node.primaryUnicastAddress))
+            })
+            // 设备绑定场景
+            group.info.bindSceneDatas.forEach { (sceneId: SceneNumber, data: SceneExecuteData) in
+                // 设备是否支持场景model及亮度model
+                if let sceneModel = node.sceneModel, let lightnessModel = node.lightnessModel {
+                    // 设备是否支持色温model
+                    let lightness = Node.getLightness(lightness100: data.lightness)
+                    if let ctlModel = node.ctlModel {
+                        appendMessages.append(MeshMessageHandle(message: LightCTLSet(lightness: lightness, temperature: UInt16(data.cct), deltaUV: 0), model: ctlModel))
+                    }else { // 不支持则设置亮度
+                        appendMessages.append(MeshMessageHandle(message: LightLightnessSet(lightness: lightness), model: lightnessModel))
+                    }
+                    // 保存场景
+                    appendMessages.append(MeshMessageHandle(message: SceneStore(sceneId), model: sceneModel))
+                }
+            }
+            // 设备绑定日程
+            group.info.bindSchedules.forEach { schedule in
+                if let timeModel = node.timeModel, let schedulerSetupModel = node.schedulerSetupModel {
+                    // 设置时区
+                    appendMessages.append(MeshMessageHandle(message: Node.setLocalTimeMessage(), model: timeModel))
+                    // 设置日程
+                    appendMessages.append(MeshMessageHandle(message: SchedulerActionSet(index: UInt8(schedule.id), entry: SchedulerRegistryEntry(year: .any(), month: .any(of: [.January,.February,.March,.April,.May,.June,.July,.August,.September,.October,.November,.December]), day: .any(), hour: .specific(hour: schedule.hour), minute: .specific(minute: schedule.minute), second: .specific(second: 0), dayOfWeek: .any(of: schedule.weekDays), action: schedule.action, transitionTime: .init(steps: UInt8(schedule.fadeTime), stepResolution: .seconds), sceneNumber: schedule.actionSceneId)), model: schedulerSetupModel))
+                }
+            }
+            
+            return appendMessages
         } addSuccess: {[weak self] addDevice in
             addDevice.addState = .success
             self?.reloadDeviceState(addDevice)
             self?.updateUIState()
             if let node = self?.space.meshManager?.meshNetwork?.node(withAddress: addDevice.address) {
+                node.rssi = addDevice.rssi.intValue
 //                self?.space.getNextNodeName(resultCallback: { name in
 //                    node.name = name
 //                    print("address:\(node.primaryUnicastAddress), name:\(name)")
@@ -493,6 +571,8 @@ class DeviceAddViewController: UIViewController {
             rssiSlider.minimumTrackTintColor = RGB(255, 167, 44, 0.5)
         }
         
+        UIApplication.shared.isIdleTimerDisabled = false
+        
         switch state {
         case .none:
             footerView.isHidden = false
@@ -513,6 +593,8 @@ class DeviceAddViewController: UIViewController {
                 tableView.contentInset = UIEdgeInsets(top: 0, left: 0, bottom: addResultView.height + footerView.height + SCRYFrom(8), right: 0)
                 closeBtn.isHidden = true
                 stopAddBtn.isHidden = !showDevices.contains(where: { $0.addState == .wait})
+                // 添加中设置屏幕常亮
+                UIApplication.shared.isIdleTimerDisabled = true
             }else {
                 closeBtn.isHidden = false
                 stopAddBtn.isHidden = true
@@ -532,9 +614,11 @@ class DeviceAddViewController: UIViewController {
         
         headerView = UIView()
         view.addSubview(headerView)
+        let navigationHeight = presentingViewController != nil ? (navigationController?.navigationBar.height ?? 0) : kNavigationHeight
         headerView.snp.makeConstraints { make in
             make.left.right.equalToSuperview()
-            make.top.equalTo(kNavigationHeight)
+            make.top.equalTo(navigationHeight)
+//            make.top.equalTo(kNavigationHeight)
             make.height.equalTo(SCRYFrom(100))
         }
         
@@ -579,7 +663,7 @@ class DeviceAddViewController: UIViewController {
             make.bottom.equalTo(SCRYFrom(-14))
         }
         
-        addDeviceTargetBtn = UIButton(title: space.name, titleSize: 13, titleColor: TextBlack_Color, normalImageName: "space_arrow_down")
+        addDeviceTargetBtn = UIButton(title: addToGroup?.info.name ?? addToGroup?.name ?? space.name, titleSize: 13, titleColor: TextBlack_Color, normalImageName: "space_arrow_down", target: self, action: #selector(addDeviceTargetBtnClick))
         addDeviceTargetBtn.imageView?.sizeToFit()
         let imageW = addDeviceTargetBtn.imageView?.image?.size.width ?? 0
         addDeviceTargetBtn.imageEdgeInsets = UIEdgeInsets(top: 0, left: SCRXFrom(103), bottom: 0, right: 0)
@@ -773,15 +857,21 @@ extension DeviceAddViewController: UITableViewDataSource, UITableViewDelegate {
             device.addState = .none
             device.selectedState = .selected
             tableView.reloadRows(at: [indexPath], with: .none)
+            updateUIState()
+//            let successCount = scanDevices.filter({ $0.addState == .success }).count
+//            let failedCount = scanDevices.filter({ $0.addState == .failed }).count
+//            successCountLabel.text = "\("successfully".localizedString) : \(successCount)"
+//            failedCountLabel.text = "\(failedCount)"
+            
         }else {
             if let cell = tableView.cellForRow(at: indexPath) as? DeviceAddViewCell {
                 switch device.selectedState {
                 case .unselected:
-                    cell.selectImageView.image = UIImage(named: "select_un")
+                    cell.selectImageView.image = UIImage(named: "device_select_un")
                 case .selected:
-                    cell.selectImageView.image = UIImage(named: "select")
+                    cell.selectImageView.image = UIImage(named: "device_select")
                 case .disabled:
-                    cell.selectImageView.image = UIImage(named: "select_disable")
+                    cell.selectImageView.image = UIImage(named: "device_select_disable")
                 }
             }else {
                 tableView.reloadRows(at: [indexPath], with: .none)
@@ -844,15 +934,16 @@ extension DeviceAddViewController: DeviceAddViewCellDelegate {
         guard device.addState == .wait || device.addState == .failed else {
             return
         }
+        if device.addState == .wait { // 等待添加
+            MeshAPI.cancelFastAddAwaitOperations(devices: [device])
+        }
+        
         // 设备状态回归为默认状态
         device.addState = .none
         device.selectedState = .selected
         reloadDeviceState(device)
         
-        if device.addState == .wait { // 等待添加
-            MeshAPI.cancelFastAddAwaitOperations(devices: [device])
-            updateUIState()
-        }
+        updateUIState()
     }
 }
 

@@ -1,0 +1,317 @@
+//
+//  SceneViewController.swift
+//  SunSmart
+//
+//  Created by 袁科鸿 on 2023/12/25.
+//
+
+import UIKit
+import NordicSigMeshSDK
+
+/// 场景数据更新通知名称
+let sceneDataUpdateNotificationName = "scenesDataUpdateNotificationName"
+
+class SceneViewController: UIViewController {
+
+    private var titleLabel: UILabel!
+    private var collectionView: UICollectionView!
+    private var flowLayout: AlignCenterFlowLayout!
+    private var pageControl: UIPageControl!
+    /// 是否需要更新数据源
+    private var refreshData: Bool = false
+    
+    let space: SpaceData
+    let scene: Scene
+    
+    init(space: SpaceData, scene: Scene) {
+        self.space = space
+        self.scene = scene
+        super.init(nibName: nil, bundle: nil)
+    }
+    
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
+    
+    
+    override func viewDidLoad() {
+        super.viewDidLoad()
+
+//        self.title = scene.name
+        
+        view.backgroundColor = Background_Color
+        
+        let appearance = UINavigationBarAppearance()
+        appearance.configureWithOpaqueBackground()
+        appearance.backgroundColor = .clear
+        appearance.shadowImage = UIImage.image(size: CGSize(width: 1, height: 1), color: .clear)
+        navigationController?.navigationBar.standardAppearance = appearance
+        navigationController?.navigationBar.scrollEdgeAppearance = appearance
+        
+        navigationItem.leftBarButtonItem = UIBarButtonItem(image: UIImage(named: "close")?.withRenderingMode(.alwaysOriginal), style: .done, target: self, action: #selector(close))
+        navigationItem.rightBarButtonItem = UIBarButtonItem(image: UIImage(named: "more_vertical")?.withRenderingMode(.alwaysOriginal), style: .done, target: self, action: #selector(moreClick))
+        
+        setupUI()
+        
+        updateEmptyUI()
+//        for i in 1...30 {
+//            devices.append("ID \(i)")
+//        }
+        
+        pageControl.numberOfPages = Int(ceil(Double(scene.info.groups.count) / 9.0))
+        pageControl.currentPage = 0
+        
+        addNotification()
+    }
+
+    override func viewWillAppear(_ animated: Bool) {
+        super.viewWillAppear(animated)
+        
+        if refreshData {
+            refreshData = false
+            collectionView.reloadData()
+            updateEmptyUI()
+        }
+    }
+    
+    /// 添加通知监听
+    private func addNotification() {
+        
+        NotificationCenter.default.addObserver(forName: .init(sceneDataUpdateNotificationName), object: nil, queue: nil) {[weak self] _ in
+            if self?.view.window != nil {
+                self?.collectionView.reloadData()
+                self?.updateEmptyUI()
+            }else {
+                self?.refreshData = true
+            }
+        }
+        
+    }
+    
+    @objc private func close() {
+        dismiss(animated: true)
+    }
+    
+    @objc private func moreClick() {
+        
+        MenuPopView.show(items: [
+            .init(icon: UIImage(named: "menu_edit"), title: "edit".localizedString, tapItemBack: {[weak self] item in
+                self?.editScene()
+            }),
+            .init(icon: UIImage(named: "menu_delete"), title: "delete".localizedString, tapItemBack: {[weak self] item in
+//                self?.deleteSite()
+                self?.deleteScene()
+            }),
+            .init(icon: UIImage(named: "settings"), title: "settings".localizedString, tapItemBack: {[weak self] item in
+                self?.settings()
+            })
+            
+        ], anchorPoint: CGPoint(x: view.width - SCRXFrom(20) - 13, y: (navigationController?.navigationBar.frame.maxY ?? kNavigationHeight) + 44))
+        
+    }
+    
+    /// 编辑场景
+    private func editScene() {
+        
+        var imageNames: [String] = []
+        for id in 1...16 {
+            imageNames.append("scene_image_\(id)")
+        }
+        let vc = InfoEditViewController(name: scene.info.name ?? scene.name, imageNames: imageNames, selectImageIndex: max(scene.info.imageId - 1, 0), columnNum: 4)
+        vc.title = "edit_scene".localizedString
+        vc.itemRound = true
+        vc.nameEditChangedCallback = {[weak self] name in
+            guard let self = self else {
+                return false
+            }
+            return self.space.isSceneTautonym(name: name) && name != self.scene.name
+        }
+        vc.doneCallback = {[weak self] (name, imageId) in
+            guard let self = self else { return }
+            self.scene.name = name
+            self.scene.info.name = name
+            self.scene.info.imageId = imageId + 1
+            self.scene.info.save(meshUUID: self.space.meshUUID)
+            self.titleLabel.text = name
+//            self.sceneUpdateCallback?(self.scene)
+            NotificationCenter.default.post(name: .init(scenesRefreshNotificationName), object: nil)
+        }
+
+        let navVc = NavigationViewController(rootViewController: vc)
+        present(navVc, animated: true)
+    }
+    
+    /// 删除场景
+    private func deleteScene() {
+        
+        SRAlertView(title: "notification".localizedString, message: "scene_delete_message".localizedString, contentPadding: SCRXFrom(25), actions: [.cancelAction, SRAlertAction(title: "DELETE".localizedString, style: .destructive, actionHandler: {[weak self] _ in
+            guard let self = self else { return }
+            if !MeshLibManager.manager.isMeshNetworkConnected && self.scene.info.groups.contains(where: { $0.nodes.count > 0 }) { // 未连接mesh网络
+                XWHUDManager.showTipHUD("device_notconnect_message".localizedString, isLineFeed: true)
+                return
+            }
+            
+            XWHUDManager.showCustomHUD(withMessage: "deleting".localizedString, isWindow: true)
+            
+            SceneServer.deleteScene(scene: self.scene) {[weak self] _ in
+                XWHUDManager.hide()
+                guard let self = self else { return }
+                XWHUDManager.showSuccessTipHUD("done!".localizedString)
+//                self.groupDeleteCallback?(self.group)
+                NotificationCenter.default.post(name: .init(scenesRefreshNotificationName), object: nil)
+                DispatchQueue.main.asyncAfter(wallDeadline: .now() + 1.5, execute: {[weak self] in
+                    self?.close()
+                })
+                
+            } failed: { _ in
+                // 跳转到同步数据页面
+                
+            }
+            
+        })]).show()
+        
+    }
+    
+    /// 设置
+    private func settings() {
+        
+        let vc = SceneSettingsViewController(space: space, scene: scene)
+        
+//        let vc = GroupMembersViewController(space: space, group: group)
+        navigationController?.pushViewController(vc, animated: true)
+    }
+    
+    @objc private func collectionLongPressAction(sender: UIGestureRecognizer) {
+        
+        guard sender.state == .began else {
+            return
+        }
+        let point = sender.location(in: collectionView)
+        if let indexPath = collectionView.indexPathForItem(at: point), indexPath.item < scene.info.groups.count {
+            
+            let group = scene.info.groups[indexPath.item]
+//            let data = group.info.bindSceneDatas.first(where: { $0.sceneId == scene.number })?.data
+            let vc = GroupViewController(space: space, group: group)
+            navigationController?.pushViewController(vc, animated: true)
+//            present(NavigationViewController(rootViewController: vc), animated: true)
+        }
+        
+    }
+    
+    /// 分页页码编辑回调
+    @objc private func pageControlValueChanged() {
+        collectionView.setContentOffset(CGPoint(x: CGFloat(pageControl.currentPage) * collectionView.width, y: 0), animated: true)
+    }
+
+    private func updateEmptyUI() {
+        
+        if scene.info.groups.isEmpty {
+            collectionView.showEmptyDataView(title: "No Members!", position: .center, bottomMargin: 3.5)
+        }else {
+            collectionView.hideEmptyDataView()
+        }
+        
+    }
+    
+    private func setupUI() {
+        
+        titleLabel = UILabel(text: scene.name, textColor: RGB(30, 35, 41), fontSize: 18, fontWeight: .light)
+        titleLabel.textAlignment = .center
+        view.addSubview(titleLabel)
+        titleLabel.snp.makeConstraints { make in
+            make.left.equalTo(SCRXFrom(30))
+            make.right.equalTo(SCRXFrom(-29))
+            make.top.equalTo(SCRYFit(60) + (navigationController?.navigationBar.frame.maxY ?? 0))
+        }
+        
+        flowLayout = AlignCenterFlowLayout()
+        flowLayout.minimumLineSpacing = SCRXFrom(14)
+        flowLayout.minimumInteritemSpacing = SCRXFrom(14)
+        flowLayout.scrollDirection = .horizontal
+        flowLayout.sectionInset = UIEdgeInsets(top: SCRYFrom(36), left: SCRXFrom(24), bottom: SCRYFit(36), right: SCRXFrom(24))
+        
+        collectionView = UICollectionView(frame: .zero, collectionViewLayout: flowLayout)
+//        collectionView.contentInset = UIEdgeInsets(top: SCRYFrom(36), left: SCRXFrom(24), bottom: SCRYFit(36), right: SCRXFrom(24))
+        collectionView.backgroundColor = RGB(0, 0, 0, 0.05)
+        collectionView.layer.cornerRadius = SCRYFrom(40)
+
+        collectionView.dataSource = self
+        collectionView.delegate = self
+        collectionView.isPagingEnabled = true
+        collectionView.showsHorizontalScrollIndicator = false
+        collectionView.register(SceneGroupsViewCell.classForCoder(), forCellWithReuseIdentifier: "cell")
+        let longPress = UILongPressGestureRecognizer(target: self, action: #selector(collectionLongPressAction))
+        longPress.minimumPressDuration = 0.5
+        collectionView.addGestureRecognizer(longPress)
+        view.addSubview(collectionView)
+        collectionView.snp.makeConstraints { make in
+            make.left.equalTo(SCRXFrom(30))
+            make.right.equalTo(SCRXFrom(-29))
+            make.top.equalTo(titleLabel.snp.bottom).offset(SCRYFit(45))
+            make.height.equalTo(SCRYFrom(392))
+        }
+        
+        pageControl = UIPageControl()
+        pageControl.currentPageIndicatorTintColor = Bar_Color
+        pageControl.pageIndicatorTintColor = RGB(216, 216, 216)
+        pageControl.addTarget(self, action: #selector(pageControlValueChanged), for: .valueChanged)
+        pageControl.hidesForSinglePage = true
+        view.addSubview(pageControl)
+        pageControl.snp.makeConstraints { make in
+            make.bottom.equalTo(collectionView)
+            make.centerX.equalToSuperview()
+//            make.width.equalTo(SCRXFrom(40))
+//            make.height.equalTo(4)
+        }
+        
+        view.layoutIfNeeded()
+        
+        var itemW = (collectionView.width - collectionView.contentInset.left - collectionView.contentInset.right - flowLayout.minimumInteritemSpacing * CGFloat(2) - flowLayout.sectionInset.left - flowLayout.sectionInset.right) / CGFloat(3)
+        itemW = CGFloat(floorf(Float(itemW) * 100) / 100.0)
+        let itemSize = CGSize(width: itemW, height: itemW + SCRYFrom(16))
+        flowLayout.itemSize = itemSize
+        
+        collectionView.snp.updateConstraints { make in
+            let height = itemSize.height * 3.0 + flowLayout.minimumLineSpacing * 2.0 + collectionView.contentInset.top + collectionView.contentInset.bottom + flowLayout.sectionInset.top + flowLayout.sectionInset.bottom
+//            ceil(height)
+//            height = CGFloat(ceil(Float(height) * 100) / 100.0)
+            make.height.equalTo(ceil(height))
+        }
+        
+    }
+
+}
+
+extension SceneViewController: UICollectionViewDataSource, UICollectionViewDelegateFlowLayout {
+    
+    func collectionView(_ collectionView: UICollectionView, numberOfItemsInSection section: Int) -> Int {
+//        return 9
+        return scene.info.groups.count
+    }
+    
+    func collectionView(_ collectionView: UICollectionView, cellForItemAt indexPath: IndexPath) -> UICollectionViewCell {
+        let cell = collectionView.dequeueReusableCell(withReuseIdentifier: "cell", for: indexPath) as! SceneGroupsViewCell
+        let group = scene.info.groups[indexPath.item]
+        let data = group.info.bindSceneDatas[scene.number]
+        cell.updateData(group: group, sceneData: data)
+        return cell
+    }
+    
+    func collectionView(_ collectionView: UICollectionView, didSelectItemAt indexPath: IndexPath) {
+        
+        let group = scene.info.groups[indexPath.item]
+        group.isOn = !group.isOn
+        CATransaction.setDisableActions(true)
+        collectionView.reloadItems(at: [indexPath])
+        CATransaction.commit()
+        
+        
+    }
+    
+    func scrollViewDidEndDecelerating(_ scrollView: UIScrollView) {
+        let page = Int(scrollView.contentOffset.x / scrollView.frame.size.width + 0.5)
+        
+        pageControl.currentPage = page
+        //            pageControl.setCurrentPage(page, animated: true)
+    }
+}

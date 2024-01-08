@@ -41,6 +41,21 @@ extension UIViewController {
 
 extension UINavigationController {
     
+    /// 设置导航条颜色
+    /// - Parameter showShadow: 是否显示分割线
+    /// - Parameter color: 颜色
+    func setNavigationBarBackgroundColor(color: UIColor, showShadow: Bool = false) {
+        
+        let appearance = UINavigationBarAppearance()
+        appearance.configureWithOpaqueBackground()
+        appearance.backgroundColor = .clear
+        if !showShadow {
+            appearance.shadowImage = UIImage.image(size: CGSize(width: 1, height: 1), color: .clear)
+        }
+        navigationBar.standardAppearance = appearance
+        navigationBar.scrollEdgeAppearance = appearance
+    }
+    
     /// 移除栈内控制器
     func removeVc(vc: UIViewController) {
         

@@ -23,9 +23,13 @@ class DeviceLightBasicController: UIViewController {
     private var deviceInfoModels: [CustomCellModel] = []
     
     /// 是否锁住UI更新（操作时不更新UI）
-    private var lockUIUpdate: Bool = false
+//    private var lockUIUpdate: Bool = false
     /// 节点在线/离线状态
     private var onlineState: Bool = false
+    /// 最后发送的亮度值
+    private var lastSendLightness: UInt16 = 0
+    /// 刷新
+    private var refreshControl: UIRefreshControl!
     
     let node: Node
     
@@ -52,11 +56,7 @@ class DeviceLightBasicController: UIViewController {
         
         updateUI()
         
-        if node.lightCTLTemperatureRange == nil {
-            MeshAPI.sendMessage(message: LightCTLTemperatureRangeGet(), address: node.primaryUnicastAddress)
-        }
-//        MeshAPI.getNodeCTLState(address: node.primaryUnicastAddress)
-        MeshAPI.getNodeState(address: node.primaryUnicastAddress)
+        getNodeState()
     }
     
     override func viewWillAppear(_ animated: Bool) {
@@ -65,12 +65,44 @@ class DeviceLightBasicController: UIViewController {
         MeshLibManager.manager.register(self)
     }
     
+    override func viewWillDisappear(_ animated: Bool) {
+        super.viewWillDisappear(animated)
+        
+        if tableView.contentOffset.y + tableView.contentInset.top < 0 {
+            tableView.contentOffset = .zero
+            refreshControl.isHidden = true
+        }
+    }
+    
     /// 设备名称更新
     func reloadNodeName(_ name: String) {
         setupDeviceInfoDataSource()
         if let index = self.sections.firstIndex(of: .deviceInfo) {
             tableView.reloadSections(IndexSet(integer: index), with: .none)
         }
+    }
+    
+    /// 获取设备数据
+    @objc private func getNodeState() {
+        
+        MeshAPI.getNodeState(address: node.primaryUnicastAddress)
+    
+        MeshLibManager.manager.refreshNodesRSSI(withWaitFor: 2) {[weak self] nodes in
+            guard let self = self else { return }
+            if self.refreshControl.isRefreshing {
+                self.refreshControl.endRefreshing()
+            }
+            if !nodes.contains(where: { $0.primaryUnicastAddress == self.node.primaryUnicastAddress }) {
+                self.node.rssi = nil
+            }
+            self.headerView.node = self.node
+            let model = self.deviceInfoModels.last
+            model?.content = self.node.rssi != nil ? "\(self.node.rssi!)dB" : "--"
+            if let section = self.sections.firstIndex(of: .deviceInfo) {
+                self.tableView.reloadRows(at: [IndexPath(row: self.deviceInfoModels.count - 1, section: section)], with: .none)
+            }
+        }
+        
     }
     
     /// 设备数据
@@ -88,7 +120,7 @@ class DeviceLightBasicController: UIViewController {
         
         let firmwareModel = CustomCellModel(title: "firmware".localizedString, content: String(format: "%04X", node.versionIdentifier ?? 0), contentColor: messageColor, contentFont: FONTS(SCRYFrom(15)), style: .none)
         
-        let singleStrengthModel = CustomCellModel(title: "single_strength".localizedString, content: "\(node.rssi)dB", contentColor: messageColor, contentFont: FONTS(SCRYFrom(15)), style: .none)
+        let singleStrengthModel = CustomCellModel(title: "signal_strength".localizedString, content: node.rssi != nil ? "\(node.rssi!)dB" : "--", contentColor: messageColor, contentFont: FONTS(SCRYFrom(15)), style: .none)
         
         deviceInfoModels = [nameModel, macModel, devModel, deviceTypeModel, firmwareModel, singleStrengthModel]
     }
@@ -114,10 +146,18 @@ class DeviceLightBasicController: UIViewController {
             guard let self = self else { return }
             MeshAPI.setNodeOnOffState(address: self.node.primaryUnicastAddress, isOn: isOn)
             self.node.isOn = isOn
+            if !isOn && self.node.lightness > 0 {
+                // 记录关灯前亮度
+                self.node.trunOffLightness = self.node.lightness
+            }
             if self.tableView.numberOfSections > 0, let index = self.sections.firstIndex(of: .control) {
                 if let levelCell = tableView.cellForRow(at: IndexPath(row: 0, section: index)) as? DeviceLightControlViewCell {
                     if isOn {
-                        levelCell.value = self.node.lightness100
+                        if let trunOffLightness = self.node.trunOffLightness, self.node.lightness == 0 {
+                            levelCell.value = Node.getLightness100(lightness: trunOffLightness)
+                        }else {
+                            levelCell.value = self.node.lightness100
+                        }
                     }else {
                         levelCell.value = 0
                     }
@@ -159,28 +199,38 @@ class DeviceLightBasicController: UIViewController {
         }
         
         tableView.tableHeaderView = offlineView
+        
+        refreshControl = UIRefreshControl()
+        refreshControl.tintColor = UIColor.lightGray
+        refreshControl.addTarget(self, action: #selector(getNodeState), for: .valueChanged)
+//        tableView.addSubview(refreshControl)
     }
     
     /// 设置锁住UI更新
-    @objc private func lockUIUpdateAction(duration: TimeInterval = 3) {
-        
-        lockUIUpdate = true
-        DispatchQueue.main.async {
-            NSObject.cancelPreviousPerformRequests(withTarget: self, selector: #selector(self.unlockUIUpdateAction), object: nil)
-            self.perform(#selector(self.unlockUIUpdateAction), with: nil, afterDelay: duration)
-        }
-    }
+//    @objc private func lockUIUpdateAction(duration: TimeInterval = 3) {
+//        
+//        lockUIUpdate = true
+//        DispatchQueue.main.async {
+//            NSObject.cancelPreviousPerformRequests(withTarget: self, selector: #selector(self.unlockUIUpdateAction), object: nil)
+//            self.perform(#selector(self.unlockUIUpdateAction), with: nil, afterDelay: duration)
+//        }
+//    }
     
     /// 解锁UI更新
-    @objc private func unlockUIUpdateAction() {
-        
-        lockUIUpdate = false
-    }
+//    @objc private func unlockUIUpdateAction() {
+//        
+//        lockUIUpdate = false
+//    }
     
     /// 修复设备
     @objc private func repairBtnClick() {
         
-        XWHUDManager.showCustomHUD(withMessage: "repairing".localizedString, isWindiw: true)
+        guard MeshLibManager.manager.isMeshNetworkConnected else {
+            XWHUDManager.showTipHUD("device_repair_offline".localizedString, isLineFeed: true)
+            return
+        }
+        
+        XWHUDManager.showCustomHUD(withMessage: "repairing".localizedString, isWindow: true)
         MeshAPI.startKeyBind(node: node, startKeyBind: nil) {[weak self] node in
             XWHUDManager.hide()
             if MeshLibManager.manager.bluetoothState == .poweredOn {
@@ -253,6 +303,11 @@ class DeviceLightBasicController: UIViewController {
     //                tableView.reloadSections(IndexSet(integer: index), with: .none)
                 }
             }
+            if node.state {
+                tableView.refreshControl = refreshControl
+            }else {
+                tableView.refreshControl = nil
+            }
             repairBtn.isHidden = true
             offlineLabel.text = "device_offline_message".localizedString
         }else { // 修复
@@ -262,6 +317,7 @@ class DeviceLightBasicController: UIViewController {
             repairBtn.isHidden = false
             offlineLabel.text = "device_repair_message".localizedString
             tableView.reloadData()
+            tableView.refreshControl = nil
         }
         
     }
@@ -404,7 +460,7 @@ extension DeviceLightBasicController: UITableViewDataSource, UITableViewDelegate
             }else {
                 let scene = node.scenes[indexPath.row]
                 cell.cellStyle = .none
-                cell.titleLabel.text = scene.name
+                cell.titleLabel.text = scene.info.name ?? scene.name
                 cell.titleLabel.textColor = TextBlack_Color.withAlphaComponent(0.5)
                 cell.titleLabel.font = Font_Medium_Size(SCRYFrom(14))
                 cell.contentLabel.text = "Brightness-20%."
@@ -423,7 +479,7 @@ extension DeviceLightBasicController: UITableViewDataSource, UITableViewDelegate
         if sectionType == .deviceInfo && indexPath.row == 1 { // 复制
             let model = deviceInfoModels[indexPath.row]
             if let content = model.content {
-                let pasteboard = UIPasteboard()
+                let pasteboard = UIPasteboard.general
                 pasteboard.string = content
                 XWHUDManager.showTipHUD(inView: "copy_success".localizedString, isLineFeed: false)
             }
@@ -439,6 +495,10 @@ extension DeviceLightBasicController: DeviceLightControlViewCellDelegate {
         case .level:
             let lightness = Node.getLightness(lightness100: value)
             MeshAPI.setNodeLightnessState(address: node.primaryUnicastAddress, lightness: lightness, ack: ended)
+            if lightness == 0, lastSendLightness > 0 {
+                node.trunOffLightness = lastSendLightness
+            }
+            lastSendLightness = lightness
         case .cct:
             let cct = node.getTemperature(temperature100: value)
             MeshAPI.setNodeColorTemperatureState(address: node.primaryUnicastAddress, temperature: cct)
@@ -458,7 +518,7 @@ extension DeviceLightBasicController: DeviceLightControlViewCellDelegate {
         }
         headerView.node = node
         
-        lockUIUpdateAction()
+//        lockUIUpdateAction()
     }
     
 }
@@ -485,15 +545,17 @@ extension DeviceLightBasicController: MeshLibManagerDelegate {
     
     func meshNetworkManager(_ manager: MeshNetworkManager, deviceDataUpdate node: Node) {
         if node.primaryUnicastAddress == self.node.primaryUnicastAddress {
-            // 离线->在线
-//            if node.state && node.state != onlineState {
+            // 离线->在线  在线->离线
+            if node.state != onlineState {
 //                // 获取设备最新状态
 //                MeshAPI.getNodeState(address: node.primaryUnicastAddress)
-//            }
-//            onlineState = node.state
-            if !lockUIUpdate { // 未在发送控制消息时才可更新UI
-                updateUI()
+                (self.wm_pageController as? DeviceLightViewController)?.updateUI()
             }
+            
+//            if !lockUIUpdate { // 未在发送控制消息时才可更新UI
+            lastSendLightness = node.lightness
+                updateUI()
+//            }
         }
     }
     

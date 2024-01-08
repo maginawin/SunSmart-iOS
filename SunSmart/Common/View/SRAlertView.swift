@@ -30,6 +30,11 @@ class SRAlertView: UIView {
     var titleLabel: UILabel!
     /// 文本
     var messageLabel: UILabel!
+    /// 富文本按钮
+    var messageAttStrBtn: UIButton!
+    /// 富文本按钮配置
+    private var messageAttBtnStyle: SRAlertMessageAttBtnStyle?
+    
     /// 输入框
     private var textField: UITextField!
     
@@ -102,17 +107,20 @@ class SRAlertView: UIView {
     ///   - actionHeight: 底部按钮高度
     ///   - actions: 底部按钮配置
     convenience init(title: String? = nil,
-                     titleColor: UIColor = TextBlack_Color,
-                     titleFont: UIFont = Font_Medium_Size(SCRYFrom(15)),
+                     titleColor: UIColor = Title_Color,
+                     titleFont: UIFont = FONTS(SCRYFrom(15)),
                      message: String? = nil,
-                     messageColor: UIColor = TextBlack_Color,
-                     messageFont: UIFont = FONTS(SCRYFrom(14)),
+                     messageAttStr: NSAttributedString? = nil,
+                     messageColor: UIColor = Title_Color,
+                     messageFont: UIFont = FONTS(SCRYFrom(15)),
+                     messageAttBtnStyle: SRAlertMessageAttBtnStyle? = nil,
                      stateImage: UIImage? = nil,
                      loadingState: Bool = false,
                      showProgress: Bool = false,
                      progress: Int = 0,
                      tapBackgroundHide: Bool = true,
-                     margin: CGFloat? = nil,
+                     margin: CGFloat = SCRXFrom(36),
+                     contentPadding: CGFloat = SCRXFrom(27),
                      contentMinHeight: CGFloat = SCRYFrom(130),
                      actionDirection: ActionDirection = .horizontal,
                      showClose: Bool = false,
@@ -121,8 +129,8 @@ class SRAlertView: UIView {
         self.init(frame: UIScreen.main.bounds)
         
         contentView.snp.remakeConstraints { make in
-            make.left.equalTo(margin ?? SCRXFrom(36))
-            make.right.equalTo(-(margin ?? SCRXFrom(36)))
+            make.left.equalTo(margin)
+            make.right.equalTo(-margin)
             make.center.equalToSuperview()
             if title != nil && message != nil && !actions.isEmpty {
                 make.height.greaterThanOrEqualTo(contentMinHeight + 60)
@@ -132,14 +140,20 @@ class SRAlertView: UIView {
         }
         
         if contentMinHeight > 0 {
-            if message?.isEmpty ?? true {
+            if message?.isEmpty ?? true && messageAttStr?.length == 0 {
                 self.titleLabel.snp.remakeConstraints { make in
                     make.top.equalTo(SCRYFrom(24))
 //                    make.height.greaterThanOrEqualTo(SCRYFrom(50))
-                    make.left.equalTo(SCRXFrom(27))
-                    make.right.equalTo(SCRXFrom(-27))
+                    make.left.equalTo(contentPadding)
+                    make.right.equalTo(-contentPadding)
                 }
             }else {
+                self.titleLabel.snp.updateConstraints { make in
+//                    make.height.greaterThanOrEqualTo(SCRYFrom(50))
+                    make.left.equalTo(contentPadding)
+                    make.right.equalTo(-contentPadding)
+                }
+                
                 messageLabel.snp.remakeConstraints { make in
                     make.left.right.equalTo(titleLabel)
                     make.top.equalTo(titleLabel.snp.bottom).offset(SCRYFrom(26))
@@ -155,11 +169,36 @@ class SRAlertView: UIView {
             self.titleLabel.font = titleFont
         }
         
-        if message != nil {
-            self.messageLabel.text = message
+        if message != nil || messageAttStr != nil {
+            if messageAttStr != nil {
+                self.messageLabel.attributedText = messageAttStr
+            }else {
+                self.messageLabel.text = message
+            }
             self.messageLabel.textColor = messageColor
             self.messageLabel.font = messageFont
         }
+        
+        if let style = messageAttBtnStyle {
+            self.messageAttBtnStyle = style
+            self.messageAttStrBtn.isHidden = false
+            self.messageAttStrBtn.titleLabel?.font = style.textFont
+            if style.underline {
+                
+                let attStr = NSMutableAttributedString(string: style.text, attributes: [.foregroundColor: style.textColor])
+                attStr.addAttributes([.underlineStyle: 1, .underlineColor: style.textColor], range: NSMakeRange(0, style.text.count))
+                self.messageAttStrBtn.setAttributedTitle(attStr, for: .normal)
+            }else {
+                self.messageAttStrBtn.setTitle(style.text, for: .normal)
+                self.messageAttStrBtn.setTitleColor(style.textColor, for: .normal)
+            }
+            
+            self.messageAttStrBtn.snp.updateConstraints { make in
+                make.centerX.equalTo(messageLabel).offset(style.offset.x)
+                make.centerY.equalTo(messageLabel).offset(style.offset.y)
+            }
+        }
+        
 //        self.layoutIfNeeded()
 //        hLineView.snp.makeConstraints { make in
 //            self.titleLabel.sizeToFit()
@@ -596,7 +635,10 @@ class SRAlertView: UIView {
         
     }
     
-  
+    ///文本点击按钮
+    @objc private func messageAttStrBtnClick() {
+        messageAttBtnStyle?.actionHandler?()
+    }
     
     
     // MARK: - UI
@@ -678,12 +720,21 @@ class SRAlertView: UIView {
         
         messageLabel = UILabel()
         messageLabel.numberOfLines = 0
+        messageLabel.lineBreakMode = .byCharWrapping
         messageLabel.textAlignment = .center
         messageLabel.setContentHuggingPriority(.defaultHigh, for: .vertical)
         contentView.addSubview(messageLabel)
         messageLabel.snp.makeConstraints { make in
             make.left.right.equalTo(titleLabel)
             make.top.equalTo(titleLabel.snp.bottom).offset(SCRYFrom(8))
+        }
+        
+        messageAttStrBtn = UIButton(target: self, action: #selector(messageAttStrBtnClick))
+        messageAttStrBtn.isHidden = true
+        contentView.addSubview(messageAttStrBtn)
+        messageAttStrBtn.snp.makeConstraints { make in
+            make.centerX.equalTo(messageLabel)
+            make.centerY.equalTo(messageLabel)
         }
         
         textField = UITextField()
@@ -743,6 +794,7 @@ class SRAlertView: UIView {
             make.centerX.equalToSuperview()
         }
         
+        
         bottomBtn = UIButton()
         bottomBtn.backgroundColor = Bar_Color
         bottomBtn.layer.cornerRadius = SCRYFrom(5)
@@ -764,7 +816,7 @@ class SRAlertView: UIView {
         hLineView.snp.makeConstraints { make in
             make.left.right.equalTo(0)
             make.height.equalTo(1)
-            make.top.equalTo(messageLabel.snp.bottom).offset(SCRYFrom(18)).priority(.low)
+            make.top.equalTo(messageLabel.snp.bottom).offset(SCRYFrom(22)).priority(.low)
         }
         
         vLineView = UIView()
@@ -1111,13 +1163,13 @@ struct SRAlertAction {
         switch style {
         case .default:
             self.titleColor = Bar_Color
-            self.titleFont = Font_Medium_Size(17)
+            self.titleFont = FONTS(15)
         case .cancel:
-            self.titleColor = TextBlack_Color
-            self.titleFont = Font_Medium_Size(17)
+            self.titleColor = Title_Color
+            self.titleFont = FONTS(15)
         case .destructive:
             self.titleColor = Red_Color
-            self.titleFont = Font_Medium_Size(17)
+            self.titleFont = FONTS(15)
         }
         
         if titleColor != nil {
@@ -1127,6 +1179,31 @@ struct SRAlertAction {
             self.titleFont = titleFont!
         }
         self.style = style
+        self.actionHandler = actionHandler
+    }
+}
+
+struct SRAlertMessageAttBtnStyle {
+    
+    /// 是否偏移（与message居中）
+    let offset: CGPoint
+    /// 文本
+    let text: String
+    /// 文本颜色
+    let textColor: UIColor
+    /// 文本字体
+    let textFont: UIFont
+    /// 是否显示下划线
+    let underline: Bool
+    /// 事件回调
+    var actionHandler: (()->())? = nil
+    
+    init(offset: CGPoint = .zero, text: String, textColor: UIColor = Bar_Color, textFont: UIFont = FONTS(SCRYFrom(15)), underline: Bool = true, actionHandler: (()->Void)? = nil) {
+        self.offset = offset
+        self.text = text
+        self.textColor = textColor
+        self.textFont = textFont
+        self.underline = underline
         self.actionHandler = actionHandler
     }
 }
