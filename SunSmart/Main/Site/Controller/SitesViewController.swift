@@ -208,7 +208,7 @@ class SitesViewController: UIViewController {
         }
         
         if allSites.isEmpty {
-            allSitesTableView.showEmptyDataView(imageName: "site_structure", title: "no_sites_title".localizedString, tipText: nil)
+            allSitesTableView.showEmptyDataView(imageName: "site_empty", title: "no_sites_title".localizedString, tipText: nil)
             if let emptyView = allSitesTableView.emptyView {
                 emptyView.contentView.snp.remakeConstraints({ make in
                     make.top.equalTo(SCRYFrom(7))

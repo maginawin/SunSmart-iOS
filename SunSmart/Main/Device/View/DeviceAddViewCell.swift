@@ -208,7 +208,7 @@ class DeviceAddViewCell: UITableViewCell {
             make.width.height.equalTo(SCRYFrom(12))
         }
         
-        nameLabel = UILabel(text: "Device", textColor: RGB(13, 14, 28), fontSize: 15)
+        nameLabel = UILabel(text: "Device", textColor: RGB(13, 14, 28), fontSize: 15, fontWeight: .light)
         contentView.addSubview(nameLabel)
         nameLabel.snp.makeConstraints { make in
             make.left.equalTo(deviceImageView.snp.right).offset(SCRXFrom(8))
@@ -216,7 +216,7 @@ class DeviceAddViewCell: UITableViewCell {
             make.right.equalTo(SCRXFrom(-135))
         }
         
-        macAddressLabel = UILabel(text: "DF:EF:32:DG:HJ:67", textColor: RGB(142, 142, 147), fontSize: 13)
+        macAddressLabel = UILabel(text: "DF:EF:32:DG:HJ:67", textColor: RGB(142, 142, 147), fontSize: 13, fontWeight: .light)
         contentView.addSubview(macAddressLabel)
         macAddressLabel.snp.makeConstraints { make in
             make.left.right.equalTo(nameLabel)
@@ -233,7 +233,7 @@ class DeviceAddViewCell: UITableViewCell {
             make.width.height.equalTo(SCRYFrom(30))
         }
         
-        identifyBtn = UIButton(title: "identify".localizedString, titleSize: 14, titleColor: Bar_Color, target: self, action: #selector(identifyBtnClick))
+        identifyBtn = UIButton(title: "identify".localizedString, titleSize: 14, titleWeight: .light, titleColor: Bar_Color, target: self, action: #selector(identifyBtnClick))
         identifyBtn.setTitleColor(RGB(39, 37, 54, 0.5), for: .disabled)
         identifyBtn.layer.cornerRadius = SCRYFrom(15)
         identifyBtn.layer.borderColor = Bar_Color.cgColor
@@ -254,7 +254,7 @@ class DeviceAddViewCell: UITableViewCell {
             make.width.height.equalTo(SCRYFrom(40))
         }
         
-        identifyStateLabel = UILabel(text: "", textColor: TextBlack_Color, fontSize: 12)
+        identifyStateLabel = UILabel(text: "", textColor: TextBlack_Color, fontSize: 12, fontWeight: .light)
         identifyStateLabel.layer.cornerRadius = 3
         identifyStateLabel.layer.borderWidth = 0.5
         identifyStateLabel.layer.borderColor = Message_Color.cgColor
@@ -278,7 +278,7 @@ class DeviceAddViewCell: UITableViewCell {
             make.width.height.equalTo(SCRYFrom(30))
         }
         
-        addStateLabel = UILabel(text: "", textColor: TextBlack_Color, fontSize: 12)
+        addStateLabel = UILabel(text: "", textColor: TextBlack_Color, fontSize: 12, fontWeight: .light)
         addStateLabel.layer.cornerRadius = 3
         addStateLabel.layer.borderWidth = 0.5
         addStateLabel.layer.borderColor = Message_Color.cgColor

@@ -151,7 +151,7 @@ class GroupsViewController: UIViewController {
 //            collectionView.showEmptyDataView(title: "no_devices".localizedString, tipText: "no_devices_message".localizedString)
 //            collectionView.emptyView?.titleLabel.font = Font_Medium_Size(SCRYFrom(14))
             
-            collectionView.showEmptyDataView(imageName: "site_structure", title: "no_groups".localizedString, tipText: nil)
+            collectionView.showEmptyDataView(imageName: "group_empty", title: "no_groups".localizedString, tipText: nil)
             if let emptyView = collectionView.emptyView {
                 emptyView.contentView.snp.remakeConstraints({ make in
                     make.top.equalTo(SCRYFrom(39))

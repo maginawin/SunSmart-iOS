@@ -622,7 +622,7 @@ class DeviceAddViewController: UIViewController {
             make.height.equalTo(SCRYFrom(100))
         }
         
-        nearLabel = UILabel(text: "near".localizedString, textColor: TextBlack_Color, fontSize: 15)
+        nearLabel = UILabel(text: "near".localizedString, textColor: TextBlack_Color, fontSize: 15, fontWeight: .light)
         headerView.addSubview(nearLabel)
         nearLabel.snp.makeConstraints { make in
             make.left.equalTo(SCRXFrom(16))
@@ -649,21 +649,21 @@ class DeviceAddViewController: UIViewController {
             make.height.equalTo(SCRYFrom(40))
         }
         
-        farLabel = UILabel(text: "far".localizedString, textColor: TextBlack_Color, fontSize: 15)
+        farLabel = UILabel(text: "far".localizedString, textColor: TextBlack_Color, fontSize: 15, fontWeight: .light)
         headerView.addSubview(farLabel)
         farLabel.snp.makeConstraints { make in
             make.right.equalTo(SCRXFrom(-16))
             make.top.equalTo(nearLabel)
         }
         
-        addDeviceToLabel = UILabel(text: "add_device_to".localizedString, textColor: TextBlack_Color, fontSize: 14)
+        addDeviceToLabel = UILabel(text: "add_device_to".localizedString, textColor: TextBlack_Color, fontSize: 14, fontWeight: .light)
         headerView.addSubview(addDeviceToLabel)
         addDeviceToLabel.snp.makeConstraints { make in
             make.left.equalTo(nearLabel)
             make.bottom.equalTo(SCRYFrom(-14))
         }
         
-        addDeviceTargetBtn = UIButton(title: addToGroup?.info.name ?? addToGroup?.name ?? space.name, titleSize: 13, titleColor: TextBlack_Color, normalImageName: "space_arrow_down", target: self, action: #selector(addDeviceTargetBtnClick))
+        addDeviceTargetBtn = UIButton(title: addToGroup?.info.name ?? addToGroup?.name ?? space.name, titleSize: 13, titleWeight: .light, titleColor: TextBlack_Color, normalImageName: "space_arrow_down", target: self, action: #selector(addDeviceTargetBtnClick))
         addDeviceTargetBtn.imageView?.sizeToFit()
         let imageW = addDeviceTargetBtn.imageView?.image?.size.width ?? 0
         addDeviceTargetBtn.imageEdgeInsets = UIEdgeInsets(top: 0, left: SCRXFrom(103), bottom: 0, right: 0)

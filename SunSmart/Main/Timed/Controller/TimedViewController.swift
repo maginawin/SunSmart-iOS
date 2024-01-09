@@ -35,7 +35,7 @@ class TimedViewController: UIViewController {
         view.backgroundColor = Background_Color
         setupUI()
         
-        var actions: [SchedulerAction] = [.turnOn, .turnOff, .sceneRecall]
+        let actions: [SchedulerAction] = [.turnOn, .turnOff, .sceneRecall]
         
         let allWeekDays: [WeekDay] = [.Monday, .Tuesday, .Wednesday, .Thursday, .Friday, .Saturday, .Sunday]
         
@@ -55,6 +55,8 @@ class TimedViewController: UIViewController {
             let schedule = Schedule(id: i, name: "Schedule \(i)", enabled: i < 3, action: actions[Int(actionIndex)], fadeTime: 5, weekDays: randomWeeks[Int(weekIndex)], hour: Int(arc4random_uniform(24)), minute: 0, create: create)
             schedules.append(schedule)
         }
+        
+        footerView.countBtn.setTitle("\(schedules.count)/16", for: .normal)
         
     }
     
