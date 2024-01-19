@@ -26,7 +26,7 @@ class NavigationViewController: UINavigationController {
 
         self.navigationBar.barTintColor = .white
         let titleFont = FONTS(18)
-        let titleTextAttributes = [NSAttributedString.Key.font: titleFont,NSAttributedString.Key.foregroundColor: RGB(35, 35, 41)]
+        let titleTextAttributes = [NSAttributedString.Key.font: titleFont,NSAttributedString.Key.foregroundColor: RGB(30, 35, 41)]
         self.navigationBar.titleTextAttributes = titleTextAttributes
         self.navigationBar.shadowImage = UIImage()
         
@@ -36,8 +36,10 @@ class NavigationViewController: UINavigationController {
             appearance.backgroundImage = UIImage.image(size: CGSize(width: 1, height: 1), color: .white)
             appearance.titleTextAttributes = titleTextAttributes
             appearance.shadowImage = UIImage.image(size: CGSize(width: 1, height: 1), color: .clear)
+            appearance.titleTextAttributes = titleTextAttributes
             navigationBar.standardAppearance = appearance
             navigationBar.scrollEdgeAppearance = appearance
+            
         }
         interactivePopGestureRecognizer?.delegate = self
     }

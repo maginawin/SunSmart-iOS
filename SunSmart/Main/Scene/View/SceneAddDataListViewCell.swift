@@ -27,7 +27,7 @@ class SceneAddDataListViewCell: UICollectionViewCell {
     
     var selectIndex: Int?
     /// 最大数量
-    var maxCount = 8
+    var maxCount = 16
     
     weak var delegate: SceneAddDataListViewCellDelegate?
     

@@ -14,9 +14,9 @@ class GroupAddHeaderView: UICollectionReusableView {
     var nameField: UITextField!
     private var tipTextLabel: UILabel!
     
-    private var profileLabel: UILabel!
-    private var profileBtn: UIButton!
-    private var profileEditBtn: UIButton!
+    var profileLabel: UILabel!
+    var profileBtn: UIButton!
+    var profileEditBtn: UIButton!
     
     /// 名称编辑回调
     var nameEditChangedCallback: ((String)->String?)?
@@ -102,12 +102,12 @@ class GroupAddHeaderView: UICollectionReusableView {
         
         nameField = UITextField()
         nameField.textColor = TextBlack_Color
-        nameField.font = FONTS(15)
+        nameField.font = UIFont.systemFont(ofSize: SCRYFrom(15), weight: .light)
         nameField.layer.cornerRadius = 5
         nameField.layer.borderColor = RGB(151, 151, 151, 0.3).cgColor
         nameField.layer.borderWidth = 1
-        nameField.clearButtonMode = .whileEditing
-        nameField.rightViewMode = .whileEditing
+        nameField.clearButtonMode = .always
+        nameField.rightViewMode = .always
         nameField.leftView = UIView(frame: CGRect(x: 0, y: 0, width: SCRXFrom(8), height: 0))
         nameField.leftViewMode = .always
         nameField.returnKeyType = .done
@@ -122,7 +122,7 @@ class GroupAddHeaderView: UICollectionReusableView {
             make.height.equalTo(SCRYFrom(40))
         }
         
-        tipTextLabel = UILabel(text: nil, textColor: Red_Color, fontSize: 13)
+        tipTextLabel = UILabel(text: nil, textColor: Red_Color, fontSize: 12, fontWeight: .light)
         addSubview(tipTextLabel)
         tipTextLabel.snp.makeConstraints { make in
             make.left.equalTo(SCRXFrom(24))
@@ -137,12 +137,13 @@ class GroupAddHeaderView: UICollectionReusableView {
             make.left.equalTo(nameField)
         }
         
-        profileBtn = UIButton(title: "Occupancy sensing with daylight harvesting", titleSize: 15, titleColor: RGB(72, 72, 74), normalImageName: "arrow_down_small", target: self, action: #selector(profileBtnClick))
+        profileBtn = UIButton(title: "Occupancy sensing with daylight harvesting", titleSize: 14, titleWeight: .light, titleColor: RGB(72, 72, 74), normalImageName: "arrow_down_small", target: self, action: #selector(profileBtnClick))
         profileBtn.layer.cornerRadius = 5
         profileBtn.layer.borderWidth = 0.5
+        profileBtn.titleLabel?.adjustsFontSizeToFitWidth = true
         profileBtn.layer.borderColor = RGB(151, 151, 151, 0.3).cgColor
         profileBtn.backgroundColor = .white
-        profileBtn.contentEdgeInsets = UIEdgeInsets(top: 0, left: SCRXFrom(8), bottom: 0, right: SCRXFrom(5))
+        profileBtn.contentEdgeInsets = UIEdgeInsets(top: 0, left: SCRXFrom(6), bottom: 0, right: SCRXFrom(1))
         addSubview(profileBtn)
         profileBtn.snp.makeConstraints { make in
             make.left.equalTo(profileLabel)

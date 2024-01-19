@@ -27,6 +27,11 @@ class CustomTableViewCell: UITableViewCell {
     var contentLabel : UILabel!
     var arrowImageView : UIImageView!
     var lineView : UIView!
+    var iconImageClickCallback: (()->Void)? {
+        didSet {
+            iconImageView.isUserInteractionEnabled = true
+        }
+    }
     var cellStyle : CustomCellStyle = .none {
         didSet {
             if cellStyle == .none {
@@ -77,7 +82,7 @@ class CustomTableViewCell: UITableViewCell {
                     self.contentLabel.snp.remakeConstraints { make in
                         make.right.equalTo(SCRXFrom(-36))
                         make.centerY.equalToSuperview()
-//                        make.left.equalTo(SCRXFrom(140))
+                        make.left.equalTo(SCRXFrom(140))
                     }
                 }
                 
@@ -138,6 +143,8 @@ class CustomTableViewCell: UITableViewCell {
         
         iconImageView = UIImageView()
         iconImageView.isHidden = true
+        iconImageView.isUserInteractionEnabled = false
+        iconImageView.addGestureRecognizer(UITapGestureRecognizer(target: self, action: #selector(iconImageViewAction)))
         contentView.addSubview(iconImageView)
         iconImageView.snp.makeConstraints { make in
             make.left.equalTo(iconX)
@@ -180,6 +187,11 @@ class CustomTableViewCell: UITableViewCell {
     
     required init?(coder: NSCoder) {
         fatalError("init(coder:) has not been implemented")
+    }
+    
+    @objc private func iconImageViewAction() {
+        
+        iconImageClickCallback?()
     }
     
 }

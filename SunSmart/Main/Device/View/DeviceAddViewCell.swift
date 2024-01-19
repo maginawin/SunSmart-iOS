@@ -24,7 +24,7 @@ class DeviceAddViewCell: UITableViewCell {
 
     var selectImageView: UIImageView!
     var deviceImageView: UIImageView!
-    private var identifyAnimationView: UIView!
+    private var identifyAnimationView: UIImageView!
     var nameLabel: UILabel!
     var macAddressLabel: UILabel!
     var identifyBtn: UIButton!
@@ -198,14 +198,15 @@ class DeviceAddViewCell: UITableViewCell {
             make.width.height.equalTo(SCRYFrom(30))
         }
         
-        identifyAnimationView = UIView()
-        identifyAnimationView.backgroundColor = RGB(0, 234, 164)
-        identifyAnimationView.isUserInteractionEnabled = false
-        identifyAnimationView.layer.cornerRadius = SCRYFrom(6)
+        identifyAnimationView = UIImageView(image: UIImage(named: "device_light_identify"))
+//        identifyAnimationView.backgroundColor = RGB(0, 234, 164)
+//        identifyAnimationView.isUserInteractionEnabled = false
+//        identifyAnimationView.layer.cornerRadius = SCRYFrom(6)
         deviceImageView.addSubview(identifyAnimationView)
         identifyAnimationView.snp.makeConstraints { make in
-            make.center.equalToSuperview()
-            make.width.height.equalTo(SCRYFrom(12))
+            make.centerX.equalToSuperview()
+            make.top.equalTo(SCRYFrom(3))
+            make.width.height.equalTo(SCRYFrom(15))
         }
         
         nameLabel = UILabel(text: "Device", textColor: RGB(13, 14, 28), fontSize: 15, fontWeight: .light)
@@ -275,7 +276,7 @@ class DeviceAddViewCell: UITableViewCell {
         stateImageView.snp.makeConstraints { make in
             make.right.equalTo(SCRXFrom(-20))
             make.centerY.equalToSuperview()
-            make.width.height.equalTo(SCRYFrom(30))
+            make.width.height.equalTo(30)
         }
         
         addStateLabel = UILabel(text: "", textColor: TextBlack_Color, fontSize: 12, fontWeight: .light)

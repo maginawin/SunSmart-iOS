@@ -136,7 +136,7 @@ class SpaceFunctionFooterView: UIView {
             make.top.equalTo(SCRYFrom(5))
         }
         
-        cancelBtn = UIButton(title: "cancel".localizedString, titleSize: 17, titleColor: TextBlack_Color, target: self, action: #selector(cancelBtnClick))
+        cancelBtn = UIButton(title: "cancel".localizedString, titleSize: 17, titleWeight: .light, titleColor: TextBlack_Color, target: self, action: #selector(cancelBtnClick))
         cancelBtn.isHidden = true
         addSubview(cancelBtn)
         cancelBtn.snp.makeConstraints { make in
@@ -155,8 +155,8 @@ class SpaceFunctionFooterView: UIView {
             make.height.equalTo(SCRYFrom(16))
         }
         
-        deleteBtn = UIButton(title: "DELETE".localizedString, titleSize: 17, titleColor: Red_Color, target: self, action: #selector(deleteBtnClick))
-        deleteBtn.titleLabel?.font = Font_Medium_Size(SCRYFrom(17))
+        deleteBtn = UIButton(title: "DELETE".localizedString, titleSize: 17, titleWeight: .light, titleColor: Red_Color, target: self, action: #selector(deleteBtnClick))
+//        deleteBtn.titleLabel?.font = Font_Medium_Size(SCRYFrom(17))
         deleteBtn.setTitleColor(RGB(147, 146, 154), for: .disabled)
         deleteBtn.isHidden = true
         addSubview(deleteBtn)

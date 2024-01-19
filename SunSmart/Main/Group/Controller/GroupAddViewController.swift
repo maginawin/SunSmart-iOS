@@ -32,7 +32,7 @@ class GroupAddViewController: UIViewController {
     private var name: String?
     
     let space: SpaceData
-    var doneCallback: ((Group)->Void)?
+//    var doneCallback: ((Group)->Void)?
     /// 传入组则编辑
     var group: Group?
     
@@ -71,7 +71,8 @@ class GroupAddViewController: UIViewController {
         if let group = self.group {
             name = group.name
             title = "edit_group".localizedString
-//            doneBtn.setTitle("", for: <#T##UIControl.State#>)
+            
+            doneBtn.setTitle("done".localizedString, for: .normal)
         }else {
             name = space.getNextGroupName()
             title = "create_group".localizedString
@@ -104,6 +105,9 @@ class GroupAddViewController: UIViewController {
             self.group?.name = name
             _ = MeshNetworkManager.instance.save()
             finnished()
+            close()
+            NotificationCenter.default.post(name: .init(groupDataUpdateNotificationName), object: self.group!)
+            
         }else { // 新增
             
             MeshAPI.createGroup(name: name) {[weak self] group in
@@ -114,8 +118,11 @@ class GroupAddViewController: UIViewController {
                 DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {[weak self] in
                     guard let self = self else { return }
                     let memberVc = GroupMembersViewController(space: self.space, group: group)
+                    memberVc.isAddDevices = true
                     self.navigationController?.pushViewController(memberVc, animated: true)
-                    self.navigationController?.removeVc(vc: self)
+                    
+                    NotificationCenter.default.post(name: .init(groupsRefreshNotificationName), object: nil)
+//                    self.navigationController?.removeVc(vc: self)
                 }
                 
             } fail: { _, error in
@@ -137,7 +144,7 @@ class GroupAddViewController: UIViewController {
         let groupInfo = GroupInfo(address: group.address.address, name: name, imageId: self.selectImageIndex + 1, imageText: source.type == .text ? source.name : nil)
         groupInfo.save(meshUUID: space.meshUUID)
         group.info = groupInfo
-        self.doneCallback?(group)
+//        self.doneCallback?(group)
     }
     
     private func setupUI() {
@@ -150,34 +157,36 @@ class GroupAddViewController: UIViewController {
             make.height.equalTo(SCRYFrom(56) + kSafeAreaBottomHeight)
         }
         
-        lineView = UIView()
-        lineView.backgroundColor = Line_Color
-        footerView.addSubview(lineView)
-        lineView.snp.makeConstraints { make in
-            make.centerX.equalToSuperview()
-            make.top.equalTo(SCRYFrom(8))
-            make.width.equalTo(1)
-            make.bottom.equalTo(-kSafeAreaTopHeight - SCRYFrom(8))
-//            make.height.equalTo(SCRYFrom(40))
-        }
+//        lineView = UIView()
+//        lineView.backgroundColor = Line_Color
+//        footerView.addSubview(lineView)
+//        lineView.snp.makeConstraints { make in
+//            make.centerX.equalToSuperview()
+//            make.top.equalTo(SCRYFrom(8))
+//            make.width.equalTo(1)
+//            make.bottom.equalTo(-kSafeAreaTopHeight - SCRYFrom(8))
+////            make.height.equalTo(SCRYFrom(40))
+//        }
         
-        cancelBtn = UIButton(title: "cancel".localizedString, titleSize: 16, titleColor: TextBlack_Color, target: self, action: #selector(cancelBtnClick))
-        cancelBtn.titleLabel?.textAlignment = .center
-        footerView.addSubview(cancelBtn)
-        cancelBtn.snp.makeConstraints { make in
-            make.right.equalTo(lineView.snp.left).offset(SCRXFrom(-33))
-            make.centerY.equalTo(lineView)
-            make.width.equalTo(SCRXFrom(120))
-            make.height.equalTo(SCRYFrom(30))
-        }
+//        cancelBtn = UIButton(title: "cancel".localizedString, titleSize: 16, titleColor: TextBlack_Color, target: self, action: #selector(cancelBtnClick))
+//        cancelBtn.titleLabel?.textAlignment = .center
+//        footerView.addSubview(cancelBtn)
+//        cancelBtn.snp.makeConstraints { make in
+//            make.right.equalTo(lineView.snp.left).offset(SCRXFrom(-33))
+//            make.centerY.equalTo(lineView)
+//            make.width.equalTo(SCRXFrom(120))
+//            make.height.equalTo(SCRYFrom(30))
+//        }
         
-        doneBtn = UIButton(title: "done".localizedString, titleSize: 16, titleColor: Bar_Color, target: self, action: #selector(doneBtnClick))
+        doneBtn = UIButton(title: "create".localizedString, titleSize: 16, titleWeight: .light, titleColor: Title_Color, target: self, action: #selector(doneBtnClick))
         doneBtn.setTitleColor(RGB(139, 139, 139), for: .disabled)
         doneBtn.titleLabel?.textAlignment = .center
         footerView.addSubview(doneBtn)
         doneBtn.snp.makeConstraints { make in
-            make.left.equalTo(lineView.snp.left).offset(SCRXFrom(33))
-            make.centerY.height.width.equalTo(cancelBtn)
+//            make.left.equalTo(lineView.snp.left).offset(SCRXFrom(33))
+            make.left.right.top.equalToSuperview()
+            make.height.equalTo(SCRYFrom(56))
+//            make.centerY.height.width.equalTo(cancelBtn)
         }
         
         flowLayout = UICollectionViewFlowLayout()
@@ -267,7 +276,7 @@ extension GroupAddViewController: UICollectionViewDataSource, UICollectionViewDe
             if name.count > 32 {
                 self.doneBtn.isEnabled = false
                 return "text_length_exceeded".localizedString
-            }else if self.space.isGroupTautonym(name: name) {
+            }else if self.space.isGroupTautonym(name: name) && name != self.group?.name {
                 self.doneBtn.isEnabled = false
                 return "name_already_exists".localizedString
             }
@@ -279,11 +288,17 @@ extension GroupAddViewController: UICollectionViewDataSource, UICollectionViewDe
             self.name = name
             return nil
         }
+        if group != nil {
+            header.profileLabel.isHidden = true
+            header.profileBtn.isHidden = true
+            header.profileEditBtn.isHidden = true
+        }
         return header
     }
     
     func collectionView(_ collectionView: UICollectionView, layout collectionViewLayout: UICollectionViewLayout, referenceSizeForHeaderInSection section: Int) -> CGSize {
-        return CGSize(width: collectionView.width, height: SCRYFrom(186))
+        
+        return CGSize(width: collectionView.width, height: group != nil ? SCRYFrom(105) : SCRYFrom(186))
     }
     
     

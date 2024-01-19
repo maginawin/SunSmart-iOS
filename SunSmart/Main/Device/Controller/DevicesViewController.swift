@@ -9,24 +9,34 @@ import UIKit
 import NordicSigMeshSDK
 import CoreBluetooth
 
+/// 全开全关状态
+enum DeviceAllOnOffState {
+    /// 开
+    case on
+    /// 关
+    case off
+    /// 不可用
+    case disable
+}
+
 class DevicesViewController: UIViewController {
 
     /// 头部
-    private var headerView: UIView!
-    private var allOnBtn: UIButton!
-    private var allOffBtn: UIButton!
-    private var settingBtn: UIButton!
+//    private var headerView: UIView!
+//    private var allOnBtn: UIButton!
+//    private var allOffBtn: UIButton!
+//    private var settingBtn: UIButton!
     
     // 设备列表
-    private var flowLayout: UICollectionViewFlowLayout!
+    private var flowLayout: AlignCenterFlowLayout!
     private var collectionView: UICollectionView!
     
     /// 底部
     private var footerView: SpaceFunctionFooterView!
     /// 全选
-    private var allSelectView: UIView!
-    private var allSelectBgView: UIView!
-    private var allSelectBtn: UIButton!
+    private var groupsView: DeviceGroupsView!
+//    private var allSelectBgView: UIView!
+//    private var allSelectBtn: UIButton!
     /// 修复
     private var repairView: UIView!
     private var repairCountLabel: UILabel!
@@ -38,16 +48,20 @@ class DevicesViewController: UIViewController {
     let space: SpaceData
     
     var devices: [Node] = []
-    
+    /// 展示的组/全选
+    private var showSelectDatas: [DeviceGroupsSelectData] = []
     /// 是否正在编辑
     private var isEdit: Bool = false
     /// 选中的设备地址
     private var selectedAddresss: [Address] = []
     /// 删除设备中
     private var isDeletingDevice: Bool = false
-
-    
     private let rssiFileName: String
+    
+    /// 全开/全关状态（读取设备）
+    private var allOnOffState: DeviceAllOnOffState = .disable
+    /// 是否手动控制 全开/全关
+    private var controlAllOn: Bool?
     
     lazy var lightControlView: DeviceLightControlView = {
         let view = DeviceLightControlView(frame: self.view.bounds)
@@ -67,17 +81,42 @@ class DevicesViewController: UIViewController {
     
     override func viewDidLoad() {
         super.viewDidLoad()
-
+        
         view.backgroundColor = Background_Color
         
         setupUI()
         view.layoutIfNeeded()
         // 未连接上mesh网络
         if !MeshNetworkManager.instance.realNodes.isEmpty && !MeshLibManager.manager.isMeshNetworkConnected && (MeshLibManager.manager.bluetoothState == .poweredOn || MeshLibManager.manager.bluetoothState == .unknown) {
-            XWHUDManager.showCustomHUD(withMessage: nil, isWindow: false, afterDelay: 15)
-            // 获取设备信号
-            MeshLibManager.manager.refreshNodesRSSI(withWaitFor: 3, result: nil)
+//            XWHUDManager.showCustomHUD(withMessage: nil, isWindow: false, afterDelay: 15)
+//            // 获取设备信号
+//            MeshLibManager.manager.refreshNodesRSSI(withWaitFor: 3, result: nil)
+            
+            XWHUDManager.showCustomHUD(withMessage: nil, isWindow: false, afterDelay: 1)
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
+                self.devices.forEach({
+                    $0.state = true
+                    $0.isOn = true
+                    $0.lightness = 63335
+//                    if $0.temperatureModel != nil {
+                        $0.temperature = 3200
+//                    }
+                    
+                })
+                self.collectionView.reloadData()
+                self.updateAllOnOffItemUI()
+            }
         }
+//        testData()
+//        if MeshLibManager.manager.bluetoothState == .poweredOn {
+//            XWHUDManager.showCustomHUD(withMessage: nil, isWindow: false, afterDelay: 3)
+////            DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
+////                self.devices.forEach({
+////                    $0.state = true
+////                })
+////                self.collectionView.reloadData()
+////            }
+//        }
     }
     
     override func viewWillAppear(_ animated: Bool) {
@@ -86,7 +125,6 @@ class DevicesViewController: UIViewController {
         MeshLibManager.manager.register(self)
         
         loadDevices()
-//        collectionView.reloadData()
     }
     
     override func viewDidLayoutSubviews() {
@@ -101,7 +139,9 @@ class DevicesViewController: UIViewController {
         if devices.count != MeshNetworkManager.instance.realNodes.count {
             reloadDevicesView = true
         }
+        
         devices = MeshNetworkManager.instance.realNodes
+        
         // 读取缓存的设备信号值
         if let rssiMap = LCPlistCacheTool.readDict(fileName: rssiFileName) {
             rssiMap.forEach { (mac: String, rssi: Any) in
@@ -143,16 +183,16 @@ class DevicesViewController: UIViewController {
                 view.layoutIfNeeded()
             }
 
-            collectionView.showEmptyDataView(title: "no_devices".localizedString, tipText: "no_devices_message".localizedString)
+            collectionView.showEmptyDataView(title: "no_devices".localizedString, tipText: "no_devices_message".localizedString, bottomMargin: SCRYFit(-40))
             collectionView.emptyView?.titleLabel.font = Font_Medium_Size(SCRYFrom(14))
-            headerView.isHidden = true
+//            headerView.isHidden = true
             footerView.sortBtn.isEnabled = false
             footerView.editBtn.isEnabled = false
         }else {
-            headerView.isHidden = false
+//            headerView.isHidden = false
             collectionView.hideEmptyDataView()
             footerView.sortBtn.isEnabled = true
-            footerView.editBtn.isEnabled = true
+            footerView.editBtn.isEnabled = !isEdit
         }
     }
     
@@ -165,14 +205,14 @@ class DevicesViewController: UIViewController {
         var inset = self.collectionView.contentInset
         inset.bottom = SCRYFrom(16)
         if isEdit {
-            self.allSelectView.isHidden = false
-            inset.bottom = SCRYFrom(16) + allSelectView.height
+            self.groupsView.isHidden = false
+            inset.bottom = SCRYFrom(16) + groupsView.height
             self.footerView.isEditing = true
             self.repairView.isHidden = true
-            self.settingBtn.isEnabled = false
+//            self.settingBtn.isEnabled = false
         }else {
-            self.allSelectView.isHidden = true
-            self.settingBtn.isEnabled = true
+            self.groupsView.isHidden = true
+//            self.settingBtn.isEnabled = true
             self.footerView.isEditing = false
             // 判断是否有需要修复设备
             let notKeybindNodes = devices.filter({ !$0.isKeybindComplete })
@@ -191,73 +231,55 @@ class DevicesViewController: UIViewController {
 //            self.collectionView.reloadData()
             reloadAllDevices()
         }
+        
+        updateAllOnOffItemUI()
 //        CATransaction.commit()
     }
     
     private func updateEditUI() {
         
         // 可编辑的设备list
-        let canEditDevices = devices.filter({ $0.state && $0.isKeybindComplete })
-        if canEditDevices.count > 0 && self.selectedAddresss.count >= canEditDevices.count {
-            self.allSelectBtn.isSelected = true
-            self.allSelectBtn.backgroundColor = Bar_Color
-        }else {
-            self.allSelectBtn.isSelected = false
-            self.allSelectBtn.backgroundColor = RGB(238, 238, 239)
-        }
+        
+        let groups = MeshNetworkManager.instance.groups.filter({ $0.nodes.count > 0 })
+        showSelectDatas = groups.map({
+            let nodes = $0.nodes.filter({ $0.state && $0.isKeybindComplete })
+            let isSelected = !nodes.contains(where: { !self.selectedAddresss.contains($0.primaryUnicastAddress) })
+            return DeviceGroupsSelectData(name: $0.info.name ?? $0.name, addresss: nodes.map({ $0.primaryUnicastAddress }), isSelected: isSelected)
+        })
+        let canEditDeviceAddresss = devices.filter({ $0.state && $0.isKeybindComplete }).map({ $0.primaryUnicastAddress })
+        // 全选
+        showSelectDatas.insert(DeviceGroupsSelectData(name: "ALL".localizedString, addresss: canEditDeviceAddresss, isSelected: canEditDeviceAddresss.count == selectedAddresss.count), at: 0)
+        self.groupsView.datas = showSelectDatas
+        
+//        if canEditDevices.count > 0 { // self.selectedAddresss.count >= canEditDevices.count
+//            
+////            self.allSelectBtn.isSelected = true
+////            self.allSelectBtn.backgroundColor = Bar_Color
+//        }else {
+////            self.allSelectBtn.isSelected = false
+////            self.allSelectBtn.backgroundColor = RGB(238, 238, 239)
+//        }
         self.footerView.deleteBtn.isEnabled = selectedAddresss.count > 0
     }
     
+    /// 更新全开全关状态
+    private func updateAllOnOffItemUI() {
+        
+        if devices.contains(where: { $0.state }) {
+            allOnOffState = devices.contains(where: { $0.isOn }) ? .on : .off
+        }else {
+            allOnOffState = .disable
+        }
+        if let item = collectionView.cellForItem(at: IndexPath(item: 0, section: 0)) as? DeviceAllOnOffViewCell {
+            if allOnOffState != .disable, let isOn = controlAllOn {
+                item.state = isOn ? .on : .off
+            }else {
+                item.state = allOnOffState
+            }
+        }
+    }
+    
     private func setupUI() {
-        
-        // header
-        headerView = UIView()
-        headerView.backgroundColor = Background_Color
-        view.addSubview(headerView)
-        headerView.snp.makeConstraints { make in
-            make.left.right.equalToSuperview()
-            make.top.equalTo(SCRYFrom(8))
-            make.height.equalTo(SCRYFrom(44))
-        }
-        
-        allOffBtn = UIButton(title: "off".localizedString, titleSize: 15, titleColor: TextBlack_Color, target: self, action: #selector(allOffBtnClick))
-        allOffBtn.setTitleColor(TextBlack_Color.withAlphaComponent(0.5), for: .highlighted)
-        allOffBtn.setBackgroundImage(UIImage.image(size: CGSize(width: 1, height: 1), color: .white.withAlphaComponent(0.5)), for: .highlighted)
-        allOffBtn.adjustsImageWhenHighlighted = true
-        allOffBtn.titleLabel?.font = Font_Medium_Size(14)
-        allOffBtn.layer.cornerRadius = 4
-        allOffBtn.layer.borderWidth = 0.5
-        allOffBtn.layer.borderColor = RGB(100, 136, 139).cgColor
-        headerView.addSubview(allOffBtn)
-        allOffBtn.snp.makeConstraints { make in
-            make.center.equalToSuperview()
-            make.width.equalTo(SCRXFrom(40))
-            make.height.equalTo(SCRYFrom(30))
-        }
-        
-        allOnBtn = UIButton(title: "on".localizedString, titleSize: 15, titleColor: TextBlack_Color, target: self, action: #selector(allOnBtnClick))
-        allOnBtn.setTitleColor(TextBlack_Color.withAlphaComponent(0.5), for: .focused)
-        allOnBtn.setBackgroundImage(UIImage.image(size: CGSize(width: 1, height: 1), color: .white.withAlphaComponent(0.5)), for: .highlighted)
-        allOnBtn.adjustsImageWhenHighlighted = true
-        allOnBtn.titleLabel?.font = Font_Medium_Size(14)
-        allOnBtn.layer.cornerRadius = 4
-        allOnBtn.layer.borderWidth = 0.5
-        allOnBtn.layer.borderColor = RGB(100, 136, 139).cgColor
-        headerView.addSubview(allOnBtn)
-        allOnBtn.snp.makeConstraints { make in
-            make.centerY.width.height.equalTo(allOffBtn)
-            make.right.equalTo(allOffBtn.snp.left).offset(SCRXFrom(-28))
-        }
-        
-        settingBtn = UIButton(normalImageName: nil, target: self, action: #selector(settingBtnClick))
-        settingBtn.setBackgroundImage(UIImage(named: "space_device_adjust"), for: .normal)
-        settingBtn.setBackgroundImage(UIImage(named: "space_device_adjust_highlighted"), for: .highlighted)
-        settingBtn.adjustsImageWhenHighlighted = true
-        headerView.addSubview(settingBtn)
-        settingBtn.snp.makeConstraints { make in
-            make.centerY.width.height.equalTo(allOffBtn)
-            make.left.equalTo(allOffBtn.snp.right).offset(SCRXFrom(28))
-        }
         
         footerView = SpaceFunctionFooterView()
         footerView.delegate = self
@@ -267,14 +289,15 @@ class DevicesViewController: UIViewController {
             make.height.equalTo(SCRYFrom(44) + kSafeAreaBottomHeight)
         }
         
-        flowLayout = UICollectionViewFlowLayout()
+        flowLayout = AlignCenterFlowLayout()
         flowLayout.minimumLineSpacing = SCRXFrom(16)
         flowLayout.minimumInteritemSpacing = SCRXFrom(16)
         
         collectionView = UICollectionView(frame: .zero, collectionViewLayout: flowLayout)
-        collectionView.contentInset = UIEdgeInsets(top: SCRYFrom(8), left: SCRXFrom(12), bottom: SCRYFrom(16), right: SCRXFrom(12))
+        collectionView.contentInset = UIEdgeInsets(top: SCRYFrom(16), left: SCRXFrom(12), bottom: SCRYFrom(16), right: SCRXFrom(12))
         collectionView.backgroundColor = Background_Color
         collectionView.register(DevicesViewCell.classForCoder(), forCellWithReuseIdentifier: "cell")
+        collectionView.register(DeviceAllOnOffViewCell.classForCoder(), forCellWithReuseIdentifier: "allControlCell")
         collectionView.alwaysBounceVertical = true
         collectionView.dataSource = self
         collectionView.delegate = self
@@ -283,8 +306,8 @@ class DevicesViewController: UIViewController {
         collectionView.addGestureRecognizer(longPress)
         view.addSubview(collectionView)
         collectionView.snp.makeConstraints { make in
-            make.left.right.equalToSuperview()
-            make.top.equalTo(headerView.snp.bottom)
+            make.left.top.right.equalToSuperview()
+//            make.top.equalTo(headerView.snp.bottom)
             make.bottom.equalTo(footerView.snp.top)
         }
         
@@ -293,42 +316,16 @@ class DevicesViewController: UIViewController {
         refreshControl.addTarget(self, action: #selector(getNodesState), for: .valueChanged)
         
         
-        allSelectView = UIView()
-        allSelectView.layer.shadowColor = RGB(0, 0, 0, 0.1).cgColor
-//        allSelectView.layer.shadowOffset = CGSizeMake(0, -2)
-        allSelectView.layer.shadowOpacity = 1
-        allSelectView.layer.shadowRadius = 6
-        allSelectView.layer.shadowPath = UIBezierPath(rect: CGRect(x: 0, y: -2, width: view.width, height: SCRYFrom(11))).cgPath
-        
-        allSelectView.isHidden = true
-        view.addSubview(allSelectView)
-        allSelectView.snp.makeConstraints { make in
+        groupsView = DeviceGroupsView()
+        groupsView.isHidden = true
+        groupsView.delegate = self
+        view.addSubview(groupsView)
+        groupsView.snp.makeConstraints { make in
             make.left.right.equalToSuperview()
             make.bottom.equalTo(footerView.snp.top)
-            make.height.equalTo(SCRYFrom(64))
+            make.height.greaterThanOrEqualTo(SCRYFrom(64))
         }
-        
-        allSelectBgView = UIView()
-        allSelectBgView.backgroundColor = .white
-        allSelectBgView.addRoundedCorners(corners: [.topLeft, .topRight], cornerRadii: CGSize(width: 10, height: 10), rect: CGRect(x: 0, y: 0, width: view.width, height: SCRYFrom(64)))
-        allSelectView.addSubview(allSelectBgView)
-        allSelectBgView.snp.makeConstraints { make in
-            make.edges.equalToSuperview()
-        }
-        
-        
-        allSelectBtn = UIButton(title: "all".localizedString, titleSize: 16, titleColor: RGB(49, 49, 93), target: self, action: #selector(allSelectBtnClick))
-        allSelectBtn.layer.cornerRadius = SCRYFrom(6)
-        allSelectBtn.backgroundColor = RGB(238, 238, 239)
-        allSelectBtn.setTitleColor(.white, for: .selected)
-        allSelectView.addSubview(allSelectBtn)
-        allSelectBtn.snp.makeConstraints { make in
-            make.left.equalToSuperview()
-            make.centerY.equalToSuperview()
-            make.width.equalTo(SCRXFrom(88))
-            make.height.equalTo(SCRYFrom(40))
-        }
-        
+
         repairView = UIView()
 //        repairView.addRoundedCorners(corners: [.topLeft, .topRight], cornerRadii: CGSize(width: SCRYFrom(8), height: SCRYFrom(8)), rect: CGRect(x: 0, y: 0, width: view.width, height: SCRYFrom(60)))
         repairView.layer.cornerRadius = SCRYFrom(8)
@@ -369,7 +366,7 @@ class DevicesViewController: UIViewController {
     // MARK: - Action
     
     /// 全关
-    @objc private func allOffBtnClick() {
+     private func allOffAction() {
         devices.forEach({
             $0.isOn = false
             // 关灯，记录关灯前的亮度值
@@ -382,14 +379,14 @@ class DevicesViewController: UIViewController {
     }
     
     /// 全开
-    @objc private func allOnBtnClick() {
+    private func allOnAction() {
         devices.forEach({ $0.isOn = true })
         collectionView.reloadData()
         MeshAPI.setAllOnOffState(isOn: true)
     }
     
     /// 设备调节
-    @objc private func settingBtnClick() {
+    @objc func deviceAllSetting() {
         if lightControlView.superview == nil {
             view.addSubview(lightControlView)
         }
@@ -426,20 +423,25 @@ class DevicesViewController: UIViewController {
             return
         }
         let point = sender.location(in: collectionView)
-        if let indexPath = collectionView.indexPathForItem(at: point), indexPath.item < devices.count {
-            let node = devices[indexPath.item]
-            if isEdit && node.state { // 不在编辑状态/编辑状态+设备离线可以进入设备控制页
-                return
+        if let indexPath = collectionView.indexPathForItem(at: point) {
+            if indexPath.item == 0 { // 全部设备调节
+                deviceAllSetting()
+                
+            }else if indexPath.item <= devices.count {
+                let node = devices[indexPath.item - 1]
+                if isEdit && node.state { // 不在编辑状态/编辑状态+设备离线可以进入设备控制页
+                    return
+                }
+                let deviceVc = DeviceLightViewController(space: space, node: node)
+                navigationController?.pushViewController(deviceVc, animated: true)
             }
-            let deviceVc = DeviceLightViewController(space: space, node: node)
-            navigationController?.pushViewController(deviceVc, animated: true)
         }
     }
     
     /// 更新全部设备UI状态
     private func reloadAllDevices() {
         devices.forEach({
-            if let index = devices.firstIndex(of: $0), let item = collectionView.cellForItem(at: IndexPath(item: index, section: 0)) as? DevicesViewCell {
+            if let index = devices.firstIndex(of: $0), let item = collectionView.cellForItem(at: IndexPath(item: index + 1, section: 0)) as? DevicesViewCell {
                 item.device = $0
             }
         })
@@ -464,7 +466,7 @@ class DevicesViewController: UIViewController {
                 }
             }
             
-            if let item = collectionView.cellForItem(at: IndexPath(item: index, section: 0)) as? DevicesViewCell {
+            if let item = collectionView.cellForItem(at: IndexPath(item: index + 1, section: 0)) as? DevicesViewCell {
                 if isEdit {
                     if node.state { // 离线->在线
                         if item.selectImageView.isHidden {
@@ -480,6 +482,8 @@ class DevicesViewController: UIViewController {
             updateEditUI()
 //            CATransaction.commit()
         }
+        
+        updateAllOnOffItemUI()
     }
     /// 获取节点状态
     @objc private func getNodesState() {
@@ -642,6 +646,17 @@ extension DevicesViewController: SpaceFunctionFooterViewDelegate {
             self?.space.luminairesCount = self?.devices.count ?? 0
             self?.space.save()
             self?.getNodesState()
+            
+            self?.devices.forEach({
+                $0.state = true
+                $0.isOn = true
+                $0.lightness = 63335
+//                    if $0.temperatureModel != nil {
+                $0.temperature = 3200
+//                    }
+            })
+            self?.collectionView.reloadData()
+            self?.updateAllOnOffItemUI()
         }
         navigationController?.pushViewController(vc, animated: true) 
     }
@@ -650,14 +665,16 @@ extension DevicesViewController: SpaceFunctionFooterViewDelegate {
     func function(view: SpaceFunctionFooterView, editStateChanged editing: Bool) {
         isEdit = editing
         
-        allSelectBtn.isSelected = false
-        allSelectBtn.backgroundColor = RGB(238, 238, 239)
+//        allSelectBtn.isSelected = false
+//        allSelectBtn.backgroundColor = RGB(238, 238, 239)
         selectedAddresss.removeAll()
         footerView.deleteBtn.isEnabled = false
         updateUI(reloadTableView: false)
         CATransaction.setDisableActions(true)
         collectionView.reloadItems(at: collectionView.indexPathsForVisibleItems)
         CATransaction.commit()
+        
+        updateEditUI()
     }
     
     /// 点击删除回调
@@ -679,6 +696,30 @@ extension DevicesViewController: SpaceFunctionFooterViewDelegate {
                 resetAddressList.removeAll(where: { $0 == proxyNode.primaryUnicastAddress })
                 resetAddressList.append(proxyNode.primaryUnicastAddress)
             }
+            
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+                XWHUDManager.hide()
+                XWHUDManager.showSuccessTipHUD("done!".localizedString)
+                self.devices.removeAll(where: { resetAddressList.contains($0.primaryUnicastAddress) })
+//                self.selectedAddresss.removeAll(where: { resetAddressList.contains($0) })
+                self.selectedAddresss.removeAll()
+                resetAddressList.forEach({
+                    if let node = MeshNetworkManager.instance.meshNetwork?.node(withAddress: $0) {
+//                        MeshNetworkManager.instance.meshNetwork?.remove(node: node)
+                        MeshNetworkManager.instance.removeTest(node: node)
+                    }
+                })
+                _ = MeshNetworkManager.instance.save()
+                self.space.deviceCount = self.devices.count
+                self.space.luminairesCount = self.devices.count
+                self.space.save()
+                self.isEdit = false
+                self.updateUI()
+                self.collectionView.reloadData()
+                self.isDeletingDevice = false
+            }
+            return
+            
             isDeletingDevice = true
             MeshAPI.resetNodes(addressList: resetAddressList, resetSuccess: nil, resetFail: nil) {[weak self] successAddressList, failAddressList in
                 XWHUDManager.hide()
@@ -737,15 +778,22 @@ extension DevicesViewController: SpaceFunctionFooterViewDelegate {
 extension DevicesViewController: UICollectionViewDataSource, UICollectionViewDelegateFlowLayout {
     
     func collectionView(_ collectionView: UICollectionView, numberOfItemsInSection section: Int) -> Int {
-        return devices.count
+        return devices.count + (devices.count > 0 ? 1 : 0)
     }
     
     func collectionView(_ collectionView: UICollectionView, cellForItemAt indexPath: IndexPath) -> UICollectionViewCell {
+        if indexPath.item == 0 {// 全开全关
+            let allControlCell = collectionView.dequeueReusableCell(withReuseIdentifier: "allControlCell", for: indexPath) as! DeviceAllOnOffViewCell
+            if allOnOffState != .disable, let isOn = controlAllOn {
+                allControlCell.state = isOn ? .on : .off
+            }else {
+                allControlCell.state = allOnOffState
+            }
+            return allControlCell
+        }
         let cell = collectionView.dequeueReusableCell(withReuseIdentifier: "cell", for: indexPath) as! DevicesViewCell
-        
-        let device = devices[indexPath.item]
+        let device = devices[indexPath.item - 1]
         if isEdit && device.state && device.isKeybindComplete {
-//        if isEdit {
             cell.selectImageView.isHidden = false
             cell.selectImageView.image = UIImage(named: selectedAddresss.contains(device.primaryUnicastAddress) ? "select" : "select_un")
         }else {
@@ -761,7 +809,8 @@ extension DevicesViewController: UICollectionViewDataSource, UICollectionViewDel
             }else {
                 self.selectedAddresss.append(address)
             }
-            collectionView.reloadItems(at: [indexPath])
+            cell.selectImageView.image = UIImage(named: selectedAddresss.contains(device.primaryUnicastAddress) ? "select" : "select_un")
+//            collectionView.reloadItems(at: [indexPath])
             self.updateEditUI()
         }
         return cell
@@ -774,24 +823,39 @@ extension DevicesViewController: UICollectionViewDataSource, UICollectionViewDel
     }
     
     func collectionView(_ collectionView: UICollectionView, didSelectItemAt indexPath: IndexPath) {
-        // 编辑
-        let node = devices[indexPath.row]
-        // 未绑定完成功能则修复设备
-        guard node.isKeybindComplete else {
-            repairNodes(nodes: [node])
-            return
-        }
-        if node.state { // 设备在线
-            node.isOn = !node.isOn
-            if !node.isOn, node.lightness > 0 { // 关灯，记录关灯前的亮度值
-                node.trunOffLightness = node.lightness
-            }
-            reloadCollectionItem(node: node)
-            MeshAPI.setNodeOnOffState(address: node.primaryUnicastAddress, isOn: node.isOn)
-        }else { // 设备离线
-            MeshAPI.getNodeOnOffState(address: node.primaryUnicastAddress)
-        }
         
+        if indexPath.item == 0 { // 全开/全关
+            if let isOn = controlAllOn {
+                controlAllOn = isOn
+            }else {
+                controlAllOn = allOnOffState == .on
+            }
+            controlAllOn = !controlAllOn!
+            if controlAllOn! {
+                allOnAction()
+            }else {
+                allOffAction()
+            }
+        }else {
+            // 编辑
+            let node = devices[indexPath.row - 1]
+            // 未绑定完成功能则修复设备
+            guard node.isKeybindComplete else {
+                repairNodes(nodes: [node])
+                return
+            }
+            if node.state { // 设备在线
+                node.isOn = !node.isOn
+                if !node.isOn, node.lightness > 0 { // 关灯，记录关灯前的亮度值
+                    node.trunOffLightness = node.lightness
+                }
+                reloadCollectionItem(node: node)
+                MeshAPI.setNodeOnOffState(address: node.primaryUnicastAddress, isOn: node.isOn)
+            }else { // 设备离线
+                MeshAPI.getNodeOnOffState(address: node.primaryUnicastAddress)
+            }
+        }
+        updateAllOnOffItemUI()
     }
     
 }
@@ -804,15 +868,20 @@ extension DevicesViewController: DeviceLightControlViewDelegate {
 //        let lightness = UInt16(round(Double(level) / 100.0) * Double(UInt16.max))
         let ligheness = Node.getLightness(lightness100: level)
         MeshAPI.setAllLightnessState(lightness: ligheness, ack: ended)
-        devices.forEach({
+        
+        self.devices.forEach({
             // 记录关灯前亮度
             if $0.isOn && ligheness == 0 && $0.lightness > 0 {
                 $0.trunOffLightness = $0.lightness
             }
             $0.isOn = ligheness > 0
             $0.lightness = ligheness
-            reloadCollectionItem(node: $0)
+            // self.reloadCollectionItem(node: $0)
         })
+        controlAllOn = ligheness > 0
+        updateAllOnOffItemUI()
+        
+        self.collectionView.reloadData()
     }
     
     func lightControl(_ view: DeviceLightControlView, cctValueChanged cct: Int, ended: Bool) {
@@ -821,13 +890,31 @@ extension DevicesViewController: DeviceLightControlViewDelegate {
         MeshAPI.setAllColorTemperatureState(temperature: UInt16(cct), ack: ended)
         devices.forEach({
             $0.temperature = UInt16(cct)
-            reloadCollectionItem(node: $0)
+//            reloadCollectionItem(node: $0)
         })
-        
+        updateAllOnOffItemUI()
+        self.collectionView.reloadData()
     }
     
     func lightControlDidHide(_ view: DeviceLightControlView) {
         self.wm_pageController?.scrollEnable = true
+    }
+}
+
+extension DevicesViewController: DeviceGroupsViewDelegate {
+    
+    /// 选中/取消选中Group/ALL回调
+    func view(_ view: DeviceGroupsView, didSelectData data: DeviceGroupsSelectData) {
+        
+        if data.isSelected {
+            let appendAddresss = data.addresss.filter({ !selectedAddresss.contains($0) })
+            selectedAddresss.append(contentsOf: appendAddresss)
+        }else {
+            selectedAddresss.removeAll(where: { data.addresss.contains($0) })
+        }
+        updateEditUI()
+//        footerView.deleteBtn.isEnabled = selectedAddresss.count > 0
+        collectionView.reloadData()
     }
 }
 

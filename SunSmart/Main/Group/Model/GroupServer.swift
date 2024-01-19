@@ -50,26 +50,10 @@ struct GroupServer {
                 }
                 let messageHandles = group.getNodeAddMessageHandles(node: node)
                 MeshProxyMessageCommand.shared.addMessage(messageHandles: messageHandles, progressBack: nil) { sendMessageHandle, responseMessage in
-                    switch responseMessage {
-                    case is SceneRegisterStatus: // 设置场景成功
-                        if let sceneMessage = sendMessageHandle.message as? SceneStore,
-                            let sceneData = group.info.bindSceneDatas[sceneMessage.scene] {
-                            node.sceneDatas.updateValue(sceneData, forKey: sceneMessage.scene)
-                        }
-                    case is SchedulerActionStatus: // 设置日程成功
-                        let message = (responseMessage as! SchedulerActionStatus)
-//                        if let scheduler = group.info.bindSchedules.first(where: { $0.id == schedulerId }) {
-//                            node.schedules.append(scheduler)
-                        node.scheduleDatas.updateValue(message.entry, forKey: Int(message.index))
-//                        }
-                    default:
-                        break
-                    }
+                    node.updateData(message: sendMessageHandle.message)
                 } failedBack: { messageHandles in
                     print("node send message failed \(messageHandles.message)")
                 } finishedBack: { messageHandles in
-                    // 本地化缓存
-                    node.save()
                     DispatchQueue.main.async {
                         // 未设置完成
                         if messageHandles.contains(where: { !$0.isFinished }) {
@@ -118,23 +102,10 @@ struct GroupServer {
                 }
                 let messageHandles = group.getNodeExitMessageHandles(node: node)
                 MeshProxyMessageCommand.shared.addMessage(messageHandles: messageHandles, progressBack: nil) { sendMessageHandle, responseMessage in
-                    switch responseMessage {
-                    case is SceneRegisterStatus: // 删除场景成功
-                        if let sceneMessage = sendMessageHandle.message as? SceneDelete {
-                            node.sceneDatas.removeValue(forKey: sceneMessage.scene)
-                        }
-                    case is SchedulerActionStatus: // 删除日程成功
-                        let schedulerId = (responseMessage as! SchedulerActionStatus).index
-                        node.scheduleDatas.removeValue(forKey: Int(schedulerId))
-
-                    default:
-                        break
-                    }
+                    node.updateData(message: sendMessageHandle.message)
                 } failedBack: { messageHandles in
                     print("node send message failed \(messageHandles.message)")
                 } finishedBack: { messageHandles in
-                    // 本地化缓存
-                    node.save()
                     DispatchQueue.main.async {
                         // 未删除完成
                         if messageHandles.contains(where: { !$0.isFinished }) {
@@ -168,11 +139,12 @@ struct GroupServer {
         self.groupDeleteNodes(group: group, nodes: group.nodes, progress: progress, successful: nil, failed: nil) { (_, deleteFailedNodes) in
             if deleteFailedNodes.isEmpty { // 删除成功
                 // 删除组缓存数据
-//                if let uuid = MeshNetworkManager.instance.meshNetwork?.uuid.uuidString {
+                if let uuid = MeshNetworkManager.instance.meshNetwork?.uuid.uuidString {
+                
                     try? MeshNetworkManager.instance.meshNetwork?.remove(group: group)
                     _ = MeshNetworkManager.instance.save()
                     group.delete()
-//                }
+                }
                 successful?(group)
             }else {
                 failed?(group)
@@ -344,7 +316,7 @@ extension Group {
             }
             // 设置日程
             if let schedulerSetupModel = node.schedulerSetupModel {
-                messages.append(MeshMessageHandle(message: SchedulerActionSet(index: UInt8(schedule.id), entry: SchedulerRegistryEntry(year: .any(), month: .any(of: [.January,.February,.March,.April,.May,.June,.July,.August,.September,.October,.November,.December]), day: .any(), hour: .specific(hour: schedule.hour), minute: .specific(minute: schedule.minute), second: .specific(second: 0), dayOfWeek: .any(of: schedule.weekDays), action: schedule.action, transitionTime: .init(steps: UInt8(schedule.fadeTime), stepResolution: .seconds), sceneNumber: schedule.actionSceneId)), model: schedulerSetupModel))
+                messages.append(MeshMessageHandle(message: SchedulerActionSet(index: UInt8(schedule.id), entry: SchedulerRegistryEntry(year: .any(), month: .any(of: [.January,.February,.March,.April,.May,.June,.July,.August,.September,.October,.November,.December]), day: .any(), hour: .specific(hour: schedule.hour), minute: .specific(minute: schedule.minute), second: .specific(second: 0), dayOfWeek: .any(of: schedule.weekDays), action: schedule.action, transitionTime: .init(steps: UInt8(schedule.fadeTime), stepResolution: .seconds), sceneNumber: schedule.scene?.number ?? 0)), model: schedulerSetupModel))
             }
         }
         return messages

@@ -33,7 +33,6 @@ class SceneGroupsViewCell: UICollectionViewCell {
     func updateData(group: Group, sceneData: SceneExecuteData?) {
         
 //        iconImageView.image = UIImage(named: "group_image_\(group.info.imageId)")
-        
         if let text = group.info.imageText, text.count > 0 {
             imageLabel.isHidden = false
             imageLabel.text = text
@@ -86,7 +85,9 @@ class SceneGroupsViewCell: UICollectionViewCell {
         bgView.addSubview(iconImageView)
         iconImageView.snp.makeConstraints { make in
             make.centerX.equalToSuperview()
-            make.bottom.equalTo(bgView.snp.centerY)
+//            make.bottom.equalTo(bgView.snp.centerY).offset(SCRYFrom(-3))
+            make.centerY.equalToSuperview().offset(SCRYFrom(-6))
+//            make.top.equalTo(SCRYFrom(11))
         }
         
         imageLabel = UILabel(text: nil, textColor: RGB(20, 46, 79))
@@ -94,7 +95,7 @@ class SceneGroupsViewCell: UICollectionViewCell {
         contentView.addSubview(imageLabel)
         imageLabel.snp.makeConstraints { make in
             make.centerX.equalToSuperview()
-            make.top.equalTo(SCRYFrom(8))
+            make.top.equalTo(SCRYFrom(11))
 //            make.bottom.equalTo(bgView.snp.centerY)
 //            make.bottom.equalTo(self.snp.centerY)
         }

@@ -76,7 +76,7 @@ let Blue_Color = RGB(0, 122, 255)
 /// 按钮红色
 let Red_Color = RGB(235, 78, 78)
 
-let SubText_Color = RGB(100, 136, 139)
+let SubText_Color = RGB(100, 116, 139)
 
 
 /// RGB颜色

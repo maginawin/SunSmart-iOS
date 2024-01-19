@@ -50,8 +50,6 @@ class SceneSettingsViewController: UIViewController {
     override func viewDidLoad() {
         super.viewDidLoad()
 
-
-        
         view.backgroundColor = Background_Color
         
         navigationController?.setNavigationBarBackgroundColor(color: .clear)
@@ -83,8 +81,32 @@ class SceneSettingsViewController: UIViewController {
             scene.info.groups.forEach({
 //                if let group = space.groups.first(where: { $0.add })
                 $0.isSelected = true
-                $0.executeSceneData = $0.info.bindSceneDatas[scene.number]
+                if let sceneData = $0.info.bindSceneDatas[scene.number] {
+                    $0.executeSceneData = SceneExecuteData(lightness: sceneData.lightness, cct: sceneData.cct)
+                }
             })
+        }
+        
+        addNotificationObserver()
+        
+    }
+    
+    override func viewWillAppear(_ animated: Bool) {
+        super.viewWillAppear(animated)
+        
+        if mode == .settings {
+            syncBtn.isHidden = scene.needSyncGroups.isEmpty
+            collectionView.reloadData()
+        }
+    }
+    
+    /// 添加组/编辑通知监听
+    private func addNotificationObserver() {
+        NotificationCenter.default.addObserver(forName: .init(groupsRefreshNotificationName), object: nil, queue: nil) {[weak self] _ in
+//            self?.refreshData = true
+            guard let self = self else { return }
+            self.updateEmptyUI()
+            self.collectionView.reloadData()
         }
         
     }
@@ -100,7 +122,10 @@ class SceneSettingsViewController: UIViewController {
         selectGroups.forEach({
             $0.info.bindSceneDatas.updateValue($0.executeSceneData!, forKey: scene.number)
             SceneExecuteData.save(meshUUID: space.meshUUID, address: $0.address.address, sceneId: Int(scene.number), sceneData: $0.executeSceneData!)
+            scene.info.groups.append($0)
+            scene.info.groups.sort(by: { $0.address.address < $1.address.address })
         })
+        
         if existNodeGroups.isEmpty { // 都是空组
             scene.info.groups = selectGroups
             NotificationCenter.default.post(name: .init(scenesRefreshNotificationName), object: nil)
@@ -108,6 +133,20 @@ class SceneSettingsViewController: UIViewController {
             
         }else { // 去同步
             
+            let vc = SyncDevicesViewController(type: .scene(scene))
+            vc.syncSuccessCallback = {[weak self] _ in
+                XWHUDManager.showSuccessTipHUD("done!".localizedString)
+                guard let self = self else { return }
+                DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+                    NotificationCenter.default.post(name: .init(scenesRefreshNotificationName), object: nil)
+                    self.dismiss(animated: true)
+                }
+            }
+            vc.backActionCallback = {[weak self] in
+                NotificationCenter.default.post(name: .init(scenesRefreshNotificationName), object: nil)
+                self?.dismiss(animated: true)
+            }
+            navigationController?.pushViewController(vc, animated: true)
         }
         
     }
@@ -118,13 +157,14 @@ class SceneSettingsViewController: UIViewController {
         // 获取已选择的组
         let selectGroups = space.groups.filter({ $0.isSelected && $0.executeSceneData != nil })
         // 有设备的组
-        let existNodeGroups = selectGroups.filter({ $0.nodes.count > 0 })
+//        let existNodeGroups = selectGroups.filter({ $0.nodes.count > 0 })
        
         // 获取新增的组
         let addGroups = selectGroups.filter({ !scene.info.groups.contains($0) })
 //        scene.info.groups.filter({ selectGroups.contains($0) })
         // 删除的组
         let deleteGroups = scene.info.groups.filter({ !selectGroups.contains($0) })
+        
         // 修改数据的组
         let updateGroups = selectGroups.filter({ group in
             
@@ -137,25 +177,78 @@ class SceneSettingsViewController: UIViewController {
             return false
         })
         
+        // 需要同步的节点
+        var syncNodes: [Node] = []
+        
         addGroups.forEach({
+            scene.info.groups.append($0)
+            scene.info.groups.sort(by: { $0.address.address < $1.address.address })
+            $0.info.bindSceneDatas.updateValue($0.executeSceneData!, forKey: scene.number)
             SceneExecuteData.save(meshUUID: space.meshUUID, address: $0.address.address, sceneId: Int(scene.number), sceneData: $0.executeSceneData!)
+            
+            syncNodes.append(contentsOf: $0.getNeedSyncDataNodes(scene: scene).syncNodes)
         })
         
         updateGroups.forEach({
+            $0.info.bindSceneDatas.updateValue($0.executeSceneData!, forKey: scene.number)
             SceneExecuteData.save(meshUUID: space.meshUUID, address: $0.address.address, sceneId: Int(scene.number), sceneData: $0.executeSceneData!)
+            
+            syncNodes.append(contentsOf: $0.getNeedSyncDataNodes(scene: scene).syncNodes)
         })
         
-        deleteGroups.filter({ $0.nodes.isEmpty }).forEach({
-            SceneExecuteData.deleteData(meshUUID: space.meshUUID, address: $0.address.address, sceneId: Int(scene.number))
+        deleteGroups.forEach({
+            var deleteNodes: [Node] = []
+            // 同步过场景则去同步删除设备场景
+            if let sceneData = $0.info.bindSceneDatas[scene.number] {
+                sceneData.state = .waitDelete
+                // 判断组内是否有设备同步过该场景
+                deleteNodes = $0.getNeedSyncDataNodes(scene: scene).deleteNodes
+                if deleteNodes.count > 0 {
+                    SceneExecuteData.save(meshUUID: space.meshUUID, address: $0.address.address, sceneId: Int(scene.number), sceneData: sceneData)
+                }
+            }
+            // 未同步则直接删除组场景
+            if deleteNodes.isEmpty {
+                if let index = scene.info.groups.firstIndex(of: $0) {
+                    scene.info.groups.remove(at: index)
+                }
+                SceneExecuteData.deleteData(meshUUID: space.meshUUID, address: $0.address.address, sceneId: Int(scene.number))
+            }
+            syncNodes.append(contentsOf: deleteNodes)
+            
         })
         
-        if existNodeGroups.isEmpty { // 都是空组
-            scene.info.groups = selectGroups
+        // 未编辑
+        if addGroups.isEmpty && deleteGroups.isEmpty && updateGroups.isEmpty {
+            navigationController?.popViewController(animated: true)
+            return
+        }
+        
+        if syncNodes.isEmpty { // 都是空组/无设备操作
+//            scene.info.groups = selectGroups
             XWHUDManager.showSuccessTipHUD("done!".localizedString)
             NotificationCenter.default.post(name: .init(sceneDataUpdateNotificationName), object: scene)
             DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {[weak self] in
                 self?.navigationController?.popViewController(animated: true)
             }
+        }else {
+            
+            let vc = SyncDevicesViewController(type: .scene(scene))
+            vc.syncSuccessCallback = {[weak self] _ in
+                XWHUDManager.showSuccessTipHUD("done!".localizedString)
+                guard let self = self else { return }
+                DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+                    NotificationCenter.default.post(name: .init(sceneDataUpdateNotificationName), object: self.scene)
+                    self.navigationController?.popToRootViewController(animated: true)
+                }
+            }
+            vc.backActionCallback = {[weak self] in
+//                self?.dismiss(animated: true)
+                guard let self = self else { return }
+                NotificationCenter.default.post(name: .init(sceneDataUpdateNotificationName), object: self.scene)
+                self.navigationController?.popToRootViewController(animated: true)
+            }
+            navigationController?.pushViewController(vc, animated: true)
         }
     }
     
@@ -176,23 +269,22 @@ class SceneSettingsViewController: UIViewController {
     
     /// 同步
     @objc private func syncBtnAction() {
-        
-        // 获取已选择的组
-        let selectGroups = space.groups.filter({ $0.isSelected && $0.executeSceneData != nil })
-        // 获取新增的组
-        let addGroups = selectGroups.filter({ !scene.info.groups.contains($0) })
-//        scene.info.groups.filter({ selectGroups.contains($0) })
-        // 删除的组
-        let deleteGroups = scene.info.groups.filter({ !selectGroups.contains($0) })
-        // 修改数据的组
-        let updateGroups = selectGroups.first { group in
-            if scene.info.groups.contains(group), let oldData = group.info.bindSceneDatas[scene.number], let newDta = group.executeSceneData {
-                return newDta.lightness != oldData.lightness || newDta.cct != oldData.cct
-            }
-            return false
-        }
 
-        
+        let vc = SyncDevicesViewController(type: .scene(scene))
+        vc.syncSuccessCallback = {[weak self] _ in
+            XWHUDManager.showSuccessTipHUD("done!".localizedString)
+            guard let self = self else { return }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+                NotificationCenter.default.post(name: .init(sceneDataUpdateNotificationName), object: self.scene)
+                self.dismiss(animated: true)
+            }
+        }
+        vc.backActionCallback = {[weak self] in
+            guard let self = self else { return }
+            NotificationCenter.default.post(name: .init(sceneDataUpdateNotificationName), object: self.scene)
+            self.dismiss(animated: true)
+        }
+        navigationController?.pushViewController(vc, animated: true)
         
     }
     
@@ -211,6 +303,13 @@ class SceneSettingsViewController: UIViewController {
                 XWHUDManager.showTipHUD("device_notconnect_message".localizedString, isLineFeed: true)
             }
         }
+    }
+    
+    /// 创建组
+    private func addGroup() {
+        
+        let vc = GroupAddViewController(space: space)
+        navigationController?.pushViewController(vc, animated: true)
     }
     
     /// 更新组的场景参数
@@ -246,8 +345,10 @@ class SceneSettingsViewController: UIViewController {
     private func updateEmptyUI() {
         
         if space.groups.isEmpty {
-            view.showEmptyDataView(title: "no_groups".localizedString, tipText: "scene_not_groups_message".localizedString, buttonText: "create_group".localizedString, buttomWidth: SCRXFrom(216), position: .center, bottomMargin: SCRYFit(50)) {
-            }
+            view.showEmptyDataView(title: "no_groups".localizedString, tipText: "scene_not_groups_message".localizedString, buttonText: "create_group".localizedString, buttomWidth: SCRXFrom(216), position: .center, bottomMargin: SCRYFit(50), btnClickBack: {[weak self] in
+                self?.addGroup()
+            })
+            
             if let emptyView = view.emptyView {
                 emptyView.tipLabel.font = UIFont.systemFont(ofSize: SCRYFrom(15), weight: .light)
                 emptyView.tipLabel.snp.updateConstraints { make in
@@ -259,10 +360,13 @@ class SceneSettingsViewController: UIViewController {
                     make.top.equalTo(emptyView.titleLabel.snp.bottom).offset(SCRYFrom(78))
                 }
             }
-            
+            bottomView.isHidden = true
             
         }else {
             view.hideEmptyDataView()
+            if mode == .settings {
+                bottomView.isHidden = false
+            }
         }
         
     }
@@ -338,6 +442,10 @@ extension SceneSettingsViewController: UICollectionViewDataSource, UICollectionV
             cell.selectBtn.isSelected = false
             cell.progressView.isHidden = true
         }
+        // 获取组是否需要同步
+        if scene.needSyncGroups.contains(group) {
+            cell.iconImageView.image = UIImage(named: "sync_failed")
+        }
         
         cell.selectActionCallBack = {[weak self] isSelected in
             guard let self = self else { return }
@@ -348,6 +456,7 @@ extension SceneSettingsViewController: UICollectionViewDataSource, UICollectionV
 //                cell.progressView.isHidden = false
             }else {
 //                self.selectGroups.removeAll(where: { $0.address.address == group.address.address })
+                group.executeSceneData = nil
                 cell.progressView.isHidden = true
             }
         }

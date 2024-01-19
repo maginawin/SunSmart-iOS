@@ -329,6 +329,7 @@ extension SpaceData {
         SceneInfo.createDatabaseIfNotExit()
         SceneExecuteData.createDatabaseIfNotExit()
         Schedule.createDatabaseIfNotExit()
+        Node.createDatabaseIfNotExit()
     }
  
     /// 根据场所id获取场所下的所有空间
@@ -843,9 +844,9 @@ extension SceneInfo {
         // 获取场景下面的组
         let targetAddresss = SceneExecuteData.loadAll(meshUUID: meshUUID, sceneId: Int(sceneId)).map({ $0.address })
         
-        let groups = targetAddresss.compactMap({ MeshNetworkManager.instance.meshNetwork?.group(withAddress: MeshAddress($0)) })
+        var groups = targetAddresss.compactMap({ MeshNetworkManager.instance.meshNetwork?.group(withAddress: MeshAddress($0)) })
+        groups.sort(by: { $0.address.address < $1.address.address })
         sceneInfo?.groups = groups
-        
         return sceneInfo
     }
     
@@ -1141,23 +1142,23 @@ extension SceneExecuteData {
 
 extension Schedule {
     
-    static let CREAT_TABLE_SCHEDULES = "CREATE TABLE IF NOT EXISTS SCHEDULES(SCHEDULE_ROW INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT, SCHEDULE_NAME TEXT, SCHEDULE_ID TEXT, MESH_UUID TEXT, SCHEDULE_CREATE TEXT, SCHEDULE_LASTUPDATE TEXT, SCHEDULE_ENABLED BOOL, DEVICE_ADDRESS TEXT, GROUP_ADDRESS TEXT, DELETE_DEVICE_ADDRESS TEXT, DELETE_GROUP_ADDRESS TEXT, SCENE_ID INTEGER, SELECT_TYPE INTEGER, ACTION_TYPE INTEGER, FADETIME INTEGER, WEEKDAYS INTEGER, HOUR INTEGER, MINUTE INTEGER, SECOND INTEGER)"
+    private static let CREAT_TABLE_SCHEDULES = "CREATE TABLE IF NOT EXISTS SCHEDULES(SCHEDULE_ROW INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT, SCHEDULE_NAME TEXT, SCHEDULE_ID TEXT, MESH_UUID TEXT, SCHEDULE_CREATE TEXT, SCHEDULE_LASTUPDATE TEXT, SCHEDULE_ENABLED BOOL, DEVICE_ADDRESS TEXT, GROUP_ADDRESS TEXT, DELETE_DEVICE_ADDRESS TEXT, DELETE_GROUP_ADDRESS TEXT, SCENE_ID INTEGER, DELETE_SCENES TEXT, SELECT_TYPE INTEGER, ACTION_TYPE INTEGER, FADETIME INTEGER, WEEKDAYS INTEGER, HOUR INTEGER, MINUTE INTEGER, SECOND INTEGER)"
     
-    static let CREATE_IDX_SCHEDULES_SCHEDULE = "CREATE UNIQUE INDEX IF NOT EXISTS IDX_SCHEDULES_SCHEDULE ON SCHEDULES(SCHEDULE_ID, MESH_UUID)"
+    private static let CREATE_IDX_SCHEDULES_SCHEDULE = "CREATE UNIQUE INDEX IF NOT EXISTS IDX_SCHEDULES_SCHEDULE ON SCHEDULES(SCHEDULE_ID, MESH_UUID)"
     
-    static let SAVE_SCHEDULES = "INSERT OR REPLACE INTO SCHEDULES(SCHEDULE_NAME, SCHEDULE_ID, MESH_UUID, SCHEDULE_CREATE, SCHEDULE_LASTUPDATE, SCHEDULE_ENABLED, DEVICE_ADDRESS, GROUP_ADDRESS, DELETE_NODE_ADDRESS, DELETE_GROUP_ADDRESS, SCENE_ID, SELECT_TYPE, ACTION_TYPE, FADETIME, WEEKDAYS, HOUR, MINUTE, SECOND) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+    private static let SAVE_SCHEDULES = "INSERT OR REPLACE INTO SCHEDULES(SCHEDULE_NAME, SCHEDULE_ID, MESH_UUID, SCHEDULE_CREATE, SCHEDULE_LASTUPDATE, SCHEDULE_ENABLED, DEVICE_ADDRESS, GROUP_ADDRESS, DELETE_DEVICE_ADDRESS, DELETE_GROUP_ADDRESS, SCENE_ID, DELETE_SCENES, SELECT_TYPE, ACTION_TYPE, FADETIME, WEEKDAYS, HOUR, MINUTE, SECOND) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
 
-    static let GET_SCHEDULES = "SELECT SCHEDULE_NAME, SCHEDULE_ID, MESH_UUID, SCHEDULE_CREATE, SCHEDULE_LASTUPDATE, SCHEDULE_ENABLED, DEVICE_ADDRESS, GROUP_ADDRESS, DELETE_NODE_ADDRESS, DELETE_GROUP_ADDRESS, SCENE_ID, SELECT_TYPE, ACTION_TYPE, FADETIME, WEEKDAYS, HOUR, MINUTE, SECOND FROM SCHEDULES WHERE MESH_UUID = ? ORDER BY SCHEDULE_CREATE"
+    private static let GET_SCHEDULES = "SELECT SCHEDULE_NAME, SCHEDULE_ID, MESH_UUID, SCHEDULE_CREATE, SCHEDULE_LASTUPDATE, SCHEDULE_ENABLED, DEVICE_ADDRESS, GROUP_ADDRESS, DELETE_DEVICE_ADDRESS, DELETE_GROUP_ADDRESS, SCENE_ID, DELETE_SCENES, SELECT_TYPE, ACTION_TYPE, FADETIME, WEEKDAYS, HOUR, MINUTE, SECOND FROM SCHEDULES WHERE MESH_UUID = ?"
     
-    static let GET_SCHEDULE_BY_ID = "SELECT SCHEDULE_NAME, SCHEDULE_ID, MESH_UUID, SCHEDULE_CREATE, SCHEDULE_LASTUPDATE, SCHEDULE_ENABLED, DEVICE_ADDRESS, GROUP_ADDRESS, DELETE_NODE_ADDRESS, DELETE_GROUP_ADDRESS, SCENE_ID, SELECT_TYPE, ACTION_TYPE, FADETIME, WEEKDAYS, HOUR, MINUTE, SECOND FROM SCHEDULES WHERE MESH_UUID = ? AND SCHEDULE_ID = ?"
+    private static let GET_SCHEDULE_BY_ID = "SELECT SCHEDULE_NAME, SCHEDULE_ID, MESH_UUID, SCHEDULE_CREATE, SCHEDULE_LASTUPDATE, SCHEDULE_ENABLED, DEVICE_ADDRESS, GROUP_ADDRESS, DELETE_DEVICE_ADDRESS, DELETE_GROUP_ADDRESS, SCENE_ID, DELETE_SCENES, SELECT_TYPE, ACTION_TYPE, FADETIME, WEEKDAYS, HOUR, MINUTE, SECOND FROM SCHEDULES WHERE MESH_UUID = ? AND SCHEDULE_ID = ?"
     
-    static let GET_NEXT_SCHEDULE_NAME = "SELECT SPACE_NAME FROM SPACES WHERE MESH_UUID = ? AND SCHEDULE_NAME LIKE ?"
+    private static let GET_NEXT_SCHEDULE_NAME = "SELECT SPACE_NAME FROM SCHEDULES WHERE MESH_UUID = ? AND SCHEDULE_NAME LIKE ?"
     
-    static let GET_TAUTONY_SCHEDULE_NAME = "SELECT SPACE_NAME FROM SPACES WHERE MESH_UUID = ? AND SCHEDULE_NAME = ?"
+    private static let GET_TAUTONY_SCHEDULE_NAME = "SELECT SPACE_NAME FROM SCHEDULES WHERE MESH_UUID = ? AND SCHEDULE_NAME = ?"
 
-    static let DELETE_SCHEDULES = "DELETE FROM SPACES WHERE MESH_UUID = ?"
+    private static let DELETE_SCHEDULES = "DELETE FROM SCHEDULES WHERE MESH_UUID = ?"
     
-    static let DELETE_SCHEDULE = "DELETE FROM SPACES WHERE MESH_UUID = ? AND SCHEDULE_ID = ?"
+    private static let DELETE_SCHEDULE = "DELETE FROM SCHEDULES WHERE MESH_UUID = ? AND SCHEDULE_ID = ?"
 //    needDelete
     
     /// 初始化数据库缓存
@@ -1189,13 +1190,14 @@ extension Schedule {
             let groupAddressStr = sqliteWrapper.columnText(7)
             let deleteDeviceAddressStr = sqliteWrapper.columnText(8)
             let deleteGroupAddressStr = sqliteWrapper.columnText(9)
-            let scheduleId = UInt16(sqliteWrapper.columnInt(10))
-            let selectTargetType = Int(sqliteWrapper.columnInt(11))
-            let actionType = UInt8(sqliteWrapper.columnInt(12))
-            let fadeTime = Int(sqliteWrapper.columnInt(13))
-            let weekDaysValue = Int(sqliteWrapper.columnInt(14))
-            let hour = Int(sqliteWrapper.columnInt(15))
-            let minute = Int(sqliteWrapper.columnInt(16))
+            let sceneId = UInt16(sqliteWrapper.columnInt(10))
+            let deleteSceneStr = sqliteWrapper.columnText(11)
+            let selectTargetType = Int(sqliteWrapper.columnInt(12))
+            let actionType = UInt8(sqliteWrapper.columnInt(13))
+            let fadeTime = Int(sqliteWrapper.columnInt(14))
+            let weekDaysValue = Int(sqliteWrapper.columnInt(15))
+            let hour = Int(sqliteWrapper.columnInt(16))
+            let minute = Int(sqliteWrapper.columnInt(17))
             // 计算选中的重复周期
             let allWeekDays: [WeekDay] = [.Monday, .Tuesday, .Wednesday, .Thursday, .Friday, .Saturday, .Sunday]
             var selectWeekDays: [WeekDay] = []
@@ -1209,6 +1211,8 @@ extension Schedule {
             var deleteGroups: [Group] = []
             var nodes: [Node] = []
             var deleteNodes: [Node] = []
+            var scene: Scene?
+            var deleteScenes: [Scene] = []
             if meshUUID == MeshNetworkManager.instance.meshNetwork?.uuid.uuidString {
                 // 获取对应的组 "组地址0,组地址1..."
                 groups = groupAddressStr?.components(separatedBy: ",").compactMap({ MeshNetworkManager.instance.meshNetwork?.group(withAddress: UInt16($0) ?? 0) }) ?? []
@@ -1217,12 +1221,21 @@ extension Schedule {
                 // 获取对应的设备 "设备地址0,设备地址1..."
                 nodes = deviceAddressStr?.components(separatedBy: ",").compactMap({ MeshNetworkManager.instance.meshNetwork?.node(withAddress: UInt16($0) ?? 0) }) ?? []
                 deleteNodes = deleteDeviceAddressStr?.components(separatedBy: ",").compactMap({ MeshNetworkManager.instance.meshNetwork?.node(withAddress: UInt16($0) ?? 0) }) ?? []
+                
+                // 获取对应的场景
+                scene = MeshNetworkManager.instance.scenes.first(where: { $0.number == sceneId })
+                // 获取对应待删除的场景"场景地址0,场景地址1..."
+                deleteScenes = deleteSceneStr?.components(separatedBy: ",").compactMap({ sceneId in
+                    MeshNetworkManager.instance.scenes.first(where: { $0.number == SceneNumber(UInt16(sceneId) ?? 0) })
+                }) ?? []
+                
             }
            
-            let schedule = Schedule(id: Int(sqliteWrapper.columnInt(1)), name: sqliteWrapper.columnText(0), enabled: sqliteWrapper.columnBool(5), nodes: nodes, groups: groups, actionSceneId: scheduleId, action: SchedulerAction(rawValue: actionType) ?? .noAction, fadeTime: fadeTime, weekDays: selectWeekDays, hour: hour, minute: minute, create: sqliteWrapper.columnText(3), lastUpdate: sqliteWrapper.columnText(4))
+            let schedule = Schedule(id: Int(sqliteWrapper.columnInt(1)), name: sqliteWrapper.columnText(0), enabled: sqliteWrapper.columnBool(5), nodes: nodes, groups: groups, scene: scene, action: SchedulerAction(rawValue: actionType) ?? .noAction, fadeTime: fadeTime, weekDays: selectWeekDays, hour: hour, minute: minute, create: sqliteWrapper.columnText(3), lastUpdate: sqliteWrapper.columnText(4))
             schedule.selectTargetType = .init(rawValue: selectTargetType) ?? .groups
             schedule.needDeleteGroups = deleteGroups
             schedule.needDeleteNodes = deleteNodes
+            schedule.needDeleteScenes = deleteScenes
             schedules.append(schedule)
         }
       
@@ -1252,13 +1265,14 @@ extension Schedule {
             let groupAddressStr = sqliteWrapper.columnText(7)
             let deleteDeviceAddressStr = sqliteWrapper.columnText(8)
             let deleteGroupAddressStr = sqliteWrapper.columnText(9)
-            let scheduleId = UInt16(sqliteWrapper.columnInt(10))
-            let selectTargetType = Int(sqliteWrapper.columnInt(11))
-            let actionType = UInt8(sqliteWrapper.columnInt(12))
-            let fadeTime = Int(sqliteWrapper.columnInt(13))
-            let weekDaysValue = Int(sqliteWrapper.columnInt(14))
-            let hour = Int(sqliteWrapper.columnInt(15))
-            let minute = Int(sqliteWrapper.columnInt(16))
+            let sceneId = UInt16(sqliteWrapper.columnInt(10))
+            let deleteSceneStr = sqliteWrapper.columnText(11)
+            let selectTargetType = Int(sqliteWrapper.columnInt(12))
+            let actionType = UInt8(sqliteWrapper.columnInt(13))
+            let fadeTime = Int(sqliteWrapper.columnInt(14))
+            let weekDaysValue = Int(sqliteWrapper.columnInt(15))
+            let hour = Int(sqliteWrapper.columnInt(16))
+            let minute = Int(sqliteWrapper.columnInt(17))
             // 计算选中的重复周期
             let allWeekDays: [WeekDay] = [.Monday, .Tuesday, .Wednesday, .Thursday, .Friday, .Saturday, .Sunday]
             var selectWeekDays: [WeekDay] = []
@@ -1272,6 +1286,8 @@ extension Schedule {
             var deleteGroups: [Group] = []
             var nodes: [Node] = []
             var deleteNodes: [Node] = []
+            var scene: Scene?
+            var deleteScenes: [Scene] = []
             if meshUUID == MeshNetworkManager.instance.meshNetwork?.uuid.uuidString {
                 // 获取对应的组 "组地址0,组地址1..."
                 groups = groupAddressStr?.components(separatedBy: ",").compactMap({ MeshNetworkManager.instance.meshNetwork?.group(withAddress: UInt16($0) ?? 0) }) ?? []
@@ -1280,11 +1296,18 @@ extension Schedule {
                 // 获取对应的设备 "设备地址0,设备地址1..."
                 nodes = deviceAddressStr?.components(separatedBy: ",").compactMap({ MeshNetworkManager.instance.meshNetwork?.node(withAddress: UInt16($0) ?? 0) }) ?? []
                 deleteNodes = deleteDeviceAddressStr?.components(separatedBy: ",").compactMap({ MeshNetworkManager.instance.meshNetwork?.node(withAddress: UInt16($0) ?? 0) }) ?? []
+                // 获取对应的场景
+                scene = MeshNetworkManager.instance.scenes.first(where: { $0.number == sceneId })
+                // 获取对应待删除的场景"场景地址0,场景地址1..."
+                deleteScenes = deleteSceneStr?.components(separatedBy: ",").compactMap({ sceneId in
+                    MeshNetworkManager.instance.scenes.first(where: { $0.number == SceneNumber(UInt16(sceneId) ?? 0) })
+                }) ?? []
             }
            
-            sceneData = Schedule(id: Int(sqliteWrapper.columnInt(1)), name: sqliteWrapper.columnText(0), enabled: sqliteWrapper.columnBool(5), nodes: nodes, groups: groups, actionSceneId: scheduleId, action: SchedulerAction(rawValue: actionType) ?? .noAction, fadeTime: fadeTime, weekDays: selectWeekDays, hour: hour, minute: minute, create: sqliteWrapper.columnText(3), lastUpdate: sqliteWrapper.columnText(4))
+            sceneData = Schedule(id: Int(sqliteWrapper.columnInt(1)), name: sqliteWrapper.columnText(0), enabled: sqliteWrapper.columnBool(5), nodes: nodes, groups: groups, scene: scene, action: SchedulerAction(rawValue: actionType) ?? .noAction, fadeTime: fadeTime, weekDays: selectWeekDays, hour: hour, minute: minute, create: sqliteWrapper.columnText(3), lastUpdate: sqliteWrapper.columnText(4))
             sceneData?.needDeleteNodes = deleteNodes
             sceneData?.needDeleteGroups = deleteGroups
+            sceneData?.needDeleteScenes = deleteScenes
             sceneData?.selectTargetType = .init(rawValue: selectTargetType) ?? .groups
         }
         sqliteWrapper.finalizeSql()
@@ -1298,7 +1321,19 @@ extension Schedule {
         
         let schedules = loadAll(meshUUID: meshUUID)
         let bindSchedules = schedules.filter({
-            $0.groups.contains(where: { $0.address.address == address }) || $0.nodes.contains(where: { $0.primaryUnicastAddress == address })
+            $0.groups.contains(where: { $0.address.address == address }) ||
+            $0.needDeleteGroups.contains(where: { $0.address.address == address }) ||
+            $0.nodes.contains(where: { $0.primaryUnicastAddress == address }) ||
+            $0.needDeleteNodes.contains(where: { $0.primaryUnicastAddress == address })
+        })
+        return bindSchedules
+    }
+    
+    static func loadAll(meshUUID: String, sceneNumber: SceneNumber) -> [Schedule] {
+        let schedules = loadAll(meshUUID: meshUUID)
+        let bindSchedules = schedules.filter({
+            $0.scene?.number == sceneNumber
+//            $0.needDeleteGroups.contains(where: { $0.address.address == address }) ||
         })
         return bindSchedules
     }
@@ -1326,7 +1361,7 @@ extension Schedule {
     ///   - meshUUID: 所属网络id
     ///   - scheduleId: 日程id
     /// - Returns: 是否成功
-    @discardableResult func deleteData(meshUUID: String, scheduleId: Int) -> Bool {
+    @discardableResult static func deleteData(meshUUID: String, scheduleId: Int) -> Bool {
         
         objc_sync_enter(sqliteWrapper)
         guard sqliteWrapper.isOpen || sqliteWrapper.openDb(sqliteDBName), sqliteWrapper.prepareSql(Schedule.DELETE_SCHEDULE) else {
@@ -1367,25 +1402,28 @@ extension Schedule {
         var groupAddressStr = ""
         var deleteGroupAddressStr = ""
         groups.forEach({ groupAddressStr += "\(groupAddressStr.isEmpty ? "" : ",")\($0.address.address)" })
-        needDeleteGroups.forEach({ groupAddressStr += "\(groupAddressStr.isEmpty ? "" : ",")\($0.address.address)" })
+        needDeleteGroups.forEach({ deleteGroupAddressStr += "\(deleteGroupAddressStr.isEmpty ? "" : ",")\($0.address.address)" })
         var nodeAddressStr = ""
         var deleteNodeAddressStr = ""
         nodes.forEach({ nodeAddressStr += "\(nodeAddressStr.isEmpty ? "" : ",")\($0.primaryUnicastAddress)" })
         needDeleteNodes.forEach({ deleteNodeAddressStr += "\(deleteNodeAddressStr.isEmpty ? "" : ",")\($0.primaryUnicastAddress)" })
+        var deleteSceneIdStr = ""
+        needDeleteScenes.forEach({ deleteSceneIdStr += "\(deleteSceneIdStr.isEmpty ? "" : ",")\($0.number)" })
+        
         sqliteWrapper.bindText(7, text: nodeAddressStr)
         sqliteWrapper.bindText(8, text: groupAddressStr)
         sqliteWrapper.bindText(9, text: deleteNodeAddressStr)
         sqliteWrapper.bindText(10, text: deleteGroupAddressStr)
-        
-        sqliteWrapper.bindInt(11, integer: sqlite3_int64(actionSceneId))
-        sqliteWrapper.bindInt(12, integer: sqlite3_int64(selectTargetType.rawValue))
-        sqliteWrapper.bindInt(13, integer: sqlite3_int64(action.rawValue))
-        sqliteWrapper.bindInt(14, integer: sqlite3_int64(fadeTime))
+        sqliteWrapper.bindInt(11, integer: sqlite3_int64(scene?.number ?? 0))
+        sqliteWrapper.bindText(12, text: deleteSceneIdStr)
+        sqliteWrapper.bindInt(13, integer: sqlite3_int64(selectTargetType.rawValue))
+        sqliteWrapper.bindInt(14, integer: sqlite3_int64(action.rawValue))
+        sqliteWrapper.bindInt(15, integer: sqlite3_int64(fadeTime))
         var weekdayValue = 0
         weekDays.forEach({ weekdayValue += Int($0.rawValue) })
-        sqliteWrapper.bindInt(15, integer: sqlite3_int64(weekdayValue))
-        sqliteWrapper.bindInt(16, integer: sqlite3_int64(hour))
-        sqliteWrapper.bindInt(17, integer: sqlite3_int64(minute))
+        sqliteWrapper.bindInt(16, integer: sqlite3_int64(weekdayValue))
+        sqliteWrapper.bindInt(17, integer: sqlite3_int64(hour))
+        sqliteWrapper.bindInt(18, integer: sqlite3_int64(minute))
         
         sqliteWrapper.stepSqlDone()
         sqliteWrapper.resetSql()
@@ -1469,7 +1507,7 @@ extension Node {
     
     private static let GET_NODE_INFOS = "SELECT ADDRESS, MAC_ADDRESS, MESH_UUID, CCT_RANGE_MIN, CCT_RANGE_MAX, RSSI, GROUP_STATE FROM NODE_INFOS WHERE MESH_UUID = ?"
     
-    private static let GET_NODE_INFO_BY_ID = "SELECT ADDRESS, MAC_ADDRESS, MESH_UUID, CCT_RANGE_MIN, CCT_RANGE_MAX, RSSI, GROUP_STATE FROM NODE_INFOS WHERE MESH_UUID = ? AND ADDRESS = ?"
+    private static let GET_NODE_INFO_BY_ID = "SELECT ADDRESS, MAC_ADDRESS, MESH_UUID, CCT_RANGE_MIN, CCT_RANGE_MAX, RSSI, GROUP_STATE FROM NODE_INFOS  WHERE MESH_UUID = ? AND ADDRESS = ?"
     
     private static let DELETE_NODE_INFOS = "DELETE FROM NODE_INFOS WHERE MESH_UUID = ?"
     
@@ -1486,11 +1524,11 @@ extension Node {
     
     private static let GET_NODE_SCHEDULE = "SELECT ADDRESS, MESH_UUID, SCHEDULE_ID, SCHEDULE_DATA FROM NODE_SCHEDULES WHERE MESH_UUID = ? AND ADDRESS = ? AND SCHEDULE_ID = ?"
     
-    private static let DELETE_NETWORK_SCHEDULES = "DELETE FROM NODE_INFOS WHERE MESH_UUID = ?"
+    private static let DELETE_NETWORK_SCHEDULES = "DELETE FROM NODE_SCHEDULES WHERE MESH_UUID = ?"
     
-    private static let DELETE_NODE_SCHEDULES = "DELETE FROM NODE_INFOS WHERE MESH_UUID = ? AND ADDRESS = ?"
+    private static let DELETE_NODE_SCHEDULES = "DELETE FROM NODE_SCHEDULES WHERE MESH_UUID = ? AND ADDRESS = ?"
     
-    private static let DELETE_NODE_SCHEDULE = "DELETE FROM NODE_INFOS WHERE MESH_UUID = ? AND ADDRESS = ? AND SCHEDULE_ID = ?"
+    private static let DELETE_NODE_SCHEDULE = "DELETE FROM NODE_SCHEDULES WHERE MESH_UUID = ? AND ADDRESS = ? AND SCHEDULE_ID = ?"
     
     /// 初始化数据库缓存
     static func createDatabaseIfNotExit() {
@@ -1525,25 +1563,30 @@ extension Node {
             let cctRange: ClosedRange<UInt16> = UInt16(sqliteWrapper.columnInt(3))...UInt16(sqliteWrapper.columnInt(4))
             let rssi = Int(sqliteWrapper.columnInt(5))
             let groupState: GroupState = .init(rawValue: Int(sqliteWrapper.columnInt(5))) ?? .none
-            let schedules = loadAllSchedule(meshUUID: meshUUID, address: address)
-            var scheduleDatas: [Int: SchedulerRegistryEntry] = [:]
-            schedules.forEach({
-                scheduleDatas.updateValue($0.entry, forKey: $0.scheduleId)
-            })
+        
             
-            let scenes = SceneExecuteData.loadAll(meshUUID: meshUUID, address: address)
-            var sceneDatas: [Int: SceneExecuteData] = [:]
-            scenes.forEach({
-                sceneDatas.updateValue($0.data, forKey: $0.sceneId)
-            })
-            
-            nodeInfos.append(NodeInfo(address: address, mac: mac, cctRange: cctRange, rssi: rssi, groupState: groupState, schedules: scheduleDatas, sceneDatas: sceneDatas))
+            nodeInfos.append(NodeInfo(address: address, mac: mac, cctRange: cctRange, rssi: rssi, groupState: groupState, schedules: [:], sceneDatas: [:]))
         }
       
         sqliteWrapper.finalizeSql()
         //        sqliteWrapper.closeDb()
         objc_sync_exit(sqliteWrapper)
-
+        
+        nodeInfos.forEach({ info in
+            
+            let schedules = loadAllSchedule(meshUUID: meshUUID, address: info.address)
+            var scheduleDatas: [Int: SchedulerRegistryEntry] = [:]
+            schedules.forEach({
+                scheduleDatas.updateValue($0.entry, forKey: $0.scheduleId)
+            })
+            
+            let scenes = SceneExecuteData.loadAll(meshUUID: meshUUID, address: info.address)
+            var sceneDatas: [SceneNumber: SceneExecuteData] = [:]
+            scenes.forEach({
+                sceneDatas.updateValue($0.data, forKey: SceneNumber($0.sceneId))
+            })
+        })
+        
         return nodeInfos
     }
     
@@ -1569,7 +1612,13 @@ extension Node {
             let rssi = Int(sqliteWrapper.columnInt(5))
             let groupState: GroupState = .init(rawValue: Int(sqliteWrapper.columnInt(5))) ?? .none
             
-//            loadAllSchedule(meshUUID: meshUUID, address: address)
+            nodeInfo = NodeInfo(address: address, mac: mac, cctRange: cctRange, rssi: rssi, groupState: groupState, schedules: [:], sceneDatas: [:])
+        }
+      
+        sqliteWrapper.finalizeSql()
+        objc_sync_exit(sqliteWrapper)
+        
+        if nodeInfo != nil {
             let schedules = loadAllSchedule(meshUUID: meshUUID, address: address)
             var scheduleDatas: [Int: SchedulerRegistryEntry] = [:]
             schedules.forEach({
@@ -1577,17 +1626,14 @@ extension Node {
             })
             
             let scenes = SceneExecuteData.loadAll(meshUUID: meshUUID, address: address)
-            var sceneDatas: [Int: SceneExecuteData] = [:]
+            var sceneDatas: [SceneNumber: SceneExecuteData] = [:]
             scenes.forEach({
-                sceneDatas.updateValue($0.data, forKey: $0.sceneId)
+                sceneDatas.updateValue($0.data, forKey: SceneNumber($0.sceneId))
             })
-            
-            nodeInfo = NodeInfo(address: address, mac: mac, cctRange: cctRange, rssi: rssi, groupState: groupState, schedules: scheduleDatas, sceneDatas: sceneDatas)
+            nodeInfo?.sceneDatas = sceneDatas
+            nodeInfo?.schedules = scheduleDatas
         }
-      
-        sqliteWrapper.finalizeSql()
         //        sqliteWrapper.closeDb()
-        objc_sync_exit(sqliteWrapper)
 
         return nodeInfo
     }
@@ -1603,10 +1649,11 @@ extension Node {
         sqliteWrapper.bindText(2, text: macAddress ?? "")
         sqliteWrapper.bindText(3, text: meshUUID)
         sqliteWrapper.bindInt(4, integer: sqlite3_int64((lightCTLTemperatureRange ?? defalutLightCTLTemperatureRange).lowerBound))
-        sqliteWrapper.bindInt(5, integer: sqlite3_int64((lightCTLTemperatureRange ?? defalutLightCTLTemperatureRange).lowerBound))
+        sqliteWrapper.bindInt(5, integer: sqlite3_int64((lightCTLTemperatureRange ?? defalutLightCTLTemperatureRange).upperBound))
         sqliteWrapper.bindInt(6, integer: sqlite3_int64(rssi ?? -99))
         sqliteWrapper.bindInt(7, integer: sqlite3_int64(groupState.rawValue))
         sqliteWrapper.stepSqlDone()
+        sqliteWrapper.resetSql()
         sqliteWrapper.finalizeSql()
         objc_sync_exit(sqliteWrapper)
         
@@ -1683,7 +1730,9 @@ extension Node {
         while sqliteWrapper.stepSqlRow() {
             
             if let scheduleData = sqliteWrapper.columnBlob(3), scheduleData.count == 10 {
-                schedules.append(SchedulerRegistryEntry.unmarshal(scheduleData) as! (Int, SchedulerRegistryEntry))
+                let data = SchedulerRegistryEntry.unmarshal(scheduleData)
+                
+                schedules.append((Int(data.index), data.entry))
             }
         }
       
@@ -1699,7 +1748,7 @@ extension Node {
     /// - Parameter address: 设备地址
     ///- Parameter scheduleId: 设备地址
     /// - Returns: 日程id，日程数据
-    static func loadSchedule(meshUUID: String, address: UInt16, scheduleId: Int) -> (scheduleId: Int, entry: SchedulerRegistryEntry)? {
+    static func loadSchedule(meshUUID: String, address: UInt16, scheduleId: Int) -> SchedulerRegistryEntry? {
         objc_sync_enter(sqliteWrapper)
         guard sqliteWrapper.isOpen || sqliteWrapper.openDb(sqliteDBName), sqliteWrapper.prepareSql(GET_NODE_SCHEDULE) else {
             objc_sync_exit(sqliteWrapper)
@@ -1709,13 +1758,14 @@ extension Node {
         sqliteWrapper.bindInt(2, integer: sqlite3_int64(address))
         sqliteWrapper.bindInt(3, integer: sqlite3_int64(scheduleId))
         
-        var schedule: (Int, SchedulerRegistryEntry)?
+        var schedule: SchedulerRegistryEntry?
         while sqliteWrapper.stepSqlRow() {
             
 //            let groupAddress = UInt16(sqliteWrapper.columnInt(0))
 //            let scheduleId = Int(sqliteWrapper.columnInt(2))
             if let scheduleData = sqliteWrapper.columnBlob(3), scheduleData.count == 10 {
-                schedule = SchedulerRegistryEntry.unmarshal(scheduleData) as? (Int, SchedulerRegistryEntry)
+                schedule = SchedulerRegistryEntry.unmarshal(scheduleData).entry
+//                schedule = (Int(data.index), data.entry)
             }
         }
       
@@ -1737,7 +1787,7 @@ extension Node {
     @discardableResult static func saveSchedule(meshUUID: String, address: UInt16, scheduleId: Int, entry: SchedulerRegistryEntry? = nil, data: Data? = nil) -> Bool {
         
         objc_sync_enter(sqliteWrapper)
-        guard sqliteWrapper.isOpen || sqliteWrapper.openDb(sqliteDBName), sqliteWrapper.prepareSql(Node.SAVE_NODE_SCHEDULE), data == nil && entry == nil else {
+        guard sqliteWrapper.isOpen || sqliteWrapper.openDb(sqliteDBName), sqliteWrapper.prepareSql(Node.SAVE_NODE_SCHEDULE), data != nil || entry != nil else {
             objc_sync_exit(sqliteWrapper)
             return false
         }
@@ -1825,8 +1875,8 @@ extension Node {
         let cctRange: ClosedRange<UInt16>
         let rssi: Int
         let groupState: Node.GroupState
-        let schedules: [Int: SchedulerRegistryEntry]
-        let sceneDatas: [Int: SceneExecuteData]
+        var schedules: [Int: SchedulerRegistryEntry]
+        var sceneDatas: [SceneNumber: SceneExecuteData]
     }
     
 }

@@ -64,13 +64,7 @@ class InfoEditViewController: UIViewController {
         }
         view.backgroundColor = Background_Color
         
-        let appearance = UINavigationBarAppearance()
-        appearance.configureWithOpaqueBackground()
-        appearance.backgroundColor = .clear
-//        appearance.backgroundImage = UIImage(named: "nav_bar_corner")
-        appearance.shadowImage = UIImage.image(size: CGSize(width: 1, height: 1), color: .clear)
-        navigationController?.navigationBar.standardAppearance = appearance
-        navigationController?.navigationBar.scrollEdgeAppearance = appearance
+        navigationController?.setNavigationBarBackgroundColor(color: .clear)
 //        navigationController?.navigationBar.layer.cornerRadius = 20
 //        navigationController?.navigationBar.layer.masksToBounds = true
         
@@ -193,7 +187,7 @@ class InfoEditViewController: UIViewController {
             make.height.equalTo(SCRYFrom(40))
         }
         
-        tipTextLabel = UILabel(text: nil, textColor: Red_Color, fontSize: 13)
+        tipTextLabel = UILabel(text: nil, textColor: Red_Color, fontSize: 12, fontWeight: .light)
         headerView.addSubview(tipTextLabel)
         tipTextLabel.snp.makeConstraints { make in
             make.left.equalTo(SCRXFrom(24))

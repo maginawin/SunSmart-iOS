@@ -8,6 +8,11 @@
 import UIKit
 import NordicSigMeshSDK
 
+/// 组列表刷新通知
+let groupsRefreshNotificationName = "groupsRefreshNotification"
+/// 组状态刷新通知
+let groupDataUpdateNotificationName = "groupDataUpdateNotification"
+
 class GroupsViewController: UIViewController {
 
     private var collectionView: UICollectionView!
@@ -42,22 +47,40 @@ class GroupsViewController: UIViewController {
         setupUI()
         
         footerView.countBtn.setTitle("\(space.groups.count)/16", for: .normal)
+        
+        addNotificationObserver()
     }
     
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
         
-        if refreshData {
-            refreshData = false
-            collectionView.reloadData()
-            updateGroupesEmptyUI()
-        }
+        updateUI()
+//        if refreshData {
+//            refreshData = false
+//            collectionView.reloadData()
+//            updateGroupesEmptyUI()
+//        }
     }
     
     override func viewDidLayoutSubviews() {
         super.viewDidLayoutSubviews()
         
         updateGroupesEmptyUI()
+    }
+    
+    private func addNotificationObserver() {
+        NotificationCenter.default.addObserver(forName: .init(groupsRefreshNotificationName), object: nil, queue: nil) {[weak self] _ in
+//            self?.refreshData = true
+            guard let self = self else { return }
+            self.updateUI()
+        }
+        
+        NotificationCenter.default.addObserver(forName: .init(groupDataUpdateNotificationName), object: nil, queue: nil) {[weak self] notification in
+            if let group = notification.object as? Group {
+                self?.reloadCollectionItem(group: group)
+            }
+        }
+        
     }
     
     /// 长按事件，跳转到组详情
@@ -71,15 +94,15 @@ class GroupsViewController: UIViewController {
             let group = space.groups[indexPath.item]
             
             let groupVc = GroupViewController(space: space, group: group)
-            groupVc.groupDeleteCallback = {[weak self] _ in
-    //            self?.refreshData = true
-                self?.collectionView.reloadData()
-            }
-            groupVc.groupUpdateCallback = {[weak self] _ in
-    //            self?.refreshData = true
-                self?.collectionView.reloadData()
-                self?.updateGroupesEmptyUI()
-            }
+//            groupVc.groupDeleteCallback = {[weak self] _ in
+//    //            self?.refreshData = true
+//                self?.collectionView.reloadData()
+//            }
+//            groupVc.groupUpdateCallback = {[weak self] _ in
+//    //            self?.refreshData = true
+//                self?.collectionView.reloadData()
+//                self?.updateGroupesEmptyUI()
+//            }
             let navVc = NavigationViewController(rootViewController: groupVc)
             present(navVc, animated: true)
         }
@@ -91,34 +114,64 @@ class GroupsViewController: UIViewController {
             guard let self = self else { return }
          
             guard group.nodes.isEmpty || group.nodes.contains(where: { $0.state }) else { // 设备是否都在线
-                SRAlertView(title: "notification".localizedString, message: "group_delete_message".localizedString, actions:[SRAlertAction(title: "confirm".localizedString, actionHandler: nil)]).show()
+                SRAlertView(title: "notification".localizedString, message: "group_delete_offline".localizedString, actions:[SRAlertAction(title: "confirm".localizedString, actionHandler: nil)]).show()
                 return
             }
             
             XWHUDManager.showCustomHUD(withMessage: "deleting".localizedString, isWindow: true)
-            GroupServer.deleteGroup(group: group, progress: nil) {[weak self] _ in
-                XWHUDManager.hide()
-                XWHUDManager.showSuccessTipHUD("done!".localizedString)
-                self?.collectionView.reloadData()
-                
-            } failed: {[weak self] _ in
-                
-                XWHUDManager.showErrorTipHUD("group_delete_failed".localizedString)
-                DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
-                    XWHUDManager.hide()
-                    // 跳转到检查页面
-                    self?.deleteFailedCheck(group: group)
+            group.nodes.forEach({ node in
+                node.unsubscribe(from: group)
+                node.sceneDatas.removeAll()
+                // 删除设备场景数据
+                SceneExecuteData.deleteData(meshUUID: self.space.meshUUID, address: node.primaryUnicastAddress)
+                // 删除设备关联组的日程数据
+                group.info.bindSchedules.forEach{ schedule in
+                    Node.deleteSchedule(meshUUID: self.space.meshUUID, address: node.primaryUnicastAddress, scheduleId: schedule.id)
                 }
-            }
+            })
+            DispatchQueue.main.asyncAfter(wallDeadline: .now() + 1.5, execute: {
+                GroupServer.deleteGroup(group: group, progress: nil) {[weak self] _ in
+                    XWHUDManager.hide()
+                    XWHUDManager.showSuccessTipHUD("done!".localizedString)
+                    self?.updateUI()
+                    self?.space.scenes.forEach({
+                        if let index = $0.info.groups.firstIndex(of: group) {
+                            $0.info.groups.remove(at: index)
+                        }
+                    })
+                    
+                } failed: {[weak self] _ in
+                    XWHUDManager.hide()
+                    XWHUDManager.showErrorTipHUD("group_delete_failed".localizedString)
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+                        XWHUDManager.hide()
+                        // 跳转到检查页面
+                        self?.deleteFailedCheck(group: group)
+                    }
+                }
+            })
             
         })]).show()
     }
-    
+
     /// 删除失败检查设备
     private func deleteFailedCheck(group: Group) {
         
-        let checkVc = GroupCheckViewController(group: group, nodes: group.nodes)
-        navigationController?.pushViewController(checkVc, animated: true)
+        let vc = SyncDevicesViewController(type: .group(group, outNodes: group.nodes))
+        vc.syncSuccessCallback = {[weak self] _ in
+            XWHUDManager.showSuccessTipHUD("done!".localizedString)
+            guard let self = self else { return }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+                self.dismiss(animated: true)
+            }
+            GroupServer.deleteGroup(group: group, progress: nil, successful: nil, failed: nil)
+            self.updateUI()
+        }
+        vc.backActionCallback = { [weak self] in
+            self?.dismiss(animated: true)
+        }
+        present(NavigationViewController(rootViewController: vc), animated: true)
+//        navigationController?.pushViewController(vc, animated: true)
     }
     
     /// 编辑完成
@@ -130,6 +183,15 @@ class GroupsViewController: UIViewController {
     /// 刷新UI
     private func updateUI() {
         
+        self.footerView.countBtn.setTitle("\(space.groups.count)/16", for: .normal)
+        if self.space.groupCount != self.space.groups.count {
+            self.space.groupCount = self.space.groups.count
+            self.space.save()
+        }
+        self.updateGroupesEmptyUI()
+        if isEdit && space.groups.isEmpty {
+            isEdit = false
+        }
         if isEdit {
             editView.isHidden = false
             footerView.isHidden = true
@@ -179,6 +241,16 @@ class GroupsViewController: UIViewController {
             collectionView.hideEmptyDataView()
 
             footerView.editBtn.isHidden = false
+        }
+    }
+    
+    private func reloadCollectionItem(group: Group) {
+        if let index = space.groups.firstIndex(where: {$0.address.address == group.address.address}) {
+            //            CATransaction.setDisableActions(true)
+            //            collectionView.reloadItems(at: [IndexPath(row: index, section: 0)])
+            if let item = collectionView.cellForItem(at: IndexPath(item: index, section: 0)) as? GroupsViewCell {
+                item.group = group
+            }
         }
     }
     
@@ -242,16 +314,7 @@ extension GroupsViewController: UICollectionViewDataSource, UICollectionViewDele
     public func collectionView(_ collectionView: UICollectionView, cellForItemAt indexPath: IndexPath) -> UICollectionViewCell {
         let cell = collectionView.dequeueReusableCell(withReuseIdentifier: "cell", for: indexPath) as! GroupsViewCell
         let group = space.groups[indexPath.item]
-        if let text = group.info.imageText, text.count > 0 {
-            cell.imageLabel.isHidden = false
-            cell.imageLabel.text = text
-            cell.imageView.isHidden = true
-        }else {
-            cell.imageLabel.isHidden = true
-            cell.imageView.isHidden = false
-            cell.imageView.image = UIImage(named: "group_image_\(group.info.imageId)") //device_light_offline
-        }
-        cell.nameLabel.text = group.name
+        cell.group = group
         cell.deleteBtn.isHidden = !isEdit
         cell.deleteActionCallback = {[weak self] in
             self?.deleteGroup(group: group)
@@ -268,11 +331,12 @@ extension GroupsViewController: UICollectionViewDataSource, UICollectionViewDele
     
     func collectionView(_ collectionView: UICollectionView, didSelectItemAt indexPath: IndexPath) {
         
-//        let group = space.groups[indexPath.item]
-//        if group.nodes.count > 0 {
-//            MeshAPI.getGroupOnOffState(address: group.address.address)
-//        }
-        
+        let group = space.groups[indexPath.item]
+        if group.nodes.count > 0 {
+            MeshAPI.getGroupOnOffState(address: group.address.address)
+        }
+        group.isOn = !group.isOn
+        reloadCollectionItem(group: group)
     }
     
 }
@@ -285,12 +349,12 @@ extension GroupsViewController: SpaceFunctionFooterViewDelegate {
         guard self.space.groups.count < 16 else { return }
         
         let vc = GroupAddViewController(space: space)
-        vc.doneCallback = {[weak self] group in
-            guard let self = self else { return }
-            self.collectionView.reloadData()
-            self.space.groupCount = self.space.groups.count
-            self.space.save()
-        }
+//        vc.doneCallback = {[weak self] group in
+//            guard let self = self else { return }
+//            self.collectionView.reloadData()
+//            self.space.groupCount = self.space.groups.count
+//            self.space.save()
+//        }
         present(NavigationViewController(rootViewController: vc), animated: true)
     }
     

@@ -14,10 +14,15 @@ class GroupMembersViewController: UIViewController {
     private var flowLayout: AlignCenterFlowLayout!
     private var functionView: GroupDevicesFunctionView!
     private var selectNodes: [Node] = []
+    /// 是否创建后添加设备
+    var isAddDevices: Bool = false
+    
+    private var nodes: [Node] = []
     
     let space: SpaceData
     let group: Group
-
+    
+    
     init(space: SpaceData, group: Group) {
         self.space = space
         self.group = group
@@ -37,20 +42,45 @@ class GroupMembersViewController: UIViewController {
         
         setupUI()
         
-        if navigationController?.viewControllers.count ?? 0 == 1 {
+        if isAddDevices {
             navigationItem.leftBarButtonItem = UIBarButtonItem(image: UIImage(named: "navigation_back")?.withRenderingMode(.alwaysOriginal), style: .done, target: self, action: #selector(backAction))
             functionView.syncBtn.isHidden = true
             navigationItem.rightBarButtonItem?.title = "done".localizedString
         }
         
+        nodes = space.nodes.filter({ $0.group == nil || $0.group?.address.address == group.address.address })
+        selectNodes = nodes.filter({ $0.group?.address.address == group.address.address })
         updateEmptyUI()
         
-        selectNodes = space.nodes.filter({ $0.group?.address.address == group.address.address })
+//        selectNodes = nodes.filter({ $0.group?.address.address == group.address.address })
         
     }
     
+    override func viewWillAppear(_ animated: Bool) {
+        super.viewWillAppear(animated)
+        
+        if space.nodes.filter({ $0.group == nil || $0.group?.address.address == group.address.address }).count != nodes.count {
+            nodes = space.nodes.filter({ $0.group == nil || $0.group?.address.address == group.address.address })
+            selectNodes = nodes.filter({ $0.group?.address.address == group.address.address })
+        }
+        functionView.syncBtn.isHidden = !group.nodes.contains(where: { $0.needSync })
+        collectionView.reloadData()
+    }
+    
+    override func viewDidAppear(_ animated: Bool) {
+        super.viewDidAppear(animated)
+        if isAddDevices {
+            navigationController?.interactivePopGestureRecognizer?.isEnabled = false
+        }
+    }
+    
+    override func viewDidDisappear(_ animated: Bool) {
+        super.viewDidDisappear(animated)
+        navigationController?.interactivePopGestureRecognizer?.isEnabled = true
+    }
+    
     @objc private func backAction() {
-        if parent != nil && navigationController?.viewControllers.count ?? 0 == 1 {
+        if parent != nil && isAddDevices {
             dismiss(animated: true)
         }else {
             navigationController?.popViewController(animated: true)
@@ -59,7 +89,7 @@ class GroupMembersViewController: UIViewController {
     
     @objc private func saveAction() {
         
-        if selectNodes.isEmpty && group.nodes.isEmpty {
+        if selectNodes.isEmpty && nodes.isEmpty {
             backAction()
             return
         }
@@ -71,12 +101,29 @@ class GroupMembersViewController: UIViewController {
             return
         }
         let vc = SyncDevicesViewController(type: .group(group, inNodes: addNodes, outNodes: exitNodes))
+        vc.syncSuccessCallback = {[weak self] _ in
+            XWHUDManager.showSuccessTipHUD("done!".localizedString)
+            guard let self = self else { return }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+                NotificationCenter.default.post(name: .init(groupDataUpdateNotificationName), object: self.group)
+                if self.isAddDevices {
+                    self.backAction()
+                }else {
+                    self.navigationController?.popToViewController(vcClass: GroupViewController.classForCoder(), animated: true)
+                }
+            }
+        }
+        vc.backActionCallback = {[weak self] in
+            guard let self = self else { return }
+            NotificationCenter.default.post(name: .init(groupDataUpdateNotificationName), object: self.group)
+            self.navigationController?.popToViewController(vcClass: GroupViewController.classForCoder())
+        }
         navigationController?.pushViewController(vc, animated: true)
     }
     
     private func updateEmptyUI() {
         
-        if space.nodes.isEmpty {
+        if nodes.isEmpty {
             
             view.showEmptyDataView(title: "no_devices".localizedString, tipText: "group_not_devices_message".localizedString, buttonText: "group_add_device".localizedString, buttomWidth: SCRXFrom(216), position: .center, bottomMargin: SCRYFit(50)) {[weak self] in
                 guard let self = self else { return }
@@ -102,6 +149,7 @@ class GroupMembersViewController: UIViewController {
             functionView.isHidden = false
         }
     }
+    
 
     private func setupUI() {
         
@@ -114,9 +162,9 @@ class GroupMembersViewController: UIViewController {
         }
         
         flowLayout = AlignCenterFlowLayout()
-        flowLayout.minimumLineSpacing = SCRXFrom(14)
-        flowLayout.minimumInteritemSpacing = SCRXFrom(14)
-        flowLayout.sectionInset = UIEdgeInsets(top: SCRYFrom(12), left: SCRXFrom(12), bottom: SCRYFrom(12), right: SCRXFrom(12))
+        flowLayout.minimumLineSpacing = SCRXFrom(16)
+        flowLayout.minimumInteritemSpacing = SCRXFrom(16)
+        flowLayout.sectionInset = UIEdgeInsets(top: SCRYFrom(16), left: SCRXFrom(16), bottom: SCRYFrom(16), right: SCRXFrom(16))
         
         collectionView = UICollectionView(frame: .zero, collectionViewLayout: flowLayout)
         //        collectionView.contentInset = UIEdgeInsets(top: SCRYFrom(36), left: SCRXFrom(24), bottom: SCRYFit(36), right: SCRXFrom(24))
@@ -161,21 +209,35 @@ class GroupMembersViewController: UIViewController {
     
     private func updateFunctionView() {
         
-        let canEditDevices = space.nodes.filter({ $0.state })
+        let canEditDevices = nodes.filter({ $0.state })
         
         functionView.selectAllBtn.isSelected = selectNodes.count >= canEditDevices.count
+    }
+    
+    private func reloadCollectionItem(node: Node) {
+        
+        if let index = nodes.firstIndex(where: {$0.primaryUnicastAddress == node.primaryUnicastAddress}) {
+            //            CATransaction.setDisableActions(true)
+            //            collectionView.reloadItems(at: [IndexPath(row: index, section: 0)])
+            if let item = collectionView.cellForItem(at: IndexPath(item: index, section: 0)) as? DevicesViewCell {
+                item.device = node
+                if node.needSync {
+                    item.iconImageView.image = UIImage(named: "device_light_unsync")
+                }
+            }
+        }
     }
 }
 
 extension GroupMembersViewController: UICollectionViewDataSource, UICollectionViewDelegateFlowLayout {
     
     func collectionView(_ collectionView: UICollectionView, numberOfItemsInSection section: Int) -> Int {
-        return space.nodes.count
+        return nodes.count
     }
     
     func collectionView(_ collectionView: UICollectionView, cellForItemAt indexPath: IndexPath) -> UICollectionViewCell {
         let cell = collectionView.dequeueReusableCell(withReuseIdentifier: "cell", for: indexPath) as! DevicesViewCell
-        let node = space.nodes[indexPath.item]
+        let node = nodes[indexPath.item]
         cell.device = node
         if node.state {
             cell.selectImageView.isHidden = false
@@ -183,6 +245,9 @@ extension GroupMembersViewController: UICollectionViewDataSource, UICollectionVi
             cell.selectImageView.isHidden = true
         }
         cell.selectImageView.image = selectNodes.contains(node) ? UIImage(named: "device_select") : UIImage(named: "device_select_un")
+        if node.needSync {
+            cell.iconImageView.image = UIImage(named: "device_light_unsync")
+        }
         cell.editClickCallback = {[weak self] node in
             guard let self = self else { return }
             if self.selectNodes.contains(node) {
@@ -204,6 +269,16 @@ extension GroupMembersViewController: UICollectionViewDataSource, UICollectionVi
         return CGSizeMake(itemW, itemW)
     }
     
+    func collectionView(_ collectionView: UICollectionView, didSelectItemAt indexPath: IndexPath) {
+        let node = nodes[indexPath.item]
+        node.isOn = !node.isOn
+        if !node.isOn, node.lightness > 0 { // 关灯，记录关灯前的亮度值
+            node.trunOffLightness = node.lightness
+        }
+        
+        reloadCollectionItem(node: node)
+    }
+    
 }
 
 extension GroupMembersViewController: GroupDevicesFunctionViewDelegate {
@@ -213,8 +288,15 @@ extension GroupMembersViewController: GroupDevicesFunctionViewDelegate {
 //        showFailedAlert()
         
         let vc = SyncDevicesViewController(type: .group(group))
+        vc.syncSuccessCallback = {[weak self] _ in
+            XWHUDManager.showSuccessTipHUD("done!".localizedString)
+            guard let self = self else { return }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+                NotificationCenter.default.post(name: .init(groupDataUpdateNotificationName), object: self.group)
+                self.navigationController?.popViewController(animated: true)
+            }
+        }
         navigationController?.pushViewController(vc, animated: true)
-        
     }
     
     /// 点击检查回调
@@ -224,15 +306,42 @@ extension GroupMembersViewController: GroupDevicesFunctionViewDelegate {
     
     /// 点击排序回调
     func functionDidSortAction(view: GroupDevicesFunctionView) {
-        MeshLibManager.manager.refreshNodesRSSI(withWaitFor: 3) { nodes in
-            
+        XWHUDManager.showCustomHUD(withMessage: nil, isWindow: false)
+        MeshLibManager.manager.refreshNodesRSSI(withWaitFor: 3) {[weak self] nodes in
+            XWHUDManager.hide()
+            guard let self = self else { return }
+//            print("\() \()")
+//            nodes.forEach({ print("\(String(describing: $0.name)) \($0.rssi)") })
+            if nodes.isEmpty { // 未到节点信号
+                XWHUDManager.showErrorTipHUD("device_sort_failed".localizedString)
+                return
+            }
+//            self.space.nodes.sort(by: { ($0.rssi ?? -99) > ($1.rssi ?? -99) })
+//            self.space.nodes.sort(by: { $0.state && !$1.state })
+//            self.collectionView.reloadData()
+//            // 节点信号map
+//            var rssiMap: [String: Int] = [:]
+//            self.devices.forEach { node in
+//                if let mac = node.macAddress, let rssi = node.rssi {
+//                    rssiMap.updateValue(rssi, forKey: mac)
+//                }
+//            }
+//            // 设备信号排序
+//            self.space.deviceSortType = .rssi
+//            self.space.save()
+//            LCPlistCacheTool.write(fileName: self.rssiFileName, value: rssiMap)
         }
     }
     
     /// 全选点击回调  selectAll：是否全选
     func function(view: GroupDevicesFunctionView, selectAllStateChanged selectAll: Bool) {
-        let canEditDevices = space.nodes.filter({ $0.state })
-        selectNodes = canEditDevices
+        let canEditDevices = nodes.filter({ $0.state })
+        if selectAll {
+            selectNodes = canEditDevices
+        }else {
+            selectNodes.removeAll()
+        }
+        collectionView.reloadData()
     }
 
     

@@ -366,7 +366,7 @@ extension DeviceLightBasicController: UITableViewDataSource, UITableViewDelegate
         case .group:
             headerView.titleLabel.text = "group".localizedString
             headerView.contentLabel.isHidden = false
-            headerView.contentLabel.text = node.group?.name ?? "device_not_added_group".localizedString
+            headerView.contentLabel.text = node.group?.info.name ?? node.group?.name ?? "device_not_added_group".localizedString
         case .scene:
             headerView.titleLabel.text = "scene".localizedString
             if node.scenes.count > 0 {
@@ -463,7 +463,15 @@ extension DeviceLightBasicController: UITableViewDataSource, UITableViewDelegate
                 cell.titleLabel.text = scene.info.name ?? scene.name
                 cell.titleLabel.textColor = TextBlack_Color.withAlphaComponent(0.5)
                 cell.titleLabel.font = Font_Medium_Size(SCRYFrom(14))
-                cell.contentLabel.text = "Brightness-20%."
+                if let sceneData = node.sceneDatas[scene.number] {
+                    if sceneData.lightness == 0 {
+                        cell.contentLabel.text = "off".localizedString
+                    }else {
+                        let cct100 = Node.getTemperature100(temperature: UInt16(sceneData.cct), range: node.lightCTLTemperatureRange ?? node.defalutLightCTLTemperatureRange)
+                        cell.contentLabel.text = "\("brightness".localizedString)-\(sceneData.lightness)%.\("cct".localizedString)-\(cct100)%"
+                    }
+                }
+//                "Brightness-20%."
                 cell.contentLabel.textColor = RGB(13, 14, 28, 0.5)
                 cell.contentLabel.font = FONTS(SCRYFrom(15))
                 cell.lineView.isHidden = false

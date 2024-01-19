@@ -13,6 +13,9 @@ class GroupDeviceViewCell: DevicesViewCell {
     override var device: Node! {
         didSet {
             super.device = device
+            if device.needSync {
+                iconImageView.image = UIImage(named: "device_light_unsync")
+            }
             
             if device.isKeybindComplete {
                 iconImageView.snp.updateConstraints { make in
@@ -39,7 +42,8 @@ class GroupDeviceViewCell: DevicesViewCell {
 //        progressValueView.layer.cornerRadius = 3
         
 //        lightnessProgressView.layer.masksToBounds = true
-        progressBgView.snp.remakeConstraints({ make in
+        
+        progressView.snp.remakeConstraints({ make in
             make.left.equalTo(SCRXFrom(19))
             make.right.equalTo(SCRXFrom(-19))
 //            make.bottom.equalTo(SCRYFrom(-31))
@@ -47,7 +51,7 @@ class GroupDeviceViewCell: DevicesViewCell {
             make.height.equalTo(1.5)
         })
         
-        progressValueView.height = 1.5
+//        progressValueView.height = 1.5
         
         nameLabel.font = FONTS(SCRYFrom(10.5))
         nameLabel.snp.updateConstraints({ make in

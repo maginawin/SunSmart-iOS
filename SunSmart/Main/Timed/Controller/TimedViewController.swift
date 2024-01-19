@@ -8,6 +8,9 @@
 import UIKit
 import NordicSigMeshSDK
 
+let schedulesRefreshNotificationName = "schedulesRefreshNotification"
+let scheduleDataUpdateNotificationName = "scheduleDataUpdateNotification"
+
 class TimedViewController: UIViewController {
 
     /// 底部
@@ -16,7 +19,8 @@ class TimedViewController: UIViewController {
     private var scheduleCollectionView: UICollectionView!
     private var selectTypeView: TimedSelectTypeView!
     
-    private var schedules: [Schedule] = []
+//    private var schedules: [Schedule] = []
+    private var refreshData = false
     
     let space: SpaceData
     
@@ -35,45 +39,144 @@ class TimedViewController: UIViewController {
         view.backgroundColor = Background_Color
         setupUI()
         
-        let actions: [SchedulerAction] = [.turnOn, .turnOff, .sceneRecall]
+//        let actions: [SchedulerAction] = [.turnOn, .turnOff, .sceneRecall]
+//        
+//        let allWeekDays: [WeekDay] = [.Monday, .Tuesday, .Wednesday, .Thursday, .Friday, .Saturday, .Sunday]
+//        
+//        let workdays: [WeekDay] = [.Monday, .Tuesday, .Wednesday, .Thursday, .Friday]
+//        
+//        let weekends: [WeekDay] = [.Saturday, .Sunday]
+//        
+//        let irregularity: [WeekDay] = [.Monday, .Wednesday, .Saturday]
+//        
+//        let randomWeeks = [allWeekDays, workdays, weekends, irregularity]
+//        
+//        let create = "\(CLongLong(Date().timeIntervalSince1970 * 1000))"
+//        for i in 1...4 {
+//            let actionIndex = arc4random_uniform(UInt32(actions.count))
+//            let weekIndex = arc4random_uniform(UInt32(randomWeeks.count))
+//            
+//            let schedule = Schedule(id: i, name: "Schedule \(i)", enabled: i < 3, action: actions[Int(actionIndex)], fadeTime: 5, weekDays: randomWeeks[Int(weekIndex)], hour: Int(arc4random_uniform(24)), minute: 0, create: create)
+//            schedules.append(schedule)
+//        }
         
-        let allWeekDays: [WeekDay] = [.Monday, .Tuesday, .Wednesday, .Thursday, .Friday, .Saturday, .Sunday]
+        footerView.countBtn.setTitle("\(space.schedules.count)/16", for: .normal)
         
-        let workdays: [WeekDay] = [.Monday, .Tuesday, .Wednesday, .Thursday, .Friday]
+        addNotification()
+    }
+    
+    override func viewWillAppear(_ animated: Bool) {
+        super.viewWillAppear(animated)
         
-        let weekends: [WeekDay] = [.Saturday, .Sunday]
-        
-        let irregularity: [WeekDay] = [.Monday, .Wednesday, .Saturday]
-        
-        let randomWeeks = [allWeekDays, workdays, weekends, irregularity]
-        
-        let create = "\(CLongLong(Date().timeIntervalSince1970 * 1000))"
-        for i in 1...4 {
-            let actionIndex = arc4random_uniform(UInt32(actions.count))
-            let weekIndex = arc4random_uniform(UInt32(randomWeeks.count))
-            
-            let schedule = Schedule(id: i, name: "Schedule \(i)", enabled: i < 3, action: actions[Int(actionIndex)], fadeTime: 5, weekDays: randomWeeks[Int(weekIndex)], hour: Int(arc4random_uniform(24)), minute: 0, create: create)
-            schedules.append(schedule)
-        }
-        
-        footerView.countBtn.setTitle("\(schedules.count)/16", for: .normal)
-        
+//        if refreshData {
+//            refreshData = false
+            updateUI()
+//        }
     }
     
     override func viewDidLayoutSubviews() {
         super.viewDidLayoutSubviews()
         
         updateEmptyUI()
+        
+        if scheduleCollectionView.contentInset.top == 0 {
+            var inset = scheduleCollectionView.contentInset
+            inset.top = SCRXFrom(16)
+            scheduleCollectionView.contentInset = inset
+        }
     }
+
+    
+    /// 添加通知监听
+    private func addNotification() {
+        
+        NotificationCenter.default.addObserver(forName: .init(schedulesRefreshNotificationName), object: nil, queue: nil) {[weak self] _ in
+            if self?.view.window != nil {
+                self?.updateUI()
+            }else {
+                self?.refreshData = true
+            }
+        }
+        
+        NotificationCenter.default.addObserver(forName: .init(scheduleDataUpdateNotificationName), object: nil, queue: nil) { [weak self] notification in
+            guard let self = self, let schedule = notification.object as? Schedule else {
+                return
+            }
+            self.reloadCollectionItem(schedule: schedule)
+        }
+        
+    }
+    
+    /// 设置日程启用/禁用
+    private func setScheduleEnabled(schedule: Schedule, enabled: Bool) {
+        
+        guard schedule.exitNodes.count > 0 else {
+            schedule.enabled = enabled
+            schedule.save(meshUUID: self.space.meshUUID)
+            self.reloadCollectionItem(schedule: schedule)
+            return
+        }
+        guard MeshLibManager.manager.isMeshNetworkConnected else {
+            XWHUDManager.showTipHUD("device_notconnect_message".localizedString, isLineFeed: true)
+            return
+        }
+        
+        XWHUDManager.showCustomHUD(withMessage: "processing".localizedString, isWindow: true)
+        ScheduleServer.setEnabledState(schedule: schedule, enabled: enabled) {[weak self] _ in
+            XWHUDManager.hide()
+            XWHUDManager.showSuccessTipHUD("done!".localizedString)
+            self?.reloadCollectionItem(schedule: schedule)
+        } failed: {[weak self] _ in
+            XWHUDManager.hide()
+            XWHUDManager.showErrorTipHUD("failed".localizedString + "!")
+            self?.reloadCollectionItem(schedule: schedule)
+            
+            let vc = SyncDevicesViewController(type: .schedule(schedule))
+            vc.syncSuccessCallback = {[weak self] _ in
+                XWHUDManager.showSuccessTipHUD("done!".localizedString)
+                guard let self = self else {
+                    return
+                }
+                schedule.enabled = enabled
+                schedule.save(meshUUID: self.space.meshUUID)
+                self.reloadCollectionItem(schedule: schedule)
+                self.dismiss(animated: true)
+            }
+            vc.backActionCallback = {[weak self] in
+                self?.dismiss(animated: true)
+                self?.reloadCollectionItem(schedule: schedule)
+            }
+            self?.present(NavigationViewController(rootViewController: vc), animated: true)
+        }
+    }
+    
+    private func updateUI() {
+  
+        footerView.countBtn.setTitle("\(space.schedules.count)/16", for: .normal)
+        
+        updateEmptyUI()
+        
+        scheduleCollectionView.reloadData()
+    }
+    
     
     private func updateEmptyUI() {
         
-        if schedules.isEmpty {
+        if space.schedules.isEmpty {
             scheduleCollectionView.showEmptyDataView(title: "no_schedules".localizedString, tipText: "no_schedules_message".localizedString, position: .center, bottomMargin: SCRYFit(27))
         }else {
             scheduleCollectionView.hideEmptyDataView()
         }
     }
+    
+    private func reloadCollectionItem(schedule: Schedule) {
+        if let index = space.schedules.firstIndex(where: {$0.id == schedule.id}) {
+            CATransaction.setDisableActions(true)
+            scheduleCollectionView.reloadItems(at: [IndexPath(row: index, section: 0)])
+            CATransaction.commit()
+        }
+    }
+    
     
     private func setupUI() {
         
@@ -101,6 +204,8 @@ class TimedViewController: UIViewController {
         scheduleFlowLayout = UICollectionViewFlowLayout()
         scheduleFlowLayout.minimumLineSpacing = SCRXFrom(16)
         scheduleFlowLayout.minimumInteritemSpacing = 0
+        scheduleFlowLayout.headerReferenceSize = .zero
+//        scheduleFlowLayout.sectionInset = UIEdgeInsets(top: SCRXFrom(16), left: SCRXFrom(16), bottom: SCRXFrom(16), right: SCRXFrom(16))
         
         scheduleCollectionView = UICollectionView(frame: .zero, collectionViewLayout: scheduleFlowLayout)
         scheduleCollectionView.showsVerticalScrollIndicator = false
@@ -123,36 +228,32 @@ class TimedViewController: UIViewController {
 extension TimedViewController: UICollectionViewDataSource, UICollectionViewDelegateFlowLayout {
     
     func collectionView(_ collectionView: UICollectionView, numberOfItemsInSection section: Int) -> Int {
-        return schedules.count
+        return space.schedules.count
     }
     
     func collectionView(_ collectionView: UICollectionView, cellForItemAt indexPath: IndexPath) -> UICollectionViewCell {
         let cell = collectionView.dequeueReusableCell(withReuseIdentifier: "cell", for: indexPath) as! SchedulesViewCell
-        let schedule = schedules[indexPath.item]
+        let schedule = space.schedules[indexPath.item]
         cell.schedule = schedule
         cell.enabledActionCallback = {[weak self] enabled in
-            
-            XWHUDManager.showCustomHUD(withMessage: "processing".localizedString, isWindow: true)
-            DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
-                XWHUDManager.hide()
-                XWHUDManager.showSuccessTipHUD("done!".localizedString)
-                schedule.enabled = enabled
-                collectionView.reloadItems(at: [indexPath])
-            }
+            self?.setScheduleEnabled(schedule: schedule, enabled: enabled)
         }
         return cell
     }
     
     func collectionView(_ collectionView: UICollectionView, layout collectionViewLayout: UICollectionViewLayout, sizeForItemAt indexPath: IndexPath) -> CGSize {
-        var itemW = collectionView.width - collectionView.contentInset.left - collectionView.contentInset.right
+        var itemW = collectionView.width - collectionView.contentInset.left - collectionView.contentInset.right - scheduleFlowLayout.sectionInset.left - scheduleFlowLayout.sectionInset.right
         itemW = CGFloat(floorf(Float(itemW) * 100) / 100.0)
-        let schedule = schedules[indexPath.item]
+        let schedule = space.schedules[indexPath.item]
         
         return CGSize(width: itemW, height: schedule.enabled ? SCRYFrom(114) : SCRYFrom(64))
     }
     
     func collectionView(_ collectionView: UICollectionView, didSelectItemAt indexPath: IndexPath) {
-        let schedule = schedules[indexPath.item]
+        let schedule = space.schedules[indexPath.item]
+        
+        let vc = ScheduleAddViewController(space: space, schedule: schedule)
+        present(NavigationViewController(rootViewController: vc), animated: true)
         
     }
 }
@@ -161,6 +262,9 @@ extension TimedViewController: SpaceFunctionFooterViewDelegate {
     
     /// 点击添加回调
     func functionDidClickAdd(view: SpaceFunctionFooterView) {
+        
+        let vc = ScheduleAddViewController(space: space)
+        present(NavigationViewController(rootViewController: vc), animated: true)
         
     }
 }

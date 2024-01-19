@@ -34,7 +34,11 @@ class SyncDeviceStepViewCell: UITableViewCell {
         didSet {
             
             stepNameLabel.text = stepModel.type
-            progressLabel.text = "\(stepModel.current)/\(stepModel.count)"
+            if stepModel.showProgress {
+                progressLabel.text = "\(stepModel.current)/\(stepModel.count)"
+            }else {
+                progressLabel.text = nil
+            }
             resyncBtn.isHidden = true
             stateImageView.isHidden = false
             
@@ -82,6 +86,14 @@ class SyncDeviceStepViewCell: UITableViewCell {
                 break
             }
             
+            if stepModel.parentDeviceModel?.parentGroupModel != nil {
+                progressLabel.snp.updateConstraints { make in
+                    make.left.equalTo(SCRXFrom(40))
+                }
+                stateImageView.snp.updateConstraints { make in
+                    make.left.equalTo(SCRXFrom(79))
+                }
+            }
             
         }
     }
@@ -116,7 +128,7 @@ class SyncDeviceStepViewCell: UITableViewCell {
         stateImageView.snp.makeConstraints { make in
             make.centerY.equalToSuperview()
             make.left.equalTo(SCRXFrom(59))
-            make.width.height.equalTo(SCRYFrom(24))
+//            make.width.height.equalTo(SCRYFrom(24))
         }
         
         stepNameLabel = UILabel(text: "Scene", textColor: RGB(100, 116, 139), fontSize: 14, fontWeight: .light)

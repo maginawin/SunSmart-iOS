@@ -16,6 +16,10 @@ class SceneMembersViewCell: SceneGroupsViewCell {
     override init(frame: CGRect) {
         super.init(frame: frame)
         
+        iconImageView.snp.updateConstraints { make in
+//            make.bottom.equalTo(bgView.snp.centerY)
+            make.centerY.equalToSuperview().offset(SCRYFrom(-12))
+        }
     
         imageLabel.snp.updateConstraints { make in
             make.top.equalTo(SCRYFrom(21))

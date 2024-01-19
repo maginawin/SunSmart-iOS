@@ -84,8 +84,7 @@ class SyncDevicesGroupViewCell: UITableViewCell {
                 stateImageView.snp.updateConstraints { make in
                     make.right.equalTo(SCRXFrom(-59))
                 }
-            default:
-                break
+
             }
         }
     }

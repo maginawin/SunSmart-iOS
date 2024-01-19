@@ -42,7 +42,7 @@ class SpaceViewController: WMPageController {
     }
     
     override func viewDidLoad() {
-//        self.selectIndex = 3
+        self.selectIndex = 3
         MeshLibManager.manager.setMeshNetworkConnected(meshUUID: space.meshUUID)
         if let manager = MeshLibManager.manager.meshNetworkManager {
             space.meshManager = manager
@@ -62,6 +62,7 @@ class SpaceViewController: WMPageController {
         
         MeshLibManager.manager.supportModelIDs = [.genericOnOffServerModelId, .lightLightnessServerModelId, .lightCTLServerModelId, .lightCTLTemperatureServerModelId, .sceneServerModelId, .sceneSetupServerModelId]
         MeshLibManager.manager.publishModelIDs = []
+        MeshLibManager.manager.groupSubscriptionModelIDs = [.genericOnOffServerModelId, .lightLightnessServerModelId, .lightCTLTemperatureServerModelId, .lightCTLServerModelId,]
         checkBluetoothState()
     }
     

@@ -46,9 +46,9 @@ extension UINavigationController {
     /// - Parameter color: 颜色
     func setNavigationBarBackgroundColor(color: UIColor, showShadow: Bool = false) {
         
-        let appearance = UINavigationBarAppearance()
+        let appearance = navigationBar.standardAppearance 
         appearance.configureWithOpaqueBackground()
-        appearance.backgroundColor = .clear
+        appearance.backgroundColor = color
         if !showShadow {
             appearance.shadowImage = UIImage.image(size: CGSize(width: 1, height: 1), color: .clear)
         }

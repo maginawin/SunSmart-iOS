@@ -20,12 +20,12 @@ class GroupViewController: UIViewController {
     let space: SpaceData
     let group: Group
     
-    private var devices: [String] = []
-    
+//    private var devices: [String] = []
+    private var isGroupUpdateData = false
     /// 组更新回调
-    var groupUpdateCallback: ((Group)->Void)?
+//    var groupUpdateCallback: ((Group)->Void)?
     /// 组删除回调
-    var groupDeleteCallback: ((Group)->Void)?
+//    var groupDeleteCallback: ((Group)->Void)?
     
     init(space: SpaceData,group: Group) {
         self.space = space
@@ -45,13 +45,17 @@ class GroupViewController: UIViewController {
         
         view.backgroundColor = Background_Color
         
-        if self.presentingViewController != nil {
-            let appearance = UINavigationBarAppearance()
-            appearance.configureWithOpaqueBackground()
-            appearance.backgroundColor = .clear
-            appearance.shadowImage = UIImage.image(size: CGSize(width: 1, height: 1), color: .clear)
-            navigationController?.navigationBar.standardAppearance = appearance
-            navigationController?.navigationBar.scrollEdgeAppearance = appearance
+        if self.presentingViewController != nil && navigationController?.viewControllers.count ?? 0 == 1 {
+            
+            navigationController?.setNavigationBarBackgroundColor(color: .clear)
+            
+//            let appearance = UINavigationBarAppearance()
+//            appearance.configureWithOpaqueBackground()
+//            appearance.backgroundColor = .clear
+//            appearance.shadowImage = UIImage.image(size: CGSize(width: 1, height: 1), color: .clear)
+////            appearance.titleTextAttributes = [.font: UIFont.systemFont(ofSize: 18, weight: .light)]
+//            navigationController?.navigationBar.standardAppearance = appearance
+//            navigationController?.navigationBar.scrollEdgeAppearance = appearance
             
             navigationItem.leftBarButtonItem = UIBarButtonItem(image: UIImage(named: "close")?.withRenderingMode(.alwaysOriginal), style: .done, target: self, action: #selector(close))
         }
@@ -60,14 +64,27 @@ class GroupViewController: UIViewController {
         setupUI()
         bindSliderAciton()
         
-        for i in 1...30 {
-            devices.append("ID \(i)")
-        }
-        pageControl.numberOfPages = Int(ceil(Double(devices.count) / 9.0))
-        pageControl.currentPage = 0
+//        for i in 1...30 {
+//            devices.append("ID \(i)")
+//        }
+    
+        addNotificationObserver()
         
+        updateUI()
     }
     
+    override func viewWillAppear(_ animated: Bool) {
+        super.viewWillAppear(animated)
+        
+        collectionView.reloadData()
+    }
+    
+    override func viewWillDisappear(_ animated: Bool) {
+        super.viewWillDisappear(animated)
+        if isGroupUpdateData {
+            NotificationCenter.default.post(name: .init(groupDataUpdateNotificationName), object: group)
+        }
+    }
     
     override func viewDidLayoutSubviews() {
         super.viewDidLayoutSubviews()
@@ -78,21 +95,50 @@ class GroupViewController: UIViewController {
         flowLayout.itemSize = itemSize
         
         collectionView.snp.updateConstraints { make in
-            let height = itemSize.height * 3.0 + flowLayout.minimumLineSpacing * 2.0 + collectionView.contentInset.top + collectionView.contentInset.bottom + flowLayout.sectionInset.top + flowLayout.sectionInset.bottom
+            var height = itemSize.height * 3.0 + flowLayout.minimumLineSpacing * 2.0 + collectionView.contentInset.top + collectionView.contentInset.bottom + flowLayout.sectionInset.top + flowLayout.sectionInset.bottom
+            height = CGFloat(ceilf(Float(height)))
+//            CGFloat(floorf(Float(height) * 100) / 100.0)
             make.height.equalTo(height)
         }
         
+    }
+    
+    private func addNotificationObserver() {
+        NotificationCenter.default.addObserver(forName: .init(groupDataUpdateNotificationName), object: nil, queue: nil) {[weak self] notification in
+            //            self?.refreshData = true
+            guard let self = self, let group = notification.object as? Group else { return }
         
-        if devices.isEmpty {
-            collectionView.showEmptyDataView(title: "No Members!", position: .center, bottomMargin: 3.5)
-        }else {
-            collectionView.hideEmptyDataView()
+            self.title = group.name
+            self.updateUI()
         }
         
     }
     
     @objc private func close() {
         dismiss(animated: true)
+    }
+    
+    private func updateUI() {
+        pageControl.numberOfPages = Int(ceil(Double(group.nodes.count) / 9.0))
+//        pageControl.currentPage = 0
+        updateEmptyUI()
+        
+        onoffBtn.isSelected = group.isOn
+        lightnessSlider.value = Node.getLightness100(lightness: group.lightness)
+        cctSlider.value = group.cct
+        
+        collectionView.reloadData()
+    }
+    
+    private func updateEmptyUI() {
+        if group.nodes.isEmpty {
+            if collectionView.frame == .zero {
+                view.layoutIfNeeded()
+            }
+            collectionView.showEmptyDataView(title: "no_members".localizedString, position: .center, bottomMargin: 3.5)
+        }else {
+            collectionView.hideEmptyDataView()
+        }
     }
     
     @objc private func moreClick() {
@@ -109,7 +155,7 @@ class GroupViewController: UIViewController {
                 self?.members()
             }),
             .init(icon: UIImage(named: "menu_profile"), title: "profile".localizedString, tapItemBack: {[weak self] item in
-//                self?.deleteSite()
+                self?.groupProfile()
             })
             
         ], anchorPoint: CGPoint(x: view.width - SCRXFrom(20) - 15, y: (navigationController?.navigationBar.frame.maxY ?? kNavigationHeight) + 44))
@@ -119,15 +165,42 @@ class GroupViewController: UIViewController {
     @objc private func onoffBtnClick(sender: UIButton) {
         sender.isSelected = !sender.isSelected
         
+        MeshAPI.setGroupOnOffState(address: group.address.address, isOn: sender.isSelected)
+        group.isOn = sender.isSelected
+        group.nodes.forEach({
+            $0.isOn = group.isOn
+        })
+        collectionView.reloadData()
+        isGroupUpdateData = true
     }
     
     private func bindSliderAciton() {
         lightnessSlider.valueChangedCallback = {[weak self] (value, ended) in
             print("lightness: \(value)")
+            guard let self = self else { return }
+            let lightness = Node.getLightness(lightness100: value)
+            self.group.lightness = lightness
+            MeshAPI.setGroupLightnessState(address: self.group.address.address, lightness: lightness)
+            group.nodes.forEach({
+                $0.isOn = lightness > 0
+                $0.lightness = lightness
+//                self.reloadCollectionItem(node: $0)
+            })
+            collectionView.reloadData()
+            self.isGroupUpdateData = true
         }
         
         cctSlider.valueChangedCallback = {[weak self] (value, ended) in
             print("cct: \(value)")
+            guard let self = self else { return }
+            self.group.cct = value
+            MeshAPI.setGroupColorTemperatureState(address: self.group.address.address, temperature: UInt16(value))
+            group.nodes.forEach({
+                $0.temperature = UInt16(value)
+//                self.reloadCollectionItem(node: $0)
+            })
+            collectionView.reloadData()
+            self.isGroupUpdateData = true
         }
     }
     
@@ -135,10 +208,10 @@ class GroupViewController: UIViewController {
     private func editGroup() {
         
         let editVc = GroupAddViewController(space: space, group: group)
-        editVc.doneCallback = {[weak self] group in
-            self?.title = group.name
-            self?.groupUpdateCallback?(group)
-        }
+//        editVc.doneCallback = {[weak self] group in
+//            self?.title = group.name
+//            self?.groupUpdateCallback?(group)
+//        }
         let navVc = NavigationViewController(rootViewController: editVc)
         present(navVc, animated: true)
     }
@@ -148,21 +221,64 @@ class GroupViewController: UIViewController {
         
         SRAlertView(title: "notification".localizedString, message: "group_delete_message".localizedString, contentPadding: SCRXFrom(25), actions: [.cancelAction, SRAlertAction(title: "DELETE".localizedString, style: .destructive, actionHandler: {[weak self] _ in
             guard let self = self else { return }
+            
+            guard self.group.nodes.isEmpty || self.group.nodes.contains(where: { $0.state }) else { // 设备是否都在线
+                SRAlertView(title: "notification".localizedString, message: "group_delete_offline".localizedString, actions:[SRAlertAction(title: "confirm".localizedString, actionHandler: nil)]).show()
+                return
+            }
+            
             XWHUDManager.showCustomHUD(withMessage: "deleting".localizedString, isWindow: true)
+            
+            group.nodes.forEach({ node in
+                node.unsubscribe(from: self.group)
+                node.sceneDatas.removeAll()
+                // 删除设备场景数据
+                SceneExecuteData.deleteData(meshUUID: self.space.meshUUID, address: node.primaryUnicastAddress)
+                // 删除设备关联组的日程数据
+                self.group.info.bindSchedules.forEach{ schedule in
+                    Node.deleteSchedule(meshUUID: self.space.meshUUID, address: node.primaryUnicastAddress, scheduleId: schedule.id)
+                }
+            })
+            
             GroupServer.deleteGroup(group: self.group, progress: nil) {[weak self] _ in
                 XWHUDManager.hide()
                 guard let self = self else { return }
                 XWHUDManager.showSuccessTipHUD("done!".localizedString)
-                self.groupDeleteCallback?(self.group)
+                NotificationCenter.default.post(name: .init(groupsRefreshNotificationName), object: nil)
+//                self.groupDeleteCallback?(self.group)
                 self.close()
                 
-            } failed: { _ in
-                // 跳转到
+            } failed: {[weak self] _ in
+                XWHUDManager.hide()
+                XWHUDManager.showErrorTipHUD("group_delete_failed".localizedString)
+                DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+                    XWHUDManager.hide()
+                    // 跳转到检查页面
+                    self?.deleteFailedCheck()
+                }
             }
             
         })]).show()
         
     }
+    
+    /// 删除失败去手动同步
+    private func deleteFailedCheck() {
+        
+        let vc = SyncDevicesViewController(type: .group(group, outNodes: group.nodes))
+        vc.syncSuccessCallback = {[weak self] _ in
+            XWHUDManager.showSuccessTipHUD("done!".localizedString)
+            guard let self = self else { return }
+            GroupServer.deleteGroup(group: group, progress: nil, successful: nil, failed: nil)
+            self.isGroupUpdateData = true
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+                self.close()
+            }
+        }
+//        present(NavigationViewController(rootViewController: vc), animated: true)
+        navigationController?.pushViewController(vc, animated: true)
+    }
+    
     
     /// 查看成员
     private func members() {
@@ -171,11 +287,40 @@ class GroupViewController: UIViewController {
         navigationController?.pushViewController(vc, animated: true)
     }
     
-    
+    /// 配置文件
+    private func groupProfile() {
+        
+        let vc = GroupProfilesViewController(group: group)
+        navigationController?.pushViewController(vc, animated: true)
+    }
     
     /// 分页页码编辑回调
     @objc private func pageControlValueChanged() {
         collectionView.setContentOffset(CGPoint(x: CGFloat(pageControl.currentPage) * collectionView.width, y: 0), animated: true)
+    }
+    
+    /// 刷新设备
+    private func reloadCollectionItem(node: Node) {
+        
+        if let index = space.nodes.firstIndex(where: {$0.primaryUnicastAddress == node.primaryUnicastAddress}) {
+            if let item = collectionView.cellForItem(at: IndexPath(item: index, section: 0)) as? DevicesViewCell {
+                item.device = node
+            }
+        }
+    }
+    
+    /// 长按事件，跳转到设备详情
+    @objc private func collectionLongPressAction(sender: UIGestureRecognizer) {
+        
+        guard sender.state == .began else {
+            return
+        }
+        let point = sender.location(in: collectionView)
+        if let indexPath = collectionView.indexPathForItem(at: point), indexPath.item < group.nodes.count {
+            let node = group.nodes[indexPath.item]
+            let vc = DeviceLightViewController(space: space, node: node)
+            navigationController?.pushViewController(vc, animated: true)
+        }
     }
 
     
@@ -185,18 +330,20 @@ class GroupViewController: UIViewController {
         flowLayout.minimumLineSpacing = SCRXFrom(14)
         flowLayout.minimumInteritemSpacing = SCRXFrom(14)
         flowLayout.scrollDirection = .horizontal
-        flowLayout.sectionInset = UIEdgeInsets(top: SCRYFrom(36), left: SCRXFrom(24), bottom: SCRYFit(36), right: SCRXFrom(24))
+        flowLayout.sectionInset = UIEdgeInsets(top: 0, left: SCRXFrom(24), bottom: 0, right: SCRXFrom(24))
         
         collectionView = UICollectionView(frame: .zero, collectionViewLayout: flowLayout)
-//        collectionView.contentInset = UIEdgeInsets(top: SCRYFrom(36), left: SCRXFrom(24), bottom: SCRYFit(36), right: SCRXFrom(24))
+        collectionView.contentInset = UIEdgeInsets(top: SCRYFrom(36), left: 0, bottom: SCRYFrom(36), right: 0)
         collectionView.backgroundColor = RGB(0, 0, 0, 0.05)
         collectionView.layer.cornerRadius = SCRYFrom(40)
-
         collectionView.dataSource = self
         collectionView.delegate = self
         collectionView.isPagingEnabled = true
         collectionView.showsHorizontalScrollIndicator = false
         collectionView.register(GroupDeviceViewCell.classForCoder(), forCellWithReuseIdentifier: "cell")
+        let longPress = UILongPressGestureRecognizer(target: self, action: #selector(collectionLongPressAction))
+        longPress.minimumPressDuration = 0.5
+        collectionView.addGestureRecognizer(longPress)
         view.addSubview(collectionView)
         collectionView.snp.makeConstraints { make in
             make.left.equalTo(SCRXFrom(30))
@@ -227,15 +374,18 @@ class GroupViewController: UIViewController {
         
         lightnessSlider = BuoySliderView(frame: .zero, functionType: .level())
         lightnessSlider.slider.interval = 0.5
+//        lightnessSlider.isHidden = !group.supportLightness
         view.addSubview(lightnessSlider)
         lightnessSlider.snp.makeConstraints { make in
             make.left.right.equalTo(collectionView)
-            make.top.equalTo(onoffBtn.snp.bottom).offset(SCRYFit(44))
+            make.top.equalTo(onoffBtn.snp.bottom).offset(SCRYFit(8))
             make.height.equalTo(SCRYFrom(76))
         }
         
         cctSlider = BuoySliderView(frame: .zero, functionType: .cct())
-        lightnessSlider.slider.interval = 0.5
+        cctSlider.slider.interval = 0.5
+//        Node.getTemperature100(temperature: UInt16(group.cct))
+//        cctSlider.isHidden = !group.supportCct
         view.addSubview(cctSlider)
         cctSlider.snp.makeConstraints { make in
             make.left.right.height.equalTo(lightnessSlider)
@@ -250,13 +400,24 @@ class GroupViewController: UIViewController {
 extension GroupViewController: UICollectionViewDataSource, UICollectionViewDelegateFlowLayout {
     
     func collectionView(_ collectionView: UICollectionView, numberOfItemsInSection section: Int) -> Int {
-        return devices.count
+        return group.nodes.count
     }
     
     func collectionView(_ collectionView: UICollectionView, cellForItemAt indexPath: IndexPath) -> UICollectionViewCell {
         let cell = collectionView.dequeueReusableCell(withReuseIdentifier: "cell", for: indexPath) as! GroupDeviceViewCell
-        cell.nameLabel.text = devices[indexPath.item]
+        let node = group.nodes[indexPath.item]
+        cell.device = node
         return cell
+    }
+    
+    func collectionView(_ collectionView: UICollectionView, didSelectItemAt indexPath: IndexPath) {
+        let node = space.nodes[indexPath.item]
+        node.isOn = !node.isOn
+        if !node.isOn, node.lightness > 0 { // 关灯，记录关灯前的亮度值
+            node.trunOffLightness = node.lightness
+        }
+        
+        reloadCollectionItem(node: node)
     }
     
     func scrollViewDidEndDecelerating(_ scrollView: UIScrollView) {

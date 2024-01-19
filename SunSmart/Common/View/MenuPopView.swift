@@ -47,6 +47,12 @@ class MenuPopView: UIView {
         
     }
     
+    override func hitTest(_ point: CGPoint, with event: UIEvent?) -> UIView? {
+        let view = super.hitTest(point, with: event)
+        print(view)
+        return view
+    }
+    
     override func layoutSubviews() {
         super.layoutSubviews()
         
@@ -106,7 +112,9 @@ class MenuPopView: UIView {
         
         shadeView = UIView(frame: self.bounds)
 //        shadeView.backgroundColor = RGB(0, 0, 0, 0.3)
-        shadeView.addGestureRecognizer(UITapGestureRecognizer(target: self, action: #selector(shadeViewClick)))
+        let tap = UITapGestureRecognizer(target: self, action: #selector(shadeViewClick))
+        tap.delegate = self
+        shadeView.addGestureRecognizer(tap)
         addSubview(shadeView)
         
         contentView = UIView()
@@ -179,6 +187,17 @@ extension MenuPopView: UITableViewDataSource, UITableViewDelegate {
         dismiss()
     }
     
+}
+
+extension MenuPopView: UIGestureRecognizerDelegate {
+    
+    func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer, shouldReceive touch: UITouch) -> Bool {
+        
+        if let view = touch.view, NSStringFromClass(view.classForCoder) == "UITableViewCellContentView" {
+            return false
+        }
+        return true
+    }
 }
 
 extension MenuPopView {

@@ -53,9 +53,9 @@ class SchedulesViewCell: UICollectionViewCell {
             var action = ""
             switch schedule.action {
             case .turnOn:
-               action = "action_on".localizedString
+               action = "action_ON".localizedString
             case .turnOff:
-                action = "action_off".localizedString
+                action = "action_OFF".localizedString
             case .sceneRecall:
                 action = "action_reall_scene".localizedString
             case .noAction:
@@ -64,6 +64,12 @@ class SchedulesViewCell: UICollectionViewCell {
             actionLabel.text = "\("action".localizedString): " + action
             
             fadeTimeLabel.text = "\("fade_time".localizedString): " + "\(schedule.fadeTime)s"
+            
+            if schedule.getNeedSyncDatas().isEmpty() {
+                failedImageView.isHidden = true
+            }else {
+                failedImageView.isHidden = false
+            }
             
         }
     }
@@ -158,7 +164,7 @@ class SchedulesViewCell: UICollectionViewCell {
         contentView.addSubview(failedImageView)
         failedImageView.snp.makeConstraints { make in
             make.right.equalTo(enableSwitch.snp.left).offset(SCRXFrom(-8))
-            make.centerY.equalToSuperview()
+            make.centerY.equalTo(enableSwitch)
         }
     }
     

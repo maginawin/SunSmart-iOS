@@ -8,8 +8,6 @@
 import UIKit
 import NordicSigMeshSDK
 
-/// 场景数据更新通知名称
-let sceneDataUpdateNotificationName = "scenesDataUpdateNotificationName"
 
 class SceneViewController: UIViewController {
 
@@ -41,25 +39,17 @@ class SceneViewController: UIViewController {
         
         view.backgroundColor = Background_Color
         
-        let appearance = UINavigationBarAppearance()
-        appearance.configureWithOpaqueBackground()
-        appearance.backgroundColor = .clear
-        appearance.shadowImage = UIImage.image(size: CGSize(width: 1, height: 1), color: .clear)
-        navigationController?.navigationBar.standardAppearance = appearance
-        navigationController?.navigationBar.scrollEdgeAppearance = appearance
+        navigationController?.setNavigationBarBackgroundColor(color: .clear)
         
         navigationItem.leftBarButtonItem = UIBarButtonItem(image: UIImage(named: "close")?.withRenderingMode(.alwaysOriginal), style: .done, target: self, action: #selector(close))
         navigationItem.rightBarButtonItem = UIBarButtonItem(image: UIImage(named: "more_vertical")?.withRenderingMode(.alwaysOriginal), style: .done, target: self, action: #selector(moreClick))
         
         setupUI()
         
-        updateEmptyUI()
+        updateUI()
 //        for i in 1...30 {
 //            devices.append("ID \(i)")
 //        }
-        
-        pageControl.numberOfPages = Int(ceil(Double(scene.info.groups.count) / 9.0))
-        pageControl.currentPage = 0
         
         addNotification()
     }
@@ -69,8 +59,7 @@ class SceneViewController: UIViewController {
         
         if refreshData {
             refreshData = false
-            collectionView.reloadData()
-            updateEmptyUI()
+            updateUI()
         }
     }
     
@@ -78,6 +67,15 @@ class SceneViewController: UIViewController {
     private func addNotification() {
         
         NotificationCenter.default.addObserver(forName: .init(sceneDataUpdateNotificationName), object: nil, queue: nil) {[weak self] _ in
+            self?.titleLabel.text = self?.scene.info.name ?? self?.scene.name
+            if self?.view.window != nil {
+                self?.updateUI()
+            }else {
+                self?.refreshData = true
+            }
+        }
+        
+        NotificationCenter.default.addObserver(forName: .init(groupsRefreshNotificationName), object: nil, queue: nil) {[weak self] _ in
             if self?.view.window != nil {
                 self?.collectionView.reloadData()
                 self?.updateEmptyUI()
@@ -86,6 +84,22 @@ class SceneViewController: UIViewController {
             }
         }
         
+        NotificationCenter.default.addObserver(forName: .init(groupDataUpdateNotificationName), object: nil, queue: nil) {[weak self] notification in
+            guard let self = self, let group = notification.object as? Group else { return }
+            if let index = self.scene.info.groups.firstIndex(of: group) {
+                collectionView.reloadItems(at: [IndexPath(item: index, section: 0)])
+            }else {
+                collectionView.reloadData()
+            }
+        }
+        
+    }
+    
+    
+    private func updateUI() {
+        collectionView.reloadData()
+        updateEmptyUI()
+        pageControl.numberOfPages = Int(ceil(Double(scene.info.groups.count) / 9.0))
     }
     
     @objc private func close() {
@@ -113,11 +127,8 @@ class SceneViewController: UIViewController {
     /// 编辑场景
     private func editScene() {
         
-        var imageNames: [String] = []
-        for id in 1...16 {
-            imageNames.append("scene_image_\(id)")
-        }
-        let vc = InfoEditViewController(name: scene.info.name ?? scene.name, imageNames: imageNames, selectImageIndex: max(scene.info.imageId - 1, 0), columnNum: 4)
+       
+        let vc = InfoEditViewController(name: scene.info.name ?? scene.name, imageNames: sceneImageNames, selectImageIndex: max(scene.info.imageId - 1, 0), columnNum: 4)
         vc.title = "edit_scene".localizedString
         vc.itemRound = true
         vc.nameEditChangedCallback = {[weak self] name in
@@ -146,13 +157,17 @@ class SceneViewController: UIViewController {
         
         SRAlertView(title: "notification".localizedString, message: "scene_delete_message".localizedString, contentPadding: SCRXFrom(25), actions: [.cancelAction, SRAlertAction(title: "DELETE".localizedString, style: .destructive, actionHandler: {[weak self] _ in
             guard let self = self else { return }
-            if !MeshLibManager.manager.isMeshNetworkConnected && self.scene.info.groups.contains(where: { $0.nodes.count > 0 }) { // 未连接mesh网络
-                XWHUDManager.showTipHUD("device_notconnect_message".localizedString, isLineFeed: true)
-                return
-            }
+//            if !MeshLibManager.manager.isMeshNetworkConnected && self.scene.info.groups.contains(where: { $0.nodes.count > 0 }) { // 未连接mesh网络
+//                XWHUDManager.showTipHUD("device_notconnect_message".localizedString, isLineFeed: true)
+//                return
+//            }
             
             XWHUDManager.showCustomHUD(withMessage: "deleting".localizedString, isWindow: true)
-            
+            // 测试数据
+            scene.nodes.forEach({
+                self.scene.remove(node: $0)
+            })
+            scene.delete()
             SceneServer.deleteScene(scene: self.scene) {[weak self] _ in
                 XWHUDManager.hide()
                 guard let self = self else { return }
@@ -165,10 +180,37 @@ class SceneViewController: UIViewController {
                 
             } failed: { _ in
                 // 跳转到同步数据页面
-                
+                XWHUDManager.hide()
+                XWHUDManager.showErrorTipHUD("scene_delete_failed".localizedString)
+                DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {[weak self] in
+                    self?.pushToSyncDevicesVc()
+                }
             }
             
         })]).show()
+        
+    }
+    
+    /// 跳到同步数据页面
+    private func pushToSyncDevicesVc() {
+        
+        let vc = SyncDevicesViewController(type: .scene(scene))
+        vc.syncSuccessCallback = {[weak self] _ in
+            XWHUDManager.showSuccessTipHUD("done!".localizedString)
+            guard let self = self else { return }
+            SceneServer.deleteScene(scene: self.scene, success: nil, failed: nil)
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+                NotificationCenter.default.post(name: .init(scenesRefreshNotificationName), object: nil)
+                self.close()
+            }
+        }
+        vc.backActionCallback = {[weak self] in
+//                self?.dismiss(animated: true)
+            guard let self = self else { return }
+            NotificationCenter.default.post(name: .init(sceneDataUpdateNotificationName), object: self.scene)
+            self.navigationController?.popViewController(animated: true)
+        }
+        navigationController?.pushViewController(vc, animated: true)
         
     }
     
@@ -294,6 +336,10 @@ extension SceneViewController: UICollectionViewDataSource, UICollectionViewDeleg
         let group = scene.info.groups[indexPath.item]
         let data = group.info.bindSceneDatas[scene.number]
         cell.updateData(group: group, sceneData: data)
+        // 获取组是否需要同步
+        if scene.needSyncGroups.contains(group) {
+            cell.iconImageView.image = UIImage(named: "sync_failed")
+        }
         return cell
     }
     

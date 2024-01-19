@@ -101,7 +101,11 @@ class DeviceSliderFunctionView: UIView {
     private func updateValue() {
         
         let data = type.data
-        titleLabel.text = "\(title!) | \(Int(slider.value))\(data.unit)"
+        if title.isEmpty {
+            titleLabel.text = "\(Int(slider.value))\(data.unit)"
+        }else {
+            titleLabel.text = "\(title!) | \(Int(slider.value))\(data.unit)"
+        }
     }
     
     private func updateUI() {
@@ -123,7 +127,7 @@ class DeviceSliderFunctionView: UIView {
     
     private func setupUI() {
         
-        titleLabel = UILabel(text: "", textColor: TextBlack_Color, fontSize: 14, fontName: FontName_Medium)
+        titleLabel = UILabel(text: "", textColor: TextBlack_Color, fontSize: 14)
         addSubview(titleLabel)
         titleLabel.snp.makeConstraints { make in
             make.top.equalTo(SCRXFrom(24))
@@ -159,7 +163,7 @@ class DeviceSliderFunctionView: UIView {
             make.height.equalTo(SCRYFrom(40))
         }
         
-        minLabel = UILabel(text: "", textColor: TextBlack_Color, fontSize: 13)
+        minLabel = UILabel(text: "", textColor: RGB(134, 138, 160), fontSize: 14)
         minLabel.textAlignment = .left
 //        minLabel.adjustsFontSizeToFitWidth = true
         addSubview(minLabel)
@@ -169,7 +173,7 @@ class DeviceSliderFunctionView: UIView {
             make.right.equalTo(slider.snp.left).offset(SCRXFrom(-3))
         }
         
-        maxLabel = UILabel(text: "", textColor: TextBlack_Color, fontSize: 13)
+        maxLabel = UILabel(text: "", textColor: RGB(134, 138, 160), fontSize: 14)
         maxLabel.textAlignment = .right
         maxLabel.adjustsFontSizeToFitWidth = true
         addSubview(maxLabel)

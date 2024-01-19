@@ -109,31 +109,42 @@ class DeviceLightViewController: WMPageController {
             guard let self = self else { return }
             XWHUDManager.showCustomHUD(withMessage: "deleting".localizedString, isWindow: true)
             
-            MeshAPI.resetNode(address: self.node.primaryUnicastAddress) {[weak self] _ in
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
                 XWHUDManager.hide()
                 XWHUDManager.showSuccessTipHUD("done!".localizedString)
-                self?.space.save()
+                MeshNetworkManager.instance.removeTest(node: self.node)
+                _ = MeshNetworkManager.instance.save()
+                self.space.save()
                 DispatchQueue.main.asyncAfter(wallDeadline: .now() + 1) {
-                    self?.navigationController?.popViewController(animated: true)
+                    self.navigationController?.popViewController(animated: true)
                 }
-            } resetFail: { _, error in
-                XWHUDManager.hide()
-                
-                let alertView = SRAlertView(title: "notification".localizedString, actions: [.cancelAction, SRAlertAction(title: "force_delete".localizedString, actionHandler: {[weak self] _ in
-                    guard let self = self else { return }
-                    self.space.meshManager?.meshNetwork?.remove(node: self.node)
-                    _ = self.space.meshManager?.save()
-                    self.space.save()
-                    XWHUDManager.showSuccessTipHUD("done!".localizedString)
-                    DispatchQueue.main.asyncAfter(wallDeadline: .now() + 1) {
-                        self.navigationController?.popViewController(animated: true)
-                    }
-                })])
-                let messageAttStr = NSMutableAttributedString(string: "device_force_delete_message".localizedString, attributes: [.foregroundColor: TextBlack_Color])
-                messageAttStr.append(NSAttributedString(string: "device_force_delete_note".localizedString, attributes: [.foregroundColor: Message_Color]))
-                alertView.messageLabel.attributedText = messageAttStr
-                alertView.show()
             }
+            
+//            MeshAPI.resetNode(address: self.node.primaryUnicastAddress) {[weak self] _ in
+//                XWHUDManager.hide()
+//                XWHUDManager.showSuccessTipHUD("done!".localizedString)
+//                self?.space.save()
+//                DispatchQueue.main.asyncAfter(wallDeadline: .now() + 1) {
+//                    self?.navigationController?.popViewController(animated: true)
+//                }
+//            } resetFail: { _, error in
+//                XWHUDManager.hide()
+//                
+//                let alertView = SRAlertView(title: "notification".localizedString, actions: [.cancelAction, SRAlertAction(title: "force_delete".localizedString, actionHandler: {[weak self] _ in
+//                    guard let self = self else { return }
+//                    self.space.meshManager?.meshNetwork?.remove(node: self.node)
+//                    _ = self.space.meshManager?.save()
+//                    self.space.save()
+//                    XWHUDManager.showSuccessTipHUD("done!".localizedString)
+//                    DispatchQueue.main.asyncAfter(wallDeadline: .now() + 1) {
+//                        self.navigationController?.popViewController(animated: true)
+//                    }
+//                })])
+//                let messageAttStr = NSMutableAttributedString(string: "device_force_delete_message".localizedString, attributes: [.foregroundColor: TextBlack_Color])
+//                messageAttStr.append(NSAttributedString(string: "device_force_delete_note".localizedString, attributes: [.foregroundColor: Message_Color]))
+//                alertView.messageLabel.attributedText = messageAttStr
+//                alertView.show()
+//            }
             
         })]).show()
         

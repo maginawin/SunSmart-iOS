@@ -32,8 +32,9 @@ class DeviceLightControlView: UIView {
 
     private var shadeView: UIView!
     private var contentView: UIView!
-    private var levelSliderView: DeviceSliderFunctionView!
-    private var cctSliderView: DeviceSliderFunctionView!
+    private var levelSliderView: BuoySliderView!
+    private var cctSliderView: BuoySliderView!
+    
     
     weak var delegate: DeviceLightControlViewDelegate?
     
@@ -90,31 +91,34 @@ class DeviceLightControlView: UIView {
             make.bottom.equalTo(isIphoneX ? -kSafeAreaBottomHeight : SCRXFrom(-8))
         }
         
-        levelSliderView = DeviceSliderFunctionView(frame: .zero, title: "light_level".localizedString, value: 50, functionType: .level())
+        levelSliderView = BuoySliderView(frame: .zero, functionType: .level())
         levelSliderView.slider.throttle = true
         levelSliderView.slider.interval = 0.5
-        levelSliderView.throttleValueChangedCallback = {[weak self] (value, ended) in
+        levelSliderView.value = 100
+        levelSliderView.valueChangedCallback = {[weak self] (value, ended) in
             guard let self = self else { return }
             self.delegate?.lightControl(self, levelValueChanged: value, ended: ended)
         }
         contentView.addSubview(levelSliderView)
         levelSliderView.snp.makeConstraints { make in
-            make.left.right.top.equalToSuperview()
-            make.height.equalTo(SCRYFrom(128))
+            make.left.equalTo(SCRXFrom(22))
+            make.right.equalTo(SCRXFrom(-21))
+            make.top.equalTo(SCRYFrom(8))
+            make.height.equalTo(SCRYFrom(83))
         }
         
-        cctSliderView = DeviceSliderFunctionView(frame: .zero, title: "color_temperature".localizedString, value: 4000, functionType: .cct())
+        cctSliderView = BuoySliderView(frame: .zero, functionType: .cct())
+        cctSliderView.value = 4000
         cctSliderView.slider.throttle = true
         cctSliderView.slider.interval = 0.5
-        cctSliderView.lineView.isHidden = true
-        cctSliderView.throttleValueChangedCallback = {[weak self] (value, ended) in
+        cctSliderView.valueChangedCallback = {[weak self] (value, ended) in
             guard let self = self else { return }
             self.delegate?.lightControl(self, cctValueChanged: value, ended: ended)
         }
         contentView.addSubview(cctSliderView)
         cctSliderView.snp.makeConstraints { make in
-            make.left.right.bottom.equalToSuperview()
-            make.height.equalTo(levelSliderView)
+            make.bottom.equalTo(SCRYFrom(-40))
+            make.left.right.height.equalTo(levelSliderView)
             make.top.equalTo(levelSliderView.snp.bottom)
         }
         

@@ -37,36 +37,26 @@ class SceneAddViewController: UIViewController {
     private var createMode: CreateMode = .custom
     
     private let titles = ["custom".localizedString, "templates".localizedString]
-    private var iconImageNames: [String] {
-        var imageNames: [String] = []
-        for i in 1...16 {
-            imageNames.append("scene_image_\(i)")
-        }
-        return imageNames
-    }
     
-    private var templates: [String] = [
-        "Office", "School", "Medical treatment", "Industry", "Supermarket", "Warehouse", "Others"
+    private var templates: [SceneMainTemplate] = [
+        SceneMainTemplate(mainType: .frequentlyUsed),
+        SceneMainTemplate(mainType: .office),
+        SceneMainTemplate(mainType: .school),
+        SceneMainTemplate(mainType: .medicalTreatment),
+        SceneMainTemplate(mainType: .industry),
+        SceneMainTemplate(mainType: .supermarket)
     ]
+
+    private var selectTemplate: SceneMainTemplate?
+    private var selectSubTemplate: SceneMainTemplate.SceneTemplate?
     
-    private var subTemplates : [String] = [
-        "PPT", "Lecture", "Conference", "Work", "Lunch break", "Vacant", "Get off work", "Normal", "Focus"
-    ]
-    
-    private var templateShowMap: [Int: Bool] = [:]
+    private var templateShowMap: [TemplateMainType: Bool] = [:]
     
     let space: SpaceData
-    var doneCallback: ((Group)->Void)?
     
     /// 场景执行数据list
     private var sceneDatas: [SceneExecuteData] = []
     private var sceneDataSelectIndex: Int?
-    /// 模板默认场景执行数据list
-    private var defalutSceneDatas: [SceneExecuteData] = [
-        SceneExecuteData(lightness: 0, cct: 2200),
-        SceneExecuteData(lightness: 50, cct: 4500),
-        SceneExecuteData(lightness: 100, cct: 3000)
-    ]
     
     private var imageId: Int = 1
     private var name: String?
@@ -105,10 +95,19 @@ class SceneAddViewController: UIViewController {
 
         navigationController?.setNavigationBarBackgroundColor(color: .clear)
         
-        for index in 0..<templates.count {
-            templateShowMap.updateValue(false, forKey: index)
+//        sceneDatas = defalutSceneDatas
+     
+        addNotificationObserver()
+    }
+    
+    private func addNotificationObserver() {
+        NotificationCenter.default.addObserver(forName: .init(groupsRefreshNotificationName), object: nil, queue: nil) {[weak self] _ in
+            //            self?.refreshData = true
+            guard let self = self else { return }
+//            self.collectionView.reloadData()
+            self.groups = space.groups
+            self.collectionView.reloadSections(IndexSet(integer: 1))
         }
-        sceneDatas = defalutSceneDatas
         
     }
     
@@ -131,17 +130,20 @@ class SceneAddViewController: UIViewController {
     /// 创建场景
     private func createScene() {
         
-        let selectGroups = groups.filter({ $0.isSelected })
+//        let selectGroups = groups.filter({ $0.isSelected })
+     
+        addSceneHandle()
+        
         // 组里是否存在设备
-        if selectGroups.contains(where: { $0.nodes.count > 0 }) { // 同步数据
-            if MeshLibManager.manager.isMeshNetworkConnected { // 去同步
-                addSceneHandle()
-            }else { // 未连接网络
-                XWHUDManager.showTipHUD("device_notconnect_message".localizedString, isLineFeed: true)
-            }
-        }else { // 组内无设备
-            addSceneHandle()
-        }
+//        if selectGroups.contains(where: { $0.nodes.count > 0 }) { // 同步数据
+//            if MeshLibManager.manager.isMeshNetworkConnected { // 去同步
+//                addSceneHandle()
+//            }else { // 未连接网络
+//                XWHUDManager.showTipHUD("device_notconnect_message".localizedString, isLineFeed: true)
+//            }
+//        }else { // 组内无设备
+//            addSceneHandle()
+//        }
         
     }
     
@@ -150,26 +152,32 @@ class SceneAddViewController: UIViewController {
         XWHUDManager.showCustomHUD(withMessage: nil, isWindow: false)
         MeshAPI.addOrEditScene(name: name) {[weak self] scene in
             XWHUDManager.hide()
-            XWHUDManager.showSuccessTipHUD("done!".localizedString)
             guard let self = self else { return }
+            
             let selectGroups = groups.filter({ $0.isSelected })
-            scene.info = .init(sceneId: scene.number, name: self.name, imageId: self.imageId, groups: selectGroups)
-            scene.info.save(meshUUID: self.space.meshUUID)
             selectGroups.forEach({
                 if let data = $0.executeSceneData {
                     SceneExecuteData.save(meshUUID: self.space.meshUUID, address: $0.address.address, sceneId: Int(scene.number), sceneData: data)
+                    $0.info.bindSceneDatas.updateValue(data, forKey: scene.number)
                 }
             })
-            self.createSceneCallback?(scene)
+            scene.info = .init(sceneId: scene.number, name: self.name, imageId: self.imageId, groups: selectGroups)
+            scene.info.save(meshUUID: self.space.meshUUID)
             
-            DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {[weak self] in
-                guard let self = self else { return }
-                if self.createMode == .custom {
+            NotificationCenter.default.post(name: .init(scenesRefreshNotificationName), object: nil)
+            // 自定义创建场景
+            if self.createMode == .custom {
+                XWHUDManager.showSuccessTipHUD("done!".localizedString)
+//                self.createSceneCallback?(scene)
+                
+                DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {[weak self] in
+                    guard let self = self else { return }
                     let vc = SceneSettingsViewController(space: self.space, scene: scene, mode: .members)
                     self.navigationController?.pushViewController(vc, animated: true)
-                }else {
-                    self.close()
                 }
+                
+            }else { // 模板创建场景
+                self.pushToSyncDeviceVc(scene: scene)
             }
         
         } addFail: { _, _ in
@@ -177,6 +185,24 @@ class SceneAddViewController: UIViewController {
             XWHUDManager.showErrorTipHUD("failed".localizedString)
         }
         
+    }
+    
+    private func pushToSyncDeviceVc(scene: Scene) {
+        
+        let vc = SyncDevicesViewController(type: .scene(scene))
+        vc.syncSuccessCallback = {[weak self] _ in
+            XWHUDManager.showSuccessTipHUD("done!".localizedString)
+            guard let self = self else { return }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+                self.close()
+            }
+        }
+        vc.backActionCallback = {[weak self] in
+//                self?.dismiss(animated: true)
+            guard let self = self else { return }
+            self.close()
+        }
+        navigationController?.pushViewController(vc, animated: true)
     }
     
     // 保存
@@ -201,6 +227,16 @@ class SceneAddViewController: UIViewController {
         menuView.isHidden = true
         scrollView.isHidden = true
         
+        if let subTemplate = selectSubTemplate {
+            
+            sceneDatas = subTemplate.parameters.map({
+                SceneExecuteData(lightness: $0.lightness, cct: $0.cct)
+            })
+            imageId = subTemplate.imageId
+            name = subTemplate.title
+//            infoView.templateLabel.text = "\(mainTemplate.title)->\(subTemplate.title)"
+        }
+        
         setupTemplateDataUI()
     }
     
@@ -211,6 +247,7 @@ class SceneAddViewController: UIViewController {
         menuView.layoutMode = .center
         menuView.lineColor = Bar_Color
         menuView.progressHeight = 2
+        menuView.progressViewBottomSpace = 4
         menuView.itemBackgroundColor = .clear
         menuView.dataSource = self
         menuView.delegate = self
@@ -231,7 +268,7 @@ class SceneAddViewController: UIViewController {
             make.top.equalTo(menuView.frame.maxY + SCRYFrom(17))
         }
         
-        customView = SceneAddCustomView(frame: .zero, name: name, imageNames: iconImageNames)
+        customView = SceneAddCustomView(frame: .zero, name: name, imageNames: sceneImageNames)
 //        customView.createBtn.addTarget(self, action: #selector(createAction), for: .touchUpInside)
         customView.delegate = self
         scrollView.addSubview(customView)
@@ -328,21 +365,24 @@ extension SceneAddViewController: UITableViewDataSource, UITableViewDelegate {
     }
     
     func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
-        return (templateShowMap[section] ?? false) ? subTemplates.count : 0
+        let template = templates[section]
+        return (templateShowMap[template.mainType] ?? false) ? template.sceneTemplates.count : 0
     }
     
     func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
         let cell = tableView.dequeueReusableCell(withIdentifier: "cell", for: indexPath) as! SceneAddTemplateTitleCell
-        cell.titleLabel.text = subTemplates[indexPath.row]
+        let template = templates[indexPath.section]
+        cell.titleLabel.text = template.sceneTemplates[indexPath.row].title
         return cell
     }
     
     func tableView(_ tableView: UITableView, viewForHeaderInSection section: Int) -> UIView? {
         let headerView = tableView.dequeueReusableHeaderFooterView(withIdentifier: "header") as! SceneAddTemplateTitleHeaderView
-        headerView.nameLabel.text = templates[section]
-        headerView.isShow = templateShowMap[section] ?? false
+        let template = templates[section]
+        headerView.nameLabel.text = template.title
+        headerView.isShow = templateShowMap[template.mainType] ?? false
         headerView.showHideCallback = {[weak self] isShow in
-            self?.templateShowMap.updateValue(isShow, forKey: section)
+            self?.templateShowMap.updateValue(isShow, forKey: template.mainType)
             tableView.reloadSections(IndexSet(integer: section), with: .automatic)
         }
         return headerView
@@ -365,6 +405,9 @@ extension SceneAddViewController: UITableViewDataSource, UITableViewDelegate {
     }
     
     func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
+        let template = templates[indexPath.section]
+        selectTemplate = template
+        selectSubTemplate = template.sceneTemplates[indexPath.row]
         showSceneDataUI()
     }
     
@@ -477,9 +520,9 @@ extension SceneAddViewController: UICollectionViewDataSource, UICollectionViewDe
         
         let itemW = collectionView.width
         if indexPath.section == 0 {
-            let count = min(sceneDatas.count + 1, 8)
-            let row = ceil(Float(count) / 4.0)
-            return CGSize(width: itemW, height: CGFloat(max(row, 1)) * SCRYFrom(96))
+            let count = min(sceneDatas.count + 1, 16)
+            let row = max(ceil(Float(count) / 4.0), 1)
+            return CGSize(width: itemW, height: CGFloat(row) * SCRYFrom(68) + CGFloat(row - 1) * SCRXFrom(16) + SCRYFrom(28))
         }else if indexPath.section == 1 && groups.isEmpty {
             return CGSize(width: collectionView.width, height: SCRYFrom(170))
         }else {
@@ -491,7 +534,10 @@ extension SceneAddViewController: UICollectionViewDataSource, UICollectionViewDe
         if indexPath.section == 0 {
             let infoView = collectionView.dequeueReusableSupplementaryView(ofKind: kind, withReuseIdentifier: "infoSection", for: indexPath) as! SceneAddTemplateInfoSectionView
             infoView.delegate = self
-            infoView.iconImageBtn.setImage(UIImage(named: iconImageNames[imageId - 1]), for: .normal)
+            if let mainTemplate = selectTemplate, let subTemplate = selectSubTemplate {
+                infoView.templateLabel.text = "\(mainTemplate.title)->\(subTemplate.title)"
+            }
+            infoView.iconImageBtn.setImage(UIImage(named: sceneImageNames[imageId - 1]), for: .normal)
             infoView.name = name
             return infoView
         }else {
@@ -547,13 +593,13 @@ extension SceneAddViewController: UICollectionViewDataSource, UICollectionViewDe
             group.executeSceneData = .init(lightness: data.lightness, cct: data.cct)
             group.sceneDataIndex = index
             group.isSelected = true
-            if group.nodes.count > 0 {
-                if MeshLibManager.manager.isMeshNetworkConnected {
-                    MeshAPI.setGroupCTLState(address: group.address.address, lightness: Node.getLightness(lightness100: data.lightness), temperature: UInt16(data.cct))
-                }else {
-                    XWHUDManager.showTipHUD("device_notconnect_message".localizedString, isLineFeed: true)
-                }
-            }
+//            if group.nodes.count > 0 {
+//                if MeshLibManager.manager.isMeshNetworkConnected {
+//                    MeshAPI.setGroupCTLState(address: group.address.address, lightness: Node.getLightness(lightness100: data.lightness), temperature: UInt16(data.cct))
+//                }else {
+//                    XWHUDManager.showTipHUD("device_notconnect_message".localizedString, isLineFeed: true)
+//                }
+//            }
         }
         collectionView.reloadItems(at: [indexPath])
         
@@ -598,7 +644,7 @@ extension SceneAddViewController: SceneAddCustomViewDelegate {
 extension SceneAddViewController: SceneAddTemplateInfoSectionViewDelegate {
     /// 图标点击回调
     func sectionViewDidImageAction(_ sectionView: SceneAddTemplateInfoSectionView) {
-        let vc = ImagesPickerViewController(imageNames: iconImageNames) {[weak self] imageId in
+        let vc = ImagesPickerViewController(imageNames: sceneImageNames, selectIndex: imageId - 1) {[weak self] imageId in
             guard let self = self else { return }
             self.imageId = imageId + 1
             self.collectionView.reloadSections(IndexSet(integer: 0))
@@ -609,7 +655,12 @@ extension SceneAddViewController: SceneAddTemplateInfoSectionViewDelegate {
     /// 重置点击回调
     func sectionViewDidResetAction(_ sectionView: SceneAddTemplateInfoSectionView) {
         hideKeyboard()
+        guard let subTemplate = self.selectSubTemplate else { return }
         // 场景数据是否修改
+        let defalutSceneDatas = subTemplate.parameters.map({
+            SceneExecuteData(lightness: $0.lightness, cct: $0.cct)
+        })
+        
         var valueEdit = false
         if sceneDatas.count == defalutSceneDatas.count {
             for (index, data) in sceneDatas.enumerated() {
@@ -622,15 +673,15 @@ extension SceneAddViewController: SceneAddTemplateInfoSectionViewDelegate {
             valueEdit = true
         }
         
-        guard self.name != self.space.getNextSceneName() || self.imageId != 1 || valueEdit else {
+        guard self.name != subTemplate.title || self.imageId != subTemplate.imageId || valueEdit else {
             return
         }
         
         SRAlertView(title: "notification".localizedString, message: "scene_parameter_reset_message".localizedString, actions: [.cancelAction, SRAlertAction(title: "ok".localizedString, actionHandler: {[weak self] _ in
             guard let self = self else { return }
-            self.name = self.space.getNextSceneName()
-            self.imageId = 1
-            self.sceneDatas = self.defalutSceneDatas
+            self.name = subTemplate.title
+            self.imageId = subTemplate.imageId
+            self.sceneDatas = defalutSceneDatas
             self.sceneDataSelectIndex = nil
             self.groups.forEach({
                 $0.isSelected = false
@@ -773,10 +824,10 @@ extension SceneAddViewController: SceneAddGroupEmptyCellDelegate {
     func cellDidCreateGroupAction(_ cell: SceneAddGroupEmptyCell) {
         hideKeyboard()
         let groupAddVc = GroupAddViewController(space: space)
-        groupAddVc.doneCallback = {[weak self] group in
-            self?.groups = [group]
-            self?.collectionView.reloadSections(IndexSet(integer: 1))
-        }
+//        groupAddVc.doneCallback = {[weak self] group in
+//            self?.groups = [group]
+//            self?.collectionView.reloadSections(IndexSet(integer: 1))
+//        }
         present(NavigationViewController(rootViewController: groupAddVc), animated: true)
         
     }

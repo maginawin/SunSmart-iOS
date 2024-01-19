@@ -40,11 +40,16 @@ class LinePageControl: UIView {
     
     var numberOfPages: Int = 0 {
         didSet {
-            let progressW = frame.size.width / CGFloat(numberOfPages + 1)
+            
+            let progressW = frame.size.width / CGFloat(numberOfPages)
             if progressView.width != progressW {
                 progressView.width = progressW
                 setCurrentPage(currentPage, animated: false)
             }
+            if hidesForSinglePage {
+                updatePageState()
+            }
+            
         }
     }
     
@@ -88,7 +93,7 @@ class LinePageControl: UIView {
     override func layoutSubviews() {
         super.layoutSubviews()
         
-        let progressW = frame.size.width / CGFloat(numberOfPages + 1)
+        let progressW = frame.size.width / CGFloat(numberOfPages)
         progressView.width = progressW
         progressView.height = frame.size.height
         

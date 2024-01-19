@@ -41,6 +41,90 @@ class SyncCellModel: NSObject {
 /// 操作类型
 enum DeviceOperationType {
     
+    /// 完成操作处理
+    func finneshHandle() {
+        let meshUUID = MeshNetworkManager.instance.meshNetwork?.uuid.uuidString
+        switch self {
+        case .delete(let node, let type):
+            switch type {
+            case .group(let group): // 节点退出组
+                node.unsubscribe(from: group)
+            case .scene(let sceneId, _): // 删除场景
+                if let scene = MeshNetworkManager.instance.meshNetwork?.scenes.first(where: { $0.number == sceneId }) {
+                    scene.remove(node: node)
+                    node.sceneDatas.removeValue(forKey: sceneId)
+                    if let uuid = meshUUID {
+                        SceneExecuteData.deleteData(meshUUID: uuid, address: node.primaryUnicastAddress, sceneId: Int(sceneId))
+                    }
+                    // 组对应场景数据是否待删除
+                    if let group = node.group, let groupSceneData = group.info.bindSceneDatas[sceneId], groupSceneData.state == .waitDelete {
+                        // 组内设备已删除对应场景缓存
+                        if !group.nodes.contains(where: { $0.sceneDatas[sceneId] != nil }) {
+                            group.info.bindSceneDatas.removeValue(forKey: sceneId)
+                            // 设备加入组，组加入场景，场景加入日程 Node->Group->Scene->Schedule
+                            // 场景加入日程后关联场景的组也加入日程，场景移出组后吧组间接关联的日程删除
+                            group.info.bindSchedules.removeAll(where: { groupSchedule in scene.info.bindSchedules.contains(where: { $0.id == groupSchedule.id }) })
+                            if let uuid = meshUUID { // 删除组对应的场景数据缓存
+                                scene.info.groups.removeAll(where: { $0.address.address == group.address.address })
+                                SceneExecuteData.deleteData(meshUUID: uuid, address: group.address.address, sceneId: Int(sceneId))
+                            }
+                        }
+                    }
+                }
+            case .schedule(let schedule): // 删除日程
+                node.scheduleDatas.removeValue(forKey: schedule.id)
+                node.scheduleIds.removeAll(where: { $0 == schedule.id })
+                if let uuid = meshUUID {
+                    Node.deleteSchedule(meshUUID: uuid, address: node.primaryUnicastAddress, scheduleId: schedule.id)
+                    
+                    var isSaveSchedule = false
+                    // 判断组是否因为此设备而无法从日程中删除，设备删除后组也从日程中删除
+                    if let group = schedule.needDeleteGroups.first(where: { $0.nodes.contains(node) }), !group.nodes.contains(where: { $0.scheduleDatas[schedule.id] != nil }) {
+                        schedule.needDeleteGroups.removeAll(where: { $0.address.address == group.address.address })
+                        
+                        isSaveSchedule = true
+                    }
+                    // 判断场景是否因为此设备无法从日程中删除，设备删除后场景也从日程中删除
+                    if let scene = schedule.needDeleteScenes.first(where: { $0.info.groups.contains(where: { $0.nodes.contains(node) }) }), !scene.info.groups.contains(where: { $0.nodes.contains(where: { $0.scheduleDatas[schedule.id] != nil }) }) {
+                        schedule.needDeleteScenes.removeAll(where: { $0.number == scene.number })
+                        
+                        isSaveSchedule = true
+                    }
+                    if schedule.needDeleteNodes.contains(node) {
+                        schedule.needDeleteNodes.removeAll(where: { $0.primaryUnicastAddress == node.primaryUnicastAddress })
+                        isSaveSchedule = true
+                    }
+                    
+                    if isSaveSchedule {
+                        schedule.save(meshUUID: uuid)
+                    }
+                }
+             
+            }
+        case .configuration(let node, let type):
+            switch type {
+            case .group(let group): // 节点加入组
+                node.subscribe(to: group)
+            case .scene(let sceneId, let executeData): // 添加/同步场景
+                if let scene = MeshNetworkManager.instance.meshNetwork?.scenes.first(where: { $0.number == sceneId }) {
+                    scene.add(address: node.primaryUnicastAddress)
+                    node.sceneDatas.updateValue(executeData!, forKey: sceneId)
+                    if let uuid = meshUUID {
+                        SceneExecuteData.save(meshUUID: uuid, address: node.primaryUnicastAddress, sceneId: Int(sceneId), sceneData: executeData!)
+                    }
+                }
+            case .schedule(let schedule): // 添加日程
+                node.scheduleDatas.updateValue(schedule.schedulerEntry, forKey: schedule.id)
+                node.scheduleIds.append(schedule.id)
+                if let uuid = meshUUID {
+                    Node.saveSchedule(meshUUID: uuid, address: node.primaryUnicastAddress, scheduleId: schedule.id, entry: schedule.schedulerEntry)
+                }
+            }
+        }
+        
+    }
+    
+    
     /// 对应操作需要发送的消息处理
     var messageHandles: [MeshMessageHandle] {
         var messageHandles: [MeshMessageHandle] = []
@@ -97,7 +181,7 @@ enum DeviceOperationType {
                 }
                 // 设置日程
                 if let schedulerSetupModel = node.schedulerSetupModel {
-                    messageHandles.append(MeshMessageHandle(message: SchedulerActionSet(index: UInt8(schedule.id), entry: SchedulerRegistryEntry(year: .any(), month: .any(of: [.January,.February,.March,.April,.May,.June,.July,.August,.September,.October,.November,.December]), day: .any(), hour: .specific(hour: schedule.hour), minute: .specific(minute: schedule.minute), second: .specific(second: 0), dayOfWeek: .any(of: schedule.weekDays), action: schedule.action, transitionTime: .init(steps: UInt8(schedule.fadeTime), stepResolution: .seconds), sceneNumber: schedule.actionSceneId)), model: schedulerSetupModel))
+                    messageHandles.append(MeshMessageHandle(message: SchedulerActionSet(index: UInt8(schedule.id), entry: SchedulerRegistryEntry(year: .any(), month: .any(of: [.January,.February,.March,.April,.May,.June,.July,.August,.September,.October,.November,.December]), day: .any(), hour: .specific(hour: schedule.hour), minute: .specific(minute: schedule.minute), second: .specific(second: 0), dayOfWeek: .any(of: schedule.weekDays), action: schedule.action, transitionTime: .init(steps: UInt8(schedule.fadeTime), stepResolution: .seconds), sceneNumber: schedule.scene?.number ?? 0)), model: schedulerSetupModel))
                 }
             }
         }
@@ -122,7 +206,7 @@ enum ActionType {
 
 class SyncDevicesSectionModel {
     /// 标题
-    let title: String
+    var title: String
     /// 组list（场景、日程）
     var groups: [SyncDevicesGroupModel] = []
     /// 设备list（组、日程（设备））
@@ -159,7 +243,12 @@ class SyncDevicesSectionModel {
         groups.forEach({
             models.append($0)
             if $0.isShow {
-                models.append(contentsOf: $0.deviceModels)
+                $0.deviceModels.forEach({ device in
+                    models.append(device)
+                    if device.isShow {
+                        models.append(contentsOf: device.steps)
+                    }
+                })
             }
         })
         devices.forEach({
@@ -356,6 +445,8 @@ class SyncDeviceStepModel: SyncCellModel {
     var relevanceStepModels: [SyncDeviceStepModel] = []
     /// 加载动画
     var loadingAnimation: CAAnimation?
+    /// 是否显示进度（1/4）
+    var showProgress: Bool = true
     
     
     init(type: String, state: SyncDevicesState, tasks: [SyncDeviceStepTaskModel]) {

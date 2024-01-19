@@ -19,8 +19,10 @@ class DevicesViewCell: UICollectionViewCell {
     /// 进度条
 //    var lightnessProgressView: UIProgressView!
     
-    var progressBgView: UIView!
-    var progressValueView: UIView!
+    var progressView: CustomProgressView!
+    
+//    var progressBgView: UIView!
+//    var progressValueView: UIView!
     
     /// 名称
     var nameLabel: UILabel!
@@ -43,67 +45,84 @@ class DevicesViewCell: UICollectionViewCell {
 
             backgroundColor = .white
             nameLabel.text = device.name
-            if device.isKeybindComplete {
-                
+//            if device.isKeybindComplete {
+            if device.isKeybindComplete || !device.isConfigComplete {
+                progressView.isHidden = false
 //                lightnessProgressView.isHidden = false
                 iconImageView.image = UIImage(named: "device_light")
-                iconImageView.snp.updateConstraints { make in
-                    make.top.equalTo(SCRYFrom(12))
-                }
-                
-                var progressAnimation = false
-                var progress: Float = 0
                 
                 if device.state {
                     
-                    var lightness100 = device.lightness100
-                    if device.isOn, device.lightness == 0, let trunOffLightness = device.trunOffLightness { // 开灯并且亮度0，设备亮度未上报；先显示设备关灯前的亮度值
-                        lightness100 = Node.getLightness100(lightness: trunOffLightness)
-                    }
+                    var progressAnimation = false
+                    var progress: Int = 0
                     
-                    progress = Float(lightness100) / 100.0
-                    
-                    if device.lastLightness != device.lightness {
-                        device.lastLightness = device.lightness
-                        progressAnimation = true
-                        
-//                        UIView.animate(withDuration: 0.25) {
-//                            self.lightnessProgressView.setProgress(progress, animated: true)
-//                        }
+//                    progressView.isHidden = false
+                    iconImageView.snp.updateConstraints { make in
+                        make.top.equalTo(SCRYFrom(12))
                     }
                     
                     if device.isOn {
-                        nameLabel.textColor = RGB(64, 79, 102)
+                        nameLabel.textColor = Title_Color
+                        var lightness100 = device.lightness100
+                        if device.isOn, device.lightness == 0, let trunOffLightness = device.trunOffLightness { // 开灯并且亮度0，设备亮度未上报；先显示设备关灯前的亮度值
+                            lightness100 = Node.getLightness100(lightness: trunOffLightness)
+                        }
+                        
+                        progress = lightness100
+                        
+                        if device.lastLightness != device.lightness {
+                            device.lastLightness = device.lightness
+                            progressAnimation = true
+    //                        UIView.animate(withDuration: 0.25) {
+    //                            self.lightnessProgressView.setProgress(progress, animated: true)
+    //                        }
+                        }
+                        
                     }else {
                         nameLabel.textColor = RGB(148, 163, 184)
+                        backgroundColor = RGB(226, 226, 226)
+                        progress = 0
                     }
+                   
+                    progressView.setProgress(Int(progress), animated: progressAnimation)
+//                    if progressBgView.frame.isEmpty {
+//                        self.layoutIfNeeded()
+//                    }
+//                    if progressAnimation {
+//
+////                        UIView.animate(withDuration: 0.25) {
+////                            self.progressValueView.width = self.progressBgView.width * CGFloat(progress)
+////                        }
+//                    }else {
+//                        progressValueView.width = progressBgView.width * CGFloat(progress)
+//                    }
+//                    if device.temperatureModel != nil {
+                        progressView.progressColor = Node.getCctMixColor(temperature100: device.temperature100)
+//                    }else {
+//                        progressView.progressColor = RGB(156, 163, 175)
+//                    }
                     
                 }else {
+                    
+                    iconImageView.snp.updateConstraints { make in
+                        make.top.equalTo(SCRYFrom(24))
+                    }
+                    
                     iconImageView.image = UIImage(named: "device_light_offline")
                     
 //                    lightnessProgressView.progress = 0
                     device.lastLightness = 0
-                    backgroundColor = RGB(226, 226, 226)
+//                    backgroundColor = .white
                     nameLabel.textColor = RGB(148, 163, 184)
-                }
-                
-                if progressBgView.frame.isEmpty {
-                    self.layoutIfNeeded()
-                }
-                if progressAnimation {
-                    UIView.animate(withDuration: 0.25) {
-                        self.progressValueView.width = self.progressBgView.width * CGFloat(progress)
-                    }
-                }else {
-                    progressValueView.width = progressBgView.width * CGFloat(progress)
+                    progressView.isHidden = true
                 }
                 
             }else {
 //                lightnessProgressView.isHidden = true
-                
+                progressView.isHidden = true
                 iconImageView.image = UIImage(named: "device_repair")
                 iconImageView.snp.updateConstraints { make in
-                    make.top.equalTo(SCRYFrom(27))
+                    make.top.equalTo(SCRYFrom(24))
                 }
                 nameLabel.textColor = RGB(148, 163, 184)
             }
@@ -215,14 +234,14 @@ class DevicesViewCell: UICollectionViewCell {
         super.layoutSubviews()
         
         layer.cornerRadius = height * 0.5
-        
-        progressBgView.layer.cornerRadius = progressBgView.height * 0.5
-        progressValueView.layer.cornerRadius = progressValueView.height * 0.5
-        
-        if progressBgView.frame == .zero {
-            layoutIfNeeded()
-        }
-        progressValueView.width = progressBgView.width * CGFloat(0.5)
+//        
+//        progressBgView.layer.cornerRadius = progressBgView.height * 0.5
+//        progressValueView.layer.cornerRadius = progressValueView.height * 0.5
+//        
+//        if progressBgView.frame == .zero {
+//            layoutIfNeeded()
+//        }
+//        progressValueView.width = progressBgView.width * CGFloat(0.5)
         
 //        lightnessProgressView.layer.cornerRadius = 5
 //        if progressView.layer.mask == nil {
@@ -247,7 +266,7 @@ class DevicesViewCell: UICollectionViewCell {
 //            make.left.equalTo(SCRXFrom(11))
             make.centerX.equalToSuperview()
             make.top.equalTo(SCRYFrom(12))
-            make.width.height.equalTo(SCRXFrom(35))
+            make.width.height.equalTo(SCRXFrom(40))
         }
         
 //        brightnessLabel = UILabel(text: "60%", textColor: RGB(0, 0, 0, 0.5), fontSize: 12, fontName: FontName_Medium)
@@ -292,25 +311,35 @@ class DevicesViewCell: UICollectionViewCell {
 //            make.height.equalTo(10)
 //        }
         
-        progressBgView = UIView()
-        progressBgView.backgroundColor = RGB(239, 240, 241)
-//        progressBgView.layer.cornerRadius = 1
-//        progressBgView.clipsToBounds = true
-        contentView.addSubview(progressBgView)
-        progressBgView.snp.makeConstraints { make in
-            
+        progressView = CustomProgressView()
+        contentView.addSubview(progressView)
+        progressView.snp.makeConstraints { make in
             make.left.equalTo(SCRXFrom(25))
             make.right.equalTo(SCRXFrom(-25))
             make.top.equalTo(self.snp.centerY).offset(SCRYFrom(12))
-           //            make.bottom.equalTo(SCRYFrom(-40))
+            //            make.bottom.equalTo(SCRYFrom(-40))
             make.height.equalTo(2)
         }
         
-        progressValueView = UIView()
-        progressValueView.frame = CGRect(x: 0, y: 0, width: 0, height: 2)
-        progressValueView.backgroundColor = RGB(244, 206, 152)
-//        progressValueView.layer.cornerRadius = 1
-        progressBgView.addSubview(progressValueView)
+//        progressBgView = UIView()
+//        progressBgView.backgroundColor = RGB(239, 240, 241)
+////        progressBgView.layer.cornerRadius = 1
+////        progressBgView.clipsToBounds = true
+//        contentView.addSubview(progressBgView)
+//        progressBgView.snp.makeConstraints { make in
+//            
+//            make.left.equalTo(SCRXFrom(25))
+//            make.right.equalTo(SCRXFrom(-25))
+//            make.top.equalTo(self.snp.centerY).offset(SCRYFrom(12))
+//           //            make.bottom.equalTo(SCRYFrom(-40))
+//            make.height.equalTo(2)
+//        }
+//        
+//        progressValueView = UIView()
+//        progressValueView.frame = CGRect(x: 0, y: 0, width: 0, height: 2)
+//        progressValueView.backgroundColor = RGB(244, 206, 152)
+////        progressValueView.layer.cornerRadius = 1
+//        progressBgView.addSubview(progressValueView)
 //        progressValueView.snp.makeConstraints { make in
 //            make.left.top.bottom.equalTo(progressBgView)
 //        }

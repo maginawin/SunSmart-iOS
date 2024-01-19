@@ -1,0 +1,26 @@
+//
+//  DeviceGroupsSelectData.swift
+//  SunSmart
+//
+//  Created by 袁科鸿 on 2024/1/12.
+//
+
+import Foundation
+import NordicSigMeshSDK
+
+class DeviceGroupsSelectData {
+    
+    /// 组名称
+    var name: String = ""
+    /// 包含设备
+    var addresss: [Address] = []
+    /// 是否选中
+    var isSelected: Bool = false
+    
+    
+    init(name: String, addresss: [Address], isSelected: Bool) {
+        self.name = name
+        self.addresss = addresss
+        self.isSelected = isSelected
+    }
+}

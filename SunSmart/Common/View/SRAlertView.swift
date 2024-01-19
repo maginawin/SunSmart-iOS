@@ -112,7 +112,7 @@ class SRAlertView: UIView {
                      message: String? = nil,
                      messageAttStr: NSAttributedString? = nil,
                      messageColor: UIColor = Title_Color,
-                     messageFont: UIFont = FONTS(SCRYFrom(15)),
+                     messageFont: UIFont = UIFont.systemFont(ofSize: SCRYFrom(15), weight: .light),
                      messageAttBtnStyle: SRAlertMessageAttBtnStyle? = nil,
                      stateImage: UIImage? = nil,
                      loadingState: Bool = false,

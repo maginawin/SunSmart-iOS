@@ -30,6 +30,7 @@
 		C896BD3F2A930C3A00217512 /* XWHUDManager_info@2x.png in Resources */ = {isa = PBXBuildFile; fileRef = C896BB8F2A930C3800217512 /* XWHUDManager_info@2x.png */; };
 		C896BD402A930C3A00217512 /* XWHUDManager_tip@3x.png in Resources */ = {isa = PBXBuildFile; fileRef = C896BB902A930C3800217512 /* XWHUDManager_tip@3x.png */; };
 		C896BD432A930C3A00217512 /* XWHUDManager_tip@2x.png in Resources */ = {isa = PBXBuildFile; fileRef = C896BB932A930C3800217512 /* XWHUDManager_tip@2x.png */; };
+		C898D1D02B59134A00B2033B /* ScheduleServer.swift in Sources */ = {isa = PBXBuildFile; fileRef = C898D1CF2B59134A00B2033B /* ScheduleServer.swift */; };
 		C898E2D52AB7E46300C71315 /* Localizable.strings in Resources */ = {isa = PBXBuildFile; fileRef = C898E2D72AB7E46300C71315 /* Localizable.strings */; };
 		C898E2DC2AB7E62100C71315 /* String+Localized.swift in Sources */ = {isa = PBXBuildFile; fileRef = C898E2DB2AB7E62100C71315 /* String+Localized.swift */; };
 		C898E2E12AB840FE00C71315 /* MeshNetwork+SunSmart.swift in Sources */ = {isa = PBXBuildFile; fileRef = C898E2E02AB840FE00C71315 /* MeshNetwork+SunSmart.swift */; };
@@ -60,6 +61,12 @@
 		C89941932AD4E382008DCD76 /* LCWeakTimer.swift in Sources */ = {isa = PBXBuildFile; fileRef = C89941922AD4E382008DCD76 /* LCWeakTimer.swift */; };
 		C89941952AD4F192008DCD76 /* DeviceAddViewCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = C89941942AD4F192008DCD76 /* DeviceAddViewCell.swift */; };
 		C89941982AD4FB0C008DCD76 /* ProvisioningDevice+Add.swift in Sources */ = {isa = PBXBuildFile; fileRef = C89941972AD4FB0C008DCD76 /* ProvisioningDevice+Add.swift */; };
+		C89A1C362B54C64B004912B9 /* MultiseriatePickerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C89A1C352B54C64B004912B9 /* MultiseriatePickerView.swift */; };
+		C89A1C392B5535A8004912B9 /* ScheduleDevicesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C89A1C382B5535A8004912B9 /* ScheduleDevicesView.swift */; };
+		C89A1C3B2B554F56004912B9 /* UIView+Shade.swift in Sources */ = {isa = PBXBuildFile; fileRef = C89A1C3A2B554F56004912B9 /* UIView+Shade.swift */; };
+		C89A1C3D2B561850004912B9 /* ScheduleGroupsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C89A1C3C2B561850004912B9 /* ScheduleGroupsView.swift */; };
+		C89A1C3F2B566B96004912B9 /* ScheduleScenesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C89A1C3E2B566B96004912B9 /* ScheduleScenesView.swift */; };
+		C89AABE42B52376A00A17FB0 /* GroupProfilesViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C89AABE32B52376A00A17FB0 /* GroupProfilesViewController.swift */; };
 		C89C9FE22B3BC1B900074031 /* SceneServer.swift in Sources */ = {isa = PBXBuildFile; fileRef = C89C9FE12B3BC1B900074031 /* SceneServer.swift */; };
 		C89C9FE42B3C197B00074031 /* SyncDevicesViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C89C9FE32B3C197B00074031 /* SyncDevicesViewController.swift */; };
 		C89C9FE82B3C248100074031 /* SyncDevicesSectionHeaderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C89C9FE72B3C248100074031 /* SyncDevicesSectionHeaderView.swift */; };
@@ -114,6 +121,11 @@
 		C8ACF13C2AA1B2BA00E24B4A /* String+Extension.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8ACF1302AA1B2BA00E24B4A /* String+Extension.swift */; };
 		C8ACF13D2AA1B2BA00E24B4A /* CALayer+Animations.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8ACF1312AA1B2BA00E24B4A /* CALayer+Animations.swift */; };
 		C8ACF13E2AA1B2BA00E24B4A /* UIBarButtonItem+Extension.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8ACF1322AA1B2BA00E24B4A /* UIBarButtonItem+Extension.swift */; };
+		C8B0589C2B500D21006FC36F /* DeviceAllOnOffViewCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8B0589B2B500D21006FC36F /* DeviceAllOnOffViewCell.swift */; };
+		C8B0589E2B50C9C6006FC36F /* DeviceGroupsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8B0589D2B50C9C6006FC36F /* DeviceGroupsView.swift */; };
+		C8B058A02B50DE86006FC36F /* HorizontalDirectionFlowLayout.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8B0589F2B50DE86006FC36F /* HorizontalDirectionFlowLayout.swift */; };
+		C8B058A72B5115B2006FC36F /* DeviceGroupsSelectData.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8B058A62B5115B2006FC36F /* DeviceGroupsSelectData.swift */; };
+		C8B058A92B512C1F006FC36F /* TestDeviceAddManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8B058A82B512C1F006FC36F /* TestDeviceAddManager.swift */; };
 		C8B0B48B2B468BC700747CF4 /* SyncDevicesProgressView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8B0B48A2B468BC700747CF4 /* SyncDevicesProgressView.swift */; };
 		C8B5A1DE2B2BE9B300728E36 /* GroupMembersViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8B5A1DD2B2BE9B300728E36 /* GroupMembersViewController.swift */; };
 		C8B5A1E02B2C2AFD00728E36 /* GroupDevicesFunctionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8B5A1DF2B2C2AFD00728E36 /* GroupDevicesFunctionView.swift */; };
@@ -161,6 +173,7 @@
 		C896BB8F2A930C3800217512 /* XWHUDManager_info@2x.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "XWHUDManager_info@2x.png"; sourceTree = "<group>"; };
 		C896BB902A930C3800217512 /* XWHUDManager_tip@3x.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "XWHUDManager_tip@3x.png"; sourceTree = "<group>"; };
 		C896BB932A930C3800217512 /* XWHUDManager_tip@2x.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "XWHUDManager_tip@2x.png"; sourceTree = "<group>"; };
+		C898D1CF2B59134A00B2033B /* ScheduleServer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScheduleServer.swift; sourceTree = "<group>"; };
 		C898E2D82AB7E46600C71315 /* en */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = en; path = en.lproj/Localizable.strings; sourceTree = "<group>"; };
 		C898E2D92AB7E48300C71315 /* zh-Hans */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = "zh-Hans"; path = "zh-Hans.lproj/Localizable.strings"; sourceTree = "<group>"; };
 		C898E2DB2AB7E62100C71315 /* String+Localized.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "String+Localized.swift"; sourceTree = "<group>"; };
@@ -198,6 +211,12 @@
 		C89941922AD4E382008DCD76 /* LCWeakTimer.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = LCWeakTimer.swift; sourceTree = "<group>"; };
 		C89941942AD4F192008DCD76 /* DeviceAddViewCell.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceAddViewCell.swift; sourceTree = "<group>"; };
 		C89941972AD4FB0C008DCD76 /* ProvisioningDevice+Add.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = "ProvisioningDevice+Add.swift"; sourceTree = "<group>"; };
+		C89A1C352B54C64B004912B9 /* MultiseriatePickerView.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = MultiseriatePickerView.swift; sourceTree = "<group>"; };
+		C89A1C382B5535A8004912B9 /* ScheduleDevicesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScheduleDevicesView.swift; sourceTree = "<group>"; };
+		C89A1C3A2B554F56004912B9 /* UIView+Shade.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "UIView+Shade.swift"; sourceTree = "<group>"; };
+		C89A1C3C2B561850004912B9 /* ScheduleGroupsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScheduleGroupsView.swift; sourceTree = "<group>"; };
+		C89A1C3E2B566B96004912B9 /* ScheduleScenesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScheduleScenesView.swift; sourceTree = "<group>"; };
+		C89AABE32B52376A00A17FB0 /* GroupProfilesViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GroupProfilesViewController.swift; sourceTree = "<group>"; };
 		C89C9FE12B3BC1B900074031 /* SceneServer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SceneServer.swift; sourceTree = "<group>"; };
 		C89C9FE32B3C197B00074031 /* SyncDevicesViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SyncDevicesViewController.swift; sourceTree = "<group>"; };
 		C89C9FE72B3C248100074031 /* SyncDevicesSectionHeaderView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SyncDevicesSectionHeaderView.swift; sourceTree = "<group>"; };
@@ -254,6 +273,11 @@
 		C8ACF1302AA1B2BA00E24B4A /* String+Extension.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = "String+Extension.swift"; sourceTree = "<group>"; };
 		C8ACF1312AA1B2BA00E24B4A /* CALayer+Animations.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = "CALayer+Animations.swift"; sourceTree = "<group>"; };
 		C8ACF1322AA1B2BA00E24B4A /* UIBarButtonItem+Extension.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = "UIBarButtonItem+Extension.swift"; sourceTree = "<group>"; };
+		C8B0589B2B500D21006FC36F /* DeviceAllOnOffViewCell.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceAllOnOffViewCell.swift; sourceTree = "<group>"; };
+		C8B0589D2B50C9C6006FC36F /* DeviceGroupsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceGroupsView.swift; sourceTree = "<group>"; };
+		C8B0589F2B50DE86006FC36F /* HorizontalDirectionFlowLayout.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HorizontalDirectionFlowLayout.swift; sourceTree = "<group>"; };
+		C8B058A62B5115B2006FC36F /* DeviceGroupsSelectData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceGroupsSelectData.swift; sourceTree = "<group>"; };
+		C8B058A82B512C1F006FC36F /* TestDeviceAddManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TestDeviceAddManager.swift; sourceTree = "<group>"; };
 		C8B0B48A2B468BC700747CF4 /* SyncDevicesProgressView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SyncDevicesProgressView.swift; sourceTree = "<group>"; };
 		C8B5A1DD2B2BE9B300728E36 /* GroupMembersViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GroupMembersViewController.swift; sourceTree = "<group>"; };
 		C8B5A1DF2B2C2AFD00728E36 /* GroupDevicesFunctionView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GroupDevicesFunctionView.swift; sourceTree = "<group>"; };
@@ -394,9 +418,11 @@
 				C898EA782AC41AFB0023B480 /* CustomDeviceSlider.swift */,
 				C87415DC2ADFD1510020E3C2 /* PopGestureScrollView.swift */,
 				C8BF08452B26A45100144BAC /* TitleSelectView.swift */,
+				C8B0589F2B50DE86006FC36F /* HorizontalDirectionFlowLayout.swift */,
 				C8BF084D2B26F84800144BAC /* AlignCenterFlowLayout.swift */,
 				C8BF088D2B299DD700144BAC /* LinePageControl.swift */,
 				C85829F52B398443002A4367 /* CustomProgressView.swift */,
+				C89A1C352B54C64B004912B9 /* MultiseriatePickerView.swift */,
 			);
 			path = View;
 			sourceTree = "<group>";
@@ -525,6 +551,8 @@
 			isa = PBXGroup;
 			children = (
 				C898EA712AC3D17C0023B480 /* DevicesViewCell.swift */,
+				C8B0589B2B500D21006FC36F /* DeviceAllOnOffViewCell.swift */,
+				C8B0589D2B50C9C6006FC36F /* DeviceGroupsView.swift */,
 				C898EA732AC400100023B480 /* DeviceLightControlView.swift */,
 				C898EA752AC409230023B480 /* DeviceSliderFunctionView.swift */,
 				C89941942AD4F192008DCD76 /* DeviceAddViewCell.swift */,
@@ -551,6 +579,8 @@
 			isa = PBXGroup;
 			children = (
 				C89941972AD4FB0C008DCD76 /* ProvisioningDevice+Add.swift */,
+				C8B058A62B5115B2006FC36F /* DeviceGroupsSelectData.swift */,
+				C8B058A82B512C1F006FC36F /* TestDeviceAddManager.swift */,
 			);
 			path = Model;
 			sourceTree = "<group>";
@@ -628,6 +658,9 @@
 				C8A29C272B47D5CF00104634 /* TimedSelectTypeView.swift */,
 				C8A29C292B47E0D300104634 /* SchedulesViewCell.swift */,
 				C8A29C2D2B4800E400104634 /* ScheduleAddView.swift */,
+				C89A1C382B5535A8004912B9 /* ScheduleDevicesView.swift */,
+				C89A1C3C2B561850004912B9 /* ScheduleGroupsView.swift */,
+				C89A1C3E2B566B96004912B9 /* ScheduleScenesView.swift */,
 			);
 			path = View;
 			sourceTree = "<group>";
@@ -635,6 +668,7 @@
 		C8A29C232B47D42300104634 /* Model */ = {
 			isa = PBXGroup;
 			children = (
+				C898D1CF2B59134A00B2033B /* ScheduleServer.swift */,
 			);
 			path = Model;
 			sourceTree = "<group>";
@@ -723,6 +757,7 @@
 				C8ACF1312AA1B2BA00E24B4A /* CALayer+Animations.swift */,
 				C8ACF1322AA1B2BA00E24B4A /* UIBarButtonItem+Extension.swift */,
 				C898E2DB2AB7E62100C71315 /* String+Localized.swift */,
+				C89A1C3A2B554F56004912B9 /* UIView+Shade.swift */,
 			);
 			path = Extension;
 			sourceTree = "<group>";
@@ -758,6 +793,7 @@
 				C8B5A1DD2B2BE9B300728E36 /* GroupMembersViewController.swift */,
 				C8B5A1E12B2C48DE00728E36 /* GroupCheckViewController.swift */,
 				C8BF08582B2705B400144BAC /* GroupAddViewController.swift */,
+				C89AABE32B52376A00A17FB0 /* GroupProfilesViewController.swift */,
 			);
 			path = Controller;
 			sourceTree = "<group>";
@@ -916,6 +952,7 @@
 				C8A3290B2AC568A300BC7389 /* DevicesViewController.swift in Sources */,
 				C898E2E12AB840FE00C71315 /* MeshNetwork+SunSmart.swift in Sources */,
 				C89941982AD4FB0C008DCD76 /* ProvisioningDevice+Add.swift in Sources */,
+				C8B058A92B512C1F006FC36F /* TestDeviceAddManager.swift in Sources */,
 				C8A130C92B32C5F10008C353 /* SceneTemplates.swift in Sources */,
 				C8BF08662B2842A300144BAC /* BuoySliderView.swift in Sources */,
 				C8A130CF2B32EE220008C353 /* ImagesPickerViewController.swift in Sources */,
@@ -927,10 +964,13 @@
 				C8ACF1382AA1B2BA00E24B4A /* UIImage+Extension.swift in Sources */,
 				C8A130C62B32C2EC0008C353 /* SceneAddTemplateTitleHeaderView.swift in Sources */,
 				C8ACF1342AA1B2BA00E24B4A /* MacroDefinition.swift in Sources */,
+				C8B0589E2B50C9C6006FC36F /* DeviceGroupsView.swift in Sources */,
 				C8AAE2772A97435A00238C1C /* Database.swift in Sources */,
 				C8ACF1352AA1B2BA00E24B4A /* UILabel+Extension.swift in Sources */,
+				C89AABE42B52376A00A17FB0 /* GroupProfilesViewController.swift in Sources */,
 				C8B5A1E02B2C2AFD00728E36 /* GroupDevicesFunctionView.swift in Sources */,
 				C8A099FF2AC138E30068C814 /* SiteViewController.swift in Sources */,
+				C89A1C392B5535A8004912B9 /* ScheduleDevicesView.swift in Sources */,
 				C898E2EF2ABA8BEE00C71315 /* CustomTableViewCell.swift in Sources */,
 				C89C9FEE2B3C271200074031 /* SyncDevicesTitleHeaderView.swift in Sources */,
 				C8ACF1362AA1B2BA00E24B4A /* UIButton+Extension.swift in Sources */,
@@ -944,9 +984,12 @@
 				C8AADF012A973DA600238C1C /* SpaceData.swift in Sources */,
 				C8BF085B2B27146B00144BAC /* GroupAddHeaderView.swift in Sources */,
 				C89941932AD4E382008DCD76 /* LCWeakTimer.swift in Sources */,
+				C89A1C3D2B561850004912B9 /* ScheduleGroupsView.swift in Sources */,
 				C898EA602AC2BD8B0023B480 /* WMMenuItem.m in Sources */,
 				C8ACF13D2AA1B2BA00E24B4A /* CALayer+Animations.swift in Sources */,
 				C898EA5E2AC2BD8B0023B480 /* WMPageController.m in Sources */,
+				C8B0589C2B500D21006FC36F /* DeviceAllOnOffViewCell.swift in Sources */,
+				C89A1C3F2B566B96004912B9 /* ScheduleScenesView.swift in Sources */,
 				C88B25782ADD39AB00CF1AE4 /* DeviceLightAdvancedController.swift in Sources */,
 				C898EA702AC3C64C0023B480 /* SpaceFunctionFooterView.swift in Sources */,
 				C85829F22B397F2B002A4367 /* SceneViewController.swift in Sources */,
@@ -958,9 +1001,11 @@
 				C8A3EE822B34087A0082A772 /* SceneAddGroupViewCell.swift in Sources */,
 				C88B25762ADD399C00CF1AE4 /* DeviceLightBasicController.swift in Sources */,
 				C89FEF4F2ABEB37900DCCFB6 /* SitesViewCell.swift in Sources */,
+				C8B058A72B5115B2006FC36F /* DeviceGroupsSelectData.swift in Sources */,
 				C8BF085E2B27F2C300144BAC /* CharacterSelectView.swift in Sources */,
 				C8AAE2812A9879E300238C1C /* SQLiteWrapper.m in Sources */,
 				C8BF08622B2840D800144BAC /* GroupViewController.swift in Sources */,
+				C89A1C362B54C64B004912B9 /* MultiseriatePickerView.swift in Sources */,
 				C89C9FEC2B3C26BA00074031 /* SyncDeviceStepViewCell.swift in Sources */,
 				C8A130B92B3129960008C353 /* ScenesViewController.swift in Sources */,
 				C89941952AD4F192008DCD76 /* DeviceAddViewCell.swift in Sources */,
@@ -969,6 +1014,7 @@
 				C8A3EE7E2B33D62F0082A772 /* SceneAddTemplateInfoSectionView.swift in Sources */,
 				C898EA652AC2BDC50023B480 /* SpaceViewController.swift in Sources */,
 				C898F7042B3AB698008B4124 /* SceneMembersViewCell.swift in Sources */,
+				C898D1D02B59134A00B2033B /* ScheduleServer.swift in Sources */,
 				C8A3EE802B33E43C0082A772 /* SceneAddDataListViewCell.swift in Sources */,
 				C8BF088E2B299DD700144BAC /* LinePageControl.swift in Sources */,
 				C8A09A072AC1790B0068C814 /* InfoEditViewController.swift in Sources */,
@@ -988,6 +1034,7 @@
 				C89FEF432ABD657F00DCCFB6 /* AboutViewController.swift in Sources */,
 				C8A29C2A2B47E0D300104634 /* SchedulesViewCell.swift in Sources */,
 				C8BF08462B26A45100144BAC /* TitleSelectView.swift in Sources */,
+				C8B058A02B50DE86006FC36F /* HorizontalDirectionFlowLayout.swift in Sources */,
 				C898EA792AC41AFB0023B480 /* CustomDeviceSlider.swift in Sources */,
 				C8A130C02B327FF40008C353 /* SceneAddCustomView.swift in Sources */,
 				C898E2F12ABA9BB900C71315 /* SitesViewController.swift in Sources */,
@@ -999,6 +1046,7 @@
 				C898EA632AC2BD8B0023B480 /* WMProgressView.m in Sources */,
 				C8A09A032AC162660068C814 /* String+Date.swift in Sources */,
 				C898EA742AC400100023B480 /* DeviceLightControlView.swift in Sources */,
+				C89A1C3B2B554F56004912B9 /* UIView+Shade.swift in Sources */,
 				C88B25822ADE62E300CF1AE4 /* DeviceLightInfoSectionView.swift in Sources */,
 				C898E2DC2AB7E62100C71315 /* String+Localized.swift in Sources */,
 				C8A29C262B47D47500104634 /* TimedViewController.swift in Sources */,
@@ -1168,7 +1216,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 2;
+				CURRENT_PROJECT_VERSION = 3;
 				DEVELOPMENT_TEAM = HA9DE4BFZL;
 				GCC_PREFIX_HEADER = "";
 				GENERATE_INFOPLIST_FILE = YES;
@@ -1204,7 +1252,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 2;
+				CURRENT_PROJECT_VERSION = 3;
 				DEVELOPMENT_TEAM = HA9DE4BFZL;
 				GCC_PREFIX_HEADER = "";
 				GENERATE_INFOPLIST_FILE = YES;

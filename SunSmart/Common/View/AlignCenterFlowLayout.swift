@@ -14,6 +14,9 @@ class AlignCenterFlowLayout: UICollectionViewFlowLayout {
     var itemRowCount = 3
     // 每列item个数
     var itmeColCount = 3
+    /// y轴偏移量（居中时）
+    var offsetY: CGFloat = 0
+    
     
     override func prepare() {
         super.prepare()
@@ -63,7 +66,7 @@ class AlignCenterFlowLayout: UICollectionViewFlowLayout {
             lagePageElements.forEach({
                 var frame = $0.frame
                 var top = frame.origin.y
-                top += (showHeight - lastPageMaxY) * 0.5 // + collectionView.contentOffset.y
+                top += (showHeight - lastPageMaxY + offsetY) * 0.5 // + collectionView.contentOffset.y
                 frame.origin.y = top
                 $0.frame = frame
             })

@@ -54,6 +54,7 @@ class SyncDeviceViewCell: UITableViewCell {
             switch model.state {
             case .none:
                 stateImageView.isHidden = true
+                
             case .wait:
                 stateImageView.isHidden = false
                 if isGroup {
@@ -105,7 +106,10 @@ class SyncDeviceViewCell: UITableViewCell {
                     iconImageLeft = SCRXFrom(16)
                     stateImageView.isHidden = model.state == .none || model.state == .inSettings
                 }
-//                if model.steps.count > 0 {
+                
+                if model.parentGroupModel != nil {
+                    iconImageLeft += SCRXFrom(20)
+                }
                     arrowImageView.isHidden = model.state == .none || model.state == .wait
                 arrowImageView.image = UIImage(named: model.isShow ? "arrow_up" : "arrow_down")
 //                }

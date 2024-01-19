@@ -6,6 +6,7 @@
 //
 
 import UIKit
+import NordicSigMeshSDK
 
 class GroupsViewCell: UICollectionViewCell {
     
@@ -14,6 +15,23 @@ class GroupsViewCell: UICollectionViewCell {
     var nameLabel: UILabel!
     var deleteBtn: UIButton!
     var deleteActionCallback: (()->Void)?
+    
+    var group: Group! {
+        didSet {
+            if let text = group.info.imageText, text.count > 0 {
+                imageLabel.isHidden = false
+                imageLabel.text = text
+                imageView.isHidden = true
+            }else {
+                imageLabel.isHidden = true
+                imageView.isHidden = false
+                imageView.image = UIImage(named: "group_image_\(group.info.imageId)") //device_light_offline
+            }
+            nameLabel.text = group.name
+            backgroundColor = group.isOn ? .white : RGB(226, 226, 226)
+        }
+    }
+    
     
     override init(frame: CGRect) {
         super.init(frame: frame)

@@ -10,6 +10,16 @@ import NordicSigMeshSDK
 
 /// 场景列表刷新通知名称
 let scenesRefreshNotificationName = "scenesRefreshNotificationName"
+/// 场景数据更新通知名称
+let sceneDataUpdateNotificationName = "scenesDataUpdateNotificationName"
+/// 场景图标
+var sceneImageNames: [String] = {
+    var imageNames: [String] = []
+    for id in 1...30 {
+        imageNames.append("scene_image_\(id)")
+    }
+    return imageNames
+}()
 
 class ScenesViewController: UIViewController {
     
@@ -72,6 +82,13 @@ class ScenesViewController: UIViewController {
             }
         }
         
+        NotificationCenter.default.addObserver(forName: .init(sceneDataUpdateNotificationName), object: nil, queue: nil) { [weak self] notification in
+            guard let self = self, let scene = notification.object as? Scene else {
+                return
+            }
+            self.reloadCollectionItem(scene: scene)
+        }
+        
     }
     
     /// 长按事件，跳转到组详情
@@ -106,27 +123,56 @@ class ScenesViewController: UIViewController {
         SRAlertView(title: "notification".localizedString, message: "group_delete_message".localizedString, messageFont: FONTS(15), actions: [.cancelAction, SRAlertAction(title: "DELETE".localizedString, style: .destructive, actionHandler: {[weak self] _ in
             guard let self = self else { return }
             // 存在设备并且网络未连接
-            if scene.nodes.count > 0 && !MeshLibManager.manager.isMeshNetworkConnected {
-                XWHUDManager.showTipHUD("device_notconnect_message".localizedString, isLineFeed: true)
-                return
-            }
+//            if scene.nodes.count > 0 && !MeshLibManager.manager.isMeshNetworkConnected {
+//                XWHUDManager.showTipHUD("device_notconnect_message".localizedString, isLineFeed: true)
+//                return
+//            }
 
             XWHUDManager.showCustomHUD(withMessage: "deleting".localizedString, isWindow: true)
-
+            // 测试数据
+//            scene.nodes.forEach({
+//                scene.remove(node: $0)
+//            })
+//            scene.delete()
             SceneServer.deleteScene(scene: scene) {[weak self] _ in
                 XWHUDManager.hide()
                 XWHUDManager.showSuccessTipHUD("done!".localizedString)
                 self?.updateUI()
+                
             } failed: {[weak self] _ in
                 XWHUDManager.hide()
                 XWHUDManager.showErrorTipHUD("scene_delete_failed".localizedString)
                 // 跳转同步页面
-                DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
-                    
+                if scene.needSyncGroups.count > 0 {
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+                        self?.pushToSyncDevicesVc(scene: scene)
+                    }
                 }
             }
             
         })]).show()
+        
+    }
+    
+    /// 跳到同步数据页面
+    private func pushToSyncDevicesVc(scene: Scene) {
+        
+        let vc = SyncDevicesViewController(type: .scene(scene))
+        vc.syncSuccessCallback = {[weak self] _ in
+            XWHUDManager.showSuccessTipHUD("done!".localizedString)
+            guard let self = self else { return }
+            DispatchQueue.main.asyncAfter(wallDeadline: .now() + 1.5) {
+                self.dismiss(animated: true)
+            }
+            SceneServer.deleteScene(scene: scene, success: nil, failed: nil)
+            self.updateUI()
+        }
+        vc.backActionCallback = {[weak self] in
+//                self?.dismiss(animated: true)
+            guard let self = self else { return }
+            self.dismiss(animated: true)
+        }
+        present(NavigationViewController(rootViewController: vc), animated: true)
         
     }
     
@@ -138,6 +184,10 @@ class ScenesViewController: UIViewController {
     
     /// 刷新UI
     private func updateUI() {
+        
+        if isEdit && space.scenes.isEmpty {
+            isEdit = false
+        }
         
         if isEdit {
             editView.isHidden = false
@@ -194,6 +244,17 @@ class ScenesViewController: UIViewController {
         }
     }
     
+    private func reloadCollectionItem(scene: Scene) {
+        if let index = space.scenes.firstIndex(where: {$0.number == scene.number}) {
+            CATransaction.setDisableActions(true)
+            collectionView.reloadItems(at: [IndexPath(row: index, section: 0)])
+            CATransaction.commit()
+//            if let item = collectionView.cellForItem(at: IndexPath(item: index, section: 0)) as? GroupsViewCell {
+//                item. = group
+//            }
+        }
+    }
+    
     private func setupUI() {
         
         footerView = SpaceFunctionFooterView()
@@ -224,7 +285,7 @@ class ScenesViewController: UIViewController {
         flowLayout = AlignCenterFlowLayout()
         flowLayout.minimumLineSpacing = SCRXFrom(16)
         flowLayout.minimumInteritemSpacing = SCRXFrom(16)
-//        flowLayout.sectionInset = UIEdgeInsets(top: 0, left: SCRXFrom(12), bottom: 0, right: SCRXFrom(12))
+//        flowLayout.sectionInset = UIEdgeInsets(top: SCRXFrom(16), left: SCRXFrom(12), bottom: SCRXFrom(16), right: SCRXFrom(12))
         
         collectionView = UICollectionView(frame: .zero, collectionViewLayout: flowLayout)
         collectionView.contentInset = UIEdgeInsets(top: SCRXFrom(16), left: SCRXFrom(12), bottom: SCRXFrom(16), right: SCRXFrom(12))
@@ -255,7 +316,8 @@ extension ScenesViewController: UICollectionViewDataSource, UICollectionViewDele
     public func collectionView(_ collectionView: UICollectionView, cellForItemAt indexPath: IndexPath) -> UICollectionViewCell {
         let cell = collectionView.dequeueReusableCell(withReuseIdentifier: "cell", for: indexPath) as! GroupsViewCell
         let scene = space.scenes[indexPath.item]
-        cell.imageView.image = UIImage(named: "scene_image_\(scene.info.imageId)") //device_light_offline
+        let imageIndex = max(min(scene.info.imageId, sceneImageNames.count) - 1, 0)
+        cell.imageView.image = UIImage(named: sceneImageNames[imageIndex]) //device_light_offline
         cell.nameLabel.text = scene.info.name ?? scene.name
         cell.deleteBtn.isHidden = !isEdit
         cell.deleteActionCallback = {[weak self] in
@@ -274,14 +336,13 @@ extension ScenesViewController: UICollectionViewDataSource, UICollectionViewDele
     func collectionView(_ collectionView: UICollectionView, didSelectItemAt indexPath: IndexPath) {
         
         let scene = space.scenes[indexPath.item]
-        let vc = SyncDevicesViewController(type: .scene(scene))
-//        SceneSettingsViewController(space: space, scene: scene, mode: .members)
-        present(NavigationViewController(rootViewController: vc), animated: true)
+        MeshAPI.startScene(sceneNumber: scene.number)
         
-//        let group = space.groups[indexPath.item]
-//        if group.nodes.count > 0 {
-//            MeshAPI.getGroupOnOffState(address: group.address.address)
-//        }
+        XWHUDManager.showSuccessTipHUD("executed".localizedString)
+//        let vc = SyncDevicesViewController(type: .scene(scene))
+//        SceneSettingsViewController(space: space, scene: scene, mode: .members)
+//        present(NavigationViewController(rootViewController: vc), animated: true)
+        
         
     }
     

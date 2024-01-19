@@ -54,7 +54,7 @@ class SyncDevicesProgressView: UIView {
         return UIApplication.shared.keyWindow().subviews.first(where: { $0.isKind(of: SyncDevicesProgressView.classForCoder()) }) as? SyncDevicesProgressView
     }
     
-    private func hide() {
+    public func hide() {
         
         UIView.animate(withDuration: 0.3) {
             self.shadeView.alpha = 0
