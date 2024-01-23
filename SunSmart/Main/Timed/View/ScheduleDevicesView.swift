@@ -190,7 +190,6 @@ class ScheduleDevicesView: UIView {
         
         confirmBtn = UIButton(title: "confirm".localizedString, titleSize: 16, titleWeight: .light, titleColor: RGB(102, 103, 171), target: self, action: #selector(confirmBtnAction))
         confirmBtn.setTitleColor(RGB(180, 190, 209), for: .disabled)
-        confirmBtn.isEnabled = nodes.count > 0
         bottomView.addSubview(confirmBtn)
         confirmBtn.snp.makeConstraints { make in
             make.left.equalTo(lineView.snp.right)

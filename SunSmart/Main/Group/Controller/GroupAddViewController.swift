@@ -157,6 +157,14 @@ class GroupAddViewController: UIViewController {
             make.height.equalTo(SCRYFrom(56) + kSafeAreaBottomHeight)
         }
         
+        let bottomLineView = UIView()
+        bottomLineView.backgroundColor = RGB(243, 243, 243)
+        footerView.addSubview(bottomLineView)
+        bottomLineView.snp.makeConstraints { make in
+            make.left.right.top.equalToSuperview()
+            make.height.equalTo(0.5)
+        }
+        
 //        lineView = UIView()
 //        lineView.backgroundColor = Line_Color
 //        footerView.addSubview(lineView)

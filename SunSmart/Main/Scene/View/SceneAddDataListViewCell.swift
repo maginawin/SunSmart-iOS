@@ -100,6 +100,7 @@ extension SceneAddDataListViewCell: UICollectionViewDataSource, UICollectionView
             let cell = collectionView.dequeueReusableCell(withReuseIdentifier: "cell", for: indexPath) as! SceneAddDataViewCell
             cell.sceneData = sceneDatas[indexPath.item]
             cell.layer.borderColor = selectIndex == indexPath.item ? Bar_Color.cgColor : RGB(220, 220, 220).cgColor
+            cell.innerRaceView.isHidden = selectIndex != indexPath.item
             return cell
         }
     }
@@ -125,6 +126,8 @@ class SceneAddDataViewCell: UICollectionViewCell {
     var offLabel: UILabel!
     var lightnessLabel: UILabel!
     var cctLabel: UILabel!
+    var innerRaceView: UIView!
+    
     
     var sceneData: SceneExecuteData! {
         didSet {
@@ -153,7 +156,7 @@ class SceneAddDataViewCell: UICollectionViewCell {
     override init(frame: CGRect) {
         super.init(frame: frame)
         
-        layer.borderWidth = 0.5
+        layer.borderWidth = 1
         layer.borderColor = Bar_Color.cgColor
         
         setupUI()
@@ -167,9 +170,19 @@ class SceneAddDataViewCell: UICollectionViewCell {
         super.layoutSubviews()
         
         layer.cornerRadius = height * 0.5
+        innerRaceView.layer.cornerRadius = (height - 2) * 0.5
     }
     
     private func setupUI() {
+        
+        innerRaceView = UIView()
+        innerRaceView.layer.borderColor = UIColor.white.cgColor
+        innerRaceView.layer.borderWidth = 1
+        contentView.addSubview(innerRaceView)
+        innerRaceView.snp.makeConstraints { make in
+            make.left.top.equalTo(1)
+            make.bottom.right.equalTo(-1)
+        }
         
         offLabel = UILabel(text: "off".localizedString, textColor: TextBlack_Color, fontSize: 14, fontWeight: .light)
         offLabel.isHidden = true

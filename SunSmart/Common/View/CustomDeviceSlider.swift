@@ -99,9 +99,6 @@ class CustomDeviceSlider: UISlider {
         updateTrackGradient()
     }
     
-    deinit {
-        print("dealloc")
-    }
     
     private func updateTrackGradient() {
         

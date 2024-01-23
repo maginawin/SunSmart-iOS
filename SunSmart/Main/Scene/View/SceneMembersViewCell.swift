@@ -21,9 +21,9 @@ class SceneMembersViewCell: SceneGroupsViewCell {
             make.centerY.equalToSuperview().offset(SCRYFrom(-12))
         }
     
-        imageLabel.snp.updateConstraints { make in
-            make.top.equalTo(SCRYFrom(21))
-        }
+//        imageLabel.snp.updateConstraints { make in
+//            make.top.equalTo(SCRYFrom(21))
+//        }
         
         nameLabel.font = UIFont.systemFont(ofSize: SCRYFrom(14), weight: .light)
         nameLabel.snp.updateConstraints({ make in

@@ -602,7 +602,7 @@ class SyncDevicesViewController: UIViewController {
 //                        if let address = handle.address ?? handle.model?.parentElement?.unicastAddress, let node = MeshNetworkManager.instance.meshNetwork?.node(withAddress: address) {
 //                            node.updateData(message: handle.message)
 //                        }
-//                        if handle.isFinished {
+//                        if handle.isSuccessful {
 //                            model.state = .successful
 //                        }else {
 //                            model.state = model.state == .failed ? .repeatedFailure : .failed

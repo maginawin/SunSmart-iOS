@@ -46,7 +46,8 @@ class GroupsViewCell: UICollectionViewCell {
         contentView.addSubview(imageView)
         imageView.snp.makeConstraints { make in
             make.centerX.equalToSuperview()
-            make.bottom.equalTo(self.snp.centerY)
+//            make.bottom.equalTo(self.snp.centerY)
+            make.centerY.equalToSuperview().offset(SCRYFrom(-10))
         }
         
         imageLabel = UILabel(text: nil, textColor: RGB(20, 46, 79))
@@ -54,7 +55,8 @@ class GroupsViewCell: UICollectionViewCell {
         contentView.addSubview(imageLabel)
         imageLabel.snp.makeConstraints { make in
             make.centerX.equalToSuperview()
-            make.top.equalTo(SCRYFrom(21))
+//            make.top.equalTo(SCRYFrom(21))
+            make.centerY.equalTo(imageView)
 //            make.bottom.equalTo(self.snp.centerY)
         }
         

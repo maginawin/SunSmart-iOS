@@ -347,6 +347,14 @@ class ScheduleAddViewController: UIViewController {
             make.height.equalTo(kSafeAreaTopHeight + SCRYFrom(56))
         }
         
+        let bottomLineView = UIView()
+        bottomLineView.backgroundColor = RGB(243, 243, 243)
+        bottomView.addSubview(bottomLineView)
+        bottomLineView.snp.makeConstraints { make in
+            make.left.right.top.equalToSuperview()
+            make.height.equalTo(0.5)
+        }
+        
         saveBtn = UIButton(title: "save".localizedString, titleSize: 16, titleWeight: .light, titleColor: Title_Color, target: self, action: #selector(saveBtnAction))
         saveBtn.isEnabled = false
         saveBtn.setTitleColor(Message_Color, for: .disabled)

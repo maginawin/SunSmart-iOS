@@ -75,6 +75,8 @@
 		C89C9FEE2B3C271200074031 /* SyncDevicesTitleHeaderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C89C9FED2B3C271200074031 /* SyncDevicesTitleHeaderView.swift */; };
 		C89C9FF02B3D4E6200074031 /* SyncDevicesGroupViewCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = C89C9FEF2B3D4E6200074031 /* SyncDevicesGroupViewCell.swift */; };
 		C89C9FF22B3D60CC00074031 /* SyncDevicesCellModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = C89C9FF12B3D60CC00074031 /* SyncDevicesCellModel.swift */; };
+		C89F98412B5E5A56007EABF5 /* SceneExecuteAnimationView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C89F98402B5E5A56007EABF5 /* SceneExecuteAnimationView.swift */; };
+		C89F98432B5E5AC8007EABF5 /* ScenesViewCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = C89F98422B5E5AC8007EABF5 /* ScenesViewCell.swift */; };
 		C89FEF432ABD657F00DCCFB6 /* AboutViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C89FEF422ABD657F00DCCFB6 /* AboutViewController.swift */; };
 		C89FEF462ABD65F700DCCFB6 /* NavigationViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C89FEF452ABD65F700DCCFB6 /* NavigationViewController.swift */; };
 		C89FEF482ABD6A6300DCCFB6 /* WebViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C89FEF472ABD6A6300DCCFB6 /* WebViewController.swift */; };
@@ -225,6 +227,8 @@
 		C89C9FED2B3C271200074031 /* SyncDevicesTitleHeaderView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SyncDevicesTitleHeaderView.swift; sourceTree = "<group>"; };
 		C89C9FEF2B3D4E6200074031 /* SyncDevicesGroupViewCell.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SyncDevicesGroupViewCell.swift; sourceTree = "<group>"; };
 		C89C9FF12B3D60CC00074031 /* SyncDevicesCellModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SyncDevicesCellModel.swift; sourceTree = "<group>"; };
+		C89F98402B5E5A56007EABF5 /* SceneExecuteAnimationView.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = SceneExecuteAnimationView.swift; sourceTree = "<group>"; };
+		C89F98422B5E5AC8007EABF5 /* ScenesViewCell.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScenesViewCell.swift; sourceTree = "<group>"; };
 		C89FEF422ABD657F00DCCFB6 /* AboutViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AboutViewController.swift; sourceTree = "<group>"; };
 		C89FEF452ABD65F700DCCFB6 /* NavigationViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NavigationViewController.swift; sourceTree = "<group>"; };
 		C89FEF472ABD6A6300DCCFB6 /* WebViewController.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = WebViewController.swift; sourceTree = "<group>"; };
@@ -607,6 +611,7 @@
 		C8A130B62B3129740008C353 /* View */ = {
 			isa = PBXGroup;
 			children = (
+				C89F98422B5E5AC8007EABF5 /* ScenesViewCell.swift */,
 				C8A130BF2B327FF40008C353 /* SceneAddCustomView.swift */,
 				C8A130C52B32C2EC0008C353 /* SceneAddTemplateTitleHeaderView.swift */,
 				C8A130C32B32C2B90008C353 /* SceneAddTemplateTitleCell.swift */,
@@ -617,6 +622,7 @@
 				C8A3EE852B3420F60082A772 /* SceneExecuteDataPickerView.swift */,
 				C85829F32B398354002A4367 /* SceneGroupsViewCell.swift */,
 				C898F7032B3AB698008B4124 /* SceneMembersViewCell.swift */,
+				C89F98402B5E5A56007EABF5 /* SceneExecuteAnimationView.swift */,
 			);
 			path = View;
 			sourceTree = "<group>";
@@ -996,6 +1002,7 @@
 				C898E2ED2ABA8BAD00C71315 /* MainMenuView.swift in Sources */,
 				C8ACF13C2AA1B2BA00E24B4A /* String+Extension.swift in Sources */,
 				C8ACF1372AA1B2BA00E24B4A /* UIView+Extension.swift in Sources */,
+				C89F98432B5E5AC8007EABF5 /* ScenesViewCell.swift in Sources */,
 				C89FEF462ABD65F700DCCFB6 /* NavigationViewController.swift in Sources */,
 				C8BF088C2B29903E00144BAC /* GroupDeviceViewCell.swift in Sources */,
 				C8A3EE822B34087A0082A772 /* SceneAddGroupViewCell.swift in Sources */,
@@ -1038,6 +1045,7 @@
 				C898EA792AC41AFB0023B480 /* CustomDeviceSlider.swift in Sources */,
 				C8A130C02B327FF40008C353 /* SceneAddCustomView.swift in Sources */,
 				C898E2F12ABA9BB900C71315 /* SitesViewController.swift in Sources */,
+				C89F98412B5E5A56007EABF5 /* SceneExecuteAnimationView.swift in Sources */,
 				C896B9A82A930BA800217512 /* AppDelegate.swift in Sources */,
 				C89C9FEA2B3C24C700074031 /* SyncDeviceViewCell.swift in Sources */,
 				C898E2FD2ABBD61200C71315 /* SRAlertView.swift in Sources */,

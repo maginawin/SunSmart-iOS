@@ -56,9 +56,6 @@ class SpacesViewCell: UITableViewCell {
 //        delegate?.sitesViewCell(self, didClickFavourite: favoriteBtn.isSelected)
         clickFavouriteCallback?(favoriteBtn.isSelected)
     }
-    deinit {
-        print("dealloc")
-    }
     
     private func setupUI() {
         bgView = UIView()

@@ -289,7 +289,7 @@ class ScenesViewController: UIViewController {
         
         collectionView = UICollectionView(frame: .zero, collectionViewLayout: flowLayout)
         collectionView.contentInset = UIEdgeInsets(top: SCRXFrom(16), left: SCRXFrom(12), bottom: SCRXFrom(16), right: SCRXFrom(12))
-        collectionView.register(GroupsViewCell.classForCoder(), forCellWithReuseIdentifier: "cell")
+        collectionView.register(ScenesViewCell.classForCoder(), forCellWithReuseIdentifier: "cell")
         collectionView.showsVerticalScrollIndicator = false
         collectionView.backgroundColor = .clear
         collectionView.dataSource = self
@@ -314,11 +314,9 @@ extension ScenesViewController: UICollectionViewDataSource, UICollectionViewDele
     }
     
     public func collectionView(_ collectionView: UICollectionView, cellForItemAt indexPath: IndexPath) -> UICollectionViewCell {
-        let cell = collectionView.dequeueReusableCell(withReuseIdentifier: "cell", for: indexPath) as! GroupsViewCell
+        let cell = collectionView.dequeueReusableCell(withReuseIdentifier: "cell", for: indexPath) as! ScenesViewCell
         let scene = space.scenes[indexPath.item]
-        let imageIndex = max(min(scene.info.imageId, sceneImageNames.count) - 1, 0)
-        cell.imageView.image = UIImage(named: sceneImageNames[imageIndex]) //device_light_offline
-        cell.nameLabel.text = scene.info.name ?? scene.name
+        cell.scene = scene
         cell.deleteBtn.isHidden = !isEdit
         cell.deleteActionCallback = {[weak self] in
             self?.deleteScene(scene: scene)
@@ -335,15 +333,18 @@ extension ScenesViewController: UICollectionViewDataSource, UICollectionViewDele
     
     func collectionView(_ collectionView: UICollectionView, didSelectItemAt indexPath: IndexPath) {
         
-        let scene = space.scenes[indexPath.item]
-        MeshAPI.startScene(sceneNumber: scene.number)
+        guard MeshLibManager.manager.isMeshNetworkConnected else {
+            XWHUDManager.showTipHUD("device_notconnect_message".localizedString, isLineFeed: true)
+            return
+        }
         
-        XWHUDManager.showSuccessTipHUD("executed".localizedString)
-//        let vc = SyncDevicesViewController(type: .scene(scene))
-//        SceneSettingsViewController(space: space, scene: scene, mode: .members)
-//        present(NavigationViewController(rootViewController: vc), animated: true)
-        
-        
+        if let cell = collectionView.cellForItem(at: indexPath) as? ScenesViewCell, !cell.isExecuting {
+            // 执行场景
+            let scene = space.scenes[indexPath.item]
+            MeshAPI.startScene(sceneNumber: scene.number)
+            
+            cell.showExecuteAnimation()
+        }
     }
     
 }

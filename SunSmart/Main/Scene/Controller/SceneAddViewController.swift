@@ -302,6 +302,14 @@ class SceneAddViewController: UIViewController {
             make.height.equalTo(SCRYFrom(56) + kSafeAreaBottomHeight)
         }
         
+        let bottomLineView = UIView()
+        bottomLineView.backgroundColor = RGB(243, 243, 243)
+        bottomView.addSubview(bottomLineView)
+        bottomLineView.snp.makeConstraints { make in
+            make.left.right.top.equalToSuperview()
+            make.height.equalTo(0.5)
+        }
+        
         let lineView = UIView()
         lineView.backgroundColor = RGB(243, 243, 243)
         bottomView.addSubview(lineView)
@@ -537,7 +545,7 @@ extension SceneAddViewController: UICollectionViewDataSource, UICollectionViewDe
             if let mainTemplate = selectTemplate, let subTemplate = selectSubTemplate {
                 infoView.templateLabel.text = "\(mainTemplate.title)->\(subTemplate.title)"
             }
-            infoView.iconImageBtn.setImage(UIImage(named: sceneImageNames[imageId - 1]), for: .normal)
+            infoView.iconImageView.image = UIImage(named: sceneImageNames[imageId - 1])
             infoView.name = name
             return infoView
         }else {

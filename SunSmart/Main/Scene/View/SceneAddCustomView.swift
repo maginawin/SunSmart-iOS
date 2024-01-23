@@ -32,6 +32,7 @@ class SceneAddCustomView: UIView {
     private var flowLayout: UICollectionViewFlowLayout!
     var collectionView: UICollectionView!
     private var bottomView: UIView!
+    private var bottomLineView: UIView!
     var createBtn: UIButton!
     
     private var imageNames: [String] = []
@@ -110,6 +111,14 @@ class SceneAddCustomView: UIView {
         bottomView.snp.makeConstraints { make in
             make.left.right.bottom.equalToSuperview()
             make.height.equalTo(SCRYFrom(56) + kSafeAreaBottomHeight)
+        }
+        
+        bottomLineView = UIView()
+        bottomLineView.backgroundColor = RGB(243, 243, 243)
+        bottomView.addSubview(bottomLineView)
+        bottomLineView.snp.makeConstraints { make in
+            make.left.right.top.equalToSuperview()
+            make.height.equalTo(0.5)
         }
         
         createBtn = UIButton(title: "create".localizedString, titleSize: 16, titleColor: Title_Color, target: self, action: #selector(createBtnClick))

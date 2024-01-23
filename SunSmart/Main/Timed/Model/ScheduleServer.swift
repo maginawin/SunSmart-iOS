@@ -184,7 +184,7 @@ struct ScheduleServer {
             print("node send message failed \(messageHandle.message)")
         } finishedBack: { resultMessageHandles in
             
-            if resultMessageHandles.contains(where: { !$0.isFinished }) { // 设置失败
+            if resultMessageHandles.contains(where: { !$0.isSuccessful }) { // 设置失败
                 failed?(schedule)
             }else { // 成功
                 success?(schedule)

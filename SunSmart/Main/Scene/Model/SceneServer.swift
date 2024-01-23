@@ -57,7 +57,7 @@ struct SceneServer {
                 }
                 
                 if let groupAddress = messageHandle.address, let group = deleteGroups.first(where: { $0.address.address == groupAddress }) {
-                    if messageHandle.isFinished { // 全部删除完成
+                    if messageHandle.isSuccessful { // 全部删除完成
                         group.delete(sceneId: scene.number)
                         scene.info.groups.removeAll(where: { $0.address.address == groupAddress })
                         successGroups.append(group)

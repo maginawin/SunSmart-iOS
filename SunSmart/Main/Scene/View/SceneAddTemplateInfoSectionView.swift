@@ -42,7 +42,8 @@ class SceneAddTemplateInfoSectionView: UICollectionReusableView {
     var resetBtn: UIButton!
     
     private var infoView: UIView!
-    var iconImageBtn: UIButton!
+    var iconImageView: UIImageView!
+    private var iconBgView: UIView!
     var nameField: UITextField!
     private var tipTextLabel: UILabel!
     
@@ -74,7 +75,7 @@ class SceneAddTemplateInfoSectionView: UICollectionReusableView {
         delegate?.sectionViewDidResetAction(self)
     }
     
-    @objc private func iconImageBtnAction() {
+    @objc private func iconBgViewAction() {
         delegate?.sectionViewDidImageAction(self)
     }
     
@@ -124,17 +125,25 @@ class SceneAddTemplateInfoSectionView: UICollectionReusableView {
             make.height.equalTo(SCRYFrom(56))
         }
         
-        iconImageBtn = UIButton(target: self, action: #selector(iconImageBtnAction))
-        iconImageBtn.layer.cornerRadius = SCRYFrom(22)
-        iconImageBtn.layer.borderWidth = 0.5
-        iconImageBtn.layer.borderColor = Bar_Color.cgColor
-        iconImageBtn.setImage(UIImage(named: "scene_image_1"), for: .normal)
-        infoView.addSubview(iconImageBtn)
-        iconImageBtn.snp.makeConstraints { make in
+        iconBgView = UIView()
+        iconBgView.layer.cornerRadius = SCRYFrom(22)
+        iconBgView.layer.borderWidth =  0.5
+        iconBgView.layer.borderColor = Bar_Color.cgColor
+        iconBgView.addGestureRecognizer(UITapGestureRecognizer(target: self, action: #selector(iconBgViewAction)))
+        infoView.addSubview(iconBgView)
+        iconBgView.snp.makeConstraints { make in
             make.left.equalTo(SCRXFrom(12))
             make.centerY.equalToSuperview()
             make.width.height.equalTo(SCRYFrom(44))
         }
+        
+        iconImageView = UIImageView()
+        iconBgView.addSubview(iconImageView)
+        iconImageView.snp.makeConstraints { make in
+            make.center.equalToSuperview()
+            make.width.height.equalTo(SCRYFrom(30))
+        }
+        
         
         nameField = UITextField()
         nameField.text = "PPT"
@@ -149,7 +158,7 @@ class SceneAddTemplateInfoSectionView: UICollectionReusableView {
         nameField.delegate = self
         infoView.addSubview(nameField)
         nameField.snp.makeConstraints { make in
-            make.left.equalTo(iconImageBtn.snp.right).offset(SCRXFrom(10))
+            make.left.equalTo(iconBgView.snp.right).offset(SCRXFrom(10))
             make.right.equalTo(SCRXFrom(-8))
             make.top.equalTo(SCRYFrom(8))
             make.bottom.equalTo(SCRYFrom(-8))

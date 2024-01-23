@@ -42,7 +42,7 @@ class SpaceViewController: WMPageController {
     }
     
     override func viewDidLoad() {
-        self.selectIndex = 3
+//        self.selectIndex = 3
         MeshLibManager.manager.setMeshNetworkConnected(meshUUID: space.meshUUID)
         if let manager = MeshLibManager.manager.meshNetworkManager {
             space.meshManager = manager
@@ -104,6 +104,7 @@ class SpaceViewController: WMPageController {
         if !MeshLibManager.manager.isMeshNetworkConnected && XWHUDManager.isVisible() {
             return
         }
+        
         MenuPopView.show(items: [
             .init(icon: UIImage(named: "edit"), title: "edit_space".localizedString, tapItemBack: {[weak self] item in
                 self?.editSpace()
@@ -111,7 +112,7 @@ class SpaceViewController: WMPageController {
             .init(icon: UIImage(named: "menu_delete"), title: "delete_space".localizedString, tapItemBack: {[weak self] item in
                 self?.deleteSpace()
             }),
-        ], anchorPoint: CGPoint(x: view.width - SCRXFrom(20) - 15, y: kNavigationHeight), menuWidth: SCRXFrom(154))
+        ], anchorPoint: CGPoint(x: view.width - 18 - 15, y: kNavigationHeight), menuWidth: SCRXFrom(154))
     }
     
     /// 编辑空间

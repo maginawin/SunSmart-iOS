@@ -76,7 +76,7 @@ class DeviceLightViewController: WMPageController {
             .init(icon: UIImage(named: "menu_delete"), title: "delete".localizedString, tapItemBack: {[weak self] item in
                 self?.deleteNode()
             }),
-        ], anchorPoint: CGPoint(x: view.width - SCRXFrom(20) - 15, y: kNavigationHeight))
+        ], anchorPoint: CGPoint(x: view.width - SCRXFrom(17) - 15, y: kNavigationHeight))
     }
     
     /// 编辑设备

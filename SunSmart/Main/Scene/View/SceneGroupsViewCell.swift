@@ -86,7 +86,7 @@ class SceneGroupsViewCell: UICollectionViewCell {
         iconImageView.snp.makeConstraints { make in
             make.centerX.equalToSuperview()
 //            make.bottom.equalTo(bgView.snp.centerY).offset(SCRYFrom(-3))
-            make.centerY.equalToSuperview().offset(SCRYFrom(-6))
+            make.centerY.equalToSuperview().offset(SCRYFrom(-8))
 //            make.top.equalTo(SCRYFrom(11))
         }
         
@@ -95,7 +95,8 @@ class SceneGroupsViewCell: UICollectionViewCell {
         contentView.addSubview(imageLabel)
         imageLabel.snp.makeConstraints { make in
             make.centerX.equalToSuperview()
-            make.top.equalTo(SCRYFrom(11))
+//            make.top.equalTo(SCRYFrom(11))
+            make.centerY.equalTo(iconImageView)
 //            make.bottom.equalTo(bgView.snp.centerY)
 //            make.bottom.equalTo(self.snp.centerY)
         }

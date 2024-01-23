@@ -21,7 +21,7 @@ class SiteViewController: UIViewController {
     
     let site: SiteData
     /// 是否添加场所进入
-    let addSite: Bool
+    var addSite: Bool
     
     init(site: SiteData, addSite: Bool = false) {
         self.site = site
@@ -47,9 +47,6 @@ class SiteViewController: UIViewController {
         allSpaces = site.spaces
         favouriteSpaces = allSpaces.filter({ $0.isFavourite })
         
-        if addSite {
-            addSpace()
-        }
 //        updateEmptyView()
     }
     
@@ -61,6 +58,15 @@ class SiteViewController: UIViewController {
         self.updateEmptyView()
     }
     
+    override func viewDidAppear(_ animated: Bool) {
+        super.viewDidAppear(animated)
+        
+        if addSite {
+            addSite = false
+            addSpace()
+        }
+    }
+    
     @objc private func moreClick() {
         
         MenuPopView.show(items: [
@@ -70,7 +76,7 @@ class SiteViewController: UIViewController {
             .init(icon: UIImage(named: "menu_delete"), title: "delete_site".localizedString, tapItemBack: {[weak self] item in
                 self?.deleteSite()
             }),
-        ], anchorPoint: CGPoint(x: view.width - SCRXFrom(20) - 15, y: kNavigationHeight), menuWidth: SCRXFrom(154))
+        ], anchorPoint: CGPoint(x: view.width - SCRXFrom(17) - 15, y: kNavigationHeight), menuWidth: SCRXFrom(154))
     }
     
     /// 编辑场所

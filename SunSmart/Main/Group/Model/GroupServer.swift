@@ -56,7 +56,7 @@ struct GroupServer {
                 } finishedBack: { messageHandles in
                     DispatchQueue.main.async {
                         // 未设置完成
-                        if messageHandles.contains(where: { !$0.isFinished }) {
+                        if messageHandles.contains(where: { !$0.isSuccessful }) {
                             failedNodes.append(node)
                             failed?(node)
                         }else { // 已完成
@@ -108,7 +108,7 @@ struct GroupServer {
                 } finishedBack: { messageHandles in
                     DispatchQueue.main.async {
                         // 未删除完成
-                        if messageHandles.contains(where: { !$0.isFinished }) {
+                        if messageHandles.contains(where: { !$0.isSuccessful }) {
                             failedNodes.append(node)
                             failed?(node)
                         }else { // 已完成
@@ -199,7 +199,7 @@ struct GroupServer {
                     node.save()
                     DispatchQueue.main.async {
                         // 未设置完成
-                        if messageHandles.contains(where: { !$0.isFinished }) {
+                        if messageHandles.contains(where: { !$0.isSuccessful }) {
                             failedNodes.append(node)
                             failed?(node)
                         }else { // 已完成

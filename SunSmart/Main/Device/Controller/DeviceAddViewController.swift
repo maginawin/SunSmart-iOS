@@ -608,44 +608,26 @@ class DeviceAddViewController: UIViewController {
             self?.updateUIState()
         } appendMessagesBack: {[weak self] addDevice in
             guard let self = self, let group = self.addToGroup, let node = self.space.meshManager?.meshNetwork?.node(withAddress: addDevice.address) else { return [] }
+            var appendMessages = group.getNodeAddMessageHandles(node: node)
             // 需要追加发送的消息
-            var appendMessages: [MeshMessageHandle] = []
-            // 设备入组
-            node.getSubscribeToGroupMessages(group).forEach({
-                appendMessages.append(MeshMessageHandle(message: $0, address: node.primaryUnicastAddress))
-            })
-            // 设备绑定场景
-            group.info.bindSceneDatas.forEach { (sceneId: SceneNumber, data: SceneExecuteData) in
-                // 设备是否支持场景model及亮度model
-                if let sceneModel = node.sceneModel, let lightnessModel = node.lightnessModel {
-                    // 设备是否支持色温model
-                    let lightness = Node.getLightness(lightness100: data.lightness)
-                    if let ctlModel = node.ctlModel {
-                        appendMessages.append(MeshMessageHandle(message: LightCTLSet(lightness: lightness, temperature: UInt16(data.cct), deltaUV: 0), model: ctlModel))
-                    }else { // 不支持则设置亮度
-                        appendMessages.append(MeshMessageHandle(message: LightLightnessSet(lightness: lightness), model: lightnessModel))
-                    }
-                    // 保存场景
-                    appendMessages.append(MeshMessageHandle(message: SceneStore(sceneId), model: sceneModel))
-                }
+            if let ctlModel = node.ctlModel {
+                appendMessages.insert(MeshMessageHandle(message: LightCTLTemperatureRangeGet(), model: ctlModel), at: 0)
             }
-            // 设备绑定日程
-            group.info.bindSchedules.forEach { schedule in
-                if let timeModel = node.timeModel, let schedulerSetupModel = node.schedulerSetupModel {
-                    // 设置时区
-                    appendMessages.append(MeshMessageHandle(message: Node.setLocalTimeMessage(), model: timeModel))
-                    // 设置日程
-                    appendMessages.append(MeshMessageHandle(message: SchedulerActionSet(index: UInt8(schedule.id), entry: SchedulerRegistryEntry(year: .any(), month: .any(of: [.January,.February,.March,.April,.May,.June,.July,.August,.September,.October,.November,.December]), day: .any(), hour: .specific(hour: schedule.hour), minute: .specific(minute: schedule.minute), second: .specific(second: 0), dayOfWeek: .any(of: schedule.weekDays), action: schedule.action, transitionTime: .init(steps: UInt8(schedule.fadeTime), stepResolution: .seconds), sceneNumber: schedule.scene?.number ?? 0)), model: schedulerSetupModel))
-                }
+            return appendMessages
+        } appendMessageSuccessBack: { messageHandle in
+            // 发送扩展消息成功更新缓存数据
+            if let address = messageHandle.model?.parentElement?.unicastAddress ?? messageHandle.address, let node = self.space.meshManager?.meshNetwork?.node(withAddress: address) {
+                node.updateData(message: messageHandle.message)
             }
             
-            return appendMessages
         } addSuccess: {[weak self] addDevice in
+            guard let self = self else { return }
             addDevice.addState = .success
-            self?.reloadDeviceState(addDevice)
-            self?.updateUIState()
-            if let node = self?.space.meshManager?.meshNetwork?.node(withAddress: addDevice.address) {
+            self.reloadDeviceState(addDevice)
+            self.updateUIState()
+            if let node = self.space.meshManager?.meshNetwork?.node(withAddress: addDevice.address) {
                 node.rssi = addDevice.rssi.intValue
+                node.saveNodeInfo(meshUUID: self.space.meshUUID)
 //                self?.space.getNextNodeName(resultCallback: { name in
 //                    node.name = name
 //                    print("address:\(node.primaryUnicastAddress), name:\(name)")
@@ -653,7 +635,7 @@ class DeviceAddViewController: UIViewController {
 //                if let name = self?.space.getNextNodeName() {
 //                    node.name = name
 //                }
-                self?.addSuccessNodes.append(node)
+                self.addSuccessNodes.append(node)
             }
         } addFail: {[weak self] addDevice, error in
             addDevice.addState = .failed

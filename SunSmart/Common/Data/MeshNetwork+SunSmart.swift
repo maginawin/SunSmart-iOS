@@ -1214,7 +1214,7 @@ extension Node {
     func updateData(message: MeshMessage) {
        
         let meshUUID = MeshNetworkManager.instance.meshNetwork?.uuid.uuidString
-//        let isSuccess = messageHandle.isFinished
+//        let isSuccess = messageHandle.isSuccessful
 //        let message = messageHandle.message
         switch message {
         case is ConfigModelSubscriptionAdd:

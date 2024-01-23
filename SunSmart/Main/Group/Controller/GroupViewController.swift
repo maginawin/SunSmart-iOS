@@ -158,7 +158,7 @@ class GroupViewController: UIViewController {
                 self?.groupProfile()
             })
             
-        ], anchorPoint: CGPoint(x: view.width - SCRXFrom(20) - 15, y: (navigationController?.navigationBar.frame.maxY ?? kNavigationHeight) + 44))
+        ], anchorPoint: CGPoint(x: view.width - SCRXFrom(17) - 15, y: (navigationController?.navigationBar.frame.maxY ?? kNavigationHeight) + StatusBarManager.statusBarFrame.height))
         
     }
     

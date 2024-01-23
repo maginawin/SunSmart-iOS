@@ -40,19 +40,11 @@ class MenuPopView: UIView {
     }
     
     static func hide() {
-        
         if let popView = UIApplication.shared.keyWindow().subviews.first(where: { $0.isKind(of: self.classForCoder()) }) as? MenuPopView {
             popView.dismiss()
         }
-        
     }
-    
-    override func hitTest(_ point: CGPoint, with event: UIEvent?) -> UIView? {
-        let view = super.hitTest(point, with: event)
-        print(view)
-        return view
-    }
-    
+
     override func layoutSubviews() {
         super.layoutSubviews()
         

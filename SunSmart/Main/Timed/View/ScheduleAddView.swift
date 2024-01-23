@@ -76,10 +76,16 @@ class ScheduleAddView: UIView {
     var selectTarget: ScheduleTarget? {
         didSet {
             if let targets = selectTarget {
+                
+                actionOnBtn.isEnabled = true
+                actionOffBtn.isEnabled = true
+                actionRecallBtn.isEnabled = true
+                
                 if case .scene = targets { // 场景
                     actionOnBtn.isHidden = true
                     actionOffBtn.isHidden = true
                     actionRecallBtn.isHidden = false
+                    
 //                    actionRecallBtn.isSelected = true
                     actionBtnAction(sender: actionRecallBtn)
                     actionRecallBtn.snp.updateConstraints { make in
@@ -88,6 +94,7 @@ class ScheduleAddView: UIView {
                 }else { // 设备/组
                     actionOnBtn.isHidden = false
                     actionOffBtn.isHidden = false
+                    
                     actionRecallBtn.isHidden = true
                     actionRecallBtn.isSelected = false
                     actionRecallBtn.snp.updateConstraints { make in
@@ -96,8 +103,11 @@ class ScheduleAddView: UIView {
                 }
             }else { // 未选择
                 actionOnBtn.isHidden = false
+                actionOffBtn.isEnabled = false
                 actionOffBtn.isHidden = false
-                actionRecallBtn.isHidden = true
+                actionOffBtn.isEnabled = false
+                actionRecallBtn.isHidden = false
+                actionRecallBtn.isEnabled = false
                 actionRecallBtn.isSelected = false
                 
                 actionRecallBtn.snp.updateConstraints { make in
@@ -340,8 +350,10 @@ class ScheduleAddView: UIView {
         actionOnBtn = UIButton(title: "action_on".localizedString, titleSize: 16, titleWeight: .light, titleColor: RGB(39, 37, 54), target: self, action: #selector(actionBtnAction))
         actionOnBtn.tag = 100
         actionOnBtn.setTitleColor(.white, for: .selected)
+        actionOnBtn.setTitleColor(Message_Color, for: .disabled)
         actionOnBtn.layer.cornerRadius = SCRYFrom(6)
         actionOnBtn.backgroundColor = .white
+        actionOnBtn.isEnabled = false
         contentView.addSubview(actionOnBtn)
         actionOnBtn.snp.makeConstraints { make in
             make.left.equalTo(SCRXFrom(20))
@@ -353,8 +365,10 @@ class ScheduleAddView: UIView {
         actionOffBtn = UIButton(title: "action_off".localizedString, titleSize: 16, titleWeight: .light, titleColor: RGB(39, 37, 54), target: self, action: #selector(actionBtnAction))
         actionOffBtn.tag = 101
         actionOffBtn.setTitleColor(.white, for: .selected)
+        actionOffBtn.setTitleColor(Message_Color, for: .disabled)
         actionOffBtn.layer.cornerRadius = SCRYFrom(6)
         actionOffBtn.backgroundColor = .white
+        actionOffBtn.isEnabled = false
         contentView.addSubview(actionOffBtn)
         actionOffBtn.snp.makeConstraints { make in
             make.left.equalTo(actionOnBtn.snp.right).offset(SCRXFrom(10))
@@ -364,8 +378,10 @@ class ScheduleAddView: UIView {
         actionRecallBtn = UIButton(title: "recall".localizedString, titleSize: 16, titleWeight: .light, titleColor: RGB(39, 37, 54), target: self, action: #selector(actionBtnAction))
         actionRecallBtn.tag = 102
         actionRecallBtn.setTitleColor(.white, for: .selected)
+        actionRecallBtn.setTitleColor(Message_Color, for: .disabled)
         actionRecallBtn.layer.cornerRadius = SCRYFrom(6)
         actionRecallBtn.backgroundColor = .white
+        actionRecallBtn.isEnabled = false
         contentView.addSubview(actionRecallBtn)
         actionRecallBtn.snp.makeConstraints { make in
             make.left.equalTo(SCRXFrom(168))
