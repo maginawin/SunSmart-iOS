@@ -50,6 +50,11 @@ class SceneAddDataListViewCell: UICollectionViewCell {
         fatalError("init(coder:) has not been implemented")
     }
     
+    override func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent?) {
+        super.touchesBegan(touches, with: event)
+        endEditing(true)
+    }
+    
     @objc private func collectionViewDidLongPressAction(sender: UIGestureRecognizer) {
         let point = sender.location(in: collectionView)
         if sender.state == .began, let index = collectionView.indexPathForItem(at: point)?.item {
@@ -99,7 +104,14 @@ extension SceneAddDataListViewCell: UICollectionViewDataSource, UICollectionView
         }else { // data
             let cell = collectionView.dequeueReusableCell(withReuseIdentifier: "cell", for: indexPath) as! SceneAddDataViewCell
             cell.sceneData = sceneDatas[indexPath.item]
-            cell.layer.borderColor = selectIndex == indexPath.item ? Bar_Color.cgColor : RGB(220, 220, 220).cgColor
+            if selectIndex == indexPath.item {
+                cell.layer.borderColor = Bar_Color.cgColor
+                cell.layer.borderWidth = 1
+            }else {
+                cell.layer.borderColor = RGB(220, 220, 220).cgColor
+                cell.layer.borderWidth = 0.5
+            }
+            
             cell.innerRaceView.isHidden = selectIndex != indexPath.item
             return cell
         }

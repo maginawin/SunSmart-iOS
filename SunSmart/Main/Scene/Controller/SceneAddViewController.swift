@@ -25,9 +25,11 @@ class SceneAddViewController: UIViewController {
     private var templatesTableView: UITableView!
     
     //***** 数据设置UI *****/
+    private var templateCreateView: UIView!
+    private var backBtn: UIButton!
     private var templateLabel: UILabel!
     private var flowLayout: UICollectionViewFlowLayout!
-    private var collectionView: UICollectionView!
+    private var collectionView: TemplateCollectionView!
     private var bottomView: UIView!
     private var saveBtn: UIButton!
     private var previewBtn: UIButton!
@@ -51,6 +53,8 @@ class SceneAddViewController: UIViewController {
     private var selectSubTemplate: SceneMainTemplate.SceneTemplate?
     
     private var templateShowMap: [TemplateMainType: Bool] = [:]
+    /// 是否展示模板创建
+    private var showTemplateCreate: Bool = false
     
     let space: SpaceData
     
@@ -90,6 +94,10 @@ class SceneAddViewController: UIViewController {
         
         self.name = space.getNextSceneName()
         
+        backBtn = UIButton(normalImageName: "navigation_back", target: self, action: #selector(backAction))
+        backBtn.isHidden = true
+        navigationItem.leftBarButtonItem = UIBarButtonItem(customView: backBtn)
+        
         setupUI()
 //        setupTemplateDataUI()
 
@@ -100,28 +108,79 @@ class SceneAddViewController: UIViewController {
         addNotificationObserver()
     }
     
+    
     private func addNotificationObserver() {
         NotificationCenter.default.addObserver(forName: .init(groupsRefreshNotificationName), object: nil, queue: nil) {[weak self] _ in
             //            self?.refreshData = true
             guard let self = self else { return }
 //            self.collectionView.reloadData()
             self.groups = space.groups
-            self.collectionView.reloadSections(IndexSet(integer: 1))
+            if self.showTemplateCreate {
+                self.collectionView?.reloadSections(IndexSet(integer: 1))
+            }
         }
         
     }
     
-    @objc private func close() {
-        
-        dismiss(animated: true)
+    @objc private func backAction() {
+//        backHandle(close: false)
+        sceneEditTemplateCheack(close: false)
     }
+    
+    
+    @objc private func close() {
+        sceneEditTemplateCheack(close: true)
+    }
+    
+    
+    /// 模板编辑检查
+    private func sceneEditTemplateCheack(close: Bool) {
+        if showTemplateCreate, let selectSubTemplate = self.selectSubTemplate {
+            if selectSubTemplate.title != name || selectSubTemplate.imageId != imageId || selectSubTemplate.parameters.count != sceneDatas.count || !selectSubTemplate.parameters.elementsEqual(sceneDatas, by: { $0.lightness == $1.lightness && $0.cct == $1.cct }) || groups.contains(where: { $0.isSelected }) { // 提示是否放弃修改
+                
+                SRAlertView(title: "notification".localizedString, message: "templates_exit_message".localizedString, actions: [.cancelAction, .init(title: "ok".localizedString, actionHandler: {[weak self] _ in
+                    
+                    self?.backHandle(close: close)
+                })]).show()
+                return
+            }
+        }
+        
+        backHandle(close: close)
+    }
+  
+    /// 返回/退出处理
+    private func backHandle(close: Bool) {
+        
+        hideKeyboard()
+        if close {
+            dismiss(animated: true)
+        }else {
+            showTemplateCreate = false
+            updateUI()
+        }
+        
+    }
+    
     
     /// 预览
     @objc private func previewBtnAction() {
         
+        if !MeshLibManager.manager.isMeshNetworkConnected { // 网络未连接
+            XWHUDManager.showTipHUD("device_notconnect_message".localizedString, isLineFeed: true)
+            return
+        }
         groups.forEach({
-            if let data = $0.executeSceneData {
-                MeshAPI.setGroupCTLState(address: $0.address.address, lightness: Node.getLightness(lightness100: data.lightness), temperature: UInt16(data.cct))
+            if let data = $0.executeSceneData, $0.nodes.count > 0 {
+                // 判断组内是否有色温灯
+                if $0.colorTemperatureNodes.count > 0 {
+                    MeshAPI.setGroupCTLState(address: $0.address.address, lightness: Node.getLightness(lightness100: data.lightness), temperature: UInt16(data.cct))
+                }
+                // 判断组内是否有仅支持调光灯
+                if $0.colorTemperatureNodes.count < $0.lightnessNodes.count {
+                    MeshAPI.setGroupLightnessState(address: $0.address.address, lightness: Node.getLightness(lightness100: data.lightness))
+                }
+//                MeshAPI.setGroupCTLState(address: $0.address.address, lightness: Node.getLightness(lightness100: data.lightness), temperature: UInt16(data.cct))
             }
         })
         
@@ -189,24 +248,42 @@ class SceneAddViewController: UIViewController {
     
     private func pushToSyncDeviceVc(scene: Scene) {
         
+        if !scene.info.groups.contains(where: { $0.getNeedSyncDataNodes(scene: scene).syncNodes.count > 0 }) {
+            XWHUDManager.showSuccessTipHUD("done!".localizedString)
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {[weak self] in
+                self?.backHandle(close: true)
+            }
+            return
+        }
+        
         let vc = SyncDevicesViewController(type: .scene(scene))
         vc.syncSuccessCallback = {[weak self] _ in
             XWHUDManager.showSuccessTipHUD("done!".localizedString)
             guard let self = self else { return }
-            DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
-                self.close()
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {[weak self] in
+                self?.backHandle(close: true)
             }
+            NotificationCenter.default.post(name: .init(sceneDataUpdateNotificationName), object: scene)
         }
         vc.backActionCallback = {[weak self] in
 //                self?.dismiss(animated: true)
             guard let self = self else { return }
-            self.close()
+            self.backHandle(close: true)
+            NotificationCenter.default.post(name: .init(sceneDataUpdateNotificationName), object: scene)
         }
         navigationController?.pushViewController(vc, animated: true)
     }
     
     // 保存
     @objc private func saveBtnAction() {
+        // 选中存在设备的组
+        let existNodeGroups = groups.filter({ $0.isSelected && $0.nodes.count > 0 })
+        
+        if existNodeGroups.count > 0 && !MeshLibManager.manager.isMeshNetworkConnected { // 未连接上网络
+            XWHUDManager.showTipHUD("device_notconnect_message".localizedString, isLineFeed: true)
+            return
+        }
+        
         createMode = .template
         createScene()
     }
@@ -222,22 +299,56 @@ class SceneAddViewController: UIViewController {
         
     }
     
-    private func showSceneDataUI() {
+//    private func showSceneDataUI() {
+//        
+//        if let subTemplate = selectSubTemplate {
+//            
+//            sceneDatas = subTemplate.parameters.map({
+//                SceneExecuteData(lightness: $0.lightness, cct: $0.cct)
+//            })
+//            imageId = subTemplate.imageId
+//            name = subTemplate.title
+////            infoView.templateLabel.text = "\(mainTemplate.title)->\(subTemplate.title)"
+//        }
+//        setupTemplateDataUI()
+//    }
+    
+    private func updateUI() {
         
-        menuView.isHidden = true
-        scrollView.isHidden = true
-        
-        if let subTemplate = selectSubTemplate {
+        if showTemplateCreate {
+            backBtn.isHidden = false
             
-            sceneDatas = subTemplate.parameters.map({
-                SceneExecuteData(lightness: $0.lightness, cct: $0.cct)
-            })
-            imageId = subTemplate.imageId
-            name = subTemplate.title
-//            infoView.templateLabel.text = "\(mainTemplate.title)->\(subTemplate.title)"
+            if let subTemplate = selectSubTemplate {
+                sceneDatas = subTemplate.parameters.map({
+                    SceneExecuteData(lightness: $0.lightness, cct: $0.cct)
+                })
+                imageId = subTemplate.imageId
+                name = subTemplate.title
+            }
+            
+            if templateCreateView == nil {
+                setupTemplateDataUI()
+            }else {
+                templateCreateView.isHidden = false
+                collectionView.reloadData()
+            }
+            
+         
+            templateCreateView.layer.addMoveInAnimation(duration: 0.25, animationOrientation: .fromRight)
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) {
+                self.menuView.isHidden = true
+                self.scrollView.isHidden = true
+            }
+            
+        }else {
+            backBtn.isHidden = true
+            menuView.isHidden = false
+            scrollView.isHidden = false
+            
+            templateCreateView.layer.addMoveInAnimation(type: .reveal, animationOrientation: .fromLeft)
+            self.templateCreateView.isHidden = true
+
         }
-        
-        setupTemplateDataUI()
     }
     
     private func setupUI() {
@@ -294,9 +405,16 @@ class SceneAddViewController: UIViewController {
     
     private func setupTemplateDataUI() {
         
+        templateCreateView = UIView()
+        view.addSubview(templateCreateView)
+        templateCreateView.snp.makeConstraints { make in
+            make.edges.equalToSuperview()
+        }
+        
+        
         bottomView = UIView()
         bottomView.backgroundColor = .white
-        view.addSubview(bottomView)
+        templateCreateView.addSubview(bottomView)
         bottomView.snp.makeConstraints { make in
             make.left.right.bottom.equalToSuperview()
             make.height.equalTo(SCRYFrom(56) + kSafeAreaBottomHeight)
@@ -342,7 +460,7 @@ class SceneAddViewController: UIViewController {
         flowLayout.minimumLineSpacing = 0
         flowLayout.minimumInteritemSpacing = 0
         
-        collectionView = UICollectionView(frame: .zero, collectionViewLayout: flowLayout)
+        collectionView = TemplateCollectionView(frame: .zero, collectionViewLayout: flowLayout)
         collectionView.backgroundColor = Background_Color
         collectionView.dataSource = self
         collectionView.delegate = self
@@ -353,7 +471,7 @@ class SceneAddViewController: UIViewController {
         collectionView.register(SceneAddGroupEmptyCell.classForCoder(), forCellWithReuseIdentifier: "groupEmptyCell")
 //        collectionView.addGestureRecognizer(UITapGestureRecognizer(target: self, action: #selector(hideKeyboard)))
 //        collectionView.contentInset = UIEdgeInsets(top: 0, left: SCRXFrom(16), bottom: SCRYFrom(16), right: SCRXFrom(16))
-        view.addSubview(collectionView)
+        templateCreateView.addSubview(collectionView)
         collectionView.snp.makeConstraints { make in
             make.top.equalToSuperview()
             make.left.equalTo(SCRXFrom(16))
@@ -364,6 +482,26 @@ class SceneAddViewController: UIViewController {
         
     }
     
+}
+
+class TemplateCollectionView: UICollectionView {
+    
+    override func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent?) {
+        super.touchesBegan(touches, with: event)
+//        if self.subviews.contains(where: { $0.isFirstResponder }) {
+            endEditing(true)
+//        }
+    }
+    
+//    override func point(inside point: CGPoint, with event: UIEvent?) -> Bool {
+//        endEditing(true)
+//        return super.point(inside: point, with: event)
+//    }
+    
+//    override func hitTest(_ point: CGPoint, with event: UIEvent?) -> UIView? {
+//        endEditing(true)
+//        return super.hitTest(point, with: event)
+//    }
 }
 
 extension SceneAddViewController: UITableViewDataSource, UITableViewDelegate {
@@ -413,10 +551,18 @@ extension SceneAddViewController: UITableViewDataSource, UITableViewDelegate {
     }
     
     func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
+        
+        tableView.deselectRow(at: indexPath, animated: true)
         let template = templates[indexPath.section]
         selectTemplate = template
         selectSubTemplate = template.sceneTemplates[indexPath.row]
-        showSceneDataUI()
+//        showSceneDataUI()
+        self.showTemplateCreate = true
+        sceneDataSelectIndex = nil
+        groups.forEach({ $0.isSelected = false })
+        // 监听网络连接状态
+        MeshLibManager.manager.register(self)
+        updateUI()
     }
     
     func scrollViewWillBeginDragging(_ scrollView: UIScrollView) {
@@ -503,12 +649,22 @@ extension SceneAddViewController: UICollectionViewDataSource, UICollectionViewDe
             groupCell.nameLabel.text = group.info.name
             groupCell.selectBtn.isSelected = group.isSelected
             // 是否选中参数
-            if sceneDataSelectIndex != nil, MeshLibManager.manager.isMeshNetworkConnected, group.nodes.count > 0 {
-                groupCell.onoffBtn.isHidden = false
-            }else {
-                groupCell.onoffBtn.isHidden = true
-            }
-            groupCell.onoffBtn.isSelected = group.isOn
+//            if sceneDataSelectIndex != nil {
+//                groupCell.onoffBtn.isHidden = false
+                
+                // 禁用开关
+                if group.nodes.isEmpty || !MeshLibManager.manager.isMeshNetworkConnected || !group.nodes.contains(where: { $0.state }) {
+                    groupCell.onoffBtn.setImage(UIImage(named: "scene_group_disable"), for: .normal)
+                }else {
+                    groupCell.onoffBtn.setImage(UIImage(named: "scene_group_off"), for: .normal)
+                    groupCell.onoffBtn.isSelected = group.isOn
+                }
+                
+//            }else {
+//                groupCell.onoffBtn.isHidden = true
+//            }
+          
+
             // 赋值的参数
             if let data = group.executeSceneData, group.isSelected {
                 if data.lightness > 0 {
@@ -583,32 +739,49 @@ extension SceneAddViewController: UICollectionViewDataSource, UICollectionViewDe
         
         hideKeyboard()
         
+        guard indexPath.section == 1 else { return }
+        
         if groups.isEmpty {
             return
         }
         
-        guard let index = self.sceneDataSelectIndex, index >= 0, index < sceneDatas.count else {
-            XWHUDManager.showTipHUD("scene_select_parameter_message".localizedString, isLineFeed: true)
-            return
-        }
         let group = groups[indexPath.item]
-        if group.sceneDataIndex == index { // 同一个参数，反选
+        if group.isSelected {
             group.executeSceneData = nil
             group.sceneDataIndex = nil
             group.isSelected = false
         }else {
+            if group.nodes.count > 0 && !MeshLibManager.manager.isMeshNetworkConnected { // 网络未连接
+                XWHUDManager.showTipHUD("device_notconnect_message".localizedString, isLineFeed: true)
+                return
+            }
+            guard let index = self.sceneDataSelectIndex, index >= 0, index < sceneDatas.count else {
+                XWHUDManager.showTipHUD("scene_select_parameter_message".localizedString, isLineFeed: true)
+                return
+            }
             let data = sceneDatas[index]
             group.executeSceneData = .init(lightness: data.lightness, cct: data.cct)
             group.sceneDataIndex = index
             group.isSelected = true
-//            if group.nodes.count > 0 {
-//                if MeshLibManager.manager.isMeshNetworkConnected {
-//                    MeshAPI.setGroupCTLState(address: group.address.address, lightness: Node.getLightness(lightness100: data.lightness), temperature: UInt16(data.cct))
-//                }else {
-//                    XWHUDManager.showTipHUD("device_notconnect_message".localizedString, isLineFeed: true)
-//                }
-//            }
         }
+        
+//        if group.sceneDataIndex == index { // 同一个参数，反选
+//            group.executeSceneData = nil
+//            group.sceneDataIndex = nil
+//            group.isSelected = false
+//        }else {
+//            let data = sceneDatas[index]
+//            group.executeSceneData = .init(lightness: data.lightness, cct: data.cct)
+//            group.sceneDataIndex = index
+//            group.isSelected = true
+////            if group.nodes.count > 0 {
+////                if MeshLibManager.manager.isMeshNetworkConnected {
+////                    MeshAPI.setGroupCTLState(address: group.address.address, lightness: Node.getLightness(lightness100: data.lightness), temperature: UInt16(data.cct))
+////                }else {
+////                    XWHUDManager.showTipHUD("device_notconnect_message".localizedString, isLineFeed: true)
+////                }
+////            }
+//        }
         collectionView.reloadItems(at: [indexPath])
         
         updatePreviewBtnState()
@@ -729,7 +902,11 @@ extension SceneAddViewController: SceneAddDataListViewCellDelegate {
     /// 选择数据回调
     func cell(_ cell: SceneAddDataListViewCell, didSelectData index: Int) {
         hideKeyboard()
-        sceneDataSelectIndex = index
+        if sceneDataSelectIndex == index {
+            sceneDataSelectIndex = nil
+        }else {
+            sceneDataSelectIndex = index
+        }
         collectionView.reloadItems(at: [IndexPath(item: 0, section: 0)])
     }
     
@@ -804,7 +981,7 @@ extension SceneAddViewController: SceneAddGroupViewCellDelegate {
         
         guard MeshLibManager.manager.isMeshNetworkConnected, let indexPath = collectionView.indexPath(for: cell) else { return }
         let group = groups[indexPath.item]
-        guard group.nodes.count > 0 else {
+        guard group.nodes.count > 0, group.nodes.contains(where: { $0.state }) else {
             return
         }
         MeshAPI.setGroupOnOffState(address: group.address.address, isOn: isOn)
@@ -840,6 +1017,24 @@ extension SceneAddViewController: SceneAddGroupEmptyCellDelegate {
         
     }
     
+}
+
+extension SceneAddViewController: MeshLibManagerDelegate {
+    
+    func meshNetworkManager(_ manager: MeshNetworkManager, bearerDidOpen bearer: Bearer) {
+        if showTemplateCreate {
+            DispatchQueue.main.asyncAfter(wallDeadline: .now() + 1) {[weak self] in
+                self?.collectionView?.reloadSections(IndexSet(integer: 1))
+            }
+        }
+    }
+    func meshNetworkManager(_ manager: MeshNetworkManager, bearerDidClose bearer: Bearer) {
+        if showTemplateCreate {
+            DispatchQueue.main.asyncAfter(wallDeadline: .now() + 1) {[weak self] in
+                self?.collectionView?.reloadSections(IndexSet(integer: 1))
+            }
+        }
+    }
 }
 
   

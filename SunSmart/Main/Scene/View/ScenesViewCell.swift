@@ -23,6 +23,10 @@ class ScenesViewCell: GroupsViewCell {
             let imageIndex = max(min(scene.info.imageId, sceneImageNames.count) - 1, 0)
             self.imageView.image = UIImage(named: sceneImageNames[imageIndex])
             self.nameLabel.text = scene.info.name ?? scene.name
+            
+            if scene.needSyncGroups.count > 0 {
+                imageView.image = UIImage(named: "sync_failed_big")
+            }
         }
     }
     
@@ -34,6 +38,8 @@ class ScenesViewCell: GroupsViewCell {
         animationView.snp.makeConstraints { make in
             make.edges.equalToSuperview()
         }
+        
+        contentView.bringSubviewToFront(deleteBtn)
     }
     
     required init?(coder: NSCoder) {

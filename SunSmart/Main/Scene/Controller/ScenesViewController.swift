@@ -52,17 +52,17 @@ class ScenesViewController: UIViewController {
         
         view.backgroundColor = Background_Color
         setupUI()
-        updateUI()
+//        updateUI()
         addNotification()
     }
     
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
         
-        if refreshData {
-            refreshData = false
+//        if refreshData {
+//            refreshData = false
             updateUI()
-        }
+//        }
     }
     
     override func viewDidLayoutSubviews() {
@@ -75,11 +75,14 @@ class ScenesViewController: UIViewController {
     private func addNotification() {
         
         NotificationCenter.default.addObserver(forName: .init(scenesRefreshNotificationName), object: nil, queue: nil) {[weak self] _ in
-            if self?.view.window != nil {
-                self?.updateUI()
+            guard let self = self else { return }
+            if self.view.window != nil {
+                self.updateUI()
             }else {
-                self?.refreshData = true
+                self.refreshData = true
             }
+            self.space.sceneCount = self.space.scenes.count
+            self.space.save()
         }
         
         NotificationCenter.default.addObserver(forName: .init(sceneDataUpdateNotificationName), object: nil, queue: nil) { [weak self] notification in
@@ -120,13 +123,13 @@ class ScenesViewController: UIViewController {
     
     private func deleteScene(scene: Scene) {
         
-        SRAlertView(title: "notification".localizedString, message: "group_delete_message".localizedString, messageFont: FONTS(15), actions: [.cancelAction, SRAlertAction(title: "DELETE".localizedString, style: .destructive, actionHandler: {[weak self] _ in
+        SRAlertView(title: "notification".localizedString, message: "scene_delete_message".localizedString, messageFont: FONTS(15), actions: [.cancelAction, SRAlertAction(title: "DELETE".localizedString, style: .destructive, actionHandler: {[weak self] _ in
             guard let self = self else { return }
             // 存在设备并且网络未连接
-//            if scene.nodes.count > 0 && !MeshLibManager.manager.isMeshNetworkConnected {
-//                XWHUDManager.showTipHUD("device_notconnect_message".localizedString, isLineFeed: true)
-//                return
-//            }
+            if scene.nodes.count > 0 && !MeshLibManager.manager.isMeshNetworkConnected {
+                XWHUDManager.showTipHUD("device_notconnect_message".localizedString, isLineFeed: true)
+                return
+            }
 
             XWHUDManager.showCustomHUD(withMessage: "deleting".localizedString, isWindow: true)
             // 测试数据
@@ -213,7 +216,7 @@ class ScenesViewController: UIViewController {
 //            collectionView.showEmptyDataView(title: "no_devices".localizedString, tipText: "no_devices_message".localizedString)
 //            collectionView.emptyView?.titleLabel.font = Font_Medium_Size(SCRYFrom(14))
             
-            collectionView.showEmptyDataView(imageName: "scene_empty", title: "no_scenes".localizedString, tipText: nil)
+            collectionView.showEmptyDataView(imageName: "scene_empty", title: "no_scenes".localizedString, tipText: "no_scenes_message".localizedString, margin: SCRXFrom(20))
             if let emptyView = collectionView.emptyView {
                 emptyView.contentView.snp.remakeConstraints({ make in
                     make.top.equalTo(SCRYFrom(39))
@@ -223,16 +226,17 @@ class ScenesViewController: UIViewController {
                 emptyView.imageView.snp.remakeConstraints { make in
                     make.top.equalToSuperview()
                     make.centerX.equalToSuperview()
-                    make.left.equalTo(SCRXFrom(-11))
-                    make.right.equalTo(SCRXFrom(11))
-                    make.height.equalTo(emptyView.snp.width).multipliedBy(298.0 / 353)
+                    make.left.equalTo(SCRXFrom(-4))
+                    make.right.equalTo(SCRXFrom(4))
+                    make.height.equalTo(emptyView.snp.width).multipliedBy(288.0 / 343)
                 }
+                emptyView.titleLabel.font = FONTS(SCRYFrom(15))
                 emptyView.titleLabel.snp.updateConstraints { make in
-                    make.top.equalTo(emptyView.imageView.snp.bottom).offset(SCRYFrom(9))
+                    make.top.equalTo(emptyView.imageView.snp.bottom).offset(SCRYFrom(24))
                 }
+                emptyView.tipLabel.font = UIFont.systemFont(ofSize: 15, weight: .light)
+                emptyView.tipLabel.lineBreakMode = .byCharWrapping
                 
-                let attStr = NSAttributedString(string: "no_scenes_message".localizedString)
-                emptyView.tipLabel.attributedText = attStr
             }
             
             
@@ -275,7 +279,7 @@ class ScenesViewController: UIViewController {
             make.height.equalTo(kSafeAreaBottomHeight + SCRYFrom(56))
         }
         
-        doneBtn = UIButton(title: "done".localizedString, titleSize: 16, titleColor: Title_Color, target: self, action: #selector(doneBtnAction))
+        doneBtn = UIButton(title: "done".localizedString, titleSize: 16, titleWeight: .light, titleColor: Title_Color, target: self, action: #selector(doneBtnAction))
         editView.addSubview(doneBtn)
         doneBtn.snp.makeConstraints { make in
             make.left.right.top.equalToSuperview()
@@ -342,6 +346,22 @@ extension ScenesViewController: UICollectionViewDataSource, UICollectionViewDele
             // 执行场景
             let scene = space.scenes[indexPath.item]
             MeshAPI.startScene(sceneNumber: scene.number)
+            
+            scene.info.groups.forEach { group in
+                if let data = group.info.bindSceneDatas[scene.number] {
+                    group.lightness = Node.getLightness(lightness100: data.lightness)
+                    group.cct = data.cct
+                    group.isOn = data.lightness > 0
+                }
+                
+                group.nodes.forEach({
+                    if let sceneData = $0.sceneDatas[scene.number] {
+                        $0.lightness = Node.getLightness(lightness100: sceneData.lightness, range: $0.lightnessRange)
+                        $0.isOn = $0.lightness > 0
+                        $0.temperature = UInt16(sceneData.cct)
+                    }
+                })
+            }
             
             cell.showExecuteAnimation()
         }

@@ -7,9 +7,25 @@
 
 import UIKit
 
-protocol NavigationViewControllerBackItemDelegate: NSObjectProtocol {
+protocol NavigationViewControllerDelegate: NSObjectProtocol {
+    
+    /// 点击返回item回调
     func navigationController(_ navigationController: NavigationViewController, backItemAction showViewController: UIViewController)
+    
+    /// pop手势begin回调，返回是否可以pop
+    func navigationController(_ navigationController: NavigationViewController, gestureRecognizerShould gestureRecognizer: UIGestureRecognizer) -> Bool
 }
+
+extension NavigationViewControllerDelegate {
+    func navigationController(_ navigationController: NavigationViewController, backItemAction showViewController: UIViewController) {
+        
+    }
+    
+    func navigationController(_ navigationController: NavigationViewController, gestureRecognizerShould gestureRecognizer: UIGestureRecognizer) -> Bool {
+        return navigationController.children.count > 1
+    }
+}
+
 //
 //extension UIViewController: NavigationViewControllerBackItemDelegate {
 //    func navigationControllerBackItemAction(_ navigationController: NavigationViewController) {
@@ -19,11 +35,11 @@ protocol NavigationViewControllerBackItemDelegate: NSObjectProtocol {
 
 class NavigationViewController: UINavigationController {
 
-    weak var backItemDelegate: NavigationViewControllerBackItemDelegate?
+    weak var navigationDelegate: NavigationViewControllerDelegate?
      
     override func viewDidLoad() {
         super.viewDidLoad()
-
+        
         self.navigationBar.barTintColor = .white
         let titleFont = FONTS(18)
         let titleTextAttributes = [NSAttributedString.Key.font: titleFont,NSAttributedString.Key.foregroundColor: RGB(30, 35, 41)]
@@ -60,16 +76,20 @@ class NavigationViewController: UINavigationController {
     /// 点击返回
     @objc private func backItemClick() {
         
-        if let showVc = topViewController {
-            backItemDelegate?.navigationController(self, backItemAction: showVc)
+        if let showVc = topViewController, let delegate = self.navigationDelegate {
+            delegate.navigationController(self, backItemAction: showVc)
+        }else {
+            super.popViewController(animated: true)
         }
-        super.popViewController(animated: true)
     }
 }
 
 extension NavigationViewController: UIGestureRecognizerDelegate {
     
     func gestureRecognizerShouldBegin(_ gestureRecognizer: UIGestureRecognizer) -> Bool {
+        if let delegate = self.navigationDelegate {
+            return delegate.navigationController(self, gestureRecognizerShould: gestureRecognizer)
+        }
         return children.count > 1
     }
 }

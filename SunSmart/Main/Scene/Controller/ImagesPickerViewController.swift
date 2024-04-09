@@ -68,7 +68,7 @@ class ImagesPickerViewController: UIViewController {
             make.height.equalTo(SCRYFrom(56) + kSafeAreaBottomHeight)
         }
         
-        doneBtn = UIButton(title: "done".localizedString, titleSize: 16, titleColor: Title_Color, target: self, action: #selector(doneBtnAction))
+        doneBtn = UIButton(title: "done".localizedString, titleSize: 16, titleWeight: .light, titleColor: Title_Color, target: self, action: #selector(doneBtnAction))
         bottomView.addSubview(doneBtn)
         doneBtn.snp.makeConstraints { make in
             make.left.right.top.equalToSuperview()

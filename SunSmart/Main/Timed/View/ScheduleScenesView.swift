@@ -196,7 +196,7 @@ extension ScheduleScenesView: UICollectionViewDataSource, UICollectionViewDelega
         let cell = collectionView.dequeueReusableCell(withReuseIdentifier: "cell", for: indexPath) as! ScheduleGroupsViewCell
         let scene = scenes[indexPath.item]
         cell.nameLabel.text = scene.info.name ?? scene.name
-        cell.selectedImageView.image = UIImage(named: selectScene == scene ? "device_select" : "device_select_un")
+        cell.selectedImageView.image = UIImage(named: selectScene == scene ? "schedule_target_select" : "schedule_target_select_un")
         cell.onoffBtn.isHidden = true
         if let schedule = schedule {
             // 是否需要同步日程

@@ -7,6 +7,7 @@
 
 import UIKit
 import NordicSigMeshSDK
+import Bugly
 
 @main
 class AppDelegate: UIResponder, UIApplicationDelegate {
@@ -20,7 +21,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         
         
 //        let space = SiteData.loadAll()[0].spaces.last
-//        let mainNavVc = NavigationViewController(rootViewController: SpaceViewController(space: space!)) //SitesViewController
+//        let mainNavVc = NavigationViewController(rootViewController: GroupViewController(space: space!, group: space!.groups.first!)) //SitesViewController
         let mainNavVc = NavigationViewController(rootViewController: SitesViewController())
 //        let mainNavVc = NavigationViewController(rootViewController: DeviceAddViewController())
         
@@ -31,6 +32,8 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         
         SiteData.createDatabaseIfNotExit()
         XWHUDManager.configHUDType(.light)
+        
+        Bugly.start(withAppId: "fce1e870b0")
         
 //        UIApplication.shared.statusBarStyle = .default
         

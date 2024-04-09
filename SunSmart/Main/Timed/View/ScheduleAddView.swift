@@ -23,7 +23,7 @@ protocol ScheduleAddViewDelegate: AnyObject {
 
 class ScheduleAddView: UIView {
     
-    var scrollView: UIScrollView!
+    var scrollView: ScheduleScrollView!
     var contentView: UIView!
  
     /// name+enable
@@ -227,6 +227,14 @@ class ScheduleAddView: UIView {
         fatalError("init(coder:) has not been implemented")
     }
     
+    override func hitTest(_ point: CGPoint, with event: UIEvent?) -> UIView? {
+//        let touchTimeView = self.timeView.point(inside: point, with: event)
+//        if touchTimeView {
+//            return self.timeView
+//        }
+        return super.hitTest(point, with: event)
+    }
+    
     /// 更新数据完整状态
     private func updateCompletionState() {
         if lastUpdateCompletion != isCompletion {
@@ -258,6 +266,19 @@ class ScheduleAddView: UIView {
         updateCompletionState()
     }
     
+    @objc private func nameEditAction() {
+        
+        SRAlertView(title: "edit_name".localizedString, titleColor: RGB(39, 37, 54), inputText: nameField.text, inputTextColor: RGB(39, 37, 54), actions: [SRAlertAction(title: "cancel".localizedString, titleFont: UIFont.systemFont(ofSize: SCRYFrom(17), weight: .light), style: .cancel), SRAlertAction(title: "done".localizedString, titleFont: UIFont.systemFont(ofSize: SCRYFrom(17), weight: .light))]) { [weak self] text, validRange in
+            guard let self = self else { return nil }
+            
+            return self.delegate?.view(self, nameDidEditing: text)
+        } inputDoneBack: {[weak self] name in
+            self?.nameField.text = name
+            self?.updateCompletionState()
+        }.show()
+
+    }
+    
     @objc private func hideKeyboard() {
         endEditing(true)
     }
@@ -266,19 +287,19 @@ class ScheduleAddView: UIView {
     
     private func setupUI() {
         
-        scrollView = UIScrollView()
+        scrollView = ScheduleScrollView()
         scrollView.showsVerticalScrollIndicator = false
         scrollView.alwaysBounceVertical = true
-        scrollView.delegate = self
+//        scrollView.delegate = self
         addSubview(scrollView)
         scrollView.snp.makeConstraints { make in
             make.edges.equalToSuperview()
         }
         
         contentView = UIView()
-        let tap = UITapGestureRecognizer(target: self, action: #selector(hideKeyboard))
-        tap.delegate = self
-        contentView.addGestureRecognizer(tap)
+//        let tap = UITapGestureRecognizer(target: self, action: #selector(hideKeyboard))
+//        tap.delegate = self
+//        contentView.addGestureRecognizer(tap)
         contentView.backgroundColor = Background_Color
         scrollView.addSubview(contentView)
         contentView.snp.makeConstraints { make in
@@ -288,6 +309,7 @@ class ScheduleAddView: UIView {
         infoView = UIView()
         infoView.backgroundColor = .white
         infoView.layer.cornerRadius = SCRYFrom(10)
+        infoView.addGestureRecognizer(UITapGestureRecognizer(target: self, action: #selector(nameEditAction)))
         contentView.addSubview(infoView)
         infoView.snp.makeConstraints { make in
             make.left.equalTo(SCRXFrom(16))
@@ -300,11 +322,12 @@ class ScheduleAddView: UIView {
         nameField.textColor = TextBlack_Color
         nameField.font = FONTS(SCRYFrom(15))
         nameField.text = "Schedule 1"
+        nameField.isEnabled = false
 //        nameField.clearButtonMode = .always
 //        nameField.rightViewMode = .always
         nameField.returnKeyType = .done
         nameField.addTarget(self, action: #selector(nameFieldEditChanged), for: .editingChanged)
-        nameField.delegate = self
+//        nameField.delegate = self
         infoView.addSubview(nameField)
         nameField.snp.makeConstraints { make in
             make.left.equalTo(SCRXFrom(12))
@@ -435,26 +458,42 @@ class ScheduleAddView: UIView {
     
 }
 
-extension ScheduleAddView: UITextFieldDelegate, UIScrollViewDelegate, UIGestureRecognizerDelegate {
+//extension ScheduleAddView: UITextFieldDelegate, UIScrollViewDelegate, UIGestureRecognizerDelegate {
+//    
+//    func scrollViewWillBeginDragging(_ scrollView: UIScrollView) {
+//        endEditing(true)
+//    }
+//    
+//    func textFieldShouldReturn(_ textField: UITextField) -> Bool {
+//        self.endEditing(true)
+//        return true
+//    }
+//    
+//    func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer, shouldReceive touch: UITouch) -> Bool {
+//        
+//        if let view = touch.view, NSStringFromClass(view.classForCoder) == "UITableViewCellContentView" {
+//            self.endEditing(true)
+//            return false
+//        }
+//        return true
+//    }
+//    
+//}
+
+class ScheduleScrollView: UIScrollView, UIGestureRecognizerDelegate {
     
-    func scrollViewWillBeginDragging(_ scrollView: UIScrollView) {
-        endEditing(true)
-    }
-    
-    func textFieldShouldReturn(_ textField: UITextField) -> Bool {
-        self.endEditing(true)
-        return true
-    }
-    
-    func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer, shouldReceive touch: UITouch) -> Bool {
-        
-        if let view = touch.view, NSStringFromClass(view.classForCoder) == "UITableViewCellContentView" {
-            self.endEditing(true)
-            return false
+    public func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer, shouldRequireFailureOf otherGestureRecognizer: UIGestureRecognizer) -> Bool {
+        // 判断是否是pickerview滑动手势
+        let pickerClasss: [AnyClass?] = [
+            NSClassFromString("UIPickerTableView"),
+            NSClassFromString("UIPickerTableViewWrapperCell"),
+            NSClassFromString("UIPickerColumnView")
+        ]
+        if let otherClass = otherGestureRecognizer.view?.classForCoder, pickerClasss.contains(where: { $0?.isSubclass(of: otherClass) ?? false }), otherGestureRecognizer.isKind(of: UIPanGestureRecognizer.classForCoder()) {
+            return true
         }
-        return true
+        return false
     }
-    
 }
 
 
@@ -679,6 +718,7 @@ class ScheduleTimeView: UIView {
                 return
             }
             selectRows.replaceSubrange(2...2, with: [newValue])
+            timePickerView.selectRows = selectRows
         }
     }
     

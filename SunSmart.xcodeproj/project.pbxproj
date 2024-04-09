@@ -8,17 +8,56 @@
 
 /* Begin PBXBuildFile section */
 		581B58D295B1A4EA131A7EC6 /* Pods_SunSmart.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 3647F5A841E5BFD94A947886 /* Pods_SunSmart.framework */; };
+		C8047F092B8DFA5900A09FFA /* ProfileInstructionsController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8047F082B8DFA5900A09FFA /* ProfileInstructionsController.swift */; };
+		C8047F0B2B8DFBF700A09FFA /* ProfileInstructionsViewCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8047F0A2B8DFBF700A09FFA /* ProfileInstructionsViewCell.swift */; };
+		C8047F0F2B8E049E00A09FFA /* ProfileInstructionsHeaderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8047F0E2B8E049E00A09FFA /* ProfileInstructionsHeaderView.swift */; };
+		C8047F112B8E0FE400A09FFA /* MotionSensorInstructionsController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8047F102B8E0FE400A09FFA /* MotionSensorInstructionsController.swift */; };
+		C8047F132B8E14F800A09FFA /* MotionSensorInstructionsViewCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8047F122B8E14F800A09FFA /* MotionSensorInstructionsViewCell.swift */; };
+		C8047F152B8ED37800A09FFA /* ProfileSettingsViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8047F142B8ED37800A09FFA /* ProfileSettingsViewController.swift */; };
+		C8047F172B8EDAD500A09FFA /* ProfileSettingsHeaderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8047F162B8EDAD500A09FFA /* ProfileSettingsHeaderView.swift */; };
+		C8047F192B8EE37700A09FFA /* ProfileSettingsSphasesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8047F182B8EE37700A09FFA /* ProfileSettingsSphasesView.swift */; };
+		C8047F1C2B8F179900A09FFA /* ProfileDaylightSensorControlView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8047F1B2B8F179900A09FFA /* ProfileDaylightSensorControlView.swift */; };
+		C8047F1E2B8F1FDC00A09FFA /* ProfileManualOverrideTimeoutView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8047F1D2B8F1FDC00A09FFA /* ProfileManualOverrideTimeoutView.swift */; };
+		C8047F202B8F28B400A09FFA /* ProfilePowerUpBehaviorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8047F1F2B8F28B400A09FFA /* ProfilePowerUpBehaviorView.swift */; };
+		C8047F222B8F388200A09FFA /* DaylightSensorInstructionsController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8047F212B8F388200A09FFA /* DaylightSensorInstructionsController.swift */; };
+		C8047F272B8F3A7200A09FFA /* DaylightSensorInstructionsHeaderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8047F262B8F3A7200A09FFA /* DaylightSensorInstructionsHeaderView.swift */; };
+		C8047F292B8F4C0E00A09FFA /* DaylightSensorInstructionsViewCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8047F282B8F4C0E00A09FFA /* DaylightSensorInstructionsViewCell.swift */; };
+		C8047F2D2B8F5C9200A09FFA /* ManualOverrideTimeoutInstructionController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8047F2C2B8F5C9200A09FFA /* ManualOverrideTimeoutInstructionController.swift */; };
+		C8047F2F2B8F5E1B00A09FFA /* PowerUpBehaviorInstructionController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8047F2E2B8F5E1B00A09FFA /* PowerUpBehaviorInstructionController.swift */; };
+		C8047F312B8F670200A09FFA /* AdjustSpeedInstructionController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8047F302B8F670200A09FFA /* AdjustSpeedInstructionController.swift */; };
+		C8047F332B8F692A00A09FFA /* CalibrationInstructionController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8047F322B8F692A00A09FFA /* CalibrationInstructionController.swift */; };
+		C82AE2EB2B95756600FA4BDB /* GroupSensorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C82AE2EA2B95756600FA4BDB /* GroupSensorView.swift */; };
+		C82AE2ED2B96EC6600FA4BDB /* Profile.swift in Sources */ = {isa = PBXBuildFile; fileRef = C82AE2EC2B96EC6600FA4BDB /* Profile.swift */; };
 		C85602942AA0744A0063B8B2 /* NordicSigMeshSDK in Frameworks */ = {isa = PBXBuildFile; productRef = C85602932AA0744A0063B8B2 /* NordicSigMeshSDK */; };
 		C85829F22B397F2B002A4367 /* SceneViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C85829F12B397F2B002A4367 /* SceneViewController.swift */; };
 		C85829F42B398354002A4367 /* SceneGroupsViewCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = C85829F32B398354002A4367 /* SceneGroupsViewCell.swift */; };
 		C85829F62B398443002A4367 /* CustomProgressView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C85829F52B398443002A4367 /* CustomProgressView.swift */; };
+		C85CB5F92BB6BE8E006598C0 /* DeviceInformationViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C85CB5F82BB6BE8E006598C0 /* DeviceInformationViewController.swift */; };
+		C8607BE22B90267F00A94F0B /* LightSensorCalibrationViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8607BE12B90267F00A94F0B /* LightSensorCalibrationViewController.swift */; };
+		C8607BE42B9026F700A94F0B /* LightSensorCalibrationSelectView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8607BE32B9026F700A94F0B /* LightSensorCalibrationSelectView.swift */; };
+		C8607BE62B905F5100A94F0B /* LightSensorCalibrationView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8607BE52B905F5100A94F0B /* LightSensorCalibrationView.swift */; };
+		C8607BE82B9165AC00A94F0B /* ProfileLevelSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8607BE72B9165AC00A94F0B /* ProfileLevelSettingsView.swift */; };
+		C8607BEA2B91D56B00A94F0B /* ProfilePhasesTimePickerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8607BE92B91D56B00A94F0B /* ProfilePhasesTimePickerView.swift */; };
 		C87415DD2ADFD1510020E3C2 /* PopGestureScrollView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C87415DC2ADFD1510020E3C2 /* PopGestureScrollView.swift */; };
+		C87D8B272BA818AA00F930F9 /* GroupSwitchEnOceanProxyHeaderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C87D8B262BA818AA00F930F9 /* GroupSwitchEnOceanProxyHeaderView.swift */; };
+		C87EB44C2BA07D1800F9285B /* GroupSwitchsViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C87EB44B2BA07D1800F9285B /* GroupSwitchsViewController.swift */; };
+		C87EB44E2BA07E7E00F9285B /* GroupSwitchsHeaderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C87EB44D2BA07E7E00F9285B /* GroupSwitchsHeaderView.swift */; };
+		C87EB4502BA0822E00F9285B /* GroupSwitchPanelViewCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = C87EB44F2BA0822E00F9285B /* GroupSwitchPanelViewCell.swift */; };
+		C87EB4532BA0856700F9285B /* GroupSwitch.swift in Sources */ = {isa = PBXBuildFile; fileRef = C87EB4522BA0856700F9285B /* GroupSwitch.swift */; };
+		C87EB4552BA13BA400F9285B /* EnOceanProxyViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C87EB4542BA13BA400F9285B /* EnOceanProxyViewController.swift */; };
+		C87EB4572BA1500500F9285B /* SwitchSelectSceneViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C87EB4562BA1500500F9285B /* SwitchSelectSceneViewController.swift */; };
+		C87EB4622BA17D3F00F9285B /* CodeScan.bundle in Resources */ = {isa = PBXBuildFile; fileRef = C87EB45A2BA17D3E00F9285B /* CodeScan.bundle */; };
+		C87EB4632BA17D3F00F9285B /* LBXScanNetAnimation.swift in Sources */ = {isa = PBXBuildFile; fileRef = C87EB45B2BA17D3E00F9285B /* LBXScanNetAnimation.swift */; };
+		C87EB4642BA17D3F00F9285B /* LBXScanView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C87EB45C2BA17D3E00F9285B /* LBXScanView.swift */; };
+		C87EB4652BA17D3F00F9285B /* LBXScanViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C87EB45D2BA17D3E00F9285B /* LBXScanViewController.swift */; };
+		C87EB4662BA17D3F00F9285B /* LBXScanLineAnimation.swift in Sources */ = {isa = PBXBuildFile; fileRef = C87EB45E2BA17D3E00F9285B /* LBXScanLineAnimation.swift */; };
+		C87EB4672BA17D3F00F9285B /* LBXScanViewStyle.swift in Sources */ = {isa = PBXBuildFile; fileRef = C87EB45F2BA17D3E00F9285B /* LBXScanViewStyle.swift */; };
+		C87EB4682BA17D3F00F9285B /* LBXPermissions.swift in Sources */ = {isa = PBXBuildFile; fileRef = C87EB4602BA17D3F00F9285B /* LBXPermissions.swift */; };
+		C87EB4692BA17D3F00F9285B /* LBXScanWrapper.swift in Sources */ = {isa = PBXBuildFile; fileRef = C87EB4612BA17D3F00F9285B /* LBXScanWrapper.swift */; };
 		C88B25742ADD180900CF1AE4 /* DeviceLightViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C88B25732ADD180900CF1AE4 /* DeviceLightViewController.swift */; };
 		C88B25762ADD399C00CF1AE4 /* DeviceLightBasicController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C88B25752ADD399C00CF1AE4 /* DeviceLightBasicController.swift */; };
-		C88B25782ADD39AB00CF1AE4 /* DeviceLightAdvancedController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C88B25772ADD39AB00CF1AE4 /* DeviceLightAdvancedController.swift */; };
 		C88B257A2ADE1D2100CF1AE4 /* DeviceLightHeaderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C88B25792ADE1D2100CF1AE4 /* DeviceLightHeaderView.swift */; };
 		C88B257E2ADE594600CF1AE4 /* DeviceLightControlViewCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = C88B257D2ADE594600CF1AE4 /* DeviceLightControlViewCell.swift */; };
-		C88B25822ADE62E300CF1AE4 /* DeviceLightInfoSectionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C88B25812ADE62E300CF1AE4 /* DeviceLightInfoSectionView.swift */; };
 		C896B9A82A930BA800217512 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = C896B9A72A930BA800217512 /* AppDelegate.swift */; };
 		C896B9B12A930BAA00217512 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = C896B9B02A930BAA00217512 /* Assets.xcassets */; };
 		C896B9B42A930BAA00217512 /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = C896B9B22A930BAA00217512 /* LaunchScreen.storyboard */; };
@@ -38,11 +77,7 @@
 		C898E2EF2ABA8BEE00C71315 /* CustomTableViewCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = C898E2EE2ABA8BEE00C71315 /* CustomTableViewCell.swift */; };
 		C898E2F12ABA9BB900C71315 /* SitesViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C898E2F02ABA9BB900C71315 /* SitesViewController.swift */; };
 		C898E2F32ABAD3DF00C71315 /* MenuPopView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C898E2F22ABAD3DF00C71315 /* MenuPopView.swift */; };
-		C898E2F92ABAEE6C00C71315 /* XWHUDManager_successful@2x.png in Resources */ = {isa = PBXBuildFile; fileRef = C898E2F82ABAEE6C00C71315 /* XWHUDManager_successful@2x.png */; };
-		C898E2FB2ABBD57B00C71315 /* XWHUDManager_loading@2x.png in Resources */ = {isa = PBXBuildFile; fileRef = C898E2FA2ABBD57B00C71315 /* XWHUDManager_loading@2x.png */; };
 		C898E2FD2ABBD61200C71315 /* SRAlertView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C898E2FC2ABBD61200C71315 /* SRAlertView.swift */; };
-		C898E3002ABBE6A300C71315 /* XWHUDManager_error@2x.png in Resources */ = {isa = PBXBuildFile; fileRef = C898E2FE2ABBE6A300C71315 /* XWHUDManager_error@2x.png */; };
-		C898E3012ABBE6A300C71315 /* XWHUDManager_error@3x.png in Resources */ = {isa = PBXBuildFile; fileRef = C898E2FF2ABBE6A300C71315 /* XWHUDManager_error@3x.png */; };
 		C898EA5E2AC2BD8B0023B480 /* WMPageController.m in Sources */ = {isa = PBXBuildFile; fileRef = C898EA512AC2BD8B0023B480 /* WMPageController.m */; };
 		C898EA5F2AC2BD8B0023B480 /* UIViewController+WMPageController.m in Sources */ = {isa = PBXBuildFile; fileRef = C898EA522AC2BD8B0023B480 /* UIViewController+WMPageController.m */; };
 		C898EA602AC2BD8B0023B480 /* WMMenuItem.m in Sources */ = {isa = PBXBuildFile; fileRef = C898EA582AC2BD8B0023B480 /* WMMenuItem.m */; };
@@ -67,6 +102,7 @@
 		C89A1C3D2B561850004912B9 /* ScheduleGroupsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C89A1C3C2B561850004912B9 /* ScheduleGroupsView.swift */; };
 		C89A1C3F2B566B96004912B9 /* ScheduleScenesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C89A1C3E2B566B96004912B9 /* ScheduleScenesView.swift */; };
 		C89AABE42B52376A00A17FB0 /* GroupProfilesViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C89AABE32B52376A00A17FB0 /* GroupProfilesViewController.swift */; };
+		C89AC9312B62372300744868 /* DeviceLightInfoSectionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C89AC9302B62372300744868 /* DeviceLightInfoSectionView.swift */; };
 		C89C9FE22B3BC1B900074031 /* SceneServer.swift in Sources */ = {isa = PBXBuildFile; fileRef = C89C9FE12B3BC1B900074031 /* SceneServer.swift */; };
 		C89C9FE42B3C197B00074031 /* SyncDevicesViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C89C9FE32B3C197B00074031 /* SyncDevicesViewController.swift */; };
 		C89C9FE82B3C248100074031 /* SyncDevicesSectionHeaderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C89C9FE72B3C248100074031 /* SyncDevicesSectionHeaderView.swift */; };
@@ -144,22 +180,67 @@
 		C8BF088C2B29903E00144BAC /* GroupDeviceViewCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8BF088B2B29903E00144BAC /* GroupDeviceViewCell.swift */; };
 		C8BF088E2B299DD700144BAC /* LinePageControl.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8BF088D2B299DD700144BAC /* LinePageControl.swift */; };
 		C8BF08912B2A8DCD00144BAC /* GroupServer.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8BF08902B2A8DCD00144BAC /* GroupServer.swift */; };
+		C8C1E59A2B69F5E000F60E62 /* XWHUDManager_loading@3x.png in Resources */ = {isa = PBXBuildFile; fileRef = C8C1E5982B69F5E000F60E62 /* XWHUDManager_loading@3x.png */; };
+		C8C1E59C2B69F8CB00F60E62 /* XWHUDManager_loading@2x.png in Resources */ = {isa = PBXBuildFile; fileRef = C8C1E59B2B69F8CB00F60E62 /* XWHUDManager_loading@2x.png */; };
+		C8C1E5A72B6A1FA500F60E62 /* XWHUDManager_successful@2x.png in Resources */ = {isa = PBXBuildFile; fileRef = C8C1E5A52B6A1FA400F60E62 /* XWHUDManager_successful@2x.png */; };
+		C8C1E5A82B6A1FA500F60E62 /* XWHUDManager_successful@3x.png in Resources */ = {isa = PBXBuildFile; fileRef = C8C1E5A62B6A1FA500F60E62 /* XWHUDManager_successful@3x.png */; };
+		C8C1E5AB2B6A1FDC00F60E62 /* XWHUDManager_error@2x.png in Resources */ = {isa = PBXBuildFile; fileRef = C8C1E5A92B6A1FDC00F60E62 /* XWHUDManager_error@2x.png */; };
+		C8C1E5AC2B6A1FDC00F60E62 /* XWHUDManager_error@3x.png in Resources */ = {isa = PBXBuildFile; fileRef = C8C1E5AA2B6A1FDC00F60E62 /* XWHUDManager_error@3x.png */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
 		3647F5A841E5BFD94A947886 /* Pods_SunSmart.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_SunSmart.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		696542B08AF6CAD0F2D68852 /* Pods-SunSmart.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-SunSmart.release.xcconfig"; path = "Target Support Files/Pods-SunSmart/Pods-SunSmart.release.xcconfig"; sourceTree = "<group>"; };
 		83B834353D02278FB127A37D /* Pods-SunSmart.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-SunSmart.debug.xcconfig"; path = "Target Support Files/Pods-SunSmart/Pods-SunSmart.debug.xcconfig"; sourceTree = "<group>"; };
+		C8047F082B8DFA5900A09FFA /* ProfileInstructionsController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileInstructionsController.swift; sourceTree = "<group>"; };
+		C8047F0A2B8DFBF700A09FFA /* ProfileInstructionsViewCell.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileInstructionsViewCell.swift; sourceTree = "<group>"; };
+		C8047F0E2B8E049E00A09FFA /* ProfileInstructionsHeaderView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileInstructionsHeaderView.swift; sourceTree = "<group>"; };
+		C8047F102B8E0FE400A09FFA /* MotionSensorInstructionsController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MotionSensorInstructionsController.swift; sourceTree = "<group>"; };
+		C8047F122B8E14F800A09FFA /* MotionSensorInstructionsViewCell.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MotionSensorInstructionsViewCell.swift; sourceTree = "<group>"; };
+		C8047F142B8ED37800A09FFA /* ProfileSettingsViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileSettingsViewController.swift; sourceTree = "<group>"; };
+		C8047F162B8EDAD500A09FFA /* ProfileSettingsHeaderView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileSettingsHeaderView.swift; sourceTree = "<group>"; };
+		C8047F182B8EE37700A09FFA /* ProfileSettingsSphasesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileSettingsSphasesView.swift; sourceTree = "<group>"; };
+		C8047F1B2B8F179900A09FFA /* ProfileDaylightSensorControlView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileDaylightSensorControlView.swift; sourceTree = "<group>"; };
+		C8047F1D2B8F1FDC00A09FFA /* ProfileManualOverrideTimeoutView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileManualOverrideTimeoutView.swift; sourceTree = "<group>"; };
+		C8047F1F2B8F28B400A09FFA /* ProfilePowerUpBehaviorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfilePowerUpBehaviorView.swift; sourceTree = "<group>"; };
+		C8047F212B8F388200A09FFA /* DaylightSensorInstructionsController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DaylightSensorInstructionsController.swift; sourceTree = "<group>"; };
+		C8047F262B8F3A7200A09FFA /* DaylightSensorInstructionsHeaderView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DaylightSensorInstructionsHeaderView.swift; sourceTree = "<group>"; };
+		C8047F282B8F4C0E00A09FFA /* DaylightSensorInstructionsViewCell.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DaylightSensorInstructionsViewCell.swift; sourceTree = "<group>"; };
+		C8047F2C2B8F5C9200A09FFA /* ManualOverrideTimeoutInstructionController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ManualOverrideTimeoutInstructionController.swift; sourceTree = "<group>"; };
+		C8047F2E2B8F5E1B00A09FFA /* PowerUpBehaviorInstructionController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PowerUpBehaviorInstructionController.swift; sourceTree = "<group>"; };
+		C8047F302B8F670200A09FFA /* AdjustSpeedInstructionController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AdjustSpeedInstructionController.swift; sourceTree = "<group>"; };
+		C8047F322B8F692A00A09FFA /* CalibrationInstructionController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalibrationInstructionController.swift; sourceTree = "<group>"; };
+		C82AE2EA2B95756600FA4BDB /* GroupSensorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GroupSensorView.swift; sourceTree = "<group>"; };
+		C82AE2EC2B96EC6600FA4BDB /* Profile.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Profile.swift; sourceTree = "<group>"; };
 		C85829F12B397F2B002A4367 /* SceneViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SceneViewController.swift; sourceTree = "<group>"; };
 		C85829F32B398354002A4367 /* SceneGroupsViewCell.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SceneGroupsViewCell.swift; sourceTree = "<group>"; };
 		C85829F52B398443002A4367 /* CustomProgressView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CustomProgressView.swift; sourceTree = "<group>"; };
+		C85CB5F82BB6BE8E006598C0 /* DeviceInformationViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceInformationViewController.swift; sourceTree = "<group>"; };
+		C8607BE12B90267F00A94F0B /* LightSensorCalibrationViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LightSensorCalibrationViewController.swift; sourceTree = "<group>"; };
+		C8607BE32B9026F700A94F0B /* LightSensorCalibrationSelectView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LightSensorCalibrationSelectView.swift; sourceTree = "<group>"; };
+		C8607BE52B905F5100A94F0B /* LightSensorCalibrationView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LightSensorCalibrationView.swift; sourceTree = "<group>"; };
+		C8607BE72B9165AC00A94F0B /* ProfileLevelSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileLevelSettingsView.swift; sourceTree = "<group>"; };
+		C8607BE92B91D56B00A94F0B /* ProfilePhasesTimePickerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfilePhasesTimePickerView.swift; sourceTree = "<group>"; };
 		C87415DC2ADFD1510020E3C2 /* PopGestureScrollView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PopGestureScrollView.swift; sourceTree = "<group>"; };
+		C87D8B262BA818AA00F930F9 /* GroupSwitchEnOceanProxyHeaderView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GroupSwitchEnOceanProxyHeaderView.swift; sourceTree = "<group>"; };
+		C87EB44B2BA07D1800F9285B /* GroupSwitchsViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GroupSwitchsViewController.swift; sourceTree = "<group>"; };
+		C87EB44D2BA07E7E00F9285B /* GroupSwitchsHeaderView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GroupSwitchsHeaderView.swift; sourceTree = "<group>"; };
+		C87EB44F2BA0822E00F9285B /* GroupSwitchPanelViewCell.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GroupSwitchPanelViewCell.swift; sourceTree = "<group>"; };
+		C87EB4522BA0856700F9285B /* GroupSwitch.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GroupSwitch.swift; sourceTree = "<group>"; };
+		C87EB4542BA13BA400F9285B /* EnOceanProxyViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EnOceanProxyViewController.swift; sourceTree = "<group>"; };
+		C87EB4562BA1500500F9285B /* SwitchSelectSceneViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SwitchSelectSceneViewController.swift; sourceTree = "<group>"; };
+		C87EB45A2BA17D3E00F9285B /* CodeScan.bundle */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.plug-in"; path = CodeScan.bundle; sourceTree = "<group>"; };
+		C87EB45B2BA17D3E00F9285B /* LBXScanNetAnimation.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = LBXScanNetAnimation.swift; sourceTree = "<group>"; };
+		C87EB45C2BA17D3E00F9285B /* LBXScanView.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = LBXScanView.swift; sourceTree = "<group>"; };
+		C87EB45D2BA17D3E00F9285B /* LBXScanViewController.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = LBXScanViewController.swift; sourceTree = "<group>"; };
+		C87EB45E2BA17D3E00F9285B /* LBXScanLineAnimation.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = LBXScanLineAnimation.swift; sourceTree = "<group>"; };
+		C87EB45F2BA17D3E00F9285B /* LBXScanViewStyle.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = LBXScanViewStyle.swift; sourceTree = "<group>"; };
+		C87EB4602BA17D3F00F9285B /* LBXPermissions.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = LBXPermissions.swift; sourceTree = "<group>"; };
+		C87EB4612BA17D3F00F9285B /* LBXScanWrapper.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = LBXScanWrapper.swift; sourceTree = "<group>"; };
 		C88B25732ADD180900CF1AE4 /* DeviceLightViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceLightViewController.swift; sourceTree = "<group>"; };
 		C88B25752ADD399C00CF1AE4 /* DeviceLightBasicController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceLightBasicController.swift; sourceTree = "<group>"; };
-		C88B25772ADD39AB00CF1AE4 /* DeviceLightAdvancedController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceLightAdvancedController.swift; sourceTree = "<group>"; };
 		C88B25792ADE1D2100CF1AE4 /* DeviceLightHeaderView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceLightHeaderView.swift; sourceTree = "<group>"; };
 		C88B257D2ADE594600CF1AE4 /* DeviceLightControlViewCell.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = DeviceLightControlViewCell.swift; sourceTree = "<group>"; };
-		C88B25812ADE62E300CF1AE4 /* DeviceLightInfoSectionView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = DeviceLightInfoSectionView.swift; path = ../../../../../../Documents/DeviceLightInfoSectionView.swift; sourceTree = "<group>"; };
 		C896B9A42A930BA800217512 /* SunSmart.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = SunSmart.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		C896B9A72A930BA800217512 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
 		C896B9B02A930BAA00217512 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
@@ -184,11 +265,7 @@
 		C898E2EE2ABA8BEE00C71315 /* CustomTableViewCell.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = CustomTableViewCell.swift; sourceTree = "<group>"; };
 		C898E2F02ABA9BB900C71315 /* SitesViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SitesViewController.swift; sourceTree = "<group>"; };
 		C898E2F22ABAD3DF00C71315 /* MenuPopView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MenuPopView.swift; sourceTree = "<group>"; };
-		C898E2F82ABAEE6C00C71315 /* XWHUDManager_successful@2x.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "XWHUDManager_successful@2x.png"; sourceTree = "<group>"; };
-		C898E2FA2ABBD57B00C71315 /* XWHUDManager_loading@2x.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "XWHUDManager_loading@2x.png"; sourceTree = "<group>"; };
 		C898E2FC2ABBD61200C71315 /* SRAlertView.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = SRAlertView.swift; sourceTree = "<group>"; };
-		C898E2FE2ABBE6A300C71315 /* XWHUDManager_error@2x.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "XWHUDManager_error@2x.png"; sourceTree = "<group>"; };
-		C898E2FF2ABBE6A300C71315 /* XWHUDManager_error@3x.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "XWHUDManager_error@3x.png"; sourceTree = "<group>"; };
 		C898EA512AC2BD8B0023B480 /* WMPageController.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = WMPageController.m; sourceTree = "<group>"; };
 		C898EA522AC2BD8B0023B480 /* UIViewController+WMPageController.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = "UIViewController+WMPageController.m"; sourceTree = "<group>"; };
 		C898EA542AC2BD8B0023B480 /* WMScrollView.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = WMScrollView.h; sourceTree = "<group>"; };
@@ -219,6 +296,7 @@
 		C89A1C3C2B561850004912B9 /* ScheduleGroupsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScheduleGroupsView.swift; sourceTree = "<group>"; };
 		C89A1C3E2B566B96004912B9 /* ScheduleScenesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScheduleScenesView.swift; sourceTree = "<group>"; };
 		C89AABE32B52376A00A17FB0 /* GroupProfilesViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GroupProfilesViewController.swift; sourceTree = "<group>"; };
+		C89AC9302B62372300744868 /* DeviceLightInfoSectionView.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = DeviceLightInfoSectionView.swift; sourceTree = "<group>"; };
 		C89C9FE12B3BC1B900074031 /* SceneServer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SceneServer.swift; sourceTree = "<group>"; };
 		C89C9FE32B3C197B00074031 /* SyncDevicesViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SyncDevicesViewController.swift; sourceTree = "<group>"; };
 		C89C9FE72B3C248100074031 /* SyncDevicesSectionHeaderView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SyncDevicesSectionHeaderView.swift; sourceTree = "<group>"; };
@@ -298,6 +376,12 @@
 		C8BF088B2B29903E00144BAC /* GroupDeviceViewCell.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GroupDeviceViewCell.swift; sourceTree = "<group>"; };
 		C8BF088D2B299DD700144BAC /* LinePageControl.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LinePageControl.swift; sourceTree = "<group>"; };
 		C8BF08902B2A8DCD00144BAC /* GroupServer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GroupServer.swift; sourceTree = "<group>"; };
+		C8C1E5982B69F5E000F60E62 /* XWHUDManager_loading@3x.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "XWHUDManager_loading@3x.png"; sourceTree = "<group>"; };
+		C8C1E59B2B69F8CB00F60E62 /* XWHUDManager_loading@2x.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "XWHUDManager_loading@2x.png"; sourceTree = "<group>"; };
+		C8C1E5A52B6A1FA400F60E62 /* XWHUDManager_successful@2x.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "XWHUDManager_successful@2x.png"; sourceTree = "<group>"; };
+		C8C1E5A62B6A1FA500F60E62 /* XWHUDManager_successful@3x.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "XWHUDManager_successful@3x.png"; sourceTree = "<group>"; };
+		C8C1E5A92B6A1FDC00F60E62 /* XWHUDManager_error@2x.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "XWHUDManager_error@2x.png"; sourceTree = "<group>"; };
+		C8C1E5AA2B6A1FDC00F60E62 /* XWHUDManager_error@3x.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "XWHUDManager_error@3x.png"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -319,6 +403,135 @@
 				3647F5A841E5BFD94A947886 /* Pods_SunSmart.framework */,
 			);
 			name = Frameworks;
+			sourceTree = "<group>";
+		};
+		C8047F042B8DFA0100A09FFA /* Profile */ = {
+			isa = PBXGroup;
+			children = (
+				C8047F232B8F3A2C00A09FFA /* Instructions */,
+				C8047F072B8DFA1200A09FFA /* Controller */,
+				C8047F062B8DFA0E00A09FFA /* Model */,
+				C8047F052B8DFA0A00A09FFA /* View */,
+			);
+			path = Profile;
+			sourceTree = "<group>";
+		};
+		C8047F052B8DFA0A00A09FFA /* View */ = {
+			isa = PBXGroup;
+			children = (
+				C8047F162B8EDAD500A09FFA /* ProfileSettingsHeaderView.swift */,
+				C8047F182B8EE37700A09FFA /* ProfileSettingsSphasesView.swift */,
+				C8047F1B2B8F179900A09FFA /* ProfileDaylightSensorControlView.swift */,
+				C8047F1D2B8F1FDC00A09FFA /* ProfileManualOverrideTimeoutView.swift */,
+				C8047F1F2B8F28B400A09FFA /* ProfilePowerUpBehaviorView.swift */,
+				C8607BE72B9165AC00A94F0B /* ProfileLevelSettingsView.swift */,
+				C8607BE92B91D56B00A94F0B /* ProfilePhasesTimePickerView.swift */,
+			);
+			path = View;
+			sourceTree = "<group>";
+		};
+		C8047F062B8DFA0E00A09FFA /* Model */ = {
+			isa = PBXGroup;
+			children = (
+				C82AE2EC2B96EC6600FA4BDB /* Profile.swift */,
+			);
+			path = Model;
+			sourceTree = "<group>";
+		};
+		C8047F072B8DFA1200A09FFA /* Controller */ = {
+			isa = PBXGroup;
+			children = (
+				C8047F142B8ED37800A09FFA /* ProfileSettingsViewController.swift */,
+			);
+			path = Controller;
+			sourceTree = "<group>";
+		};
+		C8047F232B8F3A2C00A09FFA /* Instructions */ = {
+			isa = PBXGroup;
+			children = (
+				C8047F252B8F3A4600A09FFA /* Controller */,
+				C8047F242B8F3A4200A09FFA /* View */,
+			);
+			path = Instructions;
+			sourceTree = "<group>";
+		};
+		C8047F242B8F3A4200A09FFA /* View */ = {
+			isa = PBXGroup;
+			children = (
+				C8047F0E2B8E049E00A09FFA /* ProfileInstructionsHeaderView.swift */,
+				C8047F0A2B8DFBF700A09FFA /* ProfileInstructionsViewCell.swift */,
+				C8047F122B8E14F800A09FFA /* MotionSensorInstructionsViewCell.swift */,
+				C8047F262B8F3A7200A09FFA /* DaylightSensorInstructionsHeaderView.swift */,
+				C8047F282B8F4C0E00A09FFA /* DaylightSensorInstructionsViewCell.swift */,
+			);
+			path = View;
+			sourceTree = "<group>";
+		};
+		C8047F252B8F3A4600A09FFA /* Controller */ = {
+			isa = PBXGroup;
+			children = (
+				C8047F082B8DFA5900A09FFA /* ProfileInstructionsController.swift */,
+				C8047F102B8E0FE400A09FFA /* MotionSensorInstructionsController.swift */,
+				C8047F212B8F388200A09FFA /* DaylightSensorInstructionsController.swift */,
+				C8047F2C2B8F5C9200A09FFA /* ManualOverrideTimeoutInstructionController.swift */,
+				C8047F2E2B8F5E1B00A09FFA /* PowerUpBehaviorInstructionController.swift */,
+				C8047F302B8F670200A09FFA /* AdjustSpeedInstructionController.swift */,
+				C8047F322B8F692A00A09FFA /* CalibrationInstructionController.swift */,
+			);
+			path = Controller;
+			sourceTree = "<group>";
+		};
+		C87EB4482BA07CEA00F9285B /* Switch */ = {
+			isa = PBXGroup;
+			children = (
+				C87EB44A2BA07CF500F9285B /* Controller */,
+				C87EB4512BA0855400F9285B /* Model */,
+				C87EB4492BA07CF100F9285B /* View */,
+			);
+			path = Switch;
+			sourceTree = "<group>";
+		};
+		C87EB4492BA07CF100F9285B /* View */ = {
+			isa = PBXGroup;
+			children = (
+				C87EB44D2BA07E7E00F9285B /* GroupSwitchsHeaderView.swift */,
+				C87EB44F2BA0822E00F9285B /* GroupSwitchPanelViewCell.swift */,
+				C87D8B262BA818AA00F930F9 /* GroupSwitchEnOceanProxyHeaderView.swift */,
+			);
+			path = View;
+			sourceTree = "<group>";
+		};
+		C87EB44A2BA07CF500F9285B /* Controller */ = {
+			isa = PBXGroup;
+			children = (
+				C87EB44B2BA07D1800F9285B /* GroupSwitchsViewController.swift */,
+				C87EB4542BA13BA400F9285B /* EnOceanProxyViewController.swift */,
+				C87EB4562BA1500500F9285B /* SwitchSelectSceneViewController.swift */,
+			);
+			path = Controller;
+			sourceTree = "<group>";
+		};
+		C87EB4512BA0855400F9285B /* Model */ = {
+			isa = PBXGroup;
+			children = (
+				C87EB4522BA0856700F9285B /* GroupSwitch.swift */,
+			);
+			path = Model;
+			sourceTree = "<group>";
+		};
+		C87EB4592BA17D3E00F9285B /* ScanQRCode */ = {
+			isa = PBXGroup;
+			children = (
+				C87EB45B2BA17D3E00F9285B /* LBXScanNetAnimation.swift */,
+				C87EB45C2BA17D3E00F9285B /* LBXScanView.swift */,
+				C87EB45D2BA17D3E00F9285B /* LBXScanViewController.swift */,
+				C87EB45E2BA17D3E00F9285B /* LBXScanLineAnimation.swift */,
+				C87EB45F2BA17D3E00F9285B /* LBXScanViewStyle.swift */,
+				C87EB4602BA17D3F00F9285B /* LBXPermissions.swift */,
+				C87EB4612BA17D3F00F9285B /* LBXScanWrapper.swift */,
+				C87EB45A2BA17D3E00F9285B /* CodeScan.bundle */,
+			);
+			path = ScanQRCode;
 			sourceTree = "<group>";
 		};
 		C896B99B2A930BA800217512 = {
@@ -354,6 +567,7 @@
 		C896B9BC2A930C3700217512 /* Thirdparty */ = {
 			isa = PBXGroup;
 			children = (
+				C87EB4592BA17D3E00F9285B /* ScanQRCode */,
 				C896BB852A930C3800217512 /* WYHUDManager */,
 				C898EA502AC2BD8B0023B480 /* WMPageController */,
 			);
@@ -383,16 +597,18 @@
 		C896BB8B2A930C3800217512 /* Assets */ = {
 			isa = PBXGroup;
 			children = (
-				C898E2FA2ABBD57B00C71315 /* XWHUDManager_loading@2x.png */,
-				C898E2F82ABAEE6C00C71315 /* XWHUDManager_successful@2x.png */,
+				C8C1E59B2B69F8CB00F60E62 /* XWHUDManager_loading@2x.png */,
+				C8C1E5982B69F5E000F60E62 /* XWHUDManager_loading@3x.png */,
 				C896BB8C2A930C3800217512 /* XWHUDManager_info@3x.png */,
 				C896BB8D2A930C3800217512 /* XWHUDManager_right@2x.png */,
 				C896BB8E2A930C3800217512 /* XWHUDManager_right@3x.png */,
+				C8C1E5A52B6A1FA400F60E62 /* XWHUDManager_successful@2x.png */,
+				C8C1E5A62B6A1FA500F60E62 /* XWHUDManager_successful@3x.png */,
 				C896BB8F2A930C3800217512 /* XWHUDManager_info@2x.png */,
 				C896BB902A930C3800217512 /* XWHUDManager_tip@3x.png */,
 				C896BB932A930C3800217512 /* XWHUDManager_tip@2x.png */,
-				C898E2FE2ABBE6A300C71315 /* XWHUDManager_error@2x.png */,
-				C898E2FF2ABBE6A300C71315 /* XWHUDManager_error@3x.png */,
+				C8C1E5A92B6A1FDC00F60E62 /* XWHUDManager_error@2x.png */,
+				C8C1E5AA2B6A1FDC00F60E62 /* XWHUDManager_error@3x.png */,
 			);
 			path = Assets;
 			sourceTree = "<group>";
@@ -407,6 +623,7 @@
 				C8BF08482B26F75B00144BAC /* Group */,
 				C8A130B52B31296C0008C353 /* Scene */,
 				C8A29C212B47D3F700104634 /* Timed */,
+				C8047F042B8DFA0100A09FFA /* Profile */,
 			);
 			path = Main;
 			sourceTree = "<group>";
@@ -562,7 +779,7 @@
 				C89941942AD4F192008DCD76 /* DeviceAddViewCell.swift */,
 				C88B25792ADE1D2100CF1AE4 /* DeviceLightHeaderView.swift */,
 				C88B257D2ADE594600CF1AE4 /* DeviceLightControlViewCell.swift */,
-				C88B25812ADE62E300CF1AE4 /* DeviceLightInfoSectionView.swift */,
+				C89AC9302B62372300744868 /* DeviceLightInfoSectionView.swift */,
 			);
 			path = View;
 			sourceTree = "<group>";
@@ -573,8 +790,8 @@
 				C8A3290A2AC568A300BC7389 /* DevicesViewController.swift */,
 				C8A3290C2AC5690D00BC7389 /* DeviceAddViewController.swift */,
 				C88B25732ADD180900CF1AE4 /* DeviceLightViewController.swift */,
+				C85CB5F82BB6BE8E006598C0 /* DeviceInformationViewController.swift */,
 				C88B25752ADD399C00CF1AE4 /* DeviceLightBasicController.swift */,
-				C88B25772ADD39AB00CF1AE4 /* DeviceLightAdvancedController.swift */,
 			);
 			path = Controller;
 			sourceTree = "<group>";
@@ -771,6 +988,7 @@
 		C8BF08482B26F75B00144BAC /* Group */ = {
 			isa = PBXGroup;
 			children = (
+				C87EB4482BA07CEA00F9285B /* Switch */,
 				C8BF084A2B26F76900144BAC /* Controller */,
 				C8BF088F2B2A8DA100144BAC /* Model */,
 				C8BF08492B26F76500144BAC /* View */,
@@ -787,6 +1005,9 @@
 				C8BF08652B2842A300144BAC /* BuoySliderView.swift */,
 				C8BF088B2B29903E00144BAC /* GroupDeviceViewCell.swift */,
 				C8B5A1DF2B2C2AFD00728E36 /* GroupDevicesFunctionView.swift */,
+				C82AE2EA2B95756600FA4BDB /* GroupSensorView.swift */,
+				C8607BE32B9026F700A94F0B /* LightSensorCalibrationSelectView.swift */,
+				C8607BE52B905F5100A94F0B /* LightSensorCalibrationView.swift */,
 			);
 			path = View;
 			sourceTree = "<group>";
@@ -800,6 +1021,7 @@
 				C8B5A1E12B2C48DE00728E36 /* GroupCheckViewController.swift */,
 				C8BF08582B2705B400144BAC /* GroupAddViewController.swift */,
 				C89AABE32B52376A00A17FB0 /* GroupProfilesViewController.swift */,
+				C8607BE12B90267F00A94F0B /* LightSensorCalibrationViewController.swift */,
 			);
 			path = Controller;
 			sourceTree = "<group>";
@@ -890,17 +1112,20 @@
 			files = (
 				C896BD3E2A930C3A00217512 /* XWHUDManager_right@3x.png in Resources */,
 				C898E2D52AB7E46300C71315 /* Localizable.strings in Resources */,
+				C8C1E5A72B6A1FA500F60E62 /* XWHUDManager_successful@2x.png in Resources */,
 				C896BD402A930C3A00217512 /* XWHUDManager_tip@3x.png in Resources */,
+				C8C1E59A2B69F5E000F60E62 /* XWHUDManager_loading@3x.png in Resources */,
 				C896B9B42A930BAA00217512 /* LaunchScreen.storyboard in Resources */,
-				C898E3012ABBE6A300C71315 /* XWHUDManager_error@3x.png in Resources */,
+				C8C1E5AB2B6A1FDC00F60E62 /* XWHUDManager_error@2x.png in Resources */,
+				C87EB4622BA17D3F00F9285B /* CodeScan.bundle in Resources */,
+				C8C1E5AC2B6A1FDC00F60E62 /* XWHUDManager_error@3x.png in Resources */,
+				C8C1E59C2B69F8CB00F60E62 /* XWHUDManager_loading@2x.png in Resources */,
 				C896B9B12A930BAA00217512 /* Assets.xcassets in Resources */,
 				C896BD3F2A930C3A00217512 /* XWHUDManager_info@2x.png in Resources */,
 				C896BD3C2A930C3A00217512 /* XWHUDManager_info@3x.png in Resources */,
-				C898E2FB2ABBD57B00C71315 /* XWHUDManager_loading@2x.png in Resources */,
-				C898E2F92ABAEE6C00C71315 /* XWHUDManager_successful@2x.png in Resources */,
 				C896BD3D2A930C3A00217512 /* XWHUDManager_right@2x.png in Resources */,
-				C898E3002ABBE6A300C71315 /* XWHUDManager_error@2x.png in Resources */,
 				C896BD432A930C3A00217512 /* XWHUDManager_tip@2x.png in Resources */,
+				C8C1E5A82B6A1FA500F60E62 /* XWHUDManager_successful@3x.png in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -958,35 +1183,46 @@
 				C8A3290B2AC568A300BC7389 /* DevicesViewController.swift in Sources */,
 				C898E2E12AB840FE00C71315 /* MeshNetwork+SunSmart.swift in Sources */,
 				C89941982AD4FB0C008DCD76 /* ProvisioningDevice+Add.swift in Sources */,
+				C8607BE42B9026F700A94F0B /* LightSensorCalibrationSelectView.swift in Sources */,
 				C8B058A92B512C1F006FC36F /* TestDeviceAddManager.swift in Sources */,
+				C8047F1E2B8F1FDC00A09FFA /* ProfileManualOverrideTimeoutView.swift in Sources */,
 				C8A130C92B32C5F10008C353 /* SceneTemplates.swift in Sources */,
 				C8BF08662B2842A300144BAC /* BuoySliderView.swift in Sources */,
 				C8A130CF2B32EE220008C353 /* ImagesPickerViewController.swift in Sources */,
+				C87EB4532BA0856700F9285B /* GroupSwitch.swift in Sources */,
 				C89FEF482ABD6A6300DCCFB6 /* WebViewController.swift in Sources */,
 				C898EA6B2AC2C3270023B480 /* SpaceMenuView.swift in Sources */,
+				C8047F192B8EE37700A09FFA /* ProfileSettingsSphasesView.swift in Sources */,
 				C8ACF13B2AA1B2BA00E24B4A /* UIViewController+Extension.swift in Sources */,
+				C87EB4642BA17D3F00F9285B /* LBXScanView.swift in Sources */,
 				C87415DD2ADFD1510020E3C2 /* PopGestureScrollView.swift in Sources */,
 				C88B257E2ADE594600CF1AE4 /* DeviceLightControlViewCell.swift in Sources */,
 				C8ACF1382AA1B2BA00E24B4A /* UIImage+Extension.swift in Sources */,
+				C87EB4652BA17D3F00F9285B /* LBXScanViewController.swift in Sources */,
 				C8A130C62B32C2EC0008C353 /* SceneAddTemplateTitleHeaderView.swift in Sources */,
 				C8ACF1342AA1B2BA00E24B4A /* MacroDefinition.swift in Sources */,
 				C8B0589E2B50C9C6006FC36F /* DeviceGroupsView.swift in Sources */,
 				C8AAE2772A97435A00238C1C /* Database.swift in Sources */,
+				C85CB5F92BB6BE8E006598C0 /* DeviceInformationViewController.swift in Sources */,
 				C8ACF1352AA1B2BA00E24B4A /* UILabel+Extension.swift in Sources */,
 				C89AABE42B52376A00A17FB0 /* GroupProfilesViewController.swift in Sources */,
+				C87EB4662BA17D3F00F9285B /* LBXScanLineAnimation.swift in Sources */,
 				C8B5A1E02B2C2AFD00728E36 /* GroupDevicesFunctionView.swift in Sources */,
 				C8A099FF2AC138E30068C814 /* SiteViewController.swift in Sources */,
 				C89A1C392B5535A8004912B9 /* ScheduleDevicesView.swift in Sources */,
 				C898E2EF2ABA8BEE00C71315 /* CustomTableViewCell.swift in Sources */,
 				C89C9FEE2B3C271200074031 /* SyncDevicesTitleHeaderView.swift in Sources */,
+				C8607BE22B90267F00A94F0B /* LightSensorCalibrationViewController.swift in Sources */,
 				C8ACF1362AA1B2BA00E24B4A /* UIButton+Extension.swift in Sources */,
 				C8A3290D2AC5690D00BC7389 /* DeviceAddViewController.swift in Sources */,
 				C8A3EE862B3420F60082A772 /* SceneExecuteDataPickerView.swift in Sources */,
 				C8AADEFF2A97350400238C1C /* SiteData.swift in Sources */,
 				C8A29C2C2B47FE2300104634 /* ScheduleAddViewController.swift in Sources */,
+				C8047F0B2B8DFBF700A09FFA /* ProfileInstructionsViewCell.swift in Sources */,
 				C898EA5F2AC2BD8B0023B480 /* UIViewController+WMPageController.m in Sources */,
 				C89C9FE42B3C197B00074031 /* SyncDevicesViewController.swift in Sources */,
 				C8A099FD2AC134C30068C814 /* SiteEditViewController.swift in Sources */,
+				C87EB4502BA0822E00F9285B /* GroupSwitchPanelViewCell.swift in Sources */,
 				C8AADF012A973DA600238C1C /* SpaceData.swift in Sources */,
 				C8BF085B2B27146B00144BAC /* GroupAddHeaderView.swift in Sources */,
 				C89941932AD4E382008DCD76 /* LCWeakTimer.swift in Sources */,
@@ -995,24 +1231,29 @@
 				C8ACF13D2AA1B2BA00E24B4A /* CALayer+Animations.swift in Sources */,
 				C898EA5E2AC2BD8B0023B480 /* WMPageController.m in Sources */,
 				C8B0589C2B500D21006FC36F /* DeviceAllOnOffViewCell.swift in Sources */,
+				C8047F202B8F28B400A09FFA /* ProfilePowerUpBehaviorView.swift in Sources */,
 				C89A1C3F2B566B96004912B9 /* ScheduleScenesView.swift in Sources */,
-				C88B25782ADD39AB00CF1AE4 /* DeviceLightAdvancedController.swift in Sources */,
+				C8047F292B8F4C0E00A09FFA /* DaylightSensorInstructionsViewCell.swift in Sources */,
 				C898EA702AC3C64C0023B480 /* SpaceFunctionFooterView.swift in Sources */,
 				C85829F22B397F2B002A4367 /* SceneViewController.swift in Sources */,
 				C898E2ED2ABA8BAD00C71315 /* MainMenuView.swift in Sources */,
 				C8ACF13C2AA1B2BA00E24B4A /* String+Extension.swift in Sources */,
 				C8ACF1372AA1B2BA00E24B4A /* UIView+Extension.swift in Sources */,
 				C89F98432B5E5AC8007EABF5 /* ScenesViewCell.swift in Sources */,
+				C89AC9312B62372300744868 /* DeviceLightInfoSectionView.swift in Sources */,
 				C89FEF462ABD65F700DCCFB6 /* NavigationViewController.swift in Sources */,
 				C8BF088C2B29903E00144BAC /* GroupDeviceViewCell.swift in Sources */,
 				C8A3EE822B34087A0082A772 /* SceneAddGroupViewCell.swift in Sources */,
 				C88B25762ADD399C00CF1AE4 /* DeviceLightBasicController.swift in Sources */,
 				C89FEF4F2ABEB37900DCCFB6 /* SitesViewCell.swift in Sources */,
+				C8047F0F2B8E049E00A09FFA /* ProfileInstructionsHeaderView.swift in Sources */,
 				C8B058A72B5115B2006FC36F /* DeviceGroupsSelectData.swift in Sources */,
 				C8BF085E2B27F2C300144BAC /* CharacterSelectView.swift in Sources */,
 				C8AAE2812A9879E300238C1C /* SQLiteWrapper.m in Sources */,
+				C8047F172B8EDAD500A09FFA /* ProfileSettingsHeaderView.swift in Sources */,
 				C8BF08622B2840D800144BAC /* GroupViewController.swift in Sources */,
 				C89A1C362B54C64B004912B9 /* MultiseriatePickerView.swift in Sources */,
+				C87D8B272BA818AA00F930F9 /* GroupSwitchEnOceanProxyHeaderView.swift in Sources */,
 				C89C9FEC2B3C26BA00074031 /* SyncDeviceStepViewCell.swift in Sources */,
 				C8A130B92B3129960008C353 /* ScenesViewController.swift in Sources */,
 				C89941952AD4F192008DCD76 /* DeviceAddViewCell.swift in Sources */,
@@ -1027,16 +1268,24 @@
 				C8A09A072AC1790B0068C814 /* InfoEditViewController.swift in Sources */,
 				C8B5A1E22B2C48DE00728E36 /* GroupCheckViewController.swift in Sources */,
 				C8B5A1DE2B2BE9B300728E36 /* GroupMembersViewController.swift in Sources */,
+				C8047F092B8DFA5900A09FFA /* ProfileInstructionsController.swift in Sources */,
 				C85829F42B398354002A4367 /* SceneGroupsViewCell.swift in Sources */,
+				C87EB4692BA17D3F00F9285B /* LBXScanWrapper.swift in Sources */,
 				C8ACF13E2AA1B2BA00E24B4A /* UIBarButtonItem+Extension.swift in Sources */,
 				C898E2F32ABAD3DF00C71315 /* MenuPopView.swift in Sources */,
 				C8B0B48B2B468BC700747CF4 /* SyncDevicesProgressView.swift in Sources */,
 				C898EA622AC2BD8B0023B480 /* WMMenuView.m in Sources */,
+				C8047F2D2B8F5C9200A09FFA /* ManualOverrideTimeoutInstructionController.swift in Sources */,
 				C898EA722AC3D17C0023B480 /* DevicesViewCell.swift in Sources */,
+				C8607BE62B905F5100A94F0B /* LightSensorCalibrationView.swift in Sources */,
 				C8A29C282B47D5CF00104634 /* TimedSelectTypeView.swift in Sources */,
+				C8047F312B8F670200A09FFA /* AdjustSpeedInstructionController.swift in Sources */,
+				C87EB4672BA17D3F00F9285B /* LBXScanViewStyle.swift in Sources */,
 				C8ACF13A2AA1B2BA00E24B4A /* UIView+frame.swift in Sources */,
 				C8A09A012AC13A660068C814 /* SpacesViewCell.swift in Sources */,
 				C8BF08502B26FA7700144BAC /* GroupsViewCell.swift in Sources */,
+				C8607BEA2B91D56B00A94F0B /* ProfilePhasesTimePickerView.swift in Sources */,
+				C8607BE82B9165AC00A94F0B /* ProfileLevelSettingsView.swift in Sources */,
 				C8BF084C2B26F78100144BAC /* GroupsViewController.swift in Sources */,
 				C89FEF432ABD657F00DCCFB6 /* AboutViewController.swift in Sources */,
 				C8A29C2A2B47E0D300104634 /* SchedulesViewCell.swift in Sources */,
@@ -1045,6 +1294,7 @@
 				C898EA792AC41AFB0023B480 /* CustomDeviceSlider.swift in Sources */,
 				C8A130C02B327FF40008C353 /* SceneAddCustomView.swift in Sources */,
 				C898E2F12ABA9BB900C71315 /* SitesViewController.swift in Sources */,
+				C8047F132B8E14F800A09FFA /* MotionSensorInstructionsViewCell.swift in Sources */,
 				C89F98412B5E5A56007EABF5 /* SceneExecuteAnimationView.swift in Sources */,
 				C896B9A82A930BA800217512 /* AppDelegate.swift in Sources */,
 				C89C9FEA2B3C24C700074031 /* SyncDeviceViewCell.swift in Sources */,
@@ -1054,16 +1304,28 @@
 				C898EA632AC2BD8B0023B480 /* WMProgressView.m in Sources */,
 				C8A09A032AC162660068C814 /* String+Date.swift in Sources */,
 				C898EA742AC400100023B480 /* DeviceLightControlView.swift in Sources */,
+				C87EB4682BA17D3F00F9285B /* LBXPermissions.swift in Sources */,
+				C8047F222B8F388200A09FFA /* DaylightSensorInstructionsController.swift in Sources */,
+				C87EB44E2BA07E7E00F9285B /* GroupSwitchsHeaderView.swift in Sources */,
+				C87EB4552BA13BA400F9285B /* EnOceanProxyViewController.swift in Sources */,
 				C89A1C3B2B554F56004912B9 /* UIView+Shade.swift in Sources */,
-				C88B25822ADE62E300CF1AE4 /* DeviceLightInfoSectionView.swift in Sources */,
+				C8047F1C2B8F179900A09FFA /* ProfileDaylightSensorControlView.swift in Sources */,
+				C8047F112B8E0FE400A09FFA /* MotionSensorInstructionsController.swift in Sources */,
+				C8047F332B8F692A00A09FFA /* CalibrationInstructionController.swift in Sources */,
+				C8047F152B8ED37800A09FFA /* ProfileSettingsViewController.swift in Sources */,
 				C898E2DC2AB7E62100C71315 /* String+Localized.swift in Sources */,
 				C8A29C262B47D47500104634 /* TimedViewController.swift in Sources */,
 				C89C9FE22B3BC1B900074031 /* SceneServer.swift in Sources */,
 				C898F7022B3A810E008B4124 /* SceneSettingsViewController.swift in Sources */,
+				C87EB44C2BA07D1800F9285B /* GroupSwitchsViewController.swift in Sources */,
+				C82AE2EB2B95756600FA4BDB /* GroupSensorView.swift in Sources */,
 				C8BF084E2B26F84800144BAC /* AlignCenterFlowLayout.swift in Sources */,
 				C89FEF512ABECEEC00DCCFB6 /* EmptyDataView.swift in Sources */,
+				C8047F2F2B8F5E1B00A09FFA /* PowerUpBehaviorInstructionController.swift in Sources */,
+				C82AE2ED2B96EC6600FA4BDB /* Profile.swift in Sources */,
 				C88B25742ADD180900CF1AE4 /* DeviceLightViewController.swift in Sources */,
 				C88B257A2ADE1D2100CF1AE4 /* DeviceLightHeaderView.swift in Sources */,
+				C87EB4572BA1500500F9285B /* SwitchSelectSceneViewController.swift in Sources */,
 				C8A09A052AC178910068C814 /* ImageCollectionViewCell.swift in Sources */,
 				C8BF08912B2A8DCD00144BAC /* GroupServer.swift in Sources */,
 				C896BD3A2A930C3A00217512 /* WYProgressHUD.m in Sources */,
@@ -1074,6 +1336,8 @@
 				C89C9FE82B3C248100074031 /* SyncDevicesSectionHeaderView.swift in Sources */,
 				C8A130BE2B32785E0008C353 /* SceneAddViewController.swift in Sources */,
 				C898EA612AC2BD8B0023B480 /* WMScrollView.m in Sources */,
+				C8047F272B8F3A7200A09FFA /* DaylightSensorInstructionsHeaderView.swift in Sources */,
+				C87EB4632BA17D3F00F9285B /* LBXScanNetAnimation.swift in Sources */,
 				C898EA762AC409230023B480 /* DeviceSliderFunctionView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -1230,6 +1494,8 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = SunSmart/Info.plist;
 				INFOPLIST_KEY_NSBluetoothAlwaysUsageDescription = "Connect devices via Bluetooth";
+				INFOPLIST_KEY_NSCameraUsageDescription = "We need to access your camera for scanning the QR code of device";
+				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "We need to use your photo album to get the device's QR code";
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchStoryboardName = LaunchScreen;
 				INFOPLIST_KEY_UIMainStoryboardFile = "";
@@ -1249,7 +1515,7 @@
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_OBJC_BRIDGING_HEADER = "SunSmart/SunSmart-Bridging-Header.h";
 				SWIFT_VERSION = 5.0;
-				TARGETED_DEVICE_FAMILY = 1;
+				TARGETED_DEVICE_FAMILY = "1,2";
 			};
 			name = Debug;
 		};
@@ -1266,6 +1532,8 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = SunSmart/Info.plist;
 				INFOPLIST_KEY_NSBluetoothAlwaysUsageDescription = "Connect devices via Bluetooth";
+				INFOPLIST_KEY_NSCameraUsageDescription = "We need to access your camera for scanning the QR code of device";
+				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "We need to use your photo album to get the device's QR code";
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchStoryboardName = LaunchScreen;
 				INFOPLIST_KEY_UIMainStoryboardFile = "";
@@ -1285,7 +1553,7 @@
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_OBJC_BRIDGING_HEADER = "SunSmart/SunSmart-Bridging-Header.h";
 				SWIFT_VERSION = 5.0;
-				TARGETED_DEVICE_FAMILY = 1;
+				TARGETED_DEVICE_FAMILY = "1,2";
 			};
 			name = Release;
 		};

@@ -283,16 +283,21 @@ extension SpaceData {
         if MeshNetworkManager.instance.meshNetwork?.uuid.uuidString == self.meshUUID {
             MeshLibManager.manager.meshNetworkDisconnect()
         }
-        _ = MeshNetworkManager.removeMeshNetwork(meshUUID: self.meshUUID)
-        // 删除网络扩展数据
-        _ = GroupInfo.deleteAll(meshUUID: meshUUID)
-        _ = SceneInfo.deleteAll(meshUUID: meshUUID)
-        _ = SceneExecuteData.deleteAll(meshUUID: meshUUID)
-        _ = Schedule.deleteAll(meshUUID: meshUUID)
-        _ = Node.deleteAllInfo(meshUUID: meshUUID)
-        _ = Node.deleteAllSchedule(meshUUID: meshUUID)
-        
-        return self.deleteData()
+        DispatchQueue.global().async {
+            _ = MeshNetworkManager.removeMeshNetwork(meshUUID: self.meshUUID)
+            // 删除网络扩展数据
+            GroupInfo.deleteAll(meshUUID: self.meshUUID)
+            SceneInfo.deleteAll(meshUUID: self.meshUUID)
+            SceneExecuteData.deleteAll(meshUUID: self.meshUUID)
+            Schedule.deleteAll(meshUUID: self.meshUUID)
+            Node.deleteAllInfo(meshUUID: self.meshUUID)
+            Node.deleteAllSchedule(meshUUID: self.meshUUID)
+            Node.deleteProfile(meshUUID: self.meshUUID)
+            Profile.deleteProfiles(meshUUID: self.meshUUID)
+            GroupSwitch.deleteSwitchs(meshUUID: self.meshUUID)
+            self.deleteData()
+        }
+        return true
     }
     
 }
@@ -311,36 +316,73 @@ extension MeshNetworkManager {
     }
     
     /// 获取网络扩展数据
-    func loadExtensionData() {
+    func loadExtensionData(result: (()->Void)? = nil) {
         
         guard let uuid = self.meshNetwork?.uuid.uuidString else { return }
         
-        realNodes.forEach({
-            $0.loadExtendInfo()
-        })
-        
-        groups.forEach({
-            if let info = GroupInfo.load(meshUUID: uuid, address: $0.address.address) {
-                $0.info = info
-            }
-        })
-        
-        schedules = Schedule.loadAll(meshUUID: uuid)
-        
-        scenes.forEach({
-            if let info = SceneInfo.load(meshUUID: uuid, sceneId: Int($0.number)) {
-                $0.info = info
-                let sceneSchedules = $0.info.bindSchedules
-                $0.info.groups.forEach({ group in
-                    sceneSchedules.forEach({ sceneSchedule in
-                        if !group.info.bindSchedules.contains(where: {$0.id == sceneSchedule.id }) {
-                            group.info.bindSchedules.append(sceneSchedule)
-                        }
+        DispatchQueue.global().async {
+            self.realNodes.forEach({
+                $0.loadExtendInfo()
+                // 获取设备灯光配置数据
+                if let data = Node.loadProfile(meshUUID: uuid, address: $0.primaryUnicastAddress) {
+    //                switch data.powerUpState {
+    //                case .off:
+    //                    $0.powerUpState = .off
+    //                case .restore:
+    //                    $0.powerUpState = .restore
+    //                case .definedLightLevel(let level):
+    //                    $0.trunOffLightness = Node.getLightness(lightness100: level)
+    //                }
+    //                $0.lightnessRange = data.lightnessRange
+                    $0.lightLCProperty = data.propertys
+                }
+            })
+            
+            self.groups.forEach({
+                if let info = GroupInfo.load(meshUUID: uuid, address: $0.address.address) {
+                    $0.info = info
+                }
+            })
+            
+            self.schedules = Schedule.loadAll(meshUUID: uuid)
+            
+            self.scenes.forEach({
+                if let info = SceneInfo.load(meshUUID: uuid, sceneId: Int($0.number)) {
+                    $0.info = info
+                    let sceneSchedules = $0.info.bindSchedules
+                    $0.info.groups.forEach({ group in
+                        sceneSchedules.forEach({ sceneSchedule in
+                            if !group.info.bindSchedules.contains(where: {$0.id == sceneSchedule.id }) {
+                                group.info.bindSchedules.append(sceneSchedule)
+                            }
+                        })
                     })
-                })
+                }
+            })
+            
+            DispatchQueue.main.async {
+                result?()
             }
-        })
+        }
         
+    }
+    
+    /// 获取节点随机mac地址
+    func getRandomMacAddress() -> String {
+        
+        var mac: String = ""
+        while true {
+            mac.removeAll()
+            for _ in 0..<6 {
+                let value = UInt8.random(in: 0...0xFF)
+                mac.append(String(format: "%02X", value))
+            }
+            if !realNodes.contains(where: { $0.macAddress == mac }) {
+                break
+            }
+        }
+        print(mac)
+        return mac
     }
     
 }
@@ -371,23 +413,33 @@ extension Group {
             // 读取缓存
             guard let lightness = objc_getAssociatedObject(self, &Group.lightnessKey) as? UInt16 else {
                 if nodes.isEmpty {
-                    return 65535
+                    return Group.defaultLightness
                 }
                 // 计算频率最高值 出现次数>1
                 let lightnesss = self.nodes.filter({ $0.lightnessModel != nil }).map({ $0.lightness })
-                var lightnessValueList: [NSMutableArray] = []
-                lightnesss.forEach { value in
-                    if let values = lightnessValueList.first(where: { $0.contains(value) }) {
-                        values.add(value)
+//                var lightnessValueList: [NSMutableArray] = []
+                var lightnessDatas: [UInt16: Int] = [:]
+                lightnesss.forEach { lightness in
+                    if lightnessDatas.keys.contains(lightness) {
+                        lightnessDatas.updateValue((lightnessDatas[lightness] ?? 0) + 1, forKey: lightness)
                     }else {
-                        lightnessValueList.append(NSMutableArray(object: value))
+                        lightnessDatas.updateValue(1, forKey: lightness)
                     }
+//                    if let values = lightnessValueList.first(where: { $0.contains(value) }) {
+//                        values.add(value)
+//                    }else {
+//                        lightnessValueList.append(NSMutableArray(object: value))
+//                    }
                 }
+//                lightnesss.
                 // 默认值
                 var lightness = Group.defaultLightness
-                if let values = lightnessValueList.max(by: { $1.count > $0.count }), values.count > 1 {
-                    lightness = values.firstObject as! UInt16
+                if let result = lightnessDatas.max(by: { $0.value > $1.value && $0.key > 0 }) {
+                    lightness = result.key
                 }
+//                if let values = lightnessValueList.max(by: { $1.count >= $0.count }), values.count >= 1 {
+//                    lightness = values.firstObject as! UInt16
+//                }
                 return lightness
             }
             return lightness
@@ -478,7 +530,10 @@ extension Group {
                 $0.save(meshUUID: uuid)
             }
         })
-        
+        // 删除配置文件
+        Profile.deleteProfile(meshUUID: uuid, profileId: info.profile.id)
+        // 删除组内虚拟按键
+        GroupSwitch.deleteSwitchs(meshUUID: uuid, groupAddress: address.address)
     }
     
     /// 删除组内的场景缓存
@@ -505,6 +560,55 @@ extension Group {
         }
     }
     
+    /// 添加一个虚拟按键
+    @discardableResult func addGroupSwitch() -> GroupSwitch {
+        var nextId = 1
+        let exitIds = self.info.switchs.map({ $0.id })
+        for id in 1...1000 {
+            if !exitIds.contains(id) {
+                nextId = id
+                break
+            }
+        }
+        let groupSwitch = GroupSwitch(id: nextId, group: self, enabled: true, name: nextSwitchName())
+        self.info.switchs.append(groupSwitch)
+        if let uuid = MeshNetworkManager.instance.meshNetwork?.uuid.uuidString {
+            groupSwitch.save(meshUUID: uuid)
+        }
+        return groupSwitch
+    }
+    
+    /// 判断虚拟按键是否重名
+    func isSwitchTautonym(name: String) -> Bool {
+        return self.info.switchs.contains(where: { $0.name == name })
+    }
+    
+    /// 获取下一个虚拟按键名称
+    func nextSwitchName() -> String {
+        var nextName = ""
+        let exitNames = self.info.switchs.map({ $0.name })
+        let defalutName = "switch".localizedString
+        for index in 1...1000 {
+            let name = "\(defalutName) \(index)"
+            if !exitNames.contains(name) {
+                nextName = name
+                break
+            }
+        }
+        return nextName
+    }
+    
+    /// 删除组内虚拟按键
+    /// - Parameter groupSwitch: 虚拟按键
+    func delete(groupSwitch: GroupSwitch) {
+        
+        self.info.switchs.removeAll(where: { $0.id == groupSwitch.id })
+        guard let uuid = MeshNetworkManager.instance.meshNetwork?.uuid.uuidString else {
+            return
+        }
+        GroupSwitch.deleteProfile(meshUUID: uuid, groupAddress: groupSwitch.group.address.address, switchId: groupSwitch.id)
+    }
+    
     /// 本地化缓存组数据（只处理业务扩展数据）
     func save() {
         
@@ -517,7 +621,10 @@ extension Group {
         self.info.bindSceneDatas.forEach({
             SceneExecuteData.save(meshUUID: uuid, address: address.address, sceneId: Int($0.key), sceneData: $0.value)
         })
-        
+        // 保存虚拟按键数据
+        self.info.switchs.forEach({
+            $0.save(meshUUID: uuid)
+        })
     }
     
     
@@ -536,6 +643,9 @@ extension Group {
             needDeleteNodes = nodes.filter({ $0.sceneDatas.contains(where: { $0.key == scene.number }) })
         }else { // 同步
             needSyncNodes = nodes.filter({
+                guard $0.sceneSetupModel != nil else {
+                    return false
+                }
                 if let nodeSceneData = $0.sceneDatas.first(where: { $0.key == scene.number })?.value {
                     return !(nodeSceneData == sceneData)
                 }
@@ -685,13 +795,23 @@ class GroupInfo {
     /// 绑定的日程数据
     var bindSchedules: [Schedule] = []
     
-    init(address: UInt16, name: String? = nil, imageId: Int, imageText: String? = nil, bindSceneDatas: [SceneNumber : SceneExecuteData] = [:], bindSchedules: [Schedule] = []) {
+    /// 使用的配置数据
+    var profile: Profile
+    
+    /// 绑定的光照传感器
+    var ambientLightSensorNode: Node?
+    
+    /// 虚拟按键list
+    var switchs: [GroupSwitch] = []
+    
+    init(address: UInt16, name: String? = nil, imageId: Int, imageText: String? = nil, bindSceneDatas: [SceneNumber : SceneExecuteData] = [:], bindSchedules: [Schedule] = [], profile: Profile = .init(type: .occupancy_daylight)) {
         self.address = address
         self.name = name
         self.imageId = imageId
         self.imageText = imageText
         self.bindSceneDatas = bindSceneDatas
         self.bindSchedules = bindSchedules
+        self.profile = profile
     }
 }
 
@@ -1008,7 +1128,8 @@ extension Node {
     
     static private var bindSceneDatasKey = 1
     static private var schedulesKey = 2
-    static private var groupStateKey = 2
+    static private var groupStateKey = 3
+    static private var sensorTypesKey = 4
     
     /// 设备对应组状态
     var groupState: GroupState {
@@ -1058,6 +1179,34 @@ extension Node {
         return !getNeedSyncGroupData().isEmpty()
     }
     
+    
+    /// 节点是否配置完成
+//    var isKeybindComplete: Bool {
+//        
+//        guard isConfigBasic else {
+//            return false
+//        }
+//        // 节点内model未绑定appkey或者model有publish未设置
+//        for model in supportModels {
+//            if model.boundApplicationKeys.isEmpty {
+//                return false
+//            }
+//            if MeshLibManager.manager.publishModelIDs.contains(model.modelIdentifier) {
+//                if MeshLibManager.manager.publishModeloOnly {
+//                    if !supportModels.contains(where: { MeshLibManager.manager.publishModelIDs.contains($0.modelIdentifier) && $0.publish != nil }) {
+//                        return false
+//                    }
+//                }else {
+//                    if model.publish == nil {
+//                        return false
+//                    }
+//                }
+//            }
+//        }
+//        
+//        return true
+//    } 
+    
     /// 获取设备需要同步组的数据
     /// - Parameter group: 传入需要加入的组，不传则当前组
     func getNeedSyncGroupData(group: Group? = nil) -> SyncData {
@@ -1067,7 +1216,7 @@ extension Node {
             return data
         }
         
-        if groupState == .exitFailure { // 设备退出组失败
+        if self.group != nil && groupState == .exitFailure { // 设备退出组失败
             data.unsubscribeGroup = true
         }else if getSubscribeToGroupMessages(group).count > 0 { // 设备订阅组数据不完整
             data.subscribeGroup = true
@@ -1090,10 +1239,272 @@ extension Node {
             !self.scheduleDatas.contains(where: { $0.key == schedule.id }) || !self.scheduleDatas.contains(where: { $0.value == schedule.schedulerEntry })
         }
         
+        
+        
+        let groupProfile = group.info.profile
+        var syncProfile: [ProfileType] = []
+        // 启用的传感器model
+        var enableSensorModels: [Model] = []
+        // 禁用的传感器model
+        var disableSensorModels: [Model] = []
+        
+        if groupState == .inGroup || data.subscribeGroup { // 在组内待同步/将要加入组
+            // 光照类型
+            let daylightType = groupProfile.type == .occupancy_daylight || groupProfile.type == .vacancy_daylight || groupProfile.type == .daylight
+        
+            // 占用类型
+            let occupancyType = groupProfile.type == .occupancy_daylight || groupProfile.type == .vacancy_daylight || groupProfile.type == .occupancy || groupProfile.type == .vacancy
+            // 光照传感器是否已校准
+            var daylightCalibrated = false
+            if let model = ambientLightSensorModel, model.publish?.publicationAddress == group.address, self.sensorCalibrated, group.info.ambientLightSensorNode?.primaryUnicastAddress == self.primaryUnicastAddress { //光照传感器并且已校准
+                daylightCalibrated = true
+            }
+            if daylightType {
+                if daylightCalibrated, let model = ambientLightSensorModel, model.publish?.publicationAddress != group.address { //光照传感器并且已校准
+                    enableSensorModels.append(model)
+                }
+            }else {
+                if let model = ambientLightSensorModel, model.publish?.publicationAddress == group.address {
+                    disableSensorModels.append(model)
+                }
+            }
+            
+            if occupancyType {
+                if let model = presenceDetectedSensorModel, model.publish?.publicationAddress != group.address {
+                    enableSensorModels.append(model)
+                }
+            }else {
+                if let model = presenceDetectedSensorModel, model.publish?.publicationAddress == group.address {
+                    disableSensorModels.append(model)
+                }
+            }
+            if enableSensorModels.count > 0 {
+                syncProfile.append(.sensorEnabled(sensorModels: enableSensorModels, group: group))
+            }
+            if disableSensorModels.count > 0 {
+                syncProfile.append(.sensorDisable(sensorModels: disableSensorModels))
+            }
+            
+           if self.lightLCSetupModel != nil { // 灯设备
+               if lightLCProperty.mode == nil || !lightLCProperty.mode! {
+                   syncProfile.append(.mode(enabled: true))
+               }
+             
+               if groupProfile.type == .occupancy_daylight || groupProfile.type == .occupancy {
+                   if lightLCProperty.occupancyMode == nil || !lightLCProperty.occupancyMode! {
+                       syncProfile.append(.occupancyMode(enabled: true))
+                   }
+               }else {
+                   if lightLCProperty.occupancyMode == nil || lightLCProperty.occupancyMode! {
+                       syncProfile.append(.occupancyMode(enabled: false))
+                   }
+               }
+               // 手动控制延时（ms）
+               
+               var manualOverrideTimeout = groupProfile.manualOverrideTimeout
+               if manualOverrideTimeout < UInt32.max {
+                   manualOverrideTimeout = min(manualOverrideTimeout * 1000, UInt32.max)
+               }
+               if groupProfile.type == .daylight || groupProfile.type == .manualControl {
+                   manualOverrideTimeout = .max
+               }
+               
+               // 手动控制后延时开启灯光控制
+               if lightLCProperty.manualOverrideEnabled == nil || !lightLCProperty.manualOverrideEnabled! || lightLCProperty.manualOverrideTimeout != manualOverrideTimeout {
+                   syncProfile.append(.manualOverrideTimeout(enabled: true, second: manualOverrideTimeout))
+               }
+               
+               // 手动控制后进入第一阶段
+//               let vacancyType = groupProfile.type == .vacancy_daylight || groupProfile.type == .vacancy || groupProfile.type == .manualControl
+               if groupProfile.type == .manualControl {
+                   if lightLCProperty.manualControlMode == nil || !lightLCProperty.manualControlMode! {
+                       syncProfile.append(.manualControl(enabled: true))
+                   }
+               }else {
+                   if lightLCProperty.manualControlMode ?? false {
+                       syncProfile.append(.manualControl(enabled: false))
+                   }
+               }
+               
+               if self.sunricherVendorModel != nil {
+                   if daylightType && daylightCalibrated {
+                       if lightLCProperty.lightAutoAdjustEnabled == nil || !lightLCProperty.lightAutoAdjustEnabled! {
+                           syncProfile.append(.lightAutoAdujustEnabled(enabled: true))
+                       }
+                   }else {
+                       if lightLCProperty.lightAutoAdjustEnabled == nil || lightLCProperty.lightAutoAdjustEnabled! {
+                           syncProfile.append(.lightAutoAdujustEnabled(enabled: false))
+                       }
+                   }
+               }
+               
+                groupProfile.lightData.levels.forEach { levelType in
+                    switch levelType {
+                    case .lightnessRange(let range):
+                        let minLightness = Node.getLightness100(lightness: lightnessRange.lowerBound)
+                        let maxLightness = Node.getLightness100(lightness: lightnessRange.upperBound)
+                        if range.lowerBound != minLightness || range.upperBound != maxLightness {
+                            syncProfile.append(.highLowEndTrim(range: range))
+                        }
+                    case .occupancyLevel(let level):
+                        if daylightType {
+                            if lightLCProperty.luxLevelOn == nil || lightLCProperty.luxLevelOn! != level {
+                                syncProfile.append(.occupancyLux(lux: level))
+                            }
+                        }else {
+                            if lightLCProperty.lightnessOn == nil || lightLCProperty.lightnessOn! != Node.getLightness(lightness100: level) {
+                                syncProfile.append(.occupancyLevel(value: level))
+                            }
+                        }
+                    case .vacantLevel(let level):
+                        if daylightType {
+                            if lightLCProperty.luxLevelProlong == nil || lightLCProperty.luxLevelProlong! != level {
+                                syncProfile.append(.vacantLux(lux: level))
+                            }
+                        }else {
+                            if lightLCProperty.lightnessProlong == nil || lightLCProperty.lightnessProlong! != Node.getLightness(lightness100: level) {
+                                syncProfile.append(.vacantLevel(value: level))
+                            }
+                        }
+                    case .autoMinValue(let value, let enabled):
+
+//                        if Node.getLightness100(lightness: lightLCProperty.lightAutoMinLevel) != level {
+//                            syncProfile.append(.autoMinValue(value: level))
+//                        }
+                        // 校准后启用日光感应，关闭百分比调光
+                        if daylightType {
+                            let level = enabled ? value : 0
+                            
+                            if daylightCalibrated {
+                                if lightLCProperty.lightnessOn == nil || lightLCProperty.lightnessOn! != Node.getLightness(lightness100: level) {
+                                    syncProfile.append(.occupancyLevel(value: level))
+                                }
+                                if lightLCProperty.lightnessProlong == nil || lightLCProperty.lightnessProlong! != Node.getLightness(lightness100: level) {
+                                    syncProfile.append(.vacantLevel(value: level))
+                                }
+                            }else if occupancyType { // 日光感应并且存在占用感应profile，未校准时阶段启用默认百分比调光
+                                let occupancyLevel = 100
+                                let vacantLevel = 50
+                                if lightLCProperty.lightnessOn == nil || lightLCProperty.lightnessOn! != Node.getLightness(lightness100: occupancyLevel) {
+                                    syncProfile.append(.occupancyLevel(value: occupancyLevel))
+                                }
+                                if lightLCProperty.lightnessProlong == nil || lightLCProperty.lightnessProlong! != Node.getLightness(lightness100: vacantLevel) {
+                                    syncProfile.append(.vacantLevel(value: vacantLevel))
+                                }
+                            }
+                        }
+                        
+                    case .taskLevel(let level):
+                        if daylightType {
+                            if lightLCProperty.luxLevelOn == nil || lightLCProperty.luxLevelOn! != level { // 设置占用阶段无限长，维持该照度
+                                syncProfile.append(.occupancyLux(lux: level))
+                                if lightLCProperty.timeRunOn != 0xFFFFFF {
+                                    syncProfile.append(.t2(second: 0xFFFFFF))
+                                }
+                            }
+                        }else {
+                            if lightLCProperty.lightnessOn == nil || lightLCProperty.lightnessOn! != Node.getLightness(lightness100: level) { // 设置占用阶段无限长，维持该亮度
+                                syncProfile.append(.occupancyLevel(value: level))
+                                if lightLCProperty.timeRunOn != 0xFFFFFF {
+                                    syncProfile.append(.t2(second: 0xFFFFFF))
+                                }
+                            }
+                        }
+                    }
+                }
+                
+                groupProfile.lightData.times.forEach { time in
+                    switch time {
+                    case .t1(let second):
+                        if lightLCProperty.timeFadeOn == nil || lightLCProperty.timeFadeOn! != min(second * 1000, 0xFFFFFF) {
+                            syncProfile.append(.t1(second: second))
+                        }
+                    case .t2(let second):
+                        if lightLCProperty.timeRunOn == nil || lightLCProperty.timeRunOn! != min(second * 1000, 0xFFFFFF) {
+                            syncProfile.append(.t2(second: second))
+                        }
+                    case .t3(let second):
+                        if lightLCProperty.timeFade == nil || lightLCProperty.timeFade! != min(second * 1000, 0xFFFFFF) {
+                            syncProfile.append(.t3(second: second))
+                        }
+                    case .t4(let second):
+                        if lightLCProperty.timeProlong == nil || lightLCProperty.timeProlong! != min(second * 1000, 0xFFFFFF) {
+                            syncProfile.append(.t4(second: second))
+                        }
+                    case .t5(let second):
+                        if lightLCProperty.timeFadeStandbyAuto == nil || lightLCProperty.timeFadeStandbyAuto! != min(second * 1000, 0xFFFFFF) {
+                            syncProfile.append(.t5(second: second))
+                        }
+                    }
+                }
+               
+                // 调节速率
+                let speedValue = groupProfile.adjustSpeed
+               let regulatorData = Node.getLightRegulator(speed: speedValue)
+               if lightLCProperty.regulatorKid == nil || lightLCProperty.regulatorKid! != regulatorData.regulatorKid ||
+                    lightLCProperty.regulatorKiu == nil || lightLCProperty.regulatorKiu! != regulatorData.regulatorKiu ||
+                    lightLCProperty.regulatorKpd == nil || lightLCProperty.regulatorKpd! != regulatorData.regulatorKpd ||
+                    lightLCProperty.regulatorKpu == nil || lightLCProperty.regulatorKpu! != regulatorData.regulatorKpu ||
+                    lightLCProperty.regulatorAccuracy == nil || lightLCProperty.regulatorAccuracy! != regulatorData.regulatorAccuracy {
+                    syncProfile.append(.adjustSpeed(speed: groupProfile.adjustSpeed))
+                }
+            }
+            
+            switch groupProfile.powerUpState {
+            case .off:
+                if powerUpState != .off {
+                    syncProfile.append(.powerOnState(state: .off))
+                }
+            case .restore:
+                if powerUpState != .restore {
+                    syncProfile.append(.powerOnState(state: .restore))
+                }
+            case .definedLightLevel(let level):
+                if powerUpState != .default || Node.getLightness(lightness100: level) != defalutLightness {
+                    syncProfile.append(.powerOnState(state: .definedLightLevel(level)))
+                }
+            }
+            
+        }else if groupState == .exitFailure || data.unsubscribeGroup { // 退出组
+            
+            let disableSensorModels = sensorModels.filter({ $0.publish?.publicationAddress == group.address })
+            if disableSensorModels.count > 0 {
+                syncProfile.append(.sensorDisable(sensorModels: disableSensorModels))
+            }
+            
+            if lightLCSetupModel != nil {
+                //            if lightLCProperty.mode {
+//                syncProfile.append(.mode(enabled: false))
+                //            }
+                // 占用类型
+                let occupancyType = groupProfile.type == .occupancy_daylight || groupProfile.type == .vacancy_daylight || groupProfile.type == .occupancy || groupProfile.type == .vacancy
+                if occupancyType {
+                    //                if lightLCProperty.occupancyMode {
+                    syncProfile.append(.occupancyMode(enabled: false))
+                    //                }
+                }
+                if sunricherVendorModel != nil {
+                    //            if lightLCProperty.manualControlMode {
+                    syncProfile.append(.manualControl(enabled: false))
+                    //            }
+                    //            if lightLCProperty.manualOverrideEnabled {
+                    syncProfile.append(.manualOverrideTimeout(enabled: false, second: 0))
+                    //            }
+                    //            if lightLCProperty.lightAutoAdjustEnabled {
+                    syncProfile.append(.lightAutoAdujustEnabled(enabled: false))
+                    //            }
+                }
+                if self.enOceanMacAddress != nil {
+                    data.deleteSwitch = true
+                }
+            }
+        }
+        
         data.syncScenes = nodeSyncScenes
         data.syncSchedules = nodeSyncSchedules
         data.deleteScenes = nodeDeleteScenes
         data.deleteSchedules = deleteSchedules
+        data.syncProfile = syncProfile
         
         return data
     }
@@ -1140,6 +1551,7 @@ extension Node {
             return
         }
         if let info = Node.loadNodeInfo(meshUUID: uuid, address: primaryUnicastAddress) {
+            self.macAddress = info.mac
             self.lightCTLTemperatureRange = info.cctRange
             self.groupState = info.groupState
             self.scheduleDatas = info.schedules
@@ -1152,6 +1564,32 @@ extension Node {
             })
             
             self.schedulerActions = self.scheduleDatas.filter({ $0.value.isValid })
+            
+            let sensorTypes = info.sensorTypes
+            sensorTypes.forEach { (key: Int, value: DeviceProperty) in
+                if key < self.sensorModels.count {
+                    let model = self.sensorModels[key]
+                    self.sensorModelTypes.updateValue(value, forKey: model)
+                }
+            }
+            
+            self.daylightCalibrationValue = info.sensorCalibrationValue
+            self.enOceanMacAddress = info.enOceanMacAddress
+            self.enOceanKeySceneNumbers = info.enOceanSwitchKeyScenes
+            self.powerUpState = info.powerUpState
+            self.lightnessRange = info.lightnessRange
+            self.defalutLightness = info.defalutLightness
+//            if let address = info.sensorTypes {
+//                if let element = self.element(withAddress: address), let sensorModel = element.model(withSigModelId: .sensorServerModelId) {
+//                    self.presenceDetectedSensorModel = sensorModel
+//                }
+//            }
+//            
+//            if let address = info.ambientLightSensorModelAddress {
+//                if let element = self.element(withAddress: address), let sensorModel = element.model(withSigModelId: .sensorServerModelId) {
+//                    self.ambientLightSensorModel = sensorModel
+//                }
+//            }
 //            self.rssi = info.rssi
         }
         
@@ -1175,6 +1613,35 @@ extension Node {
         SceneExecuteData.deleteData(meshUUID: uuid, address: primaryUnicastAddress)
         // 删除设备日程数据
         Node.deleteSchedules(meshUUID: uuid, address: primaryUnicastAddress)
+        // 删除设备灯光配置数据
+        Node.deleteProfile(meshUUID: uuid, address: primaryUnicastAddress)
+        // 删除动能开关
+        deleteEnOceanSwitch()
+        // 判断删除的设备是不是组绑定的光照传感器
+        if group?.info.ambientLightSensorNode?.primaryUnicastAddress == primaryUnicastAddress {
+            group?.info.ambientLightSensorNode = nil
+             // 保存缓存
+            group?.info.save(meshUUID: uuid)
+        }
+    }
+    
+    /// 删除绑定的动能开关
+    func deleteEnOceanSwitch() {
+        self.enOceanMacAddress = nil
+        self.enOceanKeySceneNumbers = []
+        guard let uuid = MeshNetworkManager.instance.meshNetwork?.uuid.uuidString else {
+            return
+        }
+        // 删除group switch代理缓存
+        if let groupSwitch = GroupSwitch.load(meshUUID: uuid, proxyAddress: primaryUnicastAddress) {
+            groupSwitch.proxyNode = nil
+            groupSwitch.save(meshUUID: uuid)
+            // 更新开关对应组缓存
+            if let groupCacheSwitch = groupSwitch.group.info.switchs.first(where: { $0.id == groupSwitch.id }) {
+                groupCacheSwitch.proxyNode = nil
+            }
+        }
+        
     }
     
     /// 删除节点内的场景缓存
@@ -1205,27 +1672,56 @@ extension Node {
             SceneExecuteData.save(meshUUID: uuid, address: primaryUnicastAddress, sceneId: Int($0.key), sceneData: $0.value)
         })
         
-        
+        saveNodeProfile(meshUUID: uuid)
     }
     
     
     /// 更新节点缓存数据
     /// - Parameter messageHandle: 消息发送操作对象
-    func updateData(message: MeshMessage) {
+    func updateData(message: MeshMessage, isSuccess: Bool = true) {
        
+        guard isSuccess || message is ConfigModelSubscriptionDelete else {
+            return
+        }
+        
         let meshUUID = MeshNetworkManager.instance.meshNetwork?.uuid.uuidString
 //        let isSuccess = messageHandle.isSuccessful
 //        let message = messageHandle.message
         switch message {
         case is ConfigModelSubscriptionAdd:
             self.groupState = .inGroup
-            
+            if let uuid = meshUUID {
+                self.saveNodeInfo(meshUUID: uuid)
+            }
         case is ConfigModelSubscriptionDelete:
-            self.groupState = self.group != nil ? .inGroup : .exitFailure
+            
+            if isSuccess {
+                if self.group == nil { // 组删除设备成功
+                    self.groupState = .none
+                    let groupAddress = (message as! ConfigModelSubscriptionDelete).address
+                    if let group = MeshNetworkManager.instance.meshNetwork?.group(withAddress: MeshAddress(groupAddress)), group.info.ambientLightSensorNode?.primaryUnicastAddress == primaryUnicastAddress { // 判断删除的设备是不是组绑定的光照传感器
+                        group.info.ambientLightSensorNode = nil
+                        if let uuid = meshUUID { // 保存缓存
+                            group.info.save(meshUUID: uuid)
+                        }
+                    }
+                }
+            }else { // 删除失败
+                self.groupState = .exitFailure
+            }
+            if let uuid = meshUUID {
+                self.saveNodeInfo(meshUUID: uuid)
+            }
             
         case is SceneStore:
             let sceneId = (message as! SceneStore).scene
-            let executeData = SceneExecuteData(lightness: self.lightness100, cct: self.temperature100, state: .normal)
+            var cct = Int(temperature)
+            // 不支持cct，使用group预配置的cct值
+            if self.ctlModel == nil, let groupCct = self.group?.info.bindSceneDatas[sceneId]?.cct {
+                cct = groupCct
+            }
+            let executeData = SceneExecuteData(lightness: self.lightness100, cct: cct, state: .normal)
+            print("address: \(primaryUnicastAddress) lightness: \(self.lightness100) cct: \(cct)")
             self.sceneDatas.updateValue(executeData, forKey: sceneId)
             if let uuid = meshUUID {
                 SceneExecuteData.save(meshUUID: uuid, address: primaryUnicastAddress, sceneId: Int(sceneId), sceneData: executeData)
@@ -1295,7 +1791,39 @@ extension Node {
                 }
                 
             }
-        
+        case is LightLCPropertySet, is LightLCModeSet, is LightLCOccupancyModeSet, is GenericOnPowerUpSet, is LightLightnessDefaultSet, is SunricherVendorSet, is LightLightnessRangeSet:
+            if message is SunricherVendorSet { // 更新自定义协议属性
+                let vendorMessage = message as! SunricherVendorSet
+                switch vendorMessage.setParameter {
+                case .manualOverrideTimeout(let enabled, _, let interval):
+                    self.lightLCProperty.manualOverrideEnabled = enabled
+                    self.lightLCProperty.manualOverrideTimeout = interval
+//                case .lightAutoMinLevel(let level):
+//                    self.lightLCProperty.lightAutoMinLevel = level
+                default:
+                    break
+                }
+            }
+            if let uuid = meshUUID { // 缓存配置数据
+                if message is GenericOnPowerUpSet || message is LightLightnessDefaultSet || message is LightLightnessRangeSet {
+                    saveNodeInfo(meshUUID: uuid)
+                }else {
+                    saveNodeProfile(meshUUID: uuid)
+                }
+            }
+        case is SensorGet:   // 识别传感器类型
+//            sensorModelTypes.updateValue(<#T##value: DeviceProperty##DeviceProperty#>, forKey: <#T##Model#>)
+            
+            if self.presenceDetectedSensorModel != nil || self.ambientLightSensorModel != nil {
+                if let uuid = meshUUID { // 缓存节点数据
+                    saveNodeInfo(meshUUID: uuid)
+                }
+            }
+        case is SilvairEnOceanProxyMessage:
+            let options = (message as! SilvairEnOceanProxyMessage).options
+            if case .delete = options { // 删除EnOcean按键绑定
+                deleteEnOceanSwitch()
+            }
         default:
             break
         }
@@ -1319,9 +1847,14 @@ struct SyncData {
     var deleteScenes: [Scene] = []
     /// 设备待删除的日程list
     var deleteSchedules: [Schedule] = []
+    /// 设备需要同步的灯光配置
+    var syncProfile: [ProfileType] = []
+    /// 设备是否需要删除动能开关绑定
+    var deleteSwitch: Bool = false
+    
     /// 是否不需要同步
     func isEmpty() -> Bool {
-        return !(subscribeGroup || unsubscribeGroup || syncScenes.count > 0 || syncSchedules.count > 0 || deleteScenes.count > 0 || deleteSchedules.count > 0)
+        return !(subscribeGroup || unsubscribeGroup || syncScenes.count > 0 || syncSchedules.count > 0 || deleteScenes.count > 0 || deleteSchedules.count > 0 || syncProfile.count > 0)
     }
 }
 
@@ -1339,4 +1872,18 @@ extension SchedulerRegistryEntry {
     static func == (lhs: SchedulerRegistryEntry, rhs: SchedulerRegistryEntry) -> Bool {
         return lhs.year.value == rhs.year.value && lhs.month.value == rhs.month.value && lhs.day.value == rhs.day.value && lhs.hour.value == rhs.hour.value && lhs.minute.value == rhs.minute.value && lhs.second.value == rhs.second.value && lhs.dayOfWeek.value == rhs.dayOfWeek.value && lhs.action == rhs.action && lhs.transitionTime.rawValue == rhs.transitionTime.rawValue && lhs.sceneNumber == rhs.sceneNumber
     }
+}
+
+extension GroupSwitch {
+    
+    /// 是否需要同步数据
+    var needSyncData: Bool {
+        guard let proxyNode = self.proxyNode, enabled else {
+            return false
+        }
+        
+        return proxyNode.getEnOceanSwitchEnabledMessageHandles(group: self.group, sceneA: sceneA, sceneB: sceneB).count > 0
+    }
+    
+    
 }

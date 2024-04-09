@@ -15,7 +15,8 @@ class SceneGroupsViewCell: UICollectionViewCell {
     var imageLabel: UILabel!
     var nameLabel: UILabel!
     var progressView: CustomProgressView!
-
+    var syncFailImageView: UIImageView!
+    
     
     override init(frame: CGRect) {
         super.init(frame: frame)
@@ -58,6 +59,12 @@ class SceneGroupsViewCell: UICollectionViewCell {
             let cct100 = Node.getTemperature100(temperature: UInt16(data.cct), range: SceneExecuteData.cctRange)
             progressView.progressColor = Node.getCctMixColor(temperature100: cct100)
         }
+        
+//        syncFailImageView.isHidden = !group.nodes.contains(where: {
+//            let syncData = $0.getNeedSyncGroupData()
+//            return syncData.syncScenes.count > 0 || syncData.deleteScenes.count > 0
+//        })
+        
     }
     
     override func layoutSubviews() {
@@ -114,16 +121,24 @@ class SceneGroupsViewCell: UICollectionViewCell {
         }
         
         progressView = CustomProgressView()
-        progressView.cornerRadius = 1.5
+        progressView.cornerRadius = 2
+        progressView.trackColor = RGB(30, 35, 41, 0.1)
+        progressView.progressPadding = 0.5
         progressView.progress = 50
         contentView.addSubview(progressView)
         progressView.snp.makeConstraints { make in
             make.centerX.equalToSuperview()
             make.width.equalTo(SCRXFrom(42))
-            make.height.equalTo(3)
+            make.height.equalTo(4)
             make.bottom.equalTo(SCRYFrom(-2))
         }
         
+//        syncFailImageView = UIImageView(image: UIImage(named: "schedule_sync_failed"))
+//        syncFailImageView.isHidden = true
+//        contentView.addSubview(syncFailImageView)
+//        syncFailImageView.snp.makeConstraints { make in
+//            make.right.top.equalToSuperview()
+//        }
     }
     
 }

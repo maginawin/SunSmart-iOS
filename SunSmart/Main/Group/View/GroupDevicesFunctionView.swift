@@ -72,8 +72,8 @@ class GroupDevicesFunctionView: UIView {
     }
     
     @objc private func selectAllBtnClick(sender: UIButton) {
-        sender.isSelected = !sender.isSelected
-        delegate?.function(view: self, selectAllStateChanged: sender.isSelected)
+//        sender.isSelected = !sender.isSelected
+        delegate?.function(view: self, selectAllStateChanged: !sender.isSelected)
     }
     
     @objc private func syncBtnClick() {
@@ -103,6 +103,7 @@ class GroupDevicesFunctionView: UIView {
         }
         
         selectAllBtn = UIButton(title: "select_all".localizedString, titleSize: 12, titleColor: TextBlack_Color, normalImageName: "device_select_un", selectedImageName: "device_select", target: self, action: #selector(selectAllBtnClick))
+        selectAllBtn.setTitleColor(Message_Color, for: .disabled)
         addSubview(selectAllBtn)
         selectAllBtn.setImagePosition(position: .left, spacing: SCRXFrom(8))
         selectAllBtn.snp.makeConstraints { make in

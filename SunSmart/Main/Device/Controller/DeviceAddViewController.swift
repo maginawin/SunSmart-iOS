@@ -243,59 +243,59 @@ class DeviceAddViewController: UIViewController {
         UIApplication.shared.isIdleTimerDisabled = true
         
         // 测试
-        notAddedDevices = space.testNodes.filter({ testNode in !space.nodes.contains(where: { $0.primaryUnicastAddress == testNode.primaryUnicastAddress }) }).map({
-            let device = ProvisioningDevice(peripheral: nil, advertisementData: [:], rssi: -40)!
-            device.deviceName = "Mesh Device"
-            device.macAddress = $0.macAddress
-            device.address = $0.primaryUnicastAddress
-            return device
-        })
+//        notAddedDevices = space.testNodes.filter({ testNode in !space.nodes.contains(where: { $0.primaryUnicastAddress == testNode.primaryUnicastAddress }) }).map({
+//            let device = ProvisioningDevice(peripheral: nil, advertisementData: [:], rssi: -40)!
+//            device.deviceName = "Mesh Device"
+//            device.macAddress = $0.macAddress
+//            device.address = $0.primaryUnicastAddress
+//            return device
+//        })
         
-        if notAddedDevices.count > 0 {
-            self.stopScanTimer()
-            NSObject.cancelPreviousPerformRequests(withTarget: self, selector: #selector(self.stopScan), object: nil)
-            self.perform(#selector(self.stopScan), with: nil, afterDelay: 5)
-        }
-        
-        let semaphore = DispatchSemaphore(value: 0)
-        DispatchQueue.global().async {
-            
-            for i in 0..<self.notAddedDevices.count {
-                guard self.state == .scanning else { break }
-                let device = self.notAddedDevices[i]
-                device.selectedState = .selected
-                device.addState = .scaning
-                self.scanDevices.append(device)
-                self.showDevices.append(device)
-                DispatchQueue.main.async {
-                    self.tableView.insertRows(at: [IndexPath(row: self.showDevices.count - 1, section: 0)], with: .none)
-                }
-                _ = semaphore.wait(timeout: .now() + 0.1)
-            }
-            
-        }
-        
-//        MeshAPI.startScanDevice(.max, deviceScan: {[weak self] device in
-//            guard let self = self else { return }
+//        if notAddedDevices.count > 0 {
 //            self.stopScanTimer()
-//            // 新发现设备
-//            if !self.scanDevices.contains(where: { $0.peripheral.identifier.uuidString == device.peripheral.identifier.uuidString }) {
-//                self.scanDevices.append(device)
+//            NSObject.cancelPreviousPerformRequests(withTarget: self, selector: #selector(self.stopScan), object: nil)
+//            self.perform(#selector(self.stopScan), with: nil, afterDelay: 5)
+//        }
+//        
+//        let semaphore = DispatchSemaphore(value: 0)
+//        DispatchQueue.global().async {
+//            
+//            for i in 0..<self.notAddedDevices.count {
+//                guard self.state == .scanning else { break }
+//                let device = self.notAddedDevices[i]
 //                device.selectedState = .selected
 //                device.addState = .scaning
-////                print(device.rssi)
-//                
-//                if self.filterRSSI == self.filterRSSIRange.lowerBound || device.rssi.intValue >= self.filterRSSI { // 当前设备信号值在筛选范围内可展示
-//                    self.showDevices.append(device)
-//                    self.tableView.insertRows(at: [IndexPath(row: self.showDevices.count - 1, section: 0)], with: .automatic)
-//                }
+//                self.scanDevices.append(device)
+//                self.showDevices.append(device)
 //                DispatchQueue.main.async {
-//                    NSObject.cancelPreviousPerformRequests(withTarget: self, selector: #selector(self.stopScan), object: nil)
-//                    self.perform(#selector(self.stopScan), with: nil, afterDelay: 5)
+//                    self.tableView.insertRows(at: [IndexPath(row: self.showDevices.count - 1, section: 0)], with: .none)
 //                }
+//                _ = semaphore.wait(timeout: .now() + 0.1)
 //            }
 //            
-//        }, deviceScanFinish: nil)
+//        }
+        
+        MeshAPI.startScanDevice(.max, deviceScan: {[weak self] device in
+            guard let self = self else { return }
+            self.stopScanTimer()
+            // 新发现设备
+            if device.macAddress != nil && !self.scanDevices.contains(where: { $0.peripheral.identifier.uuidString == device.peripheral.identifier.uuidString }) {
+                self.scanDevices.append(device)
+                device.selectedState = .selected
+                device.addState = .scaning
+//                print(device.rssi)
+                
+                if self.filterRSSI == self.filterRSSIRange.lowerBound || device.rssi.intValue >= self.filterRSSI { // 当前设备信号值在筛选范围内可展示
+                    self.showDevices.append(device)
+                    self.tableView.insertRows(at: [IndexPath(row: self.showDevices.count - 1, section: 0)], with: .automatic)
+                }
+                DispatchQueue.main.async {
+                    NSObject.cancelPreviousPerformRequests(withTarget: self, selector: #selector(self.stopScan), object: nil)
+                    self.perform(#selector(self.stopScan), with: nil, afterDelay: 5)
+                }
+            }
+            
+        }, deviceScanFinish: nil)
     }
     
     @objc private func stopScan() {
@@ -492,43 +492,43 @@ class DeviceAddViewController: UIViewController {
             return
         }
         
-        device.addState = .identifyConnecting
-        reloadDeviceState(device)
-        
-        DispatchQueue.main.asyncAfter(deadline: .now() + 2) {[weak self] in
-            if device.addState == .identifyConnecting {
-                device.addState = .identifying
-                self?.reloadDeviceState(device)
-                DispatchQueue.main.asyncAfter(deadline: .now() + 5) {
-                    if device.addState == .identifying {
-                        device.addState = .none
-                        self?.reloadDeviceState(device)
-                    }
-                }
-            }
-        }
-        
-//        if identifyDevice != nil {
-//            stopDeviceIdentify()
-//        }
-//        
 //        device.addState = .identifyConnecting
 //        reloadDeviceState(device)
-//        identifyDevice = device
-//        
-//        identifyBearer = PBGattBearer(target: device.peripheral)
-//        identifyBearer?.delegate = self
-//        identifyBearer?.open()
-//        
-//        if state == .none || state == .addFineshed {
-//            state = .identifying
-//            updateUIState()
+        
+//        DispatchQueue.main.asyncAfter(deadline: .now() + 2) {[weak self] in
+//            if device.addState == .identifyConnecting {
+//                device.addState = .identifying
+//                self?.reloadDeviceState(device)
+//                DispatchQueue.main.asyncAfter(deadline: .now() + 5) {
+//                    if device.addState == .identifying {
+//                        device.addState = .none
+//                        self?.reloadDeviceState(device)
+//                    }
+//                }
+//            }
 //        }
-//        
-//        DispatchQueue.main.async {
-//            NSObject.cancelPreviousPerformRequests(withTarget: self, selector: #selector(self.identifyConnectTimeout), object: nil)
-//            self.perform(#selector(self.identifyConnectTimeout), with: nil, afterDelay: 10)
-//        }
+        
+        if identifyDevice != nil {
+            stopDeviceIdentify()
+        }
+        
+        device.addState = .identifyConnecting
+        reloadDeviceState(device)
+        identifyDevice = device
+        
+        identifyBearer = PBGattBearer(target: device.peripheral)
+        identifyBearer?.delegate = self
+        identifyBearer?.open()
+        
+        if state == .none || state == .addFineshed {
+            state = .identifying
+            updateUIState()
+        }
+        
+        DispatchQueue.main.async {
+            NSObject.cancelPreviousPerformRequests(withTarget: self, selector: #selector(self.identifyConnectTimeout), object: nil)
+            self.perform(#selector(self.identifyConnectTimeout), with: nil, afterDelay: 10)
+        }
     }
     
     /// identify连接设备超时
@@ -574,10 +574,10 @@ class DeviceAddViewController: UIViewController {
     /// 添加设备
     private func addDevice(_ device: ProvisioningDevice) {
         
-        testAddDevice(device: device)
-        if true {
-            return
-        }
+//        testAddDevice(device: device)
+//        if true {
+//            return
+//        }
         // 设备identify中添加不需要再闪烁
         if device.addState == .identifyConnecting || device.addState == .identifyWait || device.addState == .failed || device.addState == .identifying {
             if device.addState == .identifying {
@@ -607,26 +607,45 @@ class DeviceAddViewController: UIViewController {
             self?.reloadDeviceState(addDevice)
             self?.updateUIState()
         } appendMessagesBack: {[weak self] addDevice in
-            guard let self = self, let group = self.addToGroup, let node = self.space.meshManager?.meshNetwork?.node(withAddress: addDevice.address) else { return [] }
-            var appendMessages = group.getNodeAddMessageHandles(node: node)
+            guard let self = self, let node = self.space.meshManager?.meshNetwork?.node(withAddress: addDevice.address) else { return [] }
+            var appendMessages: [MeshMessageHandle] = []
+            if let group = self.addToGroup {
+                appendMessages.append(contentsOf: group.getNodeAddMessageHandles(node: node))
+            }
             // 需要追加发送的消息
             if let ctlModel = node.ctlModel {
                 appendMessages.insert(MeshMessageHandle(message: LightCTLTemperatureRangeGet(), model: ctlModel), at: 0)
             }
+            // 获取对应传感器model，识别传感器类型
+//            node.sensorModels.forEach { sensorModel in
+//                appendMessages.append(MeshMessageHandle(message: SensorGet(), model: sensorModel))
+//            }
             return appendMessages
         } appendMessageSuccessBack: { messageHandle in
             // 发送扩展消息成功更新缓存数据
             if let address = messageHandle.model?.parentElement?.unicastAddress ?? messageHandle.address, let node = self.space.meshManager?.meshNetwork?.node(withAddress: address) {
-                node.updateData(message: messageHandle.message)
+                DispatchQueue.global().async {
+                    node.updateData(message: messageHandle.message)
+                }
             }
-            
         } addSuccess: {[weak self] addDevice in
             guard let self = self else { return }
             addDevice.addState = .success
             self.reloadDeviceState(addDevice)
             self.updateUIState()
             if let node = self.space.meshManager?.meshNetwork?.node(withAddress: addDevice.address) {
+                if let repalceNode = addDevice.repalceNode { // 删除被替换节点的缓存数据
+                    repalceNode.delete()
+                }
                 node.rssi = addDevice.rssi.intValue
+                if let macAddress = addDevice.macAddress {
+                    node.macAddress = macAddress
+                }else {
+                    // 没有MAC，自动生成一个随机数
+                    let mac = MeshNetworkManager.instance.getRandomMacAddress()
+                    node.macAddress = mac
+                }
+//                node.state = true
                 node.saveNodeInfo(meshUUID: self.space.meshUUID)
 //                self?.space.getNextNodeName(resultCallback: { name in
 //                    node.name = name
@@ -650,6 +669,9 @@ class DeviceAddViewController: UIViewController {
             successNodes.forEach { node in
                 node.name = self.space.getNextNodeName()
             }
+//            if MeshLibManager.manager.currentProxy?.node == nil, let node = successNodes.last {
+//                MeshLibManager.manager.currentProxy?.nodeAddress = node.primaryUnicastAddress
+//            }
             _ = self.space.meshManager?.save()
 //            self.addSuccessNodes.append(contentsOf: successNodes)
         }
@@ -871,14 +893,14 @@ class DeviceAddViewController: UIViewController {
             make.width.height.equalTo(SCRYFrom(30))
         }
         
-        selectAllLabel = UILabel(text: "select_all".localizedString, textColor: TextBlack_Color, fontSize: 16)
+        selectAllLabel = UILabel(text: "select_all".localizedString, textColor: TextBlack_Color, fontSize: 15, fontWeight: .light)
         footerView.addSubview(selectAllLabel)
         selectAllLabel.snp.makeConstraints { make in
             make.left.equalTo(selectAllBtn.snp.right).offset(SCRXFrom(4))
             make.bottom.equalTo(selectAllBtn.snp.centerY)
         }
         
-        selectCountLabel = UILabel(text: "3/6", textColor: RGB(13, 14, 28, 0.5), fontSize: 14)
+        selectCountLabel = UILabel(text: "3/6", textColor: RGB(148, 163, 184), fontSize: 14, fontWeight: .light)
         footerView.addSubview(selectCountLabel)
         selectCountLabel.snp.makeConstraints { make in
             make.left.equalTo(selectAllLabel)
@@ -1024,7 +1046,7 @@ extension DeviceAddViewController: UITableViewDataSource, UITableViewDelegate {
 
 extension DeviceAddViewController: CustomDeviceSliderDelegate {
     
-    func slider(_ slider: CustomDeviceSlider, valueChanged value: Float) {
+    func slider(_ slider: CustomDeviceSlider, valueChanged value: Float, ended: Bool) {
         
         let rssi = Int(-value)
 //        filterRSSIRange.lowerBound + abs(Int(((value - 100) / 100.0) * Float(filterRSSIRange.upperBound - filterRSSIRange.lowerBound)))

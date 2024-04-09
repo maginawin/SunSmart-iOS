@@ -113,6 +113,10 @@
     return sqlite3_column_int(stmt, col);
 }
 
+- (long long)columnInt64:(int)col{
+    return sqlite3_column_int64(stmt, col);
+}
+
 - (NSData *)columnBlob:(int)col{
     NSData *result = nil;
     char *charResult = (char *)sqlite3_column_blob(stmt, col);

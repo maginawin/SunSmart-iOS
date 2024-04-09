@@ -26,14 +26,14 @@ extension UIButton {
 //        }
 //    }
     
-    convenience init(title: String? = nil, titleSize: CGFloat? = nil, titleWeight: UIFont.Weight? = nil, titleColor: UIColor? = nil, normalImageName: String? = nil, selectedImageName: String? = nil, target: AnyObject? = nil, action: Selector? = nil) {
+    convenience init(title: String? = nil, titleSize: CGFloat? = nil, titleWeight: UIFont.Weight? = nil, titleColor: UIColor? = nil, fit: Bool = true, normalImageName: String? = nil, selectedImageName: String? = nil, target: AnyObject? = nil, action: Selector? = nil) {
         self.init()
         
         if title != nil {
             self.setTitle(title!, for: .normal)
         }
         if titleSize != nil {
-            self.titleLabel?.font = UIFont.systemFont(ofSize: SCRYFrom(titleSize!), weight: titleWeight ?? .regular)
+            self.titleLabel?.font = UIFont.systemFont(ofSize: fit ? SCRYFrom(titleSize!) : titleSize!, weight: titleWeight ?? .regular)
         }
         if titleColor != nil {
             self.setTitleColor(titleColor!, for: .normal)

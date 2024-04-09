@@ -91,11 +91,14 @@ class TimedViewController: UIViewController {
     private func addNotification() {
         
         NotificationCenter.default.addObserver(forName: .init(schedulesRefreshNotificationName), object: nil, queue: nil) {[weak self] _ in
-            if self?.view.window != nil {
-                self?.updateUI()
+            guard let self = self else { return }
+            if self.view.window != nil {
+                self.updateUI()
             }else {
-                self?.refreshData = true
+                self.refreshData = true
             }
+            self.space.scheheduleCount = self.space.schedules.count
+            self.space.save()
         }
         
         NotificationCenter.default.addObserver(forName: .init(scheduleDataUpdateNotificationName), object: nil, queue: nil) { [weak self] notification in
@@ -262,6 +265,7 @@ extension TimedViewController: SpaceFunctionFooterViewDelegate {
     
     /// 点击添加回调
     func functionDidClickAdd(view: SpaceFunctionFooterView) {
+        guard self.space.schedules.count < 16 else { return }
         
         let vc = ScheduleAddViewController(space: space)
         present(NavigationViewController(rootViewController: vc), animated: true)

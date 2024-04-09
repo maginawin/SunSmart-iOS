@@ -99,7 +99,9 @@ class DeviceLightBasicController: UIViewController {
             let model = self.deviceInfoModels.last
             model?.content = self.node.rssi != nil ? "\(self.node.rssi!)dB" : "--"
             if let section = self.sections.firstIndex(of: .deviceInfo) {
-                self.tableView.reloadRows(at: [IndexPath(row: self.deviceInfoModels.count - 1, section: section)], with: .none)
+                CATransaction.setDisableActions(true)
+                self.tableView.reloadSections(IndexSet(integer: section), with: .none)
+                CATransaction.commit()
             }
         }
         
@@ -154,7 +156,7 @@ class DeviceLightBasicController: UIViewController {
                 if let levelCell = tableView.cellForRow(at: IndexPath(row: 0, section: index)) as? DeviceLightControlViewCell {
                     if isOn {
                         if let trunOffLightness = self.node.trunOffLightness, self.node.lightness == 0 {
-                            levelCell.value = Node.getLightness100(lightness: trunOffLightness)
+                            levelCell.value = Node.getLightness100(lightness: trunOffLightness, range: self.node.lightnessRange)
                         }else {
                             levelCell.value = self.node.lightness100
                         }
@@ -240,7 +242,7 @@ class DeviceLightBasicController: UIViewController {
             self?.wm_pageController?.reloadData()
             MeshAPI.getNodeState(address: node.primaryUnicastAddress)
             
-        } keyBindFail: {[weak self] _, _ in
+        } keyBindFail: {[weak self] _ in
             XWHUDManager.hide()
             self?.repairFailed()
         }
@@ -341,7 +343,7 @@ extension DeviceLightBasicController: UITableViewDataSource, UITableViewDelegate
         case .scene:
             let sceneCount = node.scenes.count
             let isShow = sectionShowMap[sectionType] ?? false
-            return isShow && sceneCount > 0 ? sceneCount : 0
+            return (isShow && sceneCount > 0) ? sceneCount : 0
         default:
             return 0
         }
@@ -425,6 +427,7 @@ extension DeviceLightBasicController: UITableViewDataSource, UITableViewDelegate
             if indexPath.row == 0 {
                 cell.value = node.lightness100
                 cell.valueTags = cell.defaultLevelValueTags
+                cell.limitRange = Node.getLightness100(lightness: node.lightnessRange.lowerBound)...Node.getLightness100(lightness: node.lightnessRange.upperBound)
                 cell.type = .level()
             }else if indexPath.row == 1 {
                 cell.valueTags = [("3000K", node.getTemperature100(temperature: 3000)),
@@ -446,7 +449,7 @@ extension DeviceLightBasicController: UITableViewDataSource, UITableViewDelegate
                 cell.cellStyle = model.style
                 cell.titleLabel.text = model.title
                 cell.titleLabel.textColor = model.titleColor
-                cell.titleLabel.font = Font_Medium_Size(SCRYFrom(14))
+                cell.titleLabel.font = UIFont.systemFont(ofSize: SCRYFrom(14), weight: .light)
                 cell.contentLabel.text = model.content
                 cell.contentLabel.font = model.contentFont
                 cell.contentLabel.textColor = model.contentColor
@@ -456,24 +459,30 @@ extension DeviceLightBasicController: UITableViewDataSource, UITableViewDelegate
                     cell.iconX = tableView.width - 30 - SCRXFrom(8)
                     cell.arrowImageView.isHidden = true
                 }
-                cell.lineView.isHidden = tableView.numberOfRows(inSection: indexPath.section) - 1 != indexPath.row
+                cell.lineView.isHidden = indexPath.row != deviceInfoModels.count - 1
+//                tableView.numberOfRows(inSection: indexPath.section) - 1 != indexPath.row
             }else {
                 let scene = node.scenes[indexPath.row]
                 cell.cellStyle = .none
                 cell.titleLabel.text = scene.info.name ?? scene.name
                 cell.titleLabel.textColor = TextBlack_Color.withAlphaComponent(0.5)
-                cell.titleLabel.font = Font_Medium_Size(SCRYFrom(14))
+                cell.titleLabel.font = UIFont.systemFont(ofSize: SCRYFrom(14), weight: .light)
+//                Font_Medium_Size(SCRYFrom(14))
                 if let sceneData = node.sceneDatas[scene.number] {
                     if sceneData.lightness == 0 {
                         cell.contentLabel.text = "off".localizedString
                     }else {
-                        let cct100 = Node.getTemperature100(temperature: UInt16(sceneData.cct), range: node.lightCTLTemperatureRange ?? node.defalutLightCTLTemperatureRange)
-                        cell.contentLabel.text = "\("brightness".localizedString)-\(sceneData.lightness)%.\("cct".localizedString)-\(cct100)%"
+                        if node.ctlModel != nil {
+                            let cct100 = Node.getTemperature100(temperature: UInt16(sceneData.cct), range: node.lightCTLTemperatureRange ?? node.defalutLightCTLTemperatureRange)
+                            cell.contentLabel.text = "\("brightness".localizedString)-\(sceneData.lightness)%.\("cct".localizedString)-\(cct100)%"
+                        }else {
+                            cell.contentLabel.text = "\("brightness".localizedString)-\(sceneData.lightness)%."
+                        }
                     }
                 }
 //                "Brightness-20%."
                 cell.contentLabel.textColor = RGB(13, 14, 28, 0.5)
-                cell.contentLabel.font = FONTS(SCRYFrom(15))
+                cell.contentLabel.font = UIFont.systemFont(ofSize: SCRYFrom(14), weight: .light)
                 cell.lineView.isHidden = false
             }
 //            cell.lineView.isHidden = tableView.numberOfRows(inSection: indexPath.section) - 1 == indexPath.row
@@ -501,7 +510,7 @@ extension DeviceLightBasicController: DeviceLightControlViewCellDelegate {
     func cell(_ cell: DeviceLightControlViewCell, type: DeviceSliderFunctionView.FunctionType, throttleValueChanged value: Int, ended: Bool) {
         switch type {
         case .level:
-            let lightness = Node.getLightness(lightness100: value)
+            let lightness = Node.getLightness(lightness100: value, range: node.lightnessRange)
             MeshAPI.setNodeLightnessState(address: node.primaryUnicastAddress, lightness: lightness, ack: ended)
             if lightness == 0, lastSendLightness > 0 {
                 node.trunOffLightness = lastSendLightness
@@ -517,7 +526,7 @@ extension DeviceLightBasicController: DeviceLightControlViewCellDelegate {
         
         switch type {
         case .level:
-            let lightness = Node.getLightness(lightness100: value)
+            let lightness = Node.getLightness(lightness100: value, range: node.lightnessRange)
             node.lightness = lightness
             node.isOn = lightness > 0
         case .cct:
@@ -557,7 +566,7 @@ extension DeviceLightBasicController: MeshLibManagerDelegate {
             if node.state != onlineState {
 //                // 获取设备最新状态
 //                MeshAPI.getNodeState(address: node.primaryUnicastAddress)
-                (self.wm_pageController as? DeviceLightViewController)?.updateUI()
+//                (self.wm_pageController as? DeviceLightViewController)?.updateUI()
             }
             
 //            if !lockUIUpdate { // 未在发送控制消息时才可更新UI

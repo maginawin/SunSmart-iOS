@@ -15,8 +15,11 @@ class BuoySliderView: UIView {
     
     private let unit: String
     
+    /// 进度条更新回调  value： level 0~100 cct：2700~6500
+    var valueChangedCallback: ((_ value: Int)->())?
+    
     /// 进度条更新回调（限流发送间隔）  value： level 0~100 cct：2700~6500      ended：是否停止修改
-    var valueChangedCallback: ((_ value: Int, _ ended: Bool)->())?
+    var valueThrottleChangedCallback: ((_ value: Int, _ ended: Bool)->())?
     
     var value: Int {
         get {
@@ -61,6 +64,7 @@ class BuoySliderView: UIView {
         slider.delegate = self
         slider.addTarget(self, action: #selector(sliderTouchDownAction), for: .touchDown)
         slider.addTarget(self, action: #selector(sliderTouchExitAction), for: .touchUpInside)
+        slider.addTarget(self, action: #selector(sliderTouchExitAction), for: .touchCancel)
         addSubview(slider)
         slider.snp.makeConstraints { make in
 //            make.left.equalTo(SCRXFrom(67))
@@ -117,7 +121,7 @@ class BuoySliderView: UIView {
 extension BuoySliderView: CustomDeviceSliderDelegate {
     
     
-    func slider(_ slider: CustomDeviceSlider, valueChanged value: Float) {
+    func slider(_ slider: CustomDeviceSlider, valueChanged value: Float, ended: Bool) {
         
         valueLabel.text = "\(Int(value))\(unit)"
         let progress = (value - slider.minimumValue) / (slider.maximumValue - slider.minimumValue)
@@ -136,12 +140,11 @@ extension BuoySliderView: CustomDeviceSliderDelegate {
         buoyImageView.snp.updateConstraints { make in
             make.centerX.equalTo(slider.snp.left).offset(x)
         }
-        
-
+        valueChangedCallback?(Int(value))
     }
     
     func slider(_ slider: CustomDeviceSlider, throttleValueChanged value: Float, ended: Bool) {
-        valueChangedCallback?(Int(value), ended)
+        valueThrottleChangedCallback?(Int(value), ended)
     }
     
 }

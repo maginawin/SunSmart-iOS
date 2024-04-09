@@ -213,7 +213,7 @@ class MainMenuView: UIView {
             make.width.equalToSuperview().multipliedBy(288.0 / 375.0)
         }
         
-        logoImageView = UIImageView(image: UIImage(named: "launch_logo"))
+        logoImageView = UIImageView(image: UIImage(named: "menu_logo"))
         logoImageView.backgroundColor = Background_Color
         contentView.addSubview(logoImageView)
         logoImageView.snp.makeConstraints { make in
@@ -222,11 +222,11 @@ class MainMenuView: UIView {
             make.width.height.equalTo(SCRYFrom(120))
         }
         
-        titleLabel = UILabel(text: "Sunsmart", textColor: Bar_Color, fontSize: 15, fontName: FontName_Medium)
+        titleLabel = UILabel(text: "Sunsmart", textColor: TextBlack_Color, fontSize: 18, fit: false)
         contentView.addSubview(titleLabel)
         titleLabel.snp.makeConstraints { make in
             make.centerX.equalTo(logoImageView)
-            make.top.equalTo(logoImageView.snp.bottom).offset(SCRYFrom(9))
+            make.top.equalTo(logoImageView.snp.bottom).offset(SCRYFrom(16))
         }
         
         lineView = UIView()
@@ -235,7 +235,7 @@ class MainMenuView: UIView {
         lineView.snp.makeConstraints { make in
             make.left.equalTo(SCRXFrom(12))
             make.right.equalToSuperview()
-            make.top.equalTo(titleLabel.snp.bottom).offset(SCRYFrom(50))
+            make.top.equalTo(titleLabel.snp.bottom).offset(SCRYFrom(44))
             make.height.equalTo(1)
         }
         
@@ -255,7 +255,7 @@ class MainMenuView: UIView {
         
         
         let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0"
-        versionLabel = UILabel(text: "Version \(version)", textColor: TextBlack_Color, fontSize: 15)
+        versionLabel = UILabel(text: "Version \(version)", textColor: TextBlack_Color, fontSize: 13, fontWeight: .light)
         contentView.addSubview(versionLabel)
         versionLabel.snp.makeConstraints { make in
             make.centerX.equalToSuperview()
@@ -275,8 +275,9 @@ extension MainMenuView: UITableViewDataSource, UITableViewDelegate {
         let cell = tableView.dequeueReusableCell(withIdentifier: "cell", for: indexPath) as! CustomTableViewCell
         cell.cellStyle = .arrow
         cell.titleLabel.text = "About"
-        cell.titleLabel.font = Font_Medium_Size(15)
+        cell.titleLabel.font = UIFont.systemFont(ofSize: SCRYFrom(15), weight: .light)
         cell.titleLabel.textColor = TextBlack_Color
+        cell.lineView.backgroundColor = RGB(243, 243, 243)
         cell.selectionStyle = .none
         return cell
     }

@@ -26,7 +26,7 @@ class EmptyDataView: UIView {
     private var btnClickBack: (()->())?
     
     
-    init(frame: CGRect, imageName: String = "empty", title: String?, tipText: String?, buttomWidth: CGFloat = SCRXFrom(180), bottomMargin: CGFloat = 0, position: ContentPosition = .bottomCenter, buttonText: String? = nil, btnClickBack: (()->())? = nil) {
+    init(frame: CGRect, imageName: String = "empty", title: String?, tipText: String?, margin: CGFloat = SCRXFrom(20), buttomWidth: CGFloat = SCRXFrom(180), bottomMargin: CGFloat = 0, position: ContentPosition = .bottomCenter, buttonText: String? = nil, btnClickBack: (()->())? = nil) {
         
         super.init(frame: frame)
         self.position = position
@@ -36,6 +36,11 @@ class EmptyDataView: UIView {
         imageView.image = UIImage(named: imageName)
         titleLabel.text = title
         tipLabel.text = tipText
+        contentView.snp.updateConstraints { make in
+            make.left.equalTo(margin)
+            make.right.equalTo(-margin)
+        }
+        
         if buttonText != nil {
             button.isHidden = false
             button.setTitle(buttonText, for: .normal)
@@ -123,7 +128,7 @@ class EmptyDataView: UIView {
             make.centerX.equalToSuperview()
         }
         
-        titleLabel = UILabel(text: "", textColor: RGB(100, 116, 139), fontSize: 15)
+        titleLabel = UILabel(text: "", textColor: RGB(100, 116, 139), fontSize: 15, fontWeight: .light)
         titleLabel.textAlignment = .center
         titleLabel.numberOfLines = 0
         contentView.addSubview(titleLabel)
@@ -143,13 +148,13 @@ class EmptyDataView: UIView {
         }
         
         button = UIButton(title: "", titleSize: 16, titleWeight: .light, titleColor: .white, target: self, action: #selector(buttonClick))
-        button.titleLabel?.font = Font_Medium_Size(16)
+        button.titleLabel?.font = UIFont.systemFont(ofSize: SCRYFrom(16), weight: .light)
         button.backgroundColor = Bar_Color
         button.layer.cornerRadius = SCRYFrom(10)
         button.isHidden = true
         contentView.addSubview(button)
         button.snp.makeConstraints { make in
-            make.top.equalTo(tipLabel.snp.bottom).offset(SCRYFrom(78))
+            make.top.equalTo(titleLabel.snp.bottom).offset(SCRYFrom(56))
             make.centerX.equalToSuperview()
             make.width.equalTo(SCRXFrom(128))
             make.height.equalTo(SCRYFrom(44))
@@ -174,11 +179,12 @@ extension UIView {
         }
     }
     
-    func showEmptyDataView(frame: CGRect? = nil, imageName: String? = nil, title: String? = nil, tipText: String? = nil, buttonText: String? = nil, buttomWidth: CGFloat = SCRXFrom(180), position: EmptyDataView.ContentPosition = .bottomCenter, bottomMargin: CGFloat = 0, btnClickBack: (()->())? = nil) {
+    func showEmptyDataView(frame: CGRect? = nil, imageName: String? = nil, title: String? = nil, tipText: String? = nil, backgroundColor: UIColor = .clear, buttonText: String? = nil, buttomWidth: CGFloat = SCRXFrom(180), position: EmptyDataView.ContentPosition = .bottomCenter, margin: CGFloat = SCRXFrom(20), bottomMargin: CGFloat = 0, btnClickBack: (()->())? = nil) {
         
         hideEmptyDataView()
         
-        let emptyView = EmptyDataView(frame: frame ?? self.bounds, imageName: imageName ?? "data_empty", title: title, tipText: tipText, buttomWidth: buttomWidth, bottomMargin: bottomMargin, position: position, buttonText: buttonText, btnClickBack: btnClickBack)
+        let emptyView = EmptyDataView(frame: frame ?? self.bounds, imageName: imageName ?? "data_empty", title: title, tipText: tipText, margin: margin, buttomWidth: buttomWidth, bottomMargin: bottomMargin, position: position, buttonText: buttonText, btnClickBack: btnClickBack)
+        emptyView.backgroundColor = backgroundColor
         addSubview(emptyView)
         self.emptyView = emptyView
     }
@@ -186,6 +192,7 @@ extension UIView {
     func hideEmptyDataView() {
         if self.emptyView != nil {
             self.emptyView?.removeFromSuperview()
+            self.emptyView = nil
         }
     }
     

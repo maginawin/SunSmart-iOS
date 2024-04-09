@@ -39,7 +39,6 @@ class SitesViewController: UIViewController {
         NotificationCenter.default.addObserver(self, selector: #selector(refreshData), name: .init(SitesDataRefreshNotifiacationName), object: nil)
         
 //        navigationController?.interactivePopGestureRecognizer?.delegate = self
-        (navigationController as? NavigationViewController)?.backItemDelegate = self
         
         setupUI()
         setupData()
@@ -47,6 +46,8 @@ class SitesViewController: UIViewController {
     
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
+        
+        (navigationController as? NavigationViewController)?.navigationDelegate = self
         
         if reloadData {
             reloadData = false
@@ -72,6 +73,11 @@ class SitesViewController: UIViewController {
         }
     }
     
+    override func viewWillDisappear(_ animated: Bool) {
+        super.viewWillDisappear(animated)
+        
+        (navigationController as? NavigationViewController)?.navigationDelegate = nil
+    }
     
     
     /// 数据源
@@ -104,14 +110,53 @@ class SitesViewController: UIViewController {
     
     /// 添加场所
     @objc private func addSite() {
-        // 创建一个场所
+        
+        
+//        ProfilePhasesTimePickerView(title: "T1", name: "Fade time", times: ["1S", "2S", "3S","4S","5S","6S","7S","8S","9S","10S"]) { selectRow in
+//            
+//            
+//            
+//        }.show()
+        // .occupancyAndVacantLux(occupanyLux: 500, vacantLux: 300, inputRange: 20...80)
+        // .taskLux(lux: 500, inputRange: 20...90)
+//        ProfileLevelSettingsView(levelType: .occupancyAndVacantLevel(occupanyLevel: 100, vacantLevel: 50, inputRange: 0...100)) { item, value in
+//        
+//            switch item.itemType {
+//            case .occupancyLux, .vacantLux, .taskLux:
+//                
+//                item.showLoadingAnimation()
+//                DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
+//                    item.value = Int(1500.0 * Float(value) / 100.0)
+//                    item.hideLoadingAnimation()
+//                }
+//                
+//            default:
+//                break
+//            }
+//            
+//        } settingsCallback: { result in
+//            print(result)
+//        }.show()
+
+//        let space = SiteData.loadAll()[0].spaces.last!
+//        space.meshManager?.loadExtensionData()
+        
+        
+//        let vc = GroupSwitchsViewController(group: space.groups.first!)
+//        let vc = LightSensorCalibrationViewController()
+//        let vc = ProfileSettingsViewController(profile: .init(type: .occupancy_daylight))
+//        let vc = ProfileInstructionsController()
+//        let vc = MotionSensorInstructionsController()
+//        present(NavigationViewController(rootViewController: vc), animated: true)
+//        return
+//        // 创建一个场所
         let site = SiteData.add(name: SiteData.getNextSiteName())
         allSites.append(site)
         allSitesTableView.insertRows(at: [IndexPath(row: allSites.count - 1, section: 0)], with: .none)
         updateEmptyView()
         
-        
-        // 跳转到场所页面
+//        
+//        // 跳转到场所页面
         let vc = SiteViewController(site: site, addSite: true)
         navigationController?.pushViewController(vc, animated: true)
     }
@@ -363,7 +408,7 @@ extension SitesViewController {
     }
 }
 
-extension SitesViewController: NavigationViewControllerBackItemDelegate {
+extension SitesViewController: NavigationViewControllerDelegate {
     /// 导航控制器点击back事件
     func navigationController(_ navigationController: NavigationViewController, backItemAction showViewController: UIViewController) {
         if navigationController.children.count > 1 {

@@ -95,7 +95,7 @@ class DeviceLightControlView: UIView {
         levelSliderView.slider.throttle = true
         levelSliderView.slider.interval = 0.5
         levelSliderView.value = 100
-        levelSliderView.valueChangedCallback = {[weak self] (value, ended) in
+        levelSliderView.valueThrottleChangedCallback = {[weak self] (value, ended) in
             guard let self = self else { return }
             self.delegate?.lightControl(self, levelValueChanged: value, ended: ended)
         }
@@ -108,10 +108,10 @@ class DeviceLightControlView: UIView {
         }
         
         cctSliderView = BuoySliderView(frame: .zero, functionType: .cct())
-        cctSliderView.value = 4000
+        cctSliderView.value = 4600
         cctSliderView.slider.throttle = true
         cctSliderView.slider.interval = 0.5
-        cctSliderView.valueChangedCallback = {[weak self] (value, ended) in
+        cctSliderView.valueThrottleChangedCallback = {[weak self] (value, ended) in
             guard let self = self else { return }
             self.delegate?.lightControl(self, cctValueChanged: value, ended: ended)
         }

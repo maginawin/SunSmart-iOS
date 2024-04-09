@@ -21,10 +21,10 @@ extension CALayer {
     /// 添加平移动画
     /// @param duration 动画时长 建议0.3s
     /// @param animationOrientation 动画方向
-    func addMoveInAnimation(duration: TimeInterval = 0.3, animationOrientation: CATransitionSubtype = .fromRight, animationKey: String? = nil) {
+    func addMoveInAnimation(duration: TimeInterval = 0.3, type: CATransitionType = .moveIn, animationOrientation: CATransitionSubtype = .fromRight, animationKey: String? = nil) {
         
         let transition = CATransition()
-        transition.type = .moveIn
+        transition.type = type
         transition.subtype = animationOrientation
         transition.duration = duration;
         self.add(transition, forKey: animationKey)

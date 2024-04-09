@@ -100,12 +100,12 @@ class CharacterSelectView: UIView {
             make.height.equalTo(contentView.snp.width).multipliedBy(350.0 / 356)
         }
         
-        titleLabel = UILabel(text: title, textColor: RGB(30, 35, 41), fontSize: 15)
+        titleLabel = UILabel(text: title, textColor: RGB(30, 35, 41), fontSize: 15, fontWeight: .light)
         contentView.addSubview(titleLabel)
         titleLabel.snp.makeConstraints { make in
             make.centerX.equalToSuperview()
             make.top.equalTo(SCRYFrom(16))
-            make.width.lessThanOrEqualTo(SCRXFrom(230))
+            make.width.lessThanOrEqualTo(SCRXFrom(240))
         }
         
         closeBtn = UIButton(normalImageName: "close", target: self, action: #selector(closeBtnClick))

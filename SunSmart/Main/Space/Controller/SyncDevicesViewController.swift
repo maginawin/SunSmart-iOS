@@ -95,7 +95,7 @@ class SyncDevicesViewController: UIViewController {
                 }
             })
             
-            group.nodes.forEach { node in
+            group.nodes.filter({ node in !(outNodes?.contains(node) ?? false) }).forEach { node in
                 let result = getSyncDeviceModel(group: group, node: node, exitGroup: node.groupState == .exitFailure)
                 if let removceDevice = result.removeDevice {
                     removeSection.devices.append(removceDevice)
@@ -274,6 +274,9 @@ class SyncDevicesViewController: UIViewController {
         var nodeSyncScenes = data.syncScenes
         var nodeDeleteSchedules = data.deleteSchedules
         var nodeSyncSchedules = data.syncSchedules
+        let syncProfiles = data.syncProfile
+        let deleteSwitch = data.deleteSwitch
+        
         /// 删除操作
         var deleteSteps: [SyncDeviceStepModel] = []
         /// 同步操作
@@ -286,6 +289,7 @@ class SyncDevicesViewController: UIViewController {
             
             nodeSyncScenes.removeAll()
             nodeSyncSchedules.removeAll()
+//            syncProfiles.removeAll()
         }
         
         let deleteScheduleTasks = nodeDeleteSchedules.map({
@@ -323,6 +327,36 @@ class SyncDevicesViewController: UIViewController {
             let step = SyncDeviceStepModel(type: "schedule".localizedString, state: .none, tasks: syncScheduleTasks)
             syncSceneTasks.forEach({ $0.parentStepModel = step })
             configturationSteps.append(step)
+        }
+        
+        if exitGroup { // 退出组
+            let deleteProfileTasks = syncProfiles.map({
+                return SyncDeviceStepTaskModel(name: $0.title, operationType: .delete(node: node, type: .profile(type: $0)))
+            })
+            if deleteProfileTasks.count > 0 {
+                let step = SyncDeviceStepModel(type: "remove_profile".localizedString, state: .none, tasks: deleteProfileTasks)
+                deleteProfileTasks.forEach({ $0.parentStepModel = step })
+                deleteSteps.append(step)
+            }
+            // 删除绑定按键
+            if deleteSwitch {
+                let removeSwitchTask = SyncDeviceStepTaskModel(name: "remove_from_switch".localizedString, operationType: .delete(node: node, type: .enOceanSwitch))
+                let step = SyncDeviceStepModel(type: "remove_kinetic_switch_proxy".localizedString, state: .none, tasks: [removeSwitchTask])
+                removeSwitchTask.parentStepModel = step
+                // 需要依赖之前操作完成才能退出组
+                step.relevanceStepModels = deleteSteps
+                deleteSteps.append(step)
+            }
+            
+        }else {
+            let syncProfileTasks = syncProfiles.map({
+                return SyncDeviceStepTaskModel(name: $0.title, operationType: .configuration(node: node, type: .profile(type: $0)))
+            })
+            if syncProfileTasks.count > 0 {
+                let step = SyncDeviceStepModel(type: "profile".localizedString, state: .none, tasks: syncProfileTasks)
+                syncProfileTasks.forEach({ $0.parentStepModel = step })
+                configturationSteps.append(step)
+            }
         }
         
         // 退出组
@@ -493,10 +527,25 @@ class SyncDevicesViewController: UIViewController {
             })
         }
         tableView.reloadData()
-
         
         DispatchQueue.global().async {
             while let model = self.getNextHandleModel() {
+                
+                guard MeshLibManager.manager.isOpenBluetooth else {
+                    self.sections.forEach { section in
+                        section.allModels.forEach({
+                            $0.state = .failed
+                            $0.isFineshed = true
+                        })
+                    }
+                    self.syncState = .syncFailure
+                    
+                    DispatchQueue.main.async {
+                        self.updateSyncStateUI()
+                        self.tableView.reloadData()
+                    }
+                    return
+                }
                 
                 var messageHandles: [MeshMessageHandle] = []
                 if let deviceModel = model as? SyncDevicesModel {
@@ -563,55 +612,27 @@ class SyncDevicesViewController: UIViewController {
                     self.tableView.reloadData()
                 }
                 
-                
                 let semaphore = DispatchSemaphore(value: 0)
-                DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
-//                    if arc4random_uniform(10) < 9  {
-//                    if (model as? SyncDevicesModel)?.address == 9 {
-//                        model.state = .failed
-//                    }else {
-                        model.state = .successful
-                        (model as? SyncDevicesModel)?.operationType?.finneshHandle()
-                        (model as? SyncDeviceStepTaskModel)?.operationType.finneshHandle()
-//                    }
-//                    }else {
-//                        (model as? SyncDevicesModel)?.failedCount += 1
-//                        (model as? SyncDeviceStepTaskModel)?.failedCount += 1
-//                        model.state = .failed
-//                    }
-                
+
+                MeshProxyMessageCommand.shared.addMessage(messageHandles: messageHandles, progressBack: nil, successfulBack: nil, failedBack: nil) {[weak self] resultMessageHandles in
                     
-                    if let stepModel = (model as? SyncDeviceStepTaskModel)?.parentStepModel, self.showProressStepModel == stepModel {
-                        DispatchQueue.main.async {
-                            if let progressView = SyncDevicesProgressView.current() {
-                                progressView.stepModel = stepModel
-                            }
+                    resultMessageHandles.forEach { handle in
+//                        updateData
+                        if let address = handle.address ?? handle.model?.parentElement?.unicastAddress, let node = MeshNetworkManager.instance.meshNetwork?.node(withAddress: address) {
+                            node.updateData(message: handle.message, isSuccess: handle.isSuccessful)
+                        }
+                        if handle.isSuccessful {
+                            model.state = .successful
+                        }else {
+                            model.state = .failed
+                            (model as? SyncDevicesModel)?.failedCount += 1
+                            (model as? SyncDeviceStepTaskModel)?.failedCount += 1
                         }
                     }
-                    self.updateCell(model: model)
+                    self?.updateCell(model: model)
                     semaphore.signal()
                 }
                 semaphore.wait()
-                
-                
-                
-//                MeshProxyMessageCommand.shared.addMessage(messageHandles: messageHandles, progressBack: nil, successfulBack: nil, failedBack: nil) {[weak self] resultMessageHandles in
-//                    
-//                    resultMessageHandles.forEach { handle in
-////                        updateData
-//                        if let address = handle.address ?? handle.model?.parentElement?.unicastAddress, let node = MeshNetworkManager.instance.meshNetwork?.node(withAddress: address) {
-//                            node.updateData(message: handle.message)
-//                        }
-//                        if handle.isSuccessful {
-//                            model.state = .successful
-//                        }else {
-//                            model.state = model.state == .failed ? .repeatedFailure : .failed
-//                        }
-//                    }
-//                    self?.updateCell(model: model)
-//                    semaphore.signal()
-//                }
-//                semaphore.wait()
             }
             _ = MeshNetworkManager.instance.save()
             print("完成")

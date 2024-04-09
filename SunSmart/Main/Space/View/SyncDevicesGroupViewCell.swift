@@ -23,6 +23,8 @@ protocol SyncDevicesGroupViewCellDelegate: AnyObject {
 
 class SyncDevicesGroupViewCell: UITableViewCell {
     
+    
+    
     var selectBtn: UIButton!
     
     var iconImageBtn: UIButton!

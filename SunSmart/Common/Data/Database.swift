@@ -297,15 +297,15 @@ extension SiteData {
 
 extension SpaceData {
     
-    static let CREAT_TABLE_SPACES = "CREATE TABLE IF NOT EXISTS SPACES(SPACE_ROW INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT, SPACE_NAME TEXT, SPACE_ID TEXT, SITE_ID TEXT, SPACE_IMAGE_ID INTEGER, SPACE_CREATE TEXT, SPACE_LASTUPDATE TEXT, SPACE_SOURCE INTEGER, SPACE_FAVOURITE BOOL, SPACE_MESHUUID TEXT, SPACE_LUMINAIRES_COUNT INTEGER, SPACE_SWITCHES_COUNT INTEGER, SPACE_DEVICE_COUNT INTEGER, SPACE_GROUP_COUNT INTEGER, SPACE_SCENE_COUNT INTEGER, SPACE_SCHEHEDULE_COUNT INTEGER, SPACE_DEVICES_SORT_TYPE INTEGER)"
+    static let CREAT_TABLE_SPACES = "CREATE TABLE IF NOT EXISTS SPACES(SPACE_ROW INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT, SPACE_NAME TEXT, SPACE_ID TEXT, SITE_ID TEXT, SPACE_IMAGE_ID INTEGER, SPACE_CREATE TEXT, SPACE_LASTUPDATE TEXT, SPACE_SOURCE INTEGER, SPACE_FAVOURITE BOOL, SPACE_MESHUUID TEXT, SPACE_LUMINAIRES_COUNT INTEGER, SPACE_SWITCHES_COUNT INTEGER, SPACE_DEVICE_COUNT INTEGER, SPACE_GROUP_COUNT INTEGER, SPACE_SCENE_COUNT INTEGER, SPACE_SCHEHEDULE_COUNT INTEGER, SPACE_DEVICES_SORT_TYPE INTEGER, SYNC_DATE_TIMESTAMP INTEGER)"
     
     static let CREATE_IDX_SPACES_SPACE = "CREATE UNIQUE INDEX IF NOT EXISTS IDX_SPACES_SPACE ON SPACES(SPACE_ID, SITE_ID)"
     
-    static let SAVE_SPACES = "INSERT OR REPLACE INTO SPACES(SPACE_NAME, SPACE_ID, SITE_ID, SPACE_IMAGE_ID, SPACE_CREATE, SPACE_LASTUPDATE, SPACE_SOURCE, SPACE_FAVOURITE, SPACE_MESHUUID, SPACE_LUMINAIRES_COUNT, SPACE_SWITCHES_COUNT, SPACE_DEVICE_COUNT, SPACE_GROUP_COUNT, SPACE_SCENE_COUNT, SPACE_SCHEHEDULE_COUNT, SPACE_DEVICES_SORT_TYPE) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+    static let SAVE_SPACES = "INSERT OR REPLACE INTO SPACES(SPACE_NAME, SPACE_ID, SITE_ID, SPACE_IMAGE_ID, SPACE_CREATE, SPACE_LASTUPDATE, SPACE_SOURCE, SPACE_FAVOURITE, SPACE_MESHUUID, SPACE_LUMINAIRES_COUNT, SPACE_SWITCHES_COUNT, SPACE_DEVICE_COUNT, SPACE_GROUP_COUNT, SPACE_SCENE_COUNT, SPACE_SCHEHEDULE_COUNT, SPACE_DEVICES_SORT_TYPE, SYNC_DATE_TIMESTAMP) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
 
-    static let GET_SPACES = "SELECT SPACE_NAME, SPACE_ID, SITE_ID, SPACE_IMAGE_ID, SPACE_CREATE, SPACE_LASTUPDATE, SPACE_SOURCE, SPACE_FAVOURITE, SPACE_MESHUUID, SPACE_LUMINAIRES_COUNT, SPACE_SWITCHES_COUNT, SPACE_DEVICE_COUNT, SPACE_GROUP_COUNT, SPACE_SCENE_COUNT, SPACE_SCHEHEDULE_COUNT, SPACE_DEVICES_SORT_TYPE FROM SPACES WHERE SITE_ID = ? ORDER BY SPACE_CREATE"
+    static let GET_SPACES = "SELECT SPACE_NAME, SPACE_ID, SITE_ID, SPACE_IMAGE_ID, SPACE_CREATE, SPACE_LASTUPDATE, SPACE_SOURCE, SPACE_FAVOURITE, SPACE_MESHUUID, SPACE_LUMINAIRES_COUNT, SPACE_SWITCHES_COUNT, SPACE_DEVICE_COUNT, SPACE_GROUP_COUNT, SPACE_SCENE_COUNT, SPACE_SCHEHEDULE_COUNT, SPACE_DEVICES_SORT_TYPE, SYNC_DATE_TIMESTAMP FROM SPACES WHERE SITE_ID = ? ORDER BY SPACE_CREATE"
     
-    static let GET_SPACE_BY_ID = "SELECT SPACE_NAME, SPACE_ID, SITE_ID, SPACE_IMAGE_ID, SPACE_CREATE, SPACE_LASTUPDATE, SPACE_SOURCE, SPACE_FAVOURITE, SPACE_MESHUUID, SPACE_LUMINAIRES_COUNT, SPACE_SWITCHES_COUNT, SPACE_DEVICE_COUNT, SPACE_GROUP_COUNT, SPACE_SCENE_COUNT, SPACE_SCHEHEDULE_COUNT, SPACE_DEVICES_SORT_TYPE FROM SPACES WHERE SPACE_ID = ? AND SITE_ID = ?"
+    static let GET_SPACE_BY_ID = "SELECT SPACE_NAME, SPACE_ID, SITE_ID, SPACE_IMAGE_ID, SPACE_CREATE, SPACE_LASTUPDATE, SPACE_SOURCE, SPACE_FAVOURITE, SPACE_MESHUUID, SPACE_LUMINAIRES_COUNT, SPACE_SWITCHES_COUNT, SPACE_DEVICE_COUNT, SPACE_GROUP_COUNT, SPACE_SCENE_COUNT, SPACE_SCHEHEDULE_COUNT, SPACE_DEVICES_SORT_TYPE, SYNC_DATE_TIMESTAMP FROM SPACES WHERE SPACE_ID = ? AND SITE_ID = ?"
     
     static let GET_NEXT_SPACENAME = "SELECT SPACE_NAME FROM SPACES WHERE SITE_ID = ? AND SPACE_NAME LIKE ?"
     
@@ -330,6 +330,8 @@ extension SpaceData {
         SceneExecuteData.createDatabaseIfNotExit()
         Schedule.createDatabaseIfNotExit()
         Node.createDatabaseIfNotExit()
+        Profile.createDatabaseIfNotExit()
+        GroupSwitch.createDatabaseIfNotExit()
     }
  
     /// 根据场所id获取场所下的所有空间
@@ -354,7 +356,8 @@ extension SpaceData {
                 space.groupCount = Int(sqliteWrapper.columnInt(12))
                 space.sceneCount = Int(sqliteWrapper.columnInt(13))
                 space.scheheduleCount = Int(sqliteWrapper.columnInt(14))
-                space.deviceSortType = .init(rawValue: Int(sqliteWrapper.columnInt(15))) ?? .addDate
+                space.deviceSortType = .init(rawValue: Int(sqliteWrapper.columnInt(15))) ?? .create
+                space.lastSyncDateTimestamp = CLongLong(sqliteWrapper.columnInt(16))
                 spaces.append(space)
             }
         }
@@ -389,7 +392,8 @@ extension SpaceData {
             space?.groupCount = Int(sqliteWrapper.columnInt(12))
             space?.sceneCount = Int(sqliteWrapper.columnInt(13))
             space?.scheheduleCount = Int(sqliteWrapper.columnInt(14))
-            space?.deviceSortType = .init(rawValue: Int(sqliteWrapper.columnInt(15))) ?? .addDate
+            space?.deviceSortType = .init(rawValue: Int(sqliteWrapper.columnInt(15))) ?? .create
+            space?.lastSyncDateTimestamp = CLongLong(sqliteWrapper.columnInt(16))
         }
         sqliteWrapper.finalizeSql()
         //        sqliteWrapper.closeDb()
@@ -458,6 +462,7 @@ extension SpaceData {
         sqliteWrapper.bindInt(14, integer: sqlite3_int64(self.sceneCount))
         sqliteWrapper.bindInt(15, integer: sqlite3_int64(self.scheheduleCount))
         sqliteWrapper.bindInt(16, integer: sqlite3_int64(self.deviceSortType.rawValue))
+        sqliteWrapper.bindInt(17, integer: sqlite3_int64(self.lastSyncDateTimestamp))
         sqliteWrapper.stepSqlDone()
         sqliteWrapper.resetSql()
         sqliteWrapper.finalizeSql()
@@ -594,15 +599,15 @@ extension SpaceData {
 
 extension GroupInfo {
     
-    private static let CREAT_TABLE_GROUPS_INFO = "CREATE TABLE IF NOT EXISTS GROUPS_INFO(GROUPS_INFO_ROW INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT, GROUP_NAME TEXT, GROUP_ADDRESS INTEGER, MESH_UUID TEXT, GROUP_IMAGE_ID INTEGER, GROUP_IMAGE_TEXT TEXT)"
+    private static let CREAT_TABLE_GROUPS_INFO = "CREATE TABLE IF NOT EXISTS GROUPS_INFO(GROUPS_INFO_ROW INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT, GROUP_NAME TEXT, GROUP_ADDRESS INTEGER, MESH_UUID TEXT, GROUP_IMAGE_ID INTEGER, GROUP_IMAGE_TEXT TEXT, PROFILE_ID TEXT, AMBIENT_LIGHT_NODE_ADDRESS INTEGER)"
     
     private static let CREATE_IDX_GROUPS_INFO = "CREATE UNIQUE INDEX IF NOT EXISTS IDX_GROUPS_INFO ON GROUPS_INFO(MESH_UUID, GROUP_ADDRESS)"
     
-    private static let SAVE_GROUPS_INFO = "INSERT OR REPLACE INTO GROUPS_INFO(GROUP_NAME, GROUP_ADDRESS, MESH_UUID, GROUP_IMAGE_ID, GROUP_IMAGE_TEXT) VALUES(?, ?, ?, ?, ?)"
+    private static let SAVE_GROUPS_INFO = "INSERT OR REPLACE INTO GROUPS_INFO(GROUP_NAME, GROUP_ADDRESS, MESH_UUID, GROUP_IMAGE_ID, GROUP_IMAGE_TEXT, PROFILE_ID, AMBIENT_LIGHT_NODE_ADDRESS) VALUES(?, ?, ?, ?, ?, ?, ?)"
 
-    private static let GET_GROUPS_INFO = "SELECT GROUP_NAME, GROUP_ADDRESS, MESH_UUID, GROUP_IMAGE_ID, GROUP_IMAGE_TEXT FROM GROUPS_INFO WHERE MESH_UUID = ?"
+    private static let GET_GROUPS_INFO = "SELECT GROUP_NAME, GROUP_ADDRESS, MESH_UUID, GROUP_IMAGE_ID, GROUP_IMAGE_TEXT, PROFILE_ID, AMBIENT_LIGHT_NODE_ADDRESS FROM GROUPS_INFO WHERE MESH_UUID = ?"
     
-    private static let GET_GROUP_INFO_BY_ID = "SELECT GROUP_NAME, GROUP_ADDRESS, MESH_UUID, GROUP_IMAGE_ID, GROUP_IMAGE_TEXT FROM GROUPS_INFO WHERE MESH_UUID = ? AND GROUP_ADDRESS = ?"
+    private static let GET_GROUP_INFO_BY_ID = "SELECT GROUP_NAME, GROUP_ADDRESS, MESH_UUID, GROUP_IMAGE_ID, GROUP_IMAGE_TEXT, PROFILE_ID, AMBIENT_LIGHT_NODE_ADDRESS FROM GROUPS_INFO WHERE MESH_UUID = ? AND GROUP_ADDRESS = ?"
     
     private static let DELETE_GROUPS_INFO = "DELETE FROM GROUPS_INFO WHERE MESH_UUID = ?"
     
@@ -631,6 +636,8 @@ extension GroupInfo {
         sqliteWrapper.bindText(1, text: meshUUID)
         
         var groupInfos: [GroupInfo] = []
+        var profileIds: [(address: Address, profileId: String)] = []
+        
         while sqliteWrapper.stepSqlRow() {
             
             let address = sqliteWrapper.columnInt(1)
@@ -643,6 +650,16 @@ extension GroupInfo {
             }
             groupInfo.imageText = imageText
             groupInfos.append(groupInfo)
+            if let profileId = sqliteWrapper.columnText(5) {
+                profileIds.append((address: Address(address), profileId: profileId))
+            }
+            // 组绑定的光照传感器
+            let ambientLightNodeAddress = sqliteWrapper.columnInt(6)
+            if ambientLightNodeAddress > 0 {
+                if let node = MeshNetworkManager.instance.meshNetwork?.node(withAddress: Address(ambientLightNodeAddress)) {
+                    groupInfo.ambientLightSensorNode = node
+                }
+            }
         }
         
         sqliteWrapper.finalizeSql()
@@ -661,6 +678,11 @@ extension GroupInfo {
             // 日程数据
             let schedules = Schedule.loadAll(meshUUID: meshUUID, address: $0.address)
             $0.bindSchedules = schedules
+            // 组配置数据
+            if let profileid = profileIds.first(where: { $0.address == $0.address })?.profileId, let profile = Profile.load(meshUUID: meshUUID, profileId: profileid) {
+                $0.profile = profile
+            }
+            
         })
 
         return groupInfos
@@ -680,6 +702,7 @@ extension GroupInfo {
         sqliteWrapper.bindInt(2, integer: sqlite3_int64(address))
         
         var groupInfo: GroupInfo?
+        var profileId: String?
         while sqliteWrapper.stepSqlRow() {
             
             let address = sqliteWrapper.columnInt(1)
@@ -691,6 +714,14 @@ extension GroupInfo {
                 groupInfo!.name = name
             }
             groupInfo!.imageText = imageText
+            profileId = sqliteWrapper.columnText(5)
+            // 组绑定的光照传感器
+            let ambientLightNodeAddress = sqliteWrapper.columnInt(6)
+            if ambientLightNodeAddress > 0 {
+                if let node = MeshNetworkManager.instance.meshNetwork?.node(withAddress: Address(ambientLightNodeAddress)) {
+                    groupInfo!.ambientLightSensorNode = node
+                }
+            }
         }
         sqliteWrapper.finalizeSql()
         //        sqliteWrapper.closeDb()
@@ -708,6 +739,12 @@ extension GroupInfo {
         // 日程数据
         let schedules = Schedule.loadAll(meshUUID: meshUUID, address: UInt16(address))
         groupInfo?.bindSchedules = schedules
+        // 配置数据
+        if let profileId = profileId, let profile = Profile.load(meshUUID: meshUUID, profileId: profileId) {
+            groupInfo?.profile = profile
+        }
+        // 虚拟按键
+        groupInfo?.switchs = GroupSwitch.loadAll(meshUUID: meshUUID, groupAddress: address)
         
         return groupInfo
     }
@@ -715,7 +752,7 @@ extension GroupInfo {
     /// 删除所有组扩展数据
     /// - Parameter meshUUID: 对应网络id
     /// - Returns: 是否成功
-    static func deleteAll(meshUUID: String) -> Bool {
+    @discardableResult static func deleteAll(meshUUID: String) -> Bool {
         
         objc_sync_enter(sqliteWrapper)
         guard sqliteWrapper.isOpen || sqliteWrapper.openDb(sqliteDBName), sqliteWrapper.prepareSql(DELETE_GROUPS_INFO) else {
@@ -772,6 +809,13 @@ extension GroupInfo {
         sqliteWrapper.bindInt(4, integer: sqlite3_int64(imageId))
 //        if imageText != nil {
             sqliteWrapper.bindText(5, text: imageText)
+        sqliteWrapper.bindText(6, text: profile.id)
+        if let node = ambientLightSensorNode {
+            sqliteWrapper.bindInt(7, integer: sqlite3_int64(node.primaryUnicastAddress))
+        }else {
+            sqliteWrapper.bindInt(7, integer: sqlite3_int64(-1))
+        }
+        
 //        }
         sqliteWrapper.stepSqlDone()
         sqliteWrapper.resetSql()
@@ -853,7 +897,7 @@ extension SceneInfo {
     /// 删除所有场景扩展数据
     /// - Parameter meshUUID: 对应网络id
     /// - Returns: 是否成功
-    static func deleteAll(meshUUID: String) -> Bool {
+    @discardableResult static func deleteAll(meshUUID: String) -> Bool {
         
         objc_sync_enter(sqliteWrapper)
         guard sqliteWrapper.isOpen || sqliteWrapper.openDb(sqliteDBName), sqliteWrapper.prepareSql(DELETE_SCENES_INFO) else {
@@ -1055,7 +1099,7 @@ extension SceneExecuteData {
     /// 删除所有配置的场景数据
     /// - Parameter meshUUID: 对应网络id
     /// - Returns: 是否成功
-    static func deleteAll(meshUUID: String) -> Bool {
+    @discardableResult static func deleteAll(meshUUID: String) -> Bool {
         
         objc_sync_enter(sqliteWrapper)
         guard sqliteWrapper.isOpen || sqliteWrapper.openDb(sqliteDBName), sqliteWrapper.prepareSql(DELETE_SCENES_DATA) else {
@@ -1341,7 +1385,7 @@ extension Schedule {
     /// 删除网络内所有配置的日程数据
     /// - Parameter meshUUID: 对应网络id
     /// - Returns: 是否成功
-    static func deleteAll(meshUUID: String) -> Bool {
+    @discardableResult static func deleteAll(meshUUID: String) -> Bool {
         
         objc_sync_enter(sqliteWrapper)
         guard sqliteWrapper.isOpen || sqliteWrapper.openDb(sqliteDBName), sqliteWrapper.prepareSql(DELETE_SCHEDULES) else {
@@ -1499,15 +1543,15 @@ extension Schedule {
 
 extension Node {
     
-    private static let CREAT_TABLE_NODE_INFOS = "CREATE TABLE IF NOT EXISTS NODE_INFOS(NODE_ROW INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT, ADDRESS INTEGER, MAC_ADDRESS TEXT, MESH_UUID TEXT, CCT_RANGE_MIN INTEGER, CCT_RANGE_MAX INTEGER, RSSI INTEGER, GROUP_STATE INTEGER)"
-    
+    private static let CREAT_TABLE_NODE_INFOS = "CREATE TABLE IF NOT EXISTS NODE_INFOS(NODE_ROW INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT, ADDRESS INTEGER, MAC_ADDRESS TEXT, MESH_UUID TEXT, CCT_RANGE_MIN INTEGER, CCT_RANGE_MAX INTEGER, RSSI INTEGER, GROUP_STATE INTEGER, SENSOR_TYPE_DATA BLOB, SENSOR_CALIBRATIONVALUE INTEGER,  ENOCEAN_MACADDRESS TEXT, ENOCEAN_KEY_SCENES BLOB, POWER_UPSTATE INTEGER, DEFALUT_LIGHTNESS INTEGER, LIGHTNESS_RANGE_MIN INTEGER, LIGHTNESS_RANGE_MAX INTEGER)"
+
     private static let CREATE_IDX_NODE_INFO = "CREATE UNIQUE INDEX IF NOT EXISTS IDX_NODE_INFO ON NODE_INFOS(ADDRESS, MESH_UUID)"
     
-    private static let SAVE_NODE_INFO = "INSERT OR REPLACE INTO NODE_INFOS(ADDRESS, MAC_ADDRESS, MESH_UUID, CCT_RANGE_MIN, CCT_RANGE_MAX, RSSI, GROUP_STATE) VALUES(?, ?, ?, ?, ?, ?, ?)"
+    private static let SAVE_NODE_INFO = "INSERT OR REPLACE INTO NODE_INFOS(ADDRESS, MAC_ADDRESS, MESH_UUID, CCT_RANGE_MIN, CCT_RANGE_MAX, RSSI, GROUP_STATE, SENSOR_TYPE_DATA, SENSOR_CALIBRATIONVALUE, ENOCEAN_MACADDRESS, ENOCEAN_KEY_SCENES, POWER_UPSTATE, DEFALUT_LIGHTNESS, LIGHTNESS_RANGE_MIN, LIGHTNESS_RANGE_MAX) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
     
-    private static let GET_NODE_INFOS = "SELECT ADDRESS, MAC_ADDRESS, MESH_UUID, CCT_RANGE_MIN, CCT_RANGE_MAX, RSSI, GROUP_STATE FROM NODE_INFOS WHERE MESH_UUID = ?"
+    private static let GET_NODE_INFOS = "SELECT ADDRESS, MAC_ADDRESS, MESH_UUID, CCT_RANGE_MIN, CCT_RANGE_MAX, RSSI, GROUP_STATE, SENSOR_TYPE_DATA, SENSOR_CALIBRATIONVALUE, ENOCEAN_MACADDRESS, ENOCEAN_KEY_SCENES, POWER_UPSTATE, DEFALUT_LIGHTNESS, LIGHTNESS_RANGE_MIN, LIGHTNESS_RANGE_MAX FROM NODE_INFOS WHERE MESH_UUID = ?"
     
-    private static let GET_NODE_INFO_BY_ID = "SELECT ADDRESS, MAC_ADDRESS, MESH_UUID, CCT_RANGE_MIN, CCT_RANGE_MAX, RSSI, GROUP_STATE FROM NODE_INFOS  WHERE MESH_UUID = ? AND ADDRESS = ?"
+    private static let GET_NODE_INFO_BY_ID = "SELECT ADDRESS, MAC_ADDRESS, MESH_UUID, CCT_RANGE_MIN, CCT_RANGE_MAX, RSSI, GROUP_STATE, SENSOR_TYPE_DATA, SENSOR_CALIBRATIONVALUE, ENOCEAN_MACADDRESS, ENOCEAN_KEY_SCENES, POWER_UPSTATE, DEFALUT_LIGHTNESS, LIGHTNESS_RANGE_MIN, LIGHTNESS_RANGE_MAX FROM NODE_INFOS  WHERE MESH_UUID = ? AND ADDRESS = ?"
     
     private static let DELETE_NODE_INFOS = "DELETE FROM NODE_INFOS WHERE MESH_UUID = ?"
     
@@ -1530,6 +1574,18 @@ extension Node {
     
     private static let DELETE_NODE_SCHEDULE = "DELETE FROM NODE_SCHEDULES WHERE MESH_UUID = ? AND ADDRESS = ? AND SCHEDULE_ID = ?"
     
+    /// node-profile
+    private static let CREAT_TABLE_NODE_PROFILES = "CREATE TABLE IF NOT EXISTS NODE_PROFILES(NODE_PROFILES_ROW INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT, address integer, mesh_uuid text, mode integer, occupancy_mode integer, lightness_range_high integer, lightness_range_low integer, lightness_on integer, lux_level_on integer, lightness_prolong integer, lux_level_prolong integer, regulator_kid text, regulator_kiu text, regulator_kpd text, regulator_kpu text, regulator_accuracy integer, time_fade_on integer, time_run_on integer, time_fade integer, time_prolong integer, time_standby_auto integer, manual_override_timeout bigint, manual_override_enabled integer, power_up_state integer, power_up_lightness integer, light_auto_adjust_enabled integer)"
+    
+    private static let CREATE_IDX_NODE_PROFILES = "CREATE UNIQUE INDEX IF NOT EXISTS IDX_NODE_PROFILES ON NODE_PROFILES(mesh_uuid, address)"
+    
+    private static let SAVE_NODE_PROFILE = "INSERT OR REPLACE INTO NODE_PROFILES(address, mesh_uuid, mode, occupancy_mode, lightness_range_high, lightness_range_low, lightness_on, lux_level_on, lightness_prolong, lux_level_prolong, regulator_kid, regulator_kiu, regulator_kpd, regulator_kpu, regulator_accuracy, time_fade_on, time_run_on, time_fade, time_prolong, time_standby_auto, manual_override_timeout, manual_override_enabled, power_up_state, power_up_lightness, light_auto_adjust_enabled) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+    
+    private static let GET_NODE_PROFILE = "SELECT address, mesh_uuid, mode, occupancy_mode, lightness_range_high, lightness_range_low, lightness_on, lux_level_on, lightness_prolong, lux_level_prolong, regulator_kid, regulator_kiu, regulator_kpd, regulator_kpu, regulator_accuracy, time_fade_on, time_run_on, time_fade, time_prolong, time_standby_auto, manual_override_timeout, manual_override_enabled, power_up_state, power_up_lightness, light_auto_adjust_enabled FROM NODE_PROFILES WHERE mesh_uuid = ? AND address = ?"
+    
+    private static let DELETE_NODE_PROFILES = "DELETE FROM NODE_PROFILES WHERE mesh_uuid = ?"
+    private static let DELETE_NODE_PROFILE = "DELETE FROM NODE_PROFILES WHERE mesh_uuid = ? AND address = ?"
+    
     /// 初始化数据库缓存
     static func createDatabaseIfNotExit() {
         objc_sync_enter(sqliteWrapper)
@@ -1541,6 +1597,8 @@ extension Node {
         objc_sync_exit(sqliteWrapper)
         
         createScheduleDatabaseIfNotExit()
+        
+        createProfileDatabaseIfNotExit()
     }
     
     /// 获取网络下所有的设备扩展数据
@@ -1562,10 +1620,50 @@ extension Node {
             let mac = sqliteWrapper.columnText(1)
             let cctRange: ClosedRange<UInt16> = UInt16(sqliteWrapper.columnInt(3))...UInt16(sqliteWrapper.columnInt(4))
             let rssi = Int(sqliteWrapper.columnInt(5))
-            let groupState: GroupState = .init(rawValue: Int(sqliteWrapper.columnInt(5))) ?? .none
-        
+            let groupState: GroupState = .init(rawValue: Int(sqliteWrapper.columnInt(6))) ?? .none
             
-            nodeInfos.append(NodeInfo(address: address, mac: mac, cctRange: cctRange, rssi: rssi, groupState: groupState, schedules: [:], sceneDatas: [:]))
+            // 传感器类型data
+            var sensorTypes: [Int: DeviceProperty] = [:]
+            if let sensorTypeData = sqliteWrapper.columnBlob(7) {
+                var offset = 0
+                let length = 2
+                while offset + length <= sensorTypeData.count {
+                    let type: UInt16 = sensorTypeData.read(fromOffset: offset)
+                    sensorTypes.updateValue(DeviceProperty(type), forKey: Int(offset / length))
+                    offset += length
+                }
+            }
+            // 光照传感器校准值
+            let sensorCalibrationValue = UInt16(sqliteWrapper.columnInt(8))
+            // EnOcean设备mac
+            var enOceanMacAddress: String?
+            if sqliteWrapper.columnText(9).count > 0 {
+                enOceanMacAddress = sqliteWrapper.columnText(9)
+            }
+            // EnOcean按键对应场景
+            var enOceanSwitchKeyScenes: [SceneNumber] = []
+            if let switchKeySceneData = sqliteWrapper.columnBlob(10), switchKeySceneData.count == 8 {
+                let sceneNumber1: UInt16 = switchKeySceneData.read(fromOffset: 0)
+                let sceneNumber2: UInt16 = switchKeySceneData.read(fromOffset: 1)
+                let sceneNumber3: UInt16 = switchKeySceneData.read(fromOffset: 2)
+                let sceneNumber4: UInt16 = switchKeySceneData.read(fromOffset: 3)
+                enOceanSwitchKeyScenes.append(contentsOf: [sceneNumber1, sceneNumber2, sceneNumber3, sceneNumber4])
+            }
+            
+            // 上电状态
+            let powerUpState: OnPowerUp = .init(rawValue: UInt8(sqliteWrapper.columnInt(8))) ?? .restore
+            
+            // 上电亮度
+            var defalutLightness: UInt16?
+            if sqliteWrapper.columnInt(9) >= 0 {
+                defalutLightness = UInt16(sqliteWrapper.columnInt(9))
+            }
+            
+            // 亮度范围
+            let lightnessMin = UInt16(sqliteWrapper.columnInt(13))
+            let lightnessMax = UInt16(sqliteWrapper.columnInt(14))
+            
+            nodeInfos.append(NodeInfo(address: address, mac: mac, cctRange: cctRange, rssi: rssi, groupState: groupState, schedules: [:], sceneDatas: [:], sensorTypes: sensorTypes, sensorCalibrationValue: sensorCalibrationValue, enOceanMacAddress: enOceanMacAddress, enOceanSwitchKeyScenes: enOceanSwitchKeyScenes, powerUpState: powerUpState, defalutLightness: defalutLightness, lightnessRange: lightnessMin...lightnessMax))
         }
       
         sqliteWrapper.finalizeSql()
@@ -1610,9 +1708,52 @@ extension Node {
             let mac = sqliteWrapper.columnText(1)
             let cctRange: ClosedRange<UInt16> = UInt16(sqliteWrapper.columnInt(3))...UInt16(sqliteWrapper.columnInt(4))
             let rssi = Int(sqliteWrapper.columnInt(5))
-            let groupState: GroupState = .init(rawValue: Int(sqliteWrapper.columnInt(5))) ?? .none
+            let groupState: GroupState = .init(rawValue: Int(sqliteWrapper.columnInt(6))) ?? .none
+            // 传感器类型data
+            var sensorTypes: [Int: DeviceProperty] = [:]
+            if let sensorTypeData = sqliteWrapper.columnBlob(7) {
+                var offset = 0
+                let length = 2
+                
+                while offset + length <= sensorTypeData.count {
+                    let type: UInt16 = sensorTypeData.read(fromOffset: offset)
+                    sensorTypes.updateValue(DeviceProperty(type), forKey: Int(offset / length))
+                    offset += length
+                }
+            }
+            // 光照传感器校准值
+            let sensorCalibrationValue = UInt16(sqliteWrapper.columnInt(8))
+            // EnOcean设备mac
+            var enOceanMacAddress: String?
+            if sqliteWrapper.columnText(9).count > 0 {
+                enOceanMacAddress = sqliteWrapper.columnText(9)
+            }
+            // EnOcean按键对应场景
+            var enOceanSwitchKeyScenes: [SceneNumber] = []
+            if let switchKeySceneData = sqliteWrapper.columnBlob(10), switchKeySceneData.count == 8 {
+                let sceneNumber1: UInt16 = switchKeySceneData.read(fromOffset: 0)
+                let sceneNumber2: UInt16 = switchKeySceneData.read(fromOffset: 2)
+                let sceneNumber3: UInt16 = switchKeySceneData.read(fromOffset: 4)
+                let sceneNumber4: UInt16 = switchKeySceneData.read(fromOffset: 6)
+                enOceanSwitchKeyScenes.append(contentsOf: [sceneNumber1, sceneNumber2, sceneNumber3, sceneNumber4])
+            }
             
-            nodeInfo = NodeInfo(address: address, mac: mac, cctRange: cctRange, rssi: rssi, groupState: groupState, schedules: [:], sceneDatas: [:])
+            // 上电状态
+            var powerUpState: OnPowerUp?
+            if sqliteWrapper.columnInt(11) > 0 {
+                powerUpState = .init(rawValue: UInt8(sqliteWrapper.columnInt(11)))
+            }
+         
+            // 上电亮度
+            var defalutLightness: UInt16?
+            if sqliteWrapper.columnInt(12) >= 0 {
+                defalutLightness = UInt16(sqliteWrapper.columnInt(12))
+            }
+            // 亮度范围
+            let lightnessMin = UInt16(sqliteWrapper.columnInt(13))
+            let lightnessMax = UInt16(sqliteWrapper.columnInt(14))
+            
+            nodeInfo = NodeInfo(address: address, mac: mac, cctRange: cctRange, rssi: rssi, groupState: groupState, schedules: [:], sceneDatas: [:], sensorTypes: sensorTypes, sensorCalibrationValue: sensorCalibrationValue, enOceanMacAddress: enOceanMacAddress, enOceanSwitchKeyScenes: enOceanSwitchKeyScenes, powerUpState: powerUpState, defalutLightness: defalutLightness, lightnessRange: lightnessMin...lightnessMax)
         }
       
         sqliteWrapper.finalizeSql()
@@ -1652,6 +1793,51 @@ extension Node {
         sqliteWrapper.bindInt(5, integer: sqlite3_int64((lightCTLTemperatureRange ?? defalutLightCTLTemperatureRange).upperBound))
         sqliteWrapper.bindInt(6, integer: sqlite3_int64(rssi ?? -99))
         sqliteWrapper.bindInt(7, integer: sqlite3_int64(groupState.rawValue))
+        
+        var sensorTypeData = Data()
+        let propertys: [DeviceProperty] = sensorModelTypes.sorted(by: { $0.key.parentElement?.index ?? 0 < $1.key.parentElement?.index ?? 0 }).map({ $0.value })
+        propertys.forEach { property in
+            sensorTypeData.append(Data([UInt8(property.id & 0xff), UInt8(property.id << 8 & 0xff)]))
+        }
+        sqliteWrapper.bindBlob(8, blob: sensorTypeData)
+        
+        sqliteWrapper.bindInt(9, integer: sqlite3_int64(self.daylightCalibrationValue ?? 0xFFFF))
+        sqliteWrapper.bindText(10, text: self.enOceanMacAddress ?? "")
+        
+        var enOceanKeySceneData = Data()
+        self.enOceanKeySceneNumbers.forEach({
+            enOceanKeySceneData += Data([UInt8($0 & 0xff), UInt8($0 >> 8 & 0xff)])
+        })
+        sqliteWrapper.bindBlob(11, blob: enOceanKeySceneData)
+        
+        if let state = powerUpState {
+            sqliteWrapper.bindInt(12, integer: sqlite3_int64(state.rawValue))
+        }else {
+            sqliteWrapper.bindInt(12, integer: -1)
+        }
+        
+        if let lightness = defalutLightness {
+            sqliteWrapper.bindInt(13, integer: sqlite3_int64(lightness))
+        }else {
+            sqliteWrapper.bindInt(13, integer: -1)
+        }
+        
+        sqliteWrapper.bindInt(14, integer: sqlite3_int64(lightnessRange.lowerBound))
+        sqliteWrapper.bindInt(15, integer: sqlite3_int64(lightnessRange.upperBound))
+        
+        // 占用传感器model地址
+//        if let address = presenceDetectedSensorModel?.parentElement?.unicastAddress {
+//            sqliteWrapper.bindInt(8, integer: sqlite3_int64(address))
+//        }else {
+//            sqliteWrapper.bindInt(8, integer: sqlite3_int64(-1))
+//        }
+//        // 光照传感器model地址
+//        if let address = ambientLightSensorModel?.parentElement?.unicastAddress {
+//            sqliteWrapper.bindInt(9, integer: sqlite3_int64(address))
+//        }else {
+//            sqliteWrapper.bindInt(9, integer: sqlite3_int64(-1))
+//        }
+        
         sqliteWrapper.stepSqlDone()
         sqliteWrapper.resetSql()
         sqliteWrapper.finalizeSql()
@@ -1868,6 +2054,308 @@ extension Node {
         return true
     }
     
+    //********* Profile **********/
+    
+    /// 初始化数据库缓存
+    static func createProfileDatabaseIfNotExit() {
+        objc_sync_enter(sqliteWrapper)
+        if sqliteWrapper.isOpen || sqliteWrapper.openDb(sqliteDBName) {
+            sqliteWrapper.execSql(CREAT_TABLE_NODE_PROFILES)
+            sqliteWrapper.execSql(CREATE_IDX_NODE_PROFILES)
+            //        sqliteWrapper.closeDb()
+        }
+        objc_sync_exit(sqliteWrapper)
+    }
+    
+    /// 获取网络下对应设备的配置数据
+    /// - Parameter meshUUID: 网络id
+    /// - Parameter address: 设备地址
+    /// - Returns: 配置数据
+    static func loadProfile(meshUUID: String, address: UInt16) -> (propertys: LightLCProperty, lightnessRange: ClosedRange<UInt16>, powerUpState: Profile.PowerUpState)? {
+        objc_sync_enter(sqliteWrapper)
+        guard sqliteWrapper.isOpen || sqliteWrapper.openDb(sqliteDBName), sqliteWrapper.prepareSql(GET_NODE_PROFILE) else {
+            objc_sync_exit(sqliteWrapper)
+            return nil
+        }
+        sqliteWrapper.bindText(1, text: meshUUID)
+        sqliteWrapper.bindInt(2, integer: sqlite3_int64(address))
+        
+        var data: (propertys: LightLCProperty, lightnessRange: ClosedRange<UInt16>, powerUpState: Profile.PowerUpState)?
+        while sqliteWrapper.stepSqlRow() {
+            
+            let property = LightLCProperty()
+            
+            let mode = sqliteWrapper.columnInt(2)
+            if mode == 0 || mode == 1 {
+                property.mode = mode == 1
+            }
+            
+            let occupancyMode = sqliteWrapper.columnInt(3)
+            if occupancyMode == 0 || occupancyMode == 1 {
+                property.occupancyMode = occupancyMode == 1
+            }
+            
+            let lightnessRangeHigh = UInt16(sqliteWrapper.columnInt(4))
+            
+            let lightnessRangeLow = UInt16(sqliteWrapper.columnInt(5))
+            
+            let lightnessOn = sqliteWrapper.columnInt(6)
+            if lightnessOn >= 0 {
+                property.lightnessOn = UInt16(lightnessOn)
+            }
+            let luxLevelOn = sqliteWrapper.columnInt(7)
+            if luxLevelOn >= 0 {
+                property.luxLevelOn = UInt16(luxLevelOn)
+            }
+            
+            let lightnessProlong = sqliteWrapper.columnInt(8)
+            if lightnessProlong >= 0 {
+                property.lightnessProlong = UInt16(lightnessProlong)
+            }
+            let luxLevelProlong = sqliteWrapper.columnInt(9)
+            if luxLevelProlong >= 0 {
+                property.luxLevelProlong = UInt16(luxLevelProlong)
+            }
+            
+//            let lightAutoMinLevel = UInt16(sqliteWrapper.columnInt(10))
+//            property.lightAutoMinLevel = lightAutoMinLevel
+            
+            if let regulatorKidStr = sqliteWrapper.columnText(10), let regulatorKid = Float(regulatorKidStr) {
+                property.regulatorKid = regulatorKid
+            }
+            
+            if let regulatorKiuStr = sqliteWrapper.columnText(11), let regulatorKiu = Float(regulatorKiuStr) {
+                property.regulatorKiu = regulatorKiu
+            }
+            
+            if let regulatorKpdStr = sqliteWrapper.columnText(12), let regulatorKpd = Float(regulatorKpdStr) {
+                property.regulatorKpd = regulatorKpd
+            }
+            
+            if let regulatorKpuStr = sqliteWrapper.columnText(13), let regulatorKpu = Float(regulatorKpuStr) {
+                property.regulatorKpu = regulatorKpu
+            }
+            
+            let regulatorAccuracy = sqliteWrapper.columnInt(14)
+            if regulatorAccuracy >= 0 {
+                property.regulatorAccuracy = UInt8(regulatorAccuracy)
+            }
+            let timeFadeOn = sqliteWrapper.columnInt(15)
+            if timeFadeOn >= 0 {
+                property.timeFadeOn = UInt32(timeFadeOn)
+            }
+            let timeRunOn = sqliteWrapper.columnInt(16)
+            if timeRunOn >= 0 {
+                property.timeRunOn = UInt32(timeRunOn)
+            }
+            let timeFade = sqliteWrapper.columnInt(17)
+            if timeFade >= 0 {
+                property.timeFade = UInt32(timeFade)
+            }
+            let timeProlong = sqliteWrapper.columnInt(18)
+            if timeProlong >= 0 {
+                property.timeProlong = UInt32(timeProlong)
+            }
+            let timeFadeStandbyAuto = sqliteWrapper.columnInt(19)
+            if timeFadeStandbyAuto >= 0 {
+                property.timeFadeStandbyAuto = UInt32(timeFadeStandbyAuto)
+            }
+            let manualOverrideTimeout = sqliteWrapper.columnInt64(20)
+            if manualOverrideTimeout >= 0 {
+                property.manualOverrideTimeout = UInt32(manualOverrideTimeout)
+            }
+            
+            let manualOverrideEnabled = sqliteWrapper.columnInt(21)
+            if manualOverrideEnabled == 0 || manualOverrideEnabled == 1 {
+                property.manualOverrideEnabled = manualOverrideEnabled == 1
+            }
+            
+            var powerUpState: OnPowerUp?
+            if sqliteWrapper.columnInt(22) >= 0 {
+                powerUpState = .init(rawValue: UInt8(sqliteWrapper.columnInt(22)))
+            }
+            
+            let powerUpLightness = sqliteWrapper.columnInt(23)
+            
+            let autoAdjustEnabled = sqliteWrapper.columnInt(24)
+            if autoAdjustEnabled == 0 || autoAdjustEnabled == 1 {
+                property.lightAutoAdjustEnabled = autoAdjustEnabled == 1
+            }
+            
+            if powerUpState == .default, powerUpLightness > 0 {
+                let level = Node.getLightness100(lightness: UInt16(powerUpLightness))
+                data = (property, lightnessRangeLow...lightnessRangeHigh, .definedLightLevel(level))
+            }else {
+                data = (property, lightnessRangeLow...lightnessRangeHigh, .restore)
+            }
+            
+        }
+      
+        sqliteWrapper.finalizeSql()
+        //        sqliteWrapper.closeDb()
+        objc_sync_exit(sqliteWrapper)
+
+        return data
+    }
+    
+    
+    /// 保存节点配置数据
+    /// - Parameter meshUUID: 网络id
+    /// - Returns: 是否成功
+    @discardableResult func saveNodeProfile(meshUUID: String) -> Bool {
+        
+        objc_sync_enter(sqliteWrapper)
+        guard sqliteWrapper.isOpen || sqliteWrapper.openDb(sqliteDBName), sqliteWrapper.prepareSql(Node.SAVE_NODE_PROFILE) else {
+            objc_sync_exit(sqliteWrapper)
+            return false
+        }
+
+        sqliteWrapper.bindInt(1, integer: sqlite3_int64(primaryUnicastAddress))
+        sqliteWrapper.bindText(2, text: meshUUID)
+        if let mode = lightLCProperty.mode {
+            sqliteWrapper.bindInt(3, integer: sqlite3_int64(mode ? 1 : 0))
+        }else {
+            sqliteWrapper.bindInt(3, integer: sqlite3_int64(-1))
+        }
+        if let occupancyMode = lightLCProperty.occupancyMode {
+            sqliteWrapper.bindInt(4, integer: sqlite3_int64(occupancyMode ? 1 : 0))
+        }else {
+            sqliteWrapper.bindInt(4, integer: sqlite3_int64(-1))
+        }
+        sqliteWrapper.bindInt(5, integer: sqlite3_int64(lightnessRange.upperBound))
+        sqliteWrapper.bindInt(6, integer: sqlite3_int64(lightnessRange.lowerBound))
+        if let lightnessOn = lightLCProperty.lightnessOn {
+            sqliteWrapper.bindInt(7, integer: sqlite3_int64(lightnessOn))
+        }else {
+            sqliteWrapper.bindInt(7, integer: sqlite3_int64(-1))
+        }
+        if let luxLevelOn = lightLCProperty.luxLevelOn {
+            sqliteWrapper.bindInt(8, integer: sqlite3_int64(luxLevelOn))
+        }else {
+            sqliteWrapper.bindInt(8, integer: sqlite3_int64(-1))
+        }
+        if let lightnessProlong = lightLCProperty.lightnessProlong {
+            sqliteWrapper.bindInt(9, integer: sqlite3_int64(lightnessProlong))
+        }else {
+            sqliteWrapper.bindInt(9, integer: sqlite3_int64(-1))
+        }
+        if let luxLevelProlong = lightLCProperty.luxLevelProlong {
+            sqliteWrapper.bindInt(10, integer: sqlite3_int64(luxLevelProlong))
+        }else {
+            sqliteWrapper.bindInt(10, integer: sqlite3_int64(-1))
+        }
+//        sqliteWrapper.bindInt(11, integer: sqlite3_int64(lightLCProperty.lightAutoMinLevel))
+        
+        if let regulatorKid = lightLCProperty.regulatorKid {
+            sqliteWrapper.bindText(11, text: "\(regulatorKid)")
+        }else {
+            sqliteWrapper.bindText(11, text: "")
+        }
+        if let regulatorKiu = lightLCProperty.regulatorKiu {
+            sqliteWrapper.bindText(12, text: "\(regulatorKiu)")
+        }else {
+            sqliteWrapper.bindText(12, text: "")
+        }
+        if let regulatorKpd = lightLCProperty.regulatorKpd {
+            sqliteWrapper.bindText(13, text: "\(regulatorKpd)")
+        }else {
+            sqliteWrapper.bindText(13, text: "")
+        }
+        if let regulatorKpu = lightLCProperty.regulatorKpu {
+            sqliteWrapper.bindText(14, text: "\(regulatorKpu)")
+        }else {
+            sqliteWrapper.bindText(14, text: "")
+        }
+        if let regulatorAccuracy = lightLCProperty.regulatorAccuracy {
+            sqliteWrapper.bindInt(15, integer: sqlite3_int64(regulatorAccuracy))
+        }else {
+            sqliteWrapper.bindInt(15, integer: sqlite3_int64(-1))
+        }
+        if let timeFadeOn = lightLCProperty.timeFadeOn {
+            sqliteWrapper.bindInt(16, integer: sqlite3_int64(timeFadeOn))
+        }else {
+            sqliteWrapper.bindInt(16, integer: sqlite3_int64(-1))
+        }
+        if let timeRunOn = lightLCProperty.timeRunOn {
+            sqliteWrapper.bindInt(17, integer: sqlite3_int64(timeRunOn))
+        }else {
+            sqliteWrapper.bindInt(17, integer: sqlite3_int64(-1))
+        }
+        if let timeFade = lightLCProperty.timeFade {
+            sqliteWrapper.bindInt(18, integer: sqlite3_int64(timeFade))
+        }else {
+            sqliteWrapper.bindInt(18, integer: sqlite3_int64(-1))
+        }
+        if let timeProlong = lightLCProperty.timeProlong {
+            sqliteWrapper.bindInt(19, integer: sqlite3_int64(timeProlong))
+        }else {
+            sqliteWrapper.bindInt(19, integer: sqlite3_int64(-1))
+        }
+        if let timeFadeStandbyAuto = lightLCProperty.timeFadeStandbyAuto {
+            sqliteWrapper.bindInt(20, integer: sqlite3_int64(timeFadeStandbyAuto))
+        }else {
+            sqliteWrapper.bindInt(20, integer: sqlite3_int64(-1))
+        }
+        sqliteWrapper.bindInt(21, integer: sqlite3_int64(lightLCProperty.manualOverrideTimeout))
+        if let manualOverrideEnabled = lightLCProperty.manualOverrideEnabled {
+            sqliteWrapper.bindInt(22, integer: sqlite3_int64(manualOverrideEnabled ? 1 : 0))
+        }else {
+            sqliteWrapper.bindInt(22, integer: sqlite3_int64(-1))
+        }
+        
+        if let state = powerUpState {
+            sqliteWrapper.bindInt(23, integer: sqlite3_int64(state.rawValue))
+        }else {
+            sqliteWrapper.bindInt(23, integer: sqlite3_int64(-1))
+        }
+        
+        if let defalutLightness = self.defalutLightness {
+            sqliteWrapper.bindInt(24, integer: sqlite3_int64(defalutLightness))
+        }else {
+            sqliteWrapper.bindInt(24, integer: sqlite3_int64(-1))
+        }
+        
+        if let lightAutoAdjustEnabled = lightLCProperty.lightAutoAdjustEnabled {
+            sqliteWrapper.bindInt(25, integer: sqlite3_int64(lightAutoAdjustEnabled ? 1 : 0))
+        }else {
+            sqliteWrapper.bindInt(25, integer: sqlite3_int64(-1))
+        }
+        
+        sqliteWrapper.stepSqlDone()
+        sqliteWrapper.resetSql()
+        sqliteWrapper.finalizeSql()
+        objc_sync_exit(sqliteWrapper)
+        
+        return true
+    }
+    
+    /// 删除配置数据
+    /// - Parameter meshUUID: mesh网络id
+    /// - Parameter address: 设备地址（传入删除单个设备，不传删除网络内设备配置数据）
+    /// - Returns: 是否成功
+    @discardableResult static func deleteProfile(meshUUID: String, address: UInt16? = nil) -> Bool {
+        
+        objc_sync_enter(sqliteWrapper)
+        guard sqliteWrapper.isOpen || sqliteWrapper.openDb(sqliteDBName) else {
+            objc_sync_exit(sqliteWrapper)
+            return false
+        }
+        if address != nil {
+            sqliteWrapper.prepareSql(Node.DELETE_NODE_PROFILE)
+            sqliteWrapper.bindText(1, text: meshUUID)
+            sqliteWrapper.bindInt(2, integer: sqlite3_int64(address!))
+        }else {
+            sqliteWrapper.prepareSql(Node.DELETE_NODE_PROFILES)
+            sqliteWrapper.bindText(1, text: meshUUID)
+        }
+     
+        sqliteWrapper.stepSqlDone()
+        sqliteWrapper.finalizeSql()
+        //        sqliteWrapper.closeDb()
+        objc_sync_exit(sqliteWrapper)
+        return true
+    }
+    
 
     struct NodeInfo {
         let address: UInt16
@@ -1877,7 +2365,489 @@ extension Node {
         let groupState: Node.GroupState
         var schedules: [Int: SchedulerRegistryEntry]
         var sceneDatas: [SceneNumber: SceneExecuteData]
+        /// 传感器类型 key：element count  value：类型
+        var sensorTypes: [Int: DeviceProperty]
+        /// 传感器校准值（光照）
+        var sensorCalibrationValue: UInt16?
+        /// 动能开关mac
+        var enOceanMacAddress: String?
+        /// 动能开关按键绑定的场景
+        var enOceanSwitchKeyScenes: [SceneNumber]
+        /// 上电状态
+        var powerUpState: OnPowerUp?
+        /// 上电亮度（powerUpState：defalut）
+        var defalutLightness: UInt16?
+        /// 亮度范围
+        var lightnessRange: ClosedRange<UInt16>
+    }
+}
+
+extension Profile {
+    
+    
+    private static let CREAT_TABLE_PROFILES = "CREATE TABLE IF NOT EXISTS PROFILES(PROFILE_ROW INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT, profile_name text, profile_id text, mesh_uuid text, profile_type integer, high_end_trim integer, low_end_trim integer, occupancy_level integer, vacant_level integer, task_level integer, auto_min_level integer, time_t1 integer, time_t2 integer, time_t3 integer, time_t4 integer, time_t5 integer, manual_override_timeout bigint, power_up_state integer, adjust_speed integer)"
+    
+    private static let CREATE_IDX_PROFILES_PROFILE = "CREATE UNIQUE INDEX IF NOT EXISTS IDX_PROFILES_PROFILE ON PROFILES(mesh_uuid, profile_id)"
+    
+    private static let SAVE_PROFILE = "INSERT OR REPLACE INTO PROFILES(profile_name, profile_id, mesh_uuid, profile_type, high_end_trim, low_end_trim, occupancy_level, vacant_level, task_level, auto_min_level, time_t1, time_t2, time_t3, time_t4, time_t5, manual_override_timeout, power_up_state, adjust_speed) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+
+    private static let GET_PROFILES = "SELECT profile_name, profile_id, mesh_uuid, profile_type, high_end_trim, low_end_trim, occupancy_level, vacant_level, task_level, auto_min_level, time_t1, time_t2, time_t3, time_t4, time_t5, manual_override_timeout, power_up_state, adjust_speed FROM PROFILES WHERE mesh_uuid = ?"
+    
+    private static let GET_PROFILE_BY_ID = "SELECT profile_name, profile_id, mesh_uuid, profile_type, high_end_trim, low_end_trim, occupancy_level, vacant_level, task_level, auto_min_level, time_t1, time_t2, time_t3, time_t4, time_t5, manual_override_timeout, power_up_state, adjust_speed FROM PROFILES WHERE mesh_uuid = ? AND profile_id = ?"
+    
+    private static let DELETE_PROFILES = "DELETE FROM PROFILES WHERE mesh_uuid = ?"
+    
+    private static let DELETE_PROFILE = "DELETE FROM PROFILES WHERE mesh_uuid = ? AND profile_id = ?"
+    
+    
+    /// 初始化数据库缓存
+    static func createDatabaseIfNotExit() {
+        objc_sync_enter(sqliteWrapper)
+        if sqliteWrapper.isOpen || sqliteWrapper.openDb(sqliteDBName) {
+            sqliteWrapper.execSql(CREAT_TABLE_PROFILES)
+            sqliteWrapper.execSql(CREATE_IDX_PROFILES_PROFILE)
+            //        sqliteWrapper.closeDb()
+        }
+        objc_sync_exit(sqliteWrapper)
+    }
+    
+    /// 根据网络id获取网络下的所有的配置数据
+    /// - Parameter meshUUID: 网络id
+    /// - Returns: 日程数据list
+    static func loadAll(meshUUID: String) -> [Profile] {
+        objc_sync_enter(sqliteWrapper)
+        guard sqliteWrapper.isOpen || sqliteWrapper.openDb(sqliteDBName), sqliteWrapper.prepareSql(GET_PROFILES) else {
+            objc_sync_exit(sqliteWrapper)
+            return []
+        }
+        sqliteWrapper.bindText(1, text: meshUUID)
+        
+        var profiles: [Profile] = []
+        while sqliteWrapper.stepSqlRow() {
+            
+            let name = sqliteWrapper.columnText(0)
+            let id = sqliteWrapper.columnText(1) ?? ""
+            let type = Int(sqliteWrapper.columnInt(3))
+            let highEndTrim = Int(sqliteWrapper.columnInt(4))
+            let lowEndTrim = Int(sqliteWrapper.columnInt(5))
+            let occupancyLevel = Int(sqliteWrapper.columnInt(6))
+            let vacantLevel = Int(sqliteWrapper.columnInt(7))
+            let taskLevel = Int(sqliteWrapper.columnInt(8))
+            let autoMinLevel = Int(sqliteWrapper.columnInt(9))
+            let t1 = Int(sqliteWrapper.columnInt(10))
+            let t2 = Int(sqliteWrapper.columnInt(11))
+            let t3 = Int(sqliteWrapper.columnInt(12))
+            let t4 = Int(sqliteWrapper.columnInt(13))
+            let t5 = Int(sqliteWrapper.columnInt(14))
+            let manualOverrideTimeout: UInt32 = UInt32(sqliteWrapper.columnInt64(15))
+            let powerUpState = Int(sqliteWrapper.columnInt(16))
+            let adjustSpeed = Int(sqliteWrapper.columnInt(17))
+            
+            let profileType: ProfileType = .init(rawValue: type) ?? .occupancy_daylight
+            
+            let lightData = LightData(profileType: profileType, highEndTrim: highEndTrim, lowEndTrim: lowEndTrim, occupancyLevel: occupancyLevel, vacantLevel: vacantLevel, taskLevel: taskLevel, autoMinLevel: autoMinLevel, t1: t1, t2: t2, t3: t3, t4: t4, t5: t5)
+            
+            let profile = Profile(name: name ?? "", id: id, type: profileType, lightData: lightData, powerUpState: .init(rawValue: powerUpState), manualOverrideTimeout: manualOverrideTimeout, adjustSpeed: adjustSpeed)
+            profiles.append(profile)
+        }
+        
+        sqliteWrapper.finalizeSql()
+        objc_sync_exit(sqliteWrapper)
+        
+        return profiles
+    }
+    
+    /// 根据网络id获取网络下的所有的配置数据
+    /// - Parameter meshUUID: 网络id
+    /// - Parameter profileId: 配置id
+    /// - Returns: 配置数据
+    static func load(meshUUID: String, profileId: String) -> Profile? {
+        objc_sync_enter(sqliteWrapper)
+        guard sqliteWrapper.isOpen || sqliteWrapper.openDb(sqliteDBName), sqliteWrapper.prepareSql(GET_PROFILE_BY_ID) else {
+            objc_sync_exit(sqliteWrapper)
+            return nil
+        }
+        sqliteWrapper.bindText(1, text: meshUUID)
+        sqliteWrapper.bindText(2, text: profileId)
+        
+        var profile: Profile?
+        while sqliteWrapper.stepSqlRow() {
+            
+            let name = sqliteWrapper.columnText(0)
+            let id = sqliteWrapper.columnText(1) ?? ""
+            let type = Int(sqliteWrapper.columnInt(3))
+            let highEndTrim = Int(sqliteWrapper.columnInt(4))
+            let lowEndTrim = Int(sqliteWrapper.columnInt(5))
+            let occupancyLevel = Int(sqliteWrapper.columnInt(6))
+            let vacantLevel = Int(sqliteWrapper.columnInt(7))
+            let taskLevel = Int(sqliteWrapper.columnInt(8))
+            let autoMinLevel = Int(sqliteWrapper.columnInt(9))
+            let t1 = Int(sqliteWrapper.columnInt(10))
+            let t2 = Int(sqliteWrapper.columnInt(11))
+            let t3 = Int(sqliteWrapper.columnInt(12))
+            let t4 = Int(sqliteWrapper.columnInt(13))
+            let t5 = Int(sqliteWrapper.columnInt(14))
+            let manualOverrideTimeout: UInt32 = UInt32(sqliteWrapper.columnInt64(15))
+            let powerUpState = Int(sqliteWrapper.columnInt(16))
+            let adjustSpeed = Int(sqliteWrapper.columnInt(17))
+            
+            let profileType: ProfileType = .init(rawValue: type) ?? .occupancy_daylight
+            
+            let lightData = LightData(profileType: profileType, highEndTrim: highEndTrim, lowEndTrim: lowEndTrim, occupancyLevel: occupancyLevel, vacantLevel: vacantLevel, taskLevel: taskLevel, autoMinLevel: autoMinLevel, t1: t1, t2: t2, t3: t3, t4: t4, t5: t5)
+            
+            profile = Profile(name: name ?? "", id: id, type: profileType, lightData: lightData, powerUpState: .init(rawValue: powerUpState), manualOverrideTimeout: manualOverrideTimeout, adjustSpeed: adjustSpeed)
+        }
+        
+        sqliteWrapper.finalizeSql()
+        objc_sync_exit(sqliteWrapper)
+        
+        return profile
+    }
+    
+    /// 缓存配置数据
+    /// - Parameters:
+    ///   - meshUUID: 网络id
+    /// - Returns: 是否成功
+    @discardableResult func save(meshUUID: String) -> Bool {
+        
+        objc_sync_enter(sqliteWrapper)
+        guard sqliteWrapper.isOpen || sqliteWrapper.openDb(sqliteDBName), sqliteWrapper.prepareSql(Profile.SAVE_PROFILE) else {
+            objc_sync_exit(sqliteWrapper)
+            return false
+        }
+        
+        let data = lightData.data
+        sqliteWrapper.bindText(1, text: name)
+        sqliteWrapper.bindText(2, text: id)
+        sqliteWrapper.bindText(3, text: meshUUID)
+        sqliteWrapper.bindInt(4, integer: sqlite3_int64(type.rawValue))
+        sqliteWrapper.bindInt(5, integer: sqlite3_int64(data.highEndTrim))
+        sqliteWrapper.bindInt(6, integer: sqlite3_int64(data.lowEndTrim))
+        sqliteWrapper.bindInt(7, integer: sqlite3_int64(data.occupancyLevel))
+        sqliteWrapper.bindInt(8, integer: sqlite3_int64(data.vacantLevel))
+        sqliteWrapper.bindInt(9, integer: sqlite3_int64(data.taskLevel))
+        sqliteWrapper.bindInt(10, integer: sqlite3_int64(data.autoMinLevelEnabled ? data.autoMinLevel : 255))
+        sqliteWrapper.bindInt(11, integer: sqlite3_int64(data.t1))
+        sqliteWrapper.bindInt(12, integer: sqlite3_int64(data.t2))
+        sqliteWrapper.bindInt(13, integer: sqlite3_int64(data.t3))
+        sqliteWrapper.bindInt(14, integer: sqlite3_int64(data.t4))
+        sqliteWrapper.bindInt(15, integer: sqlite3_int64(data.t5))
+        sqliteWrapper.bindInt(16, integer: sqlite3_int64(manualOverrideTimeout))
+        sqliteWrapper.bindInt(17, integer: sqlite3_int64(powerUpState.rawValue))
+        sqliteWrapper.bindInt(18, integer: sqlite3_int64(adjustSpeed))
+        
+        sqliteWrapper.stepSqlDone()
+        sqliteWrapper.finalizeSql()
+        objc_sync_exit(sqliteWrapper)
+        return true
+    }
+    
+    /// 删除网络全部日程数据
+    /// - Parameter spaceId: 空间id
+    /// - Returns: 是否成功
+    @discardableResult static func deleteProfiles(meshUUID: String) -> Bool {
+        
+        objc_sync_enter(sqliteWrapper)
+        guard sqliteWrapper.isOpen || sqliteWrapper.openDb(sqliteDBName), sqliteWrapper.prepareSql(DELETE_PROFILES) else {
+            objc_sync_exit(sqliteWrapper)
+            return false
+        }
+        
+        sqliteWrapper.bindText(1, text: meshUUID)
+        sqliteWrapper.stepSqlDone()
+        sqliteWrapper.finalizeSql()
+        //        sqliteWrapper.closeDb()
+        objc_sync_exit(sqliteWrapper)
+        return true
+    }
+    
+    /// 删除网络全部日程数据
+    /// - Parameter meshUUID: mesh网络id
+    /// - Returns: 是否成功
+    @discardableResult static func deleteProfile(meshUUID: String, profileId: String) -> Bool {
+        
+        objc_sync_enter(sqliteWrapper)
+        guard sqliteWrapper.isOpen || sqliteWrapper.openDb(sqliteDBName), sqliteWrapper.prepareSql(DELETE_PROFILE) else {
+            objc_sync_exit(sqliteWrapper)
+            return false
+        }
+        
+        sqliteWrapper.bindText(1, text: meshUUID)
+        sqliteWrapper.bindText(2, text: profileId)
+        sqliteWrapper.stepSqlDone()
+        sqliteWrapper.finalizeSql()
+        //        sqliteWrapper.closeDb()
+        objc_sync_exit(sqliteWrapper)
+        return true
     }
     
 }
 
+extension GroupSwitch {
+    
+    private static let CREAT_TABLE_ENOCEAN_SWITCHS = "CREATE TABLE IF NOT EXISTS ENOCEAN_SWITCHS(SWITCHS_ROW INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT, id integer, mesh_uuid text, name text, enable bool, panel_type integer, group_address integer, sceneA_id integer, sceneB_id integer, proxy_address integer)"
+    
+    private static let CREATE_IDX_ENOCEAN_SWITCH = "CREATE UNIQUE INDEX IF NOT EXISTS IDX_ENOCEAN_SWITCH ON ENOCEAN_SWITCHS(mesh_uuid, group_address, id)"
+    
+    private static let SAVE_ENOCEAN_SWITCH = "INSERT OR REPLACE INTO ENOCEAN_SWITCHS(id, mesh_uuid, name, enable, panel_type, group_address, sceneA_id, sceneB_id, proxy_address) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?)"
+
+    
+    private static let GET_ENOCEAN_SWITCHS = "SELECT id, mesh_uuid, name, enable, panel_type, group_address, sceneA_id, sceneB_id, proxy_address FROM ENOCEAN_SWITCHS WHERE mesh_uuid = ? And group_address = ?"
+    
+    private static let GET_ENOCEAN_SWITCH_BY_ID = "SELECT id, mesh_uuid, name, enable, panel_type, group_address, sceneA_id, sceneB_id, proxy_address FROM ENOCEAN_SWITCHS WHERE mesh_uuid = ? AND group_address = ? AND id = ?"
+    
+    private static let GET_ENOCEAN_SWITCH_BY_PROXY = "SELECT id, mesh_uuid, name, enable, panel_type, group_address, sceneA_id, sceneB_id, proxy_address FROM ENOCEAN_SWITCHS WHERE mesh_uuid = ? AND proxy_address = ?"
+    
+
+    private static let DELETE_ALL_ENOCEAN_SWITCHS = "DELETE FROM ENOCEAN_SWITCHS WHERE mesh_uuid = ?"
+    
+    private static let DELETE_ENOCEAN_SWITCHS = "DELETE FROM ENOCEAN_SWITCHS WHERE mesh_uuid = ? AND group_address = ?"
+    
+    private static let DELETE_ENOCEAN_SWITCH = "DELETE FROM ENOCEAN_SWITCHS WHERE mesh_uuid = ? AND group_address = ? AND id = ?"
+    
+    
+    /// 初始化数据库缓存
+    static func createDatabaseIfNotExit() {
+        objc_sync_enter(sqliteWrapper)
+        if sqliteWrapper.isOpen || sqliteWrapper.openDb(sqliteDBName) {
+            sqliteWrapper.execSql(CREAT_TABLE_ENOCEAN_SWITCHS)
+            sqliteWrapper.execSql(CREATE_IDX_ENOCEAN_SWITCH)
+            //        sqliteWrapper.closeDb()
+        }
+        objc_sync_exit(sqliteWrapper)
+    }
+    
+    /// 根据网络id、组地址获取组下的所有的虚拟按键数据
+    /// - Parameter meshUUID: 网络id
+    /// - Parameter groupAddress: 组地址
+    /// - Returns: 虚拟按键数据list
+    static func loadAll(meshUUID: String, groupAddress: Address) -> [GroupSwitch] {
+        objc_sync_enter(sqliteWrapper)
+        
+        guard sqliteWrapper.isOpen || sqliteWrapper.openDb(sqliteDBName), sqliteWrapper.prepareSql(GET_ENOCEAN_SWITCHS),
+              MeshNetworkManager.instance.meshNetwork?.uuid.uuidString == meshUUID,
+              let group = MeshNetworkManager.instance.meshNetwork?.group(withAddress: MeshAddress(groupAddress)) else {
+            objc_sync_exit(sqliteWrapper)
+            return []
+        }
+        sqliteWrapper.bindText(1, text: meshUUID)
+        sqliteWrapper.bindInt(2, integer: sqlite3_int64(groupAddress))
+        
+        var switchs: [GroupSwitch] = []
+        while sqliteWrapper.stepSqlRow() {
+            
+            let id = Int(sqliteWrapper.columnInt(0))
+            let name = sqliteWrapper.columnText(2)
+            let enabled = sqliteWrapper.columnBool(3)
+            let panelType: PanelType = .init(rawValue: UInt8(sqliteWrapper.columnInt(4))) ?? .default
+            let sceneANumber = UInt16(sqliteWrapper.columnInt(6))
+            let sceneBNumber = UInt16(sqliteWrapper.columnInt(7))
+            let proxyAddress = sqliteWrapper.columnInt(8)
+
+            let groupSwitch = GroupSwitch(id: id, group: group, enabled: enabled, name: name ?? "")
+            groupSwitch.panelType = panelType
+            if sceneANumber > 0, let sceneA = MeshNetworkManager.instance.scenes.first(where: { $0.number == sceneANumber }) {
+                groupSwitch.sceneA = sceneA
+            }
+            if sceneBNumber > 0, let sceneB = MeshNetworkManager.instance.scenes.first(where: { $0.number == sceneBNumber }) {
+                groupSwitch.sceneB = sceneB
+            }
+            if proxyAddress > 0, let proxyNode = MeshNetworkManager.instance.meshNetwork?.node(withAddress: Address(proxyAddress)) {
+                groupSwitch.proxyNode = proxyNode
+            }
+            switchs.append(groupSwitch)
+        }
+        
+        sqliteWrapper.finalizeSql()
+        objc_sync_exit(sqliteWrapper)
+        
+        return switchs
+    }
+    
+    /// 根据网络id和组地址、id获取网络下的指定的虚拟按键数据
+    /// - Parameter meshUUID: 网络id
+    /// - Parameter groupAddress: 组地址
+    /// - Parameter id: 虚拟按键id
+    /// - Returns: 按键数据
+    static func load(meshUUID: String, groupAddress: Address, id: Int) -> GroupSwitch? {
+        objc_sync_enter(sqliteWrapper)
+        guard sqliteWrapper.isOpen || sqliteWrapper.openDb(sqliteDBName), sqliteWrapper.prepareSql(GET_ENOCEAN_SWITCH_BY_ID),
+              MeshNetworkManager.instance.meshNetwork?.uuid.uuidString == meshUUID,
+              let group = MeshNetworkManager.instance.meshNetwork?.group(withAddress: MeshAddress(groupAddress))else {
+            objc_sync_exit(sqliteWrapper)
+            return nil
+        }
+        sqliteWrapper.bindText(1, text: meshUUID)
+        sqliteWrapper.bindInt(2, integer: sqlite3_int64(groupAddress))
+        sqliteWrapper.bindInt(3, integer: sqlite3_int64(id))
+        
+        var groupSwitch: GroupSwitch?
+        while sqliteWrapper.stepSqlRow() {
+            
+            let id = Int(sqliteWrapper.columnInt(0))
+            let name = sqliteWrapper.columnText(2)
+            let enabled = sqliteWrapper.columnBool(3)
+            let panelType: PanelType = .init(rawValue: UInt8(sqliteWrapper.columnInt(4))) ?? .default
+            let sceneANumber = UInt16(sqliteWrapper.columnInt(6))
+            let sceneBNumber = UInt16(sqliteWrapper.columnInt(7))
+            let proxyAddress = sqliteWrapper.columnInt(8)
+
+            groupSwitch = GroupSwitch(id: id, group: group, enabled: enabled, name: name ?? "")
+            groupSwitch?.panelType = panelType
+            if sceneANumber > 0, let sceneA = MeshNetworkManager.instance.scenes.first(where: { $0.number == sceneANumber }) {
+                groupSwitch?.sceneA = sceneA
+            }
+            if sceneBNumber > 0, let sceneB = MeshNetworkManager.instance.scenes.first(where: { $0.number == sceneBNumber }) {
+                groupSwitch?.sceneB = sceneB
+            }
+            if proxyAddress > 0, let proxyNode = MeshNetworkManager.instance.meshNetwork?.node(withAddress: Address(proxyAddress)) {
+                groupSwitch?.proxyNode = proxyNode
+            }
+        }
+        
+        sqliteWrapper.finalizeSql()
+        objc_sync_exit(sqliteWrapper)
+        
+        return groupSwitch
+    }
+    
+    /// 根据网络id获取网络下的所有的虚拟按键数据
+    /// - Parameter meshUUID: 网络id
+    /// - Parameter switchMac: 虚拟按键mac
+    /// - Returns: 按键数据
+    static func load(meshUUID: String, proxyAddress: UInt16) -> GroupSwitch? {
+        objc_sync_enter(sqliteWrapper)
+        guard sqliteWrapper.isOpen || sqliteWrapper.openDb(sqliteDBName), sqliteWrapper.prepareSql(GET_ENOCEAN_SWITCH_BY_PROXY),
+              MeshNetworkManager.instance.meshNetwork?.uuid.uuidString == meshUUID else {
+            objc_sync_exit(sqliteWrapper)
+            return nil
+        }
+        sqliteWrapper.bindText(1, text: meshUUID)
+        sqliteWrapper.bindInt(2, integer: sqlite3_int64(proxyAddress))
+        
+        var groupSwitch: GroupSwitch?
+        while sqliteWrapper.stepSqlRow() {
+            
+            let id = Int(sqliteWrapper.columnInt(0))
+            let name = sqliteWrapper.columnText(2)
+            let enabled = sqliteWrapper.columnBool(3)
+            let panelType: PanelType = .init(rawValue: UInt8(sqliteWrapper.columnInt(4))) ?? .default
+            let groupAddress = UInt16(sqliteWrapper.columnInt(5))
+            let sceneANumber = UInt16(sqliteWrapper.columnInt(6))
+            let sceneBNumber = UInt16(sqliteWrapper.columnInt(7))
+            let proxyAddress = sqliteWrapper.columnInt(8)
+            
+            if let group = MeshNetworkManager.instance.meshNetwork?.group(withAddress: MeshAddress(groupAddress)) {
+                groupSwitch = GroupSwitch(id: id, group: group, enabled: enabled, name: name ?? "")
+                groupSwitch?.panelType = panelType
+                if sceneANumber > 0, let sceneA = MeshNetworkManager.instance.scenes.first(where: { $0.number == sceneANumber }) {
+                    groupSwitch?.sceneA = sceneA
+                }
+                if sceneBNumber > 0, let sceneB = MeshNetworkManager.instance.scenes.first(where: { $0.number == sceneBNumber }) {
+                    groupSwitch?.sceneB = sceneB
+                }
+                if proxyAddress > 0, let proxyNode = MeshNetworkManager.instance.meshNetwork?.node(withAddress: Address(proxyAddress)) {
+                    groupSwitch?.proxyNode = proxyNode
+                }
+            }
+            
+        }
+        
+        sqliteWrapper.finalizeSql()
+        objc_sync_exit(sqliteWrapper)
+        
+        return groupSwitch
+    }
+    
+    
+    /// 缓存虚拟按键数据
+    /// - Parameters:
+    ///   - meshUUID: 网络id
+    /// - Returns: 是否成功
+    @discardableResult func save(meshUUID: String) -> Bool {
+        
+        objc_sync_enter(sqliteWrapper)
+        guard sqliteWrapper.isOpen || sqliteWrapper.openDb(sqliteDBName), sqliteWrapper.prepareSql(GroupSwitch.SAVE_ENOCEAN_SWITCH) else {
+            objc_sync_exit(sqliteWrapper)
+            return false
+        }
+
+        sqliteWrapper.bindInt(1, integer: sqlite3_int64(id))
+        sqliteWrapper.bindText(2, text: meshUUID)
+        sqliteWrapper.bindText(3, text: name)
+        sqliteWrapper.bindBool(4, boolean: enabled)
+        sqliteWrapper.bindInt(5, integer: sqlite3_int64(panelType.rawValue))
+        sqliteWrapper.bindInt(6, integer: sqlite3_int64(group.address.address))
+        sqliteWrapper.bindInt(7, integer: sqlite3_int64(sceneA?.number ?? 0))
+        sqliteWrapper.bindInt(8, integer: sqlite3_int64(sceneB?.number ?? 0))
+        sqliteWrapper.bindInt(9, integer: sqlite3_int64(proxyNode?.primaryUnicastAddress ?? 0))
+        
+        sqliteWrapper.stepSqlDone()
+        sqliteWrapper.finalizeSql()
+        objc_sync_exit(sqliteWrapper)
+        return true
+    }
+    
+    /// 删除网络内全部虚拟按键数据
+    /// - Parameter spaceId: 空间id
+    /// - Returns: 是否成功
+    @discardableResult static func deleteSwitchs(meshUUID: String) -> Bool {
+        
+        objc_sync_enter(sqliteWrapper)
+        guard sqliteWrapper.isOpen || sqliteWrapper.openDb(sqliteDBName), sqliteWrapper.prepareSql(DELETE_ALL_ENOCEAN_SWITCHS) else {
+            objc_sync_exit(sqliteWrapper)
+            return false
+        }
+        
+        sqliteWrapper.bindText(1, text: meshUUID)
+        sqliteWrapper.stepSqlDone()
+        sqliteWrapper.finalizeSql()
+        //        sqliteWrapper.closeDb()
+        objc_sync_exit(sqliteWrapper)
+        return true
+    }
+    
+    /// 删除网络内组全部虚拟按键数据
+    /// - Parameter spaceId: 空间id
+    /// - Returns: 是否成功
+    @discardableResult static func deleteSwitchs(meshUUID: String, groupAddress: Address) -> Bool {
+        
+        objc_sync_enter(sqliteWrapper)
+        guard sqliteWrapper.isOpen || sqliteWrapper.openDb(sqliteDBName), sqliteWrapper.prepareSql(DELETE_ENOCEAN_SWITCHS) else {
+            objc_sync_exit(sqliteWrapper)
+            return false
+        }
+        
+        sqliteWrapper.bindText(1, text: meshUUID)
+        sqliteWrapper.bindInt(2, integer: sqlite3_int64(groupAddress))
+        sqliteWrapper.stepSqlDone()
+        sqliteWrapper.finalizeSql()
+        //        sqliteWrapper.closeDb()
+        objc_sync_exit(sqliteWrapper)
+        return true
+    }
+    
+    /// 删除网络内组的虚拟按键数据
+    /// - Parameter meshUUID: mesh网络id
+    /// - Parameter groupAddress: 组地址
+    /// - Parameter id: id
+    /// - Returns: 是否成功
+    @discardableResult static func deleteProfile(meshUUID: String, groupAddress: Address, switchId: Int) -> Bool {
+        
+        objc_sync_enter(sqliteWrapper)
+        guard sqliteWrapper.isOpen || sqliteWrapper.openDb(sqliteDBName), sqliteWrapper.prepareSql(DELETE_ENOCEAN_SWITCH) else {
+            objc_sync_exit(sqliteWrapper)
+            return false
+        }
+        
+        sqliteWrapper.bindText(1, text: meshUUID)
+        sqliteWrapper.bindInt(2, integer: sqlite3_int64(groupAddress))
+        sqliteWrapper.bindInt(3, integer: sqlite3_int64(switchId))
+        sqliteWrapper.stepSqlDone()
+        sqliteWrapper.finalizeSql()
+        //        sqliteWrapper.closeDb()
+        objc_sync_exit(sqliteWrapper)
+        return true
+    }
+    
+}

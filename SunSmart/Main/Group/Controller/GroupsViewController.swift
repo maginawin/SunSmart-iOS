@@ -49,6 +49,8 @@ class GroupsViewController: UIViewController {
         footerView.countBtn.setTitle("\(space.groups.count)/16", for: .normal)
         
         addNotificationObserver()
+        
+  
     }
     
     override func viewWillAppear(_ animated: Bool) {
@@ -67,6 +69,7 @@ class GroupsViewController: UIViewController {
         
         updateGroupesEmptyUI()
     }
+
     
     private func addNotificationObserver() {
         NotificationCenter.default.addObserver(forName: .init(groupsRefreshNotificationName), object: nil, queue: nil) {[weak self] _ in
@@ -104,6 +107,7 @@ class GroupsViewController: UIViewController {
 //                self?.updateGroupesEmptyUI()
 //            }
             let navVc = NavigationViewController(rootViewController: groupVc)
+            
             present(navVc, animated: true)
         }
     }
@@ -113,23 +117,28 @@ class GroupsViewController: UIViewController {
         SRAlertView(title: "notification".localizedString, message: "group_delete_message".localizedString, messageFont: FONTS(15), actions: [.cancelAction, SRAlertAction(title: "DELETE".localizedString, style: .destructive, actionHandler: {[weak self] _ in
             guard let self = self else { return }
          
-            guard group.nodes.isEmpty || group.nodes.contains(where: { $0.state }) else { // 设备是否都在线
+            guard group.nodes.isEmpty || MeshLibManager.manager.isMeshNetworkConnected else {
+                XWHUDManager.showTipHUD("device_notconnect_message".localizedString, isLineFeed: true)
+                return
+            }
+            
+            guard group.nodes.isEmpty || group.nodes.contains(where: { $0.state }) else { // 是否有设备在线
                 SRAlertView(title: "notification".localizedString, message: "group_delete_offline".localizedString, actions:[SRAlertAction(title: "confirm".localizedString, actionHandler: nil)]).show()
                 return
             }
             
             XWHUDManager.showCustomHUD(withMessage: "deleting".localizedString, isWindow: true)
-            group.nodes.forEach({ node in
-                node.unsubscribe(from: group)
-                node.sceneDatas.removeAll()
-                // 删除设备场景数据
-                SceneExecuteData.deleteData(meshUUID: self.space.meshUUID, address: node.primaryUnicastAddress)
-                // 删除设备关联组的日程数据
-                group.info.bindSchedules.forEach{ schedule in
-                    Node.deleteSchedule(meshUUID: self.space.meshUUID, address: node.primaryUnicastAddress, scheduleId: schedule.id)
-                }
-            })
-            DispatchQueue.main.asyncAfter(wallDeadline: .now() + 1.5, execute: {
+//            group.nodes.forEach({ node in
+//                node.unsubscribe(from: group)
+//                node.sceneDatas.removeAll()
+//                // 删除设备场景数据
+//                SceneExecuteData.deleteData(meshUUID: self.space.meshUUID, address: node.primaryUnicastAddress)
+//                // 删除设备关联组的日程数据
+//                group.info.bindSchedules.forEach{ schedule in
+//                    Node.deleteSchedule(meshUUID: self.space.meshUUID, address: node.primaryUnicastAddress, scheduleId: schedule.id)
+//                }
+//            })
+//            DispatchQueue.main.asyncAfter(wallDeadline: .now() + 1.5, execute: {
                 GroupServer.deleteGroup(group: group, progress: nil) {[weak self] _ in
                     XWHUDManager.hide()
                     XWHUDManager.showSuccessTipHUD("done!".localizedString)
@@ -149,7 +158,7 @@ class GroupsViewController: UIViewController {
                         self?.deleteFailedCheck(group: group)
                     }
                 }
-            })
+//            })
             
         })]).show()
     }
@@ -213,7 +222,7 @@ class GroupsViewController: UIViewController {
 //            collectionView.showEmptyDataView(title: "no_devices".localizedString, tipText: "no_devices_message".localizedString)
 //            collectionView.emptyView?.titleLabel.font = Font_Medium_Size(SCRYFrom(14))
             
-            collectionView.showEmptyDataView(imageName: "group_empty", title: "no_groups".localizedString, tipText: nil)
+            collectionView.showEmptyDataView(imageName: "group_empty", title: "no_groups".localizedString, tipText: "no_groups_message".localizedString, margin: SCRXFrom(20))
             if let emptyView = collectionView.emptyView {
                 emptyView.contentView.snp.remakeConstraints({ make in
                     make.top.equalTo(SCRYFrom(39))
@@ -223,16 +232,16 @@ class GroupsViewController: UIViewController {
                 emptyView.imageView.snp.remakeConstraints { make in
                     make.top.equalToSuperview()
                     make.centerX.equalToSuperview()
-                    make.left.equalTo(SCRXFrom(-11))
-                    make.right.equalTo(SCRXFrom(11))
-                    make.height.equalTo(emptyView.snp.width).multipliedBy(298.0 / 353)
+                    make.left.equalTo(SCRXFrom(-4))
+                    make.right.equalTo(SCRXFrom(4))
+                    make.height.equalTo(emptyView.snp.width).multipliedBy(288.0 / 343)
                 }
+                emptyView.titleLabel.font = FONTS(SCRYFrom(15))
                 emptyView.titleLabel.snp.updateConstraints { make in
-                    make.top.equalTo(emptyView.imageView.snp.bottom).offset(SCRYFrom(9))
+                    make.top.equalTo(emptyView.imageView.snp.bottom).offset(SCRYFrom(24))
                 }
-                
-                let attStr = NSAttributedString(string: "no_groups_message".localizedString)
-                emptyView.tipLabel.attributedText = attStr
+                emptyView.tipLabel.font = UIFont.systemFont(ofSize: 15, weight: .light)
+                emptyView.tipLabel.lineBreakMode = .byCharWrapping
             }
             
             
@@ -274,7 +283,7 @@ class GroupsViewController: UIViewController {
             make.height.equalTo(kSafeAreaBottomHeight + SCRYFrom(56))
         }
         
-        doneBtn = UIButton(title: "done".localizedString, titleSize: 16, titleColor: Title_Color, target: self, action: #selector(doneBtnAction))
+        doneBtn = UIButton(title: "done".localizedString, titleSize: 16, titleWeight: .light, titleColor: Title_Color, target: self, action: #selector(doneBtnAction))
         editView.addSubview(doneBtn)
         doneBtn.snp.makeConstraints { make in
             make.left.right.top.equalToSuperview()
@@ -332,10 +341,18 @@ extension GroupsViewController: UICollectionViewDataSource, UICollectionViewDele
     func collectionView(_ collectionView: UICollectionView, didSelectItemAt indexPath: IndexPath) {
         
         let group = space.groups[indexPath.item]
-        if group.nodes.count > 0 {
-            MeshAPI.getGroupOnOffState(address: group.address.address)
-        }
+ 
         group.isOn = !group.isOn
+        if group.nodes.count > 0 {
+            // 修改缓存数据
+            group.nodes.forEach({
+                $0.isOn = group.isOn
+                if !$0.isOn, $0.lightness > 0 { // 关灯，记录关灯前的亮度值
+                    $0.trunOffLightness = $0.lightness
+                }
+            })
+            MeshAPI.setGroupOnOffState(address: group.address.address, isOn: group.isOn)
+        }
         reloadCollectionItem(group: group)
     }
     
@@ -355,7 +372,10 @@ extension GroupsViewController: SpaceFunctionFooterViewDelegate {
 //            self.space.groupCount = self.space.groups.count
 //            self.space.save()
 //        }
-        present(NavigationViewController(rootViewController: vc), animated: true)
+//        vc.isModalInPresentation = true
+        let navVc = NavigationViewController(rootViewController: vc)
+        
+        present(navVc, animated: true)
     }
     
     /// 编辑/取消编辑状态修改  editing：是否正在编辑

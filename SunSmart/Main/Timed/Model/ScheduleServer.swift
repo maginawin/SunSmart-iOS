@@ -48,9 +48,11 @@ struct ScheduleServer {
         
         let meshUUID = MeshNetworkManager.instance.meshNetwork?.uuid.uuidString
         
+        schedule.enabled = enabled
+        
         saveSchedule(schedule: schedule, setNodes: setNodes) { _ in
             
-            schedule.enabled = enabled
+//            schedule.enabled = enabled
             if meshUUID != nil {
                 schedule.save(meshUUID: meshUUID!)
             }
@@ -64,6 +66,8 @@ struct ScheduleServer {
                 if meshUUID != nil {
                     schedule.save(meshUUID: meshUUID!)
                 }
+            }else {
+                schedule.enabled = !enabled
             }
             failed?(schedule)
         }

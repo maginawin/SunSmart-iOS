@@ -242,6 +242,55 @@ class ScheduleDevicesView: UIView {
         
     }
     
+    /// 开始修复节点
+    private func repair(node: Node) {
+        
+        XWHUDManager.showCustomHUD(withMessage: "repairing".localizedString, isWindow: true)
+        MeshAPI.startKeyBind(node: node, startKeyBind: nil) {[weak self] node in
+            XWHUDManager.hide()
+            if MeshLibManager.manager.bluetoothState == .poweredOn {
+                XWHUDManager.showSuccessTipHUD("complete!".localizedString)
+            }
+            guard let self = self else { return }
+            if let uuid = MeshNetworkManager.instance.meshNetwork?.uuid.uuidString {
+                node.saveNodeInfo(meshUUID: uuid)
+            }
+            
+            if let index = self.nodes.firstIndex(of: node), let cell = collectionView.cellForItem(at: IndexPath(row: index, section: 0)) as? DevicesViewCell {
+                cell.device = node
+                cell.selectImageView.isHidden = false
+            }
+//                MeshAPI.getNodeCTLState(address: node.primaryUnicastAddress)
+        } keyBindFail: {[weak self] _ in
+            XWHUDManager.hide()
+            self?.repairFailed(node: node)
+        }
+        
+    }
+    
+    /// 修复失败
+    private func repairFailed(node: Node) {
+        
+        let alertView = SRAlertView(message: "repair_failed_message".localizedString, messageFont: FONTS(SCRYFrom(15)), stateImage: UIImage(named: "alert_failed"), actions: [.cancelAction, SRAlertAction(title: "repair".localizedString, style: .default, actionHandler: {[weak self] _ in
+            self?.repair(node: node)
+        })])
+        alertView.stateImageView.snp.remakeConstraints { make in
+            make.top.equalTo(SCRYFrom(24))
+            make.centerX.equalToSuperview()
+        }
+        alertView.messageLabel.snp.remakeConstraints { make in
+            make.left.equalTo(SCRXFrom(27))
+            make.right.equalTo(SCRXFrom(-27))
+            make.top.equalTo(alertView.stateImageView.snp.bottom).offset(SCRYFrom(16))
+        }
+        alertView.hLineView.snp.remakeConstraints { make in
+            make.left.right.equalTo(0)
+            make.height.equalTo(0.5)
+            make.top.equalTo(alertView.messageLabel.snp.bottom).offset(SCRYFrom(16))
+        }
+        alertView.show()
+    }
+    
 }
 
 extension ScheduleDevicesView: UICollectionViewDataSource, UICollectionViewDelegateFlowLayout {
@@ -285,10 +334,16 @@ extension ScheduleDevicesView: UICollectionViewDataSource, UICollectionViewDeleg
     func collectionView(_ collectionView: UICollectionView, didSelectItemAt indexPath: IndexPath) {
         
         let node = nodes[indexPath.item]
+        guard node.isKeybindComplete else {
+            repair(node: node)
+            return
+        }
+        
         guard node.state else {
             return
         }
         node.isOn = !node.isOn
+        MeshAPI.setNodeOnOffState(address: node.primaryUnicastAddress, isOn: node.isOn)
         if let cell = collectionView.cellForItem(at: indexPath) as? DevicesViewCell {
             cell.device = node
         }

@@ -38,7 +38,6 @@ class SiteViewController: UIViewController {
 
         title = site.name
         view.backgroundColor = Background_Color
-        
         navigationController?.navigationBar.barTintColor = .clear
         navigationItem.rightBarButtonItem = UIBarButtonItem(image: UIImage(named: "more_vertical")?.withRenderingMode(.alwaysOriginal), style: .done, target: self, action: #selector(moreClick))
 

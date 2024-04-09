@@ -41,7 +41,7 @@ class LinePageControl: UIView {
     var numberOfPages: Int = 0 {
         didSet {
             
-            let progressW = frame.size.width / CGFloat(numberOfPages)
+            let progressW = frame.size.width / CGFloat(max(numberOfPages, 1))
             if progressView.width != progressW {
                 progressView.width = progressW
                 setCurrentPage(currentPage, animated: false)

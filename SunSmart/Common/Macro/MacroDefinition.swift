@@ -78,6 +78,7 @@ let Red_Color = RGB(235, 78, 78)
 
 let SubText_Color = RGB(100, 116, 139)
 
+let Chart_Text_Color = RGB(72, 72, 74)
 
 /// RGB颜色
 func RGB(_ red:Int,_ green:Int,_ blue:Int, _ alpha:CGFloat=1) -> UIColor {

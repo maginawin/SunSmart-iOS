@@ -86,11 +86,14 @@ class SceneViewController: UIViewController {
         
         NotificationCenter.default.addObserver(forName: .init(groupDataUpdateNotificationName), object: nil, queue: nil) {[weak self] notification in
             guard let self = self, let group = notification.object as? Group else { return }
-            if let index = self.scene.info.groups.firstIndex(of: group) {
-                collectionView.reloadItems(at: [IndexPath(item: index, section: 0)])
+//            CATransaction.setDisableActions(true)
+            if let index = self.scene.info.groups.firstIndex(of: group), let item = collectionView.cellForItem(at: IndexPath(item: index, section: 0)) as? SceneGroupsViewCell {
+                let data = group.info.bindSceneDatas[scene.number]
+                item.updateData(group: group, sceneData: data)
             }else {
                 collectionView.reloadData()
             }
+//            CATransaction.commit()
         }
         
     }
@@ -157,17 +160,17 @@ class SceneViewController: UIViewController {
         
         SRAlertView(title: "notification".localizedString, message: "scene_delete_message".localizedString, contentPadding: SCRXFrom(25), actions: [.cancelAction, SRAlertAction(title: "DELETE".localizedString, style: .destructive, actionHandler: {[weak self] _ in
             guard let self = self else { return }
-//            if !MeshLibManager.manager.isMeshNetworkConnected && self.scene.info.groups.contains(where: { $0.nodes.count > 0 }) { // 未连接mesh网络
-//                XWHUDManager.showTipHUD("device_notconnect_message".localizedString, isLineFeed: true)
-//                return
-//            }
+            if !MeshLibManager.manager.isMeshNetworkConnected && self.scene.info.groups.contains(where: { $0.nodes.count > 0 }) { // 未连接mesh网络
+                XWHUDManager.showTipHUD("device_notconnect_message".localizedString, isLineFeed: true)
+                return
+            }
             
             XWHUDManager.showCustomHUD(withMessage: "deleting".localizedString, isWindow: true)
             // 测试数据
-            scene.nodes.forEach({
-                self.scene.remove(node: $0)
-            })
-            scene.delete()
+//            scene.nodes.forEach({
+//                self.scene.remove(node: $0)
+//            })
+//            scene.delete()
             SceneServer.deleteScene(scene: self.scene) {[weak self] _ in
                 XWHUDManager.hide()
                 guard let self = self else { return }
@@ -346,7 +349,21 @@ extension SceneViewController: UICollectionViewDataSource, UICollectionViewDeleg
     func collectionView(_ collectionView: UICollectionView, didSelectItemAt indexPath: IndexPath) {
         
         let group = scene.info.groups[indexPath.item]
+        if group.nodes.isEmpty { // 空组
+            XWHUDManager.showTipHUD("group_empty".localizedString, isLineFeed: true)
+            return
+        }
+        if !MeshLibManager.manager.isMeshNetworkConnected { // 网络未连接
+            XWHUDManager.showTipHUD("network_no_connnection".localizedString, isLineFeed: true)
+            return
+        }
+        if !group.nodes.contains(where: { $0.state }) { // 组内设备全部离线
+            XWHUDManager.showTipHUD("group_all_devices_offline".localizedString, isLineFeed: true)
+            return
+        }
+        
         group.isOn = !group.isOn
+        MeshAPI.setGroupOnOffState(address: group.address.address, isOn: group.isOn)
         CATransaction.setDisableActions(true)
         collectionView.reloadItems(at: [indexPath])
         CATransaction.commit()

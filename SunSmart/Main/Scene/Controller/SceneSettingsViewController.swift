@@ -68,7 +68,7 @@ class SceneSettingsViewController: UIViewController {
         })
         
         if mode == .members {
-            title = "members".localizedString
+            title = "settings".localizedString
             navigationItem.leftBarButtonItem = UIBarButtonItem()
             navigationController?.interactivePopGestureRecognizer?.isEnabled = false
             navigationItem.rightBarButtonItem = UIBarButtonItem(title: "done".localizedString, color: RGB(0, 0, 0, 0.85), font: UIFont.systemFont(ofSize: 16, weight: .light), target: self, sel: #selector(doneAction))
@@ -118,6 +118,11 @@ class SceneSettingsViewController: UIViewController {
         let selectGroups = space.groups.filter({ $0.isSelected && $0.executeSceneData != nil })
         // 有设备的组
         let existNodeGroups = selectGroups.filter({ $0.nodes.count > 0 })
+        // 网络未连接
+        if existNodeGroups.count > 0 && !MeshLibManager.manager.isMeshNetworkConnected {
+            XWHUDManager.showTipHUD("device_notconnect_message".localizedString, isLineFeed: true)
+            return
+        }
         
         selectGroups.forEach({
             $0.info.bindSceneDatas.updateValue($0.executeSceneData!, forKey: scene.number)
@@ -176,6 +181,13 @@ class SceneSettingsViewController: UIViewController {
             }
             return false
         })
+        // 组是否存在设备
+        let existNodes = addGroups.contains(where: { $0.nodes.count > 0 }) || deleteGroups.contains(where: { $0.nodes.count > 0 }) || updateGroups.contains(where: { $0.nodes.count > 0 })
+        
+        guard MeshLibManager.manager.isMeshNetworkConnected || !existNodes else {
+            XWHUDManager.showTipHUD("device_notconnect_message".localizedString, isLineFeed: true)
+            return
+        }
         
         // 需要同步的节点
         var syncNodes: [Node] = []
@@ -270,7 +282,12 @@ class SceneSettingsViewController: UIViewController {
     /// 同步
     @objc private func syncBtnAction() {
 
-        let vc = SyncDevicesViewController(type: .scene(scene))
+        guard MeshLibManager.manager.isMeshNetworkConnected else {
+            XWHUDManager.showTipHUD("device_notconnect_message".localizedString, isLineFeed: true)
+            return
+        }
+        
+        let vc = SyncDevicesViewController(type: .scene(scene), reSync: true)
         vc.syncSuccessCallback = {[weak self] _ in
             XWHUDManager.showSuccessTipHUD("done!".localizedString)
             guard let self = self else { return }
@@ -290,19 +307,27 @@ class SceneSettingsViewController: UIViewController {
     
     /// 预览
     @objc private func previewBtnAction() {
+        
+        guard MeshLibManager.manager.isMeshNetworkConnected else {
+            XWHUDManager.showTipHUD("device_notconnect_message".localizedString, isLineFeed: true)
+            return
+        }
+        
         // 有设备的组
         let controlGroups = space.groups.filter({ $0.isSelected && $0.nodes.count > 0 })
-        if controlGroups.count > 0 {
-            if MeshLibManager.manager.isMeshNetworkConnected {
-                controlGroups.forEach({
-                    if let data = $0.executeSceneData {
-                        MeshAPI.setGroupCTLState(address: $0.address.address, lightness: Node.getLightness(lightness100: data.lightness), temperature: UInt16(data.cct))
-                    }
-                })
-            }else {
-                XWHUDManager.showTipHUD("device_notconnect_message".localizedString, isLineFeed: true)
+        controlGroups.forEach({
+            if let data = $0.executeSceneData, $0.nodes.count > 0 {
+                // 判断组内是否有色温灯
+                if $0.colorTemperatureNodes.count > 0 {
+                    MeshAPI.setGroupCTLState(address: $0.address.address, lightness: Node.getLightness(lightness100: data.lightness), temperature: UInt16(data.cct))
+                }
+                // 判断组内是否有仅支持调光灯
+                if $0.colorTemperatureNodes.count < $0.lightnessNodes.count {
+                    MeshAPI.setGroupLightnessState(address: $0.address.address, lightness: Node.getLightness(lightness100: data.lightness))
+                }
             }
-        }
+        })
+        
     }
     
     /// 创建组
@@ -318,7 +343,7 @@ class SceneSettingsViewController: UIViewController {
         let data = group.executeSceneData
 //        group.info.bindSceneDatas.first(where: { $0.sceneId == scene.number })?.data
         
-        SceneExecuteDataPickerView.show(lightness: data?.lightness ?? 100, cct: data?.cct ?? 4500, showConfirm: false, showDelete: false) {[weak self] lightness, cct in
+        SceneExecuteDataPickerView.show(lightness: data?.lightness ?? 100, cct: data?.cct ?? 4500, showDelete: false) {[weak self] lightness, cct in
             guard let self = self else { return }
             if let sceneData = data { // 修改
                 sceneData.lightness = lightness
@@ -473,12 +498,25 @@ extension SceneSettingsViewController: UICollectionViewDataSource, UICollectionV
     func collectionView(_ collectionView: UICollectionView, didSelectItemAt indexPath: IndexPath) {
            
         let group = space.groups[indexPath.item]
+        if group.nodes.isEmpty { // 空组
+            XWHUDManager.showTipHUD("group_empty".localizedString, isLineFeed: true)
+            return
+        }
+        if !MeshLibManager.manager.isMeshNetworkConnected { // 网络未连接
+            XWHUDManager.showTipHUD("network_no_connnection".localizedString, isLineFeed: true)
+            return
+        }
+        if !group.nodes.contains(where: { $0.state }) { // 组内设备全部离线
+            XWHUDManager.showTipHUD("group_all_devices_offline".localizedString, isLineFeed: true)
+            return
+        }
+        
         group.isOn = !group.isOn
         CATransaction.setDisableActions(true)
         collectionView.reloadItems(at: [indexPath])
         CATransaction.commit()
         if group.nodes.count > 0 {
-            MeshAPI.getGroupOnOffState(address: group.address.address)
+            MeshAPI.setGroupOnOffState(address: group.address.address, isOn: group.isOn)
         }
         
     }

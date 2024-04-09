@@ -42,10 +42,24 @@ class ScheduleGroupsView: UIView {
         super.init(frame: UIScreen.main.bounds)
         
         setupUI()
+        
+        MeshLibManager.manager.addObserver(self, forKeyPath: "isMeshNetworkConnected", context: nil)
     }
     
     required init?(coder: NSCoder) {
         fatalError("init(coder:) has not been implemented")
+    }
+    
+    deinit {
+        MeshLibManager.manager.removeObserver(self, forKeyPath: "isMeshNetworkConnected")
+    }
+    
+    override func observeValue(forKeyPath keyPath: String?, of object: Any?, change: [NSKeyValueChangeKey : Any]?, context: UnsafeMutableRawPointer?) {
+        if keyPath == "isMeshNetworkConnected" { // 网络连接/断开连接回调
+            DispatchQueue.main.asyncAfter(wallDeadline: .now() + 1) {[weak self] in
+                self?.collectionView.reloadData()
+            }
+        }
     }
     
     func show() {
@@ -211,10 +225,12 @@ extension ScheduleGroupsView: UICollectionViewDataSource, UICollectionViewDelega
         let group = groups[indexPath.item]
         cell.nameLabel.text = group.info.name ?? group.name
         cell.selectedImageView.image = UIImage(named: selectGroups.contains(group) ? "device_select" : "device_select_un")
-        if group.nodes.isEmpty {
-            cell.onoffBtn.isEnabled = false
+        if group.nodes.isEmpty || !group.nodes.contains(where: { $0.state }) {
+//            cell.onoffBtn.isEnabled = false
+            cell.onoffBtn.setImage(UIImage(named: "scene_group_disable"), for: .normal)
         }else {
-            cell.onoffBtn.isEnabled = true
+//            cell.onoffBtn.isEnabled = true
+            cell.onoffBtn.setImage(UIImage(named: "scene_group_off"), for: .normal)
             cell.onoffBtn.isSelected = group.isOn
         }
         if let schedule = schedule {
@@ -225,8 +241,11 @@ extension ScheduleGroupsView: UICollectionViewDataSource, UICollectionViewDelega
         }
         
         cell.onoffCallback = { isOn in
-            group.isOn = isOn
-            MeshAPI.setGroupOnOffState(address: group.address.address, isOn: isOn)
+            if group.nodes.count > 0 && group.nodes.contains(where: { $0.state }) {
+                cell.onoffBtn.isSelected = isOn
+                group.isOn = isOn
+                MeshAPI.setGroupOnOffState(address: group.address.address, isOn: isOn)
+            }
         }
 //        group.getNeedSyncDataNodes(scene: <#T##Scene#>)
         return cell
@@ -276,8 +295,7 @@ class ScheduleGroupsViewCell: UICollectionViewCell {
     }
     
     @objc private func onoffBtnAction(sender: UIButton) {
-        sender.isSelected = !sender.isSelected
-        onoffCallback?(sender.isSelected)
+        onoffCallback?(!sender.isSelected)
     }
     
     private func setupUI() {

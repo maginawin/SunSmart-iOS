@@ -5,12 +5,12 @@
       "scale" : "1x"
     },
     {
-      "filename" : "slider_point@2x.png",
+      "filename" : "point@2x.png",
       "idiom" : "universal",
       "scale" : "2x"
     },
     {
-      "filename" : "slider_point@3x.png",
+      "filename" : "point@3x.png",
       "idiom" : "universal",
       "scale" : "3x"
     }

@@ -223,7 +223,7 @@ struct SceneMainTemplate {
                     SceneParameter(lightness: 10, cct: 5500)
                 ]
             case .getOffWork: // 下班（办公室）
-                self.title = "templates_go_to_work".localizedString
+                self.title = "templates_get_off_work".localizedString
                 self.imageId = 26
                 self.parameters = [
                     SceneParameter(lightness: 0, cct: 5000)

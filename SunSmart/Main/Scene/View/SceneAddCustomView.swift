@@ -121,7 +121,7 @@ class SceneAddCustomView: UIView {
             make.height.equalTo(0.5)
         }
         
-        createBtn = UIButton(title: "create".localizedString, titleSize: 16, titleColor: Title_Color, target: self, action: #selector(createBtnClick))
+        createBtn = UIButton(title: "CREATE".localizedString, titleSize: 16, titleColor: Title_Color, target: self, action: #selector(createBtnClick))
         createBtn.setTitleColor(RGB(156, 163, 175), for: .disabled)
         bottomView.addSubview(createBtn)
         createBtn.snp.makeConstraints { make in

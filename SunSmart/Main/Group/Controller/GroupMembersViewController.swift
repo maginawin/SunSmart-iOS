@@ -45,12 +45,11 @@ class GroupMembersViewController: UIViewController {
         if isAddDevices {
             navigationItem.leftBarButtonItem = UIBarButtonItem(image: UIImage(named: "navigation_back")?.withRenderingMode(.alwaysOriginal), style: .done, target: self, action: #selector(backAction))
             functionView.syncBtn.isHidden = true
-            navigationItem.rightBarButtonItem?.title = "done".localizedString
+//            navigationItem.rightBarButtonItem?.title = "done".localizedString
         }
         
-        nodes = space.nodes.filter({ $0.group == nil || $0.group?.address.address == group.address.address })
-        selectNodes = nodes.filter({ $0.group?.address.address == group.address.address })
-        updateEmptyUI()
+//        nodes = space.nodes.filter({ $0.group == nil || $0.group?.address.address == group.address.address })
+//        selectNodes = nodes.filter({ $0.group?.address.address == group.address.address })
         
 //        selectNodes = nodes.filter({ $0.group?.address.address == group.address.address })
         
@@ -59,12 +58,16 @@ class GroupMembersViewController: UIViewController {
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
         
-        if space.nodes.filter({ $0.group == nil || $0.group?.address.address == group.address.address }).count != nodes.count {
-            nodes = space.nodes.filter({ $0.group == nil || $0.group?.address.address == group.address.address })
-            selectNodes = nodes.filter({ $0.group?.address.address == group.address.address })
-        }
+//        if space.nodes.filter({ $0.group == nil || $0.group?.address.address == group.address.address }).count != nodes.count || group.nodes.count != selectNodes.count {
+        nodes = space.nodes.filter({ $0.group == nil || $0.group?.address.address == group.address.address })
+        
+        selectNodes.append(contentsOf: nodes.filter({ $0.group?.address.address == group.address.address }).filter({ !selectNodes.contains($0) }))
+//        }
         functionView.syncBtn.isHidden = !group.nodes.contains(where: { $0.needSync })
+        updateEmptyUI()
         collectionView.reloadData()
+        updateFunctionView()
+        MeshLibManager.manager.register(self)
     }
     
     override func viewDidAppear(_ animated: Bool) {
@@ -95,11 +98,17 @@ class GroupMembersViewController: UIViewController {
         }
         
         let exitNodes = group.nodes.filter({ !selectNodes.contains($0) })
+        exitNodes.forEach({ $0.groupState = .exitFailure })
         let addNodes = selectNodes.filter({ !group.nodes.contains($0) })
         guard exitNodes.count > 0 || addNodes.count > 0 else {
             backAction()
             return
         }
+        guard MeshLibManager.manager.isMeshNetworkConnected else {
+            XWHUDManager.showTipHUD("device_notconnect_message".localizedString, isLineFeed: true)
+            return
+        }
+        
         let vc = SyncDevicesViewController(type: .group(group, inNodes: addNodes, outNodes: exitNodes))
         vc.syncSuccessCallback = {[weak self] _ in
             XWHUDManager.showSuccessTipHUD("done!".localizedString)
@@ -129,10 +138,10 @@ class GroupMembersViewController: UIViewController {
                 guard let self = self else { return }
                 let addVc = DeviceAddViewController(space: space)
                 addVc.appointGroup = self.group
-                addVc.deviceAddCallback = {[weak self] _ in
-                    self?.updateEmptyUI()
-                    self?.collectionView.reloadData()
-                }
+//                addVc.deviceAddCallback = {[weak self] _ in
+//                    self?.updateEmptyUI()
+//                    self?.collectionView.reloadData()
+//                }
                 self.navigationController?.pushViewController(addVc, animated: true)
             }
             if let emptyView = view.emptyView {
@@ -172,6 +181,9 @@ class GroupMembersViewController: UIViewController {
         collectionView.dataSource = self
         collectionView.delegate = self
         collectionView.register(DevicesViewCell.classForCoder(), forCellWithReuseIdentifier: "cell")
+        let longPress = UILongPressGestureRecognizer(target: self, action: #selector(collectionLongPressAction))
+        longPress.minimumPressDuration = 0.5
+        collectionView.addGestureRecognizer(longPress)
         view.addSubview(collectionView)
         collectionView.snp.makeConstraints { make in
             make.left.right.equalToSuperview()
@@ -180,25 +192,6 @@ class GroupMembersViewController: UIViewController {
         }
     }
     
-    private func showFailedAlert() {
-        
-        let style = NSMutableParagraphStyle()
-        style.lineSpacing = 6
-        
-        let messageAttStr = NSMutableAttributedString(string: "device_configured_failed_title".localizedString + "\n", attributes: [.paragraphStyle: style, .foregroundColor: Title_Color])
-        let noteAttStr = NSAttributedString(string: "device_configured_failed_note".localizedString, attributes: [.foregroundColor: RGB(100, 136, 139), .paragraphStyle: style])
-        messageAttStr.append(noteAttStr)
-        
-        let messageAttBtnStyle = SRAlertMessageAttBtnStyle(offset: CGPoint(x: 0, y: -6), text: "check".localizedString) {[weak self] in
-            print("Check")
-            SRAlertView.hide()
-            self?.checkDevices()
-        }
-        
-        SRAlertView(title: "notification".localizedString, messageAttStr: messageAttStr, messageAttBtnStyle: messageAttBtnStyle, margin: SCRXFrom(27), actions: [SRAlertAction(title: "finish".localizedString, style: .cancel, actionHandler: nil), SRAlertAction(title: "reconfigure".localizedString, actionHandler: { _ in
-            print("reconfigure")
-        })]).show()
-    }
     
     /// 检查设备
     private func checkDevices() {
@@ -209,9 +202,16 @@ class GroupMembersViewController: UIViewController {
     
     private func updateFunctionView() {
         
-        let canEditDevices = nodes.filter({ $0.state })
+        let canEditDevices = nodes.filter({ $0.state || $0.group?.address == self.group.address })
         
-        functionView.selectAllBtn.isSelected = selectNodes.count >= canEditDevices.count
+        functionView.selectAllBtn.isSelected = canEditDevices.count > 0 && selectNodes.count >= canEditDevices.count
+        if MeshLibManager.manager.isMeshNetworkConnected {
+            functionView.selectAllBtn.isEnabled = true
+            functionView.sortBtn.isEnabled = true
+        }else {
+            functionView.selectAllBtn.isEnabled = false
+            functionView.sortBtn.isEnabled = false
+        }
     }
     
     private func reloadCollectionItem(node: Node) {
@@ -219,14 +219,134 @@ class GroupMembersViewController: UIViewController {
         if let index = nodes.firstIndex(where: {$0.primaryUnicastAddress == node.primaryUnicastAddress}) {
             //            CATransaction.setDisableActions(true)
             //            collectionView.reloadItems(at: [IndexPath(row: index, section: 0)])
+//            if !node.state { // 离线
+//                if selectNodes.contains(node) { // 是否编辑选中
+//                    // 离线时清空选中地址数据
+//                    selectNodes.removeAll(where: { $0.primaryUnicastAddress == node.primaryUnicastAddress })
+//                }
+//            }
+            
             if let item = collectionView.cellForItem(at: IndexPath(item: index, section: 0)) as? DevicesViewCell {
                 item.device = node
-                if node.needSync {
+//                if node.state && node.isKeybindComplete {
+//                    item.selectImageView.isHidden = false
+//                }else {
+//                    item.selectImageView.isHidden = true
+//                }
+                if selectNodes.contains(node) {
+                    item.selectImageView.isHidden = false
+                    if node.state && node.isKeybindComplete {
+                        item.selectImageView.image = UIImage(named: "device_select")
+                    }else {
+                        item.selectImageView.image = UIImage(named: "device_select_disable")
+                    }
+                }else {
+                    item.selectImageView.isHidden = !(node.state || node.isKeybindComplete)
+                    item.selectImageView.image = UIImage(named: "device_select_un")
+                }
+//                item.selectImageView.image = selectNodes.contains(node) ? UIImage(named: "device_select") : UIImage(named: "device_select_un")
+                if node.state && node.isKeybindComplete && node.needSync {
                     item.iconImageView.image = UIImage(named: "device_light_unsync")
                 }
             }
+            updateFunctionView()
         }
     }
+    
+    /// 开始修复节点
+    private func repair(node: Node) {
+        
+        XWHUDManager.showCustomHUD(withMessage: "repairing".localizedString, isWindow: true)
+        MeshAPI.startKeyBind(node: node, startKeyBind: nil) {[weak self] node in
+            XWHUDManager.hide()
+            guard let self = self else { return }
+            if node.isKeybindComplete {
+                if MeshLibManager.manager.bluetoothState == .poweredOn {
+                    XWHUDManager.showSuccessTipHUD("complete!".localizedString)
+                }
+                if let uuid = MeshNetworkManager.instance.meshNetwork?.uuid.uuidString {
+                    node.saveNodeInfo(meshUUID: uuid)
+                }
+                if node.group?.address.address == group.address.address, !selectNodes.contains(node) {
+                    selectNodes.append(node)
+                }
+                if let index = self.nodes.firstIndex(of: node), let cell = collectionView.cellForItem(at: IndexPath(row: index, section: 0)) as? DevicesViewCell {
+                    cell.device = node
+                    cell.selectImageView.isHidden = false
+                    cell.selectImageView.image = selectNodes.contains(node) ? UIImage(named: "device_select") : UIImage(named: "device_select_un")
+                }
+            }else {
+                self.repairFailed(node: node)
+            }
+//                MeshAPI.getNodeCTLState(address: node.primaryUnicastAddress)
+        } keyBindFail: {[weak self] _ in
+            XWHUDManager.hide()
+            self?.repairFailed(node: node)
+        }
+        
+    }
+    
+    /// 修复失败
+    private func repairFailed(node: Node) {
+        
+        let alertView = SRAlertView(message: "repair_failed_message".localizedString, messageFont: FONTS(SCRYFrom(15)), stateImage: UIImage(named: "alert_failed"), actions: [.cancelAction, SRAlertAction(title: "repair".localizedString, style: .default, actionHandler: {[weak self] _ in
+            self?.repair(node: node)
+        })])
+        alertView.stateImageView.snp.remakeConstraints { make in
+            make.top.equalTo(SCRYFrom(24))
+            make.centerX.equalToSuperview()
+        }
+        alertView.messageLabel.snp.remakeConstraints { make in
+            make.left.equalTo(SCRXFrom(27))
+            make.right.equalTo(SCRXFrom(-27))
+            make.top.equalTo(alertView.stateImageView.snp.bottom).offset(SCRYFrom(16))
+        }
+        alertView.hLineView.snp.remakeConstraints { make in
+            make.left.right.equalTo(0)
+            make.height.equalTo(0.5)
+            make.top.equalTo(alertView.messageLabel.snp.bottom).offset(SCRYFrom(16))
+        }
+        alertView.show()
+    }
+    
+    /// collectionview长按事件（跳转到设备控制页面）
+    @objc private func collectionLongPressAction(sender: UIGestureRecognizer) {
+        guard sender.state == .began else {
+            return
+        }
+        let point = sender.location(in: collectionView)
+        if let indexPath = collectionView.indexPathForItem(at: point) {
+            let node = nodes[indexPath.item]
+            let deviceVc = DeviceLightViewController(space: space, node: node)
+            navigationController?.pushViewController(deviceVc, animated: true)
+        }
+    }
+    
+}
+
+extension GroupMembersViewController: MeshLibManagerDelegate {
+    
+    func meshNetworkManager(_ manager: MeshNetworkManager, bearerDidOpen bearer: Bearer) {
+        
+        let inGroupNodes = nodes.filter({ $0.group?.address.address == group.address.address })
+        selectNodes.append(contentsOf: inGroupNodes.filter({ !selectNodes.contains($0) }))
+//        nodes.filter({ $0.group?.address.address == group.address.address })
+        collectionView.reloadData()
+        updateFunctionView()
+    }
+    
+    func meshNetworkManager(_ manager: MeshNetworkManager, bearerDidClose bearer: Bearer) {
+        
+        functionView.selectAllBtn.isEnabled = false
+        functionView.sortBtn.isEnabled = false
+    }
+    
+    func meshNetworkManager(_ manager: MeshNetworkManager, deviceDataUpdate node: Node) {
+        if nodes.contains(where: { $0.primaryUnicastAddress == node.primaryUnicastAddress }) {
+            reloadCollectionItem(node: node)
+        }
+    }
+    
 }
 
 extension GroupMembersViewController: UICollectionViewDataSource, UICollectionViewDelegateFlowLayout {
@@ -239,17 +359,35 @@ extension GroupMembersViewController: UICollectionViewDataSource, UICollectionVi
         let cell = collectionView.dequeueReusableCell(withReuseIdentifier: "cell", for: indexPath) as! DevicesViewCell
         let node = nodes[indexPath.item]
         cell.device = node
-        if node.state {
+        
+//        if node.state && node.isKeybindComplete {
+//            cell.selectImageView.isHidden = false
+//        }else {
+//            cell.selectImageView.isHidden = true
+//        }
+//        device_select_disable
+        if selectNodes.contains(node) {
             cell.selectImageView.isHidden = false
+            if node.state && node.isKeybindComplete {
+                cell.selectImageView.image = UIImage(named: "device_select")
+            }else {
+                cell.selectImageView.image = UIImage(named: "device_select_disable")
+            }
         }else {
-            cell.selectImageView.isHidden = true
+            cell.selectImageView.isHidden = !(node.state || node.isKeybindComplete)
+            cell.selectImageView.image = UIImage(named: "device_select_un")
         }
-        cell.selectImageView.image = selectNodes.contains(node) ? UIImage(named: "device_select") : UIImage(named: "device_select_un")
-        if node.needSync {
+        
+//        cell.selectImageView.image = selectNodes.contains(node) ? UIImage(named: "device_select") : UIImage(named: "device_select_un")
+        
+        if node.state && node.isKeybindComplete && node.needSync {
             cell.iconImageView.image = UIImage(named: "device_light_unsync")
         }
         cell.editClickCallback = {[weak self] node in
             guard let self = self else { return }
+            guard node.state && node.isKeybindComplete else {
+                return
+            }
             if self.selectNodes.contains(node) {
                 self.selectNodes.removeAll(where: { $0.primaryUnicastAddress == node.primaryUnicastAddress })
                 cell.selectImageView.image = UIImage(named: "device_select_un")
@@ -271,11 +409,20 @@ extension GroupMembersViewController: UICollectionViewDataSource, UICollectionVi
     
     func collectionView(_ collectionView: UICollectionView, didSelectItemAt indexPath: IndexPath) {
         let node = nodes[indexPath.item]
+        if !node.isKeybindComplete {
+            repair(node: node)
+            return
+        }
+        if !node.state {
+            MeshAPI.getNodeOnOffState(address: node.primaryUnicastAddress)
+            return
+        }
+        
         node.isOn = !node.isOn
         if !node.isOn, node.lightness > 0 { // 关灯，记录关灯前的亮度值
             node.trunOffLightness = node.lightness
         }
-        
+        MeshAPI.setNodeOnOffState(address: node.primaryUnicastAddress, isOn: node.isOn)
         reloadCollectionItem(node: node)
     }
     
@@ -287,7 +434,7 @@ extension GroupMembersViewController: GroupDevicesFunctionViewDelegate {
     func functionDidSyncDataAction(view: GroupDevicesFunctionView) {
 //        showFailedAlert()
         
-        let vc = SyncDevicesViewController(type: .group(group))
+        let vc = SyncDevicesViewController(type: .group(group), reSync: true)
         vc.syncSuccessCallback = {[weak self] _ in
             XWHUDManager.showSuccessTipHUD("done!".localizedString)
             guard let self = self else { return }
@@ -316,16 +463,9 @@ extension GroupMembersViewController: GroupDevicesFunctionViewDelegate {
                 XWHUDManager.showErrorTipHUD("device_sort_failed".localizedString)
                 return
             }
-//            self.space.nodes.sort(by: { ($0.rssi ?? -99) > ($1.rssi ?? -99) })
-//            self.space.nodes.sort(by: { $0.state && !$1.state })
-//            self.collectionView.reloadData()
-//            // 节点信号map
-//            var rssiMap: [String: Int] = [:]
-//            self.devices.forEach { node in
-//                if let mac = node.macAddress, let rssi = node.rssi {
-//                    rssiMap.updateValue(rssi, forKey: mac)
-//                }
-//            }
+            self.nodes.sort(by: { ($0.rssi ?? -99) > ($1.rssi ?? -99) })
+            self.nodes.sort(by: { $0.state && !$1.state })
+            self.collectionView.reloadData()
 //            // 设备信号排序
 //            self.space.deviceSortType = .rssi
 //            self.space.save()
@@ -335,13 +475,16 @@ extension GroupMembersViewController: GroupDevicesFunctionViewDelegate {
     
     /// 全选点击回调  selectAll：是否全选
     func function(view: GroupDevicesFunctionView, selectAllStateChanged selectAll: Bool) {
-        let canEditDevices = nodes.filter({ $0.state })
+        let canEditDevices = nodes.filter({ $0.state && $0.isKeybindComplete })
         if selectAll {
-            selectNodes = canEditDevices
+            selectNodes.append(contentsOf: canEditDevices.filter({ !selectNodes.contains($0) }))
+//            selectNodes = canEditDevices
         }else {
-            selectNodes.removeAll()
+            selectNodes.removeAll(where: { canEditDevices.contains($0) })
+//            selectNodes.removeAll()
         }
         collectionView.reloadData()
+        updateFunctionView()
     }
 
     

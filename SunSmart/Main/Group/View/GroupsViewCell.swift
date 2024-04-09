@@ -29,6 +29,12 @@ class GroupsViewCell: UICollectionViewCell {
             }
             nameLabel.text = group.name
             backgroundColor = group.isOn ? .white : RGB(226, 226, 226)
+            
+            if group.nodes.contains(where: { $0.needSync }) {
+                imageView.isHidden = false
+                imageView.image = UIImage(named: "sync_failed_big")
+                imageLabel.isHidden = true
+            }
         }
     }
     
@@ -62,6 +68,7 @@ class GroupsViewCell: UICollectionViewCell {
         
         nameLabel = UILabel(text: nil, textColor: RGB(64, 79, 102), fontSize: 14, fontWeight: .light)
         nameLabel.textAlignment = .center
+        nameLabel.lineBreakMode = .byTruncatingHead
         contentView.addSubview(nameLabel)
         nameLabel.snp.makeConstraints { make in
             make.left.equalTo(SCRXFrom(18))
@@ -69,7 +76,7 @@ class GroupsViewCell: UICollectionViewCell {
             make.bottom.equalTo(SCRYFrom(-18))
         }
         
-        deleteBtn = UIButton(normalImageName: "close", target: self, action: #selector(deleteBtnClick))
+        deleteBtn = UIButton(normalImageName: "scene_delete", target: self, action: #selector(deleteBtnClick))
         deleteBtn.isHidden = true
         contentView.addSubview(deleteBtn)
         deleteBtn.snp.makeConstraints { make in

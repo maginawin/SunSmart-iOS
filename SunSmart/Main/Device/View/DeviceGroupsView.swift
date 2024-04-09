@@ -10,18 +10,30 @@ import NordicSigMeshSDK
 
 protocol DeviceGroupsViewDelegate: AnyObject {
     
+    /// 选择/取消选择所有回调
+    func view(_ view: DeviceGroupsView, didSelectAllAction selectAll: Bool)
+    
     /// 选中/取消选中回调
     func view(_ view: DeviceGroupsView, didSelectData data: DeviceGroupsSelectData)
+    
+    /// 筛选
+    func viewDidSortAction(_ view: DeviceGroupsView)
 }
 
 class DeviceGroupsView: UIView {
     
     private var bgView: UIView!
-    var flowLayout: HorizontalDirectionFlowLayout!
+    
+    var selectAllBtn: UIButton!
+    private var sortBtn: UIButton!
+    
+    private var flowLayout: HorizontalDirectionFlowLayout!
     
     var collectionView: UICollectionView!
     
     var progressView: LinePageControl!
+    
+    private var lineView: UIView!
     
     weak var delegate: DeviceGroupsViewDelegate?
     
@@ -29,16 +41,25 @@ class DeviceGroupsView: UIView {
         didSet {
 
             collectionView.snp.updateConstraints { make in
-                if datas.count >= 4 {
-                    make.bottom.equalToSuperview()
-                    make.height.equalTo(SCRYFrom(108))
-                }else {
+//                let top = SCRYFrom(46)
+                if datas.count > 0 {
                     make.bottom.equalToSuperview().offset(SCRYFrom(-6))
-                    make.height.equalTo(SCRYFrom(58))
+                    
+                    let row = min(Int(ceil(CGFloat(datas.count) / 4.0)), 2)
+                    var height = CGFloat(row) * (SCRYFrom(40) + SCRYFrom(8))
+                    if datas.count > 8 {
+                        height += SCRYFrom(6)
+                    }
+                    make.height.equalTo(height)
+                }else {
+                    make.bottom.equalToSuperview()
+                    make.height.equalTo(SCRYFrom(8))
                 }
             }
-            progressView.numberOfPages = Int(ceil(Double(datas.count + 1) / 8.0))
+            progressView.numberOfPages = Int(ceil(Double(datas.count) / 8.0))
+            flowLayout.itemRowCount = datas.count > 4 ? 2 : 1
             collectionView.reloadData()
+            
         }
     }
     
@@ -64,6 +85,15 @@ class DeviceGroupsView: UIView {
         fatalError("init(coder:) has not been implemented")
     }
     
+    @objc private func selectAllBtnAction(sender: UIButton) {
+        
+        delegate?.view(self, didSelectAllAction: !sender.isSelected)
+    }
+    
+    @objc private func sortBtnAction() {
+        delegate?.viewDidSortAction(self)
+    }
+    
     private func setupUI() {
         
         bgView = UIView()
@@ -73,30 +103,44 @@ class DeviceGroupsView: UIView {
             make.edges.equalToSuperview()
         }
         
+        selectAllBtn = UIButton(title: "select_all".localizedString, titleSize: 14, titleWeight: .light, titleColor: TextBlack_Color, normalImageName: "device_select_un", selectedImageName: "device_select", target: self, action: #selector(selectAllBtnAction))
+        selectAllBtn.setImagePosition(position: .left, spacing: SCRXFrom(4))
+        bgView.addSubview(selectAllBtn)
+        selectAllBtn.snp.makeConstraints { make in
+            make.left.equalTo(SCRXFrom(16))
+            make.top.equalTo(SCRYFrom(8))
+        }
+        
+        sortBtn = UIButton(normalImageName: "space_sort", target: self, action: #selector(sortBtnAction))
+        bgView.addSubview(sortBtn)
+        sortBtn.snp.makeConstraints { make in
+            make.right.equalTo(SCRXFrom(-16))
+            make.centerY.equalTo(selectAllBtn)
+        }
+        
         flowLayout = HorizontalDirectionFlowLayout()
-        flowLayout.itemRowCount = 2
+        flowLayout.itemRowCount = 1
         flowLayout.itmeColCount = 4
         flowLayout.minimumLineSpacing = SCRXFrom(8)
         flowLayout.minimumInteritemSpacing = SCRXFrom(8)
         flowLayout.scrollDirection = .horizontal
-        flowLayout.sectionInset = UIEdgeInsets(top: SCRYFrom(12), left: 0, bottom: SCRYFrom(6), right: 0)
+        flowLayout.sectionInset = UIEdgeInsets(top: 0, left: SCRXFrom(4), bottom: 0, right: SCRXFrom(4))
         
         collectionView = UICollectionView(frame: .zero, collectionViewLayout: flowLayout)
         collectionView.backgroundColor = .clear
         collectionView.isPagingEnabled = true
         collectionView.bounces = false
-        collectionView.contentInset = UIEdgeInsets(top: 0, left: SCRXFrom(4), bottom: 0, right: SCRXFrom(4))
+//        collectionView.contentInset = UIEdgeInsets(top: 0, left: SCRXFrom(4), bottom: 0, right: SCRXFrom(4))
         collectionView.register(DeviceGroupsViewCell.classForCoder(), forCellWithReuseIdentifier: "cell")
         collectionView.dataSource = self
         collectionView.delegate = self
         collectionView.showsHorizontalScrollIndicator = false
         addSubview(collectionView)
         collectionView.snp.makeConstraints { make in
-            make.left.right.top.equalToSuperview()
-            make.bottom.equalToSuperview().offset(SCRYFrom(-6))
-//            make.bottom.equalToSuperview()
-            make.height.equalTo(SCRYFrom(58))
-//            make.height.equalTo(SCRYFrom(108))
+            make.left.right.equalToSuperview()
+            make.bottom.equalToSuperview()
+            make.top.equalTo(SCRYFrom(46))
+            make.height.equalTo(SCRYFrom(8))
         }
         
         progressView = LinePageControl()
@@ -106,9 +150,18 @@ class DeviceGroupsView: UIView {
         progressView.numberOfPages = 1
         addSubview(progressView)
         progressView.snp.makeConstraints { make in
-            make.centerX.bottom.equalToSuperview()
+            make.centerX.equalToSuperview()
+            make.bottom.equalTo(SCRYFrom(-8))
             make.width.equalTo(SCRXFrom(24))
             make.height.equalTo(SCRYFrom(4))
+        }
+        
+        lineView = UIView()
+        lineView.backgroundColor = RGB(243, 243, 243)
+        addSubview(lineView)
+        lineView.snp.makeConstraints { make in
+            make.left.right.bottom.equalToSuperview()
+            make.height.equalTo(1)
         }
     }
 }
@@ -131,6 +184,7 @@ extension DeviceGroupsView: UICollectionViewDataSource, UICollectionViewDelegate
     func collectionView(_ collectionView: UICollectionView, layout collectionViewLayout: UICollectionViewLayout, sizeForItemAt indexPath: IndexPath) -> CGSize {
         var itemW = (collectionView.width - collectionView.contentInset.left - collectionView.contentInset.right - flowLayout.sectionInset.left - flowLayout.sectionInset.right - flowLayout.minimumInteritemSpacing * 3.0) / 4.0
         itemW = CGFloat(floorf(Float(itemW) * 100.0) / 100.0)
+        
         return CGSize(width: itemW, height: SCRYFrom(40))
     }
     func collectionView(_ collectionView: UICollectionView, didSelectItemAt indexPath: IndexPath) {
@@ -142,6 +196,7 @@ extension DeviceGroupsView: UICollectionViewDataSource, UICollectionViewDelegate
         if let cell = collectionView.cellForItem(at: indexPath) as? DeviceGroupsViewCell {
             cell.isSelect = data.isSelected
         }
+//        selectAllBtn.isSelected = datas.count > 0 && datas.filter({ $0.isSelected }).count == datas.count
     }
     
     func scrollViewDidEndDecelerating(_ scrollView: UIScrollView) {
@@ -175,7 +230,7 @@ class DeviceGroupsViewCell: UICollectionViewCell {
         layer.cornerRadius = SCRYFrom(6)
         backgroundColor = RGB(238, 238, 239)
         
-        titleLabel = UILabel(text: "ALL".localizedString, textColor: RGB(46, 49, 93), fontSize: 16, fontWeight: .light)
+        titleLabel = UILabel(text: "ALL".localizedString, textColor: TextBlack_Color, fontSize: 14, fontWeight: .light)
         titleLabel.textAlignment = .center
         titleLabel.lineBreakMode = .byTruncatingHead
         contentView.addSubview(titleLabel)

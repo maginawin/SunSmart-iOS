@@ -18,6 +18,8 @@ enum CustomCellStyle {
     case icon
     /// 样式图标-标题-底部内容
     case iconAddBottomSubtitle
+    /// 标题-开关
+    case `switch`
 }
 
 class CustomTableViewCell: UITableViewCell {
@@ -26,15 +28,24 @@ class CustomTableViewCell: UITableViewCell {
     var titleLabel : UILabel!
     var contentLabel : UILabel!
     var arrowImageView : UIImageView!
+    var enabledSwitch: UISwitch!
+    private var enabledBtn: UIButton!
     var lineView : UIView!
     var iconImageClickCallback: (()->Void)? {
         didSet {
             iconImageView.isUserInteractionEnabled = true
         }
     }
+    /// 开关点击事件
+    var switchActionCallback: ((Bool)->Void)?
+    
     var cellStyle : CustomCellStyle = .none {
         didSet {
-            if cellStyle == .none {
+            
+            self.enabledSwitch.isHidden = true
+            
+            switch cellStyle {
+            case .none:
                 self.arrowImageView.isHidden = true
                 self.iconImageView.isHidden = true
                 self.titleLabel.snp.remakeConstraints { make in
@@ -42,11 +53,12 @@ class CustomTableViewCell: UITableViewCell {
                     make.centerY.equalToSuperview()
                 }
                 self.contentLabel.snp.remakeConstraints { make in
-                    make.left.equalTo(SCRXFrom(140))
+//                    make.left.equalTo(SCRXFrom(140))
+                    make.width.lessThanOrEqualTo(SCRXFrom(200))
                     make.right.equalTo(SCRXFrom(-16))
                     make.centerY.equalTo(titleLabel)
                 }
-            }else if cellStyle == .bottomSubtitle {
+            case .bottomSubtitle:
                 self.iconImageView.isHidden = true
                 self.arrowImageView.isHidden = true
                 self.titleLabel.snp.remakeConstraints { make in
@@ -57,8 +69,7 @@ class CustomTableViewCell: UITableViewCell {
                     make.left.equalTo(self.titleLabel)
                     make.top.equalTo(self.titleLabel.snp.bottom).offset(SCRYFrom(3))
                 }
-                
-            }else if cellStyle == .icon || cellStyle == .iconAddBottomSubtitle {
+            case .icon, .iconAddBottomSubtitle:
                 self.iconImageView.isHidden = false
                 
                 if cellStyle == .iconAddBottomSubtitle {
@@ -82,11 +93,18 @@ class CustomTableViewCell: UITableViewCell {
                     self.contentLabel.snp.remakeConstraints { make in
                         make.right.equalTo(SCRXFrom(-36))
                         make.centerY.equalToSuperview()
-                        make.left.equalTo(SCRXFrom(140))
+//                        make.left.equalTo(SCRXFrom(140))
+                        make.width.lessThanOrEqualTo(SCRXFrom(200))
                     }
                 }
+            case .switch:
+                self.enabledSwitch.isHidden = false
+                self.contentLabel.snp.updateConstraints { make in
+                    make.right.equalTo(SCRXFrom(-66))
+                }
                 
-            }else {
+                self.arrowImageView.isHidden = true
+            default:
                 self.titleLabel.snp.remakeConstraints { make in
                     make.left.equalTo(SCRXFrom(16))
                     make.centerY.equalToSuperview()
@@ -95,9 +113,12 @@ class CustomTableViewCell: UITableViewCell {
                 self.contentLabel.snp.remakeConstraints { make in
                     make.right.equalTo(SCRXFrom(-36))
                     make.centerY.equalToSuperview()
-                    make.left.equalTo(SCRXFrom(140))
+//                    make.left.equalTo(SCRXFrom(140))
+                    make.width.lessThanOrEqualTo(SCRXFrom(200))
                 }
             }
+            
+            
         }
     }
     
@@ -130,6 +151,23 @@ class CustomTableViewCell: UITableViewCell {
             self.titleLabel.snp.remakeConstraints { make in
                 make.left.equalTo(titleX)
                 make.centerY.equalToSuperview()
+            }
+        }
+    }
+    
+    /// 设置内容文本与标题水平布局优先级
+    var contentHorizontalPriority: UILayoutPriority? {
+        didSet {
+            
+            contentLabel.setContentCompressionResistancePriority(contentHorizontalPriority ?? .defaultLow, for: .horizontal)
+            contentLabel.snp.remakeConstraints { make in
+                make.left.equalTo(titleLabel.snp.right).offset(SCRXFrom(20))
+                if cellStyle == .switch {
+                    make.right.equalTo(SCRXFrom(-66))
+                }else {
+                    make.right.equalTo(SCRXFrom(-16))
+                }
+                make.centerY.equalTo(titleLabel)
             }
         }
     }
@@ -167,6 +205,22 @@ class CustomTableViewCell: UITableViewCell {
             make.centerY.equalTo(titleLabel)
         }
         
+        enabledSwitch = UISwitch()
+        enabledSwitch.onTintColor = Bar_Color
+        enabledSwitch.tintColor = RGB(207, 207, 207)
+        enabledSwitch.isHidden = true
+        contentView.addSubview(enabledSwitch)
+        enabledSwitch.snp.makeConstraints { make in
+            make.right.equalTo(SCRXFrom(-12))
+            make.centerY.equalTo(titleLabel)
+        }
+        
+        enabledBtn = UIButton(target: self, action: #selector(enabledBtnAction))
+        enabledSwitch.addSubview(enabledBtn)
+        enabledBtn.snp.makeConstraints { make in
+            make.edges.equalTo(enabledSwitch)
+        }
+        
         arrowImageView = UIImageView(image: UIImage(named: "arrow_right"))
         arrowImageView.isHidden = true
         contentView.addSubview(arrowImageView)
@@ -192,6 +246,10 @@ class CustomTableViewCell: UITableViewCell {
     @objc private func iconImageViewAction() {
         
         iconImageClickCallback?()
+    }
+    
+    @objc private func enabledBtnAction() {
+        switchActionCallback?(!enabledSwitch.isOn)
     }
     
 }

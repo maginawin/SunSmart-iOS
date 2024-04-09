@@ -19,7 +19,7 @@ class InfoEditViewController: UIViewController {
     private var footerView: UIView!
     private var doneBtn: UIButton!
 //    private var cancelBtn: UIButton!
-//    private var lineView: UIView!
+    private var lineView: UIView!
     
     private let name: String
     private let imageNames: [String]
@@ -203,16 +203,14 @@ class InfoEditViewController: UIViewController {
             make.height.equalTo(SCRYFrom(56) + kSafeAreaBottomHeight)
         }
         
-//        lineView = UIView()
-//        lineView.backgroundColor = Line_Color
-//        footerView.addSubview(lineView)
-//        lineView.snp.makeConstraints { make in
-//            make.centerX.equalToSuperview()
-//            make.top.equalTo(SCRYFrom(8))
-//            make.width.equalTo(1)
-//            make.bottom.equalTo(-kSafeAreaTopHeight - SCRYFrom(8))
-////            make.height.equalTo(SCRYFrom(40))
-//        }
+        lineView = UIView()
+        lineView.backgroundColor = RGB(243, 243, 243)
+        footerView.addSubview(lineView)
+        lineView.snp.makeConstraints { make in
+            make.left.right.top.equalToSuperview()
+            make.height.equalTo(1)
+//            make.height.equalTo(SCRYFrom(40))
+        }
         
 //        cancelBtn = UIButton(title: "cancel".localizedString, titleSize: 16, titleColor: TextBlack_Color, target: self, action: #selector(cancelBtnClick))
 //        cancelBtn.titleLabel?.textAlignment = .center
@@ -224,7 +222,7 @@ class InfoEditViewController: UIViewController {
 //            make.height.equalTo(SCRYFrom(30))
 //        }
         
-        doneBtn = UIButton(title: "done".localizedString, titleSize: 16, titleColor: Title_Color, target: self, action: #selector(doneBtnClick))
+        doneBtn = UIButton(title: "done".localizedString, titleSize: 16, titleWeight: .light, titleColor: Title_Color, target: self, action: #selector(doneBtnClick))
         doneBtn.setTitleColor(RGB(139, 139, 139), for: .disabled)
         doneBtn.titleLabel?.textAlignment = .center
         footerView.addSubview(doneBtn)

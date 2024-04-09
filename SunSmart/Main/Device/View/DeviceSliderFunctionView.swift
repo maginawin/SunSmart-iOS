@@ -101,10 +101,11 @@ class DeviceSliderFunctionView: UIView {
     private func updateValue() {
         
         let data = type.data
+        let value = Int(roundf(slider.value / Float(data.step)) * Float(data.step))
         if title.isEmpty {
-            titleLabel.text = "\(Int(slider.value))\(data.unit)"
+            titleLabel.text = "\(value)\(data.unit)"
         }else {
-            titleLabel.text = "\(title!) | \(Int(slider.value))\(data.unit)"
+            titleLabel.text = "\(title!) | \(value)\(data.unit)"
         }
     }
     
@@ -114,6 +115,7 @@ class DeviceSliderFunctionView: UIView {
         titleLabel.text = "\(title ?? "") | \(value)\(data.unit)"
         minLabel.text = "\(data.min)\(data.unit)"
         maxLabel.text = "\(data.max)\(data.unit)"
+        slider.step = data.step
         slider.minimumValue = Float(data.min)
         slider.maximumValue = Float(data.max)
         switch type {
@@ -206,7 +208,8 @@ extension DeviceSliderFunctionView: CustomDeviceSliderDelegate {
     /// - Parameters:
     ///   - slider: 滑动条
     ///   - value: 数值
-    func slider(_ slider: CustomDeviceSlider, valueChanged value: Float) {
+    func slider(_ slider: CustomDeviceSlider, valueChanged value: Float, ended: Bool) {
+        
         updateValue()
         valueChangedCallback?(Int(value))
     }

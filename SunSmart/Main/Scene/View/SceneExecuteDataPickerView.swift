@@ -25,17 +25,15 @@ class SceneExecuteDataPickerView: UIView {
     private var deleteBtn: UIButton!
     
     private var showDelete: Bool = true
-    private var showConfirm: Bool = true
     private var lightness: Int = 30
     private var cct: Int = 5500
     private var pickerCallback: DataPickerCallback?
     private var deleteCallback: DeleteCallback?
     
-    static func show(lightness: Int = 100, cct: Int = 4500, showConfirm: Bool = true, showDelete: Bool = true, picker: DataPickerCallback?, delete: DeleteCallback? = nil) {
+    static func show(lightness: Int = 100, cct: Int = 4500, showDelete: Bool = true, picker: DataPickerCallback?, delete: DeleteCallback? = nil) {
         
         let pickerView = SceneExecuteDataPickerView(frame: UIScreen.main.bounds)
         pickerView.showDelete = showDelete
-        pickerView.showConfirm = showConfirm
         pickerView.lightness = lightness
         pickerView.pickerCallback = picker
         pickerView.deleteCallback = delete
@@ -89,11 +87,11 @@ class SceneExecuteDataPickerView: UIView {
     
     @objc private func shadeViewAction() {
         
-        if !showConfirm { // 没有确认按键，关闭则确认修改
+//        if !showConfirm { // 没有确认按键，关闭则确认修改
             let lightness = lightnessSliderView.value
             let cct = cctSliderView.value
             pickerCallback?(lightness, cct)
-        }
+//        }
         dismiss()
     }
     
@@ -107,7 +105,7 @@ class SceneExecuteDataPickerView: UIView {
             make.edges.equalToSuperview()
         }
         
-        if showConfirm || showDelete {
+        if showDelete {
             
             functionView = UIView()
             functionView.backgroundColor = .white
@@ -120,42 +118,42 @@ class SceneExecuteDataPickerView: UIView {
                 make.height.equalTo(SCRYFrom(60))
             }
             
-            lineView = UIView()
-            lineView.backgroundColor = RGB(216, 216, 216)
-            functionView.addSubview(lineView)
-            lineView.snp.makeConstraints { make in
-                make.center.equalToSuperview()
-                make.width.equalTo(1)
-                make.height.equalTo(SCRYFrom(24))
-            }
+//            lineView = UIView()
+//            lineView.backgroundColor = RGB(216, 216, 216)
+//            functionView.addSubview(lineView)
+//            lineView.snp.makeConstraints { make in
+//                make.center.equalToSuperview()
+//                make.width.equalTo(1)
+//                make.height.equalTo(SCRYFrom(24))
+//            }
             
-            deleteBtn = UIButton(title: "delete".localizedString, titleSize: 16, titleWeight: .light, titleColor: Red_Color, target: self, action: #selector(deleteBtnAction))
+            deleteBtn = UIButton(title: "DELETE".localizedString, titleSize: 16, titleWeight: .light, titleColor: Bar_Color, target: self, action: #selector(deleteBtnAction))
             functionView.addSubview(deleteBtn)
             deleteBtn.snp.makeConstraints { make in
                 make.left.equalTo(SCRXFrom(20))
-                make.right.equalTo(lineView.snp.left).offset(SCRXFrom(-20))
-                make.height.equalTo(SCRYFrom(40))
-                make.centerY.equalToSuperview()
-            }
-            
-            confirmBtn = UIButton(title: "confirm".localizedString, titleSize: 16, titleWeight: .light, titleColor: Bar_Color, target: self, action: #selector(confirmBtnAction))
-            functionView.addSubview(confirmBtn)
-            confirmBtn.snp.makeConstraints { make in
-                make.left.equalTo(lineView.snp.right).offset(SCRXFrom(20))
                 make.right.equalTo(SCRXFrom(-20))
-                make.height.centerY.equalTo(deleteBtn)
+                make.centerY.equalToSuperview()
+                make.height.equalTo(SCRYFrom(40))
             }
             
-            if !showDelete {
-                deleteBtn.isHidden = true
-                lineView.isHidden = true
-                confirmBtn.snp.remakeConstraints { make in
-                    make.left.equalTo(SCRXFrom(20))
-                    make.right.equalTo(SCRXFrom(-20))
-                    make.centerY.equalToSuperview()
-                    make.height.equalTo(SCRYFrom(40))
-                }
-            }
+//            confirmBtn = UIButton(title: "confirm".localizedString, titleSize: 16, titleWeight: .light, titleColor: Bar_Color, target: self, action: #selector(confirmBtnAction))
+//            functionView.addSubview(confirmBtn)
+//            confirmBtn.snp.makeConstraints { make in
+//                make.left.equalTo(lineView.snp.right).offset(SCRXFrom(20))
+//                make.right.equalTo(SCRXFrom(-20))
+//                make.height.centerY.equalTo(deleteBtn)
+//            }
+            
+//            if !showDelete {
+//                deleteBtn.isHidden = true
+//                lineView.isHidden = true
+//                confirmBtn.snp.remakeConstraints { make in
+//                    make.left.equalTo(SCRXFrom(20))
+//                    make.right.equalTo(SCRXFrom(-20))
+//                    make.centerY.equalToSuperview()
+//                    make.height.equalTo(SCRYFrom(40))
+//                }
+//            }
         }
             
         contentView = UIView()
@@ -165,7 +163,7 @@ class SceneExecuteDataPickerView: UIView {
         contentView.snp.makeConstraints { make in
             make.left.equalTo(SCRXFrom(8))
             make.right.equalTo(SCRXFrom(-8))
-            if showConfirm || showDelete {
+            if showDelete {
                 make.bottom.equalTo(functionView.snp.top).offset(SCRYFrom(-8))
             }else {
                 make.bottom.equalTo(-34)

@@ -26,12 +26,14 @@ class TitleSelectView: UIView {
     private var menuWidth: CGFloat = defalutWidth
     private var itemHeight: CGFloat = defalutItemHeight
     private var selectCallback: TitleSelectCallback?
-    
+    private var selectBackgroundColor: UIColor = RGB(216, 216, 216, 0.1)
+    private var titleColor: UIColor = .white
+    private var titleFont: UIFont = FONTS(13)
 //    required init?(coder: NSCoder) {
 //        fatalError("init(coder:) has not been implemented")
 //    }
     
-    static func show(titles: [String], anchorPoint: CGPoint, selectIndex: Int = 0, menuWidth: CGFloat = TitleSelectView.defalutWidth, itemHeight: CGFloat = TitleSelectView.defalutItemHeight, selectBack: TitleSelectCallback?) {
+    static func show(titles: [String], anchorPoint: CGPoint, selectIndex: Int = 0, menuWidth: CGFloat = TitleSelectView.defalutWidth, itemHeight: CGFloat = TitleSelectView.defalutItemHeight, titleColor: UIColor = .white, titleFont: UIFont = FONTS(13), backgroundColor: UIColor = RGB(102, 102, 102), selectBackgroundColor: UIColor = RGB(216, 216, 216, 0.1), shadowColor: UIColor? = nil, selectBack: TitleSelectCallback?) {
         
         let view = TitleSelectView(frame: UIScreen.main.bounds)
         view.menuWidth = menuWidth
@@ -39,8 +41,18 @@ class TitleSelectView: UIView {
         view.startPoint = anchorPoint
         view.selectIndex = selectIndex
         view.titles = titles
+        view.titleFont = titleFont
+        view.titleColor = titleColor
+        view.selectBackgroundColor = selectBackgroundColor
         view.selectCallback = selectBack
         view.setupUI()
+        view.contentView.backgroundColor = backgroundColor
+        if shadowColor != nil {
+            view.contentView.layer.shadowColor = shadowColor!.cgColor
+            view.contentView.layer.shadowOpacity = 1
+            view.contentView.layer.shadowOffset = CGSize(width: 0, height: 2)
+            view.contentView.layer.cornerRadius = 6
+        }
         UIApplication.shared.keyWindow().addSubview(view)
         view.showAnimation()
     }
@@ -123,8 +135,8 @@ extension TitleSelectView: UITableViewDataSource, UITableViewDelegate {
         let cell = tableView.dequeueReusableCell(withIdentifier: "cell", for: indexPath) as! CustomTableViewCell
         cell.cellStyle = .icon
         cell.titleLabel.text = titles[indexPath.row]
-        cell.titleLabel.textColor = .white
-        cell.titleLabel.font = FONTS(13)
+        cell.titleLabel.textColor = titleColor
+        cell.titleLabel.font = titleFont
         cell.iconImageView.image = UIImage(named: "menu_select")
         cell.iconImageView.isHidden = selectIndex != indexPath.row
         cell.iconX = 0
@@ -137,7 +149,7 @@ extension TitleSelectView: UITableViewDataSource, UITableViewDelegate {
 //        let bgView = UIView()
 //        bgView.backgroundColor = RGB(216, 216, 216, 0.1)
 //        cell.selectedBackgroundView = bgView
-        cell.backgroundColor = selectIndex == indexPath.row ? RGB(216, 216, 216, 0.1) : .clear
+        cell.backgroundColor = selectIndex == indexPath.row ? self.selectBackgroundColor : .clear
         return cell
     }
     

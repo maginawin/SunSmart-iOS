@@ -9,6 +9,8 @@ target 'SunSmart' do
 #  pod 'CryptoSwift'
   # 自动布局
   pod 'SnapKit'
+  # Bug捕捉
+  pod 'Bugly'
 #  pod 'MMDrawerController'
   
   # Pods for SunSmart

@@ -27,9 +27,16 @@ class CustomProgressView: UIView {
     var cornerRadius: CGFloat = 2 {
         didSet {
             layer.cornerRadius = cornerRadius
-            progressView.layer.cornerRadius = cornerRadius
+            progressView.layer.cornerRadius = cornerRadius - progressPadding
         }
     }
+    
+    var progressPadding: CGFloat = 0 {
+        didSet {
+            progressView.layer.cornerRadius = cornerRadius - progressPadding
+        }
+    }
+    
     
     /// 进度 0~100
     var progress: Int = 0 {
@@ -39,18 +46,6 @@ class CustomProgressView: UIView {
 //            }
             setProgress(progress, animated: false)
         }
-       
-//        get {
-//            guard self.frame != CGRectZero else {
-//                return 0
-//            }
-//            return Int((progressView.width / self.frame.size.width) * 100.0)
-//        }set {
-//            guard progress != newValue else {
-//                return
-//            }
-//            setProgress(newValue, animated: false)
-//        }
     }
     
     override init(frame: CGRect) {
@@ -59,9 +54,9 @@ class CustomProgressView: UIView {
         backgroundColor = trackColor
         layer.cornerRadius = cornerRadius
         
-        progressView = UIView(frame: CGRect(x: 0, y: 0, width: 0, height: frame.size.height))
+        progressView = UIView()
         progressView.backgroundColor = progressColor
-        progressView.layer.cornerRadius = cornerRadius
+        progressView.layer.cornerRadius = cornerRadius - progressPadding
         addSubview(progressView)
         
     }
@@ -73,9 +68,12 @@ class CustomProgressView: UIView {
     override func layoutSubviews() {
         super.layoutSubviews()
         
-        let progressW = self.frame.size.width * CGFloat(progress) / 100.0
-        progressView.width = progressW
-        progressView.height = frame.size.height
+        let progressW = (self.frame.size.width - progressPadding * 2) * CGFloat(progress) / 100.0
+
+        progressView.frame = CGRect(x: progressPadding, y: progressPadding, width: progressW, height: frame.size.height - progressPadding * 2)
+//        self.frame.insetBy(dx: progressPadding, dy: progressPadding)
+//        progressView.width = progressW - progressPadding * 2
+//        progressView.height = frame.size.height - progressPadding * 2
         
     }
     
@@ -87,12 +85,13 @@ class CustomProgressView: UIView {
         
         let value = min(max(progress, 0), 100)
         
-        let width = self.frame.size.width * CGFloat(value) / 100.0
+        let width = (self.frame.size.width - progressPadding * 2) * CGFloat(value) / 100.0
         if animated {
             UIView.animate(withDuration: 0.25) {
                 self.progressView.width = width
             }
         }else {
+            progressView.x = progressPadding
             progressView.width = width
         }
         

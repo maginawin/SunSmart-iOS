@@ -108,7 +108,7 @@ class SiteEditViewController: UIViewController {
             make.height.equalTo(SCRYFrom(30))
         }
         
-        doneBtn = UIButton(title: "done".localizedString, titleSize: 16, titleColor: TextBlack_Color, target: self, action: #selector(doneBtnClick))
+        doneBtn = UIButton(title: "done".localizedString, titleSize: 16, titleWeight: .light, titleColor: TextBlack_Color, target: self, action: #selector(doneBtnClick))
         footerView.addSubview(doneBtn)
         doneBtn.snp.makeConstraints { make in
             make.left.equalTo(lineView.snp.left).offset(SCRXFrom(60))

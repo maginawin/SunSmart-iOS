@@ -50,6 +50,7 @@ extension SpaceFunctionFooterViewDelegate {
 class SpaceFunctionFooterView: UIView {
 
     var countBtn: UIButton!
+    var switchCountBtn: UIButton!
     var sortBtn: UIButton!
     var editBtn: UIButton!
     var addBtn: UIButton!
@@ -109,19 +110,24 @@ class SpaceFunctionFooterView: UIView {
     /// 更新UI
     private func updateUI() {
         if isEditing {
+            
             cancelBtn.isHidden = false
             lineView.isHidden = false
             deleteBtn.isHidden = false
             countBtn.isHidden = true
-            editBtn.isEnabled = false
-            addBtn.isEnabled = false
+            editBtn.isHidden = true
+            addBtn.isHidden = true
+            sortBtn.isHidden = true
+//            switchCountBtn.isHidden = true
         }else {
             cancelBtn.isHidden = true
             lineView.isHidden = true
             deleteBtn.isHidden = true
             countBtn.isHidden = false
-            editBtn.isEnabled = true
-            addBtn.isEnabled = true
+            editBtn.isHidden = false
+            addBtn.isHidden = false
+            sortBtn.isHidden = false
+//            switchCountBtn.isHidden = false
         }
     }
     
@@ -136,12 +142,24 @@ class SpaceFunctionFooterView: UIView {
             make.top.equalTo(SCRYFrom(5))
         }
         
+        switchCountBtn = UIButton(title: "0/16", titleSize: 12, titleColor: TextBlack_Color, normalImageName: "space_switch_count")
+        switchCountBtn.setImagePosition(position: .left, spacing: SCRXFrom(2))
+        switchCountBtn.isUserInteractionEnabled = false
+        switchCountBtn.isHidden = true
+        addSubview(switchCountBtn)
+        switchCountBtn.snp.makeConstraints { make in
+            make.left.equalTo(countBtn.snp.right).offset(SCRXFrom(20))
+            make.centerY.equalTo(countBtn)
+        }
+        
         cancelBtn = UIButton(title: "cancel".localizedString, titleSize: 17, titleWeight: .light, titleColor: TextBlack_Color, target: self, action: #selector(cancelBtnClick))
         cancelBtn.isHidden = true
         addSubview(cancelBtn)
         cancelBtn.snp.makeConstraints { make in
-            make.left.equalTo(SCRXFrom(22))
-            make.centerY.equalTo(countBtn)
+            make.left.equalTo(SCRXFrom(34))
+            make.top.equalTo(SCRYFrom(14))
+            make.width.equalTo(SCRXFrom(120))
+            make.height.equalTo(SCRYFrom(30))
         }
         
         lineView = UIView()
@@ -149,10 +167,10 @@ class SpaceFunctionFooterView: UIView {
         lineView.backgroundColor = Line_Color
         addSubview(lineView)
         lineView.snp.makeConstraints { make in
-            make.left.equalTo(cancelBtn.snp.right).offset(SCRXFrom(17))
+            make.centerX.equalToSuperview()
             make.centerY.equalTo(cancelBtn)
             make.width.equalTo(1)
-            make.height.equalTo(SCRYFrom(16))
+            make.height.equalTo(SCRYFrom(40))
         }
         
         deleteBtn = UIButton(title: "DELETE".localizedString, titleSize: 17, titleWeight: .light, titleColor: Red_Color, target: self, action: #selector(deleteBtnClick))
@@ -161,8 +179,8 @@ class SpaceFunctionFooterView: UIView {
         deleteBtn.isHidden = true
         addSubview(deleteBtn)
         deleteBtn.snp.makeConstraints { make in
-            make.left.equalTo(lineView.snp.right).offset(SCRXFrom(17))
-            make.centerY.equalTo(cancelBtn)
+            make.left.equalTo(lineView.snp.right).offset(SCRXFrom(34))
+            make.width.height.centerY.equalTo(cancelBtn)
         }
         
         

@@ -25,7 +25,7 @@ class SRAlertView: UIView {
     
     private var shadeView: UIView!
     /// 内容view
-    private var contentView: UIView!
+    var contentView: UIView!
     /// 标题
     var titleLabel: UILabel!
     /// 文本
@@ -51,11 +51,11 @@ class SRAlertView: UIView {
     var stateImageView: UIImageView!
     
     /// 进度
-    private var progressView: SRProgressView!
-    private var progressLabel: UILabel!
+    var progressView: SRProgressView!
+    var progressLabel: UILabel!
     
     // 底部设置按钮（打开权限弹窗）
-    private var bottomBtn: UIButton!
+    var bottomBtn: UIButton!
     
     /// 右上角关闭按钮
     private var closeBtn: UIButton!
@@ -128,28 +128,39 @@ class SRAlertView: UIView {
                      actions: [SRAlertAction] = []) {
         self.init(frame: UIScreen.main.bounds)
         
+        var minHeight = contentMinHeight
+        if title?.isEmpty ?? true || message?.isEmpty ?? true {
+            minHeight = SCRYFrom(74)
+        }
+        
         contentView.snp.remakeConstraints { make in
             make.left.equalTo(margin)
             make.right.equalTo(-margin)
             make.center.equalToSuperview()
-            if title != nil && message != nil && !actions.isEmpty {
-                make.height.greaterThanOrEqualTo(contentMinHeight + 60)
+            if actions.count > 0 {
+                make.height.greaterThanOrEqualTo(minHeight + actionHeight)
             }else {
-                make.height.greaterThanOrEqualTo(contentMinHeight)
+                make.height.greaterThanOrEqualTo(minHeight)
             }
         }
         
-        if contentMinHeight > 0 {
-            if message?.isEmpty ?? true && messageAttStr?.length == 0 {
-                self.titleLabel.snp.remakeConstraints { make in
-                    make.top.equalTo(SCRYFrom(24))
-//                    make.height.greaterThanOrEqualTo(SCRYFrom(50))
+        if message?.isEmpty ?? true && messageAttStr?.length == 0 {
+            self.titleLabel.snp.remakeConstraints { make in
+                make.top.equalTo(SCRYFrom(24))
+                //                    make.height.greaterThanOrEqualTo(SCRYFrom(50))
+                make.left.equalTo(contentPadding)
+                make.right.equalTo(-contentPadding)
+            }
+        }else {
+            if title?.isEmpty ?? true {
+                messageLabel.snp.remakeConstraints { make in
+                    make.top.equalTo(SCRYFrom(32))
                     make.left.equalTo(contentPadding)
                     make.right.equalTo(-contentPadding)
                 }
             }else {
                 self.titleLabel.snp.updateConstraints { make in
-//                    make.height.greaterThanOrEqualTo(SCRYFrom(50))
+                    //                    make.height.greaterThanOrEqualTo(SCRYFrom(50))
                     make.left.equalTo(contentPadding)
                     make.right.equalTo(-contentPadding)
                 }
@@ -157,10 +168,11 @@ class SRAlertView: UIView {
                 messageLabel.snp.remakeConstraints { make in
                     make.left.right.equalTo(titleLabel)
                     make.top.equalTo(titleLabel.snp.bottom).offset(SCRYFrom(26))
-//                    make.height.greaterThanOrEqualTo(SCRYFrom(50))
+                    //                    make.height.greaterThanOrEqualTo(SCRYFrom(50))
                 }
             }
         }
+        
         
         
         if title != nil {
@@ -318,10 +330,10 @@ class SRAlertView: UIView {
     ///   - maxInputLength: 最大输入长度
     convenience init(title: String? = nil,
                      titleColor: UIColor = TextBlack_Color,
-                     titleFont: UIFont = Font_Medium_Size(SCRYFrom(15)),
+                     titleFont: UIFont = FONTS(SCRYFrom(15)),
                      inputText: String? = nil,
                      inputTextColor: UIColor = TextBlack_Color,
-                     inputTextFont: UIFont = FONTS(SCRYFrom(15)),
+                     inputTextFont: UIFont = UIFont.systemFont(ofSize: SCRYFrom(15), weight: .light),
                      placeholder: String? = nil,
                      keyboardType: UIKeyboardType = .default,
                      minInputLength: Int = 1,
@@ -353,12 +365,12 @@ class SRAlertView: UIView {
         self.textValueChangedBack = textValueChangedBack
         
         messageLabel.textColor = RGB(215, 78, 78)
-        messageLabel.font = FONTS(SCRYFrom(13))
+        messageLabel.font = UIFont.systemFont(ofSize: SCRYFrom(13), weight: .light)
         messageLabel.textAlignment = .left
         messageLabel.snp.remakeConstraints { make in
             make.left.equalTo(textField).offset(SCRXFrom(8))
             make.right.equalTo(textField)
-            make.top.equalTo(textField.snp.bottom).offset(SCRYFrom(8))
+            make.top.equalTo(textField.snp.bottom).offset(SCRYFrom(7))
         }
         
         hLineView.snp.remakeConstraints { make in
@@ -397,16 +409,23 @@ class SRAlertView: UIView {
                      messageFont: UIFont = FONTS(SCRYFrom(15)),
                      stateImage: UIImage? = nil,
                      loadingState: Bool = false,
+                     backgroundColor: UIColor = .white,
+                     contentMinHeight: CGFloat = SCRYFrom(130),
                      btnText: String,
-                     btnTextColor: UIColor = Bar_Color,
+                     btnTextColor: UIColor = .white,
                      btnTextFont: UIFont = Font_Bold_Size(SCRYFrom(15)),
+                     btnBackgroundColor: UIColor = Bar_Color,
+                     btnBorderWidth: CGFloat = 0,
                      btnClickBack: BottomBtnClickBack?) {
         
         self.init(frame: UIScreen.main.bounds)
         
-        self.contentView.snp.updateConstraints { make in
-            make.left.equalTo(SCRXFrom(68))
-            make.right.equalTo(SCRXFrom(-68))
+        self.contentView.backgroundColor = backgroundColor
+        self.contentView.snp.remakeConstraints { make in
+            make.left.equalTo(SCRXFrom(38))
+            make.right.equalTo(SCRXFrom(-38))
+            make.centerY.equalToSuperview()
+            make.height.greaterThanOrEqualTo(contentMinHeight)
         }
         
         if title != nil {
@@ -458,6 +477,9 @@ class SRAlertView: UIView {
         self.bottomBtn.setTitleColor(btnTextColor, for: .normal)
         self.bottomBtn.titleLabel?.font = btnTextFont
         self.bottomBtnClickBack = btnClickBack
+        self.bottomBtn.backgroundColor = btnBackgroundColor
+        self.bottomBtn.layer.borderColor = btnTextColor.cgColor
+        self.bottomBtn.layer.borderWidth = btnBorderWidth
 //        self.bottomBtn.sizeToFit()
         
 //        self.bottomBtn.snp.updateConstraints { make in
@@ -492,7 +514,7 @@ class SRAlertView: UIView {
             alartView.dismiss(animation: false)
         }
         
-        UIApplication.shared.keyWindow?.addSubview(self)
+        UIApplication.shared.keyWindow().addSubview(self)
         contentView.layoutIfNeeded()
         contentView.transform = CGAffineTransformMakeScale(0.1, 0.1)
         shadeView.alpha = 0
@@ -509,10 +531,14 @@ class SRAlertView: UIView {
     
     public func dismiss(animation: Bool = true) {
         self.isDismiss = true
-        UIView.animate(withDuration: 0.15) {
-            self.shadeView.alpha = 0
-            self.contentView.layer.addScaleAnimation(fromScale: 1, toScale: 0.7, duration: 0.2)
-        } completion: { _ in
+        if animation {
+            UIView.animate(withDuration: 0.15) {
+                self.shadeView.alpha = 0
+                self.contentView.layer.addScaleAnimation(fromScale: 1, toScale: 0.7, duration: 0.2)
+            } completion: { _ in
+                self.removeFromSuperview()
+            }
+        }else {
             self.removeFromSuperview()
         }
         
@@ -526,6 +552,11 @@ class SRAlertView: UIView {
         self.progressLabel.isHidden = false
         self.progressView.progress = CGFloat(progress) / 100.0
         self.progressLabel.text = "\(progress)%"
+        
+//        self.bottomBtn.snp.updateConstraints { make in
+//            make.top.equalTo(progressLabel.snp.bottom).offset(SCRYFrom(12))
+//        }
+        
     }
     
     // MARK: - Action
@@ -539,8 +570,11 @@ class SRAlertView: UIView {
             if action.actionHandler != nil {
                 action.actionHandler!(action)
             }
+            if action.closeAlert {
+                dismiss()
+            }
         }
-        dismiss()
+//        dismiss()
     }
     
     /// 右侧按钮点击
@@ -552,11 +586,14 @@ class SRAlertView: UIView {
             if action.actionHandler != nil {
                 action.actionHandler!(action)
             }
+            if action.closeAlert {
+                dismiss()
+            }
         }
         if self.inputDoneBack != nil {
             self.inputDoneBack!(self.textField.text ?? "")
         }
-        dismiss()
+        
     }
     /// 点击背景遮罩
     @objc private func shadeViewClick() {
@@ -741,8 +778,11 @@ class SRAlertView: UIView {
         textField.leftViewMode = .always
         textField.leftView = UIView(frame: CGRectMake(0, 0, 10, 0))
         textField.rightViewMode = .always
-        textField.rightView = UIButton(normalImageName: "close", target: self, action: #selector(clearText))
-//        UIView(frame: CGRectMake(0, 0, 10, 0))
+        let clearView = UIView(frame: CGRect(x: 0, y: 0, width: 38, height: 30))
+        let clearBtn = UIButton(normalImageName: "nameField_clear", target: self, action: #selector(clearText))
+        clearBtn.frame = CGRect(x: 0, y: 0, width: 30, height: 30)
+        clearView.addSubview(clearBtn)
+        textField.rightView = clearView
         textField.clearButtonMode = .whileEditing
         textField.backgroundColor = .white
         textField.returnKeyType = .done
@@ -765,17 +805,17 @@ class SRAlertView: UIView {
         }
         
         progressView = SRProgressView()
-        progressView.startColor = RGB(20, 210, 179)
-        progressView.endColor = RGB(0, 255, 232)
-        progressView.cornerRadius = 2
-        progressView.backgroundColor = RGB(216, 216, 216, 0.5)
+        progressView.startColor = Bar_Color
+        progressView.endColor = Bar_Color
+        progressView.cornerRadius = 1
+        progressView.backgroundColor = RGB(216, 216, 216)
         progressView.isHidden = true
         contentView.addSubview(progressView)
         progressView.snp.makeConstraints { make in
             make.left.equalTo(SCRXFrom(37))
             make.right.equalTo(SCRXFrom(-37))
             make.top.equalTo(titleLabel.snp.bottom).offset(SCRYFrom(16))
-            make.height.equalTo(4)
+            make.height.equalTo(2)
         }
         
         progressLabel = UILabel(text: "0%", textColor: .black, fontSize: 13)
@@ -951,6 +991,12 @@ class SRProgressView: UIView {
 }
 
 extension SRAlertView {
+    
+    // 是否显示
+    static func isVisible() -> Bool {
+        return UIApplication.shared.keyWindow?.subviews.contains(where: {$0.isKind(of: self.classForCoder())}) ?? false
+    }
+    
     // 获取当前展示弹窗
     static func getCurrentAlertView() -> SRAlertView? {
         
@@ -1154,10 +1200,12 @@ struct SRAlertAction {
     var titleFont: UIFont!// FONTS(17)
     /// 风格
     let style: SRAlertActionStyle
+    /// 点击是否关闭弹窗
+    var closeAlert: Bool = true
     /// 点击事件
     var actionHandler: ((SRAlertAction)->())? = nil
     
-    init(title: String, titleColor: UIColor? = nil, titleFont: UIFont? = nil, style: SRAlertActionStyle = .default, actionHandler: ((SRAlertAction) -> Void)? = nil) {
+    init(title: String, titleColor: UIColor? = nil, titleFont: UIFont? = nil, style: SRAlertActionStyle = .default, closeAlert: Bool = true, actionHandler: ((SRAlertAction) -> Void)? = nil) {
         self.title = title
         
         switch style {
@@ -1179,6 +1227,7 @@ struct SRAlertAction {
             self.titleFont = titleFont!
         }
         self.style = style
+        self.closeAlert = closeAlert
         self.actionHandler = actionHandler
     }
 }

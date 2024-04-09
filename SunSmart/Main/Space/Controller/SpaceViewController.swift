@@ -14,6 +14,8 @@ class SpaceViewController: WMPageController {
     let space: SpaceData
     /// 删除空间回调
     var deleteSpaceCallback: (()->Void)?
+    /// 是否已加载完成网络数据
+    private var loadNetworkData: Bool = false
     
     lazy var mainMenuView: SpaceMenuView = {
         let menuView = SpaceMenuView(frame: CGRect(x: 0, y: kNavigationHeight, width: self.view.width, height: SCRYFrom(46)))
@@ -26,7 +28,7 @@ class SpaceViewController: WMPageController {
         self.space = space
         super.init(nibName: nil, bundle: nil)
         
-        self.titles = ["main".localizedString, "group".localizedString, "scene".localizedString, "timed".localizedString, "more".localizedString]
+//        self.titles = ["", "", "", "", ""]
 //        self.viewControllerClasses = [SpaceDevicesViewController.self, SpaceGroupsViewController.self]
         self.menuViewStyle = .line
         self.progressHeight = 2
@@ -44,10 +46,6 @@ class SpaceViewController: WMPageController {
     override func viewDidLoad() {
 //        self.selectIndex = 3
         MeshLibManager.manager.setMeshNetworkConnected(meshUUID: space.meshUUID)
-        if let manager = MeshLibManager.manager.meshNetworkManager {
-            space.meshManager = manager
-            manager.loadExtensionData()
-        }
         
         super.viewDidLoad()
 
@@ -60,10 +58,20 @@ class SpaceViewController: WMPageController {
 
         MeshLibManager.manager.addObserver(self, forKeyPath: "bluetoothState", context: nil)
         
-        MeshLibManager.manager.supportModelIDs = [.genericOnOffServerModelId, .lightLightnessServerModelId, .lightCTLServerModelId, .lightCTLTemperatureServerModelId, .sceneServerModelId, .sceneSetupServerModelId]
-        MeshLibManager.manager.publishModelIDs = []
-        MeshLibManager.manager.groupSubscriptionModelIDs = [.genericOnOffServerModelId, .lightLightnessServerModelId, .lightCTLTemperatureServerModelId, .lightCTLServerModelId,]
+        MeshLibManager.manager.publishModelIDs = [.genericOnOffServerModelId, .lightLightnessServerModelId, .lightCTLServerModelId]
+        MeshLibManager.manager.publishTimeModelIDs = []
+        MeshLibManager.manager.publishModeloOnly = true
+        MeshLibManager.manager.groupSubscriptionModelIDs = [.genericOnOffServerModelId, .lightLightnessServerModelId, .genericLevelServerModelId, .lightCTLTemperatureServerModelId, .lightCTLServerModelId, .sensorServerModelId, .lightLCServerModelId]
         checkBluetoothState()
+        // 读取网络数据
+        if let manager = MeshLibManager.manager.meshNetworkManager {
+            space.meshManager = manager
+            manager.loadExtensionData {[weak self] in
+                self?.loadNetworkData = true
+                self?.reloadData()
+            }
+        }
+        
     }
     
     deinit {
@@ -85,18 +93,43 @@ class SpaceViewController: WMPageController {
         if MeshLibManager.manager.bluetoothState == .unknown {
             return
         }
-        if MeshLibManager.manager.bluetoothState == .poweredOn {
-            if let currentVc = UIViewController.getVisibleVc(), currentVc.isKind(of: BluetoothRequiredViewController.classForCoder()) {
-//                self.presentedViewController?.dismiss(animated: true)
-                navigationController?.popViewController(animated: false)
+        
+//        self.navigationController?.visibleViewController
+        // modal页面
+        if let childVc = self.children.first, childVc.presentedViewController != nil {
+            if MeshLibManager.manager.bluetoothState == .poweredOn {
+                SRAlertView.hide()
+            }else {
+                showBluetoothRequiredAlertView()
             }
         }else {
-//            if self.view.window != nil {
+            if MeshLibManager.manager.bluetoothState == .poweredOn {
+                if let currentVc = UIViewController.getVisibleVc(), currentVc.isKind(of: BluetoothRequiredViewController.classForCoder()) {
+                    navigationController?.popViewController(animated: false)
+                }
+            }else {
                 MenuPopView.hide()
                 navigationController?.pushViewController(BluetoothRequiredViewController(), animated: false)
-//            }
-            
+            }
         }
+
+        
+    }
+    
+    private func showBluetoothRequiredAlertView() {
+        
+        let alertView = SRAlertView(title: "bluetooth_required_title".localizedString, message: "bluetooth_required_message".localizedString, actions: [SRAlertAction(title: "settings".localizedString, titleColor: RGB(61, 110, 246), titleFont: FONTS(SCRYFrom(15)), closeAlert: false, actionHandler: { _ in
+            if let openUrl = URL(string: "App-Prefs:root=Bluetooth") {
+                UIApplication.shared.open(openUrl)
+            }
+        }), SRAlertAction(title: "back_space_list".localizedString, titleColor: RGB(61, 110, 246), titleFont: Font_Medium_Size(15), actionHandler: {[weak self] _ in
+            UIViewController.getVisibleVc()?.dismiss(animated: false)
+            self?.navigationController?.popViewController(animated: true)
+        })])
+        alertView.messageLabel.snp.updateConstraints { make in
+            make.top.equalTo(alertView.titleLabel.snp.bottom).offset(SCRYFrom(8))
+        }
+        alertView.show()
     }
     
     @objc private func moreClick() {
@@ -165,7 +198,10 @@ class SpaceViewController: WMPageController {
 extension SpaceViewController {
     
     override func numbersOfChildControllers(in pageController: WMPageController) -> Int {
-        return self.titles!.count
+        guard loadNetworkData else {
+            return 0
+        }
+        return SpaceMenuView.defalutItems.count
     }
     
     override func pageController(_ pageController: WMPageController, viewControllerAt index: Int) -> UIViewController {
@@ -198,7 +234,7 @@ extension SpaceViewController {
     }
     
     override func menuView(_ menu: WMMenuView!, titleAt index: Int) -> String! {
-        return titles![index]
+        return ""
     }
     
     override func pageController(_ pageController: WMPageController, didEnter viewController: UIViewController, withInfo info: [AnyHashable : Any]) {

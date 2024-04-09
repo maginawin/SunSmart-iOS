@@ -1,16 +1,20 @@
 PODS:
+  - Bugly (2.5.93)
   - SnapKit (5.6.0)
 
 DEPENDENCIES:
+  - Bugly
   - SnapKit
 
 SPEC REPOS:
   trunk:
+    - Bugly
     - SnapKit
 
 SPEC CHECKSUMS:
+  Bugly: b8715e6ec4004b7f7fbffab0643ba80545aee3da
   SnapKit: e01d52ebb8ddbc333eefe2132acf85c8227d9c25
 
-PODFILE CHECKSUM: ef4380e612d110601dd5bbbc3698408336b5c281
+PODFILE CHECKSUM: 157f65f5a0ea1d5754c6cd089c5304c9d4910123
 
 COCOAPODS: 1.11.3

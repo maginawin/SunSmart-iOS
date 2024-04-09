@@ -68,6 +68,12 @@ class DeviceLightControlViewCell: UITableViewCell {
         }
     }
     
+    var limitRange: ClosedRange<Int>? {
+        didSet {
+            controlView.slider.limitRange = limitRange
+        }
+    }
+    
     private var valueTagBtns: [UIButton] = []
     var valueTags: [(title: String, value: Int)] = []
     

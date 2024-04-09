@@ -10,17 +10,20 @@ import UIKit
 
 extension UILabel {
 
-    convenience init(text : String?, textColor : UIColor = TextBlack_Color, fontSize: CGFloat = 15, fontName: String? = nil, fontWeight: UIFont.Weight? = nil) {
+    convenience init(text : String?, textColor : UIColor = TextBlack_Color, fontSize: CGFloat = 15, fontName: String? = nil, fontWeight: UIFont.Weight? = nil, fit: Bool = true) {
         self.init()
         
         self.text = text
         self.textColor = textColor
+        let size = fit ? SCRYFrom(fontSize) : fontSize
         if fontName != nil {
-            self.font = UIFont(name: fontName!, size: SCRYFrom(fontSize))
+            self.font = UIFont(name: fontName!, size: size)
+        }else if fontWeight != nil {
+            self.font = UIFont.systemFont(ofSize: size, weight: fontWeight!)
+        }else {
+            self.font = UIFont.systemFont(ofSize: size)
         }
-        if fontWeight != nil {
-            self.font = UIFont.systemFont(ofSize: SCRYFrom(fontSize), weight: fontWeight!)
-        }
+        
     }
     
 //    class func labelWith(text : String?, textColor : UIColor?, fontSize: CGFloat) -> UILabel {

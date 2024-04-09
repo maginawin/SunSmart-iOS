@@ -82,45 +82,8 @@ static XWHUDManagerType kXWHUDManagerType = XWHUDManagerTypeDark;
 
 + (void)showCustomHUDWithMessage:(nullable NSString*)message isWindow:(BOOL)isWindow afterDelay:(NSTimeInterval)afterSecond {
     
-    [self hide];
-    
-    WYProgressHUD *hud  =  [self p_createWYProgressHUDviewWithMessage:message isWindiw:isWindow];
-    if (message.length > 0) {
-        hud.minSize = CGSizeMake(164, 140);
-    }else {
-        hud.minSize = CGSizeMake(88, 88);
-    }
-    hud.margin = 16;
-    hud.mode = WYProgressHUDModeCustomView;
-    hud.detailsLabel.font = [UIFont systemFontOfSize:15];
-    hud.bezelView.backgroundColor = [[UIColor whiteColor] colorWithAlphaComponent:0.5];
-    if (isWindow) {
-        hud.backgroundView.color = [[UIColor blackColor] colorWithAlphaComponent:0.3];
-    }else {
-        hud.bezelView.clipsToBounds = NO;
-        hud.bezelView.style = WYProgressHUDBackgroundStyleSolidColor;
-        hud.bezelView.backgroundColor = [UIColor colorWithRed:254/255.0 green:254/255.0 blue:254/255.0 alpha:1];
-        hud.bezelView.layer.shadowColor = [UIColor colorWithRed:0/255.0 green:0/255.0 blue:0/255.0 alpha:0.2].CGColor;
-        hud.bezelView.layer.shadowOffset = CGSizeMake(0,0);
-        hud.bezelView.layer.shadowOpacity = 1;
-        hud.bezelView.layer.shadowRadius = 8;
-    }
-    
-    NSString *normalImgName = [NSString stringWithFormat:@"XWHUDManager_%@@2x.png", @"loading"];
-    hud.customView = [[UIImageView alloc] initWithImage:[UIImage imageNamed:normalImgName]];
-    
-    [hud hideAnimated:YES afterDelay:afterSecond];
-    
-    CABasicAnimation *animation = [CABasicAnimation animation];
-    //旋转必须在前面加上transform
-    animation.keyPath = @"transform.rotation.z";
-    animation.fromValue = @0;
-    animation.toValue = @(M_PI * 2);
-    animation.duration = 2;
-    animation.removedOnCompletion = NO;
-    animation.fillMode = kCAFillModeForwards;
-    animation.repeatCount = 9999;
-    [hud.customView.layer addAnimation:animation forKey:nil];
+    UIView *view = isWindow ? [self p_getKeyWindow] : [self p_getCurrentUIVC].view;
+    [self showCustomHUDWithMessage:message view:view afterDelay:afterSecond];
 }
 
 + (void)showCustomHUDWithMessage:(nullable NSString*)message view:(UIView *)view afterDelay:(NSTimeInterval)afterSecond {
@@ -149,7 +112,8 @@ static XWHUDManagerType kXWHUDManagerType = XWHUDManagerTypeDark;
         hud.bezelView.layer.shadowRadius = 8;
 //    }
     
-    NSString *normalImgName = [NSString stringWithFormat:@"XWHUDManager_%@@2x.png", @"loading"];
+    NSString *scale = UIScreen.mainScreen.scale >= 3.0 ? @"@3x" : @"@2x";
+    NSString *normalImgName = [NSString stringWithFormat:@"XWHUDManager_%@%@.png", @"loading", scale];
     hud.customView = [[UIImageView alloc] initWithImage:[UIImage imageNamed:normalImgName]];
     
     [hud hideAnimated:YES afterDelay:afterSecond];
@@ -159,9 +123,10 @@ static XWHUDManagerType kXWHUDManagerType = XWHUDManagerTypeDark;
     animation.keyPath = @"transform.rotation.z";
     animation.fromValue = @0;
     animation.toValue = @(M_PI * 2);
-    animation.duration = 2;
+    animation.duration = 1.5;
     animation.removedOnCompletion = NO;
     animation.fillMode = kCAFillModeForwards;
+    animation.timingFunction = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseInEaseOut];
     animation.repeatCount = 9999;
     [hud.customView.layer addAnimation:animation forKey:nil];
     
@@ -517,8 +482,8 @@ static XWHUDManagerType kXWHUDManagerType = XWHUDManagerTypeDark;
 //        NSString *normalImgPath = [curBundle pathForResource:normalImgName ofType:nil inDirectory:curBundleDirectory];
 //        UIImage *normalImage = [UIImage imageWithContentsOfFile:normalImgPath];
 //        hud.customView = [[UIImageView alloc] initWithImage:normalImage];
-    
-    NSString *normalImgName = [NSString stringWithFormat:@"XWHUDManager_%@@2x.png", iconName];
+    NSString *scale = UIScreen.mainScreen.scale >= 3.0 ? @"@3x" : @"@2x";
+    NSString *normalImgName = [NSString stringWithFormat:@"XWHUDManager_%@%@.png", iconName, scale];
     hud.customView = [[UIImageView alloc] initWithImage:[UIImage imageNamed:normalImgName]];
     
     [hud hideAnimated:YES afterDelay:aTimer];
@@ -680,6 +645,12 @@ static XWHUDManagerType kXWHUDManagerType = XWHUDManagerTypeDark;
         if ([tempVC isKindOfClass:[UITabBarController class]]) {
             result = [(UITabBarController *)tempVC selectedViewController];
         } else {
+            if (tempVC.childViewControllers) {
+                UIViewController *childVc = tempVC.childViewControllers.firstObject;
+                if ([childVc.presentedViewController isKindOfClass:[UINavigationController class]]) {
+                    tempVC = [(UINavigationController *)childVc.presentedViewController topViewController];
+                }
+            }
             return tempVC;
         }
     }

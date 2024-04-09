@@ -43,7 +43,16 @@ class SpaceData: Copyable {
     /// 计划数量
     var scheheduleCount: Int = 0
     /// 设备排序类型
-    var deviceSortType: DeviceSortType = .addDate
+    var deviceSortType: DeviceSortType = .create
+    /// 上一次同步节点时间戳
+    var lastSyncDateTimestamp: CLongLong = 0
+    /// 是否需要同步节点时间
+    var needSyncDate: Bool {
+        /// 计算上次同步时间后的时间差值
+        let distance = CLongLong(Date().timeIntervalSince1970) - lastSyncDateTimestamp
+        // 超过一天主动同步时间
+        return distance > 3600 * 24
+    }
     
     
     /// 初始化空间
@@ -86,7 +95,7 @@ extension SpaceData {
     /// 设备排序类型
     enum DeviceSortType: Int {
         /// 添加时间（默认）
-        case addDate = 0
+        case create = 0
         /// id递增排序（小到大）
         case id = 1
         /// 信号强度排序（强到弱）

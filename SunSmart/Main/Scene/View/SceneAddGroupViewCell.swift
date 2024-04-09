@@ -79,7 +79,7 @@ class SceneAddGroupViewCell: UICollectionViewCell {
         }
         
         onoffBtn = UIButton(normalImageName: "scene_group_off", selectedImageName: "scene_group_on", target: self, action: #selector(onoffBtnAction))
-        onoffBtn.setImage(UIImage(named: "scene_group_disable"), for: .disabled)
+//        onoffBtn.setImage(UIImage(named: "scene_group_disable"), for: .disabled)
         contentView.addSubview(onoffBtn)
         onoffBtn.snp.makeConstraints { make in
             make.right.equalTo(SCRXFrom(-10))

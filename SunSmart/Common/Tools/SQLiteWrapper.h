@@ -38,6 +38,8 @@
 
 - (int)columnInt:(int)col;
 
+- (long long)columnInt64:(int)col;
+
 - (NSData *)columnBlob:(int)col;
 
 - (NSDate *)columnDate:(int)col;

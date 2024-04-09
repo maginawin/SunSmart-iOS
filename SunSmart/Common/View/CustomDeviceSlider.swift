@@ -13,7 +13,7 @@ protocol CustomDeviceSliderDelegate: AnyObject {
     /// - Parameters:
     ///   - slider: 滑动条
     ///   - value: 数值
-    func slider(_ slider: CustomDeviceSlider, valueChanged value: Float)
+    func slider(_ slider: CustomDeviceSlider, valueChanged value: Float, ended: Bool)
     
     
     /// 滑动条数值修改回调（限流）
@@ -64,11 +64,25 @@ class CustomDeviceSlider: UISlider {
             updateTrackGradient()
         }
     }
+    /// 限制滑动范围（可选）
+    var limitRange: ClosedRange<Int>? {
+        willSet {
+            if let oldRange = limitRange, let newRange = newValue, oldRange == newRange {
+                return
+            }
+            self.limitRange = newValue
+        }
+        didSet {
+            updateLimitUI()
+        }
+    }
     
     /// 是否正在滑动中
     var isSliding: Bool = false
     
     weak var delegate: CustomDeviceSliderDelegate?
+    /// 步进值
+    var step: Int?
     
     /// 滑动条上报定时器
     private var valueChangedTimer: Timer?
@@ -77,7 +91,52 @@ class CustomDeviceSlider: UISlider {
     
     private var trackRect: CGRect?
     
+    
+    lazy private var minLineView: UIView = {
+        let view = UIView()
+        view.isUserInteractionEnabled = false
+        view.backgroundColor = UIColor(red: 100 / 255.0, green: 116 / 255.0, blue: 139 / 255.0, alpha: 1)
+        view.layer.cornerRadius = 1
+        return view
+    }()
+    
+    lazy private var maxLineView: UIView = {
+        let view = UIView()
+        view.isUserInteractionEnabled = false
+        view.backgroundColor = UIColor(red: 100 / 255.0, green: 116 / 255.0, blue: 139 / 255.0, alpha: 1)
+        view.layer.cornerRadius = 1
+        return view
+    }()
+    
     var lastBounds: CGRect?
+    
+    /// 重写value属性，设置步进后只返回对应步进倍数值
+    override var value: Float {
+        get {
+            var value = super.value
+            if let step = self.step {
+                value = roundf(value / Float(step)) * Float(step)
+                value = max(min(value, maximumValue), minimumValue)
+            }
+            // 判断是否限制value范围
+            if let limitRange = self.limitRange {
+                value = Float(max(limitRange.lowerBound, min(Int(value), limitRange.upperBound)))
+            }
+            return value
+        }set {
+            var value = newValue
+            if let step = self.step {
+                var value = roundf(newValue / Float(step)) * Float(step)
+                value = max(min(value, maximumValue), minimumValue)
+            }
+            
+            // 判断是否限制value范围
+            if let limitRange = self.limitRange {
+                value = Float(max(limitRange.lowerBound, min(Int(value), limitRange.upperBound)))
+            }
+            super.value = value
+        }
+    }
     
     override init(frame: CGRect) {
         super.init(frame: frame)
@@ -97,6 +156,34 @@ class CustomDeviceSlider: UISlider {
         super.layoutSubviews()
         
         updateTrackGradient()
+        updateLimitUI()
+    }
+    
+    /// 更新限制滑动UI
+    private func updateLimitUI() {
+        
+        guard let range = limitRange, let trackRect = self.trackRect, let trackView = subviews.first, let thumbImageView = trackView.subviews.first(where: { $0.isKind(of: UIImageView.classForCoder()) }) else { return }
+        
+        maxLineView.removeFromSuperview()
+        minLineView.removeFromSuperview()
+        
+        if Int(maximumValue) > range.upperBound {
+            let overrunValue = Int(maximumValue) - range.upperBound
+            let progress = CGFloat(overrunValue) / CGFloat(maximumValue - minimumValue)
+            let width = trackView.frame.size.width * progress
+            maxLineView.frame = CGRect(x: trackView.frame.size.width - width, y: trackRect.minY, width: width, height: trackRect.height)
+            trackView.addSubview(maxLineView)
+        }
+        
+        if Int(minimumValue) < range.lowerBound {
+            let overrunValue = range.lowerBound - Int(minimumValue)
+            let progress = CGFloat(overrunValue) / CGFloat(maximumValue - minimumValue)
+            let width = trackView.frame.size.width * progress
+            minLineView.frame = CGRect(x: trackView.frame.minX, y: trackRect.minY, width: width, height: trackRect.height)
+            trackView.addSubview(minLineView)
+//            trackView.insertSubview(minLineView, at: 2)
+        }
+        trackView.bringSubviewToFront(thumbImageView)
     }
     
     
@@ -131,7 +218,8 @@ class CustomDeviceSlider: UISlider {
         if throttle { // 是否需要限流
             startTimer()
         }
-        self.delegate?.slider(self, valueChanged: self.value)
+        
+        self.delegate?.slider(self, valueChanged: self.value, ended: false)
     }
     
     @objc private func sliderTouchDown() {
@@ -142,10 +230,9 @@ class CustomDeviceSlider: UISlider {
         isSliding = false
         if throttle { // 是否需要限流
             stopTimer()
-            self.delegate?.slider(self, throttleValueChanged: self.value, ended: true)
-        }else {
-            self.delegate?.slider(self, valueChanged: self.value)
         }
+        self.delegate?.slider(self, valueChanged: self.value, ended: true)
+        self.delegate?.slider(self, throttleValueChanged: self.value, ended: true)
     }
     
     // MARK: - Timer
@@ -173,11 +260,17 @@ class CustomDeviceSlider: UISlider {
     
     override func thumbRect(forBounds bounds: CGRect, trackRect rect: CGRect, value: Float) -> CGRect {
 
+        var resultValue = value
+        // 判断是否限制滑动范围
+        if let range = limitRange {
+            resultValue = Float(max(range.lowerBound, min(Int(resultValue), range.upperBound)))
+        }
+        
         // 滑块图片宽度
         let thumbW = (self.currentThumbImage?.size.width ?? 0) - 10
         let thumbRect = CGRect(x: rect.origin.x - thumbW * 0.5, y: rect.origin.y, width: rect.size.width + thumbW, height: rect.size.height)
         
-        let returnRect = super.thumbRect(forBounds: bounds, trackRect: thumbRect, value: value)
+        let returnRect = super.thumbRect(forBounds: bounds, trackRect: thumbRect, value: resultValue)
         lastBounds = returnRect
         return returnRect
     }
@@ -222,7 +315,7 @@ class CustomDeviceSlider: UISlider {
         if !result {
             
             // 滑块图片宽度
-            let thumbW = self.currentThumbImage?.size.width ?? 0
+            let thumbW = (self.currentThumbImage?.size.width ?? 20) * 0.5
             
             //同理,如果不在slider范围类,扩充响应范围
             if point.x >= ((lastBounds?.origin.x ?? self.frame.origin.x) - thumbW) && (point.x <= ((lastBounds?.origin.x ?? self.frame.origin.x) + (lastBounds?.size.width ?? self.frame.size.width) + thumbW)) && point.y > 0 {

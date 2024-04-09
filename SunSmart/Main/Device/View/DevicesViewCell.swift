@@ -29,7 +29,8 @@ class DevicesViewCell: UICollectionViewCell {
     /// 离线/off
 //    var stateLabel: UILabel!
     /// 代理节点标识
-//    var proxyFlagView: UIImageView!
+    var proxyFlagView: UIView!
+    
     /// 编辑选中
     var selectImageView: UIImageView!
     
@@ -46,7 +47,7 @@ class DevicesViewCell: UICollectionViewCell {
             backgroundColor = .white
             nameLabel.text = device.name
 //            if device.isKeybindComplete {
-            if device.isKeybindComplete || !device.isConfigComplete {
+            if device.isKeybindComplete {
                 progressView.isHidden = false
 //                lightnessProgressView.isHidden = false
                 iconImageView.image = UIImage(named: "device_light")
@@ -63,9 +64,10 @@ class DevicesViewCell: UICollectionViewCell {
                     
                     if device.isOn {
                         nameLabel.textColor = Title_Color
-                        var lightness100 = device.lightness100
+                        var lightness100 = Node.getLightness100(lightness: device.lightness)
+//                        device.lightness100
                         if device.isOn, device.lightness == 0, let trunOffLightness = device.trunOffLightness { // 开灯并且亮度0，设备亮度未上报；先显示设备关灯前的亮度值
-                            lightness100 = Node.getLightness100(lightness: trunOffLightness)
+                            lightness100 = Node.getLightness100(lightness: trunOffLightness) // , range: device.lightnessRange
                         }
                         
                         progress = lightness100
@@ -96,11 +98,11 @@ class DevicesViewCell: UICollectionViewCell {
 //                    }else {
 //                        progressValueView.width = progressBgView.width * CGFloat(progress)
 //                    }
-//                    if device.temperatureModel != nil {
+                    if device.temperatureModel != nil {
                         progressView.progressColor = Node.getCctMixColor(temperature100: device.temperature100)
-//                    }else {
-//                        progressView.progressColor = RGB(156, 163, 175)
-//                    }
+                    }else {
+                        progressView.progressColor = RGB(156, 163, 175)
+                    }
                     
                 }else {
                     
@@ -116,7 +118,7 @@ class DevicesViewCell: UICollectionViewCell {
                     nameLabel.textColor = RGB(148, 163, 184)
                     progressView.isHidden = true
                 }
-                
+                proxyFlagView.isHidden = !(device.state && device.isProxy)
             }else {
 //                lightnessProgressView.isHidden = true
                 progressView.isHidden = true
@@ -125,6 +127,7 @@ class DevicesViewCell: UICollectionViewCell {
                     make.top.equalTo(SCRYFrom(24))
                 }
                 nameLabel.textColor = RGB(148, 163, 184)
+                proxyFlagView.isHidden = true
             }
             
             
@@ -291,12 +294,16 @@ class DevicesViewCell: UICollectionViewCell {
 //            make.centerY.equalTo(iconImageView)
 //        }
 //        
-//        proxyFlagView = UIImageView(image: UIImage(named: "device_proxy"))
-//        proxyFlagView.isHidden = true
-//        contentView.addSubview(proxyFlagView)
-//        proxyFlagView.snp.makeConstraints { make in
-//            make.left.top.equalToSuperview()
-//        }
+        proxyFlagView = UIView()
+        proxyFlagView.layer.cornerRadius = 3
+        proxyFlagView.backgroundColor = Bar_Color
+        proxyFlagView.isHidden = true
+        contentView.addSubview(proxyFlagView)
+        proxyFlagView.snp.makeConstraints { make in
+            make.left.equalTo(SCRXFrom(20))
+            make.top.equalTo(SCRXFrom(20))
+            make.width.height.equalTo(6)
+        }
 
 //        lightnessProgressView = UIProgressView(progressViewStyle: .default)
 //        lightnessProgressView.trackTintColor = RGB(239, 240, 241)
@@ -312,13 +319,15 @@ class DevicesViewCell: UICollectionViewCell {
 //        }
         
         progressView = CustomProgressView()
+        progressView.cornerRadius = 2
+        progressView.progressPadding = 0.5
         contentView.addSubview(progressView)
         progressView.snp.makeConstraints { make in
             make.left.equalTo(SCRXFrom(25))
             make.right.equalTo(SCRXFrom(-25))
             make.top.equalTo(self.snp.centerY).offset(SCRYFrom(12))
             //            make.bottom.equalTo(SCRYFrom(-40))
-            make.height.equalTo(2)
+            make.height.equalTo(4)
         }
         
 //        progressBgView = UIView()

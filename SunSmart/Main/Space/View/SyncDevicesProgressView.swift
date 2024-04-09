@@ -195,7 +195,7 @@ class SyncDevicesProgressViewCell: UITableViewCell {
         contentView.addSubview(nameLabel)
         nameLabel.snp.makeConstraints { make in
             make.left.equalTo(SCRXFrom(24))
-            make.width.lessThanOrEqualTo(SCRXFrom(150))
+            make.width.lessThanOrEqualTo(SCRXFrom(180))
             make.centerY.equalToSuperview()
         }
         

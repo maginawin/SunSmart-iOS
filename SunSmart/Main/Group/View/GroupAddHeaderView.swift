@@ -7,6 +7,22 @@
 
 import UIKit
 
+protocol GroupAddHeaderViewDelegate: AnyObject {
+    
+    /// 名称编辑回调
+    /// - Parameters:
+    ///   - view: view
+    ///   - name: 名称
+    /// - Returns: 返回错误提示（可选）
+    func view(_ view: GroupAddHeaderView, nameEditChanged name: String) -> String?
+    
+    /// 选择配置文件回调
+    func headerViewDidSelectProfile(_ view: GroupAddHeaderView, profileRect: CGRect)
+    
+    /// 编辑配置文件回调
+    func headerViewDidEditProfile(_ view: GroupAddHeaderView)
+}
+
 class GroupAddHeaderView: UICollectionReusableView {
         
     private var headerView: UIView!
@@ -16,10 +32,11 @@ class GroupAddHeaderView: UICollectionReusableView {
     
     var profileLabel: UILabel!
     var profileBtn: UIButton!
+    private var selectImageView: UIImageView!
     var profileEditBtn: UIButton!
     
-    /// 名称编辑回调
-    var nameEditChangedCallback: ((String)->String?)?
+    weak var delegate: GroupAddHeaderViewDelegate?
+    
  
     override init(frame: CGRect) {
         super.init(frame: frame)
@@ -35,7 +52,7 @@ class GroupAddHeaderView: UICollectionReusableView {
     
     override func layoutSubviews() {
         super.layoutSubviews()
-        profileBtn.setImagePosition(position: .right, spacing: 0)
+//        profileBtn.setImagePosition(position: .right, spacing: 0)
     }
     
     @objc private func hideKeyboard() {
@@ -51,44 +68,27 @@ class GroupAddHeaderView: UICollectionReusableView {
             return
         }
         
-        if let message = nameEditChangedCallback?(text) {
-            if text.count > 32 { // 是否超限
-                sender.text = text.subString(rang: NSMakeRange(0, 32))
-            }
+        if let message = delegate?.view(self, nameEditChanged: text) {
+//            if text.count > 32 { // 是否超限
+//                sender.text = text.subString(rang: NSMakeRange(0, 32))
+//                DispatchQueue.main.asyncAfter(wallDeadline: .now() + 1.5) {
+//                    self.tipTextLabel.isHidden = true
+//                }
+//            }
             tipTextLabel.text = message
-//            "text_length_exceeded".localizedString
-//            NSObject.cancelPreviousPerformRequests(withTarget: self, selector: #selector(textExceededHide), object: nil)
-//            self.perform(#selector(textExceededHide), with: nil, afterDelay: 2)
         }else {
             tipTextLabel.text = nil
         }
-        
-//        if text.count > 32 { // 是否超限
-//            sender.text = text.subString(rang: NSMakeRange(0, 32))
-//            tipTextLabel.text = "text_length_exceeded".localizedString
-//            NSObject.cancelPreviousPerformRequests(withTarget: self, selector: #selector(textExceededHide), object: nil)
-//            self.perform(#selector(textExceededHide), with: nil, afterDelay: 2)
-//        }else {
-//            // 是否重名
-//            if let result = nameEditChangedCallback?(text) {
-//                tipTextLabel.text = result ? "name_already_exists".localizedString : nil
-//                self.isTautonym = result
-//                if result {
-//                    doneBtn.isEnabled = false
-//                }else {
-//                    doneBtn.isEnabled = true
-//                }
-//            }else {
-//                doneBtn.isEnabled = true
-//            }
-//            if text.isEmpty {
-//                doneBtn.isEnabled = false
-//            }
-//        }
+    
     }
     
-    @objc private func profileBtnClick() {
+    @objc private func profileBtnClick(sender: UIButton) {
         
+        delegate?.headerViewDidSelectProfile(self, profileRect: sender.frame)
+    }
+    
+    @objc private func profileEditBtnAction() {
+        delegate?.headerViewDidEditProfile(self)
     }
     
     private func setupUI() {
@@ -105,7 +105,7 @@ class GroupAddHeaderView: UICollectionReusableView {
         nameField.font = UIFont.systemFont(ofSize: SCRYFrom(15), weight: .light)
         nameField.layer.cornerRadius = 5
         nameField.layer.borderColor = RGB(151, 151, 151, 0.3).cgColor
-        nameField.layer.borderWidth = 1
+        nameField.layer.borderWidth = 0.5
         nameField.clearButtonMode = .always
         nameField.rightViewMode = .always
         nameField.leftView = UIView(frame: CGRect(x: 0, y: 0, width: SCRXFrom(8), height: 0))
@@ -137,13 +137,15 @@ class GroupAddHeaderView: UICollectionReusableView {
             make.left.equalTo(nameField)
         }
         
-        profileBtn = UIButton(title: "Occupancy sensing with daylight harvesting", titleSize: 14, titleWeight: .light, titleColor: RGB(72, 72, 74), normalImageName: "arrow_down_small", target: self, action: #selector(profileBtnClick))
+        profileBtn = UIButton(title: "Occupancy sensing with daylight harvesting", titleSize: 14, titleWeight: .light, titleColor: RGB(72, 72, 74), target: self, action: #selector(profileBtnClick))
+//        profileBtn.titleLabel?.font = UIFont.systemFont(ofSize: 14, weight: .light)
         profileBtn.layer.cornerRadius = 5
         profileBtn.layer.borderWidth = 0.5
         profileBtn.titleLabel?.adjustsFontSizeToFitWidth = true
         profileBtn.layer.borderColor = RGB(151, 151, 151, 0.3).cgColor
         profileBtn.backgroundColor = .white
-        profileBtn.contentEdgeInsets = UIEdgeInsets(top: 0, left: SCRXFrom(6), bottom: 0, right: SCRXFrom(1))
+        profileBtn.contentHorizontalAlignment = .left
+        profileBtn.contentEdgeInsets = UIEdgeInsets(top: 0, left: SCRXFrom(8), bottom: 0, right: 30)
         addSubview(profileBtn)
         profileBtn.snp.makeConstraints { make in
             make.left.equalTo(profileLabel)
@@ -152,7 +154,14 @@ class GroupAddHeaderView: UICollectionReusableView {
             make.right.equalTo(SCRXFrom(-54))
         }
         
-        profileEditBtn = UIButton(normalImageName: "edit_icon", target: nil, action: nil)
+        selectImageView = UIImageView(image: UIImage(named: "arrow_down_small"))
+        profileBtn.addSubview(selectImageView)
+        selectImageView.snp.makeConstraints { make in
+            make.right.equalTo(SCRXFrom(-4))
+            make.centerY.equalToSuperview()
+        }
+        
+        profileEditBtn = UIButton(normalImageName: "edit_icon", target: self, action: #selector(profileEditBtnAction))
         addSubview(profileEditBtn)
         profileEditBtn.snp.makeConstraints { make in
             make.right.equalTo(SCRXFrom(-24))

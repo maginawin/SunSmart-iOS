@@ -87,10 +87,19 @@ struct GroupServer {
     ///   - finshed: 完成回调（成功设备list，失败设备list）
     static func groupDeleteNodes(group: Group, nodes: [Node], progress: GroupOperateProgressCallback?, successful: GroupOperateNodeSuccessCallback?, failed: GroupOperateNodeFailedCallback?, finshed: GroupOperateNodeFinshedCallback?) {
         
+        // 解绑本地节点订阅组信息
+        for element in MeshNetworkManager.instance.localNode?.elements ?? [] {
+            let subscribeModels = element.models.filter({ $0.isSubscribed(to: group) })
+            subscribeModels.forEach({
+                $0.unsubscribe(from: group)
+            })
+        }
+        
         guard nodes.count > 0 else {
             finshed?([], [])
             return
         }
+        
         DispatchQueue.global().async {
             let semaphore = DispatchSemaphore(value: 0)
             var successNodes: [Node] = []
@@ -139,13 +148,14 @@ struct GroupServer {
         self.groupDeleteNodes(group: group, nodes: group.nodes, progress: progress, successful: nil, failed: nil) { (_, deleteFailedNodes) in
             if deleteFailedNodes.isEmpty { // 删除成功
                 // 删除组缓存数据
-                if let uuid = MeshNetworkManager.instance.meshNetwork?.uuid.uuidString {
-                
-                    try? MeshNetworkManager.instance.meshNetwork?.remove(group: group)
-                    _ = MeshNetworkManager.instance.save()
+                do {
+                    try MeshNetworkManager.instance.meshNetwork?.remove(group: group)
                     group.delete()
+                    _ = MeshNetworkManager.instance.save()
+                    successful?(group)
+                } catch  {
+                    failed?(group)
                 }
-                successful?(group)
             }else {
                 failed?(group)
             }
@@ -236,8 +246,16 @@ extension Group {
         node.getSubscribeToGroupMessages(self).forEach({
             messages.append(MeshMessageHandle(message: $0, address: node.primaryUnicastAddress))
         })
+        
+//        if node.lightLCSetupModel != nil { // 同步灯光控制配置
+        let syncProfile = node.getNeedSyncGroupData(group: self).syncProfile
+        syncProfile.forEach({
+            messages.append(contentsOf: $0.getMessageHandles(node: node))
+        })
+//        }
         // 添加需要同步的场景、日程消息处理list
         messages.append(contentsOf: getNodeSyncDataMessageHandles(node: node))
+        
         return messages
     }
     
@@ -275,10 +293,26 @@ extension Group {
                 messages.append(MeshMessageHandle(message: SchedulerActionSet(index: UInt8(schedule.id), entry: SchedulerRegistryEntry()), model: schedulerSetupModel))
             }
         }
+        
+        // 删除节点内model上报到组数据
+        for element in node.elements {
+            let publishModels = element.models.filter({ $0.publish?.publicationAddress == address })
+            publishModels.forEach({
+                messages.append(MeshMessageHandle(message: ConfigModelPublicationSet(disablePublicationFor: $0)!, address: node.primaryUnicastAddress))
+            })
+        }
+        // 解除动能开关绑定
+        if node.enOceanMacAddress != nil {
+            let disableSwitchMessages = node.getEnOceanSwitchDisableMessageHandles(group: self)
+            messages.append(contentsOf: disableSwitchMessages)
+        }
+        
         // 设备退出组
         node.getUnsubscribeGroupMessages(self).forEach({
             messages.append(MeshMessageHandle(message: $0, address: node.primaryUnicastAddress))
         })
+        
+        
         messages.forEach({ $0.continuous = false })
         
         return messages
@@ -294,14 +328,38 @@ extension Group {
             // 设备是否支持场景model及亮度model
             if let sceneSetupModel = node.sceneSetupModel, let lightnessModel = node.lightnessModel {
                 // 设备是否支持色温model
-                let lightness = Node.getLightness(lightness100: data.lightness)
+                let lightness = Node.getLightness(lightness100: data.lightness, range: node.lightnessRange)
                 if let ctlModel = node.ctlModel {
-                    messages.append(MeshMessageHandle(message: LightCTLSet(lightness: lightness, temperature: UInt16(data.cct), deltaUV: 0), model: ctlModel))
+                    var message: MeshMessage!
+//                    if ctlModel.publish?.publicationAddress.address == .allNodes { // 修改后等待主动上报
+//                        message = LightCTLSetUnacknowledged(lightness: lightness, temperature: UInt16(data.cct), deltaUV: 0, transitionTime: .immediate, delay: 0)
+//                    }else { // 不会上报设置ACK
+                        message = LightCTLSet(lightness: lightness, temperature: UInt16(data.cct), deltaUV: 0, transitionTime: .immediate, delay: 0)
+//                    }
+                    messages.append(MeshMessageHandle(message: message, model: ctlModel))
                 }else { // 不支持则设置亮度
-                    messages.append(MeshMessageHandle(message: LightLightnessSet(lightness: lightness), model: lightnessModel))
+                    var message: MeshMessage!
+//                    if lightnessModel.publish?.publicationAddress.address == .allNodes { // 修改后等待主动上报
+//                        message = LightLightnessSetUnacknowledged(lightness: lightness, transitionTime: .immediate, delay: 0)
+//                    }else { // 不会上报设置ACK
+                        message = LightLightnessSet(lightness: lightness, transitionTime: .immediate, delay: 0)
+//                    }
+                    messages.append(MeshMessageHandle(message: message, model: lightnessModel))
                 }
                 // 保存场景
                 messages.append(MeshMessageHandle(message: SceneStore(sceneId), model: sceneSetupModel))
+                
+                if let vendorModel = node.sunricherVendorModel {
+                    // 保存场景前禁用灯光控制
+//                    if node.lightLCProperty.lightControlEnabled {
+                        messages.insert(MeshMessageHandle(message: SunricherVendorSet(code: .lightControlEnabled, parameters: .lightControlEnabled(enabled: false)), model: vendorModel), at: 0)
+//                    }
+                    // 保存完场景开启灯光控制
+//                    if !node.lightLCProperty.lightControlEnabled {
+//                        messages.append(MeshMessageHandle(message: SunricherVendorSet(code: .lightControlEnabled, parameters: .lightControlEnabled(enabled: true)), model: vendorModel))
+//                    }
+                }
+                
             }
         }
         // 设备需要新增/更新的日程
@@ -316,7 +374,10 @@ extension Group {
             }
             // 设置日程
             if let schedulerSetupModel = node.schedulerSetupModel {
-                messages.append(MeshMessageHandle(message: SchedulerActionSet(index: UInt8(schedule.id), entry: SchedulerRegistryEntry(year: .any(), month: .any(of: [.January,.February,.March,.April,.May,.June,.July,.August,.September,.October,.November,.December]), day: .any(), hour: .specific(hour: schedule.hour), minute: .specific(minute: schedule.minute), second: .specific(second: 0), dayOfWeek: .any(of: schedule.weekDays), action: schedule.action, transitionTime: .init(steps: UInt8(schedule.fadeTime), stepResolution: .seconds), sceneNumber: schedule.scene?.number ?? 0)), model: schedulerSetupModel))
+                
+                let months: [Month] = schedule.enabled ? [.January,.February,.March,.April,.May,.June,.July,.August,.September,.October,.November,.December] : []
+                
+                messages.append(MeshMessageHandle(message: SchedulerActionSet(index: UInt8(schedule.id), entry: SchedulerRegistryEntry(year: .any(), month: .any(of: months), day: .any(), hour: .specific(hour: schedule.hour), minute: .specific(minute: schedule.minute), second: .specific(second: 0), dayOfWeek: .any(of: schedule.weekDays), action: schedule.action, transitionTime: .init(steps: UInt8(schedule.fadeTime), stepResolution: .seconds), sceneNumber: schedule.scene?.number ?? 0)), model: schedulerSetupModel))
             }
         }
         return messages

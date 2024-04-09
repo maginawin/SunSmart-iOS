@@ -27,8 +27,22 @@ extension UIViewController {
             }
         }else {
             if rootVc?.isKind(of: UINavigationController.self) ?? false {
-                
-                return (rootVc as? UINavigationController)?.visibleViewController
+                let topVc = (rootVc as? UINavigationController)?.visibleViewController
+//                if topVc?.presentedViewController != nil {
+//                    return topVc?.presentedViewController
+//                }else {
+//                    if let childVc = topVc?.children.first {
+                        if let presentingVc = topVc?.presentingViewController {
+                            if presentingVc.isKind(of: UINavigationController.self) {
+                                return (presentingVc as! UINavigationController).topViewController
+                            }else {
+                                return presentingVc
+                            }
+                        }
+//                        return childVc
+//                    }
+//                }
+                return topVc
             }else {
                 return rootVc
             }
@@ -68,6 +82,8 @@ extension UINavigationController {
     func popToViewController(vcClass: AnyClass, animated: Bool = true) {
         if let vc = viewControllers.first(where: {$0.isKind(of: vcClass)}) {
             self.popToViewController(vc, animated: true)
+        }else {
+            self.popViewController(animated: true)
         }
     }
     

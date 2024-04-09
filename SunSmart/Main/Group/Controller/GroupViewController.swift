@@ -13,15 +13,20 @@ class GroupViewController: UIViewController {
     private var collectionView: UICollectionView!
     private var flowLayout: AlignCenterFlowLayout!
     private var onoffBtn: UIButton!
+    private var autoBtn: UIButton!
     private var lightnessSlider: BuoySliderView!
     private var cctSlider: BuoySliderView!
     private var pageControl: UIPageControl!
+    
+    private var calibrateLabel: UILabel!
+    private var calibrateBtn: UIButton!
+    private var sensorView: GroupSensorView?
     
     let space: SpaceData
     let group: Group
     
 //    private var devices: [String] = []
-    private var isGroupUpdateData = false
+//    private var isGroupUpdateData = false
     /// 组更新回调
 //    var groupUpdateCallback: ((Group)->Void)?
     /// 组删除回调
@@ -57,7 +62,7 @@ class GroupViewController: UIViewController {
 //            navigationController?.navigationBar.standardAppearance = appearance
 //            navigationController?.navigationBar.scrollEdgeAppearance = appearance
             
-            navigationItem.leftBarButtonItem = UIBarButtonItem(image: UIImage(named: "close")?.withRenderingMode(.alwaysOriginal), style: .done, target: self, action: #selector(close))
+            navigationItem.leftBarButtonItem = UIBarButtonItem(image: UIImage(named: "navigation_back")?.withRenderingMode(.alwaysOriginal), style: .done, target: self, action: #selector(close))
         }
         navigationItem.rightBarButtonItem = UIBarButtonItem(image: UIImage(named: "more_vertical")?.withRenderingMode(.alwaysOriginal), style: .done, target: self, action: #selector(moreClick))
         
@@ -70,20 +75,33 @@ class GroupViewController: UIViewController {
     
         addNotificationObserver()
         
-        updateUI()
+        if let sensor = self.group.info.ambientLightSensorNode {
+            MeshAPI.getAmbientSensorValue(node: sensor, result: nil)
+        }
     }
     
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
         
-        collectionView.reloadData()
+//        collectionView.reloadData()
+//        updateEmptyUI()
+        updateUI()
+        
+        MeshLibManager.manager.register(self)
+        
+    }
+    
+    override func viewDidAppear(_ animated: Bool) {
+        super.viewDidAppear(animated)
+        
+//        sensorPublishCheck()
     }
     
     override func viewWillDisappear(_ animated: Bool) {
         super.viewWillDisappear(animated)
-        if isGroupUpdateData {
+//        if isGroupUpdateData {
             NotificationCenter.default.post(name: .init(groupDataUpdateNotificationName), object: group)
-        }
+//        }
     }
     
     override func viewDidLayoutSubviews() {
@@ -118,14 +136,92 @@ class GroupViewController: UIViewController {
         dismiss(animated: true)
     }
     
+    /// 传感器上报检查，未上报的传感器设置上报
+    private func sensorPublishCheck() {
+        if self.group.info.profile.type == .manualControl {
+            return
+        }
+        
+        var messageHandles: [MeshMessageHandle] = []
+        
+//        group.sensorNodes.forEach({
+//            let  $0.getNeedSyncGroupData(group: self).syncProfile
+//            
+//        })
+//        
+//        let syncProfile = group.sensorNodes.getNeedSyncGroupData(group: self).syncProfile
+//        syncProfile.forEach({
+//            messages.append(contentsOf: $0.getMessageHandles(node: node))
+//        })
+        
+        // 检查占用传感器是否有上报
+        let publishPresenceDetectedSensors = self.group.presenceDetectedSensorNodes.filter({ $0.presenceDetectedSensorModel?.publish?.publicationAddress != group.address })
+        
+        publishPresenceDetectedSensors.forEach({
+            let message = ConfigModelPublicationSet(Publish(to: group.address, using: MeshNetworkManager.instance.currentApplicationKey, usingFriendshipMaterial: false, ttl: MeshNetworkManager.instance.networkParameters.defaultTtl, period: .disabled, retransmit: .disabled), to: $0.presenceDetectedSensorModel!)!
+            let messageHandle = MeshMessageHandle(message: message, address: $0.primaryUnicastAddress)
+            messageHandles.append(messageHandle)
+        })
+        // 检查校准后的光照传感器是否有上报
+        if let publishAmbientLightSensor = self.group.info.ambientLightSensorNode, let sensorModel = publishAmbientLightSensor.ambientLightSensorModel, sensorModel.publish?.publicationAddress != group.address {
+            let message = ConfigModelPublicationSet(Publish(to: group.address, using: MeshNetworkManager.instance.currentApplicationKey, usingFriendshipMaterial: false, ttl: MeshNetworkManager.instance.networkParameters.defaultTtl, period: .disabled, retransmit: .disabled), to: sensorModel)!
+            let messageHandle = MeshMessageHandle(message: message, address: publishAmbientLightSensor.primaryUnicastAddress)
+            messageHandles.append(messageHandle)
+        }
+        
+        if messageHandles.count > 0 {
+            MeshLibManager.manager.register(self)
+            
+            MeshProxyMessageCommand.shared.stopSendMessage(finishedBack: nil)
+            MeshProxyMessageCommand.shared.addMessage(messageHandles: messageHandles, finishedBack: nil)
+        }
+        
+    }
+    
     private func updateUI() {
         pageControl.numberOfPages = Int(ceil(Double(group.nodes.count) / 9.0))
-//        pageControl.currentPage = 0
+        //        pageControl.currentPage = 0
         updateEmptyUI()
         
+        onoffBtn.isEnabled = MeshLibManager.manager.isMeshNetworkConnected && group.nodes.contains(where: { $0.state })
         onoffBtn.isSelected = group.isOn
+        
+        let data = group.info.profile.lightData.data
+        lightnessSlider.slider.limitRange = data.lowEndTrim...data.highEndTrim
         lightnessSlider.value = Node.getLightness100(lightness: group.lightness)
-        cctSlider.value = group.cct
+        if group.nodes.contains(where: {$0.ctlModel != nil }) {
+            cctSlider.value = group.cct
+            cctSlider.isHidden = false
+        }else {
+            cctSlider.isHidden = true
+        }
+        
+        let profileType = group.info.profile.type
+        // 提示校准
+        if group.info.ambientLightSensorNode == nil, group.ambientLightSensorNodes.count > 0, profileType == .occupancy_daylight || profileType == .vacancy_daylight || profileType == .daylight {
+            calibrateBtn.isHidden = false
+            calibrateLabel.isHidden = false
+        }else {
+            calibrateBtn.isHidden = true
+            calibrateLabel.isHidden = true
+        }
+        
+        if profileType != .manualControl {
+            sensorView?.isHidden = false
+            sensorView?.sensors = group.sensorNodes
+            switch profileType {
+            case .occupancy_daylight, .vacancy_daylight:
+                sensorView?.supportSensorType = .all
+            case .occupancy, .vacancy:
+                sensorView?.supportSensorType = .presenceDetected
+            case .daylight:
+                sensorView?.supportSensorType = .ambientLight
+            case .manualControl:
+                sensorView?.supportSensorType = .none
+            }
+        }else {
+            sensorView?.isHidden = true
+        }
         
         collectionView.reloadData()
     }
@@ -135,7 +231,22 @@ class GroupViewController: UIViewController {
             if collectionView.frame == .zero {
                 view.layoutIfNeeded()
             }
-            collectionView.showEmptyDataView(title: "no_members".localizedString, position: .center, bottomMargin: 3.5)
+            if collectionView.emptyView == nil {
+                collectionView.showEmptyDataView(title: "no_members".localizedString, buttonText: "add_member".localizedString, position: .center) {[weak self] in
+                    self?.members()
+                }
+                if let emptyView = collectionView.emptyView {
+                    emptyView.button.backgroundColor = .clear
+//                    emptyView.button.setTitle("add_member".localizedString, for: .normal)
+                    emptyView.button.setImage(UIImage(named: "member_add"), for: .normal)
+                    emptyView.button.titleLabel?.font = FONTS(16)
+                    emptyView.button.setTitleColor(Bar_Color, for: .normal)
+                    emptyView.button.setImagePosition(position: .left, spacing: SCRXFrom(2))
+                    emptyView.button.snp.updateConstraints { make in
+                        make.top.equalTo(emptyView.titleLabel.snp.bottom).offset(SCRYFrom(24))
+                    }
+                }
+            }
         }else {
             collectionView.hideEmptyDataView()
         }
@@ -143,7 +254,7 @@ class GroupViewController: UIViewController {
     
     @objc private func moreClick() {
         
-        MenuPopView.show(items: [
+        var items: [MenuPopView.MenuItem] = [
             .init(icon: UIImage(named: "menu_edit"), title: "edit".localizedString, tapItemBack: {[weak self] item in
                 self?.editGroup()
             }),
@@ -157,8 +268,19 @@ class GroupViewController: UIViewController {
             .init(icon: UIImage(named: "menu_profile"), title: "profile".localizedString, tapItemBack: {[weak self] item in
                 self?.groupProfile()
             })
-            
-        ], anchorPoint: CGPoint(x: view.width - SCRXFrom(17) - 15, y: (navigationController?.navigationBar.frame.maxY ?? kNavigationHeight) + StatusBarManager.statusBarFrame.height))
+        ]
+        let profileType = group.info.profile.type
+        if profileType == .occupancy_daylight || profileType == .vacancy_daylight || profileType == .daylight {
+            items.append( .init(icon: UIImage(named: "menu_calibrate"), title: "calibrate".localizedString, tapItemBack: {[weak self] item in
+                self?.calibrate()
+            }))
+        }
+        
+        items.append( .init(icon: UIImage(named: "menu_switch"), title: "switch".localizedString, tapItemBack: {[weak self] item in
+            self?.pushToSwitch()
+        }))
+        
+        MenuPopView.show(items: items, anchorPoint: CGPoint(x: view.width - SCRXFrom(17) - 15, y: (navigationController?.navigationBar.frame.maxY ?? kNavigationHeight) + StatusBarManager.statusBarFrame.height))
         
     }
     
@@ -170,16 +292,41 @@ class GroupViewController: UIViewController {
         group.nodes.forEach({
             $0.isOn = group.isOn
         })
+        lightnessSlider.value = group.isOn ? Node.getLightness100(lightness: group.lightness) : 0
         collectionView.reloadData()
-        isGroupUpdateData = true
+//        isGroupUpdateData = true
     }
     
+    @objc private func autoBtnAction(sender: UIButton) {
+        
+        btnTouchCancelAction(sender: sender)
+        
+        MeshAPI.sendMessage(message: LightLCLightOnOffSet(true, transitionTime: .init(steps: 1, stepResolution: .seconds), delay: 0), address: group.address.address)
+    }
+    
+    /// 按键按下回调
+    @objc private func btnTouchDownAction(sender: UIButton) {
+        sender.setImage(UIImage(named: "auto_press"), for: .normal)
+    }
+    
+    /// 按键点击抬起回调
+    @objc private func btnTouchCancelAction(sender: UIButton) {
+//        UIView.animate(withDuration: 0.25) {
+        DispatchQueue.main.asyncAfter(wallDeadline: .now() + 0.2) {
+            sender.setImage(UIImage(named: "auto"), for: .normal)
+        }
+//        }
+    }
+    
+    
     private func bindSliderAciton() {
-        lightnessSlider.valueChangedCallback = {[weak self] (value, ended) in
+        lightnessSlider.valueThrottleChangedCallback = {[weak self] (value, ended) in
             print("lightness: \(value)")
             guard let self = self else { return }
             let lightness = Node.getLightness(lightness100: value)
             self.group.lightness = lightness
+            self.group.isOn = lightness > 0
+            self.onoffBtn.isSelected = self.group.isOn
             MeshAPI.setGroupLightnessState(address: self.group.address.address, lightness: lightness)
             group.nodes.forEach({
                 $0.isOn = lightness > 0
@@ -187,10 +334,10 @@ class GroupViewController: UIViewController {
 //                self.reloadCollectionItem(node: $0)
             })
             collectionView.reloadData()
-            self.isGroupUpdateData = true
+//            self.isGroupUpdateData = true
         }
         
-        cctSlider.valueChangedCallback = {[weak self] (value, ended) in
+        cctSlider.valueThrottleChangedCallback = {[weak self] (value, ended) in
             print("cct: \(value)")
             guard let self = self else { return }
             self.group.cct = value
@@ -200,7 +347,7 @@ class GroupViewController: UIViewController {
 //                self.reloadCollectionItem(node: $0)
             })
             collectionView.reloadData()
-            self.isGroupUpdateData = true
+//            self.isGroupUpdateData = true
         }
     }
     
@@ -229,16 +376,16 @@ class GroupViewController: UIViewController {
             
             XWHUDManager.showCustomHUD(withMessage: "deleting".localizedString, isWindow: true)
             
-            group.nodes.forEach({ node in
-                node.unsubscribe(from: self.group)
-                node.sceneDatas.removeAll()
-                // 删除设备场景数据
-                SceneExecuteData.deleteData(meshUUID: self.space.meshUUID, address: node.primaryUnicastAddress)
-                // 删除设备关联组的日程数据
-                self.group.info.bindSchedules.forEach{ schedule in
-                    Node.deleteSchedule(meshUUID: self.space.meshUUID, address: node.primaryUnicastAddress, scheduleId: schedule.id)
-                }
-            })
+//            group.nodes.forEach({ node in
+//                node.unsubscribe(from: self.group)
+//                node.sceneDatas.removeAll()
+//                // 删除设备场景数据
+//                SceneExecuteData.deleteData(meshUUID: self.space.meshUUID, address: node.primaryUnicastAddress)
+//                // 删除设备关联组的日程数据
+//                self.group.info.bindSchedules.forEach{ schedule in
+//                    Node.deleteSchedule(meshUUID: self.space.meshUUID, address: node.primaryUnicastAddress, scheduleId: schedule.id)
+//                }
+//            })
             
             GroupServer.deleteGroup(group: self.group, progress: nil) {[weak self] _ in
                 XWHUDManager.hide()
@@ -270,7 +417,7 @@ class GroupViewController: UIViewController {
             XWHUDManager.showSuccessTipHUD("done!".localizedString)
             guard let self = self else { return }
             GroupServer.deleteGroup(group: group, progress: nil, successful: nil, failed: nil)
-            self.isGroupUpdateData = true
+//            self.isGroupUpdateData = true
             DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
                 self.close()
             }
@@ -290,7 +437,33 @@ class GroupViewController: UIViewController {
     /// 配置文件
     private func groupProfile() {
         
-        let vc = GroupProfilesViewController(group: group)
+        let vc = ProfileSettingsViewController(group: group, profile: group.info.profile)
+        vc.saveActionCallback = {[weak self] profile in
+            guard let self = self else {
+                return
+            }
+//             profile.type
+            if profile.type == .occupancy || profile.type == .vacancy || profile.type == .manualControl {
+                self.group.info.ambientLightSensorNode = nil
+            }
+            self.group.info.profile = profile
+            self.group.info.save(meshUUID: self.space.meshUUID)
+            profile.save(meshUUID: self.space.meshUUID)
+            self.updateUI()
+        }
+        navigationController?.pushViewController(vc, animated: true)
+    }
+    
+    /// 校准
+    @objc private func calibrate() {
+        let vc = LightSensorCalibrationViewController(group: group)
+        navigationController?.pushViewController(vc, animated: true)
+    }
+    
+    /// 开关
+    @objc private func pushToSwitch() {
+        
+        let vc = GroupSwitchsViewController(group: group)
         navigationController?.pushViewController(vc, animated: true)
     }
     
@@ -302,11 +475,16 @@ class GroupViewController: UIViewController {
     /// 刷新设备
     private func reloadCollectionItem(node: Node) {
         
-        if let index = space.nodes.firstIndex(where: {$0.primaryUnicastAddress == node.primaryUnicastAddress}) {
+        if let index = group.nodes.firstIndex(where: {$0.primaryUnicastAddress == node.primaryUnicastAddress}) {
             if let item = collectionView.cellForItem(at: IndexPath(item: index, section: 0)) as? DevicesViewCell {
                 item.device = node
             }
         }
+        
+        onoffBtn.isEnabled = MeshLibManager.manager.isMeshNetworkConnected && group.nodes.contains(where: { $0.state })
+        onoffBtn.isSelected = group.isOn
+        lightnessSlider.value = Node.getLightness100(lightness: group.lightness)
+        cctSlider.value = group.cct
     }
     
     /// 长按事件，跳转到设备详情
@@ -321,6 +499,13 @@ class GroupViewController: UIViewController {
             let vc = DeviceLightViewController(space: space, node: node)
             navigationController?.pushViewController(vc, animated: true)
         }
+    }
+    
+    /// 校准
+    @objc private func calibrateBtnAction() {
+        
+        let vc = LightSensorCalibrationViewController(group: group)
+        navigationController?.pushViewController(vc, animated: true)
     }
 
     
@@ -366,10 +551,22 @@ class GroupViewController: UIViewController {
         }
         
         onoffBtn = UIButton(normalImageName: "group_off", selectedImageName: "group_on", target: self, action: #selector(onoffBtnClick))
+        onoffBtn.setImage(UIImage(named: "group_control_disable"), for: .disabled)
         view.addSubview(onoffBtn)
         onoffBtn.snp.makeConstraints { make in
             make.top.equalTo(collectionView.snp.bottom).offset(SCRYFit(32))
-            make.centerX.equalToSuperview()
+            make.centerX.equalToSuperview().offset(SCRXFrom(-40))
+        }
+        
+        autoBtn = UIButton(normalImageName: "auto", target: self, action: #selector(autoBtnAction))
+        autoBtn.addTarget(self, action: #selector(btnTouchDownAction), for: .touchDown)
+        autoBtn.addTarget(self, action: #selector(btnTouchCancelAction), for: .touchCancel)
+//        UIButton(title: "AUTO".localizedString, titleSize: 13, titleColor: Bar_Color, fit: false, target: self, action: #selector(autoBtnAction))
+//        autoBtn.setBackgroundImage(UIImage(named: "auto_btn_border"), for: .normal)
+        view.addSubview(autoBtn)
+        autoBtn.snp.makeConstraints { make in
+            make.centerY.equalTo(onoffBtn)
+            make.left.equalTo(onoffBtn.snp.right).offset(SCRXFrom(40))
         }
         
         lightnessSlider = BuoySliderView(frame: .zero, functionType: .level())
@@ -384,6 +581,7 @@ class GroupViewController: UIViewController {
         
         cctSlider = BuoySliderView(frame: .zero, functionType: .cct())
         cctSlider.slider.interval = 0.5
+        cctSlider.slider.step = 10
 //        Node.getTemperature100(temperature: UInt16(group.cct))
 //        cctSlider.isHidden = !group.supportCct
         view.addSubview(cctSlider)
@@ -392,6 +590,33 @@ class GroupViewController: UIViewController {
             make.top.equalTo(lightnessSlider.snp.bottom).offset(SCRYFit(2))
         }
         
+        calibrateLabel = UILabel(text: "not_calibrated".localizedString, textColor: SubText_Color, fontSize: 14, fontWeight: .light)
+        calibrateLabel.isHidden = true
+        view.addSubview(calibrateLabel)
+        calibrateLabel.snp.makeConstraints { make in
+            make.left.equalTo(collectionView)
+            make.bottom.equalTo(collectionView.snp.top).offset(SCRYFit(-16))
+        }
+        
+        calibrateBtn = UIButton(title: "CALIBRATE".localizedString, titleSize: 14, titleWeight: .light, titleColor: .white, target: self, action: #selector(calibrateBtnAction))
+        calibrateBtn.backgroundColor = Bar_Color
+        calibrateBtn.layer.cornerRadius = 6
+        calibrateBtn.isHidden = true
+        view.addSubview(calibrateBtn)
+        calibrateBtn.snp.makeConstraints { make in
+            make.right.equalTo(collectionView)
+            make.centerY.equalTo(calibrateLabel)
+            make.width.equalTo(SCRXFrom(88))
+            make.height.equalTo(SCRYFrom(32))
+        }
+        
+        sensorView = GroupSensorView()
+        sensorView?.isHidden = true
+        view.addSubview(sensorView!)
+        sensorView!.snp.makeConstraints { make in
+            make.left.right.bottom.equalToSuperview()
+            make.height.equalTo(SCRYFrom(40) + kSafeAreaBottomHeight)
+        }
     }
 
 
@@ -411,13 +636,18 @@ extension GroupViewController: UICollectionViewDataSource, UICollectionViewDeleg
     }
     
     func collectionView(_ collectionView: UICollectionView, didSelectItemAt indexPath: IndexPath) {
-        let node = space.nodes[indexPath.item]
+        let node = group.nodes[indexPath.item]
         node.isOn = !node.isOn
         if !node.isOn, node.lightness > 0 { // 关灯，记录关灯前的亮度值
             node.trunOffLightness = node.lightness
         }
-        
+        if node.isOn {
+            node.lightness = node.trunOffLightness ?? node.lightnessRange.upperBound
+        }else {
+            node.lightness = 0
+        }
         reloadCollectionItem(node: node)
+        MeshAPI.setNodeOnOffState(address: node.primaryUnicastAddress, isOn: node.isOn)
     }
     
     func scrollViewDidEndDecelerating(_ scrollView: UIScrollView) {
@@ -430,5 +660,43 @@ extension GroupViewController: UICollectionViewDataSource, UICollectionViewDeleg
 //    func collectionView(_ collectionView: UICollectionView, layout collectionViewLayout: UICollectionViewLayout, sizeForItemAt indexPath: IndexPath) -> CGSize {
 //
 //    }
+    
+}
+
+extension GroupViewController: MeshLibManagerDelegate {
+    
+    func meshNetworkManager(_ manager: MeshNetworkManager, bearerDidOpen bearer: Bearer) {
+        onoffBtn.isEnabled = true
+    }
+    
+    func meshNetworkManager(_ manager: MeshNetworkManager, bearerDidClose bearer: Bearer) {
+        if group.nodes.count > 0 {
+            onoffBtn.isEnabled = false
+        }
+    }
+    
+    func meshNetworkManager(_ manager: MeshNetworkManager, deviceDataUpdate node: Node) {
+        if group.nodes.contains(node) {
+            reloadCollectionItem(node: node)
+        }
+    }
+    
+    func meshNetworkManager(_ manager: MeshNetworkManager, didReceiveMessage message: MeshMessage, sentFrom source: Address, to destination: Address) {
+        // 传感器消息
+        guard let sensorNode = group.sensorNodes.first(where: { $0.contains(elementWithAddress: source) }), let sensorMessage = message as? SensorStatus else {
+            return
+        }
+        sensorMessage.values.forEach { (property: DeviceProperty, _) in
+            // 人体存在传感器model
+            if case .presenceDetected = property {
+                sensorView?.reloadSensorData(sensor: sensorNode, sensorType: .presenceDetected)
+            }
+            
+            // 环境光传感器model
+            if case .presentAmbientLightLevel = property, sensorNode.primaryUnicastAddress == group.info.ambientLightSensorNode?.primaryUnicastAddress {
+                sensorView?.reloadSensorData(sensor: sensorNode, sensorType: .ambientLight)
+            }
+        }
+    }
     
 }

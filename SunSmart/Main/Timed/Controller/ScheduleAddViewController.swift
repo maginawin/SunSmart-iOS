@@ -51,6 +51,8 @@ class ScheduleAddViewController: UIViewController {
         setupData()
      
         updateBtnState()
+        
+        
     }
     
     private func setupData() {
@@ -140,16 +142,33 @@ class ScheduleAddViewController: UIViewController {
             selectTargetType = .scene
         }
         
+        
+        // 日程是否有设备
+        let isExitNodes = nodes.count > 0 || groups.contains(where: { $0.nodes.count > 0 }) || (scene?.info.groups.contains(where: { $0.nodes.count > 0 }) ?? false)
+        
+        guard MeshLibManager.manager.isMeshNetworkConnected || !isExitNodes else {
+            XWHUDManager.showTipHUD("device_notconnect_message".localizedString, isLineFeed: true)
+            return
+        }
+        
         let weekDays = Schedule.getWeekDays(weekValue: scheduleAddView.weekValue)
         let create = "\(Date().timeIntervalSince1970 * 1000)"
         
         let schedule = Schedule(id: id, name: name, enabled: isEnabled, nodes: nodes, groups: groups, scene: scene, selectTargetType: selectTargetType, action: action, fadeTime: fadeTime, weekDays: weekDays, hour: scheduleAddView.hour, minute: scheduleAddView.minute, create: create)
         if schedule.save(meshUUID: space.meshUUID) {
-            groups.forEach({ $0.info.bindSchedules.append(schedule) })
+//            groups.forEach({ $0.info.bindSchedules.append(schedule) })
             space.meshManager?.schedules.append(schedule)
             space.scheheduleCount = space.schedules.count
             space.save()
         }
+        
+        groups.forEach({
+            $0.info.bindSchedules.append(schedule)
+        })
+            
+        scene?.info.groups.forEach({
+            $0.info.bindSchedules.append(schedule)
+        })
         
         if needSync { // 是否需要同步
             pushToSyncDevices(schedule: schedule)
@@ -169,6 +188,8 @@ class ScheduleAddViewController: UIViewController {
         
         guard let schedule = self.schedule else { return }
         guard schedule.exitNodes.count > 0 else {
+            Schedule.deleteData(meshUUID: self.space.meshUUID, scheduleId: schedule.id)
+            MeshNetworkManager.instance.schedules.removeAll(where: { $0.id == schedule.id })
             XWHUDManager.showSuccessTipHUD("done!".localizedString)
             NotificationCenter.default.post(name: .init(schedulesRefreshNotificationName), object: nil)
             DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {[weak self] in
@@ -188,6 +209,24 @@ class ScheduleAddViewController: UIViewController {
             guard let self = self else { return }
             Schedule.deleteData(meshUUID: self.space.meshUUID, scheduleId: schedule.id)
             MeshNetworkManager.instance.schedules.removeAll(where: { $0.id == schedule.id })
+            // 删除关联组缓存的对应日程
+            var groups = schedule.groups
+            groups.append(contentsOf: schedule.needDeleteGroups)
+            if let sceneGroups = schedule.scene?.info.groups {
+                groups.append(contentsOf: sceneGroups)
+            }
+            schedule.needDeleteScenes.forEach({
+                groups.append(contentsOf: $0.info.groups)
+            })
+            if let sceneGroups = schedule.scene?.info.groups {
+                groups.append(contentsOf: sceneGroups)
+            }
+            schedule.needDeleteScenes.forEach({
+                groups.append(contentsOf: $0.info.groups)
+            })
+            groups.forEach({
+                $0.info.bindSchedules.removeAll(where: {$0.id == schedule.id })
+            })
             
             NotificationCenter.default.post(name: .init(schedulesRefreshNotificationName), object: nil)
             DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {[weak self] in
@@ -232,6 +271,14 @@ class ScheduleAddViewController: UIViewController {
                 scene = selectScene
                 selectTargetType = .scene
             }
+        }
+        
+        // 日程是否有设备
+        let isExitNodes = schedule.exitNodes.count > 0 || nodes.count > 0 || groups.contains(where: { $0.nodes.count > 0 }) || (scene?.info.groups.contains(where: { $0.nodes.count > 0 }) ?? false)
+        
+        guard MeshLibManager.manager.isMeshNetworkConnected || !isExitNodes else {
+            XWHUDManager.showTipHUD("device_notconnect_message".localizedString, isLineFeed: true)
+            return
         }
         
         if schedule.name != name {
@@ -288,7 +335,7 @@ class ScheduleAddViewController: UIViewController {
         
         // 判断需要同步设备数据
         if !schedule.getNeedSyncDatas().isEmpty() {
-               pushToSyncDevices(schedule: schedule)
+            pushToSyncDevices(schedule: schedule)
         }else { // 无需同步，仅编辑名称参数不影响设备配置
             XWHUDManager.showSuccessTipHUD("done".localizedString)
             DispatchQueue.main.asyncAfter(wallDeadline: .now() + 1.5, execute: {
@@ -307,6 +354,10 @@ class ScheduleAddViewController: UIViewController {
         vc.syncSuccessCallback = {[weak self] _ in
             XWHUDManager.showSuccessTipHUD("done".localizedString)
             guard let self = self else { return }
+            self.schedule?.needDeleteNodes.removeAll()
+            self.schedule?.needDeleteGroups.removeAll()
+            self.schedule?.needDeleteScenes.removeAll()
+            self.schedule?.save(meshUUID: self.space.meshUUID)
             DispatchQueue.main.asyncAfter(wallDeadline: .now() + 1.5, execute: {
                 XWHUDManager.hide()
                 self.back()
@@ -432,7 +483,7 @@ extension ScheduleAddViewController: ScheduleAddViewDelegate {
     func view(_ view: ScheduleAddView, nameDidEditing name: String) -> String? {
         if name.count > 32 {
             return "text_length_exceeded".localizedString
-        } else if space.isScheduleTautonym(name: name) { // 重名
+        } else if space.isScheduleTautonym(name: name) && self.schedule?.name != name { // 重名
             return "name_already_exists".localizedString
         }
         return nil
@@ -448,13 +499,8 @@ extension ScheduleAddViewController: ScheduleAddTargetViewDelegate {
     func view(_ view: ScheduleAddTargetView, didClickTargetAction target: ScheduleTarget) {
         switch target {
         case .devices(let nodes):
-            MeshNetworkManager.instance.realNodes.forEach({
-                $0.state = true
-                $0.isOn = true
-                $0.lightness = 65535
-            })
 
-            ScheduleDevicesView(nodes: MeshNetworkManager.instance.realNodes, selectNodes: nodes, schedule: self.schedule, selectBack: {[weak self] selectNodes in
+            ScheduleDevicesView(nodes: MeshNetworkManager.instance.lightNodes, selectNodes: nodes, schedule: self.schedule, selectBack: {[weak self] selectNodes in
                 self?.updateScheduleTarget(.devices(selectNodes))
             }).show()
             

@@ -162,7 +162,7 @@ extension MenuPopView: UITableViewDataSource, UITableViewDelegate {
         cell.titleLabel.font = FONTS(14)
         cell.iconImageView.image = item.icon
         cell.iconX = 0
-        cell.iconSize = CGSize(width: SCRYFrom(30), height: SCRYFrom(30))
+        cell.iconSize = CGSize(width: SCRXFrom(30), height: SCRXFrom(30))
         cell.titleX = SCRXFrom(35)
         cell.lineView.isHidden = true
         cell.arrowImageView.isHidden = true

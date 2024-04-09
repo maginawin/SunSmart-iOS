@@ -20,7 +20,6 @@ class GroupAddViewController: UIViewController {
     private var collectionView: UICollectionView!
     private var flowLayout: UICollectionViewFlowLayout!
     
-    
     private var footerView: UIView!
     private var doneBtn: UIButton!
     private var cancelBtn: UIButton!
@@ -35,6 +34,16 @@ class GroupAddViewController: UIViewController {
 //    var doneCallback: ((Group)->Void)?
     /// 传入组则编辑
     var group: Group?
+    /// 配置数据
+    private var profiles: [Profile] = [
+        .init(type: .occupancy_daylight),
+        .init(type: .vacancy_daylight),
+        .init(type: .occupancy),
+        .init(type: .vacancy),
+        .init(type: .daylight),
+        .init(type: .manualControl)
+    ]
+    private var selectProfile: Profile!
     
     init(space: SpaceData, group: Group? = nil) {
         self.space = space
@@ -49,8 +58,6 @@ class GroupAddViewController: UIViewController {
     override func viewDidLoad() {
         super.viewDidLoad()
 
-        
-        
         view.backgroundColor = Background_Color
         
         if presentationController != nil {
@@ -71,12 +78,15 @@ class GroupAddViewController: UIViewController {
         if let group = self.group {
             name = group.name
             title = "edit_group".localizedString
-            
+            selectProfile = group.info.profile
             doneBtn.setTitle("done".localizedString, for: .normal)
         }else {
             name = space.getNextGroupName()
             title = "create_group".localizedString
+            selectProfile = profiles.first!
         }
+        
+        
 //        if isAdd {
 //            doneBtn.setTitle("add".localizedString, for: .normal)
 //        }
@@ -142,8 +152,11 @@ class GroupAddViewController: UIViewController {
         
         let source = self.dataSource[self.selectImageIndex]
         let groupInfo = GroupInfo(address: group.address.address, name: name, imageId: self.selectImageIndex + 1, imageText: source.type == .text ? source.name : nil)
+        groupInfo.profile = self.selectProfile
         groupInfo.save(meshUUID: space.meshUUID)
         group.info = groupInfo
+        // 保存配置数据
+        self.selectProfile.save(meshUUID: self.space.meshUUID)
 //        self.doneCallback?(group)
     }
     
@@ -186,7 +199,7 @@ class GroupAddViewController: UIViewController {
 //            make.height.equalTo(SCRYFrom(30))
 //        }
         
-        doneBtn = UIButton(title: "create".localizedString, titleSize: 16, titleWeight: .light, titleColor: Title_Color, target: self, action: #selector(doneBtnClick))
+        doneBtn = UIButton(title: "CREATE".localizedString, titleSize: 16, titleWeight: .light, titleColor: Title_Color, target: self, action: #selector(doneBtnClick))
         doneBtn.setTitleColor(RGB(139, 139, 139), for: .disabled)
         doneBtn.titleLabel?.textAlignment = .center
         footerView.addSubview(doneBtn)
@@ -279,27 +292,13 @@ extension GroupAddViewController: UICollectionViewDataSource, UICollectionViewDe
     func collectionView(_ collectionView: UICollectionView, viewForSupplementaryElementOfKind kind: String, at indexPath: IndexPath) -> UICollectionReusableView {
         let header = collectionView.dequeueReusableSupplementaryView(ofKind: UICollectionView.elementKindSectionHeader, withReuseIdentifier: "header", for: indexPath) as! GroupAddHeaderView
         header.nameField.text = name
-        header.nameEditChangedCallback = {[weak self] name in
-            guard let self = self else { return nil }
-            if name.count > 32 {
-                self.doneBtn.isEnabled = false
-                return "text_length_exceeded".localizedString
-            }else if self.space.isGroupTautonym(name: name) && name != self.group?.name {
-                self.doneBtn.isEnabled = false
-                return "name_already_exists".localizedString
-            }
-            if name.count > 0 && !name.isAllInputTextEmpty() {
-                self.doneBtn.isEnabled = true
-            }else {
-                self.doneBtn.isEnabled = false
-            }
-            self.name = name
-            return nil
-        }
+        header.delegate = self
         if group != nil {
             header.profileLabel.isHidden = true
             header.profileBtn.isHidden = true
             header.profileEditBtn.isHidden = true
+        }else {
+            header.profileBtn.setTitle(selectProfile.type.instruction.name, for: .normal)
         }
         return header
     }
@@ -315,8 +314,65 @@ extension GroupAddViewController: UICollectionViewDataSource, UICollectionViewDe
     }
     
 }
-
-
+ 
+extension GroupAddViewController: GroupAddHeaderViewDelegate {
+    
+    /// 名称编辑回调
+    /// - Parameters:
+    ///   - view: view
+    ///   - name: 名称
+    /// - Returns: 返回错误提示（可选）
+    func view(_ view: GroupAddHeaderView, nameEditChanged name: String) -> String? {
+        if name.count > 32 {
+            self.doneBtn.isEnabled = false
+            return "text_length_exceeded".localizedString
+        }else if self.space.isGroupTautonym(name: name) && name != self.group?.name {
+            self.doneBtn.isEnabled = false
+            return "name_already_exists".localizedString
+        }
+        if name.count > 0 && !name.isAllInputTextEmpty() {
+            self.doneBtn.isEnabled = true
+        }else {
+            self.doneBtn.isEnabled = false
+        }
+        self.name = name
+        return nil
+    }
+    
+    /// 选择配置文件回调
+    func headerViewDidSelectProfile(_ view: GroupAddHeaderView, profileRect: CGRect) {
+        
+//        let profileTypes: [Profile.ProfileType] = [.occupancy_daylight, .vacancy_daylight, .occupancy, .vacancy, .daylight, .manualControl]
+        let names = profiles.map({ $0.type.instruction.name })
+        let selectIndex = profiles.firstIndex(where: { $0.type == selectProfile.type }) ?? 0
+//        view
+        let viewPoint = collectionView.convert(CGPoint(x: profileRect.minX, y: profileRect.maxY), from: view)
+        let y = (SCREEN_HEIGHT - self.view.height) + collectionView.y + viewPoint.y + SCRYFrom(2) - collectionView.contentOffset.y
+        TitleSelectView.show(titles: names, anchorPoint: CGPoint(x: viewPoint.x, y: y), selectIndex: selectIndex, menuWidth: profileRect.size.width, titleColor: SubText_Color, titleFont: FONTS(14), backgroundColor: .white, selectBackgroundColor: .clear, shadowColor: RGB(0, 0, 0, 0.1)) {[weak self] index in
+            guard let self = self else { return }
+            
+            self.selectProfile = profiles[index]
+            view.profileBtn.setTitle(names[index], for: .normal)
+        }
+        
+    }
+    
+    /// 编辑配置文件回调
+    func headerViewDidEditProfile(_ view: GroupAddHeaderView) {
+        
+        let vc = ProfileSettingsViewController(group: nil, profile: selectProfile)
+        vc.saveActionCallback = {[weak self] profile in
+            guard let self = self else { return }
+            self.selectProfile = profile
+            view.profileBtn.setTitle(profile.type.instruction.name, for: .normal)
+            if let index = self.profiles.firstIndex(where: { $0.type == profile.type }) {
+                self.profiles.replaceSubrange(index...index, with: [profile])
+            }
+        }
+        navigationController?.pushViewController(vc, animated: true)
+    }
+    
+}
 
 
 class GroupImageViewCell: UICollectionViewCell {

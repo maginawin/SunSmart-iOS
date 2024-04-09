@@ -18,3 +18,4 @@ class PopGestureScrollView: UIScrollView, UIGestureRecognizerDelegate {
     }
     
 }
+

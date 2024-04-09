@@ -12,6 +12,10 @@ class BluetoothRequiredViewController: UIViewController {
 
     /// 蓝牙管理中心
 //    private var cbCentralManager : CBCentralManager!
+    
+    private var navigationBar: UIView!
+    private var backBtn: UIButton!
+    
     private var isShowAlert: Bool = false
     
     override func viewDidLoad() {
@@ -46,6 +50,16 @@ class BluetoothRequiredViewController: UIViewController {
     }
     
     private func showBluetoothRequiredUI() {
+        
+        navigationBar = UIView()
+        navigationBar.backgroundColor = .white
+        view.addSubview(navigationBar)
+        navigationBar.snp.makeConstraints { make in
+            make.left.top.right.equalToSuperview()
+            make.height.equalTo(kNavigationHeight)
+        }
+        
+        
         view.showEmptyDataView(imageName: "bluetooth_required", title: "Bluetooth required", tipText: "Turn on bluetooth to use the app.")
         if let emptyView = view.emptyView {
             emptyView.titleLabel.font = Font_Medium_Size(SCRYFrom(16))
