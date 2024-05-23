@@ -6,6 +6,7 @@
 //
 
 import Foundation
+import NordicSigMeshSDK
 
 class SpaceData: Copyable {
     
@@ -17,9 +18,9 @@ class SpaceData: Copyable {
     var siteId: String
     /// 图标
     var imageId: Int = 0
-    /// 创建时间（时间戳毫秒）
+    /// 创建时间（时间戳秒）
     var create: String
-    /// 最近更新的时间（时间戳毫秒）
+    /// 最近更新的时间（时间戳秒）
     var lastUpdate: String
     /// 是否喜欢（常用）
     var isFavourite: Bool = false
@@ -28,6 +29,12 @@ class SpaceData: Copyable {
     var sourceType: DataSourceType
     /// mesh网络uuid
     var meshUUID: String
+    /// 子网网络key
+    var meshNetworkKey: NetworkKey {
+        return meshManager?.meshNetwork?.networkKeys.first(where: { $0.networkId.hex == meshNetworkId }) ?? MeshNetworkManager.instance.currentNetworkKey
+    }
+    /// 子网网络id
+    var meshNetworkId: String
 //    var meshInfo: MeshNetworkInfo
     
     /// 灯数量
@@ -53,7 +60,12 @@ class SpaceData: Copyable {
         // 超过一天主动同步时间
         return distance > 3600 * 24
     }
-    
+    /// 是否数据空的空间
+    var isEmpty: Bool {
+        return deviceCount == 0 && luminairesCount == 0 && groupCount == 0 && sceneCount == 0 && scheheduleCount == 0 && switchesCount == 0
+    }
+    /// 是否引导配置中
+    var isConfiguring: Bool = false
     
     /// 初始化空间
     /// - Parameters:
@@ -61,12 +73,12 @@ class SpaceData: Copyable {
     ///   - id: 空间id
     ///   - siteId: 对应场所id
     ///   - image: 空间图片
-    ///   - create: 创建时间（时间戳毫秒）
-    ///   - lastUpdate: 最新修改时间（时间戳毫秒）
+    ///   - create: 创建时间（时间戳秒）
+    ///   - lastUpdate: 最新修改时间（时间戳秒）
     ///   - isFavourite: 是否喜欢
     ///   - sourceType: 来源
     ///   - meshUUID: mesh网络uuid
-    init(name: String, id: String, siteId: String, imageId: Int = 0, create: String, lastUpdate: String? = nil, isFavourite: Bool, sourceType: DataSourceType, meshUUID: String) {
+    init(name: String, id: String, siteId: String, imageId: Int = 0, create: String, lastUpdate: String? = nil, isFavourite: Bool, sourceType: DataSourceType, meshUUID: String, meshNetworkId: String) {
         self.name = name
         self.id = id
         self.siteId = siteId
@@ -76,10 +88,11 @@ class SpaceData: Copyable {
         self.sourceType = sourceType
         self.isFavourite = isFavourite
         self.meshUUID = meshUUID
+        self.meshNetworkId = meshNetworkId
     }
     
     func copy() -> Self {
-        let space = SpaceData(name: self.name, id: self.id, siteId: self.siteId, imageId: self.imageId, create: self.create, lastUpdate: self.lastUpdate, isFavourite: self.isFavourite, sourceType: self.sourceType, meshUUID: self.meshUUID)
+        let space = SpaceData(name: self.name, id: self.id, siteId: self.siteId, imageId: self.imageId, create: self.create, lastUpdate: self.lastUpdate, isFavourite: self.isFavourite, sourceType: self.sourceType, meshUUID: self.meshUUID, meshNetworkId: self.meshNetworkId)
         space.deviceCount = self.deviceCount
         space.switchesCount = self.switchesCount
         space.luminairesCount = self.luminairesCount

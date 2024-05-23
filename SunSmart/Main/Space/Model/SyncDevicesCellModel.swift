@@ -41,95 +41,38 @@ class SyncCellModel: NSObject {
 /// 操作类型
 enum DeviceOperationType {
     
-    /// 完成操作处理
-    func finneshHandle() {
-        let meshUUID = MeshNetworkManager.instance.meshNetwork?.uuid.uuidString
+    /// 操作是否成功
+    var isSuccessful: Bool {
+        
         switch self {
         case .delete(let node, let type):
             switch type {
-            case .group(let group): // 节点退出组
-                node.unsubscribe(from: group)
-            case .scene(let sceneId, _): // 删除场景
-                if let scene = MeshNetworkManager.instance.meshNetwork?.scenes.first(where: { $0.number == sceneId }) {
-                    scene.remove(node: node)
-                    node.sceneDatas.removeValue(forKey: sceneId)
-                    if let uuid = meshUUID {
-                        SceneExecuteData.deleteData(meshUUID: uuid, address: node.primaryUnicastAddress, sceneId: Int(sceneId))
-                    }
-                    // 组对应场景数据是否待删除
-                    if let group = node.group, let groupSceneData = group.info.bindSceneDatas[sceneId], groupSceneData.state == .waitDelete {
-                        // 组内设备已删除对应场景缓存
-                        if !group.nodes.contains(where: { $0.sceneDatas[sceneId] != nil }) {
-                            group.info.bindSceneDatas.removeValue(forKey: sceneId)
-                            // 设备加入组，组加入场景，场景加入日程 Node->Group->Scene->Schedule
-                            // 场景加入日程后关联场景的组也加入日程，场景移出组后吧组间接关联的日程删除
-                            group.info.bindSchedules.removeAll(where: { groupSchedule in scene.info.bindSchedules.contains(where: { $0.id == groupSchedule.id }) })
-                            if let uuid = meshUUID { // 删除组对应的场景数据缓存
-                                scene.info.groups.removeAll(where: { $0.address.address == group.address.address })
-                                SceneExecuteData.deleteData(meshUUID: uuid, address: group.address.address, sceneId: Int(sceneId))
-                            }
-                        }
-                    }
-                }
-            case .schedule(let schedule): // 删除日程
-                node.scheduleDatas.removeValue(forKey: schedule.id)
-                node.scheduleIds.removeAll(where: { $0 == schedule.id })
-                if let uuid = meshUUID {
-                    Node.deleteSchedule(meshUUID: uuid, address: node.primaryUnicastAddress, scheduleId: schedule.id)
-                    
-                    var isSaveSchedule = false
-                    // 判断组是否因为此设备而无法从日程中删除，设备删除后组也从日程中删除
-                    if let group = schedule.needDeleteGroups.first(where: { $0.nodes.contains(node) }), !group.nodes.contains(where: { $0.scheduleDatas[schedule.id] != nil }) {
-                        schedule.needDeleteGroups.removeAll(where: { $0.address.address == group.address.address })
-                        
-                        isSaveSchedule = true
-                    }
-                    // 判断场景是否因为此设备无法从日程中删除，设备删除后场景也从日程中删除
-                    if let scene = schedule.needDeleteScenes.first(where: { $0.info.groups.contains(where: { $0.nodes.contains(node) }) }), !scene.info.groups.contains(where: { $0.nodes.contains(where: { $0.scheduleDatas[schedule.id] != nil }) }) {
-                        schedule.needDeleteScenes.removeAll(where: { $0.number == scene.number })
-                        
-                        isSaveSchedule = true
-                    }
-                    if schedule.needDeleteNodes.contains(node) {
-                        schedule.needDeleteNodes.removeAll(where: { $0.primaryUnicastAddress == node.primaryUnicastAddress })
-                        isSaveSchedule = true
-                    }
-                    
-                    if isSaveSchedule {
-                        schedule.save(meshUUID: uuid)
-                    }
-                }
-            case .profile:
-                if let uuid = meshUUID {
-                    node.saveNodeProfile(meshUUID: uuid)
-                }
+            case .scene(let sceneId, _):
+                return !node.sceneExecuteDatas.contains(where: { $0.sceneNumber == sceneId })
+            case .schedule(let schedule):
+                return node.schedulerActions[schedule.id] == nil || !node.schedulerActions[schedule.id]!.isValid
+            case .group(let group):
+                return node.group != group
+            case .profile(let type):
+                return type.isSuccessful(node: node)
             case .enOceanSwitch:
-                node.deleteEnOceanSwitch()
+                return node.enOceanMacAddress == nil
             }
         case .configuration(let node, let type):
             switch type {
-            case .group(let group): // 节点加入组
-                node.subscribe(to: group)
-            case .scene(let sceneId, let executeData): // 添加/同步场景
-                if let scene = MeshNetworkManager.instance.meshNetwork?.scenes.first(where: { $0.number == sceneId }) {
-                    scene.add(address: node.primaryUnicastAddress)
-                    node.sceneDatas.updateValue(executeData!, forKey: sceneId)
-                    if let uuid = meshUUID {
-                        SceneExecuteData.save(meshUUID: uuid, address: node.primaryUnicastAddress, sceneId: Int(sceneId), sceneData: executeData!)
-                    }
+            case .scene(let sceneId, let sceneData):
+                guard sceneData != nil, let nodeScene = node.sceneExecuteDatas.first(where: { $0.sceneNumber == sceneId }) else {
+                    return false
                 }
-            case .schedule(let schedule): // 添加日程
-                node.scheduleDatas.updateValue(schedule.schedulerEntry, forKey: schedule.id)
-                node.scheduleIds.append(schedule.id)
-                if let uuid = meshUUID {
-                    Node.saveSchedule(meshUUID: uuid, address: node.primaryUnicastAddress, scheduleId: schedule.id, entry: schedule.schedulerEntry)
-                }
-            case .profile:
-                if let uuid = meshUUID {
-                    node.saveNodeProfile(meshUUID: uuid)
-                }
+                return nodeScene == sceneData!
+            case .schedule(let schedule):
+                return node.schedulerActions[schedule.id] != nil && node.schedulerActions[schedule.id]! == schedule.schedulerEntry
+            case .group(let group):
+                return node.group == group && node.getSubscribeToGroupMessages(group).count == 0
+            case .profile(let type):
+                return type.isSuccessful(node: node)
             case .enOceanSwitch:
-                break
+                return true
             }
         }
         
@@ -215,18 +158,19 @@ enum DeviceOperationType {
                 // 设备是否支持场景model及亮度model
                 if let sceneSetupModel = node.sceneSetupModel, let lightnessModel = node.lightnessModel, let data = executeData {
                     // 设备是否支持色温model
-                    let lightness = Node.getLightness(lightness100: data.lightness, range: node.lightnessRange)
+                    let lightness = data.lightness
+                    //Node.getLightness(lightness100: data.lightness, range: node.lightnessRange)
                     if let ctlModel = node.ctlModel {
                         messageHandles.append(MeshMessageHandle(message: LightCTLSet(lightness: lightness, temperature: UInt16(data.cct), deltaUV: 0, transitionTime: .immediate, delay: 0), model: ctlModel))
                     }else { // 不支持则设置亮度
                         messageHandles.append(MeshMessageHandle(message: LightLightnessSet(lightness: lightness, transitionTime: .immediate, delay: 0), model: lightnessModel))
-                    }
+                    } 
                     // 保存场景
                     messageHandles.append(MeshMessageHandle(message: SceneStore(sceneId), model: sceneSetupModel))
                     if let vendorModel = node.sunricherVendorModel {
                         // 保存场景前禁用灯光控制
 //                        if node.lightLCProperty.lightControlEnabled {
-                            messageHandles.insert(MeshMessageHandle(message: SunricherVendorSet(code: .lightControlEnabled, parameters: .lightControlEnabled(enabled: false)), model: vendorModel), at: 0)
+                            messageHandles.insert(MeshMessageHandle(message: SunricherVendorSet(function: .lightControlEnabled(enabled: false)), model: vendorModel), at: 0)
 //                        }
                         // 保存完场景开启灯光控制
 //                        if !node.lightLCProperty.lightControlEnabled {
@@ -237,14 +181,14 @@ enum DeviceOperationType {
                 }
             case .schedule(let schedule):
                 // 设置时区
-                if node.timezome == nil, let timeModel = node.timeModel {
+                if schedule.enabled, let timeModel = node.timeModel {
                     messageHandles.append(MeshMessageHandle(message: Node.setLocalTimeMessage(), model: timeModel))
                 }
                 // 设置日程
                 if let schedulerSetupModel = node.schedulerSetupModel {
-                    let months: [Month] = schedule.enabled ? [.January,.February,.March,.April,.May,.June,.July,.August,.September,.October,.November,.December] : []
                     
-                    messageHandles.append(MeshMessageHandle(message: SchedulerActionSet(index: UInt8(schedule.id), entry: SchedulerRegistryEntry(year: .any(), month: .any(of: months), day: .any(), hour: .specific(hour: schedule.hour), minute: .specific(minute: schedule.minute), second: .specific(second: 0), dayOfWeek: .any(of: schedule.weekDays), action: schedule.action, transitionTime: .init(steps: UInt8(schedule.fadeTime), stepResolution: .seconds), sceneNumber: schedule.scene?.number ?? 0)), model: schedulerSetupModel))
+                    let months: [Month] = [.January,.February,.March,.April,.May,.June,.July,.August,.September,.October,.November,.December]
+                    messageHandles.append(MeshMessageHandle(message: SchedulerActionSet(index: UInt8(schedule.id), entry: SchedulerRegistryEntry(year: .any(), month: .any(of: months), day: .any(), hour: .specific(hour: schedule.hour), minute: .specific(minute: schedule.minute), second: .specific(second: 0), dayOfWeek: .any(of: schedule.weekDays), action: schedule.enabled ? schedule.action : .noAction, transitionTime: .init(steps: UInt8(schedule.fadeTime), stepResolution: .seconds), sceneNumber: schedule.scene?.number ?? 0)), model: schedulerSetupModel))
                 }
             case .profile(let type): 
                 messageHandles.append(contentsOf: type.getMessageHandles(node: node))
@@ -337,7 +281,7 @@ enum ProfileType {
                     onPowerUp = .restore
                 case .definedLightLevel(let level):
                     onPowerUp = .default
-                    let lightness = Node.getLightness(lightness100: level)
+                    let lightness = Node.getLightness(lightness100: Int(level))
                     messageHandles.append(MeshMessageHandle(message: LightLightnessDefaultSet(lightness: lightness), model: lightnessSetupModel))
                 }
                 messageHandles.append(MeshMessageHandle(message: GenericOnPowerUpSet(state: onPowerUp), model: powerUpModel))
@@ -375,16 +319,7 @@ enum ProfileType {
 //            }
             
         case .adjustSpeed(let speed):
-            
-//            let range: ClosedRange<Int> = 0...1000
-//            let accuracyRange: ClosedRange<Int> = 0...100
-//            let value = Float(speed)
-//            
-//            let kid = 1 + Float(15) * Float(10) / 100.0
-//            let kiu = 1 + Float(32) * Float(10) / 100.0
-//            let kpd = Float(0)
-//            let kpu = Float(1)
-//            let accuracy = 5
+
             let data = Node.getLightRegulator(speed: speed)
             
             let kidMessage = LightLCPropertySet(of: .lightControlRegulatorKid, value: .coefficient(data.regulatorKid))
@@ -411,18 +346,22 @@ enum ProfileType {
             messageHandles.append(MeshMessageHandle(message: LightLCPropertySet(of: .lightControlTimeFadeStandbyAuto, value: .timeMillisecond24(UInt32(second * 1000))), model: lightLCSetupModel))
         case .manualOverrideTimeout(let enabled, let second):
             if let vendorModel = node.sunricherVendorModel {
-                messageHandles.append(MeshMessageHandle(message: SunricherVendorSet(code: .manualOverrideTimeout, parameters: .manualOverrideTimeout(enabled: enabled, state: .standby, interval: second)), model: vendorModel))
+                var interval = second
+                if second < UInt32.max {
+                    interval = min(interval * 1000, UInt32.max)
+                }
+                messageHandles.append(MeshMessageHandle(message: SunricherVendorSet(function: .manualOverrideTimeout(enabled: enabled, state: .standby, interval: interval)), model: vendorModel))
             }
         case .manualControl(let enabled):
             if let vendorModel = node.sunricherVendorModel {
-                messageHandles.append(MeshMessageHandle(message: SunricherVendorSet(code: .manualControlEnabled, parameters: .manualControlEnabled(enabled: enabled)), model: vendorModel))
+                messageHandles.append(MeshMessageHandle(message: SunricherVendorSet(function: .manualControlEnabled(enabled: enabled)), model: vendorModel))
             }
             
         case .powerOnState:
             break
         case .lightAutoAdujustEnabled(let enabled):
             if let vendorModel = node.sunricherVendorModel {
-                messageHandles.append(MeshMessageHandle(message: SunricherVendorSet(code: .lightAutoAdjustEnabled, parameters: .lightAutoAdjustEnabled(enabled: enabled)), model: vendorModel))
+                messageHandles.append(MeshMessageHandle(message: SunricherVendorSet(function: .lightAutoAdjustEnabled(enabled: enabled)), model: vendorModel))
             }
         case .sensorEnabled(let sensorModels, let group):
             let models = sensorModels.filter({ $0.modelIdentifier == .sensorServerModelId })
@@ -439,6 +378,60 @@ enum ProfileType {
             })
         }
         return messageHandles
+    }
+    
+    /// 判断是否设置成功
+    func isSuccessful(node: Node) -> Bool {
+        switch self {
+        case .sensorEnabled(let sensorModels, let group):
+           return !sensorModels.contains(where: { $0.publish?.publicationAddress != group.address })
+        case .sensorDisable(let sensorModels):
+            return !sensorModels.contains(where: { $0.publish?.publicationAddress != nil })
+        case .mode(let enabled):
+            return node.lightLCProperty.mode == enabled
+        case .occupancyMode(let enabled):
+            return node.lightLCProperty.occupancyMode == enabled
+        case .highLowEndTrim(let range):
+            let lightnessRange = Node.getLightness100(lightness: node.lightnessRange.lowerBound)...Node.getLightness100(lightness: node.lightnessRange.upperBound)
+            return lightnessRange == range
+        case .occupancyLevel(let value):
+            return node.lightLCProperty.lightnessOn == Node.getLightness(lightness100: value)
+        case .occupancyLux(let lux):
+            return node.lightLCProperty.luxLevelOn == UInt16(lux)
+        case .vacantLevel(let value):
+            return node.lightLCProperty.lightnessProlong == Node.getLightness(lightness100: value)
+        case .vacantLux(let lux):
+            return node.lightLCProperty.luxLevelProlong == UInt16(lux)
+        case .lightAutoAdujustEnabled(let enabled):
+            return node.lightLCProperty.lightAutoAdjustEnabled == enabled
+        case .adjustSpeed(let speed):
+            let data = Node.getLightRegulator(speed: speed)
+            return node.lightLCProperty.regulatorKid == data.regulatorKid && node.lightLCProperty.regulatorKiu == data.regulatorKiu && node.lightLCProperty.regulatorKpd == data.regulatorKpd && node.lightLCProperty.regulatorKpu == data.regulatorKpu
+        case .t1(let second):
+           return node.lightLCProperty.timeFadeOn == UInt32(min(second * 1000, 0xFFFFFF))
+        case .t2(let second):
+            return node.lightLCProperty.timeRunOn == UInt32(min(second * 1000, 0xFFFFFF))
+        case .t3(let second):
+            return node.lightLCProperty.timeFade == UInt32(min(second * 1000, 0xFFFFFF))
+        case .t4(let second):
+            return node.lightLCProperty.timeProlong == UInt32(min(second * 1000, 0xFFFFFF))
+        case .t5(let second):
+            return node.lightLCProperty.timeFadeStandbyAuto == UInt32(min(second * 1000, 0xFFFFFF))
+        case .manualOverrideTimeout(let enabled, let second):
+            return node.lightLCProperty.manualOverrideEnabled == enabled && node.lightLCProperty.manualOverrideTimeout == min(second != .max ? second * 1000 : second, UInt32.max)
+        case .manualControl(let enabled):
+            return node.lightLCProperty.manualControlMode == enabled
+        case .powerOnState(let state):
+            switch state {
+            case .off:
+                return node.powerUpState == .off
+            case .restore:
+                return node.powerUpState == .restore
+            case .definedLightLevel(let level):
+                return node.powerUpState == .default && node.defalutLightness == Node.getLightness(lightness100: Int(level))
+            }
+        }
+        
     }
     
     /// 传感器启用（启用后才能与接收传感器状态）
@@ -473,7 +466,7 @@ enum ProfileType {
     case t4(second: Int)
     /// 进入休眠阶段时间（s）
     case t5(second: Int)
-    /// 手动控制后延迟时间（期间内保存控制后状态） enabled：是否开启  second： 0xFFFFFFFF无限长 默认60s
+    /// 手动控制后延迟时间（期间内保存控制后状态） enabled：是否开启  second： 0xFFFFFFFF无限长 默认10min
     case manualOverrideTimeout(enabled: Bool, second: UInt32 = 600)
     /// 是否手动控制后进入感应状态
     case manualControl(enabled: Bool)
@@ -499,10 +492,16 @@ class SyncDevicesSectionModel {
         var models: [SyncCellModel] = []
         groups.forEach({
             models.append($0)
-            models.append(contentsOf: $0.deviceModels)
-//            $0.deviceModels.forEach({
+//            models.append(contentsOf: $0.deviceModels)
+            
+            $0.deviceModels.forEach({
+                models.append($0)
+                $0.steps.forEach({
+                    models.append($0)
+                    models.append(contentsOf: $0.tasks)
+                })
 //                models.append(contentsOf: $0.steps)
-//            })
+            })
         })
         
         devices.forEach({

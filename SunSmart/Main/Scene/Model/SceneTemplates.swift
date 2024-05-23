@@ -208,19 +208,19 @@ struct SceneMainTemplate {
                 self.imageId = 16
                 self.parameters = [
                     SceneParameter(lightness: 100, cct: 5500),
-                    SceneParameter(lightness: 60, cct: 5000)
+                    SceneParameter(lightness: 20, cct: 5500)
                 ]
             case .work:
                 self.title = "templates_work".localizedString
                 self.imageId = 12
                 self.parameters = [
-                    SceneParameter(lightness: 100, cct: 5500)
+                    SceneParameter(lightness: 100, cct: 5000)
                 ]
             case .vacant:
                 self.title = "templates_vacant".localizedString
                 self.imageId = 10
                 self.parameters = [
-                    SceneParameter(lightness: 10, cct: 5500)
+                    SceneParameter(lightness: 10, cct: 5000)
                 ]
             case .getOffWork: // 下班（办公室）
                 self.title = "templates_get_off_work".localizedString
@@ -230,7 +230,7 @@ struct SceneMainTemplate {
                 ]
             case .normal:
                 self.title = "templates_normal".localizedString
-                self.imageId = 12
+                self.imageId = 11
                 self.parameters = [
                     SceneParameter(lightness: 100, cct: 5000)
                 ]
@@ -303,7 +303,7 @@ struct SceneMainTemplate {
                 self.title = "templates_go_to_work".localizedString
                 self.imageId = 25
                 self.parameters = [
-                    SceneParameter(lightness: 10, cct: 5500)
+                    SceneParameter(lightness: 100, cct: 5000)
                 ]
             case .industryRest:
                 self.title = "templates_industry_break".localizedString
@@ -330,7 +330,7 @@ struct SceneMainTemplate {
                 self.title = "templates_regular".localizedString
                 self.imageId = 27
                 self.parameters = [
-                    SceneParameter(lightness: 10, cct: 5000)
+                    SceneParameter(lightness: 100, cct: 5000)
                 ]
             case .peakTraffic:
                 self.title = "templates_peak_traffic".localizedString

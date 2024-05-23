@@ -65,6 +65,8 @@ class BuoySliderView: UIView {
         slider.addTarget(self, action: #selector(sliderTouchDownAction), for: .touchDown)
         slider.addTarget(self, action: #selector(sliderTouchExitAction), for: .touchUpInside)
         slider.addTarget(self, action: #selector(sliderTouchExitAction), for: .touchCancel)
+        slider.addTarget(self, action: #selector(sliderTouchExitAction), for: .touchUpOutside)
+         
         addSubview(slider)
         slider.snp.makeConstraints { make in
 //            make.left.equalTo(SCRXFrom(67))

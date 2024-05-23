@@ -46,6 +46,7 @@ class Profile: Copyable {
                 var phasesTimeItems: [TimePickerData.TimeItem] = []
                 phasesTimeItems.append(TimePickerData.TimeItem(name: "5 sec", second: 5))
                 phasesTimeItems.append(TimePickerData.TimeItem(name: "10 sec", second: 10))
+                phasesTimeItems.append(TimePickerData.TimeItem(name: "30 sec", second: 30))
                 for i in 1...60 {
                     phasesTimeItems.append(TimePickerData.TimeItem(name: "\(i) min", second: i * 60))
                 }
@@ -320,7 +321,7 @@ class Profile: Copyable {
             case .vacancy_daylight:
                 return ("profile_vacancy_daylight".localizedString, "profile_vacancy_daylight", "profile_vacancy_daylight_desc".localizedString, [.luminaire, .lightSensor, .manualControl, .occupancySensor])
             case .occupancy:
-                return ("profile_occupancy".localizedString, "profile_occupancy", "profile_occupancy_desc".localizedString, [.luminaire, .lightSensor])
+                return ("profile_occupancy".localizedString, "profile_occupancy", "profile_occupancy_desc".localizedString, [.luminaire, .occupancySensor])
             case .vacancy:
                 return ("profile_vacancy".localizedString, "profile_vacancy", "profile_vacancy_desc".localizedString, [.luminaire, .occupancySensor, .manualControl])
             case .daylight:
@@ -346,7 +347,7 @@ class Profile: Copyable {
     
     /// 上电状态
     enum PowerUpState {
-        var rawValue: Int {
+        var rawValue: UInt8 {
             switch self {
             case .off:
                 return 254
@@ -356,7 +357,7 @@ class Profile: Copyable {
                 return level
             }
         }
-        init(rawValue: Int) {
+        init(rawValue: UInt8) {
             switch rawValue {
             case 0...100:
                 self = .definedLightLevel(rawValue)
@@ -372,7 +373,7 @@ class Profile: Copyable {
         /// 保持上次状态
         case restore
         /// 调节到具体亮度值 0~100
-        case definedLightLevel(_ level: Int)
+        case definedLightLevel(_ level: UInt8)
     }
     
     /// 名称
@@ -422,6 +423,10 @@ class Profile: Copyable {
         let t3 = 2
         let t4 = 600
         let t5 = 2
+        
+        if type == .daylight || type == .manualControl {
+            self.manualOverrideTimeout = .max
+        }
         
         switch type {
         case .occupancy_daylight, .vacancy_daylight, .daylight:

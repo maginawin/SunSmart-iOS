@@ -84,6 +84,7 @@ class DaylightSensorInstructionsHeaderView: UICollectionReusableView {
             
             let label = UILabel(text: data.name, textColor: SubText_Color, fontSize: 14, fontWeight: .light, fit: false)
             label.numberOfLines = 2
+            label.adjustsFontSizeToFitWidth = true
             itemView.addSubview(label)
             label.snp.makeConstraints { make in
                 make.left.equalTo(btn.snp.right).offset(SCRXFrom(8))

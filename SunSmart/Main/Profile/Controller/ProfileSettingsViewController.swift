@@ -133,6 +133,11 @@ class ProfileSettingsViewController: UIViewController {
             if item.itemType.data.calibrated, let group = self?.group, let sensorNode = group.info.ambientLightSensorNode, sensorNode.ambientLightSensorModel != nil {
                 switch item.itemType {
                 case .occupancyLux, .vacantLux, .taskLux:
+                    guard MeshLibManager.manager.isMeshNetworkConnected else {
+                        XWHUDManager.showTipHUD("device_notconnect_message".localizedString, isLineFeed: true)
+                        return
+                    }
+                    
                     item.showLoadingAnimation()
                     DispatchQueue.global().async {
                         MeshAPI.setGroupLightnessState(address: group.address.address, lightness: Node.getLightness(lightness100: value))
@@ -141,6 +146,8 @@ class ProfileSettingsViewController: UIViewController {
                             DispatchQueue.main.async {
                                 if lux != nil {
                                     item.value = Int(lux!)
+                                }else if let currentLux = sensorNode.daylightLux {
+                                    item.value = Int(currentLux)
                                 }
                                 item.hideLoadingAnimation()
                             }
@@ -182,8 +189,8 @@ class ProfileSettingsViewController: UIViewController {
                 switch self.selectProfile.powerUpState {
                 case .definedLightLevel(let level):
                     if !range.contains(data.occupancyLevel) { // 上电亮度不在亮度范围内
-                        let value = max(min(level, high), low)
-                        self.selectProfile.powerUpState = .definedLightLevel(value)
+                        let value = max(min(Int(level), high), low)
+                        self.selectProfile.powerUpState = .definedLightLevel(UInt8(value))
                         self.powerUpBehaviorView.powerState = self.selectProfile.powerUpState
                     }
                     self.powerUpBehaviorView.slider.limitRange = range
@@ -461,9 +468,11 @@ extension ProfileSettingsViewController: ProfileSettingsSphasesViewDelegate {
         case .occupancy_daylight, .vacancy_daylight, .daylight:
             // Occupancy sensing with daylight harvesting / Vacancy sensing with daylight harvesting / Daylight harvesting
             // TODO: 判断是否已校准
-//            showLevelSettings(type: .taskLux(lux: data.taskLevel, inputRange: data.lowEndTrim...data.highEndTrim, calibrated: true))
-            // 未校准
-            showLevelSettings(type: .taskLux(lux: data.taskLevel, calibrated: false))
+            if let sensorNode = group?.info.ambientLightSensorNode, sensorNode.ambientLightSensorModel != nil, sensorNode.sensorCalibrated {
+                showLevelSettings(type: .taskLux(lux: data.taskLevel, inputRange: data.lowEndTrim...data.highEndTrim, calibrated: true))
+            }else { // 未校准
+                showLevelSettings(type: .taskLux(lux: data.taskLevel, calibrated: false))
+            }
         default:
             // Occupancy sensing / Vacancy sensing / Manual control
             showLevelSettings(type: .taskLevel(level: data.taskLevel, inputRange: data.lowEndTrim...data.highEndTrim))

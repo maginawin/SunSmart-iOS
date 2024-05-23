@@ -37,7 +37,12 @@ class LightSensorCalibrationViewController: UIViewController {
         let profile = group.info.profile
         if profile.type == .occupancy_daylight || profile.type == .vacancy_daylight || profile.type == .daylight {
             // 75% * occupancyLux, 不小于100lx
-            self.minimunLux = max(Int(Float(profile.lightData.data.occupancyLevel) * 0.75), 100)
+            let data = profile.lightData.data
+            var value = max(data.occupancyLevel, data.vacantLevel)
+            if profile.type == .daylight {
+                value = data.taskLevel
+            }
+            self.minimunLux = max(Int(Float(value) * 0.75), 100)
         }
     }
     
@@ -127,9 +132,10 @@ class LightSensorCalibrationViewController: UIViewController {
     private func updateGroupLightSensor() {
         
         if let uuid = MeshNetworkManager.instance.meshNetwork?.uuid.uuidString {
+            let networkKey = MeshNetworkManager.instance.currentNetworkKey
             self.group.info.profile.adjustSpeed = self.calibrationView.adjustSpeed
-            self.group.info.save(meshUUID: uuid)
-            self.group.info.profile.save(meshUUID: uuid)
+            self.group.info.save()
+            self.group.info.profile.save()
         }
         NotificationCenter.default.post(name: .init(groupDataUpdateNotificationName), object: self.group)
     }
@@ -172,15 +178,16 @@ class LightSensorCalibrationViewController: UIViewController {
 //            self.group.info.ambientLightSensorNode = sensor
             // 更新profile调节速率
             self.group.info.profile.adjustSpeed = self.calibrationView.adjustSpeed
-            if let uuid = MeshNetworkManager.instance.meshNetwork?.uuid.uuidString {
-                sensor.saveNodeInfo(meshUUID: uuid)
-            }
+//            if let uuid = MeshNetworkManager.instance.meshNetwork?.uuid.uuidString {
+//                sensor.saveNodeInfo(meshUUID: uuid, networkKey: MeshNetworkManager.instance.currentNetworkKey)
+//            }
 //            self.updateGroupLightSensor()
             DispatchQueue.main.async {
                 self.sensorEnabled(sensor: sensor) {[weak self] result in
                     guard let self = self else { return }
                     sensor.selectState = result ? .switchOn : .switchOff
                     self.sensorSelectView.reloadSensorCell(sensor: sensor)
+//                    MeshAPI.sendMessage(message: ConfigRelaySet(count: 0, steps: 1), address: sensor.primaryUnicastAddress)
                     if result {
                         self.selectSensor = sensor
                         // 切换选中的传感器，更新缓存
@@ -197,8 +204,8 @@ class LightSensorCalibrationViewController: UIViewController {
             switch error {
             case .deviceNotsupport, .connectTimeout, .disconnect, .noResponse:
                 self.showConnectFailed()
-            case .ambientInstability:
-                self.showCalibrationFailed(message: "calibrating_failure".localizedString)
+            case .ambientInstability(let minLux, let maxLux):
+                self.showCalibrationFailed(message: "calibrating_failure".localizedString) //  + "min: \(minLux) max:\(maxLux)"
             case .lightNoEffect:
                 self.showCalibrationFailed(message: "checking_correct_failure".localizedString)
             }
@@ -241,9 +248,9 @@ class LightSensorCalibrationViewController: UIViewController {
                     DispatchQueue.main.async {
                         self?.updateConfiguringProgress(total: setLightNodes.count, successCount: successNodes.count, failedCount: failedNodes.count)
                     }
-                    if let uuid = MeshNetworkManager.instance.meshNetwork?.uuid.uuidString {
-                        node.saveNodeProfile(meshUUID: uuid)
-                    }
+//                    if let uuid = MeshNetworkManager.instance.meshNetwork?.uuid.uuidString {
+//                        node.saveNodeProfile(meshUUID: uuid, networkKey: MeshNetworkManager.instance.currentNetworkKey)
+//                    }
                     semaphore.signal()
                 }
                 if self.stopConfig { // 停止配置
@@ -327,6 +334,8 @@ class LightSensorCalibrationViewController: UIViewController {
             make.bottom.equalTo(SCRYFrom(-25))
         }
         
+        self.configurCompletedBtn = completedBtn
+        
         let failedBtn = UIButton(title: "\("failed:".localizedString) 0", titleSize: 14, titleWeight: .light, titleColor: TextBlack_Color, normalImageName: "calibration_failed_num")
         failedBtn.setImagePosition(position: .left, spacing: SCRXFrom(6))
         failedBtn.isUserInteractionEnabled = false
@@ -335,6 +344,7 @@ class LightSensorCalibrationViewController: UIViewController {
             make.right.equalTo(SCRXFrom(-28))
             make.bottom.equalTo(completedBtn)
         }
+        self.configurFailedBtn = failedBtn
         
         alertView.show()
         
@@ -398,7 +408,7 @@ class LightSensorCalibrationViewController: UIViewController {
     }
 
     /// 传感器禁用
-    private func sensorDisable(sensor: Node, result: ((Bool)->Void)?) {
+    private func sensorDisable(sensor: Node, lightConfig: Bool = true, result: ((Bool)->Void)?) {
         
         guard let ambientLightSensorModel = sensor.ambientLightSensorModel else {
             result?(false)
@@ -440,7 +450,9 @@ class LightSensorCalibrationViewController: UIViewController {
                 self.updateGroupLightSensor()
                 
                 result?(handle.isSuccessful)
-                self.configuring(lightNodes: self.group.nodes)
+                if lightConfig {
+                    self.configuring(lightNodes: self.group.nodes)
+                }
             }else {
                 result?(false)
             }
@@ -596,7 +608,7 @@ extension LightSensorCalibrationViewController: LightSensorCalibrationSelectView
         DispatchQueue.global().async {
             let semaphore = DispatchSemaphore(value: 0)
             if lastSelectSensorUnPublish, let sensor = lastSelectSensor {
-                self.sensorDisable(sensor: sensor) {[weak self] result in
+                self.sensorDisable(sensor: sensor, lightConfig: !selectSensorPublish) {[weak self] result in
                     DispatchQueue.main.async {
                         sensor.selectState = result ? .switchOff : .switchOn
                         view.reloadSensorCell(sensor: sensor)

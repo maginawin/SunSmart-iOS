@@ -28,6 +28,8 @@ class GroupAddViewController: UIViewController {
     private var selectImageIndex: Int = 0
     private var dataSource: [(type: SourceType, name: String)] = []
     
+    private var headerView: GroupAddHeaderView?
+    
     private var name: String?
     
     let space: SpaceData
@@ -44,6 +46,8 @@ class GroupAddViewController: UIViewController {
         .init(type: .manualControl)
     ]
     private var selectProfile: Profile!
+    /// 创建完成回调
+    var addFinishedCallback: ((Group)->Void)?
     
     init(space: SpaceData, group: Group? = nil) {
         self.space = space
@@ -60,7 +64,7 @@ class GroupAddViewController: UIViewController {
 
         view.backgroundColor = Background_Color
         
-        if presentationController != nil {
+        if presentingViewController != nil {
             navigationItem.rightBarButtonItem = UIBarButtonItem(image: UIImage(named: "close")?.withRenderingMode(.alwaysOriginal), style: .done, target: self, action: #selector(close))
         }
         navigationController?.setNavigationBarBackgroundColor(color: .clear)
@@ -81,7 +85,7 @@ class GroupAddViewController: UIViewController {
             selectProfile = group.info.profile
             doneBtn.setTitle("done".localizedString, for: .normal)
         }else {
-            name = space.getNextGroupName()
+            name = MeshNetworkManager.instance.getNextGroupName()
             title = "create_group".localizedString
             selectProfile = profiles.first!
         }
@@ -93,8 +97,15 @@ class GroupAddViewController: UIViewController {
 //        nameField.text = name
     }
     
+    deinit {
+        // 首次进入引导创建流程，手动退出后停止配置
+        if space.isConfiguring && group == nil {
+            space.isConfiguring = false
+        }
+    }
+    
     @objc private func close() {
-        if presentationController != nil {
+        if presentingViewController != nil {
             dismiss(animated: true)
         }else {
             navigationController?.popViewController(animated: true)
@@ -108,12 +119,15 @@ class GroupAddViewController: UIViewController {
     @objc private func doneBtnClick() {
         
         guard let name = self.name, !name.isAllInputTextEmpty() else {
+//            showEmptyState
+            headerView?.showEmptyState()
             return
         }
         
         if self.group != nil { // 编辑
             self.group?.name = name
-            _ = MeshNetworkManager.instance.save()
+            self.group?.save()
+//            _ = MeshNetworkManager.instance.save()
             finnished()
             close()
             NotificationCenter.default.post(name: .init(groupDataUpdateNotificationName), object: self.group!)
@@ -121,16 +135,21 @@ class GroupAddViewController: UIViewController {
         }else { // 新增
             
             MeshAPI.createGroup(name: name) {[weak self] group in
+//                MeshNetworkManager.instance.groups.append(group)
                 guard let self = self else { return }
                 self.group = group
                 XWHUDManager.showSuccessTipHUD("done!".localizedString)
                 self.finnished()
                 DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {[weak self] in
                     guard let self = self else { return }
-                    let memberVc = GroupMembersViewController(space: self.space, group: group)
-                    memberVc.isAddDevices = true
-                    self.navigationController?.pushViewController(memberVc, animated: true)
-                    
+                    if self.addFinishedCallback != nil {
+                        self.addFinishedCallback?(group)
+                        close()
+                    }else {
+                        let memberVc = GroupMembersViewController(space: self.space, group: group)
+                        memberVc.isAddDevices = true
+                        self.navigationController?.pushViewController(memberVc, animated: true)
+                    }
                     NotificationCenter.default.post(name: .init(groupsRefreshNotificationName), object: nil)
 //                    self.navigationController?.removeVc(vc: self)
                 }
@@ -145,18 +164,18 @@ class GroupAddViewController: UIViewController {
     
     private func finnished() {
         
-        guard let name = self.name, let group = self.group else {
+        guard let group = self.group else {
             close()
             return
         }
         
         let source = self.dataSource[self.selectImageIndex]
-        let groupInfo = GroupInfo(address: group.address.address, name: name, imageId: self.selectImageIndex + 1, imageText: source.type == .text ? source.name : nil)
+        let groupInfo = GroupInfo(address: group.address.address, imageId: self.selectImageIndex + 1, imageText: source.type == .text ? source.name : nil)
         groupInfo.profile = self.selectProfile
-        groupInfo.save(meshUUID: space.meshUUID)
+        groupInfo.save()
         group.info = groupInfo
         // 保存配置数据
-        self.selectProfile.save(meshUUID: self.space.meshUUID)
+        self.selectProfile.save()
 //        self.doneCallback?(group)
     }
     
@@ -300,6 +319,7 @@ extension GroupAddViewController: UICollectionViewDataSource, UICollectionViewDe
         }else {
             header.profileBtn.setTitle(selectProfile.type.instruction.name, for: .normal)
         }
+        headerView = header
         return header
     }
     
@@ -324,17 +344,17 @@ extension GroupAddViewController: GroupAddHeaderViewDelegate {
     /// - Returns: 返回错误提示（可选）
     func view(_ view: GroupAddHeaderView, nameEditChanged name: String) -> String? {
         if name.count > 32 {
-            self.doneBtn.isEnabled = false
+//            self.doneBtn.isEnabled = false
             return "text_length_exceeded".localizedString
-        }else if self.space.isGroupTautonym(name: name) && name != self.group?.name {
-            self.doneBtn.isEnabled = false
+        }else if MeshNetworkManager.instance.isGroupTautonym(name: name) && name != self.group?.name {
+//            self.doneBtn.isEnabled = false
             return "name_already_exists".localizedString
         }
-        if name.count > 0 && !name.isAllInputTextEmpty() {
-            self.doneBtn.isEnabled = true
-        }else {
-            self.doneBtn.isEnabled = false
-        }
+//        if name.count > 0 && !name.isAllInputTextEmpty() {
+//            self.doneBtn.isEnabled = true
+//        }else {
+//            self.doneBtn.isEnabled = false
+//        }
         self.name = name
         return nil
     }

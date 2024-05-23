@@ -43,7 +43,7 @@ class DeviceInformationViewController: UIViewController {
     /// 设备数据
     private func setupDeviceInfoDataSource() {
         
-        let messageColor = RGB(13, 14, 28, 0.5)
+//        let messageColor = RGB(13, 14, 28, 0.5)
         
         let nameModel = CustomCellModel(title: "name".localizedString, content: node.name, style: .none)
         
@@ -115,7 +115,7 @@ extension DeviceInformationViewController: UITableViewDataSource, UITableViewDel
         case .group:
             headerView.titleLabel.text = "group".localizedString
             headerView.contentLabel.isHidden = false
-            headerView.contentLabel.text = node.group?.info.name ?? node.group?.name ?? "device_not_added_group".localizedString
+            headerView.contentLabel.text = node.group?.name ?? "device_not_added_group".localizedString
         case .scene:
             headerView.titleLabel.text = "scene".localizedString
             if node.scenes.count > 0 {
@@ -185,19 +185,19 @@ extension DeviceInformationViewController: UITableViewDataSource, UITableViewDel
         }else {
             let scene = node.scenes[indexPath.row]
             cell.cellStyle = .none
-            cell.titleLabel.text = scene.info.name ?? scene.name
+            cell.titleLabel.text = scene.name
             cell.titleLabel.textColor = TextBlack_Color.withAlphaComponent(0.5)
             cell.titleLabel.font = UIFont.systemFont(ofSize: SCRYFrom(14), weight: .light)
             //                Font_Medium_Size(SCRYFrom(14))
-            if let sceneData = node.sceneDatas[scene.number] {
+            if let sceneData = node.sceneExecuteDatas.first(where: { $0.sceneNumber == scene.number }) {
                 if sceneData.lightness == 0 {
                     cell.contentLabel.text = "off".localizedString
                 }else {
                     if node.ctlModel != nil {
                         let cct100 = Node.getTemperature100(temperature: UInt16(sceneData.cct), range: node.lightCTLTemperatureRange ?? node.defalutLightCTLTemperatureRange)
-                        cell.contentLabel.text = "\("brightness".localizedString)-\(sceneData.lightness)%.\("cct".localizedString)-\(cct100)%"
+                        cell.contentLabel.text = "\("brightness".localizedString)-\(Node.getLightness100(lightness: sceneData.lightness))%.\("cct".localizedString)-\(cct100)%"
                     }else {
-                        cell.contentLabel.text = "\("brightness".localizedString)-\(sceneData.lightness)%."
+                        cell.contentLabel.text = "\("brightness".localizedString)-\(Node.getLightness100(lightness: sceneData.lightness))%."
                     }
                 }
             }

@@ -223,7 +223,7 @@ extension ScheduleGroupsView: UICollectionViewDataSource, UICollectionViewDelega
     func collectionView(_ collectionView: UICollectionView, cellForItemAt indexPath: IndexPath) -> UICollectionViewCell {
         let cell = collectionView.dequeueReusableCell(withReuseIdentifier: "cell", for: indexPath) as! ScheduleGroupsViewCell
         let group = groups[indexPath.item]
-        cell.nameLabel.text = group.info.name ?? group.name
+        cell.nameLabel.text = group.name
         cell.selectedImageView.image = UIImage(named: selectGroups.contains(group) ? "device_select" : "device_select_un")
         if group.nodes.isEmpty || !group.nodes.contains(where: { $0.state }) {
 //            cell.onoffBtn.isEnabled = false

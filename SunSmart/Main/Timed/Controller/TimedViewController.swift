@@ -60,7 +60,7 @@ class TimedViewController: UIViewController {
 //            schedules.append(schedule)
 //        }
         
-        footerView.countBtn.setTitle("\(space.schedules.count)/16", for: .normal)
+        footerView.countBtn.setTitle("\(MeshNetworkManager.instance.schedules.count)/16", for: .normal)
         
         addNotification()
     }
@@ -97,7 +97,7 @@ class TimedViewController: UIViewController {
             }else {
                 self.refreshData = true
             }
-            self.space.scheheduleCount = self.space.schedules.count
+            self.space.scheheduleCount = MeshNetworkManager.instance.schedules.count
             self.space.save()
         }
         
@@ -115,7 +115,7 @@ class TimedViewController: UIViewController {
         
         guard schedule.exitNodes.count > 0 else {
             schedule.enabled = enabled
-            schedule.save(meshUUID: self.space.meshUUID)
+            schedule.save()
             self.reloadCollectionItem(schedule: schedule)
             return
         }
@@ -141,7 +141,7 @@ class TimedViewController: UIViewController {
                     return
                 }
                 schedule.enabled = enabled
-                schedule.save(meshUUID: self.space.meshUUID)
+                schedule.save()
                 self.reloadCollectionItem(schedule: schedule)
                 self.dismiss(animated: true)
             }
@@ -155,7 +155,7 @@ class TimedViewController: UIViewController {
     
     private func updateUI() {
   
-        footerView.countBtn.setTitle("\(space.schedules.count)/16", for: .normal)
+        footerView.countBtn.setTitle("\(MeshNetworkManager.instance.schedules.count)/16", for: .normal)
         
         updateEmptyUI()
         
@@ -165,7 +165,7 @@ class TimedViewController: UIViewController {
     
     private func updateEmptyUI() {
         
-        if space.schedules.isEmpty {
+        if MeshNetworkManager.instance.schedules.isEmpty {
             scheduleCollectionView.showEmptyDataView(title: "no_schedules".localizedString, tipText: "no_schedules_message".localizedString, position: .center, bottomMargin: SCRYFit(27))
         }else {
             scheduleCollectionView.hideEmptyDataView()
@@ -173,7 +173,7 @@ class TimedViewController: UIViewController {
     }
     
     private func reloadCollectionItem(schedule: Schedule) {
-        if let index = space.schedules.firstIndex(where: {$0.id == schedule.id}) {
+        if let index = MeshNetworkManager.instance.schedules.firstIndex(where: {$0.id == schedule.id}) {
             CATransaction.setDisableActions(true)
             scheduleCollectionView.reloadItems(at: [IndexPath(row: index, section: 0)])
             CATransaction.commit()
@@ -231,12 +231,12 @@ class TimedViewController: UIViewController {
 extension TimedViewController: UICollectionViewDataSource, UICollectionViewDelegateFlowLayout {
     
     func collectionView(_ collectionView: UICollectionView, numberOfItemsInSection section: Int) -> Int {
-        return space.schedules.count
+        return MeshNetworkManager.instance.schedules.count
     }
     
     func collectionView(_ collectionView: UICollectionView, cellForItemAt indexPath: IndexPath) -> UICollectionViewCell {
         let cell = collectionView.dequeueReusableCell(withReuseIdentifier: "cell", for: indexPath) as! SchedulesViewCell
-        let schedule = space.schedules[indexPath.item]
+        let schedule = MeshNetworkManager.instance.schedules[indexPath.item]
         cell.schedule = schedule
         cell.enabledActionCallback = {[weak self] enabled in
             self?.setScheduleEnabled(schedule: schedule, enabled: enabled)
@@ -247,13 +247,13 @@ extension TimedViewController: UICollectionViewDataSource, UICollectionViewDeleg
     func collectionView(_ collectionView: UICollectionView, layout collectionViewLayout: UICollectionViewLayout, sizeForItemAt indexPath: IndexPath) -> CGSize {
         var itemW = collectionView.width - collectionView.contentInset.left - collectionView.contentInset.right - scheduleFlowLayout.sectionInset.left - scheduleFlowLayout.sectionInset.right
         itemW = CGFloat(floorf(Float(itemW) * 100) / 100.0)
-        let schedule = space.schedules[indexPath.item]
+        let schedule = MeshNetworkManager.instance.schedules[indexPath.item]
         
         return CGSize(width: itemW, height: schedule.enabled ? SCRYFrom(114) : SCRYFrom(64))
     }
     
     func collectionView(_ collectionView: UICollectionView, didSelectItemAt indexPath: IndexPath) {
-        let schedule = space.schedules[indexPath.item]
+        let schedule = MeshNetworkManager.instance.schedules[indexPath.item]
         
         let vc = ScheduleAddViewController(space: space, schedule: schedule)
         present(NavigationViewController(rootViewController: vc), animated: true)
@@ -265,7 +265,7 @@ extension TimedViewController: SpaceFunctionFooterViewDelegate {
     
     /// 点击添加回调
     func functionDidClickAdd(view: SpaceFunctionFooterView) {
-        guard self.space.schedules.count < 16 else { return }
+        guard MeshNetworkManager.instance.schedules.count < 16 else { return }
         
         let vc = ScheduleAddViewController(space: space)
         present(NavigationViewController(rootViewController: vc), animated: true)

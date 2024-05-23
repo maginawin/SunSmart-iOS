@@ -18,9 +18,11 @@ class GroupMembersViewController: UIViewController {
     var isAddDevices: Bool = false
     
     private var nodes: [Node] = []
+    /// 配置过程是否去创建场景
+    private var configurationCreateScene: Bool = false
     
     let space: SpaceData
-    let group: Group
+    var group: Group
     
     
     init(space: SpaceData, group: Group) {
@@ -45,7 +47,10 @@ class GroupMembersViewController: UIViewController {
         if isAddDevices {
             navigationItem.leftBarButtonItem = UIBarButtonItem(image: UIImage(named: "navigation_back")?.withRenderingMode(.alwaysOriginal), style: .done, target: self, action: #selector(backAction))
             functionView.syncBtn.isHidden = true
-//            navigationItem.rightBarButtonItem?.title = "done".localizedString
+            navigationItem.rightBarButtonItem?.title = "done".localizedString
+            if space.isConfiguring {
+                title = group.name
+            }
         }
         
 //        nodes = space.nodes.filter({ $0.group == nil || $0.group?.address.address == group.address.address })
@@ -59,9 +64,9 @@ class GroupMembersViewController: UIViewController {
         super.viewWillAppear(animated)
         
 //        if space.nodes.filter({ $0.group == nil || $0.group?.address.address == group.address.address }).count != nodes.count || group.nodes.count != selectNodes.count {
-        nodes = space.nodes.filter({ $0.group == nil || $0.group?.address.address == group.address.address })
+        nodes = MeshNetworkManager.instance.realNodes.filter({ $0.group == nil || $0.group?.address.address == group.address.address })
         
-        selectNodes.append(contentsOf: nodes.filter({ $0.group?.address.address == group.address.address }).filter({ !selectNodes.contains($0) }))
+        selectNodes.append(contentsOf: nodes.filter({ $0.group?.address.address == group.address.address }).filter({ !selectNodes.contains($0) && $0.group?.address.address == group.address.address }))
 //        }
         functionView.syncBtn.isHidden = !group.nodes.contains(where: { $0.needSync })
         updateEmptyUI()
@@ -80,6 +85,14 @@ class GroupMembersViewController: UIViewController {
     override func viewDidDisappear(_ animated: Bool) {
         super.viewDidDisappear(animated)
         navigationController?.interactivePopGestureRecognizer?.isEnabled = true
+    }
+    
+    deinit {
+        if !configurationCreateScene { // 退出配置流程关闭配置中状态
+            if space.isConfiguring {
+                space.isConfiguring = false
+            }
+        }
     }
     
     @objc private func backAction() {
@@ -149,8 +162,44 @@ class GroupMembersViewController: UIViewController {
                     make.top.equalTo(emptyView.titleLabel.snp.bottom).offset(SCRYFrom(78))
 //                    make.width.equalTo(SCRXFrom(216))
                 })
+                
+                // 引导配置中
+                if isAddDevices && space.isConfiguring {
+                    
+                    let guidanceBtn = UIButton(title: "configuration_flow_guidance".localizedString, titleSize: 15, titleWeight: .light, titleColor: SubText_Color, normalImageName: "help", target: self, action: #selector(guidanceBtnAction))
+                    emptyView.addSubview(guidanceBtn)
+                    guidanceBtn.snp.makeConstraints { make in
+                        make.centerX.equalToSuperview()
+                        make.bottom.equalTo(-kSafeAreaBottomHeight - SCRYFit(10))
+                    }
+                    
+                    let createSceneBtn = UIButton(title: "create_scene".localizedString, titleSize: 16, titleWeight: .light, titleColor: Bar_Color, target: self, action: #selector(createSceneBtnAction))
+                    createSceneBtn.backgroundColor = .white
+                    createSceneBtn.layer.cornerRadius = SCRYFrom(10)
+                    createSceneBtn.layer.borderWidth = 0.5
+                    createSceneBtn.layer.borderColor = Bar_Color.cgColor
+                    emptyView.addSubview(createSceneBtn)
+                    createSceneBtn.snp.makeConstraints { make in
+                        make.bottom.equalTo(guidanceBtn.snp.top).offset(SCRYFit(-12))
+                        make.centerX.equalToSuperview()
+                        make.width.equalTo(SCRXFrom(216))
+                        make.height.equalTo(SCRYFrom(44))
+                    }
+                    
+                    let createGroupsBtn = UIButton(title: "create_more_groups".localizedString, titleSize: 16, titleWeight: .light, titleColor: Bar_Color, target: self, action: #selector(createGroupsBtnAction))
+                    createGroupsBtn.backgroundColor = .white
+                    createGroupsBtn.layer.cornerRadius = SCRYFrom(10)
+                    createGroupsBtn.layer.borderWidth = 0.5
+                    createGroupsBtn.layer.borderColor = Bar_Color.cgColor
+                    emptyView.addSubview(createGroupsBtn)
+                    createGroupsBtn.snp.makeConstraints { make in
+                        make.centerX.width.height.equalTo(createSceneBtn)
+                        make.bottom.equalTo(createSceneBtn.snp.top).offset(SCRYFit(-15))
+                    }
+                    
+                }
+                
             }
-            
             
             functionView.isHidden = true
         }else {
@@ -192,6 +241,42 @@ class GroupMembersViewController: UIViewController {
         }
     }
     
+    // MARK: - Action
+    /// 引导帮助
+    @objc private func guidanceBtnAction() {
+        
+        ConfigurationFlowGuidanceView().show()
+    }
+    /// 创建更多组
+    @objc private func createGroupsBtnAction() {
+        
+        guard MeshNetworkManager.instance.groups.count < 16 else {
+            XWHUDManager.showTipHUD("groups_overrun_message".localizedString, isLineFeed: true)
+            return
+        }
+        
+        let vc = GroupAddViewController(space: space)
+        space.isConfiguring = true
+        vc.addFinishedCallback = {[weak self] newGroup in
+            guard let self = self else { return }
+            self.group = newGroup
+            self.title = newGroup.name
+        }
+        present(NavigationViewController(rootViewController: vc), animated: true)
+    }
+    
+    /// 创建场景
+    @objc private func createSceneBtnAction() {
+        
+        self.configurationCreateScene = true
+        self.dismiss(animated: false)
+        space.isConfiguring = true
+//        let vc = SpaceNewCreationProcessController(space: space, showCreateScene: true)
+        let vc = SceneAddViewController(space: space)
+        UIViewController.getVisibleVc()?.present(NavigationViewController(rootViewController: vc), animated: true)
+        
+        NotificationCenter.default.post(name: .init(spaceMenuIndexChangeNotificaitonName), object: 2)
+    }
     
     /// 检查设备
     private func checkDevices() {
@@ -241,7 +326,7 @@ class GroupMembersViewController: UIViewController {
                         item.selectImageView.image = UIImage(named: "device_select_disable")
                     }
                 }else {
-                    item.selectImageView.isHidden = !(node.state || node.isKeybindComplete)
+                    item.selectImageView.isHidden = !(node.state && node.isKeybindComplete)
                     item.selectImageView.image = UIImage(named: "device_select_un")
                 }
 //                item.selectImageView.image = selectNodes.contains(node) ? UIImage(named: "device_select") : UIImage(named: "device_select_un")
@@ -264,9 +349,9 @@ class GroupMembersViewController: UIViewController {
                 if MeshLibManager.manager.bluetoothState == .poweredOn {
                     XWHUDManager.showSuccessTipHUD("complete!".localizedString)
                 }
-                if let uuid = MeshNetworkManager.instance.meshNetwork?.uuid.uuidString {
-                    node.saveNodeInfo(meshUUID: uuid)
-                }
+//                if let uuid = MeshNetworkManager.instance.meshNetwork?.uuid.uuidString {
+//                    node.saveNodeInfo(meshUUID: uuid, networkKey: MeshNetworkManager.instance.currentNetworkKey)
+//                }
                 if node.group?.address.address == group.address.address, !selectNodes.contains(node) {
                     selectNodes.append(node)
                 }
@@ -374,7 +459,7 @@ extension GroupMembersViewController: UICollectionViewDataSource, UICollectionVi
                 cell.selectImageView.image = UIImage(named: "device_select_disable")
             }
         }else {
-            cell.selectImageView.isHidden = !(node.state || node.isKeybindComplete)
+            cell.selectImageView.isHidden = !(node.state && node.isKeybindComplete)
             cell.selectImageView.image = UIImage(named: "device_select_un")
         }
         

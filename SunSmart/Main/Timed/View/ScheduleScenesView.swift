@@ -44,7 +44,7 @@ class ScheduleScenesView: UIView {
         super.init(frame: UIScreen.main.bounds)
         
         if let schedule = self.schedule {
-            if let scene = schedule.scene, scene.info.groups.contains(where: { $0.nodes.contains(where: { $0.scheduleDatas[schedule.id] == nil || !($0.scheduleDatas[schedule.id]! == schedule.schedulerEntry ) }) }) {
+            if let scene = schedule.scene, scene.info.groups.contains(where: { $0.nodes.contains(where: { $0.schedulerActions[schedule.id] == nil || !($0.schedulerActions[schedule.id]! == schedule.schedulerEntry ) }) }) {
                 syncScenes.append(scene)
             }
             syncScenes.append(contentsOf: schedule.needDeleteScenes)
@@ -195,10 +195,10 @@ extension ScheduleScenesView: UICollectionViewDataSource, UICollectionViewDelega
     func collectionView(_ collectionView: UICollectionView, cellForItemAt indexPath: IndexPath) -> UICollectionViewCell {
         let cell = collectionView.dequeueReusableCell(withReuseIdentifier: "cell", for: indexPath) as! ScheduleGroupsViewCell
         let scene = scenes[indexPath.item]
-        cell.nameLabel.text = scene.info.name ?? scene.name
+        cell.nameLabel.text = scene.name
         cell.selectedImageView.image = UIImage(named: selectScene == scene ? "schedule_target_select" : "schedule_target_select_un")
         cell.onoffBtn.isHidden = true
-        if let schedule = schedule {
+        if schedule != nil {
             // 是否需要同步日程
             if syncScenes.contains(scene) {
                 cell.failedImageView.isHidden = false

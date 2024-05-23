@@ -40,6 +40,9 @@ class SitesViewController: UIViewController {
         
 //        navigationController?.interactivePopGestureRecognizer?.delegate = self
         
+        let uuid = Keychain.getUUID()
+        print(uuid)
+        
         setupUI()
         setupData()
     }
@@ -105,41 +108,28 @@ class SitesViewController: UIViewController {
             self.navigationController?.pushViewController(AboutViewController(), animated: true)
             self.showMenu = true
         }
-            
+        
     }
     
     /// 添加场所
     @objc private func addSite() {
-        
-        
-//        ProfilePhasesTimePickerView(title: "T1", name: "Fade time", times: ["1S", "2S", "3S","4S","5S","6S","7S","8S","9S","10S"]) { selectRow in
-//            
-//            
-//            
-//        }.show()
-        // .occupancyAndVacantLux(occupanyLux: 500, vacantLux: 300, inputRange: 20...80)
-        // .taskLux(lux: 500, inputRange: 20...90)
-//        ProfileLevelSettingsView(levelType: .occupancyAndVacantLevel(occupanyLevel: 100, vacantLevel: 50, inputRange: 0...100)) { item, value in
-//        
-//            switch item.itemType {
-//            case .occupancyLux, .vacantLux, .taskLux:
-//                
-//                item.showLoadingAnimation()
-//                DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
-//                    item.value = Int(1500.0 * Float(value) / 100.0)
-//                    item.hideLoadingAnimation()
-//                }
-//                
-//            default:
-//                break
-//            }
-//            
-//        } settingsCallback: { result in
-//            print(result)
-//        }.show()
 
-//        let space = SiteData.loadAll()[0].spaces.last!
-//        space.meshManager?.loadExtensionData()
+//        if let uuid = UIDevice.current.identifierForVendor?.uuidString, let siteId = self.allSites.first?.id {
+//            let image = LBXScanWrapper.createCode(codeType: "CIQRCodeGenerator", codeString: "\(siteId)", size: CGSize(width: 200, height: 200), qrColor: .black, bkColor: .white)!
+//            let qrCodeImage = LBXScanWrapper.addImageLogo(srcImg: image, logoImg: UIImage(named: "launch_logo")!, logoSize: CGSize(width: 50, height: 50))
+//            
+//            let vc = UIActivityViewController(activityItems: [qrCodeImage], applicationActivities: nil)
+//            present(vc, animated: true)
+// 
+//            vc.completionWithItemsHandler = { (type, completion, _, error) in
+//                if completion {
+//                    vc.dismiss(animated: true)
+//                }
+//            }
+//            return
+//        }
+        
+        
         
         
 //        let vc = GroupSwitchsViewController(group: space.groups.first!)
@@ -152,7 +142,9 @@ class SitesViewController: UIViewController {
 //        // 创建一个场所
         let site = SiteData.add(name: SiteData.getNextSiteName())
         allSites.append(site)
-        allSitesTableView.insertRows(at: [IndexPath(row: allSites.count - 1, section: 0)], with: .none)
+        let insertPath = IndexPath(row: allSites.count - 1, section: 0)
+        allSitesTableView.insertRows(at: [insertPath], with: .none)
+        allSitesTableView.scrollToRow(at: insertPath, at: .bottom, animated: true)
         updateEmptyView()
         
 //        
@@ -165,8 +157,8 @@ class SitesViewController: UIViewController {
     private func editSite(site: SiteData) {
         
         var imageNames: [String] = []
-        for id in 1...24 {
-            imageNames.append("site_image\(id)")
+        for id in 1...28 {
+            imageNames.append("site_\(id)")
         }
         let vc = InfoEditViewController(name: site.name, imageNames: imageNames, selectImageIndex: max(site.imageId - 1, 0), columnNum: 4)
         vc.nameEditChangedCallback = { name in
@@ -459,7 +451,7 @@ extension SitesViewController: UITableViewDataSource, UITableViewDelegate {
             site = favouriteSites[indexPath.row]
         }
         cell.nameLabel.text = site.name
-        cell.iconImageView.image = UIImage(named: "site_image\(site.imageId)")
+        cell.iconImageView.image = UIImage(named: "site_\(site.imageId)")
 //        cell.timeLabel.text = String.dateConvert(timestamp: site.create, dateFormat: "M/d/yyyy hh:mm a")
         cell.spaceNumLabel.text = "\(site.spaces.count) \("spaces".localizedString)"
         cell.favoriteBtn.isSelected = site.isFavourite

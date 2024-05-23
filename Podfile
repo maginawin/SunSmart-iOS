@@ -11,6 +11,10 @@ target 'SunSmart' do
   pod 'SnapKit'
   # Bug捕捉
   pod 'Bugly'
+  # 网络请求
+#  pod 'Moya'
+  # Json
+#  pod 'SwiftyJson'
 #  pod 'MMDrawerController'
   
   # Pods for SunSmart

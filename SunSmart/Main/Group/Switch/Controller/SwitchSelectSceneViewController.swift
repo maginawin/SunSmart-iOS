@@ -164,7 +164,7 @@ extension SwitchSelectSceneViewController: UITableViewDataSource, UITableViewDel
         let cell = tableView.dequeueReusableCell(withIdentifier: "cell", for: indexPath) as! CustomTableViewCell
         let scene = scenes[indexPath.row]
         cell.cellStyle = .icon
-        cell.titleLabel.text = scene.info.name ?? scene.name
+        cell.titleLabel.text = scene.name
         cell.titleLabel.font = UIFont.systemFont(ofSize: SCRYFrom(14), weight: .light)
         var isSelect = false
         if tableView == sceneATableView {

@@ -252,9 +252,9 @@ class ScheduleDevicesView: UIView {
                 XWHUDManager.showSuccessTipHUD("complete!".localizedString)
             }
             guard let self = self else { return }
-            if let uuid = MeshNetworkManager.instance.meshNetwork?.uuid.uuidString {
-                node.saveNodeInfo(meshUUID: uuid)
-            }
+//            if let uuid = MeshNetworkManager.instance.meshNetwork?.uuid.uuidString {
+//                node.saveNodeInfo(meshUUID: uuid, networkKey: MeshNetworkManager.instance.currentNetworkKey)
+//            }
             
             if let index = self.nodes.firstIndex(of: node), let cell = collectionView.cellForItem(at: IndexPath(row: index, section: 0)) as? DevicesViewCell {
                 cell.device = node

@@ -31,7 +31,7 @@ class SceneAddDataListViewCell: UICollectionViewCell {
     
     weak var delegate: SceneAddDataListViewCellDelegate?
     
-    var sceneDatas: [SceneExecuteData]! {
+    var sceneDatas: [ExecuteSceneData]! {
         didSet {
             collectionView.reloadData()
         }
@@ -141,7 +141,7 @@ class SceneAddDataViewCell: UICollectionViewCell {
     var innerRaceView: UIView!
     
     
-    var sceneData: SceneExecuteData! {
+    var sceneData: ExecuteSceneData! {
         didSet {
             
             if sceneData.lightness > 0 {

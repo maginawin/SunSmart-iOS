@@ -66,6 +66,10 @@ class SyncDevicesProgressView: UIView {
 
     }
     
+    func reload() {
+        tableView.reloadData()
+    }
+    
     private func showAnimation() {
         shadeView.alpha = 0
         tableView.alpha = 0

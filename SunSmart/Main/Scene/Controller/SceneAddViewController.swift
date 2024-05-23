@@ -59,13 +59,15 @@ class SceneAddViewController: UIViewController {
     let space: SpaceData
     
     /// 场景执行数据list
-    private var sceneDatas: [SceneExecuteData] = []
+    private var sceneDatas: [ExecuteSceneData] = []
     private var sceneDataSelectIndex: Int?
     
     private var imageId: Int = 1
     private var name: String?
     
     private var groups: [Group] = []
+    /// 创建成功的场景
+    private var scene: Scene?
     
     init(space: SpaceData) {
         self.space = space
@@ -84,7 +86,7 @@ class SceneAddViewController: UIViewController {
         view.backgroundColor = Background_Color
         navigationItem.rightBarButtonItem = UIBarButtonItem(image: UIImage(named: "close")?.withRenderingMode(.alwaysOriginal), style: .done, target: self, action: #selector(close))
         
-        groups = space.groups
+        groups = MeshNetworkManager.instance.groups
         
         groups.forEach({
             $0.executeSceneData = nil
@@ -92,7 +94,7 @@ class SceneAddViewController: UIViewController {
             $0.sceneDataIndex = nil
         })
         
-        self.name = space.getNextSceneName()
+        self.name = MeshNetworkManager.instance.getNextSceneName()
         
         backBtn = UIButton(normalImageName: "navigation_back", target: self, action: #selector(backAction))
         backBtn.isHidden = true
@@ -108,13 +110,18 @@ class SceneAddViewController: UIViewController {
         addNotificationObserver()
     }
     
+    deinit {
+        if self.scene == nil && self.space.isConfiguring { // 未创建场景退出页面，停止引导配置流程
+            self.space.isConfiguring = false
+        }
+    }
     
     private func addNotificationObserver() {
         NotificationCenter.default.addObserver(forName: .init(groupsRefreshNotificationName), object: nil, queue: nil) {[weak self] _ in
             //            self?.refreshData = true
             guard let self = self else { return }
 //            self.collectionView.reloadData()
-            self.groups = space.groups
+            self.groups = MeshNetworkManager.instance.groups
             if self.showTemplateCreate {
                 self.collectionView?.reloadSections(IndexSet(integer: 1))
             }
@@ -154,7 +161,15 @@ class SceneAddViewController: UIViewController {
         
         hideKeyboard()
         if close {
-            dismiss(animated: true)
+            if self.createMode == .template && self.scene != nil && self.space.isConfiguring && UIViewController.getVisibleVc()?.isKind(of: SpaceViewController.classForCoder()) ?? false { // 创建成功并在引导配置流程中
+//                self.backHandle(close: true)
+                dismiss(animated: false)
+                // 跳转到连续创建页面
+                let vc = SpaceNewCreationProcessController(space: space, options: .scene)
+                UIViewController.getVisibleVc()?.present(NavigationViewController(rootViewController: vc), animated: true)
+            }else {
+                dismiss(animated: true)
+            }
         }else {
             showTemplateCreate = false
             updateUI()
@@ -190,7 +205,7 @@ class SceneAddViewController: UIViewController {
     private func createScene() {
         
 //        let selectGroups = groups.filter({ $0.isSelected })
-     
+        
         addSceneHandle()
         
         // 组里是否存在设备
@@ -208,6 +223,10 @@ class SceneAddViewController: UIViewController {
     
     private func addSceneHandle() {
         
+        guard let sceneName = name, sceneName.count > 0, !sceneName.isAllInputTextEmpty() else {
+            return
+        }
+        
         XWHUDManager.showCustomHUD(withMessage: nil, isWindow: false)
         MeshAPI.addOrEditScene(name: name) {[weak self] scene in
             XWHUDManager.hide()
@@ -216,23 +235,31 @@ class SceneAddViewController: UIViewController {
             let selectGroups = groups.filter({ $0.isSelected })
             selectGroups.forEach({
                 if let data = $0.executeSceneData {
-                    SceneExecuteData.save(meshUUID: self.space.meshUUID, address: $0.address.address, sceneId: Int(scene.number), sceneData: data)
-                    $0.info.bindSceneDatas.updateValue(data, forKey: scene.number)
+                    let executeData = SceneExecuteData(sceneNumber: scene.number, isOn: data.lightness > 0, lightness: Node.getLightness(lightness100: data.lightness), cct: UInt16(data.cct))
+                    $0.info.sceneExecuteDatas.append(executeData)
+                    $0.info.save()
+//                    SceneExecuteData.save(meshUUID: self.space.meshUUID, networkKey: self.space.meshNetworkKey, address: $0.address.address, sceneId: Int(scene.number), sceneData: data)
+//                    $0.info.bindSceneDatas.updateValue(data, forKey: scene.number)
                 }
             })
-            scene.info = .init(sceneId: scene.number, name: self.name, imageId: self.imageId, groups: selectGroups)
-            scene.info.save(meshUUID: self.space.meshUUID)
+            scene.info = SceneInfo(sceneId: scene.number, imageId: self.imageId)
+            scene.info.save()
             
             NotificationCenter.default.post(name: .init(scenesRefreshNotificationName), object: nil)
+            
+            self.scene = scene
             // 自定义创建场景
             if self.createMode == .custom {
                 XWHUDManager.showSuccessTipHUD("done!".localizedString)
 //                self.createSceneCallback?(scene)
-                
                 DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {[weak self] in
                     guard let self = self else { return }
-                    let vc = SceneSettingsViewController(space: self.space, scene: scene, mode: .members)
-                    self.navigationController?.pushViewController(vc, animated: true)
+//                    if self.space.isConfiguring { // 引导配置流程中
+//                        self.backHandle(close: true)
+//                    }else {
+                        let vc = SceneSettingsViewController(space: self.space, scene: scene, mode: .members)
+                        self.navigationController?.pushViewController(vc, animated: true)
+//                    }
                 }
                 
             }else { // 模板创建场景
@@ -320,7 +347,7 @@ class SceneAddViewController: UIViewController {
             
             if let subTemplate = selectSubTemplate {
                 sceneDatas = subTemplate.parameters.map({
-                    SceneExecuteData(lightness: $0.lightness, cct: $0.cct)
+                    ExecuteSceneData(lightness: $0.lightness, cct: $0.cct)
                 })
                 imageId = subTemplate.imageId
                 name = subTemplate.title
@@ -646,7 +673,7 @@ extension SceneAddViewController: UICollectionViewDataSource, UICollectionViewDe
         }else {
             let group = groups[indexPath.item]
             let groupCell = collectionView.dequeueReusableCell(withReuseIdentifier: "groupCell", for: indexPath) as! SceneAddGroupViewCell
-            groupCell.nameLabel.text = group.info.name
+            groupCell.nameLabel.text = group.name
             groupCell.selectBtn.isSelected = group.isSelected
             // 是否选中参数
 //            if sceneDataSelectIndex != nil {
@@ -800,7 +827,7 @@ extension SceneAddViewController: SceneAddCustomViewDelegate {
         if name.count > 32 {
             view.createBtn.isEnabled = false
             return "text_length_exceeded".localizedString
-        } else if space.isSceneTautonym(name: name) { // 重名
+        } else if MeshNetworkManager.instance.isSceneTautonym(name: name) { // 重名
             view.createBtn.isEnabled = false
             return "name_already_exists".localizedString
         }
@@ -839,7 +866,7 @@ extension SceneAddViewController: SceneAddTemplateInfoSectionViewDelegate {
         guard let subTemplate = self.selectSubTemplate else { return }
         // 场景数据是否修改
         let defalutSceneDatas = subTemplate.parameters.map({
-            SceneExecuteData(lightness: $0.lightness, cct: $0.cct)
+            ExecuteSceneData(lightness: $0.lightness, cct: $0.cct)
         })
         
         var valueEdit = false
@@ -882,7 +909,7 @@ extension SceneAddViewController: SceneAddTemplateInfoSectionViewDelegate {
         if name.count > 32 {
             saveBtn.isEnabled = false
             return "text_length_exceeded".localizedString
-        } else if space.isSceneTautonym(name: name) { // 重名
+        } else if MeshNetworkManager.instance.isSceneTautonym(name: name) { // 重名
             saveBtn.isEnabled = false
             return "name_already_exists".localizedString
         }
@@ -936,7 +963,7 @@ extension SceneAddViewController: SceneAddDataListViewCellDelegate {
     func cellDidAddAction(_ cell: SceneAddDataListViewCell) {
         hideKeyboard()
         SceneExecuteDataPickerView.show(showDelete: false) {[weak self] lightness, cct in
-            let data = SceneExecuteData(lightness: lightness, cct: cct)
+            let data = ExecuteSceneData(lightness: lightness, cct: cct)
             self?.sceneDatas.append(data)
             self?.collectionView.reloadItems(at: [IndexPath(item: 0, section: 0)])
         }
@@ -1037,6 +1064,22 @@ extension SceneAddViewController: MeshLibManagerDelegate {
     }
 }
 
+class ExecuteSceneData {
+    /// 亮度 0~100
+    var lightness: Int
+    /// 色温
+    var cct: Int
+    
+    init(lightness: Int, cct: Int) {
+        self.lightness = lightness
+        self.cct = cct
+    }
+    
+    init(data: SceneExecuteData) {
+        self.lightness = Node.getLightness100(lightness: data.lightness)
+        self.cct = Int(data.cct)
+    }
+}
   
 private extension Group {
     
@@ -1047,9 +1090,9 @@ private extension Group {
     static var sceneDataIndexKey = 3
     
     /// 赋值的场景数据
-    var executeSceneData: SceneExecuteData? {
+    var executeSceneData: ExecuteSceneData? {
         get {
-            objc_getAssociatedObject(self, &Group.executeSceneDataKey) as? SceneExecuteData
+            objc_getAssociatedObject(self, &Group.executeSceneDataKey) as? ExecuteSceneData
         }set {
             objc_setAssociatedObject(self, &Group.executeSceneDataKey, newValue, .OBJC_ASSOCIATION_RETAIN)
         }

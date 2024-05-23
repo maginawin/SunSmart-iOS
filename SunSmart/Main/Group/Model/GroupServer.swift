@@ -150,8 +150,7 @@ struct GroupServer {
                 // 删除组缓存数据
                 do {
                     try MeshNetworkManager.instance.meshNetwork?.remove(group: group)
-                    group.delete()
-                    _ = MeshNetworkManager.instance.save()
+                    group.deleteExtension()
                     successful?(group)
                 } catch  {
                     failed?(group)
@@ -189,24 +188,24 @@ struct GroupServer {
                 }
                 let messageHandles = group.getNodeSyncDataMessageHandles(node: node)
                 MeshProxyMessageCommand.shared.addMessage(messageHandles: messageHandles, progressBack: nil) { sendMessageHandle, responseMessage in
-                    switch responseMessage {
-                    case is SceneRegisterStatus: // 更新场景成功
-                        if let sceneMessage = sendMessageHandle.message as? SceneStore, let sceneData = group.info.bindSceneDatas[sceneMessage.scene] {
-                            node.sceneDatas.updateValue(sceneData, forKey: sceneMessage.scene)
-                        }
-                    case is SchedulerActionStatus: // 更新日程成功
-                        let message = (responseMessage as! SchedulerActionStatus)
-                        node.scheduleDatas.updateValue(message.entry, forKey: Int(message.index))
-                        break
-                    default:
-                        break
-                    }
+//                    switch responseMessage {
+//                    case is SceneRegisterStatus: // 更新场景成功
+//                        if let sceneMessage = sendMessageHandle.message as? SceneStore, let sceneData = group.info.sceneExecuteDatas.first(where: { $0.sceneNumber == sceneMessage.scene }) {
+//                            node.sceneDatas.updateValue(sceneData, forKey: sceneMessage.scene)
+//                        }
+//                    case is SchedulerActionStatus: // 更新日程成功
+//                        let message = (responseMessage as! SchedulerActionStatus)
+//                        node.scheduleDatas.updateValue(message.entry, forKey: Int(message.index))
+//                        break
+//                    default:
+//                        break
+//                    }
                 } failedBack: { messageHandle in
                     print("node send message failed \(messageHandle.message)")
                     
                 } finishedBack: { messageHandles in
                     // 本地化缓存
-                    node.save()
+//                    node.save()
                     DispatchQueue.main.async {
                         // 未设置完成
                         if messageHandles.contains(where: { !$0.isSuccessful }) {
@@ -267,24 +266,24 @@ extension Group {
         var messages: [MeshMessageHandle] = []
         // 设备中组关联的场景
        
-        let removeSceneDatas = self.info.bindSceneDatas.filter { (sceneId, _) in
-            return node.sceneDatas.keys.contains(where: { $0 == sceneId })
+        let removeSceneDatas = self.info.sceneExecuteDatas.filter { data in
+            return node.sceneExecuteDatas.contains(where: { $0.sceneNumber == data.sceneNumber })
         }
 //        self.info.bindSceneDatas.filter { groupSceneData in
 //            return node.bindSceneDatas.contains(where: { $0.sceneId == groupSceneData.sceneId })
 //        }
         // 设备删除组关联的场景
-        removeSceneDatas.forEach { (sceneId: SceneNumber, data: SceneExecuteData) in
+        removeSceneDatas.forEach { data in
             // 设备是否支持场景model
             if let sceneSetupModel = node.sceneSetupModel {
                 // 删除场景
-                messages.append(MeshMessageHandle(message: SceneDelete(sceneId), model: sceneSetupModel))
+                messages.append(MeshMessageHandle(message: SceneDelete(data.sceneNumber), model: sceneSetupModel))
             }
         }
         
         // 设备中组关联的日程
        let removeSchedules = self.info.bindSchedules.filter { schedule in
-            return node.scheduleDatas.contains(where: { Int($0.key) == schedule.id })
+           return node.schedulerActions.filter({ $0.value.isValid }).contains(where: { Int($0.key) == schedule.id })
         }
         // 设备删除日程
         removeSchedules.forEach { schedule in
@@ -324,17 +323,17 @@ extension Group {
         var messages: [MeshMessageHandle] = []
         
         // 设备绑定组添加的场景
-        self.info.bindSceneDatas.forEach { (sceneId: SceneNumber, data: SceneExecuteData) in
+        self.info.sceneExecuteDatas.forEach { data in
             // 设备是否支持场景model及亮度model
             if let sceneSetupModel = node.sceneSetupModel, let lightnessModel = node.lightnessModel {
                 // 设备是否支持色温model
-                let lightness = Node.getLightness(lightness100: data.lightness, range: node.lightnessRange)
+                let lightness = data.lightness
                 if let ctlModel = node.ctlModel {
                     var message: MeshMessage!
 //                    if ctlModel.publish?.publicationAddress.address == .allNodes { // 修改后等待主动上报
 //                        message = LightCTLSetUnacknowledged(lightness: lightness, temperature: UInt16(data.cct), deltaUV: 0, transitionTime: .immediate, delay: 0)
 //                    }else { // 不会上报设置ACK
-                        message = LightCTLSet(lightness: lightness, temperature: UInt16(data.cct), deltaUV: 0, transitionTime: .immediate, delay: 0)
+                        message = LightCTLSet(lightness: lightness, temperature: data.cct, deltaUV: 0, transitionTime: .immediate, delay: 0)
 //                    }
                     messages.append(MeshMessageHandle(message: message, model: ctlModel))
                 }else { // 不支持则设置亮度
@@ -347,12 +346,12 @@ extension Group {
                     messages.append(MeshMessageHandle(message: message, model: lightnessModel))
                 }
                 // 保存场景
-                messages.append(MeshMessageHandle(message: SceneStore(sceneId), model: sceneSetupModel))
+                messages.append(MeshMessageHandle(message: SceneStore(data.sceneNumber), model: sceneSetupModel))
                 
                 if let vendorModel = node.sunricherVendorModel {
                     // 保存场景前禁用灯光控制
 //                    if node.lightLCProperty.lightControlEnabled {
-                        messages.insert(MeshMessageHandle(message: SunricherVendorSet(code: .lightControlEnabled, parameters: .lightControlEnabled(enabled: false)), model: vendorModel), at: 0)
+                        messages.insert(MeshMessageHandle(message: SunricherVendorSet(function: .lightControlEnabled(enabled: false)), model: vendorModel), at: 0)
 //                    }
                     // 保存完场景开启灯光控制
 //                    if !node.lightLCProperty.lightControlEnabled {
@@ -364,12 +363,12 @@ extension Group {
         }
         // 设备需要新增/更新的日程
         let setSchedules = self.info.bindSchedules.filter { schedule in
-            !node.scheduleDatas.contains(where: { schedule.id == $0.key })
+            !node.schedulerActions.filter({ $0.value.isValid }).contains(where: { schedule.id == $0.key })
         }
         
         setSchedules.forEach { schedule in
             // 设置时区
-            if node.timezome == nil, let timeModel = node.timeModel {
+            if let timeModel = node.timeModel {
                 messages.append(MeshMessageHandle(message: Node.setLocalTimeMessage(), model: timeModel))
             }
             // 设置日程

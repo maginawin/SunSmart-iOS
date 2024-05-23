@@ -30,7 +30,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         window?.rootViewController = mainNavVc
         window?.makeKeyAndVisible()
         
-        SiteData.createDatabaseIfNotExit()
+        SunSmartDataManager.shared.initDatabase()
         XWHUDManager.configHUDType(.light)
         
         Bugly.start(withAppId: "fce1e870b0")
@@ -40,7 +40,6 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         if #available(iOS 15.0, *) {
             UITableView.appearance().sectionHeaderTopPadding = 0
         }
-
         return true
     }
 

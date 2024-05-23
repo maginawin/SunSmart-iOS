@@ -300,10 +300,10 @@
 "profile_vacancy_daylight_desc" = "A vacancy mode also automatically turns lights off when you are leave a room,but you need to manually turn them on when you walk into a room,the light level will maintain to a defined lux level.Vacancy sensing maximizes the energy savings from the sensor because it's not always necessary to turn lights on when you walk into a room.";
 
 "profile_occupancy" = "Occupancy sensing";
-"profile_occupancy_desc" = "A vacancy mode also automatically turns lights off when you are leave a room,but you need to manually turn them on when you walk into a room,the light level will maintain to a defined lux level.Vacancy sensing maximizes the energy savings from the sensor because it's not always necessary to turn lights on when you walk into a room.";
+"profile_occupancy_desc" = "An occupancy mode automatically turns lights on to a defined lux level when you enter a room，turns off when you leave,making this type of mode the most convenient,since you never have to touch the lighting controls.";
 
 "profile_vacancy" = "Vacancy sensing";
-"profile_vacancy_desc" = "An occupancy mode automatically turns lights on to a defined lux level when you enter a room，turns off when you leave,making this type of mode the most convenient,since you never have to touch the lighting controls.";
+"profile_vacancy_desc" = "A vacancy mode also automatically turns lights off when you are leave a room,but you need to manually turn them on when you walk into a room,the light level will maintain to a defined lux level.Vacancy sensing maximizes the energy savings from the sensor because it's not always necessary to turn lights on when you walk into a room.";
 
 "profile_daylight" = "Daylight harvesting (Closed loop)";
 "profile_daylight_desc" = "Daylight harvesting is a lighting control strategy used to maintain the required light level in the work area and reduce energy use.Luminaires adjust their light level automatically in response to changes in daylight.";
@@ -461,3 +461,44 @@
 "switch_proxy_exist" = "The kinetic switch has been linked by %@ and you cannot link to another switch.";
 "network_switch_proxy_exceed" = "Up to 16 switches, you can delete unnecessary switches and then add new ones.";
 "add_member" = "Add member";
+
+"switch_key_on" = "ON/AUTO";
+"switch_key_off" = "OFF";
+"switch_key_dim_up" = "Dim UP";
+"switch_key_dim_down" = "Dim DOWN";
+"switch_key_cooler" = "Cooler";
+"switch_key_warmer" = "Warmer";
+"switch_key_sceneA" = "Scene A";
+"switch_key_sceneB" = "Scene B";
+
+"configuration_flow_guidance" = "Configuration flow guidance";
+"name_empty" = "The name is empty";
+
+"guidance_off_site" = "Off-Site Setting";
+"guidance_on_site" = "On-Site Setting";
+"guidance_create_sites" = "Create Sites and Spaces";
+"guidance_create_groups" = "Create Groups and select profile";
+"guidance_create_groups_message" = "Groups are the basis for off-site presettings, based on which you can preset scenes, schedules and more";
+"guidance_create_scenes" = "Create scenes and pre-set scenes";
+"guidance_create_switchs" = "Create virtual switches and pre-set switchs";
+"guidance_create_schedules" = "Create schedules and pre-set schedules";
+"guidance_configuration" = "On-Site configuration";
+"guidance_configuration_message" = "Add the target device to the group";
+"guidance_switch_binding" = "Switch binding";
+"guidance_sensor_calibration" = "Light sensor calibration";
+"guidance_adjustment" = "Fine adjustment";
+"guidance_share" = "Share and finish";
+"create_more_groups" = "Create more groups";
+"create_scene" = "Create scene";
+"guidance_process" = "Guidance process";
+"create_more_scenes" = "Create more scenes";
+"create_schedule" = "Create schedule";
+"create_more_schedules" = "Create more schedules";
+"create_virtual_switch" = "Create virtual switch";
+"create_more_switch" = "Create more switch";
+"schedule_multiple_unselect_first" = "The setting is not complete.";
+"schedule_multiple_unselect_end" = "must be set.";
+"groups_overrun_message" = "The limit of 16 groups is exceeded, please delete unnecessary ones.";
+"scenes_overrun_message" = "The limit of 16 Scenes is exceeded, please delete unnecessary ones.";
+"schedules_overrun_message" = "The limit of 16 Schedules is exceeded, please delete unnecessary ones.";
+"create_virtual_switch_message" = "Oops! Under development, please click × in the upper right corner to exit. The switch can be created in the group's page.";

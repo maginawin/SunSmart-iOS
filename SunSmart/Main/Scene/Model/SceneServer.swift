@@ -59,7 +59,7 @@ struct SceneServer {
                 if let groupAddress = messageHandle.address, let group = deleteGroups.first(where: { $0.address.address == groupAddress }) {
                     if messageHandle.isSuccessful { // 全部删除完成
                         group.delete(sceneId: scene.number)
-                        scene.info.groups.removeAll(where: { $0.address.address == groupAddress })
+//                        scene.info.groups.removeAll(where: { $0.address.address == groupAddress })
                         successGroups.append(group)
                     }else { // 部分设备删除成功，设置组内场景数据为待删除状态
                         group.updateSceneState(sceneId: scene.number, state: .waitDelete)
@@ -85,9 +85,10 @@ struct SceneServer {
     static private func deleteSceneData(scene: Scene) throws {
         
         try MeshNetworkManager.instance.meshNetwork?.remove(scene: scene.number)
-        _ = MeshNetworkManager.instance.save()
+//        MeshNetworkManager.instance.scenes.removeAll(where: { $0.number == scene.number })
+//        _ = MeshNetworkManager.instance.save()
         // 删除场景扩展数据
-        scene.delete()
+        scene.deleteExtension()
     }
     
     

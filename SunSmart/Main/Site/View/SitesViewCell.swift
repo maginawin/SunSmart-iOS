@@ -73,7 +73,7 @@ class SitesViewCell: UITableViewCell {
             iconImageView.snp.makeConstraints { make in
                 make.left.equalTo(SCRXFrom(8))
                 make.centerY.equalToSuperview()
-                make.width.height.equalTo(SCRYFrom(44))
+                make.width.height.equalTo(SCRXFrom(44))
             }
             
             nameLabel = UILabel(text: "Frist Floor", textColor: TextBlack_Color, fontSize: 14, fontWeight: .light)

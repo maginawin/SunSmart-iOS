@@ -67,7 +67,7 @@ class SceneViewController: UIViewController {
     private func addNotification() {
         
         NotificationCenter.default.addObserver(forName: .init(sceneDataUpdateNotificationName), object: nil, queue: nil) {[weak self] _ in
-            self?.titleLabel.text = self?.scene.info.name ?? self?.scene.name
+            self?.titleLabel.text = self?.scene.name
             if self?.view.window != nil {
                 self?.updateUI()
             }else {
@@ -88,8 +88,8 @@ class SceneViewController: UIViewController {
             guard let self = self, let group = notification.object as? Group else { return }
 //            CATransaction.setDisableActions(true)
             if let index = self.scene.info.groups.firstIndex(of: group), let item = collectionView.cellForItem(at: IndexPath(item: index, section: 0)) as? SceneGroupsViewCell {
-                let data = group.info.bindSceneDatas[scene.number]
-                item.updateData(group: group, sceneData: data)
+                let data = group.info.sceneExecuteDatas.first(where: { $0.sceneNumber == self.scene.number })
+                item.updateData(group: group, sceneData: data != nil ? .init(data: data!) : nil)
             }else {
                 collectionView.reloadData()
             }
@@ -131,21 +131,20 @@ class SceneViewController: UIViewController {
     private func editScene() {
         
        
-        let vc = InfoEditViewController(name: scene.info.name ?? scene.name, imageNames: sceneImageNames, selectImageIndex: max(scene.info.imageId - 1, 0), columnNum: 4)
+        let vc = InfoEditViewController(name: scene.name, imageNames: sceneImageNames, selectImageIndex: max(scene.info.imageId - 1, 0), columnNum: 4)
         vc.title = "edit_scene".localizedString
         vc.itemRound = true
         vc.nameEditChangedCallback = {[weak self] name in
             guard let self = self else {
                 return false
             }
-            return self.space.isSceneTautonym(name: name) && name != self.scene.name
+            return MeshNetworkManager.instance.isSceneTautonym(name: name) && name != self.scene.name
         }
         vc.doneCallback = {[weak self] (name, imageId) in
             guard let self = self else { return }
             self.scene.name = name
-            self.scene.info.name = name
             self.scene.info.imageId = imageId + 1
-            self.scene.info.save(meshUUID: self.space.meshUUID)
+            self.scene.info.save()
             self.titleLabel.text = name
 //            self.sceneUpdateCallback?(self.scene)
             NotificationCenter.default.post(name: .init(scenesRefreshNotificationName), object: nil)
@@ -337,8 +336,8 @@ extension SceneViewController: UICollectionViewDataSource, UICollectionViewDeleg
     func collectionView(_ collectionView: UICollectionView, cellForItemAt indexPath: IndexPath) -> UICollectionViewCell {
         let cell = collectionView.dequeueReusableCell(withReuseIdentifier: "cell", for: indexPath) as! SceneGroupsViewCell
         let group = scene.info.groups[indexPath.item]
-        let data = group.info.bindSceneDatas[scene.number]
-        cell.updateData(group: group, sceneData: data)
+        let data = group.info.sceneExecuteDatas.first(where: { $0.sceneNumber == scene.number })
+        cell.updateData(group: group, sceneData: data != nil ? .init(data: data!) : nil)
         // 获取组是否需要同步
         if scene.needSyncGroups.contains(group) {
             cell.iconImageView.image = UIImage(named: "sync_failed")

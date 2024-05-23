@@ -55,6 +55,17 @@ class GroupAddHeaderView: UICollectionReusableView {
 //        profileBtn.setImagePosition(position: .right, spacing: 0)
     }
     
+    /// 未输入名称
+    func showEmptyState() {
+        if nameField.text == nil || nameField.text?.isAllInputTextEmpty() ?? true {
+            tipTextLabel.text = "name_empty".localizedString
+//            nameField.layer.borderColor = Red_Color.cgColor
+        }else {
+            tipTextLabel.text = nil
+//            nameField.layer.borderColor = RGB(151, 151, 151, 0.3).cgColor
+        }
+    }
+    
     @objc private func hideKeyboard() {
         endEditing(true)
     }
@@ -122,7 +133,7 @@ class GroupAddHeaderView: UICollectionReusableView {
             make.height.equalTo(SCRYFrom(40))
         }
         
-        tipTextLabel = UILabel(text: nil, textColor: Red_Color, fontSize: 12, fontWeight: .light)
+        tipTextLabel = UILabel(text: nil, textColor: Red_Color, fontSize: 13, fontWeight: .light)
         addSubview(tipTextLabel)
         tipTextLabel.snp.makeConstraints { make in
             make.left.equalTo(SCRXFrom(24))

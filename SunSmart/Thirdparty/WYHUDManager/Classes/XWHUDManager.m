@@ -87,6 +87,16 @@ static XWHUDManagerType kXWHUDManagerType = XWHUDManagerTypeDark;
 }
 
 + (void)showCustomHUDWithMessage:(nullable NSString*)message view:(UIView *)view afterDelay:(NSTimeInterval)afterSecond {
+//    // 判断同一个view弹出的加载框则复用，并按参数延时关闭
+//    for (UIView *subView in view.subviews) {
+//        if ([subView isKindOfClass:[WYProgressHUD class]]) {
+//            WYProgressHUD *hud = (WYProgressHUD *)subView;
+//            if ((hud.detailsLabel.text == nil && message == nil) || [hud.detailsLabel.text isEqualToString:message]) {
+//                [hud hideAnimated:YES afterDelay:afterSecond];
+//                return;
+//            }
+//        }
+//    }
     
     [self hide];
     

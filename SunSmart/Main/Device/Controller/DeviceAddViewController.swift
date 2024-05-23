@@ -81,6 +81,7 @@ class DeviceAddViewController: UIViewController {
 
         title = "add_device".localizedString
         view.backgroundColor = Background_Color
+        self.isModalInPresentation = true
         
         navigationBackBtn = UIButton(normalImageName: "navigation_back", target: self, action: #selector(backClick))
         navigationItem.leftBarButtonItem = UIBarButtonItem(customView: navigationBackBtn)
@@ -120,107 +121,16 @@ class DeviceAddViewController: UIViewController {
                 let unnamedNodes = addSuccessNodes.filter({ !($0.name?.contains("ID") ?? true) })
                 if unnamedNodes.count > 0 {
                     unnamedNodes.forEach({
-                        $0.name = self.space.getNextNodeName()
+                        $0.name = MeshNetworkManager.instance.getNextNodeName()
+                        $0.save()
                     })
-                    _ = self.space.meshManager?.save()
+//                    _ = MeshNetworkManager.instance.save()
                 }
                 self.deviceAddCallback?(self.addSuccessNodes)
             }
         // 关闭设置屏幕常亮
         UIApplication.shared.isIdleTimerDisabled = false
 //        }
-    }
-    
-    //MARK: - Test
-    
-    private func testAddDevice(device: ProvisioningDevice) {
-        
-        // 设备identify中添加不需要再闪烁
-        if device.addState == .identifyConnecting || device.addState == .identifyWait || device.addState == .failed || device.addState == .identifying {
-            if device.addState == .identifying {
-                device.identifyAttentionTimer = 0
-            }
-            if device == identifyDevice {
-//                if let bearer = identifyBearer { // 将identify连接的设备数据传入添加设备操作，避免二次连接
-//                    device.gattBearer = PBGattBearer(bearer: bearer)
-//                    stopDeviceIdentify(close: false)
-//                }else {
-                    stopDeviceIdentify()
-//                }
-            }
-        }
-       
-        device.addState = .wait
-        device.selectedState = .disabled
-        reloadDeviceState(device)
-        updateUIState()
-        
-        TestDeviceAddManager.manager.startAddDevices(addDeviceList: [device]) {[weak self] addDevice in
-            addDevice.addState = .addConnecting
-            self?.reloadDeviceState(addDevice)
-            self?.updateUIState()
-        } connectingBack: {[weak self] addDevice in
-            addDevice.addState = .adding
-            self?.reloadDeviceState(addDevice)
-            self?.updateUIState()
-        } addSuccessBack: {[weak self] addDevice in
-            
-            addDevice.addState = .success
-            self?.reloadDeviceState(addDevice)
-            self?.updateUIState()
-            guard let self = self else { return }
-            
-            if let node = self.space.testNodes.first(where: { $0.primaryUnicastAddress == addDevice.address }) {
-                
-//                let node = Node(copy: testNode, withDeviceKey: true, andTruncateTo: [MeshNetworkManager.instance.currentNetworkKey], applicationKeys: [MeshNetworkManager.instance.currentApplicationKey], nodes: [], groups: [])
-                node.state = true
-                node.name = self.space.getNextNodeName()
-                node.macAddress = device.macAddress
-                node.rssi = addDevice.rssi.intValue
-                self.addSuccessNodes.append(node)
-                
-                if let group = self.addToGroup {
-                    
-                    node.subscribe(to: group)
-                    group.info.bindSceneDatas.forEach({ sceneData in
-//                        node.scenes
-                        if let scene = self.space.scenes.first(where: { $0.number == sceneData.key }) {
-                            scene.add(address: node.primaryUnicastAddress)
-                            node.sceneDatas.updateValue(sceneData.value, forKey: sceneData.key)
-                        }
-                        SceneExecuteData.save(meshUUID: self.space.meshUUID, address: node.primaryUnicastAddress, sceneId: Int(sceneData.key), sceneData: sceneData.value)
-                    })
-                    
-                }
-                
-                try? MeshNetworkManager.instance.meshNetwork?.add(node: node)
-                node.save()
-                _ = MeshNetworkManager.instance.save()
-                
-//                node.name = self.space.getNextNodeName()
-//                if let name = self?.space.getNextNodeName() {
-//                    node.name = name
-//                }
-                self.addSuccessNodes.append(node)
-            }
-            
-        } addFailBack: {[weak self] addDevice, _ in
-            addDevice.addState = .failed
-            addDevice.selectedState = .selected
-            self?.reloadDeviceState(addDevice)
-            self?.updateUIState()
-        } addFinishBack: {[weak self] successList, failList in
-            guard let self = self else { return }
-//            let successNodes = self.space.nodes.filter { node in
-//                successList.contains(where: { $0.address == node.primaryUnicastAddress })
-//            }
-//            successNodes.forEach { node in
-//                node.name = self.space.getNextNodeName()
-//            }
-            _ = self.space.meshManager?.save()
-        }
-
-        
     }
     
     // MARK: - Scan
@@ -241,39 +151,6 @@ class DeviceAddViewController: UIViewController {
         updateUIState()
         // 扫描中设置屏幕常亮
         UIApplication.shared.isIdleTimerDisabled = true
-        
-        // 测试
-//        notAddedDevices = space.testNodes.filter({ testNode in !space.nodes.contains(where: { $0.primaryUnicastAddress == testNode.primaryUnicastAddress }) }).map({
-//            let device = ProvisioningDevice(peripheral: nil, advertisementData: [:], rssi: -40)!
-//            device.deviceName = "Mesh Device"
-//            device.macAddress = $0.macAddress
-//            device.address = $0.primaryUnicastAddress
-//            return device
-//        })
-        
-//        if notAddedDevices.count > 0 {
-//            self.stopScanTimer()
-//            NSObject.cancelPreviousPerformRequests(withTarget: self, selector: #selector(self.stopScan), object: nil)
-//            self.perform(#selector(self.stopScan), with: nil, afterDelay: 5)
-//        }
-//        
-//        let semaphore = DispatchSemaphore(value: 0)
-//        DispatchQueue.global().async {
-//            
-//            for i in 0..<self.notAddedDevices.count {
-//                guard self.state == .scanning else { break }
-//                let device = self.notAddedDevices[i]
-//                device.selectedState = .selected
-//                device.addState = .scaning
-//                self.scanDevices.append(device)
-//                self.showDevices.append(device)
-//                DispatchQueue.main.async {
-//                    self.tableView.insertRows(at: [IndexPath(row: self.showDevices.count - 1, section: 0)], with: .none)
-//                }
-//                _ = semaphore.wait(timeout: .now() + 0.1)
-//            }
-//            
-//        }
         
         MeshAPI.startScanDevice(.max, deviceScan: {[weak self] device in
             guard let self = self else { return }
@@ -454,11 +331,12 @@ class DeviceAddViewController: UIViewController {
         }
         
         var titles: [String] = [space.name]
-        for group in space.groups {
+        let groups = MeshNetworkManager.instance.groups
+        for group in groups {
             titles.append(group.name)
         }
         var selectIndex = 0
-        if let selectGroup = addToGroup, let index = space.groups.firstIndex(where: { $0.address == selectGroup.address }) {
+        if let selectGroup = addToGroup, let index = groups.firstIndex(where: { $0.address == selectGroup.address }) {
             selectIndex = index + 1
         }
         
@@ -467,7 +345,7 @@ class DeviceAddViewController: UIViewController {
             if index == 0 {
                 self.addToGroup = nil
             }else {
-                self.addToGroup = space.groups[index - 1]
+                self.addToGroup = groups[index - 1]
             }
             sender.setTitle(titles[index], for: .normal)
         }
@@ -607,15 +485,28 @@ class DeviceAddViewController: UIViewController {
             self?.reloadDeviceState(addDevice)
             self?.updateUIState()
         } appendMessagesBack: {[weak self] addDevice in
-            guard let self = self, let node = self.space.meshManager?.meshNetwork?.node(withAddress: addDevice.address) else { return [] }
+            guard let self = self, let node = MeshNetworkManager.instance.meshNetwork?.node(withAddress: addDevice.address) else { return [] }
             var appendMessages: [MeshMessageHandle] = []
             if let group = self.addToGroup {
                 appendMessages.append(contentsOf: group.getNodeAddMessageHandles(node: node))
+            }else {
+                if let vendorModel = node.sunricherVendorModel { // 未加入组的设备默认设置一个手动控制延迟时间，避免默认30s后状态被LC修改
+                    appendMessages.append(MeshMessageHandle(message: SunricherVendorSet(function: .manualOverrideTimeout(enabled: true, state: .standby, interval: .max)), model: vendorModel))
+                }
+                if let powerOnOffSetupModel = node.powerOnOffSetupModel { // 设置默认上电状态
+                    appendMessages.append(MeshMessageHandle(message: GenericOnPowerUpSet(state: .restore), model: powerOnOffSetupModel))
+                }
             }
             // 需要追加发送的消息
             if let ctlModel = node.ctlModel {
                 appendMessages.insert(MeshMessageHandle(message: LightCTLTemperatureRangeGet(), model: ctlModel), at: 0)
             }
+            // 设置默认过渡时间
+            if let defaultTransitionTimeModel = node.defaultTransitionTimeModel {
+                appendMessages.append(MeshMessageHandle(message: GenericDefaultTransitionTimeSet(transitionTime: .default), model: defaultTransitionTimeModel))
+            }
+//            appendMessages.insert(MeshMessageHandle(message: ConfigRelaySet(), address: node.primaryUnicastAddress), at: 0)
+            
             // 获取对应传感器model，识别传感器类型
 //            node.sensorModels.forEach { sensorModel in
 //                appendMessages.append(MeshMessageHandle(message: SensorGet(), model: sensorModel))
@@ -623,7 +514,7 @@ class DeviceAddViewController: UIViewController {
             return appendMessages
         } appendMessageSuccessBack: { messageHandle in
             // 发送扩展消息成功更新缓存数据
-            if let address = messageHandle.model?.parentElement?.unicastAddress ?? messageHandle.address, let node = self.space.meshManager?.meshNetwork?.node(withAddress: address) {
+            if let address = messageHandle.model?.parentElement?.unicastAddress ?? messageHandle.address, let node = MeshNetworkManager.instance.meshNetwork?.node(withAddress: address) {
                 DispatchQueue.global().async {
                     node.updateData(message: messageHandle.message)
                 }
@@ -633,9 +524,9 @@ class DeviceAddViewController: UIViewController {
             addDevice.addState = .success
             self.reloadDeviceState(addDevice)
             self.updateUIState()
-            if let node = self.space.meshManager?.meshNetwork?.node(withAddress: addDevice.address) {
+            if let node = MeshNetworkManager.instance.meshNetwork?.node(withAddress: addDevice.address) {
                 if let repalceNode = addDevice.repalceNode { // 删除被替换节点的缓存数据
-                    repalceNode.delete()
+                    repalceNode.deleteExtension()
                 }
                 node.rssi = addDevice.rssi.intValue
                 if let macAddress = addDevice.macAddress {
@@ -646,7 +537,8 @@ class DeviceAddViewController: UIViewController {
                     node.macAddress = mac
                 }
 //                node.state = true
-                node.saveNodeInfo(meshUUID: self.space.meshUUID)
+                node.save()
+//                node.saveNodeInfo(meshUUID: self.space.meshUUID, networkKey: self.space.meshNetworkKey)
 //                self?.space.getNextNodeName(resultCallback: { name in
 //                    node.name = name
 //                    print("address:\(node.primaryUnicastAddress), name:\(name)")
@@ -663,16 +555,20 @@ class DeviceAddViewController: UIViewController {
             self?.updateUIState()
         } addFinish: {[weak self] successList, failList in
             guard let self = self else { return }
-            let successNodes = self.space.nodes.filter { node in
+            let successNodes = MeshNetworkManager.instance.realNodes.filter { node in
                 successList.contains(where: { $0.address == node.primaryUnicastAddress })
             }
             successNodes.forEach { node in
-                node.name = self.space.getNextNodeName()
+                node.name = MeshNetworkManager.instance.getNextNodeName()
+                node.save()
             }
 //            if MeshLibManager.manager.currentProxy?.node == nil, let node = successNodes.last {
 //                MeshLibManager.manager.currentProxy?.nodeAddress = node.primaryUnicastAddress
 //            }
-            _ = self.space.meshManager?.save()
+            self.space.deviceCount = MeshNetworkManager.instance.realNodes.count
+            self.space.luminairesCount = MeshNetworkManager.instance.lightNodes.count
+            self.space.save()
+            
 //            self.addSuccessNodes.append(contentsOf: successNodes)
         }
         
@@ -824,7 +720,7 @@ class DeviceAddViewController: UIViewController {
             make.bottom.equalTo(SCRYFrom(-14))
         }
         
-        addDeviceTargetBtn = UIButton(title: addToGroup?.info.name ?? addToGroup?.name ?? space.name, titleSize: 13, titleWeight: .light, titleColor: TextBlack_Color, normalImageName: "space_arrow_down", target: self, action: #selector(addDeviceTargetBtnClick))
+        addDeviceTargetBtn = UIButton(title: addToGroup?.name ?? space.name, titleSize: 13, titleWeight: .light, titleColor: TextBlack_Color, normalImageName: "space_arrow_down", target: self, action: #selector(addDeviceTargetBtnClick))
         addDeviceTargetBtn.imageView?.sizeToFit()
         let imageW = addDeviceTargetBtn.imageView?.image?.size.width ?? 0
         addDeviceTargetBtn.imageEdgeInsets = UIEdgeInsets(top: 0, left: SCRXFrom(103), bottom: 0, right: 0)

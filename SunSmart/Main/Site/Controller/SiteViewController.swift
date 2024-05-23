@@ -6,6 +6,7 @@
 //
 
 import UIKit
+import NordicSigMeshSDK
 
 class SiteViewController: UIViewController {
 
@@ -46,6 +47,8 @@ class SiteViewController: UIViewController {
         allSpaces = site.spaces
         favouriteSpaces = allSpaces.filter({ $0.isFavourite })
         
+//        MeshLibManager.manager.setMeshNetworkConnected(meshUUID: site.meshUUID, connected: false)
+        
 //        updateEmptyView()
     }
     
@@ -82,8 +85,8 @@ class SiteViewController: UIViewController {
     private func editSite() {
         
         var imageNames: [String] = []
-        for id in 1...24 {
-            imageNames.append("site_image\(id)")
+        for id in 1...28 {
+            imageNames.append("site_\(id)")
         }
         let vc = InfoEditViewController(name: site.name, imageNames: imageNames, selectImageIndex: max(site.imageId - 1, 0), columnNum: 4)
         vc.nameEditChangedCallback = {[weak self] name in
@@ -144,9 +147,15 @@ class SiteViewController: UIViewController {
         vc.doneCallback = {[weak self] (name, imageId) in
             guard let self = self else { return }
             
-            let space = self.site.addSpace(name: name, imageId: imageId + 1)
+            guard let space = self.site.addSpace(name: name, imageId: imageId + 1) else {
+                XWHUDManager.showErrorTipHUD("\("failed".localizedString)!")
+                return
+            }
+            
             self.allSpaces.append(space)
-            self.allSpacesTableView.insertRows(at: [IndexPath(row: self.allSpaces.count - 1, section: 0)], with: .automatic)
+            let insertPath = IndexPath(row: self.allSpaces.count - 1, section: 0)
+            self.allSpacesTableView.insertRows(at: [insertPath], with: .automatic)
+            self.allSpacesTableView.scrollToRow(at: insertPath, at: .bottom, animated: true)
             self.updateEmptyView()
         }
         

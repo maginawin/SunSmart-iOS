@@ -20,7 +20,7 @@ class GroupSwitch: Copyable {
     }
 
     /// id
-    let id: Int
+    let id: String
     /// 所属的组
     let group: Group
     /// 是否启用
@@ -35,8 +35,10 @@ class GroupSwitch: Copyable {
     var sceneB: Scene?
     /// 选择的代理节点（绑定设备后）
     var proxyNode: Node?
+    /// 绑定真实动能开关mac
+    var enOceanMacAddress: String?
     
-    init(id: Int, group: Group, enabled: Bool, name: String, sceneA: Scene? = nil, sceneB: Scene? = nil, proxyNode: Node? = nil) {
+    init(id: String, group: Group, enabled: Bool, name: String, sceneA: Scene? = nil, sceneB: Scene? = nil, proxyNode: Node? = nil) {
         self.id = id
         self.group = group
         self.enabled = enabled
@@ -85,7 +87,7 @@ struct EnOceanQRCodeData {
         /// 型号截取头 截取10个字符
         let modelIdentify = "30P"
         
-        guard qrcode.count >= 82, qrcode.contains(macIdentify), qrcode.contains(macIdentify), qrcode.contains(modelIdentify) else {
+        guard qrcode.count >= 82, qrcode.contains(macIdentify), qrcode.contains(securityKeyIdentify), qrcode.contains(modelIdentify) else {
             return nil
         }
         let qrcodeStr = qrcode as NSString

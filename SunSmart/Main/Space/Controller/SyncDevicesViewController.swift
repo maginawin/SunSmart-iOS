@@ -36,7 +36,8 @@ class SyncDevicesViewController: UIViewController {
     var syncSuccessCallback: ((SyncType)->Void)?
     /// 点击返回回调
     var backActionCallback: (()->Void)?
-    
+    /// 更新版本的设备地址
+    private var updateVersionAddresses: [Address] = []
     
     init(type: SyncType, reSync: Bool = false) {
         
@@ -52,7 +53,8 @@ class SyncDevicesViewController: UIViewController {
     
     override func viewDidLoad() {
         super.viewDidLoad()
-
+        self.isModalInPresentation = true
+        
         title = "sync_device(s)".localizedString
         view.backgroundColor = Background_Color
         
@@ -110,7 +112,7 @@ class SyncDevicesViewController: UIViewController {
             // 场景内需要同步的组
             scene.info.groups.forEach { group in
                 
-                if let groupSceneData = group.info.bindSceneDatas[scene.number] {
+                if let groupSceneData = group.info.sceneExecuteDatas.first(where: { scene.number == $0.sceneNumber }) {
                     let resut = group.getNeedSyncDataNodes(scene: scene)
                     // 需要同步的设备
                     let syncNodes = resut.syncNodes
@@ -119,7 +121,7 @@ class SyncDevicesViewController: UIViewController {
                         // 场景绑定日程
                         if scene.info.bindSchedules.count > 0 {
                             
-                            let addSceneTask = SyncDeviceStepTaskModel(name: scene.info.name ?? scene.name, operationType: .configuration(node: node, type: .scene(sceneId: scene.number, executeData: groupSceneData)))
+                            let addSceneTask = SyncDeviceStepTaskModel(name: scene.name, operationType: .configuration(node: node, type: .scene(sceneId: scene.number, executeData: groupSceneData)))
                             let addSceneStep = SyncDeviceStepModel(type: "scene".localizedString, state: .none, tasks: [addSceneTask])
                             addSceneStep.parentDeviceModel = model
                             addSceneStep.showProgress = false
@@ -140,7 +142,7 @@ class SyncDevicesViewController: UIViewController {
                         return model
                     })
                     if syncSceneDeviceModels.count > 0 {
-                        let groupModel = SyncDevicesGroupModel(groupName: group.info.name ?? group.name, groupAddress: group.address.address, deviceModels: syncSceneDeviceModels)
+                        let groupModel = SyncDevicesGroupModel(groupName: group.name, groupAddress: group.address.address, deviceModels: syncSceneDeviceModels)
                         configurationSection.groups.append(groupModel)
                         
                         syncSceneDeviceModels.forEach({
@@ -163,7 +165,7 @@ class SyncDevicesViewController: UIViewController {
                             deleteScheduleTasks.forEach({ $0.parentStepModel = deleteScheduleStep })
                             
                             
-                            let deleteSceneTask = SyncDeviceStepTaskModel(name: scene.info.name ?? scene.name, operationType: .delete(node: node, type: .scene(sceneId: scene.number, executeData: groupSceneData)))
+                            let deleteSceneTask = SyncDeviceStepTaskModel(name: scene.name, operationType: .delete(node: node, type: .scene(sceneId: scene.number, executeData: groupSceneData)))
                             let deleteSceneStep = SyncDeviceStepModel(type: "scene".localizedString, state: .none, tasks: [deleteSceneTask])
                             deleteSceneStep.parentDeviceModel = model
                             deleteSceneStep.showProgress = false
@@ -178,7 +180,7 @@ class SyncDevicesViewController: UIViewController {
                         return model
                     })
                     if deleteSceneDeviceModels.count > 0 {
-                        let groupModel = SyncDevicesGroupModel(groupName: group.info.name ?? group.name, groupAddress: group.address.address, deviceModels: deleteSceneDeviceModels)
+                        let groupModel = SyncDevicesGroupModel(groupName: group.name, groupAddress: group.address.address, deviceModels: deleteSceneDeviceModels)
                         removeSection.groups.append(groupModel)
                         
                         deleteSceneDeviceModels.forEach({
@@ -214,7 +216,7 @@ class SyncDevicesViewController: UIViewController {
                     return model
                 })
                 
-                let groupModel = SyncDevicesGroupModel(groupName: group.info.name ?? group.name, groupAddress: group.address.address, deviceModels: deviceModels)
+                let groupModel = SyncDevicesGroupModel(groupName: group.name, groupAddress: group.address.address, deviceModels: deviceModels)
                 deviceModels.forEach({ $0.parentGroupModel = groupModel })
                 return groupModel
             }
@@ -227,7 +229,7 @@ class SyncDevicesViewController: UIViewController {
                     model.operationType = .configuration(node: $0, type: .schedule(schedule: schedule))
                     return model
                 })
-                let groupModel = SyncDevicesGroupModel(groupName: group.info.name ?? group.name, groupAddress: group.address.address, deviceModels: deviceModels)
+                let groupModel = SyncDevicesGroupModel(groupName: group.name, groupAddress: group.address.address, deviceModels: deviceModels)
                 deviceModels.forEach({ $0.parentGroupModel = groupModel })
                 return groupModel
             }
@@ -251,9 +253,10 @@ class SyncDevicesViewController: UIViewController {
             if syncState == .syncFailure {
                 section.allModels.forEach({
                     $0.isFineshed = true
+                    $0.state = .failed
 //                    ($0 as? SyncDevicesGroupModel)?.isShow = true
-                    ($0 as? SyncDevicesModel)?.state = .failed
-                    ($0 as? SyncDeviceStepTaskModel)?.state = .failed
+//                    ($0 as? SyncDevicesModel)?.state = .failed
+//                    ($0 as? SyncDeviceStepTaskModel)?.state = .failed
                 })
             }
         }
@@ -284,8 +287,8 @@ class SyncDevicesViewController: UIViewController {
         
         // 是否退出组
         if exitGroup {
-            nodeDeleteScenes = node.scenes.filter({ group.info.bindSceneDatas.keys.contains($0.number) })
-            nodeDeleteSchedules = group.info.bindSchedules.filter({ schedule in node.scheduleDatas.contains(where: { $0.key == schedule.id }) })
+            nodeDeleteScenes = node.scenes.filter({ scene in group.info.sceneExecuteDatas.contains(where: { $0.sceneNumber == scene.number }) })
+            nodeDeleteSchedules = group.info.bindSchedules.filter({ schedule in node.schedulerActions.contains(where: { $0.key == schedule.id }) })
             
             nodeSyncScenes.removeAll()
             nodeSyncSchedules.removeAll()
@@ -302,7 +305,7 @@ class SyncDevicesViewController: UIViewController {
         }
         
         let deleteSceneTasks = nodeDeleteScenes.map({
-            return SyncDeviceStepTaskModel(name: $0.info.name ?? $0.name, operationType: .delete(node: node, type: .scene(sceneId: $0.number, executeData: nil)))
+            return SyncDeviceStepTaskModel(name: $0.name, operationType: .delete(node: node, type: .scene(sceneId: $0.number, executeData: nil)))
         })
         if deleteSceneTasks.count > 0 {
             let step = SyncDeviceStepModel(type: "remove_scene".localizedString, state: .none, tasks: deleteSceneTasks)
@@ -311,8 +314,8 @@ class SyncDevicesViewController: UIViewController {
         }
         
         let syncSceneTasks = nodeSyncScenes.map({ sceneData in
-            let scene = MeshNetworkManager.instance.scenes.first(where: { $0.number == sceneData.key })
-            return SyncDeviceStepTaskModel(name: scene?.info.name ?? scene?.name ?? "", operationType: .configuration(node: node, type: .scene(sceneId: sceneData.key, executeData: sceneData.value)))
+            let scene = MeshNetworkManager.instance.scenes.first(where: { $0.number == sceneData.sceneNumber })
+            return SyncDeviceStepTaskModel(name: scene?.name ?? "", operationType: .configuration(node: node, type: .scene(sceneId: sceneData.sceneNumber, executeData: sceneData)))
         })
         if syncSceneTasks.count > 0 {
             let step = SyncDeviceStepModel(type: "scene".localizedString, state: .none, tasks: syncSceneTasks)
@@ -515,6 +518,8 @@ class SyncDevicesViewController: UIViewController {
     private func startSync() {
         
 //        guard let section = sections.first, let model = section.allModels.first else { return }
+        // 需要配置的设备list
+        var configNodes: [Node] = []
         
         sections.forEach { section in
             section.allModels.forEach({
@@ -524,11 +529,25 @@ class SyncDevicesViewController: UIViewController {
                 $0.isFineshed = false
                 ($0 as? SyncDevicesGroupModel)?.isSelected = false
                 ($0 as? SyncDevicesModel)?.isSelected = false
+                //  需要配置的设备
+                if let deviceModel = $0 as? SyncDevicesModel, let node = MeshNetworkManager.instance.meshNetwork?.node(withAddress: deviceModel.address), node.sunricherVendorModel != nil, !configNodes.contains(node) {
+                    configNodes.append(node)
+                }
             })
         }
         tableView.reloadData()
         
         DispatchQueue.global().async {
+            
+            let versionLockMessageHandles = configNodes.map({ MeshMessageHandle(message: SunricherVendorGet(function: .versionLock), model: $0.sunricherVendorModel!) })
+            
+            let semaphore = DispatchSemaphore(value: 0)
+            // 给操作设备加锁
+            MeshProxyMessageCommand.shared.addMessage(messageHandles: versionLockMessageHandles) { _ in
+                semaphore.signal()
+            }
+            semaphore.wait()
+            
             while let model = self.getNextHandleModel() {
                 
                 guard MeshLibManager.manager.isOpenBluetooth else {
@@ -546,9 +565,10 @@ class SyncDevicesViewController: UIViewController {
                     }
                     return
                 }
-                
+                var nodeAddress: Address?
                 var messageHandles: [MeshMessageHandle] = []
                 if let deviceModel = model as? SyncDevicesModel {
+                    // code
                     messageHandles = deviceModel.operationType?.messageHandles ?? []
 //                    deviceModel.parentGroupModel?.deviceModels.forEach({
 //                        if $0.state == .none {
@@ -556,6 +576,7 @@ class SyncDevicesViewController: UIViewController {
 ////                            self.updateCell(model: $0)
 //                        }
 //                    })
+                    nodeAddress = deviceModel.address
                     deviceModel.state = .inSettings
 //                    self.tableView.reloadData()
 //                    self.updateCell(model: deviceModel)
@@ -605,36 +626,48 @@ class SyncDevicesViewController: UIViewController {
                             }
                             self.lastDeviceModel = deviceModel
                         }
-                        
+                        nodeAddress = deviceModel.address
                     }
                 }
+                // 节点加锁失败，不进行发送数据
+                if let node = configNodes.first(where: { $0.primaryUnicastAddress == nodeAddress }), node.versionVerifyCode == nil {
+                   messageHandles = []
+                }
+                
                 DispatchQueue.main.async {
                     self.tableView.reloadData()
                 }
                 
-                let semaphore = DispatchSemaphore(value: 0)
-
                 MeshProxyMessageCommand.shared.addMessage(messageHandles: messageHandles, progressBack: nil, successfulBack: nil, failedBack: nil) {[weak self] resultMessageHandles in
                     
                     resultMessageHandles.forEach { handle in
-//                        updateData
                         if let address = handle.address ?? handle.model?.parentElement?.unicastAddress, let node = MeshNetworkManager.instance.meshNetwork?.node(withAddress: address) {
                             node.updateData(message: handle.message, isSuccess: handle.isSuccessful)
                         }
-                        if handle.isSuccessful {
-                            model.state = .successful
-                        }else {
-                            model.state = .failed
-                            (model as? SyncDevicesModel)?.failedCount += 1
-                            (model as? SyncDeviceStepTaskModel)?.failedCount += 1
-                        }
+                    }
+                    let resultSuccessful = !resultMessageHandles.contains(where: { !$0.isSuccessful })
+                    let operationSuccessful = ((model as? SyncDevicesModel)?.operationType?.isSuccessful ?? (model as? SyncDeviceStepTaskModel)?.operationType.isSuccessful) ?? false
+                    if resultSuccessful && operationSuccessful {
+                        model.state = .successful
+                    }else {
+                        model.state = .failed
+                        (model as? SyncDevicesModel)?.failedCount += 1
+                        (model as? SyncDeviceStepTaskModel)?.failedCount += 1
                     }
                     self?.updateCell(model: model)
                     semaphore.signal()
                 }
                 semaphore.wait()
+                
+                DispatchQueue.main.async {
+                    if let model = self.showProressStepModel {
+                        if let progressView = SyncDevicesProgressView.current() {
+                            progressView.stepModel = model
+                        }
+                    }
+                }
             }
-            _ = MeshNetworkManager.instance.save()
+//            _ = MeshNetworkManager.instance.save()
             print("完成")
             
             self.sections.forEach { section in
@@ -654,16 +687,34 @@ class SyncDevicesViewController: UIViewController {
                     if let progressView = SyncDevicesProgressView.current() {
                         progressView.hide()
                     }
-                }
-                
-                if let model = self.showProressStepModel {
+                }else {
                     if let progressView = SyncDevicesProgressView.current() {
-                        progressView.stepModel = model
+                        progressView.reload()
                     }
                 }
 //                self.bottomView.isHidden = self.syncState != .syncFailure
             }
             
+            // 操作成功的设备地址
+            var successAddresses: [Address] = []
+            self.sections.forEach({
+                let successfulModels = $0.allModels.filter({ $0.state == .successful })
+                successfulModels.forEach({
+                    if let model = $0 as? SyncDevicesModel {
+                        if !successAddresses.contains(model.address) {
+                            successAddresses.append(model.address)
+                        }
+                    }else if let model = $0 as? SyncDeviceStepTaskModel, let deviceModel = model.parentStepModel?.parentDeviceModel {
+                        if !successAddresses.contains(deviceModel.address) {
+                            successAddresses.append(deviceModel.address)
+                        }
+                    }
+                })
+            })
+            
+            // 更新设备版本
+            let versionUpdateMessageHandles = configNodes.filter({ $0.versionVerifyCode != nil }).map({ MeshMessageHandle(message: SunricherVendorSet(function: .setVersion(version: $0.versionSEQ + (successAddresses.contains($0.primaryUnicastAddress) ? 1 : 0) , verifyCode: $0.versionVerifyCode ?? 0)), model: $0.sunricherVendorModel!) })
+            MeshProxyMessageCommand.shared.addMessage(messageHandles: versionUpdateMessageHandles, finishedBack: nil)
         }
       
     }
@@ -943,6 +994,11 @@ extension SyncDevicesViewController: SyncDeviceViewCellDelegate {
         
         if let section = model.parentSectionIndex, let row = self.sections[section].rowModels.firstIndex(where: { $0 == model }) {
             tableView.reloadRows(at: [IndexPath(row: row, section: section)], with: .none)
+        }else if let section = model.parentGroupModel?.parentSectionIndex {
+            if let groupModel = model.parentGroupModel {
+                groupModel.isSelected = !groupModel.deviceModels.contains(where: { !$0.isSelected })
+            }
+            tableView.reloadSections(IndexSet(integer: section), with: .none)
         }
         
 //        var reloadIndexPaths: [IndexPath] = []

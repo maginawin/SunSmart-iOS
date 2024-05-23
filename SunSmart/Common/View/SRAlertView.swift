@@ -994,13 +994,13 @@ extension SRAlertView {
     
     // 是否显示
     static func isVisible() -> Bool {
-        return UIApplication.shared.keyWindow?.subviews.contains(where: {$0.isKind(of: self.classForCoder())}) ?? false
+        return UIApplication.shared.keyWindow().subviews.contains(where: {$0.isKind(of: self.classForCoder())}) ?? false
     }
     
     // 获取当前展示弹窗
     static func getCurrentAlertView() -> SRAlertView? {
         
-        let alertView = UIApplication.shared.keyWindow?.subviews.first(where: {$0.isKind(of: self.classForCoder())})
+        let alertView = UIApplication.shared.keyWindow().subviews.first(where: {$0.isKind(of: self.classForCoder())})
         return alertView as? SRAlertView
     }
     
@@ -1047,7 +1047,7 @@ class SRSheetView: UIView {
     
     public func show() {
         // 如果已有弹窗则先关闭之前的弹窗
-        UIApplication.shared.keyWindow?.addSubview(self)
+        UIApplication.shared.keyWindow().addSubview(self)
         shadeView.alpha = 0
         UIView.animate(withDuration: 0.3) {
             self.shadeView.alpha = 1
@@ -1112,7 +1112,7 @@ extension SRSheetView {
     // 获取当前展示弹窗
     static func getCurrentSheetView() -> SRSheetView? {
         
-        let alertView = UIApplication.shared.keyWindow?.subviews.first(where: {$0.isKind(of: self.classForCoder())})
+        let alertView = UIApplication.shared.keyWindow().subviews.first(where: {$0.isKind(of: self.classForCoder())})
         return alertView as? SRSheetView
     }
     

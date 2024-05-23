@@ -26,6 +26,8 @@ class ScheduleAddViewController: UIViewController {
     private var doneBtn: UIButton!
     private var lineView: UIView!
     private var deleteBtn: UIButton!
+    /// 添加日程完成
+    private var addFineshed = false
     
     let space: SpaceData
     var schedule: Schedule?
@@ -50,9 +52,15 @@ class ScheduleAddViewController: UIViewController {
         setupUI()
         setupData()
      
-        updateBtnState()
+//        updateBtnState()
         
         
+    }
+    
+    deinit {
+        if space.isConfiguring {
+            space.isConfiguring = false
+        }
     }
     
     private func setupData() {
@@ -92,24 +100,77 @@ class ScheduleAddViewController: UIViewController {
             
         }else {
             title = "add_schedule".localizedString
-            scheduleAddView.name = space.getNextScheduleName()
+            scheduleAddView.name = MeshNetworkManager.instance.getNextScheduleName()
         }
         
     }
 
     
     @objc private func back() {
-        self.dismiss(animated: true)
+        if addFineshed && self.space.isConfiguring && (UIViewController.getVisibleVc()?.isKind(of: SpaceViewController.classForCoder()) ?? false) {
+            self.dismiss(animated: false)
+            let vc = SpaceNewCreationProcessController(space: self.space, options: .schedule)
+            UIViewController.getVisibleVc()?.present(NavigationViewController(rootViewController: vc), animated: true)
+            
+        }else {
+            self.dismiss(animated: true)
+        }
+        
+    }
+    
+    /// 校验数据是否完整
+    private func verify() -> Bool {
+        
+        guard scheduleAddView.isCompletion else {
+            // 提示内容
+//            var message = ""
+            // 多个内容缺失
+            var errorContents: [String] = []
+            
+            if scheduleAddView.selectTarget == nil {
+                errorContents.append("target".localizedString)
+//                message = "schedule_target_unselect".localizedString
+            }
+            if scheduleAddView.actionType == .noAction {
+                
+                errorContents.append("action".localizedString)
+//                message = "schedule_action_unselect".localizedString
+//                return
+            }
+            if scheduleAddView.weekValue == 0 {
+                errorContents.append("select_days_and_time".localizedString)
+//                message = "schedule_time_unselect".localizedString
+            }
+            
+            if errorContents.count > 0 { // 多个内容缺失合并提示
+                var content = "schedule_multiple_unselect_first".localizedString
+                errorContents.enumerated().forEach { index, name in
+                    content.append("\(index > 0 ? "," : "")“\(name)”")
+                }
+                content.append(" \("schedule_multiple_unselect_end".localizedString)")
+                XWHUDManager.showTipHUD(content, isLineFeed: true)
+            }
+//            }else { // 单内容缺失
+//                XWHUDManager.showTipHUD(message, isLineFeed: true)
+//            }
+            return false
+        }
+        return true
     }
     
     /// 保存（添加）
     @objc private func saveBtnAction() {
         
-        guard let id = space.getNextAvailableScheduleId(), let target = scheduleAddView.selectTarget else {
+        guard let id = MeshNetworkManager.instance.getNextAvailableScheduleId() else {
             // 已有16个日程
+            XWHUDManager.showTipHUD("schedules_overrun_message".localizedString, isLineFeed: true)
             return
         }
-        
+        // 检验数据完整性
+        guard verify() else {
+            return
+        }
+
         let name = scheduleAddView.name
         
         let isEnabled = scheduleAddView.enabled
@@ -124,6 +185,9 @@ class ScheduleAddViewController: UIViewController {
         var selectTargetType: Schedule.TargetType = .groups
         // 是否需要同步
         var needSync = false
+        
+        let target = scheduleAddView.selectTarget!
+        
         // 选择的目标
         switch target {
         case .devices(let selectNodes):
@@ -154,12 +218,14 @@ class ScheduleAddViewController: UIViewController {
         let weekDays = Schedule.getWeekDays(weekValue: scheduleAddView.weekValue)
         let create = "\(Date().timeIntervalSince1970 * 1000)"
         
-        let schedule = Schedule(id: id, name: name, enabled: isEnabled, nodes: nodes, groups: groups, scene: scene, selectTargetType: selectTargetType, action: action, fadeTime: fadeTime, weekDays: weekDays, hour: scheduleAddView.hour, minute: scheduleAddView.minute, create: create)
-        if schedule.save(meshUUID: space.meshUUID) {
+       
+        let schedule = Schedule(id: id, name: name, enabled: isEnabled, nodeAddresses: nodes.map({ $0.primaryUnicastAddress }), groupAddresses: groups.map({ $0.address.address }), sceneNumber: scene?.number, selectTargetType: selectTargetType, action: action, fadeTime: fadeTime, weekDays: weekDays, hour: scheduleAddView.hour, minute: scheduleAddView.minute)
+        if schedule.save() {
 //            groups.forEach({ $0.info.bindSchedules.append(schedule) })
-            space.meshManager?.schedules.append(schedule)
-            space.scheheduleCount = space.schedules.count
+            MeshNetworkManager.instance.schedules.append(schedule)
+            space.scheheduleCount = MeshNetworkManager.instance.schedules.count
             space.save()
+            addFineshed = true
         }
         
         groups.forEach({
@@ -188,7 +254,8 @@ class ScheduleAddViewController: UIViewController {
         
         guard let schedule = self.schedule else { return }
         guard schedule.exitNodes.count > 0 else {
-            Schedule.deleteData(meshUUID: self.space.meshUUID, scheduleId: schedule.id)
+//            Schedule.deleteData(meshUUID: self.space.meshUUID, meshNetworkKey: space.meshNetworkKey, scheduleId: schedule.id)
+            schedule.deleteData()
             MeshNetworkManager.instance.schedules.removeAll(where: { $0.id == schedule.id })
             XWHUDManager.showSuccessTipHUD("done!".localizedString)
             NotificationCenter.default.post(name: .init(schedulesRefreshNotificationName), object: nil)
@@ -207,7 +274,8 @@ class ScheduleAddViewController: UIViewController {
             XWHUDManager.hide()
             XWHUDManager.showSuccessTipHUD("done!".localizedString)
             guard let self = self else { return }
-            Schedule.deleteData(meshUUID: self.space.meshUUID, scheduleId: schedule.id)
+//            Schedule.deleteData(meshUUID: self.space.meshUUID, meshNetworkKey: self.space.meshNetworkKey, scheduleId: schedule.id)
+            schedule.deleteData()
             MeshNetworkManager.instance.schedules.removeAll(where: { $0.id == schedule.id })
             // 删除关联组缓存的对应日程
             var groups = schedule.groups
@@ -245,6 +313,11 @@ class ScheduleAddViewController: UIViewController {
     /// 完成（编辑）
     @objc private func doneBtnAction() {
         guard let schedule = self.schedule else { return }
+        
+        // 检验数据完整性
+        guard verify() else {
+            return
+        }
         
         let name = scheduleAddView.name
         let isEnabled = scheduleAddView.enabled
@@ -291,47 +364,52 @@ class ScheduleAddViewController: UIViewController {
     
         schedule.selectTargetType = selectTargetType
         // 选中之前移除失败的设备，则把设备改为待添加
-        schedule.needDeleteNodes.removeAll(where: { node in
-             nodes.contains(node) || groups.contains(where: { $0.nodes.contains(node) || scene?.info.groups.contains(where: { $0.nodes.contains(node) }) ?? false })
+        schedule.needDeleteNodeAddresses.removeAll(where: { address in
+            nodes.contains(where: { $0.primaryUnicastAddress == address }) || groups.contains(where: { $0.nodes.contains(where: { $0.primaryUnicastAddress == address }) || scene?.info.groups.contains(where: { $0.nodes.contains(where: { $0.primaryUnicastAddress == address }) }) ?? false })
         })
         
         let deleteNodes = schedule.nodes.filter({ !nodes.contains($0) && !schedule.needDeleteNodes.contains($0) })
         if deleteNodes.count > 0 {
-            schedule.needDeleteNodes.append(contentsOf: deleteNodes)
+            schedule.needDeleteNodeAddresses.append(contentsOf: deleteNodes.map({ $0.primaryUnicastAddress }))
+//            schedule.needDeleteNodes.append(contentsOf: deleteNodes)
         }
-        schedule.nodes = nodes
+        schedule.nodeAddresses = nodes.map({ $0.primaryUnicastAddress })
         
-        schedule.needDeleteGroups.removeAll(where: { groups.contains($0) || scene?.info.groups.contains($0) ?? false })
+        schedule.needDeleteGroupAddresses.removeAll(where: { address in
+            groups.contains(where: { $0.address.address == address }) || scene?.info.groups.contains(where: { $0.address.address == address }) ?? false
+        })
         
         let deleteGroups = schedule.groups.filter({ !groups.contains($0) && !schedule.needDeleteGroups.contains($0) })
         if deleteGroups.count > 0 {
-            schedule.needDeleteGroups.append(contentsOf: deleteGroups)
+            schedule.needDeleteGroupAddresses.append(contentsOf: deleteGroups.map({ $0.address.address }))
+//            schedule.needDeleteGroups.append(contentsOf: deleteGroups)
         }
-        schedule.groups = groups
+        schedule.groupAddresses = groups.map({ $0.address.address })
+        
         
         if schedule.scene != scene { // 切换场景
-            schedule.needDeleteScenes.removeAll(where: { $0 == scene })
+            schedule.needDeleteSceneNumbers.removeAll(where: { $0 == scene?.number })
+//            schedule.needDeleteScenes.removeAll(where: { $0 == scene })
             if let lastScene = schedule.scene { // 上一个场景
                 lastScene.info.groups.forEach({ group in
                     if !groups.contains(group) {
                         group.info.bindSchedules.removeAll(where: { $0.id == schedule.id })
                     }
                 })
-                schedule.needDeleteScenes.append(lastScene)
+                schedule.needDeleteSceneNumbers.append(lastScene.number)
+//                schedule.needDeleteScenes.append(lastScene)
             }
             scene?.info.groups.forEach({ group in
                 group.info.bindSchedules.append(schedule)
             })
-            schedule.scene = scene
+            schedule.sceneNumber = scene?.number
         }
         
         schedule.weekDays = weekDays
         schedule.hour = hour
         schedule.minute = minute
         
-        let time = "\(Date().timeIntervalSince1970 * 1000)"
-        schedule.lastUpdate = time
-        schedule.save(meshUUID: space.meshUUID)
+        schedule.save()
         
         // 判断需要同步设备数据
         if !schedule.getNeedSyncDatas().isEmpty() {
@@ -354,10 +432,10 @@ class ScheduleAddViewController: UIViewController {
         vc.syncSuccessCallback = {[weak self] _ in
             XWHUDManager.showSuccessTipHUD("done".localizedString)
             guard let self = self else { return }
-            self.schedule?.needDeleteNodes.removeAll()
-            self.schedule?.needDeleteGroups.removeAll()
-            self.schedule?.needDeleteScenes.removeAll()
-            self.schedule?.save(meshUUID: self.space.meshUUID)
+            self.schedule?.needDeleteNodeAddresses.removeAll()
+            self.schedule?.needDeleteGroupAddresses.removeAll()
+            self.schedule?.needDeleteSceneNumbers.removeAll()
+            self.schedule?.save()
             DispatchQueue.main.asyncAfter(wallDeadline: .now() + 1.5, execute: {
                 XWHUDManager.hide()
                 self.back()
@@ -407,7 +485,6 @@ class ScheduleAddViewController: UIViewController {
         }
         
         saveBtn = UIButton(title: "save".localizedString, titleSize: 16, titleWeight: .light, titleColor: Title_Color, target: self, action: #selector(saveBtnAction))
-        saveBtn.isEnabled = false
         saveBtn.setTitleColor(Message_Color, for: .disabled)
         bottomView.addSubview(saveBtn)
         saveBtn.snp.makeConstraints { make in
@@ -473,7 +550,7 @@ class ScheduleAddViewController: UIViewController {
         scheduleAddView.targetView.targets = targets
         scheduleAddView.selectTarget = target
         
-        updateBtnState()
+//        updateBtnState()
     }
 
 }
@@ -483,14 +560,14 @@ extension ScheduleAddViewController: ScheduleAddViewDelegate {
     func view(_ view: ScheduleAddView, nameDidEditing name: String) -> String? {
         if name.count > 32 {
             return "text_length_exceeded".localizedString
-        } else if space.isScheduleTautonym(name: name) && self.schedule?.name != name { // 重名
+        } else if MeshNetworkManager.instance.isScheduleTautonym(name: name) && self.schedule?.name != name { // 重名
             return "name_already_exists".localizedString
         }
         return nil
     }
     
     func view(_ view: ScheduleAddView, completionStateChanged completion: Bool) {
-        updateBtnState()
+//        updateBtnState()
     }
 }
 

@@ -115,10 +115,11 @@ class GroupSwitchsViewController: UIViewController {
         if let realSwitch = self.group.info.switchs.first(where: { $0.id == copySwitch.id }) {
             realSwitch.update(switchData: copySwitch)
             if uuid != nil {
-                realSwitch.save(meshUUID: uuid!)
-                if let proxy = realSwitch.proxyNode {
-                    proxy.saveNodeInfo(meshUUID: uuid!)
-                }
+//                let networkKey = MeshNetworkManager.instance.currentNetworkKey
+                realSwitch.save()
+//                if let proxy = realSwitch.proxyNode {
+//                    proxy.saveNodeInfo(meshUUID: uuid!, networkKey: networkKey)
+//                }
             }
         }
         
@@ -380,6 +381,8 @@ extension GroupSwitchsViewController: UITableViewDataSource, UITableViewDelegate
         let option = options[indexPath.row]
         if option == .keyInfo {
             let panelCell = tableView.dequeueReusableCell(withIdentifier: "panel", for: indexPath) as! GroupSwitchPanelViewCell
+            panelCell.sceneNameA = groupSwitch.sceneA?.name
+            panelCell.sceneNameB = groupSwitch.sceneB?.name
             if let realSwitch = group.info.switchs.first(where: { $0.id == groupSwitch.id }) {
                 panelCell.saveBtn.isEnabled = !(realSwitch == groupSwitch) || realSwitch.needSyncData
             }
@@ -410,15 +413,15 @@ extension GroupSwitchsViewController: UITableViewDataSource, UITableViewDelegate
                 infoCell.contentLabel.text = groupSwitch.panelType.describe
             case .group:
                 infoCell.cellStyle = .arrow
-                infoCell.contentLabel.text = group.info.name ?? group.name
+                infoCell.contentLabel.text = group.name
             case .scene:
                 infoCell.cellStyle = .arrow
                 var sceneStr = ""
                 if let sceneA = groupSwitch.sceneA {
-                    sceneStr.append(sceneA.info.name ?? sceneA.name)
+                    sceneStr.append(sceneA.name)
                 }
                 if let sceneB = groupSwitch.sceneB {
-                    sceneStr.append(String(format: "%@%@", sceneStr.isEmpty ? "" : ",", sceneB.info.name ?? sceneB.name))
+                    sceneStr.append(String(format: "%@%@", sceneStr.isEmpty ? "" : ",", sceneB.name))
                 }
                 if sceneStr.isEmpty {
                     sceneStr = "N/A"

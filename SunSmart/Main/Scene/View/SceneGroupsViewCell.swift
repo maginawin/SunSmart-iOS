@@ -31,7 +31,7 @@ class SceneGroupsViewCell: UICollectionViewCell {
     /// - Parameters:
     ///   - group: 组
     ///   - sceneData: 执行的场景数据
-    func updateData(group: Group, sceneData: SceneExecuteData?) {
+    func updateData(group: Group, sceneData: ExecuteSceneData?) {
         
 //        iconImageView.image = UIImage(named: "group_image_\(group.info.imageId)")
         if let text = group.info.imageText, text.count > 0 {
@@ -51,7 +51,7 @@ class SceneGroupsViewCell: UICollectionViewCell {
             bgView.backgroundColor = RGB(226, 226, 226)
             nameLabel.textColor = RGB(148, 163, 184)
         }
-        nameLabel.text = group.info.name
+        nameLabel.text = group.name
         
         if let data = sceneData {
             progressView.progress = data.lightness

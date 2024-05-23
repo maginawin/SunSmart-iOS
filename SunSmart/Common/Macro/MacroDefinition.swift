@@ -31,6 +31,9 @@ let StatusBarManager = UIApplication.shared.windows.first!.windowScene!.statusBa
 
 // 屏幕适配 (x)
 func SCRXFrom(_ x : CGFloat) -> CGFloat {
+    if isIPad {
+        return x
+    }
     return x * SCREEN_WIDTH / 375.0
 }
 
@@ -48,6 +51,7 @@ func SCRYFit(_ y : CGFloat) -> CGFloat {
     return SCREEN_HEIGHT / 812.0 * y
 }
 
+let isIPad = UIDevice.current.model == "iPad"
 
 //let BACKGROUND_COLOR = RGB(248, 250, 252)
 //背景色

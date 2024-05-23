@@ -22,7 +22,7 @@ class ScenesViewCell: GroupsViewCell {
         didSet {
             let imageIndex = max(min(scene.info.imageId, sceneImageNames.count) - 1, 0)
             self.imageView.image = UIImage(named: sceneImageNames[imageIndex])
-            self.nameLabel.text = scene.info.name ?? scene.name
+            self.nameLabel.text = scene.name
             
             if scene.needSyncGroups.count > 0 {
                 imageView.image = UIImage(named: "sync_failed_big")

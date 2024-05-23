@@ -117,7 +117,7 @@ class GroupSensorView: UIView {
 //                lightImageView.isHidden = false
 //                lightLuxLabel.isHidden = false
                 // 显示第一个光照传感器lux
-                if let sensor = sensors.first(where: { $0.sensorCalibrated && $0.daylightLux != nil && $0.state }) {
+                if let sensor = sensors.first(where: { $0.ambientLightSensorModel?.publish != nil && $0.sensorCalibrated && $0.daylightLux != nil && $0.state }) {
                     lightLuxLabel.text = "\(sensor.daylightLux!)lx"
                     lightLuxLabel.backgroundColor = RGB(245, 245, 245)
                     startUpdateLuxTimer()
@@ -535,23 +535,12 @@ class GroupSensorViewCell: UITableViewCell {
             }
             
             // 判断是否有光照传感器
-            if sensor.ambientLightSensorModel != nil {
-//                lightLuxLabel.isHidden = false
-                if sensor.sensorCalibrated {
-                    if let lux = sensor.daylightLux {
-                        lightLuxLabel.text = "\(lux)lx"
-                        startUpdateLuxTimer()
-                    }else {
-                        lightLuxLabel.text = nil
-                    }
-                }else {
-                    lightLuxLabel.text = nil
-                }
-                lightLuxLabel.backgroundColor = RGB(245, 245, 245)
+            if sensor.sensorCalibrated, let model = sensor.ambientLightSensorModel, model.publish != nil, sensor.state, let lux = sensor.daylightLux {
+                lightLuxLabel.text = "\(lux)lx"
+                startUpdateLuxTimer()
             }else {
                 lightLuxLabel.text = nil
                 lightLuxLabel.backgroundColor = RGB(245, 245, 245)
-                lightLuxLabel.isHidden = true
             }
         }
     }

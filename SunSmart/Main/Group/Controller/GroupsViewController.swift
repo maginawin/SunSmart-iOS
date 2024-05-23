@@ -46,7 +46,7 @@ class GroupsViewController: UIViewController {
         
         setupUI()
         
-        footerView.countBtn.setTitle("\(space.groups.count)/16", for: .normal)
+        footerView.countBtn.setTitle("\(MeshNetworkManager.instance.groups.count)/16", for: .normal)
         
         addNotificationObserver()
         
@@ -93,8 +93,8 @@ class GroupsViewController: UIViewController {
             return
         }
         let point = sender.location(in: collectionView)
-        if let indexPath = collectionView.indexPathForItem(at: point), indexPath.item < space.groups.count {
-            let group = space.groups[indexPath.item]
+        if let indexPath = collectionView.indexPathForItem(at: point), indexPath.item < MeshNetworkManager.instance.groups.count {
+            let group = MeshNetworkManager.instance.groups[indexPath.item]
             
             let groupVc = GroupViewController(space: space, group: group)
 //            groupVc.groupDeleteCallback = {[weak self] _ in
@@ -143,11 +143,11 @@ class GroupsViewController: UIViewController {
                     XWHUDManager.hide()
                     XWHUDManager.showSuccessTipHUD("done!".localizedString)
                     self?.updateUI()
-                    self?.space.scenes.forEach({
-                        if let index = $0.info.groups.firstIndex(of: group) {
-                            $0.info.groups.remove(at: index)
-                        }
-                    })
+//                    MeshNetworkManager.instance.scenes.forEach({
+//                        if let index = $0.info.groups.firstIndex(of: group) {
+//                            $0.info.groups.remove(at: index)
+//                        }
+//                    })
                     
                 } failed: {[weak self] _ in
                     XWHUDManager.hide()
@@ -192,13 +192,14 @@ class GroupsViewController: UIViewController {
     /// 刷新UI
     private func updateUI() {
         
-        self.footerView.countBtn.setTitle("\(space.groups.count)/16", for: .normal)
-        if self.space.groupCount != self.space.groups.count {
-            self.space.groupCount = self.space.groups.count
+        let groups = MeshNetworkManager.instance.groups
+        self.footerView.countBtn.setTitle("\(groups.count)/16", for: .normal)
+        if self.space.groupCount != groups.count {
+            self.space.groupCount = groups.count
             self.space.save()
         }
         self.updateGroupesEmptyUI()
-        if isEdit && space.groups.isEmpty {
+        if isEdit && groups.isEmpty {
             isEdit = false
         }
         if isEdit {
@@ -208,13 +209,14 @@ class GroupsViewController: UIViewController {
             editView.isHidden = true
             footerView.isHidden = false
         }
+        footerView.sortBtn.isHidden = true
         collectionView.reloadData()
     }
   
     /// 更新空页面UI
     private func updateGroupesEmptyUI() {
         
-        if space.groups.isEmpty {
+        if MeshNetworkManager.instance.groups.isEmpty {
             if collectionView.frame.isEmpty {
                 view.layoutIfNeeded()
             }
@@ -254,7 +256,7 @@ class GroupsViewController: UIViewController {
     }
     
     private func reloadCollectionItem(group: Group) {
-        if let index = space.groups.firstIndex(where: {$0.address.address == group.address.address}) {
+        if let index = MeshNetworkManager.instance.groups.firstIndex(where: {$0.address.address == group.address.address}) {
             //            CATransaction.setDisableActions(true)
             //            collectionView.reloadItems(at: [IndexPath(row: index, section: 0)])
             if let item = collectionView.cellForItem(at: IndexPath(item: index, section: 0)) as? GroupsViewCell {
@@ -317,12 +319,12 @@ class GroupsViewController: UIViewController {
 extension GroupsViewController: UICollectionViewDataSource, UICollectionViewDelegateFlowLayout {
     
     public func collectionView(_ collectionView: UICollectionView, numberOfItemsInSection section: Int) -> Int {
-        return space.groups.count
+        return MeshNetworkManager.instance.groups.count
     }
     
     public func collectionView(_ collectionView: UICollectionView, cellForItemAt indexPath: IndexPath) -> UICollectionViewCell {
         let cell = collectionView.dequeueReusableCell(withReuseIdentifier: "cell", for: indexPath) as! GroupsViewCell
-        let group = space.groups[indexPath.item]
+        let group = MeshNetworkManager.instance.groups[indexPath.item]
         cell.group = group
         cell.deleteBtn.isHidden = !isEdit
         cell.deleteActionCallback = {[weak self] in
@@ -340,7 +342,7 @@ extension GroupsViewController: UICollectionViewDataSource, UICollectionViewDele
     
     func collectionView(_ collectionView: UICollectionView, didSelectItemAt indexPath: IndexPath) {
         
-        let group = space.groups[indexPath.item]
+        let group = MeshNetworkManager.instance.groups[indexPath.item]
  
         group.isOn = !group.isOn
         if group.nodes.count > 0 {
@@ -363,7 +365,7 @@ extension GroupsViewController: SpaceFunctionFooterViewDelegate {
     /// 点击添加回调
     func functionDidClickAdd(view: SpaceFunctionFooterView) {
         
-        guard self.space.groups.count < 16 else { return }
+        guard MeshNetworkManager.instance.groups.count < 16 else { return }
         
         let vc = GroupAddViewController(space: space)
 //        vc.doneCallback = {[weak self] group in

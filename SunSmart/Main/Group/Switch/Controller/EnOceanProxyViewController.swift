@@ -71,6 +71,12 @@ class EnOceanProxyViewController: UIViewController {
         view.backgroundColor = Background_Color
         
         view.addSubview(tableView)
+        
+        tableView.snp.makeConstraints { make in
+            make.left.right.bottom.equalToSuperview()
+            make.top.equalTo((navigationController?.navigationBar.height ?? 0))
+        }
+        
         view.addSubview(loadingView)
         groupProxys = group.nodes.filter({ $0.sunricherVendorModel != nil })
         
@@ -138,10 +144,7 @@ class EnOceanProxyViewController: UIViewController {
 //                }
                 
                 self.setSwitch.proxyNode = proxyNode
-                if let uuid = MeshNetworkManager.instance.meshNetwork?.uuid.uuidString {
-                    self.setSwitch.save(meshUUID: uuid)
-                    proxyNode.saveNodeInfo(meshUUID: uuid)
-                }
+                self.setSwitch.save()
                 self.reloadProxyItem(proxy: proxyNode)
                 if self.setSwitch.enabled { // 是否启用，启用默认绑定按键
                     MeshEnOceanProxyServer.bindEnOceanSwitchKeys(proxyNode: proxyNode, group: self.group, sceneA: self.setSwitch.sceneA, sceneB: self.setSwitch.sceneB) {[weak self] _, _ in
@@ -182,16 +185,15 @@ class EnOceanProxyViewController: UIViewController {
             self.hideLoadingAnimation()
             if isDeleteSuccess { // 删除代理成功
                 
-                if let uuid = MeshNetworkManager.instance.meshNetwork?.uuid.uuidString {
-                    proxyNode.saveNodeInfo(meshUUID: uuid)
+//                    proxyNode.saveNodeInfo(meshUUID: uuid, networkKey: networkKey)
                     
-                    if let removeProxySwitch = self.group.info.switchs.first(where: { $0.proxyNode?.primaryUnicastAddress == proxyNode.primaryUnicastAddress }) {
-                        
-                        removeProxySwitch.proxyNode = nil
-                        removeProxySwitch.save(meshUUID: uuid)
-                        self.switchDataUpdateCallback?(removeProxySwitch)
-                    }
+                if let removeProxySwitch = self.group.info.switchs.first(where: { $0.proxyNode?.primaryUnicastAddress == proxyNode.primaryUnicastAddress }) {
+                    
+                    removeProxySwitch.proxyNode = nil
+                    removeProxySwitch.save()
+                    self.switchDataUpdateCallback?(removeProxySwitch)
                 }
+                
                 self.reloadProxyItem(proxy: proxyNode)
                 
             }else {
@@ -312,7 +314,7 @@ extension EnOceanProxyViewController: LBXScanViewControllerDelegate {
                     self?.scanCodeVc?.startScan()
                 })]).show()
                 
-            }else if group.info.switchs.contains(where: { $0.proxyNode?.enOceanMacAddress != nil && $0.proxyNode?.enOceanMacAddress != data.macAddress }) { // 本地判断是否组内是否有动能开关绑定
+            }else if group.info.switchs.contains(where: { $0.proxyNode?.enOceanMacAddress != nil && $0.proxyNode?.enOceanMacAddress != data.macAddress }) && groupSwitch.proxyNode != nil { // 本地判断是否组内是否有动能开关绑定，并且该虚拟开关绑定了代理
                 // 提示是否需要创建
                 SRAlertView(message: "enocean_proxies_exist".localizedString, actions: [.init(title: "alert_item_cancel".localizedString, style: .cancel, actionHandler: {[weak self] _ in
                     self?.scanCodeVc?.startScan()
@@ -322,6 +324,8 @@ extension EnOceanProxyViewController: LBXScanViewControllerDelegate {
                     self.navigationController?.popViewController(animated: true)
                     // 生成一个新的虚拟开关给
                     self.setSwitch = self.group.addGroupSwitch()
+                    self.setSwitch.sceneA = self.groupSwitch.sceneA
+                    self.setSwitch.sceneB = self.groupSwitch.sceneB
                     self.enOceanSwitchBind(enOceanData: data)
                     
                 })]).show()
@@ -425,7 +429,7 @@ extension EnOceanProxyViewController: UITableViewDataSource, UITableViewDelegate
         if section == 0 {
             headerView.titleLabel.text = "not_in_groups".localizedString
         }else {
-            headerView.titleLabel.text = group.info.name ?? group.name
+            headerView.titleLabel.text = group.name
         }
         headerView.contentLabel.text = nil
         headerView.isShow = showSections.contains(section)

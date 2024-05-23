@@ -489,7 +489,7 @@ class ScheduleScrollView: UIScrollView, UIGestureRecognizerDelegate {
             NSClassFromString("UIPickerTableViewWrapperCell"),
             NSClassFromString("UIPickerColumnView")
         ]
-        if let otherClass = otherGestureRecognizer.view?.classForCoder, pickerClasss.contains(where: { $0?.isSubclass(of: otherClass) ?? false }), otherGestureRecognizer.isKind(of: UIPanGestureRecognizer.classForCoder()) {
+        if let otherClass = otherGestureRecognizer.view?.classForCoder, pickerClasss.contains(where: { $0 == otherClass }), otherGestureRecognizer.isKind(of: UIPanGestureRecognizer.classForCoder()) {
             return true
         }
         return false
@@ -603,14 +603,14 @@ extension ScheduleAddTargetView: UITableViewDataSource, UITableViewDelegate {
             }
         case .groups(let groups):
             cell.titleLabel.text = "groups".localizedString
-            names = groups.map({ $0.info.name ?? $0.name })
+            names = groups.map({ $0.name })
             emptyStr = "select_groups".localizedString
             if case .groups = self.selectTarget {
                 isSelected = true
             }
         case .scene(let scene):
             cell.titleLabel.text = "scenes".localizedString
-            if let name = scene?.info.name ?? scene?.name {
+            if let name = scene?.name {
                 names = [name]
             }
             emptyStr = "select_scenes".localizedString

@@ -26,6 +26,11 @@ class DeviceLightViewController: UIViewController {
     private var lightnessSlider: BuoySliderView!
     private var cctSlider: BuoySliderView!
     
+    private var replyLabel: UILabel!
+    private var replySwitch: UISwitch!
+    
+    private var lastMeshDelegate: MeshLibManagerDelegate?
+    
     let space: SpaceData
     let node: Node
 
@@ -44,6 +49,8 @@ class DeviceLightViewController: UIViewController {
 
         title = node.name
         view.backgroundColor = Background_Color
+        
+        self.lastMeshDelegate = MeshLibManager.manager.delegate
 
         if self.presentingViewController != nil && navigationController?.viewControllers.count ?? 0 == 1 {
             
@@ -53,7 +60,12 @@ class DeviceLightViewController: UIViewController {
 //        menuView?.backgroundColor = .white
         navigationItem.rightBarButtonItem = UIBarButtonItem(image: UIImage(named: "more_vertical")?.withRenderingMode(.alwaysOriginal), style: .done, target: self, action: #selector(moreClick))
         
-        node.lightCTLTemperatureRange = 2700...6500
+//        let tap = UITapGestureRecognizer(target: self, action: #selector(test))
+//        tap.numberOfTapsRequired = 2
+//        view.addGestureRecognizer(tap)
+        
+        
+//        node.lightCTLTemperatureRange = 2700...6500
         
         // 初始化UI
         setupUI()
@@ -63,6 +75,27 @@ class DeviceLightViewController: UIViewController {
         bindSliderAction()
         // 获取设备数据
         getNodeState()
+        // 获取节点转发功能是否启用
+        MeshAPI.getReplyState(address: node.primaryUnicastAddress, result: nil)
+    }
+    
+    
+    @objc private func test() {
+        
+        
+        SRAlertView(title: "输入亮度值", inputText: "\(self.node.lightness)", placeholder: "0~65535", keyboardType: .numberPad, actions: [.cancelAction, .init(title: "Settings".localizedString, style: .default)]) { _, _ in
+            return nil
+        } inputDoneBack: {[weak self] text in
+            guard let self = self, let value = UInt16(text), node.lightnessRange.contains(value) else { return }
+            
+            self.node.lightness = value
+            self.node.isOn = value > 0
+            self.updateData()
+            
+            MeshAPI.setNodeLightnessState(address: self.node.primaryUnicastAddress, lightness: value)
+        }.show()
+
+        
     }
     
     override func viewWillAppear(_ animated: Bool) {
@@ -77,6 +110,8 @@ class DeviceLightViewController: UIViewController {
     
     override func viewDidDisappear(_ animated: Bool) {
         super.viewDidDisappear(animated)
+        
+        MeshLibManager.manager.register(self.lastMeshDelegate)
         
         NotificationCenter.default.post(name: .init(deviceStateUpdateNotificationName), object: self.node)
     }
@@ -97,6 +132,8 @@ class DeviceLightViewController: UIViewController {
     
     /// 更新UI数据
     private func updateData() {
+        
+        self.replySwitch.isOn = node.replyEnabled
         
         if node.isKeybindComplete {
             
@@ -205,7 +242,7 @@ class DeviceLightViewController: UIViewController {
 //            guard let self = self else { return }
              if !validRange && !text.isEmpty { // 长度超限
                  return "text_length_exceeded".localizedString
-             }else if (self?.space.isNodeTautonym(nodeName: text) ?? false) && text != self?.node.name { // 重名
+             }else if (MeshNetworkManager.instance.isNodeTautonym(nodeName: text) ) && text != self?.node.name { // 重名
                  return "name_already_exists".localizedString
              }
              return nil
@@ -213,7 +250,7 @@ class DeviceLightViewController: UIViewController {
              guard let self = self else { return }
              self.title = text
              self.node.name = text
-             _ = self.space.meshManager?.save()
+//             _ = self.space.meshManager?.save()
              self.space.save()
 //             self.lightBasicVc?.reloadNodeName(text)
 //             reloadNodeName
@@ -231,8 +268,10 @@ class DeviceLightViewController: UIViewController {
             MeshAPI.resetNode(address: self.node.primaryUnicastAddress) {[weak self] _ in
                 XWHUDManager.hide()
                 XWHUDManager.showSuccessTipHUD("done!".localizedString)
+                self?.space.deviceCount = MeshNetworkManager.instance.realNodes.count
+                self?.space.luminairesCount = MeshNetworkManager.instance.lightNodes.count
                 self?.space.save()
-                self?.node.delete()
+                self?.node.deleteExtension()
                 DispatchQueue.main.asyncAfter(wallDeadline: .now() + 1) {
                     NotificationCenter.default.post(name: .init(devicesUpdateNotificationName), object: nil)
                     self?.backAction()
@@ -242,9 +281,11 @@ class DeviceLightViewController: UIViewController {
                 
                 let alertView = SRAlertView(title: "notification".localizedString, actions: [.cancelAction, SRAlertAction(title: "force_delete".localizedString, actionHandler: {[weak self] _ in
                     guard let self = self else { return }
-                    self.node.delete()
+                    self.node.deleteExtension()
                     self.space.meshManager?.meshNetwork?.remove(node: self.node)
-                    _ = self.space.meshManager?.save()
+//                    _ = self.space.meshManager?.save()
+                    self.space.deviceCount = MeshNetworkManager.instance.realNodes.count
+                    self.space.luminairesCount = MeshNetworkManager.instance.lightNodes.count
                     self.space.save()
                     XWHUDManager.showSuccessTipHUD("done!".localizedString)
                     DispatchQueue.main.asyncAfter(wallDeadline: .now() + 1) {[weak self] in
@@ -320,7 +361,7 @@ class DeviceLightViewController: UIViewController {
     /// 刷新
     private func refresh() {
         
-        XWHUDManager.showCustomHUD(withMessage: nil, isWindow: false, afterDelay: 3)
+        XWHUDManager.showCustomHUD(withMessage: nil, isWindow: false, afterDelay: 2)
         getNodeState()
     }
     
@@ -369,6 +410,16 @@ class DeviceLightViewController: UIViewController {
         cctSlider.valueThrottleChangedCallback = {[weak self] (value, ended) in
             guard let self = self else { return }
             MeshAPI.setNodeColorTemperatureState(address: self.node.primaryUnicastAddress, temperature: UInt16(value), ack: ended)
+        }
+    }
+    
+    @objc private func replySwitchValueChanged(sender: UISwitch) {
+        sender.isEnabled = false
+        MeshAPI.setReplyState(address: node.primaryUnicastAddress, enabled: sender.isOn) { successful in
+            sender.isEnabled = true
+            if !successful {
+                sender.isOn = !sender.isOn
+            }
         }
     }
     
@@ -523,6 +574,23 @@ class DeviceLightViewController: UIViewController {
             make.centerX.equalToSuperview()
         }
         
+        replySwitch = UISwitch()
+        replySwitch.onTintColor = Bar_Color
+        replySwitch.tintColor = RGB(207, 207, 207)
+        replySwitch.addTarget(self, action: #selector(replySwitchValueChanged), for: .valueChanged)
+        view.addSubview(replySwitch)
+        replySwitch.snp.makeConstraints { make in
+            make.right.equalTo(SCRXFrom(-16))
+            make.bottom.equalTo(lightBgView.snp.top)
+        }
+        
+        replyLabel = UILabel(text: "Reply", textColor: TextBlack_Color, fontSize: 13)
+        view.addSubview(replyLabel)
+        replyLabel.snp.makeConstraints { make in
+            make.centerY.equalTo(replySwitch)
+            make.right.equalTo(replySwitch.snp.left).offset(SCRXFrom(-6))
+        }
+        
     }
 
 }
@@ -533,6 +601,22 @@ extension DeviceLightViewController: MeshLibManagerDelegate {
         if node.primaryUnicastAddress == self.node.primaryUnicastAddress {
             updateData()
             updateSliderValue()
+        }
+    }
+    
+    /// 收到消息回调
+    /// - Parameters:
+    ///   - manager: mesh网络管理
+    ///   - message: 消息体
+    ///   - source: 来源设备地址
+    ///   - destination: 接收设备地址
+    func meshNetworkManager(_ manager: MeshNetworkManager, didReceiveMessage message: MeshMessage, sentFrom source: Address, to destination: Address) {
+        if let node = manager.meshNetwork?.node(withAddress: source), !node.isProvisioner {
+            node.updateData(message: message)
+            if node.primaryUnicastAddress == self.node.primaryUnicastAddress {
+                updateData()
+                updateSliderValue()
+            }
         }
     }
     

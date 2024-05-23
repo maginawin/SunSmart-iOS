@@ -9,6 +9,9 @@ import UIKit
 import NordicSigMeshSDK
 import CoreBluetooth
 
+/// 空间内菜单选择修改通知
+let spaceMenuIndexChangeNotificaitonName = "spaceMenuIndexChangeNotificaiton"
+
 class SpaceViewController: WMPageController {
 
     let space: SpaceData
@@ -45,10 +48,10 @@ class SpaceViewController: WMPageController {
     
     override func viewDidLoad() {
 //        self.selectIndex = 3
-        MeshLibManager.manager.setMeshNetworkConnected(meshUUID: space.meshUUID)
         
+//        MeshNetworkManager.instance.meshNetwork?.applicationKeys.first.
         super.viewDidLoad()
-
+        
         title = space.name
         view.backgroundColor = Background_Color
         menuView?.backgroundColor = .white
@@ -58,17 +61,49 @@ class SpaceViewController: WMPageController {
 
         MeshLibManager.manager.addObserver(self, forKeyPath: "bluetoothState", context: nil)
         
-        MeshLibManager.manager.publishModelIDs = [.genericOnOffServerModelId, .lightLightnessServerModelId, .lightCTLServerModelId]
+        MeshLibManager.manager.publishModelIDs = []// .genericOnOffServerModelId, .lightLightnessServerModelId, .lightCTLServerModelId
         MeshLibManager.manager.publishTimeModelIDs = []
         MeshLibManager.manager.publishModeloOnly = true
         MeshLibManager.manager.groupSubscriptionModelIDs = [.genericOnOffServerModelId, .lightLightnessServerModelId, .genericLevelServerModelId, .lightCTLTemperatureServerModelId, .lightCTLServerModelId, .sensorServerModelId, .lightLCServerModelId]
         checkBluetoothState()
         // 读取网络数据
-        if let manager = MeshLibManager.manager.meshNetworkManager {
-            space.meshManager = manager
-            manager.loadExtensionData {[weak self] in
-                self?.loadNetworkData = true
-                self?.reloadData()
+        XWHUDManager.showCustomHUD(withMessage: nil, isWindow: false, afterDelay: 2)
+        DispatchQueue.global().async {
+            MeshLibManager.manager.setMeshNetworkConnected(meshUUID: self.space.meshUUID, subNetwork: self.space.meshNetworkKey)
+            
+            if let manager = MeshLibManager.manager.meshNetworkManager {
+                self.space.meshManager = manager
+                manager.loadExtensionData {[weak self] in
+                    guard let self = self else { return }
+//                    XWHUDManager.hideInView(with: self.view)
+                    self.loadNetworkData = true
+                    self.reloadData()
+                    self.configurationFlowGuidance()
+                }
+            }
+        }
+   
+        // 添加通知监听
+        addNotificaiton()
+        
+    }
+    
+    /// 配置引导
+    private func configurationFlowGuidance() {
+        
+        // 判断是否空的空间，进行引导配置流程
+        if space.isEmpty {
+            DispatchQueue.main.asyncAfter(wallDeadline: .now() + 0.5) {[weak self] in
+                guard let self = self else { return }
+                ConfigurationFlowGuidanceView(continueBack: {[weak self] in
+                    guard let self = self else { return }
+                    // 进入引导配置流程
+                    self.space.isConfiguring = true
+                    let vc = GroupAddViewController(space: self.space)
+                    let navVc = NavigationViewController(rootViewController: vc)
+                    self.present(navVc, animated: true)
+                    self.selectIndex = 1
+                }).show()
             }
         }
         
@@ -87,6 +122,75 @@ class SpaceViewController: WMPageController {
 //        let oldState = change![NSKeyValueChangeKey.oldKey] as! CBManagerState
            
         checkBluetoothState()
+    }
+    
+     /// 添加通知监听
+    private func addNotificaiton() {
+        
+        // 设备列表更新通知
+        NotificationCenter.default.addObserver(forName: .init(devicesUpdateNotificationName), object: nil, queue: nil) {[weak self] _ in
+            self?.updateSpaceData()
+        }
+        
+        // 组列表更新通知
+        NotificationCenter.default.addObserver(forName: .init(groupsRefreshNotificationName), object: nil, queue: nil) {[weak self] _ in
+            self?.updateSpaceData()
+        }
+        
+        // 场景列表更新通知
+        NotificationCenter.default.addObserver(forName: .init(scenesRefreshNotificationName), object: nil, queue: nil) {[weak self] _ in
+            self?.updateSpaceData()
+        }
+        
+        // 日程列表更新通知
+        NotificationCenter.default.addObserver(forName: .init(schedulesRefreshNotificationName), object: nil, queue: nil) {[weak self] _ in
+            self?.updateSpaceData()
+        }
+        
+        NotificationCenter.default.addObserver(forName: .init(spaceMenuIndexChangeNotificaitonName), object: nil, queue: nil) {[weak self] notification in
+            guard let self = self, let selectIndex = notification.object as? Int, selectIndex >= 0 && selectIndex < SpaceMenuView.defalutItems.count else { return }
+            self.selectIndex = Int32(selectIndex)
+        }
+        
+        // 日程列表更新通知
+//        NotificationCenter.default.addObserver(forName: .init(schedulesRefreshNotificationName), object: nil, queue: nil) {[weak self] _ in
+//            self?.updateSpaceData()
+//        }
+    }
+    
+    /// 更新空间缓存数据
+    private func updateSpaceData() {
+        var saveData = false
+        let nodes = MeshNetworkManager.instance.realNodes
+        let lightNodes = MeshNetworkManager.instance.lightNodes
+        if self.space.deviceCount != nodes.count {
+            self.space.deviceCount = nodes.count
+            saveData = true
+        }
+        if self.space.luminairesCount != lightNodes.count {
+            self.space.luminairesCount = lightNodes.count
+            saveData = true
+        }
+        if self.space.groupCount != MeshNetworkManager.instance.groups.count {
+            self.space.groupCount = MeshNetworkManager.instance.groups.count
+            saveData = true
+        }
+        if self.space.sceneCount != MeshNetworkManager.instance.scenes.count {
+            self.space.sceneCount = MeshNetworkManager.instance.scenes.count
+            saveData = true
+        }
+        if self.space.scheheduleCount != MeshNetworkManager.instance.schedules.count {
+            self.space.scheheduleCount = MeshNetworkManager.instance.schedules.count
+            saveData = true
+        }
+        if self.space.switchesCount != MeshNetworkManager.instance.subnetworkSwitchProxys.count {
+            self.space.scheheduleCount = MeshNetworkManager.instance.subnetworkSwitchProxys.count
+            saveData = true
+        }
+        
+        if saveData {
+            self.space.save()
+        }
     }
     
     func checkBluetoothState() {

@@ -44,7 +44,8 @@ struct ScheduleServer {
                 setNodes.append(contentsOf: $0.nodes.filter({ !setNodes.contains($0) }))
             })
         }
-        setNodes = setNodes.filter({ $0.scheduleDatas.keys.contains(schedule.id) && !($0.scheduleDatas[schedule.id]! == schedule.schedulerEntry) })
+        
+        setNodes = setNodes.filter({ $0.schedulerActions.keys.contains(schedule.id) && !($0.schedulerActions[schedule.id]! == schedule.schedulerEntry) })
         
         let meshUUID = MeshNetworkManager.instance.meshNetwork?.uuid.uuidString
         
@@ -53,18 +54,16 @@ struct ScheduleServer {
         saveSchedule(schedule: schedule, setNodes: setNodes) { _ in
             
 //            schedule.enabled = enabled
-            if meshUUID != nil {
-                schedule.save(meshUUID: meshUUID!)
-            }
+            schedule.save()
             success?(schedule)
             
         } failed: { _ in
             // 部分设备设置成功。设备失败则算开启/关闭，失败设备需去同步
-            if setNodes.contains(where: { $0.scheduleDatas.keys.contains(schedule.id) && ($0.scheduleDatas[schedule.id]! == schedule.schedulerEntry) }) {
+            if setNodes.contains(where: { $0.schedulerActions.keys.contains(schedule.id) && ($0.schedulerActions[schedule.id]! == schedule.schedulerEntry) }) {
                 
                 schedule.enabled = enabled
                 if meshUUID != nil {
-                    schedule.save(meshUUID: meshUUID!)
+                    schedule.save()
                 }
             }else {
                 schedule.enabled = !enabled
@@ -87,19 +86,18 @@ struct ScheduleServer {
         // 更新缓存，删除本地设备数据
         schedule.action = .noAction
         
-        schedule.needDeleteNodes.append(contentsOf: schedule.nodes)
-        schedule.nodes.removeAll()
+        schedule.needDeleteNodeAddresses.append(contentsOf: schedule.nodes.map({ $0.primaryUnicastAddress }))
+        schedule.needDeleteNodeAddresses.removeAll()
         
-        schedule.needDeleteGroups.append(contentsOf: schedule.groups)
-        schedule.groups.removeAll()
+        schedule.needDeleteGroupAddresses.append(contentsOf: schedule.groups.map({ $0.address.address }))
+        schedule.groupAddresses.removeAll()
         
         if let scene = schedule.scene {
-            schedule.needDeleteScenes.append(scene)
-            schedule.scene = nil
+            schedule.needDeleteSceneNumbers.append(scene.number)
+            schedule.sceneNumber = nil
         }
-        if let uuid = MeshNetworkManager.instance.meshNetwork?.uuid.uuidString {
-            schedule.save(meshUUID: uuid)
-        }
+        schedule.save()
+        
         
 //        var setNodes: [Node] = []
 //        
@@ -124,10 +122,10 @@ struct ScheduleServer {
 //        setNodes = setNodes.filter({ $0.scheduleDatas.keys.contains(schedule.id) })
         
         saveSchedule(schedule: schedule) { _ in
-            if let uuid = MeshNetworkManager.instance.meshNetwork?.uuid.uuidString {
-                Schedule.deleteData(meshUUID: uuid, scheduleId: schedule.id)
-                MeshNetworkManager.instance.schedules.removeAll(where: { $0.id == schedule.id })
-            }
+//            if let uuid = MeshNetworkManager.instance.meshNetwork?.uuid.uuidString {
+            schedule.deleteData()
+            MeshNetworkManager.instance.schedules.removeAll(where: { $0.id == schedule.id })
+//            }
             success?(schedule)
         } failed: { _ in
             failed?(schedule)

@@ -28,7 +28,8 @@ class DaylightSensorInstructionsController: UIViewController {
         navigationController?.setNavigationBarBackgroundColor(color: Background_Color)
         
         view.backgroundColor = Background_Color
-        navigationItem.leftBarButtonItem = UIBarButtonItem(image: UIImage(named: "close")?.withRenderingMode(.alwaysOriginal), style: .done, target: self, action: #selector(back))
+        navigationItem.leftBarButtonItem = UIBarButtonItem()
+        navigationItem.rightBarButtonItem = UIBarButtonItem(image: UIImage(named: "close")?.withRenderingMode(.alwaysOriginal), style: .done, target: self, action: #selector(back))
         
         setupUI()
     }
@@ -80,8 +81,7 @@ extension DaylightSensorInstructionsController: UICollectionViewDataSource, UICo
     func collectionView(_ collectionView: UICollectionView, layout collectionViewLayout: UICollectionViewLayout, sizeForItemAt indexPath: IndexPath) -> CGSize {
         var itemW = (collectionView.width - flowLayout.sectionInset.left - flowLayout.sectionInset.right - flowLayout.minimumInteritemSpacing) / 2.0
         itemW = CGFloat(floorf(Float(itemW) * 100) / 100.0)
-        
-        return CGSize(width: itemW, height: SCRYFrom(142))
+        return CGSize(width: itemW , height: SCRYFrom(142))
     }
     
     func collectionView(_ collectionView: UICollectionView, viewForSupplementaryElementOfKind kind: String, at indexPath: IndexPath) -> UICollectionReusableView {

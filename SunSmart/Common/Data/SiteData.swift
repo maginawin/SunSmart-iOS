@@ -25,6 +25,8 @@ class SiteData: Copyable {
     
     /// 场所id
     var id: String
+    /// 网络uuid
+    var meshUUID: String
     /// 场所名称
     var name: String = ""
     /// 图标id
@@ -48,15 +50,17 @@ class SiteData: Copyable {
     /// 初始化场所数据
     /// - Parameters:
     ///   - id: id
+    ///   - meshUUID: Mesh UUID
     ///   - name: 名称
     ///   - imageId: 图片id
     ///   - type: 类型
     ///   - create: 创建时间（时间戳毫秒）
     ///   - lastUpdate: 上次更新时间（时间戳毫秒）
     ///   - isFavourite: 是否喜欢
-    init(id: String, name: String, imageId: Int = 0, type: SiteType, create: String, lastUpdate: String? = nil, isFavourite: Bool, sourceType: DataSourceType) {
+    init(id: String, meshUUID: String, name: String, imageId: Int = 0, type: SiteType, create: String, lastUpdate: String? = nil, isFavourite: Bool, sourceType: DataSourceType) {
         self.name = name
         self.id = id
+        self.meshUUID = meshUUID
         self.imageId = imageId
         self.type = type
         self.create = create
@@ -67,7 +71,7 @@ class SiteData: Copyable {
     
     func copy() -> Self {
         
-        let site = SiteData(id: self.id, name: self.name, imageId: self.imageId, type: self.type, create: self.create, lastUpdate: self.lastUpdate, isFavourite: self.isFavourite, sourceType: self.sourceType)
+        let site = SiteData(id: self.id, meshUUID: self.meshUUID, name: self.name, imageId: self.imageId, type: self.type, create: self.create, lastUpdate: self.lastUpdate, isFavourite: self.isFavourite, sourceType: self.sourceType)
         let spaces = self.spaces.map({ $0.copy() })
         site.spaces = spaces
         return site as! Self

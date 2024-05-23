@@ -56,10 +56,12 @@ class SceneSettingsViewController: UIViewController {
         setupUI()
         updateEmptyUI()
         
-        space.groups.forEach({
+        MeshNetworkManager.instance.groups.forEach({
             if scene.info.groups.contains($0) {
                 $0.isSelected = true
-                $0.executeSceneData = $0.info.bindSceneDatas[scene.number]
+                if let data = $0.info.sceneExecuteDatas.first(where: { $0.sceneNumber == scene.number }) {
+                    $0.executeSceneData = .init(data: data)
+                }
 //                    .first(where: { $0.key == scene.number })
             }else {
                 $0.isSelected = false
@@ -81,8 +83,8 @@ class SceneSettingsViewController: UIViewController {
             scene.info.groups.forEach({
 //                if let group = space.groups.first(where: { $0.add })
                 $0.isSelected = true
-                if let sceneData = $0.info.bindSceneDatas[scene.number] {
-                    $0.executeSceneData = SceneExecuteData(lightness: sceneData.lightness, cct: sceneData.cct)
+                if let sceneData = $0.info.sceneExecuteDatas.first(where: { scene.number == $0.sceneNumber }) {
+                    $0.executeSceneData = .init(data: sceneData)
                 }
             })
         }
@@ -100,6 +102,12 @@ class SceneSettingsViewController: UIViewController {
         }
     }
     
+    deinit {
+        if self.mode == .members && self.space.isConfiguring { // 未创建场景退出页面，停止引导配置流程
+            self.space.isConfiguring = false
+        }
+    }
+    
     /// 添加组/编辑通知监听
     private func addNotificationObserver() {
         NotificationCenter.default.addObserver(forName: .init(groupsRefreshNotificationName), object: nil, queue: nil) {[weak self] _ in
@@ -111,11 +119,26 @@ class SceneSettingsViewController: UIViewController {
         
     }
     
+    private func addSuccessHandle() {
+        
+        NotificationCenter.default.post(name: .init(scenesRefreshNotificationName), object: nil)
+        
+        if self.space.isConfiguring && UIViewController.getVisibleVc()?.isKind(of: SpaceViewController.classForCoder()) ?? false { // 在引导配置流程中
+            dismiss(animated: false)
+            // 跳转到连续创建页面
+            let vc = SpaceNewCreationProcessController(space: space, options: .scene)
+            UIViewController.getVisibleVc()?.present(NavigationViewController(rootViewController: vc), animated: true)
+        }else {
+            dismiss(animated: true)
+        }
+        
+    }
+    
     /// 完成（添加成员模式）
     @objc private func doneAction() {
         
         // 获取已选择的组
-        let selectGroups = space.groups.filter({ $0.isSelected && $0.executeSceneData != nil })
+        let selectGroups = MeshNetworkManager.instance.groups.filter({ $0.isSelected && $0.executeSceneData != nil })
         // 有设备的组
         let existNodeGroups = selectGroups.filter({ $0.nodes.count > 0 })
         // 网络未连接
@@ -125,16 +148,22 @@ class SceneSettingsViewController: UIViewController {
         }
         
         selectGroups.forEach({
-            $0.info.bindSceneDatas.updateValue($0.executeSceneData!, forKey: scene.number)
-            SceneExecuteData.save(meshUUID: space.meshUUID, address: $0.address.address, sceneId: Int(scene.number), sceneData: $0.executeSceneData!)
-            scene.info.groups.append($0)
-            scene.info.groups.sort(by: { $0.address.address < $1.address.address })
+            let lightness = Node.getLightness(lightness100: $0.executeSceneData!.lightness)
+            let cct = UInt16($0.cct)
+            if let data = $0.info.sceneExecuteDatas.first(where: { $0.sceneNumber == scene.number }) {
+                data.lightness = lightness
+                data.cct = cct
+            }else {
+                $0.info.sceneExecuteDatas.append(SceneExecuteData(sceneNumber: scene.number, isOn: lightness > 0, lightness: lightness, cct: cct))
+            }
+            $0.info.save()
+//            scene.info.groups.sort(by: { $0.address.address < $1.address.address })
         })
         
         if existNodeGroups.isEmpty { // 都是空组
-            scene.info.groups = selectGroups
-            NotificationCenter.default.post(name: .init(scenesRefreshNotificationName), object: nil)
-            dismiss(animated: true)
+//            scene.info.groups = selectGroups
+//            dismiss(animated: true)
+            addSuccessHandle()
             
         }else { // 去同步
             
@@ -142,14 +171,14 @@ class SceneSettingsViewController: UIViewController {
             vc.syncSuccessCallback = {[weak self] _ in
                 XWHUDManager.showSuccessTipHUD("done!".localizedString)
                 guard let self = self else { return }
-                DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
-                    NotificationCenter.default.post(name: .init(scenesRefreshNotificationName), object: nil)
-                    self.dismiss(animated: true)
+                DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {[weak self] in
+//                    self.dismiss(animated: true)
+                    self?.addSuccessHandle()
                 }
             }
             vc.backActionCallback = {[weak self] in
-                NotificationCenter.default.post(name: .init(scenesRefreshNotificationName), object: nil)
-                self?.dismiss(animated: true)
+//                self?.dismiss(animated: true)
+                self?.addSuccessHandle()
             }
             navigationController?.pushViewController(vc, animated: true)
         }
@@ -160,7 +189,7 @@ class SceneSettingsViewController: UIViewController {
     @objc private func saveAction() {
         
         // 获取已选择的组
-        let selectGroups = space.groups.filter({ $0.isSelected && $0.executeSceneData != nil })
+        let selectGroups = MeshNetworkManager.instance.groups.filter({ $0.isSelected && $0.executeSceneData != nil })
         // 有设备的组
 //        let existNodeGroups = selectGroups.filter({ $0.nodes.count > 0 })
        
@@ -173,11 +202,11 @@ class SceneSettingsViewController: UIViewController {
         // 修改数据的组
         let updateGroups = selectGroups.filter({ group in
             
-            guard let oldData = group.info.bindSceneDatas[scene.number] else {
+            guard let oldData = group.info.sceneExecuteDatas.first(where: { $0.sceneNumber == scene.number }) else {
                 return true
             }
             if scene.info.groups.contains(group), let newData = group.executeSceneData {
-                return newData.lightness != oldData.lightness || newData.cct != oldData.cct
+                return newData.lightness != Node.getLightness100(lightness: oldData.lightness) || newData.cct != oldData.cct
             }
             return false
         })
@@ -193,39 +222,42 @@ class SceneSettingsViewController: UIViewController {
         var syncNodes: [Node] = []
         
         addGroups.forEach({
-            scene.info.groups.append($0)
-            scene.info.groups.sort(by: { $0.address.address < $1.address.address })
-            $0.info.bindSceneDatas.updateValue($0.executeSceneData!, forKey: scene.number)
-            SceneExecuteData.save(meshUUID: space.meshUUID, address: $0.address.address, sceneId: Int(scene.number), sceneData: $0.executeSceneData!)
-            
+//            scene.info.groups.append($0)
+//            scene.info.groups.sort(by: { $0.address.address < $1.address.address })
+            let lightness = Node.getLightness(lightness100: $0.executeSceneData!.lightness)
+            let cct = UInt16($0.executeSceneData!.cct)
+            $0.info.sceneExecuteDatas.append(SceneExecuteData(sceneNumber: scene.number, isOn: $0.executeSceneData!.lightness > 0, lightness: lightness, cct: cct))
+            $0.info.save()
             syncNodes.append(contentsOf: $0.getNeedSyncDataNodes(scene: scene).syncNodes)
         })
         
         updateGroups.forEach({
-            $0.info.bindSceneDatas.updateValue($0.executeSceneData!, forKey: scene.number)
-            SceneExecuteData.save(meshUUID: space.meshUUID, address: $0.address.address, sceneId: Int(scene.number), sceneData: $0.executeSceneData!)
-            
+            if let data = $0.info.sceneExecuteDatas.first(where: { $0.sceneNumber == scene.number }) {
+                data.lightness = Node.getLightness(lightness100: $0.executeSceneData!.lightness)
+                data.cct = UInt16($0.executeSceneData!.cct)
+                $0.info.save()
+            }
             syncNodes.append(contentsOf: $0.getNeedSyncDataNodes(scene: scene).syncNodes)
         })
         
         deleteGroups.forEach({
             var deleteNodes: [Node] = []
             // 同步过场景则去同步删除设备场景
-            if let sceneData = $0.info.bindSceneDatas[scene.number] {
+            if let sceneData = $0.info.sceneExecuteDatas.first(where: { $0.sceneNumber == scene.number }) {
                 sceneData.state = .waitDelete
                 // 判断组内是否有设备同步过该场景
                 deleteNodes = $0.getNeedSyncDataNodes(scene: scene).deleteNodes
                 if deleteNodes.count > 0 {
-                    SceneExecuteData.save(meshUUID: space.meshUUID, address: $0.address.address, sceneId: Int(scene.number), sceneData: sceneData)
+                    $0.info.save()
                 }
             }
             // 未同步则直接删除组场景
-            if deleteNodes.isEmpty {
-                if let index = scene.info.groups.firstIndex(of: $0) {
-                    scene.info.groups.remove(at: index)
-                }
-                SceneExecuteData.deleteData(meshUUID: space.meshUUID, address: $0.address.address, sceneId: Int(scene.number))
-            }
+//            if deleteNodes.isEmpty {
+//                if let index = scene.info.groups.firstIndex(of: $0) {
+//                    scene.info.groups.remove(at: index)
+//                }
+//                SceneExecuteData.deleteData(meshUUID: space.meshUUID, address: $0.address.address, sceneId: Int(scene.number))
+//            }
             syncNodes.append(contentsOf: deleteNodes)
             
         })
@@ -270,9 +302,9 @@ class SceneSettingsViewController: UIViewController {
             return
         }
         let point = sender.location(in: collectionView)
-        if let indexPath = collectionView.indexPathForItem(at: point), indexPath.item < space.groups.count {
+        if let indexPath = collectionView.indexPathForItem(at: point), indexPath.item < MeshNetworkManager.instance.groups.count {
             
-            let group = space.groups[indexPath.item]
+            let group = MeshNetworkManager.instance.groups[indexPath.item]
 //            let data = group.info.bindSceneDatas.first(where: { $0.sceneId == scene.number })?.data
             updateGroupSceneExecuteData(group: group)
         }
@@ -305,16 +337,30 @@ class SceneSettingsViewController: UIViewController {
         
     }
     
+    @objc private func previewBtnTouchDown(sender: UIButton) {
+//        sender.isHighlighted = true
+        sender.setImage(UIImage(named: "scene_preview")?.withTintColor(RGB(155, 155, 155)), for: .normal)
+        sender.setTitleColor(RGB(155, 155, 155), for: .normal)
+    }
+    
+    @objc private func previewBtnTouchEnd(sender: UIButton) {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
+            sender.setImage(UIImage(named: "scene_preview"), for: .normal)
+            sender.setTitleColor(TextBlack_Color, for: .normal)
+        }
+    }
+    
     /// 预览
-    @objc private func previewBtnAction() {
-        
+    @objc private func previewBtnAction(sender: UIButton) {
+      
+        previewBtnTouchEnd(sender: sender)
         guard MeshLibManager.manager.isMeshNetworkConnected else {
             XWHUDManager.showTipHUD("device_notconnect_message".localizedString, isLineFeed: true)
             return
         }
         
         // 有设备的组
-        let controlGroups = space.groups.filter({ $0.isSelected && $0.nodes.count > 0 })
+        let controlGroups = MeshNetworkManager.instance.groups.filter({ $0.isSelected && $0.nodes.count > 0 })
         controlGroups.forEach({
             if let data = $0.executeSceneData, $0.nodes.count > 0 {
                 // 判断组内是否有色温灯
@@ -349,14 +395,15 @@ class SceneSettingsViewController: UIViewController {
                 sceneData.lightness = lightness
                 sceneData.cct = cct
             }else { // 新增
-                group.executeSceneData = SceneExecuteData(lightness: lightness, cct: cct)
+                group.executeSceneData = ExecuteSceneData(lightness: lightness, cct: cct)
+//                SceneExecuteData(lightness: lightness, cct: cct)
 //                group.info.bindSceneDatas.append((self.scene.number, SceneExecuteData(lightness: lightness, cct: cct)))
             }
             group.isSelected = true
 //            if !self.selectGroups.contains(group) {
 //                self.selectGroups.append(group)
 //            }
-            if let index = self.space.groups.firstIndex(of: group) {
+            if let index = MeshNetworkManager.instance.groups.firstIndex(of: group) {
                 CATransaction.setDisableActions(true)
                 self.collectionView.reloadItems(at: [IndexPath(item: index, section: 0)])
                 CATransaction.commit()
@@ -369,7 +416,7 @@ class SceneSettingsViewController: UIViewController {
     
     private func updateEmptyUI() {
         
-        if space.groups.isEmpty {
+        if MeshNetworkManager.instance.groups.isEmpty {
             view.showEmptyDataView(title: "no_groups".localizedString, tipText: "scene_not_groups_message".localizedString, buttonText: "create_group".localizedString, buttomWidth: SCRXFrom(216), position: .center, bottomMargin: SCRYFit(50), btnClickBack: {[weak self] in
                 self?.addGroup()
             })
@@ -415,6 +462,9 @@ class SceneSettingsViewController: UIViewController {
         }
         
         previewBtn = UIButton(title: "preview".localizedString, titleSize: 14, titleWeight: .light, titleColor: RGB(30, 35, 41), normalImageName: "scene_preview", target: self, action: #selector(previewBtnAction))
+        previewBtn.addTarget(self, action: #selector(previewBtnTouchDown), for: .touchDown)
+        previewBtn.addTarget(self, action: #selector(previewBtnTouchEnd), for: .touchCancel)
+        previewBtn.addTarget(self, action: #selector(previewBtnTouchEnd), for: .touchUpOutside)
         previewBtn.setImagePosition(position: .left, spacing: SCRXFrom(4))
         bottomView.addSubview(previewBtn)
         previewBtn.snp.makeConstraints { make in
@@ -453,12 +503,12 @@ class SceneSettingsViewController: UIViewController {
 extension SceneSettingsViewController: UICollectionViewDataSource, UICollectionViewDelegateFlowLayout {
    
     public func collectionView(_ collectionView: UICollectionView, numberOfItemsInSection section: Int) -> Int {
-        return space.groups.count
+        return MeshNetworkManager.instance.groups.count
     }
     
     public func collectionView(_ collectionView: UICollectionView, cellForItemAt indexPath: IndexPath) -> UICollectionViewCell {
         let cell = collectionView.dequeueReusableCell(withReuseIdentifier: "cell", for: indexPath) as! SceneMembersViewCell
-        let group = space.groups[indexPath.item]
+        let group = MeshNetworkManager.instance.groups[indexPath.item]
         cell.updateData(group: group, sceneData: group.executeSceneData)
         if group.isSelected {
             cell.selectBtn.isSelected = true
@@ -497,7 +547,7 @@ extension SceneSettingsViewController: UICollectionViewDataSource, UICollectionV
     
     func collectionView(_ collectionView: UICollectionView, didSelectItemAt indexPath: IndexPath) {
            
-        let group = space.groups[indexPath.item]
+        let group = MeshNetworkManager.instance.groups[indexPath.item]
         if group.nodes.isEmpty { // 空组
             XWHUDManager.showTipHUD("group_empty".localizedString, isLineFeed: true)
             return
@@ -530,9 +580,9 @@ private extension Group {
     static var isSelectedKey = 2
     
     /// 赋值的场景数据
-    var executeSceneData: SceneExecuteData? {
+    var executeSceneData: ExecuteSceneData? {
         get {
-            objc_getAssociatedObject(self, &Group.executeSceneDataKey) as? SceneExecuteData
+            objc_getAssociatedObject(self, &Group.executeSceneDataKey) as? ExecuteSceneData
         }set {
             objc_setAssociatedObject(self, &Group.executeSceneDataKey, newValue, .OBJC_ASSOCIATION_RETAIN)
         }

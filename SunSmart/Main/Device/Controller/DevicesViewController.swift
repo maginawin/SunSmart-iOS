@@ -99,6 +99,8 @@ class DevicesViewController: UIViewController {
             XWHUDManager.showCustomHUD(withMessage: nil, isWindow: false, afterDelay: 10)
             // 获取设备信号
             MeshLibManager.manager.refreshNodesRSSI(withWaitFor: 3, result: nil)
+        }else {
+            XWHUDManager.hideInView()
         }
         
         addNotificaiton()
@@ -129,15 +131,23 @@ class DevicesViewController: UIViewController {
     override func observeValue(forKeyPath keyPath: String?, of object: Any?, change: [NSKeyValueChangeKey : Any]?, context: UnsafeMutableRawPointer?) {
         if keyPath == "isMeshNetworkConnected" { // 网络连接/断开连接回调
             if MeshLibManager.manager.isMeshNetworkConnected {
-                getNodesState()
-                // 同步时间
-                if space.nodes.contains(where: { $0.scheduleIds.count > 0 }) && space.schedules.count > 0 {
-//                if space.needSyncDate {
-                    // 延迟3s发送广播节点同步时间消息，避免与获取设备状态冲突
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 3) {[weak self] in
-                        self?.syncTimeNodes()
+//                DispatchQueue.global().async {
+//                    if let node = MeshNetworkManager.instance.realNodes.first(where: { $0.isProxy }) ?? MeshNetworkManager.instance.realNodes.first {
+//                        MeshAPI.sendMessage(message: ConfigRelaySet(count: 0, steps: 1), address: node.primaryUnicastAddress)
+//                        sleep(1)
+//                    }
+//                    DispatchQueue.main.async {
+                        self.getNodesState()
+//                    }
+                    // 同步时间
+                    if MeshNetworkManager.instance.realNodes.contains(where: { $0.scheduleIds.count > 0 }) && MeshNetworkManager.instance.schedules.count > 0 {
+    //                if space.needSyncDate {
+                        // 延迟3s发送广播节点同步时间消息，避免与获取设备状态冲突
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 3) {[weak self] in
+                            self?.syncTimeNodes()
+                        }
                     }
-                }
+//                }
             }
         }
     }
@@ -145,7 +155,7 @@ class DevicesViewController: UIViewController {
     /// 添加通知监听
     private func addNotificaiton() {
         
-        // 设备状态更新通知
+        // 设备列表更新通知
         NotificationCenter.default.addObserver(forName: .init(devicesUpdateNotificationName), object: nil, queue: nil) {[weak self] notification in
             guard let self = self else { return }
             self.loadDevices()
@@ -170,13 +180,13 @@ class DevicesViewController: UIViewController {
         devices = MeshNetworkManager.instance.realNodes
         
         // 读取缓存的设备信号值
-        if let rssiMap = LCPlistCacheTool.readDict(fileName: rssiFileName) {
-            rssiMap.forEach { (mac: String, rssi: Any) in
-                if let node = devices.first(where: { $0.macAddress == mac }) {
-                    node.rssi = rssi as? Int
-                }
-            }
-        }
+//        if let rssiMap = LCPlistCacheTool.readDict(fileName: rssiFileName) {
+//            rssiMap.forEach { (mac: String, rssi: Any) in
+//                if let node = devices.first(where: { $0.macAddress == mac }) {
+//                    node.rssi = rssi as? Int
+//                }
+//            }
+//        }
         if devices.count > 0 {
             collectionView.refreshControl = refreshControl
         }else {
@@ -228,7 +238,7 @@ class DevicesViewController: UIViewController {
         self.updateDevicesEmptyUI()
         
         self.footerView.countBtn.setTitle("\(self.devices.count)/100", for: .normal)
-        let switchProxys = self.devices.filter({ $0.enOceanMacAddress != nil })
+        let switchProxys = MeshNetworkManager.instance.subnetworkSwitchProxys
         self.footerView.switchCountBtn.setTitle("\(switchProxys.count)/16", for: .normal)
         
         var inset = self.collectionView.contentInset
@@ -276,7 +286,7 @@ class DevicesViewController: UIViewController {
         showSelectDatas = groups.map({
             let nodes = $0.nodes.filter({ $0.state && $0.isKeybindComplete })
             let isSelected = nodes.count > 0 && !nodes.contains(where: { !self.selectedAddresss.contains($0.primaryUnicastAddress) })
-            return DeviceGroupsSelectData(name: $0.info.name ?? $0.name, addresss: nodes.map({ $0.primaryUnicastAddress }), isSelected: isSelected)
+            return DeviceGroupsSelectData(name: $0.name, addresss: nodes.map({ $0.primaryUnicastAddress }), isSelected: isSelected)
         })
         let canEditDeviceAddresss = devices.filter({ $0.state && $0.isKeybindComplete }).map({ $0.primaryUnicastAddress })
         // 全选
@@ -569,11 +579,12 @@ class DevicesViewController: UIViewController {
                 let index = (nodes.firstIndex(of: node) ?? 0) + 1
                 alertView.messageLabel.text = "\(index)/\(nodes.count)"
             }, keyBindSuccess: nil, keyBindFail: nil) { [weak self] successList, failList in
+                
                 SRAlertView.hide()
                 guard let self = self else { return }
-                successList.forEach({
-                    $0.saveNodeInfo(meshUUID: self.space.meshUUID)
-                })
+//                successList.forEach({
+//                    $0.saveNodeInfo(meshUUID: self.space.meshUUID, networkKey: self.space.meshNetworkKey)
+//                })
                 if failList.isEmpty { // 全部修复成功
                     if MeshLibManager.manager.bluetoothState == .poweredOn {
                         XWHUDManager.showSuccessTipHUD("complete!".localizedString)
@@ -594,7 +605,7 @@ class DevicesViewController: UIViewController {
                     XWHUDManager.showSuccessTipHUD("complete!".localizedString)
                 }
                 guard let self = self else { return }
-                node.saveNodeInfo(meshUUID: self.space.meshUUID)
+//                node.saveNodeInfo(meshUUID: self.space.meshUUID, networkKey: self.space.meshNetworkKey)
                 self.updateUI()
                 
 //                MeshAPI.getNodeCTLState(address: node.primaryUnicastAddress)
@@ -656,7 +667,7 @@ class DevicesViewController: UIViewController {
             // 设备信号排序
             self.space.deviceSortType = .rssi
             self.space.save()
-            LCPlistCacheTool.write(fileName: self.rssiFileName, value: rssiMap)
+//            LCPlistCacheTool.write(fileName: self.rssiFileName, value: rssiMap)
         }
         
     }
@@ -681,9 +692,6 @@ extension DevicesViewController: SpaceFunctionFooterViewDelegate {
         vc.deviceAddCallback = {[weak self] nodes in
             
             self?.loadDevices()
-            self?.space.deviceCount = self?.devices.count ?? 0
-            self?.space.luminairesCount = self?.devices.count ?? 0
-            self?.space.save()
             self?.getNodesState()
             
 //            self?.devices.forEach({
@@ -750,7 +758,7 @@ extension DevicesViewController: SpaceFunctionFooterViewDelegate {
                 successAddressList.forEach({ address in
                     if let index = self.devices.firstIndex(where: { $0.primaryUnicastAddress == address }) {
                         let node = self.devices[index]
-                        node.delete()
+                        node.deleteExtension()
                         self.devices.remove(at: index)
                     }
                 })
@@ -767,6 +775,9 @@ extension DevicesViewController: SpaceFunctionFooterViewDelegate {
                     self.updateUI()
                     self.isDeletingDevice = false
                     self.collectionView.reloadData()
+                    if MeshNetworkManager.instance.realNodes.isEmpty, MeshLibManager.manager.isMeshNetworkConnected {
+                        MeshLibManager.manager.close()
+                    }
                     
                 }else { // 删除失败（提示是否强制删除这部分设备）
                     
@@ -778,10 +789,10 @@ extension DevicesViewController: SpaceFunctionFooterViewDelegate {
                         guard let self = self else { return }
                         let forceDeleteNodes = self.devices.filter({ failAddressList.contains($0.primaryUnicastAddress) })
                         forceDeleteNodes.forEach({
-                            $0.delete()
+                            $0.deleteExtension()
                             self.space.meshManager?.meshNetwork?.remove(node: $0)
                         })
-                        _ = self.space.meshManager?.save()
+//                        _ = self.space.meshManager?.save()
                         self.devices.removeAll(where: { failAddressList.contains($0.primaryUnicastAddress) })
                         self.isEdit = false
                         self.isDeletingDevice = false
@@ -878,9 +889,19 @@ extension DevicesViewController: UICollectionViewDataSource, UICollectionViewDel
             }
             if node.state { // 设备在线
                 node.isOn = !node.isOn
-                if !node.isOn, node.lightness > 0 { // 关灯，记录关灯前的亮度值
-                    node.trunOffLightness = node.lightness
+                if node.isOn {
+                    if let lightness = node.trunOffLightness {
+                        node.lightness = lightness
+                    }
+                }else { // 关灯，记录关灯前的亮度值
+                    if node.lightness > 0 { // 关灯，记录关灯前的亮度值
+                        node.trunOffLightness = node.lightness
+                    }
+                    node.lightness = 0
                 }
+//                if !node.isOn, node.lightness > 0 { // 关灯，记录关灯前的亮度值
+//                    node.trunOffLightness = node.lightness
+//                }
                 
                 reloadCollectionItem(node: node)
                 MeshAPI.setNodeOnOffState(address: node.primaryUnicastAddress, isOn: node.isOn)
@@ -1024,6 +1045,25 @@ extension DevicesViewController: MeshLibManagerDelegate {
     func meshNetworkManager(_ manager: MeshNetworkManager, proxyDidReplace bearer: Bearer) {
         if view.window != nil {
             collectionView.reloadData()
+        }
+    }
+    
+    /// 收到消息回调
+    /// - Parameters:
+    ///   - manager: mesh网络管理
+    ///   - message: 消息体
+    ///   - source: 来源设备地址
+    ///   - destination: 接收设备地址
+    func meshNetworkManager(_ manager: MeshNetworkManager, didReceiveMessage message: MeshMessage, sentFrom source: Address, to destination: Address) {
+        if let node = manager.meshNetwork?.node(withAddress: source), !node.isProvisioner {
+            node.updateData(message: message)
+            // 动能开关事件
+            if message is LightLCLightOnOffSet || message is LightLCLightOnOffSetUnacknowledged || message is SceneRecall || message is SceneRecallUnacknowledged  {
+//                reloadCollectionItem(node: node)
+                if view.window != nil {
+                    collectionView.reloadData()
+                }
+            }
         }
     }
     

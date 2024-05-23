@@ -254,6 +254,12 @@ class ProfileLevelSettingsView: UIView {
                 lastAddItem = itemView
                 items.append(itemView)
             }
+            if levelType.items.count == 1 {
+                contentView.snp.updateConstraints({ make in
+                    make.height.equalTo(SCRYFrom(122))
+                })
+            }
+            
         }
         
     }

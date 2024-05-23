@@ -39,7 +39,7 @@ class GroupProfilesViewController: UIViewController {
     override func viewDidLoad() {
         super.viewDidLoad()
 
-        title = group.info.name ?? group.name
+        title = group.name
         view.backgroundColor = Background_Color
         
         view.addSubview(tableView)

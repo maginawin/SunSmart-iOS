@@ -122,7 +122,7 @@ class ProfilePowerUpBehaviorView: UIView {
             lastSelectBtn = sender
             slider.value = 50
             updateValue()
-            delegate?.view(self, powerStateChanged: .definedLightLevel(Int(slider.value)))
+            delegate?.view(self, powerStateChanged: .definedLightLevel(UInt8(Int(slider.value))))
         }
     }
     
@@ -130,14 +130,14 @@ class ProfilePowerUpBehaviorView: UIView {
         
         slider.value = min(slider.value + 1, slider.maximumValue)
         updateValue()
-        delegate?.view(self, powerStateChanged: .definedLightLevel(Int(slider.value)))
+        delegate?.view(self, powerStateChanged: .definedLightLevel(UInt8(Int(slider.value))))
     }
     
     @objc private func minusBtnClick() {
         
         slider.value = max(slider.value - 1, slider.minimumValue)
         updateValue()
-        delegate?.view(self, powerStateChanged: .definedLightLevel(Int(slider.value)))
+        delegate?.view(self, powerStateChanged: .definedLightLevel(UInt8(Int(slider.value))))
     }
     
     private func updateValue() {
@@ -262,7 +262,7 @@ extension ProfilePowerUpBehaviorView: CustomDeviceSliderDelegate {
     func slider(_ slider: CustomDeviceSlider, valueChanged value: Float, ended: Bool) {
         
         updateValue()
-        delegate?.view(self, powerStateChanged: .definedLightLevel(Int(slider.value)))
+        delegate?.view(self, powerStateChanged: .definedLightLevel(UInt8(Int(slider.value))))
     }
     
 }
