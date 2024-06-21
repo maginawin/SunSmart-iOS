@@ -345,7 +345,7 @@ static XWHUDManagerType kXWHUDManagerType = XWHUDManagerTypeDark;
 }
 /// 在view上展示自定义GIF图片
 + (void)showGifImagesHUDInView:(NSString *)gifFileName message:(NSString *)message timer:(NSTimeInterval)aTimer {
-    [self p_showGifImagesHUD:gifFileName message:message isWindow:NO timer:aTimer backgroundColor:nil textColor:nil textFont:nil alpha:1.0];
+    [self p_showGifImagesHUD:gifFileName message:message isWindow:NO timer:aTimer backgroundColor:nil textColor:[UIColor colorWithRed:64 / 255.0 green:79 / 255.0 blue:102 / 255.0 alpha:1] textFont: [UIFont systemFontOfSize:15 weight:UIFontWeightLight] alpha:1.0];
 }
 /// 展示自定义GIF图片 - 不自动移除
 + (void)showGifImagesHUD:(NSString *)gifFileName message:(NSString *)message {
@@ -540,6 +540,27 @@ static XWHUDManagerType kXWHUDManagerType = XWHUDManagerTypeDark;
     if (textFont) {
         hud.label.font = textFont;
     }
+    
+    if (message.length > 0) {
+        hud.minSize = CGSizeMake(164, 140);
+    }else {
+        hud.minSize = CGSizeMake(88, 88);
+    }
+    hud.margin = 36;
+    hud.padding = 26;
+    hud.mode = WYProgressHUDModeCustomView;
+    hud.detailsLabel.font = [UIFont systemFontOfSize:15];
+    hud.bezelView.backgroundColor = [[UIColor whiteColor] colorWithAlphaComponent:0.5];
+//    if (isWindow) {
+//        hud.backgroundView.color = [[UIColor blackColor] colorWithAlphaComponent:0.3];
+//    }else {
+    hud.bezelView.clipsToBounds = NO;
+    hud.bezelView.style = WYProgressHUDBackgroundStyleSolidColor;
+    hud.bezelView.backgroundColor = [UIColor colorWithRed:254/255.0 green:254/255.0 blue:254/255.0 alpha:1];
+    hud.bezelView.layer.shadowColor = [UIColor colorWithRed:0/255.0 green:0/255.0 blue:0/255.0 alpha:0.2].CGColor;
+    hud.bezelView.layer.shadowOffset = CGSizeMake(0,0);
+    hud.bezelView.layer.shadowOpacity = 1;
+    hud.bezelView.layer.shadowRadius = 8;
     
     [hud hideAnimated:YES afterDelay:aTimer];
 }

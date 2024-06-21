@@ -44,6 +44,9 @@ open class LBXScanViewController: UIViewController {
 
     // 是否需要识别后的当前图像
     public var isNeedCodeImage = false
+    
+    // 描述
+    public var message: String?
 
     // 相机启动提示文字
     public var readyString: String! = "loading"
@@ -75,7 +78,7 @@ open class LBXScanViewController: UIViewController {
         
         messageLabel = UILabel()
         messageLabel.font = UIFont.systemFont(ofSize: 15, weight: .light)
-        messageLabel.text = "scan_qr_code_message".localizedString
+        messageLabel.text = message ?? "scan_qrcode_message".localizedString
         messageLabel.numberOfLines = 2
         messageLabel.textColor = .white
         messageLabel.textAlignment = .center
@@ -110,12 +113,12 @@ open class LBXScanViewController: UIViewController {
         ])
         
         let scanRect = LBXScanView.getScanRectWithPreView(preView: view, style: scanStyle!)
-        let scanMaxY = view.height * (scanRect.minY + scanRect.width)
+        let scanMaxY = view.height * (scanRect.minY + scanRect.width) + (presentingViewController == nil ? kSafeAreaTopHeight : 0)
         
         NSLayoutConstraint.activate([
             messageLabel.leftAnchor.constraint(equalTo: view.leftAnchor, constant: 35),
             messageLabel.rightAnchor.constraint(equalTo: view.rightAnchor, constant: -35),
-            messageLabel.topAnchor.constraint(equalTo: view.topAnchor, constant: scanMaxY + SCRYFit(60))
+            messageLabel.topAnchor.constraint(equalTo: view.topAnchor, constant: scanMaxY + SCRYFit(56))
         ])
         
         NSLayoutConstraint.activate([

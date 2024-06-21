@@ -240,6 +240,8 @@ NS_ASSUME_NONNULL_BEGIN
  */
 @property (assign, nonatomic) CGFloat margin UI_APPEARANCE_SELECTOR;
 
+@property (assign, nonatomic) CGFloat padding UI_APPEARANCE_SELECTOR;
+
 /**
  * The minimum size of the HUD bezel. Defaults to CGSizeZero (no minimum size).
  */

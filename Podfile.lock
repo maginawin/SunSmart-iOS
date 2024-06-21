@@ -1,20 +1,34 @@
 PODS:
+  - Alamofire (5.6.4)
   - Bugly (2.5.93)
+  - Moya (15.0.0):
+    - Moya/Core (= 15.0.0)
+  - Moya/Core (15.0.0):
+    - Alamofire (~> 5.0)
   - SnapKit (5.6.0)
+  - SwiftyJSON (4.3.0)
 
 DEPENDENCIES:
   - Bugly
+  - Moya (~> 15.0)
   - SnapKit
+  - SwiftyJSON (~> 4.0)
 
 SPEC REPOS:
   trunk:
+    - Alamofire
     - Bugly
+    - Moya
     - SnapKit
+    - SwiftyJSON
 
 SPEC CHECKSUMS:
+  Alamofire: 4e95d97098eacb88856099c4fc79b526a299e48c
   Bugly: b8715e6ec4004b7f7fbffab0643ba80545aee3da
+  Moya: 138f0573e53411fb3dc17016add0b748dfbd78ee
   SnapKit: e01d52ebb8ddbc333eefe2132acf85c8227d9c25
+  SwiftyJSON: 6faa0040f8b59dead0ee07436cbf76b73c08fd08
 
-PODFILE CHECKSUM: 157f65f5a0ea1d5754c6cd089c5304c9d4910123
+PODFILE CHECKSUM: ad8059c62fe9c48019923acf347d2d24abb53fba
 
 COCOAPODS: 1.11.3

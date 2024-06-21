@@ -47,6 +47,8 @@ class ProfileSettingsViewController: UIViewController {
     private var initProfile: Profile?
     /// 使用配置的group
     let group: Group?
+    /// 是否可编辑
+    var editable: Bool = true
     /// 保存事件回调
     var saveActionCallback: ((Profile)->Void)?
     
@@ -71,9 +73,10 @@ class ProfileSettingsViewController: UIViewController {
         navigationController?.setNavigationBarBackgroundColor(color: .clear)
         view.backgroundColor = Background_Color
 //        navigationItem.leftBarButtonItem = UIBarButtonItem(image: UIImage(named: "navigation_back")?.withRenderingMode(.alwaysOriginal), style: .done, target: self, action: #selector(backAction))
-        navigationItem.rightBarButtonItem = UIBarButtonItem(title: "save".localizedString, color: RGB(0, 0, 0, 0.85), font: UIFont.systemFont(ofSize: 16, weight: .light), target: self, sel: #selector(saveAction))
-        
-        (navigationController as? NavigationViewController)?.navigationDelegate = self
+        if editable {
+            navigationItem.rightBarButtonItem = UIBarButtonItem(title: "save".localizedString, color: RGB(0, 0, 0, 0.85), font: UIFont.systemFont(ofSize: 16, weight: .light), target: self, sel: #selector(saveAction))
+            (navigationController as? NavigationViewController)?.navigationDelegate = self
+        }
         
         setupUI()
         updateUI()
@@ -104,6 +107,7 @@ class ProfileSettingsViewController: UIViewController {
     
     @objc private func saveAction() {
         saveActionCallback?(selectProfile)
+     
         if let group = group, group.nodes.contains(where: { $0.needSync }) {
             let vc = SyncDevicesViewController(type: .group(group, inNodes: nil, outNodes: nil))
             vc.syncSuccessCallback = {[weak self] _ in
@@ -122,6 +126,8 @@ class ProfileSettingsViewController: UIViewController {
             navigationController?.pushViewController(vc, animated: true)
         }else {
             navigationController?.popViewController(animated: true)
+            // 通知space数据修改
+            NotificationCenter.default.post(name: .init(spaceDataChangedNotificaitonName), object: SpaceChangeDataType.common)
         }
         
     }
@@ -337,6 +343,7 @@ class ProfileSettingsViewController: UIViewController {
         
         timeoutView = ProfileManualOverrideTimeoutView()
         timeoutView.delegate = self
+        timeoutView.editable = self.editable
         contentView.addSubview(timeoutView)
         timeoutView.snp.makeConstraints { make in
 //            make.left.right.equalTo(daylightSensorView)
@@ -348,6 +355,7 @@ class ProfileSettingsViewController: UIViewController {
         
         powerUpBehaviorView = ProfilePowerUpBehaviorView()
         powerUpBehaviorView.delegate = self
+        powerUpBehaviorView.editable = self.editable
         contentView.addSubview(powerUpBehaviorView)
         powerUpBehaviorView.snp.makeConstraints { make in
             make.left.right.equalTo(timeoutView)
@@ -393,6 +401,10 @@ extension ProfileSettingsViewController: ProfileSettingsHeaderViewDelegate {
     /// 选择配置文件回调
     func headerViewDidSelectProfile(_ view: ProfileSettingsHeaderView, profileRect: CGRect) {
         
+        guard editable else {
+            return
+        }
+        
         let names = profiles.map({ $0.type.instruction.name })
         
 //        view
@@ -428,12 +440,18 @@ extension ProfileSettingsViewController: ProfileSettingsSphasesViewDelegate {
     
     /// High-end/Low-end trim
     func sphasesViewHighAndLowEndTrimAction(_ view: ProfileSettingsSphasesView) {
+        guard editable else {
+            return
+        }
         let data = selectProfile.lightData.data
         showLevelSettings(type: .highLowEndTrim(high: data.highEndTrim, low: data.lowEndTrim))
     }
     
     /// Occupancy/Vacant level
     func sphasesViewOccupancyAndVacantLevelAction(_ view: ProfileSettingsSphasesView) {
+        guard editable else {
+            return
+        }
         // 判断配置类型
         let data = selectProfile.lightData.data
         switch selectProfile.type {
@@ -455,13 +473,18 @@ extension ProfileSettingsViewController: ProfileSettingsSphasesViewDelegate {
     
     /// Auto min level
     func sphasesViewAutoMinValueAction(_ view: ProfileSettingsSphasesView) {
+        guard editable else {
+            return
+        }
         let data = selectProfile.lightData.data
         showLevelSettings(type: .autoMinValue(level: data.autoMinLevel, inputRange: data.lowEndTrim...data.highEndTrim, enabled: data.autoMinLevelEnabled))
     }
     
     /// Task level (%/lx)
     func sphasesViewTaskLevelAction(_ view: ProfileSettingsSphasesView) {
-        
+        guard editable else {
+            return
+        }
         // 判断配置类型
         let data = selectProfile.lightData.data
         switch selectProfile.type {
@@ -481,6 +504,9 @@ extension ProfileSettingsViewController: ProfileSettingsSphasesViewDelegate {
     
     /// Time  T1/T2/T3/T4/T5
     func view(_ view: ProfileSettingsSphasesView, timeAction timeType: Profile.LightData.TimePickerData.TimeType) {
+        guard editable else {
+            return
+        }
         showTimeSettings(type: timeType)
     }
     
@@ -502,6 +528,12 @@ extension ProfileSettingsViewController: ProfileDaylightSensorControlViewDelegat
 
 extension ProfileSettingsViewController: ProfileManualOverrideTimeoutViewDelegate {
     
+    /// 不可编辑状态下修改参数回调
+    func timeoutViewDisableEditAction(view: ProfileManualOverrideTimeoutView) {
+        XWHUDManager.showTipHUD("no_permission".localizedString + "！")
+    }
+    
+    
     /// 帮助
     func timeoutViewHelpAction(view: ProfileManualOverrideTimeoutView) {
 //        let vc = ProfileTeletextInstructionsController(vcTitle: "Manual override timeout instruction", richText: NSAttributedString(), headerView: nil)
@@ -521,6 +553,10 @@ extension ProfileSettingsViewController: ProfileManualOverrideTimeoutViewDelegat
 }
 
 extension ProfileSettingsViewController: ProfilePowerUpBehaviorViewDelegate {
+    /// 禁止交互下编辑事件
+    func powerUpBehaviorViewDisableEditAction(view: ProfilePowerUpBehaviorView) {
+        XWHUDManager.showTipHUD("no_permission".localizedString + "！")
+    }
     
     /// 帮助
     func powerUpBehaviorViewHelpAction(view: ProfilePowerUpBehaviorView) {

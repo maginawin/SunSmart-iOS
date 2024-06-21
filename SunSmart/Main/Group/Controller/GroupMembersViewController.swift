@@ -363,6 +363,8 @@ class GroupMembersViewController: UIViewController {
             }else {
                 self.repairFailed(node: node)
             }
+            // 通知space数据修改
+            NotificationCenter.default.post(name: .init(spaceDataChangedNotificaitonName), object: SpaceChangeDataType.device)
 //                MeshAPI.getNodeCTLState(address: node.primaryUnicastAddress)
         } keyBindFail: {[weak self] _ in
             XWHUDManager.hide()

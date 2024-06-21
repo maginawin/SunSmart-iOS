@@ -26,5 +26,19 @@ extension UIView {
 //        self.layer.addSublayer(shape)
     }
     
+    func snapshotImage() -> UIImage? {
+        UIGraphicsBeginImageContextWithOptions(self.frame.size, false, UIScreen.main.scale)
+        let context = UIGraphicsGetCurrentContext()!
+//        context.setShadow(offset: self.frame.size, blur: 0.3, color: UIColor.black.cgColor)
+        layer.render(in: context)
+        var image = UIGraphicsGetImageFromCurrentImageContext()
+        if let data = image?.pngData() {
+            image = UIImage(data: data)
+        }
+        UIGraphicsEndImageContext()
+        return image
+    }
+    
     
 }
+

@@ -39,8 +39,8 @@ class InfoEditViewController: UIViewController {
     /// 名称编辑回调（当前输入名称->是否重名）
     var nameEditChangedCallback: ((String)->(Bool))?
     
-    /// 完成回调（名称、图片index）
-    var doneCallback: ((String, Int)->Void)?
+    /// 完成回调（名称、图片index）reutrn 是否退出
+    var doneCallback: ((String, Int)->Bool)?
     
     init(name: String, imageNames: [String], selectImageIndex: Int, columnNum: Int = 4, isAdd: Bool = false) {
         self.name = name
@@ -106,8 +106,9 @@ class InfoEditViewController: UIViewController {
         if isTautonym || text.isAllInputTextEmpty(){
             return
         }
-        doneCallback?(text, selectImageIndex)
-        close()
+        if doneCallback?(text, selectImageIndex) ?? true {
+            close()
+        }
     }
     
     @objc private func nameFieldEditChanged(sender: UITextField) {

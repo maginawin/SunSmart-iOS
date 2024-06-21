@@ -37,11 +37,11 @@ extension SiteData {
     /// - Parameter name: 场所名称
     /// - Returns: 场所
     static func add(name: String) -> SiteData {
-        let time = CLongLong(Date().timeIntervalSince1970 * 1000)
+        let time = Int64(Date().timeIntervalSince1970)
         
         let id = UUID().uuidString
         MeshLibManager.manager.createMeshNetwork(meshUUID: id, meshNetworkName: name, connected: false)
-        let site = SiteData(id: id, meshUUID: id, name: name, imageId: 1, type: .office, create: "\(time)",isFavourite: false, sourceType: .create)
+        let site = SiteData(id: id, meshUUID: id, name: name, imageId: 1, type: .office, permission: .owner, create: time,isFavourite: false, sourceType: .create)
         site.save()
         return site
     }
@@ -54,13 +54,13 @@ extension SiteData {
     /// - Returns: 空间
     func addSpace(name: String, id: String = UUID().uuidString, imageId: Int = 1) -> SpaceData? {
         
-        let time = CLongLong(Date().timeIntervalSince1970 * 1000)
+        let time = Int64(Date().timeIntervalSince1970)
         
         guard let subnetworkData = meshManager?.addSubnetwork(networkKeyName: name, applicationKeyName: name) else {
             return nil
         }
         
-        let space = SpaceData(name: name, id: id, siteId: self.id, imageId: imageId, create: "\(time)", isFavourite: false, sourceType: .create, meshUUID: self.meshUUID, meshNetworkId: subnetworkData.networkKey.networkId.hex)
+        let space = SpaceData(name: name, id: id, siteId: self.id, imageId: imageId, create: time, isFavourite: false, permission: .owner, sourceType: .create, meshUUID: self.meshUUID, meshNetworkId: subnetworkData.networkKey.networkId.hex)
         space.meshManager = self.meshManager
         addSpace(space)
         return space
@@ -90,6 +90,7 @@ extension SiteData {
         
         space.save()
         spaces.append(space)
+        lastUpdate = Int64(Date().timeIntervalSince1970)
     }
     
     /// 克隆场所数据
@@ -514,9 +515,10 @@ extension Group {
     
     /// 删除本地化缓存数据（只处理业务扩展数据）
     func deleteExtension() {
-        guard let uuid = MeshNetworkManager.instance.meshNetwork?.uuid.uuidString else {
+        guard let uuid = self.network?.uuid.uuidString else {
             return
         }
+        let subnetworkId = self.network?.networkKeys.first(where: { $0.isSecondary })?.networkId.hex
         // 删除基本信息
         info.delete(meshUUID: uuid)
         
@@ -532,9 +534,9 @@ extension Group {
             }
         })
         // 删除配置文件
-        self.info.profile.delete()
+        self.info.profile.delete(meshUUID: uuid, meshNetworkId: subnetworkId)
         // 删除组内虚拟按键
-        GroupSwitch.deleteSwitchs(meshUUID: uuid, networkId: MeshNetworkManager.instance.currentNetworkKey.networkId.hex, groupAddress: address.address)
+        GroupSwitch.deleteSwitchs(meshUUID: uuid, networkId: subnetworkId ?? MeshNetworkManager.instance.currentNetworkKey.networkId.hex, groupAddress: address.address)
     }
     
     /// 删除组内的场景缓存
@@ -570,7 +572,7 @@ extension Group {
 //                break
 //            }
 //        }
-        let groupSwitch = GroupSwitch(id: UUID().uuidString, group: self, enabled: true, name: nextSwitchName())
+        let groupSwitch = GroupSwitch(id: UUID().uuidString, groupAddress: self.address.address, enabled: true, name: nextSwitchName())
         self.info.switchs.append(groupSwitch)
         if let uuid = MeshNetworkManager.instance.meshNetwork?.uuid.uuidString {
             groupSwitch.save(meshUUID: uuid, networkId: MeshNetworkManager.instance.currentNetworkKey.networkId.hex)
@@ -603,27 +605,29 @@ extension Group {
     func delete(groupSwitch: GroupSwitch) {
         
         self.info.switchs.removeAll(where: { $0.id == groupSwitch.id })
-        guard let uuid = MeshNetworkManager.instance.meshNetwork?.uuid.uuidString else {
+        guard let uuid = self.network?.uuid.uuidString else {
             return
         }
-        groupSwitch.delete(meshUUID: uuid, networkId: MeshNetworkManager.instance.currentNetworkKey.networkId.hex)
+        groupSwitch.delete(meshUUID: uuid, networkId: (self.network?.networkKeys.first(where: { $0.isSecondary }) ?? MeshNetworkManager.instance.currentNetworkKey).networkId.hex)
     }
     
     /// 本地化缓存组数据（只处理业务扩展数据）
     func saveExtension() {
         
-        guard let uuid = MeshNetworkManager.instance.meshNetwork?.uuid.uuidString else {
+        guard let uuid = self.network?.uuid.uuidString else {
             return
         }
+        let subnetworkId = self.network?.networkKeys.first(where: { $0.isSecondary })?.networkId.hex
         // 保存基本信息
-        self.info.save(meshUUID: uuid)
+        self.info.save(meshUUID: uuid, subnetworkId: subnetworkId)
         // 保存场景数据
 //        self.info.sceneExecuteDatas.forEach({
 //            SceneExecuteData.save(meshUUID: uuid, networkKey: networkKey, address: address.address, sceneId: Int($0.key), sceneData: $0.value)
 //        })
+        self.info.profile.save(meshUUID: uuid, meshNetworkId: subnetworkId)
         // 保存虚拟按键数据
         self.info.switchs.forEach({
-            $0.save(meshUUID: uuid)
+            $0.save(meshUUID: uuid, networkId: subnetworkId)
         })
     }
     
@@ -708,13 +712,14 @@ extension Scene {
     
     /// 删除场景缓存数据
     func deleteExtension() {
-        guard let uuid = MeshNetworkManager.instance.meshNetwork?.uuid.uuidString else {
+        guard let uuid = self.network?.uuid.uuidString else {
             return
         }
+        let subnetworkId = self.network?.networkKeys.first(where: { $0.isSecondary })?.networkId.hex
         // 删除场景内组缓存数据
         info.groups.forEach({
             $0.info.sceneExecuteDatas.removeAll(where: { $0.sceneNumber == self.number })
-            $0.info.save()
+            $0.info.save(meshUUID: uuid, subnetworkId: subnetworkId)
 //            if $0.info.sceneExecuteDatas[number] != nil {
 //                SceneExecuteData.deleteData(meshUUID: uuid, address: $0.address.address, sceneId: Int(number))
 //                $0.info.bindSceneDatas.removeValue(forKey: number)
@@ -839,6 +844,8 @@ class Schedule: Codable, Copyable {
     
     /// 重复周期字符串list
     static let weeklyStrs = ["week_mo".localizedString, "week_tu".localizedString, "week_we".localizedString, "week_th".localizedString, "week_fr".localizedString, "week_sa".localizedString, "week_su".localizedString]
+    /// 所有月份
+    static let allMonths: [Month] = [.January,.February,.March,.April,.May,.June,.July,.August,.September,.October,.November,.December]
     
     /// 日程执行目标类型
     enum TargetType: Int {
@@ -964,8 +971,7 @@ class Schedule: Codable, Copyable {
     var schedulerEntry: SchedulerRegistryEntry {
 //        日程删除 => (action==noAction && dayOfWeek=0)
 //        日程关闭=>  (action==noAction && dayOfWeek>0)
-        let allMonths: [Month] = [.January,.February,.March,.April,.May,.June,.July,.August,.September,.October,.November,.December]
-        let entry = SchedulerRegistryEntry(year: .any(), month: .any(of: allMonths), day: .any(), hour: .specific(hour: hour), minute: .specific(minute: minute), second: .specific(second: 0), dayOfWeek: .any(of: weekDays), action: enabled ? action : .noAction, transitionTime: .init(steps: UInt8(fadeTime), stepResolution: .seconds), sceneNumber: scene?.number ?? 0)
+        let entry = SchedulerRegistryEntry(year: .any(), month: .any(of: Schedule.allMonths), day: .any(), hour: .specific(hour: hour), minute: .specific(minute: minute), second: .specific(second: 0), dayOfWeek: .any(of: weekDays), action: enabled ? action : .noAction, transitionTime: .init(steps: UInt8(fadeTime), stepResolution: .seconds), sceneNumber: scene?.number ?? 0)
         return entry
     }
     
@@ -1600,11 +1606,11 @@ extension Node {
         // 删除group switch代理缓存
         
         if let mac = enOceanMacAddress ?? self.enOceanMacAddress, let groupSwitch = GroupSwitch.load(enOceanMacAddress: mac) {
-            groupSwitch.proxyNode = nil
+            groupSwitch.proxyNodeAddress = nil
             groupSwitch.save()
             // 更新开关对应组缓存
-            if let groupCacheSwitch = groupSwitch.group.info.switchs.first(where: { $0.id == groupSwitch.id }) {
-                groupCacheSwitch.proxyNode = nil
+            if let groupCacheSwitch = groupSwitch.group?.info.switchs.first(where: { $0.id == groupSwitch.id }) {
+                groupCacheSwitch.proxyNodeAddress = nil
             }
         }
         
@@ -1837,12 +1843,12 @@ extension GroupSwitch {
     
     /// 是否需要同步数据
     var needSyncData: Bool {
-        guard let proxyNode = self.proxyNode, enabled else {
+        guard let proxyNode = self.proxyNode, let group = self.group, enabled else {
             return false
         }
         
         let keys = MeshEnOceanProxyServer.SwitchKey.defaultKeys(sceneA: sceneA, sceneB: sceneB)
-        return proxyNode.getEnOceanSwitchEnabledMessageHandles(group: self.group, switchKeys: keys).count > 0
+        return proxyNode.getEnOceanSwitchEnabledMessageHandles(group: group, switchKeys: keys).count > 0
     }
     
     

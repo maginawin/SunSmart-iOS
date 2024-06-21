@@ -83,7 +83,8 @@ class DeviceLightViewController: UIViewController {
     @objc private func test() {
         
         
-        SRAlertView(title: "输入亮度值", inputText: "\(self.node.lightness)", placeholder: "0~65535", keyboardType: .numberPad, actions: [.cancelAction, .init(title: "Settings".localizedString, style: .default)]) { _, _ in
+        
+        SRAlertView(title: "输入亮度值", messageColor: Red_Color, messageFont: UIFont.systemFont(ofSize: 13, weight: .light), inputText: "\(self.node.lightness)", inputFieldStyle: .init(placeholder: "0~65535", keyboardType: .numberPad), actions: [.cancelAction, .init(title: "Settings".localizedString, style: .default)]) { _, _ in
             return nil
         } inputDoneBack: {[weak self] text in
             guard let self = self, let value = UInt16(text), node.lightnessRange.contains(value) else { return }
@@ -191,8 +192,12 @@ class DeviceLightViewController: UIViewController {
                     self?.repairBtnClick()
                 }
                 if let emptyView = view.emptyView {
-                    emptyView.button.snp.updateConstraints { make in
-                        make.top.equalTo(emptyView.titleLabel.snp.bottom).offset(SCRYFrom(78))
+                    if space.deviceOperates.contains(.edit) { // 是否有编辑设备权限
+                        emptyView.button.snp.updateConstraints { make in
+                            make.top.equalTo(emptyView.titleLabel.snp.bottom).offset(SCRYFrom(78))
+                        }
+                    }else {
+                        emptyView.button.isHidden = true
                     }
                 }
             }
@@ -218,27 +223,33 @@ class DeviceLightViewController: UIViewController {
         if self.presentingViewController != nil {
             y = StatusBarManager.statusBarFrame.height + (navigationController?.navigationBar.height ?? kNavigationHeight)
         }
-        
-        MenuPopView.show(items: [
-            .init(icon: UIImage(named: "edit"), title: "edit".localizedString, tapItemBack: {[weak self] _ in
+        var items: [MenuPopView.MenuItem] = []
+        if space.deviceOperates.contains(.edit) {
+            items.append(.init(icon: UIImage(named: "edit"), title: "edit".localizedString, tapItemBack: {[weak self] _ in
                 self?.editNode()
-            }),
-            .init(icon: UIImage(named: "menu_delete"), title: "delete".localizedString, tapItemBack: {[weak self] _ in
+            }))
+        }
+        if space.deviceOperates.contains(.delete) {
+            items.append(.init(icon: UIImage(named: "menu_delete"), title: "delete".localizedString, tapItemBack: {[weak self] _ in
                 self?.deleteNode()
-            }),
-            .init(icon: UIImage(named: "menu_information"), title: "information".localizedString, tapItemBack: {[weak self] _ in
-                self?.information()
-            }),
-            .init(icon: UIImage(named: "menu_refresh"), title: "refresh".localizedString, tapItemBack: {[weak self] _ in
-                self?.refresh()
-            })
-        ], anchorPoint: CGPoint(x: view.width - SCRXFrom(17) - 15, y: y), menuWidth: MenuPopView.defalutMenuWidth + SCRXFrom(10))
+            }))
+        }
+        
+        items.append(.init(icon: UIImage(named: "menu_information"), title: "information".localizedString, tapItemBack: {[weak self] _ in
+            self?.information()
+        }))
+           
+        items.append(.init(icon: UIImage(named: "menu_refresh"), title: "refresh".localizedString, tapItemBack: {[weak self] _ in
+            self?.refresh()
+        }))
+        
+        MenuPopView.show(items: items, anchorPoint: CGPoint(x: view.width - SCRXFrom(17) - 15, y: y), menuWidth: MenuPopView.defalutMenuWidth + SCRXFrom(10))
     }
     
     /// 编辑设备
     private func editNode() {
         
-        SRAlertView(title: "edit_name".localizedString, inputText: node.name, placeholder: "", actions: [.cancelAction, .init(title: "done".localizedString, style: .default)]) {[weak self] text, validRange in
+        SRAlertView(title: "edit_name".localizedString, messageColor: Red_Color, messageFont: UIFont.systemFont(ofSize: 13, weight: .light), inputText: node.name, inputFieldStyle: .init(placeholder: ""), actions: [.cancelAction, .init(title: "done".localizedString, style: .default)]) {[weak self] text, validRange in
 //            guard let self = self else { return }
              if !validRange && !text.isEmpty { // 长度超限
                  return "text_length_exceeded".localizedString
@@ -252,6 +263,9 @@ class DeviceLightViewController: UIViewController {
              self.node.name = text
 //             _ = self.space.meshManager?.save()
              self.space.save()
+             // 通知space数据修改
+             NotificationCenter.default.post(name: .init(spaceDataChangedNotificaitonName), object: SpaceChangeDataType.common)
+             
 //             self.lightBasicVc?.reloadNodeName(text)
 //             reloadNodeName
              
@@ -274,6 +288,8 @@ class DeviceLightViewController: UIViewController {
                 self?.node.deleteExtension()
                 DispatchQueue.main.asyncAfter(wallDeadline: .now() + 1) {
                     NotificationCenter.default.post(name: .init(devicesUpdateNotificationName), object: nil)
+                    // 通知space数据修改
+                    NotificationCenter.default.post(name: .init(spaceDataChangedNotificaitonName), object: SpaceChangeDataType.device)
                     self?.backAction()
                 }
             } resetFail: { _, error in
@@ -290,6 +306,8 @@ class DeviceLightViewController: UIViewController {
                     XWHUDManager.showSuccessTipHUD("done!".localizedString)
                     DispatchQueue.main.asyncAfter(wallDeadline: .now() + 1) {[weak self] in
                         NotificationCenter.default.post(name: .init(devicesUpdateNotificationName), object: nil)
+                        // 通知space数据修改
+                        NotificationCenter.default.post(name: .init(spaceDataChangedNotificaitonName), object: SpaceChangeDataType.device)
                         self?.backAction()
                     }
                 })])
@@ -320,10 +338,13 @@ class DeviceLightViewController: UIViewController {
             self?.updateUI()
             self?.updateData()
             self?.getNodeState()
-            
+            // 通知space数据修改
+            NotificationCenter.default.post(name: .init(spaceDataChangedNotificaitonName), object: SpaceChangeDataType.device)
         } keyBindFail: {[weak self] _ in
             XWHUDManager.hide()
             self?.repairFailed()
+            // 通知space数据修改
+//            NotificationCenter.default.post(name: .init(spaceDataChangedNotificaitonName), object: nil)
         }
         
     }

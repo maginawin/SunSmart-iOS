@@ -17,6 +17,9 @@ protocol ProfilePowerUpBehaviorViewDelegate: AnyObject {
     ///   - view: view
     ///   - state: 上电状态
     func view(_ view: ProfilePowerUpBehaviorView, powerStateChanged state: Profile.PowerUpState)
+    
+    /// 禁止交互下编辑事件
+    func powerUpBehaviorViewDisableEditAction(view: ProfilePowerUpBehaviorView)
 }
 
 class ProfilePowerUpBehaviorView: UIView {
@@ -65,6 +68,9 @@ class ProfilePowerUpBehaviorView: UIView {
         }
     }
     
+    /// 是否可编辑
+    var editable: Bool = true
+    
     override init(frame: CGRect) {
         super.init(frame: frame)
         
@@ -86,6 +92,11 @@ class ProfilePowerUpBehaviorView: UIView {
     
     @objc private func keepLightOffBtnAction(sender: UIButton) {
  
+        guard editable else {
+            delegate?.powerUpBehaviorViewDisableEditAction(view: self)
+            return
+        }
+        
         if sender != lastSelectBtn {
             sender.isSelected = true
             lastSelectBtn?.isSelected = false
@@ -100,6 +111,11 @@ class ProfilePowerUpBehaviorView: UIView {
     
     @objc private func restoreBtnAction(sender: UIButton) {
         
+        guard editable else {
+            delegate?.powerUpBehaviorViewDisableEditAction(view: self)
+            return
+        }
+        
         if sender != lastSelectBtn {
             sender.isSelected = true
             lastSelectBtn?.isSelected = false
@@ -113,6 +129,12 @@ class ProfilePowerUpBehaviorView: UIView {
     }
     
     @objc private func definedLightLevelBtnAction(sender: UIButton) {
+        
+        guard editable else {
+            delegate?.powerUpBehaviorViewDisableEditAction(view: self)
+            return
+        }
+        
         if sender != lastSelectBtn {
             sender.isSelected = true
             lastSelectBtn?.isSelected = false
@@ -128,12 +150,22 @@ class ProfilePowerUpBehaviorView: UIView {
     
     @objc private func addBtnClick() {
         
+        guard editable else {
+            delegate?.powerUpBehaviorViewDisableEditAction(view: self)
+            return
+        }
+        
         slider.value = min(slider.value + 1, slider.maximumValue)
         updateValue()
         delegate?.view(self, powerStateChanged: .definedLightLevel(UInt8(Int(slider.value))))
     }
     
     @objc private func minusBtnClick() {
+        
+        guard editable else {
+            delegate?.powerUpBehaviorViewDisableEditAction(view: self)
+            return
+        }
         
         slider.value = max(slider.value - 1, slider.minimumValue)
         updateValue()
@@ -254,6 +286,13 @@ class ProfilePowerUpBehaviorView: UIView {
 }
 
 extension ProfilePowerUpBehaviorView: CustomDeviceSliderDelegate {
+    
+    func slider(_ slider: CustomDeviceSlider, canEditChanged value: Float) -> Bool {
+        if !editable {
+            delegate?.powerUpBehaviorViewDisableEditAction(view: self)
+        }
+        return editable
+    }
     
     /// 滑动条数值修改回调
     /// - Parameters:

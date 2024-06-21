@@ -204,7 +204,13 @@ class SRAlertView: UIView {
                 self.messageAttStrBtn.setTitle(style.text, for: .normal)
                 self.messageAttStrBtn.setTitleColor(style.textColor, for: .normal)
             }
-            
+            if let imageName = style.imageName {
+                self.messageAttStrBtn.setImage(UIImage(named: imageName), for: .normal)
+                self.messageAttStrBtn.setImagePosition(position: .right, spacing: 2)
+            }
+            if let selectImageName = style.selectImageName {
+                self.messageAttStrBtn.setImage(UIImage(named: selectImageName), for: .selected)
+            }
             self.messageAttStrBtn.snp.updateConstraints { make in
                 make.centerX.equalTo(messageLabel).offset(style.offset.x)
                 make.centerY.equalTo(messageLabel).offset(style.offset.y)
@@ -331,13 +337,11 @@ class SRAlertView: UIView {
     convenience init(title: String? = nil,
                      titleColor: UIColor = TextBlack_Color,
                      titleFont: UIFont = FONTS(SCRYFrom(15)),
+                     message: String? = nil,
+                     messageColor: UIColor = Title_Color,
+                     messageFont: UIFont = UIFont.systemFont(ofSize: 15, weight: .light),
                      inputText: String? = nil,
-                     inputTextColor: UIColor = TextBlack_Color,
-                     inputTextFont: UIFont = UIFont.systemFont(ofSize: SCRYFrom(15), weight: .light),
-                     placeholder: String? = nil,
-                     keyboardType: UIKeyboardType = .default,
-                     minInputLength: Int = 1,
-                     maxInputLength: Int = 32,
+                     inputFieldStyle: TextFieldStyle,
                      actions: [SRAlertAction] = [],
                      textValueChangedBack: InputTextChangedBack?,
                      inputDoneBack: InputTextDoneBack?) {
@@ -354,23 +358,57 @@ class SRAlertView: UIView {
         
         self.textField.isHidden = false
         self.textField.text = inputText
-        self.textField.textColor = inputTextColor
-        self.textField.font = inputTextFont
-        self.textField.keyboardType = keyboardType
-        if placeholder != nil {
-            self.textField.attributedPlaceholder = NSAttributedString(string: placeholder!, attributes: [.font: inputTextFont, .foregroundColor: RGB(134, 138, 160)])
+        self.textField.textColor = inputFieldStyle.textColor
+        self.textField.font = inputFieldStyle.textFont
+        self.textField.keyboardType = inputFieldStyle.keyboardType
+        self.textField.textAlignment = inputFieldStyle.textAlignment
+        self.textField.layer.borderColor = inputFieldStyle.borderColor.cgColor
+        self.textField.layer.borderWidth = inputFieldStyle.borderWidth
+        self.textField.isSecureTextEntry = inputFieldStyle.secret
+        self.textField.tintColor = inputFieldStyle.borderColor
+        if let placeholder = inputFieldStyle.placeholder {
+            self.textField.attributedPlaceholder = NSAttributedString(string: placeholder, attributes: [.font: inputFieldStyle.textFont, .foregroundColor: RGB(134, 138, 160)])
         }
-        self.minInputLength = minInputLength
-        self.maxInputLength = maxInputLength
+        if inputFieldStyle.showClear {
+            textField.clearButtonMode = .whileEditing
+        }else {
+            textField.clearButtonMode = .never
+            textField.rightViewMode = .never
+        }
+        self.minInputLength = inputFieldStyle.minInputLength
+        self.maxInputLength = inputFieldStyle.maxInputLength
         self.textValueChangedBack = textValueChangedBack
+
         
-        messageLabel.textColor = RGB(215, 78, 78)
-        messageLabel.font = UIFont.systemFont(ofSize: SCRYFrom(13), weight: .light)
+        messageLabel.textColor = messageColor
+        messageLabel.font = messageFont
         messageLabel.textAlignment = .left
-        messageLabel.snp.remakeConstraints { make in
-            make.left.equalTo(textField).offset(SCRXFrom(8))
-            make.right.equalTo(textField)
-            make.top.equalTo(textField.snp.bottom).offset(SCRYFrom(7))
+        messageLabel.text = message
+        if message == nil || message?.isEmpty ?? true {
+            messageLabel.snp.remakeConstraints { make in
+                make.left.equalTo(textField).offset(SCRXFrom(8))
+                make.right.equalTo(textField)
+                make.top.equalTo(textField.snp.bottom).offset(SCRYFrom(7))
+            }
+            
+            self.textField.snp.updateConstraints { make in
+                make.left.equalTo(inputFieldStyle.margin)
+                make.right.equalTo(-inputFieldStyle.margin)
+                make.height.equalTo(inputFieldStyle.height)
+            }
+        }else {
+            
+            messageLabel.snp.remakeConstraints { make in
+                make.left.right.equalTo(titleLabel)
+                make.top.equalTo(titleLabel.snp.bottom).offset(SCRYFrom(16))
+            }
+            
+            self.textField.snp.remakeConstraints { make in
+                make.left.equalTo(inputFieldStyle.margin)
+                make.right.equalTo(-inputFieldStyle.margin)
+                make.height.equalTo(inputFieldStyle.height)
+                make.top.equalTo(messageLabel.snp.bottom).offset(SCRYFrom(12))
+            }
         }
         
         hLineView.snp.remakeConstraints { make in
@@ -638,21 +676,26 @@ class SRAlertView: UIView {
         if realText.count > maxInputLength { // 长度超限
             
             sender.text = realText.subString(rang: NSMakeRange(0, maxInputLength))
-            let message = textValueChangedBack?(realText, false)
-            messageLabel.text = message
+            
+            if textValueChangedBack != nil {
+                let message = textValueChangedBack?(realText, false)
+                    messageLabel.text = message
+            }
             self.perform(#selector(textExceededHide), with: nil, afterDelay: 2)
             
         }else { // 判断是否重名
-            let message = textValueChangedBack?(realText, realText.count >= minInputLength)
-            if message?.isEmpty ?? true {
-                let enabled = realText.count >= self.minInputLength && (self.minInputLength > 0 && !realText.isAllInputTextEmpty())
-                self.secondBtn.isUserInteractionEnabled = enabled
-                self.secondBtn.setTitleColor(enabled ? Bar_Color : Bar_Color.withAlphaComponent(0.5), for: .normal)
-            }else {
-                secondBtn.isUserInteractionEnabled = false
-                self.secondBtn.setTitleColor(Bar_Color.withAlphaComponent(0.5), for: .normal)
+            if textValueChangedBack != nil {
+                let message = textValueChangedBack?(realText, realText.count >= minInputLength)
+                if message?.isEmpty ?? true {
+                    let enabled = realText.count >= self.minInputLength && (self.minInputLength > 0 && !realText.isAllInputTextEmpty())
+                    self.secondBtn.isUserInteractionEnabled = enabled
+                    self.secondBtn.setTitleColor(enabled ? Bar_Color : Bar_Color.withAlphaComponent(0.5), for: .normal)
+                }else {
+                    secondBtn.isUserInteractionEnabled = false
+                    self.secondBtn.setTitleColor(Bar_Color.withAlphaComponent(0.5), for: .normal)
+                }
+                messageLabel.text = message
             }
-            messageLabel.text = message
         }
     }
     
@@ -673,7 +716,10 @@ class SRAlertView: UIView {
     }
     
     ///文本点击按钮
-    @objc private func messageAttStrBtnClick() {
+    @objc private func messageAttStrBtnClick(sender: UIButton) {
+        if messageAttBtnStyle?.selectImageName != nil {
+            sender.isSelected = !sender.isSelected
+        }
         messageAttBtnStyle?.actionHandler?()
     }
     
@@ -1232,28 +1278,83 @@ struct SRAlertAction {
     }
 }
 
-struct SRAlertMessageAttBtnStyle {
+extension SRAlertView {
     
-    /// 是否偏移（与message居中）
-    let offset: CGPoint
-    /// 文本
-    let text: String
-    /// 文本颜色
-    let textColor: UIColor
-    /// 文本字体
-    let textFont: UIFont
-    /// 是否显示下划线
-    let underline: Bool
-    /// 事件回调
-    var actionHandler: (()->())? = nil
+    struct SRAlertMessageAttBtnStyle {
+        
+        /// 是否偏移（与message居中）
+        let offset: CGPoint
+        /// 文本
+        let text: String
+        /// 文本颜色
+        let textColor: UIColor
+        /// 文本字体
+        let textFont: UIFont
+        /// 是否显示下划线
+        let underline: Bool
+        /// 图标
+        let imageName: String?
+        /// 点击后图标
+        let selectImageName: String?
+        /// 事件回调
+        var actionHandler: (()->())? = nil
+        
+        init(offset: CGPoint = .zero, text: String, textColor: UIColor = Bar_Color, textFont: UIFont = FONTS(SCRYFrom(15)), imageName: String? = nil, selectImageName: String? = nil, underline: Bool = true, actionHandler: (()->Void)? = nil) {
+            self.offset = offset
+            self.text = text
+            self.textColor = textColor
+            self.textFont = textFont
+            self.underline = underline
+            self.imageName = imageName
+            self.selectImageName = selectImageName
+            self.actionHandler = actionHandler
+        }
+    }
     
-    init(offset: CGPoint = .zero, text: String, textColor: UIColor = Bar_Color, textFont: UIFont = FONTS(SCRYFrom(15)), underline: Bool = true, actionHandler: (()->Void)? = nil) {
-        self.offset = offset
-        self.text = text
-        self.textColor = textColor
-        self.textFont = textFont
-        self.underline = underline
-        self.actionHandler = actionHandler
+    /// 输入框样式
+    struct TextFieldStyle {
+        /// 输入文本颜色
+        let textColor: UIColor
+        /// 文本字体
+        let textFont: UIFont
+        /// 提示语
+        let placeholder: String?
+        /// 键盘类型
+        let keyboardType: UIKeyboardType
+        /// 输入框边距
+        let margin: CGFloat
+        /// 输入框高度
+        let height: CGFloat
+        /// 最小输入文本限制
+        let minInputLength: Int
+        /// 最大输入文本限制
+        let maxInputLength: Int
+        /// 边框颜色
+        let borderColor: UIColor
+        /// 边框宽度
+        let borderWidth: CGFloat
+        /// 文本排列
+        let textAlignment: NSTextAlignment
+        /// 是否密文
+        let secret: Bool
+        /// 是否展示清空
+        let showClear: Bool
+        
+        init(textColor: UIColor = TextBlack_Color, textFont: UIFont = UIFont.systemFont(ofSize: SCRYFrom(15), weight: .light), placeholder: String? = nil, keyboardType: UIKeyboardType = .default, margin: CGFloat = SCRXFrom(31), height: CGFloat = SCRYFrom(40), minInputLength: Int = 1, maxInputLength: Int = 32, borderColor: UIColor = Bar_Color, borderWidth: CGFloat = 0.5, textAlignment: NSTextAlignment = .left, secret: Bool = false, showClear: Bool = true) {
+            self.textColor = textColor
+            self.textFont = textFont
+            self.placeholder = placeholder
+            self.keyboardType = keyboardType
+            self.margin = margin
+            self.height = height
+            self.minInputLength = minInputLength
+            self.maxInputLength = maxInputLength
+            self.borderColor = borderColor
+            self.borderWidth = borderWidth
+            self.textAlignment = textAlignment
+            self.secret = secret
+            self.showClear = showClear
+        }
     }
 }
 

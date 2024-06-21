@@ -246,7 +246,8 @@ class SceneAddViewController: UIViewController {
             scene.info.save()
             
             NotificationCenter.default.post(name: .init(scenesRefreshNotificationName), object: nil)
-            
+            // 通知space数据修改
+            NotificationCenter.default.post(name: .init(spaceDataChangedNotificaitonName), object: SpaceChangeDataType.common)
             self.scene = scene
             // 自定义创建场景
             if self.createMode == .custom {

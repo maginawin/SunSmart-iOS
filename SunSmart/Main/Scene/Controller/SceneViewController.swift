@@ -42,8 +42,9 @@ class SceneViewController: UIViewController {
         navigationController?.setNavigationBarBackgroundColor(color: .clear)
         
         navigationItem.leftBarButtonItem = UIBarButtonItem(image: UIImage(named: "close")?.withRenderingMode(.alwaysOriginal), style: .done, target: self, action: #selector(close))
-        navigationItem.rightBarButtonItem = UIBarButtonItem(image: UIImage(named: "more_vertical")?.withRenderingMode(.alwaysOriginal), style: .done, target: self, action: #selector(moreClick))
-        
+        if space.sceneOperates.contains(.edit) {
+            navigationItem.rightBarButtonItem = UIBarButtonItem(image: UIImage(named: "more_vertical")?.withRenderingMode(.alwaysOriginal), style: .done, target: self, action: #selector(moreClick))
+        }
         setupUI()
         
         updateUI()
@@ -141,13 +142,16 @@ class SceneViewController: UIViewController {
             return MeshNetworkManager.instance.isSceneTautonym(name: name) && name != self.scene.name
         }
         vc.doneCallback = {[weak self] (name, imageId) in
-            guard let self = self else { return }
+            guard let self = self else { return true }
             self.scene.name = name
             self.scene.info.imageId = imageId + 1
             self.scene.info.save()
             self.titleLabel.text = name
 //            self.sceneUpdateCallback?(self.scene)
             NotificationCenter.default.post(name: .init(scenesRefreshNotificationName), object: nil)
+            // 通知space数据修改
+            NotificationCenter.default.post(name: .init(spaceDataChangedNotificaitonName), object: SpaceChangeDataType.common)
+            return true
         }
 
         let navVc = NavigationViewController(rootViewController: vc)
@@ -170,12 +174,16 @@ class SceneViewController: UIViewController {
 //                self.scene.remove(node: $0)
 //            })
 //            scene.delete()
+            let existNode: Bool = self.scene.addresses.count > 0
             SceneServer.deleteScene(scene: self.scene) {[weak self] _ in
                 XWHUDManager.hide()
                 guard let self = self else { return }
                 XWHUDManager.showSuccessTipHUD("done!".localizedString)
 //                self.groupDeleteCallback?(self.group)
                 NotificationCenter.default.post(name: .init(scenesRefreshNotificationName), object: nil)
+                // 通知space数据修改
+                let type: SpaceChangeDataType = existNode ? .device : .common
+                NotificationCenter.default.post(name: .init(spaceDataChangedNotificaitonName), object: type)
                 DispatchQueue.main.asyncAfter(wallDeadline: .now() + 1.5, execute: {[weak self] in
                     self?.close()
                 })

@@ -50,10 +50,137 @@ extension UIViewController {
 
     }
     
+    func showNavigationBarLoading() {
+        showNavigationBarState(.loading)
+    }
+    
+    func showNavigationBarSuccessful() {
+        showNavigationBarState(.successful)
+        self.perform(#selector(navigationBarStateFinished), with: nil, afterDelay: 2)
+    }
+    
+    func showNavigationBarFailure(duration: TimeInterval = .infinity, actionCallback: (()->Void)?) {
+        showNavigationBarState(.failure, actionCallback: actionCallback)
+        self.perform(#selector(navigationBarStateFinished), with: nil, afterDelay: duration)
+    }
+    
+    func showNavigationBarState(_ state: NavigationBarState, actionCallback: (()->Void)? = nil) {
+        
+        guard let navVc = navigationController, navVc.interactivePopGestureRecognizer?.state == .possible, let contentView = navVc.navigationBarContentView, let titleLabel = navVc.navigationBarTitleLabel else { return  }
+        
+        NSObject.cancelPreviousPerformRequests(withTarget: self, selector: #selector(navigationBarStateFinished), object: nil)
+        
+        var stateImageView = navVc.stateImageView
+        if stateImageView == nil {
+            stateImageView = UIImageView()
+            navVc.stateImageView = stateImageView
+        }
+        
+        if stateImageView?.superview == nil {
+            contentView.addSubview(stateImageView!)
+//            navVc.navigationBar.setNeedsFocusUpdate()
+            stateImageView!.snp.makeConstraints { make in
+                make.right.equalTo(titleLabel.snp.left).offset(SCRXFrom(-4))
+                make.centerY.equalToSuperview()
+            }
+        }
+        
+        navVc.stateImageActionCallback = actionCallback
+        if actionCallback != nil {
+            stateImageView?.isUserInteractionEnabled = true
+            stateImageView?.addGestureRecognizer(UITapGestureRecognizer(target: self, action: #selector(stateImageViewAction)))
+        }else {
+            stateImageView?.isUserInteractionEnabled = false
+        }
+        
+        switch state {
+        case .loading:
+            if !(stateImageView?.layer.animationKeys()?.contains("loading") ?? false) {
+                stateImageView?.image = UIImage(named: "sync_loading_small")
+                stateImageView?.layer.addRotationAnimation(duration: 1.2, repeatCount: 999, animationKey: "loading")
+            }
+        case .successful:
+            stateImageView?.image = UIImage(named: "sync_success_small")
+            stateImageView?.layer.removeAnimation(forKey: "loading")
+        case .failure:
+            stateImageView?.image = UIImage(named: "cloud_sync_failed")
+            stateImageView?.layer.removeAnimation(forKey: "loading")
+            stateImageView!.snp.updateConstraints { make in
+                make.right.equalTo(titleLabel.snp.left)
+            }
+        }
+     
+    }
+    
+    /// 点击事件
+    @objc private func stateImageViewAction() {
+        guard let navVc = navigationController else {
+            return
+        }
+        navVc.stateImageActionCallback?()
+    }
+    
+    /// 导航条状态展示完成
+    @objc private func navigationBarStateFinished() {
+        hideNavigationBarState()
+    }
+    
+    func hideNavigationBarState() {
+        navigationController?.stateImageView?.removeFromSuperview()
+        navigationController?.stateImageView = nil
+       NSObject.cancelPreviousPerformRequests(withTarget: self, selector: #selector(navigationBarStateFinished), object: nil)
+    }
+    
+    enum NavigationBarState {
+        case loading
+        case successful
+        case failure
+    }
+    
 }
 
 
 extension UINavigationController {
+    
+    static var stateImageKey = 1
+    static var stateImageActionCallbackKey = 2
+    
+    typealias StateImageActionCallback = (()->Void)
+    
+    /// 导航条状态图标
+    var stateImageView: UIImageView? {
+        get  {
+//            guard let imageView = objc_getAssociatedObject(self, &UINavigationController.stateImageKey) as? UIImageView else {
+//                self.stateImageView = UIImageView()
+//                return self.stateImageView
+//            }
+            objc_getAssociatedObject(self, &UINavigationController.stateImageKey) as? UIImageView
+        }set {
+            objc_setAssociatedObject(self, &UINavigationController.stateImageKey, newValue, .OBJC_ASSOCIATION_RETAIN)
+        }
+    }
+    
+    /// 状态图标点击事件回调
+   fileprivate var stateImageActionCallback: StateImageActionCallback? {
+        get {
+            objc_getAssociatedObject(self, &UINavigationController.stateImageActionCallbackKey) as? StateImageActionCallback
+        }set {
+            objc_setAssociatedObject(self, &UINavigationController.stateImageActionCallbackKey, newValue, .OBJC_ASSOCIATION_RETAIN)
+        }
+    }
+    
+    
+    /// 导航条内容view
+    var navigationBarContentView: UIView? {
+        guard let contentClass = NSClassFromString("_UINavigationBarContentView") else { return nil }
+        return navigationBar.subviews.first(where: { $0.isKind(of: contentClass) })
+    }
+    
+    /// 导航条标题
+    var navigationBarTitleLabel: UILabel? {
+        return navigationBarContentView?.subviews.first(where: { $0.isKind(of: UILabel.classForCoder()) }) as? UILabel
+    }
+    
     
     /// 设置导航条颜色
     /// - Parameter showShadow: 是否显示分割线
@@ -69,6 +196,7 @@ extension UINavigationController {
         navigationBar.standardAppearance = appearance
         navigationBar.scrollEdgeAppearance = appearance
     }
+    
     
     /// 移除栈内控制器
     func removeVc(vc: UIViewController) {
@@ -86,5 +214,6 @@ extension UINavigationController {
             self.popViewController(animated: true)
         }
     }
+    
     
 }

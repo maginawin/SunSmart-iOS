@@ -187,8 +187,7 @@ enum DeviceOperationType {
                 // 设置日程
                 if let schedulerSetupModel = node.schedulerSetupModel {
                     
-                    let months: [Month] = [.January,.February,.March,.April,.May,.June,.July,.August,.September,.October,.November,.December]
-                    messageHandles.append(MeshMessageHandle(message: SchedulerActionSet(index: UInt8(schedule.id), entry: SchedulerRegistryEntry(year: .any(), month: .any(of: months), day: .any(), hour: .specific(hour: schedule.hour), minute: .specific(minute: schedule.minute), second: .specific(second: 0), dayOfWeek: .any(of: schedule.weekDays), action: schedule.enabled ? schedule.action : .noAction, transitionTime: .init(steps: UInt8(schedule.fadeTime), stepResolution: .seconds), sceneNumber: schedule.scene?.number ?? 0)), model: schedulerSetupModel))
+                    messageHandles.append(MeshMessageHandle(message: SchedulerActionSet(index: UInt8(schedule.id), entry: SchedulerRegistryEntry(year: .any(), month: .any(of: Schedule.allMonths), day: .any(), hour: .specific(hour: schedule.hour), minute: .specific(minute: schedule.minute), second: .specific(second: 0), dayOfWeek: .any(of: schedule.weekDays), action: schedule.enabled ? schedule.action : .noAction, transitionTime: .init(steps: UInt8(schedule.fadeTime), stepResolution: .seconds), sceneNumber: schedule.scene?.number ?? 0)), model: schedulerSetupModel))
                 }
             case .profile(let type): 
                 messageHandles.append(contentsOf: type.getMessageHandles(node: node))

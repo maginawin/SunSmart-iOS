@@ -58,6 +58,8 @@ extension UIButton {
 //    #pragma clang diagnostic ignored "-Wdeprecated-declarations"
         // Single line, no wrapping. Truncation based on the NSLineBreakMode.
         
+        
+        
         let size = (self.currentTitle as? NSString)?.size(withAttributes: [NSAttributedString.Key.font : self.titleLabel?.font ?? FONTS(14)]) ?? CGSizeZero
         var labelWidth = size.width
         

@@ -13,6 +13,7 @@ class AboutViewController: UIViewController {
         let tableV = UITableView(frame: CGRect(x: 0, y: kNavigationHeight, width: self.view.width, height: self.view.height - kNavigationHeight))
         tableV.rowHeight = SCRYFrom(44)
         tableV.register(CustomTableViewCell.classForCoder(), forCellReuseIdentifier: "cell")
+        tableV.contentInset = UIEdgeInsets(top: SCRYFrom(16), left: 0, bottom: 0, right: 0)
         tableV.dataSource = self
         tableV.delegate = self
         tableV.separatorStyle = .none
@@ -29,13 +30,13 @@ class AboutViewController: UIViewController {
         titleLabel.frame = CGRect(x: SCRXFrom(20), y: SCRYFrom(16), width: self.view.width - SCRXFrom(40), height: titleLabel.height)
         headerV.addSubview(titleLabel)
         
-        let messageLabel = UILabel(text: "welcome_message".localizedString, textColor: TextBlack_Color, fontSize: 14)
+        let messageLabel = UILabel(text: "welcome_message".localizedString, textColor: TextBlack_Color, fontSize: 14, fontWeight: .light)
         messageLabel.numberOfLines = 0
         let messageSize = messageLabel.sizeThatFits(CGSize(width: titleLabel.width, height: 1000))
-        messageLabel.frame = CGRect(x: titleLabel.x, y: titleLabel.frame.maxY + SCRYFrom(24), width: titleLabel.width, height: messageSize.height)
+        messageLabel.frame = CGRect(x: titleLabel.x, y: titleLabel.frame.maxY + SCRYFrom(20), width: titleLabel.width, height: messageSize.height)
         headerV.addSubview(messageLabel)
         
-        headerV.frame = CGRect(x: 0, y: 0, width: self.view.width, height: messageLabel.frame.maxY + SCRYFrom(27))
+        headerV.frame = CGRect(x: 0, y: 0, width: self.view.width, height: messageLabel.frame.maxY + SCRYFrom(28))
         
         return headerV
     }()
@@ -74,9 +75,10 @@ extension AboutViewController: UITableViewDataSource, UITableViewDelegate {
         let model = dataSource[indexPath.row]
         cell.cellStyle = .arrow
         cell.titleLabel.text = model.title
-        cell.titleLabel.font = model.titleFont
+        cell.titleLabel.font = UIFont.systemFont(ofSize: SCRYFrom(15), weight: .light)
+        cell.arrowImageView.image = UIImage(named: "arrow_light_right")
+        cell.lineView.backgroundColor = RGB(243, 243, 243)
         cell.selectionStyle = .none
-        cell.lineView.isHidden = tableView.numberOfRows(inSection: indexPath.section) - 1 == indexPath.row
         cell.backgroundColor = .white
         return cell
     }

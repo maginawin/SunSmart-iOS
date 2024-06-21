@@ -1,5 +1,5 @@
 # Uncomment the next line to define a global platform for your project
-# platform :ios, '9.0'
+ platform :ios, '13.0'
 
 target 'SunSmart' do
   # Comment the next line if you don't want to use dynamic frameworks
@@ -12,9 +12,9 @@ target 'SunSmart' do
   # Bug捕捉
   pod 'Bugly'
   # 网络请求
-#  pod 'Moya'
+  pod 'Moya', '~> 15.0'
   # Json
-#  pod 'SwiftyJson'
+  pod 'SwiftyJSON', '~> 4.0'
 #  pod 'MMDrawerController'
   
   # Pods for SunSmart

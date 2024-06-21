@@ -81,6 +81,7 @@ static const CGFloat MBDefaultDetailsLabelFontSize = 12.f;
     _animationType = WYProgressHUDAnimationFade;
     _mode = WYProgressHUDModeIndeterminate;
     _margin = 20.0f;
+    _padding = 20.0f;
     _defaultMotionEffectsEnabled = NO;
 
     if (@available(iOS 13.0, tvOS 13, *)) {
@@ -513,8 +514,10 @@ static const CGFloat MBDefaultDetailsLabelFontSize = 12.f;
     UIView *topSpacer = self.topSpacer;
     UIView *bottomSpacer = self.bottomSpacer;
     CGFloat margin = self.margin;
+    CGFloat padding = self.padding;
     NSMutableArray *bezelConstraints = [NSMutableArray array];
     NSDictionary *metrics = @{@"margin": @(margin)};
+    NSDictionary *paddigns = @{@"margin": @(padding)};
 
     NSMutableArray *subviews = [NSMutableArray arrayWithObjects:self.topSpacer, self.label, self.detailsLabel, self.button, self.bottomSpacer, nil];
     if (self.indicator) [subviews insertObject:self.indicator atIndex:1];
@@ -572,14 +575,15 @@ static const CGFloat MBDefaultDetailsLabelFontSize = 12.f;
         // Center in bezel
         [bezelConstraints addObject:[NSLayoutConstraint constraintWithItem:view attribute:NSLayoutAttributeCenterX relatedBy:NSLayoutRelationEqual toItem:bezel attribute:NSLayoutAttributeCenterX multiplier:1.f constant:0.f]];
         // Ensure the minimum edge margin is kept
-        [bezelConstraints addObjectsFromArray:[NSLayoutConstraint constraintsWithVisualFormat:@"|-(>=margin)-[view]-(>=margin)-|" options:0 metrics:metrics views:NSDictionaryOfVariableBindings(view)]];
+        [bezelConstraints addObjectsFromArray:[NSLayoutConstraint constraintsWithVisualFormat:@"|-(>=margin)-[view]-(>=margin)-|" options:0 metrics:paddigns views:NSDictionaryOfVariableBindings(view)]];
         // Element spacing
         if (idx == 0) {
             // First, ensure spacing to bezel edge
-            [bezelConstraints addObject:[NSLayoutConstraint constraintWithItem:view attribute:NSLayoutAttributeTop relatedBy:NSLayoutRelationEqual toItem:bezel attribute:NSLayoutAttributeTop multiplier:1.f constant:0.f]];
+            
+            [bezelConstraints addObject:[NSLayoutConstraint constraintWithItem:view attribute:NSLayoutAttributeTop relatedBy:NSLayoutRelationEqual toItem:bezel attribute:NSLayoutAttributeTop multiplier:1.f constant:padding - margin]];
         } else if (idx == subviews.count - 1) {
             // Last, ensure spacing to bezel edge
-            [bezelConstraints addObject:[NSLayoutConstraint constraintWithItem:view attribute:NSLayoutAttributeBottom relatedBy:NSLayoutRelationEqual toItem:bezel attribute:NSLayoutAttributeBottom multiplier:1.f constant:0.f]];
+            [bezelConstraints addObject:[NSLayoutConstraint constraintWithItem:view attribute:NSLayoutAttributeBottom relatedBy:NSLayoutRelationEqual toItem:bezel attribute:NSLayoutAttributeBottom multiplier:1.f constant:-(padding - margin)]];
         }
         if (idx > 0) {
             // Has previous
@@ -665,6 +669,13 @@ static const CGFloat MBDefaultDetailsLabelFontSize = 12.f;
 - (void)setMinSize:(CGSize)minSize {
     if (!CGSizeEqualToSize(minSize, _minSize)) {
         _minSize = minSize;
+        [self setNeedsUpdateConstraints];
+    }
+}
+
+- (void)setPadding:(CGFloat)padding {
+    if (padding != _padding) {
+        _padding = padding;
         [self setNeedsUpdateConstraints];
     }
 }

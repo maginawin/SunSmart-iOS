@@ -74,9 +74,15 @@ class CustomTableViewCell: UITableViewCell {
                 
                 if cellStyle == .iconAddBottomSubtitle {
                     self.arrowImageView.isHidden = true
+                    
+                    self.iconImageView.snp.remakeConstraints { make in
+                        make.left.equalTo(iconX)
+                        make.top.equalTo(SCRYFrom(3))
+                    }
+                    
                     self.titleLabel.snp.remakeConstraints { make in
-                        make.left.equalTo(iconImageView.snp.right).offset(SCRXFrom(8))
-                        make.top.equalTo(SCRYFrom(12))
+                        make.left.equalTo(self.titleX)
+                        make.centerY.equalTo(self.iconImageView)
                     }
                     
                     self.contentLabel.snp.remakeConstraints { make in

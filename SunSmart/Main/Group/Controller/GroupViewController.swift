@@ -9,7 +9,7 @@ import UIKit
 import NordicSigMeshSDK
 
 class GroupViewController: UIViewController {
-
+    
     private var collectionView: UICollectionView!
     private var flowLayout: AlignCenterFlowLayout!
     private var onoffBtn: UIButton!
@@ -22,15 +22,22 @@ class GroupViewController: UIViewController {
     private var calibrateBtn: UIButton!
     private var sensorView: GroupSensorView?
     
+    private var automationTimer: Timer?
+    private lazy var testBtn: UIButton = {
+        let btn = UIButton(title: "Start", titleSize: 15, titleWeight: .light, titleColor: TextBlack_Color, fit: false, target: self, action: #selector(test))
+        btn.setTitle("Stop", for: .selected)
+        return btn
+    }()
+    
     let space: SpaceData
     let group: Group
     
-//    private var devices: [String] = []
-//    private var isGroupUpdateData = false
+    //    private var devices: [String] = []
+    //    private var isGroupUpdateData = false
     /// 组更新回调
-//    var groupUpdateCallback: ((Group)->Void)?
+    //    var groupUpdateCallback: ((Group)->Void)?
     /// 组删除回调
-//    var groupDeleteCallback: ((Group)->Void)?
+    //    var groupDeleteCallback: ((Group)->Void)?
     
     init(space: SpaceData,group: Group) {
         self.space = space
@@ -45,7 +52,7 @@ class GroupViewController: UIViewController {
     
     override func viewDidLoad() {
         super.viewDidLoad()
-
+        
         self.title = group.name
         
         view.backgroundColor = Background_Color
@@ -54,25 +61,31 @@ class GroupViewController: UIViewController {
             
             navigationController?.setNavigationBarBackgroundColor(color: .clear)
             
-//            let appearance = UINavigationBarAppearance()
-//            appearance.configureWithOpaqueBackground()
-//            appearance.backgroundColor = .clear
-//            appearance.shadowImage = UIImage.image(size: CGSize(width: 1, height: 1), color: .clear)
-////            appearance.titleTextAttributes = [.font: UIFont.systemFont(ofSize: 18, weight: .light)]
-//            navigationController?.navigationBar.standardAppearance = appearance
-//            navigationController?.navigationBar.scrollEdgeAppearance = appearance
+            //            let appearance = UINavigationBarAppearance()
+            //            appearance.configureWithOpaqueBackground()
+            //            appearance.backgroundColor = .clear
+            //            appearance.shadowImage = UIImage.image(size: CGSize(width: 1, height: 1), color: .clear)
+            ////            appearance.titleTextAttributes = [.font: UIFont.systemFont(ofSize: 18, weight: .light)]
+            //            navigationController?.navigationBar.standardAppearance = appearance
+            //            navigationController?.navigationBar.scrollEdgeAppearance = appearance
             
             navigationItem.leftBarButtonItem = UIBarButtonItem(image: UIImage(named: "navigation_back")?.withRenderingMode(.alwaysOriginal), style: .done, target: self, action: #selector(close))
         }
-        navigationItem.rightBarButtonItem = UIBarButtonItem(image: UIImage(named: "more_vertical")?.withRenderingMode(.alwaysOriginal), style: .done, target: self, action: #selector(moreClick))
+        
+        
+        
+        navigationItem.rightBarButtonItems = [
+            UIBarButtonItem(image: UIImage(named: "more_vertical")?.withRenderingMode(.alwaysOriginal), style: .done, target: self, action: #selector(moreClick)),
+            UIBarButtonItem(customView: testBtn)
+        ]
         
         setupUI()
         bindSliderAciton()
         
-//        for i in 1...30 {
-//            devices.append("ID \(i)")
-//        }
-    
+        //        for i in 1...30 {
+        //            devices.append("ID \(i)")
+        //        }
+        
         addNotificationObserver()
         
         if let sensor = self.group.info.ambientLightSensorNode {
@@ -80,6 +93,24 @@ class GroupViewController: UIViewController {
         }
         // 刷新设备状态
         refresh()
+    }
+    
+    @objc private func test(sender: UIButton) {
+        
+        sender.isSelected = !sender.isSelected
+        
+        if sender.isSelected {
+            automationTimer = LCWeakTimer.scheduledTimer(timeInterval: 10, aTarget: self, selector: #selector(automationTimerAction), userInfo: nil, repeats: true)
+            RunLoop.current.add(automationTimer!, forMode: .common)
+        }else {
+            automationTimer?.invalidate()
+            automationTimer = nil
+        }
+    }
+    
+    @objc private func automationTimerAction() {
+        group.isOn = !group.isOn
+        MeshAPI.setGroupOnOffState(address: group.address.address, isOn: group.isOn)
     }
     
     override func viewWillAppear(_ animated: Bool) {
@@ -97,6 +128,10 @@ class GroupViewController: UIViewController {
         super.viewDidAppear(animated)
         
 //        sensorPublishCheck()
+    }
+    deinit {
+        automationTimer?.invalidate()
+        automationTimer = nil
     }
     
     override func viewWillDisappear(_ animated: Bool) {
@@ -238,14 +273,18 @@ class GroupViewController: UIViewController {
                     self?.members()
                 }
                 if let emptyView = collectionView.emptyView {
-                    emptyView.button.backgroundColor = .clear
-//                    emptyView.button.setTitle("add_member".localizedString, for: .normal)
-                    emptyView.button.setImage(UIImage(named: "member_add"), for: .normal)
-                    emptyView.button.titleLabel?.font = FONTS(16)
-                    emptyView.button.setTitleColor(Bar_Color, for: .normal)
-                    emptyView.button.setImagePosition(position: .left, spacing: SCRXFrom(2))
-                    emptyView.button.snp.updateConstraints { make in
-                        make.top.equalTo(emptyView.titleLabel.snp.bottom).offset(SCRYFrom(24))
+                    if space.groupOperates.contains(.edit) {
+                        emptyView.button.backgroundColor = .clear
+                        //                    emptyView.button.setTitle("add_member".localizedString, for: .normal)
+                        emptyView.button.setImage(UIImage(named: "member_add"), for: .normal)
+                        emptyView.button.titleLabel?.font = FONTS(16)
+                        emptyView.button.setTitleColor(Bar_Color, for: .normal)
+                        emptyView.button.setImagePosition(position: .left, spacing: SCRXFrom(2))
+                        emptyView.button.snp.updateConstraints { make in
+                            make.top.equalTo(emptyView.titleLabel.snp.bottom).offset(SCRYFrom(24))
+                        }
+                    }else {
+                        emptyView.button.isHidden = true
                     }
                 }
             }
@@ -256,26 +295,34 @@ class GroupViewController: UIViewController {
     
     @objc private func moreClick() {
         
-        var items: [MenuPopView.MenuItem] = [
-            .init(icon: UIImage(named: "menu_edit"), title: "edit".localizedString, tapItemBack: {[weak self] item in
+        var items: [MenuPopView.MenuItem] = []
+        if space.groupOperates.contains(.edit) {
+            items.append(.init(icon: UIImage(named: "menu_edit"), title: "edit".localizedString, tapItemBack: {[weak self] item in
                 self?.editGroup()
-            }),
-            .init(icon: UIImage(named: "menu_delete"), title: "delete".localizedString, tapItemBack: {[weak self] item in
-//                self?.deleteSite()
-                self?.deleteGroup()
-            }),
-            .init(icon: UIImage(named: "menu_members"), title: "members".localizedString, tapItemBack: {[weak self] item in
-                self?.members()
-            }),
-            .init(icon: UIImage(named: "menu_profile"), title: "profile".localizedString, tapItemBack: {[weak self] item in
-                self?.groupProfile()
-            })
-        ]
-        let profileType = group.info.profile.type
-        if profileType == .occupancy_daylight || profileType == .vacancy_daylight || profileType == .daylight {
-            items.append( .init(icon: UIImage(named: "menu_calibrate"), title: "calibrate".localizedString, tapItemBack: {[weak self] item in
-                self?.calibrate()
             }))
+        }
+        if space.groupOperates.contains(.delete) {
+            items.append(.init(icon: UIImage(named: "menu_delete"), title: "delete".localizedString, tapItemBack: {[weak self] item in
+                //                self?.deleteSite()
+                self?.deleteGroup()
+            }))
+        }
+        if space.groupOperates.contains(.edit) {
+            items.append(.init(icon: UIImage(named: "menu_members"), title: "members".localizedString, tapItemBack: {[weak self] item in
+                self?.members()
+            }))
+        }
+        items.append(.init(icon: UIImage(named: "menu_profile"), title: "profile".localizedString, tapItemBack: {[weak self] item in
+            self?.groupProfile()
+        }))
+        
+        if space.groupOperates.contains(.edit) {
+            let profileType = group.info.profile.type
+            if profileType == .occupancy_daylight || profileType == .vacancy_daylight || profileType == .daylight {
+                items.append( .init(icon: UIImage(named: "menu_calibrate"), title: "calibrate".localizedString, tapItemBack: {[weak self] item in
+                    self?.calibrate()
+                }))
+            }
         }
         
         items.append( .init(icon: UIImage(named: "menu_switch"), title: "switch".localizedString, tapItemBack: {[weak self] item in
@@ -473,6 +520,7 @@ class GroupViewController: UIViewController {
     private func groupProfile() {
         
         let vc = ProfileSettingsViewController(group: group, profile: group.info.profile)
+        vc.editable = space.groupOperates.contains(.edit)
         vc.saveActionCallback = {[weak self] profile in
             guard let self = self else {
                 return
@@ -483,7 +531,7 @@ class GroupViewController: UIViewController {
             }
             self.group.info.profile = profile
             self.group.info.save()
-            profile.save()
+            profile.save(meshUUID: self.space.meshUUID, meshNetworkId: self.space.meshNetworkId)
             self.updateUI()
         }
         navigationController?.pushViewController(vc, animated: true)
@@ -514,6 +562,7 @@ class GroupViewController: UIViewController {
     @objc private func pushToSwitch() {
         
         let vc = GroupSwitchsViewController(group: group)
+        vc.editable = space.groupOperates.contains(.edit)
         navigationController?.pushViewController(vc, animated: true)
     }
     

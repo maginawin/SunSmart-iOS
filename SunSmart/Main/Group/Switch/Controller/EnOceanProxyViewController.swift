@@ -143,7 +143,7 @@ class EnOceanProxyViewController: UIViewController {
 //                    self.reloadProxyItem(proxy: lastProxyNode)
 //                }
                 
-                self.setSwitch.proxyNode = proxyNode
+                self.setSwitch.proxyNodeAddress = proxyNode.primaryUnicastAddress
                 self.setSwitch.save()
                 self.reloadProxyItem(proxy: proxyNode)
                 if self.setSwitch.enabled { // 是否启用，启用默认绑定按键
@@ -151,10 +151,14 @@ class EnOceanProxyViewController: UIViewController {
                         guard let self = self else { return }
                         self.hideLoadingAnimation()
                         self.switchDataUpdateCallback?(self.setSwitch)
+                        // 通知space数据修改
+                        NotificationCenter.default.post(name: .init(spaceDataChangedNotificaitonName), object: SpaceChangeDataType.device)
                     }
                 }else {
                     self.hideLoadingAnimation()
                     self.switchDataUpdateCallback?(self.setSwitch)
+                    // 通知space数据修改
+                    NotificationCenter.default.post(name: .init(spaceDataChangedNotificaitonName), object: SpaceChangeDataType.device)
                 }
                 
             }else if let error = error {
@@ -189,13 +193,14 @@ class EnOceanProxyViewController: UIViewController {
                     
                 if let removeProxySwitch = self.group.info.switchs.first(where: { $0.proxyNode?.primaryUnicastAddress == proxyNode.primaryUnicastAddress }) {
                     
-                    removeProxySwitch.proxyNode = nil
+                    removeProxySwitch.proxyNodeAddress = nil
                     removeProxySwitch.save()
                     self.switchDataUpdateCallback?(removeProxySwitch)
                 }
                 
                 self.reloadProxyItem(proxy: proxyNode)
-                
+                // 通知space数据修改
+                NotificationCenter.default.post(name: .init(spaceDataChangedNotificaitonName), object: SpaceChangeDataType.device)
             }else {
                 switch deleteError {
                 case .connectTimeout:
@@ -260,6 +265,7 @@ class EnOceanProxyViewController: UIViewController {
             
             let vc = LBXScanViewController()
             vc.scanStyle = style
+            vc.message = "scan_panel_qr_code_message".localizedString
             vc.isOpenInterestRect = true
             vc.scanResultDelegate = self
             vc.scanFineshedExit = false
@@ -324,9 +330,12 @@ extension EnOceanProxyViewController: LBXScanViewControllerDelegate {
                     self.navigationController?.popViewController(animated: true)
                     // 生成一个新的虚拟开关给
                     self.setSwitch = self.group.addGroupSwitch()
-                    self.setSwitch.sceneA = self.groupSwitch.sceneA
-                    self.setSwitch.sceneB = self.groupSwitch.sceneB
+                    self.setSwitch.sceneANumber = self.groupSwitch.sceneA?.number
+                    self.setSwitch.sceneBNumber = self.groupSwitch.sceneB?.number
                     self.enOceanSwitchBind(enOceanData: data)
+                    
+                    // 通知space数据修改
+                    NotificationCenter.default.post(name: .init(spaceDataChangedNotificaitonName), object: SpaceChangeDataType.common)
                     
                 })]).show()
                 

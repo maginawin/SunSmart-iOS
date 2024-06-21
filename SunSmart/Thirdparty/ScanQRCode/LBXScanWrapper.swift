@@ -470,6 +470,7 @@ open class LBXScanWrapper: NSObject,AVCaptureMetadataOutputObjectsDelegate {
                           y: srcImg.size.height / 2 - logoSize.height / 2,
                           width: logoSize.width,
                           height: logoSize.height)
+        
         logoImg.draw(in: rect)
         let resultingImage = UIGraphicsGetImageFromCurrentImageContext()
         UIGraphicsEndImageContext()

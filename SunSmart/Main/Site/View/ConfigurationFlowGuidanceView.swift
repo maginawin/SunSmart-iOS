@@ -105,7 +105,11 @@ class ConfigurationFlowGuidanceView: UIView {
         
     }
     
-    @objc private func hide() {
+    static func current() -> ConfigurationFlowGuidanceView? {
+        return UIApplication.shared.keyWindow().subviews.first(where: { $0.isKind(of: self.classForCoder()) }) as? ConfigurationFlowGuidanceView
+    }
+    
+    @objc func hide() {
         
         UIView.animate(withDuration: 0.3) {
             self.shadeView.alpha = 0

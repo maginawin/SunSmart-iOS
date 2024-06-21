@@ -9,6 +9,13 @@ import UIKit
 
 protocol CustomDeviceSliderDelegate: AnyObject {
     
+    /// 是否可以滑动
+    /// - Parameters:
+    ///   - slider: 滑条
+    ///   - value: 数值
+    /// - Returns: 是否可以滑动
+    func slider(_ slider: CustomDeviceSlider, canEditChanged value: Float) -> Bool
+    
     /// 滑动条数值修改回调
     /// - Parameters:
     ///   - slider: 滑动条
@@ -43,6 +50,15 @@ extension CustomDeviceSliderDelegate {
     ///   - ended: 是否滑动结束
     func slider(_ slider: CustomDeviceSlider, throttleValueChanged value: Float, ended: Bool) {
         
+    }
+    
+    /// 是否可以滑动
+    /// - Parameters:
+    ///   - slider: 滑条
+    ///   - value: 数值
+    /// - Returns: 是否可以滑动
+    func slider(_ slider: CustomDeviceSlider, canEditChanged value: Float) -> Bool {
+        return true
     }
     
 }
@@ -211,6 +227,11 @@ class CustomDeviceSlider: UISlider {
             layer.insertSublayer(gradient, at: 0)
 //            layer.addSublayer(gradient)
         }
+    }
+    
+    /// 是否可以滑动编辑数值
+    override func beginTracking(_ touch: UITouch, with event: UIEvent?) -> Bool {
+        return self.delegate?.slider(self, canEditChanged: self.value) ?? true
     }
     
     @objc private func sliderValueChanged() {

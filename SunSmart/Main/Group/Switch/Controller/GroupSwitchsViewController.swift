@@ -24,6 +24,8 @@ class GroupSwitchsViewController: UIViewController {
     private var showSwitchs: [GroupSwitch] = []
     /// 虚拟开关副本
     private var copySwitchs: [GroupSwitch] = []
+    /// 是否可编辑
+    var editable: Bool = true
     
     init(group: Group) {
         self.group = group
@@ -93,6 +95,7 @@ class GroupSwitchsViewController: UIViewController {
     
     /// 添加虚拟开关
     private func addVirtualSwitch() {
+        
 //        if let index = group.info.switchs.firstIndex(where: { $0.id == groupSwitch.id }) {
 //            tableView.deleteSections(IndexSet(integer: index), with: .automatic)
 //        }
@@ -142,7 +145,10 @@ class GroupSwitchsViewController: UIViewController {
     
     /// 保存虚拟开关
     private func saveSwitch(groupSwitch: GroupSwitch) {
-        
+        guard editable else {
+            XWHUDManager.showTipHUD("no_permission".localizedString + "！")
+            return
+        }
         guard groupSwitch.proxyNode != nil else {
             XWHUDManager.showSuccessTipHUD("done!".localizedString)
             syncRealSwitchData(copySwitch: groupSwitch)
@@ -192,6 +198,10 @@ class GroupSwitchsViewController: UIViewController {
     ///   - enabled: 是否启用
     private func setEnOceanSwitchKeysEnabled(groupSwitch: GroupSwitch, enabled: Bool) {
         
+        guard editable else {
+            XWHUDManager.showTipHUD("no_permission".localizedString + "！")
+            return
+        }
         // 虚拟按键未设置代理
         guard let proxyNode = groupSwitch.proxyNode else {
             groupSwitch.enabled = enabled
@@ -215,7 +225,8 @@ class GroupSwitchsViewController: UIViewController {
                     self.syncRealSwitchData(copySwitch: groupSwitch)
                     self.reloadSwitchItem(groupSwitch: groupSwitch)
                     XWHUDManager.showSuccessTipHUD("done!".localizedString)
-                    
+                    // 通知space数据修改
+                    NotificationCenter.default.post(name: .init(spaceDataChangedNotificaitonName), object: SpaceChangeDataType.device)
                 }else {
                     XWHUDManager.showErrorTipHUD("save_failure".localizedString)
                 }
@@ -229,7 +240,8 @@ class GroupSwitchsViewController: UIViewController {
                     self.syncRealSwitchData(copySwitch: groupSwitch)
                     self.reloadSwitchItem(groupSwitch: groupSwitch)
                     XWHUDManager.showSuccessTipHUD("done!".localizedString)
-                    
+                    // 通知space数据修改
+                    NotificationCenter.default.post(name: .init(spaceDataChangedNotificaitonName), object: SpaceChangeDataType.device)
                 }else {
                     XWHUDManager.showErrorTipHUD("save_failure".localizedString)
                 }
@@ -241,6 +253,11 @@ class GroupSwitchsViewController: UIViewController {
     
     /// 删除开关
     private func deleteEnOceanSwitch(groupSwitch: GroupSwitch) {
+        
+        guard editable else {
+            XWHUDManager.showTipHUD("no_permission".localizedString + "！")
+            return
+        }
         
         guard let proxyNode = groupSwitch.proxyNode else { // 未绑定
             deleteSwitch(groupSwitch: groupSwitch)
@@ -259,6 +276,8 @@ class GroupSwitchsViewController: UIViewController {
             if isDeleteSuccess {
                 XWHUDManager.showSuccessTipHUD("done!".localizedString)
                 self.deleteSwitch(groupSwitch: groupSwitch)
+                // 通知space数据修改
+                NotificationCenter.default.post(name: .init(spaceDataChangedNotificaitonName), object: SpaceChangeDataType.device)
             }else {
                 XWHUDManager.showErrorTipHUD("switch_delete_failure".localizedString)
             }
@@ -300,6 +319,7 @@ class GroupSwitchsViewController: UIViewController {
         
         bottomView = UIView()
         bottomView.backgroundColor = .white
+        bottomView.isHidden = !editable
         view.addSubview(bottomView)
         bottomView.snp.makeConstraints { make in
             make.left.right.bottom.equalToSuperview()
@@ -326,7 +346,11 @@ class GroupSwitchsViewController: UIViewController {
         tableView.snp.makeConstraints { make in
             make.top.equalTo(view.safeAreaInsets.top)
             make.left.right.equalToSuperview()
-            make.bottom.equalTo(bottomView.snp.top)
+            if editable {
+                make.bottom.equalTo(bottomView.snp.top)
+            }else {
+                make.bottom.equalToSuperview()
+            }
         }
         
         loadingView = UIImageView(image: UIImage(named: "loading_big"))
@@ -481,7 +505,14 @@ extension GroupSwitchsViewController: UITableViewDataSource, UITableViewDelegate
     }
     
     func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
+        
         let option = options[indexPath.row]
+        
+        guard editable || option == .keyInfo else {
+            XWHUDManager.showTipHUD("no_permission".localizedString + "！")
+            return
+        }
+        
         let groupSwitch = copySwitchs[indexPath.section]
         switch option {
         case .scene:
@@ -490,8 +521,8 @@ extension GroupSwitchsViewController: UITableViewDataSource, UITableViewDelegate
             }
             let vc = SwitchSelectSceneViewController(scenes: MeshNetworkManager.instance.scenes, sceneA: groupSwitch.sceneA, sceneB: groupSwitch.sceneB)
             vc.sceneSelectCallback = { sceneA, sceneB in
-                groupSwitch.sceneA = sceneA
-                groupSwitch.sceneB = sceneB
+                groupSwitch.sceneANumber = sceneA?.number
+                groupSwitch.sceneBNumber = sceneB?.number
                 tableView.reloadSections(IndexSet(integer: indexPath.section), with: .none)
             }
             navigationController?.pushViewController(vc, animated: true)
@@ -550,7 +581,7 @@ extension GroupSwitchsViewController: GroupSwitchsHeaderViewDelegate {
         guard let groupSwitch = view.groupSwitch else {
             return
         }
-        SRAlertView(title: "edit_name".localizedString, inputText: groupSwitch.name, placeholder: "", actions: [.cancelAction, .init(title: "done".localizedString, style: .default)]) {[weak self] text, validRange in
+        SRAlertView(title: "edit_name".localizedString, messageColor: Red_Color, messageFont: UIFont.systemFont(ofSize: 13, weight: .light), inputText: groupSwitch.name, inputFieldStyle: .init(placeholder: ""), actions: [.cancelAction, .init(title: "done".localizedString, style: .default)]) {[weak self] text, validRange in
 //            guard let self = self else { return }
              if !validRange && !text.isEmpty { // 长度超限
                  return "text_length_exceeded".localizedString

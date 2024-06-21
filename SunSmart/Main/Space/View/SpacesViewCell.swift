@@ -7,27 +7,112 @@
 
 import UIKit
 
+protocol SpacesViewCellDelegate: AnyObject {
+    
+    /// 点击更多回调
+    func cell(_ cell: SpacesViewCell, moreAction point: CGPoint)
+    
+    /// 点击收藏回调
+    func cell(_ cell: SpacesViewCell, favouriteChanged favourite: Bool)
+    
+    /// 点击同步异常回调
+    func spacesViewCellSyncFailedAction(_ cell: SpacesViewCell)
+}
+
 class SpacesViewCell: UITableViewCell {
 
     private var bgView: UIView!
-    var iconImageView: UIImageView!
-    var nameLabel: UILabel!
-    var favoriteBtn: UIButton!
-    var moreBtn: UIButton!
-    var luminairesLabel: UILabel!
-    var switchesLabel: UILabel!
-    var groupsLabel: UILabel!
-    var scenesLabel: UILabel!
-    var schedulesLabel: UILabel!
-    var timeLabel: UILabel!
+    private var iconImageView: UIImageView!
+    private var nameLabel: UILabel!
+    private var favoriteBtn: UIButton!
+    private var moreBtn: UIButton!
+    private var luminairesLabel: UILabel!
+    private var switchesLabel: UILabel!
+    private var groupsLabel: UILabel!
+    private var scenesLabel: UILabel!
+    private var schedulesLabel: UILabel!
+    private var timeLabel: UILabel!
+    /// 存在子管理员
+    private var editorImageView: UIImageView!
+    /// 权限
+    private var permissionLabel: UILabel!
+    /// 没有权限图标
+    private var lockImageView: UIImageView!
+    /// 同步失败标识
+    var syncFailedImageBtn: UIButton!
     
-    
-//    var delegate: SitesViewCellDelegate?
+    weak var delegate: SpacesViewCellDelegate?
     /// 点击更多回调
-    var clickMoreCallback: ((CGPoint)->Void)?
+//    var clickMoreCallback: ((CGPoint)->Void)?
     /// 点击收藏回调
-    var clickFavouriteCallback: ((Bool)->Void)?
+//    var clickFavouriteCallback: ((Bool)->Void)?
     
+    var space: SpaceData! {
+        didSet {
+            nameLabel.text = space.name
+            iconImageView.image = UIImage(named: "space_picture_\(space.imageId)")
+            timeLabel.text = String.dateConvert(timestamp: "\(space.create)", dateFormat: "M/d/yyyy hh:mm a")
+            luminairesLabel.text = "luminaires".localizedString + ":\(space.luminairesCount)"
+            switchesLabel.text = "switches".localizedString + ":\(space.switchesCount)"
+            groupsLabel.text = "groups".localizedString + ":\(space.groupCount)"
+            scenesLabel.text = "scenes".localizedString + ":\(space.sceneCount)"
+            schedulesLabel.text = "schedules".localizedString + ":\(space.scheheduleCount)"
+            favoriteBtn.isSelected = space.isFavourite
+            
+            permissionLabel.text = space.permission.rawString
+            lockImageView.isHidden = true
+            nameLabel.textColor = TextBlack_Color
+            nameLabel.snp.updateConstraints { make in
+                make.left.equalTo(SCRXFrom(16))
+            }
+            editorImageView.isHidden = true
+            syncFailedImageBtn.isHidden = space.showSyncCloudError == nil
+            
+            
+            if space.permission == .owner {
+                
+                if space.editor != nil {
+                    editorImageView.isHidden = false
+                    syncFailedImageBtn.snp.remakeConstraints { make in
+                        make.right.equalTo(editorImageView.snp.left).offset(SCRXFrom(-8))
+                        make.centerY.equalTo(editorImageView)
+                    }
+                }else {
+                    editorImageView.isHidden = true
+                    syncFailedImageBtn.snp.remakeConstraints { make in
+                        make.right.equalTo(favoriteBtn.snp.left).offset(SCRXFrom(-8))
+                        make.centerY.equalTo(favoriteBtn)
+                    }
+                }
+                
+            }else {
+                permissionLabel.textColor = Message_Color
+                // 判断是否回收权限
+                if space.state == .waitDeleted {
+    //                lockImageView.isHidden = false
+                    nameLabel.textColor = Red_Color
+                    permissionLabel.textColor = TextBlack_Color
+                    
+                }else { // 判断是否修改密码
+                    
+                    if true {
+                        lockImageView.isHidden = false
+                        permissionLabel.textColor = TextBlack_Color
+                        nameLabel.snp.updateConstraints { make in
+                            make.left.equalTo(SCRXFrom(50))
+                        }
+                    }
+                }
+                
+                syncFailedImageBtn.snp.remakeConstraints { make in
+                    make.right.equalTo(editorImageView.snp.left).offset(SCRXFrom(-8))
+                    make.centerY.equalTo(editorImageView)
+                }
+            }
+           
+            
+        }
+    }
     
     override init(style: UITableViewCell.CellStyle, reuseIdentifier: String?) {
         super.init(style: style, reuseIdentifier: reuseIdentifier)
@@ -46,7 +131,8 @@ class SpacesViewCell: UITableViewCell {
         let morePoint = CGPoint(x: self.moreBtn.center.x, y: self.moreBtn.frame.maxY)
         
         let point = bgView.convert(morePoint, to: self)
-        clickMoreCallback?(point)
+//        clickMoreCallback?(point)
+        delegate?.cell(self, moreAction: point)
 //        delegate?.sitesViewCell(self, didClickMore: point)
     }
     /// 收藏
@@ -54,7 +140,13 @@ class SpacesViewCell: UITableViewCell {
         
         favoriteBtn.isSelected = !favoriteBtn.isSelected
 //        delegate?.sitesViewCell(self, didClickFavourite: favoriteBtn.isSelected)
-        clickFavouriteCallback?(favoriteBtn.isSelected)
+//        clickFavouriteCallback?(favoriteBtn.isSelected)
+        delegate?.cell(self, favouriteChanged: favoriteBtn.isSelected)
+    }
+    
+    /// 同步失败
+    @objc private func syncFailedImageBtnAction() {
+        delegate?.spacesViewCellSyncFailedAction(self)
     }
     
     private func setupUI() {
@@ -73,11 +165,11 @@ class SpacesViewCell: UITableViewCell {
             make.bottom.equalTo(SCRYFrom(-16))
         }
         
-        nameLabel = UILabel(text: "Frist Floor", textColor: TextBlack_Color, fontSize: 14)
+        nameLabel = UILabel(text: "Frist Floor", textColor: TextBlack_Color, fontSize: 14, fontWeight: .light)
         bgView.addSubview(nameLabel)
         nameLabel.snp.makeConstraints { make in
             make.left.equalTo(SCRXFrom(16))
-            make.right.equalTo(SCRXFrom(-99))
+            make.width.lessThanOrEqualTo(SCRXFrom(140))
             make.top.equalTo(SCRYFrom(16))
         }
         
@@ -149,6 +241,39 @@ class SpacesViewCell: UITableViewCell {
         timeLabel.snp.makeConstraints { make in
             make.left.right.equalTo(scenesLabel)
             make.bottom.equalTo(iconImageView)
+        }
+        
+        editorImageView = UIImageView(image: UIImage(named: "space_editor"))
+        editorImageView.isHidden = true
+        bgView.addSubview(editorImageView)
+        editorImageView.snp.makeConstraints { make in
+            make.right.equalTo(favoriteBtn.snp.left).offset(SCRXFrom(-8))
+            make.centerY.equalTo(favoriteBtn)
+        }
+        
+        permissionLabel = UILabel(text: "", textColor: Message_Color, fontSize: 14, fontWeight: .light)
+        permissionLabel.isHidden = true
+        bgView.addSubview(permissionLabel)
+        permissionLabel.snp.makeConstraints { make in
+            make.right.equalTo(favoriteBtn.snp.left).offset(SCRXFrom(-8))
+            make.centerY.equalTo(favoriteBtn)
+        }
+        
+        lockImageView = UIImageView(image: UIImage(named: "locked"))
+        lockImageView.isHidden = true
+        bgView.addSubview(lockImageView)
+        lockImageView.snp.makeConstraints { make in
+            make.left.equalTo(SCRXFrom(16))
+//            make.top.equalTo(SCRYFrom(9))
+            make.centerY.equalTo(nameLabel)
+        }
+        
+        syncFailedImageBtn = UIButton(normalImageName: "cloud_sync_failed", target: self, action: #selector(syncFailedImageBtnAction))
+//        UIImageView(image: UIImage(named: "cloud_sync_failed"))
+        bgView.addSubview(syncFailedImageBtn)
+        syncFailedImageBtn.snp.makeConstraints { make in
+            make.right.equalTo(editorImageView.snp.left).offset(SCRXFrom(-8))
+            make.centerY.equalTo(editorImageView)
         }
         
     }

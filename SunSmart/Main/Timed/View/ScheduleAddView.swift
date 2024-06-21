@@ -268,7 +268,7 @@ class ScheduleAddView: UIView {
     
     @objc private func nameEditAction() {
         
-        SRAlertView(title: "edit_name".localizedString, titleColor: RGB(39, 37, 54), inputText: nameField.text, inputTextColor: RGB(39, 37, 54), actions: [SRAlertAction(title: "cancel".localizedString, titleFont: UIFont.systemFont(ofSize: SCRYFrom(17), weight: .light), style: .cancel), SRAlertAction(title: "done".localizedString, titleFont: UIFont.systemFont(ofSize: SCRYFrom(17), weight: .light))]) { [weak self] text, validRange in
+        SRAlertView(title: "edit_name".localizedString, titleColor: RGB(39, 37, 54), messageColor: Red_Color, messageFont: UIFont.systemFont(ofSize: 13, weight: .light), inputText: nameField.text, inputFieldStyle: .init(textColor: RGB(39, 37, 54)), actions: [SRAlertAction(title: "cancel".localizedString, titleFont: UIFont.systemFont(ofSize: SCRYFrom(17), weight: .light), style: .cancel), SRAlertAction(title: "done".localizedString, titleFont: UIFont.systemFont(ofSize: SCRYFrom(17), weight: .light))]) { [weak self] text, validRange in
             guard let self = self else { return nil }
             
             return self.delegate?.view(self, nameDidEditing: text)

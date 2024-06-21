@@ -94,6 +94,7 @@ class DeviceAddViewController: UIViewController {
         
         addToGroup = appointGroup
         
+        NetworkRequest.shared.addObserver(self, forKeyPath: "networkable", context: nil)
         
         setupUI()
     }
@@ -131,6 +132,17 @@ class DeviceAddViewController: UIViewController {
         // 关闭设置屏幕常亮
         UIApplication.shared.isIdleTimerDisabled = false
 //        }
+    }
+    
+    /// KVO监听
+    override func observeValue(forKeyPath keyPath: String?, of object: Any?, change: [NSKeyValueChangeKey : Any]?, context: UnsafeMutableRawPointer?) {
+        if keyPath == "networkable" { // 手机网络连接状态
+            if NetworkRequest.shared.networkable, space.isLoadAddress { // 需要加载地址
+                SRAlertView.hide()
+                // 申请设备地址请求
+                applyDeviceAddressesRequest()
+            }
+        }
     }
     
     // MARK: - Scan
@@ -275,7 +287,15 @@ class DeviceAddViewController: UIViewController {
     
     /// 全选/取消全选
     @objc private func selectAllBtnClick(sender: UIButton) {
+        
+        // space只能添加200个设备
+        guard !sender.isSelected, MeshNetworkManager.instance.realNodes.count + showDevices.filter({ $0.addState == .wait || $0.addState == .adding || $0.addState == .addConnecting }).count < 200 else {
+            SRAlertView(title: "notification".localizedString, message: "devices_number_exceeds_message".localizedString, actions: [SRAlertAction(title: "ok".localizedString)]).show()
+            return
+        }
+        
         sender.isSelected = !sender.isSelected
+        
         let devices = showDevices.filter({ $0.selectedState != .disabled })
         if sender.isSelected {
             devices.forEach({ $0.selectedState = .selected })
@@ -456,6 +476,7 @@ class DeviceAddViewController: UIViewController {
 //        if true {
 //            return
 //        }
+        
         // 设备identify中添加不需要再闪烁
         if device.addState == .identifyConnecting || device.addState == .identifyWait || device.addState == .failed || device.addState == .identifying {
             if device.addState == .identifying {
@@ -553,6 +574,11 @@ class DeviceAddViewController: UIViewController {
             addDevice.selectedState = .selected
             self?.reloadDeviceState(addDevice)
             self?.updateUIState()
+            // 设备地址已分配完
+            if let provisioningError = error as? ProvisioningError, case .noAddressAvailable = provisioningError {
+                
+            }
+            
         } addFinish: {[weak self] successList, failList in
             guard let self = self else { return }
             let successNodes = MeshNetworkManager.instance.realNodes.filter { node in
@@ -568,10 +594,45 @@ class DeviceAddViewController: UIViewController {
             self.space.deviceCount = MeshNetworkManager.instance.realNodes.count
             self.space.luminairesCount = MeshNetworkManager.instance.lightNodes.count
             self.space.save()
-            
+            // 通知space数据修改
+            NotificationCenter.default.post(name: .init(spaceDataChangedNotificaitonName), object: SpaceChangeDataType.device)
 //            self.addSuccessNodes.append(contentsOf: successNodes)
         }
         
+    }
+    
+    /// 检查设备地址是否足够
+    private func checkDeviceAddressesAreSufficient(devices: [ProvisioningDevice]) {
+        
+        let needAddressesCount = devices.count * 2
+        // 检查剩余地址是否足够添加设备
+        guard MeshAPI.getNumberOfAvailableUnicastAddresses() >= needAddressesCount else {
+            // 地址不够
+            // 手机是否联网
+            guard NetworkRequest.shared.networkable else {
+                // 未联网提示联网以获取地址
+                SRAlertView(title: "notification".localizedString, message: "device_address_insufficient".localizedString, actions: [SRAlertAction(title: "ok".localizedString)]).show()
+                space.isLoadAddress = true
+                space.save()
+                return
+            }
+            // 向服务器申请地址
+            applyDeviceAddressesRequest()
+            return
+        }
+        devices.forEach({
+            addDevice($0)
+        })
+    }
+    
+    /// 申请设备地址请求
+    private func applyDeviceAddressesRequest(devices: [ProvisioningDevice] = []) {
+        
+        // request
+        
+        devices.forEach({
+            addDevice($0)
+        })
     }
     
     /// 刷新设备UI状态
@@ -905,6 +966,12 @@ extension DeviceAddViewController: UITableViewDataSource, UITableViewDelegate {
         guard device.selectedState == .unselected || device.selectedState == .selected else {
             return
         }
+        // space只能添加200个设备
+        guard MeshNetworkManager.instance.realNodes.count + showDevices.filter({ $0.addState == .wait || $0.addState == .adding || $0.addState == .addConnecting }).count < 200 else {
+            SRAlertView(title: "notification".localizedString, message: "devices_number_exceeds_message".localizedString, actions: [SRAlertAction(title: "ok".localizedString)]).show()
+            return
+        }
+        
         if device.selectedState == .unselected {
             device.selectedState = .selected
         }else {
@@ -982,6 +1049,12 @@ extension DeviceAddViewController: DeviceAddViewCellDelegate {
             XWHUDManager.showTipHUD(inView: "device_scaning_disable_add".localizedString)
             return
         }
+        // space只能添加200个设备
+        guard MeshNetworkManager.instance.realNodes.count + showDevices.filter({ $0.addState == .wait || $0.addState == .adding || $0.addState == .addConnecting }).count < 200 else {
+            SRAlertView(title: "notification".localizedString, message: "devices_number_exceeds_message".localizedString, actions: [SRAlertAction(title: "ok".localizedString)]).show()
+            return
+        }
+        
         addDevice(device)
     }
     

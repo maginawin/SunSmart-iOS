@@ -131,12 +131,10 @@ class LightSensorCalibrationViewController: UIViewController {
     /// 更新组光感传感器
     private func updateGroupLightSensor() {
         
-        if let uuid = MeshNetworkManager.instance.meshNetwork?.uuid.uuidString {
-            let networkKey = MeshNetworkManager.instance.currentNetworkKey
-            self.group.info.profile.adjustSpeed = self.calibrationView.adjustSpeed
-            self.group.info.save()
-            self.group.info.profile.save()
-        }
+        self.group.info.profile.adjustSpeed = self.calibrationView.adjustSpeed
+        self.group.info.save()
+        self.group.info.profile.save()
+        
         NotificationCenter.default.post(name: .init(groupDataUpdateNotificationName), object: self.group)
     }
     
@@ -182,6 +180,10 @@ class LightSensorCalibrationViewController: UIViewController {
 //                sensor.saveNodeInfo(meshUUID: uuid, networkKey: MeshNetworkManager.instance.currentNetworkKey)
 //            }
 //            self.updateGroupLightSensor()
+            
+            // 通知space数据修改
+            NotificationCenter.default.post(name: .init(spaceDataChangedNotificaitonName), object: SpaceChangeDataType.device)
+            
             DispatchQueue.main.async {
                 self.sensorEnabled(sensor: sensor) {[weak self] result in
                     guard let self = self else { return }
@@ -264,6 +266,8 @@ class LightSensorCalibrationViewController: UIViewController {
             }
           
             DispatchQueue.main.async {
+                // 通知space数据修改
+                NotificationCenter.default.post(name: .init(spaceDataChangedNotificaitonName), object: SpaceChangeDataType.device)
                 if failedNodes.count > 0 {
                     self.showCheckingCorrectFailure(total: successNodes.count + failedNodes.count, successCount: successNodes.count, failedNodes: failedNodes)
                 }else {
@@ -618,6 +622,8 @@ extension LightSensorCalibrationViewController: LightSensorCalibrationSelectView
                             }
                             self?.group.info.ambientLightSensorNode = nil
                             self?.updateGroupLightSensor()
+                            // 通知space数据修改
+                            NotificationCenter.default.post(name: .init(spaceDataChangedNotificaitonName), object: SpaceChangeDataType.device)
                         }
                     }
                     semaphore.signal()
@@ -632,6 +638,8 @@ extension LightSensorCalibrationViewController: LightSensorCalibrationSelectView
                         if result {
                             self?.selectSensor = selectSensor
                             self?.calibrationView.measuredLightValue = nil
+                            // 通知space数据修改
+                            NotificationCenter.default.post(name: .init(spaceDataChangedNotificaitonName), object: SpaceChangeDataType.device)
                         }
                     }
                     semaphore.signal()
@@ -663,6 +671,8 @@ extension LightSensorCalibrationViewController: LightSensorCalibrationSelectView
 //                        self?.group.info.ambientLightSensorNode = nil
 //                        self?.updateGroupLightSensor()
                         self?.updateCalibrationState()
+                        // 通知space数据修改
+                        NotificationCenter.default.post(name: .init(spaceDataChangedNotificaitonName), object: SpaceChangeDataType.device)
                     }
                 }
             }

@@ -539,14 +539,14 @@ class SyncDevicesViewController: UIViewController {
         
         DispatchQueue.global().async {
             
-            let versionLockMessageHandles = configNodes.map({ MeshMessageHandle(message: SunricherVendorGet(function: .versionLock), model: $0.sunricherVendorModel!) })
+//            let versionLockMessageHandles = configNodes.map({ MeshMessageHandle(message: SunricherVendorGet(function: .versionLock), model: $0.sunricherVendorModel!) })
             
             let semaphore = DispatchSemaphore(value: 0)
             // 给操作设备加锁
-            MeshProxyMessageCommand.shared.addMessage(messageHandles: versionLockMessageHandles) { _ in
-                semaphore.signal()
-            }
-            semaphore.wait()
+//            MeshProxyMessageCommand.shared.addMessage(messageHandles: versionLockMessageHandles) { _ in
+//                semaphore.signal()
+//            }
+//            semaphore.wait()
             
             while let model = self.getNextHandleModel() {
                 
@@ -565,7 +565,7 @@ class SyncDevicesViewController: UIViewController {
                     }
                     return
                 }
-                var nodeAddress: Address?
+//                var nodeAddress: Address?
                 var messageHandles: [MeshMessageHandle] = []
                 if let deviceModel = model as? SyncDevicesModel {
                     // code
@@ -576,7 +576,7 @@ class SyncDevicesViewController: UIViewController {
 ////                            self.updateCell(model: $0)
 //                        }
 //                    })
-                    nodeAddress = deviceModel.address
+//                    nodeAddress = deviceModel.address
                     deviceModel.state = .inSettings
 //                    self.tableView.reloadData()
 //                    self.updateCell(model: deviceModel)
@@ -626,13 +626,13 @@ class SyncDevicesViewController: UIViewController {
                             }
                             self.lastDeviceModel = deviceModel
                         }
-                        nodeAddress = deviceModel.address
+//                        nodeAddress = deviceModel.address
                     }
                 }
                 // 节点加锁失败，不进行发送数据
-                if let node = configNodes.first(where: { $0.primaryUnicastAddress == nodeAddress }), node.versionVerifyCode == nil {
-                   messageHandles = []
-                }
+//                if let node = configNodes.first(where: { $0.primaryUnicastAddress == nodeAddress }), node.versionVerifyCode == nil {
+//                   messageHandles = []
+//                }
                 
                 DispatchQueue.main.async {
                     self.tableView.reloadData()
@@ -681,6 +681,8 @@ class SyncDevicesViewController: UIViewController {
             DispatchQueue.main.async {
                 self.tableView.reloadData()
                 self.updateSyncStateUI()
+                // 通知space数据修改
+                NotificationCenter.default.post(name: .init(spaceDataChangedNotificaitonName), object: SpaceChangeDataType.device)
                 if self.syncState == .syncSuccess {
                     // 同步完成回调
                     self.syncSuccessCallback?(self.type)
@@ -696,25 +698,25 @@ class SyncDevicesViewController: UIViewController {
             }
             
             // 操作成功的设备地址
-            var successAddresses: [Address] = []
-            self.sections.forEach({
-                let successfulModels = $0.allModels.filter({ $0.state == .successful })
-                successfulModels.forEach({
-                    if let model = $0 as? SyncDevicesModel {
-                        if !successAddresses.contains(model.address) {
-                            successAddresses.append(model.address)
-                        }
-                    }else if let model = $0 as? SyncDeviceStepTaskModel, let deviceModel = model.parentStepModel?.parentDeviceModel {
-                        if !successAddresses.contains(deviceModel.address) {
-                            successAddresses.append(deviceModel.address)
-                        }
-                    }
-                })
-            })
+//            var successAddresses: [Address] = []
+//            self.sections.forEach({
+//                let successfulModels = $0.allModels.filter({ $0.state == .successful })
+//                successfulModels.forEach({
+//                    if let model = $0 as? SyncDevicesModel {
+//                        if !successAddresses.contains(model.address) {
+//                            successAddresses.append(model.address)
+//                        }
+//                    }else if let model = $0 as? SyncDeviceStepTaskModel, let deviceModel = model.parentStepModel?.parentDeviceModel {
+//                        if !successAddresses.contains(deviceModel.address) {
+//                            successAddresses.append(deviceModel.address)
+//                        }
+//                    }
+//                })
+//            })
             
             // 更新设备版本
-            let versionUpdateMessageHandles = configNodes.filter({ $0.versionVerifyCode != nil }).map({ MeshMessageHandle(message: SunricherVendorSet(function: .setVersion(version: $0.versionSEQ + (successAddresses.contains($0.primaryUnicastAddress) ? 1 : 0) , verifyCode: $0.versionVerifyCode ?? 0)), model: $0.sunricherVendorModel!) })
-            MeshProxyMessageCommand.shared.addMessage(messageHandles: versionUpdateMessageHandles, finishedBack: nil)
+//            let versionUpdateMessageHandles = configNodes.filter({ $0.versionVerifyCode != nil }).map({ MeshMessageHandle(message: SunricherVendorSet(function: .setVersion(version: $0.versionSEQ + (successAddresses.contains($0.primaryUnicastAddress) ? 1 : 0) , verifyCode: $0.versionVerifyCode ?? 0)), model: $0.sunricherVendorModel!) })
+//            MeshProxyMessageCommand.shared.addMessage(messageHandles: versionUpdateMessageHandles, finishedBack: nil)
         }
       
     }

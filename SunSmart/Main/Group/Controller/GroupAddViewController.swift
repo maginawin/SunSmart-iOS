@@ -131,7 +131,8 @@ class GroupAddViewController: UIViewController {
             finnished()
             close()
             NotificationCenter.default.post(name: .init(groupDataUpdateNotificationName), object: self.group!)
-            
+            // 通知space数据修改
+            NotificationCenter.default.post(name: .init(spaceDataChangedNotificaitonName), object: SpaceChangeDataType.common)
         }else { // 新增
             
             MeshAPI.createGroup(name: name) {[weak self] group in
@@ -153,7 +154,8 @@ class GroupAddViewController: UIViewController {
                     NotificationCenter.default.post(name: .init(groupsRefreshNotificationName), object: nil)
 //                    self.navigationController?.removeVc(vc: self)
                 }
-                
+                // 通知space数据修改
+                NotificationCenter.default.post(name: .init(spaceDataChangedNotificaitonName), object: SpaceChangeDataType.common)
             } fail: { _, error in
                 XWHUDManager.showTipHUD("failed".localizedString)
                 return

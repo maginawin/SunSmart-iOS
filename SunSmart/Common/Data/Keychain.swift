@@ -12,6 +12,7 @@ struct Keychain {
     
     private static let service = "com.azoula.sunsmart.app"
     private static let account = "uuid"
+    private static let serverRegion = "region"
     
     /// 获取uuid
     static func getUUID() -> String {
@@ -60,5 +61,45 @@ struct Keychain {
         let status = SecItemAdd(query as CFDictionary, nil)
         return status == errSecSuccess
     }
+    
+    /// 获取服务器地区
+    static func getServerRegion() -> ServerRegion? {
+        
+        let query: [String: Any] = [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrService as String: service,
+            kSecAttrType as String: serverRegion,
+            kSecReturnData as String: kCFBooleanTrue!,
+            kSecMatchLimit as String: kSecMatchLimitOne
+        ]
+        
+        var dataTypeRef: AnyObject?
+        let status = SecItemCopyMatching(query as CFDictionary, &dataTypeRef)
+        
+        if status == errSecSuccess {
+            if let data = dataTypeRef as? Data,
+               let region = ServerRegion(rawValue: Int(UInt8(data: data))) {
+                return region
+            }
+        }
+        return nil
+    }
+    
+    /// 保存服务器地区到钥匙串
+   @discardableResult static func saveServerRegion(_ region: ServerRegion) -> Bool {
+       
+        let query: [String: Any] = [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrService as String: service,
+            kSecAttrType as String: serverRegion,
+            kSecValueData as String: UInt8(region.rawValue).data,
+            kSecAttrAccessible as String: kSecAttrAccessibleAfterFirstUnlock
+        ]
+        
+        SecItemDelete(query as CFDictionary) // 删除已有的地区，以确保只有一个
+        let status = SecItemAdd(query as CFDictionary, nil)
+        return status == errSecSuccess
+    }
+   
     
 }

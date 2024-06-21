@@ -139,10 +139,14 @@ class GroupsViewController: UIViewController {
 //                }
 //            })
 //            DispatchQueue.main.asyncAfter(wallDeadline: .now() + 1.5, execute: {
+            let exitsNode: Bool = group.nodes.count > 0
                 GroupServer.deleteGroup(group: group, progress: nil) {[weak self] _ in
                     XWHUDManager.hide()
                     XWHUDManager.showSuccessTipHUD("done!".localizedString)
                     self?.updateUI()
+                    // 通知space数据修改
+                    let type: SpaceChangeDataType = exitsNode ? .device : .common
+                    NotificationCenter.default.post(name: .init(spaceDataChangedNotificaitonName), object: type)
 //                    MeshNetworkManager.instance.scenes.forEach({
 //                        if let index = $0.info.groups.firstIndex(of: group) {
 //                            $0.info.groups.remove(at: index)
@@ -209,6 +213,7 @@ class GroupsViewController: UIViewController {
             editView.isHidden = true
             footerView.isHidden = false
         }
+        
         footerView.sortBtn.isHidden = true
         collectionView.reloadData()
     }
@@ -270,6 +275,12 @@ class GroupsViewController: UIViewController {
         footerView = SpaceFunctionFooterView()
         footerView.sortBtn.isHidden = true
         footerView.delegate = self
+        if !space.groupOperates.contains(.edit) {
+            footerView.editBtn.isEnabled = false
+        }
+        if !space.groupOperates.contains(.add) {
+            footerView.addBtn.isEnabled = false
+        }
         view.addSubview(footerView)
         footerView.snp.makeConstraints { make in
             make.left.right.bottom.equalToSuperview()

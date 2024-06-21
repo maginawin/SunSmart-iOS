@@ -35,6 +35,8 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         
         Bugly.start(withAppId: "fce1e870b0")
         
+        NetworkRequest.shared.networkListener()
+        
 //        UIApplication.shared.statusBarStyle = .default
         
         if #available(iOS 15.0, *) {

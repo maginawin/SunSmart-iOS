@@ -70,7 +70,14 @@ class NavigationViewController: UINavigationController {
         }else {
             viewController.hidesBottomBarWhenPushed = false
         }
+        visibleViewController?.hideNavigationBarState()
         super.pushViewController(viewController, animated: animated)
+    }
+    
+    override func popViewController(animated: Bool) -> UIViewController? {
+        
+        visibleViewController?.hideNavigationBarState()
+        return super.popViewController(animated: animated)
     }
     
     /// 点击返回
@@ -79,7 +86,7 @@ class NavigationViewController: UINavigationController {
         if let showVc = topViewController, let delegate = self.navigationDelegate {
             delegate.navigationController(self, backItemAction: showVc)
         }else {
-            super.popViewController(animated: true)
+            _ = popViewController(animated: true)
         }
     }
 }
@@ -87,9 +94,11 @@ class NavigationViewController: UINavigationController {
 extension NavigationViewController: UIGestureRecognizerDelegate {
     
     func gestureRecognizerShouldBegin(_ gestureRecognizer: UIGestureRecognizer) -> Bool {
-        if let delegate = self.navigationDelegate {
-            return delegate.navigationController(self, gestureRecognizerShould: gestureRecognizer)
+        
+        let result = self.navigationDelegate?.navigationController(self, gestureRecognizerShould: gestureRecognizer) ?? (self.children.count > 1)
+        if result {
+            visibleViewController?.hideNavigationBarState()
         }
-        return children.count > 1
+        return result
     }
 }

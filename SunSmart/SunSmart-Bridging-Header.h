@@ -8,7 +8,7 @@
 #ifndef SunSmart_Bridging_Header_h
 #define SunSmart_Bridging_Header_h
 
-#import "SQLiteWrapper.h"
+//#import "SQLiteWrapper.h"
 #import "XWHUDManager.h"
 #import "WMPageController.h"
 #import "UIViewController+WMPageController.h"

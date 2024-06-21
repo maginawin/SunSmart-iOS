@@ -14,7 +14,7 @@ class CustomSegmentedControl: UIView {
     private var titles: [String] = []
     private var selectedActionBtn: UIButton?
     
-    var delegate: CustomSegmentedControlDelegate?
+    weak var delegate: CustomSegmentedControlDelegate?
     
     var cornerRadius: CGFloat = SCRYFrom(8)
     
@@ -39,6 +39,31 @@ class CustomSegmentedControl: UIView {
             updateFrame()
         }
     }
+    
+    /// 选中的滑块背景颜色
+    var selectBgColor: UIColor = Bar_Color {
+        didSet {
+            selectBgView.backgroundColor = selectBgColor
+        }
+    }
+    /// 选中的滑块标题颜色
+    var selectTitleColor: UIColor = .white {
+        didSet {
+            actionBtns.forEach({
+                $0.setTitleColor(selectTitleColor, for: .selected)
+            })
+        }
+    }
+    /// 选中的滑块边框颜色
+    var selectBorderColor: UIColor = .clear {
+        didSet {
+            if selectedIndex < self.actionBtns.count {
+                self.actionBtns[selectedIndex].layer.shadowColor = selectBorderColor.cgColor
+            }
+        }
+    }
+    
+    
     
     
     init(frame: CGRect, titles: [String]) {
@@ -81,18 +106,20 @@ class CustomSegmentedControl: UIView {
     private func setupUI() {
         
         selectBgView = UIView()
-        selectBgView.backgroundColor = Bar_Color
+        selectBgView.backgroundColor = selectBgColor
         selectBgView.layer.cornerRadius = cornerRadius
         selectBgView.layer.shadowColor = RGB(82, 82, 153, 0.12).cgColor
         selectBgView.layer.shadowOffset = CGSizeMake(0,3)
         selectBgView.layer.shadowOpacity = 1
         selectBgView.layer.shadowRadius = cornerRadius
+        selectBgView.layer.borderWidth = 1
+        selectBgView.layer.borderColor = selectBorderColor.cgColor
         addSubview(selectBgView)
         
         for (index, title) in titles.enumerated() {
             let btn = UIButton(title: title, titleSize: 14, titleColor: RGB(156, 163, 175), target: self, action: #selector(actionBtnClick))
             btn.tag = 100 + index
-            btn.setTitleColor(.white, for: .selected)
+            btn.setTitleColor(selectTitleColor, for: .selected)
             if index == selectedIndex {
                 btn.isSelected = true
             }
@@ -118,7 +145,7 @@ class CustomSegmentedControl: UIView {
     
 }
 
-protocol CustomSegmentedControlDelegate {
+protocol CustomSegmentedControlDelegate: AnyObject {
     
     /// 分段控制器切换item回调
     /// - Parameters:

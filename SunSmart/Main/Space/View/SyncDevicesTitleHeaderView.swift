@@ -11,6 +11,15 @@ class SyncDevicesTitleHeaderView: UITableViewHeaderFooterView {
 
     var titleLabel: UILabel!
     
+    var titleLeftMargin: CGFloat = SCRXFrom(20) {
+        didSet {
+            titleLabel.snp.updateConstraints { make in
+                make.left.equalTo(titleLeftMargin)
+            }
+        }
+    }
+    
+    
     override init(reuseIdentifier: String?) {
         super.init(reuseIdentifier: reuseIdentifier)
      
@@ -23,7 +32,7 @@ class SyncDevicesTitleHeaderView: UITableViewHeaderFooterView {
         titleLabel = UILabel(text: "Remove", textColor: RGB(100, 136, 139), fontSize: 14, fontWeight: .light)
         addSubview(titleLabel)
         titleLabel.snp.makeConstraints { make in
-            make.left.equalTo(SCRXFrom(20))
+            make.left.equalTo(titleLeftMargin)
             make.bottom.equalTo(SCRYFrom(-8))
         }
     }

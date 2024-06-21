@@ -129,6 +129,8 @@ class TimedViewController: UIViewController {
             XWHUDManager.hide()
             XWHUDManager.showSuccessTipHUD("done!".localizedString)
             self?.reloadCollectionItem(schedule: schedule)
+            // 通知space数据修改
+            NotificationCenter.default.post(name: .init(spaceDataChangedNotificaitonName), object: SpaceChangeDataType.device)
         } failed: {[weak self] _ in
             XWHUDManager.hide()
             XWHUDManager.showErrorTipHUD("failed".localizedString + "!")
@@ -186,6 +188,7 @@ class TimedViewController: UIViewController {
         footerView = SpaceFunctionFooterView()
         footerView.editBtn.isHidden = true
         footerView.sortBtn.isHidden = true
+        footerView.addBtn.isEnabled = space.scheduleOperates.contains(.add)
         footerView.delegate = self
         view.addSubview(footerView)
         footerView.snp.makeConstraints { make in
@@ -239,7 +242,14 @@ extension TimedViewController: UICollectionViewDataSource, UICollectionViewDeleg
         let schedule = MeshNetworkManager.instance.schedules[indexPath.item]
         cell.schedule = schedule
         cell.enabledActionCallback = {[weak self] enabled in
-            self?.setScheduleEnabled(schedule: schedule, enabled: enabled)
+            guard let self = self else {
+                return
+            }
+            guard self.space.scheduleOperates.contains(.edit) else {
+                XWHUDManager.showTipHUD("no_permission".localizedString + "！")
+                return
+            }
+            self.setScheduleEnabled(schedule: schedule, enabled: enabled)
         }
         return cell
     }
@@ -253,6 +263,11 @@ extension TimedViewController: UICollectionViewDataSource, UICollectionViewDeleg
     }
     
     func collectionView(_ collectionView: UICollectionView, didSelectItemAt indexPath: IndexPath) {
+        
+        guard self.space.scheduleOperates.contains(.edit) else {
+            return
+        }
+        
         let schedule = MeshNetworkManager.instance.schedules[indexPath.item]
         
         let vc = ScheduleAddViewController(space: space, schedule: schedule)

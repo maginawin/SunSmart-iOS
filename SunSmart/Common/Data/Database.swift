@@ -54,10 +54,16 @@ extension SiteData {
         static let name = Expression<String>("name")
         static let imageId = Expression<Int>("imageId")
         static let type = Expression<Int>("type")
+        static let permission = Expression<Int>("permission")
         static let source = Expression<Int>("source")
         static let favourite = Expression<Bool>("favourite")
         static let createTimestamp = Expression<Int64>("createTimestamp")
         static let lastUpdateTimestamp = Expression<Int64>("lastUpdateTimestamp")
+        static let lastUploadCloudTimestamp = Expression<Int64?>("lastUploadCloudTimestamp")
+        static let regionType = Expression<Int>("regionType")
+        static let syncCloudError = Expression<Int?>("syncCloudError")
+        static let state = Expression<Int>("state")
+        static let spaceCount = Expression<Int?>("spaceCount")
     }
     
     /// 初始化场所表
@@ -69,10 +75,16 @@ extension SiteData {
             builder.column(ExpressionKey.name)
             builder.column(ExpressionKey.imageId)
             builder.column(ExpressionKey.type)
+            builder.column(ExpressionKey.permission)
             builder.column(ExpressionKey.source)
             builder.column(ExpressionKey.favourite)
             builder.column(ExpressionKey.createTimestamp)
             builder.column(ExpressionKey.lastUpdateTimestamp)
+            builder.column(ExpressionKey.lastUploadCloudTimestamp)
+            builder.column(ExpressionKey.regionType)
+            builder.column(ExpressionKey.syncCloudError)
+            builder.column(ExpressionKey.state)
+            builder.column(ExpressionKey.spaceCount)
         }))
         
         SpaceData.initDatabase()
@@ -83,9 +95,18 @@ extension SiteData {
     static func loadAll() -> [SiteData] {
         
         var sites: [SiteData] = []
-        if let rows = try? SunSmartDataManager.shared.db?.prepare(SiteData.sitesTable.order(ExpressionKey.createTimestamp.asc)) {
+        
+        let filter = SiteData.sitesTable.filter(ExpressionKey.regionType == UserData.currentServerRegion.rawValue)
+        
+        if let rows = try? SunSmartDataManager.shared.db?.prepare(filter.order(ExpressionKey.createTimestamp.asc)) {
             for row in rows {
-                let site = SiteData(id: row[ExpressionKey.uuid], meshUUID: row[ExpressionKey.uuid], name: row[ExpressionKey.name], imageId: row[ExpressionKey.imageId], type: .init(rawValue: row[ExpressionKey.type]) ?? .office, create: "\(row[ExpressionKey.createTimestamp])", lastUpdate: "\(row[ExpressionKey.lastUpdateTimestamp])", isFavourite: row[ExpressionKey.favourite], sourceType: .init(rawValue: row[ExpressionKey.source]) ?? .create)
+                let site = SiteData(id: row[ExpressionKey.uuid], meshUUID: row[ExpressionKey.uuid], name: row[ExpressionKey.name], imageId: row[ExpressionKey.imageId], type: .init(rawValue: row[ExpressionKey.type]) ?? .office, permission: .init(rawValue: row[ExpressionKey.permission]) ?? .owner, create: row[ExpressionKey.createTimestamp], lastUpdate: row[ExpressionKey.lastUpdateTimestamp], isFavourite: row[ExpressionKey.favourite], sourceType: .init(rawValue: row[ExpressionKey.source]) ?? .create)
+                site.lastUploadCloudTimestamp = row[ExpressionKey.lastUploadCloudTimestamp]
+                if let errorCode = row[ExpressionKey.syncCloudError] {
+                    site.syncCloudError = .init(code: errorCode)
+                }
+                site.state = .init(rawValue: row[ExpressionKey.state]) ?? .normal
+                site.spaceCount = row[ExpressionKey.spaceCount]
                 sites.append(site)
             }
         }
@@ -103,12 +124,18 @@ extension SiteData {
     /// - Returns: 返回场所对象
     static func load(siteId: String) -> SiteData? {
         
-        let filter = SiteData.sitesTable.filter(ExpressionKey.uuid == siteId)
+        let filter = SiteData.sitesTable.filter(ExpressionKey.uuid == siteId && ExpressionKey.regionType == UserData.currentServerRegion.rawValue)
         
         var site: SiteData?
         if let rows = try? SunSmartDataManager.shared.db?.prepare(filter) {
             for row in rows {
-                site = SiteData(id: row[ExpressionKey.uuid], meshUUID: row[ExpressionKey.uuid], name: row[ExpressionKey.name], imageId: row[ExpressionKey.imageId], type: .init(rawValue: row[ExpressionKey.type]) ?? .office, create: "\(row[ExpressionKey.createTimestamp])", lastUpdate: "\(row[ExpressionKey.lastUpdateTimestamp])", isFavourite: row[ExpressionKey.favourite], sourceType: .init(rawValue: row[ExpressionKey.source]) ?? .create)
+                site = SiteData(id: row[ExpressionKey.uuid], meshUUID: row[ExpressionKey.uuid], name: row[ExpressionKey.name], imageId: row[ExpressionKey.imageId], type: .init(rawValue: row[ExpressionKey.type]) ?? .office, permission: .init(rawValue: row[ExpressionKey.permission]) ?? .owner, create: row[ExpressionKey.createTimestamp], lastUpdate: row[ExpressionKey.lastUpdateTimestamp], isFavourite: row[ExpressionKey.favourite], sourceType: .init(rawValue: row[ExpressionKey.source]) ?? .create)
+                site?.lastUploadCloudTimestamp = row[ExpressionKey.lastUpdateTimestamp]
+                if let errorCode = row[ExpressionKey.syncCloudError] {
+                    site?.syncCloudError = .init(code: errorCode)
+                }
+                site?.state = .init(rawValue: row[ExpressionKey.state]) ?? .normal
+                site?.spaceCount = row[ExpressionKey.spaceCount]
                 break
             }
         }
@@ -151,7 +178,7 @@ extension SiteData {
         var result = "\(defalutName)1"
         // 场所已使用的名称索引
         var siteIndexs: [Int] = []
-        let sql = SiteData.sitesTable.filter(ExpressionKey.name.like(defalutName + "%"))
+        let sql = SiteData.sitesTable.filter(ExpressionKey.regionType == UserData.currentServerRegion.rawValue && ExpressionKey.name.like(defalutName + "%"))
         if let rows = try? SunSmartDataManager.shared.db?.prepare(sql) {
             for row in rows {
                 let siteName = row[ExpressionKey.name]
@@ -176,9 +203,9 @@ extension SiteData {
         site.id = UUID().uuidString
         site.name = SiteData.getNextCloneSiteName(site.name)
         site.sourceType = .clone
-        let time = CLongLong(Date().timeIntervalSince1970 * 1000)
-        site.create = "\(time)"
-        site.lastUpdate = "\(time)"
+        let time = Int64(Date().timeIntervalSince1970)
+        site.create = time
+        site.lastUpdate = time
         // 克隆场所内空间
         var spaces: [SpaceData] = []
         site.spaces.forEach { space in
@@ -204,7 +231,7 @@ extension SiteData {
         // 匹配名称
         let matching = "\(siteName)("
         
-        let sql = SiteData.sitesTable.filter(ExpressionKey.name.like(matching + "%"))
+        let sql = SiteData.sitesTable.filter(ExpressionKey.regionType == UserData.currentServerRegion.rawValue && ExpressionKey.name.like(matching + "%"))
         if let rows = try? SunSmartDataManager.shared.db?.prepare(sql) {
             for row in rows {
                 let siteName = row[ExpressionKey.name]
@@ -232,7 +259,7 @@ extension SiteData {
     /// - Returns: 是否重名
     static func isTautonym(siteName: String) -> Bool {
         
-        let filter = SiteData.sitesTable.filter(ExpressionKey.name == siteName)
+        let filter = SiteData.sitesTable.filter(ExpressionKey.regionType == UserData.currentServerRegion.rawValue && ExpressionKey.name == siteName)
         let reuslt = try? SunSmartDataManager.shared.db?.prepareRowIterator(filter)
         if reuslt?.next() != nil {
             return true
@@ -245,16 +272,21 @@ extension SiteData {
     @discardableResult func save(allData: Bool = false) -> Bool {
         
         let table = SiteData.sitesTable
-        let createTimestamp = Int64(self.create) ?? Int64(Date().timeIntervalSince1970 * 1000)
         let insetOrUpdate = table.insert(or: .replace, [
             ExpressionKey.uuid <- self.id,
             ExpressionKey.name <- self.name,
             ExpressionKey.imageId <- self.imageId,
             ExpressionKey.type <- self.type.rawValue,
+            ExpressionKey.permission <- self.permission.rawValue,
             ExpressionKey.source <- self.sourceType.rawValue,
             ExpressionKey.favourite <- self.isFavourite,
-            ExpressionKey.createTimestamp <- createTimestamp,
-            ExpressionKey.lastUpdateTimestamp <- Int64(self.lastUpdate) ?? createTimestamp
+            ExpressionKey.createTimestamp <- self.create,
+            ExpressionKey.lastUpdateTimestamp <- self.lastUpdate,
+            ExpressionKey.lastUploadCloudTimestamp <- self.lastUploadCloudTimestamp,
+            ExpressionKey.regionType <- UserData.currentServerRegion.rawValue,
+            ExpressionKey.syncCloudError <- self.syncCloudError?.code,
+            ExpressionKey.state <- self.state.rawValue,
+            ExpressionKey.spaceCount <- self.spaceCount
         ])
         do {
             try SunSmartDataManager.shared.db?.run(insetOrUpdate)
@@ -281,6 +313,7 @@ extension SpaceData {
         static let subNetworkKey = Expression<String>("subNetworkKey")
         static let name = Expression<String>("name")
         static let imageId = Expression<Int>("imageId")
+        static let permission = Expression<Int>("permission")
         static let source = Expression<Int>("source")
         static let favourite = Expression<Bool>("favourite")
         static let deviceSortType = Expression<Int>("deviceSortType")
@@ -292,6 +325,9 @@ extension SpaceData {
         static let switchesNumber = Expression<Int>("switchesNumber")
         static let createTimestamp = Expression<Int64>("createTimestamp")
         static let lastUpdateTimestamp = Expression<Int64>("lastUpdateTimestamp")
+        static let lastUploadCloudTimestamp = Expression<Int64?>("lastUploadCloudTimestamp")
+        static let syncCloudError = Expression<Int?>("syncCloudError")
+        static let state = Expression<Int>("state")
     }
     
     /// 初始化空间表
@@ -304,6 +340,7 @@ extension SpaceData {
             builder.column(ExpressionKey.subNetworkKey)
             builder.column(ExpressionKey.name)
             builder.column(ExpressionKey.imageId)
+            builder.column(ExpressionKey.permission)
             builder.column(ExpressionKey.source)
             builder.column(ExpressionKey.favourite)
             builder.column(ExpressionKey.deviceSortType)
@@ -315,6 +352,9 @@ extension SpaceData {
             builder.column(ExpressionKey.switchesNumber)
             builder.column(ExpressionKey.createTimestamp)
             builder.column(ExpressionKey.lastUpdateTimestamp)
+            builder.column(ExpressionKey.lastUploadCloudTimestamp)
+            builder.column(ExpressionKey.syncCloudError)
+            builder.column(ExpressionKey.state)
         }))
         GroupInfo.initDatabase()
         Profile.initDatabase()
@@ -341,16 +381,22 @@ extension SpaceData {
         let filter = SpaceData.spacesTable.filter(predicate).order(ExpressionKey.createTimestamp.asc)
         if let rows = try? SunSmartDataManager.shared.db?.prepare(filter) {
             for row in rows {
-                let space = SpaceData(name: row[ExpressionKey.name], id: row[ExpressionKey.uuid], siteId: row[ExpressionKey.siteUUID], imageId: row[ExpressionKey.imageId], create: "\(row[ExpressionKey.createTimestamp])", lastUpdate: "\(row[ExpressionKey.lastUpdateTimestamp])", isFavourite: row[ExpressionKey.favourite], sourceType: .init(rawValue: row[ExpressionKey.source]) ?? .create, meshUUID: row[ExpressionKey.siteUUID], meshNetworkId: row[ExpressionKey.subNetworkKey])
+                let space = SpaceData(name: row[ExpressionKey.name], id: row[ExpressionKey.uuid], siteId: row[ExpressionKey.siteUUID], imageId: row[ExpressionKey.imageId], create: row[ExpressionKey.createTimestamp], lastUpdate: row[ExpressionKey.lastUpdateTimestamp], isFavourite: row[ExpressionKey.favourite], permission: .init(rawValue: row[ExpressionKey.permission]) ?? .owner, sourceType: .init(rawValue: row[ExpressionKey.source]) ?? .create, meshUUID: row[ExpressionKey.siteUUID], meshNetworkId: row[ExpressionKey.subNetworkKey])
                 space.deviceCount = row[ExpressionKey.deviceNumber]
                 space.luminairesCount = row[ExpressionKey.luminaireNumber]
                 space.groupCount = row[ExpressionKey.groupNumber]
                 space.sceneCount = row[ExpressionKey.sceneNumber]
                 space.scheheduleCount = row[ExpressionKey.scheduleNumber]
                 space.switchesCount = row[ExpressionKey.switchesNumber]
+                space.lastUploadCloudTimestamp = row[ExpressionKey.lastUploadCloudTimestamp]
+                if let errorCode = row[ExpressionKey.syncCloudError] {
+                    space.syncCloudError = .init(code: errorCode)
+                }
+                space.state = .init(rawValue: row[ExpressionKey.state]) ?? .normal
                 spaces.append(space)
             }
         }
+        
         return spaces
     }
  
@@ -385,13 +431,13 @@ extension SpaceData {
     /// 缓存当前空间数据
     @discardableResult func save() -> Bool {
 
-        let createTimestamp = Int64(self.create) ?? Int64(Date().timeIntervalSince1970 * 1000)
         let interOrUpdate = SpaceData.spacesTable.insert(or: .replace, [
             ExpressionKey.uuid <- self.id,
             ExpressionKey.siteUUID <- self.siteId,
             ExpressionKey.subNetworkKey <- self.meshNetworkKey.networkId.hex,
             ExpressionKey.name <- self.name,
             ExpressionKey.imageId <- self.imageId,
+            ExpressionKey.permission <- self.permission.rawValue,
             ExpressionKey.source <- self.sourceType.rawValue,
             ExpressionKey.favourite <- self.isFavourite,
             ExpressionKey.deviceSortType <- self.deviceSortType.rawValue,
@@ -401,8 +447,11 @@ extension SpaceData {
             ExpressionKey.sceneNumber <- self.sceneCount,
             ExpressionKey.scheduleNumber <- self.scheheduleCount,
             ExpressionKey.switchesNumber <- self.switchesCount,
-            ExpressionKey.createTimestamp <- createTimestamp,
-            ExpressionKey.lastUpdateTimestamp <- Int64(self.lastUpdate) ?? createTimestamp
+            ExpressionKey.createTimestamp <- self.create,
+            ExpressionKey.lastUpdateTimestamp <- self.lastUpdate,
+            ExpressionKey.lastUploadCloudTimestamp <- self.lastUploadCloudTimestamp,
+            ExpressionKey.syncCloudError <- self.syncCloudError?.code,
+            ExpressionKey.state <- self.state.rawValue
         ])
         do {
             try SunSmartDataManager.shared.db?.run(interOrUpdate)
@@ -447,9 +496,9 @@ extension SpaceData {
         let space = self.copy()
         space.id = UUID().uuidString
         space.name = SpaceData.getNextCloneSpaceName(siteId: space.siteId, spaceName: space.name)
-        let time = CLongLong(Date().timeIntervalSince1970 * 1000)
-        space.create = "\(time)"
-        space.lastUpdate = "\(time)"
+        let time = Int64(Date().timeIntervalSince1970)
+        space.create = time
+        space.lastUpdate = time
         space.sourceType = .clone
         return space
     }
@@ -561,11 +610,11 @@ extension GroupInfo {
 //                let schedules = Schedule.load(meshUUID: meshUUID, meshNetworkKey: meshNetworkKey, address: UInt16(address))
 //                groupInfo?.bindSchedules = schedules
 //                // 配置数据
-                if let profile = Profile.load(meshUUID: meshUUID, profileId: row[ExpressionKey.profileId]) {
+                if let profile = Profile.load(meshUUID: meshUUID, meshNetworkId: row[ExpressionKey.subNetworkKey], profileId: row[ExpressionKey.profileId]) {
                     info.profile = profile
                 }
                 // 虚拟按键
-                info.switchs = GroupSwitch.load(meshUUID: meshUUID, groupAddress: address)
+                info.switchs = GroupSwitch.load(meshUUID: meshUUID, meshNetworkId: row[ExpressionKey.subNetworkKey], groupAddress: address)
                 
                 groupInfo = info
                 break
@@ -613,14 +662,15 @@ extension GroupInfo {
     ///   - meshUUID: 所属网络id
     ///   - groupAddress: 组地址
     /// - Returns: 是否成功
-    @discardableResult func save(meshUUID: String? = nil) -> Bool {
+    @discardableResult func save(meshUUID: String? = nil, subnetworkId: String? = nil) -> Bool {
         
         guard let uuid = meshUUID ?? MeshNetworkManager.instance.meshNetwork?.uuid.uuidString else { return false }
-        let networkKey = MeshNetworkManager.instance.currentNetworkKey
+        let networkId = subnetworkId ?? MeshNetworkManager.instance.currentNetworkKey.networkId.hex
+       
         let scenesData = try? jsonEncoder.encode(self.sceneExecuteDatas)
         let insertOrUpdate = GroupInfo.groupInfosTable.insert(or: .replace, [
             ExpressionKey.meshUUID <- uuid,
-            ExpressionKey.subNetworkKey <- networkKey.networkId.hex,
+            ExpressionKey.subNetworkKey <- networkId,
             ExpressionKey.groupAddress <- Int(self.address),
             ExpressionKey.imageId <- self.imageId,
             ExpressionKey.imageText <- self.imageText,
@@ -719,13 +769,13 @@ extension SceneInfo {
     /// - Parameters:
     ///   - meshUUID: 所属网络id
     /// - Returns: 是否成功
-    @discardableResult func save(meshUUID: String? = nil) -> Bool {
+    @discardableResult func save(meshUUID: String? = nil, subnetworkId: String? = nil) -> Bool {
         
         guard let uuid = meshUUID ?? MeshNetworkManager.instance.meshNetwork?.uuid.uuidString else { return false }
-        let networkKey = MeshNetworkManager.instance.currentNetworkKey
+        let networkId = subnetworkId ?? MeshNetworkManager.instance.currentNetworkKey.networkId.hex
         let insertOrUpdate = SceneInfo.sceneInfosTable.insert(or: .replace, [
             ExpressionKey.meshUUID <- uuid,
-            ExpressionKey.subNetworkKey <- networkKey.networkId.hex,
+            ExpressionKey.subNetworkKey <- networkId,
             ExpressionKey.number <- Int(self.sceneId),
             ExpressionKey.imageId <- self.imageId
         ])
@@ -1250,20 +1300,20 @@ extension GroupSwitch {
         if let switchId = id {
             predicate = ExpressionKey.meshUUID == uuid && ExpressionKey.subNetworkKey == subNetworkKey && ExpressionKey.groupAddress == Int(groupAddress) && ExpressionKey.switchId == switchId
         }
-        let filter = GroupSwitch.switchsTable.filter(predicate)
+        let filter = GroupSwitch.switchsTable.filter(predicate).order(ExpressionKey.id.asc)
         
         var switchs: [GroupSwitch] = []
         if let rows = try? SunSmartDataManager.shared.db?.prepare(filter) {
             for row in rows {
-                if let group = MeshNetworkManager.instance.groups.first(where: { $0.address.address == row[ExpressionKey.groupAddress] }) {
-                    let groupSwitch = GroupSwitch(id: row[ExpressionKey.switchId], group: group, enabled: row[ExpressionKey.enabled], name: row[ExpressionKey.name])
+//                if let group = MeshNetworkManager.instance.groups.first(where: { $0.address.address == row[ExpressionKey.groupAddress] }) {
+                let groupSwitch = GroupSwitch(id: row[ExpressionKey.switchId], groupAddress: Address(row[ExpressionKey.groupAddress]), enabled: row[ExpressionKey.enabled], name: row[ExpressionKey.name])
                     let panelType: PanelType = .init(rawValue: UInt8(row[ExpressionKey.panelType])) ?? .default
                     groupSwitch.panelType = panelType
-                    if let number = row[ExpressionKey.sceneA], let sceneA = MeshNetworkManager.instance.scenes.first(where: { $0.number == number }) {
-                        groupSwitch.sceneA = sceneA
+                    if let number = row[ExpressionKey.sceneA] { //  let sceneA = MeshNetworkManager.instance.scenes.first(where: { $0.number == number })
+                        groupSwitch.sceneANumber = SceneNumber(number)
                     }
-                    if let number = row[ExpressionKey.sceneB], let sceneB = MeshNetworkManager.instance.scenes.first(where: { $0.number == number }) {
-                        groupSwitch.sceneB = sceneB
+                    if let number = row[ExpressionKey.sceneB] { //  let sceneB = MeshNetworkManager.instance.scenes.first(where: { $0.number == number })
+                        groupSwitch.sceneBNumber = SceneNumber(number)
                     }
                     
                     if let addressesData = row[ExpressionKey.proxyAddresses], let addressesStrings = (try? jsonDecoder.decode([String].self, from: addressesData)) {
@@ -1274,12 +1324,12 @@ extension GroupSwitch {
                                 proxyAddresses.append(address)
                             }
                         }
-                        if let address = proxyAddresses.first, let proxyNode = MeshNetworkManager.instance.meshNetwork?.node(withAddress: Address(address)) {
-                            groupSwitch.proxyNode = proxyNode
+                        if let address = proxyAddresses.first { // let proxyNode = MeshNetworkManager.instance.meshNetwork?.node(withAddress: Address(address))
+                            groupSwitch.proxyNodeAddress = Address(address)
                         }
                     }
                     switchs.append(groupSwitch)
-                }
+//                }
             }
         }
         return switchs
@@ -1302,15 +1352,15 @@ extension GroupSwitch {
         var resultSwitch: GroupSwitch?
         if let rows = try? SunSmartDataManager.shared.db?.prepare(filter) {
             for row in rows {
-                if let group = MeshNetworkManager.instance.groups.first(where: { $0.address.address == row[ExpressionKey.groupAddress] }) {
-                    let groupSwitch = GroupSwitch(id: row[ExpressionKey.switchId], group: group, enabled: row[ExpressionKey.enabled], name: row[ExpressionKey.name])
+//                if let group = MeshNetworkManager.instance.groups.first(where: { $0.address.address == row[ExpressionKey.groupAddress] }) {
+                    let groupSwitch = GroupSwitch(id: row[ExpressionKey.switchId], groupAddress: Address(row[ExpressionKey.groupAddress]), enabled: row[ExpressionKey.enabled], name: row[ExpressionKey.name])
                     let panelType: PanelType = .init(rawValue: UInt8(row[ExpressionKey.panelType])) ?? .default
                     groupSwitch.panelType = panelType
-                    if let number = row[ExpressionKey.sceneA], let sceneA = MeshNetworkManager.instance.scenes.first(where: { $0.number == number }) {
-                        groupSwitch.sceneA = sceneA
+                    if let number = row[ExpressionKey.sceneA] {
+                        groupSwitch.sceneANumber = SceneNumber(number)
                     }
-                    if let number = row[ExpressionKey.sceneB], let sceneB = MeshNetworkManager.instance.scenes.first(where: { $0.number == number }) {
-                        groupSwitch.sceneB = sceneB
+                    if let number = row[ExpressionKey.sceneB] {
+                        groupSwitch.sceneBNumber = SceneNumber(number)
                     }
                     
                     if let addressesData = row[ExpressionKey.proxyAddresses], let addressesStrings = (try? jsonDecoder.decode([String].self, from: addressesData)) {
@@ -1321,13 +1371,13 @@ extension GroupSwitch {
                                 proxyAddresses.append(address)
                             }
                         }
-                        if let address = proxyAddresses.first, let proxyNode = MeshNetworkManager.instance.meshNetwork?.node(withAddress: Address(address)) {
-                            groupSwitch.proxyNode = proxyNode
+                        if let address = proxyAddresses.first {
+                            groupSwitch.proxyNodeAddress = Address(address)
                         }
                     }
                     resultSwitch = groupSwitch
                     break
-                }
+//                }
             }
         }
         return resultSwitch
@@ -1345,7 +1395,7 @@ extension GroupSwitch {
         let subNetworkey = networkId ?? MeshNetworkManager.instance.currentNetworkKey.networkId.hex
         
         var proxyAddressesData: Data?
-        if let proxyAddress = self.proxyNode?.primaryUnicastAddress {
+        if let proxyAddress = self.proxyNodeAddress {
             proxyAddressesData = try? jsonEncoder.encode([String(format: "%04X", proxyAddress)])
         }
         
@@ -1356,9 +1406,9 @@ extension GroupSwitch {
             ExpressionKey.name <- self.name,
             ExpressionKey.enabled <- self.enabled,
             ExpressionKey.panelType <- Int(self.panelType.rawValue),
-            ExpressionKey.groupAddress <- Int(self.group.address.address),
-            ExpressionKey.sceneA <- self.sceneA != nil ? Int(self.sceneA!.number) : nil,
-            ExpressionKey.sceneB <- self.sceneB != nil ? Int(self.sceneB!.number) : nil,
+            ExpressionKey.groupAddress <- Int(self.groupAddress),
+            ExpressionKey.sceneA <- self.sceneANumber != nil ? Int(self.sceneANumber!) : nil,
+            ExpressionKey.sceneB <- self.sceneBNumber != nil ? Int(self.sceneBNumber!) : nil,
             ExpressionKey.proxyAddresses <- proxyAddressesData,
             ExpressionKey.enOceanMacAddress <- self.enOceanMacAddress,
         ])
@@ -1397,7 +1447,7 @@ extension GroupSwitch {
     @discardableResult func delete(meshUUID: String, networkId: String) -> Bool {
         
         // 指定虚拟按键
-        let predicate = ExpressionKey.meshUUID == meshUUID && ExpressionKey.subNetworkKey == networkId && ExpressionKey.groupAddress == Int(group.address.address) && ExpressionKey.switchId == self.id
+        let predicate = ExpressionKey.meshUUID == meshUUID && ExpressionKey.subNetworkKey == networkId && ExpressionKey.groupAddress == Int(groupAddress) && ExpressionKey.switchId == self.id
 
         let filter = GroupSwitch.switchsTable.filter(predicate)
         do {

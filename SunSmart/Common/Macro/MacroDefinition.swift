@@ -46,6 +46,10 @@ func SCRYFrom(_ y : CGFloat) -> CGFloat {
 //    (isIphoneX ? 736 : SCREEN_HEIGHT) / 667.0 * y
 }
 
+func FontFit(_ size: CGFloat) -> CGFloat {
+    return size * min(SCREEN_HEIGHT / 812.0, 1.05)
+}
+
 // 屏幕等比适配 (y)
 func SCRYFit(_ y : CGFloat) -> CGFloat {
     return SCREEN_HEIGHT / 812.0 * y

@@ -10,7 +10,7 @@ import SnapKit
 
 class MainMenuView: UIView {
 
-    typealias MenuTapActionCallback = (Int)->Void
+    typealias MenuTapActionCallback = (MainMenuView.Options)->Void
     
     private var contentView: UIView!
     private var logoImageView: UIImageView!
@@ -22,6 +22,7 @@ class MainMenuView: UIView {
     private var shadeView: UIView!
     
     private var menuTapBack: MenuTapActionCallback?
+    private var options: [Options] = [.serverSelection, .about]
     
     override init(frame: CGRect) {
         super.init(frame: frame)
@@ -213,13 +214,13 @@ class MainMenuView: UIView {
             make.width.equalToSuperview().multipliedBy(288.0 / 375.0)
         }
         
-        logoImageView = UIImageView(image: UIImage(named: "menu_logo"))
+        logoImageView = UIImageView(image: UIImage(named: "launch_logo"))
         logoImageView.backgroundColor = Background_Color
         contentView.addSubview(logoImageView)
         logoImageView.snp.makeConstraints { make in
             make.centerX.equalToSuperview()
-            make.top.equalTo(kNavigationHeight)
-            make.width.height.equalTo(SCRYFrom(120))
+            make.top.equalTo(kNavigationHeight + SCRYFit(30))
+            make.width.height.equalTo(SCRYFrom(88))
         }
         
         titleLabel = UILabel(text: "Sunsmart", textColor: TextBlack_Color, fontSize: 18, fit: false)
@@ -230,12 +231,12 @@ class MainMenuView: UIView {
         }
         
         lineView = UIView()
-        lineView.backgroundColor = Line_Color
+        lineView.backgroundColor = Background_Color
         contentView.addSubview(lineView)
         lineView.snp.makeConstraints { make in
-            make.left.equalTo(SCRXFrom(12))
-            make.right.equalToSuperview()
-            make.top.equalTo(titleLabel.snp.bottom).offset(SCRYFrom(44))
+//            make.left.equalTo(SCRXFrom(12))
+            make.left.right.equalToSuperview()
+            make.top.equalTo(titleLabel.snp.bottom).offset(SCRYFit(43))
             make.height.equalTo(1)
         }
         
@@ -244,7 +245,7 @@ class MainMenuView: UIView {
         tableView.register(CustomTableViewCell.classForCoder(), forCellReuseIdentifier: "cell")
         tableView.rowHeight = SCRYFrom(44)
         tableView.dataSource = self
-        tableView.backgroundColor = RGB(248, 250, 252)
+        tableView.backgroundColor = Background_Color
         tableView.delegate = self
         tableView.isScrollEnabled = false
         contentView.addSubview(tableView)
@@ -268,22 +269,46 @@ class MainMenuView: UIView {
 extension MainMenuView: UITableViewDataSource, UITableViewDelegate {
     
     func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
-        return 1
+        return options.count
     }
     
     func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
         let cell = tableView.dequeueReusableCell(withIdentifier: "cell", for: indexPath) as! CustomTableViewCell
-        cell.cellStyle = .arrow
-        cell.titleLabel.text = "About"
+        let option = options[indexPath.row]
+        cell.cellStyle = .icon
+        cell.iconImageView.image = UIImage(named: option.data.icon)
+        cell.titleLabel.text = option.data.title
         cell.titleLabel.font = UIFont.systemFont(ofSize: SCRYFrom(15), weight: .light)
         cell.titleLabel.textColor = TextBlack_Color
         cell.lineView.backgroundColor = RGB(243, 243, 243)
+        cell.arrowImageView.image = UIImage(named: "arrow_light_right")
         cell.selectionStyle = .none
         return cell
     }
     
     func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
-        menuTapBack?(indexPath.row)
+        let option = options[indexPath.row]
+        menuTapBack?(option)
         dismiss()
     }
+}
+
+extension MainMenuView {
+    
+    enum Options {
+        var data: (icon: String, title: String) {
+            switch self {
+            case .serverSelection:
+                return ("server", "server_selection".localizedString)
+            case .about:
+                return ("about", "about".localizedString)
+            }
+        }
+        
+        /// 服务器选择
+        case serverSelection
+        /// 关于
+        case about
+    }
+    
 }

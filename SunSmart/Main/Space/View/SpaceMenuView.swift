@@ -32,6 +32,7 @@ class SpaceMenuView: UIView {
             for (index, itemData) in itemDatas.enumerated() {
                 let btn = UIButton(title: itemData.title, titleSize: 12, titleColor: RGB(148, 163, 184), normalImageName: itemData.imageName, selectedImageName: itemData.selectImageName, target: nil, action: nil)
                 btn.setTitleColor(Bar_Color, for: .selected)
+                btn.contentHorizontalAlignment = .center
                 btn.isUserInteractionEnabled = false
                 if index == selectIndex {
                     btn.isSelected = true

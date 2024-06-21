@@ -102,7 +102,7 @@ class DevicesViewController: UIViewController {
         }else {
             XWHUDManager.hideInView()
         }
-        
+//        XWHUDManager.showGifImagesHUD(inView: "XWHUDManager_loading", message: "Some devices prompt REPAIR when they are added because some models cannot be set to the device.", timer: 10)
         addNotificaiton()
         
     }
@@ -265,6 +265,14 @@ class DevicesViewController: UIViewController {
                 self.repairView.isHidden = true
             }
         }
+        
+        if !space.deviceOperates.contains(.add) {
+            self.footerView.addBtn.isEnabled = false
+        }
+        if !space.deviceOperates.contains(.edit) {
+            self.footerView.editBtn.isEnabled = false
+        }
+        
         
         self.collectionView.contentInset = inset
 //        CATransaction.setDisableActions(true)
@@ -594,6 +602,9 @@ class DevicesViewController: UIViewController {
                     self.repairFailed(nodes: failList)
                 }
                 self.updateUI()
+                
+                // 通知space数据修改
+                NotificationCenter.default.post(name: .init(spaceDataChangedNotificaitonName), object: SpaceChangeDataType.device)
             }
             
         }else { // 单设备配置
@@ -608,11 +619,16 @@ class DevicesViewController: UIViewController {
 //                node.saveNodeInfo(meshUUID: self.space.meshUUID, networkKey: self.space.meshNetworkKey)
                 self.updateUI()
                 
+                // 通知space数据修改
+                NotificationCenter.default.post(name: .init(spaceDataChangedNotificaitonName), object: SpaceChangeDataType.device)
 //                MeshAPI.getNodeCTLState(address: node.primaryUnicastAddress)
             } keyBindFail: {[weak self] _ in
                 XWHUDManager.hide()
                 self?.updateUI()
                 self?.repairFailed(nodes: nodes)
+                
+                // 通知space数据修改
+//                NotificationCenter.default.post(name: .init(spaceDataChangedNotificaitonName), object: SpaceChangeDataType.device)
             }
         }
         
@@ -779,12 +795,20 @@ extension DevicesViewController: SpaceFunctionFooterViewDelegate {
                         MeshLibManager.manager.close()
                     }
                     
+                    // 通知space数据修改
+                    NotificationCenter.default.post(name: .init(spaceDataChangedNotificaitonName), object: SpaceChangeDataType.device)
+                    
                 }else { // 删除失败（提示是否强制删除这部分设备）
                     
                     let alertView = SRAlertView(title: "notification".localizedString, actions: [SRAlertAction(title: "alert_item_cancel".localizedString, style: .cancel, actionHandler: {[weak self] _ in
                         self?.updateUI()
                         self?.updateEditUI()
                         self?.isDeletingDevice = false
+                        if successAddressList.count > 0 {
+                            // 通知space数据修改
+                            NotificationCenter.default.post(name: .init(spaceDataChangedNotificaitonName), object: SpaceChangeDataType.device)
+                        }
+                        
                     }), SRAlertAction(title: "force_delete".localizedString, actionHandler: {[weak self] _ in
                         guard let self = self else { return }
                         let forceDeleteNodes = self.devices.filter({ failAddressList.contains($0.primaryUnicastAddress) })
@@ -805,6 +829,8 @@ extension DevicesViewController: SpaceFunctionFooterViewDelegate {
                         self.space.save()
                         
                         XWHUDManager.showSuccessTipHUD("done!".localizedString)
+                        // 通知space数据修改
+                        NotificationCenter.default.post(name: .init(spaceDataChangedNotificaitonName), object: SpaceChangeDataType.device)
                         
                     })])
                     let messageAttStr = NSMutableAttributedString(string: "devices_force_delete_message".localizedString, attributes: [.foregroundColor: TextBlack_Color])
@@ -884,7 +910,10 @@ extension DevicesViewController: UICollectionViewDataSource, UICollectionViewDel
             let node = devices[indexPath.row - 1]
             // 未绑定完成功能则修复设备
             guard node.isKeybindComplete else {
-                repairNodes(nodes: [node])
+                // 判断是否有设备编辑/配置权限，没有则无响应
+                if space.deviceOperates.contains(.edit) {
+                    repairNodes(nodes: [node])
+                }
                 return
             }
             if node.state { // 设备在线

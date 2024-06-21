@@ -297,6 +297,8 @@ class ScheduleAddViewController: UIViewController {
             })
             
             NotificationCenter.default.post(name: .init(schedulesRefreshNotificationName), object: nil)
+            // 通知space数据修改
+            NotificationCenter.default.post(name: .init(spaceDataChangedNotificaitonName), object: SpaceChangeDataType.device)
             DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {[weak self] in
                 self?.back()
             }
@@ -420,6 +422,8 @@ class ScheduleAddViewController: UIViewController {
                 XWHUDManager.hide()
                 self.back()
                 NotificationCenter.default.post(name: .init(schedulesRefreshNotificationName), object: nil)
+                // 通知space数据修改
+                NotificationCenter.default.post(name: .init(spaceDataChangedNotificaitonName), object: SpaceChangeDataType.common)
             })
         }
         

@@ -137,10 +137,14 @@ class ScenesViewController: UIViewController {
 //                scene.remove(node: $0)
 //            })
 //            scene.delete()
+            let existNode: Bool = scene.addresses.count > 0
             SceneServer.deleteScene(scene: scene) {[weak self] _ in
                 XWHUDManager.hide()
                 XWHUDManager.showSuccessTipHUD("done!".localizedString)
                 self?.updateUI()
+                // 通知space数据修改
+                let type: SpaceChangeDataType = existNode ? .device : .common
+                NotificationCenter.default.post(name: .init(spaceDataChangedNotificaitonName), object: type)
                 
             } failed: {[weak self] _ in
                 XWHUDManager.hide()
@@ -270,6 +274,8 @@ class ScenesViewController: UIViewController {
         footerView = SpaceFunctionFooterView()
         footerView.sortBtn.isHidden = true
         footerView.delegate = self
+        footerView.editBtn.isEnabled = space.sceneOperates.contains(.edit)
+        footerView.addBtn.isEnabled = space.sceneOperates.contains(.add)
         view.addSubview(footerView)
         footerView.snp.makeConstraints { make in
             make.left.right.bottom.equalToSuperview()

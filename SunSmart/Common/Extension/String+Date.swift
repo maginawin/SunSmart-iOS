@@ -10,16 +10,19 @@ import Foundation
 extension String {
     
     
-    /// 时间戳字符串转时间（毫秒）
+    /// 时间戳字符串转时间
     /// - Parameters:
-    ///   - millisecond: 毫秒
+    ///   - millisecond: 秒/毫秒
     ///   - dateFormat: 时间格式
     /// - Returns: 时间
     static func dateConvert(timestamp millisecond: String, dateFormat: String) -> String {
-        guard let timestamp = CLongLong(millisecond) else {
+        guard var timestamp = CLongLong(millisecond) else {
             return millisecond
         }
-        let date = Date(timeIntervalSince1970: Double(timestamp) / 1000.0)
+        if timestamp > CLongLong(Date().timeIntervalSince1970) {
+            timestamp = CLongLong(Double(timestamp) / 1000.0)
+        }
+        let date = Date(timeIntervalSince1970: Double(timestamp))
         let formatter = DateFormatter()
         formatter.dateFormat = dateFormat
         formatter.locale = Locale.current
