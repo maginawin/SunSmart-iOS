@@ -182,7 +182,7 @@ extension UIView {
     func showEmptyDataView(frame: CGRect? = nil, imageName: String? = nil, title: String? = nil, tipText: String? = nil, backgroundColor: UIColor = .clear, buttonText: String? = nil, buttomWidth: CGFloat = SCRXFrom(180), position: EmptyDataView.ContentPosition = .bottomCenter, margin: CGFloat = SCRXFrom(20), bottomMargin: CGFloat = 0, btnClickBack: (()->())? = nil) {
         
         hideEmptyDataView()
-        
+//        CGRect(x: 0, y: 0, width: self.frame.width, height: self.frame.height)
         let emptyView = EmptyDataView(frame: frame ?? self.bounds, imageName: imageName ?? "data_empty", title: title, tipText: tipText, margin: margin, buttomWidth: buttomWidth, bottomMargin: bottomMargin, position: position, buttonText: buttonText, btnClickBack: btnClickBack)
         emptyView.backgroundColor = backgroundColor
         addSubview(emptyView)

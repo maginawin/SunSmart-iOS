@@ -27,14 +27,19 @@ class SharingSettingViewController: UIViewController {
     private var itemsView: UIView!
     private var tableView: UITableView!
     
+    private var messageLabel: UILabel?
     /// 类型
     let type: SharingType
     /// 二维码uuid
     private let codeUUID: String
     /// 功能项
-    private let options: [Options]
+    private var options: [Options] = []
     /// 是否展示密码
     private var viewPassword: Bool = false
+    /// editor密码
+//    private var editorPassword: String?
+//    /// visitor密码
+//    private var vistorPassword: String?
     
     init(type: SharingType) {
         self.type = type
@@ -61,12 +66,77 @@ class SharingSettingViewController: UIViewController {
             navigationItem.rightBarButtonItem = UIBarButtonItem(image: UIImage(named: "close")?.withRenderingMode(.alwaysOriginal), style: .done, target: self, action: #selector(close))
         }
         
+//        switch self.type {
+//        case .transferSite(let site):
+//            break
+//        case .space(_, let space):
+//            if space.permission == .owner {
+//                editorPassword = space.editorPassword
+//                vistorPassword = space.vistorPassword
+//            }else if space.permission == .editor {
+//                vistorPassword = space.vistorPassword
+//            }
+//        case .batchSpace(let data):
+//            break
+//        }
         setupUI()
     }
+    
+//    override func viewDidAppear(_ animated: Bool) {
+//        super.viewDidAppear(animated)
+//        // 生成二维码，耗时操作避免影响页面展示
+//        if self.qrcodeImageView.image == nil {
+//            XWHUDManager.showCustomHUD(withMessage: nil, isWindow: true)
+//            DispatchQueue.global().async {
+//                var qrcodeColor: UIColor = .black
+//                if case .transferSite = self.type {
+//                    qrcodeColor = Bar_Color
+//                }
+//                let image = LBXScanWrapper.createCode(codeType: "CIQRCodeGenerator", codeString: self.codeUUID, size: CGSize(width: SCRYFrom(160), height: SCRYFrom(160)), qrColor: qrcodeColor, bkColor: .white)!
+//                DispatchQueue.main.async {
+//                    XWHUDManager.hide()
+//                    self.qrcodeImageView.image = image
+//                }
+//            }
+//        }
+//    }
     
     @objc private func close() {
         dismiss(animated: true)
     }
+    
+    // MARK: -- Request
+    
+    /// 清除space editor
+    private func clearSpaceEditorRequest(space: SpaceData) {
+        
+        guard let editor = space.editor else {
+            return
+        }
+        XWHUDManager.showCustomHUD(withMessage: nil, isWindow: true)
+        NetworkRequest.shared.request(.clearSpaceMember(siteId: space.siteId, spaceId: space.id, userId: editor.uuid, permission: .editor, force: false)) {[weak self] result in
+            XWHUDManager.hide()
+            guard let self = self else { return }
+            switch result {
+            case .success(_):
+                XWHUDManager.showSuccessTipHUD("successfully".localizedString + " !")
+                space.editor = nil
+                space.save()
+                self.options = self.type.data.options
+                self.tableView.reloadData()
+                self.editorNameLabel?.text = "no_editor_yet".localizedString
+                
+            case .failure(let error):
+                if error == .editorBeingUsedSpace { // 正在使用空间
+                    SRAlertView(title: "notification".localizedString, message: "space_clear_editor_failed".localizedString, actions: [SRAlertAction(title: "confirm".localizedString)]).show()
+                }else {
+                    XWHUDManager.showErrorTipHUD(error.localizedDescription)
+                }
+            }
+        }
+    }
+    
+    
     
     // MARK: -- Options
     
@@ -89,7 +159,7 @@ class SharingSettingViewController: UIViewController {
                 return
             }
             UIImageWriteToSavedPhotosAlbum(image, nil, nil, nil)
-            XWHUDManager.showSuccessTipHUD("successfully".localizedString)
+            XWHUDManager.showSuccessTipHUD("successfully".localizedString + " !")
         }
     }
 
@@ -107,7 +177,7 @@ class SharingSettingViewController: UIViewController {
         vc.completionWithItemsHandler = { (type, completion, _, error) in
             if completion {
                 if error == nil {
-                    XWHUDManager.showSuccessTipHUD("successfully".localizedString)
+                    XWHUDManager.showSuccessTipHUD("successfully".localizedString + " !")
                 }else {
                     XWHUDManager.showSuccessTipHUD("failed".localizedString)
                 }
@@ -120,12 +190,51 @@ class SharingSettingViewController: UIViewController {
     /// 修改密码
     private func changePassword() {
         
-        var operationType: ShareChangePasswordController.OperationType = .spacePassword
-        if case .transferSite = type {
-            operationType = .transferPassword
+        var operationType: ShareChangePasswordController.OperationType!
+        
+        switch type {
+        case .transferSite(let site):
+            operationType = .transferPassword(site: site)
+        case .space(let site, let space):
+            operationType = .spacePassword(space: space)
+        case .batchSpace(let data):
+//            operationType = .spacePassword(space: )
+            operationType = .batchSpacePassword(data: data)
         }
+        
         let vc = ShareChangePasswordController(type: operationType)
+        vc.passwordSetCallback = {[weak self] (permisson, password) in
+            guard let self = self else { return }
+            switch self.type {
+            case .transferSite(let site):
+                site.transferPassword = password
+                site.save()
+            case .space(let site, let space):
+                if permisson == .editor {
+                    space.editorPassword = password
+                }else if permisson == .visitor {
+                    space.vistorPassword = password
+                }
+                space.save()
+            case .batchSpace(let data):
+                if password != nil {
+                    data.editorPassword = password!
+                }
+            }
+            if let index = self.options.firstIndex(of: .viewHidePassword) {
+                self.tableView.reloadRows(at: [IndexPath(row: index, section: 0)], with: .none)
+            }else {
+                self.tableView.reloadData()
+            }
+        }
         navigationController?.pushViewController(vc, animated: true)
+    }
+    
+    /// 清空编辑者
+    private func clearEditor(space: SpaceData) {
+        SRAlertView(title: "notification".localizedString, message: "space_clear_editor_message".localizedString, actions: [.cancelAction, SRAlertAction(title: "ok".localizedString, actionHandler: {[weak self] _ in
+            self?.clearSpaceEditorRequest(space: space)
+        })]).show()
     }
     
     /// space list
@@ -137,7 +246,7 @@ class SharingSettingViewController: UIViewController {
     /// 查看访客list
     private func viewVisitorList(space: SpaceData) {
         
-        let vc = SpaceVisitorListViewController(space: space, visitors: [UserData(name: "iPhone 1", uuid: UUID().uuidString), UserData(name: "iPhone 1", uuid: UUID().uuidString), UserData(name: "iPhone 1", uuid: UUID().uuidString)])
+        let vc = SpaceVisitorListViewController(space: space)
         navigationController?.pushViewController(vc, animated: true)
     }
     
@@ -162,7 +271,7 @@ class SharingSettingViewController: UIViewController {
         }
         
         qrcodeView = UIView()
-        qrcodeView.layer.cornerRadius = SCRYFrom(20)
+        qrcodeView.layer.cornerRadius = SCRYFrom(15)
         qrcodeView.layer.masksToBounds = true
         qrcodeView.backgroundColor = .white
         contentView.addSubview(qrcodeView)
@@ -180,15 +289,20 @@ class SharingSettingViewController: UIViewController {
             make.top.equalTo(SCRYFrom(22))
         }
         
-        var qrcodeColor: UIColor = .black
-        if case .transferSite = type {
-            qrcodeColor = Bar_Color
-        }
-        
         let qrcodeW = SCRYFrom(160)
         let qrcodeH = SCRYFrom(160)
         
-        let image = LBXScanWrapper.createCode(codeType: "CIQRCodeGenerator", codeString: self.codeUUID, size: CGSize(width: qrcodeW, height: qrcodeH), qrColor: qrcodeColor, bkColor: .white)!
+        var qrcodeColor: UIColor = .black
+        if case .transferSite = self.type {
+            qrcodeColor = Bar_Color
+        }
+        let image = LBXScanWrapper.createCode(codeType: "CIQRCodeGenerator", codeString: self.codeUUID, size: CGSize(width: SCRYFrom(160), height: SCRYFrom(160)), qrColor: qrcodeColor, bkColor: .white)!
+//        DispatchQueue.global().async {
+//            let image = LBXScanWrapper.createCode(codeType: "CIQRCodeGenerator", codeString: self.codeUUID, size: CGSize(width: qrcodeW, height: qrcodeH), qrColor: qrcodeColor, bkColor: .white)!
+//            DispatchQueue.main.async {
+//                self.qrcodeImageView.image = image
+//            }
+//        }
         qrcodeImageView = UIImageView(image: image)
         qrcodeView.addSubview(qrcodeImageView)
         qrcodeImageView.snp.makeConstraints { make in
@@ -209,7 +323,7 @@ class SharingSettingViewController: UIViewController {
         
         if case .space(_, let space) = type {
             permissionView = UIView()
-            permissionView!.layer.cornerRadius = SCRYFrom(20)
+            permissionView!.layer.cornerRadius = SCRYFrom(15)
             permissionView!.backgroundColor = .white
             contentView.addSubview(permissionView!)
             permissionView!.snp.makeConstraints { make in
@@ -217,22 +331,38 @@ class SharingSettingViewController: UIViewController {
                 make.top.equalTo(qrcodeView.snp.bottom).offset(SCRYFrom(16))
                 make.height.equalTo(SCRYFrom(52))
             }
-          
-            ownerLabel = UILabel(text: "owner".localizedString + ":", textColor: TextBlack_Color, fontSize: 14, fontWeight: .light)
-            permissionView!.addSubview(ownerLabel!)
-            ownerLabel!.snp.makeConstraints { make in
-                make.left.equalTo(SCRXFrom(20))
-                make.top.equalTo(SCRYFrom(16))
-            }
             
-            ownerNameLabel = UILabel(text: "Jesse's iphone 13", textColor: SubText_Color, fontSize: 14, fontWeight: .light)
-            permissionView!.addSubview(ownerNameLabel!)
-            ownerNameLabel!.snp.makeConstraints { make in
-                make.centerY.equalTo(ownerLabel!)
-                make.right.equalTo(SCRXFrom(-20))
-            }
-            
-            if space.permission == .editor {
+            if space.permission == .owner {
+                
+                editorLabel = UILabel(text: "editor".localizedString + ":", textColor: TextBlack_Color, fontSize: 14, fontWeight: .light)
+                permissionView!.addSubview(editorLabel!)
+                editorLabel!.snp.makeConstraints { make in
+                    make.left.equalTo(SCRXFrom(20))
+                    make.top.equalTo(SCRYFrom(16))
+                }
+                
+                editorNameLabel = UILabel(text: space.editor?.name ?? "no_editor_yet".localizedString, textColor: SubText_Color, fontSize: 14, fontWeight: .light)
+                permissionView!.addSubview(editorNameLabel!)
+                editorNameLabel!.snp.makeConstraints { make in
+                    make.centerY.equalTo(editorLabel!)
+                    make.right.equalTo(SCRXFrom(-20))
+                }
+                
+            }else if space.permission == .editor {
+                
+                ownerLabel = UILabel(text: "owner".localizedString + ":", textColor: TextBlack_Color, fontSize: 14, fontWeight: .light)
+                permissionView!.addSubview(ownerLabel!)
+                ownerLabel!.snp.makeConstraints { make in
+                    make.left.equalTo(SCRXFrom(20))
+                    make.top.equalTo(SCRYFrom(16))
+                }
+                
+                ownerNameLabel = UILabel(text: space.owner?.name ?? "no_owner_yet".localizedString, textColor: SubText_Color, fontSize: 14, fontWeight: .light)
+                permissionView!.addSubview(ownerNameLabel!)
+                ownerNameLabel!.snp.makeConstraints { make in
+                    make.centerY.equalTo(ownerLabel!)
+                    make.right.equalTo(SCRXFrom(-20))
+                }
                 
                 editorLabel = UILabel(text: "editor".localizedString + ":", textColor: TextBlack_Color, fontSize: 14, fontWeight: .light)
                 permissionView!.addSubview(editorLabel!)
@@ -241,7 +371,7 @@ class SharingSettingViewController: UIViewController {
                     make.top.equalTo(ownerLabel!.snp.bottom).offset(SCRYFrom(8))
                 }
                 
-                editorNameLabel = UILabel(text: "Jesse's iphone 13", textColor: SubText_Color, fontSize: 14, fontWeight: .light)
+                editorNameLabel = UILabel(text: "you".localizedString, textColor: SubText_Color, fontSize: 14, fontWeight: .light)
                 permissionView!.addSubview(editorNameLabel!)
                 editorNameLabel!.snp.makeConstraints { make in
                     make.centerY.equalTo(editorLabel!)
@@ -251,12 +381,13 @@ class SharingSettingViewController: UIViewController {
                 permissionView!.snp.updateConstraints { make in
                     make.height.equalTo(SCRYFrom(80))
                 }
+                
             }
           
         }
         
         itemsView = UIView()
-        itemsView.layer.cornerRadius = SCRYFrom(20)
+        itemsView.layer.cornerRadius = SCRYFrom(15)
         itemsView.backgroundColor = .white
         contentView.addSubview(itemsView)
         itemsView.snp.makeConstraints { make in
@@ -275,8 +406,21 @@ class SharingSettingViewController: UIViewController {
             make.top.equalTo(SCRYFrom(20))
             make.left.equalTo(SCRXFrom(16))
             make.right.equalTo(SCRXFrom(-16))
-            make.bottom.equalTo(SCRYFrom(-20))
+            make.bottom.equalTo(SCRYFrom(-20)).priority(.low)
             make.height.equalTo(CGFloat(self.options.count) * SCRYFrom(32))
+        }
+        
+        if case .transferSite = type {
+            messageLabel = UILabel(text: "site_transfer_message".localizedString, textColor: RGB(143, 168, 184), fontSize: 14, fontWeight: .light, fit: false)
+            messageLabel?.numberOfLines = 0
+            messageLabel?.textAlignment = .center
+            contentView.addSubview(messageLabel!)
+            messageLabel!.snp.makeConstraints { make in
+                make.left.equalTo(SCRXFrom(44))
+                make.right.equalTo(SCRXFrom(-43))
+                make.top.equalTo(tableView.snp.bottom).offset(SCRYFrom(36))
+                make.bottom.equalTo(SCRYFrom(-20)).priority(.low)
+            }
         }
 
     }
@@ -301,8 +445,23 @@ extension SharingSettingViewController: UITableViewDataSource, UITableViewDelega
         cell.titleX = SCRXFrom(38)
         if option == .viewHidePassword, viewPassword {
             cell.cellStyle = .iconAddBottomSubtitle
+            cell.iconY = SCRYFrom(3)
             cell.titleLabel.text = "hide_password".localizedString
-            cell.contentLabel.text = "Visitor: 2345"
+            var content = ""
+            switch self.type {
+            case .space(_, let space):
+                if space.permission == .owner {
+                    content = "\("editor".localizedString): \(space.editorPassword ?? "no_password".localizedString)    \("visitor".localizedString): \(space.vistorPassword ?? "no_password".localizedString)"
+                }else if space.permission == .editor {
+                    content = "\("visitor".localizedString): \(space.vistorPassword ?? "no_password".localizedString)"
+                }
+            case .transferSite(let site):
+                content = "\("transfer_password".localizedString): \(site.transferPassword ?? "")"
+            case .batchSpace(let data):
+                content = "\("editor".localizedString): \(data.editorPassword)"
+            }
+            
+            cell.contentLabel.text = content
             cell.contentLabel.textColor = RGB(148, 163, 184)
             cell.contentLabel.font = UIFont.systemFont(ofSize: SCRYFrom(14), weight: .light)
         }else {
@@ -338,7 +497,9 @@ extension SharingSettingViewController: UITableViewDataSource, UITableViewDelega
                 pushToSpaceList(spaces: data.spaces)
             }
         case .clearEditor: /// 清除管理员
-            break
+            if case .space(_, let space) = type {
+                clearEditor(space: space)
+            }
         case .visitors: /// 访客list
             if case .space(_, let space) = type {
                 viewVisitorList(space: space)
@@ -360,17 +521,6 @@ extension SharingSettingViewController: UITableViewDataSource, UITableViewDelega
     
 }
 
-/// 批量分享space数据
-struct BatchSpaceData {
-    /// 所属site
-    let site: SiteData
-    /// 分享的uuid
-    let uuid: String
-    /// 批量分享的名称
-    let name: String
-    /// 分享的space list
-    let spaces: [SpaceData]
-}
 
 extension SharingSettingViewController {
    
@@ -380,20 +530,19 @@ extension SharingSettingViewController {
         var data: (title: String, uuid: String, options: [Options]) {
             switch self {
             case .transferSite(let site):
-                return (site.name, site.id, [.copyUUID, .saveQRCode, .shareQRCode, .changePassword, .viewHidePassword])
+                return (site.name, site.transferCode ?? "", [.copyUUID, .saveQRCode, .shareQRCode, .changePassword, .viewHidePassword])
             case .space(let site, let space):
                 var options: [Options] = [.copyUUID, .saveQRCode, .shareQRCode, .visitors, .changePassword, .viewHidePassword]
-                if space.spaceOperates.contains(.editorOperate) {
+                if space.spaceOperates.contains(.editorOperate) && space.editor != nil {
                     options.insert(.clearEditor, at: 3)
                 }
-                return ("\(site.name) > \(space.name)", space.id, options)
+                return ("\(site.name) > \(space.name)", space.shareCode ?? "", options)
             case .batchSpace(let data):
-                
                 var options: [Options] = [.copyUUID, .saveQRCode, .shareQRCode, .spaces]
-                if data.site.permission == .owner {
+                if data.spaces.contains(where: { $0.permission == .owner }) {
                     options.append(contentsOf: [.changePassword, .viewHidePassword])
                 }
-                return ("\(data.site.name)>\(data.name)", data.uuid, options)
+                return (data.name, data.code, options)
             }
         }
         
@@ -410,7 +559,7 @@ extension SharingSettingViewController {
         var data: (icon: String, name: String) {
             switch self {
             case .copyUUID:
-                return ("share_copy", "copy_uuid".localizedString)
+                return ("share_copy", "copy_invitation_code".localizedString)
             case .saveQRCode:
                 return ("share_save", "save_qrcode_to_album".localizedString)
             case .shareQRCode:
@@ -427,7 +576,6 @@ extension SharingSettingViewController {
                 return ("share_viewhide_password", "view_password".localizedString)
             }
         }
-        
         
         /// 复制uuid
         case copyUUID

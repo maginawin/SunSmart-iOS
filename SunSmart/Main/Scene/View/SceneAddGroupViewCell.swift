@@ -94,7 +94,7 @@ class SceneAddGroupViewCell: UICollectionViewCell {
         }
         
         lineView = UIView()
-        lineView.backgroundColor = RGB(243, 243, 243)
+        lineView.backgroundColor = Line_Color
         contentView.addSubview(lineView)
         lineView.snp.makeConstraints { make in
             make.left.equalTo(SCRXFrom(29))

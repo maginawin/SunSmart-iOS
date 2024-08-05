@@ -34,16 +34,21 @@
 		C830CFDD2C0EBE730035CD5B /* ShareBacthListViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C830CFDC2C0EBE730035CD5B /* ShareBacthListViewController.swift */; };
 		C830CFDF2C0EC0240035CD5B /* ShareBacthListViewCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = C830CFDE2C0EC0240035CD5B /* ShareBacthListViewCell.swift */; };
 		C830CFE32C0F1C6B0035CD5B /* TableSelectView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C830CFE22C0F1C6B0035CD5B /* TableSelectView.swift */; };
+		C84A2C552C2D465A0064D3F1 /* ExternalVendorMessage+Extension.swift in Sources */ = {isa = PBXBuildFile; fileRef = C84A2C542C2D465A0064D3F1 /* ExternalVendorMessage+Extension.swift */; };
+		C84A2C572C2D571D0064D3F1 /* BatchSpaceData.swift in Sources */ = {isa = PBXBuildFile; fileRef = C84A2C562C2D571D0064D3F1 /* BatchSpaceData.swift */; };
 		C85602942AA0744A0063B8B2 /* NordicSigMeshSDK in Frameworks */ = {isa = PBXBuildFile; productRef = C85602932AA0744A0063B8B2 /* NordicSigMeshSDK */; };
 		C85829F22B397F2B002A4367 /* SceneViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C85829F12B397F2B002A4367 /* SceneViewController.swift */; };
 		C85829F42B398354002A4367 /* SceneGroupsViewCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = C85829F32B398354002A4367 /* SceneGroupsViewCell.swift */; };
 		C85829F62B398443002A4367 /* CustomProgressView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C85829F52B398443002A4367 /* CustomProgressView.swift */; };
+		C85BC5F02C3BBE39002D4CB6 /* Device+Extension.swift in Sources */ = {isa = PBXBuildFile; fileRef = C85BC5EF2C3BBE39002D4CB6 /* Device+Extension.swift */; };
+		C85BC5F22C3BEEF8002D4CB6 /* UserSettingsViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C85BC5F12C3BEEF8002D4CB6 /* UserSettingsViewController.swift */; };
 		C85CB5F92BB6BE8E006598C0 /* DeviceInformationViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C85CB5F82BB6BE8E006598C0 /* DeviceInformationViewController.swift */; };
 		C8607BE22B90267F00A94F0B /* LightSensorCalibrationViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8607BE12B90267F00A94F0B /* LightSensorCalibrationViewController.swift */; };
 		C8607BE42B9026F700A94F0B /* LightSensorCalibrationSelectView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8607BE32B9026F700A94F0B /* LightSensorCalibrationSelectView.swift */; };
 		C8607BE62B905F5100A94F0B /* LightSensorCalibrationView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8607BE52B905F5100A94F0B /* LightSensorCalibrationView.swift */; };
 		C8607BE82B9165AC00A94F0B /* ProfileLevelSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8607BE72B9165AC00A94F0B /* ProfileLevelSettingsView.swift */; };
 		C8607BEA2B91D56B00A94F0B /* ProfilePhasesTimePickerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8607BE92B91D56B00A94F0B /* ProfilePhasesTimePickerView.swift */; };
+		C86760A52C37F4B4006AD978 /* SitesTransferredView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C86760A42C37F4B4006AD978 /* SitesTransferredView.swift */; };
 		C8699DB72C09661700424A60 /* ShareAuthorityFilterView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8699DB62C09661700424A60 /* ShareAuthorityFilterView.swift */; };
 		C8699DB92C0978F300424A60 /* UserData.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8699DB82C0978F300424A60 /* UserData.swift */; };
 		C86B0AB82C106BE00038F669 /* ServerSelectionViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C86B0AB72C106BE00038F669 /* ServerSelectionViewController.swift */; };
@@ -125,6 +130,8 @@
 		C89AC9312B62372300744868 /* DeviceLightInfoSectionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C89AC9302B62372300744868 /* DeviceLightInfoSectionView.swift */; };
 		C89B3CB32C08650400820277 /* ShareAuthorityViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C89B3CB22C08650400820277 /* ShareAuthorityViewController.swift */; };
 		C89B3CB52C08807200820277 /* ShareAuthoritySpaceViewCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = C89B3CB42C08807200820277 /* ShareAuthoritySpaceViewCell.swift */; };
+		C89BAB1F2C4F3CF4000A4173 /* MeshFirmwareListViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C89BAB1E2C4F3CF4000A4173 /* MeshFirmwareListViewController.swift */; };
+		C89BAB212C4F3EC8000A4173 /* MeshFirmwareListViewCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = C89BAB202C4F3EC8000A4173 /* MeshFirmwareListViewCell.swift */; };
 		C89C9FE22B3BC1B900074031 /* SceneServer.swift in Sources */ = {isa = PBXBuildFile; fileRef = C89C9FE12B3BC1B900074031 /* SceneServer.swift */; };
 		C89C9FE42B3C197B00074031 /* SyncDevicesViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C89C9FE32B3C197B00074031 /* SyncDevicesViewController.swift */; };
 		C89C9FE82B3C248100074031 /* SyncDevicesSectionHeaderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C89C9FE72B3C248100074031 /* SyncDevicesSectionHeaderView.swift */; };
@@ -147,6 +154,7 @@
 		C8A09A032AC162660068C814 /* String+Date.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A09A022AC162660068C814 /* String+Date.swift */; };
 		C8A09A052AC178910068C814 /* ImageCollectionViewCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A09A042AC178910068C814 /* ImageCollectionViewCell.swift */; };
 		C8A09A072AC1790B0068C814 /* InfoEditViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A09A062AC1790B0068C814 /* InfoEditViewController.swift */; };
+		C8A0AC4B2C3E21B200DFE803 /* Array+Split.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A0AC4A2C3E21B200DFE803 /* Array+Split.swift */; };
 		C8A130B92B3129960008C353 /* ScenesViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A130B82B3129960008C353 /* ScenesViewController.swift */; };
 		C8A130BE2B32785E0008C353 /* SceneAddViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A130BD2B32785E0008C353 /* SceneAddViewController.swift */; };
 		C8A130C02B327FF40008C353 /* SceneAddCustomView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A130BF2B327FF40008C353 /* SceneAddCustomView.swift */; };
@@ -170,6 +178,8 @@
 		C8AADEFF2A97350400238C1C /* SiteData.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8AADEFE2A97350400238C1C /* SiteData.swift */; };
 		C8AADF012A973DA600238C1C /* SpaceData.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8AADF002A973DA600238C1C /* SpaceData.swift */; };
 		C8AAE2772A97435A00238C1C /* Database.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8AAE2762A97435A00238C1C /* Database.swift */; };
+		C8AC50982C4E2FF1003CE437 /* SpaceMoreViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8AC50972C4E2FF1003CE437 /* SpaceMoreViewController.swift */; };
+		C8AC509A2C4E3234003CE437 /* SpaceMoreViewCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8AC50992C4E3234003CE437 /* SpaceMoreViewCell.swift */; };
 		C8ACF1342AA1B2BA00E24B4A /* MacroDefinition.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8ACF1272AA1B2BA00E24B4A /* MacroDefinition.swift */; };
 		C8ACF1352AA1B2BA00E24B4A /* UILabel+Extension.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8ACF1292AA1B2BA00E24B4A /* UILabel+Extension.swift */; };
 		C8ACF1362AA1B2BA00E24B4A /* UIButton+Extension.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8ACF12A2AA1B2BA00E24B4A /* UIButton+Extension.swift */; };
@@ -247,15 +257,20 @@
 		C830CFDC2C0EBE730035CD5B /* ShareBacthListViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShareBacthListViewController.swift; sourceTree = "<group>"; };
 		C830CFDE2C0EC0240035CD5B /* ShareBacthListViewCell.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShareBacthListViewCell.swift; sourceTree = "<group>"; };
 		C830CFE22C0F1C6B0035CD5B /* TableSelectView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TableSelectView.swift; sourceTree = "<group>"; };
+		C84A2C542C2D465A0064D3F1 /* ExternalVendorMessage+Extension.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ExternalVendorMessage+Extension.swift"; sourceTree = "<group>"; };
+		C84A2C562C2D571D0064D3F1 /* BatchSpaceData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BatchSpaceData.swift; sourceTree = "<group>"; };
 		C85829F12B397F2B002A4367 /* SceneViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SceneViewController.swift; sourceTree = "<group>"; };
 		C85829F32B398354002A4367 /* SceneGroupsViewCell.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SceneGroupsViewCell.swift; sourceTree = "<group>"; };
 		C85829F52B398443002A4367 /* CustomProgressView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CustomProgressView.swift; sourceTree = "<group>"; };
+		C85BC5EF2C3BBE39002D4CB6 /* Device+Extension.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Device+Extension.swift"; sourceTree = "<group>"; };
+		C85BC5F12C3BEEF8002D4CB6 /* UserSettingsViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UserSettingsViewController.swift; sourceTree = "<group>"; };
 		C85CB5F82BB6BE8E006598C0 /* DeviceInformationViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceInformationViewController.swift; sourceTree = "<group>"; };
 		C8607BE12B90267F00A94F0B /* LightSensorCalibrationViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LightSensorCalibrationViewController.swift; sourceTree = "<group>"; };
 		C8607BE32B9026F700A94F0B /* LightSensorCalibrationSelectView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LightSensorCalibrationSelectView.swift; sourceTree = "<group>"; };
 		C8607BE52B905F5100A94F0B /* LightSensorCalibrationView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LightSensorCalibrationView.swift; sourceTree = "<group>"; };
 		C8607BE72B9165AC00A94F0B /* ProfileLevelSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileLevelSettingsView.swift; sourceTree = "<group>"; };
 		C8607BE92B91D56B00A94F0B /* ProfilePhasesTimePickerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfilePhasesTimePickerView.swift; sourceTree = "<group>"; };
+		C86760A42C37F4B4006AD978 /* SitesTransferredView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SitesTransferredView.swift; sourceTree = "<group>"; };
 		C8699DB62C09661700424A60 /* ShareAuthorityFilterView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShareAuthorityFilterView.swift; sourceTree = "<group>"; };
 		C8699DB82C0978F300424A60 /* UserData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UserData.swift; sourceTree = "<group>"; };
 		C86B0AB72C106BE00038F669 /* ServerSelectionViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ServerSelectionViewController.swift; sourceTree = "<group>"; };
@@ -348,6 +363,8 @@
 		C89AC9302B62372300744868 /* DeviceLightInfoSectionView.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = DeviceLightInfoSectionView.swift; sourceTree = "<group>"; };
 		C89B3CB22C08650400820277 /* ShareAuthorityViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShareAuthorityViewController.swift; sourceTree = "<group>"; };
 		C89B3CB42C08807200820277 /* ShareAuthoritySpaceViewCell.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShareAuthoritySpaceViewCell.swift; sourceTree = "<group>"; };
+		C89BAB1E2C4F3CF4000A4173 /* MeshFirmwareListViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeshFirmwareListViewController.swift; sourceTree = "<group>"; };
+		C89BAB202C4F3EC8000A4173 /* MeshFirmwareListViewCell.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeshFirmwareListViewCell.swift; sourceTree = "<group>"; };
 		C89C9FE12B3BC1B900074031 /* SceneServer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SceneServer.swift; sourceTree = "<group>"; };
 		C89C9FE32B3C197B00074031 /* SyncDevicesViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SyncDevicesViewController.swift; sourceTree = "<group>"; };
 		C89C9FE72B3C248100074031 /* SyncDevicesSectionHeaderView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SyncDevicesSectionHeaderView.swift; sourceTree = "<group>"; };
@@ -370,6 +387,7 @@
 		C8A09A022AC162660068C814 /* String+Date.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "String+Date.swift"; sourceTree = "<group>"; };
 		C8A09A042AC178910068C814 /* ImageCollectionViewCell.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImageCollectionViewCell.swift; sourceTree = "<group>"; };
 		C8A09A062AC1790B0068C814 /* InfoEditViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InfoEditViewController.swift; sourceTree = "<group>"; };
+		C8A0AC4A2C3E21B200DFE803 /* Array+Split.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Array+Split.swift"; sourceTree = "<group>"; };
 		C8A130B82B3129960008C353 /* ScenesViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScenesViewController.swift; sourceTree = "<group>"; };
 		C8A130BD2B32785E0008C353 /* SceneAddViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SceneAddViewController.swift; sourceTree = "<group>"; };
 		C8A130BF2B327FF40008C353 /* SceneAddCustomView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SceneAddCustomView.swift; sourceTree = "<group>"; };
@@ -394,6 +412,8 @@
 		C8AADF002A973DA600238C1C /* SpaceData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpaceData.swift; sourceTree = "<group>"; };
 		C8AAE2762A97435A00238C1C /* Database.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Database.swift; sourceTree = "<group>"; };
 		C8AAE2822A987B8C00238C1C /* SunSmart-Bridging-Header.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "SunSmart-Bridging-Header.h"; sourceTree = "<group>"; };
+		C8AC50972C4E2FF1003CE437 /* SpaceMoreViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpaceMoreViewController.swift; sourceTree = "<group>"; };
+		C8AC50992C4E3234003CE437 /* SpaceMoreViewCell.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpaceMoreViewCell.swift; sourceTree = "<group>"; };
 		C8ACF1272AA1B2BA00E24B4A /* MacroDefinition.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = MacroDefinition.swift; sourceTree = "<group>"; };
 		C8ACF1292AA1B2BA00E24B4A /* UILabel+Extension.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = "UILabel+Extension.swift"; sourceTree = "<group>"; };
 		C8ACF12A2AA1B2BA00E24B4A /* UIButton+Extension.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = "UIButton+Extension.swift"; sourceTree = "<group>"; };
@@ -542,8 +562,25 @@
 			isa = PBXGroup;
 			children = (
 				C8C663E52C199DCF0058A5F5 /* CustomActivityItemSource.swift */,
+				C84A2C562C2D571D0064D3F1 /* BatchSpaceData.swift */,
 			);
 			path = Model;
+			sourceTree = "<group>";
+		};
+		C84A2C4A2C2D022E0064D3F1 /* Mesh */ = {
+			isa = PBXGroup;
+			children = (
+				C84A2C4B2C2D03F50064D3F1 /* Message */,
+			);
+			path = Mesh;
+			sourceTree = "<group>";
+		};
+		C84A2C4B2C2D03F50064D3F1 /* Message */ = {
+			isa = PBXGroup;
+			children = (
+				C84A2C542C2D465A0064D3F1 /* ExternalVendorMessage+Extension.swift */,
+			);
+			path = Message;
 			sourceTree = "<group>";
 		};
 		C87EB4482BA07CEA00F9285B /* Switch */ = {
@@ -700,6 +737,7 @@
 				C8BF08482B26F75B00144BAC /* Group */,
 				C8A130B52B31296C0008C353 /* Scene */,
 				C8A29C212B47D3F700104634 /* Timed */,
+				C89BAB182C4F3B6F000A4173 /* Firmware */,
 				C8047F042B8DFA0100A09FFA /* Profile */,
 			);
 			path = Main;
@@ -755,6 +793,7 @@
 				C803EC4B2BCCC9F0003C48B1 /* ConfigurationFlowGuidanceView.swift */,
 				C884EF6F2C05788900B5F869 /* NoInternetHeaderView.swift */,
 				C86B0AB92C11434C0038F669 /* ServerSelectionView.swift */,
+				C86760A42C37F4B4006AD978 /* SitesTransferredView.swift */,
 			);
 			path = View;
 			sourceTree = "<group>";
@@ -775,6 +814,7 @@
 				C89FEF422ABD657F00DCCFB6 /* AboutViewController.swift */,
 				C8A09A062AC1790B0068C814 /* InfoEditViewController.swift */,
 				C86B0AB72C106BE00038F669 /* ServerSelectionViewController.swift */,
+				C85BC5F12C3BEEF8002D4CB6 /* UserSettingsViewController.swift */,
 			);
 			path = Controller;
 			sourceTree = "<group>";
@@ -791,6 +831,7 @@
 				C89C9FE92B3C24C700074031 /* SyncDeviceViewCell.swift */,
 				C89C9FEB2B3C26BA00074031 /* SyncDeviceStepViewCell.swift */,
 				C8B0B48A2B468BC700747CF4 /* SyncDevicesProgressView.swift */,
+				C8AC50992C4E3234003CE437 /* SpaceMoreViewCell.swift */,
 			);
 			path = View;
 			sourceTree = "<group>";
@@ -810,6 +851,7 @@
 				C8A18FEA2AE105F300260707 /* BluetoothRequiredViewController.swift */,
 				C89C9FE32B3C197B00074031 /* SyncDevicesViewController.swift */,
 				C87B2D2E2BCFC6CD0034E9C2 /* SpaceNewCreationProcessController.swift */,
+				C8AC50972C4E2FF1003CE437 /* SpaceMoreViewController.swift */,
 			);
 			path = Controller;
 			sourceTree = "<group>";
@@ -926,6 +968,39 @@
 			path = Controller;
 			sourceTree = "<group>";
 		};
+		C89BAB182C4F3B6F000A4173 /* Firmware */ = {
+			isa = PBXGroup;
+			children = (
+				C89BAB1D2C4F3C70000A4173 /* Controller */,
+				C89BAB1C2C4F3C6C000A4173 /* Model */,
+				C89BAB1B2C4F3C68000A4173 /* View */,
+			);
+			path = Firmware;
+			sourceTree = "<group>";
+		};
+		C89BAB1B2C4F3C68000A4173 /* View */ = {
+			isa = PBXGroup;
+			children = (
+				C89BAB202C4F3EC8000A4173 /* MeshFirmwareListViewCell.swift */,
+			);
+			path = View;
+			sourceTree = "<group>";
+		};
+		C89BAB1C2C4F3C6C000A4173 /* Model */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			path = Model;
+			sourceTree = "<group>";
+		};
+		C89BAB1D2C4F3C70000A4173 /* Controller */ = {
+			isa = PBXGroup;
+			children = (
+				C89BAB1E2C4F3CF4000A4173 /* MeshFirmwareListViewController.swift */,
+			);
+			path = Controller;
+			sourceTree = "<group>";
+		};
 		C89FEF442ABD65DF00DCCFB6 /* Base */ = {
 			isa = PBXGroup;
 			children = (
@@ -1028,6 +1103,7 @@
 		C8AADEF82A97326D00238C1C /* Common */ = {
 			isa = PBXGroup;
 			children = (
+				C84A2C4A2C2D022E0064D3F1 /* Mesh */,
 				C8D58F642C1D33B10066B770 /* Cloud */,
 				C884EF732C05B91200B5F869 /* Network */,
 				C8ACF1262AA1B2BA00E24B4A /* Macro */,
@@ -1105,7 +1181,9 @@
 				C8ACF1322AA1B2BA00E24B4A /* UIBarButtonItem+Extension.swift */,
 				C898E2DB2AB7E62100C71315 /* String+Localized.swift */,
 				C89A1C3A2B554F56004912B9 /* UIView+Shade.swift */,
+				C8A0AC4A2C3E21B200DFE803 /* Array+Split.swift */,
 				C8D663722BFF14A000BFF81A /* Int+Hex.swift */,
+				C85BC5EF2C3BBE39002D4CB6 /* Device+Extension.swift */,
 			);
 			path = Extension;
 			sourceTree = "<group>";
@@ -1325,6 +1403,7 @@
 				C86B0AB82C106BE00038F669 /* ServerSelectionViewController.swift in Sources */,
 				C8A130CF2B32EE220008C353 /* ImagesPickerViewController.swift in Sources */,
 				C87EB4532BA0856700F9285B /* GroupSwitch.swift in Sources */,
+				C89BAB212C4F3EC8000A4173 /* MeshFirmwareListViewCell.swift in Sources */,
 				C89FEF482ABD6A6300DCCFB6 /* WebViewController.swift in Sources */,
 				C898EA6B2AC2C3270023B480 /* SpaceMenuView.swift in Sources */,
 				C8047F192B8EE37700A09FFA /* ProfileSettingsSphasesView.swift in Sources */,
@@ -1400,25 +1479,31 @@
 				C89A1C362B54C64B004912B9 /* MultiseriatePickerView.swift in Sources */,
 				C87D8B272BA818AA00F930F9 /* GroupSwitchEnOceanProxyHeaderView.swift in Sources */,
 				C88DE4432C072C8C005A38C1 /* SharePermissionSelectionController.swift in Sources */,
+				C86760A52C37F4B4006AD978 /* SitesTransferredView.swift in Sources */,
 				C89C9FEC2B3C26BA00074031 /* SyncDeviceStepViewCell.swift in Sources */,
 				C8A130B92B3129960008C353 /* ScenesViewController.swift in Sources */,
 				C89941952AD4F192008DCD76 /* DeviceAddViewCell.swift in Sources */,
 				C884EF722C057B5100B5F869 /* ImportProjectView.swift in Sources */,
 				C8A18FEB2AE105F300260707 /* BluetoothRequiredViewController.swift in Sources */,
 				C884EF752C05B93200B5F869 /* NetworkRequest.swift in Sources */,
+				C84A2C552C2D465A0064D3F1 /* ExternalVendorMessage+Extension.swift in Sources */,
 				C8D6636D2BFED12B00BFF81A /* Keychain.swift in Sources */,
 				C8A130C42B32C2B90008C353 /* SceneAddTemplateTitleCell.swift in Sources */,
 				C8A3EE7E2B33D62F0082A772 /* SceneAddTemplateInfoSectionView.swift in Sources */,
 				C898EA652AC2BDC50023B480 /* SpaceViewController.swift in Sources */,
+				C8AC509A2C4E3234003CE437 /* SpaceMoreViewCell.swift in Sources */,
 				C898F7042B3AB698008B4124 /* SceneMembersViewCell.swift in Sources */,
 				C898D1D02B59134A00B2033B /* ScheduleServer.swift in Sources */,
+				C8AC50982C4E2FF1003CE437 /* SpaceMoreViewController.swift in Sources */,
 				C8A3EE802B33E43C0082A772 /* SceneAddDataListViewCell.swift in Sources */,
 				C8BF088E2B299DD700144BAC /* LinePageControl.swift in Sources */,
 				C8A09A072AC1790B0068C814 /* InfoEditViewController.swift in Sources */,
+				C84A2C572C2D571D0064D3F1 /* BatchSpaceData.swift in Sources */,
 				C88DE4412C070D3F005A38C1 /* ShareChangePasswordController.swift in Sources */,
 				C8B5A1E22B2C48DE00728E36 /* GroupCheckViewController.swift in Sources */,
 				C8D58F662C1D34090066B770 /* CloudSynchronizationManager.swift in Sources */,
 				C8EF54742C1AFA53008389CE /* NetworkLoggerPlugin.swift in Sources */,
+				C8A0AC4B2C3E21B200DFE803 /* Array+Split.swift in Sources */,
 				C8B5A1DE2B2BE9B300728E36 /* GroupMembersViewController.swift in Sources */,
 				C830CFDB2C0DC23F0035CD5B /* SpaceVisitorListViewController.swift in Sources */,
 				C8047F092B8DFA5900A09FFA /* ProfileInstructionsController.swift in Sources */,
@@ -1428,6 +1513,7 @@
 				C8ACF13E2AA1B2BA00E24B4A /* UIBarButtonItem+Extension.swift in Sources */,
 				C898E2F32ABAD3DF00C71315 /* MenuPopView.swift in Sources */,
 				C8B0B48B2B468BC700747CF4 /* SyncDevicesProgressView.swift in Sources */,
+				C89BAB1F2C4F3CF4000A4173 /* MeshFirmwareListViewController.swift in Sources */,
 				C898EA622AC2BD8B0023B480 /* WMMenuView.m in Sources */,
 				C8047F2D2B8F5C9200A09FFA /* ManualOverrideTimeoutInstructionController.swift in Sources */,
 				C898EA722AC3D17C0023B480 /* DevicesViewCell.swift in Sources */,
@@ -1440,6 +1526,7 @@
 				C8BF08502B26FA7700144BAC /* GroupsViewCell.swift in Sources */,
 				C8607BEA2B91D56B00A94F0B /* ProfilePhasesTimePickerView.swift in Sources */,
 				C8607BE82B9165AC00A94F0B /* ProfileLevelSettingsView.swift in Sources */,
+				C85BC5F02C3BBE39002D4CB6 /* Device+Extension.swift in Sources */,
 				C8BF084C2B26F78100144BAC /* GroupsViewController.swift in Sources */,
 				C89FEF432ABD657F00DCCFB6 /* AboutViewController.swift in Sources */,
 				C8A29C2A2B47E0D300104634 /* SchedulesViewCell.swift in Sources */,
@@ -1452,6 +1539,7 @@
 				C8047F132B8E14F800A09FFA /* MotionSensorInstructionsViewCell.swift in Sources */,
 				C89F98412B5E5A56007EABF5 /* SceneExecuteAnimationView.swift in Sources */,
 				C896B9A82A930BA800217512 /* AppDelegate.swift in Sources */,
+				C85BC5F22C3BEEF8002D4CB6 /* UserSettingsViewController.swift in Sources */,
 				C8699DB72C09661700424A60 /* ShareAuthorityFilterView.swift in Sources */,
 				C884EF7B2C05C9C500B5F869 /* SharingSettingViewController.swift in Sources */,
 				C89C9FEA2B3C24C700074031 /* SyncDeviceViewCell.swift in Sources */,

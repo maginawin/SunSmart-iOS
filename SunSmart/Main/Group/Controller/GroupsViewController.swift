@@ -84,6 +84,12 @@ class GroupsViewController: UIViewController {
             }
         }
         
+        // space编辑权限变更回调
+        NotificationCenter.default.addObserver(forName: .init(spacePermissionChangedNotificaitonName), object: nil, queue: nil) {[weak self] notification in
+            guard let self = self else { return }
+            self.updateUI()
+        }
+        
     }
     
     /// 长按事件，跳转到组详情
@@ -214,6 +220,13 @@ class GroupsViewController: UIViewController {
             footerView.isHidden = false
         }
         
+        if !space.groupOperates.contains(.edit) {
+            footerView.editBtn.isEnabled = false
+        }
+        if !space.groupOperates.contains(.add) {
+            footerView.addBtn.isEnabled = false
+        }
+        
         footerView.sortBtn.isHidden = true
         collectionView.reloadData()
     }
@@ -275,12 +288,6 @@ class GroupsViewController: UIViewController {
         footerView = SpaceFunctionFooterView()
         footerView.sortBtn.isHidden = true
         footerView.delegate = self
-        if !space.groupOperates.contains(.edit) {
-            footerView.editBtn.isEnabled = false
-        }
-        if !space.groupOperates.contains(.add) {
-            footerView.addBtn.isEnabled = false
-        }
         view.addSubview(footerView)
         footerView.snp.makeConstraints { make in
             make.left.right.bottom.equalToSuperview()

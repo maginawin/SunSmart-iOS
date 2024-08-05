@@ -6,6 +6,7 @@
 //
 
 #import <UIKit/UIKit.h>
+#import "WYProgressHUD.h"
 
 NS_ASSUME_NONNULL_BEGIN
 
@@ -66,6 +67,9 @@ typedef NS_ENUM(NSUInteger, XWHUDManagerType) {
  */
 + (void)hideInWindow;
 
+/// 获取当前展示的提示框
++ (nullable WYProgressHUD *)currentHUD;
+
 /**
  延时隐藏蒙版((KeyWindow和当前控制器视图))
  
@@ -99,6 +103,8 @@ typedef NS_ENUM(NSUInteger, XWHUDManagerType) {
 + (void)showCustomHUDWithMessage:(nullable NSString*)message isWindow:(BOOL)isWindow;
 /// 自定义加载框 - 可选时间自动消失
 + (void)showCustomHUDWithMessage:(nullable NSString*)message isWindow:(BOOL)isWindow afterDelay:(NSTimeInterval)afterSecond;
+/// 自定义加载框传入展示的view - 不自动消失
++ (void)showCustomHUDWithMessage:(nullable NSString*)message view:(UIView *)view;
 /// 自定义加载框-传入展示的view
 + (void)showCustomHUDWithMessage:(nullable NSString*)message view:(UIView *)view afterDelay:(NSTimeInterval)afterSecond;
 /**

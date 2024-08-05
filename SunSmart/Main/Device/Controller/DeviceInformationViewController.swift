@@ -206,7 +206,7 @@ extension DeviceInformationViewController: UITableViewDataSource, UITableViewDel
             cell.contentLabel.font = UIFont.systemFont(ofSize: SCRYFrom(14), weight: .light)
 //            cell.lineView.isHidden = false
         }
-        cell.lineView.backgroundColor = RGB(243, 243, 243)
+        cell.lineView.backgroundColor = Line_Color
         //            cell.lineView.isHidden = tableView.numberOfRows(inSection: indexPath.section) - 1 == indexPath.row
         return cell
     }

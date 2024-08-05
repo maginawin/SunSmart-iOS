@@ -20,6 +20,9 @@ extension SiteData {
     /// 导入site数据
     /// - Parameters:
     ///   - siteJsonData: site json数据
+    ///   - changeLocalAddress: 当第一次导入site时是否需要修改手机地址，分以下两种情况：
+    ///      1：第一次加入space，服务器生成site数据并分配新的手机地址，则不需要再修改地址；
+    ///      2：卸载app后由于没有缓存数据，之前使用的手机地址对应SEQ序列号未知，所以把旧的地址放到地址回收池内回收，并分配新的手机地址
     /// - Returns: site
     static func `import`(siteJsonData: [String: Any]) async -> SiteData? {
         
@@ -57,46 +60,214 @@ extension SiteData {
             return
         }
         let lastUpdate = json["updateTimestamp"].int64Value
+        
+        var permission: Permission = .visitor
+        switch json["role"].string {
+        case "owner":
+            permission = .owner
+        case "editor":
+            permission = .editor
+        default:
+            break
+        }
+        self.permission = permission
+        
         // 服务器最后更新时间比本地时间新才覆盖本地数据
-        guard lastUpdate >= self.lastUpdate else {
-            return
-        }
-        
-        self.name = name
-        self.imageId = json["imageId"].intValue
-        self.isFavourite = json["favourite"].boolValue
-        self.sourceType = DataSourceType(rawValue: json["type"].intValue) ?? DataSourceType.create
-        self.create = json["createTimestamp"].int64Value
-        self.lastUpdate = json["updateTimestamp"].int64Value
-        if self.lastUploadCloudTimestamp == nil {
+        if lastUpdate >= self.lastUpdate {
+            
+            self.name = name
+            self.imageId = json["imageId"].intValue
+            //        self.isFavourite = json["favourite"].boolValue
+            self.sourceType = DataSourceType(rawValue: json["type"].intValue) ?? DataSourceType.create
+            self.create = json["createTimestamp"].int64Value
+            self.lastUpdate = lastUpdate
+            //        if self.lastUploadCloudTimestamp == nil {
             self.lastUploadCloudTimestamp = self.lastUpdate
-        }
-        
-        var meshNetwork = MeshNetwork.load(meshUUID: uuid, allData: false)
-        
-        if meshNetwork == nil {
-            guard let netKeyDict = json["netKey"].dictionaryObject,
-                  let netKeyData = try? JSONSerialization.data(withJSONObject: netKeyDict),
-                  let netKey = try? jsonDecoder.decode(NetworkKey.self, from: netKeyData),
-                  let appKeyDict = json["appKey"].dictionaryObject,
-                  let appKeyData = try? JSONSerialization.data(withJSONObject: appKeyDict),
-                  let appKey = try? jsonDecoder.decode(ApplicationKey.self, from: appKeyData) else {
-                return
+            //        }
+            // 转让site id
+            if let shareId = json["shareId"].string {
+                self.transferCode = shareId
             }
-            meshNetwork = MeshNetworkManager.createMeshNetwork(meshUUID: uuid, meshNetworkName: name).meshNetwork
-            meshNetwork?.add(networkKey: netKey)
-            meshNetwork?.add(applicationKey: appKey)
-            meshNetwork?.save()
+            
+            // 本地手机节点地址
+            if self.localAddress == nil, let addressHex = json["provisioner"]["address"].string, let address = Address(hex: addressHex) {
+                self.localAddress = address
+            }
+            
+            let currentNetwork = MeshNetworkManager.instance.meshNetwork?.uuid.uuidString == self.meshUUID ? MeshNetworkManager.instance.meshNetwork : nil
+            
+            var meshNetwork = currentNetwork ?? MeshNetwork.load(meshUUID: uuid, allData: false)
+            if meshNetwork == nil {
+                
+                guard let netKeyDict = siteJsonData["netKey"] as? [String: Any],
+                      let netKeyData = try? JSONSerialization.data(withJSONObject: netKeyDict),
+                      let netKey = try? jsonDecoder.decode(NetworkKey.self, from: netKeyData),
+                      let appKeyDict = siteJsonData["appKey"] as? [String: Any],
+                      let appKeyData = try? JSONSerialization.data(withJSONObject: appKeyDict),
+                      let appKey = try? jsonDecoder.decode(ApplicationKey.self, from: appKeyData) else {
+                    return
+                }
+                // Local Provisioner
+                // 本地手机供应者
+                var localProvisioner: Provisioner = Provisioner(name: UserData.currentUserName, uuid: UUID(uuidString: UserData.currentUserId)!, allocatedUnicastRange: [], allocatedGroupRange: [], allocatedSceneRange: [])
+                // 用户地址数据
+                if let provisionerJson = json["provisioner"].dictionary {
+                    let uuid = provisionerJson["UUID"]?.string ?? UserData.currentUserId
+                    let name = provisionerJson["provisionerName"]?.string
+                    
+                    // 设备地址
+                    var allocatedUnicastRange: [AddressRange] = []
+                    if let allocatedUnicastRangeJson = provisionerJson["allocatedUnicastRange"]?.array {
+                        allocatedUnicastRange = allocatedUnicastRangeJson.compactMap({
+                            if let lowAddressString = $0["lowAddress"].string, let lowAddress = Address(hex: lowAddressString),
+                               let highAddressString = $0["highAddress"].string, let highAddress = Address(hex: highAddressString) {
+                                return AddressRange(from: lowAddress, to: highAddress)
+                            }
+                            return nil
+                        })
+                    }
+                    // 后续申请的设备地址
+                    if let applyUnicastAddresses = provisionerJson["addrLists"]?.arrayObject as? [Int] {
+                        // 设备地址
+                        let applyUnicastRanges = applyUnicastAddresses.splitArray().compactMap { array in
+                            if let lowAddress = array.first, let highAddress = array.last {
+                                return AddressRange(from: UInt16(lowAddress), to: UInt16(highAddress))
+                            }
+                            return nil
+                        }
+                        allocatedUnicastRange.append(contentsOf: applyUnicastRanges)
+                    }
+                    
+                    // 组地址
+                    var allocatedGroupRange: [AddressRange] = []
+                    if let allocatedGroupRangeJson = provisionerJson["allocatedGroupRange"]?.array {
+                        allocatedGroupRange = allocatedGroupRangeJson.compactMap({
+                            if let lowAddressString = $0["lowAddress"].string, let lowAddress = Address(hex: lowAddressString),
+                               let highAddressString = $0["highAddress"].string, let highAddress = Address(hex: highAddressString) {
+                                return AddressRange(from: lowAddress, to: highAddress)
+                            }
+                            return nil
+                        })
+                    }
+                    // 后续申请的组地址
+                    if let applyGroupAddresses = provisionerJson["group"]?.arrayObject as? [Int] {
+                        // 组地址
+                        let applyGroupRanges = applyGroupAddresses.splitArray().compactMap { array in
+                            if let lowAddress = array.first, let highAddress = array.last {
+                                return AddressRange(from: UInt16(lowAddress), to: UInt16(highAddress))
+                            }
+                            return nil
+                        }
+                        allocatedGroupRange.append(contentsOf: applyGroupRanges)
+                    }
+                    
+                    
+                    // 场景地址
+                    var allocatedSceneRange: [SceneRange] = []
+                    if let allocatedSceneRangeJson = provisionerJson["allocatedSceneRange"]?.array {
+                        allocatedSceneRange = allocatedSceneRangeJson.compactMap({
+                            if let firstSceneString = $0["firstScene"].string, let firstScene = Address(hex: firstSceneString),
+                               let lastSceneString = $0["lastScene"].string, let lastScene = Address(hex: lastSceneString) {
+                                return SceneRange(from: firstScene, to: lastScene)
+                            }
+                            return nil
+                        })
+                    }
+                    // 后续申请的场景地址
+                    if let applySceneAddresses = provisionerJson["scene"]?.arrayObject as? [Int] {
+                        // 场景地址
+                        let applySceneRanges = applySceneAddresses.splitArray().compactMap { array in
+                            if let firstScene = array.first, let lastScene = array.last {
+                                return SceneRange(from: UInt16(firstScene), to: UInt16(lastScene))
+                            }
+                            return nil
+                        }
+                        allocatedSceneRange.append(contentsOf: applySceneRanges)
+                    }
+                    
+                    let provisioner = Provisioner(name: name ?? UserData.currentUserName, uuid: UUID(uuidString: uuid)!, allocatedUnicastRange: allocatedUnicastRange, allocatedGroupRange: allocatedGroupRange, allocatedSceneRange: allocatedSceneRange)
+                    localProvisioner = provisioner
+                }
+                
+                meshNetwork = MeshNetworkManager.createMeshNetwork(meshUUID: uuid, meshNetworkName: name, localAddress: self.localAddress, provisionerUUID: UserData.currentUserId, provisioner: localProvisioner).meshNetwork
+                if let deviceUsedAddresses = json["provisioner"]["usedAddresses"].arrayObject as? [String] {
+                    meshNetwork?.deviceUsedAddresses = deviceUsedAddresses.compactMap({ Address(hex: $0) })
+                }
+                
+                if let ivIndex = json["ivIndex"].uInt32 {
+                    meshNetwork?.currentIVIndex = ivIndex
+                }
+                meshNetwork?.add(networkKey: netKey)
+                try? appKey.bind(to: netKey)
+                meshNetwork?.add(applicationKey: appKey)
+                
+                // 废弃的设备地址
+                if let exclusions = json["exclusions"].array {
+                    let exclusionDataList = exclusions.compactMap({
+                        if let ivIndex = $0["ivIndex"].uInt32, let addresses = $0["addresses"].arrayObject as? [String] {
+                            return (ivIndex, addresses.compactMap({ Address(hex: $0) }))
+                        }
+                        return nil
+                    })
+                    meshNetwork?.setNetworkExclusionAddresses(list: exclusionDataList)
+                    // 判断是否使用了废弃地址
+                    //                if let localAddress = meshNetwork?.localProvisioner?.primaryUnicastAddress, exclusionDataList.contains(where: { $0.1.contains(localAddress) }) {
+                    //                    resetLocalAddress = true
+                    //                }
+                }
+                
+                // 是否卸载后重装APP，需要更新site手机地址
+                if UserData.isReinstallation {
+                    // 重新分配设备地址
+                    if let provisioner = meshNetwork?.localProvisioner, let newAddress = meshNetwork?.nextAvailableUnicastAddress(elementsCount: 1, elementsUsing: provisioner, lockInAddress: false) {
+                        //                    self.localAddress = newAddress
+                        
+                        do {
+                            if let lastAddress = provisioner.primaryUnicastAddress {
+                                meshNetwork?.insetExclusionAddress(ivIndex: meshNetwork!.currentIVIndex, address: lastAddress)
+                            }
+                            try meshNetwork?.changeLocalNodeAddress(newAddress)
+                            self.localAddress = meshNetwork?.localProvisioner?.primaryUnicastAddress
+                            self.lastUpdate = Int64(Date().timeIntervalSince1970)
+                        } catch {
+                            self.localAddress = nil
+                        }
+                    }else {
+                        self.localAddress = nil
+                    }
+                }
+                meshNetwork?.save()
+                
+            } else {
+                // 修改供应者地址资源
+                if let provisionerData = json["provisioner"].dictionaryObject {
+                    self.setProvisioner(provisionerData: provisionerData)
+                }
+                
+                // 更新废弃的设备地址
+                if let exclusions = json["exclusions"].array {
+                    let exclusionDataList = exclusions.compactMap({
+                        if let ivIndex = $0["ivIndex"].uInt32, let addresses = $0["addresses"].arrayObject as? [String] {
+                            return (ivIndex, addresses.compactMap({ Address(hex: $0) }))
+                        }
+                        return nil
+                    })
+                    meshNetwork?.setNetworkExclusionAddresses(list: exclusionDataList)
+                }
+                
+                if let ivIndex = json["ivIndex"].uInt32 {
+                    meshNetwork?.currentIVIndex = ivIndex
+                }
+                
+            }
         }
-        // TODO: Local Provisioner
-        
         if var spaceDicts = json["spaces"].arrayObject as? [[String: Any]] {
             var spaces: [SpaceData] = []
             while let dict = spaceDicts.first {
                 if let space = await SpaceData.import(siteId: uuid, spaceJsonData: dict) {
-                    spaceDicts.remove(at: 0)
                     spaces.append(space)
                 }
+                spaceDicts.remove(at: 0)
             }
             self.spaces = spaces
             self.spaceCount = nil
@@ -106,6 +277,252 @@ extension SiteData {
         self.save()
     }
     
+    /// 添加site内用户资源
+    func insetProvisioner(provisionerData: [String: Any]) {
+        
+        let provisionerJson = JSON(provisionerData)
+        
+        let currentNetwork = MeshNetworkManager.instance.meshNetwork?.uuid.uuidString == self.meshUUID ? MeshNetworkManager.instance.meshNetwork : nil
+        guard let meshNetwork = currentNetwork ?? MeshNetwork.load(meshUUID: self.meshUUID, allData: false) else { return }
+        // 如没有供应者，则新建一个
+        guard let localProvisioner = meshNetwork.localProvisioner else {
+            setProvisioner(provisionerData: provisionerData)
+            return
+        }
+        
+        if let deviceAddresses = provisionerJson["device"].arrayObject as? [Int] {
+            // 设备地址
+            let allocatedUnicastRange = deviceAddresses.splitArray().compactMap { array in
+                if let lowAddress = array.first, let highAddress = array.last {
+                    return AddressRange(from: UInt16(lowAddress), to: UInt16(highAddress))
+                }
+                return nil
+            }
+            try? localProvisioner.allocate(unicastAddressRanges: allocatedUnicastRange)
+            // 查看是否缺少手机地址
+            if let localAddress = localProvisioner.primaryUnicastAddress {
+                if self.localAddress != localAddress {
+                    self.localAddress = localAddress
+                    self.save()
+                }
+            }else if let localAddress = meshNetwork.nextAvailableUnicastAddress(elementsCount: 1, elementsUsing: localProvisioner, lockInAddress: false) { // 缺少手机地址自动分配一个
+                do {
+                    try meshNetwork.changeLocalNodeAddress(localAddress)
+                    self.localAddress = localAddress
+                    self.save()
+                } catch {
+                    print("set local address error: \(error)")
+                }
+            }
+        }
+        
+        if let groupAddresses = provisionerJson["group"].arrayObject as? [Int] {
+            // 组地址
+            let allocatedGroupRange = groupAddresses.splitArray().compactMap { array in
+                if let lowAddress = array.first, let highAddress = array.last {
+                    return AddressRange(from: UInt16(lowAddress), to: UInt16(highAddress))
+                }
+                return nil
+            }
+            try? localProvisioner.allocate(groupAddressRanges: allocatedGroupRange)
+        }
+        
+        if let sceneAddresses = provisionerJson["scene"].arrayObject as? [Int] {
+            // 场景地址
+            let allocatedSceneRange = sceneAddresses.splitArray().compactMap { array in
+                if let firstScene = array.first, let lastScene = array.last {
+                    return SceneRange(from: UInt16(firstScene), to: UInt16(lastScene))
+                }
+                return nil
+            }
+            try? localProvisioner.allocate(sceneRanges: allocatedSceneRange)
+        }
+        meshNetwork.save()
+    }
+    
+    /// 删除手机供应者地址
+    /// - Parameters:
+    ///   - deviceAddresses: 删除的设备地址
+    ///   - groupAddresses: 删除的组地址
+    ///   - sceneAddresses: 删除的场景地址
+    func deleteProvisionerAddress(deviceAddresses: [Int], groupAddresses: [Int], sceneAddresses: [Int]) {
+        let currentNetwork = MeshNetworkManager.instance.meshNetwork?.uuid.uuidString == self.meshUUID ? MeshNetworkManager.instance.meshNetwork : nil
+        guard let meshNetwork = currentNetwork ?? MeshNetwork.load(meshUUID: self.meshUUID, allData: false) else { return }
+        
+        let deallocatedUnicastRange = deviceAddresses.splitArray().compactMap { array in
+            if let lowAddress = array.first, let highAddress = array.last {
+                return AddressRange(from: UInt16(lowAddress), to: UInt16(highAddress))
+            }
+            return nil
+        }
+        deallocatedUnicastRange.forEach({
+            meshNetwork.localProvisioner?.deallocate(unicastAddressRange: $0)
+        })
+        
+        // 组地址
+        let deallocatedGroupRange = groupAddresses.splitArray().compactMap { array in
+            if let lowAddress = array.first, let highAddress = array.last {
+                return AddressRange(from: UInt16(lowAddress), to: UInt16(highAddress))
+            }
+            return nil
+        }
+        deallocatedGroupRange.forEach({
+            meshNetwork.localProvisioner?.deallocate(groupAddressRange: $0)
+        })
+        
+        // 场景地址
+        let deallocatedSceneRange = sceneAddresses.splitArray().compactMap { array in
+            if let firstScene = array.first, let lastScene = array.last {
+                return SceneRange(from: UInt16(firstScene), to: UInt16(lastScene))
+            }
+            return nil
+        }
+        deallocatedSceneRange.forEach({
+            meshNetwork.localProvisioner?.deallocate(sceneRange: $0)
+        })
+        meshNetwork.save()
+    }
+    
+    
+    /// 设置site所有者用户地址数据（覆盖）
+    func setOwnerProvisioner(addressData: [String: Any]) {
+        
+        let addressJson = JSON(addressData)
+        let currentNetwork = MeshNetworkManager.instance.meshNetwork?.uuid.uuidString == self.meshUUID ? MeshNetworkManager.instance.meshNetwork : nil
+        guard let meshNetwork = currentNetwork ?? MeshNetwork.load(meshUUID: self.meshUUID, allData: false),
+              let deviceAddressCount = addressJson["ownerDevicesAddress"].int,
+              let groupAddressCount = addressJson["ownerGroupsAddress"].int,
+              let sceneAddressCount = addressJson["ownerScenesAddress"].int else {
+            return
+        }
+        
+        let deviceAddressRange = AddressRange(from: Address.minUnicastAddress, to: Address.minUnicastAddress + UInt16(deviceAddressCount))
+        let groupAddressRange = AddressRange(from: Address.minGroupAddress, to: Address.minGroupAddress + UInt16(groupAddressCount))
+        let sceneAddressRange = SceneRange(from: Address.minScene, to: Address.minUnicastAddress + UInt16(sceneAddressCount))
+        
+        let localProvisioner = meshNetwork.localProvisioner
+        
+        let provisioner = Provisioner(name: localProvisioner?.name ?? UserData.currentUserName, uuid: localProvisioner?.uuid ?? UUID(uuidString: UserData.currentUserId)!, allocatedUnicastRange: [deviceAddressRange], allocatedGroupRange: [groupAddressRange], allocatedSceneRange: [sceneAddressRange])
+        // 修改供应者地址
+        if localProvisioner?.uuid.uuidString == provisioner.uuid.uuidString && localProvisioner?.primaryUnicastAddress != nil {
+            try? meshNetwork.changeProvisioner(provisioner)
+        }else {
+            let address = localProvisioner?.primaryUnicastAddress ?? meshNetwork.nextAvailableUnicastAddress(elementsCount: 1, elementsUsing: provisioner, lockInAddress: false)
+            try? meshNetwork.changeProvisioner(provisioner, localAddress: address)
+            self.localAddress = address
+            self.save()
+        }
+        meshNetwork.save()
+    }
+    
+    /// 设置site内用户资源（覆盖）
+    func setProvisioner(provisionerData: [String: Any]) {
+        
+        let provisionerJson = JSON(provisionerData)
+        let currentNetwork = MeshNetworkManager.instance.meshNetwork?.uuid.uuidString == self.meshUUID ? MeshNetworkManager.instance.meshNetwork : nil
+        guard let meshNetwork = currentNetwork ?? MeshNetwork.load(meshUUID: self.meshUUID, allData: false) else {
+            return
+        }
+        
+        // 设备地址
+        var allocatedUnicastRange: [AddressRange] = []
+        if let allocatedUnicastRangeJson = provisionerJson["allocatedUnicastRange"].array {
+            allocatedUnicastRange = allocatedUnicastRangeJson.compactMap({
+                if let lowAddressString = $0["lowAddress"].string, let lowAddress = Address(hex: lowAddressString),
+                   let highAddressString = $0["highAddress"].string, let highAddress = Address(hex: highAddressString) {
+                    return AddressRange(from: lowAddress, to: highAddress)
+                }
+                return nil
+            })
+        }
+        // 后续申请的设备地址
+        if let applyUnicastAddresses = provisionerJson["allocatedUnicastAddress"].arrayObject as? [Int] {
+            // 设备地址
+            let applyUnicastRanges = applyUnicastAddresses.splitArray().compactMap { array in
+                if let lowAddress = array.first, let highAddress = array.last {
+                    return AddressRange(from: UInt16(lowAddress), to: UInt16(highAddress))
+                }
+                return nil
+            }
+            allocatedUnicastRange.append(contentsOf: applyUnicastRanges)
+        }
+        
+        // 组地址
+        var allocatedGroupRange: [AddressRange] = []
+        if let allocatedGroupRangeJson = provisionerJson["allocatedGroupRange"].array {
+            allocatedGroupRange = allocatedGroupRangeJson.compactMap({
+                if let lowAddressString = $0["lowAddress"].string, let lowAddress = Address(hex: lowAddressString),
+                   let highAddressString = $0["highAddress"].string, let highAddress = Address(hex: highAddressString) {
+                    return AddressRange(from: lowAddress, to: highAddress)
+                }
+                return nil
+            })
+        }
+        // 后续申请的组地址
+        if let applyGroupAddresses = provisionerJson["allocatedGroupRange"].arrayObject as? [Int] {
+            // 组地址
+            let applyGroupRanges = applyGroupAddresses.splitArray().compactMap { array in
+                if let lowAddress = array.first, let highAddress = array.last {
+                    return AddressRange(from: UInt16(lowAddress), to: UInt16(highAddress))
+                }
+                return nil
+            }
+            allocatedGroupRange.append(contentsOf: applyGroupRanges)
+        }
+        
+        
+        // 场景地址
+        var allocatedSceneRange: [SceneRange] = []
+        if let allocatedSceneRangeJson = provisionerJson["allocatedSceneRange"].array {
+            allocatedSceneRange = allocatedSceneRangeJson.compactMap({
+                if let firstSceneString = $0["firstScene"].string, let firstScene = Address(hex: firstSceneString),
+                   let lastSceneString = $0["lastScene"].string, let lastScene = Address(hex: lastSceneString) {
+                    return SceneRange(from: firstScene, to: lastScene)
+                }
+                return nil
+            })
+        }
+        // 后续申请的场景地址
+        if let applySceneAddresses = provisionerJson["allocatedSceneRange"].arrayObject as? [Int] {
+            // 场景地址
+            let applySceneRanges = applySceneAddresses.splitArray().compactMap { array in
+                if let firstScene = array.first, let lastScene = array.last {
+                    return SceneRange(from: UInt16(firstScene), to: UInt16(lastScene))
+                }
+                return nil
+            }
+            allocatedSceneRange.append(contentsOf: applySceneRanges)
+        }
+        
+        let localProvisioner = meshNetwork.localProvisioner
+        
+        let provisioner = Provisioner(name: localProvisioner?.name ?? UserData.currentUserName, uuid: localProvisioner?.uuid ?? UUID(uuidString: UserData.currentUserId)!, allocatedUnicastRange: allocatedUnicastRange, allocatedGroupRange: allocatedGroupRange, allocatedSceneRange: allocatedSceneRange)
+        // 修改供应者地址
+        if localProvisioner?.uuid.uuidString == provisioner.uuid.uuidString && localProvisioner?.primaryUnicastAddress != nil {
+            try? meshNetwork.changeProvisioner(provisioner)
+        }else {
+            let address = localProvisioner?.primaryUnicastAddress ?? meshNetwork.nextAvailableUnicastAddress(elementsCount: 1, elementsUsing: provisioner, lockInAddress: false)
+            try? meshNetwork.changeProvisioner(provisioner, localAddress: address)
+            self.localAddress = address
+            self.save()
+        }
+        meshNetwork.save()
+    }
+    
+    /// 新增网络废弃地址
+    func insetExclusionAddresses(list: [(ivIndex: UInt32, addresses: [Address])]) {
+        
+        let currentNetwork = MeshNetworkManager.instance.meshNetwork?.uuid.uuidString == self.meshUUID ? MeshNetworkManager.instance.meshNetwork : nil
+        guard let meshNetwork = currentNetwork ?? MeshNetwork.load(meshUUID: self.meshUUID, allData: false) else {
+            return
+        }
+        list.forEach { (ivIndex: UInt32, addresses: [Address]) in
+            addresses.forEach { address in
+                meshNetwork.insetExclusionAddress(ivIndex: ivIndex, address: address)
+            }
+        }
+        
+    }
     
 }
 
@@ -118,48 +535,52 @@ extension SpaceData {
     /// - Returns: space
     static func `import`(siteId: String, spaceJsonData: [String: Any]) async -> SpaceData? {
         
-//       return await withCheckedContinuation { continuation in
-            let json = JSON(spaceJsonData)
-            guard let uuid = json["uuid"].string,
-                  let name = json["spaceName"].string else {
+        //       return await withCheckedContinuation { continuation in
+        let json = JSON(spaceJsonData)
+        guard let uuid = json["uuid"].string,
+              let name = json["spaceName"].string else {
+            return nil
+        }
+        
+        var space = SpaceData.load(siteId: siteId, spaceId: uuid).first
+        if space == nil{
+            guard let netKeyDict = json["netKey"].dictionaryObject,
+                  let netKeyData = try? JSONSerialization.data(withJSONObject: netKeyDict),
+                  let netKey = try? jsonDecoder.decode(NetworkKey.self, from: netKeyData),
+                  let appKeyDict = json["appKey"].dictionaryObject,
+                  let appKeyData = try? JSONSerialization.data(withJSONObject: appKeyDict),
+                  let appKey = try? jsonDecoder.decode(ApplicationKey.self, from: appKeyData),
+                  let meshNetwork = MeshNetwork.load(meshUUID: siteId, allData: false) else {
+                //                    continuation.resume(returning: nil)
                 return nil
             }
             
-            var space = SpaceData.load(siteId: siteId, spaceId: uuid).first
-            if space == nil{
-                guard let netKeyDict = json["netKey"].dictionaryObject,
-                      let netKeyData = try? JSONSerialization.data(withJSONObject: netKeyDict),
-                      let netKey = try? jsonDecoder.decode(NetworkKey.self, from: netKeyData),
-                      let appKeyDict = json["appKey"].dictionaryObject,
-                      let appKeyData = try? JSONSerialization.data(withJSONObject: appKeyDict),
-                      let appKey = try? jsonDecoder.decode(ApplicationKey.self, from: appKeyData),
-                      let meshNetwork = MeshNetwork.load(meshUUID: siteId, allData: false) else {
-//                    continuation.resume(returning: nil)
-                    return nil
-                }
-                
-                if !meshNetwork.networkKeys.contains(where: { $0.index == netKey.index }) {
-                    meshNetwork.add(networkKey: netKey)
-                    meshNetwork.add(applicationKey: appKey)
-                    meshNetwork.save()
-                }
-                
-                var permission: Permission = .visitor
-                if json["role"].string == "owner" {
-                    permission = .owner
-                }
-                
-                let newSpace = SpaceData(name: name, id: uuid, siteId: siteId, imageId: 0, create: json["createTimestamp"].int64Value, lastUpdate: json["updateTimestamp"].int64Value, isFavourite: false, permission: permission, sourceType: .share, meshUUID: siteId, meshNetworkId: netKey.networkId.hex)
-                space = newSpace
+            if !meshNetwork.networkKeys.contains(where: { $0.index == netKey.index }) {
+                meshNetwork.add(networkKey: netKey)
+                meshNetwork.add(applicationKey: appKey)
+                meshNetwork.save()
             }
-//            Task {
-                await space?.update(spaceJsonData: spaceJsonData)
-//                continuation.resume(returning: space)
-//            }
-            return space
-//        }
+            
+            var permission: Permission = .visitor
+            switch json["role"].string {
+            case "owner":
+                permission = .owner
+            case "editor":
+                permission = .editor
+            default:
+                break
+            }
+            let newSpace = SpaceData(name: name, id: uuid, siteId: siteId, imageId: 0, create: json["createTimestamp"].int64Value, lastUpdate: json["updateTimestamp"].int64Value, isFavourite: false, permission: permission, sourceType: .share, meshUUID: siteId, meshNetworkId: netKey.networkId.hex)
+            space = newSpace
+        }
+        //            Task {
+        await space?.update(spaceJsonData: spaceJsonData)
+        //                continuation.resume(returning: space)
+        //            }
+        return space
+        //        }
     }
- 
+    
     /// 更新空间内基本数据+设备、组、场景、日程
     /// - Parameter spaceJsonData: 空间数据
     func update(spaceJsonData: [String: Any]) async {
@@ -172,15 +593,74 @@ extension SpaceData {
                   let groupDicts = json["groups"].arrayObject as? [[String: Any]],
                   let sceneDicts = json["scenes"].arrayObject as? [[String: Any]],
                   let scheduleDicts = json["schedules"].arrayObject as? [[String: Any]] else {
-//                return
+                //                return
                 continuation.resume()
                 return
             }
             
+            // 分享id
+            if let shareId = json["shareId"].string {
+                self.shareCode = shareId
+            }
+            // 是否启用访客密码
+            if let vistorPasswordEnable = json["visitProtected"].bool {
+                self.vistorPasswordEnable = vistorPasswordEnable
+            }
+            
+            // 权限
+            if let role = json["role"].string {
+                var permission: Permission = .visitor
+                switch role {
+                case "owner":
+                    permission = .owner
+                case "editor":
+                    permission = .editor
+                default:
+                    break
+                }
+                self.permission = permission
+            }
+            
+            if let userId = json["owner"]["userId"].string, let userName = json["owner"]["username"].string {
+                self.owner = .init(name: userName, uuid: userId)
+            }else {
+                self.owner = nil
+            }
+            
+            if let userId = json["editor"]["userId"].string, let userName = json["editor"]["username"].string {
+                self.editor = .init(name: userName, uuid: userId)
+            }else {
+                self.editor = nil
+            }
+            // 访客数据
+            if let visitors = json["visitors"].arrayObject as? [[String: Any]] {
+                self.visitors = visitors.compactMap({
+                    let visitorJson = JSON($0)
+                    if let userId = $0["userId"] as? String, let userName = $0["username"] as? String {
+                        return UserData(name: userName, uuid: userId)
+                    }
+                    return nil
+                })
+            }
+            
+            if self.state == .waitDeleted {
+                self.state = .normal
+            }
+            // 用户事件
+            if let events = json["userEvents"].arrayObject as? [String] {
+                var requiresPasswordVerification = false
+                // 密码被修改
+                if (self.permission == .editor && events.contains("EditorPasswdChanged")) || (self.permission == .visitor && events.contains("VisitorPasswdChanged")) {
+                    requiresPasswordVerification = true
+                }
+                self.requiresPasswordVerification = requiresPasswordVerification
+            }
+            
+            
             let lastUpdate = json["updateTimestamp"].int64Value
             // 服务器最后更新时间比本地时间新才覆盖本地数据
             guard lastUpdate >= self.lastUpdate else {
-//                return
+                //                return
                 continuation.resume()
                 return
             }
@@ -198,25 +678,26 @@ extension SpaceData {
             self.name = json["spaceName"].stringValue
             self.imageId = json["imageId"].intValue
             self.sourceType = .init(rawValue: json["source"].intValue) ?? .create
-            self.isFavourite = json["favourite"].boolValue
+            //            self.isFavourite = json["favourite"].boolValue
             self.create = json["createTimestamp"].int64Value
             self.lastUpdate = json["updateTimestamp"].int64Value
-            if self.lastUploadCloudTimestamp == nil {
-                self.lastUploadCloudTimestamp = self.lastUpdate
-            }
-            
-            if self.state == .waitDeleted {
-                self.state = .normal
-            }
+            //            if self.lastUploadCloudTimestamp == nil {
+            self.lastUploadCloudTimestamp = self.lastUpdate
+            //            }
             
             let localNodes = Node.load(meshUUID: self.meshUUID, subnetworkId: self.meshNetworkId)
             
             network.nodes.filter({ !$0.isLocalProvisioner }).forEach { node in
-                network.remove(node: node)
+                network.forceRemove(node: node)
+                node.deleteExtension()
             }
             // 设备
             let nodes = nodeDicts.compactMap { nodeDict in
-                if let data = try? JSONSerialization.data(withJSONObject: nodeDict), var node = try? jsonDecoder.decode(Node.self, from: data) {
+                var decodeNodeDict = nodeDict
+                if let uuid = nodeDict["uuid"] as? String { // 换算成大写UUID提供Node解码
+                    decodeNodeDict.updateValue(uuid, forKey: "UUID")
+                }
+                if let data = try? JSONSerialization.data(withJSONObject: decodeNodeDict), var node = try? jsonDecoder.decode(Node.self, from: data) {
                     let nodeJson = JSON(nodeDict)
                     if let version = nodeJson["versionSEQ"].uInt32 {
                         node.versionSEQ = version
@@ -291,7 +772,6 @@ extension SpaceData {
             nodes.forEach({
                 try? network.add(node: $0)
             })
-            
             
             while network.scenes.count > 0 {
                 network.forceRemove(scene: network.scenes.first!.number)

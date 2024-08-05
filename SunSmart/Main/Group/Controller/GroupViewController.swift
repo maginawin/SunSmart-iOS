@@ -43,6 +43,8 @@ class GroupViewController: UIViewController {
         self.space = space
         self.group = group
         super.init(nibName: nil, bundle: nil)
+        
+        MeshLibManager.manager.addObserver(self, forKeyPath: "isMeshNetworkConnected", context: nil)
     }
     
     required init?(coder: NSCoder) {
@@ -86,6 +88,7 @@ class GroupViewController: UIViewController {
         //            devices.append("ID \(i)")
         //        }
         
+        
         addNotificationObserver()
         
         if let sensor = self.group.info.ambientLightSensorNode {
@@ -120,7 +123,7 @@ class GroupViewController: UIViewController {
 //        updateEmptyUI()
         updateUI()
         
-        MeshLibManager.manager.register(self)
+        MeshLibManager.manager.messageDelegate = self
         
     }
     
@@ -132,6 +135,8 @@ class GroupViewController: UIViewController {
     deinit {
         automationTimer?.invalidate()
         automationTimer = nil
+        
+        MeshLibManager.manager.removeObserver(self, forKeyPath: "isMeshNetworkConnected")
     }
     
     override func viewWillDisappear(_ animated: Bool) {
@@ -167,6 +172,17 @@ class GroupViewController: UIViewController {
             self.updateUI()
         }
         
+    }
+    
+    override func observeValue(forKeyPath keyPath: String?, of object: Any?, change: [NSKeyValueChangeKey : Any]?, context: UnsafeMutableRawPointer?) {
+        
+        if MeshLibManager.manager.isMeshNetworkConnected {
+            onoffBtn.isEnabled = true
+        }else {
+            if group.nodes.count > 0 {
+                onoffBtn.isEnabled = false
+            }
+        }
     }
     
     @objc private func close() {
@@ -207,7 +223,7 @@ class GroupViewController: UIViewController {
         }
         
         if messageHandles.count > 0 {
-            MeshLibManager.manager.register(self)
+            MeshLibManager.manager.messageDelegate = self
             
             MeshProxyMessageCommand.shared.stopSendMessage(finishedBack: nil)
             MeshProxyMessageCommand.shared.addMessage(messageHandles: messageHandles, finishedBack: nil)
@@ -764,17 +780,7 @@ extension GroupViewController: UICollectionViewDataSource, UICollectionViewDeleg
     
 }
 
-extension GroupViewController: MeshLibManagerDelegate {
-    
-    func meshNetworkManager(_ manager: MeshNetworkManager, bearerDidOpen bearer: Bearer) {
-        onoffBtn.isEnabled = true
-    }
-    
-    func meshNetworkManager(_ manager: MeshNetworkManager, bearerDidClose bearer: Bearer) {
-        if group.nodes.count > 0 {
-            onoffBtn.isEnabled = false
-        }
-    }
+extension GroupViewController: MeshLibManagerMessageDelegate {
     
     func meshNetworkManager(_ manager: MeshNetworkManager, deviceDataUpdate node: Node) {
         if group.nodes.contains(node) {

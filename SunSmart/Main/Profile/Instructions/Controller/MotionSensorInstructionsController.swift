@@ -163,7 +163,7 @@ extension MotionSensorInstructionsController {
             case .occpancyLevel:
                 return "profile_occupancy_level".localizedString
             case .vacantLevel:
-                return "profile_vacancy_level".localizedString
+                return "profile_vacant_level".localizedString
             case .autoMinValue:
                 return "profile_auto_min_value".localizedString
             case .taskLevel:

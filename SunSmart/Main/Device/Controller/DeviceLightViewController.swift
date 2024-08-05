@@ -29,7 +29,7 @@ class DeviceLightViewController: UIViewController {
     private var replyLabel: UILabel!
     private var replySwitch: UISwitch!
     
-    private var lastMeshDelegate: MeshLibManagerDelegate?
+    private var lastMessageDelegate: MeshLibManagerMessageDelegate?
     
     let space: SpaceData
     let node: Node
@@ -50,7 +50,7 @@ class DeviceLightViewController: UIViewController {
         title = node.name
         view.backgroundColor = Background_Color
         
-        self.lastMeshDelegate = MeshLibManager.manager.delegate
+        self.lastMessageDelegate = MeshLibManager.manager.messageDelegate
 
         if self.presentingViewController != nil && navigationController?.viewControllers.count ?? 0 == 1 {
             
@@ -102,7 +102,7 @@ class DeviceLightViewController: UIViewController {
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
         
-        MeshLibManager.manager.register(self)
+        MeshLibManager.manager.messageDelegate = self
         
         // 更新数据
         updateData()
@@ -112,7 +112,7 @@ class DeviceLightViewController: UIViewController {
     override func viewDidDisappear(_ animated: Bool) {
         super.viewDidDisappear(animated)
         
-        MeshLibManager.manager.register(self.lastMeshDelegate)
+        MeshLibManager.manager.messageDelegate = self.lastMessageDelegate
         
         NotificationCenter.default.post(name: .init(deviceStateUpdateNotificationName), object: self.node)
     }
@@ -289,7 +289,7 @@ class DeviceLightViewController: UIViewController {
                 DispatchQueue.main.asyncAfter(wallDeadline: .now() + 1) {
                     NotificationCenter.default.post(name: .init(devicesUpdateNotificationName), object: nil)
                     // 通知space数据修改
-                    NotificationCenter.default.post(name: .init(spaceDataChangedNotificaitonName), object: SpaceChangeDataType.device)
+                    NotificationCenter.default.post(name: .init(spaceDataChangedNotificaitonName), object: SpaceChangeDataType.network(type: .address))
                     self?.backAction()
                 }
             } resetFail: { _, error in
@@ -307,7 +307,8 @@ class DeviceLightViewController: UIViewController {
                     DispatchQueue.main.asyncAfter(wallDeadline: .now() + 1) {[weak self] in
                         NotificationCenter.default.post(name: .init(devicesUpdateNotificationName), object: nil)
                         // 通知space数据修改
-                        NotificationCenter.default.post(name: .init(spaceDataChangedNotificaitonName), object: SpaceChangeDataType.device)
+//                        NotificationCenter.default.post(name: .init(spaceDataChangedNotificaitonName), object: SpaceChangeDataType.device)
+                        NotificationCenter.default.post(name: .init(spaceDataChangedNotificaitonName), object: SpaceChangeDataType.network(type: .address))
                         self?.backAction()
                     }
                 })])
@@ -616,7 +617,7 @@ class DeviceLightViewController: UIViewController {
 
 }
 
-extension DeviceLightViewController: MeshLibManagerDelegate {
+extension DeviceLightViewController: MeshLibManagerMessageDelegate {
     
     func meshNetworkManager(_ manager: MeshNetworkManager, deviceDataUpdate node: Node) {
         if node.primaryUnicastAddress == self.node.primaryUnicastAddress {

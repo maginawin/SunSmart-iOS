@@ -64,6 +64,10 @@ extension SiteData {
         static let syncCloudError = Expression<Int?>("syncCloudError")
         static let state = Expression<Int>("state")
         static let spaceCount = Expression<Int?>("spaceCount")
+        static let transferCode = Expression<String?>("transferCode")
+        static let transferPassword = Expression<String?>("transferPassword")
+        static let localAddress = Expression<Int?>("localAddress")
+        static let recycleAddressData = Expression<Data?>("recycleAddressData")
     }
     
     /// 初始化场所表
@@ -85,6 +89,10 @@ extension SiteData {
             builder.column(ExpressionKey.syncCloudError)
             builder.column(ExpressionKey.state)
             builder.column(ExpressionKey.spaceCount)
+            builder.column(ExpressionKey.transferCode)
+            builder.column(ExpressionKey.transferPassword)
+            builder.column(ExpressionKey.localAddress)
+            builder.column(ExpressionKey.recycleAddressData)
         }))
         
         SpaceData.initDatabase()
@@ -107,6 +115,16 @@ extension SiteData {
                 }
                 site.state = .init(rawValue: row[ExpressionKey.state]) ?? .normal
                 site.spaceCount = row[ExpressionKey.spaceCount]
+                site.transferCode = row[ExpressionKey.transferCode]
+                site.transferPassword = row[ExpressionKey.transferPassword]
+                // 手机正在使用的地址
+                if let address = row[ExpressionKey.localAddress] {
+                    site.localAddress = Address(address)
+                }
+                // site未回收的地址
+                if let data = row[ExpressionKey.recycleAddressData], let recycleAddressData = try? jsonDecoder.decode(RecycleAddressData.self, from: data) {
+                    site.recycleAddressData = recycleAddressData
+                }
                 sites.append(site)
             }
         }
@@ -136,6 +154,16 @@ extension SiteData {
                 }
                 site?.state = .init(rawValue: row[ExpressionKey.state]) ?? .normal
                 site?.spaceCount = row[ExpressionKey.spaceCount]
+                site?.transferCode = row[ExpressionKey.transferCode]
+                site?.transferPassword = row[ExpressionKey.transferPassword]
+                // 手机正在使用的地址
+                if let address = row[ExpressionKey.localAddress] {
+                    site?.localAddress = Address(address)
+                }
+                // site未回收的地址
+                if let data = row[ExpressionKey.recycleAddressData], let recycleAddressData = try? jsonDecoder.decode(RecycleAddressData.self, from: data) {
+                    site?.recycleAddressData = recycleAddressData
+                }
                 break
             }
         }
@@ -272,6 +300,11 @@ extension SiteData {
     @discardableResult func save(allData: Bool = false) -> Bool {
         
         let table = SiteData.sitesTable
+        var recycleAddressData: Data?
+        if self.recycleAddressData != nil {
+            recycleAddressData = try? jsonEncoder.encode(recycleAddressData!)
+        }
+        
         let insetOrUpdate = table.insert(or: .replace, [
             ExpressionKey.uuid <- self.id,
             ExpressionKey.name <- self.name,
@@ -286,7 +319,11 @@ extension SiteData {
             ExpressionKey.regionType <- UserData.currentServerRegion.rawValue,
             ExpressionKey.syncCloudError <- self.syncCloudError?.code,
             ExpressionKey.state <- self.state.rawValue,
-            ExpressionKey.spaceCount <- self.spaceCount
+            ExpressionKey.spaceCount <- self.spaceCount,
+            ExpressionKey.transferCode <- self.transferCode,
+            ExpressionKey.transferPassword <- self.transferPassword,
+            ExpressionKey.localAddress <- self.localAddress != nil ? Int(self.localAddress!) : nil,
+            ExpressionKey.recycleAddressData <- recycleAddressData
         ])
         do {
             try SunSmartDataManager.shared.db?.run(insetOrUpdate)
@@ -328,6 +365,14 @@ extension SpaceData {
         static let lastUploadCloudTimestamp = Expression<Int64?>("lastUploadCloudTimestamp")
         static let syncCloudError = Expression<Int?>("syncCloudError")
         static let state = Expression<Int>("state")
+        static let editorPassword = Expression<String?>("editorPassword")
+        static let vistorPassword = Expression<String?>("vistorPassword")
+        static let authorizationPassword = Expression<String?>("authorizationPassword")
+        static let requiresPasswordVerification = Expression<Bool>("requiresPasswordVerification")
+        static let vistorPasswordEnable = Expression<Bool>("vistorPasswordEnable")
+        static let shareCode = Expression<String?>("shareCode")
+        static let applyDeviceAddressCount = Expression<Int?>("applyDeviceAddressCount")
+        static let isReleaseAddress = Expression<Bool?>("isReleaseAddress")
     }
     
     /// 初始化空间表
@@ -355,12 +400,21 @@ extension SpaceData {
             builder.column(ExpressionKey.lastUploadCloudTimestamp)
             builder.column(ExpressionKey.syncCloudError)
             builder.column(ExpressionKey.state)
+            builder.column(ExpressionKey.editorPassword)
+            builder.column(ExpressionKey.vistorPassword)
+            builder.column(ExpressionKey.authorizationPassword)
+            builder.column(ExpressionKey.requiresPasswordVerification)
+            builder.column(ExpressionKey.vistorPasswordEnable)
+            builder.column(ExpressionKey.shareCode)
+            builder.column(ExpressionKey.applyDeviceAddressCount)
+            builder.column(ExpressionKey.isReleaseAddress)
         }))
         GroupInfo.initDatabase()
         Profile.initDatabase()
         SceneInfo.initDatabase()
         Schedule.initDatabase()
         GroupSwitch.initDatabase()
+        UserData.initDatabase()
     }
  
     
@@ -393,6 +447,16 @@ extension SpaceData {
                     space.syncCloudError = .init(code: errorCode)
                 }
                 space.state = .init(rawValue: row[ExpressionKey.state]) ?? .normal
+                space.editorPassword = row[ExpressionKey.editorPassword]
+                space.vistorPassword = row[ExpressionKey.vistorPassword]
+                space.authorizationPassword = row[ExpressionKey.authorizationPassword]
+                space.requiresPasswordVerification = row[ExpressionKey.requiresPasswordVerification]
+                space.vistorPasswordEnable = row[ExpressionKey.vistorPasswordEnable]
+                space.editor = UserData.load(spaceId: space.id, permisson: .editor).first
+                space.visitors = UserData.load(spaceId: space.id, permisson: .visitor)
+                space.shareCode = row[ExpressionKey.shareCode]
+                space.applyDeviceAddressCount = row[ExpressionKey.applyDeviceAddressCount]
+                space.releaseAddress = row[ExpressionKey.isReleaseAddress] ?? false
                 spaces.append(space)
             }
         }
@@ -451,10 +515,28 @@ extension SpaceData {
             ExpressionKey.lastUpdateTimestamp <- self.lastUpdate,
             ExpressionKey.lastUploadCloudTimestamp <- self.lastUploadCloudTimestamp,
             ExpressionKey.syncCloudError <- self.syncCloudError?.code,
-            ExpressionKey.state <- self.state.rawValue
+            ExpressionKey.state <- self.state.rawValue,
+            ExpressionKey.editorPassword <- self.editorPassword,
+            ExpressionKey.vistorPassword <- self.vistorPassword,
+            ExpressionKey.authorizationPassword <- self.authorizationPassword,
+            ExpressionKey.requiresPasswordVerification <- self.requiresPasswordVerification,
+            ExpressionKey.vistorPasswordEnable <- self.vistorPasswordEnable,
+            ExpressionKey.shareCode <- self.shareCode,
+            ExpressionKey.applyDeviceAddressCount <- self.applyDeviceAddressCount,
+            ExpressionKey.isReleaseAddress <- self.releaseAddress
         ])
         do {
             try SunSmartDataManager.shared.db?.run(interOrUpdate)
+            
+            // 更新editor、visitor用户数据
+            UserData.delete(spaceId: self.id)
+            if let editorUser = self.editor {
+                editorUser.save(spaceId: self.id, permisson: .editor)
+            }
+            self.visitors.forEach({
+                $0.save(spaceId: self.id, permisson: .visitor)
+            })
+            
         } catch {
             print(error)
             return false
@@ -548,6 +630,96 @@ extension SpaceData {
             return true
         }
         return false
+    }
+    
+}
+
+extension UserData {
+    
+    private static let usersTable = Table("users")
+    
+    struct ExpressionKey {
+        static let id = Expression<Int64>("id")
+        static let spaceId = Expression<String>("spaceId")
+        static let userId = Expression<String>("userId")
+        static let name = Expression<String>("name")
+        static let permisson = Expression<Int>("permisson")
+    }
+    
+    /// 初始化空间表
+    static func initDatabase() {
+        
+        _ = try? SunSmartDataManager.shared.db?.run(UserData.usersTable.create(temporary: false, ifNotExists: true, withoutRowid: false, block: { builder in
+            builder.column(ExpressionKey.id, primaryKey: true)
+            builder.column(ExpressionKey.spaceId)
+            builder.column(ExpressionKey.userId)
+            builder.column(ExpressionKey.name)
+            builder.column(ExpressionKey.permisson)
+            builder.unique(ExpressionKey.spaceId, ExpressionKey.userId)
+        }))
+    }
+    
+    /// 根据空间id获取对应权限的用户数据
+    /// - Parameter spaceId: 空间id
+    /// - Parameter permisson: 对应权限
+    /// - Returns: 用户数据list
+    static func load(spaceId: String, permisson: Permission) -> [UserData] {
+        
+        let predicate: Expression<Bool> = ExpressionKey.spaceId == spaceId && ExpressionKey.permisson == permisson.rawValue
+        let filter = UserData.usersTable.filter(predicate)
+        var users: [UserData] = []
+        if let rows = try? SunSmartDataManager.shared.db?.prepare(filter) {
+            for row in rows {
+                let user = UserData(name: row[ExpressionKey.name], uuid: row[ExpressionKey.userId])
+                users.append(user)
+            }
+        }
+        return users
+    }
+ 
+    /// 删除用户
+    /// - Parameters:
+    ///   - spaceId: 空间id
+    ///   - permisson: 用户权限（传入删除空间下拥有该权限的用户）二选一
+    ///   - userId: 用户id（传入删除空间下对应用户）二选一
+    /// - Returns: 是否成功
+    @discardableResult static func delete(spaceId: String, permisson: Permission? = nil, userId: String? = nil) -> Bool {
+        
+        var predicate: Expression<Bool> = ExpressionKey.spaceId == spaceId
+        if userId != nil {
+            predicate = ExpressionKey.spaceId == spaceId && ExpressionKey.userId == userId!
+        } else if permisson != nil {
+            predicate = ExpressionKey.spaceId == spaceId && ExpressionKey.permisson == permisson!.rawValue
+        }
+        let filter = UserData.usersTable.filter(predicate)
+        do {
+            try SunSmartDataManager.shared.db?.run(filter.delete())
+        } catch {
+            print(error)
+            return false
+        }
+        return true
+    }
+    
+    /// 保存用户数据
+    /// - Parameter spaceId: 空间id
+    /// - Parameter permisson: 权限
+    /// - Returns: 是否成功
+    @discardableResult func save(spaceId: String, permisson: Permission) -> Bool {
+        
+        let interOrUpdate = UserData.usersTable.insert(or: .replace, [
+            ExpressionKey.spaceId <- spaceId,
+            ExpressionKey.userId <- self.uuid,
+            ExpressionKey.name <- self.name,
+            ExpressionKey.permisson <- permisson.rawValue
+        ])
+        do {
+            try SunSmartDataManager.shared.db?.run(interOrUpdate)
+        } catch {
+            print(error)
+            return false
+        }
+        return true
     }
     
 }

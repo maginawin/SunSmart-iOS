@@ -15,7 +15,7 @@ class AdjustSpeedInstructionController: UIViewController {
     override func viewDidLoad() {
         super.viewDidLoad()
         self.isModalInPresentation = true
-        title = "power_up_behavior_instruction_title".localizedString
+        title = "adjust_speed_instruction".localizedString
         navigationController?.setNavigationBarBackgroundColor(color: Background_Color)
         
         view.backgroundColor = Background_Color

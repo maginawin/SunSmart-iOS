@@ -49,7 +49,7 @@ class HorizontalDirectionFlowLayout: UICollectionViewFlowLayout {
         // 0  3  6      0  1  2
         // 1  4  7  =>  3  4  5
         // 2  5  8      6  7  8
-        guard scrollDirection == .horizontal, var attributes = super.layoutAttributesForItem(at: indexPath) else {
+        guard scrollDirection == .horizontal, let attributes = super.layoutAttributesForItem(at: indexPath) else {
             return super.layoutAttributesForItem(at: indexPath)
         }
         
@@ -58,8 +58,8 @@ class HorizontalDirectionFlowLayout: UICollectionViewFlowLayout {
         let itemX = indexPath.item % self.itmeColCount + page * self.itmeColCount //
         let itemY = indexPath.item / self.itmeColCount - page * self.itemRowCount //
 //        Int(collectionView.contentSize.height) != Int(collectionView.frame.size.height)
-        let item = itemX * self.itemRowCount + itemY
-        let newIndexPath = IndexPath(item: item, section: indexPath.section) 
+//        let item = itemX * self.itemRowCount + itemY
+//        let newIndexPath = IndexPath(item: item, section: indexPath.section) 
         
 //        let contentInset = UIEdgeInsets(top: collectionView.contentInset.top + sectionInset.top, left: collectionView.contentInset.left + sectionInset.left, bottom: collectionView.contentInset.bottom + sectionInset.bottom, right: collectionView.contentInset.right + sectionInset.right)
         

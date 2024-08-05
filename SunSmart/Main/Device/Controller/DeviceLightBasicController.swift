@@ -62,7 +62,7 @@ class DeviceLightBasicController: UIViewController {
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
         
-        MeshLibManager.manager.register(self)
+        MeshLibManager.manager.messageDelegate = self
     }
     
     override func viewWillDisappear(_ animated: Bool) {
@@ -558,7 +558,7 @@ extension DeviceLightBasicController {
     
 }
 
-extension DeviceLightBasicController: MeshLibManagerDelegate {
+extension DeviceLightBasicController: MeshLibManagerMessageDelegate {
     
     func meshNetworkManager(_ manager: MeshNetworkManager, deviceDataUpdate node: Node) {
         if node.primaryUnicastAddress == self.node.primaryUnicastAddress {

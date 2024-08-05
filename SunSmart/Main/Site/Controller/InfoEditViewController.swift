@@ -205,7 +205,7 @@ class InfoEditViewController: UIViewController {
         }
         
         lineView = UIView()
-        lineView.backgroundColor = RGB(243, 243, 243)
+        lineView.backgroundColor = Line_Color
         footerView.addSubview(lineView)
         lineView.snp.makeConstraints { make in
             make.left.right.top.equalToSuperview()

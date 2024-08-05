@@ -22,14 +22,29 @@ final class NetworkLoggerPlugin: PluginType {
     func didReceive(_ result: Result<Response, MoyaError>, target: TargetType) {
         switch result {
         case .success(let response):
-//            guard let networkTarget = target as? NetowrkReqeustApi else { return }
+            guard let networkTarget = target as? NetowrkReqeustApi else { return }
 //            
-//            switch networkTarget {
-//            case .siteAdd(let siteData):
-//                
-//            default:
-//                <#code#>
-//            }
+            switch networkTarget {
+            case .spaceShare(let space): // space分享数据
+                // 更新
+                // 编辑者信息
+                if let editorInfo = JSON(response)["spaceEditor"].dictionaryObject, let userId = editorInfo["userId"] as? String, let userName = editorInfo["username"] as? String {
+                    space.editor = .init(name: userName, uuid: userId)
+                }
+                // 访客信息
+                if let visitorInfos = JSON(response)["spaceEditor"].arrayObject as? [[String: Any]] {
+                   let visitors = visitorInfos.compactMap({ visitorInfo in
+                        if let userId = visitorInfo["userId"] as? String, let userName = visitorInfo["username"] as? String {
+                            return UserData(name: userName, uuid: userId)
+                        }
+                       return nil
+                    })
+                    space.visitors = visitors
+                }
+                space.save()
+            default:
+                break
+            }
             
             print("✅ Received response from \(response.request?.url?.absoluteString ?? "unknown URL")")
             print("✅ Response status code: \(response.statusCode)")

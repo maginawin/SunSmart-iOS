@@ -6,6 +6,8 @@
 //
 
 import UIKit
+import SwiftyJSON
+import NordicSigMeshSDK
 
 class SharePermissionSelectionController: UIViewController {
 
@@ -15,23 +17,54 @@ class SharePermissionSelectionController: UIViewController {
     private var tableView: UITableView!
     private var ownerMessageLabel: UILabel?
 
+    private let shareId: String
     private var options: [Options] = []
     private var selectionTypes: [PermissionSelection] = []
     /// 展示导入结果弹窗
     private var showResultAlert: Bool = false
+    /// 批量导入的spaces结果
+    private var batchImportResults: [BatchSpaceImportResult]?
+    
+    /// 正在输入的密码框
+    private var activeField: UITextField?
+    
+    
+    let type: ReceivingType
+    
+    init(type: ReceivingType) {
+        self.type = type
+        self.shareId = type.data.shareId
+        super.init(nibName: nil, bundle: nil)
+    }
+    
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
+    
+    
     
     override func viewDidLoad() {
         super.viewDidLoad()
 
 //        title = "receiving_site".localizedString
-        title = "permission_selection".localizedString
+        
         view.backgroundColor = Background_Color
         navigationController?.setNavigationBarBackgroundColor(color: .clear)
         navigationItem.leftBarButtonItem = UIBarButtonItem(image: UIImage(named: "navigation_back")?.withRenderingMode(.alwaysOriginal), style: .done, target: self, action: #selector(back))
         
-        options = [.title("Batch 53487"), .invitationCode(code: "xxxxxxxx"), .owner(name: "Jesse's iphone 13"), .spaces]
+        if case .site = type {
+            title = "receiving_site".localizedString
+        }else {
+            title = "permission_selection".localizedString
+        }
+        
+        options = type.data.options
+//        [.title("Batch 53487"), .invitationCode(code: "xxxxxxxx"), .owner(name: "Jesse's iphone 13"), .spaces]
 //        selectionTypes = [.init(permission: .owner, requirePwd: true)]
-        selectionTypes = [.init(permission: .visitor, requirePwd: false), .init(permission: .editor, requirePwd: true)]
+        selectionTypes = type.data.selectTypes
+//        [.init(permission: .visitor, requirePwd: false), .init(permission: .editor, requirePwd: true)]
+        
+        addKeyboardNotification()
         
         setupUI()
     }
@@ -41,7 +74,9 @@ class SharePermissionSelectionController: UIViewController {
         
         if showResultAlert {
             showResultAlert = false
-            showImportResult()
+            if let results = batchImportResults {
+                showImportResult(results: results)
+            }
         }
     }
     
@@ -49,9 +84,230 @@ class SharePermissionSelectionController: UIViewController {
         dismiss(animated: true)
     }
     
-    private func showImportResult() {
+    /// 监听键盘通知
+    private func addKeyboardNotification() {
         
-        BatchImportResultView(helpCallback: {[weak self] in
+        // 键盘弹出通知
+        NotificationCenter.default.addObserver(forName: UIResponder.keyboardWillShowNotification, object: nil, queue: nil) {[weak self] notification in
+            guard let self = self, let keyboardFrame = (notification.userInfo?[UIResponder.keyboardFrameEndUserInfoKey] as? NSValue)?.cgRectValue else { return }
+            
+            let keyboardHeight = keyboardFrame.height
+            var contentInset = scrollView.contentInset
+            contentInset.bottom = keyboardHeight
+            
+            self.scrollView.contentInset = contentInset
+            self.scrollView.scrollIndicatorInsets = contentInset
+            
+            // Optional: 滚动到活跃的文本输入视图
+            if let activeField = self.activeField, let superView = activeField.superview {
+                let visibleRect = self.scrollView.frame.inset(by: self.scrollView.contentInset)
+                let point = superView.convert(activeField.frame.origin, to: self.scrollView)
+                if !visibleRect.contains(point) {
+                    let scrollPoint = CGPoint(x: 0, y: point.y - visibleRect.height + activeField.frame.height)
+                    self.scrollView.setContentOffset(scrollPoint, animated: true)
+                }
+            }
+        }
+        
+        // 键盘收起通知
+        NotificationCenter.default.addObserver(forName: UIResponder.keyboardWillHideNotification, object: nil, queue: nil) {[weak self] notification in
+            guard let self = self else { return }
+            let contentInset = UIEdgeInsets.zero
+            self.scrollView.contentInset = contentInset
+            self.scrollView.scrollIndicatorInsets = contentInset
+        }
+    }
+    
+    // MARK: - Request
+    /// 加入space请求
+    private func spaceJoinRequest(space: SpaceData, password: String?, permission: Permission) {
+        XWHUDManager.showCustomHUD(withMessage: nil, isWindow: true)
+        NetworkRequest.shared.request(.joinSpace(shareId: self.shareId, password: password, permission: permission)) {[weak self] result in
+            XWHUDManager.hide()
+            guard let self = self else { return }
+            switch result {
+            case .success(let response):
+                if let siteData = JSON(response)["data"]["site"].dictionaryObject {
+                    Task {
+                        // 区分加入site服务器分配的手机地址，还是卸载后的拉取site之前的手机地址
+                        if let site = await SiteData.import(siteJsonData: siteData) {
+                            // 同步
+//                            if let provisionerData = JSON(response)["data"]["provisioner"].dictionaryObject {
+//                                site.setProvisioner(provisionerData: provisionerData)
+//                                // 更新地址数据
+////                                CloudSynchronizationManager.shared.addSynchronizationHandle(operation: .syncSite(site: site), level: .promptly)
+//                            }
+                            site.save()
+                        }
+                    }
+                }
+                space.authorizationPassword = password
+                space.permission = permission
+                space.state = .normal
+                space.save()
+                XWHUDManager.showSuccessTipHUD("successfully".localizedString + "!")
+                DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {[weak self] in
+                    NotificationCenter.default.post(name: .init(SitesDataRefreshNotifiacationName), object: true)
+                    self?.back()
+                }
+            case .failure(let error):
+                XWHUDManager.showErrorTipHUD(error.localizedDescription)
+            }
+        }
+    }
+    
+    /// 批量加入space请求
+    private func spacesJoinRequest(spaces: [SpaceData], password: String?, permission: Permission) {
+        
+        XWHUDManager.showCustomHUD(withMessage: nil, isWindow: true)
+        NetworkRequest.shared.request(.joinSpace(shareId: self.shareId, password: password, permission: permission)) {[weak self] result in
+            XWHUDManager.hide()
+            guard let self = self else { return }
+            switch result {
+            case .success(let response):
+//                XWHUDManager.showSuccessTipHUD("successfully".localizedString + "!")
+                
+                if let spaceDatas = JSON(response)["data"]["spaces"].arrayObject as? [[String: Any]] {
+                    let results: [BatchSpaceImportResult] = spaceDatas.compactMap({ spaceData in
+                        guard let spaceId = spaceData["spaceId"] as? String, let spaceName = spaceData["spaceName"] as? String else { return nil }
+                        
+                        var status: BatchSpaceImportResult.Status = .successfully
+                        if let statusCode = spaceData["importStatus"] as? Int, let resultStatus = BatchSpaceImportResult.Status(rawValue: statusCode) {
+                            status = resultStatus
+                        }
+                        if status == .successfully {
+                            let space = spaces.first(where: { $0.id == spaceId })
+                            space?.permission = permission
+                            if permission == .editor {
+                                space?.authorizationPassword = spaceData["editorPasswd"] as? String
+                            }
+                            space?.state = .normal
+                            space?.save()
+                        }
+                        
+                        let result = BatchSpaceImportResult(spaceId: spaceId, spaceName: spaceName, editorPassword: spaceData["editorPasswd"] as? String, status: status)
+                        return result
+                    })
+                    
+                    self.batchImportResults = results
+                    self.showImportResult(results: results)
+                }
+                
+                NotificationCenter.default.post(name: .init(SitesDataRefreshNotifiacationName), object: true)
+    
+            case .failure(let error):
+                XWHUDManager.showErrorTipHUD(error.localizedDescription)
+            }
+        }
+    }
+    
+    /// 接收site请求
+    private func receiveSiteRequest(password: String) {
+        XWHUDManager.showCustomHUD(withMessage: nil, isWindow: true)
+        NetworkRequest.shared.request(.receiveSite(shareId: self.shareId, password: password)) {[weak self] result in
+            guard let self = self else { return }
+            switch result {
+            case .success(let response):
+                
+                if let siteData = JSON(response)["data"]["site"].dictionaryObject {
+                    Task {
+                        var localSite: SiteData?
+                        if let siteId = siteData["uuid"] as? String {
+                            localSite = SiteData.load(siteId: siteId)
+                        }
+                        
+                        // 区分加入site服务器分配的手机地址，还是卸载后的拉取site之前的手机地址
+                        if let site = await SiteData.import(siteJsonData: siteData) {
+                            site.state = .normal
+                            // 判断是否存在这个site，如果有则主动回收自己之前拥有的地址
+                            if let localSite = localSite, localSite.permission != .owner {
+                                var recycleData = localSite.getRecycleAddressData(unbindSpaces: localSite.spaces)
+                                // 回收之前owner的手机地址
+                                if let ivIndex = JSON(siteData)["ivIndex"].uInt32, let addressHex = JSON(siteData)["provisioner"]["address"].string, let localAddress = Address(hex: addressHex) {
+                                    site.insetExclusionAddresses(list: [(ivIndex, [localAddress])])
+                                }
+                                // 合并废弃地址数据
+                                if let exclusionAddresses: [(ivIndex: UInt32, addresses: [UInt16])] = recycleData.exclusionAddresses?.map({ (UInt32($0.ivIndex), $0.addresses.map({ UInt16($0) })) }) {
+                                    site.insetExclusionAddresses(list: exclusionAddresses)
+                                    recycleData.exclusionAddresses = nil
+                                }
+                                // 立即将合并废弃地址数据同步到云端
+                                CloudSynchronizationManager.shared.addSynchronizationHandle(operation: .syncSite(site: site, syncSpaces: []), level: .promptly)
+                                
+                                // 回收未使用的地址
+                                if !recycleData.isEmpty {
+                                    self.recycleAddressReqeust(site: site, recycleData: recycleData)
+                                }
+                                return
+                            }else {
+                                site.save()
+                            }
+                        }
+                    }
+                }
+                XWHUDManager.hide()
+                XWHUDManager.showSuccessTipHUD("successfully".localizedString + "!")
+                DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {[weak self] in
+                    NotificationCenter.default.post(name: .init(SitesDataRefreshNotifiacationName), object: true)
+                    self?.back()
+                }
+                
+            case .failure(let error):
+                XWHUDManager.hide()
+                XWHUDManager.showErrorTipHUD(error.localizedDescription)
+            }
+        }
+    }
+    
+    
+    /// 回收地址请求（接收转让的Site后，如之前在这个Site内需回收之前分配的地址）
+    /// - Parameters:
+    ///   - site: site
+    ///   - recycleData: 回收地址数据
+    private func recycleAddressReqeust(site: SiteData, recycleData: SiteData.RecycleAddressData) {
+        
+        let networkApi: NetowrkReqeustApi = .recyclingAddress(siteId: site.id, recycleDeviceAddresses: recycleData.deviceAddresses, recycleGroupAddresses: recycleData.groupAddresses, recycleSceneAddresses: recycleData.sceneAddresses, exclusions: nil)
+//        recycleData.exclusionAddresses?.map({ ($0.ivIndex, $0.addresses) })
+    
+        NetworkRequest.shared.request(networkApi) {[weak self] result in
+            guard let self = self else { return }
+            
+            XWHUDManager.hide()
+            XWHUDManager.showSuccessTipHUD("successfully".localizedString + "!")
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {[weak self] in
+                NotificationCenter.default.post(name: .init(SitesDataRefreshNotifiacationName), object: true)
+                self?.back()
+            }
+            
+            switch result {
+            case .success(_):
+                site.save()
+            case .failure(_):
+                site.recycleAddressData = recycleData
+                site.save()
+            }
+        }
+        
+    }
+    
+    
+    /// 申请权限
+    private func applyPermission(_ permission: Permission, password: String?) {
+        
+        switch self.type {
+        case .site:
+            guard let receivePassword = password else { return }
+            receiveSiteRequest(password: receivePassword)
+        case .space(_, let space, _):
+            spaceJoinRequest(space: space, password: password, permission: permission)
+        case .spaceList(let data, _):
+            spacesJoinRequest(spaces: data.spaces, password: password, permission: permission)
+        }
+    }
+    
+    private func showImportResult(results: [BatchSpaceImportResult]) {
+        
+        BatchImportResultView(results: results, helpCallback: {[weak self] in
             self?.showResultAlert = true
             
             let vc = BatchImportResultHelpController()
@@ -67,6 +323,7 @@ class SharePermissionSelectionController: UIViewController {
         scrollView = UIScrollView()
         scrollView.showsVerticalScrollIndicator = false
         scrollView.alwaysBounceVertical = true
+        scrollView.delegate = self
         view.addSubview(scrollView)
         scrollView.snp.makeConstraints { make in
             make.left.right.bottom.equalToSuperview()
@@ -104,8 +361,15 @@ class SharePermissionSelectionController: UIViewController {
             let type = selectionTypes[index]
             let permissionView = SharePermissionSelectionView(frame: .zero, require: type.requirePwd, permission: type.permission)
             permissionView.doneCallback = {[weak self] password in
-                print(password)
-                self?.showImportResult()
+                self?.applyPermission(type.permission, password: password)
+//                self?.showImportResult()
+            }
+            permissionView.keyboardEditChangeCallback = {[weak self] (textField, isShow) in
+                if isShow {
+                    self?.activeField = textField
+                }else {
+                    self?.activeField = nil
+                }
             }
             contentView.addSubview(permissionView)
             permissionView.snp.makeConstraints { make in
@@ -165,6 +429,10 @@ extension SharePermissionSelectionController: UITableViewDataSource, UITableView
         return cell
     }
     
+    func scrollViewWillBeginDragging(_ scrollView: UIScrollView) {
+        view.endEditing(true)
+    }
+
 }
 
 extension SharePermissionSelectionController {
@@ -172,27 +440,97 @@ extension SharePermissionSelectionController {
     /// 接收数据类型
     enum ReceivingType {
         
-        var data: (options: [Options], selectTypes: [PermissionSelection]) {
+        var data: (shareId: String, options: [Options], selectTypes: [PermissionSelection]) {
             
             switch self {
-            case .site(let site):
-                return ([.title(site.name), .invitationCode(code: site.id), .owner(name: "Jesse's iphone 13")],
+            case .site(let site, let owner, let shareId):
+                return (shareId, [.title(site.name), .invitationCode(code: shareId), .owner(name: owner.name)],
                         [.init(permission: .owner, requirePwd: true)])
-            case .space(let site, let space):
-                return ([.title(site.name), .invitationCode(code: site.id), .owner(name: "Jesse's iphone 13"), .editor(name: nil)],
-                        [.init(permission: .owner, requirePwd: true)])
-            case .spaceList:
-                return ([],
-                        [.init(permission: .owner, requirePwd: true)])
+            case .space(let siteName, let space, let shareId):
+                return (shareId, [.title("\(siteName) > \(space.name)"), .invitationCode(code: shareId), .owner(name: space.owner?.name ?? ""), .editor(name: space.editor?.name)],
+                        [.init(permission: .visitor, requirePwd: space.vistorPasswordEnable), .init(permission: .editor, requirePwd: true)])
+            case .spaceList(let data, let shareId):
+                let ownerName = data.spaces.first(where: { $0.owner != nil })?.owner?.name
+                return (shareId, [.title(data.name), .invitationCode(code: shareId), .owner(name: ownerName ?? "")],
+                        [.init(permission: .visitor, requirePwd: false), .init(permission: .editor, requirePwd: true)])
             }
         }
         
         /// 接收项目
-        case site(site: SiteData)
+        case site(site: SiteData, owner: UserData, shareId: String)
         /// 接收space
-        case space(site: SiteData, space: SpaceData)
+        case space(siteName: String, space: SpaceData, shareId: String)
         /// 接收space list
-        case spaceList(data: BatchSpaceData)
+        case spaceList(data: BatchSpaceData, shareId: String)
+        
+        init?(shareData: [String: Any]) {
+            
+            let data = JSON(shareData)
+            guard let shareId = data["token"].string,
+                  let type = data["type"].string else {
+                return nil
+            }
+            
+            switch type {
+            case "single":
+                
+                guard let siteId = data["siteId"].string,
+                      let spaceDict = data["space"].dictionaryObject,
+                      let spaceId = JSON(spaceDict)["spaceId"].string,
+                      let owner = data["owner"].dictionaryObject else { return nil }
+                
+                let spaceJson = JSON(spaceDict)
+                
+                let space = SpaceData(name: spaceJson["spaceName"].stringValue, id: spaceId, siteId: siteId, imageId: spaceJson["imageId"].intValue, create: 0, isFavourite: false, permission: .visitor, sourceType: .share, meshUUID: siteId, meshNetworkId: spaceId)
+                if let userId = owner["userId"] as? String, let userName = owner["username"] as? String {
+                    space.owner = .init(name: userName, uuid: userId)
+                }
+                if let userId = spaceJson["editor"]["userId"].string, let userName = spaceJson["editor"]["username"].string {
+                    space.editor = .init(name: userName, uuid: userId)
+                }
+                if let visitorPasswordEnable = spaceJson["visitProtected"].bool {
+                    space.vistorPasswordEnable = visitorPasswordEnable
+                }
+                
+                self = .space(siteName: data["site"]["siteName"].stringValue, space: space, shareId: shareId)
+            case "batch":
+                
+                guard let siteId = data["siteId"].string,
+                      let batchName = data["batchName"].string,
+                      let spaceDicts = data["spaces"].arrayObject as? [[String: Any]] else { return nil }
+                
+                let spaces: [SpaceData] = spaceDicts.compactMap({ spaceDict in
+                    let spaceData = JSON(spaceDict)
+                    guard let spaceId = spaceData["spaceId"].string,
+                          let spaceName = spaceData["spaceName"].string,
+                          let password = spaceData["editorPasswd"].string else {
+                        return nil
+                    }
+                    
+                    let deviceCount = spaceData["nodeCount"].intValue
+                    let space = SpaceData(name: spaceName, id: spaceId, siteId: siteId, imageId: 1, create: 0, isFavourite: false, permission: .visitor, sourceType: .share, meshUUID: siteId, meshNetworkId: spaceId)
+                    space.deviceCount = deviceCount
+                    space.editorPassword = password
+                    if let userId = spaceData["owner"]["userId"].string, let username = spaceData["owner"]["username"].string {
+                        space.owner = .init(name: username, uuid: userId)
+                    }
+                    space.vistorPasswordEnable = spaceData["visitProtected"].boolValue
+                    return space
+                })
+                self = .spaceList(data: BatchSpaceData(siteId: siteId, code: shareId, name: batchName, spaces: spaces, editorPassword: ""), shareId: shareId)
+            case "ownertrans":
+                guard let siteId = data["siteId"].string, 
+                        let siteName = data["siteName"].string,
+                      let userId = data["owner"]["userId"].string,
+                      let username = data["owner"]["username"].string else { return nil }
+                let site = SiteData(id: siteId, meshUUID: siteId, name: siteName, type: .office, permission: userId == UserData.currentUserId ? .owner : .visitor, create: 0, isFavourite: false, sourceType: .share)
+                self = .site(site: site, owner: UserData(name: username, uuid: userId), shareId: shareId)
+            default:
+                return nil
+            }
+            
+        }
+        
     }
     
     enum Options {
@@ -246,6 +584,8 @@ class SharePermissionSelectionView: UIView {
     /// 完成回调  password
     var doneCallback: ((String?)->Void)?
     
+    var keyboardEditChangeCallback: ((UITextField, Bool)->Void)?
+    
     /// 是否必须输入密码
     let require: Bool
     /// 权限
@@ -273,7 +613,8 @@ class SharePermissionSelectionView: UIView {
     }
     
     @objc private func hideKeyboard() {
-        self.endEditing(true)
+        UIApplication.shared.keyWindow().endEditing(true)
+//        self.endEditing(true)
     }
     
     
@@ -375,11 +716,13 @@ extension SharePermissionSelectionView: UITextFieldDelegate {
     
     func textFieldShouldBeginEditing(_ textField: UITextField) -> Bool {
         textField.placeholder = nil
+        keyboardEditChangeCallback?(textField, true)
         return true
     }
     
     func textFieldShouldEndEditing(_ textField: UITextField) -> Bool {
         textField.placeholder = "password".localizedString
+        keyboardEditChangeCallback?(textField, false)
         return true
     }
     

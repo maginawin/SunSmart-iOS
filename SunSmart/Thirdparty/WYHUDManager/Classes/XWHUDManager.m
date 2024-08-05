@@ -6,7 +6,6 @@
 //
 
 #import "XWHUDManager.h"
-#import "WYProgressHUD.h"
 
 @implementation XWHUDManager
 static NSTimer * kXWHUDkHideHUDTimer;
@@ -86,6 +85,10 @@ static XWHUDManagerType kXWHUDManagerType = XWHUDManagerTypeDark;
     [self showCustomHUDWithMessage:message view:view afterDelay:afterSecond];
 }
 
++ (void)showCustomHUDWithMessage:(nullable NSString*)message view:(UIView *)view {
+    [self showCustomHUDWithMessage:message view:view afterDelay:HUGE_VALF];
+}
+
 + (void)showCustomHUDWithMessage:(nullable NSString*)message view:(UIView *)view afterDelay:(NSTimeInterval)afterSecond {
 //    // 判断同一个view弹出的加载框则复用，并按参数延时关闭
 //    for (UIView *subView in view.subviews) {
@@ -100,7 +103,7 @@ static XWHUDManagerType kXWHUDManagerType = XWHUDManagerTypeDark;
     
     [self hide];
     
-    WYProgressHUD *hud  =  [self p_createWYProgressHUDviewWithView:view message:message];
+    WYProgressHUD *hud  =  [self p_createWYProgressHUDviewWithView:view message:message animated:YES];
     if (message.length > 0) {
         hud.minSize = CGSizeMake(164, 140);
     }else {
@@ -186,6 +189,22 @@ static XWHUDManagerType kXWHUDManagerType = XWHUDManagerTypeDark;
         return YES;
     }
     return NO;
+}
+
+/// 获取当前展示的提示框
++ (nullable WYProgressHUD *)currentHUD {
+    UIView *windowView = [self p_getKeyWindow];
+    WYProgressHUD *windowHud = [WYProgressHUD HUDForView:windowView];
+    if (windowHud != nil) {
+        return windowHud;
+    }
+    
+    UIView *vcView = [self p_getCurrentUIVC].view;
+    WYProgressHUD *vcViewHud = [WYProgressHUD HUDForView:vcView];
+    if (vcViewHud != nil) {
+        return vcViewHud;
+    }
+    return nil;
 }
 
 #pragma mark - 文本提示框
@@ -418,7 +437,7 @@ static XWHUDManagerType kXWHUDManagerType = XWHUDManagerTypeDark;
 #pragma mark - private
 /// 文本框
 + (void)p_showTipMessage:(NSString*)message isLineFeed:(BOOL)isLineFeed isWindow:(BOOL)isWindow timer:(NSTimeInterval)aTimer {
-    WYProgressHUD *hud = [self p_createWYProgressHUDviewWithMessage:message isWindiw:isWindow];
+    WYProgressHUD *hud = [self p_createWYProgressHUDviewWithMessage:message isWindiw:isWindow animated:YES];
     // 提示文本框不拦截响应
 //    hud.userInteractionEnabled = NO;
     hud.minSize = CGSizeZero;
@@ -442,7 +461,7 @@ static XWHUDManagerType kXWHUDManagerType = XWHUDManagerTypeDark;
 
 /// 自定义文本框
 + (void)p_showCustomTipMessage:(NSString*)message isLineFeed:(BOOL)isLineFeed isWindow:(BOOL)isWindow backgroundColor:(UIColor *)backgroundColor textColor:(UIColor *)textColor textFont:(UIFont *)textFont margin:(CGFloat)margin offset:(CGPoint)offset timer:(NSTimeInterval)aTimer {
-    WYProgressHUD *hud = [self p_createWYProgressHUDviewWithMessage:message isWindiw:isWindow];
+    WYProgressHUD *hud = [self p_createWYProgressHUDviewWithMessage:message isWindiw:isWindow animated:YES];
     hud.mode = WYProgressHUDModeText;
     hud.bezelView.style = WYProgressHUDBackgroundStyleSolidColor;
     if (margin > 0.0 && margin < 20.0) {
@@ -467,7 +486,7 @@ static XWHUDManagerType kXWHUDManagerType = XWHUDManagerTypeDark;
 
 /// 小菊花
 + (void)p_showActivityMessage:(NSString*)message isWindow:(BOOL)isWindow timer:(NSTimeInterval)aTimer {
-    WYProgressHUD *hud  =  [self p_createWYProgressHUDviewWithMessage:message isWindiw:isWindow];
+    WYProgressHUD *hud  =  [self p_createWYProgressHUDviewWithMessage:message isWindiw:isWindow animated:YES];
     hud.minSize = CGSizeMake(140, 140);
     hud.mode = WYProgressHUDModeCustomView;
     [hud hideAnimated:YES afterDelay:aTimer];
@@ -476,7 +495,7 @@ static XWHUDManagerType kXWHUDManagerType = XWHUDManagerTypeDark;
 
 /// 自定义图片 - bundle内资源
 + (void)p_showCustomIcon:(NSString *)iconName message:(NSString *)message isWindow:(BOOL)isWindow timer:(NSTimeInterval)aTimer {
-    WYProgressHUD *hud  =  [self p_createWYProgressHUDviewWithMessage:message isWindiw:isWindow];
+    WYProgressHUD *hud  =  [self p_createWYProgressHUDviewWithMessage:message isWindiw:isWindow animated:YES];
     hud.minSize = CGSizeMake(164, 140);
     hud.margin = 28;
     hud.mode = WYProgressHUDModeCustomView;
@@ -501,7 +520,7 @@ static XWHUDManagerType kXWHUDManagerType = XWHUDManagerTypeDark;
 
 /// 自定义图片-外界传入图片
 + (void)p_showCustomImage:(UIImage *)image message:(NSString *)message isWindow:(BOOL)isWindow timer:(NSTimeInterval)aTimer{
-    WYProgressHUD *hud  =  [self p_createWYProgressHUDviewWithMessage:message isWindiw:isWindow];
+    WYProgressHUD *hud  =  [self p_createWYProgressHUDviewWithMessage:message isWindiw:isWindow animated:YES];
     hud.mode = WYProgressHUDModeCustomView;
     hud.customView = [[UIImageView alloc] initWithImage:image];
     [hud hideAnimated:YES afterDelay:aTimer];
@@ -509,7 +528,7 @@ static XWHUDManagerType kXWHUDManagerType = XWHUDManagerTypeDark;
 
 /// 序列帧
 + (void)p_showCustomImages:(NSArray <UIImage *> *)images message:(NSString *)message isWindow:(BOOL)isWindow timer:(NSTimeInterval)aTimer{
-    WYProgressHUD *hud  =  [self p_createWYProgressHUDviewWithMessage:message isWindiw:isWindow];
+    WYProgressHUD *hud  =  [self p_createWYProgressHUDviewWithMessage:message isWindiw:isWindow animated:YES];
     hud.mode = WYProgressHUDModeCustomView;
     UIImageView *imageView = [[UIImageView alloc] init];
     imageView.animationImages = images;
@@ -522,7 +541,7 @@ static XWHUDManagerType kXWHUDManagerType = XWHUDManagerTypeDark;
 
 /// GIF - Gif 文件名
 + (void)p_showGifImagesHUD:(NSString *)gifFileName message:(NSString *)message isWindow:(BOOL)isWindow timer:(NSTimeInterval)aTimer backgroundColor:(UIColor *)backgroundColor textColor:(UIColor *)textColor textFont:(UIFont *)textFont alpha:(CGFloat)alpha {
-    WYProgressHUD *hud  =  [self p_createWYProgressHUDviewWithMessage:message isWindiw:isWindow];
+    WYProgressHUD *hud  =  [self p_createWYProgressHUDviewWithMessage:message isWindiw:isWindow animated:NO];
     hud.mode = WYProgressHUDModeCustomView;
     NSString *filePath = [[NSBundle mainBundle] pathForResource:gifFileName ofType:@"gif"];
     UIImage *gifImage = [self imageGIFWithData:[NSData dataWithContentsOfFile:filePath]];
@@ -562,12 +581,12 @@ static XWHUDManagerType kXWHUDManagerType = XWHUDManagerTypeDark;
     hud.bezelView.layer.shadowOpacity = 1;
     hud.bezelView.layer.shadowRadius = 8;
     
-    [hud hideAnimated:YES afterDelay:aTimer];
+    [hud hideAnimated:NO afterDelay:aTimer];
 }
 
 /// GIF
 + (void)p_showGifImageHUD:(UIImage *)gifImage message:(NSString *)message isWindow:(BOOL)isWindow timer:(NSTimeInterval)aTimer backgroundColor:(UIColor *)backgroundColor textColor:(UIColor *)textColor textFont:(UIFont *)textFont alpha:(CGFloat)alpha {
-    WYProgressHUD *hud  =  [self p_createWYProgressHUDviewWithMessage:message isWindiw:isWindow];
+    WYProgressHUD *hud  =  [self p_createWYProgressHUDviewWithMessage:message isWindiw:isWindow animated:YES];
     hud.mode = WYProgressHUDModeCustomView;
     UIImageView *gifImageView = [[UIImageView alloc] initWithImage:gifImage];
     hud.customView = gifImageView;
@@ -588,9 +607,9 @@ static XWHUDManagerType kXWHUDManagerType = XWHUDManagerTypeDark;
 }
 
 /// 全局统一生成提示框对象
-+ (WYProgressHUD *) p_createWYProgressHUDviewWithView:(UIView *)view message:(NSString*)message {
++ (WYProgressHUD *) p_createWYProgressHUDviewWithView:(UIView *)view message:(NSString*)message animated:(BOOL)animated {
     
-    WYProgressHUD *hud = [WYProgressHUD showHUDAddedTo:view animated:YES];
+    WYProgressHUD *hud = [WYProgressHUD showHUDAddedTo:view animated:animated];
     hud.defaultMotionEffectsEnabled = NO;
     hud.removeFromSuperViewOnHide = YES;
     hud.minSize = CGSizeMake(96, 96);
@@ -618,9 +637,9 @@ static XWHUDManagerType kXWHUDManagerType = XWHUDManagerTypeDark;
 }
 
 /// 全局统一生成提示框对象
-+ (WYProgressHUD *) p_createWYProgressHUDviewWithMessage:(NSString*)message isWindiw:(BOOL)isWindow {
++ (WYProgressHUD *) p_createWYProgressHUDviewWithMessage:(NSString*)message isWindiw:(BOOL)isWindow animated:(BOOL)animated {
     UIView *view = isWindow ? [self p_getKeyWindow] : [self p_getCurrentUIVC].view;
-    WYProgressHUD *hud = [self p_createWYProgressHUDviewWithView:view message:message];
+    WYProgressHUD *hud = [self p_createWYProgressHUDviewWithView:view message:message animated:animated];
     if (isWindow) {
         hud.backgroundView.color = [[UIColor blackColor] colorWithAlphaComponent:0.3];
     }else {

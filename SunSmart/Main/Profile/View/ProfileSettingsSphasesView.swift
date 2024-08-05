@@ -178,7 +178,7 @@ class ProfileSettingsSphasesView: UIView {
                 }
                 
             case .manualControl:
-                chartImageView.image = UIImage(named: "profile_chart_daylight")
+                chartImageView.image = UIImage(named: "profile_chart_manual_control")
                 timeT1Btn.isHidden = false
                 timeT1Label.isHidden = false
 //                timeT5Btn.isHidden = false

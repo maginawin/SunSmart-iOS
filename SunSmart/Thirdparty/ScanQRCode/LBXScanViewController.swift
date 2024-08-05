@@ -107,13 +107,16 @@ open class LBXScanViewController: UIViewController {
         
         NSLayoutConstraint.activate([
             backBtn.leftAnchor.constraint(equalTo: view.leftAnchor, constant: 16),
-            backBtn.topAnchor.constraint(equalTo: view.topAnchor, constant: statusBarManager.statusBarFrame.height),
+            backBtn.topAnchor.constraint(equalTo: view.topAnchor, constant: isIphoneX ? statusBarManager.statusBarFrame.height : 12),
             backBtn.widthAnchor.constraint(equalToConstant: 30),
             backBtn.heightAnchor.constraint(equalToConstant: 30)
         ])
         
+        
         let scanRect = LBXScanView.getScanRectWithPreView(preView: view, style: scanStyle!)
-        let scanMaxY = view.height * (scanRect.minY + scanRect.width) + (presentingViewController == nil ? kSafeAreaTopHeight : 0)
+        let scanHeight = view.height * scanRect.width
+        
+        let scanMaxY = (view.height - scanHeight) * 0.5 - view.height * scanRect.minY + scanHeight + (presentingViewController == nil ? kSafeAreaTopHeight : 0)
         
         NSLayoutConstraint.activate([
             messageLabel.leftAnchor.constraint(equalTo: view.leftAnchor, constant: 35),

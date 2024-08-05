@@ -69,7 +69,7 @@ class DeviceLightInfoSectionView: UITableViewHeaderFooterView {
         }
         
         lineView = UIView()
-        lineView.backgroundColor = RGB(243, 243, 243)
+        lineView.backgroundColor = Line_Color
         addSubview(lineView)
         lineView.snp.makeConstraints { make in
             make.left.equalTo(SCRXFrom(16))

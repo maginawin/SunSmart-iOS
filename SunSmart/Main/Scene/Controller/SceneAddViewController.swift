@@ -72,6 +72,8 @@ class SceneAddViewController: UIViewController {
     init(space: SpaceData) {
         self.space = space
         super.init(nibName: nil, bundle: nil)
+        
+        MeshLibManager.manager.addObserver(self, forKeyPath: "isMeshNetworkConnected", context: nil)
     }
     
     required init?(coder: NSCoder) {
@@ -114,6 +116,7 @@ class SceneAddViewController: UIViewController {
         if self.scene == nil && self.space.isConfiguring { // 未创建场景退出页面，停止引导配置流程
             self.space.isConfiguring = false
         }
+        MeshLibManager.manager.removeObserver(self, forKeyPath: "isMeshNetworkConnected")
     }
     
     private func addNotificationObserver() {
@@ -127,6 +130,16 @@ class SceneAddViewController: UIViewController {
             }
         }
         
+    }
+    
+    override func observeValue(forKeyPath keyPath: String?, of object: Any?, change: [NSKeyValueChangeKey : Any]?, context: UnsafeMutableRawPointer?) {
+        
+        guard showTemplateCreate else {
+            return
+        }
+        DispatchQueue.main.asyncAfter(wallDeadline: .now() + 1) {[weak self] in
+            self?.collectionView?.reloadSections(IndexSet(integer: 1))
+        }
     }
     
     @objc private func backAction() {
@@ -449,7 +462,7 @@ class SceneAddViewController: UIViewController {
         }
         
         let bottomLineView = UIView()
-        bottomLineView.backgroundColor = RGB(243, 243, 243)
+        bottomLineView.backgroundColor = Line_Color
         bottomView.addSubview(bottomLineView)
         bottomLineView.snp.makeConstraints { make in
             make.left.right.top.equalToSuperview()
@@ -457,7 +470,7 @@ class SceneAddViewController: UIViewController {
         }
         
         let lineView = UIView()
-        lineView.backgroundColor = RGB(243, 243, 243)
+        lineView.backgroundColor = Line_Color
         bottomView.addSubview(lineView)
         lineView.snp.makeConstraints { make in
             make.centerX.equalToSuperview()
@@ -588,8 +601,6 @@ extension SceneAddViewController: UITableViewDataSource, UITableViewDelegate {
         self.showTemplateCreate = true
         sceneDataSelectIndex = nil
         groups.forEach({ $0.isSelected = false })
-        // 监听网络连接状态
-        MeshLibManager.manager.register(self)
         updateUI()
     }
     
@@ -1045,24 +1056,6 @@ extension SceneAddViewController: SceneAddGroupEmptyCellDelegate {
         
     }
     
-}
-
-extension SceneAddViewController: MeshLibManagerDelegate {
-    
-    func meshNetworkManager(_ manager: MeshNetworkManager, bearerDidOpen bearer: Bearer) {
-        if showTemplateCreate {
-            DispatchQueue.main.asyncAfter(wallDeadline: .now() + 1) {[weak self] in
-                self?.collectionView?.reloadSections(IndexSet(integer: 1))
-            }
-        }
-    }
-    func meshNetworkManager(_ manager: MeshNetworkManager, bearerDidClose bearer: Bearer) {
-        if showTemplateCreate {
-            DispatchQueue.main.asyncAfter(wallDeadline: .now() + 1) {[weak self] in
-                self?.collectionView?.reloadSections(IndexSet(integer: 1))
-            }
-        }
-    }
 }
 
 class ExecuteSceneData {

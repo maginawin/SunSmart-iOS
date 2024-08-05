@@ -119,6 +119,7 @@ class SitesViewCell: UITableViewCell {
             make.right.equalTo(favoriteBtn.snp.left).offset(SCRXFrom(-8))
             make.centerY.equalTo(favoriteBtn)
         }
+        
     }
     
     

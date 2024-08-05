@@ -23,7 +23,7 @@ class SRAlertView: UIView {
     /// 底部按钮点击回调
     typealias BottomBtnClickBack = (()->())
     
-    private var shadeView: UIView!
+    var shadeView: UIView!
     /// 内容view
     var contentView: UIView!
     /// 标题
@@ -136,7 +136,7 @@ class SRAlertView: UIView {
         contentView.snp.remakeConstraints { make in
             make.left.equalTo(margin)
             make.right.equalTo(-margin)
-            make.center.equalToSuperview()
+            make.centerY.equalToSuperview()
             if actions.count > 0 {
                 make.height.greaterThanOrEqualTo(minHeight + actionHeight)
             }else {
@@ -182,13 +182,13 @@ class SRAlertView: UIView {
         }
         
         if message != nil || messageAttStr != nil {
+            self.messageLabel.textColor = messageColor
+            self.messageLabel.font = messageFont
             if messageAttStr != nil {
                 self.messageLabel.attributedText = messageAttStr
             }else {
                 self.messageLabel.text = message
             }
-            self.messageLabel.textColor = messageColor
-            self.messageLabel.font = messageFont
         }
         
         if let style = messageAttBtnStyle {
@@ -435,6 +435,7 @@ class SRAlertView: UIView {
         
         self.inputDoneBack = inputDoneBack
         
+        
         textFieldEditChanged(sender: self.textField)
         
     }
@@ -629,6 +630,7 @@ class SRAlertView: UIView {
             }
         }
         if self.inputDoneBack != nil {
+            self.textField.resignFirstResponder()
             self.inputDoneBack!(self.textField.text ?? "")
         }
         
@@ -695,6 +697,10 @@ class SRAlertView: UIView {
                     self.secondBtn.setTitleColor(Bar_Color.withAlphaComponent(0.5), for: .normal)
                 }
                 messageLabel.text = message
+            }else {
+                let enabled = realText.count >= self.minInputLength && (self.minInputLength > 0 && !realText.isAllInputTextEmpty())
+                self.secondBtn.isUserInteractionEnabled = enabled
+                self.secondBtn.setTitleColor(enabled ? Bar_Color : Bar_Color.withAlphaComponent(0.5), for: .normal)
             }
         }
     }
@@ -778,7 +784,7 @@ class SRAlertView: UIView {
         contentView.snp.makeConstraints { make in
             make.left.equalTo(SCRXFrom(35))
             make.right.equalTo(SCRXFrom(-35))
-            make.center.equalToSuperview()
+            make.centerY.equalToSuperview()
 //            make.height.greaterThanOrEqualTo(140)
         }
         
@@ -1040,7 +1046,7 @@ extension SRAlertView {
     
     // 是否显示
     static func isVisible() -> Bool {
-        return UIApplication.shared.keyWindow().subviews.contains(where: {$0.isKind(of: self.classForCoder())}) ?? false
+        return UIApplication.shared.keyWindow().subviews.contains(where: {$0.isKind(of: self.classForCoder())}) 
     }
     
     // 获取当前展示弹窗

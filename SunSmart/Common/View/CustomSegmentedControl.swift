@@ -46,6 +46,16 @@ class CustomSegmentedControl: UIView {
             selectBgView.backgroundColor = selectBgColor
         }
     }
+    
+    var titleFont: UIFont = UIFont.systemFont(ofSize: SCRYFrom(14)) {
+        didSet {
+            actionBtns.forEach({
+                $0.titleLabel?.font = titleFont
+            })
+        }
+    }
+    
+    
     /// 选中的滑块标题颜色
     var selectTitleColor: UIColor = .white {
         didSet {
@@ -54,16 +64,29 @@ class CustomSegmentedControl: UIView {
             })
         }
     }
-    /// 选中的滑块边框颜色
-    var selectBorderColor: UIColor = .clear {
+    
+    var selectBorderWidth: CGFloat = 1 {
         didSet {
-            if selectedIndex < self.actionBtns.count {
-                self.actionBtns[selectedIndex].layer.shadowColor = selectBorderColor.cgColor
-            }
+            selectBgView.layer.borderWidth = selectBorderWidth
         }
     }
     
+    /// 选中的滑块边框颜色
+    var selectBorderColor: UIColor = .clear {
+        didSet {
+            selectBgView.layer.borderColor = selectBorderColor.cgColor
+//            if selectedIndex < self.actionBtns.count {
+//                self.actionBtns[selectedIndex].layer.shadowColor = selectBorderColor.cgColor
+//            }
+        }
+    }
     
+    /// 展示阴影
+    var showShadow: Bool = true {
+        didSet {
+            selectBgView.layer.shadowOpacity = showShadow ? 1 : 0
+        }
+    }
     
     
     init(frame: CGRect, titles: [String]) {
@@ -92,9 +115,15 @@ class CustomSegmentedControl: UIView {
         guard index != selectedIndex else {
             return
         }
-        actionBtns[selectedIndex].isSelected = false
+        let lastBtn = actionBtns[selectedIndex]
+        lastBtn.isSelected = false
+//        lastBtn.layer.borderWidth = 0
         selectedIndex = index
-        self.actionBtns[index].isSelected = true
+        
+        let selectBtn = actionBtns[index]
+        selectBtn.isSelected = true
+//        selectBtn.layer.borderWidth = 0.5
+//        selectBtn.layer.borderColor = selectBorderColor.cgColor
         
         UIView.animate(withDuration: 0.3) {
             self.selectBgView.x = self.margin + CGFloat(self.selectedIndex) * self.selectBgView.width
@@ -108,16 +137,19 @@ class CustomSegmentedControl: UIView {
         selectBgView = UIView()
         selectBgView.backgroundColor = selectBgColor
         selectBgView.layer.cornerRadius = cornerRadius
-        selectBgView.layer.shadowColor = RGB(82, 82, 153, 0.12).cgColor
-        selectBgView.layer.shadowOffset = CGSizeMake(0,3)
-        selectBgView.layer.shadowOpacity = 1
-        selectBgView.layer.shadowRadius = cornerRadius
-        selectBgView.layer.borderWidth = 1
+        selectBgView.layer.borderWidth = selectBorderWidth
         selectBgView.layer.borderColor = selectBorderColor.cgColor
+        if showShadow {
+            selectBgView.layer.shadowColor = RGB(82, 82, 153, 0.12).cgColor
+            selectBgView.layer.shadowOffset = CGSizeMake(0,3)
+            selectBgView.layer.shadowOpacity = 1
+            selectBgView.layer.shadowRadius = cornerRadius
+        }
         addSubview(selectBgView)
         
         for (index, title) in titles.enumerated() {
             let btn = UIButton(title: title, titleSize: 14, titleColor: RGB(156, 163, 175), target: self, action: #selector(actionBtnClick))
+            btn.titleLabel?.font = titleFont
             btn.tag = 100 + index
             btn.setTitleColor(selectTitleColor, for: .selected)
             if index == selectedIndex {

@@ -21,22 +21,33 @@ class BatchImportResultView: UIView {
     private var closeBtn: UIButton!
     
     /// 总计条目
-    private var totalItems: [ItemType] = [.total(count: 18), .successfully(count: 8), .presenceEditor(count: 6), .invalid(count: 3), .alreadyExist(count: 1)]
-    private var spaces: [ResultState] = [.successfully, .presenceEditor, .presenceEditor, .invalid, .alreadyExist, .successfully, .presenceEditor, .presenceEditor, .invalid, .alreadyExist]
+    private var totalItems: [ItemType] = []
+//    private var spaces: [ResultState] = [.successfully, .presenceEditor, .presenceEditor, .invalid, .alreadyExist, .successfully, .presenceEditor, .presenceEditor, .invalid, .alreadyExist]
+    private let results: [BatchSpaceImportResult]
     
     var helpCallback: HelpCallback?
     var closeCallback: CloseCallback?
     
-    init(helpCallback: HelpCallback? = nil, closeCallback: CloseCallback?) {
+    init(results: [BatchSpaceImportResult] ,helpCallback: HelpCallback? = nil, closeCallback: CloseCallback?) {
+        
+        self.results = results
         super.init(frame: UIScreen.main.bounds)
         self.helpCallback = helpCallback
         self.closeCallback = closeCallback
         
-        setupUI()
-    }
-    
-    override init(frame: CGRect) {
-        super.init(frame: frame)
+        let total = results.count
+        let successfullyCount = results.filter({ $0.status == .successfully }).count
+        let presenceEditorCount = results.filter({ $0.status == .presenceEditor }).count
+        let invalidCount = results.filter({ $0.status == .invalid }).count
+        let alreadyExistCount = results.filter({ $0.status == .alreadyExist }).count
+        
+        self.totalItems = [
+            .total(count: total),
+            .successfully(count: successfullyCount),
+            .presenceEditor(count: presenceEditorCount),
+            .invalid(count: invalidCount),
+            .alreadyExist(count: alreadyExistCount)
+        ]
         
         setupUI()
     }
@@ -141,7 +152,7 @@ class BatchImportResultView: UIView {
             make.right.equalTo(SCRXFrom(-8))
             make.top.equalTo(titleLabel.snp.bottom).offset(SCRYFrom(24))
             make.bottom.equalTo(lineView.snp.top).offset(SCRYFrom(-17))
-            let showRows = min(totalItems.count + spaces.count, 10)
+            let showRows = min(totalItems.count + results.count, 10)
             make.height.equalTo(CGFloat(showRows) * tableView.rowHeight + SCRYFrom(41))
         }
         
@@ -159,7 +170,7 @@ extension BatchImportResultView: UITableViewDataSource, UITableViewDelegate {
         if section == 0 {
             return totalItems.count
         }
-        return spaces.count
+        return results.count
     }
     
     func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
@@ -172,9 +183,9 @@ extension BatchImportResultView: UITableViewDataSource, UITableViewDelegate {
             cell.titleLabel.text = item.data.title
             cell.contentLabel.text = "\(item.data.count)"
         }else {
-            let state = spaces[indexPath.row]
-            cell.titleLabel.text = "Space \(indexPath.row + 1)"
-            cell.contentLabel.text = state.rawString
+            let result = results[indexPath.row]
+            cell.titleLabel.text = result.spaceName
+            cell.contentLabel.text = result.status.rawString
         }
         cell.selectionStyle = .none
         cell.lineView.isHidden = true
@@ -201,32 +212,6 @@ extension BatchImportResultView: UITableViewDataSource, UITableViewDelegate {
 }
 
 extension BatchImportResultView {
-    
-    /// 导入结果状态
-    enum ResultState {
-        
-        var rawString: String {
-            switch self {
-            case .successfully:
-                return "successfully_improrted".localizedString
-            case .presenceEditor:
-                return "presence_editor".localizedString
-            case .invalid:
-                return "invalid".localizedString
-            case .alreadyExist:
-                return "already_exist".localizedString
-            }
-        }
-        
-        /// 成功
-        case successfully
-        /// 存在管理员
-        case presenceEditor
-        /// 空间失效
-        case invalid
-        /// 空间已存在
-        case alreadyExist
-    }
     
     enum ItemType {
         

@@ -66,7 +66,7 @@ extension UIViewController {
     
     func showNavigationBarState(_ state: NavigationBarState, actionCallback: (()->Void)? = nil) {
         
-        guard let navVc = navigationController, navVc.interactivePopGestureRecognizer?.state == .possible, let contentView = navVc.navigationBarContentView, let titleLabel = navVc.navigationBarTitleLabel else { return  }
+        guard let navVc = navigationController, navVc.interactivePopGestureRecognizer?.state == .possible, let contentView = navVc.navigationBarContentView, let titleView = navVc.navigationBarTitleView else { return  }
         
         NSObject.cancelPreviousPerformRequests(withTarget: self, selector: #selector(navigationBarStateFinished), object: nil)
         
@@ -80,7 +80,7 @@ extension UIViewController {
             contentView.addSubview(stateImageView!)
 //            navVc.navigationBar.setNeedsFocusUpdate()
             stateImageView!.snp.makeConstraints { make in
-                make.right.equalTo(titleLabel.snp.left).offset(SCRXFrom(-4))
+                make.right.equalTo(titleView.snp.left).offset(SCRXFrom(-4))
                 make.centerY.equalToSuperview()
             }
         }
@@ -106,7 +106,7 @@ extension UIViewController {
             stateImageView?.image = UIImage(named: "cloud_sync_failed")
             stateImageView?.layer.removeAnimation(forKey: "loading")
             stateImageView!.snp.updateConstraints { make in
-                make.right.equalTo(titleLabel.snp.left)
+                make.right.equalTo(titleView.snp.left)
             }
         }
      
@@ -177,8 +177,9 @@ extension UINavigationController {
     }
     
     /// 导航条标题
-    var navigationBarTitleLabel: UILabel? {
-        return navigationBarContentView?.subviews.first(where: { $0.isKind(of: UILabel.classForCoder()) }) as? UILabel
+    var navigationBarTitleView: UIView? {
+        let titleViewClass: AnyClass? = NSClassFromString("_UINavigationBarTitleControl")
+        return navigationBarContentView?.subviews.first(where: { $0.isKind(of: titleViewClass ?? UILabel.classForCoder()) }) as? UIView
     }
     
     

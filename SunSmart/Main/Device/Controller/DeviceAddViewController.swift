@@ -8,6 +8,7 @@
 import UIKit
 import NordicSigMeshSDK
 import CoreBluetooth
+import SwiftyJSON
 
 class DeviceAddViewController: UIViewController {
 
@@ -66,6 +67,8 @@ class DeviceAddViewController: UIViewController {
     var appointGroup: Group?
     
     private var notAddedDevices: [ProvisioningDevice] = []
+    /// 最大设备数量
+    private let maxDeviceCount = 200
     
     init(space: SpaceData) {
         self.space = space
@@ -94,7 +97,7 @@ class DeviceAddViewController: UIViewController {
         
         addToGroup = appointGroup
         
-        NetworkRequest.shared.addObserver(self, forKeyPath: "networkable", context: nil)
+//        NetworkRequest.shared.addObserver(self, forKeyPath: "networkable", context: nil)
         
         setupUI()
     }
@@ -135,15 +138,16 @@ class DeviceAddViewController: UIViewController {
     }
     
     /// KVO监听
-    override func observeValue(forKeyPath keyPath: String?, of object: Any?, change: [NSKeyValueChangeKey : Any]?, context: UnsafeMutableRawPointer?) {
-        if keyPath == "networkable" { // 手机网络连接状态
-            if NetworkRequest.shared.networkable, space.isLoadAddress { // 需要加载地址
-                SRAlertView.hide()
-                // 申请设备地址请求
-                applyDeviceAddressesRequest()
-            }
-        }
-    }
+//    override func observeValue(forKeyPath keyPath: String?, of object: Any?, change: [NSKeyValueChangeKey : Any]?, context: UnsafeMutableRawPointer?) {
+//        if keyPath == "networkable" { // 手机网络连接状态
+//            if NetworkRequest.shared.networkable, space.isLoadAddress { // 需要加载地址
+//                SRAlertView.hide()
+//                // 申请设备地址请求
+//                applyDeviceAddressesRequest()
+//            }
+//        }
+//    }
+    
     
     // MARK: - Scan
     
@@ -289,19 +293,32 @@ class DeviceAddViewController: UIViewController {
     @objc private func selectAllBtnClick(sender: UIButton) {
         
         // space只能添加200个设备
-        guard !sender.isSelected, MeshNetworkManager.instance.realNodes.count + showDevices.filter({ $0.addState == .wait || $0.addState == .adding || $0.addState == .addConnecting }).count < 200 else {
-            SRAlertView(title: "notification".localizedString, message: "devices_number_exceeds_message".localizedString, actions: [SRAlertAction(title: "ok".localizedString)]).show()
-            return
-        }
+        let existNodeCount = MeshNetworkManager.instance.realNodes.count + showDevices.filter({ $0.addState == .wait || $0.addState == .adding || $0.addState == .addConnecting }).count
+//        guard !sender.isSelected, existNodeCount < 200 else {
+//            let canSelectCount = 200 - existNodeCount
+//            
+//            
+//            devices.forEach({ $0.selectedState = .selected })
+//            
+//            SRAlertView(title: "notification".localizedString, message: "devices_number_exceeds_message".localizedString, actions: [SRAlertAction(title: "ok".localizedString)]).show()
+//            return
+//        }
         
         sender.isSelected = !sender.isSelected
         
-        let devices = showDevices.filter({ $0.selectedState != .disabled })
+        let canAddDevices = showDevices.filter({ $0.selectedState != .disabled && !($0.addState == .wait || $0.addState == .adding || $0.addState == .addConnecting) })
         if sender.isSelected {
-            devices.forEach({ $0.selectedState = .selected })
+            if existNodeCount + canAddDevices.count > maxDeviceCount {
+                SRAlertView(title: "notification".localizedString, message: "devices_number_exceeds_message".localizedString, actions: [SRAlertAction(title: "ok".localizedString)]).show()
+                canAddDevices.prefix(maxDeviceCount - existNodeCount).forEach({ $0.selectedState = .selected })
+            }else {
+                canAddDevices.forEach({ $0.selectedState = .selected })
+            }
+            
 //            selectCountLabel.text = "\(devices.count)/\(devices.count)"
         }else {
-            devices.forEach({ $0.selectedState = .unselected })
+            canAddDevices.forEach({ $0.selectedState = .unselected })
+            
 //            selectCountLabel.text = "0/\(devices.count)"
         }
         updateFooterViewState()
@@ -311,9 +328,11 @@ class DeviceAddViewController: UIViewController {
     /// 批量添加
     @objc private func addSelectedBtnClick() {
         let selectDevices = showDevices.filter({ $0.selectedState == .selected })
-        selectDevices.forEach { device in
-            addDevice(device)
-        }
+        
+        checkDeviceAddressesAreSufficient(devices: selectDevices)
+//        selectDevices.forEach { device in
+//            addDevice(device)
+//        }
     }
     
     /// 隐藏添加结果view
@@ -595,7 +614,9 @@ class DeviceAddViewController: UIViewController {
             self.space.luminairesCount = MeshNetworkManager.instance.lightNodes.count
             self.space.save()
             // 通知space数据修改
-            NotificationCenter.default.post(name: .init(spaceDataChangedNotificaitonName), object: SpaceChangeDataType.device)
+//            NotificationCenter.default.post(name: .init(spaceDataChangedNotificaitonName), object: SpaceChangeDataType.device)
+            NotificationCenter.default.post(name: .init(spaceDataChangedNotificaitonName), object: SpaceChangeDataType.network(type: .address))
+            
 //            self.addSuccessNodes.append(contentsOf: successNodes)
         }
         
@@ -604,20 +625,33 @@ class DeviceAddViewController: UIViewController {
     /// 检查设备地址是否足够
     private func checkDeviceAddressesAreSufficient(devices: [ProvisioningDevice]) {
         
-        let needAddressesCount = devices.count * 2
+        // 添加设备需要地址-剩余地址 +（site中所有space已经添加的设备地址+正在添加的设备地址）*20%
+        let estimatedAddressCount = devices.reduce(0, { (result, device) in result + device.elementCount })
+        // 获取网络内已存在的设备地址数量
+        let existingAddressCount = Node.loadAddresses(meshUUID: self.space.meshUUID).count
+        // 申请的地址数量
+        let applyAddressCount = estimatedAddressCount - MeshAPI.getNumberOfAvailableUnicastAddresses(meshUUID: self.space.meshUUID) + Int(Float(existingAddressCount) * 0.2)
+        
         // 检查剩余地址是否足够添加设备
-        guard MeshAPI.getNumberOfAvailableUnicastAddresses() >= needAddressesCount else {
+        guard MeshAPI.getNumberOfAvailableUnicastAddresses(meshUUID: self.space.meshUUID) >= estimatedAddressCount else {
             // 地址不够
             // 手机是否联网
             guard NetworkRequest.shared.networkable else {
                 // 未联网提示联网以获取地址
-                SRAlertView(title: "notification".localizedString, message: "device_address_insufficient".localizedString, actions: [SRAlertAction(title: "ok".localizedString)]).show()
-                space.isLoadAddress = true
-                space.save()
+                self.space.applyDeviceAddressCount = applyAddressCount
+                self.space.save()
+                
+                SRAlertView(title: "notification".localizedString, message: "device_address_insufficient".localizedString, actions: [SRAlertAction(title: "ok".localizedString, actionHandler: {[weak self] _ in
+                    if NetworkRequest.shared.networkable {
+                        self?.space.applyDeviceAddressCount = nil
+                        self?.space.save()
+                        self?.applyDeviceAddressesRequest(applyAddressCount: applyAddressCount)
+                    }
+                })]).show()
                 return
             }
             // 向服务器申请地址
-            applyDeviceAddressesRequest()
+            applyDeviceAddressesRequest(applyAddressCount: applyAddressCount, devices: devices)
             return
         }
         devices.forEach({
@@ -626,13 +660,39 @@ class DeviceAddViewController: UIViewController {
     }
     
     /// 申请设备地址请求
-    private func applyDeviceAddressesRequest(devices: [ProvisioningDevice] = []) {
+    /// - Parameters:
+    ///   - applyAddressCount: 申请地址数量
+    ///   - devices: 需要添加的设备
+    private func applyDeviceAddressesRequest(applyAddressCount: Int, devices: [ProvisioningDevice] = []) {
         
+//        // 添加设备需要地址-剩余地址 +（site中所有space已经添加的设备地址+正在添加的设备地址）*20%
+//        let estimatedAddressCount = devices.reduce(0, { (result, device) in result + device.elementCount })
+//        // 获取网络内已存在的设备地址数量
+//        let existingAddressCount = Node.loadAddresses(meshUUID: self.space.meshUUID).count
+//        // 申请的地址数量
+//        let applyAddressCount = estimatedAddressCount - MeshAPI.getNumberOfAvailableUnicastAddresses() + Int(Float(existingAddressCount) * 0.2)
         // request
-        
-        devices.forEach({
-            addDevice($0)
-        })
+        XWHUDManager.showCustomHUD(withMessage: nil, isWindow: true)
+        NetworkRequest.shared.request(.applyAddress(siteId: self.space.siteId, type: .device, number: applyAddressCount)) {[weak self] result in
+            XWHUDManager.hide()
+            guard let self = self else { return }
+            switch result {
+            case .success(let repsonsed):
+                // 新增地址
+                if let site = SiteData.load(siteId: self.space.siteId), let provisionerData = JSON(repsonsed)["data"]["provisioner"].dictionaryObject {
+                    site.setProvisioner(provisionerData: provisionerData)
+                    // 继续添加设备
+                    devices.forEach({
+                        self.addDevice($0)
+                    })
+                }else {
+                    XWHUDManager.showErrorTipHUD(NetworkApiError.unknown.localizedDescription)
+                }
+            case .failure(let error):
+                XWHUDManager.showErrorTipHUD(error.localizedDescription)
+            }
+        }
+       
     }
     
     /// 刷新设备UI状态
@@ -967,7 +1027,7 @@ extension DeviceAddViewController: UITableViewDataSource, UITableViewDelegate {
             return
         }
         // space只能添加200个设备
-        guard MeshNetworkManager.instance.realNodes.count + showDevices.filter({ $0.addState == .wait || $0.addState == .adding || $0.addState == .addConnecting }).count < 200 else {
+        guard MeshNetworkManager.instance.realNodes.count + showDevices.filter({ $0.addState == .wait || $0.addState == .adding || $0.addState == .addConnecting }).count < maxDeviceCount else {
             SRAlertView(title: "notification".localizedString, message: "devices_number_exceeds_message".localizedString, actions: [SRAlertAction(title: "ok".localizedString)]).show()
             return
         }
@@ -1050,12 +1110,12 @@ extension DeviceAddViewController: DeviceAddViewCellDelegate {
             return
         }
         // space只能添加200个设备
-        guard MeshNetworkManager.instance.realNodes.count + showDevices.filter({ $0.addState == .wait || $0.addState == .adding || $0.addState == .addConnecting }).count < 200 else {
+        guard MeshNetworkManager.instance.realNodes.count + showDevices.filter({ $0.addState == .wait || $0.addState == .adding || $0.addState == .addConnecting }).count < maxDeviceCount else {
             SRAlertView(title: "notification".localizedString, message: "devices_number_exceeds_message".localizedString, actions: [SRAlertAction(title: "ok".localizedString)]).show()
             return
         }
-        
-        addDevice(device)
+        checkDeviceAddressesAreSufficient(devices: [device])
+//        addDevice(device)
     }
     
     /// 设备状态图标点击

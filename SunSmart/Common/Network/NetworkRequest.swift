@@ -70,11 +70,11 @@ class NetworkRequest: NSObject {
             switch result {
             case .success(let respond):
                 do {
-                    let json = try respond.filter(statusCode: 200).mapJSON() as? [String: Any]
+                    let json = try respond.mapJSON() as? [String: Any]
                     // 服务器返回成功
                     let code = JSON(json as Any)["code"].intValue
                     let isSuccess = JSON(json as Any)["isSuccess"].bool ?? false
-                    if code == 200 || isSuccess {
+                    if code == 200 || isSuccess || (json != nil && json!.isEmpty) {
                         completion(.success(json!))
 //                        success?(json!)
                     }else {
@@ -85,11 +85,21 @@ class NetworkRequest: NSObject {
 //                        }
                     }
                 } catch let error {
-                    let errorCode = (error as NSError).code
+                    let errorCode = (error as? MoyaError)?.response?.statusCode ?? (error as NSError).code
                     completion(.failure(.init(code: errorCode)))
                 }
             case .failure(let error):
-                let errorCode = (error as NSError).code
+                
+                var errorCode = (error as NSError).code
+                switch error {
+                case .underlying(let resultError, _):
+                    if let requestError = (resultError as? AFError)?.underlyingError as? NSError {
+                        errorCode = requestError.code
+                    }
+                default:
+                    break
+                }
+                
                 completion(.failure(.init(code: errorCode)))
 //                switch error {
 //                case .underlying(let resultError, _):
@@ -162,8 +172,6 @@ class NetworkRequest: NSObject {
 /// 网络请求api错误
 public enum NetworkApiError: Error {
     
-//    public typealias RawValue = MoyaError
-    
     var code: Int {
         switch self {
         case .unknown:
@@ -172,17 +180,51 @@ public enum NetworkApiError: Error {
             return -1009
         case .requestTimeout:
             return -1001
-        case .noPermission:
-            return 7000
+        case .serverNotRespond:
+            return 502
+        case .resourceNotFound:
+            return 4004
+        case .visitorBeingUsedSpace:
+            return 4005
+        case .editorBeingUsedSpace:
+            return 4006
+        case .noSitePermission:
+            return 4008
+        case .noSpacePermission:
+            return 4009
+        case .userUnauthorized:
+            return 4010
+        case .incorrectPassword:
+            return 4011
+        case .spaceAlreadyExist:
+            return 4012
         }
     }
     
     init(code: Int) {
         switch code {
-        case -1009:
+        case -1009, -1020:
             self = .noNetwork
         case -1001:
             self = .requestTimeout
+        case 502:
+            self = .serverNotRespond
+        case 4004:
+            self = .resourceNotFound
+        case 4005:
+            self = .visitorBeingUsedSpace
+        case 4006:
+            self = .editorBeingUsedSpace
+        case 4008:
+            self = .noSitePermission
+        case 4009:
+            self = .noSpacePermission
+        case 4010:
+            self = .userUnauthorized
+        case 4011:
+            self = .incorrectPassword
+        case 4012:
+            self = .spaceAlreadyExist
         default:
             self = .unknown
         }
@@ -194,8 +236,24 @@ public enum NetworkApiError: Error {
     case noNetwork
     /// 网络请求超时
     case requestTimeout
-    /// 无权限
-    case noPermission
+    /// 服务器未响应
+    case serverNotRespond
+    /// 找不到资源
+    case resourceNotFound
+    /// 访客正在使用空间
+    case visitorBeingUsedSpace
+    /// 编辑者/Editor正在使用空间
+    case editorBeingUsedSpace
+    /// 无site权限
+    case noSitePermission
+    /// 无space权限
+    case noSpacePermission
+    /// 用户未授权（未加入空间）
+    case userUnauthorized
+    /// space密码错误
+    case incorrectPassword
+    /// 空间已存在(加入已存在的空间)
+    case spaceAlreadyExist
 }
 
 extension NetworkApiError: LocalizedError {
@@ -206,8 +264,20 @@ extension NetworkApiError: LocalizedError {
             return "phone_no_network".localizedString
         case .requestTimeout:
             return "network_request_timeout".localizedString
-        case .noPermission:
+        case .serverNotRespond:
+            return "server_not_responding".localizedString
+        case .resourceNotFound:
+            return "resource_not_found".localizedString
+        case .visitorBeingUsedSpace:
+            return "space_visitor_are_using".localizedString
+        case .editorBeingUsedSpace:
+            return "space_editor_are_using".localizedString
+        case .noSitePermission, .noSpacePermission, .userUnauthorized:
             return "no_permission".localizedString
+        case .incorrectPassword:
+            return "incorrect_password".localizedString
+        case .spaceAlreadyExist:
+            return "space_already_exist".localizedString
         case .unknown:
             return "unknown_error".localizedString
         }

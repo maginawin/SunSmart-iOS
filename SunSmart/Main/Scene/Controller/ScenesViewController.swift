@@ -92,6 +92,12 @@ class ScenesViewController: UIViewController {
             self.reloadCollectionItem(scene: scene)
         }
         
+        // space编辑权限变更回调
+        NotificationCenter.default.addObserver(forName: .init(spacePermissionChangedNotificaitonName), object: nil, queue: nil) {[weak self] notification in
+            guard let self = self else { return }
+            self.updateUI()
+        }
+        
     }
     
     /// 长按事件，跳转到组详情
@@ -207,10 +213,14 @@ class ScenesViewController: UIViewController {
         footerView.sortBtn.isHidden = true
         footerView.countBtn.setTitle("\(scenes.count)/16", for: .normal)
         
+        footerView.editBtn.isEnabled = space.sceneOperates.contains(.edit)
+        footerView.addBtn.isEnabled = space.sceneOperates.contains(.add)
+        
         if self.space.sceneCount != scenes.count {
             self.space.sceneCount = scenes.count
             self.space.save()
         }
+        
         updateScenesEmptyUI()
         
         collectionView.reloadData()
@@ -274,8 +284,6 @@ class ScenesViewController: UIViewController {
         footerView = SpaceFunctionFooterView()
         footerView.sortBtn.isHidden = true
         footerView.delegate = self
-        footerView.editBtn.isEnabled = space.sceneOperates.contains(.edit)
-        footerView.addBtn.isEnabled = space.sceneOperates.contains(.add)
         view.addSubview(footerView)
         footerView.snp.makeConstraints { make in
             make.left.right.bottom.equalToSuperview()

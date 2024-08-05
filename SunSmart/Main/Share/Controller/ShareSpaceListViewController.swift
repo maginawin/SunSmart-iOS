@@ -67,6 +67,11 @@ extension ShareSpaceListViewController: UICollectionViewDataSource, UICollection
         cell.nameLabel.text = space.name
         cell.iconImageView.image = UIImage(named: "space_picture_\(space.imageId)")
         cell.deviceCountLabel.text = "\(space.deviceCount)"
+        if space.permission == .owner {
+            cell.editorImageView.isHidden = space.editor == nil
+        }else {
+            cell.editorImageView.isHidden = true
+        }
         return cell
     }
     

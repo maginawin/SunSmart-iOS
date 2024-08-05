@@ -77,7 +77,7 @@ extension AboutViewController: UITableViewDataSource, UITableViewDelegate {
         cell.titleLabel.text = model.title
         cell.titleLabel.font = UIFont.systemFont(ofSize: SCRYFrom(15), weight: .light)
         cell.arrowImageView.image = UIImage(named: "arrow_light_right")
-        cell.lineView.backgroundColor = RGB(243, 243, 243)
+        cell.lineView.backgroundColor = Line_Color
         cell.selectionStyle = .none
         cell.backgroundColor = .white
         return cell

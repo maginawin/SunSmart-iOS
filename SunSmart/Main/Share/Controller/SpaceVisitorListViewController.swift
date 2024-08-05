@@ -6,6 +6,7 @@
 //
 
 import UIKit
+import SwiftyJSON
 
 class SpaceVisitorListViewController: UIViewController {
 
@@ -18,13 +19,12 @@ class SpaceVisitorListViewController: UIViewController {
     }()
     
     let space: SpaceData
-    var visitors: [UserData]
+    var visitors: [UserData] = []
     
     private var selectVisitors: [UserData] = []
     
-    init(space: SpaceData, visitors: [UserData]) {
+    init(space: SpaceData) {
         self.space = space
-        self.visitors = visitors
         super.init(nibName: nil, bundle: nil)
     }
     
@@ -38,10 +38,42 @@ class SpaceVisitorListViewController: UIViewController {
         title = "visitor_list".localizedString
         view.backgroundColor = Background_Color
         
+        selectAllBtn.isHidden = true
         navigationItem.rightBarButtonItem = UIBarButtonItem(customView: selectAllBtn)
         
         setupTableView()
-        updateEmptyUI()
+        
+        loadMemberRequest()
+    }
+    
+    /// 获取space成员数据
+    private func loadMemberRequest() {
+        XWHUDManager.showCustomHUD(withMessage: nil, view: self.view)
+        NetworkRequest.shared.request(.spaceShare(space: space)) {[weak self] result in
+            guard let self = self else { return }
+            XWHUDManager.hideInView(with: self.view)
+            
+            switch result {
+            case .success(let response):
+                if let visitorDatas = JSON(response)["data"]["visitors"].arrayObject as? [[String: Any]] {
+                    let visitors: [UserData] = visitorDatas.compactMap({
+                        if let userId = $0["userId"] as? String, let username = $0["username"] as? String {
+                            return UserData(name: username, uuid: userId)
+                        }
+                        return nil
+                    })
+                    self.space.visitors = visitors
+                    self.space.save()
+                }
+            case .failure(let error):
+                XWHUDManager.showTipHUD(error.localizedDescription, isLineFeed: true)
+            }
+            
+            self.visitors = self.space.visitors
+            self.tableView.reloadData()
+            self.updateEmptyUI()
+        }
+        
     }
     
     /// 选中所有
@@ -52,57 +84,111 @@ class SpaceVisitorListViewController: UIViewController {
         clearSelectBtn.isEnabled = selectVisitors.count > 0
     }
     
-    /// 清除选中访客
+    /// 清除选中访客（批量删除）
+    /// - Parameters force: 是否强制删除
     @objc private func clearSelectBtnAction() {
-        
+    
         guard selectVisitors.count > 0 else {
             return
         }
-        
-        // 删除未在使用的访客
-        
-        // 是否有正在使用的访客
-        SRAlertView(title: "notification".localizedString, message: "space_delete_used_visitors_message".localizedString, actions: [.cancelAction, SRAlertAction(title: "ok".localizedString, actionHandler: {[weak self] _ in
-            // 删除使用中的访客
+        SRAlertView(title: "notification".localizedString, message: "space_clear_visitors_message".localizedString, actions: [.cancelAction, SRAlertAction(title: "ok".localizedString, actionHandler: {[weak self] _ in
             guard let self = self else { return }
-            let deleteIndexPaths = self.selectVisitors.compactMap({ visitor in
-                if let row = self.visitors.firstIndex(where: { $0.uuid == visitor.uuid }) {
-                    return IndexPath(row: row, section: 0)
-                }
-                return nil
-            })
-            self.visitors.removeAll(where: { visitor in self.selectVisitors.contains(where: { $0.uuid == visitor.uuid }) })
-            self.tableView.deleteRows(at: deleteIndexPaths, with: .fade)
-            self.selectVisitors.removeAll()
-            self.clearSelectBtn.isEnabled = self.selectVisitors.count > 0
-            
-            self.updateEmptyUI()
+            self.deleteVisitorsRequest(visitors: self.selectVisitors)
         })]).show()
         
     }
     
-    /// 删除访客
-    private func deleteVisitor(_ visitor: UserData) {
+    /// 批量删除访客请求
+    /// - Parameters:
+    ///   - visitors: 访客list
+    ///   - force: 强制删除
+    private func deleteVisitorsRequest(visitors: [UserData], force: Bool = false) {
         
-        // 检查是否正在使用space
-        
-        // 对应访客正在使用space
-        SRAlertView(title: "notification".localizedString, message: "space_delete_visitor_message".localizedString, actions: [.cancelAction, SRAlertAction(title: "ok".localizedString, actionHandler: {[weak self] _ in
-            // 删除访客
+        XWHUDManager.showCustomHUD(withMessage: nil, isWindow: true)
+        NetworkRequest.shared.request(.clearSpaceMembers(siteId: space.siteId, spaceId: space.id, userIds: visitors.map({ $0.uuid }), permission: .visitor, force: force)) {[weak self] result in
+            XWHUDManager.hide()
             guard let self = self else { return }
-            if let row = self.visitors.firstIndex(where: { $0.uuid == visitor.uuid }) {
-                self.visitors.remove(at: row)
-                self.tableView.deleteRows(at: [IndexPath(row: row, section: 0)], with: .fade)
+            switch result {
+            case .success(let response):
+                // 删除访客结果
+                if let detail = JSON(response)["data"]["detail"].dictionaryObject as? [String: Int] {
+                    // 删除的访客中正在使用space
+                    let usedVisitorIds = detail.filter({ $0.value == NetworkApiError.visitorBeingUsedSpace.code }).map({ $0.key })
+                    // 删除成功的访客
+                    let successVisitorIds = detail.filter({ $0.value == 1 }).map({ $0.key })
+                    
+                    // 清空space内删除成功的访客
+                    // 删除访客
+                    self.space.visitors.removeAll(where: { successVisitorIds.contains($0.uuid) })
+                    space.save()
+                    
+                    self.visitors = self.space.visitors
+                    self.selectVisitors.removeAll()
+//                    self.selectVisitors.removeAll(where: { successVisitorIds.contains($0.uuid) })
+                    // 有正在使用的访客
+                    if usedVisitorIds.count > 0 {
+                        SRAlertView(title: "notification".localizedString, message: "space_delete_used_visitors_message".localizedString, actions: [SRAlertAction(title: "skip".localizedString, style: .cancel, actionHandler: {[weak self] _ in
+                            guard let self = self else { return }
+                            self.clearSelectBtn.isEnabled = self.selectVisitors.count > 0
+                            self.tableView.reloadData()
+                            self.updateEmptyUI()
+                            
+                        }), SRAlertAction(title: "clear".localizedString, actionHandler: {[weak self] _ in
+                            // 强制删除正在使用的访客
+                            let forceDeleteUsers = visitors.filter({ usedVisitorIds.contains($0.uuid) })
+                            // 强制删除请求
+                            self?.deleteVisitorsRequest(visitors: forceDeleteUsers, force: true)
+                        })]).show()
+                    }else {
+                        // 删除成功
+                        self.clearSelectBtn.isEnabled = self.selectVisitors.count > 0
+                        self.tableView.reloadData()
+                        self.updateEmptyUI()
+                    }
+                }else {
+                    XWHUDManager.showErrorTipHUD(NetworkApiError.unknown.localizedDescription)
+                }
+            case .failure(let error):
+                XWHUDManager.showErrorTipHUD(error.localizedDescription)
             }
-            if let index = self.selectVisitors.firstIndex(where: { $0.uuid == visitor.uuid }) {
-                self.selectVisitors.remove(at: index)
+        }
+        
+    }
+    
+    /// 删除访客  force: 是否强制删除，对方正在使用时二次确认
+    private func deleteVisitor(_ visitor: UserData, force: Bool) {
+        
+        XWHUDManager.showCustomHUD(withMessage: nil, isWindow: true)
+        NetworkRequest.shared.request(.clearSpaceMember(siteId: space.siteId, spaceId: space.id, userId: visitor.uuid, permission: .visitor, force: force)) {[weak self] result in
+            XWHUDManager.hide()
+            guard let self = self else { return }
+            switch result {
+            case .success(_):
+                // 删除访客
+                space.visitors.removeAll(where: { $0.uuid == visitor.uuid })
+                space.save()
+                if let row = self.visitors.firstIndex(where: { $0.uuid == visitor.uuid }) {
+                    self.visitors.remove(at: row)
+                    self.tableView.deleteRows(at: [IndexPath(row: row, section: 0)], with: .fade)
+                }
+                if let index = self.selectVisitors.firstIndex(where: { $0.uuid == visitor.uuid }) {
+                    self.selectVisitors.remove(at: index)
+                }
+                self.clearSelectBtn.isEnabled = self.selectVisitors.count > 0
+                self.updateEmptyUI()
+                
+            case .failure(let error): // 是否正在使用space
+                if error == .visitorBeingUsedSpace && !force {
+                    // 对应访客正在使用space
+                    SRAlertView(title: "notification".localizedString, message: "space_delete_visitor_message".localizedString, actions: [.cancelAction, SRAlertAction(title: "ok".localizedString, actionHandler: {[weak self] _ in
+                        // 强制删除
+                        self?.deleteVisitor(visitor, force: true)
+                    })]).show()
+                }else {
+                    XWHUDManager.showErrorTipHUD(error.localizedDescription)
+                }
             }
-            self.clearSelectBtn.isEnabled = self.selectVisitors.count > 0
-            self.updateEmptyUI()
-        })]).show()
-        
-        // 删除访客
-        
+        }
     }
     
     private func updateEmptyUI() {
@@ -126,6 +212,7 @@ class SpaceVisitorListViewController: UIViewController {
         
         bottomView = UIView()
         bottomView.backgroundColor = .white
+        bottomView.isHidden = true
         view.addSubview(bottomView)
         bottomView.snp.makeConstraints { make in
             make.left.right.bottom.equalToSuperview()
@@ -170,9 +257,11 @@ extension SpaceVisitorListViewController: UITableViewDataSource, UITableViewDele
         let visitor = visitors[indexPath.row]
         cell.nameLabel.text = visitor.name
         cell.selectImageView.image = UIImage(named: selectVisitors.contains(where: { $0.uuid == visitor.uuid }) ? "device_select" : "device_select_un")
-        cell.deleteCallback = {[weak self] in
+        cell.deleteCallback = {
             // 删除访客
-            self?.deleteVisitor(visitor)
+            SRAlertView(title: "notification".localizedString, message: "space_clear_visitor_message".localizedString, actions: [.cancelAction, SRAlertAction(title: "ok".localizedString, actionHandler: {[weak self] _ in
+                self?.deleteVisitor(visitor, force: false)
+            })]).show()
         }
         return cell
     }
@@ -203,6 +292,7 @@ class SpaceVisitorListViewCell: UITableViewCell {
  
     override init(style: UITableViewCell.CellStyle, reuseIdentifier: String?) {
         super.init(style: style, reuseIdentifier: reuseIdentifier)
+        selectionStyle = .none
         setupUI()
     }
     

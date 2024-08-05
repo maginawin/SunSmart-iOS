@@ -25,7 +25,7 @@ class SpaceData: Copyable {
     /// 是否喜欢（常用）
     var isFavourite: Bool = false
     /// 权限
-    let permission: Permission
+    var permission: Permission
     /// 来源类型
     var sourceType: DataSourceType
     /// mesh网络uuid
@@ -34,9 +34,11 @@ class SpaceData: Copyable {
     var meshNetworkKey: NetworkKey {
         return meshManager?.meshNetwork?.networkKeys.first(where: { $0.networkId.hex == meshNetworkId }) ?? MeshNetworkManager.instance.currentNetworkKey
     }
-    /// 子管理员
+    /// 所有者（editor/visitor权限查看）
+    var owner: UserData?
+    /// 子管理员（owner权限查看）
     var editor: UserData?
-    /// 访客list
+    /// 访客list（owner/editor权限查看）
     var visitors: [UserData] = []
     
     /// 子网网络id
@@ -73,8 +75,16 @@ class SpaceData: Copyable {
     }
     /// 展示的同步服务区错误信息
     var showSyncCloudError: NetworkApiError? {
+        
+        guard needUploadCloud else {
+            return nil
+        }
+        // 同步过程中不显示错误
+        if let handle = CloudSynchronizationManager.shared.getSpaceCurrentSyncState(self), case .inProgress = handle.state {
+            return nil
+        }
         // 有错误则显示之前上传服务器错误，如没有错误并需要上传服务器并不在同步过程，则说明同步过程退出APP
-        return syncCloudError ?? ((needUploadCloud && CloudSynchronizationManager.shared.getSpaceCurrentSyncState(self) == nil) ? .unknown : nil)
+        return syncCloudError ?? (CloudSynchronizationManager.shared.getSpaceCurrentSyncState(self) == nil ? .unknown : nil)
     }
     
     /// 同步服务器错误信息
@@ -91,14 +101,35 @@ class SpaceData: Copyable {
     /// space状态
     var state: State = .normal
     
+    /// Password
+    /// 访客密码（权限owner/editor）
+    var vistorPassword: String?
+    /// 子管理员密码（权限owner）
+    var editorPassword: String?
+    /// 授权密码（editor、visitor进入space需要）
+    var authorizationPassword: String?
+    /// 是否需要访客密码
+    var vistorPasswordEnable: Bool = false
+    /// 是否需要验证密码（密码被修改后需要验证）
+    var requiresPasswordVerification: Bool = false
+    
+    /// 分享邀请码
+    var shareCode: String?
+    
     /// 是否数据空的空间
     var isEmpty: Bool {
         return deviceCount == 0 && luminairesCount == 0 && groupCount == 0 && sceneCount == 0 && scheheduleCount == 0 && switchesCount == 0
     }
     /// 是否引导配置中
     var isConfiguring: Bool = false
-    // 是否需要获取地址
-    var isLoadAddress: Bool = false
+    // 需要申请的设备地址数量
+    var applyDeviceAddressCount: Int?
+    /// 是否已释放地址
+    var releaseAddress: Bool = false
+    
+    /// 是否被关闭了编辑权限
+    var disableEditorPermission: Bool = false
+    
     /// space操作权限list
     var spaceOperates: [SpaceOperate] {
         switch permission {
@@ -112,7 +143,7 @@ class SpaceData: Copyable {
     }
     /// 设备操作权限
     var deviceOperates: [MeshOperate] {
-        if permission == .visitor {
+        if permission == .visitor || disableEditorPermission {
             return [.control]
         }
         return [.add, .edit, .delete, .control]
@@ -120,7 +151,7 @@ class SpaceData: Copyable {
     
     /// 组操作权限
     var groupOperates: [MeshOperate] {
-        if permission == .visitor {
+        if permission == .visitor || disableEditorPermission {
             return [.control]
         }
         return [.add, .edit, .delete, .control]
@@ -128,7 +159,7 @@ class SpaceData: Copyable {
     
     /// 场景操作权限
     var sceneOperates: [MeshOperate] {
-        if permission == .visitor {
+        if permission == .visitor || disableEditorPermission {
             return [.control]
         }
         return [.add, .edit, .delete, .control]
@@ -136,7 +167,7 @@ class SpaceData: Copyable {
     
     /// 日程操作权限
     var scheduleOperates: [MeshOperate] {
-        if permission == .visitor {
+        if permission == .visitor || disableEditorPermission {
             return []
         }
         return [.add, .edit, .delete]

@@ -75,10 +75,10 @@ class CustomTableViewCell: UITableViewCell {
                 if cellStyle == .iconAddBottomSubtitle {
                     self.arrowImageView.isHidden = true
                     
-                    self.iconImageView.snp.remakeConstraints { make in
-                        make.left.equalTo(iconX)
-                        make.top.equalTo(SCRYFrom(3))
-                    }
+//                    self.iconImageView.snp.remakeConstraints { make in
+//                        make.left.equalTo(iconX)
+//                        make.top.equalTo(SCRYFrom(3))
+//                    }
                     
                     self.titleLabel.snp.remakeConstraints { make in
                         make.left.equalTo(self.titleX)
@@ -140,6 +140,19 @@ class CustomTableViewCell: UITableViewCell {
         }
     }
     
+    var iconY: CGFloat? {
+        didSet {
+            guard let y = iconY else { return }
+            self.iconImageView.snp.remakeConstraints { make in
+                if iconSize != nil {
+                    make.size.equalTo(iconSize!)
+                }
+                make.left.equalTo(iconX)
+                make.top.equalTo(y)
+            }
+        }
+    }
+    
     var iconSize: CGSize? {
         didSet {
             self.iconImageView.snp.remakeConstraints { make in
@@ -157,6 +170,33 @@ class CustomTableViewCell: UITableViewCell {
             self.titleLabel.snp.remakeConstraints { make in
                 make.left.equalTo(titleX)
                 make.centerY.equalToSuperview()
+            }
+        }
+    }
+    
+    var titleY: CGFloat? {
+        didSet {
+            guard let y = titleY else { return }
+            self.titleLabel.snp.remakeConstraints { make in
+                make.left.equalTo(titleX)
+                make.top.equalTo(y)
+            }
+        }
+    }
+    
+    var titleMaxWidth: CGFloat? {
+        didSet {
+            guard let maxWidth = titleMaxWidth else {
+                return
+            }
+            self.titleLabel.snp.remakeConstraints { make in
+                make.left.equalTo(titleX)
+                if let y = titleY {
+                    make.top.equalTo(y)
+                }else {
+                    make.centerY.equalToSuperview()
+                }
+                make.width.lessThanOrEqualTo(maxWidth)
             }
         }
     }

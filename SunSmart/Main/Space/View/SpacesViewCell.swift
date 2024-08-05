@@ -66,11 +66,17 @@ class SpacesViewCell: UITableViewCell {
                 make.left.equalTo(SCRXFrom(16))
             }
             editorImageView.isHidden = true
-            syncFailedImageBtn.isHidden = space.showSyncCloudError == nil
+            if space.showSyncCloudError != nil && space.permission != .visitor {
+                syncFailedImageBtn.isHidden = false
+                nameLabel.textColor = Message_Color
+            }else {
+                syncFailedImageBtn.isHidden = true
+            }
+//            syncFailedImageBtn.isHidden = space.showSyncCloudError == nil || space.permission == .visitor
             
             
             if space.permission == .owner {
-                
+                permissionLabel.isHidden = true
                 if space.editor != nil {
                     editorImageView.isHidden = false
                     syncFailedImageBtn.snp.remakeConstraints { make in
@@ -86,6 +92,7 @@ class SpacesViewCell: UITableViewCell {
                 }
                 
             }else {
+                permissionLabel.isHidden = false
                 permissionLabel.textColor = Message_Color
                 // 判断是否回收权限
                 if space.state == .waitDeleted {
@@ -94,8 +101,31 @@ class SpacesViewCell: UITableViewCell {
                     permissionLabel.textColor = TextBlack_Color
                     
                 }else { // 判断是否修改密码
+//                    switch space.permission {
+//                    case .editor:
+//                        if (space.authorizationPassword?.isEmpty ?? true || space.requiresPasswordVerification) {
+//                            // 编辑者没有密码/修改密码时需要验证密码
+//                            verificationSpacePassword(space: space)
+//                            return
+//                        }
+//                    case .visitor:
+//                        if space.vistorPasswordEnable && (space.authorizationPassword?.isEmpty ?? true || space.requiresPasswordVerification) {
+//                            // 访客需要密码并修改密码/没有密码时需要验证密码
+//                            verificationSpacePassword(space: space)
+//                            return
+//                        }
+//                    default:
+//                        break
+//                    }
+                    // 是否需要验证密码
+                    var passwordVerification = false
+                    if space.permission == .editor {
+                        passwordVerification = space.authorizationPassword?.isEmpty ?? true || space.requiresPasswordVerification
+                    }else {
+                        passwordVerification = space.vistorPasswordEnable && (space.authorizationPassword?.isEmpty ?? true || space.requiresPasswordVerification)
+                    }
                     
-                    if true {
+                    if passwordVerification {
                         lockImageView.isHidden = false
                         permissionLabel.textColor = TextBlack_Color
                         nameLabel.snp.updateConstraints { make in
@@ -105,8 +135,8 @@ class SpacesViewCell: UITableViewCell {
                 }
                 
                 syncFailedImageBtn.snp.remakeConstraints { make in
-                    make.right.equalTo(editorImageView.snp.left).offset(SCRXFrom(-8))
-                    make.centerY.equalTo(editorImageView)
+                    make.right.equalTo(permissionLabel.snp.left).offset(SCRXFrom(-8))
+                    make.centerY.equalTo(permissionLabel)
                 }
             }
            

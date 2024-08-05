@@ -159,7 +159,7 @@ extension MenuPopView: UITableViewDataSource, UITableViewDelegate {
         let item = items[indexPath.row]
         cell.titleLabel.text = item.title
         cell.titleLabel.textColor = .white
-        cell.titleLabel.font = FONTS(14)
+        cell.titleLabel.font = UIFont.systemFont(ofSize: 14, weight: .light)
         cell.iconImageView.image = item.icon
         cell.iconX = 0
         cell.iconSize = CGSize(width: SCRXFrom(30), height: SCRXFrom(30))

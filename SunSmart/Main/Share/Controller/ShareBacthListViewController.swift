@@ -6,6 +6,7 @@
 //
 
 import UIKit
+import SwiftyJSON
 
 class ShareBacthListViewController: UIViewController {
 
@@ -30,29 +31,104 @@ class ShareBacthListViewController: UIViewController {
         title = "bacth_shared_list".localizedString
         view.backgroundColor = Background_Color
         
-        for _ in 0...3 {
-            let nameId = arc4random_uniform(1000000)
-            let shareId = arc4random_uniform(100000000)
-           let data = BatchSpaceData(site: site, uuid: String(format: "%08d", shareId), name: "Bacth \(String(format: "%06d", nameId))", spaces: site.spaces)
-            bacthDataList.append(data)
-        }
+//        for _ in 0...3 {
+//            let nameId = String.generateRandomNumberString(length: 6)
+//            let shareId = String.generateRandomNumberString(length: 8)
+//            let data = BatchSpaceData(site: site, code: String(format: "%08d", shareId), name: "Bacth \(String(format: "%06d", nameId))", spaces: site.spaces, editorPassword: "123456")
+//            bacthDataList.append(data)
+//        }
         setupCollectionView()
-        updateEmptyUI()
+//        updateEmptyUI()
+        
+        loadDataReqeust()
     }
+    
+    // MARK: - Reqeust
+    
+    private func loadDataReqeust() {
+        XWHUDManager.showCustomHUD(withMessage: nil, view: self.view)
+        NetworkRequest.shared.request(.batchShareList(siteId: site.id)) {[weak self] result in
+            guard let self = self else { return }
+            XWHUDManager.hideInView(with: self.view)
+            
+            switch result {
+            case .success(let response):
+                if let batchList = JSON(response)["data"]["batchList"].arrayObject as? [[String: Any]] {
+                    self.bacthDataList = batchList.map({ data in
+                        
+                        let name = JSON(data)["batchName"].stringValue
+                        let code = JSON(data)["batchId"].stringValue
+                        let password = JSON(data)["editorPasswd"].stringValue
+                        
+                        let spaces: [SpaceData] = JSON(data)["spaces"].arrayValue.compactMap({ spaceData in
+                            guard let spaceId = spaceData["spaceId"].string,
+                                  let spaceName = spaceData["spaceName"].string else { return nil }
+                            // 本地有space记录直接返回本地数据
+                            if let space = self.site.spaces.first(where: { $0.id == spaceId }) {
+                                return space
+                            }
+                            
+                            var permission: Permission = self.site.permission
+                            // 权限
+                            if let role = spaceData["role"].string {
+                                switch role {
+                                case "owner":
+                                    permission = .owner
+                                case "editor":
+                                    permission = .editor
+                                case "visitor":
+                                    permission = .visitor
+                                default:
+                                    break
+                                }
+                            }
+                            
+                            let space = SpaceData(name: spaceName, id: spaceId, siteId: self.site.id, imageId: spaceData["imageId"].intValue, create: 0, isFavourite: false, permission: permission, sourceType: .create, meshUUID: self.site.meshUUID, meshNetworkId: spaceId)
+                            space.deviceCount = spaceData["nodeCount"].intValue
+                            if let password = spaceData["editorPasswd"].string, password.count > 0 {
+                                space.editorPassword = password
+                            }
+                            if let password = spaceData["visitorPasswd"].string, password.count > 0 {
+                                space.vistorPassword = password
+                            }
+                            if let editorUserId = spaceData["editor"]["userId"].string, let name = spaceData["editor"]["username"].string {
+                                space.editor = .init(name: name, uuid: editorUserId)
+                            }
+                           return space
+                        })
+                        return BatchSpaceData(siteId: self.site.id, code: code, name: name, spaces: spaces, editorPassword: password)
+                    })
+                    self.collectionView.reloadData()
+                }
+                self.updateEmptyUI()
+                
+            case .failure(let error):
+                XWHUDManager.showErrorTipHUD(error.localizedDescription)
+            }
+            
+        }
+    }
+    
     
     
     /// 撤回批量分享的数据
     private func withdrawBacthData(_ data: BatchSpaceData) {
         
-        if let index = bacthDataList.firstIndex(where: { $0.uuid == data.uuid }) {
-            bacthDataList.remove(at: index)
-            collectionView.deleteItems(at: [IndexPath(item: index, section: 0)])
+        XWHUDManager.showCustomHUD(withMessage: nil, isWindow: true)
+        NetworkRequest.shared.request(.revocationBatchShare(siteId: site.id, batchId: data.code)) {[weak self] result in
+            XWHUDManager.hide()
+            guard let self = self else { return }
+            
+            if let index = self.bacthDataList.firstIndex(where: { $0.code == data.code }) {
+                self.bacthDataList.remove(at: index)
+                self.collectionView.deleteItems(at: [IndexPath(item: index, section: 0)])
+                self.updateEmptyUI()
+            }
         }
-        updateEmptyUI()
     }
     
     private func updateEmptyUI() {
-        
+        view.layoutIfNeeded()
         if bacthDataList.isEmpty {
             collectionView.showEmptyDataView(title: "bacth_shared_no_data".localizedString)
         }else {
@@ -96,9 +172,11 @@ extension ShareBacthListViewController: UICollectionViewDataSource, UICollection
         let cell = collectionView.dequeueReusableCell(withReuseIdentifier: "cell", for: indexPath) as! ShareBacthListViewCell
         let data = bacthDataList[indexPath.item]
         cell.nameLabel.text = data.name
-        cell.shareIdLabel.text = data.uuid
-        cell.withdrawCallback = {[weak self] in
-            self?.withdrawBacthData(data)
+        cell.shareIdLabel.text = data.code
+        cell.withdrawCallback = {
+            SRAlertView(title: "notification".localizedString, message: "batch_share_revoked_message".localizedString, actions: [.cancelAction, SRAlertAction(title: "ok".localizedString, actionHandler: {[weak self] _ in
+                self?.withdrawBacthData(data)
+            })]).show()
         }
         return cell
     }

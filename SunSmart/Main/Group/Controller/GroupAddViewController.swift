@@ -73,7 +73,7 @@ class GroupAddViewController: UIViewController {
         
         for i in 1...18 {
             if i == 2 {
-                dataSource.append((type: .text, name: "A"))
+                dataSource.append((type: .text, name: self.group?.info.imageText ?? "A"))
             }else {
                 dataSource.append((type: .image, name: "group_image_\(i)"))
             }
@@ -84,6 +84,7 @@ class GroupAddViewController: UIViewController {
             title = "edit_group".localizedString
             selectProfile = group.info.profile
             doneBtn.setTitle("done".localizedString, for: .normal)
+            selectImageIndex = max(0, group.info.imageId - 1)
         }else {
             name = MeshNetworkManager.instance.getNextGroupName()
             title = "create_group".localizedString
@@ -157,8 +158,12 @@ class GroupAddViewController: UIViewController {
                 // 通知space数据修改
                 NotificationCenter.default.post(name: .init(spaceDataChangedNotificaitonName), object: SpaceChangeDataType.common)
             } fail: { _, error in
-                XWHUDManager.showTipHUD("failed".localizedString)
-                return
+                // 没有地址
+//                if let network = MeshNetworkManager.instance.meshNetwork, network.localProvisioner == nil || MeshNetworkManager.instance.meshNetwork?.nextAvailableGroupAddress(for: network.localProvisioner!) == nil {
+//
+//                }else {
+                    XWHUDManager.showTipHUD("failed".localizedString)
+//                }
             }
         }
        
@@ -192,7 +197,7 @@ class GroupAddViewController: UIViewController {
         }
         
         let bottomLineView = UIView()
-        bottomLineView.backgroundColor = RGB(243, 243, 243)
+        bottomLineView.backgroundColor = Line_Color
         footerView.addSubview(bottomLineView)
         bottomLineView.snp.makeConstraints { make in
             make.left.right.top.equalToSuperview()

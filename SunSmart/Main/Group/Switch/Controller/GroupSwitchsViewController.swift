@@ -109,6 +109,8 @@ class GroupSwitchsViewController: UIViewController {
             self.tableView.scrollToRow(at: IndexPath(row: 0, section: self.copySwitchs.count - 1), at: .top, animated: true)
         }
         
+        NotificationCenter.default.post(name: .init(spaceDataChangedNotificaitonName), object: SpaceChangeDataType.common)
+        
         updateEmptyUI()
     }
     
@@ -139,7 +141,7 @@ class GroupSwitchsViewController: UIViewController {
             showSwitchs.removeAll(where: { $0.id == groupSwitch.id })
             tableView.deleteSections(IndexSet(integer: index), with: .none)
         }
-        
+        NotificationCenter.default.post(name: .init(spaceDataChangedNotificaitonName), object: SpaceChangeDataType.common)
         updateEmptyUI()
     }
     
@@ -595,6 +597,7 @@ extension GroupSwitchsViewController: GroupSwitchsHeaderViewDelegate {
              groupSwitch.name = text
              self.syncRealSwitchData(copySwitch: groupSwitch)
              self.reloadSwitchItem(groupSwitch: groupSwitch)
+             NotificationCenter.default.post(name: .init(spaceDataChangedNotificaitonName), object: SpaceChangeDataType.common)
          }.show()
         
     }

@@ -8,6 +8,7 @@
 import UIKit
 import NordicSigMeshSDK
 import CoreBluetooth
+import SwiftyJSON
 
 /// 全开全关状态
 enum DeviceAllOnOffState {
@@ -67,6 +68,14 @@ class DevicesViewController: UIViewController {
     private var allOnOffState: DeviceAllOnOffState = .disable
     /// 是否手动控制 全开/全关
     private var controlAllOn: Bool?
+    /// 使用过的引导内容索引
+    private var useGuidanceMessageIndexs: [Int] = []
+    /// 引导内容轮播定时器
+    private var guidanceTimer: Timer?
+    /// 连接loading弹窗
+    private weak var connectLoadingHUD: WYProgressHUD?
+    /// 是否首次连接
+    private var firstConnectionNetwork: Bool = true
     
     lazy var lightControlView: DeviceLightControlView = {
         let view = DeviceLightControlView(frame: self.view.bounds)
@@ -96,14 +105,30 @@ class DevicesViewController: UIViewController {
         
         // 未连接上mesh网络
         if !MeshNetworkManager.instance.realNodes.isEmpty && !MeshLibManager.manager.isMeshNetworkConnected && (MeshLibManager.manager.bluetoothState == .poweredOn || MeshLibManager.manager.bluetoothState == .unknown) {
-            XWHUDManager.showCustomHUD(withMessage: nil, isWindow: false, afterDelay: 10)
+//            XWHUDManager.showCustomHUD(withMessage: nil, isWindow: false, afterDelay: 10)
+            // loading
+            XWHUDManager.showGifImagesHUD(inView: "XWHUDManager_loading", message: getNextGuidanceMessage() ?? "", timer: 10)
+            self.perform(#selector(self.guidanceTimeout), with: nil, afterDelay: 10)
+            if let hud = XWHUDManager.currentHUD() {
+                hud.bezelView.layer.cornerRadius = 20
+                hud.minSize = CGSizeMake(SCREEN_WIDTH - 72, 185)
+                self.connectLoadingHUD = hud
+            }
+            startGuidanceTimer()
             // 获取设备信号
             MeshLibManager.manager.refreshNodesRSSI(withWaitFor: 3, result: nil)
         }else {
-            XWHUDManager.hideInView()
+//            XWHUDManager.hideInView()
+            // 判断是否需要申请地址
+            if space.applyDeviceAddressCount != nil {
+                applyDeviceAddressAlert()
+            }
         }
+        
 //        XWHUDManager.showGifImagesHUD(inView: "XWHUDManager_loading", message: "Some devices prompt REPAIR when they are added because some models cannot be set to the device.", timer: 10)
         addNotificaiton()
+   
+        startGuidanceTimer()
         
     }
     
@@ -116,6 +141,13 @@ class DevicesViewController: UIViewController {
         super.viewDidAppear(animated)
         
         MeshLibManager.manager.register(self)
+        MeshLibManager.manager.messageDelegate = self
+    }
+    
+    override func viewDidDisappear(_ animated: Bool) {
+        super.viewDidDisappear(animated)
+        
+        stopGuidanceTimer()
     }
     
     override func viewDidLayoutSubviews() {
@@ -138,17 +170,72 @@ class DevicesViewController: UIViewController {
 //                    }
 //                    DispatchQueue.main.async {
                         self.getNodesState()
-//                    }
+                //                    }
+                // 首次连接上mesh网络
+                if firstConnectionNetwork {
+                    firstConnectionNetwork = false
+                    // 判断是否需要申请地址
+                    if space.applyDeviceAddressCount != nil {
+                        applyDeviceAddressAlert()
+                    }
+                    
                     // 同步时间
                     if MeshNetworkManager.instance.realNodes.contains(where: { $0.scheduleIds.count > 0 }) && MeshNetworkManager.instance.schedules.count > 0 {
-    //                if space.needSyncDate {
+                        //                if space.needSyncDate {
                         // 延迟3s发送广播节点同步时间消息，避免与获取设备状态冲突
                         DispatchQueue.main.asyncAfter(deadline: .now() + 3) {[weak self] in
                             self?.syncTimeNodes()
                         }
                     }
+                }
 //                }
             }
+        }
+    }
+    
+    // MARK: - Guidance
+    
+    /// 获取下一个引导文本
+    private func getNextGuidanceMessage() -> String? {
+        let maxIndex = 55
+        guard useGuidanceMessageIndexs.count < maxIndex else {
+            return nil
+        }
+        // 55条文案随机一条
+        let index = Int(arc4random_uniform(UInt32(maxIndex))) + 1
+        // 排除重复文案
+        if useGuidanceMessageIndexs.contains(Int(index)) {
+           return getNextGuidanceMessage()
+        }
+        useGuidanceMessageIndexs.append(index)
+        return "guidance_message_\(index)".localizedString
+    }
+    
+    /// 开始轮播引导文本
+    private func startGuidanceTimer() {
+        guidanceTimer = Timer(timeInterval: 2, repeats: true, block: {[weak self] _ in
+            guard let self = self else {
+                return
+            }
+            self.connectLoadingHUD?.detailsLabel.text = self.getNextGuidanceMessage()
+        })
+        RunLoop.current.add(guidanceTimer!, forMode: .common)
+    }
+
+    /// 停止网络连接引导提示
+    private func stopGuidanceTimer() {
+        guidanceTimer?.invalidate()
+        guidanceTimer = nil
+        NSObject.cancelPreviousPerformRequests(withTarget: self, selector: #selector(guidanceTimeout), object: nil)
+    }
+    
+    /// 连接网络引导超时
+    @objc private func guidanceTimeout() {
+        stopGuidanceTimer()
+        
+        // 判断是否需要申请地址
+        if space.applyDeviceAddressCount != nil {
+            applyDeviceAddressAlert()
         }
     }
     
@@ -168,7 +255,45 @@ class DevicesViewController: UIViewController {
             self.reloadCollectionItem(node: node)
         }
         
+        // space编辑权限变更回调
+        NotificationCenter.default.addObserver(forName: .init(spacePermissionChangedNotificaitonName), object: nil, queue: nil) {[weak self] notification in
+            guard let self = self else { return }
+            self.updateUI(reloadTableView: false)
+        }
+        
     }
+    
+    /// 申请地址提示
+    private func applyDeviceAddressAlert() {
+        guard let applyAddressCount = space.applyDeviceAddressCount else { return }
+        
+        self.space.applyDeviceAddressCount = nil
+        self.space.save()
+        
+        SRAlertView(title: "notification".localizedString, message: "device_address_apply_message".localizedString, actions: [.cancelAction, SRAlertAction(title: "ok".localizedString, actionHandler: {[weak self] _ in
+            guard let self = self else { return }
+            // 申请地址
+            XWHUDManager.showCustomHUD(withMessage: nil, isWindow: true)
+            NetworkRequest.shared.request(.applyAddress(siteId: self.space.siteId, type: .device, number: applyAddressCount)) {[weak self] result in
+                XWHUDManager.hide()
+                guard let self = self else { return }
+                switch result {
+                case .success(let repsonsed):
+                    // 新增地址
+                    if let site = SiteData.load(siteId: self.space.siteId), let provisionerData = JSON(repsonsed)["data"]["provisioner"].dictionaryObject {
+                        site.setProvisioner(provisionerData: provisionerData)
+//                        CloudSynchronizationManager.shared.addSynchronizationHandle(operation: .syncSite(site: site), level: .promptly)
+                    }else {
+                        XWHUDManager.showErrorTipHUD(NetworkApiError.unknown.localizedDescription)
+                    }
+                case .failure(let error):
+                    XWHUDManager.showErrorTipHUD(error.localizedDescription)
+                }
+            }
+            
+        })]).show()
+    }
+    
     
     private func loadDevices() {
      
@@ -534,6 +659,7 @@ class DevicesViewController: UIViewController {
         }else {
             XWHUDManager.hide()
         }
+        stopGuidanceTimer()
 
         MeshAPI.sendMessage(message: LightLightnessGet(), address: .allNodes)
         
@@ -796,7 +922,8 @@ extension DevicesViewController: SpaceFunctionFooterViewDelegate {
                     }
                     
                     // 通知space数据修改
-                    NotificationCenter.default.post(name: .init(spaceDataChangedNotificaitonName), object: SpaceChangeDataType.device)
+//                    NotificationCenter.default.post(name: .init(spaceDataChangedNotificaitonName), object: SpaceChangeDataType.device)
+                    NotificationCenter.default.post(name: .init(spaceDataChangedNotificaitonName), object: SpaceChangeDataType.network(type: .address))
                     
                 }else { // 删除失败（提示是否强制删除这部分设备）
                     
@@ -806,7 +933,8 @@ extension DevicesViewController: SpaceFunctionFooterViewDelegate {
                         self?.isDeletingDevice = false
                         if successAddressList.count > 0 {
                             // 通知space数据修改
-                            NotificationCenter.default.post(name: .init(spaceDataChangedNotificaitonName), object: SpaceChangeDataType.device)
+//                            NotificationCenter.default.post(name: .init(spaceDataChangedNotificaitonName), object: SpaceChangeDataType.device)
+                            NotificationCenter.default.post(name: .init(spaceDataChangedNotificaitonName), object: SpaceChangeDataType.network(type: .address))
                         }
                         
                     }), SRAlertAction(title: "force_delete".localizedString, actionHandler: {[weak self] _ in
@@ -830,7 +958,7 @@ extension DevicesViewController: SpaceFunctionFooterViewDelegate {
                         
                         XWHUDManager.showSuccessTipHUD("done!".localizedString)
                         // 通知space数据修改
-                        NotificationCenter.default.post(name: .init(spaceDataChangedNotificaitonName), object: SpaceChangeDataType.device)
+                        NotificationCenter.default.post(name: .init(spaceDataChangedNotificaitonName), object: SpaceChangeDataType.network(type: .address))
                         
                     })])
                     let messageAttStr = NSMutableAttributedString(string: "devices_force_delete_message".localizedString, attributes: [.foregroundColor: TextBlack_Color])
@@ -1023,7 +1151,7 @@ extension DevicesViewController: DeviceGroupsViewDelegate {
     }
 }
 
-extension DevicesViewController: MeshLibManagerDelegate {
+extension DevicesViewController: MeshLibManagerDelegate, MeshLibManagerMessageDelegate {
     
     /// 蓝牙状态发生变化回调
     /// - Parameters:
@@ -1055,6 +1183,12 @@ extension DevicesViewController: MeshLibManagerDelegate {
     ///   - bearer: 代理设备
     func meshNetworkManager(_ manager: MeshNetworkManager, bearerDidClose bearer: Bearer) {
         
+    }
+    
+    /// ivIndex更新回调
+    func meshNetworkManager(_ manager: MeshNetworkManager, didIvIndexChange ivIndex: UInt32) {
+        // 通知space数据修改
+        NotificationCenter.default.post(name: .init(spaceDataChangedNotificaitonName), object: SpaceChangeDataType.network(type: .ivIndex))
     }
  
     /// mesh设备数据更新

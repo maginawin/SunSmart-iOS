@@ -19,12 +19,34 @@ let spaceMenuIndexChangeNotificaitonName = "spaceMenuIndexChangeNotificaiton"
 /// 添加定时、编辑定时（名称、target、enable…）、删除定时
 let spaceDataChangedNotificaitonName = "spaceDataChangedNotificaiton"
 
+/// 空间用户编辑权限变更通知
+let spacePermissionChangedNotificaitonName = "spacePermissionChangedNotificaiton"
+
 /// space修改数据类型
 enum SpaceChangeDataType {
+    /// 网络数据类型
+    enum NetworkDataType {
+        /// ivIndex更新
+        case ivIndex
+        /// 地址（已使用地址/废弃地址）
+        case address
+    }
+    /// 设备数据类型
+    enum DeviceDataType {
+        /// 配置设备
+    case config
+        /// 添加设备
+    case add
+        ///
+    case delete
+    }
+    
     /// 设备数据（包含device、group/scene等配置数据-与设备数据交互）
     case device
     /// 通用数据（group/scene等配置数据-无设备数据交互）
     case common
+    /// 网络通用数据（ivIndex更新、废弃地址）
+    case network(type: NetworkDataType)
 }
 
 class SpaceViewController: WMPageController {
@@ -37,6 +59,12 @@ class SpaceViewController: WMPageController {
     private var loadNetworkData: Bool = false
     /// 退出页面同步space中
     private var exitSyncSpace: Bool = false
+    /// 心跳定时器
+    private var heartbeatTimer: Timer?
+    /// 是否进行云端权限校验
+    private var cloudPermissionValidation: Bool = false
+    /// 是否进行mesh权限校验
+    private var meshPermissionValidation: Bool = false
     
     lazy var mainMenuView: SpaceMenuView = {
         let menuView = SpaceMenuView(frame: CGRect(x: 0, y: kNavigationHeight, width: self.view.width, height: SCRYFrom(46)))
@@ -58,6 +86,12 @@ class SpaceViewController: WMPageController {
         self.menuItemWidth = SCRXFrom(64)
         self.menuViewContentMargin = SCRXFrom(10)
         self.itemMargin = SCRXFrom(6)
+        
+        space.disableEditorPermission = false
+        
+        NetworkRequest.shared.addObserver(self, forKeyPath: "networkable", context: nil)
+        MeshLibManager.manager.addObserver(self, forKeyPath: "isMeshNetworkConnected", context: nil)
+        MeshLibManager.manager.addObserver(self, forKeyPath: "bluetoothState", context: nil)
     }
     
     required init?(coder: NSCoder) {
@@ -77,7 +111,6 @@ class SpaceViewController: WMPageController {
         
         navigationItem.rightBarButtonItem = UIBarButtonItem(image: UIImage(named: "more_vertical")?.withRenderingMode(.alwaysOriginal), style: .done, target: self, action: #selector(moreClick))
 
-        MeshLibManager.manager.addObserver(self, forKeyPath: "bluetoothState", context: nil)
         
         MeshLibManager.manager.publishModelIDs = []// .genericOnOffServerModelId, .lightLightnessServerModelId, .lightCTLServerModelId
         MeshLibManager.manager.publishTimeModelIDs = []
@@ -90,6 +123,13 @@ class SpaceViewController: WMPageController {
         // 获取space数据
         setNetworkConnected()
 //        loadSpaceReqeust()
+        if space.permission == .visitor {
+            // 开始定时发送心跳
+            startHeartbeatTimer()
+        }else {
+            // 读取space内是否有其他编辑者
+            checkTheSpaceMembersRequest()
+        }
     }
     
     override func viewWillAppear(_ animated: Bool) {
@@ -110,44 +150,49 @@ class SpaceViewController: WMPageController {
         super.viewWillDisappear(animated)
         ConfigurationFlowGuidanceView.current()?.hide()
     }
-    
-    /// 配置引导
-    private func configurationFlowGuidance() {
-        
-        guard !exitSyncSpace else {
-            return
-        }
-        // 判断是否空的空间，进行引导配置流程
-        if view.window != nil && space.permission != .visitor && space.isEmpty {
-//            DispatchQueue.main.asyncAfter(wallDeadline: .now() + 0.5) {[weak self] in
-//                guard let self = self else { return }
-                ConfigurationFlowGuidanceView(continueBack: {[weak self] in
-                    guard let self = self else { return }
-                    // 进入引导配置流程
-                    self.space.isConfiguring = true
-                    let vc = GroupAddViewController(space: self.space)
-                    let navVc = NavigationViewController(rootViewController: vc)
-                    self.present(navVc, animated: true)
-                    self.selectIndex = 1
-                }).show()
-//            }
-        }
-        
-    }
+
     
     deinit {
         if MeshLibManager.manager.meshNetworkManager?.meshNetwork?.uuid.uuidString == space.meshUUID {
             MeshLibManager.manager.meshNetworkDisconnect()
         }
         MeshLibManager.manager.removeObserver(self, forKeyPath: "bluetoothState")
+        NetworkRequest.shared.removeObserver(self, forKeyPath: "networkable")
+        MeshLibManager.manager.removeObserver(self, forKeyPath: "isMeshNetworkConnected")
+        
+        stopHeartbeatTimer()
     }
     
     override func observeValue(forKeyPath keyPath: String?, of object: Any?, change: [NSKeyValueChangeKey : Any]?, context: UnsafeMutableRawPointer?) {
         
 //        let newState = change![.newKey] as! CBManagerState
 //        let oldState = change![NSKeyValueChangeKey.oldKey] as! CBManagerState
-           
-        checkBluetoothState()
+        guard let key = keyPath else { return }
+        switch key {
+        case "bluetoothState":
+            checkBluetoothState()
+        case "networkable":
+            if NetworkRequest.shared.networkable { // 无网->有网 开始发送心跳
+                self.startHeartbeatTimer()
+            }else {
+                
+            }
+        case "isMeshNetworkConnected": // mesh连接成功/断开连接
+            // 连接上mesh网络
+            if MeshLibManager.manager.isMeshNetworkConnected && self.space.deviceOperates.contains(.edit) && !self.space.disableEditorPermission {
+                // 如果未完成mesh权限校验，有space编辑权限的用户进入空间连接网络后需判定是否有其他的编辑用户
+                if !self.meshPermissionValidation && (space.permission == .owner || space.permission == .editor) {
+                    MeshLibManager.manager.externalVendorMessageDelegate = self
+                    MeshAPI.sendMessage(message: ExternalVendorMessage(operation: .userPermission(.ask)), address: .localClientGroupAddress)
+                    DispatchQueue.main.async {
+                        NSObject.cancelPreviousPerformRequests(withTarget: self, selector: #selector(self.userPermissionAskTimeout), object: nil)
+                        self.perform(#selector(self.userPermissionAskTimeout), with: nil, afterDelay: 5)
+                    }
+                }
+            }
+        default:
+            break
+        }
     }
     
      /// 添加通知监听
@@ -184,10 +229,54 @@ class SpaceViewController: WMPageController {
             self.space.save()
             switch type {
             case .device:
-                CloudSynchronizationManager.shared.addSynchronizationHandle(operation: .syncSpace(space: self.space), level: .promptly)
+                self.syncSpace(level: .promptly)
             case .common:
-                CloudSynchronizationManager.shared.addSynchronizationHandle(operation: .syncSpace(space: self.space), level: .slow)
+                self.syncSpace(level: .slow)
+            case .network(let type):
+                if type == .ivIndex {
+                    CloudSynchronizationManager.shared.addSynchronizationHandle(operation: .syncSite(site: self.site), level: .promptly)
+                }else if type == .address {
+                    self.site.lastUpdate = Int64(Date().timeIntervalSince1970)
+                    self.site.save()
+                    CloudSynchronizationManager.shared.addSynchronizationHandle(operation: .syncSite(site: self.site, syncSpaces: [self.space]), level: .promptly)
+                }
             }
+        }
+        
+    }
+    
+    /// 同步space
+    private func syncSpace(level: SyncLevel) {
+        // site已上传服务器
+        if self.site.uploadCloud {
+            // 同步space
+            CloudSynchronizationManager.shared.addSynchronizationHandle(operation: .syncSpace(space: space), level: level)
+        }else {
+            // 未上传服务器，site、space一起上传
+            CloudSynchronizationManager.shared.addSynchronizationHandle(operation: .syncSite(site: site, syncSpaces: site.spaces), level: level)
+        }
+    }
+    
+    /// 配置引导
+    private func configurationFlowGuidance() {
+        
+        guard !exitSyncSpace else {
+            return
+        }
+        // 判断是否空的空间，进行引导配置流程
+        if view.window != nil && space.deviceOperates.contains(.edit) && space.isEmpty {
+//            DispatchQueue.main.asyncAfter(wallDeadline: .now() + 0.5) {[weak self] in
+//                guard let self = self else { return }
+                ConfigurationFlowGuidanceView(continueBack: {[weak self] in
+                    guard let self = self else { return }
+                    // 进入引导配置流程
+                    self.space.isConfiguring = true
+                    let vc = GroupAddViewController(space: self.space)
+                    let navVc = NavigationViewController(rootViewController: vc)
+                    self.present(navVc, animated: true)
+                    self.selectIndex = 1
+                }).show()
+//            }
         }
         
     }
@@ -198,14 +287,25 @@ class SpaceViewController: WMPageController {
         XWHUDManager.showCustomHUD(withMessage: nil, isWindow: false, afterDelay: 2)
         DispatchQueue.global().async {
             MeshLibManager.manager.setMeshNetworkConnected(meshUUID: self.space.meshUUID, subNetwork: self.space.meshNetworkKey)
-            if let manager = MeshLibManager.manager.meshNetworkManager {
+            if let manager = MeshLibManager.manager.meshNetworkManager, let meshNetwork = manager.meshNetwork {
                 self.space.meshManager = manager
+                if meshNetwork.localProvisioner == nil || meshNetwork.localProvisioner?.primaryUnicastAddress == nil { // 缺少手机供应者或手机地址
+                    // 如果用户有地址则自己分配一个作为手机地址
+                    if let localProvisioner = manager.meshNetwork?.localProvisioner, let address = meshNetwork.nextAvailableUnicastAddress(elementsCount: 1, elementsUsing: localProvisioner, lockInAddress: false) {
+                        try? meshNetwork.changeLocalNodeAddress(address)
+                    }else { // 如果没有地址，则向服务器申请一个地址
+                        self.requestMobileAddress()
+                    }
+                }
+                
                 manager.loadExtensionData {[weak self] in
                     guard let self = self else { return }
 //                    XWHUDManager.hideInView(with: self.view)
                     self.loadNetworkData = true
                     self.reloadData()
-                    self.configurationFlowGuidance()
+//                    if self.cloudPermissionValidation {
+//                        self.configurationFlowGuidance()
+//                    }
                 }
             }
         }
@@ -242,20 +342,236 @@ class SpaceViewController: WMPageController {
         XWHUDManager.showCustomHUD(withMessage: "deleting".localizedString, isWindow: true)
         NetworkRequest.shared.request(.siteDelete(siteId: self.site.id)) {[weak self] result in
             XWHUDManager.hide()
+            guard let self = self else { return }
             switch result {
             case .success(_):
+                
                 // 删除本地数据
-                self?.space.delete()
-                self?.navigationController?.popViewController(animated: true)
-                self?.deleteSpaceCallback?()
+                self.space.delete()
+                self.navigationController?.popViewController(animated: true)
+                self.deleteSpaceCallback?()
                 NotificationCenter.default.post(name: .init(rawValue: SitesDataRefreshNotifiacationName), object: nil)
                 
             case .failure(let error): // 删除失败，无网络/space存在编辑者
-                XWHUDManager.showTipHUD(error.localizedDescription, isLineFeed: true)
+                XWHUDManager.showErrorTipHUD(error.localizedDescription)
             }
         }
     }
     
+    /// 解绑space
+    private func unbindSpace() {
+        
+        XWHUDManager.showCustomHUD(withMessage: nil, isWindow: true)
+        
+        // 是否有同步操作正在进行,进行中则取消任务
+        CloudSynchronizationManager.shared.cancelSynchronizationHandle(space: self.space)
+        
+        // 数据有更新没提交,先提交完成数据再解绑
+        if space.permission == .editor && space.needUploadCloud {
+            Task {
+                let spaceData = await space.export()
+                NetworkRequest.shared.request(.spaceUpload(siteId: space.siteId, spaceData: spaceData)) {[weak self] result in
+                    switch result {
+                    case .success(_):
+                        self?.space.lastUploadCloudTimestamp = self?.space.lastUpdate
+                        self?.unbindSpace()
+                    case .failure(let error):
+                        XWHUDManager.hide()
+                        XWHUDManager.showErrorTipHUD(error.localizedDescription)
+                    }
+                }
+            }
+            return
+        }
+        
+        let recycleData = site.getRecycleAddressData(unbindSpaces: [space])
+        
+        let networkApi: NetowrkReqeustApi = .unbindSpaces(siteId: site.id, spaceIds: [space.id], recycleDeviceAddresses: recycleData.deviceAddresses, recycleGroupAddresses: recycleData.groupAddresses, recycleSceneAddresses: recycleData.sceneAddresses, exclusions: recycleData.exclusionAddresses?.map({ ($0.ivIndex, $0.addresses) }))
+        
+        NetworkRequest.shared.request(networkApi) {[weak self] result in
+            XWHUDManager.hide()
+            
+            guard let self = self else { return }
+            switch result {
+            case .success(_):
+//                XWHUDManager.showSuccessTipHUD("successfully".localizedString + " !")
+                if let spaceIndex = self.site.spaces.firstIndex(where: { $0.id == self.space.id }) {
+                    self.site.spaces.remove(at: spaceIndex)
+                }
+                // 删除回收的地址
+                self.site.deleteProvisionerAddress(deviceAddresses: recycleData.deviceAddresses, groupAddresses: recycleData.groupAddresses, sceneAddresses: recycleData.sceneAddresses)
+                
+                self.space.delete()
+                
+                self.navigationController?.popViewController(animated: true)
+                if self.site.spaces.isEmpty && self.site.permission != .owner { // 不属于site所有者并且解绑所有spaces则清空site记录
+                    self.site.delete()
+                    self.site.state = .waitDeleted
+                    NotificationCenter.default.post(name: .init(SiteStateChangeNotificationName), object: nil)
+                }else {
+                    self.deleteSpaceCallback?()
+                }
+                NotificationCenter.default.post(name: .init(rawValue: SitesDataRefreshNotifiacationName), object: nil)
+            case .failure(let error):
+                XWHUDManager.showErrorTipHUD(error.localizedDescription)
+            }
+        }
+        
+    }
+    
+    /// 检查空间内成员请求，保证空间内只有一个编辑权限用户
+    private func checkTheSpaceMembersRequest() {
+        guard space.deviceOperates.contains(.edit), !space.disableEditorPermission else {
+            return
+        }
+        NetworkRequest.shared.request(.spaceActiveMembers(siteId: self.space.siteId, spaceId: self.space.id)) {[weak self] result in
+            guard let self = self else { return }
+            switch result {
+            case .success(let response):
+                if let users = JSON(response)["data"]["activeUsers"].arrayObject as? [[String: Any]] {
+                    let userInfos: [(userId: String, permission: Permission)] = users.compactMap({ userDict in
+                        if let role = userDict["role"] as? String, let permission = Permission(permissionString: role), let userId = userDict["userId"] as? String {
+                            return (userId, permission)
+                        }
+                        return nil
+                    })
+                    
+                    self.cloudPermissionValidation = true
+                    // 判断空间内是否存在编辑权限用户
+                    if userInfos.contains(where: { ($0.permission == .owner || $0.permission == .editor) && $0.userId != UserData.currentUserId }) {
+                        NSObject.cancelPreviousPerformRequests(withTarget: self, selector: #selector(userPermissionAskTimeout), object: nil)
+                        // 提示是否关闭用户编辑权限
+                        self.showTransferPermissionAlert()
+                    }else {
+                        if space.deviceCount == 0 {
+                            self.configurationFlowGuidance()
+                        }
+                        // 开始定时发送心跳
+                        self.startHeartbeatTimer()
+                    }
+                }
+            case .failure(_):
+                self.cloudPermissionValidation = true
+                if space.deviceCount == 0 {
+                    self.configurationFlowGuidance()
+                }
+                // 开始定时发送心跳
+                self.startHeartbeatTimer()
+            }
+        }
+        
+        
+    }
+    
+    /// 申请手机地址请求
+    private func requestMobileAddress() {
+//        if showHUD {
+//            XWHUDManager.showCustomHUD(withMessage: nil, isWindow: true)
+//        }
+        NetworkRequest.shared.request(.applyAddress(siteId: site.id, number: 1)) {[weak self] result in
+//            XWHUDManager.hide()
+            guard let self = self else { return }
+            switch result {
+            case .success(let response):
+                if let provisionerData = JSON(response)["data"]["provisioner"].dictionaryObject {
+                    self.site.setProvisioner(provisionerData: provisionerData)
+                    if self.site.localAddress != nil {
+                        CloudSynchronizationManager.shared.addSynchronizationHandle(operation: .syncSite(site: self.site), level: .promptly)
+                    }
+                }
+            case .failure(_): // 申请手机地址失败
+                break
+//                XWHUDManager.showErrorTipHUD(error.localizedDescription)
+            }
+        }
+        
+    }
+    
+    // MARK: - Heartbeat
+    
+    /// 开始发送心跳
+    private func startHeartbeatTimer() {
+        
+        if heartbeatTimer != nil {
+            heartbeatTimer?.invalidate()
+        }
+        
+        heartbeatTimer = LCWeakTimer.scheduledTimer(timeInterval: 60, aTarget: self, selector: #selector(heartbeatRequest), userInfo: nil, repeats: true)
+        
+        heartbeatTimer?.fire()
+        RunLoop.current.add(heartbeatTimer!, forMode: .common)
+    }
+    
+    /// 停止发送心跳
+    private func stopHeartbeatTimer() {
+        
+        heartbeatTimer?.invalidate()
+        heartbeatTimer = nil
+    }
+    
+    /// 心跳请求
+    @objc private func heartbeatRequest() {
+        
+        NetworkRequest.shared.request(.heartbeat(siteId: self.space.siteId, spaceId: self.space.id, permission: self.space.permission)) { result in
+            switch result {
+            case .success(_):
+                break
+            case .failure(let error):
+//                print(error.localizedDescription)
+                guard self.space.permission == .visitor else {
+                    return
+                }
+                switch error {
+                case .noSitePermission: // 被回收权限/转让site
+                    XWHUDManager.showErrorTipHUD(error.localizedDescription)
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {[weak self] in
+                        self?.navigationController?.popViewController(animated: true)
+                    }
+                    // 返回到site列表 通知刷新site
+                    NotificationCenter.default.post(name: .init(rawValue: SitesDataRefreshNotifiacationName), object: true)
+                case .noSpacePermission, .userUnauthorized: // 没有空间权限
+                    self.space.state = .waitDeleted
+                    self.space.save()
+                    SRAlertView(title: "notification".localizedString, message: "the_space_cleared_visitor_message".localizedString, actions: [SRAlertAction(title: "confirm".localizedString, actionHandler: {[weak self] _ in
+                        self?.navigationController?.popViewController(animated: true)
+                    })]).show()
+                case .incorrectPassword: // 密码修改
+                    self.space.requiresPasswordVerification = true
+                    self.space.save()
+                    SRAlertView(title: "notification".localizedString, message: "the_space_password_change_message".localizedString, actions: [SRAlertAction(title: "confirm".localizedString, actionHandler: {[weak self] _ in
+                        self?.navigationController?.popViewController(animated: true)
+                    })]).show()
+                default:
+                    break
+                }
+            }
+        }
+    }
+    
+    /// 查询用户权限超时
+    @objc private func userPermissionAskTimeout() {
+        self.meshPermissionValidation = true
+    }
+    
+    /// 切换权限提示
+    private func showTransferPermissionAlert() {
+        
+        guard !space.disableEditorPermission else { return }
+        
+        SRAlertView(title: "notification".localizedString, message: "space_permission_transition_message".localizedString, actions: [SRAlertAction(title: "cancel".localizedString, style: .cancel, actionHandler: {[weak self] _ in
+            self?.navigationController?.popToViewController(vcClass: SiteViewController.classForCoder())
+        }), SRAlertAction(title: "confirm".localizedString, actionHandler: {[weak self] _ in
+            // 禁用编辑权限
+            self?.disableEditorPermission()
+        })]).show()
+        
+    }
+    
+    /// 关闭用户编辑权限
+    private func disableEditorPermission() {
+        self.space.disableEditorPermission = true
+        NotificationCenter.default.post(name: .init(spacePermissionChangedNotificaitonName), object: nil)
+    }
     
     /// 更新空间缓存数据
     private func updateSpaceData() {
@@ -364,7 +680,7 @@ class SpaceViewController: WMPageController {
             }))
         }
         
-        MenuPopView.show(items: items, anchorPoint: CGPoint(x: view.width - 18 - 15, y: kNavigationHeight), menuWidth: SCRXFrom(154))
+        MenuPopView.show(items: items, anchorPoint: CGPoint(x: view.width - 18 - 15, y: kNavigationHeight), menuWidth: SCRXFrom(108))
     }
     
     /// 编辑空间
@@ -385,7 +701,7 @@ class SpaceViewController: WMPageController {
             self.space.imageId = imageId + 1
             self.space.save()
             self.title = name
-            CloudSynchronizationManager.shared.addSynchronizationHandle(operation: .syncSpace(space: self.space), level: .normal)
+            self.syncSpace(level: .normal)
             return true
         }
         present(NavigationViewController(rootViewController: vc), animated: true)
@@ -404,6 +720,10 @@ class SpaceViewController: WMPageController {
                 if self.space.deviceCount > 0 {
                     XWHUDManager.showErrorTipHUD("site_delete_fail".localizedString)
                 }else { // 空间未存在设备，删除成功
+                    
+                    // 是否有同步操作正在进行,进行中则取消任务
+                    CloudSynchronizationManager.shared.cancelSynchronizationHandle(space: self.space)
+                    
                     // 提交到云端需要网络才能删除
                     if self.space.uploadCloud {
                         self.deleteSpaceRequest()
@@ -422,13 +742,72 @@ class SpaceViewController: WMPageController {
     
     /// 分享space
     private func shareSpace() {
-        let vc = SharingSettingViewController(type: .space(site: self.site, space: self.space))
-        present(NavigationViewController(rootViewController: vc), animated: true)
-    }
-    
-    /// 解绑space
-    private func unbindSpace() {
         
+        guard NetworkRequest.shared.networkable else {
+            XWHUDManager.showTipHUD("phone_no_network".localizedString, isLineFeed: true)
+            return
+        }
+        if let handle = CloudSynchronizationManager.shared.getSpaceCurrentSyncState(space) {
+            // site正在排队
+            if case .wait = handle.state {
+                XWHUDManager.showTipHUD("sync_data_unfinished_message".localizedString, isLineFeed: true)
+                // 修改任务等级为紧急
+                CloudSynchronizationManager.shared.setSynchronizationHandleLevel(handle: handle, level: .promptly)
+                return
+            }
+            // site正在同步中
+            if case .inProgress = handle.state {
+                XWHUDManager.showTipHUD("syncing_data_message".localizedString, isLineFeed: true)
+                return
+            }
+        }
+        // space需要提交数据
+        if space.needUploadCloud {
+            self.syncSpace(level: .promptly)
+            XWHUDManager.showTipHUD("sync_data_unfinished_message".localizedString, isLineFeed: true)
+            return
+        }
+    
+        var networkApi: NetowrkReqeustApi!
+        // 有分享code则读取之前的数据
+        if let shareCode = space.shareCode {
+            networkApi = .shareInfo(shareId: shareCode)
+        }else {
+            // 还没有设置编辑者密码
+            if space.permission == .owner && space.editorPassword == nil {
+                space.editorPassword = String.generateRandomNumberString()
+            }
+            networkApi = .spaceShare(space: space)
+        }
+        
+        XWHUDManager.showCustomHUD(withMessage: nil, isWindow: true)
+        NetworkRequest.shared.request(networkApi) {[weak self] result in
+            
+            guard let self = self else {
+                XWHUDManager.hide()
+                return
+            }
+            switch result {
+            case .success(let response):
+                guard let code = JSON(response)["data"]["token"].string else {
+                    XWHUDManager.hide()
+                    XWHUDManager.showErrorTipHUD(NetworkApiError.unknown.localizedDescription)
+                    return
+                }
+                // 邀请码
+                if self.space.shareCode != code {
+                    self.space.shareCode = code
+                    self.space.save()
+                }
+                let vc = SharingSettingViewController(type: .space(site: self.site, space: self.space))
+                self.present(NavigationViewController(rootViewController: vc), animated: true) {
+                    XWHUDManager.hide()
+                }
+            case .failure(let error):
+                XWHUDManager.hide()
+                XWHUDManager.showErrorTipHUD(error.localizedDescription)
+            }
+        }
     }
     
     
@@ -444,7 +823,10 @@ class SpaceViewController: WMPageController {
             case .failure:
                 self.showNavigationBarFailure {[weak self] in
                     // 点击失败图标
-                    
+                    guard let self = self, let error = self.space.showSyncCloudError else { return }
+                    SRAlertView(title: "synchronization_failure".localizedString, message: error.localizedDescription, actions: [.cancelAction, SRAlertAction(title: "SYNC".localizedString, actionHandler: { _ in
+                        self.syncSpace(level: .promptly)
+                    })]).show()
                 }
             default:
                 break
@@ -455,11 +837,12 @@ class SpaceViewController: WMPageController {
     /// 退出页面立即同步space数据
     private func promptlySyncSpace() {
         
-        ConfigurationFlowGuidanceView.current()?.hide()
-        
-        CloudSynchronizationManager.shared.addSynchronizationHandle(operation: .syncSpace(space: space), level: .promptly)
-        exitSyncSpace = true
         XWHUDManager.showCustomHUD(withMessage: "syncing_data".localizedString, isWindow: true)
+        
+        ConfigurationFlowGuidanceView.current()?.hide()
+        exitSyncSpace = true
+        self.syncSpace(level: .promptly)
+        
     }
     /// 展示同步space数据失败页面
     private func showSyncSpaceFailedAlert() {
@@ -494,6 +877,9 @@ extension SpaceViewController {
             return vc
         case 3:
             let vc = TimedViewController(space: space)
+            return vc
+        case 4:
+            let vc = SpaceMoreViewController(space: space)
             return vc
         default:
             return UIViewController()
@@ -556,7 +942,7 @@ extension SpaceViewController: CloudSynchronizationManagerDelegate {
     /// - Parameters:
     ///   - manager: 同步管理
     ///   - handle: 同步数据操作
-    func cloudSynchManager(_ manager: CloudSynchronizationManager, didStartSync handle: CloudSynchronizationHandle) {
+    func cloudSyncManager(_ manager: CloudSynchronizationManager, didStartSync handle: CloudSynchronizationHandle) {
         updateSyncState()
     }
     
@@ -564,7 +950,7 @@ extension SpaceViewController: CloudSynchronizationManagerDelegate {
     /// - Parameters:
     ///   - manager: 同步管理
     ///   - handle: 同步数据操作
-    func cloudSynchManager(_ manager: CloudSynchronizationManager, didSyncFinished handle: CloudSynchronizationHandle) {
+    func cloudSyncManager(_ manager: CloudSynchronizationManager, didSyncFinished handle: CloudSynchronizationHandle) {
         updateSyncState()
         if exitSyncSpace {
             XWHUDManager.hide()
@@ -576,11 +962,52 @@ extension SpaceViewController: CloudSynchronizationManagerDelegate {
     /// - Parameters:
     ///   - manager: 同步管理
     ///   - handle: 同步数据操作
-    func cloudSynchManager(_ manager: CloudSynchronizationManager, didSyncFailure handle: CloudSynchronizationHandle, error: NetworkApiError) {
+    func cloudSyncManager(_ manager: CloudSynchronizationManager, didSyncFailure handle: CloudSynchronizationHandle, error: NetworkApiError) {
         updateSyncState()
         if exitSyncSpace { // 提示数据同步失败
             XWHUDManager.hide()
             showSyncSpaceFailedAlert()
         }
     }
+    
+    /// 同步数据操作取消回调
+    func cloudSyncManager(_ manager: CloudSynchronizationManager, cancelSyncHandle handle: CloudSynchronizationHandle) {
+        updateSyncState()
+    }
+}
+
+extension SpaceViewController: MeshExternalVendorMessageDelegate {
+    
+    /// 收到外部自定义消息回调
+    /// - Parameters:
+    ///   - manager: mesh网络管理
+    ///   - message: 消息体
+    ///   - source: 来源设备地址
+    ///   - destination: 接收设备地址
+    func meshNetworkManager(_ manager: MeshNetworkManager,
+                            didReceiveMessage message: ExternalVendorMessage,
+                            sentFrom source: Address, to destination: Address) {
+        
+        guard source != manager.meshNetwork?.localProvisioner?.node?.primaryUnicastAddress, !self.meshPermissionValidation, let operation = message.unmarshal() else {
+            return
+        }
+        
+        switch operation {
+        case .userPermission(let event):
+            switch event {
+            case .ask: // 收到其他人查询权限消息
+                // 回复自己的权限给对方
+                MeshAPI.sendMessage(message: ExternalVendorMessage(operation: .userPermission(.reply(permission: self.space.permission))), address: source)
+            case .reply(let permission): // 收到对方回复权限消息
+                if permission == .owner || permission == .editor {
+                    NSObject.cancelPreviousPerformRequests(withTarget: self, selector: #selector(userPermissionAskTimeout), object: nil)
+                    // 关闭用户编辑权限
+                    showTransferPermissionAlert()
+                    self.meshPermissionValidation = true
+                }
+            }
+        }
+        
+    }
+    
 }

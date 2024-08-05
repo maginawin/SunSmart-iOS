@@ -481,7 +481,7 @@ class ScheduleAddViewController: UIViewController {
         }
         
         let bottomLineView = UIView()
-        bottomLineView.backgroundColor = RGB(243, 243, 243)
+        bottomLineView.backgroundColor = Line_Color
         bottomView.addSubview(bottomLineView)
         bottomLineView.snp.makeConstraints { make in
             make.left.right.top.equalToSuperview()
@@ -498,7 +498,7 @@ class ScheduleAddViewController: UIViewController {
         
         lineView = UIView()
         lineView.isHidden = true
-        lineView.backgroundColor = RGB(243, 243, 243)
+        lineView.backgroundColor = Line_Color
         bottomView.addSubview(lineView)
         lineView.snp.makeConstraints { make in
             make.centerX.equalToSuperview()

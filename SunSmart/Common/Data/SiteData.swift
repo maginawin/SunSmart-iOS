@@ -6,6 +6,7 @@
 //
 
 import Foundation
+import NordicSigMeshSDK
 
 /// 数据来源
 enum DataSourceType: Int {
@@ -20,6 +21,19 @@ enum DataSourceType: Int {
 /// 权限类型
 enum Permission: Int {
     
+    /// 数据文本
+    var dataString: String {
+        switch self {
+        case .owner:
+            return "owner"
+        case .editor:
+            return "editor"
+        case .visitor:
+            return "visitor"
+        }
+    }
+    
+    /// 翻译文本
     var rawString: String {
         switch self {
         case .owner:
@@ -28,6 +42,19 @@ enum Permission: Int {
             return "editor".localizedString
         case .visitor:
             return "visitor".localizedString
+        }
+    }
+    
+    init?(permissionString: String) {
+        switch permissionString {
+        case "owner":
+            self = .owner
+        case "editor":
+            self = .editor
+        case "visitor":
+            self = .visitor
+        default:
+            return nil
         }
     }
     
@@ -56,7 +83,7 @@ class SiteData: Copyable {
     /// 类型
     let type: SiteType
     /// 权限
-    let permission: Permission
+    var permission: Permission
 
     /// 创建时间（时间戳秒）
 //    let create: TimeInterval
@@ -77,7 +104,10 @@ class SiteData: Copyable {
     /// 展示的同步服务区错误信息
     var showSyncCloudError: NetworkApiError? {
         // 有错误则显示之前上传服务器错误，如没有错误并需要上传服务器并不在同步过程，则说明同步过程退出APP
-        return syncCloudError ?? ((needUploadCloud && CloudSynchronizationManager.shared.getSiteCurrentSyncState(self) == nil) ? .unknown : nil)
+        guard needUploadCloud else {
+            return nil
+        }
+        return syncCloudError ?? (CloudSynchronizationManager.shared.getSiteCurrentSyncState(self) == nil ? .unknown : nil)
     }
     
     /// 最近上传到云端的时间
@@ -93,6 +123,15 @@ class SiteData: Copyable {
     }
     /// 状态
     var state: State = .normal
+    /// 转让site密码
+    var transferPassword: String?
+    /// 转让邀请码
+    var transferCode: String?
+    /// 正在使用的本地手机地址
+    var localAddress: Address?
+    /// 需要回收的地址数据
+    var recycleAddressData: RecycleAddressData?
+    
     
     /// 权限操作list
     var permissionOperates: [SiteOperate] {
@@ -169,5 +208,4 @@ extension SiteData {
         case waitDeleted = 2
     }
 }
-
 

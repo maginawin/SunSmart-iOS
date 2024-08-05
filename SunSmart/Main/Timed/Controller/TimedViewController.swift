@@ -108,6 +108,12 @@ class TimedViewController: UIViewController {
             self.reloadCollectionItem(schedule: schedule)
         }
         
+        // space编辑权限变更回调
+        NotificationCenter.default.addObserver(forName: .init(spacePermissionChangedNotificaitonName), object: nil, queue: nil) {[weak self] notification in
+            guard let self = self else { return }
+            self.updateUI()
+        }
+        
     }
     
     /// 设置日程启用/禁用
@@ -117,6 +123,7 @@ class TimedViewController: UIViewController {
             schedule.enabled = enabled
             schedule.save()
             self.reloadCollectionItem(schedule: schedule)
+            NotificationCenter.default.post(name: .init(spaceDataChangedNotificaitonName), object: SpaceChangeDataType.common)
             return
         }
         guard MeshLibManager.manager.isMeshNetworkConnected else {
@@ -159,6 +166,8 @@ class TimedViewController: UIViewController {
   
         footerView.countBtn.setTitle("\(MeshNetworkManager.instance.schedules.count)/16", for: .normal)
         
+        footerView.addBtn.isEnabled = space.scheduleOperates.contains(.add)
+        
         updateEmptyUI()
         
         scheduleCollectionView.reloadData()
@@ -188,7 +197,6 @@ class TimedViewController: UIViewController {
         footerView = SpaceFunctionFooterView()
         footerView.editBtn.isHidden = true
         footerView.sortBtn.isHidden = true
-        footerView.addBtn.isEnabled = space.scheduleOperates.contains(.add)
         footerView.delegate = self
         view.addSubview(footerView)
         footerView.snp.makeConstraints { make in

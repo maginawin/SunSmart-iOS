@@ -7,6 +7,8 @@
 
 import Foundation
 import Moya
+import NordicSigMeshSDK
+import SwiftyJSON
 
 /// 操作类型
 enum SyncOperation {
@@ -33,8 +35,8 @@ enum SyncOperation {
         }
     }
     
-    /// 同步site
-    case syncSite(site: SiteData)
+    /// 同步site  syncSpaces:需要同时同步的spaces
+    case syncSite(site: SiteData, syncSpaces: [SpaceData] = [])
     /// 同步space
     case syncSpace(space: SpaceData)
     /// 添加spaces
@@ -47,9 +49,10 @@ enum SyncOperation {
             return false
         }
         switch lhs {
-        case .syncSite(let site):
-            if case .syncSite(let rhsSite) = rhs {
-                return site.id == rhsSite.id
+        case .syncSite(let site, let syncSpaces):
+            if case .syncSite(let rhsSite, let rhsSyncSpaces) = rhs {
+                // 后面同步的spaces包含上一个同步的所有spaces
+                return site.id == rhsSite.id && (!rhsSyncSpaces.contains(where: { rhsSpace in !syncSpaces.contains(where: { $0.id == rhsSpace.id }) }) || syncSpaces.isEmpty)
             }
         case .syncSpace(let space):
             if case .syncSpace(let rhsSpace) = rhs {
@@ -65,8 +68,14 @@ enum SyncOperation {
     
     func getNetworkApi() async -> NetowrkReqeustApi {
         switch self {
-        case .syncSite(let site):
-            return .siteUpload(siteData: await site.export())
+        case .syncSite(let site, let syncSpaces):
+            if site.uploadCloud {
+                return .siteUpload(siteData: await site.export(spaceIds: syncSpaces.map({ $0.id })))
+            }else {
+                // 获取最后分配的设备地址
+                let maxAddress = MeshAPI.getTheUsedDeviceAddresses(meshUUID: site.meshUUID).max()
+                return .siteAdd(siteData: await site.export(spaceIds: syncSpaces.map({ $0.id })), useDeivceAddressNum: Int(maxAddress ?? 0))
+            }
         case .syncSpace(let space):
             return .spaceUpload(siteId: space.siteId, spaceData: await space.export())
         case .addSpaces(let site, let spaces):
@@ -107,20 +116,27 @@ protocol CloudSynchronizationManagerDelegate: AnyObject {
     /// - Parameters:
     ///   - manager: 同步管理
     ///   - handle: 同步数据操作
-    func cloudSynchManager(_ manager: CloudSynchronizationManager, didStartSync handle: CloudSynchronizationHandle)
+    func cloudSyncManager(_ manager: CloudSynchronizationManager, didStartSync handle: CloudSynchronizationHandle)
     
     /// 同步数据成功回调
     /// - Parameters:
     ///   - manager: 同步管理
     ///   - handle: 同步数据操作
-    func cloudSynchManager(_ manager: CloudSynchronizationManager, didSyncFinished handle: CloudSynchronizationHandle)
+    func cloudSyncManager(_ manager: CloudSynchronizationManager, didSyncFinished handle: CloudSynchronizationHandle)
     
     /// 同步数据失败回调
     /// - Parameters:
     ///   - manager: 同步管理
     ///   - handle: 同步数据操作
     ///   - error: 错误内容
-    func cloudSynchManager(_ manager: CloudSynchronizationManager, didSyncFailure handle: CloudSynchronizationHandle, error: NetworkApiError)
+    func cloudSyncManager(_ manager: CloudSynchronizationManager, didSyncFailure handle: CloudSynchronizationHandle, error: NetworkApiError)
+    
+    
+    /// 取消同步数据回调
+    /// - Parameters:
+    ///   - manager: 同步管理
+    ///   - handle: 同步任务
+    func cloudSyncManager(_ manager: CloudSynchronizationManager, cancelSyncHandle handle: CloudSynchronizationHandle)
     
 }
 
@@ -130,19 +146,25 @@ extension CloudSynchronizationManagerDelegate {
     /// - Parameters:
     ///   - manager: 同步管理
     ///   - handle: 同步数据操作
-    func cloudSynchManager(_ manager: CloudSynchronizationManager, didStartSync handle: CloudSynchronizationHandle) {}
+    func cloudSyncManager(_ manager: CloudSynchronizationManager, didStartSync handle: CloudSynchronizationHandle) {}
     
     /// 同步数据成功回调
     /// - Parameters:
     ///   - manager: 同步管理
     ///   - handle: 同步数据操作
-    func cloudSynchManager(_ manager: CloudSynchronizationManager, didSyncFinished handle: CloudSynchronizationHandle) {}
+    func cloudSyncManager(_ manager: CloudSynchronizationManager, didSyncFinished handle: CloudSynchronizationHandle) {}
     
     /// 同步数据失败回调
     /// - Parameters:
     ///   - manager: 同步管理
     ///   - handle: 同步数据操作
-    func cloudSynchManager(_ manager: CloudSynchronizationManager, didSyncFailure handle: CloudSynchronizationHandle) {}
+    func cloudSyncManager(_ manager: CloudSynchronizationManager, didSyncFailure handle: CloudSynchronizationHandle) {}
+    
+    /// 取消同步数据回调
+    /// - Parameters:
+    ///   - manager: 同步管理
+    ///   - handle: 同步任务
+    func cloudSyncManager(_ manager: CloudSynchronizationManager, cancelSyncHandle handle: CloudSynchronizationHandle) {}
     
 }
 
@@ -192,17 +214,19 @@ class CloudSynchronizationManager {
             case .wait:
                 break
             case .inProgress:
-                self.delegate?.cloudSynchManager(self, didStartSync: resultHandle)
+                self.delegate?.cloudSyncManager(self, didStartSync: resultHandle)
             case .successful:
-                self.delegate?.cloudSynchManager(self, didSyncFinished: resultHandle)
+                self.delegate?.cloudSyncManager(self, didSyncFinished: resultHandle)
                 self.mutex.sync {
                     self.syncHandles.removeAll(where: { $0 == resultHandle })
                 }
             case .failure(let error):
-                self.delegate?.cloudSynchManager(self, didSyncFailure: resultHandle, error: error)
+                self.delegate?.cloudSyncManager(self, didSyncFailure: resultHandle, error: error)
                 self.mutex.sync {
                     self.syncHandles.removeAll(where: { $0 == resultHandle })
                 }
+            case .cancel:
+                self.delegate?.cloudSyncManager(self, cancelSyncHandle: resultHandle)
             }
         })
 //        DispatchQueue.global().async {
@@ -215,6 +239,64 @@ class CloudSynchronizationManager {
         handle.start()
     }
     
+    /// 取消同步操作
+    func cancelSynchronizationHandle(operation: SyncOperation) {
+        
+        if let lastHandleIndex = syncHandles.firstIndex(where: { $0.operation == operation }) {
+            syncHandles[lastHandleIndex].cancel()
+            self.mutex.sync {
+               _ = syncHandles.remove(at: lastHandleIndex)
+            }
+        }
+    }
+    
+    /// 取消site相关的同步操作
+    func cancelSynchronizationHandle(site: SiteData) {
+        
+        // 获取site相关同步操作
+        let handles = syncHandles.filter({ handle in
+            switch handle.operation {
+            case .syncSite(let site, _):
+                return site.id == site.id
+            case .syncSpace(let space):
+                return space.siteId == site.id
+            case .addSpaces(let site, _):
+                return site.id == site.id
+            }
+        })
+        handles.forEach { handle in
+            handle.cancel()
+            if let index = syncHandles.firstIndex(of: handle) {
+                self.mutex.sync {
+                    _ = syncHandles.remove(at: index)
+                }
+            }
+        }
+    }
+    
+    /// 取消space相关的同步操作
+    func cancelSynchronizationHandle(space: SpaceData) {
+        
+        // 获取space相关同步操作
+        if let handle = syncHandles.first(where: { handle in
+            switch handle.operation {
+            case .syncSite(_, let syncSpaces):
+                return syncSpaces.contains(where: { $0.id == space.id })
+            case .syncSpace(let syncSpace):
+                return space.id == syncSpace.id
+            case .addSpaces(_, let spaces):
+                return spaces.contains(where: { $0.id == space.id })
+            }
+        }) {
+            handle.cancel()
+            if let index = syncHandles.firstIndex(of: handle) {
+                self.mutex.sync {
+                    _ = syncHandles.remove(at: index)
+                }
+            }
+        }
+    }
+    
     
     /// 修改同步操作同步等级（仅限等待中的操作）
     /// - Parameters:
@@ -222,6 +304,9 @@ class CloudSynchronizationManager {
     ///   - level: 等级
     func setSynchronizationHandleLevel(handle: CloudSynchronizationHandle, level: SyncLevel) {
         handle.level = level
+        handle.cancel()
+        // 重新开始
+        handle.start()
     }
     
     /// 根据sites数据获取当前同步状态
@@ -253,6 +338,25 @@ class CloudSynchronizationManager {
         return state
     }
     
+    /// 根据site数据获取当前同步操作
+    /// - Parameter site: site
+    /// - Returns: 当前同步操作
+    func getSiteCurrentSyncHandle(_ site: SiteData) -> CloudSynchronizationHandle? {
+        
+        // 获取site/space相关同步操作
+        let handle = syncHandles.first(where: { handle in
+            switch handle.operation {
+            case .syncSite(let site, _):
+                return site.id == site.id
+            case .syncSpace(let space):
+                return space.siteId == site.id
+            case .addSpaces(let site, _):
+                return site.id == site.id
+            }
+        })
+        return handle
+    }
+    
     /// 根据site数据获取当前同步状态（复合状态可能包含下级多个space状态）
     /// - Parameter site: site
     /// - Returns: 当前同步操作
@@ -261,7 +365,7 @@ class CloudSynchronizationManager {
         // 获取site/space相关同步操作
         let handles = syncHandles.filter({ handle in
             switch handle.operation {
-            case .syncSite(let site):
+            case .syncSite(let site, _):
                 return site.id == site.id
             case .syncSpace(let space):
                 return space.siteId == site.id
@@ -287,6 +391,7 @@ class CloudSynchronizationManager {
         return state
     }
     
+    
     /// 根据space数据获取当前同步状态
     /// - Parameter space: space
     /// - Returns: 当前同步操作
@@ -294,12 +399,12 @@ class CloudSynchronizationManager {
         
         let handle = syncHandles.first(where: { handle in
             switch handle.operation {
+            case .syncSite(_, let syncSpaces):
+                return syncSpaces.contains(where: { $0.id == space.id })
             case .syncSpace(let syncSpace):
                 return space.id == syncSpace.id
             case .addSpaces(_, let spaces):
                 return spaces.contains(where: { $0.id == space.id })
-            default:
-                return false
             }
         })
         return handle
@@ -327,9 +432,10 @@ class CloudSynchronizationHandle: NSObject {
                 return 2
             case .failure:
                 return 3
+            case .cancel:
+                return 4
             }
         }
-        
         /// 等待
         case wait
         /// 进行中
@@ -338,6 +444,8 @@ class CloudSynchronizationHandle: NSObject {
         case successful
         /// 失败
         case failure(error: NetworkApiError)
+        /// 已取消
+        case cancel
     }
     
     /// 操作类型
@@ -387,8 +495,12 @@ class CloudSynchronizationHandle: NSObject {
             state = .failure(error: error)
             // 更新缓存
             switch self.operation {
-            case .syncSite(let site):
+            case .syncSite(let site, let spaces):
                 site.syncCloudError = error
+                spaces.forEach({ 
+                    $0.syncCloudError = error
+                    $0.save()
+                })
                 site.save()
             case .addSpaces(_, let spaces):
                 spaces.forEach({
@@ -409,6 +521,8 @@ class CloudSynchronizationHandle: NSObject {
     func cancel() {
         stopTimewait()
         requestHandle?.cancel()
+        state = .cancel
+        handleCallback?(self, state)
     }
     
     /// 进入计时
@@ -450,14 +564,29 @@ class CloudSynchronizationHandle: NSObject {
                 guard let self = self else { return }
                 self.requestHandle = nil
                 switch result {
-                case .success(_):
+                case .success(let response):
                     self.state = .successful
                     // 更新缓存
                     switch self.operation {
-                    case .syncSite(let site):
+                    case .syncSite(let site, let syncSpaces):
+                        if !site.uploadCloud { // 首次上传site，更新owner的地址资源数据（将地址提交到服务器分配，并且服务器重分配地址给owner）
+                           if let provisionerData = JSON(response)["data"]["addrLists"].dictionaryObject {
+                                site.setOwnerProvisioner(addressData: provisionerData)
+                                
+                                // 更新完服务器分配地址后再次提交到服务器，首次上传的site还是最初mesh分配的地址
+//                                site.lastUpdate = Int64(Date().timeIntervalSince1970)
+//                                CloudSynchronizationManager.shared.addSynchronizationHandle(operation: .syncSite(site: site, syncSpaces: []), level: .promptly)
+                            }
+                        }
                         site.lastUploadCloudTimestamp = site.lastUpdate
                         site.syncCloudError = nil
                         site.save()
+                        syncSpaces.forEach({
+                            $0.lastUploadCloudTimestamp = $0.lastUpdate
+                            $0.syncCloudError = nil
+                            $0.save()
+                        })
+                        
                     case .addSpaces(let site, let spaces):
                         site.lastUploadCloudTimestamp = site.lastUpdate
                         site.syncCloudError = nil
@@ -477,9 +606,13 @@ class CloudSynchronizationHandle: NSObject {
                     self.state = .failure(error: error)
                     // 更新缓存
                     switch self.operation {
-                    case .syncSite(let site):
+                    case .syncSite(let site, let syncSpaces):
                         site.syncCloudError = error
                         site.save()
+                        syncSpaces.forEach({
+                            $0.syncCloudError = error
+                            $0.save()
+                        })
                     case .addSpaces(_, let spaces):
                         spaces.forEach({
                             $0.syncCloudError = error

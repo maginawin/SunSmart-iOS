@@ -29,6 +29,8 @@ class GroupMembersViewController: UIViewController {
         self.space = space
         self.group = group
         super.init(nibName: nil, bundle: nil)
+        
+        MeshLibManager.manager.addObserver(self, forKeyPath: "isMeshNetworkConnected", context: nil)
     }
     
     required init?(coder: NSCoder) {
@@ -72,7 +74,7 @@ class GroupMembersViewController: UIViewController {
         updateEmptyUI()
         collectionView.reloadData()
         updateFunctionView()
-        MeshLibManager.manager.register(self)
+        MeshLibManager.manager.messageDelegate = self
     }
     
     override func viewDidAppear(_ animated: Bool) {
@@ -92,6 +94,23 @@ class GroupMembersViewController: UIViewController {
             if space.isConfiguring {
                 space.isConfiguring = false
             }
+        }
+        
+        MeshLibManager.manager.removeObserver(self, forKeyPath: "isMeshNetworkConnected")
+    }
+    
+    override func observeValue(forKeyPath keyPath: String?, of object: Any?, change: [NSKeyValueChangeKey : Any]?, context: UnsafeMutableRawPointer?) {
+        
+        if MeshLibManager.manager.isMeshNetworkConnected {
+            let inGroupNodes = nodes.filter({ $0.group?.address.address == group.address.address })
+            selectNodes.append(contentsOf: inGroupNodes.filter({ !selectNodes.contains($0) }))
+    //        nodes.filter({ $0.group?.address.address == group.address.address })
+            collectionView.reloadData()
+            updateFunctionView()
+            
+        }else {
+            functionView.selectAllBtn.isEnabled = false
+            functionView.sortBtn.isEnabled = false
         }
     }
     
@@ -411,22 +430,7 @@ class GroupMembersViewController: UIViewController {
     
 }
 
-extension GroupMembersViewController: MeshLibManagerDelegate {
-    
-    func meshNetworkManager(_ manager: MeshNetworkManager, bearerDidOpen bearer: Bearer) {
-        
-        let inGroupNodes = nodes.filter({ $0.group?.address.address == group.address.address })
-        selectNodes.append(contentsOf: inGroupNodes.filter({ !selectNodes.contains($0) }))
-//        nodes.filter({ $0.group?.address.address == group.address.address })
-        collectionView.reloadData()
-        updateFunctionView()
-    }
-    
-    func meshNetworkManager(_ manager: MeshNetworkManager, bearerDidClose bearer: Bearer) {
-        
-        functionView.selectAllBtn.isEnabled = false
-        functionView.sortBtn.isEnabled = false
-    }
+extension GroupMembersViewController: MeshLibManagerMessageDelegate {
     
     func meshNetworkManager(_ manager: MeshNetworkManager, deviceDataUpdate node: Node) {
         if nodes.contains(where: { $0.primaryUnicastAddress == node.primaryUnicastAddress }) {

@@ -78,7 +78,7 @@ let Message_Color = RGB(134, 138, 160)
 /// 主色
 let Bar_Color = RGB(102, 103, 171)
 /// 线条颜色
-let Line_Color = RGB(236, 236, 236)    //RGB(126, 126, 126, 0.1)
+let Line_Color = RGB(243, 243, 243)    //RGB(126, 126, 126, 0.1)
 /// 按钮蓝色
 let Blue_Color = RGB(0, 122, 255)
 /// 按钮红色

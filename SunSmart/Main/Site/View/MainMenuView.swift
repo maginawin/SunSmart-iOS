@@ -22,7 +22,7 @@ class MainMenuView: UIView {
     private var shadeView: UIView!
     
     private var menuTapBack: MenuTapActionCallback?
-    private var options: [Options] = [.serverSelection, .about]
+    private var options: [Options] = [.user, .serverSelection, .about]
     
     override init(frame: CGRect) {
         super.init(frame: frame)
@@ -243,7 +243,6 @@ class MainMenuView: UIView {
         tableView = UITableView()
         tableView.separatorStyle = .none
         tableView.register(CustomTableViewCell.classForCoder(), forCellReuseIdentifier: "cell")
-        tableView.rowHeight = SCRYFrom(44)
         tableView.dataSource = self
         tableView.backgroundColor = Background_Color
         tableView.delegate = self
@@ -275,13 +274,26 @@ extension MainMenuView: UITableViewDataSource, UITableViewDelegate {
     func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
         let cell = tableView.dequeueReusableCell(withIdentifier: "cell", for: indexPath) as! CustomTableViewCell
         let option = options[indexPath.row]
-        cell.cellStyle = .icon
-        cell.iconImageView.image = UIImage(named: option.data.icon)
-        cell.titleLabel.text = option.data.title
+        let data = option.data
+        if let content = data.content {
+            cell.cellStyle = .iconAddBottomSubtitle
+            cell.contentLabel.text = content
+            cell.contentLabel.textColor = SubText_Color
+            cell.contentLabel.font = UIFont.systemFont(ofSize: SCRYFrom(13), weight: .light)
+        }else {
+            cell.cellStyle = .icon
+            cell.contentLabel.text = nil
+        }
+        cell.titleX = SCRXFrom(54)
+        cell.titleY = SCRYFrom(12)
+        cell.titleMaxWidth = SCRXFrom(190)
+        cell.iconImageView.image = UIImage(named: data.icon)
+        cell.titleLabel.text = data.title
         cell.titleLabel.font = UIFont.systemFont(ofSize: SCRYFrom(15), weight: .light)
         cell.titleLabel.textColor = TextBlack_Color
-        cell.lineView.backgroundColor = RGB(243, 243, 243)
+        cell.lineView.backgroundColor = Line_Color
         cell.arrowImageView.image = UIImage(named: "arrow_light_right")
+        cell.arrowImageView.isHidden = false
         cell.selectionStyle = .none
         return cell
     }
@@ -291,20 +303,31 @@ extension MainMenuView: UITableViewDataSource, UITableViewDelegate {
         menuTapBack?(option)
         dismiss()
     }
+    
+    func tableView(_ tableView: UITableView, heightForRowAt indexPath: IndexPath) -> CGFloat {
+        let option = options[indexPath.row]
+        if option == .user {
+            return SCRYFrom(60)
+        }
+        return SCRYFrom(44)
+    }
 }
 
 extension MainMenuView {
     
     enum Options {
-        var data: (icon: String, title: String) {
+        var data: (icon: String, title: String, content: String?) {
             switch self {
+            case .user:
+                return ("user", UserData.currentUserName, "user_settings".localizedString)
             case .serverSelection:
-                return ("server", "server_selection".localizedString)
+                return ("server", "server_selection".localizedString, nil)
             case .about:
-                return ("about", "about".localizedString)
+                return ("about", "about".localizedString, nil)
             }
         }
-        
+        /// 用户名称
+        case user
         /// 服务器选择
         case serverSelection
         /// 关于

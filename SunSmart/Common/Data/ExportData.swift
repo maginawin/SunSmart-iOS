@@ -30,6 +30,7 @@ extension SiteData {
                     continuation.resume(returning: siteJsonData)
                     return
                 }
+                
                 siteJsonData.updateValue(self.name, forKey: "siteName")
                 siteJsonData.updateValue(self.id, forKey: "uuid")
                 siteJsonData.updateValue(self.imageId, forKey: "imageId")
@@ -38,6 +39,7 @@ extension SiteData {
                 siteJsonData.updateValue(self.isFavourite, forKey: "favourite")
                 siteJsonData.updateValue(self.create, forKey: "createTimestamp")
                 siteJsonData.updateValue(self.lastUpdate, forKey: "updateTimestamp")
+                siteJsonData.updateValue(meshNetwork.currentIVIndex, forKey: "ivIndex")
                 
                 if let data = try? jsonEncoder.encode(networkKey), let networkKeyDict = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
                     siteJsonData.updateValue(networkKeyDict, forKey: "netKey")
@@ -45,6 +47,52 @@ extension SiteData {
                 if let data = try? jsonEncoder.encode(appKey), let appKeyDict = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
                     siteJsonData.updateValue(appKeyDict, forKey: "appKey")
                 }
+                
+                // 用户地址数据
+                if let provisioner = meshNetwork.localProvisioner {
+                    var provisionerJson: [String: Any] = [:]
+                    provisionerJson.updateValue(provisioner.uuid.uuidString, forKey: "UUID")
+                    provisionerJson.updateValue(provisioner.name, forKey: "provisionerName")
+                    // 正在使用的手机地址
+                    if let addressHex = (provisioner.primaryUnicastAddress ?? self.localAddress)?.hex {
+                        provisionerJson.updateValue(addressHex, forKey: "address")
+                    }
+                    // 已使用地址
+                    provisionerJson.updateValue(meshNetwork.deviceUsedAddresses.map({ $0.hex }), forKey: "usedAddresses")
+                    
+                    // 设备、组、场景可分配地址
+                    let allocatedUnicastRange = provisioner.allocatedUnicastRange.map({
+                        ["lowAddress": $0.lowAddress.hex, "highAddress": $0.highAddress.hex]
+                    })
+                    provisionerJson.updateValue(allocatedUnicastRange, forKey: "allocatedUnicastRange")
+                    
+                    let allocatedGroupRange = provisioner.allocatedGroupRange.map({
+                        ["lowAddress": $0.lowAddress.hex, "highAddress": $0.highAddress.hex]
+                    })
+                    
+                    provisionerJson.updateValue(allocatedGroupRange, forKey: "allocatedGroupRange")
+                    
+                    let allocatedSceneRange = provisioner.allocatedSceneRange.map({
+                        ["firstScene": $0.firstScene.hex, "lastScene": $0.lastScene.hex]
+                    })
+                    provisionerJson.updateValue(allocatedSceneRange, forKey: "allocatedSceneRange")
+                    
+                    siteJsonData.updateValue(provisionerJson, forKey: "provisioner")
+                }
+                
+                // 废弃的设备地址
+                let exclusions = meshNetwork.getNetworkExclusionAddresses()
+                let exclusionsData = exclusions.compactMap({
+                    if $0.addresses.count > 0 {
+                        return ["ivIndex": $0.ivIndex, "addresses": $0.addresses.map({ $0.hex })]
+                    }
+                    return nil
+                })
+                siteJsonData.updateValue(exclusionsData, forKey: "exclusions")
+                
+                // 已使用的地址
+                
+                
                 
         //        var exportSpaces: [SpaceData] = []
                 continuation.resume(returning: siteJsonData)
@@ -148,6 +196,10 @@ extension SpaceData {
             // 设备
             meshNetworkManager.realNodes.forEach { node in
                 if let data = try? jsonEncoder.encode(node), var nodeDict = try? JSONSerialization.jsonObject(with: data) as? [String : Any] {
+                    if let uuid = nodeDict["UUID"] as? String { // 修改UUID=>uuid提交服务器
+                        nodeDict.updateValue(uuid, forKey: "uuid")
+                        nodeDict.removeValue(forKey: "UUID")
+                    }
                     nodeDict.updateValue(node.macAddress ?? "", forKey: "macAddress")
                     let types = node.sensorModels.compactMap({ node.sensorModelTypes[$0]?.id.hex })
                     nodeDict.updateValue(types, forKey: "sensorTypes")

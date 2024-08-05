@@ -32,12 +32,12 @@ class ShareAuthorityFilterView: UIView {
     ///   - editorNames: 管理员名称list
     ///   - visitorNames: 访客名称list
     ///   - selectCallback: 筛选回调
-    init(selectFilterType: FilterType? = nil, editorNames: [String], visitorNames: [String], selectCallback: FilterSelectCallback?) {
+    init(filters: [FilterData], selectFilterType: FilterType? = nil, selectCallback: FilterSelectCallback?) {
         
         super.init(frame: UIScreen.main.bounds)
         
         self.selectCallback = selectCallback
-        self.filters = FilterData.defalutFilters(editorNames: editorNames, visitorNames: visitorNames)
+        self.filters = filters
         // 选中之前选中的筛选项
         if let type = selectFilterType {
             switch type {
@@ -48,7 +48,7 @@ class ShareAuthorityFilterView: UIView {
                             filter.spread = true
                             self.selectFilter = item
                             items.enumerated().forEach { (index, item) in
-                                filters.insert(item, at: sectionIndex + index + 1)
+                                self.filters.insert(item, at: sectionIndex + index + 1)
                             }
                         }
                     }
@@ -283,14 +283,33 @@ extension ShareAuthorityFilterView {
             filters.append(.init(icon: "filter_favorite", name: "favorite_space".localizedString, options: .filter(type: .favorite)))
             filters.append(.init(icon: "filter_editor", name: "editor".localizedString, options: .filter(type: .editor)))
             filters.append(.init(icon: "filter_no_editor", name: "no_editor".localizedString, options: .filter(type: .noEditor)))
-            filters.append(.init(icon: "filter_name", name: "editor_name".localizedString, options: .section(items: editorNameItems)))
-            filters.append(.init(icon: "filter_name", name: "visitor_name".localizedString, options: .section(items: visitorNameItems)))
+            if editorNameItems.count > 0 {
+                filters.append(.init(icon: "filter_name", name: "editor_name".localizedString, options: .section(items: editorNameItems)))
+            }
+            if visitorNameItems.count > 0 {
+                filters.append(.init(icon: "filter_name", name: "visitor_name".localizedString, options: .section(items: visitorNameItems)))
+            }
             filters.append(.init(icon: "filter_password", name: "visitor_password".localizedString, options: .filter(type: .visitorPassword)))
             filters.append(.init(icon: "filter_no_password", name: "no_visitor_password".localizedString, options: .filter(type: .noVisitorPassword)))
             filters.append(.init(icon: "filter_device_exists", name: "devices_exists".localizedString, options: .filter(type: .devicesExists)))
             filters.append(.init(icon: "filter_no_device", name: "filter_no_devices".localizedString, options: .filter(type: .noDevices)))
             return filters
         }
+        
+        /// editor角色筛选条件
+        static func editorDefalutFilters() -> [FilterData] {
+            var filters: [FilterData] = []
+//            filters.append(.init(icon: "filter_all", name: "all_space".localizedString, options: .filter(type: .none)))
+            filters.append(.init(icon: "filter_favorite", name: "favorite_space".localizedString, options: .filter(type: .favorite)))
+            filters.append(.init(icon: "filter_editor", name: "editor".localizedString, options: .filter(type: .isEditor)))
+            filters.append(.init(icon: "filter_isVisitor", name: "visitor".localizedString, options: .filter(type: .isVisitor)))
+            filters.append(.init(icon: "filter_password", name: "visitor_password".localizedString, options: .filter(type: .visitorPassword)))
+            filters.append(.init(icon: "filter_no_password", name: "no_visitor_password".localizedString, options: .filter(type: .noVisitorPassword)))
+            filters.append(.init(icon: "filter_device_exists", name: "devices_exists".localizedString, options: .filter(type: .devicesExists)))
+            filters.append(.init(icon: "filter_no_device", name: "filter_no_devices".localizedString, options: .filter(type: .noDevices)))
+            return filters
+        }
+        
     }
     
     
@@ -302,6 +321,10 @@ extension ShareAuthorityFilterView {
         case editor
         /// 没有子管理员
         case noEditor
+        /// 自己是子管理员
+        case isEditor
+        /// 自己是访客
+        case isVisitor
         /// 子管理名称section
         case editorNameSection
         /// 子管理员名称为"?"
@@ -348,18 +371,22 @@ extension ShareAuthorityFilterView {
                 return 2
             case .noEditor:
                 return 3
-            case .editorName:
+            case .isEditor:
                 return 4
-            case .visitorName:
+            case .isVisitor:
                 return 5
-            case .visitorPassword:
+            case .editorName:
                 return 6
-            case .noVisitorPassword:
+            case .visitorName:
                 return 7
-            case .devicesExists:
+            case .visitorPassword:
                 return 8
-            case .noDevices:
+            case .noVisitorPassword:
                 return 9
+            case .devicesExists:
+                return 10
+            case .noDevices:
+                return 11
             }
         }
         
@@ -371,6 +398,10 @@ extension ShareAuthorityFilterView {
         case editor
         /// 没有子管理员
         case noEditor
+        /// 自己是子管理员
+        case isEditor
+        /// 自己是访客
+        case isVisitor
         /// 子管理员名称为"?"
         case editorName(name: String)
         /// 访客名称为"?"

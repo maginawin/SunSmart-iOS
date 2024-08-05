@@ -94,6 +94,33 @@ extension String {
         return europeRegionCodes.contains(regionCode)
     }
     
+    // 生成一个包含4个随机数字字符的字符串
+    static func generateRandomNumberString(length: Int = 4) -> String {
+        let digits = "0123456789"
+        var result = ""
+        
+        for _ in 0..<length {
+            if let randomDigit = digits.randomElement() {
+                result.append(randomDigit)
+            }
+        }
+        return result
+    }
+    
+    // 生成一个包含4个随机字母+数字的字符串
+    static func generateRandomString(length: Int = 4) -> String {
+        let lettersAndNumbers = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+        return String((0..<length).map { _ in lettersAndNumbers.randomElement()! })
+    }
+    
+    /// 是否有效邀请码
+    func isValidInvitationCode() -> Bool {
+        let pattern = "^[A-Za-z\\d]{8}$"
+        let regex = try! NSRegularExpression(pattern: pattern)
+        let range = NSRange(location: 0, length: self.utf16.count)
+        return regex.firstMatch(in: self, options: [], range: range) != nil
+    }
+    
 }
 
 
