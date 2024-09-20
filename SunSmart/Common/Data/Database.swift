@@ -39,6 +39,8 @@ class SunSmartDataManager {
     
     public func initDatabase() {
         SiteData.initDatabase()
+        
+        FirmwareData.initDatabase()
         // 初始化网络数据库
         MeshDataManager.shared.initDatabase()
     }
@@ -413,8 +415,9 @@ extension SpaceData {
         Profile.initDatabase()
         SceneInfo.initDatabase()
         Schedule.initDatabase()
-        GroupSwitch.initDatabase()
+//        GroupSwitch.initDatabase()
         UserData.initDatabase()
+        DeviceSwitchData.initDatabase()
     }
  
     
@@ -786,7 +789,7 @@ extension GroupInfo {
                     info.profile = profile
                 }
                 // 虚拟按键
-                info.switchs = GroupSwitch.load(meshUUID: meshUUID, meshNetworkId: row[ExpressionKey.subNetworkKey], groupAddress: address)
+//                info.switchs = GroupSwitch.load(meshUUID: meshUUID, meshNetworkId: row[ExpressionKey.subNetworkKey], groupAddress: address)
                 
                 groupInfo = info
                 break
@@ -1431,6 +1434,7 @@ extension GroupSwitch {
         static let enabled = Expression<Bool>("enabled")
         static let panelType = Expression<Int>("panelType")
         static let groupAddress = Expression<Int>("groupAddress")
+        
         static let sceneA = Expression<Int?>("sceneA")
         static let sceneB = Expression<Int?>("sceneB")
         static let proxyAddresses = Expression<Data?>("proxyAddresses")
@@ -1622,6 +1626,338 @@ extension GroupSwitch {
         let predicate = ExpressionKey.meshUUID == meshUUID && ExpressionKey.subNetworkKey == networkId && ExpressionKey.groupAddress == Int(groupAddress) && ExpressionKey.switchId == self.id
 
         let filter = GroupSwitch.switchsTable.filter(predicate)
+        do {
+            try SunSmartDataManager.shared.db?.run(filter.delete())
+        } catch {
+            print(error)
+            return false
+        }
+        return true
+    }
+    
+}
+
+extension FirmwareData {
+    
+    private static let firmwaresTable = Table("firmwares")
+    
+    struct ExpressionKey {
+        static let id = Expression<Int64>("id")
+        static let name = Expression<String>("name")
+        static let version = Expression<String>("version")
+        static let firmwareData = Expression<Data>("data")
+        static let firmwareId = Expression<Data>("firmwareId")
+        static let updateFirmwareImageIndex = Expression<Int>("updateFirmwareImageIndex")
+        static let incomingFirmwareMetadata = Expression<Data>("incomingFirmwareMetadata")
+        static let deviceType = Expression<Int>("deviceType")
+        static let vendorId = Expression<Int>("vendorId")
+        static let customId = Expression<Int?>("customId")
+        static let releaseDateTimestamp = Expression<Int64>("releaseDate")
+        static let content = Expression<String>("content")
+    }
+    
+    /// 初始化固件数据扩展信息表
+    static func initDatabase() {
+        
+        _ = try? SunSmartDataManager.shared.db?.run(FirmwareData.firmwaresTable.create(temporary: false, ifNotExists: true, withoutRowid: false, block: { builder in
+            builder.column(ExpressionKey.id, primaryKey: true)
+            builder.column(ExpressionKey.name)
+            builder.column(ExpressionKey.version)
+            builder.column(ExpressionKey.firmwareData)
+            builder.column(ExpressionKey.firmwareId)
+            builder.column(ExpressionKey.updateFirmwareImageIndex)
+            builder.column(ExpressionKey.incomingFirmwareMetadata)
+            builder.column(ExpressionKey.deviceType)
+            builder.column(ExpressionKey.vendorId)
+            builder.column(ExpressionKey.customId)
+            builder.column(ExpressionKey.releaseDateTimestamp)
+            builder.column(ExpressionKey.content)
+            builder.unique(ExpressionKey.deviceType, ExpressionKey.vendorId, ExpressionKey.customId)
+        }))
+    }
+    
+    
+    /// 读取固件缓存数据
+    /// - Parameters:
+    ///   - deviceType: 设备类型
+    ///   - vendorId: 厂商id（非必须）
+    ///   - customId: 自定义id（非必须）
+    /// - Returns: 固件包list
+    static func load(deviceType: DeviceType, vendorId: UInt16? = nil, customId: UInt16? = nil) -> [FirmwareData] {
+        
+        var query = FirmwareData.firmwaresTable.filter(ExpressionKey.deviceType == Int(deviceType.pid))
+        
+        if let vendorId = vendorId {
+            let vendorQuery = FirmwareData.firmwaresTable.filter(ExpressionKey.vendorId == Int(vendorId))
+            query = query.union(vendorQuery)
+        }
+        if let customId = customId {
+            let customIdQuery = FirmwareData.firmwaresTable.filter(ExpressionKey.customId == Int(customId))
+            query = query.union(customIdQuery)
+        }
+        
+        var list: [FirmwareData] = []
+        if let rows = try? SunSmartDataManager.shared.db?.prepare(query) {
+            for row in rows {
+                let deviceType: DeviceType = .init(pid: UInt16(row[ExpressionKey.deviceType]))
+                if deviceType != .unknown {
+                    let customId = row[ExpressionKey.customId]
+                    let data = FirmwareData(name: row[ExpressionKey.name], version: row[ExpressionKey.version], firmwareID: row[ExpressionKey.firmwareId], data: row[ExpressionKey.firmwareData], updateFirmwareImageIndex: row[ExpressionKey.updateFirmwareImageIndex], incomingFirmwareMetadata: row[ExpressionKey.incomingFirmwareMetadata], deviceType: deviceType, vendorId: UInt16(row[ExpressionKey.vendorId]), customId: customId != nil ? UInt16(customId!) : nil, releaseDate: row[ExpressionKey.releaseDateTimestamp], content: row[ExpressionKey.content])
+                    
+                    list.append(data)
+                }
+            }
+        }
+        return list
+    }
+    
+    /// 保存数据
+    @discardableResult func save() -> Bool {
+     
+        let insertOrUpdate = FirmwareData.firmwaresTable.insert(or: .replace, [
+            ExpressionKey.name <- self.name,
+            ExpressionKey.version <- self.version,
+            ExpressionKey.firmwareData <- self.data,
+            ExpressionKey.firmwareId <- self.firmwareID,
+            ExpressionKey.updateFirmwareImageIndex <- self.updateFirmwareImageIndex,
+            ExpressionKey.incomingFirmwareMetadata <- self.incomingFirmwareMetadata,
+            ExpressionKey.deviceType <- Int(self.deviceType.pid),
+            ExpressionKey.vendorId <- Int(self.vendorId),
+            ExpressionKey.customId <- self.customId != nil ? Int(self.customId!) : nil,
+            ExpressionKey.releaseDateTimestamp <- self.releaseDate,
+            ExpressionKey.content <- self.content
+        ])
+       
+        do {
+            try SunSmartDataManager.shared.db?.run(insertOrUpdate)
+        } catch {
+            print(error)
+            return false
+        }
+        return true
+    }
+    
+    @discardableResult func delete() -> Bool {
+        
+        var filter = FirmwareData.firmwaresTable.filter(ExpressionKey.deviceType == Int(self.deviceType.pid) && ExpressionKey.vendorId == Int(self.vendorId))
+        if self.customId != nil {
+            let customIdQuery = FirmwareData.firmwaresTable.filter(ExpressionKey.customId == Int(self.customId!))
+            filter = filter.union(customIdQuery)
+        }
+        
+        do {
+            try SunSmartDataManager.shared.db?.run(filter.delete())
+        } catch {
+            print(error)
+            return false
+        }
+        return true
+    }
+    
+}
+
+extension DeviceSwitchData {
+    
+    private static let switchsTable = Table("switchs")
+    
+    struct ExpressionKey {
+        static let id = Expression<Int64>("id")
+        static let meshUUID = Expression<String>("meshUUID")
+        static let subNetworkKey = Expression<String>("subNetworkKey")
+        static let switchId = Expression<String>("switchId")
+        static let name = Expression<String>("name")
+        static let enabled = Expression<Bool>("enabled")
+        static let panelType = Expression<Int>("panelType")
+        static let linkGroupAddress = Expression<Int?>("linkGroupAddress")
+        static let bindGroupAddresses = Expression<Data?>("bindGroupAddresses")
+        static let unbindGroupAddresses = Expression<Data?>("unbindGroupAddresses")
+        static let sceneA = Expression<Int?>("sceneA")
+        static let sceneB = Expression<Int?>("sceneB")
+        static let proxyAddresses = Expression<Data?>("proxyAddresses")
+        static let enOceanMacAddress = Expression<String?>("enOceanMacAddress")
+        static let enOceanSecurityKey = Expression<String?>("enOceanSecurityKey")
+        static let deleteProxyAddress = Expression<Int?>("deleteProxyAddress")
+    }
+    
+    /// 初始化组扩展信息表
+    static func initDatabase() {
+        
+        _ = try? SunSmartDataManager.shared.db?.run(DeviceSwitchData.switchsTable.create(temporary: false, ifNotExists: true, withoutRowid: false, block: { builder in
+            builder.column(ExpressionKey.id, primaryKey: true)
+            builder.column(ExpressionKey.meshUUID)
+            builder.column(ExpressionKey.subNetworkKey)
+            builder.column(ExpressionKey.switchId)
+            builder.column(ExpressionKey.name)
+            builder.column(ExpressionKey.enabled)
+            builder.column(ExpressionKey.panelType)
+            builder.column(ExpressionKey.linkGroupAddress)
+            builder.column(ExpressionKey.bindGroupAddresses)
+            builder.column(ExpressionKey.unbindGroupAddresses)
+            builder.column(ExpressionKey.sceneA)
+            builder.column(ExpressionKey.sceneB)
+            builder.column(ExpressionKey.proxyAddresses)
+            builder.column(ExpressionKey.enOceanMacAddress)
+            builder.column(ExpressionKey.enOceanSecurityKey)
+            builder.column(ExpressionKey.deleteProxyAddress)
+            builder.unique(ExpressionKey.meshUUID, ExpressionKey.subNetworkKey, ExpressionKey.switchId)
+        }))
+    }
+
+    /// 根据网络id获取所有的虚拟按键数据
+    /// - Parameter meshUUID: 网络id
+    /// - Parameter networkKey: 子网网络key
+    /// - Parameter id: 按键id（传入获取指定按键）
+    /// - Parameter macAddress: 动能开关mac
+    /// - Returns: 虚拟按键数据list
+    static func load(meshUUID: String, meshNetworkId: String? = nil, id: String? = nil, macAddress: String? = nil) -> [DeviceSwitchData] {
+        
+        let subNetworkKey = meshNetworkId ?? MeshNetworkManager.instance.currentNetworkKey.networkId.hex
+        
+        var predicate = ExpressionKey.meshUUID == meshUUID && ExpressionKey.subNetworkKey == subNetworkKey
+        if let switchId = id {
+            predicate = ExpressionKey.meshUUID == meshUUID && ExpressionKey.subNetworkKey == subNetworkKey && ExpressionKey.switchId == switchId
+        }else if let mac = macAddress {
+            predicate = ExpressionKey.meshUUID == meshUUID && ExpressionKey.subNetworkKey == subNetworkKey && (ExpressionKey.enOceanMacAddress ?? "") == mac
+        }
+        
+        let filter = DeviceSwitchData.switchsTable.filter(predicate).order(ExpressionKey.id.asc)
+        
+        var switchs: [DeviceSwitchData] = []
+        if let rows = try? SunSmartDataManager.shared.db?.prepare(filter) {
+            for row in rows {
+                
+                // 动能开关关联的组地址（publish）
+                let linkGroupAddress = row[ExpressionKey.linkGroupAddress]
+                
+                // 动能开关绑定组地址list（subscribe）
+                var bindAddresses: [Address] = []
+                if let bindAddressesData = row[ExpressionKey.bindGroupAddresses], let addressesStrings = (try? jsonDecoder.decode([String].self, from: bindAddressesData)) {
+                    addressesStrings.forEach {
+                        if let address = UInt16($0, radix: 16), address.isGroup {
+                            bindAddresses.append(address)
+                        }
+                    }
+                }
+                // 解除绑定的组地址list（unsubscribe）
+                var unbindAddresses: [Address] = []
+                if let unbindAddressesData = row[ExpressionKey.unbindGroupAddresses], let addressesStrings = (try? jsonDecoder.decode([String].self, from: unbindAddressesData)) {
+                    addressesStrings.forEach {
+                        if let address = UInt16($0, radix: 16), address.isGroup {
+                            unbindAddresses.append(address)
+                        }
+                    }
+                }
+                
+                let switchData = DeviceSwitchData(id: row[ExpressionKey.switchId], enabled: row[ExpressionKey.enabled], name: row[ExpressionKey.name], linkGroupAddress: linkGroupAddress != nil ? Address(linkGroupAddress!) : nil, bindGroupAddresses: bindAddresses)
+                let panelType: PanelType = .init(rawValue: UInt8(row[ExpressionKey.panelType])) ?? .default
+                switchData.panelType = panelType
+                if let number = row[ExpressionKey.sceneA] { //  let sceneA = MeshNetworkManager.instance.scenes.first(where: { $0.number == number })
+                    switchData.sceneANumber = SceneNumber(number)
+                }
+                if let number = row[ExpressionKey.sceneB] { //  let sceneB = MeshNetworkManager.instance.scenes.first(where: { $0.number == number })
+                    switchData.sceneBNumber = SceneNumber(number)
+                }
+                switchData.unbindGroupAddresses = unbindAddresses
+                
+                if let addressesData = row[ExpressionKey.proxyAddresses], let addressesStrings = (try? jsonDecoder.decode([String].self, from: addressesData)) {
+                    // 动能开关代理地址list
+                    var proxyAddresses: [Address] = []
+                    addressesStrings.forEach {
+                        if let address = UInt16($0, radix: 16), address.isUnicast {
+                            proxyAddresses.append(address)
+                        }
+                    }
+                    if let address = proxyAddresses.first { // let proxyNode = MeshNetworkManager.instance.meshNetwork?.node(withAddress: Address(address))
+                        switchData.proxyNodeAddress = Address(address)
+                    }
+                }
+                switchData.enOceanMacAddress = row[ExpressionKey.enOceanMacAddress]
+                switchData.enOceanSecurityKey = row[ExpressionKey.enOceanSecurityKey]
+                if let address = row[ExpressionKey.deleteProxyAddress] {
+                    switchData.deleteProxyNodeAddress = Address(address)
+                }
+                
+                switchs.append(switchData)
+            }
+        }
+        return switchs
+    }
+    
+
+    /// 缓存虚拟按键数据
+    /// - Parameters:
+    ///   - meshUUID: 网络id
+    ///   - networkKey: 子网网络key
+    /// - Returns: 是否成功
+    @discardableResult func save(meshUUID: String? = nil, networkId: String? = nil) -> Bool {
+        
+        guard let uuid = meshUUID ?? MeshNetworkManager.instance.meshNetwork?.uuid.uuidString else { return false }
+        let subNetworkey = networkId ?? MeshNetworkManager.instance.currentNetworkKey.networkId.hex
+        
+        var proxyAddressesData: Data?
+        if let proxyAddress = self.proxyNodeAddress {
+            proxyAddressesData = try? jsonEncoder.encode([String(format: "%04X", proxyAddress)])
+        }
+        var bindGroupAddressesData: Data?
+        if self.bindGroupAddresses.count > 0 {
+            bindGroupAddressesData = try? jsonEncoder.encode(bindGroupAddresses.map({ $0.hex }))
+        }
+        var unbindGroupAddressesData: Data?
+        if self.unbindGroupAddresses.count > 0 {
+            unbindGroupAddressesData = try? jsonEncoder.encode(unbindGroupAddresses.map({ $0.hex }))
+        }
+        
+        let insertOrUpdate = DeviceSwitchData.switchsTable.insert(or: .replace, [
+            ExpressionKey.meshUUID <- uuid,
+            ExpressionKey.subNetworkKey <- subNetworkey,
+            ExpressionKey.switchId <- self.id,
+            ExpressionKey.name <- self.name,
+            ExpressionKey.enabled <- self.enabled,
+            ExpressionKey.panelType <- Int(self.panelType.rawValue),
+            ExpressionKey.linkGroupAddress <- self.linkGroupAddress != nil ? Int(self.linkGroupAddress!) : nil,
+            ExpressionKey.bindGroupAddresses <- bindGroupAddressesData,
+            ExpressionKey.unbindGroupAddresses <- unbindGroupAddressesData,
+            ExpressionKey.sceneA <- self.sceneANumber != nil ? Int(self.sceneANumber!) : nil,
+            ExpressionKey.sceneB <- self.sceneBNumber != nil ? Int(self.sceneBNumber!) : nil,
+            ExpressionKey.proxyAddresses <- proxyAddressesData,
+            ExpressionKey.enOceanMacAddress <- self.enOceanMacAddress,
+            ExpressionKey.enOceanSecurityKey <- self.enOceanSecurityKey,
+            ExpressionKey.deleteProxyAddress <- self.deleteProxyNodeAddress != nil ? Int(self.deleteProxyNodeAddress!) : nil
+        ])
+        do {
+            try SunSmartDataManager.shared.db?.run(insertOrUpdate)
+        } catch {
+            print(error)
+            return false
+        }
+        return true
+    }
+    
+    /// 删除网络内全部虚拟按键数据
+    /// - Parameter spaceId: 空间id
+    /// - Parameter networkKey: 子网网络key
+    /// - Returns: 是否成功
+    @discardableResult static func deleteSwitchs(meshUUID: String, networkId: String) -> Bool {
+        
+        // 指定子网下所有虚拟按键
+        let predicate = ExpressionKey.meshUUID == meshUUID && ExpressionKey.subNetworkKey == networkId
+ 
+        let filter = DeviceSwitchData.switchsTable.filter(predicate)
+        do {
+            try SunSmartDataManager.shared.db?.run(filter.delete())
+        } catch {
+            print(error)
+            return false
+        }
+        return true
+    }
+    
+    @discardableResult func delete(meshUUID: String, networkId: String) -> Bool {
+        
+        // 指定虚拟按键
+        let predicate = ExpressionKey.meshUUID == meshUUID && ExpressionKey.subNetworkKey == networkId && ExpressionKey.switchId == self.id
+
+        let filter = DeviceSwitchData.switchsTable.filter(predicate)
         do {
             try SunSmartDataManager.shared.db?.run(filter.delete())
         } catch {

@@ -18,13 +18,23 @@ protocol GroupSwitchPanelViewCellDelegate: AnyObject {
 
 class GroupSwitchPanelViewCell: UITableViewCell {
 
-    private var switchContentView: UIView!
+    var switchContentView: UIView!
     private var panelImageView: UIImageView!
     private var sceneAKeyBtn: UIButton!
     private var sceneBKeyBtn: UIButton!
-    private var deleteBtn: UIButton!
+    var deleteBtn: UIButton!
     var saveBtn: UIButton!
     weak var delegate: GroupSwitchPanelViewCellDelegate?
+    
+    var margin: CGFloat = SCRXFrom(16) {
+        didSet {
+            switchContentView.snp.updateConstraints { make in
+                make.left.equalTo(margin)
+                make.right.equalTo(margin)
+            }
+        }
+    }
+    
     
     var sceneNameA: String? {
         didSet {
@@ -68,8 +78,8 @@ class GroupSwitchPanelViewCell: UITableViewCell {
         switchContentView.backgroundColor = .white
         contentView.addSubview(switchContentView)
         switchContentView.snp.makeConstraints { make in
-            make.left.equalTo(SCRXFrom(16))
-            make.right.equalTo(SCRXFrom(-16))
+            make.left.equalTo(margin)
+            make.right.equalTo(-margin)
             make.top.equalTo(SCRYFrom(8))
             make.height.equalTo(SCRYFrom(288))
 //            make.height.equalTo(switchContentView.snp.width).multipliedBy(288.0 / 343)

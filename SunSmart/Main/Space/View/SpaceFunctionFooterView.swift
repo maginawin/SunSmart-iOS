@@ -58,6 +58,7 @@ class SpaceFunctionFooterView: UIView {
     var cancelBtn: UIButton!
     var lineView: UIView!
     var deleteBtn: UIButton!
+    
     /// 是否正在编辑
     var isEditing: Bool = false {
         didSet {

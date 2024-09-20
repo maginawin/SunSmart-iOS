@@ -125,6 +125,7 @@ class SharingSettingViewController: UIViewController {
                 self.options = self.type.data.options
                 self.tableView.reloadData()
                 self.editorNameLabel?.text = "no_editor_yet".localizedString
+                NotificationCenter.default.post(name: .init(SpacesRefreshChangeNotificationName), object: nil)
                 
             case .failure(let error):
                 if error == .editorBeingUsedSpace { // 正在使用空间
@@ -283,9 +284,11 @@ class SharingSettingViewController: UIViewController {
         }
         
         qrcodeTitleLabel = UILabel(text: self.type.data.title, textColor: TextBlack_Color, fontSize: 15, fit: true)
+        qrcodeTitleLabel.textAlignment = .center
         qrcodeView.addSubview(qrcodeTitleLabel)
         qrcodeTitleLabel.snp.makeConstraints { make in
-            make.centerX.equalToSuperview()
+            make.left.equalTo(SCRXFrom(20))
+            make.right.equalTo(SCRXFrom(-20))
             make.top.equalTo(SCRYFrom(22))
         }
         
@@ -542,7 +545,8 @@ extension SharingSettingViewController {
                 if data.spaces.contains(where: { $0.permission == .owner }) {
                     options.append(contentsOf: [.changePassword, .viewHidePassword])
                 }
-                return (data.name, data.code, options)
+                let siteName = SiteData.load(siteId: data.siteId)?.name
+                return (siteName != nil ? "\(siteName!) > \(data.name)" : data.name, data.code, options)
             }
         }
         

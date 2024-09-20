@@ -55,8 +55,20 @@ enum DeviceOperationType {
                 return node.group != group
             case .profile(let type):
                 return type.isSuccessful(node: node)
-            case .enOceanSwitch:
-                return node.enOceanMacAddress == nil
+            case .enOceanSwitch(let switchData):
+                if let linkGroup = switchData.linkGroup {
+                    return node.getEnOceanUnSubscriptionMessageHandles(group: linkGroup).isEmpty
+                }
+                return true
+            case .enOceanProxy(let switchData):
+                // 动能开关代理
+                if let linkGroup = switchData.linkGroup, node.primaryUnicastAddress == switchData.proxyNodeAddress {
+                    // 清除代理
+                    guard node.getEnOceanSwitchUnBindMessageHandles(group: linkGroup).isEmpty else {
+                        return false
+                    }
+                }
+                return switchData.proxyNode?.enOceanMacAddress == nil
             }
         case .configuration(let node, let type):
             switch type {
@@ -71,7 +83,19 @@ enum DeviceOperationType {
                 return node.group == group && node.getSubscribeToGroupMessages(group).count == 0
             case .profile(let type):
                 return type.isSuccessful(node: node)
-            case .enOceanSwitch:
+            case .enOceanSwitch(let switchData):
+                if let linkGroup = switchData.linkGroup {
+                    return node.getEnOceanSubscriptionMessageHandles(group: linkGroup).isEmpty
+                }
+                return true
+            case .enOceanProxy(let switchData):
+                // 如果是动能开关代理并且已启用状态，则判断代理是否绑定按键成功
+                if let linkGroup = switchData.linkGroup, node.primaryUnicastAddress == switchData.proxyNodeAddress, let macAddress = switchData.enOceanMacAddress, let key = switchData.enOceanSecurityKey {
+                    let syncMessageHandles = node.getEnOceanSwitchBindMessageHandles(enOceanMacAddress: macAddress, securityKey: key, group: linkGroup, enabled: switchData.enabled, switchKeys: MeshEnOceanProxyServer.SwitchKey.defaultKeys(sceneA: switchData.sceneA, sceneB: switchData.sceneB))
+                    guard syncMessageHandles.isEmpty else {
+                        return false
+                    }
+                }
                 return true
             }
         }
@@ -127,9 +151,14 @@ enum DeviceOperationType {
 //                    messageHandles.append(MeshMessageHandle(message: LightLCModeSet(false), model: lightLCSetupModel))
 //                    messageHandles.append(MeshMessageHandle(message: LightLCOccupancyModeSet(false), model: lightLCSetupModel))
 //                }
-            case .enOceanSwitch:
-                if let group = node.group {
-                    messageHandles.append(contentsOf: node.getEnOceanSwitchDisableMessageHandles(group: group, delete: true))
+            case .enOceanSwitch(let switchData):
+                if let linkGroup = switchData.linkGroup {
+                    messageHandles.append(contentsOf: node.getEnOceanUnSubscriptionMessageHandles(group: linkGroup))
+                }
+            case .enOceanProxy(let switchData):
+//                node.primaryUnicastAddress == switchData.proxyNodeAddress ||
+                if let linkGroup = switchData.linkGroup, node.primaryUnicastAddress == switchData.proxyNodeAddress || node.primaryUnicastAddress == switchData.deleteProxyNodeAddress {
+                    messageHandles.append(contentsOf: node.getEnOceanSwitchUnBindMessageHandles(group: linkGroup))
                 }
             }
         case .configuration(let node, let type): // 添加/配置操作
@@ -191,8 +220,16 @@ enum DeviceOperationType {
                 }
             case .profile(let type): 
                 messageHandles.append(contentsOf: type.getMessageHandles(node: node))
-            case .enOceanSwitch:
-                break
+            case .enOceanSwitch(let switchData):
+                if let linkGroup = switchData.linkGroup {
+                    // 判断是否已订阅动能开关按键事件
+                    messageHandles.append(contentsOf: node.getEnOceanSubscriptionMessageHandles(group: linkGroup))
+                }
+            case .enOceanProxy(let switchData):
+                if let linkGroup = switchData.linkGroup, node.primaryUnicastAddress == switchData.proxyNodeAddress, let macAddress = switchData.enOceanMacAddress, let key = switchData.enOceanSecurityKey {
+                    let handles = node.getEnOceanSwitchBindMessageHandles(enOceanMacAddress: macAddress, securityKey: key, group: linkGroup, enabled: switchData.enabled, switchKeys: MeshEnOceanProxyServer.SwitchKey.defaultKeys(sceneA: switchData.sceneA, sceneB: switchData.sceneB))
+                    messageHandles.append(contentsOf: handles)
+                }
             }
         }
         return messageHandles
@@ -214,8 +251,10 @@ enum ActionType {
     case group(group: Group)
     /// 配置
     case profile(type: ProfileType)
-    /// 动能开关
-    case enOceanSwitch
+    /// 动能开关（关联）
+    case enOceanSwitch(switchData: DeviceSwitchData)
+    /// 动能开关代理
+    case enOceanProxy(switchData: DeviceSwitchData)
 }
 
 /// 配置类型
@@ -481,6 +520,8 @@ class SyncDevicesSectionModel {
     var groups: [SyncDevicesGroupModel] = []
     /// 设备list（组、日程（设备））
     var devices: [SyncDevicesModel] = []
+    /// 动能开关代理
+    var switchProxy: SyncDevicesSwitchProxyModel?
     
     init(title: String) {
         self.title = title
@@ -489,6 +530,11 @@ class SyncDevicesSectionModel {
     /// 所有相关model
     var allModels: [SyncCellModel] {
         var models: [SyncCellModel] = []
+        if let model = switchProxy {
+            models.append(model)
+            models.append(model.deviceModel)
+        }
+        
         groups.forEach({
             models.append($0)
 //            models.append(contentsOf: $0.deviceModels)
@@ -516,6 +562,12 @@ class SyncDevicesSectionModel {
     /// 一级列表结构model（用于列表展示）
     var rowModels: [SyncCellModel] {
         var models: [SyncCellModel] = []
+        
+        if let model = switchProxy {
+            models.append(model)
+            models.append(model.deviceModel)
+        }
+        
         groups.forEach({
             models.append($0)
             if $0.isShow {
@@ -534,6 +586,25 @@ class SyncDevicesSectionModel {
             }
         })
         return models
+    }
+    
+}
+
+class SyncDevicesSwitchProxyModel: SyncCellModel {
+    
+    /// 图标名称
+    var imageName: String = "switch_proxy"
+    /// 名称
+    var name: String
+    /// 所属的section
+    var parentSectionIndex: Int?
+    /// 设置的设备
+    let deviceModel: SyncDevicesModel
+    
+    init(imageName: String = "switch_proxy", name: String, deviceModel: SyncDevicesModel) {
+        self.imageName = imageName
+        self.name = name
+        self.deviceModel = deviceModel
     }
     
 }

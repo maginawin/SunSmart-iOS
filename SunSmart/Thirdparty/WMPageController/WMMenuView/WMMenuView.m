@@ -321,6 +321,7 @@
     if (self = [super initWithFrame:frame]) {
         self.progressViewCornerRadius = WMUNDEFINED_VALUE;
         self.progressHeight = WMUNDEFINED_VALUE;
+        self.itemRateAnimation = YES;
     }
     return self;
 }
@@ -512,7 +513,7 @@
         if (self.fontName) {
             item.font = [UIFont fontWithName:self.fontName size:item.selectedSize];
         } else {
-            item.font = [UIFont systemFontOfSize:item.selectedSize];
+            item.font = [UIFont systemFontOfSize:item.selectedSize weight:self.fontWeight];
         }
         if ([self.dataSource respondsToSelector:@selector(menuView:initialMenuItem:atIndex:)]) {
             item = [self.dataSource menuView:self initialMenuItem:item atIndex:i];
@@ -615,8 +616,8 @@
         [self.delegate menuView:self didSelectedIndex:menuItem.tag - WMMENUITEM_TAG_OFFSET currentIndex:currentIndex];
     }
     
-    [self.selItem setSelected:NO withAnimation:YES];
-    [menuItem setSelected:YES withAnimation:YES];
+    [self.selItem setSelected:NO withAnimation:self.itemRateAnimation];
+    [menuItem setSelected:YES withAnimation:self.itemRateAnimation];
     self.selItem = menuItem;
     
     NSTimeInterval delay = self.style == WMMenuViewStyleDefault ? 0 : 0.3f;

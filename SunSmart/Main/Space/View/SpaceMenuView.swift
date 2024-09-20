@@ -83,7 +83,7 @@ extension SpaceMenuView {
             MenuItemData(title: "group".localizedString, imageName: "space_group", selectImageName: "space_group_selected"),
             MenuItemData(title: "scene".localizedString, imageName: "space_scene", selectImageName: "space_scene_selected"),
             MenuItemData(title: "timed".localizedString, imageName: "space_timed", selectImageName: "space_timed_selected"),
-            MenuItemData(title: "more".localizedString, imageName: "space_more", selectImageName: "space_more_selected")
+            MenuItemData(title: "More".localizedString, imageName: "space_more", selectImageName: "space_more_selected")
         ]
     }
     

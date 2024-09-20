@@ -106,7 +106,7 @@ extension ExternalVendorMessage {
     
     /// 初始化自定义操作
     init(operation: Operation) {
-        self.init(parameters: operation.data)!
+        self.init(parameters: operation.data)
     }
     
     /// 解析自定义操作数据

@@ -7,6 +7,7 @@
 
 import UIKit
 import SwiftyJSON
+import ZIPFoundation
 
 /// 场所列表数据刷新通知
 let SitesDataRefreshNotifiacationName = "SitesRefreshNotifiacation"
@@ -84,7 +85,7 @@ class SitesViewController: UIViewController {
         setupUI()
         setupData()
         
-        print(UserData.currentUserId, UserData.currentUserName, UserData.currentServerRegion)
+//        print(UserData.currentUserId, UserData.currentUserName, UserData.currentServerRegion)
         
      
 //        allSitesTableView.tableHeaderView = allSitesNoInternetView
@@ -98,6 +99,21 @@ class SitesViewController: UIViewController {
                 self?.loadSitesRequest()
             }.show()
         }
+        
+//        ZipHandler.downloadAndHandleZip(from: <#T##URL#>, completion: <#T##(Result<FirmwareZipData, Error>) -> Void#>)
+        
+        if let sourceURL = Bundle.main.url(forResource: "dfu", withExtension: "zip"), let data = try? Data(contentsOf: sourceURL) {
+            
+//            let result = try? ZipHandler.handleZipData(data)
+            
+            
+            
+//            print(result)
+        }
+        
+        
+        
+//        dfu.zip
         
 //        loadSitesRequest()
     }
@@ -288,9 +304,9 @@ class SitesViewController: UIViewController {
                         }
                         
                         // 上传到云端
-                        self.allSites.filter({ $0.needUploadCloud && $0.state == .normal }).forEach { site in
-                            CloudSynchronizationManager.shared.addSynchronizationHandle(operation: .syncSite(site: site, syncSpaces: []), level: .promptly)
-                        }
+//                        self.allSites.filter({ $0.needUploadCloud && $0.state == .normal }).forEach { site in
+//                            CloudSynchronizationManager.shared.addSynchronizationHandle(operation: .syncSite(site: site, syncSpaces: []), level: .promptly)
+//                        }
                         
                     }
                 }else {
@@ -303,8 +319,8 @@ class SitesViewController: UIViewController {
         
     }
     
-    /// 获取扫码分享内容请求
-    private func loadShareInfoRequest(shareId: String) {
+    /// 获取扫码分享内容请求  qrCode: 是否扫码
+    private func loadShareInfoRequest(shareId: String, qrCode: Bool) {
         XWHUDManager.showCustomHUD(withMessage: nil, isWindow: true)
         NetworkRequest.shared.request(.shareInfo(shareId: shareId)) {[weak self] result in
             XWHUDManager.hide()
@@ -331,7 +347,7 @@ class SitesViewController: UIViewController {
                     }
                 case .space(_, let space, _):
                     // 已存在的space分享数据，跳转到site->space页面
-                    if let mySite = self.allSites.first(where: { $0.id == space.siteId && $0.permission == .owner }) {
+                    if let mySite = self.allSites.first(where: { $0.id == space.siteId && $0.permission == .owner && $0.state == .normal }) {
                         self.navigationController?.popViewController(animated: false)
                         let vc = SiteViewController(site: mySite)
                         vc.enterSpaceId = space.id
@@ -355,7 +371,13 @@ class SitesViewController: UIViewController {
                 
             case .failure(let error):
                 if error == .resourceNotFound {
-                    self.showQRCodeFailed(title: "shared_code_invalid".localizedString, message: "invalid_invitation_code_message".localizedString, messageAlignment: .left)
+                    var title = "qr_code_invalid".localizedString
+                    var message = "invalid_qr_code_message".localizedString
+                    if !qrCode {
+                        title = "shared_code_invalid".localizedString
+                        message = "invalid_invitation_code_message".localizedString
+                    }
+                    self.showQRCodeFailed(title: title, message: message, messageAlignment: .left)
 //                    XWHUDManager.showErrorTipHUD("shared_code_invalid".localizedString)
                 }else {
                     XWHUDManager.showErrorTipHUD(error.localizedDescription)
@@ -417,6 +439,7 @@ class SitesViewController: UIViewController {
     
     /// 导入
     @objc private func importClick() {
+        
         ImportProjectView {[weak self] mode in
             if mode == .scanQRCode {
                 self?.scanQRCode()
@@ -472,7 +495,7 @@ class SitesViewController: UIViewController {
                 self?.showQRCodeFailed(message: "shared_code_unknown".localizedString)
                 return
             }
-            self?.loadShareInfoRequest(shareId: uuid)
+            self?.loadShareInfoRequest(shareId: uuid, qrCode: false)
         }.show()
         
     }
@@ -1121,6 +1144,7 @@ extension SitesViewController: UITableViewDataSource, UITableViewDelegate {
         if site.permission == .owner && site.state == .waitDeleted {
             cell.syncFailedImageView.isHidden = false
             cell.syncFailedImageView.image = UIImage(named: "site_transferred")
+            cell.iconImageView.alpha = 0.5
         }else {
             cell.syncFailedImageView.image = UIImage(named: "cloud_sync_failed")
             // 自己有同步错误 / 自己有需要同步但是不在同步中 / 下面space有同步错误
@@ -1129,6 +1153,7 @@ extension SitesViewController: UITableViewDataSource, UITableViewDelegate {
             }else {
                 cell.syncFailedImageView.isHidden = true
             }
+            cell.iconImageView.alpha = 1
         }
 //        cell.syncFailedImageView.isHidden = !(site.syncCloudError != nil || site.spaces.contains(where: { $0.syncCloudError != nil }))
         cell.clickMoreCallback = {[weak self] point in
@@ -1229,7 +1254,7 @@ extension SitesViewController: LBXScanViewControllerDelegate {
             return
         }
         
-        loadShareInfoRequest(shareId: content)
+        loadShareInfoRequest(shareId: content, qrCode: true)
         
     }
 }
@@ -1285,3 +1310,4 @@ extension SitesViewController: CloudSynchronizationManagerDelegate {
         updateSyncState()
     }
 }
+

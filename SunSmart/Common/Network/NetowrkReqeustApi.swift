@@ -109,6 +109,12 @@ enum NetowrkReqeustApi {
     
     /// 回收地址  recycleDeviceAddresses: 回收的设备地址list   recycleGroupAddresses: 回收的组地址list  recycleSceneAddresses: 回收的场景地址list
     case recyclingAddress(siteId: String, recycleDeviceAddresses: [Int]? = nil, recycleGroupAddresses: [Int]? = nil, recycleSceneAddresses: [Int]? = nil, exclusions: [(ivIndex: Int, addresses: [Int])]? = nil)
+    
+    // #****** OTA ******#
+    /// 获取最新的固件包
+    case firmwareLatestVersion(companyId: String = "0A78", deviceType: String, customId: String = "00")
+    /// 固件包历史版本list
+    case firmwareVersionList(companyId: String = "0A78", deviceType: String, customId: String = "00")
 }
 
 extension NetowrkReqeustApi: TargetType {
@@ -177,6 +183,10 @@ extension NetowrkReqeustApi: TargetType {
             return "/sitespace/address/release"
         case .spaceActiveMembers:
             return "/sitespace/get/activeuser"
+        case .firmwareLatestVersion:
+            return "/sitespace/ota/latest"
+        case .firmwareVersionList:
+            return "/sitespace/ota/history"
         }
     }
     
@@ -346,6 +356,10 @@ extension NetowrkReqeustApi: TargetType {
             return parameters
         case .spaceActiveMembers(let siteId, let spaceId):
             return ["siteId": siteId, "spaceId": spaceId]
+        case .firmwareLatestVersion(let companyId, let deviceType, let customId):
+            return ["manufacturerId": companyId, "deviceType": deviceType, "customerId": customId]
+        case .firmwareVersionList(let companyId, let deviceType, let customId):
+            return ["manufacturerId": companyId, "deviceType": deviceType, "customerId": customId]
         }
     }
     

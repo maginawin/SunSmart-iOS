@@ -26,11 +26,11 @@ class GroupSwitchsHeaderView: UITableViewHeaderFooterView {
     private var enabledSwitch: UISwitch!
     private var enabledBtn: UIButton!
     private var lineView: UIView!
-    private var failedImageView: UIImageView!
+    var failedImageView: UIImageView!
     
     weak var delegate: GroupSwitchsHeaderViewDelegate?
     
-    var groupSwitch: GroupSwitch! {
+    var groupSwitch: DeviceSwitchData! {
         didSet {
             
             titleLabel.text = groupSwitch.name

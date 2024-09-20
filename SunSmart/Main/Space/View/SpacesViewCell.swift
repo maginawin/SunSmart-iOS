@@ -51,7 +51,7 @@ class SpacesViewCell: UITableViewCell {
         didSet {
             nameLabel.text = space.name
             iconImageView.image = UIImage(named: "space_picture_\(space.imageId)")
-            timeLabel.text = String.dateConvert(timestamp: "\(space.create)", dateFormat: "M/d/yyyy hh:mm a")
+            timeLabel.text = space.create > 0 ? String.dateConvert(timestamp: "\(space.create)", dateFormat: "M/d/yyyy hh:mm a") : "--"
             luminairesLabel.text = "luminaires".localizedString + ":\(space.luminairesCount)"
             switchesLabel.text = "switches".localizedString + ":\(space.switchesCount)"
             groupsLabel.text = "groups".localizedString + ":\(space.groupCount)"

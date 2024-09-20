@@ -67,6 +67,9 @@ class SpaceData: Copyable {
     
     /// 是否提交到云端
     var uploadCloud: Bool {
+        guard permission == .owner else {
+            return true
+        }
         return lastUploadCloudTimestamp != nil
     }
     /// 是否需要上传到云端
@@ -80,9 +83,9 @@ class SpaceData: Copyable {
             return nil
         }
         // 同步过程中不显示错误
-        if let handle = CloudSynchronizationManager.shared.getSpaceCurrentSyncState(self), case .inProgress = handle.state {
-            return nil
-        }
+//        if let handle = CloudSynchronizationManager.shared.getSpaceCurrentSyncState(self), handle.state.rawValue == CloudSynchronizationHandle.State.wait.rawValue || handle.state.rawValue == CloudSynchronizationHandle.State.inProgress.rawValue {
+//            return nil
+//        }
         // 有错误则显示之前上传服务器错误，如没有错误并需要上传服务器并不在同步过程，则说明同步过程退出APP
         return syncCloudError ?? (CloudSynchronizationManager.shared.getSpaceCurrentSyncState(self) == nil ? .unknown : nil)
     }

@@ -10,6 +10,7 @@ import NordicSigMeshSDK
 import SwiftyJSON
 
 let SiteStateChangeNotificationName = "siteStateChangeNotification"
+let SpacesRefreshChangeNotificationName = "SpacesRefreshChangeNotification"
 
 class SiteViewController: UIViewController {
 
@@ -67,11 +68,32 @@ class SiteViewController: UIViewController {
         NotificationCenter.default.addObserver(forName: .init(SiteStateChangeNotificationName), object: nil, queue: nil) {[weak self] _ in
             guard let self = self else { return }
             if self.site.state == .waitDeleted {
+                NotificationCenter.default.post(name: .init(SitesDataRefreshNotifiacationName), object: true)
                 self.navigationController?.popViewController(animated: true)
             }else {
-                self.reloadData = true
+                if self.view.window != nil {
+                    self.reloadData = false
+                    allSpaces = site.spaces
+                    favouriteSpaces = allSpaces.filter({ $0.isFavourite })
+                    loadSiteRequest()
+                }else {
+                    self.reloadData = true
+                }
             }
         }
+        
+        /// 刷新spaces列表通知回调
+        NotificationCenter.default.addObserver(forName: .init(SpacesRefreshChangeNotificationName), object: nil, queue: nil) {[weak self] _ in
+            guard let self = self else { return }
+            if self.view.window != nil {
+                allSpaces = site.spaces
+                favouriteSpaces = allSpaces.filter({ $0.isFavourite })
+                self.allSpacesTableView.reloadData()
+                self.favouritesTableView.reloadData()
+                self.updateEmptyView()
+            }
+        }
+        
 //        updateEmptyView()
         updateNoInternetUI()
         
@@ -82,6 +104,8 @@ class SiteViewController: UIViewController {
                 recyclingAddressRequest(abandonAddressData: addressData)
             }
         }
+        
+//        MeshLibManager.manager.setMeshNetworkConnected(meshUUID: self.site.meshUUID, subNetwork: self.allSpaces.first?.meshNetworkKey, connected: true)
     }
     
     override func viewWillAppear(_ animated: Bool) {
@@ -120,6 +144,7 @@ class SiteViewController: UIViewController {
     
     deinit {
         NetworkRequest.shared.removeObserver(self, forKeyPath: "networkable")
+//        MeshLibManager.manager.meshNetworkDisconnect()
     }
     
     /// KVO监听
@@ -198,8 +223,8 @@ class SiteViewController: UIViewController {
                 }
             case .failure(let error):
                 XWHUDManager.hideInView(with: self.view)
-                XWHUDManager.showErrorTipHUD(error.localizedDescription)
                 if error == .noSitePermission || error == .userUnauthorized { // 无权限
+                    XWHUDManager.showErrorTipHUD(error.localizedDescription)
                     if self.site.state == .normal {
                         self.site.state = .waitDeleted
                         self.site.save()
@@ -281,8 +306,11 @@ class SiteViewController: UIViewController {
                 // 删除本地数据
                 self?.deleteSpace(space: space)
             case .failure(let error): // 删除失败，无网络/space存在编辑者
-                XWHUDManager.showErrorTipHUD(error.localizedDescription)
-                //                XWHUDManager.showErrorTipHUD("site_delete_fail".localizedString)
+                if error == .editorBeingUsedSpace {
+                    XWHUDManager.showErrorTipHUD("space_delete_have_editor_message".localizedString)
+                }else {
+                    XWHUDManager.showErrorTipHUD(error.localizedDescription)
+                }
             }
         }
     }
@@ -338,7 +366,11 @@ class SiteViewController: UIViewController {
                     if verificationPassword != nil { // 正在输入密码验证
                         XWHUDManager.showErrorTipHUD(error.localizedDescription)
                     }else {
-                        self.intoSpace(space: space)
+                        if space.meshNetworkId.isEmpty { // 子网密钥未更新
+                            XWHUDManager.showErrorTipHUD(error.localizedDescription)
+                        }else {
+                            self.intoSpace(space: space)
+                        }
                     }
                 }
             }
@@ -469,6 +501,12 @@ class SiteViewController: UIViewController {
     /// 添加空间
     @objc private func addSpace() {
         
+//        let vc = BleFirmwareUpdateViewController()
+//
+//        present(NavigationViewController(rootViewController: vc), animated: true)
+//        
+//        return
+        
         var imageNames: [String] = []
         for id in 1...24 {
             imageNames.append("space_picture_\(id)")
@@ -524,7 +562,6 @@ class SiteViewController: UIViewController {
             space.imageId = imageId + 1
             space.lastUpdate = Int64(Date().timeIntervalSince1970)
             space.save()
-            self.reloadSpaceData(space)
             
             // site已上传服务器
             if site.uploadCloud {
@@ -534,6 +571,7 @@ class SiteViewController: UIViewController {
                 // 未上传服务器，site、space一起上传
                 CloudSynchronizationManager.shared.addSynchronizationHandle(operation: .syncSite(site: site, syncSpaces: site.spaces), level: .normal)
             }
+            self.reloadSpaceData(space)
             return true
         }
         present(NavigationViewController(rootViewController: vc), animated: true)
@@ -747,7 +785,7 @@ class SiteViewController: UIViewController {
         
         var networkApi: NetowrkReqeustApi!
         // 有site转让code则读取之前的数据
-        if let shareCode = space.shareCode {
+        if let shareCode = space.shareCode, space.editorPassword != nil {
             networkApi = .shareInfo(shareId: shareCode)
         }else {
             // 还没有设置编辑者密码
@@ -767,10 +805,43 @@ class SiteViewController: UIViewController {
                     XWHUDManager.showErrorTipHUD(NetworkApiError.unknown.localizedDescription)
                     return
                 }
+                var spaceSave = false
+                // 更新owner数据
+                if let ownerData = JSON(response)["data"]["space"]["owner"].dictionaryObject {
+                    if let userId = ownerData["userId"] as? String, let userName = ownerData["username"] as? String {
+                        if space.owner?.uuid != userId {
+                            space.owner = .init(name: userName, uuid: userId)
+                            spaceSave = true
+                        }
+                    }
+                }
+                
+                // 更新editor数据
+                if let editorData = JSON(response)["data"]["space"]["editor"].dictionaryObject {
+                    if let userId = editorData["userId"] as? String, let userName = editorData["username"] as? String {
+                        if space.editor?.uuid != userId {
+                            space.editor = .init(name: userName, uuid: userId)
+                            spaceSave = true
+                        }
+                    }else {
+                        if space.editor != nil {
+                            space.editor = nil
+                            spaceSave = true
+                        }
+                    }
+                }
+                
+                if case .spaceShare = networkApi {
+                    spaceSave = true
+                }
                 // 邀请码
                 if space.shareCode != code {
                     space.shareCode = code
+                    spaceSave = true
+                }
+                if spaceSave {
                     space.save()
+                    self.reloadSpaceData(space)
                 }
                 
                 let vc = SharingSettingViewController(type: .space(site: self.site, space: space))
@@ -789,14 +860,20 @@ class SiteViewController: UIViewController {
     /// 解绑space
     private func unbindSpace(_ space: SpaceData) {
         
+        XWHUDManager.showCustomHUD(withMessage: nil, isWindow: true)
+        
         // 是否有同步操作正在进行,进行中则取消任务
         CloudSynchronizationManager.shared.cancelSynchronizationHandle(space: space)
-        
-        XWHUDManager.showCustomHUD(withMessage: nil, isWindow: true)
         // 数据有更新没提交,先提交完成数据再解绑
         if space.permission == .editor && space.needUploadCloud {
             Task {
                 let spaceData = await space.export()
+                // 数据不完整则不上传直接解绑
+                if spaceData.isEmpty || !spaceData.keys.contains("netKey") {
+                    space.lastUploadCloudTimestamp = space.lastUpdate
+                    self.unbindSpace(space)
+                    return
+                }
                 NetworkRequest.shared.request(.spaceUpload(siteId: space.siteId, spaceData: spaceData)) {[weak self] result in
                     switch result {
                     case .success(_):
@@ -854,7 +931,6 @@ class SiteViewController: UIViewController {
     
     /// 回收放弃的地址请求（接收转让site，拿到之前owner数据，放弃自己之前其他身份持有的地址）
     private func recyclingAddressRequest(abandonAddressData: SiteData.RecycleAddressData) {
-        guard let addressData = site.recycleAddressData else { return }
         
         NetworkRequest.shared.request(.recyclingAddress(siteId: site.id, recycleDeviceAddresses: abandonAddressData.deviceAddresses, recycleGroupAddresses: abandonAddressData.groupAddresses, recycleSceneAddresses: abandonAddressData.sceneAddresses, exclusions: nil)) {[weak self] result in
             guard let self = self else { return }
@@ -967,6 +1043,8 @@ class SiteViewController: UIViewController {
                         CloudSynchronizationManager.shared.addSynchronizationHandle(operation: .syncSite(site: site, syncSpaces: []), level: .promptly)
                     }
                 }
+            case .cancel:
+                self.hideNavigationBarState()
             default:
                 break
             }
@@ -1038,12 +1116,12 @@ class SiteViewController: UIViewController {
             return
         }
         
-        guard space.uploadCloud else {
-            // 未上传到服务器，直接进入space
+        // 未上传到服务器，直接进入space
+        if space.permission == .owner && !space.uploadCloud {
             intoSpace(space: space)
             return
         }
-        
+
         // 手机节点地址未分配
         guard site.localAddress != nil else {
             self.requestMobileAddress()

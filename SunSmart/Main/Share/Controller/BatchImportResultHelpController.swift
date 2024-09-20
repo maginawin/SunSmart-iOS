@@ -15,8 +15,11 @@ class BatchImportResultHelpController: UIViewController {
         super.viewDidLoad()
 
         title = "help".localizedString
-//        navigationItem.rightBarButtonItem = UIBarButtonItem(image: UIImage(named: "close")?.withRenderingMode(.alwaysOriginal), style: .done, target: self, action: #selector(close))
+        navigationItem.leftBarButtonItem = UIBarButtonItem()
+        navigationItem.rightBarButtonItem = UIBarButtonItem(image: UIImage(named: "close")?.withRenderingMode(.alwaysOriginal), style: .done, target: self, action: #selector(close))
         view.backgroundColor = Background_Color
+        
+        
         setupUI()
     }
     

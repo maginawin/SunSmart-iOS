@@ -105,8 +105,9 @@ extension UIViewController {
         case .failure:
             stateImageView?.image = UIImage(named: "cloud_sync_failed")
             stateImageView?.layer.removeAnimation(forKey: "loading")
-            stateImageView!.snp.updateConstraints { make in
-                make.right.equalTo(titleView.snp.left)
+            stateImageView!.snp.remakeConstraints { make in
+                make.right.equalTo(titleView.snp.left) 
+                make.centerY.equalToSuperview()
             }
         }
      

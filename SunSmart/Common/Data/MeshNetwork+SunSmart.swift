@@ -303,6 +303,7 @@ extension MeshNetworkManager {
         static var groupsKey = 1
         static var scenesKey = 2
         static var schedulesKey = 3
+        static var switchsKey = 4
     }
     
     /// 日程list
@@ -350,9 +351,14 @@ extension MeshNetworkManager {
         }
     }
     
-    /// 当前子网内动能开关代理list
-    var subnetworkSwitchProxys: [Node] {
-        return realNodes.filter({ $0.enOceanMacAddress != nil })
+
+    /// 当前子网内动能开关list
+    var switchs: [DeviceSwitchData] {
+        get {
+            objc_getAssociatedObject(self, &AssociatedKey.switchsKey) as? [DeviceSwitchData] ?? []
+        }set {
+            objc_setAssociatedObject(self, &AssociatedKey.switchsKey, newValue, .OBJC_ASSOCIATION_RETAIN)
+        }
     }
     
     /// 获取网络扩展数据
@@ -377,6 +383,8 @@ extension MeshNetworkManager {
             self.scenes.forEach({
                 $0.info = SceneInfo.load(meshUUID: uuid, sceneId: $0.number) ?? SceneInfo(sceneId: $0.number)
             })
+            
+            self.switchs = DeviceSwitchData.load(meshUUID: uuid, meshNetworkId: self.currentNetworkKey.networkId.hex)
             
 //            var subnetworkScenes: [Scene] = []
 //            let sceneInfos = SceneInfo.load(meshUUID: uuid, networkKey: self.currentNetworkKey)
@@ -506,6 +514,26 @@ extension MeshNetworkManager {
         return schedules.contains(where: { $0.name == name })
     }
     
+    /// 获取下一个动能开关名称
+    func getNextSwitchName(_ defalutName: String = "switch".localizedString) -> String {
+        // 已存在的开关名称
+        let existNames = switchs.map({ $0.name })
+        for index in 1...16 {
+            let name = defalutName + "\(index)"
+            if !existNames.contains(name) {
+                return name
+            }
+        }
+        return defalutName + "1"
+    }
+    
+    /// 动能开关是否重名
+    /// - Parameter name: 名称
+    /// - Returns: 是否重名
+    func isSwitchTautonym(name: String) -> Bool {
+        return switchs.contains(where: { $0.name == name })
+    }
+    
     /// 获取节点随机mac地址
     func getRandomMacAddress() -> String {
         
@@ -522,6 +550,37 @@ extension MeshNetworkManager {
         }
         print(mac)
         return mac
+    }
+    
+    /// 创建动能开关
+    func createDefalutSwitch() -> DeviceSwitchData? {
+        // 是否超出限制
+        guard self.switchs.count < 16 else {
+            return nil
+        }
+        let newSwtich = DeviceSwitchData.defalut()
+        self.switchs.append(newSwtich)
+        newSwtich.save()
+        return newSwtich
+    }
+    
+    /// 删除动能开关
+    func deleteSwitch(switchData: DeviceSwitchData) {
+        guard let meshUUID = self.meshNetwork?.uuid.uuidString else { return }
+        switchData.delete(meshUUID: meshUUID, networkId: self.currentNetworkKey.networkId.hex)
+        self.switchs.removeAll(where: { $0.id == switchData.id })
+        if let group = switchData.linkGroup {
+            
+            // 解绑本地节点订阅组信息，用于接收按键发出指令本地显示状态
+            for element in MeshNetworkManager.instance.localNode?.elements ?? [] {
+                let subscribeModels = element.models.filter({ $0.isSubscribed(to: group) })
+                subscribeModels.forEach({
+                    $0.unsubscribe(from: group)
+                })
+            }
+            try? self.meshNetwork?.remove(group: group)
+        }
+        
     }
     
 }
@@ -683,53 +742,53 @@ extension Group {
     }
     
     /// 添加一个虚拟按键
-    @discardableResult func addGroupSwitch() -> GroupSwitch {
-//        var nextId = 1
-//        let exitIds = self.info.switchs.map({ $0.id })
-//        for id in 1...1000 {
-//            if !exitIds.contains(id) {
-//                nextId = id
+//    @discardableResult func addGroupSwitch() -> GroupSwitch {
+////        var nextId = 1
+////        let exitIds = self.info.switchs.map({ $0.id })
+////        for id in 1...1000 {
+////            if !exitIds.contains(id) {
+////                nextId = id
+////                break
+////            }
+////        }
+//        let groupSwitch = GroupSwitch(id: UUID().uuidString, groupAddress: self.address.address, enabled: true, name: nextSwitchName())
+//        self.info.switchs.append(groupSwitch)
+//        if let uuid = MeshNetworkManager.instance.meshNetwork?.uuid.uuidString {
+//            groupSwitch.save(meshUUID: uuid, networkId: MeshNetworkManager.instance.currentNetworkKey.networkId.hex)
+//        }
+//        return groupSwitch
+//    }
+    
+    /// 判断虚拟按键是否重名
+//    func isSwitchTautonym(name: String) -> Bool {
+//        return self.info.switchs.contains(where: { $0.name == name })
+//    }
+    
+    /// 获取下一个虚拟按键名称
+//    func nextSwitchName() -> String {
+//        var nextName = ""
+//        let exitNames = self.info.switchs.map({ $0.name })
+//        let defalutName = "switch".localizedString
+//        for index in 1...1000 {
+//            let name = "\(defalutName) \(index)"
+//            if !exitNames.contains(name) {
+//                nextName = name
 //                break
 //            }
 //        }
-        let groupSwitch = GroupSwitch(id: UUID().uuidString, groupAddress: self.address.address, enabled: true, name: nextSwitchName())
-        self.info.switchs.append(groupSwitch)
-        if let uuid = MeshNetworkManager.instance.meshNetwork?.uuid.uuidString {
-            groupSwitch.save(meshUUID: uuid, networkId: MeshNetworkManager.instance.currentNetworkKey.networkId.hex)
-        }
-        return groupSwitch
-    }
-    
-    /// 判断虚拟按键是否重名
-    func isSwitchTautonym(name: String) -> Bool {
-        return self.info.switchs.contains(where: { $0.name == name })
-    }
-    
-    /// 获取下一个虚拟按键名称
-    func nextSwitchName() -> String {
-        var nextName = ""
-        let exitNames = self.info.switchs.map({ $0.name })
-        let defalutName = "switch".localizedString
-        for index in 1...1000 {
-            let name = "\(defalutName) \(index)"
-            if !exitNames.contains(name) {
-                nextName = name
-                break
-            }
-        }
-        return nextName
-    }
+//        return nextName
+//    }
     
     /// 删除组内虚拟按键
     /// - Parameter groupSwitch: 虚拟按键
-    func delete(groupSwitch: GroupSwitch) {
-        
-        self.info.switchs.removeAll(where: { $0.id == groupSwitch.id })
-        guard let uuid = self.network?.uuid.uuidString else {
-            return
-        }
-        groupSwitch.delete(meshUUID: uuid, networkId: (self.network?.networkKeys.first(where: { $0.isSecondary }) ?? MeshNetworkManager.instance.currentNetworkKey).networkId.hex)
-    }
+//    func delete(groupSwitch: GroupSwitch) {
+//        
+//        self.info.switchs.removeAll(where: { $0.id == groupSwitch.id })
+//        guard let uuid = self.network?.uuid.uuidString else {
+//            return
+//        }
+//        groupSwitch.delete(meshUUID: uuid, networkId: (self.network?.networkKeys.first(where: { $0.isSecondary }) ?? MeshNetworkManager.instance.currentNetworkKey).networkId.hex)
+//    }
     
     /// 本地化缓存组数据（只处理业务扩展数据）
     func saveExtension() {
@@ -746,9 +805,9 @@ extension Group {
 //        })
         self.info.profile.save(meshUUID: uuid, meshNetworkId: subnetworkId)
         // 保存虚拟按键数据
-        self.info.switchs.forEach({
-            $0.save(meshUUID: uuid, networkId: subnetworkId)
-        })
+//        self.info.switchs.forEach({
+//            $0.save(meshUUID: uuid, networkId: subnetworkId)
+//        })
     }
     
     
@@ -928,7 +987,12 @@ class GroupInfo {
     var ambientLightSensorNode: Node?
     
     /// 虚拟按键list
-    var switchs: [GroupSwitch] = []
+//    var switchs: [GroupSwitch] = []
+    
+    /// 组内绑定的动能开关list
+    var switchs: [DeviceSwitchData] {
+        return MeshNetworkManager.instance.switchs.filter({ $0.bindGroupAddresses.contains(self.address) })
+    }
     
     
     init(address: Address, imageId: Int = 0, imageText: String? = nil, sceneExecuteDatas: [SceneExecuteData] = [], bindSchedules: [Schedule] = [], profile: Profile = .init(type: .occupancy_daylight)) {
@@ -1320,6 +1384,92 @@ class Schedule: Codable, Copyable {
 
 }
 
+extension DeviceSwitchData {
+    
+    /// 获取动能开关需要同步/删除的数据
+    func getNeedSyncDatas(deleteSwitch: Bool = false) -> SwitchSyncData {
+        
+        var syncGroupData: [Group: [Node]] = [:]
+        var deleteGroupData: [Group: [Node]] = [:]
+        var syncProxy: Node?
+        var deleteProxy: Node?
+        
+        if let linkGroup = self.linkGroup {
+            var allNodes: [Node] = []
+            if deleteSwitch { // 删除动能开关
+                
+                bindGroups.forEach { group in
+                    allNodes.append(contentsOf: group.nodes)
+                    let nodes = group.nodes.filter({ $0.getEnOceanUnSubscriptionMessageHandles(group: linkGroup).count > 0 })
+                    if nodes.count > 0 {
+                        deleteGroupData.updateValue(nodes, forKey: group)
+                    }
+                }
+                // 当前设置动能开关的代理设备
+                let currentProxy = allNodes.first(where: { $0.enOceanMacAddress != nil && $0.enOceanMacAddress == self.enOceanMacAddress })
+                deleteProxy = currentProxy
+                
+            }else {
+                // 同步数据
+                bindGroups.forEach { group in
+                    allNodes.append(contentsOf: group.nodes)
+                    if !unbindGroups.contains(group) {
+                        let nodes = group.nodes.filter({
+                            $0.getEnOceanSubscriptionMessageHandles(group: linkGroup).count > 0
+                        })
+                        if nodes.count > 0 {
+                            syncGroupData.updateValue(nodes, forKey: group)
+                        }
+                    }
+                }
+                
+                unbindGroups.forEach({ group in
+                    let nodes = group.nodes.filter({ $0.getEnOceanUnSubscriptionMessageHandles(group: linkGroup).count > 0 })
+                    if nodes.count > 0 {
+                        deleteGroupData.updateValue(nodes, forKey: group)
+                    }
+                })
+                
+                // 判断是否需要同步动能开关代理
+                if let mac = self.enOceanMacAddress, let key = self.enOceanSecurityKey, let proxyNode = self.proxyNode {
+                    if proxyNode.getEnOceanSwitchBindMessageHandles(enOceanMacAddress: mac, securityKey: key, group: linkGroup, enabled: self.enabled, switchKeys: MeshEnOceanProxyServer.SwitchKey.defaultKeys(sceneA: self.sceneA, sceneB: self.sceneB)).count > 0 {
+                        syncProxy = proxyNode
+                    }
+                }
+                
+                
+                // 当前设置动能开关的代理设备
+//                let currentProxy = allNodes.first(where: { $0.enOceanMacAddress != nil && $0.enOceanMacAddress == self.enOceanMacAddress })
+                // 判断当前的代理设备和目标的代理设备是否不一样，不一样需要删除之前的代理
+//                if currentProxy?.primaryUnicastAddress != self.proxyNodeAddress {
+//                    deleteProxy = currentProxy
+//                }
+                deleteProxy = self.deleteProxyNode
+            }
+        }
+        
+        let data = SwitchSyncData(syncGroups: syncGroupData, deleteGroups: deleteGroupData, syncProxy: syncProxy, deleteProxy: deleteProxy)
+        return data
+    }
+    
+    /// 动能开关同步数据
+    struct SwitchSyncData {
+        /// 需要同步的组-设备
+        var syncGroups: [Group: [Node]] = [:]
+        /// 需要删除的组-设备
+        var deleteGroups: [Group: [Node]] = [:]
+        /// 同步的代理设备
+        var syncProxy: Node?
+        /// 删除的代理设备
+        var deleteProxy: Node?
+  
+        /// 是否空数据
+        func isEmpty() -> Bool {
+            return syncGroups.isEmpty && deleteGroups.isEmpty && syncProxy == nil && deleteProxy == nil
+        }
+    }
+}
+
 extension Node {
 
     static private var localVersionSEQ = 1
@@ -1387,6 +1537,34 @@ extension Node {
         let nodeSyncSchedules = group.info.bindSchedules.filter { schedule in
             !self.schedulerActions.contains(where: { $0.key == schedule.id }) || !self.schedulerActions.contains(where: { $0.value == schedule.schedulerEntry })
         }
+        
+        // 设备待删除的动能开关list
+        var deleteSwitchs: [DeviceSwitchData] = []
+        // 设备待同步的动能开关list
+        var nodeSyncSwitchs: [DeviceSwitchData] = []
+//        group.info.switchs.filter({ switchData in
+//            switchData.unbindGroupAddresses.contains(group.address.address)
+//        })
+        // 设置动能开关代理
+        var setSwitchProxy: DeviceSwitchData?
+        // 删除设备动能开关代理
+        var deleteSwitchProxy: DeviceSwitchData?
+        
+        group.info.switchs.forEach({ switchData in
+            if let linkGroup = switchData.linkGroup {
+                // 判断代理设备是否未设置完成
+                if switchData.proxyNodeAddress == self.primaryUnicastAddress, let enOceanMacAddress = switchData.enOceanMacAddress, let enOceanSecurityKey = switchData.enOceanSecurityKey {
+                    if self.getEnOceanSwitchBindMessageHandles(enOceanMacAddress: enOceanMacAddress, securityKey: enOceanSecurityKey, group: linkGroup, enabled: switchData.enabled, switchKeys: MeshEnOceanProxyServer.SwitchKey.defaultKeys(sceneA: switchData.sceneA, sceneB: switchData.sceneB)).count > 0 {
+                        setSwitchProxy = switchData
+                    }
+                }
+                if switchData.unbindGroupAddresses.contains(group.address.address), self.getEnOceanUnSubscriptionMessageHandles(group: linkGroup).count > 0 {
+                    deleteSwitchs.append(switchData)
+                }else if switchData.bindGroupAddresses.contains(group.address.address), self.getEnOceanSubscriptionMessageHandles(group: linkGroup).count > 0 {
+                    nodeSyncSwitchs.append(switchData)
+                }
+            }
+        })
         
         let groupProfile = group.info.profile
         var syncProfile: [ProfileType] = []
@@ -1644,7 +1822,9 @@ extension Node {
                     //            }
                 }
                 if self.enOceanMacAddress != nil {
-                    data.deleteSwitch = true
+                    if let proxySwitch = group.info.switchs.first(where: { $0.proxyNodeAddress == self.primaryUnicastAddress && $0.enOceanMacAddress == self.enOceanMacAddress }) {
+                        deleteSwitchProxy = proxySwitch
+                    }
                 }
             }
         }
@@ -1654,7 +1834,10 @@ extension Node {
         data.deleteScenes = nodeDeleteScenes
         data.deleteSchedules = deleteSchedules
         data.syncProfile = syncProfile
-        
+        data.syncSwitchs = nodeSyncSwitchs
+        data.deleteSwitchs = deleteSwitchs
+        data.syncSwitchProxy = setSwitchProxy
+        data.deleteSwitchProxy = deleteSwitchProxy
         return data
     }
 
@@ -1720,18 +1903,25 @@ extension Node {
     /// 删除绑定的动能开关
     func deleteEnOceanSwitch(enOceanMacAddress: String? = nil) {
 
-//        guard let uuid = MeshNetworkManager.instance.meshNetwork?.uuid.uuidString else {
-//            return
-//        }
+        guard let uuid = MeshNetworkManager.instance.meshNetwork?.uuid.uuidString else {
+            return
+        }
         // 删除group switch代理缓存
         
-        if let mac = enOceanMacAddress ?? self.enOceanMacAddress, let groupSwitch = GroupSwitch.load(enOceanMacAddress: mac) {
-            groupSwitch.proxyNodeAddress = nil
-            groupSwitch.save()
-            // 更新开关对应组缓存
-            if let groupCacheSwitch = groupSwitch.group?.info.switchs.first(where: { $0.id == groupSwitch.id }) {
-                groupCacheSwitch.proxyNodeAddress = nil
+        if let mac = enOceanMacAddress ?? self.enOceanMacAddress, let switchData = DeviceSwitchData.load(meshUUID: uuid, macAddress: mac).first {
+            if switchData.proxyNodeAddress == self.primaryUnicastAddress {
+                switchData.proxyNodeAddress = nil
+                switchData.enOceanMacAddress = nil
+                switchData.enOceanSecurityKey = nil
             }
+            if switchData.deleteProxyNodeAddress == self.primaryUnicastAddress {
+                switchData.deleteProxyNodeAddress = nil
+            }
+            switchData.save()
+            // 更新开关对应组缓存
+//            if let groupCacheSwitch = groupSwitch.group?.info.switchs.first(where: { $0.id == groupSwitch.id }) {
+//                groupCacheSwitch.proxyNodeAddress = nil
+//            }
         }
         
 //        self.enOceanMacAddress = nil
@@ -1754,26 +1944,62 @@ extension Node {
 //        let message = messageHandle.message
         switch message {
         case is ConfigModelSubscriptionAdd:
-            self.groupState = .inGroup
-            self.save()
+            let subscriptionMessage = message as! ConfigModelSubscriptionAdd
+            // 加入组
+            if subscriptionMessage.address == self.group?.address.address {
+                if self.groupState != .inGroup {
+                    self.groupState = .inGroup
+                    self.save()
+                }
+            }
+//            else if let group = MeshNetworkManager.instance.meshNetwork?.group(withAddress: MeshAddress(subscriptionMessage.address)), group.isVirtual { // 订阅其它组（动能开关功能组等）
+//                
+//                
+//                
+//            }
 //                self.saveNodeInfo(meshUUID: uuid, networkKey: networkKey)
             
         case is ConfigModelSubscriptionDelete:
             
-            if isSuccess {
-                if self.group == nil { // 组删除设备成功
-                    self.groupState = .none
-                    let groupAddress = (message as! ConfigModelSubscriptionDelete).address
-                    if let group = MeshNetworkManager.instance.meshNetwork?.group(withAddress: MeshAddress(groupAddress)), group.info.ambientLightSensorNode?.primaryUnicastAddress == primaryUnicastAddress { // 判断删除的设备是不是组绑定的光照传感器
-                        group.info.ambientLightSensorNode = nil
-                         // 保存缓存
-                        group.info.save()
+            let subscriptionMessage = message as! ConfigModelSubscriptionDelete
+            
+            if let group = MeshNetworkManager.instance.meshNetwork?.group(withAddress: MeshAddress(subscriptionMessage.address)) {
+                if group.isVirtual { // 动能开关虚拟组
+                    if let switchData = MeshNetworkManager.instance.switchs.first(where: { $0.linkGroupAddress == group.address.address }), let nodeGroup = self.group {
+                        if isSuccess { // 删除成功
+                            // 判断是否之前动能开关删除组失败，再次删除后成功，接着判断组里面是否设备都清空动能开关数据
+                            if switchData.unbindGroupAddresses.contains(nodeGroup.address.address), !nodeGroup.nodes.contains(where: { $0.getEnOceanUnSubscriptionMessageHandles(group: group).count > 0 }) {
+                                switchData.unbindGroupAddresses.removeAll(where: { $0 == nodeGroup.address.address })
+                                switchData.save()
+                            }
+                            
+                        }else { // 删除失败
+                            if !switchData.unbindGroupAddresses.contains(nodeGroup.address.address) {
+                                switchData.unbindGroupAddresses.append(nodeGroup.address.address)
+                                switchData.save()
+                            }
+                        }
+                    }
+                }else { // 设备组 退出真实组
+                    if isSuccess {
+                        if self.group == nil { // 组删除设备成功
+                            self.groupState = .none
+                            let groupAddress = (message as! ConfigModelSubscriptionDelete).address
+                            if let group = MeshNetworkManager.instance.meshNetwork?.group(withAddress: MeshAddress(groupAddress)), group.info.ambientLightSensorNode?.primaryUnicastAddress == primaryUnicastAddress { // 判断删除的设备是不是组绑定的光照传感器
+                                group.info.ambientLightSensorNode = nil
+                                 // 保存缓存
+                                group.info.save()
+                            }
+                            self.save()
+                        }
+                    }else { // 删除失败
+                        if self.groupState != .exitFailure {
+                            self.groupState = .exitFailure
+                            self.save()
+                        }
                     }
                 }
-            }else { // 删除失败
-                self.groupState = .exitFailure
             }
-            self.save()
             
         case is SceneStore:
             let sceneId = (message as! SceneStore).scene
@@ -1906,6 +2132,16 @@ extension Node {
         case is SunricherVendorSet: // 设置自定义消息
             if let vendorMessage = message as? SunricherVendorSet {
                 if case .enOceanDelete(let macAddress) = vendorMessage.function { // 删除EnOcean按键绑定
+                    // 判断是否之前删除代理失败
+//                    if let switchData = MeshNetworkManager.instance.switchs.first(where: { ($0.proxyNodeAddress == self.primaryUnicastAddress || $0.deleteProxyNodeAddress == self.primaryUnicastAddress) }) {
+//                        if switchData.deleteProxyNodeAddress == self.primaryUnicastAddress {
+//                            switchData.deleteProxyNodeAddress = nil
+//                        }
+//                        if switchData.proxyNodeAddress == self.primaryUnicastAddress {
+//                            switchData.proxyNodeAddress = nil
+//                        }
+//                        switchData.save()
+//                    }
                     deleteEnOceanSwitch(enOceanMacAddress: macAddress)
                 }
             }
@@ -1935,11 +2171,17 @@ struct SyncData {
     /// 设备需要同步的灯光配置
     var syncProfile: [ProfileType] = []
     /// 设备是否需要删除动能开关绑定
-    var deleteSwitch: Bool = false
+    var deleteSwitchProxy: DeviceSwitchData?
+    /// 设备是否需要设置动能开关绑定
+    var syncSwitchProxy: DeviceSwitchData?
+    /// 设备待同步的开关list
+    var syncSwitchs: [DeviceSwitchData] = []
+    /// 设备待删除的开关list
+    var deleteSwitchs: [DeviceSwitchData] = []
     
     /// 是否不需要同步
     func isEmpty() -> Bool {
-        return !(subscribeGroup || unsubscribeGroup || syncScenes.count > 0 || syncSchedules.count > 0 || deleteScenes.count > 0 || deleteSchedules.count > 0 || syncProfile.count > 0)
+        return !(subscribeGroup || unsubscribeGroup || syncScenes.count > 0 || syncSchedules.count > 0 || deleteScenes.count > 0 || deleteSchedules.count > 0 || syncProfile.count > 0 || syncSwitchs.count > 0 || deleteSwitchs.count > 0 || syncSwitchProxy != nil || deleteSwitchProxy != nil)
     }
 }
 
@@ -1959,17 +2201,11 @@ struct SyncData {
 //    }
 //}
 
-extension GroupSwitch {
+extension DeviceSwitchData {
     
     /// 是否需要同步数据
     var needSyncData: Bool {
-        guard let proxyNode = self.proxyNode, let group = self.group, enabled else {
-            return false
-        }
-        
-        let keys = MeshEnOceanProxyServer.SwitchKey.defaultKeys(sceneA: sceneA, sceneB: sceneB)
-        return proxyNode.getEnOceanSwitchEnabledMessageHandles(group: group, switchKeys: keys).count > 0
+        return !self.getNeedSyncDatas().isEmpty()
     }
-    
     
 }

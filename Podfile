@@ -14,9 +14,10 @@ target 'SunSmart' do
   # 网络请求
   pod 'Moya', '~> 15.0'
   # Json
-  pod 'SwiftyJSON', '~> 4.0'
+  pod 'SwiftyJSON', '~> 5.0.2'
 #  pod 'MMDrawerController'
-  
+  # zip解压
+  pod 'ZIPFoundation', '~> 0.9'
   # Pods for SunSmart
 
 end

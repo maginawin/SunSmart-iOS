@@ -20,11 +20,11 @@ extension SiteData {
     /// 导入site数据
     /// - Parameters:
     ///   - siteJsonData: site json数据
-    ///   - changeLocalAddress: 当第一次导入site时是否需要修改手机地址，分以下两种情况：
+    ///   - changeAddress: 当第一次导入site时是否需要修改手机地址，分以下两种情况：
     ///      1：第一次加入space，服务器生成site数据并分配新的手机地址，则不需要再修改地址；
     ///      2：卸载app后由于没有缓存数据，之前使用的手机地址对应SEQ序列号未知，所以把旧的地址放到地址回收池内回收，并分配新的手机地址
     /// - Returns: site
-    static func `import`(siteJsonData: [String: Any]) async -> SiteData? {
+    static func `import`(siteJsonData: [String: Any], changeAddress: Bool = false) async -> SiteData? {
         
         let json = JSON(siteJsonData)
         guard let uuid = json["uuid"].string,
@@ -32,6 +32,7 @@ extension SiteData {
             return nil
         }
         var site = SiteData.load(siteId: uuid)
+        var initialize = false
         if site == nil {
             var permission: Permission = .visitor
             switch json["role"].string {
@@ -43,8 +44,9 @@ extension SiteData {
                 break
             }
             site = SiteData(id: uuid, meshUUID: uuid, name: name, type: .init(rawValue: json["type"].intValue) ?? .office, permission: permission, create: json["createTimestamp"].int64Value, lastUpdate: json["updateTimestamp"].int64Value, isFavourite: false, sourceType: .create)
+            initialize = true
         }
-        await site?.update(siteJsonData: siteJsonData)
+        await site?.update(siteJsonData: siteJsonData, changeAddress: changeAddress, initialize: initialize)
         
         return site
     }
@@ -52,7 +54,9 @@ extension SiteData {
     
     /// 更新数据
     /// - Parameter siteJsonData: site数据
-    func update(siteJsonData: [String: Any]) async {
+    /// - Parameter changeAddress: 是否切换地址
+    /// - Parameter initialize 首次更新数据（本地无记录）
+    func update(siteJsonData: [String: Any], changeAddress: Bool = false, initialize: Bool = false) async {
         
         let json = JSON(siteJsonData)
         guard let uuid = json["uuid"].string,
@@ -73,7 +77,7 @@ extension SiteData {
         self.permission = permission
         
         // 服务器最后更新时间比本地时间新才覆盖本地数据
-        if lastUpdate >= self.lastUpdate {
+        if lastUpdate > self.lastUpdate || initialize {
             
             self.name = name
             self.imageId = json["imageId"].intValue
@@ -97,8 +101,9 @@ extension SiteData {
             let currentNetwork = MeshNetworkManager.instance.meshNetwork?.uuid.uuidString == self.meshUUID ? MeshNetworkManager.instance.meshNetwork : nil
             
             var meshNetwork = currentNetwork ?? MeshNetwork.load(meshUUID: uuid, allData: false)
+            /// 是否保存mesh数据
+            var meshNetworkSave = false
             if meshNetwork == nil {
-                
                 guard let netKeyDict = siteJsonData["netKey"] as? [String: Any],
                       let netKeyData = try? JSONSerialization.data(withJSONObject: netKeyDict),
                       let netKey = try? jsonDecoder.decode(NetworkKey.self, from: netKeyData),
@@ -107,6 +112,7 @@ extension SiteData {
                       let appKey = try? jsonDecoder.decode(ApplicationKey.self, from: appKeyData) else {
                     return
                 }
+                
                 // Local Provisioner
                 // 本地手机供应者
                 var localProvisioner: Provisioner = Provisioner(name: UserData.currentUserName, uuid: UUID(uuidString: UserData.currentUserId)!, allocatedUnicastRange: [], allocatedGroupRange: [], allocatedSceneRange: [])
@@ -126,6 +132,7 @@ extension SiteData {
                             return nil
                         })
                     }
+                    
                     // 后续申请的设备地址
                     if let applyUnicastAddresses = provisionerJson["addrLists"]?.arrayObject as? [Int] {
                         // 设备地址
@@ -197,10 +204,13 @@ extension SiteData {
                 if let ivIndex = json["ivIndex"].uInt32 {
                     meshNetwork?.currentIVIndex = ivIndex
                 }
-                meshNetwork?.add(networkKey: netKey)
-                try? appKey.bind(to: netKey)
-                meshNetwork?.add(applicationKey: appKey)
                 
+                if !(meshNetwork?.networkKeys.contains(where: { $0.index == netKey.index }) ?? false) {
+                    meshNetwork?.add(networkKey: netKey)
+                    try? appKey.bind(to: netKey)
+                    meshNetwork?.add(applicationKey: appKey)
+                }
+               
                 // 废弃的设备地址
                 if let exclusions = json["exclusions"].array {
                     let exclusionDataList = exclusions.compactMap({
@@ -215,29 +225,7 @@ extension SiteData {
                     //                    resetLocalAddress = true
                     //                }
                 }
-                
-                // 是否卸载后重装APP，需要更新site手机地址
-                if UserData.isReinstallation {
-                    // 重新分配设备地址
-                    if let provisioner = meshNetwork?.localProvisioner, let newAddress = meshNetwork?.nextAvailableUnicastAddress(elementsCount: 1, elementsUsing: provisioner, lockInAddress: false) {
-                        //                    self.localAddress = newAddress
-                        
-                        do {
-                            if let lastAddress = provisioner.primaryUnicastAddress {
-                                meshNetwork?.insetExclusionAddress(ivIndex: meshNetwork!.currentIVIndex, address: lastAddress)
-                            }
-                            try meshNetwork?.changeLocalNodeAddress(newAddress)
-                            self.localAddress = meshNetwork?.localProvisioner?.primaryUnicastAddress
-                            self.lastUpdate = Int64(Date().timeIntervalSince1970)
-                        } catch {
-                            self.localAddress = nil
-                        }
-                    }else {
-                        self.localAddress = nil
-                    }
-                }
-                meshNetwork?.save()
-                
+                meshNetworkSave = true
             } else {
                 // 修改供应者地址资源
                 if let provisionerData = json["provisioner"].dictionaryObject {
@@ -258,9 +246,34 @@ extension SiteData {
                 if let ivIndex = json["ivIndex"].uInt32 {
                     meshNetwork?.currentIVIndex = ivIndex
                 }
-                
+            }
+            
+            // 是否卸载后重装APP，需要更新site手机地址
+            if UserData.isReinstallation || changeAddress {
+                // 重新分配设备地址
+                if let provisioner = meshNetwork?.localProvisioner, let newAddress = meshNetwork?.nextAvailableUnicastAddress(elementsCount: 1, elementsUsing: provisioner, lockInAddress: false) {
+                    do {
+                        if let lastAddress = provisioner.primaryUnicastAddress {
+                            meshNetwork?.insetExclusionAddress(ivIndex: meshNetwork!.currentIVIndex, address: lastAddress)
+                        }
+                        try meshNetwork?.changeLocalNodeAddress(newAddress)
+                        meshNetworkSave = true
+                        self.localAddress = meshNetwork?.localProvisioner?.primaryUnicastAddress
+                        self.lastUpdate = Int64(Date().timeIntervalSince1970)
+                    } catch {
+                        self.localAddress = nil
+                    }
+                }else {
+                    self.localAddress = nil
+                }
+            }
+            
+            // 是否需要保存mesh数据
+            if meshNetworkSave {
+                meshNetwork?.save()
             }
         }
+        
         if var spaceDicts = json["spaces"].arrayObject as? [[String: Any]] {
             var spaces: [SpaceData] = []
             while let dict = spaceDicts.first {
@@ -475,8 +488,8 @@ extension SiteData {
         var allocatedSceneRange: [SceneRange] = []
         if let allocatedSceneRangeJson = provisionerJson["allocatedSceneRange"].array {
             allocatedSceneRange = allocatedSceneRangeJson.compactMap({
-                if let firstSceneString = $0["firstScene"].string, let firstScene = Address(hex: firstSceneString),
-                   let lastSceneString = $0["lastScene"].string, let lastScene = Address(hex: lastSceneString) {
+                if let firstSceneString = $0["firstScene"].string ?? $0["lowAddress"].string, let firstScene = Address(hex: firstSceneString),
+                   let lastSceneString = $0["lastScene"].string ?? $0["highAddress"].string, let lastScene = Address(hex: lastSceneString) {
                     return SceneRange(from: firstScene, to: lastScene)
                 }
                 return nil
@@ -543,22 +556,13 @@ extension SpaceData {
         }
         
         var space = SpaceData.load(siteId: siteId, spaceId: uuid).first
+        var initialize = false
         if space == nil{
+            
             guard let netKeyDict = json["netKey"].dictionaryObject,
                   let netKeyData = try? JSONSerialization.data(withJSONObject: netKeyDict),
-                  let netKey = try? jsonDecoder.decode(NetworkKey.self, from: netKeyData),
-                  let appKeyDict = json["appKey"].dictionaryObject,
-                  let appKeyData = try? JSONSerialization.data(withJSONObject: appKeyDict),
-                  let appKey = try? jsonDecoder.decode(ApplicationKey.self, from: appKeyData),
-                  let meshNetwork = MeshNetwork.load(meshUUID: siteId, allData: false) else {
-                //                    continuation.resume(returning: nil)
+                  let netKey = try? jsonDecoder.decode(NetworkKey.self, from: netKeyData) else {
                 return nil
-            }
-            
-            if !meshNetwork.networkKeys.contains(where: { $0.index == netKey.index }) {
-                meshNetwork.add(networkKey: netKey)
-                meshNetwork.add(applicationKey: appKey)
-                meshNetwork.save()
             }
             
             var permission: Permission = .visitor
@@ -572,9 +576,10 @@ extension SpaceData {
             }
             let newSpace = SpaceData(name: name, id: uuid, siteId: siteId, imageId: 0, create: json["createTimestamp"].int64Value, lastUpdate: json["updateTimestamp"].int64Value, isFavourite: false, permission: permission, sourceType: .share, meshUUID: siteId, meshNetworkId: netKey.networkId.hex)
             space = newSpace
+            initialize = true
         }
         //            Task {
-        await space?.update(spaceJsonData: spaceJsonData)
+        await space?.update(spaceJsonData: spaceJsonData, initialize: initialize)
         //                continuation.resume(returning: space)
         //            }
         return space
@@ -583,7 +588,8 @@ extension SpaceData {
     
     /// 更新空间内基本数据+设备、组、场景、日程
     /// - Parameter spaceJsonData: 空间数据
-    func update(spaceJsonData: [String: Any]) async {
+    /// - Parameter initialize: 是否初始化数据（本地无记录）
+    func update(spaceJsonData: [String: Any], initialize: Bool = false) async {
         await withCheckedContinuation { continuation in
             let json = JSON(spaceJsonData)
             guard json["uuid"].string == self.id,
@@ -635,7 +641,6 @@ extension SpaceData {
             // 访客数据
             if let visitors = json["visitors"].arrayObject as? [[String: Any]] {
                 self.visitors = visitors.compactMap({
-                    let visitorJson = JSON($0)
                     if let userId = $0["userId"] as? String, let userName = $0["username"] as? String {
                         return UserData(name: userName, uuid: userId)
                     }
@@ -659,7 +664,7 @@ extension SpaceData {
             
             let lastUpdate = json["updateTimestamp"].int64Value
             // 服务器最后更新时间比本地时间新才覆盖本地数据
-            guard lastUpdate >= self.lastUpdate else {
+            guard lastUpdate > self.lastUpdate || initialize else {
                 //                return
                 continuation.resume()
                 return
@@ -675,6 +680,21 @@ extension SpaceData {
             }
             guard let network = meshNetwork else { return }
             
+            if let netKeyDict = json["netKey"].dictionaryObject,
+               let netKeyData = try? JSONSerialization.data(withJSONObject: netKeyDict),
+               let netKey = try? jsonDecoder.decode(NetworkKey.self, from: netKeyData),
+               let appKeyDict = json["appKey"].dictionaryObject,
+               let appKeyData = try? JSONSerialization.data(withJSONObject: appKeyDict),
+               let appKey = try? jsonDecoder.decode(ApplicationKey.self, from: appKeyData) {
+                
+                if !network.networkKeys.contains(where: { $0.index == netKey.index }) {
+                    network.add(networkKey: netKey)
+                    network.add(applicationKey: appKey)
+                    network.save()
+                }
+                self.meshNetworkId = netKey.networkId.hex
+            }
+            
             self.name = json["spaceName"].stringValue
             self.imageId = json["imageId"].intValue
             self.sourceType = .init(rawValue: json["source"].intValue) ?? .create
@@ -684,7 +704,6 @@ extension SpaceData {
             //            if self.lastUploadCloudTimestamp == nil {
             self.lastUploadCloudTimestamp = self.lastUpdate
             //            }
-            
             let localNodes = Node.load(meshUUID: self.meshUUID, subnetworkId: self.meshNetworkId)
             
             network.nodes.filter({ !$0.isLocalProvisioner }).forEach { node in
@@ -742,6 +761,13 @@ extension SpaceData {
                         node.enOceanMacAddress = enOceanMacAddress
                         node.enOceanKeySceneNumbers = enOceanKeyScenes.map({ SceneNumber(hex: $0) ?? 0 })
                     }
+                    if let firmwareID = nodeJson["firmwareID"].string {
+                        node.firmwareID = Data(hex: firmwareID)
+                    }
+                    if let distributionFirmwareID = nodeJson["distributionFirmwareID"].string {
+                        node.distributionFirmwareID = Data(hex: distributionFirmwareID)
+                    }
+                    
                     if let sceneDataDicts = nodeJson["scenesDatas"].arrayObject,
                        let data = try? JSONSerialization.data(withJSONObject: sceneDataDicts),
                        let sceneExecuteDatas = try? jsonDecoder.decode([SceneExecuteData].self, from: data) {
@@ -817,11 +843,12 @@ extension SpaceData {
             }
             
             // 按键
-            var switches: [GroupSwitch] = []
+//            var switches: [GroupSwitch] = []
             
             let groups = groupDicts.compactMap { groupDict in
                 if let data = try? JSONSerialization.data(withJSONObject: groupDict), let group = try? jsonDecoder.decode(Group.self, from: data) {
                     let groupJson = JSON(groupDict)
+                    group.isVirtual = groupJson["isVirtual"].boolValue
                     group.info = GroupInfo(address: group.address.address, imageId: groupJson["imageId"].int ?? 1, imageText: groupJson["imageText"].string)
                     // profile
                     if let profileDict = groupJson["profile"].dictionaryObject {
@@ -857,31 +884,31 @@ extension SpaceData {
                     group.info.bindSchedules = bindSchedules
                     
                     // switches
-                    if let switcheDicts = groupJson["switches"].arrayObject {
-                        switcheDicts.forEach { switcheDict in
-                            let switcheJson = JSON(switcheDict)
-                            if let id = switcheJson["id"].string, let name = switcheJson["name"].string {
-                                var sceneA: SceneNumber?
-                                var sceneB: SceneNumber?
-                                if let sceneAHex = switcheJson["sceneA"].string,
-                                   let sceneANumber = SceneNumber(sceneAHex) {
-                                    sceneA = sceneANumber
-                                }
-                                if let sceneBHex = switcheJson["sceneB"].string,
-                                   let sceneBNumber = SceneNumber(sceneBHex) {
-                                    sceneB = sceneBNumber
-                                }
-                                
-                                var proxyNode: Node?
-                                if let macAddress = switcheJson["enOceanMacAddress"].string {
-                                    proxyNode = nodes.first(where: { $0.enOceanMacAddress == macAddress })
-                                }
-                                let groupSwitch = GroupSwitch(id: id, groupAddress: group.address.address, enabled: switcheJson["enabled"].bool ?? true, name: name, sceneANumber: sceneA, sceneBNumber: sceneB, proxyNodeAddress: proxyNode?.primaryUnicastAddress)
-                                group.info.switchs.append(groupSwitch)
-                                switches.append(groupSwitch)
-                            }
-                        }
-                    }
+//                    if let switcheDicts = groupJson["switches"].arrayObject {
+//                        switcheDicts.forEach { switcheDict in
+//                            let switcheJson = JSON(switcheDict)
+//                            if let id = switcheJson["id"].string, let name = switcheJson["name"].string {
+//                                var sceneA: SceneNumber?
+//                                var sceneB: SceneNumber?
+//                                if let sceneAHex = switcheJson["sceneA"].string,
+//                                   let sceneANumber = SceneNumber(sceneAHex) {
+//                                    sceneA = sceneANumber
+//                                }
+//                                if let sceneBHex = switcheJson["sceneB"].string,
+//                                   let sceneBNumber = SceneNumber(sceneBHex) {
+//                                    sceneB = sceneBNumber
+//                                }
+//                                
+//                                var proxyNode: Node?
+//                                if let macAddress = switcheJson["enOceanMacAddress"].string {
+//                                    proxyNode = nodes.first(where: { $0.enOceanMacAddress == macAddress })
+//                                }
+//                                let groupSwitch = GroupSwitch(id: id, groupAddress: group.address.address, enabled: switcheJson["enabled"].bool ?? true, name: name, sceneANumber: sceneA, sceneBNumber: sceneB, proxyNodeAddress: proxyNode?.primaryUnicastAddress)
+//                                group.info.switchs.append(groupSwitch)
+//                                switches.append(groupSwitch)
+//                            }
+//                        }
+//                    }
                     return group
                 }
                 return nil
@@ -890,12 +917,55 @@ extension SpaceData {
                 try? network.add(group: $0)
                 $0.saveExtension()
             })
+            
+            var switches: [DeviceSwitchData] = []
+            if let switchesDicts = json["switches"].arrayObject as? [[String: Any]] {
+                switchesDicts.forEach { dict in
+                    let switcheJson = JSON(dict)
+                    if let id = switcheJson["id"].string, let name = switcheJson["name"].string {
+                        let switchData = DeviceSwitchData(id: id, enabled: switcheJson["enabled"].boolValue, name: name)
+                        if let addressHex = switcheJson["linkGroupAddress"].string, let linkGroupAddress = Address(hex: addressHex) {
+                            switchData.linkGroupAddress = linkGroupAddress
+                        }
+                        if let sceneAHex = switcheJson["sceneA"].string,
+                           let sceneANumber = SceneNumber(sceneAHex) {
+                            switchData.sceneANumber = sceneANumber
+                        }
+                        if let sceneBHex = switcheJson["sceneB"].string,
+                           let sceneBNumber = SceneNumber(sceneBHex) {
+                            switchData.sceneBNumber = sceneBNumber
+                        }
+                        if let proxyAddress = switcheJson["proxyNodeAddress"].string {
+                            switchData.proxyNodeAddress = Address(hex: proxyAddress)
+                        }
+                        
+                        if let bindGroupAddresseStrings = switcheJson["bindGroupAddresses"].arrayObject as? [String] {
+                            switchData.bindGroupAddresses = bindGroupAddresseStrings.compactMap({ Address(hex: $0) })
+                        }
+                        if let unbindGroupAddresseStrings = switcheJson["unbindGroupAddresses"].arrayObject as? [String] {
+                            switchData.unbindGroupAddresses = unbindGroupAddresseStrings.compactMap({ Address(hex: $0) })
+                        }
+                        if let enOceanMacAddress = switcheJson["enOceanMacAddress"].string {
+                            switchData.enOceanMacAddress = enOceanMacAddress
+                        }
+                        if let enOceanSecurityKey = switcheJson["enOceanSecurityKey"].string {
+                            switchData.enOceanSecurityKey = enOceanSecurityKey
+                        }
+                        switches.append(switchData)
+                    }
+                }
+            }
+            DeviceSwitchData.deleteSwitchs(meshUUID: meshUUID, networkId: self.meshNetworkId)
+            switches.forEach { switchData in
+                switchData.save(meshUUID: meshUUID, networkId: self.meshNetworkId)
+            }
+            
             self.deviceCount = nodes.count
             self.luminairesCount = nodes.filter({ $0.lightnessModel != nil }).count
             self.groupCount = groups.count
             self.sceneCount = scenes.count
             self.scheheduleCount = schedules.count
-            self.switchesCount = switches.filter({ $0.enOceanMacAddress != nil }).count
+            self.switchesCount = switches.count
             self.save()
             continuation.resume()
         }

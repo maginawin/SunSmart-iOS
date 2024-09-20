@@ -11,6 +11,7 @@ class SceneAddGroupTitleSectionView: UICollectionReusableView {
         
     var titleLabel: UILabel!
     
+    
     override init(frame: CGRect) {
         super.init(frame: frame)
         
@@ -18,7 +19,7 @@ class SceneAddGroupTitleSectionView: UICollectionReusableView {
         addSubview(titleLabel)
         titleLabel.snp.makeConstraints { make in
             make.left.equalTo(SCRXFrom(12))
-            make.bottom.equalTo(SCRYFrom(-8))
+            make.bottom.equalTo(-SCRYFrom(8))
         }
     }
     

@@ -25,49 +25,58 @@ let devicesUpdateNotificationName = "devicesUpdateNotification"
 /// 设备状态更新通知
 let deviceStateUpdateNotificationName = "deviceStateUpdateNotification"
 
-class DevicesViewController: UIViewController {
+/// 设备添加刷新通知
+let devicesAddNotificationName = "devicesAddNotification"
 
+protocol DevicesFunctionProtocol {
+    
+    /// 点击编辑事件
+    func footerView(_ footerView: SpaceFunctionFooterView, didEditAction edit: Bool)
+    
+    /// 点击排序事件
+    func footerViewDidSortAction(_ footerView: SpaceFunctionFooterView)
+    
+    /// 点击添加事件
+    func footerViewDidAddAction(_ footerView: SpaceFunctionFooterView)
+    
+    /// 点击删除事件
+    func footerViewDidDeleteAction(_ footerView: SpaceFunctionFooterView)
+}
+
+extension DevicesFunctionProtocol {
+    
+    /// 点击排序事件
+    func footerViewDidSortAction(_ footerView: SpaceFunctionFooterView) {
+        
+    }
+    
+    /// 点击添加事件
+    func footerViewDidAddAction(_ footerView: SpaceFunctionFooterView) {
+        
+    }
+    
+    /// 点击删除事件
+    func footerViewDidDeleteAction(_ footerView: SpaceFunctionFooterView) {
+        
+    }
+    
+}
+
+class DevicesViewController: WMPageController {
+
+    let footerHeight = SCRYFrom(44) + kSafeAreaBottomHeight
     /// 头部
 //    private var headerView: UIView!
 //    private var allOnBtn: UIButton!
 //    private var allOffBtn: UIButton!
 //    private var settingBtn: UIButton!
     
-    // 设备列表
-    private var flowLayout: AlignCenterFlowLayout!
-    private var collectionView: UICollectionView!
-    
-    /// 底部
-    private var footerView: SpaceFunctionFooterView!
-    /// 全选
-    private var groupsView: DeviceGroupsView!
-//    private var allSelectBgView: UIView!
-//    private var allSelectBtn: UIButton!
-    /// 修复
-    private var repairView: UIView!
-    private var repairCountLabel: UILabel!
-    private var repairBtn: UIButton!
-    
-    /// 刷新
-    private var refreshControl: UIRefreshControl!
+    /// 菜单功能
+    let menuTitles: [String] = ["lights".localizedString, "switches".localizedString, "sensors".localizedString, "gateway".localizedString]
     
     let space: SpaceData
     
-    var devices: [Node] = []
-    /// 展示的组/全选
-    private var showSelectDatas: [DeviceGroupsSelectData] = []
-    /// 是否正在编辑
-    private var isEdit: Bool = false
-    /// 选中的设备地址
-    private var selectedAddresss: [Address] = []
-    /// 删除设备中
-    private var isDeletingDevice: Bool = false
-    private let rssiFileName: String
     
-    /// 全开/全关状态（读取设备）
-    private var allOnOffState: DeviceAllOnOffState = .disable
-    /// 是否手动控制 全开/全关
-    private var controlAllOn: Bool?
     /// 使用过的引导内容索引
     private var useGuidanceMessageIndexs: [Int] = []
     /// 引导内容轮播定时器
@@ -77,16 +86,18 @@ class DevicesViewController: UIViewController {
     /// 是否首次连接
     private var firstConnectionNetwork: Bool = true
     
-    lazy var lightControlView: DeviceLightControlView = {
-        let view = DeviceLightControlView(frame: self.view.bounds)
-        view.delegate = self
-        return view
-    }()
+//    private var meunView: WMMenuView!
     
+ 
     init(space: SpaceData) {
         self.space = space
-        rssiFileName = "\(self.space.id)_rssi"
         super.init(nibName: nil, bundle: nil)
+        
+//        self.menuViewStyle = .flood
+        self.menuItemCornerRadius = SCRYFrom(16)
+//        self.progressViewIsNaughty = false
+        self.menuItemBackgroundColor = .clear
+        self.scrollEnable = false
     }
     
     required init?(coder: NSCoder) {
@@ -98,8 +109,7 @@ class DevicesViewController: UIViewController {
         
         view.backgroundColor = Background_Color
         
-        setupUI()
-        view.layoutIfNeeded()
+//        view.layoutIfNeeded()
         
         MeshLibManager.manager.addObserver(self, forKeyPath: "isMeshNetworkConnected", context: nil)
         
@@ -125,35 +135,37 @@ class DevicesViewController: UIViewController {
             }
         }
         
+//        meunView = WMMenuView(frame: CGRect(x: 0, y: SCRYFrom(10), width: view.width, height: SCRYFrom(32)))
+//        meunView.fontWeight = .light
+//        meunView.style = .segmented
+//        meunView.lineColor = Bar_Color
+        
+        
+        
+//        meunView.contentMargin = SCRXFrom(12)
+        
+        self.menuView?.itemRateAnimation = false
+        self.menuView?.delegate = self
+        self.menuView?.dataSource = self
+//        view.addSubview(self.menuView!)
+//        meunView.snp.makeConstraints { make in
+//            make.left.right.equalToSuperview()
+//            make.top.equalTo(SCRYFrom(10))
+//            make.height.equalTo(SCRYFrom(32))
+//        }
+        
 //        XWHUDManager.showGifImagesHUD(inView: "XWHUDManager_loading", message: "Some devices prompt REPAIR when they are added because some models cannot be set to the device.", timer: 10)
-        addNotificaiton()
+//        addNotificaiton()
    
         startGuidanceTimer()
         
-    }
-    
-    override func viewWillAppear(_ animated: Bool) {
-        super.viewWillAppear(animated)
-        loadDevices()
-    }
-    
-    override func viewDidAppear(_ animated: Bool) {
-        super.viewDidAppear(animated)
-        
-        MeshLibManager.manager.register(self)
-        MeshLibManager.manager.messageDelegate = self
+//        selectIndex = 1
     }
     
     override func viewDidDisappear(_ animated: Bool) {
         super.viewDidDisappear(animated)
         
         stopGuidanceTimer()
-    }
-    
-    override func viewDidLayoutSubviews() {
-        super.viewDidLayoutSubviews()
-        
-        updateDevicesEmptyUI()
     }
     
     deinit {
@@ -169,11 +181,20 @@ class DevicesViewController: UIViewController {
 //                        sleep(1)
 //                    }
 //                    DispatchQueue.main.async {
-                        self.getNodesState()
+//                        self.getNodesState()
+                   
                 //                    }
                 // 首次连接上mesh网络
                 if firstConnectionNetwork {
                     firstConnectionNetwork = false
+                    
+                    if let view = self.wm_pageController?.view {
+                        XWHUDManager.hideInView(with: view)
+                    }else {
+                        XWHUDManager.hide()
+                    }
+                    stopGuidanceTimer()
+                    
                     // 判断是否需要申请地址
                     if space.applyDeviceAddressCount != nil {
                         applyDeviceAddressAlert()
@@ -213,7 +234,7 @@ class DevicesViewController: UIViewController {
     
     /// 开始轮播引导文本
     private func startGuidanceTimer() {
-        guidanceTimer = Timer(timeInterval: 2, repeats: true, block: {[weak self] _ in
+        guidanceTimer = Timer(timeInterval: 5, repeats: true, block: {[weak self] _ in
             guard let self = self else {
                 return
             }
@@ -237,30 +258,6 @@ class DevicesViewController: UIViewController {
         if space.applyDeviceAddressCount != nil {
             applyDeviceAddressAlert()
         }
-    }
-    
-    /// 添加通知监听
-    private func addNotificaiton() {
-        
-        // 设备列表更新通知
-        NotificationCenter.default.addObserver(forName: .init(devicesUpdateNotificationName), object: nil, queue: nil) {[weak self] notification in
-            guard let self = self else { return }
-            self.loadDevices()
-        }
-        
-        // 设备状态更新通知
-        NotificationCenter.default.addObserver(forName: .init(deviceStateUpdateNotificationName), object: nil, queue: nil) {[weak self] notification in
-            guard let self = self, let node = notification.object as? Node else { return }
-            
-            self.reloadCollectionItem(node: node)
-        }
-        
-        // space编辑权限变更回调
-        NotificationCenter.default.addObserver(forName: .init(spacePermissionChangedNotificaitonName), object: nil, queue: nil) {[weak self] notification in
-            guard let self = self else { return }
-            self.updateUI(reloadTableView: false)
-        }
-        
     }
     
     /// 申请地址提示
@@ -295,389 +292,49 @@ class DevicesViewController: UIViewController {
     }
     
     
-    private func loadDevices() {
-     
-        var reloadDevicesView = false
-        if devices.count != MeshNetworkManager.instance.realNodes.count {
-            reloadDevicesView = true
-        }
-        
-        devices = MeshNetworkManager.instance.realNodes
-        
-        // 读取缓存的设备信号值
-//        if let rssiMap = LCPlistCacheTool.readDict(fileName: rssiFileName) {
-//            rssiMap.forEach { (mac: String, rssi: Any) in
-//                if let node = devices.first(where: { $0.macAddress == mac }) {
-//                    node.rssi = rssi as? Int
-//                }
-//            }
-//        }
-        if devices.count > 0 {
-            collectionView.refreshControl = refreshControl
-        }else {
-            collectionView.refreshControl = nil
-        }
-        
-        switch space.deviceSortType {
-        case .rssi:
-            devices.sort(by: { ($0.rssi ?? -99) > ($1.rssi ?? -99) })
-        default:
-            break
-        }
-        
-        if space.deviceCount != devices.count {
-            space.deviceCount = devices.count
-            space.luminairesCount = devices.count
-            space.save()
-        }
-        if reloadDevicesView {
-            self.collectionView.reloadData()
-        }else { // 只刷新数据
-            devices.forEach({ reloadCollectionItem(node: $0) })
-        }
-        updateUI(reloadTableView: false)
-    }
     
-    private func updateDevicesEmptyUI() {
-        
-        if devices.isEmpty {
-            if collectionView.frame.isEmpty {
-                view.layoutIfNeeded()
-            }
-
-            collectionView.showEmptyDataView(title: "no_devices".localizedString, tipText: "no_devices_message".localizedString, bottomMargin: SCRYFit(-40))
-            collectionView.emptyView?.titleLabel.font = Font_Medium_Size(SCRYFrom(14))
-//            headerView.isHidden = true
-            footerView.sortBtn.isEnabled = false
-            footerView.editBtn.isEnabled = false
-        }else {
-//            headerView.isHidden = false
-            collectionView.hideEmptyDataView()
-            footerView.sortBtn.isEnabled = true
-            footerView.editBtn.isEnabled = !isEdit
-        }
-    }
-    
-    private func updateUI(reloadTableView: Bool = true) {
-        
-        self.updateDevicesEmptyUI()
-        
-        self.footerView.countBtn.setTitle("\(self.devices.count)/100", for: .normal)
-        let switchProxys = MeshNetworkManager.instance.subnetworkSwitchProxys
-        self.footerView.switchCountBtn.setTitle("\(switchProxys.count)/16", for: .normal)
-        
-        var inset = self.collectionView.contentInset
-        inset.bottom = SCRYFrom(16)
-        if isEdit {
-            self.groupsView.isHidden = false
-            inset.bottom = SCRYFrom(16) + groupsView.height
-            self.footerView.isEditing = true
-            self.repairView.isHidden = true
-            self.footerView.switchCountBtn.isHidden = true
-//            self.settingBtn.isEnabled = false
-        }else {
-            self.groupsView.isHidden = true
-//            self.settingBtn.isEnabled = true
-            self.footerView.isEditing = false
-            self.footerView.switchCountBtn.isHidden = false
-            // 判断是否有需要修复设备
-            let notKeybindNodes = devices.filter({ !$0.isKeybindComplete })
-            if notKeybindNodes.count > 0 {
-                inset.bottom = SCRYFrom(16) + repairView.height
-                self.repairView.isHidden = false
-                self.repairCountLabel.text = String(format: "device_repair_tip".localizedString, notKeybindNodes.count)
-            }else {
-                self.repairView.isHidden = true
-            }
-        }
-        
-        if !space.deviceOperates.contains(.add) {
-            self.footerView.addBtn.isEnabled = false
-        }
-        if !space.deviceOperates.contains(.edit) {
-            self.footerView.editBtn.isEnabled = false
-        }
-        
-        
-        self.collectionView.contentInset = inset
-//        CATransaction.setDisableActions(true)
-        if reloadTableView {
-//            self.collectionView.reloadData()
-            reloadAllDevices()
-        }
-        
-        updateAllOnOffItemUI()
-//        CATransaction.commit()
-    }
-    
-    private func updateEditUI() {
-        
-        // 可编辑的设备list
-        
-        let groups = MeshNetworkManager.instance.groups
-//            .filter({ $0.nodes.count > 0 })
-        showSelectDatas = groups.map({
-            let nodes = $0.nodes.filter({ $0.state && $0.isKeybindComplete })
-            let isSelected = nodes.count > 0 && !nodes.contains(where: { !self.selectedAddresss.contains($0.primaryUnicastAddress) })
-            return DeviceGroupsSelectData(name: $0.name, addresss: nodes.map({ $0.primaryUnicastAddress }), isSelected: isSelected)
-        })
-        let canEditDeviceAddresss = devices.filter({ $0.state && $0.isKeybindComplete }).map({ $0.primaryUnicastAddress })
-        // 全选
-//        showSelectDatas.insert(DeviceGroupsSelectData(name: "ALL".localizedString, addresss: canEditDeviceAddresss, isSelected: canEditDeviceAddresss.count == selectedAddresss.count && canEditDeviceAddresss.count > 0), at: 0)
-        self.groupsView.datas = showSelectDatas
-        self.groupsView.selectAllBtn.isSelected = canEditDeviceAddresss.count == selectedAddresss.count
-//        if canEditDevices.count > 0 { // self.selectedAddresss.count >= canEditDevices.count
-//            
-////            self.allSelectBtn.isSelected = true
-////            self.allSelectBtn.backgroundColor = Bar_Color
-//        }else {
-////            self.allSelectBtn.isSelected = false
-////            self.allSelectBtn.backgroundColor = RGB(238, 238, 239)
-//        }
-        self.footerView.deleteBtn.isEnabled = selectedAddresss.count > 0
-    }
-    
-    /// 更新全开全关状态
-    private func updateAllOnOffItemUI() {
-        
-        if devices.contains(where: { $0.state }) {
-            allOnOffState = devices.contains(where: { $0.isOn }) ? .on : .off
-        }else {
-            allOnOffState = .disable
-        }
-        if let item = collectionView.cellForItem(at: IndexPath(item: 0, section: 0)) as? DeviceAllOnOffViewCell {
-            if allOnOffState != .disable, let isOn = controlAllOn {
-                item.state = isOn ? .on : .off
-            }else {
-                item.state = allOnOffState
-            }
-        }
-    }
-    
-    private func setupUI() {
-        
-        footerView = SpaceFunctionFooterView()
-        footerView.delegate = self
-        view.addSubview(footerView)
-        footerView.snp.makeConstraints { make in
-            make.left.right.bottom.equalToSuperview()
-            make.height.equalTo(SCRYFrom(44) + kSafeAreaBottomHeight)
-        }
-        
-        flowLayout = AlignCenterFlowLayout()
-        flowLayout.minimumLineSpacing = SCRXFrom(16)
-        flowLayout.minimumInteritemSpacing = SCRXFrom(16)
-        flowLayout.sectionInset = UIEdgeInsets(top: SCRYFrom(16), left: SCRXFrom(12), bottom: SCRYFrom(16), right: SCRXFrom(12))
-//        UIEdgeInsets(top: 0, left: SCRXFrom(12), bottom: <#T##CGFloat#>, right: SCRXFrom(12))
-        
-        collectionView = UICollectionView(frame: .zero, collectionViewLayout: flowLayout)
-//        collectionView.contentInset = UIEdgeInsets(top: SCRYFrom(16), left: 0, bottom: SCRYFrom(16), right: 0)
-        collectionView.backgroundColor = Background_Color
-        collectionView.register(DevicesViewCell.classForCoder(), forCellWithReuseIdentifier: "cell")
-        collectionView.register(DeviceAllOnOffViewCell.classForCoder(), forCellWithReuseIdentifier: "allControlCell")
-        collectionView.alwaysBounceVertical = true
-        collectionView.dataSource = self
-        collectionView.delegate = self
-        let longPress = UILongPressGestureRecognizer(target: self, action: #selector(collectionLongPressAction))
-        longPress.minimumPressDuration = 0.5
-        collectionView.addGestureRecognizer(longPress)
-        view.addSubview(collectionView)
-        collectionView.snp.makeConstraints { make in
-            make.left.top.right.equalToSuperview()
-//            make.top.equalTo(headerView.snp.bottom)
-            make.bottom.equalTo(footerView.snp.top)
-        }
-        
-        refreshControl = UIRefreshControl()
-        refreshControl.tintColor = UIColor.lightGray
-        refreshControl.addTarget(self, action: #selector(getNodesState), for: .valueChanged)
-        
-        
-        groupsView = DeviceGroupsView()
-        groupsView.isHidden = true
-        groupsView.delegate = self
-        view.addSubview(groupsView)
-        groupsView.snp.makeConstraints { make in
-            make.left.right.equalToSuperview()
-            make.bottom.equalTo(footerView.snp.top)
-//            make.height.greaterThanOrEqualTo(SCRYFrom(64))
-        }
-
-        repairView = UIView()
-//        repairView.addRoundedCorners(corners: [.topLeft, .topRight], cornerRadii: CGSize(width: SCRYFrom(8), height: SCRYFrom(8)), rect: CGRect(x: 0, y: 0, width: view.width, height: SCRYFrom(60)))
-        repairView.layer.cornerRadius = SCRYFrom(8)
-        repairView.layer.shadowColor = RGB(0, 0, 0, 0.1).cgColor
-        repairView.layer.shadowOpacity = 1
-        repairView.layer.shadowRadius = 6
-        repairView.layer.shadowOffset = CGSize(width: 0, height: -2)
-//        repairView.layer.shadowPath = UIBezierPath(rect: CGRect(x: 0, y: -2, width: view.width, height: SCRYFrom(11))).cgPath
-        repairView.isHidden = true
-        repairView.backgroundColor = .white
-        view.addSubview(repairView)
-        repairView.snp.makeConstraints { make in
-            make.left.right.equalToSuperview()
-            make.bottom.equalTo(footerView.snp.top)
-            make.height.equalTo(SCRYFrom(60))
-        }
-        
-        repairCountLabel = UILabel(text: "", textColor: TextBlack_Color, fontSize: 16)
-        repairView.addSubview(repairCountLabel)
-        repairCountLabel.snp.makeConstraints { make in
-            make.left.equalTo(SCRXFrom(16))
-            make.centerY.equalToSuperview()
-        }
-        
-        repairBtn = UIButton(title: "repair".localizedString, titleSize: 14, titleColor: .white, target: self, action: #selector(repairBtnClick))
-        repairBtn.titleLabel?.font = Font_Medium_Size(SCRYFrom(14))
-        repairBtn.layer.cornerRadius = SCRYFrom(5)
-        repairBtn.backgroundColor = Bar_Color
-        repairView.addSubview(repairBtn)
-        repairBtn.snp.makeConstraints { make in
-            make.right.equalTo(SCRXFrom(-16))
-            make.centerY.equalToSuperview()
-            make.width.equalTo(SCRXFrom(80))
-            make.height.equalTo(SCRYFrom(32))
-        }
-    }
-    
-    // MARK: - Action
-    
-    /// 全关
-     private func allOffAction() {
-        devices.forEach({
-            $0.isOn = false
-            // 关灯，记录关灯前的亮度值
-            if $0.lightness > 0 {
-                $0.trunOffLightness = $0.lightness
-            }
-        })
-        collectionView.reloadData()
-        MeshAPI.setAllOnOffState(isOn: false)
-    }
-    
-    /// 全开
-    private func allOnAction() {
-        devices.forEach({ $0.isOn = true })
-        collectionView.reloadData()
-        MeshAPI.setAllOnOffState(isOn: true)
-    }
-    
-    /// 设备调节
-    @objc func deviceAllSetting() {
-        if lightControlView.superview == nil {
-            view.addSubview(lightControlView)
-        }
-        self.wm_pageController?.scrollEnable = false
-        lightControlView.show()
-    }
-    
-    /// 修复设备
-    @objc private func repairBtnClick() {
-        let nodes = devices.filter({ !$0.isKeybindComplete })
-        repairNodes(nodes: nodes)
-    }
-    
-    /// collectionview长按事件（跳转到设备控制页面）
-    @objc private func collectionLongPressAction(sender: UIGestureRecognizer) {
-        guard sender.state == .began else {
-            return
-        }
-        let point = sender.location(in: collectionView)
-        if let indexPath = collectionView.indexPathForItem(at: point) {
-            if indexPath.item == 0 { // 全部设备调节
-                deviceAllSetting()
-                
-            }else if indexPath.item <= devices.count {
-                let node = devices[indexPath.item - 1]
-                if isEdit && node.state { // 不在编辑状态/编辑状态+设备离线可以进入设备控制页
-                    return
-                }
-                let deviceVc = DeviceLightViewController(space: space, node: node)
-                present(NavigationViewController(rootViewController: deviceVc), animated: true)
-//                navigationController?.pushViewController(deviceVc, animated: true)
-            }
-        }
-    }
-    
-    /// 更新全部设备UI状态
-    private func reloadAllDevices() {
-        devices.forEach({
-            if let index = devices.firstIndex(of: $0), let item = collectionView.cellForItem(at: IndexPath(item: index + 1, section: 0)) as? DevicesViewCell {
-                item.device = $0
-            }
-        })
-    }
-    
-    /// 更新设备UI状态
-    private func reloadCollectionItem(node: Node) {
-        // 删除设备中不更新状态
-        if isDeletingDevice {
-            return
-        }
-        
-        if let index = devices.firstIndex(where: {$0.primaryUnicastAddress == node.primaryUnicastAddress}) {
-//            CATransaction.setDisableActions(true)
-//            collectionView.reloadItems(at: [IndexPath(row: index, section: 0)])
-            if isEdit {
-                if !node.state { // 离线
-                    if selectedAddresss.contains(node.primaryUnicastAddress) { // 是否编辑选中
-                        // 离线时清空选中地址数据
-                        selectedAddresss.removeAll(where: { $0 == node.primaryUnicastAddress })
-                    }
-                }
-            }
-            
-            if let item = collectionView.cellForItem(at: IndexPath(item: index + 1, section: 0)) as? DevicesViewCell {
-                if isEdit {
-                    if node.state { // 离线->在线
-                        if item.selectImageView.isHidden {
-                            item.selectImageView.isHidden = false
-                            item.selectImageView.image = UIImage(named: selectedAddresss.contains(node.primaryUnicastAddress) ? "select" : "select_un")
-                        }
-                    }else { // 在线->离线
-                        item.selectImageView.isHidden = true
-                    }
-                }
-                item.device = node
-            }
-            updateEditUI()
-//            CATransaction.commit()
-        }
-        
-        updateAllOnOffItemUI()
-    }
-    /// 获取节点状态
-    @objc private func getNodesState() {
-        guard MeshLibManager.manager.isMeshNetworkConnected else {
-            if refreshControl.isRefreshing {
-                refreshControl.endRefreshing()
-            }
-            return
-        }
-        if let view = self.wm_pageController?.view {
-            XWHUDManager.hideInView(with: view)
-        }else {
-            XWHUDManager.hide()
-        }
-        stopGuidanceTimer()
-
-        MeshAPI.sendMessage(message: LightLightnessGet(), address: .allNodes)
-        
-        if devices.contains(where: { $0.ctlModel != nil }) {
-            MeshAPI.sendMessage(message: LightCTLGet(), address: .allNodes)
-        }
-        
-//        MeshAPI.sendMessage(message: LightCTLTemperatureRangeGet(), address: .allNodes)
-        
-        MeshLibManager.manager.refreshNodesRSSI(withWaitFor: 3, result: nil)
-        if refreshControl.isRefreshing {
-            DispatchQueue.main.asyncAfter(deadline: .now() + 3) {[weak self] in
+    func addAction(point: CGPoint) {
+        let items: [MenuPopView.MenuItem] = [
+            .init(icon: UIImage(named: "menu_light"), title: "light".localizedString, tapItemBack: {[weak self] _ in
                 guard let self = self else { return }
-                self.refreshControl.endRefreshing()
-            }
-        }
-//        }
+                self.deviceAdd()
+            }),
+            .init(icon: UIImage(named: "menu_switch"), title: "switch".localizedString, tapItemBack: { _ in
+                self.switchAdd()
+            })
+        ]
+        MenuPopView.show(items: items, anchorPoint: point, direction: .up)
     }
+    
+//    /// 获取节点状态
+//    @objc private func getNodesState() {
+//        guard MeshLibManager.manager.isMeshNetworkConnected else {
+//            return
+//        }
+//        if let view = self.wm_pageController?.view {
+//            XWHUDManager.hideInView(with: view)
+//        }else {
+//            XWHUDManager.hide()
+//        }
+//        stopGuidanceTimer()
+//
+//        MeshAPI.sendMessage(message: LightLightnessGet(), address: .allNodes)
+//        
+//        if devices.contains(where: { $0.ctlModel != nil }) {
+//            MeshAPI.sendMessage(message: LightCTLGet(), address: .allNodes)
+//        }
+//        
+////        MeshAPI.sendMessage(message: LightCTLTemperatureRangeGet(), address: .allNodes)
+//        
+//        MeshLibManager.manager.refreshNodesRSSI(withWaitFor: 3, result: nil)
+////        if refreshControl.isRefreshing {
+////            DispatchQueue.main.asyncAfter(deadline: .now() + 3) {[weak self] in
+////                guard let self = self else { return }
+////                self.refreshControl.endRefreshing()
+////            }
+////        }
+////        }
+//    }
     
     /// 节点同步时间
     private func syncTimeNodes() {
@@ -690,22 +347,26 @@ class DevicesViewController: UIViewController {
     }
     
     /// 修复设备
-    private func repairNodes(nodes: [Node]) {
+    func repairNodes(nodes: [Node], complete: ((_ successList: [Node], _ failedList: [Node])->Void)?) {
         if nodes.isEmpty {
+            complete?([], [])
             return
         }
         // 是否连接网络
         guard MeshLibManager.manager.isMeshNetworkConnected else {
             XWHUDManager.showTipHUD("device_repair_offline".localizedString, isLineFeed: true)
+            complete?([], [])
             return
         }
         // 多设备配置
         if nodes.count > 1 {
             let alertView =  SRAlertView(title: "repairing".localizedString, titleFont: FONTS(SCRYFrom(15)), message: "0/\(nodes.count)", messageColor: TextBlack_Color, messageFont: FONTS(SCRYFrom(15)), stateImage: UIImage(named: "loading_big"), loadingState: true, btnText: "STOP".localizedString, btnTextColor: .white, btnTextFont: Font_Medium_Size(SCRYFrom(15))) {[weak self] in
                 SRAlertView.hide()
-                MeshAPI.stopKeyBind(keyBindFinish: nil)
-                self?.updateUI()
-                self?.getNodesState()
+                MeshAPI.stopKeyBind(keyBindFinish: { (successNodes, failedNodes) in
+                    complete?(successNodes, failedNodes)
+                })
+//                self?.updateUI()
+//                self?.getNodesState()
             }
             alertView.show()
             
@@ -723,11 +384,12 @@ class DevicesViewController: UIViewController {
                     if MeshLibManager.manager.bluetoothState == .poweredOn {
                         XWHUDManager.showSuccessTipHUD("complete!".localizedString)
                     }
-                    self.getNodesState()
+//                    self.getNodesState()
                 }else { // 全部/部分修复失败
                     self.repairFailed(nodes: failList)
                 }
-                self.updateUI()
+                complete?(successList, failList)
+//                self.updateUI()
                 
                 // 通知space数据修改
                 NotificationCenter.default.post(name: .init(spaceDataChangedNotificaitonName), object: SpaceChangeDataType.device)
@@ -743,14 +405,16 @@ class DevicesViewController: UIViewController {
                 }
                 guard let self = self else { return }
 //                node.saveNodeInfo(meshUUID: self.space.meshUUID, networkKey: self.space.meshNetworkKey)
-                self.updateUI()
+//                self.updateUI()
+                complete?(nodes, [])
                 
                 // 通知space数据修改
                 NotificationCenter.default.post(name: .init(spaceDataChangedNotificaitonName), object: SpaceChangeDataType.device)
 //                MeshAPI.getNodeCTLState(address: node.primaryUnicastAddress)
             } keyBindFail: {[weak self] _ in
                 XWHUDManager.hide()
-                self?.updateUI()
+//                self?.updateUI()
+                complete?([], nodes)
                 self?.repairFailed(nodes: nodes)
                 
                 // 通知space数据修改
@@ -764,7 +428,7 @@ class DevicesViewController: UIViewController {
     private func repairFailed(nodes: [Node]) {
         
         let alertView = SRAlertView(message: "repair_failed_message".localizedString, messageFont: FONTS(SCRYFrom(15)), stateImage: UIImage(named: "alert_failed"), actions: [.cancelAction, SRAlertAction(title: "repair".localizedString, style: .default, actionHandler: {[weak self] _ in
-            self?.repairNodes(nodes: nodes)
+//            self?.repairNodes(nodes: nodes)
         })])
         alertView.stateImageView.snp.remakeConstraints { make in
             make.top.equalTo(SCRYFrom(24))
@@ -783,372 +447,38 @@ class DevicesViewController: UIViewController {
         alertView.show()
     }
     
-    /// 筛选
-    private func sort() {
+   
+    /// 添加设备
+    private func deviceAdd() {
         
-        XWHUDManager.showCustomHUD(withMessage: nil, isWindow: false)
-        MeshLibManager.manager.refreshNodesRSSI(withWaitFor: 3) {[weak self] nodes in
-            XWHUDManager.hide()
-            guard let self = self else { return }
-//            print("\() \()")
-//            nodes.forEach({ print("\(String(describing: $0.name)) \($0.rssi)") })
-            if nodes.isEmpty { // 未到节点信号
-                XWHUDManager.showErrorTipHUD("device_sort_failed".localizedString)
-                return
-            }
-            self.devices.sort(by: { ($0.rssi ?? -99) > ($1.rssi ?? -99) })
-            self.devices.sort(by: { $0.state && !$1.state })
-            self.collectionView.reloadData()
-            // 节点信号map
-            var rssiMap: [String: Int] = [:]
-            self.devices.forEach { node in
-                if let mac = node.macAddress, let rssi = node.rssi {
-                    rssiMap.updateValue(rssi, forKey: mac)
-                }
-            }
-            // 设备信号排序
-            self.space.deviceSortType = .rssi
-            self.space.save()
-//            LCPlistCacheTool.write(fileName: self.rssiFileName, value: rssiMap)
-        }
-        
-    }
-
-}
-
-
-extension DevicesViewController: SpaceFunctionFooterViewDelegate {
-    
-    /// 点击排序回调
-    func functionDidClickSort(view: SpaceFunctionFooterView) {
-        sort()
-    }
-    
-    /// 点击添加回调
-    func functionDidClickAdd(view: SpaceFunctionFooterView) {
-        guard self.devices.count < 100 else {
+        guard MeshNetworkManager.instance.realNodes.count < 100 else {
             return
         }
-        
         let vc = DeviceAddViewController(space: space)
-        vc.deviceAddCallback = {[weak self] nodes in
+        vc.deviceAddCallback = { nodes in
+            NotificationCenter.default.post(name: .init(devicesAddNotificationName), object: nil)
             
-            self?.loadDevices()
-            self?.getNodesState()
-            
-//            self?.devices.forEach({
-//                $0.state = true
-//                $0.isOn = true
-//                $0.lightness = 63335
-////                    if $0.temperatureModel != nil {
-//                $0.temperature = 3200
-////                    }
-//            })
-            self?.collectionView.reloadData()
-            self?.updateAllOnOffItemUI()
+//            self?.loadDevices()
+//            self?.getNodesState()
+//            self?.collectionView.reloadData()
+//            self?.updateAllOnOffItemUI()
         }
-        navigationController?.pushViewController(vc, animated: true) 
+        navigationController?.pushViewController(vc, animated: true)
     }
     
-    /// 编辑/取消编辑状态修改  editing：是否正在编辑
-    func function(view: SpaceFunctionFooterView, editStateChanged editing: Bool) {
-        isEdit = editing
+    /// 添加动能开关
+    private func switchAdd() {
         
-//        allSelectBtn.isSelected = false
-//        allSelectBtn.backgroundColor = RGB(238, 238, 239)
-        
-        footerView.snp.updateConstraints { make in
-            make.height.equalTo(SCRYFrom(editing ? 56 : 44) + kSafeAreaBottomHeight)
-        }
-        footerView.layoutIfNeeded()
-        
-        selectedAddresss.removeAll()
-        footerView.deleteBtn.isEnabled = false
-        updateUI(reloadTableView: false)
-        collectionView.reloadData()
-//        CATransaction.setDisableActions(true)
-//        collectionView.reloadItems(at: collectionView.indexPathsForVisibleItems)
-//        CATransaction.commit()
-        
-        updateEditUI()
-    }
-    
-    /// 点击删除回调
-    func functionDidClickDelete(view: SpaceFunctionFooterView) {
-        
-        guard selectedAddresss.count > 0 else {
+        guard MeshNetworkManager.instance.switchs.count < 16 else {
+            SRAlertView(title: "notification".localizedString, message: "switchs_overrun_message".localizedString, actions: [SRAlertAction(title: "GOT_IT".localizedString)]).show()
             return
         }
-//        guard MeshLibManager.manager.isMeshNetworkConnected else {
-//            return
-//        }
-        SRAlertView(title: "notification".localizedString, message: "devices_delete_message".localizedString, actions: [.cancelAction, SRAlertAction(title: "alert_item_continue".localizedString, actionHandler: {[weak self] _ in
-            guard let self = self else { return }
-            XWHUDManager.showCustomHUD(withMessage: "deleting".localizedString, isWindow: true)
-            
-            var resetAddressList = self.selectedAddresss
-            // 如果重置节点中存在代理节点，将代理节点放到最后重置
-            if let proxyNode = self.devices.first(where: { $0.isProxy }), self.selectedAddresss.contains(proxyNode.primaryUnicastAddress) {
-                resetAddressList.removeAll(where: { $0 == proxyNode.primaryUnicastAddress })
-                resetAddressList.append(proxyNode.primaryUnicastAddress)
-            }
-            isDeletingDevice = true
-            MeshAPI.resetNodes(addressList: resetAddressList, resetSuccess: nil, resetFail: nil) {[weak self] successAddressList, failAddressList in
-                XWHUDManager.hide()
-                guard let self = self else { return }
-                
-                successAddressList.forEach({ address in
-                    if let index = self.devices.firstIndex(where: { $0.primaryUnicastAddress == address }) {
-                        let node = self.devices[index]
-                        node.deleteExtension()
-                        self.devices.remove(at: index)
-                    }
-                })
-                
-//                self.devices.removeAll(where: { successAddressList.contains($0.primaryUnicastAddress) })
-                self.selectedAddresss.removeAll(where: { successAddressList.contains($0) })
-                self.space.deviceCount = self.devices.count
-                self.space.luminairesCount = self.devices.count
-                self.space.save()
-                
-                if failAddressList.isEmpty { // 删除成功
-                    XWHUDManager.showSuccessTipHUD("done!".localizedString)
-                    self.isEdit = false
-                    self.updateUI()
-                    self.isDeletingDevice = false
-                    self.collectionView.reloadData()
-                    if MeshNetworkManager.instance.realNodes.isEmpty, MeshLibManager.manager.isMeshNetworkConnected {
-                        MeshLibManager.manager.close()
-                    }
-                    
-                    // 通知space数据修改
-//                    NotificationCenter.default.post(name: .init(spaceDataChangedNotificaitonName), object: SpaceChangeDataType.device)
-                    NotificationCenter.default.post(name: .init(spaceDataChangedNotificaitonName), object: SpaceChangeDataType.network(type: .address))
-                    
-                }else { // 删除失败（提示是否强制删除这部分设备）
-                    
-                    let alertView = SRAlertView(title: "notification".localizedString, actions: [SRAlertAction(title: "alert_item_cancel".localizedString, style: .cancel, actionHandler: {[weak self] _ in
-                        self?.updateUI()
-                        self?.updateEditUI()
-                        self?.isDeletingDevice = false
-                        if successAddressList.count > 0 {
-                            // 通知space数据修改
-//                            NotificationCenter.default.post(name: .init(spaceDataChangedNotificaitonName), object: SpaceChangeDataType.device)
-                            NotificationCenter.default.post(name: .init(spaceDataChangedNotificaitonName), object: SpaceChangeDataType.network(type: .address))
-                        }
-                        
-                    }), SRAlertAction(title: "force_delete".localizedString, actionHandler: {[weak self] _ in
-                        guard let self = self else { return }
-                        let forceDeleteNodes = self.devices.filter({ failAddressList.contains($0.primaryUnicastAddress) })
-                        forceDeleteNodes.forEach({
-                            $0.deleteExtension()
-                            self.space.meshManager?.meshNetwork?.remove(node: $0)
-                        })
-//                        _ = self.space.meshManager?.save()
-                        self.devices.removeAll(where: { failAddressList.contains($0.primaryUnicastAddress) })
-                        self.isEdit = false
-                        self.isDeletingDevice = false
-                        self.selectedAddresss.removeAll()
-                        self.updateUI()
-                        self.collectionView.reloadData()
-                        
-                        self.space.deviceCount = self.devices.count
-                        self.space.luminairesCount = self.devices.count
-                        self.space.save()
-                        
-                        XWHUDManager.showSuccessTipHUD("done!".localizedString)
-                        // 通知space数据修改
-                        NotificationCenter.default.post(name: .init(spaceDataChangedNotificaitonName), object: SpaceChangeDataType.network(type: .address))
-                        
-                    })])
-                    let messageAttStr = NSMutableAttributedString(string: "devices_force_delete_message".localizedString, attributes: [.foregroundColor: TextBlack_Color])
-                    messageAttStr.append(NSAttributedString(string: "devices_force_delete_note".localizedString, attributes: [.foregroundColor: Message_Color]))
-                    alertView.messageLabel.attributedText = messageAttStr
-                    alertView.show()
-                }
-            }
-        })]).show()
+        let vc = DeviceSwitchViewController(space: self.space, switchData: nil)
+        present(NavigationViewController(rootViewController: vc), animated: true)
         
+        NotificationCenter.default.post(name: .init(switchsRefreshNotificationName), object: nil)
     }
-    
-}
 
-extension DevicesViewController: UICollectionViewDataSource, UICollectionViewDelegateFlowLayout {
-    
-    func collectionView(_ collectionView: UICollectionView, numberOfItemsInSection section: Int) -> Int {
-        return devices.count + (devices.count > 0 ? 1 : 0)
-    }
-    
-    func collectionView(_ collectionView: UICollectionView, cellForItemAt indexPath: IndexPath) -> UICollectionViewCell {
-        if indexPath.item == 0 {// 全开全关
-            let allControlCell = collectionView.dequeueReusableCell(withReuseIdentifier: "allControlCell", for: indexPath) as! DeviceAllOnOffViewCell
-            if allOnOffState != .disable, let isOn = controlAllOn {
-                allControlCell.state = isOn ? .on : .off
-            }else {
-                allControlCell.state = allOnOffState
-            }
-            return allControlCell
-        }
-        let cell = collectionView.dequeueReusableCell(withReuseIdentifier: "cell", for: indexPath) as! DevicesViewCell
-        let device = devices[indexPath.item - 1]
-        if isEdit && device.state && device.isKeybindComplete {
-            cell.selectImageView.isHidden = false
-            cell.selectImageView.image = UIImage(named: selectedAddresss.contains(device.primaryUnicastAddress) ? "select" : "select_un")
-        }else {
-            cell.selectImageView.isHidden = true
-        }
-        cell.device = device
-        // 编辑选中点击
-        cell.editClickCallback = {[weak self] node in
-            guard let self = self else { return }
-            let address = node.primaryUnicastAddress
-            if self.selectedAddresss.contains(address) {
-                self.selectedAddresss.removeAll(where: { $0 == address })
-            }else {
-                self.selectedAddresss.append(address)
-            }
-            cell.selectImageView.image = UIImage(named: selectedAddresss.contains(device.primaryUnicastAddress) ? "select" : "select_un")
-//            collectionView.reloadItems(at: [indexPath])
-            self.updateEditUI()
-        }
-        return cell
-    }
-    
-    func collectionView(_ collectionView: UICollectionView, layout collectionViewLayout: UICollectionViewLayout, sizeForItemAt indexPath: IndexPath) -> CGSize {
-        var itemW = (collectionView.width - collectionView.contentInset.left - collectionView.contentInset.right - flowLayout.sectionInset.left - flowLayout.sectionInset.right - flowLayout.minimumInteritemSpacing * CGFloat(2)) / CGFloat(3)
-        itemW = CGFloat(floorf(Float(itemW) * 100) / 100.0)
-        return CGSize(width: itemW, height: itemW)
-    }
-    
-    func collectionView(_ collectionView: UICollectionView, didSelectItemAt indexPath: IndexPath) {
-        
-        if indexPath.item == 0 { // 全开/全关
-            if let isOn = controlAllOn {
-                controlAllOn = isOn
-            }else {
-                controlAllOn = allOnOffState == .on
-            }
-            controlAllOn = !controlAllOn!
-            if controlAllOn! {
-                allOnAction()
-            }else {
-                allOffAction()
-            }
-        }else { // 设备点击
-            let node = devices[indexPath.row - 1]
-            // 未绑定完成功能则修复设备
-            guard node.isKeybindComplete else {
-                // 判断是否有设备编辑/配置权限，没有则无响应
-                if space.deviceOperates.contains(.edit) {
-                    repairNodes(nodes: [node])
-                }
-                return
-            }
-            if node.state { // 设备在线
-                node.isOn = !node.isOn
-                if node.isOn {
-                    if let lightness = node.trunOffLightness {
-                        node.lightness = lightness
-                    }
-                }else { // 关灯，记录关灯前的亮度值
-                    if node.lightness > 0 { // 关灯，记录关灯前的亮度值
-                        node.trunOffLightness = node.lightness
-                    }
-                    node.lightness = 0
-                }
-//                if !node.isOn, node.lightness > 0 { // 关灯，记录关灯前的亮度值
-//                    node.trunOffLightness = node.lightness
-//                }
-                
-                reloadCollectionItem(node: node)
-                MeshAPI.setNodeOnOffState(address: node.primaryUnicastAddress, isOn: node.isOn)
-//                if let model = node.sunricherVendorModel {
-//                    MeshAPI.sendMessage(message: SunricherVendorSet(code: .lightSensorCalibrate, parameters: .lightSensorCalibrate(214)), model: model)
-//                }
-                
-                
-            }else { // 设备离线
-                MeshAPI.getNodeOnOffState(address: node.primaryUnicastAddress)
-            }
-        }
-        updateAllOnOffItemUI()
-    }
-    
-}
-
-extension DevicesViewController: DeviceLightControlViewDelegate {
-    
-    func lightControl(_ view: DeviceLightControlView, levelValueChanged level: Int, ended: Bool) {
-        print("level: \(level)")
-        
-//        let lightness = UInt16(round(Double(level) / 100.0) * Double(UInt16.max))
-        let ligheness = Node.getLightness(lightness100: level)
-        MeshAPI.setAllLightnessState(lightness: ligheness, ack: ended)
-        
-        self.devices.forEach({
-            // 记录关灯前亮度
-            if $0.isOn && ligheness == 0 && $0.lightness > 0 {
-                $0.trunOffLightness = $0.lightness
-            }
-            $0.isOn = ligheness > 0
-            $0.lightness = ligheness
-            // self.reloadCollectionItem(node: $0)
-        })
-        controlAllOn = ligheness > 0
-        updateAllOnOffItemUI()
-        
-        self.collectionView.reloadData()
-    }
-    
-    func lightControl(_ view: DeviceLightControlView, cctValueChanged cct: Int, ended: Bool) {
-        print("cct: \(cct)")
-        
-        MeshAPI.setAllColorTemperatureState(temperature: UInt16(cct), ack: ended)
-        devices.forEach({
-            $0.temperature = UInt16(cct)
-//            reloadCollectionItem(node: $0)
-        })
-        updateAllOnOffItemUI()
-        self.collectionView.reloadData()
-    }
-    
-    func lightControlDidHide(_ view: DeviceLightControlView) {
-        self.wm_pageController?.scrollEnable = true
-    }
-}
-
-extension DevicesViewController: DeviceGroupsViewDelegate {
-    /// 选择/取消选择所有回调
-    func view(_ view: DeviceGroupsView, didSelectAllAction selectAll: Bool) {
-        
-        if selectAll {
-            selectedAddresss = devices.filter({ $0.isKeybindComplete && $0.state }).map({ $0.primaryUnicastAddress })
-        }else {
-            selectedAddresss.removeAll()
-        }
-        updateEditUI()
-        collectionView.reloadData()
-    }
-    
-    /// 筛选
-    func viewDidSortAction(_ view: DeviceGroupsView) {
-        
-        sort()
-    }
-    
-    /// 选中/取消选中Group/ALL回调
-    func view(_ view: DeviceGroupsView, didSelectData data: DeviceGroupsSelectData) {
-        
-        if data.isSelected {
-            let appendAddresss = data.addresss.filter({ !selectedAddresss.contains($0) })
-            selectedAddresss.append(contentsOf: appendAddresss)
-        }else {
-            selectedAddresss.removeAll(where: { data.addresss.contains($0) })
-        }
-        updateEditUI()
-//        footerView.deleteBtn.isEnabled = selectedAddresss.count > 0
-        collectionView.reloadData()
-    }
 }
 
 extension DevicesViewController: MeshLibManagerDelegate, MeshLibManagerMessageDelegate {
@@ -1157,10 +487,10 @@ extension DevicesViewController: MeshLibManagerDelegate, MeshLibManagerMessageDe
     /// - Parameters:
     ///   - state: 蓝牙状态
     func meshNetworkManager(bluetoothDidUpdateState state: CBManagerState) {
-        if state == .poweredOn && devices.count > 0 {
-            // 获取设备信号
-            MeshLibManager.manager.refreshNodesRSSI(withWaitFor: 3, result: nil)
-        }
+//        if state == .poweredOn && devices.count > 0 {
+//            // 获取设备信号
+//            MeshLibManager.manager.refreshNodesRSSI(withWaitFor: 3, result: nil)
+//        }
     }
     
     
@@ -1190,44 +520,117 @@ extension DevicesViewController: MeshLibManagerDelegate, MeshLibManagerMessageDe
         // 通知space数据修改
         NotificationCenter.default.post(name: .init(spaceDataChangedNotificaitonName), object: SpaceChangeDataType.network(type: .ivIndex))
     }
- 
-    /// mesh设备数据更新
-    /// - Parameters:
-    ///   - manager: mesh网络管理
-    ///   - node: 更新的设备节点
-    func meshNetworkManager(_ manager: MeshNetworkManager, deviceDataUpdate node: Node) {
-        if view.window != nil {
-            reloadCollectionItem(node: node)
+    
+}
+
+extension DevicesViewController {
+    
+    override func numbersOfChildControllers(in pageController: WMPageController) -> Int {
+        return menuTitles.count
+    }
+    
+    override func pageController(_ pageController: WMPageController, viewControllerAt index: Int) -> UIViewController {
+        
+        switch index {
+        case 0:
+            let vc = DeviceLightsViewController(space: space)
+            return vc
+        case 1:
+            let vc = DeviceSwitchesViewController(space: space)
+            return vc
+        case 2:
+            let vc = DeviceSensorsViewController(space: space)
+            return vc
+        case 3:
+            let vc = GatewaysViewController(space: space)
+            return vc
+        default:
+            return UIViewController()
         }
     }
     
-    /// 代理节点切换回调
-    /// - Parameters:
-    ///   - manager: mesh网络管理
-    ///   - bearer: 切换的代理
-    func meshNetworkManager(_ manager: MeshNetworkManager, proxyDidReplace bearer: Bearer) {
-        if view.window != nil {
-            collectionView.reloadData()
-        }
+    override func pageController(_ pageController: WMPageController, preferredFrameForContentView contentView: WMScrollView) -> CGRect {
+//        let y = SCRYFrom(42)
+//        let footerH = SCRYFrom(44) + kSafeAreaBottomHeight
+        return CGRect(x: 0, y: 0, width: view.width, height: view.height)
     }
     
-    /// 收到消息回调
-    /// - Parameters:
-    ///   - manager: mesh网络管理
-    ///   - message: 消息体
-    ///   - source: 来源设备地址
-    ///   - destination: 接收设备地址
-    func meshNetworkManager(_ manager: MeshNetworkManager, didReceiveMessage message: MeshMessage, sentFrom source: Address, to destination: Address) {
-        if let node = manager.meshNetwork?.node(withAddress: source), !node.isProvisioner {
-            node.updateData(message: message)
-            // 动能开关事件
-            if message is LightLCLightOnOffSet || message is LightLCLightOnOffSetUnacknowledged || message is SceneRecall || message is SceneRecallUnacknowledged  {
-//                reloadCollectionItem(node: node)
-                if view.window != nil {
-                    collectionView.reloadData()
-                }
-            }
+    override func pageController(_ pageController: WMPageController, preferredFrameFor menuView: WMMenuView) -> CGRect {
+        return CGRect(x: 0, y: SCRYFrom(10), width: view.width, height: SCRYFrom(32))
+    }
+    
+    override func pageController(_ pageController: WMPageController, didEnter viewController: UIViewController, withInfo info: [AnyHashable : Any]) {
+//        mainMenuView.selectIndex = Int(self.selectIndex)
+    }
+    
+    override func menuView(_ menu: WMMenuView!, shouldSelesctedIndex index: Int) -> Bool {
+        return !XWHUDManager.isVisible()
+//        return index < 3
+    }
+    
+}
+
+extension DevicesViewController {
+    
+    override func numbersOfTitles(in menu: WMMenuView!) -> Int {
+        return menuTitles.count
+    }
+    
+    override func menuView(_ menu: WMMenuView!, titleAt index: Int) -> String! {
+        return menuTitles[index]
+    }
+    
+    override func menuView(_ menu: WMMenuView!, titleSizeFor state: WMMenuItemState, at index: Int) -> CGFloat {
+        return 14
+    }
+    
+    override func menuView(_ menu: WMMenuView!, titleColorFor state: WMMenuItemState, at index: Int) -> UIColor! {
+        return state == .selected ? .white : Bar_Color
+    }
+    
+    override func menuView(_ menu: WMMenuView!, widthForItemAt index: Int) -> CGFloat {
+        return SCRXFrom(80)
+    }
+    
+    override func menuView(_ menu: WMMenuView!, itemMarginAt index: Int) -> CGFloat {
+        if index == 0 || index == 4 {
+            return SCRXFrom(12)
         }
+        return SCRXFrom(10)
+    }
+    
+    override func menuView(_ menu: WMMenuView!, didSelectedIndex index: Int, currentIndex: Int) {
+       
+        let item = menu.item(at: index)
+        item?.backgroundColor = Bar_Color
+        item?.layer.borderWidth = 0
+        item?.font = UIFont.systemFont(ofSize: 14)
+        
+        guard index != currentIndex else {
+            return
+        }
+        
+        let lastItem = menu.item(at: currentIndex)
+        lastItem?.backgroundColor = .white.withAlphaComponent(0.5)
+        lastItem?.layer.borderColor = RGB(220, 220, 220).cgColor
+        lastItem?.layer.borderWidth = 0.5
+//        self.selectIndex = Int32(index)
+        
+        super.menuView(menu, didSelectedIndex: index, currentIndex: currentIndex)
+    }
+    
+    override func menuView(_ menu: WMMenuView!, initialMenuItem: WMMenuItem!, at index: Int) -> WMMenuItem! {
+        
+        if index == 0 {
+            initialMenuItem.layer.borderWidth = 0
+            initialMenuItem.font = UIFont.systemFont(ofSize: 14)
+            initialMenuItem.backgroundColor = Bar_Color
+        }else {
+            initialMenuItem.layer.borderColor = RGB(220, 220, 220).cgColor
+            initialMenuItem.layer.borderWidth = 0.5
+            initialMenuItem.backgroundColor = .white.withAlphaComponent(0.5)
+        }
+        return initialMenuItem
     }
     
 }

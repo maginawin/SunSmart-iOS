@@ -79,6 +79,8 @@ let Message_Color = RGB(134, 138, 160)
 let Bar_Color = RGB(102, 103, 171)
 /// 线条颜色
 let Line_Color = RGB(243, 243, 243)    //RGB(126, 126, 126, 0.1)
+let Line_Color1 = RGB(236, 236, 236)
+
 /// 按钮蓝色
 let Blue_Color = RGB(0, 122, 255)
 /// 按钮红色
@@ -112,4 +114,7 @@ func Font_Bold_Size(_ size : CGFloat) -> UIFont {
     return UIFont.init(name: FontName_Bold, size: size) ?? UIFont()
 }
 
-
+/// 使用协议
+let termsOfUseUrlStr = "https://srdocs.gitee.io/privacypolicy/#/ble/en"
+/// 隐私政策
+let privacyPolicyUrlStr = "https://srdocs.gitee.io/privacypolicy/#/ble/en"

@@ -18,28 +18,28 @@ class AboutViewController: UIViewController {
         tableV.delegate = self
         tableV.separatorStyle = .none
         tableV.backgroundColor = Background_Color
-        tableV.tableHeaderView = headerView
+//        tableV.tableHeaderView = headerView
         return tableV
     }()
     
-    private lazy var headerView: UIView = {
-        let headerV = UIView()
-        headerV.backgroundColor = .white
-        let titleLabel = UILabel(text: "welcome".localizedString, textColor: TextBlack_Color, fontSize: 18)
-        titleLabel.sizeToFit()
-        titleLabel.frame = CGRect(x: SCRXFrom(20), y: SCRYFrom(16), width: self.view.width - SCRXFrom(40), height: titleLabel.height)
-        headerV.addSubview(titleLabel)
-        
-        let messageLabel = UILabel(text: "welcome_message".localizedString, textColor: TextBlack_Color, fontSize: 14, fontWeight: .light)
-        messageLabel.numberOfLines = 0
-        let messageSize = messageLabel.sizeThatFits(CGSize(width: titleLabel.width, height: 1000))
-        messageLabel.frame = CGRect(x: titleLabel.x, y: titleLabel.frame.maxY + SCRYFrom(20), width: titleLabel.width, height: messageSize.height)
-        headerV.addSubview(messageLabel)
-        
-        headerV.frame = CGRect(x: 0, y: 0, width: self.view.width, height: messageLabel.frame.maxY + SCRYFrom(28))
-        
-        return headerV
-    }()
+//    private lazy var headerView: UIView = {
+//        let headerV = UIView()
+//        headerV.backgroundColor = .white
+//        let titleLabel = UILabel(text: "welcome".localizedString, textColor: TextBlack_Color, fontSize: 18)
+//        titleLabel.sizeToFit()
+//        titleLabel.frame = CGRect(x: SCRXFrom(20), y: SCRYFrom(16), width: self.view.width - SCRXFrom(40), height: titleLabel.height)
+//        headerV.addSubview(titleLabel)
+//        
+//        let messageLabel = UILabel(text: "welcome_message".localizedString, textColor: TextBlack_Color, fontSize: 14, fontWeight: .light)
+//        messageLabel.numberOfLines = 0
+//        let messageSize = messageLabel.sizeThatFits(CGSize(width: titleLabel.width, height: 1000))
+//        messageLabel.frame = CGRect(x: titleLabel.x, y: titleLabel.frame.maxY + SCRYFrom(20), width: titleLabel.width, height: messageSize.height)
+//        headerV.addSubview(messageLabel)
+//        
+//        headerV.frame = CGRect(x: 0, y: 0, width: self.view.width, height: messageLabel.frame.maxY + SCRYFrom(28))
+//        
+//        return headerV
+//    }()
     
     private var dataSource: [CustomCellModel] = []
     
@@ -85,17 +85,48 @@ extension AboutViewController: UITableViewDataSource, UITableViewDelegate {
     
     func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
         
-        let model = dataSource[indexPath.row]
-        var urlStr = ""
-        switch indexPath.row {
-        case 0:
-            urlStr = "https://srdocs.gitee.io/privacypolicy/#/ble/en"
-        default:
-            urlStr = "https://srdocs.gitee.io/privacypolicy/#/ble/en"
+        var title = ""
+        var filePath: String?
+        if indexPath.row == 0 {
+            title = "welcome_privacy_policy".localizedString
+            filePath = Bundle.main.path(forResource: "Privacy Policy", ofType: "html")
+        }else {
+            title = "welcome_policy_use".localizedString
+            filePath = Bundle.main.path(forResource: "User Agreement", ofType: "html")
+        }
+        if filePath != nil {
+            let vc = WebViewController(loadUrl: URL(fileURLWithPath: filePath!), vcTitle: title)
+            navigationController?.pushViewController(vc, animated: true)
         }
         
-        let vc = WebViewController(loadUrl: URL(string: urlStr), vcTitle: model.title)
-        navigationController?.pushViewController(vc, animated: true)
+//        var title = ""
+//        var attStr: NSMutableAttributedString = .init()
+//        
+//        let paragraphStyle = NSMutableParagraphStyle()
+//        paragraphStyle.lineSpacing = 3
+//        paragraphStyle.paragraphSpacing = 8
+//        
+//        if indexPath.row == 0 {
+//            title = "welcome_privacy_policy".localizedString
+//            let privacyPolicy = NSMutableAttributedString(string: "protocol_privacy_policy_message".localizedString, attributes: [.font: UIFont.systemFont(ofSize: 14, weight: .light)])
+//            privacyPolicy.addAttributes([.font: FONTS(15)], range: NSRange(location: 0, length: title.count))
+//            privacyPolicy.addAttributes([.font: UIFont.systemFont(ofSize: 15, weight: .light)], range: (privacyPolicy.string as NSString).range(of: "sunsmart_application".localizedString))
+//            attStr = privacyPolicy
+//            
+//        }else {
+//            title = "welcome_policy_use".localizedString
+//            let termsOfUse = NSMutableAttributedString(string: "protocol_terms_of_use_message".localizedString, attributes: [.font: UIFont.systemFont(ofSize: 14, weight: .light)])
+//            termsOfUse.addAttributes([.font: FONTS(15)], range: NSRange(location: 0, length: title.count))
+//            
+//            attStr = termsOfUse
+//        }
+//        
+//      
+//        attStr.addAttribute(.paragraphStyle, value: paragraphStyle, range: NSRange(location: 0, length: attStr.string.count))
+//        
+//        
+//        let vc = AttributedTextViewController(vcTitle: title, attributedStr: attStr)
+//        navigationController?.pushViewController(vc, animated: true)
     }
     
 }

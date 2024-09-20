@@ -66,7 +66,7 @@ class AlignCenterFlowLayout: UICollectionViewFlowLayout {
             lagePageElements.forEach({
                 var frame = $0.frame
                 var top = frame.origin.y
-                top += (showHeight - lastPageMaxY + offsetY) * 0.5 // + collectionView.contentOffset.y
+                top += (showHeight - lastPageMaxY + contentInset.top + offsetY) * 0.5 // + collectionView.contentOffset.y
                 frame.origin.y = top
                 $0.frame = frame
             })

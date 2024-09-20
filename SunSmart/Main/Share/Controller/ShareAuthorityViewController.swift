@@ -95,7 +95,6 @@ class ShareAuthorityViewController: UIViewController {
         loadSpacesReqeust()
         view.backgroundColor = Background_Color
         navigationController?.setNavigationBarBackgroundColor(color: .clear)
-        
         updateUI()
     }
     
@@ -161,9 +160,15 @@ class ShareAuthorityViewController: UIViewController {
                     var usedEditorIds: [String] = []
                     // 删除成功的Editor
                     var successEditorIds: [String] = []
-                    detail.forEach({
-                        usedEditorIds.append(contentsOf: $0.value.filter({ $0.value == NetworkApiError.editorBeingUsedSpace.code }).map({ $0.key }))
-                        successEditorIds.append(contentsOf: $0.value.filter({ $0.value == 200 }).map({ $0.key }))
+                    detail.forEach({ data in
+                        usedEditorIds.append(contentsOf: data.value.filter({ $0.value == NetworkApiError.editorBeingUsedSpace.code }).map({ $0.key }))
+                        if data.value.isEmpty {
+                            if let space = spaces.first(where: { space in data.key == space.id }), let editorId = space.editor?.uuid {
+                                successEditorIds.append(editorId)
+                            }
+                        }else {
+                            successEditorIds.append(contentsOf: data.value.filter({ $0.value == 200 }).map({ $0.key }))
+                        }
                     })
                     // 删除editor成功的space更新缓存
                     spaces.forEach({
@@ -212,9 +217,15 @@ class ShareAuthorityViewController: UIViewController {
                     var usedVistorIds: [String] = []
                     // 删除成功的vistors
                     var successVistorIds: [String] = []
-                    detail.forEach({
-                        usedVistorIds.append(contentsOf: $0.value.filter({ $0.value == NetworkApiError.visitorBeingUsedSpace.code }).map({ $0.key }))
-                        successVistorIds.append(contentsOf: $0.value.filter({ $0.value == 200 }).map({ $0.key }))
+                    detail.forEach({ data in
+                        usedVistorIds.append(contentsOf: data.value.filter({ $0.value == NetworkApiError.visitorBeingUsedSpace.code }).map({ $0.key }))
+                        if data.value.isEmpty {
+                            if let space = spaces.first(where: { space in data.key == space.id }), space.visitors.count > 0 {
+                                successVistorIds.append(contentsOf: space.visitors.map({ $0.uuid }))
+                            }
+                        }else {
+                            successVistorIds.append(contentsOf: data.value.filter({ $0.value == 200 }).map({ $0.key }))
+                        }
                     })
                     
                     // 删除vistor成功的space更新缓存
@@ -231,7 +242,7 @@ class ShareAuthorityViewController: UIViewController {
                     
                     if usedVistorIds.count > 0 { // 部分用户正在使用space，无法删除
                         // 强制删除 / 跳过
-                        SRAlertView(title: "notification".localizedString, message: "spaces_delete_used_visitors_message".localizedString, actions: [SRAlertAction(title: "skip".localizedString, style: .cancel, actionHandler: {[weak self] _ in
+                        SRAlertView(title: "notification".localizedString, message: "space_delete_used_visitors_message".localizedString, actions: [SRAlertAction(title: "skip".localizedString, style: .cancel, actionHandler: {[weak self] _ in
                             guard let self = self else { return }
                             
                             self.selectSpaces.removeAll()
@@ -292,7 +303,7 @@ class ShareAuthorityViewController: UIViewController {
         
         var networkApi: NetowrkReqeustApi!
         // 有site转让code则读取之前的数据
-        if let shareCode = space.shareCode {
+        if let shareCode = space.shareCode, space.editorPassword != nil {
             networkApi = .shareInfo(shareId: shareCode)
         }else {
             // 还没有设置编辑者密码
@@ -310,9 +321,41 @@ class ShareAuthorityViewController: UIViewController {
                 guard let code = JSON(response)["data"]["token"].string else {
                     return
                 }
+                var saveSpace = false
+                if case .spaceShare = networkApi {
+                    saveSpace = true
+                }else {
+                    // 更新owner数据
+                    if let ownerData = JSON(response)["data"]["space"]["owner"].dictionaryObject {
+                        if let userId = ownerData["userId"] as? String, let userName = ownerData["username"] as? String {
+                            if space.owner?.uuid != userId {
+                                space.owner = .init(name: userName, uuid: userId)
+                                saveSpace = true
+                            }
+                        }
+                    }
+                    
+                    // 更新editor数据
+                    if let editorData = JSON(response)["data"]["space"]["editor"].dictionaryObject {
+                        if let userId = editorData["userId"] as? String, let userName = editorData["username"] as? String {
+                            if space.editor?.uuid != userId {
+                                space.editor = .init(name: userName, uuid: userId)
+                                saveSpace = true
+                            }
+                        }else {
+                            if space.editor != nil {
+                                space.editor = nil
+                                saveSpace = true
+                            }
+                        }
+                    }
+                }
                 // 邀请码
                 if space.shareCode != code {
                     space.shareCode = code
+                    saveSpace = true
+                }
+                if saveSpace {
                     space.save()
                 }
                 let vc = SharingSettingViewController(type: .space(site: self.site, space: space))
@@ -364,7 +407,7 @@ class ShareAuthorityViewController: UIViewController {
         guard spaces.count > 0 else {
             return
         }
-        let passwordDatas = selectSpaces.map({
+        let passwordDatas = spaces.map({
             return NetowrkReqeustApi.SpacePasswordData(spaceId: $0.id, password: nil, permission: .visitor)
         })
         XWHUDManager.showCustomHUD(withMessage: nil, isWindow: true)
@@ -376,10 +419,10 @@ class ShareAuthorityViewController: UIViewController {
             case .success(_):
                 XWHUDManager.showSuccessTipHUD("successfully".localizedString + " !")
                 spaces.forEach({ space in
-                    if let passwordData = passwordDatas.first(where: { space.id == $0.spaceId }) {
+//                    if let passwordData = passwordDatas.first(where: { space.id == $0.spaceId }) {
                         space.vistorPassword = nil
                         space.save()
-                    }
+//                    }
                 })
                 self.isSelectState = false
                 self.selectSpaces.removeAll()
@@ -459,6 +502,7 @@ class ShareAuthorityViewController: UIViewController {
                     SRAlertView(title: "notification".localizedString, message: "spaces_delete_failed".localizedString, actions: [SRAlertAction(title: "confirm".localizedString)]).show()
                 }
                 NotificationCenter.default.post(name: .init(rawValue: SitesDataRefreshNotifiacationName), object: nil)
+                NotificationCenter.default.post(name: .init(SpacesRefreshChangeNotificationName), object: nil)
                 
             case .failure(let error):
                 XWHUDManager.showErrorTipHUD(error.localizedDescription)
@@ -652,7 +696,11 @@ class ShareAuthorityViewController: UIViewController {
         if sender.isSelected {
             selectSpaces.removeAll()
         }else {
-            selectSpaces = allSpaces
+            if type == .share {
+                selectSpaces = showSpaces.filter({ ($0.permission == .owner && $0.editor == nil) || ($0.permission == .editor && $0.state == .normal) })
+            }else {
+                selectSpaces = showSpaces
+            }
         }
         collectionView.reloadData()
         updateBottomUI()
@@ -704,7 +752,7 @@ class ShareAuthorityViewController: UIViewController {
         
         // 清空visitor
         items.append(.init(icon: UIImage(named: "share_clear_member"), title: "clear_visitor".localizedString, tapItemBack: {[weak self] _ in
-            self?.showAlertNotification(message: "spaces_clear_editor_message".localizedString, doneActionHandle: {[weak self] in
+            self?.showAlertNotification(message: "spaces_clear_visitors_message".localizedString, doneActionHandle: {[weak self] in
                 guard let self = self, self.selectSpaces.count > 0 else { return }
                 self.clearSpacesVistorsRequest(spaces: self.selectSpaces)
             })
@@ -745,10 +793,10 @@ class ShareAuthorityViewController: UIViewController {
             }))
         }
         
-        let point = CGPoint(x: sender.center.x, y: bottomView.frame.minY + SCRYFrom(30))
+        let point = CGPoint(x: sender.center.x, y: bottomView.frame.minY) // + SCRYFrom(30)
         let viewPoint = UIApplication.shared.keyWindow().convert(point, from: view)
         
-        MenuPopView.show(items: items, anchorPoint: viewPoint, menuWidth: SCRXFrom(220))
+        MenuPopView.show(items: items, anchorPoint: viewPoint, direction: .up, menuWidth: SCRXFrom(220))
         
     }
     
@@ -881,6 +929,7 @@ class ShareAuthorityViewController: UIViewController {
         collectionView.register(ShareAuthoritySpaceViewCell.classForCoder(), forCellWithReuseIdentifier: "cell")
         collectionView.backgroundColor = Background_Color
         collectionView.alwaysBounceVertical = true
+        collectionView.panGestureRecognizer.cancelsTouchesInView = false
         collectionView.dataSource = self
         collectionView.delegate = self
         view.addSubview(collectionView)
@@ -1006,7 +1055,12 @@ class ShareAuthorityViewController: UIViewController {
         if isSelectState {
             selectAllBtn.isHidden = false
             // 判断是否选中所有可选space
-            selectAllBtn.isSelected = selectSpaces.count > 0 && selectSpaces.count == showSpaces.count
+            var canSelectSpaces = showSpaces
+            if type == .share {
+                canSelectSpaces = showSpaces.filter({ ($0.permission == .owner && $0.editor == nil) || ($0.permission == .editor && $0.state == .normal) })
+            }
+            
+            selectAllBtn.isSelected = selectSpaces.count > 0 && selectSpaces.count == canSelectSpaces.count
             editBtn.isSelected = true
         }else {
             selectAllBtn.isHidden = true
@@ -1103,6 +1157,7 @@ extension ShareAuthorityViewController: UICollectionViewDataSource, UICollection
             spaceShareReqeuest(space: space)
         }
     }
+    
 }
 
 extension ShareAuthorityViewController {

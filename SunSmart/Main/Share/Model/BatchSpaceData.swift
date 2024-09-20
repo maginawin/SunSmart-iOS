@@ -38,7 +38,7 @@ class BatchSpaceImportResult {
         var rawString: String {
             switch self {
             case .successfully:
-                return "successfully_improrted".localizedString
+                return "successful".localizedString
             case .presenceEditor:
                 return "presence_editor".localizedString
             case .invalid:

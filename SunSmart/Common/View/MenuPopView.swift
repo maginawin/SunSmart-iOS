@@ -9,6 +9,14 @@ import UIKit
 
 class MenuPopView: UIView {
 
+    /// 弹出方向
+    enum Direction {
+        /// 下
+        case down
+        /// 上
+        case up
+    }
+    
     /// 默认菜单内容宽度
     static let defalutMenuWidth = SCRXFrom(108)
     /// 默认item高度
@@ -25,14 +33,16 @@ class MenuPopView: UIView {
     private var menuWidth: CGFloat = 0
     private var itemHeight: CGFloat = 0
     private var isShow: Bool = false
+    private var direction: Direction = .down
     
-    static func show(items: [MenuItem], anchorPoint: CGPoint, menuWidth: CGFloat = MenuPopView.defalutMenuWidth, itemHeight: CGFloat = MenuPopView.defalutItemHeight) {
+    static func show(items: [MenuItem], anchorPoint: CGPoint, direction: Direction = .down, menuWidth: CGFloat = MenuPopView.defalutMenuWidth, itemHeight: CGFloat = MenuPopView.defalutItemHeight) {
 //        let itemHeight: CGFloat =
         let view = MenuPopView(frame: UIScreen.main.bounds)
         view.menuWidth = menuWidth
         view.itemHeight = itemHeight
         view.startPoint = anchorPoint
         view.items = items
+        view.direction = direction
         view.setupUI()
         UIApplication.shared.keyWindow().addSubview(view)
         
@@ -59,7 +69,7 @@ class MenuPopView: UIView {
         var contentPoint = CGPoint(x: self.startPoint.x + SCRXFrom(15), y: self.startPoint.y)
         
         var anchorPoint = CGPointMake(1, 0)
-        if startPoint.y + contentView.height > self.height { // 超出显示范围
+        if (direction == .down && startPoint.y + contentView.height > self.height) || direction == .up { // 超出显示范围
             // 弹出方向调整
             anchorPoint = CGPointMake(1, 1)
             // 图片翻转
@@ -73,7 +83,9 @@ class MenuPopView: UIView {
                 make.top.equalTo(SCRYFrom(5))
                 make.bottom.equalTo(SCRYFrom(-12))
             }
-            contentPoint = CGPoint(x: contentPoint.x, y: contentPoint.y - SCRYFrom(25))
+            if direction == .down {
+                contentPoint = CGPoint(x: contentPoint.x, y: contentPoint.y - SCRYFrom(25))
+            }
         }
         contentView.layer.anchorPoint = anchorPoint
         contentView.transform = CGAffineTransformMakeScale(0.01, 0.01)

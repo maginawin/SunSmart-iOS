@@ -26,7 +26,8 @@ extension CALayer {
         let transition = CATransition()
         transition.type = type
         transition.subtype = animationOrientation
-        transition.duration = duration;
+        transition.duration = duration
+        transition.timingFunction = .init(name: .easeInEaseOut)
         self.add(transition, forKey: animationKey)
     }
 

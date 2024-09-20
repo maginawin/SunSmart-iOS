@@ -33,4 +33,17 @@ extension String {
         return timeStr
     }
     
+    /// 时间字符串转时间戳
+    /// - Parameters:
+    ///   - timeStr: 时间字符串
+    ///   - dateFormat: 时间格式
+    /// - Returns: 时间戳
+    static func dateConvert(timeStr: String, dateFormat: String?) -> Int64 {
+       
+        let formatter = DateFormatter.init()
+        formatter.dateFormat = dateFormat ?? "YYYY-MM-dd HH:mm:ss"
+        let date = formatter.date(from: timeStr) ?? Date()
+        return Int64(date.timeIntervalSince1970)
+    }
+    
 }

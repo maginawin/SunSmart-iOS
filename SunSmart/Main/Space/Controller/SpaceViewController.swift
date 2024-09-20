@@ -218,12 +218,12 @@ class SpaceViewController: WMPageController {
             self?.updateSpaceData()
         }
         // 空间内菜单选择修改通知
-        NotificationCenter.default.addObserver(forName: .init(spaceMenuIndexChangeNotificaitonName), object: nil, queue: nil) {[weak self] notification in
+        NotificationCenter.default.addObserver(forName: .init(spaceMenuIndexChangeNotificaitonName), object: nil, queue: .main) {[weak self] notification in
             guard let self = self, let selectIndex = notification.object as? Int, selectIndex >= 0 && selectIndex < SpaceMenuView.defalutItems.count else { return }
             self.selectIndex = Int32(selectIndex)
         }
         // 空间内数据更新通知
-        NotificationCenter.default.addObserver(forName: .init(spaceDataChangedNotificaitonName), object: nil, queue: nil) {[weak self] notification in
+        NotificationCenter.default.addObserver(forName: .init(spaceDataChangedNotificaitonName), object: nil, queue: .main) {[weak self] notification in
             guard let self = self, let type = notification.object as? SpaceChangeDataType else { return }
             self.space.lastUpdate = Int64(Date().timeIntervalSince1970)
             self.space.save()
@@ -524,6 +524,9 @@ class SpaceViewController: WMPageController {
                 switch error {
                 case .noSitePermission: // 被回收权限/转让site
                     XWHUDManager.showErrorTipHUD(error.localizedDescription)
+                    if self.site.permission == .owner {
+                        NotificationCenter.default.post(name: .init(SiteStateChangeNotificationName), object: nil)
+                    }
                     DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {[weak self] in
                         self?.navigationController?.popViewController(animated: true)
                     }
@@ -533,6 +536,9 @@ class SpaceViewController: WMPageController {
                     self.space.state = .waitDeleted
                     self.space.save()
                     SRAlertView(title: "notification".localizedString, message: "the_space_cleared_visitor_message".localizedString, actions: [SRAlertAction(title: "confirm".localizedString, actionHandler: {[weak self] _ in
+                        if self?.space.permission == .owner {
+                            NotificationCenter.default.post(name: .init(SiteStateChangeNotificationName), object: nil)
+                        }
                         self?.navigationController?.popViewController(animated: true)
                     })]).show()
                 case .incorrectPassword: // 密码修改
@@ -598,8 +604,8 @@ class SpaceViewController: WMPageController {
             self.space.scheheduleCount = MeshNetworkManager.instance.schedules.count
             saveData = true
         }
-        if self.space.switchesCount != MeshNetworkManager.instance.subnetworkSwitchProxys.count {
-            self.space.scheheduleCount = MeshNetworkManager.instance.subnetworkSwitchProxys.count
+        if self.space.switchesCount != MeshNetworkManager.instance.switchs.count {
+            self.space.scheheduleCount = MeshNetworkManager.instance.switchs.count
             saveData = true
         }
         
@@ -676,7 +682,9 @@ class SpaceViewController: WMPageController {
         }
         if space.spaceOperates.contains(.exit) {
             items.append(.init(icon: UIImage(named: "menu_unbind"), title: "unbind".localizedString, tapItemBack: {[weak self] _ in
-                self?.unbindSpace()
+                SRAlertView(title: "notification".localizedString, message: "space_unbind_message".localizedString, actions: [.cancelAction, SRAlertAction(title: "ok".localizedString, actionHandler: {[weak self] _ in
+                    self?.unbindSpace()
+                })]).show()
             }))
         }
         
@@ -794,9 +802,39 @@ class SpaceViewController: WMPageController {
                     XWHUDManager.showErrorTipHUD(NetworkApiError.unknown.localizedDescription)
                     return
                 }
+                
+                var spaceSave = false
+                // 更新owner数据
+                if let ownerData = JSON(response)["data"]["space"]["owner"].dictionaryObject {
+                    if let userId = ownerData["userId"] as? String, let userName = ownerData["username"] as? String {
+                        if self.space.owner?.uuid != userId {
+                            self.space.owner = .init(name: userName, uuid: userId)
+                            spaceSave = true
+                        }
+                    }
+                }
+                
+                // 更新editor数据
+                if let editorData = JSON(response)["data"]["space"]["editor"].dictionaryObject {
+                    if let userId = editorData["userId"] as? String, let userName = editorData["username"] as? String {
+                        if self.space.editor?.uuid != userId {
+                            self.space.editor = .init(name: userName, uuid: userId)
+                            spaceSave = true
+                        }
+                    }else {
+                        if self.space.editor != nil {
+                            self.space.editor = nil
+                            spaceSave = true
+                        }
+                    }
+                }
+                
                 // 邀请码
                 if self.space.shareCode != code {
                     self.space.shareCode = code
+                    spaceSave = true
+                }
+                if spaceSave {
                     self.space.save()
                 }
                 let vc = SharingSettingViewController(type: .space(site: self.site, space: self.space))
@@ -914,8 +952,8 @@ extension SpaceViewController: NavigationViewControllerDelegate {
     
     /// 点击返回item回调
     func navigationController(_ navigationController: NavigationViewController, backItemAction showViewController: UIViewController) {
-        
-        guard space.needUploadCloud else {
+      
+        guard space.needUploadCloud, navigationController.topViewController == self else {
             self.navigationController?.popViewController(animated: true)
             return
         }
@@ -925,6 +963,9 @@ extension SpaceViewController: NavigationViewControllerDelegate {
     /// pop手势begin回调，返回是否可以pop
     func navigationController(_ navigationController: NavigationViewController, gestureRecognizerShould gestureRecognizer: UIGestureRecognizer) -> Bool {
         // 无网络并且更新了数据
+        guard navigationController.topViewController == self else {
+            return true
+        }
         guard selectIndex == 0 else {
             return false
         }

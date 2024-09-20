@@ -387,6 +387,8 @@ class CloudSynchronizationManager {
             state = .successful
         }else if handles.contains(where: { $0.state.rawValue == CloudSynchronizationHandle.State.wait.rawValue }) { // 操作全部都在等待
             state = .wait
+        }else if handles.contains(where: { $0.state.rawValue == CloudSynchronizationHandle.State.cancel.rawValue }) { // 取消
+            state = .cancel
         }
         return state
     }
@@ -626,7 +628,9 @@ class CloudSynchronizationHandle: NSObject {
                     
                     
                 }
-                self.handleCallback?(self, self.state)
+                DispatchQueue.main.async {
+                    self.handleCallback?(self, self.state)
+                }
             }
         }
     }

@@ -19,6 +19,14 @@ class SyncDevicesTitleHeaderView: UITableViewHeaderFooterView {
         }
     }
     
+    var bottomMargin: CGFloat = SCRYFrom(8) {
+        didSet {
+            titleLabel.snp.updateConstraints { make in
+                make.bottom.equalTo(-bottomMargin)
+            }
+        }
+    }
+    
     
     override init(reuseIdentifier: String?) {
         super.init(reuseIdentifier: reuseIdentifier)
@@ -33,7 +41,7 @@ class SyncDevicesTitleHeaderView: UITableViewHeaderFooterView {
         addSubview(titleLabel)
         titleLabel.snp.makeConstraints { make in
             make.left.equalTo(titleLeftMargin)
-            make.bottom.equalTo(SCRYFrom(-8))
+            make.bottom.equalTo(-bottomMargin)
         }
     }
     

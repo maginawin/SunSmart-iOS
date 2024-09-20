@@ -20,14 +20,32 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         window = UIWindow(frame: UIScreen.main.bounds)
         
         
-//        let space = SiteData.loadAll()[0].spaces.last
+        
 //        let mainNavVc = NavigationViewController(rootViewController: GroupViewController(space: space!, group: space!.groups.first!)) //SitesViewController
-        let mainNavVc = NavigationViewController(rootViewController: SitesViewController())
+        if UserData.isTermsOfService { // 是否同意使用协议
+//            let site = SiteData.loadAll().last!
+//            let space = site.spaces.last!
+//
+//            let spaceVc = SpaceViewController(space: space)
+//            spaceVc.site = site
+//            
+//            let mainNavVc = NavigationViewController(rootViewController: spaceVc)
+//            let mainNavVc = NavigationViewController(rootViewController: FirmwareVersionHistoryController())
+            
+            let mainNavVc = NavigationViewController(rootViewController: SitesViewController())
+            window?.rootViewController = mainNavVc
+        }else {
+            let welcomeNavVc = NavigationViewController(rootViewController: WelcomeViewController())
+            window?.rootViewController = welcomeNavVc
+        }
+        
+//        let mainNavVc = NavigationViewController(rootViewController: WelcomeViewController())
+//        NavigationViewController(rootViewController: SitesViewController())
 //        let mainNavVc = NavigationViewController(rootViewController: DeviceAddViewController())
         
 //        let node = space?.meshManager?.meshNetwork?.nodes.first
         
-        window?.rootViewController = mainNavVc
+        
         window?.makeKeyAndVisible()
         
         SunSmartDataManager.shared.initDatabase()

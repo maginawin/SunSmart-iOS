@@ -67,10 +67,10 @@ class SpaceNewCreationProcessController: UIViewController {
             createOtherBtn.setTitle("create_schedule".localizedString, for: .normal)
         case .schedule:
             createMoreBtn.setTitle("create_more_schedules".localizedString, for: .normal)
-            createOtherBtn.setTitle("create_virtual_switch".localizedString, for: .normal)
+            createOtherBtn.setTitle("create_virtual_switchs".localizedString, for: .normal)
         case .switch:
-            createMoreBtn.setTitle("create_more_switch".localizedString, for: .normal)
-            createOtherBtn.setTitle("create_virtual_switch".localizedString, for: .normal)
+            createMoreBtn.setTitle("create_more_switchs".localizedString, for: .normal)
+            createOtherBtn.setTitle("Finish".localizedString, for: .normal)
         }
     }
     
@@ -97,7 +97,14 @@ class SpaceNewCreationProcessController: UIViewController {
             
             NotificationCenter.default.post(name: .init(spaceMenuIndexChangeNotificaitonName), object: 3)
         case .switch:
-            break
+            
+            guard MeshNetworkManager.instance.switchs.count < 16 else {
+                SRAlertView(title: "notification".localizedString, message: "switchs_overrun_message".localizedString, actions: [SRAlertAction(title: "GOT_IT".localizedString)]).show()
+                return
+            }
+            space.isConfiguring = true
+            let vc = DeviceSwitchViewController(space: self.space, switchData: nil)
+            present(NavigationViewController(rootViewController: vc), animated: true)
         }
         
     }
@@ -117,9 +124,22 @@ class SpaceNewCreationProcessController: UIViewController {
             UIViewController.getVisibleVc()?.present(NavigationViewController(rootViewController: vc), animated: true)
             NotificationCenter.default.post(name: .init(spaceMenuIndexChangeNotificaitonName), object: 3)
         case .schedule:
-            XWHUDManager.showTipHUD("create_virtual_switch_message".localizedString, isLineFeed: true)
+//            XWHUDManager.showTipHUD("create_virtual_switch_message".localizedString, isLineFeed: true)
+            
+            space.isConfiguring = true
+            self.dismiss(animated: false)
+            isNext = true
+            
+            guard MeshNetworkManager.instance.switchs.count < 16 else {
+                SRAlertView(title: "notification".localizedString, message: "switchs_overrun_message".localizedString, actions: [SRAlertAction(title: "GOT_IT".localizedString)]).show()
+                return
+            }
+            let vc = DeviceSwitchViewController(space: self.space, switchData: nil)
+            UIViewController.getVisibleVc()?.present(NavigationViewController(rootViewController: vc), animated: true)
+            NotificationCenter.default.post(name: .init(spaceMenuIndexChangeNotificaitonName), object: 0)
+            
         case .switch:
-            break
+            back()
         }
         updateUI()
         

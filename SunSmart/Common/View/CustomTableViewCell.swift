@@ -6,6 +6,7 @@
 //
 
 import UIKit
+import SnapKit
 
 enum CustomCellStyle {
     /// 样式标题-内容
@@ -347,6 +348,36 @@ class CustomCellModel {
         }
         self.showLine = showLine
         self.style = style
+    }
+    
+}
+
+extension UITableViewCell {
+    
+    func configureCell(isFirst: Bool, isLast: Bool) {
+        let cornerRadius: CGFloat = SCRYFrom(10)
+        var corners: CACornerMask = []
+        
+        // 设置顶部圆角
+        if isFirst {
+            corners.insert(.layerMinXMinYCorner)
+            corners.insert(.layerMaxXMinYCorner)
+        }
+        
+        // 设置底部圆角
+        if isLast {
+            corners.insert(.layerMinXMaxYCorner)
+            corners.insert(.layerMaxXMaxYCorner)
+        }
+        
+        // 设置圆角
+        self.backgroundColor = .clear
+        self.contentView.backgroundColor = .white
+        if isFirst || isLast {
+            self.contentView.layer.cornerRadius = cornerRadius
+            self.contentView.layer.maskedCorners = corners
+            self.contentView.layer.masksToBounds = true
+        }
     }
     
 }

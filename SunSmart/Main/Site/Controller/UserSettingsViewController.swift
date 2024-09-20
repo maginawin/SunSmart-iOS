@@ -86,8 +86,8 @@ extension UserSettingsViewController: UITableViewDataSource, UITableViewDelegate
     }
     
     func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
-        SRAlertView(title: "name".localizedString, messageColor: Red_Color, inputText: UserData.currentUserName, inputFieldStyle: .init(borderColor: RGB(220, 220, 220)), actions: [.cancelAction, SRAlertAction(title: "ok".localizedString, closeAlert: false)]) { _, valid in
-            if !valid {
+        SRAlertView(title: "name".localizedString, messageColor: Red_Color, inputText: UserData.currentUserName, inputFieldStyle: .init(borderColor: RGB(220, 220, 220)), actions: [.cancelAction, SRAlertAction(title: "ok".localizedString, closeAlert: false)]) { text, validRange in
+            if !validRange && !text.isEmpty {
                 return "text_length_exceeded".localizedString
             }
             return nil

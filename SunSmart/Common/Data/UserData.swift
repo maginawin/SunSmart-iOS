@@ -24,6 +24,9 @@ extension UserData {
 
     private static var regionKey = 1
     private static var userNameKey = 2
+    
+    private static let isTermsOfServiceKey = "isTermsOfService"
+    
     /// 当前用户id
     static let currentUserId = Keychain.getUUID()
     /// 是否重装APP
@@ -31,6 +34,17 @@ extension UserData {
         let lastVendorIdentifier = Keychain.getLastVendorIdentifier()
         return lastVendorIdentifier != UIDevice.current.identifierForVendor?.uuidString
     }
+    
+    /// 是否同意使用协议
+    static var isTermsOfService: Bool {
+        get {
+            return UserDefaults.standard.bool(forKey: isTermsOfServiceKey) 
+        }set {
+            UserDefaults.standard.set(newValue, forKey: isTermsOfServiceKey)
+            UserDefaults.standard.synchronize()
+        }
+    }
+    
 //    currentUserId != UIDevice.current.identifierForVendor?.uuidString
     
     /// 当前用户名称

@@ -131,20 +131,22 @@ class SharePermissionSelectionController: UIViewController {
                     Task {
                         // 区分加入site服务器分配的手机地址，还是卸载后的拉取site之前的手机地址
                         if let site = await SiteData.import(siteJsonData: siteData) {
-                            // 同步
-//                            if let provisionerData = JSON(response)["data"]["provisioner"].dictionaryObject {
-//                                site.setProvisioner(provisionerData: provisionerData)
-//                                // 更新地址数据
-////                                CloudSynchronizationManager.shared.addSynchronizationHandle(operation: .syncSite(site: site), level: .promptly)
-//                            }
+                            // 申请下来的地址
+                            if let addressData = JSON(response)["data"]["addrLists"].dictionaryObject {
+                                site.insetProvisioner(provisionerData: addressData)
+                                // 更新地址数据
+//                                CloudSynchronizationManager.shared.addSynchronizationHandle(operation: .syncSite(site: site), level: .promptly)
+                            }
                             site.save()
                         }
                     }
                 }
-                space.authorizationPassword = password
-                space.permission = permission
-                space.state = .normal
-                space.save()
+                let localSpace = SpaceData.load(siteId: space.siteId, spaceId: space.id).first ?? space
+                localSpace.authorizationPassword = password
+                localSpace.permission = permission
+                localSpace.state = .normal
+                localSpace.save()
+                
                 XWHUDManager.showSuccessTipHUD("successfully".localizedString + "!")
                 DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {[weak self] in
                     NotificationCenter.default.post(name: .init(SitesDataRefreshNotifiacationName), object: true)
@@ -208,17 +210,28 @@ class SharePermissionSelectionController: UIViewController {
             guard let self = self else { return }
             switch result {
             case .success(let response):
-                
-                if let siteData = JSON(response)["data"]["site"].dictionaryObject {
+//                没有site   切换一个与之前owner不重复的地址，并回收之前owner的手机地址
+//                已有site   使用之前的手机地址，并回收之前owner的手机地址
+                if var siteData = JSON(response)["data"]["site"].dictionaryObject {
+                    if let provisionerDict = JSON(response)["data"]["provisioner"].dictionaryObject {
+                        siteData.updateValue(provisionerDict, forKey: "provisioner")
+                    }
+                    if let exclusions = JSON(response)["data"]["exclusions"].arrayObject {
+                        siteData.updateValue(exclusions, forKey: "exclusions")
+                    }
                     Task {
                         var localSite: SiteData?
+                        var changeAddress = true
                         if let siteId = siteData["uuid"] as? String {
                             localSite = SiteData.load(siteId: siteId)
+                            if localSite != nil && localSite?.localAddress != nil && localSite?.state == .normal {
+                                changeAddress = false
+                            }
                         }
                         
-                        // 区分加入site服务器分配的手机地址，还是卸载后的拉取site之前的手机地址
-                        if let site = await SiteData.import(siteJsonData: siteData) {
+                        if let site = await SiteData.import(siteJsonData: siteData, changeAddress: changeAddress) {
                             site.state = .normal
+                            site.permission = .owner
                             // 判断是否存在这个site，如果有则主动回收自己之前拥有的地址
                             if let localSite = localSite, localSite.permission != .owner {
                                 var recycleData = localSite.getRecycleAddressData(unbindSpaces: localSite.spaces)
@@ -231,17 +244,19 @@ class SharePermissionSelectionController: UIViewController {
                                     site.insetExclusionAddresses(list: exclusionAddresses)
                                     recycleData.exclusionAddresses = nil
                                 }
-                                // 立即将合并废弃地址数据同步到云端
-                                CloudSynchronizationManager.shared.addSynchronizationHandle(operation: .syncSite(site: site, syncSpaces: []), level: .promptly)
-                                
                                 // 回收未使用的地址
                                 if !recycleData.isEmpty {
                                     self.recycleAddressReqeust(site: site, recycleData: recycleData)
                                 }
+                                // 立即将合并废弃地址/修改的手机地址数据同步到云端
+                                CloudSynchronizationManager.shared.addSynchronizationHandle(operation: .syncSite(site: site, syncSpaces: []), level: .promptly)
                                 return
                             }else {
                                 site.save()
+                                // 立即将合并废弃地址/修改的手机地址数据同步到云端
+                                CloudSynchronizationManager.shared.addSynchronizationHandle(operation: .syncSite(site: site, syncSpaces: []), level: .promptly)
                             }
+                            
                         }
                     }
                 }
@@ -429,6 +444,16 @@ extension SharePermissionSelectionController: UITableViewDataSource, UITableView
         return cell
     }
     
+    func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
+        let option = options[indexPath.row]
+        if case .spaces = option {
+            if case .spaceList(let data, _) = self.type {
+                let vc = ShareSpaceListViewController(spaces: data.spaces)
+                navigationController?.pushViewController(vc, animated: true)
+            }
+        }
+    }
+    
     func scrollViewWillBeginDragging(_ scrollView: UIScrollView) {
         view.endEditing(true)
     }
@@ -451,7 +476,7 @@ extension SharePermissionSelectionController {
                         [.init(permission: .visitor, requirePwd: space.vistorPasswordEnable), .init(permission: .editor, requirePwd: true)])
             case .spaceList(let data, let shareId):
                 let ownerName = data.spaces.first(where: { $0.owner != nil })?.owner?.name
-                return (shareId, [.title(data.name), .invitationCode(code: shareId), .owner(name: ownerName ?? "")],
+                return (shareId, [.title(data.name), .invitationCode(code: shareId), .owner(name: ownerName ?? ""), .spaces],
                         [.init(permission: .visitor, requirePwd: false), .init(permission: .editor, requirePwd: true)])
             }
         }
@@ -481,7 +506,7 @@ extension SharePermissionSelectionController {
                 
                 let spaceJson = JSON(spaceDict)
                 
-                let space = SpaceData(name: spaceJson["spaceName"].stringValue, id: spaceId, siteId: siteId, imageId: spaceJson["imageId"].intValue, create: 0, isFavourite: false, permission: .visitor, sourceType: .share, meshUUID: siteId, meshNetworkId: spaceId)
+                let space = SpaceData(name: spaceJson["spaceName"].stringValue, id: spaceId, siteId: siteId, imageId: spaceJson["imageId"].intValue, create: 0, isFavourite: false, permission: .visitor, sourceType: .share, meshUUID: siteId, meshNetworkId: "")
                 if let userId = owner["userId"] as? String, let userName = owner["username"] as? String {
                     space.owner = .init(name: userName, uuid: userId)
                 }

@@ -215,7 +215,9 @@ class MainMenuView: UIView {
         }
         
         logoImageView = UIImageView(image: UIImage(named: "launch_logo"))
-        logoImageView.backgroundColor = Background_Color
+//        logoImageView.backgroundColor = Background_Color
+        logoImageView.layer.cornerRadius = SCRYFrom(12)
+        logoImageView.layer.masksToBounds = true
         contentView.addSubview(logoImageView)
         logoImageView.snp.makeConstraints { make in
             make.centerX.equalToSuperview()

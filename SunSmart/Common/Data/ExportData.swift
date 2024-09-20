@@ -36,7 +36,7 @@ extension SiteData {
                 siteJsonData.updateValue(self.imageId, forKey: "imageId")
                 siteJsonData.updateValue(self.type.rawValue, forKey: "type")
                 siteJsonData.updateValue(self.sourceType.rawValue, forKey: "source")
-                siteJsonData.updateValue(self.isFavourite, forKey: "favourite")
+//                siteJsonData.updateValue(self.isFavourite, forKey: "favourite")
                 siteJsonData.updateValue(self.create, forKey: "createTimestamp")
                 siteJsonData.updateValue(self.lastUpdate, forKey: "updateTimestamp")
                 siteJsonData.updateValue(meshNetwork.currentIVIndex, forKey: "ivIndex")
@@ -152,12 +152,13 @@ extension SpaceData {
             spaceJsonData.updateValue(self.name, forKey: "spaceName")
             spaceJsonData.updateValue(self.imageId, forKey: "imageId")
             spaceJsonData.updateValue(self.sourceType.rawValue, forKey: "source")
-            spaceJsonData.updateValue(self.isFavourite, forKey: "favourite")
+//            spaceJsonData.updateValue(self.isFavourite, forKey: "favourite")
             spaceJsonData.updateValue(Int64(self.create) , forKey: "createTimestamp")
             spaceJsonData.updateValue(Int64(self.lastUpdate) , forKey: "updateTimestamp")
             
-            let networkKey = meshNetworkManager.currentNetworkKey
-            let appKey = meshNetworkManager.currentApplicationKey
+            
+            let networkKey = meshNetworkManager.meshNetwork?.networkKeys.first(where: { $0.networkId.hex == self.meshNetworkId })
+            let appKey = meshNetworkManager.meshNetwork?.applicationKeys.first(where: { $0.boundNetworkKeyIndex == networkKey?.index })
             
             if let data = try? jsonEncoder.encode(networkKey), let networkKeyDict = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
                 spaceJsonData.updateValue(networkKeyDict, forKey: "netKey")
@@ -225,6 +226,13 @@ extension SpaceData {
                         nodeDict.updateValue(enOceanMacAddress, forKey: "enOceanMacAddress")
                         nodeDict.updateValue(node.enOceanKeySceneNumbers.map({ $0.hex }), forKey: "enOceanKeyScenes")
                     }
+                    if let firmwareID = node.firmwareID {
+                        nodeDict.updateValue(firmwareID.hex, forKey: "firmwareID")
+                    }
+                    if let distributionFirmwareID = node.distributionFirmwareID {
+                        nodeDict.updateValue(distributionFirmwareID.hex, forKey: "distributionFirmwareID")
+                    }
+                    
                     if let data = try? jsonEncoder.encode(node.sceneExecuteDatas), let scenesDatas = try? JSONSerialization.jsonObject(with: data) as? [[String: Any]] {
                         nodeDict.updateValue(scenesDatas, forKey: "scenesDatas")
                     }
@@ -269,6 +277,7 @@ extension SpaceData {
             meshNetworkManager.groups.forEach { group in
                 if let data = try? jsonEncoder.encode(group), var groupDict = try? JSONSerialization.jsonObject(with: data) as? [String : Any] {
                     groupDict.updateValue(group.info.imageId, forKey: "imageId")
+                    groupDict.updateValue(group.isVirtual, forKey: "isVirtual")
                     if let imageText = group.info.imageText {
                         groupDict.updateValue(imageText, forKey: "imageText")
                     }
@@ -299,35 +308,50 @@ extension SpaceData {
                     if let scenesDatas = try? jsonEncoder.encode(group.info.sceneExecuteDatas), let scenesDicts = try? JSONSerialization.jsonObject(with: scenesDatas) as? [[String : Any]] {
                         groupDict.updateValue(scenesDicts, forKey: "scenesDatas")
                     }
-                    
-                    let switcheDicts = group.info.switchs.map({ switchData in
-                        var dict = [
-                            "id" : switchData.id,
-                            "name" : switchData.name,
-                            "enabled" : switchData.enabled,
-                            "panelType" : switchData.panelType.rawValue,
-                        ]
-                        if let sceneA = switchData.sceneANumber {
-                            dict.updateValue(sceneA.hex, forKey: "sceneA")
-                        }
-                        if let sceneB = switchData.sceneBNumber {
-                            dict.updateValue(sceneB.hex, forKey: "sceneB")
-                        }
-                        if let macAddress = switchData.enOceanMacAddress {
-                            dict.updateValue(macAddress, forKey: "enOceanMacAddress")
-                        }
-                        return dict
-                    })
-                    groupDict.updateValue(switcheDicts, forKey: "switches")
                     groupDicts.append(groupDict)
                 }
             }
             
+            // 动能开关
+            let switcheDicts = meshNetworkManager.switchs.map { switchData in
+                var dict = [
+                    "id" : switchData.id,
+                    "name" : switchData.name,
+                    "enabled" : switchData.enabled,
+                    "panelType" : switchData.panelType.rawValue,
+                ]
+                if let sceneA = switchData.sceneANumber {
+                    dict.updateValue(sceneA.hex, forKey: "sceneA")
+                }
+                if let sceneB = switchData.sceneBNumber {
+                    dict.updateValue(sceneB.hex, forKey: "sceneB")
+                }
+                if let proxyNodeAddress = switchData.proxyNodeAddress {
+                    dict.updateValue(proxyNodeAddress.hex, forKey: "proxyNodeAddress")
+                }
+                if let linkGroupAddress = switchData.linkGroupAddress {
+                    dict.updateValue(linkGroupAddress.hex, forKey: "linkGroupAddress")
+                }
+                let bindGroupAddresses = switchData.bindGroupAddresses.map({ $0.hex })
+                dict.updateValue(bindGroupAddresses, forKey: "bindGroupAddresses")
+                
+                let unbindGroupAddresses = switchData.unbindGroupAddresses.map({ $0.hex })
+                dict.updateValue(unbindGroupAddresses, forKey: "unbindGroupAddresses")
+                
+                if let enOceanMacAddress = switchData.enOceanMacAddress {
+                    dict.updateValue(enOceanMacAddress, forKey: "enOceanMacAddress")
+                }
+                if let enOceanSecurityKey = switchData.enOceanSecurityKey {
+                    dict.updateValue(enOceanSecurityKey, forKey: "enOceanSecurityKey")
+                }
+                
+                return dict
+            }
+
             // 场景
             meshNetworkManager.scenes.forEach { scene in
                 sceneDicts.append(["number": scene.number.hex, "name": scene.name, "imageId": scene.info.imageId])
             }
-            
             
             // 日程
             if let data = try? jsonEncoder.encode(meshNetworkManager.schedules), let schedules = try? JSONSerialization.jsonObject(with: data) as? [[String : Any]] {
@@ -339,6 +363,7 @@ extension SpaceData {
             
             spaceJsonData.updateValue(nodeDicts, forKey: "nodes")
             spaceJsonData.updateValue(groupDicts, forKey: "groups")
+            spaceJsonData.updateValue(switcheDicts, forKey: "switches")
             spaceJsonData.updateValue(sceneDicts, forKey: "scenes")
             spaceJsonData.updateValue(scheheduleDicts, forKey: "schedules")
             

@@ -76,10 +76,7 @@ class GroupViewController: UIViewController {
         
         
         
-        navigationItem.rightBarButtonItems = [
-            UIBarButtonItem(image: UIImage(named: "more_vertical")?.withRenderingMode(.alwaysOriginal), style: .done, target: self, action: #selector(moreClick)),
-            UIBarButtonItem(customView: testBtn)
-        ]
+        navigationItem.rightBarButtonItem = UIBarButtonItem(image: UIImage(named: "more_vertical")?.withRenderingMode(.alwaysOriginal), style: .done, target: self, action: #selector(moreClick))
         
         setupUI()
         bindSliderAciton()

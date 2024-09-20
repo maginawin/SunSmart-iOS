@@ -64,11 +64,24 @@ class SyncDevicesViewController: UIViewController {
         setupUI()
         
         setupDataSource()
+        
 //        test()
         if syncState == .inSync {
             startSync()
         }
         updateSyncStateUI()
+    }
+    
+    override func viewDidAppear(_ animated: Bool) {
+        super.viewDidAppear(animated)
+        if backActionCallback != nil {
+            navigationController?.interactivePopGestureRecognizer?.isEnabled = false
+        }
+    }
+    
+    override func viewWillDisappear(_ animated: Bool) {
+        super.viewWillDisappear(animated)
+        navigationController?.interactivePopGestureRecognizer?.isEnabled = true
     }
     
     /// 设置数据源
@@ -235,12 +248,66 @@ class SyncDevicesViewController: UIViewController {
             }
             syncScheduleGroupModels = syncScheduleGroupModels.sorted(by: { $0.address < $1.address })
             configurationSection.groups.append(contentsOf: syncScheduleGroupModels)
+            
+        case .enOceanSwitch(let switchData, let deleteSwitch):
+            guard let linkGroup = switchData.linkGroup else {
+                break
+            }
+            let data = switchData.getNeedSyncDatas(deleteSwitch: deleteSwitch)
+            // 删除动能开关
+            if let proxyNode = data.deleteProxy {
+                let deviceModel = SyncDevicesModel(name: proxyNode.name ?? "", address: proxyNode.primaryUnicastAddress)
+                deviceModel.operationType = .delete(node: proxyNode, type: .enOceanProxy(switchData: switchData))
+                
+                let proxyModel = SyncDevicesSwitchProxyModel(name: "enocean_proxy".localizedString, deviceModel: deviceModel)
+                removeSection.switchProxy = proxyModel
+            }
+            // 同步动能开关
+            if let syncNode = data.syncProxy {
+                
+                let deviceModel = SyncDevicesModel(name: syncNode.name ?? "", address: syncNode.primaryUnicastAddress)
+                deviceModel.operationType = .configuration(node: syncNode, type: .enOceanProxy(switchData: switchData))
+                
+                let proxyModel = SyncDevicesSwitchProxyModel(name: "enocean_proxy".localizedString, deviceModel: deviceModel)
+                configurationSection.switchProxy = proxyModel
+            }
+            
+            // 需解绑动能开关的组
+            var deleteSwitchGroupModels = data.deleteGroups.map { (group, nodes) in
+                let deviceModels = nodes.map({
+                    let model = SyncDevicesModel(name: $0.name ?? "", address: $0.primaryUnicastAddress)
+                    model.operationType = .delete(node: $0, type: .enOceanSwitch(switchData: switchData))
+                    return model
+                })
+                
+                let groupModel = SyncDevicesGroupModel(groupName: group.name, groupAddress: group.address.address, deviceModels: deviceModels)
+                deviceModels.forEach({ $0.parentGroupModel = groupModel })
+                return groupModel
+            }
+            deleteSwitchGroupModels = deleteSwitchGroupModels.sorted(by: { $0.address < $1.address })
+            removeSection.groups.append(contentsOf: deleteSwitchGroupModels)
+            
+            // 需订阅开关的组
+            var syncSwitchGroupModels = data.syncGroups.map { (group, nodes) in
+                
+                let deviceModels = nodes.map({
+                    let model = SyncDevicesModel(name: $0.name ?? "", address: $0.primaryUnicastAddress)
+                    model.operationType = .configuration(node: $0, type: .enOceanSwitch(switchData: switchData))
+                    return model
+                })
+                let groupModel = SyncDevicesGroupModel(groupName: group.name, groupAddress: group.address.address, deviceModels: deviceModels)
+                deviceModels.forEach({ $0.parentGroupModel = groupModel })
+                return groupModel
+            }
+            syncSwitchGroupModels = syncSwitchGroupModels.sorted(by: { $0.address < $1.address })
+            configurationSection.groups.append(contentsOf: syncSwitchGroupModels)
+            
         }
     
-        if removeSection.groups.count > 0 || removeSection.devices.count > 0 {
+        if removeSection.groups.count > 0 || removeSection.devices.count > 0 || removeSection.switchProxy != nil {
             sections.append(removeSection)
         }
-        if configurationSection.groups.count > 0 || configurationSection.devices.count > 0 {
+        if configurationSection.groups.count > 0 || configurationSection.devices.count > 0 || configurationSection.switchProxy != nil {
             sections.append(configurationSection)
         }
         for (index, section) in sections.enumerated() {
@@ -275,10 +342,17 @@ class SyncDevicesViewController: UIViewController {
         let data = node.getNeedSyncGroupData(group: group)
         var nodeDeleteScenes = data.deleteScenes
         var nodeSyncScenes = data.syncScenes
+        
         var nodeDeleteSchedules = data.deleteSchedules
         var nodeSyncSchedules = data.syncSchedules
+        
         let syncProfiles = data.syncProfile
-        let deleteSwitch = data.deleteSwitch
+        
+        var nodeDeleteSwitchs = data.deleteSwitchs
+        var nodeSyncSwitchs = data.syncSwitchs
+        
+        let deleteSwitchProxy = data.deleteSwitchProxy
+        var syncSwitchProxy = data.syncSwitchProxy
         
         /// 删除操作
         var deleteSteps: [SyncDeviceStepModel] = []
@@ -289,9 +363,12 @@ class SyncDevicesViewController: UIViewController {
         if exitGroup {
             nodeDeleteScenes = node.scenes.filter({ scene in group.info.sceneExecuteDatas.contains(where: { $0.sceneNumber == scene.number }) })
             nodeDeleteSchedules = group.info.bindSchedules.filter({ schedule in node.schedulerActions.contains(where: { $0.key == schedule.id }) })
+            nodeDeleteSwitchs = group.info.switchs.filter({ switchData in switchData.linkGroup != nil && (node.enOceanMacAddress == switchData.enOceanMacAddress || node.getEnOceanUnSubscriptionMessageHandles(group: switchData.linkGroup!).count > 0) })
             
             nodeSyncScenes.removeAll()
             nodeSyncSchedules.removeAll()
+            nodeSyncSwitchs.removeAll()
+            syncSwitchProxy = nil
 //            syncProfiles.removeAll()
         }
         
@@ -310,6 +387,24 @@ class SyncDevicesViewController: UIViewController {
         if deleteSceneTasks.count > 0 {
             let step = SyncDeviceStepModel(type: "remove_scene".localizedString, state: .none, tasks: deleteSceneTasks)
             deleteSceneTasks.forEach({ $0.parentStepModel = step })
+            deleteSteps.append(step)
+        }
+        
+        let deleteSwitchTasks = nodeDeleteSwitchs.map({
+            return SyncDeviceStepTaskModel(name: $0.name, operationType: .delete(node: node, type: .enOceanSwitch(switchData: $0)))
+        })
+        if deleteSwitchTasks.count > 0 {
+            let step = SyncDeviceStepModel(type: "remove_switch".localizedString, state: .none, tasks: deleteSwitchTasks)
+            deleteSwitchTasks.forEach({ $0.parentStepModel = step })
+            deleteSteps.append(step)
+        }
+        
+        if let switchData = deleteSwitchProxy {
+            
+            let deleteSwitchProxyTask = SyncDeviceStepTaskModel(name: switchData.name, operationType: .delete(node: node, type: .enOceanProxy(switchData: switchData)))
+            
+            let step = SyncDeviceStepModel(type: "remove_switch_proxy".localizedString, state: .none, tasks: [deleteSwitchProxyTask])
+            deleteSwitchProxyTask.parentStepModel = step
             deleteSteps.append(step)
         }
         
@@ -332,6 +427,22 @@ class SyncDevicesViewController: UIViewController {
             configturationSteps.append(step)
         }
         
+        if let switchData = syncSwitchProxy {
+            let syncSwitchProxyTask = SyncDeviceStepTaskModel(name: switchData.name, operationType: .configuration(node: node, type: .enOceanSwitch(switchData: switchData)))
+            let step = SyncDeviceStepModel(type: "enocean_proxy".localizedString, state: .none, tasks: [syncSwitchProxyTask])
+            syncSwitchProxyTask.parentStepModel = step
+            configturationSteps.append(step)
+        }
+        
+        let syncSwitchTasks = nodeSyncSwitchs.map({
+            return SyncDeviceStepTaskModel(name: $0.name, operationType: .configuration(node: node, type: .enOceanSwitch(switchData: $0)))
+        })
+        if syncSwitchTasks.count > 0 {
+            let step = SyncDeviceStepModel(type: "switch".localizedString, state: .none, tasks: syncSwitchTasks)
+            syncSwitchTasks.forEach({ $0.parentStepModel = step })
+            configturationSteps.append(step)
+        }
+        
         if exitGroup { // 退出组
             let deleteProfileTasks = syncProfiles.map({
                 return SyncDeviceStepTaskModel(name: $0.title, operationType: .delete(node: node, type: .profile(type: $0)))
@@ -342,14 +453,16 @@ class SyncDevicesViewController: UIViewController {
                 deleteSteps.append(step)
             }
             // 删除绑定按键
-            if deleteSwitch {
-                let removeSwitchTask = SyncDeviceStepTaskModel(name: "remove_from_switch".localizedString, operationType: .delete(node: node, type: .enOceanSwitch))
-                let step = SyncDeviceStepModel(type: "remove_kinetic_switch_proxy".localizedString, state: .none, tasks: [removeSwitchTask])
-                removeSwitchTask.parentStepModel = step
-                // 需要依赖之前操作完成才能退出组
-                step.relevanceStepModels = deleteSteps
-                deleteSteps.append(step)
-            }
+//            if deleteSwitch {
+//                let removeSwitchTask = SyncDeviceStepTaskModel(name: "remove_from_switch".localizedString, operationType: .delete(node: node, type: .enOceanSwitch))
+//                let step = SyncDeviceStepModel(type: "remove_kinetic_switch_proxy".localizedString, state: .none, tasks: [removeSwitchTask])
+//                removeSwitchTask.parentStepModel = step
+//                // 需要依赖之前操作完成才能退出组
+//                step.relevanceStepModels = deleteSteps
+//                deleteSteps.append(step)
+//            }
+            
+            
             
         }else {
             let syncProfileTasks = syncProfiles.map({
@@ -865,6 +978,25 @@ extension SyncDevicesViewController: UITableViewDataSource, UITableViewDelegate 
             cell.groupModel = cellModel as? SyncDevicesGroupModel
             cell.delegate = self
             return cell
+        case is SyncDevicesSwitchProxyModel:
+            let cell = tableView.dequeueReusableCell(withIdentifier: "groupCell", for: indexPath) as! SyncDevicesGroupViewCell
+            cell.arrowImageView.isHidden = true
+            cell.stateImageView.isHidden = true
+            cell.selectBtn.isHidden = true
+            if cellModel.isFineshed {
+                cell.iconImageBtn.snp.updateConstraints { make in
+                    make.left.equalTo(SCRXFrom(48))
+                }
+            }else {
+                cell.iconImageBtn.snp.updateConstraints { make in
+                    make.left.equalTo(SCRXFrom(16))
+                }
+            }
+            let proxyModel = cellModel as? SyncDevicesSwitchProxyModel
+            cell.nameLabel.text = proxyModel?.name
+            cell.iconImageBtn.setImage(UIImage(named: proxyModel?.imageName ?? ""), for: .normal)
+            return cell
+            
         case is SyncDevicesModel:
             let cell = tableView.dequeueReusableCell(withIdentifier: "deviceCell", for: indexPath) as! SyncDeviceViewCell
             cell.model = cellModel as? SyncDevicesModel
@@ -1062,6 +1194,8 @@ extension SyncDevicesViewController {
         case scene(_ scene: Scene)
         /// 日程
         case schedule(_ schdule: Schedule)
+        /// 动能开关 deleteSwitch: 是否删除动能开关
+        case enOceanSwitch(_ switchData: DeviceSwitchData, deleteSwitch: Bool = false)
     }
     
     /// 同步状态

@@ -90,6 +90,13 @@ extension SpaceMoreViewController: UICollectionViewDataSource, UICollectionViewD
     }
     
     func collectionView(_ collectionView: UICollectionView, didSelectItemAt indexPath: IndexPath) {
+        switch options[indexPath.item] {
+        case .ble:
+            let vc = BleFirmwareUpdateViewController()
+            present(NavigationViewController(rootViewController: vc), animated: true)
+        case .mesh:
+            break
+        }
         
     }
     

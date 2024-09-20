@@ -123,7 +123,7 @@ class BatchImportResultView: UIView {
             make.centerY.equalTo(titleLabel)
         }
         
-        closeBtn = UIButton(title: "close".localizedString, titleSize: 15, titleWeight: .light, titleColor: Bar_Color, target: self, action: #selector(close))
+        closeBtn = UIButton(title: "CLOSE".localizedString, titleSize: 15, titleWeight: .light, titleColor: Bar_Color, target: self, action: #selector(close))
         contentView.addSubview(closeBtn)
         closeBtn.snp.makeConstraints { make in
             make.left.right.bottom.equalToSuperview()
@@ -178,6 +178,7 @@ extension BatchImportResultView: UITableViewDataSource, UITableViewDelegate {
         cell.cellStyle = .none
         cell.titleLabel.font = UIFont.systemFont(ofSize: SCRYFrom(14), weight: .light)
         cell.contentLabel.font = UIFont.systemFont(ofSize: SCRYFrom(14), weight: .light)
+        cell.contentLabel.textColor = SubText_Color
         if indexPath.section == 0 {
             let item = totalItems[indexPath.row]
             cell.titleLabel.text = item.data.title
@@ -198,6 +199,7 @@ extension BatchImportResultView: UITableViewDataSource, UITableViewDelegate {
         }
         let headerView = tableView.dequeueReusableHeaderFooterView(withIdentifier: "header") as! SyncDevicesTitleHeaderView
         headerView.titleLabel.text = "detailed_informations".localizedString
+        headerView.titleLabel.textColor = Title_Color
         headerView.titleLeftMargin = SCRXFrom(16)
         headerView.contentView.backgroundColor = .clear
         return headerView
