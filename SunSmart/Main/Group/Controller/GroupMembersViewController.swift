@@ -292,7 +292,8 @@ class GroupMembersViewController: UIViewController {
         space.isConfiguring = true
 //        let vc = SpaceNewCreationProcessController(space: space, showCreateScene: true)
         let vc = SceneAddViewController(space: space)
-        UIViewController.getVisibleVc()?.present(NavigationViewController(rootViewController: vc), animated: true)
+//        UIViewController.getVisibleVc()?.presentingViewController?.present(NavigationViewController(rootViewController: vc), animated: true)
+        NotificationCenter.default.post(name: .init(spaceModalViewControllerNotificaitonName), object: NavigationViewController(rootViewController: vc))
         
         NotificationCenter.default.post(name: .init(spaceMenuIndexChangeNotificaitonName), object: 2)
     }
@@ -350,7 +351,7 @@ class GroupMembersViewController: UIViewController {
                 }
 //                item.selectImageView.image = selectNodes.contains(node) ? UIImage(named: "device_select") : UIImage(named: "device_select_un")
                 if node.state && node.isKeybindComplete && node.needSync {
-                    item.iconImageView.image = UIImage(named: "device_light_unsync")
+                    item.iconImageView.image = UIImage(named: node.unsyncIconName)
                 }
             }
             updateFunctionView()
@@ -472,7 +473,7 @@ extension GroupMembersViewController: UICollectionViewDataSource, UICollectionVi
 //        cell.selectImageView.image = selectNodes.contains(node) ? UIImage(named: "device_select") : UIImage(named: "device_select_un")
         
         if node.state && node.isKeybindComplete && node.needSync {
-            cell.iconImageView.image = UIImage(named: "device_light_unsync")
+            cell.iconImageView.image = UIImage(named: node.unsyncIconName)
         }
         cell.editClickCallback = {[weak self] node in
             guard let self = self else { return }

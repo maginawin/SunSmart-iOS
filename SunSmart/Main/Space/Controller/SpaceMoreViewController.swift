@@ -90,6 +90,10 @@ extension SpaceMoreViewController: UICollectionViewDataSource, UICollectionViewD
     }
     
     func collectionView(_ collectionView: UICollectionView, didSelectItemAt indexPath: IndexPath) {
+        guard self.space.deviceOperates.contains(.edit) else {
+            XWHUDManager.showTipHUD("no_permission".localizedString + "！")
+            return
+        }
         switch options[indexPath.item] {
         case .ble:
             let vc = BleFirmwareUpdateViewController()

@@ -73,7 +73,7 @@ extension SiteData {
                     provisionerJson.updateValue(allocatedGroupRange, forKey: "allocatedGroupRange")
                     
                     let allocatedSceneRange = provisioner.allocatedSceneRange.map({
-                        ["firstScene": $0.firstScene.hex, "lastScene": $0.lastScene.hex]
+                        ["lowAddress": $0.firstScene.hex, "highAddress": $0.lastScene.hex]
                     })
                     provisionerJson.updateValue(allocatedSceneRange, forKey: "allocatedSceneRange")
                     
@@ -131,7 +131,7 @@ extension SpaceData {
                 continuation.resume(returning: spaceJsonData)
                 return
             }
-            
+            meshNetworkManager.switchs = DeviceSwitchData.load(meshUUID: meshUUID, meshNetworkId: self.meshNetworkId)
             // SigMesh + SunSmart扩展数据
             meshNetworkManager.schedules = Schedule.load(meshUUID: meshUUID, meshNetworkId: self.meshNetworkId)
             meshNetworkManager.groups.forEach({ group in
@@ -232,23 +232,29 @@ extension SpaceData {
                     if let distributionFirmwareID = node.distributionFirmwareID {
                         nodeDict.updateValue(distributionFirmwareID.hex, forKey: "distributionFirmwareID")
                     }
+                    if let compositionHash = node.compositionHash {
+                        nodeDict.updateValue(compositionHash, forKey: "compositionHash")
+                    }
+                    if let defaultTransitionTime = node.defaultTransitionTime {
+                        nodeDict.updateValue(defaultTransitionTime.rawValue, forKey: "defaultTransitionTime")
+                    }
                     
                     if let data = try? jsonEncoder.encode(node.sceneExecuteDatas), let scenesDatas = try? JSONSerialization.jsonObject(with: data) as? [[String: Any]] {
                         nodeDict.updateValue(scenesDatas, forKey: "scenesDatas")
                     }
-                    //                let scenesDatas = node.sceneExecuteDatas.map({ data in
-                    //                    [
-                    //                        "sceneNumber" : data.sceneNumber,
-                    //                        "isOn" : data.isOn,
-                    //                        "lightness" : data.lightness,
-                    //                        "cct" : data.cct,
-                    //                        "hue" : data.hue,
-                    //                        "saturation" : data.saturation,
-                    //                        "state" : data.state
-                    //                    ]
-                    //                })
-                    //                nodeDict.updateValue(scenesDatas, forKey: "scenesDatas")
-                    // .filter({ $0.value.isValid })
+//                                    let scenesDatas = node.sceneExecuteDatas.map({ data in
+//                                        [
+//                                            "sceneNumber" : data.sceneNumber,
+//                                            "isOn" : data.isOn,
+//                                            "lightness" : data.lightness,
+//                                            "cct" : data.cct,
+//                                            "hue" : data.hue,
+//                                            "saturation" : data.saturation,
+//                                            "state" : data.state
+//                                        ]
+//                                    })
+//                                    nodeDict.updateValue(scenesDatas, forKey: "scenesDatas")
+//                     .filter({ $0.value.isValid })
                     let scheduleDatas = node.schedulerActions.map { (key: Int, value: SchedulerRegistryEntry) in
                         [
                             "id" : key,
@@ -258,9 +264,9 @@ extension SpaceData {
                             "hour" : value.hour.value,
                             "minute" : value.minute.value,
                             "second" : value.second.value,
-                            "dayOfWeek" : value.dayOfWeek,
+                            "dayOfWeek" : value.dayOfWeek.value,
                             "action" : value.action.rawValue,
-                            "transitionTime" : value.transitionTime.interval ?? 0,
+                            "transitionTime" : Int(value.transitionTime.interval ?? 0),
                             "sceneNumber" : value.sceneNumber
                         ]
                     }
@@ -312,6 +318,14 @@ extension SpaceData {
                 }
             }
             
+            // 虚拟组
+            meshNetworkManager.virtualGroups.forEach { group in
+                if let data = try? jsonEncoder.encode(group), var groupDict = try? JSONSerialization.jsonObject(with: data) as? [String : Any] {
+                    groupDict.updateValue(group.isVirtual, forKey: "isVirtual")
+                    groupDicts.append(groupDict)
+                }
+            }
+            
             // 动能开关
             let switcheDicts = meshNetworkManager.switchs.map { switchData in
                 var dict = [
@@ -329,6 +343,10 @@ extension SpaceData {
                 if let proxyNodeAddress = switchData.proxyNodeAddress {
                     dict.updateValue(proxyNodeAddress.hex, forKey: "proxyNodeAddress")
                 }
+                if let deleteProxyNodeAddress = switchData.deleteProxyNodeAddress {
+                    dict.updateValue(deleteProxyNodeAddress.hex, forKey: "deleteProxyNodeAddress")
+                }
+                
                 if let linkGroupAddress = switchData.linkGroupAddress {
                     dict.updateValue(linkGroupAddress.hex, forKey: "linkGroupAddress")
                 }
@@ -366,7 +384,6 @@ extension SpaceData {
             spaceJsonData.updateValue(switcheDicts, forKey: "switches")
             spaceJsonData.updateValue(sceneDicts, forKey: "scenes")
             spaceJsonData.updateValue(scheheduleDicts, forKey: "schedules")
-            
             continuation.resume(returning: spaceJsonData)
         }
     }

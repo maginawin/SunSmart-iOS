@@ -32,7 +32,7 @@ extension UIViewController {
 //                    return topVc?.presentedViewController
 //                }else {
 //                    if let childVc = topVc?.children.first {
-                        if let presentingVc = topVc?.presentingViewController {
+                        if let presentingVc = topVc?.presentedViewController {
                             if presentingVc.isKind(of: UINavigationController.self) {
                                 return (presentingVc as! UINavigationController).topViewController
                             }else {

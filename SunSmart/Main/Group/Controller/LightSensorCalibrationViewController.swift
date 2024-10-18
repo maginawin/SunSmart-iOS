@@ -70,7 +70,7 @@ class LightSensorCalibrationViewController: UIViewController {
             selectSensor = publishSensor
         }
         sensorSelectView.daylightSensors = group.ambientLightSensorNodes
-    
+        
         // 组关灯
         MeshAPI.setGroupOnOffState(address: self.group.address.address, isOn: false)
         
@@ -193,7 +193,7 @@ class LightSensorCalibrationViewController: UIViewController {
                     if result {
                         self.selectSensor = sensor
                         // 切换选中的传感器，更新缓存
-                        self.group.info.ambientLightSensorNode = sensor
+                        self.group.info.ambientLightSensorNodeAddress = sensor.primaryUnicastAddress
                         self.calibrationView.measuredLightValue = nil
                         self.updateGroupLightSensor()
                         self.updateCalibrationState()
@@ -400,7 +400,7 @@ class LightSensorCalibrationViewController: UIViewController {
             if let handle = resultHandles.first, handle.isSuccessful {
                 
                 // 启用传感器，更新缓存
-                self.group.info.ambientLightSensorNode = sensor
+                self.group.info.ambientLightSensorNodeAddress = sensor.primaryUnicastAddress
                 self.updateGroupLightSensor()
                 
                 result?(true)
@@ -450,7 +450,7 @@ class LightSensorCalibrationViewController: UIViewController {
             if let handle = resultHandles.first, handle.isSuccessful {
                 
                 // 禁用传感器，更新缓存
-                self.group.info.ambientLightSensorNode = nil
+                self.group.info.ambientLightSensorNodeAddress = nil
                 self.updateGroupLightSensor()
                 
                 result?(handle.isSuccessful)
@@ -515,6 +515,7 @@ class LightSensorCalibrationViewController: UIViewController {
         calibrationView = LightSensorCalibrationView()
         let profileData = group.info.profile.lightData.data
         calibrationView.limitRange = profileData.lowEndTrim...profileData.highEndTrim
+        calibrationView.speedSlider.value = Float(group.info.profile.adjustSpeed)
         calibrationView.delegate = self
         calibrationView.minimunValue = minimunLux
         contentView.addSubview(calibrationView)
@@ -620,7 +621,7 @@ extension LightSensorCalibrationViewController: LightSensorCalibrationSelectView
                             if self?.selectSensor == sensor {
                                 self?.selectSensor = nil
                             }
-                            self?.group.info.ambientLightSensorNode = nil
+                            self?.group.info.ambientLightSensorNodeAddress = nil
                             self?.updateGroupLightSensor()
                             // 通知space数据修改
                             NotificationCenter.default.post(name: .init(spaceDataChangedNotificaitonName), object: SpaceChangeDataType.device)

@@ -7,7 +7,7 @@
 
 import UIKit
 import SwiftyJSON
-import ZIPFoundation
+import NordicSigMeshSDK
 
 /// 场所列表数据刷新通知
 let SitesDataRefreshNotifiacationName = "SitesRefreshNotifiacation"
@@ -98,24 +98,12 @@ class SitesViewController: UIViewController {
                 self?.setupData()
                 self?.loadSitesRequest()
             }.show()
+        }else {
+            loadSitesRequest()
         }
-        
-//        ZipHandler.downloadAndHandleZip(from: <#T##URL#>, completion: <#T##(Result<FirmwareZipData, Error>) -> Void#>)
-        
-        if let sourceURL = Bundle.main.url(forResource: "dfu", withExtension: "zip"), let data = try? Data(contentsOf: sourceURL) {
-            
-//            let result = try? ZipHandler.handleZipData(data)
-            
-            
-            
-//            print(result)
-        }
-        
-        
-        
-//        dfu.zip
-        
-//        loadSitesRequest()
+      
+        // 获取设备配置数据
+        loadMeshDeviceConfigRequest()
     }
     
     override func viewWillAppear(_ animated: Bool) {
@@ -173,9 +161,17 @@ class SitesViewController: UIViewController {
     override func observeValue(forKeyPath keyPath: String?, of object: Any?, change: [NSKeyValueChangeKey : Any]?, context: UnsafeMutableRawPointer?) {
         if keyPath == "networkable" { // 手机网络连接状态
             updateNoInternetUI()
-            if view.window != nil {
-                loadSitesRequest()
+            if NetworkRequest.shared.networkable { // 无网络=>有网络
+                // 自动上传
+                if view.window != nil {
+                    loadSitesRequest()
+                }
+                
+            }else { // 有网络=>无网络
+                SRAlertView(title: "notification".localizedString, message: "phone_network_disconnect".localizedString, actions: [.init(title: "confirm".localizedString)]).show()
             }
+                
+            
         }
     }
     
@@ -185,6 +181,16 @@ class SitesViewController: UIViewController {
         let sites = SiteData.loadAll()
         allSites = sites
         favouriteSites = sites.filter({ $0.isFavourite })
+        
+//        allSites.forEach { site in
+//            site.state = .normal
+//            site.lastUploadCloudTimestamp = nil
+//            site.save()
+//            site.spaces.forEach({
+//                $0.lastUploadCloudTimestamp = nil
+//                $0.save()
+//            })
+//        }
         
         setupSectionsData()
         
@@ -229,7 +235,11 @@ class SitesViewController: UIViewController {
                 reloadState = .server
             }
         }else { // 读取本地数据库
-            reloadState = .cache
+            if view.window != nil {
+                setupData()
+            }else {
+                reloadState = .cache
+            }
         }
     }
     
@@ -320,7 +330,7 @@ class SitesViewController: UIViewController {
     }
     
     /// 获取扫码分享内容请求  qrCode: 是否扫码
-    private func loadShareInfoRequest(shareId: String, qrCode: Bool) {
+    private func loadShareInfoRequest(shareId: String, qrCode: Bool, sharePermission: Permission? = nil) {
         XWHUDManager.showCustomHUD(withMessage: nil, isWindow: true)
         NetworkRequest.shared.request(.shareInfo(shareId: shareId)) {[weak self] result in
             XWHUDManager.hide()
@@ -328,7 +338,7 @@ class SitesViewController: UIViewController {
             switch result {
             case .success(let response):
                 guard let data = JSON(response)["data"].dictionaryObject,
-                      let type = SharePermissionSelectionController.ReceivingType(shareData: data) else {
+                      let type = SharePermissionSelectionController.ReceivingType(shareData: data, sharePermission: sharePermission) else {
                     XWHUDManager.showErrorTipHUD(NetworkApiError.unknown.localizedDescription)
                     DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {[weak self] in
                         self?.scanCodeVc?.startScan()
@@ -345,7 +355,7 @@ class SitesViewController: UIViewController {
                         self.navigationController?.pushViewController(vc, animated: true)
                         return
                     }
-                case .space(_, let space, _):
+                case .space(_, let space, _, _):
                     // 已存在的space分享数据，跳转到site->space页面
                     if let mySite = self.allSites.first(where: { $0.id == space.siteId && $0.permission == .owner && $0.state == .normal }) {
                         self.navigationController?.popViewController(animated: false)
@@ -354,7 +364,7 @@ class SitesViewController: UIViewController {
                         self.navigationController?.pushViewController(vc, animated: true)
                         return
                     }
-                case .spaceList(let data, _):
+                case .spaceList(let data, _, _):
                     // 自己分享的space，并且owner权限，跳转到site页面
                     if let mySite = self.allSites.first(where: { $0.id == data.siteId && $0.permission == .owner && $0.state == .normal }) {
                         self.navigationController?.popViewController(animated: false)
@@ -385,6 +395,29 @@ class SitesViewController: UIViewController {
                         self?.scanCodeVc?.startScan()
                     }
                 }
+            }
+        }
+        
+    }
+    
+    /// 加载mesh网络设备配置数据请求
+    private func loadMeshDeviceConfigRequest() {
+        
+        NetworkRequest.shared.request(.devicesConfig) { result in
+            switch result {
+            case .success(let response):
+                let list: [MeshDeviceConfigInfo] = JSON(response)["data"].arrayValue.compactMap({ json in
+                    guard let companyIdHex = json["companyId"].string, let companyId = UInt16(hex: companyIdHex),
+                          let productIdHex = json["productId"].string, let productId = UInt16(hex: productIdHex),
+                          let categoryName = json["categoryName"].string, let elementCount = json["elementCount"].int else {
+                        return nil
+                    }
+                    return MeshDeviceConfigInfo(companyId: companyId, productId: productId, categoryName: categoryName, elementCount: elementCount)
+                })
+                MeshLibManager.manager.supportDeviceInfos = list
+                MeshDeviceConfigInfo.saveAll(list: list)
+            case .failure(_):
+                break
             }
         }
         
@@ -615,7 +648,11 @@ class SitesViewController: UIViewController {
             case .success(_):
                 self?.delteSiteLocalData(site: site)
             case .failure(let error): // 删除失败，无网络/space存在编辑者
-                XWHUDManager.showErrorTipHUD(error.localizedDescription)
+                if error == .editorBeingUsedSpace {
+                    XWHUDManager.showErrorTipHUD("site_delete_have_editor_message".localizedString)
+                }else {
+                    XWHUDManager.showErrorTipHUD(error.localizedDescription)
+                }
 //                XWHUDManager.showErrorTipHUD("site_delete_fail".localizedString)
             }
         }
@@ -1249,12 +1286,17 @@ extension SitesViewController: LBXScanViewControllerDelegate {
     /// 扫码结果
     func scanFinished(scanResult: LBXScanResult, error: String?) {
         
-        guard let content = scanResult.strScanned, content.isValidInvitationCode() else {
-            showQRCodeFailed(message: "shared_code_unknown".localizedString)
+        guard let content = scanResult.strScanned, let code = content.components(separatedBy: "/").first, code.isValidInvitationCode() else {
+            showQRCodeFailed(message: "unknown_qr_code".localizedString)
             return
         }
-        
-        loadShareInfoRequest(shareId: content, qrCode: true)
+        // 二维码分享人权限
+        var sharePermission: Permission?
+        let array = content.components(separatedBy: "/")
+        if array.count == 2, let type = array.last, let value = Int(type), let permission = Permission(rawValue: value) {
+            sharePermission = permission
+        }
+        loadShareInfoRequest(shareId: code, qrCode: true, sharePermission: sharePermission)
         
     }
 }

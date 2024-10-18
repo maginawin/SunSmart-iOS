@@ -39,7 +39,7 @@ class DeviceAddViewCell: UITableViewCell {
     var device: ProvisioningDevice! {
         didSet {
             
-            deviceImageView.image = UIImage(named: "device_add_light")
+            deviceImageView.image = UIImage(named: device.icon ?? "")
             identifyAnimationView.isHidden = true
             identifyBtn.isHidden = true
             addBtn.isHidden = true
@@ -63,6 +63,7 @@ class DeviceAddViewCell: UITableViewCell {
             case .disabled:
                 selectImageView.image = UIImage(named: "device_select_disable")
             }
+            
          
             switch device.addState {
             case .none, .scaning:
@@ -74,7 +75,7 @@ class DeviceAddViewCell: UITableViewCell {
                     identifyBtn.layer.borderColor = RGB(156, 163, 175, 0.5).cgColor
                 }else {
                     identifyBtn.isEnabled = true
-                    addBtn.isEnabled = true
+                    addBtn.isEnabled = device.isSupport
                     identifyBtn.layer.borderColor = Bar_Color.cgColor
                 }
                 
@@ -204,9 +205,9 @@ class DeviceAddViewCell: UITableViewCell {
 //        identifyAnimationView.layer.cornerRadius = SCRYFrom(6)
         deviceImageView.addSubview(identifyAnimationView)
         identifyAnimationView.snp.makeConstraints { make in
-            make.centerX.equalToSuperview()
-            make.top.equalTo(SCRYFrom(3))
-            make.width.height.equalTo(SCRYFrom(15))
+            make.center.equalToSuperview()
+//            make.top.equalTo(SCRYFrom(3))
+            make.width.height.equalTo(SCRYFrom(10))
         }
         
         nameLabel = UILabel(text: "Device", textColor: RGB(13, 14, 28), fontSize: 15, fontWeight: .light)

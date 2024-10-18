@@ -118,12 +118,17 @@ class ShareBacthListViewController: UIViewController {
         NetworkRequest.shared.request(.revocationBatchShare(siteId: site.id, batchId: data.code)) {[weak self] result in
             XWHUDManager.hide()
             guard let self = self else { return }
-            
-            if let index = self.bacthDataList.firstIndex(where: { $0.code == data.code }) {
-                self.bacthDataList.remove(at: index)
-                self.collectionView.deleteItems(at: [IndexPath(item: index, section: 0)])
-                self.updateEmptyUI()
+            switch result {
+            case .success(_):
+                if let index = self.bacthDataList.firstIndex(where: { $0.code == data.code }) {
+                    self.bacthDataList.remove(at: index)
+                    self.collectionView.deleteItems(at: [IndexPath(item: index, section: 0)])
+                    self.updateEmptyUI()
+                }
+            case .failure(let error):
+                XWHUDManager.showErrorTipHUD(error.localizedDescription)
             }
+          
         }
     }
     

@@ -42,12 +42,12 @@ class FirmwareVersionHistoryController: UIViewController {
         return tableV
     }()
     
-    let deviceType: DeviceType
+    let productId: UInt16
     
     private var versionDatas: [FirmwareServerData] = []
     
-    init(deviceType: DeviceType) {
-        self.deviceType = deviceType
+    init(productId: UInt16) {
+        self.productId = productId
         super.init(nibName: nil, bundle: nil)
     }
     
@@ -91,14 +91,14 @@ class FirmwareVersionHistoryController: UIViewController {
     private func loadVersionHistoryRequest() {
         
         XWHUDManager.showCustomHUD(withMessage: nil, view: view)
-        NetworkRequest.shared.request(.firmwareVersionList(deviceType: self.deviceType.pid.hex)) {[weak self] result in
+        NetworkRequest.shared.request(.firmwareVersionList(deviceType: self.productId.hex)) {[weak self] result in
             guard let self = self else { return }
             XWHUDManager.hideInView(with: self.view)
             
             switch result {
             case .success(let response):
                 let list = JSON(response)["data"].arrayValue
-                self.versionDatas = list.compactMap { data in
+                var results: [FirmwareServerData] = list.compactMap { data in
                     guard let version = data["version"].string,
                           let companyId = data["manufacturerId"].string,
                           let customId = data["customerId"].string,
@@ -111,10 +111,11 @@ class FirmwareVersionHistoryController: UIViewController {
                     releaseDate = releaseDate.replacingOccurrences(of: "Z", with: "")
                     let timeInterval = String.dateConvert(timeStr: releaseDate, dateFormat: nil)
                     
-                    let serverData = FirmwareServerData(deviceType: self.deviceType, version: version.replacingOccurrences(of: "v", with: ""), companyId: UInt16(companyId) ?? 0x0A78, customId: UInt16(customId) ?? 0, url: "", filename: data["filename"].stringValue, size: size, releaseDate: timeInterval, content: data["describe"].stringValue)
+                    let serverData = FirmwareServerData(productId: self.productId, version: version.replacingOccurrences(of: "v", with: ""), companyId: UInt16(companyId) ?? 0x0A78, customId: UInt16(customId) ?? 0, url: "", filename: data["filename"].stringValue, size: size, releaseDate: timeInterval, content: data["describe"].stringValue)
                     return serverData
                 }
-                
+                results = results.sorted(by: { $0.releaseDate >= $1.releaseDate })
+                self.versionDatas = results
                 if self.versionDatas.isEmpty {
                     self.tableView.showEmptyDataView(title: "no_record".localizedString)
                 }else {

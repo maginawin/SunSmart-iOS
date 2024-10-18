@@ -60,7 +60,7 @@ enum NetowrkReqeustApi {
     /// space分享
     case spaceShare(space: SpaceData)
     /// spaces批量分享
-    case spacesShare(siteId: String, spaceIds: [String], password: String)
+    case spacesShare(siteId: String, spaceIds: [String], password: String, userPermission: Permission)
     /// 批量分享list
     case batchShareList(siteId: String)
     /// 撤销批量分享
@@ -71,6 +71,8 @@ enum NetowrkReqeustApi {
 //    case joinSpaces(shareId: String, password: String?, permission: Permission)
     /// 获取分享数据信息 分享id：space、批量spaces、转移site
     case shareInfo(shareId: String)
+    /// space成员信息
+    case spaceMembers(siteId: String, spaceId: String)
     /// 清除space内成员   userId: 对应用户id   permission：权限类型  force：是否强制删除
     case clearSpaceMember(siteId: String, spaceId: String, userId: String, permission: Permission, force: Bool)
     /// 批量清除space内成员   userIds: 对应用户id list   permission：权限类型  force：是否强制删除
@@ -115,6 +117,8 @@ enum NetowrkReqeustApi {
     case firmwareLatestVersion(companyId: String = "0A78", deviceType: String, customId: String = "00")
     /// 固件包历史版本list
     case firmwareVersionList(companyId: String = "0A78", deviceType: String, customId: String = "00")
+    /// 设备配置数据
+    case devicesConfig
 }
 
 extension NetowrkReqeustApi: TargetType {
@@ -153,7 +157,7 @@ extension NetowrkReqeustApi: TargetType {
 //            return "/sitespace/space/clearpass"
         case .transferSite:
             return "/sitespace/site/ownertrans"
-        case .spaceShare:
+        case .spaceShare, .spaceMembers:
             return "/sitespace/space/singleshare"
         case .spacesShare:
             return "/sitespace/space/batchshare"
@@ -187,6 +191,8 @@ extension NetowrkReqeustApi: TargetType {
             return "/sitespace/ota/latest"
         case .firmwareVersionList:
             return "/sitespace/ota/history"
+        case .devicesConfig:
+            return "/sitespace/ota/configfile"
         }
     }
     
@@ -267,13 +273,13 @@ extension NetowrkReqeustApi: TargetType {
 //            return parameter
         case .spaceShare(let space):
             
-            var parameter = ["siteId": space.siteId, "spaceId": space.id, "editorPasswd": space.editorPassword ?? "", "userId": UserData.currentUserId]
+            var parameter = ["siteId": space.siteId, "spaceId": space.id, "editorPasswd": space.editorPassword ?? "", "sharerRole": space.permission.dataString, "userId": UserData.currentUserId]
             if let password = space.vistorPassword {
                 parameter.updateValue(password, forKey: "visitorPasswd")
             }
             return parameter
-        case .spacesShare(let siteId, let spaceIds, let password):
-            return ["siteId": siteId, "spaces": spaceIds, "passwd": password, "userId": UserData.currentUserId]
+        case .spacesShare(let siteId, let spaceIds, let password, let userPermission):
+            return ["siteId": siteId, "spaces": spaceIds, "passwd": password, "sharerRole": userPermission.dataString, "userId": UserData.currentUserId]
         case .batchShareList(let siteId):
             return ["siteId": siteId, "userId": UserData.currentUserId]
         case .revocationBatchShare(let siteId, let batchId):
@@ -294,6 +300,8 @@ extension NetowrkReqeustApi: TargetType {
             return ["token": shareId, "passwd": password, "user": user]
         case .shareInfo(let shareId):
             return ["token": shareId]
+        case .spaceMembers(let siteId, let spaceId):
+            return ["siteId": siteId, "spaceId": spaceId, "userId": UserData.currentUserId]
         case .clearSpaceMember(let siteId, let spaceId, let userId, let permission, let force):
             
             return ["siteId": siteId, "spaceId": spaceId, "userId": UserData.currentUserId, "reclaimUserId": userId, "roleName": permission.dataString, "force": force]
@@ -360,6 +368,8 @@ extension NetowrkReqeustApi: TargetType {
             return ["manufacturerId": companyId, "deviceType": deviceType, "customerId": customId]
         case .firmwareVersionList(let companyId, let deviceType, let customId):
             return ["manufacturerId": companyId, "deviceType": deviceType, "customerId": customId]
+        case .devicesConfig:
+            return nil
         }
     }
     

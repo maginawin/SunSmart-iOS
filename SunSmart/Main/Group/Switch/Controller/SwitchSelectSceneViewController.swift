@@ -24,6 +24,8 @@ class SwitchSelectSceneViewController: UIViewController {
     let scenes: [Scene]
     /// 场景选择回调
     var sceneSelectCallback: ((_ sceneA: Scene?, _ sceneB: Scene?)->Void)?
+    /// 是否可以编辑
+    var editable: Bool = true
     
     init(scenes: [Scene], sceneA: Scene?, sceneB: Scene?) {
         self.scenes = scenes
@@ -172,7 +174,12 @@ extension SwitchSelectSceneViewController: UITableViewDataSource, UITableViewDel
         }else {
             isSelect = scene == sceneB
         }
-        cell.iconImageView.image = UIImage(named: isSelect ? "schedule_target_select" : "schedule_target_select_un")
+        let selectImage = UIImage(named: isSelect ? "schedule_target_select" : "schedule_target_select_un")
+        if self.editable {
+            cell.iconImageView.image = selectImage
+        }else {
+            cell.iconImageView.image = selectImage?.withTintColor(RGB(216, 216, 216))
+        }
         cell.iconX = tableView.width - 30 - SCRXFrom(8)
         cell.arrowImageView.isHidden = true
         cell.lineView.backgroundColor = RGB(243, 243, 243, 0.7)
@@ -181,7 +188,9 @@ extension SwitchSelectSceneViewController: UITableViewDataSource, UITableViewDel
     }
     
     func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
-        
+        guard editable else {
+            return
+        }
         let scene = scenes[indexPath.row]
         
         if tableView == sceneATableView {

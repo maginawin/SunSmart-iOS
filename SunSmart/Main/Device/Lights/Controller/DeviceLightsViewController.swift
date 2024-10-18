@@ -251,7 +251,7 @@ class DeviceLightsViewController: UIViewController {
 //            self.mainViewController?.footerView.switchCountBtn.isHidden = true
             // 判断是否有需要修复设备
             let notKeybindNodes = devices.filter({ !$0.isKeybindComplete })
-            if notKeybindNodes.count > 0 {
+            if notKeybindNodes.count > 0 && space.deviceOperates.contains(.edit) {
                 inset.bottom = SCRYFrom(16) + repairView.height
                 self.repairView.isHidden = false
                 self.repairCountLabel.text = String(format: "device_repair_tip".localizedString, notKeybindNodes.count)
@@ -337,11 +337,11 @@ class DeviceLightsViewController: UIViewController {
         flowLayout = AlignCenterFlowLayout()
         flowLayout.minimumLineSpacing = SCRXFrom(16)
         flowLayout.minimumInteritemSpacing = SCRXFrom(16)
-        flowLayout.sectionInset = UIEdgeInsets(top: SCRYFrom(16) + SCRYFrom(42), left: SCRXFrom(12), bottom: SCRYFrom(16), right: SCRXFrom(12))
+        flowLayout.sectionInset = UIEdgeInsets(top: 0, left: SCRXFrom(12), bottom: SCRYFrom(16), right: SCRXFrom(12))
 //        UIEdgeInsets(top: 0, left: SCRXFrom(12), bottom: <#T##CGFloat#>, right: SCRXFrom(12))
         
         collectionView = UICollectionView(frame: .zero, collectionViewLayout: flowLayout)
-//        collectionView.contentInset = UIEdgeInsets(top: SCRYFrom(16), left: 0, bottom: SCRYFrom(16), right: 0)
+        collectionView.contentInset = UIEdgeInsets(top: SCRYFrom(42), left: 0, bottom: 0, right: 0)
         collectionView.backgroundColor = Background_Color
         collectionView.register(DevicesViewCell.classForCoder(), forCellWithReuseIdentifier: "cell")
         collectionView.register(DeviceAllOnOffViewCell.classForCoder(), forCellWithReuseIdentifier: "allControlCell")
@@ -650,7 +650,7 @@ class DeviceLightsViewController: UIViewController {
     
     /// 修复设备
     func repairNodes(nodes: [Node]) {
-        if nodes.isEmpty {
+        if nodes.isEmpty || !space.deviceOperates.contains(.edit) {
             return
         }
         // 是否连接网络

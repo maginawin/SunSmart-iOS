@@ -121,7 +121,8 @@ class SpaceNewCreationProcessController: UIViewController {
             isNext = true
             
             let vc = ScheduleAddViewController(space: space)
-            UIViewController.getVisibleVc()?.present(NavigationViewController(rootViewController: vc), animated: true)
+//            UIViewController.getVisibleVc()?.presentingViewController?.present(NavigationViewController(rootViewController: vc), animated: true)
+            NotificationCenter.default.post(name: .init(spaceModalViewControllerNotificaitonName), object: NavigationViewController(rootViewController: vc))
             NotificationCenter.default.post(name: .init(spaceMenuIndexChangeNotificaitonName), object: 3)
         case .schedule:
 //            XWHUDManager.showTipHUD("create_virtual_switch_message".localizedString, isLineFeed: true)
@@ -135,7 +136,8 @@ class SpaceNewCreationProcessController: UIViewController {
                 return
             }
             let vc = DeviceSwitchViewController(space: self.space, switchData: nil)
-            UIViewController.getVisibleVc()?.present(NavigationViewController(rootViewController: vc), animated: true)
+//            UIViewController.getVisibleVc()?.presentingViewController?.present(NavigationViewController(rootViewController: vc), animated: true)
+            NotificationCenter.default.post(name: .init(spaceModalViewControllerNotificaitonName), object: NavigationViewController(rootViewController: vc))
             NotificationCenter.default.post(name: .init(spaceMenuIndexChangeNotificaitonName), object: 0)
             
         case .switch:

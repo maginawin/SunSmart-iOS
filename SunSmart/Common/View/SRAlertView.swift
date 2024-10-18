@@ -809,7 +809,7 @@ class SRAlertView: UIView {
         
         messageLabel = UILabel()
         messageLabel.numberOfLines = 0
-        messageLabel.lineBreakMode = .byCharWrapping
+//        messageLabel.lineBreakMode = .byCharWrapping
         messageLabel.textAlignment = .center
         messageLabel.setContentHuggingPriority(.defaultHigh, for: .vertical)
         contentView.addSubview(messageLabel)

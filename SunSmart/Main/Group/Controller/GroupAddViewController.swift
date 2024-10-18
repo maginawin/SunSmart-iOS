@@ -178,11 +178,13 @@ class GroupAddViewController: UIViewController {
         
         let source = self.dataSource[self.selectImageIndex]
         let groupInfo = GroupInfo(address: group.address.address, imageId: self.selectImageIndex + 1, imageText: source.type == .text ? source.name : nil)
-        groupInfo.profile = self.selectProfile
+//        groupInfo.profile = self.selectProfile
+        groupInfo.profile.updateData(profile: self.selectProfile)
         groupInfo.save()
+        groupInfo.profile.save()
         group.info = groupInfo
         // 保存配置数据
-        self.selectProfile.save()
+//        self.selectProfile.save()
 //        self.doneCallback?(group)
     }
     

@@ -255,6 +255,14 @@ extension Group {
         // 添加需要同步的场景、日程消息处理list
         messages.append(contentsOf: getNodeSyncDataMessageHandles(node: node))
         
+        // 添加动能开关订阅
+        self.info.switchs.forEach { switchData in
+            if let group = switchData.linkGroup {
+                let subscriptionMessageHandles = node.getEnOceanSubscriptionMessageHandles(group: group, switchKeys: MeshEnOceanProxyServer.SwitchKey.defaultKeys(sceneA: switchData.sceneA, sceneB: switchData.sceneB))
+                messages.append(contentsOf: subscriptionMessageHandles)
+            }
+        }
+        
         return messages
     }
     
@@ -300,10 +308,20 @@ extension Group {
                 messages.append(MeshMessageHandle(message: ConfigModelPublicationSet(disablePublicationFor: $0)!, address: node.primaryUnicastAddress))
             })
         }
+        
         // 解除动能开关绑定
-        if node.enOceanMacAddress != nil {
-            let disableSwitchMessages = node.getEnOceanSwitchDisableMessageHandles(group: self)
-            messages.append(contentsOf: disableSwitchMessages)
+        self.info.allSwitchs.forEach { switchData in
+            if let group = switchData.linkGroup {
+                let unbindSwitchMessages = node.getEnOceanSwitchUnBindMessageHandles(group: group)
+                messages.append(contentsOf: unbindSwitchMessages)
+            }
+        }
+        // 解除动能开关代理
+        if node.enOceanMacAddress != nil, let switchData = self.info.allSwitchs.first(where: { $0.proxyNodeAddress == node.primaryUnicastAddress && $0.enOceanMacAddress == node.enOceanMacAddress }) {
+            if let group = switchData.linkGroup {
+                let disableSwitchMessages = node.getEnOceanSwitchDisableMessageHandles(group: group)
+                messages.append(contentsOf: disableSwitchMessages)
+            }
         }
         
         // 设备退出组

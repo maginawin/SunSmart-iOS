@@ -227,6 +227,7 @@ class DeviceSwitchesViewController: UIViewController {
             collectionView.reloadData()
         }
         NotificationCenter.default.post(name: .init(spaceDataChangedNotificaitonName), object: SpaceChangeDataType.device)
+        NotificationCenter.default.post(name: .init(switchsRefreshNotificationName), object: nil)
         
         if MeshNetworkManager.instance.switchs.isEmpty {
             isEdit = false
@@ -245,6 +246,7 @@ class DeviceSwitchesViewController: UIViewController {
         if let indexPath = collectionView.indexPathForItem(at: point), indexPath.item < MeshNetworkManager.instance.switchs.count {
             let switche = MeshNetworkManager.instance.switchs[indexPath.item]
             let vc = DeviceSwitchViewController(space: self.space,switchData: switche)
+            vc.editable = space.deviceOperates.contains(.edit)
             present(NavigationViewController(rootViewController: vc), animated: true)
         }
     }
@@ -267,7 +269,7 @@ extension DeviceSwitchesViewController: UICollectionViewDataSource, UICollection
         cell.deleteActionCallback = {[weak self] switche in
             guard let self = self else { return }
             
-            SRAlertView(title: "notification".localizedString, message: "switch_delete_message".localizedString, actions: [.cancelAction, SRAlertAction(title: "confirm".localizedString, style: .destructive, actionHandler: {[weak self] _ in
+            SRAlertView(title: "notification".localizedString, message: "switchs_delete_message".localizedString, actions: [.cancelAction, SRAlertAction(title: "confirm".localizedString, style: .destructive, actionHandler: {[weak self] _ in
                 
                 // 是否已绑定开关
                 guard !switche.getNeedSyncDatas(deleteSwitch: true).isEmpty() else {
@@ -294,6 +296,7 @@ extension DeviceSwitchesViewController: UICollectionViewDataSource, UICollection
         }
         let switche = MeshNetworkManager.instance.switchs[indexPath.item]
         let vc = DeviceSwitchViewController(space: self.space,switchData: switche)
+        vc.editable = space.deviceOperates.contains(.edit)
         present(NavigationViewController(rootViewController: vc), animated: true)
     }
     

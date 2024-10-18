@@ -57,7 +57,7 @@ class AboutViewController: UIViewController {
         
         let policyModel = CustomCellModel(title: "privacy_policy".localizedString, style: .arrow)
         
-        let serviceModel = CustomCellModel(title: "terms_of_service".localizedString, style: .arrow)
+        let serviceModel = CustomCellModel(title: "welcome_policy_use".localizedString, style: .arrow)
         
         dataSource = [policyModel, serviceModel]
     }

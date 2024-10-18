@@ -16,6 +16,9 @@ protocol GroupSwitchsHeaderViewDelegate: AnyObject {
     
     /// 开关点击回调  enabled：是否启用
     func view(_ view: GroupSwitchsHeaderView, switchDidClick enabled: Bool)
+    
+    /// 重新同步点击回调
+    func headerViewDidResyncAction(_ view: GroupSwitchsHeaderView)
 }
 
 class GroupSwitchsHeaderView: UITableViewHeaderFooterView {
@@ -34,7 +37,7 @@ class GroupSwitchsHeaderView: UITableViewHeaderFooterView {
         didSet {
             
             titleLabel.text = groupSwitch.name
-            if let mac = groupSwitch.proxyNode?.enOceanMacAddress {
+            if let mac = groupSwitch.enOceanMacAddress {
                 contentLabel.text = "ID:\(mac)"
             }else {
                 contentLabel.text =  "switch_not_linked".localizedString
@@ -82,6 +85,10 @@ class GroupSwitchsHeaderView: UITableViewHeaderFooterView {
         delegate?.view(self, switchDidClick: !enabledSwitch.isOn)
     }
     
+    @objc private func resyncAction() {
+        delegate?.headerViewDidResyncAction(self)
+    }
+    
     private func setupUI() {
         
         titleLabel = UILabel(text: nil, textColor: TextBlack_Color, fontSize: 14)
@@ -100,6 +107,8 @@ class GroupSwitchsHeaderView: UITableViewHeaderFooterView {
         
         failedImageView = UIImageView(image: UIImage(named: "schedule_sync_failed"))
         failedImageView.isHidden = true
+        failedImageView.isUserInteractionEnabled = true
+        failedImageView.addGestureRecognizer(UITapGestureRecognizer(target: self, action: #selector(resyncAction)))
         contentView.addSubview(failedImageView)
         failedImageView.snp.makeConstraints { make in
             make.left.equalTo(contentLabel.snp.right).offset(SCRXFrom(11))

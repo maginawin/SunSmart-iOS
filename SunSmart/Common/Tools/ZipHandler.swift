@@ -56,7 +56,6 @@ class ZipHandler {
                     completion(.failure(error))
                     return
                 }
-                
                 guard let data = data else {
                     completion(.failure(NSError(domain: "DownloadError", code: -1, userInfo: nil)))
                     return
@@ -117,7 +116,7 @@ class ZipHandler {
         
         for file in files {
             let filePath = destinationURL.appendingPathComponent(file)
-            print("解压后的文件路径: \(filePath)")
+//            print("解压后的文件路径: \(filePath)")
             // 根据文件的扩展名处理文件
             if filePath.pathExtension == "json" {
                 // 处理配置文件
@@ -126,10 +125,9 @@ class ZipHandler {
             } else if filePath.pathExtension == "bin" {
                 // 处理固件文件
                 let fileData = try Data(contentsOf: filePath)
-                print("固件包大小：\(fileData.count)")
+//                print("固件包大小：\(fileData.count)")
                 firmwareData = fileData
             }
-            // 根据文件类型处理 (例如: .txt, .png 等)
         }
         guard let config = configJson, var firmwareIdStr = config["firmware_id"] as? String, let hash = config["comp_hash"] as? String, let elementCount = config["element_count"] as? Int, let imageIndex = config["image_id"] as? Int, let firmwareData = firmwareData else {
             throw NSError(domain: "Data exception", code: -1)
@@ -160,7 +158,8 @@ class ZipHandler {
         // 升级来源 1: App 其它值目前不存在
         let coreType = config["core_type"] as? Int ?? 1
         
-        let data = FirmwareZipData(firmwareId: firmwareId, coreType: coreType, imageIndex: imageIndex, compositionHash: Data(hex: hash), elementCount: elementCount, firmwareData: firmwareData)
+        
+        let data = FirmwareZipData(firmwareId: firmwareId, coreType: coreType, imageIndex: imageIndex, compositionHash: Data(hex: hash).turnOver(), elementCount: elementCount, firmwareData: firmwareData)
         return data
     }
 }

@@ -210,13 +210,17 @@ class SharingSettingViewController: UIViewController {
             case .transferSite(let site):
                 site.transferPassword = password
                 site.save()
+                NotificationCenter.default.post(name: .init(SitesDataRefreshNotifiacationName), object: nil)
             case .space(let site, let space):
                 if permisson == .editor {
                     space.editorPassword = password
                 }else if permisson == .visitor {
                     space.vistorPassword = password
+//                    space.vistorPasswordEnable = password != nil
                 }
                 space.save()
+                NotificationCenter.default.post(name: .init(SpacesRefreshChangeNotificationName), object: true)
+                
             case .batchSpace(let data):
                 if password != nil {
                     data.editorPassword = password!
@@ -299,7 +303,12 @@ class SharingSettingViewController: UIViewController {
         if case .transferSite = self.type {
             qrcodeColor = Bar_Color
         }
-        let image = LBXScanWrapper.createCode(codeType: "CIQRCodeGenerator", codeString: self.codeUUID, size: CGSize(width: SCRYFrom(160), height: SCRYFrom(160)), qrColor: qrcodeColor, bkColor: .white)!
+        
+        var codeString = self.codeUUID
+        if case .space(_, let space) = type {
+            codeString = "\(self.codeUUID)/\(space.permission.rawValue)"
+        }
+        let image = LBXScanWrapper.createCode(codeType: "CIQRCodeGenerator", codeString: codeString, size: CGSize(width: SCRYFrom(160), height: SCRYFrom(160)), qrColor: qrcodeColor, bkColor: .white)!
 //        DispatchQueue.global().async {
 //            let image = LBXScanWrapper.createCode(codeType: "CIQRCodeGenerator", codeString: self.codeUUID, size: CGSize(width: qrcodeW, height: qrcodeH), qrColor: qrcodeColor, bkColor: .white)!
 //            DispatchQueue.main.async {
@@ -453,10 +462,12 @@ extension SharingSettingViewController: UITableViewDataSource, UITableViewDelega
             var content = ""
             switch self.type {
             case .space(_, let space):
+                let vistorPassword = space.vistorPassword?.count ?? 0 > 0 ? space.vistorPassword : nil
                 if space.permission == .owner {
-                    content = "\("editor".localizedString): \(space.editorPassword ?? "no_password".localizedString)    \("visitor".localizedString): \(space.vistorPassword ?? "no_password".localizedString)"
+                    let editorPassword = space.editorPassword?.count ?? 0 > 0 ? space.editorPassword : nil
+                    content = "\("editor".localizedString): \(editorPassword ?? "no_password".localizedString)    \("visitor".localizedString): \(vistorPassword ?? "no_password".localizedString)"
                 }else if space.permission == .editor {
-                    content = "\("visitor".localizedString): \(space.vistorPassword ?? "no_password".localizedString)"
+                    content = "\("visitor".localizedString): \(vistorPassword ?? "no_password".localizedString)"
                 }
             case .transferSite(let site):
                 content = "\("transfer_password".localizedString): \(site.transferPassword ?? "")"

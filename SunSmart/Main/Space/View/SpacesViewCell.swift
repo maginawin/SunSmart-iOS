@@ -122,7 +122,7 @@ class SpacesViewCell: UITableViewCell {
                     if space.permission == .editor {
                         passwordVerification = space.authorizationPassword?.isEmpty ?? true || space.requiresPasswordVerification
                     }else {
-                        passwordVerification = space.vistorPasswordEnable && (space.authorizationPassword?.isEmpty ?? true || space.requiresPasswordVerification)
+                        passwordVerification = (space.vistorPasswordEnable && (space.authorizationPassword?.isEmpty ?? true)) || space.requiresPasswordVerification
                     }
                     
                     if passwordVerification {

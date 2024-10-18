@@ -107,10 +107,12 @@ class ScheduleAddViewController: UIViewController {
 
     
     @objc private func back() {
-        if addFineshed && self.space.isConfiguring && (UIViewController.getVisibleVc()?.isKind(of: SpaceViewController.classForCoder()) ?? false) {
+//        let spaceVc = UIViewController.getVisibleVc()?.presentingViewController
+        if addFineshed && self.space.isConfiguring { //  && (spaceVc?.isKind(of: SpaceViewController.classForCoder()) ?? false)
             self.dismiss(animated: false)
             let vc = SpaceNewCreationProcessController(space: self.space, options: .schedule)
-            UIViewController.getVisibleVc()?.present(NavigationViewController(rootViewController: vc), animated: true)
+//            spaceVc?.present(NavigationViewController(rootViewController: vc), animated: true)
+            NotificationCenter.default.post(name: .init(spaceModalViewControllerNotificaitonName), object: NavigationViewController(rootViewController: vc))
             
         }else {
             self.dismiss(animated: true)

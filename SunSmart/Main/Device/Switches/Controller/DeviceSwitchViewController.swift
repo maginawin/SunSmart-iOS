@@ -21,7 +21,7 @@ class DeviceSwitchViewController: UIViewController {
     /// 是否可以编辑
     var editable: Bool = true
     
-    let switchData: DeviceSwitchData?
+    var switchData: DeviceSwitchData?
     let space: SpaceData
 //    private var enabled: Bool = false
     private var setSwitchData: DeviceSwitchData!
@@ -50,12 +50,7 @@ class DeviceSwitchViewController: UIViewController {
         navigationItem.rightBarButtonItem = UIBarButtonItem(image: UIImage(named: "close")?.withRenderingMode(.alwaysOriginal), style: .done, target: self, action: #selector(back))
         
         setupUI()
-        if self.switchData == nil {
-            createBtn.isHidden = false
-            deleteBtn.isHidden = true
-            btnLineView.isHidden = true
-            saveBtn.isHidden = true
-        }
+        updateUI()
         updateSaveEnabledState()
     }
     
@@ -65,16 +60,46 @@ class DeviceSwitchViewController: UIViewController {
         }
     }
     
-    @objc private func back(_ fineshed: Bool = false) {
-        if fineshed && self.space.isConfiguring && (UIViewController.getVisibleVc()?.isKind(of: SpaceViewController.classForCoder()) ?? false) {
+    private func fineshed() {
+//        let spaceVc = UIViewController.getVisibleVc()?.presentingViewController
+        if self.space.isConfiguring { // && (spaceVc?.isKind(of: SpaceViewController.classForCoder()) ?? false)
             self.dismiss(animated: false)
             let vc = SpaceNewCreationProcessController(space: self.space, options: .switch)
-            UIViewController.getVisibleVc()?.present(NavigationViewController(rootViewController: vc), animated: true)
-            
+            NotificationCenter.default.post(name: .init(spaceModalViewControllerNotificaitonName), object: NavigationViewController(rootViewController: vc))
+//            spaceVc?.present(NavigationViewController(rootViewController: vc), animated: true)
         }else {
             self.dismiss(animated: true)
         }
-        
+    }
+    
+    @objc private func back() {
+//        if fineshed && self.space.isConfiguring && (UIViewController.getVisibleVc()?.isKind(of: SpaceViewController.classForCoder()) ?? false) {
+//            self.dismiss(animated: false)
+//            let vc = SpaceNewCreationProcessController(space: self.space, options: .switch)
+//            UIViewController.getVisibleVc()?.present(NavigationViewController(rootViewController: vc), animated: true)
+//            
+//        }else {
+        if !(setSwitchData == (switchData ?? DeviceSwitchData.defalut(id: setSwitchData.id))) {
+            SRAlertView(title: "notification".localizedString, message: "profile_exiting_message".localizedString, actions: [SRAlertAction(title: "keep_edit".localizedString, style: .cancel), SRAlertAction(title: "exit".localizedString, actionHandler: {[weak self] _ in
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                    //                        self?.fineshed()
+                    self?.dismiss(animated: true)
+                }
+            })]).show()
+            view.endEditing(true)
+        }else {
+            self.dismiss(animated: true)
+        }
+//        }
+    }
+    
+    private func updateUI() {
+        if self.switchData == nil {
+            createBtn.isHidden = false
+            deleteBtn.isHidden = true
+            btnLineView.isHidden = true
+            saveBtn.isHidden = true
+        }
     }
     
     @objc private func deleteBtnAction() {
@@ -82,14 +107,16 @@ class DeviceSwitchViewController: UIViewController {
         
         SRAlertView(title: "notification".localizedString, message: "switch_delete_message".localizedString, actions: [.cancelAction, SRAlertAction(title: "confirm".localizedString, style: .destructive, actionHandler: {[weak self] _ in
             
-            // 是否已绑定开关
-            guard let self = self, self.switchData?.linkGroupAddress != nil || self.switchData?.proxyNodeAddress != nil else {
+            // 是否需要清空设备数据
+            guard let self = self, let switchData = self.switchData, !switchData.getNeedSyncDatas(deleteSwitch: true).isEmpty() else {
+                MeshNetworkManager.instance.deleteSwitch(switchData: self!.switchData!)
+                
                 // 空数据直接删除
                 NotificationCenter.default.post(name: .init(switchsRefreshNotificationName), object: nil)
-                MeshNetworkManager.instance.deleteSwitch(switchData: self!.switchData!)
+                NotificationCenter.default.post(name: .init(spaceDataChangedNotificaitonName), object: SpaceChangeDataType.common)
                 XWHUDManager.showSuccessTipHUD("done!".localizedString)
                 DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) {[weak self] in
-                    self?.back()
+                    self?.fineshed()
                 }
                 return
             }
@@ -99,6 +126,8 @@ class DeviceSwitchViewController: UIViewController {
     }
     
     @objc private func saveBtnAction() {
+        // 是否创建开关
+        var isCreate = false
         if self.switchData != nil {
             // 切换代理/删除代理节点记录该代理地址
             var deleteProxyNodeAddress = setSwitchData.deleteProxyNodeAddress
@@ -110,19 +139,20 @@ class DeviceSwitchViewController: UIViewController {
 //            self.switchData?.deleteProxyNodeAddress = deleteProxyNodeAddress
         }else {
 //            setSwitchData.save()
+            isCreate = true
             MeshNetworkManager.instance.switchs.append(setSwitchData)
             NotificationCenter.default.post(name: .init(switchsRefreshNotificationName), object: nil)
         }
         
         // 未创建动能开关通讯组
-        if setSwitchData.proxyNodeAddress != nil && setSwitchData.linkGroupAddress == nil {
-            guard let linkGroup = try? MeshAPI.createGroup(name: self.setSwitchData.name + "-Group", isVirtual: true) else {
+        if (setSwitchData.proxyNodeAddress != nil || setSwitchData.bindGroups.contains(where: { $0.nodes.count > 0 })) && setSwitchData.linkGroup == nil {
+            guard let linkGroup = try? MeshAPI.createGroup(name: self.setSwitchData.name + "-Group", address: setSwitchData.linkGroupAddress, isVirtual: true) else {
                 XWHUDManager.showErrorTipHUD("failed".localizedString + " !")
                 return
             }
             self.setSwitchData.linkGroupAddress = linkGroup.address.address
             self.switchData?.linkGroupAddress = linkGroup.address.address
-            self.setSwitchData?.save()
+//            self.setSwitchData?.save()
         }
         
         let syncData = setSwitchData.getNeedSyncDatas()
@@ -139,10 +169,18 @@ class DeviceSwitchViewController: UIViewController {
         guard setSwitchData.needSyncData else {
             
             NotificationCenter.default.post(name: .init(switchsRefreshNotificationName), object: nil)
+            NotificationCenter.default.post(name: .init(spaceDataChangedNotificaitonName), object: SpaceChangeDataType.common)
             XWHUDManager.showSuccessTipHUD("done!".localizedString)
             DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) {[weak self] in
-                self?.back(true)
+                if isCreate {
+                    self?.fineshed()
+                }else {
+                    self?.updateSaveEnabledState()
+                    self?.tableView.reloadData()
+                    self?.navigationController?.popViewController(animated: true)
+                }
             }
+            
             return
         }
         
@@ -151,14 +189,27 @@ class DeviceSwitchViewController: UIViewController {
             guard let self = self else { return }
             NotificationCenter.default.post(name: .init(switchsRefreshNotificationName), object: nil)
             XWHUDManager.showSuccessTipHUD("done!".localizedString)
-            DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) {[weak self] in
-                self?.back(true)
+            if self.switchData != nil {
+                self.setSwitchData.update(switchData: self.switchData!)
             }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) {[weak self] in
+                if isCreate {
+                    self?.fineshed()
+                }else {
+                    self?.updateSaveEnabledState()
+                    self?.tableView.reloadData()
+                    self?.navigationController?.popViewController(animated: true)
+                }
+            }
+            
         }
         vc.backActionCallback = {[weak self] in
             guard let self = self else { return }
             NotificationCenter.default.post(name: .init(switchsRefreshNotificationName), object: nil)
-            if self.switchData == nil {
+            if self.switchData != nil {
+                self.setSwitchData.update(switchData: self.switchData!)
+            }
+            if isCreate {
                 self.dismiss(animated: true)
             }else {
                 self.navigationController?.popViewController(animated: true)
@@ -171,7 +222,7 @@ class DeviceSwitchViewController: UIViewController {
     
     /// 重新同步
     private func switchReSync() {
-        guard let switchData = self.switchData else {
+        guard let switchData = self.switchData, self.editable else {
             return
         }
         let vc = SyncDevicesViewController(type: .enOceanSwitch(switchData), reSync: true)
@@ -180,12 +231,14 @@ class DeviceSwitchViewController: UIViewController {
             NotificationCenter.default.post(name: .init(switchsRefreshNotificationName), object: nil)
             XWHUDManager.showSuccessTipHUD("done!".localizedString)
             self.navigationController?.popViewController(animated: true)
+            self.setSwitchData.update(switchData: switchData)
             self.updateSaveEnabledState()
             self.tableView.reloadData()
         }
         vc.backActionCallback = {[weak self] in
             guard let self = self else { return }
             self.navigationController?.popViewController(animated: true)
+            self.setSwitchData.update(switchData: switchData)
             self.updateSaveEnabledState()
             self.tableView.reloadData()
         }
@@ -219,7 +272,7 @@ class DeviceSwitchViewController: UIViewController {
             NotificationCenter.default.post(name: .init(switchsRefreshNotificationName), object: nil)
             XWHUDManager.showSuccessTipHUD("done!".localizedString)
             DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) {[weak self] in
-                self?.back()
+                self?.fineshed()
             }
         }
         vc.backActionCallback = {[weak self] in
@@ -312,14 +365,24 @@ class DeviceSwitchViewController: UIViewController {
 
     /// 更新保存按钮状态
     private func updateSaveEnabledState() {
+        // 名称是否合法
+        let nameValid = !(setSwitchData.name.isAllInputTextEmpty() || MeshNetworkManager.instance.isSwitchTautonym(name: setSwitchData.name) && setSwitchData.name != switchData?.name)
         
-        if switchData != nil && setSwitchData == switchData! { // 未改动
+        if !nameValid || (switchData != nil && setSwitchData == switchData!) { // 未改动
+            createBtn.isUserInteractionEnabled = false
+            createBtn.setTitleColor(Message_Color, for: .normal)
+            
             saveBtn.isUserInteractionEnabled = false
             saveBtn.setTitleColor(Message_Color, for: .normal)
         }else {
+            createBtn.isUserInteractionEnabled = true
+            createBtn.setTitleColor(Bar_Color, for: .normal)
+            
             saveBtn.isUserInteractionEnabled = true
             saveBtn.setTitleColor(Bar_Color, for: .normal)
         }
+        
+        self.isModalInPresentation = !(setSwitchData == (switchData ?? DeviceSwitchData.defalut()))
     }
     
 }
@@ -353,6 +416,7 @@ extension DeviceSwitchViewController: UITableViewDataSource, UITableViewDelegate
             infoCell.contentLabel.font = UIFont.systemFont(ofSize: SCRYFrom(14), weight: .light)
             infoCell.lineView.backgroundColor = RGB(243, 243, 243, 0.7)
             infoCell.lineView.isHidden = option == .proxy
+            infoCell.iconImageView.isHidden = true
             infoCell.selectionStyle = .none
             let numberOfRows = tableView.numberOfRows(inSection: indexPath.section)
             let isFirstCell = indexPath.row == 0
@@ -365,9 +429,14 @@ extension DeviceSwitchViewController: UITableViewDataSource, UITableViewDelegate
                 infoCell.enabledSwitch.isOn = self.setSwitchData.enabled
                 infoCell.contentLabel.text = nil
                 infoCell.switchActionCallback = {[weak self] isOn in
-                    self?.setSwitchData.enabled = isOn
+                    guard let self = self else { return }
+                    guard self.editable else {
+                        XWHUDManager.showTipHUD("no_permission".localizedString + "！")
+                        return
+                    }
+                    self.setSwitchData.enabled = isOn
                     infoCell.enabledSwitch.isOn = isOn
-                    self?.updateSaveEnabledState()
+                    self.updateSaveEnabledState()
 //                    self?.setEnOceanSwitchKeysEnabled(groupSwitch: groupSwitch, enabled: isOn)
                 }
             case .id:
@@ -524,6 +593,7 @@ extension DeviceSwitchViewController: UITableViewDataSource, UITableViewDelegate
             }
             
             let vc = EnOceanProxyViewController(switchData: setSwitchData)
+            vc.editable = self.editable
             vc.switchDataSaved = {[weak self] in
                 guard let self = self, let switchData = self.switchData else {
                     return true
@@ -540,11 +610,17 @@ extension DeviceSwitchViewController: UITableViewDataSource, UITableViewDelegate
             }
             vc.switchCreateCallback = {[weak self] newSwitch in
                 guard let self = self else { return }
-                self.dismiss(animated: true) {[weak self] in
-                    guard let self = self else { return }
-                    let vc = DeviceSwitchViewController(space: self.space, switchData: newSwitch)
-                    UIViewController.getVisibleVc()?.present(NavigationViewController(rootViewController: vc), animated: true)
-                }
+                navigationController?.popViewController(animated: true)
+                self.switchData = nil
+                self.setSwitchData = newSwitch
+                self.updateUI()
+                self.updateSaveEnabledState()
+                self.tableView.reloadData()
+//                self.dismiss(animated: true) {[weak self] in
+//                    guard let self = self else { return }
+//                    let vc = DeviceSwitchViewController(space: self.space, switchData: newSwitch)
+//                    UIViewController.getVisibleVc()?.present(NavigationViewController(rootViewController: vc), animated: true)
+//                }
             }
 //            vc.switchDataUpdateCallback = {[weak self] setSwitch in
 //                guard let self = self else { return }

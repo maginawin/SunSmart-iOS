@@ -176,6 +176,18 @@ class DeviceAddViewController: UIViewController {
                 self.scanDevices.append(device)
                 device.selectedState = .selected
                 device.addState = .scaning
+                
+                if let info = MeshLibManager.manager.supportDeviceInfos.first(where: { $0.companyId == device.cid && $0.productId == device.pid }) {
+                    device.deviceName = info.categoryName
+                    device.elementCount = info.elementCount
+                    device.isSupport = true
+                    device.icon = "device_\(info.productId.hex)"
+                }else {
+                    device.isSupport = false
+                    device.icon = "device_unknown"
+                    device.selectedState = .disabled
+                }
+                
 //                print(device.rssi)
                 
                 if self.filterRSSI == self.filterRSSIRange.lowerBound || device.rssi.intValue >= self.filterRSSI { // 当前设备信号值在筛选范围内可展示
@@ -542,8 +554,12 @@ class DeviceAddViewController: UIViewController {
                 appendMessages.insert(MeshMessageHandle(message: LightCTLTemperatureRangeGet(), model: ctlModel), at: 0)
             }
             // 设置默认过渡时间
-            if let defaultTransitionTimeModel = node.defaultTransitionTimeModel {
-                appendMessages.append(MeshMessageHandle(message: GenericDefaultTransitionTimeSet(transitionTime: .default), model: defaultTransitionTimeModel))
+//            if let defaultTransitionTimeModel = node.defaultTransitionTimeModel {
+//                appendMessages.append(MeshMessageHandle(message: GenericDefaultTransitionTimeSet(transitionTime: .default), model: defaultTransitionTimeModel))
+//            }
+            // 节点数据hash
+            if let vendorModel = node.sunricherVendorModel {
+                appendMessages.append(MeshMessageHandle(message: SunricherVendorGet(function: .compositionHash), model: vendorModel))
             }
 //            appendMessages.insert(MeshMessageHandle(message: ConfigRelaySet(), address: node.primaryUnicastAddress), at: 0)
             
@@ -576,6 +592,7 @@ class DeviceAddViewController: UIViewController {
                     let mac = MeshNetworkManager.instance.getRandomMacAddress()
                     node.macAddress = mac
                 }
+                node.name = MeshNetworkManager.instance.getNextNodeName()
 //                node.state = true
                 node.save()
 //                node.saveNodeInfo(meshUUID: self.space.meshUUID, networkKey: self.space.meshNetworkKey)
@@ -595,7 +612,7 @@ class DeviceAddViewController: UIViewController {
             self?.updateUIState()
             // 设备地址已分配完
             if let provisioningError = error as? ProvisioningError, case .noAddressAvailable = provisioningError {
-                
+//                applyDeviceAddressesRequest(applyAddressCount: applyAddressCount, devices: [])
             }
             
         } addFinish: {[weak self] successList, failList in
@@ -603,10 +620,10 @@ class DeviceAddViewController: UIViewController {
             let successNodes = MeshNetworkManager.instance.realNodes.filter { node in
                 successList.contains(where: { $0.address == node.primaryUnicastAddress })
             }
-            successNodes.forEach { node in
-                node.name = MeshNetworkManager.instance.getNextNodeName()
-                node.save()
-            }
+//            successNodes.forEach { node in
+//                node.name = MeshNetworkManager.instance.getNextNodeName()
+//                node.save()
+//            }
 //            if MeshLibManager.manager.currentProxy?.node == nil, let node = successNodes.last {
 //                MeshLibManager.manager.currentProxy?.nodeAddress = node.primaryUnicastAddress
 //            }

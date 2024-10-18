@@ -38,6 +38,15 @@ class DeviceInformationViewController: UIViewController {
         sectionShowMap = [.deviceInfo: true, .group: true, .scene: true]
         
         setupTableView()
+        
+        if let model = node.firmwareUpdateServerModel {
+            MeshAPI.sendMessage(message: FirmwareUpdateInformationGet(firstIndex: 0, entriesLimit: 1), model: model) {[weak self] _ in
+                guard let self = self else { return }
+                self.setupDeviceInfoDataSource()
+                self.tableView.reloadSections(IndexSet(integer: 0), with: .none)
+            }
+        }
+        
     }
     
     /// 设备数据
@@ -50,10 +59,10 @@ class DeviceInformationViewController: UIViewController {
         let macModel = CustomCellModel(icon: UIImage(named: "copy"), title: "MAC", content: node.macAddressResult, style: .icon)
         
         let devModel = CustomCellModel(title: "model".localizedString, content: "--", style: .none)
+        let typeName = MeshLibManager.manager.supportDeviceInfos.first(where: { $0.companyId == node.companyIdentifier && $0.productId == node.productIdentifier })?.categoryName
+        let deviceTypeModel = CustomCellModel(title: "device_type".localizedString, content: typeName ?? "--", style: .none)
         
-        let deviceTypeModel = CustomCellModel(title: "device_type".localizedString, content: "--", style: .none)
-        
-        let firmwareModel = CustomCellModel(title: "firmware".localizedString, content: String(format: "%04X", node.versionIdentifier ?? 0), style: .none)
+        let firmwareModel = CustomCellModel(title: "firmware".localizedString, content: node.firmwareVersion ?? "--", style: .none)
         
         let singleStrengthModel = CustomCellModel(title: "signal_strength".localizedString, content: node.rssi != nil ? "\(node.rssi!)dB" : "--", style: .none)
         

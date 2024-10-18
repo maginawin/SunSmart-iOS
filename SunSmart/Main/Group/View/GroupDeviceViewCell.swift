@@ -14,7 +14,7 @@ class GroupDeviceViewCell: DevicesViewCell {
         didSet {
             super.device = device
             if device.needSync && device.state {
-                iconImageView.image = UIImage(named: "device_light_unsync")
+                iconImageView.image = UIImage(named: device.unsyncIconName)
             }
             
             if device.isKeybindComplete && device.state {

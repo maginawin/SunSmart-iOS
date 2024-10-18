@@ -133,7 +133,10 @@ class ProfileManualOverrideTimeoutView: UIView {
     }
     
     @objc private func enableSwitchBtnAction() {
-        if !self.editable {
+        if self.editable {
+            self.enableSwitch.isOn = !self.enableSwitch.isOn
+            enableSwitchValueChanged(sender: self.enableSwitch)
+        }else {
             delegate?.timeoutViewDisableEditAction(view: self)
         }
     }

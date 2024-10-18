@@ -304,7 +304,7 @@ extension ScheduleDevicesView: UICollectionViewDataSource, UICollectionViewDeleg
         let node = nodes[indexPath.item]
         cell.device = node
         if needSyncNodes.contains(node) {
-            cell.iconImageView.image = UIImage(named: "device_light_unsync")
+            cell.iconImageView.image = UIImage(named: node.unsyncIconName)
         }
         if node.isKeybindComplete && node.state {
             cell.selectImageView.isHidden = false

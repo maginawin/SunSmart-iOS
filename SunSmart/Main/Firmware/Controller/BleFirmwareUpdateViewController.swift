@@ -164,7 +164,8 @@ class BleFirmwareUpdateViewController: UIViewController {
     private var selectCountLabel: UILabel!
     private var upgradeBtn: UIButton!
     private weak var upgradeView: FirmwareUpdateStateView?
-    private var showData: [DeviceType: Bool] = [:]
+    private var showData: [UInt16: Bool] = [:]
+    private var refreshControl: UIRefreshControl!
     
     private var firmwareTypeDatas: [FirmwareUpdateTypeData] = []
     private var selectNodes: [Node] = []
@@ -182,21 +183,21 @@ class BleFirmwareUpdateViewController: UIViewController {
         
         navigationItem.rightBarButtonItem = UIBarButtonItem(image: UIImage(named: "help")?.withRenderingMode(.alwaysOriginal), style: .done, target: self, action: #selector(helpAction))
         setupUI()
+        self.isModalInPresentation = true
 //        setupData()
         
         MeshNetworkManager.instance.realNodes.forEach({
             $0.updateState = .none
+            $0.selectedState = .unselected
         })
         
         refreshRSSI()
     }
     
-    
-    
     /// 获取云端固件
     private func loadCloudFirmwareRequest(type: FirmwareUpdateTypeData) {
         
-        NetworkRequest.shared.request(.firmwareLatestVersion(deviceType: type.deviceType.pid.hex)) {[weak self] result in
+        NetworkRequest.shared.request(.firmwareLatestVersion(deviceType: type.productId.hex)) {[weak self] result in
             guard let self = self else { return }
             switch result {
             case .success(let response):
@@ -207,19 +208,17 @@ class BleFirmwareUpdateViewController: UIViewController {
                       let url = data["url"].string,
                       var releaseDate = data["releaseDate"].string,
                       let size = data["size"].int,
-                      let deviceTypeStr = data["deviceType"].string, let pid = UInt16(hex: deviceTypeStr.replacingOccurrences(of: "0x", with: "")) else {
+                      let deviceTypeStr = data["deviceType"].string, let pid = UInt16(hex: deviceTypeStr.replacingOccurrences(of: "0x", with: "")), pid == type.productId else {
                     return
                 }
-                
-                let deviceType = DeviceType(pid: pid)
             
                 releaseDate = releaseDate.replacingOccurrences(of: "T", with: " ")
                 releaseDate = releaseDate.replacingOccurrences(of: "Z", with: "")
                 let timeInterval = String.dateConvert(timeStr: releaseDate, dateFormat: nil)
                 
-                let serverData = FirmwareServerData(deviceType: deviceType, version: version.replacingOccurrences(of: "v", with: ""), companyId: UInt16(companyId) ?? 0x0A78, customId: UInt16(customId) ?? 0, url: url, filename: data["filename"].stringValue, size: size, releaseDate: timeInterval, content: data["describe"].stringValue)
+                let serverData = FirmwareServerData(productId: pid, version: version.replacingOccurrences(of: "v", with: ""), companyId: UInt16(companyId) ?? CompanyId, customId: UInt16(customId) ?? 0, url: url, filename: data["filename"].stringValue, size: size, releaseDate: timeInterval, content: data["describe"].stringValue)
                 type.serverData = serverData
-                if let index = firmwareTypeDatas.firstIndex(where: { $0.deviceType.pid == type.deviceType.pid }) {
+                if let index = firmwareTypeDatas.firstIndex(where: { $0.productId == type.productId }) {
                     self.collectionView.reloadItems(at: [IndexPath(row: index, section: 0)])
                 }else {
                     self.collectionView.reloadData()
@@ -232,7 +231,7 @@ class BleFirmwareUpdateViewController: UIViewController {
     }
     
     /// 刷新信号值
-    private func refreshRSSI() {
+    @objc private func refreshRSSI() {
         guard MeshNetworkManager.instance.realNodes.count > 0 else {
             showEmptyUI()
             return
@@ -240,14 +239,15 @@ class BleFirmwareUpdateViewController: UIViewController {
         
         MeshNetworkManager.instance.realNodes.forEach({ $0.rssi = nil })
         XWHUDManager.showCustomHUD(withMessage: nil, view: view)
-        MeshLibManager.manager.refreshNodesRSSI(withWaitFor: 2) {[weak self] nodes in
+        MeshLibManager.manager.refreshNodesRSSI(withWaitFor: 6) {[weak self] nodes in
             guard let self = self else { return }
-            XWHUDManager.hideInView(with: self.view)
+//            self.firmwareTypeDatas.forEach({
+//                $0.nodes.sort(by: { $0.rssi ?? 0 >= $1.rssi ?? 0 })
+//            })
+            self.refreshControl.endRefreshing()
+            self.setupData(loadServerData: true)
             
-            self.firmwareTypeDatas.forEach({
-                $0.nodes.sort(by: { $0.rssi ?? 0 >= $1.rssi ?? 0 })
-            })
-            self.setupData()
+            XWHUDManager.hideInView(with: self.view)
         }
     }
     
@@ -258,18 +258,20 @@ class BleFirmwareUpdateViewController: UIViewController {
         bottomView.isHidden = true
     }
     
-    private func setupData() {
+    /// 初始化数据
+    /// - Parameters installServerData: 加载服务器数据
+    private func setupData(loadServerData: Bool = false) {
         
         var deviceTypes: [FirmwareUpdateTypeData] = []
         
         let nodes = MeshNetworkManager.instance.realNodes
         nodes.forEach { node in
             if let pid = node.productIdentifier {
-                let deviceType = DeviceType(pid: pid)
-                if deviceType != .unknown {
+//                let deviceType = DeviceType(pid: pid)
+//                if deviceType != .unknown {
                     
                     // 读取本地固件包
-                    let localFirmwareData = FirmwareData.load(deviceType: deviceType).first
+                    let localFirmwareData = FirmwareData.load(productId: pid).first
                     let cacheVersion = localFirmwareData?.version
                     
                     var enableUpgrade = false
@@ -277,14 +279,15 @@ class BleFirmwareUpdateViewController: UIViewController {
                     if cacheVersion != nil, let nodeVersion = node.firmwareVersion {
                         enableUpgrade = cacheVersion!.compare(nodeVersion) == .orderedDescending
                     }
-                    if let deviceTypeData = deviceTypes.first(where: { $0.deviceType.pid == node.productIdentifier }) {
+                    if let deviceTypeData = deviceTypes.first(where: { $0.productId == node.productIdentifier }) {
                         deviceTypeData.nodes.append(node)
                         if enableUpgrade {
                             deviceTypeData.upgradedNodes.append(node)
                         }
                     }else {
-                        let data = FirmwareUpdateTypeData(deviceType: deviceType, targetVersion: localFirmwareData?.version, nodes: [node])
-                        data.isShow = self.showData[deviceType] ?? false
+                        let data = FirmwareUpdateTypeData(productId: pid, targetVersion: localFirmwareData?.version, nodes: [node])
+                        data.targetVersionHash = localFirmwareData?.compositionHash
+                        data.isShow = self.showData[pid] ?? false
                         if enableUpgrade {
                             data.upgradedNodes.append(node)
                         }
@@ -294,31 +297,40 @@ class BleFirmwareUpdateViewController: UIViewController {
                     node.targetFirmwareData = localFirmwareData
                     if enableUpgrade, let rssi = node.rssi {
                         node.enableUpgrade = rssi >= -80
-                        node.selectedState = .unselected
+                        if node.selectedState == .disabled {
+                            node.selectedState = .unselected
+                        }
                     }else {
                         node.enableUpgrade = false
                         node.selectedState = .disabled
                     }
-                }
+//                }
                 
             }
         }
         self.firmwareTypeDatas = deviceTypes
         
         if deviceTypes.isEmpty {
+            collectionView.refreshControl = nil
             showEmptyUI()
         }else {
+            if collectionView.refreshControl == nil {
+                collectionView.refreshControl = refreshControl
+            }
             bottomView.isHidden = false
             var selectNodes: [Node] = []
             firmwareTypeDatas.forEach { data in
+                data.nodes.sort(by: { $0.rssi ?? -99 >= $1.rssi ?? -99 })
                 selectNodes.append(contentsOf: data.nodes.filter({ $0.updateState.rawValue == Node.UpdateState.none.rawValue && $0.enableUpgrade && $0.selectedState == .selected }))
             }
             self.selectNodes = selectNodes
             updateSelectAllState()
             
-            deviceTypes.forEach { data in
-                if data.targetVersion != nil {
-                    loadCloudFirmwareRequest(type: data)
+            if loadServerData {
+                deviceTypes.forEach { data in
+                    if data.targetVersion != nil {
+                        loadCloudFirmwareRequest(type: data)
+                    }
                 }
             }
             
@@ -344,6 +356,8 @@ class BleFirmwareUpdateViewController: UIViewController {
         stateView.delegate = self
         stateView.show()
         self.upgradeView = stateView
+        // 设置屏幕常亮
+        UIApplication.shared.isIdleTimerDisabled = true
         
         MeshFirmwareUpdateManager.shared.startFirmwareUpdate(targets: targets) { node, state in
             switch state {
@@ -367,6 +381,9 @@ class BleFirmwareUpdateViewController: UIViewController {
             }
             
         } complete: {[weak self] successfulList, failureList in
+            
+            // 关闭设置屏幕常亮
+            UIApplication.shared.isIdleTimerDisabled = false
             guard let self = self else { return  }
             var selectNodes: [Node] = []
             self.firmwareTypeDatas.forEach { data in
@@ -375,13 +392,16 @@ class BleFirmwareUpdateViewController: UIViewController {
             self.selectNodes = selectNodes
             
             if targets.count > 1 { // 多设备升级
-                stateView.update(state: .result(successfuly: successfulList.count, failed: successfulList.count))
+                stateView.update(state: .result(successfuly: successfulList.count, failed: failureList.count))
             }else { // 单设备升级
                 if let failedTarget = failureList.first {
                     stateView.update(state: .failure(message: failedTarget.1.message))
                 }else {
                     stateView.update(state: .completed)
                 }
+            }
+            if successfulList.count > 0 {
+                NotificationCenter.default.post(name: .init(spaceDataChangedNotificaitonName), object: SpaceChangeDataType.device)
             }
             self.failedNodes = failureList.map({ $0.0.node })
             self.setupData()
@@ -450,6 +470,10 @@ class BleFirmwareUpdateViewController: UIViewController {
         flowLayout.minimumLineSpacing = SCRYFrom(16)
         flowLayout.minimumInteritemSpacing = 0
         
+        refreshControl = UIRefreshControl()
+        refreshControl.tintColor = UIColor.lightGray
+        refreshControl.addTarget(self, action: #selector(refreshRSSI), for: .valueChanged)
+        
         collectionView = UICollectionView(frame: .zero, collectionViewLayout: flowLayout)
         collectionView.backgroundColor = .clear
         collectionView.contentInset = UIEdgeInsets(top: SCRYFrom(7), left: SCRXFrom(16), bottom: SCRYFrom(16), right: SCRXFrom(16))
@@ -517,7 +541,38 @@ class BleFirmwareUpdateViewController: UIViewController {
         guard self.selectNodes.count > 0 else {
             return
         }
-        startUpgraded(nodes: selectNodes)
+        upgradeCheak(nodes: selectNodes)
+    }
+    
+    /// 升级检查设备，升级后需要重置的设备提前提示
+    private func upgradeCheak(nodes: [Node]) {
+        
+        // 获取升级后会重置的设备list
+        let resetTypes = self.firmwareTypeDatas.filter({ type in
+            return nodes.contains(where: { $0.productIdentifier == type.productId && $0.compositionHash != nil && $0.compositionHash != type.targetVersionHash })
+        })
+        
+//        let resetNodes = nodes.filter({ node in node.compositionHash != self.firmwareTypeDatas.first(where: { $0.productId == node.productIdentifier })?.targetVersionHash })
+        if resetTypes.count > 0 {
+            var firmwareStr = ""
+            resetTypes.forEach({ type in
+                let pid = String(format: "0x%04X", type.productId)
+                firmwareStr.append(String(format: "%@%@", firmwareStr.isEmpty ? "" : ",", pid))
+            })
+            firmwareStr = "[\(firmwareStr)]"
+            let message = String(format: "firmware_update_reset_message".localizedString, firmwareStr)
+            
+            let messageAttStr = NSMutableAttributedString(string: message)
+            messageAttStr.addAttributes([.font: FONTS(SCRYFrom(15)), .foregroundColor: TextBlack_Color], range: (message as NSString).range(of: firmwareStr))
+            
+            SRAlertView(title: "notification".localizedString, messageAttStr: messageAttStr, actions: [.cancelAction, SRAlertAction(title: "UPGRADE".localizedString, actionHandler: {[weak self] _ in
+                guard let self = self else { return }
+                self.startUpgraded(nodes: nodes)
+            })]).show()
+        }else {
+            startUpgraded(nodes: nodes)
+        }
+        
     }
     
 }
@@ -562,8 +617,8 @@ extension BleFirmwareUpdateViewController: BleFirmwareTypeUpdateViewCellDelegate
     /// 展开/收起设备列表
     func cell(_ cell: BleFirmwareTypeUpdateViewCell, didShowDevices show: Bool) {
         if let indexPath = collectionView.indexPath(for: cell) {
-            let deviceType = firmwareTypeDatas[indexPath.item].deviceType
-            self.showData.updateValue(show, forKey: deviceType)
+            let productId = firmwareTypeDatas[indexPath.item].productId
+            self.showData.updateValue(show, forKey: productId)
             firmwareTypeDatas[indexPath.row].isShow = show
 //            collectionView.reloadItems(at: [indexPath])
             UIView.animate(withDuration: 0.2) {
@@ -575,7 +630,8 @@ extension BleFirmwareUpdateViewController: BleFirmwareTypeUpdateViewCellDelegate
     
     /// 设备开始升级
     func cell(_ cell: BleFirmwareTypeUpdateViewCell, startUpgraded device: Node) {
-        startUpgraded(nodes: [device])
+        upgradeCheak(nodes: [device])
+//        startUpgraded(nodes: [device])
     }
     
     /// 设备升级失败原因
@@ -610,11 +666,16 @@ extension BleFirmwareUpdateViewController: BleFirmwareTypeUpdateViewCellDelegate
     func cell(_ cell: BleFirmwareTypeUpdateViewCell, viewCurrentTargetVersion firmwareTypeData: FirmwareUpdateTypeData) {
         
         let vc = FirmwareVersionViewController(type: firmwareTypeData)
-        vc.localFirmwareData = FirmwareData.load(deviceType: firmwareTypeData.deviceType).first
+        vc.localFirmwareData = FirmwareData.load(productId: firmwareTypeData.productId).first
         vc.updateLocalFirmwareDataCallback = {[weak self] updateFirmwareData in
             guard let self = self else { return }
 //            firmwareTypeData.targetVersion = updateFirmwareData?.version
 //            cell.firmwareTypeData = firmwareTypeData
+            MeshNetworkManager.instance.realNodes.forEach({
+                $0.updateState = .none
+                $0.selectedState = .unselected
+            })
+            self.failedNodes.removeAll()
             self.setupData()
         }
         navigationController?.pushViewController(vc, animated: true)
@@ -629,6 +690,10 @@ extension BleFirmwareUpdateViewController: FirmwareUpdateStateViewDelegate {
     func firmwareUpdateCancelAction(_ view: FirmwareUpdateStateView) {
         self.upgradeView = nil
         MeshFirmwareUpdateManager.shared.stopFirmwareUpdate(complete: nil)
+        // 关闭设置屏幕常亮
+        UIApplication.shared.isIdleTimerDisabled = false
+        
+        self.setupData()
     }
     
     /// 点击重试回调

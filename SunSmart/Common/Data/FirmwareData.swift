@@ -69,8 +69,8 @@ struct FirmwareData {
     let updateFirmwareImageIndex: Int
     /// 升级check数据
     let incomingFirmwareMetadata: Data
-    /// 设备类型
-    let deviceType: DeviceType
+    /// 产品id
+    let productId: UInt16
     /// 厂商id
     let vendorId: UInt16
     /// 客户id
@@ -79,5 +79,6 @@ struct FirmwareData {
     let releaseDate: Int64
     /// 更新内容
     let content: String
-    
+    /// 固件hash
+    let compositionHash: String
 }

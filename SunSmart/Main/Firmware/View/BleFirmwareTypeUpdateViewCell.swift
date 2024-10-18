@@ -63,8 +63,8 @@ class BleFirmwareTypeUpdateViewCell: UICollectionViewCell {
     
     var firmwareTypeData: FirmwareUpdateTypeData! {
         didSet {
-            deviceTypeLabel.text = firmwareTypeData.deviceType.name
-            productIdLabel.text = String(format: "0x%04X", firmwareTypeData.deviceType.pid)
+            deviceTypeLabel.text = firmwareTypeData.categoryName
+            productIdLabel.text = String(format: "0x%04X", firmwareTypeData.productId)
             if let targetVersion = firmwareTypeData.targetVersion, let serverVersion = firmwareTypeData.serverData?.version {
                 newVersionView.isHidden = !(serverVersion.compare(targetVersion) == .orderedDescending)
             }else {
@@ -73,8 +73,14 @@ class BleFirmwareTypeUpdateViewCell: UICollectionViewCell {
             targetVersionLabel.text = firmwareTypeData.targetVersion ?? "None"
             
             totalNumberLabel.text = "\(firmwareTypeData.nodes.count)"
-            if firmwareTypeData.targetVersion != nil {
-                upgradedNumberLabel.text =  "\(firmwareTypeData.upgradedNodes.count)"
+            if let targetVersion = firmwareTypeData.targetVersion{
+                
+                // 已升级的设备
+                let upgradedCount = firmwareTypeData.nodes.filter({ $0.firmwareVersion != nil && targetVersion.compare($0.firmwareVersion!) == .orderedSame }).count
+                
+//                let  firmwareTypeData.nodes.count - firmwareTypeData.upgradedNodes.count
+                upgradedNumberLabel.text = "\(upgradedCount)"
+//                "\(firmwareTypeData.upgradedNodes.count)"
             }else {
                 upgradedNumberLabel.text = "--"
             }
@@ -536,6 +542,7 @@ class BleFirmwareUpdateDeviceCell: UITableViewCell {
                 }
             case .successful:
                 selectedImageView.isHidden = true
+                updateStateBtn.isHidden = false
                 updateStateBtn.setImage(UIImage(named: "device_add_success"), for: .normal)
             case .failure:
                 selectedImageView.image = UIImage(named: "device_select_disable")
@@ -545,11 +552,13 @@ class BleFirmwareUpdateDeviceCell: UITableViewCell {
             if let rssi = device.rssi {
                 nameLabel.textColor = TextBlack_Color
                 rssiLabel.text = "\(rssi)dB"
-                
+                rssiLabel.textColor = rssi >= -80 ? SubText_Color : Red_Color
+                deviceImageView.image = UIImage(named: device.iconName)
             }else {
                 nameLabel.textColor = SubText_Color
-                deviceImageView.image = UIImage(named: "device_light")?.withTintColor(SubText_Color)
+                deviceImageView.image = UIImage(named: device.iconName)?.withTintColor(SubText_Color)
                 rssiLabel.text = "--"
+                rssiLabel.textColor = SubText_Color
                 selectedImageView.isHidden = true
             }
             
@@ -596,6 +605,7 @@ class BleFirmwareUpdateDeviceCell: UITableViewCell {
         }
         
         deviceImageView = UIImageView(image: UIImage(named: "device_light"))
+        deviceImageView.isUserInteractionEnabled = true
         deviceImageView.addGestureRecognizer(UITapGestureRecognizer(target: self, action: #selector(identifyingAction)))
         contentView.addSubview(deviceImageView)
         deviceImageView.snp.makeConstraints { make in

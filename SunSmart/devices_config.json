@@ -1,0 +1,141 @@
+[
+    {
+        "companyId" : "0A78",
+        "productId" : "0001",
+        "categoryName" : "PIR Sensor Lighting",
+        "elementCount" : 2
+    },
+    {
+        "companyId" : "0A78",
+        "productId" : "0011",
+        "categoryName" : "PIR Sensor Lighting",
+        "elementCount" : 2
+    },
+    {
+        "companyId" : "0A78",
+        "productId" : "0021",
+        "categoryName" : "PIR Sensor Lighting",
+        "elementCount" : 2
+    },
+    {
+        "companyId" : "0A78",
+        "productId" : "0031",
+        "categoryName" : "ZLLC PIR Sensor",
+        "elementCount" : 2
+    },
+    {
+        "companyId" : "0A78",
+        "productId" : "0041",
+        "categoryName" : "ZLLC PIR Sensor",
+        "elementCount" : 2
+    },
+    {
+        "companyId" : "0A78",
+        "productId" : "0101",
+        "categoryName" : "0-10V Converter",
+        "elementCount" : 2
+    },
+    {
+        "companyId" : "0A78",
+        "productId" : "0111",
+        "categoryName" : "0-10V Load Controller",
+        "elementCount" : 2
+    },
+    {
+        "companyId" : "0A78",
+        "productId" : "0301",
+        "categoryName" : "Driver Lighting",
+        "elementCount" : 2
+    },
+    {
+        "companyId" : "0A78",
+        "productId" : "0302",
+        "categoryName" : "Driver Lighting",
+        "elementCount" : 2
+    },
+    {
+        "companyId" : "0A78",
+        "productId" : "0303",
+        "categoryName" : "Driver Lighting",
+        "elementCount" : 2
+    },
+    {
+        "companyId" : "0A78",
+        "productId" : "0311",
+        "categoryName" : "Driver Lighting",
+        "elementCount" : 2
+    },
+    {
+        "companyId" : "0A78",
+        "productId" : "0312",
+        "categoryName" : "Driver Lighting",
+        "elementCount" : 2
+    },
+    {
+        "companyId" : "0A78",
+        "productId" : "0313",
+        "categoryName" : "Driver Lighting",
+        "elementCount" : 2
+    },
+    {
+        "companyId" : "0A78",
+        "productId" : "0401",
+        "categoryName" : "Controler Lighting",
+        "elementCount" : 2
+    },
+    {
+        "companyId" : "0A78",
+        "productId" : "0411",
+        "categoryName" : "Controler Lighting",
+        "elementCount" : 2
+    },
+    {
+        "companyId" : "0A78",
+        "productId" : "0421",
+        "categoryName" : "Controler Lighting",
+        "elementCount" : 4
+    },
+    {
+        "companyId" : "0A78",
+        "productId" : "0422",
+        "categoryName" : "Controler Lighting",
+        "elementCount" : 4
+    },
+    {
+        "companyId" : "0A78",
+        "productId" : "0423",
+        "categoryName" : "Controler Lighting",
+        "elementCount" : 4
+    },
+    {
+        "companyId" : "0A78",
+        "productId" : "0424",
+        "categoryName" : "Controler Lighting",
+        "elementCount" : 4
+    },
+    {
+        "companyId" : "0A78",
+        "productId" : "0431",
+        "categoryName" : "Controler Lighting",
+        "elementCount" : 4
+    },
+    {
+        "companyId" : "0A78",
+        "productId" : "0441",
+        "categoryName" : "Controler Lighting",
+        "elementCount" : 2
+    },
+    {
+        "companyId" : "0A78",
+        "productId" : "0451",
+        "categoryName" : "Controler Lighting",
+        "elementCount" : 2
+    },
+    {
+        "companyId" : "0A78",
+        "productId" : "0461",
+        "categoryName" : "Controler Lighting",
+        "elementCount" : 2
+    }
+]
+

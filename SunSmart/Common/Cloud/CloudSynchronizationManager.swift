@@ -99,6 +99,8 @@ enum SyncLevel {
             return 5
         case .slow:
             return 10
+        case .custom(let interval):
+            return interval
         }
     }
     
@@ -108,6 +110,8 @@ enum SyncLevel {
     case normal
     /// 缓慢
     case slow
+    /// 自定义
+    case custom(interval: TimeInterval)
 }
 
 protocol CloudSynchronizationManagerDelegate: AnyObject {

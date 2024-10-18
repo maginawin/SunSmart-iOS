@@ -68,7 +68,8 @@ enum DeviceOperationType {
                         return false
                     }
                 }
-                return switchData.proxyNode?.enOceanMacAddress == nil
+//                return switchData.proxyNode?.enOceanMacAddress == nil
+                return switchData.deleteProxyNode == nil || switchData.deleteProxyNode?.enOceanMacAddress == nil
             }
         case .configuration(let node, let type):
             switch type {
@@ -600,6 +601,16 @@ class SyncDevicesSwitchProxyModel: SyncCellModel {
     var parentSectionIndex: Int?
     /// 设置的设备
     let deviceModel: SyncDevicesModel
+    
+    /// 状态
+    override var state: SyncDevicesState {
+        get {
+            return deviceModel.state
+        }set {
+//            self.state = newValue
+            super.state = newValue
+        }
+    }
     
     init(imageName: String = "switch_proxy", name: String, deviceModel: SyncDevicesModel) {
         self.imageName = imageName

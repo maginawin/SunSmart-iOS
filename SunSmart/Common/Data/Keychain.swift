@@ -54,7 +54,7 @@ struct Keychain {
         guard let data = uuid.data(using: .utf8) else {
             return false
         }
-        return saveData(key: service, data: data)
+        return saveData(key: account, data: data)
 //        let query: [String: Any] = [
 //            kSecClass as String: kSecClassGenericPassword,
 //            kSecAttrService as String: service,

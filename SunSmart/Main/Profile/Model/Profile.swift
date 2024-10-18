@@ -436,6 +436,17 @@ class Profile: Copyable {
         }
     }
     
+    /// 更新数据
+    func updateData(profile: Profile) {
+        
+        self.name = profile.name
+        self.type = profile.type
+        self.lightData = profile.lightData
+        self.powerUpState = profile.powerUpState
+        self.manualOverrideTimeout = profile.manualOverrideTimeout
+        self.adjustSpeed = profile.adjustSpeed
+    }
+    
     func copy() -> Self {
         return Profile(name: name, id: id, type: type, lightData: lightData.copy(), powerUpState: powerUpState, manualOverrideTimeout: manualOverrideTimeout, adjustSpeed: adjustSpeed) as! Self
     }

@@ -131,6 +131,7 @@ class SyncDevicesViewController: UIViewController {
                     let syncNodes = resut.syncNodes
                     let syncSceneDeviceModels = syncNodes.map({ node in
                         let model = SyncDevicesModel(name: node.name ?? "", address: node.primaryUnicastAddress)
+                        model.imageName = node.iconName
                         // 场景绑定日程
                         if scene.info.bindSchedules.count > 0 {
                             
@@ -167,6 +168,7 @@ class SyncDevicesViewController: UIViewController {
                     let deleteNodes = resut.deleteNodes
                     let deleteSceneDeviceModels = deleteNodes.map({ node in
                         let model = SyncDevicesModel(name: node.name ?? "", address: node.primaryUnicastAddress)
+                        model.imageName = node.iconName
                         if scene.info.bindSchedules.count > 0 {
                             
                             let deleteScheduleTasks = scene.info.bindSchedules.map({ schedule in
@@ -209,6 +211,7 @@ class SyncDevicesViewController: UIViewController {
             // 需删除日程的设备
             let deleteScheduleDeviceModels = data.deleteNodes.map({
                 let model = SyncDevicesModel(name: $0.name ?? "", address: $0.primaryUnicastAddress)
+                model.imageName = $0.iconName
                 model.operationType = .delete(node: $0, type: .schedule(schedule: schedule))
                 return model
             })
@@ -216,6 +219,7 @@ class SyncDevicesViewController: UIViewController {
             // 需同步日程的设备
             let syncScheduleDeviceModels = data.syncNodes.map({
                 let model = SyncDevicesModel(name: $0.name ?? "", address: $0.primaryUnicastAddress)
+                model.imageName = $0.iconName
                 model.operationType = .configuration(node: $0, type: .schedule(schedule: schedule))
                 return model
             })
@@ -225,6 +229,7 @@ class SyncDevicesViewController: UIViewController {
             var deleteScheduleGroupModels = data.deleteGroups.map { (group: Group, nodes: [Node]) in
                 let deviceModels = nodes.map({
                     let model = SyncDevicesModel(name: $0.name ?? "", address: $0.primaryUnicastAddress)
+                    model.imageName = $0.iconName
                     model.operationType = .delete(node: $0, type: .schedule(schedule: schedule))
                     return model
                 })
@@ -239,6 +244,7 @@ class SyncDevicesViewController: UIViewController {
             var syncScheduleGroupModels = data.syncGroups.map { (group: Group, nodes: [Node]) in
                 let deviceModels = nodes.map({
                     let model = SyncDevicesModel(name: $0.name ?? "", address: $0.primaryUnicastAddress)
+                    model.imageName = $0.iconName
                     model.operationType = .configuration(node: $0, type: .schedule(schedule: schedule))
                     return model
                 })
@@ -257,6 +263,7 @@ class SyncDevicesViewController: UIViewController {
             // 删除动能开关
             if let proxyNode = data.deleteProxy {
                 let deviceModel = SyncDevicesModel(name: proxyNode.name ?? "", address: proxyNode.primaryUnicastAddress)
+                deviceModel.imageName = proxyNode.iconName
                 deviceModel.operationType = .delete(node: proxyNode, type: .enOceanProxy(switchData: switchData))
                 
                 let proxyModel = SyncDevicesSwitchProxyModel(name: "enocean_proxy".localizedString, deviceModel: deviceModel)
@@ -266,6 +273,7 @@ class SyncDevicesViewController: UIViewController {
             if let syncNode = data.syncProxy {
                 
                 let deviceModel = SyncDevicesModel(name: syncNode.name ?? "", address: syncNode.primaryUnicastAddress)
+                deviceModel.imageName = syncNode.iconName
                 deviceModel.operationType = .configuration(node: syncNode, type: .enOceanProxy(switchData: switchData))
                 
                 let proxyModel = SyncDevicesSwitchProxyModel(name: "enocean_proxy".localizedString, deviceModel: deviceModel)
@@ -276,6 +284,7 @@ class SyncDevicesViewController: UIViewController {
             var deleteSwitchGroupModels = data.deleteGroups.map { (group, nodes) in
                 let deviceModels = nodes.map({
                     let model = SyncDevicesModel(name: $0.name ?? "", address: $0.primaryUnicastAddress)
+                    model.imageName = $0.iconName
                     model.operationType = .delete(node: $0, type: .enOceanSwitch(switchData: switchData))
                     return model
                 })
@@ -292,6 +301,7 @@ class SyncDevicesViewController: UIViewController {
                 
                 let deviceModels = nodes.map({
                     let model = SyncDevicesModel(name: $0.name ?? "", address: $0.primaryUnicastAddress)
+                    model.imageName = $0.iconName
                     model.operationType = .configuration(node: $0, type: .enOceanSwitch(switchData: switchData))
                     return model
                 })
@@ -363,7 +373,7 @@ class SyncDevicesViewController: UIViewController {
         if exitGroup {
             nodeDeleteScenes = node.scenes.filter({ scene in group.info.sceneExecuteDatas.contains(where: { $0.sceneNumber == scene.number }) })
             nodeDeleteSchedules = group.info.bindSchedules.filter({ schedule in node.schedulerActions.contains(where: { $0.key == schedule.id }) })
-            nodeDeleteSwitchs = group.info.switchs.filter({ switchData in switchData.linkGroup != nil && (node.enOceanMacAddress == switchData.enOceanMacAddress || node.getEnOceanUnSubscriptionMessageHandles(group: switchData.linkGroup!).count > 0) })
+            nodeDeleteSwitchs = group.info.allSwitchs.filter({ switchData in switchData.linkGroup != nil && (node.enOceanMacAddress == switchData.enOceanMacAddress || node.getEnOceanUnSubscriptionMessageHandles(group: switchData.linkGroup!).count > 0) })
             
             nodeSyncScenes.removeAll()
             nodeSyncSchedules.removeAll()
@@ -505,12 +515,14 @@ class SyncDevicesViewController: UIViewController {
         var removeDevice: SyncDevicesModel?
         if configturationSteps.count > 0 {
             configturationDevice = SyncDevicesModel(name: node.name ?? "", address: node.primaryUnicastAddress)
+            configturationDevice?.imageName = node.iconName
             configturationDevice?.steps = configturationSteps
             configturationSteps.forEach({ $0.parentDeviceModel = configturationDevice })
         }
         
         if deleteSteps.count > 0 {
             removeDevice = SyncDevicesModel(name: node.name ?? "", address: node.primaryUnicastAddress)
+            removeDevice?.imageName = node.iconName
             removeDevice?.steps = deleteSteps
             deleteSteps.forEach({ $0.parentDeviceModel = removeDevice })
         }

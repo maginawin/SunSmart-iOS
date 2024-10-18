@@ -198,6 +198,8 @@ public enum NetworkApiError: Error {
             return 4011
         case .spaceAlreadyExist:
             return 4012
+        case .spacePasswordOverdue:
+            return 4015
         }
     }
     
@@ -225,6 +227,8 @@ public enum NetworkApiError: Error {
             self = .incorrectPassword
         case 4012:
             self = .spaceAlreadyExist
+        case 4015:
+            self = .spacePasswordOverdue
         default:
             self = .unknown
         }
@@ -254,6 +258,8 @@ public enum NetworkApiError: Error {
     case incorrectPassword
     /// 空间已存在(加入已存在的空间)
     case spaceAlreadyExist
+    /// 空间密码过期（被高权限用户修改密码）
+    case spacePasswordOverdue
 }
 
 extension NetworkApiError: LocalizedError {
@@ -278,6 +284,8 @@ extension NetworkApiError: LocalizedError {
             return "incorrect_password".localizedString
         case .spaceAlreadyExist:
             return "space_already_exist".localizedString
+        case .spacePasswordOverdue:
+            return "space_password_overdue".localizedString
         case .unknown:
             return "unknown_error".localizedString
         }

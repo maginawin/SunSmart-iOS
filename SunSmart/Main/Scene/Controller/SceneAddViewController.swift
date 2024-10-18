@@ -174,12 +174,14 @@ class SceneAddViewController: UIViewController {
         
         hideKeyboard()
         if close {
-            if self.createMode == .template && self.scene != nil && self.space.isConfiguring && UIViewController.getVisibleVc()?.isKind(of: SpaceViewController.classForCoder()) ?? false { // 创建成功并在引导配置流程中
+//            let spaceVc = UIViewController.getVisibleVc()?.presentingViewController
+            if self.createMode == .template && self.scene != nil && self.space.isConfiguring { //  && spaceVc?.isKind(of: SpaceViewController.classForCoder()) ?? false  // 创建成功并在引导配置流程中
 //                self.backHandle(close: true)
                 dismiss(animated: false)
                 // 跳转到连续创建页面
                 let vc = SpaceNewCreationProcessController(space: space, options: .scene)
-                UIViewController.getVisibleVc()?.present(NavigationViewController(rootViewController: vc), animated: true)
+//                spaceVc?.present(NavigationViewController(rootViewController: vc), animated: true)
+                NotificationCenter.default.post(name: .init(spaceModalViewControllerNotificaitonName), object: NavigationViewController(rootViewController: vc))
             }else {
                 dismiss(animated: true)
             }

@@ -147,7 +147,7 @@ class ProfileSettingsViewController: UIViewController {
                     item.showLoadingAnimation()
                     DispatchQueue.global().async {
                         MeshAPI.setGroupLightnessState(address: group.address.address, lightness: Node.getLightness(lightness100: value))
-                        Thread.sleep(forTimeInterval: 1.5)
+                        Thread.sleep(forTimeInterval: 3)
                         MeshAPI.getAmbientSensorValue(node: sensorNode) { lux in
                             DispatchQueue.main.async {
                                 if lux != nil {

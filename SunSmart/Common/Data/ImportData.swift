@@ -173,8 +173,8 @@ extension SiteData {
                     var allocatedSceneRange: [SceneRange] = []
                     if let allocatedSceneRangeJson = provisionerJson["allocatedSceneRange"]?.array {
                         allocatedSceneRange = allocatedSceneRangeJson.compactMap({
-                            if let firstSceneString = $0["firstScene"].string, let firstScene = Address(hex: firstSceneString),
-                               let lastSceneString = $0["lastScene"].string, let lastScene = Address(hex: lastSceneString) {
+                            if let firstSceneString = $0["lowAddress"].string ?? $0["firstScene"].string, let firstScene = Address(hex: firstSceneString),
+                               let lastSceneString = $0["lowAddress"].string ?? $0["lastScene"].string, let lastScene = Address(hex: lastSceneString) {
                                 return SceneRange(from: firstScene, to: lastScene)
                             }
                             return nil
@@ -251,16 +251,22 @@ extension SiteData {
             // 是否卸载后重装APP，需要更新site手机地址
             if UserData.isReinstallation || changeAddress {
                 // 重新分配设备地址
-                if let provisioner = meshNetwork?.localProvisioner, let newAddress = meshNetwork?.nextAvailableUnicastAddress(elementsCount: 1, elementsUsing: provisioner, lockInAddress: false) {
-                    do {
-                        if let lastAddress = provisioner.primaryUnicastAddress {
-                            meshNetwork?.insetExclusionAddress(ivIndex: meshNetwork!.currentIVIndex, address: lastAddress)
+                if let provisioner = meshNetwork?.localProvisioner {
+                    if let newAddress = meshNetwork?.nextAvailableUnicastAddress(elementsCount: 1, elementsUsing: provisioner, lockInAddress: false) {
+                        do {
+                            if let lastAddress = provisioner.primaryUnicastAddress {
+                                meshNetwork?.insetExclusionAddress(ivIndex: meshNetwork!.currentIVIndex, address: lastAddress)
+                            }
+                            try meshNetwork?.changeLocalNodeAddress(newAddress)
+                            meshNetworkSave = true
+                            self.localAddress = meshNetwork?.localProvisioner?.primaryUnicastAddress
+                            self.lastUpdate = Int64(Date().timeIntervalSince1970)
+                        } catch {
+                            self.localAddress = nil
                         }
-                        try meshNetwork?.changeLocalNodeAddress(newAddress)
-                        meshNetworkSave = true
-                        self.localAddress = meshNetwork?.localProvisioner?.primaryUnicastAddress
-                        self.lastUpdate = Int64(Date().timeIntervalSince1970)
-                    } catch {
+                    }else {
+                        // 没有地址时将之前的本地节点禁用删除，待后续申请到地址后再分配本地节点，否则会导致发送消息SEQ校验被拦截
+                        meshNetwork?.disableConfigurationCapabilities(for: provisioner)
                         self.localAddress = nil
                     }
                 }else {
@@ -282,7 +288,29 @@ extension SiteData {
                 }
                 spaceDicts.remove(at: 0)
             }
-            self.spaces = spaces
+            
+            // space已提交到服务器，但是本地有但是服务器没有
+            let deleteSpaces = self.spaces.filter({ localSpace in !spaces.contains(where: { $0.id == localSpace.id }) && localSpace.uploadCloud })
+            deleteSpaces.forEach({ space in
+                if space.permission == .editor || space.permission == .visitor {
+                    // 设置space为待删除状态
+                    space.state = .waitDeleted
+                    space.save()
+                }
+            })
+            // 更新site下space数据
+            spaces.forEach { space in
+                if let index = self.spaces.firstIndex(where: { $0.id == space.id }) {
+                    // 如果space已存在则更新数据
+                    self.spaces.replaceSubrange(index...index, with: [space])
+                }else {
+                    // 如果space不存在则新增
+                    self.spaces.append(space)
+                }
+            }
+            self.spaces.sort(by: { $0.create < $1.create })
+            
+//            self.spaces = spaces
             self.spaceCount = nil
         }else {
             self.spaceCount = json["spaceCount"].int
@@ -488,8 +516,8 @@ extension SiteData {
         var allocatedSceneRange: [SceneRange] = []
         if let allocatedSceneRangeJson = provisionerJson["allocatedSceneRange"].array {
             allocatedSceneRange = allocatedSceneRangeJson.compactMap({
-                if let firstSceneString = $0["firstScene"].string ?? $0["lowAddress"].string, let firstScene = Address(hex: firstSceneString),
-                   let lastSceneString = $0["lastScene"].string ?? $0["highAddress"].string, let lastScene = Address(hex: lastSceneString) {
+                if let firstSceneString = $0["lowAddress"].string ?? $0["firstScene"].string, let firstScene = Address(hex: firstSceneString),
+                   let lastSceneString = $0["highAddress"].string ?? $0["lastScene"].string, let lastScene = Address(hex: lastSceneString) {
                     return SceneRange(from: firstScene, to: lastScene)
                 }
                 return nil
@@ -611,6 +639,13 @@ extension SpaceData {
             // 是否启用访客密码
             if let vistorPasswordEnable = json["visitProtected"].bool {
                 self.vistorPasswordEnable = vistorPasswordEnable
+                if !vistorPasswordEnable {
+                    self.requiresPasswordVerification = false
+                }
+            }
+            // 访客密码
+            if let visitorPasswd = json["visitorPasswd"].string {
+                self.vistorPassword = visitorPasswd.count > 0 ? visitorPasswd : nil
             }
             
             // 权限
@@ -650,15 +685,18 @@ extension SpaceData {
             
             if self.state == .waitDeleted {
                 self.state = .normal
+                self.requiresPasswordVerification = false
+                self.applyDeviceAddressCount = nil
+                self.releaseAddress = false
+                self.disableEditorPermission = false
             }
             // 用户事件
             if let events = json["userEvents"].arrayObject as? [String] {
-                var requiresPasswordVerification = false
+//                var requiresPasswordVerification = false
                 // 密码被修改
-                if (self.permission == .editor && events.contains("EditorPasswdChanged")) || (self.permission == .visitor && events.contains("VisitorPasswdChanged")) {
-                    requiresPasswordVerification = true
+                if (self.permission == .editor && events.contains("EditorPasswdChanged")) || (self.permission == .visitor && events.contains("VisitorPasswdChanged") && self.vistorPasswordEnable) {
+                    self.requiresPasswordVerification = true
                 }
-                self.requiresPasswordVerification = requiresPasswordVerification
             }
             
             
@@ -667,6 +705,7 @@ extension SpaceData {
             guard lastUpdate > self.lastUpdate || initialize else {
                 //                return
                 continuation.resume()
+                self.save()
                 return
             }
             
@@ -704,7 +743,7 @@ extension SpaceData {
             //            if self.lastUploadCloudTimestamp == nil {
             self.lastUploadCloudTimestamp = self.lastUpdate
             //            }
-            let localNodes = Node.load(meshUUID: self.meshUUID, subnetworkId: self.meshNetworkId)
+//            let localNodes = Node.load(meshUUID: self.meshUUID, subnetworkId: self.meshNetworkId)
             
             network.nodes.filter({ !$0.isLocalProvisioner }).forEach { node in
                 network.forceRemove(node: node)
@@ -716,18 +755,18 @@ extension SpaceData {
                 if let uuid = nodeDict["uuid"] as? String { // 换算成大写UUID提供Node解码
                     decodeNodeDict.updateValue(uuid, forKey: "UUID")
                 }
-                if let data = try? JSONSerialization.data(withJSONObject: decodeNodeDict), var node = try? jsonDecoder.decode(Node.self, from: data) {
+                if let data = try? JSONSerialization.data(withJSONObject: decodeNodeDict), let node = try? jsonDecoder.decode(Node.self, from: data) {
                     let nodeJson = JSON(nodeDict)
                     if let version = nodeJson["versionSEQ"].uInt32 {
                         node.versionSEQ = version
                     }
-                    if let localNode = localNodes.first(where: { $0.primaryUnicastAddress == node.primaryUnicastAddress }) {
-                        // 判断本地缓存比线上节点版本高则使用本地节点数据
-                        if localNode.versionSEQ > node.versionSEQ {
-                            return localNode
-                        }
-                        node = localNode
-                    }
+//                    if let localNode = localNodes.first(where: { $0.primaryUnicastAddress == node.primaryUnicastAddress }) {
+//                        // 判断本地缓存比线上节点版本高则使用本地节点数据
+//                        if localNode.versionSEQ > node.versionSEQ {
+//                            return localNode
+//                        }
+//                        node = localNode
+//                    }
                     
                     node.macAddress = nodeJson["macAddress"].string
                     if let sensorTypes = nodeJson["sensorTypes"].arrayObject as? [String] {
@@ -761,11 +800,24 @@ extension SpaceData {
                         node.enOceanMacAddress = enOceanMacAddress
                         node.enOceanKeySceneNumbers = enOceanKeyScenes.map({ SceneNumber(hex: $0) ?? 0 })
                     }
-                    if let firmwareID = nodeJson["firmwareID"].string {
-                        node.firmwareID = Data(hex: firmwareID)
+                    if let firmwareID = nodeJson["firmwareID"].string, !firmwareID.isEmpty {
+                        let data = Data(hex: firmwareID)
+                        if data.count == 6 || data.count == 8 {
+                            node.firmwareID = data
+                        }
                     }
-                    if let distributionFirmwareID = nodeJson["distributionFirmwareID"].string {
-                        node.distributionFirmwareID = Data(hex: distributionFirmwareID)
+                    if let distributionFirmwareID = nodeJson["distributionFirmwareID"].string, !distributionFirmwareID.isEmpty {
+                        let data = Data(hex: distributionFirmwareID)
+                        if data.count == 6 || data.count == 8 {
+                            node.distributionFirmwareID = data
+                        }
+                    }
+                    
+                    if let compositionHash = nodeJson["compositionHash"].string, !compositionHash.isEmpty {
+                        node.compositionHash = compositionHash
+                    }
+                    if let defaultTransitionTime = nodeJson["defaultTransitionTime"].uInt8 {
+                        node.defaultTransitionTime = .init(rawValue: defaultTransitionTime)
                     }
                     
                     if let sceneDataDicts = nodeJson["scenesDatas"].arrayObject,
@@ -779,7 +831,7 @@ extension SpaceData {
                             let scheduleJson = JSON(dict)
                             if let id = scheduleJson["id"].int {
                                 let dayOfWeek = Schedule.getWeekDays(weekValue: scheduleJson["dayOfWeek"].int ?? 0)
-                                let entry = SchedulerRegistryEntry(year: .any(), month: .any(of: Schedule.allMonths), day: .specific(day: scheduleJson["day"].int ?? 0), hour: .specific(hour: scheduleJson["hour"].int ?? 0), minute: .specific(minute: scheduleJson["minute"].int ?? 0), second: .specific(second: scheduleJson["second"].int ?? 0), dayOfWeek: .any(of: dayOfWeek), action: SchedulerAction(rawValue: scheduleJson["action"].uInt8 ?? 0x0F) ?? .noAction, transitionTime: .init(rawValue: scheduleJson["transitionTime"].uInt8 ?? 0), sceneNumber: scheduleJson["sceneNumber"].uInt16 ?? 0)
+                                let entry = SchedulerRegistryEntry(year: .any(), month: .any(of: Schedule.allMonths), day: .specific(day: scheduleJson["day"].int ?? 0), hour: .specific(hour: scheduleJson["hour"].int ?? 0), minute: .specific(minute: scheduleJson["minute"].int ?? 0), second: .specific(second: scheduleJson["second"].int ?? 0), dayOfWeek: .any(of: dayOfWeek), action: SchedulerAction(rawValue: scheduleJson["action"].uInt8 ?? 0x0F) ?? .noAction, transitionTime: .init(steps: scheduleJson["transitionTime"].uInt8 ?? 0, stepResolution: .seconds), sceneNumber: scheduleJson["sceneNumber"].uInt16 ?? 0)
                                 node.schedulerActions.updateValue(entry, forKey: id)
                             }
                         }
@@ -807,6 +859,7 @@ extension SpaceData {
                 let sceneJson = JSON(sceneDict)
                 if let sceneNumberHex = sceneJson["number"].string, let sceneNumber = SceneNumber(sceneNumberHex), let name = sceneJson["name"].string {
                     let scene = Scene(sceneNumber, name: name)
+                    scene.subNetworkId = self.meshNetworkId
                     let existNodes = nodes.filter({ $0.sceneExecuteDatas.contains(where: { $0.sceneNumber == sceneNumber }) })
                     existNodes.forEach({
                         scene.add(address: $0.primaryUnicastAddress)
@@ -849,6 +902,10 @@ extension SpaceData {
                 if let data = try? JSONSerialization.data(withJSONObject: groupDict), let group = try? jsonDecoder.decode(Group.self, from: data) {
                     let groupJson = JSON(groupDict)
                     group.isVirtual = groupJson["isVirtual"].boolValue
+                    group.subNetworkId = self.meshNetworkId
+                    guard !group.isVirtual else {
+                        return group
+                    }
                     group.info = GroupInfo(address: group.address.address, imageId: groupJson["imageId"].int ?? 1, imageText: groupJson["imageText"].string)
                     // profile
                     if let profileDict = groupJson["profile"].dictionaryObject {
@@ -864,9 +921,8 @@ extension SpaceData {
                     }
                     // 选择的光照传感器
                     if let sensorAddressHex = groupJson["daylightSensorAddress"].string,
-                       let sensorAddress = Address(sensorAddressHex),
-                       let sensorNode = nodes.first(where: { $0.primaryUnicastAddress == sensorAddress }) {
-                        group.info.ambientLightSensorNode = sensorNode
+                       let sensorAddress = Address(sensorAddressHex) {
+                        group.info.ambientLightSensorNodeAddress = sensorAddress
                     }
                     // scenes data
                     if let sceneDicts = groupJson["scenesDatas"].arrayObject,
@@ -962,7 +1018,7 @@ extension SpaceData {
             
             self.deviceCount = nodes.count
             self.luminairesCount = nodes.filter({ $0.lightnessModel != nil }).count
-            self.groupCount = groups.count
+            self.groupCount = groups.filter({ !$0.isVirtual }).count
             self.sceneCount = scenes.count
             self.scheheduleCount = schedules.count
             self.switchesCount = switches.count

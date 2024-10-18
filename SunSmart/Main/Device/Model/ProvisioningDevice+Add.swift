@@ -15,6 +15,9 @@ extension ProvisioningDevice {
         static var selectedStateKey = 2
         static var startAddDateKey = 3
         static var addProgressKey = 4
+        static var elementCountKey = 5
+        static var isSupportKey = 6
+        static var iconKey = 7
     }
     
     /// 设备选中状态
@@ -98,6 +101,33 @@ extension ProvisioningDevice {
             // （当前时间-开始添加时间）/ 超时时长
             let progress = Float(Date().timeIntervalSince1970 - startDate.timeIntervalSince1970) / Float(timeoutDuration)
             return min(progress, 1)
+        }
+    }
+    
+    /// 元素地址数量
+    var elementCount: Int {
+        get {
+            objc_getAssociatedObject(self, &AssociatedKey.elementCountKey) as? Int ?? 1
+        }set {
+            objc_setAssociatedObject(self, &AssociatedKey.elementCountKey, newValue, .OBJC_ASSOCIATION_RETAIN)
+        }
+    }
+    
+    /// 是否支持设备
+    var isSupport: Bool {
+        get {
+            objc_getAssociatedObject(self, &AssociatedKey.isSupportKey) as? Bool ?? false
+        }set {
+            objc_setAssociatedObject(self, &AssociatedKey.isSupportKey, newValue, .OBJC_ASSOCIATION_RETAIN)
+        }
+    }
+    
+    /// 图标
+    var icon: String? {
+        get {
+            objc_getAssociatedObject(self, &AssociatedKey.iconKey) as? String
+        }set {
+            objc_setAssociatedObject(self, &AssociatedKey.iconKey, newValue, .OBJC_ASSOCIATION_RETAIN)
         }
     }
   

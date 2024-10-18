@@ -514,6 +514,7 @@ class GroupSensorViewCell: UITableViewCell {
         didSet {
             
             nameLabel.text = sensor.name
+            iconImageView.image = UIImage(named: sensor.iconName)
             // 判断是否有占用传感器
             if sensor.presenceDetectedSensorModel != nil {
 //                occupyStateImageView.isHidden = false

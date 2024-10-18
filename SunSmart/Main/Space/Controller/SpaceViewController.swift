@@ -12,6 +12,8 @@ import SwiftyJSON
 
 /// 空间内菜单选择修改通知
 let spaceMenuIndexChangeNotificaitonName = "spaceMenuIndexChangeNotificaiton"
+/// 空间弹出控制器通知
+let spaceModalViewControllerNotificaitonName = "spaceModalViewControllerNotificaiton"
 /// 空间内数据修改通知
 /// 添加设备、编辑设备、删除设备、修复设备
 /// 添加组、编辑组（基本数据 、 添加/删除设备、profile、校准、动能开关）、删除组
@@ -217,11 +219,25 @@ class SpaceViewController: WMPageController {
         NotificationCenter.default.addObserver(forName: .init(schedulesRefreshNotificationName), object: nil, queue: nil) {[weak self] _ in
             self?.updateSpaceData()
         }
+        
+        // 开关列表更新通知
+        NotificationCenter.default.addObserver(forName: .init(switchsRefreshNotificationName), object: nil, queue: nil) {[weak self] _ in
+            self?.updateSpaceData()
+        }
+        
         // 空间内菜单选择修改通知
         NotificationCenter.default.addObserver(forName: .init(spaceMenuIndexChangeNotificaitonName), object: nil, queue: .main) {[weak self] notification in
             guard let self = self, let selectIndex = notification.object as? Int, selectIndex >= 0 && selectIndex < SpaceMenuView.defalutItems.count else { return }
             self.selectIndex = Int32(selectIndex)
         }
+        NotificationCenter.default.addObserver(forName: .init(spaceModalViewControllerNotificaitonName), object: nil, queue: .main) {[weak self] notification in
+            guard let self = self, let modalVc = notification.object as? UIViewController else {
+                return
+            }
+            self.present(modalVc, animated: true)
+        }
+        
+        
         // 空间内数据更新通知
         NotificationCenter.default.addObserver(forName: .init(spaceDataChangedNotificaitonName), object: nil, queue: .main) {[weak self] notification in
             guard let self = self, let type = notification.object as? SpaceChangeDataType else { return }
@@ -340,7 +356,7 @@ class SpaceViewController: WMPageController {
     private func deleteSpaceRequest() {
         
         XWHUDManager.showCustomHUD(withMessage: "deleting".localizedString, isWindow: true)
-        NetworkRequest.shared.request(.siteDelete(siteId: self.site.id)) {[weak self] result in
+        NetworkRequest.shared.request(.spaceDelete(siteId: self.site.id, spaceId: self.space.id)) {[weak self] result in
             XWHUDManager.hide()
             guard let self = self else { return }
             switch result {
@@ -496,7 +512,7 @@ class SpaceViewController: WMPageController {
             heartbeatTimer?.invalidate()
         }
         
-        heartbeatTimer = LCWeakTimer.scheduledTimer(timeInterval: 60, aTarget: self, selector: #selector(heartbeatRequest), userInfo: nil, repeats: true)
+        heartbeatTimer = LCWeakTimer.scheduledTimer(timeInterval: 30, aTarget: self, selector: #selector(heartbeatRequest), userInfo: nil, repeats: true)
         
         heartbeatTimer?.fire()
         RunLoop.current.add(heartbeatTimer!, forMode: .common)
@@ -541,7 +557,11 @@ class SpaceViewController: WMPageController {
                         }
                         self?.navigationController?.popViewController(animated: true)
                     })]).show()
-                case .incorrectPassword: // 密码修改
+                case .incorrectPassword, .spacePasswordOverdue: // 密码修改
+                    // 正在提示
+                    if self.space.requiresPasswordVerification && SRAlertView.getCurrentAlertView() != nil {
+                        return
+                    }
                     self.space.requiresPasswordVerification = true
                     self.space.save()
                     SRAlertView(title: "notification".localizedString, message: "the_space_password_change_message".localizedString, actions: [SRAlertAction(title: "confirm".localizedString, actionHandler: {[weak self] _ in
@@ -605,7 +625,7 @@ class SpaceViewController: WMPageController {
             saveData = true
         }
         if self.space.switchesCount != MeshNetworkManager.instance.switchs.count {
-            self.space.scheheduleCount = MeshNetworkManager.instance.switchs.count
+            self.space.switchesCount = MeshNetworkManager.instance.switchs.count
             saveData = true
         }
         
@@ -707,6 +727,7 @@ class SpaceViewController: WMPageController {
             guard let self = self else { return true }
             self.space.name = name
             self.space.imageId = imageId + 1
+            self.space.lastUpdate = Int64(Date().timeIntervalSince1970)
             self.space.save()
             self.title = name
             self.syncSpace(level: .normal)
@@ -778,7 +799,7 @@ class SpaceViewController: WMPageController {
     
         var networkApi: NetowrkReqeustApi!
         // 有分享code则读取之前的数据
-        if let shareCode = space.shareCode {
+        if let shareCode = space.shareCode, space.editorPassword != nil || space.permission == .editor {
             networkApi = .shareInfo(shareId: shareCode)
         }else {
             // 还没有设置编辑者密码

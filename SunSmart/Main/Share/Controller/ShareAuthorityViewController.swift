@@ -107,6 +107,13 @@ class ShareAuthorityViewController: UIViewController {
 //        self.updateBottomUI()
     }
     
+    override func viewWillAppear(_ animated: Bool) {
+        super.viewWillAppear(animated)
+        if self.filterType != nil {
+            updateUI()
+        }
+    }
+    
     // MARK: - Request
     /// 获取spaces请求
     private func loadSpacesReqeust() {
@@ -123,7 +130,9 @@ class ShareAuthorityViewController: UIViewController {
                 if let siteData = JSON(response)["data"].dictionaryObject {
 //                    let site = SiteData.import(siteJsonData: siteData)
                     Task {
+                        
                         await self.site.update(siteJsonData: siteData)
+                        
                         self.site.save()
                         XWHUDManager.hideInView(with: self.view)
                         self.navigationItem.rightBarButtonItem?.isEnabled = true
@@ -180,6 +189,9 @@ class ShareAuthorityViewController: UIViewController {
                     self.isSelectState = false
                     self.selectSpaces.removeAll()
                     self.updateUI()
+                    
+                    // 通知外部site刷新space列表
+                    NotificationCenter.default.post(name: .init(SpacesRefreshChangeNotificationName), object: true)
                     
                     if usedEditorIds.count > 0 { // 部分用户正在使用space，无法删除
                         SRAlertView(title: "notification".localizedString, message: "spaces_clear_editor_failed".localizedString, actions: [SRAlertAction(title: "confirm".localizedString)]).show()
@@ -249,7 +261,7 @@ class ShareAuthorityViewController: UIViewController {
                             self.isSelectState = false
                             self.updateUI()
                             
-                        }), SRAlertAction(title: "clear".localizedString, actionHandler: {[weak self] _ in
+                        }), SRAlertAction(title: "Clear".localizedString, actionHandler: {[weak self] _ in
                             // 强制删除请求
                             self?.clearSpacesVistorsRequest(spaces: spaces, force: true)
                         })]).show()
@@ -273,9 +285,21 @@ class ShareAuthorityViewController: UIViewController {
     /// 批量分享spaces
     private func batchShareSpacesReqeust(spaces: [SpaceData]) {
         
+        // 判断是否有space未设置editor密码
+        let setPasswordSpaces = spaces.filter({ $0.editorPassword == nil })
+        if setPasswordSpaces.count > 0 {
+            // 设置密码后才能进入分享
+            regeneratesMemberPasswordRequest(spaces: setPasswordSpaces, permission: .editor) {[weak self] result in
+                if result && spaces.filter({ $0.editorPassword == nil }).isEmpty {
+                    self?.batchShareSpacesReqeust(spaces: spaces)
+                }
+            }
+            return
+        }
+        
         let password = String.generateRandomNumberString()
         XWHUDManager.showCustomHUD(withMessage: nil, isWindow: true)
-        NetworkRequest.shared.request(.spacesShare(siteId: site.id, spaceIds: spaces.map({ $0.id }), password: password)) {[weak self] result in
+        NetworkRequest.shared.request(.spacesShare(siteId: site.id, spaceIds: spaces.map({ $0.id }), password: password, userPermission: site.permission)) {[weak self] result in
             XWHUDManager.hide()
             guard let self = self else { return }
             switch result {
@@ -303,7 +327,7 @@ class ShareAuthorityViewController: UIViewController {
         
         var networkApi: NetowrkReqeustApi!
         // 有site转让code则读取之前的数据
-        if let shareCode = space.shareCode, space.editorPassword != nil {
+        if let shareCode = space.shareCode, space.editorPassword != nil || space.permission == .editor {
             networkApi = .shareInfo(shareId: shareCode)
         }else {
             // 还没有设置编辑者密码
@@ -349,6 +373,24 @@ class ShareAuthorityViewController: UIViewController {
                             }
                         }
                     }
+                    
+                    if let visitorPassword = JSON(response)["data"]["space"]["visitorPasswd"].string {
+                        if space.vistorPassword ?? "" != visitorPassword {
+                            if visitorPassword.isEmpty {
+                                space.vistorPassword = nil
+//                                space.vistorPasswordEnable = false
+                            }else {
+                                space.vistorPassword = visitorPassword
+//                                space.vistorPasswordEnable = true
+                            }
+                            saveSpace = true
+                        }
+//                        if space.vistorPassword ?? "" != visitorPassword {
+//                            space.vistorPassword = visitorPassword
+//                            space.vistorPasswordEnable = visitorPassword.count > 0
+//                            saveSpace = true
+//                        }
+                    }
                 }
                 // 邀请码
                 if space.shareCode != code {
@@ -357,6 +399,8 @@ class ShareAuthorityViewController: UIViewController {
                 }
                 if saveSpace {
                     space.save()
+                    // 通知外部site刷新space列表
+                    NotificationCenter.default.post(name: .init(SpacesRefreshChangeNotificationName), object: true)
                 }
                 let vc = SharingSettingViewController(type: .space(site: self.site, space: space))
                 self.navigationController?.pushViewController(vc, animated: true)
@@ -368,7 +412,7 @@ class ShareAuthorityViewController: UIViewController {
     }
     
     /// 批量重置space editor/vistor密码
-    private func regeneratesMemberPasswordRequest(spaces: [SpaceData], permission: Permission) {
+    private func regeneratesMemberPasswordRequest(spaces: [SpaceData], permission: Permission, callback: ((Bool)->Void)? = nil) {
         guard spaces.count > 0, permission != .owner else {
             return
         }
@@ -379,22 +423,32 @@ class ShareAuthorityViewController: UIViewController {
             guard let self = self else { return }
             switch result {
             case .success(_):
-                XWHUDManager.showSuccessTipHUD("successfully".localizedString + " !")
+                
                 spaces.forEach({ space in
                     if let passwordData = passwordDatas.first(where: { space.id == $0.spaceId }) {
                         if passwordData.permission == .editor {
                             space.editorPassword = passwordData.password
                         }else if passwordData.permission == .visitor {
                             space.vistorPassword = passwordData.password
+//                            space.vistorPasswordEnable = passwordData.password != nil
                         }
                         space.save()
                     }
                 })
-                self.isSelectState = false
-                self.selectSpaces.removeAll()
-                self.updateUI()
+                // 通知外部site刷新space列表
+                NotificationCenter.default.post(name: .init(SpacesRefreshChangeNotificationName), object: true)
+                
+                if callback != nil {
+                    callback?(true)
+                }else {
+                    XWHUDManager.showSuccessTipHUD("successfully".localizedString + " !")
+                    self.isSelectState = false
+                    self.selectSpaces.removeAll()
+                    self.updateUI()
+                }
                 
             case .failure(let error):
+                callback?(false)
                 XWHUDManager.showErrorTipHUD(error.localizedDescription)
             }
         }
@@ -424,6 +478,8 @@ class ShareAuthorityViewController: UIViewController {
                         space.save()
 //                    }
                 })
+                // 通知外部site刷新space列表
+                NotificationCenter.default.post(name: .init(SpacesRefreshChangeNotificationName), object: true)
                 self.isSelectState = false
                 self.selectSpaces.removeAll()
                 self.updateUI()
@@ -502,8 +558,7 @@ class ShareAuthorityViewController: UIViewController {
                     SRAlertView(title: "notification".localizedString, message: "spaces_delete_failed".localizedString, actions: [SRAlertAction(title: "confirm".localizedString)]).show()
                 }
                 NotificationCenter.default.post(name: .init(rawValue: SitesDataRefreshNotifiacationName), object: nil)
-                NotificationCenter.default.post(name: .init(SpacesRefreshChangeNotificationName), object: nil)
-                
+                NotificationCenter.default.post(name: .init(SpacesRefreshChangeNotificationName), object: true)
             case .failure(let error):
                 XWHUDManager.showErrorTipHUD(error.localizedDescription)
             }
@@ -515,7 +570,7 @@ class ShareAuthorityViewController: UIViewController {
         XWHUDManager.showCustomHUD(withMessage: nil, isWindow: true)
         
         let uploadSpaces = spaces.filter({ $0.needUploadCloud })
-        guard uploadSpaces.count > 0 else {
+        if uploadSpaces.count > 0 {
             Task {
                 let siteDict = await site.export(spaceIds: uploadSpaces.map({ $0.id }))
                 NetworkRequest.shared.request(.siteUpload(siteData: siteDict)) {[weak self] result in
@@ -697,7 +752,7 @@ class ShareAuthorityViewController: UIViewController {
             selectSpaces.removeAll()
         }else {
             if type == .share {
-                selectSpaces = showSpaces.filter({ ($0.permission == .owner && $0.editor == nil) || ($0.permission == .editor && $0.state == .normal) })
+                selectSpaces = showSpaces.filter({ ($0.permission == .owner && $0.editor == nil) || ($0.permission == .editor && $0.state == .normal && !($0.authorizationPassword?.isEmpty ?? true || $0.requiresPasswordVerification)) })
             }else {
                 selectSpaces = showSpaces
             }
@@ -962,9 +1017,9 @@ class ShareAuthorityViewController: UIViewController {
             showSpaces = allSpaces.filter({ space in space.visitors.contains(where: { $0.name == name }) })
         case .visitorPassword:
 //            showSpaces =
-            showSpaces = allSpaces.filter({ $0.vistorPasswordEnable && !($0.vistorPassword?.isEmpty ?? true) })
+            showSpaces = allSpaces.filter({ !($0.vistorPassword?.isEmpty ?? true) })
         case .noVisitorPassword:
-            showSpaces = allSpaces.filter({ !$0.vistorPasswordEnable || ($0.vistorPassword?.isEmpty ?? true) })
+            showSpaces = allSpaces.filter({ ($0.vistorPassword?.isEmpty ?? true) })
         case .devicesExists:
             showSpaces = allSpaces.filter({ $0.deviceCount > 0 })
         case .noDevices:
@@ -1028,7 +1083,7 @@ class ShareAuthorityViewController: UIViewController {
         
         switch type {
         case .share:
-            viewRecordBtn.isHidden = false
+            viewRecordBtn.isHidden = !allSpaces.contains(where: { $0.permission != .visitor })
             shareBtn.isHidden = false
             if site.permission == .owner {
                 moreBtn.isHidden = true
@@ -1138,12 +1193,22 @@ extension ShareAuthorityViewController: UICollectionViewDataSource, UICollection
             XWHUDManager.showTipHUD("no_permission".localizedString)
             return
         }
+        if type == .share && space.permission == .editor && (space.authorizationPassword?.isEmpty ?? true || space.requiresPasswordVerification) {
+            XWHUDManager.showTipHUD("space_password_overdue".localizedString)
+            return
+        }
         
         // 可选择状态
         if isSelectState {
             if type == .share, space.permission == .owner, space.editor != nil { // owner不能选择已有editor的space
                 return
             }
+            // 是否提交到云端
+            guard space.uploadCloud else {
+                XWHUDManager.showTipHUD("no_upload".localizedString)
+                return
+            }
+            
             let space = showSpaces[indexPath.item]
             if selectSpaces.contains(where: { $0.id == space.id }) {
                 selectSpaces.removeAll(where: { $0.id == space.id })

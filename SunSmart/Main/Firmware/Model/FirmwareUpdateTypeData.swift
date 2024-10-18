@@ -10,9 +10,11 @@ import NordicSigMeshSDK
 
 class FirmwareUpdateTypeData {
      
-    let deviceType: DeviceType
+    let productId: UInt16
     /// 手机缓存固件版本
     var targetVersion: String?
+    /// 手机缓存固件版本hash
+    var targetVersionHash: String?
     /// 服务器固件数据
     var serverData: FirmwareServerData?
     
@@ -22,10 +24,13 @@ class FirmwareUpdateTypeData {
     var upgradedNodes: [Node] = []
     /// 是否展开
     var isShow: Bool = false
+    /// 类别名称
+    var categoryName: String? {
+        return MeshLibManager.manager.supportDeviceInfos.first(where: { $0.productId == self.productId })?.categoryName
+    }
     
-    
-    init(deviceType: DeviceType, targetVersion: String?, nodes: [Node], upgradedNodes: [Node] = []) {
-        self.deviceType = deviceType
+    init(productId: UInt16, targetVersion: String?, nodes: [Node], upgradedNodes: [Node] = []) {
+        self.productId = productId
         self.targetVersion = targetVersion
         self.nodes = nodes
         self.upgradedNodes = upgradedNodes
@@ -36,7 +41,7 @@ class FirmwareUpdateTypeData {
 struct FirmwareServerData {
     
     /// 设备类型
-    let deviceType: DeviceType
+    let productId: UInt16
     /// 服务器固件版本
     let version: String
     /// 厂商id

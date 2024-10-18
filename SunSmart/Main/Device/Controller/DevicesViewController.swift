@@ -97,7 +97,7 @@ class DevicesViewController: WMPageController {
         self.menuItemCornerRadius = SCRYFrom(16)
 //        self.progressViewIsNaughty = false
         self.menuItemBackgroundColor = .clear
-        self.scrollEnable = false
+//        self.scrollEnable = false
     }
     
     required init?(coder: NSCoder) {
@@ -143,7 +143,7 @@ class DevicesViewController: WMPageController {
         
         
 //        meunView.contentMargin = SCRXFrom(12)
-        
+        self.scrollEnable = false
         self.menuView?.itemRateAnimation = false
         self.menuView?.delegate = self
         self.menuView?.dataSource = self
@@ -611,7 +611,7 @@ extension DevicesViewController {
         }
         
         let lastItem = menu.item(at: currentIndex)
-        lastItem?.backgroundColor = .white.withAlphaComponent(0.5)
+        lastItem?.backgroundColor = RGB(254, 254, 254)
         lastItem?.layer.borderColor = RGB(220, 220, 220).cgColor
         lastItem?.layer.borderWidth = 0.5
 //        self.selectIndex = Int32(index)
@@ -628,7 +628,8 @@ extension DevicesViewController {
         }else {
             initialMenuItem.layer.borderColor = RGB(220, 220, 220).cgColor
             initialMenuItem.layer.borderWidth = 0.5
-            initialMenuItem.backgroundColor = .white.withAlphaComponent(0.5)
+            initialMenuItem.backgroundColor = RGB(254, 254, 254)
+//                .white.withAlphaComponent(0.95)
         }
         return initialMenuItem
     }

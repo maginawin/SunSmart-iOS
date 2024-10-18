@@ -83,8 +83,8 @@ class DeviceSwitchData: Copyable {
 //    }
     
     /// 默认动能开关
-    static func defalut() -> DeviceSwitchData {
-        return DeviceSwitchData(id: UUID().uuidString, enabled: true, name: MeshNetworkManager.instance.getNextSwitchName(), linkGroupAddress: nil, bindGroupAddresses: [], sceneANumber: nil, sceneBNumber: nil, proxyNodeAddress: nil)
+    static func defalut(id: String = UUID().uuidString) -> DeviceSwitchData {
+        return DeviceSwitchData(id: id, enabled: true, name: MeshNetworkManager.instance.getNextSwitchName(), linkGroupAddress: nil, bindGroupAddresses: [], sceneANumber: nil, sceneBNumber: nil, proxyNodeAddress: nil)
     }
     
     
@@ -104,6 +104,7 @@ class DeviceSwitchData: Copyable {
         copy.enOceanMacAddress = self.enOceanMacAddress
         copy.enOceanSecurityKey = self.enOceanSecurityKey
         copy.unbindGroupAddresses = self.unbindGroupAddresses
+        copy.deleteProxyNodeAddress = self.deleteProxyNodeAddress
         return copy
     }
     
@@ -117,6 +118,7 @@ class DeviceSwitchData: Copyable {
         self.sceneANumber = switchData.sceneANumber
         self.sceneBNumber = switchData.sceneBNumber
         self.proxyNodeAddress = switchData.proxyNodeAddress
+        self.deleteProxyNodeAddress = switchData.deleteProxyNodeAddress
         self.enOceanMacAddress = switchData.enOceanMacAddress
         self.enOceanSecurityKey = switchData.enOceanSecurityKey
         //        self.group = switchData.group

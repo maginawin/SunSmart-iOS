@@ -55,7 +55,7 @@ class LightSensorCalibrationView: UIView {
     private var speedHelpBtn: UIButton!
     private var speedSlowLabel: UILabel!
     private var speedFastLabel: UILabel!
-    private var speedSlider: CustomDeviceSlider!
+    var speedSlider: CustomDeviceSlider!
     
     weak var delegate: LightSensorCalibrationViewDelegate?
     

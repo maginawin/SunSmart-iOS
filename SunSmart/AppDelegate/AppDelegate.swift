@@ -24,8 +24,8 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
 //        let mainNavVc = NavigationViewController(rootViewController: GroupViewController(space: space!, group: space!.groups.first!)) //SitesViewController
         if UserData.isTermsOfService { // 是否同意使用协议
 //            let site = SiteData.loadAll().last!
-//            let space = site.spaces.last!
-//
+//            let space = site.spaces.first!
+////
 //            let spaceVc = SpaceViewController(space: space)
 //            spaceVc.site = site
 //            
@@ -54,6 +54,11 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         Bugly.start(withAppId: "fce1e870b0")
         
         MeshLibManager.manager.disableRecyclingExclusions = true
+        // 加载设备配置信息list（未加入配置的设备类型无法添加）
+        let configInfos = MeshDeviceConfigInfo.load()
+        if configInfos.count > 0 {
+            MeshLibManager.manager.supportDeviceInfos = configInfos
+        }
         
         NetworkRequest.shared.networkListener()
         

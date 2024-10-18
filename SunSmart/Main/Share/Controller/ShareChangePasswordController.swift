@@ -290,7 +290,7 @@ class ShareChangePasswordController: UIViewController {
             
             visitorPassword = ShareChangePasswordView(frame: .zero, require: false)
             visitorPassword.titleLabel.text = "visitors_password".localizedString
-            visitorPassword.password = space.vistorPassword
+            visitorPassword.password = space.vistorPassword?.count ?? 0 > 0 ? space.vistorPassword : nil
             visitorPassword.keyboardEditChangeCallback = {[weak self] (textField, isShow) in
                 if isShow {
                     self?.activeField = textField

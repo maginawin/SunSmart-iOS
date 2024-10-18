@@ -85,7 +85,7 @@ class FirmwareVersionViewController: UIViewController {
     private func loadCloudFirmwareRequest() {
         
         XWHUDManager.showCustomHUD(withMessage: nil, view: view)
-        NetworkRequest.shared.request(.firmwareLatestVersion(deviceType: type.deviceType.pid.hex)) {[weak self] result in
+        NetworkRequest.shared.request(.firmwareLatestVersion(deviceType: type.productId.hex)) {[weak self] result in
             guard let self = self else { return }
             XWHUDManager.hideInView(with: self.view)
             if self.headerView == nil {
@@ -100,18 +100,17 @@ class FirmwareVersionViewController: UIViewController {
                       let url = data["url"].string,
                       var releaseDate = data["releaseDate"].string,
                       let size = data["size"].int,
-                      let deviceTypeStr = data["deviceType"].string, let pid = UInt16(hex: deviceTypeStr.replacingOccurrences(of: "0x", with: "")) else {
+                      let deviceTypeStr = data["deviceType"].string, let pid = UInt16(hex: deviceTypeStr.replacingOccurrences(of: "0x", with: "")), pid == self.type.productId else {
                     self.updateUI()
                     return
                 }
                 
-                let deviceType = DeviceType(pid: pid)
             
                 releaseDate = releaseDate.replacingOccurrences(of: "T", with: " ")
                 releaseDate = releaseDate.replacingOccurrences(of: "Z", with: "")
                 let timeInterval = String.dateConvert(timeStr: releaseDate, dateFormat: nil)
                 
-                let serverData = FirmwareServerData(deviceType: deviceType, version: version.replacingOccurrences(of: "v", with: ""), companyId: UInt16(companyId) ?? 0x0A78, customId: UInt16(customId) ?? 0, url: url, filename: data["filename"].stringValue, size: size, releaseDate: timeInterval, content: data["describe"].stringValue)
+                let serverData = FirmwareServerData(productId: pid, version: version.replacingOccurrences(of: "v", with: ""), companyId: UInt16(companyId) ?? 0x0A78, customId: UInt16(customId) ?? 0, url: url, filename: data["filename"].stringValue, size: size, releaseDate: timeInterval, content: data["describe"].stringValue)
                 self.type.serverData = serverData
                 self.updateUI()
                 
@@ -125,7 +124,7 @@ class FirmwareVersionViewController: UIViewController {
     
     /// 固件版本历史记录
     @objc private func history() {
-        let vc = FirmwareVersionHistoryController(deviceType: self.type.deviceType)
+        let vc = FirmwareVersionHistoryController(productId: self.type.productId)
         navigationController?.pushViewController(vc, animated: true)
     }
     
@@ -156,7 +155,7 @@ class FirmwareVersionViewController: UIViewController {
                 incomingFirmwareMetadata.writeBits(value: UInt32(data: zipData.compositionHash), numBits: 32, atOffset: 96)
                 incomingFirmwareMetadata.writeBits(value: UInt16(zipData.elementCount), numBits: 16, atOffset: 128)
                 
-                self.localFirmwareData = .init(name: serverData.filename, version: serverData.version, firmwareID: zipData.firmwareId, data: zipData.firmwareData, updateFirmwareImageIndex: zipData.imageIndex, incomingFirmwareMetadata: incomingFirmwareMetadata, deviceType: serverData.deviceType, vendorId: serverData.companyId, customId: serverData.customId, releaseDate: serverData.releaseDate, content: serverData.content)
+                self.localFirmwareData = .init(name: serverData.filename, version: serverData.version, firmwareID: zipData.firmwareId, data: zipData.firmwareData, updateFirmwareImageIndex: zipData.imageIndex, incomingFirmwareMetadata: incomingFirmwareMetadata, productId: serverData.productId, vendorId: serverData.companyId, customId: serverData.customId, releaseDate: serverData.releaseDate, content: serverData.content, compositionHash: zipData.compositionHash.reversed().toHexString())
                 self.localFirmwareData?.save()
                 self.updateLocalFirmwareDataCallback?(self.localFirmwareData)
                 self.updateUI()

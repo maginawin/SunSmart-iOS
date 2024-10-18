@@ -55,7 +55,7 @@ class AlignCenterFlowLayout: UICollectionViewFlowLayout {
         if let lastElement = lastRowElements.last, lastRowElements.count < itemRowCount {
             lastRowElements.forEach({
                 var frame = $0.frame
-                frame.origin.x += (maxX - lastElement.frame.maxX) * 0.5
+                frame.origin.x += (maxX - lastElement.frame.maxX + contentInset.left) * 0.5
                 $0.frame = frame
             })
         }

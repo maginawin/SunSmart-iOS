@@ -138,6 +138,7 @@
 		C89B3CB32C08650400820277 /* ShareAuthorityViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C89B3CB22C08650400820277 /* ShareAuthorityViewController.swift */; };
 		C89B3CB52C08807200820277 /* ShareAuthoritySpaceViewCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = C89B3CB42C08807200820277 /* ShareAuthoritySpaceViewCell.swift */; };
 		C89B53292C7DB5DC00D2959F /* FirmwareUpdateStateView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C89B53282C7DB5DC00D2959F /* FirmwareUpdateStateView.swift */; };
+		C89B78812CC1EFEB0048B746 /* devices_config.json in Resources */ = {isa = PBXBuildFile; fileRef = C89B78802CC1EFEA0048B746 /* devices_config.json */; };
 		C89BAB1F2C4F3CF4000A4173 /* MeshFirmwareListViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C89BAB1E2C4F3CF4000A4173 /* MeshFirmwareListViewController.swift */; };
 		C89BAB212C4F3EC8000A4173 /* MeshFirmwareListViewCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = C89BAB202C4F3EC8000A4173 /* MeshFirmwareListViewCell.swift */; };
 		C89C82CA2C81B7FE009D43F6 /* FirmwareUpdateTypeData.swift in Sources */ = {isa = PBXBuildFile; fileRef = C89C82C92C81B7FE009D43F6 /* FirmwareUpdateTypeData.swift */; };
@@ -201,6 +202,7 @@
 		C8A3EE822B34087A0082A772 /* SceneAddGroupViewCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A3EE812B34087A0082A772 /* SceneAddGroupViewCell.swift */; };
 		C8A3EE842B34146D0082A772 /* SceneAddGroupTitleSectionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A3EE832B34146D0082A772 /* SceneAddGroupTitleSectionView.swift */; };
 		C8A3EE862B3420F60082A772 /* SceneExecuteDataPickerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A3EE852B3420F60082A772 /* SceneExecuteDataPickerView.swift */; };
+		C8A3EF762CA69758000A1226 /* MeshDeviceConfigInfo.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A3EF752CA69758000A1226 /* MeshDeviceConfigInfo.swift */; };
 		C8A4C5082C95624E003EE5E5 /* DeviceSensorsViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A4C5072C95624E003EE5E5 /* DeviceSensorsViewController.swift */; };
 		C8A4C50B2C956262003EE5E5 /* GatewaysViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A4C50A2C956262003EE5E5 /* GatewaysViewController.swift */; };
 		C8AADEFF2A97350400238C1C /* SiteData.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8AADEFE2A97350400238C1C /* SiteData.swift */; };
@@ -399,6 +401,7 @@
 		C89B3CB22C08650400820277 /* ShareAuthorityViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShareAuthorityViewController.swift; sourceTree = "<group>"; };
 		C89B3CB42C08807200820277 /* ShareAuthoritySpaceViewCell.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShareAuthoritySpaceViewCell.swift; sourceTree = "<group>"; };
 		C89B53282C7DB5DC00D2959F /* FirmwareUpdateStateView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FirmwareUpdateStateView.swift; sourceTree = "<group>"; };
+		C89B78802CC1EFEA0048B746 /* devices_config.json */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.json; path = devices_config.json; sourceTree = "<group>"; };
 		C89BAB1E2C4F3CF4000A4173 /* MeshFirmwareListViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeshFirmwareListViewController.swift; sourceTree = "<group>"; };
 		C89BAB202C4F3EC8000A4173 /* MeshFirmwareListViewCell.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeshFirmwareListViewCell.swift; sourceTree = "<group>"; };
 		C89C82C92C81B7FE009D43F6 /* FirmwareUpdateTypeData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FirmwareUpdateTypeData.swift; sourceTree = "<group>"; };
@@ -462,6 +465,7 @@
 		C8A3EE812B34087A0082A772 /* SceneAddGroupViewCell.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SceneAddGroupViewCell.swift; sourceTree = "<group>"; };
 		C8A3EE832B34146D0082A772 /* SceneAddGroupTitleSectionView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SceneAddGroupTitleSectionView.swift; sourceTree = "<group>"; };
 		C8A3EE852B3420F60082A772 /* SceneExecuteDataPickerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SceneExecuteDataPickerView.swift; sourceTree = "<group>"; };
+		C8A3EF752CA69758000A1226 /* MeshDeviceConfigInfo.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeshDeviceConfigInfo.swift; sourceTree = "<group>"; };
 		C8A4C5072C95624E003EE5E5 /* DeviceSensorsViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceSensorsViewController.swift; sourceTree = "<group>"; };
 		C8A4C50A2C956262003EE5E5 /* GatewaysViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GatewaysViewController.swift; sourceTree = "<group>"; };
 		C8AADEFE2A97350400238C1C /* SiteData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SiteData.swift; sourceTree = "<group>"; };
@@ -626,6 +630,7 @@
 		C84A2C4A2C2D022E0064D3F1 /* Mesh */ = {
 			isa = PBXGroup;
 			children = (
+				C8A3EF742CA6940C000A1226 /* Device */,
 				C84A2C4B2C2D03F50064D3F1 /* Message */,
 			);
 			path = Mesh;
@@ -1234,6 +1239,14 @@
 			path = Controller;
 			sourceTree = "<group>";
 		};
+		C8A3EF742CA6940C000A1226 /* Device */ = {
+			isa = PBXGroup;
+			children = (
+				C8A3EF752CA69758000A1226 /* MeshDeviceConfigInfo.swift */,
+			);
+			path = Device;
+			sourceTree = "<group>";
+		};
 		C8A4C5042C956225003EE5E5 /* Sensors */ = {
 			isa = PBXGroup;
 			children = (
@@ -1313,6 +1326,7 @@
 				C89B34202C93E2B600A77DB6 /* User Agreement.html */,
 				C89B34222C93E3B700A77DB6 /* Privacy Policy.html */,
 				C89FD65F2C88088C00DE431D /* app_update1.0.1.bin */,
+				C89B78802CC1EFEA0048B746 /* devices_config.json */,
 				C896B9B02A930BAA00217512 /* Assets.xcassets */,
 				C896B9B22A930BAA00217512 /* LaunchScreen.storyboard */,
 				C896B9B52A930BAA00217512 /* Info.plist */,
@@ -1504,6 +1518,7 @@
 				C896B9B42A930BAA00217512 /* LaunchScreen.storyboard in Resources */,
 				C8C1E5AB2B6A1FDC00F60E62 /* XWHUDManager_error@2x.png in Resources */,
 				C87EB4622BA17D3F00F9285B /* CodeScan.bundle in Resources */,
+				C89B78812CC1EFEB0048B746 /* devices_config.json in Resources */,
 				C8C1E5AC2B6A1FDC00F60E62 /* XWHUDManager_error@3x.png in Resources */,
 				C8A0CB472C9A78D8009A37E3 /* dfu.zip in Resources */,
 				C8C1E59C2B69F8CB00F60E62 /* XWHUDManager_loading@2x.png in Resources */,
@@ -1586,6 +1601,7 @@
 				C8047F192B8EE37700A09FFA /* ProfileSettingsSphasesView.swift in Sources */,
 				C884EF702C05788900B5F869 /* NoInternetHeaderView.swift in Sources */,
 				C8ACF13B2AA1B2BA00E24B4A /* UIViewController+Extension.swift in Sources */,
+				C8A3EF762CA69758000A1226 /* MeshDeviceConfigInfo.swift in Sources */,
 				C87EB4642BA17D3F00F9285B /* LBXScanView.swift in Sources */,
 				C87415DD2ADFD1510020E3C2 /* PopGestureScrollView.swift in Sources */,
 				C86B0ABA2C11434C0038F669 /* ServerSelectionView.swift in Sources */,

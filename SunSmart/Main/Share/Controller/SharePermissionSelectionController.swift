@@ -126,24 +126,27 @@ class SharePermissionSelectionController: UIViewController {
             XWHUDManager.hide()
             guard let self = self else { return }
             switch result {
-            case .success(let response):
-                if let siteData = JSON(response)["data"]["site"].dictionaryObject {
-                    Task {
-                        // 区分加入site服务器分配的手机地址，还是卸载后的拉取site之前的手机地址
-                        if let site = await SiteData.import(siteJsonData: siteData) {
-                            // 申请下来的地址
-                            if let addressData = JSON(response)["data"]["addrLists"].dictionaryObject {
-                                site.insetProvisioner(provisionerData: addressData)
-                                // 更新地址数据
-//                                CloudSynchronizationManager.shared.addSynchronizationHandle(operation: .syncSite(site: site), level: .promptly)
-                            }
-                            site.save()
-                        }
-                    }
-                }
+            case .success(_):
+//                if let siteData = JSON(response)["data"]["site"].dictionaryObject {
+//                    Task {
+//                        // 区分加入site服务器分配的手机地址，还是卸载后的拉取site之前的手机地址
+//                        if let site = await SiteData.import(siteJsonData: siteData) {
+//                            // 申请下来的地址
+//                            if let addressData = JSON(response)["data"]["addrLists"].dictionaryObject {
+//                                site.insetProvisioner(provisionerData: addressData)
+//                                // 更新地址数据
+////                                CloudSynchronizationManager.shared.addSynchronizationHandle(operation: .syncSite(site: site), level: .promptly)
+//                            }
+//                            site.save()
+//                        }
+//                    }
+//                }
                 let localSpace = SpaceData.load(siteId: space.siteId, spaceId: space.id).first ?? space
                 localSpace.authorizationPassword = password
                 localSpace.permission = permission
+                localSpace.requiresPasswordVerification = false
+                localSpace.applyDeviceAddressCount = nil
+                localSpace.releaseAddress = false
                 localSpace.state = .normal
                 localSpace.save()
                 
@@ -182,6 +185,9 @@ class SharePermissionSelectionController: UIViewController {
                             space?.permission = permission
                             if permission == .editor {
                                 space?.authorizationPassword = spaceData["editorPasswd"] as? String
+                                space?.requiresPasswordVerification = false
+                                space?.applyDeviceAddressCount = nil
+                                space?.releaseAddress = false
                             }
                             space?.state = .normal
                             space?.save()
@@ -313,9 +319,9 @@ class SharePermissionSelectionController: UIViewController {
         case .site:
             guard let receivePassword = password else { return }
             receiveSiteRequest(password: receivePassword)
-        case .space(_, let space, _):
+        case .space(_, let space, _, _):
             spaceJoinRequest(space: space, password: password, permission: permission)
-        case .spaceList(let data, _):
+        case .spaceList(let data, _, _):
             spacesJoinRequest(spaces: data.spaces, password: password, permission: permission)
         }
     }
@@ -327,8 +333,10 @@ class SharePermissionSelectionController: UIViewController {
             
             let vc = BatchImportResultHelpController()
             self?.navigationController?.pushViewController(vc, animated: true)
-        }, closeCallback: {[weak self] in
-            self?.back()
+        }, closeCallback: {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {[weak self] in
+                self?.back()
+            }
         }).show()
         
     }
@@ -360,6 +368,7 @@ class SharePermissionSelectionController: UIViewController {
         tableView.register(CustomTableViewCell.classForCoder(), forCellReuseIdentifier: "cell")
         tableView.dataSource = self
         tableView.delegate = self
+        tableView.isScrollEnabled = false
         contentView.addSubview(tableView)
         tableView.snp.makeConstraints { make in
             make.top.equalTo(SCRYFrom(7))
@@ -447,7 +456,7 @@ extension SharePermissionSelectionController: UITableViewDataSource, UITableView
     func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
         let option = options[indexPath.row]
         if case .spaces = option {
-            if case .spaceList(let data, _) = self.type {
+            if case .spaceList(let data, _, _) = self.type {
                 let vc = ShareSpaceListViewController(spaces: data.spaces)
                 navigationController?.pushViewController(vc, animated: true)
             }
@@ -471,24 +480,38 @@ extension SharePermissionSelectionController {
             case .site(let site, let owner, let shareId):
                 return (shareId, [.title(site.name), .invitationCode(code: shareId), .owner(name: owner.name)],
                         [.init(permission: .owner, requirePwd: true)])
-            case .space(let siteName, let space, let shareId):
+            case .space(let siteName, let space, let shareId, let sharePermission):
+                
+                var permissionTypes: [PermissionSelection] = [.init(permission: .visitor, requirePwd: space.vistorPasswordEnable)]
+                if sharePermission == .owner {
+                    permissionTypes.append(.init(permission: .editor, requirePwd: true))
+                }
                 return (shareId, [.title("\(siteName) > \(space.name)"), .invitationCode(code: shareId), .owner(name: space.owner?.name ?? ""), .editor(name: space.editor?.name)],
-                        [.init(permission: .visitor, requirePwd: space.vistorPasswordEnable), .init(permission: .editor, requirePwd: true)])
-            case .spaceList(let data, let shareId):
+                        permissionTypes)
+            case .spaceList(let data, let shareId, let sharePermission):
                 let ownerName = data.spaces.first(where: { $0.owner != nil })?.owner?.name
-                return (shareId, [.title(data.name), .invitationCode(code: shareId), .owner(name: ownerName ?? ""), .spaces],
-                        [.init(permission: .visitor, requirePwd: false), .init(permission: .editor, requirePwd: true)])
+                
+                var permissionTypes: [PermissionSelection] = [.init(permission: .visitor, requirePwd: false)]
+                if sharePermission == .owner {
+                    permissionTypes.append(.init(permission: .editor, requirePwd: true))
+                }
+                var options: [Options] = [.title(data.name), .invitationCode(code: shareId), .owner(name: ownerName ?? ""), .spaces]
+                // editor分享时显示editor名称
+                if sharePermission == .editor, let name = data.spaces.first(where: { $0.editor != nil })?.editor?.name {
+                    options.insert(.editor(name: name), at: 3)
+                }
+                return (shareId, options, permissionTypes)
             }
         }
         
         /// 接收项目
         case site(site: SiteData, owner: UserData, shareId: String)
         /// 接收space
-        case space(siteName: String, space: SpaceData, shareId: String)
+        case space(siteName: String, space: SpaceData, shareId: String, sharePermission: Permission)
         /// 接收space list
-        case spaceList(data: BatchSpaceData, shareId: String)
+        case spaceList(data: BatchSpaceData, shareId: String, sharePermission: Permission)
         
-        init?(shareData: [String: Any]) {
+        init?(shareData: [String: Any], sharePermission: Permission? = nil) {
             
             let data = JSON(shareData)
             guard let shareId = data["token"].string,
@@ -516,8 +539,14 @@ extension SharePermissionSelectionController {
                 if let visitorPasswordEnable = spaceJson["visitProtected"].bool {
                     space.vistorPasswordEnable = visitorPasswordEnable
                 }
-                
-                self = .space(siteName: data["site"]["siteName"].stringValue, space: space, shareId: shareId)
+                // 分享人权限
+                var shareRole: Permission = .owner
+                if sharePermission != nil {
+                    shareRole = sharePermission!
+                }else if let roleString = data["sharerRole"].string, let permission = Permission(permissionString: roleString) {
+                    shareRole = permission
+                }
+                self = .space(siteName: data["site"]["siteName"].stringValue, space: space, shareId: shareId, sharePermission: shareRole)
             case "batch":
                 
                 guard let siteId = data["siteId"].string,
@@ -539,10 +568,20 @@ extension SharePermissionSelectionController {
                     if let userId = spaceData["owner"]["userId"].string, let username = spaceData["owner"]["username"].string {
                         space.owner = .init(name: username, uuid: userId)
                     }
+                    if let userId = spaceData["editor"]["userId"].string, let username = spaceData["editor"]["username"].string {
+                        space.editor = .init(name: username, uuid: userId)
+                    }
                     space.vistorPasswordEnable = spaceData["visitProtected"].boolValue
                     return space
                 })
-                self = .spaceList(data: BatchSpaceData(siteId: siteId, code: shareId, name: batchName, spaces: spaces, editorPassword: ""), shareId: shareId)
+                
+                // 分享人权限
+                var sharePermission: Permission = .owner
+                if let roleString = data["sharerRole"].string, let permission = Permission(permissionString: roleString) {
+                    sharePermission = permission
+                }
+                
+                self = .spaceList(data: BatchSpaceData(siteId: siteId, code: shareId, name: batchName, spaces: spaces, editorPassword: ""), shareId: shareId, sharePermission: sharePermission)
             case "ownertrans":
                 guard let siteId = data["siteId"].string, 
                         let siteName = data["siteName"].string,

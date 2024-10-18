@@ -188,6 +188,8 @@ class GroupSwitchsViewController: UIViewController {
         guard !switchData.getNeedSyncDatas().isEmpty() else {
             XWHUDManager.showSuccessTipHUD("done!".localizedString)
             reloadSwitchItem(switchData: switchData)
+            NotificationCenter.default.post(name: .init(switchsRefreshNotificationName), object: nil)
+            NotificationCenter.default.post(name: .init(spaceDataChangedNotificaitonName), object: SpaceChangeDataType.common)
             return
         }
         
@@ -203,49 +205,52 @@ class GroupSwitchsViewController: UIViewController {
             DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) {[weak self] in
                 self?.navigationController?.popViewController(animated: true)
             }
+            if let realSwitch = MeshNetworkManager.instance.switchs.first(where: { $0.id == switchData.id }) {
+                switchData.update(switchData: realSwitch)
+            }
             self?.reloadSwitchItem(switchData: switchData)
             NotificationCenter.default.post(name: .init(switchsRefreshNotificationName), object: nil)
         }
         vc.backActionCallback = {[weak self] in
+            if let realSwitch = MeshNetworkManager.instance.switchs.first(where: { $0.id == switchData.id }) {
+                switchData.update(switchData: realSwitch)
+            }
+            self?.reloadSwitchItem(switchData: switchData)
             self?.navigationController?.popViewController(animated: true)
             NotificationCenter.default.post(name: .init(switchsRefreshNotificationName), object: nil)
         }
         navigationController?.pushViewController(vc, animated: true)
-//        vc.backActionCallback = { [weak self] in
-//            self?.dismiss(animated: true)
-//        }
-//        present(NavigationViewController(rootViewController: vc), animated: true)
-        
-        
-//        setEnOceanSwitchKeysEnabled(groupSwitch: groupSwitch, enabled: groupSwitch.enabled)
-        
-//        showLoadingAnimation()
-        
-//        if groupSwitch.enabled {
-//            MeshEnOceanProxyServer.bindEnOceanSwitchKeys(proxyNode: proxyNode, sceneA: groupSwitch.sceneA, sceneB: groupSwitch.sceneB) {[weak self] isSuccess, error in
-//                guard let self = self else { return }
-//                self.hideLoadingAnimation()
-//                if isSuccess {
-//                    XWHUDManager.showSuccessTipHUD("done!".localizedString)
-//                    self.syncRealSwitchData(copySwitch: groupSwitch)
-//                }else {
-//                    XWHUDManager.showErrorTipHUD("save_failure".localizedString)
-//                }
-//            }
-//        }else {
-//            MeshEnOceanProxyServer.unbindEnOceanSwitchKeys(proxyNode: proxyNode) {[weak self] isSuccess, error in
-//                guard let self = self else { return }
-//                self.hideLoadingAnimation()
-//                if isSuccess {
-//                    XWHUDManager.showSuccessTipHUD("done!".localizedString)
-//                    self.syncRealSwitchData(copySwitch: groupSwitch)
-//                }else {
-//                    XWHUDManager.showErrorTipHUD("save_failure".localizedString)
-//                }
-//            }
-//        }
     }
     
+    /// 重新同步
+    private func switchReSync(switchData: DeviceSwitchData) {
+       
+        let vc = SyncDevicesViewController(type: .enOceanSwitch(switchData), reSync: true)
+        vc.syncSuccessCallback = {[weak self] _ in
+            guard let self = self else { return }
+            XWHUDManager.showSuccessTipHUD("done!".localizedString)
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) {[weak self] in
+                self?.navigationController?.popViewController(animated: true)
+            }
+            
+            if let copySwitch = self.copySwitchs.first(where: { $0.id == switchData.id }) {
+                copySwitch.update(switchData: switchData)
+            }
+            self.reloadSwitchItem(switchData: switchData)
+            NotificationCenter.default.post(name: .init(switchsRefreshNotificationName), object: nil)
+        }
+        vc.backActionCallback = {[weak self] in
+            guard let self = self else { return }
+            if let copySwitch = self.copySwitchs.first(where: { $0.id == switchData.id }) {
+                copySwitch.update(switchData: switchData)
+            }
+            self.reloadSwitchItem(switchData: switchData)
+            self.navigationController?.popViewController(animated: true)
+            NotificationCenter.default.post(name: .init(switchsRefreshNotificationName), object: nil)
+        }
+        navigationController?.pushViewController(vc, animated: true)
+        
+    }
     
     /// 设置开关启用/禁用
     /// - Parameters:
@@ -341,10 +346,13 @@ class GroupSwitchsViewController: UIViewController {
         }
         vc.backActionCallback = {[weak self] in
             guard let self = self else { return }
-            if let index = self.copySwitchs.firstIndex(where: { $0.id == switchData.id }) {
-                self.copySwitchs[index].update(switchData: switchData)
-                self.reloadSwitchItem(switchData: switchData)
+//            if let index = self.copySwitchs.firstIndex(where: { $0.id == switchData.id }) {
+//                self.copySwitchs[index].update(switchData: switchData)
+//            }
+            if let realSwitch = MeshNetworkManager.instance.switchs.first(where: { $0.id == switchData.id }) {
+                switchData.update(switchData: realSwitch)
             }
+            self.reloadSwitchItem(switchData: switchData)
             NotificationCenter.default.post(name: .init(switchsRefreshNotificationName), object: nil)
         }
         navigationController?.pushViewController(vc, animated: true)
@@ -406,7 +414,7 @@ class GroupSwitchsViewController: UIViewController {
             make.height.equalTo(SCRYFrom(56) + kSafeAreaBottomHeight)
         }
         
-        addSwitchBtn = UIButton(title: "add_virtual_switch".localizedString, titleSize: 15, titleWeight: .light, titleColor: Title_Color, target: self, action: #selector(addSwitchBtnAction))
+        addSwitchBtn = UIButton(title: "add_switch".localizedString, titleSize: 15, titleWeight: .light, titleColor: Title_Color, target: self, action: #selector(addSwitchBtnAction))
         bottomView.addSubview(addSwitchBtn)
         addSwitchBtn.snp.makeConstraints { make in
             make.left.right.top.equalToSuperview()
@@ -539,7 +547,7 @@ extension GroupSwitchsViewController: UITableViewDataSource, UITableViewDelegate
                 infoCell.contentLabel.text = sceneStr
             case .proxy:
                 infoCell.cellStyle = .arrow
-                if let node = groupSwitch.proxyNode, node.enOceanMacAddress != nil {
+                if let node = groupSwitch.proxyNode, groupSwitch.enOceanMacAddress != nil {
                     infoCell.contentLabel.text = node.name ?? "\(node.primaryUnicastAddress)"
                 }else {
                     infoCell.contentLabel.text = "N/A"
@@ -625,6 +633,7 @@ extension GroupSwitchsViewController: UITableViewDataSource, UITableViewDelegate
                 return
             }
             let vc = EnOceanProxyViewController(switchData: groupSwitch)
+            vc.editable = self.editable
             vc.switchDataSaved = {[weak self] in
                 guard let self = self, let switchData = self.group.info.switchs.first(where: { $0.id == groupSwitch.id }) else {
                     return true
@@ -651,9 +660,28 @@ extension GroupSwitchsViewController: UITableViewDataSource, UITableViewDelegate
             }
             vc.switchCreateCallback = {[weak self] newSwitch in
                 guard let self = self else { return }
-                self.showSwitchs.append(newSwitch)
-                copySwitchs.append(newSwitch.copy())
-                tableView.reloadData()
+                
+                // 未创建动能开关通讯组
+                if newSwitch.proxyNodeAddress != nil && newSwitch.linkGroupAddress == nil {
+                    guard let linkGroup = try? MeshAPI.createGroup(name: newSwitch.name + "-Group", isVirtual: true) else {
+                        XWHUDManager.showErrorTipHUD("failed".localizedString + " !")
+                        return
+                    }
+                    newSwitch.linkGroupAddress = linkGroup.address.address
+                }
+                newSwitch.save()
+                MeshNetworkManager.instance.switchs.append(newSwitch)
+                NotificationCenter.default.post(name: .init(switchsRefreshNotificationName), object: nil)
+                self.navigationController?.popViewController(animated: true)
+                
+                let copySwitch = newSwitch.copy()
+                self.showSwitchs.append(copySwitch)
+                self.copySwitchs.append(copySwitch)
+                
+                tableView.insertSections(IndexSet(integer: self.copySwitchs.count - 1), with: .top)
+                DispatchQueue.main.async {
+                    self.tableView.scrollToRow(at: IndexPath(row: 0, section: self.copySwitchs.count - 1), at: .top, animated: true)
+                }
             }
             navigationController?.pushViewController(vc, animated: true)
         default:
@@ -707,12 +735,27 @@ extension GroupSwitchsViewController: GroupSwitchsHeaderViewDelegate {
     
     /// 开关点击回调  enabled：是否启用
     func view(_ view: GroupSwitchsHeaderView, switchDidClick enabled: Bool) {
+        guard self.editable else {
+            XWHUDManager.showTipHUD("no_permission".localizedString + "！")
+            return
+        }
         
         view.groupSwitch.enabled = enabled
         reloadSwitchItem(switchData: view.groupSwitch)
         
 //        let groupSwitch = view.groupSwitch!
 //        setEnOceanSwitchKeysEnabled(groupSwitch: groupSwitch, enabled: enabled)
+    }
+    
+    /// 重新同步点击回调
+    func headerViewDidResyncAction(_ view: GroupSwitchsHeaderView) {
+        guard self.editable else {
+            XWHUDManager.showTipHUD("no_permission".localizedString + "！")
+            return
+        }
+        if let realSwitch = self.group.info.switchs.first(where: { $0.id == view.groupSwitch.id }) {
+            switchReSync(switchData: realSwitch)
+        }
     }
     
 }

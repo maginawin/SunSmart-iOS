@@ -43,6 +43,9 @@ class SunSmartDataManager {
         FirmwareData.initDatabase()
         // 初始化网络数据库
         MeshDataManager.shared.initDatabase()
+        
+        // 初始化设备配置信息数据库
+        MeshDeviceConfigInfo.initDatabase()
     }
 }
 
@@ -150,7 +153,7 @@ extension SiteData {
         if let rows = try? SunSmartDataManager.shared.db?.prepare(filter) {
             for row in rows {
                 site = SiteData(id: row[ExpressionKey.uuid], meshUUID: row[ExpressionKey.uuid], name: row[ExpressionKey.name], imageId: row[ExpressionKey.imageId], type: .init(rawValue: row[ExpressionKey.type]) ?? .office, permission: .init(rawValue: row[ExpressionKey.permission]) ?? .owner, create: row[ExpressionKey.createTimestamp], lastUpdate: row[ExpressionKey.lastUpdateTimestamp], isFavourite: row[ExpressionKey.favourite], sourceType: .init(rawValue: row[ExpressionKey.source]) ?? .create)
-                site?.lastUploadCloudTimestamp = row[ExpressionKey.lastUpdateTimestamp]
+                site?.lastUploadCloudTimestamp = row[ExpressionKey.lastUploadCloudTimestamp]
                 if let errorCode = row[ExpressionKey.syncCloudError] {
                     site?.syncCloudError = .init(code: errorCode)
                 }
@@ -778,7 +781,8 @@ extension GroupInfo {
                 }
                 // 组绑定的光照传感器
                 if let daylightSensorAddress = row[ExpressionKey.daylightSensorAddress] {
-                    info.ambientLightSensorNode = Node.load(meshUUID: meshUUID, address: Address(daylightSensorAddress)).first
+                    info.ambientLightSensorNodeAddress = Address(daylightSensorAddress)
+//                    info.ambientLightSensorNode = Node.load(meshUUID: meshUUID, address: Address(daylightSensorAddress)).first
                 }
                 // TODO: load Profile、Switches
                 // 日程数据
@@ -1311,9 +1315,11 @@ extension Profile {
     /// - Returns: 日程数据list
     static func loadAll(meshUUID: String, meshNetworkId: String? = nil, profileId: String? = nil) -> [Profile] {
        
-        var predicate = ExpressionKey.meshUUID == meshUUID && ExpressionKey.subNetworkKey == meshNetworkId
+        let subNetworkey = meshNetworkId ?? MeshNetworkManager.instance.currentNetworkKey.networkId.hex
+        
+        var predicate = ExpressionKey.meshUUID == meshUUID && ExpressionKey.subNetworkKey == subNetworkey
         if profileId != nil {
-            predicate = ExpressionKey.meshUUID == meshUUID && ExpressionKey.subNetworkKey == meshNetworkId && ExpressionKey.uuid == profileId!
+            predicate = ExpressionKey.meshUUID == meshUUID && ExpressionKey.subNetworkKey == subNetworkey && ExpressionKey.uuid == profileId!
         }
         let filter = Profile.profilesTable.filter(predicate)
         
@@ -1351,11 +1357,12 @@ extension Profile {
         
         guard let uuid = meshUUID ?? MeshNetworkManager.instance.meshNetwork?.uuid.uuidString else { return false }
 //        let subNetworkey = networkKey
+        let subNetworkey = meshNetworkId ?? MeshNetworkManager.instance.currentNetworkKey.networkId.hex
         
         let data = lightData.data
         let insertOrUpdate = Profile.profilesTable.insert(or: .replace, [
             ExpressionKey.meshUUID <- uuid,
-            ExpressionKey.subNetworkKey <- meshNetworkId,
+            ExpressionKey.subNetworkKey <- subNetworkey,
             ExpressionKey.uuid <- self.id,
             ExpressionKey.name <- self.name,
             ExpressionKey.type <- self.type.rawValue,
@@ -1384,7 +1391,7 @@ extension Profile {
         return true
     }
     
-    /// 删除网络全部日程数据
+    /// 删除网络全部组配置
     /// - Parameter spaceId: 空间id
     /// - Parameter networkKey: 子网网络key
     /// - Returns: 是否成功
@@ -1400,7 +1407,7 @@ extension Profile {
         return true
     }
     
-    /// 删除日程数据
+    /// 删除组配置数据
     /// - Parameter meshUUID: mesh网络id
     /// - Parameter networkKey: 子网网络key
     /// - Returns: 是否成功
@@ -1654,6 +1661,7 @@ extension FirmwareData {
         static let customId = Expression<Int?>("customId")
         static let releaseDateTimestamp = Expression<Int64>("releaseDate")
         static let content = Expression<String>("content")
+        static let compositionHash = Expression<String>("compositionHash")
     }
     
     /// 初始化固件数据扩展信息表
@@ -1672,6 +1680,7 @@ extension FirmwareData {
             builder.column(ExpressionKey.customId)
             builder.column(ExpressionKey.releaseDateTimestamp)
             builder.column(ExpressionKey.content)
+            builder.column(ExpressionKey.compositionHash)
             builder.unique(ExpressionKey.deviceType, ExpressionKey.vendorId, ExpressionKey.customId)
         }))
     }
@@ -1679,13 +1688,13 @@ extension FirmwareData {
     
     /// 读取固件缓存数据
     /// - Parameters:
-    ///   - deviceType: 设备类型
+    ///   - productId: 产品id
     ///   - vendorId: 厂商id（非必须）
     ///   - customId: 自定义id（非必须）
     /// - Returns: 固件包list
-    static func load(deviceType: DeviceType, vendorId: UInt16? = nil, customId: UInt16? = nil) -> [FirmwareData] {
+    static func load(productId: UInt16, vendorId: UInt16? = nil, customId: UInt16? = nil) -> [FirmwareData] {
         
-        var query = FirmwareData.firmwaresTable.filter(ExpressionKey.deviceType == Int(deviceType.pid))
+        var query = FirmwareData.firmwaresTable.filter(ExpressionKey.deviceType == Int(productId))
         
         if let vendorId = vendorId {
             let vendorQuery = FirmwareData.firmwaresTable.filter(ExpressionKey.vendorId == Int(vendorId))
@@ -1699,13 +1708,9 @@ extension FirmwareData {
         var list: [FirmwareData] = []
         if let rows = try? SunSmartDataManager.shared.db?.prepare(query) {
             for row in rows {
-                let deviceType: DeviceType = .init(pid: UInt16(row[ExpressionKey.deviceType]))
-                if deviceType != .unknown {
-                    let customId = row[ExpressionKey.customId]
-                    let data = FirmwareData(name: row[ExpressionKey.name], version: row[ExpressionKey.version], firmwareID: row[ExpressionKey.firmwareId], data: row[ExpressionKey.firmwareData], updateFirmwareImageIndex: row[ExpressionKey.updateFirmwareImageIndex], incomingFirmwareMetadata: row[ExpressionKey.incomingFirmwareMetadata], deviceType: deviceType, vendorId: UInt16(row[ExpressionKey.vendorId]), customId: customId != nil ? UInt16(customId!) : nil, releaseDate: row[ExpressionKey.releaseDateTimestamp], content: row[ExpressionKey.content])
-                    
-                    list.append(data)
-                }
+                let customId = row[ExpressionKey.customId]
+                let data = FirmwareData(name: row[ExpressionKey.name], version: row[ExpressionKey.version], firmwareID: row[ExpressionKey.firmwareId], data: row[ExpressionKey.firmwareData], updateFirmwareImageIndex: row[ExpressionKey.updateFirmwareImageIndex], incomingFirmwareMetadata: row[ExpressionKey.incomingFirmwareMetadata], productId: UInt16(row[ExpressionKey.deviceType]), vendorId: UInt16(row[ExpressionKey.vendorId]), customId: customId != nil ? UInt16(customId!) : nil, releaseDate: row[ExpressionKey.releaseDateTimestamp], content: row[ExpressionKey.content], compositionHash: row[ExpressionKey.compositionHash])
+                list.append(data)
             }
         }
         return list
@@ -1721,11 +1726,12 @@ extension FirmwareData {
             ExpressionKey.firmwareId <- self.firmwareID,
             ExpressionKey.updateFirmwareImageIndex <- self.updateFirmwareImageIndex,
             ExpressionKey.incomingFirmwareMetadata <- self.incomingFirmwareMetadata,
-            ExpressionKey.deviceType <- Int(self.deviceType.pid),
+            ExpressionKey.deviceType <- Int(self.productId),
             ExpressionKey.vendorId <- Int(self.vendorId),
             ExpressionKey.customId <- self.customId != nil ? Int(self.customId!) : nil,
             ExpressionKey.releaseDateTimestamp <- self.releaseDate,
-            ExpressionKey.content <- self.content
+            ExpressionKey.content <- self.content,
+            ExpressionKey.compositionHash <- self.compositionHash
         ])
        
         do {
@@ -1739,7 +1745,7 @@ extension FirmwareData {
     
     @discardableResult func delete() -> Bool {
         
-        var filter = FirmwareData.firmwaresTable.filter(ExpressionKey.deviceType == Int(self.deviceType.pid) && ExpressionKey.vendorId == Int(self.vendorId))
+        var filter = FirmwareData.firmwaresTable.filter(ExpressionKey.deviceType == Int(self.productId) && ExpressionKey.vendorId == Int(self.vendorId))
         if self.customId != nil {
             let customIdQuery = FirmwareData.firmwaresTable.filter(ExpressionKey.customId == Int(self.customId!))
             filter = filter.union(customIdQuery)
@@ -1966,5 +1972,121 @@ extension DeviceSwitchData {
         }
         return true
     }
+    
+}
+
+extension MeshDeviceConfigInfo {
+    
+    private static let deviceConfigInfosTable = Table("deviceConfigInfos")
+    
+    struct ExpressionKey {
+        static let id = Expression<Int64>("id")
+        static let companyId = Expression<Int>("companyId")
+        static let productId = Expression<Int>("productId")
+        static let categoryName = Expression<String>("categoryName")
+        static let elementCount = Expression<Int>("elementCount")
+    }
+    
+    /// 初始化设备配置信息表
+    static func initDatabase() {
+        
+        _ = try? SunSmartDataManager.shared.db?.run(MeshDeviceConfigInfo.deviceConfigInfosTable.create(temporary: false, ifNotExists: true, withoutRowid: false, block: { builder in
+            builder.column(ExpressionKey.id, primaryKey: true)
+            builder.column(ExpressionKey.companyId)
+            builder.column(ExpressionKey.productId)
+            builder.column(ExpressionKey.categoryName)
+            builder.column(ExpressionKey.elementCount)
+            builder.unique(ExpressionKey.companyId, ExpressionKey.productId)
+        }))
+    }
+    
+    /// 加载设备配置信息list
+    /// - Parameters:
+    ///   - companyId: 厂商id（非必须）
+    ///   - productId: 产品id（非必须）
+    /// - Returns: 设备配置信息list
+    static func load(companyId: UInt16? = nil, productId: UInt16? = nil) -> [MeshDeviceConfigInfo] {
+        
+        var query = MeshDeviceConfigInfo.deviceConfigInfosTable
+        
+        if let companyId = companyId {
+            let vendorQuery = MeshDeviceConfigInfo.deviceConfigInfosTable.filter(ExpressionKey.companyId == Int(companyId))
+            query = query.union(vendorQuery)
+        }
+        if let productId = productId {
+            let productIdQuery = MeshDeviceConfigInfo.deviceConfigInfosTable.filter(ExpressionKey.productId == Int(productId))
+            query = query.union(productIdQuery)
+        }
+        
+        var infos: [MeshDeviceConfigInfo] = []
+        if let rows = try? SunSmartDataManager.shared.db?.prepare(query) {
+            for row in rows {
+                let info = MeshDeviceConfigInfo(companyId: UInt16(row[ExpressionKey.companyId]), productId: UInt16(row[ExpressionKey.productId]), categoryName: row[ExpressionKey.categoryName], elementCount: row[ExpressionKey.elementCount])
+                infos.append(info)
+            }
+        }
+        return infos
+    }
+    
+    
+    /// 删除设备配置信息
+    /// - Parameters:
+    ///   - companyId: 厂商id（非必须）
+    ///   - productId: 产品id（非必须）
+    /// - Returns: 是否成功
+    @discardableResult static func delete(companyId: UInt16? = nil, productId: UInt16? = nil) -> Bool {
+        
+        var predicate = MeshDeviceConfigInfo.deviceConfigInfosTable
+        
+        if let companyId = companyId {
+            let vendorQuery = MeshDeviceConfigInfo.deviceConfigInfosTable.filter(ExpressionKey.companyId == Int(companyId))
+            predicate = predicate.union(vendorQuery)
+        }
+        if let productId = productId {
+            let productIdQuery = MeshDeviceConfigInfo.deviceConfigInfosTable.filter(ExpressionKey.productId == Int(productId))
+            predicate = predicate.union(productIdQuery)
+        }
+
+        do {
+            try SunSmartDataManager.shared.db?.run(predicate.delete())
+        } catch {
+            print(error)
+            return false
+        }
+        return true
+    }
+    
+    
+    /// 重新缓存所有设备配置信息数据
+    /// - Parameter list: 缓存的list数据
+    /// - Returns: 是否成功
+    @discardableResult static func saveAll(list: [MeshDeviceConfigInfo]) -> Bool {
+        guard delete() else {
+            return false
+        }
+        list.forEach({
+            $0.save()
+        })
+        return true
+    }
+    
+    @discardableResult func save() -> Bool {
+        
+        let insertOrUpdate = MeshDeviceConfigInfo.deviceConfigInfosTable.insert(or: .replace, [
+            ExpressionKey.companyId <- Int(self.companyId),
+            ExpressionKey.productId <- Int(self.productId),
+            ExpressionKey.categoryName <- self.categoryName,
+            ExpressionKey.elementCount <- self.elementCount
+        ])
+        do {
+            try SunSmartDataManager.shared.db?.run(insertOrUpdate)
+        } catch {
+            print(error)
+            return false
+        }
+        return true
+        
+    }
+    
     
 }

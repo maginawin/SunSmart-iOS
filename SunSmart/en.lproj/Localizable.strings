@@ -431,7 +431,7 @@
 "panel" = "Panel";
 "enocean_proxy" = "Kinetic Switch Proxy";
 "group_not_proxy_message" = "Your group does not yet have a device, please add a device first.";
-"add_virtual_switch" = "ADD VIRTUAL SWITCH";
+"add_switch" = "ADD SWITCH";
 "select_scene" = "Select scene";
 "scene_a" = "Scene A";
 "scene_b" = "Scene B";
@@ -439,7 +439,7 @@
 "camera_requires_alert_message" = "We need to access your camera for scanning the QR code of share ID and for importing configurations.";
 "scan_panel_qr_code_message" = "Scan the QR code of the Kinetic Switch Bluetooth wireless panel";
 "enocean_proxies_overrun" = "You cannot set two Kinetic Switch proxies for the same switch in a group.";
-"enocean_proxies_exist" = "Do you want to add a new switch based on this type of virtual switch?";
+"enocean_proxies_exist" = "Do you want to add a new switch based on this type of switch?";
 "unknown_qr_code" = "Unknown QR code";
 "enocean_proxy_connect_failed" = "Failed to connect to Kinetic Switch Proxy";
 "switch_delete_failed" = "Failed to delete switch.";
@@ -480,7 +480,7 @@
 "guidance_create_groups" = "Create Groups and pre-set profile";
 "guidance_create_groups_message" = "Groups are the basis for off-site presettings, based on which you can preset scenes, schedules and more";
 "guidance_create_scenes" = "Create scenes and pre-set scenes";
-"guidance_create_switchs" = "Create virtual switches and pre-set switchs";
+"guidance_create_switchs" = "Create virtual switches and pre-set switches";
 "guidance_create_schedules" = "Create schedules and pre-set schedules";
 "guidance_configuration" = "On-Site configuration";
 "guidance_configuration_message" = "Add the target device to the group";
@@ -494,8 +494,8 @@
 "create_more_scenes" = "Create more scenes";
 "create_schedule" = "Create schedule";
 "create_more_schedules" = "Create more schedules";
-"create_virtual_switchs" = "Create virtual switchs";
-"create_more_switchs" = "Create more virtual switchs";
+"create_virtual_switchs" = "Create virtual switches";
+"create_more_switchs" = "Create more virtual switches";
 "schedule_multiple_unselect_first" = "The setting is not complete.";
 "schedule_multiple_unselect_end" = "must be set.";
 "groups_overrun_message" = "The limit of 16 groups is exceeded, please delete unnecessary ones.";
@@ -630,6 +630,7 @@
 "space_editor_password_change_message" = "Space editor password changed, please re-enter the correct password to access";
 "space_visitor_password_change_message" = "Space visitor password changed, please re-enter the correct password to access";
 "space_permission_cleared_message" = "Your permission has been cleared, please re-apply for access";
+"no_upload" = "No upload"; 
 
 "guidance_message_1" = "Click the \"+\" button in the lower right corner of the Main interface to add a device.";
 "guidance_message_2" = "Add a member from an empty group interface to add it directly to the group.";
@@ -723,6 +724,10 @@
 "device_address_apply_message" = "You have applied for the device address from the server, are you sure to get it.";
 "space_permission_transition_message" = "The person with editing permission is currently operating the space. Do you want to enter the space as a vistor?";
 "help" = "Help";
+"phone_network_disconnect" = "Network error. You can continue to edit offline.Once you have completed offline editing, ensure that the modified data is saved to the server.";
+"space_editor_password_changed_message" = "Space editor password changed, please re-enter the correct password to access.";
+"space_vistor_password_changed_message" = "Space vistor password changed, please re-enter the correct password to access.";
+"space_password_overdue" = "Space password overdue";
 
 "ota_ble_title" = "Firmware update via BLE";
 "ota_mesh_title" = "Firmware update via MESH";
@@ -733,6 +738,7 @@
 "current_target_version" = "Current target version";
 "total" = "Total";
 "upgraded" = "Upgraded";
+"UPGRADE" = "UPGRADE";
 "updating" = "Updating";
 "upgrade_selected" = "Upgrade Selected";
 "firmware_update_message" = "Point-to-point BLE upgrade in progress...Please ensure that the connection between the phone and the device is normal and maintain this interface until the upgrade is completed.";
@@ -789,6 +795,7 @@
 "firmware_update_blob_error_message" = "Firmware Update Error: Blob failure. Check whether the device can be controlled and re-upgrade.";
 "firmware_update_error_message" = "Firmware Update Error: Update failure. Check whether the device can be controlled and re-upgrade.";
 "firmware_update_stop_message" = "Firmware Update Error: Stop update. Check whether the device can be controlled and re-upgrade.";
+"firmware_update_reset_message" = "Due to major firmware changes, devices with firmware %@ will automatically reset after the upgrade. You need to add and set up the device again. Are you sure to upgrade?";
 "none" = "None";
 "minutes" = "minutes";
 "sec" = "sec";
@@ -796,8 +803,8 @@
 
 "get_started" = "Get Started";
 "welcome_title" = "Welcome to the\nSunsmart\napplication !";
-"welcome_policy_message" = "I accept and agree to Terms of Use and \n Privacy Policy";
-"welcome_policy_use" = "Terms of Use";
+"welcome_policy_message" = "I accept and agree to User Agreement and \n Privacy Policy";
+"welcome_policy_use" = "User Agreement";
 "welcome_privacy_policy" = "Privacy Policy";
 
 "light" = "Light";
@@ -820,12 +827,14 @@
 "remove_switch_proxy" = "Remove switch proxy";
 "switchs_overrun_message" = "The number of kinetic switches has been exceeded. A single space is limited to 16 switches.";
 "switch_delete_message" = "The kinetic switch has a bound agent. Are you sure you want to remove it?";
+"switchs_delete_message" = "Are you sure to delete the kinetic switch?";
 "Finish" = "Finish";
 "GOT_IT" = "GOT IT";
 "switch_copy_failed_message" = "The kinetic switch has not been saved. You need to save it before you can copy a new switch.";
 "switch_proxy_repair_message" = "The device is under repair and cannot be used as a kinetic switch proxy.";
 "switch_proxy_notsupport_message" = "This device does not support kinetic switch proxy, please select another device";
 "switch_proxy_in_group_message" = "There is a kinetic switch proxy in the group. The controlled group can only be changed after disabling the kinetic switch.";
+"switch_proxy_notcleared_message" = "Cannot set as proxy. There are proxysettings that have not been cleared before. Please complete the previous synchronization and try again.";
 "switch_group_deselected_message" = "This group is the current group and cannotpe deselected.";
 "no_switches" = "No Switches!";
 "no_switches_message" = "You do not have a switch yet, please add a switch first.";
@@ -835,3 +844,4 @@
 "no_gateways_message" = "You do not have a gateway yet, please add a gateway first.";
 "download_failure" = "Download failure!";
 "no_record" = "No record";
+

@@ -121,8 +121,8 @@ class DeviceLightViewController: UIViewController {
     @objc private func getNodeState() {
         
         MeshAPI.getNodeState(address: node.primaryUnicastAddress)
-    
-        MeshLibManager.manager.refreshNodesRSSI(withWaitFor: 2) {[weak self] nodes in
+        
+        MeshLibManager.manager.refreshNodesRSSI(withWaitFor: 5) {[weak self] nodes in
             guard let self = self else { return }
             if !nodes.contains(where: { $0.primaryUnicastAddress == self.node.primaryUnicastAddress }) {
                 self.node.rssi = nil
@@ -262,7 +262,7 @@ class DeviceLightViewController: UIViewController {
              self.title = text
              self.node.name = text
 //             _ = self.space.meshManager?.save()
-             self.space.save()
+             self.node.save()
              // 通知space数据修改
              NotificationCenter.default.post(name: .init(spaceDataChangedNotificaitonName), object: SpaceChangeDataType.common)
              

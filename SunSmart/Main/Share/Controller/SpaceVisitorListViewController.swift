@@ -48,8 +48,10 @@ class SpaceVisitorListViewController: UIViewController {
     
     /// 获取space成员数据
     private func loadMemberRequest() {
+
         XWHUDManager.showCustomHUD(withMessage: nil, view: self.view)
-        NetworkRequest.shared.request(.spaceShare(space: space)) {[weak self] result in
+       
+        NetworkRequest.shared.request(.spaceMembers(siteId: self.space.siteId, spaceId: self.space.id)) {[weak self] result in
             guard let self = self else { return }
             XWHUDManager.hideInView(with: self.view)
             

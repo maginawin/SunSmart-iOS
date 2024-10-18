@@ -248,7 +248,7 @@ class GroupViewController: UIViewController {
         
         let profileType = group.info.profile.type
         // 提示校准
-        if group.info.ambientLightSensorNode == nil, group.ambientLightSensorNodes.count > 0, profileType == .occupancy_daylight || profileType == .vacancy_daylight || profileType == .daylight {
+        if group.info.ambientLightSensorNode == nil, group.ambientLightSensorNodes.count > 0, profileType == .occupancy_daylight || profileType == .vacancy_daylight || profileType == .daylight, space.groupOperates.contains(.edit) {
             calibrateBtn.isHidden = false
             calibrateLabel.isHidden = false
         }else {
@@ -540,9 +540,9 @@ class GroupViewController: UIViewController {
             }
 //             profile.type
             if profile.type == .occupancy || profile.type == .vacancy || profile.type == .manualControl {
-                self.group.info.ambientLightSensorNode = nil
+                self.group.info.ambientLightSensorNodeAddress = nil
             }
-            self.group.info.profile = profile
+            self.group.info.profile.updateData(profile: profile)
             self.group.info.save()
             profile.save(meshUUID: self.space.meshUUID, meshNetworkId: self.space.meshNetworkId)
             self.updateUI()

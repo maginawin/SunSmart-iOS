@@ -50,7 +50,7 @@ class DevicesViewCell: UICollectionViewCell {
             if device.isKeybindComplete {
                 progressView.isHidden = false
 //                lightnessProgressView.isHidden = false
-                iconImageView.image = UIImage(named: "device_light")
+                iconImageView.image = UIImage(named: device.iconName)
                 
                 if device.state {
                     
@@ -110,7 +110,7 @@ class DevicesViewCell: UICollectionViewCell {
                         make.top.equalTo(SCRYFrom(24))
                     }
                     
-                    iconImageView.image = UIImage(named: "device_light_offline")
+                    iconImageView.image = UIImage(named: device.offlineIconName)
                     
 //                    lightnessProgressView.progress = 0
                     device.lastLightness = 0
