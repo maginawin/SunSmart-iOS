@@ -190,7 +190,7 @@ enum DeviceOperationType {
                     // 设备是否支持色温model
                     let lightness = data.lightness
                     //Node.getLightness(lightness100: data.lightness, range: node.lightnessRange)
-                    if let ctlModel = node.ctlModel {
+                    if let ctlModel = node.ctlModel, node.temperatureModel != nil {
                         messageHandles.append(MeshMessageHandle(message: LightCTLSet(lightness: lightness, temperature: UInt16(data.cct), deltaUV: 0, transitionTime: .immediate, delay: 0), model: ctlModel))
                     }else { // 不支持则设置亮度
                         messageHandles.append(MeshMessageHandle(message: LightLightnessSet(lightness: lightness, transitionTime: .immediate, delay: 0), model: lightnessModel))

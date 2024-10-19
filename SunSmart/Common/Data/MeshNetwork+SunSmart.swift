@@ -683,7 +683,7 @@ extension Group {
                     return 4500
                 }
                 // 计算频率最高值 出现次数>1
-                let ccts = self.nodes.filter({ ($0.temperatureModel != nil || $0.ctlModel != nil) && $0.state }).map({ $0.temperature })
+                let ccts = self.nodes.filter({ $0.temperatureModel != nil && $0.state }).map({ $0.temperature })
                 var cctDatas: [UInt16: Int] = [:]
                 ccts.forEach { cct in
                     if cctDatas.keys.contains(cct) {
@@ -726,7 +726,7 @@ extension Group {
     
     /// 是否支持色温
     var supportCct: Bool {
-        return nodes.contains(where: { $0.temperatureModel != nil || $0.ctlModel != nil })
+        return nodes.contains(where: { $0.temperatureModel != nil })
     }
     
     /// 删除本地化缓存数据（只处理业务扩展数据）
@@ -2091,7 +2091,7 @@ extension Node {
             let sceneId = (message as! SceneStore).scene
             var cct = temperature
             // 不支持cct，使用group预配置的cct值
-            if self.ctlModel == nil, let groupCct = self.group?.info.sceneExecuteDatas.first(where: { $0.sceneNumber == sceneId })?.cct {
+            if self.temperatureModel == nil, let groupCct = self.group?.info.sceneExecuteDatas.first(where: { $0.sceneNumber == sceneId })?.cct {
                 cct = groupCct
             }
             if let sceneData = self.sceneExecuteDatas.first(where: { $0.sceneNumber == sceneId }) {

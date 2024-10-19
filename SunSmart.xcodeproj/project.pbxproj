@@ -155,7 +155,6 @@
 		C89F08A02C7712F2005C0711 /* BleFirmwareTypeUpdateViewCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = C89F089F2C7712F2005C0711 /* BleFirmwareTypeUpdateViewCell.swift */; };
 		C89F98412B5E5A56007EABF5 /* SceneExecuteAnimationView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C89F98402B5E5A56007EABF5 /* SceneExecuteAnimationView.swift */; };
 		C89F98432B5E5AC8007EABF5 /* ScenesViewCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = C89F98422B5E5AC8007EABF5 /* ScenesViewCell.swift */; };
-		C89FD6602C88088C00DE431D /* app_update1.0.1.bin in Resources */ = {isa = PBXBuildFile; fileRef = C89FD65F2C88088C00DE431D /* app_update1.0.1.bin */; };
 		C89FD6662C89840400DE431D /* DeviceSwitchesViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C89FD6652C89840400DE431D /* DeviceSwitchesViewController.swift */; };
 		C89FD66B2C89845D00DE431D /* DeviceLightsViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C89FD66A2C89845D00DE431D /* DeviceLightsViewController.swift */; };
 		C89FD66D2C899D4B00DE431D /* DeviceSwitchesViewCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = C89FD66C2C899D4B00DE431D /* DeviceSwitchesViewCell.swift */; };
@@ -173,7 +172,6 @@
 		C8A09A052AC178910068C814 /* ImageCollectionViewCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A09A042AC178910068C814 /* ImageCollectionViewCell.swift */; };
 		C8A09A072AC1790B0068C814 /* InfoEditViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A09A062AC1790B0068C814 /* InfoEditViewController.swift */; };
 		C8A0AC4B2C3E21B200DFE803 /* Array+Split.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A0AC4A2C3E21B200DFE803 /* Array+Split.swift */; };
-		C8A0CB472C9A78D8009A37E3 /* dfu.zip in Resources */ = {isa = PBXBuildFile; fileRef = C8A0CB462C9A78D8009A37E3 /* dfu.zip */; };
 		C8A0CB4F2C9A81E1009A37E3 /* ZipHandler.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A0CB4E2C9A81E1009A37E3 /* ZipHandler.swift */; };
 		C8A130B92B3129960008C353 /* ScenesViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A130B82B3129960008C353 /* ScenesViewController.swift */; };
 		C8A130BE2B32785E0008C353 /* SceneAddViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A130BD2B32785E0008C353 /* SceneAddViewController.swift */; };
@@ -418,7 +416,6 @@
 		C89F089F2C7712F2005C0711 /* BleFirmwareTypeUpdateViewCell.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BleFirmwareTypeUpdateViewCell.swift; sourceTree = "<group>"; };
 		C89F98402B5E5A56007EABF5 /* SceneExecuteAnimationView.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = SceneExecuteAnimationView.swift; sourceTree = "<group>"; };
 		C89F98422B5E5AC8007EABF5 /* ScenesViewCell.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScenesViewCell.swift; sourceTree = "<group>"; };
-		C89FD65F2C88088C00DE431D /* app_update1.0.1.bin */ = {isa = PBXFileReference; lastKnownFileType = archive.macbinary; path = app_update1.0.1.bin; sourceTree = "<group>"; };
 		C89FD6652C89840400DE431D /* DeviceSwitchesViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceSwitchesViewController.swift; sourceTree = "<group>"; };
 		C89FD66A2C89845D00DE431D /* DeviceLightsViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceLightsViewController.swift; sourceTree = "<group>"; };
 		C89FD66C2C899D4B00DE431D /* DeviceSwitchesViewCell.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceSwitchesViewCell.swift; sourceTree = "<group>"; };
@@ -436,7 +433,6 @@
 		C8A09A042AC178910068C814 /* ImageCollectionViewCell.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImageCollectionViewCell.swift; sourceTree = "<group>"; };
 		C8A09A062AC1790B0068C814 /* InfoEditViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InfoEditViewController.swift; sourceTree = "<group>"; };
 		C8A0AC4A2C3E21B200DFE803 /* Array+Split.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Array+Split.swift"; sourceTree = "<group>"; };
-		C8A0CB462C9A78D8009A37E3 /* dfu.zip */ = {isa = PBXFileReference; lastKnownFileType = archive.zip; path = dfu.zip; sourceTree = "<group>"; };
 		C8A0CB4E2C9A81E1009A37E3 /* ZipHandler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ZipHandler.swift; sourceTree = "<group>"; };
 		C8A130B82B3129960008C353 /* ScenesViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScenesViewController.swift; sourceTree = "<group>"; };
 		C8A130BD2B32785E0008C353 /* SceneAddViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SceneAddViewController.swift; sourceTree = "<group>"; };
@@ -1322,10 +1318,8 @@
 		C8AAE2792A9743A300238C1C /* Support */ = {
 			isa = PBXGroup;
 			children = (
-				C8A0CB462C9A78D8009A37E3 /* dfu.zip */,
 				C89B34202C93E2B600A77DB6 /* User Agreement.html */,
 				C89B34222C93E3B700A77DB6 /* Privacy Policy.html */,
-				C89FD65F2C88088C00DE431D /* app_update1.0.1.bin */,
 				C89B78802CC1EFEA0048B746 /* devices_config.json */,
 				C896B9B02A930BAA00217512 /* Assets.xcassets */,
 				C896B9B22A930BAA00217512 /* LaunchScreen.storyboard */,
@@ -1520,7 +1514,6 @@
 				C87EB4622BA17D3F00F9285B /* CodeScan.bundle in Resources */,
 				C89B78812CC1EFEB0048B746 /* devices_config.json in Resources */,
 				C8C1E5AC2B6A1FDC00F60E62 /* XWHUDManager_error@3x.png in Resources */,
-				C8A0CB472C9A78D8009A37E3 /* dfu.zip in Resources */,
 				C8C1E59C2B69F8CB00F60E62 /* XWHUDManager_loading@2x.png in Resources */,
 				C896B9B12A930BAA00217512 /* Assets.xcassets in Resources */,
 				C896BD3F2A930C3A00217512 /* XWHUDManager_info@2x.png in Resources */,
@@ -1528,7 +1521,6 @@
 				C896BD3D2A930C3A00217512 /* XWHUDManager_right@2x.png in Resources */,
 				C896BD432A930C3A00217512 /* XWHUDManager_tip@2x.png in Resources */,
 				C8C1E5A82B6A1FA500F60E62 /* XWHUDManager_successful@3x.png in Resources */,
-				C89FD6602C88088C00DE431D /* app_update1.0.1.bin in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

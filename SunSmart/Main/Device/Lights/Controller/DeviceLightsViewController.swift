@@ -184,7 +184,7 @@ class DeviceLightsViewController: UIViewController {
 
         MeshAPI.sendMessage(message: LightLightnessGet(), address: .allNodes)
         
-        if devices.contains(where: { $0.ctlModel != nil }) {
+        if devices.contains(where: { $0.ctlModel != nil && $0.temperatureModel != nil }) {
             MeshAPI.sendMessage(message: LightCTLGet(), address: .allNodes)
         }
         

@@ -800,6 +800,7 @@
 "minutes" = "minutes";
 "sec" = "sec";
 "signal_below_message" = "Signals below -80dB cannot be selected.";
+"no_data" = "No Data !";
 
 "get_started" = "Get Started";
 "welcome_title" = "Welcome to the\nSunsmart\napplication !";

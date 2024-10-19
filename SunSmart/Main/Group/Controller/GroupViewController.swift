@@ -239,7 +239,7 @@ class GroupViewController: UIViewController {
         let data = group.info.profile.lightData.data
         lightnessSlider.slider.limitRange = data.lowEndTrim...data.highEndTrim
         lightnessSlider.value = Node.getLightness100(lightness: group.lightness)
-        if group.nodes.contains(where: {$0.ctlModel != nil }) {
+        if group.nodes.contains(where: {$0.temperatureModel != nil }) {
             cctSlider.value = group.cct
             cctSlider.isHidden = false
         }else {
@@ -565,7 +565,7 @@ class GroupViewController: UIViewController {
         
         MeshAPI.sendMessage(message: LightLightnessGet(), address: group.address.address)
         
-        if group.nodes.contains(where: { $0.ctlModel != nil }) {
+        if group.nodes.contains(where: { $0.temperatureModel != nil }) {
             MeshAPI.sendMessage(message: LightCTLGet(), address: group.address.address)
         }
         

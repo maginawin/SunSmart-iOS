@@ -58,7 +58,7 @@ class BLEUpgradeInstructionsController: UIViewController {
             make.height.equalTo(SCRYFrom(108))
         }
         
-        serverBtn = UIButton(title: "server_version".localizedString, titleSize: 13, titleWeight: .light, titleColor: TextBlack_Color, normalImageName: "server_download")
+        serverBtn = UIButton(title: "server_firmware".localizedString, titleSize: 13, titleWeight: .light, titleColor: TextBlack_Color, normalImageName: "server_download")
         serverBtn.isUserInteractionEnabled = false
         serverBtn.setImagePosition(position: .top, spacing: SCRYFrom(8))
         headerView.addSubview(serverBtn)

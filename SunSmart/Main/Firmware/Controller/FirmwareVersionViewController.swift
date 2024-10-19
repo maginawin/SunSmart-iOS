@@ -59,23 +59,6 @@ class FirmwareVersionViewController: UIViewController {
         view.backgroundColor = Background_Color
         navigationItem.rightBarButtonItem = UIBarButtonItem(image: UIImage(named: "firmware_history")?.withRenderingMode(.alwaysOriginal), style: .done, target: self, action: #selector(history))
         
-
-//        if let path = Bundle.main.path(forResource: "app_update1.0.1", ofType: "bin"), let fileData = try? Data(contentsOf: URL(fileURLWithPath: path)) {
-//            
-//            let versionDesc = "• Optimized dimming performance；\n• Added quick dimming button；\n• Fixed the bug of device flickering at low brightness\n• Added quick dimming button；\n• Fixed the bug of device flickering at low brightness"
-//            
-//            let firmwareID = Data() + UInt8(1) + UInt8(0) + UInt16(1) + UInt32(0)
-//            let imageSize = UInt32(fileData.count)
-//            var incomingFirmwareMetadata = Data(bytes: firmwareID.bytes, count: firmwareID.count + 3 + 1 + 4 + 2)
-//            incomingFirmwareMetadata.writeBits(value: imageSize, numBits: 24, atOffset: 64)
-//            incomingFirmwareMetadata.writeBits(value: UInt8(0x01), numBits: 8, atOffset: 88)
-//            incomingFirmwareMetadata.writeBits(value: UInt32(0xf2acae6), numBits: 32, atOffset: 96)
-//            incomingFirmwareMetadata.writeBits(value: UInt16(2), numBits: 16, atOffset: 128)
-//            
-//            let newFirmware = FirmwareData(name: "app_update1.0.1", version: "1.0.1", firmwareID: firmwareID, data: fileData, updateFirmwareImageIndex: 0, incomingFirmwareMetadata: incomingFirmwareMetadata, deviceType: .pirSensorLightingLinear, vendorId: 0x0A78, customId: nil, releaseDate: Int64(1725366112), content: versionDesc)
-//            self.newFirmwareData = newFirmware
-//        }
-        
         loadCloudFirmwareRequest()
         
 //        updateUI()

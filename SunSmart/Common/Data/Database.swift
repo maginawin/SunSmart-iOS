@@ -100,6 +100,8 @@ extension SiteData {
             builder.column(ExpressionKey.recycleAddressData)
         }))
         
+        _ = try? SunSmartDataManager.shared.db?.run(SiteData.sitesTable.addColumn(ExpressionKey.localAddress))
+        
         SpaceData.initDatabase()
     }
     

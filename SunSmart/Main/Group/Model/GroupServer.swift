@@ -346,7 +346,7 @@ extension Group {
             if let sceneSetupModel = node.sceneSetupModel, let lightnessModel = node.lightnessModel {
                 // 设备是否支持色温model
                 let lightness = data.lightness
-                if let ctlModel = node.ctlModel {
+                if let ctlModel = node.ctlModel, node.temperatureModel != nil {
                     var message: MeshMessage!
 //                    if ctlModel.publish?.publicationAddress.address == .allNodes { // 修改后等待主动上报
 //                        message = LightCTLSetUnacknowledged(lightness: lightness, temperature: UInt16(data.cct), deltaUV: 0, transitionTime: .immediate, delay: 0)

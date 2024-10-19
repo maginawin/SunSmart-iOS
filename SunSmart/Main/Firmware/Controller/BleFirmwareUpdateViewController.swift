@@ -254,7 +254,7 @@ class BleFirmwareUpdateViewController: UIViewController {
     private func showEmptyUI() {
         
         view.layoutIfNeeded()
-        collectionView.showEmptyDataView(title: "no_devices".localizedString)
+        collectionView.showEmptyDataView(title: "no_data".localizedString)
         bottomView.isHidden = true
     }
     

@@ -346,10 +346,42 @@
             filePath = "SunSmart/Main/Firmware/Controller/FirmwareVersionViewController.swift"
             startingColumnNumber = "9223372036854775807"
             endingColumnNumber = "9223372036854775807"
-            startingLineNumber = "159"
-            endingLineNumber = "159"
+            startingLineNumber = "142"
+            endingLineNumber = "142"
             landmarkName = "downloadBtnAction()"
             landmarkType = "7">
+            <Locations>
+               <Location
+                  uuid = "ABC460E4-CB6F-4023-9C16-7D014E32FD6D - 8a98e8f9980a5c79"
+                  shouldBeEnabled = "Yes"
+                  ignoreCount = "0"
+                  continueAfterRunningActions = "No"
+                  symbolName = "closure #1 (Swift.Result&lt;SunSmart.FirmwareZipData, Swift.Error&gt;) -&gt; () in SunSmart.FirmwareVersionViewController.downloadBtnAction() -&gt; ()"
+                  moduleName = "SunSmart"
+                  usesParentBreakpointCondition = "Yes"
+                  urlString = "file:///Users/yuankehong/Desktop/SunSmart/SunSmart/Main/Firmware/Controller/FirmwareVersionViewController.swift"
+                  startingColumnNumber = "9223372036854775807"
+                  endingColumnNumber = "9223372036854775807"
+                  startingLineNumber = "159"
+                  endingLineNumber = "159"
+                  offsetFromSymbolStart = "2132">
+               </Location>
+               <Location
+                  uuid = "ABC460E4-CB6F-4023-9C16-7D014E32FD6D - 8a98e8f9980a622a"
+                  shouldBeEnabled = "Yes"
+                  ignoreCount = "0"
+                  continueAfterRunningActions = "No"
+                  symbolName = "closure #1 (Swift.Result&lt;SunSmart.FirmwareZipData, Swift.Error&gt;) -&gt; () in SunSmart.FirmwareVersionViewController.downloadBtnAction() -&gt; ()"
+                  moduleName = "SunSmart"
+                  usesParentBreakpointCondition = "Yes"
+                  urlString = "file:///Users/yuankehong/Desktop/SunSmart/SunSmart/Main/Firmware/Controller/FirmwareVersionViewController.swift"
+                  startingColumnNumber = "9223372036854775807"
+                  endingColumnNumber = "9223372036854775807"
+                  startingLineNumber = "142"
+                  endingLineNumber = "142"
+                  offsetFromSymbolStart = "2132">
+               </Location>
+            </Locations>
          </BreakpointContent>
       </BreakpointProxy>
       <BreakpointProxy
@@ -387,22 +419,6 @@
       <BreakpointProxy
          BreakpointExtensionID = "Xcode.Breakpoint.FileBreakpoint">
          <BreakpointContent
-            uuid = "3C4C1FB2-1037-451C-AEBD-42A6381EF2A0"
-            shouldBeEnabled = "Yes"
-            ignoreCount = "0"
-            continueAfterRunningActions = "No"
-            filePath = "../../Library/Developer/Xcode/DerivedData/SunSmart-bsknqvobukouwgfvklwtoruhrcgz/SourcePackages/checkouts/nordic-sig-mesh-sdk/Sources/NordicSigMeshSDK/MeshLib/Node/Node+Config.swift"
-            startingColumnNumber = "9223372036854775807"
-            endingColumnNumber = "9223372036854775807"
-            startingLineNumber = "31"
-            endingLineNumber = "31"
-            landmarkName = "isKeybindComplete"
-            landmarkType = "24">
-         </BreakpointContent>
-      </BreakpointProxy>
-      <BreakpointProxy
-         BreakpointExtensionID = "Xcode.Breakpoint.FileBreakpoint">
-         <BreakpointContent
             uuid = "DFF9151E-2DF9-404C-A05E-EE4F7D5375AC"
             shouldBeEnabled = "Yes"
             ignoreCount = "0"
@@ -430,6 +446,38 @@
             endingLineNumber = "214"
             landmarkName = "messageHandles"
             landmarkType = "24">
+            <Locations>
+               <Location
+                  uuid = "B65B8048-6D77-4739-9A99-BCFAB254FAB2 - ce88a60521fb45a6"
+                  shouldBeEnabled = "Yes"
+                  ignoreCount = "0"
+                  continueAfterRunningActions = "No"
+                  symbolName = "SunSmart.DeviceOperationType.messageHandles.getter : Swift.Array&lt;NordicSigMeshSDK.MeshMessageHandle&gt;"
+                  moduleName = "SunSmart"
+                  usesParentBreakpointCondition = "Yes"
+                  urlString = "file:///Users/yuankehong/Desktop/SunSmart/SunSmart/Main/Space/Model/SyncDevicesCellModel.swift"
+                  startingColumnNumber = "9223372036854775807"
+                  endingColumnNumber = "9223372036854775807"
+                  startingLineNumber = "214"
+                  endingLineNumber = "214"
+                  offsetFromSymbolStart = "4380">
+               </Location>
+               <Location
+                  uuid = "B65B8048-6D77-4739-9A99-BCFAB254FAB2 - ce88a60521fb45a6"
+                  shouldBeEnabled = "Yes"
+                  ignoreCount = "0"
+                  continueAfterRunningActions = "No"
+                  symbolName = "SunSmart.DeviceOperationType.messageHandles.getter : Swift.Array&lt;NordicSigMeshSDK.MeshMessageHandle&gt;"
+                  moduleName = "SunSmart"
+                  usesParentBreakpointCondition = "Yes"
+                  urlString = "file:///Users/yuankehong/Desktop/SunSmart/SunSmart/Main/Space/Model/SyncDevicesCellModel.swift"
+                  startingColumnNumber = "9223372036854775807"
+                  endingColumnNumber = "9223372036854775807"
+                  startingLineNumber = "214"
+                  endingLineNumber = "214"
+                  offsetFromSymbolStart = "4500">
+               </Location>
+            </Locations>
          </BreakpointContent>
       </BreakpointProxy>
    </Breakpoints>

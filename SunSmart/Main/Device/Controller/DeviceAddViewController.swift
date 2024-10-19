@@ -550,7 +550,7 @@ class DeviceAddViewController: UIViewController {
                 }
             }
             // 需要追加发送的消息
-            if let ctlModel = node.ctlModel {
+            if let ctlModel = node.ctlModel, node.temperatureModel != nil {
                 appendMessages.insert(MeshMessageHandle(message: LightCTLTemperatureRangeGet(), model: ctlModel), at: 0)
             }
             // 设置默认过渡时间
