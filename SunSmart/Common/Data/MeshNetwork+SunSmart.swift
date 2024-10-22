@@ -1501,7 +1501,6 @@ extension DeviceSwitchData {
                 }
             }
         }
-        
         let data = SwitchSyncData(syncGroups: syncGroupData, deleteGroups: deleteGroupData, syncProxy: syncProxy, deleteProxy: deleteProxy)
         return data
     }
@@ -2051,6 +2050,9 @@ extension Node {
             
             if let group = MeshNetworkManager.instance.meshNetwork?.group(withAddress: MeshAddress(subscriptionMessage.address)) {
                 if group.isVirtual { // 动能开关虚拟组
+                    guard isSuccess else {
+                        return
+                    }
                     if let switchData = MeshNetworkManager.instance.switchs.first(where: { $0.linkGroupAddress == group.address.address }), let nodeGroup = self.group {
                         if isSuccess { // 删除成功
                             // 判断是否之前动能开关删除组失败，再次删除后成功，接着判断组里面是否设备都清空动能开关数据

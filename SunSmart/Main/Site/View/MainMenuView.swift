@@ -225,7 +225,7 @@ class MainMenuView: UIView {
             make.width.height.equalTo(SCRYFrom(88))
         }
         
-        titleLabel = UILabel(text: "Sunsmart", textColor: TextBlack_Color, fontSize: 18, fit: false)
+        titleLabel = UILabel(text: "SunSmart", textColor: TextBlack_Color, fontSize: 18, fit: false)
         contentView.addSubview(titleLabel)
         titleLabel.snp.makeConstraints { make in
             make.centerX.equalTo(logoImageView)

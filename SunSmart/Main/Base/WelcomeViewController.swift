@@ -66,7 +66,7 @@ class WelcomeViewController: UIViewController {
         welcomeLabel = UILabel(text: "welcome_title".localizedString, textColor: TextBlack_Color, fontSize: 20, fit: false)
         welcomeLabel.numberOfLines = 0
         let welcomeAttStr = NSMutableAttributedString(string: "welcome_title".localizedString)
-        welcomeAttStr.addAttribute(.foregroundColor, value: Bar_Color, range: (welcomeAttStr.string as NSString).range(of: "Sunsmart"))
+        welcomeAttStr.addAttribute(.foregroundColor, value: Bar_Color, range: (welcomeAttStr.string as NSString).range(of: "SunSmart"))
         let style = NSMutableParagraphStyle()
         style.lineSpacing = 6
         welcomeAttStr.addAttribute(.paragraphStyle, value: style, range: NSRange(location: 0, length: welcomeAttStr.string.count))

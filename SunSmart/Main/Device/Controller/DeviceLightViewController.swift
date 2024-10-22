@@ -76,7 +76,7 @@ class DeviceLightViewController: UIViewController {
         // 获取设备数据
         getNodeState()
         // 获取节点转发功能是否启用
-        MeshAPI.getReplyState(address: node.primaryUnicastAddress, result: nil)
+//        MeshAPI.getReplyState(address: node.primaryUnicastAddress, result: nil)
     }
     
     
@@ -134,7 +134,7 @@ class DeviceLightViewController: UIViewController {
     /// 更新UI数据
     private func updateData() {
         
-        self.replySwitch.isOn = node.replyEnabled
+//        self.replySwitch.isOn = node.replyEnabled
         
         if node.isKeybindComplete {
             
@@ -298,7 +298,7 @@ class DeviceLightViewController: UIViewController {
                 let alertView = SRAlertView(title: "notification".localizedString, actions: [.cancelAction, SRAlertAction(title: "force_delete".localizedString, actionHandler: {[weak self] _ in
                     guard let self = self else { return }
                     self.node.deleteExtension()
-                    self.space.meshManager?.meshNetwork?.remove(node: self.node)
+                    MeshNetworkManager.instance.meshNetwork?.remove(node: self.node)
 //                    _ = self.space.meshManager?.save()
                     self.space.deviceCount = MeshNetworkManager.instance.realNodes.count
                     self.space.luminairesCount = MeshNetworkManager.instance.lightNodes.count
@@ -598,6 +598,7 @@ class DeviceLightViewController: UIViewController {
         
         replySwitch = UISwitch()
         replySwitch.onTintColor = Bar_Color
+        replySwitch.isHidden = true
         replySwitch.tintColor = RGB(207, 207, 207)
         replySwitch.addTarget(self, action: #selector(replySwitchValueChanged), for: .valueChanged)
         view.addSubview(replySwitch)
@@ -607,6 +608,7 @@ class DeviceLightViewController: UIViewController {
         }
         
         replyLabel = UILabel(text: "Reply", textColor: TextBlack_Color, fontSize: 13)
+        replyLabel.isHidden = true
         view.addSubview(replyLabel)
         replyLabel.snp.makeConstraints { make in
             make.centerY.equalTo(replySwitch)

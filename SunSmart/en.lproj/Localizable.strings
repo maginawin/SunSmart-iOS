@@ -12,7 +12,6 @@
 
 "sites" = "Sites";
 "about" = "About";
-"privacy_policy" = "Privacy policy";
 "terms_of_service" = "Terms of service";
 "welcome" = "Welcome !";
 "welcome_message" = "Welcome to use this app for the smart lighting system,enabling installers to do commissioning and testing,and business owners to manage the lighting system.";
@@ -135,7 +134,7 @@
 "repairing" = "Repairing…";
 "complete!" = "Complete !";
 "repair_failed_message" = "The repair failed, please check whether the device is powered on. If the repair fails multiple times, it is recommended to delete the device and then add it again.";
-"bluetooth_required_title" = "“Sunsmart”would like to use Bluetooth for new connections";
+"bluetooth_required_title" = "“SunSmart”would like to use Bluetooth for new connections";
 "bluetooth_required_message" = "You can allow new connections in Settings.";
 "settings" = "Settings";
 "Settings" = "SETTINGS";
@@ -803,7 +802,7 @@
 "no_data" = "No Data !";
 
 "get_started" = "Get Started";
-"welcome_title" = "Welcome to the\nSunsmart\napplication !";
+"welcome_title" = "Welcome to the\nSunSmart\napplication !";
 "welcome_policy_message" = "I accept and agree to User Agreement and \n Privacy Policy";
 "welcome_policy_use" = "User Agreement";
 "welcome_privacy_policy" = "Privacy Policy";

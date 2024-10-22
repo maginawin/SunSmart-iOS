@@ -11,7 +11,7 @@ import Security
 struct Keychain {
     
     
-    private static let service = Bundle.main.bundleIdentifier ?? "com.azoula.sunsmart.app"
+    private static let service = Bundle.main.bundleIdentifier ?? "com.azoula.sunsmart"
     private static let account = "uuid"
     private static let username = "username"
     private static let serverRegion = "region"

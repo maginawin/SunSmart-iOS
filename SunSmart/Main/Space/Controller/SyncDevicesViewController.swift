@@ -546,7 +546,7 @@ class SyncDevicesViewController: UIViewController {
             MeshProxyMessageCommand.shared.stopSendMessage(finishedBack: nil)
             sections.forEach({
                 $0.allModels.forEach({
-                    if $0.state == .wait || $0.state == .none {
+                    if $0.state == .wait  {//|| $0.state == .none
                         $0.state = .failed
                         ($0 as? SyncDevicesModel)?.failedCount += 1
                         ($0 as? SyncDeviceStepTaskModel)?.failedCount += 1

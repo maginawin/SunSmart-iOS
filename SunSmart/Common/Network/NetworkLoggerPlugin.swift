@@ -13,45 +13,45 @@ final class NetworkLoggerPlugin: PluginType {
 
     // Called immediately before a request is sent over the network (or stubbed).
     func willSend(_ request: RequestType, target: TargetType) {
-        print("🌐 Sending request to \(request.request?.url?.absoluteString ?? "unknown URL")")
-        print("🌐 Request headers: \(request.request?.allHTTPHeaderFields ?? [:])")
-        print("🌐 Request body: \(String(data: request.request?.httpBody ?? Data(), encoding: .utf8) ?? "no body")")
+//        print("🌐 Sending request to \(request.request?.url?.absoluteString ?? "unknown URL")")
+//        print("🌐 Request headers: \(request.request?.allHTTPHeaderFields ?? [:])")
+//        print("🌐 Request body: \(String(data: request.request?.httpBody ?? Data(), encoding: .utf8) ?? "no body")")
     }
 
     // Called after a response has been received, but before the completion handler is called.
     func didReceive(_ result: Result<Response, MoyaError>, target: TargetType) {
-        switch result {
-        case .success(let response):
-            guard let networkTarget = target as? NetowrkReqeustApi else { return }
-//            
-            switch networkTarget {
-            case .spaceShare(let space): // space分享数据
-                // 更新
-                // 编辑者信息
-                if let editorInfo = JSON(response)["spaceEditor"].dictionaryObject, let userId = editorInfo["userId"] as? String, let userName = editorInfo["username"] as? String {
-                    space.editor = .init(name: userName, uuid: userId)
-                }
-                // 访客信息
-                if let visitorInfos = JSON(response)["spaceEditor"].arrayObject as? [[String: Any]] {
-                   let visitors = visitorInfos.compactMap({ visitorInfo in
-                        if let userId = visitorInfo["userId"] as? String, let userName = visitorInfo["username"] as? String {
-                            return UserData(name: userName, uuid: userId)
-                        }
-                       return nil
-                    })
-                    space.visitors = visitors
-                }
-                space.save()
-            default:
-                break
-            }
+//        switch result {
+//        case .success(let response):
+//            guard let networkTarget = target as? NetowrkReqeustApi else { return }
+////            
+//            switch networkTarget {
+//            case .spaceShare(let space): // space分享数据
+//                // 更新
+//                // 编辑者信息
+//                if let editorInfo = JSON(response)["spaceEditor"].dictionaryObject, let userId = editorInfo["userId"] as? String, let userName = editorInfo["username"] as? String {
+//                    space.editor = .init(name: userName, uuid: userId)
+//                }
+//                // 访客信息
+//                if let visitorInfos = JSON(response)["spaceEditor"].arrayObject as? [[String: Any]] {
+//                   let visitors = visitorInfos.compactMap({ visitorInfo in
+//                        if let userId = visitorInfo["userId"] as? String, let userName = visitorInfo["username"] as? String {
+//                            return UserData(name: userName, uuid: userId)
+//                        }
+//                       return nil
+//                    })
+//                    space.visitors = visitors
+//                }
+//                space.save()
+//            default:
+//                break
+//            }
             
-            print("✅ Received response from \(response.request?.url?.absoluteString ?? "unknown URL")")
-            print("✅ Response status code: \(response.statusCode)")
-            print("✅ Response data: \(String(data: response.data, encoding: .utf8) ?? "no data")")
-        case .failure(let error):
-            print("❌ Request failed with error: \(error.localizedDescription)")
-        }
+//            print("✅ Received response from \(response.request?.url?.absoluteString ?? "unknown URL")")
+//            print("✅ Response status code: \(response.statusCode)")
+//            print("✅ Response data: \(String(data: response.data, encoding: .utf8) ?? "no data")")
+//        case .failure(let error):
+//            print("❌ Request failed with error: \(error.localizedDescription)")
+//        }
     }
     
 //    func process(_ result: Result<Response, MoyaError>, target: TargetType) -> Result<Response, MoyaError> {

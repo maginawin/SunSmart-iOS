@@ -63,6 +63,8 @@ class SpaceViewController: WMPageController {
     private var exitSyncSpace: Bool = false
     /// 心跳定时器
     private var heartbeatTimer: Timer?
+    /// mesh网络内用户查询定时器
+    private var userAskTimer: Timer?
     /// 是否进行云端权限校验
     private var cloudPermissionValidation: Bool = false
     /// 是否进行mesh权限校验
@@ -161,8 +163,9 @@ class SpaceViewController: WMPageController {
         MeshLibManager.manager.removeObserver(self, forKeyPath: "bluetoothState")
         NetworkRequest.shared.removeObserver(self, forKeyPath: "networkable")
         MeshLibManager.manager.removeObserver(self, forKeyPath: "isMeshNetworkConnected")
-        
+        print("dealloc")
         stopHeartbeatTimer()
+        stopUserAskTimer()
     }
     
     override func observeValue(forKeyPath keyPath: String?, of object: Any?, change: [NSKeyValueChangeKey : Any]?, context: UnsafeMutableRawPointer?) {
@@ -186,16 +189,39 @@ class SpaceViewController: WMPageController {
                 if !self.meshPermissionValidation && (space.permission == .owner || space.permission == .editor) {
                     MeshLibManager.manager.externalVendorMessageDelegate = self
                     MeshAPI.sendMessage(message: ExternalVendorMessage(operation: .userPermission(.ask)), address: .localClientGroupAddress)
+                    
                     DispatchQueue.main.async {
-                        NSObject.cancelPreviousPerformRequests(withTarget: self, selector: #selector(self.userPermissionAskTimeout), object: nil)
-                        self.perform(#selector(self.userPermissionAskTimeout), with: nil, afterDelay: 5)
+                        self.startUserAskTimer()
                     }
+                    
+//                    DispatchQueue.main.async {
+//                        NSObject.cancelPreviousPerformRequests(withTarget: self, selector: #selector(self.userPermissionAskTimeout), object: nil)
+//                        self.perform(#selector(self.userPermissionAskTimeout), with: nil, afterDelay: 5)
+//                    }
                 }
             }
         default:
             break
         }
     }
+    
+    // MARK: - Mesh Ask Timer
+    /// mesh查询用户权限
+    private func startUserAskTimer() {
+        userAskTimer = LCWeakTimer.scheduledTimer(timeInterval: 5, aTarget: self, selector: #selector(userPermissionAskTimeout), userInfo: nil, repeats: false)
+        RunLoop.current.add(userAskTimer!, forMode: .common)
+    }
+    
+    private func stopUserAskTimer() {
+        userAskTimer?.invalidate()
+        userAskTimer = nil
+    }
+    
+    /// 查询用户权限超时
+    @objc private func userPermissionAskTimeout() {
+        self.meshPermissionValidation = true
+    }
+    
     
      /// 添加通知监听
     private func addNotificaiton() {
@@ -301,7 +327,8 @@ class SpaceViewController: WMPageController {
     private func setNetworkConnected() {
         // 读取网络数据
         XWHUDManager.showCustomHUD(withMessage: nil, isWindow: false, afterDelay: 2)
-        DispatchQueue.global().async {
+        DispatchQueue.global().async {[weak self] in
+            guard let self = self else { return }
             MeshLibManager.manager.setMeshNetworkConnected(meshUUID: self.space.meshUUID, subNetwork: self.space.meshNetworkKey)
             if let manager = MeshLibManager.manager.meshNetworkManager, let meshNetwork = manager.meshNetwork {
                 self.space.meshManager = manager
@@ -455,7 +482,8 @@ class SpaceViewController: WMPageController {
                     self.cloudPermissionValidation = true
                     // 判断空间内是否存在编辑权限用户
                     if userInfos.contains(where: { ($0.permission == .owner || $0.permission == .editor) && $0.userId != UserData.currentUserId }) {
-                        NSObject.cancelPreviousPerformRequests(withTarget: self, selector: #selector(userPermissionAskTimeout), object: nil)
+//                        NSObject.cancelPreviousPerformRequests(withTarget: self, selector: #selector(userPermissionAskTimeout), object: nil)
+                        self.stopUserAskTimer()
                         // 提示是否关闭用户编辑权限
                         self.showTransferPermissionAlert()
                     }else {
@@ -572,11 +600,6 @@ class SpaceViewController: WMPageController {
                 }
             }
         }
-    }
-    
-    /// 查询用户权限超时
-    @objc private func userPermissionAskTimeout() {
-        self.meshPermissionValidation = true
     }
     
     /// 切换权限提示
@@ -1062,7 +1085,8 @@ extension SpaceViewController: MeshExternalVendorMessageDelegate {
                 MeshAPI.sendMessage(message: ExternalVendorMessage(operation: .userPermission(.reply(permission: self.space.permission))), address: source)
             case .reply(let permission): // 收到对方回复权限消息
                 if permission == .owner || permission == .editor {
-                    NSObject.cancelPreviousPerformRequests(withTarget: self, selector: #selector(userPermissionAskTimeout), object: nil)
+//                    NSObject.cancelPreviousPerformRequests(withTarget: self, selector: #selector(userPermissionAskTimeout), object: nil)
+                    stopUserAskTimer()
                     // 关闭用户编辑权限
                     showTransferPermissionAlert()
                     self.meshPermissionValidation = true

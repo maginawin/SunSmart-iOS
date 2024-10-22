@@ -55,7 +55,7 @@ class AboutViewController: UIViewController {
     
     private func setupDataSource() {
         
-        let policyModel = CustomCellModel(title: "privacy_policy".localizedString, style: .arrow)
+        let policyModel = CustomCellModel(title: "welcome_privacy_policy".localizedString, style: .arrow)
         
         let serviceModel = CustomCellModel(title: "welcome_policy_use".localizedString, style: .arrow)
         

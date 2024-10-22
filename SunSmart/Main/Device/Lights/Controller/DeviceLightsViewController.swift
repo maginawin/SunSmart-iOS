@@ -619,7 +619,7 @@ class DeviceLightsViewController: UIViewController {
                         let forceDeleteNodes = self.devices.filter({ failAddressList.contains($0.primaryUnicastAddress) })
                         forceDeleteNodes.forEach({
                             $0.deleteExtension()
-                            self.space.meshManager?.meshNetwork?.remove(node: $0)
+                            MeshNetworkManager.instance.meshNetwork?.remove(node: $0)
                         })
 //                        _ = self.space.meshManager?.save()
                         self.devices.removeAll(where: { failAddressList.contains($0.primaryUnicastAddress) })
