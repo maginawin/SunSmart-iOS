@@ -510,9 +510,9 @@ class DeviceAddViewController: UIViewController {
         
         // 设备identify中添加不需要再闪烁
         if device.addState == .identifyConnecting || device.addState == .identifyWait || device.addState == .failed || device.addState == .identifying {
-            if device.addState == .identifying {
-                device.identifyAttentionTimer = 0
-            }
+//            if device.addState == .identifying {
+//                device.identifyAttentionTimer = 0
+//            }
             if device == identifyDevice {
 //                if let bearer = identifyBearer { // 将identify连接的设备数据传入添加设备操作，避免二次连接
 //                    device.gattBearer = PBGattBearer(bearer: bearer)
@@ -522,7 +522,8 @@ class DeviceAddViewController: UIViewController {
 //                }
             }
         }
-       
+        // 添加设备不需要闪烁
+        device.identifyAttentionTimer = 0
         device.addState = .wait
         device.selectedState = .disabled
         reloadDeviceState(device)
@@ -560,6 +561,10 @@ class DeviceAddViewController: UIViewController {
             // 节点数据hash
             if let vendorModel = node.sunricherVendorModel {
                 appendMessages.append(MeshMessageHandle(message: SunricherVendorGet(function: .compositionHash), model: vendorModel))
+            }
+            // 添加成功后闪烁
+            if let healthModel = node.healthModel {
+                appendMessages.append(MeshMessageHandle(message: AttentionSet(attentionTimer: 5), model: healthModel))
             }
 //            appendMessages.insert(MeshMessageHandle(message: ConfigRelaySet(), address: node.primaryUnicastAddress), at: 0)
             

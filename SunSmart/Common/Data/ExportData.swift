@@ -215,8 +215,8 @@ extension SpaceData {
                     if let state = node.powerUpState {
                         nodeDict.updateValue(state.rawValue, forKey: "powerUpState")
                     }
-                    if let defalutLightness = node.defalutLightness {
-                        nodeDict.updateValue(defalutLightness, forKey: "defalutLightness")
+                    if let defaultLightness = node.defalutLightness {
+                        nodeDict.updateValue(defaultLightness, forKey: "defaultLightness")
                     }
                     if let timezone = node.timezone {
                         nodeDict.updateValue(timezone.encodeToTzOffset(), forKey: "timezoneOffset")

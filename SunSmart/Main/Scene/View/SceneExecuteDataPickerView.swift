@@ -27,14 +27,16 @@ class SceneExecuteDataPickerView: UIView {
     private var showDelete: Bool = true
     private var lightness: Int = 30
     private var cct: Int = 5500
+    private var lightnessLimitRange: ClosedRange<Int>?
     private var pickerCallback: DataPickerCallback?
     private var deleteCallback: DeleteCallback?
     
-    static func show(lightness: Int = 100, cct: Int = 4500, showDelete: Bool = true, picker: DataPickerCallback?, delete: DeleteCallback? = nil) {
+    static func show(lightness: Int = 100, cct: Int = 4500, lightnessLimitRange: ClosedRange<Int>? = nil, showDelete: Bool = true, picker: DataPickerCallback?, delete: DeleteCallback? = nil) {
         
         let pickerView = SceneExecuteDataPickerView(frame: UIScreen.main.bounds)
         pickerView.showDelete = showDelete
         pickerView.lightness = lightness
+        pickerView.lightnessLimitRange = lightnessLimitRange
         pickerView.pickerCallback = picker
         pickerView.deleteCallback = delete
         pickerView.cct = cct
@@ -171,14 +173,20 @@ class SceneExecuteDataPickerView: UIView {
             make.height.equalTo(SCRYFrom(220))
         }
         
-        lightnessLabel = UILabel(text: "\(lightness)%", textColor: TextBlack_Color, fontSize: 14, fontWeight: .light)
+        var lightnessValue = lightness
+        if let range = lightnessLimitRange {
+            lightnessValue = max(range.lowerBound, min(range.upperBound, lightnessValue))
+        }
+        
+        lightnessLabel = UILabel(text: "\(lightnessValue)%", textColor: TextBlack_Color, fontSize: 14, fontWeight: .light)
         contentView.addSubview(lightnessLabel)
         lightnessLabel.snp.makeConstraints { make in
             make.right.equalTo(SCRXFrom(-67))
             make.top.equalTo(SCRYFrom(24))
         }
         
-        lightnessSliderView = DeviceSliderFunctionView(frame: .zero, title: "", value: lightness, functionType: .level())
+     
+        lightnessSliderView = DeviceSliderFunctionView(frame: .zero, title: "", value: lightnessValue, functionType: .level(limitRange: lightnessLimitRange))
         lightnessSliderView.minLabel.isHidden = true
         lightnessSliderView.maxLabel.isHidden = true
         lightnessSliderView.minusBtn.setImage(UIImage(named: "scene_data_value_minus"), for: .normal)

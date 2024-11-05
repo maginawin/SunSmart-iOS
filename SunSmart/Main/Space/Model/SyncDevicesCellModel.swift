@@ -197,7 +197,7 @@ enum DeviceOperationType {
                     } 
                     // 保存场景
                     messageHandles.append(MeshMessageHandle(message: SceneStore(sceneId), model: sceneSetupModel))
-                    if let vendorModel = node.sunricherVendorModel {
+                    if let vendorModel = node.sunricherVendorModel, node.lightLCModel != nil {
                         // 保存场景前禁用灯光控制
 //                        if node.lightLCProperty.lightControlEnabled {
                             messageHandles.insert(MeshMessageHandle(message: SunricherVendorSet(function: .lightControlEnabled(enabled: false)), model: vendorModel), at: 0)

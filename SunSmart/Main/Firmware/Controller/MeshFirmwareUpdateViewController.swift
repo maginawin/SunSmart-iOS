@@ -1,0 +1,259 @@
+//
+//  MeshFirmwareUpdateViewController.swift
+//  SunSmart
+//
+//  Created by 袁科鸿 on 2024/10/31.
+//
+
+import UIKit
+import NordicSigMeshSDK
+import SwiftyJSON
+
+internal extension FirmwareUpdateTypeData {
+    
+    /// 设备版本状态
+    enum DeviceVersionState {
+        /// 无
+        case none
+        /// 可升级
+        case updatable
+        /// 已是最新版本
+        case latest
+    }
+    
+    /// 升级状态
+    enum UpdateState {
+        /// 等待
+        case wait
+        /// 升级中
+        case updating(progress: Int)
+        /// 完成
+        case complete
+        /// 失败
+        case failure
+    }
+    
+    static var versionStateKey = 1
+    static var updateStateKey = 2
+    
+    var versionState: DeviceVersionState {
+        get {
+            objc_getAssociatedObject(self, &FirmwareUpdateTypeData.versionStateKey) as? DeviceVersionState ?? .none
+        }set {
+            objc_setAssociatedObject(self, &FirmwareUpdateTypeData.versionStateKey, newValue, .OBJC_ASSOCIATION_RETAIN)
+        }
+    }
+    
+    var updateState: UpdateState? {
+        get {
+            objc_getAssociatedObject(self, &FirmwareUpdateTypeData.updateStateKey) as? UpdateState
+        }set {
+            objc_setAssociatedObject(self, &FirmwareUpdateTypeData.updateStateKey, newValue, .OBJC_ASSOCIATION_RETAIN)
+        }
+    }
+    
+}
+
+class MeshFirmwareUpdateViewController: UIViewController {
+
+    private var flowLayout: UICollectionViewFlowLayout!
+    private var collectionView: UICollectionView!
+    private var refreshControl: UIRefreshControl!
+    
+    private var firmwareTypeDatas: [FirmwareUpdateTypeData] = []
+    
+    override func viewDidLoad() {
+        super.viewDidLoad()
+        
+        title = "ota_mesh_title".localizedString
+        view.backgroundColor = Background_Color
+        navigationController?.setNavigationBarBackgroundColor(color: .clear)
+        
+        navigationItem.leftBarButtonItem = UIBarButtonItem(image: UIImage(named: "navigation_back")?.withRenderingMode(.alwaysOriginal), style: .done, target: self, action: #selector(backAction))
+        
+        navigationItem.rightBarButtonItem = UIBarButtonItem(image: UIImage(named: "help")?.withRenderingMode(.alwaysOriginal), style: .done, target: self, action: #selector(helpAction))
+        setupUI()
+        self.isModalInPresentation = true
+        
+        setupData(loadServerData: true)
+    }
+    
+    
+    
+    /// 获取云端固件
+    private func loadCloudFirmwareRequest(type: FirmwareUpdateTypeData) {
+        
+        NetworkRequest.shared.request(.firmwareLatestVersion(deviceType: type.productId.hex)) {[weak self] result in
+            guard let self = self else { return }
+            switch result {
+            case .success(let response):
+                let data = JSON(response)["data"]
+                guard let version = data["version"].string,
+                      let companyId = data["manufacturerId"].string,
+                      let customId = data["customerId"].string,
+                      let url = data["url"].string,
+                      var releaseDate = data["releaseDate"].string,
+                      let size = data["size"].int,
+                      let deviceTypeStr = data["deviceType"].string, let pid = UInt16(hex: deviceTypeStr.replacingOccurrences(of: "0x", with: "")), pid == type.productId else {
+                    return
+                }
+            
+                releaseDate = releaseDate.replacingOccurrences(of: "T", with: " ")
+                releaseDate = releaseDate.replacingOccurrences(of: "Z", with: "")
+                let timeInterval = String.dateConvert(timeStr: releaseDate, dateFormat: nil)
+                
+                let serverData = FirmwareServerData(productId: pid, version: version.replacingOccurrences(of: "v", with: ""), companyId: UInt16(companyId) ?? CompanyId, customId: UInt16(customId) ?? 0, url: url, filename: data["filename"].stringValue, size: size, releaseDate: timeInterval, content: data["describe"].stringValue)
+                type.serverData = serverData
+                if let index = firmwareTypeDatas.firstIndex(where: { $0.productId == type.productId }) {
+                    self.collectionView.reloadItems(at: [IndexPath(row: index, section: 0)])
+                }else {
+                    self.collectionView.reloadData()
+                }
+            case .failure(_):
+                break
+            }
+        }
+        
+    }
+    
+    private func showEmptyUI() {
+        
+        view.layoutIfNeeded()
+        collectionView.showEmptyDataView(title: "no_data".localizedString)
+    }
+    
+    /// 初始化数据
+    /// - Parameters installServerData: 加载服务器数据
+    private func setupData(loadServerData: Bool = false) {
+        
+        var deviceTypes: [FirmwareUpdateTypeData] = []
+        
+        let nodes = MeshNetworkManager.instance.realNodes
+        nodes.forEach { node in
+            if let pid = node.productIdentifier {
+//                let deviceType = DeviceType(pid: pid)
+//                if deviceType != .unknown {
+                    
+                    // 读取本地固件包
+                    let localFirmwareData = FirmwareData.load(productId: pid).first
+                    let cacheVersion = localFirmwareData?.version
+                    
+                    var enableUpgrade = false
+                    
+                    if cacheVersion != nil, let nodeVersion = node.firmwareVersion {
+                        enableUpgrade = cacheVersion!.compare(nodeVersion, options: .numeric) == .orderedDescending
+                    }
+                    if let deviceTypeData = deviceTypes.first(where: { $0.productId == node.productIdentifier }) {
+                        deviceTypeData.nodes.append(node)
+                        if enableUpgrade {
+                            deviceTypeData.upgradedNodes.append(node)
+                        }
+                    }else {
+                        let data = FirmwareUpdateTypeData(productId: pid, targetVersion: localFirmwareData?.version, nodes: [node])
+                        data.targetVersionHash = localFirmwareData?.compositionHash
+                        if enableUpgrade {
+                            data.upgradedNodes.append(node)
+                        }
+                        deviceTypes.append(data)
+                    }
+//                }
+                
+            }
+        }
+        self.firmwareTypeDatas = deviceTypes
+        
+        if deviceTypes.isEmpty {
+            collectionView.refreshControl = nil
+            showEmptyUI()
+        }else {
+            if collectionView.refreshControl == nil {
+                collectionView.refreshControl = refreshControl
+            }
+            
+            if loadServerData {
+                deviceTypes.forEach { data in
+                    if data.targetVersion != nil {
+                        loadCloudFirmwareRequest(type: data)
+                    }
+                }
+            }
+            
+        }
+        
+        self.collectionView.reloadData()
+    }
+    
+    // MARK: - Action
+    
+    /// 返回
+    @objc private func backAction() {
+        self.dismiss(animated: true)
+    }
+
+    /// 帮助
+    @objc private func helpAction() {
+        
+//        let  MeshSelectDistributorViewController()
+        
+        
+        let vc = BLEUpgradeInstructionsController()
+        let datas: [BLEUpgradeInstructionsController.InstructionsData] = [
+            .init(iconName: "server_download", name: "server_firmware".localizedString, message: "server_firmware_message".localizedString + "\n\n", showArrow: true, arrowX: SCRXFrom(82), ratio: 0.3),
+            .init(iconName: "initiator", name: "initiator".localizedString, message: "initiator_message".localizedString + "\n\n", showArrow: true, arrowX: SCRXFrom(149), ratio: 0.17),
+            .init(iconName: "single_device", name: "Distributor".localizedString, message: "distributor_message".localizedString + "\n\n", showArrow: true, arrowX: SCRXFrom(219), ratio: 0.18),
+            .init(iconName: "updatating_nodes", name: "updatating_nodes".localizedString, message: "updatating_nodes_message".localizedString + "\n\n" + "mesh_upgrade_instructions_message".localizedString, showArrow: false, arrowX: 0, ratio: 0.35)
+        ]
+        vc.title = "mesh_upgrade_instructions".localizedString
+        vc.datas = datas
+        navigationController?.pushViewController(vc, animated: true)
+    }
+    
+    private func setupUI() {
+        flowLayout = UICollectionViewFlowLayout()
+        flowLayout.minimumLineSpacing = SCRYFrom(16)
+        flowLayout.minimumInteritemSpacing = 0
+        
+        refreshControl = UIRefreshControl()
+        refreshControl.tintColor = UIColor.lightGray
+//        refreshControl.addTarget(self, action: #selector(refreshRSSI), for: .valueChanged)
+        
+        collectionView = UICollectionView(frame: .zero, collectionViewLayout: flowLayout)
+        collectionView.backgroundColor = .clear
+        collectionView.contentInset = UIEdgeInsets(top: SCRYFrom(7), left: SCRXFrom(16), bottom: SCRYFrom(16), right: SCRXFrom(16))
+        collectionView.register(MeshFirmwareTypeUpdateViewCell.classForCoder(), forCellWithReuseIdentifier: "cell")
+        collectionView.dataSource = self
+        collectionView.delegate = self
+        view.addSubview(collectionView)
+        collectionView.snp.makeConstraints { make in
+            make.left.right.bottom.equalToSuperview()
+            make.top.equalTo((navigationController?.navigationBar.height ?? 0) + SCRYFrom(7))
+        }
+        
+        flowLayout.estimatedItemSize = CGSize(width: view.width - collectionView.contentInset.left - collectionView.contentInset.right, height: SCRYFrom(182))
+    }
+
+}
+
+extension MeshFirmwareUpdateViewController: UICollectionViewDataSource, UICollectionViewDelegateFlowLayout {
+    
+    func collectionView(_ collectionView: UICollectionView, numberOfItemsInSection section: Int) -> Int {
+        return firmwareTypeDatas.count
+    }
+    
+    func collectionView(_ collectionView: UICollectionView, cellForItemAt indexPath: IndexPath) -> UICollectionViewCell {
+        let cell = collectionView.dequeueReusableCell(withReuseIdentifier: "cell", for: indexPath) as! MeshFirmwareTypeUpdateViewCell
+        cell.firmwareTypeData = firmwareTypeDatas[indexPath.row]
+//        cell.isShow = showData[indexPath.item] ?? false
+        return cell
+    }
+    
+//    func collectionView(_ collectionView: UICollectionView, layout collectionViewLayout: UICollectionViewLayout, sizeForItemAt indexPath: IndexPath) -> CGSize {
+//        var itemH = SCRYFrom(182)
+//        if showData[indexPath.item] ?? false {
+//            itemH += (SCRYFrom(44) + SCRYFrom(60 + 18))
+//        }
+//        return CGSize(width: collectionView.width - collectionView.contentInset.left - collectionView.contentInset.right, height: itemH)
+//    }
+    
+}
+

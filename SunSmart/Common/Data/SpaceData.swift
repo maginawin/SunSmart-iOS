@@ -31,9 +31,9 @@ class SpaceData: Copyable {
     /// mesh网络uuid
     var meshUUID: String
     /// 子网网络key
-    var meshNetworkKey: NetworkKey {
-        return meshManager?.meshNetwork?.networkKeys.first(where: { $0.networkId.hex == meshNetworkId }) ?? MeshNetworkManager.instance.currentNetworkKey
-    }
+//    var meshNetworkKey: NetworkKey {
+//        return meshManager?.meshNetwork?.networkKeys.first(where: { $0.networkId.hex == meshNetworkId }) ?? MeshNetworkManager.instance.currentNetworkKey
+//    }
     /// 所有者（editor/visitor权限查看）
     var owner: UserData?
     /// 子管理员（owner权限查看）

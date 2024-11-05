@@ -277,7 +277,7 @@ class BleFirmwareUpdateViewController: UIViewController {
                     var enableUpgrade = false
                     
                     if cacheVersion != nil, let nodeVersion = node.firmwareVersion {
-                        enableUpgrade = cacheVersion!.compare(nodeVersion) == .orderedDescending
+                        enableUpgrade = cacheVersion!.compare(nodeVersion, options: .numeric) == .orderedDescending
                     }
                     if let deviceTypeData = deviceTypes.first(where: { $0.productId == node.productIdentifier }) {
                         deviceTypeData.nodes.append(node)
@@ -515,6 +515,13 @@ class BleFirmwareUpdateViewController: UIViewController {
     /// 帮助
     @objc private func helpAction() {
         let vc = BLEUpgradeInstructionsController()
+        vc.title = "ble_upgrade_instructions".localizedString
+        let datas: [BLEUpgradeInstructionsController.InstructionsData] = [
+            .init(iconName: "server_download", name: "server_firmware".localizedString, message: "server_firmware_message".localizedString + "\n\n", showArrow: true, arrowX: SCRXFrom(104), ratio: 0.333),
+            .init(iconName: "initiator", name: "initiator".localizedString, message: "initiator_message".localizedString + "\n\n", showArrow: true, arrowX: SCRXFrom(209), ratio: 0.333),
+            .init(iconName: "single_device", name: "updating_node".localizedString, message: "updating_node_message".localizedString + "\n\n" + "ble_upgrade_instructions_message".localizedString, showArrow: false, arrowX: 0, ratio: 0.333)
+        ]
+        vc.datas = datas
         navigationController?.pushViewController(vc, animated: true)
     }
 

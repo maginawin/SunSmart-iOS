@@ -87,12 +87,12 @@ class DeviceSwitchesViewController: UIViewController {
         flowLayout = AlignCenterFlowLayout()
         flowLayout.minimumLineSpacing = SCRXFrom(16)
         flowLayout.minimumInteritemSpacing = SCRXFrom(16)
-        flowLayout.sectionInset = UIEdgeInsets(top: SCRYFrom(16) + SCRYFrom(42), left: SCRXFrom(12), bottom: SCRYFrom(16), right: SCRXFrom(12))
+//        flowLayout.sectionInset = UIEdgeInsets(top: SCRYFrom(16) + SCRYFrom(42), left: SCRXFrom(12), bottom: SCRYFrom(16), right: SCRXFrom(12))
 //        flowLayout.offsetY = flowLayout.sectionInset.top
 //        UIEdgeInsets(top: 0, left: SCRXFrom(12), bottom: <#T##CGFloat#>, right: SCRXFrom(12))
         
         collectionView = UICollectionView(frame: .zero, collectionViewLayout: flowLayout)
-//        collectionView.contentInset = UIEdgeInsets(top: SCRYFrom(16), left: 0, bottom: SCRYFrom(16), right: 0)
+        collectionView.contentInset = UIEdgeInsets(top: SCRYFrom(16) + SCRYFrom(42), left: SCRXFrom(12), bottom: SCRYFrom(16), right: SCRXFrom(12))
         collectionView.backgroundColor = Background_Color
         collectionView.register(DeviceSwitchesViewCell.classForCoder(), forCellWithReuseIdentifier: "cell")
         collectionView.alwaysBounceVertical = true

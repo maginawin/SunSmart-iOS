@@ -147,22 +147,6 @@
       <BreakpointProxy
          BreakpointExtensionID = "Xcode.Breakpoint.FileBreakpoint">
          <BreakpointContent
-            uuid = "B492A402-17F3-4B49-8A00-01BBE14401A5"
-            shouldBeEnabled = "Yes"
-            ignoreCount = "0"
-            continueAfterRunningActions = "No"
-            filePath = "SunSmart/Main/Group/Controller/GroupAddViewController.swift"
-            startingColumnNumber = "9223372036854775807"
-            endingColumnNumber = "9223372036854775807"
-            startingLineNumber = "165"
-            endingLineNumber = "165"
-            landmarkName = "doneBtnClick()"
-            landmarkType = "7">
-         </BreakpointContent>
-      </BreakpointProxy>
-      <BreakpointProxy
-         BreakpointExtensionID = "Xcode.Breakpoint.FileBreakpoint">
-         <BreakpointContent
             uuid = "49C9BE8C-D974-429C-A69C-0DD29BB0753A"
             shouldBeEnabled = "Yes"
             ignoreCount = "0"
@@ -221,6 +205,21 @@
                   endingLineNumber = "775"
                   offsetFromSymbolStart = "28">
                </Location>
+               <Location
+                  uuid = "4352D0FD-B3AF-4EBD-9EFC-C7ED6E1E6AF7 - acfdc9607ba1a513"
+                  shouldBeEnabled = "Yes"
+                  ignoreCount = "0"
+                  continueAfterRunningActions = "No"
+                  symbolName = "NordicSigMeshSDK.MeshFirmwareBLOBServer.blobFailed(error: NordicSigMeshSDK.BLOBUploadError) -&gt; ()"
+                  moduleName = "SunSmart"
+                  usesParentBreakpointCondition = "Yes"
+                  urlString = "file:///Users/yuankehong/Library/Developer/Xcode/DerivedData/SunSmart-bsknqvobukouwgfvklwtoruhrcgz/SourcePackages/checkouts/nordic-sig-mesh-sdk/Sources/NordicSigMeshSDK/MeshLib/Manager/MeshFirmwareBLOBServer.swift"
+                  startingColumnNumber = "9223372036854775807"
+                  endingColumnNumber = "9223372036854775807"
+                  startingLineNumber = "775"
+                  endingLineNumber = "775"
+                  offsetFromSymbolStart = "208">
+               </Location>
             </Locations>
          </BreakpointContent>
       </BreakpointProxy>
@@ -269,6 +268,36 @@
                   endingLineNumber = "486"
                   offsetFromSymbolStart = "44">
                </Location>
+               <Location
+                  uuid = "6BFDE68A-1E76-4B76-B42D-3B573B01D0FD - d5a13cade2cfcd51"
+                  shouldBeEnabled = "Yes"
+                  ignoreCount = "0"
+                  continueAfterRunningActions = "No"
+                  symbolName = "closure #1 (Swift.Optional&lt;NordicSigMeshSDK.StaticMeshResponse&gt;) -&gt; () in NordicSigMeshSDK.MeshFirmwareBLOBServer.blobBlockStart() -&gt; ()"
+                  moduleName = "SunSmart"
+                  usesParentBreakpointCondition = "Yes"
+                  urlString = "file:///Users/yuankehong/Library/Developer/Xcode/DerivedData/SunSmart-bsknqvobukouwgfvklwtoruhrcgz/SourcePackages/checkouts/nordic-sig-mesh-sdk/Sources/NordicSigMeshSDK/MeshLib/Manager/MeshFirmwareBLOBServer.swift"
+                  startingColumnNumber = "9223372036854775807"
+                  endingColumnNumber = "9223372036854775807"
+                  startingLineNumber = "486"
+                  endingLineNumber = "486"
+                  offsetFromSymbolStart = "4056">
+               </Location>
+               <Location
+                  uuid = "6BFDE68A-1E76-4B76-B42D-3B573B01D0FD - d4330748607dd089"
+                  shouldBeEnabled = "Yes"
+                  ignoreCount = "0"
+                  continueAfterRunningActions = "No"
+                  symbolName = "closure #1 @Swift.MainActor () -&gt; () in closure #1 (Swift.Optional&lt;NordicSigMeshSDK.StaticMeshResponse&gt;) -&gt; () in NordicSigMeshSDK.MeshFirmwareBLOBServer.blobBlockStart() -&gt; ()"
+                  moduleName = "SunSmart"
+                  usesParentBreakpointCondition = "Yes"
+                  urlString = "file:///Users/yuankehong/Library/Developer/Xcode/DerivedData/SunSmart-bsknqvobukouwgfvklwtoruhrcgz/SourcePackages/checkouts/nordic-sig-mesh-sdk/Sources/NordicSigMeshSDK/MeshLib/Manager/MeshFirmwareBLOBServer.swift"
+                  startingColumnNumber = "9223372036854775807"
+                  endingColumnNumber = "9223372036854775807"
+                  startingLineNumber = "487"
+                  endingLineNumber = "487"
+                  offsetFromSymbolStart = "44">
+               </Location>
             </Locations>
          </BreakpointContent>
       </BreakpointProxy>
@@ -286,100 +315,36 @@
             endingLineNumber = "492"
             landmarkName = "blobBlockStart()"
             landmarkType = "7">
-         </BreakpointContent>
-      </BreakpointProxy>
-      <BreakpointProxy
-         BreakpointExtensionID = "Xcode.Breakpoint.FileBreakpoint">
-         <BreakpointContent
-            uuid = "8A39983F-A89B-44EA-A750-4776E787F94E"
-            shouldBeEnabled = "Yes"
-            ignoreCount = "0"
-            continueAfterRunningActions = "No"
-            filePath = "SunSmart/Main/Scene/Controller/SceneAddViewController.swift"
-            startingColumnNumber = "9223372036854775807"
-            endingColumnNumber = "9223372036854775807"
-            startingLineNumber = "176"
-            endingLineNumber = "176"
-            landmarkName = "backHandle(close:)"
-            landmarkType = "7">
             <Locations>
                <Location
-                  uuid = "8A39983F-A89B-44EA-A750-4776E787F94E - bc31631620621022"
+                  uuid = "3BFB0D61-BBEA-4677-9B92-99C22257B228 - d5a13cade2cfce17"
                   shouldBeEnabled = "Yes"
                   ignoreCount = "0"
                   continueAfterRunningActions = "No"
-                  symbolName = "SunSmart.SceneAddViewController.backHandle(close: Swift.Bool) -&gt; ()"
+                  symbolName = "closure #1 (Swift.Optional&lt;NordicSigMeshSDK.StaticMeshResponse&gt;) -&gt; () in NordicSigMeshSDK.MeshFirmwareBLOBServer.blobBlockStart() -&gt; ()"
                   moduleName = "SunSmart"
                   usesParentBreakpointCondition = "Yes"
-                  urlString = "file:///Users/yuankehong/Desktop/SunSmart/SunSmart/Main/Scene/Controller/SceneAddViewController.swift"
+                  urlString = "file:///Users/yuankehong/Library/Developer/Xcode/DerivedData/SunSmart-bsknqvobukouwgfvklwtoruhrcgz/SourcePackages/checkouts/nordic-sig-mesh-sdk/Sources/NordicSigMeshSDK/MeshLib/Manager/MeshFirmwareBLOBServer.swift"
                   startingColumnNumber = "9223372036854775807"
                   endingColumnNumber = "9223372036854775807"
-                  startingLineNumber = "176"
-                  endingLineNumber = "176"
-                  offsetFromSymbolStart = "68">
+                  startingLineNumber = "492"
+                  endingLineNumber = "492"
+                  offsetFromSymbolStart = "4348">
                </Location>
                <Location
-                  uuid = "8A39983F-A89B-44EA-A750-4776E787F94E - bc31631620621022"
+                  uuid = "3BFB0D61-BBEA-4677-9B92-99C22257B228 - d5a13cade2cfce36"
                   shouldBeEnabled = "Yes"
                   ignoreCount = "0"
                   continueAfterRunningActions = "No"
-                  symbolName = "SunSmart.SceneAddViewController.backHandle(close: Swift.Bool) -&gt; ()"
+                  symbolName = "closure #1 (Swift.Optional&lt;NordicSigMeshSDK.StaticMeshResponse&gt;) -&gt; () in NordicSigMeshSDK.MeshFirmwareBLOBServer.blobBlockStart() -&gt; ()"
                   moduleName = "SunSmart"
                   usesParentBreakpointCondition = "Yes"
-                  urlString = "file:///Users/yuankehong/Desktop/SunSmart/SunSmart/Main/Scene/Controller/SceneAddViewController.swift"
+                  urlString = "file:///Users/yuankehong/Library/Developer/Xcode/DerivedData/SunSmart-bsknqvobukouwgfvklwtoruhrcgz/SourcePackages/checkouts/nordic-sig-mesh-sdk/Sources/NordicSigMeshSDK/MeshLib/Manager/MeshFirmwareBLOBServer.swift"
                   startingColumnNumber = "9223372036854775807"
                   endingColumnNumber = "9223372036854775807"
-                  startingLineNumber = "176"
-                  endingLineNumber = "176"
-                  offsetFromSymbolStart = "64">
-               </Location>
-            </Locations>
-         </BreakpointContent>
-      </BreakpointProxy>
-      <BreakpointProxy
-         BreakpointExtensionID = "Xcode.Breakpoint.FileBreakpoint">
-         <BreakpointContent
-            uuid = "ABC460E4-CB6F-4023-9C16-7D014E32FD6D"
-            shouldBeEnabled = "Yes"
-            ignoreCount = "0"
-            continueAfterRunningActions = "No"
-            filePath = "SunSmart/Main/Firmware/Controller/FirmwareVersionViewController.swift"
-            startingColumnNumber = "9223372036854775807"
-            endingColumnNumber = "9223372036854775807"
-            startingLineNumber = "142"
-            endingLineNumber = "142"
-            landmarkName = "downloadBtnAction()"
-            landmarkType = "7">
-            <Locations>
-               <Location
-                  uuid = "ABC460E4-CB6F-4023-9C16-7D014E32FD6D - 8a98e8f9980a5c79"
-                  shouldBeEnabled = "Yes"
-                  ignoreCount = "0"
-                  continueAfterRunningActions = "No"
-                  symbolName = "closure #1 (Swift.Result&lt;SunSmart.FirmwareZipData, Swift.Error&gt;) -&gt; () in SunSmart.FirmwareVersionViewController.downloadBtnAction() -&gt; ()"
-                  moduleName = "SunSmart"
-                  usesParentBreakpointCondition = "Yes"
-                  urlString = "file:///Users/yuankehong/Desktop/SunSmart/SunSmart/Main/Firmware/Controller/FirmwareVersionViewController.swift"
-                  startingColumnNumber = "9223372036854775807"
-                  endingColumnNumber = "9223372036854775807"
-                  startingLineNumber = "159"
-                  endingLineNumber = "159"
-                  offsetFromSymbolStart = "2132">
-               </Location>
-               <Location
-                  uuid = "ABC460E4-CB6F-4023-9C16-7D014E32FD6D - 8a98e8f9980a622a"
-                  shouldBeEnabled = "Yes"
-                  ignoreCount = "0"
-                  continueAfterRunningActions = "No"
-                  symbolName = "closure #1 (Swift.Result&lt;SunSmart.FirmwareZipData, Swift.Error&gt;) -&gt; () in SunSmart.FirmwareVersionViewController.downloadBtnAction() -&gt; ()"
-                  moduleName = "SunSmart"
-                  usesParentBreakpointCondition = "Yes"
-                  urlString = "file:///Users/yuankehong/Desktop/SunSmart/SunSmart/Main/Firmware/Controller/FirmwareVersionViewController.swift"
-                  startingColumnNumber = "9223372036854775807"
-                  endingColumnNumber = "9223372036854775807"
-                  startingLineNumber = "142"
-                  endingLineNumber = "142"
-                  offsetFromSymbolStart = "2132">
+                  startingLineNumber = "493"
+                  endingLineNumber = "493"
+                  offsetFromSymbolStart = "4348">
                </Location>
             </Locations>
          </BreakpointContent>
@@ -413,102 +378,6 @@
             startingLineNumber = "527"
             endingLineNumber = "527"
             landmarkName = "handle(_:)"
-            landmarkType = "7">
-         </BreakpointContent>
-      </BreakpointProxy>
-      <BreakpointProxy
-         BreakpointExtensionID = "Xcode.Breakpoint.FileBreakpoint">
-         <BreakpointContent
-            uuid = "DFF9151E-2DF9-404C-A05E-EE4F7D5375AC"
-            shouldBeEnabled = "Yes"
-            ignoreCount = "0"
-            continueAfterRunningActions = "No"
-            filePath = "SunSmart/Main/Device/Controller/DeviceAddViewController.swift"
-            startingColumnNumber = "9223372036854775807"
-            endingColumnNumber = "9223372036854775807"
-            startingLineNumber = "579"
-            endingLineNumber = "579"
-            landmarkName = "addDevice(_:)"
-            landmarkType = "7">
-         </BreakpointContent>
-      </BreakpointProxy>
-      <BreakpointProxy
-         BreakpointExtensionID = "Xcode.Breakpoint.FileBreakpoint">
-         <BreakpointContent
-            uuid = "6BACAD07-D54A-411C-8631-062817A10A9B"
-            shouldBeEnabled = "Yes"
-            ignoreCount = "0"
-            continueAfterRunningActions = "No"
-            filePath = "SunSmart/Main/Share/Controller/SharePermissionSelectionController.swift"
-            startingColumnNumber = "9223372036854775807"
-            endingColumnNumber = "9223372036854775807"
-            startingLineNumber = "200"
-            endingLineNumber = "200"
-            landmarkName = "spacesJoinRequest(spaces:password:permission:)"
-            landmarkType = "7">
-         </BreakpointContent>
-      </BreakpointProxy>
-      <BreakpointProxy
-         BreakpointExtensionID = "Xcode.Breakpoint.FileBreakpoint">
-         <BreakpointContent
-            uuid = "C28F0938-DB87-435E-8CFD-5154EA5D2C10"
-            shouldBeEnabled = "Yes"
-            ignoreCount = "0"
-            continueAfterRunningActions = "No"
-            filePath = "SunSmart/Main/Share/Controller/SharePermissionSelectionController.swift"
-            startingColumnNumber = "9223372036854775807"
-            endingColumnNumber = "9223372036854775807"
-            startingLineNumber = "177"
-            endingLineNumber = "177"
-            landmarkName = "spacesJoinRequest(spaces:password:permission:)"
-            landmarkType = "7">
-            <Locations>
-               <Location
-                  uuid = "C28F0938-DB87-435E-8CFD-5154EA5D2C10 - 16d9129d81c5cd0d"
-                  shouldBeEnabled = "Yes"
-                  ignoreCount = "0"
-                  continueAfterRunningActions = "No"
-                  symbolName = "closure #1 (Swift.Dictionary&lt;Swift.String, Any&gt;) -&gt; Swift.Optional&lt;SunSmart.BatchSpaceImportResult&gt; in closure #1 (Swift.Result&lt;Swift.Dictionary&lt;Swift.String, Any&gt;, SunSmart.NetworkApiError&gt;) -&gt; () in SunSmart.SharePermissionSelectionController.spacesJoinRequest(spaces: Swift.Array&lt;SunSmart.SpaceData&gt;, password: Swift.Optional&lt;Swift.String&gt;, permission: SunSmart.Permission) -&gt; ()"
-                  moduleName = "SunSmart"
-                  usesParentBreakpointCondition = "Yes"
-                  urlString = "file:///Users/yuankehong/Desktop/SunSmart/SunSmart/Main/Share/Controller/SharePermissionSelectionController.swift"
-                  startingColumnNumber = "9223372036854775807"
-                  endingColumnNumber = "9223372036854775807"
-                  startingLineNumber = "177"
-                  endingLineNumber = "177"
-                  offsetFromSymbolStart = "164">
-               </Location>
-               <Location
-                  uuid = "C28F0938-DB87-435E-8CFD-5154EA5D2C10 - 16d9129d81c5cd0d"
-                  shouldBeEnabled = "Yes"
-                  ignoreCount = "0"
-                  continueAfterRunningActions = "No"
-                  symbolName = "closure #1 (Swift.Dictionary&lt;Swift.String, Any&gt;) -&gt; Swift.Optional&lt;SunSmart.BatchSpaceImportResult&gt; in closure #1 (Swift.Result&lt;Swift.Dictionary&lt;Swift.String, Any&gt;, SunSmart.NetworkApiError&gt;) -&gt; () in SunSmart.SharePermissionSelectionController.spacesJoinRequest(spaces: Swift.Array&lt;SunSmart.SpaceData&gt;, password: Swift.Optional&lt;Swift.String&gt;, permission: SunSmart.Permission) -&gt; ()"
-                  moduleName = "SunSmart"
-                  usesParentBreakpointCondition = "Yes"
-                  urlString = "file:///Users/yuankehong/Desktop/SunSmart/SunSmart/Main/Share/Controller/SharePermissionSelectionController.swift"
-                  startingColumnNumber = "9223372036854775807"
-                  endingColumnNumber = "9223372036854775807"
-                  startingLineNumber = "177"
-                  endingLineNumber = "177"
-                  offsetFromSymbolStart = "480">
-               </Location>
-            </Locations>
-         </BreakpointContent>
-      </BreakpointProxy>
-      <BreakpointProxy
-         BreakpointExtensionID = "Xcode.Breakpoint.FileBreakpoint">
-         <BreakpointContent
-            uuid = "D0952B40-1A28-4EA7-9701-C9AABAA13B02"
-            shouldBeEnabled = "Yes"
-            ignoreCount = "0"
-            continueAfterRunningActions = "No"
-            filePath = "SunSmart/Main/Share/Controller/SharePermissionSelectionController.swift"
-            startingColumnNumber = "9223372036854775807"
-            endingColumnNumber = "9223372036854775807"
-            startingLineNumber = "197"
-            endingLineNumber = "197"
-            landmarkName = "spacesJoinRequest(spaces:password:permission:)"
             landmarkType = "7">
          </BreakpointContent>
       </BreakpointProxy>

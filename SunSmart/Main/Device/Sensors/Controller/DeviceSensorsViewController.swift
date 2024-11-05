@@ -93,10 +93,11 @@ class DeviceSensorsViewController: UIViewController {
         flowLayout = AlignCenterFlowLayout()
         flowLayout.minimumLineSpacing = SCRXFrom(16)
         flowLayout.minimumInteritemSpacing = SCRXFrom(16)
-        flowLayout.sectionInset = UIEdgeInsets(top: SCRYFrom(16) + SCRYFrom(42), left: SCRXFrom(12), bottom: SCRYFrom(16), right: SCRXFrom(12))
+//        flowLayout.sectionInset = UIEdgeInsets(top: SCRYFrom(16) + SCRYFrom(42), left: SCRXFrom(12), bottom: SCRYFrom(16), right: SCRXFrom(12))
         //        UIEdgeInsets(top: 0, left: SCRXFrom(12), bottom: <#T##CGFloat#>, right: SCRXFrom(12))
         
         collectionView = UICollectionView(frame: .zero, collectionViewLayout: flowLayout)
+        collectionView.contentInset = UIEdgeInsets(top: SCRYFrom(16) + SCRYFrom(42), left: SCRXFrom(12), bottom: SCRYFrom(16), right: SCRXFrom(12))
         //        collectionView.contentInset = UIEdgeInsets(top: SCRYFrom(16), left: 0, bottom: SCRYFrom(16), right: 0)
         collectionView.backgroundColor = Background_Color
         collectionView.register(DevicesViewCell.classForCoder(), forCellWithReuseIdentifier: "cell")

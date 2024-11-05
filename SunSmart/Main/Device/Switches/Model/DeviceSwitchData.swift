@@ -83,7 +83,7 @@ class DeviceSwitchData: Copyable {
 //    }
     
     /// 默认动能开关
-    static func defalut(id: String = UUID().uuidString) -> DeviceSwitchData {
+    static func `default`(id: String = UUID().uuidString) -> DeviceSwitchData {
         return DeviceSwitchData(id: id, enabled: true, name: MeshNetworkManager.instance.getNextSwitchName(), linkGroupAddress: nil, bindGroupAddresses: [], sceneANumber: nil, sceneBNumber: nil, proxyNodeAddress: nil)
     }
     

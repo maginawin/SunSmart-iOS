@@ -99,7 +99,8 @@ extension SpaceMoreViewController: UICollectionViewDataSource, UICollectionViewD
             let vc = BleFirmwareUpdateViewController()
             present(NavigationViewController(rootViewController: vc), animated: true)
         case .mesh:
-            break
+            let vc = MeshFirmwareUpdateViewController()
+            present(NavigationViewController(rootViewController: vc), animated: true)
         }
         
     }

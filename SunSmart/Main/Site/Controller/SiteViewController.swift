@@ -37,6 +37,19 @@ class SiteViewController: UIViewController {
     /// 进入space，space列表加载完成后自动跳转进入对应space页面
     var enterSpaceId: String?
     
+//    #if DEBUG  // 测试环境展示地址数量
+    private var allDeviceAddressNum: Int = 0
+    private var usedDeviceAddressNum: Int = 0
+    
+    private var allGroupAddressNum: Int = 0
+    private var usedGroupAddressNum: Int = 0
+    
+    private var allSceneAddressNum: Int = 0
+    private var usedSceneAddressNum: Int = 0
+    
+    private var recycleAddressNum: Int = 0
+//    #endif
+    
     private var reloadData: Bool = false
     
     init(site: SiteData, addSite: Bool = false) {
@@ -104,9 +117,9 @@ class SiteViewController: UIViewController {
         if NetworkRequest.shared.networkable && site.uploadCloud {
             loadSiteRequest()
             // 判断是否有放弃的地址需要回收
-            if let addressData = site.recycleAddressData {
-                recyclingAddressRequest(abandonAddressData: addressData)
-            }
+//            if let addressData = site.recycleAddressData {
+//                recyclingAddressRequest(abandonAddressData: addressData)
+//            }
         }
         
 //        MeshLibManager.manager.setMeshNetworkConnected(meshUUID: self.site.meshUUID, subNetwork: self.allSpaces.first?.meshNetworkKey, connected: true)
@@ -124,7 +137,7 @@ class SiteViewController: UIViewController {
         self.allSpacesTableView.reloadData()
         self.favouritesTableView.reloadData()
         self.updateEmptyView()
-        
+     
         CloudSynchronizationManager.shared.delegate = self
     }
     
@@ -137,7 +150,9 @@ class SiteViewController: UIViewController {
         }
         
         updateSyncState()
-        
+#if DEBUG
+self.updateAddressData()
+#endif
 //        self.showNavigationBarLoading()
 //        DispatchQueue.main.asyncAfter(deadline: .now() + 3, execute: {
 //            if self.view.window != nil {
@@ -166,6 +181,44 @@ class SiteViewController: UIViewController {
         }
     }
     
+//    #if DEBUG
+    /// 更新地址数据
+    private func updateAddressData() {
+        
+//        guard let meshNetwork = MeshNetwork.load(meshUUID: self.site.id), let localProvisioner = meshNetwork.localProvisioner else { return }
+//
+//        var deviceAddressCount = 0
+//        localProvisioner.allocatedUnicastRange.forEach({
+//            deviceAddressCount += Int(($0.highAddress - $0.lowAddress) + 1)
+//        })
+//        var groupAddressCount = 0
+//        localProvisioner.allocatedGroupRange.forEach({
+//            groupAddressCount += Int(($0.highAddress - $0.lowAddress) + 1)
+//        })
+//        var sceneAddressCount = 0
+//        localProvisioner.allocatedSceneRange.forEach({
+//            sceneAddressCount += Int(($0.lastScene - $0.firstScene) + 1)
+//        })
+//        
+//        var recycleAddressCount = 0
+//        MeshAPI.getExclusionAddresses(meshUUID: self.site.id).forEach({
+//            recycleAddressCount += $0.addresses.count
+//        })
+//        
+//        allDeviceAddressNum = deviceAddressCount
+//        usedDeviceAddressNum = deviceAddressCount - MeshAPI.getNumberOfAvailableUnicastAddresses(meshUUID: self.site.id)
+//        
+//        allGroupAddressNum = groupAddressCount
+//        usedGroupAddressNum = groupAddressCount - MeshAPI.getNumberOfAvailableGroupAddresses(meshUUID: self.site.id)
+//        
+//        allSceneAddressNum = sceneAddressCount
+//        usedSceneAddressNum = sceneAddressCount - MeshAPI.getNumberOfAvailableSceneAddresses(meshUUID: self.site.id)
+//        
+//        recycleAddressNum = recycleAddressCount
+//        
+//        self.allSpacesTableView.reloadData()
+    }
+//    #endif
     
     // MARK: - Request
     /// 获取site数据请求
@@ -218,6 +271,10 @@ class SiteViewController: UIViewController {
                         self.allSpacesTableView.reloadData()
                         self.favouritesTableView.reloadData()
                         self.updateEmptyView()
+                    #if DEBUG
+                        self.updateAddressData()
+                    #endif
+                        
                         XWHUDManager.hideInView(with: self.view)
                         
                         if self.view.window != nil && self.site.localAddress == nil { // 申请地址
@@ -429,6 +486,9 @@ class SiteViewController: UIViewController {
                     if self.site.localAddress != nil {
                         CloudSynchronizationManager.shared.addSynchronizationHandle(operation: .syncSite(site: self.site), level: .promptly)
                     }
+                #if DEBUG
+                    self.updateAddressData()
+                #endif
                 }
             case .failure(let error): // 申请手机地址失败
                 XWHUDManager.showErrorTipHUD(error.localizedDescription)
@@ -874,6 +934,12 @@ class SiteViewController: UIViewController {
                         }
                     }
                 }
+                
+                if space.permission == .owner, let editorPassword = JSON(response)["data"]["space"]["editorPasswd"].string, space.editorPassword != editorPassword {
+                    space.editorPassword = editorPassword
+                    spaceSave = true
+                }
+                
                 if let visitorPassword = JSON(response)["data"]["space"]["visitorPasswd"].string {
                     if space.vistorPassword ?? "" != visitorPassword {
                         if visitorPassword.isEmpty {
@@ -946,7 +1012,7 @@ class SiteViewController: UIViewController {
         
         let recycleData = site.getRecycleAddressData(unbindSpaces: [space])
         
-        let networkApi: NetowrkReqeustApi = .unbindSpaces(siteId: site.id, spaceIds: [space.id], recycleDeviceAddresses: recycleData.deviceAddresses, recycleGroupAddresses: recycleData.groupAddresses, recycleSceneAddresses: recycleData.sceneAddresses, exclusions: recycleData.exclusionAddresses?.map({ ($0.ivIndex, $0.addresses) }))
+        let networkApi: NetowrkReqeustApi = .unbindSpaces(siteId: site.id, spaceIds: [space.id], recycleDeviceAddresses: recycleData.deviceAddresses, recycleGroupAddresses: recycleData.groupAddresses, recycleSceneAddresses: recycleData.sceneAddresses, exclusions: recycleData.exclusionAddresses?.map({ ($0.ivIndex, $0.addresses) }), provisionerData: recycleData.provisionerData)
     
         NetworkRequest.shared.request(networkApi) {[weak self] result in
             XWHUDManager.hide()
@@ -1007,7 +1073,7 @@ class SiteViewController: UIViewController {
         if delete {
             XWHUDManager.showCustomHUD(withMessage: nil, isWindow: true)
         }
-        NetworkRequest.shared.request(.recyclingAddress(siteId: site.id, recycleDeviceAddresses: addressData.deviceAddresses, recycleGroupAddresses: addressData.groupAddresses, recycleSceneAddresses: addressData.sceneAddresses, exclusions: addressData.exclusionAddresses?.map({ ($0.ivIndex, $0.addresses) }))) {[weak self] result in
+        NetworkRequest.shared.request(.recyclingAddress(siteId: site.id, recycleDeviceAddresses: addressData.deviceAddresses, recycleGroupAddresses: addressData.groupAddresses, recycleSceneAddresses: addressData.sceneAddresses, exclusions: addressData.exclusionAddresses?.map({ ($0.ivIndex, $0.addresses) }), provisionerData: addressData.provisionerData)) {[weak self] result in
             guard let self = self else { return }
             if delete {
                 XWHUDManager.hide()
@@ -1016,6 +1082,9 @@ class SiteViewController: UIViewController {
             case .success(_):
                 // 删除回收的地址
                 self.site.deleteProvisionerAddress(deviceAddresses: addressData.deviceAddresses, groupAddresses: addressData.groupAddresses, sceneAddresses: addressData.sceneAddresses)
+                #if DEBUG
+                    self.updateAddressData()
+                #endif
                 if delete {
                     recyclingSpaces.forEach({
                         self.deleteSpace(space: $0)
@@ -1032,7 +1101,7 @@ class SiteViewController: UIViewController {
                         $0.releaseAddress = true
                         $0.save()
                     })
-                    CloudSynchronizationManager.shared.addSynchronizationHandle(operation: .syncSite(site: site, syncSpaces: []), level: .promptly)
+//                    CloudSynchronizationManager.shared.addSynchronizationHandle(operation: .syncSite(site: site, syncSpaces: []), level: .promptly)
                 }
                 
             case .failure(let error):
@@ -1361,6 +1430,9 @@ class SiteViewController: UIViewController {
         allSpacesTableView.separatorStyle = .none
         allSpacesTableView.backgroundColor = .clear
         allSpacesTableView.register(SpacesViewCell.classForCoder(), forCellReuseIdentifier: "cell")
+        #if DEBUG
+        allSpacesTableView.register(SiteAddressDataHeaderView.classForCoder(), forHeaderFooterViewReuseIdentifier: "header")
+        #endif
         allSpacesTableView.rowHeight = SCRYFrom(208)
         allSpacesTableView.dataSource = self
         allSpacesTableView.delegate = self
@@ -1463,6 +1535,30 @@ extension SiteViewController: UITableViewDataSource, UITableViewDelegate {
         
         selectSpaceAction(space: space)
     }
+    
+//#if DEBUG
+//    func tableView(_ tableView: UITableView, viewForHeaderInSection section: Int) -> UIView? {
+//        guard tableView == self.allSpacesTableView else {
+//            return nil
+//        }
+//        let headerView = tableView.dequeueReusableHeaderFooterView(withIdentifier: "header") as! SiteAddressDataHeaderView
+//        headerView.deviceAddressLabel.text = "Device Address: \(self.usedDeviceAddressNum)/\(self.allDeviceAddressNum)"
+//        headerView.groupAddressLabel.text = "Group Address: \(self.usedGroupAddressNum)/\(self.allGroupAddressNum)"
+//        headerView.sceneAddressLabel.text = "Scene Address: \(self.usedSceneAddressNum)/\(self.allSceneAddressNum)"
+//        headerView.recycleAddressLabel.text = "Recycle Address: \(self.recycleAddressNum)"
+//        return headerView
+//    }
+//    
+//    
+//    func tableView(_ tableView: UITableView, heightForHeaderInSection section: Int) -> CGFloat {
+//        guard tableView == self.allSpacesTableView else {
+//            return 0
+//        }
+//        return SCRYFrom(44)
+//    }
+//    
+//    #endif
+    
 }
 
 extension SiteViewController: SpacesViewCellDelegate {

@@ -33,7 +33,7 @@ class DeviceSwitchViewController: UIViewController {
         self.space = space
         self.switchData = switchData
         super.init(nibName: nil, bundle: nil)
-        self.setSwitchData = switchData?.copy() ?? DeviceSwitchData.defalut()
+        self.setSwitchData = switchData?.copy() ?? DeviceSwitchData.default()
     }
     
     required init?(coder: NSCoder) {
@@ -79,7 +79,7 @@ class DeviceSwitchViewController: UIViewController {
 //            UIViewController.getVisibleVc()?.present(NavigationViewController(rootViewController: vc), animated: true)
 //            
 //        }else {
-        if !(setSwitchData == (switchData ?? DeviceSwitchData.defalut(id: setSwitchData.id))) {
+        if !(setSwitchData == (switchData ?? DeviceSwitchData.default(id: setSwitchData.id))) {
             SRAlertView(title: "notification".localizedString, message: "profile_exiting_message".localizedString, actions: [SRAlertAction(title: "keep_edit".localizedString, style: .cancel), SRAlertAction(title: "exit".localizedString, actionHandler: {[weak self] _ in
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
                     //                        self?.fineshed()
@@ -382,7 +382,7 @@ class DeviceSwitchViewController: UIViewController {
             saveBtn.setTitleColor(Bar_Color, for: .normal)
         }
         
-        self.isModalInPresentation = !(setSwitchData == (switchData ?? DeviceSwitchData.defalut()))
+        self.isModalInPresentation = !(setSwitchData == (switchData ?? DeviceSwitchData.default()))
     }
     
 }
@@ -495,6 +495,7 @@ extension DeviceSwitchViewController: UITableViewDataSource, UITableViewDelegate
         if section == 0 {
             let headerView = tableView.dequeueReusableHeaderFooterView(withIdentifier: "header") as! DeviceSwitchHeaderView
             headerView.nameField.text = setSwitchData.name
+            headerView.nameField.isEnabled = editable
             headerView.syncFailedBtn.isHidden = switchData == nil || !switchData!.needSyncData
             headerView.nameEditChanged = {[weak self] name in
                 self?.setSwitchData.name = name

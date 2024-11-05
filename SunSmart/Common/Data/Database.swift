@@ -206,18 +206,18 @@ extension SiteData {
 //    }
     
     /// 获取下一个site名称
-    /// - Parameter defalutName: 查询的site默认名称  ”Site “
+    /// - Parameter defaultName: 查询的site默认名称  ”Site “
     /// - Returns: 默认的site名称
-    static func getNextSiteName(_ defalutName: String = "site_defalut_name".localizedString) -> String {
+    static func getNextSiteName(_ defaultName: String = "site_defalut_name".localizedString) -> String {
         
-        var result = "\(defalutName)1"
+        var result = "\(defaultName)1"
         // 场所已使用的名称索引
         var siteIndexs: [Int] = []
-        let sql = SiteData.sitesTable.filter(ExpressionKey.regionType == UserData.currentServerRegion.rawValue && ExpressionKey.name.like(defalutName + "%"))
+        let sql = SiteData.sitesTable.filter(ExpressionKey.regionType == UserData.currentServerRegion.rawValue && ExpressionKey.name.like(defaultName + "%"))
         if let rows = try? SunSmartDataManager.shared.db?.prepare(sql) {
             for row in rows {
                 let siteName = row[ExpressionKey.name]
-                if let index = Int(siteName.replacingOccurrences(of: defalutName, with: "")) {
+                if let index = Int(siteName.replacingOccurrences(of: defaultName, with: "")) {
                     siteIndexs.append(index)
                 }
             }
@@ -225,7 +225,7 @@ extension SiteData {
         // 获取未被使用的site索引
         for index in 1...1000 {
             if !siteIndexs.contains(index) {
-                result = defalutName + "\(index)"
+                result = defaultName + "\(index)"
                 break
             }
         }
@@ -309,7 +309,7 @@ extension SiteData {
         let table = SiteData.sitesTable
         var recycleAddressData: Data?
         if self.recycleAddressData != nil {
-            recycleAddressData = try? jsonEncoder.encode(recycleAddressData!)
+            recycleAddressData = try? jsonEncoder.encode(self.recycleAddressData!)
         }
         
         let insetOrUpdate = table.insert(or: .replace, [
@@ -506,7 +506,7 @@ extension SpaceData {
         let interOrUpdate = SpaceData.spacesTable.insert(or: .replace, [
             ExpressionKey.uuid <- self.id,
             ExpressionKey.siteUUID <- self.siteId,
-            ExpressionKey.subNetworkKey <- self.meshNetworkKey.networkId.hex,
+            ExpressionKey.subNetworkKey <- self.meshNetworkId,
             ExpressionKey.name <- self.name,
             ExpressionKey.imageId <- self.imageId,
             ExpressionKey.permission <- self.permission.rawValue,
@@ -554,19 +554,19 @@ extension SpaceData {
     
     /// 获取下一个space名称
     /// - Parameter siteId: 对应场所id
-    /// - Parameter defalutName: 查询的space默认名称  ”Space “
+    /// - Parameter defaultName: 查询的space默认名称  ”Space “
     /// - Returns: 默认的space名称
-    static func getNextSpaceName(siteId: String, defalutName: String = "space_defalut_name".localizedString) -> String {
+    static func getNextSpaceName(siteId: String, defaultName: String = "space_defalut_name".localizedString) -> String {
         
-        var result = "\(defalutName)1"
+        var result = "\(defaultName)1"
         // 场所已使用的名称索引
         var spaceIndexs: [Int] = []
-        let sql = SpaceData.spacesTable.filter(ExpressionKey.siteUUID == siteId && ExpressionKey.name.like(defalutName + "%"))
+        let sql = SpaceData.spacesTable.filter(ExpressionKey.siteUUID == siteId && ExpressionKey.name.like(defaultName + "%"))
         if let rows = try? SunSmartDataManager.shared.db?.prepare(sql) {
             for row in rows {
                 
                 let spaceName = row[ExpressionKey.name]
-                if let index = Int(spaceName.replacingOccurrences(of: defalutName, with: "")) {
+                if let index = Int(spaceName.replacingOccurrences(of: defaultName, with: "")) {
                     spaceIndexs.append(index)
                 }
             }
@@ -574,7 +574,7 @@ extension SpaceData {
         // 获取未被使用的site索引
         for index in 1...1000 {
             if !spaceIndexs.contains(index) {
-                result = defalutName + "\(index)"
+                result = defaultName + "\(index)"
                 break
             }
         }
@@ -1204,23 +1204,23 @@ extension Schedule {
     }
     
     /// 获取下一个schedule名称
-    /// - Parameter defalutName: 默认名称
+    /// - Parameter defaultName: 默认名称
     /// - Parameter meshNetworkKey: 子网网络key
     /// - Returns: 日程名称
-    static func getNextScheduleName(meshUUID: String? = nil, meshNetworkId: String? = nil, defalutName: String = "schedule_defalut_name".localizedString) -> String {
+    static func getNextScheduleName(meshUUID: String? = nil, meshNetworkId: String? = nil, defaultName: String = "schedule_defalut_name".localizedString) -> String {
         
-        var result = "\(defalutName)1"
+        var result = "\(defaultName)1"
         
         guard let uuid = meshUUID ?? MeshNetworkManager.instance.meshNetwork?.uuid.uuidString else { return result }
         let subNetworkey = meshNetworkId ?? MeshNetworkManager.instance.currentNetworkKey.networkId.hex
         
         // 日程已使用的名称索引
         var scheduleIndexs: [Int] = []
-        let sql = Schedule.schedulesTable.filter(ExpressionKey.meshUUID == uuid && ExpressionKey.subNetworkKey == subNetworkey && ExpressionKey.name.like(defalutName + "%"))
+        let sql = Schedule.schedulesTable.filter(ExpressionKey.meshUUID == uuid && ExpressionKey.subNetworkKey == subNetworkey && ExpressionKey.name.like(defaultName + "%"))
         if let rows = try? SunSmartDataManager.shared.db?.prepare(sql) {
             for row in rows {
                 let spaceName = row[ExpressionKey.name]
-                if let index = Int(spaceName.replacingOccurrences(of: defalutName, with: "")) {
+                if let index = Int(spaceName.replacingOccurrences(of: defaultName, with: "")) {
                     scheduleIndexs.append(index)
                 }
             }
@@ -1229,7 +1229,7 @@ extension Schedule {
         // 获取未被使用的schedule索引
         for index in 1...16 {
             if !scheduleIndexs.contains(index) {
-                result = defalutName + "\(index)"
+                result = defaultName + "\(index)"
                 break
             }
         }

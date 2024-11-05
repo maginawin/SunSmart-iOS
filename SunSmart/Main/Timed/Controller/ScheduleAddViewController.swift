@@ -218,7 +218,7 @@ class ScheduleAddViewController: UIViewController {
         }
         
         let weekDays = Schedule.getWeekDays(weekValue: scheduleAddView.weekValue)
-        let create = "\(Date().timeIntervalSince1970 * 1000)"
+//        let create = "\(Date().timeIntervalSince1970 * 1000)"
         
        
         let schedule = Schedule(id: id, name: name, enabled: isEnabled, nodeAddresses: nodes.map({ $0.primaryUnicastAddress }), groupAddresses: groups.map({ $0.address.address }), sceneNumber: scene?.number, selectTargetType: selectTargetType, action: action, fadeTime: fadeTime, weekDays: weekDays, hour: scheduleAddView.hour, minute: scheduleAddView.minute)

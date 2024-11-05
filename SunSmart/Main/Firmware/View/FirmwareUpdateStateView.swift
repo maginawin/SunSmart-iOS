@@ -150,6 +150,7 @@ class FirmwareUpdateStateView: UIView {
             self.stateLabel.text = "upgrade_failure".localizedString
             self.stateLabel.textColor = Red_Color
             self.rertyBtn.isHidden = false
+            self.operateBtn.setTitle("cancel".localizedString, for: .normal)
             self.operateBtn.snp.remakeConstraints { make in
                 make.right.equalTo(self.contentView.snp.centerX).offset(SCRXFrom(-7))
                 make.top.equalTo(messageLabel.snp.bottom).offset(SCRYFrom(132))
@@ -160,12 +161,29 @@ class FirmwareUpdateStateView: UIView {
         case .result(let successfuly, let failed):
             if failed > 0 {
                 self.messageLabel.text = "multi_upgrade_result_message".localizedString
+                self.rertyBtn.isHidden = false
+                self.operateBtn.setTitle("cancel".localizedString, for: .normal)
+                self.operateBtn.snp.remakeConstraints { make in
+                    make.right.equalTo(self.contentView.snp.centerX).offset(SCRXFrom(-7))
+                    make.top.equalTo(messageLabel.snp.bottom).offset(SCRYFrom(76))
+                    make.width.equalTo(SCRXFrom(124))
+                    make.height.equalTo(SCRYFrom(32))
+                    make.bottom.equalTo(SCRYFrom(-24))
+                }
             }else {
                 self.messageLabel.text = "multi_upgrade_completed_message".localizedString
+                self.operateBtn.setTitle("ok".localizedString, for: .normal)
+                self.rertyBtn.isHidden = true
+                self.operateBtn.snp.remakeConstraints { make in
+                    make.centerX.equalToSuperview()
+                    make.top.equalTo(messageLabel.snp.bottom).offset(SCRYFrom(76))
+                    make.width.equalTo(SCRXFrom(124))
+                    make.height.equalTo(SCRYFrom(32))
+                    make.bottom.equalTo(SCRYFrom(-24))
+                }
             }
             self.titleLabel.text = "\("upgrade_result".localizedString): \(successfuly)/\(successfuly + failed)"
             self.stateLabel.isHidden = true
-            self.rertyBtn.isHidden = false
             self.completedBtn.isHidden = false
             self.failedBtn.isHidden = false
             self.versionLabel.isHidden = true
@@ -179,14 +197,6 @@ class FirmwareUpdateStateView: UIView {
             let failedAttStr = NSMutableAttributedString(string: "\("failed:".localizedString) \(failed)")
             failedAttStr.addAttribute(.foregroundColor, value: TextBlack_Color, range: (failedAttStr.string as NSString).range(of: "\(failed)"))
             self.failedBtn.setAttributedTitle(failedAttStr, for: .normal)
-            
-            self.operateBtn.snp.remakeConstraints { make in
-                make.right.equalTo(self.contentView.snp.centerX).offset(SCRXFrom(-7))
-                make.top.equalTo(messageLabel.snp.bottom).offset(SCRYFrom(76))
-                make.width.equalTo(SCRXFrom(124))
-                make.height.equalTo(SCRYFrom(32))
-                make.bottom.equalTo(SCRYFrom(-24))
-            }
         }
         
     }

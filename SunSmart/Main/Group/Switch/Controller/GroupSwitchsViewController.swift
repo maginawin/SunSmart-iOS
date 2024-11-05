@@ -99,7 +99,7 @@ class GroupSwitchsViewController: UIViewController {
 //        if let index = group.info.switchs.firstIndex(where: { $0.id == groupSwitch.id }) {
 //            tableView.deleteSections(IndexSet(integer: index), with: .automatic)
 //        }
-        guard let newSwitch = MeshNetworkManager.instance.createDefalutSwitch() else {
+        guard let newSwitch = MeshNetworkManager.instance.createDefaultSwitch() else {
             SRAlertView(title: "notification".localizedString, message: "switchs_overrun_message".localizedString, actions: [SRAlertAction(title: "GOT_IT".localizedString)]).show()
             return
         }
@@ -712,7 +712,7 @@ extension GroupSwitchsViewController: GroupSwitchsHeaderViewDelegate {
     
     /// 长按view回调
     func headerViewDidLongPress(_ view: GroupSwitchsHeaderView) {
-        guard let groupSwitch = view.groupSwitch else {
+        guard let groupSwitch = view.groupSwitch, self.editable else {
             return
         }
         SRAlertView(title: "edit_name".localizedString, messageColor: Red_Color, messageFont: UIFont.systemFont(ofSize: 13, weight: .light), inputText: groupSwitch.name, inputFieldStyle: .init(placeholder: ""), actions: [.cancelAction, .init(title: "done".localizedString, style: .default)]) { text, validRange in

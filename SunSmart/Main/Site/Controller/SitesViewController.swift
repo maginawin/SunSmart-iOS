@@ -357,7 +357,7 @@ class SitesViewController: UIViewController {
                     }
                 case .space(_, let space, _, _):
                     // 已存在的space分享数据，跳转到site->space页面
-                    if let mySite = self.allSites.first(where: { $0.id == space.siteId && $0.permission == .owner && $0.state == .normal }) {
+                    if let mySite = self.allSites.first(where: { $0.id == space.siteId  && $0.state == .normal }), let mySpace = mySite.spaces.first(where: { $0.id == space.id }), mySpace.state == .normal {
                         self.navigationController?.popViewController(animated: false)
                         let vc = SiteViewController(site: mySite)
                         vc.enterSpaceId = space.id

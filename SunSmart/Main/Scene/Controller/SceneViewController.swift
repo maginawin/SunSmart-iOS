@@ -145,6 +145,7 @@ class SceneViewController: UIViewController {
             guard let self = self else { return true }
             self.scene.name = name
             self.scene.info.imageId = imageId + 1
+            self.scene.save()
             self.scene.info.save()
             self.titleLabel.text = name
 //            self.sceneUpdateCallback?(self.scene)

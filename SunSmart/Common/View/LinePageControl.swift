@@ -92,7 +92,9 @@ class LinePageControl: UIView {
     
     override func layoutSubviews() {
         super.layoutSubviews()
-        
+        guard frame != .zero, numberOfPages > 0 else {
+            return
+        }
         let progressW = frame.size.width / CGFloat(numberOfPages)
         progressView.width = progressW
         progressView.height = frame.size.height

@@ -544,7 +544,7 @@ class GroupViewController: UIViewController {
             }
             self.group.info.profile.updateData(profile: profile)
             self.group.info.save()
-            profile.save(meshUUID: self.space.meshUUID, meshNetworkId: self.space.meshNetworkId)
+            self.group.info.profile.save(meshUUID: self.space.meshUUID, meshNetworkId: self.space.meshNetworkId)
             self.updateUI()
         }
         navigationController?.pushViewController(vc, animated: true)

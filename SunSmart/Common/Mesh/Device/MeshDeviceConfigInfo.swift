@@ -20,7 +20,7 @@ struct MeshDeviceConfigInfo {
     let elementCount: Int
     
     /// 默认设备配置信息
-    static var defalutConfigInfos: [MeshDeviceConfigInfo] {
+    static var defaultConfigInfos: [MeshDeviceConfigInfo] {
         
         var configInfos: [MeshDeviceConfigInfo] = [
             .init(companyId: CompanyId, productId: 0x0001, categoryName: "PIR Sensor Lighting", elementCount: 2),

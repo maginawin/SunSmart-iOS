@@ -7,6 +7,7 @@
 
 import Foundation
 import Moya
+import NordicSigMeshSDK
 
 
 enum NetowrkReqeustApi {
@@ -79,8 +80,8 @@ enum NetowrkReqeustApi {
     case clearSpaceMembers(siteId: String, spaceId: String, userIds: [String], permission: Permission, force: Bool)
     /// 批量清除多个space成员 spaces: 需要删除成员的space  permission：权限类型  force：是否强制删除
     case clearSpacesMembers(siteId: String, spaces: [String], permission: Permission, force: Bool)
-    /// editor/visitor 批量解绑space  recycleDeviceAddresses: 回收的设备地址list   recycleGroupAddresses: 回收的组地址list  recycleSceneAddresses: 回收的场景地址list
-    case unbindSpaces(siteId: String, spaceIds: [String], recycleDeviceAddresses: [Int]? = nil, recycleGroupAddresses: [Int]? = nil, recycleSceneAddresses: [Int]? = nil, exclusions: [(ivIndex: Int, addresses: [Int])]? = nil)
+    /// editor/visitor 批量解绑space  recycleDeviceAddresses: 回收的设备地址list   recycleGroupAddresses: 回收的组地址list  recycleSceneAddresses: 回收的场景地址list  provisionerData: 用户当前网络地址数据
+    case unbindSpaces(siteId: String, spaceIds: [String], recycleDeviceAddresses: [Int]? = nil, recycleGroupAddresses: [Int]? = nil, recycleSceneAddresses: [Int]? = nil, exclusions: [(ivIndex: Int, addresses: [Int])]? = nil, provisionerData: [String: Any]? = nil)
     /// 修改space密码 permission：权限类型，editor/visitor
     case spacePasswordSet(siteId: String, spacePassword: SpacePasswordData)
     /// 批量修改space密码
@@ -109,8 +110,8 @@ enum NetowrkReqeustApi {
     /// 地址申请 type：地址类型  number：申请数量
     case applyAddress(siteId: String, type: AddressType = .device, number: Int)
     
-    /// 回收地址  recycleDeviceAddresses: 回收的设备地址list   recycleGroupAddresses: 回收的组地址list  recycleSceneAddresses: 回收的场景地址list
-    case recyclingAddress(siteId: String, recycleDeviceAddresses: [Int]? = nil, recycleGroupAddresses: [Int]? = nil, recycleSceneAddresses: [Int]? = nil, exclusions: [(ivIndex: Int, addresses: [Int])]? = nil)
+    /// 回收地址  recycleDeviceAddresses: 回收的设备地址list   recycleGroupAddresses: 回收的组地址list  recycleSceneAddresses: 回收的场景地址list  provisionerData: 用户当前网络地址数据
+    case recyclingAddress(siteId: String, recycleDeviceAddresses: [Int]? = nil, recycleGroupAddresses: [Int]? = nil, recycleSceneAddresses: [Int]? = nil, exclusions: [(ivIndex: Int, addresses: [Int])]? = nil, provisionerData: [String: Any]? = nil)
     
     // #****** OTA ******#
     /// 获取最新的固件包
@@ -299,7 +300,7 @@ extension NetowrkReqeustApi: TargetType {
             ]
             return ["token": shareId, "passwd": password, "user": user]
         case .shareInfo(let shareId):
-            return ["token": shareId]
+            return ["token": shareId, "userId": UserData.currentUserId]
         case .spaceMembers(let siteId, let spaceId):
             return ["siteId": siteId, "spaceId": spaceId, "userId": UserData.currentUserId]
         case .clearSpaceMember(let siteId, let spaceId, let userId, let permission, let force):
@@ -309,7 +310,7 @@ extension NetowrkReqeustApi: TargetType {
             return ["siteId": siteId, "spaceId": spaceId, "userId": UserData.currentUserId, "reclaimUserList": userIds, "roleName": permission.dataString, "force": force]
         case .clearSpacesMembers(let siteId, let spaces, let permission, let force):
             return ["siteId": siteId, "spaces": spaces, "userId": UserData.currentUserId, "roleName": permission.dataString, "force": force]
-        case .unbindSpaces(let siteId, let spaceIds, let recycleDeviceAddresses, let recycleGroupAddresses, let recycleSceneAddresses, let exclusions):
+        case .unbindSpaces(let siteId, let spaceIds, let recycleDeviceAddresses, let recycleGroupAddresses, let recycleSceneAddresses, let exclusions, let provisionerData):
             
             var parameters: [String: Any] = ["siteId": siteId, "spaces": spaceIds, "userId": UserData.currentUserId]
             // 判断是否回收地址
@@ -326,6 +327,9 @@ extension NetowrkReqeustApi: TargetType {
                 }
                 parameters.updateValue(addressDict, forKey: "addrLists")
             }
+            if provisionerData != nil {
+                parameters.updateValue(provisionerData!, forKey: "provisioner")
+            }
             // 是否回收废弃地址数据
             if let exclusions = exclusions {
                 parameters.updateValue(exclusions.map({ ["ivIndex": $0.ivIndex, "addresses": $0.addresses] }), forKey: "exclusions")
@@ -340,7 +344,7 @@ extension NetowrkReqeustApi: TargetType {
             return ["username": name, "userId": UserData.currentUserId]
         case .applyAddress(let siteId, let type, let number):
             return ["siteId": siteId, "addrType": type.rawValue, "number": number, "userId": UserData.currentUserId]
-        case .recyclingAddress(let siteId, let recycleDeviceAddresses, let recycleGroupAddresses, let recycleSceneAddresses, let exclusions):
+        case .recyclingAddress(let siteId, let recycleDeviceAddresses, let recycleGroupAddresses, let recycleSceneAddresses, let exclusions, let provisionerData):
             
             var parameters: [String: Any] = ["siteId": siteId, "userId": UserData.currentUserId]
             // 判断是否回收地址
@@ -357,6 +361,10 @@ extension NetowrkReqeustApi: TargetType {
                 }
                 parameters.updateValue(addressDict, forKey: "addrLists")
             }
+            if provisionerData != nil {
+                parameters.updateValue(provisionerData!, forKey: "provisioner")
+            }
+            
             // 是否回收废弃地址数据
             if let exclusions = exclusions {
                 parameters.updateValue(exclusions.map({ ["ivIndex": $0.ivIndex, "addresses": $0.addresses] }), forKey: "exclusions")

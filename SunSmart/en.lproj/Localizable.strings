@@ -801,6 +801,36 @@
 "signal_below_message" = "Signals below -80dB cannot be selected.";
 "no_data" = "No Data !";
 
+"device_version_state" = "Device version state";
+"updatable" = "Updatable";
+"latest" = "Latest";
+"transfer_blob_failure" = "Transfer BLOB failure";
+"install_firmware_failure" = "Install firmware failure";
+"install_firmware_complete" = "Install firmware complete";
+"distributor" = "distributor";
+"Distributor" = "Distributor";
+"distributor_message" = "Distributor-The distributor receives new firmware images from an initiator and is responsiblefor sending them to appropriate nodes in the network.";
+"updatating_nodes" = "Updating node(s)";
+"updatating_nodes_message" = "Updating node(s)-Updating node is the name given to a node which can receive a firmware image from a distributor and installit.";
+"mesh_upgrade_instructions" = "Mesh Upgrade Instructions";
+"mesh_upgrade_instructions_message" = "Each stage can be executed separately. For example, you can first download the firmware package from the server to the app, and then upload the firmware to the distributor on site without network. After uploading, you can also upgrade the device in multiple times.\n\nDifferent device types can queue up for mesh upgrades, and during the upgrade, you can take your phone away from the site to operate the next space.";
+"node(s)" = "Node(s)";
+"upgrade" = "Upgrade";
+"how_to_mesh_upgrade" = "How to Mesh Upgrade";
+"how_to_select_a_distributor" = "How to select a distributor";
+"firmware_package" = "Firmware package";
+"device_version" = "Device version";
+"UPLOAD" = "UPLOAD";
+"NEXT" = "NEXT";
+"upload" = "Upload";
+"to" = "to";
+"select_distributor" = "Select Distributor";
+"distributor_download_firmware_message" = "Download the firmware package before uploading.";
+"mesh_upgrade_prompt_message" = "In this step，the DFU feature uses a multicast firmware distribution(BLOB transfer) capability enabling single firmware image to be distributed to multiple devices in one go.\nYou can exit the space or app during the upgrade so that you can go to the next space for more operations. You can still check the progress when you enter the space again.";
+"mesh_upgrade_guide_1" = "Select the device(s) that needs to be upgraded.";
+"mesh_upgrade_guide_2" = "Upgrade firmware to selected device(s).";
+"mesh_upgrade_guide_3" = "Waiting for the upgrade queue, if there is already a device type in the space being upgraded.";
+
 "get_started" = "Get Started";
 "welcome_title" = "Welcome to the\nSunSmart\napplication !";
 "welcome_policy_message" = "I accept and agree to User Agreement and \n Privacy Policy";

@@ -23,14 +23,12 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         
 //        let mainNavVc = NavigationViewController(rootViewController: GroupViewController(space: space!, group: space!.groups.first!)) //SitesViewController
         if UserData.isTermsOfService { // 是否同意使用协议
-//            let site = SiteData.loadAll().last!
-//            let space = site.spaces.first!
-////
+//            let site = SiteData.loadAll().first!
+//            let space = site.spaces[1]
+//////
 //            let spaceVc = SpaceViewController(space: space)
 //            spaceVc.site = site
-//            
 //            let mainNavVc = NavigationViewController(rootViewController: spaceVc)
-//            let mainNavVc = NavigationViewController(rootViewController: FirmwareVersionHistoryController())
             
             let mainNavVc = NavigationViewController(rootViewController: SitesViewController())
             window?.rootViewController = mainNavVc

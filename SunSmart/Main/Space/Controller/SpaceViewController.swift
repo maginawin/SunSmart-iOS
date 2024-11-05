@@ -103,7 +103,7 @@ class SpaceViewController: WMPageController {
     }
     
     override func viewDidLoad() {
-//        self.selectIndex = 3
+//        self.selectIndex = 4
         
 //        MeshNetworkManager.instance.meshNetwork?.applicationKeys.first.
         super.viewDidLoad()
@@ -329,9 +329,9 @@ class SpaceViewController: WMPageController {
         XWHUDManager.showCustomHUD(withMessage: nil, isWindow: false, afterDelay: 2)
         DispatchQueue.global().async {[weak self] in
             guard let self = self else { return }
-            MeshLibManager.manager.setMeshNetworkConnected(meshUUID: self.space.meshUUID, subNetwork: self.space.meshNetworkKey)
+            MeshLibManager.manager.setMeshNetworkConnected(meshUUID: self.space.meshUUID, subNetworkId: self.space.meshNetworkId)
             if let manager = MeshLibManager.manager.meshNetworkManager, let meshNetwork = manager.meshNetwork {
-                self.space.meshManager = manager
+//                self.space.meshManager = manager
                 if meshNetwork.localProvisioner == nil || meshNetwork.localProvisioner?.primaryUnicastAddress == nil { // 缺少手机供应者或手机地址
                     // 如果用户有地址则自己分配一个作为手机地址
                     if let localProvisioner = manager.meshNetwork?.localProvisioner, let address = meshNetwork.nextAvailableUnicastAddress(elementsCount: 1, elementsUsing: localProvisioner, lockInAddress: false) {
@@ -344,6 +344,7 @@ class SpaceViewController: WMPageController {
                 manager.loadExtensionData {[weak self] in
                     guard let self = self else { return }
 //                    XWHUDManager.hideInView(with: self.view)
+                    XWHUDManager.hide()
                     self.loadNetworkData = true
                     self.reloadData()
 //                    if self.cloudPermissionValidation {
@@ -429,7 +430,7 @@ class SpaceViewController: WMPageController {
         
         let recycleData = site.getRecycleAddressData(unbindSpaces: [space])
         
-        let networkApi: NetowrkReqeustApi = .unbindSpaces(siteId: site.id, spaceIds: [space.id], recycleDeviceAddresses: recycleData.deviceAddresses, recycleGroupAddresses: recycleData.groupAddresses, recycleSceneAddresses: recycleData.sceneAddresses, exclusions: recycleData.exclusionAddresses?.map({ ($0.ivIndex, $0.addresses) }))
+        let networkApi: NetowrkReqeustApi = .unbindSpaces(siteId: site.id, spaceIds: [space.id], recycleDeviceAddresses: recycleData.deviceAddresses, recycleGroupAddresses: recycleData.groupAddresses, recycleSceneAddresses: recycleData.sceneAddresses, exclusions: recycleData.exclusionAddresses?.map({ ($0.ivIndex, $0.addresses) }), provisionerData: recycleData.provisionerData)
         
         NetworkRequest.shared.request(networkApi) {[weak self] result in
             XWHUDManager.hide()
@@ -870,6 +871,24 @@ class SpaceViewController: WMPageController {
                             self.space.editor = nil
                             spaceSave = true
                         }
+                    }
+                }
+                
+                if self.space.permission == .owner, let editorPassword = JSON(response)["data"]["space"]["editorPasswd"].string, space.editorPassword != editorPassword {
+                    self.space.editorPassword = editorPassword
+                    spaceSave = true
+                }
+                
+                if let visitorPassword = JSON(response)["data"]["space"]["visitorPasswd"].string {
+                    if self.space.vistorPassword ?? "" != visitorPassword {
+                        if visitorPassword.isEmpty {
+                            self.space.vistorPassword = nil
+//                                space.vistorPasswordEnable = false
+                        }else {
+                            self.space.vistorPassword = visitorPassword
+//                                space.vistorPasswordEnable = true
+                        }
+                        spaceSave = true
                     }
                 }
                 

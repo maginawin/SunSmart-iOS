@@ -1075,7 +1075,7 @@ extension SyncDevicesViewController: UITableViewDataSource, UITableViewDelegate 
             tableView.reloadSections(IndexSet(integer: indexPath.section), with: .automatic)
         }else if let stepModel = cellModel as? SyncDeviceStepModel { // 过程
             // 弹窗显示进度
-            guard stepModel.tasks.count > 1 else {
+            guard stepModel.tasks.count > 0 else {
                 return
             }
             SyncDevicesProgressView.show(stepModel: stepModel) { [weak self] task in

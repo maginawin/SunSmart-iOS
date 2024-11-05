@@ -385,7 +385,7 @@ extension EnOceanProxyViewController: LBXScanViewControllerDelegate {
                         SRAlertView(title: "notification".localizedString, message: "switchs_overrun_message".localizedString, actions: [SRAlertAction(title: "GOT_IT".localizedString)]).show()
                         return
                     }
-                    let newSwitch = DeviceSwitchData.defalut()
+                    let newSwitch = DeviceSwitchData.default()
                     newSwitch.enabled = switchData.enabled
                     newSwitch.bindGroupAddresses = switchData.bindGroupAddresses
                     newSwitch.sceneANumber = switchData.sceneANumber

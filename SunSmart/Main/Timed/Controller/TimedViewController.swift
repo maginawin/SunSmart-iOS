@@ -273,6 +273,7 @@ extension TimedViewController: UICollectionViewDataSource, UICollectionViewDeleg
     func collectionView(_ collectionView: UICollectionView, didSelectItemAt indexPath: IndexPath) {
         
         guard self.space.scheduleOperates.contains(.edit) else {
+            XWHUDManager.showTipHUD("no_permission".localizedString + "！")
             return
         }
         

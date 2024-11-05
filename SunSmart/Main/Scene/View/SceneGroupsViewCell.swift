@@ -54,8 +54,13 @@ class SceneGroupsViewCell: UICollectionViewCell {
         nameLabel.text = group.name
         
         if let data = sceneData {
-            progressView.progress = data.lightness
-            
+            let groupLightData = group.info.profile.lightData
+            var lightnessValue = data.lightness
+            lightnessValue = max(groupLightData.data.lowEndTrim, min(groupLightData.data.highEndTrim, lightnessValue))
+            progressView.progress = lightnessValue
+//            data.lightness
+            // max(groupLightData.data.lowEndTrim, min(groupLightData.data.highEndTrim, <#T##y: Comparable##Comparable#>))
+           
             let cct100 = Node.getTemperature100(temperature: UInt16(data.cct), range: SceneExecuteData.cctRange)
             progressView.progressColor = Node.getCctMixColor(temperature100: cct100)
         }

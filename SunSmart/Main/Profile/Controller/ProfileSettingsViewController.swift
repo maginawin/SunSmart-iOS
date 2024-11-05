@@ -199,9 +199,9 @@ class ProfileSettingsViewController: UIViewController {
                         self.selectProfile.powerUpState = .definedLightLevel(UInt8(value))
                         self.powerUpBehaviorView.powerState = self.selectProfile.powerUpState
                     }
-                    self.powerUpBehaviorView.slider.limitRange = range
+                    fallthrough
                 default:
-                    break
+                    self.powerUpBehaviorView.slider.limitRange = range
                 }
                     
             case .occupancyAndVacantLevel(let occupanyLevel, let vacantLevel):

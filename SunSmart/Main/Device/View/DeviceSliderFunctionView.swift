@@ -118,6 +118,9 @@ class DeviceSliderFunctionView: UIView {
         slider.step = data.step
         slider.minimumValue = Float(data.min)
         slider.maximumValue = Float(data.max)
+        if data.limitRange != nil {
+            slider.limitRange = data.limitRange
+        }
         switch type {
         case .level:
             slider.minimumTrackTintColor = data.sliderColors.first
@@ -231,17 +234,17 @@ extension DeviceSliderFunctionView {
   
     /// 功能类型
     enum FunctionType {
-        /// 最小值，最大值，步长（加/减），单位，滑动条颜色
-        var data: (min: Int,max: Int, step: Int, unit: String, sliderColors: [UIColor]) {
+        /// 最小值，最大值，步长（加/减），限制范围， 单位，滑动条颜色
+        var data: (min: Int,max: Int, step: Int, limitRange: ClosedRange<Int>?, unit: String, sliderColors: [UIColor]) {
             switch self {
-            case .level(let min, let max, let step, let unit, let sliderColors):
-                return (min, max, step, unit, sliderColors)
+            case .level(let min, let max, let step, let limitRange, let unit, let sliderColors):
+                return (min, max, step, limitRange, unit, sliderColors)
             case .cct(let min, let max, let step, let unit, let sliderColors):
-                return (min, max, step, unit, sliderColors)
+                return (min, max, step, nil, unit, sliderColors)
             }
         }
         /// 亮度
-        case level(min: Int = 0, max: Int = 100, step: Int = 1, unit: String = "%", sliderColors: [UIColor] = [RGB(255, 167, 44), RGB(229, 229, 229)])
+        case level(min: Int = 0, max: Int = 100, step: Int = 1, limitRange: ClosedRange<Int>? = nil, unit: String = "%", sliderColors: [UIColor] = [RGB(255, 167, 44), RGB(229, 229, 229)])
         /// 色温
         case cct(min: Int = 2700, max: Int = 6500, step: Int = 10, unit: String = "K", sliderColors: [UIColor] = [RGB(255, 108, 0), .white, RGB(114, 179, 255)])
     }

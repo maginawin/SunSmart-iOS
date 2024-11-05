@@ -55,7 +55,9 @@ class AlignCenterFlowLayout: UICollectionViewFlowLayout {
         if let lastElement = lastRowElements.last, lastRowElements.count < itemRowCount {
             lastRowElements.forEach({
                 var frame = $0.frame
-                frame.origin.x += (maxX - lastElement.frame.maxX + contentInset.left) * 0.5
+                let leftMargin: CGFloat = 0
+//                attrubutesArray.count <= itemRowCount ? 0 : collectionView.contentInset.left
+                frame.origin.x += (maxX - lastElement.frame.maxX + leftMargin) * 0.5
                 $0.frame = frame
             })
         }
@@ -66,7 +68,7 @@ class AlignCenterFlowLayout: UICollectionViewFlowLayout {
             lagePageElements.forEach({
                 var frame = $0.frame
                 var top = frame.origin.y
-                top += (showHeight - lastPageMaxY + contentInset.top + offsetY) * 0.5 // + collectionView.contentOffset.y
+                top += (showHeight - lastPageMaxY  + offsetY) * 0.5 // + collectionView.contentOffset.y
                 frame.origin.y = top
                 $0.frame = frame
             })

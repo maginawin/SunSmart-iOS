@@ -374,6 +374,11 @@ class ShareAuthorityViewController: UIViewController {
                         }
                     }
                     
+                    if space.permission == .owner, let editorPassword = JSON(response)["data"]["space"]["editorPasswd"].string, space.editorPassword != editorPassword {
+                        space.editorPassword = editorPassword
+                        saveSpace = true
+                    }
+                    
                     if let visitorPassword = JSON(response)["data"]["space"]["visitorPasswd"].string {
                         if space.vistorPassword ?? "" != visitorPassword {
                             if visitorPassword.isEmpty {
@@ -594,7 +599,7 @@ class ShareAuthorityViewController: UIViewController {
         // 回收地址数据
         let recycleData = site.getRecycleAddressData(unbindSpaces: spaces)
         
-        let networkApi: NetowrkReqeustApi = .unbindSpaces(siteId: site.id, spaceIds: spaces.map({ $0.id }), recycleDeviceAddresses: recycleData.deviceAddresses, recycleGroupAddresses: recycleData.groupAddresses, recycleSceneAddresses: recycleData.sceneAddresses, exclusions: recycleData.exclusionAddresses?.map({ ($0.ivIndex, $0.addresses) }))
+        let networkApi: NetowrkReqeustApi = .unbindSpaces(siteId: site.id, spaceIds: spaces.map({ $0.id }), recycleDeviceAddresses: recycleData.deviceAddresses, recycleGroupAddresses: recycleData.groupAddresses, recycleSceneAddresses: recycleData.sceneAddresses, exclusions: recycleData.exclusionAddresses?.map({ ($0.ivIndex, $0.addresses) }), provisionerData: recycleData.provisionerData)
         
         NetworkRequest.shared.request(networkApi) {[weak self] result in
             XWHUDManager.hide()

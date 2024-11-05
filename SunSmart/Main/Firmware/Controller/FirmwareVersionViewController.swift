@@ -177,7 +177,7 @@ class FirmwareVersionViewController: UIViewController {
             
 //            if let currentFirmwareData = self.localFirmwareData {
                 // 有新版本
-                if self.localFirmwareData == nil || newFirmwareData.version.compare(self.localFirmwareData!.version) == .orderedDescending {
+                if self.localFirmwareData == nil || newFirmwareData.version.compare(self.localFirmwareData!.version, options: .numeric) == .orderedDescending {
                     
                     stateLabel.text = "new_version_found".localizedString
                     

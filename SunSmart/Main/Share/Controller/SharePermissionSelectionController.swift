@@ -122,43 +122,57 @@ class SharePermissionSelectionController: UIViewController {
     /// 加入space请求
     private func spaceJoinRequest(space: SpaceData, password: String?, permission: Permission) {
         XWHUDManager.showCustomHUD(withMessage: nil, isWindow: true)
+            
         NetworkRequest.shared.request(.joinSpace(shareId: self.shareId, password: password, permission: permission)) {[weak self] result in
             XWHUDManager.hide()
             guard let self = self else { return }
             switch result {
             case .success(_):
-//                if let siteData = JSON(response)["data"]["site"].dictionaryObject {
-//                    Task {
-//                        // 区分加入site服务器分配的手机地址，还是卸载后的拉取site之前的手机地址
-//                        if let site = await SiteData.import(siteJsonData: siteData) {
-//                            // 申请下来的地址
-//                            if let addressData = JSON(response)["data"]["addrLists"].dictionaryObject {
-//                                site.insetProvisioner(provisionerData: addressData)
-//                                // 更新地址数据
-////                                CloudSynchronizationManager.shared.addSynchronizationHandle(operation: .syncSite(site: site), level: .promptly)
+                Task {
+                    let cacheSpace = SpaceData.load(siteId: space.siteId, spaceId: space.id).first
+                    if cacheSpace != nil, let site = SiteData.load(siteId: space.siteId) {
+                        // 回收之前清空权限时的地址
+                        var recycleAddressData = site.getRecycleAddressData(unbindSpaces: [cacheSpace!])
+                        recycleAddressData.provisionerData = nil
+                        recycleAddressData.exclusionAddresses = nil
+                        if !recycleAddressData.isEmpty {
+//                            let result = await self.recycleAddressReqeust(site: site, recycleData:recycleAddressData)
+//                            if !result {
+                            // 回收地址数据合并，在打开site时回收
+                                if let existRecycleAddressData = site.recycleAddressData {
+                                    site.recycleAddressData = existRecycleAddressData + recycleAddressData
+                                }else {
+                                    site.recycleAddressData = recycleAddressData
+                                }
 //                            }
-//                            site.save()
-//                        }
-//                    }
-//                }
-                let localSpace = SpaceData.load(siteId: space.siteId, spaceId: space.id).first ?? space
-                localSpace.authorizationPassword = password
-                localSpace.permission = permission
-                localSpace.requiresPasswordVerification = false
-                localSpace.applyDeviceAddressCount = nil
-                localSpace.releaseAddress = false
-                localSpace.state = .normal
-                localSpace.save()
-                
-                XWHUDManager.showSuccessTipHUD("successfully".localizedString + "!")
-                DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {[weak self] in
-                    NotificationCenter.default.post(name: .init(SitesDataRefreshNotifiacationName), object: true)
-                    self?.back()
+                        }
+                        site.state = .normal
+                        site.save()
+                    }
+                    
+                    let localSpace = cacheSpace ?? space
+                    localSpace.authorizationPassword = password
+                    localSpace.permission = permission
+                    localSpace.requiresPasswordVerification = false
+                    localSpace.applyDeviceAddressCount = nil
+                    localSpace.releaseAddress = false
+                    localSpace.state = .normal
+                    localSpace.save()
+                    
+                    XWHUDManager.showSuccessTipHUD("successfully".localizedString + "!")
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {[weak self] in
+                        NotificationCenter.default.post(name: .init(SitesDataRefreshNotifiacationName), object: true)
+                        self?.back()
+                    }
                 }
             case .failure(let error):
                 XWHUDManager.showErrorTipHUD(error.localizedDescription)
             }
         }
+            
+        
+        
+        
     }
     
     /// 批量加入space请求
@@ -166,44 +180,77 @@ class SharePermissionSelectionController: UIViewController {
         
         XWHUDManager.showCustomHUD(withMessage: nil, isWindow: true)
         NetworkRequest.shared.request(.joinSpace(shareId: self.shareId, password: password, permission: permission)) {[weak self] result in
-            XWHUDManager.hide()
             guard let self = self else { return }
             switch result {
             case .success(let response):
 //                XWHUDManager.showSuccessTipHUD("successfully".localizedString + "!")
                 
                 if let spaceDatas = JSON(response)["data"]["spaces"].arrayObject as? [[String: Any]] {
-                    let results: [BatchSpaceImportResult] = spaceDatas.compactMap({ spaceData in
-                        guard let spaceId = spaceData["spaceId"] as? String, let spaceName = spaceData["spaceName"] as? String else { return nil }
-                        
-                        var status: BatchSpaceImportResult.Status = .successfully
-                        if let statusCode = spaceData["importStatus"] as? Int, let resultStatus = BatchSpaceImportResult.Status(rawValue: statusCode) {
-                            status = resultStatus
-                        }
-                        if status == .successfully {
-                            let space = spaces.first(where: { $0.id == spaceId })
-                            space?.permission = permission
-                            if permission == .editor {
-                                space?.authorizationPassword = spaceData["editorPasswd"] as? String
-                                space?.requiresPasswordVerification = false
-                                space?.applyDeviceAddressCount = nil
-                                space?.releaseAddress = false
+                    Task {
+                        // 之前已移除权限并未回收地址的space
+                        var recycleSpaces: [SpaceData] = []
+                        let results: [BatchSpaceImportResult] = spaceDatas.compactMap({ spaceData in
+                            guard let spaceId = spaceData["spaceId"] as? String, let spaceName = spaceData["spaceName"] as? String else { return nil }
+                            
+                            var status: BatchSpaceImportResult.Status = .successfully
+                            if let statusCode = spaceData["importStatus"] as? Int, let resultStatus = BatchSpaceImportResult.Status(rawValue: statusCode) {
+                                status = resultStatus
                             }
-                            space?.state = .normal
-                            space?.save()
-                        }
+                            if status == .successfully {
+                                let space = spaces.first(where: { $0.id == spaceId })
+                                space?.permission = permission
+                                if permission == .editor {
+                                    space?.authorizationPassword = spaceData["editorPasswd"] as? String
+                                    space?.requiresPasswordVerification = false
+                                    space?.applyDeviceAddressCount = nil
+                                    space?.releaseAddress = false
+                                }
+                                // 是否之前存在该space，并且处理权限回收未清空地址状态
+                                if let siteId = space?.siteId, let spaceId = space?.id,
+                                   let oldSpace = SpaceData.load(siteId: siteId, spaceId: spaceId).first, !oldSpace.releaseAddress {
+                                    recycleSpaces.append(oldSpace)
+                                }
+                                space?.state = .normal
+                                space?.save()
+                            }
+                            
+                            let result = BatchSpaceImportResult(spaceId: spaceId, spaceName: spaceName, editorPassword: spaceData["editorPasswd"] as? String, status: status)
+                            return result
+                        })
                         
-                        let result = BatchSpaceImportResult(spaceId: spaceId, spaceName: spaceName, editorPassword: spaceData["editorPasswd"] as? String, status: status)
-                        return result
-                    })
-                    
-                    self.batchImportResults = results
-                    self.showImportResult(results: results)
+                        if let siteId = spaces.first?.siteId, let site = SiteData.load(siteId: siteId) {
+                            // 回收之前清空权限时的地址
+                            if recycleSpaces.count > 0 {
+                                var recycleAddressData = site.getRecycleAddressData(unbindSpaces: recycleSpaces)
+                                recycleAddressData.provisionerData = nil
+                                recycleAddressData.exclusionAddresses = nil
+                                if !recycleAddressData.isEmpty {
+                                    
+                                    // 回收地址数据合并，在打开site时回收
+                                    if let existRecycleAddressData = site.recycleAddressData {
+                                        site.recycleAddressData = existRecycleAddressData + recycleAddressData
+                                    }else {
+                                        site.recycleAddressData = recycleAddressData
+                                    }
+                                    //                                let result = await self.recycleAddressReqeust(site: site, recycleData: recycleAddressData)
+                                    //                                if !result {
+                                    //                                    site.recycleAddressData = recycleAddressData
+                                    //                                }
+                                }
+                            }
+                            site.state = .normal
+                            site.save()
+                        }
+                        XWHUDManager.hide()
+                        self.batchImportResults = results
+                        self.showImportResult(results: results)
+                    }
                 }
                 
                 NotificationCenter.default.post(name: .init(SitesDataRefreshNotifiacationName), object: true)
     
             case .failure(let error):
+                XWHUDManager.hide()
                 XWHUDManager.showErrorTipHUD(error.localizedDescription)
             }
         }
@@ -226,52 +273,75 @@ class SharePermissionSelectionController: UIViewController {
                         siteData.updateValue(exclusions, forKey: "exclusions")
                     }
                     Task {
-                        var localSite: SiteData?
-                        var changeAddress = true
-                        if let siteId = siteData["uuid"] as? String {
-                            localSite = SiteData.load(siteId: siteId)
-                            if localSite != nil && localSite?.localAddress != nil && localSite?.state == .normal {
-                                changeAddress = false
+                        var recycleAddressData: SiteData.RecycleAddressData?
+                        if let siteId = siteData["uuid"] as? String, let localSite = SiteData.load(siteId: siteId), localSite.permission != .owner {
+                            // 判断是否存在这个site，如果有则主动回收自己之前拥有的地址
+                            var recycleData = localSite.getRecycleAddressData(unbindSpaces: localSite.spaces)
+                            recycleData.provisionerData = nil
+                            if !recycleData.isEmpty {
+                                let result = await self.recycleAddressReqeust(site: localSite, recycleData: recycleData)
+                                localSite.delete()
+                                if !result {
+                                    recycleAddressData = recycleData
+                                }
                             }
+                                // 回收之前owner的手机地址
+//                                if let ivIndex = JSON(siteData)["ivIndex"].uInt32, let addressHex = JSON(siteData)["provisioner"]["address"].string, let localAddress = Address(hex: addressHex) {
+//                                    site.insetExclusionAddresses(list: [(ivIndex, [localAddress])])
+//                                }
+//                                // 合并废弃地址数据
+//                                if let exclusionAddresses: [(ivIndex: UInt32, addresses: [UInt16])] = recycleData.exclusionAddresses?.map({ (UInt32($0.ivIndex), $0.addresses.map({ UInt16($0) })) }) {
+//                                    site.insetExclusionAddresses(list: exclusionAddresses)
+//                                    recycleData.exclusionAddresses = nil
+//                                }
+//                                // 回收未使用的地址
+//                                if !recycleData.isEmpty {
+//                                    let result = await self.recycleAddressReqeust(site: site, recycleData: recycleData)
+//                                    if !result {
+//                                        site.recycleAddressData = recycleData
+//                                    }
+//                                    site.save()
+//                                }
+//                                // 立即将合并废弃地址/修改的手机地址数据同步到云端
+//                                CloudSynchronizationManager.shared.addSynchronizationHandle(operation: .syncSite(site: site, syncSpaces: []), level: .promptly)
+//                            }else {
+//                                site.save()
+//                                // 立即将合并废弃地址/修改的手机地址数据同步到云端
+//                                CloudSynchronizationManager.shared.addSynchronizationHandle(operation: .syncSite(site: site, syncSpaces: []), level: .promptly)
+//                            }
+//                            localSite = SiteData.load(siteId: siteId)
+                            
+//                            if localSite != nil && localSite?.localAddress != nil && localSite?.state == .normal {
+//                                changeAddress = false
+//                            }
                         }
                         
-                        if let site = await SiteData.import(siteJsonData: siteData, changeAddress: changeAddress) {
+                        if let site = await SiteData.import(siteJsonData: siteData, changeAddress: true) {
                             site.state = .normal
                             site.permission = .owner
-                            // 判断是否存在这个site，如果有则主动回收自己之前拥有的地址
-                            if let localSite = localSite, localSite.permission != .owner {
-                                var recycleData = localSite.getRecycleAddressData(unbindSpaces: localSite.spaces)
-                                // 回收之前owner的手机地址
-                                if let ivIndex = JSON(siteData)["ivIndex"].uInt32, let addressHex = JSON(siteData)["provisioner"]["address"].string, let localAddress = Address(hex: addressHex) {
-                                    site.insetExclusionAddresses(list: [(ivIndex, [localAddress])])
-                                }
-                                // 合并废弃地址数据
-                                if let exclusionAddresses: [(ivIndex: UInt32, addresses: [UInt16])] = recycleData.exclusionAddresses?.map({ (UInt32($0.ivIndex), $0.addresses.map({ UInt16($0) })) }) {
-                                    site.insetExclusionAddresses(list: exclusionAddresses)
-                                    recycleData.exclusionAddresses = nil
-                                }
-                                // 回收未使用的地址
-                                if !recycleData.isEmpty {
-                                    self.recycleAddressReqeust(site: site, recycleData: recycleData)
-                                }
-                                // 立即将合并废弃地址/修改的手机地址数据同步到云端
-                                CloudSynchronizationManager.shared.addSynchronizationHandle(operation: .syncSite(site: site, syncSpaces: []), level: .promptly)
-                                return
-                            }else {
-                                site.save()
-                                // 立即将合并废弃地址/修改的手机地址数据同步到云端
-                                CloudSynchronizationManager.shared.addSynchronizationHandle(operation: .syncSite(site: site, syncSpaces: []), level: .promptly)
-                            }
-                            
+                            site.recycleAddressData = recycleAddressData
+                            site.save()
+                            // 修改手机地址需要合并到服务器
+                            CloudSynchronizationManager.shared.addSynchronizationHandle(operation: .syncSite(site: site, syncSpaces: []), level: .promptly)
                         }
+                         
+                        XWHUDManager.hide()
+                        XWHUDManager.showSuccessTipHUD("successfully".localizedString + "!")
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {[weak self] in
+                            NotificationCenter.default.post(name: .init(SitesDataRefreshNotifiacationName), object: true)
+                            self?.back()
+                        }
+                        
+                    }
+                }else {
+                    XWHUDManager.hide()
+                    XWHUDManager.showSuccessTipHUD("successfully".localizedString + "!")
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {[weak self] in
+                        NotificationCenter.default.post(name: .init(SitesDataRefreshNotifiacationName), object: true)
+                        self?.back()
                     }
                 }
-                XWHUDManager.hide()
-                XWHUDManager.showSuccessTipHUD("successfully".localizedString + "!")
-                DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {[weak self] in
-                    NotificationCenter.default.post(name: .init(SitesDataRefreshNotifiacationName), object: true)
-                    self?.back()
-                }
+               
                 
             case .failure(let error):
                 XWHUDManager.hide()
@@ -281,31 +351,22 @@ class SharePermissionSelectionController: UIViewController {
     }
     
     
-    /// 回收地址请求（接收转让的Site后，如之前在这个Site内需回收之前分配的地址）
+    /// 回收地址请求（接收转让的Site后，如之前在这个Site内需回收之前分配的地址 / 导入已存在且未回收地址的space）
     /// - Parameters:
     ///   - site: site
     ///   - recycleData: 回收地址数据
-    private func recycleAddressReqeust(site: SiteData, recycleData: SiteData.RecycleAddressData) {
+    private func recycleAddressReqeust(site: SiteData, recycleData: SiteData.RecycleAddressData) async -> Bool {
         
-        let networkApi: NetowrkReqeustApi = .recyclingAddress(siteId: site.id, recycleDeviceAddresses: recycleData.deviceAddresses, recycleGroupAddresses: recycleData.groupAddresses, recycleSceneAddresses: recycleData.sceneAddresses, exclusions: nil)
+        let networkApi: NetowrkReqeustApi = .recyclingAddress(siteId: site.id, recycleDeviceAddresses: recycleData.deviceAddresses, recycleGroupAddresses: recycleData.groupAddresses, recycleSceneAddresses: recycleData.sceneAddresses, exclusions: recycleData.exclusionAddresses?.map({ ($0.ivIndex, $0.addresses) }), provisionerData: recycleData.provisionerData)
 //        recycleData.exclusionAddresses?.map({ ($0.ivIndex, $0.addresses) })
-    
-        NetworkRequest.shared.request(networkApi) {[weak self] result in
-            guard let self = self else { return }
-            
-            XWHUDManager.hide()
-            XWHUDManager.showSuccessTipHUD("successfully".localizedString + "!")
-            DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {[weak self] in
-                NotificationCenter.default.post(name: .init(SitesDataRefreshNotifiacationName), object: true)
-                self?.back()
-            }
-            
-            switch result {
-            case .success(_):
-                site.save()
-            case .failure(_):
-                site.recycleAddressData = recycleData
-                site.save()
+        return await withCheckedContinuation { continuation in
+            NetworkRequest.shared.request(networkApi) { result in
+                switch result {
+                case .success(_):
+                    continuation.resume(returning: true)
+                case .failure(_):
+                    continuation.resume(returning: false)
+                }
             }
         }
         
@@ -556,15 +617,13 @@ extension SharePermissionSelectionController {
                 let spaces: [SpaceData] = spaceDicts.compactMap({ spaceDict in
                     let spaceData = JSON(spaceDict)
                     guard let spaceId = spaceData["spaceId"].string,
-                          let spaceName = spaceData["spaceName"].string,
-                          let password = spaceData["editorPasswd"].string else {
+                          let spaceName = spaceData["spaceName"].string else {
                         return nil
                     }
                     
                     let deviceCount = spaceData["nodeCount"].intValue
                     let space = SpaceData(name: spaceName, id: spaceId, siteId: siteId, imageId: 1, create: 0, isFavourite: false, permission: .visitor, sourceType: .share, meshUUID: siteId, meshNetworkId: spaceId)
                     space.deviceCount = deviceCount
-                    space.editorPassword = password
                     if let userId = spaceData["owner"]["userId"].string, let username = spaceData["owner"]["username"].string {
                         space.owner = .init(name: username, uuid: userId)
                     }

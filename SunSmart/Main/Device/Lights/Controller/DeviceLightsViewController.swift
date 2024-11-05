@@ -337,11 +337,11 @@ class DeviceLightsViewController: UIViewController {
         flowLayout = AlignCenterFlowLayout()
         flowLayout.minimumLineSpacing = SCRXFrom(16)
         flowLayout.minimumInteritemSpacing = SCRXFrom(16)
-        flowLayout.sectionInset = UIEdgeInsets(top: 0, left: SCRXFrom(12), bottom: SCRYFrom(16), right: SCRXFrom(12))
+        flowLayout.sectionInset = UIEdgeInsets(top: 0, left: 0, bottom: SCRYFrom(16), right: 0)
 //        UIEdgeInsets(top: 0, left: SCRXFrom(12), bottom: <#T##CGFloat#>, right: SCRXFrom(12))
         
         collectionView = UICollectionView(frame: .zero, collectionViewLayout: flowLayout)
-        collectionView.contentInset = UIEdgeInsets(top: SCRYFrom(42), left: 0, bottom: 0, right: 0)
+        collectionView.contentInset = UIEdgeInsets(top: SCRYFrom(42), left: SCRXFrom(12), bottom: 0, right: SCRXFrom(12))
         collectionView.backgroundColor = Background_Color
         collectionView.register(DevicesViewCell.classForCoder(), forCellWithReuseIdentifier: "cell")
         collectionView.register(DeviceAllOnOffViewCell.classForCoder(), forCellWithReuseIdentifier: "allControlCell")
@@ -859,14 +859,18 @@ extension DeviceLightsViewController: SpaceFunctionFooterViewDelegate {
     
     /// 点击添加回调
     func functionDidClickAdd(view: SpaceFunctionFooterView) {
-        
+        guard space.deviceOperates.contains(.add) else {
+            return
+        }
         let point = CGPoint(x: view.addBtn.center.x, y: SCREEN_HEIGHT - footerView.height)
         (self.parent as? DevicesViewController)?.addAction(point: point)
     }
     
     /// 编辑/取消编辑状态修改  editing：是否正在编辑
     func function(view: SpaceFunctionFooterView, editStateChanged editing: Bool) {
-        
+        guard space.deviceOperates.contains(.edit) else {
+            return
+        }
         
         isEdit = editing
         

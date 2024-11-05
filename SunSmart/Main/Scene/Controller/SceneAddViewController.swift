@@ -243,7 +243,7 @@ class SceneAddViewController: UIViewController {
         }
         
         XWHUDManager.showCustomHUD(withMessage: nil, isWindow: false)
-        MeshAPI.addOrEditScene(name: name) {[weak self] scene in
+        MeshAPI.addOrEditScene(name: sceneName) {[weak self] scene in
             XWHUDManager.hide()
             guard let self = self else { return }
             

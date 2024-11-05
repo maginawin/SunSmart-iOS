@@ -162,7 +162,7 @@ class GroupAddViewController: UIViewController {
 //                if let network = MeshNetworkManager.instance.meshNetwork, network.localProvisioner == nil || MeshNetworkManager.instance.meshNetwork?.nextAvailableGroupAddress(for: network.localProvisioner!) == nil {
 //
 //                }else {
-                    XWHUDManager.showTipHUD("failed".localizedString)
+                    XWHUDManager.showTipHUD("failed".localizedString + "!")
 //                }
             }
         }
@@ -177,12 +177,18 @@ class GroupAddViewController: UIViewController {
         }
         
         let source = self.dataSource[self.selectImageIndex]
-        let groupInfo = GroupInfo(address: group.address.address, imageId: self.selectImageIndex + 1, imageText: source.type == .text ? source.name : nil)
+        group.info.imageId = self.selectImageIndex + 1
+        group.info.imageText = source.type == .text ? source.name : nil
+        group.info.profile.updateData(profile: self.selectProfile)
+        group.info.save()
+        group.info.profile.save()
+        
+//        let groupInfo = GroupInfo(address: group.address.address, imageId: self.selectImageIndex + 1, imageText: source.type == .text ? source.name : nil)
 //        groupInfo.profile = self.selectProfile
-        groupInfo.profile.updateData(profile: self.selectProfile)
-        groupInfo.save()
-        groupInfo.profile.save()
-        group.info = groupInfo
+        
+//        groupInfo.save()
+//        groupInfo.profile.save()
+//        group.info = groupInfo
         // 保存配置数据
 //        self.selectProfile.save()
 //        self.doneCallback?(group)
