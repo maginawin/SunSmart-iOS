@@ -200,7 +200,7 @@ extension SiteData {
         case transfer
     }
     
-    /// Space状态
+    /// Site状态
     enum State: Int {
         /// 正常
         case normal = 1

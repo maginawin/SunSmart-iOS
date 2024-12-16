@@ -195,7 +195,7 @@ class GroupMembersViewController: UIViewController {
                     let createSceneBtn = UIButton(title: "create_scene".localizedString, titleSize: 16, titleWeight: .light, titleColor: Bar_Color, target: self, action: #selector(createSceneBtnAction))
                     createSceneBtn.backgroundColor = .white
                     createSceneBtn.layer.cornerRadius = SCRYFrom(10)
-                    createSceneBtn.layer.borderWidth = 0.5
+                    createSceneBtn.layer.borderWidth = 0.6
                     createSceneBtn.layer.borderColor = Bar_Color.cgColor
                     emptyView.addSubview(createSceneBtn)
                     createSceneBtn.snp.makeConstraints { make in
@@ -208,7 +208,7 @@ class GroupMembersViewController: UIViewController {
                     let createGroupsBtn = UIButton(title: "create_more_groups".localizedString, titleSize: 16, titleWeight: .light, titleColor: Bar_Color, target: self, action: #selector(createGroupsBtnAction))
                     createGroupsBtn.backgroundColor = .white
                     createGroupsBtn.layer.cornerRadius = SCRYFrom(10)
-                    createGroupsBtn.layer.borderWidth = 0.5
+                    createGroupsBtn.layer.borderWidth = 0.6
                     createGroupsBtn.layer.borderColor = Bar_Color.cgColor
                     emptyView.addSubview(createGroupsBtn)
                     createGroupsBtn.snp.makeConstraints { make in
@@ -241,10 +241,11 @@ class GroupMembersViewController: UIViewController {
         flowLayout = AlignCenterFlowLayout()
         flowLayout.minimumLineSpacing = SCRXFrom(16)
         flowLayout.minimumInteritemSpacing = SCRXFrom(16)
-        flowLayout.sectionInset = UIEdgeInsets(top: SCRYFrom(16), left: SCRXFrom(16), bottom: SCRYFrom(16), right: SCRXFrom(16))
+//        flowLayout.sectionInset = UIEdgeInsets(top: SCRYFrom(16), left: SCRXFrom(16), bottom: SCRYFrom(16), right: SCRXFrom(16))
         
         collectionView = UICollectionView(frame: .zero, collectionViewLayout: flowLayout)
         //        collectionView.contentInset = UIEdgeInsets(top: SCRYFrom(36), left: SCRXFrom(24), bottom: SCRYFit(36), right: SCRXFrom(24))
+        collectionView.contentInset = UIEdgeInsets(top: SCRYFrom(16), left: SCRXFrom(16), bottom: SCRYFrom(16), right: SCRXFrom(16))
         collectionView.backgroundColor = .clear
         collectionView.dataSource = self
         collectionView.delegate = self

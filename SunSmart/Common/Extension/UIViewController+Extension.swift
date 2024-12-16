@@ -203,9 +203,15 @@ extension UINavigationController {
     /// 移除栈内控制器
     func removeVc(vc: UIViewController) {
         
-        let vcArray = NSMutableArray.init(array: self.viewControllers)
-        vcArray.remove(vc)
-        self.viewControllers = vcArray as! [UIViewController]
+        removeViewControllers(viewControllers: [vc])
+    }
+    
+    /// 移除栈内控制器list
+    func removeViewControllers(viewControllers: [UIViewController]) {
+        
+        var vcArray = self.viewControllers
+        vcArray.removeAll(where: { viewControllers.contains($0) })
+        self.viewControllers = vcArray
     }
     
     /// 根据控制器类名返回到对应控制器

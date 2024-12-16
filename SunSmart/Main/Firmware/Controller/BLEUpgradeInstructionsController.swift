@@ -48,7 +48,7 @@ class BLEUpgradeInstructionsController: UIViewController {
         
         datas.forEach { data in
             let serverAttStr = NSMutableAttributedString(string: data.message)
-            serverAttStr.addAttributes([.font: FONTS(SCRYFrom(14)), .foregroundColor: TextBlack_Color], range: (serverAttStr.string as NSString).range(of: data.name))
+            serverAttStr.addAttributes([.font: FONTS(SCRXFrom(13)), .foregroundColor: TextBlack_Color], range: (serverAttStr.string as NSString).range(of: data.name))
             instrucutionAttStr.append(serverAttStr)
         }
         
@@ -85,7 +85,7 @@ class BLEUpgradeInstructionsController: UIViewController {
         var lastItemBtn: UIButton?
         datas.forEach { data in
             
-            let itemBtn = UIButton(title: data.name, titleSize: 13, titleWeight: .light, titleColor: TextBlack_Color, fit: false, normalImageName: data.iconName)
+            let itemBtn = UIButton(title: data.name, titleSize: SCRXFrom(12), titleWeight: .light, titleColor: TextBlack_Color, fit: false, normalImageName: data.iconName)
             itemBtn.isUserInteractionEnabled = false
             itemBtn.setImagePosition(position: .top, spacing: SCRYFrom(8))
             headerView.addSubview(itemBtn)
@@ -154,7 +154,7 @@ class BLEUpgradeInstructionsController: UIViewController {
 //            make.top.equalTo(arrowImageView1)
 //        }
         
-        instructionLabel = UILabel(text: "", textColor: SubText_Color, fontSize: 14, fontWeight: .light, fit: false)
+        instructionLabel = UILabel(text: "", textColor: SubText_Color, fontSize: SCRXFrom(13), fontWeight: .light, fit: false)
         instructionLabel.numberOfLines = 0
         view.addSubview(instructionLabel)
         instructionLabel.snp.makeConstraints { make in

@@ -38,7 +38,8 @@ class AdjustSpeedInstructionController: UIViewController {
             make.left.equalTo(SCRXFrom(16))
             make.right.equalTo(SCRXFrom(-16))
             make.bottom.equalToSuperview()
-            make.top.equalTo((navigationController?.navigationBar.height ?? kNavigationHeight))
+            make.top.equalTo(view.safeAreaLayoutGuide)
+//            make.top.equalTo((navigationController?.navigationBar.height ?? kNavigationHeight))
         }
         
         contentView = UIView()

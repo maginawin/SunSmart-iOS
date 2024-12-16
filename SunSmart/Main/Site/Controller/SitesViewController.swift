@@ -98,7 +98,7 @@ class SitesViewController: UIViewController {
                 self?.setupData()
                 self?.loadSitesRequest()
             }.show()
-        }else {
+        }else if NetworkRequest.shared.networkable {
             loadSitesRequest()
         }
       
@@ -259,17 +259,26 @@ class SitesViewController: UIViewController {
             self.favouritesRefreshControl.endRefreshing()
             switch result {
             case .success(let response):
-                if var siteDatas = JSON(response)["data"]["sites"].arrayObject as? [[String: Any]] {
+                if let siteDatas = JSON(response)["data"]["sites"].arrayObject as? [[String: Any]] {
                     Task {
                         var sites: [SiteData] = []
                         // 导入site数据属于耗时操作，等待异步线程完成
-                        while let data = siteDatas.first {
-                            // 如site本地数据不存在则修改手机地址（卸载重装）
-                            if let site = await SiteData.import(siteJsonData: data) {
-                                sites.append(site)
+                        print("导入数据: \(Date().timeIntervalSince1970)")
+                        await withTaskGroup(of: SiteData?.self) { group in
+                            for data in siteDatas {
+                                group.addTask {
+                                    // 异步处理每个数据
+                                    return await SiteData.import(siteJsonData: data)
+                                }
                             }
-                            siteDatas.removeFirst()
+                            // 收集结果
+                            for await site in group {
+                                if let site = site {
+                                    sites.append(site)
+                                }
+                            }
                         }
+                        print("导入数据完成: \(Date().timeIntervalSince1970)")
                         if UserData.isReinstallation {
                            _ = Keychain.saveLastVendorIdentifier()
                         }
@@ -409,10 +418,11 @@ class SitesViewController: UIViewController {
                 let list: [MeshDeviceConfigInfo] = JSON(response)["data"].arrayValue.compactMap({ json in
                     guard let companyIdHex = json["companyId"].string, let companyId = UInt16(hex: companyIdHex),
                           let productIdHex = json["productId"].string, let productId = UInt16(hex: productIdHex),
-                          let categoryName = json["categoryName"].string, let elementCount = json["elementCount"].int else {
+                          let categoryName = json["categoryName"].string, let elementCount = json["elementCount"].int,
+                          let iconCategory = json["iconCategory"].string else {
                         return nil
                     }
-                    return MeshDeviceConfigInfo(companyId: companyId, productId: productId, categoryName: categoryName, elementCount: elementCount)
+                    return MeshDeviceConfigInfo(companyId: companyId, productId: productId, categoryName: categoryName, elementCount: elementCount, iconCategory: iconCategory)
                 })
                 MeshLibManager.manager.supportDeviceInfos = list
                 MeshDeviceConfigInfo.saveAll(list: list)
@@ -472,7 +482,7 @@ class SitesViewController: UIViewController {
     
     /// 导入
     @objc private func importClick() {
-        
+            
         ImportProjectView {[weak self] mode in
             if mode == .scanQRCode {
                 self?.scanQRCode()
@@ -535,7 +545,11 @@ class SitesViewController: UIViewController {
     
     @objc private func moreClick() {
         
-        MenuPopView.show(items: [
+        let margin: CGFloat = SCRXFrom(15.5)
+//        isIphoneX ? 18 : 15
+        let touchCenterX = view.width - SCRXFrom(margin) - 15
+        
+        let items: [MenuPopView.MenuItem] = [
             .init(icon: UIImage(named: "menu_nearby_network"), title: "nearby_network".localizedString, tapItemBack: { item in
                 print(item.title)
                 XWHUDManager.showTipHUD("under_development".localizedString, isLineFeed: true)
@@ -543,8 +557,10 @@ class SitesViewController: UIViewController {
             .init(icon: UIImage(named: "menu_transfer_account"), title: "transfer_account".localizedString, tapItemBack: { item in
                 print(item.title)
                 XWHUDManager.showTipHUD("under_development".localizedString, isLineFeed: true)
-            }),
-        ], anchorPoint: CGPoint(x: view.width - SCRXFrom(20) - 15, y: kNavigationHeight), menuWidth: SCRXFrom(154))
+            })
+        ]
+        
+        MenuPopView.show(items: items, anchorPoint: CGPoint(x: touchCenterX, y: (navigationController?.navigationBar.frame.maxY ?? kNavigationHeight)), menuWidth: SCRXFrom(154))
         
     }
     
@@ -989,7 +1005,7 @@ class SitesViewController: UIViewController {
         view.addSubview(segmentedControl)
 //        CGRect(x: SCRXFrom(16), y: SCRYFrom(16) + kNavigationHeight, width: view.width - SCRXFrom(32), height: SCRYFrom(44))
         segmentedControl.snp.makeConstraints { make in
-            make.top.equalTo(SCRYFrom(16) + kNavigationHeight)
+            make.top.equalTo(view.safeAreaLayoutGuide).offset(SCRYFrom(16))
             make.left.equalTo(SCRXFrom(16))
             make.right.equalTo(SCRXFrom(-16))
             make.height.equalTo(SCRYFrom(44))

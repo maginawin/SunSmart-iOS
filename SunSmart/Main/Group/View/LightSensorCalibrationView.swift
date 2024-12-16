@@ -205,7 +205,7 @@ class LightSensorCalibrationView: UIView {
         levelField.layer.cornerRadius = 5
         levelField.layer.borderColor = RGB(151, 151, 151, 0.3).cgColor
         levelField.keyboardType = .numberPad
-        levelField.layer.borderWidth = 0.5
+        levelField.layer.borderWidth = 0.6
         levelField.returnKeyType = .done
         levelField.delegate = self
         levelField.addTarget(self, action: #selector(levelFieldEditChanged), for: .editingChanged)

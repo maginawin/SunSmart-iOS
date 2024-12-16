@@ -131,7 +131,7 @@ class ProfileSettingsHeaderView: UIView {
         profileBtn = UIButton(title: "Occupancy sensing with daylight harvesting", titleSize: 14, titleWeight: .light, titleColor: RGB(72, 72, 74), target: self, action: #selector(profileBtnClick))
         profileBtn.titleLabel?.font = UIFont.systemFont(ofSize: 14, weight: .light)
         profileBtn.layer.cornerRadius = 5
-        profileBtn.layer.borderWidth = 0.5
+        profileBtn.layer.borderWidth = 0.6
 //        profileBtn.titleLabel?.adjustsFontSizeToFitWidth = true
         profileBtn.layer.borderColor = RGB(151, 151, 151, 0.3).cgColor
         profileBtn.contentHorizontalAlignment = .left

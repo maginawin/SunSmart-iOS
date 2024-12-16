@@ -47,13 +47,15 @@ class DeviceSensorsViewController: UIViewController {
     
     private func updateUI() {
         
-        footerView.countBtn.setTitle("0/100", for: .normal)
-        if !space.deviceOperates.contains(.add) {
-            footerView.addBtn.isEnabled = false
-        }
-        if !space.deviceOperates.contains(.edit) {
-            footerView.editBtn.isEnabled = false
-        }
+        footerView.countBtn.setTitle("0/200", for: .normal)
+//        if !space.deviceOperates.contains(.add) {
+//            footerView.addBtn.isEnabled = false
+//        }
+//        if !space.deviceOperates.contains(.edit) {
+//            footerView.editBtn.isEnabled = false
+//        }
+        footerView.addBtn.isEnabled = space.deviceOperates.contains(.add)
+        footerView.editBtn.isEnabled = space.deviceOperates.contains(.edit)
         footerView.sortBtn.isHidden = true
         
         updateDevicesEmptyUI()

@@ -11,7 +11,7 @@ import NordicSigMeshSDK
 class GroupProfilesViewController: UIViewController {
 
     private lazy var tableView: UITableView = {
-        let navHeight = navigationController?.navigationBar.height ?? kNavigationHeight
+        let navHeight = navigationController?.navigationBar.frame.maxY ?? kNavigationHeight
         let tableV = UITableView(frame: CGRect(x: 0, y: navHeight, width: self.view.width, height: self.view.height - navHeight))
         tableV.contentInset = UIEdgeInsets(top: SCRYFrom(12), left: 0, bottom: 0, right: 0)
         tableV.rowHeight = SCRYFrom(44)

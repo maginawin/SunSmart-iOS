@@ -106,15 +106,15 @@ class EmptyDataView: UIView {
 //            make.right.equalTo(-SCRXFrom(20))
 //        }
         contentView.snp.makeConstraints { make in
-            if UIDevice.current.model == "iPad" {
-                make.centerY.equalToSuperview().offset(-bottomMargin - SCRYFit(100))
-            }else {
+//            if UIDevice.current.model == "iPad" {
+//                make.centerY.equalToSuperview().offset(-bottomMargin - SCRYFit(50))
+//            }else {
                 if position == .bottomCenter {
                     make.bottom.equalTo(self.snp.centerY).offset(-bottomMargin)
                 }else {
                     make.centerY.equalTo(self).offset(-bottomMargin)
                 }
-            }
+//            }
             make.left.equalTo(SCRXFrom(20))
             make.right.equalTo(-SCRXFrom(20))
         }

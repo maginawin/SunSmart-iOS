@@ -18,11 +18,23 @@ let SCREEN_HEIGHT = UIScreen.main.bounds.size.height
 let isIphoneX = StatusBarManager.statusBarFrame.size.height >= 44
 //}
 /** 导航条高度*/
-let kNavigationHeight = StatusBarManager.statusBarFrame.size.height + 44
+//let kNavigationHeight = StatusBarManager.statusBarFrame.size.height + 44
+let kNavigationHeight = kSafeAreaTopHeight + 44
+
 /** tabbar高度*/
 let kTabbarHeight = CGFloat(kSafeAreaBottomHeight + 44)
 
-let kSafeAreaTopHeight = StatusBarManager.statusBarFrame.size.height
+/// 顶部导航栏边距
+var kSafeAreaTopHeight: CGFloat {
+    guard let window = UIApplication.shared.connectedScenes
+            .compactMap({ $0 as? UIWindowScene })
+            .first?.windows.first else {
+        return 0 // 返回默认值，避免崩溃
+    }
+    return window.safeAreaInsets.top
+}
+
+//let kSafeAreaTopHeight = StatusBarManager.statusBarFrame.size.height
 /** 底部边界值  iPhone X类型使用*/
 let kSafeAreaBottomHeight = CGFloat(isIphoneX ? 34 : 0)
 //if #available(iOS 13.0, *) {

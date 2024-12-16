@@ -376,11 +376,11 @@ enum ProfileType {
         case .t1(let second):
             messageHandles.append(MeshMessageHandle(message: LightLCPropertySet(of: .lightControlTimeFadeOn, value: .timeMillisecond24(UInt32(second * 1000))), model: lightLCSetupModel))
         case .t2(let second):
-            messageHandles.append(MeshMessageHandle(message: LightLCPropertySet(of: .lightControlTimeRunOn, value: .timeMillisecond24(UInt32(min(second * 1000, 0xFFFFFF)))), model: lightLCSetupModel))
+            messageHandles.append(MeshMessageHandle(message: LightLCPropertySet(of: .lightControlTimeRunOn, value: .timeMillisecond24(UInt32(min(second * 1000, 0xFFFFFE)))), model: lightLCSetupModel))
         case .t3(let second):
             messageHandles.append(MeshMessageHandle(message: LightLCPropertySet(of: .lightControlTimeFade, value: .timeMillisecond24(UInt32(second * 1000))), model: lightLCSetupModel))
         case .t4(let second):
-            messageHandles.append(MeshMessageHandle(message: LightLCPropertySet(of: .lightControlTimeProlong, value: .timeMillisecond24(UInt32(min(second * 1000, 0xFFFFFF)))), model: lightLCSetupModel))
+            messageHandles.append(MeshMessageHandle(message: LightLCPropertySet(of: .lightControlTimeProlong, value: .timeMillisecond24(UInt32(min(second * 1000, 0xFFFFFE)))), model: lightLCSetupModel))
         case .t5(let second):
             messageHandles.append(MeshMessageHandle(message: LightLCPropertySet(of: .lightControlTimeFadeStandbyAuto, value: .timeMillisecond24(UInt32(second * 1000))), model: lightLCSetupModel))
         case .manualOverrideTimeout(let enabled, let second):
@@ -447,15 +447,15 @@ enum ProfileType {
             let data = Node.getLightRegulator(speed: speed)
             return node.lightLCProperty.regulatorKid == data.regulatorKid && node.lightLCProperty.regulatorKiu == data.regulatorKiu && node.lightLCProperty.regulatorKpd == data.regulatorKpd && node.lightLCProperty.regulatorKpu == data.regulatorKpu
         case .t1(let second):
-           return node.lightLCProperty.timeFadeOn == UInt32(min(second * 1000, 0xFFFFFF))
+           return node.lightLCProperty.timeFadeOn == UInt32(min(second * 1000, 0xFFFFFE))
         case .t2(let second):
-            return node.lightLCProperty.timeRunOn == UInt32(min(second * 1000, 0xFFFFFF))
+            return node.lightLCProperty.timeRunOn == UInt32(min(second * 1000, 0xFFFFFE))
         case .t3(let second):
-            return node.lightLCProperty.timeFade == UInt32(min(second * 1000, 0xFFFFFF))
+            return node.lightLCProperty.timeFade == UInt32(min(second * 1000, 0xFFFFFE))
         case .t4(let second):
-            return node.lightLCProperty.timeProlong == UInt32(min(second * 1000, 0xFFFFFF))
+            return node.lightLCProperty.timeProlong == UInt32(min(second * 1000, 0xFFFFFE))
         case .t5(let second):
-            return node.lightLCProperty.timeFadeStandbyAuto == UInt32(min(second * 1000, 0xFFFFFF))
+            return node.lightLCProperty.timeFadeStandbyAuto == UInt32(min(second * 1000, 0xFFFFFE))
         case .manualOverrideTimeout(let enabled, let second):
             return node.lightLCProperty.manualOverrideEnabled == enabled && node.lightLCProperty.manualOverrideTimeout == min(second != .max ? second * 1000 : second, UInt32.max)
         case .manualControl(let enabled):

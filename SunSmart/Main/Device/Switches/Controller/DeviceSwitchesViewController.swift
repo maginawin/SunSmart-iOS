@@ -148,8 +148,6 @@ class DeviceSwitchesViewController: UIViewController {
     
     private func updateUI() {
         
-        self.updateDevicesEmptyUI()
-        
         footerView.countBtn.setTitle("\(MeshNetworkManager.instance.switchs.count)/16", for: .normal)
         
         var inset = self.collectionView.contentInset
@@ -163,12 +161,17 @@ class DeviceSwitchesViewController: UIViewController {
             footerView.isHidden = false
         }
         
-        if !space.deviceOperates.contains(.add) {
-            footerView.addBtn.isEnabled = false
-        }
-        if !space.deviceOperates.contains(.edit) {
-            footerView.editBtn.isEnabled = false
-        }
+        footerView.addBtn.isEnabled = space.deviceOperates.contains(.add)
+        footerView.editBtn.isEnabled = space.deviceOperates.contains(.edit)
+        
+        self.updateDevicesEmptyUI()
+        
+//        if !space.deviceOperates.contains(.add) {
+//            footerView.addBtn.isEnabled = false
+//        }
+//        if !space.deviceOperates.contains(.edit) {
+//            footerView.editBtn.isEnabled = false
+//        }
 //        CATransaction.commit()
         self.collectionView.reloadData()
     }

@@ -788,6 +788,7 @@
 "firmware_update_blob_error" = "Blob failure";
 "firmware_update_error" = "Update failure";
 "firmware_update_stop" = "Stop update";
+"firmware_update_underway" = "Updateing";
 "firmware_update_connect_timeout_message" = "Firmware Update Error: Connection timeout.Make sure the device is normal and stay as close to it as possible.";
 "firmware_update_notSupport_message" = "Firmware Update Error: Device not supported.Older devices, please check the device specifications.";
 "firmware_update_noBindKey_message" = "Firmware Update Error: No application key.Repair the device first, then update.";
@@ -799,6 +800,7 @@
 "firmware_update_blob_error_message" = "Firmware Update Error: Blob failure. Check whether the device can be controlled and re-upgrade.";
 "firmware_update_error_message" = "Firmware Update Error: Update failure. Check whether the device can be controlled and re-upgrade.";
 "firmware_update_stop_message" = "Firmware Update Error: Stop update. Check whether the device can be controlled and re-upgrade.";
+"firmware_update_underway_message" = "Firmware Update Error: The firmware is being upgraded.";
 "firmware_update_reset_message" = "Due to major firmware changes, devices with firmware %@ will automatically reset after the upgrade. You need to add and set up the device again. Are you sure to upgrade?";
 "none" = "None";
 "minutes" = "minutes";
@@ -812,6 +814,7 @@
 "transfer_blob_failure" = "Transfer BLOB failure";
 "install_firmware_failure" = "Install firmware failure";
 "install_firmware_complete" = "Install firmware complete";
+"waiting_install" = "Waiting for installation";
 "distributor" = "distributor";
 "Distributor" = "Distributor";
 "distributor_message" = "Distributor-The distributor receives new firmware images from an initiator and is responsiblefor sending them to appropriate nodes in the network.";
@@ -820,7 +823,8 @@
 "mesh_upgrade_instructions" = "Mesh Upgrade Instructions";
 "mesh_upgrade_instructions_message" = "Each stage can be executed separately. For example, you can first download the firmware package from the server to the app, and then upload the firmware to the distributor on site without network. After uploading, you can also upgrade the device in multiple times.\n\nDifferent device types can queue up for mesh upgrades, and during the upgrade, you can take your phone away from the site to operate the next space.";
 "node(s)" = "Node(s)";
-"upgrade" = "Upgrade";
+"upgrade" = "upgrade";
+"Upgrade" = "Upgrade";
 "how_to_mesh_upgrade" = "How to Mesh Upgrade";
 "how_to_select_a_distributor" = "How to select a distributor";
 "firmware_package" = "Firmware package";
@@ -836,9 +840,62 @@
 "mesh_upgrade_guide_2" = "Upgrade firmware to selected device(s).";
 "mesh_upgrade_guide_3" = "Waiting for the upgrade queue, if there is already a device type in the space being upgraded.";
 
+"mesh_distributor_prompt_message" = "In the Firmware Update via Mesh method, you need to first confirm the most suitable node to upload the firmware package, and then distribute the firmware from this node to other target nodes and start the upgrade. The advantage of this is that you can perform autonomous upgrades without having to use a mobile phone.";
+"mesh_distributor_guide_1" = "Preliminarily select a device that is installed in a relatively central location and go to its location.";
+"mesh_distributor_guide_2" = "Check the device list and find the one with the strongest signal.";
+"mesh_distributor_guide_3" = "Click the light icon to identify the target device and select it.";
+"mesh_distributor_guide_4" = "Upload the firmware package to the target device or select Next button.";
+"select_upgrade_device(s)" = "Select Upgrade Device(s)";
+"selected_device(s)" = "selected device(s)";
+"mesh_upgrade" = "Mesh Upgrade";
+"waiting" = "Waiting";
+"mesh_upgrade_waiting_message" = "There are other devices being upgraded in the space. Do you want to wait in line for the upgrade?";
+"re-upload" = "RE-UPLOAD";
+"upload_firmware" = "Upload Firmware";
+"upload_firmware_message" = "Do not move your phone away from the device during the firmware upload process, otherwise the upload will fail.";
+"mesh_upgrade_inview_message" = "The firmware is being upgraded. It is recommended to wait until it is completed before operating to reduce data congestion.";
+"download_firmware_message" = "Download the firmware package before uploading.";
+"mesh_distributor_targets_overrun_message" = "Up to %d devices can be upgraded";
+"RE-START" = "RE-START";
+
+"mesh_distributor_stop_message" = "Are you sure to exit the upgrade?";
+"mesh_distributor_check_failed" = "Check firmware failure!";
+"mesh_distributor_blob_failed" = "Transfer BLOB failure!";
+"mesh_distributor_blob_complete" = "Transfer BLOB complete!";
+"mesh_distributor_apply_failed" = "Install firmware failure!";
+"mesh_distributor_apply_complete" = "Install firmware complete!";
+
+"mesh_distributor_log_wait_transfer" = "> Queued for upgrade because other device types are distributing firmware.";
+"mesh_distributor_log_check_firmware" = ">Check whether the firmware package already exists on the device";
+"mesh_distributor_log_not_firmware" = "> Some devices do not have firmware packages";
+"mesh_distributor_log_transfer" = "> Transfer BLOB: %@ -> selected device(s)\n(Estimated %@ left)";
+"mesh_distributor_log_transfer_failed_conduct" = "(Please make sure that the device is working properly or not powered off during the transfer process. You can click 'RE-START' in the upper right corner to retransmission.)";
+"mesh_distributor_log_restart" = "> Re-start";
+
+"mesh_distributor_log_check_queued" = "> Detects that there are other device types queued for upgrade";
+"mesh_distributor_log_wait_distribution" = "> Waiting for other device types to complete firmware distribution";
+"mesh_distributor_log_install" = "> Install firmware";
+"mesh_distributor_log_install_failed" = "> Installation failed on some devices!";
+"mesh_distributor_log_install_failed_targets" = "> Failure device(s): %@";
+"mesh_distributor_log_install_failed_conduct" = "(You can click 'RE-INSTALL' in the upper right corner to re-install. If there are few failed devices, you can exit and choose BLE upgrade mode, which is faster.)";
+"mesh_distributor_log_reinstall" = "> Re-install firmware";
+"mesh_distributor_log_manually_install" = "> An exception occurred and the installation failed to be triggered. Please click 'INSTALL MANUALLY' at the bottom to install manually.";
+"mesh_distributor_log_not_executed" = "Not executed yet";
+"mesh_distributor_log_omit" = ">...";
+"distribute_firmware..." = "Distribute firmware...";
+"install_firmware..." = "Install firmware...";
+"install_manually" = "INSTALL MANUALLY";
+"re_install" = "RE-INSTALL";
+"no_distributor" = "No distributor";
+"firmware_upgrade_results" = "Firmware upgrade results";
+"DETAILS" = "DETAILS";
+"GOT IT" = "GOT IT";
+"mesh_distributor_permission_changed_message" = "After returning, your permissions will be changed to control only, but you can still enter the upgrade list to manage upgrade tasks.";
+"mesh_distributor_apply_wait_message" = "There are other device firmwares being distributed, please wait for completion andtry again.";
+
 "get_started" = "Get Started";
 "welcome_title" = "Welcome to the\nSunSmart\napplication !";
-"welcome_policy_message" = "I accept and agree to User Agreement and \n Privacy Policy";
+"welcome_policy_message" = "I accept and agree to User Agreement and Privacy Policy";
 "welcome_policy_use" = "User Agreement";
 "welcome_privacy_policy" = "Privacy Policy";
 
@@ -863,6 +920,7 @@
 "switchs_overrun_message" = "The number of kinetic switches has been exceeded. A single space is limited to 16 switches.";
 "switch_delete_message" = "The kinetic switch has a bound agent. Are you sure you want to remove it?";
 "switchs_delete_message" = "Are you sure to delete the kinetic switch?";
+"switchs_not_saved" = "The kinetic switch \"%@\" has not been saved. ";
 "Finish" = "Finish";
 "GOT_IT" = "GOT IT";
 "switch_copy_failed_message" = "The kinetic switch has not been saved. You need to save it before you can copy a new switch.";

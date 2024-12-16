@@ -9,7 +9,7 @@ import UIKit
 
 class MeshFirmwareUpgradeSectionView: UITableViewHeaderFooterView {
 
-    private var messageView: UIView!
+    var messageView: UIView!
     var messageLabel: UILabel!
     private var nameLabel: UILabel!
     private var firmwareVersionLabel: UILabel!
@@ -37,18 +37,21 @@ class MeshFirmwareUpgradeSectionView: UITableViewHeaderFooterView {
             make.height.equalTo(SCRYFrom(32))
         }
         
-        messageLabel = UILabel(text: "", textColor: TextBlack_Color, fontSize: 13, fontWeight: .light, fit: false)
+        messageLabel = UILabel(text: "", textColor: TextBlack_Color, fontSize: 13, fontWeight: .light)
+        messageLabel.textAlignment = .center
+        messageLabel.adjustsFontSizeToFitWidth = true
         messageView.addSubview(messageLabel)
         messageLabel.snp.makeConstraints { make in
-            make.left.equalTo(SCRXFrom(40))
-            make.right.equalTo(SCRXFrom(-40))
+            make.left.equalTo(SCRXFrom(20))
+            make.right.equalTo(SCRXFrom(-20))
             make.centerY.equalToSuperview()
         }
         
         nameLabel = UILabel(text: "name".localizedString, textColor: .black, fontSize: 13, fontWeight: .light)
         addSubview(nameLabel)
         nameLabel.snp.makeConstraints { make in
-            make.left.equalTo(SCRXFrom(78))
+//            make.left.equalTo(SCRXFrom(78))
+            make.centerX.equalTo(self.snp.left).offset(SCRXFrom(94))
             make.bottom.equalTo(SCRYFrom(-8))
         }
         

@@ -40,6 +40,7 @@ class BleFirmwareTypeUpdateViewCell: UICollectionViewCell {
     /// 本地版本
     private var targetVersionView: UIView!
     private var targetVersionTitleLabel: UILabel!
+    private var targetVersionInfoView: UIView!
     private var targetVersionLabel: UILabel!
     private var newVersionView: UIView!
     private var versionInfoImageView: UIImageView!
@@ -224,7 +225,7 @@ class BleFirmwareTypeUpdateViewCell: UICollectionViewCell {
         }
         
         targetVersionView = UIView()
-        targetVersionView.addGestureRecognizer(UITapGestureRecognizer(target: self, action: #selector(targetVersionAction)))
+//        targetVersionView.addGestureRecognizer(UITapGestureRecognizer(target: self, action: #selector(targetVersionAction)))
         contentView.addSubview(targetVersionView)
         targetVersionView.snp.makeConstraints { make in
             make.left.right.equalTo(deviceTypeView)
@@ -239,17 +240,27 @@ class BleFirmwareTypeUpdateViewCell: UICollectionViewCell {
             make.centerY.equalToSuperview()
         }
         
-        versionInfoImageView = UIImageView(image: UIImage(named: "firmware_version_more"))
-        targetVersionView.addSubview(versionInfoImageView)
-        versionInfoImageView.snp.makeConstraints { make in
+        targetVersionInfoView = UIView()
+        targetVersionInfoView.addGestureRecognizer(UITapGestureRecognizer(target: self, action: #selector(targetVersionAction)))
+        targetVersionView.addSubview(targetVersionInfoView)
+        targetVersionInfoView.snp.makeConstraints { make in
             make.right.equalTo(SCRXFrom(-20))
             make.centerY.equalToSuperview()
         }
         
+        versionInfoImageView = UIImageView(image: UIImage(named: "firmware_version_more"))
+        targetVersionInfoView.addSubview(versionInfoImageView)
+        versionInfoImageView.snp.makeConstraints { make in
+            make.top.bottom.right.equalToSuperview()
+//            make.right.equalTo(SCRXFrom(-20))
+//            make.centerY.equalToSuperview()
+        }
+        
         targetVersionLabel = UILabel(text: "1.2.0", textColor: TextBlack_Color, fontSize: 13, fontWeight: .light)
-        targetVersionView.addSubview(targetVersionLabel)
+        targetVersionInfoView.addSubview(targetVersionLabel)
         targetVersionLabel.snp.makeConstraints { make in
             make.right.equalTo(versionInfoImageView.snp.left).offset(SCRXFrom(-9))
+            make.left.equalToSuperview()
             make.centerY.equalTo(versionInfoImageView)
         }
         
@@ -632,7 +643,7 @@ class BleFirmwareUpdateDeviceCell: UITableViewCell {
         versionLabel = UILabel(text: "1.0.0", textColor: SubText_Color, fontSize: 13, fontWeight: .light)
         contentView.addSubview(versionLabel)
         versionLabel.snp.makeConstraints { make in
-            make.right.equalTo(SCRXFrom(-66))
+            make.centerX.equalTo(self.snp.right).offset(SCRXFrom(-77))
             make.centerY.equalToSuperview()
         }
         

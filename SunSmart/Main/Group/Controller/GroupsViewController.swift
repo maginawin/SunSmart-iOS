@@ -220,12 +220,15 @@ class GroupsViewController: UIViewController {
             footerView.isHidden = false
         }
         
-        if !space.groupOperates.contains(.edit) {
-            footerView.editBtn.isEnabled = false
-        }
-        if !space.groupOperates.contains(.add) {
-            footerView.addBtn.isEnabled = false
-        }
+        footerView.addBtn.isEnabled = space.groupOperates.contains(.add)
+        footerView.editBtn.isEnabled = space.groupOperates.contains(.edit)
+        
+//        if !space.groupOperates.contains(.edit) {
+//            footerView.editBtn.isEnabled = false
+//        }
+//        if !space.groupOperates.contains(.add) {
+//            footerView.addBtn.isEnabled = false
+//        }
         
         footerView.sortBtn.isHidden = true
         collectionView.reloadData()

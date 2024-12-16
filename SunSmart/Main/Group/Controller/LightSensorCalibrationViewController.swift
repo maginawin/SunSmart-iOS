@@ -491,7 +491,7 @@ class LightSensorCalibrationViewController: UIViewController {
         view.addSubview(scrollView)
         scrollView.snp.makeConstraints { make in
             make.left.right.equalToSuperview()
-            make.top.equalTo(navigationController?.navigationBar.height ?? kNavigationHeight)
+            make.top.equalTo(view.safeAreaLayoutGuide)
             make.bottom.equalTo(bottomView.snp.top)
         }
         

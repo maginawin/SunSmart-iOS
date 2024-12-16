@@ -66,7 +66,8 @@ class CalibrationInstructionController: UIViewController {
             make.left.equalTo(SCRXFrom(16))
             make.right.equalTo(SCRXFrom(-16))
             make.bottom.equalTo(-kSafeAreaBottomHeight)
-            make.top.equalTo((navigationController?.navigationBar.height ?? kNavigationHeight))
+//            make.top.equalTo((navigationController?.navigationBar.height ?? kNavigationHeight))
+            make.top.equalTo(view.safeAreaLayoutGuide)
         }
         
         contentView = UIView()

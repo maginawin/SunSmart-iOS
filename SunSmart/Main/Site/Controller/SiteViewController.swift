@@ -255,7 +255,22 @@ self.updateAddressData()
                         // 需要回收地址的space
                         let recyclingSpaces = self.site.spaces.filter({ $0.state == .waitDeleted  && !$0.releaseAddress })
                         if recyclingSpaces.count > 0 {
-                            self.recyclingAddressRequest(delete: false, recyclingSpaces: recyclingSpaces)
+                            recyclingSpaces.forEach({ 
+                                $0.releaseAddress = true
+                                $0.save()
+                            })
+                            let addressData = self.site.getRecycleAddressData(unbindSpaces: recyclingSpaces)
+                            if let recycleAddressData = self.site.recycleAddressData {
+                                self.site.recycleAddressData = recycleAddressData + addressData
+                            }else {
+                                self.site.recycleAddressData = addressData
+                            }
+                            self.site.save()
+//                            self.recyclingAddressRequest(delete: false, recyclingSpaces: recyclingSpaces)
+                        }
+                        // 判断site内是否有需要回收的地址
+                        if !(self.site.recycleAddressData?.isEmpty ?? true) {
+                            try? await self.siteRecyclingAddressRequest(site: self.site)
                         }
                         
                         self.title = self.site.name
@@ -320,14 +335,23 @@ self.updateAddressData()
                                 self.site.spaces.forEach({
                                     if $0.state == .normal {
                                         $0.state = .waitDeleted
+                                        $0.releaseAddress = true
                                         $0.save()
                                         self.reloadSpaceData($0)
                                     }
                                 })
+                                self.site.recycleAddressData = self.site.getRecycleAddressData(unbindSpaces: self.site.spaces)
+                                self.site.save()
                             }
-                        
                         }
                     }
+                    // 判断site内是否有需要回收的地址
+                    if !(self.site.recycleAddressData?.isEmpty ?? true) {
+                        Task {
+                            try? await self.siteRecyclingAddressRequest(site: self.site)
+                        }
+                    }
+                    
                 }else {
                     if self.site.spaces.isEmpty && self.site.spaceCount != self.site.spaces.count {
                         XWHUDManager.showErrorTipHUD(error.localizedDescription)
@@ -483,7 +507,8 @@ self.updateAddressData()
                 if let provisionerData = JSON(response)["data"]["provisioner"].dictionaryObject {
 //                    self.site.insetProvisioner(provisionerData: ["device": addresses])
                     self.site.setProvisioner(provisionerData: provisionerData)
-                    if self.site.localAddress != nil {
+                    // 访客权限不可以提交site
+                    if self.site.localAddress != nil && self.site.spaces.contains(where: { $0.permission != .visitor }) {
                         CloudSynchronizationManager.shared.addSynchronizationHandle(operation: .syncSite(site: self.site), level: .promptly)
                     }
                 #if DEBUG
@@ -500,7 +525,12 @@ self.updateAddressData()
     // MARK: - Action
     
     @objc private func moreClick() {
-        
+        // item距离右边间距 iphone6s 8 iphone12promax 12
+        // 19 * 0.5 = 9.5 + 12
+        let margin: CGFloat = SCRXFrom(15.5)
+//        isIphoneX ? 18 : 15
+        let touchCenterX = view.width - SCRXFrom(margin) - 15
+
         var items: [MenuPopView.MenuItem] = []
         
         if site.permissionOperates.contains(.edit) {
@@ -525,7 +555,7 @@ self.updateAddressData()
             }))
         }
         
-        MenuPopView.show(items: items, anchorPoint: CGPoint(x: view.width - SCRXFrom(17) - 15, y: kNavigationHeight), menuWidth: SCRXFrom(154))
+        MenuPopView.show(items: items, anchorPoint: CGPoint(x: touchCenterX, y: (navigationController?.navigationBar.frame.maxY ?? kNavigationHeight)), menuWidth: SCRXFrom(154))
     }
     
     /// 编辑场所
@@ -1051,6 +1081,33 @@ self.updateAddressData()
         
     }
     
+    /// site回收地址请求
+    @MainActor
+    private func siteRecyclingAddressRequest(site: SiteData) async throws {
+        try await withCheckedThrowingContinuation { continuation in
+            guard let recycleAddressData = site.recycleAddressData, !recycleAddressData.isEmpty else {
+                site.recycleAddressData = nil
+                site.save()
+                continuation.resume()
+                return
+            }
+            let provisionerData = recycleAddressData.getResultProvisionerData(meshUUID: site.meshUUID)
+            NetworkRequest.shared.request(.recyclingAddress(siteId: site.id, recycleDeviceAddresses: recycleAddressData.deviceAddresses, recycleGroupAddresses: recycleAddressData.groupAddresses, recycleSceneAddresses: recycleAddressData.sceneAddresses, exclusions: recycleAddressData.exclusionAddresses?.map({ ($0.ivIndex, $0.addresses) }), provisionerData: provisionerData)) { result in
+           
+                switch result {
+                case .success(_):
+                    // 删除回收的地址
+                    site.deleteProvisionerAddress(deviceAddresses: recycleAddressData.deviceAddresses, groupAddresses: recycleAddressData.groupAddresses, sceneAddresses: recycleAddressData.sceneAddresses)
+                    site.recycleAddressData = nil
+                    site.save()
+                    continuation.resume()
+                case .failure(let error):
+                    continuation.resume(throwing: error)
+                }
+            }
+        }
+    }
+    
     /// 回收放弃的地址请求（接收转让site，拿到之前owner数据，放弃自己之前其他身份持有的地址）
     private func recyclingAddressRequest(abandonAddressData: SiteData.RecycleAddressData) {
         
@@ -1213,19 +1270,41 @@ self.updateAddressData()
         
         SRAlertView(title: "notification".localizedString, message: "space_permission_cleared_message".localizedString, actions: [SRAlertAction(title: "confirm".localizedString, actionHandler: {[weak self] _ in
             guard let self = self else { return }
-            // 是否已释放地址
-            guard space.releaseAddress else {
-                // 释放地址并删除space
-                self.recyclingAddressRequest(delete: true, recyclingSpaces: [space])
-                return
-            }
-            
-            self.deleteSpace(space: space)
-            // 删除site数据
-            if self.site.permission == .visitor && self.site.spaces.isEmpty {
-                self.site.delete()
-                NotificationCenter.default.post(name: .init(SitesDataRefreshNotifiacationName), object: false)
-                self.navigationController?.popViewController(animated: true)
+            Task {
+                // 未记录释放的地址
+                if !space.releaseAddress {
+                    let addressData = self.site.getRecycleAddressData(unbindSpaces: [space])
+                    if let recycleAddressData = self.site.recycleAddressData {
+                        self.site.recycleAddressData = recycleAddressData + addressData
+                    }else {
+                        self.site.recycleAddressData = addressData
+                    }
+                    self.site.save()
+                }
+                // 回收地址
+                if !(self.site.recycleAddressData?.isEmpty ?? true) {
+                    do {
+                        XWHUDManager.showCustomHUD(withMessage: nil, isWindow: true)
+                        try await self.siteRecyclingAddressRequest(site: self.site)
+                        XWHUDManager.hide()
+                    } catch let error {
+                        XWHUDManager.hide()
+                        XWHUDManager.showErrorTipHUD(error.localizedDescription)
+                    }
+                }
+                //            guard space.releaseAddress else {
+                //                // 释放地址并删除space
+                //                self.recyclingAddressRequest(delete: true, recyclingSpaces: [space])
+                //                return
+                //            }
+                
+                self.deleteSpace(space: space)
+                // 删除site数据
+                if self.site.permission == .visitor && self.site.spaces.isEmpty {
+                    self.site.delete()
+                    NotificationCenter.default.post(name: .init(SitesDataRefreshNotifiacationName), object: false)
+                    self.navigationController?.popViewController(animated: true)
+                }
             }
             
         })]).show()
@@ -1405,7 +1484,8 @@ self.updateAddressData()
         view.addSubview(segmentedControl)
 //        CGRect(x: SCRXFrom(16), y: SCRYFrom(16) + kNavigationHeight, width: view.width - SCRXFrom(32), height: SCRYFrom(44))
         segmentedControl.snp.makeConstraints { make in
-            make.top.equalTo(SCRYFrom(16) + kNavigationHeight)
+//            make.top.equalTo(SCRYFrom(16) + (navigationController?.navigationBar.frame.maxY ?? kNavigationHeight))
+            make.top.equalTo(view.safeAreaLayoutGuide).offset(SCRYFrom(16))
             make.left.equalTo(SCRXFrom(16))
             make.right.equalTo(SCRXFrom(-16))
             make.height.equalTo(SCRYFrom(44))

@@ -57,7 +57,15 @@ class FirmwareVersionViewController: UIViewController {
 
         title = "firmware_version".localizedString
         view.backgroundColor = Background_Color
+        
+        #if DEBUG
+        navigationItem.rightBarButtonItems = [
+            UIBarButtonItem(customView: UIButton(normalImageName: "firmware_history", target: self, action: #selector(history))),
+            UIBarButtonItem(customView: UIButton(normalImageName: "import", target: self, action: #selector(importFirmwareData)))
+        ]
+        #else
         navigationItem.rightBarButtonItem = UIBarButtonItem(image: UIImage(named: "firmware_history")?.withRenderingMode(.alwaysOriginal), style: .done, target: self, action: #selector(history))
+        #endif
         
         loadCloudFirmwareRequest()
         
@@ -104,6 +112,14 @@ class FirmwareVersionViewController: UIViewController {
         
     }
     
+    /// 导入固件包
+    @objc private func importFirmwareData() {
+        
+        let picker = UIDocumentPickerViewController(documentTypes: ["public.data", "public.content"], in: .import)
+        picker.delegate = self
+        present(picker, animated: true, completion: nil)
+        
+    }
     
     /// 固件版本历史记录
     @objc private func history() {
@@ -353,4 +369,31 @@ class FirmwareVersionViewController: UIViewController {
         }
     }
 
+}
+
+extension FirmwareVersionViewController: UIDocumentPickerDelegate {
+    
+    /// 选择文件导入回调
+    func documentPicker(_ controller: UIDocumentPickerViewController, didPickDocumentsAt urls: [URL]) {
+        guard let url = urls.first, url.absoluteString.contains(".zip") else { return }
+        do {
+            let data = try Data(contentsOf: url)
+            let zipData = try ZipHandler.handleZipData(data)
+            let imageSize = UInt32(zipData.firmwareData.count)
+            var incomingFirmwareMetadata = Data(bytes: zipData.firmwareId.bytes, count: zipData.firmwareId.count + 3 + 1 + 4 + 2)
+            incomingFirmwareMetadata.writeBits(value: imageSize, numBits: 24, atOffset: 64)
+            incomingFirmwareMetadata.writeBits(value: UInt8(zipData.coreType), numBits: 8, atOffset: 88)
+            incomingFirmwareMetadata.writeBits(value: UInt32(data: zipData.compositionHash), numBits: 32, atOffset: 96)
+            incomingFirmwareMetadata.writeBits(value: UInt16(zipData.elementCount), numBits: 16, atOffset: 128)
+            
+            let firmwareData = FirmwareData(name: "", version: zipData.firmwareVersion, firmwareID: zipData.firmwareId, data: zipData.firmwareData, updateFirmwareImageIndex: zipData.imageIndex, incomingFirmwareMetadata: incomingFirmwareMetadata, productId: self.type.productId, vendorId: self.type.serverData?.companyId ?? 0x0A78, customId: self.type.serverData?.customId ?? 0x00, releaseDate: Int64(Date().timeIntervalSince1970), content: "test", compositionHash: zipData.compositionHash.reversed().toHexString())
+            firmwareData.save()
+            XWHUDManager.showSuccessTipHUD("successfully".localizedString + "!")
+            
+        } catch { // 失败提示
+            print(error)
+            XWHUDManager.showErrorTipHUD("failed".localizedString + "!")
+        }
+    }
+    
 }

@@ -33,6 +33,7 @@ class SpaceMoreViewController: UIViewController {
     private var flowLayout: UICollectionViewFlowLayout!
     
     private var options: [FirmwareUpdateType] = [.ble, .mesh]
+    private weak var uploadStateView: FirmwareDistributeUpdateStateView?
     
     init(space: SpaceData) {
         self.space = space
@@ -90,20 +91,86 @@ extension SpaceMoreViewController: UICollectionViewDataSource, UICollectionViewD
     }
     
     func collectionView(_ collectionView: UICollectionView, didSelectItemAt indexPath: IndexPath) {
-        guard self.space.deviceOperates.contains(.edit) else {
-            XWHUDManager.showTipHUD("no_permission".localizedString + "！")
-            return
-        }
         switch options[indexPath.item] {
         case .ble:
+            guard self.space.bleOTAOperates.contains(.edit) else {
+                XWHUDManager.showTipHUD("no_permission".localizedString + "！")
+                return
+            }
             let vc = BleFirmwareUpdateViewController()
             present(NavigationViewController(rootViewController: vc), animated: true)
         case .mesh:
-            let vc = MeshFirmwareUpdateViewController()
+            guard self.space.meshOTAOperates.contains(.edit) else {
+                XWHUDManager.showTipHUD("no_permission".localizedString + "！")
+                return
+            }
+            let vc = MeshFirmwareListViewController()
             present(NavigationViewController(rootViewController: vc), animated: true)
+            return
+            
+//            MeshFirmwareUpgradeGuideView(title: "how_to_select_a_distributor".localizedString, message: "mesh_distributor_prompt_message".localizedString, steps: [.location, .signal, .identify, .distributor], contentHeight: SCRYFit(738)).show()
+//            MeshFirmwareUpgradeGuideView(title: "how_to_mesh_upgrade".localizedString, message: "mesh_upgrade_prompt_message".localizedString, steps: [.selectDistributor, .selectDevices, .waiting], contentHeight: SCRYFit(660)).show()
+            
+            let stateView = FirmwareDistributeUpdateStateView(frame: UIScreen.main.bounds)
+//            stateView.start(title: "upload_firmware".localizedString, message: "upload_firmware_message".localizedString, deviceName: "ID001", distributeVersion: "1.2.0")
+            stateView.start(title: "notification".localizedString, message: "mesh_upgrade_inview_message".localizedString, distributeVersion: nil, isUpload: false)
+            stateView.show()
+            stateView.delegate = self
+            uploadStateView = stateView
+            
+            DispatchQueue.global().async {
+                DispatchQueue.main.async {
+                    stateView.update(state: .connect)
+                }
+                Thread.sleep(forTimeInterval: 1)
+                DispatchQueue.main.async {
+                    stateView.update(state: .start)
+                }
+                Thread.sleep(forTimeInterval: 1)
+                DispatchQueue.main.async {
+                    stateView.update(state: .inProgress(progress: 20, estimatedTime: "1 minutes"))
+                }
+                Thread.sleep(forTimeInterval: 0.5)
+                DispatchQueue.main.async {
+                    stateView.update(state: .inProgress(progress: 50, estimatedTime: "1 minutes"))
+                }
+                Thread.sleep(forTimeInterval: 1)
+                DispatchQueue.main.async {
+                    stateView.update(state: .inProgress(progress: 100, estimatedTime: "0 minutes 10 sec"))
+                }
+                Thread.sleep(forTimeInterval: 1)
+                if arc4random_uniform(2) == 1 {
+                    DispatchQueue.main.async {
+                        stateView.update(state: .completed)
+                    }
+                }else {
+                    DispatchQueue.main.async {
+                        stateView.update(state: .failure(message: "error"))
+                    }
+                }
+            }
+            
         }
         
     }
     
 }
 
+extension SpaceMoreViewController: FirmwareDistributeUpdateStateViewDelegate {
+    
+    /// 点击取消更新回调
+    func firmwareUpdateCancelAction(_ view: FirmwareDistributeUpdateStateView) {
+        uploadStateView?.hide()
+    }
+    
+    /// 点击重试回调
+    func firmwareUpdateRetryAction(_ view: FirmwareDistributeUpdateStateView) {
+        uploadStateView?.hide()
+    }
+    
+    /// 点击ok回调
+    func firmwareUpdateOKAction(_ view: FirmwareDistributeUpdateStateView) {
+        uploadStateView?.hide()
+    }
+    
+}

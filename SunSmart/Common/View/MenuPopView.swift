@@ -66,7 +66,7 @@ class MenuPopView: UIView {
     private func showAnimation() {
         layoutIfNeeded()
        
-        var contentPoint = CGPoint(x: self.startPoint.x + SCRXFrom(15), y: self.startPoint.y)
+        var contentPoint = CGPoint(x: self.startPoint.x + 18, y: self.startPoint.y)
         
         var anchorPoint = CGPointMake(1, 0)
         if (direction == .down && startPoint.y + contentView.height > self.height) || direction == .up { // 超出显示范围
@@ -97,12 +97,16 @@ class MenuPopView: UIView {
         }
     }
     
-    func dismiss() {
+    func dismiss(animation: Bool = true) {
         isShow = false
         contentView.layer.anchorPoint = contentView.layer.anchorPoint
-        UIView.animate(withDuration: 0.3) {
-            self.contentView.transform = CGAffineTransformMakeScale(0.01, 0.01)
-        } completion: { _ in
+        if animation {
+            UIView.animate(withDuration: 0.3) {
+                self.contentView.transform = CGAffineTransformMakeScale(0.01, 0.01)
+            } completion: { _ in
+                self.removeFromSuperview()
+            }
+        }else {
             self.removeFromSuperview()
         }
     }
@@ -171,7 +175,7 @@ extension MenuPopView: UITableViewDataSource, UITableViewDelegate {
         let item = items[indexPath.row]
         cell.titleLabel.text = item.title
         cell.titleLabel.textColor = .white
-        cell.titleLabel.font = UIFont.systemFont(ofSize: 14, weight: .light)
+        cell.titleLabel.font = UIFont.systemFont(ofSize: SCRXFrom(13), weight: .light)
         cell.iconImageView.image = item.icon
         cell.iconX = 0
         cell.iconSize = CGSize(width: SCRXFrom(30), height: SCRXFrom(30))
@@ -188,7 +192,7 @@ extension MenuPopView: UITableViewDataSource, UITableViewDelegate {
     func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
         let item = items[indexPath.row]
         item.tapItemBack?(item)
-        dismiss()
+        dismiss(animation: item.hideAnimation)
     }
     
 }
@@ -209,6 +213,8 @@ extension MenuPopView {
     struct MenuItem {
         let icon: UIImage?
         let title: String
+        /// 点击后是否展示隐藏动画
+        var hideAnimation: Bool = true
         let tapItemBack: ((MenuItem)->Void)?
     }
     

@@ -248,7 +248,7 @@ class GroupViewController: UIViewController {
         
         let profileType = group.info.profile.type
         // 提示校准
-        if group.info.ambientLightSensorNode == nil, group.ambientLightSensorNodes.count > 0, profileType == .occupancy_daylight || profileType == .vacancy_daylight || profileType == .daylight, space.groupOperates.contains(.edit) {
+        if group.info.ambientLightSensorNode == nil || !group.info.ambientLightSensorNode!.sensorCalibrated, group.ambientLightSensorNodes.count > 0, profileType == .occupancy_daylight || profileType == .vacancy_daylight || profileType == .daylight, space.groupOperates.contains(.edit) {
             calibrateBtn.isHidden = false
             calibrateLabel.isHidden = false
         }else {
@@ -321,24 +321,24 @@ class GroupViewController: UIViewController {
             }))
         }
         if space.groupOperates.contains(.edit) {
-            items.append(.init(icon: UIImage(named: "menu_members"), title: "members".localizedString, tapItemBack: {[weak self] item in
+            items.append(.init(icon: UIImage(named: "menu_members"), title: "members".localizedString, hideAnimation: false, tapItemBack: {[weak self] item in
                 self?.members()
             }))
         }
-        items.append(.init(icon: UIImage(named: "menu_profile"), title: "profile".localizedString, tapItemBack: {[weak self] item in
+        items.append(.init(icon: UIImage(named: "menu_profile"), title: "profile".localizedString, hideAnimation: false, tapItemBack: {[weak self] item in
             self?.groupProfile()
         }))
         
         if space.groupOperates.contains(.edit) {
             let profileType = group.info.profile.type
             if profileType == .occupancy_daylight || profileType == .vacancy_daylight || profileType == .daylight {
-                items.append( .init(icon: UIImage(named: "menu_calibrate"), title: "calibrate".localizedString, tapItemBack: {[weak self] item in
+                items.append( .init(icon: UIImage(named: "menu_calibrate"), title: "calibrate".localizedString, hideAnimation: false, tapItemBack: {[weak self] item in
                     self?.calibrate()
                 }))
             }
         }
         
-        items.append( .init(icon: UIImage(named: "menu_switch"), title: "switch".localizedString, tapItemBack: {[weak self] item in
+        items.append( .init(icon: UIImage(named: "menu_switch"), title: "switch".localizedString, hideAnimation: false, tapItemBack: {[weak self] item in
             self?.pushToSwitch()
         }))
         
@@ -356,7 +356,14 @@ class GroupViewController: UIViewController {
             self?.refresh()
         }))
         
-        MenuPopView.show(items: items, anchorPoint: CGPoint(x: view.width - SCRXFrom(17) - 15, y: (navigationController?.navigationBar.frame.maxY ?? kNavigationHeight) + StatusBarManager.statusBarFrame.height))
+        
+        let margin: CGFloat = SCRXFrom(15.5)
+//        isIphoneX ? 18 : 15
+        let touchCenterX = view.width - SCRXFrom(margin) - 15
+        let touchCenterY = SCREEN_HEIGHT - view.height + view.safeAreaInsets.top - 15
+        MenuPopView.show(items: items, anchorPoint: CGPoint(x: touchCenterX, y: touchCenterY))
+        // (navigationController?.navigationBar.frame.maxY ?? kNavigationHeight) + StatusBarManager.statusBarFrame.height
+                         
         
     }
     
@@ -648,6 +655,7 @@ class GroupViewController: UIViewController {
             make.left.equalTo(SCRXFrom(30))
             make.right.equalTo(SCRXFrom(-29))
             make.top.equalTo(SCRYFit(40) + (navigationController?.navigationBar.frame.maxY ?? 0))
+//            make.height.equalTo(collectionView.snp.width).multipliedBy(340.0 / 316)
             make.height.equalTo(SCRYFrom(340))
         }
         

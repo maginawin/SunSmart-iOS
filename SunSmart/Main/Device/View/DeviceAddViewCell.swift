@@ -239,7 +239,7 @@ class DeviceAddViewCell: UITableViewCell {
         identifyBtn.setTitleColor(RGB(39, 37, 54, 0.5), for: .disabled)
         identifyBtn.layer.cornerRadius = SCRYFrom(15)
         identifyBtn.layer.borderColor = Bar_Color.cgColor
-        identifyBtn.layer.borderWidth = 0.5
+        identifyBtn.layer.borderWidth = 0.6
         identifyBtn.contentEdgeInsets = UIEdgeInsets(top: 0, left: SCRXFrom(14), bottom: 0, right: SCRXFrom(14))
         contentView.addSubview(identifyBtn)
         identifyBtn.snp.makeConstraints { make in
@@ -258,7 +258,7 @@ class DeviceAddViewCell: UITableViewCell {
         
         identifyStateLabel = UILabel(text: "", textColor: TextBlack_Color, fontSize: 12, fontWeight: .light)
         identifyStateLabel.layer.cornerRadius = 3
-        identifyStateLabel.layer.borderWidth = 0.5
+        identifyStateLabel.layer.borderWidth = 0.6
         identifyStateLabel.layer.borderColor = Message_Color.cgColor
         identifyStateLabel.textAlignment = .center
         identifyStateLabel.backgroundColor = .white
@@ -282,7 +282,7 @@ class DeviceAddViewCell: UITableViewCell {
         
         addStateLabel = UILabel(text: "", textColor: TextBlack_Color, fontSize: 12, fontWeight: .light)
         addStateLabel.layer.cornerRadius = 3
-        addStateLabel.layer.borderWidth = 0.5
+        addStateLabel.layer.borderWidth = 0.6
         addStateLabel.layer.borderColor = Message_Color.cgColor
         addStateLabel.textAlignment = .center
         addStateLabel.backgroundColor = .white

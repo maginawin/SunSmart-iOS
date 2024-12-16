@@ -38,7 +38,7 @@ class TimedSelectTypeView: UIView {
                 lastSelectBtn?.isSelected = false
                 lastSelectBtn?.layer.borderWidth = 0
                 btn.isSelected = true
-                btn.layer.borderWidth = 0.5
+                btn.layer.borderWidth = 0.6
                 
                 lastSelectBtn = btn
             }
@@ -89,7 +89,7 @@ class TimedSelectTypeView: UIView {
         scheduleBtn.setTitleColor(Bar_Color, for: .selected)
         scheduleBtn.layer.cornerRadius = SCRYFrom(6)
         scheduleBtn.layer.borderColor = Bar_Color.cgColor
-        scheduleBtn.layer.borderWidth = 0.5
+        scheduleBtn.layer.borderWidth = 0.6
         scheduleBtn.tag = 100
         addSubview(scheduleBtn)
         scheduleBtn.snp.makeConstraints { make in

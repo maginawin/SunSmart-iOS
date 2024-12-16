@@ -28,7 +28,8 @@ class ManualOverrideTimeoutInstructionController: UIViewController {
         imageView.snp.makeConstraints { make in
             make.left.equalTo(SCRXFrom(19))
             make.right.equalTo(SCRXFrom(-28))
-            make.top.equalTo((navigationController?.navigationBar.height ?? kNavigationHeight) + SCRYFrom(11))
+            make.top.equalTo(view.safeAreaLayoutGuide).offset(SCRYFrom(11))
+//            make.top.equalTo((navigationController?.navigationBar.height ?? kNavigationHeight) + SCRYFrom(11))
             make.height.equalTo(imageView.snp.width).multipliedBy(141.0 / 328.0)
         }
         

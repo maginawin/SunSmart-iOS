@@ -62,8 +62,7 @@ class SwitchSelectSceneViewController: UIViewController {
     
     private func setupUI() {
         
-        let menuY = navigationController?.navigationBar.height ?? kNavigationHeight
-        menuView = WMMenuView(frame: CGRect(x: 0, y: menuY, width: view.width, height: SCRYFrom(45)))
+        menuView = WMMenuView(frame: CGRect(x: 0, y: kNavigationHeight, width: view.width, height: SCRYFrom(45)))
         menuView.progressHeight = 2
         menuView.style = .line
         menuView.progressWidths = [SCRXFrom(63.5)]
@@ -75,7 +74,7 @@ class SwitchSelectSceneViewController: UIViewController {
         view.addSubview(menuView)
         menuView.snp.makeConstraints { make in
             make.left.right.equalToSuperview()
-            make.top.equalTo(menuY)
+            make.top.equalTo(view.safeAreaLayoutGuide)
             make.height.equalTo(SCRYFrom(45))
         }
         

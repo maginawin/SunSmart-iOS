@@ -34,7 +34,8 @@ class PowerUpBehaviorInstructionController: UIViewController {
         view.addSubview(offItem)
         offItem.snp.makeConstraints { make in
             make.left.equalTo(SCRXFrom(25))
-            make.top.equalTo(SCRYFrom(24) + (navigationController?.navigationBar.height ?? kNavigationHeight))
+            make.top.equalTo(view.safeAreaLayoutGuide).offset(SCRYFrom(24))
+//            make.top.equalTo(SCRYFrom(24) + (navigationController?.navigationBar.height ?? kNavigationHeight))
             make.width.equalTo(SCRXFrom(66))
             make.height.equalTo(SCRYFrom(102))
         }

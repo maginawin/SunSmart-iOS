@@ -9,6 +9,7 @@
 import UIKit
 import Foundation
 import AVFoundation
+import PhotosUI
 
 public protocol LBXScanViewControllerDelegate: class {
      func scanFinished(scanResult: LBXScanResult, error: String?)
@@ -265,11 +266,24 @@ open class LBXScanViewController: UIViewController {
     
     @objc open func openPhotoAlbum() {
         LBXPermissions.authorizePhotoWith { [weak self] _ in
-            let picker = UIImagePickerController()
-            picker.sourceType = UIImagePickerController.SourceType.photoLibrary
-            picker.delegate = self
-            picker.allowsEditing = true
-            self?.present(picker, animated: true, completion: nil)
+            
+            
+            if #available(iOS 14.0, *) {
+                var configuration = PHPickerConfiguration(photoLibrary: .shared())
+                configuration.selectionLimit = 1 // 单选模式
+                configuration.filter = .images // 只允许图片
+                
+                let picker = PHPickerViewController(configuration: configuration)
+                picker.delegate = self
+                self?.present(picker, animated: true, completion: nil)
+            } else {
+                
+                let picker = UIImagePickerController()
+                picker.delegate  = self
+                picker.sourceType = .photoLibrary
+                picker.allowsEditing = false
+                self?.present(picker, animated: true, completion: nil)
+            }
         }
     }
 }
@@ -293,6 +307,36 @@ extension LBXScanViewController: UIImagePickerControllerDelegate, UINavigationCo
         }
     }
     
+}
+
+extension LBXScanViewController: PHPickerViewControllerDelegate {
+    
+    @available(iOS 14.0, *)
+    public func picker(_ picker: PHPickerViewController, didFinishPicking results: [PHPickerResult]) {
+        picker.dismiss(animated: true, completion: nil)
+        
+        guard let result = results.first else {
+            print("没有选择图片")
+            showMsg(title: nil, message: NSLocalizedString("Identify failed", comment: "Identify failed"))
+            return
+        }
+        
+        // 获取选中的图片
+        if result.itemProvider.canLoadObject(ofClass: UIImage.self) {
+            result.itemProvider.loadObject(ofClass: UIImage.self) { (object, error) in
+                if let image = object as? UIImage {
+                    DispatchQueue.main.async {
+                        // 识别二维码或其他操作
+                        let arrayResult = LBXScanWrapper.recognizeQRImage(image: image)
+                        if !arrayResult.isEmpty {
+                            self.handleCodeResult(arrayResult: arrayResult)
+                        }
+                    }
+                }
+            }
+        }
+    }
+   
 }
 
 //MARK: - 私有方法

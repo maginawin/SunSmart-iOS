@@ -73,7 +73,7 @@ class GroupSwitchPanelViewCell: UITableViewCell {
         
         switchContentView = UIView()
         switchContentView.layer.borderColor = RGB(220, 220, 220).cgColor
-        switchContentView.layer.borderWidth = 0.5
+        switchContentView.layer.borderWidth = 0.6
         switchContentView.layer.cornerRadius = 15
         switchContentView.backgroundColor = .white
         contentView.addSubview(switchContentView)

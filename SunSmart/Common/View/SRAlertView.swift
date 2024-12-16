@@ -610,7 +610,7 @@ class SRAlertView: UIView {
                 action.actionHandler!(action)
             }
             if action.closeAlert {
-                dismiss()
+                dismiss(animation: action.hideAnimation)
             }
         }
 //        dismiss()
@@ -626,7 +626,7 @@ class SRAlertView: UIView {
                 action.actionHandler!(action)
             }
             if action.closeAlert {
-                dismiss()
+                dismiss(animation: action.hideAnimation)
             }
         }
         if self.inputDoneBack != nil {
@@ -1254,10 +1254,12 @@ struct SRAlertAction {
     let style: SRAlertActionStyle
     /// 点击是否关闭弹窗
     var closeAlert: Bool = true
+    /// 点击后关闭弹窗是否展示动画
+    var hideAnimation: Bool = true
     /// 点击事件
     var actionHandler: ((SRAlertAction)->())? = nil
     
-    init(title: String, titleColor: UIColor? = nil, titleFont: UIFont? = nil, style: SRAlertActionStyle = .default, closeAlert: Bool = true, actionHandler: ((SRAlertAction) -> Void)? = nil) {
+    init(title: String, titleColor: UIColor? = nil, titleFont: UIFont? = nil, style: SRAlertActionStyle = .default, closeAlert: Bool = true, hideAnimation: Bool = true, actionHandler: ((SRAlertAction) -> Void)? = nil) {
         self.title = title
         
         switch style {
@@ -1280,6 +1282,7 @@ struct SRAlertAction {
         }
         self.style = style
         self.closeAlert = closeAlert
+        self.hideAnimation = hideAnimation
         self.actionHandler = actionHandler
     }
 }

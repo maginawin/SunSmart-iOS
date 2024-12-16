@@ -6,6 +6,7 @@
 //
 
 import UIKit
+import NordicSigMeshSDK
 
 class MeshFirmwareTypeUpdateViewCell: UICollectionViewCell {
     
@@ -18,6 +19,7 @@ class MeshFirmwareTypeUpdateViewCell: UICollectionViewCell {
     /// 本地版本
     private var targetVersionView: UIView!
     private var targetVersionTitleLabel: UILabel!
+    private var targetVersionInfoView: UIView!
     private var targetVersionLabel: UILabel!
     private var newVersionView: UIView!
     private var versionInfoImageView: UIImageView!
@@ -38,6 +40,9 @@ class MeshFirmwareTypeUpdateViewCell: UICollectionViewCell {
     private var upgradedLabel: UILabel!
     private var upgradedNumberLabel: UILabel!
     
+    /// 当前版本点击回调
+    var currentVersionCallback: (()->Void)?
+    
     var firmwareTypeData: FirmwareUpdateTypeData! {
         didSet {
             
@@ -53,20 +58,54 @@ class MeshFirmwareTypeUpdateViewCell: UICollectionViewCell {
             updatableTipsView.isHidden = true
             versionStateImageView.layer.removeAnimation(forKey: "updating")
             
-            if let updateState = firmwareTypeData.updateState {
+            versionStateLabel.snp.remakeConstraints({ make in
+                make.left.equalTo(targetVersionLabel)
+                make.centerY.equalTo(versionStateTitleLabel)
+            })
+            
+            if let updateState = firmwareTypeData.distributorData?.distributionState {
+                
                 switch updateState {
-                case .wait:
+                case .none:
+                    
+                    versionStateImageView.isHidden = true
+                    versionStateLabel.isHidden = false
+                    switch firmwareTypeData.versionState {
+                    case .none:
+                        versionStateLabel.text = "--"
+                        versionStateLabel.textColor = SubText_Color
+                    case .updatable:
+                        updatableTipsView.isHidden = false
+                        versionStateLabel.text = "updatable".localizedString
+                    case .latest:
+                        versionStateLabel.text = "latest".localizedString
+                    }
+                    versionStateLabel.snp.remakeConstraints { make in
+                        make.left.equalTo(updatableTipsView.snp.right).offset(SCRXFrom(6))
+                        make.centerY.equalTo(versionStateTitleLabel)
+                    }
+                    
+                case .await:
                     versionStateLabel.isHidden = true
                     versionStateImageView.isHidden = false
                     versionStateImageView.image = UIImage(named: "sync_waiting_small")
                     
-                case .updating(let progress):
+                case .updating(let updatePhase):
                     versionStateLabel.isHidden = false
                     versionStateLabel.textColor = SubText_Color
-                    versionStateLabel.text = "\(progress)%"
+                    var currentProgress: UInt8 = 0
+                    switch updatePhase {
+                    case .verifying:
+                        currentProgress = 0
+                    case .blob(let progress, _):
+                        currentProgress = progress
+                    case .apply:
+                        currentProgress = 100
+                    }
+                    versionStateLabel.text = "\(currentProgress)%"
                     versionStateImageView.isHidden = false
                     versionStateImageView.image = UIImage(named: "sync_loading_small")
-                    versionStateImageView.layer.addRotationAnimation(duration: 1.2, repeatCount: .max, animationKey: "updating")
+                    versionStateImageView.layer.addRotationAnimation(duration: 1.5, repeatCount: .max, animationKey: "updating")
                     
                 case .complete:
                     versionStateLabel.isHidden = false
@@ -78,11 +117,13 @@ class MeshFirmwareTypeUpdateViewCell: UICollectionViewCell {
                     versionStateLabel.text = "install_firmware_failure".localizedString
                     versionStateLabel.textColor = Red_Color
                     versionStateImageView.isHidden = true
+                case .waitingInstall:
+                    versionStateLabel.isHidden = false
+                    versionStateLabel.text = "waiting_install".localizedString
+                    versionStateLabel.textColor = RGB(148, 163, 184)
+                    versionStateImageView.isHidden = true
                 }
-                versionStateLabel.snp.remakeConstraints({ make in
-                    make.centerX.equalTo(targetVersionLabel)
-                    make.centerY.equalTo(versionStateTitleLabel)
-                })
+               
                 
             }else {
                 versionStateImageView.isHidden = true
@@ -98,18 +139,19 @@ class MeshFirmwareTypeUpdateViewCell: UICollectionViewCell {
                     versionStateLabel.text = "latest".localizedString
                 }
                 
-                versionStateLabel.snp.remakeConstraints({ make in
-                    make.left.equalTo(targetVersionLabel)
-                    make.centerY.equalTo(versionStateTitleLabel)
-                })
+//                versionStateLabel.snp.remakeConstraints({ make in
+//                    make.left.equalTo(targetVersionLabel)
+//                    make.centerY.equalTo(versionStateTitleLabel)
+//                })
             }
             
             
             
             totalNumberLabel.text = "\(firmwareTypeData.nodes.count)"
-            if let targetVersion = firmwareTypeData.targetVersion{
+            if firmwareTypeData.targetVersion != nil {
                 // 已升级的设备
-                let upgradedCount = firmwareTypeData.nodes.filter({ $0.firmwareVersion != nil && targetVersion.compare($0.firmwareVersion!, options: .numeric) == .orderedSame }).count
+                let upgradedCount = firmwareTypeData.upgradedNodes.count
+//                firmwareTypeData.nodes.filter({ $0.firmwareVersion != nil && targetVersion.compare($0.firmwareVersion!, options: .numeric) == .orderedSame }).count
                 upgradedNumberLabel.text = "\(upgradedCount)"
             }else {
                 upgradedNumberLabel.text = "--"
@@ -141,7 +183,7 @@ class MeshFirmwareTypeUpdateViewCell: UICollectionViewCell {
     // MARK: - Action
     /// 当前版本
     @objc private func targetVersionAction() {
-//        delegate?.cell(self, viewCurrentTargetVersion: firmwareTypeData)
+        currentVersionCallback?()
     }
     
     
@@ -181,7 +223,7 @@ class MeshFirmwareTypeUpdateViewCell: UICollectionViewCell {
         }
         
         targetVersionView = UIView()
-        targetVersionView.addGestureRecognizer(UITapGestureRecognizer(target: self, action: #selector(targetVersionAction)))
+//        targetVersionView.addGestureRecognizer(UITapGestureRecognizer(target: self, action: #selector(targetVersionAction)))
         contentView.addSubview(targetVersionView)
         targetVersionView.snp.makeConstraints { make in
             make.left.right.equalTo(deviceTypeView)
@@ -196,17 +238,27 @@ class MeshFirmwareTypeUpdateViewCell: UICollectionViewCell {
             make.centerY.equalToSuperview()
         }
         
-        versionInfoImageView = UIImageView(image: UIImage(named: "firmware_version_more"))
-        targetVersionView.addSubview(versionInfoImageView)
-        versionInfoImageView.snp.makeConstraints { make in
+        targetVersionInfoView = UIView()
+        targetVersionInfoView.addGestureRecognizer(UITapGestureRecognizer(target: self, action: #selector(targetVersionAction)))
+        targetVersionView.addSubview(targetVersionInfoView)
+        targetVersionInfoView.snp.makeConstraints { make in
             make.right.equalTo(SCRXFrom(-20))
             make.centerY.equalToSuperview()
         }
         
+        versionInfoImageView = UIImageView(image: UIImage(named: "firmware_version_more"))
+        targetVersionInfoView.addSubview(versionInfoImageView)
+        versionInfoImageView.snp.makeConstraints { make in
+            make.top.bottom.right.equalToSuperview()
+//            make.right.equalTo(SCRXFrom(-20))
+//            make.centerY.equalToSuperview()
+        }
+        
         targetVersionLabel = UILabel(text: "1.2.0", textColor: TextBlack_Color, fontSize: 13, fontWeight: .light)
-        targetVersionView.addSubview(targetVersionLabel)
+        targetVersionInfoView.addSubview(targetVersionLabel)
         targetVersionLabel.snp.makeConstraints { make in
             make.right.equalTo(versionInfoImageView.snp.left).offset(SCRXFrom(-9))
+            make.left.equalToSuperview()
             make.centerY.equalTo(versionInfoImageView)
         }
         
@@ -235,20 +287,20 @@ class MeshFirmwareTypeUpdateViewCell: UICollectionViewCell {
             make.top.equalTo(SCRYFrom(6))
         }
         
-        versionStateLabel = UILabel(text: "--", textColor: TextBlack_Color, fontSize: 13, fontWeight: .light)
-        versionStateView.addSubview(versionStateLabel)
-        versionStateLabel.snp.makeConstraints { make in
-            make.centerX.equalTo(targetVersionLabel)
-            make.centerY.equalTo(versionStateTitleLabel)
-        }
-        
         updatableTipsView = UIView()
         updatableTipsView.backgroundColor = RGB(255, 72, 49)
         updatableTipsView.layer.cornerRadius = 2
         versionStateView.addSubview(updatableTipsView)
         updatableTipsView.snp.makeConstraints { make in
             make.centerX.width.height.equalTo(newVersionView)
-            make.centerY.equalTo(versionStateLabel)
+            make.centerY.equalTo(versionStateTitleLabel)
+        }
+        
+        versionStateLabel = UILabel(text: "--", textColor: TextBlack_Color, fontSize: 13, fontWeight: .light)
+        versionStateView.addSubview(versionStateLabel)
+        versionStateLabel.snp.makeConstraints { make in
+            make.left.equalTo(updatableTipsView.snp.right).offset(SCRXFrom(6))
+            make.centerY.equalTo(versionStateTitleLabel)
         }
         
         versionStateImageView = UIImageView()
@@ -272,7 +324,7 @@ class MeshFirmwareTypeUpdateViewCell: UICollectionViewCell {
         contentView.addSubview(deviceNumberView)
         deviceNumberView.snp.makeConstraints { make in
             make.left.right.equalTo(targetVersionView)
-            make.top.equalTo(targetVersionView.snp.bottom)
+            make.top.equalTo(versionStateView.snp.bottom)
             make.height.equalTo(SCRYFrom(40))
         }
         

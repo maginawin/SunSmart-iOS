@@ -31,6 +31,7 @@ extension SiteData {
               let name = json["siteName"].string else {
             return nil
         }
+        var isChangeAddress = changeAddress
         var site = SiteData.load(siteId: uuid)
         var initialize = false
         if site == nil {
@@ -45,8 +46,12 @@ extension SiteData {
             }
             site = SiteData(id: uuid, meshUUID: uuid, name: name, type: .init(rawValue: json["type"].intValue) ?? .office, permission: permission, create: json["createTimestamp"].int64Value, lastUpdate: json["updateTimestamp"].int64Value, isFavourite: false, sourceType: .create)
             initialize = true
+        }else if site?.state == .waitDeleted { // 已转让site再次加入算重新
+            initialize = true
+            isChangeAddress = true
+            site?.state = .normal
         }
-        await site?.update(siteJsonData: siteJsonData, changeAddress: changeAddress, initialize: initialize)
+        await site?.update(siteJsonData: siteJsonData, changeAddress: isChangeAddress, initialize: initialize)
         
         return site
     }
@@ -77,7 +82,7 @@ extension SiteData {
         self.permission = permission
         
         let currentNetwork = MeshNetworkManager.instance.meshNetwork?.uuid.uuidString == self.meshUUID ? MeshNetworkManager.instance.meshNetwork : nil
-        var meshNetwork = currentNetwork ?? MeshNetwork.load(meshUUID: uuid, allData: false)
+        var meshNetwork = currentNetwork ?? MeshNetwork.load(meshUUID: self.meshUUID, allData: false)
         
         // 服务器最后更新时间比本地时间新才覆盖本地数据
         if lastUpdate > self.lastUpdate || initialize {
@@ -103,7 +108,7 @@ extension SiteData {
             
             /// 是否保存mesh数据
 //            var meshNetworkSave = false
-            if meshNetwork == nil {
+            if meshNetwork == nil || initialize {
                 guard let netKeyDict = siteJsonData["netKey"] as? [String: Any],
                       let netKeyData = try? JSONSerialization.data(withJSONObject: netKeyDict),
                       let netKey = try? jsonDecoder.decode(NetworkKey.self, from: netKeyData),
@@ -197,7 +202,7 @@ extension SiteData {
                     localProvisioner = provisioner
                 }
                 
-                meshNetwork = MeshNetworkManager.createMeshNetwork(meshUUID: uuid, meshNetworkName: name, localAddress: self.localAddress, provisionerUUID: provisionerUuid.uuidString, provisioner: localProvisioner).meshNetwork
+                meshNetwork = MeshNetworkManager.createMeshNetwork(meshUUID: self.meshUUID, meshNetworkName: name, localAddress: self.localAddress, provisionerUUID: provisionerUuid.uuidString, provisioner: localProvisioner, networkKey: netKey, applicationKey: appKey).meshNetwork
                 if let deviceUsedAddresses = json["provisioner"]["usedAddresses"].arrayObject as? [String] {
                     meshNetwork?.deviceUsedAddresses = deviceUsedAddresses.compactMap({ Address(hex: $0) })
                 }
@@ -260,21 +265,44 @@ extension SiteData {
 //                meshNetwork?.save()
 //            }
         }else {
+            
+            if let ivIndex = json["ivIndex"].uInt32 {
+                meshNetwork?.currentIVIndex = ivIndex
+            }
+            
             // 更新废弃的设备地址
             if let exclusions = json["exclusions"].array {
-                let exclusionDataList = exclusions.compactMap({
+                let exclusionDataList: [(ivIndex: UInt32, addresses: [Address])] = exclusions.compactMap({
                     if let ivIndex = $0["ivIndex"].uInt32, let addresses = $0["addresses"].arrayObject as? [String] {
                         return (ivIndex, addresses.compactMap({ Address(hex: $0) }))
                     }
                     return nil
                 })
+                
+                // 之前有服务器不存在的废弃地址，更新数据时追加保存到本地
+                var appendExclusionDatas: [(ivIndex: UInt32, addresses: [Address])] = []
+                // 检查不符合回收条件并且未记录的废弃地址
+                if let currentExclusionAddresses = meshNetwork?.getNetworkExclusionAddresses() {
+                    currentExclusionAddresses.forEach { (ivIndex: UInt32, addresses: [Address]) in
+                        if (meshNetwork?.currentIVIndex ?? 0) - ivIndex <= 1 {
+                            var appendAddresses = addresses
+                            if let exclusionData = exclusionDataList.first(where: { $0.ivIndex == ivIndex }) {
+                                appendAddresses = addresses.filter({ !exclusionData.addresses.contains($0) })
+                            }
+                            appendExclusionDatas.append((ivIndex: ivIndex, addresses: appendAddresses))
+                        }
+                    }
+                }
                 meshNetwork?.setNetworkExclusionAddresses(list: exclusionDataList)
+                appendExclusionDatas.forEach { (ivIndex: UInt32, addresses: [Address]) in
+                    addresses.forEach({
+                        meshNetwork?.insetExclusionAddress(ivIndex: ivIndex, address: $0)
+                    })
+                }
             }
         }
       
-        if let ivIndex = json["ivIndex"].uInt32 {
-            meshNetwork?.currentIVIndex = ivIndex
-        }
+       
         meshNetwork?.save()
         
         // 修改供应者地址资源
@@ -282,13 +310,21 @@ extension SiteData {
             self.setProvisioner(provisionerData: provisionerData)
         }
         
-        if var spaceDicts = json["spaces"].arrayObject as? [[String: Any]] {
+        if let spaceDicts = json["spaces"].arrayObject as? [[String: Any]] {
             var spaces: [SpaceData] = []
-            while let dict = spaceDicts.first {
-                if let space = await SpaceData.import(siteId: uuid, spaceJsonData: dict) {
-                    spaces.append(space)
+            await withTaskGroup(of: SpaceData?.self) { group in
+                for data in spaceDicts {
+                    group.addTask {
+                        // 异步处理每个数据
+                        return await SpaceData.import(siteId: uuid, meshUUID: self.meshUUID, spaceJsonData: data)
+                    }
                 }
-                spaceDicts.remove(at: 0)
+                // 收集结果
+                for await space in group {
+                    if let space = space {
+                        spaces.append(space)
+                    }
+                }
             }
             
             // space已提交到服务器，但是本地有但是服务器没有
@@ -574,9 +610,10 @@ extension SpaceData {
     /// 导入space数据
     /// - Parameters:
     ///   - siteId: 所属site id
+    ///   - meshUUID: 网络uuid
     ///   - spaceJsonData: space数据
     /// - Returns: space
-    static func `import`(siteId: String, spaceJsonData: [String: Any]) async -> SpaceData? {
+    static func `import`(siteId: String, meshUUID: String, spaceJsonData: [String: Any]) async -> SpaceData? {
         
         //       return await withCheckedContinuation { continuation in
         let json = JSON(spaceJsonData)
@@ -604,7 +641,7 @@ extension SpaceData {
             default:
                 break
             }
-            let newSpace = SpaceData(name: name, id: uuid, siteId: siteId, imageId: 0, create: json["createTimestamp"].int64Value, lastUpdate: json["updateTimestamp"].int64Value, isFavourite: false, permission: permission, sourceType: .share, meshUUID: siteId, meshNetworkId: netKey.networkId.hex)
+            let newSpace = SpaceData(name: name, id: uuid, siteId: siteId, imageId: 0, create: json["createTimestamp"].int64Value, lastUpdate: json["updateTimestamp"].int64Value, isFavourite: false, permission: permission, sourceType: .share, meshUUID: meshUUID, meshNetworkId: netKey.networkId.hex)
             space = newSpace
             initialize = true
         }
@@ -727,7 +764,10 @@ extension SpaceData {
 //                    })
 //                }
             }
-            guard let network = meshNetwork else { return }
+            guard let network = meshNetwork else {
+                continuation.resume()
+                return
+            }
             
             if let netKeyDict = json["netKey"].dictionaryObject,
                let netKeyData = try? JSONSerialization.data(withJSONObject: netKeyDict),
@@ -849,10 +889,18 @@ extension SpaceData {
                     }
                     
                     if let lightLCPropertyDict = nodeJson["lightLCPropertys"].dictionaryObject,
-                       let lightLCPropertyData = try? JSONSerialization.data(withJSONObject: lightLCPropertyDict),
-                       let lightLCProperty = try? jsonDecoder.decode(LightLCProperty.self, from: lightLCPropertyData)  {
-                        node.lightLCProperty = lightLCProperty
+                       let lightLCPropertyData = try? JSONSerialization.data(withJSONObject: lightLCPropertyDict) {
+                        
+                        if let lightLCProperty = try? jsonDecoder.decode(LightLCProperty.self, from: lightLCPropertyData) {
+                            node.lightLCProperty = lightLCProperty
+                        }
                     }
+                    
+                    // 光感校准值
+                    if let daylightCalibrationValue = nodeJson["daylightCalibrationValue"].uInt16 {
+                        node.daylightCalibrationValue = daylightCalibrationValue
+                    }
+                    
                     return node
                 }
                 return nil
@@ -868,7 +916,7 @@ extension SpaceData {
             // 场景
             let scenes = sceneDicts.compactMap { sceneDict in
                 let sceneJson = JSON(sceneDict)
-                if let sceneNumberHex = sceneJson["number"].string, let sceneNumber = SceneNumber(sceneNumberHex), let name = sceneJson["name"].string {
+                if let sceneNumberHex = sceneJson["number"].string, let sceneNumber = SceneNumber(hex: sceneNumberHex), let name = sceneJson["name"].string {
                     let scene = Scene(sceneNumber, name: name)
                     scene.subNetworkId = self.meshNetworkId
                     let existNodes = nodes.filter({ $0.sceneExecuteDatas.contains(where: { $0.sceneNumber == sceneNumber }) })
@@ -938,9 +986,9 @@ extension SpaceData {
                     }
                     // scenes data
                     if let sceneDicts = groupJson["scenesDatas"].arrayObject,
-                       let data = try? JSONSerialization.data(withJSONObject: sceneDicts),
-                       let sceneExecuteDatas = try? jsonDecoder.decode([SceneExecuteData].self, from: data) {
-                        group.info.sceneExecuteDatas = sceneExecuteDatas
+                       let data = try? JSONSerialization.data(withJSONObject: sceneDicts) {
+                        let sceneExecuteDatas = try? jsonDecoder.decode([SceneExecuteData].self, from: data)
+                        group.info.sceneExecuteDatas = sceneExecuteDatas ?? []
                     }
                     
                     // schedules
@@ -996,11 +1044,11 @@ extension SpaceData {
                             switchData.linkGroupAddress = linkGroupAddress
                         }
                         if let sceneAHex = switcheJson["sceneA"].string,
-                           let sceneANumber = SceneNumber(sceneAHex) {
+                           let sceneANumber = SceneNumber(hex: sceneAHex) {
                             switchData.sceneANumber = sceneANumber
                         }
                         if let sceneBHex = switcheJson["sceneB"].string,
-                           let sceneBNumber = SceneNumber(sceneBHex) {
+                           let sceneBNumber = SceneNumber(hex: sceneBHex) {
                             switchData.sceneBNumber = sceneBNumber
                         }
                         if let proxyAddress = switcheJson["proxyNodeAddress"].string {

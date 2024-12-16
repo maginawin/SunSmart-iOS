@@ -18,16 +18,17 @@ struct MeshDeviceConfigInfo {
     let categoryName: String
     /// element数量
     let elementCount: Int
+    /// 图标类别
+    let iconCategory: String
     
     /// 默认设备配置信息
     static var defaultConfigInfos: [MeshDeviceConfigInfo] {
         
         var configInfos: [MeshDeviceConfigInfo] = [
-            .init(companyId: CompanyId, productId: 0x0001, categoryName: "PIR Sensor Lighting", elementCount: 2),
-            .init(companyId: CompanyId, productId: 0x0011, categoryName: "PIR Sensor Lighting", elementCount: 2),
-            .init(companyId: CompanyId, productId: 0x0211, categoryName: "Standalone Sensor", elementCount: 2),
-            .init(companyId: CompanyId, productId: 0x0301, categoryName: "Driver Lighting", elementCount: 2),
-            .init(companyId: CompanyId, productId: 0x0401, categoryName: "Controler Lighting", elementCount: 2)
+            .init(companyId: CompanyId, productId: 0x0001, categoryName: "PIR Sensor Lighting", elementCount: 2, iconCategory: "Lighting"),
+            .init(companyId: CompanyId, productId: 0x0011, categoryName: "PIR Sensor Lighting", elementCount: 2, iconCategory: "Lighting"),
+            .init(companyId: CompanyId, productId: 0x0301, categoryName: "Driver Lighting", elementCount: 2,  iconCategory: "Lighting"),
+            .init(companyId: CompanyId, productId: 0x0401, categoryName: "Controller Lighting", elementCount: 2,  iconCategory: "Lighting")
         ]
         
         if let filePath = Bundle.main.path(forResource: "devices_config", ofType: "json") {
@@ -36,8 +37,9 @@ struct MeshDeviceConfigInfo {
                 configInfos = configDicts.compactMap({ dict in
                     if let companyIdHex = dict["companyId"] as? String, let companyId = UInt16(hex: companyIdHex),
                        let productIdHex = dict["productId"] as? String,  let productId = UInt16(hex: productIdHex),
-                       let categoryName = dict["categoryName"] as? String, let elementCount = dict["elementCount"] as? Int {
-                        return .init(companyId: companyId, productId: productId, categoryName: categoryName, elementCount: elementCount)
+                       let categoryName = dict["categoryName"] as? String, let elementCount = dict["elementCount"] as? Int,
+                       let iconCategory = dict["iconCategory"] as? String {
+                        return .init(companyId: companyId, productId: productId, categoryName: categoryName, elementCount: elementCount, iconCategory: iconCategory)
                     }
                     return nil
                 })

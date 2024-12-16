@@ -56,7 +56,7 @@ class BluetoothRequiredViewController: UIViewController {
         view.addSubview(navigationBar)
         navigationBar.snp.makeConstraints { make in
             make.left.top.right.equalToSuperview()
-            make.height.equalTo(kNavigationHeight)
+            make.height.equalTo((navigationController?.navigationBar.frame.maxY ?? kNavigationHeight))
         }
         
         

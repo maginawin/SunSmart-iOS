@@ -112,6 +112,11 @@ class SceneViewController: UIViewController {
     
     @objc private func moreClick() {
         
+        let margin: CGFloat = SCRXFrom(15.5)
+//        isIphoneX ? 18 : 15
+        let touchCenterX = view.width - SCRXFrom(margin) - 15
+        let touchCenterY = SCREEN_HEIGHT - view.height + view.safeAreaInsets.top - 15
+        
         MenuPopView.show(items: [
             .init(icon: UIImage(named: "menu_edit"), title: "edit".localizedString, tapItemBack: {[weak self] item in
                 self?.editScene()
@@ -120,11 +125,11 @@ class SceneViewController: UIViewController {
 //                self?.deleteSite()
                 self?.deleteScene()
             }),
-            .init(icon: UIImage(named: "settings"), title: "settings".localizedString, tapItemBack: {[weak self] item in
+            .init(icon: UIImage(named: "settings"), title: "settings".localizedString, hideAnimation: false, tapItemBack: {[weak self] item in
                 self?.settings()
             })
             
-        ], anchorPoint: CGPoint(x: view.width - SCRXFrom(17) - 15, y: (navigationController?.navigationBar.frame.maxY ?? kNavigationHeight) + StatusBarManager.statusBarFrame.height))
+        ], anchorPoint: CGPoint(x: touchCenterX, y: touchCenterY))
         
     }
     

@@ -89,10 +89,7 @@ extension SiteData {
                     return nil
                 })
                 siteJsonData.updateValue(exclusionsData, forKey: "exclusions")
-                
-                // 已使用的地址
-                
-                
+             
                 
         //        var exportSpaces: [SpaceData] = []
                 continuation.resume(returning: siteJsonData)
@@ -105,9 +102,19 @@ extension SiteData {
             var exportSpaces = self.spaces.filter({ space in spaceIds!.contains(where: { $0 == space.id }) })
             var spaceDicts: [[String: Any]] = []
             
-            while let data = await exportSpaces.first?.export() {
-                exportSpaces.remove(at: 0)
-                spaceDicts.append(data)
+            await withTaskGroup(of: [String: Any]?.self) { group in
+                for space in exportSpaces {
+                    group.addTask {
+                        // 异步处理每个数据
+                        return await space.export()
+                    }
+                }
+                // 收集结果
+                for await spaceData in group {
+                    if let spaceData = spaceData {
+                        spaceDicts.append(spaceData)
+                    }
+                }
             }
             siteData.updateValue(spaceDicts, forKey: "spaces")
         }else {
@@ -127,24 +134,29 @@ extension SpaceData {
             
             var spaceJsonData: [String: Any] = [:]
             
-            guard let meshNetworkManager = MeshNetworkManager.loadMeshNetwork(meshUUID: meshUUID, subnetworkId: self.meshNetworkId) else {
+//            guard let meshNetworkManager = MeshNetworkManager.loadMeshNetwork(meshUUID: meshUUID, subnetworkId: self.meshNetworkId) else {
+//                continuation.resume(returning: spaceJsonData)
+//                return
+//            }
+            guard let meshNetwork = MeshNetwork.load(meshUUID: meshUUID, subnetworkId: self.meshNetworkId) else {
                 continuation.resume(returning: spaceJsonData)
                 return
             }
-            meshNetworkManager.switchs = DeviceSwitchData.load(meshUUID: meshUUID, meshNetworkId: self.meshNetworkId)
+            let switchs = DeviceSwitchData.load(meshUUID: meshUUID, meshNetworkId: self.meshNetworkId)
+//            meshNetworkManager.switchs = DeviceSwitchData.load(meshUUID: meshUUID, meshNetworkId: self.meshNetworkId)
             // SigMesh + SunSmart扩展数据
-            meshNetworkManager.schedules = Schedule.load(meshUUID: meshUUID, meshNetworkId: self.meshNetworkId)
-            meshNetworkManager.groups.forEach({ group in
+            let schedules = Schedule.load(meshUUID: meshUUID, meshNetworkId: self.meshNetworkId)
+            meshNetwork.groups.forEach({ group in
                 group.info = GroupInfo.load(meshUUID: meshUUID, address: group.address.address) ?? GroupInfo(address: group.address.address)
                 
-                let bindSchedules = meshNetworkManager.schedules.filter({ schedule in
+                let bindSchedules = schedules.filter({ schedule in
                     schedule.groups.contains(where: { $0.address == group.address }) ||
                     schedule.needDeleteGroups.contains(where: { $0.address == group.address }) ||
                     (schedule.scene?.info.groups.contains(where: { $0.address == group.address }) ?? false)
                 })
                 group.info.bindSchedules = bindSchedules
             })
-            meshNetworkManager.scenes.forEach({
+            meshNetwork.scenes.forEach({
                 $0.info = SceneInfo.load(meshUUID: meshUUID, sceneId: $0.number) ?? SceneInfo(sceneId: $0.number)
             })
             
@@ -157,8 +169,8 @@ extension SpaceData {
             spaceJsonData.updateValue(Int64(self.lastUpdate) , forKey: "updateTimestamp")
             
             
-            let networkKey = meshNetworkManager.meshNetwork?.networkKeys.first(where: { $0.networkId.hex == self.meshNetworkId })
-            let appKey = meshNetworkManager.meshNetwork?.applicationKeys.first(where: { $0.boundNetworkKeyIndex == networkKey?.index })
+            let networkKey = meshNetwork.networkKeys.first(where: { $0.networkId.hex == self.meshNetworkId })
+            let appKey = meshNetwork.applicationKeys.first(where: { $0.boundNetworkKeyIndex == networkKey?.index })
             
             if let data = try? jsonEncoder.encode(networkKey), let networkKeyDict = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
                 spaceJsonData.updateValue(networkKeyDict, forKey: "netKey")
@@ -194,8 +206,9 @@ extension SpaceData {
             var sceneDicts: [[String: Any]] = []
             var scheheduleDicts: [[String: Any]] = []
             
+            let allNodes = meshNetwork.nodes.filter({!$0.isLocalProvisioner && !$0.isProvisioner && !$0.isConfigComplete })
             // 设备
-            meshNetworkManager.realNodes.forEach { node in
+            allNodes.filter({ !$0.isProvisioner }).forEach { node in
                 if let data = try? jsonEncoder.encode(node), var nodeDict = try? JSONSerialization.jsonObject(with: data) as? [String : Any] {
                     if let uuid = nodeDict["UUID"] as? String { // 修改UUID=>uuid提交服务器
                         nodeDict.updateValue(uuid, forKey: "uuid")
@@ -275,12 +288,22 @@ extension SpaceData {
                     if let lightLCPropertyData = try? jsonEncoder.encode(node.lightLCProperty), let lightLCPropertyDict = try? JSONSerialization.jsonObject(with: lightLCPropertyData) as? [String : Any] {
                         nodeDict.updateValue(lightLCPropertyDict, forKey: "lightLCPropertys")
                     }
+                    // 光感校准值
+                    if node.sensorCalibrated, let daylightCalibrationValue = node.daylightCalibrationValue {
+                        nodeDict.updateValue(daylightCalibrationValue, forKey: "daylightCalibrationValue")
+                    }
+                    
                     nodeDicts.append(nodeDict)
                 }
             }
             
             // 组
-            meshNetworkManager.groups.forEach { group in
+            // 真实组
+            let realGroups = meshNetwork.groups.filter({ $0.address.address.isGroup && !$0.address.address.isSpecialGroup && !$0.isVirtual })
+            // 虚拟组
+            let virtualGroups = meshNetwork.groups.filter({ $0.address.address.isGroup && !$0.address.address.isSpecialGroup && $0.isVirtual })
+            
+            realGroups.forEach { group in
                 if let data = try? jsonEncoder.encode(group), var groupDict = try? JSONSerialization.jsonObject(with: data) as? [String : Any] {
                     groupDict.updateValue(group.info.imageId, forKey: "imageId")
                     groupDict.updateValue(group.isVirtual, forKey: "isVirtual")
@@ -319,7 +342,7 @@ extension SpaceData {
             }
             
             // 虚拟组
-            meshNetworkManager.virtualGroups.forEach { group in
+            virtualGroups.forEach { group in
                 if let data = try? jsonEncoder.encode(group), var groupDict = try? JSONSerialization.jsonObject(with: data) as? [String : Any] {
                     groupDict.updateValue(group.isVirtual, forKey: "isVirtual")
                     groupDicts.append(groupDict)
@@ -327,7 +350,7 @@ extension SpaceData {
             }
             
             // 动能开关
-            let switcheDicts = meshNetworkManager.switchs.map { switchData in
+            let switcheDicts = switchs.map { switchData in
                 var dict = [
                     "id" : switchData.id,
                     "name" : switchData.name,
@@ -367,12 +390,12 @@ extension SpaceData {
             }
 
             // 场景
-            meshNetworkManager.scenes.forEach { scene in
+            meshNetwork.scenes.forEach { scene in
                 sceneDicts.append(["number": scene.number.hex, "name": scene.name, "imageId": scene.info.imageId])
             }
             
             // 日程
-            if let data = try? jsonEncoder.encode(meshNetworkManager.schedules), let schedules = try? JSONSerialization.jsonObject(with: data) as? [[String : Any]] {
+            if let data = try? jsonEncoder.encode(schedules), let schedules = try? JSONSerialization.jsonObject(with: data) as? [[String : Any]] {
                 scheheduleDicts = schedules
             }
             

@@ -42,7 +42,8 @@ class AttributedTextViewController: UIViewController {
         textView.snp.makeConstraints { make in
             make.left.equalTo(SCRXFrom(16))
             make.right.equalTo(SCRXFrom(-16))
-            make.top.equalTo(SCRYFrom(20) + kNavigationHeight)
+            make.top.equalTo(view.safeAreaLayoutGuide).offset(SCRYFrom(20))
+//            make.top.equalTo(SCRYFrom(20) + (navigationController?.navigationBar.frame.maxY ?? kNavigationHeight))
             make.bottom.equalTo(SCRYFrom(-20))
         }
     }

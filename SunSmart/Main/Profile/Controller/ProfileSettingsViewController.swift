@@ -283,7 +283,7 @@ class ProfileSettingsViewController: UIViewController {
                 make.left.right.equalTo(sphasesView)
                 make.top.equalTo(sphasesView.snp.bottom).offset(SCRYFrom(16))
                 make.height.greaterThanOrEqualTo(SCRYFrom(172))
-                make.bottom.equalToSuperview()
+                make.bottom.equalTo(SCRYFrom(-16))
             }
         }else {
             timeoutView.isHidden = false
@@ -291,7 +291,7 @@ class ProfileSettingsViewController: UIViewController {
                 make.left.right.equalTo(timeoutView)
                 make.top.equalTo(timeoutView.snp.bottom).offset(SCRYFrom(16))
                 make.height.greaterThanOrEqualTo(SCRYFrom(172))
-                make.bottom.equalToSuperview()
+                make.bottom.equalTo(SCRYFrom(-16))
             }
         }
         
@@ -304,7 +304,8 @@ class ProfileSettingsViewController: UIViewController {
         view.addSubview(scrollView)
         scrollView.snp.makeConstraints { make in
             make.left.right.bottom.equalToSuperview()
-            make.top.equalTo(navigationController?.navigationBar.height ?? kNavigationHeight)
+//            make.top.equalTo(navigationController?.navigationBar.height ?? kNavigationHeight)
+            make.top.equalTo(view.safeAreaLayoutGuide)
         }
         
         contentView = UIView()
@@ -361,7 +362,7 @@ class ProfileSettingsViewController: UIViewController {
             make.left.right.equalTo(timeoutView)
             make.top.equalTo(timeoutView.snp.bottom).offset(SCRYFrom(16))
             make.height.greaterThanOrEqualTo(SCRYFrom(172))
-            make.bottom.equalToSuperview()
+            make.bottom.equalTo(SCRYFrom(-16))
         }
     }
     
@@ -413,7 +414,7 @@ extension ProfileSettingsViewController: ProfileSettingsHeaderViewDelegate {
         
         let selectIndex = profiles.firstIndex(where: { $0.type == selectProfile.type }) ?? 0
         
-        TitleSelectView.show(titles: names, anchorPoint: CGPoint(x: viewPoint.x, y: y), selectIndex: selectIndex, menuWidth: profileRect.size.width, titleColor: SubText_Color, titleFont: FONTS(14), backgroundColor: .white, selectBackgroundColor: .clear, shadowColor: RGB(0, 0, 0, 0.1)) {[weak self] index in
+        TitleSelectView.show(titles: names, anchorPoint: CGPoint(x: viewPoint.x, y: y), selectIndex: selectIndex, menuWidth: profileRect.size.width, titleColor: SubText_Color, titleFont: FONTS(SCRXFrom(12)), backgroundColor: .white, selectBackgroundColor: .clear, shadowColor: RGB(0, 0, 0, 0.1)) {[weak self] index in
             guard let self = self else { return }
             self.selectProfile = self.profiles[index]
             self.initProfile = self.selectProfile.copy()

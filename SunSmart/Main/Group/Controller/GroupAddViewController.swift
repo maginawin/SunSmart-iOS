@@ -311,7 +311,7 @@ extension GroupAddViewController: UICollectionViewDataSource, UICollectionViewDe
         }
         
         if let currentCell = collectionView.cellForItem(at: indexPath) {
-            currentCell.layer.borderWidth = 0.5
+            currentCell.layer.borderWidth = 0.6
         }
         selectImageIndex = indexPath.item
         
@@ -383,7 +383,7 @@ extension GroupAddViewController: GroupAddHeaderViewDelegate {
 //        view
         let viewPoint = collectionView.convert(CGPoint(x: profileRect.minX, y: profileRect.maxY), from: view)
         let y = (SCREEN_HEIGHT - self.view.height) + collectionView.y + viewPoint.y + SCRYFrom(2) - collectionView.contentOffset.y
-        TitleSelectView.show(titles: names, anchorPoint: CGPoint(x: viewPoint.x, y: y), selectIndex: selectIndex, menuWidth: profileRect.size.width, titleColor: SubText_Color, titleFont: FONTS(14), backgroundColor: .white, selectBackgroundColor: .clear, shadowColor: RGB(0, 0, 0, 0.1)) {[weak self] index in
+        TitleSelectView.show(titles: names, anchorPoint: CGPoint(x: viewPoint.x, y: y), selectIndex: selectIndex, menuWidth: profileRect.size.width, titleColor: SubText_Color, titleFont: FONTS(SCRXFrom(12)), backgroundColor: .white, selectBackgroundColor: .clear, shadowColor: RGB(0, 0, 0, 0.1)) {[weak self] index in
             guard let self = self else { return }
             
             self.selectProfile = profiles[index]

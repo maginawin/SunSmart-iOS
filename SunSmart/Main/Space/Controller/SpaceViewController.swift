@@ -51,6 +51,17 @@ enum SpaceChangeDataType {
     case network(type: NetworkDataType)
 }
 
+extension SpaceViewController {
+    
+    /// 当前显示的space控制器
+    static func currentSpaceVc() -> SpaceViewController? {
+        guard let rootVc = UIApplication.shared.keyWindow().rootViewController as? UINavigationController else {
+            return nil
+        }
+        return rootVc.viewControllers.first(where: { $0.isKind(of: self) }) as? SpaceViewController
+    }
+}
+
 class SpaceViewController: WMPageController {
 
     var site: SiteData!
@@ -71,7 +82,7 @@ class SpaceViewController: WMPageController {
     private var meshPermissionValidation: Bool = false
     
     lazy var mainMenuView: SpaceMenuView = {
-        let menuView = SpaceMenuView(frame: CGRect(x: 0, y: kNavigationHeight, width: self.view.width, height: SCRYFrom(46)))
+        let menuView = SpaceMenuView()
         menuView.itemDatas = SpaceMenuView.defalutItems
         menuView.isUserInteractionEnabled = false
         return menuView
@@ -112,6 +123,11 @@ class SpaceViewController: WMPageController {
         view.backgroundColor = Background_Color
         menuView?.backgroundColor = .white
         self.view.addSubview(self.mainMenuView)
+        mainMenuView.snp.makeConstraints { make in
+            make.left.right.equalToSuperview()
+            make.top.equalTo(view.safeAreaLayoutGuide)
+            make.height.equalTo(SCRYFrom(46))
+        }
         
         navigationItem.rightBarButtonItem = UIBarButtonItem(image: UIImage(named: "more_vertical")?.withRenderingMode(.alwaysOriginal), style: .done, target: self, action: #selector(moreClick))
 
@@ -119,7 +135,7 @@ class SpaceViewController: WMPageController {
         MeshLibManager.manager.publishModelIDs = []// .genericOnOffServerModelId, .lightLightnessServerModelId, .lightCTLServerModelId
         MeshLibManager.manager.publishTimeModelIDs = []
         MeshLibManager.manager.publishModeloOnly = true
-        MeshLibManager.manager.groupSubscriptionModelIDs = [.genericOnOffServerModelId, .lightLightnessServerModelId, .genericLevelServerModelId, .lightCTLTemperatureServerModelId, .lightCTLServerModelId, .sensorServerModelId, .lightLCServerModelId]
+        MeshLibManager.manager.groupSubscriptionModelIDs = [.genericOnOffServerModelId, .lightLightnessServerModelId, .lightCTLTemperatureServerModelId, .lightCTLServerModelId, .sensorServerModelId, .lightLCServerModelId]
         checkBluetoothState()
    
         // 添加通知监听
@@ -134,6 +150,8 @@ class SpaceViewController: WMPageController {
             // 读取space内是否有其他编辑者
             checkTheSpaceMembersRequest()
         }
+        
+        
     }
     
     override func viewWillAppear(_ animated: Bool) {
@@ -707,6 +725,10 @@ class SpaceViewController: WMPageController {
             return
         }
         
+        let margin: CGFloat = SCRXFrom(15.5)
+//        isIphoneX ? 18 : 15
+        let touchCenterX = view.width - SCRXFrom(margin) - 15
+        
         var items: [MenuPopView.MenuItem] = []
         
         if space.spaceOperates.contains(.edit) {
@@ -732,7 +754,7 @@ class SpaceViewController: WMPageController {
             }))
         }
         
-        MenuPopView.show(items: items, anchorPoint: CGPoint(x: view.width - 18 - 15, y: kNavigationHeight), menuWidth: SCRXFrom(108))
+        MenuPopView.show(items: items, anchorPoint: CGPoint(x: touchCenterX, y: view.safeAreaInsets.top), menuWidth: SCRXFrom(108))
     }
     
     /// 编辑空间
@@ -988,12 +1010,12 @@ extension SpaceViewController {
     }
     
     override func pageController(_ pageController: WMPageController, preferredFrameForContentView contentView: WMScrollView) -> CGRect {
-        let y = kNavigationHeight + SCRYFrom(48)
+        let y = view.safeAreaInsets.top + SCRYFrom(48)
         return CGRect(x: 0, y: y, width: view.width, height: view.height - y)
     }
     
     override func pageController(_ pageController: WMPageController, preferredFrameFor menuView: WMMenuView) -> CGRect {
-        return CGRect(x: 0, y: kNavigationHeight, width: view.width, height: SCRYFrom(48))
+        return CGRect(x: 0, y: view.safeAreaInsets.top, width: view.width, height: SCRYFrom(48))
     }
     
     override func menuView(_ menu: WMMenuView!, titleAt index: Int) -> String! {

@@ -174,7 +174,7 @@ extension SceneAddCustomView: UICollectionViewDataSource, UICollectionViewDelega
         }
         
         if let currentCell = collectionView.cellForItem(at: indexPath) {
-            currentCell.layer.borderWidth = 0.5
+            currentCell.layer.borderWidth = 0.6
         }
         selectImageIndex = indexPath.item
     }

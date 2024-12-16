@@ -132,6 +132,8 @@ class SpaceData: Copyable {
     
     /// 是否被关闭了编辑权限
     var disableEditorPermission: Bool = false
+    /// Mesh OTA分发中
+    var meshOTADistribution: Bool = false
     
     /// space操作权限list
     var spaceOperates: [SpaceOperate] {
@@ -146,7 +148,7 @@ class SpaceData: Copyable {
     }
     /// 设备操作权限
     var deviceOperates: [MeshOperate] {
-        if permission == .visitor || disableEditorPermission {
+        if permission == .visitor || disableEditorPermission || meshOTADistribution {
             return [.control]
         }
         return [.add, .edit, .delete, .control]
@@ -154,7 +156,7 @@ class SpaceData: Copyable {
     
     /// 组操作权限
     var groupOperates: [MeshOperate] {
-        if permission == .visitor || disableEditorPermission {
+        if permission == .visitor || disableEditorPermission || meshOTADistribution {
             return [.control]
         }
         return [.add, .edit, .delete, .control]
@@ -162,7 +164,7 @@ class SpaceData: Copyable {
     
     /// 场景操作权限
     var sceneOperates: [MeshOperate] {
-        if permission == .visitor || disableEditorPermission {
+        if permission == .visitor || disableEditorPermission || meshOTADistribution {
             return [.control]
         }
         return [.add, .edit, .delete, .control]
@@ -170,12 +172,27 @@ class SpaceData: Copyable {
     
     /// 日程操作权限
     var scheduleOperates: [MeshOperate] {
-        if permission == .visitor || disableEditorPermission {
+        if permission == .visitor || disableEditorPermission || meshOTADistribution {
             return []
         }
         return [.add, .edit, .delete]
     }
     
+    /// ble固件升级操作权限
+    var bleOTAOperates: [MeshOperate] {
+        if permission == .visitor || disableEditorPermission || meshOTADistribution {
+            return []
+        }
+        return [.add, .edit, .delete]
+    }
+    
+    /// mesh固件升级操作权限
+    var meshOTAOperates: [MeshOperate] {
+        if permission == .visitor || (disableEditorPermission && !meshOTADistribution) {
+            return []
+        }
+        return [.add, .edit, .delete]
+    }
     
     /// 初始化空间
     /// - Parameters:

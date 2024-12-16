@@ -38,7 +38,7 @@ internal extension Node {
         /// 成功
         case successful
         /// 失败
-        case failure(MeshFirmwareUpdateManager.FirmwareUpdateError)
+        case failure(FirmwareUpdateError)
     }
     
     /// 设备选择状态
@@ -90,7 +90,7 @@ internal extension Node {
     
 }
 
-internal extension MeshFirmwareUpdateManager.FirmwareUpdateError {
+internal extension FirmwareUpdateError {
     
     /// 错误标题
     var title: String {
@@ -118,6 +118,8 @@ internal extension MeshFirmwareUpdateManager.FirmwareUpdateError {
             localized = "firmware_update_error"
         case .stop:
             localized = "firmware_update_stop"
+        case .underway:
+            return "firmware_update_underway"
         }
         return localized.localizedString
     }
@@ -148,6 +150,8 @@ internal extension MeshFirmwareUpdateManager.FirmwareUpdateError {
             localized = "firmware_update_error_message"
         case .stop:
             localized = "firmware_update_stop_message"
+        case .underway:
+            localized = "firmware_update_underway_message"
         }
         return localized.localizedString
     }
@@ -239,7 +243,7 @@ class BleFirmwareUpdateViewController: UIViewController {
         
         MeshNetworkManager.instance.realNodes.forEach({ $0.rssi = nil })
         XWHUDManager.showCustomHUD(withMessage: nil, view: view)
-        MeshLibManager.manager.refreshNodesRSSI(withWaitFor: 6) {[weak self] nodes in
+        MeshLibManager.manager.refreshNodesRSSI(withWaitFor: 5) {[weak self] nodes in
             guard let self = self else { return }
 //            self.firmwareTypeDatas.forEach({
 //                $0.nodes.sort(by: { $0.rssi ?? 0 >= $1.rssi ?? 0 })

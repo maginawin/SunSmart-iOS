@@ -181,7 +181,7 @@ class DeviceAddViewController: UIViewController {
                     device.deviceName = info.categoryName
                     device.elementCount = info.elementCount
                     device.isSupport = true
-                    device.icon = "device_\(info.productId.hex)"
+                    device.icon = "device_\(info.iconCategory)"
                 }else {
                     device.isSupport = false
                     device.icon = "device_unknown"
@@ -391,7 +391,7 @@ class DeviceAddViewController: UIViewController {
             selectIndex = index + 1
         }
         
-        TitleSelectView.show(titles: titles, anchorPoint: CGPoint(x: sender.x, y: sender.frame.maxY + kNavigationHeight + SCRYFrom(2)), selectIndex: selectIndex) {[weak self] index in
+        TitleSelectView.show(titles: titles, anchorPoint: CGPoint(x: sender.x, y: sender.frame.maxY + (navigationController?.navigationBar.frame.maxY ?? kNavigationHeight) + SCRYFrom(2)), selectIndex: selectIndex) {[weak self] index in
             guard let self = self else { return }
             if index == 0 {
                 self.addToGroup = nil
@@ -622,9 +622,9 @@ class DeviceAddViewController: UIViewController {
             
         } addFinish: {[weak self] successList, failList in
             guard let self = self else { return }
-            let successNodes = MeshNetworkManager.instance.realNodes.filter { node in
-                successList.contains(where: { $0.address == node.primaryUnicastAddress })
-            }
+//            let successNodes = MeshNetworkManager.instance.realNodes.filter { node in
+//                successList.contains(where: { $0.address == node.primaryUnicastAddress })
+//            }
 //            successNodes.forEach { node in
 //                node.name = MeshNetworkManager.instance.getNextNodeName()
 //                node.save()
@@ -814,10 +814,10 @@ class DeviceAddViewController: UIViewController {
         
         headerView = UIView()
         view.addSubview(headerView)
-        let navigationHeight = presentingViewController != nil ? (navigationController?.navigationBar.height ?? 0) : kNavigationHeight
+//        let navigationHeight = (navigationController?.navigationBar.frame.maxY ?? kNavigationHeight)
         headerView.snp.makeConstraints { make in
             make.left.right.equalToSuperview()
-            make.top.equalTo(navigationHeight)
+            make.top.equalTo(view.safeAreaLayoutGuide)
 //            make.top.equalTo(kNavigationHeight)
             make.height.equalTo(SCRYFrom(100))
         }

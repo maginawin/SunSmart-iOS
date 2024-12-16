@@ -75,6 +75,7 @@ class DeviceLightViewController: UIViewController {
         bindSliderAction()
         // 获取设备数据
         getNodeState()
+        
         // 获取节点转发功能是否启用
 //        MeshAPI.getReplyState(address: node.primaryUnicastAddress, result: nil)
     }
@@ -219,10 +220,10 @@ class DeviceLightViewController: UIViewController {
     
     @objc private func moreClick() {
         
-        var y = kNavigationHeight
-        if self.presentingViewController != nil {
-            y = StatusBarManager.statusBarFrame.height + (navigationController?.navigationBar.height ?? kNavigationHeight)
-        }
+//        var y = kNavigationHeight
+//        if self.presentingViewController != nil {
+//            y = StatusBarManager.statusBarFrame.height + (navigationController?.navigationBar.height ?? kNavigationHeight)
+//        }
         var items: [MenuPopView.MenuItem] = []
         if space.deviceOperates.contains(.edit) {
             items.append(.init(icon: UIImage(named: "edit"), title: "edit".localizedString, tapItemBack: {[weak self] _ in
@@ -235,7 +236,7 @@ class DeviceLightViewController: UIViewController {
             }))
         }
         
-        items.append(.init(icon: UIImage(named: "menu_information"), title: "information".localizedString, tapItemBack: {[weak self] _ in
+        items.append(.init(icon: UIImage(named: "menu_information"), title: "information".localizedString, hideAnimation: false, tapItemBack: {[weak self] _ in
             self?.information()
         }))
            
@@ -243,7 +244,13 @@ class DeviceLightViewController: UIViewController {
             self?.refresh()
         }))
         
-        MenuPopView.show(items: items, anchorPoint: CGPoint(x: view.width - SCRXFrom(17) - 15, y: y), menuWidth: MenuPopView.defalutMenuWidth + SCRXFrom(10))
+        let margin: CGFloat = SCRXFrom(15.5)
+//        isIphoneX ? 18 : 15
+        let touchCenterX = view.width - SCRXFrom(margin) - 15
+        let touchCenterY = SCREEN_HEIGHT - view.height + view.safeAreaInsets.top - 15
+        MenuPopView.show(items: items, anchorPoint: CGPoint(x: touchCenterX, y: touchCenterY), menuWidth: SCRXFrom(114))
+        
+//        MenuPopView.show(items: items, anchorPoint: CGPoint(x: view.width - SCRXFrom(17) - 15, y: y), menuWidth: MenuPopView.defalutMenuWidth + SCRXFrom(10))
     }
     
     /// 编辑设备

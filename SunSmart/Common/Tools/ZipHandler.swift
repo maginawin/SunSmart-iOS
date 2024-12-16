@@ -11,6 +11,8 @@ import ZIPFoundation
 struct FirmwareZipData {
     /// 固件id
     let firmwareId: Data
+    /// 固件版本
+    let firmwareVersion: String
     /// 升级来源 1：app
     let coreType: Int
     /// 升级镜像索引
@@ -159,7 +161,7 @@ class ZipHandler {
         let coreType = config["core_type"] as? Int ?? 1
         
         
-        let data = FirmwareZipData(firmwareId: firmwareId, coreType: coreType, imageIndex: imageIndex, compositionHash: Data(hex: hash).turnOver(), elementCount: elementCount, firmwareData: firmwareData)
+        let data = FirmwareZipData(firmwareId: firmwareId, firmwareVersion: firmwareIdArray.first ?? "", coreType: coreType, imageIndex: imageIndex, compositionHash: Data(hex: hash).turnOver(), elementCount: elementCount, firmwareData: firmwareData)
         return data
     }
 }

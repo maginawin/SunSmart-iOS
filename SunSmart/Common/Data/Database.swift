@@ -423,6 +423,7 @@ extension SpaceData {
 //        GroupSwitch.initDatabase()
         UserData.initDatabase()
         DeviceSwitchData.initDatabase()
+        MeshDistributionData.initDatabase()
     }
  
     
@@ -1764,6 +1765,181 @@ extension FirmwareData {
     
 }
 
+extension MeshDistributionData {
+    
+    private static let distributionDatasTableName = "distributionDatas"
+    private static let distributionDatasTable = Table(distributionDatasTableName)
+    
+    struct ExpressionKey {
+        static let id = Expression<Int64>("id")
+        static let meshUUID = Expression<String>("meshUUID")
+        static let subNetworkId = Expression<String>("subNetworkId")
+        static let vendorId = Expression<Int>("vendorId")
+        static let deviceType = Expression<Int>("deviceType")
+        static let distributionAddress = Expression<Int>("distributionAddress")
+        static let targetAddresses = Expression<Data>("targetAddresses")
+        static let distributionState = Expression<Data?>("distributionState")
+//        static let updateFirmwareImageIndex = Expression<Int>("updateFirmwareImageIndex")
+//        static let incomingFirmwareMetadata = Expression<Data>("incomingFirmwareMetadata")
+//        static let firmwareDataSize = Expression<Int>("firmwareDataSize")
+    }
+    
+    /// 初始化固件数据扩展信息表
+    static func initDatabase() {
+        
+        _ = try? SunSmartDataManager.shared.db?.run(MeshDistributionData.distributionDatasTable.create(temporary: false, ifNotExists: true, withoutRowid: false, block: { builder in
+            builder.column(ExpressionKey.id, primaryKey: true)
+            builder.column(ExpressionKey.meshUUID)
+            builder.column(ExpressionKey.subNetworkId)
+            builder.column(ExpressionKey.vendorId)
+            builder.column(ExpressionKey.deviceType)
+            builder.column(ExpressionKey.distributionAddress)
+            builder.column(ExpressionKey.targetAddresses)
+            builder.column(ExpressionKey.distributionState)
+//            builder.column(ExpressionKey.updateFirmwareImageIndex)
+//            builder.column(ExpressionKey.incomingFirmwareMetadata)
+//            builder.column(ExpressionKey.firmwareDataSize)
+            builder.unique(ExpressionKey.meshUUID, ExpressionKey.subNetworkId, ExpressionKey.vendorId, ExpressionKey.deviceType)
+        }))
+        
+        // 获取表内存在的属性
+        if let columns = try? SunSmartDataManager.shared.db?.schema.columnDefinitions(table: distributionDatasTableName) {
+            // 插入字段
+            // 是否存在”distributionState“属性
+            if !columns.contains(where: { $0.name == "distributionState" }) {
+                _ = try? SunSmartDataManager.shared.db?.run(MeshDistributionData.distributionDatasTable.addColumn(ExpressionKey.distributionState))
+            }
+        }
+        
+    }
+    
+    
+    /// 获取网络内所有分发记录
+    /// - Parameters:
+    ///   - meshUUID: 网络uuid
+    ///   - meshNetworkId: 子网id
+    /// - Returns: 分发记录list
+    static func loadAll(meshUUID: String? = nil, meshNetworkId: String? = nil) -> [MeshDistributionData] {
+        
+        guard let uuid = meshUUID ?? MeshNetworkManager.instance.meshNetwork?.uuid.uuidString else { return [] }
+        let subNetworkKey = meshNetworkId ?? MeshNetworkManager.instance.currentNetworkKey.networkId.hex
+        
+        let predicate = ExpressionKey.meshUUID == uuid && ExpressionKey.subNetworkId == subNetworkKey
+        
+        let filter = MeshDistributionData.distributionDatasTable.filter(predicate)
+        
+        var distributionDatas: [MeshDistributionData] = []
+        if let rows = try? SunSmartDataManager.shared.db?.prepare(filter) {
+            for row in rows {
+                
+                // 升级设备地址data
+                let targetAddressesData = row[ExpressionKey.targetAddresses]
+                var targetAddresses: [Address] = []
+                if let addressesStrings = (try? jsonDecoder.decode([String].self, from: targetAddressesData)) {
+                    addressesStrings.forEach {
+                        if let address = UInt16($0, radix: 16) {
+                            targetAddresses.append(address)
+                        }
+                    }
+                }
+                // 分发状态
+                var state: FirmwareDistributionUpdateState = .none
+                if let data = row[ExpressionKey.distributionState], let updateState = FirmwareDistributionUpdateState(parameters: data) {
+                    state = updateState
+                }
+                let distributionData = MeshDistributionData(distributionAddress: Address(row[ExpressionKey.distributionAddress]), targetAddresses: targetAddresses, distributionState: state)
+                distributionDatas.append(distributionData)
+            }
+        }
+        return distributionDatas
+    }
+    
+    /// 获取固件分发数据
+    /// - Parameters:
+    ///   - meshUUID: 网络uuid
+    ///   - meshNetworkId: 子网id
+    ///   - productId: 设备类型
+    ///   - vendorId: 场所id
+    /// - Returns: 固件分发数据
+    static func load(meshUUID: String? = nil, meshNetworkId: String? = nil, productId: UInt16, vendorId: UInt16 = 0x0A78) -> MeshDistributionData? {
+        
+        guard let uuid = meshUUID ?? MeshNetworkManager.instance.meshNetwork?.uuid.uuidString else { return nil }
+        let subNetworkKey = meshNetworkId ?? MeshNetworkManager.instance.currentNetworkKey.networkId.hex
+        
+        let predicate = ExpressionKey.meshUUID == uuid && ExpressionKey.subNetworkId == subNetworkKey && ExpressionKey.deviceType == Int(productId) && ExpressionKey.vendorId == Int(vendorId)
+        
+        let filter = MeshDistributionData.distributionDatasTable.filter(predicate)
+        
+        var distributionData: MeshDistributionData?
+        if let rows = try? SunSmartDataManager.shared.db?.prepare(filter) {
+            for row in rows {
+                // 升级设备地址data
+                let targetAddressesData = row[ExpressionKey.targetAddresses]
+                var targetAddresses: [Address] = []
+                if let addressesStrings = (try? jsonDecoder.decode([String].self, from: targetAddressesData)) {
+                    addressesStrings.forEach {
+                        if let address = UInt16($0, radix: 16) {
+                            targetAddresses.append(address)
+                        }
+                    }
+                }
+                // 分发状态
+                var state: FirmwareDistributionUpdateState = .none
+                if let data = row[ExpressionKey.distributionState], let updateState = FirmwareDistributionUpdateState(parameters: data) {
+                    state = updateState
+                }
+                distributionData = MeshDistributionData(distributionAddress: Address(row[ExpressionKey.distributionAddress]), targetAddresses: targetAddresses, distributionState: state)
+            }
+        }
+        return distributionData
+    }
+    
+    /// 保存数据
+    @discardableResult func save(meshUUID: String? = nil, networkId: String? = nil, productId: UInt16, vendorId: UInt16 = 0x0A78) -> Bool {
+        
+        guard let uuid = meshUUID ?? MeshNetworkManager.instance.meshNetwork?.uuid.uuidString else { return false }
+        let subNetworkey = networkId ?? MeshNetworkManager.instance.currentNetworkKey.networkId.hex
+        
+        let targetAddressesData = try? jsonEncoder.encode(targetAddresses.map({ $0.hex }))
+        
+        let insertOrUpdate = MeshDistributionData.distributionDatasTable.insert(or: .replace, [
+            ExpressionKey.meshUUID <- uuid,
+            ExpressionKey.subNetworkId <- subNetworkey,
+            ExpressionKey.vendorId <- Int(vendorId),
+            ExpressionKey.deviceType <- Int(productId),
+            ExpressionKey.distributionAddress <- Int(self.distributionAddress),
+            ExpressionKey.targetAddresses <- targetAddressesData ?? Data(),
+            ExpressionKey.distributionState <- self.distributionState.parmaters
+        ])
+       
+        do {
+            try SunSmartDataManager.shared.db?.run(insertOrUpdate)
+        } catch {
+            print(error)
+            return false
+        }
+        return true
+    }
+    
+    /// 删除分发数据
+    @discardableResult func delete(meshUUID: String? = nil, networkId: String? = nil, productId: UInt16, vendorId: UInt16 = 0x0A78) -> Bool {
+        
+        guard let uuid = meshUUID ?? MeshNetworkManager.instance.meshNetwork?.uuid.uuidString else { return false }
+        let subNetworkey = networkId ?? MeshNetworkManager.instance.currentNetworkKey.networkId.hex
+        
+        let filter = MeshDistributionData.distributionDatasTable.filter(ExpressionKey.meshUUID == uuid && ExpressionKey.subNetworkId == subNetworkey && ExpressionKey.deviceType == Int(productId) && ExpressionKey.vendorId == Int(vendorId))
+        
+        do {
+            try SunSmartDataManager.shared.db?.run(filter.delete())
+        } catch {
+            print(error)
+            return false
+        }
+        return true
+    }
+    
+}
+
 extension DeviceSwitchData {
     
     private static let switchsTable = Table("switchs")
@@ -1979,7 +2155,8 @@ extension DeviceSwitchData {
 
 extension MeshDeviceConfigInfo {
     
-    private static let deviceConfigInfosTable = Table("deviceConfigInfos")
+    private static let deviceConfigInfosTableName = "deviceConfigInfos"
+    private static let deviceConfigInfosTable = Table(deviceConfigInfosTableName)
     
     struct ExpressionKey {
         static let id = Expression<Int64>("id")
@@ -1987,6 +2164,7 @@ extension MeshDeviceConfigInfo {
         static let productId = Expression<Int>("productId")
         static let categoryName = Expression<String>("categoryName")
         static let elementCount = Expression<Int>("elementCount")
+        static let iconCategory = Expression<String>("iconCategory")
     }
     
     /// 初始化设备配置信息表
@@ -1998,8 +2176,17 @@ extension MeshDeviceConfigInfo {
             builder.column(ExpressionKey.productId)
             builder.column(ExpressionKey.categoryName)
             builder.column(ExpressionKey.elementCount)
+            builder.column(ExpressionKey.iconCategory)
             builder.unique(ExpressionKey.companyId, ExpressionKey.productId)
         }))
+        // 获取表内存在的属性
+        if let columns = try? SunSmartDataManager.shared.db?.schema.columnDefinitions(table: deviceConfigInfosTableName) {
+            // 插入字段
+            // 是否存在”iconCategory“属性
+            if !columns.contains(where: { $0.name == "iconCategory" }) {
+                _ = try? SunSmartDataManager.shared.db?.run(MeshDeviceConfigInfo.deviceConfigInfosTable.addColumn(ExpressionKey.iconCategory, defaultValue: "Lighting"))
+            }
+        }
     }
     
     /// 加载设备配置信息list
@@ -2023,7 +2210,7 @@ extension MeshDeviceConfigInfo {
         var infos: [MeshDeviceConfigInfo] = []
         if let rows = try? SunSmartDataManager.shared.db?.prepare(query) {
             for row in rows {
-                let info = MeshDeviceConfigInfo(companyId: UInt16(row[ExpressionKey.companyId]), productId: UInt16(row[ExpressionKey.productId]), categoryName: row[ExpressionKey.categoryName], elementCount: row[ExpressionKey.elementCount])
+                let info = MeshDeviceConfigInfo(companyId: UInt16(row[ExpressionKey.companyId]), productId: UInt16(row[ExpressionKey.productId]), categoryName: row[ExpressionKey.categoryName], elementCount: row[ExpressionKey.elementCount], iconCategory: row[ExpressionKey.iconCategory])
                 infos.append(info)
             }
         }
@@ -2078,7 +2265,8 @@ extension MeshDeviceConfigInfo {
             ExpressionKey.companyId <- Int(self.companyId),
             ExpressionKey.productId <- Int(self.productId),
             ExpressionKey.categoryName <- self.categoryName,
-            ExpressionKey.elementCount <- self.elementCount
+            ExpressionKey.elementCount <- self.elementCount,
+            ExpressionKey.iconCategory <- self.iconCategory
         ])
         do {
             try SunSmartDataManager.shared.db?.run(insertOrUpdate)
@@ -2089,6 +2277,5 @@ extension MeshDeviceConfigInfo {
         return true
         
     }
-    
     
 }

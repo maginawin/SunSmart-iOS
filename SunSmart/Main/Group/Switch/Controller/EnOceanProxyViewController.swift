@@ -36,6 +36,8 @@ class EnOceanProxyViewController: UIViewController {
     var switchCreateCallback: ((DeviceSwitchData)->Void)?
     /// 是否已保存动能开关数据  返回bool
     var switchDataSaved: (()->Bool)?
+    /// 所有开关数据
+    var switchs: [DeviceSwitchData] = []
     
     private var enOceanMacMap: [Address : String] = [:]
     
@@ -79,6 +81,11 @@ class EnOceanProxyViewController: UIViewController {
         title = "\(switchData.name) \("proxy".localizedString)"
         view.backgroundColor = Background_Color
         
+        if switchs.isEmpty {
+            switchs = MeshNetworkManager.instance.switchs
+        }
+        
+        
         view.addSubview(tableView)
         
         tableView.snp.makeConstraints { make in
@@ -102,7 +109,7 @@ class EnOceanProxyViewController: UIViewController {
         switchData.bindGroups.forEach { group in
             group.nodes.forEach { node in
                 // 其他动能开关绑定的代理和动能开关mac
-                if let switchData = MeshNetworkManager.instance.switchs.first(where: { $0.proxyNodeAddress == node.primaryUnicastAddress && $0.enOceanMacAddress != nil }), switchData.id != self.switchData.id {
+                if let switchData = switchs.first(where: { $0.proxyNodeAddress == node.primaryUnicastAddress && $0.enOceanMacAddress != nil }), switchData.id != self.switchData.id {
                     self.enOceanMacMap.updateValue(switchData.enOceanMacAddress!, forKey: node.primaryUnicastAddress)
                 }
 //                if let mac = node.enOceanMacAddress, MeshNetworkManager.instance.switchs.contains(where: { $0.enOceanMacAddress == mac && ($0.id == switchData.id || $0.deleteProxyNodeAddress != node.primaryUnicastAddress) }) {
@@ -348,7 +355,15 @@ extension EnOceanProxyViewController: LBXScanViewControllerDelegate {
             self.enOceanData = data
           
 //            if let node = MeshNetworkManager.instance.realNodes.first(where: { $0.enOceanMacAddress == data.macAddress }), MeshNetworkManager.instance.switchs.contains(where: { $0.enOceanMacAddress == data.macAddress }) {
+            // 获取已绑定的动能开关的节点
+            var bindNode: Node?
             if let nodeData = enOceanMacMap.first(where: { $0.value == data.macAddress }), let node = MeshNetworkManager.instance.realNodes.first(where: { $0.primaryUnicastAddress == nodeData.key }) {
+                bindNode = node
+            }else if let node = MeshNetworkManager.instance.realNodes.first(where: { $0.enOceanMacAddress == data.macAddress }) {
+                bindNode = node
+            }
+            
+            if let node = bindNode {
                 // 提示是否动能开关已被网络内设备绑定
                 let message = String(format: "switch_proxy_exist".localizedString, node.name ?? "")
 //                if group.nodes.contains(node) {   // 组内设备存在同一个动能开关
@@ -381,7 +396,7 @@ extension EnOceanProxyViewController: LBXScanViewControllerDelegate {
                     self.scanCodeVc = nil
                     self.navigationController?.popViewController(animated: false)
                     // 生成一个新的虚拟开关
-                    guard MeshNetworkManager.instance.switchs.count < 16 else {
+                    guard self.switchs.count < 16 else {
                         SRAlertView(title: "notification".localizedString, message: "switchs_overrun_message".localizedString, actions: [SRAlertAction(title: "GOT_IT".localizedString)]).show()
                         return
                     }
@@ -504,7 +519,7 @@ extension EnOceanProxyViewController: UITableViewDataSource, UITableViewDelegate
                 return
             }
             // 判断不是待删除代理设备
-            guard !MeshNetworkManager.instance.switchs.contains(where: { $0.id != self.switchData.id && $0.deleteProxyNodeAddress == node.primaryUnicastAddress }) else {
+            guard !self.switchs.contains(where: { $0.id != self.switchData.id && $0.deleteProxyNodeAddress == node.primaryUnicastAddress }) else {
                 XWHUDManager.showTipHUD("switch_proxy_notcleared_message".localizedString, isLineFeed: true, afterDelay: 2)
                 return
             }

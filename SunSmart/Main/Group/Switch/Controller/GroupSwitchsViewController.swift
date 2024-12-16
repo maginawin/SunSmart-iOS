@@ -166,6 +166,12 @@ class GroupSwitchsViewController: UIViewController {
             return
         }
         
+        // 是否存在别的虚拟动能开关也绑定了同一个动能开关
+        if let otherSwitch = group.info.switchs.first(where: { $0.id != switchData.id && switchData.enOceanMacAddress != nil && $0.enOceanMacAddress == switchData.enOceanMacAddress }) {
+            XWHUDManager.showTipHUD(String(format: "switchs_not_saved".localizedString, otherSwitch.name))
+            return
+        }
+        
         // 切换代理/删除代理节点记录该代理地址
         var deleteProxyNodeAddress = switchData.deleteProxyNodeAddress
         if let realSwitch = group.info.switchs.first(where: { $0.id == switchData.id }), realSwitch.proxyNodeAddress != nil && realSwitch.proxyNodeAddress != switchData.proxyNodeAddress {
@@ -349,6 +355,7 @@ class GroupSwitchsViewController: UIViewController {
 //            if let index = self.copySwitchs.firstIndex(where: { $0.id == switchData.id }) {
 //                self.copySwitchs[index].update(switchData: switchData)
 //            }
+            self.navigationController?.popViewController(animated: true)
             if let realSwitch = MeshNetworkManager.instance.switchs.first(where: { $0.id == switchData.id }) {
                 switchData.update(switchData: realSwitch)
             }
@@ -633,6 +640,14 @@ extension GroupSwitchsViewController: UITableViewDataSource, UITableViewDelegate
                 return
             }
             let vc = EnOceanProxyViewController(switchData: groupSwitch)
+            let allSwitches = MeshNetworkManager.instance.switchs.map({ $0.copy() })
+            allSwitches.forEach({ switches in
+                if let copySwitch = self.copySwitchs.first(where: { $0.id == switches.id }) {
+                    switches.update(switchData: copySwitch)
+                }
+            })
+            vc.switchs = allSwitches
+//            self.copySwitchs
             vc.editable = self.editable
             vc.switchDataSaved = {[weak self] in
                 guard let self = self, let switchData = self.group.info.switchs.first(where: { $0.id == groupSwitch.id }) else {

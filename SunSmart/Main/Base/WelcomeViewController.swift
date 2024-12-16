@@ -60,7 +60,7 @@ class WelcomeViewController: UIViewController {
         view.addSubview(iconImageView)
         iconImageView.snp.makeConstraints { make in
             make.centerX.equalToSuperview()
-            make.top.equalTo(kNavigationHeight + SCRYFrom(64))
+            make.top.equalTo(view.safeAreaLayoutGuide).offset(SCRYFrom(64))
         }
         
         welcomeLabel = UILabel(text: "welcome_title".localizedString, textColor: TextBlack_Color, fontSize: 20, fit: false)
@@ -94,9 +94,10 @@ class WelcomeViewController: UIViewController {
         policyView = UIView()
         view.addSubview(policyView)
         policyView.snp.makeConstraints { make in
-            make.left.equalTo(SCRXFrom(57)).priority(.low)
-            make.right.equalTo(SCRXFrom(-58)).priority(.low)
-//            make.centerX.equalToSuperview()
+//            make.left.lessThanOrEqualTo(SCRXFrom(57))
+//            make.right.lessThanOrEqualTo(SCRXFrom(-58))
+            make.centerX.equalToSuperview()
+//            make.width.lessThanOrEqualTo(SCRXFrom(320))
             make.bottom.equalTo(startedBtn.snp.top).offset(SCRYFit(-60))
         }
         
@@ -109,12 +110,13 @@ class WelcomeViewController: UIViewController {
         
         policyTipText = UITextView()
         policyTipText.textColor = TextBlack_Color
-        policyTipText.font = UIFont.systemFont(ofSize: SCRYFrom(14), weight: .light)
+        policyTipText.font = UIFont.systemFont(ofSize: 14, weight: .light)
         policyTipText.isScrollEnabled = false
         policyTipText.isEditable = false
         policyTipText.backgroundColor = .clear
         policyTipText.textContainerInset = .zero
         policyTipText.textContainer.lineFragmentPadding = 0
+        policyTipText.textContainer.maximumNumberOfLines = 2
         policyTipText.tintColor = Bar_Color
         let policyText = "welcome_policy_message".localizedString
         let policyAttStr = NSMutableAttributedString(string: policyText, attributes: [.font: UIFont.systemFont(ofSize: SCRYFrom(14), weight: .light)])
@@ -130,10 +132,17 @@ class WelcomeViewController: UIViewController {
         policyView.addSubview(policyTipText)
         policyTipText.snp.makeConstraints { make in
             make.left.equalTo(checkBoxBtn.snp.right).offset(SCRXFrom(8))
+            make.width.lessThanOrEqualTo(SCRXFrom(250))
             make.right.equalToSuperview()
             make.top.bottom.equalToSuperview()
         }
         
+        policyView.layoutIfNeeded()
+        // 判断富文本显示内容居中
+        let textSize = policyAttStr.boundingRect(with: policyView.frame.size, options: .usesLineFragmentOrigin, context: nil).size
+        if policyTipText.height > textSize.height { // 内容垂直居中
+            policyTipText.textContainerInset = UIEdgeInsets(top: (policyTipText.height - textSize.height) * 0.5, left: 0, bottom: 0, right: 0)
+        }
     }
 
 }
@@ -143,6 +152,7 @@ extension WelcomeViewController: UITextViewDelegate {
     
     func textView(_ textView: UITextView, shouldInteractWith url: URL, in characterRange: NSRange, interaction: UITextItemInteraction) -> Bool {
   
+        
         var title = ""
         var filePath: String?
         if url.absoluteString == "Agreement://use" {

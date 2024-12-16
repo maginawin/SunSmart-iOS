@@ -112,8 +112,8 @@ struct GroupServer {
                 let messageHandles = group.getNodeExitMessageHandles(node: node)
                 MeshProxyMessageCommand.shared.addMessage(messageHandles: messageHandles, progressBack: nil) { sendMessageHandle, responseMessage in
                     node.updateData(message: sendMessageHandle.message)
-                } failedBack: { messageHandles in
-                    print("node send message failed \(messageHandles.message)")
+                } failedBack: { messageHandle in
+                    print("node send message failed \(messageHandle.message)")
                 } finishedBack: { messageHandles in
                     DispatchQueue.main.async {
                         // 未删除完成
@@ -312,7 +312,7 @@ extension Group {
         // 解除动能开关绑定
         self.info.allSwitchs.forEach { switchData in
             if let group = switchData.linkGroup {
-                let unbindSwitchMessages = node.getEnOceanSwitchUnBindMessageHandles(group: group)
+                let unbindSwitchMessages = node.getEnOceanUnSubscriptionMessageHandles(group: group)
                 messages.append(contentsOf: unbindSwitchMessages)
             }
         }

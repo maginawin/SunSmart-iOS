@@ -458,7 +458,7 @@ class ShareChangePasswordView: UIView {
         passwordField.font = UIFont.systemFont(ofSize: SCRYFrom(15), weight: .light)
         passwordField.layer.cornerRadius = SCRYFrom(8)
         passwordField.layer.borderColor = RGB(151, 151, 151, 0.3).cgColor
-        passwordField.layer.borderWidth = 0.5
+        passwordField.layer.borderWidth = 0.6
         passwordField.returnKeyType = .done
         passwordField.keyboardType = .numberPad
         passwordField.textAlignment = .center

@@ -438,7 +438,7 @@ class SyncDevicesViewController: UIViewController {
         }
         
         if let switchData = syncSwitchProxy {
-            let syncSwitchProxyTask = SyncDeviceStepTaskModel(name: switchData.name, operationType: .configuration(node: node, type: .enOceanSwitch(switchData: switchData)))
+            let syncSwitchProxyTask = SyncDeviceStepTaskModel(name: switchData.name, operationType: .configuration(node: node, type: .enOceanProxy(switchData: switchData)))
             let step = SyncDeviceStepModel(type: "enocean_proxy".localizedString, state: .none, tasks: [syncSwitchProxyTask])
             syncSwitchProxyTask.parentStepModel = step
             configturationSteps.append(step)
@@ -634,6 +634,9 @@ class SyncDevicesViewController: UIViewController {
             })
             
             selectAllBtn.isSelected = selectModels.count == failedModels.count
+            if bottomView.frame == .zero {
+                bottomView.layoutIfNeeded()
+            }
             tableView.contentInset = UIEdgeInsets(top: 0, left: 0, bottom: bottomView.height, right: 0)
             navigationItem.rightBarButtonItem?.isEnabled = selectModels.count > 0
         }

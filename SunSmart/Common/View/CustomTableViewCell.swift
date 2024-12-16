@@ -202,6 +202,19 @@ class CustomTableViewCell: UITableViewCell {
         }
     }
     
+    /// 内容文本最大宽度
+    var contentTextMaxWidth: CGFloat? {
+        didSet {
+            guard let maxWidth = contentTextMaxWidth else {
+                return
+            }
+            self.contentLabel.snp.updateConstraints { make in
+//                        make.left.equalTo(SCRXFrom(140))
+                make.width.lessThanOrEqualTo(maxWidth)
+            }
+        }
+    }
+    
     /// 设置内容文本与标题水平布局优先级
     var contentHorizontalPriority: UILayoutPriority? {
         didSet {

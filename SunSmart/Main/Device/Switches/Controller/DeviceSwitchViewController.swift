@@ -422,7 +422,6 @@ extension DeviceSwitchViewController: UITableViewDataSource, UITableViewDelegate
             let isFirstCell = indexPath.row == 0
             let isLastCell = indexPath.row == numberOfRows - 1
             infoCell.configureCell(isFirst: isFirstCell, isLast: isLastCell)
-            
             switch option {
             case .enable:
                 infoCell.cellStyle = .switch
@@ -471,6 +470,7 @@ extension DeviceSwitchViewController: UITableViewDataSource, UITableViewDelegate
                 infoCell.cellStyle = .arrow
                 infoCell.iconImageView.isHidden = false
                 infoCell.iconImageView.image = UIImage(named: "help")
+                infoCell.contentTextMaxWidth = SCRXFrom(135)
                 infoCell.iconImageView.snp.remakeConstraints { make in
                     make.left.equalTo(infoCell.titleLabel.snp.right)
                     make.centerY.equalToSuperview()

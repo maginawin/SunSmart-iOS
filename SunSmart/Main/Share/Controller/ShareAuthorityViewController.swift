@@ -663,7 +663,7 @@ class ShareAuthorityViewController: UIViewController {
         let point = CGPoint(x: sender.frame.minX, y: topBarView.frame.maxY)
         
 //        let tableviewPoint = tableView.convert(point, from: cell)
-        let viewPoint = view.convert(point, from: topBarView)
+        let viewPoint = UIApplication.shared.keyWindow().convert(point, from: view)
         
         let items: [TableSelectView.TableItem] = [
             .init(icon: UIImage(named: "sort_create"), title: "created_date".localizedString, tapItemBack: {[weak self] _ in
@@ -690,7 +690,7 @@ class ShareAuthorityViewController: UIViewController {
         
         let sortTypes: [SortType] = [.createdDate, .updatedDate, .alphabetical, .deviceQuantity]
         
-        TableSelectView.show(items: items, anchorPoint: viewPoint, selectIndex: sortTypes.firstIndex(of: self.sortType) ?? 0, menuWidth: SCRXFrom(154), titleFont: UIFont.systemFont(ofSize: 13, weight: .light), backgroundColor: RGB(89, 87, 86))
+        TableSelectView.show(items: items, anchorPoint: CGPoint(x: viewPoint.x, y: viewPoint.y + 5), selectIndex: sortTypes.firstIndex(of: self.sortType) ?? 0, menuWidth: SCRXFrom(154), titleFont: UIFont.systemFont(ofSize: 13, weight: .light), backgroundColor: RGB(89, 87, 86))
         
 //        MenuPopView.show(items: items, anchorPoint: CGPoint(x: sender.frame.minX, y: sender.frame.maxY), animation: .none, bgImage: UIImage.image(size: CGSize(width: SCRXFrom(140), height: SCRYFrom(152)), color: RGB(89, 87, 86)), menuWidth: SCRXFrom(154))
     }
@@ -919,7 +919,7 @@ class ShareAuthorityViewController: UIViewController {
         editBtn = UIButton(title: "select".localizedString, titleSize: 14, titleWeight: .light, titleColor: Bar_Color, target: self, action: #selector(editBtnAction))
         editBtn.setTitle("Cancel".localizedString, for: .selected)
         editBtn.layer.cornerRadius = SCRYFrom(15)
-        editBtn.layer.borderWidth = 0.5
+        editBtn.layer.borderWidth = 0.6
         editBtn.layer.borderColor = Bar_Color.withAlphaComponent(0.5).cgColor
         bottomView.addSubview(editBtn)
         editBtn.snp.makeConstraints { make in

@@ -10,7 +10,7 @@ import UIKit
 class UserSettingsViewController: UIViewController {
 
     private lazy var tableView: UITableView = {
-        let tableV = UITableView(frame: CGRect(x: 0, y: kNavigationHeight, width: self.view.width, height: self.view.height - kNavigationHeight))
+        let tableV = UITableView()
         tableV.rowHeight = SCRYFrom(44)
         tableV.register(CustomTableViewCell.classForCoder(), forCellReuseIdentifier: "cell")
         tableV.contentInset = UIEdgeInsets(top: SCRYFrom(16), left: 0, bottom: 0, right: 0)
@@ -44,6 +44,10 @@ class UserSettingsViewController: UIViewController {
         view.backgroundColor = Background_Color
         
         view.addSubview(tableView)
+        tableView.snp.makeConstraints { make in
+            make.top.equalTo(view.safeAreaLayoutGuide)
+            make.left.right.bottom.equalToSuperview()
+        }
     }
     
     /// 修改用户名称请求

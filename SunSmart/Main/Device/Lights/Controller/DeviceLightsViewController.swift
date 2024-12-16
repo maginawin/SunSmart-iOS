@@ -216,7 +216,8 @@ class DeviceLightsViewController: UIViewController {
 //            headerView.isHidden = false
             collectionView.hideEmptyDataView()
             footerView.sortBtn.isEnabled = true
-            footerView.editBtn.isEnabled = !isEdit
+//            footerView.editBtn.isEnabled = !isEdit
+            footerView.editBtn.isEnabled = space.deviceOperates.contains(.edit)
         }
     }
     
@@ -226,7 +227,7 @@ class DeviceLightsViewController: UIViewController {
         
        
         
-        footerView.countBtn.setTitle("\(self.devices.count)/100", for: .normal)
+        footerView.countBtn.setTitle("\(self.devices.count)/200", for: .normal)
         
         var inset = self.collectionView.contentInset
         inset.bottom = SCRYFrom(16)
@@ -260,12 +261,15 @@ class DeviceLightsViewController: UIViewController {
             }
         }
         
-        if !space.deviceOperates.contains(.add) {
-            footerView.addBtn.isEnabled = false
-        }
-        if !space.deviceOperates.contains(.edit) {
-            footerView.editBtn.isEnabled = false
-        }
+        footerView.addBtn.isEnabled = space.deviceOperates.contains(.add)
+        footerView.editBtn.isEnabled = space.deviceOperates.contains(.edit)
+        
+//        if !space.deviceOperates.contains(.add) {
+//            footerView.addBtn.isEnabled = false
+//        }
+//        if !space.deviceOperates.contains(.edit) {
+//            footerView.editBtn.isEnabled = false
+//        }
         
         
         self.collectionView.contentInset = inset
@@ -341,7 +345,7 @@ class DeviceLightsViewController: UIViewController {
 //        UIEdgeInsets(top: 0, left: SCRXFrom(12), bottom: <#T##CGFloat#>, right: SCRXFrom(12))
         
         collectionView = UICollectionView(frame: .zero, collectionViewLayout: flowLayout)
-        collectionView.contentInset = UIEdgeInsets(top: SCRYFrom(42), left: SCRXFrom(12), bottom: 0, right: SCRXFrom(12))
+        collectionView.contentInset = UIEdgeInsets(top: SCRYFrom(42 + 8), left: SCRXFrom(12), bottom: 0, right: SCRXFrom(12))
         collectionView.backgroundColor = Background_Color
         collectionView.register(DevicesViewCell.classForCoder(), forCellWithReuseIdentifier: "cell")
         collectionView.register(DeviceAllOnOffViewCell.classForCoder(), forCellWithReuseIdentifier: "allControlCell")
@@ -439,9 +443,10 @@ class DeviceLightsViewController: UIViewController {
     /// 设备调节
     @objc func deviceAllSetting() {
         if lightControlView.superview == nil {
-            view.addSubview(lightControlView)
+            (self.wm_pageController?.view ?? view).addSubview(lightControlView)
+//            view.addSubview(lightControlView)
         }
-        self.wm_pageController?.scrollEnable = false
+//        self.wm_pageController?.scrollEnable = false
         lightControlView.show()
     }
     
@@ -863,12 +868,14 @@ extension DeviceLightsViewController: SpaceFunctionFooterViewDelegate {
             return
         }
         let point = CGPoint(x: view.addBtn.center.x, y: SCREEN_HEIGHT - footerView.height)
+        
         (self.parent as? DevicesViewController)?.addAction(point: point)
     }
     
     /// 编辑/取消编辑状态修改  editing：是否正在编辑
     func function(view: SpaceFunctionFooterView, editStateChanged editing: Bool) {
         guard space.deviceOperates.contains(.edit) else {
+            view.isEditing = false
             return
         }
         
@@ -932,7 +939,7 @@ extension DeviceLightsViewController: DeviceLightControlViewDelegate {
     }
     
     func lightControlDidHide(_ view: DeviceLightControlView) {
-        self.wm_pageController?.scrollEnable = true
+//        self.wm_pageController?.scrollEnable = true
     }
 }
 

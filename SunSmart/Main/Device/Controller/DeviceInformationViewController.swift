@@ -59,7 +59,7 @@ class DeviceInformationViewController: UIViewController {
         let macModel = CustomCellModel(icon: UIImage(named: "copy"), title: "MAC", content: node.macAddressResult, style: .icon)
         
         let devModel = CustomCellModel(title: "model".localizedString, content: "--", style: .none)
-        let typeName = MeshLibManager.manager.supportDeviceInfos.first(where: { $0.companyId == node.companyIdentifier && $0.productId == node.productIdentifier })?.categoryName
+        let typeName = node.categoryName
         let deviceTypeModel = CustomCellModel(title: "device_type".localizedString, content: typeName ?? "--", style: .none)
         
         let firmwareModel = CustomCellModel(title: "firmware".localizedString, content: node.firmwareVersion ?? "--", style: .none)
@@ -162,9 +162,9 @@ extension DeviceInformationViewController: UITableViewDataSource, UITableViewDel
     func tableView(_ tableView: UITableView, heightForRowAt indexPath: IndexPath) -> CGFloat {
         
         let sectionType = sections[indexPath.section]
-        if sectionType == .deviceInfo && indexPath.row == 3 {
-            return SCRYFrom(60)
-        }
+//        if sectionType == .deviceInfo && indexPath.row == 3 {
+//            return SCRYFrom(60)
+//        }
         return SCRYFrom(44)
     }
     

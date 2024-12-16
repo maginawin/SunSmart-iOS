@@ -202,15 +202,15 @@ class ProfileSettingsSphasesView: UIView {
             
             chartImageView.sizeToFit()
             chartImageView.snp.remakeConstraints { make in
-                if isIPad {
-                    make.top.equalTo(SCRYFrom(46))
-                    make.centerX.equalToSuperview()
-                }else {
+//                if isIPad {
+//                    make.top.equalTo(SCRYFrom(46))
+//                    make.centerX.equalToSuperview()
+//                }else {
                     make.left.equalTo(SCRXFrom(86))
                     make.right.equalTo(SCRXFrom(-45))
                     make.top.equalTo(SCRYFrom(46))
                     make.height.equalTo(chartImageView.snp.width).multipliedBy(chartImageView.height / chartImageView.width)
-                }
+//                }
             }
             
         }
@@ -345,15 +345,15 @@ class ProfileSettingsSphasesView: UIView {
         chartImageView.sizeToFit()
         addSubview(chartImageView)
         chartImageView.snp.makeConstraints { make in
-            if isIPad {
-                make.top.equalTo(SCRYFrom(46))
-                make.centerX.equalToSuperview()
-            }else {
-                make.left.equalTo(SCRXFrom(86))
-                make.right.equalTo(SCRXFrom(-45))
-                make.top.equalTo(SCRYFrom(46))
-                make.height.equalTo(chartImageView.snp.width).multipliedBy(chartImageView.height / chartImageView.width)
-            }
+            make.left.equalTo(SCRXFrom(86))
+            make.right.equalTo(SCRXFrom(-45))
+            make.height.equalTo(chartImageView.snp.width).multipliedBy(chartImageView.height / chartImageView.width)
+            make.top.equalTo(SCRYFrom(46))
+//            if isIPad {
+////                make.centerX.equalToSuperview()
+//            }else {
+//                make.top.equalTo(SCRYFrom(46))
+//            }
         }
         
         imageView = UIImageView(image: UIImage(named: "profile_light_level"))
@@ -370,9 +370,10 @@ class ProfileSettingsSphasesView: UIView {
         addSubview(maxLightOutputLabel)
         maxLightOutputLabel.snp.makeConstraints { make in
             make.right.equalTo(chartImageView.snp.left)
-            if !isIPad {
-                make.left.equalTo(SCRXFrom(25))
-            }
+//            if !isIPad {
+//                make.left.equalTo(SCRXFrom(25))
+//            }
+            make.width.equalTo(SCRXFrom(60))
             make.centerY.equalTo(chartImageView.snp.top)
         }
         

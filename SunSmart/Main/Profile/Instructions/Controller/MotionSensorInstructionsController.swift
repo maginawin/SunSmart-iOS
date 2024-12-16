@@ -53,8 +53,8 @@ class MotionSensorInstructionsController: UIViewController {
         view.addSubview(tableView)
         
         tableView.snp.makeConstraints { make in
-            let navHeight = navigationController?.navigationBar.height ?? kNavigationHeight
-            make.top.equalTo(navHeight)
+//            let navHeight = navigationController?.navigationBar.height ?? kNavigationHeight
+            make.top.equalTo(view.safeAreaLayoutGuide)
             make.left.right.bottom.equalToSuperview()
         }
     }

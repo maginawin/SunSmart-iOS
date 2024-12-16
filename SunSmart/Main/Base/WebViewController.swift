@@ -29,13 +29,25 @@ class WebViewController: UIViewController {
         self.title = vcTitle
         view.backgroundColor = Background_Color
         
-        wkWebView = WKWebView.init(frame: CGRect(x: 0, y: kNavigationHeight, width: SCREEN_WIDTH, height: SCREEN_HEIGHT - kNavigationHeight))
+        wkWebView = WKWebView()
         wkWebView.navigationDelegate = self
         wkWebView.allowsBackForwardNavigationGestures = true
         self.view.addSubview(wkWebView)
+        wkWebView.snp.makeConstraints { make in
+            make.top.equalTo(view.safeAreaLayoutGuide)
+            make.left.right.bottom.equalToSuperview()
+        }
         
-        wkWebView.load(URLRequest.init(url: self.loadUrl ?? URL.init(string: "http://www.baidu.com/")!))
+        if let url = self.loadUrl {
+            if url.isFileURL {
+                wkWebView.loadFileURL(url, allowingReadAccessTo: url.deletingLastPathComponent())
+            }else {
+                wkWebView.load(URLRequest(url: url))
+            }
+        }
+        
     }
+    
     
     init(loadUrl: URL?, vcTitle: String? = nil) {
         super.init(nibName: nil, bundle: nil)

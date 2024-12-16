@@ -109,7 +109,7 @@ extension SceneAddDataListViewCell: UICollectionViewDataSource, UICollectionView
                 cell.layer.borderWidth = 1
             }else {
                 cell.layer.borderColor = RGB(220, 220, 220).cgColor
-                cell.layer.borderWidth = 0.5
+                cell.layer.borderWidth = 0.6
             }
             
             cell.innerRaceView.isHidden = selectIndex != indexPath.item
@@ -229,7 +229,7 @@ class SceneAddDataAddCell: UICollectionViewCell {
         super.init(frame: frame)
         
         layer.borderColor = RGB(220, 220, 220).cgColor
-        layer.borderWidth = 0.5
+        layer.borderWidth = 0.6
         backgroundColor = .white
         
         addImageView = UIImageView(image: UIImage(named: "scene_data_add"))

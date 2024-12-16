@@ -150,8 +150,9 @@ class SceneSettingsViewController: UIViewController {
         }
         
         selectGroups.forEach({
-            let lightness = Node.getLightness(lightness100: $0.executeSceneData!.lightness)
-            let cct = UInt16($0.cct)
+            let executeSceneData = $0.executeSceneData!
+            let lightness = Node.getLightness(lightness100: executeSceneData.lightness)
+            let cct = UInt16(executeSceneData.cct)
             if let data = $0.info.sceneExecuteDatas.first(where: { $0.sceneNumber == scene.number }) {
                 data.lightness = lightness
                 data.cct = cct
@@ -274,6 +275,8 @@ class SceneSettingsViewController: UIViewController {
 //            scene.info.groups = selectGroups
             XWHUDManager.showSuccessTipHUD("done!".localizedString)
             NotificationCenter.default.post(name: .init(sceneDataUpdateNotificationName), object: scene)
+            // 通知space数据修改
+            NotificationCenter.default.post(name: .init(spaceDataChangedNotificaitonName), object: SpaceChangeDataType.common)
             DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {[weak self] in
                 self?.navigationController?.popViewController(animated: true)
             }

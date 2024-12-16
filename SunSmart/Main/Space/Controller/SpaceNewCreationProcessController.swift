@@ -176,7 +176,7 @@ class SpaceNewCreationProcessController: UIViewController {
         createOtherBtn = UIButton(title: "create_switch".localizedString, titleSize: 16, titleWeight: .light, titleColor: Bar_Color, target: self, action: #selector(createOtherBtnAction))
         createOtherBtn.layer.cornerRadius = SCRYFrom(10)
         createOtherBtn.layer.borderColor = Bar_Color.cgColor
-        createOtherBtn.layer.borderWidth = 0.5
+        createOtherBtn.layer.borderWidth = 0.6
         createOtherBtn.backgroundColor = .white
         view.addSubview(createOtherBtn)
         createOtherBtn.snp.makeConstraints { make in

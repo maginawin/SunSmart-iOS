@@ -50,7 +50,7 @@ class Profile: Copyable {
                 for i in 1...60 {
                     phasesTimeItems.append(TimePickerData.TimeItem(name: "\(i) min", second: i * 60))
                 }
-                phasesTimeItems.append(TimePickerData.TimeItem(name: "infinite".localizedString, second: 0xFFFFFF))
+                phasesTimeItems.append(TimePickerData.TimeItem(name: "infinite".localizedString, second: 0xFFFFFE))
                 
                 var t4TimeItems = phasesTimeItems
                 t4TimeItems.insert(TimePickerData.TimeItem(name: "0 sec", second: 0), at: 0)

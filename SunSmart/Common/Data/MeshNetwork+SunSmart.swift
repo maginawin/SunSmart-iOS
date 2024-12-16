@@ -124,14 +124,14 @@ extension SiteData {
     struct RecycleAddressData: Codable {
         
         /// 回收后剩余的地址结果
-//        struct AddressResult {
-//            /// 设备地址rangs
-//            let allocatedUnicastRange: [AddressRange]
-//            /// 组地址ranges
-//            let allocatedGroupRange: [AddressRange]
-//            /// 场景地址ranges
-//            let allocatedSceneRange: [SceneRange]
-//        }
+        //        struct AddressResult {
+        //            /// 设备地址rangs
+        //            let allocatedUnicastRange: [AddressRange]
+        //            /// 组地址ranges
+        //            let allocatedGroupRange: [AddressRange]
+        //            /// 场景地址ranges
+        //            let allocatedSceneRange: [SceneRange]
+        //        }
         
         /// 设备地址list
         let deviceAddresses: [Int]
@@ -185,6 +185,47 @@ extension SiteData {
             })
             exclusionAddresses?.sort(by: { $0.ivIndex <= $1.ivIndex })
             return RecycleAddressData(deviceAddresses: deviceAddresses.sorted(), groupAddresses: groupAddresses.sorted(), sceneAddresses: sceneAddresses.sorted(), exclusionAddresses: exclusionAddresses, provisionerData: nil)
+        }
+        
+        /// 获取回收后的供应者地址数据
+        func getResultProvisionerData(meshUUID: String) -> [String: Any]? {
+            var provisionerData: [String: Any]?
+            let meshNetwork = MeshNetwork.load(meshUUID: meshUUID, allData: false)
+            if let localProvisioner = meshNetwork?.localProvisioner {
+                
+                let deallocatedUnicastRange = self.deviceAddresses.splitArray().compactMap { array in
+                    if let lowAddress = array.first, let highAddress = array.last {
+                        return AddressRange(from: UInt16(lowAddress), to: UInt16(highAddress))
+                    }
+                    return nil
+                }
+                deallocatedUnicastRange.forEach({
+                    localProvisioner.deallocate(unicastAddressRange: $0)
+                })
+                // 组地址
+                let deallocatedGroupRange = self.groupAddresses.splitArray().compactMap { array in
+                    if let lowAddress = array.first, let highAddress = array.last {
+                        return AddressRange(from: UInt16(lowAddress), to: UInt16(highAddress))
+                    }
+                    return nil
+                }
+                deallocatedGroupRange.forEach({
+                    localProvisioner.deallocate(groupAddressRange: $0)
+                })
+                
+                // 场景地址
+                let deallocatedSceneRange = self.sceneAddresses.splitArray().compactMap { array in
+                    if let firstScene = array.first, let lastScene = array.last {
+                        return SceneRange(from: UInt16(firstScene), to: UInt16(lastScene))
+                    }
+                    return nil
+                }
+                deallocatedSceneRange.forEach({
+                    localProvisioner.deallocate(sceneRange: $0)
+                })
+                provisionerData = localProvisioner.toJson()
+            }
+            return provisionerData
         }
         
         // MARK: - Codable
@@ -440,7 +481,12 @@ extension MeshLibManager {
     /// 支持的设备信息list（未配置设备则不可添加）
     var supportDeviceInfos: [MeshDeviceConfigInfo] {
         get {
-            objc_getAssociatedObject(self, &MeshLibManager.supportDeviceInfosKey) as? [MeshDeviceConfigInfo] ?? MeshDeviceConfigInfo.defaultConfigInfos
+            guard let infos = objc_getAssociatedObject(self, &MeshLibManager.supportDeviceInfosKey) as? [MeshDeviceConfigInfo] else {
+                let defaultConfigInfos = MeshDeviceConfigInfo.defaultConfigInfos
+                self.supportDeviceInfos = defaultConfigInfos
+                return defaultConfigInfos
+            }
+            return infos
         }set {
             objc_setAssociatedObject(self, &MeshLibManager.supportDeviceInfosKey, newValue, .OBJC_ASSOCIATION_RETAIN)
         }
@@ -909,7 +955,7 @@ extension Group {
     
     /// 删除本地化缓存数据（只处理业务扩展数据）
     func deleteExtension() {
-        guard let uuid = self.network?.uuid.uuidString else {
+        guard let uuid = (self.network ?? MeshNetworkManager.instance.meshNetwork)?.uuid.uuidString else {
             return
         }
         let subnetworkId = self.subNetworkId
@@ -1742,17 +1788,31 @@ extension Node {
     
     /// 图标名称
     var iconName: String {
-        return "device_\(self.productIdentifier?.hex ?? "unknown")"
+        guard let pid = self.productIdentifier, pid != 0, let iconCategory = MeshLibManager.manager.supportDeviceInfos.first(where: { $0.productId == pid })?.iconCategory, iconCategory.count > 0 else {
+            return "device_unknown"
+        }
+        return "device_\(iconCategory)"
     }
-    
+   
     /// 离线图标名称
     var offlineIconName: String {
-        return "device_offline_\(self.productIdentifier?.hex ?? "unknown")"
+        guard let pid = self.productIdentifier, pid != 0, let iconCategory = MeshLibManager.manager.supportDeviceInfos.first(where: { $0.productId == pid })?.iconCategory, iconCategory.count > 0 else {
+            return "device_offline_unknown"
+        }
+        return "device_offline_\(iconCategory)"
     }
     
     /// 待同步图标名称
     var unsyncIconName: String {
-        return "device_unsync_\(self.productIdentifier?.hex ?? "0001")"
+        guard let pid = self.productIdentifier, pid != 0, let iconCategory = MeshLibManager.manager.supportDeviceInfos.first(where: { $0.productId == pid })?.iconCategory, iconCategory.count > 0 else {
+            return "device_unknown"
+        }
+        return "device_unsync_\(iconCategory)"
+    }
+    
+    /// 类别名称
+    var categoryName: String? {
+        return MeshLibManager.manager.supportDeviceInfos.first(where: { $0.companyId == companyIdentifier && $0.productId == productIdentifier })?.categoryName
     }
     
     /// 是否需要同步数据
@@ -1997,8 +2057,8 @@ extension Node {
                                 syncProfile.append(.occupancyLevel(value: level))
                             }
                         }
-                        if lightLCProperty.timeRunOn != 0xFFFFFF {
-                            syncProfile.append(.t2(second: 0xFFFFFF))
+                        if lightLCProperty.timeRunOn != 0xFFFFFE {
+                            syncProfile.append(.t2(second: 0xFFFFFE))
                         }
                     }
                 }
@@ -2006,23 +2066,23 @@ extension Node {
                 groupProfile.lightData.times.forEach { time in
                     switch time {
                     case .t1(let second):
-                        if lightLCProperty.timeFadeOn == nil || lightLCProperty.timeFadeOn! != min(second * 1000, 0xFFFFFF) {
+                        if lightLCProperty.timeFadeOn == nil || lightLCProperty.timeFadeOn! != min(second * 1000, 0xFFFFFE) {
                             syncProfile.append(.t1(second: second))
                         }
                     case .t2(let second):
-                        if lightLCProperty.timeRunOn == nil || lightLCProperty.timeRunOn! != min(second * 1000, 0xFFFFFF) {
+                        if lightLCProperty.timeRunOn == nil || lightLCProperty.timeRunOn! != min(second * 1000, 0xFFFFFE) {
                             syncProfile.append(.t2(second: second))
                         }
                     case .t3(let second):
-                        if lightLCProperty.timeFade == nil || lightLCProperty.timeFade! != min(second * 1000, 0xFFFFFF) {
+                        if lightLCProperty.timeFade == nil || lightLCProperty.timeFade! != min(second * 1000, 0xFFFFFE) {
                             syncProfile.append(.t3(second: second))
                         }
                     case .t4(let second):
-                        if lightLCProperty.timeProlong == nil || lightLCProperty.timeProlong! != min(second * 1000, 0xFFFFFF) {
+                        if lightLCProperty.timeProlong == nil || lightLCProperty.timeProlong! != min(second * 1000, 0xFFFFFE) {
                             syncProfile.append(.t4(second: second))
                         }
                     case .t5(let second):
-                        if lightLCProperty.timeFadeStandbyAuto == nil || lightLCProperty.timeFadeStandbyAuto! != min(second * 1000, 0xFFFFFF) {
+                        if lightLCProperty.timeFadeStandbyAuto == nil || lightLCProperty.timeFadeStandbyAuto! != min(second * 1000, 0xFFFFFE) {
                             syncProfile.append(.t5(second: second))
                         }
                     }
@@ -2109,6 +2169,47 @@ extension Node {
         data.syncSwitchProxy = setSwitchProxy
         data.deleteSwitchProxy = deleteSwitchProxy
         return data
+    }
+    
+    /// 获取恢复节点需要数据
+    /// - Parameter oldNode: 之前的节点
+    /// - Returns: 需要发送的消息数据
+    func getResoreMessageHandles(oldNode: Node, group: Group?) -> [MeshMessageHandle] {
+        // 设置的消息数据
+        var messageHandles: [MeshMessageHandle] = []
+        if let group = group {
+            
+            // 已设置设备做为组光照感应
+            if oldNode.sensorCalibrated, let calibrationValue = oldNode.daylightCalibrationValue, group.info.ambientLightSensorNodeAddress == oldNode.primaryUnicastAddress {
+                group.info.ambientLightSensorNodeAddress = self.primaryUnicastAddress
+                group.info.save()
+                self.daylightCalibrationValue = calibrationValue
+                // 设置照度校准值
+                if let vendorModel = self.sunricherVendorModel {
+                    let messageHandle = MeshMessageHandle(message: SunricherVendorSet(function: .daylightCalibrate(calibrationValue)), model: vendorModel)
+//                    messageHandle.continuous = false
+                    messageHandles.append(messageHandle)
+                }
+                // 开启光感model上报
+//                if let ambientLightSensorModel = self.ambientLightSensorModel {
+//                    let publishDaylightModelMessage = ConfigModelPublicationSet(Publish(to: group.address, using: MeshNetworkManager.instance.currentApplicationKey, usingFriendshipMaterial: false, ttl: MeshNetworkManager.instance.networkParameters.defaultTtl, period: .disabled, retransmit: .disabled), to: ambientLightSensorModel)!
+//                    messageHandles.append(MeshMessageHandle(message: publishDaylightModelMessage, address: self.primaryUnicastAddress))
+//                }
+            }
+            
+            messageHandles.append(contentsOf: group.getNodeAddMessageHandles(node: self))
+            
+            // 动能开关
+            if let enOceanMacAddress = oldNode.enOceanMacAddress, let switchData = group.info.switchs.first(where: { $0.enOceanMacAddress == enOceanMacAddress && $0.proxyNodeAddress == oldNode.primaryUnicastAddress }), let linkGroup = switchData.linkGroup, let enOceanSecurityKey = switchData.enOceanSecurityKey {
+                
+                switchData.proxyNodeAddress = self.primaryUnicastAddress
+                switchData.save()
+                let handles = self.getEnOceanSwitchBindMessageHandles(enOceanMacAddress: enOceanMacAddress, securityKey: enOceanSecurityKey, group: linkGroup, enabled: switchData.enabled, switchKeys: MeshEnOceanProxyServer.SwitchKey.defaultKeys(sceneA: switchData.sceneA, sceneB: switchData.sceneB))
+                messageHandles.append(contentsOf: handles)
+            }
+            self.daylightCalibrationValue = nil
+        }
+        return messageHandles
     }
 
     
@@ -2223,12 +2324,12 @@ extension Node {
                     self.save()
                 }
             }
-//            else if let group = MeshNetworkManager.instance.meshNetwork?.group(withAddress: MeshAddress(subscriptionMessage.address)), group.isVirtual { // 订阅其它组（动能开关功能组等）
-//                
-//                
-//                
-//            }
-//                self.saveNodeInfo(meshUUID: uuid, networkKey: networkKey)
+            //            else if let group = MeshNetworkManager.instance.meshNetwork?.group(withAddress: MeshAddress(subscriptionMessage.address)), group.isVirtual { // 订阅其它组（动能开关功能组等）
+            //
+            //
+            //
+            //            }
+            //                self.saveNodeInfo(meshUUID: uuid, networkKey: networkKey)
             
         case is ConfigModelSubscriptionDelete:
             
@@ -2261,7 +2362,7 @@ extension Node {
                             let groupAddress = (message as! ConfigModelSubscriptionDelete).address
                             if let group = MeshNetworkManager.instance.meshNetwork?.group(withAddress: MeshAddress(groupAddress)), group.info.ambientLightSensorNodeAddress == primaryUnicastAddress { // 判断删除的设备是不是组绑定的光照传感器
                                 group.info.ambientLightSensorNodeAddress = nil
-                                 // 保存缓存
+                                // 保存缓存
                                 group.info.save()
                             }
                             self.save()
@@ -2278,14 +2379,26 @@ extension Node {
         case is SceneStore:
             let sceneId = (message as! SceneStore).scene
             var cct = temperature
+            var lightness = self.lightness
             // 不支持cct，使用group预配置的cct值
-            if self.temperatureModel == nil, let groupCct = self.group?.info.sceneExecuteDatas.first(where: { $0.sceneNumber == sceneId })?.cct {
+            let groupSceneData = self.group?.info.sceneExecuteDatas.first(where: { $0.sceneNumber == sceneId })
+            if self.temperatureModel == nil, let groupCct = groupSceneData?.cct {
                 cct = groupCct
             }
+            if let groupSceneExecuteData = groupSceneData {
+                // 判断是否设置了亮度范围，如已设置亮度范围导致达不到目标亮度则判定正确
+                if self.lightnessRange.lowerBound > groupSceneExecuteData.lightness || self.lightnessRange.upperBound < groupSceneExecuteData.lightness {
+                    lightness = groupSceneExecuteData.lightness
+                }
+            }
+            
+            
             if let sceneData = self.sceneExecuteDatas.first(where: { $0.sceneNumber == sceneId }) {
+                sceneData.isOn = lightness > 0
+                sceneData.lightness = lightness
                 sceneData.cct = cct
             }else {
-                self.sceneExecuteDatas.append(SceneExecuteData(sceneNumber: sceneId, isOn: self.lightness > 0, lightness: self.lightness, cct: cct))
+                self.sceneExecuteDatas.append(SceneExecuteData(sceneNumber: sceneId, isOn: lightness > 0, lightness: lightness, cct: cct))
             }
             self.savePropertys()
 //            let executeData = SceneExecuteData(scenenumber: sceneId, lightness: self.lightness, cct: cct)

@@ -116,7 +116,7 @@ class GroupAddHeaderView: UICollectionReusableView {
         nameField.font = UIFont.systemFont(ofSize: SCRYFrom(15), weight: .light)
         nameField.layer.cornerRadius = 5
         nameField.layer.borderColor = RGB(151, 151, 151, 0.3).cgColor
-        nameField.layer.borderWidth = 0.5
+        nameField.layer.borderWidth = 0.6
         nameField.clearButtonMode = .always
         nameField.rightViewMode = .always
         nameField.leftView = UIView(frame: CGRect(x: 0, y: 0, width: SCRXFrom(8), height: 0))
@@ -151,7 +151,7 @@ class GroupAddHeaderView: UICollectionReusableView {
         profileBtn = UIButton(title: "Occupancy sensing with daylight harvesting", titleSize: 14, titleWeight: .light, titleColor: RGB(72, 72, 74), target: self, action: #selector(profileBtnClick))
 //        profileBtn.titleLabel?.font = UIFont.systemFont(ofSize: 14, weight: .light)
         profileBtn.layer.cornerRadius = 5
-        profileBtn.layer.borderWidth = 0.5
+        profileBtn.layer.borderWidth = 0.6
         profileBtn.titleLabel?.adjustsFontSizeToFitWidth = true
         profileBtn.layer.borderColor = RGB(151, 151, 151, 0.3).cgColor
         profileBtn.backgroundColor = .white

@@ -86,6 +86,14 @@ class DevicesViewController: WMPageController {
     /// 是否首次连接
     private var firstConnectionNetwork: Bool = true
     
+    //******** Mesh Distribution ********/
+    /// 分发状态查询定时器
+    private var distributionStateTimer: Timer?
+    /// 当前分发的设备
+    private var currentDistributionNode: Node?
+    // 分发状态view
+    private var distributionStateView: FirmwareDistributeUpdateStateView?
+
 //    private var meunView: WMMenuView!
     
  
@@ -98,6 +106,7 @@ class DevicesViewController: WMPageController {
 //        self.progressViewIsNaughty = false
         self.menuItemBackgroundColor = .clear
 //        self.scrollEnable = false
+        space.meshOTADistribution = false
     }
     
     required init?(coder: NSCoder) {
@@ -140,7 +149,9 @@ class DevicesViewController: WMPageController {
 //        meunView.style = .segmented
 //        meunView.lineColor = Bar_Color
         
-        
+//        let node = MeshNetworkManager.instance.realNodes.first!
+//        MeshDistributionData(distributionAddress: node.primaryUnicastAddress, targetAddresses: [node.primaryUnicastAddress], distributionState: .updating(updatePhase: .verifying)).save(productId: 0x11)
+//        MeshDistributionData(distributionAddress: node.primaryUnicastAddress, targetAddresses: [node.primaryUnicastAddress], distributionState: .updating(updatePhase: .blob(progress: 0, estimateTime: 0))).save(productId: 0x12)
         
 //        meunView.contentMargin = SCRXFrom(12)
         self.scrollEnable = false
@@ -170,20 +181,12 @@ class DevicesViewController: WMPageController {
     
     deinit {
         MeshLibManager.manager.removeObserver(self, forKeyPath: "isMeshNetworkConnected")
+        stopDistributionStateTimer()
     }
     
     override func observeValue(forKeyPath keyPath: String?, of object: Any?, change: [NSKeyValueChangeKey : Any]?, context: UnsafeMutableRawPointer?) {
         if keyPath == "isMeshNetworkConnected" { // 网络连接/断开连接回调
             if MeshLibManager.manager.isMeshNetworkConnected {
-//                DispatchQueue.global().async {
-//                    if let node = MeshNetworkManager.instance.realNodes.first(where: { $0.isProxy }) ?? MeshNetworkManager.instance.realNodes.first {
-//                        MeshAPI.sendMessage(message: ConfigRelaySet(count: 0, steps: 1), address: node.primaryUnicastAddress)
-//                        sleep(1)
-//                    }
-//                    DispatchQueue.main.async {
-//                        self.getNodesState()
-                   
-                //                    }
                 // 首次连接上mesh网络
                 if firstConnectionNetwork {
                     firstConnectionNetwork = false
@@ -199,6 +202,11 @@ class DevicesViewController: WMPageController {
                     if space.applyDeviceAddressCount != nil {
                         applyDeviceAddressAlert()
                     }
+//                    DispatchQueue.global().async {
+                        // 检查mesh分发情况
+                        self.getMeshDistribution()
+//                    }
+               
                     
                     // 同步时间
                     if MeshNetworkManager.instance.realNodes.contains(where: { $0.scheduleIds.count > 0 }) && MeshNetworkManager.instance.schedules.count > 0 {
@@ -291,11 +299,10 @@ class DevicesViewController: WMPageController {
         })]).show()
     }
     
-    
-    
+    /// 添加按键点击事件
     func addAction(point: CGPoint) {
         let items: [MenuPopView.MenuItem] = [
-            .init(icon: UIImage(named: "menu_light"), title: "light".localizedString, tapItemBack: {[weak self] _ in
+            .init(icon: UIImage(named: "menu_light"), title: "light".localizedString, hideAnimation: false, tapItemBack: {[weak self] _ in
                 guard let self = self else { return }
                 self.deviceAdd()
             }),
@@ -305,36 +312,6 @@ class DevicesViewController: WMPageController {
         ]
         MenuPopView.show(items: items, anchorPoint: point, direction: .up)
     }
-    
-//    /// 获取节点状态
-//    @objc private func getNodesState() {
-//        guard MeshLibManager.manager.isMeshNetworkConnected else {
-//            return
-//        }
-//        if let view = self.wm_pageController?.view {
-//            XWHUDManager.hideInView(with: view)
-//        }else {
-//            XWHUDManager.hide()
-//        }
-//        stopGuidanceTimer()
-//
-//        MeshAPI.sendMessage(message: LightLightnessGet(), address: .allNodes)
-//        
-//        if devices.contains(where: { $0.ctlModel != nil }) {
-//            MeshAPI.sendMessage(message: LightCTLGet(), address: .allNodes)
-//        }
-//        
-////        MeshAPI.sendMessage(message: LightCTLTemperatureRangeGet(), address: .allNodes)
-//        
-//        MeshLibManager.manager.refreshNodesRSSI(withWaitFor: 3, result: nil)
-////        if refreshControl.isRefreshing {
-////            DispatchQueue.main.asyncAfter(deadline: .now() + 3) {[weak self] in
-////                guard let self = self else { return }
-////                self.refreshControl.endRefreshing()
-////            }
-////        }
-////        }
-//    }
     
     /// 节点同步时间
     private func syncTimeNodes() {
@@ -346,114 +323,14 @@ class DevicesViewController: WMPageController {
         space.save()
     }
     
-    /// 修复设备
-    func repairNodes(nodes: [Node], complete: ((_ successList: [Node], _ failedList: [Node])->Void)?) {
-        if nodes.isEmpty {
-            complete?([], [])
-            return
-        }
-        // 是否连接网络
-        guard MeshLibManager.manager.isMeshNetworkConnected else {
-            XWHUDManager.showTipHUD("device_repair_offline".localizedString, isLineFeed: true)
-            complete?([], [])
-            return
-        }
-        // 多设备配置
-        if nodes.count > 1 {
-            let alertView =  SRAlertView(title: "repairing".localizedString, titleFont: FONTS(SCRYFrom(15)), message: "0/\(nodes.count)", messageColor: TextBlack_Color, messageFont: FONTS(SCRYFrom(15)), stateImage: UIImage(named: "loading_big"), loadingState: true, btnText: "STOP".localizedString, btnTextColor: .white, btnTextFont: Font_Medium_Size(SCRYFrom(15))) {[weak self] in
-                SRAlertView.hide()
-                MeshAPI.stopKeyBind(keyBindFinish: { (successNodes, failedNodes) in
-                    complete?(successNodes, failedNodes)
-                })
-//                self?.updateUI()
-//                self?.getNodesState()
-            }
-            alertView.show()
-            
-            MeshAPI.startKeyBind(nodes: nodes, startKeyBind: { node in
-                let index = (nodes.firstIndex(of: node) ?? 0) + 1
-                alertView.messageLabel.text = "\(index)/\(nodes.count)"
-            }, keyBindSuccess: nil, keyBindFail: nil) { [weak self] successList, failList in
-                
-                SRAlertView.hide()
-                guard let self = self else { return }
-//                successList.forEach({
-//                    $0.saveNodeInfo(meshUUID: self.space.meshUUID, networkKey: self.space.meshNetworkKey)
-//                })
-                if failList.isEmpty { // 全部修复成功
-                    if MeshLibManager.manager.bluetoothState == .poweredOn {
-                        XWHUDManager.showSuccessTipHUD("complete!".localizedString)
-                    }
-//                    self.getNodesState()
-                }else { // 全部/部分修复失败
-                    self.repairFailed(nodes: failList)
-                }
-                complete?(successList, failList)
-//                self.updateUI()
-                
-                // 通知space数据修改
-                NotificationCenter.default.post(name: .init(spaceDataChangedNotificaitonName), object: SpaceChangeDataType.device)
-            }
-            
-        }else { // 单设备配置
-            XWHUDManager.showCustomHUD(withMessage: "repairing".localizedString, isWindow: true)
-
-            MeshAPI.startKeyBind(node: nodes.first!, startKeyBind: nil) {[weak self] node in
-                XWHUDManager.hide()
-                if MeshLibManager.manager.bluetoothState == .poweredOn {
-                    XWHUDManager.showSuccessTipHUD("complete!".localizedString)
-                }
-                guard let self = self else { return }
-//                node.saveNodeInfo(meshUUID: self.space.meshUUID, networkKey: self.space.meshNetworkKey)
-//                self.updateUI()
-                complete?(nodes, [])
-                
-                // 通知space数据修改
-                NotificationCenter.default.post(name: .init(spaceDataChangedNotificaitonName), object: SpaceChangeDataType.device)
-//                MeshAPI.getNodeCTLState(address: node.primaryUnicastAddress)
-            } keyBindFail: {[weak self] _ in
-                XWHUDManager.hide()
-//                self?.updateUI()
-                complete?([], nodes)
-                self?.repairFailed(nodes: nodes)
-                
-                // 通知space数据修改
-//                NotificationCenter.default.post(name: .init(spaceDataChangedNotificaitonName), object: SpaceChangeDataType.device)
-            }
-        }
-        
-    }
-    
-    /// 修复失败
-    private func repairFailed(nodes: [Node]) {
-        
-        let alertView = SRAlertView(message: "repair_failed_message".localizedString, messageFont: FONTS(SCRYFrom(15)), stateImage: UIImage(named: "alert_failed"), actions: [.cancelAction, SRAlertAction(title: "repair".localizedString, style: .default, actionHandler: {[weak self] _ in
-//            self?.repairNodes(nodes: nodes)
-        })])
-        alertView.stateImageView.snp.remakeConstraints { make in
-            make.top.equalTo(SCRYFrom(24))
-            make.centerX.equalToSuperview()
-        }
-        alertView.messageLabel.snp.remakeConstraints { make in
-            make.left.equalTo(SCRXFrom(27))
-            make.right.equalTo(SCRXFrom(-27))
-            make.top.equalTo(alertView.stateImageView.snp.bottom).offset(SCRYFrom(16))
-        }
-        alertView.hLineView.snp.remakeConstraints { make in
-            make.left.right.equalTo(0)
-            make.height.equalTo(0.5)
-            make.top.equalTo(alertView.messageLabel.snp.bottom).offset(SCRYFrom(16))
-        }
-        alertView.show()
-    }
-    
-   
     /// 添加设备
     private func deviceAdd() {
         
-        guard MeshNetworkManager.instance.realNodes.count < 100 else {
+        guard MeshNetworkManager.instance.realNodes.count < 200 else {
             return
         }
+//        navigationController?.pushViewController(DeviceRestoreViewController(), animated: true)
+//        return
         let vc = DeviceAddViewController(space: space)
         vc.deviceAddCallback = { nodes in
             NotificationCenter.default.post(name: .init(devicesAddNotificationName), object: nil)
@@ -477,6 +354,192 @@ class DevicesViewController: WMPageController {
         present(NavigationViewController(rootViewController: vc), animated: true)
         
         NotificationCenter.default.post(name: .init(switchsRefreshNotificationName), object: nil)
+    }
+    
+    // MARK: - Mesh Distribution
+    
+    // 获取网络内当前固件分发者
+    private func getMeshDistribution() {
+        
+        Task {
+            // 获取当前分发者
+            if let currentDistribution = await MeshFirmwareDistributionManager.shared.currentActiveFirmwareDistributionNodeGet() {
+                self.currentDistributionNode = currentDistribution
+                startDistributionStateTimer()
+            }else if self.space.permission != .visitor { // 没有分发者
+                
+                // 获取分发记录
+                let list = MeshDistributionData.loadAll()
+                // 需要获取分发中的状态的记录
+                var distributionDatas: [MeshDistributionData] = []
+                list.forEach { data in
+                    switch data.distributionState {
+                    case .await:
+                        distributionDatas.append(data)
+                    case .updating:
+                        distributionDatas.append(data)
+                    case .waitingInstall:
+                        distributionDatas.append(data)
+                    default:
+                        break
+                    }
+                }
+                guard distributionDatas.count > 0 else {
+                    return
+                }
+                XWHUDManager.showCustomHUD(withMessage: nil, view: SpaceViewController.currentSpaceVc()?.view ?? self.view)
+                
+                // 展示的分发记录
+                var showDistributionDatas: [MeshDistributionData] = []
+                var results: [MeshFirmwareUpgradeResultsView.FirmwareUpgradeResult] = []
+                while let data = distributionDatas.first {
+                    guard let distributionNode = data.distributionNode, let productId = distributionNode.productIdentifier else {
+                        continue
+                    }
+                    // 固件大小
+                    let firmwareSize = distributionNode.distributionFirmwareSize ?? UInt32(FirmwareData.load(productId: productId).first?.data.count ?? 300 * 1024)
+                    
+                    if let state = await MeshFirmwareDistributionManager.shared.getDistributionState(distributionNode: distributionNode, firmwareSize: firmwareSize) {
+                        var updateData = data
+                        updateData.distributionState = state
+                        updateData.save(productId: productId)
+                        
+                        switch state {
+                        case .complete:
+                            let result = MeshFirmwareUpgradeResultsView.FirmwareUpgradeResult(name: distributionNode.categoryName ?? "Unknown", productId: productId, state: .installComplete)
+                            results.append(result)
+                            showDistributionDatas.append(data)
+                        case .failure:
+                            let result = MeshFirmwareUpgradeResultsView.FirmwareUpgradeResult(name: distributionNode.categoryName ?? "Unknown", productId: productId, state: .installFailure)
+                            results.append(result)
+                            showDistributionDatas.append(data)
+                        default:
+                            break
+                        }
+                    }
+                    distributionDatas.removeFirst()
+                }
+                XWHUDManager.hideInView(with: SpaceViewController.currentSpaceVc()?.view ?? self.view)
+                // 展示分发结果
+                if results.count > 0 {
+                    DispatchQueue.main.async {
+                        MeshFirmwareUpgradeResultsView(results: results) {[weak self] showDetails in
+                            if showDetails { // 详情
+                                self?.pushToMeshOTADetails()
+                            }else { // 知道了
+                                // 清空已查看的分发状态信息
+                                showDistributionDatas.forEach({
+                                    if let productId = $0.distributionNode?.productIdentifier {
+                                        $0.delete(productId: productId)
+                                    }
+                                })
+                            }
+                        }.show()
+                    }
+                }
+                
+            }
+        }
+    }
+    
+    /// 开启分发者状态定时器
+    private func startDistributionStateTimer() {
+        
+        guard currentDistributionNode != nil else {
+            return
+        }
+        
+        distributionStateTimer = LCWeakTimer.scheduledTimer(timeInterval: 30, aTarget: self, selector: #selector(getMeshDistributionState), userInfo: nil, repeats: true)
+        RunLoop.current.add(distributionStateTimer!, forMode: .common)
+        distributionStateTimer?.fire()
+    }
+    
+    /// 获取分发者状态
+    @objc private func getMeshDistributionState() {
+        
+        guard let distributionNode = currentDistributionNode, let productId = distributionNode.productIdentifier else {
+            distributionStateView?.hide()
+            distributionStateView = nil
+            stopDistributionStateTimer()
+            return
+        }
+        guard MeshLibManager.manager.isMeshNetworkConnected else {
+            return
+        }
+        // 固件大小
+        let firmwareSize = distributionNode.distributionFirmwareSize ?? UInt32(FirmwareData.load(productId: productId).first?.data.count ?? 300 * 1024)
+        MeshFirmwareDistributionManager.shared.getDistributionState(distributionNode: distributionNode, firmwareSize: firmwareSize) {[weak self] _, state in
+            guard let self = self, state != nil else { return }
+            
+            switch state {
+            case .updating(let updatePhase):
+                switch updatePhase {
+                case .blob(let progress, let estimateSec):
+                    if self.distributionStateView == nil {
+                        let cacheData = MeshDistributionData.load(productId: productId)
+                        let isOwner = cacheData?.distributionAddress == distributionNode.primaryUnicastAddress
+                        if isOwner {
+                            self.space.meshOTADistribution = true
+                        }
+                        let stateView = FirmwareDistributeUpdateStateView(frame: UIScreen.main.bounds)
+                        stateView.start(title: "notification".localizedString, message: "mesh_upgrade_inview_message".localizedString, distributeVersion: nil, isUpload: false, isOwner: isOwner)
+                        stateView.show()
+                        stateView.delegate = self
+                        self.distributionStateView = stateView
+                    }
+                    var estimatedTime: String?
+                    if estimateSec >= 0 {
+                        // 剩余分钟
+                        let minute = Int(ceil(Double(estimateSec) / 60.0))
+                        estimatedTime = "\(minute) \("minutes".localizedString)"
+                    }
+                    self.distributionStateView?.update(state: .inProgress(progress: Int(progress), estimatedTime: estimatedTime))
+                    // 传输固件中关闭编辑权限
+                    if !self.space.disableEditorPermission {
+                        self.space.disableEditorPermission = true
+                        NotificationCenter.default.post(name: .init(spacePermissionChangedNotificaitonName), object: nil)
+                    }
+                default:
+                    // 恢复权限
+                    if self.space.meshOTADistribution && self.space.disableEditorPermission {
+                        self.space.meshOTADistribution = false
+                        self.space.disableEditorPermission = false
+                        NotificationCenter.default.post(name: .init(spacePermissionChangedNotificaitonName), object: nil)
+                    }
+                    self.distributionStateView?.hide()
+                    self.distributionStateView = nil
+                    self.stopDistributionStateTimer()
+                }
+            default:
+                // 恢复权限
+                if self.space.meshOTADistribution && self.space.disableEditorPermission {
+                    self.space.meshOTADistribution = false
+                    self.space.disableEditorPermission = false
+                    NotificationCenter.default.post(name: .init(spacePermissionChangedNotificaitonName), object: nil)
+                }
+                self.distributionStateView?.hide()
+                self.distributionStateView = nil
+                self.stopDistributionStateTimer()
+            }
+            
+            var data = MeshDistributionData.load(productId: productId)
+            data?.distributionState = state!
+            data?.save(productId: productId)
+        }
+    }
+    
+    /// 停止分发者状态定时器
+    private func stopDistributionStateTimer() {
+        distributionStateTimer?.invalidate()
+        distributionStateTimer = nil
+    }
+    
+    /// 页面跳转到mesh ota信息
+    private func pushToMeshOTADetails() {
+        
+        let vc = MeshFirmwareListViewController()
+        present(NavigationViewController(rootViewController: vc), animated: true)
+        
     }
 
 }
@@ -613,7 +676,7 @@ extension DevicesViewController {
         let lastItem = menu.item(at: currentIndex)
         lastItem?.backgroundColor = RGB(254, 254, 254)
         lastItem?.layer.borderColor = RGB(220, 220, 220).cgColor
-        lastItem?.layer.borderWidth = 0.5
+        lastItem?.layer.borderWidth = 0.6
 //        self.selectIndex = Int32(index)
         
         super.menuView(menu, didSelectedIndex: index, currentIndex: currentIndex)
@@ -627,11 +690,26 @@ extension DevicesViewController {
             initialMenuItem.backgroundColor = Bar_Color
         }else {
             initialMenuItem.layer.borderColor = RGB(220, 220, 220).cgColor
-            initialMenuItem.layer.borderWidth = 0.5
+            initialMenuItem.layer.borderWidth = 0.6
             initialMenuItem.backgroundColor = RGB(254, 254, 254)
 //                .white.withAlphaComponent(0.95)
         }
         return initialMenuItem
+    }
+    
+}
+
+extension DevicesViewController: FirmwareDistributeUpdateStateViewDelegate {
+    
+    /// 点击GOT IT回调
+    func firmwareUpdateCancelAction(_ view: FirmwareDistributeUpdateStateView) {
+        stopDistributionStateTimer()
+    }
+
+    /// 点击详情回调
+    func firmwareUpdateDetailsAction(_ view: FirmwareDistributeUpdateStateView) {
+        stopDistributionStateTimer()
+        pushToMeshOTADetails()
     }
     
 }
