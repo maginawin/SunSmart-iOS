@@ -366,7 +366,7 @@ extension GroupsViewController: UICollectionViewDataSource, UICollectionViewDele
         let group = MeshNetworkManager.instance.groups[indexPath.item]
  
         group.isOn = !group.isOn
-        if group.nodes.count > 0 {
+//        if group.nodes.count > 0 {
             // 修改缓存数据
             group.nodes.forEach({
                 $0.isOn = group.isOn
@@ -375,7 +375,7 @@ extension GroupsViewController: UICollectionViewDataSource, UICollectionViewDele
                 }
             })
             MeshAPI.setGroupOnOffState(address: group.address.address, isOn: group.isOn)
-        }
+//        }
         reloadCollectionItem(group: group)
     }
     

@@ -66,7 +66,7 @@ extension UIViewController {
     
     func showNavigationBarState(_ state: NavigationBarState, actionCallback: (()->Void)? = nil) {
         
-        guard let navVc = navigationController, navVc.interactivePopGestureRecognizer?.state == .possible, let contentView = navVc.navigationBarContentView, let titleView = navVc.navigationBarTitleView else { return  }
+        guard let navVc = navigationController, navVc.topViewController == self, navVc.interactivePopGestureRecognizer?.state == .possible, let contentView = navVc.navigationBarContentView, let titleView = navVc.navigationBarTitleView else { return  }
         
         NSObject.cancelPreviousPerformRequests(withTarget: self, selector: #selector(navigationBarStateFinished), object: nil)
         
@@ -76,7 +76,7 @@ extension UIViewController {
             navVc.stateImageView = stateImageView
         }
         
-        if stateImageView?.superview == nil {
+        if stateImageView?.superview == nil, titleView.x > 0 {
             contentView.addSubview(stateImageView!)
 //            navVc.navigationBar.setNeedsFocusUpdate()
             stateImageView!.snp.makeConstraints { make in

@@ -823,6 +823,13 @@ extension DeviceLightsViewController: UICollectionViewDataSource, UICollectionVi
                 }
                 return
             }
+//            if let model = node.sunricherVendorModel {
+//                let data = Data.init(hex: "000000000000000000000000000000000000000000000000000000000000000000000000000000")
+//                let testMessage = ExternalVendorMessage(parameters: data)
+//                MeshAPI.sendMessage(message: testMessage, model: model)
+//                return
+//            }
+            
             if node.state { // 设备在线
                 node.isOn = !node.isOn
                 if node.isOn {

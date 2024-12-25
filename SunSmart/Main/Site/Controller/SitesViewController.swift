@@ -1184,7 +1184,7 @@ extension SitesViewController: UITableViewDataSource, UITableViewDelegate {
         }
         cell.nameLabel.text = site.name
         cell.iconImageView.image = UIImage(named: "site_\(site.imageId)")
-//        cell.timeLabel.text = String.dateConvert(timestamp: site.create, dateFormat: "M/d/yyyy hh:mm a")
+        cell.timeLabel.text = String.dateConvert(timestamp: "\(site.create)", dateFormat: "M/d/yyyy hh:mm a")
         if site.spaces.isEmpty {
             cell.spaceNumLabel.text = "\(site.spaceCount ?? site.spaces.count) \("spaces".localizedString)"
         }else {

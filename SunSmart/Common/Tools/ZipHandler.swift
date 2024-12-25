@@ -23,6 +23,10 @@ struct FirmwareZipData {
     let elementCount: Int
     /// 固件数据
     let firmwareData: Data
+    /// 是否测试（固件升级完成后不生效）
+    let test: Bool
+    /// 是否需要检查版本
+    let versionCheck: Bool
 }
 
 class ZipHandler {
@@ -159,9 +163,12 @@ class ZipHandler {
         
         // 升级来源 1: App 其它值目前不存在
         let coreType = config["core_type"] as? Int ?? 1
+        // 是否测试固件
+        let isTest = config["test"] as? Bool ?? false
+        // 是否检查固件版本
+        let versionCheck = config["version_check"] as? Bool ?? true
         
-        
-        let data = FirmwareZipData(firmwareId: firmwareId, firmwareVersion: firmwareIdArray.first ?? "", coreType: coreType, imageIndex: imageIndex, compositionHash: Data(hex: hash).turnOver(), elementCount: elementCount, firmwareData: firmwareData)
+        let data = FirmwareZipData(firmwareId: firmwareId, firmwareVersion: firmwareIdArray.first ?? "", coreType: coreType, imageIndex: imageIndex, compositionHash: Data(hex: hash).turnOver(), elementCount: elementCount, firmwareData: firmwareData, test: isTest, versionCheck: versionCheck)
         return data
     }
 }

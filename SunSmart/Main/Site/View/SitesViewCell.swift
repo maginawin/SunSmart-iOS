@@ -81,21 +81,21 @@ class SitesViewCell: UITableViewCell {
         nameLabel.snp.makeConstraints { make in
             make.left.equalTo(iconImageView.snp.right).offset(SCRXFrom(8))
             make.right.equalTo(SCRXFrom(-83))
-            make.top.equalTo(SCRYFrom(19))
+            make.top.equalTo(SCRYFrom(10))
         }
         
-        //            timeLabel = UILabel(text: "8/7/2023 12:00 AM", textColor: RGB(100, 116, 139), fontSize: 14, fontWeight: .light)
-        //            bgView.addSubview(timeLabel)
-        //            timeLabel.snp.makeConstraints { make in
-        //                make.left.equalTo(nameLabel)
-        //                make.top.equalTo(nameLabel.snp.bottom).offset(SCRYFrom(6))
-        //            }
+        timeLabel = UILabel(text: "8/7/2023 12:00 AM", textColor: RGB(148, 163, 184), fontSize: 14, fontWeight: .light)
+        bgView.addSubview(timeLabel)
+        timeLabel.snp.makeConstraints { make in
+            make.left.equalTo(nameLabel)
+            make.top.equalTo(nameLabel.snp.bottom).offset(SCRYFrom(5))
+        }
         
-        spaceNumLabel = UILabel(text: "15 Spaces", textColor: RGB(100, 116, 139), fontSize: 14, fontWeight: .light)
+        spaceNumLabel = UILabel(text: "15 Spaces", textColor: RGB(148, 163, 184), fontSize: 14, fontWeight: .light)
         bgView.addSubview(spaceNumLabel)
         spaceNumLabel.snp.makeConstraints { make in
             make.left.equalTo(nameLabel)
-            make.top.equalTo(nameLabel.snp.bottom).offset(SCRYFrom(8))
+            make.top.equalTo(timeLabel.snp.bottom).offset(SCRYFrom(3))
         }
         
         moreBtn = UIButton(normalImageName: "more_vertical", target: self, action: #selector(moreBtnClick))

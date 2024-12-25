@@ -19,6 +19,7 @@ class DeviceRestoreViewController: UIViewController {
         view.backgroundColor = Background_Color
         
         MeshAPI.startScanRecoverDevices(duration: 10) { device, node in
+            
             if node.macAddress == "E43703BA05EE" {
                 let name = node.name ?? device.deviceName ?? ""
                 let group = node.group

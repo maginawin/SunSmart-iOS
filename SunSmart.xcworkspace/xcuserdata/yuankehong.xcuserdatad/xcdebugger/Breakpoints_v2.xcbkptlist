@@ -541,16 +541,16 @@
       <BreakpointProxy
          BreakpointExtensionID = "Xcode.Breakpoint.FileBreakpoint">
          <BreakpointContent
-            uuid = "D24AF398-7111-4CF8-AD3A-0D928CAD6507"
+            uuid = "9DDA494C-A530-4818-A4C6-D59EF49F1E67"
             shouldBeEnabled = "Yes"
             ignoreCount = "0"
             continueAfterRunningActions = "No"
-            filePath = "../../Library/Developer/Xcode/DerivedData/SunSmart-bsknqvobukouwgfvklwtoruhrcgz/SourcePackages/checkouts/nordic-sig-mesh-sdk/Sources/NordicSigMeshSDK/nRFMeshProvision/Layers/NetworkManager.swift"
+            filePath = "../../Library/Developer/Xcode/DerivedData/SunSmart-bsknqvobukouwgfvklwtoruhrcgz/SourcePackages/checkouts/nordic-sig-mesh-sdk/Sources/NordicSigMeshSDK/MeshLib/MeshAPI.swift"
             startingColumnNumber = "9223372036854775807"
             endingColumnNumber = "9223372036854775807"
-            startingLineNumber = "390"
-            endingLineNumber = "390"
-            landmarkName = "waitFor(messageWithOpCode:from:to:timeout:)"
+            startingLineNumber = "1280"
+            endingLineNumber = "1280"
+            landmarkName = "sendMessage(message:address:defaultTTL:timeout:result:)"
             landmarkType = "7">
          </BreakpointContent>
       </BreakpointProxy>

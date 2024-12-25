@@ -369,12 +369,12 @@ class CloudSynchronizationManager {
         // 获取site/space相关同步操作
         let handles = syncHandles.filter({ handle in
             switch handle.operation {
-            case .syncSite(let site, _):
-                return site.id == site.id
+            case .syncSite(let syncSite, _):
+                return site.id == syncSite.id
             case .syncSpace(let space):
                 return space.siteId == site.id
-            case .addSpaces(let site, _):
-                return site.id == site.id
+            case .addSpaces(let syncSite, _):
+                return site.id == syncSite.id
             }
         })
         

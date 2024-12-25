@@ -433,9 +433,9 @@ class GroupViewController: UIViewController {
             group.nodes.forEach({
                 $0.isOn = lightness > 0
                 $0.lightness = lightness
-//                self.reloadCollectionItem(node: $0)
+                self.reloadCollectionItem(node: $0)
             })
-            collectionView.reloadData()
+//            collectionView.reloadData()
 //            self.isGroupUpdateData = true
         }
         
@@ -446,9 +446,9 @@ class GroupViewController: UIViewController {
             MeshAPI.setGroupColorTemperatureState(address: self.group.address.address, temperature: UInt16(value))
             group.nodes.forEach({
                 $0.temperature = UInt16(value)
-//                self.reloadCollectionItem(node: $0)
+                self.reloadCollectionItem(node: $0)
             })
-            collectionView.reloadData()
+//            collectionView.reloadData()
 //            self.isGroupUpdateData = true
         }
     }

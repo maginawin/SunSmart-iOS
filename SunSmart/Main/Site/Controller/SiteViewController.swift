@@ -1207,7 +1207,7 @@ self.updateAddressData()
         }
         if let state = CloudSynchronizationManager.shared.getSiteCurrentSyncState(site) {
             switch state {
-            case .inProgress:
+                case .inProgress:
                 self.showNavigationBarLoading()
             case .successful:
                 if allSpaces.contains(where: { $0.showSyncCloudError != nil }) { // site或者site下space存在同步错误
