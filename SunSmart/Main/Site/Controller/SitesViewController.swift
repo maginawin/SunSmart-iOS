@@ -140,7 +140,6 @@ class SitesViewController: UIViewController {
             showMenu = false
             menuClick()
         }
-        
         updateSyncState()
 //        self.showNavigationBarLoading()
         

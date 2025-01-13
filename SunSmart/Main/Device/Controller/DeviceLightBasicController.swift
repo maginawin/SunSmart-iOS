@@ -87,7 +87,7 @@ class DeviceLightBasicController: UIViewController {
         
         MeshAPI.getNodeState(address: node.primaryUnicastAddress)
     
-        MeshLibManager.manager.refreshNodesRSSI(withWaitFor: 2) {[weak self] nodes in
+        MeshLibManager.manager.refreshNodesRSSI(withWaitFor: 5) {[weak self] nodes in
             guard let self = self else { return }
             if self.refreshControl.isRefreshing {
                 self.refreshControl.endRefreshing()

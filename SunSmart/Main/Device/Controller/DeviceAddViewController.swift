@@ -546,8 +546,9 @@ class DeviceAddViewController: UIViewController {
                 if let vendorModel = node.sunricherVendorModel { // 未加入组的设备默认设置一个手动控制延迟时间，避免默认30s后状态被LC修改
                     appendMessages.append(MeshMessageHandle(message: SunricherVendorSet(function: .manualOverrideTimeout(enabled: true, state: .standby, interval: .max)), model: vendorModel))
                 }
-                if let powerOnOffSetupModel = node.powerOnOffSetupModel { // 设置默认上电状态
-                    appendMessages.append(MeshMessageHandle(message: GenericOnPowerUpSet(state: .restore), model: powerOnOffSetupModel))
+                if let powerOnOffSetupModel = node.powerOnOffSetupModel, let lightnessSetupModel = node.lightnessSetupModel { // 设置默认上电状态 100%亮度
+                    appendMessages.append(MeshMessageHandle(message: GenericOnPowerUpSet(state: .default), model: powerOnOffSetupModel))
+                    appendMessages.append(MeshMessageHandle(message: LightLightnessDefaultSet(lightness: .max), model: lightnessSetupModel))
                 }
             }
             // 需要追加发送的消息

@@ -135,7 +135,7 @@ class DevicesViewController: WMPageController {
             }
             startGuidanceTimer()
             // 获取设备信号
-            MeshLibManager.manager.refreshNodesRSSI(withWaitFor: 3, result: nil)
+            MeshLibManager.manager.refreshNodesRSSI(withWaitFor: 5, result: nil)
         }else {
 //            XWHUDManager.hideInView()
             // 判断是否需要申请地址
@@ -374,10 +374,12 @@ class DevicesViewController: WMPageController {
                 var distributionDatas: [MeshDistributionData] = []
                 list.forEach { data in
                     switch data.distributionState {
+                    case .none:
+                        fallthrough
                     case .await:
-                        distributionDatas.append(data)
+                        fallthrough
                     case .updating:
-                        distributionDatas.append(data)
+                        fallthrough
                     case .waitingInstall:
                         distributionDatas.append(data)
                     default:

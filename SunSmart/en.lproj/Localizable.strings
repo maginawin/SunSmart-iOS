@@ -600,8 +600,8 @@
 "space_delete_used_visitors_message" = "Some Spaces are being used by visitors, cleared or skipped.";
 "skip" = "SKIP";
 "Clear" = "CLEAR";
-"bacth_shared_list" = "Bacth shared list";
-"bacth_shared_no_data" = "No bacth data";
+"batch_shared_list" = "Batch shared list";
+"batch_shared_no_data" = "No batch data";
 "no_permission" = "No permission";
 "server_selection" = "Server selection";
 "china_mainland" = "China mainland";
@@ -761,7 +761,7 @@
 "updating_node(s)" = "Updating node(s)";
 "server_firmware" = "Server firmware";
 "server_firmware_message" = "Server firmware-The server is where the latest firmware is stored, for the initiator to check and download from the cloud.";
-"initiator_message" = "Initiator-The initiator identifies availaFirmware update via BLEs for a given list of nodes.";
+"initiator_message" = "Initiator-The initiator identifies available firmware updates for a given list of nodes.";
 "updating_node_message" = "Updating node-Updating node is the name given to a node which can receive a firmware image from a initiator and installit.";
 "ble_upgrade_instructions_message" = "Point-to-point BLE firmware upgrades require a direct connection to the device being upgraded and remain connected until the upgrade is complete.\n\nFor scenarios where you want to upgrade a few specified devices, this provides a very simple upgrade method.";
 "new_version_found" = "New version found.";
@@ -862,7 +862,7 @@
 "mesh_distributor_log_wait_transfer" = "> Queued for upgrade because other device types are distributing firmware.";
 "mesh_distributor_log_check_firmware" = "> Check whether the firmware package already exists on the device";
 "mesh_distributor_log_not_firmware" = "> Some devices do not have firmware packages";
-"mesh_distributor_log_transfer" = "> Transfer BLOB: %@ -> selected device(s)\n(Estimated %@ left)";
+"mesh_distributor_log_transfer" = "> Transfer BLOB: %@ -> selected device(s)";
 "mesh_distributor_log_transfer_failed_conduct" = "(Please make sure that the device is working properly or not powered off during the transfer process. You can click 'RE-START' in the upper right corner to retransmission.)";
 "mesh_distributor_log_restart" = "> Re-start";
 
@@ -871,7 +871,7 @@
 "mesh_distributor_log_install" = "> Install firmware";
 "mesh_distributor_log_install_failed" = "> Installation failed on some devices!";
 "mesh_distributor_log_install_failed_targets" = "> Failure device(s): %@";
-"mesh_distributor_log_install_failed_conduct" = "(You can click 'RE-INSTALL' in the upper right corner to re-install. If there are few failed devices, you can exit and choose BLE upgrade mode, which is faster.)";
+"mesh_distributor_log_install_failed_conduct" = "(You can click 'RE-START' in the upper right corner to re-install. If there are few failed devices, you can exit and choose BLE upgrade mode, which is faster.)";
 "mesh_distributor_log_reinstall" = "> Re-install firmware";
 "mesh_distributor_log_manually_install" = "> An exception occurred and the installation failed to be triggered. Please click 'INSTALL MANUALLY' at the bottom to install manually.";
 "mesh_distributor_log_not_executed" = "Not executed yet";

@@ -256,152 +256,151 @@ extension SiteData {
     }
     
     
-    /// 获取site解绑spaces回收地址数据
+    /// 获取site解绑spaces回收地址数据（异步加载数据，避免阻塞主线程）
     /// - Parameter spaces: spaces
     /// - Returns: 回收地址数据
-    func getRecycleAddressData(unbindSpaces spaces: [SpaceData]) -> RecycleAddressData {
-        
-        guard spaces.count > 0 else {
-            return .init(deviceAddresses: [], groupAddresses: [], sceneAddresses: [], provisionerData: nil)
-        }
-//        addressResult
-        
-        
-        /// 回收的设备地址
-        var recycleDeviceAddresses: [Int] = []
-        /// 回收的组地址
-        var recycleGroupAddresses: [Int] = []
-        /// 回收的场景地址
-        var recycleSceneAddresses: [Int] = []
-        
-        /// 未使用的设备地址
-        var availableDeviceAddresses = MeshAPI.getAvailableUnicastAddresses(meshUUID: self.meshUUID).map { Int($0) }
-        /// 未使用的组地址
-        let availableGroupAddresses = MeshAPI.getAvailableGroupAddresses(meshUUID: self.meshUUID).map { Int($0) }
-        /// 未使用的场景地址
-        let availableSceneAddresses = MeshAPI.getAvailableSceneAddresses(meshUUID: self.meshUUID).map { Int($0) }
-        /// 废弃地址list
-        var exclusionAddresses: [(ivIndex: Int, addresses: [Int])]?
-        /// 回收后的网络用户数据
-        var provisionerData: [String: Any]?
-        
-        let meshNetwork = MeshNetwork.load(meshUUID: self.meshUUID)
-        
-        if self.spaces.count - spaces.count == 0 { // 没有space了
-            /// 废弃的设备地址
-            exclusionAddresses = MeshAPI.getExclusionAddresses(meshUUID: self.meshUUID).map({ (Int($0.ivIndex), $0.addresses.map({ Int($0) })) })
-            // 将手机地址回收
-            if let meshNetwork = meshNetwork,
-               let localAddress = meshNetwork.localProvisioner?.primaryUnicastAddress {
-                let seq = meshNetwork.getCurrentSequenceNumber(localAddress: localAddress)
-                // 判断seq大于0说明手机地址已和设备交互，需要回收
-                if seq ?? 0 > 0 {
-                    if let index = exclusionAddresses?.firstIndex(where: { $0.ivIndex == meshNetwork.currentIVIndex }), let exclusion = exclusionAddresses?.first(where: { $0.ivIndex == meshNetwork.currentIVIndex }) {
-                        var addresses = exclusion.addresses
-                        addresses.append(Int(localAddress))
-                        exclusionAddresses?.replaceSubrange(index...index, with: [(exclusion.ivIndex, addresses)])
-                    }else {
-                        exclusionAddresses?.append((Int(meshNetwork.currentIVIndex), [Int(localAddress)]))
-                    }
-                }else { // 手机地址未使用
-                    // 回收设备地址
-                    availableDeviceAddresses.append(Int(localAddress))
-                }
-            }
+    func getRecycleAddressData(unbindSpaces spaces: [SpaceData]) async -> RecycleAddressData {
+
+        return await withCheckedContinuation { continuation in
             
-            // 全部回收剩余地址和剩余废弃地址
-            recycleDeviceAddresses = availableDeviceAddresses
-            recycleGroupAddresses = availableGroupAddresses
-            recycleSceneAddresses = availableSceneAddresses
-        }else {
-            // spaces内没有editor权限，应回收未使用的所有地址
-            let otherSpaces = self.spaces.filter({ space in spaces.contains(where: { $0.id != space.id }) })
-            if !otherSpaces.contains(where: { $0.permission == .editor }) {
+            guard spaces.count > 0 else {
+                continuation.resume(returning: .init(deviceAddresses: [], groupAddresses: [], sceneAddresses: [], provisionerData: nil))
+                return
+            }
+            /// 回收的设备地址
+            var recycleDeviceAddresses: [Int] = []
+            /// 回收的组地址
+            var recycleGroupAddresses: [Int] = []
+            /// 回收的场景地址
+            var recycleSceneAddresses: [Int] = []
+            
+            /// 未使用的设备地址
+            var availableDeviceAddresses = MeshAPI.getAvailableUnicastAddresses(meshUUID: self.meshUUID).map { Int($0) }
+            /// 未使用的组地址
+            let availableGroupAddresses = MeshAPI.getAvailableGroupAddresses(meshUUID: self.meshUUID).map { Int($0) }
+            /// 未使用的场景地址
+            let availableSceneAddresses = MeshAPI.getAvailableSceneAddresses(meshUUID: self.meshUUID).map { Int($0) }
+            /// 废弃地址list
+            var exclusionAddresses: [(ivIndex: Int, addresses: [Int])]?
+            /// 回收后的网络用户数据
+            var provisionerData: [String: Any]?
+            
+            let meshNetwork = MeshNetwork.load(meshUUID: self.meshUUID)
+            
+            if self.spaces.count - spaces.count == 0 { // 没有space了
+                /// 废弃的设备地址
+                exclusionAddresses = MeshAPI.getExclusionAddresses(meshUUID: self.meshUUID).map({ (Int($0.ivIndex), $0.addresses.map({ Int($0) })) })
+                // 将手机地址回收
+                if let meshNetwork = meshNetwork,
+                   let localAddress = meshNetwork.localProvisioner?.primaryUnicastAddress {
+                    let seq = meshNetwork.getCurrentSequenceNumber(localAddress: localAddress)
+                    // 判断seq大于0说明手机地址已和设备交互，需要回收
+                    if seq ?? 0 > 0 {
+                        if let index = exclusionAddresses?.firstIndex(where: { $0.ivIndex == meshNetwork.currentIVIndex }), let exclusion = exclusionAddresses?.first(where: { $0.ivIndex == meshNetwork.currentIVIndex }) {
+                            var addresses = exclusion.addresses
+                            addresses.append(Int(localAddress))
+                            exclusionAddresses?.replaceSubrange(index...index, with: [(exclusion.ivIndex, addresses)])
+                        }else {
+                            exclusionAddresses?.append((Int(meshNetwork.currentIVIndex), [Int(localAddress)]))
+                        }
+                    }else { // 手机地址未使用
+                        // 回收设备地址
+                        availableDeviceAddresses.append(Int(localAddress))
+                    }
+                }
+                
                 // 全部回收剩余地址和剩余废弃地址
                 recycleDeviceAddresses = availableDeviceAddresses
                 recycleGroupAddresses = availableGroupAddresses
                 recycleSceneAddresses = availableSceneAddresses
             }else {
-                
-                // site中已存在的设备地址list
-                let alreadyExistAddressCount = MeshAPI.getAlreadyExistDeviceAddresses(meshUUID: self.meshUUID).count
-                // 剩余地址是否小于site设备数量地址的20%？，小于则取消回收地址，大于则回收space数量*50个地址
-                if availableDeviceAddresses.count >= Int(Float(alreadyExistAddressCount) * 0.2) {
-                    // 结尾开始回收，避免切割成多段地址范围
-                    recycleDeviceAddresses = availableDeviceAddresses.suffix(spaces.filter({ $0.permission == .editor }).count * 50)
-                }
-                // 回收组地址数量
-                var recycleGroupAddresCount = 0
-                // 回收场景地址数量
-                var recycleSceneAddresCount = 0
-                
-                spaces.filter({ $0.permission == .editor }).forEach { space in
+                // spaces内没有editor权限，应回收未使用的所有地址
+                let otherSpaces = self.spaces.filter({ space in spaces.contains(where: { $0.id != space.id }) })
+                if !otherSpaces.contains(where: { $0.permission == .editor }) {
+                    // 全部回收剩余地址和剩余废弃地址
+                    recycleDeviceAddresses = availableDeviceAddresses
+                    recycleGroupAddresses = availableGroupAddresses
+                    recycleSceneAddresses = availableSceneAddresses
+                }else {
                     
-                    var usedGroupAddresses = Group.loadAddresses(meshUUID: space.meshUUID, subnetworkId: space.meshNetworkId)
+                    // site中已存在的设备地址list
+                    let alreadyExistAddressCount = MeshAPI.getAlreadyExistDeviceAddresses(meshUUID: self.meshUUID).count
+                    // 剩余地址是否小于site设备数量地址的20%？，小于则取消回收地址，大于则回收space数量*50个地址
+                    if availableDeviceAddresses.count >= Int(Float(alreadyExistAddressCount) * 0.2) {
+                        // 结尾开始回收，避免切割成多段地址范围
+                        recycleDeviceAddresses = availableDeviceAddresses.suffix(spaces.filter({ $0.permission == .editor }).count * 50)
+                    }
+                    // 回收组地址数量
+                    var recycleGroupAddresCount = 0
+                    // 回收场景地址数量
+                    var recycleSceneAddresCount = 0
                     
-                    var usedSceneAddresses = Scene.loadAddresses(meshUUID: space.meshUUID, subnetworkId: space.meshNetworkId)
-                    
-                    if let localProvisioner = meshNetwork?.localProvisioner {
-                        // 该用户已使用的组地址
-                        usedGroupAddresses = usedGroupAddresses.filter({ localProvisioner.allocatedGroupRange.contains($0) })
-                        // 该用户已使用的场景地址
-                        usedSceneAddresses = usedSceneAddresses.filter({ localProvisioner.allocatedSceneRange.contains($0) })
+                    spaces.filter({ $0.permission == .editor }).forEach { space in
+                        
+                        var usedGroupAddresses = Group.loadAddresses(meshUUID: space.meshUUID, subnetworkId: space.meshNetworkId)
+                        
+                        var usedSceneAddresses = Scene.loadAddresses(meshUUID: space.meshUUID, subnetworkId: space.meshNetworkId)
+                        
+                        if let localProvisioner = meshNetwork?.localProvisioner {
+                            // 该用户已使用的组地址
+                            usedGroupAddresses = usedGroupAddresses.filter({ localProvisioner.allocatedGroupRange.contains($0) })
+                            // 该用户已使用的场景地址
+                            usedSceneAddresses = usedSceneAddresses.filter({ localProvisioner.allocatedSceneRange.contains($0) })
+                        }
+                        
+                        // 每解绑一个space，其APP都回收这个space未使用的组地址给服务器  1个空间32个组地址
+                        recycleGroupAddresCount += 32 - usedGroupAddresses.count
+                        
+                        // 每解绑一个space，其APP都回收这个space未使用的场景地址给服务器  1个空间16个场景
+                        let spaceScenes = Scene.load(meshUUID: space.meshUUID, subnetworkId: space.meshNetworkId)
+                        recycleSceneAddresCount += 16 - usedSceneAddresses.count
                     }
                     
-                    // 每解绑一个space，其APP都回收这个space未使用的组地址给服务器  1个空间32个组地址
-                    recycleGroupAddresCount += 32 - usedGroupAddresses.count
-                    
-                    // 每解绑一个space，其APP都回收这个space未使用的场景地址给服务器  1个空间16个场景
-                    let spaceScenes = Scene.load(meshUUID: space.meshUUID, subnetworkId: space.meshNetworkId)
-                    recycleSceneAddresCount += 16 - usedSceneAddresses.count
+                    recycleGroupAddresses = availableGroupAddresses.suffix(recycleGroupAddresCount)
+                    recycleSceneAddresses = availableSceneAddresses.suffix(recycleSceneAddresCount)
                 }
-                
-                recycleGroupAddresses = availableGroupAddresses.suffix(recycleGroupAddresCount)
-                recycleSceneAddresses = availableSceneAddresses.suffix(recycleSceneAddresCount)
             }
-        }
-//        exclusionAddresses.map({ data in RecycleAddressData.ExclusionAddressData(ivIndex: data.$0, addresses: data.$1) })
-        let exclusions = exclusionAddresses?.map({ (ivIndex: Int, addresses: [Int]) in
-            return RecycleAddressData.ExclusionAddressData(ivIndex: ivIndex, addresses: addresses)
-        })
-        
-        
-        if let localProvisioner = meshNetwork?.localProvisioner {
-            let deallocatedUnicastRange = recycleDeviceAddresses.splitArray().compactMap { array in
-                if let lowAddress = array.first, let highAddress = array.last {
-                    return AddressRange(from: UInt16(lowAddress), to: UInt16(highAddress))
-                }
-                return nil
-            }
-            deallocatedUnicastRange.forEach({
-                localProvisioner.deallocate(unicastAddressRange: $0)
-            })
-            // 组地址
-            let deallocatedGroupRange = recycleGroupAddresses.splitArray().compactMap { array in
-                if let lowAddress = array.first, let highAddress = array.last {
-                    return AddressRange(from: UInt16(lowAddress), to: UInt16(highAddress))
-                }
-                return nil
-            }
-            deallocatedGroupRange.forEach({
-                localProvisioner.deallocate(groupAddressRange: $0)
+            //        exclusionAddresses.map({ data in RecycleAddressData.ExclusionAddressData(ivIndex: data.$0, addresses: data.$1) })
+            let exclusions = exclusionAddresses?.map({ (ivIndex: Int, addresses: [Int]) in
+                return RecycleAddressData.ExclusionAddressData(ivIndex: ivIndex, addresses: addresses)
             })
             
-            // 场景地址
-            let deallocatedSceneRange = recycleSceneAddresses.splitArray().compactMap { array in
-                if let firstScene = array.first, let lastScene = array.last {
-                    return SceneRange(from: UInt16(firstScene), to: UInt16(lastScene))
+            
+            if let localProvisioner = meshNetwork?.localProvisioner {
+                let deallocatedUnicastRange = recycleDeviceAddresses.splitArray().compactMap { array in
+                    if let lowAddress = array.first, let highAddress = array.last {
+                        return AddressRange(from: UInt16(lowAddress), to: UInt16(highAddress))
+                    }
+                    return nil
                 }
-                return nil
+                deallocatedUnicastRange.forEach({
+                    localProvisioner.deallocate(unicastAddressRange: $0)
+                })
+                // 组地址
+                let deallocatedGroupRange = recycleGroupAddresses.splitArray().compactMap { array in
+                    if let lowAddress = array.first, let highAddress = array.last {
+                        return AddressRange(from: UInt16(lowAddress), to: UInt16(highAddress))
+                    }
+                    return nil
+                }
+                deallocatedGroupRange.forEach({
+                    localProvisioner.deallocate(groupAddressRange: $0)
+                })
+                
+                // 场景地址
+                let deallocatedSceneRange = recycleSceneAddresses.splitArray().compactMap { array in
+                    if let firstScene = array.first, let lastScene = array.last {
+                        return SceneRange(from: UInt16(firstScene), to: UInt16(lastScene))
+                    }
+                    return nil
+                }
+                deallocatedSceneRange.forEach({
+                    localProvisioner.deallocate(sceneRange: $0)
+                })
+                provisionerData = localProvisioner.toJson()
             }
-            deallocatedSceneRange.forEach({
-                localProvisioner.deallocate(sceneRange: $0)
-            })
-            provisionerData = localProvisioner.toJson()
+            continuation.resume(returning: .init(deviceAddresses: recycleDeviceAddresses.sorted(), groupAddresses: recycleGroupAddresses.sorted(), sceneAddresses: recycleSceneAddresses.sorted(), exclusionAddresses: exclusions, provisionerData: provisionerData))
         }
-        
-        
-        return .init(deviceAddresses: recycleDeviceAddresses.sorted(), groupAddresses: recycleGroupAddresses.sorted(), sceneAddresses: recycleSceneAddresses.sorted(), exclusionAddresses: exclusions, provisionerData: provisionerData)
     }
     
 }
@@ -1166,7 +1165,7 @@ extension Scene {
         guard let uuid = self.network?.uuid.uuidString else {
             return
         }
-        let subnetworkId = self.network?.networkKeys.first(where: { $0.isSecondary })?.networkId.hex
+        let subnetworkId = self.subNetworkId
         // 删除场景内组缓存数据
         info.groups.forEach({
             $0.info.sceneExecuteDatas.removeAll(where: { $0.sceneNumber == self.number })
@@ -2249,15 +2248,21 @@ extension Node {
     
     /// 删除设备缓存的所有扩展数据
     func deleteExtension() {
-        guard let uuid = self.network?.uuid.uuidString else {
+        guard let meshNetwork = self.network ?? MeshNetworkManager.instance.meshNetwork else {
             return
         }
         // 删除动能开关
         deleteEnOceanSwitch()
         // 判断删除的设备是不是组绑定的光照传感器
-        if let group = self.network?.groups.first(where: { $0.info.ambientLightSensorNodeAddress == primaryUnicastAddress }) {
+        if let group = meshNetwork.groups.first(where: { $0.info.ambientLightSensorNodeAddress == primaryUnicastAddress }) {
             group.info.ambientLightSensorNodeAddress = nil
-            group.info.save(meshUUID: uuid, subnetworkId: group.subNetworkId)
+            group.info.save(meshUUID: meshNetwork.uuid.uuidString, subnetworkId: group.subNetworkId)
+        }
+        // 检查是否有删除分发者设备，删除分发者需把OTA分发缓存清空
+        if let productId = self.productIdentifier {
+            if let distributionData = MeshDistributionData.load(productId: productId), distributionData.distributionAddress == self.primaryUnicastAddress {
+                distributionData.delete(productId: productId)
+            }
         }
     }
     
@@ -2273,7 +2278,7 @@ extension Node {
     /// 删除绑定的动能开关
     func deleteEnOceanSwitch(enOceanMacAddress: String? = nil) {
 
-        guard let uuid = self.network?.uuid.uuidString else {
+        guard let uuid = self.network?.uuid.uuidString ?? MeshNetworkManager.instance.meshNetwork?.uuid.uuidString else {
             return
         }
         let subNetworkId = self.subNetworkId
@@ -2468,30 +2473,50 @@ extension Node {
 //                
 //            }
             break
-        case is LightLCLightOnOffSet, is LightLCLightOnOffSetUnacknowledged: // 点击Auto
-            if let isOn = (message as? LightLCLightOnOffSet)?.isOn ?? (message as? LightLCLightOnOffSetUnacknowledged)?.isOn, let group = group {
-                if isOn {
-                    let profile = group.info.profile
-                    let lightData = profile.lightData.data
-                    // daylight并且已校准则不更新本地数据，更新设备状态到第一阶段
-                    if !((profile.type == .occupancy_daylight || profile.type == .vacancy_daylight || profile.type == .daylight) && group.info.ambientLightSensorNode != nil) {
-                        let lightness = Node.getLightness(lightness100: lightData.occupancyLevel)
-                        group.lightnessNodes.forEach({
-                            if !isOn {
-                                $0.trunOffLightness = $0.lightness
-                            }
-                            $0.lightness = lightness
-                            $0.isOn = lightness > 0
-                        })
+        case is LightLCLightOnOffSet, is LightLCLightOnOffSetUnacknowledged, is GenericOnOffSetUnacknowledged: // 点击Auto / Off
+            
+            guard let switchData = MeshNetworkManager.instance.switchs.first(where: { $0.proxyNodeAddress == self.primaryUnicastAddress }), let linkGroup = switchData.linkGroup else { return }
+            
+            switch message {
+            case is LightLCLightOnOffSet, is LightLCLightOnOffSetUnacknowledged: // 点击Auto
+                if let isOn = (message as? LightLCLightOnOffSet)?.isOn ?? (message as? LightLCLightOnOffSetUnacknowledged)?.isOn, isOn {
+                    switchData.bindGroups.forEach { group in
+                        let profile = group.info.profile
+                        let lightData = profile.lightData.data
+                        // daylight并且已校准则不更新本地数据，更新设备状态到第一阶段
+                        if !((profile.type == .occupancy_daylight || profile.type == .vacancy_daylight || profile.type == .daylight) && group.info.ambientLightSensorNode != nil) {
+                            let lightness = Node.getLightness(lightness100: lightData.occupancyLevel)
+                            group.lightnessNodes.forEach({
+                                if !isOn {
+                                    $0.trunOffLightness = $0.lightness
+                                }
+                                $0.lightness = lightness
+                                $0.isOn = lightness > 0
+                            })
+                        }
                     }
-                    
-                }else {
-                    group.nodes.forEach({
-                        $0.isOn = false
-                        $0.lightness = 0
+                }
+            case is GenericOnOffSetUnacknowledged: // OFF
+                if let isOn = (message as? GenericOnOffSetUnacknowledged)?.isOn {
+                    var nodes: [Node] = []
+                    switchData.bindGroups.forEach({ group in
+                        nodes.append(contentsOf: group.nodes.filter({ node in (node.onoffModel?.isSubscribed(to: linkGroup) ?? false) || (node.lightLCModel?.isSubscribed(to: linkGroup) ?? false) }))
+                    })
+                    nodes.forEach({
+                        if isOn {
+                            if let trunOffLightness = $0.trunOffLightness {
+                                $0.lightness = trunOffLightness
+                            }
+                        }else {
+                            $0.lightness = 0
+                        }
+                        $0.isOn = isOn
                     })
                 }
+            default:
+                break
             }
+            
 //        case is GenericDeltaSetUnacknowledged: // 亮度+/-
 //            let delta = (message as! GenericDeltaSetUnacknowledged).delta
 //            if let group = self.group {

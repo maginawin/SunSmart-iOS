@@ -83,7 +83,7 @@ extension SiteData {
         
         let currentNetwork = MeshNetworkManager.instance.meshNetwork?.uuid.uuidString == self.meshUUID ? MeshNetworkManager.instance.meshNetwork : nil
         var meshNetwork = currentNetwork ?? MeshNetwork.load(meshUUID: self.meshUUID, allData: false)
-        
+        var updateNetwork = false
         // 服务器最后更新时间比本地时间新才覆盖本地数据
         if lastUpdate > self.lastUpdate || initialize {
             
@@ -259,15 +259,16 @@ extension SiteData {
                     self.localAddress = nil
                 }
             }
-            
+            updateNetwork = true
             // 是否需要保存mesh数据
 //            if meshNetworkSave {
 //                meshNetwork?.save()
 //            }
         }else {
             
-            if let ivIndex = json["ivIndex"].uInt32 {
+            if let ivIndex = json["ivIndex"].uInt32, meshNetwork?.currentIVIndex != ivIndex {
                 meshNetwork?.currentIVIndex = ivIndex
+                updateNetwork = true
             }
             
             // 更新废弃的设备地址
@@ -302,8 +303,9 @@ extension SiteData {
             }
         }
       
-       
-        meshNetwork?.save()
+        if updateNetwork {
+            meshNetwork?.save()
+        }
         
         // 修改供应者地址资源
         if let provisionerData = json["provisioner"].dictionaryObject {
@@ -738,6 +740,32 @@ extension SpaceData {
                 }
             }
             
+            let meshUUID = self.meshUUID
+            
+            var meshNetwork: MeshNetwork?
+            if MeshNetworkManager.instance.meshNetwork?.uuid.uuidString == meshUUID && MeshNetworkManager.instance.currentNetworkKey.networkId.hex == self.meshNetworkId {
+                meshNetwork = MeshNetworkManager.instance.meshNetwork
+            }else {
+                meshNetwork = MeshNetwork.load(meshUUID: meshUUID, subnetworkId: self.meshNetworkId)
+            }
+            // 子网key丢失
+            if let network = meshNetwork, !network.networkKeys.contains(where: { $0.networkId.hex == self.meshNetworkId }) {
+                // 修复子网key数据
+                if let netKeyDict = json["netKey"].dictionaryObject,
+                   let netKeyData = try? JSONSerialization.data(withJSONObject: netKeyDict),
+                   let netKey = try? jsonDecoder.decode(NetworkKey.self, from: netKeyData),
+                   let appKeyDict = json["appKey"].dictionaryObject,
+                   let appKeyData = try? JSONSerialization.data(withJSONObject: appKeyDict),
+                   let appKey = try? jsonDecoder.decode(ApplicationKey.self, from: appKeyData) {
+                    
+                    if !network.networkKeys.contains(where: { $0.index == netKey.index }) {
+                        network.add(networkKey: netKey)
+                        network.add(applicationKey: appKey)
+                        network.save()
+                    }
+                    self.meshNetworkId = netKey.networkId.hex
+                }
+            }
             
             let lastUpdate = json["updateTimestamp"].int64Value
             // 服务器最后更新时间比本地时间新才覆盖本地数据
@@ -748,22 +776,6 @@ extension SpaceData {
                 return
             }
             
-            let meshUUID = self.meshUUID
-            
-            var meshNetwork: MeshNetwork?
-            if MeshNetworkManager.instance.meshNetwork?.uuid.uuidString == meshUUID && MeshNetworkManager.instance.currentNetworkKey.networkId.hex == self.meshNetworkId {
-                meshNetwork = MeshNetworkManager.instance.meshNetwork
-            }else {
-                meshNetwork = MeshNetwork.load(meshUUID: meshUUID, subnetworkId: self.meshNetworkId)
-//                if let network = meshNetwork {
-//                    network.groups.forEach({ group in
-//                        group.info = GroupInfo.load(meshUUID: meshUUID, address: group.address.address) ?? GroupInfo(address: group.address.address)
-//                    })
-//                    network.scenes.forEach({ scene in
-//                        scene.info = SceneInfo.load(meshUUID: meshUUID, sceneId: $0.number) ?? SceneInfo(sceneId: $0.number)
-//                    })
-//                }
-            }
             guard let network = meshNetwork else {
                 continuation.resume()
                 return

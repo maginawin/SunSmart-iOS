@@ -112,6 +112,18 @@ class MeshFirmwareSelectDeviceViewCell: UITableViewCell {
                     make.top.equalTo(SCRYFrom(12))
                     make.centerX.equalToSuperview().offset(SCRXFrom(13))
                 }
+                if device.distributionVersion == nil {
+                    distributorLabel.snp.remakeConstraints { make in
+                        make.centerX.equalTo(firmwareVersionLabel)
+                        make.centerY.equalToSuperview()
+                    }
+                }else {
+                    distributorLabel.snp.remakeConstraints { make in
+                        make.centerX.equalTo(firmwareVersionLabel)
+                        make.bottom.equalTo(SCRYFrom(-11))
+                    }
+                }
+                
             }else {
                 distributorLabel.isHidden = true
                 firmwareVersionLabel.snp.remakeConstraints { make in

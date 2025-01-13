@@ -282,8 +282,8 @@ class FirmwareDistributeUpdateStateView: UIView {
         progressView.progressColor = Bar_Color
         contentView.addSubview(progressView)
         progressView.snp.makeConstraints { make in
-            make.left.equalTo(SCRXFrom(48))
-            make.right.equalTo(SCRXFrom(-82))
+            make.left.equalTo(SCRXFrom(26))
+            make.right.equalTo(SCRXFrom(-64))
             make.top.equalTo(messageLabel.snp.bottom).offset(SCRYFrom(23))
             make.height.equalTo(SCRYFrom(2))
         }
@@ -291,7 +291,7 @@ class FirmwareDistributeUpdateStateView: UIView {
         progressLabel = UILabel(text: "", textColor: Bar_Color, fontSize: 14, fontWeight: .light)
         contentView.addSubview(progressLabel)
         progressLabel.snp.makeConstraints { make in
-            make.left.equalTo(progressView.snp.right).offset(SCRXFrom(8))
+            make.left.equalTo(progressView.snp.right).offset(SCRXFrom(11))
             make.centerY.equalTo(progressView)
         }
         

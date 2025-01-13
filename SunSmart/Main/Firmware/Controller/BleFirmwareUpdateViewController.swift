@@ -243,7 +243,7 @@ class BleFirmwareUpdateViewController: UIViewController {
         
         MeshNetworkManager.instance.realNodes.forEach({ $0.rssi = nil })
         XWHUDManager.showCustomHUD(withMessage: nil, view: view)
-        MeshLibManager.manager.refreshNodesRSSI(withWaitFor: 5) {[weak self] nodes in
+        MeshLibManager.manager.refreshNodesRSSI(withWaitFor: 6) {[weak self] nodes in
             guard let self = self else { return }
 //            self.firmwareTypeDatas.forEach({
 //                $0.nodes.sort(by: { $0.rssi ?? 0 >= $1.rssi ?? 0 })

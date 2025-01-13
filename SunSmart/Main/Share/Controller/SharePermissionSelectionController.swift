@@ -132,7 +132,7 @@ class SharePermissionSelectionController: UIViewController {
                     let cacheSpace = SpaceData.load(siteId: space.siteId, spaceId: space.id).first
                     if cacheSpace != nil, let site = SiteData.load(siteId: space.siteId) {
                         // 回收之前清空权限时的地址
-                        var recycleAddressData = site.getRecycleAddressData(unbindSpaces: [cacheSpace!])
+                        var recycleAddressData = await site.getRecycleAddressData(unbindSpaces: [cacheSpace!])
                         recycleAddressData.provisionerData = nil
                         recycleAddressData.exclusionAddresses = nil
                         if !recycleAddressData.isEmpty {
@@ -221,7 +221,7 @@ class SharePermissionSelectionController: UIViewController {
                         if let siteId = spaces.first?.siteId, let site = SiteData.load(siteId: siteId) {
                             // 回收之前清空权限时的地址
                             if recycleSpaces.count > 0 {
-                                var recycleAddressData = site.getRecycleAddressData(unbindSpaces: recycleSpaces)
+                                var recycleAddressData = await site.getRecycleAddressData(unbindSpaces: recycleSpaces)
                                 recycleAddressData.provisionerData = nil
                                 recycleAddressData.exclusionAddresses = nil
                                 if !recycleAddressData.isEmpty {
@@ -276,7 +276,7 @@ class SharePermissionSelectionController: UIViewController {
                         var recycleAddressData: SiteData.RecycleAddressData?
                         if let siteId = siteData["uuid"] as? String, let localSite = SiteData.load(siteId: siteId), localSite.permission != .owner {
                             // 判断是否存在这个site，如果有则主动回收自己之前拥有的地址
-                            var recycleData = localSite.getRecycleAddressData(unbindSpaces: localSite.spaces)
+                            var recycleData = await localSite.getRecycleAddressData(unbindSpaces: localSite.spaces)
                             recycleData.provisionerData = nil
                             if !recycleData.isEmpty {
                                 let result = await self.recycleAddressReqeust(site: localSite, recycleData: recycleData)
@@ -622,7 +622,8 @@ extension SharePermissionSelectionController {
                     }
                     
                     let deviceCount = spaceData["nodeCount"].intValue
-                    let space = SpaceData(name: spaceName, id: spaceId, siteId: siteId, imageId: 1, create: 0, isFavourite: false, permission: .visitor, sourceType: .share, meshUUID: siteId, meshNetworkId: spaceId)
+                    let imageId = spaceData["imageId"].int ?? 1
+                    let space = SpaceData(name: spaceName, id: spaceId, siteId: siteId, imageId: imageId, create: 0, isFavourite: false, permission: .visitor, sourceType: .share, meshUUID: siteId, meshNetworkId: spaceId)
                     space.deviceCount = deviceCount
                     if let userId = spaceData["owner"]["userId"].string, let username = spaceData["owner"]["username"].string {
                         space.owner = .init(name: username, uuid: userId)

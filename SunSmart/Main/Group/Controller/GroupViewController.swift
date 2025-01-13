@@ -811,7 +811,11 @@ extension GroupViewController: MeshLibManagerMessageDelegate {
         
         if let node = manager.meshNetwork?.node(withAddress: source), !node.isProvisioner {
             node.updateData(message: message)
-            if group.nodes.contains(node) {
+            
+            // 动能开关事件
+            let isSwitchAction = message is LightLCLightOnOffSetUnacknowledged || message is GenericOnOffSetUnacknowledged || message is SceneRecallUnacknowledged
+            
+            if group.nodes.contains(node) || destination == .allNodes || (isSwitchAction && group.info.switchs.contains(where: { $0.linkGroupAddress == destination })) {
                 if view.window != nil {
                     collectionView.reloadData()
                     if group.isOn != onoffBtn.isSelected {

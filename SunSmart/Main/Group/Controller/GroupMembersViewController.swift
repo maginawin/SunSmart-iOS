@@ -547,7 +547,7 @@ extension GroupMembersViewController: GroupDevicesFunctionViewDelegate {
     /// 点击排序回调
     func functionDidSortAction(view: GroupDevicesFunctionView) {
         XWHUDManager.showCustomHUD(withMessage: nil, isWindow: false)
-        MeshLibManager.manager.refreshNodesRSSI(withWaitFor: 3) {[weak self] nodes in
+        MeshLibManager.manager.refreshNodesRSSI(withWaitFor: 5) {[weak self] nodes in
             XWHUDManager.hide()
             guard let self = self else { return }
 //            print("\() \()")

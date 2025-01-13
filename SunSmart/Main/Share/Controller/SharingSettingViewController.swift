@@ -304,10 +304,10 @@ class SharingSettingViewController: UIViewController {
             qrcodeColor = Bar_Color
         }
         
-        var codeString = self.codeUUID
-        if case .space(_, let space) = type {
-            codeString = "\(self.codeUUID)/\(space.permission.rawValue)"
-        }
+        let codeString = self.codeUUID
+//        if case .space(_, let space) = type {
+//            codeString = "\(self.codeUUID)/\(space.permission.rawValue)"
+//        }
         let image = LBXScanWrapper.createCode(codeType: "CIQRCodeGenerator", codeString: codeString, size: CGSize(width: SCRYFrom(160), height: SCRYFrom(160)), qrColor: qrcodeColor, bkColor: .white)!
 //        DispatchQueue.global().async {
 //            let image = LBXScanWrapper.createCode(codeType: "CIQRCodeGenerator", codeString: self.codeUUID, size: CGSize(width: qrcodeW, height: qrcodeH), qrColor: qrcodeColor, bkColor: .white)!

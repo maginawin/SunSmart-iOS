@@ -97,7 +97,7 @@ class MeshFirmwareUpgradeResultsView: UIView {
         contentView.snp.makeConstraints { make in
             make.left.equalTo(SCRXFrom(36))
             make.right.equalTo(SCRXFrom(-37))
-            make.height.equalTo(SCRYFrom(260))
+            make.height.lessThanOrEqualTo(SCRYFrom(260))
             make.centerY.equalToSuperview()
         }
         
@@ -143,6 +143,7 @@ class MeshFirmwareUpgradeResultsView: UIView {
             make.left.right.equalToSuperview()
             make.top.equalTo(titleLabel.snp.bottom).offset(SCRYFrom(12))
             make.bottom.equalTo(detailsBtn.snp.top).offset(SCRYFrom(-12))
+            make.height.equalTo(CGFloat(results.count) * tableView.rowHeight)
         }
         
         

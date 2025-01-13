@@ -124,10 +124,11 @@ class MeshSelectDistributorViewController: UIViewController {
         
         nodes.forEach({ 
             $0.rssi = nil
+            $0.rssiState = .none
             $0.distributorSelectedState = .none
         })
         XWHUDManager.showCustomHUD(withMessage: nil, view: view)
-        MeshLibManager.manager.refreshNodesRSSI(withWaitFor: 5) {[weak self] nodes in
+        MeshLibManager.manager.refreshNodesRSSI(withWaitFor: 6) {[weak self] nodes in
             guard let self = self else { return }
             self.refreshControl.endRefreshing()
             self.nodes.forEach { node in
@@ -196,6 +197,7 @@ class MeshSelectDistributorViewController: UIViewController {
             case .failed(let error):
                 stateView.update(state: .failure(message: error.message))
                 UIApplication.shared.isIdleTimerDisabled = false
+                self?.updateUI()
             }
         }
     }

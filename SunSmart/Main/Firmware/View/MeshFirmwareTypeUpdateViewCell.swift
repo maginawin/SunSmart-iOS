@@ -77,8 +77,10 @@ class MeshFirmwareTypeUpdateViewCell: UICollectionViewCell {
                     case .updatable:
                         updatableTipsView.isHidden = false
                         versionStateLabel.text = "updatable".localizedString
+                        versionStateLabel.textColor = TextBlack_Color
                     case .latest:
                         versionStateLabel.text = "latest".localizedString
+                        versionStateLabel.textColor = SubText_Color
                     }
                     versionStateLabel.snp.remakeConstraints { make in
                         make.left.equalTo(updatableTipsView.snp.right).offset(SCRXFrom(6))
@@ -112,16 +114,28 @@ class MeshFirmwareTypeUpdateViewCell: UICollectionViewCell {
                     versionStateLabel.text = "install_firmware_complete".localizedString
                     versionStateLabel.textColor = RGB(0, 209, 124)
                     versionStateImageView.isHidden = true
+                    versionStateLabel.snp.remakeConstraints { make in
+                        make.right.equalTo(SCRXFrom(-20))
+                        make.centerY.equalTo(versionStateTitleLabel)
+                    }
                 case .failure:
                     versionStateLabel.isHidden = false
                     versionStateLabel.text = "install_firmware_failure".localizedString
                     versionStateLabel.textColor = Red_Color
                     versionStateImageView.isHidden = true
+                    versionStateLabel.snp.remakeConstraints { make in
+                        make.right.equalTo(SCRXFrom(-20))
+                        make.centerY.equalTo(versionStateTitleLabel)
+                    }
                 case .waitingInstall:
                     versionStateLabel.isHidden = false
                     versionStateLabel.text = "waiting_install".localizedString
                     versionStateLabel.textColor = RGB(148, 163, 184)
                     versionStateImageView.isHidden = true
+                    versionStateLabel.snp.remakeConstraints { make in
+                        make.right.equalTo(SCRXFrom(-20))
+                        make.centerY.equalTo(versionStateTitleLabel)
+                    }
                 }
                
                 
@@ -135,8 +149,10 @@ class MeshFirmwareTypeUpdateViewCell: UICollectionViewCell {
                 case .updatable:
                     updatableTipsView.isHidden = false
                     versionStateLabel.text = "updatable".localizedString
+                    versionStateLabel.textColor = TextBlack_Color
                 case .latest:
                     versionStateLabel.text = "latest".localizedString
+                    versionStateLabel.textColor = SubText_Color
                 }
                 
 //                versionStateLabel.snp.remakeConstraints({ make in

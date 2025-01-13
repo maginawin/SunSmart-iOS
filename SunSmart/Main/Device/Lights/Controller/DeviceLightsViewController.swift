@@ -61,8 +61,6 @@ class DeviceLightsViewController: UIViewController {
         fatalError("init(coder:) has not been implemented")
     }
     
-    
-    
     override func viewDidLoad() {
         super.viewDidLoad()
 
@@ -182,17 +180,18 @@ class DeviceLightsViewController: UIViewController {
 //            XWHUDManager.hide()
 //        }
 
-        MeshAPI.sendMessage(message: LightLightnessGet(), address: .allNodes)
-        
-        if devices.contains(where: { $0.ctlModel != nil && $0.temperatureModel != nil }) {
-            MeshAPI.sendMessage(message: LightCTLGet(), address: .allNodes)
-        }
+        MeshNodeHeartbeatManager.shared.refresh()
+//        MeshAPI.sendMessage(message: LightLightnessGet(), address: .allNodes)
+//        
+//        if devices.contains(where: { $0.ctlModel != nil && $0.temperatureModel != nil }) {
+//            MeshAPI.sendMessage(message: LightCTLGet(), address: .allNodes)
+//        }
         
 //        MeshAPI.sendMessage(message: LightCTLTemperatureRangeGet(), address: .allNodes)
         
-        MeshLibManager.manager.refreshNodesRSSI(withWaitFor: 3, result: nil)
+        MeshLibManager.manager.refreshNodesRSSI(withWaitFor: 5, result: nil)
         if refreshControl.isRefreshing {
-            DispatchQueue.main.asyncAfter(deadline: .now() + 3) {[weak self] in
+            DispatchQueue.main.asyncAfter(deadline: .now() + 5) {[weak self] in
                 guard let self = self else { return }
                 self.refreshControl.endRefreshing()
             }
@@ -447,6 +446,7 @@ class DeviceLightsViewController: UIViewController {
 //            view.addSubview(lightControlView)
         }
 //        self.wm_pageController?.scrollEnable = false
+        NotificationCenter.default.post(name: .init(spacePageDisableScrollNotificaitonName), object: 0)
         lightControlView.show()
     }
     
@@ -530,7 +530,7 @@ class DeviceLightsViewController: UIViewController {
     private func sort() {
         
         XWHUDManager.showCustomHUD(withMessage: nil, isWindow: false)
-        MeshLibManager.manager.refreshNodesRSSI(withWaitFor: 3) {[weak self] nodes in
+        MeshLibManager.manager.refreshNodesRSSI(withWaitFor: 5) {[weak self] nodes in
             XWHUDManager.hide()
             guard let self = self else { return }
 //            print("\() \()")
@@ -946,7 +946,7 @@ extension DeviceLightsViewController: DeviceLightControlViewDelegate {
     }
     
     func lightControlDidHide(_ view: DeviceLightControlView) {
-//        self.wm_pageController?.scrollEnable = true
+        NotificationCenter.default.post(name: .init(spacePageDisableScrollNotificaitonName), object: nil)
     }
 }
 
@@ -992,7 +992,7 @@ extension DeviceLightsViewController: MeshLibManagerDelegate, MeshLibManagerMess
     func meshNetworkManager(bluetoothDidUpdateState state: CBManagerState) {
         if state == .poweredOn && devices.count > 0 {
             // 获取设备信号
-            MeshLibManager.manager.refreshNodesRSSI(withWaitFor: 3, result: nil)
+            MeshLibManager.manager.refreshNodesRSSI(withWaitFor: 5, result: nil)
         }
     }
     
@@ -1054,10 +1054,11 @@ extension DeviceLightsViewController: MeshLibManagerDelegate, MeshLibManagerMess
         if let node = manager.meshNetwork?.node(withAddress: source), !node.isProvisioner {
             node.updateData(message: message)
             // 动能开关事件
-            if message is LightLCLightOnOffSet || message is LightLCLightOnOffSetUnacknowledged || message is SceneRecall || message is SceneRecallUnacknowledged  {
+            if message is LightLCLightOnOffSetUnacknowledged || message is GenericOnOffSetUnacknowledged || message is SceneRecallUnacknowledged {
 //                reloadCollectionItem(node: node)
                 if view.window != nil {
                     collectionView.reloadData()
+                    updateAllOnOffItemUI()
                 }
             }
         }

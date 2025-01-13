@@ -275,7 +275,11 @@ class ProfileSettingsViewController: UIViewController {
         }
         self.sphasesView.profile = self.selectProfile
         self.timeoutView.second = self.selectProfile.manualOverrideTimeout
+        
+        let data = self.selectProfile.lightData.data
+        self.powerUpBehaviorView.slider.limitRange = data.lowEndTrim...data.highEndTrim
         self.powerUpBehaviorView.powerState = self.selectProfile.powerUpState
+       
         
         if selectProfile.type == .daylight || selectProfile.type == .manualControl {
             timeoutView.isHidden = true

@@ -241,8 +241,9 @@ self.updateAddressData()
                 if let siteData = JSON(response)["data"].dictionaryObject {
 //                    let site = SiteData.import(siteJsonData: siteData)
                     Task {
+                        print("导入数据: \(Date().timeIntervalSince1970)")
                         await self.site.update(siteJsonData: siteData)
-                        
+                        print("导入数据完成: \(Date().timeIntervalSince1970)")
                         // space已提交到服务器，但是本地有但是服务器没有
 //                        let deleteSpaces = self.allSpaces.filter({ localSpace in !self.site.spaces.contains(where: { $0.id == localSpace.id }) && localSpace.uploadCloud })
 //                        deleteSpaces.forEach({ space in
@@ -259,7 +260,7 @@ self.updateAddressData()
                                 $0.releaseAddress = true
                                 $0.save()
                             })
-                            let addressData = self.site.getRecycleAddressData(unbindSpaces: recyclingSpaces)
+                            let addressData = await self.site.getRecycleAddressData(unbindSpaces: recyclingSpaces)
                             if let recycleAddressData = self.site.recycleAddressData {
                                 self.site.recycleAddressData = recycleAddressData + addressData
                             }else {
@@ -317,13 +318,15 @@ self.updateAddressData()
                     if self.site.state == .normal {
                         self.site.state = .waitDeleted
                         self.site.save()
-                        if self.site.permission == .owner { // 权限已转让
-                            //通知site列表刷新数据
-                            DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {[weak self] in
-                                self?.navigationController?.popViewController(animated: true)
-                                NotificationCenter.default.post(name: .init(SitesDataRefreshNotifiacationName), object: true)
-                            }
-                        }else { // 权限被回收
+                    }
+                    if self.site.permission == .owner { // 权限已转让
+                        //通知site列表刷新数据
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {[weak self] in
+                            self?.navigationController?.popViewController(animated: true)
+                            NotificationCenter.default.post(name: .init(SitesDataRefreshNotifiacationName), object: true)
+                        }
+                    }else { // 权限被回收
+                        Task {
                             if self.site.spaces.isEmpty {
                                 self.site.delete()
                                 //通知site列表刷新数据
@@ -340,15 +343,14 @@ self.updateAddressData()
                                         self.reloadSpaceData($0)
                                     }
                                 })
-                                self.site.recycleAddressData = self.site.getRecycleAddressData(unbindSpaces: self.site.spaces)
+                                self.site.recycleAddressData = await self.site.getRecycleAddressData(unbindSpaces: self.site.spaces)
                                 self.site.save()
                             }
-                        }
-                    }
-                    // 判断site内是否有需要回收的地址
-                    if !(self.site.recycleAddressData?.isEmpty ?? true) {
-                        Task {
-                            try? await self.siteRecyclingAddressRequest(site: self.site)
+                            
+                            // 判断site内是否有需要回收的地址
+                            if !(self.site.recycleAddressData?.isEmpty ?? true) {
+                                try? await self.siteRecyclingAddressRequest(site: self.site)
+                            }
                         }
                     }
                     
@@ -1040,45 +1042,46 @@ self.updateAddressData()
             return
         }
         
-        let recycleData = site.getRecycleAddressData(unbindSpaces: [space])
-        
-        let networkApi: NetowrkReqeustApi = .unbindSpaces(siteId: site.id, spaceIds: [space.id], recycleDeviceAddresses: recycleData.deviceAddresses, recycleGroupAddresses: recycleData.groupAddresses, recycleSceneAddresses: recycleData.sceneAddresses, exclusions: recycleData.exclusionAddresses?.map({ ($0.ivIndex, $0.addresses) }), provisionerData: recycleData.provisionerData)
-    
-        NetworkRequest.shared.request(networkApi) {[weak self] result in
-            XWHUDManager.hide()
+        Task {
+            let recycleData = await site.getRecycleAddressData(unbindSpaces: [space])
             
-            guard let self = self else { return }
-            switch result {
-            case .success(_):
-//                XWHUDManager.showSuccessTipHUD("successfully".localizedString + " !")
-                // 删除回收的地址
-                self.site.deleteProvisionerAddress(deviceAddresses: recycleData.deviceAddresses, groupAddresses: recycleData.groupAddresses, sceneAddresses: recycleData.sceneAddresses)
+            let networkApi: NetowrkReqeustApi = .unbindSpaces(siteId: site.id, spaceIds: [space.id], recycleDeviceAddresses: recycleData.deviceAddresses, recycleGroupAddresses: recycleData.groupAddresses, recycleSceneAddresses: recycleData.sceneAddresses, exclusions: recycleData.exclusionAddresses?.map({ ($0.ivIndex, $0.addresses) }), provisionerData: recycleData.provisionerData)
+            
+            NetworkRequest.shared.request(networkApi) {[weak self] result in
+                XWHUDManager.hide()
                 
-                self.deleteSpace(space: space)
-//                space.delete()
-                if self.site.spaces.isEmpty && self.site.permission != .owner { // 不属于site所有者并且解绑所有spaces则清空site记录
-                    self.site.delete()
-                    self.site.state = .waitDeleted
-                    self.navigationController?.popViewController(animated: true)
-                }
-                NotificationCenter.default.post(name: .init(rawValue: SitesDataRefreshNotifiacationName), object: nil)
-                
-            case .failure(let error):
-//                if error == .resourceNotFound { // 找不到资源
-//                    self.deleteSpace(space: space)
-//                    if self.site.spaces.isEmpty && self.site.permission != .owner { // 不属于site所有者并且解绑所有spaces则清空site记录
-//                        self.site.delete()
-//                        self.site.state = .waitDeleted
-//                        self.navigationController?.popViewController(animated: true)
-//                    }
-//                    NotificationCenter.default.post(name: .init(rawValue: SitesDataRefreshNotifiacationName), object: nil)
-//                    
-//                }else {
+                guard let self = self else { return }
+                switch result {
+                case .success(_):
+                    //                XWHUDManager.showSuccessTipHUD("successfully".localizedString + " !")
+                    // 删除回收的地址
+                    self.site.deleteProvisionerAddress(deviceAddresses: recycleData.deviceAddresses, groupAddresses: recycleData.groupAddresses, sceneAddresses: recycleData.sceneAddresses)
+                    
+                    self.deleteSpace(space: space)
+                    //                space.delete()
+                    if self.site.spaces.isEmpty && self.site.permission != .owner { // 不属于site所有者并且解绑所有spaces则清空site记录
+                        self.site.delete()
+                        self.site.state = .waitDeleted
+                        self.navigationController?.popViewController(animated: true)
+                    }
+                    NotificationCenter.default.post(name: .init(rawValue: SitesDataRefreshNotifiacationName), object: nil)
+                    
+                case .failure(let error):
+                    //                if error == .resourceNotFound { // 找不到资源
+                    //                    self.deleteSpace(space: space)
+                    //                    if self.site.spaces.isEmpty && self.site.permission != .owner { // 不属于site所有者并且解绑所有spaces则清空site记录
+                    //                        self.site.delete()
+                    //                        self.site.state = .waitDeleted
+                    //                        self.navigationController?.popViewController(animated: true)
+                    //                    }
+                    //                    NotificationCenter.default.post(name: .init(rawValue: SitesDataRefreshNotifiacationName), object: nil)
+                    //
+                    //                }else {
                     XWHUDManager.showErrorTipHUD(error.localizedDescription)
-//                }
+                    //                }
+                }
             }
         }
-        
     }
     
     /// site回收地址请求
@@ -1126,43 +1129,46 @@ self.updateAddressData()
     /// 回收地址请求
     private func recyclingAddressRequest(delete: Bool, recyclingSpaces: [SpaceData]) {
         
-        let addressData = site.getRecycleAddressData(unbindSpaces: recyclingSpaces)
         if delete {
             XWHUDManager.showCustomHUD(withMessage: nil, isWindow: true)
         }
-        NetworkRequest.shared.request(.recyclingAddress(siteId: site.id, recycleDeviceAddresses: addressData.deviceAddresses, recycleGroupAddresses: addressData.groupAddresses, recycleSceneAddresses: addressData.sceneAddresses, exclusions: addressData.exclusionAddresses?.map({ ($0.ivIndex, $0.addresses) }), provisionerData: addressData.provisionerData)) {[weak self] result in
-            guard let self = self else { return }
-            if delete {
-                XWHUDManager.hide()
-            }
-            switch result {
-            case .success(_):
-                // 删除回收的地址
-                self.site.deleteProvisionerAddress(deviceAddresses: addressData.deviceAddresses, groupAddresses: addressData.groupAddresses, sceneAddresses: addressData.sceneAddresses)
-                #if DEBUG
-                    self.updateAddressData()
-                #endif
+        
+        Task {
+            let addressData = await site.getRecycleAddressData(unbindSpaces: recyclingSpaces)
+            NetworkRequest.shared.request(.recyclingAddress(siteId: site.id, recycleDeviceAddresses: addressData.deviceAddresses, recycleGroupAddresses: addressData.groupAddresses, recycleSceneAddresses: addressData.sceneAddresses, exclusions: addressData.exclusionAddresses?.map({ ($0.ivIndex, $0.addresses) }), provisionerData: addressData.provisionerData)) {[weak self] result in
+                guard let self = self else { return }
                 if delete {
-                    recyclingSpaces.forEach({
-                        self.deleteSpace(space: $0)
-                    })
-                    // 删除site数据
-                    if self.site.permission != .owner && self.site.spaces.isEmpty {
-                        self.site.delete()
-                        NotificationCenter.default.post(name: .init(SitesDataRefreshNotifiacationName), object: false)
-                        self.navigationController?.popViewController(animated: true)
-                    }
-                }else {
-                    // 只回收地址不删除space记录一下，下次删除不用再回收
-                    recyclingSpaces.forEach({
-                        $0.releaseAddress = true
-                        $0.save()
-                    })
-//                    CloudSynchronizationManager.shared.addSynchronizationHandle(operation: .syncSite(site: site, syncSpaces: []), level: .promptly)
+                    XWHUDManager.hide()
                 }
-                
-            case .failure(let error):
-                XWHUDManager.showErrorTipHUD(error.localizedDescription)
+                switch result {
+                case .success(_):
+                    // 删除回收的地址
+                    self.site.deleteProvisionerAddress(deviceAddresses: addressData.deviceAddresses, groupAddresses: addressData.groupAddresses, sceneAddresses: addressData.sceneAddresses)
+#if DEBUG
+                    self.updateAddressData()
+#endif
+                    if delete {
+                        recyclingSpaces.forEach({
+                            self.deleteSpace(space: $0)
+                        })
+                        // 删除site数据
+                        if self.site.permission != .owner && self.site.spaces.isEmpty {
+                            self.site.delete()
+                            NotificationCenter.default.post(name: .init(SitesDataRefreshNotifiacationName), object: false)
+                            self.navigationController?.popViewController(animated: true)
+                        }
+                    }else {
+                        // 只回收地址不删除space记录一下，下次删除不用再回收
+                        recyclingSpaces.forEach({
+                            $0.releaseAddress = true
+                            $0.save()
+                        })
+                        //                    CloudSynchronizationManager.shared.addSynchronizationHandle(operation: .syncSite(site: site, syncSpaces: []), level: .promptly)
+                    }
+                    
+                case .failure(let error):
+                    XWHUDManager.showErrorTipHUD(error.localizedDescription)
+                }
             }
         }
         
@@ -1273,7 +1279,9 @@ self.updateAddressData()
             Task {
                 // 未记录释放的地址
                 if !space.releaseAddress {
-                    let addressData = self.site.getRecycleAddressData(unbindSpaces: [space])
+                    XWHUDManager.showCustomHUD(withMessage: nil, isWindow: true)
+                    let addressData = await self.site.getRecycleAddressData(unbindSpaces: [space])
+                    XWHUDManager.hide()
                     if let recycleAddressData = self.site.recycleAddressData {
                         self.site.recycleAddressData = recycleAddressData + addressData
                     }else {

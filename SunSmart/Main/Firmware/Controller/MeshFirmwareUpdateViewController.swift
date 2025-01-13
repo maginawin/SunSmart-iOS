@@ -49,7 +49,13 @@ class MeshFirmwareUpdateViewController: UIViewController {
         setupUI()
         updateUI()
         
-        startStateTimer()
+        if isInitial { // 刚开始分发需要等待2s查询状态，否则状态可能未更新
+            DispatchQueue.main.asyncAfter(wallDeadline: .now() + 2) {[weak self] in
+                self?.startStateTimer()
+            }
+        }else {
+            startStateTimer()
+        }
     }
     
     private func setupData() {
@@ -82,8 +88,12 @@ class MeshFirmwareUpdateViewController: UIViewController {
                     distributeStepData.logs = [.omit]
                 }
                 // 剩余分钟
-                let minute = Int(ceil(Double(estimateSec) / 60.0))
-                distributeStepData.logs.append(.transferBlob(distributionName: distributorData.distributionNode?.name ?? "", version: distributorData.distributionNode?.distributionVersion ?? "", estimateTime: "\(minute) \("minutes".localizedString)"))
+                var minuteStr: String = "--"
+                if estimateSec >= 0 {
+                    minuteStr = "\(Int(ceil(Double(estimateSec) / 60.0)))"
+                }
+                
+                distributeStepData.logs.append(.transferBlob(distributionName: distributorData.distributionNode?.name ?? "", version: distributorData.distributionNode?.distributionVersion ?? "", estimateTime: "\(minuteStr) \("minutes".localizedString)"))
                 
             case .apply(let successNodes):
                 distributeStepData.step = .distributeFirmware(progress: 100)
@@ -119,10 +129,14 @@ class MeshFirmwareUpdateViewController: UIViewController {
             case .blob(let progress, let estimateSec):
                 
                 // 剩余分钟
-                let minute = Int(ceil(Double(estimateSec) / 60.0))
+//                let minute = Int(ceil(Double(estimateSec) / 60.0))
+                var minuteStr: String = "--"
+                if estimateSec >= 0 {
+                    minuteStr = "\(Int(ceil(Double(estimateSec) / 60.0)))"
+                }
                 
                 distributeStepData.step = .distributeFirmware(progress: progress)
-                distributeStepData.logs = [.omit, .transferBlob(distributionName: distributorData.distributionNode?.name ?? "", version: distributorData.distributionNode?.distributionVersion ?? "", estimateTime: "\(minute) \("minutes".localizedString)"), .transferBlobFailed]
+                distributeStepData.logs = [.omit, .transferBlob(distributionName: distributorData.distributionNode?.name ?? "", version: distributorData.distributionNode?.distributionVersion ?? "", estimateTime: "\(minuteStr) \("minutes".localizedString)"), .transferBlobFailed]
                 
                 installStepData.logs = [.notExecuted]
             case .apply(let successNodes):
@@ -169,10 +183,14 @@ class MeshFirmwareUpdateViewController: UIViewController {
                 }
                 
             case .blob(let progress, let estimateSec):
+                distributeStepData.logs.removeAll(where: { $0.rawValue == UpdateLog.notExecuted.rawValue })
                 distributeStepData.step = .distributeFirmware(progress: progress)
                 // 剩余分钟
-                let minute = Int(ceil(Double(estimateSec) / 60.0))
-                let blobTransferLog: UpdateLog = .transferBlob(distributionName: distributorData.distributionNode?.name ?? "", version: distributorData.distributionNode?.distributionVersion ?? "", estimateTime: "\(minute) \("minutes".localizedString)")
+                var minuteStr: String = "--"
+                if estimateSec >= 0 {
+                    minuteStr = "\(Int(ceil(Double(estimateSec) / 60.0)))"
+                }
+                let blobTransferLog: UpdateLog = .transferBlob(distributionName: distributorData.distributionNode?.name ?? "", version: distributorData.distributionNode?.distributionVersion ?? "", estimateTime: "\(minuteStr) \("minutes".localizedString)")
                 
                 if let index = distributeStepData.logs.lastIndex(where: { $0.rawValue == UpdateLog.transferBlob(distributionName: "", version: "", estimateTime: "").rawValue }) {
                     distributeStepData.logs.replaceSubrange(index...index, with: [blobTransferLog])
@@ -184,10 +202,22 @@ class MeshFirmwareUpdateViewController: UIViewController {
                 
             case .apply(let successNodes):
                 distributeStepData.step = .distributeFirmware(progress: 100)
+                
+                let blobTransferLog: UpdateLog = .transferBlob(distributionName: distributorData.distributionNode?.name ?? "", version: distributorData.distributionNode?.distributionVersion ?? "", estimateTime: nil)
+                distributeStepData.logs.filter({ $0.rawValue == UpdateLog.transferBlob(distributionName: "", version: "", estimateTime: "").rawValue  }).forEach { log in
+                    if let index = distributeStepData.logs.firstIndex(where: { $0.rawValue == log.rawValue }) {
+                        distributeStepData.logs.replaceSubrange(index...index, with: [blobTransferLog])
+                    }
+                }
+//                if let index = distributeStepData.logs.lastIndex(where: { $0.rawValue == UpdateLog.transferBlob(distributionName: "", version: "", estimateTime: "").rawValue }) {
+//                    distributeStepData.logs.replaceSubrange(index...index, with: [blobTransferLog])
+//                }
+                
                 if !distributeStepData.logs.contains(where: { $0.rawValue == UpdateLog.transferBlobComplete.rawValue }) {
                     distributeStepData.logs.append(.transferBlobComplete)
                 }
                 
+                installStepData.logs.removeAll(where: { $0.rawValue == UpdateLog.notExecuted.rawValue })
                 installStepData.step = .installFirmware(completeCount: successNodes.count, totalCount: targetNodes.count)
                 if !installStepData.logs.contains(where: { $0.rawValue == UpdateLog.installFirmware.rawValue }) {
                     installStepData.logs.append(.installFirmware)
@@ -197,6 +227,14 @@ class MeshFirmwareUpdateViewController: UIViewController {
             // 等待后续分发者升级
             
             distributeStepData.step = .distributeFirmware(progress: 100)
+            
+            let blobTransferLog: UpdateLog = .transferBlob(distributionName: distributorData.distributionNode?.name ?? "", version: distributorData.distributionNode?.distributionVersion ?? "", estimateTime: nil)
+            distributeStepData.logs.filter({ $0.rawValue == UpdateLog.transferBlob(distributionName: "", version: "", estimateTime: "").rawValue  }).forEach { log in
+                if let index = distributeStepData.logs.firstIndex(where: { $0.rawValue == log.rawValue }) {
+                    distributeStepData.logs.replaceSubrange(index...index, with: [blobTransferLog])
+                }
+            }
+            
             if !distributeStepData.logs.contains(where: { $0.rawValue == UpdateLog.transferBlobComplete.rawValue }) {
                 distributeStepData.logs.append(.transferBlobComplete)
             }
@@ -215,32 +253,54 @@ class MeshFirmwareUpdateViewController: UIViewController {
             }
         case .complete:
             distributeStepData.step = .distributeFirmware(progress: 100)
+            
+            let blobTransferLog: UpdateLog = .transferBlob(distributionName: distributorData.distributionNode?.name ?? "", version: distributorData.distributionNode?.distributionVersion ?? "", estimateTime: nil)
+            distributeStepData.logs.filter({ $0.rawValue == UpdateLog.transferBlob(distributionName: "", version: "", estimateTime: "").rawValue  }).forEach { log in
+                if let index = distributeStepData.logs.firstIndex(where: { $0.rawValue == log.rawValue }) {
+                    distributeStepData.logs.replaceSubrange(index...index, with: [blobTransferLog])
+                }
+            }
+            
             if !distributeStepData.logs.contains(where: { $0.rawValue == UpdateLog.transferBlobComplete.rawValue }) {
                 distributeStepData.logs.append(.transferBlobComplete)
             }
             
             installStepData.step = .installFirmware(completeCount: targetNodes.count, totalCount: targetNodes.count)
-            installStepData.logs.append(.installFirmwareComplete)
+            if !installStepData.logs.contains(where: { $0.rawValue == UpdateLog.installFirmwareComplete.rawValue }) {
+                installStepData.logs.append(.installFirmwareComplete)
+            }
+            
         case .failure(let updatePhase, let failedNodes):
             
             switch updatePhase {
             case .verifying:
                 break
-            case .blob(let progress, let estimateSec):
+            case .blob(let progress, _):
                 distributeStepData.step = .distributeFirmware(progress: progress)
-                // 剩余分钟
-                let minute = Int(ceil(Double(estimateSec) / 60.0))
-                let blobTransferLog: UpdateLog = .transferBlob(distributionName: distributorData.distributionNode?.name ?? "", version: distributorData.distributionNode?.distributionVersion ?? "", estimateTime: "\(minute) \("minutes".localizedString)")
+                
+                distributeStepData.logs.removeAll(where: { $0.rawValue == UpdateLog.notExecuted.rawValue })
+                
+                let blobTransferLog: UpdateLog = .transferBlob(distributionName: distributorData.distributionNode?.name ?? "", version: distributorData.distributionNode?.distributionVersion ?? "", estimateTime: nil)
                 if let index = distributeStepData.logs.lastIndex(where: { $0.rawValue == UpdateLog.transferBlob(distributionName: "", version: "", estimateTime: "").rawValue }) {
                     distributeStepData.logs.replaceSubrange(index...index, with: [blobTransferLog])
                 }else {
                     distributeStepData.logs.append(blobTransferLog)
                 }
-                distributeStepData.logs.append(.transferBlobFailed)
+                if !distributeStepData.logs.contains(where: { $0.rawValue == UpdateLog.transferBlobFailed.rawValue }) {
+                    distributeStepData.logs.append(.transferBlobFailed)
+                }
                 
                 installStepData.logs = [.notExecuted]
             case .apply(let successNodes):
                 distributeStepData.step = .distributeFirmware(progress: 100)
+                
+                let blobTransferLog: UpdateLog = .transferBlob(distributionName: distributorData.distributionNode?.name ?? "", version: distributorData.distributionNode?.distributionVersion ?? "", estimateTime: nil)
+                distributeStepData.logs.filter({ $0.rawValue == UpdateLog.transferBlob(distributionName: "", version: "", estimateTime: "").rawValue  }).forEach { log in
+                    if let index = distributeStepData.logs.firstIndex(where: { $0.rawValue == log.rawValue }) {
+                        distributeStepData.logs.replaceSubrange(index...index, with: [blobTransferLog])
+                    }
+                }
+                
                 if !distributeStepData.logs.contains(where: { $0.rawValue == UpdateLog.transferBlobComplete.rawValue }) {
                     distributeStepData.logs.append(.transferBlobComplete)
                 }
@@ -249,12 +309,13 @@ class MeshFirmwareUpdateViewController: UIViewController {
                 if !installStepData.logs.contains(where: { $0.rawValue == UpdateLog.installFirmware.rawValue }) {
                     installStepData.logs.append(.installFirmware)
                 }
-                installStepData.logs.append(.installFirmwareFailed(failedNodes: failedNodes))
+                if !installStepData.logs.contains(where: { $0.rawValue == UpdateLog.installFirmwareFailed(failedNodes: []).rawValue }) {
+                    installStepData.logs.append(.installFirmwareFailed(failedNodes: failedNodes))
+                }
             }
         }
-        
-        
-        
+        tableView.reloadData()
+        updateUI()
     }
     
     @objc private func rightItemAction() {
@@ -262,7 +323,7 @@ class MeshFirmwareUpdateViewController: UIViewController {
         switch distributorData.distributionState {
         case .none:
             navigationController?.popViewController(animated: true)
-        case .await, .updating, .waitingInstall:
+        case .await, .updating, .waitingInstall, .failure:
             // 停止分发
             SRAlertView(title: "notification".localizedString, message: "mesh_distributor_stop_message".localizedString, actions: [.cancelAction, SRAlertAction(title: "ok".localizedString, actionHandler: {[weak self] _ in
                 self?.stopDistributor()
@@ -270,8 +331,9 @@ class MeshFirmwareUpdateViewController: UIViewController {
            
         case .complete:
             navigationController?.popViewController(animated: true)
-        case .failure: // 重试
-            startDistributor()
+//        case .failure: // 重试
+//            navigationController?.popViewController(animated: true)
+//            startDistributor()
         }
     }
     
@@ -319,7 +381,7 @@ class MeshFirmwareUpdateViewController: UIViewController {
     }
     
     /// 开始分发
-    private func startDistributor() {
+    private func startDistributor(reset: Bool = false) {
         guard let distributionNode = distributorData.distributionNode else {
             XWHUDManager.showErrorTipHUD("no_distributor".localizedString)
             return
@@ -327,6 +389,7 @@ class MeshFirmwareUpdateViewController: UIViewController {
         if distributorData.targetNodes.count > 0 {
             XWHUDManager.showCustomHUD(withMessage: nil, isWindow: true)
             MeshFirmwareDistributionManager.shared.startDistribution(distributionNode: distributionNode, targetNodes: distributorData.targetNodes) {[weak self] _, state in
+                
                 XWHUDManager.hide()
                 guard let self = self else { return }
                 switch state {
@@ -339,9 +402,20 @@ class MeshFirmwareUpdateViewController: UIViewController {
                     self.updateData()
                 case .started:
                     self.distributorData.distributionState = .updating(updatePhase: .verifying)
-                    self.startStateTimer()
+                    // 刚开始分发需要等待2s查询状态，否则状态可能未更新
+                    DispatchQueue.main.asyncAfter(wallDeadline: .now() + 2) {[weak self] in
+                        self?.startStateTimer()
+                    }
                     self.distributorDataUpdateCallback?(self.distributorData)
-                    self.updateDatas.first?.logs.append(.restartTransfer)
+                    
+                    let blobTransferLog: UpdateLog = .transferBlob(distributionName: distributorData.distributionNode?.name ?? "", version: distributorData.distributionNode?.distributionVersion ?? "", estimateTime: nil)
+                    if reset {
+                        self.distributorData.distributionState = .updating(updatePhase: .blob(progress: 0, estimateTime: -1))
+                        self.setupData()
+                        tableView.reloadData()
+                    }else {
+                        self.updateDatas.first?.logs.append(contentsOf: [.restartTransfer, blobTransferLog])
+                    }
                     self.updateData()
                     
                 case .failure(let error):
@@ -437,17 +511,21 @@ class MeshFirmwareUpdateViewController: UIViewController {
         switch distributorData.distributionState {
         case .failure(let updatePhase, _):
             if case .apply = updatePhase { // apply
-                Task {
-                    XWHUDManager.showCustomHUD(withMessage: nil, isWindow: true)
-                    // 还有设备在分发中
-                    if let currentDistributionNode = await MeshFirmwareDistributionManager.shared.currentActiveFirmwareDistributionNodeGet() {
-                        XWHUDManager.hide()
-                        XWHUDManager.showTipHUD("mesh_distributor_apply_wait_message".localizedString, isLineFeed: true)
-                        return
-                    }
-                    XWHUDManager.hide()
-                    startDistributorApply()
-                }
+//                Task {
+//                    XWHUDManager.showCustomHUD(withMessage: nil, isWindow: true)
+//                    // 还有设备在分发中
+//                    if await MeshFirmwareDistributionManager.shared.currentActiveFirmwareDistributionNodeGet() != nil {
+//                        XWHUDManager.hide()
+//                        XWHUDManager.showTipHUD("mesh_distributor_apply_wait_message".localizedString, isLineFeed: true)
+//                        return
+//                    }
+//                    XWHUDManager.hide()
+//                    startDistributorApply()
+//                }
+//                distributorData.distributionState = .updating(updatePhase: .blob(progress: 0, estimateTime: -1))
+                
+                operationBtn.isHidden = true
+                startDistributor(reset: true)
             }else { // start
                 startDistributor()
             }
@@ -474,14 +552,14 @@ class MeshFirmwareUpdateViewController: UIViewController {
         case .complete:
             navigationItem.rightBarButtonItem?.title = "ok".localizedString
             operationBtn.isHidden = true
-        case .failure(let updatePhase, _):
-            navigationItem.rightBarButtonItem?.title = "RE-START".localizedString
+        case .failure:
+            navigationItem.rightBarButtonItem?.title = "cancel".localizedString
             operationBtn.isHidden = false
-            if case .apply = updatePhase {
-                operationBtn.setTitle("re_install".localizedString, for: .normal)
-            }else {
+//            if case .apply = updatePhase {
+//                operationBtn.setTitle("re_install".localizedString, for: .normal)
+//            }else {
                 operationBtn.setTitle("RE-START".localizedString, for: .normal)
-            }
+//            }
         case .waitingInstall(let currentDistributionNode):
             navigationItem.rightBarButtonItem?.title = "cancel".localizedString
             if currentDistributionNode == nil {
@@ -501,6 +579,7 @@ class MeshFirmwareUpdateViewController: UIViewController {
         tableView.register(MeshFirmwareUpdateLogViewCell.classForCoder(), forCellReuseIdentifier: "cell")
         tableView.register(MeshFirmwareUpdateStepHeaderView.classForCoder(), forHeaderFooterViewReuseIdentifier: "header")
         tableView.estimatedRowHeight = UITableView.automaticDimension
+        tableView.estimatedRowHeight = 44
         tableView.backgroundColor = .white
         tableView.layer.cornerRadius = SCRYFrom(10)
         tableView.contentInset = UIEdgeInsets(top: SCRYFrom(24), left: 0, bottom: SCRYFit(30), right: 0)
@@ -591,6 +670,12 @@ extension MeshFirmwareUpdateViewController {
             let paragraphStyle = NSMutableParagraphStyle()
             paragraphStyle.lineSpacing = SCRYFrom(3)
             
+            var attributes: [NSAttributedString.Key: Any] = [
+                .font: UIFont.systemFont(ofSize: 13, weight: .light),
+                .foregroundColor: SubText_Color,
+                .paragraphStyle: paragraphStyle
+            ]
+            
             switch self {
             case .omit:
                 message = "mesh_distributor_log_omit".localizedString
@@ -600,18 +685,26 @@ extension MeshFirmwareUpdateViewController {
                 message = "mesh_distributor_log_not_firmware".localizedString
             case .transferBlob(let distributionName, let version, let estimateTime):
                 
-                let message = String(format: "mesh_distributor_log_transfer".localizedString, " \(distributionName)(\(version))", estimateTime)
-                let attStr = NSMutableAttributedString(string: message, attributes: [.paragraphStyle: paragraphStyle])
-                attStr.addAttribute(.foregroundColor, value: RGB(222, 160, 84), range: (message as NSString).range(of: message.components(separatedBy: "\n").last ?? estimateTime))
+                var message = String(format: "mesh_distributor_log_transfer".localizedString, " \(distributionName)(\(version))")
+                let attStr = NSMutableAttributedString(string: message, attributes: attributes)
+                
+                if let time = estimateTime {
+                    let timeStr = "(\(String(format: "update_estimated_time".localizedString, time)))"
+//                    message.append("\n(\(String(format: "update_estimated_time".localizedString, time)))")
+                    attributes.updateValue(RGB(222, 160, 84), forKey: .foregroundColor)
+                    attStr.append(NSAttributedString(string: "\n\(timeStr)", attributes: attributes))
+//                    attStr.addAttribute(.foregroundColor, value: RGB(222, 160, 84), range: (message as NSString).range(of: message.components(separatedBy: "\n").last ?? time))
+                }
+       
                 return attStr
                 
             case .transferBlobFailed:
                 let failedMessage = "> " + "mesh_distributor_blob_failed".localizedString
-                let attStr = NSMutableAttributedString(string: failedMessage, attributes: [.paragraphStyle: paragraphStyle])
+                let attStr = NSMutableAttributedString(string: failedMessage, attributes: attributes)
                 attStr.addAttribute(.foregroundColor, value: Red_Color, range: NSRange(location: 1, length: failedMessage.count - 1))
-            
-                let conductMessage = "mesh_distributor_log_install_failed_conduct".localizedString
-                attStr.append(NSAttributedString(string: conductMessage))
+                
+                let conductMessage = "\n" + "mesh_distributor_log_transfer_failed_conduct".localizedString
+                attStr.append(NSAttributedString(string: conductMessage, attributes: attributes))
                 return attStr
                 
             case .restartTransfer:
@@ -619,7 +712,7 @@ extension MeshFirmwareUpdateViewController {
             case .transferBlobComplete:
                 
                 let completeMessage = "> " + "mesh_distributor_blob_complete".localizedString
-                let attStr = NSMutableAttributedString(string: completeMessage, attributes: [.paragraphStyle: paragraphStyle])
+                let attStr = NSMutableAttributedString(string: completeMessage, attributes: attributes)
                 attStr.addAttribute(.foregroundColor, value: Green_Color, range: NSRange(location: 1, length: completeMessage.count - 1))
                 return attStr
             case .waitTransfer:
@@ -633,7 +726,7 @@ extension MeshFirmwareUpdateViewController {
             case .installFirmwareFailed(let failedNodes):
                 
                 let failedMessage = "mesh_distributor_log_install_failed".localizedString
-                let attStr = NSMutableAttributedString(string: failedMessage + "\n", attributes: [.paragraphStyle: paragraphStyle])
+                let attStr = NSMutableAttributedString(string: failedMessage + "\n", attributes: attributes)
                 attStr.addAttribute(.foregroundColor, value: Red_Color, range: NSRange(location: 1, length: failedMessage.count - 1))
                 
                 var targetStr = ""
@@ -643,12 +736,13 @@ extension MeshFirmwareUpdateViewController {
                 })
                 
                 let devicesMessage = String(format: "mesh_distributor_log_install_failed_targets".localizedString, targetStr)
-                let devicesMessageAtt = NSMutableAttributedString(string: devicesMessage + "\n")
-                devicesMessageAtt.addAttribute(.foregroundColor, value: Red_Color, range: NSRange(location: 1, length: devicesMessage.count - 1))
+                let conductMessage = "mesh_distributor_log_install_failed_conduct".localizedString
+                let devicesMessageAtt = NSMutableAttributedString(string: devicesMessage + "\n" + conductMessage, attributes: attributes)
+//                devicesMessageAtt.addAttribute(.foregroundColor, value: SubText_Color, range: NSRange(location: 1, length: devicesMessage.count - 1))
                 attStr.append(devicesMessageAtt)
                 
-                let conductMessage = "mesh_distributor_log_install_failed_conduct".localizedString
-                attStr.append(NSAttributedString(string: conductMessage))
+//                let conductMessage = "mesh_distributor_log_install_failed_conduct".localizedString
+//                attStr.append(NSAttributedString(string: conductMessage))
                 
                 return attStr
             case .reinstallFirmware:
@@ -656,7 +750,7 @@ extension MeshFirmwareUpdateViewController {
             case .installFirmwareComplete:
 
                 let completeMessage = "> " + "mesh_distributor_apply_complete".localizedString
-                let attStr = NSMutableAttributedString(string: completeMessage, attributes: [.paragraphStyle: paragraphStyle])
+                let attStr = NSMutableAttributedString(string: completeMessage, attributes: attributes)
                 attStr.addAttribute(.foregroundColor, value: Green_Color, range: NSRange(location: 1, length: completeMessage.count - 1))
                 return attStr
                 
@@ -666,7 +760,7 @@ extension MeshFirmwareUpdateViewController {
                 message = "mesh_distributor_log_not_executed".localizedString
             }
             
-            let attStr = NSAttributedString(string: message, attributes: [.paragraphStyle: paragraphStyle])
+            let attStr = NSAttributedString(string: message, attributes: attributes)
             return attStr
         }
         
@@ -717,7 +811,7 @@ extension MeshFirmwareUpdateViewController {
         /// 部分设备没有固件
         case someDevicesNotFirmware
         /// 开始传输 distributionName: 分发者名称  version: 升级版本 estimateTime: 预估时间
-        case transferBlob(distributionName: String, version: String, estimateTime: String)
+        case transferBlob(distributionName: String, version: String, estimateTime: String?)
         /// 传输失败
         case transferBlobFailed
         /// 重新传输

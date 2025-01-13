@@ -28,7 +28,7 @@ class ShareBacthListViewController: UIViewController {
     override func viewDidLoad() {
         super.viewDidLoad()
 
-        title = "bacth_shared_list".localizedString
+        title = "batch_shared_list".localizedString
         view.backgroundColor = Background_Color
         
 //        for _ in 0...3 {
@@ -135,7 +135,7 @@ class ShareBacthListViewController: UIViewController {
     private func updateEmptyUI() {
         view.layoutIfNeeded()
         if bacthDataList.isEmpty {
-            collectionView.showEmptyDataView(title: "bacth_shared_no_data".localizedString)
+            collectionView.showEmptyDataView(title: "batch_shared_no_data".localizedString)
         }else {
             collectionView.hideEmptyDataView()
         }

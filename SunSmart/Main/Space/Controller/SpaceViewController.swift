@@ -24,6 +24,9 @@ let spaceDataChangedNotificaitonName = "spaceDataChangedNotificaiton"
 /// 空间用户编辑权限变更通知
 let spacePermissionChangedNotificaitonName = "spacePermissionChangedNotificaiton"
 
+/// 空间页面分页滑动禁用通知
+let spacePageDisableScrollNotificaitonName = "spacePageDisableScrollNotificaiton"
+
 /// space修改数据类型
 enum SpaceChangeDataType {
     /// 网络数据类型
@@ -80,6 +83,8 @@ class SpaceViewController: WMPageController {
     private var cloudPermissionValidation: Bool = false
     /// 是否进行mesh权限校验
     private var meshPermissionValidation: Bool = false
+    /// 禁止滑动的页面索引
+    private var disablePageIndex: Int?
     
     lazy var mainMenuView: SpaceMenuView = {
         let menuView = SpaceMenuView()
@@ -303,6 +308,19 @@ class SpaceViewController: WMPageController {
             }
         }
         
+        // 页面page禁止滑动通知
+        NotificationCenter.default.addObserver(forName: .init(spacePageDisableScrollNotificaitonName), object: nil, queue: nil) {[weak self] notification in
+            guard let self = self else { return }
+            
+            if let disablePageIndex = notification.object as? Int {
+                self.disablePageIndex = disablePageIndex
+                self.scrollEnable = self.selectIndex != disablePageIndex
+            }else {
+                self.scrollEnable = true
+                self.disablePageIndex = nil
+            }
+        }
+        
     }
     
     /// 同步space
@@ -446,39 +464,40 @@ class SpaceViewController: WMPageController {
             return
         }
         
-        let recycleData = site.getRecycleAddressData(unbindSpaces: [space])
-        
-        let networkApi: NetowrkReqeustApi = .unbindSpaces(siteId: site.id, spaceIds: [space.id], recycleDeviceAddresses: recycleData.deviceAddresses, recycleGroupAddresses: recycleData.groupAddresses, recycleSceneAddresses: recycleData.sceneAddresses, exclusions: recycleData.exclusionAddresses?.map({ ($0.ivIndex, $0.addresses) }), provisionerData: recycleData.provisionerData)
-        
-        NetworkRequest.shared.request(networkApi) {[weak self] result in
-            XWHUDManager.hide()
+        Task {
+            let recycleData = await site.getRecycleAddressData(unbindSpaces: [space])
             
-            guard let self = self else { return }
-            switch result {
-            case .success(_):
-//                XWHUDManager.showSuccessTipHUD("successfully".localizedString + " !")
-                if let spaceIndex = self.site.spaces.firstIndex(where: { $0.id == self.space.id }) {
-                    self.site.spaces.remove(at: spaceIndex)
-                }
-                // 删除回收的地址
-                self.site.deleteProvisionerAddress(deviceAddresses: recycleData.deviceAddresses, groupAddresses: recycleData.groupAddresses, sceneAddresses: recycleData.sceneAddresses)
+            let networkApi: NetowrkReqeustApi = .unbindSpaces(siteId: site.id, spaceIds: [space.id], recycleDeviceAddresses: recycleData.deviceAddresses, recycleGroupAddresses: recycleData.groupAddresses, recycleSceneAddresses: recycleData.sceneAddresses, exclusions: recycleData.exclusionAddresses?.map({ ($0.ivIndex, $0.addresses) }), provisionerData: recycleData.provisionerData)
+            
+            NetworkRequest.shared.request(networkApi) {[weak self] result in
+                XWHUDManager.hide()
                 
-                self.space.delete()
-                
-                self.navigationController?.popViewController(animated: true)
-                if self.site.spaces.isEmpty && self.site.permission != .owner { // 不属于site所有者并且解绑所有spaces则清空site记录
-                    self.site.delete()
-                    self.site.state = .waitDeleted
-                    NotificationCenter.default.post(name: .init(SiteStateChangeNotificationName), object: nil)
-                }else {
-                    self.deleteSpaceCallback?()
+                guard let self = self else { return }
+                switch result {
+                case .success(_):
+                    //                XWHUDManager.showSuccessTipHUD("successfully".localizedString + " !")
+                    if let spaceIndex = self.site.spaces.firstIndex(where: { $0.id == self.space.id }) {
+                        self.site.spaces.remove(at: spaceIndex)
+                    }
+                    // 删除回收的地址
+                    self.site.deleteProvisionerAddress(deviceAddresses: recycleData.deviceAddresses, groupAddresses: recycleData.groupAddresses, sceneAddresses: recycleData.sceneAddresses)
+                    
+                    self.space.delete()
+                    
+                    self.navigationController?.popViewController(animated: true)
+                    if self.site.spaces.isEmpty && self.site.permission != .owner { // 不属于site所有者并且解绑所有spaces则清空site记录
+                        self.site.delete()
+                        self.site.state = .waitDeleted
+                        NotificationCenter.default.post(name: .init(SiteStateChangeNotificationName), object: nil)
+                    }else {
+                        self.deleteSpaceCallback?()
+                    }
+                    NotificationCenter.default.post(name: .init(rawValue: SitesDataRefreshNotifiacationName), object: nil)
+                case .failure(let error):
+                    XWHUDManager.showErrorTipHUD(error.localizedDescription)
                 }
-                NotificationCenter.default.post(name: .init(rawValue: SitesDataRefreshNotifiacationName), object: nil)
-            case .failure(let error):
-                XWHUDManager.showErrorTipHUD(error.localizedDescription)
             }
         }
-        
     }
     
     /// 检查空间内成员请求，保证空间内只有一个编辑权限用户
@@ -579,7 +598,7 @@ class SpaceViewController: WMPageController {
             switch result {
             case .success(_):
                 break
-            case .failure(let error):
+            case .failure(let error): 
 //                print(error.localizedDescription)
                 guard self.space.permission == .visitor else {
                     return
@@ -1024,11 +1043,24 @@ extension SpaceViewController {
     
     override func pageController(_ pageController: WMPageController, didEnter viewController: UIViewController, withInfo info: [AnyHashable : Any]) {
         mainMenuView.selectIndex = Int(self.selectIndex)
+        if let disablePageIndex = self.disablePageIndex, selectIndex == disablePageIndex {
+            self.scrollEnable = false
+        }
     }
     
     override func menuView(_ menu: WMMenuView!, shouldSelesctedIndex index: Int) -> Bool {
         return !XWHUDManager.isVisible()
 //        return index < 3
+    }
+    
+    override func menuView(_ menu: WMMenuView!, didSelectedIndex index: Int, currentIndex: Int) {
+        super.menuView(menu, didSelectedIndex: index, currentIndex: currentIndex)
+        
+        if let disablePageIndex = self.disablePageIndex, index == disablePageIndex {
+            self.scrollEnable = false
+        }else {
+            self.scrollEnable = true
+        }
     }
     
 }

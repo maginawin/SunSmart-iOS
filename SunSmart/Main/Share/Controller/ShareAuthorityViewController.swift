@@ -82,6 +82,9 @@ class ShareAuthorityViewController: UIViewController {
             }else {
                 navigationItem.rightBarButtonItem = UIBarButtonItem(image: UIImage(named: "share_unbind")?.withRenderingMode(.alwaysOriginal), style: .done, target: self, action: #selector(unbindItemAction))
             }
+            NotificationCenter.default.addObserver(forName: .init(SpacesRefreshChangeNotificationName), object: nil, queue: nil) {[weak self] _ in
+                self?.setupData()
+            }
             
         case .management:
             title = "management".localizedString
@@ -573,10 +576,10 @@ class ShareAuthorityViewController: UIViewController {
     /// 批量解绑space请求
     private func spacesUnbindRequest(spaces: [SpaceData]) {
         XWHUDManager.showCustomHUD(withMessage: nil, isWindow: true)
-        
-        let uploadSpaces = spaces.filter({ $0.needUploadCloud })
-        if uploadSpaces.count > 0 {
-            Task {
+        Task {
+            let uploadSpaces = spaces.filter({ $0.state == .normal && $0.needUploadCloud })
+            if uploadSpaces.count > 0 {
+                
                 let siteDict = await site.export(spaceIds: uploadSpaces.map({ $0.id }))
                 NetworkRequest.shared.request(.siteUpload(siteData: siteDict)) {[weak self] result in
                     XWHUDManager.hide()
@@ -592,45 +595,45 @@ class ShareAuthorityViewController: UIViewController {
                         XWHUDManager.showErrorTipHUD(error.localizedDescription)
                     }
                 }
+                return
             }
-            return
-        }
-        
-        // 回收地址数据
-        let recycleData = site.getRecycleAddressData(unbindSpaces: spaces)
-        
-        let networkApi: NetowrkReqeustApi = .unbindSpaces(siteId: site.id, spaceIds: spaces.map({ $0.id }), recycleDeviceAddresses: recycleData.deviceAddresses, recycleGroupAddresses: recycleData.groupAddresses, recycleSceneAddresses: recycleData.sceneAddresses, exclusions: recycleData.exclusionAddresses?.map({ ($0.ivIndex, $0.addresses) }), provisionerData: recycleData.provisionerData)
-        
-        NetworkRequest.shared.request(networkApi) {[weak self] result in
-            XWHUDManager.hide()
             
-            guard let self = self else { return }
-            switch result {
-            case .success(_):
-//                XWHUDManager.showSuccessTipHUD("successfully".localizedString + " !")
-                // 删除回收的地址
-                self.site.deleteProvisionerAddress(deviceAddresses: recycleData.deviceAddresses, groupAddresses: recycleData.groupAddresses, sceneAddresses: recycleData.sceneAddresses)
+            // 回收地址数据
+            let recycleData = await site.getRecycleAddressData(unbindSpaces: spaces)
+            
+            let networkApi: NetowrkReqeustApi = .unbindSpaces(siteId: site.id, spaceIds: spaces.map({ $0.id }), recycleDeviceAddresses: recycleData.deviceAddresses, recycleGroupAddresses: recycleData.groupAddresses, recycleSceneAddresses: recycleData.sceneAddresses, exclusions: recycleData.exclusionAddresses?.map({ ($0.ivIndex, $0.addresses) }), provisionerData: recycleData.provisionerData)
+            
+            NetworkRequest.shared.request(networkApi) {[weak self] result in
+                XWHUDManager.hide()
                 
-                spaces.forEach { deleteSpace in
-                    if let spaceIndex = self.site.spaces.firstIndex(where: { $0.id == deleteSpace.id }) {
-                        self.site.spaces.remove(at: spaceIndex)
+                guard let self = self else { return }
+                switch result {
+                case .success(_):
+                    //                XWHUDManager.showSuccessTipHUD("successfully".localizedString + " !")
+                    // 删除回收的地址
+                    self.site.deleteProvisionerAddress(deviceAddresses: recycleData.deviceAddresses, groupAddresses: recycleData.groupAddresses, sceneAddresses: recycleData.sceneAddresses)
+                    
+                    spaces.forEach { deleteSpace in
+                        if let spaceIndex = self.site.spaces.firstIndex(where: { $0.id == deleteSpace.id }) {
+                            self.site.spaces.remove(at: spaceIndex)
+                        }
+                        deleteSpace.delete()
                     }
-                    deleteSpace.delete()
+                    if self.site.spaces.isEmpty && self.site.permission != .owner { // 不属于site所有者并且解绑所有spaces则清空site记录
+                        self.site.delete()
+                        self.site.state = .waitDeleted
+                        self.close()
+                    }else {
+                        self.allSpaces = self.site.spaces
+                        self.selectSpaces.removeAll()
+                        self.isSelectState = false
+                        self.updateUI()
+                    }
+                    NotificationCenter.default.post(name: .init(rawValue: SiteStateChangeNotificationName), object: nil)
+                    NotificationCenter.default.post(name: .init(rawValue: SitesDataRefreshNotifiacationName), object: nil)
+                case .failure(let error):
+                    XWHUDManager.showErrorTipHUD(error.localizedDescription)
                 }
-                if self.site.spaces.isEmpty && self.site.permission != .owner { // 不属于site所有者并且解绑所有spaces则清空site记录
-                    self.site.delete()
-                    self.site.state = .waitDeleted
-                    self.close()
-                }else {
-                    self.allSpaces = self.site.spaces
-                    self.selectSpaces.removeAll()
-                    self.isSelectState = false
-                    self.updateUI()
-                }
-                NotificationCenter.default.post(name: .init(rawValue: SiteStateChangeNotificationName), object: nil)
-                NotificationCenter.default.post(name: .init(rawValue: SitesDataRefreshNotifiacationName), object: nil)
-            case .failure(let error):
-                XWHUDManager.showErrorTipHUD(error.localizedDescription)
             }
         }
         
@@ -1044,7 +1047,7 @@ class ShareAuthorityViewController: UIViewController {
                 showSpaces.sort(by: { $0.lastUpdate > $1.lastUpdate })
                 
             case .alphabetical:
-                showSpaces.sort(by: { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending })
+                showSpaces.sort(by: { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedDescending })
                 
             case .deviceQuantity:
                 showSpaces.sort(by: { $0.deviceCount < $1.deviceCount })
@@ -1058,7 +1061,7 @@ class ShareAuthorityViewController: UIViewController {
                 showSpaces.sort(by: { $0.lastUpdate < $1.lastUpdate })
 
             case .alphabetical:
-                showSpaces.sort(by: { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedDescending })
+                showSpaces.sort(by: { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending })
 
             case .deviceQuantity:
                 showSpaces.sort(by: { $0.deviceCount > $1.deviceCount })
@@ -1194,13 +1197,18 @@ extension ShareAuthorityViewController: UICollectionViewDataSource, UICollection
     func collectionView(_ collectionView: UICollectionView, didSelectItemAt indexPath: IndexPath) {
         
         let space = showSpaces[indexPath.item]
-        if type == .share && space.permission == .visitor {
-            XWHUDManager.showTipHUD("no_permission".localizedString)
-            return
-        }
-        if type == .share && space.permission == .editor && (space.authorizationPassword?.isEmpty ?? true || space.requiresPasswordVerification) {
-            XWHUDManager.showTipHUD("space_password_overdue".localizedString)
-            return
+        if type == .share || (type == .unbind && !isSelectState) {
+            if space.permission == .visitor {
+                XWHUDManager.showTipHUD("no_permission".localizedString)
+                return
+            }
+            if space.state == .waitDeleted { // 无权限
+                return
+            }
+            if space.permission == .editor && (space.authorizationPassword?.isEmpty ?? true || space.requiresPasswordVerification) {
+                XWHUDManager.showTipHUD("space_password_overdue".localizedString)
+                return
+            }
         }
         
         // 可选择状态

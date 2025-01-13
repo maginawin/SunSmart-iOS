@@ -115,7 +115,7 @@ extension String {
     
     /// 是否有效邀请码
     func isValidInvitationCode() -> Bool {
-        let pattern = "^[A-Za-z\\d]{8}$"
+        let pattern = "^[A-Z\\d]{8}$"
         let regex = try! NSRegularExpression(pattern: pattern)
         let range = NSRange(location: 0, length: self.utf16.count)
         return regex.firstMatch(in: self, options: [], range: range) != nil

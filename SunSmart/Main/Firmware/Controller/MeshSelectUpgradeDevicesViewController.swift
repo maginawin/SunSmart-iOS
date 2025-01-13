@@ -111,6 +111,7 @@ class MeshSelectUpgradeDevicesViewController: UIViewController {
                     if case .waitManualInstall = state {
                         distributionData.distributionState = .waitingInstall(currentDistributionNode: nil)
                     }
+                    distributionData.distributionState = .updating(updatePhase: .blob(progress: 0, estimateTime: -1))
                     let vc = MeshFirmwareUpdateViewController(distributorData: distributionData, initial: true)
                     self.navigationController?.pushViewController(vc, animated: true)
 //                    self.navigationController?.removeVc(vc: self)
@@ -123,6 +124,9 @@ class MeshSelectUpgradeDevicesViewController: UIViewController {
                     self.state = .waiting
                     self.updateBottomUIState()
                     self.tableView.reloadData()
+                    if let selectDistributorVc = self.navigationController?.viewControllers.first(where: { $0.isKind(of: MeshSelectDistributorViewController.classForCoder()) }) {
+                        self.navigationController?.removeVc(vc: selectDistributorVc)
+                    }
                 default:
                     break
                 }
