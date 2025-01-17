@@ -72,7 +72,7 @@ class SitesViewController: UIViewController {
     private var allSections: [SectionType] = []
     private var favouriteSections: [SectionType] = []
     /// 每行显示几个item
-    private var itemRowCount: Int = isIPad ? 2 : 1
+    private let itemRowCount: Int = 1 //isIPad ? 2 : 1
     
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -934,12 +934,12 @@ class SitesViewController: UIViewController {
         }
 //        allSitesCollectionView.reloadData()
 //        favouritesCollectionView.reloadData()
-        if let emptyView = allSitesCollectionView.emptyView {
-            emptyView.contentView.snp.updateConstraints({ make in
-                let margin = NetworkRequest.shared.networkable ? 0 : noInternetHeight
-                make.top.equalTo(SCRYFrom(7) + margin)
-            })
-        }
+//        if let emptyView = allSitesCollectionView.emptyView {
+//            emptyView.contentView.snp.updateConstraints({ make in
+//                let margin = NetworkRequest.shared.networkable ? 0 : noInternetHeight
+//                make.top.equalTo(SCRYFrom(7) + margin)
+//            })
+//        }
     }
     
     private func updateEmptyView() {
@@ -949,11 +949,14 @@ class SitesViewController: UIViewController {
         }
         
         if allSites.isEmpty {
-            allSitesCollectionView.showEmptyDataView(frame: allSitesCollectionView.frame,imageName: "site_empty", title: "no_sites_title".localizedString, tipText: nil)
+             var frame = allSitesCollectionView.bounds
+            frame.origin.y = allSitesCollectionView.y
+            allSitesCollectionView.showEmptyDataView(frame: frame, imageName: "site_empty", title: "no_sites_title".localizedString, tipText: nil)
             if let emptyView = allSitesCollectionView.emptyView {
-                let margin = NetworkRequest.shared.networkable ? 0 : noInternetHeight
+//                let margin = NetworkRequest.shared.networkable ? 0 : noInternetHeight
                 emptyView.contentView.snp.remakeConstraints({ make in
-                    make.top.equalTo(SCRYFrom(7) + margin)
+//                    make.top.equalTo(SCRYFrom(7) + margin)
+                    make.top.equalTo(SCRYFrom(7))
                     make.left.equalTo(SCRXFrom(20))
                     make.right.equalTo(-SCRXFrom(20))
                 })
@@ -1051,13 +1054,13 @@ class SitesViewController: UIViewController {
         allSitesRefreshControl.addTarget(self, action: #selector(loadSitesRequest), for: .valueChanged)
         
         allSitesFlowLayout = UICollectionViewFlowLayout()
-        if isIPad {
+//        if isIPad {
+//            allSitesFlowLayout.minimumLineSpacing = SCRXFrom(18)
+//            allSitesFlowLayout.minimumInteritemSpacing = SCRXFrom(18)
+//        }else {
             allSitesFlowLayout.minimumLineSpacing = SCRXFrom(16)
             allSitesFlowLayout.minimumInteritemSpacing = SCRXFrom(16)
-        }else {
-            allSitesFlowLayout.minimumLineSpacing = SCRXFrom(18)
-            allSitesFlowLayout.minimumInteritemSpacing = SCRXFrom(18)
-        }
+//        }
         
         allSitesCollectionView = UICollectionView(frame: .zero, collectionViewLayout: allSitesFlowLayout)
         allSitesCollectionView.backgroundColor = .clear
@@ -1079,13 +1082,13 @@ class SitesViewController: UIViewController {
         favouritesRefreshControl.addTarget(self, action: #selector(loadSitesRequest), for: .valueChanged)
         
         favouritesSitesFlowLayout = UICollectionViewFlowLayout()
-        if isIPad {
+//        if isIPad {
+//            favouritesSitesFlowLayout.minimumLineSpacing = SCRXFrom(18)
+//            favouritesSitesFlowLayout.minimumInteritemSpacing = SCRXFrom(18)
+//        }else {
             favouritesSitesFlowLayout.minimumLineSpacing = SCRXFrom(16)
             favouritesSitesFlowLayout.minimumInteritemSpacing = SCRXFrom(16)
-        }else {
-            favouritesSitesFlowLayout.minimumLineSpacing = SCRXFrom(18)
-            favouritesSitesFlowLayout.minimumInteritemSpacing = SCRXFrom(18)
-        }
+//        }
       
         favouritesCollectionView = UICollectionView(frame: .zero, collectionViewLayout: favouritesSitesFlowLayout)
         favouritesCollectionView.backgroundColor = .clear
@@ -1110,11 +1113,11 @@ class SitesViewController: UIViewController {
             make.bottom.equalTo(SCRYFrom(-38))
         }
         
-        if isIPad {
-            allSitesCollectionView.contentInset = UIEdgeInsets(top: 0, left: SCRXFrom(20), bottom: SCRYFrom(38) + 20, right: SCRXFrom(20))
-        }else {
+//        if isIPad {
+//            allSitesCollectionView.contentInset = UIEdgeInsets(top: 0, left: SCRXFrom(20), bottom: SCRYFrom(38) + 20, right: SCRXFrom(20))
+//        }else {
             allSitesCollectionView.contentInset = UIEdgeInsets(top: 0, left: SCRXFrom(16), bottom: SCRYFrom(38) + 20, right: SCRXFrom(16))
-        }
+//        }
         favouritesCollectionView.contentInset = allSitesCollectionView.contentInset
         
 //        buoySliderView = BuoySliderView(frame: .zero, functionType: .level())

@@ -37,7 +37,7 @@ class SiteViewController: UIViewController {
     private var favouritesRefreshControl: UIRefreshControl!
     
     /// 每行显示几个item
-    private var itemRowCount: Int = isIPad ? 2 : 1
+    private let itemRowCount: Int = 1 // isIPad ? 2 : 1
     
     let site: SiteData
     /// 是否添加场所进入
@@ -1461,12 +1461,12 @@ self.updateAddressData()
 //            favouritesTableView.tableHeaderView = favouritesNoInternetView
         }
         
-        if let emptyView = allSpacesCollectionView.emptyView {
-            emptyView.contentView.snp.updateConstraints({ make in
-                let margin = NetworkRequest.shared.networkable ? 0 : (allSpacesNoInternetView?.height ?? 0)
-                make.top.equalTo(SCRYFrom(7) + margin)
-            })
-        }
+//        if let emptyView = allSpacesCollectionView.emptyView {
+//            emptyView.contentView.snp.updateConstraints({ make in
+//                let margin = NetworkRequest.shared.networkable ? 0 : (allSpacesNoInternetView?.height ?? 0)
+//                make.top.equalTo(SCRYFrom(7) + margin)
+//            })
+//        }
     }
     
     /// 判断是否显示空数据页
@@ -1477,11 +1477,14 @@ self.updateAddressData()
         }
         
         if allSpaces.isEmpty {
-            allSpacesCollectionView.showEmptyDataView(frame: allSpacesCollectionView.frame,imageName: "space_empty", title: "no_spaces_title".localizedString, tipText: nil)
+            var frame = allSpacesCollectionView.bounds
+            frame.origin.y = 0
+            allSpacesCollectionView.showEmptyDataView(frame: frame,imageName: "space_empty", title: "no_spaces_title".localizedString, tipText: nil)
             if let emptyView = allSpacesCollectionView.emptyView {
-                let margin = NetworkRequest.shared.networkable ? 0 : (allSpacesNoInternetView?.height ?? 0)
+//                let margin = NetworkRequest.shared.networkable ? 0 : (allSpacesNoInternetView?.height ?? 0)
                 emptyView.contentView.snp.remakeConstraints({ make in
-                    make.top.equalTo(SCRYFrom(7) + margin)
+//                    make.top.equalTo(SCRYFrom(7) + margin)
+                    make.top.equalTo(SCRYFrom(7))
                     make.left.equalTo(SCRXFrom(20))
                     make.right.equalTo(-SCRXFrom(20))
                 })
@@ -1547,13 +1550,13 @@ self.updateAddressData()
         allSpacesRefreshControl.addTarget(self, action: #selector(loadSiteRequest), for: .valueChanged)
         
         allSpacesFlowLayout = UICollectionViewFlowLayout()
-        if isIPad {
+//        if isIPad {
+//            allSpacesFlowLayout.minimumLineSpacing = SCRXFrom(20)
+//            allSpacesFlowLayout.minimumInteritemSpacing = SCRXFrom(20)
+//        }else {
             allSpacesFlowLayout.minimumLineSpacing = SCRXFrom(16)
             allSpacesFlowLayout.minimumInteritemSpacing = SCRXFrom(16)
-        }else {
-            allSpacesFlowLayout.minimumLineSpacing = SCRXFrom(20)
-            allSpacesFlowLayout.minimumInteritemSpacing = SCRXFrom(20)
-        }
+//        }
         
         allSpacesCollectionView = UICollectionView(frame: .zero, collectionViewLayout: allSpacesFlowLayout)
         allSpacesCollectionView.backgroundColor = .clear
@@ -1577,13 +1580,13 @@ self.updateAddressData()
         favouritesRefreshControl.addTarget(self, action: #selector(loadSiteRequest), for: .valueChanged)
         
         favouritesFlowLayout = UICollectionViewFlowLayout()
-        if isIPad {
+//        if isIPad {
+//            favouritesFlowLayout.minimumLineSpacing = SCRXFrom(20)
+//            favouritesFlowLayout.minimumInteritemSpacing = SCRXFrom(20)
+//        }else {
             favouritesFlowLayout.minimumLineSpacing = SCRXFrom(16)
             favouritesFlowLayout.minimumInteritemSpacing = SCRXFrom(16)
-        }else {
-            favouritesFlowLayout.minimumLineSpacing = SCRXFrom(20)
-            favouritesFlowLayout.minimumInteritemSpacing = SCRXFrom(20)
-        }
+//        }
         
         favouritesCollectionView = UICollectionView(frame: .zero, collectionViewLayout: favouritesFlowLayout)
         favouritesCollectionView.backgroundColor = .clear
@@ -1599,11 +1602,11 @@ self.updateAddressData()
             make.width.equalToSuperview()
         }
         
-        if isIPad {
-            allSpacesCollectionView.contentInset = UIEdgeInsets(top: 0, left: SCRXFrom(20), bottom: 0, right: SCRXFrom(20))
-        }else {
+//        if isIPad {
+//            allSpacesCollectionView.contentInset = UIEdgeInsets(top: 0, left: SCRXFrom(20), bottom: 0, right: SCRXFrom(20))
+//        }else {
             allSpacesCollectionView.contentInset = UIEdgeInsets(top: 0, left: SCRXFrom(16), bottom: 0, right: SCRXFrom(16))
-        }
+//        }
         favouritesCollectionView.contentInset = allSpacesCollectionView.contentInset
         
         addSpaceBtn = UIButton(normalImageName: "add", target: self, action: #selector(addSpace))

@@ -25,7 +25,7 @@ let kNavigationHeight = kSafeAreaTopHeight + 44
 let kTabbarHeight = CGFloat(kSafeAreaBottomHeight + 44)
 
 /// 导航栏右侧item边距
-let navigationRightItemMargin = isIPad ? 20 : SCRXFrom(SCRXFrom(15.5))
+let navigationRightItemMargin = SCRXFrom(SCRXFrom(15.5)) //isIPad ? 20 : SCRXFrom(SCRXFrom(15.5))
 
 /// 顶部导航栏边距
 var kSafeAreaTopHeight: CGFloat {
