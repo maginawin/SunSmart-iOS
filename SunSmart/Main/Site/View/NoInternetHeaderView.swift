@@ -28,7 +28,7 @@ class NoInternetHeaderView: UIView {
         imageView = UIImageView(image: UIImage(named: "no_Internet"))
         addSubview(imageView)
         imageView.snp.makeConstraints { make in
-            make.left.equalTo(SCRXFrom(20))
+            make.left.equalTo(SCRXFrom(4))
             make.top.equalToSuperview()
             make.width.height.equalTo(SCRYFrom(30))
         }
@@ -38,7 +38,7 @@ class NoInternetHeaderView: UIView {
         addSubview(messageLabel)
         messageLabel.snp.makeConstraints { make in
             make.left.equalTo(imageView.snp.right).offset(SCRXFrom(4))
-            make.right.equalTo(SCRXFrom(-20))
+            make.right.equalTo(SCRXFrom(-4))
             make.centerY.equalTo(imageView)
         }
     }

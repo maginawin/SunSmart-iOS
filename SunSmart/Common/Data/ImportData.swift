@@ -854,9 +854,9 @@ extension SpaceData {
                     if let defaultLightness = nodeJson["defaultLightness"].uInt16 {
                         node.defalutLightness = defaultLightness
                     }
-                    if let timezoneOffset = nodeJson["timezoneOffset"].uInt8, let timestamp = nodeJson["timestamp"].uInt64 {
+                    if let timezoneOffset = nodeJson["timezoneOffset"].uInt8, let timestamp = nodeJson["timestamp"].int64, timestamp >= 0 {
                         node.timezone = timezoneOffset.decodeFromTzOffset()
-                        node.timestamp = timestamp
+                        node.timestamp = UInt64(timestamp)
                     }
                     if let enOceanMacAddress = nodeJson["enOceanMacAddress"].string, let enOceanKeyScenes = nodeJson["enOceanKeyScenes"].arrayObject as? [String] {
                         node.enOceanMacAddress = enOceanMacAddress

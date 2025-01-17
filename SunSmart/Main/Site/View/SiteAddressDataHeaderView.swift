@@ -7,15 +7,15 @@
 
 import UIKit
 
-class SiteAddressDataHeaderView: UITableViewHeaderFooterView {
+class SiteAddressDataHeaderView: UICollectionReusableView {
 
     var deviceAddressLabel: UILabel!
     var groupAddressLabel: UILabel!
     var sceneAddressLabel: UILabel!
     var recycleAddressLabel: UILabel!
     
-    override init(reuseIdentifier: String?) {
-        super.init(reuseIdentifier: reuseIdentifier)
+    override init(frame: CGRect) {
+        super.init(frame: frame)
         setupUI()
     }
     

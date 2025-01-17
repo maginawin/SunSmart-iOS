@@ -211,6 +211,7 @@
 		C8A3EE842B34146D0082A772 /* SceneAddGroupTitleSectionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A3EE832B34146D0082A772 /* SceneAddGroupTitleSectionView.swift */; };
 		C8A3EE862B3420F60082A772 /* SceneExecuteDataPickerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A3EE852B3420F60082A772 /* SceneExecuteDataPickerView.swift */; };
 		C8A3EF762CA69758000A1226 /* MeshDeviceConfigInfo.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A3EF752CA69758000A1226 /* MeshDeviceConfigInfo.swift */; };
+		C8A437B22D35F11A00F3424C /* CollectionTitleHeaderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A437B12D35F11A00F3424C /* CollectionTitleHeaderView.swift */; };
 		C8A4C5082C95624E003EE5E5 /* DeviceSensorsViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A4C5072C95624E003EE5E5 /* DeviceSensorsViewController.swift */; };
 		C8A4C50B2C956262003EE5E5 /* GatewaysViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A4C50A2C956262003EE5E5 /* GatewaysViewController.swift */; };
 		C8A4E8932CDB0F5D00A22C77 /* MeshFirmwareUpdateViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A4E8922CDB0F5D00A22C77 /* MeshFirmwareUpdateViewController.swift */; };
@@ -487,6 +488,7 @@
 		C8A3EE832B34146D0082A772 /* SceneAddGroupTitleSectionView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SceneAddGroupTitleSectionView.swift; sourceTree = "<group>"; };
 		C8A3EE852B3420F60082A772 /* SceneExecuteDataPickerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SceneExecuteDataPickerView.swift; sourceTree = "<group>"; };
 		C8A3EF752CA69758000A1226 /* MeshDeviceConfigInfo.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeshDeviceConfigInfo.swift; sourceTree = "<group>"; };
+		C8A437B12D35F11A00F3424C /* CollectionTitleHeaderView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CollectionTitleHeaderView.swift; sourceTree = "<group>"; };
 		C8A4C5072C95624E003EE5E5 /* DeviceSensorsViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceSensorsViewController.swift; sourceTree = "<group>"; };
 		C8A4C50A2C956262003EE5E5 /* GatewaysViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GatewaysViewController.swift; sourceTree = "<group>"; };
 		C8A4E8922CDB0F5D00A22C77 /* MeshFirmwareUpdateViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeshFirmwareUpdateViewController.swift; sourceTree = "<group>"; };
@@ -882,6 +884,7 @@
 				C86B0AB92C11434C0038F669 /* ServerSelectionView.swift */,
 				C86760A42C37F4B4006AD978 /* SitesTransferredView.swift */,
 				C8DCD0FB2CC8E0DE00B8671E /* SiteAddressDataHeaderView.swift */,
+				C8A437B12D35F11A00F3424C /* CollectionTitleHeaderView.swift */,
 			);
 			path = View;
 			sourceTree = "<group>";
@@ -1726,6 +1729,7 @@
 				C8A130B92B3129960008C353 /* ScenesViewController.swift in Sources */,
 				C89941952AD4F192008DCD76 /* DeviceAddViewCell.swift in Sources */,
 				C884EF722C057B5100B5F869 /* ImportProjectView.swift in Sources */,
+				C8A437B22D35F11A00F3424C /* CollectionTitleHeaderView.swift in Sources */,
 				C8A18FEB2AE105F300260707 /* BluetoothRequiredViewController.swift in Sources */,
 				C884EF752C05B93200B5F869 /* NetworkRequest.swift in Sources */,
 				C84A2C552C2D465A0064D3F1 /* ExternalVendorMessage+Extension.swift in Sources */,
@@ -2035,7 +2039,7 @@
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_OBJC_BRIDGING_HEADER = "SunSmart/SunSmart-Bridging-Header.h";
 				SWIFT_VERSION = 5.0;
-				TARGETED_DEVICE_FAMILY = 1;
+				TARGETED_DEVICE_FAMILY = "1,2";
 			};
 			name = Debug;
 		};
@@ -2075,7 +2079,7 @@
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_OBJC_BRIDGING_HEADER = "SunSmart/SunSmart-Bridging-Header.h";
 				SWIFT_VERSION = 5.0;
-				TARGETED_DEVICE_FAMILY = 1;
+				TARGETED_DEVICE_FAMILY = "1,2";
 			};
 			name = Release;
 		};

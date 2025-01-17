@@ -359,17 +359,17 @@ extension GroupAddViewController: GroupAddHeaderViewDelegate {
     /// - Returns: 返回错误提示（可选）
     func view(_ view: GroupAddHeaderView, nameEditChanged name: String) -> String? {
         if name.count > 32 {
-//            self.doneBtn.isEnabled = false
+            self.doneBtn.isEnabled = false
             return "text_length_exceeded".localizedString
         }else if MeshNetworkManager.instance.isGroupTautonym(name: name) && name != self.group?.name {
-//            self.doneBtn.isEnabled = false
+            self.doneBtn.isEnabled = false
             return "name_already_exists".localizedString
         }
-//        if name.count > 0 && !name.isAllInputTextEmpty() {
-//            self.doneBtn.isEnabled = true
-//        }else {
-//            self.doneBtn.isEnabled = false
-//        }
+        if name.count > 0 && !name.isAllInputTextEmpty() {
+            self.doneBtn.isEnabled = true
+        }else {
+            self.doneBtn.isEnabled = false
+        }
         self.name = name
         return nil
     }

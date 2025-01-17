@@ -43,9 +43,15 @@ class SitesViewController: UIViewController {
     
     private var segmentedControl: CustomSegmentedControl!
     private var scrollView: UIScrollView!
-    private var allSitesTableView: UITableView!
+    private var allSitesCollectionView: UICollectionView!
+    private var allSitesFlowLayout: UICollectionViewFlowLayout!
+    
     private var allSitesNoInternetView: NoInternetHeaderView?
-    private var favouritesTableView: UITableView!
+    private var favouritesCollectionView: UICollectionView!
+    private var favouritesSitesFlowLayout: UICollectionViewFlowLayout!
+    
+    private let noInternetHeight = SCRYFrom(54)
+    
     private var favouritesNoInternetView: NoInternetHeaderView?
     
     /// 所有site刷新
@@ -65,6 +71,8 @@ class SitesViewController: UIViewController {
     
     private var allSections: [SectionType] = []
     private var favouriteSections: [SectionType] = []
+    /// 每行显示几个item
+    private var itemRowCount: Int = isIPad ? 2 : 1
     
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -113,8 +121,8 @@ class SitesViewController: UIViewController {
         
         switch reloadState {
         case .list:
-            allSitesTableView.reloadData()
-            favouritesTableView.reloadData()
+            allSitesCollectionView.reloadData()
+            favouritesCollectionView.reloadData()
         case .cache:
             setupData()
             reloadState = .list
@@ -193,8 +201,8 @@ class SitesViewController: UIViewController {
         
         setupSectionsData()
         
-        allSitesTableView.reloadData()
-        favouritesTableView.reloadData()
+        allSitesCollectionView.reloadData()
+        favouritesCollectionView.reloadData()
         
         updateEmptyView()
     }
@@ -546,7 +554,7 @@ class SitesViewController: UIViewController {
         
         let margin: CGFloat = SCRXFrom(15.5)
 //        isIphoneX ? 18 : 15
-        let touchCenterX = view.width - SCRXFrom(margin) - 15
+        let touchCenterX = view.width - navigationRightItemMargin - 15
         
         let items: [MenuPopView.MenuItem] = [
             .init(icon: UIImage(named: "menu_nearby_network"), title: "nearby_network".localizedString, tapItemBack: { item in
@@ -574,7 +582,7 @@ class SitesViewController: UIViewController {
 //        let insertPath = IndexPath(row: allSites.count - 1, section: 0)
 //        allSitesTableView.insertRows(at: [insertPath], with: .none)
 //        allSitesTableView.scrollToRow(at: insertPath, at: .bottom, animated: true)
-        allSitesTableView.reloadData()
+        allSitesCollectionView.reloadData()
         updateEmptyView()
         
 //        
@@ -699,8 +707,8 @@ class SitesViewController: UIViewController {
 //            tableView.deleteRows(at: [IndexPath(row: index, section: 0)], with: .fade)
 //            otherTableView?.reloadData()
 //        }else {
-        self.allSitesTableView.reloadData()
-        self.favouritesTableView.reloadData()
+        self.allSitesCollectionView.reloadData()
+        self.favouritesCollectionView.reloadData()
 //         }
         self.updateEmptyView()
         
@@ -898,20 +906,37 @@ class SitesViewController: UIViewController {
     /// 没有网络UI
     private func updateNoInternetUI() {
         if NetworkRequest.shared.networkable {
-            allSitesTableView.tableHeaderView = nil
-            favouritesTableView.tableHeaderView = nil
+            
+            allSitesNoInternetView?.removeFromSuperview()
+            favouritesNoInternetView?.removeFromSuperview()
+            
+            allSitesCollectionView.contentInset.top = 0
+            favouritesCollectionView.contentInset.top = 0
+            
+//            allSitesTableView.tableHeaderView = nil
+//            favouritesTableView.tableHeaderView = nil
         }else {
             if allSitesNoInternetView == nil || favouritesNoInternetView == nil {
-                allSitesNoInternetView = NoInternetHeaderView(frame: CGRect(x: 0, y: 0, width: self.view.width, height: SCRYFrom(54)))
-                favouritesNoInternetView = NoInternetHeaderView(frame: CGRect(x: 0, y: 0, width: self.view.width, height: SCRYFrom(54)))
+                allSitesNoInternetView = NoInternetHeaderView(frame: CGRect(x: 0, y: -noInternetHeight, width: self.allSitesCollectionView.width, height: noInternetHeight))
+                favouritesNoInternetView = NoInternetHeaderView(frame: CGRect(x: 0, y: -noInternetHeight, width: self.favouritesCollectionView.width, height: noInternetHeight))
             }
-            allSitesTableView.tableHeaderView = allSitesNoInternetView
-            favouritesTableView.tableHeaderView = favouritesNoInternetView
+            allSitesCollectionView.addSubview(allSitesNoInternetView!)
+            allSitesCollectionView.contentInset.top = noInternetHeight
+
+            favouritesCollectionView.addSubview(favouritesNoInternetView!)
+            favouritesCollectionView.contentInset.top = noInternetHeight
+            
+            allSitesCollectionView.setContentOffset(CGPoint(x: allSitesCollectionView.contentOffset.x, y: -noInternetHeight), animated: false)
+            favouritesCollectionView.setContentOffset(CGPoint(x: favouritesCollectionView.contentOffset.x, y: -noInternetHeight), animated: false)
+            
+//            allSitesTableView.tableHeaderView = allSitesNoInternetView
+//            favouritesTableView.tableHeaderView = favouritesNoInternetView
         }
-        
-        if let emptyView = allSitesTableView.emptyView {
+//        allSitesCollectionView.reloadData()
+//        favouritesCollectionView.reloadData()
+        if let emptyView = allSitesCollectionView.emptyView {
             emptyView.contentView.snp.updateConstraints({ make in
-                let margin = NetworkRequest.shared.networkable ? 0 : (allSitesNoInternetView?.height ?? 0)
+                let margin = NetworkRequest.shared.networkable ? 0 : noInternetHeight
                 make.top.equalTo(SCRYFrom(7) + margin)
             })
         }
@@ -924,9 +949,9 @@ class SitesViewController: UIViewController {
         }
         
         if allSites.isEmpty {
-            allSitesTableView.showEmptyDataView(frame: allSitesTableView.frame,imageName: "site_empty", title: "no_sites_title".localizedString, tipText: nil)
-            if let emptyView = allSitesTableView.emptyView {
-                let margin = NetworkRequest.shared.networkable ? 0 : (allSitesNoInternetView?.height ?? 0)
+            allSitesCollectionView.showEmptyDataView(frame: allSitesCollectionView.frame,imageName: "site_empty", title: "no_sites_title".localizedString, tipText: nil)
+            if let emptyView = allSitesCollectionView.emptyView {
+                let margin = NetworkRequest.shared.networkable ? 0 : noInternetHeight
                 emptyView.contentView.snp.remakeConstraints({ make in
                     make.top.equalTo(SCRYFrom(7) + margin)
                     make.left.equalTo(SCRXFrom(20))
@@ -952,13 +977,13 @@ class SitesViewController: UIViewController {
             }
            
         }else {
-            allSitesTableView.hideEmptyDataView()
+            allSitesCollectionView.hideEmptyDataView()
         }
         
         if favouriteSites.isEmpty {
-            favouritesTableView.showEmptyDataView(frame: favouritesTableView.bounds, title: "no_favourites_sites".localizedString)
+            favouritesCollectionView.showEmptyDataView(frame: favouritesCollectionView.bounds, title: "no_favourites_sites".localizedString)
         }else {
-            favouritesTableView.hideEmptyDataView()
+            favouritesCollectionView.hideEmptyDataView()
         }
         
     }
@@ -968,28 +993,28 @@ class SitesViewController: UIViewController {
         
         // 刷新数据
         var indexPath: IndexPath?
-        var currentTableView: UITableView?
+        var currentCollectionView: UICollectionView?
         if self.segmentedControl.selectedIndex == 0 {
             if let index = allSites.filter({ $0.permission == .owner }).firstIndex(where: { $0.id == site.id }) {
                 indexPath = IndexPath(row: index, section: 0)
             }else if let index = allSites.filter({ $0.permission == .visitor }).firstIndex(where: { $0.id == site.id }) {
                 indexPath = IndexPath(row: index, section: 1)
             }
-            currentTableView = allSitesTableView
+            currentCollectionView = allSitesCollectionView
         }else {
             if let index = favouriteSites.filter({ $0.permission == .owner }).firstIndex(where: { $0.id == site.id }) {
                 indexPath = IndexPath(row: index, section: 0)
             }else if let index = favouriteSites.filter({ $0.permission == .visitor }).firstIndex(where: { $0.id == site.id }) {
                 indexPath = IndexPath(row: index, section: 1)
             }
-            currentTableView = favouritesTableView
+            currentCollectionView = favouritesCollectionView
         }
         CATransaction.setDisableActions(true)
-        if let reloadIndexPath = indexPath, let tableView = currentTableView {
-            tableView.reloadRows(at: [reloadIndexPath], with: .none)
+        if let reloadIndexPath = indexPath, let collectionView = currentCollectionView {
+            collectionView.reloadItems(at: [reloadIndexPath])
         }else {
-            self.allSitesTableView.reloadData()
-            self.favouritesTableView.reloadData()
+            self.allSitesCollectionView.reloadData()
+            self.favouritesCollectionView.reloadData()
         }
         CATransaction.commit()
     }
@@ -1025,17 +1050,25 @@ class SitesViewController: UIViewController {
         allSitesRefreshControl.tintColor = UIColor.lightGray
         allSitesRefreshControl.addTarget(self, action: #selector(loadSitesRequest), for: .valueChanged)
         
-        allSitesTableView = UITableView()
-        allSitesTableView.separatorStyle = .none
-        allSitesTableView.backgroundColor = .clear
-        allSitesTableView.register(SitesViewCell.classForCoder(), forCellReuseIdentifier: "cell")
-        allSitesTableView.register(SyncDevicesTitleHeaderView.classForCoder(), forHeaderFooterViewReuseIdentifier: "title")
-        allSitesTableView.rowHeight = SCRYFrom(92)
-        allSitesTableView.dataSource = self
-        allSitesTableView.delegate = self
-        allSitesTableView.refreshControl = allSitesRefreshControl
-        scrollView.addSubview(allSitesTableView)
-        allSitesTableView.snp.makeConstraints { make in
+        allSitesFlowLayout = UICollectionViewFlowLayout()
+        if isIPad {
+            allSitesFlowLayout.minimumLineSpacing = SCRXFrom(16)
+            allSitesFlowLayout.minimumInteritemSpacing = SCRXFrom(16)
+        }else {
+            allSitesFlowLayout.minimumLineSpacing = SCRXFrom(18)
+            allSitesFlowLayout.minimumInteritemSpacing = SCRXFrom(18)
+        }
+        
+        allSitesCollectionView = UICollectionView(frame: .zero, collectionViewLayout: allSitesFlowLayout)
+        allSitesCollectionView.backgroundColor = .clear
+        allSitesCollectionView.register(SitesViewCell.classForCoder(), forCellWithReuseIdentifier: "cell")
+        allSitesCollectionView.register(CollectionTitleHeaderView.classForCoder(), forSupplementaryViewOfKind: UICollectionView.elementKindSectionHeader, withReuseIdentifier: "title")
+//        allSitesCollectionView.rowHeight = SCRYFrom(92)
+        allSitesCollectionView.dataSource = self
+        allSitesCollectionView.delegate = self
+        allSitesCollectionView.refreshControl = allSitesRefreshControl
+        scrollView.addSubview(allSitesCollectionView)
+        allSitesCollectionView.snp.makeConstraints { make in
             make.left.top.equalToSuperview()
             make.height.equalToSuperview()
             make.width.equalToSuperview()
@@ -1045,19 +1078,27 @@ class SitesViewController: UIViewController {
         favouritesRefreshControl.tintColor = UIColor.lightGray
         favouritesRefreshControl.addTarget(self, action: #selector(loadSitesRequest), for: .valueChanged)
         
-        favouritesTableView = UITableView()
-        favouritesTableView.separatorStyle = .none
-        favouritesTableView.backgroundColor = .clear
-        favouritesTableView.dataSource = self
-        favouritesTableView.delegate = self
-        favouritesTableView.register(SitesViewCell.classForCoder(), forCellReuseIdentifier: "cell")
-        favouritesTableView.register(SyncDevicesTitleHeaderView.classForCoder(), forHeaderFooterViewReuseIdentifier: "title")
-        favouritesTableView.rowHeight = SCRYFrom(92)
-        favouritesTableView.refreshControl = favouritesRefreshControl
-        scrollView.addSubview(favouritesTableView)
-        favouritesTableView.snp.makeConstraints { make in
+        favouritesSitesFlowLayout = UICollectionViewFlowLayout()
+        if isIPad {
+            favouritesSitesFlowLayout.minimumLineSpacing = SCRXFrom(16)
+            favouritesSitesFlowLayout.minimumInteritemSpacing = SCRXFrom(16)
+        }else {
+            favouritesSitesFlowLayout.minimumLineSpacing = SCRXFrom(18)
+            favouritesSitesFlowLayout.minimumInteritemSpacing = SCRXFrom(18)
+        }
+      
+        favouritesCollectionView = UICollectionView(frame: .zero, collectionViewLayout: favouritesSitesFlowLayout)
+        favouritesCollectionView.backgroundColor = .clear
+        favouritesCollectionView.register(SitesViewCell.classForCoder(), forCellWithReuseIdentifier: "cell")
+        favouritesCollectionView.register(CollectionTitleHeaderView.classForCoder(), forSupplementaryViewOfKind: UICollectionView.elementKindSectionHeader, withReuseIdentifier: "title")
+//        allSitesCollectionView.rowHeight = SCRYFrom(92)
+        favouritesCollectionView.dataSource = self
+        favouritesCollectionView.delegate = self
+        favouritesCollectionView.refreshControl = favouritesRefreshControl
+        scrollView.addSubview(favouritesCollectionView)
+        favouritesCollectionView.snp.makeConstraints { make in
             make.top.right.equalToSuperview()
-            make.left.equalTo(allSitesTableView.snp.right)
+            make.left.equalTo(allSitesCollectionView.snp.right)
             make.height.equalToSuperview()
             make.width.equalToSuperview()
         }
@@ -1069,8 +1110,12 @@ class SitesViewController: UIViewController {
             make.bottom.equalTo(SCRYFrom(-38))
         }
         
-        allSitesTableView.contentInset = UIEdgeInsets(top: 0, left: 0, bottom: SCRYFrom(38) + 20, right: 0)
-        favouritesTableView.contentInset = allSitesTableView.contentInset
+        if isIPad {
+            allSitesCollectionView.contentInset = UIEdgeInsets(top: 0, left: SCRXFrom(20), bottom: SCRYFrom(38) + 20, right: SCRXFrom(20))
+        }else {
+            allSitesCollectionView.contentInset = UIEdgeInsets(top: 0, left: SCRXFrom(16), bottom: SCRYFrom(38) + 20, right: SCRXFrom(16))
+        }
+        favouritesCollectionView.contentInset = allSitesCollectionView.contentInset
         
 //        buoySliderView = BuoySliderView(frame: .zero, functionType: .level())
 //        view.addSubview(buoySliderView)
@@ -1134,18 +1179,18 @@ extension SitesViewController: UIScrollViewDelegate {
 
 }
 
-extension SitesViewController: UITableViewDataSource, UITableViewDelegate {
+extension SitesViewController: UICollectionViewDataSource, UICollectionViewDelegateFlowLayout {
     
-    func numberOfSections(in tableView: UITableView) -> Int {
-        if tableView == allSitesTableView {
+    func numberOfSections(in collectionView: UICollectionView) -> Int {
+        if collectionView == allSitesCollectionView {
             return allSections.count
         }else {
             return favouriteSections.count
         }
     }
     
-    func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
-        if tableView == allSitesTableView {
+    func collectionView(_ collectionView: UICollectionView, numberOfItemsInSection section: Int) -> Int {
+        if collectionView == allSitesCollectionView {
             switch allSections[section] {
             case .personal:
                 return allSites.filter({ $0.permission == .owner }).count
@@ -1161,12 +1206,11 @@ extension SitesViewController: UITableViewDataSource, UITableViewDelegate {
             }
         }
     }
-    
-    func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
-        let cell = tableView.dequeueReusableCell(withIdentifier: "cell", for: indexPath) as! SitesViewCell
-        cell.selectionStyle = .none
+ 
+    func collectionView(_ collectionView: UICollectionView, cellForItemAt indexPath: IndexPath) -> UICollectionViewCell {
+        let cell = collectionView.dequeueReusableCell(withReuseIdentifier: "cell", for: indexPath) as! SitesViewCell
         var site: SiteData!
-        if tableView == allSitesTableView {
+        if collectionView == allSitesCollectionView {
             let section = allSections[indexPath.section]
             if section == .personal {
                 site = allSites.filter({ $0.permission == .owner })[indexPath.row]
@@ -1210,8 +1254,8 @@ extension SitesViewController: UITableViewDataSource, UITableViewDelegate {
 //        cell.syncFailedImageView.isHidden = !(site.syncCloudError != nil || site.spaces.contains(where: { $0.syncCloudError != nil }))
         cell.clickMoreCallback = {[weak self] point in
             guard let self = self else { return }
-            let tableviewPoint = tableView.convert(point, from: cell)
-            let viewPoint = view.convert(tableviewPoint, from: tableView)
+            let tableviewPoint = collectionView.convert(point, from: cell)
+            let viewPoint = view.convert(tableviewPoint, from: collectionView)
     //        [weakself.view convertPoint:tableviewPoint fromView:tableView];
             self.siteMenu(site: site, point: viewPoint)
         }
@@ -1230,8 +1274,8 @@ extension SitesViewController: UITableViewDataSource, UITableViewDelegate {
                 self.favouriteSites.removeAll(where: { $0.id == site.id })
             }
             self.setupSectionsData()
-            self.allSitesTableView.reloadData()
-            self.favouritesTableView.reloadData()
+            self.allSitesCollectionView.reloadData()
+            self.favouritesCollectionView.reloadData()
             self.updateEmptyView()
 //            CloudSynchronizationManager.shared.addSynchronizationHandle(operation: .syncSite(site: site), level: .normal)
         }
@@ -1239,14 +1283,38 @@ extension SitesViewController: UITableViewDataSource, UITableViewDelegate {
         return cell
     }
     
-    func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
+    func collectionView(_ collectionView: UICollectionView, viewForSupplementaryElementOfKind kind: String, at indexPath: IndexPath) -> UICollectionReusableView {
+        let headerView = collectionView.dequeueReusableSupplementaryView(ofKind: UICollectionView.elementKindSectionHeader, withReuseIdentifier: "title", for: indexPath) as! CollectionTitleHeaderView
+        var sectionType: SectionType = .personal
+        if collectionView == allSitesCollectionView {
+            sectionType = allSections[indexPath.section]
+        }else {
+            sectionType = favouriteSections[indexPath.section]
+        }
+        headerView.titleLabel.text = sectionType.rawString
+        headerView.titleLeftMargin = SCRXFrom(12)
+        return headerView
+    }
+    
+    func collectionView(_ collectionView: UICollectionView, layout collectionViewLayout: UICollectionViewLayout, referenceSizeForHeaderInSection section: Int) -> CGSize {
+        return CGSize(width: collectionView.width - collectionView.contentInset.left - collectionView.contentInset.right, height: section == 0 ? SCRYFrom(25) : SCRYFrom(41))
+    }
+    
+    func collectionView(_ collectionView: UICollectionView, layout collectionViewLayout: UICollectionViewLayout, sizeForItemAt indexPath: IndexPath) -> CGSize {
+        let padding = (collectionViewLayout as? UICollectionViewFlowLayout)?.minimumLineSpacing ?? 0
+        var itemW = ((collectionView.width - collectionView.contentInset.left - collectionView.contentInset.right) - CGFloat(self.itemRowCount - 1) * padding) / CGFloat(self.itemRowCount)
+        itemW = CGFloat(floorf(Float(itemW) * 100) / 100.0)
+        return CGSizeMake(itemW, SCRYFrom(76))
+    }
+    
+    func collectionView(_ collectionView: UICollectionView, didSelectItemAt indexPath: IndexPath) {
         var site: SiteData!
 //        if tableView == allSitesTableView {
 //            site = allSites[indexPath.row]
 //        }else {
 //            site = favouriteSites[indexPath.row]
 //        }
-        if tableView == allSitesTableView {
+        if collectionView == allSitesCollectionView {
             let section = allSections[indexPath.section]
             if section == .personal {
                 site = allSites.filter({ $0.permission == .owner })[indexPath.row]
@@ -1269,31 +1337,7 @@ extension SitesViewController: UITableViewDataSource, UITableViewDelegate {
         let vc = SiteViewController(site: site)
         navigationController?.pushViewController(vc, animated: true)
     }
-    
-    func tableView(_ tableView: UITableView, viewForHeaderInSection section: Int) -> UIView? {
-        let headerView = tableView.dequeueReusableHeaderFooterView(withIdentifier: "title") as! SyncDevicesTitleHeaderView
-        var sectionType: SectionType = .personal
-        if tableView == allSitesTableView {
-            sectionType = allSections[section]
-        }else {
-            sectionType = favouriteSections[section]
-        }
-        headerView.titleLabel.text = sectionType.rawString
-        headerView.titleLeftMargin = SCRXFrom(28)
-        return headerView
-    }
-    
-    func tableView(_ tableView: UITableView, heightForHeaderInSection section: Int) -> CGFloat {
-        return SCRYFrom(25)
-    }
-    
-    func tableView(_ tableView: UITableView, viewForFooterInSection section: Int) -> UIView? {
-        return UIView()
-    }
-    
-    func tableView(_ tableView: UITableView, heightForFooterInSection section: Int) -> CGFloat {
-        return 0.01
-    }
+
 }
 
 extension SitesViewController: LBXScanViewControllerDelegate {

@@ -7,7 +7,7 @@
 
 import UIKit
 
-class SitesViewCell: UITableViewCell {
+class SitesViewCell: UICollectionViewCell {
     
     private var bgView: UIView!
     var iconImageView: UIImageView!
@@ -23,13 +23,19 @@ class SitesViewCell: UITableViewCell {
     /// 点击收藏回调
     var clickFavouriteCallback: ((Bool)->Void)?
     
-    
-    override init(style: UITableViewCell.CellStyle, reuseIdentifier: String?) {
-        super.init(style: style, reuseIdentifier: reuseIdentifier)
+    override init(frame: CGRect) {
+        super.init(frame: frame)
         
-        backgroundColor = .clear
+        backgroundColor = .white
+        layer.cornerRadius = SCRYFrom(10)
+        layer.shadowColor = RGB(0, 0, 0, 0.05).cgColor
+        layer.shadowOffset = CGSizeMake(0,3)
+        layer.shadowOpacity = 1
+        layer.shadowRadius = 5
+        
         setupUI()
     }
+    
     
     required init?(coder: NSCoder) {
         fatalError("init(coder:) has not been implemented")
@@ -40,8 +46,8 @@ class SitesViewCell: UITableViewCell {
         
         let morePoint = CGPoint(x: self.moreBtn.center.x, y: self.moreBtn.frame.maxY)
         
-        let point = bgView.convert(morePoint, to: self)
-        clickMoreCallback?(point)
+//        let point = bgView.convert(morePoint, to: self)
+        clickMoreCallback?(morePoint)
         //        delegate?.sitesViewCell(self, didClickMore: point)
     }
     /// 收藏
@@ -53,23 +59,23 @@ class SitesViewCell: UITableViewCell {
     }
     
     private func setupUI() {
-        bgView = UIView()
-        bgView.backgroundColor = .white
-        bgView.layer.cornerRadius = SCRYFrom(10)
-        bgView.layer.shadowColor = RGB(0, 0, 0, 0.05).cgColor
-        bgView.layer.shadowOffset = CGSizeMake(0,3)
-        bgView.layer.shadowOpacity = 1
-        bgView.layer.shadowRadius = 5
-        contentView.addSubview(bgView)
-        bgView.snp.makeConstraints { make in
-            make.left.equalTo(SCRXFrom(16))
-            make.right.equalTo(SCRXFrom(-16))
-            make.top.equalToSuperview()
-            make.bottom.equalTo(SCRYFrom(-16))
-        }
+//        bgView = UIView()
+//        bgView.backgroundColor = .white
+//        bgView.layer.cornerRadius = SCRYFrom(10)
+//        bgView.layer.shadowColor = RGB(0, 0, 0, 0.05).cgColor
+//        bgView.layer.shadowOffset = CGSizeMake(0,3)
+//        bgView.layer.shadowOpacity = 1
+//        bgView.layer.shadowRadius = 5
+//        contentView.addSubview(bgView)
+//        bgView.snp.makeConstraints { make in
+//            make.left.equalTo(SCRXFrom(16))
+//            make.right.equalTo(SCRXFrom(-16))
+//            make.top.equalToSuperview()
+//            make.bottom.equalTo(SCRYFrom(-16))
+//        }
         
         iconImageView = UIImageView()
-        bgView.addSubview(iconImageView)
+        contentView.addSubview(iconImageView)
         iconImageView.snp.makeConstraints { make in
             make.left.equalTo(SCRXFrom(8))
             make.centerY.equalToSuperview()
@@ -77,7 +83,7 @@ class SitesViewCell: UITableViewCell {
         }
         
         nameLabel = UILabel(text: "Frist Floor", textColor: TextBlack_Color, fontSize: 14, fontWeight: .light)
-        bgView.addSubview(nameLabel)
+        contentView.addSubview(nameLabel)
         nameLabel.snp.makeConstraints { make in
             make.left.equalTo(iconImageView.snp.right).offset(SCRXFrom(8))
             make.right.equalTo(SCRXFrom(-83))
@@ -85,28 +91,28 @@ class SitesViewCell: UITableViewCell {
         }
         
         timeLabel = UILabel(text: "8/7/2023 12:00 AM", textColor: RGB(148, 163, 184), fontSize: 14, fontWeight: .light)
-        bgView.addSubview(timeLabel)
+        contentView.addSubview(timeLabel)
         timeLabel.snp.makeConstraints { make in
             make.left.equalTo(nameLabel)
             make.top.equalTo(nameLabel.snp.bottom).offset(SCRYFrom(5))
         }
         
         spaceNumLabel = UILabel(text: "15 Spaces", textColor: RGB(148, 163, 184), fontSize: 14, fontWeight: .light)
-        bgView.addSubview(spaceNumLabel)
+        contentView.addSubview(spaceNumLabel)
         spaceNumLabel.snp.makeConstraints { make in
             make.left.equalTo(nameLabel)
             make.top.equalTo(timeLabel.snp.bottom).offset(SCRYFrom(3))
         }
         
         moreBtn = UIButton(normalImageName: "more_vertical", target: self, action: #selector(moreBtnClick))
-        bgView.addSubview(moreBtn)
+        contentView.addSubview(moreBtn)
         moreBtn.snp.makeConstraints { make in
             make.right.equalTo(SCRXFrom(-4))
             make.centerY.equalToSuperview()
         }
         
         favoriteBtn = UIButton(normalImageName: "favourite_normal", selectedImageName: "favourite_selected", target: self, action: #selector(favoriteBtnClick))
-        bgView.addSubview(favoriteBtn)
+        contentView.addSubview(favoriteBtn)
         favoriteBtn.snp.makeConstraints { make in
             make.right.equalTo(moreBtn.snp.left).offset(SCRXFrom(-4))
             make.centerY.equalToSuperview()
@@ -114,7 +120,7 @@ class SitesViewCell: UITableViewCell {
         
         syncFailedImageView = UIImageView(image: UIImage(named: "cloud_sync_failed"))
         syncFailedImageView.isHidden = true
-        bgView.addSubview(syncFailedImageView)
+        contentView.addSubview(syncFailedImageView)
         syncFailedImageView.snp.makeConstraints { make in
             make.right.equalTo(favoriteBtn.snp.left).offset(SCRXFrom(-8))
             make.centerY.equalTo(favoriteBtn)

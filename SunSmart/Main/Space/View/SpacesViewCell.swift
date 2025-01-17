@@ -19,9 +19,9 @@ protocol SpacesViewCellDelegate: AnyObject {
     func spacesViewCellSyncFailedAction(_ cell: SpacesViewCell)
 }
 
-class SpacesViewCell: UITableViewCell {
+class SpacesViewCell: UICollectionViewCell {
 
-    private var bgView: UIView!
+//    private var bgView: UIView!
     private var iconImageView: UIImageView!
     private var nameLabel: UILabel!
     private var favoriteBtn: UIButton!
@@ -144,10 +144,17 @@ class SpacesViewCell: UITableViewCell {
         }
     }
     
-    override init(style: UITableViewCell.CellStyle, reuseIdentifier: String?) {
-        super.init(style: style, reuseIdentifier: reuseIdentifier)
+    override init(frame: CGRect) {
+      
+        super.init(frame: frame)
         
-        backgroundColor = .clear
+        backgroundColor = .white
+        layer.cornerRadius = SCRYFrom(10)
+        layer.shadowColor = RGB(0, 0, 0, 0.05).cgColor
+        layer.shadowOffset = CGSizeMake(0,3)
+        layer.shadowOpacity = 1
+        layer.shadowRadius = 5
+        
         setupUI()
     }
     
@@ -160,9 +167,9 @@ class SpacesViewCell: UITableViewCell {
         
         let morePoint = CGPoint(x: self.moreBtn.center.x, y: self.moreBtn.frame.maxY)
         
-        let point = bgView.convert(morePoint, to: self)
+//        let point = bgView.convert(morePoint, to: self)
 //        clickMoreCallback?(point)
-        delegate?.cell(self, moreAction: point)
+        delegate?.cell(self, moreAction: morePoint)
 //        delegate?.sitesViewCell(self, didClickMore: point)
     }
     /// 收藏
@@ -180,23 +187,23 @@ class SpacesViewCell: UITableViewCell {
     }
     
     private func setupUI() {
-        bgView = UIView()
-        bgView.backgroundColor = .white
-        bgView.layer.cornerRadius = SCRYFrom(10)
-        bgView.layer.shadowColor = RGB(0, 0, 0, 0.05).cgColor
-        bgView.layer.shadowOffset = CGSizeMake(0,3)
-        bgView.layer.shadowOpacity = 1
-        bgView.layer.shadowRadius = 5
-        contentView.addSubview(bgView)
-        bgView.snp.makeConstraints { make in
-            make.left.equalTo(SCRXFrom(16))
-            make.right.equalTo(SCRXFrom(-16))
-            make.top.equalToSuperview()
-            make.bottom.equalTo(SCRYFrom(-16))
-        }
+//        bgView = UIView()
+//        bgView.backgroundColor = .white
+//        bgView.layer.cornerRadius = SCRYFrom(10)
+//        bgView.layer.shadowColor = RGB(0, 0, 0, 0.05).cgColor
+//        bgView.layer.shadowOffset = CGSizeMake(0,3)
+//        bgView.layer.shadowOpacity = 1
+//        bgView.layer.shadowRadius = 5
+//        contentView.addSubview(bgView)
+//        bgView.snp.makeConstraints { make in
+//            make.left.equalTo(SCRXFrom(16))
+//            make.right.equalTo(SCRXFrom(-16))
+//            make.top.equalToSuperview()
+//            make.bottom.equalTo(SCRYFrom(-16))
+//        }
         
         nameLabel = UILabel(text: "Frist Floor", textColor: TextBlack_Color, fontSize: 14, fontWeight: .light)
-        bgView.addSubview(nameLabel)
+        contentView.addSubview(nameLabel)
         nameLabel.snp.makeConstraints { make in
             make.left.equalTo(SCRXFrom(16))
             make.width.lessThanOrEqualTo(SCRXFrom(140))
@@ -204,14 +211,14 @@ class SpacesViewCell: UITableViewCell {
         }
         
         moreBtn = UIButton(normalImageName: "more_vertical", target: self, action: #selector(moreBtnClick))
-        bgView.addSubview(moreBtn)
+        contentView.addSubview(moreBtn)
         moreBtn.snp.makeConstraints { make in
             make.right.equalTo(SCRXFrom(-4))
             make.centerY.centerY.equalTo(nameLabel)
         }
         
         favoriteBtn = UIButton(normalImageName: "favourite_normal", selectedImageName: "favourite_selected", target: self, action: #selector(favoriteBtnClick))
-        bgView.addSubview(favoriteBtn)
+        contentView.addSubview(favoriteBtn)
         favoriteBtn.snp.makeConstraints { make in
             make.right.equalTo(moreBtn.snp.left).offset(SCRXFrom(-4))
             make.centerY.equalTo(moreBtn)
@@ -221,7 +228,7 @@ class SpacesViewCell: UITableViewCell {
         iconImageView.backgroundColor = RGB(247, 247, 255)
         iconImageView.contentMode = .center
         iconImageView.layer.cornerRadius = SCRYFrom(8)
-        bgView.addSubview(iconImageView)
+        contentView.addSubview(iconImageView)
         iconImageView.snp.makeConstraints { make in
             make.left.equalTo(SCRXFrom(16))
             make.top.equalTo(SCRYFrom(48))
@@ -231,7 +238,7 @@ class SpacesViewCell: UITableViewCell {
         }
         
         luminairesLabel = UILabel(text: "Luminaires: 20", textColor: RGB(100, 136, 139), fontSize: 13, fontWeight: .light)
-        bgView.addSubview(luminairesLabel)
+        contentView.addSubview(luminairesLabel)
         luminairesLabel.snp.makeConstraints { make in
             make.top.equalTo(iconImageView)
             make.left.equalTo(iconImageView.snp.right).offset(SCRXFrom(16))
@@ -239,35 +246,35 @@ class SpacesViewCell: UITableViewCell {
         }
         
         switchesLabel = UILabel(text: "Switches: 20", textColor: RGB(100, 136, 139), fontSize: 13, fontWeight: .light)
-        bgView.addSubview(switchesLabel)
+        contentView.addSubview(switchesLabel)
         switchesLabel.snp.makeConstraints { make in
             make.top.equalTo(luminairesLabel.snp.bottom).offset(SCRYFrom(4))
             make.left.right.equalTo(luminairesLabel)
         }
         
         groupsLabel = UILabel(text: "Groups: 4", textColor: RGB(100, 136, 139), fontSize: 13, fontWeight: .light)
-        bgView.addSubview(groupsLabel)
+        contentView.addSubview(groupsLabel)
         groupsLabel.snp.makeConstraints { make in
             make.top.equalTo(switchesLabel.snp.bottom).offset(SCRYFrom(9))
             make.left.right.equalTo(switchesLabel)
         }
         
         scenesLabel = UILabel(text: "Scenes: 2", textColor: RGB(100, 136, 139), fontSize: 13, fontWeight: .light)
-        bgView.addSubview(scenesLabel)
+        contentView.addSubview(scenesLabel)
         scenesLabel.snp.makeConstraints { make in
             make.top.equalTo(groupsLabel.snp.bottom).offset(SCRYFrom(4))
             make.left.right.equalTo(groupsLabel)
         }
         
         schedulesLabel = UILabel(text: "Schedules: 2", textColor: RGB(100, 136, 139), fontSize: 13, fontWeight: .light)
-        bgView.addSubview(schedulesLabel)
+        contentView.addSubview(schedulesLabel)
         schedulesLabel.snp.makeConstraints { make in
             make.top.equalTo(scenesLabel.snp.bottom).offset(SCRYFrom(4))
             make.left.right.equalTo(scenesLabel)
         }
         
         timeLabel = UILabel(text: "8/7/2023 12:00 AM", textColor: RGB(100, 136, 139), fontSize: 13, fontWeight: .light)
-        bgView.addSubview(timeLabel)
+        contentView.addSubview(timeLabel)
         timeLabel.snp.makeConstraints { make in
             make.left.right.equalTo(scenesLabel)
             make.bottom.equalTo(iconImageView)
@@ -275,7 +282,7 @@ class SpacesViewCell: UITableViewCell {
         
         editorImageView = UIImageView(image: UIImage(named: "space_editor"))
         editorImageView.isHidden = true
-        bgView.addSubview(editorImageView)
+        contentView.addSubview(editorImageView)
         editorImageView.snp.makeConstraints { make in
             make.right.equalTo(favoriteBtn.snp.left).offset(SCRXFrom(-8))
             make.centerY.equalTo(favoriteBtn)
@@ -283,7 +290,7 @@ class SpacesViewCell: UITableViewCell {
         
         permissionLabel = UILabel(text: "", textColor: Message_Color, fontSize: 14, fontWeight: .light)
         permissionLabel.isHidden = true
-        bgView.addSubview(permissionLabel)
+        contentView.addSubview(permissionLabel)
         permissionLabel.snp.makeConstraints { make in
             make.right.equalTo(favoriteBtn.snp.left).offset(SCRXFrom(-8))
             make.centerY.equalTo(favoriteBtn)
@@ -291,7 +298,7 @@ class SpacesViewCell: UITableViewCell {
         
         lockImageView = UIImageView(image: UIImage(named: "locked"))
         lockImageView.isHidden = true
-        bgView.addSubview(lockImageView)
+        contentView.addSubview(lockImageView)
         lockImageView.snp.makeConstraints { make in
             make.left.equalTo(SCRXFrom(16))
 //            make.top.equalTo(SCRYFrom(9))
@@ -300,7 +307,7 @@ class SpacesViewCell: UITableViewCell {
         
         syncFailedImageBtn = UIButton(normalImageName: "cloud_sync_failed", target: self, action: #selector(syncFailedImageBtnAction))
 //        UIImageView(image: UIImage(named: "cloud_sync_failed"))
-        bgView.addSubview(syncFailedImageBtn)
+        contentView.addSubview(syncFailedImageBtn)
         syncFailedImageBtn.snp.makeConstraints { make in
             make.right.equalTo(editorImageView.snp.left).offset(SCRXFrom(-8))
             make.centerY.equalTo(editorImageView)

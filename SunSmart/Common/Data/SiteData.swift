@@ -119,7 +119,7 @@ class SiteData: Copyable {
     }
     /// 是否需要上传到云端
     var needUploadCloud: Bool {
-        return lastUpdate > lastUploadCloudTimestamp ?? 0
+        return lastUpdate > lastUploadCloudTimestamp ?? 0 && permission != .visitor
     }
     /// 状态
     var state: State = .normal

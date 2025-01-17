@@ -16,11 +16,16 @@ class SiteViewController: UIViewController {
 
     private var segmentedControl: CustomSegmentedControl!
     private var scrollView: PopGestureScrollView!
-    private var allSpacesTableView: UITableView!
-    private var favouritesTableView: UITableView!                
+    private var allSpacesCollectionView: UICollectionView!
+    private var allSpacesFlowLayout: UICollectionViewFlowLayout!
+    
+    private var favouritesCollectionView: UICollectionView!
+    private var favouritesFlowLayout: UICollectionViewFlowLayout!
     private var allSpacesNoInternetView: NoInternetHeaderView?
     private var favouritesNoInternetView: NoInternetHeaderView?
-
+    
+    private let noInternetHeight = SCRYFrom(54)
+    
     private var addSpaceBtn: UIButton!
     
     private var allSpaces: [SpaceData] = []
@@ -30,6 +35,9 @@ class SiteViewController: UIViewController {
     private var allSpacesRefreshControl: UIRefreshControl!
     /// 喜欢的space刷新
     private var favouritesRefreshControl: UIRefreshControl!
+    
+    /// 每行显示几个item
+    private var itemRowCount: Int = isIPad ? 2 : 1
     
     let site: SiteData
     /// 是否添加场所进入
@@ -105,8 +113,8 @@ class SiteViewController: UIViewController {
             allSpaces = site.spaces
             favouriteSpaces = allSpaces.filter({ $0.isFavourite })
             if self.view.window != nil {
-                self.allSpacesTableView.reloadData()
-                self.favouritesTableView.reloadData()
+                self.allSpacesCollectionView.reloadData()
+                self.favouritesCollectionView.reloadData()
                 self.updateEmptyView()
             }
         }
@@ -134,8 +142,8 @@ class SiteViewController: UIViewController {
             favouriteSpaces = allSpaces.filter({ $0.isFavourite })
             loadSiteRequest()
         }
-        self.allSpacesTableView.reloadData()
-        self.favouritesTableView.reloadData()
+        self.allSpacesCollectionView.reloadData()
+        self.favouritesCollectionView.reloadData()
         self.updateEmptyView()
      
         CloudSynchronizationManager.shared.delegate = self
@@ -225,16 +233,16 @@ self.updateAddressData()
     @objc private func loadSiteRequest() {
         
         guard self.site.uploadCloud else { // 已上传服务器
-            self.allSpacesTableView.refreshControl?.endRefreshing()
-            self.favouritesTableView.refreshControl?.endRefreshing()
+            self.allSpacesCollectionView.refreshControl?.endRefreshing()
+            self.favouritesCollectionView.refreshControl?.endRefreshing()
             return
         }
         
         XWHUDManager.showCustomHUD(withMessage: nil, isWindow: false)
         NetworkRequest.shared.request(.siteInfo(siteId: self.site.id)) {[weak self] result in
             guard let self = self else { return }
-            self.allSpacesTableView.refreshControl?.endRefreshing()
-            self.favouritesTableView.refreshControl?.endRefreshing()
+            self.allSpacesCollectionView.refreshControl?.endRefreshing()
+            self.favouritesCollectionView.refreshControl?.endRefreshing()
             
             switch result {
             case .success(let response):
@@ -284,8 +292,8 @@ self.updateAddressData()
                         
                         self.allSpaces = self.site.spaces
                         self.favouriteSpaces = self.allSpaces.filter({ $0.isFavourite })
-                        self.allSpacesTableView.reloadData()
-                        self.favouritesTableView.reloadData()
+                        self.allSpacesCollectionView.reloadData()
+                        self.favouritesCollectionView.reloadData()
                         self.updateEmptyView()
                     #if DEBUG
                         self.updateAddressData()
@@ -529,9 +537,9 @@ self.updateAddressData()
     @objc private func moreClick() {
         // item距离右边间距 iphone6s 8 iphone12promax 12
         // 19 * 0.5 = 9.5 + 12
-        let margin: CGFloat = SCRXFrom(15.5)
+//        let margin: CGFloat = SCRXFrom(15.5)
 //        isIphoneX ? 18 : 15
-        let touchCenterX = view.width - SCRXFrom(margin) - 15
+        let touchCenterX = view.width - navigationRightItemMargin - 15
 
         var items: [MenuPopView.MenuItem] = []
         
@@ -661,8 +669,8 @@ self.updateAddressData()
             
             self.allSpaces.append(space)
             let insertPath = IndexPath(row: self.allSpaces.count - 1, section: 0)
-            self.allSpacesTableView.insertRows(at: [insertPath], with: .automatic)
-            self.allSpacesTableView.scrollToRow(at: insertPath, at: .bottom, animated: true)
+            self.allSpacesCollectionView.insertItems(at: [insertPath])
+            self.allSpacesCollectionView.scrollToItem(at: insertPath, at: .bottom, animated: true)
             self.updateEmptyView()
             
             return true
@@ -735,25 +743,25 @@ self.updateAddressData()
         self.site.spaces.removeAll(where: { $0.id == space.id })
         // 删除数据
         var index: Int?
-        var currentTableView: UITableView?
-        var otherTableView: UITableView?
+        var currentCollectionView: UICollectionView?
+        var otherCollectionView: UICollectionView?
         if self.segmentedControl.selectedIndex == 0 {
             index = allSpaces.firstIndex(where: { $0.id == space.id })
-            currentTableView = allSpacesTableView
-            otherTableView = favouritesTableView
+            currentCollectionView = allSpacesCollectionView
+            otherCollectionView = favouritesCollectionView
         }else {
             index = favouriteSpaces.firstIndex(where: { $0.id == space.id })
-            currentTableView = favouritesTableView
-            otherTableView = allSpacesTableView
+            currentCollectionView = favouritesCollectionView
+            otherCollectionView = allSpacesCollectionView
         }
         self.allSpaces.removeAll(where: { $0.id == space.id })
         self.favouriteSpaces.removeAll(where: { $0.id == space.id })
-        if let index = index, let tableView = currentTableView {
-            tableView.deleteRows(at: [IndexPath(row: index, section: 0)], with: .fade)
-            otherTableView?.reloadData()
+        if let index = index, let collectionView = currentCollectionView {
+            collectionView.deleteItems(at: [IndexPath(row: index, section: 0)])
+            otherCollectionView?.reloadData()
         }else {
-            self.allSpacesTableView.reloadData()
-            self.favouritesTableView.reloadData()
+            self.allSpacesCollectionView.reloadData()
+            self.favouritesCollectionView.reloadData()
         }
         self.updateEmptyView()
         
@@ -1375,8 +1383,8 @@ self.updateAddressData()
             self.allSpaces.removeAll(where: { $0.id == space.id })
             self.favouriteSpaces.removeAll(where: { $0.id == space.id })
             if self.view.window != nil {
-                self.allSpacesTableView.reloadData()
-                self.favouritesTableView.reloadData()
+                self.allSpacesCollectionView.reloadData()
+                self.favouritesCollectionView.reloadData()
                 self.updateEmptyView()
             }
         }
@@ -1397,43 +1405,67 @@ self.updateAddressData()
         
         // 刷新数据
         var index: Int?
-        var currentTableView: UITableView?
+        var currentCollectionView: UICollectionView?
         if self.segmentedControl.selectedIndex == 0 {
             index = allSpaces.firstIndex(where: { $0.id == space.id })
-            currentTableView = allSpacesTableView
+            currentCollectionView = allSpacesCollectionView
         }else {
             index = favouriteSpaces.firstIndex(where: { $0.id == space.id })
-            currentTableView = favouritesTableView
+            currentCollectionView = favouritesCollectionView
         }
         CATransaction.setDisableActions(true)
-        if let index = index, let tableView = currentTableView {
-            tableView.reloadRows(at: [IndexPath(row: index, section: 0)], with: .none)
+        if let index = index, let collectionView = currentCollectionView {
+            collectionView.reloadItems(at: [IndexPath(row: index, section: 0)])
         }else {
-            self.allSpacesTableView.reloadData()
-            self.favouritesTableView.reloadData()
+            self.allSpacesCollectionView.reloadData()
+            self.favouritesCollectionView.reloadData()
         }
         CATransaction.commit()
     }
     
     /// 更新无网络UI
     private func updateNoInternetUI() {
+        
         if NetworkRequest.shared.networkable {
-            allSpacesTableView.tableHeaderView = nil
-            favouritesTableView.tableHeaderView = nil
-        }else {
-            if allSpacesNoInternetView == nil || favouritesNoInternetView == nil {
-                allSpacesNoInternetView = NoInternetHeaderView(frame: CGRect(x: 0, y: 0, width: self.view.width, height: SCRYFrom(54)))
-                favouritesNoInternetView = NoInternetHeaderView(frame: CGRect(x: 0, y: 0, width: self.view.width, height: SCRYFrom(54)))
-            }
-            allSpacesTableView.tableHeaderView = allSpacesNoInternetView
-            favouritesTableView.tableHeaderView = favouritesNoInternetView
             
-            if let emptyView = allSpacesTableView.emptyView {
-                emptyView.contentView.snp.updateConstraints({ make in
-                    let margin = NetworkRequest.shared.networkable ? 0 : (allSpacesNoInternetView?.height ?? 0)
-                    make.top.equalTo(SCRYFrom(7) + margin)
-                })
+            allSpacesNoInternetView?.removeFromSuperview()
+            favouritesNoInternetView?.removeFromSuperview()
+            
+            allSpacesCollectionView.contentInset.top = 0
+            favouritesCollectionView.contentInset.top = 0
+            
+//            allSitesTableView.tableHeaderView = nil
+//            favouritesTableView.tableHeaderView = nil
+        }else {
+            if allSpacesCollectionView.frame == .zero {
+                allSpacesCollectionView.layoutIfNeeded()
             }
+            if favouritesCollectionView.frame == .zero {
+                favouritesCollectionView.layoutIfNeeded()
+            }
+            
+            if allSpacesNoInternetView == nil || favouritesNoInternetView == nil {
+                allSpacesNoInternetView = NoInternetHeaderView(frame: CGRect(x: 0, y: -noInternetHeight, width: self.allSpacesCollectionView.width, height: noInternetHeight))
+                favouritesNoInternetView = NoInternetHeaderView(frame: CGRect(x: 0, y: -noInternetHeight, width: self.favouritesCollectionView.width, height: noInternetHeight))
+            }
+            allSpacesCollectionView.addSubview(allSpacesNoInternetView!)
+            allSpacesCollectionView.contentInset.top = noInternetHeight
+
+            favouritesCollectionView.addSubview(favouritesNoInternetView!)
+            favouritesCollectionView.contentInset.top = noInternetHeight
+            
+            allSpacesCollectionView.setContentOffset(CGPoint(x: allSpacesCollectionView.contentOffset.x, y: -noInternetHeight), animated: false)
+            favouritesCollectionView.setContentOffset(CGPoint(x: favouritesCollectionView.contentOffset.x, y: -noInternetHeight), animated: false)
+            
+//            allSitesTableView.tableHeaderView = allSitesNoInternetView
+//            favouritesTableView.tableHeaderView = favouritesNoInternetView
+        }
+        
+        if let emptyView = allSpacesCollectionView.emptyView {
+            emptyView.contentView.snp.updateConstraints({ make in
+                let margin = NetworkRequest.shared.networkable ? 0 : (allSpacesNoInternetView?.height ?? 0)
+                make.top.equalTo(SCRYFrom(7) + margin)
+            })
         }
     }
     
@@ -1445,8 +1477,8 @@ self.updateAddressData()
         }
         
         if allSpaces.isEmpty {
-            allSpacesTableView.showEmptyDataView(frame: allSpacesTableView.frame,imageName: "space_empty", title: "no_spaces_title".localizedString, tipText: nil)
-            if let emptyView = allSpacesTableView.emptyView {
+            allSpacesCollectionView.showEmptyDataView(frame: allSpacesCollectionView.frame,imageName: "space_empty", title: "no_spaces_title".localizedString, tipText: nil)
+            if let emptyView = allSpacesCollectionView.emptyView {
                 let margin = NetworkRequest.shared.networkable ? 0 : (allSpacesNoInternetView?.height ?? 0)
                 emptyView.contentView.snp.remakeConstraints({ make in
                     make.top.equalTo(SCRYFrom(7) + margin)
@@ -1473,13 +1505,13 @@ self.updateAddressData()
             }
            
         }else {
-            allSpacesTableView.hideEmptyDataView()
+            allSpacesCollectionView.hideEmptyDataView()
         }
         
         if favouriteSpaces.isEmpty {
-            favouritesTableView.showEmptyDataView(frame: favouritesTableView.bounds, title: "no_favourites_spaces".localizedString, bottomMargin: SCRYFrom(32))
+            favouritesCollectionView.showEmptyDataView(frame: favouritesCollectionView.bounds, title: "no_favourites_spaces".localizedString, bottomMargin: SCRYFrom(32))
         }else {
-            favouritesTableView.hideEmptyDataView()
+            favouritesCollectionView.hideEmptyDataView()
         }
         
     }
@@ -1514,19 +1546,27 @@ self.updateAddressData()
         allSpacesRefreshControl.tintColor = UIColor.lightGray
         allSpacesRefreshControl.addTarget(self, action: #selector(loadSiteRequest), for: .valueChanged)
         
-        allSpacesTableView = UITableView()
-        allSpacesTableView.separatorStyle = .none
-        allSpacesTableView.backgroundColor = .clear
-        allSpacesTableView.register(SpacesViewCell.classForCoder(), forCellReuseIdentifier: "cell")
-        #if DEBUG
-        allSpacesTableView.register(SiteAddressDataHeaderView.classForCoder(), forHeaderFooterViewReuseIdentifier: "header")
-        #endif
-        allSpacesTableView.rowHeight = SCRYFrom(208)
-        allSpacesTableView.dataSource = self
-        allSpacesTableView.delegate = self
-        allSpacesTableView.refreshControl = allSpacesRefreshControl
-        scrollView.addSubview(allSpacesTableView)
-        allSpacesTableView.snp.makeConstraints { make in
+        allSpacesFlowLayout = UICollectionViewFlowLayout()
+        if isIPad {
+            allSpacesFlowLayout.minimumLineSpacing = SCRXFrom(16)
+            allSpacesFlowLayout.minimumInteritemSpacing = SCRXFrom(16)
+        }else {
+            allSpacesFlowLayout.minimumLineSpacing = SCRXFrom(20)
+            allSpacesFlowLayout.minimumInteritemSpacing = SCRXFrom(20)
+        }
+        
+        allSpacesCollectionView = UICollectionView(frame: .zero, collectionViewLayout: allSpacesFlowLayout)
+        allSpacesCollectionView.backgroundColor = .clear
+        allSpacesCollectionView.register(SpacesViewCell.classForCoder(), forCellWithReuseIdentifier: "cell")
+//#if DEBUG
+//        allSpacesCollectionView.register(SiteAddressDataHeaderView.classForCoder(), forHeaderFooterViewReuseIdentifier: "header")
+//#endif
+//        allSitesCollectionView.rowHeight = SCRYFrom(92)
+        allSpacesCollectionView.dataSource = self
+        allSpacesCollectionView.delegate = self
+        allSpacesCollectionView.refreshControl = allSpacesRefreshControl
+        scrollView.addSubview(allSpacesCollectionView)
+        allSpacesCollectionView.snp.makeConstraints { make in
             make.left.top.equalToSuperview()
             make.height.equalToSuperview()
             make.width.equalToSuperview()
@@ -1536,21 +1576,35 @@ self.updateAddressData()
         favouritesRefreshControl.tintColor = UIColor.lightGray
         favouritesRefreshControl.addTarget(self, action: #selector(loadSiteRequest), for: .valueChanged)
         
-        favouritesTableView = UITableView()
-        favouritesTableView.separatorStyle = .none
-        favouritesTableView.backgroundColor = .clear
-        favouritesTableView.dataSource = self
-        favouritesTableView.delegate = self
-        favouritesTableView.register(SpacesViewCell.classForCoder(), forCellReuseIdentifier: "cell")
-        favouritesTableView.rowHeight = SCRYFrom(208)
-        favouritesTableView.refreshControl = favouritesRefreshControl
-        scrollView.addSubview(favouritesTableView)
-        favouritesTableView.snp.makeConstraints { make in
+        favouritesFlowLayout = UICollectionViewFlowLayout()
+        if isIPad {
+            favouritesFlowLayout.minimumLineSpacing = SCRXFrom(16)
+            favouritesFlowLayout.minimumInteritemSpacing = SCRXFrom(16)
+        }else {
+            favouritesFlowLayout.minimumLineSpacing = SCRXFrom(20)
+            favouritesFlowLayout.minimumInteritemSpacing = SCRXFrom(20)
+        }
+        
+        favouritesCollectionView = UICollectionView(frame: .zero, collectionViewLayout: favouritesFlowLayout)
+        favouritesCollectionView.backgroundColor = .clear
+        favouritesCollectionView.register(SpacesViewCell.classForCoder(), forCellWithReuseIdentifier: "cell")
+        favouritesCollectionView.dataSource = self
+        favouritesCollectionView.delegate = self
+        favouritesCollectionView.refreshControl = favouritesRefreshControl
+        scrollView.addSubview(favouritesCollectionView)
+        favouritesCollectionView.snp.makeConstraints { make in
             make.top.right.equalToSuperview()
-            make.left.equalTo(allSpacesTableView.snp.right)
+            make.left.equalTo(allSpacesCollectionView.snp.right)
             make.height.equalToSuperview()
             make.width.equalToSuperview()
         }
+        
+        if isIPad {
+            allSpacesCollectionView.contentInset = UIEdgeInsets(top: 0, left: SCRXFrom(20), bottom: 0, right: SCRXFrom(20))
+        }else {
+            allSpacesCollectionView.contentInset = UIEdgeInsets(top: 0, left: SCRXFrom(16), bottom: 0, right: SCRXFrom(16))
+        }
+        favouritesCollectionView.contentInset = allSpacesCollectionView.contentInset
         
         addSpaceBtn = UIButton(normalImageName: "add", target: self, action: #selector(addSpace))
         if !site.permissionOperates.contains(.edit) {
@@ -1589,20 +1643,19 @@ extension SiteViewController: UIScrollViewDelegate {
 
 }
 
-extension SiteViewController: UITableViewDataSource, UITableViewDelegate {
+extension SiteViewController: UICollectionViewDataSource, UICollectionViewDelegateFlowLayout {
     
-    func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
-        if tableView == allSpacesTableView {
+    func collectionView(_ collectionView: UICollectionView, numberOfItemsInSection section: Int) -> Int {
+        if collectionView == allSpacesCollectionView {
             return allSpaces.count
         }
         return favouriteSpaces.count
     }
     
-    func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
-        let cell = tableView.dequeueReusableCell(withIdentifier: "cell", for: indexPath) as! SpacesViewCell
-        cell.selectionStyle = .none
+    func collectionView(_ collectionView: UICollectionView, cellForItemAt indexPath: IndexPath) -> UICollectionViewCell {
+        let cell = collectionView.dequeueReusableCell(withReuseIdentifier: "cell", for: indexPath) as! SpacesViewCell
         var space: SpaceData!
-        if tableView == allSpacesTableView {
+        if collectionView == allSpacesCollectionView {
             space = allSpaces[indexPath.row]
         }else {
             space = favouriteSpaces[indexPath.row]
@@ -1613,15 +1666,22 @@ extension SiteViewController: UITableViewDataSource, UITableViewDelegate {
         return cell
     }
     
-    func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
+    func collectionView(_ collectionView: UICollectionView, didSelectItemAt indexPath: IndexPath) {
         var space: SpaceData!
-        if tableView == allSpacesTableView {
+        if collectionView == allSpacesCollectionView {
             space = allSpaces[indexPath.row]
         }else {
             space = favouriteSpaces[indexPath.row]
         }
         
         selectSpaceAction(space: space)
+    }
+    
+    func collectionView(_ collectionView: UICollectionView, layout collectionViewLayout: UICollectionViewLayout, sizeForItemAt indexPath: IndexPath) -> CGSize {
+        let padding = (collectionViewLayout as? UICollectionViewFlowLayout)?.minimumLineSpacing ?? 0
+        var itemW = ((collectionView.width - collectionView.contentInset.left - collectionView.contentInset.right) - CGFloat(self.itemRowCount - 1) * padding) / CGFloat(self.itemRowCount)
+        itemW = CGFloat(floorf(Float(itemW) * 100) / 100.0)
+        return CGSizeMake(itemW, SCRYFrom(192))
     }
     
 //#if DEBUG
@@ -1662,15 +1722,15 @@ extension SiteViewController: SpacesViewCellDelegate {
             return
         }
         
-        var tableView: UITableView!
+        var collectionView: UICollectionView!
         if segmentedControl.selectedIndex == 0 {
-            tableView = allSpacesTableView
+            collectionView = allSpacesCollectionView
         }else {
-            tableView = favouritesTableView
+            collectionView = favouritesCollectionView
         }
         
-        let tableviewPoint = tableView.convert(point, from: cell)
-        let viewPoint = view.convert(tableviewPoint, from: tableView)
+        let collectionViewPoint = collectionView.convert(point, from: cell)
+        let viewPoint = view.convert(collectionViewPoint, from: collectionView)
 //        [weakself.view convertPoint:tableviewPoint fromView:tableView];
         self.spaceMenu(space: space, point: viewPoint)
     }
@@ -1698,8 +1758,8 @@ extension SiteViewController: SpacesViewCellDelegate {
         }else {
             self.favouriteSpaces.removeAll(where: { $0.id == space.id })
         }
-        self.allSpacesTableView.reloadData()
-        self.favouritesTableView.reloadData()
+        self.allSpacesCollectionView.reloadData()
+        self.favouritesCollectionView.reloadData()
         self.updateEmptyView()
 //        CloudSynchronizationManager.shared.addSynchronizationHandle(operation: .syncSpace(space: space), level: .normal)
         
