@@ -20,8 +20,8 @@ class SpaceMenuView: UIView {
         }
     }
     
-    private var margin: CGFloat = SCRXFrom(16)
-    private var itemMargin: CGFloat = SCRXFrom(6)
+    var margin: CGFloat = SCRXFrom(16)
+    var itemMargin: CGFloat = SCRXFrom(6)
     
     var itemDatas: [MenuItemData]! {
         didSet {

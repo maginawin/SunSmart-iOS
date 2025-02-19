@@ -198,6 +198,12 @@ class BleFirmwareUpdateViewController: UIViewController {
         refreshRSSI()
     }
     
+    override func viewDidLayoutSubviews() {
+        super.viewDidLayoutSubviews()
+        
+        flowLayout.estimatedItemSize = CGSize(width: view.width - collectionView.contentInset.left - collectionView.contentInset.right, height: SCRYFrom(182))
+    }
+    
     /// 获取云端固件
     private func loadCloudFirmwareRequest(type: FirmwareUpdateTypeData) {
         
@@ -422,7 +428,7 @@ class BleFirmwareUpdateViewController: UIViewController {
         view.addSubview(bottomView)
         bottomView.snp.makeConstraints { make in
             make.left.right.bottom.equalToSuperview()
-            make.height.equalTo(kSafeAreaBottomHeight + SCRYFrom(60))
+            make.height.equalTo((isIPad ? 0 : kSafeAreaBottomHeight) + SCRYFrom(60))
         }
         
         let lineView = UIView()
@@ -491,7 +497,6 @@ class BleFirmwareUpdateViewController: UIViewController {
             make.top.equalTo((navigationController?.navigationBar.height ?? 0) + SCRYFrom(7))
         }
         
-        flowLayout.estimatedItemSize = CGSize(width: view.width - collectionView.contentInset.left - collectionView.contentInset.right, height: SCRYFrom(182))
     }
     
     private func updateSelectAllState() {
@@ -521,8 +526,8 @@ class BleFirmwareUpdateViewController: UIViewController {
         let vc = BLEUpgradeInstructionsController()
         vc.title = "ble_upgrade_instructions".localizedString
         let datas: [BLEUpgradeInstructionsController.InstructionsData] = [
-            .init(iconName: "server_download", name: "server_firmware".localizedString, message: "server_firmware_message".localizedString + "\n\n", showArrow: true, arrowX: SCRXFrom(104), ratio: 0.333),
-            .init(iconName: "initiator", name: "initiator".localizedString, message: "initiator_message".localizedString + "\n\n", showArrow: true, arrowX: SCRXFrom(209), ratio: 0.333),
+            .init(iconName: "server_download", name: "server_firmware".localizedString, message: "server_firmware_message".localizedString + "\n\n", showArrow: true, arrowX: isIPad ? SCRXFrom(200) : SCRXFrom(104), ratio: 0.333),
+            .init(iconName: "initiator", name: "initiator".localizedString, message: "initiator_message".localizedString + "\n\n", showArrow: true, arrowX: isIPad ? SCRXFrom(450) : SCRXFrom(209), ratio: 0.333),
             .init(iconName: "single_device", name: "updating_node".localizedString, message: "updating_node_message".localizedString + "\n\n" + "ble_upgrade_instructions_message".localizedString, showArrow: false, arrowX: 0, ratio: 0.333)
         ]
         vc.datas = datas

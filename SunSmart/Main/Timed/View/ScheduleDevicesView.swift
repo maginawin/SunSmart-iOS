@@ -38,6 +38,13 @@ class ScheduleDevicesView: UIView {
     /// 选择设备完成回调
     private var selectCallback: DevicesSelectFinishedCallback?
     
+    /// 每行个数
+    private var rowNum: Int = isIPad ? 6 : 3
+    /// collectionview边距
+    private var collectionViewInsets: UIEdgeInsets = isIPad ? UIEdgeInsets(top: SCRYFrom(60), left: SCRXFrom(24), bottom: SCRXFrom(24), right: SCRXFrom(24)) : UIEdgeInsets(top: SCRYFrom(60), left: SCRXFrom(12), bottom: SCRXFrom(12), right: SCRXFrom(12))
+    /// item间距
+    private var itemMargin: CGFloat = isIPad ? SCRXFrom(30) : SCRXFrom(16)
+    
     init(nodes: [Node], selectNodes: [Node], schedule: Schedule? = nil, selectBack: DevicesSelectFinishedCallback?) {
         self.nodes = nodes
         self.selectNodes = selectNodes
@@ -197,13 +204,13 @@ class ScheduleDevicesView: UIView {
         }
         
         flowLayout = AlignCenterFlowLayout()
-        flowLayout.minimumLineSpacing = SCRXFrom(16)
-        flowLayout.minimumInteritemSpacing = SCRXFrom(16)
+        flowLayout.minimumLineSpacing = itemMargin
+        flowLayout.minimumInteritemSpacing = itemMargin
         flowLayout.offsetY = SCRYFrom(-53)
         
         collectionView = UICollectionView(frame: .zero, collectionViewLayout: flowLayout)
         collectionView.showsVerticalScrollIndicator = false
-        collectionView.contentInset = UIEdgeInsets(top: SCRYFrom(60), left: SCRXFrom(12), bottom: SCRXFrom(12), right: SCRXFrom(12))
+        collectionView.contentInset = collectionViewInsets
         collectionView.dataSource = self
         collectionView.delegate = self
         collectionView.alwaysBounceVertical = true
@@ -326,7 +333,7 @@ extension ScheduleDevicesView: UICollectionViewDataSource, UICollectionViewDeleg
     }
     
     func collectionView(_ collectionView: UICollectionView, layout collectionViewLayout: UICollectionViewLayout, sizeForItemAt indexPath: IndexPath) -> CGSize {
-        var itemW = (collectionView.width - collectionView.contentInset.left - collectionView.contentInset.right - flowLayout.minimumInteritemSpacing * 2.0) / 3.0
+        var itemW = (collectionView.width - collectionView.contentInset.left - collectionView.contentInset.right - flowLayout.minimumInteritemSpacing * CGFloat(rowNum - 1)) / CGFloat(rowNum)
         itemW = CGFloat(floorf(Float(itemW) * 100) / 100.0)
         return CGSize(width: itemW, height: itemW)
     }

@@ -111,6 +111,11 @@ class MeshFirmwareListViewController: UIViewController {
         }
     }
     
+    override func viewDidLayoutSubviews() {
+        super.viewDidLayoutSubviews()
+        
+        flowLayout.itemSize = CGSize(width: view.width - collectionView.contentInset.left - collectionView.contentInset.right, height: SCRYFrom(206))
+    }
     
     /// 获取云端固件
     private func loadCloudFirmwareRequest(type: FirmwareUpdateTypeData) {
@@ -326,9 +331,9 @@ class MeshFirmwareListViewController: UIViewController {
         
         let vc = BLEUpgradeInstructionsController()
         let datas: [BLEUpgradeInstructionsController.InstructionsData] = [
-            .init(iconName: "server_download", name: "server_firmware".localizedString, message: "server_firmware_message".localizedString + "\n\n", showArrow: true, arrowX: SCRXFrom(82), ratio: 0.3),
-            .init(iconName: "initiator", name: "initiator".localizedString, message: "initiator_message".localizedString + "\n\n", showArrow: true, arrowX: SCRXFrom(149), ratio: 0.17),
-            .init(iconName: "single_device", name: "Distributor".localizedString, message: "distributor_message".localizedString + "\n\n", showArrow: true, arrowX: SCRXFrom(219), ratio: 0.18),
+            .init(iconName: "server_download", name: "server_firmware".localizedString, message: "server_firmware_message".localizedString + "\n\n", showArrow: true, arrowX: isIPad ? SCRXFrom(170) : SCRXFrom(82), ratio: 0.3),
+            .init(iconName: "initiator", name: "initiator".localizedString, message: "initiator_message".localizedString + "\n\n", showArrow: true, arrowX: isIPad ? SCRXFrom(300) : SCRXFrom(149), ratio: 0.17),
+            .init(iconName: "single_device", name: "Distributor".localizedString, message: "distributor_message".localizedString + "\n\n", showArrow: true, arrowX: isIPad ? SCRXFrom(440) : SCRXFrom(219), ratio: 0.18),
             .init(iconName: "updatating_nodes", name: "updatating_nodes".localizedString, message: "updatating_nodes_message".localizedString + "\n\n" + "mesh_upgrade_instructions_message".localizedString, showArrow: false, arrowX: 0, ratio: 0.35)
         ]
         vc.title = "mesh_upgrade_instructions".localizedString
@@ -358,7 +363,6 @@ class MeshFirmwareListViewController: UIViewController {
             make.top.equalTo((navigationController?.navigationBar.height ?? 0) + SCRYFrom(7))
         }
         
-        flowLayout.itemSize = CGSize(width: view.width - collectionView.contentInset.left - collectionView.contentInset.right, height: SCRYFrom(206))
     }
     
     private func firmwareVersionInfo(firmwareTypeData: FirmwareUpdateTypeData) {

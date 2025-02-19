@@ -20,6 +20,13 @@ class DeviceSwitchesViewController: UIViewController {
     private var editView: UIView!
     private var doneBtn: UIButton!
     
+    /// 列数
+    private var columnNum: Int = isIPad ? 6 : 3
+    /// collectionview边距
+    private var collectionViewMargin: CGFloat = isIPad ? SCRXFrom(24) : SCRXFrom(12)
+    /// item间距
+    private var itemMargin: CGFloat = isIPad ? SCRXFrom(30) : SCRXFrom(16)
+    
     /// 底部
     private var footerView: SpaceFunctionFooterView!
     
@@ -85,14 +92,15 @@ class DeviceSwitchesViewController: UIViewController {
         }
         
         flowLayout = AlignCenterFlowLayout()
-        flowLayout.minimumLineSpacing = SCRXFrom(16)
-        flowLayout.minimumInteritemSpacing = SCRXFrom(16)
+        flowLayout.minimumLineSpacing = itemMargin
+        flowLayout.minimumInteritemSpacing = itemMargin
+        flowLayout.itemRowCount = columnNum
 //        flowLayout.sectionInset = UIEdgeInsets(top: SCRYFrom(16) + SCRYFrom(42), left: SCRXFrom(12), bottom: SCRYFrom(16), right: SCRXFrom(12))
 //        flowLayout.offsetY = flowLayout.sectionInset.top
 //        UIEdgeInsets(top: 0, left: SCRXFrom(12), bottom: <#T##CGFloat#>, right: SCRXFrom(12))
         
         collectionView = UICollectionView(frame: .zero, collectionViewLayout: flowLayout)
-        collectionView.contentInset = UIEdgeInsets(top: SCRYFrom(16) + SCRYFrom(42), left: SCRXFrom(12), bottom: SCRYFrom(16), right: SCRXFrom(12))
+        collectionView.contentInset = UIEdgeInsets(top: SCRYFrom(40 + (isIPad ? 22 : 10)), left: collectionViewMargin, bottom: collectionViewMargin, right: collectionViewMargin)
         collectionView.backgroundColor = Background_Color
         collectionView.register(DeviceSwitchesViewCell.classForCoder(), forCellWithReuseIdentifier: "cell")
         collectionView.alwaysBounceVertical = true
@@ -288,7 +296,7 @@ extension DeviceSwitchesViewController: UICollectionViewDataSource, UICollection
     }
     
     func collectionView(_ collectionView: UICollectionView, layout collectionViewLayout: UICollectionViewLayout, sizeForItemAt indexPath: IndexPath) -> CGSize {
-        var itemW = (collectionView.width - collectionView.contentInset.left - collectionView.contentInset.right - flowLayout.sectionInset.left - flowLayout.sectionInset.right - flowLayout.minimumInteritemSpacing * CGFloat(2)) / CGFloat(3)
+        var itemW = (collectionView.width - collectionView.contentInset.left - collectionView.contentInset.right - flowLayout.sectionInset.left - flowLayout.sectionInset.right - flowLayout.minimumInteritemSpacing * CGFloat(columnNum - 1)) / CGFloat(columnNum)
         itemW = CGFloat(floorf(Float(itemW) * 100) / 100.0)
         return CGSize(width: itemW, height: itemW)
     }

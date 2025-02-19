@@ -59,6 +59,13 @@ class ShareAuthorityViewController: UIViewController {
     /// 正在加载空间数据中
     private var loadingSpacesData: Bool = false
     
+    /// 每行个数
+    private var rowNum: Int = isIPad ? 4 : 2
+    /// collectionview边距
+    private var collectionViewInsets: UIEdgeInsets = isIPad ? UIEdgeInsets(top: SCRYFrom(22), left: SCRXFrom(24), bottom: SCRXFrom(24), right: SCRXFrom(24)) : UIEdgeInsets(top: SCRYFrom(22), left: SCRXFrom(16), bottom: SCRXFrom(16), right: SCRXFrom(16))
+    /// item间距
+    private var itemMargin: CGFloat = isIPad ? SCRXFrom(24) : SCRXFrom(15)
+    
     init(site: SiteData, type: OperationType) {
         self.site = site
         self.type = type
@@ -916,7 +923,7 @@ class ShareAuthorityViewController: UIViewController {
         view.addSubview(bottomView)
         bottomView.snp.makeConstraints { make in
             make.left.right.bottom.equalToSuperview()
-            make.height.equalTo(SCRYFrom(44) + kSafeAreaBottomHeight)
+            make.height.equalTo(SCRYFrom(44) + (isIPad ? 0 : kSafeAreaBottomHeight))
         }
         
         editBtn = UIButton(title: "select".localizedString, titleSize: 14, titleWeight: .light, titleColor: Bar_Color, target: self, action: #selector(editBtnAction))
@@ -984,11 +991,11 @@ class ShareAuthorityViewController: UIViewController {
         }
         
         flowLayout = UICollectionViewFlowLayout()
-        flowLayout.minimumLineSpacing = SCRYFrom(14)
-        flowLayout.minimumInteritemSpacing = SCRXFrom(15)
+        flowLayout.minimumLineSpacing = itemMargin
+        flowLayout.minimumInteritemSpacing = itemMargin
         
         collectionView = UICollectionView(frame: .zero, collectionViewLayout: flowLayout)
-        collectionView.contentInset = UIEdgeInsets(top: SCRYFrom(22), left: SCRXFrom(16), bottom: SCRXFrom(16), right: SCRXFrom(16))
+        collectionView.contentInset = collectionViewInsets
         collectionView.register(ShareAuthoritySpaceViewCell.classForCoder(), forCellWithReuseIdentifier: "cell")
         collectionView.backgroundColor = Background_Color
         collectionView.alwaysBounceVertical = true
@@ -1189,7 +1196,7 @@ extension ShareAuthorityViewController: UICollectionViewDataSource, UICollection
     }
     
     func collectionView(_ collectionView: UICollectionView, layout collectionViewLayout: UICollectionViewLayout, sizeForItemAt indexPath: IndexPath) -> CGSize {
-        var itemW = (collectionView.width - collectionView.contentInset.left - collectionView.contentInset.right - flowLayout.minimumInteritemSpacing) / 2.0
+        var itemW = (collectionView.width - collectionView.contentInset.left - collectionView.contentInset.right - CGFloat(rowNum - 1) * flowLayout.minimumInteritemSpacing) / CGFloat(rowNum)
         itemW = CGFloat(floorf(Float(itemW) * 100) / 100.0)
         return CGSize(width: itemW , height: SCRYFrom(156))
     }

@@ -49,8 +49,6 @@ class GroupSwitchsViewController: UIViewController {
         
         setupUI()
         
-        updateEmptyUI()
-        
     }
     
     override func viewWillAppear(_ animated: Bool) {
@@ -64,6 +62,12 @@ class GroupSwitchsViewController: UIViewController {
         (navigationController as? NavigationViewController)?.navigationDelegate = nil
     }
 
+    override func viewDidLayoutSubviews() {
+        super.viewDidLayoutSubviews()
+        
+        updateEmptyUI()
+    }
+    
     private func exitAction() {
         
         if copySwitchs.contains(where: { copySwitch in !group.info.switchs.contains(where: { $0 == copySwitch }) }) {
@@ -79,9 +83,9 @@ class GroupSwitchsViewController: UIViewController {
     private func updateEmptyUI() {
         
         if copySwitchs.isEmpty {
-            if tableView.frame == .zero {
-                view.layoutIfNeeded()
-            }
+//            if tableView.frame == .zero {
+//                view.layoutIfNeeded()
+//            }
             tableView.showEmptyDataView(frame: tableView.frame, title: "switch_empty_title".localizedString, tipText: "switch_empty_message".localizedString, position: .center, bottomMargin: SCRYFit(100))
             tableView.emptyView?.backgroundColor = .clear
         }else {
@@ -418,7 +422,7 @@ class GroupSwitchsViewController: UIViewController {
         view.addSubview(bottomView)
         bottomView.snp.makeConstraints { make in
             make.left.right.bottom.equalToSuperview()
-            make.height.equalTo(SCRYFrom(56) + kSafeAreaBottomHeight)
+            make.height.equalTo(SCRYFrom(56) + (isIPad ? 0 : kSafeAreaBottomHeight))
         }
         
         addSwitchBtn = UIButton(title: "add_switch".localizedString, titleSize: 15, titleWeight: .light, titleColor: Title_Color, target: self, action: #selector(addSwitchBtnAction))

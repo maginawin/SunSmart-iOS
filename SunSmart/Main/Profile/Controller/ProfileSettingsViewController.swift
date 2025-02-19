@@ -31,6 +31,7 @@ class ProfileSettingsViewController: UIViewController {
 //    private var daylightSensorView: ProfileDaylightSensorControlView!
     private var timeoutView: ProfileManualOverrideTimeoutView!
     private var powerUpBehaviorView: ProfilePowerUpBehaviorView!
+    private let contentMargin: CGFloat = isIPad ? SCRXFrom(20) : SCRXFrom(16)
     
     /// 配置数据
     private var profiles: [Profile] = [
@@ -330,8 +331,8 @@ class ProfileSettingsViewController: UIViewController {
         sphasesView.delegate = self
         contentView.addSubview(sphasesView)
         sphasesView.snp.makeConstraints { make in
-            make.left.equalTo(SCRXFrom(16))
-            make.right.equalTo(SCRXFrom(-16))
+            make.left.equalTo(contentMargin)
+            make.right.equalTo(-contentMargin)
             make.top.equalTo(headerView.snp.bottom).offset(SCRYFrom(13))
             make.height.equalTo(SCRYFrom(selectProfile.lightData.times.count > 0 ? 344 : 264))
         }
@@ -354,7 +355,7 @@ class ProfileSettingsViewController: UIViewController {
 //            make.left.right.equalTo(daylightSensorView)
 //            make.top.equalTo(daylightSensorView.snp.bottom).offset(SCRYFrom(16))
             make.left.right.equalTo(sphasesView)
-            make.top.equalTo(sphasesView.snp.bottom).offset(SCRYFrom(16))
+            make.top.equalTo(sphasesView.snp.bottom).offset(contentMargin)
             make.height.equalTo(SCRYFrom(140))
         }
         
@@ -364,9 +365,9 @@ class ProfileSettingsViewController: UIViewController {
         contentView.addSubview(powerUpBehaviorView)
         powerUpBehaviorView.snp.makeConstraints { make in
             make.left.right.equalTo(timeoutView)
-            make.top.equalTo(timeoutView.snp.bottom).offset(SCRYFrom(16))
+            make.top.equalTo(timeoutView.snp.bottom).offset(contentMargin)
             make.height.greaterThanOrEqualTo(SCRYFrom(172))
-            make.bottom.equalTo(SCRYFrom(-16))
+            make.bottom.equalTo(-contentMargin)
         }
     }
     
@@ -413,12 +414,12 @@ extension ProfileSettingsViewController: ProfileSettingsHeaderViewDelegate {
         let names = profiles.map({ $0.type.instruction.name })
         
 //        view
-        let viewPoint = contentView.convert(CGPoint(x: profileRect.minX, y: profileRect.maxY), from: view)
-        let y = (SCREEN_HEIGHT - self.view.height) + viewPoint.y + scrollView.y + SCRYFrom(2) - scrollView.contentOffset.y
+        let viewPoint = contentView.convert(CGPoint(x: profileRect.minX, y: profileRect.maxY + 2), from: view)
+        let windowPoint = view.convert(viewPoint, to: UIApplication.shared.keyWindow())
         
         let selectIndex = profiles.firstIndex(where: { $0.type == selectProfile.type }) ?? 0
         
-        TitleSelectView.show(titles: names, anchorPoint: CGPoint(x: viewPoint.x, y: y), selectIndex: selectIndex, menuWidth: profileRect.size.width, titleColor: SubText_Color, titleFont: FONTS(SCRXFrom(12)), backgroundColor: .white, selectBackgroundColor: .clear, shadowColor: RGB(0, 0, 0, 0.1)) {[weak self] index in
+        TitleSelectView.show(titles: names, anchorPoint: windowPoint, selectIndex: selectIndex, menuWidth: profileRect.size.width, titleColor: SubText_Color, titleFont: FONTS(SCRXFrom(12)), backgroundColor: .white, selectBackgroundColor: .clear, shadowColor: RGB(0, 0, 0, 0.1)) {[weak self] index in
             guard let self = self else { return }
             self.selectProfile = self.profiles[index]
             self.initProfile = self.selectProfile.copy()

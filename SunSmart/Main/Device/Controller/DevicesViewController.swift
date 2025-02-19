@@ -94,6 +94,7 @@ class DevicesViewController: WMPageController {
     // 分发状态view
     private var distributionStateView: FirmwareDistributeUpdateStateView?
 
+    private var menuHeight = SCRYFrom(40)
 //    private var meunView: WMMenuView!
     
  
@@ -102,7 +103,11 @@ class DevicesViewController: WMPageController {
         super.init(nibName: nil, bundle: nil)
         
 //        self.menuViewStyle = .flood
-        self.menuItemCornerRadius = SCRYFrom(16)
+        if isIPad {
+            self.menuViewLayoutMode = .center
+            self.itemMargin = SCRXFrom(24)
+        }
+        self.menuItemCornerRadius = menuHeight * 0.5
 //        self.progressViewIsNaughty = false
         self.menuItemBackgroundColor = .clear
 //        self.scrollEnable = false
@@ -126,11 +131,12 @@ class DevicesViewController: WMPageController {
         if !MeshNetworkManager.instance.realNodes.isEmpty && !MeshLibManager.manager.isMeshNetworkConnected && (MeshLibManager.manager.bluetoothState == .poweredOn || MeshLibManager.manager.bluetoothState == .unknown) {
 //            XWHUDManager.showCustomHUD(withMessage: nil, isWindow: false, afterDelay: 10)
             // loading
-            XWHUDManager.showGifImagesHUD(inView: "XWHUDManager_loading", message: getNextGuidanceMessage() ?? "", timer: 10)
+            let margin: CGFloat = isIPad ? 100 : 36
+            XWHUDManager.showGifImagesHUD(inView: "XWHUDManager_loading", message: getNextGuidanceMessage() ?? "", timer: 10, margin: margin)
             self.perform(#selector(self.guidanceTimeout), with: nil, afterDelay: 10)
             if let hud = XWHUDManager.currentHUD() {
                 hud.bezelView.layer.cornerRadius = 20
-                hud.minSize = CGSizeMake(SCREEN_WIDTH - 72, 185)
+                hud.minSize = CGSizeMake(SCREEN_WIDTH - margin * 2, 185)
                 self.connectLoadingHUD = hud
             }
             startGuidanceTimer()
@@ -621,7 +627,7 @@ extension DevicesViewController {
     }
     
     override func pageController(_ pageController: WMPageController, preferredFrameFor menuView: WMMenuView) -> CGRect {
-        return CGRect(x: 0, y: SCRYFrom(10), width: view.width, height: SCRYFrom(32))
+        return CGRect(x: 0, y: SCRYFrom(isIPad ? 20 : 10), width: view.width, height: menuHeight)
     }
     
     override func pageController(_ pageController: WMPageController, didEnter viewController: UIViewController, withInfo info: [AnyHashable : Any]) {
@@ -654,10 +660,13 @@ extension DevicesViewController {
     }
     
     override func menuView(_ menu: WMMenuView!, widthForItemAt index: Int) -> CGFloat {
-        return SCRXFrom(80)
+        return isIPad ? SCRXFrom(120) : SCRXFrom(80)
     }
     
     override func menuView(_ menu: WMMenuView!, itemMarginAt index: Int) -> CGFloat {
+        if isIPad {
+            return super.menuView(menu, itemMarginAt: index)
+        }
         if index == 0 || index == 4 {
             return SCRXFrom(12)
         }

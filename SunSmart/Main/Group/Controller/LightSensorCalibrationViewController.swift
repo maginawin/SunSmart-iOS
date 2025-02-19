@@ -470,7 +470,7 @@ class LightSensorCalibrationViewController: UIViewController {
         view.addSubview(bottomView)
         bottomView.snp.makeConstraints { make in
             make.left.right.bottom.equalToSuperview()
-            make.height.equalTo(SCRYFrom(56) + kSafeAreaBottomHeight)
+            make.height.equalTo(SCRYFrom(56) + (isIPad ? 0 : kSafeAreaBottomHeight))
         }
         
         calibrationBtn = UIButton(title: "CALIBRATION".localizedString, titleSize: 16, titleWeight: .light, titleColor: Bar_Color, target: self, action: #selector(calibrationBtnAction))

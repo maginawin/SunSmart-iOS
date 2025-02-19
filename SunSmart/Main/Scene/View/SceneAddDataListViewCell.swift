@@ -29,6 +29,8 @@ class SceneAddDataListViewCell: UICollectionViewCell {
     /// 最大数量
     var maxCount = 16
     
+    private var itemRowCount: Int = isIPad ? 7 : 4
+    
     weak var delegate: SceneAddDataListViewCellDelegate?
     
     var sceneDatas: [ExecuteSceneData]! {
@@ -118,7 +120,7 @@ extension SceneAddDataListViewCell: UICollectionViewDataSource, UICollectionView
     }
     
     func collectionView(_ collectionView: UICollectionView, layout collectionViewLayout: UICollectionViewLayout, sizeForItemAt indexPath: IndexPath) -> CGSize {
-        var itemW = (collectionView.width - collectionView.contentInset.left - collectionView.contentInset.right - flowLayout.minimumInteritemSpacing * CGFloat(3) - flowLayout.sectionInset.left - flowLayout.sectionInset.right) / CGFloat(4)
+        var itemW = (collectionView.width - collectionView.contentInset.left - collectionView.contentInset.right - flowLayout.minimumInteritemSpacing * CGFloat(itemRowCount - 1) - flowLayout.sectionInset.left - flowLayout.sectionInset.right) / CGFloat(itemRowCount)
         itemW = CGFloat(floorf(Float(itemW) * 100) / 100.0)
         return CGSize(width: itemW, height: itemW)
     }

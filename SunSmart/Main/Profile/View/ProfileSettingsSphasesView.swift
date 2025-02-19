@@ -123,6 +123,7 @@ class ProfileSettingsSphasesView: UIView {
             autoMinLevelBtn.isHidden = true
             autoMinLevelLabel.isHidden = true
             
+            var profileChartImageName = "profile_chart_occupancy"
             switch profile.type {
             case .occupancy_daylight, .vacancy_daylight, .occupancy, .vacancy:
                 timeT1Btn.isHidden = false
@@ -143,11 +144,13 @@ class ProfileSettingsSphasesView: UIView {
                 if profile.type == .occupancy || profile.type == .vacancy {
                     autoMinLevelBtn.isHidden = true
                     autoMinLevelLabel.isHidden = true
-                    chartImageView.image = UIImage(named: "profile_chart_occupancy")
+                    profileChartImageName = "profile_chart_occupancy"
+//                    chartImageView.image = UIImage(named: "profile_chart_occupancy")
                 }else {
                     autoMinLevelBtn.isHidden = false
                     autoMinLevelLabel.isHidden = false
-                    chartImageView.image = UIImage(named: "profile_chart_occupancy_daylight")
+//                    chartImageView.image = UIImage(named: "profile_chart_occupancy_daylight")
+                    profileChartImageName = "profile_chart_occupancy_daylight"
                 }
                 autoMinLevelBtn.snp.remakeConstraints { make in
                     make.right.width.height.equalTo(highEndTrimBtn)
@@ -155,7 +158,8 @@ class ProfileSettingsSphasesView: UIView {
                 }
    
             case .daylight:
-                chartImageView.image = UIImage(named: "profile_chart_daylight")
+//                chartImageView.image = UIImage(named: "profile_chart_daylight")
+                profileChartImageName = "profile_chart_daylight"
                 autoMinLevelBtn.isHidden = false
                 autoMinLevelLabel.isHidden = false
                 taskLevelBtn.isHidden = false
@@ -178,7 +182,8 @@ class ProfileSettingsSphasesView: UIView {
                 }
                 
             case .manualControl:
-                chartImageView.image = UIImage(named: "profile_chart_manual_control")
+//                chartImageView.image = UIImage(named: "profile_chart_manual_control")
+                profileChartImageName = "profile_chart_manual_control"
                 timeT1Btn.isHidden = false
                 timeT1Label.isHidden = false
 //                timeT5Btn.isHidden = false
@@ -199,18 +204,22 @@ class ProfileSettingsSphasesView: UIView {
                     make.top.equalTo(vacantLevelBtn.snp.bottom).offset(SCRYFrom(8))
                 }
             }
-            
+            if isIPad {
+                profileChartImageName.append("_ipad")
+            }
+            chartImageView.image = UIImage(named: profileChartImageName)
             chartImageView.sizeToFit()
             chartImageView.snp.remakeConstraints { make in
-//                if isIPad {
-//                    make.top.equalTo(SCRYFrom(46))
-//                    make.centerX.equalToSuperview()
-//                }else {
+                make.top.equalTo(SCRYFrom(46))
+                if isIPad {
+                    make.left.equalTo(SCRXFrom(136))
+                    make.right.equalTo(SCRXFrom(-56.7))
+//                    make.height.equalTo(chartImageView.snp.width).multipliedBy(230 / 490.0)
+                }else {
                     make.left.equalTo(SCRXFrom(86))
                     make.right.equalTo(SCRXFrom(-45))
-                    make.top.equalTo(SCRYFrom(46))
-                    make.height.equalTo(chartImageView.snp.width).multipliedBy(chartImageView.height / chartImageView.width)
-//                }
+                }
+                make.height.equalTo(chartImageView.snp.width).multipliedBy(chartImageView.height / chartImageView.width)
             }
             
         }
@@ -345,9 +354,15 @@ class ProfileSettingsSphasesView: UIView {
         chartImageView.sizeToFit()
         addSubview(chartImageView)
         chartImageView.snp.makeConstraints { make in
-            make.left.equalTo(SCRXFrom(86))
-            make.right.equalTo(SCRXFrom(-45))
-            make.height.equalTo(chartImageView.snp.width).multipliedBy(chartImageView.height / chartImageView.width)
+            if isIPad {
+                make.left.equalTo(SCRXFrom(146))
+                make.right.equalTo(SCRXFrom(-56.7))
+                make.height.equalTo(chartImageView.snp.width).multipliedBy(230 / 490.0)
+            }else {
+                make.left.equalTo(SCRXFrom(86))
+                make.right.equalTo(SCRXFrom(-45))
+                make.height.equalTo(chartImageView.snp.width).multipliedBy(chartImageView.height / chartImageView.width)
+            }
             make.top.equalTo(SCRYFrom(46))
 //            if isIPad {
 ////                make.centerX.equalToSuperview()
@@ -359,7 +374,7 @@ class ProfileSettingsSphasesView: UIView {
         imageView = UIImageView(image: UIImage(named: "profile_light_level"))
         addSubview(imageView)
         imageView.snp.makeConstraints { make in
-            make.left.equalTo(SCRXFrom(2))
+            make.left.equalTo(SCRXFrom(isIPad ? 13 : 2))
             make.top.equalTo(SCRYFrom(34))
             make.bottom.equalTo(chartImageView)
         }
@@ -373,7 +388,11 @@ class ProfileSettingsSphasesView: UIView {
 //            if !isIPad {
 //                make.left.equalTo(SCRXFrom(25))
 //            }
-            make.width.equalTo(SCRXFrom(60))
+            if isIPad {
+                make.width.equalTo(SCRXFrom(93.8))
+            }else {
+                make.width.equalTo(SCRXFrom(60))
+            }
             make.centerY.equalTo(chartImageView.snp.top)
         }
         
@@ -388,15 +407,24 @@ class ProfileSettingsSphasesView: UIView {
         addSubview(highEndTrimBtn)
         highEndTrimBtn.snp.makeConstraints { make in
             make.right.equalTo(chartImageView.snp.left)
-            make.top.equalTo(maxLightOutputLabel.snp.bottom).offset(SCRYFrom(1))
-            make.width.equalTo(SCRXFrom(64))
+            if isIPad {
+                make.top.equalTo(maxLightOutputLabel.snp.bottom).offset(SCRYFrom(7))
+                make.width.equalTo(SCRXFrom(93.6))
+            }else {
+                make.top.equalTo(maxLightOutputLabel.snp.bottom).offset(SCRYFrom(1))
+                make.width.equalTo(SCRXFrom(64))
+            }
             make.height.equalTo(SCRYFrom(32))
         }
         
         highEndTrimLabel = UILabel(text: "100%", textColor: Chart_Text_Color, fontSize: 10)
         addSubview(highEndTrimLabel)
         highEndTrimLabel.snp.makeConstraints { make in
-            make.left.equalTo(chartImageView.snp.right).offset(SCRXFrom(1))
+            if isIPad {
+                make.left.equalTo(chartImageView.snp.right).offset(SCRXFrom(7))
+            }else {
+                make.left.equalTo(chartImageView.snp.right).offset(SCRXFrom(1))
+            }
             make.centerY.equalTo(highEndTrimBtn)
         }
         
@@ -501,7 +529,11 @@ class ProfileSettingsSphasesView: UIView {
         addSubview(offLabel)
         offLabel.snp.makeConstraints { make in
             make.centerX.equalTo(lowEndTrimBtn)
-            make.top.equalTo(lowEndTrimBtn.snp.bottom).offset(SCRYFrom(8))
+            if isIPad {
+                make.bottom.equalTo(chartImageView).offset(SCRYFrom(-4))
+            }else {
+                make.top.equalTo(lowEndTrimBtn.snp.bottom).offset(SCRYFrom(8))
+            }
         }
         
         timeT1Btn = UIButton(title: "T1", titleSize: 12, titleWeight: .light, titleColor: .black, target: self, action: #selector(timeT1BtnAction))
@@ -510,9 +542,15 @@ class ProfileSettingsSphasesView: UIView {
         timeT1Btn.layer.borderColor = RGB(216, 216, 216).cgColor
         addSubview(timeT1Btn)
         timeT1Btn.snp.makeConstraints { make in
-            make.left.equalTo(chartImageView).offset(SCRXFrom(-4))
+            if isIPad {
+                make.left.equalTo(chartImageView).offset(SCRXFrom(2.5))
+                make.width.equalTo(SCRXFrom(69.45))
+                make.height.equalTo(SCRYFrom(30))
+            }else {
+                make.left.equalTo(chartImageView).offset(SCRXFrom(-4))
+                make.width.height.equalTo(SCRXFrom(30))
+            }
             make.bottom.equalTo(SCRYFrom(-12))
-            make.width.height.equalTo(SCRXFrom(30))
         }
         
         timeT1Label = UILabel(text: "2s", textColor: .black, fontSize: 10, fontWeight: .light)
@@ -528,7 +566,11 @@ class ProfileSettingsSphasesView: UIView {
         timeT2Btn.layer.borderColor = RGB(216, 216, 216).cgColor
         addSubview(timeT2Btn)
         timeT2Btn.snp.makeConstraints { make in
-            make.left.equalTo(timeT1Btn.snp.right).offset(SCRXFrom(34))
+            if isIPad {
+                make.left.equalTo(timeT1Btn.snp.right).offset(SCRXFrom(64))
+            }else {
+                make.left.equalTo(timeT1Btn.snp.right).offset(SCRXFrom(34))
+            }
             make.bottom.width.height.equalTo(timeT1Btn)
         }
         
@@ -545,7 +587,11 @@ class ProfileSettingsSphasesView: UIView {
         timeT3Btn.layer.borderColor = RGB(216, 216, 216).cgColor
         addSubview(timeT3Btn)
         timeT3Btn.snp.makeConstraints { make in
-            make.left.equalTo(timeT2Btn.snp.right).offset(SCRXFrom(10))
+            if isIPad {
+                make.left.equalTo(timeT2Btn.snp.right).offset(SCRXFrom(22))
+            }else {
+                make.left.equalTo(timeT2Btn.snp.right).offset(SCRXFrom(10))
+            }
             make.bottom.width.height.equalTo(timeT1Btn)
         }
         
@@ -562,7 +608,11 @@ class ProfileSettingsSphasesView: UIView {
         timeT4Btn.layer.borderColor = RGB(216, 216, 216).cgColor
         addSubview(timeT4Btn)
         timeT4Btn.snp.makeConstraints { make in
-            make.left.equalTo(timeT3Btn.snp.right).offset(SCRXFrom(5))
+            if isIPad {
+                make.left.equalTo(timeT3Btn.snp.right).offset(SCRXFrom(10))
+            }else {
+                make.left.equalTo(timeT3Btn.snp.right).offset(SCRXFrom(5))
+            }
             make.bottom.width.height.equalTo(timeT1Btn)
         }
         
@@ -579,7 +629,11 @@ class ProfileSettingsSphasesView: UIView {
         timeT5Btn.layer.borderColor = RGB(216, 216, 216).cgColor
         addSubview(timeT5Btn)
         timeT5Btn.snp.makeConstraints { make in
-            make.left.equalTo(timeT4Btn.snp.right).offset(SCRXFrom(5))
+            if isIPad {
+                make.left.equalTo(timeT4Btn.snp.right).offset(SCRXFrom(10))
+            }else {
+                make.left.equalTo(timeT4Btn.snp.right).offset(SCRXFrom(5))
+            }
             make.bottom.width.height.equalTo(timeT1Btn)
         }
         

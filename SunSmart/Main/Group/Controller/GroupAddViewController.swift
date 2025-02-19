@@ -201,7 +201,7 @@ class GroupAddViewController: UIViewController {
         view.addSubview(footerView)
         footerView.snp.makeConstraints { make in
             make.left.right.bottom.equalToSuperview()
-            make.height.equalTo(SCRYFrom(56) + kSafeAreaBottomHeight)
+            make.height.equalTo(SCRYFrom(56) + (isIPad ? 0 : kSafeAreaBottomHeight))
         }
         
         let bottomLineView = UIView()
@@ -381,9 +381,9 @@ extension GroupAddViewController: GroupAddHeaderViewDelegate {
         let names = profiles.map({ $0.type.instruction.name })
         let selectIndex = profiles.firstIndex(where: { $0.type == selectProfile.type }) ?? 0
 //        view
-        let viewPoint = collectionView.convert(CGPoint(x: profileRect.minX, y: profileRect.maxY), from: view)
-        let y = (SCREEN_HEIGHT - self.view.height) + collectionView.y + viewPoint.y + SCRYFrom(2) - collectionView.contentOffset.y
-        TitleSelectView.show(titles: names, anchorPoint: CGPoint(x: viewPoint.x, y: y), selectIndex: selectIndex, menuWidth: profileRect.size.width, titleColor: SubText_Color, titleFont: FONTS(SCRXFrom(12)), backgroundColor: .white, selectBackgroundColor: .clear, shadowColor: RGB(0, 0, 0, 0.1)) {[weak self] index in
+        let viewPoint = collectionView.convert(CGPoint(x: profileRect.minX, y: profileRect.maxY + 2), from: view)
+        let windowPoint = view.convert(viewPoint, to: UIApplication.shared.keyWindow())
+        TitleSelectView.show(titles: names, anchorPoint: windowPoint, selectIndex: selectIndex, menuWidth: profileRect.size.width, titleColor: SubText_Color, titleFont: FONTS(SCRXFrom(12)), backgroundColor: .white, selectBackgroundColor: .clear, shadowColor: RGB(0, 0, 0, 0.1)) {[weak self] index in
             guard let self = self else { return }
             
             self.selectProfile = profiles[index]

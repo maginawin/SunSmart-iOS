@@ -17,6 +17,13 @@ class GatewaysViewController: UIViewController {
     /// 是否正在编辑
     private var isEdit: Bool = false
     
+    /// 列数
+    private var columnNum: Int = isIPad ? 6 : 3
+    /// collectionview边距
+    private var collectionViewMargin: CGFloat = isIPad ? SCRXFrom(24) : SCRXFrom(12)
+    /// item间距
+    private var itemMargin: CGFloat = isIPad ? SCRXFrom(30) : SCRXFrom(16)
+    
     let space: SpaceData
     
     

@@ -18,6 +18,15 @@ class SceneViewController: UIViewController {
     /// 是否需要更新数据源
     private var refreshData: Bool = false
     
+    /// 列数
+    private var columnNum: Int = isIPad ? 4 : 3
+    private var rowNum: Int = isIPad ? 6 : 3
+    /// collectionview边距
+    private var collectionViewInsets: UIEdgeInsets = isIPad ? UIEdgeInsets(top: SCRYFrom(44), left: SCRXFrom(40), bottom: SCRYFrom(44), right: SCRXFrom(40)) : UIEdgeInsets(top: SCRYFrom(36), left: SCRXFrom(24), bottom: SCRYFit(36), right: SCRXFrom(24))
+    
+    /// item间距
+    private var itemMargin: CGFloat = isIPad ? SCRXFrom(20) : SCRXFrom(14)
+    
     let space: SpaceData
     let scene: Scene
     
@@ -47,7 +56,6 @@ class SceneViewController: UIViewController {
         }
         setupUI()
         
-        updateUI()
 //        for i in 1...30 {
 //            devices.append("ID \(i)")
 //        }
@@ -62,6 +70,11 @@ class SceneViewController: UIViewController {
             refreshData = false
             updateUI()
         }
+    }
+    
+    override func viewDidLayoutSubviews() {
+        super.viewDidLayoutSubviews()
+        updateUI()
     }
     
     /// 添加通知监听
@@ -103,7 +116,7 @@ class SceneViewController: UIViewController {
     private func updateUI() {
         collectionView.reloadData()
         updateEmptyUI()
-        pageControl.numberOfPages = Int(ceil(Double(scene.info.groups.count) / 9.0))
+        pageControl.numberOfPages = Int(ceil(Double(scene.info.groups.count) / Double(columnNum * rowNum)))
     }
     
     @objc private func close() {
@@ -112,10 +125,15 @@ class SceneViewController: UIViewController {
     
     @objc private func moreClick() {
         
-        let margin: CGFloat = SCRXFrom(15.5)
-//        isIphoneX ? 18 : 15
-        let touchCenterX = view.width - SCRXFrom(margin) - 15
-        let touchCenterY = SCREEN_HEIGHT - view.height + view.safeAreaInsets.top - 15
+//        let margin: CGFloat = SCRXFrom(15.5)
+////        isIphoneX ? 18 : 15
+//        let touchCenterX = view.width - SCRXFrom(margin) - 15
+//        let touchCenterY = SCREEN_HEIGHT - view.height + view.safeAreaInsets.top - 15
+        
+        let touchCenterX = view.width - navigationRightItemMargin - 15
+        let touchCenterY = view.safeAreaInsets.top - 10
+//        SCREEN_HEIGHT - view.height + view.safeAreaInsets.top - 15
+        let windowPoint = view.convert(CGPoint(x: touchCenterX, y: touchCenterY), to: UIApplication.shared.keyWindow())
         
         MenuPopView.show(items: [
             .init(icon: UIImage(named: "menu_edit"), title: "edit".localizedString, tapItemBack: {[weak self] item in
@@ -129,7 +147,7 @@ class SceneViewController: UIViewController {
                 self?.settings()
             })
             
-        ], anchorPoint: CGPoint(x: touchCenterX, y: touchCenterY))
+        ], anchorPoint: windowPoint)
         
     }
     
@@ -283,10 +301,10 @@ class SceneViewController: UIViewController {
         }
         
         flowLayout = AlignCenterFlowLayout()
-        flowLayout.minimumLineSpacing = SCRXFrom(14)
-        flowLayout.minimumInteritemSpacing = SCRXFrom(14)
+        flowLayout.minimumLineSpacing = itemMargin
+        flowLayout.minimumInteritemSpacing = itemMargin
         flowLayout.scrollDirection = .horizontal
-        flowLayout.sectionInset = UIEdgeInsets(top: SCRYFrom(36), left: SCRXFrom(24), bottom: SCRYFit(36), right: SCRXFrom(24))
+        flowLayout.sectionInset = collectionViewInsets //UIEdgeInsets(top: SCRYFrom(36), left: SCRXFrom(24), bottom: SCRYFit(36), right: SCRXFrom(24))
         
         collectionView = UICollectionView(frame: .zero, collectionViewLayout: flowLayout)
 //        collectionView.contentInset = UIEdgeInsets(top: SCRYFrom(36), left: SCRXFrom(24), bottom: SCRYFit(36), right: SCRXFrom(24))
@@ -324,13 +342,13 @@ class SceneViewController: UIViewController {
         
         view.layoutIfNeeded()
         
-        var itemW = (collectionView.width - collectionView.contentInset.left - collectionView.contentInset.right - flowLayout.minimumInteritemSpacing * CGFloat(2) - flowLayout.sectionInset.left - flowLayout.sectionInset.right) / CGFloat(3)
+        var itemW = (collectionView.width - collectionView.contentInset.left - collectionView.contentInset.right - flowLayout.minimumInteritemSpacing * CGFloat(rowNum - 1) - flowLayout.sectionInset.left - flowLayout.sectionInset.right) / CGFloat(rowNum)
         itemW = CGFloat(floorf(Float(itemW) * 100) / 100.0)
         let itemSize = CGSize(width: itemW, height: itemW + SCRYFrom(16))
         flowLayout.itemSize = itemSize
         
         collectionView.snp.updateConstraints { make in
-            let height = itemSize.height * 3.0 + flowLayout.minimumLineSpacing * 2.0 + collectionView.contentInset.top + collectionView.contentInset.bottom + flowLayout.sectionInset.top + flowLayout.sectionInset.bottom
+            let height = itemSize.height * CGFloat(columnNum) + flowLayout.minimumLineSpacing * CGFloat(columnNum - 1) + collectionView.contentInset.top + collectionView.contentInset.bottom + flowLayout.sectionInset.top + flowLayout.sectionInset.bottom
 //            ceil(height)
 //            height = CGFloat(ceil(Float(height) * 100) / 100.0)
             make.height.equalTo(ceil(height))

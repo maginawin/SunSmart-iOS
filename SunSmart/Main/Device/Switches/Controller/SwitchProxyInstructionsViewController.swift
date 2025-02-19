@@ -70,6 +70,7 @@ class SwitchProxyInstructionsViewController: UIViewController {
         
         let messageParagraphStyle = NSMutableParagraphStyle()
         messageParagraphStyle.lineSpacing = SCRYFrom(4)
+        messageParagraphStyle.alignment = .center
         
         let correctView = SwitchProxyInstructionsGuideView()
         correctView.imageView.image = UIImage(named: "switch_proxy_instructions_1")
@@ -102,7 +103,7 @@ class SwitchProxyInstructionsViewController: UIViewController {
             make.left.right.equalTo(correctView)
             make.top.equalTo(errorTitleLabel.snp.bottom).offset(SCRYFrom(16))
             make.height.greaterThanOrEqualTo(SCRYFrom(300))
-            make.bottom.equalToSuperview()
+            make.bottom.equalTo(SCRYFrom(-8))
         }
         
     }
@@ -123,8 +124,12 @@ class SwitchProxyInstructionsGuideView: UIView {
         imageView = UIImageView()
         addSubview(imageView)
         imageView.snp.makeConstraints { make in
-            make.left.right.top.equalToSuperview()
-            make.height.equalTo(imageView.snp.width).multipliedBy(324 / 310.0)
+            if isIPad {
+                make.top.centerX.equalToSuperview()
+            }else {
+                make.left.right.top.equalToSuperview()
+                make.height.equalTo(imageView.snp.width).multipliedBy(324 / 310.0)
+            }
         }
         
         switchLabel = UILabel(text: "kinetic_switch".localizedString, textColor: Bar_Color, fontSize: 13, fontWeight: .light, fit: false)
@@ -143,7 +148,11 @@ class SwitchProxyInstructionsGuideView: UIView {
         
         messageLabel = UILabel(text: "", textColor: SubText_Color, fontSize: 13, fontWeight: .light, fit: false)
         messageLabel.numberOfLines = 0
-        messageLabel.textAlignment = .left
+        if isIPad {
+            messageLabel.textAlignment = .center
+        }else {
+            messageLabel.textAlignment = .left
+        }
         addSubview(messageLabel)
         messageLabel.snp.makeConstraints { make in
             make.top.equalTo(proxyLabel.snp.bottom).offset(SCRYFrom(16))

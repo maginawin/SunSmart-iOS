@@ -22,6 +22,15 @@ class GroupViewController: UIViewController {
     private var calibrateBtn: UIButton!
     private var sensorView: GroupSensorView?
     
+    /// 列数
+    private var columnNum: Int = isIPad ? 4 : 3
+    private var rowNum: Int = isIPad ? 6 : 3
+    /// collectionview边距
+    private var collectionViewInsets: UIEdgeInsets = isIPad ? UIEdgeInsets(top: SCRYFrom(44), left: SCRXFrom(40), bottom: SCRYFrom(44), right: SCRXFrom(40)) : UIEdgeInsets(top: SCRYFrom(36), left: SCRXFrom(24), bottom: SCRYFrom(36), right: SCRXFrom(24))
+    
+    /// item间距
+    private var itemMargin: CGFloat = isIPad ? SCRXFrom(20) : SCRXFrom(14)
+    
     private var automationTimer: Timer?
     private lazy var testBtn: UIButton = {
         let btn = UIButton(title: "Start", titleSize: 15, titleWeight: .light, titleColor: TextBlack_Color, fit: false, target: self, action: #selector(test))
@@ -146,13 +155,13 @@ class GroupViewController: UIViewController {
     override func viewDidLayoutSubviews() {
         super.viewDidLayoutSubviews()
         
-        var itemW = (collectionView.width - collectionView.contentInset.left - collectionView.contentInset.right - flowLayout.minimumInteritemSpacing * CGFloat(2) - flowLayout.sectionInset.left - flowLayout.sectionInset.right) / CGFloat(3)
+        var itemW = (collectionView.width - collectionView.contentInset.left - collectionView.contentInset.right - flowLayout.minimumInteritemSpacing * CGFloat(rowNum - 1) - flowLayout.sectionInset.left - flowLayout.sectionInset.right) / CGFloat(rowNum)
         itemW = CGFloat(floorf(Float(itemW) * 100) / 100.0)
         let itemSize = CGSize(width: itemW, height: itemW)
         flowLayout.itemSize = itemSize
         
         collectionView.snp.updateConstraints { make in
-            var height = itemSize.height * 3.0 + flowLayout.minimumLineSpacing * 2.0 + collectionView.contentInset.top + collectionView.contentInset.bottom + flowLayout.sectionInset.top + flowLayout.sectionInset.bottom
+            var height = itemSize.height * CGFloat(columnNum) + flowLayout.minimumLineSpacing * CGFloat(columnNum - 1) + collectionView.contentInset.top + collectionView.contentInset.bottom + flowLayout.sectionInset.top + flowLayout.sectionInset.bottom
             height = CGFloat(ceil(Float(height)))
 //            CGFloat(floorf(Float(height) * 100) / 100.0)
             make.height.equalTo(height)
@@ -229,7 +238,7 @@ class GroupViewController: UIViewController {
     }
     
     private func updateUI() {
-        pageControl.numberOfPages = Int(ceil(Double(group.nodes.count) / 9.0))
+        pageControl.numberOfPages = Int(ceil(Double(group.nodes.count) / Double(columnNum * rowNum)))
         //        pageControl.currentPage = 0
         updateEmptyUI()
         
@@ -357,11 +366,11 @@ class GroupViewController: UIViewController {
         }))
         
         
-        let margin: CGFloat = SCRXFrom(15.5)
-//        isIphoneX ? 18 : 15
-        let touchCenterX = view.width - SCRXFrom(margin) - 15
-        let touchCenterY = SCREEN_HEIGHT - view.height + view.safeAreaInsets.top - 15
-        MenuPopView.show(items: items, anchorPoint: CGPoint(x: touchCenterX, y: touchCenterY))
+        let touchCenterX = view.width - navigationRightItemMargin - 15
+        let touchCenterY = view.safeAreaInsets.top - 10
+//        SCREEN_HEIGHT - view.height + view.safeAreaInsets.top - 15
+        let windowPoint = view.convert(CGPoint(x: touchCenterX, y: touchCenterY), to: UIApplication.shared.keyWindow())
+        MenuPopView.show(items: items, anchorPoint: windowPoint)
         // (navigationController?.navigationBar.frame.maxY ?? kNavigationHeight) + StatusBarManager.statusBarFrame.height
                          
         
@@ -408,14 +417,14 @@ class GroupViewController: UIViewController {
     
     /// 按键按下回调
     @objc private func btnTouchDownAction(sender: UIButton) {
-        sender.setImage(UIImage(named: "auto_press"), for: .normal)
+        sender.setImage(UIImage(named: isIPad ? "auto_big" : "auto")?.withTintColor(RGB(156, 163, 175)), for: .normal)
     }
     
     /// 按键点击抬起回调
     @objc private func btnTouchCancelAction(sender: UIButton) {
 //        UIView.animate(withDuration: 0.25) {
         DispatchQueue.main.asyncAfter(wallDeadline: .now() + 0.2) {
-            sender.setImage(UIImage(named: "auto"), for: .normal)
+            sender.setImage(UIImage(named: isIPad ? "auto_big" : "auto"), for: .normal)
         }
 //        }
     }
@@ -633,13 +642,15 @@ class GroupViewController: UIViewController {
     private func setupUI() {
         
         flowLayout = AlignCenterFlowLayout()
-        flowLayout.minimumLineSpacing = SCRXFrom(14)
-        flowLayout.minimumInteritemSpacing = SCRXFrom(14)
+        flowLayout.minimumLineSpacing = itemMargin
+        flowLayout.minimumInteritemSpacing = itemMargin
         flowLayout.scrollDirection = .horizontal
-        flowLayout.sectionInset = UIEdgeInsets(top: 0, left: SCRXFrom(24), bottom: 0, right: SCRXFrom(24))
+        flowLayout.itemRowCount = rowNum
+        flowLayout.itmeColCount = columnNum
+        flowLayout.sectionInset = UIEdgeInsets(top: 0, left: collectionViewInsets.left, bottom: 0, right: collectionViewInsets.right)
         
         collectionView = UICollectionView(frame: .zero, collectionViewLayout: flowLayout)
-        collectionView.contentInset = UIEdgeInsets(top: SCRYFrom(36), left: 0, bottom: SCRYFrom(36), right: 0)
+        collectionView.contentInset = UIEdgeInsets(top: collectionViewInsets.bottom, left: 0, bottom: collectionViewInsets.bottom, right: 0)
         collectionView.backgroundColor = RGB(0, 0, 0, 0.05)
         collectionView.layer.cornerRadius = SCRYFrom(40)
         collectionView.dataSource = self
@@ -654,9 +665,13 @@ class GroupViewController: UIViewController {
         collectionView.snp.makeConstraints { make in
             make.left.equalTo(SCRXFrom(30))
             make.right.equalTo(SCRXFrom(-29))
-            make.top.equalTo(SCRYFit(40) + (navigationController?.navigationBar.frame.maxY ?? 0))
-//            make.height.equalTo(collectionView.snp.width).multipliedBy(340.0 / 316)
-            make.height.equalTo(SCRYFrom(340))
+            if isIPad {
+                make.top.equalTo(SCRYFit(60) + (navigationController?.navigationBar.frame.maxY ?? 0))
+                make.height.equalTo(SCRYFrom(498))
+            }else {
+                make.top.equalTo(SCRYFit(40) + (navigationController?.navigationBar.frame.maxY ?? 0))
+                make.height.equalTo(SCRYFrom(340))
+            }
         }
         
         pageControl = UIPageControl()
@@ -672,15 +687,29 @@ class GroupViewController: UIViewController {
 //            make.height.equalTo(4)
         }
         
-        onoffBtn = UIButton(normalImageName: "group_off", selectedImageName: "group_on", target: self, action: #selector(onoffBtnClick))
-        onoffBtn.setImage(UIImage(named: "group_control_disable"), for: .disabled)
+        var offImageName = "group_off"
+        var onImageName = "group_on"
+        var disableImageName = "group_control_disable"
+        if isIPad {
+            offImageName = "group_off_big"
+            onImageName = "group_on_big"
+            disableImageName = "group_control_disable_big"
+        }
+        onoffBtn = UIButton(normalImageName: offImageName, selectedImageName: onImageName, target: self, action: #selector(onoffBtnClick))
+        onoffBtn.setImage(UIImage(named: disableImageName), for: .disabled)
         view.addSubview(onoffBtn)
         onoffBtn.snp.makeConstraints { make in
-            make.top.equalTo(collectionView.snp.bottom).offset(SCRYFit(32))
-            make.centerX.equalToSuperview().offset(SCRXFrom(-40))
+            if isIPad {
+                make.width.height.equalTo(56)
+                make.right.equalTo(view.snp.centerX).offset(SCRXFrom(-40))
+                make.top.equalTo(collectionView.snp.bottom).offset(SCRYFit(64))
+            }else {
+                make.centerX.equalToSuperview().offset(SCRXFrom(-40))
+                make.top.equalTo(collectionView.snp.bottom).offset(SCRYFit(32))
+            }
         }
         
-        autoBtn = UIButton(normalImageName: "auto", target: self, action: #selector(autoBtnAction))
+        autoBtn = UIButton(normalImageName: isIPad ? "auto_big" : "auto", target: self, action: #selector(autoBtnAction))
         autoBtn.addTarget(self, action: #selector(btnTouchDownAction), for: .touchDown)
         autoBtn.addTarget(self, action: #selector(btnTouchCancelAction), for: .touchCancel)
 //        UIButton(title: "AUTO".localizedString, titleSize: 13, titleColor: Bar_Color, fit: false, target: self, action: #selector(autoBtnAction))
@@ -688,7 +717,12 @@ class GroupViewController: UIViewController {
         view.addSubview(autoBtn)
         autoBtn.snp.makeConstraints { make in
             make.centerY.equalTo(onoffBtn)
-            make.left.equalTo(onoffBtn.snp.right).offset(SCRXFrom(40))
+            if isIPad {
+                make.width.height.equalTo(56)
+                make.left.equalTo(onoffBtn.snp.right).offset(SCRXFrom(60))
+            }else {
+                make.left.equalTo(onoffBtn.snp.right).offset(SCRXFrom(40))
+            }
         }
         
         lightnessSlider = BuoySliderView(frame: .zero, functionType: .level())
@@ -696,7 +730,12 @@ class GroupViewController: UIViewController {
 //        lightnessSlider.isHidden = !group.supportLightness
         view.addSubview(lightnessSlider)
         lightnessSlider.snp.makeConstraints { make in
-            make.left.right.equalTo(collectionView)
+            if isIPad {
+                make.left.equalTo(SCRXFrom(107))
+                make.right.equalTo(SCRXFrom(-107))
+            }else {
+                make.left.right.equalTo(collectionView)
+            }
             make.top.equalTo(onoffBtn.snp.bottom).offset(SCRYFit(8))
             make.height.equalTo(SCRYFrom(76))
         }

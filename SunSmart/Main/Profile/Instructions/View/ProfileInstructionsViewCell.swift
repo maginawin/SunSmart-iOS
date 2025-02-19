@@ -48,9 +48,15 @@ class ProfileInstructionsViewCell: UITableViewCell {
         guideImageView = UIImageView()
         contentView.addSubview(guideImageView)
         guideImageView.snp.makeConstraints { make in
-            make.left.equalTo(SCRXFrom(16))
-            make.right.equalTo(SCRXFrom(-16))
-            make.top.equalTo(SCRYFrom(8))
+            if isIPad {
+                make.top.equalTo(SCRYFrom(12))
+                make.centerX.equalToSuperview()
+                make.width.equalTo(SCRXFrom(343))
+            }else {
+                make.left.equalTo(SCRXFrom(16))
+                make.right.equalTo(SCRXFrom(-16))
+                make.top.equalTo(SCRYFrom(8))
+            }
             make.height.equalTo(guideImageView.snp.width).multipliedBy(138 / 343.0)
         }
         
@@ -59,8 +65,8 @@ class ProfileInstructionsViewCell: UITableViewCell {
         descLabel.numberOfLines = 0
         contentView.addSubview(descLabel)
         descLabel.snp.makeConstraints { make in
-            make.left.equalTo(SCRXFrom(30))
-            make.right.equalTo(SCRXFrom(-30))
+            make.left.equalTo(guideImageView).offset(SCRXFrom(16))
+            make.right.equalTo(guideImageView).offset(SCRXFrom(-16))
             make.top.equalTo(guideImageView.snp.bottom).offset(SCRYFrom(8))
         }
         

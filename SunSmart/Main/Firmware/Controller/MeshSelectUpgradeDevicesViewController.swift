@@ -208,7 +208,7 @@ class MeshSelectUpgradeDevicesViewController: UIViewController {
         view.addSubview(bottomView)
         bottomView.snp.makeConstraints { make in
             make.left.right.bottom.equalToSuperview()
-            make.height.equalTo(kSafeAreaBottomHeight + SCRYFrom(60))
+            make.height.equalTo((isIPad ? 0 : kSafeAreaBottomHeight) + SCRYFrom(60))
         }
         
         let lineView = UIView()

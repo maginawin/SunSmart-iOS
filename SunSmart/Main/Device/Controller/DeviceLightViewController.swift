@@ -66,7 +66,6 @@ class DeviceLightViewController: UIViewController {
         
         
 //        node.lightCTLTemperatureRange = 2700...6500
-        
         // 初始化UI
         setupUI()
         // 根据设备类型显示UI
@@ -75,6 +74,7 @@ class DeviceLightViewController: UIViewController {
         bindSliderAction()
         // 获取设备数据
         getNodeState()
+        
         
         // 获取节点转发功能是否启用
 //        MeshAPI.getReplyState(address: node.primaryUnicastAddress, result: nil)
@@ -244,11 +244,12 @@ class DeviceLightViewController: UIViewController {
             self?.refresh()
         }))
         
-        let margin: CGFloat = SCRXFrom(15.5)
 //        isIphoneX ? 18 : 15
-        let touchCenterX = view.width - SCRXFrom(margin) - 15
-        let touchCenterY = SCREEN_HEIGHT - view.height + view.safeAreaInsets.top - 15
-        MenuPopView.show(items: items, anchorPoint: CGPoint(x: touchCenterX, y: touchCenterY), menuWidth: SCRXFrom(114))
+        let touchCenterX = view.width - navigationRightItemMargin - 15
+        let touchCenterY = view.safeAreaInsets.top - 10
+//        SCREEN_HEIGHT - view.height + view.safeAreaInsets.top - 15
+        let windowPoint = view.convert(CGPoint(x: touchCenterX, y: touchCenterY), to: UIApplication.shared.keyWindow())
+        MenuPopView.show(items: items, anchorPoint: windowPoint, menuWidth: SCRXFrom(114))
         
 //        MenuPopView.show(items: items, anchorPoint: CGPoint(x: view.width - SCRXFrom(17) - 15, y: y), menuWidth: MenuPopView.defalutMenuWidth + SCRXFrom(10))
     }
@@ -485,32 +486,43 @@ class DeviceLightViewController: UIViewController {
         lightGrayBgView.alpha = 0
         view.addSubview(lightGrayBgView)
         lightGrayBgView.snp.makeConstraints { make in
-            make.top.equalTo(SCRYFit(108))
+            
             make.centerX.equalToSuperview()
 //            make.width.equalTo(lightBgView.snp.height)
-            make.width.height.equalTo(SCRYFit(200))
+            if isIPad {
+                make.top.equalTo(SCRYFit(198))
+                make.width.height.equalTo(SCRYFit(238))
+            }else {
+                make.top.equalTo(SCRYFit(108))
+                make.width.height.equalTo(SCRYFit(200))
+            }
+            
         }
         
         lightBgView = UIImageView(image: UIImage(named: "device_light_bg"))
         view.addSubview(lightBgView)
         lightBgView.snp.makeConstraints { make in
-            make.top.equalTo(SCRYFit(108))
+//            make.top.equalTo(SCRYFit(108))
             make.centerX.equalToSuperview()
+            make.top.width.height.equalTo(lightGrayBgView)
 //            make.width.equalTo(lightBgView.snp.height)
-            make.width.height.equalTo(SCRYFit(200))
+//            make.width.height.equalTo(SCRYFit(200))
         }
         
         lightImageBtn = UIButton(normalImageName: "device_light_control_off", selectedImageName: "device_light_control_on", target: self, action: #selector(onoffAction))
         view.addSubview(lightImageBtn)
         lightImageBtn.snp.makeConstraints { make in
             make.center.equalTo(lightBgView)
+            if isIPad {
+                make.width.height.equalTo(67)
+            }
         }
         
         brightnessView = UIView()
         view.addSubview(brightnessView)
         brightnessView.snp.makeConstraints { make in
             make.centerX.equalToSuperview()
-            make.top.equalTo(lightBgView.snp.bottom).offset(SCRYFit(28))
+            make.top.equalTo(lightBgView.snp.bottom).offset(SCRYFit(isIPad ? 68 : 28))
             make.height.equalTo(SCRYFrom(20))
         }
         
@@ -580,9 +592,15 @@ class DeviceLightViewController: UIViewController {
         cctSlider.isHidden = true
         view.addSubview(cctSlider)
         cctSlider.snp.makeConstraints { make in
-            make.left.equalTo(SCRXFrom(30))
-            make.right.equalTo(SCRXFrom(-29))
-            make.bottom.equalTo(SCRYFit(-52) - kSafeAreaBottomHeight)
+            if isIPad {
+                make.left.equalTo(SCRXFrom(107))
+                make.right.equalTo(SCRXFrom(-107))
+                make.bottom.equalTo(SCRYFit(-102) - kSafeAreaBottomHeight)
+            }else {
+                make.left.equalTo(SCRXFrom(30))
+                make.right.equalTo(SCRXFrom(-29))
+                make.bottom.equalTo(SCRYFit(-52) - kSafeAreaBottomHeight)
+            }
             make.height.equalTo(76)
         }
         
@@ -595,12 +613,26 @@ class DeviceLightViewController: UIViewController {
             make.bottom.equalTo(cctSlider.snp.top).offset(SCRYFit(2))
         }
         
-        onoffBtn = UIButton(normalImageName: "device_control_off", selectedImageName: "device_control_on", target: self, action: #selector(onoffAction))
-        onoffBtn.setImage(UIImage(named: "group_control_disable"), for: .disabled)
+        var offImageName = "device_control_off"
+        var onImageName = "device_control_on"
+        var disableImageName = "group_control_disable"
+        if isIPad {
+            offImageName = "device_control_off_big"
+            onImageName = "device_control_on_big"
+            disableImageName = "group_control_disable_big"
+        }
+        
+        onoffBtn = UIButton(normalImageName: offImageName, selectedImageName: onImageName, target: self, action: #selector(onoffAction))
+        onoffBtn.setImage(UIImage(named: disableImageName), for: .disabled)
         view.addSubview(onoffBtn)
         onoffBtn.snp.makeConstraints { make in
-            make.bottom.equalTo(lightnessSlider.snp.top).offset(SCRYFit(-8))
             make.centerX.equalToSuperview()
+            if isIPad {
+                make.width.height.equalTo(56)
+                make.bottom.equalTo(lightnessSlider.snp.top).offset(SCRYFit(-28))
+            }else {
+                make.bottom.equalTo(lightnessSlider.snp.top).offset(SCRYFit(-8))
+            }
         }
         
         replySwitch = UISwitch()

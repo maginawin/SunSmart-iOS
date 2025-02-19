@@ -405,6 +405,16 @@ typedef NS_ENUM(NSUInteger, XWHUDManagerType) {
 + (void)showGifImagesHUDInView:(NSString *)gifFileName message:(NSString *)message timer:(NSTimeInterval)aTimer;
 
 /**
+ 在 View 展示自定义GIF图片 - 传入Gif 文件名
+ 
+ @param gifFileName Gif 文件名
+ @param message 提示语
+ @param aTimer 延时消失时间
+ @param margin 边距
+ */
++ (void)showGifImagesHUDInView:(NSString *)gifFileName message:(NSString *)message timer:(NSTimeInterval)aTimer margin:(CGFloat)margin;
+
+/**
  在 KeyWindow 展示自定义GIF图片 - 传入Gif 文件名 - 不自动移除
  
  @param gifFileName Gif 文件名

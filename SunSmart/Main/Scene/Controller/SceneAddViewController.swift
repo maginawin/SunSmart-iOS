@@ -460,7 +460,7 @@ class SceneAddViewController: UIViewController {
         templateCreateView.addSubview(bottomView)
         bottomView.snp.makeConstraints { make in
             make.left.right.bottom.equalToSuperview()
-            make.height.equalTo(SCRYFrom(56) + kSafeAreaBottomHeight)
+            make.height.equalTo(SCRYFrom(56) + (isIPad ? 0 : kSafeAreaBottomHeight))
         }
         
         let bottomLineView = UIView()
@@ -486,7 +486,8 @@ class SceneAddViewController: UIViewController {
         previewBtn.isEnabled = false
         bottomView.addSubview(previewBtn)
         previewBtn.snp.makeConstraints { make in
-            make.right.equalTo(lineView.snp.left).offset(SCRXFrom(-33))
+//            make.right.equalTo(lineView.snp.left).offset(SCRXFrom(-33))
+            make.centerX.equalToSuperview().multipliedBy(0.5)
             make.width.equalTo(SCRXFrom(120))
             make.centerY.height.equalTo(lineView)
         }
@@ -495,7 +496,8 @@ class SceneAddViewController: UIViewController {
         saveBtn.setTitleColor(RGB(156, 163, 175), for: .disabled)
         bottomView.addSubview(saveBtn)
         saveBtn.snp.makeConstraints { make in
-            make.left.equalTo(lineView.snp.right).offset(SCRXFrom(33))
+//            make.left.equalTo(lineView.snp.right).offset(SCRXFrom(33))
+            make.centerX.equalToSuperview().multipliedBy(1.5)
             make.width.height.centerY.equalTo(previewBtn)
         }
         
@@ -726,8 +728,10 @@ extension SceneAddViewController: UICollectionViewDataSource, UICollectionViewDe
         let itemW = collectionView.width
         if indexPath.section == 0 {
             let count = min(sceneDatas.count + 1, 16)
-            let row = max(ceil(Float(count) / 4.0), 1)
-            return CGSize(width: itemW, height: CGFloat(row) * SCRYFrom(68) + CGFloat(row - 1) * SCRXFrom(16) + SCRYFrom(28))
+            let rowCount = isIPad ? 7 : 4
+            let row = max(ceil(Float(count) / Float(rowCount)), 1)
+            let itemHeight = isIPad ? SCRYFrom(80) : SCRYFrom(68)
+            return CGSize(width: itemW, height: CGFloat(row) * itemHeight + CGFloat(row - 1) * SCRXFrom(16) + SCRYFrom(28))
         }else if indexPath.section == 1 && groups.isEmpty {
             return CGSize(width: collectionView.width, height: SCRYFrom(170))
         }else {

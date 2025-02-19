@@ -366,6 +366,11 @@ static XWHUDManagerType kXWHUDManagerType = XWHUDManagerTypeDark;
 + (void)showGifImagesHUDInView:(NSString *)gifFileName message:(NSString *)message timer:(NSTimeInterval)aTimer {
     [self p_showGifImagesHUD:gifFileName message:message isWindow:NO timer:aTimer backgroundColor:nil textColor:[UIColor colorWithRed:64 / 255.0 green:79 / 255.0 blue:102 / 255.0 alpha:1] textFont: [UIFont systemFontOfSize:15 weight:UIFontWeightLight] alpha:1.0];
 }
+
++ (void)showGifImagesHUDInView:(NSString *)gifFileName message:(NSString *)message timer:(NSTimeInterval)aTimer margin:(CGFloat)margin {
+    [self p_showGifImagesHUD:gifFileName message:message isWindow:NO timer:aTimer backgroundColor:nil textColor:[UIColor colorWithRed:64 / 255.0 green:79 / 255.0 blue:102 / 255.0 alpha:1] textFont: [UIFont systemFontOfSize:15 weight:UIFontWeightLight] alpha:1.0 margin:margin];
+}
+
 /// 展示自定义GIF图片 - 不自动移除
 + (void)showGifImagesHUD:(NSString *)gifFileName message:(NSString *)message {
     [self p_showGifImagesHUD:gifFileName message:message isWindow:YES timer:HUGE_VALF backgroundColor:nil textColor:nil textFont:nil alpha:1.0];
@@ -541,6 +546,10 @@ static XWHUDManagerType kXWHUDManagerType = XWHUDManagerTypeDark;
 
 /// GIF - Gif 文件名
 + (void)p_showGifImagesHUD:(NSString *)gifFileName message:(NSString *)message isWindow:(BOOL)isWindow timer:(NSTimeInterval)aTimer backgroundColor:(UIColor *)backgroundColor textColor:(UIColor *)textColor textFont:(UIFont *)textFont alpha:(CGFloat)alpha {
+    [self p_showGifImagesHUD:gifFileName message:message isWindow:isWindow timer:aTimer backgroundColor:backgroundColor textColor:textColor textFont:textFont alpha:alpha margin:36];
+}
+
++ (void)p_showGifImagesHUD:(NSString *)gifFileName message:(NSString *)message isWindow:(BOOL)isWindow timer:(NSTimeInterval)aTimer backgroundColor:(UIColor *)backgroundColor textColor:(UIColor *)textColor textFont:(UIFont *)textFont alpha:(CGFloat)alpha margin:(CGFloat)margin {
     WYProgressHUD *hud  =  [self p_createWYProgressHUDviewWithMessage:message isWindiw:isWindow animated:NO];
     hud.mode = WYProgressHUDModeCustomView;
     NSString *filePath = [[NSBundle mainBundle] pathForResource:gifFileName ofType:@"gif"];
@@ -565,7 +574,7 @@ static XWHUDManagerType kXWHUDManagerType = XWHUDManagerTypeDark;
     }else {
         hud.minSize = CGSizeMake(88, 88);
     }
-    hud.margin = 36;
+    hud.margin = margin;
     hud.padding = 26;
     hud.mode = WYProgressHUDModeCustomView;
     hud.detailsLabel.font = [UIFont systemFontOfSize:15];

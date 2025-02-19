@@ -98,8 +98,12 @@ class GroupDevicesFunctionView: UIView {
         syncBtn.setImagePosition(position: .left, spacing: SCRXFrom(4))
         addSubview(syncBtn)
         syncBtn.snp.makeConstraints { make in
+            if isIPad {
+                make.centerY.equalToSuperview()
+            }else {
+                make.top.equalTo(SCRYFrom(17))
+            }
             make.left.equalTo(SCRXFrom(20))
-            make.top.equalTo(SCRYFrom(17))
         }
         
         selectAllBtn = UIButton(title: "select_all".localizedString, titleSize: 12, titleColor: TextBlack_Color, normalImageName: "device_select_un", selectedImageName: "device_select", target: self, action: #selector(selectAllBtnClick))

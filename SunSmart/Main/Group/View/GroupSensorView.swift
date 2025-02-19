@@ -340,11 +340,11 @@ class GroupSensorView: UIView {
         contentView = UIView(frame: CGRect(x: 0, y: 0, width: SCREEN_WIDTH, height: SCRYFrom(352) + kSafeAreaBottomHeight))
         contentView.backgroundColor = .white
         addSubview(contentView)
-//        contentView.snp.makeConstraints { make in
-//            make.left.right.top.equalToSuperview()
-//            make.height.equalTo(SCRYFrom(352) + kSafeAreaBottomHeight)
-////            make.height.equalTo(SCRYFrom(40) + kSafeAreaBottomHeight)
-//        }
+        contentView.snp.makeConstraints { make in
+            make.left.right.top.equalToSuperview()
+            make.height.equalTo(SCRYFrom(352) + kSafeAreaBottomHeight)
+//            make.height.equalTo(SCRYFrom(40) + kSafeAreaBottomHeight)
+        }
         
         topView = UIView()
 //        topView.backgroundColor = .white

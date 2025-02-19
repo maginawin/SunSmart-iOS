@@ -44,6 +44,7 @@ class ShareAuthoritySpaceViewCell: UICollectionViewCell {
         }
         
         iconImageView = UIImageView(image: UIImage(named: "space_picture_1"))
+        iconImageView.contentMode = .center
         contentView.addSubview(iconImageView)
         iconImageView.snp.makeConstraints { make in
             make.centerX.equalToSuperview()

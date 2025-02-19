@@ -94,7 +94,12 @@ class TimedSelectTypeView: UIView {
         addSubview(scheduleBtn)
         scheduleBtn.snp.makeConstraints { make in
             make.centerY.equalToSuperview().offset(SCRYFrom(-1))
-            make.left.equalTo(SCRXFrom(6))
+            if isIPad {
+                make.centerX.equalTo(self.snp.centerX).multipliedBy(0.4)
+            }else {
+                make.left.equalTo(SCRXFrom(6))
+            }
+            
             make.width.equalTo(SCRXFrom(112))
             make.height.equalTo(SCRYFrom(72))
         }
@@ -122,7 +127,11 @@ class TimedSelectTypeView: UIView {
         timeBtn.tag = 102
         addSubview(timeBtn)
         timeBtn.snp.makeConstraints { make in
-            make.right.equalTo(SCRXFrom(-7))
+            if isIPad {
+                make.centerX.equalTo(self.snp.centerX).multipliedBy(1.6)
+            }else {
+                make.right.equalTo(SCRXFrom(-7))
+            }
             make.width.height.centerY.equalTo(scheduleBtn)
             make.height.equalTo(SCRYFrom(72))
         }

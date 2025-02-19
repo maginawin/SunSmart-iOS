@@ -27,6 +27,13 @@ class GroupsViewController: UIViewController {
     /// 是否需要更新数据源
     private var refreshData: Bool = false
     
+    /// 列数
+    private var columnNum: Int = isIPad ? 6 : 3
+    /// collectionview边距
+    private var collectionViewMargin: CGFloat = isIPad ? SCRXFrom(24) : SCRXFrom(12)
+    /// item间距
+    private var itemMargin: CGFloat = isIPad ? SCRXFrom(30) : SCRXFrom(16)
+    
     private var isEdit: Bool = false
     
     init(space: SpaceData) {
@@ -247,18 +254,37 @@ class GroupsViewController: UIViewController {
             
             collectionView.showEmptyDataView(imageName: "group_empty", title: "no_groups".localizedString, tipText: "no_groups_message".localizedString, margin: SCRXFrom(20))
             if let emptyView = collectionView.emptyView {
-                emptyView.contentView.snp.remakeConstraints({ make in
-                    make.top.equalTo(SCRYFrom(39))
-                    make.left.equalTo(SCRXFrom(20))
-                    make.right.equalTo(-SCRXFrom(20))
-                })
-                emptyView.imageView.snp.remakeConstraints { make in
-                    make.top.equalToSuperview()
-                    make.centerX.equalToSuperview()
-                    make.left.equalTo(SCRXFrom(-4))
-                    make.right.equalTo(SCRXFrom(4))
-                    make.height.equalTo(emptyView.snp.width).multipliedBy(288.0 / 343)
+
+                if isIPad {
+                    
+                    emptyView.contentView.snp.remakeConstraints({ make in
+                        make.centerX.equalToSuperview()
+                        make.centerY.equalToSuperview().offset(SCRYFit(-60))
+                        make.width.equalToSuperview().multipliedBy(0.7)
+                    })
+                    emptyView.imageView.snp.remakeConstraints { make in
+                        make.top.equalToSuperview()
+                        make.centerX.equalToSuperview()
+                        make.left.equalTo(SCRXFrom(-4))
+                        make.right.equalTo(SCRXFrom(4))
+                        make.height.equalTo(emptyView.imageView.snp.width).multipliedBy(288.0 / 343)
+                    }
+                    
+                }else {
+                    emptyView.contentView.snp.remakeConstraints({ make in
+                        make.top.equalTo(SCRYFrom(39))
+                        make.left.equalTo(SCRXFrom(20))
+                        make.right.equalTo(-SCRXFrom(20))
+                    })
+                    emptyView.imageView.snp.remakeConstraints { make in
+                        make.top.equalToSuperview()
+                        make.centerX.equalToSuperview()
+                        make.left.equalTo(SCRXFrom(-4))
+                        make.right.equalTo(SCRXFrom(4))
+                        make.height.equalTo(emptyView.snp.width).multipliedBy(288.0 / 343)
+                    }
                 }
+                    
                 emptyView.titleLabel.font = FONTS(SCRYFrom(15))
                 emptyView.titleLabel.snp.updateConstraints { make in
                     make.top.equalTo(emptyView.imageView.snp.bottom).offset(SCRYFrom(24))
@@ -314,12 +340,13 @@ class GroupsViewController: UIViewController {
         }
         
         flowLayout = AlignCenterFlowLayout()
-        flowLayout.minimumLineSpacing = SCRXFrom(16)
-        flowLayout.minimumInteritemSpacing = SCRXFrom(16)
+        flowLayout.minimumLineSpacing = itemMargin
+        flowLayout.minimumInteritemSpacing = itemMargin
+        flowLayout.itemRowCount = columnNum
 //        flowLayout.sectionInset = UIEdgeInsets(top: 0, left: SCRXFrom(12), bottom: 0, right: SCRXFrom(12))
         
         collectionView = UICollectionView(frame: .zero, collectionViewLayout: flowLayout)
-        collectionView.contentInset = UIEdgeInsets(top: 0, left: SCRXFrom(12), bottom: 0, right: SCRXFrom(12))
+        collectionView.contentInset = UIEdgeInsets(top: 0, left: collectionViewMargin, bottom: 0, right: collectionViewMargin)
         collectionView.register(GroupsViewCell.classForCoder(), forCellWithReuseIdentifier: "cell")
         collectionView.backgroundColor = .clear
         collectionView.dataSource = self
@@ -356,7 +383,7 @@ extension GroupsViewController: UICollectionViewDataSource, UICollectionViewDele
     
     public func collectionView(_ collectionView: UICollectionView, layout collectionViewLayout: UICollectionViewLayout, sizeForItemAt indexPath: IndexPath) -> CGSize {
         
-        var itemW = (collectionView.frame.size.width - flowLayout.minimumLineSpacing * 2.0 - collectionView.contentInset.left - collectionView.contentInset.right - flowLayout.sectionInset.left - flowLayout.sectionInset.right) / 3.0
+        var itemW = (collectionView.frame.size.width - flowLayout.minimumLineSpacing * CGFloat(columnNum - 1) - collectionView.contentInset.left - collectionView.contentInset.right - flowLayout.sectionInset.left - flowLayout.sectionInset.right) / CGFloat(columnNum)
         itemW = CGFloat(floorf(Float(itemW) * 100) / 100)
         return CGSizeMake(itemW, itemW)
     }

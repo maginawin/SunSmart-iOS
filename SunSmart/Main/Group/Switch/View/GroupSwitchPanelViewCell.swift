@@ -102,7 +102,7 @@ class GroupSwitchPanelViewCell: UITableViewCell {
         switchContentView.addSubview(onKeyBtn)
         onKeyBtn.snp.makeConstraints { make in
             make.top.equalTo(SCRYFrom(14))
-            make.left.equalTo(SCRXFrom(38))
+            make.left.equalTo(panelImageView).offset(SCRXFrom(-53))
         }
         
         let dimUpKeyBtn = initSwitchKeyBtn(name: "switch_key_dim_up".localizedString, shortPress: false)

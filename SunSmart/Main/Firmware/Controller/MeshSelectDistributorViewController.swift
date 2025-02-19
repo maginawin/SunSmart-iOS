@@ -274,7 +274,7 @@ class MeshSelectDistributorViewController: UIViewController {
         view.addSubview(bottomView)
         bottomView.snp.makeConstraints { make in
             make.left.right.bottom.equalToSuperview()
-            make.height.equalTo(kSafeAreaBottomHeight + SCRYFrom(56))
+            make.height.equalTo((isIPad ? 0 : kSafeAreaBottomHeight) + SCRYFrom(56))
         }
         
         bottomLineView = UIView()

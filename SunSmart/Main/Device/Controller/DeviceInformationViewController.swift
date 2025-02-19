@@ -176,6 +176,7 @@ extension DeviceInformationViewController: UITableViewDataSource, UITableViewDel
         let sectionType = sections[indexPath.section]
         let cell = tableView.dequeueReusableCell(withIdentifier: "cell", for: indexPath) as! CustomTableViewCell
         cell.selectionStyle = .none
+        cell.titleX = SCRXFrom(32)
         if sectionType == .deviceInfo {
             let model = deviceInfoModels[indexPath.row]
             cell.cellStyle = model.style
@@ -186,7 +187,7 @@ extension DeviceInformationViewController: UITableViewDataSource, UITableViewDel
             cell.contentLabel.font = UIFont.systemFont(ofSize: SCRYFrom(14), weight: .light)
             cell.contentLabel.textColor = model.contentColor
             cell.contentLabel.numberOfLines = 2
-            cell.titleX = SCRXFrom(32)
+            
             if model.style == .icon {
                 cell.iconImageView.image = model.icon
                 cell.iconX = tableView.width - 30 - SCRXFrom(8)
@@ -198,7 +199,7 @@ extension DeviceInformationViewController: UITableViewDataSource, UITableViewDel
             let scene = node.scenes[indexPath.row]
             cell.cellStyle = .none
             cell.titleLabel.text = scene.name
-            cell.titleLabel.textColor = TextBlack_Color.withAlphaComponent(0.5)
+            cell.titleLabel.textColor = TextBlack_Color
             cell.titleLabel.font = UIFont.systemFont(ofSize: SCRYFrom(14), weight: .light)
             //                Font_Medium_Size(SCRYFrom(14))
             if let sceneData = node.sceneExecuteDatas.first(where: { $0.sceneNumber == scene.number }) {

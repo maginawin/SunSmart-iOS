@@ -191,7 +191,8 @@ class ConfigurationFlowGuidanceView: UIView {
             cancelBtn = UIButton(title: "cancel".localizedString, titleSize: 15, titleWeight: .light, titleColor: Title_Color, target: self, action: #selector(cancelBtnAction))
             bottomView!.addSubview(cancelBtn!)
             cancelBtn!.snp.makeConstraints { make in
-                make.right.equalTo(hLineView!.snp.left).offset(SCRXFrom(-20))
+                make.centerX.equalToSuperview().multipliedBy(0.5)
+//                make.right.equalTo(hLineView!.snp.left).offset(SCRXFrom(-20))
                 make.width.equalTo(SCRXFrom(108))
                 make.height.equalTo(SCRYFrom(40))
                 make.centerY.equalToSuperview()
@@ -200,7 +201,8 @@ class ConfigurationFlowGuidanceView: UIView {
             continueBtn = UIButton(title: "alert_item_continue".localizedString, titleSize: 15, titleWeight: .light, titleColor: Bar_Color, target: self, action: #selector(continueBtnAction))
             bottomView!.addSubview(continueBtn!)
             continueBtn!.snp.makeConstraints { make in
-                make.left.equalTo(hLineView!.snp.right).offset(SCRXFrom(20))
+//                make.left.equalTo(hLineView!.snp.right).offset(SCRXFrom(20))
+                make.centerX.equalToSuperview().multipliedBy(1.5)
                 make.centerY.width.height.equalTo(cancelBtn!)
             }
         }else {
@@ -298,7 +300,7 @@ class ConfigurationFlowGuidanceTitleView: UITableViewHeaderFooterView {
         titleLabel = UILabel(text: nil, textColor: RGB(39, 37, 54), fontSize: 14)
         addSubview(titleLabel)
         titleLabel.snp.makeConstraints { make in
-            make.left.equalTo(SCRXFrom(16))
+            make.left.equalTo(SCRXFrom(isIPad ? 30 : 16))
             make.centerY.equalToSuperview()
             make.right.equalTo(SCRXFrom(-16))
         }
@@ -337,7 +339,7 @@ class ConfigurationFlowGuidanceViewCell: UITableViewCell {
         stepLabel.textAlignment = .center
         contentView.addSubview(stepLabel)
         stepLabel.snp.makeConstraints { make in
-            make.left.equalTo(SCRXFrom(16))
+            make.left.equalTo(SCRXFrom(isIPad ? 30 : 16))
             make.top.equalTo(1)
             make.width.height.equalTo(20)
         }

@@ -36,6 +36,15 @@ class SceneSettingsViewController: UIViewController {
     /// 选择的组
 //    private var selectGroups: [Group] = []
     
+    /// 列数
+    private var columnNum: Int = isIPad ? 4 : 3
+    private var rowNum: Int = isIPad ? 5 : 3
+    /// collectionview边距
+    private var collectionViewInsets: UIEdgeInsets = isIPad ? UIEdgeInsets(top: 0, left: SCRXFrom(30), bottom: 0, right: SCRXFrom(30)) : UIEdgeInsets(top: 0, left: SCRXFrom(15), bottom: 0, right: SCRXFrom(15))
+    
+    /// item间距
+    private var itemMargin: CGFloat = isIPad ? SCRXFrom(20) : SCRXFrom(13)
+    
     init(space: SpaceData, scene: Scene, mode: Mode = .settings) {
         self.space = space
         self.scene = scene
@@ -54,7 +63,7 @@ class SceneSettingsViewController: UIViewController {
         
         navigationController?.setNavigationBarBackgroundColor(color: .clear)
         setupUI()
-        updateEmptyUI()
+        
         
         MeshNetworkManager.instance.groups.forEach({
             if scene.info.groups.contains($0) {
@@ -100,6 +109,11 @@ class SceneSettingsViewController: UIViewController {
             syncBtn.isHidden = scene.needSyncGroups.isEmpty
             collectionView.reloadData()
         }
+    }
+    
+    override func viewDidLayoutSubviews() {
+        super.viewDidLayoutSubviews()
+        updateEmptyUI()
     }
     
     deinit {
@@ -455,7 +469,7 @@ class SceneSettingsViewController: UIViewController {
         view.addSubview(bottomView)
         bottomView.snp.makeConstraints { make in
             make.left.right.bottom.equalToSuperview()
-            make.height.equalTo(kSafeAreaBottomHeight + SCRYFrom(44))
+            make.height.equalTo((isIPad ? 0 : kSafeAreaBottomHeight) + SCRYFrom(44))
         }
         
         syncBtn = UIButton(title: "sync".localizedString, titleSize: 14, titleWeight: .light, titleColor: RGB(30, 35, 41), normalImageName: "scene_sync", target: self, action: #selector(syncBtnAction))
@@ -478,12 +492,12 @@ class SceneSettingsViewController: UIViewController {
         }
         
         flowLayout = AlignCenterFlowLayout()
-        flowLayout.minimumLineSpacing = SCRXFrom(13)
-        flowLayout.minimumInteritemSpacing = SCRXFrom(13)
+        flowLayout.minimumLineSpacing = itemMargin
+        flowLayout.minimumInteritemSpacing = itemMargin
 //        flowLayout.sectionInset = UIEdgeInsets(top: 0, left: SCRXFrom(12), bottom: 0, right: SCRXFrom(12))
         
         collectionView = UICollectionView(frame: .zero, collectionViewLayout: flowLayout)
-        collectionView.contentInset = UIEdgeInsets(top: 0, left: SCRXFrom(15), bottom: 0, right: SCRXFrom(15))
+        collectionView.contentInset = collectionViewInsets
         collectionView.register(SceneMembersViewCell.classForCoder(), forCellWithReuseIdentifier: "cell")
         collectionView.backgroundColor = .clear
         collectionView.dataSource = self
@@ -545,7 +559,7 @@ extension SceneSettingsViewController: UICollectionViewDataSource, UICollectionV
     
     public func collectionView(_ collectionView: UICollectionView, layout collectionViewLayout: UICollectionViewLayout, sizeForItemAt indexPath: IndexPath) -> CGSize {
         
-        var itemW = (collectionView.frame.size.width - flowLayout.minimumLineSpacing * 2.0 - collectionView.contentInset.left - collectionView.contentInset.right - flowLayout.sectionInset.left - flowLayout.sectionInset.right) / 3.0
+        var itemW = (collectionView.frame.size.width - flowLayout.minimumLineSpacing * CGFloat(rowNum - 1) - collectionView.contentInset.left - collectionView.contentInset.right - flowLayout.sectionInset.left - flowLayout.sectionInset.right) / CGFloat(rowNum)
         itemW = CGFloat(floorf(Float(itemW) * 100) / 100)
         return CGSizeMake(itemW, itemW + SCRYFrom(16))
     }

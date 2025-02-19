@@ -85,10 +85,16 @@ class SpaceViewController: WMPageController {
     private var meshPermissionValidation: Bool = false
     /// 禁止滑动的页面索引
     private var disablePageIndex: Int?
+    /// 菜单bar高度
+    private var meunHeight: CGFloat = 48
     
     lazy var mainMenuView: SpaceMenuView = {
         let menuView = SpaceMenuView()
         menuView.itemDatas = SpaceMenuView.defalutItems
+        if isIPad {
+            menuView.margin = SCRXFrom(35)
+            menuView.itemMargin = SCRXFrom(13)
+        }
         menuView.isUserInteractionEnabled = false
         return menuView
     }()
@@ -102,10 +108,18 @@ class SpaceViewController: WMPageController {
         self.menuViewStyle = .line
         self.progressHeight = 2
         self.progressColor = Bar_Color
-        self.progressWidth = SCRXFrom(64)
-        self.menuItemWidth = SCRXFrom(64)
-        self.menuViewContentMargin = SCRXFrom(10)
-        self.itemMargin = SCRXFrom(6)
+        
+        if isIPad {
+            self.progressWidth = SCRXFrom(142.34)
+            self.menuItemWidth = SCRXFrom(142.34)
+            self.menuViewContentMargin = SCRXFrom(22)
+            self.itemMargin = SCRXFrom(13)
+        }else {
+            self.progressWidth = SCRXFrom(64)
+            self.menuItemWidth = SCRXFrom(64)
+            self.menuViewContentMargin = SCRXFrom(10)
+            self.itemMargin = SCRXFrom(6)
+        }
         
         space.disableEditorPermission = false
         
@@ -131,7 +145,7 @@ class SpaceViewController: WMPageController {
         mainMenuView.snp.makeConstraints { make in
             make.left.right.equalToSuperview()
             make.top.equalTo(view.safeAreaLayoutGuide)
-            make.height.equalTo(SCRYFrom(46))
+            make.height.equalTo(meunHeight - 2)
         }
         
         navigationItem.rightBarButtonItem = UIBarButtonItem(image: UIImage(named: "more_vertical")?.withRenderingMode(.alwaysOriginal), style: .done, target: self, action: #selector(moreClick))
@@ -744,9 +758,8 @@ class SpaceViewController: WMPageController {
             return
         }
         
-        let margin: CGFloat = SCRXFrom(15.5)
 //        isIphoneX ? 18 : 15
-        let touchCenterX = view.width - SCRXFrom(margin) - 15
+        let touchCenterX = view.width - navigationRightItemMargin - 15
         
         var items: [MenuPopView.MenuItem] = []
         
@@ -783,7 +796,9 @@ class SpaceViewController: WMPageController {
         for id in 1...24 {
             imageNames.append("space_picture_\(id)")
         }
-        let vc = InfoEditViewController(name: space.name, imageNames: imageNames, selectImageIndex: max(space.imageId - 1, 0), columnNum: 2)
+        let columnNum = isIPad ? 4 : 2
+        let vc = InfoEditViewController(name: space.name, imageNames: imageNames, selectImageIndex: max(space.imageId - 1, 0), columnNum: columnNum)
+        vc.itemHeight = isIPad ? SCRYFrom(104) : nil
         vc.nameEditChangedCallback = {[weak self] name in
             guard let self = self else { return false }
             return SpaceData.isTautonym(spaceName: name, siteId: self.space.siteId) && name != self.space.name
@@ -1029,12 +1044,12 @@ extension SpaceViewController {
     }
     
     override func pageController(_ pageController: WMPageController, preferredFrameForContentView contentView: WMScrollView) -> CGRect {
-        let y = view.safeAreaInsets.top + SCRYFrom(48)
+        let y = view.safeAreaInsets.top + meunHeight
         return CGRect(x: 0, y: y, width: view.width, height: view.height - y)
     }
     
     override func pageController(_ pageController: WMPageController, preferredFrameFor menuView: WMMenuView) -> CGRect {
-        return CGRect(x: 0, y: view.safeAreaInsets.top, width: view.width, height: SCRYFrom(48))
+        return CGRect(x: 0, y: view.safeAreaInsets.top, width: view.width, height: meunHeight)
     }
     
     override func menuView(_ menu: WMMenuView!, titleAt index: Int) -> String! {

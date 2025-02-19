@@ -71,7 +71,8 @@ class SpaceMoreViewController: UIViewController {
         
         var itemW = view.width - collectionView.contentInset.left - collectionView.contentInset.right
         itemW = CGFloat(floorf(Float(itemW) * 100) / 100.0)
-        flowLayout.itemSize = CGSize(width: itemW, height: SCRYFrom(64))
+        
+        flowLayout.itemSize = CGSize(width: itemW, height: SCRYFrom(isIPad ? 84 : 64))
     }
 
 }
@@ -106,50 +107,6 @@ extension SpaceMoreViewController: UICollectionViewDataSource, UICollectionViewD
             }
             let vc = MeshFirmwareListViewController()
             present(NavigationViewController(rootViewController: vc), animated: true)
-            return
-            
-//            MeshFirmwareUpgradeGuideView(title: "how_to_select_a_distributor".localizedString, message: "mesh_distributor_prompt_message".localizedString, steps: [.location, .signal, .identify, .distributor], contentHeight: SCRYFit(738)).show()
-//            MeshFirmwareUpgradeGuideView(title: "how_to_mesh_upgrade".localizedString, message: "mesh_upgrade_prompt_message".localizedString, steps: [.selectDistributor, .selectDevices, .waiting], contentHeight: SCRYFit(660)).show()
-            
-            let stateView = FirmwareDistributeUpdateStateView(frame: UIScreen.main.bounds)
-//            stateView.start(title: "upload_firmware".localizedString, message: "upload_firmware_message".localizedString, deviceName: "ID001", distributeVersion: "1.2.0")
-            stateView.start(title: "notification".localizedString, message: "mesh_upgrade_inview_message".localizedString, distributeVersion: nil, isUpload: false)
-            stateView.show()
-            stateView.delegate = self
-            uploadStateView = stateView
-            
-            DispatchQueue.global().async {
-                DispatchQueue.main.async {
-                    stateView.update(state: .connect)
-                }
-                Thread.sleep(forTimeInterval: 1)
-                DispatchQueue.main.async {
-                    stateView.update(state: .start)
-                }
-                Thread.sleep(forTimeInterval: 1)
-                DispatchQueue.main.async {
-                    stateView.update(state: .inProgress(progress: 20, estimatedTime: "1 minutes"))
-                }
-                Thread.sleep(forTimeInterval: 0.5)
-                DispatchQueue.main.async {
-                    stateView.update(state: .inProgress(progress: 50, estimatedTime: "1 minutes"))
-                }
-                Thread.sleep(forTimeInterval: 1)
-                DispatchQueue.main.async {
-                    stateView.update(state: .inProgress(progress: 100, estimatedTime: "0 minutes 10 sec"))
-                }
-                Thread.sleep(forTimeInterval: 1)
-                if arc4random_uniform(2) == 1 {
-                    DispatchQueue.main.async {
-                        stateView.update(state: .completed)
-                    }
-                }else {
-                    DispatchQueue.main.async {
-                        stateView.update(state: .failure(message: "error"))
-                    }
-                }
-            }
-            
         }
         
     }

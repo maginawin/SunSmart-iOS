@@ -34,7 +34,10 @@ class InfoEditViewController: UIViewController {
 //    var radius: CGFloat = SCRXFrom(8)
     /// item是否圆型展示
     var itemRound: Bool = false
-    
+    /// item高度，不传则与宽度一致
+    var itemHeight: CGFloat?
+    /// collectionview item间距
+    var itmeMargin: CGFloat = isIPad ? SCRXFrom(24) : SCRXFrom(16)
     
     /// 名称编辑回调（当前输入名称->是否重名）
     var nameEditChangedCallback: ((String)->(Bool))?
@@ -201,7 +204,7 @@ class InfoEditViewController: UIViewController {
         view.addSubview(footerView)
         footerView.snp.makeConstraints { make in
             make.left.right.bottom.equalToSuperview()
-            make.height.equalTo(SCRYFrom(56) + kSafeAreaBottomHeight)
+            make.height.equalTo(SCRYFrom(56) + (isIPad ? 0 : kSafeAreaBottomHeight))
         }
         
         lineView = UIView()
@@ -235,8 +238,8 @@ class InfoEditViewController: UIViewController {
         }
         
         flowLayout = UICollectionViewFlowLayout()
-        flowLayout.minimumLineSpacing = SCRXFrom(16)
-        flowLayout.minimumInteritemSpacing = SCRXFrom(16)
+        flowLayout.minimumLineSpacing = itmeMargin
+        flowLayout.minimumInteritemSpacing = itmeMargin
         
         collectionView = UICollectionView(frame: .zero, collectionViewLayout: flowLayout)
         collectionView.backgroundColor = .clear
@@ -291,7 +294,7 @@ extension InfoEditViewController: UICollectionViewDataSource, UICollectionViewDe
     func collectionView(_ collectionView: UICollectionView, layout collectionViewLayout: UICollectionViewLayout, sizeForItemAt indexPath: IndexPath) -> CGSize {
         var itemW = (collectionView.width - flowLayout.minimumInteritemSpacing * CGFloat(columnNum - 1)) / CGFloat(columnNum)
         itemW = CGFloat(floorf(Float(itemW) * 100) / 100.0)
-        return CGSize(width: itemW, height: itemW)
+        return CGSize(width: itemW, height: itemHeight ?? itemW)
     }
     
     func scrollViewWillBeginDragging(_ scrollView: UIScrollView) {

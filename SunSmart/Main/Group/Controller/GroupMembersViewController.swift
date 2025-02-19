@@ -21,6 +21,14 @@ class GroupMembersViewController: UIViewController {
     /// 配置过程是否去创建场景
     private var configurationCreateScene: Bool = false
     
+    /// 每行个数
+    private var rowNum: Int = isIPad ? 5 : 3
+    /// collectionview边距
+    private var collectionViewInsets: UIEdgeInsets = isIPad ? UIEdgeInsets(top: SCRYFrom(44), left: SCRXFrom(40), bottom: SCRYFrom(44), right: SCRXFrom(40)) : UIEdgeInsets(top: SCRYFrom(16), left: SCRXFrom(16), bottom: SCRYFrom(16), right: SCRXFrom(16))
+    
+    /// item间距
+    private var itemMargin: CGFloat = isIPad ? SCRXFrom(30) : SCRXFrom(16)
+    
     let space: SpaceData
     var group: Group
     
@@ -235,17 +243,18 @@ class GroupMembersViewController: UIViewController {
         view.addSubview(functionView)
         functionView.snp.makeConstraints { make in
             make.left.right.bottom.equalToSuperview()
-            make.height.equalTo(SCRYFrom(56) + kSafeAreaBottomHeight)
+            make.height.equalTo(SCRYFrom(56) + (isIPad ? 0 : kSafeAreaBottomHeight))
         }
         
         flowLayout = AlignCenterFlowLayout()
-        flowLayout.minimumLineSpacing = SCRXFrom(16)
-        flowLayout.minimumInteritemSpacing = SCRXFrom(16)
+        flowLayout.minimumLineSpacing = itemMargin
+        flowLayout.minimumInteritemSpacing = itemMargin
+        flowLayout.itemRowCount = rowNum
 //        flowLayout.sectionInset = UIEdgeInsets(top: SCRYFrom(16), left: SCRXFrom(16), bottom: SCRYFrom(16), right: SCRXFrom(16))
         
         collectionView = UICollectionView(frame: .zero, collectionViewLayout: flowLayout)
         //        collectionView.contentInset = UIEdgeInsets(top: SCRYFrom(36), left: SCRXFrom(24), bottom: SCRYFit(36), right: SCRXFrom(24))
-        collectionView.contentInset = UIEdgeInsets(top: SCRYFrom(16), left: SCRXFrom(16), bottom: SCRYFrom(16), right: SCRXFrom(16))
+        collectionView.contentInset = collectionViewInsets
         collectionView.backgroundColor = .clear
         collectionView.dataSource = self
         collectionView.delegate = self
@@ -495,7 +504,7 @@ extension GroupMembersViewController: UICollectionViewDataSource, UICollectionVi
     
     public func collectionView(_ collectionView: UICollectionView, layout collectionViewLayout: UICollectionViewLayout, sizeForItemAt indexPath: IndexPath) -> CGSize {
         
-        var itemW = (collectionView.frame.size.width - flowLayout.minimumLineSpacing * 2.0 - collectionView.contentInset.left - collectionView.contentInset.right - flowLayout.sectionInset.left - flowLayout.sectionInset.right) / 3.0
+        var itemW = (collectionView.frame.size.width - flowLayout.minimumLineSpacing * CGFloat(rowNum - 1) - collectionView.contentInset.left - collectionView.contentInset.right - flowLayout.sectionInset.left - flowLayout.sectionInset.right) / CGFloat(rowNum)
         itemW = CGFloat(floorf(Float(itemW) * 100) / 100)
         return CGSizeMake(itemW, itemW)
     }

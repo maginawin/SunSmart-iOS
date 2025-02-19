@@ -99,10 +99,10 @@ class AlignCenterFlowLayout: UICollectionViewFlowLayout {
         
         let page = indexPath.item / (self.itmeColCount * self.itemRowCount) // 第几页(左右翻页)： 每行的cell个数 * 几行
         
-        let itemX = indexPath.item % self.itmeColCount + page * self.itmeColCount //
-        let itemY = indexPath.item / self.itmeColCount - page * self.itemRowCount //
+        let itemX = indexPath.item % self.itemRowCount + page * self.itemRowCount //
+        let itemY = indexPath.item / self.itemRowCount - page * self.itmeColCount //
         
-        let item = itemX * self.itemRowCount + itemY
+        let item = itemX * self.itmeColCount + itemY
         let newIndexPath = IndexPath(item: item, section: indexPath.section)
         let attributes = super.layoutAttributesForItem(at: indexPath)
         if let newAttributes = super.layoutAttributesForItem(at: newIndexPath), let collectionView = self.collectionView {

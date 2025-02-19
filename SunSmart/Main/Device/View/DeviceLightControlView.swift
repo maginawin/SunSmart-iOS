@@ -88,7 +88,7 @@ class DeviceLightControlView: UIView {
         contentView.snp.makeConstraints { make in
             make.left.equalTo(SCRXFrom(8))
             make.right.equalTo(SCRXFrom(-8))
-            make.bottom.equalTo(isIphoneX ? -kSafeAreaBottomHeight : SCRXFrom(-8))
+            make.bottom.equalTo(kSafeAreaBottomHeight != 0 ? -kSafeAreaBottomHeight : SCRXFrom(-8))
         }
         
         levelSliderView = BuoySliderView(frame: .zero, functionType: .level())

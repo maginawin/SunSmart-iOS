@@ -45,7 +45,7 @@ class GroupCheckViewController: UIViewController {
         view.addSubview(functionView)
         functionView.snp.makeConstraints { make in
             make.left.right.bottom.equalToSuperview()
-            make.height.equalTo(SCRYFrom(56) + kSafeAreaBottomHeight)
+            make.height.equalTo(SCRYFrom(56) + (isIPad ? 0 : kSafeAreaBottomHeight))
         }
         
         flowLayout = AlignCenterFlowLayout()

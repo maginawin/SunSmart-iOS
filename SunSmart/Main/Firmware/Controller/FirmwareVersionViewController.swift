@@ -359,7 +359,7 @@ class FirmwareVersionViewController: UIViewController {
         view.addSubview(bottomView)
         bottomView.snp.makeConstraints { make in
             make.left.right.bottom.equalToSuperview()
-            make.height.equalTo(kSafeAreaBottomHeight + SCRYFit(56))
+            make.height.equalTo((isIPad ? 0 : kSafeAreaBottomHeight) + SCRYFit(56))
         }
         
         downloadBtn = UIButton(title: "Download".localizedString, titleSize: 16, titleWeight: .light, titleColor: Bar_Color, target: self, action: #selector(downloadBtnAction))

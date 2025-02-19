@@ -119,7 +119,7 @@ class SRAlertView: UIView {
                      showProgress: Bool = false,
                      progress: Int = 0,
                      tapBackgroundHide: Bool = true,
-                     margin: CGFloat = SCRXFrom(36),
+                     margin: CGFloat = isIPad ? SCRXFrom(150) : SCRXFrom(36),
                      contentPadding: CGFloat = SCRXFrom(27),
                      contentMinHeight: CGFloat = SCRYFrom(130),
                      actionDirection: ActionDirection = .horizontal,
@@ -1349,7 +1349,7 @@ extension SRAlertView {
         /// 是否展示清空
         let showClear: Bool
         
-        init(textColor: UIColor = TextBlack_Color, textFont: UIFont = UIFont.systemFont(ofSize: SCRYFrom(15), weight: .light), placeholder: String? = nil, keyboardType: UIKeyboardType = .default, margin: CGFloat = SCRXFrom(31), height: CGFloat = SCRYFrom(40), minInputLength: Int = 1, maxInputLength: Int = 32, borderColor: UIColor = Bar_Color, borderWidth: CGFloat = 0.5, textAlignment: NSTextAlignment = .left, secret: Bool = false, showClear: Bool = true) {
+        init(textColor: UIColor = TextBlack_Color, textFont: UIFont = UIFont.systemFont(ofSize: SCRYFrom(15), weight: .light), placeholder: String? = nil, keyboardType: UIKeyboardType = .default, margin: CGFloat = isIPad ? SCRXFrom(100) : SCRXFrom(31), height: CGFloat = SCRYFrom(40), minInputLength: Int = 1, maxInputLength: Int = 32, borderColor: UIColor = Bar_Color, borderWidth: CGFloat = 0.5, textAlignment: NSTextAlignment = .left, secret: Bool = false, showClear: Bool = true) {
             self.textColor = textColor
             self.textFont = textFont
             self.placeholder = placeholder

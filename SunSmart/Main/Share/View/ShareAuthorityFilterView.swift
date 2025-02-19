@@ -117,7 +117,7 @@ class ShareAuthorityFilterView: UIView {
         contentView.snp.makeConstraints { make in
             make.left.right.equalToSuperview()
             make.top.equalTo(self.snp.bottom)
-            make.height.equalTo(kSafeAreaBottomHeight + SCRYFrom(480))
+            make.height.equalTo((isIPad ? 0 : kSafeAreaBottomHeight) + SCRYFrom(480))
         }
         
         titleLabel = UILabel(text: "filter".localizedString, textColor: Title_Color, fontSize: 15)
