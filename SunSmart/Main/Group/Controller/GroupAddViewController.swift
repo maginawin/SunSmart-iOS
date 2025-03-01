@@ -162,7 +162,7 @@ class GroupAddViewController: UIViewController {
 //                if let network = MeshNetworkManager.instance.meshNetwork, network.localProvisioner == nil || MeshNetworkManager.instance.meshNetwork?.nextAvailableGroupAddress(for: network.localProvisioner!) == nil {
 //
 //                }else {
-                    XWHUDManager.showTipHUD("failed".localizedString + "!")
+                XWHUDManager.showErrorTipHUD("group_address_insufficient_message".localizedString, timer: 2)
 //                }
             }
         }

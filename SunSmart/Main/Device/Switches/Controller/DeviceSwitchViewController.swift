@@ -144,14 +144,26 @@ class DeviceSwitchViewController: UIViewController {
             NotificationCenter.default.post(name: .init(switchsRefreshNotificationName), object: nil)
         }
         
+        
         // 未创建动能开关通讯组
         if (setSwitchData.proxyNodeAddress != nil || setSwitchData.bindGroups.contains(where: { $0.nodes.count > 0 })) && setSwitchData.linkGroup == nil {
+            // 判断组地址是否足够分配
+            guard MeshAPI.getAvailableGroupAddresses(meshUUID: self.space.meshUUID, subnetworkId: self.space.meshNetworkId).count >= setSwitchData.panelType.usedAddressesNumber else {
+                XWHUDManager.showErrorTipHUD("group_address_insufficient_message".localizedString, timer: 2)
+                return
+            }
+            
             guard let linkGroup = try? MeshAPI.createGroup(name: self.setSwitchData.name + "-Group", address: setSwitchData.linkGroupAddress, isVirtual: true) else {
                 XWHUDManager.showErrorTipHUD("failed".localizedString + " !")
                 return
             }
+            let subLinkGroup = try? MeshAPI.createGroup(name: self.setSwitchData.name + "-Group_1", isVirtual: true)
+            
+            
             self.setSwitchData.linkGroupAddress = linkGroup.address.address
+            self.setSwitchData.subLinkGroupAddress = subLinkGroup?.address.address
             self.switchData?.linkGroupAddress = linkGroup.address.address
+            self.switchData?.subLinkGroupAddress = subLinkGroup?.address.address
 //            self.setSwitchData?.save()
         }
         
@@ -555,6 +567,8 @@ extension DeviceSwitchViewController: UITableViewDataSource, UITableViewDelegate
         }
         
         switch option {
+        case .panel:
+            XWHUDManager.showTipHUD("under_development".localizedString, isLineFeed: true)
         case .group:
             let vc = SwitchSelectGroupsViewController(groups: MeshNetworkManager.instance.groups, selectGroups: setSwitchData.bindGroups)
             vc.editable = self.editable

@@ -256,7 +256,7 @@ class SyncDevicesViewController: UIViewController {
             configurationSection.groups.append(contentsOf: syncScheduleGroupModels)
             
         case .enOceanSwitch(let switchData, let deleteSwitch):
-            guard let linkGroup = switchData.linkGroup else {
+            guard switchData.linkGroup != nil else {
                 break
             }
             let data = switchData.getNeedSyncDatas(deleteSwitch: deleteSwitch)
@@ -373,7 +373,7 @@ class SyncDevicesViewController: UIViewController {
         if exitGroup {
             nodeDeleteScenes = node.scenes.filter({ scene in group.info.sceneExecuteDatas.contains(where: { $0.sceneNumber == scene.number }) })
             nodeDeleteSchedules = group.info.bindSchedules.filter({ schedule in node.schedulerActions.contains(where: { $0.key == schedule.id }) })
-            nodeDeleteSwitchs = group.info.allSwitchs.filter({ switchData in switchData.linkGroup != nil && (node.enOceanMacAddress == switchData.enOceanMacAddress || node.getEnOceanUnSubscriptionMessageHandles(group: switchData.linkGroup!).count > 0) })
+            nodeDeleteSwitchs = group.info.allSwitchs.filter({ switchData in switchData.linkGroup != nil && (node.enOceanMacAddress == switchData.enOceanMacAddress || node.getEnOceanUnSubscriptionMessageHandles(switchKeys: switchData.switchKeys).count > 0) })
             
             nodeSyncScenes.removeAll()
             nodeSyncSchedules.removeAll()
@@ -766,8 +766,8 @@ class SyncDevicesViewController: UIViewController {
                     self.tableView.reloadData()
                 }
                 
-                MeshProxyMessageCommand.shared.addMessage(messageHandles: messageHandles, progressBack: nil, successfulBack: nil, failedBack: nil) {[weak self] resultMessageHandles in
-                    
+                MeshProxyMessageCommand.shared.addMessage(messageHandles: messageHandles, ackMessageTimeout: 10, progressBack: nil, successfulBack: nil, failedBack: nil) {[weak self] resultMessageHandles in
+
                     resultMessageHandles.forEach { handle in
                         if let address = handle.address ?? handle.model?.parentElement?.unicastAddress, let node = MeshNetworkManager.instance.meshNetwork?.node(withAddress: address) {
                             node.updateData(message: handle.message, isSuccess: handle.isSuccessful)

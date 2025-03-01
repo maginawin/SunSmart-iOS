@@ -61,7 +61,7 @@ class DeviceRestoreViewController: UIViewController {
                     }
                     // 添加成功后闪烁
                     if let healthModel = newNode.healthModel {
-                        appendMessages.append(MeshMessageHandle(message: AttentionSet(attentionTimer: 5), model: healthModel))
+                        appendMessages.append(MeshMessageHandle(message: AttentionSet(attentionTimer: 6), model: healthModel))
                     }
                     
                     

@@ -30,11 +30,79 @@ protocol DeviceLightControlViewDelegate: AnyObject {
 
 class DeviceLightControlView: UIView {
 
+    /// 支持功能项
+    enum SupportOptions {
+        /// 亮度
+        case level
+        /// 色温
+        case cct
+    }
+    
     private var shadeView: UIView!
     private var contentView: UIView!
     private var levelSliderView: BuoySliderView!
     private var cctSliderView: BuoySliderView!
     
+    private var lastSupportOptions: [SupportOptions] = [.level, .cct]
+    
+    /// 支持的功能项
+    var supportOptions: [SupportOptions] = [.level, .cct] {
+        didSet {
+            guard supportOptions != lastSupportOptions else {
+                return
+            }
+            lastSupportOptions = supportOptions
+            
+            if supportOptions.contains(.level) {
+                levelSliderView.isHidden = false
+            }else {
+                levelSliderView.isHidden = true
+            }
+            if supportOptions.contains(.cct) {
+                cctSliderView.isHidden = false
+            }else {
+                cctSliderView.isHidden = true
+            }
+            
+            if supportOptions.count == 1 {
+                var slider: BuoySliderView!
+                if supportOptions.contains(.level) {
+                    slider = levelSliderView
+                }else {
+                    slider = cctSliderView
+                }
+                slider.snp.remakeConstraints { make in
+                    make.left.equalTo(SCRXFrom(22))
+                    make.right.equalTo(SCRXFrom(-21))
+                    make.top.equalTo(SCRYFrom(8))
+                    make.height.equalTo(SCRYFrom(83))
+                    make.bottom.equalTo(SCRYFrom(-58))
+                }
+            }else {
+                levelSliderView.snp.remakeConstraints { make in
+                    make.left.equalTo(SCRXFrom(22))
+                    make.right.equalTo(SCRXFrom(-21))
+                    make.top.equalTo(SCRYFrom(8))
+                    make.height.equalTo(SCRYFrom(83))
+                }
+                
+                cctSliderView.snp.remakeConstraints { make in
+                    make.bottom.equalTo(SCRYFrom(-40))
+                    make.left.right.height.equalTo(levelSliderView)
+                    make.top.equalTo(levelSliderView.snp.bottom)
+                }
+            }
+            
+        }
+    }
+    
+    var level: Int {
+        return levelSliderView.value
+    }
+    
+    var cct: Int {
+        return cctSliderView.value
+    }
     
     weak var delegate: DeviceLightControlViewDelegate?
     
@@ -89,6 +157,7 @@ class DeviceLightControlView: UIView {
             make.left.equalTo(SCRXFrom(8))
             make.right.equalTo(SCRXFrom(-8))
             make.bottom.equalTo(kSafeAreaBottomHeight != 0 ? -kSafeAreaBottomHeight : SCRXFrom(-8))
+            make.height.greaterThanOrEqualTo(SCRYFrom(156))
         }
         
         levelSliderView = BuoySliderView(frame: .zero, functionType: .level())

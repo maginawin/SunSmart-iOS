@@ -214,7 +214,11 @@ class DeviceLightsViewController: UIViewController {
             }
 
             collectionView.showEmptyDataView(title: "no_devices".localizedString, tipText: "no_devices_message".localizedString, position: .center, bottomMargin: SCRYFit(30))
-            collectionView.emptyView?.titleLabel.font = Font_Medium_Size(SCRYFrom(14))
+            if let emptyView = collectionView.emptyView {
+                emptyView.titleLabel.font = FONTS(SCRYFrom(15))
+                emptyView.tipLabel.font = UIFont.systemFont(ofSize: 15, weight: .light)
+            }
+           
 //            headerView.isHidden = true
             footerView.sortBtn.isEnabled = false
             footerView.editBtn.isEnabled = false
@@ -304,7 +308,7 @@ class DeviceLightsViewController: UIViewController {
         // 全选
 //        showSelectDatas.insert(DeviceGroupsSelectData(name: "ALL".localizedString, addresss: canEditDeviceAddresss, isSelected: canEditDeviceAddresss.count == selectedAddresss.count && canEditDeviceAddresss.count > 0), at: 0)
         self.groupsView.datas = showSelectDatas
-        self.groupsView.selectAllBtn.isSelected = canEditDeviceAddresss.count == selectedAddresss.count
+        self.groupsView.selectAllBtn.isSelected = canEditDeviceAddresss.count > 0 && canEditDeviceAddresss.count == selectedAddresss.count
 //        if canEditDevices.count > 0 { // self.selectedAddresss.count >= canEditDevices.count
 //
 ////            self.allSelectBtn.isSelected = true
@@ -455,6 +459,9 @@ class DeviceLightsViewController: UIViewController {
         }
 //        self.wm_pageController?.scrollEnable = false
         NotificationCenter.default.post(name: .init(spacePageDisableScrollNotificaitonName), object: 0)
+        // 是否有设备支持cct控制
+        let supportCct = devices.contains(where: { $0.temperatureModel != nil })
+        lightControlView.supportOptions = supportCct ? [.level, .cct] : [.level]
         lightControlView.show()
     }
     
@@ -925,7 +932,7 @@ extension DeviceLightsViewController: DeviceLightControlViewDelegate {
         
 //        let lightness = UInt16(round(Double(level) / 100.0) * Double(UInt16.max))
         let ligheness = Node.getLightness(lightness100: level)
-        MeshAPI.setAllLightnessState(lightness: ligheness, ack: ended)
+        MeshAPI.setAllLightnessState(lightness: ligheness)
         
         self.devices.forEach({
             // 记录关灯前亮度
@@ -945,7 +952,9 @@ extension DeviceLightsViewController: DeviceLightControlViewDelegate {
     func lightControl(_ view: DeviceLightControlView, cctValueChanged cct: Int, ended: Bool) {
         print("cct: \(cct)")
         
-        MeshAPI.setAllColorTemperatureState(temperature: UInt16(cct), ack: ended)
+        MeshAPI.sendMessage(message: LightCTLTemperatureSetUnacknowledged(temperature: UInt16(cct), deltaUV: 0), address: .subElementBroadcastGroupAddress)
+//        MeshAPI.setAllNodesCTLState(lightness: ligheness, temperature: UInt16(cct))
+//        MeshAPI.setAllColorTemperatureState(temperature: UInt16(cct), ack: ended)
         devices.forEach({
             $0.temperature = UInt16(cct)
 //            reloadCollectionItem(node: $0)
@@ -1068,6 +1077,21 @@ extension DeviceLightsViewController: MeshLibManagerDelegate, MeshLibManagerMess
                 if view.window != nil {
                     collectionView.reloadData()
                     updateAllOnOffItemUI()
+                }
+            }else if message is GenericMoveSetUnacknowledged {
+                if let moveLevelMessage = message as? GenericMoveSetUnacknowledged, moveLevelMessage.deltaLevel == 0 { // 动能开关长按结束
+                    
+                    /// 动能开关组设备list
+                    var groupNodes: [Node] = []
+                    if let group = manager.meshNetwork?.group(withAddress: destination) {
+                        if group.isVirtual { // 虚拟组（动能开关）
+                            groupNodes = manager.realNodes.filter({ $0.levelModels.contains(where: { $0.isSubscribed(to: group) }) })
+                        }else { // 真实组
+                            groupNodes = group.nodes.filter({ $0.lightnessModel != nil })
+                        }
+                    }
+                    // 获取动能开关更新的设备列表状态
+                    MeshNodeHeartbeatManager.shared.refresh(nodes: groupNodes)
                 }
             }
         }

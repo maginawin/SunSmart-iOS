@@ -206,6 +206,7 @@ class ScheduleDevicesView: UIView {
         flowLayout = AlignCenterFlowLayout()
         flowLayout.minimumLineSpacing = itemMargin
         flowLayout.minimumInteritemSpacing = itemMargin
+        flowLayout.itemRowCount = rowNum
         flowLayout.offsetY = SCRYFrom(-53)
         
         collectionView = UICollectionView(frame: .zero, collectionViewLayout: flowLayout)

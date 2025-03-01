@@ -257,8 +257,8 @@ extension Group {
         
         // 添加动能开关订阅
         self.info.switchs.forEach { switchData in
-            if let group = switchData.linkGroup {
-                let subscriptionMessageHandles = node.getEnOceanSubscriptionMessageHandles(group: group, switchKeys: MeshEnOceanProxyServer.SwitchKey.defaultKeys(sceneA: switchData.sceneA, sceneB: switchData.sceneB))
+            if switchData.linkGroup != nil {
+                let subscriptionMessageHandles = node.getEnOceanSubscriptionMessageHandles(switchKeys: switchData.switchKeys)
                 messages.append(contentsOf: subscriptionMessageHandles)
             }
         }
@@ -311,15 +311,15 @@ extension Group {
         
         // 解除动能开关绑定
         self.info.allSwitchs.forEach { switchData in
-            if let group = switchData.linkGroup {
-                let unbindSwitchMessages = node.getEnOceanUnSubscriptionMessageHandles(group: group)
+            if switchData.linkGroup != nil {
+                let unbindSwitchMessages = node.getEnOceanUnSubscriptionMessageHandles(switchKeys: switchData.switchKeys)
                 messages.append(contentsOf: unbindSwitchMessages)
             }
         }
         // 解除动能开关代理
         if node.enOceanMacAddress != nil, let switchData = self.info.allSwitchs.first(where: { $0.proxyNodeAddress == node.primaryUnicastAddress && $0.enOceanMacAddress == node.enOceanMacAddress }) {
-            if let group = switchData.linkGroup {
-                let disableSwitchMessages = node.getEnOceanSwitchDisableMessageHandles(group: group)
+            if switchData.linkGroup != nil {
+                let disableSwitchMessages = node.getEnOceanSwitchDisableMessageHandles(switchKeys: switchData.switchKeys)
                 messages.append(contentsOf: disableSwitchMessages)
             }
         }
@@ -392,9 +392,9 @@ extension Group {
             // 设置日程
             if let schedulerSetupModel = node.schedulerSetupModel {
                 
-                let months: [Month] = Schedule.allMonths // schedule.enabled ? Schedule.allMonths : []
-                
-                messages.append(MeshMessageHandle(message: SchedulerActionSet(index: UInt8(schedule.id), entry: SchedulerRegistryEntry(year: .any(), month: .any(of: months), day: .any(), hour: .specific(hour: schedule.hour), minute: .specific(minute: schedule.minute), second: .specific(second: 0), dayOfWeek: .any(of: schedule.weekDays), action: schedule.enabled ? schedule.action : .noAction, transitionTime: .init(steps: UInt8(schedule.fadeTime), stepResolution: .seconds), sceneNumber: schedule.scene?.number ?? 0)), model: schedulerSetupModel))
+//                let months: [Month] = Schedule.allMonths // schedule.enabled ? Schedule.allMonths : []
+                // SchedulerRegistryEntry(year: .any(), month: .any(of: months), day: .any(), hour: .specific(hour: schedule.hour), minute: .specific(minute: schedule.minute), second: .specific(second: 0), dayOfWeek: .any(of: schedule.weekDays), action: schedule.enabled ? schedule.action : .noAction, transitionTime: .init(steps: UInt8(schedule.fadeTime), stepResolution: .seconds), sceneNumber: schedule.scene?.number ?? 0)
+                messages.append(MeshMessageHandle(message: SchedulerActionSet(index: UInt8(schedule.id), entry: schedule.schedulerEntry), model: schedulerSetupModel))
             }
         }
         return messages

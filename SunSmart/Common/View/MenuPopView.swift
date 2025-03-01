@@ -68,6 +68,7 @@ class MenuPopView: UIView {
        
         var contentPoint = CGPoint(x: self.startPoint.x + 18, y: self.startPoint.y)
         
+//        var anchorPoint = CGPointMake(0.88, 0)
         var anchorPoint = CGPointMake(1, 0)
         if (direction == .down && startPoint.y + contentView.height > self.height) || direction == .up { // 超出显示范围
             // 弹出方向调整

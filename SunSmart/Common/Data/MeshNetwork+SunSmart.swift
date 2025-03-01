@@ -818,7 +818,15 @@ extension MeshNetworkManager {
         guard let meshUUID = self.meshNetwork?.uuid.uuidString else { return }
         switchData.delete(meshUUID: meshUUID, networkId: self.currentNetworkKey.networkId.hex)
         self.switchs.removeAll(where: { $0.id == switchData.id })
+        
+        var switchGroups: [Group] = []
         if let group = switchData.linkGroup {
+            switchGroups.append(group)
+        }
+        if let group = switchData.subLinkGroup {
+            switchGroups.append(group)
+        }
+        switchGroups.forEach { group in
             var isUnsubscribe: Bool = false
             // 解绑本地节点订阅组信息，用于接收按键发出指令本地显示状态
             for element in MeshNetworkManager.instance.localNode?.elements ?? [] {
@@ -1433,9 +1441,17 @@ class Schedule: Codable, Copyable {
     }
     /// 设备的日程数据
     var schedulerEntry: SchedulerRegistryEntry {
-//        日程删除 => (action==noAction && dayOfWeek=0)
-//        日程关闭=>  (action==noAction && dayOfWeek>0)
-        let entry = SchedulerRegistryEntry(year: .any(), month: .any(of: Schedule.allMonths), day: .any(), hour: .specific(hour: hour), minute: .specific(minute: minute), second: .specific(second: 0), dayOfWeek: .any(of: weekDays), action: enabled ? action : .noAction, transitionTime: .init(steps: UInt8(fadeTime), stepResolution: .seconds), sceneNumber: scene?.number ?? 0)
+//        日程删除 => (action==noAction && month==0 && dayOfWeek==0)
+//        日程关闭 => (year == 0)
+        
+        var year: SchedulerYear = .any()
+        // 未启用
+        if !enabled {
+            year = .specific(year: 0)
+        }
+        
+        let entry = SchedulerRegistryEntry(year: year, month: .any(of: Schedule.allMonths), day: .any(), hour: .specific(hour: hour), minute: .specific(minute: minute), second: .specific(second: 0), dayOfWeek: .any(of: weekDays), action: action, transitionTime: .init(steps: UInt8(fadeTime), stepResolution: .seconds), sceneNumber: scene?.number ?? 0)
+        
         return entry
     }
     
@@ -1680,7 +1696,7 @@ extension DeviceSwitchData {
                 
                 bindGroups.forEach { group in
                     allNodes.append(contentsOf: group.nodes)
-                    let nodes = group.nodes.filter({ $0.getEnOceanUnSubscriptionMessageHandles(group: linkGroup).count > 0 })
+                    let nodes = group.nodes.filter({ $0.getEnOceanUnSubscriptionMessageHandles(switchKeys: self.switchKeys).count > 0 })
                     if nodes.count > 0 {
                         deleteGroupData.updateValue(nodes, forKey: group)
                     }
@@ -1695,7 +1711,7 @@ extension DeviceSwitchData {
                     allNodes.append(contentsOf: group.nodes)
                     if !unbindGroups.contains(group) {
                         let nodes = group.nodes.filter({
-                            $0.getEnOceanSubscriptionMessageHandles(group: linkGroup).count > 0
+                            $0.getEnOceanSubscriptionMessageHandles(switchKeys: self.switchKeys).count > 0
                         })
                         if nodes.count > 0 {
                             syncGroupData.updateValue(nodes, forKey: group)
@@ -1704,7 +1720,7 @@ extension DeviceSwitchData {
                 }
                 
                 unbindGroups.forEach({ group in
-                    let nodes = group.nodes.filter({ $0.getEnOceanUnSubscriptionMessageHandles(group: linkGroup).count > 0 })
+                    let nodes = group.nodes.filter({ $0.getEnOceanUnSubscriptionMessageHandles(switchKeys: self.switchKeys).count > 0 })
                     if nodes.count > 0 {
                         deleteGroupData.updateValue(nodes, forKey: group)
                     }
@@ -1712,7 +1728,7 @@ extension DeviceSwitchData {
                 
                 // 判断是否需要同步动能开关代理
                 if let mac = self.enOceanMacAddress, let key = self.enOceanSecurityKey, let proxyNode = self.proxyNode {
-                    if proxyNode.getEnOceanSwitchBindMessageHandles(enOceanMacAddress: mac, securityKey: key, group: linkGroup, enabled: self.enabled, switchKeys: MeshEnOceanProxyServer.SwitchKey.defaultKeys(sceneA: self.sceneA, sceneB: self.sceneB)).count > 0 {
+                    if proxyNode.getEnOceanSwitchBindMessageHandles(enOceanMacAddress: mac, securityKey: key, enabled: self.enabled, switchKeys: self.switchKeys).count > 0 {
                         syncProxy = proxyNode
                     }
                 }
@@ -1877,16 +1893,16 @@ extension Node {
         var deleteSwitchProxy: DeviceSwitchData?
         if self.sunricherVendorModel != nil {
             group.info.allSwitchs.forEach({ switchData in
-                if let linkGroup = switchData.linkGroup {
+                if switchData.linkGroup != nil {
                     // 判断代理设备是否未设置完成
                     if switchData.proxyNodeAddress == self.primaryUnicastAddress, let enOceanMacAddress = switchData.enOceanMacAddress, let enOceanSecurityKey = switchData.enOceanSecurityKey {
-                        if self.getEnOceanSwitchBindMessageHandles(enOceanMacAddress: enOceanMacAddress, securityKey: enOceanSecurityKey, group: linkGroup, enabled: switchData.enabled, switchKeys: MeshEnOceanProxyServer.SwitchKey.defaultKeys(sceneA: switchData.sceneA, sceneB: switchData.sceneB)).count > 0 {
+                        if self.getEnOceanSwitchBindMessageHandles(enOceanMacAddress: enOceanMacAddress, securityKey: enOceanSecurityKey, enabled: switchData.enabled, switchKeys: switchData.switchKeys).count > 0 {
                             setSwitchProxy = switchData
                         }
                     }
-                    if switchData.unbindGroupAddresses.contains(group.address.address), self.getEnOceanUnSubscriptionMessageHandles(group: linkGroup).count > 0 {
+                    if switchData.unbindGroupAddresses.contains(group.address.address), self.getEnOceanUnSubscriptionMessageHandles(switchKeys: switchData.switchKeys).count > 0 {
                         deleteSwitchs.append(switchData)
-                    }else if switchData.bindGroupAddresses.contains(group.address.address), self.getEnOceanSubscriptionMessageHandles(group: linkGroup).count > 0 {
+                    }else if switchData.bindGroupAddresses.contains(group.address.address), self.getEnOceanSubscriptionMessageHandles(switchKeys: switchData.switchKeys).count > 0 {
                         nodeSyncSwitchs.append(switchData)
                     }
                 }
@@ -2111,8 +2127,13 @@ extension Node {
                     syncProfile.append(.powerOnState(state: .restore))
                 }
             case .definedLightLevel(let level):
-                if powerUpState != .default || Node.getLightness(lightness100: Int(level)) != defalutLightness {
-                    syncProfile.append(.powerOnState(state: .definedLightLevel(level)))
+                let setCct = (ctlModel != nil && groupProfile.powerUpCct != self.defaultCct)
+                if powerUpState != .default || Node.getLightness(lightness100: Int(level)) != defalutLightness || setCct {
+                    if setCct {
+                        syncProfile.append(.powerOnState(state: .definedLightLevel(level), cct: groupProfile.powerUpCct))
+                    }else {
+                        syncProfile.append(.powerOnState(state: .definedLightLevel(level)))
+                    }
                 }
             }
             
@@ -2126,6 +2147,10 @@ extension Node {
             let defaultRange: ClosedRange<UInt16> = 0...65535
             if lightnessSetupModel != nil, lightnessRange != defaultRange {
                 syncProfile.append(.highLowEndTrim(range: 0...100))
+            }
+            
+            if powerUpState != .restore {
+                syncProfile.append(.powerOnState(state: .restore))
             }
             
             if lightLCSetupModel != nil {
@@ -2199,11 +2224,11 @@ extension Node {
             messageHandles.append(contentsOf: group.getNodeAddMessageHandles(node: self))
             
             // 动能开关
-            if let enOceanMacAddress = oldNode.enOceanMacAddress, let switchData = group.info.switchs.first(where: { $0.enOceanMacAddress == enOceanMacAddress && $0.proxyNodeAddress == oldNode.primaryUnicastAddress }), let linkGroup = switchData.linkGroup, let enOceanSecurityKey = switchData.enOceanSecurityKey {
+            if let enOceanMacAddress = oldNode.enOceanMacAddress, let switchData = group.info.switchs.first(where: { $0.enOceanMacAddress == enOceanMacAddress && $0.proxyNodeAddress == oldNode.primaryUnicastAddress }), switchData.linkGroup != nil, let enOceanSecurityKey = switchData.enOceanSecurityKey {
                 
                 switchData.proxyNodeAddress = self.primaryUnicastAddress
                 switchData.save()
-                let handles = self.getEnOceanSwitchBindMessageHandles(enOceanMacAddress: enOceanMacAddress, securityKey: enOceanSecurityKey, group: linkGroup, enabled: switchData.enabled, switchKeys: MeshEnOceanProxyServer.SwitchKey.defaultKeys(sceneA: switchData.sceneA, sceneB: switchData.sceneB))
+                let handles = self.getEnOceanSwitchBindMessageHandles(enOceanMacAddress: enOceanMacAddress, securityKey: enOceanSecurityKey, enabled: switchData.enabled, switchKeys: switchData.switchKeys)
                 messageHandles.append(contentsOf: handles)
             }
             self.daylightCalibrationValue = nil
@@ -2345,10 +2370,10 @@ extension Node {
                     guard isSuccess else {
                         return
                     }
-                    if let switchData = MeshNetworkManager.instance.switchs.first(where: { $0.linkGroupAddress == group.address.address }), let nodeGroup = self.group {
+                    if let switchData = MeshNetworkManager.instance.switchs.first(where: { $0.linkGroupAddress == group.address.address || $0.subLinkGroupAddress == group.address.address }), let nodeGroup = self.group {
                         if isSuccess { // 删除成功
                             // 判断是否之前动能开关删除组失败，再次删除后成功，接着判断组里面是否设备都清空动能开关数据
-                            if switchData.unbindGroupAddresses.contains(nodeGroup.address.address), !nodeGroup.nodes.contains(where: { $0.getEnOceanUnSubscriptionMessageHandles(group: group).count > 0 }) {
+                            if switchData.unbindGroupAddresses.contains(nodeGroup.address.address), !nodeGroup.nodes.contains(where: { $0.getEnOceanUnSubscriptionMessageHandles(switchKeys: switchData.switchKeys).count > 0 }) {
                                 switchData.unbindGroupAddresses.removeAll(where: { $0 == nodeGroup.address.address })
                                 switchData.save()
                             }

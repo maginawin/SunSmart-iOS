@@ -176,7 +176,6 @@ extension DeviceInformationViewController: UITableViewDataSource, UITableViewDel
         let sectionType = sections[indexPath.section]
         let cell = tableView.dequeueReusableCell(withIdentifier: "cell", for: indexPath) as! CustomTableViewCell
         cell.selectionStyle = .none
-        cell.titleX = SCRXFrom(32)
         if sectionType == .deviceInfo {
             let model = deviceInfoModels[indexPath.row]
             cell.cellStyle = model.style
@@ -219,6 +218,7 @@ extension DeviceInformationViewController: UITableViewDataSource, UITableViewDel
             cell.contentLabel.font = UIFont.systemFont(ofSize: SCRYFrom(14), weight: .light)
 //            cell.lineView.isHidden = false
         }
+        cell.titleX = SCRXFrom(32)
         cell.lineView.backgroundColor = Line_Color
         //            cell.lineView.isHidden = tableView.numberOfRows(inSection: indexPath.section) - 1 == indexPath.row
         return cell

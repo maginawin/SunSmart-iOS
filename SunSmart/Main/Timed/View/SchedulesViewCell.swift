@@ -42,7 +42,11 @@ class SchedulesViewCell: UICollectionViewCell {
             nameLabel.snp.remakeConstraints { make in
                 make.left.equalTo(SCRXFrom(16))
                 if schedule.enabled {
-                    make.top.equalTo(SCRYFrom(16))
+                    if isIPad {
+                        make.top.equalTo(SCRYFrom(24))
+                    }else {
+                        make.top.equalTo(SCRYFrom(16))
+                    }
                 }else {
                     make.centerY.equalToSuperview()
                 }
@@ -103,7 +107,11 @@ class SchedulesViewCell: UICollectionViewCell {
         contentView.addSubview(nameLabel)
         nameLabel.snp.makeConstraints { make in
             make.left.equalTo(SCRXFrom(16))
-            make.top.equalTo(SCRYFrom(16))
+            if isIPad {
+                make.top.equalTo(SCRYFrom(24))
+            }else {
+                make.top.equalTo(SCRYFrom(16))
+            }
             make.width.lessThanOrEqualTo(SCRXFrom(228))
         }
         

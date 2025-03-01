@@ -237,6 +237,10 @@
 		C8ACF13C2AA1B2BA00E24B4A /* String+Extension.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8ACF1302AA1B2BA00E24B4A /* String+Extension.swift */; };
 		C8ACF13D2AA1B2BA00E24B4A /* CALayer+Animations.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8ACF1312AA1B2BA00E24B4A /* CALayer+Animations.swift */; };
 		C8ACF13E2AA1B2BA00E24B4A /* UIBarButtonItem+Extension.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8ACF1322AA1B2BA00E24B4A /* UIBarButtonItem+Extension.swift */; };
+		C8AFDBFB2D6FF6D600839A38 /* DaliMasterMultipleControlsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8AFDBFA2D6FF6D600839A38 /* DaliMasterMultipleControlsView.swift */; };
+		C8AFDBFD2D700A1800839A38 /* DaliDevicesViewCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8AFDBFC2D700A1800839A38 /* DaliDevicesViewCell.swift */; };
+		C8AFDBFF2D70326E00839A38 /* DaliSettingViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8AFDBFE2D70326E00839A38 /* DaliSettingViewController.swift */; };
+		C8AFDC012D70557100839A38 /* DaliSettingDeviceWarnHeaderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8AFDC002D70557100839A38 /* DaliSettingDeviceWarnHeaderView.swift */; };
 		C8B0589C2B500D21006FC36F /* DeviceAllOnOffViewCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8B0589B2B500D21006FC36F /* DeviceAllOnOffViewCell.swift */; };
 		C8B0589E2B50C9C6006FC36F /* DeviceGroupsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8B0589D2B50C9C6006FC36F /* DeviceGroupsView.swift */; };
 		C8B058A02B50DE86006FC36F /* HorizontalDirectionFlowLayout.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8B0589F2B50DE86006FC36F /* HorizontalDirectionFlowLayout.swift */; };
@@ -519,6 +523,10 @@
 		C8ACF1302AA1B2BA00E24B4A /* String+Extension.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = "String+Extension.swift"; sourceTree = "<group>"; };
 		C8ACF1312AA1B2BA00E24B4A /* CALayer+Animations.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = "CALayer+Animations.swift"; sourceTree = "<group>"; };
 		C8ACF1322AA1B2BA00E24B4A /* UIBarButtonItem+Extension.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = "UIBarButtonItem+Extension.swift"; sourceTree = "<group>"; };
+		C8AFDBFA2D6FF6D600839A38 /* DaliMasterMultipleControlsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DaliMasterMultipleControlsView.swift; sourceTree = "<group>"; };
+		C8AFDBFC2D700A1800839A38 /* DaliDevicesViewCell.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DaliDevicesViewCell.swift; sourceTree = "<group>"; };
+		C8AFDBFE2D70326E00839A38 /* DaliSettingViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DaliSettingViewController.swift; sourceTree = "<group>"; };
+		C8AFDC002D70557100839A38 /* DaliSettingDeviceWarnHeaderView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DaliSettingDeviceWarnHeaderView.swift; sourceTree = "<group>"; };
 		C8B0589B2B500D21006FC36F /* DeviceAllOnOffViewCell.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceAllOnOffViewCell.swift; sourceTree = "<group>"; };
 		C8B0589D2B50C9C6006FC36F /* DeviceGroupsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceGroupsView.swift; sourceTree = "<group>"; };
 		C8B0589F2B50DE86006FC36F /* HorizontalDirectionFlowLayout.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HorizontalDirectionFlowLayout.swift; sourceTree = "<group>"; };
@@ -1307,6 +1315,9 @@
 			isa = PBXGroup;
 			children = (
 				C8A347CB2D62E8660092D3E4 /* DaliMasterSingleControlView.swift */,
+				C8AFDBFA2D6FF6D600839A38 /* DaliMasterMultipleControlsView.swift */,
+				C8AFDBFC2D700A1800839A38 /* DaliDevicesViewCell.swift */,
+				C8AFDC002D70557100839A38 /* DaliSettingDeviceWarnHeaderView.swift */,
 			);
 			path = View;
 			sourceTree = "<group>";
@@ -1322,6 +1333,7 @@
 			isa = PBXGroup;
 			children = (
 				C8A347C92D62D0740092D3E4 /* DaliMasterViewController.swift */,
+				C8AFDBFE2D70326E00839A38 /* DaliSettingViewController.swift */,
 			);
 			path = Controller;
 			sourceTree = "<group>";
@@ -1723,6 +1735,7 @@
 				C8047F0B2B8DFBF700A09FFA /* ProfileInstructionsViewCell.swift in Sources */,
 				C898EA5F2AC2BD8B0023B480 /* UIViewController+WMPageController.m in Sources */,
 				C8D663732BFF14A000BFF81A /* Int+Hex.swift in Sources */,
+				C8AFDBFD2D700A1800839A38 /* DaliDevicesViewCell.swift in Sources */,
 				C89C9FE42B3C197B00074031 /* SyncDevicesViewController.swift in Sources */,
 				C8A099FD2AC134C30068C814 /* SiteEditViewController.swift in Sources */,
 				C8A16F6F2C8568F700FB50BD /* AttributedTextViewController.swift in Sources */,
@@ -1732,6 +1745,7 @@
 				C89941932AD4E382008DCD76 /* LCWeakTimer.swift in Sources */,
 				C8AC83C92D068CC70033513E /* MeshFirmwareUpdateLogViewCell.swift in Sources */,
 				C89A1C3D2B561850004912B9 /* ScheduleGroupsView.swift in Sources */,
+				C8AFDC012D70557100839A38 /* DaliSettingDeviceWarnHeaderView.swift in Sources */,
 				C898EA602AC2BD8B0023B480 /* WMMenuItem.m in Sources */,
 				C830CFDD2C0EBE730035CD5B /* ShareBacthListViewController.swift in Sources */,
 				C89F08A02C7712F2005C0711 /* BleFirmwareTypeUpdateViewCell.swift in Sources */,
@@ -1781,6 +1795,7 @@
 				C84A2C552C2D465A0064D3F1 /* ExternalVendorMessage+Extension.swift in Sources */,
 				C89A9A962C8AAB0D0032287D /* DeviceSwitchHeaderView.swift in Sources */,
 				C8D6636D2BFED12B00BFF81A /* Keychain.swift in Sources */,
+				C8AFDBFB2D6FF6D600839A38 /* DaliMasterMultipleControlsView.swift in Sources */,
 				C8A347CE2D6307CC0092D3E4 /* DeviceProtocol.swift in Sources */,
 				C89F089E2C77112F005C0711 /* BleFirmwareUpdateViewController.swift in Sources */,
 				C8A130C42B32C2B90008C353 /* SceneAddTemplateTitleCell.swift in Sources */,
@@ -1859,6 +1874,7 @@
 				C85829F62B398443002A4367 /* CustomProgressView.swift in Sources */,
 				C8699DB92C0978F300424A60 /* UserData.swift in Sources */,
 				C898EA632AC2BD8B0023B480 /* WMProgressView.m in Sources */,
+				C8AFDBFF2D70326E00839A38 /* DaliSettingViewController.swift in Sources */,
 				C8A09A032AC162660068C814 /* String+Date.swift in Sources */,
 				C898EA742AC400100023B480 /* DeviceLightControlView.swift in Sources */,
 				C87EB4682BA17D3F00F9285B /* LBXPermissions.swift in Sources */,

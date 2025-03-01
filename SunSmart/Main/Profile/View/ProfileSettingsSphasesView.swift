@@ -220,8 +220,8 @@ class ProfileSettingsSphasesView: UIView {
                     make.right.equalTo(SCRXFrom(-45))
                 }
                 make.height.equalTo(chartImageView.snp.width).multipliedBy(chartImageView.height / chartImageView.width)
+                make.bottom.equalTo(SCRYFrom(-68))
             }
-            
         }
     }
     
@@ -364,6 +364,7 @@ class ProfileSettingsSphasesView: UIView {
                 make.height.equalTo(chartImageView.snp.width).multipliedBy(chartImageView.height / chartImageView.width)
             }
             make.top.equalTo(SCRYFrom(46))
+            make.bottom.equalTo(SCRYFrom(-68))
 //            if isIPad {
 ////                make.centerX.equalToSuperview()
 //            }else {
@@ -407,11 +408,11 @@ class ProfileSettingsSphasesView: UIView {
         addSubview(highEndTrimBtn)
         highEndTrimBtn.snp.makeConstraints { make in
             make.right.equalTo(chartImageView.snp.left)
+            make.top.equalTo(SCRYFrom(60))
             if isIPad {
-                make.top.equalTo(maxLightOutputLabel.snp.bottom).offset(SCRYFrom(7))
+//                make.top.equalTo(maxLightOutputLabel.snp.bottom).offset(SCRYFrom(20))
                 make.width.equalTo(SCRXFrom(93.6))
             }else {
-                make.top.equalTo(maxLightOutputLabel.snp.bottom).offset(SCRYFrom(1))
                 make.width.equalTo(SCRXFrom(64))
             }
             make.height.equalTo(SCRYFrom(32))

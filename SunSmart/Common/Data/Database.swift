@@ -1259,7 +1259,8 @@ extension Schedule {
 
 extension Profile {
     
-    private static let profilesTable = Table("profiles")
+    private static let profilesTableName = "profiles"
+    private static let profilesTable = Table(profilesTableName)
     
     struct ExpressionKey {
         static let id = Expression<Int64>("id")
@@ -1281,6 +1282,7 @@ extension Profile {
         static let timeT5 = Expression<Int>("timeT5")
         static let manualOverrideTimeout = Expression<Int64>("manualOverrideTimeout")
         static let powerUpState = Expression<Int>("powerUpState")
+        static let powerUpCct = Expression<Int>("powerUpCct")
         static let adjustSpeed = Expression<Int>("adjustSpeed")
     }
     
@@ -1308,8 +1310,18 @@ extension Profile {
             builder.column(ExpressionKey.manualOverrideTimeout)
             builder.column(ExpressionKey.powerUpState)
             builder.column(ExpressionKey.adjustSpeed)
+            builder.column(ExpressionKey.powerUpCct)
             builder.unique(ExpressionKey.meshUUID, ExpressionKey.uuid)
         }))
+        
+        // 获取表内存在的属性
+        if let columns = try? SunSmartDataManager.shared.db?.schema.columnDefinitions(table: profilesTableName) {
+            // 插入字段
+            // 是否存在”powerUpCct“属性
+            if !columns.contains(where: { $0.name == "powerUpCct" }) {
+                _ = try? SunSmartDataManager.shared.db?.run(Profile.profilesTable.addColumn(ExpressionKey.powerUpCct, defaultValue: 4500))
+            }
+        }
     }
 
     /// 根据网络id获取网络下的所有的配置数据
@@ -1333,8 +1345,11 @@ extension Profile {
                 let lightData = LightData(profileType: profileType, highEndTrim: row[ExpressionKey.highEndTrim], lowEndTrim: row[ExpressionKey.lowEndTrim], occupancyLevel: row[ExpressionKey.occupancyLevel], vacantLevel: row[ExpressionKey.vacantLevel], taskLevel: row[ExpressionKey.taskLevel], autoMinLevel: row[ExpressionKey.autoMinLevel], t1: row[ExpressionKey.timeT1], t2: row[ExpressionKey.timeT2], t3: row[ExpressionKey.timeT3], t4: row[ExpressionKey.timeT4], t5: row[ExpressionKey.timeT5])
                 
                 let powerUpState: PowerUpState = .init(rawValue: UInt8(row[ExpressionKey.powerUpState]))
+                let powerUpCct = UInt16(row[ExpressionKey.powerUpCct])
+             
                 let manualOverrideTimeout = UInt32(row[ExpressionKey.manualOverrideTimeout])
-                let profile = Profile(name: row[ExpressionKey.name], id: row[ExpressionKey.uuid], type: profileType, lightData: lightData, powerUpState: powerUpState, manualOverrideTimeout: manualOverrideTimeout, adjustSpeed: row[ExpressionKey.adjustSpeed])
+                
+                let profile = Profile(name: row[ExpressionKey.name], id: row[ExpressionKey.uuid], type: profileType, lightData: lightData, powerUpState: powerUpState, powerUpCct: powerUpCct, manualOverrideTimeout: manualOverrideTimeout, adjustSpeed: row[ExpressionKey.adjustSpeed])
                 profiles.append(profile)
             }
         }
@@ -1382,6 +1397,7 @@ extension Profile {
             ExpressionKey.timeT5 <- data.t5,
             ExpressionKey.manualOverrideTimeout <- Int64(self.manualOverrideTimeout),
             ExpressionKey.powerUpState <- Int(self.powerUpState.rawValue),
+            ExpressionKey.powerUpCct <- Int(self.powerUpCct),
             ExpressionKey.adjustSpeed <- self.adjustSpeed
         ])
         do {
@@ -1942,7 +1958,8 @@ extension MeshDistributionData {
 
 extension DeviceSwitchData {
     
-    private static let switchsTable = Table("switchs")
+    private static let switchsTableName = "switchs"
+    private static let switchsTable = Table(switchsTableName)
     
     struct ExpressionKey {
         static let id = Expression<Int64>("id")
@@ -1953,6 +1970,7 @@ extension DeviceSwitchData {
         static let enabled = Expression<Bool>("enabled")
         static let panelType = Expression<Int>("panelType")
         static let linkGroupAddress = Expression<Int?>("linkGroupAddress")
+        static let subLinkGroupAddress = Expression<Int?>("subLinkGroupAddress")
         static let bindGroupAddresses = Expression<Data?>("bindGroupAddresses")
         static let unbindGroupAddresses = Expression<Data?>("unbindGroupAddresses")
         static let sceneA = Expression<Int?>("sceneA")
@@ -1983,8 +2001,19 @@ extension DeviceSwitchData {
             builder.column(ExpressionKey.enOceanMacAddress)
             builder.column(ExpressionKey.enOceanSecurityKey)
             builder.column(ExpressionKey.deleteProxyAddress)
+            builder.column(ExpressionKey.subLinkGroupAddress)
             builder.unique(ExpressionKey.meshUUID, ExpressionKey.subNetworkKey, ExpressionKey.switchId)
         }))
+        
+        // 获取表内存在的属性
+        if let columns = try? SunSmartDataManager.shared.db?.schema.columnDefinitions(table: switchsTableName) {
+            // 插入字段
+            // 是否存在”subLinkGroupAddress“属性
+            if !columns.contains(where: { $0.name == "subLinkGroupAddress" }) {
+                _ = try? SunSmartDataManager.shared.db?.run(DeviceSwitchData.switchsTable.addColumn(ExpressionKey.subLinkGroupAddress))
+            }
+        }
+        
     }
 
     /// 根据网络id获取所有的虚拟按键数据
@@ -2012,6 +2041,8 @@ extension DeviceSwitchData {
                 
                 // 动能开关关联的组地址（publish）
                 let linkGroupAddress = row[ExpressionKey.linkGroupAddress]
+                // 动能开关关联的子组地址（cct publish）
+                let subLinkGroupAddress = row[ExpressionKey.subLinkGroupAddress]
                 
                 // 动能开关绑定组地址list（subscribe）
                 var bindAddresses: [Address] = []
@@ -2022,6 +2053,7 @@ extension DeviceSwitchData {
                         }
                     }
                 }
+                
                 // 解除绑定的组地址list（unsubscribe）
                 var unbindAddresses: [Address] = []
                 if let unbindAddressesData = row[ExpressionKey.unbindGroupAddresses], let addressesStrings = (try? jsonDecoder.decode([String].self, from: unbindAddressesData)) {
@@ -2032,7 +2064,7 @@ extension DeviceSwitchData {
                     }
                 }
                 
-                let switchData = DeviceSwitchData(id: row[ExpressionKey.switchId], enabled: row[ExpressionKey.enabled], name: row[ExpressionKey.name], linkGroupAddress: linkGroupAddress != nil ? Address(linkGroupAddress!) : nil, bindGroupAddresses: bindAddresses)
+                let switchData = DeviceSwitchData(id: row[ExpressionKey.switchId], enabled: row[ExpressionKey.enabled], name: row[ExpressionKey.name], linkGroupAddress: linkGroupAddress != nil ? Address(linkGroupAddress!) : nil, subLinkGroupAddress: subLinkGroupAddress != nil ? Address(subLinkGroupAddress!) : nil, bindGroupAddresses: bindAddresses)
                 let panelType: PanelType = .init(rawValue: UInt8(row[ExpressionKey.panelType])) ?? .default
                 switchData.panelType = panelType
                 if let number = row[ExpressionKey.sceneA] { //  let sceneA = MeshNetworkManager.instance.scenes.first(where: { $0.number == number })
@@ -2099,6 +2131,7 @@ extension DeviceSwitchData {
             ExpressionKey.enabled <- self.enabled,
             ExpressionKey.panelType <- Int(self.panelType.rawValue),
             ExpressionKey.linkGroupAddress <- self.linkGroupAddress != nil ? Int(self.linkGroupAddress!) : nil,
+            ExpressionKey.subLinkGroupAddress <- self.subLinkGroupAddress != nil ? Int(self.subLinkGroupAddress!) : nil,
             ExpressionKey.bindGroupAddresses <- bindGroupAddressesData,
             ExpressionKey.unbindGroupAddresses <- unbindGroupAddressesData,
             ExpressionKey.sceneA <- self.sceneANumber != nil ? Int(self.sceneANumber!) : nil,

@@ -123,19 +123,19 @@ class DeviceLightViewController: UIViewController {
         
         MeshAPI.getNodeState(address: node.primaryUnicastAddress)
         
-        MeshLibManager.manager.refreshNodesRSSI(withWaitFor: 5) {[weak self] nodes in
-            guard let self = self else { return }
-            if !nodes.contains(where: { $0.primaryUnicastAddress == self.node.primaryUnicastAddress }) {
-                self.node.rssi = nil
-            }
-        }
+//        MeshLibManager.manager.refreshNodesRSSI(withWaitFor: 5) {[weak self] nodes in
+//            guard let self = self else { return }
+//            if !nodes.contains(where: { $0.primaryUnicastAddress == self.node.primaryUnicastAddress }) {
+//                self.node.rssi = nil
+//            }
+//        }
         
     }
     
     /// 更新UI数据
     private func updateData() {
         
-//        self.replySwitch.isOn = node.replyEnabled
+        self.replySwitch.isOn = node.replyEnabled
         
         if node.isKeybindComplete {
             
@@ -393,6 +393,13 @@ class DeviceLightViewController: UIViewController {
         
         XWHUDManager.showCustomHUD(withMessage: nil, isWindow: false, afterDelay: 2)
         getNodeState()
+        
+        MeshLibManager.manager.refreshNodesRSSI(withWaitFor: 5) {[weak self] nodes in
+            guard let self = self else { return }
+            if !nodes.contains(where: { $0.primaryUnicastAddress == self.node.primaryUnicastAddress }) {
+                self.node.rssi = nil
+            }
+        }
     }
     
     // MARK: - Action
@@ -637,7 +644,7 @@ class DeviceLightViewController: UIViewController {
         
         replySwitch = UISwitch()
         replySwitch.onTintColor = Bar_Color
-        replySwitch.isHidden = true
+//        replySwitch.isHidden = true
         replySwitch.tintColor = RGB(207, 207, 207)
         replySwitch.addTarget(self, action: #selector(replySwitchValueChanged), for: .valueChanged)
         view.addSubview(replySwitch)
@@ -647,7 +654,7 @@ class DeviceLightViewController: UIViewController {
         }
         
         replyLabel = UILabel(text: "Reply", textColor: TextBlack_Color, fontSize: 13)
-        replyLabel.isHidden = true
+//        replyLabel.isHidden = true
         view.addSubview(replyLabel)
         replyLabel.snp.makeConstraints { make in
             make.centerY.equalTo(replySwitch)

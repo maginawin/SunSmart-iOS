@@ -267,7 +267,16 @@ static XWHUDManagerType kXWHUDManagerType = XWHUDManagerTypeDark;
 
 /// 有文本错误提示
 + (void)showErrorTipHUD:(NSString *)message {
-    [self p_showCustomIcon:@"error" message:message isWindow:YES timer:kXWHUDHideTimeInterval];
+    [self showErrorTipHUD:message timer:kXWHUDHideTimeInterval];
+}
+
+/**
+ 在 KeyWindow 展示 有文本的失败提示,默认失败图片在 XWHUDImages.bundle 中, - 1秒消失
+ 
+ @param message 提示语
+ */
++ (void)showErrorTipHUD:(NSString *)message timer:(NSTimeInterval)aTimer {
+    [self p_showCustomIcon:@"error" message:message isWindow:YES timer:aTimer];
 }
 
 /// 在view有文本错误提示

@@ -215,7 +215,7 @@ class DevicesViewController: WMPageController {
                
                     
                     // 同步时间
-                    if MeshNetworkManager.instance.realNodes.contains(where: { $0.scheduleIds.count > 0 }) && MeshNetworkManager.instance.schedules.count > 0 {
+                    if MeshNetworkManager.instance.realNodes.contains(where: { $0.scheduleIds.count > 0 }) && MeshNetworkManager.instance.schedules.filter({ $0.enabled }).count > 0 {
                         //                if space.needSyncDate {
                         // 延迟3s发送广播节点同步时间消息，避免与获取设备状态冲突
                         DispatchQueue.main.asyncAfter(deadline: .now() + 3) {[weak self] in

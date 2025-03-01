@@ -185,11 +185,21 @@ class GroupSwitchsViewController: UIViewController {
         
         // 未创建动能开关通讯组
         if switchData.proxyNodeAddress != nil && switchData.linkGroupAddress == nil {
+            
+            // 判断组地址是否足够分配
+            guard let meshUUID = MeshNetworkManager.instance.meshNetwork?.uuid.uuidString, MeshAPI.getAvailableGroupAddresses(meshUUID: meshUUID).count >= switchData.panelType.usedAddressesNumber else {
+                XWHUDManager.showErrorTipHUD("group_address_insufficient_message".localizedString, timer: 2)
+                return
+            }
+            
             guard let linkGroup = try? MeshAPI.createGroup(name: switchData.name + "-Group", isVirtual: true) else {
                 XWHUDManager.showErrorTipHUD("failed".localizedString + " !")
                 return
             }
+            let subLinkGroup = try? MeshAPI.createGroup(name: switchData.name + "-Group_1", isVirtual: true)
+            
             switchData.linkGroupAddress = linkGroup.address.address
+            switchData.subLinkGroupAddress = subLinkGroup?.address.address
 //            self.switchData?.save()
         }
         syncRealSwitchData(copySwitch: switchData)
@@ -622,6 +632,8 @@ extension GroupSwitchsViewController: UITableViewDataSource, UITableViewDelegate
         
         let groupSwitch = copySwitchs[indexPath.section]
         switch option {
+        case .panel:
+            XWHUDManager.showTipHUD("under_development".localizedString, isLineFeed: true)
         case .group:
             
             let vc = SwitchSelectGroupsViewController(groups: groupSwitch.bindGroups, selectGroups: groupSwitch.bindGroups)
@@ -682,11 +694,20 @@ extension GroupSwitchsViewController: UITableViewDataSource, UITableViewDelegate
                 
                 // 未创建动能开关通讯组
                 if newSwitch.proxyNodeAddress != nil && newSwitch.linkGroupAddress == nil {
+                    // 判断组地址是否足够分配
+                    guard let meshUUID = MeshNetworkManager.instance.meshNetwork?.uuid.uuidString, MeshAPI.getAvailableGroupAddresses(meshUUID: meshUUID).count >= newSwitch.panelType.usedAddressesNumber else {
+                        XWHUDManager.showErrorTipHUD("group_address_insufficient_message".localizedString, timer: 2)
+                        return
+                    }
+                    
                     guard let linkGroup = try? MeshAPI.createGroup(name: newSwitch.name + "-Group", isVirtual: true) else {
                         XWHUDManager.showErrorTipHUD("failed".localizedString + " !")
                         return
                     }
+                    let subLinkGroup = try? MeshAPI.createGroup(name: newSwitch.name + "-Group_1", isVirtual: true)
+                    
                     newSwitch.linkGroupAddress = linkGroup.address.address
+                    newSwitch.subLinkGroupAddress = subLinkGroup?.address.address
                 }
                 newSwitch.save()
                 MeshNetworkManager.instance.switchs.append(newSwitch)

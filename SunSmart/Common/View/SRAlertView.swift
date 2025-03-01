@@ -342,6 +342,7 @@ class SRAlertView: UIView {
                      messageFont: UIFont = UIFont.systemFont(ofSize: 15, weight: .light),
                      inputText: String? = nil,
                      inputFieldStyle: TextFieldStyle,
+                     margin: CGFloat = isIPad ? SCRXFrom(150) : SCRXFrom(35),
                      actions: [SRAlertAction] = [],
                      textValueChangedBack: InputTextChangedBack?,
                      inputDoneBack: InputTextDoneBack?) {
@@ -349,6 +350,11 @@ class SRAlertView: UIView {
         self.init(frame: UIScreen.main.bounds)
         
         contentView.backgroundColor = RGB(245, 245, 245)
+        
+        contentView.snp.updateConstraints { make in
+            make.left.equalTo(margin)
+            make.right.equalTo(-margin)
+        }
         
         if title != nil {
             self.titleLabel.text = title
@@ -449,6 +455,7 @@ class SRAlertView: UIView {
                      stateImage: UIImage? = nil,
                      loadingState: Bool = false,
                      backgroundColor: UIColor = .white,
+                     margin: CGFloat = isIPad ? SCRXFrom(150) : SCRXFrom(38),
                      contentMinHeight: CGFloat = SCRYFrom(130),
                      btnText: String,
                      btnTextColor: UIColor = .white,
@@ -461,8 +468,8 @@ class SRAlertView: UIView {
         
         self.contentView.backgroundColor = backgroundColor
         self.contentView.snp.remakeConstraints { make in
-            make.left.equalTo(SCRXFrom(38))
-            make.right.equalTo(SCRXFrom(-38))
+            make.left.equalTo(margin)
+            make.right.equalTo(-margin)
             make.centerY.equalToSuperview()
             make.height.greaterThanOrEqualTo(contentMinHeight)
         }
@@ -1349,7 +1356,7 @@ extension SRAlertView {
         /// 是否展示清空
         let showClear: Bool
         
-        init(textColor: UIColor = TextBlack_Color, textFont: UIFont = UIFont.systemFont(ofSize: SCRYFrom(15), weight: .light), placeholder: String? = nil, keyboardType: UIKeyboardType = .default, margin: CGFloat = isIPad ? SCRXFrom(100) : SCRXFrom(31), height: CGFloat = SCRYFrom(40), minInputLength: Int = 1, maxInputLength: Int = 32, borderColor: UIColor = Bar_Color, borderWidth: CGFloat = 0.5, textAlignment: NSTextAlignment = .left, secret: Bool = false, showClear: Bool = true) {
+        init(textColor: UIColor = TextBlack_Color, textFont: UIFont = UIFont.systemFont(ofSize: SCRYFrom(15), weight: .light), placeholder: String? = nil, keyboardType: UIKeyboardType = .default, margin: CGFloat = SCRXFrom(31), height: CGFloat = SCRYFrom(40), minInputLength: Int = 1, maxInputLength: Int = 32, borderColor: UIColor = Bar_Color, borderWidth: CGFloat = 0.5, textAlignment: NSTextAlignment = .left, secret: Bool = false, showClear: Bool = true) {
             self.textColor = textColor
             self.textFont = textFont
             self.placeholder = placeholder

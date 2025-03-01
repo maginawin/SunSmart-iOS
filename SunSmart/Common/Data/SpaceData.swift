@@ -74,7 +74,7 @@ class SpaceData: Copyable {
     }
     /// 是否需要上传到云端
     var needUploadCloud: Bool {
-        return lastUpdate > lastUploadCloudTimestamp ?? 0
+        return lastUpdate > lastUploadCloudTimestamp ?? 0 && permission != .visitor
     }
     /// 展示的同步服务区错误信息
     var showSyncCloudError: NetworkApiError? {

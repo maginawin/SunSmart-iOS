@@ -231,6 +231,9 @@ extension SpaceData {
                     if let defaultLightness = node.defalutLightness {
                         nodeDict.updateValue(defaultLightness, forKey: "defaultLightness")
                     }
+                    if let defaultCct = node.defaultCct {
+                        nodeDict.updateValue(defaultCct, forKey: "defaultCct")
+                    }
                     if let timezone = node.timezone {
                         nodeDict.updateValue(timezone.encodeToTzOffset(), forKey: "timezoneOffset")
                         nodeDict.updateValue(node.timestamp, forKey: "timestamp")
@@ -238,7 +241,12 @@ extension SpaceData {
                     if let enOceanMacAddress = node.enOceanMacAddress {
                         nodeDict.updateValue(enOceanMacAddress, forKey: "enOceanMacAddress")
                         nodeDict.updateValue(node.enOceanKeySceneNumbers.map({ $0.hex }), forKey: "enOceanKeyScenes")
+                        
+                        if node.enOceanProxySwitchKeys.count > 0, let data = try? jsonEncoder.encode(node.enOceanProxySwitchKeys), let switchKeyDicts = try? JSONSerialization.jsonObject(with: data) as? [[String : Any]] {
+                            nodeDict.updateValue(switchKeyDicts, forKey: "enOceanProxySwitchKeys")
+                        }
                     }
+                    
                     if let firmwareID = node.firmwareID {
                         nodeDict.updateValue(firmwareID.hex, forKey: "firmwareID")
                     }
@@ -320,7 +328,7 @@ extension SpaceData {
                         "occupancyLevel": lightData.occupancyLevel,
                         "vacantLevel": lightData.vacantLevel,
                         "taskLevel": lightData.taskLevel,
-                        "autoMinLevel": lightData.autoMinLevelEnabled ? lightData.autoMinLevel : 255,
+                        "autoMinLevel": lightData.autoMinLevelEnabled ? lightData.autoMinLevel : 255, 
                         "timeT1": lightData.t1,
                         "timeT2": lightData.t2,
                         "timeT3": lightData.t3,
@@ -328,6 +336,7 @@ extension SpaceData {
                         "timeT5": lightData.t5,
                         "manualOverrideTimeout": profile.manualOverrideTimeout,
                         "powerUpState": profile.powerUpState.rawValue,
+                        "powerOnCct": profile.powerUpCct,
                         "adjustSpeed": profile.adjustSpeed
                     ]
                     groupDict.updateValue(profileDict, forKey: "profile")
@@ -372,6 +381,9 @@ extension SpaceData {
                 
                 if let linkGroupAddress = switchData.linkGroupAddress {
                     dict.updateValue(linkGroupAddress.hex, forKey: "linkGroupAddress")
+                }
+                if let subLinkGroupAddress = switchData.subLinkGroupAddress {
+                    dict.updateValue(subLinkGroupAddress.hex, forKey: "subLinkGroupAddress")
                 }
                 let bindGroupAddresses = switchData.bindGroupAddresses.map({ $0.hex })
                 dict.updateValue(bindGroupAddresses, forKey: "bindGroupAddresses")

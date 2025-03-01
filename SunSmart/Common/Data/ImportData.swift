@@ -854,14 +854,27 @@ extension SpaceData {
                     if let defaultLightness = nodeJson["defaultLightness"].uInt16 {
                         node.defalutLightness = defaultLightness
                     }
+                    if let defaultCct = nodeJson["defaultCct"].uInt16 {
+                        node.defaultCct = defaultCct
+                    }
                     if let timezoneOffset = nodeJson["timezoneOffset"].uInt8, let timestamp = nodeJson["timestamp"].int64, timestamp >= 0 {
                         node.timezone = timezoneOffset.decodeFromTzOffset()
                         node.timestamp = UInt64(timestamp)
                     }
-                    if let enOceanMacAddress = nodeJson["enOceanMacAddress"].string, let enOceanKeyScenes = nodeJson["enOceanKeyScenes"].arrayObject as? [String] {
+                    if let enOceanMacAddress = nodeJson["enOceanMacAddress"].string {
                         node.enOceanMacAddress = enOceanMacAddress
-                        node.enOceanKeySceneNumbers = enOceanKeyScenes.map({ SceneNumber(hex: $0) ?? 0 })
+                        // 动能开关按键配置
+                        if let enOceanProxySwitchKeyDicts = nodeJson["enOceanProxySwitchKeys"].arrayObject as? [[String: Any]],
+                           let data = try? JSONSerialization.data(withJSONObject: enOceanProxySwitchKeyDicts),
+                           let enOceanProxySwitchKeys = try? jsonDecoder.decode([SwitchKey].self, from: data) {
+                            node.enOceanProxySwitchKeys = enOceanProxySwitchKeys
+                        }
+                        
+                        if let enOceanKeyScenes = nodeJson["enOceanKeyScenes"].arrayObject as? [String] {
+                            node.enOceanKeySceneNumbers = enOceanKeyScenes.map({ SceneNumber(hex: $0) ?? 0 })
+                        }
                     }
+                    
                     if let firmwareID = nodeJson["firmwareID"].string, !firmwareID.isEmpty {
                         let data = Data(hex: firmwareID)
                         if data.count == 6 || data.count == 8 {
@@ -893,7 +906,8 @@ extension SpaceData {
                             let scheduleJson = JSON(dict)
                             if let id = scheduleJson["id"].int {
                                 let dayOfWeek = Schedule.getWeekDays(weekValue: scheduleJson["dayOfWeek"].int ?? 0)
-                                let entry = SchedulerRegistryEntry(year: .any(), month: .any(of: Schedule.allMonths), day: .specific(day: scheduleJson["day"].int ?? 0), hour: .specific(hour: scheduleJson["hour"].int ?? 0), minute: .specific(minute: scheduleJson["minute"].int ?? 0), second: .specific(second: scheduleJson["second"].int ?? 0), dayOfWeek: .any(of: dayOfWeek), action: SchedulerAction(rawValue: scheduleJson["action"].uInt8 ?? 0x0F) ?? .noAction, transitionTime: .init(steps: scheduleJson["transitionTime"].uInt8 ?? 0, stepResolution: .seconds), sceneNumber: scheduleJson["sceneNumber"].uInt16 ?? 0)
+                                
+                                let entry = SchedulerRegistryEntry(year: .specific(year: scheduleJson["year"].int ?? 0), month: .any(of: Schedule.allMonths), day: .specific(day: scheduleJson["day"].int ?? 0), hour: .specific(hour: scheduleJson["hour"].int ?? 0), minute: .specific(minute: scheduleJson["minute"].int ?? 0), second: .specific(second: scheduleJson["second"].int ?? 0), dayOfWeek: .any(of: dayOfWeek), action: SchedulerAction(rawValue: scheduleJson["action"].uInt8 ?? 0x0F) ?? .noAction, transitionTime: .init(steps: scheduleJson["transitionTime"].uInt8 ?? 0, stepResolution: .seconds), sceneNumber: scheduleJson["sceneNumber"].uInt16 ?? 0)
                                 node.schedulerActions.updateValue(entry, forKey: id)
                             }
                         }
@@ -987,6 +1001,9 @@ extension SpaceData {
                             let lightData = Profile.LightData(profileType: type, highEndTrim: profileJson["highEndTrim"].int ?? 100, lowEndTrim: profileJson["lowEndTrim"].int ?? 0, occupancyLevel: profileJson["occupancyLevel"].int ?? 100, vacantLevel: profileJson["vacantLevel"].int ?? 50, taskLevel: profileJson["taskLevel"].int ?? 100, autoMinLevel: profileJson["autoMinLevel"].int ?? 0, t1: profileJson["timeT1"].int ?? 0, t2: profileJson["timeT2"].int ?? 0, t3: profileJson["timeT3"].int ?? 0, t4: profileJson["timeT4"].int ?? 0, t5: profileJson["timeT5"].int ?? 0)
                             
                             let profile = Profile(id: id, type: type, lightData: lightData, powerUpState: Profile.PowerUpState(rawValue: profileJson["powerUpState"].uInt8 ?? 0), manualOverrideTimeout: profileJson["manualOverrideTimeout"].uInt32 ?? 600)
+                            if let powerOnCct = profileJson["powerOnCct"].uInt16 {
+                                profile.powerUpCct = powerOnCct
+                            }
                             profile.adjustSpeed = profileJson["adjustSpeed"].int ?? 50
                             group.info.profile = profile
                         }
@@ -1055,6 +1072,10 @@ extension SpaceData {
                         if let addressHex = switcheJson["linkGroupAddress"].string, let linkGroupAddress = Address(hex: addressHex) {
                             switchData.linkGroupAddress = linkGroupAddress
                         }
+                        if let addressHex = switcheJson["subLinkGroupAddress"].string, let subLinkGroupAddress = Address(hex: addressHex) {
+                            switchData.subLinkGroupAddress = subLinkGroupAddress
+                        }
+                        
                         if let sceneAHex = switcheJson["sceneA"].string,
                            let sceneANumber = SceneNumber(hex: sceneAHex) {
                             switchData.sceneANumber = sceneANumber

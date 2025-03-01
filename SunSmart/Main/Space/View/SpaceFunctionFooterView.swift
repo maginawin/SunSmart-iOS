@@ -157,7 +157,8 @@ class SpaceFunctionFooterView: UIView {
         cancelBtn.isHidden = true
         addSubview(cancelBtn)
         cancelBtn.snp.makeConstraints { make in
-            make.left.equalTo(SCRXFrom(34))
+//            make.left.equalTo(SCRXFrom(34))
+            make.centerX.equalTo(self).multipliedBy(0.5)
             make.top.equalTo(SCRYFrom(14))
             make.width.equalTo(SCRXFrom(120))
             make.height.equalTo(SCRYFrom(30))
@@ -180,7 +181,8 @@ class SpaceFunctionFooterView: UIView {
         deleteBtn.isHidden = true
         addSubview(deleteBtn)
         deleteBtn.snp.makeConstraints { make in
-            make.left.equalTo(lineView.snp.right).offset(SCRXFrom(34))
+//            make.left.equalTo(lineView.snp.right).offset(SCRXFrom(34))
+            make.centerX.equalTo(self).multipliedBy(1.5)
             make.width.height.centerY.equalTo(cancelBtn)
         }
         

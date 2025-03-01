@@ -540,15 +540,20 @@ class DeviceAddViewController: UIViewController {
         } appendMessagesBack: {[weak self] addDevice in
             guard let self = self, let node = MeshNetworkManager.instance.meshNetwork?.node(withAddress: addDevice.address) else { return [] }
             var appendMessages: [MeshMessageHandle] = []
+            // 入网后默认调为最大亮度
+            if let model = node.lightnessModel {
+                appendMessages.append(MeshMessageHandle(message: LightLightnessSetUnacknowledged(lightness: .max), model: model))
+            }
             if let group = self.addToGroup {
                 appendMessages.append(contentsOf: group.getNodeAddMessageHandles(node: node))
             }else {
                 if let vendorModel = node.sunricherVendorModel { // 未加入组的设备默认设置一个手动控制延迟时间，避免默认30s后状态被LC修改
                     appendMessages.append(MeshMessageHandle(message: SunricherVendorSet(function: .manualOverrideTimeout(enabled: true, state: .standby, interval: .max)), model: vendorModel))
                 }
-                if let powerOnOffSetupModel = node.powerOnOffSetupModel, let lightnessSetupModel = node.lightnessSetupModel { // 设置默认上电状态 100%亮度
-                    appendMessages.append(MeshMessageHandle(message: GenericOnPowerUpSet(state: .default), model: powerOnOffSetupModel))
-                    appendMessages.append(MeshMessageHandle(message: LightLightnessDefaultSet(lightness: .max), model: lightnessSetupModel))
+                if let powerOnOffSetupModel = node.powerOnOffSetupModel { // 设置默认上电状态为上一次亮度
+                    appendMessages.append(MeshMessageHandle(message: GenericOnPowerUpSet(state: .restore), model: powerOnOffSetupModel))
+//                    appendMessages.append(MeshMessageHandle(message: GenericOnPowerUpSet(state: .default), model: powerOnOffSetupModel))
+//                    appendMessages.append(MeshMessageHandle(message: LightLightnessDefaultSet(lightness: .max), model: lightnessSetupModel))
                 }
             }
             // 需要追加发送的消息
@@ -565,7 +570,7 @@ class DeviceAddViewController: UIViewController {
             }
             // 添加成功后闪烁
             if let healthModel = node.healthModel {
-                appendMessages.append(MeshMessageHandle(message: AttentionSet(attentionTimer: 5), model: healthModel))
+                appendMessages.append(MeshMessageHandle(message: AttentionSet(attentionTimer: 6), model: healthModel))
             }
 //            appendMessages.insert(MeshMessageHandle(message: ConfigRelaySet(), address: node.primaryUnicastAddress), at: 0)
             
@@ -824,10 +829,21 @@ class DeviceAddViewController: UIViewController {
         }
         
         nearLabel = UILabel(text: "near".localizedString, textColor: TextBlack_Color, fontSize: 15, fontWeight: .light)
+        nearLabel.sizeToFit()
         headerView.addSubview(nearLabel)
         nearLabel.snp.makeConstraints { make in
             make.left.equalTo(SCRXFrom(16))
             make.top.equalTo(SCRYFrom(24))
+            make.width.equalTo(nearLabel.width)
+        }
+        
+        farLabel = UILabel(text: "far".localizedString, textColor: TextBlack_Color, fontSize: 15, fontWeight: .light)
+        farLabel.sizeToFit()
+        headerView.addSubview(farLabel)
+        farLabel.snp.makeConstraints { make in
+            make.right.equalTo(SCRXFrom(-16))
+            make.top.equalTo(nearLabel)
+            make.width.equalTo(farLabel.width)
         }
         
         rssiSlider = CustomDeviceSlider()
@@ -844,44 +860,21 @@ class DeviceAddViewController: UIViewController {
         rssiSlider.delegate = self
         headerView.addSubview(rssiSlider)
         rssiSlider.snp.makeConstraints { make in
-            make.left.equalTo(SCRXFrom(68))
-            make.right.equalTo(SCRXFrom(-67))
+            make.left.equalTo(nearLabel.snp.right).offset(SCRXFrom(15))
+            make.right.equalTo(farLabel.snp.left).offset(SCRXFrom(-20))
             make.centerY.equalTo(nearLabel)
             make.height.equalTo(SCRYFrom(40))
         }
         
-        farLabel = UILabel(text: "far".localizedString, textColor: TextBlack_Color, fontSize: 15, fontWeight: .light)
-        headerView.addSubview(farLabel)
-        farLabel.snp.makeConstraints { make in
-            make.right.equalTo(SCRXFrom(-16))
-            make.top.equalTo(nearLabel)
-        }
-        
         addDeviceToLabel = UILabel(text: "add_device_to".localizedString, textColor: TextBlack_Color, fontSize: 14, fontWeight: .light)
+        addDeviceToLabel.sizeToFit()
         headerView.addSubview(addDeviceToLabel)
         addDeviceToLabel.snp.makeConstraints { make in
             make.left.equalTo(nearLabel)
             make.bottom.equalTo(SCRYFrom(-14))
+            make.width.equalTo(addDeviceToLabel.width)
         }
         
-        addDeviceTargetBtn = UIButton(title: addToGroup?.name ?? space.name, titleSize: 13, titleWeight: .light, titleColor: TextBlack_Color, normalImageName: "space_arrow_down", target: self, action: #selector(addDeviceTargetBtnClick))
-        addDeviceTargetBtn.imageView?.sizeToFit()
-        let imageW = addDeviceTargetBtn.imageView?.image?.size.width ?? 0
-        addDeviceTargetBtn.imageEdgeInsets = UIEdgeInsets(top: 0, left: SCRXFrom(103), bottom: 0, right: 0)
-        addDeviceTargetBtn.titleEdgeInsets = UIEdgeInsets(top: 0, left: SCRXFrom(8) - imageW, bottom: 0, right: imageW + SCRXFrom(6))
-        addDeviceTargetBtn.contentHorizontalAlignment = .left
-        addDeviceTargetBtn.layer.cornerRadius = SCRYFrom(5)
-        addDeviceTargetBtn.layer.borderWidth = 1
-        addDeviceTargetBtn.layer.borderColor = RGB(220, 220, 220).cgColor
-        addDeviceTargetBtn.backgroundColor = .white
-        headerView.addSubview(addDeviceTargetBtn)
-        addDeviceTargetBtn.snp.makeConstraints { make in
-            make.left.equalTo(addDeviceToLabel.snp.right).offset(SCRXFrom(5))
-            make.centerY.equalTo(addDeviceToLabel)
-            make.width.equalTo(SCRXFrom(128))
-            make.height.equalTo(SCRYFrom(32))
-        }
-
         scanBtn = UIButton(title: "scan".localizedString, titleSize: 13, titleColor: Bar_Color, normalImageName: "device_scan", target: self, action: #selector(scanBtnClick))
         scanBtn.setTitle("stop".localizedString, for: .selected)
         scanBtn.setTitleColor(Bar_Color.withAlphaComponent(0.5), for: .disabled)
@@ -896,10 +889,33 @@ class DeviceAddViewController: UIViewController {
         headerView.addSubview(scanBtn)
         scanBtn.snp.makeConstraints { make in
             make.right.equalTo(SCRXFrom(-18))
-            make.centerY.equalTo(addDeviceTargetBtn)
+            make.centerY.equalTo(addDeviceToLabel)
             make.width.equalTo(SCRXFrom(80))
             make.height.equalTo(SCRYFrom(32))
         }
+        
+        addDeviceTargetBtn = UIButton(title: addToGroup?.name ?? space.name, titleSize: 13, titleWeight: .light, titleColor: TextBlack_Color, normalImageName: "space_arrow_down", target: self, action: #selector(addDeviceTargetBtnClick))
+        addDeviceTargetBtn.contentHorizontalAlignment = .left
+        addDeviceTargetBtn.layer.cornerRadius = SCRYFrom(5)
+        addDeviceTargetBtn.layer.borderWidth = 1
+        addDeviceTargetBtn.layer.borderColor = RGB(220, 220, 220).cgColor
+        addDeviceTargetBtn.backgroundColor = .white
+        headerView.addSubview(addDeviceTargetBtn)
+        addDeviceTargetBtn.snp.makeConstraints { make in
+            make.left.equalTo(addDeviceToLabel.snp.right).offset(SCRXFrom(5))
+            make.centerY.equalTo(addDeviceToLabel)
+            if isIPad {
+                make.width.equalTo(SCRXFrom(128))
+            }else {
+                make.right.equalTo(scanBtn.snp.left).offset(SCRXFrom(-27))
+            }
+            make.height.equalTo(SCRYFrom(32))
+        }
+        addDeviceTargetBtn.layoutIfNeeded()
+        addDeviceTargetBtn.imageView?.sizeToFit()
+        let imageW = addDeviceTargetBtn.imageView?.image?.size.width ?? 0
+        addDeviceTargetBtn.imageEdgeInsets = UIEdgeInsets(top: 0, left: addDeviceTargetBtn.width - imageW, bottom: 0, right: 0)
+        addDeviceTargetBtn.titleEdgeInsets = UIEdgeInsets(top: 0, left: SCRXFrom(8) - imageW, bottom: 0, right: imageW + SCRXFrom(6))
         
         tableView = UITableView()
         tableView.separatorStyle = .none

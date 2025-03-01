@@ -37,7 +37,7 @@ class SceneSettingsViewController: UIViewController {
 //    private var selectGroups: [Group] = []
     
     /// 列数
-    private var columnNum: Int = isIPad ? 4 : 3
+//    private var columnNum: Int = isIPad ? 4 : 3
     private var rowNum: Int = isIPad ? 5 : 3
     /// collectionview边距
     private var collectionViewInsets: UIEdgeInsets = isIPad ? UIEdgeInsets(top: 0, left: SCRXFrom(30), bottom: 0, right: SCRXFrom(30)) : UIEdgeInsets(top: 0, left: SCRXFrom(15), bottom: 0, right: SCRXFrom(15))
@@ -264,9 +264,10 @@ class SceneSettingsViewController: UIViewController {
                 sceneData.state = .waitDelete
                 // 判断组内是否有设备同步过该场景
                 deleteNodes = $0.getNeedSyncDataNodes(scene: scene).deleteNodes
-                if deleteNodes.count > 0 {
-                    $0.info.save()
+                if deleteNodes.isEmpty {
+                    $0.info.sceneExecuteDatas.removeAll(where: { $0.sceneNumber == sceneData.sceneNumber })
                 }
+                $0.info.save()
             }
             // 未同步则直接删除组场景
 //            if deleteNodes.isEmpty {
@@ -494,6 +495,8 @@ class SceneSettingsViewController: UIViewController {
         flowLayout = AlignCenterFlowLayout()
         flowLayout.minimumLineSpacing = itemMargin
         flowLayout.minimumInteritemSpacing = itemMargin
+        flowLayout.itemRowCount = rowNum
+//        flowLayout.itmeColCount = columnNum
 //        flowLayout.sectionInset = UIEdgeInsets(top: 0, left: SCRXFrom(12), bottom: 0, right: SCRXFrom(12))
         
         collectionView = UICollectionView(frame: .zero, collectionViewLayout: flowLayout)

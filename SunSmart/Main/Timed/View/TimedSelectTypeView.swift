@@ -12,8 +12,8 @@ protocol TimedSelectTypeViewDelegate: AnyObject {
     /// 选择类型回调
     /// - Parameters:
     ///   - view: 选择view
-    ///   - tyoe: 类型
-    func view(_ view: TimedSelectTypeView, selectTypeAction tyoe: TimedSelectTypeView.TimedType)
+    ///   - type: 类型
+    func view(_ view: TimedSelectTypeView, selectTypeAction type: TimedSelectTypeView.TimedType)
 }
 
 class TimedSelectTypeView: UIView {

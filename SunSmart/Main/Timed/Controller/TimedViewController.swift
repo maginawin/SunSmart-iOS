@@ -178,6 +178,10 @@ class TimedViewController: UIViewController {
         
         if MeshNetworkManager.instance.schedules.isEmpty {
             scheduleCollectionView.showEmptyDataView(title: "no_schedules".localizedString, tipText: "no_schedules_message".localizedString, position: .center, bottomMargin: SCRYFit(27))
+            if let emptyView = scheduleCollectionView.emptyView {
+                emptyView.titleLabel.font = FONTS(SCRYFrom(15))
+                emptyView.tipLabel.font = UIFont.systemFont(ofSize: 15, weight: .light)
+            }
         }else {
             scheduleCollectionView.hideEmptyDataView()
         }
@@ -267,7 +271,7 @@ extension TimedViewController: UICollectionViewDataSource, UICollectionViewDeleg
         itemW = CGFloat(floorf(Float(itemW) * 100) / 100.0)
         let schedule = MeshNetworkManager.instance.schedules[indexPath.item]
         
-        return CGSize(width: itemW, height: schedule.enabled ? SCRYFrom(114) : SCRYFrom(64))
+        return CGSize(width: itemW, height: schedule.enabled ? SCRYFrom(isIPad ? 130 : 114) : SCRYFrom(isIPad ? 84 : 64))
     }
     
     func collectionView(_ collectionView: UICollectionView, didSelectItemAt indexPath: IndexPath) {
@@ -300,9 +304,13 @@ extension TimedViewController: SpaceFunctionFooterViewDelegate {
 extension TimedViewController: TimedSelectTypeViewDelegate {
     
     /// 选择类型
-    func view(_ view: TimedSelectTypeView, selectTypeAction tyoe: TimedSelectTypeView.TimedType) {
+    func view(_ view: TimedSelectTypeView, selectTypeAction type: TimedSelectTypeView.TimedType) {
         
-        scheduleCollectionView.isHidden = tyoe != .schedule
-        
+        guard type == .schedule else {
+            scheduleCollectionView.isHidden = true
+            XWHUDManager.showTipHUD("under_development".localizedString, isLineFeed: true)
+            return
+        }
+        scheduleCollectionView.isHidden = false
     }
 }

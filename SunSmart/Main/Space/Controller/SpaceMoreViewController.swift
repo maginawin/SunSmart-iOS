@@ -58,7 +58,7 @@ class SpaceMoreViewController: UIViewController {
         flowLayout.minimumLineSpacing = SCRYFrom(16)
         
         collectionView = UICollectionView(frame: .zero, collectionViewLayout: flowLayout)
-        collectionView.contentInset = UIEdgeInsets(top: SCRYFrom(20), left: SCRXFrom(16), bottom: SCRYFrom(20), right: SCRXFrom(16))
+        collectionView.contentInset = UIEdgeInsets(top: SCRYFrom(16), left: SCRXFrom(16), bottom: SCRYFrom(20), right: SCRXFrom(16))
         collectionView.register(SpaceMoreViewCell.classForCoder(), forCellWithReuseIdentifier: "cell")
         collectionView.dataSource = self
         collectionView.delegate = self
@@ -94,10 +94,10 @@ extension SpaceMoreViewController: UICollectionViewDataSource, UICollectionViewD
     func collectionView(_ collectionView: UICollectionView, didSelectItemAt indexPath: IndexPath) {
         switch options[indexPath.item] {
         case .ble:
-            guard self.space.bleOTAOperates.contains(.edit) else {
-                XWHUDManager.showTipHUD("no_permission".localizedString + "！")
-                return
-            }
+//            guard self.space.bleOTAOperates.contains(.edit) else {
+//                XWHUDManager.showTipHUD("no_permission".localizedString + "！")
+//                return
+//            }
             let vc = BleFirmwareUpdateViewController()
             present(NavigationViewController(rootViewController: vc), animated: true)
         case .mesh:

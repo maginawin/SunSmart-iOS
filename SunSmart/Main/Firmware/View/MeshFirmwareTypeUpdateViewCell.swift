@@ -53,7 +53,7 @@ class MeshFirmwareTypeUpdateViewCell: UICollectionViewCell {
             }else {
                 newVersionView.isHidden = true
             }
-            targetVersionLabel.text = firmwareTypeData.targetVersion ?? "None"
+            targetVersionLabel.text = firmwareTypeData.targetVersion ?? "none".localizedString
             
             updatableTipsView.isHidden = true
             versionStateImageView.layer.removeAnimation(forKey: "updating")

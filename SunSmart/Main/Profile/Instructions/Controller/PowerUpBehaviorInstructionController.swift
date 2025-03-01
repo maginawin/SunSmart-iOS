@@ -63,7 +63,7 @@ class PowerUpBehaviorInstructionController: UIViewController {
         let text = "power_up_behavior_instruction_desc".localizedString
         let textAttStr = NSMutableAttributedString(string: text, attributes: [.paragraphStyle: paragraphStyle])
         textAttStr.addAttributes([.foregroundColor: TextBlack_Color, .font: FONTS(14)], range: (text as NSString).range(of: "keep_light_off".localizedString))
-        textAttStr.addAttributes([.foregroundColor: TextBlack_Color, .font: FONTS(14)], range: (text as NSString).range(of: "restore".localizedString))
+        textAttStr.addAttributes([.foregroundColor: TextBlack_Color, .font: FONTS(14)], range: (text as NSString).range(of: "\n" + "restore".localizedString))
         textAttStr.addAttributes([.foregroundColor: TextBlack_Color, .font: FONTS(14)], range: (text as NSString).range(of: "defined_light_level".localizedString))
         
         contentLabel.attributedText = textAttStr

@@ -390,16 +390,18 @@ class Profile: Copyable {
     var manualOverrideTimeout: UInt32 = 600
     /// 调节速率 0~100
     var adjustSpeed: Int = 50
-    
+    /// 上电色温值
+    var powerUpCct: UInt16 = 4500
     /// 调节速率 0~100
 //    var adjustSpeed: Int = 50
     
-    init(name: String = "", id: String = UUID().uuidString, type: ProfileType = .occupancy_daylight, lightData: LightData, powerUpState: PowerUpState, manualOverrideTimeout: UInt32, adjustSpeed: Int = 50) {
+    init(name: String = "", id: String = UUID().uuidString, type: ProfileType = .occupancy_daylight, lightData: LightData, powerUpState: PowerUpState, powerUpCct: UInt16 = 4500, manualOverrideTimeout: UInt32, adjustSpeed: Int = 50) {
         self.name = name
         self.id = id
         self.type = type
         self.lightData = lightData
         self.powerUpState = powerUpState
+        self.powerUpCct = powerUpCct
         self.manualOverrideTimeout = manualOverrideTimeout
         self.adjustSpeed = adjustSpeed
     }
@@ -443,16 +445,17 @@ class Profile: Copyable {
         self.type = profile.type
         self.lightData = profile.lightData
         self.powerUpState = profile.powerUpState
+        self.powerUpCct = profile.powerUpCct
         self.manualOverrideTimeout = profile.manualOverrideTimeout
         self.adjustSpeed = profile.adjustSpeed
     }
     
     func copy() -> Self {
-        return Profile(name: name, id: id, type: type, lightData: lightData.copy(), powerUpState: powerUpState, manualOverrideTimeout: manualOverrideTimeout, adjustSpeed: adjustSpeed) as! Self
+        return Profile(name: name, id: id, type: type, lightData: lightData.copy(), powerUpState: powerUpState, powerUpCct: powerUpCct, manualOverrideTimeout: manualOverrideTimeout, adjustSpeed: adjustSpeed) as! Self
     }
     
     static func == (lhs: Profile, rhs: Profile) -> Bool {
-        return lhs.id == rhs.id && lhs.type == rhs.type && lhs.lightData == rhs.lightData && lhs.powerUpState.rawValue == rhs.powerUpState.rawValue && lhs.manualOverrideTimeout == rhs.manualOverrideTimeout && lhs.adjustSpeed == rhs.adjustSpeed
+        return lhs.id == rhs.id && lhs.type == rhs.type && lhs.lightData == rhs.lightData && lhs.powerUpState.rawValue == rhs.powerUpState.rawValue && lhs.powerUpCct == rhs.powerUpCct && lhs.manualOverrideTimeout == rhs.manualOverrideTimeout && lhs.adjustSpeed == rhs.adjustSpeed
     }
     
 }

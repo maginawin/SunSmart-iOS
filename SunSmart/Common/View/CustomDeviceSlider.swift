@@ -159,8 +159,8 @@ class CustomDeviceSlider: UISlider {
         
         addTarget(self, action: #selector(sliderTouchDown), for: .touchDown)
         addTarget(self, action: #selector(sliderValueChanged), for: .valueChanged)
-        addTarget(self, action: #selector(sliderEndValueChange), for: .touchUpInside)
-        addTarget(self, action: #selector(sliderEndValueChange), for: .touchDragExit)
+//        addTarget(self, action: #selector(sliderEndValueChange), for: .touchUpInside)
+//        addTarget(self, action: #selector(sliderEndValueChange), for: .touchDragExit)
     }
     
     required init?(coder: NSCoder) {
@@ -302,6 +302,12 @@ class CustomDeviceSlider: UISlider {
         
         trackRect = rect
         return rect
+    }
+    
+    override func touchesEnded(_ touches: Set<UITouch>, with event: UIEvent?) {
+        super.touchesEnded(touches, with: event)
+        
+        sliderEndValueChange()
     }
     
 //    override func hitTest(_ point: CGPoint, with event: UIEvent?) -> UIView? {

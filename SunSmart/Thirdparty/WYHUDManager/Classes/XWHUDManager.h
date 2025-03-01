@@ -246,6 +246,13 @@ typedef NS_ENUM(NSUInteger, XWHUDManagerType) {
 + (void)showErrorTipHUD:(NSString *)message;
 
 /**
+ 在 KeyWindow 展示 有文本的失败提示,默认失败图片在 XWHUDImages.bundle 中, - 1秒消失
+ 
+ @param message 提示语
+ */
++ (void)showErrorTipHUD:(NSString *)message timer:(NSTimeInterval)aTimer;
+
+/**
  在view有文本失败提示 - 1秒消失
  
  @param message 提示语

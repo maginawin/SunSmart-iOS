@@ -393,7 +393,7 @@ class GroupViewController: UIViewController {
         
         btnTouchCancelAction(sender: sender)
         
-        MeshAPI.sendMessage(message: LightLCLightOnOffSet(true, transitionTime: .default, delay: 0), address: group.address.address)
+        MeshAPI.sendMessage(message: LightLCLightOnOffSetUnacknowledged(true, transitionTime: .default, delay: 0), address: group.address.address)
         
         // 更新本地数据
         let profile = group.info.profile

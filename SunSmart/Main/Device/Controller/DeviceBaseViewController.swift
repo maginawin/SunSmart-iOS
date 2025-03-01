@@ -126,7 +126,7 @@ class DeviceBaseViewController: UIViewController, DeviceProtocol {
         })
     }
     
-    @objc private func moreClick() {
+    @objc func moreClick() {
         
         var items: [MenuPopView.MenuItem] = []
         if space.deviceOperates.contains(.edit) {
@@ -221,14 +221,6 @@ class DeviceBaseViewController: UIViewController, DeviceProtocol {
     
 }
 
-extension DeviceBaseViewController {
-    
-    
-    func showDeviceMenu() {
-        
-    }
-    
-}
 
 extension DeviceBaseViewController: MeshLibManagerMessageDelegate {
     

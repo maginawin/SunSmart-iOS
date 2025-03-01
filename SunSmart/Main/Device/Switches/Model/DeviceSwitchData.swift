@@ -12,6 +12,22 @@ class DeviceSwitchData: Copyable {
     
     /// 按键面板类型
     enum PanelType: UInt8 {
+        /// 按键数量
+        var keyCount: Int {
+            switch self {
+            case .default:
+                return 4
+            }
+        }
+        
+        /// 占用地址数量
+        var usedAddressesNumber: Int {
+            switch self {
+            case .default:
+                return 2
+            }
+        }
+        
         var describe: String {
             return "default".localizedString
         }
@@ -27,13 +43,21 @@ class DeviceSwitchData: Copyable {
     /// 面板类型
     var panelType: PanelType = .default
     
-    /// 关联的组地址（publish）
+    /// 关联的组地址Main（publish）
     var linkGroupAddress: Address?
     /// 关联的组
     var linkGroup: Group? {
         guard let address = linkGroupAddress else { return nil }
         return MeshNetworkManager.instance.virtualGroups.first(where: { $0.address.address == address })
     }
+    /// 关联的子组地址Sub (cct)
+    var subLinkGroupAddress: Address?
+    /// 关联的子组
+    var subLinkGroup: Group? {
+        guard let address = subLinkGroupAddress else { return nil }
+        return MeshNetworkManager.instance.virtualGroups.first(where: { $0.address.address == address })
+    }
+    
     /// 绑定的组地址list
     var bindGroupAddresses: [Address] = []
     /// 绑定的组list
@@ -75,12 +99,6 @@ class DeviceSwitchData: Copyable {
         guard let address = deleteProxyNodeAddress else { return nil }
         return MeshNetworkManager.instance.meshNetwork?.node(withAddress: address)
     }
-
-//    var syncError: Bool {
-//        
-//        
-//        
-//    }
     
     /// 默认动能开关
     static func `default`(id: String = UUID().uuidString) -> DeviceSwitchData {
@@ -88,11 +106,12 @@ class DeviceSwitchData: Copyable {
     }
     
     
-    init(id: String, enabled: Bool, name: String, linkGroupAddress: Address? = nil, bindGroupAddresses: [Address] = [], sceneANumber: SceneNumber? = nil, sceneBNumber: SceneNumber? = nil, proxyNodeAddress: Address? = nil) {
+    init(id: String, enabled: Bool, name: String, linkGroupAddress: Address? = nil, subLinkGroupAddress: Address? = nil, bindGroupAddresses: [Address] = [], sceneANumber: SceneNumber? = nil, sceneBNumber: SceneNumber? = nil, proxyNodeAddress: Address? = nil) {
         self.id = id
         self.enabled = enabled
         self.name = name
         self.linkGroupAddress = linkGroupAddress
+        self.subLinkGroupAddress = subLinkGroupAddress
         self.bindGroupAddresses = bindGroupAddresses
         self.sceneANumber = sceneANumber
         self.sceneBNumber = sceneBNumber
@@ -100,7 +119,7 @@ class DeviceSwitchData: Copyable {
     }
     
     func copy() -> Self {
-        let copy = DeviceSwitchData(id: id, enabled: enabled, name: name, linkGroupAddress: linkGroupAddress, bindGroupAddresses: bindGroupAddresses, sceneANumber: sceneANumber, sceneBNumber: sceneBNumber, proxyNodeAddress: proxyNodeAddress) as! Self
+        let copy = DeviceSwitchData(id: id, enabled: enabled, name: name, linkGroupAddress: linkGroupAddress, subLinkGroupAddress: subLinkGroupAddress, bindGroupAddresses: bindGroupAddresses, sceneANumber: sceneANumber, sceneBNumber: sceneBNumber, proxyNodeAddress: proxyNodeAddress) as! Self
         copy.enOceanMacAddress = self.enOceanMacAddress
         copy.enOceanSecurityKey = self.enOceanSecurityKey
         copy.unbindGroupAddresses = self.unbindGroupAddresses
@@ -113,6 +132,7 @@ class DeviceSwitchData: Copyable {
         self.enabled = switchData.enabled
         self.panelType = switchData.panelType
         self.linkGroupAddress = switchData.linkGroupAddress
+        self.subLinkGroupAddress = switchData.subLinkGroupAddress
         self.bindGroupAddresses = switchData.bindGroupAddresses
         self.unbindGroupAddresses = switchData.unbindGroupAddresses
         self.sceneANumber = switchData.sceneANumber
@@ -125,7 +145,25 @@ class DeviceSwitchData: Copyable {
     }
     
     static func == (lhs: DeviceSwitchData, rhs: DeviceSwitchData) -> Bool {
-        return lhs.id == rhs.id && lhs.name == rhs.name && lhs.linkGroupAddress == rhs.linkGroupAddress && lhs.bindGroupAddresses == rhs.bindGroupAddresses && lhs.unbindGroupAddresses == rhs.unbindGroupAddresses && lhs.enabled == rhs.enabled && lhs.panelType == rhs.panelType && lhs.sceneANumber == rhs.sceneANumber && lhs.sceneBNumber == rhs.sceneBNumber && lhs.proxyNodeAddress == rhs.proxyNodeAddress && lhs.enOceanMacAddress == rhs.enOceanMacAddress && lhs.enOceanSecurityKey == rhs.enOceanSecurityKey
+        return lhs.id == rhs.id && lhs.name == rhs.name && lhs.linkGroupAddress == rhs.linkGroupAddress && lhs.subLinkGroupAddress == rhs.subLinkGroupAddress && lhs.bindGroupAddresses == rhs.bindGroupAddresses && lhs.unbindGroupAddresses == rhs.unbindGroupAddresses && lhs.enabled == rhs.enabled && lhs.panelType == rhs.panelType && lhs.sceneANumber == rhs.sceneANumber && lhs.sceneBNumber == rhs.sceneBNumber && lhs.proxyNodeAddress == rhs.proxyNodeAddress && lhs.enOceanMacAddress == rhs.enOceanMacAddress && lhs.enOceanSecurityKey == rhs.enOceanSecurityKey
+    }
+    
+    /// 动能开关按键信息list
+    var switchKeys: [SwitchKey] {
+        var switchKeys: [SwitchKey] = []
+        switch panelType {
+        case .default:
+            if let mainAddress = self.linkGroupAddress {
+                let subAddress = self.subLinkGroupAddress
+                switchKeys = [
+                    SwitchKey(key: 4, shortPressAction: .auto(address: mainAddress), longPressAction: .dimUp(address: mainAddress), direction: .up),
+                    SwitchKey(key: 3, shortPressAction: .off(address: mainAddress), longPressAction: .dimDown(address: mainAddress), direction: .down),
+                    SwitchKey(key: 2, shortPressAction: .sceneRecall(sceneA?.number), longPressAction: .cctUp(address: subAddress ?? mainAddress), direction: .up),
+                    SwitchKey(key: 1, shortPressAction: .sceneRecall(sceneB?.number), longPressAction: .cctDown(address: subAddress ?? mainAddress), direction: .down)
+                ]
+            }
+        }
+        return switchKeys
     }
     
 }

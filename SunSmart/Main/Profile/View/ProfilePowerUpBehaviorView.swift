@@ -6,6 +6,7 @@
 //
 
 import UIKit
+import NordicSigMeshSDK
 
 protocol ProfilePowerUpBehaviorViewDelegate: AnyObject {
     
@@ -16,7 +17,8 @@ protocol ProfilePowerUpBehaviorViewDelegate: AnyObject {
     /// - Parameters:
     ///   - view: view
     ///   - state: 上电状态
-    func view(_ view: ProfilePowerUpBehaviorView, powerStateChanged state: Profile.PowerUpState)
+    ///   - powerOnCct: 上电色温（state: 自定义时）
+    func view(_ view: ProfilePowerUpBehaviorView, powerStateChanged state: Profile.PowerUpState, powerOnCct: UInt16?)
     
     /// 禁止交互下编辑事件
     func powerUpBehaviorViewDisableEditAction(view: ProfilePowerUpBehaviorView)
@@ -32,16 +34,10 @@ class ProfilePowerUpBehaviorView: UIView {
     private var restoreBtn: UIButton!
     /// 自定义目标值
     private var definedLightLevelBtn: UIButton!
-    /// 滑块view
-    private var sliderView: UIView!
-    /// 当前值
-    private var valueLabel: UILabel!
-    /// 滑条
-    var slider: CustomDeviceSlider!
-    /// 增加
-    private var addBtn: UIButton!
-    /// 减少
-    private var minusBtn: UIButton!
+    /// 亮度滑块view
+    var lightnessSliderView: PowerUpLightSliderView!
+    /// 色温滑块view
+    var cctSliderView: PowerUpLightSliderView!
     /// 记录上次选中的按键
     private var lastSelectBtn: UIButton?
     
@@ -60,16 +56,34 @@ class ProfilePowerUpBehaviorView: UIView {
             case .definedLightLevel(let level):
                 lastSelectBtn = definedLightLevelBtn
                 definedLightLevelBtn.isSelected = true
-                slider.value = Float(level)
+                lightnessSliderView.slider.value = Float(level)
             }
             
             updateUI()
             updateValue()
         }
     }
+    /// 上电色温
+    var powerOnCct: UInt16? {
+        didSet {
+            guard let cct = powerOnCct else {
+                cctSliderView.isHidden = true
+                return
+            }
+
+            cctSliderView.slider.value = Float(cct)
+            updateUI()
+            updateValue()
+        }
+    }
     
     /// 是否可编辑
-    var editable: Bool = true
+    var editable: Bool = true {
+        didSet {
+            lightnessSliderView.editable = editable
+            cctSliderView.editable = editable
+        }
+    }
     
     override init(frame: CGRect) {
         super.init(frame: frame)
@@ -80,6 +94,8 @@ class ProfilePowerUpBehaviorView: UIView {
         setupUI()
         restoreBtn.isSelected = true
         lastSelectBtn = restoreBtn
+        
+        bindSliderAction()
     }
     
     required init?(coder: NSCoder) {
@@ -105,7 +121,7 @@ class ProfilePowerUpBehaviorView: UIView {
             }
             lastSelectBtn = sender
             
-            delegate?.view(self, powerStateChanged: .off)
+            delegate?.view(self, powerStateChanged: .off, powerOnCct: nil)
         }
     }
     
@@ -124,7 +140,7 @@ class ProfilePowerUpBehaviorView: UIView {
             }
             lastSelectBtn = sender
             
-            delegate?.view(self, powerStateChanged: .restore)
+            delegate?.view(self, powerStateChanged: .restore, powerOnCct: nil)
         }
     }
     
@@ -142,48 +158,37 @@ class ProfilePowerUpBehaviorView: UIView {
                 updateUI()
             }
             lastSelectBtn = sender
-            slider.value = 50
+            lightnessSliderView.slider.value = 50
+            cctSliderView.slider.value = 4500
+            
             updateValue()
-            delegate?.view(self, powerStateChanged: .definedLightLevel(UInt8(Int(slider.value))))
+            delegate?.view(self, powerStateChanged: .definedLightLevel(UInt8(Int(lightnessSliderView.slider.value))), powerOnCct: UInt16(cctSliderView.slider.value))
         }
     }
     
-    @objc private func addBtnClick() {
-        
-        guard editable else {
-            delegate?.powerUpBehaviorViewDisableEditAction(view: self)
-            return
-        }
-        
-        slider.value = min(slider.value + 1, slider.maximumValue)
-        updateValue()
-        delegate?.view(self, powerStateChanged: .definedLightLevel(UInt8(Int(slider.value))))
-    }
-    
-    @objc private func minusBtnClick() {
-        
-        guard editable else {
-            delegate?.powerUpBehaviorViewDisableEditAction(view: self)
-            return
-        }
-        
-        slider.value = max(slider.value - 1, slider.minimumValue)
-        updateValue()
-        delegate?.view(self, powerStateChanged: .definedLightLevel(UInt8(Int(slider.value))))
-    }
     
     private func updateValue() {
         
-        valueLabel.text = "\(Int(slider.value))%"
+        lightnessSliderView.valueLabel.text = "\(Int(lightnessSliderView.slider.value))%"
+        cctSliderView.valueLabel.text = "\(Int(cctSliderView.slider.value))K"
     }
     
     private func updateUI() {
         
         let isShow = definedLightLevelBtn.isSelected
-        sliderView.snp.updateConstraints { make in
+        let showCct = isShow && powerOnCct != nil
+        
+        lightnessSliderView.snp.updateConstraints { make in
             make.height.equalTo(isShow ? SCRYFrom(76) : 0)
+            make.bottom.equalTo(-SCRYFrom(16 + (showCct ? 12 + 76 : 0)))
         }
-        sliderView.isHidden = !isShow
+        lightnessSliderView.isHidden = !isShow
+        
+        cctSliderView.snp.updateConstraints { make in
+            make.height.equalTo(showCct ? SCRYFrom(76) : 0)
+        }
+        cctSliderView.isHidden = !showCct
+        
 //        UIView.animate(withDuration: 0.25) {
 //            self.sliderView.isHidden = !isShow
 //        }
@@ -232,18 +237,93 @@ class ProfilePowerUpBehaviorView: UIView {
             make.height.equalTo(SCRYFrom(30))
         }
         
-        sliderView = UIView()
-        sliderView.isHidden = true
-        addSubview(sliderView)
-        sliderView.snp.makeConstraints { make in
+        lightnessSliderView = PowerUpLightSliderView()
+        lightnessSliderView.isHidden = true
+        
+        addSubview(lightnessSliderView)
+        lightnessSliderView.snp.makeConstraints { make in
             make.left.right.equalToSuperview()
             make.top.equalTo(definedLightLevelBtn.snp.bottom)
             make.bottom.equalTo(SCRYFrom(-16))
             make.height.equalTo(0)
         }
         
+        cctSliderView = PowerUpLightSliderView()
+        cctSliderView.slider.minimumValue = Float(LightCTL_TemperatureRange.min)
+        cctSliderView.slider.maximumValue = Float(LightCTL_TemperatureRange.max)
+        cctSliderView.isHidden = true
+        cctSliderView.slider.gradientColors = [RGB(255, 108, 0), .white, RGB(114, 179, 255)]
+        addSubview(cctSliderView)
+        cctSliderView.snp.makeConstraints { make in
+            make.left.right.equalToSuperview()
+            make.top.equalTo(lightnessSliderView.snp.bottom).offset(SCRYFrom(12))
+//            make.bottom.equalTo(SCRYFrom(-16))
+            make.height.equalTo(0)
+        }
+        
+    }
+    
+    private func bindSliderAction() {
+        
+        lightnessSliderView.valueChangedCallback = {[weak self] lightness in
+            guard let self = self else { return }
+            let cct: UInt16? = cctSliderView.isHidden ? nil : UInt16(cctSliderView.slider.value)
+            delegate?.view(self, powerStateChanged: .definedLightLevel(UInt8(lightness)), powerOnCct: cct)
+            
+            self.updateValue()
+        }
+        lightnessSliderView.disableEditActionCallback = {[weak self] in
+            guard let self = self else { return }
+            self.delegate?.powerUpBehaviorViewDisableEditAction(view: self)
+        }
+        
+        cctSliderView.valueChangedCallback = {[weak self] cct in
+            guard let self = self else { return }
+            delegate?.view(self, powerStateChanged: .definedLightLevel(UInt8(self.lightnessSliderView.slider.value)), powerOnCct: UInt16(cct))
+            
+            self.updateValue()
+        }
+        cctSliderView.disableEditActionCallback = {[weak self] in
+            guard let self = self else { return }
+            self.delegate?.powerUpBehaviorViewDisableEditAction(view: self)
+        }
+        
+    }
+    
+}
+
+class PowerUpLightSliderView: UIView {
+    
+    /// 当前值
+    var valueLabel: UILabel!
+    /// 滑条
+    var slider: CustomDeviceSlider!
+    /// 增加
+    private var addBtn: UIButton!
+    /// 减少
+    private var minusBtn: UIButton!
+    /// 数值变更回调
+    var valueChangedCallback: ((Int)->Void)?
+    /// 不可编辑状态下修改滑条
+    var disableEditActionCallback: (()->Void)?
+    
+    /// 是否可编辑
+    var editable: Bool = true
+    
+    override init(frame: CGRect) {
+        super.init(frame: frame)
+        
+        setupUI()
+    }
+    
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
+    
+    private func setupUI() {
+        
         valueLabel = UILabel(text: "50%", textColor: TextBlack_Color, fontWeight: .light)
-        sliderView.addSubview(valueLabel)
+        addSubview(valueLabel)
         valueLabel.snp.makeConstraints { make in
             make.right.equalTo(SCRXFrom(-16))
             make.top.equalTo(SCRYFrom(4))
@@ -251,14 +331,14 @@ class ProfilePowerUpBehaviorView: UIView {
         }
 
         addBtn = UIButton(normalImageName: "scene_data_value_add", target: self, action: #selector(addBtnClick))
-        sliderView.addSubview(addBtn)
+        addSubview(addBtn)
         addBtn.snp.makeConstraints { make in
             make.right.equalTo(SCRXFrom(-16))
             make.bottom.equalTo(SCRYFrom(-9))
         }
         
         minusBtn = UIButton(normalImageName: "scene_data_value_minus", target: self, action: #selector(minusBtnClick))
-        sliderView.addSubview(minusBtn)
+        addSubview(minusBtn)
         minusBtn.snp.makeConstraints { make in
             make.left.equalTo(SCRXFrom(16))
             make.centerY.equalTo(addBtn)
@@ -274,7 +354,7 @@ class ProfilePowerUpBehaviorView: UIView {
         slider.value = 50
         slider.throttle = true
         slider.delegate = self
-        sliderView.addSubview(slider)
+        addSubview(slider)
         slider.snp.makeConstraints { make in
             make.left.equalTo(SCRXFrom(61))
             make.right.equalTo(SCRXFrom(-62))
@@ -283,13 +363,38 @@ class ProfilePowerUpBehaviorView: UIView {
         }
     }
     
+    @objc private func addBtnClick() {
+        
+        guard editable else {
+//            delegate?.powerUpBehaviorViewDisableEditAction(view: self)
+            disableEditActionCallback?()
+            return
+        }
+        
+        slider.value = min(slider.value + 1, slider.maximumValue)
+//        updateValue()
+        valueChangedCallback?(Int(slider.value))
+    }
+    
+    @objc private func minusBtnClick() {
+        
+        guard editable else {
+            disableEditActionCallback?()
+            return
+        }
+        
+        slider.value = max(slider.value - 1, slider.minimumValue)
+        valueChangedCallback?(Int(slider.value))
+    }
+    
+    
 }
 
-extension ProfilePowerUpBehaviorView: CustomDeviceSliderDelegate {
+extension PowerUpLightSliderView: CustomDeviceSliderDelegate {
     
     func slider(_ slider: CustomDeviceSlider, canEditChanged value: Float) -> Bool {
         if !editable {
-            delegate?.powerUpBehaviorViewDisableEditAction(view: self)
+            disableEditActionCallback?()
         }
         return editable
     }
@@ -300,8 +405,7 @@ extension ProfilePowerUpBehaviorView: CustomDeviceSliderDelegate {
     ///   - value: 数值
     func slider(_ slider: CustomDeviceSlider, valueChanged value: Float, ended: Bool) {
         
-        updateValue()
-        delegate?.view(self, powerStateChanged: .definedLightLevel(UInt8(Int(slider.value))))
+        valueChangedCallback?(Int(value))
     }
     
 }

@@ -297,10 +297,10 @@
 "profile_vacancy_daylight_desc" = "A vacancy mode also automatically turns lights off when you are leave a room,but you need to manually turn them on when you walk into a room,the light level will maintain to a defined lux level.Vacancy sensing maximizes the energy savings from the sensor because it's not always necessary to turn lights on when you walk into a room.";
 
 "profile_occupancy" = "Occupancy sensing";
-"profile_occupancy_desc" = "An occupancy mode automatically turns lights on to a defined lux level when you enter a room，turns off when you leave,making this type of mode the most convenient,since you never have to touch the lighting controls.";
+"profile_occupancy_desc" = "An occupancy mode automatically turns lights on to a defined lumen level when you enter a room，turns off when you leave,making this type of mode the most convenient,since you never have to touch the lighting controls.";
 
 "profile_vacancy" = "Vacancy sensing";
-"profile_vacancy_desc" = "A vacancy mode also automatically turns lights off when you are leave a room,but you need to manually turn them on when you walk into a room,the light level will maintain to a defined lux level.Vacancy sensing maximizes the energy savings from the sensor because it's not always necessary to turn lights on when you walk into a room.";
+"profile_vacancy_desc" = "A vacancy mode also automatically turns lights off when you are leave a room,but you need to manually turn them on when you walk into a room,the light level will maintain to a defined lumen level.Vacancy sensing maximizes the energy savings from the sensor because it's not always necessary to turn lights on when you walk into a room.";
 
 "profile_daylight" = "Daylight harvesting (Closed loop)";
 "profile_daylight_desc" = "Daylight harvesting is a lighting control strategy used to maintain the required light level in the work area and reduce energy use.Luminaires adjust their light level automatically in response to changes in daylight.";
@@ -372,7 +372,7 @@
 "manual_override_timeout_instruction_title" = "Manual override timeout instruction";
 "manual_override_timeout_instruction_desc" = "Makes lighting return automatically to default settings.When disabled automatic operation needs to be restored manually.\n\nTime after which the light switches itself to default settings.Example:Manual override timeout is set to 10 minutes.When you turn on one of the preset scenes from the switch,after 10 minutes of detected vacancy in the space the light will be switched to default settings.\n\nNOTE:Any human activity detected(such as occupancy,using the switch)will reset the timer.";
 "power_up_behavior_instruction_title" = "Power up behavior instruction";
-"power_up_behavior_instruction_desc" = "Keep light off-The light will remain off on power up.\nIf manual override timeout is enabled then the light returns to default settings(automation) after the timeout  if occupancy is notdetected.\n\nRestore-The light will return to the last level before power failure.Light level and color temperature returns to the state before power failure.\nExample: If a device has been in an occupied state before power failure the occupied state will be restored on power up. The timeouts will be restored.\n\nDefined light level-The light will come on at this brightness on power up.Color temperature returns to default.\nIf manual override timeout is enabled then the light returns to default settings (automation) after the timeout if occupancy is not detected.";
+"power_up_behavior_instruction_desc" = "Keep light off-The light will remain off on power up.\nIf manual override timeout is enabled then the light returns to default settings(automation) after the timeout  if occupancy is notdetected.\n\nRestore-The light will return to the last level before power failure.Light level and color temperature returns to the state before power failure.\nExample: If a device has been in an occupied state before power failure the occupied state will be restored on power up. The timeouts will be restored.\n\nDefined light level-The light will come on at this brightness and color temperature on power up.\nIf manual override timeout is enabled then the light returns to default settings (automation) after the timeout if occupancy is not detected.";
 "calibration_instruction_title" = "Calibration instruction";
 "calibration_instruction_desc" = "1.What is calibration？\nThe illumination we need generally refers to the illumination of the target level, but the sensor is generally installed in the ceiling, and the measured value is different from the value of the target level. The purpose of calibration is to provide an approximate relationship that allows us to read the illumination value of the target level directly on the APP.\n\n2.Preparing for calibration\n-Install all interior finishes,furniture,and equipment.\n-Make sure that there are normal daylight conditions and turn off all luminaires in adjacent groups.\n-To decrease the calibration error,the measured light level must be at least 75% of the light level set in the group and at least 100 lx.\n-Do not stand next to the light meter when you read the values and calibrate.\n-Make sure that windows and skylights are not covered.\n\n3. Principle of calibration\nCalibration calculates the coefficient A that defines the relation between the light level on the monitored surface and the light level measured by the sensor:\n\nThe  app adjusts the light level measured by the sensor using coefficient A so that the sensor displays the light level that is expected to be on the surface.";
 "calibration_instruction_desc_end" = "\n\nThe  app adjusts the light level measured by the sensor using coefficient A so that the sensor displays the light level that is expected to be on the surface.";
@@ -636,10 +636,10 @@
 "guidance_message_3" = "Add Device interface, adding to a group can quickly synchronize group parameters to the device";
 "guidance_message_4" = "Add Device interface, you can choose to add the device to space or group.";
 "guidance_message_5" = "Add Device interface, adding to space is faster than adding to group.";
-"guidance_message_6" = "Add Decive interface, after scanning the target device, you can stop scanning to speed up the operation.";
-"guidance_message_7" = "Add Decive interface, Scan will continue, move the location to search without clicking scan again.";
-"guidance_message_8" = "Add Decive interface, adjust near-far to filter unnecessary devices, so as to identify the device faster.";
-"guidance_message_9" = "Add Decive interface, \"identify\" is used to identify the target device.";
+"guidance_message_6" = "Add Device interface, after scanning the target device, you can stop scanning to speed up the operation.";
+"guidance_message_7" = "Add Device interface, Scan will continue, move the location to search without clicking scan again.";
+"guidance_message_8" = "Add Device interface, adjust near-far to filter unnecessary devices, so as to identify the device faster.";
+"guidance_message_9" = "Add Device interface, \"identify\" is used to identify the target device.";
 "guidance_message_10" = "Swiping left and right on the main interface can quickly switch the main menu.";
 "guidance_message_11" = "Swiping down can quickly exit the interface.";
 "guidance_message_12" = "Press and hold the \"All\" button for dimming all lights.";
@@ -931,4 +931,12 @@
 "no_gateways_message" = "You do not have a gateway yet, please add a gateway first.";
 "download_failure" = "Download failure!";
 "no_record" = "No record";
-
+"group_address_insufficient_message" = "The group address is insufficient. Please ask the owner to share new space for expansion.";
+"no_bus_devices" = "No BUS Devices !";
+"Scan_Dali_Devices" = "Scan DALI Devices";
+"dali_setting" = "DALI Setting";
+"replace_the_master" = "Replace The Master";
+"dali_configuration" = "DALI Configuration";
+"scan_dali_devices" = "Scan DALI devices";
+"address_conflicts_detected" = "Address conflicts detected";
+"unaddressed_gear_present" = "Unaddressed gear present";

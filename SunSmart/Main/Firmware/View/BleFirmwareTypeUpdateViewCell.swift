@@ -71,7 +71,7 @@ class BleFirmwareTypeUpdateViewCell: UICollectionViewCell {
             }else {
                 newVersionView.isHidden = true
             }
-            targetVersionLabel.text = firmwareTypeData.targetVersion ?? "None"
+            targetVersionLabel.text = firmwareTypeData.targetVersion ?? "none".localizedString
             
             totalNumberLabel.text = "\(firmwareTypeData.nodes.count)"
             if let targetVersion = firmwareTypeData.targetVersion{

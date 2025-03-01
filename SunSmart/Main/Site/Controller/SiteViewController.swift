@@ -1757,6 +1757,7 @@ extension SiteViewController: SpacesViewCellDelegate {
         
         let collectionViewPoint = collectionView.convert(point, from: cell)
         let viewPoint = view.convert(collectionViewPoint, from: collectionView)
+//        let windowPoint =
 //        [weakself.view convertPoint:tableviewPoint fromView:tableView];
         self.spaceMenu(space: space, point: viewPoint)
     }

@@ -202,7 +202,7 @@ class ProfileSettingsViewController: UIViewController {
                     }
                     fallthrough
                 default:
-                    self.powerUpBehaviorView.slider.limitRange = range
+                    self.powerUpBehaviorView.lightnessSliderView.slider.limitRange = range
                 }
                     
             case .occupancyAndVacantLevel(let occupanyLevel, let vacantLevel):
@@ -272,15 +272,19 @@ class ProfileSettingsViewController: UIViewController {
         self.headerView.profileBtn.setTitle(selectProfile.type.instruction.name, for: .normal)
         
         self.sphasesView.snp.updateConstraints { make in
-            make.height.equalTo(SCRYFrom(self.selectProfile.lightData.times.count > 0 ? 344 : 264))
+            make.height.greaterThanOrEqualTo(SCRYFrom(self.selectProfile.lightData.times.count > 0 ? 344 : 264))
         }
         self.sphasesView.profile = self.selectProfile
         self.timeoutView.second = self.selectProfile.manualOverrideTimeout
         
         let data = self.selectProfile.lightData.data
-        self.powerUpBehaviorView.slider.limitRange = data.lowEndTrim...data.highEndTrim
+        self.powerUpBehaviorView.lightnessSliderView.slider.limitRange = data.lowEndTrim...data.highEndTrim
         self.powerUpBehaviorView.powerState = self.selectProfile.powerUpState
-       
+        if self.group?.supportCct ?? false {
+            self.powerUpBehaviorView.powerOnCct = self.selectProfile.powerUpCct
+        }else {
+            self.powerUpBehaviorView.powerOnCct = nil
+        }
         
         if selectProfile.type == .daylight || selectProfile.type == .manualControl {
             timeoutView.isHidden = true
@@ -334,7 +338,7 @@ class ProfileSettingsViewController: UIViewController {
             make.left.equalTo(contentMargin)
             make.right.equalTo(-contentMargin)
             make.top.equalTo(headerView.snp.bottom).offset(SCRYFrom(13))
-            make.height.equalTo(SCRYFrom(selectProfile.lightData.times.count > 0 ? 344 : 264))
+            make.height.greaterThanOrEqualTo(SCRYFrom(selectProfile.lightData.times.count > 0 ? 344 : 264))
         }
         
 //        daylightSensorView = ProfileDaylightSensorControlView()
@@ -576,10 +580,12 @@ extension ProfileSettingsViewController: ProfilePowerUpBehaviorViewDelegate {
     /// - Parameters:
     ///   - view: view
     ///   - state: 上电状态
-    func view(_ view: ProfilePowerUpBehaviorView, powerStateChanged state: Profile.PowerUpState) {
-        
+    ///   - powerOnCct: 上电色温）
+    func view(_ view: ProfilePowerUpBehaviorView, powerStateChanged state: Profile.PowerUpState, powerOnCct: UInt16?) {
         selectProfile.powerUpState = state
-        
+        if let cct = powerOnCct {
+            selectProfile.powerUpCct = cct
+        }
     }
     
 }

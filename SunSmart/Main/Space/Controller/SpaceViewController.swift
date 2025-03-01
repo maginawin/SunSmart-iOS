@@ -155,6 +155,7 @@ class SpaceViewController: WMPageController {
         MeshLibManager.manager.publishTimeModelIDs = []
         MeshLibManager.manager.publishModeloOnly = true
         MeshLibManager.manager.groupSubscriptionModelIDs = [.genericOnOffServerModelId, .lightLightnessServerModelId, .lightCTLTemperatureServerModelId, .lightCTLServerModelId, .sensorServerModelId, .lightLCServerModelId]
+        MeshLibManager.manager.subElementGroupSubscriptionModelIDs = [.lightCTLTemperatureServerModelId]
         checkBluetoothState()
    
         // 添加通知监听

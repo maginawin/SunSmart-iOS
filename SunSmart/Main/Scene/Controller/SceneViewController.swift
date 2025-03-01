@@ -304,6 +304,8 @@ class SceneViewController: UIViewController {
         flowLayout.minimumLineSpacing = itemMargin
         flowLayout.minimumInteritemSpacing = itemMargin
         flowLayout.scrollDirection = .horizontal
+        flowLayout.itemRowCount = rowNum
+        flowLayout.itmeColCount = columnNum
         flowLayout.sectionInset = collectionViewInsets //UIEdgeInsets(top: SCRYFrom(36), left: SCRXFrom(24), bottom: SCRYFit(36), right: SCRXFrom(24))
         
         collectionView = UICollectionView(frame: .zero, collectionViewLayout: flowLayout)

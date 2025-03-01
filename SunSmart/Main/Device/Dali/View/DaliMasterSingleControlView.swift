@@ -33,14 +33,8 @@ class DaliMasterSingleControlView: UIView {
     var lightGrayBgView: UIImageView!
     var lightBgView: UIImageView!
     var lightImageBtn: UIButton!
-    var brightnessView: UIView!
-    var brightnessImageView: UIImageView!
-    var brightnessLineView: UIView!
-    var brightnessLabel: UILabel!
-    var cctView: UIView!
-    var cctImageView: UIImageView!
-    var cctLineView: UIView!
-    var cctLabel: UILabel!
+    var brightnessView: LightFunctionItem!
+    var cctView: LightFunctionItem!
     
     var onoffBtn: UIButton!
     var lightnessSlider: BuoySliderView!
@@ -134,10 +128,10 @@ class DaliMasterSingleControlView: UIView {
             make.centerX.equalToSuperview()
 //            make.width.equalTo(lightBgView.snp.height)
             if isIPad {
-                make.top.equalTo(SCRYFit(198))
+                make.top.equalTo(SCRYFit(142))
                 make.width.height.equalTo(SCRYFit(238))
             }else {
-                make.top.equalTo(SCRYFit(108))
+                make.top.equalTo(SCRYFit(52))
                 make.width.height.equalTo(SCRYFit(200))
             }
             
@@ -159,69 +153,19 @@ class DaliMasterSingleControlView: UIView {
             }
         }
         
-        brightnessView = UIView()
+        brightnessView = LightFunctionItem(imageName: "device_brightness", valueStr: "100%")
         addSubview(brightnessView)
         brightnessView.snp.makeConstraints { make in
             make.centerX.equalToSuperview()
             make.top.equalTo(lightBgView.snp.bottom).offset(SCRYFit(isIPad ? 68 : 28))
-            make.height.equalTo(SCRYFrom(20))
+//            make.height.greaterThanOrEqualTo(SCRYFrom(20))
         }
         
-        brightnessImageView = UIImageView(image: UIImage(named: "device_brightness"))
-        brightnessView.addSubview(brightnessImageView)
-        brightnessImageView.snp.makeConstraints { make in
-            make.left.centerY.equalToSuperview()
-            make.width.height.equalTo(SCRYFrom(20))
-        }
-        
-        brightnessLineView = UIView()
-        brightnessLineView.backgroundColor = RGB(148, 163, 184)
-        brightnessView.addSubview(brightnessLineView)
-        brightnessLineView.snp.makeConstraints { make in
-            make.left.equalTo(brightnessImageView.snp.right).offset(SCRXFrom(4))
-            make.centerY.equalToSuperview()
-            make.width.equalTo(1)
-            make.height.equalTo(SCRYFrom(12))
-        }
-        brightnessLabel = UILabel(text: "100%", textColor: TextBlack_Color, fontSize: 14)
-        brightnessView.addSubview(brightnessLabel)
-        brightnessLabel.sizeToFit()
-        brightnessLabel.snp.makeConstraints { make in
-            make.left.equalTo(brightnessLineView.snp.right).offset(SCRXFrom(6))
-            make.centerY.right.equalToSuperview()
-            make.width.equalTo(brightnessLabel.width)
-        }
-        
-        cctView = UIView()
+        cctView = LightFunctionItem(imageName: "device_cct", valueStr: "4500K")
         addSubview(cctView)
         cctView.snp.makeConstraints { make in
             make.left.equalTo(self.snp.centerX).offset(SCRXFrom(22))
             make.centerY.height.equalTo(brightnessView)
-        }
-        
-        cctImageView = UIImageView(image: UIImage(named: "device_cct"))
-        cctView.addSubview(cctImageView)
-        cctImageView.snp.makeConstraints { make in
-            make.left.centerY.equalToSuperview()
-            make.width.height.equalTo(SCRYFrom(20))
-        }
-        
-        cctLineView = UIView()
-        cctLineView.backgroundColor = RGB(148, 163, 184)
-        cctView.addSubview(cctLineView)
-        cctLineView.snp.makeConstraints { make in
-            make.left.equalTo(cctImageView.snp.right).offset(SCRXFrom(4))
-            make.centerY.equalToSuperview()
-            make.width.equalTo(1)
-            make.height.equalTo(SCRYFrom(12))
-        }
-        cctLabel = UILabel(text: "4500K", textColor: TextBlack_Color, fontSize: 14)
-        cctView.addSubview(cctLabel)
-        cctLabel.sizeToFit()
-        cctLabel.snp.makeConstraints { make in
-            make.left.equalTo(cctLineView.snp.right).offset(SCRXFrom(6))
-            make.centerY.right.equalToSuperview()
-            make.width.greaterThanOrEqualTo(cctLabel.width)
         }
         
 //        let cctRange = self.node.lightCTLTemperatureRange ?? self.node.defalutLightCTLTemperatureRange
@@ -311,6 +255,52 @@ class DaliMasterSingleControlView: UIView {
                 make.top.equalTo(lightBgView.snp.bottom).offset(SCRYFit(28))
                 make.height.equalTo(SCRYFrom(20))
             }
+        }
+    }
+    
+}
+
+class LightFunctionItem: UIView {
+    var itemImageView: UIImageView!
+    var itemLineView: UIView!
+    var itemValueLabel: UILabel!
+    
+    init(imageName: String, valueStr: String) {
+        super.init(frame: .zero)
+        
+        setupUI()
+        itemImageView.image = UIImage(named: imageName)
+        itemValueLabel.text = valueStr
+    }
+    
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
+    
+    private func setupUI() {
+        itemImageView = UIImageView()
+        addSubview(itemImageView)
+        itemImageView.snp.makeConstraints { make in
+            make.left.top.bottom.equalToSuperview()
+        }
+        
+        itemLineView = UIView()
+        itemLineView.backgroundColor = RGB(148, 163, 184)
+        addSubview(itemLineView)
+        itemLineView.snp.makeConstraints { make in
+            make.left.equalTo(itemImageView.snp.right).offset(SCRXFrom(4))
+            make.centerY.equalToSuperview()
+            make.width.equalTo(1)
+            make.height.equalTo(SCRYFrom(12))
+        }
+        itemValueLabel = UILabel(text: "", textColor: TextBlack_Color, fontSize: 14)
+        addSubview(itemValueLabel)
+//        brightnessLabel.sizeToFit()
+        itemValueLabel.snp.makeConstraints { make in
+            make.left.equalTo(itemLineView.snp.right).offset(SCRXFrom(6))
+            make.centerY.right.equalToSuperview()
+            make.right.equalToSuperview()
+//            make.width.equalTo(brightnessLabel.width)
         }
     }
     

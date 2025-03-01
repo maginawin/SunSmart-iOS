@@ -24,6 +24,8 @@ class EnOceanProxyViewController: UIViewController {
     
     /// 选择的代理
     private var selectProxy: Node?
+    /// 之前的代理设备地址（进入页面设置之前）
+    private var lastProxyAddress: Address?
     /// 设置的虚拟开关
 //    private var setSwitch: DeviceSwitchData!
     /// 扫码页面
@@ -100,6 +102,7 @@ class EnOceanProxyViewController: UIViewController {
 //        notInGroupProxys = MeshNetworkManager.instance.realNodes.filter({ $0.group == nil && $0.sunricherVendorModel != nil })
         
         showSections = switchData.bindGroups.enumerated().map({ $0.offset })
+        lastProxyAddress = switchData.proxyNodeAddress
         
         if switchData.bindGroups.isEmpty {
             tableView.showEmptyDataView(title: "no_devices".localizedString, tipText: "group_not_proxy_message".localizedString, margin: SCRXFrom(42))
@@ -148,119 +151,6 @@ class EnOceanProxyViewController: UIViewController {
         tableView.isHidden = false
         loadingView.isHidden = true
         loadingView.layer.removeAnimation(forKey: "loading")
-    }
-
-    /// 动能开关和代理绑定
-    private func enOceanSwitchBind(enOceanData: EnOceanQRCodeData) {
-        
-        // 网络未连接
-        guard MeshLibManager.manager.isMeshNetworkConnected else {
-            XWHUDManager.showTipHUD("device_notconnect_message".localizedString, isLineFeed: true)
-            return
-        }
-        
-        guard let proxyNode = self.selectProxy else { return }
-        showLoadingAnimation()
-        
-        MeshEnOceanProxyServer.setEnOceanProxy(proxyNode: proxyNode, securityKey: enOceanData.securityKey, macAddress: enOceanData.macAddress) {[weak self] isSuccess, error in
-            guard let self = self else { return }
-            
-            if isSuccess {
-                // 清空之前绑定的代理mac信息
-//                if let removeProxySwitch = self.group.info.switchs.first(where: { $0.proxyNode?.enOceanMacAddress == enOceanData.macAddress }) {
-//                    
-//                    removeProxySwitch.proxyNode = nil
-//                    
-//                    removeProxySwitch.save(meshUUID: MeshNetworkManager.instance.meshNetwork!.uuid.uuidString)
-//                    self.switchDataUpdateCallback?(removeProxySwitch)
-//                }
-//                
-//                if let lastProxyNode = MeshNetworkManager.instance.meshNetwork?.nodes.first(where: { $0.enOceanMacAddress == enOceanData.macAddress }), lastProxyNode.primaryUnicastAddress != proxyNode.primaryUnicastAddress {
-//                    
-//                    lastProxyNode.enOceanMacAddress = nil
-//                    lastProxyNode.saveNodeInfo(meshUUID: MeshNetworkManager.instance.meshNetwork!.uuid.uuidString)
-//                    
-//                    self.reloadProxyItem(proxy: lastProxyNode)
-//                }
-                
-                // 如果开关未生成对应发布订阅组(虚拟不展示给用户看)，则自动生成一个
-                var linkGroup = switchData.linkGroup
-                if linkGroup == nil {
-                    linkGroup = (try? MeshAPI.createGroup(name: self.switchData.name + "-Group", isVirtual: true))
-                    switchData.linkGroupAddress = linkGroup?.address.address
-                }
-                guard let group = linkGroup else {
-                    XWHUDManager.showErrorTipHUD("failed".localizedString + " !")
-                    return
-                }
-                
-                self.switchData.proxyNodeAddress = proxyNode.primaryUnicastAddress
-                self.switchData.save()
-                self.reloadProxyItem(proxy: proxyNode)
-                if self.switchData.enabled { // 是否启用，启用默认绑定按键
-                    MeshEnOceanProxyServer.bindEnOceanSwitchKeys(proxyNode: proxyNode, group: group, sceneA: self.switchData.sceneA, sceneB: self.switchData.sceneB) {[weak self] _, _ in
-                        guard let self = self else { return }
-                        self.hideLoadingAnimation()
-                        self.switchDataUpdateCallback?(self.switchData)
-                        // 通知space数据修改
-                        NotificationCenter.default.post(name: .init(spaceDataChangedNotificaitonName), object: SpaceChangeDataType.device)
-                    }
-                }else {
-                    self.hideLoadingAnimation()
-                    self.switchDataUpdateCallback?(self.switchData)
-                    // 通知space数据修改
-                    NotificationCenter.default.post(name: .init(spaceDataChangedNotificaitonName), object: SpaceChangeDataType.device)
-                }
-                
-            }else if let error = error {
-                self.hideLoadingAnimation()
-                switch error {
-                case .connectTimeout:
-                    self.showSetProxyFailed(proxy: proxyNode, failedMessage: "connection_failure".localizedString)
-                default:
-                    self.showSetProxyFailed(proxy: proxyNode, failedMessage: "enocean_proxy_set_failed".localizedString)
-                }
-            }
-        }
-        
-    }
-    
-    /// 动能开关和代理解绑
-    private func enOceanSwitchUnBind(proxyNode: Node) {
-         
-        // 网络未连接
-        guard MeshLibManager.manager.isMeshNetworkConnected else {
-            XWHUDManager.showTipHUD("device_notconnect_message".localizedString, isLineFeed: true)
-            return
-        }
-        showLoadingAnimation()
-        
-        MeshEnOceanProxyServer.deleteEnOceanProxy(proxyNode: proxyNode, group: switchData.linkGroup) {[weak self] isDeleteSuccess, deleteError in
-            guard let self = self else { return }
-            self.hideLoadingAnimation()
-            if isDeleteSuccess { // 删除代理成功
-                
-//                    proxyNode.saveNodeInfo(meshUUID: uuid, networkKey: networkKey)
-                    
-//                if let removeProxySwitch = self.group.info.switchs.first(where: { $0.proxyNode?.primaryUnicastAddress == proxyNode.primaryUnicastAddress }) {
-//                    
-//                    removeProxySwitch.proxyNodeAddress = nil
-//                    removeProxySwitch.save()
-//                    self.switchDataUpdateCallback?(removeProxySwitch)
-//                }
-                
-                self.reloadProxyItem(proxy: proxyNode)
-                // 通知space数据修改
-                NotificationCenter.default.post(name: .init(spaceDataChangedNotificaitonName), object: SpaceChangeDataType.device)
-            }else {
-                switch deleteError {
-                case .connectTimeout:
-                    self.showUnBindProxyFailed(proxy: proxyNode, failedMessage: "connection_failure".localizedString)
-                default:
-                    self.showUnBindProxyFailed(proxy: proxyNode, failedMessage: "switch_disable_failure".localizedString)
-                }
-            }
-        }
     }
     
     /// 刷新代理UI
@@ -325,24 +215,6 @@ class EnOceanProxyViewController: UIViewController {
             self?.scanCodeVc?.startScan()
         })]).show()
     }
-    
-    /// 提示设置代理失败
-    private func showSetProxyFailed(proxy: Node, failedMessage: String) {
-        
-        SRAlertView(message: failedMessage, actions: [.cancelAction, SRAlertAction(title: "RETRY", actionHandler: {[weak self] _ in
-            if let data = self?.enOceanData {
-                self?.enOceanSwitchBind(enOceanData: data)
-            }
-        })]).show()
-    }
-    
-    /// 提示解绑代理失败
-    private func showUnBindProxyFailed(proxy: Node, failedMessage: String) {
-        
-        SRAlertView(message: failedMessage, actions: [.cancelAction, SRAlertAction(title: "RETRY", actionHandler: {[weak self] _ in
-            self?.enOceanSwitchUnBind(proxyNode: proxy)
-        })]).show()
-    }
 
     
 }
@@ -359,7 +231,7 @@ extension EnOceanProxyViewController: LBXScanViewControllerDelegate {
             var bindNode: Node?
             if let nodeData = enOceanMacMap.first(where: { $0.value == data.macAddress }), let node = MeshNetworkManager.instance.realNodes.first(where: { $0.primaryUnicastAddress == nodeData.key }) {
                 bindNode = node
-            }else if let node = MeshNetworkManager.instance.realNodes.first(where: { $0.enOceanMacAddress == data.macAddress }) {
+            }else if let node = MeshNetworkManager.instance.realNodes.first(where: { $0.enOceanMacAddress == data.macAddress && $0.primaryUnicastAddress != lastProxyAddress }) {
                 bindNode = node
             }
             

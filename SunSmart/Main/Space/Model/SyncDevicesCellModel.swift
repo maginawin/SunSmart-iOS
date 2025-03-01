@@ -56,15 +56,15 @@ enum DeviceOperationType {
             case .profile(let type):
                 return type.isSuccessful(node: node)
             case .enOceanSwitch(let switchData):
-                if let linkGroup = switchData.linkGroup {
-                    return node.getEnOceanUnSubscriptionMessageHandles(group: linkGroup).isEmpty
+                if switchData.linkGroup != nil {
+                    return node.getEnOceanUnSubscriptionMessageHandles(switchKeys: switchData.switchKeys).isEmpty
                 }
                 return true
             case .enOceanProxy(let switchData):
                 // 动能开关代理
-                if let linkGroup = switchData.linkGroup, node.primaryUnicastAddress == switchData.proxyNodeAddress {
+                if switchData.linkGroup != nil, node.primaryUnicastAddress == switchData.proxyNodeAddress {
                     // 清除代理
-                    guard node.getEnOceanSwitchUnBindMessageHandles(group: linkGroup).isEmpty else {
+                    guard node.getEnOceanSwitchUnBindMessageHandles().isEmpty else {
                         return false
                     }
                 }
@@ -85,14 +85,14 @@ enum DeviceOperationType {
             case .profile(let type):
                 return type.isSuccessful(node: node)
             case .enOceanSwitch(let switchData):
-                if let linkGroup = switchData.linkGroup {
-                    return node.getEnOceanSubscriptionMessageHandles(group: linkGroup).isEmpty
+                if switchData.linkGroup != nil {
+                    return node.getEnOceanSubscriptionMessageHandles(switchKeys: switchData.switchKeys).isEmpty
                 }
                 return true
             case .enOceanProxy(let switchData):
                 // 如果是动能开关代理并且已启用状态，则判断代理是否绑定按键成功
-                if let linkGroup = switchData.linkGroup, node.primaryUnicastAddress == switchData.proxyNodeAddress, let macAddress = switchData.enOceanMacAddress, let key = switchData.enOceanSecurityKey {
-                    let syncMessageHandles = node.getEnOceanSwitchBindMessageHandles(enOceanMacAddress: macAddress, securityKey: key, group: linkGroup, enabled: switchData.enabled, switchKeys: MeshEnOceanProxyServer.SwitchKey.defaultKeys(sceneA: switchData.sceneA, sceneB: switchData.sceneB))
+                if switchData.linkGroup != nil, node.primaryUnicastAddress == switchData.proxyNodeAddress, let macAddress = switchData.enOceanMacAddress, let key = switchData.enOceanSecurityKey {
+                    let syncMessageHandles = node.getEnOceanSwitchBindMessageHandles(enOceanMacAddress: macAddress, securityKey: key, enabled: switchData.enabled, switchKeys: switchData.switchKeys)
                     guard syncMessageHandles.isEmpty else {
                         return false
                     }
@@ -141,9 +141,17 @@ enum DeviceOperationType {
                     messageHandles.append(MeshMessageHandle(message: SceneDelete(sceneId), model: sceneSetupModel))
                 }
             case .schedule(let schedule):
+                
+                let message = SchedulerActionSet(index: UInt8(schedule.id), entry: SchedulerRegistryEntry())
+                // Auto
+                if schedule.action == .turnOn, node.group != nil, let lightLCSchedulerSetupModel = node.lightLCSchedulerSetupModel {
+                    messageHandles.append(MeshMessageHandle(message: message, model: lightLCSchedulerSetupModel))
+                    break
+                }
+                
                 if let schedulerSetupModel = node.schedulerSetupModel {
                     // 删除日程，协议不支持删除，将对应id的日程设置为无效数据
-                    messageHandles.append(MeshMessageHandle(message: SchedulerActionSet(index: UInt8(schedule.id), entry: SchedulerRegistryEntry()), model: schedulerSetupModel))
+                    messageHandles.append(MeshMessageHandle(message: message, model: schedulerSetupModel))
                 }
             case .profile(let type):
                 
@@ -153,13 +161,13 @@ enum DeviceOperationType {
 //                    messageHandles.append(MeshMessageHandle(message: LightLCOccupancyModeSet(false), model: lightLCSetupModel))
 //                }
             case .enOceanSwitch(let switchData):
-                if let linkGroup = switchData.linkGroup {
-                    messageHandles.append(contentsOf: node.getEnOceanUnSubscriptionMessageHandles(group: linkGroup))
+                if switchData.linkGroup != nil {
+                    messageHandles.append(contentsOf: node.getEnOceanUnSubscriptionMessageHandles(switchKeys: switchData.switchKeys))
                 }
             case .enOceanProxy(let switchData):
 //                node.primaryUnicastAddress == switchData.proxyNodeAddress ||
-                if let linkGroup = switchData.linkGroup, node.primaryUnicastAddress == switchData.proxyNodeAddress || node.primaryUnicastAddress == switchData.deleteProxyNodeAddress {
-                    messageHandles.append(contentsOf: node.getEnOceanSwitchUnBindMessageHandles(group: linkGroup))
+                if switchData.linkGroup != nil, node.primaryUnicastAddress == switchData.proxyNodeAddress || node.primaryUnicastAddress == switchData.deleteProxyNodeAddress {
+                    messageHandles.append(contentsOf: node.getEnOceanSwitchUnBindMessageHandles())
                 }
             }
         case .configuration(let node, let type): // 添加/配置操作
@@ -214,21 +222,30 @@ enum DeviceOperationType {
                 if schedule.enabled, let timeModel = node.timeModel {
                     messageHandles.append(MeshMessageHandle(message: Node.setLocalTimeMessage(), model: timeModel))
                 }
+                // SchedulerRegistryEntry(year: .any(), month: .any(of: Schedule.allMonths), day: .any(), hour: .specific(hour: schedule.hour), minute: .specific(minute: schedule.minute), second: .specific(second: 0), dayOfWeek: .any(of: schedule.weekDays), action: schedule.enabled ? schedule.action : .noAction, transitionTime: .init(steps: UInt8(schedule.fadeTime), stepResolution: .seconds), sceneNumber: schedule.scene?.number ?? 0)
+                
+                let message = SchedulerActionSet(index: UInt8(schedule.id), entry: schedule.schedulerEntry)
+                
+                // Auto
+                if schedule.action == .turnOn, node.group != nil, let lightLCSchedulerSetupModel = node.lightLCSchedulerSetupModel {
+                    messageHandles.append(MeshMessageHandle(message: message, model: lightLCSchedulerSetupModel))
+                    break
+                }
+                
                 // 设置日程
                 if let schedulerSetupModel = node.schedulerSetupModel {
-                    
-                    messageHandles.append(MeshMessageHandle(message: SchedulerActionSet(index: UInt8(schedule.id), entry: SchedulerRegistryEntry(year: .any(), month: .any(of: Schedule.allMonths), day: .any(), hour: .specific(hour: schedule.hour), minute: .specific(minute: schedule.minute), second: .specific(second: 0), dayOfWeek: .any(of: schedule.weekDays), action: schedule.enabled ? schedule.action : .noAction, transitionTime: .init(steps: UInt8(schedule.fadeTime), stepResolution: .seconds), sceneNumber: schedule.scene?.number ?? 0)), model: schedulerSetupModel))
+                    messageHandles.append(MeshMessageHandle(message: message, model: schedulerSetupModel))
                 }
             case .profile(let type): 
                 messageHandles.append(contentsOf: type.getMessageHandles(node: node))
             case .enOceanSwitch(let switchData):
-                if let linkGroup = switchData.linkGroup {
+                if switchData.linkGroup != nil {
                     // 判断是否已订阅动能开关按键事件
-                    messageHandles.append(contentsOf: node.getEnOceanSubscriptionMessageHandles(group: linkGroup))
+                    messageHandles.append(contentsOf: node.getEnOceanSubscriptionMessageHandles(switchKeys: switchData.switchKeys))
                 }
             case .enOceanProxy(let switchData):
-                if let linkGroup = switchData.linkGroup, node.primaryUnicastAddress == switchData.proxyNodeAddress, let macAddress = switchData.enOceanMacAddress, let key = switchData.enOceanSecurityKey {
-                    let handles = node.getEnOceanSwitchBindMessageHandles(enOceanMacAddress: macAddress, securityKey: key, group: linkGroup, enabled: switchData.enabled, switchKeys: MeshEnOceanProxyServer.SwitchKey.defaultKeys(sceneA: switchData.sceneA, sceneB: switchData.sceneB))
+                if switchData.linkGroup != nil, node.primaryUnicastAddress == switchData.proxyNodeAddress, let macAddress = switchData.enOceanMacAddress, let key = switchData.enOceanSecurityKey {
+                    let handles = node.getEnOceanSwitchBindMessageHandles(enOceanMacAddress: macAddress, securityKey: key, enabled: switchData.enabled, switchKeys: switchData.switchKeys)
                     messageHandles.append(contentsOf: handles)
                 }
             }
@@ -310,7 +327,7 @@ enum ProfileType {
     func getMessageHandles(node: Node) -> [MeshMessageHandle] {
         var messageHandles: [MeshMessageHandle] = []
         
-        if case .powerOnState(let state) = self { // 上电状态
+        if case .powerOnState(let state, let cct) = self { // 上电状态
             if let lightnessSetupModel = node.lightnessSetupModel, let powerUpModel = node.powerOnOffSetupModel {
                 var onPowerUp: OnPowerUp = .restore
                 switch state {
@@ -321,7 +338,11 @@ enum ProfileType {
                 case .definedLightLevel(let level):
                     onPowerUp = .default
                     let lightness = Node.getLightness(lightness100: Int(level))
-                    messageHandles.append(MeshMessageHandle(message: LightLightnessDefaultSet(lightness: lightness), model: lightnessSetupModel))
+                    if let defaultCct = cct, let ctlSetupModel = node.ctlSetupModel {
+                        messageHandles.append(MeshMessageHandle(message: LightCTLDefaultSet(lightness: lightness, temperature: defaultCct, deltaUV: 0), model: ctlSetupModel))
+                    }else {
+                        messageHandles.append(MeshMessageHandle(message: LightLightnessDefaultSet(lightness: lightness), model: lightnessSetupModel))
+                    }
                 }
                 messageHandles.append(MeshMessageHandle(message: GenericOnPowerUpSet(state: onPowerUp), model: powerUpModel))
             }
@@ -460,14 +481,14 @@ enum ProfileType {
             return node.lightLCProperty.manualOverrideEnabled == enabled && node.lightLCProperty.manualOverrideTimeout == min(second != .max ? second * 1000 : second, UInt32.max)
         case .manualControl(let enabled):
             return node.lightLCProperty.manualControlMode == enabled
-        case .powerOnState(let state):
+        case .powerOnState(let state, let cct):
             switch state {
             case .off:
                 return node.powerUpState == .off
             case .restore:
                 return node.powerUpState == .restore
             case .definedLightLevel(let level):
-                return node.powerUpState == .default && node.defalutLightness == Node.getLightness(lightness100: Int(level))
+                return node.powerUpState == .default && node.defalutLightness == Node.getLightness(lightness100: Int(level)) && (cct == nil || cct != nil && cct == node.defaultCct)
             }
         }
         
@@ -510,7 +531,7 @@ enum ProfileType {
     /// 是否手动控制后进入感应状态
     case manualControl(enabled: Bool)
     /// 上电状态
-    case powerOnState(state: Profile.PowerUpState)
+    case powerOnState(state: Profile.PowerUpState, cct: UInt16? = nil)
     
 }
 
