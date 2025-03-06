@@ -37,7 +37,7 @@ class GroupSwitchsHeaderView: UITableViewHeaderFooterView {
         didSet {
             
             titleLabel.text = groupSwitch.name
-            if let mac = groupSwitch.enOceanMacAddress {
+            if groupSwitch.proxyNode != nil, let mac = groupSwitch.enOceanMacAddress {
                 contentLabel.text = "ID:\(mac)"
             }else {
                 contentLabel.text =  "switch_not_linked".localizedString

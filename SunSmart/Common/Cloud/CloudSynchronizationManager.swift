@@ -487,7 +487,7 @@ class CloudSynchronizationHandle: NSObject {
     }
     
     deinit {
-        print("deinit \(operation)")
+//        print("deinit \(operation)")
     }
     
     /// 开始
@@ -517,7 +517,9 @@ class CloudSynchronizationHandle: NSObject {
                 space.syncCloudError = error
                 space.save()
             }
-            handleCallback?(self, state)
+            DispatchQueue.main.async {
+                self.handleCallback?(self, self.state)
+            }
             return
         }
         startTimewait()
@@ -528,7 +530,9 @@ class CloudSynchronizationHandle: NSObject {
         stopTimewait()
         requestHandle?.cancel()
         state = .cancel
-        handleCallback?(self, state)
+        DispatchQueue.main.async {
+            self.handleCallback?(self, self.state)
+        }
     }
     
     /// 进入计时
@@ -555,8 +559,10 @@ class CloudSynchronizationHandle: NSObject {
             waitTimer?.invalidate()
         }
         state = .inProgress
-        handleCallback?(self, state)
-        print(operation)
+        DispatchQueue.main.async {
+            self.handleCallback?(self, self.state)
+        }
+//        print(operation)
         
 //        DispatchQueue.main.asyncAfter(deadline: .now() + 3) {[weak self] in
 //            guard let self = self else { return }

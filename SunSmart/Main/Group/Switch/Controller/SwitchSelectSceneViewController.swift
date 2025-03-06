@@ -10,38 +10,39 @@ import NordicSigMeshSDK
 
 class SwitchSelectSceneViewController: UIViewController {
 
-    private var menuView: WMMenuView!
-    private var scrollView: PopGestureScrollView!
-    private var sceneATableView: UITableView!
-    private var sceneBTableView: UITableView!
-    private var titles: [String] = ["scene_a".localizedString, "scene_b".localizedString]
+    private var sceneTableView: UITableView!
     
     /// 选择的A场景
-    var sceneA: Scene?
-    /// 选择的B场景
-    var sceneB: Scene?
+//    var sceneA: Scene?
+//    /// 选择的B场景
+//    var sceneB: Scene?
     /// 场景list
     let scenes: [Scene]
     /// 场景选择回调
-    var sceneSelectCallback: ((_ sceneA: Scene?, _ sceneB: Scene?)->Void)?
+    var sceneSelectCallback: ((_ sceneData: SwitchSceneData?)->Void)?
     /// 是否可以编辑
     var editable: Bool = true
+
+    var sceneData: SwitchSceneData!
     
-    init(scenes: [Scene], sceneA: Scene?, sceneB: Scene?) {
+    init(scenes: [Scene], sceneData: SwitchSceneData) {
+        
         self.scenes = scenes
-        self.sceneA = sceneA
-        self.sceneB = sceneB
+//        self.sceneA = sceneA
+//        self.sceneB = sceneB
         super.init(nibName: nil, bundle: nil)
+        
+        self.sceneData = sceneData
     }
     
     required init?(coder: NSCoder) {
         fatalError("init(coder:) has not been implemented")
     }
     
+    
     override func viewDidLoad() {
         super.viewDidLoad()
 
-        title = "select_scene".localizedString
         view.backgroundColor = Background_Color
         
         setupUI()
@@ -50,110 +51,81 @@ class SwitchSelectSceneViewController: UIViewController {
     }
     
     private func updateEmptyUI() {
-        if scenes.isEmpty && sceneATableView.emptyView == nil {
+        if scenes.isEmpty && sceneTableView.emptyView == nil {
             view.layoutIfNeeded()
-            sceneATableView.showEmptyDataView(title: "no_scene".localizedString, tipText: "no_scenes_message".localizedString, margin: SCRXFrom(42))
-            sceneATableView.emptyView?.backgroundColor = .clear
-            
-            sceneBTableView.showEmptyDataView(title: "no_scene".localizedString, tipText: "no_scenes_message".localizedString, margin: SCRXFrom(42))
-            sceneBTableView.emptyView?.backgroundColor = .clear
+            sceneTableView.showEmptyDataView(title: "no_scene".localizedString, tipText: "no_scenes_message".localizedString, margin: SCRXFrom(42))
+            sceneTableView.emptyView?.backgroundColor = .clear
         }
     }
     
     private func setupUI() {
         
-        menuView = WMMenuView(frame: CGRect(x: 0, y: kNavigationHeight, width: view.width, height: SCRYFrom(45)))
-        menuView.progressHeight = 2
-        menuView.style = .line
-        menuView.progressWidths = [SCRXFrom(63.5)]
-        menuView.layoutMode = .center
-        menuView.lineColor = Bar_Color
-        menuView.progressViewBottomSpace = SCRYFrom(6)
-        menuView.dataSource = self
-        menuView.delegate = self
-        view.addSubview(menuView)
-        menuView.snp.makeConstraints { make in
-            make.left.right.equalToSuperview()
-            make.top.equalTo(view.safeAreaLayoutGuide)
-            make.height.equalTo(SCRYFrom(45))
-        }
+//        menuView = WMMenuView(frame: CGRect(x: 0, y: kNavigationHeight, width: view.width, height: SCRYFrom(45)))
+//        menuView.progressHeight = 2
+//        menuView.style = .line
+//        menuView.progressWidths = [SCRXFrom(63.5)]
+//        menuView.layoutMode = .center
+//        menuView.lineColor = Bar_Color
+//        menuView.progressViewBottomSpace = SCRYFrom(6)
+//        menuView.dataSource = self
+//        menuView.delegate = self
+//        view.addSubview(menuView)
+//        menuView.snp.makeConstraints { make in
+//            make.left.right.equalToSuperview()
+//            make.top.equalTo(view.safeAreaLayoutGuide)
+//            make.height.equalTo(SCRYFrom(45))
+//        }
         
-        scrollView = PopGestureScrollView()
-        scrollView.isPagingEnabled = true
-        scrollView.bounces = false
-        scrollView.delegate = self
-        scrollView.showsHorizontalScrollIndicator = false
-        view.addSubview(scrollView)
-        scrollView.snp.makeConstraints { make in
-            make.left.right.bottom.equalToSuperview()
-            make.top.equalTo(menuView.snp.bottom).offset(SCRYFrom(10))
-        }
-        
-        sceneATableView = UITableView()
-        sceneATableView.separatorStyle = .none
-        sceneATableView.backgroundColor = .clear
-        sceneATableView.register(CustomTableViewCell.classForCoder(), forCellReuseIdentifier: "cell")
-        sceneATableView.rowHeight = SCRYFrom(44)
-        sceneATableView.dataSource = self
-        sceneATableView.delegate = self
-        scrollView.addSubview(sceneATableView)
-        sceneATableView.snp.makeConstraints { make in
+       
+        sceneTableView = UITableView()
+        sceneTableView.separatorStyle = .none
+        sceneTableView.backgroundColor = .clear
+        sceneTableView.register(CustomTableViewCell.classForCoder(), forCellReuseIdentifier: "cell")
+        sceneTableView.rowHeight = SCRYFrom(44)
+        sceneTableView.dataSource = self
+        sceneTableView.delegate = self
+        view.addSubview(sceneTableView)
+        sceneTableView.snp.makeConstraints { make in
             make.left.top.equalToSuperview()
             make.height.equalToSuperview()
             make.width.equalToSuperview()
         }
-        
-        sceneBTableView = UITableView()
-        sceneBTableView.separatorStyle = .none
-        sceneBTableView.backgroundColor = .clear
-        sceneBTableView.dataSource = self
-        sceneBTableView.delegate = self
-        sceneBTableView.register(CustomTableViewCell.classForCoder(), forCellReuseIdentifier: "cell")
-        sceneBTableView.rowHeight = SCRYFrom(44)
-        scrollView.addSubview(sceneBTableView)
-        sceneBTableView.snp.makeConstraints { make in
-            make.top.right.equalToSuperview()
-            make.left.equalTo(sceneATableView.snp.right)
-            make.height.equalToSuperview()
-            make.width.equalToSuperview()
-        }
-        
     }
     
 }
 
-extension SwitchSelectSceneViewController: WMMenuViewDataSource, WMMenuViewDelegate {
-    
-    func numbersOfTitles(in menu: WMMenuView!) -> Int {
-        return titles.count
-    }
-    
-    func menuView(_ menu: WMMenuView!, titleAt index: Int) -> String! {
-        return titles[index]
-    }
-    
-    func menuView(_ menu: WMMenuView!, widthForItemAt index: Int) -> CGFloat {
-        return SCRXFrom(64)
-    }
-    
-    func menuView(_ menu: WMMenuView!, titleSizeFor state: WMMenuItemState, at index: Int) -> CGFloat {
-        return SCRYFrom(15)
-    }
-    
-    func menuView(_ menu: WMMenuView!, titleColorFor state: WMMenuItemState, at index: Int) -> UIColor! {
-        return state == .selected ? Bar_Color : SubText_Color
-    }
-    
-    func menuView(_ menu: WMMenuView!, itemMarginAt index: Int) -> CGFloat {
-        return index == 1 ? SCRXFrom(53) : 0
-    }
-    
-    func menuView(_ menu: WMMenuView!, didSelectedIndex index: Int, currentIndex: Int) {
-        
-        scrollView.setContentOffset(CGPoint(x: CGFloat(index) * scrollView.width, y: 0), animated: true)
-    }
-    
-}
+//extension SwitchSelectSceneViewController: WMMenuViewDataSource, WMMenuViewDelegate {
+//    
+//    func numbersOfTitles(in menu: WMMenuView!) -> Int {
+//        return titles.count
+//    }
+//    
+//    func menuView(_ menu: WMMenuView!, titleAt index: Int) -> String! {
+//        return titles[index]
+//    }
+//    
+//    func menuView(_ menu: WMMenuView!, widthForItemAt index: Int) -> CGFloat {
+//        return SCRXFrom(64)
+//    }
+//    
+//    func menuView(_ menu: WMMenuView!, titleSizeFor state: WMMenuItemState, at index: Int) -> CGFloat {
+//        return SCRYFrom(15)
+//    }
+//    
+//    func menuView(_ menu: WMMenuView!, titleColorFor state: WMMenuItemState, at index: Int) -> UIColor! {
+//        return state == .selected ? Bar_Color : SubText_Color
+//    }
+//    
+//    func menuView(_ menu: WMMenuView!, itemMarginAt index: Int) -> CGFloat {
+//        return index == 1 ? SCRXFrom(53) : 0
+//    }
+//    
+//    func menuView(_ menu: WMMenuView!, didSelectedIndex index: Int, currentIndex: Int) {
+//        
+//        scrollView.setContentOffset(CGPoint(x: CGFloat(index) * scrollView.width, y: 0), animated: true)
+//    }
+//    
+//}
 
 extension SwitchSelectSceneViewController: UITableViewDataSource, UITableViewDelegate {
     
@@ -167,12 +139,12 @@ extension SwitchSelectSceneViewController: UITableViewDataSource, UITableViewDel
         cell.cellStyle = .icon
         cell.titleLabel.text = scene.name
         cell.titleLabel.font = UIFont.systemFont(ofSize: SCRYFrom(14), weight: .light)
-        var isSelect = false
-        if tableView == sceneATableView {
-            isSelect = scene == sceneA
-        }else {
-            isSelect = scene == sceneB
-        }
+        let isSelect = sceneData.scene == scene
+//        if tableView == sceneATableView {
+//            isSelect = scene == sceneA
+//        }else {
+//            isSelect = scene == sceneB
+//        }
         let selectImage = UIImage(named: isSelect ? "schedule_target_select" : "schedule_target_select_un")
         if self.editable {
             cell.iconImageView.image = selectImage
@@ -191,32 +163,24 @@ extension SwitchSelectSceneViewController: UITableViewDataSource, UITableViewDel
             return
         }
         let scene = scenes[indexPath.row]
-        
-        if tableView == sceneATableView {
-            if sceneA == scene {
-                sceneA = nil
-            }else {
-                sceneA = scene
-            }
+        if scene == sceneData.scene {
+            sceneData.scene = nil
         }else {
-            if sceneB == scene {
-                sceneB = nil
-            }else {
-                sceneB = scene
-            }
+            sceneData.scene = scene
         }
+        
         
         tableView.reloadData()
         
-        sceneSelectCallback?(sceneA, sceneB)
+        sceneSelectCallback?(sceneData)
     }
     
     
     
-    func scrollViewDidScroll(_ scrollView: UIScrollView) {
-        guard scrollView == self.scrollView else { return }
-        let progress = scrollView.contentOffset.x / scrollView.width
-        menuView.slideMenu(atProgress: progress)
-    }
+//    func scrollViewDidScroll(_ scrollView: UIScrollView) {
+//        guard scrollView == self.scrollView else { return }
+//        let progress = scrollView.contentOffset.x / scrollView.width
+//        menuView.slideMenu(atProgress: progress)
+//    }
     
 }

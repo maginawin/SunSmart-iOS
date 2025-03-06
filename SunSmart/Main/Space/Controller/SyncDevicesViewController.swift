@@ -63,13 +63,19 @@ class SyncDevicesViewController: UIViewController {
         
         setupUI()
         
-        setupDataSource()
-        
-//        test()
-        if syncState == .inSync {
-            startSync()
+        XWHUDManager.showCustomHUD(withMessage: nil, view: view)
+        DispatchQueue.global().async {
+            self.setupDataSource()
+            DispatchQueue.main.async {
+                XWHUDManager.hideInView(with: self.view)
+                if self.syncState == .inSync {
+                    self.startSync()
+                }
+                self.tableView.reloadData()
+                self.updateSyncStateUI()
+            }
         }
-        updateSyncStateUI()
+        
     }
     
     override func viewDidAppear(_ animated: Bool) {
@@ -86,259 +92,257 @@ class SyncDevicesViewController: UIViewController {
     
     /// 设置数据源
     private func setupDataSource() {
-        
-        let removeSection = SyncDevicesSectionModel(title: "remove".localizedString)
-        let configurationSection = SyncDevicesSectionModel(title: "configuration".localizedString)
-        
-        switch type {
-        case .group(let group, let inNodes, let outNodes):
+      
+            let removeSection = SyncDevicesSectionModel(title: "remove".localizedString)
+            let configurationSection = SyncDevicesSectionModel(title: "configuration".localizedString)
             
-            outNodes?.forEach({ node in
-                let result = getSyncDeviceModel(group: group, node: node, exitGroup: true)
-                if let removceDevice = result.removeDevice {
-                    removeSection.devices.append(removceDevice)
-                }
-            })
-            
-            inNodes?.forEach({ node in
-                let result = getSyncDeviceModel(group: group, node: node)
-                if let removceDevice = result.removeDevice {
-                    removeSection.devices.append(removceDevice)
-                }
-                if let configurationDevice = result.configturationDevice {
-                    configurationSection.devices.append(configurationDevice)
-                }
-            })
-            
-            group.nodes.filter({ node in !(outNodes?.contains(node) ?? false) }).forEach { node in
-                let result = getSyncDeviceModel(group: group, node: node, exitGroup: node.groupState == .exitFailure)
-                if let removceDevice = result.removeDevice {
-                    removeSection.devices.append(removceDevice)
-                }
-                if let configurationDevice = result.configturationDevice {
-                    configurationSection.devices.append(configurationDevice)
-                }
-            }
-            
-        case .scene(let scene):
-            
-            // 场景内需要同步的组
-            scene.info.groups.forEach { group in
+            switch self.type {
+            case .group(let group, let inNodes, let outNodes):
                 
-                if let groupSceneData = group.info.sceneExecuteDatas.first(where: { scene.number == $0.sceneNumber }) {
-                    let resut = group.getNeedSyncDataNodes(scene: scene)
-                    // 需要同步的设备
-                    let syncNodes = resut.syncNodes
-                    let syncSceneDeviceModels = syncNodes.map({ node in
-                        let model = SyncDevicesModel(name: node.name ?? "", address: node.primaryUnicastAddress)
-                        model.imageName = node.iconName
-                        // 场景绑定日程
-                        if scene.info.bindSchedules.count > 0 {
-                            
-                            let addSceneTask = SyncDeviceStepTaskModel(name: scene.name, operationType: .configuration(node: node, type: .scene(sceneId: scene.number, executeData: groupSceneData)))
-                            let addSceneStep = SyncDeviceStepModel(type: "scene".localizedString, state: .none, tasks: [addSceneTask])
-                            addSceneStep.parentDeviceModel = model
-                            addSceneStep.showProgress = false
-                            addSceneTask.parentStepModel = addSceneStep
-                            
-                            let addScheduleTasks = scene.info.bindSchedules.map({ schedule in
-                                 SyncDeviceStepTaskModel(name: schedule.name, operationType: .configuration(node: node, type: .schedule(schedule: schedule)))
-                            })
-                            let addScheduleStep = SyncDeviceStepModel(type: "schedule".localizedString, state: .none, tasks: addScheduleTasks)
-                            addScheduleStep.parentDeviceModel = model
-                            addScheduleStep.showProgress = false
-                            addScheduleStep.relevanceStepModels = [addSceneStep]
-                            addScheduleTasks.forEach({ $0.parentStepModel = addScheduleStep })
-                            model.steps = [addSceneStep, addScheduleStep]
-                        }else {
-                            model.operationType = .configuration(node: node, type: .scene(sceneId: scene.number, executeData: groupSceneData))
-                        }
-                        return model
-                    })
-                    if syncSceneDeviceModels.count > 0 {
-                        let groupModel = SyncDevicesGroupModel(groupName: group.name, groupAddress: group.address.address, deviceModels: syncSceneDeviceModels)
-                        configurationSection.groups.append(groupModel)
-                        
-                        syncSceneDeviceModels.forEach({
-                            $0.parentGroupModel = groupModel
-                        })
+                outNodes?.forEach({ node in
+                    let result = self.getSyncDeviceModel(group: group, node: node, exitGroup: true)
+                    if let removceDevice = result.removeDevice {
+                        removeSection.devices.append(removceDevice)
                     }
-                    
-                    // 需要删除的设备
-                    let deleteNodes = resut.deleteNodes
-                    let deleteSceneDeviceModels = deleteNodes.map({ node in
-                        let model = SyncDevicesModel(name: node.name ?? "", address: node.primaryUnicastAddress)
-                        model.imageName = node.iconName
-                        if scene.info.bindSchedules.count > 0 {
-                            
-                            let deleteScheduleTasks = scene.info.bindSchedules.map({ schedule in
-                                 SyncDeviceStepTaskModel(name: schedule.name, operationType: .delete(node: node, type: .schedule(schedule: schedule)))
-                            })
-                            let deleteScheduleStep = SyncDeviceStepModel(type: "schedule".localizedString, state: .none, tasks: deleteScheduleTasks)
-                            deleteScheduleStep.parentDeviceModel = model
-                            deleteScheduleStep.showProgress = false
-                            deleteScheduleTasks.forEach({ $0.parentStepModel = deleteScheduleStep })
-                            
-                            
-                            let deleteSceneTask = SyncDeviceStepTaskModel(name: scene.name, operationType: .delete(node: node, type: .scene(sceneId: scene.number, executeData: groupSceneData)))
-                            let deleteSceneStep = SyncDeviceStepModel(type: "scene".localizedString, state: .none, tasks: [deleteSceneTask])
-                            deleteSceneStep.parentDeviceModel = model
-                            deleteSceneStep.showProgress = false
-                            deleteSceneStep.relevanceStepModels = [deleteScheduleStep]
-                            deleteSceneTask.parentStepModel = deleteSceneStep
-                            
-                            model.steps = [deleteScheduleStep, deleteSceneStep]
-                            
-                        }else {
-                            model.operationType = .delete(node: node, type: .scene(sceneId: scene.number, executeData: nil))
-                        }
-                        return model
-                    })
-                    if deleteSceneDeviceModels.count > 0 {
-                        let groupModel = SyncDevicesGroupModel(groupName: group.name, groupAddress: group.address.address, deviceModels: deleteSceneDeviceModels)
-                        removeSection.groups.append(groupModel)
-                        
-                        deleteSceneDeviceModels.forEach({
-                            $0.parentGroupModel = groupModel
-                        })
+                })
+                
+                inNodes?.forEach({ node in
+                    let result = self.getSyncDeviceModel(group: group, node: node)
+                    if let removceDevice = result.removeDevice {
+                        removeSection.devices.append(removceDevice)
+                    }
+                    if let configurationDevice = result.configturationDevice {
+                        configurationSection.devices.append(configurationDevice)
+                    }
+                })
+                
+                group.nodes.filter({ node in !(outNodes?.contains(node) ?? false) }).forEach { node in
+                    let result = self.getSyncDeviceModel(group: group, node: node, exitGroup: node.groupState == .exitFailure)
+                    if let removceDevice = result.removeDevice {
+                        removeSection.devices.append(removceDevice)
+                    }
+                    if let configurationDevice = result.configturationDevice {
+                        configurationSection.devices.append(configurationDevice)
                     }
                 }
-            }
-            
-        case .schedule(let schedule):
-            // 需同步/删除的日程数据
-            let data = schedule.getNeedSyncDatas()
-            // 需删除日程的设备
-            let deleteScheduleDeviceModels = data.deleteNodes.map({
-                let model = SyncDevicesModel(name: $0.name ?? "", address: $0.primaryUnicastAddress)
-                model.imageName = $0.iconName
-                model.operationType = .delete(node: $0, type: .schedule(schedule: schedule))
-                return model
-            })
-            removeSection.devices.append(contentsOf: deleteScheduleDeviceModels)
-            // 需同步日程的设备
-            let syncScheduleDeviceModels = data.syncNodes.map({
-                let model = SyncDevicesModel(name: $0.name ?? "", address: $0.primaryUnicastAddress)
-                model.imageName = $0.iconName
-                model.operationType = .configuration(node: $0, type: .schedule(schedule: schedule))
-                return model
-            })
-            configurationSection.devices.append(contentsOf: syncScheduleDeviceModels)
-            
-            // 需删除日程的组
-            var deleteScheduleGroupModels = data.deleteGroups.map { (group: Group, nodes: [Node]) in
-                let deviceModels = nodes.map({
+                
+            case .scene(let scene):
+                
+                // 场景内需要同步的组
+                scene.info.groups.forEach { group in
+                    
+                    if let groupSceneData = group.info.sceneExecuteDatas.first(where: { scene.number == $0.sceneNumber }) {
+                        let resut = group.getNeedSyncDataNodes(scene: scene)
+                        // 需要同步的设备
+                        let syncNodes = resut.syncNodes
+                        let syncSceneDeviceModels = syncNodes.map({ node in
+                            let model = SyncDevicesModel(name: node.name ?? "", address: node.primaryUnicastAddress)
+                            model.imageName = node.iconName
+                            // 场景绑定日程
+                            if scene.info.bindSchedules.count > 0 {
+                                
+                                let addSceneTask = SyncDeviceStepTaskModel(name: scene.name, operationType: .configuration(node: node, type: .scene(sceneId: scene.number, executeData: groupSceneData)))
+                                let addSceneStep = SyncDeviceStepModel(type: "scene".localizedString, state: .none, tasks: [addSceneTask])
+                                addSceneStep.parentDeviceModel = model
+                                addSceneStep.showProgress = false
+                                addSceneTask.parentStepModel = addSceneStep
+                                
+                                let addScheduleTasks = scene.info.bindSchedules.map({ schedule in
+                                     SyncDeviceStepTaskModel(name: schedule.name, operationType: .configuration(node: node, type: .schedule(schedule: schedule)))
+                                })
+                                let addScheduleStep = SyncDeviceStepModel(type: "schedule".localizedString, state: .none, tasks: addScheduleTasks)
+                                addScheduleStep.parentDeviceModel = model
+                                addScheduleStep.showProgress = false
+                                addScheduleStep.relevanceStepModels = [addSceneStep]
+                                addScheduleTasks.forEach({ $0.parentStepModel = addScheduleStep })
+                                model.steps = [addSceneStep, addScheduleStep]
+                            }else {
+                                model.operationType = .configuration(node: node, type: .scene(sceneId: scene.number, executeData: groupSceneData))
+                            }
+                            return model
+                        })
+                        if syncSceneDeviceModels.count > 0 {
+                            let groupModel = SyncDevicesGroupModel(groupName: group.name, groupAddress: group.address.address, deviceModels: syncSceneDeviceModels)
+                            configurationSection.groups.append(groupModel)
+                            
+                            syncSceneDeviceModels.forEach({
+                                $0.parentGroupModel = groupModel
+                            })
+                        }
+                        
+                        // 需要删除的设备
+                        let deleteNodes = resut.deleteNodes
+                        let deleteSceneDeviceModels = deleteNodes.map({ node in
+                            let model = SyncDevicesModel(name: node.name ?? "", address: node.primaryUnicastAddress)
+                            model.imageName = node.iconName
+                            if scene.info.bindSchedules.count > 0 {
+                                
+                                let deleteScheduleTasks = scene.info.bindSchedules.map({ schedule in
+                                     SyncDeviceStepTaskModel(name: schedule.name, operationType: .delete(node: node, type: .schedule(schedule: schedule)))
+                                })
+                                let deleteScheduleStep = SyncDeviceStepModel(type: "schedule".localizedString, state: .none, tasks: deleteScheduleTasks)
+                                deleteScheduleStep.parentDeviceModel = model
+                                deleteScheduleStep.showProgress = false
+                                deleteScheduleTasks.forEach({ $0.parentStepModel = deleteScheduleStep })
+                                
+                                
+                                let deleteSceneTask = SyncDeviceStepTaskModel(name: scene.name, operationType: .delete(node: node, type: .scene(sceneId: scene.number, executeData: groupSceneData)))
+                                let deleteSceneStep = SyncDeviceStepModel(type: "scene".localizedString, state: .none, tasks: [deleteSceneTask])
+                                deleteSceneStep.parentDeviceModel = model
+                                deleteSceneStep.showProgress = false
+                                deleteSceneStep.relevanceStepModels = [deleteScheduleStep]
+                                deleteSceneTask.parentStepModel = deleteSceneStep
+                                
+                                model.steps = [deleteScheduleStep, deleteSceneStep]
+                                
+                            }else {
+                                model.operationType = .delete(node: node, type: .scene(sceneId: scene.number, executeData: nil))
+                            }
+                            return model
+                        })
+                        if deleteSceneDeviceModels.count > 0 {
+                            let groupModel = SyncDevicesGroupModel(groupName: group.name, groupAddress: group.address.address, deviceModels: deleteSceneDeviceModels)
+                            removeSection.groups.append(groupModel)
+                            
+                            deleteSceneDeviceModels.forEach({
+                                $0.parentGroupModel = groupModel
+                            })
+                        }
+                    }
+                }
+                
+            case .schedule(let schedule):
+                // 需同步/删除的日程数据
+                let data = schedule.getNeedSyncDatas()
+                // 需删除日程的设备
+                let deleteScheduleDeviceModels = data.deleteNodes.map({
                     let model = SyncDevicesModel(name: $0.name ?? "", address: $0.primaryUnicastAddress)
                     model.imageName = $0.iconName
                     model.operationType = .delete(node: $0, type: .schedule(schedule: schedule))
                     return model
                 })
-                
-                let groupModel = SyncDevicesGroupModel(groupName: group.name, groupAddress: group.address.address, deviceModels: deviceModels)
-                deviceModels.forEach({ $0.parentGroupModel = groupModel })
-                return groupModel
-            }
-            deleteScheduleGroupModels = deleteScheduleGroupModels.sorted(by: { $0.address < $1.address })
-            removeSection.groups.append(contentsOf: deleteScheduleGroupModels)
-            // 需同步日程的组
-            var syncScheduleGroupModels = data.syncGroups.map { (group: Group, nodes: [Node]) in
-                let deviceModels = nodes.map({
+                removeSection.devices.append(contentsOf: deleteScheduleDeviceModels)
+                // 需同步日程的设备
+                let syncScheduleDeviceModels = data.syncNodes.map({
                     let model = SyncDevicesModel(name: $0.name ?? "", address: $0.primaryUnicastAddress)
                     model.imageName = $0.iconName
                     model.operationType = .configuration(node: $0, type: .schedule(schedule: schedule))
                     return model
                 })
-                let groupModel = SyncDevicesGroupModel(groupName: group.name, groupAddress: group.address.address, deviceModels: deviceModels)
-                deviceModels.forEach({ $0.parentGroupModel = groupModel })
-                return groupModel
-            }
-            syncScheduleGroupModels = syncScheduleGroupModels.sorted(by: { $0.address < $1.address })
-            configurationSection.groups.append(contentsOf: syncScheduleGroupModels)
-            
-        case .enOceanSwitch(let switchData, let deleteSwitch):
-            guard switchData.linkGroup != nil else {
-                break
-            }
-            let data = switchData.getNeedSyncDatas(deleteSwitch: deleteSwitch)
-            // 删除动能开关
-            if let proxyNode = data.deleteProxy {
-                let deviceModel = SyncDevicesModel(name: proxyNode.name ?? "", address: proxyNode.primaryUnicastAddress)
-                deviceModel.imageName = proxyNode.iconName
-                deviceModel.operationType = .delete(node: proxyNode, type: .enOceanProxy(switchData: switchData))
+                configurationSection.devices.append(contentsOf: syncScheduleDeviceModels)
                 
-                let proxyModel = SyncDevicesSwitchProxyModel(name: "enocean_proxy".localizedString, deviceModel: deviceModel)
-                removeSection.switchProxy = proxyModel
-            }
-            // 同步动能开关
-            if let syncNode = data.syncProxy {
+                // 需删除日程的组
+                var deleteScheduleGroupModels = data.deleteGroups.map { (group: Group, nodes: [Node]) in
+                    let deviceModels = nodes.map({
+                        let model = SyncDevicesModel(name: $0.name ?? "", address: $0.primaryUnicastAddress)
+                        model.imageName = $0.iconName
+                        model.operationType = .delete(node: $0, type: .schedule(schedule: schedule))
+                        return model
+                    })
+                    
+                    let groupModel = SyncDevicesGroupModel(groupName: group.name, groupAddress: group.address.address, deviceModels: deviceModels)
+                    deviceModels.forEach({ $0.parentGroupModel = groupModel })
+                    return groupModel
+                }
+                deleteScheduleGroupModels = deleteScheduleGroupModels.sorted(by: { $0.address < $1.address })
+                removeSection.groups.append(contentsOf: deleteScheduleGroupModels)
+                // 需同步日程的组
+                var syncScheduleGroupModels = data.syncGroups.map { (group: Group, nodes: [Node]) in
+                    let deviceModels = nodes.map({
+                        let model = SyncDevicesModel(name: $0.name ?? "", address: $0.primaryUnicastAddress)
+                        model.imageName = $0.iconName
+                        model.operationType = .configuration(node: $0, type: .schedule(schedule: schedule))
+                        return model
+                    })
+                    let groupModel = SyncDevicesGroupModel(groupName: group.name, groupAddress: group.address.address, deviceModels: deviceModels)
+                    deviceModels.forEach({ $0.parentGroupModel = groupModel })
+                    return groupModel
+                }
+                syncScheduleGroupModels = syncScheduleGroupModels.sorted(by: { $0.address < $1.address })
+                configurationSection.groups.append(contentsOf: syncScheduleGroupModels)
                 
-                let deviceModel = SyncDevicesModel(name: syncNode.name ?? "", address: syncNode.primaryUnicastAddress)
-                deviceModel.imageName = syncNode.iconName
-                deviceModel.operationType = .configuration(node: syncNode, type: .enOceanProxy(switchData: switchData))
+            case .enOceanSwitch(let switchData, let deleteSwitch):
+                guard switchData.linkGroup != nil else {
+                    break
+                }
+                let data = switchData.getNeedSyncDatas(deleteSwitch: deleteSwitch)
+                // 删除动能开关
+                if let proxyNode = data.deleteProxy {
+                    let deviceModel = SyncDevicesModel(name: proxyNode.name ?? "", address: proxyNode.primaryUnicastAddress)
+                    deviceModel.imageName = proxyNode.iconName
+                    deviceModel.operationType = .delete(node: proxyNode, type: .enOceanProxy(switchData: switchData))
+                    
+                    let proxyModel = SyncDevicesSwitchProxyModel(name: "enocean_proxy".localizedString, deviceModel: deviceModel)
+                    removeSection.switchProxy = proxyModel
+                }
+                // 同步动能开关
+                if let syncNode = data.syncProxy {
+                    
+                    let deviceModel = SyncDevicesModel(name: syncNode.name ?? "", address: syncNode.primaryUnicastAddress)
+                    deviceModel.imageName = syncNode.iconName
+                    deviceModel.operationType = .configuration(node: syncNode, type: .enOceanProxy(switchData: switchData))
+                    
+                    let proxyModel = SyncDevicesSwitchProxyModel(name: "enocean_proxy".localizedString, deviceModel: deviceModel)
+                    configurationSection.switchProxy = proxyModel
+                }
                 
-                let proxyModel = SyncDevicesSwitchProxyModel(name: "enocean_proxy".localizedString, deviceModel: deviceModel)
-                configurationSection.switchProxy = proxyModel
-            }
-            
-            // 需解绑动能开关的组
-            var deleteSwitchGroupModels = data.deleteGroups.map { (group, nodes) in
-                let deviceModels = nodes.map({
-                    let model = SyncDevicesModel(name: $0.name ?? "", address: $0.primaryUnicastAddress)
-                    model.imageName = $0.iconName
-                    model.operationType = .delete(node: $0, type: .enOceanSwitch(switchData: switchData))
-                    return model
-                })
+                // 需解绑动能开关的组
+                var deleteSwitchGroupModels = data.deleteGroups.map { (group, nodes) in
+                    let deviceModels = nodes.map({
+                        let model = SyncDevicesModel(name: $0.name ?? "", address: $0.primaryUnicastAddress)
+                        model.imageName = $0.iconName
+                        model.operationType = .delete(node: $0, type: .enOceanSwitch(switchData: switchData))
+                        return model
+                    })
+                    
+                    let groupModel = SyncDevicesGroupModel(groupName: group.name, groupAddress: group.address.address, deviceModels: deviceModels)
+                    deviceModels.forEach({ $0.parentGroupModel = groupModel })
+                    return groupModel
+                }
+                deleteSwitchGroupModels = deleteSwitchGroupModels.sorted(by: { $0.address < $1.address })
+                removeSection.groups.append(contentsOf: deleteSwitchGroupModels)
                 
-                let groupModel = SyncDevicesGroupModel(groupName: group.name, groupAddress: group.address.address, deviceModels: deviceModels)
-                deviceModels.forEach({ $0.parentGroupModel = groupModel })
-                return groupModel
-            }
-            deleteSwitchGroupModels = deleteSwitchGroupModels.sorted(by: { $0.address < $1.address })
-            removeSection.groups.append(contentsOf: deleteSwitchGroupModels)
-            
-            // 需订阅开关的组
-            var syncSwitchGroupModels = data.syncGroups.map { (group, nodes) in
+                // 需订阅开关的组
+                var syncSwitchGroupModels = data.syncGroups.map { (group, nodes) in
+                    
+                    let deviceModels = nodes.map({
+                        let model = SyncDevicesModel(name: $0.name ?? "", address: $0.primaryUnicastAddress)
+                        model.imageName = $0.iconName
+                        model.operationType = .configuration(node: $0, type: .enOceanSwitch(switchData: switchData))
+                        return model
+                    })
+                    let groupModel = SyncDevicesGroupModel(groupName: group.name, groupAddress: group.address.address, deviceModels: deviceModels)
+                    deviceModels.forEach({ $0.parentGroupModel = groupModel })
+                    return groupModel
+                }
+                syncSwitchGroupModels = syncSwitchGroupModels.sorted(by: { $0.address < $1.address })
+                configurationSection.groups.append(contentsOf: syncSwitchGroupModels)
                 
-                let deviceModels = nodes.map({
-                    let model = SyncDevicesModel(name: $0.name ?? "", address: $0.primaryUnicastAddress)
-                    model.imageName = $0.iconName
-                    model.operationType = .configuration(node: $0, type: .enOceanSwitch(switchData: switchData))
-                    return model
-                })
-                let groupModel = SyncDevicesGroupModel(groupName: group.name, groupAddress: group.address.address, deviceModels: deviceModels)
-                deviceModels.forEach({ $0.parentGroupModel = groupModel })
-                return groupModel
             }
-            syncSwitchGroupModels = syncSwitchGroupModels.sorted(by: { $0.address < $1.address })
-            configurationSection.groups.append(contentsOf: syncSwitchGroupModels)
-            
-        }
-    
-        if removeSection.groups.count > 0 || removeSection.devices.count > 0 || removeSection.switchProxy != nil {
-            sections.append(removeSection)
-        }
-        if configurationSection.groups.count > 0 || configurationSection.devices.count > 0 || configurationSection.switchProxy != nil {
-            sections.append(configurationSection)
-        }
-        for (index, section) in sections.enumerated() {
-            section.groups.forEach({
-                $0.parentSectionIndex = index
-            })
-            section.devices.forEach({
-                $0.parentSectionIndex = index
-            })
-            if syncState == .syncFailure {
-                section.allModels.forEach({
-                    $0.isFineshed = true
-                    $0.state = .failed
-//                    ($0 as? SyncDevicesGroupModel)?.isShow = true
-//                    ($0 as? SyncDevicesModel)?.state = .failed
-//                    ($0 as? SyncDeviceStepTaskModel)?.state = .failed
-                })
-            }
-        }
         
-        tableView.reloadData()
+            if removeSection.groups.count > 0 || removeSection.devices.count > 0 || removeSection.switchProxy != nil {
+                self.sections.append(removeSection)
+            }
+            if configurationSection.groups.count > 0 || configurationSection.devices.count > 0 || configurationSection.switchProxy != nil {
+                self.sections.append(configurationSection)
+            }
+            for (index, section) in self.sections.enumerated() {
+                section.groups.forEach({
+                    $0.parentSectionIndex = index
+                })
+                section.devices.forEach({
+                    $0.parentSectionIndex = index
+                })
+                if self.syncState == .syncFailure {
+                    section.allModels.forEach({
+                        $0.isFineshed = true
+                        $0.state = .failed
+    //                    ($0 as? SyncDevicesGroupModel)?.isShow = true
+    //                    ($0 as? SyncDevicesModel)?.state = .failed
+    //                    ($0 as? SyncDeviceStepTaskModel)?.state = .failed
+                    })
+                }
+            }
     }
     
     /// 获取组对应设备同步数据model
@@ -1169,7 +1173,7 @@ extension SyncDevicesViewController: SyncDeviceViewCellDelegate {
     
     /// 图标点击回调
     func cell(_ cell: SyncDeviceViewCell, iconClickAction model: SyncDevicesModel) {
-        
+        MeshAPI.identify(address: model.address)
     }
     
     /// 失败重试回调

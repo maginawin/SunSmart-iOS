@@ -141,7 +141,7 @@ class DevicesViewController: WMPageController {
             }
             startGuidanceTimer()
             // 获取设备信号
-            MeshLibManager.manager.refreshNodesRSSI(withWaitFor: 5, result: nil)
+//            MeshLibManager.manager.refreshNodesRSSI(withWaitFor: 5, result: nil)
         }else {
 //            XWHUDManager.hideInView()
             // 判断是否需要申请地址
@@ -332,7 +332,8 @@ class DevicesViewController: WMPageController {
     /// 添加设备
     private func deviceAdd() {
         
-        guard MeshNetworkManager.instance.realNodes.count < 200 else {
+        guard MeshNetworkManager.instance.realNodes.count < space.maxDevicesCount else {
+            XWHUDManager.showTipHUD("devices_number_exceeds_message".localizedString, isLineFeed: true)
             return
         }
 //        navigationController?.pushViewController(DeviceRestoreViewController(), animated: true)

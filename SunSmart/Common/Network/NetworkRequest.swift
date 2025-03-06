@@ -9,6 +9,7 @@ import Foundation
 import Moya
 import SwiftyJSON
 import Alamofire
+import Compression
 
 class NetworkRequest: NSObject {
     
@@ -44,6 +45,15 @@ class NetworkRequest: NSObject {
 //                    }
 //                }
 //            }else {
+            // 判断请求体数据过大压缩
+//            if let body = request.httpBody, body.count > 1024 * 100 {
+//                let destinationBuffer = UnsafeMutablePointer<UInt8>.allocate(capacity: body.count)
+//                let compressedSize = compression_encode_buffer(destinationBuffer, body.count, [UInt8](body), body.count, nil, COMPRESSION_ZLIB)
+//                if compressedSize > 0 {
+//                    request.httpBody = Data(bytes: destinationBuffer, count: compressedSize)
+//                }
+//            }
+        
                 done(.success(request))
 //            }
         } catch {

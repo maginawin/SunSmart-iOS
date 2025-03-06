@@ -13,8 +13,9 @@ class GroupSwitchEnOceanProxyHeaderView: UITableViewHeaderFooterView {
     var contentLabel: UILabel!
     var arrowImageView: UIImageView!
     var lineView: UIView!
+//    var enableSwitch: UISwitch!
     var viewActionCallback: ((Bool)->Void)?
-    
+    var switchEnableCallback: ((Bool)->Void)?
     
     var isShow: Bool = false {
         didSet {
@@ -63,6 +64,10 @@ class GroupSwitchEnOceanProxyHeaderView: UITableViewHeaderFooterView {
         viewActionCallback?(!isShow)
     }
     
+    @objc private func enableSwitchValueChanged(sender: UISwitch) {
+        switchEnableCallback?(sender.isOn)
+    }
+    
     private func setupUI() {
         
         titleLabel = UILabel(text: nil, textColor: TextBlack_Color, fontSize: 14, fontName: FontName_Medium)
@@ -84,6 +89,17 @@ class GroupSwitchEnOceanProxyHeaderView: UITableViewHeaderFooterView {
             make.right.equalTo(SCRXFrom(-8))
             make.centerY.equalToSuperview()
         }
+        
+//        enableSwitch = UISwitch()
+//        enableSwitch.onTintColor = Bar_Color
+//        enableSwitch.tintColor = RGB(207, 207, 207)
+////        enableSwitch.isHidden = true
+//        enableSwitch.addTarget(self, action: #selector(enableSwitchValueChanged), for: .valueChanged)
+//        contentView.addSubview(enableSwitch)
+//        enableSwitch.snp.makeConstraints { make in
+//            make.right.equalTo(arrowImageView.snp.left).offset(SCRXFrom(-6))
+//            make.centerY.equalTo(arrowImageView)
+//        }
         
         lineView = UIView()
         lineView.backgroundColor = RGB(243, 243, 243, 0.7)

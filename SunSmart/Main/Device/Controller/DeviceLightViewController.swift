@@ -75,9 +75,13 @@ class DeviceLightViewController: UIViewController {
         // 获取设备数据
         getNodeState()
         
-        
+#if DEBUG
+        replySwitch.isHidden = false
         // 获取节点转发功能是否启用
-//        MeshAPI.getReplyState(address: node.primaryUnicastAddress, result: nil)
+        MeshAPI.getReplyState(address: node.primaryUnicastAddress, result: nil)
+#else
+        replySwitch.isHidden = true
+#endif
     }
     
     
@@ -135,7 +139,7 @@ class DeviceLightViewController: UIViewController {
     /// 更新UI数据
     private func updateData() {
         
-        self.replySwitch.isOn = node.replyEnabled
+        self.replySwitch.isOn = node.features?.relay == .enabled
         
         if node.isKeybindComplete {
             
@@ -452,6 +456,12 @@ class DeviceLightViewController: UIViewController {
     
     @objc private func replySwitchValueChanged(sender: UISwitch) {
         sender.isEnabled = false
+//        if sender.isOn {
+//            MeshAPI.sendMessage(message: ConfigRelaySet(count: 1, steps: 1), address: node.primaryUnicastAddress)
+//            MeshAPI.sendMessage(message: ConfigRelaySet(count: 1, steps: 1), model: <#T##Model#>, result: <#T##((StaticMeshResponse?) -> ())##((StaticMeshResponse?) -> ())##(StaticMeshResponse?) -> ()#>)
+//        }
+        
+        
         MeshAPI.setReplyState(address: node.primaryUnicastAddress, enabled: sender.isOn) { successful in
             sender.isEnabled = true
             if !successful {
@@ -644,7 +654,6 @@ class DeviceLightViewController: UIViewController {
         
         replySwitch = UISwitch()
         replySwitch.onTintColor = Bar_Color
-//        replySwitch.isHidden = true
         replySwitch.tintColor = RGB(207, 207, 207)
         replySwitch.addTarget(self, action: #selector(replySwitchValueChanged), for: .valueChanged)
         view.addSubview(replySwitch)

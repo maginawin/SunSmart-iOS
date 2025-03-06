@@ -14,9 +14,9 @@ final class NetworkLoggerPlugin: PluginType {
     // Called immediately before a request is sent over the network (or stubbed).
     func willSend(_ request: RequestType, target: TargetType) {
         #if DEBUG
-        print("🌐 Sending request to \(request.request?.url?.absoluteString ?? "unknown URL")")
-        print("🌐 Request headers: \(request.request?.allHTTPHeaderFields ?? [:])")
-        print("🌐 Request body: \(String(data: request.request?.httpBody ?? Data(), encoding: .utf8) ?? "no body")")
+//        print("🌐 Sending request to \(request.request?.url?.absoluteString ?? "unknown URL")")
+//        print("🌐 Request headers: \(request.request?.allHTTPHeaderFields ?? [:])")
+//        print("🌐 Request body: \(String(data: request.request?.httpBody ?? Data(), encoding: .utf8) ?? "no body")")
         #endif
     }
 
@@ -49,9 +49,10 @@ final class NetworkLoggerPlugin: PluginType {
 //                break
 //            }
             
-            print("✅ Received response from \(response.request?.url?.absoluteString ?? "unknown URL")")
-            print("✅ Response status code: \(response.statusCode)")
-            print("✅ Response data: \(String(data: response.data, encoding: .utf8) ?? "no data")")
+//            print("✅ Received response from \(response.request?.url?.absoluteString ?? "unknown URL")")
+//            print("✅ Response status code: \(response.statusCode)")
+//            print("✅ Response data: \(String(data: response.data, encoding: .utf8) ?? "no data")")
+            break
         case .failure(let error):
             print("❌ Request failed with error: \(error.localizedDescription)")
         }

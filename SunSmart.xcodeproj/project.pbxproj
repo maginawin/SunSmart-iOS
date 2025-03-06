@@ -270,6 +270,9 @@
 		C8C1E5AB2B6A1FDC00F60E62 /* XWHUDManager_error@2x.png in Resources */ = {isa = PBXBuildFile; fileRef = C8C1E5A92B6A1FDC00F60E62 /* XWHUDManager_error@2x.png */; };
 		C8C1E5AC2B6A1FDC00F60E62 /* XWHUDManager_error@3x.png in Resources */ = {isa = PBXBuildFile; fileRef = C8C1E5AA2B6A1FDC00F60E62 /* XWHUDManager_error@3x.png */; };
 		C8C663E62C199DCF0058A5F5 /* CustomActivityItemSource.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8C663E52C199DCF0058A5F5 /* CustomActivityItemSource.swift */; };
+		C8CAE8E32D75D76A00FCCA5A /* DevicesReplySetViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8CAE8E22D75D76A00FCCA5A /* DevicesReplySetViewController.swift */; };
+		C8CAE8E52D76EF9500FCCA5A /* SwitchSelectPanelTypeController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8CAE8E42D76EF9500FCCA5A /* SwitchSelectPanelTypeController.swift */; };
+		C8CAE8E72D76FE1500FCCA5A /* SwitchSelectScenePageController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8CAE8E62D76FE1500FCCA5A /* SwitchSelectScenePageController.swift */; };
 		C8D58F662C1D34090066B770 /* CloudSynchronizationManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8D58F652C1D34090066B770 /* CloudSynchronizationManager.swift */; };
 		C8D6636D2BFED12B00BFF81A /* Keychain.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8D6636C2BFED12B00BFF81A /* Keychain.swift */; };
 		C8D6636F2BFEDDC900BFF81A /* ImportData.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8D6636E2BFEDDC900BFF81A /* ImportData.swift */; };
@@ -556,6 +559,9 @@
 		C8C1E5A92B6A1FDC00F60E62 /* XWHUDManager_error@2x.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "XWHUDManager_error@2x.png"; sourceTree = "<group>"; };
 		C8C1E5AA2B6A1FDC00F60E62 /* XWHUDManager_error@3x.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "XWHUDManager_error@3x.png"; sourceTree = "<group>"; };
 		C8C663E52C199DCF0058A5F5 /* CustomActivityItemSource.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CustomActivityItemSource.swift; sourceTree = "<group>"; };
+		C8CAE8E22D75D76A00FCCA5A /* DevicesReplySetViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DevicesReplySetViewController.swift; sourceTree = "<group>"; };
+		C8CAE8E42D76EF9500FCCA5A /* SwitchSelectPanelTypeController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SwitchSelectPanelTypeController.swift; sourceTree = "<group>"; };
+		C8CAE8E62D76FE1500FCCA5A /* SwitchSelectScenePageController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SwitchSelectScenePageController.swift; sourceTree = "<group>"; };
 		C8D58F652C1D34090066B770 /* CloudSynchronizationManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CloudSynchronizationManager.swift; sourceTree = "<group>"; };
 		C8D6636C2BFED12B00BFF81A /* Keychain.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Keychain.swift; sourceTree = "<group>"; };
 		C8D6636E2BFEDDC900BFF81A /* ImportData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImportData.swift; sourceTree = "<group>"; };
@@ -713,6 +719,7 @@
 			children = (
 				C87EB44B2BA07D1800F9285B /* GroupSwitchsViewController.swift */,
 				C87EB4542BA13BA400F9285B /* EnOceanProxyViewController.swift */,
+				C8CAE8E62D76FE1500FCCA5A /* SwitchSelectScenePageController.swift */,
 				C87EB4562BA1500500F9285B /* SwitchSelectSceneViewController.swift */,
 			);
 			path = Controller;
@@ -1031,6 +1038,7 @@
 				C85CB5F82BB6BE8E006598C0 /* DeviceInformationViewController.swift */,
 				C88B25752ADD399C00CF1AE4 /* DeviceLightBasicController.swift */,
 				C8A347CF2D63103B0092D3E4 /* DeviceBaseViewController.swift */,
+				C8CAE8E22D75D76A00FCCA5A /* DevicesReplySetViewController.swift */,
 			);
 			path = Controller;
 			sourceTree = "<group>";
@@ -1172,6 +1180,7 @@
 				C89A9A932C8A91ED0032287D /* DeviceSwitchViewController.swift */,
 				C89A9A972C8AB2140032287D /* SwitchProxyInstructionsViewController.swift */,
 				C89A9A992C8AF9430032287D /* SwitchSelectGroupsViewController.swift */,
+				C8CAE8E42D76EF9500FCCA5A /* SwitchSelectPanelTypeController.swift */,
 			);
 			path = Controller;
 			sourceTree = "<group>";
@@ -1750,6 +1759,7 @@
 				C830CFDD2C0EBE730035CD5B /* ShareBacthListViewController.swift in Sources */,
 				C89F08A02C7712F2005C0711 /* BleFirmwareTypeUpdateViewCell.swift in Sources */,
 				C87B2D2F2BCFC6CD0034E9C2 /* SpaceNewCreationProcessController.swift in Sources */,
+				C8CAE8E32D75D76A00FCCA5A /* DevicesReplySetViewController.swift in Sources */,
 				C8ACF13D2AA1B2BA00E24B4A /* CALayer+Animations.swift in Sources */,
 				C898EA5E2AC2BD8B0023B480 /* WMPageController.m in Sources */,
 				C8A16F7C2C86EEFA00FB50BD /* FirmwareVersionData.swift in Sources */,
@@ -1782,6 +1792,7 @@
 				C8BF08622B2840D800144BAC /* GroupViewController.swift in Sources */,
 				C8A347CA2D62D0740092D3E4 /* DaliMasterViewController.swift in Sources */,
 				C89A1C362B54C64B004912B9 /* MultiseriatePickerView.swift in Sources */,
+				C8CAE8E72D76FE1500FCCA5A /* SwitchSelectScenePageController.swift in Sources */,
 				C87D8B272BA818AA00F930F9 /* GroupSwitchEnOceanProxyHeaderView.swift in Sources */,
 				C88DE4432C072C8C005A38C1 /* SharePermissionSelectionController.swift in Sources */,
 				C86760A52C37F4B4006AD978 /* SitesTransferredView.swift in Sources */,
@@ -1896,6 +1907,7 @@
 				C87EB44C2BA07D1800F9285B /* GroupSwitchsViewController.swift in Sources */,
 				C82AE2EB2B95756600FA4BDB /* GroupSensorView.swift in Sources */,
 				C8BF084E2B26F84800144BAC /* AlignCenterFlowLayout.swift in Sources */,
+				C8CAE8E52D76EF9500FCCA5A /* SwitchSelectPanelTypeController.swift in Sources */,
 				C89FEF512ABECEEC00DCCFB6 /* EmptyDataView.swift in Sources */,
 				C884EF772C05B96600B5F869 /* NetowrkReqeustApi.swift in Sources */,
 				C8047F2F2B8F5E1B00A09FFA /* PowerUpBehaviorInstructionController.swift in Sources */,

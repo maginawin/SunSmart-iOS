@@ -17,6 +17,8 @@ class DeviceSwitchData: Copyable {
             switch self {
             case .default:
                 return 4
+            case .scenes:
+                return 4
             }
         }
         
@@ -25,13 +27,23 @@ class DeviceSwitchData: Copyable {
             switch self {
             case .default:
                 return 2
+            case .scenes:
+                return 2
             }
         }
         
         var describe: String {
-            return "default".localizedString
+            switch self {
+            case .default:
+                return "default".localizedString
+            case .scenes:
+                return "scene_panel".localizedString
+            }
         }
+        /// 默认
         case `default` = 0
+        /// 场景面板
+        case scenes = 1
     }
     
     /// id
@@ -82,6 +94,19 @@ class DeviceSwitchData: Copyable {
     var sceneB: Scene? {
         return MeshNetworkManager.instance.scenes.first(where: { $0.number == sceneBNumber })
     }
+    
+    /// 一键选择的场景
+    var sceneCNumber: SceneNumber?
+    var sceneC: Scene? {
+        return MeshNetworkManager.instance.scenes.first(where: { $0.number == sceneCNumber })
+    }
+    /// 二键选择的场景
+    var sceneDNumber: SceneNumber?
+    var sceneD: Scene? {
+        return MeshNetworkManager.instance.scenes.first(where: { $0.number == sceneDNumber })
+    }
+    
+    
     /// 选择的代理节点（绑定设备后）
     var proxyNodeAddress: Address?
     var proxyNode: Node? {
@@ -106,7 +131,7 @@ class DeviceSwitchData: Copyable {
     }
     
     
-    init(id: String, enabled: Bool, name: String, linkGroupAddress: Address? = nil, subLinkGroupAddress: Address? = nil, bindGroupAddresses: [Address] = [], sceneANumber: SceneNumber? = nil, sceneBNumber: SceneNumber? = nil, proxyNodeAddress: Address? = nil) {
+    init(id: String, enabled: Bool, name: String, linkGroupAddress: Address? = nil, subLinkGroupAddress: Address? = nil, bindGroupAddresses: [Address] = [], sceneANumber: SceneNumber? = nil, sceneBNumber: SceneNumber? = nil, sceneCNumber: SceneNumber? = nil, sceneDNumber: SceneNumber? = nil, proxyNodeAddress: Address? = nil) {
         self.id = id
         self.enabled = enabled
         self.name = name
@@ -115,15 +140,18 @@ class DeviceSwitchData: Copyable {
         self.bindGroupAddresses = bindGroupAddresses
         self.sceneANumber = sceneANumber
         self.sceneBNumber = sceneBNumber
+        self.sceneCNumber = sceneCNumber
+        self.sceneDNumber = sceneDNumber
         self.proxyNodeAddress = proxyNodeAddress
     }
     
     func copy() -> Self {
-        let copy = DeviceSwitchData(id: id, enabled: enabled, name: name, linkGroupAddress: linkGroupAddress, subLinkGroupAddress: subLinkGroupAddress, bindGroupAddresses: bindGroupAddresses, sceneANumber: sceneANumber, sceneBNumber: sceneBNumber, proxyNodeAddress: proxyNodeAddress) as! Self
+        let copy = DeviceSwitchData(id: id, enabled: enabled, name: name, linkGroupAddress: linkGroupAddress, subLinkGroupAddress: subLinkGroupAddress, bindGroupAddresses: bindGroupAddresses, sceneANumber: sceneANumber, sceneBNumber: sceneBNumber, sceneCNumber: sceneCNumber, sceneDNumber: sceneDNumber, proxyNodeAddress: proxyNodeAddress) as! Self
         copy.enOceanMacAddress = self.enOceanMacAddress
         copy.enOceanSecurityKey = self.enOceanSecurityKey
         copy.unbindGroupAddresses = self.unbindGroupAddresses
         copy.deleteProxyNodeAddress = self.deleteProxyNodeAddress
+        copy.panelType = self.panelType
         return copy
     }
     
@@ -137,6 +165,8 @@ class DeviceSwitchData: Copyable {
         self.unbindGroupAddresses = switchData.unbindGroupAddresses
         self.sceneANumber = switchData.sceneANumber
         self.sceneBNumber = switchData.sceneBNumber
+        self.sceneCNumber = switchData.sceneCNumber
+        self.sceneDNumber = switchData.sceneDNumber
         self.proxyNodeAddress = switchData.proxyNodeAddress
         self.deleteProxyNodeAddress = switchData.deleteProxyNodeAddress
         self.enOceanMacAddress = switchData.enOceanMacAddress
@@ -145,25 +175,61 @@ class DeviceSwitchData: Copyable {
     }
     
     static func == (lhs: DeviceSwitchData, rhs: DeviceSwitchData) -> Bool {
-        return lhs.id == rhs.id && lhs.name == rhs.name && lhs.linkGroupAddress == rhs.linkGroupAddress && lhs.subLinkGroupAddress == rhs.subLinkGroupAddress && lhs.bindGroupAddresses == rhs.bindGroupAddresses && lhs.unbindGroupAddresses == rhs.unbindGroupAddresses && lhs.enabled == rhs.enabled && lhs.panelType == rhs.panelType && lhs.sceneANumber == rhs.sceneANumber && lhs.sceneBNumber == rhs.sceneBNumber && lhs.proxyNodeAddress == rhs.proxyNodeAddress && lhs.enOceanMacAddress == rhs.enOceanMacAddress && lhs.enOceanSecurityKey == rhs.enOceanSecurityKey
+        return lhs.id == rhs.id && lhs.name == rhs.name && lhs.linkGroupAddress == rhs.linkGroupAddress && lhs.subLinkGroupAddress == rhs.subLinkGroupAddress && lhs.bindGroupAddresses == rhs.bindGroupAddresses && lhs.unbindGroupAddresses == rhs.unbindGroupAddresses && lhs.enabled == rhs.enabled && lhs.panelType == rhs.panelType && lhs.sceneANumber == rhs.sceneANumber && lhs.sceneBNumber == rhs.sceneBNumber && lhs.sceneCNumber == rhs.sceneCNumber && lhs.sceneDNumber == rhs.sceneDNumber && lhs.proxyNodeAddress == rhs.proxyNodeAddress && lhs.enOceanMacAddress == rhs.enOceanMacAddress && lhs.enOceanSecurityKey == rhs.enOceanSecurityKey
     }
+    
     
     /// 动能开关按键信息list
     var switchKeys: [SwitchKey] {
         var switchKeys: [SwitchKey] = []
+        guard let mainAddress = self.linkGroupAddress else {
+            return switchKeys
+        }
         switch panelType {
         case .default:
-            if let mainAddress = self.linkGroupAddress {
-                let subAddress = self.subLinkGroupAddress
-                switchKeys = [
-                    SwitchKey(key: 4, shortPressAction: .auto(address: mainAddress), longPressAction: .dimUp(address: mainAddress), direction: .up),
-                    SwitchKey(key: 3, shortPressAction: .off(address: mainAddress), longPressAction: .dimDown(address: mainAddress), direction: .down),
-                    SwitchKey(key: 2, shortPressAction: .sceneRecall(sceneA?.number), longPressAction: .cctUp(address: subAddress ?? mainAddress), direction: .up),
-                    SwitchKey(key: 1, shortPressAction: .sceneRecall(sceneB?.number), longPressAction: .cctDown(address: subAddress ?? mainAddress), direction: .down)
-                ]
-            }
+            let subAddress = self.subLinkGroupAddress
+            switchKeys = [
+                SwitchKey(key: 4, shortPressAction: .auto(address: mainAddress), longPressAction: .dimUp(address: mainAddress), direction: .up),
+                SwitchKey(key: 3, shortPressAction: .off(address: mainAddress), longPressAction: .dimDown(address: mainAddress), direction: .down),
+                SwitchKey(key: 2, shortPressAction: .sceneRecall(sceneA?.number), longPressAction: .cctUp(address: subAddress ?? mainAddress), direction: .up),
+                SwitchKey(key: 1, shortPressAction: .sceneRecall(sceneB?.number), longPressAction: .cctDown(address: subAddress ?? mainAddress), direction: .down)
+            ]
+        case .scenes:
+            let subAddress = self.subLinkGroupAddress
+            switchKeys = [
+                SwitchKey(key: 4, shortPressAction: .sceneRecall(sceneA?.number), longPressAction: .dimUp(address: mainAddress), direction: .up),
+                SwitchKey(key: 3, shortPressAction: .sceneRecall(sceneB?.number), longPressAction: .dimDown(address: mainAddress), direction: .down),
+                SwitchKey(key: 2, shortPressAction: .sceneRecall(sceneC?.number), longPressAction: .cctUp(address: subAddress ?? mainAddress), direction: .up),
+                SwitchKey(key: 1, shortPressAction: .sceneRecall(sceneD?.number), longPressAction: .cctDown(address: subAddress ?? mainAddress), direction: .down)
+            ]
         }
         return switchKeys
     }
+    
+//    var defaultSwitchKeys: [SwitchKey] {
+//        var switchKeys: [SwitchKey] = []
+////        guard let mainAddress = self.linkGroupAddress else {
+////            return switchKeys
+////        }
+//        switch panelType {
+//        case .default:
+////            let subAddress = self.subLinkGroupAddress
+//            switchKeys = [
+//                SwitchKey(key: 4, shortPressAction: .auto(address: nil), longPressAction: .dimUp(address: nil), direction: .up),
+//                SwitchKey(key: 3, shortPressAction: .off(address: nil), longPressAction: .dimDown(address: nil), direction: .down),
+//                SwitchKey(key: 2, shortPressAction: .sceneRecall(sceneA?.number), longPressAction: .cctUp(address: nil), direction: .up),
+//                SwitchKey(key: 1, shortPressAction: .sceneRecall(sceneB?.number), longPressAction: .cctDown(address: nil), direction: .down)
+//            ]
+//        case .scenes:
+//            let subAddress = self.subLinkGroupAddress
+//            switchKeys = [
+//                SwitchKey(key: 4, shortPressAction: .auto(address: mainAddress), longPressAction: .dimUp(address: mainAddress), direction: .up),
+//                SwitchKey(key: 3, shortPressAction: .off(address: mainAddress), longPressAction: .dimDown(address: mainAddress), direction: .down),
+//                SwitchKey(key: 2, shortPressAction: .sceneRecall(sceneA?.number), longPressAction: .cctUp(address: subAddress ?? mainAddress), direction: .up),
+//                SwitchKey(key: 1, shortPressAction: .sceneRecall(sceneB?.number), longPressAction: .cctDown(address: subAddress ?? mainAddress), direction: .down)
+//            ]
+//        }
+//        return switchKeys
+//    }
     
 }

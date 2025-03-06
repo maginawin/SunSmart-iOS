@@ -559,7 +559,6 @@ class BleFirmwareUpdateDeviceCell: UITableViewCell {
                 selectedImageView.image = UIImage(named: "device_select_disable")
                 updateStateBtn.setImage(UIImage(named: "device_add_fail"), for: .normal)
             }
-            
             if let rssi = device.rssi {
                 nameLabel.textColor = TextBlack_Color
                 rssiLabel.text = "\(rssi)dB"

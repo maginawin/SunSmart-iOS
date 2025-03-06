@@ -22,6 +22,8 @@ class DevicesViewCell: UICollectionViewCell {
     var proxyFlagView: UIView!
     /// 编辑选中
     var selectImageView: UIImageView!
+    /// 中继标识
+    var replyFlagView: UIView!
     /// 修复
 //    var repairLabel: UILabel!
     /// 编辑点击回调
@@ -89,6 +91,7 @@ class DevicesViewCell: UICollectionViewCell {
                     progressView.isHidden = true
                 }
                 proxyFlagView.isHidden = !(device.state && device.isProxy)
+//                replyFlagView.isHidden = !(device.features == nil || device.features?.relay == nil  || device.features?.relay == .enabled)
             }else {
             
                 progressView.isHidden = true
@@ -150,6 +153,17 @@ class DevicesViewCell: UICollectionViewCell {
         contentView.addSubview(proxyFlagView)
         proxyFlagView.snp.makeConstraints { make in
             make.left.equalTo(SCRXFrom(20))
+            make.top.equalTo(SCRXFrom(20))
+            make.width.height.equalTo(6)
+        }
+        
+        replyFlagView = UIView()
+        replyFlagView.layer.cornerRadius = 3
+        replyFlagView.backgroundColor = Green_Color
+        replyFlagView.isHidden = true
+        contentView.addSubview(replyFlagView)
+        replyFlagView.snp.makeConstraints { make in
+            make.right.equalTo(SCRXFrom(-20))
             make.top.equalTo(SCRXFrom(20))
             make.width.height.equalTo(6)
         }

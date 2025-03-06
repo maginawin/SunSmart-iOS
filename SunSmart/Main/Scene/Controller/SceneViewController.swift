@@ -74,6 +74,19 @@ class SceneViewController: UIViewController {
     
     override func viewDidLayoutSubviews() {
         super.viewDidLayoutSubviews()
+        
+        var itemW = (collectionView.width - collectionView.contentInset.left - collectionView.contentInset.right - flowLayout.minimumInteritemSpacing * CGFloat(rowNum - 1) - flowLayout.sectionInset.left - flowLayout.sectionInset.right) / CGFloat(rowNum)
+        itemW = CGFloat(floorf(Float(itemW) * 100) / 100.0)
+        let itemSize = CGSize(width: itemW, height: itemW + SCRYFrom(16))
+        flowLayout.itemSize = itemSize
+        
+        collectionView.snp.updateConstraints { make in
+            let height = itemSize.height * CGFloat(columnNum) + flowLayout.minimumLineSpacing * CGFloat(columnNum - 1) + collectionView.contentInset.top + collectionView.contentInset.bottom + flowLayout.sectionInset.top + flowLayout.sectionInset.bottom
+//            ceil(height)
+//            height = CGFloat(ceil(Float(height) * 100) / 100.0)
+            make.height.equalTo(ceil(height))
+        }
+        
         updateUI()
     }
     
@@ -341,21 +354,6 @@ class SceneViewController: UIViewController {
 //            make.width.equalTo(SCRXFrom(40))
 //            make.height.equalTo(4)
         }
-        
-        view.layoutIfNeeded()
-        
-        var itemW = (collectionView.width - collectionView.contentInset.left - collectionView.contentInset.right - flowLayout.minimumInteritemSpacing * CGFloat(rowNum - 1) - flowLayout.sectionInset.left - flowLayout.sectionInset.right) / CGFloat(rowNum)
-        itemW = CGFloat(floorf(Float(itemW) * 100) / 100.0)
-        let itemSize = CGSize(width: itemW, height: itemW + SCRYFrom(16))
-        flowLayout.itemSize = itemSize
-        
-        collectionView.snp.updateConstraints { make in
-            let height = itemSize.height * CGFloat(columnNum) + flowLayout.minimumLineSpacing * CGFloat(columnNum - 1) + collectionView.contentInset.top + collectionView.contentInset.bottom + flowLayout.sectionInset.top + flowLayout.sectionInset.bottom
-//            ceil(height)
-//            height = CGFloat(ceil(Float(height) * 100) / 100.0)
-            make.height.equalTo(ceil(height))
-        }
-        
     }
 
 }

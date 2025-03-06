@@ -134,6 +134,8 @@ class SpaceData: Copyable {
     var disableEditorPermission: Bool = false
     /// Mesh OTA分发中
     var meshOTADistribution: Bool = false
+    /// space最多设备数量
+    var maxDevicesCount: Int = 400
     
     /// space操作权限list
     var spaceOperates: [SpaceOperate] {

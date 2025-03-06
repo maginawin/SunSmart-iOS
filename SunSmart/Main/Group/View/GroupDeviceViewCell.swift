@@ -13,6 +13,15 @@ class GroupDeviceViewCell: DevicesViewCell {
     override var device: Node! {
         didSet {
             super.device = device
+            
+//            DispatchQueue.global().async {
+//                if self.device.needSync && self.device.state {
+//                    DispatchQueue.main.async {
+//                        self.iconImageView.image = UIImage(named: self.device.unsyncIconName)
+//                    }
+//                }
+//            }
+            
             if device.needSync && device.state {
                 iconImageView.image = UIImage(named: device.unsyncIconName)
             }

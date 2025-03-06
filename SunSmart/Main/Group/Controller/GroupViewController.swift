@@ -101,7 +101,7 @@ class GroupViewController: UIViewController {
             MeshAPI.getAmbientSensorValue(node: sensor, result: nil)
         }
         // 刷新设备状态
-        refresh()
+//        refresh()
     }
     
     @objc private func test(sender: UIButton) {
@@ -442,9 +442,14 @@ class GroupViewController: UIViewController {
             group.nodes.forEach({
                 $0.isOn = lightness > 0
                 $0.lightness = lightness
-                self.reloadCollectionItem(node: $0)
+//                self.reloadCollectionItem(node: $0)
             })
 //            collectionView.reloadData()
+            if ended {
+                CATransaction.setDisableActions(true)
+                collectionView.reloadItems(at: collectionView.indexPathsForVisibleItems)
+                CATransaction.commit()
+            }
 //            self.isGroupUpdateData = true
         }
         
@@ -455,8 +460,13 @@ class GroupViewController: UIViewController {
             MeshAPI.setGroupColorTemperatureState(address: self.group.address.address, temperature: UInt16(value))
             group.nodes.forEach({
                 $0.temperature = UInt16(value)
-                self.reloadCollectionItem(node: $0)
+//                self.reloadCollectionItem(node: $0)
             })
+            if ended {
+                CATransaction.setDisableActions(true)
+                collectionView.reloadItems(at: collectionView.indexPathsForVisibleItems)
+                CATransaction.commit()
+            }
 //            collectionView.reloadData()
 //            self.isGroupUpdateData = true
         }
@@ -579,11 +589,12 @@ class GroupViewController: UIViewController {
             return
         }
         
-        MeshAPI.sendMessage(message: LightLightnessGet(), address: group.address.address)
-        
-        if group.nodes.contains(where: { $0.temperatureModel != nil }) {
-            MeshAPI.sendMessage(message: LightCTLGet(), address: group.address.address)
-        }
+        MeshNodeHeartbeatManager.shared.refresh(nodes: group.nodes)
+//        MeshAPI.sendMessage(message: LightLightnessGet(), address: group.address.address)
+//        
+//        if group.nodes.contains(where: { $0.temperatureModel != nil }) {
+//            MeshAPI.sendMessage(message: LightCTLGet(), address: group.address.address)
+//        }
         
     }
     
@@ -793,11 +804,16 @@ extension GroupViewController: UICollectionViewDataSource, UICollectionViewDeleg
         let cell = collectionView.dequeueReusableCell(withReuseIdentifier: "cell", for: indexPath) as! GroupDeviceViewCell
         let node = group.nodes[indexPath.item]
         cell.device = node
+//        cell.nameLabel.text = node.name! + "\(indexPath.item + 1)"
         return cell
     }
     
     func collectionView(_ collectionView: UICollectionView, didSelectItemAt indexPath: IndexPath) {
         let node = group.nodes[indexPath.item]
+        guard node.state else {
+            MeshAPI.getNodeOnOffState(address: node.primaryUnicastAddress)
+            return
+        }
         node.isOn = !node.isOn
         if !node.isOn, node.lightness > 0 { // 关灯，记录关灯前的亮度值
             node.trunOffLightness = node.lightness

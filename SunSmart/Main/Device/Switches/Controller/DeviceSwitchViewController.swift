@@ -397,6 +397,14 @@ class DeviceSwitchViewController: UIViewController {
         self.isModalInPresentation = !(setSwitchData == (switchData ?? DeviceSwitchData.default()))
     }
     
+    private func reloadCell(type: CellType) {
+        if let section = sections.firstIndex(where: { $0.contains(type) }), let row = sections[section].firstIndex(of: type) {
+            tableView.reloadRows(at: [IndexPath(row: row, section: section)], with: .none)
+        }else {
+            tableView.reloadData()
+        }
+    }
+    
 }
 
 extension DeviceSwitchViewController: UITableViewDataSource, UITableViewDelegate {
@@ -414,8 +422,20 @@ extension DeviceSwitchViewController: UITableViewDataSource, UITableViewDelegate
         let option = sections[indexPath.section][indexPath.row]
         if option == .keyInfo {
             let panelCell = tableView.dequeueReusableCell(withIdentifier: "panel", for: indexPath) as! GroupSwitchPanelViewCell
-            panelCell.sceneNameA = setSwitchData.sceneA?.name
-            panelCell.sceneNameB = setSwitchData.sceneB?.name
+//            panelCell.sceneNameA = setSwitchData.sceneA?.name
+//            panelCell.sceneNameB = setSwitchData.sceneB?.name
+            switch setSwitchData.panelType {
+            case .default:
+                panelCell.key1ShortPressBtn.setTitle("switch_key_on".localizedString, for: .normal)
+                panelCell.key2ShortPressBtn.setTitle("switch_key_off".localizedString, for: .normal)
+                panelCell.key3ShortPressBtn.setTitle(setSwitchData.sceneA?.name ?? "switch_key_sceneA".localizedString, for: .normal)
+                panelCell.key4ShortPressBtn.setTitle(setSwitchData.sceneB?.name ?? "switch_key_sceneB".localizedString, for: .normal)
+            case .scenes:
+                panelCell.key1ShortPressBtn.setTitle(setSwitchData.sceneA?.name ?? "switch_key_sceneA".localizedString, for: .normal)
+                panelCell.key2ShortPressBtn.setTitle(setSwitchData.sceneB?.name ?? "switch_key_sceneB".localizedString, for: .normal)
+                panelCell.key3ShortPressBtn.setTitle(setSwitchData.sceneC?.name ?? "switch_key_sceneC".localizedString, for: .normal)
+                panelCell.key4ShortPressBtn.setTitle(setSwitchData.sceneD?.name ?? "switch_key_sceneD".localizedString, for: .normal)
+            }
             panelCell.saveBtn.isHidden = true
             panelCell.deleteBtn.isHidden = true
             panelCell.margin = 0
@@ -452,7 +472,7 @@ extension DeviceSwitchViewController: UITableViewDataSource, UITableViewDelegate
                 }
             case .id:
                 infoCell.cellStyle = .none
-                infoCell.contentLabel.text = setSwitchData.enOceanMacAddress ?? "switch_not_linked".localizedString
+                infoCell.contentLabel.text = (setSwitchData.proxyNode != nil && setSwitchData.enOceanMacAddress != nil) ? setSwitchData.enOceanMacAddress : "switch_not_linked".localizedString
 //                groupSwitch.name
             case .panel:
                 infoCell.cellStyle = .arrow
@@ -473,6 +493,12 @@ extension DeviceSwitchViewController: UITableViewDataSource, UITableViewDelegate
                 }
                 if let sceneB = setSwitchData.sceneB {
                     sceneStr.append(String(format: "%@%@", sceneStr.isEmpty ? "" : ",", sceneB.name))
+                }
+                if let sceneC = setSwitchData.sceneC {
+                    sceneStr.append(String(format: "%@%@", sceneStr.isEmpty ? "" : ",", sceneC.name))
+                }
+                if let sceneD = setSwitchData.sceneD {
+                    sceneStr.append(String(format: "%@%@", sceneStr.isEmpty ? "" : ",", sceneD.name))
                 }
                 if sceneStr.isEmpty {
                     sceneStr = "N/A"
@@ -568,7 +594,20 @@ extension DeviceSwitchViewController: UITableViewDataSource, UITableViewDelegate
         
         switch option {
         case .panel:
-            XWHUDManager.showTipHUD("under_development".localizedString, isLineFeed: true)
+//            XWHUDManager.showTipHUD("under_development".localizedString, isLineFeed: true)
+            let vc = SwitchSelectPanelTypeController()
+            vc.selectPanelType = setSwitchData.panelType
+            vc.selectPanelTypeCallback = {[weak self] type in
+                guard let self = self else { return }
+                self.setSwitchData.panelType = type
+                self.setSwitchData.sceneANumber = nil
+                self.setSwitchData.sceneBNumber = nil
+                self.setSwitchData.sceneCNumber = nil
+                self.setSwitchData.sceneDNumber = nil
+                self.tableView.reloadData()
+            }
+            navigationController?.pushViewController(vc, animated: true)
+            
         case .group:
             let vc = SwitchSelectGroupsViewController(groups: MeshNetworkManager.instance.groups, selectGroups: setSwitchData.bindGroups)
             vc.editable = self.editable
@@ -593,14 +632,42 @@ extension DeviceSwitchViewController: UITableViewDataSource, UITableViewDelegate
             if SRAlertView.isVisible() {
                 return
             }
-            let vc = SwitchSelectSceneViewController(scenes: MeshNetworkManager.instance.scenes, sceneA: setSwitchData.sceneA, sceneB: setSwitchData.sceneB)
-            vc.sceneSelectCallback = {[weak self] sceneA, sceneB in
+            
+            var datas: [SwitchSceneData] = [.init(type: .sceneA, scene: setSwitchData.sceneA), .init(type: .sceneB, scene: setSwitchData.sceneB)]
+            if setSwitchData.panelType == .scenes {
+                datas.append(contentsOf: [
+                    .init(type: .sceneC, scene: setSwitchData.sceneC),
+                    .init(type: .sceneD, scene: setSwitchData.sceneD),
+                ])
+            }
+            let vc = SwitchSelectScenePageController(scenes: MeshNetworkManager.instance.scenes, sceneDatas: datas)
+//            SwitchSelectSceneViewController(scenes: MeshNetworkManager.instance.scenes, sceneA: groupSwitch.sceneA, sceneB: groupSwitch.sceneB)
+            vc.scenesSelectCallback = {[weak self] sceneDatas in
                 guard let self = self else { return }
-                self.setSwitchData.sceneANumber = sceneA?.number
-                self.setSwitchData.sceneBNumber = sceneB?.number
+                sceneDatas.forEach { data in
+                    switch data.type {
+                    case .sceneA:
+                        self.setSwitchData.sceneANumber = data.scene?.number
+                    case .sceneB:
+                        self.setSwitchData.sceneBNumber = data.scene?.number
+                    case .sceneC:
+                        self.setSwitchData.sceneCNumber = data.scene?.number
+                    case .sceneD:
+                        self.setSwitchData.sceneDNumber = data.scene?.number
+                    }
+                }
                 tableView.reloadData()
                 self.updateSaveEnabledState()
             }
+            
+//            let vc = SwitchSelectSceneViewController(scenes: MeshNetworkManager.instance.scenes, sceneData: <#SwitchSceneData#>, sceneA: setSwitchData.sceneA, sceneB: setSwitchData.sceneB)
+//            vc.sceneSelectCallback = {[weak self] sceneA, sceneB in
+//                guard let self = self else { return }
+//                self.setSwitchData.sceneANumber = sceneA?.number
+//                self.setSwitchData.sceneBNumber = sceneB?.number
+//                tableView.reloadData()
+//                self.updateSaveEnabledState()
+//            }
             navigationController?.pushViewController(vc, animated: true)
         case .proxy:
             if SRAlertView.isVisible() {

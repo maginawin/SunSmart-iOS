@@ -112,6 +112,7 @@ class AlignCenterFlowLayout: UICollectionViewFlowLayout {
             var frame = newAttributes.frame
             frame.origin.x += CGFloat(page) * (contentInset.left + contentInset.right - minimumInteritemSpacing)
             attributes?.frame = frame
+//            print("item:\(newIndexPath.item) frame: \(frame)")
         }
         //            newAttributes?.indexPath = newIndexPath
         return attributes

@@ -30,11 +30,16 @@ class GroupsViewCell: UICollectionViewCell {
             nameLabel.text = group.name
             backgroundColor = group.isOn ? .white : RGB(226, 226, 226)
             
-            if group.nodes.contains(where: { $0.needSync }) {
-                imageView.isHidden = false
-                imageView.image = UIImage(named: "sync_failed_big")
-                imageLabel.isHidden = true
+            DispatchQueue.global().async {
+                if self.group.nodes.contains(where: { $0.needSync }) {
+                    DispatchQueue.main.async {
+                        self.imageView.isHidden = false
+                        self.imageView.image = UIImage(named: "sync_failed_big")
+                        self.imageLabel.isHidden = true
+                    }
+                }
             }
+            
         }
     }
     

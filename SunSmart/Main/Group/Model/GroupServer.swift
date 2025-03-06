@@ -317,7 +317,7 @@ extension Group {
             }
         }
         // 解除动能开关代理
-        if node.enOceanMacAddress != nil, let switchData = self.info.allSwitchs.first(where: { $0.proxyNodeAddress == node.primaryUnicastAddress && $0.enOceanMacAddress == node.enOceanMacAddress }) {
+        if node.enOceanMacAddress?.count ?? 0 > 0, let switchData = self.info.allSwitchs.first(where: { $0.proxyNodeAddress == node.primaryUnicastAddress && $0.enOceanMacAddress == node.enOceanMacAddress }) {
             if switchData.linkGroup != nil {
                 let disableSwitchMessages = node.getEnOceanSwitchDisableMessageHandles(switchKeys: switchData.switchKeys)
                 messages.append(contentsOf: disableSwitchMessages)

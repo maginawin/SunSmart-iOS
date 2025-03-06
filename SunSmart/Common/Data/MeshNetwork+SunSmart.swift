@@ -596,9 +596,12 @@ extension MeshNetworkManager {
     }
     
     /// 获取网络扩展数据
-    func loadExtensionData(result: (()->Void)? = nil) {
+    func loadExtensionData(result: ((Bool)->Void)? = nil) {
         
-        guard let uuid = self.meshNetwork?.uuid.uuidString else { return }
+        guard let uuid = self.meshNetwork?.uuid.uuidString else {
+            result?(false)
+            return
+        }
         
         DispatchQueue.global().async {
             
@@ -652,7 +655,7 @@ extension MeshNetworkManager {
 //                }
 //            }
             DispatchQueue.main.async {
-                result?()
+                result?(true)
             }
         }
         
@@ -1702,7 +1705,7 @@ extension DeviceSwitchData {
                     }
                 }
                 // 当前设置动能开关的代理设备
-                let currentProxy = allNodes.first(where: { $0.enOceanMacAddress != nil && $0.enOceanMacAddress == self.enOceanMacAddress })
+                let currentProxy = allNodes.first(where: { $0.enOceanMacAddress?.count ?? 0 > 0 && $0.enOceanMacAddress == self.enOceanMacAddress })
                 deleteProxy = currentProxy
                 
             }else {
@@ -1740,7 +1743,7 @@ extension DeviceSwitchData {
 //                if currentProxy?.primaryUnicastAddress != self.proxyNodeAddress {
 //                    deleteProxy = currentProxy
 //                }
-                if let node = self.deleteProxyNode, node.enOceanMacAddress != nil {
+                if let node = self.deleteProxyNode, node.enOceanMacAddress?.count ?? 0 > 0 {
                     deleteProxy = node
                 }
             }
@@ -2175,7 +2178,7 @@ extension Node {
                     syncProfile.append(.lightAutoAdujustEnabled(enabled: false))
                     //            }
                 }
-                if self.enOceanMacAddress != nil {
+                if self.enOceanMacAddress?.count ?? 0 > 0 {
                     if let proxySwitch = group.info.allSwitchs.first(where: { ($0.proxyNodeAddress == self.primaryUnicastAddress && $0.enOceanMacAddress == self.enOceanMacAddress) || $0.deleteProxyNodeAddress == self.primaryUnicastAddress }) {
                         deleteSwitchProxy = proxySwitch
                     }

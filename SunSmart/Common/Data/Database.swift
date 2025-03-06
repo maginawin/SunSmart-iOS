@@ -1975,6 +1975,8 @@ extension DeviceSwitchData {
         static let unbindGroupAddresses = Expression<Data?>("unbindGroupAddresses")
         static let sceneA = Expression<Int?>("sceneA")
         static let sceneB = Expression<Int?>("sceneB")
+        static let sceneC = Expression<Int?>("sceneC")
+        static let sceneD = Expression<Int?>("sceneD")
         static let proxyAddresses = Expression<Data?>("proxyAddresses")
         static let enOceanMacAddress = Expression<String?>("enOceanMacAddress")
         static let enOceanSecurityKey = Expression<String?>("enOceanSecurityKey")
@@ -2002,6 +2004,8 @@ extension DeviceSwitchData {
             builder.column(ExpressionKey.enOceanSecurityKey)
             builder.column(ExpressionKey.deleteProxyAddress)
             builder.column(ExpressionKey.subLinkGroupAddress)
+            builder.column(ExpressionKey.sceneC)
+            builder.column(ExpressionKey.sceneD)
             builder.unique(ExpressionKey.meshUUID, ExpressionKey.subNetworkKey, ExpressionKey.switchId)
         }))
         
@@ -2011,6 +2015,14 @@ extension DeviceSwitchData {
             // 是否存在”subLinkGroupAddress“属性
             if !columns.contains(where: { $0.name == "subLinkGroupAddress" }) {
                 _ = try? SunSmartDataManager.shared.db?.run(DeviceSwitchData.switchsTable.addColumn(ExpressionKey.subLinkGroupAddress))
+            }
+            // 是否存在”sceneC“属性
+            if !columns.contains(where: { $0.name == "sceneC" }) {
+                _ = try? SunSmartDataManager.shared.db?.run(DeviceSwitchData.switchsTable.addColumn(ExpressionKey.sceneC))
+            }
+            // 是否存在”sceneD“属性
+            if !columns.contains(where: { $0.name == "sceneD" }) {
+                _ = try? SunSmartDataManager.shared.db?.run(DeviceSwitchData.switchsTable.addColumn(ExpressionKey.sceneD))
             }
         }
         
@@ -2073,6 +2085,14 @@ extension DeviceSwitchData {
                 if let number = row[ExpressionKey.sceneB] { //  let sceneB = MeshNetworkManager.instance.scenes.first(where: { $0.number == number })
                     switchData.sceneBNumber = SceneNumber(number)
                 }
+                
+                if let number = row[ExpressionKey.sceneC] { //  let sceneA = MeshNetworkManager.instance.scenes.first(where: { $0.number == number })
+                    switchData.sceneCNumber = SceneNumber(number)
+                }
+                if let number = row[ExpressionKey.sceneD] { //  let sceneB = MeshNetworkManager.instance.scenes.first(where: { $0.number == number })
+                    switchData.sceneDNumber = SceneNumber(number)
+                }
+                
                 switchData.unbindGroupAddresses = unbindAddresses
                 
                 if let addressesData = row[ExpressionKey.proxyAddresses], let addressesStrings = (try? jsonDecoder.decode([String].self, from: addressesData)) {
@@ -2136,6 +2156,8 @@ extension DeviceSwitchData {
             ExpressionKey.unbindGroupAddresses <- unbindGroupAddressesData,
             ExpressionKey.sceneA <- self.sceneANumber != nil ? Int(self.sceneANumber!) : nil,
             ExpressionKey.sceneB <- self.sceneBNumber != nil ? Int(self.sceneBNumber!) : nil,
+            ExpressionKey.sceneC <- self.sceneCNumber != nil ? Int(self.sceneCNumber!) : nil,
+            ExpressionKey.sceneD <- self.sceneDNumber != nil ? Int(self.sceneDNumber!) : nil,
             ExpressionKey.proxyAddresses <- proxyAddressesData,
             ExpressionKey.enOceanMacAddress <- self.enOceanMacAddress,
             ExpressionKey.enOceanSecurityKey <- self.enOceanSecurityKey,

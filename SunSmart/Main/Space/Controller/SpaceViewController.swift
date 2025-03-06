@@ -87,6 +87,16 @@ class SpaceViewController: WMPageController {
     private var disablePageIndex: Int?
     /// 菜单bar高度
     private var meunHeight: CGFloat = 48
+    /// 自动测试定时器
+    private var autoTestTimer: Timer?
+    private var isAllOn: Bool = true
+    
+    private lazy var autoBtn: UIButton = {
+        let btn = UIButton(title: "Auto", titleSize: 20, titleWeight: .light, titleColor: .black, target: self, action: #selector(autoTestBtnAction))
+        btn.setTitleColor(Bar_Color, for: .selected)
+        btn.setTitle("Stop", for: .selected)
+        return btn
+    }()
     
     lazy var mainMenuView: SpaceMenuView = {
         let menuView = SpaceMenuView()
@@ -148,8 +158,14 @@ class SpaceViewController: WMPageController {
             make.height.equalTo(meunHeight - 2)
         }
         
+//        #if DEBUG
+//        navigationItem.rightBarButtonItems = [
+//            UIBarButtonItem(image: UIImage(named: "more_vertical")?.withRenderingMode(.alwaysOriginal), style: .done, target: self, action: #selector(moreClick)),
+//            UIBarButtonItem(customView: autoBtn)
+//        ]
+//        #else
         navigationItem.rightBarButtonItem = UIBarButtonItem(image: UIImage(named: "more_vertical")?.withRenderingMode(.alwaysOriginal), style: .done, target: self, action: #selector(moreClick))
-
+//        #endif
         
         MeshLibManager.manager.publishModelIDs = []// .genericOnOffServerModelId, .lightLightnessServerModelId, .lightCTLServerModelId
         MeshLibManager.manager.publishTimeModelIDs = []
@@ -157,6 +173,8 @@ class SpaceViewController: WMPageController {
         MeshLibManager.manager.groupSubscriptionModelIDs = [.genericOnOffServerModelId, .lightLightnessServerModelId, .lightCTLTemperatureServerModelId, .lightCTLServerModelId, .sensorServerModelId, .lightLCServerModelId]
         MeshLibManager.manager.subElementGroupSubscriptionModelIDs = [.lightCTLTemperatureServerModelId]
         checkBluetoothState()
+//        MeshNodeHeartbeatManager.shared.autoHeartbeatLoop = false
+        
    
         // 添加通知监听
         addNotificaiton()
@@ -204,6 +222,7 @@ class SpaceViewController: WMPageController {
         print("dealloc")
         stopHeartbeatTimer()
         stopUserAskTimer()
+        stopAutoTestTimer()
     }
     
     override func observeValue(forKeyPath keyPath: String?, of object: Any?, change: [NSKeyValueChangeKey : Any]?, context: UnsafeMutableRawPointer?) {
@@ -241,6 +260,36 @@ class SpaceViewController: WMPageController {
         default:
             break
         }
+    }
+    
+    // MARK: - Auto AllControl Test
+    
+    @objc private func autoTestBtnAction(sender: UIButton) {
+        guard MeshLibManager.manager.isMeshNetworkConnected else {
+            return
+        }
+        sender.isSelected = !sender.isSelected
+        if sender.isSelected {
+            startAutoTestTimer()
+        }else {
+            stopAutoTestTimer()
+        }
+    }
+    
+    private func startAutoTestTimer() {
+        
+        autoTestTimer = LCWeakTimer.scheduledTimer(timeInterval: 10, aTarget: self, selector: #selector(allControlAction), userInfo: nil, repeats: true)
+        RunLoop.current.add(autoTestTimer!, forMode: .common)
+    }
+    
+    @objc private func allControlAction() {
+        self.isAllOn = !self.isAllOn
+        MeshAPI.sendMessage(message: GenericOnOffSetUnacknowledged(self.isAllOn), address: .allNodes)
+    }
+    
+    private func stopAutoTestTimer() {
+        autoTestTimer?.invalidate()
+        autoTestTimer = nil
     }
     
     // MARK: - Mesh Ask Timer
@@ -318,7 +367,9 @@ class SpaceViewController: WMPageController {
                 }else if type == .address {
                     self.site.lastUpdate = Int64(Date().timeIntervalSince1970)
                     self.site.save()
-                    CloudSynchronizationManager.shared.addSynchronizationHandle(operation: .syncSite(site: self.site, syncSpaces: [self.space]), level: .promptly)
+                    DispatchQueue.global().async {
+                        CloudSynchronizationManager.shared.addSynchronizationHandle(operation: .syncSite(site: self.site, syncSpaces: [self.space]), level: .promptly)
+                    }
                 }
             }
         }
@@ -377,7 +428,7 @@ class SpaceViewController: WMPageController {
     /// 获取网络数据+网络连接
     private func setNetworkConnected() {
         // 读取网络数据
-        XWHUDManager.showCustomHUD(withMessage: nil, isWindow: false, afterDelay: 2)
+        XWHUDManager.showCustomHUD(withMessage: nil, isWindow: false, afterDelay: 10)
         DispatchQueue.global().async {[weak self] in
             guard let self = self else { return }
             MeshLibManager.manager.setMeshNetworkConnected(meshUUID: self.space.meshUUID, subNetworkId: self.space.meshNetworkId)
@@ -392,8 +443,12 @@ class SpaceViewController: WMPageController {
                     }
                 }
                 
-                manager.loadExtensionData {[weak self] in
+                manager.loadExtensionData {[weak self] result in
                     guard let self = self else { return }
+                    guard result else {
+                        XWHUDManager.showErrorTipHUD("unknown_error".localizedString)
+                        return
+                    }
 //                    XWHUDManager.hideInView(with: self.view)
                     XWHUDManager.hide()
                     self.loadNetworkData = true
@@ -786,6 +841,14 @@ class SpaceViewController: WMPageController {
                 })]).show()
             }))
         }
+//#if DEBUG
+//        items.append(.init(icon: UIImage(named: "menu_edit"), title: "reply".localizedString, tapItemBack: {[weak self] _ in
+//            guard let self = self else { return }
+//            let vc = DevicesReplySetViewController()
+//            self.navigationController?.pushViewController(vc, animated: true)
+//        }))
+//#endif
+        
         
         MenuPopView.show(items: items, anchorPoint: CGPoint(x: touchCenterX, y: view.safeAreaInsets.top), menuWidth: SCRXFrom(108))
     }

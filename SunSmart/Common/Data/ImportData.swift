@@ -906,8 +906,13 @@ extension SpaceData {
                             let scheduleJson = JSON(dict)
                             if let id = scheduleJson["id"].int {
                                 let dayOfWeek = Schedule.getWeekDays(weekValue: scheduleJson["dayOfWeek"].int ?? 0)
-                                
-                                let entry = SchedulerRegistryEntry(year: .specific(year: scheduleJson["year"].int ?? 0), month: .any(of: Schedule.allMonths), day: .specific(day: scheduleJson["day"].int ?? 0), hour: .specific(hour: scheduleJson["hour"].int ?? 0), minute: .specific(minute: scheduleJson["minute"].int ?? 0), second: .specific(second: scheduleJson["second"].int ?? 0), dayOfWeek: .any(of: dayOfWeek), action: SchedulerAction(rawValue: scheduleJson["action"].uInt8 ?? 0x0F) ?? .noAction, transitionTime: .init(steps: scheduleJson["transitionTime"].uInt8 ?? 0, stepResolution: .seconds), sceneNumber: scheduleJson["sceneNumber"].uInt16 ?? 0)
+                                let yearValue = scheduleJson["year"].int ?? 0
+                                var year: SchedulerYear = .any()
+                                if yearValue < 100 {
+                                    year = .specific(year: yearValue)
+                                }
+                            
+                                let entry = SchedulerRegistryEntry(year: year, month: .any(of: Schedule.allMonths), day: .specific(day: scheduleJson["day"].int ?? 0), hour: .specific(hour: scheduleJson["hour"].int ?? 0), minute: .specific(minute: scheduleJson["minute"].int ?? 0), second: .specific(second: scheduleJson["second"].int ?? 0), dayOfWeek: .any(of: dayOfWeek), action: SchedulerAction(rawValue: scheduleJson["action"].uInt8 ?? 0x0F) ?? .noAction, transitionTime: .init(steps: scheduleJson["transitionTime"].uInt8 ?? 0, stepResolution: .seconds), sceneNumber: scheduleJson["sceneNumber"].uInt16 ?? 0)
                                 node.schedulerActions.updateValue(entry, forKey: id)
                             }
                         }
@@ -1084,6 +1089,15 @@ extension SpaceData {
                            let sceneBNumber = SceneNumber(hex: sceneBHex) {
                             switchData.sceneBNumber = sceneBNumber
                         }
+                        if let sceneCHex = switcheJson["sceneC"].string,
+                           let sceneCNumber = SceneNumber(hex: sceneCHex) {
+                            switchData.sceneCNumber = sceneCNumber
+                        }
+                        if let sceneDHex = switcheJson["sceneD"].string,
+                           let sceneDNumber = SceneNumber(hex: sceneDHex) {
+                            switchData.sceneDNumber = sceneDNumber
+                        }
+                        
                         if let proxyAddress = switcheJson["proxyNodeAddress"].string {
                             switchData.proxyNodeAddress = Address(hex: proxyAddress)
                         }

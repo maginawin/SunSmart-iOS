@@ -469,6 +469,10 @@
 "switch_key_warmer" = "Warmer";
 "switch_key_sceneA" = "Scene A";
 "switch_key_sceneB" = "Scene B";
+"switch_key_sceneC" = "Scene C";
+"switch_key_sceneD" = "Scene D";
+"select_panel" = "Select Panel";
+"scene_panel" = "Scene Panel";
 
 "configuration_flow_guidance" = "Configuration flow guidance";
 "name_empty" = "The name is empty";
@@ -613,7 +617,7 @@
 "device_sync_message_more" = "If there is still a notification";
 "still_to_set" = "STILL TO SET";
 "device_address_insufficient" = "Insufficient device address, please connect to the internet to get more.Once connected to the network, the device address is automatically obtained.";
-"devices_number_exceeds_message" = "Devices cannot be added because the number of devices exceeds 200. Please create a new space to add devices.";
+"devices_number_exceeds_message" = "Devices cannot be added because the number of devices exceeds %d. Please create a new space to add devices.";
 "device_address_apply_message" = "You have applied for the device address from the server, are you sure to get it.";
 "phone_no_network" = "internet connection required!";
 "network_request_timeout" = "The network request timed out";

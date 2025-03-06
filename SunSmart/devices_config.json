@@ -309,6 +309,27 @@
     },
     {
         "companyId" : "0A78",
+        "productId" : "1432",
+        "categoryName" : "Controller Lighting",
+        "elementCount" : 4,
+        "iconCategory" : "Lighting"
+    },
+    {
+        "companyId" : "0A78",
+        "productId" : "1433",
+        "categoryName" : "Controller Lighting",
+        "elementCount" : 4,
+        "iconCategory" : "Lighting"
+    },
+    {
+        "companyId" : "0A78",
+        "productId" : "1434",
+        "categoryName" : "Controller Lighting",
+        "elementCount" : 4,
+        "iconCategory" : "Lighting"
+    },
+    {
+        "companyId" : "0A78",
         "productId" : "1441",
         "categoryName" : "Controller Lighting",
         "elementCount" : 2,

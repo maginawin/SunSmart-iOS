@@ -479,6 +479,10 @@
 "switch_key_warmer" = "调暖色";
 "switch_key_sceneA" = "场景A";
 "switch_key_sceneB" = "场景B";
+"switch_key_sceneC" = "场景 C";
+"switch_key_sceneD" = "场景 D";
+"select_panel" = "选择面板";
+"scene_panel" = "场景面板";
 
 "configuration_flow_guidance" = "配置流程指导";
 "name_empty" = "名称为空";
@@ -632,7 +636,7 @@
 "still_to_set" = "仍设置";
 
 "device_address_insufficient" = "设备地址不足，请连接网络获取更多。连接网络后，设备地址将自动获取。";
-"devices_number_exceeds_message" = "设备数量超过200，无法添加。请创建新空间添加设备。";
+"devices_number_exceeds_message" = "设备数量超过%d，无法添加。请创建新空间添加设备。";
 "device_address_apply_message" = "您已向服务器申请设备地址，确定获取？";
 "phone_no_network" = "需要网络连接！";
 "network_request_timeout" = "网络请求超时";

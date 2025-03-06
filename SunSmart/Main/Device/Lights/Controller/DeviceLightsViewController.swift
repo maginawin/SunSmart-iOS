@@ -196,7 +196,7 @@ class DeviceLightsViewController: UIViewController {
         
 //        MeshAPI.sendMessage(message: LightCTLTemperatureRangeGet(), address: .allNodes)
         
-        MeshLibManager.manager.refreshNodesRSSI(withWaitFor: 5, result: nil)
+//        MeshLibManager.manager.refreshNodesRSSI(withWaitFor: 5, result: nil)
         if refreshControl.isRefreshing {
             DispatchQueue.main.asyncAfter(deadline: .now() + 5) {[weak self] in
                 guard let self = self else { return }
@@ -237,7 +237,7 @@ class DeviceLightsViewController: UIViewController {
         
        
         
-        footerView.countBtn.setTitle("\(self.devices.count)/200", for: .normal)
+        footerView.countBtn.setTitle("\(self.devices.count)/\(space.maxDevicesCount)", for: .normal)
         
         var inset = self.collectionView.contentInset
         inset.bottom = SCRYFrom(16)
@@ -518,6 +518,7 @@ class DeviceLightsViewController: UIViewController {
                     if selectedAddresss.contains(node.primaryUnicastAddress) { // 是否编辑选中
                         // 离线时清空选中地址数据
                         selectedAddresss.removeAll(where: { $0 == node.primaryUnicastAddress })
+                        updateEditUI()
                     }
                 }
             }
@@ -535,8 +536,7 @@ class DeviceLightsViewController: UIViewController {
                 }
                 item.device = node
             }
-            updateEditUI()
-//            CATransaction.commit()
+            
         }
         
         updateAllOnOffItemUI()

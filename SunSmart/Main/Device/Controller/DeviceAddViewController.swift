@@ -68,7 +68,7 @@ class DeviceAddViewController: UIViewController {
     
     private var notAddedDevices: [ProvisioningDevice] = []
     /// 最大设备数量
-    private let maxDeviceCount = 200
+    private var maxDeviceCount = 200
     
     init(space: SpaceData) {
         self.space = space
@@ -96,6 +96,7 @@ class DeviceAddViewController: UIViewController {
         filterRSSI = filterRSSIRange.lowerBound
         
         addToGroup = appointGroup
+        maxDeviceCount = space.maxDevicesCount
         
 //        NetworkRequest.shared.addObserver(self, forKeyPath: "networkable", context: nil)
         
@@ -1150,7 +1151,7 @@ extension DeviceAddViewController: DeviceAddViewCellDelegate {
         }
         // space只能添加200个设备
         guard MeshNetworkManager.instance.realNodes.count + showDevices.filter({ $0.addState == .wait || $0.addState == .adding || $0.addState == .addConnecting }).count < maxDeviceCount else {
-            SRAlertView(title: "notification".localizedString, message: "devices_number_exceeds_message".localizedString, actions: [SRAlertAction(title: "ok".localizedString)]).show()
+            SRAlertView(title: "notification".localizedString, message: String(format: "devices_number_exceeds_message".localizedString, maxDeviceCount), actions: [SRAlertAction(title: "ok".localizedString)]).show()
             return
         }
         checkDeviceAddressesAreSufficient(devices: [device])

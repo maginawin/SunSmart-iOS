@@ -112,7 +112,7 @@ class EnOceanProxyViewController: UIViewController {
         switchData.bindGroups.forEach { group in
             group.nodes.forEach { node in
                 // 其他动能开关绑定的代理和动能开关mac
-                if let switchData = switchs.first(where: { $0.proxyNodeAddress == node.primaryUnicastAddress && $0.enOceanMacAddress != nil }), switchData.id != self.switchData.id {
+                if let switchData = switchs.first(where: { $0.proxyNodeAddress == node.primaryUnicastAddress && $0.enOceanMacAddress?.count ?? 0 > 0 }), switchData.id != self.switchData.id {
                     self.enOceanMacMap.updateValue(switchData.enOceanMacAddress!, forKey: node.primaryUnicastAddress)
                 }
 //                if let mac = node.enOceanMacAddress, MeshNetworkManager.instance.switchs.contains(where: { $0.enOceanMacAddress == mac && ($0.id == switchData.id || $0.deleteProxyNodeAddress != node.primaryUnicastAddress) }) {
@@ -167,7 +167,7 @@ class EnOceanProxyViewController: UIViewController {
     /// 扫码
     private func scanQRCode() {
         
-        let switchProxys = MeshNetworkManager.instance.realNodes.filter({ $0.enOceanMacAddress != nil })
+        let switchProxys = MeshNetworkManager.instance.realNodes.filter({ $0.enOceanMacAddress?.count ?? 0 > 0 })
         guard switchProxys.count < 16 else {
             XWHUDManager.showTipHUD("network_switch_proxy_exceed".localizedString, isLineFeed: true)
             return
@@ -245,7 +245,7 @@ extension EnOceanProxyViewController: LBXScanViewControllerDelegate {
                     self?.scanCodeVc?.startScan()
                 })]).show()
                 
-            }else if switchData.enOceanMacAddress != nil && switchData.enOceanMacAddress != data.macAddress {
+            }else if switchData.enOceanMacAddress?.count ?? 0 > 0 && switchData.enOceanMacAddress != data.macAddress {
                 // 如果当前虚拟动能开关已绑定了真实动能开关，并且扫描了一个新的动能开关则新建一个虚拟动能开关关联这个真实动能开关
                 
                 // 本地判断是否组内是否有动能开关绑定，并且该虚拟开关绑定了代理
@@ -277,6 +277,9 @@ extension EnOceanProxyViewController: LBXScanViewControllerDelegate {
                     newSwitch.bindGroupAddresses = switchData.bindGroupAddresses
                     newSwitch.sceneANumber = switchData.sceneANumber
                     newSwitch.sceneBNumber = switchData.sceneBNumber
+                    newSwitch.sceneCNumber = switchData.sceneCNumber
+                    newSwitch.sceneDNumber = switchData.sceneDNumber
+                    newSwitch.panelType = switchData.panelType
                     newSwitch.enOceanMacAddress = data.macAddress
                     newSwitch.enOceanSecurityKey = data.securityKey
                     newSwitch.proxyNodeAddress = selectProxy?.primaryUnicastAddress

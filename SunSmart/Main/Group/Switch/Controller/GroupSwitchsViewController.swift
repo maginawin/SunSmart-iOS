@@ -171,7 +171,7 @@ class GroupSwitchsViewController: UIViewController {
         }
         
         // 是否存在别的虚拟动能开关也绑定了同一个动能开关
-        if let otherSwitch = group.info.switchs.first(where: { $0.id != switchData.id && switchData.enOceanMacAddress != nil && $0.enOceanMacAddress == switchData.enOceanMacAddress }) {
+        if let otherSwitch = group.info.switchs.first(where: { $0.id != switchData.id && switchData.enOceanMacAddress?.count ?? 0 > 0 && $0.enOceanMacAddress == switchData.enOceanMacAddress }) {
             XWHUDManager.showTipHUD(String(format: "switchs_not_saved".localizedString, otherSwitch.name))
             return
         }
@@ -514,8 +514,18 @@ extension GroupSwitchsViewController: UITableViewDataSource, UITableViewDelegate
         let option = options[indexPath.row]
         if option == .keyInfo {
             let panelCell = tableView.dequeueReusableCell(withIdentifier: "panel", for: indexPath) as! GroupSwitchPanelViewCell
-            panelCell.sceneNameA = groupSwitch.sceneA?.name
-            panelCell.sceneNameB = groupSwitch.sceneB?.name
+            switch groupSwitch.panelType {
+            case .default:
+                panelCell.key1ShortPressBtn.setTitle("switch_key_on".localizedString, for: .normal)
+                panelCell.key2ShortPressBtn.setTitle("switch_key_off".localizedString, for: .normal)
+                panelCell.key3ShortPressBtn.setTitle(groupSwitch.sceneA?.name ?? "switch_key_sceneA".localizedString, for: .normal)
+                panelCell.key4ShortPressBtn.setTitle(groupSwitch.sceneB?.name ?? "switch_key_sceneB".localizedString, for: .normal)
+            case .scenes:
+                panelCell.key1ShortPressBtn.setTitle(groupSwitch.sceneA?.name ?? "switch_key_sceneA".localizedString, for: .normal)
+                panelCell.key2ShortPressBtn.setTitle(groupSwitch.sceneB?.name ?? "switch_key_sceneB".localizedString, for: .normal)
+                panelCell.key3ShortPressBtn.setTitle(groupSwitch.sceneC?.name ?? "switch_key_sceneC".localizedString, for: .normal)
+                panelCell.key4ShortPressBtn.setTitle(groupSwitch.sceneD?.name ?? "switch_key_sceneD".localizedString, for: .normal)
+            }
             if let realSwitch = group.info.switchs.first(where: { $0.id == groupSwitch.id }) {
                 panelCell.saveBtn.isEnabled = !(realSwitch == groupSwitch) || realSwitch.needSyncData
             }
@@ -568,7 +578,7 @@ extension GroupSwitchsViewController: UITableViewDataSource, UITableViewDelegate
                 infoCell.contentLabel.text = sceneStr
             case .proxy:
                 infoCell.cellStyle = .arrow
-                if let node = groupSwitch.proxyNode, groupSwitch.enOceanMacAddress != nil {
+                if let node = groupSwitch.proxyNode, groupSwitch.enOceanMacAddress?.count ?? 0 > 0 {
                     infoCell.contentLabel.text = node.name ?? "\(node.primaryUnicastAddress)"
                 }else {
                     infoCell.contentLabel.text = "N/A"
@@ -633,7 +643,20 @@ extension GroupSwitchsViewController: UITableViewDataSource, UITableViewDelegate
         let groupSwitch = copySwitchs[indexPath.section]
         switch option {
         case .panel:
-            XWHUDManager.showTipHUD("under_development".localizedString, isLineFeed: true)
+            
+            let vc = SwitchSelectPanelTypeController()
+            vc.selectPanelType = groupSwitch.panelType
+            vc.selectPanelTypeCallback = {[weak self] type in
+                guard let self = self else { return }
+                groupSwitch.panelType = type
+                groupSwitch.sceneANumber = nil
+                groupSwitch.sceneBNumber = nil
+                groupSwitch.sceneCNumber = nil
+                groupSwitch.sceneDNumber = nil
+                self.reloadSwitchItem(switchData: groupSwitch)
+            }
+            navigationController?.pushViewController(vc, animated: true)
+            
         case .group:
             
             let vc = SwitchSelectGroupsViewController(groups: groupSwitch.bindGroups, selectGroups: groupSwitch.bindGroups)
@@ -644,12 +667,34 @@ extension GroupSwitchsViewController: UITableViewDataSource, UITableViewDelegate
             if SRAlertView.isVisible() {
                 return
             }
-            let vc = SwitchSelectSceneViewController(scenes: MeshNetworkManager.instance.scenes, sceneA: groupSwitch.sceneA, sceneB: groupSwitch.sceneB)
-            vc.sceneSelectCallback = { sceneA, sceneB in
-                groupSwitch.sceneANumber = sceneA?.number
-                groupSwitch.sceneBNumber = sceneB?.number
+            var datas: [SwitchSceneData] = [.init(type: .sceneA, scene: groupSwitch.sceneA), .init(type: .sceneB, scene: groupSwitch.sceneB)]
+            if groupSwitch.panelType == .scenes {
+                datas.append(contentsOf: [
+                    .init(type: .sceneC, scene: groupSwitch.sceneC),
+                    .init(type: .sceneD, scene: groupSwitch.sceneD),
+                ])
+            }
+            let vc = SwitchSelectScenePageController(scenes: MeshNetworkManager.instance.scenes, sceneDatas: datas)
+            vc.scenesSelectCallback = { sceneDatas in
+                sceneDatas.forEach { data in
+                    switch data.type {
+                    case .sceneA:
+                        groupSwitch.sceneANumber = data.scene?.number
+                    case .sceneB:
+                        groupSwitch.sceneBNumber = data.scene?.number
+                    case .sceneC:
+                        groupSwitch.sceneCNumber = data.scene?.number
+                    case .sceneD:
+                        groupSwitch.sceneDNumber = data.scene?.number
+                    }
+                }
                 tableView.reloadSections(IndexSet(integer: indexPath.section), with: .none)
             }
+//            vc.sceneSelectCallback = { sceneA, sceneB in
+//                groupSwitch.sceneANumber = sceneA?.number
+//                groupSwitch.sceneBNumber = sceneB?.number
+//                tableView.reloadSections(IndexSet(integer: indexPath.section), with: .none)
+//            }
             navigationController?.pushViewController(vc, animated: true)
         case .proxy:
             if SRAlertView.isVisible() {

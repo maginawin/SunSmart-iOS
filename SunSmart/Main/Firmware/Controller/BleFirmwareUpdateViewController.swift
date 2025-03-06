@@ -249,7 +249,9 @@ class BleFirmwareUpdateViewController: UIViewController {
         
         MeshNetworkManager.instance.realNodes.forEach({ $0.rssi = nil })
         XWHUDManager.showCustomHUD(withMessage: nil, view: view)
-        MeshLibManager.manager.refreshNodesRSSI(withWaitFor: 6) {[weak self] nodes in
+        // 每多50个设备刷新信号时间加多1s
+        let time = ceil(Double(MeshNetworkManager.instance.realNodes.count - 100) / 50.0)
+        MeshLibManager.manager.refreshNodesRSSI(withWaitFor: 6 + time) {[weak self] nodes in
             guard let self = self else { return }
 //            self.firmwareTypeDatas.forEach({
 //                $0.nodes.sort(by: { $0.rssi ?? 0 >= $1.rssi ?? 0 })
@@ -305,6 +307,7 @@ class BleFirmwareUpdateViewController: UIViewController {
                     }
                     
                     node.targetFirmwareData = localFirmwareData
+                // test
                     if enableUpgrade, let rssi = node.rssi {
                         node.enableUpgrade = rssi >= -80
                         if node.selectedState == .disabled {

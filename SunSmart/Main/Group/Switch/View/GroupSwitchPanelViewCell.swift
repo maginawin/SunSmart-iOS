@@ -6,6 +6,7 @@
 //
 
 import UIKit
+import NordicSigMeshSDK
 
 protocol GroupSwitchPanelViewCellDelegate: AnyObject {
     
@@ -20,8 +21,21 @@ class GroupSwitchPanelViewCell: UITableViewCell {
 
     var switchContentView: UIView!
     private var panelImageView: UIImageView!
-    private var sceneAKeyBtn: UIButton!
-    private var sceneBKeyBtn: UIButton!
+//    private var sceneAKeyBtn: UIButton!
+//    private var sceneBKeyBtn: UIButton!
+    
+    var key1ShortPressBtn: UIButton!
+    var key1LongPressBtn: UIButton!
+    
+    var key2ShortPressBtn: UIButton!
+    var key2LongPressBtn: UIButton!
+    
+    var key3ShortPressBtn: UIButton!
+    var key3LongPressBtn: UIButton!
+    
+    var key4ShortPressBtn: UIButton!
+    var key4LongPressBtn: UIButton!
+    
     var deleteBtn: UIButton!
     var saveBtn: UIButton!
     weak var delegate: GroupSwitchPanelViewCellDelegate?
@@ -30,23 +44,22 @@ class GroupSwitchPanelViewCell: UITableViewCell {
         didSet {
             switchContentView.snp.updateConstraints { make in
                 make.left.equalTo(margin)
-                make.right.equalTo(margin)
+                make.right.equalTo(-margin)
             }
         }
     }
     
-    
-    var sceneNameA: String? {
-        didSet {
-            sceneAKeyBtn.setTitle(sceneNameA ?? "switch_key_sceneA".localizedString, for: .normal)
-        }
-    }
-    
-    var sceneNameB: String? {
-        didSet {
-            sceneBKeyBtn.setTitle(sceneNameB ?? "switch_key_sceneB".localizedString, for: .normal)
-        }
-    }
+//    var sceneNameA: String? {
+//        didSet {
+//            sceneAKeyBtn.setTitle(sceneNameA ?? "switch_key_sceneA".localizedString, for: .normal)
+//        }
+//    }
+//    
+//    var sceneNameB: String? {
+//        didSet {
+//            sceneBKeyBtn.setTitle(sceneNameB ?? "switch_key_sceneB".localizedString, for: .normal)
+//        }
+//    }
     
     override init(style: UITableViewCell.CellStyle, reuseIdentifier: String?) {
         super.init(style: style, reuseIdentifier: reuseIdentifier)
@@ -98,62 +111,62 @@ class GroupSwitchPanelViewCell: UITableViewCell {
         }
         
         /// 按键信息
-        let onKeyBtn = initSwitchKeyBtn(name: "switch_key_on".localizedString, shortPress: true)
-        switchContentView.addSubview(onKeyBtn)
-        onKeyBtn.snp.makeConstraints { make in
+        key1ShortPressBtn = initSwitchKeyBtn(name: "switch_key_on".localizedString, shortPress: true)
+        switchContentView.addSubview(key1ShortPressBtn)
+        key1ShortPressBtn.snp.makeConstraints { make in
             make.top.equalTo(SCRYFrom(14))
             make.left.equalTo(panelImageView).offset(SCRXFrom(-53))
         }
         
-        let dimUpKeyBtn = initSwitchKeyBtn(name: "switch_key_dim_up".localizedString, shortPress: false)
-        switchContentView.addSubview(dimUpKeyBtn)
-        dimUpKeyBtn.snp.makeConstraints { make in
-            make.top.equalTo(onKeyBtn.snp.bottom).offset(SCRYFrom(4))
-            make.left.equalTo(onKeyBtn)
+        key1LongPressBtn = initSwitchKeyBtn(name: "switch_key_dim_up".localizedString, shortPress: false)
+        switchContentView.addSubview(key1LongPressBtn)
+        key1LongPressBtn.snp.makeConstraints { make in
+            make.top.equalTo(key1ShortPressBtn.snp.bottom).offset(SCRYFrom(4))
+            make.left.equalTo(key1ShortPressBtn)
         }
         
-        let dimDownKeyBtn = initSwitchKeyBtn(name: "switch_key_dim_down".localizedString, shortPress: false)
-        switchContentView.addSubview(dimDownKeyBtn)
-        dimDownKeyBtn.snp.makeConstraints { make in
+        key2LongPressBtn = initSwitchKeyBtn(name: "switch_key_dim_down".localizedString, shortPress: false)
+        switchContentView.addSubview(key2LongPressBtn)
+        key2LongPressBtn.snp.makeConstraints { make in
             make.bottom.equalTo(SCRYFrom(-14))
-            make.left.equalTo(onKeyBtn)
+            make.left.equalTo(key1ShortPressBtn)
         }
         
-        let offKeyBtn = initSwitchKeyBtn(name: "switch_key_off".localizedString, shortPress: true)
-        switchContentView.addSubview(offKeyBtn)
-        offKeyBtn.snp.makeConstraints { make in
-            make.bottom.equalTo(dimDownKeyBtn.snp.top).offset(SCRYFrom(-4))
-            make.left.equalTo(dimDownKeyBtn)
+        key2ShortPressBtn = initSwitchKeyBtn(name: "switch_key_off".localizedString, shortPress: true)
+        switchContentView.addSubview(key2ShortPressBtn)
+        key2ShortPressBtn.snp.makeConstraints { make in
+            make.bottom.equalTo(key2LongPressBtn.snp.top).offset(SCRYFrom(-4))
+            make.left.equalTo(key1ShortPressBtn)
         }
         
-        sceneAKeyBtn = initSwitchKeyBtn(name: "Scene A", shortPress: true)
-        switchContentView.addSubview(sceneAKeyBtn)
-        sceneAKeyBtn.snp.makeConstraints { make in
-            make.centerY.equalTo(onKeyBtn)
+        key3ShortPressBtn = initSwitchKeyBtn(name: "Scene A", shortPress: true)
+        switchContentView.addSubview(key3ShortPressBtn)
+        key3ShortPressBtn.snp.makeConstraints { make in
+            make.centerY.equalTo(key1ShortPressBtn)
             make.left.equalTo(switchContentView.snp.centerX).offset(SCRXFrom(35))
             make.width.lessThanOrEqualTo(SCRXFrom(120))
         }
         
-        let coolerKeyBtn = initSwitchKeyBtn(name: "switch_key_cooler".localizedString, shortPress: false)
-        switchContentView.addSubview(coolerKeyBtn)
-        coolerKeyBtn.snp.makeConstraints { make in
-            make.top.equalTo(sceneAKeyBtn.snp.bottom).offset(SCRYFrom(4))
-            make.left.equalTo(sceneAKeyBtn)
+        key3LongPressBtn = initSwitchKeyBtn(name: "switch_key_cooler".localizedString, shortPress: false)
+        switchContentView.addSubview(key3LongPressBtn)
+        key3LongPressBtn.snp.makeConstraints { make in
+            make.top.equalTo(key3ShortPressBtn.snp.bottom).offset(SCRYFrom(4))
+            make.left.equalTo(key3ShortPressBtn)
         }
         
-        sceneBKeyBtn = initSwitchKeyBtn(name: "Scene B", shortPress: true)
-        switchContentView.addSubview(sceneBKeyBtn)
-        sceneBKeyBtn.snp.makeConstraints { make in
-            make.centerY.equalTo(offKeyBtn)
-            make.left.equalTo(sceneAKeyBtn)
+        key4ShortPressBtn = initSwitchKeyBtn(name: "Scene B", shortPress: true)
+        switchContentView.addSubview(key4ShortPressBtn)
+        key4ShortPressBtn.snp.makeConstraints { make in
+            make.centerY.equalTo(key2ShortPressBtn)
+            make.left.equalTo(key3ShortPressBtn)
             make.width.lessThanOrEqualTo(SCRXFrom(120))
         }
         
-        let warmerKeyBtn = initSwitchKeyBtn(name: "switch_key_warmer".localizedString, shortPress: false)
-        switchContentView.addSubview(warmerKeyBtn)
-        warmerKeyBtn.snp.makeConstraints { make in
-            make.centerY.equalTo(dimDownKeyBtn)
-            make.left.equalTo(sceneBKeyBtn)
+        key4LongPressBtn = initSwitchKeyBtn(name: "switch_key_warmer".localizedString, shortPress: false)
+        switchContentView.addSubview(key4LongPressBtn)
+        key4LongPressBtn.snp.makeConstraints { make in
+            make.centerY.equalTo(key2LongPressBtn)
+            make.left.equalTo(key4ShortPressBtn)
         }
         
         deleteBtn = UIButton(normalImageName: "switch_delete", target: self, action: #selector(deleteBtnAction))

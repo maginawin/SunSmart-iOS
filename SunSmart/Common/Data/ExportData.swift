@@ -372,6 +372,12 @@ extension SpaceData {
                 if let sceneB = switchData.sceneBNumber {
                     dict.updateValue(sceneB.hex, forKey: "sceneB")
                 }
+                if let sceneC = switchData.sceneCNumber {
+                    dict.updateValue(sceneC.hex, forKey: "sceneC")
+                }
+                if let sceneD = switchData.sceneDNumber {
+                    dict.updateValue(sceneD.hex, forKey: "sceneD")
+                }
                 if let proxyNodeAddress = switchData.proxyNodeAddress {
                     dict.updateValue(proxyNodeAddress.hex, forKey: "proxyNodeAddress")
                 }

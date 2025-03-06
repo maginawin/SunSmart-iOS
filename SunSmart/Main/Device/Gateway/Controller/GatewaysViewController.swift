@@ -52,7 +52,7 @@ class GatewaysViewController: UIViewController {
     
     private func updateUI() {
         
-        footerView.countBtn.setTitle("0/200", for: .normal)
+        footerView.countBtn.setTitle("0/\(space.maxDevicesCount)", for: .normal)
 //        if !space.deviceOperates.contains(.add) {
 //            footerView.addBtn.isEnabled = false
 //        }
