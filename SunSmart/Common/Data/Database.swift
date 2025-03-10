@@ -735,7 +735,8 @@ extension UserData {
 
 extension GroupInfo {
     
-    private static let groupInfosTable = Table("groupInfos")
+    private static let groupInfosTableName = "groupInfos"
+    private static let groupInfosTable = Table(groupInfosTableName)
     
     struct ExpressionKey {
         static let id = Expression<Int64>("id")
@@ -747,6 +748,7 @@ extension GroupInfo {
         static let profileId = Expression<String>("profileId")
         static let daylightSensorAddress = Expression<Int?>("daylightSensorAddress")
         static let scenesData = Expression<Data?>("scenesData")
+        static let pwmPeriod = Expression<Int?>("pwmPeriod")
     }
     
     /// 初始化组扩展信息表
@@ -762,8 +764,18 @@ extension GroupInfo {
             builder.column(ExpressionKey.profileId)
             builder.column(ExpressionKey.daylightSensorAddress)
             builder.column(ExpressionKey.scenesData)
+            builder.column(ExpressionKey.pwmPeriod)
             builder.unique(ExpressionKey.meshUUID, ExpressionKey.groupAddress)
         }))
+        
+        // 获取表内存在的属性
+        if let columns = try? SunSmartDataManager.shared.db?.schema.columnDefinitions(table: groupInfosTableName) {
+            // 插入字段
+            // 是否存在”pwmPeriod“属性
+            if !columns.contains(where: { $0.name == "pwmPeriod" }) {
+                _ = try? SunSmartDataManager.shared.db?.run(GroupInfo.groupInfosTable.addColumn(ExpressionKey.pwmPeriod))
+            }
+        }
     }
     
     /// 根据网络id和group地址获取对应配置的组数据
@@ -794,6 +806,9 @@ extension GroupInfo {
 //                // 配置数据
                 if let profile = Profile.load(meshUUID: meshUUID, meshNetworkId: row[ExpressionKey.subNetworkKey], profileId: row[ExpressionKey.profileId]) {
                     info.profile = profile
+                }
+                if let pwmPeriod = row[ExpressionKey.pwmPeriod] {
+                    info.pwmPeriod = UInt16(pwmPeriod)
                 }
                 // 虚拟按键
 //                info.switchs = GroupSwitch.load(meshUUID: meshUUID, meshNetworkId: row[ExpressionKey.subNetworkKey], groupAddress: address)
@@ -858,7 +873,8 @@ extension GroupInfo {
             ExpressionKey.imageText <- self.imageText,
             ExpressionKey.profileId <- self.profile.id,
             ExpressionKey.daylightSensorAddress <- self.ambientLightSensorNode != nil ? Int(self.ambientLightSensorNode!.primaryUnicastAddress) : nil,
-            ExpressionKey.scenesData <- scenesData
+            ExpressionKey.scenesData <- scenesData,
+            ExpressionKey.pwmPeriod <- self.pwmPeriod != nil ? Int(self.pwmPeriod!) : nil
         ])
         do {
             try SunSmartDataManager.shared.db?.run(insertOrUpdate)

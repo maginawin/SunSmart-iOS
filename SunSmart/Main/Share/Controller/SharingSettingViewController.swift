@@ -175,6 +175,18 @@ class SharingSettingViewController: UIViewController {
 //        let item = CustomActivityItemSource(image: image, text: "This is the content to share.", title: "Custom Title")
         
         let vc = UIActivityViewController(activityItems: [image], applicationActivities: nil)
+        // 适配 iPad
+        if let popoverController = vc.popoverPresentationController {
+            // 设置 sourceView（可以是按钮或视图）
+            popoverController.sourceView = self.view
+            
+            // 设置 sourceRect（浮层的锚点位置）
+            popoverController.sourceRect = CGRect(x: self.view.bounds.midX, y: self.view.bounds.midY, width: 0, height: 0)
+            
+            // 或者设置 barButtonItem（如果是导航栏按钮）
+            // popoverController.barButtonItem = self.shareButton
+        }
+        
         vc.completionWithItemsHandler = { (type, completion, _, error) in
             if completion {
                 if error == nil {

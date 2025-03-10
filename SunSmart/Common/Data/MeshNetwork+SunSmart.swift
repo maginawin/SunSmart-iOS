@@ -1271,6 +1271,8 @@ class GroupInfo {
     var ambientLightSensorNode: Node? {
         return MeshNetworkManager.instance.realNodes.first(where: { $0.primaryUnicastAddress == ambientLightSensorNodeAddress })
     }
+    /// 设置的pwm周期
+    var pwmPeriod: UInt16?
     
     /// 虚拟按键list
 //    var switchs: [GroupSwitch] = []

@@ -70,6 +70,8 @@ enum DeviceOperationType {
                 }
 //                return switchData.proxyNode?.enOceanMacAddress == nil
                 return switchData.deleteProxyNode == nil || switchData.deleteProxyNode?.enOceanMacAddress == nil
+            case .pwmPeriod:
+                return true
             }
         case .configuration(let node, let type):
             switch type {
@@ -98,6 +100,8 @@ enum DeviceOperationType {
                     }
                 }
                 return true
+            case .pwmPeriod(let period):
+                return node.pwmPeriod == period
             }
         }
         
@@ -169,6 +173,8 @@ enum DeviceOperationType {
                 if switchData.linkGroup != nil, node.primaryUnicastAddress == switchData.proxyNodeAddress || node.primaryUnicastAddress == switchData.deleteProxyNodeAddress {
                     messageHandles.append(contentsOf: node.getEnOceanSwitchUnBindMessageHandles())
                 }
+            case .pwmPeriod:
+                break
             }
         case .configuration(let node, let type): // 添加/配置操作
             
@@ -248,6 +254,10 @@ enum DeviceOperationType {
                     let handles = node.getEnOceanSwitchBindMessageHandles(enOceanMacAddress: macAddress, securityKey: key, enabled: switchData.enabled, switchKeys: switchData.switchKeys)
                     messageHandles.append(contentsOf: handles)
                 }
+            case .pwmPeriod(let period):
+                if let vendorModel = node.sunricherVendorModel, node.pwmPeriod == nil || period != node.pwmPeriod {
+                    messageHandles.append(MeshMessageHandle(message: SunricherVendorSet(function: .pwmPeriod(period)), model: vendorModel))
+                }
             }
         }
         return messageHandles
@@ -273,6 +283,8 @@ enum ActionType {
     case enOceanSwitch(switchData: DeviceSwitchData)
     /// 动能开关代理
     case enOceanProxy(switchData: DeviceSwitchData)
+    /// pwm周期
+    case pwmPeriod(period: UInt16)
 }
 
 /// 配置类型

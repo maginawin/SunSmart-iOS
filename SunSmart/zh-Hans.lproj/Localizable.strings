@@ -967,3 +967,6 @@
 "scan_dali_devices" = "Scan DALI devices";
 "address_conflicts_detected" = "Address conflicts detected";
 "unaddressed_gear_present" = "Unaddressed gear present";
+
+"pwm_period" = "PWM周期";
+"set_pwm_period" = "设置PWM周期";

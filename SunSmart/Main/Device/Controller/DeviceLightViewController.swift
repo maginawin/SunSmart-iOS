@@ -28,6 +28,7 @@ class DeviceLightViewController: UIViewController {
     
     private var replyLabel: UILabel!
     private var replySwitch: UISwitch!
+    private var pwmPeriodLabel: UILabel!
     
     private var lastMessageDelegate: MeshLibManagerMessageDelegate?
     
@@ -74,13 +75,20 @@ class DeviceLightViewController: UIViewController {
         bindSliderAction()
         // 获取设备数据
         getNodeState()
-        
+     
 #if DEBUG
         replySwitch.isHidden = false
+        replyLabel.isHidden = false
         // 获取节点转发功能是否启用
         MeshAPI.getReplyState(address: node.primaryUnicastAddress, result: nil)
+        
+        // 读取pwm周期
+//        if let model = node.sunricherVendorModel {
+//            MeshAPI.sendMessage(message: SunricherVendorGet(function: .pwmPeriod), model: model)
+//        }
 #else
         replySwitch.isHidden = true
+        replyLabel.isHidden = true
 #endif
     }
     
@@ -190,6 +198,8 @@ class DeviceLightViewController: UIViewController {
             
             lightnessSlider.slider.limitRange = Node.getLightness100(lightness: node.lightnessRange.lowerBound)...Node.getLightness100(lightness: node.lightnessRange.upperBound)
             
+//            pwmPeriodLabel.text = node.pwmPeriod != nil ? "pwm: \(node.pwmPeriod!)" : nil
+            
         }else {
             if view.emptyView == nil {
                 view.showEmptyDataView(imageName: "device_state_offline", title: "device_repair_message".localizedString, backgroundColor: Background_Color, buttonText: "repair".localizedString, buttomWidth: SCRXFrom(216), bottomMargin: SCRYFit(-78)) {[weak self] in
@@ -244,9 +254,16 @@ class DeviceLightViewController: UIViewController {
             self?.information()
         }))
            
+//        #if DEBUG
+//        items.append(.init(icon: UIImage(named: "menu_edit"), title: "pwm_period".localizedString, hideAnimation: false, tapItemBack: {[weak self] _ in
+//            self?.setPwmPeriod()
+//        }))
+//        #endif
+        
         items.append(.init(icon: UIImage(named: "menu_refresh"), title: "refresh".localizedString, tapItemBack: {[weak self] _ in
             self?.refresh()
         }))
+        
         
 //        isIphoneX ? 18 : 15
         let touchCenterX = view.width - navigationRightItemMargin - 15
@@ -256,6 +273,31 @@ class DeviceLightViewController: UIViewController {
         MenuPopView.show(items: items, anchorPoint: windowPoint, menuWidth: SCRXFrom(114))
         
 //        MenuPopView.show(items: items, anchorPoint: CGPoint(x: view.width - SCRXFrom(17) - 15, y: y), menuWidth: MenuPopView.defalutMenuWidth + SCRXFrom(10))
+    }
+    
+    /// 设置pwm周期
+    private func setPwmPeriod() {
+        let pwmPeriod = node.pwmPeriod
+        SRAlertView(title: "set_pwm_period".localizedString, inputText: pwmPeriod != nil ? "\(pwmPeriod!)" : nil, inputFieldStyle: .init(placeholder: "0-65535", keyboardType: .numberPad), actions: [.cancelAction, SRAlertAction(title: "confirm".localizedString, style: .default)], textValueChangedBack: nil) {[weak self] text in
+            guard let self = self else { return }
+            guard let value = UInt16(text) else {
+                XWHUDManager.showTipHUD("invalid".localizedString + "!", isLineFeed: true)
+                return
+            }
+            if let model = self.node.sunricherVendorModel {
+                XWHUDManager.showCustomHUD(withMessage: nil, view: self.view)
+                MeshAPI.sendMessage(message: SunricherVendorSet(function: .pwmPeriod(value)), model: model) {[weak self] response in
+                    guard let self = self else { return }
+                    XWHUDManager.hideInView(with: self.view)
+                    guard let statusMessage = response as? SunricherVendorStatus, statusMessage.status.isSuccessful else {
+                        XWHUDManager.showErrorTipHUD("failed!".localizedString)
+                        return
+                    }
+                    XWHUDManager.showSuccessTipHUD("done!".localizedString)
+                    self.updateData()
+                }
+            }
+        }.show()
     }
     
     /// 编辑设备
@@ -663,13 +705,19 @@ class DeviceLightViewController: UIViewController {
         }
         
         replyLabel = UILabel(text: "Reply", textColor: TextBlack_Color, fontSize: 13)
-//        replyLabel.isHidden = true
+        replyLabel.isHidden = true
         view.addSubview(replyLabel)
         replyLabel.snp.makeConstraints { make in
             make.centerY.equalTo(replySwitch)
             make.right.equalTo(replySwitch.snp.left).offset(SCRXFrom(-6))
         }
         
+//        pwmPeriodLabel = UILabel(text: nil, textColor: TextBlack_Color, fontSize: 14)
+//        view.addSubview(pwmPeriodLabel)
+//        pwmPeriodLabel.snp.makeConstraints { make in
+//            make.left.equalTo(SCRXFrom(20))
+//            make.centerY.equalTo(replySwitch)
+//        }
     }
 
 }

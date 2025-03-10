@@ -35,6 +35,8 @@ class FirmwareVersionViewController: UIViewController {
     
     /// 最新的固件数据
 //    private var newFirmwareData: FirmwareData?
+    /// 服务器没有该固件
+    private var noServerFirmware: Bool = false
     
     let type: FirmwareUpdateTypeData
     
@@ -103,9 +105,15 @@ class FirmwareVersionViewController: UIViewController {
                 
                 let serverData = FirmwareServerData(productId: pid, version: version.replacingOccurrences(of: "v", with: ""), companyId: UInt16(companyId) ?? 0x0A78, customId: UInt16(customId) ?? 0, url: url, filename: data["filename"].stringValue, size: size, releaseDate: timeInterval, content: data["describe"].stringValue)
                 self.type.serverData = serverData
+                self.noServerFirmware = false
                 self.updateUI()
                 
-            case .failure(_):
+            case .failure(let error):
+                if error == .resourceNotFound {
+                    self.noServerFirmware = true
+                }else {
+                    self.noServerFirmware = false
+                }
                 self.updateUI()
             }
         }
@@ -235,17 +243,33 @@ class FirmwareVersionViewController: UIViewController {
             stateLabel.isHidden = false
             reloadBtn.isHidden = true
         }else {
-            stateLabel.isHidden = true
-            versionDescribeLabel.attributedText = NSAttributedString(string: "network_error".localizedString)
-            reloadBtn.isHidden = false
-            downloadBtn.isEnabled = false
-            versionScrollView.isHidden = false
-            cacheVersionView.snp.remakeConstraints { make in
-                make.left.equalTo(SCRXFrom(16))
-                make.right.equalTo(SCRXFrom(-16))
-                make.top.equalTo(versionScrollView.snp.bottom).offset(SCRYFit(18))
-                make.height.equalTo(SCRYFit(52))
+            if noServerFirmware { // 服务器上没有固件
+                
+                stateLabel.text = "the_latest_version".localizedString
+                versionScrollView.isHidden = true
+                cacheVersionView.snp.remakeConstraints { make in
+                    make.left.equalTo(SCRXFrom(16))
+                    make.right.equalTo(SCRXFrom(-16))
+                    make.top.equalTo(versionScrollView)
+                    make.height.equalTo(SCRYFit(52))
+                }
+                downloadBtn.isEnabled = false
+                
+            }else { // 请求错误
+                stateLabel.isHidden = true
+                versionDescribeLabel.attributedText = NSAttributedString(string: "network_error".localizedString)
+                reloadBtn.isHidden = false
+                downloadBtn.isEnabled = false
+                versionScrollView.isHidden = false
+                cacheVersionView.snp.remakeConstraints { make in
+                    make.left.equalTo(SCRXFrom(16))
+                    make.right.equalTo(SCRXFrom(-16))
+                    make.top.equalTo(versionScrollView.snp.bottom).offset(SCRYFit(18))
+                    make.height.equalTo(SCRYFit(52))
+                }
             }
+            
+            
         }
         
         

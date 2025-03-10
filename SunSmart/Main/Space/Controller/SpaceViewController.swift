@@ -367,9 +367,9 @@ class SpaceViewController: WMPageController {
                 }else if type == .address {
                     self.site.lastUpdate = Int64(Date().timeIntervalSince1970)
                     self.site.save()
-                    DispatchQueue.global().async {
+//                    DispatchQueue.global().async {
                         CloudSynchronizationManager.shared.addSynchronizationHandle(operation: .syncSite(site: self.site, syncSpaces: [self.space]), level: .promptly)
-                    }
+//                    }
                 }
             }
         }

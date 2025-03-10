@@ -468,12 +468,15 @@ class CloudSynchronizationHandle: NSObject {
     /// 状态
     var state: State = .wait
     /// 等待定时器
-    private var waitTimer: Timer?
+//    private var waitTimer: Timer?
     /// 网络请求操作
     private var requestHandle: Cancellable?
     /// 同步数据操作回调
     private var handleCallback: SyncHandleCallback?
     
+    private var waitTimer: DispatchSourceTimer?
+    // 异步队列
+    private let asyncQueue = DispatchQueue(label: "com.example.asyncQueue", attributes: .concurrent)
     
     /// 初始化数据同步云端操作
     /// - Parameters:
@@ -537,26 +540,29 @@ class CloudSynchronizationHandle: NSObject {
     
     /// 进入计时
     private func startTimewait() {
-        if let timer = waitTimer {
-            timer.invalidate()
+        if waitTimer != nil {
+            stopTimewait()
         }
-        waitTimer = Timer.scheduledTimer(withTimeInterval: level.interval, repeats: false, block: {[weak self] _ in
-            guard let self = self else { return }
-            self.syncOperation()
-        })
-        RunLoop.current.add(waitTimer!, forMode: .common)
+        // 创建定时器
+        let timer = DispatchSource.makeTimerSource(queue: asyncQueue)
+        timer.schedule(deadline: .now() + level.interval, repeating: .infinity)
+        timer.setEventHandler { [weak self] in
+            self?.syncOperation()
+        }
+        timer.resume()
+        self.waitTimer = timer
     }
     
     /// 停止计时
     private func stopTimewait() {
-        waitTimer?.invalidate()
+        waitTimer?.cancel()
         waitTimer = nil
     }
     
     /// 开始同步到服务器
     func syncOperation() {
-        if waitTimer?.isValid ?? false {
-            waitTimer?.invalidate()
+        if waitTimer != nil {
+            stopTimewait()
         }
         state = .inProgress
         DispatchQueue.main.async {

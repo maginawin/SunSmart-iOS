@@ -1074,6 +1074,9 @@ extension SpaceData {
                     let switcheJson = JSON(dict)
                     if let id = switcheJson["id"].string, let name = switcheJson["name"].string {
                         let switchData = DeviceSwitchData(id: id, enabled: switcheJson["enabled"].boolValue, name: name)
+                        if let typeValue = switcheJson["panelType"].uInt8, let panelType = DeviceSwitchData.PanelType(rawValue: typeValue) {
+                            switchData.panelType = panelType
+                        }
                         if let addressHex = switcheJson["linkGroupAddress"].string, let linkGroupAddress = Address(hex: addressHex) {
                             switchData.linkGroupAddress = linkGroupAddress
                         }

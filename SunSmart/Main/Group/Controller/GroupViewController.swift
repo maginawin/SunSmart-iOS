@@ -351,6 +351,10 @@ class GroupViewController: UIViewController {
             self?.pushToSwitch()
         }))
         
+//        items.append(.init(icon: UIImage(named: "menu_edit"), title: "pwm_period".localizedString, hideAnimation: false, tapItemBack: {[weak self] _ in
+//            self?.setPwmPeriod()
+//        }))
+        
         items.append( .init(icon: UIImage(named: "menu_refresh"), title: "refresh".localizedString, tapItemBack: {[weak self] item in
             
             if self?.group.nodes.isEmpty ?? true {
@@ -364,6 +368,7 @@ class GroupViewController: UIViewController {
             XWHUDManager.showCustomHUD(withMessage: nil, isWindow: false, afterDelay: 3)
             self?.refresh()
         }))
+        
         
         
         let touchCenterX = view.width - navigationRightItemMargin - 15
@@ -427,6 +432,34 @@ class GroupViewController: UIViewController {
             sender.setImage(UIImage(named: isIPad ? "auto_big" : "auto"), for: .normal)
         }
 //        }
+    }
+    
+    private func setPwmPeriod() {
+        let pwmPeriod = group.info.pwmPeriod
+        
+        
+        SRAlertView(title: "set_pwm_period".localizedString, inputText: pwmPeriod != nil ? "\(pwmPeriod!)" : nil, inputFieldStyle: .init(placeholder: "0-65535", keyboardType: .numberPad), actions: [.cancelAction, SRAlertAction(title: "confirm".localizedString, style: .default)], textValueChangedBack: nil) {[weak self] text in
+            guard let self = self else { return }
+            guard let value = UInt16(text) else {
+                XWHUDManager.showTipHUD("invalid".localizedString + "!", isLineFeed: true)
+                return
+            }
+            self.group.info.pwmPeriod = value
+            self.group.info.save()
+            
+            guard self.group.nodes.count > 0 else {
+                return
+            }
+            
+            let vc = SyncDevicesViewController(type: .pwmPeriod(value, group: self.group))
+            vc.syncSuccessCallback = {[weak self] _ in
+                guard let self = self else { return }
+                XWHUDManager.showSuccessTipHUD("done!".localizedString)
+                self.navigationController?.popViewController(animated: true)
+            }
+            self.navigationController?.pushViewController(vc, animated: true)
+        }.show()
+    
     }
     
     

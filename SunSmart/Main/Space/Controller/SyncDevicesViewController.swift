@@ -318,6 +318,18 @@ class SyncDevicesViewController: UIViewController {
                 syncSwitchGroupModels = syncSwitchGroupModels.sorted(by: { $0.address < $1.address })
                 configurationSection.groups.append(contentsOf: syncSwitchGroupModels)
                 
+            case .pwmPeriod(let period, let group):
+                
+                let nodes = group.nodes.filter({ $0.pwmPeriod != period })
+                let deviceModels = nodes.map({
+                    let model = SyncDevicesModel(name: $0.name ?? "", address: $0.primaryUnicastAddress)
+                    model.imageName = $0.iconName
+                    model.operationType = .configuration(node: $0, type: .pwmPeriod(period: period))
+                    return model
+                })
+                let groupModel = SyncDevicesGroupModel(groupName: group.name, groupAddress: group.address.address, deviceModels: deviceModels)
+                deviceModels.forEach({ $0.parentGroupModel = groupModel })
+                configurationSection.groups.append(groupModel)
             }
         
             if removeSection.groups.count > 0 || removeSection.devices.count > 0 || removeSection.switchProxy != nil {
@@ -1215,6 +1227,8 @@ extension SyncDevicesViewController {
         case schedule(_ schdule: Schedule)
         /// 动能开关 deleteSwitch: 是否删除动能开关
         case enOceanSwitch(_ switchData: DeviceSwitchData, deleteSwitch: Bool = false)
+        /// 按组设置pwm频率
+        case pwmPeriod(_ period: UInt16, group: Group)
     }
     
     /// 同步状态
