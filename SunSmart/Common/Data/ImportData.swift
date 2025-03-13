@@ -1015,7 +1015,7 @@ extension SpaceData {
                     }
                     // 选择的光照传感器
                     if let sensorAddressHex = groupJson["daylightSensorAddress"].string,
-                       let sensorAddress = Address(sensorAddressHex) {
+                       let sensorAddress = Address(hex: sensorAddressHex) {
                         group.info.ambientLightSensorNodeAddress = sensorAddress
                     }
                     // scenes data

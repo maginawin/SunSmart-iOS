@@ -259,6 +259,9 @@ class DeviceLightViewController: UIViewController {
 //            self?.setPwmPeriod()
 //        }))
 //        #endif
+        items.append(.init(icon: UIImage(named: "menu_edit"), title: "Test", tapItemBack: {[weak self] _ in
+            self?.nodeTest()
+        }))
         
         items.append(.init(icon: UIImage(named: "menu_refresh"), title: "refresh".localizedString, tapItemBack: {[weak self] _ in
             self?.refresh()
@@ -274,6 +277,76 @@ class DeviceLightViewController: UIViewController {
         
 //        MenuPopView.show(items: items, anchorPoint: CGPoint(x: view.width - SCRXFrom(17) - 15, y: y), menuWidth: MenuPopView.defalutMenuWidth + SCRXFrom(10))
     }
+    
+    private func nodeTest() {
+        
+        if let testGroup = MeshNetworkManager.instance.groups.first {
+            
+//            var lightness = UInt16(arc4random_uniform(UInt32(UInt16.max)))
+            var messageHandles: [MeshMessageHandle] = []
+//            messageHandles.append(MeshMessageHandle(message: LightLightnessSet(lightness: lightness, transitionTime: .immediate, delay: 0), model: lightnessModel))
+//            messageHandles.append(MeshMessageHandle(message: SceneStore(testScene.number), model: sceneSetupModel))
+            
+            
+            
+            
+            if node.group == testGroup {
+                
+                node.groupState = .exitFailure
+                
+                let syncData = node.getNeedSyncGroupData(group: testGroup)
+                for schedule in syncData.deleteSchedules {
+                    messageHandles.append(contentsOf: DeviceOperationType.delete(node: node, type: .schedule(schedule: schedule)).messageHandles)
+                }
+                for switchData in syncData.deleteSwitchs {
+                    messageHandles.append(contentsOf: DeviceOperationType.delete(node: node, type: .enOceanSwitch(switchData: switchData)).messageHandles)
+                }
+                
+                for scene in syncData.deleteScenes {
+                    messageHandles.append(contentsOf: DeviceOperationType.delete(node: node, type: .scene(sceneId: scene.number, executeData: nil)).messageHandles)
+                }
+                for profile in syncData.syncProfile {
+                    messageHandles.append(contentsOf: DeviceOperationType.delete(node: node, type: .profile(type: profile)).messageHandles)
+                }
+                messageHandles.append(contentsOf: DeviceOperationType.delete(node: node, type: .group(group: testGroup)).messageHandles)
+            }else {
+                
+                node.groupState = .inGroup
+                
+                let syncData = node.getNeedSyncGroupData(group: testGroup)
+                messageHandles.append(contentsOf: DeviceOperationType.configuration(node: node, type: .group(group: testGroup)).messageHandles)
+                for profile in syncData.syncProfile {
+                    messageHandles.append(contentsOf: DeviceOperationType.configuration(node: node, type: .profile(type: profile)).messageHandles)
+                }
+                for scene in syncData.syncScenes {
+                    messageHandles.append(contentsOf: DeviceOperationType.configuration(node: node, type: .scene(sceneId: scene.sceneNumber, executeData: scene)).messageHandles)
+                }
+                for schedule in syncData.syncSchedules {
+                    messageHandles.append(contentsOf: DeviceOperationType.configuration(node: node, type: .schedule(schedule: schedule)).messageHandles)
+                }
+                for switchData in syncData.syncSwitchs {
+                    messageHandles.append(contentsOf: DeviceOperationType.configuration(node: node, type: .enOceanSwitch(switchData: switchData)).messageHandles)
+                }
+//                if let switchProxy = syncData.syncSwitchProxy {
+//                    messageHandles.append(contentsOf: DeviceOperationType.configuration(node: node, type: .enOceanProxy(switchData: switchProxy)).messageHandles)
+//                }
+            }
+            
+            MeshProxyMessageCommand.shared.addMessage(messageHandles: messageHandles) {[weak self] _ in
+                if MeshNetworkManager.instance.scenes.count >= 2 {
+                    let sceneA = MeshNetworkManager.instance.scenes[0]
+                    let sceneB = MeshNetworkManager.instance.scenes[1]
+                    MeshAPI.startScene(sceneNumber: sceneA.number)
+                    MeshAPI.startScene(sceneNumber: sceneB.number)
+                }
+                DispatchQueue.main.asyncAfter(wallDeadline: .now() + 15, execute: {
+                    self?.nodeTest()
+                })
+            }
+        }
+        
+    }
+    
     
     /// 设置pwm周期
     private func setPwmPeriod() {

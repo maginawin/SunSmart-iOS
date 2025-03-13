@@ -189,7 +189,8 @@ class DeviceSwitchViewController: UIViewController {
                 }else {
                     self?.updateSaveEnabledState()
                     self?.tableView.reloadData()
-                    self?.navigationController?.popViewController(animated: true)
+//                    self?.navigationController?.popViewController(animated: true)
+                    self?.dismiss(animated: true)
                 }
             }
             
@@ -600,11 +601,12 @@ extension DeviceSwitchViewController: UITableViewDataSource, UITableViewDelegate
             vc.selectPanelTypeCallback = {[weak self] type in
                 guard let self = self else { return }
                 self.setSwitchData.panelType = type
-                self.setSwitchData.sceneANumber = nil
-                self.setSwitchData.sceneBNumber = nil
+//                self.setSwitchData.sceneANumber = nil
+//                self.setSwitchData.sceneBNumber = nil
                 self.setSwitchData.sceneCNumber = nil
                 self.setSwitchData.sceneDNumber = nil
                 self.tableView.reloadData()
+                self.updateSaveEnabledState()
             }
             navigationController?.pushViewController(vc, animated: true)
             

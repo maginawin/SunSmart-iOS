@@ -647,7 +647,10 @@ extension SceneAddViewController: WMMenuViewDataSource, WMMenuViewDelegate {
     }
     
     func menuView(_ menu: WMMenuView!, itemMarginAt index: Int) -> CGFloat {
-        return SCRXFrom(54)
+        if index > 0 {
+            return SCRXFrom(54)
+        }
+        return 0
     }
     
     func menuView(_ menu: WMMenuView!, didSelectedIndex index: Int, currentIndex: Int) {

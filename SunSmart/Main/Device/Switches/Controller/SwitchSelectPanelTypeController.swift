@@ -13,6 +13,8 @@ class SwitchSelectPanelTypeController: UIViewController {
     private var switchPanelTypes: [DeviceSwitchData.PanelType] = [.default, .scenes]
     var selectPanelType: DeviceSwitchData.PanelType = .default
     
+    /// 是否已选择场景
+    var scenesSelected: Bool = false
     var selectPanelTypeCallback: ((DeviceSwitchData.PanelType)->Void)?
     
     override func viewDidLoad() {
@@ -111,9 +113,14 @@ extension SwitchSelectPanelTypeController: UITableViewDataSource, UITableViewDel
         guard type != selectPanelType else {
             return
         }
+        
         selectPanelType = type
         tableView.reloadData()
         selectPanelTypeCallback?(type)
         
+        // 是否已有场景
+        if scenesSelected {
+            SRAlertView(title: "notification".localizedString, message: "switch_panel_scenes_changed".localizedString, actions: [SRAlertAction(title: "ok".localizedString, style: .default)]).show()
+        }
     }
 }

@@ -435,7 +435,7 @@ extension BleFirmwareTypeUpdateViewCell: UITableViewDataSource, UITableViewDeleg
             }
             tableView.reloadRows(at: [indexPath], with: .none)
             delegate?.cell(self, selectDevicesDidChange: canSelectNodes.filter({ $0.selectedState == .selected }))
-        }else if !node.enableUpgrade, let rssi = node.rssi, rssi < -80 { // 信号太差不能选择
+        }else if !node.enableUpgrade, let rssi = node.rssi, rssi < -90 { // 信号太差不能选择
             XWHUDManager.showTipHUD("signal_below_message".localizedString, isLineFeed: true)
         }
     }
@@ -562,7 +562,7 @@ class BleFirmwareUpdateDeviceCell: UITableViewCell {
             if let rssi = device.rssi {
                 nameLabel.textColor = TextBlack_Color
                 rssiLabel.text = "\(rssi)dB"
-                rssiLabel.textColor = rssi >= -80 ? SubText_Color : Red_Color
+                rssiLabel.textColor = rssi >= -90 ? SubText_Color : Red_Color
                 deviceImageView.image = UIImage(named: device.iconName)
             }else {
                 nameLabel.textColor = SubText_Color

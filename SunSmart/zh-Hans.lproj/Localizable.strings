@@ -483,6 +483,7 @@
 "switch_key_sceneD" = "场景 D";
 "select_panel" = "选择面板";
 "scene_panel" = "场景面板";
+"switch_panel_scenes_changed" = "场景数量有变化，请注意设置。";
 
 "configuration_flow_guidance" = "配置流程指导";
 "name_empty" = "名称为空";
@@ -825,7 +826,7 @@
 "none" = "无";
 "minutes" = "分";
 "sec" = "秒";
-"signal_below_message" = "信号低于 -80dB 的设备无法选择。";
+"signal_below_message" = "信号低于 -90dB 的设备无法选择。";
 "no_data" = "无数据！";
 
 "device_version_state" = "设备版本状态";

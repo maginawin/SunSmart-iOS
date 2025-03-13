@@ -393,7 +393,7 @@ extension ScenesViewController: UICollectionViewDataSource, UICollectionViewDele
         if let cell = collectionView.cellForItem(at: indexPath) as? ScenesViewCell, !cell.isExecuting {
             // 执行场景
             
-            MeshAPI.startScene(sceneNumber: scene.number)
+            MeshAPI.startScene(sceneNumber: scene.number, delay: 100)
             
             scene.info.groups.forEach { group in
                 if let data = group.info.sceneExecuteDatas.first(where: { scene.number == $0.sceneNumber }) {

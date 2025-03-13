@@ -872,7 +872,7 @@ extension GroupInfo {
             ExpressionKey.imageId <- self.imageId,
             ExpressionKey.imageText <- self.imageText,
             ExpressionKey.profileId <- self.profile.id,
-            ExpressionKey.daylightSensorAddress <- self.ambientLightSensorNode != nil ? Int(self.ambientLightSensorNode!.primaryUnicastAddress) : nil,
+            ExpressionKey.daylightSensorAddress <- self.ambientLightSensorNodeAddress != nil ? Int(self.ambientLightSensorNodeAddress!) : nil,
             ExpressionKey.scenesData <- scenesData,
             ExpressionKey.pwmPeriod <- self.pwmPeriod != nil ? Int(self.pwmPeriod!) : nil
         ])

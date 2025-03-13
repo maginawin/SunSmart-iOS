@@ -15,7 +15,7 @@ internal extension Node {
     static var enableUpgradeKey = 3
     static var targetFirmwareDataKey = 4
     
-    // 是否可以升级 设备版本小于当前升级版本 & 信号量 >= -80dB
+    // 是否可以升级 设备版本小于当前升级版本 & 信号量 >= -90dB
     // 是否可以选择 可以升级 & 升级状态为待升级
     // 状态展示 待升级、升级成功、升级失败、不可用
     
@@ -309,7 +309,7 @@ class BleFirmwareUpdateViewController: UIViewController {
                     node.targetFirmwareData = localFirmwareData
                 // test
                     if enableUpgrade, let rssi = node.rssi {
-                        node.enableUpgrade = rssi >= -80
+                        node.enableUpgrade = rssi >= -90
                         if node.selectedState == .disabled {
                             node.selectedState = .unselected
                         }

@@ -1127,7 +1127,7 @@ class ShareAuthorityViewController: UIViewController {
             // 判断是否选中所有可选space
             var canSelectSpaces = showSpaces
             if type == .share {
-                canSelectSpaces = showSpaces.filter({ ($0.permission == .owner && $0.editor == nil) || ($0.permission == .editor && $0.state == .normal) })
+                canSelectSpaces = showSpaces.filter({ ($0.permission == .owner && $0.editor == nil) || ($0.permission == .editor && $0.state == .normal && !($0.authorizationPassword?.isEmpty ?? true || $0.requiresPasswordVerification))  })
             }
             
             selectAllBtn.isSelected = selectSpaces.count > 0 && selectSpaces.count == canSelectSpaces.count
@@ -1171,7 +1171,7 @@ extension ShareAuthorityViewController: UICollectionViewDataSource, UICollection
             switch self.type {
             case .share: // 分享授权页面
                 // 不是访客并且未删除
-                if (space.permission == .owner && space.editor == nil) || (space.permission == .editor && space.state == .normal) {
+                if (space.permission == .owner && space.editor == nil) || (space.permission == .editor && space.state == .normal && !space.requiresPasswordVerification) {
                     cell.selectImageView.isHidden = false
                     cell.selectImageView.image = UIImage(named: selectSpaces.contains(where: { $0.id == space.id }) ? "select" : "select_un")
                 }else {

@@ -473,6 +473,7 @@
 "switch_key_sceneD" = "Scene D";
 "select_panel" = "Select Panel";
 "scene_panel" = "Scene Panel";
+"switch_panel_scenes_changed" = "The number of scenes has changed, pleasepay attention to the settings";
 
 "configuration_flow_guidance" = "Configuration flow guidance";
 "name_empty" = "The name is empty";
@@ -804,7 +805,7 @@
 "none" = "None";
 "minutes" = "minutes";
 "sec" = "sec";
-"signal_below_message" = "Signals below -80dB cannot be selected.";
+"signal_below_message" = "Signals below -90dB cannot be selected.";
 "no_data" = "No Data !";
 
 "device_version_state" = "Device version state";

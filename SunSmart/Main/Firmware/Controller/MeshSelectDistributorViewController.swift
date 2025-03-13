@@ -133,7 +133,7 @@ class MeshSelectDistributorViewController: UIViewController {
             self.refreshControl.endRefreshing()
             self.nodes.forEach { node in
                 if let rssi = node.rssi {
-                    if rssi >= -80 {
+                    if rssi >= -90 {
                         node.rssiState = .normal
                     }else {
                         node.rssiState = .low

@@ -1269,7 +1269,10 @@ class GroupInfo {
     var ambientLightSensorNodeAddress: Address?
     
     var ambientLightSensorNode: Node? {
-        return MeshNetworkManager.instance.realNodes.first(where: { $0.primaryUnicastAddress == ambientLightSensorNodeAddress })
+        guard let address = ambientLightSensorNodeAddress else {
+            return nil
+        }
+        return MeshNetworkManager.instance.realNodes.first(where: {  $0.contains(elementWithAddress: address) })
     }
     /// 设置的pwm周期
     var pwmPeriod: UInt16?

@@ -112,8 +112,8 @@ class EnOceanProxyViewController: UIViewController {
         switchData.bindGroups.forEach { group in
             group.nodes.forEach { node in
                 // 其他动能开关绑定的代理和动能开关mac
-                if let switchData = switchs.first(where: { $0.proxyNodeAddress == node.primaryUnicastAddress && $0.enOceanMacAddress?.count ?? 0 > 0 }), switchData.id != self.switchData.id {
-                    self.enOceanMacMap.updateValue(switchData.enOceanMacAddress!, forKey: node.primaryUnicastAddress)
+                if let switchData = switchs.first(where: { $0.proxyNodeAddress == node.primaryUnicastAddress && $0.proxyNode?.enOceanMacAddress?.count ?? 0 > 0 }), switchData.id != self.switchData.id, let enOceanMacAddress = switchData.proxyNode?.enOceanMacAddress {
+                    self.enOceanMacMap.updateValue(enOceanMacAddress, forKey: node.primaryUnicastAddress)
                 }
 //                if let mac = node.enOceanMacAddress, MeshNetworkManager.instance.switchs.contains(where: { $0.enOceanMacAddress == mac && ($0.id == switchData.id || $0.deleteProxyNodeAddress != node.primaryUnicastAddress) }) {
 //                    self.enOceanMacMap.updateValue(mac, forKey: node.primaryUnicastAddress)
@@ -121,7 +121,7 @@ class EnOceanProxyViewController: UIViewController {
             }
         }
         // 当前动能开关绑定的代理和动能开关mac
-        if let proxyAddress = switchData.proxyNodeAddress, let mac = switchData.enOceanMacAddress {
+        if let proxyAddress = switchData.proxyNodeAddress, let mac = switchData.proxyNode?.enOceanMacAddress {
             self.enOceanMacMap.updateValue(mac, forKey: proxyAddress)
         }
 
@@ -245,7 +245,7 @@ extension EnOceanProxyViewController: LBXScanViewControllerDelegate {
                     self?.scanCodeVc?.startScan()
                 })]).show()
                 
-            }else if switchData.enOceanMacAddress?.count ?? 0 > 0 && switchData.enOceanMacAddress != data.macAddress {
+            }else if switchData.proxyNode?.enOceanMacAddress?.count ?? 0 > 0 && switchData.proxyNode?.enOceanMacAddress != data.macAddress {
                 // 如果当前虚拟动能开关已绑定了真实动能开关，并且扫描了一个新的动能开关则新建一个虚拟动能开关关联这个真实动能开关
                 
                 // 本地判断是否组内是否有动能开关绑定，并且该虚拟开关绑定了代理

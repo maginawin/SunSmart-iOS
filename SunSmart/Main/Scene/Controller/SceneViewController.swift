@@ -86,7 +86,7 @@ class SceneViewController: UIViewController {
 //            height = CGFloat(ceil(Float(height) * 100) / 100.0)
             make.height.equalTo(ceil(height))
         }
-        
+        collectionView.layoutIfNeeded()
         updateUI()
     }
     
