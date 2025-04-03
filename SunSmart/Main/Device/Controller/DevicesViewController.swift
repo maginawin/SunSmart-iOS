@@ -307,16 +307,31 @@ class DevicesViewController: WMPageController {
     
     /// 添加按键点击事件
     func addAction(point: CGPoint) {
-        let items: [MenuPopView.MenuItem] = [
-            .init(icon: UIImage(named: "menu_light"), title: "light".localizedString, hideAnimation: false, tapItemBack: {[weak self] _ in
-                guard let self = self else { return }
+        
+        DeviceAddMenuView(selectCallback: {[weak self] options in
+            guard let self = self else { return }
+            switch options {
+            case .searchDevices:
                 self.deviceAdd()
-            }),
-            .init(icon: UIImage(named: "menu_switch"), title: "switch".localizedString, tapItemBack: { _ in
+            case .preCreatedSwitches:
                 self.switchAdd()
-            })
-        ]
-        MenuPopView.show(items: items, anchorPoint: point, direction: .up)
+            case .restoreDevice:
+                self.devicesRestore()
+            case .preCreatedSensors, .preCreatedOthers:
+                XWHUDManager.showTipHUD("under_development".localizedString, isLineFeed: true)
+            }
+        }).show()
+        
+//        let items: [MenuPopView.MenuItem] = [
+//            .init(icon: UIImage(named: "menu_light"), title: "light".localizedString, hideAnimation: false, tapItemBack: {[weak self] _ in
+//                guard let self = self else { return }
+//                self.deviceAdd()
+//            }),
+//            .init(icon: UIImage(named: "menu_switch"), title: "switch".localizedString, tapItemBack: { _ in
+//                self.switchAdd()
+//            })
+//        ]
+//        MenuPopView.show(items: items, anchorPoint: point, direction: .up)
     }
     
     /// 节点同步时间
@@ -358,9 +373,21 @@ class DevicesViewController: WMPageController {
             return
         }
         let vc = DeviceSwitchViewController(space: self.space, switchData: nil)
+        if isIPad {
+            vc.preferredContentSize = iPadPreferredContentSize
+        }
         present(NavigationViewController(rootViewController: vc), animated: true)
         
         NotificationCenter.default.post(name: .init(switchsRefreshNotificationName), object: nil)
+    }
+    
+    /// 恢复设备数据
+    private func devicesRestore() {
+        let vc = DeviceRestoreViewController(restoreMode: .default)
+        vc.deviceRestoreCallback = { _ in 
+            NotificationCenter.default.post(name: .init(devicesAddNotificationName), object: nil)
+        }
+        navigationController?.pushViewController(vc, animated: true)
     }
     
     // MARK: - Mesh Distribution
@@ -403,6 +430,7 @@ class DevicesViewController: WMPageController {
                 var results: [MeshFirmwareUpgradeResultsView.FirmwareUpgradeResult] = []
                 while let data = distributionDatas.first {
                     guard let distributionNode = data.distributionNode, let productId = distributionNode.productIdentifier else {
+                        distributionDatas.removeFirst()
                         continue
                     }
                     // 固件大小
@@ -547,6 +575,9 @@ class DevicesViewController: WMPageController {
     private func pushToMeshOTADetails() {
         
         let vc = MeshFirmwareListViewController()
+        if isIPad {
+            vc.preferredContentSize = iPadPreferredContentSize
+        }
         present(NavigationViewController(rootViewController: vc), animated: true)
         
     }

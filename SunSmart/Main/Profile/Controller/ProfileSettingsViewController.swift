@@ -280,11 +280,7 @@ class ProfileSettingsViewController: UIViewController {
         let data = self.selectProfile.lightData.data
         self.powerUpBehaviorView.lightnessSliderView.slider.limitRange = data.lowEndTrim...data.highEndTrim
         self.powerUpBehaviorView.powerState = self.selectProfile.powerUpState
-        if self.group?.supportCct ?? false {
-            self.powerUpBehaviorView.powerOnCct = self.selectProfile.powerUpCct
-        }else {
-            self.powerUpBehaviorView.powerOnCct = nil
-        }
+        self.powerUpBehaviorView.powerOnCct = self.selectProfile.powerUpCct
         
         if selectProfile.type == .daylight || selectProfile.type == .manualControl {
             timeoutView.isHidden = true

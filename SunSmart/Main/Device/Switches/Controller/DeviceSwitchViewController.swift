@@ -104,23 +104,37 @@ class DeviceSwitchViewController: UIViewController {
     
     @objc private func deleteBtnAction() {
         
+        guard let switchData = self.switchData, !switchData.getNeedSyncDatas(deleteSwitch: true).isEmpty() else { // 判断动能开关是否需要删除数据
+            
+            // 未使用过直接删除缓存数据即可
+            MeshNetworkManager.instance.deleteSwitch(switchData: self.switchData!)
+            // 空数据直接删除
+            NotificationCenter.default.post(name: .init(switchsRefreshNotificationName), object: nil)
+            NotificationCenter.default.post(name: .init(spaceDataChangedNotificaitonName), object: SpaceChangeDataType.common)
+            XWHUDManager.showSuccessTipHUD("done!".localizedString)
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) {[weak self] in
+                self?.fineshed()
+            }
+            return
+        }
+        
         
         SRAlertView(title: "notification".localizedString, message: "switch_delete_message".localizedString, actions: [.cancelAction, SRAlertAction(title: "confirm".localizedString, style: .destructive, actionHandler: {[weak self] _ in
             
             // 是否需要清空设备数据
-            guard let self = self, let switchData = self.switchData, !switchData.getNeedSyncDatas(deleteSwitch: true).isEmpty() else {
-                MeshNetworkManager.instance.deleteSwitch(switchData: self!.switchData!)
-                
-                // 空数据直接删除
-                NotificationCenter.default.post(name: .init(switchsRefreshNotificationName), object: nil)
-                NotificationCenter.default.post(name: .init(spaceDataChangedNotificaitonName), object: SpaceChangeDataType.common)
-                XWHUDManager.showSuccessTipHUD("done!".localizedString)
-                DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) {[weak self] in
-                    self?.fineshed()
-                }
-                return
-            }
-            self.deleteSwitchData()
+//            guard let self = self, let switchData = self.switchData, !switchData.getNeedSyncDatas(deleteSwitch: true).isEmpty() else {
+//                MeshNetworkManager.instance.deleteSwitch(switchData: self!.switchData!)
+//                
+//                // 空数据直接删除
+//                NotificationCenter.default.post(name: .init(switchsRefreshNotificationName), object: nil)
+//                NotificationCenter.default.post(name: .init(spaceDataChangedNotificaitonName), object: SpaceChangeDataType.common)
+//                XWHUDManager.showSuccessTipHUD("done!".localizedString)
+//                DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) {[weak self] in
+//                    self?.fineshed()
+//                }
+//                return
+//            }
+            self?.deleteSwitchData()
         })]).show()
         
     }
@@ -153,7 +167,7 @@ class DeviceSwitchViewController: UIViewController {
                 return
             }
             
-            guard let linkGroup = try? MeshAPI.createGroup(name: self.setSwitchData.name + "-Group", address: setSwitchData.linkGroupAddress, isVirtual: true) else {
+            guard let linkGroup = try? MeshAPI.createGroup(name: self.setSwitchData.name + "-Group", isVirtual: true) else {
                 XWHUDManager.showErrorTipHUD("failed".localizedString + " !")
                 return
             }
@@ -598,6 +612,7 @@ extension DeviceSwitchViewController: UITableViewDataSource, UITableViewDelegate
 //            XWHUDManager.showTipHUD("under_development".localizedString, isLineFeed: true)
             let vc = SwitchSelectPanelTypeController()
             vc.selectPanelType = setSwitchData.panelType
+            vc.scenesSelected = self.switchData?.proxyNodeAddress != nil && (self.setSwitchData.sceneANumber != nil || self.setSwitchData.sceneBNumber != nil || self.setSwitchData.sceneCNumber != nil || self.setSwitchData.sceneDNumber != nil)
             vc.selectPanelTypeCallback = {[weak self] type in
                 guard let self = self else { return }
                 self.setSwitchData.panelType = type

@@ -74,7 +74,7 @@ class DeviceBaseViewController: UIViewController, DeviceProtocol {
         
         MeshLibManager.manager.refreshNodesRSSI(withWaitFor: 5) {[weak self] nodes in
             guard let self = self else { return }
-            if !nodes.contains(where: { $0.primaryUnicastAddress == self.node.primaryUnicastAddress }) {
+            if !nodes.contains(where: { $0.node.primaryUnicastAddress == self.node.primaryUnicastAddress }) {
                 self.node.rssi = nil
             }
         }

@@ -936,7 +936,23 @@ extension SpaceData {
                 }
                 return nil
             }
+            
+            
+//            network.getNetworkExclusionAddresses().filter { (ivIndex: UInt32, addresses: [Address]) in
+//                
+//            }
+            let exclusions = network.getNetworkExclusionAddresses()
             nodes.forEach({
+                // 判断设备是否存在废弃地址内，如果存在则清空废弃地址内缓存（如多用户编辑数据并未及时提交，使用了旧数据则可能出现导入的设备地址在废弃地址内）
+                if network.isAddressInExclusion(node: $0) {
+                    let range = AddressRange(from: $0.primaryUnicastAddress, elementsCount: $0.elementsCount)
+                    for address in range.range {
+                        network.deleteExclusionAddress(ivIndex: network.currentIVIndex, address: address)
+                        if network.currentIVIndex > 0 {
+                            network.deleteExclusionAddress(ivIndex: network.currentIVIndex - 1, address: address)
+                        }
+                    }
+                }
                 try? network.add(node: $0)
             })
             
@@ -1126,7 +1142,7 @@ extension SpaceData {
                 switchData.save(meshUUID: meshUUID, networkId: self.meshNetworkId)
             }
             
-            self.deviceCount = nodes.count
+            self.deviceCount = (meshNetwork?.nodes ?? nodes).count
             self.luminairesCount = nodes.filter({ $0.lightnessModel != nil }).count
             self.groupCount = groups.filter({ !$0.isVirtual }).count
             self.sceneCount = scenes.count

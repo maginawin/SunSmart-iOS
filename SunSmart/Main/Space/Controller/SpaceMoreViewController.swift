@@ -98,7 +98,11 @@ extension SpaceMoreViewController: UICollectionViewDataSource, UICollectionViewD
 //                XWHUDManager.showTipHUD("no_permission".localizedString + "！")
 //                return
 //            }
+            
             let vc = BleFirmwareUpdateViewController()
+            if isIPad {
+                vc.preferredContentSize = iPadPreferredContentSize
+            }
             present(NavigationViewController(rootViewController: vc), animated: true)
         case .mesh:
             guard self.space.meshOTAOperates.contains(.edit) else {
@@ -106,6 +110,9 @@ extension SpaceMoreViewController: UICollectionViewDataSource, UICollectionViewD
                 return
             }
             let vc = MeshFirmwareListViewController()
+            if isIPad {
+                vc.preferredContentSize = iPadPreferredContentSize
+            }
             present(NavigationViewController(rootViewController: vc), animated: true)
         }
         

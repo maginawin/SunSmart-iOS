@@ -44,6 +44,8 @@ class FirmwareVersionViewController: UIViewController {
     var localFirmwareData: FirmwareData?
     /// 更新本地固件缓存回调
     var updateLocalFirmwareDataCallback: ((FirmwareData?)->Void)?
+    /// 是否测试
+    private var isTesting: Bool = false
     
     init(type: FirmwareUpdateTypeData) {
         self.type = type
@@ -60,14 +62,14 @@ class FirmwareVersionViewController: UIViewController {
         title = "firmware_version".localizedString
         view.backgroundColor = Background_Color
         
-        #if DEBUG
-        navigationItem.rightBarButtonItems = [
-            UIBarButtonItem(customView: UIButton(normalImageName: "firmware_history", target: self, action: #selector(history))),
-            UIBarButtonItem(customView: UIButton(normalImageName: "import", target: self, action: #selector(importFirmwareData)))
-        ]
-        #else
+//        #if DEBUG
+//        navigationItem.rightBarButtonItems = [
+//            UIBarButtonItem(customView: UIButton(normalImageName: "firmware_history", target: self, action: #selector(history))),
+//            UIBarButtonItem(customView: UIButton(normalImageName: "import", target: self, action: #selector(importFirmwareData)))
+//        ]
+//        #else
         navigationItem.rightBarButtonItem = UIBarButtonItem(image: UIImage(named: "firmware_history")?.withRenderingMode(.alwaysOriginal), style: .done, target: self, action: #selector(history))
-        #endif
+//        #endif
         
         loadCloudFirmwareRequest()
         
@@ -78,7 +80,7 @@ class FirmwareVersionViewController: UIViewController {
     private func loadCloudFirmwareRequest() {
         
         XWHUDManager.showCustomHUD(withMessage: nil, view: view)
-        NetworkRequest.shared.request(.firmwareLatestVersion(deviceType: type.productId.hex)) {[weak self] result in
+        NetworkRequest.shared.request(.firmwareLatestVersion(deviceType: type.productId.hex, isTesting: self.isTesting)) {[weak self] result in
             guard let self = self else { return }
             XWHUDManager.hideInView(with: self.view)
             if self.headerView == nil {
@@ -120,6 +122,25 @@ class FirmwareVersionViewController: UIViewController {
         
     }
     
+    /// 展示测试弹窗
+    @objc private func showTestingAlert() {
+        
+        BetaTestingAlertView(inputTextCallback: {[weak self] text in
+            if text.count == 4 {
+                if text == "1314" {
+                    BetaTestingAlertView.hide()
+                    self?.loadCloudFirmwareRequest()
+                }else {
+                    return "incorrect_password".localizedString
+                }
+            }
+            return nil
+        }, importCallback: {[weak self] in
+            self?.importFirmwareData()
+        }).show()
+        
+    }
+    
     /// 导入固件包
     @objc private func importFirmwareData() {
         
@@ -132,6 +153,7 @@ class FirmwareVersionViewController: UIViewController {
     /// 固件版本历史记录
     @objc private func history() {
         let vc = FirmwareVersionHistoryController(productId: self.type.productId)
+        vc.isTesting = self.isTesting
         navigationController?.pushViewController(vc, animated: true)
     }
     
@@ -272,9 +294,6 @@ class FirmwareVersionViewController: UIViewController {
             
         }
         
-        
-        
-        
     }
     
     private func setupUI() {
@@ -288,6 +307,9 @@ class FirmwareVersionViewController: UIViewController {
         }
         
         cloudImageView = UIImageView(image: UIImage(named: "firmware_cloud_version"))
+        cloudImageView.isUserInteractionEnabled = true
+        let tap = ContinuousTapGestureRecognizer(target: self, action: #selector(showTestingAlert), numberOfTouchesRequired: 3, duration: 1)
+        cloudImageView.addGestureRecognizer(tap)
         headerView.addSubview(cloudImageView)
         cloudImageView.snp.makeConstraints { make in
             make.centerX.equalToSuperview()

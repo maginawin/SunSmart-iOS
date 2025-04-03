@@ -92,7 +92,7 @@ class DeviceLightBasicController: UIViewController {
             if self.refreshControl.isRefreshing {
                 self.refreshControl.endRefreshing()
             }
-            if !nodes.contains(where: { $0.primaryUnicastAddress == self.node.primaryUnicastAddress }) {
+            if !nodes.contains(where: { $0.node.primaryUnicastAddress == self.node.primaryUnicastAddress }) {
                 self.node.rssi = nil
             }
             self.headerView.node = self.node

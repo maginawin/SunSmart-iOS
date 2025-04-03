@@ -31,7 +31,7 @@ class GroupsViewCell: UICollectionViewCell {
             backgroundColor = group.isOn ? .white : RGB(226, 226, 226)
             
             DispatchQueue.global().async {
-                if self.group.nodes.contains(where: { $0.needSync }) {
+                if self.group.needSync {
                     DispatchQueue.main.async {
                         self.imageView.isHidden = false
                         self.imageView.image = UIImage(named: "sync_failed_big")

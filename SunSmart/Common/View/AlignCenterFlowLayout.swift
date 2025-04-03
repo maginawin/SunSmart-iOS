@@ -25,14 +25,38 @@ class AlignCenterFlowLayout: UICollectionViewFlowLayout {
         
         attrubutesArray.removeAll()
         let count = collectionView.numberOfItems(inSection: 0)
-        for index in 0..<count {
-            let indexPath = IndexPath(item: index, section: 0)
-            if let attributes = layoutAttributesForItem(at: indexPath) {
-                attrubutesArray.append(attributes)
-            }
+                
+        let contentInset = UIEdgeInsets(top: collectionView.contentInset.top + sectionInset.top, left: collectionView.contentInset.left + sectionInset.left, bottom: collectionView.contentInset.bottom + sectionInset.bottom, right: collectionView.contentInset.right + sectionInset.right)
+        
+        // 计算每个item的尺寸
+        var itemWidth = (collectionView.bounds.width - contentInset.left - contentInset.right - minimumInteritemSpacing * CGFloat(itemRowCount - 1)) / CGFloat(itemRowCount)
+        var itemHeight = itemWidth
+        if itemSize != .zero && itemSize != CGSize(width: 50, height: 50) {
+            itemWidth = itemSize.width
+            itemHeight = itemSize.height
         }
         
-        let contentInset = UIEdgeInsets(top: collectionView.contentInset.top + sectionInset.top, left: collectionView.contentInset.left + sectionInset.left, bottom: collectionView.contentInset.bottom + sectionInset.bottom, right: collectionView.contentInset.right + sectionInset.right)
+        for index in 0..<count {
+            let indexPath = IndexPath(item: index, section: 0)
+            let attributes = UICollectionViewLayoutAttributes(forCellWith: indexPath)
+            if scrollDirection == .horizontal {
+                let pageIndex = index / (self.itmeColCount * self.itemRowCount)
+                let row = index % self.itemRowCount + pageIndex * self.itemRowCount
+                let column = index / self.itemRowCount - pageIndex * self.itmeColCount
+                
+                let x = contentInset.left + CGFloat(row) * (itemWidth + minimumInteritemSpacing) + CGFloat(pageIndex) * (contentInset.left + contentInset.right - minimumInteritemSpacing)
+                
+                let y = sectionInset.top + CGFloat(column) * (itemHeight + minimumLineSpacing)
+                
+                let frame = CGRect(x: x, y: y, width: itemWidth, height: itemHeight)
+                attributes.frame = frame
+                attrubutesArray.append(attributes)
+            }else {
+                if let attributes = super.layoutAttributesForItem(at: indexPath) {
+                    attrubutesArray.append(attributes)
+                }
+            }
+        }
         
         let showHeight = collectionView.frame.size.height - contentInset.top - contentInset.bottom
 
@@ -77,58 +101,54 @@ class AlignCenterFlowLayout: UICollectionViewFlowLayout {
     }
     
     override var collectionViewContentSize: CGSize {
-        var contentSize = super.collectionViewContentSize
-        if scrollDirection == .horizontal, let collectionView = collectionView {
-            let collectionW = collectionView.frame.size.width
-            if contentSize.width > collectionW {
-                contentSize.width = CGFloat(Int(contentSize.width / collectionW) + 1) * collectionW
-            }
+        guard let collectionView = collectionView, self.scrollDirection == .horizontal else {
+            return super.collectionViewContentSize
         }
-        return contentSize
+          
+          let itemCount = collectionView.numberOfItems(inSection: 0)
+        let pages = ceil(Double(itemCount) / Double(self.itemRowCount * self.itmeColCount))
+          let width = collectionView.bounds.width * CGFloat(pages)
+        return CGSize(width: width, height: collectionView.bounds.size.height - collectionView.contentInset.top - collectionView.contentInset.bottom)
+      }
+    
+    
+//    override func layoutAttributesForItem(at indexPath: IndexPath) -> UICollectionViewLayoutAttributes? {
+//        
+//        // 横向排列时调整系统排序方向
+//        // 0  3  6      0  1  2
+//        // 1  4  7  =>  3  4  5
+//        // 2  5  8      6  7  8
+//        guard scrollDirection == .horizontal else {
+//            return super.layoutAttributesForItem(at: indexPath)
+//        }
+//        
+//        let page = indexPath.item / (self.itmeColCount * self.itemRowCount) // 第几页(左右翻页)： 每行的cell个数 * 几行
+//        
+//        let itemX = indexPath.item % self.itemRowCount + page * self.itemRowCount //
+//        let itemY = indexPath.item / self.itemRowCount - page * self.itmeColCount //
+//        
+//        let item = itemX * self.itmeColCount + itemY
+//        let newIndexPath = IndexPath(item: item, section: indexPath.section)
+//        let attributes = super.layoutAttributesForItem(at: indexPath)
+//        if let newAttributes = super.layoutAttributesForItem(at: newIndexPath), let collectionView = self.collectionView {
+//            
+//            let contentInset = UIEdgeInsets(top: collectionView.contentInset.top + sectionInset.top, left: collectionView.contentInset.left + sectionInset.left, bottom: collectionView.contentInset.bottom + sectionInset.bottom, right: collectionView.contentInset.right + sectionInset.right)
+//            
+//            var frame = newAttributes.frame
+//            frame.origin.x += CGFloat(page) * (contentInset.left + contentInset.right - minimumInteritemSpacing)
+//            attributes?.frame = frame
+////            print("item:\(newIndexPath.item) frame: \(frame)")
+//        }
+//        //            newAttributes?.indexPath = newIndexPath
+//        return attributes
+//    }
+    
+    override func layoutAttributesForElements(in rect: CGRect) -> [UICollectionViewLayoutAttributes]? {
+        return attrubutesArray.filter { $0.frame.intersects(rect) }
     }
     
     override func layoutAttributesForItem(at indexPath: IndexPath) -> UICollectionViewLayoutAttributes? {
-        
-        // 横向排列时调整系统排序方向
-        // 0  3  6      0  1  2
-        // 1  4  7  =>  3  4  5
-        // 2  5  8      6  7  8
-        guard scrollDirection == .horizontal else {
-            return super.layoutAttributesForItem(at: indexPath)
-        }
-        
-        let page = indexPath.item / (self.itmeColCount * self.itemRowCount) // 第几页(左右翻页)： 每行的cell个数 * 几行
-        
-        let itemX = indexPath.item % self.itemRowCount + page * self.itemRowCount //
-        let itemY = indexPath.item / self.itemRowCount - page * self.itmeColCount //
-        
-        let item = itemX * self.itmeColCount + itemY
-        let newIndexPath = IndexPath(item: item, section: indexPath.section)
-        let attributes = super.layoutAttributesForItem(at: indexPath)
-        if let newAttributes = super.layoutAttributesForItem(at: newIndexPath), let collectionView = self.collectionView {
-            
-            let contentInset = UIEdgeInsets(top: collectionView.contentInset.top + sectionInset.top, left: collectionView.contentInset.left + sectionInset.left, bottom: collectionView.contentInset.bottom + sectionInset.bottom, right: collectionView.contentInset.right + sectionInset.right)
-            
-            var frame = newAttributes.frame
-            frame.origin.x += CGFloat(page) * (contentInset.left + contentInset.right - minimumInteritemSpacing)
-            attributes?.frame = frame
-//            print("item:\(newIndexPath.item) frame: \(frame)")
-        }
-        //            newAttributes?.indexPath = newIndexPath
-        return attributes
-    }
-    
-    override func layoutAttributesForElements(in rect: CGRect) -> [UICollectionViewLayoutAttributes]? {
-      
-        guard let layoutAttributesForElements = super.layoutAttributesForElements(in: rect) else {
-            return nil
-        }
-        
-        let resultElements = self.attrubutesArray.filter { element in
-            return layoutAttributesForElements.contains(where: { $0.indexPath == element.indexPath })
-        }
-        
-        return resultElements
+        return attrubutesArray[indexPath.item]
     }
     
 }

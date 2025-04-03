@@ -20,6 +20,9 @@ protocol SpaceFunctionFooterViewDelegate: AnyObject {
     
     /// 点击删除回调
     func functionDidClickDelete(view: SpaceFunctionFooterView)
+    
+    /// 点击修复
+    func functionDidClickSync(view: SpaceFunctionFooterView)
 }
 
 extension SpaceFunctionFooterViewDelegate {
@@ -43,6 +46,11 @@ extension SpaceFunctionFooterViewDelegate {
     func functionDidClickDelete(view: SpaceFunctionFooterView) {
         
     }
+    
+    /// 点击修复
+    func functionDidClickSync(view: SpaceFunctionFooterView) {
+        
+    }
 
 }
 
@@ -54,6 +62,7 @@ class SpaceFunctionFooterView: UIView {
     var sortBtn: UIButton!
     var editBtn: UIButton!
     var addBtn: UIButton!
+    var syncBtn: UIButton!
     
     var cancelBtn: UIButton!
     var lineView: UIView!
@@ -108,6 +117,11 @@ class SpaceFunctionFooterView: UIView {
         delegate?.functionDidClickDelete(view: self)
     }
     
+    /// 同步
+    @objc private func syncBtnClick() {
+        delegate?.functionDidClickSync(view: self)
+    }
+    
     /// 更新UI
     private func updateUI() {
         if isEditing {
@@ -119,6 +133,7 @@ class SpaceFunctionFooterView: UIView {
             editBtn.isHidden = true
             addBtn.isHidden = true
             sortBtn.isHidden = true
+            syncBtn.isHidden = true
 //            switchCountBtn.isHidden = true
         }else {
             cancelBtn.isHidden = true
@@ -206,6 +221,14 @@ class SpaceFunctionFooterView: UIView {
         sortBtn.snp.makeConstraints { make in
             make.right.equalTo(editBtn.snp.left).offset(SCRXFrom(-20))
             make.centerY.equalTo(editBtn)
+        }
+        
+        syncBtn = UIButton(normalImageName: "sync_failed", target: self, action: #selector(syncBtnClick))
+        syncBtn.isHidden = true
+        addSubview(syncBtn)
+        syncBtn.snp.makeConstraints { make in
+            make.right.equalTo(sortBtn.snp.left).offset(SCRXFrom(-20))
+            make.centerY.equalTo(sortBtn)
         }
         
     }

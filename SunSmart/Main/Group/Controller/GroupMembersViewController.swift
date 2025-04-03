@@ -291,6 +291,9 @@ class GroupMembersViewController: UIViewController {
             self.group = newGroup
             self.title = newGroup.name
         }
+        if isIPad {
+            vc.preferredContentSize = iPadPreferredContentSize
+        }
         present(NavigationViewController(rootViewController: vc), animated: true)
     }
     

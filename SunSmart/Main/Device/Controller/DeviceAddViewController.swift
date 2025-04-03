@@ -25,20 +25,9 @@ class DeviceAddViewController: UIViewController {
     /// 设备列表
     private var tableView: UITableView!
     /// 添加设备结果
-    private var addResultView: UIView!
-    private var addResultLabel: UILabel!
-    private var successCountLabel: UILabel!
-    private var failedLabel: UILabel!
-    private var failedCountLabel: UILabel!
-    private var closeBtn: UIButton!
-    private var stopAddBtn: UIButton!
-    
+    private var addResultView: DeviceAddResultView!
     /// 底部全选
-    private var footerView: UIView!
-    private var selectAllBtn: UIButton!
-    private var selectAllLabel: UILabel!
-    private var selectCountLabel: UILabel!
-    private var addSelectedBtn: UIButton!
+    private var footerView: DeviceAddBottomView!
     
     /// 搜索设备定时器
     private var scanTimer: Timer?
@@ -421,23 +410,7 @@ class DeviceAddViewController: UIViewController {
             }
             return
         }
-        
-//        device.addState = .identifyConnecting
-//        reloadDeviceState(device)
-        
-//        DispatchQueue.main.asyncAfter(deadline: .now() + 2) {[weak self] in
-//            if device.addState == .identifyConnecting {
-//                device.addState = .identifying
-//                self?.reloadDeviceState(device)
-//                DispatchQueue.main.asyncAfter(deadline: .now() + 5) {
-//                    if device.addState == .identifying {
-//                        device.addState = .none
-//                        self?.reloadDeviceState(device)
-//                    }
-//                }
-//            }
-//        }
-        
+
         if identifyDevice != nil {
             stopDeviceIdentify()
         }
@@ -504,11 +477,6 @@ class DeviceAddViewController: UIViewController {
     /// 添加设备
     private func addDevice(_ device: ProvisioningDevice) {
         
-//        testAddDevice(device: device)
-//        if true {
-//            return
-//        }
-        
         // 设备identify中添加不需要再闪烁
         if device.addState == .identifyConnecting || device.addState == .identifyWait || device.addState == .failed || device.addState == .identifying {
 //            if device.addState == .identifying {
@@ -546,6 +514,21 @@ class DeviceAddViewController: UIViewController {
                 appendMessages.append(MeshMessageHandle(message: LightLightnessSetUnacknowledged(lightness: .max), model: model))
             }
             if let group = self.addToGroup {
+                // 判断组是否有关联动能开关，如果动能开关还未分配地址则提前分配地址以订阅设备
+                let emptySwitchs = group.info.switchs.filter({ $0.linkGroup == nil })
+                emptySwitchs.forEach { switchData in
+                    
+                    // 判断组地址是否足够分配
+                    if MeshAPI.getAvailableGroupAddresses(meshUUID: self.space.meshUUID, subnetworkId: self.space.meshNetworkId).count >= switchData.panelType.usedAddressesNumber {
+                        
+                        let linkGroup = try? MeshAPI.createGroup(name: switchData.name + "-Group", isVirtual: true)
+                        let subLinkGroup = try? MeshAPI.createGroup(name: switchData.name + "-Group_1", isVirtual: true)
+                        
+                        switchData.linkGroupAddress = linkGroup?.address.address
+                        switchData.subLinkGroupAddress = subLinkGroup?.address.address
+                        switchData.save()
+                    }
+                }
                 appendMessages.append(contentsOf: group.getNodeAddMessageHandles(node: node))
             }else {
                 if let vendorModel = node.sunricherVendorModel { // 未加入组的设备默认设置一个手动控制延迟时间，避免默认30s后状态被LC修改
@@ -605,6 +588,12 @@ class DeviceAddViewController: UIViewController {
                     node.macAddress = mac
                 }
                 node.name = MeshNetworkManager.instance.getNextNodeName()
+                // 需添加到组里
+                if let group = self.addToGroup {
+                    if node.group == nil { // 未添加组成功，需要记录组数据下次同步恢复到组里
+                        node.restoreData = NodeRestoreData(addGroupAddress: group.address.address)
+                    }
+                }
 //                node.state = true
                 node.save()
 //                node.saveNodeInfo(meshUUID: self.space.meshUUID, networkKey: self.space.meshNetworkKey)
@@ -741,13 +730,13 @@ class DeviceAddViewController: UIViewController {
     private func updateFooterViewState() {
         let selectDevices = showDevices.filter({ $0.selectedState == .selected })
         let enableDevices = showDevices.filter({ $0.selectedState != .disabled })
-        selectCountLabel.text = "\(selectDevices.count)/\(enableDevices.count)"
+        footerView.selectCountLabel.text = "\(selectDevices.count)/\(enableDevices.count)"
         if !enableDevices.isEmpty && selectDevices.count >= enableDevices.count {
-            selectAllBtn.isSelected = true
+            footerView.selectAllBtn.isSelected = true
         }else {
-            selectAllBtn.isSelected = false
+            footerView.selectAllBtn.isSelected = false
         }
-        addSelectedBtn.isEnabled = selectDevices.count > 0
+        footerView.addSelectedBtn.isEnabled = selectDevices.count > 0
     }
     
     /// 更新UI
@@ -798,18 +787,18 @@ class DeviceAddViewController: UIViewController {
             if state == .adding {
                 addResultView.isHidden = false
                 tableView.contentInset = UIEdgeInsets(top: 0, left: 0, bottom: addResultView.height + footerView.height + SCRYFrom(8), right: 0)
-                closeBtn.isHidden = true
-                stopAddBtn.isHidden = !showDevices.contains(where: { $0.addState == .wait})
+                addResultView.closeBtn.isHidden = true
+                addResultView.stopAddBtn.isHidden = !showDevices.contains(where: { $0.addState == .wait})
                 // 添加中设置屏幕常亮
                 UIApplication.shared.isIdleTimerDisabled = true
             }else {
-                closeBtn.isHidden = false
-                stopAddBtn.isHidden = true
+                addResultView.closeBtn.isHidden = false
+                addResultView.stopAddBtn.isHidden = true
             }
             let successCount = scanDevices.filter({ $0.addState == .success }).count
             let failedCount = scanDevices.filter({ $0.addState == .failed }).count
-            successCountLabel.text = "\("successfully".localizedString) : \(successCount)"
-            failedCountLabel.text = "\(failedCount)"
+            addResultView.successCountLabel.text = "\("successfully".localizedString) : \(successCount)"
+            addResultView.failedCountLabel.text = "\(failedCount)"
             
         }
         
@@ -933,114 +922,26 @@ class DeviceAddViewController: UIViewController {
             make.top.equalTo(headerView.snp.bottom)
         }
         
-        footerView = UIView()
-        footerView.backgroundColor = .white
+        footerView = DeviceAddBottomView()
         footerView.isHidden = true
         view.addSubview(footerView)
         footerView.snp.makeConstraints { make in
             make.left.right.bottom.equalToSuperview()
             make.height.equalTo(SCRYFrom(60) + kSafeAreaBottomHeight)
         }
+        footerView.selectAllBtn.addTarget(self, action: #selector(selectAllBtnClick), for: .touchUpInside)
+        footerView.addSelectedBtn.addTarget(self, action: #selector(addSelectedBtnClick), for: .touchUpInside)
         
-        selectAllBtn = UIButton(normalImageName: "select_un", selectedImageName: "select", target: self, action: #selector(selectAllBtnClick))
-        footerView.addSubview(selectAllBtn)
-        selectAllBtn.snp.makeConstraints { make in
-            make.left.equalTo(SCRXFrom(8))
-            make.top.equalTo(SCRYFrom(15))
-            make.width.height.equalTo(SCRYFrom(30))
-        }
-        
-        selectAllLabel = UILabel(text: "select_all".localizedString, textColor: TextBlack_Color, fontSize: 15, fontWeight: .light)
-        footerView.addSubview(selectAllLabel)
-        selectAllLabel.snp.makeConstraints { make in
-            make.left.equalTo(selectAllBtn.snp.right).offset(SCRXFrom(4))
-            make.bottom.equalTo(selectAllBtn.snp.centerY)
-        }
-        
-        selectCountLabel = UILabel(text: "3/6", textColor: RGB(148, 163, 184), fontSize: 14, fontWeight: .light)
-        footerView.addSubview(selectCountLabel)
-        selectCountLabel.snp.makeConstraints { make in
-            make.left.equalTo(selectAllLabel)
-            make.top.equalTo(selectAllLabel.snp.bottom).offset(SCRYFrom(3))
-        }
-        
-        addSelectedBtn = UIButton(title: "add_selected".localizedString, titleSize: 14, titleColor: .white, target: self, action: #selector(addSelectedBtnClick))
-        addSelectedBtn.titleLabel?.font = Font_Medium_Size(14)
-        addSelectedBtn.layer.cornerRadius = SCRYFrom(5)
-        addSelectedBtn.clipsToBounds = true
-        let btnSize = CGSize(width: SCRXFrom(114), height: SCRYFrom(40))
-        addSelectedBtn.setBackgroundImage(UIImage.image(size: btnSize, color: Bar_Color), for: .normal)
-        addSelectedBtn.setBackgroundImage(UIImage.image(size: btnSize, color: Bar_Color.withAlphaComponent(0.5)), for: .disabled)
-        footerView.addSubview(addSelectedBtn)
-        addSelectedBtn.snp.makeConstraints { make in
-            make.right.equalTo(SCRXFrom(-16))
-            make.centerY.equalTo(selectAllBtn)
-            make.size.equalTo(btnSize)
-        }
-        
-        addResultView = UIView()
+        addResultView = DeviceAddResultView()
         addResultView.isHidden = true
-        addResultView.backgroundColor = .white
-        addResultView.layer.cornerRadius = SCRYFrom(8)
-        addResultView.layer.shadowColor = RGB(0, 0, 0, 0.1).cgColor
-        addResultView.layer.shadowOffset = CGSizeMake(0,-2)
-        addResultView.layer.shadowOpacity = 1
-        addResultView.layer.shadowRadius = 6
         view.addSubview(addResultView)
         addResultView.snp.makeConstraints { make in
             make.bottom.equalTo(footerView.snp.top).offset(SCRYFrom(-1))
             make.left.right.equalToSuperview()
             make.height.equalTo(SCRYFrom(72))
         }
-        
-        addResultLabel = UILabel(text: "add_result".localizedString, textColor: TextBlack_Color, fontSize: 16)
-        addResultView.addSubview(addResultLabel)
-        addResultLabel.snp.makeConstraints { make in
-            make.left.equalTo(SCRXFrom(16))
-            make.top.equalTo(SCRYFrom(14))
-        }
-        
-        successCountLabel = UILabel(text: "\("successfully".localizedString) : 0", textColor: Message_Color, fontSize: 14)
-        addResultView.addSubview(successCountLabel)
-        successCountLabel.snp.makeConstraints { make in
-            make.left.equalTo(addResultLabel)
-            make.bottom.equalTo(SCRYFrom(-14))
-        }
-        
-        failedLabel = UILabel(text: "failed".localizedString + " : ", textColor: Message_Color, fontSize: 14)
-        addResultView.addSubview(failedLabel)
-        failedLabel.snp.makeConstraints { make in
-            make.left.equalTo(SCRXFrom(141))
-            make.centerY.equalTo(successCountLabel)
-        }
-        
-        failedCountLabel = UILabel(text: "0", textColor: Red_Color, fontSize: 14)
-        addResultView.addSubview(failedCountLabel)
-        failedCountLabel.snp.makeConstraints { make in
-            make.left.equalTo(failedLabel.snp.right)
-            make.centerY.equalTo(failedLabel)
-        }
-        
-        closeBtn = UIButton(normalImageName: "close", target: self, action: #selector(closeBtnClick))
-        addResultView.addSubview(closeBtn)
-        closeBtn.snp.makeConstraints { make in
-            make.right.equalTo(SCRXFrom(-4))
-            make.top.equalTo(SCRYFrom(4))
-        }
-        
-        stopAddBtn = UIButton(title: "stop_waiting".localizedString, titleSize: 14, titleColor: Red_Color, target: self, action: #selector(stopAddBtnClick))
-        stopAddBtn.titleLabel?.font = Font_Medium_Size(SCRYFrom(14))
-        stopAddBtn.isHidden = true
-        stopAddBtn.layer.cornerRadius = SCRYFrom(5)
-        stopAddBtn.layer.borderWidth = 1
-        stopAddBtn.layer.borderColor = Red_Color.cgColor
-        stopAddBtn.contentEdgeInsets = UIEdgeInsets(top: 0, left: SCRXFrom(11), bottom: 0, right: SCRXFrom(11))
-        addResultView.addSubview(stopAddBtn)
-        stopAddBtn.snp.makeConstraints { make in
-            make.right.equalTo(SCRXFrom(-18))
-            make.centerY.equalToSuperview()
-            make.height.equalTo(SCRYFrom(32))
-        }
+        addResultView.closeBtn.addTarget(self, action: #selector(closeBtnClick), for: .touchUpInside)
+        addResultView.stopAddBtn.addTarget(self, action: #selector(stopAddBtnClick), for: .touchUpInside)
     }
     
 }

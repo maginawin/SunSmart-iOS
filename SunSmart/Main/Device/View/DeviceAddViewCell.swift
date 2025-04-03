@@ -24,7 +24,7 @@ class DeviceAddViewCell: UITableViewCell {
 
     var selectImageView: UIImageView!
     var deviceImageView: UIImageView!
-    private var identifyAnimationView: UIImageView!
+    var identifyAnimationView: UIImageView!
     var nameLabel: UILabel!
     var macAddressLabel: UILabel!
     var identifyBtn: UIButton!
@@ -130,20 +130,16 @@ class DeviceAddViewCell: UITableViewCell {
                 stateImageView.isHidden = false
                 stateImageView.image = UIImage(named: "device_add_fail")
                 identifyBtn.isHidden = false
+            case .syncFailed:
+                stateImageView.isHidden = false
+                stateImageView.image = UIImage(named: "sync_failed")
+                identifyBtn.isHidden = false
             }
         
             nameLabel.text = device.deviceName ?? "device".localizedString
             
             if let macAddress = device.macAddress, !macAddress.isEmpty {
-                var result = ""
-                var offset = 0
-                for _ in 0..<Int(macAddress.count / 2) {
-                    if offset + 2 > macAddress.count { break }
-                    let string = macAddress.subString(rang: NSRange(location: offset, length: 2))
-                    offset += 2
-                    result.append(String(format: "%@%@", result.isEmpty ? "" : ":", string))
-                }
-                macAddressLabel.text = result
+                macAddressLabel.text = macAddress.getMacAddressSegmentString()
             }else {
                 macAddressLabel.text = device.peripheral.identifier.uuidString
             }

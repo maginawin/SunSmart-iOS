@@ -258,6 +258,14 @@ class DeviceLightsViewController: UIViewController {
             footerView.snp.updateConstraints { make in
                 make.height.equalTo(SCRYFrom(44) + kSafeAreaBottomHeight)
             }
+            
+            DispatchQueue.global().async {
+                let existSync = self.devices.contains(where: { $0.needSync })
+                DispatchQueue.main.async {
+                    self.footerView.syncBtn.isHidden = !existSync
+                }
+            }
+            
             footerView.isEditing = false
 //            self.mainViewController?.footerView.switchCountBtn.isHidden = true
             // 判断是否有需要修复设备
@@ -273,6 +281,7 @@ class DeviceLightsViewController: UIViewController {
         
         footerView.addBtn.isEnabled = space.deviceOperates.contains(.add)
         footerView.editBtn.isEnabled = space.deviceOperates.contains(.edit)
+        footerView.syncBtn.isEnabled = space.deviceOperates.contains(.edit)
         
 //        if !space.deviceOperates.contains(.add) {
 //            footerView.addBtn.isEnabled = false
@@ -341,6 +350,7 @@ class DeviceLightsViewController: UIViewController {
         
         footerView = SpaceFunctionFooterView()
         footerView.sortBtn.isHidden = true
+        footerView.editBtn.setImage(UIImage(named: "share_delete"), for: .normal)
         footerView.delegate = self
         view.addSubview(footerView)
         footerView.snp.makeConstraints { make in
@@ -356,7 +366,7 @@ class DeviceLightsViewController: UIViewController {
 //        UIEdgeInsets(top: 0, left: SCRXFrom(12), bottom: <#T##CGFloat#>, right: SCRXFrom(12))
         
         collectionView = UICollectionView(frame: .zero, collectionViewLayout: flowLayout)
-        collectionView.contentInset = UIEdgeInsets(top: SCRYFrom(40 + (isIPad ? 22 : 10)), left: collectionViewMargin, bottom: 0, right: collectionViewMargin)
+        collectionView.contentInset = UIEdgeInsets(top: SCRYFrom(50 + (isIPad ? 22 : 10)), left: collectionViewMargin, bottom: 0, right: collectionViewMargin)
         collectionView.backgroundColor = Background_Color
         collectionView.register(DevicesViewCell.classForCoder(), forCellWithReuseIdentifier: "cell")
         collectionView.register(DeviceAllOnOffViewCell.classForCoder(), forCellWithReuseIdentifier: "allControlCell")
@@ -488,6 +498,9 @@ class DeviceLightsViewController: UIViewController {
                 }
                 let deviceVc = DeviceLightViewController(space: space, node: node)
 //                let deviceVc = DaliMasterViewController(space: space, node: node)
+                if isIPad {
+                    deviceVc.preferredContentSize = iPadPreferredContentSize
+                }
                 present(NavigationViewController(rootViewController: deviceVc), animated: true)
 //                navigationController?.pushViewController(deviceVc, animated: true)
             }
@@ -671,7 +684,7 @@ class DeviceLightsViewController: UIViewController {
     
     /// 修复设备
     func repairNodes(nodes: [Node]) {
-        if nodes.isEmpty || !space.deviceOperates.contains(.edit) {
+        if nodes.isEmpty  {
             return
         }
         // 是否连接网络
@@ -834,9 +847,9 @@ extension DeviceLightsViewController: UICollectionViewDataSource, UICollectionVi
             // 未绑定完成功能则修复设备
             guard node.isKeybindComplete else {
                 // 判断是否有设备编辑/配置权限，没有则无响应
-                if space.deviceOperates.contains(.edit) {
+//                if space.deviceOperates.contains(.edit) {
                     self.repairNodes(nodes: [node])
-                }
+//                }
                 return
             }
 //            if let model = node.sunricherVendorModel {
@@ -921,6 +934,25 @@ extension DeviceLightsViewController: SpaceFunctionFooterViewDelegate {
     /// 点击删除回调
     func functionDidClickDelete(view: SpaceFunctionFooterView) {
         deleteNodes()
+    }
+    
+    /// 点击同步
+    func functionDidClickSync(view: SpaceFunctionFooterView) {
+//        XWHUDManager.showCustomHUD(withMessage: nil, isWindow: true)
+        let syncDevices = devices.filter({ $0.needSync })
+        let vc = SyncDevicesViewController(type: .devices(syncDevices))
+        vc.syncSuccessCallback = {[weak self] _ in
+//            syncDevices.forEach({
+//                self?.reloadCollectionItem(node: $0)
+//            })
+            self?.navigationController?.popViewController(animated: true)
+            self?.updateUI()
+        }
+        vc.backActionCallback = {[weak self] in
+            self?.updateUI()
+            self?.navigationController?.popViewController(animated: true)
+        }
+        navigationController?.pushViewController(vc, animated: true)
     }
     
 }
@@ -1010,7 +1042,7 @@ extension DeviceLightsViewController: MeshLibManagerDelegate, MeshLibManagerMess
     func meshNetworkManager(bluetoothDidUpdateState state: CBManagerState) {
         if state == .poweredOn && devices.count > 0 {
             // 获取设备信号
-            MeshLibManager.manager.refreshNodesRSSI(withWaitFor: 5, result: nil)
+            MeshLibManager.manager.refreshNodesRSSI(withWaitFor: 5, finished: nil)
         }
     }
     

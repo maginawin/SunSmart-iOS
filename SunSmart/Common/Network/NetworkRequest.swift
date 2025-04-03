@@ -22,6 +22,16 @@ class NetworkRequest: NSObject {
     
     private let reachabilityManager = NetworkReachabilityManager()
     
+//    lazy var session: Session = {
+//        let configuration = URLSessionConfiguration.default
+//        configuration.timeoutIntervalForRequest = 20 // 单次请求超时
+//        configuration.timeoutIntervalForResource = 60 // 整体资源超时
+//        configuration.httpMaximumConnectionsPerHost = 6 // 提高连接数
+//        configuration.requestCachePolicy = .reloadIgnoringLocalCacheData // 避免缓存干扰测试
+//        let session = Session(configuration: configuration)
+//        return session
+//    }()
+    
     lazy var provider = MoyaProvider<NetowrkReqeustApi>(requestClosure: requestClosure, plugins: [NetworkLoggerPlugin()])
     /// 手机是否联网
     @objc dynamic var networkable: Bool = false
@@ -31,20 +41,6 @@ class NetworkRequest: NSObject {
         do {
             var request = try endpoint.urlRequest()
             request.timeoutInterval = 10    //设置请求超时时间
-//            if endpoint.httpHeaderFields == nil || !endpoint.httpHeaderFields!.keys.contains(where: { $0 == "Authorization" }) {
-//                // 实时获取token
-//                AWSMobileClient.default().getTokens { tokens, error in
-//                    DispatchQueue.main.async {
-//                        if let token = tokens?.idToken?.tokenString {
-//                            request.setValue(token, forHTTPHeaderField: "Authorization")
-//                            request.setValue(getIdentityId(), forHTTPHeaderField: "IdentityId")
-//                            done(.success(request))
-//                        }else {
-//                            done(.failure(MoyaError.underlying(error ?? NSError(domain: "No token", code: 999, userInfo: nil), nil)))
-//                        }
-//                    }
-//                }
-//            }else {
             // 判断请求体数据过大压缩
 //            if let body = request.httpBody, body.count > 1024 * 100 {
 //                let destinationBuffer = UnsafeMutablePointer<UInt8>.allocate(capacity: body.count)
@@ -67,6 +63,7 @@ class NetworkRequest: NSObject {
             switch networkStatus {
             case .reachable:
                 self.networkable = true
+//                break
             default:
                 self.networkable = false
             }
@@ -291,7 +288,7 @@ extension NetworkApiError: LocalizedError {
         case .noSitePermission, .noSpacePermission, .userUnauthorized:
             return "no_permission".localizedString
         case .incorrectPassword:
-            return "incorrect_password".localizedString
+            return "incorrect_password!".localizedString
         case .spaceAlreadyExist:
             return "space_already_exist".localizedString
         case .spacePasswordOverdue:

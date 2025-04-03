@@ -647,10 +647,10 @@ extension SceneAddViewController: WMMenuViewDataSource, WMMenuViewDelegate {
     }
     
     func menuView(_ menu: WMMenuView!, itemMarginAt index: Int) -> CGFloat {
-        if index > 0 {
+//        if index > 0 {
             return SCRXFrom(54)
-        }
-        return 0
+//        }
+//        return 0
     }
     
     func menuView(_ menu: WMMenuView!, didSelectedIndex index: Int, currentIndex: Int) {
@@ -878,6 +878,9 @@ extension SceneAddViewController: SceneAddTemplateInfoSectionViewDelegate {
             self.imageId = imageId + 1
             self.collectionView.reloadSections(IndexSet(integer: 0))
         }
+        if isIPad {
+            vc.preferredContentSize = iPadPreferredContentSize
+        }
         present(NavigationViewController(rootViewController: vc), animated: true)
     }
     
@@ -1061,6 +1064,9 @@ extension SceneAddViewController: SceneAddGroupEmptyCellDelegate {
 //            self?.groups = [group]
 //            self?.collectionView.reloadSections(IndexSet(integer: 1))
 //        }
+        if isIPad {
+            groupAddVc.preferredContentSize = iPadPreferredContentSize
+        }
         present(NavigationViewController(rootViewController: groupAddVc), animated: true)
         
     }

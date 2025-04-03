@@ -257,7 +257,7 @@ class MainMenuView: UIView {
         
         
         let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0"
-        versionLabel = UILabel(text: "Version \(version)", textColor: TextBlack_Color, fontSize: 13, fontWeight: .light)
+        versionLabel = UILabel(text:  "\("version".localizedString) \(version)", textColor: TextBlack_Color, fontSize: 13, fontWeight: .light)
         contentView.addSubview(versionLabel)
         versionLabel.snp.makeConstraints { make in
             make.centerX.equalToSuperview()

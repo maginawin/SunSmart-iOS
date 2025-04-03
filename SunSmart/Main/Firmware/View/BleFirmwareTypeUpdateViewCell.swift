@@ -54,7 +54,7 @@ class BleFirmwareTypeUpdateViewCell: UICollectionViewCell {
     private var upgradedNumberLabel: UILabel!
     
     /// 设备列表
-    private var deviceTableView: UITableView!
+    var deviceTableView: UITableView!
     
     private weak var headerView: BleFirmwareTypeUpdateHeaderView?
     
@@ -363,7 +363,7 @@ class BleFirmwareTypeUpdateViewCell: UICollectionViewCell {
 extension BleFirmwareTypeUpdateViewCell: UITableViewDataSource, UITableViewDelegate {
     
     func numberOfSections(in tableView: UITableView) -> Int {
-        return firmwareTypeData.isShow ? 1 : 0
+        return (firmwareTypeData?.isShow ?? false) ? 1 : 0
     }
     
     func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {

@@ -88,6 +88,7 @@ public extension UIDevice {
         case "iPad14,3", "iPad14,4":                    return "iPad Pro 4"
         case "iPad14,5", "iPad14,6":                    return "iPad Pro 6"
         case "iPad14,8", "iPad14,9":                    return "iPad Air 6"
+        case "iPad15,7":                                return "iPad (A16)"
         case "iPad14,10", "iPad14,11":                  return "iPad Air 7"
         case "iPad16,3", "iPad16,4":                    return "iPad Pro 5"
         case "iPad16,5", "iPad16,6":                    return "iPad Pro 7"

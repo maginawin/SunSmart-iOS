@@ -121,7 +121,7 @@ class EnOceanProxyViewController: UIViewController {
             }
         }
         // 当前动能开关绑定的代理和动能开关mac
-        if let proxyAddress = switchData.proxyNodeAddress, let mac = switchData.proxyNode?.enOceanMacAddress {
+        if let proxyAddress = switchData.proxyNodeAddress, let mac = switchData.enOceanMacAddress {
             self.enOceanMacMap.updateValue(mac, forKey: proxyAddress)
         }
 

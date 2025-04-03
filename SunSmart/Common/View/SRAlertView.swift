@@ -795,7 +795,7 @@ class SRAlertView: UIView {
 //            make.height.greaterThanOrEqualTo(140)
         }
         
-        closeBtn = UIButton(normalImageName: "alert_close", target: self, action: #selector(shadeViewClick))
+        closeBtn = UIButton(normalImageName: "close", target: self, action: #selector(shadeViewClick))
         closeBtn.isHidden = true
         contentView.addSubview(closeBtn)
         closeBtn.snp.makeConstraints { make in

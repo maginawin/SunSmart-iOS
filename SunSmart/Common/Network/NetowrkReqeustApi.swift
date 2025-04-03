@@ -115,9 +115,9 @@ enum NetowrkReqeustApi {
     
     // #****** OTA ******#
     /// 获取最新的固件包
-    case firmwareLatestVersion(companyId: String = "0A78", deviceType: String, customId: String = "00")
+    case firmwareLatestVersion(companyId: String = "0A78", deviceType: String, customId: String = "00", isTesting: Bool = false)
     /// 固件包历史版本list
-    case firmwareVersionList(companyId: String = "0A78", deviceType: String, customId: String = "00")
+    case firmwareVersionList(companyId: String = "0A78", deviceType: String, customId: String = "00", isTesting: Bool = false)
     /// 设备配置数据
     case devicesConfig
 }
@@ -125,7 +125,8 @@ enum NetowrkReqeustApi {
 extension NetowrkReqeustApi: TargetType {
     
     var baseURL: URL {
-        return URL(string: "https://www.mericher.com/srv2")!
+        return UserData.currentServerRegion.baseURL
+//        return URL(string: "https://www.mericher.com/srv2")!
     }
     
     var path: String {
@@ -372,10 +373,18 @@ extension NetowrkReqeustApi: TargetType {
             return parameters
         case .spaceActiveMembers(let siteId, let spaceId):
             return ["siteId": siteId, "spaceId": spaceId]
-        case .firmwareLatestVersion(let companyId, let deviceType, let customId):
-            return ["manufacturerId": companyId, "deviceType": deviceType, "customerId": customId]
-        case .firmwareVersionList(let companyId, let deviceType, let customId):
-            return ["manufacturerId": companyId, "deviceType": deviceType, "customerId": customId]
+        case .firmwareLatestVersion(let companyId, let deviceType, let customId, let isTesting):
+            var parameters = ["manufacturerId": companyId, "deviceType": deviceType, "customerId": customId]
+            if isTesting {
+                parameters.updateValue("dev", forKey: "profile")
+            }
+            return parameters
+        case .firmwareVersionList(let companyId, let deviceType, let customId, let isTesting):
+            var parameters = ["manufacturerId": companyId, "deviceType": deviceType, "customerId": customId]
+            if isTesting {
+                parameters.updateValue("dev", forKey: "profile")
+            }
+            return parameters
         case .devicesConfig:
             return nil
         }
@@ -401,4 +410,95 @@ extension NetowrkReqeustApi: TargetType {
         return nil
     }
     
+}
+
+
+/// 服务器地区
+enum ServerRegion {
+    
+    static let defaultRegions: [ServerRegion] = [.chinaMainland, .asiaPacific, .northAmerica, .europe]
+    
+    var rawValue: Int {
+        switch self {
+        case .chinaMainland:
+            return 1
+        case .northAmerica:
+            return 2
+        case .europe:
+            return 3
+        case .asiaPacific:
+            return 4
+        }
+    }
+    
+    /// 服务器base url
+    var baseURL: URL {
+        var urlStr = ""
+        switch self {
+        case .chinaMainland:
+            urlStr = "https://www.mericher.com/srv2"
+        case .asiaPacific:
+            urlStr = "https://sunsmart-ap.mericher.com/srv2"
+        case .northAmerica:
+            urlStr = "https://sunsmart-us.mericher.com/srv2"
+        case .europe:
+            urlStr = "https://sunsmart-eu.mericher.com/srv2"
+        }
+        return URL(string: urlStr)!
+    }
+    
+    var data: (icon: String, name: String) {
+        switch self {
+        case .chinaMainland:
+            return ("china_map", "china_mainland".localizedString)
+        case .asiaPacific:
+            return ("asia_pacific_map", "asia_pacific".localizedString)
+        case .northAmerica:
+            return ("north_america_map", "north_america".localizedString)
+        case .europe:
+            return ("europe_map", "europe".localizedString)
+        }
+    }
+    
+    init?(rawValue: Int) {
+        switch rawValue {
+        case 1:
+            self = .chinaMainland
+        case 2:
+            self = .northAmerica
+        case 3:
+            self = .europe
+        case 4:
+            self = .asiaPacific
+        default:
+            return nil
+        }
+    }
+    
+    init?(regionCode: String?) {
+        guard let code = regionCode else {
+            return nil
+        }
+        
+        if String.isChinaMainland(regionCode: code) {
+            self = .chinaMainland
+        }else if String.isNorthAmerica(regionCode: code) {
+            self = .northAmerica
+        }else if String.isEurope(regionCode: code) {
+            self = .europe
+        }else if  String.isAsiaPacific(regionCode: code) {
+            self = .asiaPacific
+        }else {
+            return nil
+        }
+    }
+    
+    /// 中国大陆
+    case chinaMainland
+    /// 亚太
+    case asiaPacific
+    /// 北美
+    case northAmerica
+    /// 欧洲
+    case europe
 }

@@ -58,7 +58,7 @@ class LightSensorCalibrationViewController: UIViewController {
         navigationController?.setNavigationBarBackgroundColor(color: .clear)
         view.backgroundColor = Background_Color
         navigationItem.leftBarButtonItem = UIBarButtonItem(image: UIImage(named: "navigation_back")?.withRenderingMode(.alwaysOriginal), style: .done, target: self, action: #selector(backAction))
-        navigationItem.rightBarButtonItem = UIBarButtonItem(image: UIImage(named: "more_vertical")?.withRenderingMode(.alwaysOriginal), style: .done, target: nil, action: #selector(moreAction))
+//        navigationItem.rightBarButtonItem = UIBarButtonItem(image: UIImage(named: "more_vertical")?.withRenderingMode(.alwaysOriginal), style: .done, target: nil, action: #selector(moreAction))
         
         setupUI()
         

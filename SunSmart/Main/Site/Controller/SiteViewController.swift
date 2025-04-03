@@ -239,10 +239,13 @@ self.updateAddressData()
         }
         
         XWHUDManager.showCustomHUD(withMessage: nil, isWindow: false)
+        let startDate = Date()
         NetworkRequest.shared.request(.siteInfo(siteId: self.site.id)) {[weak self] result in
             guard let self = self else { return }
             self.allSpacesCollectionView.refreshControl?.endRefreshing()
             self.favouritesCollectionView.refreshControl?.endRefreshing()
+            
+            let timeinterval = Date().distance(to: startDate)
             
             switch result {
             case .success(let response):
@@ -362,6 +365,10 @@ self.updateAddressData()
                         }
                     }
                     
+                }else if error == .resourceNotFound, self.site.permission == .owner { // 找不到资源，说明服务器切换后新的服务器未上传site
+                    self.site.lastUploadCloudTimestamp = nil
+                    self.site.save()
+                    CloudSynchronizationManager.shared.addSynchronizationHandle(operation: .syncSite(site: self.site, syncSpaces: self.site.spaces), level: .custom(interval: 0.5))
                 }else {
                     if self.site.spaces.isEmpty && self.site.spaceCount != self.site.spaces.count {
                         XWHUDManager.showErrorTipHUD(error.localizedDescription)
@@ -589,6 +596,9 @@ self.updateAddressData()
             CloudSynchronizationManager.shared.addSynchronizationHandle(operation: .syncSite(site: site), level: .normal)
             return true
         }
+        if isIPad {
+            vc.preferredContentSize = iPadPreferredContentSize
+        }
         present(NavigationViewController(rootViewController: vc), animated: true)
     }
     
@@ -677,7 +687,9 @@ self.updateAddressData()
             
             return true
         }
-        
+        if isIPad {
+            vc.preferredContentSize = iPadPreferredContentSize
+        }
         present(NavigationViewController(rootViewController: vc), animated: true)
     }
     
@@ -711,6 +723,9 @@ self.updateAddressData()
             }
             self.reloadSpaceData(space)
             return true
+        }
+        if isIPad {
+            vc.preferredContentSize = iPadPreferredContentSize
         }
         present(NavigationViewController(rootViewController: vc), animated: true)
     }
@@ -803,6 +818,12 @@ self.updateAddressData()
         }
         
         let vc = ShareAuthorityViewController(site: site, type: .share)
+        if isIPad {
+            vc.preferredContentSize = iPadPreferredContentSize
+        }
+        if isIPad {
+            vc.preferredContentSize = iPadPreferredContentSize
+        }
         present(NavigationViewController(rootViewController: vc), animated: true)
     }
     
@@ -875,6 +896,9 @@ self.updateAddressData()
                 }
                 
                 let vc = SharingSettingViewController(type: .transferSite(site: site))
+                if isIPad {
+                    vc.preferredContentSize = iPadPreferredContentSize
+                }
                 self.present(NavigationViewController(rootViewController: vc), animated: true) {
                     XWHUDManager.hide()
                 }
@@ -1011,6 +1035,9 @@ self.updateAddressData()
                 }
                 
                 let vc = SharingSettingViewController(type: .space(site: self.site, space: space))
+                if isIPad {
+                    vc.preferredContentSize = iPadPreferredContentSize
+                }
                 self.present(NavigationViewController(rootViewController: vc), animated: true) {
                     XWHUDManager.hide()
                 }
@@ -1369,8 +1396,12 @@ self.updateAddressData()
         default:
             break
         }
-        // test
-        loadSpaceReqeust(space: space)
+        if NetworkRequest.shared.networkable {
+            loadSpaceReqeust(space: space)
+        }else {
+            intoSpace(space: space)
+        }
+        
     }
     
     /// 进入space

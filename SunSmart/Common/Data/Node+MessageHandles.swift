@@ -1,0 +1,220 @@
+//
+//  Node+MessageHandles.swift
+//  SunSmart
+//
+//  Created by yuankehong on 2025/4/2.
+//
+
+import Foundation
+import NordicSigMeshSDK
+
+extension Scene {
+    
+    /// 获取场景同步消息数据
+    /// - Parameters:
+    ///   - node: 设备
+    ///   - data: 场景执行数据
+    /// - Returns: 消息list
+    func getSyncMessageHandles(node: Node, data: SceneExecuteData) -> [MeshMessageHandle] {
+        guard let sceneSetupModel = node.sceneSetupModel else { return [] }
+        var messageHandles: [MeshMessageHandle] = []
+        // 设备是否支持场景model及亮度model
+        if let sceneSetupModel = node.sceneSetupModel, let lightnessModel = node.lightnessModel {
+            // 设备是否支持色温model
+            let lightness = data.lightness
+            //Node.getLightness(lightness100: data.lightness, range: node.lightnessRange)
+            if let ctlModel = node.ctlModel, node.temperatureModel != nil {
+                messageHandles.append(MeshMessageHandle(message: LightCTLSet(lightness: lightness, temperature: UInt16(data.cct), deltaUV: 0, transitionTime: .immediate, delay: 0), model: ctlModel))
+            }else { // 不支持则设置亮度
+                messageHandles.append(MeshMessageHandle(message: LightLightnessSet(lightness: lightness, transitionTime: .immediate, delay: 0), model: lightnessModel))
+            }
+            // 保存场景
+            messageHandles.append(MeshMessageHandle(message: SceneStore(self.number), model: sceneSetupModel))
+            if let vendorModel = node.sunricherVendorModel, node.lightLCModel != nil {
+                // 保存场景前禁用灯光控制
+                messageHandles.insert(MeshMessageHandle(message: SunricherVendorSet(function: .lightControlEnabled(enabled: false)), model: vendorModel), at: 0)
+            }
+        }
+        return messageHandles
+    }
+    
+    /// 获取场景删除消息数据
+    /// - Parameters:
+    ///   - node: 设备
+    ///   - data: 场景执行数据
+    /// - Returns: 消息list
+    func getDeleteMessageHandles(node: Node) -> [MeshMessageHandle] {
+        guard let sceneSetupModel = node.sceneSetupModel else { return [] }
+        // 删除场景
+        return [MeshMessageHandle(message: SceneDelete(self.number), model: sceneSetupModel)]
+    }
+    
+}
+
+extension Schedule {
+    
+    /// 获取对应消息数据
+    /// - Parameters:
+    ///   - node: 设备
+    ///   - delete: 是否删除
+    /// - Returns: 消息list
+    func getMessageHandles(node: Node, delete: Bool = false) -> [MeshMessageHandle] {
+        guard let schedulerSetupModel = node.schedulerSetupModel else {
+            return []
+        }
+        var messageHandles: [MeshMessageHandle] = []
+        if delete {
+            
+            let message = SchedulerActionSet(index: UInt8(self.id), entry: SchedulerRegistryEntry())
+            // Auto
+            if self.action == .turnOn, node.group != nil, let lightLCSchedulerSetupModel = node.lightLCSchedulerSetupModel {
+                messageHandles.append(MeshMessageHandle(message: message, model: lightLCSchedulerSetupModel))
+            }else {
+                // 删除日程，协议不支持删除，将对应id的日程设置为无效数据
+                messageHandles.append(MeshMessageHandle(message: message, model: schedulerSetupModel))
+            }
+        }else {
+            // 设置时区
+            if self.enabled, let timeModel = node.timeModel {
+                messageHandles.append(MeshMessageHandle(message: Node.setLocalTimeMessage(), model: timeModel))
+            }
+            // 设置日程
+            let message = SchedulerActionSet(index: UInt8(self.id), entry: self.schedulerEntry)
+            
+            // Auto
+            if self.action == .turnOn, node.group != nil, let lightLCSchedulerSetupModel = node.lightLCSchedulerSetupModel {
+                messageHandles.append(MeshMessageHandle(message: message, model: lightLCSchedulerSetupModel))
+            }else {
+                messageHandles.append(MeshMessageHandle(message: message, model: schedulerSetupModel))
+            }
+        }
+        
+        return messageHandles
+    }
+    
+}
+
+extension ProfileType {
+    
+    /// 根据profile类型获取对应消息发送对象
+    func getMessageHandles(node: Node) -> [MeshMessageHandle] {
+        var messageHandles: [MeshMessageHandle] = []
+        
+        if case .powerOnState(let state, let cct) = self { // 上电状态
+            if let lightnessSetupModel = node.lightnessSetupModel, let powerUpModel = node.powerOnOffSetupModel {
+                var onPowerUp: OnPowerUp = .restore
+                switch state {
+                case .off:
+                    onPowerUp = .off
+                case .restore:
+                    onPowerUp = .restore
+                case .definedLightLevel(let level):
+                    onPowerUp = .default
+                    let lightness = Node.getLightness(lightness100: Int(level))
+                    if let defaultCct = cct, let ctlSetupModel = node.ctlSetupModel {
+                        messageHandles.append(MeshMessageHandle(message: LightCTLDefaultSet(lightness: lightness, temperature: defaultCct, deltaUV: 0), model: ctlSetupModel))
+                    }else {
+                        messageHandles.append(MeshMessageHandle(message: LightLightnessDefaultSet(lightness: lightness), model: lightnessSetupModel))
+                    }
+                }
+                messageHandles.append(MeshMessageHandle(message: GenericOnPowerUpSet(state: onPowerUp), model: powerUpModel))
+            }
+            return messageHandles
+        }
+        
+        guard let lightLCModel = node.lightLCModel, let lightLCSetupModel = node.lightLCSetupModel else { return messageHandles }
+        switch self {
+        case .mode(let enabled):
+            messageHandles.append(MeshMessageHandle(message: LightLCModeSet(enabled), model: lightLCModel))
+        case .occupancyMode(let enabled):
+            messageHandles.append(MeshMessageHandle(message: LightLCOccupancyModeSet(enabled), model: lightLCModel))
+        case .highLowEndTrim(let range):
+            let minLightness = max(Node.getLightness(lightness100: range.lowerBound), 1)
+            let maxLightness = Node.getLightness(lightness100: range.upperBound)
+            if let lightnessModel = node.lightnessModel {
+                messageHandles.append(MeshMessageHandle(message: LightLightnessRangeSet(minLightness...maxLightness), model: lightnessModel))
+            }
+        case .occupancyLevel(let value):
+            let lightness = Node.getLightness(lightness100: value)
+            messageHandles.append(MeshMessageHandle(message: LightLCPropertySet(of: .lightControlLightnessOn, value: .perceivedLightness(lightness)), model: lightLCSetupModel))
+        case .occupancyLux(let lux):
+            messageHandles.append(MeshMessageHandle(message: LightLCPropertySet(of: .lightControlAmbientLuxLevelOn, value: .illuminance(Decimal(lux))), model: lightLCSetupModel))
+        case .vacantLevel(let value):
+            let lightness = Node.getLightness(lightness100: value)
+            messageHandles.append(MeshMessageHandle(message: LightLCPropertySet(of: .lightControlLightnessProlong, value: .perceivedLightness(lightness)), model: lightLCSetupModel))
+        case .vacantLux(let lux):
+            messageHandles.append(MeshMessageHandle(message: LightLCPropertySet(of: .lightControlAmbientLuxLevelProlong, value: .illuminance(Decimal(lux))), model: lightLCSetupModel))
+//        case .autoMinValue(let value):
+//            if let vendorModel = node.sunricherVendorModel {
+//
+//                let message = SunricherVendorSet(code: .lightAutoMinLevel, parameters: .lightAutoMinLevel(level: Node.getLightness(lightness100: value)))
+//                messageHandles.append(MeshMessageHandle(message: message, model: vendorModel))
+//            }
+            
+        case .adjustSpeed(let speed):
+
+            let data = Node.getLightRegulator(speed: speed)
+            
+            let kidMessage = LightLCPropertySet(of: .lightControlRegulatorKid, value: .coefficient(data.regulatorKid))
+            let kiuMessage = LightLCPropertySet(of: .lightControlRegulatorKiu, value: .coefficient(data.regulatorKiu))
+            let kpdMessage = LightLCPropertySet(of: .lightControlRegulatorKpd, value: .coefficient(data.regulatorKpd))
+            let kpuMessage = LightLCPropertySet(of: .lightControlRegulatorKpu, value: .coefficient(data.regulatorKpu))
+            let accuracyMessage = LightLCPropertySet(of: .lightControlRegulatorAccuracy, value: .percentage8(Decimal(data.regulatorAccuracy)))
+            
+            messageHandles.append(MeshMessageHandle(message: kidMessage, model: lightLCSetupModel))
+            messageHandles.append(MeshMessageHandle(message: kiuMessage, model: lightLCSetupModel))
+            messageHandles.append(MeshMessageHandle(message: kpdMessage, model: lightLCSetupModel))
+            messageHandles.append(MeshMessageHandle(message: kpuMessage, model: lightLCSetupModel))
+            messageHandles.append(MeshMessageHandle(message: accuracyMessage, model: lightLCSetupModel))
+            
+        case .t1(let second):
+            messageHandles.append(MeshMessageHandle(message: LightLCPropertySet(of: .lightControlTimeFadeOn, value: .timeMillisecond24(UInt32(second * 1000))), model: lightLCSetupModel))
+        case .t2(let second):
+            messageHandles.append(MeshMessageHandle(message: LightLCPropertySet(of: .lightControlTimeRunOn, value: .timeMillisecond24(UInt32(min(second * 1000, 0xFFFFFE)))), model: lightLCSetupModel))
+        case .t3(let second):
+            messageHandles.append(MeshMessageHandle(message: LightLCPropertySet(of: .lightControlTimeFade, value: .timeMillisecond24(UInt32(second * 1000))), model: lightLCSetupModel))
+        case .t4(let second):
+            messageHandles.append(MeshMessageHandle(message: LightLCPropertySet(of: .lightControlTimeProlong, value: .timeMillisecond24(UInt32(min(second * 1000, 0xFFFFFE)))), model: lightLCSetupModel))
+        case .t5(let second):
+            messageHandles.append(MeshMessageHandle(message: LightLCPropertySet(of: .lightControlTimeFadeStandbyAuto, value: .timeMillisecond24(UInt32(second * 1000))), model: lightLCSetupModel))
+        case .manualOverrideTimeout(let enabled, let second):
+            if let vendorModel = node.sunricherVendorModel {
+                var interval = second
+                if second < UInt32.max {
+                    interval = min(interval * 1000, UInt32.max)
+                }
+                messageHandles.append(MeshMessageHandle(message: SunricherVendorSet(function: .manualOverrideTimeout(enabled: enabled, state: .standby, interval: interval)), model: vendorModel))
+            }
+        case .manualControl(let enabled):
+            if let vendorModel = node.sunricherVendorModel {
+                messageHandles.append(MeshMessageHandle(message: SunricherVendorSet(function: .manualControlEnabled(enabled: enabled)), model: vendorModel))
+            }
+            
+        case .powerOnState:
+            break
+        case .lightAutoAdujustEnabled(let enabled):
+            if let vendorModel = node.sunricherVendorModel {
+                messageHandles.append(MeshMessageHandle(message: SunricherVendorSet(function: .lightAutoAdjustEnabled(enabled: enabled)), model: vendorModel))
+            }
+        case .sensorEnabled(let sensorModels, let group):
+            let models = sensorModels.filter({ $0.modelIdentifier == .sensorServerModelId })
+            models.forEach({
+                let message = ConfigModelPublicationSet(Publish(to: group.address, using: MeshNetworkManager.instance.currentApplicationKey, usingFriendshipMaterial: false, ttl: MeshNetworkManager.instance.networkParameters.defaultTtl, period: .disabled, retransmit: .disabled), to: $0)!
+                messageHandles.append(MeshMessageHandle(message: message, address: node.primaryUnicastAddress))
+            })
+      
+        case .sensorDisable(let sensorModels):
+            let models = sensorModels.filter({ $0.modelIdentifier == .sensorServerModelId })
+            models.forEach({
+                let message = ConfigModelPublicationSet(disablePublicationFor: $0)!
+                messageHandles.append(MeshMessageHandle(message: message, address: node.primaryUnicastAddress))
+            })
+        case .daylightCalibration(let value):
+            if let vendorModel = node.sunricherVendorModel {
+                messageHandles.append(MeshMessageHandle(message: SunricherVendorSet(function: .daylightCalibrate(value)), model: vendorModel))
+            }
+        }
+        return messageHandles
+    }
+    
+}

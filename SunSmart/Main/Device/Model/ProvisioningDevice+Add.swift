@@ -54,6 +54,8 @@ extension ProvisioningDevice {
         case success
         /// 添加失败
         case failed
+        /// 同步失败
+        case syncFailed
     }
     
     /// 设备添加状态

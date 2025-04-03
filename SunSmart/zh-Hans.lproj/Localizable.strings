@@ -627,6 +627,7 @@
 "no_permission" = "无权限";
 "server_selection" = "服务器选择";
 "china_mainland" = "中国大陆";
+"asia_pacific" = "亚太";
 "north_america" = "北美";
 "europe" = "欧洲";
 "server_selection_message" = "系统自动选择合适的服务器，如需更换请手动选择。";
@@ -727,7 +728,7 @@
 "spaces_enable_visitor_password_message" = "确定启用该空间中所有访客密码？";
 "spaces_clear_visitor_password_message" = "确定清除该空间中所有访客密码？";
 "spaces_delete_failed" = "部分空间因含有设备无法删除，请先移除设备后重试。";
-"incorrect_password" = "密码错误！";
+"incorrect_password!" = "密码错误！";
 "space_clear_visitors_message" = "确定清除所选访客？";
 "space_clear_visitor_message" = "确定清除该访客？";
 "space_unbind_message" = "确定解绑该空间？";
@@ -971,3 +972,28 @@
 
 "pwm_period" = "PWM周期";
 "set_pwm_period" = "设置PWM周期";
+"device_add_search_mesh_device" = "Search and add SIG mesh devices";
+"pre-created_devices" = "Pre-created devices";
+"pre-created_devices_message" = "Lights cannot be pre-created, they can only be searched and added";
+"Restore_device_data" = "Restore device data";
+"Restore_Device_Data" = "Restore Device Data";
+"others" = "Others";
+"device_restore_empty_message" = "There is no device that needs to restore data.";
+"not_in_the_group" = "Not in the group";
+"devices_found" = "Devices found";
+"restore_selected" = "Restore Selected";
+"sync_failed" = "Sync failed";
+"sync_all" = "Sync all";
+"initialize" = "Initialize";
+"device_parameters" = "Device parameters";
+"devices_unrestored_message" = "Unrestored devices can still be restored by clicking the Sync button at the bottom of the Main page.";
+"ble_ota_reset_number" = "Number of reset device(s)：%d";
+"ble_ota_reset_message" = "Some devices have been reset after the upgrade. Please restore data or re-add the device and set it again.\nNote: After the device upgrade is complete, it takes up to 1 minute to reset and be discovered.";
+"ble_ota_reset_message_note" = "Note: After the device upgrade is complete, it takes up to 1 minute to reset and be discovered.";
+"restore_result" = "Restore Result";
+"device_search_disable_select" = "Device cannot be selected during the search";
+"incorrect_password" = "密码错误";
+"beta_testing_environment" = "Beta Testing Environment";
+"download_from_server" = "Download from server";
+"import_from_local" = "Import from local";
+"version" = "版本";

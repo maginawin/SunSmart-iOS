@@ -85,6 +85,9 @@ class SpaceNewCreationProcessController: UIViewController {
             }
             space.isConfiguring = true
             let vc = SceneAddViewController(space: space)
+            if isIPad {
+                vc.preferredContentSize = iPadPreferredContentSize
+            }
             present(NavigationViewController(rootViewController: vc), animated: true)
         case .schedule:
             guard MeshNetworkManager.instance.schedules.count < 16 else {
@@ -93,6 +96,9 @@ class SpaceNewCreationProcessController: UIViewController {
             }
             space.isConfiguring = true
             let vc = ScheduleAddViewController(space: space)
+            if isIPad {
+                vc.preferredContentSize = iPadPreferredContentSize
+            }
             present(NavigationViewController(rootViewController: vc), animated: true)
             
             NotificationCenter.default.post(name: .init(spaceMenuIndexChangeNotificaitonName), object: 3)
@@ -104,6 +110,9 @@ class SpaceNewCreationProcessController: UIViewController {
             }
             space.isConfiguring = true
             let vc = DeviceSwitchViewController(space: self.space, switchData: nil)
+            if isIPad {
+                vc.preferredContentSize = iPadPreferredContentSize
+            }
             present(NavigationViewController(rootViewController: vc), animated: true)
         }
         

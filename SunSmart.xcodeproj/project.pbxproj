@@ -48,6 +48,7 @@
 		C8607BE62B905F5100A94F0B /* LightSensorCalibrationView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8607BE52B905F5100A94F0B /* LightSensorCalibrationView.swift */; };
 		C8607BE82B9165AC00A94F0B /* ProfileLevelSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8607BE72B9165AC00A94F0B /* ProfileLevelSettingsView.swift */; };
 		C8607BEA2B91D56B00A94F0B /* ProfilePhasesTimePickerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8607BE92B91D56B00A94F0B /* ProfilePhasesTimePickerView.swift */; };
+		C86618EF2D8BB3DA00FB3D2F /* DeviceAddMenuView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C86618EE2D8BB3DA00FB3D2F /* DeviceAddMenuView.swift */; };
 		C86760A52C37F4B4006AD978 /* SitesTransferredView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C86760A42C37F4B4006AD978 /* SitesTransferredView.swift */; };
 		C8699DB72C09661700424A60 /* ShareAuthorityFilterView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8699DB62C09661700424A60 /* ShareAuthorityFilterView.swift */; };
 		C8699DB92C0978F300424A60 /* UserData.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8699DB82C0978F300424A60 /* UserData.swift */; };
@@ -142,6 +143,8 @@
 		C89B78812CC1EFEB0048B746 /* devices_config.json in Resources */ = {isa = PBXBuildFile; fileRef = C89B78802CC1EFEA0048B746 /* devices_config.json */; };
 		C89BAB1F2C4F3CF4000A4173 /* MeshFirmwareListViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C89BAB1E2C4F3CF4000A4173 /* MeshFirmwareListViewController.swift */; };
 		C89BAB212C4F3EC8000A4173 /* MeshFirmwareListViewCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = C89BAB202C4F3EC8000A4173 /* MeshFirmwareListViewCell.swift */; };
+		C89C15712D9A873500789F0B /* BetaTestingAlertView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C89C15702D9A873500789F0B /* BetaTestingAlertView.swift */; };
+		C89C15732D9A9D8000789F0B /* ContinuousTapGestureRecognizer.swift in Sources */ = {isa = PBXBuildFile; fileRef = C89C15722D9A9D8000789F0B /* ContinuousTapGestureRecognizer.swift */; };
 		C89C70B12CD31DC900B9A76A /* MeshFirmwareTypeUpdateViewCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = C89C70B02CD31DC900B9A76A /* MeshFirmwareTypeUpdateViewCell.swift */; };
 		C89C70B32CD3731C00B9A76A /* MeshSelectDistributorViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C89C70B22CD3731C00B9A76A /* MeshSelectDistributorViewController.swift */; };
 		C89C82CA2C81B7FE009D43F6 /* FirmwareUpdateTypeData.swift in Sources */ = {isa = PBXBuildFile; fileRef = C89C82C92C81B7FE009D43F6 /* FirmwareUpdateTypeData.swift */; };
@@ -209,6 +212,8 @@
 		C8A347CC2D62E8660092D3E4 /* DaliMasterSingleControlView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A347CB2D62E8660092D3E4 /* DaliMasterSingleControlView.swift */; };
 		C8A347CE2D6307CC0092D3E4 /* DeviceProtocol.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A347CD2D6307CC0092D3E4 /* DeviceProtocol.swift */; };
 		C8A347D02D63103B0092D3E4 /* DeviceBaseViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A347CF2D63103B0092D3E4 /* DeviceBaseViewController.swift */; };
+		C8A3516E2D8D73B800325FC6 /* DeviceRestoreEmptyViewCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A3516D2D8D73B800325FC6 /* DeviceRestoreEmptyViewCell.swift */; };
+		C8A351702D8EB1FF00325FC6 /* Node+SyncData.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A3516F2D8EB1FF00325FC6 /* Node+SyncData.swift */; };
 		C8A3EE7E2B33D62F0082A772 /* SceneAddTemplateInfoSectionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A3EE7D2B33D62F0082A772 /* SceneAddTemplateInfoSectionView.swift */; };
 		C8A3EE802B33E43C0082A772 /* SceneAddDataListViewCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A3EE7F2B33E43C0082A772 /* SceneAddDataListViewCell.swift */; };
 		C8A3EE822B34087A0082A772 /* SceneAddGroupViewCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A3EE812B34087A0082A772 /* SceneAddGroupViewCell.swift */; };
@@ -246,6 +251,7 @@
 		C8B058A02B50DE86006FC36F /* HorizontalDirectionFlowLayout.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8B0589F2B50DE86006FC36F /* HorizontalDirectionFlowLayout.swift */; };
 		C8B058A72B5115B2006FC36F /* DeviceGroupsSelectData.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8B058A62B5115B2006FC36F /* DeviceGroupsSelectData.swift */; };
 		C8B058A92B512C1F006FC36F /* TestDeviceAddManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8B058A82B512C1F006FC36F /* TestDeviceAddManager.swift */; };
+		C8B0779E2D9D36750078404C /* Node+MessageHandles.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8B0779D2D9D36750078404C /* Node+MessageHandles.swift */; };
 		C8B0B48B2B468BC700747CF4 /* SyncDevicesProgressView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8B0B48A2B468BC700747CF4 /* SyncDevicesProgressView.swift */; };
 		C8B5A1DE2B2BE9B300728E36 /* GroupMembersViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8B5A1DD2B2BE9B300728E36 /* GroupMembersViewController.swift */; };
 		C8B5A1E02B2C2AFD00728E36 /* GroupDevicesFunctionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8B5A1DF2B2C2AFD00728E36 /* GroupDevicesFunctionView.swift */; };
@@ -278,7 +284,10 @@
 		C8D6636F2BFEDDC900BFF81A /* ImportData.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8D6636E2BFEDDC900BFF81A /* ImportData.swift */; };
 		C8D663712BFEDDE000BFF81A /* ExportData.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8D663702BFEDDE000BFF81A /* ExportData.swift */; };
 		C8D663732BFF14A000BFF81A /* Int+Hex.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8D663722BFF14A000BFF81A /* Int+Hex.swift */; };
+		C8DC673F2D95523E00C2BC22 /* BleFirmwareUpdateRestoreView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8DC673E2D95523E00C2BC22 /* BleFirmwareUpdateRestoreView.swift */; };
 		C8DCD0FC2CC8E0DE00B8671E /* SiteAddressDataHeaderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8DCD0FB2CC8E0DE00B8671E /* SiteAddressDataHeaderView.swift */; };
+		C8E694222D8D407E00005832 /* DeviceAddResultView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8E694212D8D407E00005832 /* DeviceAddResultView.swift */; };
+		C8E694242D8D424100005832 /* DeviceAddBottomView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8E694232D8D424100005832 /* DeviceAddBottomView.swift */; };
 		C8EF54742C1AFA53008389CE /* NetworkLoggerPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8EF54732C1AFA53008389CE /* NetworkLoggerPlugin.swift */; };
 /* End PBXBuildFile section */
 
@@ -325,6 +334,7 @@
 		C8607BE52B905F5100A94F0B /* LightSensorCalibrationView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LightSensorCalibrationView.swift; sourceTree = "<group>"; };
 		C8607BE72B9165AC00A94F0B /* ProfileLevelSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileLevelSettingsView.swift; sourceTree = "<group>"; };
 		C8607BE92B91D56B00A94F0B /* ProfilePhasesTimePickerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfilePhasesTimePickerView.swift; sourceTree = "<group>"; };
+		C86618EE2D8BB3DA00FB3D2F /* DeviceAddMenuView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceAddMenuView.swift; sourceTree = "<group>"; };
 		C86760A42C37F4B4006AD978 /* SitesTransferredView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SitesTransferredView.swift; sourceTree = "<group>"; };
 		C8699DB62C09661700424A60 /* ShareAuthorityFilterView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShareAuthorityFilterView.swift; sourceTree = "<group>"; };
 		C8699DB82C0978F300424A60 /* UserData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UserData.swift; sourceTree = "<group>"; };
@@ -430,6 +440,8 @@
 		C89B78802CC1EFEA0048B746 /* devices_config.json */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.json; path = devices_config.json; sourceTree = "<group>"; };
 		C89BAB1E2C4F3CF4000A4173 /* MeshFirmwareListViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeshFirmwareListViewController.swift; sourceTree = "<group>"; };
 		C89BAB202C4F3EC8000A4173 /* MeshFirmwareListViewCell.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeshFirmwareListViewCell.swift; sourceTree = "<group>"; };
+		C89C15702D9A873500789F0B /* BetaTestingAlertView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BetaTestingAlertView.swift; sourceTree = "<group>"; };
+		C89C15722D9A9D8000789F0B /* ContinuousTapGestureRecognizer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContinuousTapGestureRecognizer.swift; sourceTree = "<group>"; };
 		C89C70B02CD31DC900B9A76A /* MeshFirmwareTypeUpdateViewCell.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeshFirmwareTypeUpdateViewCell.swift; sourceTree = "<group>"; };
 		C89C70B22CD3731C00B9A76A /* MeshSelectDistributorViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeshSelectDistributorViewController.swift; sourceTree = "<group>"; };
 		C89C82C92C81B7FE009D43F6 /* FirmwareUpdateTypeData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FirmwareUpdateTypeData.swift; sourceTree = "<group>"; };
@@ -497,6 +509,8 @@
 		C8A347CB2D62E8660092D3E4 /* DaliMasterSingleControlView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DaliMasterSingleControlView.swift; sourceTree = "<group>"; };
 		C8A347CD2D6307CC0092D3E4 /* DeviceProtocol.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceProtocol.swift; sourceTree = "<group>"; };
 		C8A347CF2D63103B0092D3E4 /* DeviceBaseViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceBaseViewController.swift; sourceTree = "<group>"; };
+		C8A3516D2D8D73B800325FC6 /* DeviceRestoreEmptyViewCell.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceRestoreEmptyViewCell.swift; sourceTree = "<group>"; };
+		C8A3516F2D8EB1FF00325FC6 /* Node+SyncData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Node+SyncData.swift"; sourceTree = "<group>"; };
 		C8A3EE7D2B33D62F0082A772 /* SceneAddTemplateInfoSectionView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SceneAddTemplateInfoSectionView.swift; sourceTree = "<group>"; };
 		C8A3EE7F2B33E43C0082A772 /* SceneAddDataListViewCell.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SceneAddDataListViewCell.swift; sourceTree = "<group>"; };
 		C8A3EE812B34087A0082A772 /* SceneAddGroupViewCell.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SceneAddGroupViewCell.swift; sourceTree = "<group>"; };
@@ -535,6 +549,7 @@
 		C8B0589F2B50DE86006FC36F /* HorizontalDirectionFlowLayout.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HorizontalDirectionFlowLayout.swift; sourceTree = "<group>"; };
 		C8B058A62B5115B2006FC36F /* DeviceGroupsSelectData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceGroupsSelectData.swift; sourceTree = "<group>"; };
 		C8B058A82B512C1F006FC36F /* TestDeviceAddManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TestDeviceAddManager.swift; sourceTree = "<group>"; };
+		C8B0779D2D9D36750078404C /* Node+MessageHandles.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Node+MessageHandles.swift"; sourceTree = "<group>"; };
 		C8B0B48A2B468BC700747CF4 /* SyncDevicesProgressView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SyncDevicesProgressView.swift; sourceTree = "<group>"; };
 		C8B5A1DD2B2BE9B300728E36 /* GroupMembersViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GroupMembersViewController.swift; sourceTree = "<group>"; };
 		C8B5A1DF2B2C2AFD00728E36 /* GroupDevicesFunctionView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GroupDevicesFunctionView.swift; sourceTree = "<group>"; };
@@ -567,7 +582,10 @@
 		C8D6636E2BFEDDC900BFF81A /* ImportData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImportData.swift; sourceTree = "<group>"; };
 		C8D663702BFEDDE000BFF81A /* ExportData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExportData.swift; sourceTree = "<group>"; };
 		C8D663722BFF14A000BFF81A /* Int+Hex.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Int+Hex.swift"; sourceTree = "<group>"; };
+		C8DC673E2D95523E00C2BC22 /* BleFirmwareUpdateRestoreView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BleFirmwareUpdateRestoreView.swift; sourceTree = "<group>"; };
 		C8DCD0FB2CC8E0DE00B8671E /* SiteAddressDataHeaderView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SiteAddressDataHeaderView.swift; sourceTree = "<group>"; };
+		C8E694212D8D407E00005832 /* DeviceAddResultView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceAddResultView.swift; sourceTree = "<group>"; };
+		C8E694232D8D424100005832 /* DeviceAddBottomView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceAddBottomView.swift; sourceTree = "<group>"; };
 		C8EF54732C1AFA53008389CE /* NetworkLoggerPlugin.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NetworkLoggerPlugin.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -872,6 +890,7 @@
 				C8BF088D2B299DD700144BAC /* LinePageControl.swift */,
 				C85829F52B398443002A4367 /* CustomProgressView.swift */,
 				C89A1C352B54C64B004912B9 /* MultiseriatePickerView.swift */,
+				C89C15722D9A9D8000789F0B /* ContinuousTapGestureRecognizer.swift */,
 			);
 			path = View;
 			sourceTree = "<group>";
@@ -1024,6 +1043,10 @@
 				C88B25792ADE1D2100CF1AE4 /* DeviceLightHeaderView.swift */,
 				C88B257D2ADE594600CF1AE4 /* DeviceLightControlViewCell.swift */,
 				C89AC9302B62372300744868 /* DeviceLightInfoSectionView.swift */,
+				C86618EE2D8BB3DA00FB3D2F /* DeviceAddMenuView.swift */,
+				C8E694212D8D407E00005832 /* DeviceAddResultView.swift */,
+				C8E694232D8D424100005832 /* DeviceAddBottomView.swift */,
+				C8A3516D2D8D73B800325FC6 /* DeviceRestoreEmptyViewCell.swift */,
 			);
 			path = View;
 			sourceTree = "<group>";
@@ -1108,6 +1131,7 @@
 				C89F089F2C7712F2005C0711 /* BleFirmwareTypeUpdateViewCell.swift */,
 				C89C70B02CD31DC900B9A76A /* MeshFirmwareTypeUpdateViewCell.swift */,
 				C8A030192CD85FC40063FEC4 /* MeshFirmwareSelectDeviceViewCell.swift */,
+				C8DC673E2D95523E00C2BC22 /* BleFirmwareUpdateRestoreView.swift */,
 				C8A0301D2CD878C10063FEC4 /* MeshFirmwareUpgradeHeaderView.swift */,
 				C8A0301F2CD89EC00063FEC4 /* MeshFirmwareUpgradeSectionView.swift */,
 				C89B53282C7DB5DC00D2959F /* FirmwareUpdateStateView.swift */,
@@ -1117,6 +1141,7 @@
 				C8AC83C62D068A670033513E /* MeshFirmwareUpdateStepHeaderView.swift */,
 				C8AC83C82D068CC70033513E /* MeshFirmwareUpdateLogViewCell.swift */,
 				C89D560E2D0A87F100FC7890 /* MeshFirmwareUpgradeResultsView.swift */,
+				C89C15702D9A873500789F0B /* BetaTestingAlertView.swift */,
 			);
 			path = View;
 			sourceTree = "<group>";
@@ -1411,6 +1436,8 @@
 				C8AAE2762A97435A00238C1C /* Database.swift */,
 				C8699DB82C0978F300424A60 /* UserData.swift */,
 				C898E2E02AB840FE00C71315 /* MeshNetwork+SunSmart.swift */,
+				C8A3516F2D8EB1FF00325FC6 /* Node+SyncData.swift */,
+				C8B0779D2D9D36750078404C /* Node+MessageHandles.swift */,
 				C8D6636C2BFED12B00BFF81A /* Keychain.swift */,
 				C8D6636E2BFEDDC900BFF81A /* ImportData.swift */,
 				C8D663702BFEDDE000BFF81A /* ExportData.swift */,
@@ -1670,9 +1697,13 @@
 			inputFileListPaths = (
 				"${PODS_ROOT}/Target Support Files/Pods-SunSmart/Pods-SunSmart-frameworks-${CONFIGURATION}-input-files.xcfilelist",
 			);
+			inputPaths = (
+			);
 			name = "[CP] Embed Pods Frameworks";
 			outputFileListPaths = (
 				"${PODS_ROOT}/Target Support Files/Pods-SunSmart/Pods-SunSmart-frameworks-${CONFIGURATION}-output-files.xcfilelist",
+			);
+			outputPaths = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
@@ -1705,6 +1736,7 @@
 				C89FEF482ABD6A6300DCCFB6 /* WebViewController.swift in Sources */,
 				C898EA6B2AC2C3270023B480 /* SpaceMenuView.swift in Sources */,
 				C8047F192B8EE37700A09FFA /* ProfileSettingsSphasesView.swift in Sources */,
+				C8A3516E2D8D73B800325FC6 /* DeviceRestoreEmptyViewCell.swift in Sources */,
 				C89C70B32CD3731C00B9A76A /* MeshSelectDistributorViewController.swift in Sources */,
 				C884EF702C05788900B5F869 /* NoInternetHeaderView.swift in Sources */,
 				C8ACF13B2AA1B2BA00E24B4A /* UIViewController+Extension.swift in Sources */,
@@ -1739,6 +1771,7 @@
 				C8A3EE862B3420F60082A772 /* SceneExecuteDataPickerView.swift in Sources */,
 				C8AADEFF2A97350400238C1C /* SiteData.swift in Sources */,
 				C88DE4492C085A5D005A38C1 /* BatchImportResultHelpController.swift in Sources */,
+				C8A351702D8EB1FF00325FC6 /* Node+SyncData.swift in Sources */,
 				C89D560F2D0A87F100FC7890 /* MeshFirmwareUpgradeResultsView.swift in Sources */,
 				C8A29C2C2B47FE2300104634 /* ScheduleAddViewController.swift in Sources */,
 				C8047F0B2B8DFBF700A09FFA /* ProfileInstructionsViewCell.swift in Sources */,
@@ -1769,6 +1802,7 @@
 				C89B3CB52C08807200820277 /* ShareAuthoritySpaceViewCell.swift in Sources */,
 				C8047F292B8F4C0E00A09FFA /* DaylightSensorInstructionsViewCell.swift in Sources */,
 				C898EA702AC3C64C0023B480 /* SpaceFunctionFooterView.swift in Sources */,
+				C8E694242D8D424100005832 /* DeviceAddBottomView.swift in Sources */,
 				C85829F22B397F2B002A4367 /* SceneViewController.swift in Sources */,
 				C898E2ED2ABA8BAD00C71315 /* MainMenuView.swift in Sources */,
 				C830CFDF2C0EC0240035CD5B /* ShareBacthListViewCell.swift in Sources */,
@@ -1777,10 +1811,12 @@
 				C89F98432B5E5AC8007EABF5 /* ScenesViewCell.swift in Sources */,
 				C89AC9312B62372300744868 /* DeviceLightInfoSectionView.swift in Sources */,
 				C89FEF462ABD65F700DCCFB6 /* NavigationViewController.swift in Sources */,
+				C86618EF2D8BB3DA00FB3D2F /* DeviceAddMenuView.swift in Sources */,
 				C8BF088C2B29903E00144BAC /* GroupDeviceViewCell.swift in Sources */,
 				C8A3EE822B34087A0082A772 /* SceneAddGroupViewCell.swift in Sources */,
 				C88B25762ADD399C00CF1AE4 /* DeviceLightBasicController.swift in Sources */,
 				C8A347D02D63103B0092D3E4 /* DeviceBaseViewController.swift in Sources */,
+				C8DC673F2D95523E00C2BC22 /* BleFirmwareUpdateRestoreView.swift in Sources */,
 				C8A16F722C86A3CF00FB50BD /* FirmwareVersionViewController.swift in Sources */,
 				C89FEF4F2ABEB37900DCCFB6 /* SitesViewCell.swift in Sources */,
 				C8047F0F2B8E049E00A09FFA /* ProfileInstructionsHeaderView.swift in Sources */,
@@ -1802,6 +1838,7 @@
 				C884EF722C057B5100B5F869 /* ImportProjectView.swift in Sources */,
 				C8A437B22D35F11A00F3424C /* CollectionTitleHeaderView.swift in Sources */,
 				C8A18FEB2AE105F300260707 /* BluetoothRequiredViewController.swift in Sources */,
+				C8E694222D8D407E00005832 /* DeviceAddResultView.swift in Sources */,
 				C884EF752C05B93200B5F869 /* NetworkRequest.swift in Sources */,
 				C84A2C552C2D465A0064D3F1 /* ExternalVendorMessage+Extension.swift in Sources */,
 				C89A9A962C8AAB0D0032287D /* DeviceSwitchHeaderView.swift in Sources */,
@@ -1828,6 +1865,7 @@
 				C8A0AC4B2C3E21B200DFE803 /* Array+Split.swift in Sources */,
 				C8B5A1DE2B2BE9B300728E36 /* GroupMembersViewController.swift in Sources */,
 				C830CFDB2C0DC23F0035CD5B /* SpaceVisitorListViewController.swift in Sources */,
+				C89C15732D9A9D8000789F0B /* ContinuousTapGestureRecognizer.swift in Sources */,
 				C8A16F782C86E8C100FB50BD /* FirmwareVersionHistoryController.swift in Sources */,
 				C8047F092B8DFA5900A09FFA /* ProfileInstructionsController.swift in Sources */,
 				C830CFE32C0F1C6B0035CD5B /* TableSelectView.swift in Sources */,
@@ -1844,6 +1882,7 @@
 				C8047F2D2B8F5C9200A09FFA /* ManualOverrideTimeoutInstructionController.swift in Sources */,
 				C898EA722AC3D17C0023B480 /* DevicesViewCell.swift in Sources */,
 				C8607BE62B905F5100A94F0B /* LightSensorCalibrationView.swift in Sources */,
+				C89C15712D9A873500789F0B /* BetaTestingAlertView.swift in Sources */,
 				C8A29C282B47D5CF00104634 /* TimedSelectTypeView.swift in Sources */,
 				C8047F312B8F670200A09FFA /* AdjustSpeedInstructionController.swift in Sources */,
 				C87EB4672BA17D3F00F9285B /* LBXScanViewStyle.swift in Sources */,
@@ -1919,6 +1958,7 @@
 				C87EB4572BA1500500F9285B /* SwitchSelectSceneViewController.swift in Sources */,
 				C89C70B12CD31DC900B9A76A /* MeshFirmwareTypeUpdateViewCell.swift in Sources */,
 				C8A09A052AC178910068C814 /* ImageCollectionViewCell.swift in Sources */,
+				C8B0779E2D9D36750078404C /* Node+MessageHandles.swift in Sources */,
 				C89A9A942C8A91ED0032287D /* DeviceSwitchViewController.swift in Sources */,
 				C8BF08912B2A8DCD00144BAC /* GroupServer.swift in Sources */,
 				C896BD3A2A930C3A00217512 /* WYProgressHUD.m in Sources */,
@@ -2112,6 +2152,7 @@
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
 				SUPPORTS_MACCATALYST = NO;
 				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_OBJC_BRIDGING_HEADER = "SunSmart/SunSmart-Bridging-Header.h";
 				SWIFT_VERSION = 5.0;
@@ -2152,6 +2193,7 @@
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
 				SUPPORTS_MACCATALYST = NO;
 				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_OBJC_BRIDGING_HEADER = "SunSmart/SunSmart-Bridging-Header.h";
 				SWIFT_VERSION = 5.0;

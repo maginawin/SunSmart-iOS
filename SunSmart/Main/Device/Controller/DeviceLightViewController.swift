@@ -294,16 +294,17 @@ class DeviceLightViewController: UIViewController {
                 
                 node.groupState = .exitFailure
                 
+                
                 let syncData = node.getNeedSyncGroupData(group: testGroup)
-                for schedule in syncData.deleteSchedules {
+                for schedule in testGroup.info.bindSchedules {
                     messageHandles.append(contentsOf: DeviceOperationType.delete(node: node, type: .schedule(schedule: schedule)).messageHandles)
                 }
-                for switchData in syncData.deleteSwitchs {
+                for switchData in testGroup.info.switchs {
                     messageHandles.append(contentsOf: DeviceOperationType.delete(node: node, type: .enOceanSwitch(switchData: switchData)).messageHandles)
                 }
                 
-                for scene in syncData.deleteScenes {
-                    messageHandles.append(contentsOf: DeviceOperationType.delete(node: node, type: .scene(sceneId: scene.number, executeData: nil)).messageHandles)
+                for scene in testGroup.info.sceneExecuteDatas {
+                    messageHandles.append(contentsOf: DeviceOperationType.delete(node: node, type: .scene(sceneId: scene.sceneNumber, executeData: nil)).messageHandles)
                 }
                 for profile in syncData.syncProfile {
                     messageHandles.append(contentsOf: DeviceOperationType.delete(node: node, type: .profile(type: profile)).messageHandles)
@@ -332,13 +333,22 @@ class DeviceLightViewController: UIViewController {
 //                }
             }
             
-            MeshProxyMessageCommand.shared.addMessage(messageHandles: messageHandles) {[weak self] _ in
-                if MeshNetworkManager.instance.scenes.count >= 2 {
-                    let sceneA = MeshNetworkManager.instance.scenes[0]
-                    let sceneB = MeshNetworkManager.instance.scenes[1]
-                    MeshAPI.startScene(sceneNumber: sceneA.number)
-                    MeshAPI.startScene(sceneNumber: sceneB.number)
+            MeshProxyMessageCommand.shared.addMessage(messageHandles: messageHandles, ackMessageTimeout: 10) {[weak self] resultMessageHandles in
+                
+                resultMessageHandles.forEach { handle in
+                    if let address = handle.address ?? handle.model?.parentElement?.unicastAddress, let node = MeshNetworkManager.instance.meshNetwork?.node(withAddress: address) {
+                        node.updateData(message: handle.message, isSuccess: handle.isSuccessful)
+                    }
                 }
+                
+//                if MeshNetworkManager.instance.scenes.count >= 2 {
+//                    let sceneA = MeshNetworkManager.instance.scenes[0]
+//                    let sceneB = MeshNetworkManager.instance.scenes[1]
+//                    MeshAPI.startScene(sceneNumber: sceneA.number)
+//                    DispatchQueue.main.asyncAfter(wallDeadline: .now() + 3) {
+//                        MeshAPI.startScene(sceneNumber: sceneB.number)
+//                    }
+//                }
                 DispatchQueue.main.asyncAfter(wallDeadline: .now() + 15, execute: {
                     self?.nodeTest()
                 })
@@ -513,9 +523,9 @@ class DeviceLightViewController: UIViewController {
         XWHUDManager.showCustomHUD(withMessage: nil, isWindow: false, afterDelay: 2)
         getNodeState()
         
-        MeshLibManager.manager.refreshNodesRSSI(withWaitFor: 5) {[weak self] nodes in
+        MeshLibManager.manager.refreshNodesRSSI(withWaitFor: 5) {[weak self] nodeDatas in
             guard let self = self else { return }
-            if !nodes.contains(where: { $0.primaryUnicastAddress == self.node.primaryUnicastAddress }) {
+            if !nodeDatas.contains(where: { $0.node.primaryUnicastAddress == self.node.primaryUnicastAddress }) {
                 self.node.rssi = nil
             }
         }

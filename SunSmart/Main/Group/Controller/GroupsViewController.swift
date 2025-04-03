@@ -119,8 +119,10 @@ class GroupsViewController: UIViewController {
 //                self?.collectionView.reloadData()
 //                self?.updateGroupesEmptyUI()
 //            }
+            if isIPad {
+                groupVc.preferredContentSize = iPadPreferredContentSize
+            }
             let navVc = NavigationViewController(rootViewController: groupVc)
-            
             present(navVc, animated: true)
         }
     }
@@ -195,6 +197,9 @@ class GroupsViewController: UIViewController {
         }
         vc.backActionCallback = { [weak self] in
             self?.dismiss(animated: true)
+        }
+        if isIPad {
+            vc.preferredContentSize = iPadPreferredContentSize
         }
         present(NavigationViewController(rootViewController: vc), animated: true)
 //        navigationController?.pushViewController(vc, animated: true)
@@ -413,7 +418,10 @@ extension GroupsViewController: SpaceFunctionFooterViewDelegate {
     /// 点击添加回调
     func functionDidClickAdd(view: SpaceFunctionFooterView) {
         
-        guard MeshNetworkManager.instance.groups.count < 16 else { return }
+        guard MeshNetworkManager.instance.groups.count < 16 else {
+            SRAlertView(title: "notification".localizedString, message: "groups_overrun_message".localizedString, actions: [SRAlertAction(title: "GOT_IT".localizedString)]).show()
+            return
+        }
         
         let vc = GroupAddViewController(space: space)
 //        vc.doneCallback = {[weak self] group in
@@ -423,8 +431,10 @@ extension GroupsViewController: SpaceFunctionFooterViewDelegate {
 //            self.space.save()
 //        }
 //        vc.isModalInPresentation = true
+        if isIPad {
+            vc.preferredContentSize = iPadPreferredContentSize
+        }
         let navVc = NavigationViewController(rootViewController: vc)
-        
         present(navVc, animated: true)
     }
     

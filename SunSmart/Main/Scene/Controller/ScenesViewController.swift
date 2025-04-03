@@ -117,7 +117,9 @@ class ScenesViewController: UIViewController {
         if let indexPath = collectionView.indexPathForItem(at: point), indexPath.item < MeshNetworkManager.instance.scenes.count {
             let scene = MeshNetworkManager.instance.scenes[indexPath.item]
             let sceneVc = SceneViewController(space: space, scene: scene)
-            
+            if isIPad {
+                sceneVc.preferredContentSize = iPadPreferredContentSize
+            }
             let navVc = NavigationViewController(rootViewController: sceneVc)
             present(navVc, animated: true)
             
@@ -191,6 +193,9 @@ class ScenesViewController: UIViewController {
 //                self?.dismiss(animated: true)
             guard let self = self else { return }
             self.dismiss(animated: true)
+        }
+        if isIPad {
+            vc.preferredContentSize = iPadPreferredContentSize
         }
         present(NavigationViewController(rootViewController: vc), animated: true)
         
@@ -393,7 +398,7 @@ extension ScenesViewController: UICollectionViewDataSource, UICollectionViewDele
         if let cell = collectionView.cellForItem(at: indexPath) as? ScenesViewCell, !cell.isExecuting {
             // 执行场景
             
-            MeshAPI.startScene(sceneNumber: scene.number, delay: 100)
+            MeshAPI.startScene(sceneNumber: scene.number)
             
             scene.info.groups.forEach { group in
                 if let data = group.info.sceneExecuteDatas.first(where: { scene.number == $0.sceneNumber }) {
@@ -422,7 +427,10 @@ extension ScenesViewController: SpaceFunctionFooterViewDelegate {
     /// 点击添加回调
     func functionDidClickAdd(view: SpaceFunctionFooterView) {
         
-        guard MeshNetworkManager.instance.scenes.count < 16 else { return }
+        guard MeshNetworkManager.instance.scenes.count < 16 else {
+            SRAlertView(title: "notification".localizedString, message: "scenes_overrun_message".localizedString, actions: [SRAlertAction(title: "GOT_IT".localizedString)]).show()
+            return
+        }
         
         let vc = SceneAddViewController(space: space)
         vc.createSceneCallback = {[weak self] _ in
@@ -430,6 +438,9 @@ extension ScenesViewController: SpaceFunctionFooterViewDelegate {
             self.collectionView.reloadData()
             self.space.sceneCount = MeshNetworkManager.instance.scenes.count
             self.space.save()
+        }
+        if isIPad {
+            vc.preferredContentSize = iPadPreferredContentSize
         }
         present(NavigationViewController(rootViewController: vc), animated: true)
     }

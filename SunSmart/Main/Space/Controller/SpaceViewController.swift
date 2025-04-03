@@ -158,14 +158,14 @@ class SpaceViewController: WMPageController {
             make.height.equalTo(meunHeight - 2)
         }
         
-//        #if DEBUG
-//        navigationItem.rightBarButtonItems = [
-//            UIBarButtonItem(image: UIImage(named: "more_vertical")?.withRenderingMode(.alwaysOriginal), style: .done, target: self, action: #selector(moreClick)),
-//            UIBarButtonItem(customView: autoBtn)
-//        ]
-//        #else
+        #if DEBUG
+        navigationItem.rightBarButtonItems = [
+            UIBarButtonItem(image: UIImage(named: "more_vertical")?.withRenderingMode(.alwaysOriginal), style: .done, target: self, action: #selector(moreClick)),
+            UIBarButtonItem(customView: autoBtn)
+        ]
+        #else
         navigationItem.rightBarButtonItem = UIBarButtonItem(image: UIImage(named: "more_vertical")?.withRenderingMode(.alwaysOriginal), style: .done, target: self, action: #selector(moreClick))
-//        #endif
+        #endif
         
         MeshLibManager.manager.publishModelIDs = []// .genericOnOffServerModelId, .lightLightnessServerModelId, .lightCTLServerModelId
         MeshLibManager.manager.publishTimeModelIDs = []
@@ -173,7 +173,7 @@ class SpaceViewController: WMPageController {
         MeshLibManager.manager.groupSubscriptionModelIDs = [.genericOnOffServerModelId, .lightLightnessServerModelId, .lightCTLTemperatureServerModelId, .lightCTLServerModelId, .sensorServerModelId, .lightLCServerModelId]
         MeshLibManager.manager.subElementGroupSubscriptionModelIDs = [.lightCTLTemperatureServerModelId]
         checkBluetoothState()
-//        MeshNodeHeartbeatManager.shared.autoHeartbeatLoop = false
+        MeshNodeHeartbeatManager.shared.autoHeartbeatLoop = false
         
    
         // 添加通知监听
@@ -347,6 +347,9 @@ class SpaceViewController: WMPageController {
             guard let self = self, let modalVc = notification.object as? UIViewController else {
                 return
             }
+            if isIPad {
+                modalVc.preferredContentSize = iPadPreferredContentSize
+            }
             self.present(modalVc, animated: true)
         }
         
@@ -417,6 +420,9 @@ class SpaceViewController: WMPageController {
                     self.space.isConfiguring = true
                     let vc = GroupAddViewController(space: self.space)
                     let navVc = NavigationViewController(rootViewController: vc)
+                    if isIPad {
+                        vc.preferredContentSize = iPadPreferredContentSize
+                    }
                     self.present(navVc, animated: true)
                     self.selectIndex = 1
                 }).show()
@@ -877,6 +883,9 @@ class SpaceViewController: WMPageController {
             self.syncSpace(level: .normal)
             return true
         }
+        if isIPad {
+            vc.preferredContentSize = iPadPreferredContentSize
+        }
         present(NavigationViewController(rootViewController: vc), animated: true)
     }
     
@@ -1021,6 +1030,9 @@ class SpaceViewController: WMPageController {
                     self.space.save()
                 }
                 let vc = SharingSettingViewController(type: .space(site: self.site, space: self.space))
+                if isIPad {
+                    vc.preferredContentSize = iPadPreferredContentSize
+                }
                 self.present(NavigationViewController(rootViewController: vc), animated: true) {
                     XWHUDManager.hide()
                 }

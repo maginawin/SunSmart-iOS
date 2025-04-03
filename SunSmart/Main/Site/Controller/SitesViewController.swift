@@ -176,6 +176,9 @@ class SitesViewController: UIViewController {
                 
             }else { // 有网络=>无网络
                 SRAlertView(title: "notification".localizedString, message: "phone_network_disconnect".localizedString, actions: [.init(title: "confirm".localizedString)]).show()
+                if view.window !=  nil, XWHUDManager.isVisible() {
+                    XWHUDManager.hideInView(with: self.view)
+                }
             }
                 
             
@@ -392,6 +395,9 @@ class SitesViewController: UIViewController {
                 self.navigationController?.popViewController(animated: false)
                 
                 let vc = SharePermissionSelectionController(type: type)
+                if isIPad {
+                    vc.preferredContentSize = iPadPreferredContentSize
+                }
                 self.present(NavigationViewController(rootViewController: vc), animated: true)
                 self.scanCodeVc = nil
                 
@@ -463,6 +469,8 @@ class SitesViewController: UIViewController {
 //            guard let self = self else { return }
 //            
 //        }), SRAlertAction(title: "still_to_set".localizedString)]).show()
+
+        
         
         MainMenuView.show {[weak self] option in
             
@@ -617,6 +625,9 @@ class SitesViewController: UIViewController {
             
             return true
         }
+        if isIPad {
+            vc.preferredContentSize = iPadPreferredContentSize
+        }
         present(NavigationViewController(rootViewController: vc), animated: true)
     }
     
@@ -747,6 +758,9 @@ class SitesViewController: UIViewController {
         // 获取邀请信息
         
         let vc = ShareAuthorityViewController(site: site, type: .share)
+        if isIPad {
+            vc.preferredContentSize = iPadPreferredContentSize
+        }
         present(NavigationViewController(rootViewController: vc), animated: true)
 //        let dict = site.export()
 ////        print(dict)
@@ -836,6 +850,9 @@ class SitesViewController: UIViewController {
                     site.save()
                 }
                 let vc = SharingSettingViewController(type: .transferSite(site: site))
+                if isIPad {
+                    vc.preferredContentSize = iPadPreferredContentSize
+                }
                 self.present(NavigationViewController(rootViewController: vc), animated: true) {
                     XWHUDManager.hide()
                 }

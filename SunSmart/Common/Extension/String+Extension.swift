@@ -72,9 +72,19 @@ extension String {
         return string
     }
     
-    /// 根据地区编码获取是否中国大陆
-    static func isChina(regionCode: String) -> Bool {
+    /// 根据地区编码获取是否是中国大陆
+    static func isChinaMainland(regionCode: String) -> Bool {
         return regionCode == "CN"
+    }
+    /// 根据地区编码获取是否亚太
+    static func isAsiaPacific(regionCode: String) -> Bool {
+        let apacRegionCodes: Set<String> = [
+              "JP", "KR", "TW", "HK", "MO",  // 东亚
+             "SG", "MY", "TH", "ID", "PH", "VN",  // 东南亚
+             "AU", "NZ",                          // 大洋洲
+             "IN", "PK", "BD", "LK"               // 南亚
+         ]
+        return apacRegionCodes.contains(regionCode)
     }
 
     /// 根据地区编码获取是否北美
@@ -119,6 +129,22 @@ extension String {
         let regex = try! NSRegularExpression(pattern: pattern)
         let range = NSRange(location: 0, length: self.utf16.count)
         return regex.firstMatch(in: self, options: [], range: range) != nil
+    }
+    
+    /// 获取mac地址分割字符串
+    func getMacAddressSegmentString() -> String? {
+        guard self.count == 12 else {
+            return nil
+        }
+        var result = ""
+        var offset = 0
+        for _ in 0..<Int(self.count / 2) {
+            if offset + 2 > self.count { break }
+            let string = self.subString(rang: NSRange(location: offset, length: 2))
+            offset += 2
+            result.append(String(format: "%@%@", result.isEmpty ? "" : ":", string))
+        }
+        return result
     }
     
 }

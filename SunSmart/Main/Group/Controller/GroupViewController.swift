@@ -155,17 +155,17 @@ class GroupViewController: UIViewController {
     override func viewDidLayoutSubviews() {
         super.viewDidLayoutSubviews()
         
-        var itemW = (collectionView.width - collectionView.contentInset.left - collectionView.contentInset.right - flowLayout.minimumInteritemSpacing * CGFloat(rowNum - 1) - flowLayout.sectionInset.left - flowLayout.sectionInset.right) / CGFloat(rowNum)
-        itemW = CGFloat(floorf(Float(itemW) * 100) / 100.0)
-        let itemSize = CGSize(width: itemW, height: itemW)
-        flowLayout.itemSize = itemSize
+//        var itemW = (collectionView.width - collectionView.contentInset.left - collectionView.contentInset.right - flowLayout.minimumInteritemSpacing * CGFloat(rowNum - 1) - flowLayout.sectionInset.left - flowLayout.sectionInset.right) / CGFloat(rowNum)
+//        itemW = CGFloat(floorf(Float(itemW) * 100) / 100.0)
+//        let itemSize = CGSize(width: itemW, height: itemW)
+//        flowLayout.itemSize = itemSize
         
-        collectionView.snp.updateConstraints { make in
-            var height = itemSize.height * CGFloat(columnNum) + flowLayout.minimumLineSpacing * CGFloat(columnNum - 1) + collectionView.contentInset.top + collectionView.contentInset.bottom + flowLayout.sectionInset.top + flowLayout.sectionInset.bottom
-            height = CGFloat(ceil(Float(height)))
-//            CGFloat(floorf(Float(height) * 100) / 100.0)
-            make.height.equalTo(height)
-        }
+//        collectionView.snp.updateConstraints { make in
+//            var height = itemSize.height * CGFloat(columnNum) + flowLayout.minimumLineSpacing * CGFloat(columnNum - 1) + collectionView.contentInset.top + collectionView.contentInset.bottom + flowLayout.sectionInset.top + flowLayout.sectionInset.bottom
+//            height = CGFloat(ceil(Float(height)))
+////            CGFloat(floorf(Float(height) * 100) / 100.0)
+//            make.height.equalTo(height)
+//        }
         
     }
     
@@ -347,9 +347,9 @@ class GroupViewController: UIViewController {
             }
         }
         
-        items.append( .init(icon: UIImage(named: "menu_switch"), title: "switch".localizedString, hideAnimation: false, tapItemBack: {[weak self] item in
-            self?.pushToSwitch()
-        }))
+//        items.append( .init(icon: UIImage(named: "menu_switch"), title: "switch".localizedString, hideAnimation: false, tapItemBack: {[weak self] item in
+//            self?.pushToSwitch()
+//        }))
         
 //        items.append(.init(icon: UIImage(named: "menu_edit"), title: "pwm_period".localizedString, hideAnimation: false, tapItemBack: {[weak self] _ in
 //            self?.setPwmPeriod()
@@ -513,6 +513,9 @@ class GroupViewController: UIViewController {
 //            self?.title = group.name
 //            self?.groupUpdateCallback?(group)
 //        }
+        if isIPad {
+            editVc.preferredContentSize = iPadPreferredContentSize
+        }
         let navVc = NavigationViewController(rootViewController: editVc)
         present(navVc, animated: true)
     }
@@ -830,13 +833,14 @@ class GroupViewController: UIViewController {
 extension GroupViewController: UICollectionViewDataSource, UICollectionViewDelegateFlowLayout {
     
     func collectionView(_ collectionView: UICollectionView, numberOfItemsInSection section: Int) -> Int {
-        return group.nodes.count
+        group.nodes.count
     }
     
     func collectionView(_ collectionView: UICollectionView, cellForItemAt indexPath: IndexPath) -> UICollectionViewCell {
         let cell = collectionView.dequeueReusableCell(withReuseIdentifier: "cell", for: indexPath) as! GroupDeviceViewCell
         let node = group.nodes[indexPath.item]
         cell.device = node
+//        let node = MeshNetworkManager.instance.localNode!
 //        cell.nameLabel.text = node.name! + "\(indexPath.item + 1)"
         return cell
     }

@@ -52,6 +52,8 @@ let StatusBarManager = UIApplication.shared.windows.first!.windowScene!.statusBa
 let iPhoneStandardSize = CGSize(width: 375.0, height: 812.0)
 /// iPad UI基准尺寸
 let iPadStandardSize = CGSize(width: 834, height: 1210)
+/// iPad Present窗口大小
+let iPadPreferredContentSize = CGSize(width: 704, height: SCREEN_HEIGHT * (kSafeAreaBottomHeight > 0 ? 0.8 : 0.921))
 
 // 屏幕适配 (x)
 func SCRXFrom(_ x : CGFloat) -> CGFloat {
@@ -108,6 +110,8 @@ let Bar_Color = RGB(102, 103, 171)
 /// 线条颜色
 let Line_Color = RGB(243, 243, 243)    //RGB(126, 126, 126, 0.1)
 let Line_Color1 = RGB(236, 236, 236)
+/// 边框颜色
+let Border_Color = RGB(236, 236, 236)
 
 /// 按钮蓝色
 let Blue_Color = RGB(0, 122, 255)

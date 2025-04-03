@@ -19,12 +19,12 @@ class ServerSelectionView: UIView {
     private var collectionView: UICollectionView!
     private var lineView: UIView!
     private var okBtn: UIButton!
-    private var regions: [ServerRegion] = ServerRegion.defalutRegions
-    private var selectRegion: ServerRegion = .chinaMainland
+    private var regions: [ServerRegion] = ServerRegion.defaultRegions
+    private var selectRegion: ServerRegion = .asiaPacific
     
     private var selectionCallback: ServerSelectionCallback?
     
-    init(selectRegion: ServerRegion = .chinaMainland, selectionCallback: ServerSelectionCallback?) {
+    init(selectRegion: ServerRegion = .asiaPacific, selectionCallback: ServerSelectionCallback?) {
         
         super.init(frame: UIScreen.main.bounds)
         self.selectionCallback = selectionCallback

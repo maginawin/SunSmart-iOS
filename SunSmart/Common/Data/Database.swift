@@ -8,6 +8,7 @@
 import Foundation
 import NordicSigMeshSDK
 import SQLite
+import struct SQLite.Expression
 
 private var jsonEncoder: JSONEncoder {
     let encoder = JSONEncoder()

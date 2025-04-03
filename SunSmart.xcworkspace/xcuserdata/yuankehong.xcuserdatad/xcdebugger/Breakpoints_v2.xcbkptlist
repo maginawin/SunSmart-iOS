@@ -34,188 +34,6 @@
             endingLineNumber = "293"
             landmarkName = "send(_:from:to:withTtl:)"
             landmarkType = "7">
-            <Locations>
-               <Location
-                  uuid = "0596C622-531C-43B0-8D20-8C03135DC9A7 - 81b64ea755f7b15a"
-                  shouldBeEnabled = "Yes"
-                  ignoreCount = "0"
-                  continueAfterRunningActions = "No"
-                  symbolName = "(1) suspend resume partial function for NordicSigMeshSDK.NetworkManager.send(_: NordicSigMeshSDK.UnacknowledgedConfigMessage, from: NordicSigMeshSDK.Element, to: Swift.UInt16, withTtl: Swift.Optional&lt;Swift.UInt8&gt;) async throws -&gt; ()"
-                  moduleName = "SunSmart"
-                  usesParentBreakpointCondition = "Yes"
-                  urlString = "file:///Users/yuankehong/Library/Developer/Xcode/DerivedData/SunSmart-bsknqvobukouwgfvklwtoruhrcgz/SourcePackages/checkouts/nordic-sig-mesh-sdk/Sources/NordicSigMeshSDK/nRFMeshProvision/Layers/NetworkManager.swift"
-                  startingColumnNumber = "9223372036854775807"
-                  endingColumnNumber = "9223372036854775807"
-                  startingLineNumber = "293"
-                  endingLineNumber = "293"
-                  offsetFromSymbolStart = "452">
-               </Location>
-               <Location
-                  uuid = "0596C622-531C-43B0-8D20-8C03135DC9A7 - 736fbcbbe14d2cc"
-                  shouldBeEnabled = "Yes"
-                  ignoreCount = "0"
-                  continueAfterRunningActions = "No"
-                  symbolName = "(2) await resume partial function for NordicSigMeshSDK.NetworkManager.send(_: NordicSigMeshSDK.UnacknowledgedConfigMessage, from: NordicSigMeshSDK.Element, to: Swift.UInt16, withTtl: Swift.Optional&lt;Swift.UInt8&gt;) async throws -&gt; ()"
-                  moduleName = "SunSmart"
-                  usesParentBreakpointCondition = "Yes"
-                  urlString = "file:///Users/yuankehong/Library/Developer/Xcode/DerivedData/SunSmart-bsknqvobukouwgfvklwtoruhrcgz/SourcePackages/checkouts/nordic-sig-mesh-sdk/Sources/NordicSigMeshSDK/nRFMeshProvision/Layers/NetworkManager.swift"
-                  startingColumnNumber = "9223372036854775807"
-                  endingColumnNumber = "9223372036854775807"
-                  startingLineNumber = "293"
-                  endingLineNumber = "293"
-                  offsetFromSymbolStart = "44">
-               </Location>
-               <Location
-                  uuid = "0596C622-531C-43B0-8D20-8C03135DC9A7 - 32ed6f25ca9af758"
-                  shouldBeEnabled = "Yes"
-                  ignoreCount = "0"
-                  continueAfterRunningActions = "No"
-                  symbolName = "(3) suspend resume partial function for NordicSigMeshSDK.NetworkManager.send(_: NordicSigMeshSDK.UnacknowledgedConfigMessage, from: NordicSigMeshSDK.Element, to: Swift.UInt16, withTtl: Swift.Optional&lt;Swift.UInt8&gt;) async throws -&gt; ()"
-                  moduleName = "SunSmart"
-                  usesParentBreakpointCondition = "Yes"
-                  urlString = "file:///Users/yuankehong/Library/Developer/Xcode/DerivedData/SunSmart-bsknqvobukouwgfvklwtoruhrcgz/SourcePackages/checkouts/nordic-sig-mesh-sdk/Sources/NordicSigMeshSDK/nRFMeshProvision/Layers/NetworkManager.swift"
-                  startingColumnNumber = "9223372036854775807"
-                  endingColumnNumber = "9223372036854775807"
-                  startingLineNumber = "293"
-                  endingLineNumber = "293"
-                  offsetFromSymbolStart = "124">
-               </Location>
-               <Location
-                  uuid = "0596C622-531C-43B0-8D20-8C03135DC9A7 - fb4effe48a0b965f"
-                  shouldBeEnabled = "Yes"
-                  ignoreCount = "0"
-                  continueAfterRunningActions = "No"
-                  symbolName = "(4) suspend resume partial function for NordicSigMeshSDK.NetworkManager.send(_: NordicSigMeshSDK.UnacknowledgedConfigMessage, from: NordicSigMeshSDK.Element, to: Swift.UInt16, withTtl: Swift.Optional&lt;Swift.UInt8&gt;) async throws -&gt; ()"
-                  moduleName = "SunSmart"
-                  usesParentBreakpointCondition = "Yes"
-                  urlString = "file:///Users/yuankehong/Library/Developer/Xcode/DerivedData/SunSmart-bsknqvobukouwgfvklwtoruhrcgz/SourcePackages/checkouts/nordic-sig-mesh-sdk/Sources/NordicSigMeshSDK/nRFMeshProvision/Layers/NetworkManager.swift"
-                  startingColumnNumber = "9223372036854775807"
-                  endingColumnNumber = "9223372036854775807"
-                  startingLineNumber = "293"
-                  endingLineNumber = "293"
-                  offsetFromSymbolStart = "152">
-               </Location>
-               <Location
-                  uuid = "0596C622-531C-43B0-8D20-8C03135DC9A7 - 4a8b15a4a3886666"
-                  shouldBeEnabled = "Yes"
-                  ignoreCount = "0"
-                  continueAfterRunningActions = "No"
-                  symbolName = "closure #1 () async throws -&gt; () in NordicSigMeshSDK.NetworkManager.send(_: NordicSigMeshSDK.UnacknowledgedConfigMessage, from: NordicSigMeshSDK.Element, to: Swift.UInt16, withTtl: Swift.Optional&lt;Swift.UInt8&gt;) async throws -&gt; ()"
-                  moduleName = "SunSmart"
-                  usesParentBreakpointCondition = "Yes"
-                  urlString = "file:///Users/yuankehong/Library/Developer/Xcode/DerivedData/SunSmart-bsknqvobukouwgfvklwtoruhrcgz/SourcePackages/checkouts/nordic-sig-mesh-sdk/Sources/NordicSigMeshSDK/nRFMeshProvision/Layers/NetworkManager.swift"
-                  startingColumnNumber = "9223372036854775807"
-                  endingColumnNumber = "9223372036854775807"
-                  startingLineNumber = "293"
-                  endingLineNumber = "293"
-                  offsetFromSymbolStart = "300">
-               </Location>
-               <Location
-                  uuid = "0596C622-531C-43B0-8D20-8C03135DC9A7 - 626c36e3e970be8d"
-                  shouldBeEnabled = "Yes"
-                  ignoreCount = "0"
-                  continueAfterRunningActions = "No"
-                  symbolName = "(1) suspend resume partial function for closure #1 () async throws -&gt; () in NordicSigMeshSDK.NetworkManager.send(_: NordicSigMeshSDK.UnacknowledgedConfigMessage, from: NordicSigMeshSDK.Element, to: Swift.UInt16, withTtl: Swift.Optional&lt;Swift.UInt8&gt;) async throws -&gt; ()"
-                  moduleName = "SunSmart"
-                  usesParentBreakpointCondition = "Yes"
-                  urlString = "file:///Users/yuankehong/Library/Developer/Xcode/DerivedData/SunSmart-bsknqvobukouwgfvklwtoruhrcgz/SourcePackages/checkouts/nordic-sig-mesh-sdk/Sources/NordicSigMeshSDK/nRFMeshProvision/Layers/NetworkManager.swift"
-                  startingColumnNumber = "9223372036854775807"
-                  endingColumnNumber = "9223372036854775807"
-                  startingLineNumber = "293"
-                  endingLineNumber = "293"
-                  offsetFromSymbolStart = "148">
-               </Location>
-               <Location
-                  uuid = "0596C622-531C-43B0-8D20-8C03135DC9A7 - 81b64ea755f7b15a"
-                  shouldBeEnabled = "Yes"
-                  ignoreCount = "0"
-                  continueAfterRunningActions = "No"
-                  symbolName = "(1) suspend resume partial function for NordicSigMeshSDK.NetworkManager.send(_: NordicSigMeshSDK.UnacknowledgedConfigMessage, from: NordicSigMeshSDK.Element, to: Swift.UInt16, withTtl: Swift.Optional&lt;Swift.UInt8&gt;) async throws -&gt; ()"
-                  moduleName = "SunSmart"
-                  usesParentBreakpointCondition = "Yes"
-                  urlString = "file:///Users/yuankehong/Library/Developer/Xcode/DerivedData/SunSmart-bsknqvobukouwgfvklwtoruhrcgz/SourcePackages/checkouts/nordic-sig-mesh-sdk/Sources/NordicSigMeshSDK/nRFMeshProvision/Layers/NetworkManager.swift"
-                  startingColumnNumber = "9223372036854775807"
-                  endingColumnNumber = "9223372036854775807"
-                  startingLineNumber = "293"
-                  endingLineNumber = "293"
-                  offsetFromSymbolStart = "507">
-               </Location>
-               <Location
-                  uuid = "0596C622-531C-43B0-8D20-8C03135DC9A7 - 736fbcbbe14d2cc"
-                  shouldBeEnabled = "Yes"
-                  ignoreCount = "0"
-                  continueAfterRunningActions = "No"
-                  symbolName = "(2) await resume partial function for NordicSigMeshSDK.NetworkManager.send(_: NordicSigMeshSDK.UnacknowledgedConfigMessage, from: NordicSigMeshSDK.Element, to: Swift.UInt16, withTtl: Swift.Optional&lt;Swift.UInt8&gt;) async throws -&gt; ()"
-                  moduleName = "SunSmart"
-                  usesParentBreakpointCondition = "Yes"
-                  urlString = "file:///Users/yuankehong/Library/Developer/Xcode/DerivedData/SunSmart-bsknqvobukouwgfvklwtoruhrcgz/SourcePackages/checkouts/nordic-sig-mesh-sdk/Sources/NordicSigMeshSDK/nRFMeshProvision/Layers/NetworkManager.swift"
-                  startingColumnNumber = "9223372036854775807"
-                  endingColumnNumber = "9223372036854775807"
-                  startingLineNumber = "293"
-                  endingLineNumber = "293"
-                  offsetFromSymbolStart = "47">
-               </Location>
-               <Location
-                  uuid = "0596C622-531C-43B0-8D20-8C03135DC9A7 - 32ed6f25ca9af758"
-                  shouldBeEnabled = "Yes"
-                  ignoreCount = "0"
-                  continueAfterRunningActions = "No"
-                  symbolName = "(3) suspend resume partial function for NordicSigMeshSDK.NetworkManager.send(_: NordicSigMeshSDK.UnacknowledgedConfigMessage, from: NordicSigMeshSDK.Element, to: Swift.UInt16, withTtl: Swift.Optional&lt;Swift.UInt8&gt;) async throws -&gt; ()"
-                  moduleName = "SunSmart"
-                  usesParentBreakpointCondition = "Yes"
-                  urlString = "file:///Users/yuankehong/Library/Developer/Xcode/DerivedData/SunSmart-bsknqvobukouwgfvklwtoruhrcgz/SourcePackages/checkouts/nordic-sig-mesh-sdk/Sources/NordicSigMeshSDK/nRFMeshProvision/Layers/NetworkManager.swift"
-                  startingColumnNumber = "9223372036854775807"
-                  endingColumnNumber = "9223372036854775807"
-                  startingLineNumber = "293"
-                  endingLineNumber = "293"
-                  offsetFromSymbolStart = "180">
-               </Location>
-               <Location
-                  uuid = "0596C622-531C-43B0-8D20-8C03135DC9A7 - fb4effe48a0b965f"
-                  shouldBeEnabled = "Yes"
-                  ignoreCount = "0"
-                  continueAfterRunningActions = "No"
-                  symbolName = "(4) suspend resume partial function for NordicSigMeshSDK.NetworkManager.send(_: NordicSigMeshSDK.UnacknowledgedConfigMessage, from: NordicSigMeshSDK.Element, to: Swift.UInt16, withTtl: Swift.Optional&lt;Swift.UInt8&gt;) async throws -&gt; ()"
-                  moduleName = "SunSmart"
-                  usesParentBreakpointCondition = "Yes"
-                  urlString = "file:///Users/yuankehong/Library/Developer/Xcode/DerivedData/SunSmart-bsknqvobukouwgfvklwtoruhrcgz/SourcePackages/checkouts/nordic-sig-mesh-sdk/Sources/NordicSigMeshSDK/nRFMeshProvision/Layers/NetworkManager.swift"
-                  startingColumnNumber = "9223372036854775807"
-                  endingColumnNumber = "9223372036854775807"
-                  startingLineNumber = "293"
-                  endingLineNumber = "293"
-                  offsetFromSymbolStart = "185">
-               </Location>
-               <Location
-                  uuid = "0596C622-531C-43B0-8D20-8C03135DC9A7 - 4a8b15a4a3886666"
-                  shouldBeEnabled = "Yes"
-                  ignoreCount = "0"
-                  continueAfterRunningActions = "No"
-                  symbolName = "closure #1 () async throws -&gt; () in NordicSigMeshSDK.NetworkManager.send(_: NordicSigMeshSDK.UnacknowledgedConfigMessage, from: NordicSigMeshSDK.Element, to: Swift.UInt16, withTtl: Swift.Optional&lt;Swift.UInt8&gt;) async throws -&gt; ()"
-                  moduleName = "SunSmart"
-                  usesParentBreakpointCondition = "Yes"
-                  urlString = "file:///Users/yuankehong/Library/Developer/Xcode/DerivedData/SunSmart-bsknqvobukouwgfvklwtoruhrcgz/SourcePackages/checkouts/nordic-sig-mesh-sdk/Sources/NordicSigMeshSDK/nRFMeshProvision/Layers/NetworkManager.swift"
-                  startingColumnNumber = "9223372036854775807"
-                  endingColumnNumber = "9223372036854775807"
-                  startingLineNumber = "293"
-                  endingLineNumber = "293"
-                  offsetFromSymbolStart = "354">
-               </Location>
-               <Location
-                  uuid = "0596C622-531C-43B0-8D20-8C03135DC9A7 - 626c36e3e970be8d"
-                  shouldBeEnabled = "Yes"
-                  ignoreCount = "0"
-                  continueAfterRunningActions = "No"
-                  symbolName = "(1) suspend resume partial function for closure #1 () async throws -&gt; () in NordicSigMeshSDK.NetworkManager.send(_: NordicSigMeshSDK.UnacknowledgedConfigMessage, from: NordicSigMeshSDK.Element, to: Swift.UInt16, withTtl: Swift.Optional&lt;Swift.UInt8&gt;) async throws -&gt; ()"
-                  moduleName = "SunSmart"
-                  usesParentBreakpointCondition = "Yes"
-                  urlString = "file:///Users/yuankehong/Library/Developer/Xcode/DerivedData/SunSmart-bsknqvobukouwgfvklwtoruhrcgz/SourcePackages/checkouts/nordic-sig-mesh-sdk/Sources/NordicSigMeshSDK/nRFMeshProvision/Layers/NetworkManager.swift"
-                  startingColumnNumber = "9223372036854775807"
-                  endingColumnNumber = "9223372036854775807"
-                  startingLineNumber = "293"
-                  endingLineNumber = "293"
-                  offsetFromSymbolStart = "179">
-               </Location>
-            </Locations>
          </BreakpointContent>
       </BreakpointProxy>
       <BreakpointProxy
@@ -232,38 +50,6 @@
             endingLineNumber = "120"
             landmarkName = "createStubFunction(_:forTarget:withCompletion:endpoint:plugins:request:)"
             landmarkType = "7">
-            <Locations>
-               <Location
-                  uuid = "401FE661-8BE5-4FBC-B3D6-5C597F0A6A88 - 8e594425a97fea7f"
-                  shouldBeEnabled = "Yes"
-                  ignoreCount = "0"
-                  continueAfterRunningActions = "No"
-                  symbolName = "closure #1 (Moya.Response) -&gt; Swift.Result&lt;Moya.Response, Moya.MoyaError&gt; in closure #1 () -&gt; () in Moya.MoyaProvider.createStubFunction(_: Moya.CancellableToken, forTarget: &#x3c4;_0_0, withCompletion: (Swift.Result&lt;Moya.Response, Moya.MoyaError&gt;) -&gt; (), endpoint: Moya.Endpoint, plugins: Swift.Array&lt;Moya.PluginType&gt;, request: Foundation.URLRequest) -&gt; () -&gt; ()"
-                  moduleName = "Moya"
-                  usesParentBreakpointCondition = "Yes"
-                  urlString = "file:///Users/yuankehong/Desktop/SunSmart/Pods/Moya/Sources/Moya/MoyaProvider+Internal.swift"
-                  startingColumnNumber = "9223372036854775807"
-                  endingColumnNumber = "9223372036854775807"
-                  startingLineNumber = "120"
-                  endingLineNumber = "120"
-                  offsetFromSymbolStart = "468">
-               </Location>
-               <Location
-                  uuid = "401FE661-8BE5-4FBC-B3D6-5C597F0A6A88 - 8e594425a97fea7f"
-                  shouldBeEnabled = "Yes"
-                  ignoreCount = "0"
-                  continueAfterRunningActions = "No"
-                  symbolName = "closure #1 (Moya.Response) -&gt; Swift.Result&lt;Moya.Response, Moya.MoyaError&gt; in closure #1 () -&gt; () in Moya.MoyaProvider.createStubFunction(_: Moya.CancellableToken, forTarget: &#x3c4;_0_0, withCompletion: (Swift.Result&lt;Moya.Response, Moya.MoyaError&gt;) -&gt; (), endpoint: Moya.Endpoint, plugins: Swift.Array&lt;Moya.PluginType&gt;, request: Foundation.URLRequest) -&gt; () -&gt; ()"
-                  moduleName = "Moya"
-                  usesParentBreakpointCondition = "Yes"
-                  urlString = "file:///Users/yuankehong/Desktop/SunSmart/Pods/Moya/Sources/Moya/MoyaProvider+Internal.swift"
-                  startingColumnNumber = "9223372036854775807"
-                  endingColumnNumber = "9223372036854775807"
-                  startingLineNumber = "120"
-                  endingLineNumber = "120"
-                  offsetFromSymbolStart = "502">
-               </Location>
-            </Locations>
          </BreakpointContent>
       </BreakpointProxy>
       <BreakpointProxy
@@ -280,38 +66,6 @@
             endingLineNumber = "94"
             landmarkName = "urlRequest()"
             landmarkType = "7">
-            <Locations>
-               <Location
-                  uuid = "49C9BE8C-D974-429C-A69C-0DD29BB0753A - d0ce6a0c650259c7"
-                  shouldBeEnabled = "Yes"
-                  ignoreCount = "0"
-                  continueAfterRunningActions = "No"
-                  symbolName = "Moya.Endpoint.urlRequest() throws -&gt; Foundation.URLRequest"
-                  moduleName = "Moya"
-                  usesParentBreakpointCondition = "Yes"
-                  urlString = "file:///Users/yuankehong/Desktop/SunSmart/Pods/Moya/Sources/Moya/Endpoint.swift"
-                  startingColumnNumber = "9223372036854775807"
-                  endingColumnNumber = "9223372036854775807"
-                  startingLineNumber = "94"
-                  endingLineNumber = "94"
-                  offsetFromSymbolStart = "1208">
-               </Location>
-               <Location
-                  uuid = "49C9BE8C-D974-429C-A69C-0DD29BB0753A - d0ce6a0c650259c7"
-                  shouldBeEnabled = "Yes"
-                  ignoreCount = "0"
-                  continueAfterRunningActions = "No"
-                  symbolName = "Moya.Endpoint.urlRequest() throws -&gt; Foundation.URLRequest"
-                  moduleName = "Moya"
-                  usesParentBreakpointCondition = "Yes"
-                  urlString = "file:///Users/yuankehong/Desktop/SunSmart/Pods/Moya/Sources/Moya/Endpoint.swift"
-                  startingColumnNumber = "9223372036854775807"
-                  endingColumnNumber = "9223372036854775807"
-                  startingLineNumber = "94"
-                  endingLineNumber = "94"
-                  offsetFromSymbolStart = "1389">
-               </Location>
-            </Locations>
          </BreakpointContent>
       </BreakpointProxy>
       <BreakpointProxy
@@ -328,38 +82,6 @@
             endingLineNumber = "527"
             landmarkName = "handle(_:)"
             landmarkType = "7">
-            <Locations>
-               <Location
-                  uuid = "6E4532A3-CFAD-4F94-A461-E415A35665AA - 8ed39c929761d434"
-                  shouldBeEnabled = "Yes"
-                  ignoreCount = "0"
-                  continueAfterRunningActions = "No"
-                  symbolName = "NordicSigMeshSDK.AccessLayer.handle(NordicSigMeshSDK.MeshMessage) -&gt; ()"
-                  moduleName = "SunSmart"
-                  usesParentBreakpointCondition = "Yes"
-                  urlString = "file:///Users/yuankehong/Library/Developer/Xcode/DerivedData/SunSmart-bsknqvobukouwgfvklwtoruhrcgz/SourcePackages/checkouts/nordic-sig-mesh-sdk/Sources/NordicSigMeshSDK/nRFMeshProvision/Layers/Access%20Layer/AccessLayer.swift"
-                  startingColumnNumber = "9223372036854775807"
-                  endingColumnNumber = "9223372036854775807"
-                  startingLineNumber = "527"
-                  endingLineNumber = "527"
-                  offsetFromSymbolStart = "1744">
-               </Location>
-               <Location
-                  uuid = "6E4532A3-CFAD-4F94-A461-E415A35665AA - 8ed39c929761d434"
-                  shouldBeEnabled = "Yes"
-                  ignoreCount = "0"
-                  continueAfterRunningActions = "No"
-                  symbolName = "NordicSigMeshSDK.AccessLayer.handle(NordicSigMeshSDK.MeshMessage) -&gt; ()"
-                  moduleName = "SunSmart"
-                  usesParentBreakpointCondition = "Yes"
-                  urlString = "file:///Users/yuankehong/Library/Developer/Xcode/DerivedData/SunSmart-bsknqvobukouwgfvklwtoruhrcgz/SourcePackages/checkouts/nordic-sig-mesh-sdk/Sources/NordicSigMeshSDK/nRFMeshProvision/Layers/Access%20Layer/AccessLayer.swift"
-                  startingColumnNumber = "9223372036854775807"
-                  endingColumnNumber = "9223372036854775807"
-                  startingLineNumber = "527"
-                  endingLineNumber = "527"
-                  offsetFromSymbolStart = "2023">
-               </Location>
-            </Locations>
          </BreakpointContent>
       </BreakpointProxy>
       <BreakpointProxy
@@ -376,38 +98,6 @@
             endingLineNumber = "253"
             landmarkName = "send(_:from:to:withTtl:completion:)"
             landmarkType = "7">
-            <Locations>
-               <Location
-                  uuid = "BB27AC48-5B0F-430B-AF82-71AE4A9AD18E - 1ee6c10cf4188222"
-                  shouldBeEnabled = "Yes"
-                  ignoreCount = "0"
-                  continueAfterRunningActions = "No"
-                  symbolName = "NordicSigMeshSDK.MeshNetworkManager.send(_: NordicSigMeshSDK.AcknowledgedMeshMessage, from: Swift.Optional&lt;NordicSigMeshSDK.Element&gt;, to: NordicSigMeshSDK.Model, withTtl: Swift.Optional&lt;Swift.UInt8&gt;, completion: Swift.Optional&lt;(Swift.Result&lt;NordicSigMeshSDK.MeshResponse, Swift.Error&gt;) -&gt; ()&gt;) throws -&gt; NordicSigMeshSDK.MessageHandle"
-                  moduleName = "SunSmart"
-                  usesParentBreakpointCondition = "Yes"
-                  urlString = "file:///Users/yuankehong/Library/Developer/Xcode/DerivedData/SunSmart-bsknqvobukouwgfvklwtoruhrcgz/SourcePackages/checkouts/nordic-sig-mesh-sdk/Sources/NordicSigMeshSDK/nRFMeshProvision/MeshNetworkManager+Callbacks.swift"
-                  startingColumnNumber = "9223372036854775807"
-                  endingColumnNumber = "9223372036854775807"
-                  startingLineNumber = "253"
-                  endingLineNumber = "253"
-                  offsetFromSymbolStart = "3888">
-               </Location>
-               <Location
-                  uuid = "BB27AC48-5B0F-430B-AF82-71AE4A9AD18E - 1ee6c10cf4188222"
-                  shouldBeEnabled = "Yes"
-                  ignoreCount = "0"
-                  continueAfterRunningActions = "No"
-                  symbolName = "NordicSigMeshSDK.MeshNetworkManager.send(_: NordicSigMeshSDK.AcknowledgedMeshMessage, from: Swift.Optional&lt;NordicSigMeshSDK.Element&gt;, to: NordicSigMeshSDK.Model, withTtl: Swift.Optional&lt;Swift.UInt8&gt;, completion: Swift.Optional&lt;(Swift.Result&lt;NordicSigMeshSDK.MeshResponse, Swift.Error&gt;) -&gt; ()&gt;) throws -&gt; NordicSigMeshSDK.MessageHandle"
-                  moduleName = "SunSmart"
-                  usesParentBreakpointCondition = "Yes"
-                  urlString = "file:///Users/yuankehong/Library/Developer/Xcode/DerivedData/SunSmart-bsknqvobukouwgfvklwtoruhrcgz/SourcePackages/checkouts/nordic-sig-mesh-sdk/Sources/NordicSigMeshSDK/nRFMeshProvision/MeshNetworkManager+Callbacks.swift"
-                  startingColumnNumber = "9223372036854775807"
-                  endingColumnNumber = "9223372036854775807"
-                  startingLineNumber = "253"
-                  endingLineNumber = "253"
-                  offsetFromSymbolStart = "4705">
-               </Location>
-            </Locations>
          </BreakpointContent>
       </BreakpointProxy>
       <BreakpointProxy
@@ -424,38 +114,6 @@
             endingLineNumber = "367"
             landmarkName = "send(_:to:withTtl:completion:)"
             landmarkType = "7">
-            <Locations>
-               <Location
-                  uuid = "32A80034-AEE7-4DEE-9082-9DDA79E816B8 - 12f6fd49a6dde2ca"
-                  shouldBeEnabled = "Yes"
-                  ignoreCount = "0"
-                  continueAfterRunningActions = "No"
-                  symbolName = "NordicSigMeshSDK.MeshNetworkManager.send(_: NordicSigMeshSDK.UnacknowledgedConfigMessage, to: Swift.UInt16, withTtl: Swift.Optional&lt;Swift.UInt8&gt;, completion: Swift.Optional&lt;(Swift.Result&lt;(), Swift.Error&gt;) -&gt; ()&gt;) throws -&gt; NordicSigMeshSDK.MessageHandle"
-                  moduleName = "SunSmart"
-                  usesParentBreakpointCondition = "Yes"
-                  urlString = "file:///Users/yuankehong/Library/Developer/Xcode/DerivedData/SunSmart-bsknqvobukouwgfvklwtoruhrcgz/SourcePackages/checkouts/nordic-sig-mesh-sdk/Sources/NordicSigMeshSDK/nRFMeshProvision/MeshNetworkManager+Callbacks.swift"
-                  startingColumnNumber = "9223372036854775807"
-                  endingColumnNumber = "9223372036854775807"
-                  startingLineNumber = "367"
-                  endingLineNumber = "367"
-                  offsetFromSymbolStart = "3960">
-               </Location>
-               <Location
-                  uuid = "32A80034-AEE7-4DEE-9082-9DDA79E816B8 - 12f6fd49a6dde2ca"
-                  shouldBeEnabled = "Yes"
-                  ignoreCount = "0"
-                  continueAfterRunningActions = "No"
-                  symbolName = "NordicSigMeshSDK.MeshNetworkManager.send(_: NordicSigMeshSDK.UnacknowledgedConfigMessage, to: Swift.UInt16, withTtl: Swift.Optional&lt;Swift.UInt8&gt;, completion: Swift.Optional&lt;(Swift.Result&lt;(), Swift.Error&gt;) -&gt; ()&gt;) throws -&gt; NordicSigMeshSDK.MessageHandle"
-                  moduleName = "SunSmart"
-                  usesParentBreakpointCondition = "Yes"
-                  urlString = "file:///Users/yuankehong/Library/Developer/Xcode/DerivedData/SunSmart-bsknqvobukouwgfvklwtoruhrcgz/SourcePackages/checkouts/nordic-sig-mesh-sdk/Sources/NordicSigMeshSDK/nRFMeshProvision/MeshNetworkManager+Callbacks.swift"
-                  startingColumnNumber = "9223372036854775807"
-                  endingColumnNumber = "9223372036854775807"
-                  startingLineNumber = "367"
-                  endingLineNumber = "367"
-                  offsetFromSymbolStart = "4833">
-               </Location>
-            </Locations>
          </BreakpointContent>
       </BreakpointProxy>
       <BreakpointProxy
@@ -471,54 +129,6 @@
             startingLineNumber = "570"
             endingLineNumber = "570"
             landmarkName = "sendToLocalNode(_:completion:)"
-            landmarkType = "7">
-            <Locations>
-               <Location
-                  uuid = "973C73C5-4B21-4433-8B36-C69A5E6FA048 - a2deaa9f79ff8c11"
-                  shouldBeEnabled = "Yes"
-                  ignoreCount = "0"
-                  continueAfterRunningActions = "No"
-                  symbolName = "NordicSigMeshSDK.MeshNetworkManager.sendToLocalNode(_: NordicSigMeshSDK.AcknowledgedConfigMessage, completion: Swift.Optional&lt;(Swift.Result&lt;NordicSigMeshSDK.ConfigResponse, Swift.Error&gt;) -&gt; ()&gt;) throws -&gt; NordicSigMeshSDK.MessageHandle"
-                  moduleName = "SunSmart"
-                  usesParentBreakpointCondition = "Yes"
-                  urlString = "file:///Users/yuankehong/Library/Developer/Xcode/DerivedData/SunSmart-bsknqvobukouwgfvklwtoruhrcgz/SourcePackages/checkouts/nordic-sig-mesh-sdk/Sources/NordicSigMeshSDK/nRFMeshProvision/MeshNetworkManager+Callbacks.swift"
-                  startingColumnNumber = "9223372036854775807"
-                  endingColumnNumber = "9223372036854775807"
-                  startingLineNumber = "570"
-                  endingLineNumber = "570"
-                  offsetFromSymbolStart = "800">
-               </Location>
-               <Location
-                  uuid = "973C73C5-4B21-4433-8B36-C69A5E6FA048 - a2deaa9f79ff8c11"
-                  shouldBeEnabled = "Yes"
-                  ignoreCount = "0"
-                  continueAfterRunningActions = "No"
-                  symbolName = "NordicSigMeshSDK.MeshNetworkManager.sendToLocalNode(_: NordicSigMeshSDK.AcknowledgedConfigMessage, completion: Swift.Optional&lt;(Swift.Result&lt;NordicSigMeshSDK.ConfigResponse, Swift.Error&gt;) -&gt; ()&gt;) throws -&gt; NordicSigMeshSDK.MessageHandle"
-                  moduleName = "SunSmart"
-                  usesParentBreakpointCondition = "Yes"
-                  urlString = "file:///Users/yuankehong/Library/Developer/Xcode/DerivedData/SunSmart-bsknqvobukouwgfvklwtoruhrcgz/SourcePackages/checkouts/nordic-sig-mesh-sdk/Sources/NordicSigMeshSDK/nRFMeshProvision/MeshNetworkManager+Callbacks.swift"
-                  startingColumnNumber = "9223372036854775807"
-                  endingColumnNumber = "9223372036854775807"
-                  startingLineNumber = "570"
-                  endingLineNumber = "570"
-                  offsetFromSymbolStart = "987">
-               </Location>
-            </Locations>
-         </BreakpointContent>
-      </BreakpointProxy>
-      <BreakpointProxy
-         BreakpointExtensionID = "Xcode.Breakpoint.FileBreakpoint">
-         <BreakpointContent
-            uuid = "1282182C-FED9-4F56-8CD2-83643E368F7B"
-            shouldBeEnabled = "Yes"
-            ignoreCount = "0"
-            continueAfterRunningActions = "No"
-            filePath = "../../Library/Developer/Xcode/DerivedData/SunSmart-bsknqvobukouwgfvklwtoruhrcgz/SourcePackages/checkouts/nordic-sig-mesh-sdk/Sources/NordicSigMeshSDK/MeshLib/Manager/MeshFirmwareBLOBServer.swift"
-            startingColumnNumber = "9223372036854775807"
-            endingColumnNumber = "9223372036854775807"
-            startingLineNumber = "810"
-            endingLineNumber = "810"
-            landmarkName = "blobFailed(error:)"
             landmarkType = "7">
          </BreakpointContent>
       </BreakpointProxy>
@@ -541,33 +151,79 @@
       <BreakpointProxy
          BreakpointExtensionID = "Xcode.Breakpoint.FileBreakpoint">
          <BreakpointContent
-            uuid = "82519559-82C4-4B7C-AFF4-4DE8AF01791F"
+            uuid = "0DDFE583-FDFF-474F-A768-CB6A0A4D29A1"
             shouldBeEnabled = "Yes"
             ignoreCount = "0"
             continueAfterRunningActions = "No"
-            filePath = "SunSmart/Main/Device/Switches/Controller/DeviceSwitchViewController.swift"
+            filePath = "SunSmart/Main/Space/Model/SyncDevicesCellModel.swift"
             startingColumnNumber = "9223372036854775807"
             endingColumnNumber = "9223372036854775807"
-            startingLineNumber = "82"
-            endingLineNumber = "82"
-            landmarkName = "back()"
-            landmarkType = "7">
+            startingLineNumber = "493"
+            endingLineNumber = "493"
+            landmarkName = "unknown"
+            landmarkType = "0">
          </BreakpointContent>
       </BreakpointProxy>
       <BreakpointProxy
          BreakpointExtensionID = "Xcode.Breakpoint.FileBreakpoint">
          <BreakpointContent
-            uuid = "35A68967-72E8-49EC-B92F-3F859FB8D6DD"
+            uuid = "6D9022AE-33D3-494A-B3EC-91D7ED3E1EAE"
             shouldBeEnabled = "Yes"
             ignoreCount = "0"
             continueAfterRunningActions = "No"
-            filePath = "../../Library/Developer/Xcode/DerivedData/SunSmart-bsknqvobukouwgfvklwtoruhrcgz/SourcePackages/checkouts/nordic-sig-mesh-sdk/Sources/NordicSigMeshSDK/MeshLib/MeshDatabase.swift"
+            filePath = "SunSmart/Common/Extension/Device+Extension.swift"
             startingColumnNumber = "9223372036854775807"
             endingColumnNumber = "9223372036854775807"
-            startingLineNumber = "1053"
-            endingLineNumber = "1053"
-            landmarkName = "loadAll()"
+            startingLineNumber = "91"
+            endingLineNumber = "91"
+            landmarkName = "modelName"
+            landmarkType = "24">
+         </BreakpointContent>
+      </BreakpointProxy>
+      <BreakpointProxy
+         BreakpointExtensionID = "Xcode.Breakpoint.FileBreakpoint">
+         <BreakpointContent
+            uuid = "BE8F2943-1CF6-400F-B6B2-45937F042A1E"
+            shouldBeEnabled = "Yes"
+            ignoreCount = "0"
+            continueAfterRunningActions = "No"
+            filePath = "SunSmart/Main/Device/Controller/DeviceRestoreViewController.swift"
+            startingColumnNumber = "9223372036854775807"
+            endingColumnNumber = "9223372036854775807"
+            startingLineNumber = "420"
+            endingLineNumber = "420"
+            landmarkName = "addDevice(_:)"
             landmarkType = "7">
+            <Locations>
+               <Location
+                  uuid = "BE8F2943-1CF6-400F-B6B2-45937F042A1E - c71f17d73d5966a4"
+                  shouldBeEnabled = "Yes"
+                  ignoreCount = "0"
+                  continueAfterRunningActions = "No"
+                  symbolName = "closure #3 (NordicSigMeshSDK.ProvisioningDevice) -&gt; Swift.Array&lt;NordicSigMeshSDK.MeshMessageHandle&gt; in SunSmart.DeviceRestoreViewController.addDevice(SunSmart.DeviceRestoreViewController.DeviceRestoreData) -&gt; ()"
+                  moduleName = "SunSmart.debug.dylib"
+                  usesParentBreakpointCondition = "Yes"
+                  urlString = "file:///Users/yuankehong/Desktop/SunSmart/SunSmart/Main/Device/Controller/DeviceRestoreViewController.swift"
+                  startingColumnNumber = "9223372036854775807"
+                  endingColumnNumber = "9223372036854775807"
+                  startingLineNumber = "420"
+                  endingLineNumber = "420">
+               </Location>
+               <Location
+                  uuid = "BE8F2943-1CF6-400F-B6B2-45937F042A1E - c71f17d73d5966a4"
+                  shouldBeEnabled = "Yes"
+                  ignoreCount = "0"
+                  continueAfterRunningActions = "No"
+                  symbolName = "closure #3 (NordicSigMeshSDK.ProvisioningDevice) -&gt; Swift.Array&lt;NordicSigMeshSDK.MeshMessageHandle&gt; in SunSmart.DeviceRestoreViewController.addDevice(SunSmart.DeviceRestoreViewController.DeviceRestoreData) -&gt; ()"
+                  moduleName = "SunSmart.debug.dylib"
+                  usesParentBreakpointCondition = "Yes"
+                  urlString = "file:///Users/yuankehong/Desktop/SunSmart/SunSmart/Main/Device/Controller/DeviceRestoreViewController.swift"
+                  startingColumnNumber = "9223372036854775807"
+                  endingColumnNumber = "9223372036854775807"
+                  startingLineNumber = "420"
+                  endingLineNumber = "420">
+               </Location>
+            </Locations>
          </BreakpointContent>
       </BreakpointProxy>
    </Breakpoints>

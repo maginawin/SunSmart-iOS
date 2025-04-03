@@ -158,6 +158,9 @@ class TimedViewController: UIViewController {
                 self?.dismiss(animated: true)
                 self?.reloadCollectionItem(schedule: schedule)
             }
+            if isIPad {
+                vc.preferredContentSize = iPadPreferredContentSize
+            }
             self?.present(NavigationViewController(rootViewController: vc), animated: true)
         }
     }
@@ -284,6 +287,9 @@ extension TimedViewController: UICollectionViewDataSource, UICollectionViewDeleg
         let schedule = MeshNetworkManager.instance.schedules[indexPath.item]
         
         let vc = ScheduleAddViewController(space: space, schedule: schedule)
+        if isIPad {
+            vc.preferredContentSize = iPadPreferredContentSize
+        }
         present(NavigationViewController(rootViewController: vc), animated: true)
         
     }
@@ -293,9 +299,15 @@ extension TimedViewController: SpaceFunctionFooterViewDelegate {
     
     /// 点击添加回调
     func functionDidClickAdd(view: SpaceFunctionFooterView) {
-        guard MeshNetworkManager.instance.schedules.count < 16 else { return }
+        guard MeshNetworkManager.instance.schedules.count < 16 else {
+            SRAlertView(title: "notification".localizedString, message: "schedules_overrun_message".localizedString, actions: [SRAlertAction(title: "GOT_IT".localizedString)]).show()
+            return
+        }
         
         let vc = ScheduleAddViewController(space: space)
+        if isIPad {
+            vc.preferredContentSize = iPadPreferredContentSize
+        }
         present(NavigationViewController(rootViewController: vc), animated: true)
         
     }

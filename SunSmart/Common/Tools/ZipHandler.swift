@@ -55,6 +55,7 @@ class ZipHandler {
         
         let configuration = URLSessionConfiguration.default
         configuration.timeoutIntervalForRequest = 10  // 设置请求的超时时间
+        configuration.requestCachePolicy = .reloadIgnoringLocalCacheData
         let session = URLSession(configuration: configuration)
         let task = session.dataTask(with: url) { data, response, error in
             DispatchQueue.main.async {

@@ -11,7 +11,7 @@ class ServerSelectionViewController: UIViewController {
 
     private var flowLayout: UICollectionViewFlowLayout!
     private var collectionView: UICollectionView!
-    private var regions: [ServerRegion] = ServerRegion.defalutRegions
+    private var regions: [ServerRegion] = ServerRegion.defaultRegions
 //    private var selectRegion: ServerRegion = .chinaMainland
     /// 切换地区回调
     var selectRegionCallback: ((ServerRegion)->Void)?
@@ -120,67 +120,4 @@ class ServerSelectionViewCell: UICollectionViewCell {
         
     }
     
-}
-
-/// 服务器地区
-enum ServerRegion {
-    
-    static let defalutRegions: [ServerRegion] = [.chinaMainland, .northAmerica, .europe]
-    
-    var rawValue: Int {
-        switch self {
-        case .chinaMainland:
-            return 1
-        case .northAmerica:
-            return 2
-        case .europe:
-            return 3
-        }
-    }
-    
-    var data: (icon: String, name: String) {
-        switch self {
-        case .chinaMainland:
-            return ("china_map", "china_mainland".localizedString)
-        case .northAmerica:
-            return ("north_america_map", "north_america".localizedString)
-        case .europe:
-            return ("europe_map", "europe".localizedString)
-        }
-    }
-    
-    init?(rawValue: Int) {
-        switch rawValue {
-        case 1:
-            self = .chinaMainland
-        case 2:
-            self = .northAmerica
-        case 3:
-            self = .europe
-        default:
-            return nil
-        }
-    }
-    
-    init?(regionCode: String?) {
-        guard let code = regionCode else {
-            return nil
-        }
-        if String.isChina(regionCode: code) {
-            self = .chinaMainland
-        }else if String.isNorthAmerica(regionCode: code) {
-            self = .northAmerica
-        }else if String.isEurope(regionCode: code) {
-            self = .europe
-        }else {
-            return nil
-        }
-    }
-    
-    /// 中国大陆
-    case chinaMainland
-    /// 北美
-    case northAmerica
-    /// 欧洲
-    case europe
 }

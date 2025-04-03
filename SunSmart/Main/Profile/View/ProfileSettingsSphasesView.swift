@@ -215,11 +215,12 @@ class ProfileSettingsSphasesView: UIView {
                     make.left.equalTo(SCRXFrom(136))
                     make.right.equalTo(SCRXFrom(-56.7))
 //                    make.height.equalTo(chartImageView.snp.width).multipliedBy(230 / 490.0)
+                    make.height.equalTo(SCRYFrom(230))
                 }else {
                     make.left.equalTo(SCRXFrom(86))
                     make.right.equalTo(SCRXFrom(-45))
+                    make.height.equalTo(chartImageView.snp.width).multipliedBy(chartImageView.height / chartImageView.width)
                 }
-                make.height.equalTo(chartImageView.snp.width).multipliedBy(chartImageView.height / chartImageView.width)
                 make.bottom.equalTo(SCRYFrom(-68))
             }
         }
@@ -357,7 +358,8 @@ class ProfileSettingsSphasesView: UIView {
             if isIPad {
                 make.left.equalTo(SCRXFrom(146))
                 make.right.equalTo(SCRXFrom(-56.7))
-                make.height.equalTo(chartImageView.snp.width).multipliedBy(230 / 490.0)
+//                make.height.equalTo(chartImageView.snp.width).multipliedBy(230 / 490.0)
+                make.height.equalTo(SCRYFrom(230))
             }else {
                 make.left.equalTo(SCRXFrom(86))
                 make.right.equalTo(SCRXFrom(-45))
@@ -429,6 +431,8 @@ class ProfileSettingsSphasesView: UIView {
             make.centerY.equalTo(highEndTrimBtn)
         }
         
+        let levelSphaseMargin = isIPad ? SCRYFrom(7) : SCRYFrom(8)
+        
         occupancyLevelBtn = UIButton(title: "profile_occupa-ncy_level".localizedString, titleSize: 12, titleColor: Chart_Text_Color, target: self, action: #selector(occupancyLevelBtnAction))
         occupancyLevelBtn.titleLabel?.numberOfLines = 2
         occupancyLevelBtn.titleLabel?.textAlignment = .center
@@ -438,7 +442,7 @@ class ProfileSettingsSphasesView: UIView {
         addSubview(occupancyLevelBtn)
         occupancyLevelBtn.snp.makeConstraints { make in
             make.right.width.height.equalTo(highEndTrimBtn)
-            make.top.equalTo(highEndTrimBtn.snp.bottom).offset(SCRYFrom(8))
+            make.top.equalTo(highEndTrimBtn.snp.bottom).offset(levelSphaseMargin)
         }
         
         occupancyLevelLabel = UILabel(text: "1000lx", textColor: Chart_Text_Color, fontSize: 10)
@@ -457,7 +461,7 @@ class ProfileSettingsSphasesView: UIView {
         addSubview(taskLevelBtn)
         taskLevelBtn.snp.makeConstraints { make in
             make.right.width.height.equalTo(highEndTrimBtn)
-            make.top.equalTo(highEndTrimBtn.snp.bottom).offset(SCRYFrom(8))
+            make.top.equalTo(highEndTrimBtn.snp.bottom).offset(levelSphaseMargin)
         }
         
         taskLevelLabel = UILabel(text: "500lx", textColor: Chart_Text_Color, fontSize: 10)
@@ -478,7 +482,7 @@ class ProfileSettingsSphasesView: UIView {
         addSubview(vacantLevelBtn)
         vacantLevelBtn.snp.makeConstraints { make in
             make.right.width.height.equalTo(highEndTrimBtn)
-            make.top.equalTo(occupancyLevelBtn.snp.bottom).offset(SCRYFrom(8))
+            make.top.equalTo(occupancyLevelBtn.snp.bottom).offset(levelSphaseMargin)
         }
         
         vacantLevelLabel = UILabel(text: "1000lx", textColor: Chart_Text_Color, fontSize: 10)
@@ -497,7 +501,7 @@ class ProfileSettingsSphasesView: UIView {
         addSubview(autoMinLevelBtn)
         autoMinLevelBtn.snp.makeConstraints { make in
             make.right.width.height.equalTo(highEndTrimBtn)
-            make.top.equalTo(vacantLevelBtn.snp.bottom).offset(SCRYFrom(8))
+            make.top.equalTo(vacantLevelBtn.snp.bottom).offset(levelSphaseMargin)
         }
         
         autoMinLevelLabel = UILabel(text: "100%", textColor: Chart_Text_Color, fontSize: 10)
@@ -516,7 +520,7 @@ class ProfileSettingsSphasesView: UIView {
         addSubview(lowEndTrimBtn)
         lowEndTrimBtn.snp.makeConstraints { make in
             make.right.width.height.equalTo(highEndTrimBtn)
-            make.top.equalTo(autoMinLevelBtn.snp.bottom).offset(SCRYFrom(8))
+            make.top.equalTo(autoMinLevelBtn.snp.bottom).offset(levelSphaseMargin)
         }
         
         lowEndTrimLabel = UILabel(text: "0%", textColor: Chart_Text_Color, fontSize: 10)
@@ -533,7 +537,7 @@ class ProfileSettingsSphasesView: UIView {
             if isIPad {
                 make.bottom.equalTo(chartImageView).offset(SCRYFrom(-4))
             }else {
-                make.top.equalTo(lowEndTrimBtn.snp.bottom).offset(SCRYFrom(8))
+                make.top.equalTo(lowEndTrimBtn.snp.bottom).offset(levelSphaseMargin)
             }
         }
         

@@ -226,6 +226,9 @@ class DeviceSwitchesViewController: UIViewController {
                 self.collectionView.reloadItems(at: [IndexPath(item: index, section: 0)])
             }
         }
+        if isIPad {
+            vc.preferredContentSize = iPadPreferredContentSize
+        }
         present(NavigationViewController(rootViewController: vc), animated: true)
     }
     
@@ -258,6 +261,9 @@ class DeviceSwitchesViewController: UIViewController {
             let switche = MeshNetworkManager.instance.switchs[indexPath.item]
             let vc = DeviceSwitchViewController(space: self.space,switchData: switche)
             vc.editable = space.deviceOperates.contains(.edit)
+            if isIPad {
+                vc.preferredContentSize = iPadPreferredContentSize
+            }
             present(NavigationViewController(rootViewController: vc), animated: true)
         }
     }
@@ -308,6 +314,9 @@ extension DeviceSwitchesViewController: UICollectionViewDataSource, UICollection
         let switche = MeshNetworkManager.instance.switchs[indexPath.item]
         let vc = DeviceSwitchViewController(space: self.space,switchData: switche)
         vc.editable = space.deviceOperates.contains(.edit)
+        if isIPad {
+            vc.preferredContentSize = iPadPreferredContentSize
+        }
         present(NavigationViewController(rootViewController: vc), animated: true)
     }
     

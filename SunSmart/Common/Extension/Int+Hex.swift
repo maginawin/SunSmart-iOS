@@ -150,3 +150,13 @@ extension Int32 {
     }
     
 }
+
+extension Float {
+    
+    /// 精确两位小数，小数位四舍五入
+    var roundf2: Float {
+        return roundf(self * 100) / 100.0
+    }
+    
+    
+}

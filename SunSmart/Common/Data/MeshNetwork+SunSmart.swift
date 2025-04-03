@@ -963,6 +963,11 @@ extension Group {
         return nodes.contains(where: { $0.temperatureModel != nil })
     }
     
+    /// 是否需要同步
+    var needSync: Bool {
+        return nodes.contains(where: { $0.getSyncData(type: .group(self)).count > 0 })
+    }
+    
     /// 删除本地化缓存数据（只处理业务扩展数据）
     func deleteExtension() {
         guard let uuid = (self.network ?? MeshNetworkManager.instance.meshNetwork)?.uuid.uuidString else {
@@ -1156,16 +1161,19 @@ extension Scene {
         }
     }
     
+    /// 场景是否需要同步
+    var needSync: Bool {
+        info.groups.contains(where: { group in group.nodes.contains(where: { $0.getSyncData(type: .scenes(scene: self)).count > 0 })  })
+    }
+    
     /// 获取需要同步数据的组
     var needSyncGroups: [Group] {
         info.groups.filter({ group in
-            let sceneResult = group.getNeedSyncDataNodes(scene: self)
-            let isSyncScene = sceneResult.syncNodes.count > 0 || sceneResult.deleteNodes.count > 0
-            let isSyncSchedule = info.bindSchedules.contains(where: {
-                let scheduleSyncResult = group.getNeedSyncScheduleDataNodes($0)
-                return scheduleSyncResult.syncNodes.count > 0 || scheduleSyncResult.deleteNodes.count > 0
-            })
-            return isSyncSchedule || isSyncScene
+            group.nodes.contains(where: { $0.getSyncData(type: .scenes(scene: self)).count > 0 })
+            
+//            let sceneResult = group.getNeedSyncDataNodes(scene: self)
+//            let isSyncScene = sceneResult.syncNodes.count > 0 || sceneResult.deleteNodes.count > 0
+//            return isSyncScene
         })
         
     }
@@ -1698,7 +1706,7 @@ extension DeviceSwitchData {
         var syncProxy: Node?
         var deleteProxy: Node?
         
-        if let linkGroup = self.linkGroup {
+        if self.linkGroup != nil {
             var allNodes: [Node] = []
             if deleteSwitch { // 删除动能开关
                 
@@ -1840,15 +1848,56 @@ extension Node {
     
     /// 是否需要同步数据
     var needSync: Bool {
-        return !getNeedSyncGroupData().isEmpty()
+        
+        return self.getSyncData(type: .all).count > 0
+        
+//        guard self.isKeybindComplete else {
+//            return true
+//        }
+//        
+//        if !self.getNeedSyncGroupData().isEmpty() {
+//            return true
+//        }
+//        
+//        if self.getNodeSyncSchedules().count > 0 || self.getNodeNeedDeleteSchedules().count > 0 {
+//            return true
+//        }
+        
+        
+        
+//        return false
     }
+    
+  
     
     /// 获取设备需要同步组的数据
     /// - Parameter group: 传入需要加入的组，不传则当前组
     func getNeedSyncGroupData(group: Group? = nil) -> SyncData {
         
         var data = SyncData()
-        guard let group = group ?? self.group else {
+        
+        // 缓存的数据pwm阶段
+        if let restoreData = self.restoreData, self.pwmPeriod != restoreData.pwmPeriod {
+            data.pwmPeriod = restoreData.pwmPeriod
+        }
+        
+        guard let group = group ?? self.group ?? self.restoreData?.addGroup else {
+            
+            // 日程，查看是否日程选择了设备
+            if self.schedulerSetupModel != nil {
+                
+                let schedules = MeshNetworkManager.instance.schedules.filter({ $0.nodeAddresses.contains(self.primaryUnicastAddress) || $0.needDeleteNodeAddresses.contains(self.primaryUnicastAddress) })
+                
+                // 设备待删除的日程list
+                let deleteSchedules = schedules.filter({ schedule in schedule.needDeleteNodeAddresses.contains(self.primaryUnicastAddress) && self.schedulerActions.contains(where: { $0.key == schedule.id }) })
+                // 设备待同步的日程list
+               let nodeSyncSchedules = schedules.filter { schedule in
+                    schedule.nodeAddresses.contains(self.primaryUnicastAddress) && (!self.schedulerActions.contains(where: { $0.key == schedule.id }) || !self.schedulerActions.contains(where: { $0.value == schedule.schedulerEntry }))
+                }
+                data.syncSchedules = nodeSyncSchedules
+                data.deleteSchedules = deleteSchedules
+            }
+            
             return data
         }
         
@@ -1932,7 +1981,7 @@ extension Node {
             let occupancyType = groupProfile.type == .occupancy_daylight || groupProfile.type == .vacancy_daylight || groupProfile.type == .occupancy || groupProfile.type == .vacancy
             // 组内是否启用了光照传感器
             var daylightEnabled = false
-            if let daylightNode = group.info.ambientLightSensorNode, daylightNode.sensorCalibrated {
+            if let daylightNode = group.info.ambientLightSensorNode, daylightNode.sensorCalibrated || daylightNode.restoreData?.daylightCalibrationValue != nil {
                 daylightEnabled = true
             }
             if daylightType {
@@ -1954,11 +2003,17 @@ extension Node {
                     disableSensorModels.append(model)
                 }
             }
+            
             if enableSensorModels.count > 0 {
                 syncProfile.append(.sensorEnabled(sensorModels: enableSensorModels, group: group))
             }
             if disableSensorModels.count > 0 {
                 syncProfile.append(.sensorDisable(sensorModels: disableSensorModels))
+            }
+            
+            // 恢复光照校准值
+            if daylightEnabled, let value = self.restoreData?.daylightCalibrationValue, self.sunricherVendorModel != nil {
+                syncProfile.append(.daylightCalibration(value: value))
             }
             
            if self.lightLCSetupModel != nil { // 灯设备
@@ -2115,10 +2170,10 @@ extension Node {
                    // 调节速率
                    let speedValue = groupProfile.adjustSpeed
                    let regulatorData = Node.getLightRegulator(speed: speedValue)
-                   if lightLCProperty.regulatorKid == nil || lightLCProperty.regulatorKid! != regulatorData.regulatorKid ||
-                        lightLCProperty.regulatorKiu == nil || lightLCProperty.regulatorKiu! != regulatorData.regulatorKiu ||
-                        lightLCProperty.regulatorKpd == nil || lightLCProperty.regulatorKpd! != regulatorData.regulatorKpd ||
-                        lightLCProperty.regulatorKpu == nil || lightLCProperty.regulatorKpu! != regulatorData.regulatorKpu ||
+                   if lightLCProperty.regulatorKid == nil || lightLCProperty.regulatorKid!.roundf2 != regulatorData.regulatorKid.roundf2 ||
+                        lightLCProperty.regulatorKiu == nil || lightLCProperty.regulatorKiu!.roundf2 != regulatorData.regulatorKiu.roundf2 ||
+                        lightLCProperty.regulatorKpd == nil || lightLCProperty.regulatorKpd!.roundf2 != regulatorData.regulatorKpd.roundf2 ||
+                        lightLCProperty.regulatorKpu == nil || lightLCProperty.regulatorKpu!.roundf2 != regulatorData.regulatorKpu.roundf2 ||
                         lightLCProperty.regulatorAccuracy == nil || lightLCProperty.regulatorAccuracy! != regulatorData.regulatorAccuracy {
                        syncProfile.append(.adjustSpeed(speed: groupProfile.adjustSpeed))
                    }
@@ -2183,10 +2238,11 @@ extension Node {
                     syncProfile.append(.lightAutoAdujustEnabled(enabled: false))
                     //            }
                 }
-                if self.enOceanMacAddress?.count ?? 0 > 0 {
-                    if let proxySwitch = group.info.allSwitchs.first(where: { ($0.proxyNodeAddress == self.primaryUnicastAddress && $0.enOceanMacAddress == self.enOceanMacAddress) || $0.deleteProxyNodeAddress == self.primaryUnicastAddress }) {
-                        deleteSwitchProxy = proxySwitch
-                    }
+            }
+            
+            if self.enOceanMacAddress?.count ?? 0 > 0 {
+                if let proxySwitch = group.info.allSwitchs.first(where: { ($0.proxyNodeAddress == self.primaryUnicastAddress && $0.enOceanMacAddress == self.enOceanMacAddress) || $0.deleteProxyNodeAddress == self.primaryUnicastAddress }) {
+                    deleteSwitchProxy = proxySwitch
                 }
             }
         }
@@ -2203,35 +2259,65 @@ extension Node {
         return data
     }
     
+    /// 更新新设备的恢复数据
+    func updateResoreData(oldNode: Node) {
+        
+        var addToGroup: Group?
+        if let group = oldNode.group, oldNode.groupState == .inGroup {
+            addToGroup = group
+        }
+        
+        // 需要恢复的数据
+        let restoreData = NodeRestoreData(addGroupAddress: addToGroup?.address.address, pwmPeriod: oldNode.pwmPeriod)
+        
+        if let group = addToGroup {
+            // 恢复的设备之前作为组光照传感器，恢复后更新设备地址缓存到组
+            if oldNode.sensorCalibrated, let calibrationValue = oldNode.daylightCalibrationValue, group.info.ambientLightSensorNodeAddress == oldNode.primaryUnicastAddress {
+                restoreData.daylightCalibrationValue = calibrationValue
+                group.info.ambientLightSensorNodeAddress = self.primaryUnicastAddress
+                group.info.save()
+            }
+            
+            // 动能开关
+            // 如果恢复的设备之前作为动能开关代理
+            if let enOceanMacAddress = oldNode.enOceanMacAddress, let switchData = group.info.switchs.first(where: { $0.enOceanMacAddress == enOceanMacAddress && $0.proxyNodeAddress == oldNode.primaryUnicastAddress }), switchData.linkGroup != nil {
+                
+                switchData.proxyNodeAddress = self.primaryUnicastAddress
+                switchData.save()
+            }
+        }
+        
+        // 日程
+        if oldNode.schedulerActions.count > 0 {
+            let schedulers: [Schedule] = oldNode.schedulerActions.compactMap({ action in MeshNetworkManager.instance.schedules.first(where: { $0.id == action.key && action.value.isValid && $0.selectTargetType == .devices }) })
+            
+            schedulers.forEach { schedule in
+                if let index = schedule.nodeAddresses.firstIndex(of: oldNode.primaryUnicastAddress) {
+                    schedule.nodeAddresses.replaceSubrange(index...index, with: [self.primaryUnicastAddress])
+                    schedule.save()
+                }
+            }
+        }
+        
+        self.restoreData = restoreData
+        self.save()
+    }
+    
     /// 获取恢复节点需要数据
     /// - Parameter oldNode: 之前的节点
     /// - Returns: 需要发送的消息数据
-    func getResoreMessageHandles(oldNode: Node, group: Group?) -> [MeshMessageHandle] {
+    func getResoreMessageHandles(oldNode: Node) -> [MeshMessageHandle] {
         // 设置的消息数据
         var messageHandles: [MeshMessageHandle] = []
-        if let group = group {
-            
-            // 已设置设备做为组光照感应
-            if oldNode.sensorCalibrated, let calibrationValue = oldNode.daylightCalibrationValue, group.info.ambientLightSensorNodeAddress == oldNode.primaryUnicastAddress {
-                group.info.ambientLightSensorNodeAddress = self.primaryUnicastAddress
-                group.info.save()
-                self.daylightCalibrationValue = calibrationValue
-                // 设置照度校准值
-                if let vendorModel = self.sunricherVendorModel {
-                    let messageHandle = MeshMessageHandle(message: SunricherVendorSet(function: .daylightCalibrate(calibrationValue)), model: vendorModel)
-//                    messageHandle.continuous = false
-                    messageHandles.append(messageHandle)
-                }
-                // 开启光感model上报
-//                if let ambientLightSensorModel = self.ambientLightSensorModel {
-//                    let publishDaylightModelMessage = ConfigModelPublicationSet(Publish(to: group.address, using: MeshNetworkManager.instance.currentApplicationKey, usingFriendshipMaterial: false, ttl: MeshNetworkManager.instance.networkParameters.defaultTtl, period: .disabled, retransmit: .disabled), to: ambientLightSensorModel)!
-//                    messageHandles.append(MeshMessageHandle(message: publishDaylightModelMessage, address: self.primaryUnicastAddress))
-//                }
-            }
+        guard let restoreData = self.restoreData else {
+            return []
+        }
+        if let group = restoreData.addGroup {
             
             messageHandles.append(contentsOf: group.getNodeAddMessageHandles(node: self))
             
             // 动能开关
+            // 如果恢复的设备之前作为动能开关代理
             if let enOceanMacAddress = oldNode.enOceanMacAddress, let switchData = group.info.switchs.first(where: { $0.enOceanMacAddress == enOceanMacAddress && $0.proxyNodeAddress == oldNode.primaryUnicastAddress }), switchData.linkGroup != nil, let enOceanSecurityKey = switchData.enOceanSecurityKey {
                 
                 switchData.proxyNodeAddress = self.primaryUnicastAddress
@@ -2239,8 +2325,26 @@ extension Node {
                 let handles = self.getEnOceanSwitchBindMessageHandles(enOceanMacAddress: enOceanMacAddress, securityKey: enOceanSecurityKey, enabled: switchData.enabled, switchKeys: switchData.switchKeys)
                 messageHandles.append(contentsOf: handles)
             }
-            self.daylightCalibrationValue = nil
         }
+        
+        // 日程
+        if let schedulerSetupModel = self.schedulerSetupModel {
+            let setSchedules = MeshNetworkManager.instance.schedules.filter({ $0.nodeAddresses.contains(self.primaryUnicastAddress) })
+            setSchedules.forEach { schedule in
+                // 设置时区
+                if let timeModel = self.timeModel {
+                    messageHandles.append(MeshMessageHandle(message: Node.setLocalTimeMessage(), model: timeModel))
+                }
+                // 设置日程
+                messageHandles.append(MeshMessageHandle(message: SchedulerActionSet(index: UInt8(schedule.id), entry: schedule.schedulerEntry), model: schedulerSetupModel))
+            }
+        }
+        
+        if let pwmPeriod = restoreData.pwmPeriod, let vendorModel = self.sunricherVendorModel {
+            let messageHandle = MeshMessageHandle(message: SunricherVendorSet(function: .pwmPeriod(pwmPeriod)), model: vendorModel)
+            messageHandles.append(messageHandle)
+        }
+        
         return messageHandles
     }
 
@@ -2357,8 +2461,16 @@ extension Node {
             let subscriptionMessage = message as! ConfigModelSubscriptionAdd
             // 加入组
             if subscriptionMessage.address == self.group?.address.address {
+                var isSave = false
+                if self.restoreData?.addGroupAddress != nil {
+                    self.restoreData?.addGroupAddress = nil
+                    isSave = true
+                }
                 if self.groupState != .inGroup {
                     self.groupState = .inGroup
+                    isSave = true
+                }
+                if isSave {
                     self.save()
                 }
             }
@@ -2576,18 +2688,21 @@ extension Node {
             }
         case is SunricherVendorSet: // 设置自定义消息
             if let vendorMessage = message as? SunricherVendorSet {
-                if case .enOceanDelete(let macAddress) = vendorMessage.function { // 删除EnOcean按键绑定
-                    // 判断是否之前删除代理失败
-//                    if let switchData = MeshNetworkManager.instance.switchs.first(where: { ($0.proxyNodeAddress == self.primaryUnicastAddress || $0.deleteProxyNodeAddress == self.primaryUnicastAddress) }) {
-//                        if switchData.deleteProxyNodeAddress == self.primaryUnicastAddress {
-//                            switchData.deleteProxyNodeAddress = nil
-//                        }
-//                        if switchData.proxyNodeAddress == self.primaryUnicastAddress {
-//                            switchData.proxyNodeAddress = nil
-//                        }
-//                        switchData.save()
-//                    }
+                switch vendorMessage.function {
+                case .enOceanDelete(let macAddress): // 删除EnOcean按键绑定
                     deleteEnOceanSwitch(enOceanMacAddress: macAddress)
+                case .daylightCalibrate:
+                    if self.restoreData?.daylightCalibrationValue != nil {
+                        self.restoreData?.daylightCalibrationValue = nil
+                        save()
+                    }
+                case .pwmPeriod:
+                    if self.restoreData?.pwmPeriod != nil {
+                        self.restoreData?.pwmPeriod = nil
+                        save()
+                    }
+                default:
+                    break
                 }
             }
         default:
@@ -2623,10 +2738,11 @@ struct SyncData {
     var syncSwitchs: [DeviceSwitchData] = []
     /// 设备待删除的开关list
     var deleteSwitchs: [DeviceSwitchData] = []
-    
+    /// pwm阶段
+    var pwmPeriod: UInt16?
     /// 是否不需要同步
     func isEmpty() -> Bool {
-        return !(subscribeGroup || unsubscribeGroup || syncScenes.count > 0 || syncSchedules.count > 0 || deleteScenes.count > 0 || deleteSchedules.count > 0 || syncProfile.count > 0 || syncSwitchs.count > 0 || deleteSwitchs.count > 0 || syncSwitchProxy != nil || deleteSwitchProxy != nil)
+        return !(subscribeGroup || unsubscribeGroup || syncScenes.count > 0 || syncSchedules.count > 0 || deleteScenes.count > 0 || deleteSchedules.count > 0 || syncProfile.count > 0 || syncSwitchs.count > 0 || deleteSwitchs.count > 0 || syncSwitchProxy != nil || deleteSwitchProxy != nil || pwmPeriod != nil)
     }
 }
 

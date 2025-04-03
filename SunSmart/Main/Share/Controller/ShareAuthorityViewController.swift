@@ -124,6 +124,16 @@ class ShareAuthorityViewController: UIViewController {
         }
     }
     
+    override func viewWillLayoutSubviews() {
+        super.viewWillLayoutSubviews()
+        print(view.frame.size)
+    }
+    
+    override func viewDidLayoutSubviews() {
+        super.viewDidLayoutSubviews()
+        print(view.frame.size)
+    }
+    
     // MARK: - Request
     /// 获取spaces请求
     private func loadSpacesReqeust() {

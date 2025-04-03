@@ -390,7 +390,7 @@
 "adjust_speed_instruction_desc" = "Adjust speed-if there are any issues or unexpected light behavior including frequent on/off or oscillation,use adjust speed slider to adjust the controller settings.\n- Use the slider to adjust the responsiveness of daylight control.\n- If oscillations occur,position the slider to the left.\n - If daylight adjustment is too slow,position the slider to the right.";
 "adjust_speed_slow" = "Slow adjustment";
 "adjust_speed_fast" = "Fast adjustment";
-"light_sensor_minium_lux" = "Minimun %d lx required";
+"light_sensor_minium_lux" = "Minimum %d lx required";
 "show_advanced_settings" = "Show advanced settings";
 "hide_advanced_settings" = "Hide advanced settings";
 "slow" = "Slow";
@@ -503,8 +503,8 @@
 "schedule_multiple_unselect_first" = "The setting is not complete.";
 "schedule_multiple_unselect_end" = "must be set.";
 "groups_overrun_message" = "The limit of 16 groups is exceeded, please delete unnecessary ones.";
-"scenes_overrun_message" = "The limit of 16 Scenes is exceeded, please delete unnecessary ones.";
-"schedules_overrun_message" = "The limit of 16 Schedules is exceeded, please delete unnecessary ones.";
+"scenes_overrun_message" = "The limit of 16 scenes is exceeded, please delete unnecessary ones.";
+"schedules_overrun_message" = "The limit of 16 schedules is exceeded, please delete unnecessary ones.";
 "create_virtual_switch_message" = "Oops! Under development, please click × in the upper right corner to exit. The switch can be created in the group's page.";
 
 "nearby_network" = "Nearby network";
@@ -610,6 +610,7 @@
 "no_permission" = "No permission";
 "server_selection" = "Server selection";
 "china_mainland" = "China mainland";
+"asia_pacific" = "Asia Pacific";
 "north_america" = "North America";
 "europe" = "Europe";
 "server_selection_message" = "A proper server is automatically selected. If you need to replace the server, select it manually.";
@@ -708,7 +709,7 @@
 "spaces_enable_visitor_password_message" = "Are you sure to enable all visitor passwords in the space?";
 "spaces_clear_visitor_password_message" = "Are you sure to clear all visitor passwords in the space?";
 "spaces_delete_failed" = "Some spaces cannot be deleted because there are devices in the space, please remove the devices and try again.";
-"incorrect_password" = "Incorrect password ！";
+"incorrect_password!" = "Incorrect password ！";
 "space_clear_visitors_message" = "Are you sure to clear the selected visitor(s)?";
 "space_clear_visitor_message" = "Are you sure to clear the visitor?";
 "space_unbind_message" = "Are you sure to unbinding space?";
@@ -948,3 +949,28 @@
 
 "pwm_period" = "PWM Period";
 "set_pwm_period" = "Set Pwm Period";
+"device_add_search_mesh_device" = "Search and add SIG mesh devices";
+"pre-created_devices" = "Pre-created devices";
+"pre-created_devices_message" = "Lights cannot be pre-created, they can only be searched and added";
+"Restore_device_data" = "Restore device data";
+"Restore_Device_Data" = "Restore Device Data";
+"others" = "Others";
+"device_restore_empty_message" = "There is no device that needs to restore data.";
+"not_in_the_group" = "Not in the group";
+"devices_found" = "Devices found";
+"restore_selected" = "Restore Selected";
+"sync_failed" = "Sync failed";
+"sync_all" = "Sync all";
+"initialize" = "Initialize";
+"device_parameters" = "Device parameters";
+"devices_unrestored_message" = "Unrestored devices can still be restored by clicking the Sync button at the bottom of the Main page.";
+"ble_ota_reset_number" = "Number of reset device(s)：%d";
+"ble_ota_reset_message" = "Some devices have been reset after the upgrade. Please restore data or re-add the device and set it again.\nNote: After the device upgrade is complete, it takes up to 1 minute to reset and be discovered.";
+"ble_ota_reset_message_note" = "Note: After the device upgrade is complete, it takes up to 1 minute to reset and be discovered.";
+"restore_result" = "Restore Result";
+"device_search_disable_select" = "Device cannot be selected during the search";
+"incorrect_password" = "Incorrect password";
+"beta_testing_environment" = "Beta Testing Environment";
+"download_from_server" = "Download from server";
+"import_from_local" = "Import from local";
+"version" = "Version";

@@ -190,7 +190,9 @@ class SceneViewController: UIViewController {
             NotificationCenter.default.post(name: .init(spaceDataChangedNotificaitonName), object: SpaceChangeDataType.common)
             return true
         }
-
+        if isIPad {
+            vc.preferredContentSize = iPadPreferredContentSize
+        }
         let navVc = NavigationViewController(rootViewController: vc)
         present(navVc, animated: true)
     }
