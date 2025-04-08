@@ -252,8 +252,8 @@ class FirmwareDistributeUpdateStateView: UIView {
         contentView.layer.cornerRadius = SCRYFrom(20)
         addSubview(contentView)
         contentView.snp.makeConstraints { make in
-            make.left.equalTo(SCRXFrom(37))
-            make.right.equalTo(SCRXFrom(-36))
+            make.left.equalTo(isIPad ? SCRXFrom(150) : SCRXFrom(37))
+            make.right.equalTo(isIPad ? SCRXFrom(-150) : SCRXFrom(-36))
             make.centerY.equalToSuperview()
         }
         

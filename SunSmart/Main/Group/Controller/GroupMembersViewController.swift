@@ -140,6 +140,7 @@ class GroupMembersViewController: UIViewController {
         let exitNodes = group.nodes.filter({ !selectNodes.contains($0) })
         exitNodes.forEach({ $0.groupState = .exitFailure })
         let addNodes = selectNodes.filter({ !group.nodes.contains($0) })
+        addNodes.forEach({ $0.groupState = .inGroup })
         guard exitNodes.count > 0 || addNodes.count > 0 else {
             backAction()
             return

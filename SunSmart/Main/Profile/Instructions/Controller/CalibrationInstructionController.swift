@@ -86,7 +86,7 @@ class CalibrationInstructionController: UIViewController {
             make.left.equalTo(SCRXFrom(16))
             make.right.equalTo(SCRXFrom(-16))
             make.top.equalTo(SCRYFrom(22))
-            make.bottom.equalTo(SCRYFrom(-89))
+            make.bottom.equalTo(SCRYFrom(-89)).priority(.low)
 //            make.height.greaterThanOrEqualTo(500)
         }
         

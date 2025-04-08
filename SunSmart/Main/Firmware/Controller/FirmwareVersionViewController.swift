@@ -129,6 +129,7 @@ class FirmwareVersionViewController: UIViewController {
             if text.count == 4 {
                 if text == "1314" {
                     BetaTestingAlertView.hide()
+                    self?.isTesting = true
                     self?.loadCloudFirmwareRequest()
                 }else {
                     return "incorrect_password".localizedString

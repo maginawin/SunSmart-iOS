@@ -62,7 +62,13 @@ class LightSensorCalibrationView: UIView {
     /// 最小的测量值
     var minimunValue: Int = 100 {
         didSet {
-            minimunLabel.text = String(format: "light_sensor_minium_lux".localizedString, minimunValue)
+            minimunLabel.text = String(format: "light_sensor_lux_range".localizedString, minimunValue, maximunValue)
+        }
+    }
+    /// 最大测量值
+    var maximunValue: Int = 1000 {
+        didSet {
+            minimunLabel.text = String(format: "light_sensor_lux_range".localizedString, minimunValue, maximunValue)
         }
     }
     
@@ -117,7 +123,7 @@ class LightSensorCalibrationView: UIView {
     
     /// 验证测量值
     func verifyMeasuredValue() {
-        if measuredLightValue == nil || measuredLightValue! >= minimunValue {
+        if let lxValue = measuredLightValue, lxValue >= minimunValue, lxValue <= maximunValue {
             minimunLabel.textColor = Message_Color
             levelField.layer.borderColor = RGB(151, 151, 151, 0.3).cgColor
         }else {
@@ -134,7 +140,7 @@ class LightSensorCalibrationView: UIView {
             sender.layer.borderColor = RGB(151, 151, 151, 0.3).cgColor
             delegate?.view(self, measuredLightValueEditing: nil)
             luxLabel.isHidden = true
-            verifyMeasuredValue()
+//            verifyMeasuredValue()
             return
         }
       
@@ -225,7 +231,7 @@ class LightSensorCalibrationView: UIView {
             make.centerY.equalTo(levelField)
         }
         
-        minimunLabel = UILabel(text: String(format: "light_sensor_minium_lux".localizedString, 100), textColor: Message_Color, fontSize: 14, fontWeight: .light)
+        minimunLabel = UILabel(text: String(format: "light_sensor_lux_range".localizedString, minimunValue, maximunValue), textColor: Message_Color, fontSize: 14, fontWeight: .light)
         minimunLabel.sizeToFit()
         addSubview(minimunLabel)
         minimunLabel.snp.makeConstraints { make in

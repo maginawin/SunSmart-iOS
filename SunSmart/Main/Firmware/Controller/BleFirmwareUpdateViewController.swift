@@ -303,7 +303,7 @@ class BleFirmwareUpdateViewController: UIViewController {
             
             DispatchQueue.main.async {
                 NSObject.cancelPreviousPerformRequests(withTarget: self, selector: #selector(self.refreshNodesRSSIFinish), object: nil)
-                self.perform(#selector(self.refreshNodesRSSIFinish), with: nil, afterDelay: 5)
+                self.perform(#selector(self.refreshNodesRSSIFinish), with: nil, afterDelay: 6)
             }
             
             node.peripheral = data.peripheral
@@ -321,37 +321,19 @@ class BleFirmwareUpdateViewController: UIViewController {
                 node.selectedState = .disabled
             }
                 
-//            if let deviceTypeData = self.firmwareTypeDatas.first(where: { $0.productId == pid }) {
-//                deviceTypeData.nodes.append(node)
-//                if enableUpgrade {
-//                    deviceTypeData.upgradedNodes.append(node)
-//                }
-//                if deviceTypeData.isShow {
-//                    if let typeIndex = firmwareTypeDatas.firstIndex(where: { $0.productId == node.productIdentifier }),  let typeCell = self.collectionView.cellForItem(at: IndexPath(item: typeIndex, section: 0)) as? BleFirmwareTypeUpdateViewCell {
-//                        typeCell.deviceTableView.insertRows(at: [IndexPath(row: deviceTypeData.nodes.count - 1, section: 0)], with: .none)
-//                    }
-//                }
-//            }else {
-//                // 读取本地固件包
-//                let localFirmwareData = FirmwareData.load(productId: pid).first
-//                
-//                let data = FirmwareUpdateTypeData(productId: pid, targetVersion: localFirmwareData?.version, nodes: [node])
-//                data.targetVersionHash = localFirmwareData?.compositionHash
-//                data.isShow = self.showData[pid] ?? false
-//                if enableUpgrade {
-//                    data.upgradedNodes.append(node)
-//                }
-//                self.firmwareTypeDatas.append(data)
-//                self.collectionView.insertItems(at: [IndexPath(item: self.firmwareTypeDatas.count - 1, section: 0)])
-//                // 读取服务器最新固件版本
-//                if data.targetVersion != nil {
-//                    loadCloudFirmwareRequest(type: data)
-//                }
-//                
-//            }
-            if self.rssiSortTimer == nil {
-                self.startRssiSortTimer()
+            // 查找完所有设备后停止搜索
+            if !MeshNetworkManager.instance.realNodes.contains(where: { $0.rssi == nil || $0.peripheral == nil }) {
+                DispatchQueue.main.async {
+                    NSObject.cancelPreviousPerformRequests(withTarget: self, selector: #selector(self.refreshNodesRSSIFinish), object: nil)
+                    self.refreshNodesRSSIFinish()
+                }
+                devicesRssiSort()
+            }else {
+                if self.rssiSortTimer == nil {
+                    self.startRssiSortTimer()
+                }
             }
+          
             
         }, finished: nil)
         

@@ -100,7 +100,7 @@ class SyncDevicesViewController: UIViewController {
             case .group(let group, let inNodes, let outNodes):
                 
                 outNodes?.forEach({ node in
-                    let result = self.getSyncDeviceModel(group: group, node: node, exitGroup: true)
+                    let result = self.getSyncDeviceModel(group: group, node: node)
                     if let removceDevice = result.removeDevice {
                         removeSection.devices.append(removceDevice)
                     }
@@ -117,7 +117,7 @@ class SyncDevicesViewController: UIViewController {
                 })
                 
                 group.nodes.filter({ node in !(outNodes?.contains(node) ?? false) }).forEach { node in
-                    let result = self.getSyncDeviceModel(group: group, node: node, exitGroup: node.groupState == .exitFailure)
+                    let result = self.getSyncDeviceModel(group: group, node: node)
                     if let removceDevice = result.removeDevice {
                         removeSection.devices.append(removceDevice)
                     }
@@ -333,55 +333,62 @@ class SyncDevicesViewController: UIViewController {
             case .devices(let nodes):
 
                 nodes.forEach { node in
+                    let result = self.getSyncDeviceModel(group: nil, node: node)
+                    if let configurationDevice = result.configturationDevice {
+                        configurationSection.devices.append(configurationDevice)
+                    }
+                    if let removeDevice = result.removeDevice {
+                        removeSection.devices.append(removeDevice)
+                    }
                     
-                    let syncDeviceModel = SyncDevicesModel(name: node.name ?? "", address: node.primaryUnicastAddress)
-                    syncDeviceModel.imageName = node.iconName
-                    var initializeStepModel: SyncDeviceStepModel?
-                    // 是否需要初始化
-                    if !node.isKeybindComplete {
-                        let initializeTaskModel = SyncDeviceStepTaskModel(name: "initialize".localizedString, operationType: .configuration(node: node, type: .deviceInitialize))
-                        initializeStepModel = SyncDeviceStepModel(type: "initialize".localizedString, state: .none, tasks: [initializeTaskModel])
-                        initializeTaskModel.parentStepModel = initializeStepModel!
-                        initializeStepModel!.parentDeviceModel = syncDeviceModel
-                        syncDeviceModel.steps.append(initializeStepModel!)
-                    }
-                    // 是否需要同步组相关数据
-                    if let group = node.group ?? node.restoreData?.addGroup {
-                        let result = self.getSyncDeviceModel(group: group, node: node, exitGroup: node.groupState == .exitFailure)
-                        if let removceDevice = result.removeDevice {
-                            removeSection.devices.append(removceDevice)
-                        }
-                        if let configurationDevice = result.configturationDevice {
-                            configurationDevice.steps.forEach({
-                                $0.parentDeviceModel = syncDeviceModel
-                                if let relevanceStepModel = initializeStepModel {
-                                    $0.relevanceStepModels = [relevanceStepModel]
-                                }
-                            })
-                            syncDeviceModel.steps.append(contentsOf: configurationDevice.steps)
-                        }
-                    }else {
-                        var profiles: [ProfileType] = []
-                        if node.powerUpState != .default, node.powerOnOffSetupModel != nil {
-                            profiles.append(.powerOnState(state: .restore, cct: nil))
-                        }
-                        if node.lightLCProperty.manualOverrideTimeout != .max, node.sunricherVendorModel != nil {
-                            profiles.append(.manualOverrideTimeout(enabled: true, second: .max))
-                        }
-                        let taskModels = profiles.map({
-                            SyncDeviceStepTaskModel(name: $0.title, operationType: .configuration(node: node, type: .profile(type: $0)))
-                        })
-                        
-                        if taskModels.count > 0 {
-                            let step = SyncDeviceStepModel(type: "profile".localizedString, state: .none, tasks: taskModels)
-                            taskModels.forEach({ $0.parentStepModel = step })
-                            step.parentDeviceModel = syncDeviceModel
-                            if let relevanceStepModel = initializeStepModel {
-                                step.relevanceStepModels = [relevanceStepModel]
-                            }
-                            syncDeviceModel.steps.append(step)
-                        }
-                    }
+//                    let syncDeviceModel = SyncDevicesModel(name: node.name ?? "", address: node.primaryUnicastAddress)
+//                    syncDeviceModel.imageName = node.iconName
+//                    var initializeStepModel: SyncDeviceStepModel?
+//                    // 是否需要初始化
+//                    if !node.isKeybindComplete {
+//                        let initializeTaskModel = SyncDeviceStepTaskModel(name: "initialize".localizedString, operationType: .configuration(node: node, type: .deviceInitialize))
+//                        initializeStepModel = SyncDeviceStepModel(type: "initialize".localizedString, state: .none, tasks: [initializeTaskModel])
+//                        initializeTaskModel.parentStepModel = initializeStepModel!
+//                        initializeStepModel!.parentDeviceModel = syncDeviceModel
+//                        syncDeviceModel.steps.append(initializeStepModel!)
+//                    }
+//                    // 是否需要同步组相关数据
+//                    if let group = node.group ?? node.restoreData?.addGroup {
+//                        let result = self.getSyncDeviceModel(group: group, node: node, exitGroup: node.groupState == .exitFailure)
+//                        if let removceDevice = result.removeDevice {
+//                            removeSection.devices.append(removceDevice)
+//                        }
+//                        if let configurationDevice = result.configturationDevice {
+//                            configurationDevice.steps.forEach({
+//                                $0.parentDeviceModel = syncDeviceModel
+//                                if let relevanceStepModel = initializeStepModel {
+//                                    $0.relevanceStepModels = [relevanceStepModel]
+//                                }
+//                            })
+//                            syncDeviceModel.steps.append(contentsOf: configurationDevice.steps)
+//                        }
+//                    }else {
+//                        var profiles: [ProfileType] = []
+//                        if node.powerUpState != .default, node.powerOnOffSetupModel != nil {
+//                            profiles.append(.powerOnState(state: .restore, cct: nil))
+//                        }
+//                        if node.lightLCProperty.manualOverrideTimeout != .max, node.sunricherVendorModel != nil {
+//                            profiles.append(.manualOverrideTimeout(enabled: true, second: .max))
+//                        }
+//                        let taskModels = profiles.map({
+//                            SyncDeviceStepTaskModel(name: $0.title, operationType: .configuration(node: node, type: .profile(type: $0)))
+//                        })
+//                        
+//                        if taskModels.count > 0 {
+//                            let step = SyncDeviceStepModel(type: "profile".localizedString, state: .none, tasks: taskModels)
+//                            taskModels.forEach({ $0.parentStepModel = step })
+//                            step.parentDeviceModel = syncDeviceModel
+//                            if let relevanceStepModel = initializeStepModel {
+//                                step.relevanceStepModels = [relevanceStepModel]
+//                            }
+//                            syncDeviceModel.steps.append(step)
+//                        }
+//                    }
                     
 //                    let data = node.getNeedSyncGroupData(group: group)
 //                    // 需删除日程的设备
@@ -403,15 +410,15 @@ class SyncDevicesViewController: UIViewController {
                     
                     
                     // 是否需要同步设备参数
-                    if let restorePwmPeriod = node.restoreData?.pwmPeriod, node.pwmPeriod != restorePwmPeriod {
-                        let deviceParametersStepModel = SyncDeviceStepModel(type: "device_parameters".localizedString, state: .none, tasks: [])
-                        let taskModel = SyncDeviceStepTaskModel(name: "pwm_period".localizedString, operationType: .configuration(node: node, type: .deviceParameters(parameterType: .pwmPeriod(period: restorePwmPeriod))))
-                        taskModel.parentStepModel = deviceParametersStepModel
-                        syncDeviceModel.steps.append(deviceParametersStepModel)
-                    }
-                    if syncDeviceModel.steps.count > 0 {
-                        configurationSection.devices.append(syncDeviceModel)
-                    }
+//                    if let restorePwmPeriod = node.restoreData?.pwmPeriod, node.pwmPeriod != restorePwmPeriod {
+//                        let deviceParametersStepModel = SyncDeviceStepModel(type: "device_parameters".localizedString, state: .none, tasks: [])
+//                        let taskModel = SyncDeviceStepTaskModel(name: "pwm_period".localizedString, operationType: .configuration(node: node, type: .deviceParameters(parameterType: .pwmPeriod(period: restorePwmPeriod))))
+//                        taskModel.parentStepModel = deviceParametersStepModel
+//                        syncDeviceModel.steps.append(deviceParametersStepModel)
+//                    }
+//                    if syncDeviceModel.steps.count > 0 {
+//                        configurationSection.devices.append(syncDeviceModel)
+//                    }
                 }
                 
             }
@@ -447,299 +454,363 @@ class SyncDevicesViewController: UIViewController {
     ///   - node: 设备
     ///   - exitGroup: 是否退组
     /// - Returns: 需要配置的model，需要删除的model
-    private func getSyncDeviceModel(group: Group, node: Node, exitGroup: Bool = false) -> (configturationDevice: SyncDevicesModel?, removeDevice: SyncDevicesModel?) {
-        
-        /// 删除操作
-//        var deleteSteps: [SyncDeviceStepModel] = []
-        /// 同步操作
-//        var configturationSteps: [SyncDeviceStepModel] = []
-        
-        /// 添加组流程
-//        var addGroupStep: SyncDeviceStepModel?
-//        /// 删除组流程
-//        var removeGroupStep: SyncDeviceStepModel?
-//        
-//        let syncDataTypes = node.getSyncData(type: .group(group))
-//        syncDataTypes.forEach { type in
-//            switch type {
-//            case .subscribeGroup(let group):
-//                let addGroupTask = SyncDeviceStepTaskModel(name: "add_to_group".localizedString, operationType: .configuration(node: node, type: .group(group: group)))
-//                let step = SyncDeviceStepModel(type: "add_to_group".localizedString, state: .none, tasks: [addGroupTask])
-//                addGroupTask.parentStepModel = step
-//                configturationSteps.append(step)
-//             
-//            case .unsubscribeGroup(let group):
-//                let removeGroupTask = SyncDeviceStepTaskModel(name: "remove_from_group".localizedString, operationType: .delete(node: node, type: .group(group: group)))
-//                let step = SyncDeviceStepModel(type: "remove_from_group".localizedString, state: .none, tasks: [removeGroupTask])
-//                removeGroupTask.parentStepModel = step
-//                // 需要依赖之前操作完成才能退出组
-////                step.relevanceStepModels = deleteSteps
-//                deleteSteps.append(step)
-//                
-//            case .profile(let types):
-//                
-//                let syncProfileTasks = types.map({
-//                    return SyncDeviceStepTaskModel(name: $0.title, operationType: .configuration(node: node, type: .profile(type: $0)))
-//                })
-//                if syncProfileTasks.count > 0 {
-//                    let step = SyncDeviceStepModel(type: "profile".localizedString, state: .none, tasks: syncProfileTasks)
-//                    syncProfileTasks.forEach({ $0.parentStepModel = step })
-//                    configturationSteps.append(step)
-//                }
-//                
-//            case .syncScenes(let datas):
-//                
-//                let syncSceneTasks = datas.map({ (scene, sceneData) in
-//                    return SyncDeviceStepTaskModel(name: scene.name, operationType: .configuration(node: node, type: .scene(sceneId: scene.number, executeData: sceneData)))
-//                })
-//                if syncSceneTasks.count > 0 {
-//                    let step = SyncDeviceStepModel(type: "scene".localizedString, state: .none, tasks: syncSceneTasks)
-//                    syncSceneTasks.forEach({ $0.parentStepModel = step })
-//                    configturationSteps.append(step)
-//                }
-//                
-//            case .deleteScenes(let scenes):
-//                
-//                let deleteSceneTasks = scenes.map({
-//                    return SyncDeviceStepTaskModel(name: $0.name, operationType: .delete(node: node, type: .scene(sceneId: $0.number, executeData: nil)))
-//                })
-//                if deleteSceneTasks.count > 0 {
-//                    let step = SyncDeviceStepModel(type: "remove_scene".localizedString, state: .none, tasks: deleteSceneTasks)
-//                    deleteSceneTasks.forEach({ $0.parentStepModel = step })
-//                    deleteSteps.append(step)
-//                }
-//            case .syncSchedules(let schedules):
-//                
-//                let syncScheduleTasks = schedules.map({
-//                    return SyncDeviceStepTaskModel(name: $0.name, operationType: .configuration(node: node, type: .schedule(schedule: $0)))
-//                })
-//                if syncScheduleTasks.count > 0 {
-//                    let step = SyncDeviceStepModel(type: "schedule".localizedString, state: .none, tasks: syncScheduleTasks)
-//                    syncSceneTasks.forEach({ $0.parentStepModel = step })
-//                    configturationSteps.append(step)
-//                }
-//                
-//            case .deleteSchedules(let schedules):
-//                let deleteScheduleTasks = schedules.map({
-//                    return SyncDeviceStepTaskModel(name: $0.name, operationType: .delete(node: node, type: .schedule(schedule: $0)))
-//                })
-//                if deleteScheduleTasks.count > 0 {
-//                    let step = SyncDeviceStepModel(type: "remove_schedule".localizedString, state: .none, tasks: deleteScheduleTasks)
-//                    deleteScheduleTasks.forEach({ $0.parentStepModel = step })
-//                    deleteSteps.append(step)
-//                }
-//                
-//            case .syncSwitchProxy(let switchData):
-//                
-//                let syncSwitchProxyTask = SyncDeviceStepTaskModel(name: switchData.name, operationType: .configuration(node: node, type: .enOceanProxy(switchData: switchData)))
-//                let step = SyncDeviceStepModel(type: "enocean_proxy".localizedString, state: .none, tasks: [syncSwitchProxyTask])
-//                syncSwitchProxyTask.parentStepModel = step
-//                configturationSteps.append(step)
-//                
-//            case .deleteSwitchProxy(let switchData):
-//                
-//                let deleteSwitchProxyTask = SyncDeviceStepTaskModel(name: switchData.name, operationType: .delete(node: node, type: .enOceanProxy(switchData: switchData)))
-//                
-//                let step = SyncDeviceStepModel(type: "remove_switch_proxy".localizedString, state: .none, tasks: [deleteSwitchProxyTask])
-//                deleteSwitchProxyTask.parentStepModel = step
-//                deleteSteps.append(step)
-//                
-//            case .syncSwitchs(let switchDatas):
-//                
-//                let syncSwitchTasks = switchDatas.map({
-//                    return SyncDeviceStepTaskModel(name: $0.name, operationType: .configuration(node: node, type: .enOceanSwitch(switchData: $0)))
-//                })
-//                if syncSwitchTasks.count > 0 {
-//                    let step = SyncDeviceStepModel(type: "switch".localizedString, state: .none, tasks: syncSwitchTasks)
-//                    syncSwitchTasks.forEach({ $0.parentStepModel = step })
-//                    configturationSteps.append(step)
-//                }
-//                
-//            case .deleteSwitchs(let switchDatas):
-//                
-//                let deleteSwitchTasks = switchDatas.map({
-//                    return SyncDeviceStepTaskModel(name: $0.name, operationType: .delete(node: node, type: .enOceanSwitch(switchData: $0)))
-//                })
-//                if deleteSwitchTasks.count > 0 {
-//                    let step = SyncDeviceStepModel(type: "remove_switch".localizedString, state: .none, tasks: deleteSwitchTasks)
-//                    deleteSwitchTasks.forEach({ $0.parentStepModel = step })
-//                    deleteSteps.append(step)
-//                }
-//                
-//            case .deviceInitialize:
-//                break
-//            case .deviceParameterTypes(let types):
-//                break
-//            }
-//        }
-        
-        // 后续同步操作需要设备添加组完成才能进行
-//        configturationSteps.forEach({
-//            $0.relevanceStepModels = [step]
-//        })
-        
-        
-        let data = node.getNeedSyncGroupData(group: group)
-        var nodeDeleteScenes = data.deleteScenes
-        var nodeSyncScenes = data.syncScenes
-        
-        var nodeDeleteSchedules = data.deleteSchedules
-        var nodeSyncSchedules = data.syncSchedules
-        
-        let syncProfiles = data.syncProfile
-        
-        var nodeDeleteSwitchs = data.deleteSwitchs
-        var nodeSyncSwitchs = data.syncSwitchs
-        
-        let deleteSwitchProxy = data.deleteSwitchProxy
-        var syncSwitchProxy = data.syncSwitchProxy
+    private func getSyncDeviceModel(group: Group?, node: Node) -> (configturationDevice: SyncDevicesModel?, removeDevice: SyncDevicesModel?) {
         
         /// 删除操作
         var deleteSteps: [SyncDeviceStepModel] = []
-        /// 同步操作
+        // 同步操作
         var configturationSteps: [SyncDeviceStepModel] = []
         
-        // 是否退出组
-        if exitGroup {
-            nodeDeleteScenes = node.scenes.filter({ scene in group.info.sceneExecuteDatas.contains(where: { $0.sceneNumber == scene.number }) })
-            nodeDeleteSchedules = group.info.bindSchedules.filter({ schedule in node.schedulerActions.contains(where: { $0.key == schedule.id }) })
-            nodeDeleteSwitchs = group.info.allSwitchs.filter({ switchData in switchData.linkGroup != nil && (node.enOceanMacAddress == switchData.enOceanMacAddress || node.getEnOceanUnSubscriptionMessageHandles(switchKeys: switchData.switchKeys).count > 0) })
-            
-            nodeSyncScenes.removeAll()
-            nodeSyncSchedules.removeAll()
-            nodeSyncSwitchs.removeAll()
-            syncSwitchProxy = nil
-//            syncProfiles.removeAll()
-        }
+        // 添加组流程
+        var addGroupStep: SyncDeviceStepModel?
+        /// 删除组流程
+        var removeGroupStep: SyncDeviceStepModel?
+        /// 初始化设备流程
+        var initializeStepModel: SyncDeviceStepModel?
         
-        let deleteScheduleTasks = nodeDeleteSchedules.map({
-            return SyncDeviceStepTaskModel(name: $0.name, operationType: .delete(node: node, type: .schedule(schedule: $0)))
-        })
-        if deleteScheduleTasks.count > 0 {
-            let step = SyncDeviceStepModel(type: "remove_schedule".localizedString, state: .none, tasks: deleteScheduleTasks)
-            deleteScheduleTasks.forEach({ $0.parentStepModel = step })
-            deleteSteps.append(step)
-        }
-        
-        let deleteSceneTasks = nodeDeleteScenes.map({
-            return SyncDeviceStepTaskModel(name: $0.name, operationType: .delete(node: node, type: .scene(sceneId: $0.number, executeData: nil)))
-        })
-        if deleteSceneTasks.count > 0 {
-            let step = SyncDeviceStepModel(type: "remove_scene".localizedString, state: .none, tasks: deleteSceneTasks)
-            deleteSceneTasks.forEach({ $0.parentStepModel = step })
-            deleteSteps.append(step)
-        }
-        
-        let deleteSwitchTasks = nodeDeleteSwitchs.map({
-            return SyncDeviceStepTaskModel(name: $0.name, operationType: .delete(node: node, type: .enOceanSwitch(switchData: $0)))
-        })
-        if deleteSwitchTasks.count > 0 {
-            let step = SyncDeviceStepModel(type: "remove_switch".localizedString, state: .none, tasks: deleteSwitchTasks)
-            deleteSwitchTasks.forEach({ $0.parentStepModel = step })
-            deleteSteps.append(step)
-        }
-        
-        if let switchData = deleteSwitchProxy {
-            
-            let deleteSwitchProxyTask = SyncDeviceStepTaskModel(name: switchData.name, operationType: .delete(node: node, type: .enOceanProxy(switchData: switchData)))
-            
-            let step = SyncDeviceStepModel(type: "remove_switch_proxy".localizedString, state: .none, tasks: [deleteSwitchProxyTask])
-            deleteSwitchProxyTask.parentStepModel = step
-            deleteSteps.append(step)
-        }
-        
-        let syncSceneTasks = nodeSyncScenes.map({ sceneData in
-            let scene = MeshNetworkManager.instance.scenes.first(where: { $0.number == sceneData.sceneNumber })
-            return SyncDeviceStepTaskModel(name: scene?.name ?? "", operationType: .configuration(node: node, type: .scene(sceneId: sceneData.sceneNumber, executeData: sceneData)))
-        })
-        if syncSceneTasks.count > 0 {
-            let step = SyncDeviceStepModel(type: "scene".localizedString, state: .none, tasks: syncSceneTasks)
-            syncSceneTasks.forEach({ $0.parentStepModel = step })
-            configturationSteps.append(step)
-        }
-        
-        let syncScheduleTasks = nodeSyncSchedules.map({
-            return SyncDeviceStepTaskModel(name: $0.name, operationType: .configuration(node: node, type: .schedule(schedule: $0)))
-        })
-        if syncScheduleTasks.count > 0 {
-            let step = SyncDeviceStepModel(type: "schedule".localizedString, state: .none, tasks: syncScheduleTasks)
-            syncSceneTasks.forEach({ $0.parentStepModel = step })
-            configturationSteps.append(step)
-        }
-        
-        if let switchData = syncSwitchProxy {
-            let syncSwitchProxyTask = SyncDeviceStepTaskModel(name: switchData.name, operationType: .configuration(node: node, type: .enOceanProxy(switchData: switchData)))
-            let step = SyncDeviceStepModel(type: "enocean_proxy".localizedString, state: .none, tasks: [syncSwitchProxyTask])
-            syncSwitchProxyTask.parentStepModel = step
-            configturationSteps.append(step)
-        }
-        
-        let syncSwitchTasks = nodeSyncSwitchs.map({
-            return SyncDeviceStepTaskModel(name: $0.name, operationType: .configuration(node: node, type: .enOceanSwitch(switchData: $0)))
-        })
-        if syncSwitchTasks.count > 0 {
-            let step = SyncDeviceStepModel(type: "switch".localizedString, state: .none, tasks: syncSwitchTasks)
-            syncSwitchTasks.forEach({ $0.parentStepModel = step })
-            configturationSteps.append(step)
-        }
-        
-        if exitGroup { // 退出组
-            let deleteProfileTasks = syncProfiles.map({
-                return SyncDeviceStepTaskModel(name: $0.title, operationType: .delete(node: node, type: .profile(type: $0)))
-            })
-            if deleteProfileTasks.count > 0 {
-                let step = SyncDeviceStepModel(type: "remove_profile".localizedString, state: .none, tasks: deleteProfileTasks)
-                deleteProfileTasks.forEach({ $0.parentStepModel = step })
-                deleteSteps.append(step)
+        var syncDataTypes: [NodeSyncData] = []
+        if group != nil {
+            syncDataTypes = node.getSyncData(type: .group(group))
+            // 排序，如同步组按照优先级高到低排序同步数据
+            if syncDataTypes.contains(where: { data in
+                if case .subscribeGroup = data { return true }
+                    return false
+            }) {
+                syncDataTypes.sort(by: { $0.level < $1.level })
+            } else if syncDataTypes.contains(where: { data in   // 如删除组则按照优先级从低到高排序删除数据
+                if case .unsubscribeGroup = data { return true }
+                    return false
+            }) {
+                syncDataTypes.sort(by: { $0.level > $1.level })
             }
-            // 删除绑定按键
-//            if deleteSwitch {
-//                let removeSwitchTask = SyncDeviceStepTaskModel(name: "remove_from_switch".localizedString, operationType: .delete(node: node, type: .enOceanSwitch))
-//                let step = SyncDeviceStepModel(type: "remove_kinetic_switch_proxy".localizedString, state: .none, tasks: [removeSwitchTask])
-//                removeSwitchTask.parentStepModel = step
-//                // 需要依赖之前操作完成才能退出组
-//                step.relevanceStepModels = deleteSteps
-//                deleteSteps.append(step)
-//            }
-            
-            
-            
         }else {
-            let syncProfileTasks = syncProfiles.map({
-                return SyncDeviceStepTaskModel(name: $0.title, operationType: .configuration(node: node, type: .profile(type: $0)))
-            })
-            if syncProfileTasks.count > 0 {
-                let step = SyncDeviceStepModel(type: "profile".localizedString, state: .none, tasks: syncProfileTasks)
-                syncProfileTasks.forEach({ $0.parentStepModel = step })
-                configturationSteps.append(step)
-            }
+            syncDataTypes = node.getSyncData(type: .all)
         }
         
-        // 退出组
-        if exitGroup {
-            if node.group?.address.address == group.address.address {
+        syncDataTypes.forEach { type in
+            switch type {
+            case .subscribeGroup(let group):
+                let addGroupTask = SyncDeviceStepTaskModel(name: "add_to_group".localizedString, operationType: .configuration(node: node, type  : .group(group: group)))
+                let step = SyncDeviceStepModel(type: "add_to_group".localizedString, state: .none, tasks: [addGroupTask])
+                addGroupTask.parentStepModel = step
+                configturationSteps.append(step)
+                
+                addGroupStep = step
+             
+            case .unsubscribeGroup(let group):
                 let removeGroupTask = SyncDeviceStepTaskModel(name: "remove_from_group".localizedString, operationType: .delete(node: node, type: .group(group: group)))
                 let step = SyncDeviceStepModel(type: "remove_from_group".localizedString, state: .none, tasks: [removeGroupTask])
                 removeGroupTask.parentStepModel = step
                 // 需要依赖之前操作完成才能退出组
-                step.relevanceStepModels = deleteSteps
+//                step.relevanceStepModels = deleteSteps
                 deleteSteps.append(step)
-            }
-            
-        }else {
-            // 组订阅数据未完整/未加入组
-            if data.subscribeGroup {
-                let addGroupTask = SyncDeviceStepTaskModel(name: "add_to_group".localizedString, operationType: .configuration(node: node, type: .group(group: group)))
-                let step = SyncDeviceStepModel(type: "add_to_group".localizedString, state: .none, tasks: [addGroupTask])
-                addGroupTask.parentStepModel = step
+                removeGroupStep = step
                 
-                // 后续同步操作需要设备添加组完成才能进行
-                configturationSteps.forEach({
-                    $0.relevanceStepModels = [step]
+            case .profile(let types):
+                
+                let syncProfileTasks = types.map({
+                    return SyncDeviceStepTaskModel(name: $0.title, operationType: .configuration(node: node, type: .profile(type: $0)))
                 })
-                configturationSteps.insert(step, at: 0)
+                if syncProfileTasks.count > 0 {
+                    let step = SyncDeviceStepModel(type: "profile".localizedString, state: .none, tasks: syncProfileTasks)
+                    syncProfileTasks.forEach({ $0.parentStepModel = step })
+                    if node.groupState == .exitFailure || removeGroupStep != nil {
+                        deleteSteps.append(step)
+                    }else {
+                        configturationSteps.append(step)
+                    }
+                }
+                
+            case .syncScenes(let datas):
+                
+                let syncSceneTasks = datas.map({ (scene, sceneData) in
+                    return SyncDeviceStepTaskModel(name: scene.name, operationType: .configuration(node: node, type: .scene(sceneId: scene.number, executeData: sceneData)))
+                })
+                if syncSceneTasks.count > 0 {
+                    let step = SyncDeviceStepModel(type: "scene".localizedString, state: .none, tasks: syncSceneTasks)
+                    syncSceneTasks.forEach({ $0.parentStepModel = step })
+                    configturationSteps.append(step)
+                }
+                
+            case .deleteScenes(let scenes):
+                
+                let deleteSceneTasks = scenes.map({
+                    return SyncDeviceStepTaskModel(name: $0.name, operationType: .delete(node: node, type: .scene(sceneId: $0.number, executeData: nil)))
+                })
+                if deleteSceneTasks.count > 0 {
+                    let step = SyncDeviceStepModel(type: "remove_scene".localizedString, state: .none, tasks: deleteSceneTasks)
+                    deleteSceneTasks.forEach({ $0.parentStepModel = step })
+                    deleteSteps.append(step)
+                }
+            case .syncSchedules(let schedules):
+                
+                let syncScheduleTasks = schedules.map({
+                    return SyncDeviceStepTaskModel(name: $0.name, operationType: .configuration(node: node, type: .schedule(schedule: $0)))
+                })
+                if syncScheduleTasks.count > 0 {
+                    let step = SyncDeviceStepModel(type: "schedule".localizedString, state: .none, tasks: syncScheduleTasks)
+                    syncScheduleTasks.forEach({ $0.parentStepModel = step })
+                    configturationSteps.append(step)
+                }
+                
+            case .deleteSchedules(let schedules):
+                let deleteScheduleTasks = schedules.map({
+                    return SyncDeviceStepTaskModel(name: $0.name, operationType: .delete(node: node, type: .schedule(schedule: $0)))
+                })
+                if deleteScheduleTasks.count > 0 {
+                    let step = SyncDeviceStepModel(type: "remove_schedule".localizedString, state: .none, tasks: deleteScheduleTasks)
+                    deleteScheduleTasks.forEach({ $0.parentStepModel = step })
+                    deleteSteps.append(step)
+                }
+                
+            case .syncSwitchProxy(let switchData):
+                
+                let syncSwitchProxyTask = SyncDeviceStepTaskModel(name: switchData.name, operationType: .configuration(node: node, type: .enOceanProxy(switchData: switchData)))
+                let step = SyncDeviceStepModel(type: "enocean_proxy".localizedString, state: .none, tasks: [syncSwitchProxyTask])
+                syncSwitchProxyTask.parentStepModel = step
+                configturationSteps.append(step)
+                
+            case .deleteSwitchProxy(let switchData):
+                
+                let deleteSwitchProxyTask = SyncDeviceStepTaskModel(name: switchData.name, operationType: .delete(node: node, type: .enOceanProxy(switchData: switchData)))
+                
+                let step = SyncDeviceStepModel(type: "remove_switch_proxy".localizedString, state: .none, tasks: [deleteSwitchProxyTask])
+                deleteSwitchProxyTask.parentStepModel = step
+                deleteSteps.append(step)
+                
+            case .syncSwitchs(let switchDatas):
+                
+                let syncSwitchTasks = switchDatas.map({
+                    return SyncDeviceStepTaskModel(name: $0.name, operationType: .configuration(node: node, type: .enOceanSwitch(switchData: $0)))
+                })
+                if syncSwitchTasks.count > 0 {
+                    let step = SyncDeviceStepModel(type: "switch".localizedString, state: .none, tasks: syncSwitchTasks)
+                    syncSwitchTasks.forEach({ $0.parentStepModel = step })
+                    configturationSteps.append(step)
+                }
+                
+            case .deleteSwitchs(let switchDatas):
+                
+                let deleteSwitchTasks = switchDatas.map({
+                    return SyncDeviceStepTaskModel(name: $0.name, operationType: .delete(node: node, type: .enOceanSwitch(switchData: $0)))
+                })
+                if deleteSwitchTasks.count > 0 {
+                    let step = SyncDeviceStepModel(type: "remove_switch".localizedString, state: .none, tasks: deleteSwitchTasks)
+                    deleteSwitchTasks.forEach({ $0.parentStepModel = step })
+                    deleteSteps.append(step)
+                }
+                
+            case .deviceInitialize:
+                let initializeTaskModel = SyncDeviceStepTaskModel(name: "initialize".localizedString, operationType: .configuration(node: node, type: .deviceInitialize))
+                initializeStepModel = SyncDeviceStepModel(type: "initialize".localizedString, state: .none, tasks: [initializeTaskModel])
+                initializeTaskModel.parentStepModel = initializeStepModel!
+                configturationSteps.append(initializeStepModel!)
+            case .deviceParameterTypes(let types):
+                
+                var tasks: [SyncDeviceStepTaskModel] = []
+                types.forEach { type in
+                    switch type {
+                    case .pwmPeriod(let period):
+                        let taskModel = SyncDeviceStepTaskModel(name: "pwm_period".localizedString, operationType: .configuration(node: node, type: .deviceParameters(parameterType: .pwmPeriod(period: period))))
+                        tasks.append(taskModel)
+                    }
+                }
+                let deviceParametersStepModel = SyncDeviceStepModel(type: "device_parameters".localizedString, state: .none, tasks: tasks)
+                tasks.forEach({
+                    $0.parentStepModel = deviceParametersStepModel
+                })
+                configturationSteps.append(deviceParametersStepModel)
             }
         }
+        
+        // 后续同步操作需要设备添加组完成才能进行
+        if let relevanceStep = addGroupStep {
+            configturationSteps.forEach({ step in
+                if step != relevanceStep {
+                    step.relevanceStepModels = [relevanceStep]
+                }
+            })
+        }
+        
+        // 需要依赖之前操作完成才能退出组
+        if let step = removeGroupStep {
+            step.relevanceStepModels = deleteSteps.filter({ $0 != step })
+        }
+        
+        // 初始化设备操作，必须在完成才可以同步其它参数
+        if let initStep = initializeStepModel {
+            configturationSteps.forEach({ step in
+                if step != initStep {
+                    if addGroupStep != nil {
+                        step.relevanceStepModels = [initStep, addGroupStep!]
+                    }else {
+                        step.relevanceStepModels = [initStep]
+                    }
+                }
+            })
+        }
+        
+//        let data = node.getNeedSyncGroupData(group: group)
+//        var nodeDeleteScenes = data.deleteScenes
+//        var nodeSyncScenes = data.syncScenes
+//        
+//        var nodeDeleteSchedules = data.deleteSchedules
+//        var nodeSyncSchedules = data.syncSchedules
+//        
+//        let syncProfiles = data.syncProfile
+//        
+//        var nodeDeleteSwitchs = data.deleteSwitchs
+//        var nodeSyncSwitchs = data.syncSwitchs
+//        
+//        let deleteSwitchProxy = data.deleteSwitchProxy
+//        var syncSwitchProxy = data.syncSwitchProxy
+//        
+//        /// 删除操作
+//        var deleteSteps: [SyncDeviceStepModel] = []
+//        /// 同步操作
+//        var configturationSteps: [SyncDeviceStepModel] = []
+//        
+//        // 是否退出组
+//        if exitGroup {
+//            nodeDeleteScenes = node.scenes.filter({ scene in group.info.sceneExecuteDatas.contains(where: { $0.sceneNumber == scene.number }) })
+//            nodeDeleteSchedules = group.info.bindSchedules.filter({ schedule in node.schedulerActions.contains(where: { $0.key == schedule.id }) })
+//            nodeDeleteSwitchs = group.info.allSwitchs.filter({ switchData in switchData.linkGroup != nil && (node.enOceanMacAddress == switchData.enOceanMacAddress || node.getEnOceanUnSubscriptionMessageHandles(switchKeys: switchData.switchKeys).count > 0) })
+//            
+//            nodeSyncScenes.removeAll()
+//            nodeSyncSchedules.removeAll()
+//            nodeSyncSwitchs.removeAll()
+//            syncSwitchProxy = nil
+////            syncProfiles.removeAll()
+//        }
+//        
+//        let deleteScheduleTasks = nodeDeleteSchedules.map({
+//            return SyncDeviceStepTaskModel(name: $0.name, operationType: .delete(node: node, type: .schedule(schedule: $0)))
+//        })
+//        if deleteScheduleTasks.count > 0 {
+//            let step = SyncDeviceStepModel(type: "remove_schedule".localizedString, state: .none, tasks: deleteScheduleTasks)
+//            deleteScheduleTasks.forEach({ $0.parentStepModel = step })
+//            deleteSteps.append(step)
+//        }
+//        
+//        let deleteSceneTasks = nodeDeleteScenes.map({
+//            return SyncDeviceStepTaskModel(name: $0.name, operationType: .delete(node: node, type: .scene(sceneId: $0.number, executeData: nil)))
+//        })
+//        if deleteSceneTasks.count > 0 {
+//            let step = SyncDeviceStepModel(type: "remove_scene".localizedString, state: .none, tasks: deleteSceneTasks)
+//            deleteSceneTasks.forEach({ $0.parentStepModel = step })
+//            deleteSteps.append(step)
+//        }
+//        
+//        let deleteSwitchTasks = nodeDeleteSwitchs.map({
+//            return SyncDeviceStepTaskModel(name: $0.name, operationType: .delete(node: node, type: .enOceanSwitch(switchData: $0)))
+//        })
+//        if deleteSwitchTasks.count > 0 {
+//            let step = SyncDeviceStepModel(type: "remove_switch".localizedString, state: .none, tasks: deleteSwitchTasks)
+//            deleteSwitchTasks.forEach({ $0.parentStepModel = step })
+//            deleteSteps.append(step)
+//        }
+//        
+//        if let switchData = deleteSwitchProxy {
+//            
+//            let deleteSwitchProxyTask = SyncDeviceStepTaskModel(name: switchData.name, operationType: .delete(node: node, type: .enOceanProxy(switchData: switchData)))
+//            
+//            let step = SyncDeviceStepModel(type: "remove_switch_proxy".localizedString, state: .none, tasks: [deleteSwitchProxyTask])
+//            deleteSwitchProxyTask.parentStepModel = step
+//            deleteSteps.append(step)
+//        }
+//        
+//        let syncSceneTasks = nodeSyncScenes.map({ sceneData in
+//            let scene = MeshNetworkManager.instance.scenes.first(where: { $0.number == sceneData.sceneNumber })
+//            return SyncDeviceStepTaskModel(name: scene?.name ?? "", operationType: .configuration(node: node, type: .scene(sceneId: sceneData.sceneNumber, executeData: sceneData)))
+//        })
+//        if syncSceneTasks.count > 0 {
+//            let step = SyncDeviceStepModel(type: "scene".localizedString, state: .none, tasks: syncSceneTasks)
+//            syncSceneTasks.forEach({ $0.parentStepModel = step })
+//            configturationSteps.append(step)
+//        }
+//        
+//        let syncScheduleTasks = nodeSyncSchedules.map({
+//            return SyncDeviceStepTaskModel(name: $0.name, operationType: .configuration(node: node, type: .schedule(schedule: $0)))
+//        })
+//        if syncScheduleTasks.count > 0 {
+//            let step = SyncDeviceStepModel(type: "schedule".localizedString, state: .none, tasks: syncScheduleTasks)
+//            syncSceneTasks.forEach({ $0.parentStepModel = step })
+//            configturationSteps.append(step)
+//        }
+//        
+//        if let switchData = syncSwitchProxy {
+//            let syncSwitchProxyTask = SyncDeviceStepTaskModel(name: switchData.name, operationType: .configuration(node: node, type: .enOceanProxy(switchData: switchData)))
+//            let step = SyncDeviceStepModel(type: "enocean_proxy".localizedString, state: .none, tasks: [syncSwitchProxyTask])
+//            syncSwitchProxyTask.parentStepModel = step
+//            configturationSteps.append(step)
+//        }
+//        
+//        let syncSwitchTasks = nodeSyncSwitchs.map({
+//            return SyncDeviceStepTaskModel(name: $0.name, operationType: .configuration(node: node, type: .enOceanSwitch(switchData: $0)))
+//        })
+//        if syncSwitchTasks.count > 0 {
+//            let step = SyncDeviceStepModel(type: "switch".localizedString, state: .none, tasks: syncSwitchTasks)
+//            syncSwitchTasks.forEach({ $0.parentStepModel = step })
+//            configturationSteps.append(step)
+//        }
+//        
+//        if exitGroup { // 退出组
+//            let deleteProfileTasks = syncProfiles.map({
+//                return SyncDeviceStepTaskModel(name: $0.title, operationType: .delete(node: node, type: .profile(type: $0)))
+//            })
+//            if deleteProfileTasks.count > 0 {
+//                let step = SyncDeviceStepModel(type: "remove_profile".localizedString, state: .none, tasks: deleteProfileTasks)
+//                deleteProfileTasks.forEach({ $0.parentStepModel = step })
+//                deleteSteps.append(step)
+//            }
+//            // 删除绑定按键
+////            if deleteSwitch {
+////                let removeSwitchTask = SyncDeviceStepTaskModel(name: "remove_from_switch".localizedString, operationType: .delete(node: node, type: .enOceanSwitch))
+////                let step = SyncDeviceStepModel(type: "remove_kinetic_switch_proxy".localizedString, state: .none, tasks: [removeSwitchTask])
+////                removeSwitchTask.parentStepModel = step
+////                // 需要依赖之前操作完成才能退出组
+////                step.relevanceStepModels = deleteSteps
+////                deleteSteps.append(step)
+////            }
+//            
+//            
+//            
+//        }else {
+//            let syncProfileTasks = syncProfiles.map({
+//                return SyncDeviceStepTaskModel(name: $0.title, operationType: .configuration(node: node, type: .profile(type: $0)))
+//            })
+//            if syncProfileTasks.count > 0 {
+//                let step = SyncDeviceStepModel(type: "profile".localizedString, state: .none, tasks: syncProfileTasks)
+//                syncProfileTasks.forEach({ $0.parentStepModel = step })
+//                configturationSteps.append(step)
+//            }
+//        }
+//        
+//        // 退出组
+//        if exitGroup {
+//            if node.group?.address.address == group.address.address {
+//                let removeGroupTask = SyncDeviceStepTaskModel(name: "remove_from_group".localizedString, operationType: .delete(node: node, type: .group(group: group)))
+//                let step = SyncDeviceStepModel(type: "remove_from_group".localizedString, state: .none, tasks: [removeGroupTask])
+//                removeGroupTask.parentStepModel = step
+//                // 需要依赖之前操作完成才能退出组
+//                step.relevanceStepModels = deleteSteps
+//                deleteSteps.append(step)
+//            }
+//            
+//        }else {
+//            // 组订阅数据未完整/未加入组
+//            if data.subscribeGroup {
+//                let addGroupTask = SyncDeviceStepTaskModel(name: "add_to_group".localizedString, operationType: .configuration(node: node, type: .group(group: group)))
+//                let step = SyncDeviceStepModel(type: "add_to_group".localizedString, state: .none, tasks: [addGroupTask])
+//                addGroupTask.parentStepModel = step
+//                
+//                // 后续同步操作需要设备添加组完成才能进行
+//                configturationSteps.forEach({
+//                    $0.relevanceStepModels = [step]
+//                })
+//                configturationSteps.insert(step, at: 0)
+//            }
+//        }
         
         var configturationDevice: SyncDevicesModel?
         var removeDevice: SyncDevicesModel?

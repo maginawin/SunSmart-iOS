@@ -259,9 +259,9 @@ class DeviceLightViewController: UIViewController {
 //            self?.setPwmPeriod()
 //        }))
 //        #endif
-        items.append(.init(icon: UIImage(named: "menu_edit"), title: "Test", tapItemBack: {[weak self] _ in
-            self?.nodeTest()
-        }))
+//        items.append(.init(icon: UIImage(named: "menu_edit"), title: "Test", tapItemBack: {[weak self] _ in
+//            self?.nodeTest()
+//        }))
         
         items.append(.init(icon: UIImage(named: "menu_refresh"), title: "refresh".localizedString, tapItemBack: {[weak self] _ in
             self?.refresh()
@@ -279,82 +279,74 @@ class DeviceLightViewController: UIViewController {
     }
     
     private func nodeTest() {
-        
-        if let testGroup = MeshNetworkManager.instance.groups.first {
-            
-//            var lightness = UInt16(arc4random_uniform(UInt32(UInt16.max)))
-            var messageHandles: [MeshMessageHandle] = []
-//            messageHandles.append(MeshMessageHandle(message: LightLightnessSet(lightness: lightness, transitionTime: .immediate, delay: 0), model: lightnessModel))
-//            messageHandles.append(MeshMessageHandle(message: SceneStore(testScene.number), model: sceneSetupModel))
-            
-            
-            
-            
-            if node.group == testGroup {
-                
-                node.groupState = .exitFailure
-                
-                
-                let syncData = node.getNeedSyncGroupData(group: testGroup)
-                for schedule in testGroup.info.bindSchedules {
-                    messageHandles.append(contentsOf: DeviceOperationType.delete(node: node, type: .schedule(schedule: schedule)).messageHandles)
-                }
-                for switchData in testGroup.info.switchs {
-                    messageHandles.append(contentsOf: DeviceOperationType.delete(node: node, type: .enOceanSwitch(switchData: switchData)).messageHandles)
-                }
-                
-                for scene in testGroup.info.sceneExecuteDatas {
-                    messageHandles.append(contentsOf: DeviceOperationType.delete(node: node, type: .scene(sceneId: scene.sceneNumber, executeData: nil)).messageHandles)
-                }
-                for profile in syncData.syncProfile {
-                    messageHandles.append(contentsOf: DeviceOperationType.delete(node: node, type: .profile(type: profile)).messageHandles)
-                }
-                messageHandles.append(contentsOf: DeviceOperationType.delete(node: node, type: .group(group: testGroup)).messageHandles)
-            }else {
-                
-                node.groupState = .inGroup
-                
-                let syncData = node.getNeedSyncGroupData(group: testGroup)
-                messageHandles.append(contentsOf: DeviceOperationType.configuration(node: node, type: .group(group: testGroup)).messageHandles)
-                for profile in syncData.syncProfile {
-                    messageHandles.append(contentsOf: DeviceOperationType.configuration(node: node, type: .profile(type: profile)).messageHandles)
-                }
-                for scene in syncData.syncScenes {
-                    messageHandles.append(contentsOf: DeviceOperationType.configuration(node: node, type: .scene(sceneId: scene.sceneNumber, executeData: scene)).messageHandles)
-                }
-                for schedule in syncData.syncSchedules {
-                    messageHandles.append(contentsOf: DeviceOperationType.configuration(node: node, type: .schedule(schedule: schedule)).messageHandles)
-                }
-                for switchData in syncData.syncSwitchs {
-                    messageHandles.append(contentsOf: DeviceOperationType.configuration(node: node, type: .enOceanSwitch(switchData: switchData)).messageHandles)
-                }
-//                if let switchProxy = syncData.syncSwitchProxy {
-//                    messageHandles.append(contentsOf: DeviceOperationType.configuration(node: node, type: .enOceanProxy(switchData: switchProxy)).messageHandles)
+//        
+//        if let testGroup = MeshNetworkManager.instance.groups.first {
+//            
+//            var messageHandles: [MeshMessageHandle] = []
+//            if node.group == testGroup {
+//                
+//                node.groupState = .exitFailure
+//                
+//                let syncData = node.getNeedSyncGroupData(group: testGroup)
+//                for schedule in testGroup.info.bindSchedules {
+//                    messageHandles.append(contentsOf: DeviceOperationType.delete(node: node, type: .schedule(schedule: schedule)).messageHandles)
 //                }
-            }
-            
-            MeshProxyMessageCommand.shared.addMessage(messageHandles: messageHandles, ackMessageTimeout: 10) {[weak self] resultMessageHandles in
-                
-                resultMessageHandles.forEach { handle in
-                    if let address = handle.address ?? handle.model?.parentElement?.unicastAddress, let node = MeshNetworkManager.instance.meshNetwork?.node(withAddress: address) {
-                        node.updateData(message: handle.message, isSuccess: handle.isSuccessful)
-                    }
-                }
-                
-//                if MeshNetworkManager.instance.scenes.count >= 2 {
-//                    let sceneA = MeshNetworkManager.instance.scenes[0]
-//                    let sceneB = MeshNetworkManager.instance.scenes[1]
-//                    MeshAPI.startScene(sceneNumber: sceneA.number)
-//                    DispatchQueue.main.asyncAfter(wallDeadline: .now() + 3) {
-//                        MeshAPI.startScene(sceneNumber: sceneB.number)
+//                for switchData in testGroup.info.switchs {
+//                    messageHandles.append(contentsOf: DeviceOperationType.delete(node: node, type: .enOceanSwitch(switchData: switchData)).messageHandles)
+//                }
+//                
+//                for scene in testGroup.info.sceneExecuteDatas {
+//                    messageHandles.append(contentsOf: DeviceOperationType.delete(node: node, type: .scene(sceneId: scene.sceneNumber, executeData: nil)).messageHandles)
+//                }
+//                for profile in syncData.syncProfile {
+//                    messageHandles.append(contentsOf: DeviceOperationType.delete(node: node, type: .profile(type: profile)).messageHandles)
+//                }
+//                messageHandles.append(contentsOf: DeviceOperationType.delete(node: node, type: .group(group: testGroup)).messageHandles)
+//            }else {
+//                
+//                node.groupState = .inGroup
+//                
+//                let syncData = node.getNeedSyncGroupData(group: testGroup)
+//                messageHandles.append(contentsOf: DeviceOperationType.configuration(node: node, type: .group(group: testGroup)).messageHandles)
+//                for profile in syncData.syncProfile {
+//                    messageHandles.append(contentsOf: DeviceOperationType.configuration(node: node, type: .profile(type: profile)).messageHandles)
+//                }
+//                for scene in syncData.syncScenes {
+//                    messageHandles.append(contentsOf: DeviceOperationType.configuration(node: node, type: .scene(sceneId: scene.sceneNumber, executeData: scene)).messageHandles)
+//                }
+//                for schedule in syncData.syncSchedules {
+//                    messageHandles.append(contentsOf: DeviceOperationType.configuration(node: node, type: .schedule(schedule: schedule)).messageHandles)
+//                }
+//                for switchData in syncData.syncSwitchs {
+//                    messageHandles.append(contentsOf: DeviceOperationType.configuration(node: node, type: .enOceanSwitch(switchData: switchData)).messageHandles)
+//                }
+////                if let switchProxy = syncData.syncSwitchProxy {
+////                    messageHandles.append(contentsOf: DeviceOperationType.configuration(node: node, type: .enOceanProxy(switchData: switchProxy)).messageHandles)
+////                }
+//            }
+//            
+//            MeshProxyMessageCommand.shared.addMessage(messageHandles: messageHandles, ackMessageTimeout: 10) {[weak self] resultMessageHandles in
+//                
+//                resultMessageHandles.forEach { handle in
+//                    if let address = handle.address ?? handle.model?.parentElement?.unicastAddress, let node = MeshNetworkManager.instance.meshNetwork?.node(withAddress: address) {
+//                        node.updateData(message: handle.message, isSuccess: handle.isSuccessful)
 //                    }
 //                }
-                DispatchQueue.main.asyncAfter(wallDeadline: .now() + 15, execute: {
-                    self?.nodeTest()
-                })
-            }
-        }
-        
+//                
+////                if MeshNetworkManager.instance.scenes.count >= 2 {
+////                    let sceneA = MeshNetworkManager.instance.scenes[0]
+////                    let sceneB = MeshNetworkManager.instance.scenes[1]
+////                    MeshAPI.startScene(sceneNumber: sceneA.number)
+////                    DispatchQueue.main.asyncAfter(wallDeadline: .now() + 3) {
+////                        MeshAPI.startScene(sceneNumber: sceneB.number)
+////                    }
+////                }
+//                DispatchQueue.main.asyncAfter(wallDeadline: .now() + 15, execute: {
+//                    self?.nodeTest()
+//                })
+//            }
+//        }
+//        
     }
     
     

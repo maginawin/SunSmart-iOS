@@ -519,7 +519,7 @@ class DeviceAddViewController: UIViewController {
                 emptySwitchs.forEach { switchData in
                     
                     // 判断组地址是否足够分配
-                    if MeshAPI.getAvailableGroupAddresses(meshUUID: self.space.meshUUID, subnetworkId: self.space.meshNetworkId).count >= switchData.panelType.usedAddressesNumber {
+                    if MeshAPI.getAvailableGroupAddresses(meshUUID: self.space.meshUUID, subnetworkId: self.space.meshNetworkId).count >= switchData.panelType.usedAddressesNumber, switchData.linkGroupAddress == nil {
                         
                         let linkGroup = try? MeshAPI.createGroup(name: switchData.name + "-Group", isVirtual: true)
                         let subLinkGroup = try? MeshAPI.createGroup(name: switchData.name + "-Group_1", isVirtual: true)
@@ -527,6 +527,7 @@ class DeviceAddViewController: UIViewController {
                         switchData.linkGroupAddress = linkGroup?.address.address
                         switchData.subLinkGroupAddress = subLinkGroup?.address.address
                         switchData.save()
+//                        print("创建动能开关组")
                     }
                 }
                 appendMessages.append(contentsOf: group.getNodeAddMessageHandles(node: node))

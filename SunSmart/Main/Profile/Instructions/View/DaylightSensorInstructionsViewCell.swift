@@ -25,7 +25,8 @@ class DaylightSensorInstructionsViewCell: UICollectionViewCell {
         contentView.addSubview(imageView)
         imageView.snp.makeConstraints { make in
             make.left.right.bottom.equalToSuperview()
-            make.height.equalTo(imageView.snp.width).multipliedBy(120.0 / 156.0)
+            make.top.equalTo(nameLabel.snp.bottom).offset(SCRYFrom(8))
+//            make.height.equalTo(imageView.snp.width).multipliedBy(120.0 / 156.0)
         }
     }
     

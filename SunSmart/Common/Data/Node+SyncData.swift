@@ -228,17 +228,15 @@ extension Node {
                 syncDatas.append(.deviceInitialize)
             }
             if let group = self.group ?? self.restoreData?.addGroup {
-                syncDatas.append(contentsOf: getSyncData(type: .group(self.group ?? self.restoreData?.addGroup)))
+                syncDatas.append(contentsOf: getSyncData(type: .group(group)))
             }else { // 未加入组的profile
                 // profile
                 let syncProfiles = getNodeSyncProfiles(group: nil)
                 if syncProfiles.count > 0 {
                     syncDatas.append(.profile(types: syncProfiles))
                 }
+                syncDatas.append(contentsOf: getSyncData(type: .schedules()))
             }
-            syncDatas.append(contentsOf: getSyncData(type: .scenes()))
-            syncDatas.append(contentsOf: getSyncData(type: .schedules()))
-            syncDatas.append(contentsOf: getSyncData(type: .switches()))
             
             // PWM
             if let pwmPeriod = self.restoreData?.pwmPeriod, self.pwmPeriod != pwmPeriod {
@@ -257,7 +255,7 @@ extension Node {
             if powerUpState != .restore {
                 syncProfile.append(.powerOnState(state: .restore))
             }
-            if sunricherVendorModel != nil {
+            if sunricherVendorModel != nil, lightLCProperty.manualOverrideEnabled == nil || !lightLCProperty.manualOverrideEnabled! || lightLCProperty.manualOverrideTimeout != .max {
                 syncProfile.append(.manualOverrideTimeout(enabled: true, second: .max))
             }
             return syncProfile
@@ -270,7 +268,7 @@ extension Node {
         // 禁用的传感器model
         var disableSensorModels: [Model] = []
         
-        if groupState == .inGroup {
+        if self.group == nil || groupState == .inGroup {
             
             // 光照类型
             let daylightType = groupProfile.type == .occupancy_daylight || groupProfile.type == .vacancy_daylight || groupProfile.type == .daylight
@@ -578,8 +576,9 @@ extension Node {
         if scene != nil {
             scenes = [scene!]
         }
+        
         return scenes.filter({ scene in
-            group.info.sceneExecuteDatas.first(where: { $0.sceneNumber == scene.number })?.state == .waitDelete
+            groupState == .exitFailure && group.info.sceneExecuteDatas.contains(where: { $0.sceneNumber == scene.number }) ||  group.info.sceneExecuteDatas.first(where: { $0.sceneNumber == scene.number })?.state == .waitDelete
         })
     }
     
@@ -619,15 +618,17 @@ extension Node {
         guard self.schedulerSetupModel != nil else {
             return []
         }
-        let group = self.group
+
         var schedules = MeshNetworkManager.instance.schedules
         if schedule != nil {
             schedules = [schedule!]
         }
         /// 待删除的日程
         return schedules.filter({ schedule in
+            // 日程是否关联设备
+            let isBindNode = schedule.nodeAddresses.contains(self.primaryUnicastAddress)
             // 判断日程待删除设备中是否存在该设备
-            if schedule.needDeleteNodes.contains(self) || (group != nil && (schedule.needDeleteGroups.contains(group!) || schedule.needDeleteScenes.contains(where: { scene in scene.info.groups.contains(group!) }))) {
+            if schedule.needDeleteNodes.contains(self) || (self.group != nil && ((groupState == .exitFailure && !isBindNode) || (schedule.needDeleteGroups.contains(self.group!) || schedule.needDeleteScenes.contains(where: { scene in scene.info.groups.contains(self.group!) })))) {
                 // 判断日程数据是否存在
                 if self.schedulerActions[schedule.id] != nil {
                     return true
@@ -682,7 +683,7 @@ extension Node {
         }
         
         var unlinkSwitchs: [DeviceSwitchData] = []
-        switchs.filter({ $0.unbindGroupAddresses.contains(group.address.address) }).forEach { switchData in
+        switchs.filter({ self.groupState == .exitFailure || $0.unbindGroupAddresses.contains(group.address.address) }).forEach { switchData in
             if switchData.switchKeys.count > 0 {
                 // 判断是否需要解绑
                 if self.getEnOceanUnSubscriptionMessageHandles(switchKeys: switchData.switchKeys).count > 0 {

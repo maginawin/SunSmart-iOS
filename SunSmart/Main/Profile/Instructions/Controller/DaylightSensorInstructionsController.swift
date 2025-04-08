@@ -79,7 +79,8 @@ extension DaylightSensorInstructionsController: UICollectionViewDataSource, UICo
     }
     
     func collectionView(_ collectionView: UICollectionView, layout collectionViewLayout: UICollectionViewLayout, sizeForItemAt indexPath: IndexPath) -> CGSize {
-        var itemW = (collectionView.width - flowLayout.sectionInset.left - flowLayout.sectionInset.right - flowLayout.minimumInteritemSpacing) / 2.0
+        let colNum = isIPad ? 4.0 : 2.0
+        var itemW = (collectionView.width - flowLayout.sectionInset.left - flowLayout.sectionInset.right - flowLayout.minimumInteritemSpacing * (colNum - 1)) / colNum
         itemW = CGFloat(floorf(Float(itemW) * 100) / 100.0)
         return CGSize(width: itemW , height: SCRYFrom(142))
     }

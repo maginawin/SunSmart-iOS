@@ -383,7 +383,7 @@ class ScheduleAddViewController: UIViewController {
             groups.contains(where: { $0.address.address == address }) || scene?.info.groups.contains(where: { $0.address.address == address }) ?? false
         })
         
-        let deleteGroups = schedule.groups.filter({ !groups.contains($0) && !schedule.needDeleteGroups.contains($0) })
+        let deleteGroups = schedule.groups.filter({ !groups.contains($0) && $0.nodes.contains(where: { groupNode in !schedule.nodeAddresses.contains(groupNode.primaryUnicastAddress) }) && !schedule.needDeleteGroups.contains($0) })
         if deleteGroups.count > 0 {
             schedule.needDeleteGroupAddresses.append(contentsOf: deleteGroups.map({ $0.address.address }))
 //            schedule.needDeleteGroups.append(contentsOf: deleteGroups)

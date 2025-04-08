@@ -247,7 +247,7 @@ extension Group {
         })
         
 //        if node.lightLCSetupModel != nil { // 同步灯光控制配置
-        let syncProfile = node.getNeedSyncGroupData(group: self).syncProfile
+        let syncProfile = node.getNodeSyncProfiles(group: self)
         syncProfile.forEach({
             messages.append(contentsOf: $0.getMessageHandles(node: node))
         })

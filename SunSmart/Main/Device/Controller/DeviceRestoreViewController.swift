@@ -440,7 +440,7 @@ class DeviceRestoreViewController: UIViewController {
                 appendMessages.append(MeshMessageHandle(message: LightLightnessSetUnacknowledged(lightness: .max), model: model))
             }
             // 恢复数据
-            newNode.updateResoreData(oldNode: oldNode)
+            newNode.updateResoreData(oldNode: oldNode, resoreGroup: addToGroup)
             appendMessages.append(contentsOf: newNode.getResoreMessageHandles(oldNode: oldNode))
             
             if addToGroup == nil {
@@ -490,9 +490,9 @@ class DeviceRestoreViewController: UIViewController {
                     node.name = data.node.name
                     
                     // 添加设备时异常断开连接，导致恢复的数据未缓存
-                    if node.restoreData == nil {
+                    if node.restoreData == nil || (section.group != nil && data.node.groupState != .exitFailure && node.restoreData?.addGroup != section.group) {
                         let oldNode = data.node
-                        node.updateResoreData(oldNode: oldNode)
+                        node.updateResoreData(oldNode: oldNode, resoreGroup: section.group)
                     }
                 }
                 

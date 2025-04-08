@@ -390,7 +390,7 @@
 "adjust_speed_instruction_desc" = "Adjust speed-if there are any issues or unexpected light behavior including frequent on/off or oscillation,use adjust speed slider to adjust the controller settings.\n- Use the slider to adjust the responsiveness of daylight control.\n- If oscillations occur,position the slider to the left.\n - If daylight adjustment is too slow,position the slider to the right.";
 "adjust_speed_slow" = "Slow adjustment";
 "adjust_speed_fast" = "Fast adjustment";
-"light_sensor_minium_lux" = "Minimum %d lx required";
+"light_sensor_lux_range" = "Required range: %d lx - %d lx";
 "show_advanced_settings" = "Show advanced settings";
 "hide_advanced_settings" = "Hide advanced settings";
 "slow" = "Slow";

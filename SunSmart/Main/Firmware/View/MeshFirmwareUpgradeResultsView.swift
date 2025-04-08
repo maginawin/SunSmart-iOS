@@ -95,8 +95,8 @@ class MeshFirmwareUpgradeResultsView: UIView {
         contentView.layer.cornerRadius = SCRYFrom(20)
         addSubview(contentView)
         contentView.snp.makeConstraints { make in
-            make.left.equalTo(SCRXFrom(36))
-            make.right.equalTo(SCRXFrom(-37))
+            make.left.equalTo(isIPad ? SCRXFrom(150) : SCRXFrom(36))
+            make.right.equalTo(isIPad ? SCRXFrom(-150) : SCRXFrom(-37))
             make.height.lessThanOrEqualTo(SCRYFrom(260))
             make.centerY.equalToSuperview()
         }

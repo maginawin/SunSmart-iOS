@@ -92,7 +92,7 @@ class SpaceViewController: WMPageController {
     private var isAllOn: Bool = true
     
     private lazy var autoBtn: UIButton = {
-        let btn = UIButton(title: "Auto", titleSize: 20, titleWeight: .light, titleColor: .black, target: self, action: #selector(autoTestBtnAction))
+        let btn = UIButton(title: "Auto", titleSize: 17, titleWeight: .light, titleColor: .black, target: self, action: #selector(autoTestBtnAction))
         btn.setTitleColor(Bar_Color, for: .selected)
         btn.setTitle("Stop", for: .selected)
         return btn
@@ -158,14 +158,14 @@ class SpaceViewController: WMPageController {
             make.height.equalTo(meunHeight - 2)
         }
         
-        #if DEBUG
-        navigationItem.rightBarButtonItems = [
-            UIBarButtonItem(image: UIImage(named: "more_vertical")?.withRenderingMode(.alwaysOriginal), style: .done, target: self, action: #selector(moreClick)),
-            UIBarButtonItem(customView: autoBtn)
-        ]
-        #else
+//        #if DEBUG
+//        navigationItem.rightBarButtonItems = [
+//            UIBarButtonItem(image: UIImage(named: "more_vertical")?.withRenderingMode(.alwaysOriginal), style: .done, target: self, action: #selector(moreClick)),
+//            UIBarButtonItem(customView: autoBtn)
+//        ]
+//        #else
         navigationItem.rightBarButtonItem = UIBarButtonItem(image: UIImage(named: "more_vertical")?.withRenderingMode(.alwaysOriginal), style: .done, target: self, action: #selector(moreClick))
-        #endif
+//        #endif
         
         MeshLibManager.manager.publishModelIDs = []// .genericOnOffServerModelId, .lightLightnessServerModelId, .lightCTLServerModelId
         MeshLibManager.manager.publishTimeModelIDs = []

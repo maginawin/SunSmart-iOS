@@ -347,9 +347,9 @@ class GroupViewController: UIViewController {
             }
         }
         
-//        items.append( .init(icon: UIImage(named: "menu_switch"), title: "switch".localizedString, hideAnimation: false, tapItemBack: {[weak self] item in
-//            self?.pushToSwitch()
-//        }))
+        items.append( .init(icon: UIImage(named: "menu_switch"), title: "switch".localizedString, hideAnimation: false, tapItemBack: {[weak self] item in
+            self?.pushToSwitch()
+        }))
         
 //        items.append(.init(icon: UIImage(named: "menu_edit"), title: "pwm_period".localizedString, hideAnimation: false, tapItemBack: {[weak self] _ in
 //            self?.setPwmPeriod()

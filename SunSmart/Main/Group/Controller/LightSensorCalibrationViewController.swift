@@ -147,13 +147,40 @@ class LightSensorCalibrationViewController: UIViewController {
             return
         }
         
-        if measuredLightLevel < calibrationView.minimunValue { // 输入测量值低于最小值
+        if measuredLightLevel < calibrationView.minimunValue || measuredLightLevel > calibrationView.maximunValue { // 输入测量值低于最小值、大于最大值
             calibrationView.verifyMeasuredValue()
             return
         }
         
         // 禁用组内移动传感器上报
 //        disablePresenceDetectedSensorPublish()
+        
+        if sensor.sensorCalibrated, sensor.daylightCalibrationValue == UInt16(measuredLightLevel) {
+            sensor.selectState = .loading
+            self.sensorSelectView.reloadSensorCell(sensor: sensor)
+            // 更新profile调节速率
+            self.group.info.profile.adjustSpeed = self.calibrationView.adjustSpeed
+            
+            self.sensorEnabled(sensor: sensor) {[weak self] result in
+                guard let self = self else { return }
+                sensor.selectState = result ? .switchOn : .switchOff
+                self.sensorSelectView.reloadSensorCell(sensor: sensor)
+                //                    MeshAPI.sendMessage(message: ConfigRelaySet(count: 0, steps: 1), address: sensor.primaryUnicastAddress)
+                if result {
+                    self.selectSensor = sensor
+                    // 切换选中的传感器，更新缓存
+                    self.group.info.ambientLightSensorNodeAddress = sensor.primaryUnicastAddress
+                    self.calibrationView.measuredLightValue = nil
+                    self.updateGroupLightSensor()
+                    self.updateCalibrationState()
+                    if self.group.nodes.filter({ $0.getNodeSyncProfiles().count > 0 }).isEmpty {
+                        XWHUDManager.showSuccessTipHUD("done!".localizedString)
+                    }
+                }
+            }
+            return
+        }
+        
         
         showConnecting()
         MeshSensorCalibrateServer.shared.calibrate(node: sensor, measuredValue: UInt16(measuredLightLevel)) { step in
@@ -219,7 +246,7 @@ class LightSensorCalibrationViewController: UIViewController {
     private func configuring(lightNodes: [Node]) {
         
         // 判断哪些需要设置的灯
-        let setLightNodes = lightNodes.filter({ $0.getNeedSyncGroupData().syncProfile.count > 0 })
+        let setLightNodes = lightNodes.filter({ $0.getNodeSyncProfiles().count > 0 })
         if setLightNodes.isEmpty {
             SRAlertView.hide()
             return
@@ -237,7 +264,7 @@ class LightSensorCalibrationViewController: UIViewController {
             for node in setLightNodes {
                 
                 var messageHandles: [MeshMessageHandle] = []
-                let profiles = node.getNeedSyncGroupData().syncProfile
+                let profiles = node.getNodeSyncProfiles()
                 profiles.forEach({ profileType in
                     messageHandles.append(contentsOf: profileType.getMessageHandles(node: node))
                 })
@@ -392,6 +419,13 @@ class LightSensorCalibrationViewController: UIViewController {
             result?(false)
             return
         }
+        // 判断传感器是否已启用
+        if ambientLightSensorModel.publish?.publicationAddress == self.group.address {
+            result?(true)
+            self.configuring(lightNodes: self.group.nodes)
+            return
+        }
+        
         
         let publishMessage = ConfigModelPublicationSet(Publish(to: self.group.address, using: MeshNetworkManager.instance.currentApplicationKey, usingFriendshipMaterial: false, ttl: MeshNetworkManager.instance.networkParameters.defaultTtl, period: .disabled, retransmit: .disabled), to: ambientLightSensorModel)!
         
