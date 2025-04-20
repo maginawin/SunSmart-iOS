@@ -100,12 +100,14 @@ class SitesViewController: UIViewController {
 //        favouritesTableView.tableHeaderView = favouritesNoInternetView
         
         if Keychain.getServerRegion() == nil { // 还未选择服务器地区
-            let defalutRegion = ServerRegion(regionCode: Locale.current.regionCode) ?? .northAmerica
-            ServerSelectionView(selectRegion: defalutRegion) {[weak self] region in
-                UserData.currentServerRegion = region
-                self?.setupData()
-                self?.loadSitesRequest()
-            }.show()
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                let defalutRegion = ServerRegion(regionCode: Locale.current.regionCode) ?? .northAmerica
+                ServerSelectionView(selectRegion: defalutRegion) {[weak self] region in
+                    UserData.currentServerRegion = region
+                    self?.setupData()
+                    self?.loadSitesRequest()
+                }.show()
+            }
         }else if NetworkRequest.shared.networkable {
             loadSitesRequest()
         }
@@ -170,7 +172,7 @@ class SitesViewController: UIViewController {
             updateNoInternetUI()
             if NetworkRequest.shared.networkable { // 无网络=>有网络
                 // 自动上传
-                if view.window != nil {
+                if view.window != nil, Keychain.getServerRegion() != nil {
                     loadSitesRequest()
                 }
                 
@@ -180,8 +182,6 @@ class SitesViewController: UIViewController {
                     XWHUDManager.hideInView(with: self.view)
                 }
             }
-                
-            
         }
     }
     
@@ -497,7 +497,7 @@ class SitesViewController: UIViewController {
     
     /// 导入
     @objc private func importClick() {
-            
+        
         ImportProjectView {[weak self] mode in
             if mode == .scanQRCode {
                 self?.scanQRCode()

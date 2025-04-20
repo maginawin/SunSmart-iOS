@@ -195,7 +195,7 @@ class GroupsViewController: UIViewController {
             GroupServer.deleteGroup(group: group, progress: nil, successful: nil, failed: nil)
             self.updateUI()
         }
-        vc.backActionCallback = { [weak self] in
+        vc.backActionCallback = { [weak self] _ in
             self?.dismiss(animated: true)
         }
         if isIPad {

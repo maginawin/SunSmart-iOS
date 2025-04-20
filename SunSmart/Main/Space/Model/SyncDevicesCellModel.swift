@@ -74,6 +74,8 @@ enum DeviceOperationType {
                 return true
             case .deviceParameters(let parameterType):
                 return parameterType.isSuccessful(node: node)
+            case .deviceReadParmeters:
+                return true
             }
         case .configuration(let node, let type):
             switch type {
@@ -106,7 +108,11 @@ enum DeviceOperationType {
                 return node.isKeybindComplete
             case .deviceParameters(let parameterType):
                 return parameterType.isSuccessful(node: node)
+            case .deviceReadParmeters:
+                return true
             }
+        case .read:
+            return true
         }
         
     }
@@ -154,6 +160,8 @@ enum DeviceOperationType {
                 break
             case .deviceParameters(let parameterType):
                 messageHandles.append(contentsOf: parameterType.getMessageHandles(node: node))
+            case .deviceReadParmeters:
+                break
             }
         case .configuration(let node, let type): // 添加/配置操作
             
@@ -192,6 +200,15 @@ enum DeviceOperationType {
                 }
             case .deviceParameters(let parameterType):
                 messageHandles.append(contentsOf: parameterType.getMessageHandles(node: node))
+            case .deviceReadParmeters:
+                break
+            }
+        case .read(let node, let type):
+            switch type {
+            case .deviceReadParmeters(let parameterType):
+                messageHandles.append(contentsOf: parameterType.getMessageHandles(node: node))
+            default:
+                break
             }
         }
         return messageHandles
@@ -201,6 +218,8 @@ enum DeviceOperationType {
     case delete(node: Node, type: ActionType)
     /// 配置操作（添加/同步数据）
     case configuration(node: Node, type: ActionType)
+    /// 读取数据
+    case read(node: Node, type: ActionType)
 }
 
 /// 事件类型
@@ -223,6 +242,8 @@ enum ActionType {
     case deviceInitialize
     /// 设备参数
     case deviceParameters(parameterType: DeviceParameterType)
+    /// 设备参数读取
+    case deviceReadParmeters(parameterType: DeviceReadParameterType)
 }
 
 extension NodeSyncData {
@@ -620,6 +641,8 @@ class SyncDevicesModel: SyncCellModel {
             default:
                 break
             }
+        default:
+            break
         }
         return nil
     }

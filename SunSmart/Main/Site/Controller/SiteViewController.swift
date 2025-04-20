@@ -239,13 +239,13 @@ self.updateAddressData()
         }
         
         XWHUDManager.showCustomHUD(withMessage: nil, isWindow: false)
-        let startDate = Date()
+        
         NetworkRequest.shared.request(.siteInfo(siteId: self.site.id)) {[weak self] result in
             guard let self = self else { return }
             self.allSpacesCollectionView.refreshControl?.endRefreshing()
             self.favouritesCollectionView.refreshControl?.endRefreshing()
             
-            let timeinterval = Date().distance(to: startDate)
+//            let timeinterval = Date().distance(to: startDate)
             
             switch result {
             case .success(let response):
@@ -1042,6 +1042,10 @@ self.updateAddressData()
                     XWHUDManager.hide()
                 }
             case .failure(let error):
+                if error == .resourceNotFound {
+                    space.shareCode = nil
+                    space.save()
+                }
                 XWHUDManager.hide()
                 XWHUDManager.showErrorTipHUD(error.localizedDescription)
             }

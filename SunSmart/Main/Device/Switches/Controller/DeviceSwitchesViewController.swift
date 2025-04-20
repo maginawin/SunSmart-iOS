@@ -219,7 +219,7 @@ class DeviceSwitchesViewController: UIViewController {
             self.dismiss(animated: true)
             self.deleteCache(switchData: switchData)
         }
-        vc.backActionCallback = {[weak self] in
+        vc.backActionCallback = {[weak self] _ in
             guard let self = self else { return }
             self.dismiss(animated: true)
             if let index = MeshNetworkManager.instance.switchs.firstIndex(where: { $0.id == switchData.id }) {

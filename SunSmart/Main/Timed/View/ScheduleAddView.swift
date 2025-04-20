@@ -86,8 +86,7 @@ class ScheduleAddView: UIView {
                     actionOffBtn.isHidden = true
                     actionRecallBtn.isHidden = false
                     
-//                    actionRecallBtn.isSelected = true
-                    actionBtnAction(sender: actionRecallBtn)
+//                    actionBtnAction(sender: actionRecallBtn)
                     actionRecallBtn.snp.updateConstraints { make in
                         make.left.equalTo(SCRXFrom(20))
                     }
@@ -148,7 +147,12 @@ class ScheduleAddView: UIView {
             default:
                 actionOnBtn.isSelected = false
                 actionOffBtn.isSelected = false
-                actionRecallBtn.isSelected = false
+                switch selectTarget {
+                case .scene:
+                    actionBtnAction(sender: actionRecallBtn)
+                default:
+                    actionRecallBtn.isSelected = false
+                }
             }
         }
     }

@@ -77,6 +77,10 @@ class NetworkRequest: NSObject {
             switch result {
             case .success(let respond):
                 do {
+//                    if let httpResponse = respond.response as? HTTPURLResponse,
+//                       httpResponse.value(forHTTPHeaderField: "Content-Encoding")?.contains("gzip") ?? false {
+//                        
+//                    }
                     let json = try respond.mapJSON() as? [String: Any]
                     // 服务器返回成功
                     let code = JSON(json as Any)["code"].intValue

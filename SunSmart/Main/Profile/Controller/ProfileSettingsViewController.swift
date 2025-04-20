@@ -119,7 +119,7 @@ class ProfileSettingsViewController: UIViewController {
                         self.navigationController?.popToViewController(vcClass: GroupViewController.classForCoder(), animated: true)
                 }
             }
-            vc.backActionCallback = {[weak self] in
+            vc.backActionCallback = {[weak self] _ in
                 guard let self = self else { return }
                 NotificationCenter.default.post(name: .init(groupDataUpdateNotificationName), object: group)
                 self.navigationController?.popToViewController(vcClass: GroupViewController.classForCoder())

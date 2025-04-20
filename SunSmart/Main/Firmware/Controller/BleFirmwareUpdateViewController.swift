@@ -628,8 +628,8 @@ class BleFirmwareUpdateViewController: UIViewController {
         refreshControl.addTarget(self, action: #selector(refreshRSSI), for: .valueChanged)
         
         collectionView = UICollectionView(frame: .zero, collectionViewLayout: flowLayout)
-        collectionView.backgroundColor = .clear
-        collectionView.contentInset = UIEdgeInsets(top: SCRYFrom(7), left: 0, bottom: SCRYFrom(16), right: 0)
+        collectionView.backgroundColor = Background_Color
+        collectionView.contentInset = UIEdgeInsets(top: 0, left: 0, bottom: SCRYFrom(16), right: 0)
         collectionView.register(BleFirmwareTypeUpdateViewCell.classForCoder(), forCellWithReuseIdentifier: "cell")
         collectionView.register(BleFirmwareUpdateRestoreView.classForCoder(), forSupplementaryViewOfKind: UICollectionView.elementKindSectionHeader, withReuseIdentifier: "header")
         

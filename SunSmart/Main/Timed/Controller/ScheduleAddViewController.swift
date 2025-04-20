@@ -438,10 +438,10 @@ class ScheduleAddViewController: UIViewController {
         vc.syncSuccessCallback = {[weak self] _ in
             XWHUDManager.showSuccessTipHUD("done".localizedString)
             guard let self = self else { return }
-            self.schedule?.needDeleteNodeAddresses.removeAll()
-            self.schedule?.needDeleteGroupAddresses.removeAll()
-            self.schedule?.needDeleteSceneNumbers.removeAll()
-            self.schedule?.save()
+//            self.schedule?.needDeleteNodeAddresses.removeAll()
+//            self.schedule?.needDeleteGroupAddresses.removeAll()
+//            self.schedule?.needDeleteSceneNumbers.removeAll()
+//            self.schedule?.save()
             DispatchQueue.main.asyncAfter(wallDeadline: .now() + 1.5, execute: {
                 XWHUDManager.hide()
                 self.back()
@@ -452,7 +452,7 @@ class ScheduleAddViewController: UIViewController {
                 }
             })
         }
-        vc.backActionCallback = {[weak self] in
+        vc.backActionCallback = {[weak self] _ in
             guard let self = self else { return }
             self.back()
             if self.schedule == nil || delete { // 新增

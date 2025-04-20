@@ -114,8 +114,27 @@ enum DeviceParameterType {
     
     /// pwm周期
     case pwmPeriod(period: UInt16)
+    
 }
 
+enum DeviceReadParameterType {
+    
+    /// 根据设备参数类型获取对应消息发送对象
+    func getMessageHandles(node: Node) -> [MeshMessageHandle] {
+        var messageHandles: [MeshMessageHandle] = []
+        switch self {
+        case .pwmPeriod:
+            if let vendorModel = node.sunricherVendorModel {
+                messageHandles.append(MeshMessageHandle(message: SunricherVendorGet(function: .pwmPeriod), model: vendorModel))
+            }
+        }
+        return messageHandles
+    }
+    
+    /// pwm周期
+    case pwmPeriod
+    
+}
 
 
 extension Node {
@@ -244,6 +263,96 @@ extension Node {
             }
         }
         return syncDatas
+    }
+    
+    /// 获取节点是否需要同步组数据
+    func getNeedSyncGroup(group: Group? = nil) -> Bool {
+        
+        // 设备退出组失败
+        if self.group != nil && groupState == GroupState.exitFailure {
+            return true
+        }else if let addToGroup = group, getSubscribeToGroupMessages(addToGroup).count > 0 { // 设备订阅组数据不完整
+            return true
+        }
+        
+        // profile
+        let syncProfiles = getNodeSyncProfiles(group: group)
+        if syncProfiles.count > 0 {
+            return true
+        }
+        
+        // 场景
+        let syncScenes = getNodeSyncSceneDatas(group: group)
+        if syncScenes.count > 0 {
+            return true
+        }
+        let deleteScenes = getNodeNeedDeleteSceneDatas()
+        if deleteScenes.count > 0 {
+            return true
+        }
+        
+        // 日程
+        let syncSchedules = getNodeSyncSchedules(group: group)
+        if syncSchedules.count > 0 {
+            return true
+        }
+        let deleteSchedules = getNodeNeedDeleteSchedules()
+        if deleteSchedules.count > 0 {
+            return true
+        }
+        
+        // 动能开关
+        let syncSwitchData = getNodeSyncSwitchs(group: group)
+        if syncSwitchData.switchProxy != nil {
+            return true
+        }
+        if syncSwitchData.linkSwitchs.count > 0 {
+            return true
+        }
+        let deleteSwitchData = getNodeNeedDeleteSwitchs()
+        if deleteSwitchData.delteSwitchProxy != nil {
+            return true
+        }
+        if deleteSwitchData.unlinkSwitchs.count > 0 {
+            return true
+        }
+        return false
+    }
+    
+    /// 获取节点是否要同步
+    func getNeedSync() -> Bool {
+        
+        // 未配置完成
+        if !self.isKeybindComplete {
+            return true
+        }
+        
+        if let group = self.group ?? self.restoreData?.addGroup {
+            if getNeedSyncGroup(group: group) {
+                return true
+            }
+        }else { // 未加入组的profile
+            // profile
+            let syncProfiles = getNodeSyncProfiles(group: nil)
+            if syncProfiles.count > 0 {
+                return true
+            }
+            // 日程
+            let syncSchedules = getNodeSyncSchedules()
+            if syncSchedules.count > 0 {
+                return true
+            }
+            let deleteSchedules = getNodeNeedDeleteSchedules()
+            if deleteSchedules.count > 0 {
+                return true
+            }
+        }
+        
+        // PWM
+        if let pwmPeriod = self.restoreData?.pwmPeriod, self.pwmPeriod != pwmPeriod {
+            return true
+        }
+        return false
     }
     
     /// 获取需要同步的profile

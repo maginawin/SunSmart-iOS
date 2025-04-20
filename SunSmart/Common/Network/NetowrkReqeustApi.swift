@@ -399,15 +399,36 @@ extension NetowrkReqeustApi: TargetType {
             // 无参数
             return .requestPlain
         }
+//        switch self {
+//        case .siteUpload:
+//            fallthrough
+//        case .spaceUpload:
+//            if let bodyData = try? JSONSerialization.data(withJSONObject: requestParameters), let gzipData = try? bodyData.gzipped() {
+//                return .requestCompositeData(bodyData: gzipData, urlParameters: [:])
+//            }
+//        default:
+//            break
+//        }
             return .requestParameters(parameters: requestParameters, encoding: JSONEncoding.default)
 //        }
     }
     
     var headers: [String : String]? {
-//        if let token = getHeader() {
-//            return ["Authorization": token]
-//        }
-        return nil
+        switch self {
+        case .siteInfo:
+            fallthrough
+        case .spaceInfo:
+            fallthrough
+        case .siteUpload:
+            fallthrough
+        case .spaceUpload:
+            return [
+                "Content-Encoding": "gzip",
+                "Accept-Encoding": "gzip"
+            ]
+        default:
+            return nil
+        }
     }
     
 }

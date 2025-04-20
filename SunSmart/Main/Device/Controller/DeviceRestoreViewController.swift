@@ -623,7 +623,7 @@ class DeviceRestoreViewController: UIViewController {
             self.tableView.reloadData()
             self.updateUIState()
         }
-        vc.backActionCallback = {[weak self] in
+        vc.backActionCallback = {[weak self] _ in
             guard let self = self else { return }
             self.navigationController?.popViewController(animated: true)
             syncFailedDevices.forEach { device in
@@ -689,6 +689,13 @@ class DeviceRestoreViewController: UIViewController {
         if let sectionIndex = showSections.firstIndex(where: { $0.restoreDatas.contains(where: { $0.unprovisionedDevice == device }) }), let row = showSections[sectionIndex].restoreDatas.firstIndex(where: { $0.unprovisionedDevice == device }) {
             if let cell = tableView.cellForRow(at: IndexPath(row: row, section: sectionIndex)) as? DeviceAddViewCell {
                 cell.device = device
+                if device.addState == .addConnecting || device.addState == .adding {
+                    cell.addStateLabel.isHidden = true
+                    cell.stateImageView.snp.updateConstraints { make in
+                        make.width.height.equalTo(30)
+                    }
+                }
+                cell.selectImageView.isHidden = false
             }else {
                 tableView.reloadRows(at: [IndexPath(row: row, section: sectionIndex)], with: .none)
             }
@@ -964,6 +971,9 @@ extension DeviceRestoreViewController: UITableViewDataSource, UITableViewDelegat
                 cell.device = device
                 if device.addState == .addConnecting || device.addState == .adding {
                     cell.addStateLabel.isHidden = true
+                    cell.stateImageView.snp.updateConstraints { make in
+                        make.width.height.equalTo(30)
+                    }
                 }
                 cell.selectImageView.isHidden = false
             }else {

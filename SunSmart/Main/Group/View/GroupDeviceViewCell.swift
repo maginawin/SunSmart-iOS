@@ -22,10 +22,6 @@ class GroupDeviceViewCell: DevicesViewCell {
 //                }
 //            }
             
-            if device.needSync && device.state {
-                iconImageView.image = UIImage(named: device.unsyncIconName)
-            }
-            
             if device.isKeybindComplete && device.state {
                 iconImageView.snp.updateConstraints { make in
                     make.top.equalTo(SCRYFrom(10))

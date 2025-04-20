@@ -45,7 +45,7 @@ class DeviceAddViewCell: UITableViewCell {
             addBtn.isHidden = true
             stateImageView.isHidden = true
             stateImageView.snp.updateConstraints { make in
-                make.width.height.equalTo(SCRYFrom(30))
+                make.width.height.equalTo(30)
             }
             addStateLabel.isHidden = true
             identifyLoadingView.isHidden = true

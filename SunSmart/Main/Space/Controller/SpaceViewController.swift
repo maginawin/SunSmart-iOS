@@ -173,8 +173,7 @@ class SpaceViewController: WMPageController {
         MeshLibManager.manager.groupSubscriptionModelIDs = [.genericOnOffServerModelId, .lightLightnessServerModelId, .lightCTLTemperatureServerModelId, .lightCTLServerModelId, .sensorServerModelId, .lightLCServerModelId]
         MeshLibManager.manager.subElementGroupSubscriptionModelIDs = [.lightCTLTemperatureServerModelId]
         checkBluetoothState()
-        MeshNodeHeartbeatManager.shared.autoHeartbeatLoop = false
-        
+        MeshNodeHeartbeatManager.shared.autoHeartbeatLoop = true
    
         // 添加通知监听
         addNotificaiton()
@@ -1037,6 +1036,10 @@ class SpaceViewController: WMPageController {
                     XWHUDManager.hide()
                 }
             case .failure(let error):
+                if error == .resourceNotFound {
+                    self.space.shareCode = nil
+                    self.space.save()
+                }
                 XWHUDManager.hide()
                 XWHUDManager.showErrorTipHUD(error.localizedDescription)
             }

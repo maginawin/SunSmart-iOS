@@ -154,7 +154,7 @@ class TimedViewController: UIViewController {
                 self.reloadCollectionItem(schedule: schedule)
                 self.dismiss(animated: true)
             }
-            vc.backActionCallback = {[weak self] in
+            vc.backActionCallback = {[weak self] _ in
                 self?.dismiss(animated: true)
                 self?.reloadCollectionItem(schedule: schedule)
             }

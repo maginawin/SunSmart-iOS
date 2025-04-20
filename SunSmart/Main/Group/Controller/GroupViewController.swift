@@ -136,6 +136,20 @@ class GroupViewController: UIViewController {
     override func viewDidAppear(_ animated: Bool) {
         super.viewDidAppear(animated)
         
+        var messageHandles: [MeshMessageHandle] = []
+        // 检查校准后的光照传感器是否有上报
+        if let publishAmbientLightSensor = self.group.info.ambientLightSensorNode, let sensorModel = publishAmbientLightSensor.ambientLightSensorModel {
+            let message = ConfigModelPublicationSet(Publish(to: group.address, using: MeshNetworkManager.instance.currentApplicationKey, usingFriendshipMaterial: false, ttl: MeshNetworkManager.instance.networkParameters.defaultTtl, period: .disabled, retransmit: .disabled), to: sensorModel)!
+            let messageHandle = MeshMessageHandle(message: message, address: publishAmbientLightSensor.primaryUnicastAddress)
+            messageHandles.append(messageHandle)
+        }
+        
+        if messageHandles.count > 0 {
+            MeshLibManager.manager.messageDelegate = self
+            
+            MeshProxyMessageCommand.shared.stopSendMessage(finishedBack: nil)
+            MeshProxyMessageCommand.shared.addMessage(messageHandles: messageHandles, finishedBack: nil)
+        }
 //        sensorPublishCheck()
     }
     deinit {
@@ -644,7 +658,7 @@ class GroupViewController: UIViewController {
     
     /// 分页页码编辑回调
     @objc private func pageControlValueChanged() {
-        collectionView.setContentOffset(CGPoint(x: CGFloat(pageControl.currentPage) * collectionView.width, y: 0), animated: true)
+        collectionView.setContentOffset(CGPoint(x: CGFloat(pageControl.currentPage) * collectionView.width, y: self.collectionView.contentOffset.y), animated: true)
     }
     
     /// 刷新设备
@@ -653,6 +667,9 @@ class GroupViewController: UIViewController {
         if let index = group.nodes.firstIndex(where: {$0.primaryUnicastAddress == node.primaryUnicastAddress}) {
             if let item = collectionView.cellForItem(at: IndexPath(item: index, section: 0)) as? DevicesViewCell {
                 item.device = node
+                if node.state && node.getNeedSyncGroup() {
+                    item.iconImageView.image = UIImage(named: node.unsyncIconName)
+                }
             }
         }
         
@@ -840,6 +857,9 @@ extension GroupViewController: UICollectionViewDataSource, UICollectionViewDeleg
         let cell = collectionView.dequeueReusableCell(withReuseIdentifier: "cell", for: indexPath) as! GroupDeviceViewCell
         let node = group.nodes[indexPath.item]
         cell.device = node
+        if node.state && node.getNeedSyncGroup() {
+            cell.iconImageView.image = UIImage(named: node.unsyncIconName)
+        }
 //        let node = MeshNetworkManager.instance.localNode!
 //        cell.nameLabel.text = node.name! + "\(indexPath.item + 1)"
         return cell
@@ -880,7 +900,7 @@ extension GroupViewController: UICollectionViewDataSource, UICollectionViewDeleg
 extension GroupViewController: MeshLibManagerMessageDelegate {
     
     func meshNetworkManager(_ manager: MeshNetworkManager, deviceDataUpdate node: Node) {
-        if group.nodes.contains(node) {
+        if view.window != nil, group.nodes.contains(node) {
             reloadCollectionItem(node: node)
         }
     }
@@ -909,13 +929,16 @@ extension GroupViewController: MeshLibManagerMessageDelegate {
             
             if group.nodes.contains(node) || destination == .allNodes || (isSwitchAction && group.info.switchs.contains(where: { $0.linkGroupAddress == destination })) {
                 if view.window != nil {
-                    collectionView.reloadData()
-                    if group.isOn != onoffBtn.isSelected {
-                        lightnessSlider.value = Node.getLightness100(lightness: group.lightness)
+                    if isSwitchAction {
+                        collectionView.reloadData()
+                        if group.isOn != onoffBtn.isSelected {
+                            lightnessSlider.value = Node.getLightness100(lightness: group.lightness)
+                        }
+                        onoffBtn.isSelected = group.isOn
+                    }else {
+                        reloadCollectionItem(node: node)
                     }
-                    onoffBtn.isSelected = group.isOn
                 }
-//                reloadCollectionItem(node: node)
             }
         }
     }

@@ -430,6 +430,10 @@ class ShareAuthorityViewController: UIViewController {
                 let vc = SharingSettingViewController(type: .space(site: self.site, space: space))
                 self.navigationController?.pushViewController(vc, animated: true)
             case .failure(let error):
+                if error == .resourceNotFound {
+                    space.shareCode = nil
+                    space.save()
+                }
                 XWHUDManager.showErrorTipHUD(error.localizedDescription)
             }
         }

@@ -78,10 +78,12 @@ class GroupMembersViewController: UIViewController {
         
         selectNodes.append(contentsOf: nodes.filter({ $0.group?.address.address == group.address.address }).filter({ !selectNodes.contains($0) && $0.group?.address.address == group.address.address }))
 //        }
-        functionView.syncBtn.isHidden = !group.nodes.contains(where: { $0.needSync })
-        updateEmptyUI()
-        collectionView.reloadData()
-        updateFunctionView()
+        DispatchQueue.global().async {
+            let isSync = self.group.needSync
+            DispatchQueue.main.async {
+                self.functionView.syncBtn.isHidden = !isSync
+            }
+        }
         MeshLibManager.manager.messageDelegate = self
     }
     
@@ -90,6 +92,10 @@ class GroupMembersViewController: UIViewController {
         if isAddDevices {
             navigationController?.interactivePopGestureRecognizer?.isEnabled = false
         }
+        
+        updateEmptyUI()
+        collectionView.reloadData()
+        updateFunctionView()
     }
     
     override func viewDidDisappear(_ animated: Bool) {
@@ -163,7 +169,7 @@ class GroupMembersViewController: UIViewController {
                 }
             }
         }
-        vc.backActionCallback = {[weak self] in
+        vc.backActionCallback = {[weak self] _ in
             guard let self = self else { return }
             NotificationCenter.default.post(name: .init(groupDataUpdateNotificationName), object: self.group)
             self.navigationController?.popToViewController(vcClass: GroupViewController.classForCoder())
@@ -364,7 +370,7 @@ class GroupMembersViewController: UIViewController {
                     item.selectImageView.image = UIImage(named: "device_select_un")
                 }
 //                item.selectImageView.image = selectNodes.contains(node) ? UIImage(named: "device_select") : UIImage(named: "device_select_un")
-                if node.state && node.isKeybindComplete && node.needSync {
+                if node.state && node.isKeybindComplete && node.getNeedSyncGroup() {
                     item.iconImageView.image = UIImage(named: node.unsyncIconName)
                 }
             }
@@ -448,7 +454,7 @@ class GroupMembersViewController: UIViewController {
 extension GroupMembersViewController: MeshLibManagerMessageDelegate {
     
     func meshNetworkManager(_ manager: MeshNetworkManager, deviceDataUpdate node: Node) {
-        if nodes.contains(where: { $0.primaryUnicastAddress == node.primaryUnicastAddress }) {
+        if view.window != nil, nodes.contains(where: { $0.primaryUnicastAddress == node.primaryUnicastAddress }) {
             reloadCollectionItem(node: node)
         }
     }
@@ -486,7 +492,7 @@ extension GroupMembersViewController: UICollectionViewDataSource, UICollectionVi
         
 //        cell.selectImageView.image = selectNodes.contains(node) ? UIImage(named: "device_select") : UIImage(named: "device_select_un")
         
-        if node.state && node.isKeybindComplete && node.needSync {
+        if node.state && node.isKeybindComplete && node.getNeedSyncGroup() {
             cell.iconImageView.image = UIImage(named: node.unsyncIconName)
         }
         cell.editClickCallback = {[weak self] node in

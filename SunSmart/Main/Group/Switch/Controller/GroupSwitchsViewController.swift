@@ -231,7 +231,7 @@ class GroupSwitchsViewController: UIViewController {
             self?.reloadSwitchItem(switchData: switchData)
             NotificationCenter.default.post(name: .init(switchsRefreshNotificationName), object: nil)
         }
-        vc.backActionCallback = {[weak self] in
+        vc.backActionCallback = {[weak self] _ in
             if let realSwitch = MeshNetworkManager.instance.switchs.first(where: { $0.id == switchData.id }) {
                 switchData.update(switchData: realSwitch)
             }
@@ -259,7 +259,7 @@ class GroupSwitchsViewController: UIViewController {
             self.reloadSwitchItem(switchData: switchData)
             NotificationCenter.default.post(name: .init(switchsRefreshNotificationName), object: nil)
         }
-        vc.backActionCallback = {[weak self] in
+        vc.backActionCallback = {[weak self] _ in
             guard let self = self else { return }
             if let copySwitch = self.copySwitchs.first(where: { $0.id == switchData.id }) {
                 copySwitch.update(switchData: switchData)
@@ -364,7 +364,7 @@ class GroupSwitchsViewController: UIViewController {
             self.navigationController?.popViewController(animated: true)
             self.deleteSwitch(switchData: switchData)
         }
-        vc.backActionCallback = {[weak self] in
+        vc.backActionCallback = {[weak self] _ in
             guard let self = self else { return }
 //            if let index = self.copySwitchs.firstIndex(where: { $0.id == switchData.id }) {
 //                self.copySwitchs[index].update(switchData: switchData)

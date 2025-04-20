@@ -230,7 +230,7 @@ class DeviceSwitchViewController: UIViewController {
             }
             
         }
-        vc.backActionCallback = {[weak self] in
+        vc.backActionCallback = {[weak self] _ in
             guard let self = self else { return }
             NotificationCenter.default.post(name: .init(switchsRefreshNotificationName), object: nil)
             if self.switchData != nil {
@@ -262,7 +262,7 @@ class DeviceSwitchViewController: UIViewController {
             self.updateSaveEnabledState()
             self.tableView.reloadData()
         }
-        vc.backActionCallback = {[weak self] in
+        vc.backActionCallback = {[weak self] _ in
             guard let self = self else { return }
             self.navigationController?.popViewController(animated: true)
             self.setSwitchData.update(switchData: switchData)
@@ -302,7 +302,7 @@ class DeviceSwitchViewController: UIViewController {
                 self?.fineshed()
             }
         }
-        vc.backActionCallback = {[weak self] in
+        vc.backActionCallback = {[weak self] _ in
             guard let self = self else { return }
             self.navigationController?.popViewController(animated: true)
             self.setSwitchData.update(switchData: switchData)

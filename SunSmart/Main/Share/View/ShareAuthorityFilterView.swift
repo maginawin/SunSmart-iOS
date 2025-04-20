@@ -424,15 +424,21 @@ class ShareAuthorityFilterHeaderView: UITableViewHeaderFooterView {
     var nameLabel: UILabel!
     var arrowImageView: UIImageView!
     
+    var clickActionCallback: (()->Void)?
+    
     override init(reuseIdentifier: String?) {
         super.init(reuseIdentifier: reuseIdentifier)
         setupUI()
         
-        
+        addGestureRecognizer(UITapGestureRecognizer(target: self, action: #selector(viewClickAction)))
     }
     
     required init?(coder: NSCoder) {
         fatalError("init(coder:) has not been implemented")
+    }
+    
+    @objc private func viewClickAction() {
+        clickActionCallback?()
     }
     
     private func setupUI() {

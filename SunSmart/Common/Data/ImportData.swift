@@ -740,16 +740,8 @@ extension SpaceData {
                 }
             }
             
-            let meshUUID = self.meshUUID
-            
-            var meshNetwork: MeshNetwork?
-            if MeshNetworkManager.instance.meshNetwork?.uuid.uuidString == meshUUID && MeshNetworkManager.instance.currentNetworkKey.networkId.hex == self.meshNetworkId {
-                meshNetwork = MeshNetworkManager.instance.meshNetwork
-            }else {
-                meshNetwork = MeshNetwork.load(meshUUID: meshUUID, subnetworkId: self.meshNetworkId)
-            }
             // 子网key丢失
-            if let network = meshNetwork, !network.networkKeys.contains(where: { $0.networkId.hex == self.meshNetworkId }) {
+            if let network = MeshNetwork.load(meshUUID: meshUUID, subnetworkId: self.meshNetworkId, allData: false), !network.networkKeys.contains(where: { $0.networkId.hex == self.meshNetworkId }) {
                 // 修复子网key数据
                 if let netKeyDict = json["netKey"].dictionaryObject,
                    let netKeyData = try? JSONSerialization.data(withJSONObject: netKeyDict),
@@ -774,6 +766,15 @@ extension SpaceData {
                 continuation.resume()
                 self.save()
                 return
+            }
+            
+            let meshUUID = self.meshUUID
+            
+            var meshNetwork: MeshNetwork?
+            if MeshNetworkManager.instance.meshNetwork?.uuid.uuidString == meshUUID && MeshNetworkManager.instance.currentNetworkKey.networkId.hex == self.meshNetworkId {
+                meshNetwork = MeshNetworkManager.instance.meshNetwork
+            }else {
+                meshNetwork = MeshNetwork.load(meshUUID: meshUUID, subnetworkId: self.meshNetworkId)
             }
             
             guard let network = meshNetwork else {

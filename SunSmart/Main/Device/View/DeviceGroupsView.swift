@@ -25,7 +25,8 @@ class DeviceGroupsView: UIView {
     private var bgView: UIView!
     
     var selectAllBtn: UIButton!
-    private var sortBtn: UIButton!
+    var sortBtn: UIButton!
+    var selectCountLabel: UILabel!
     
     private var flowLayout: HorizontalDirectionFlowLayout!
     
@@ -33,7 +34,7 @@ class DeviceGroupsView: UIView {
     
     var progressView: LinePageControl!
     
-    private var lineView: UIView!
+    var lineView: UIView!
     
     weak var delegate: DeviceGroupsViewDelegate?
     
@@ -114,6 +115,14 @@ class DeviceGroupsView: UIView {
         sortBtn = UIButton(normalImageName: "space_sort", target: self, action: #selector(sortBtnAction))
         bgView.addSubview(sortBtn)
         sortBtn.snp.makeConstraints { make in
+            make.right.equalTo(SCRXFrom(-16))
+            make.centerY.equalTo(selectAllBtn)
+        }
+        
+        selectCountLabel = UILabel(text: "", textColor: TextBlack_Color, fontSize: 14, fontWeight: .light)
+        selectCountLabel.isHidden = true
+        bgView.addSubview(selectCountLabel)
+        selectCountLabel.snp.makeConstraints { make in
             make.right.equalTo(SCRXFrom(-16))
             make.centerY.equalTo(selectAllBtn)
         }

@@ -311,7 +311,7 @@ class DeviceLightsViewController: UIViewController {
         showSelectDatas = groups.map({
             let nodes = $0.nodes.filter({ $0.state && $0.isKeybindComplete })
             let isSelected = nodes.count > 0 && !nodes.contains(where: { !self.selectedAddresss.contains($0.primaryUnicastAddress) })
-            return DeviceGroupsSelectData(name: $0.name, addresss: nodes.map({ $0.primaryUnicastAddress }), isSelected: isSelected)
+            return DeviceGroupsSelectData(name: $0.name, groupAddress: $0.address.address,addresss: nodes.map({ $0.primaryUnicastAddress }), isSelected: isSelected)
         })
         let canEditDeviceAddresss = devices.filter({ $0.state && $0.isKeybindComplete }).map({ $0.primaryUnicastAddress })
         // 全选
@@ -948,7 +948,7 @@ extension DeviceLightsViewController: SpaceFunctionFooterViewDelegate {
             self?.navigationController?.popViewController(animated: true)
             self?.updateUI()
         }
-        vc.backActionCallback = {[weak self] in
+        vc.backActionCallback = {[weak self] _ in
             self?.updateUI()
             self?.navigationController?.popViewController(animated: true)
         }

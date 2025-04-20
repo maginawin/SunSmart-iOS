@@ -189,7 +189,7 @@ class ScenesViewController: UIViewController {
             SceneServer.deleteScene(scene: scene, success: nil, failed: nil)
             self.updateUI()
         }
-        vc.backActionCallback = {[weak self] in
+        vc.backActionCallback = {[weak self] _ in
 //                self?.dismiss(animated: true)
             guard let self = self else { return }
             self.dismiss(animated: true)

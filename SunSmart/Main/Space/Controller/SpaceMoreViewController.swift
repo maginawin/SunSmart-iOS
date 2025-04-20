@@ -9,8 +9,7 @@ import UIKit
 
 class SpaceMoreViewController: UIViewController {
     
-    /// 固件升级方式
-    enum FirmwareUpdateType {
+    enum Options {
         
         var data: (icon: String, title: String) {
             switch self {
@@ -18,6 +17,8 @@ class SpaceMoreViewController: UIViewController {
                 return ("ota_ble", "ota_ble_title".localizedString)
             case .mesh:
                 return ("ota_mesh", "ota_mesh_title".localizedString)
+            case .deviceParameters:
+                return ("device_parameter", "device_parameter_settings".localizedString)
             }
         }
         
@@ -25,6 +26,8 @@ class SpaceMoreViewController: UIViewController {
         case ble
         /// mesh分发
         case mesh
+        /// 设备参数
+        case deviceParameters
     }
     
     let space: SpaceData
@@ -32,8 +35,7 @@ class SpaceMoreViewController: UIViewController {
     private var collectionView: UICollectionView!
     private var flowLayout: UICollectionViewFlowLayout!
     
-    private var options: [FirmwareUpdateType] = [.ble, .mesh]
-    private weak var uploadStateView: FirmwareDistributeUpdateStateView?
+    private var options: [Options] = [.ble, .mesh, .deviceParameters]
     
     init(space: SpaceData) {
         self.space = space
@@ -94,10 +96,10 @@ extension SpaceMoreViewController: UICollectionViewDataSource, UICollectionViewD
     func collectionView(_ collectionView: UICollectionView, didSelectItemAt indexPath: IndexPath) {
         switch options[indexPath.item] {
         case .ble:
-//            guard self.space.bleOTAOperates.contains(.edit) else {
-//                XWHUDManager.showTipHUD("no_permission".localizedString + "！")
-//                return
-//            }
+            guard self.space.bleOTAOperates.contains(.edit) else {
+                XWHUDManager.showTipHUD("no_permission".localizedString + "！")
+                return
+            }
             
             let vc = BleFirmwareUpdateViewController()
             if isIPad {
@@ -114,27 +116,18 @@ extension SpaceMoreViewController: UICollectionViewDataSource, UICollectionViewD
                 vc.preferredContentSize = iPadPreferredContentSize
             }
             present(NavigationViewController(rootViewController: vc), animated: true)
+        case .deviceParameters:
+            guard self.space.deviceOperates.contains(.edit) else {
+                XWHUDManager.showTipHUD("no_permission".localizedString + "！")
+                return
+            }
+            let vc = DeviceCategorysViewController()
+            if isIPad {
+                vc.preferredContentSize = iPadPreferredContentSize
+            }
+            present(NavigationViewController(rootViewController: vc), animated: true)
         }
         
-    }
-    
-}
-
-extension SpaceMoreViewController: FirmwareDistributeUpdateStateViewDelegate {
-    
-    /// 点击取消更新回调
-    func firmwareUpdateCancelAction(_ view: FirmwareDistributeUpdateStateView) {
-        uploadStateView?.hide()
-    }
-    
-    /// 点击重试回调
-    func firmwareUpdateRetryAction(_ view: FirmwareDistributeUpdateStateView) {
-        uploadStateView?.hide()
-    }
-    
-    /// 点击ok回调
-    func firmwareUpdateOKAction(_ view: FirmwareDistributeUpdateStateView) {
-        uploadStateView?.hide()
     }
     
 }

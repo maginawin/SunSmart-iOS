@@ -253,7 +253,7 @@ class SceneViewController: UIViewController {
                 self.close()
             }
         }
-        vc.backActionCallback = {[weak self] in
+        vc.backActionCallback = {[weak self] _ in
 //                self?.dismiss(animated: true)
             guard let self = self else { return }
             NotificationCenter.default.post(name: .init(sceneDataUpdateNotificationName), object: self.scene)
