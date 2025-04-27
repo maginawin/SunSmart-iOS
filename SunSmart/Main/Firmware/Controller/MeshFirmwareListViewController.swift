@@ -360,7 +360,7 @@ class MeshFirmwareListViewController: UIViewController {
         view.addSubview(collectionView)
         collectionView.snp.makeConstraints { make in
             make.left.right.bottom.equalToSuperview()
-            make.top.equalTo((navigationController?.navigationBar.height ?? 0) + SCRYFrom(7))
+            make.top.equalTo(view.safeAreaLayoutGuide).offset(SCRYFrom(7))
         }
         
     }

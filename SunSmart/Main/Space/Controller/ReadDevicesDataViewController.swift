@@ -530,7 +530,7 @@ class ReadDevicesDataViewController: UIViewController {
         view.addSubview(tableView)
         tableView.snp.makeConstraints { make in
             make.left.right.bottom.equalToSuperview()
-            make.top.equalTo(navigationController?.navigationBar.height ?? 0)
+            make.top.equalTo(view.safeAreaLayoutGuide)
         }
         
         bottomView = UIView()

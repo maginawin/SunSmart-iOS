@@ -639,7 +639,7 @@ class BleFirmwareUpdateViewController: UIViewController {
         collectionView.snp.makeConstraints { make in
             make.left.right.equalToSuperview()
             make.bottom.equalTo(bottomView.snp.top)
-            make.top.equalTo((navigationController?.navigationBar.height ?? 0) + SCRYFrom(7))
+            make.top.equalTo(view.safeAreaLayoutGuide).offset(SCRYFrom(7))
         }
         
     }

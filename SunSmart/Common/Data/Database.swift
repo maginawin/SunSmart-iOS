@@ -425,6 +425,7 @@ extension SpaceData {
         UserData.initDatabase()
         DeviceSwitchData.initDatabase()
         MeshDistributionData.initDatabase()
+        DeviceDongleData.initDatabase()
     }
  
     
@@ -2225,6 +2226,153 @@ extension DeviceSwitchData {
     
 }
 
+extension DeviceDongleData {
+    
+    private static let donglesTableName = "dongles"
+    private static let donglesTable = Table(donglesTableName)
+    
+    struct ExpressionKey {
+        static let id = Expression<Int64>("id")
+        static let meshUUID = Expression<String>("meshUUID")
+        static let subNetworkKey = Expression<String>("subNetworkKey")
+        static let dongleId = Expression<String>("dongleId")
+        static let name = Expression<String>("name")
+        static let bindNodeAddress = Expression<Int?>("bindNodeAddress")
+        static let timeAuthority = Expression<Bool>("timeAuthority")
+        static let collectionEnable = Expression<Bool>("collectionEnable")
+        static let schedules = Expression<Data?>("schedules")
+        static let firstCollectionTimestamp = Expression<Int64?>("firstCollectionTimestamp")
+    }
+    
+    /// 初始化组扩展信息表
+    static func initDatabase() {
+        
+        _ = try? SunSmartDataManager.shared.db?.run(DeviceDongleData.donglesTable.create(temporary: false, ifNotExists: true, withoutRowid: false, block: { builder in
+            builder.column(ExpressionKey.id, primaryKey: true)
+            builder.column(ExpressionKey.meshUUID)
+            builder.column(ExpressionKey.subNetworkKey)
+            builder.column(ExpressionKey.dongleId)
+            builder.column(ExpressionKey.name)
+            builder.column(ExpressionKey.bindNodeAddress)
+            builder.column(ExpressionKey.timeAuthority)
+            builder.column(ExpressionKey.collectionEnable)
+            builder.column(ExpressionKey.schedules)
+            builder.column(ExpressionKey.firstCollectionTimestamp)
+            builder.unique(ExpressionKey.meshUUID, ExpressionKey.subNetworkKey, ExpressionKey.dongleId)
+        }))
+    }
+    
+    /// 根据网络id获取所有的dongle数据
+    /// - Parameter meshUUID: 网络id
+    /// - Parameter networkKey: 子网网络key
+    /// - Parameter id: dongle id（传入获取指定dongle）
+    /// - Parameter bindNodeAddress: 绑定的节点地址
+    /// - Returns: dongle数据list
+    static func load(meshUUID: String, meshNetworkId: String? = nil, id: String? = nil, bindNodeAddress: Address? = nil) -> [DeviceDongleData] {
+        
+        let subNetworkKey = meshNetworkId ?? MeshNetworkManager.instance.currentNetworkKey.networkId.hex
+        
+        var predicate = DeviceDongleData.donglesTable.filter(ExpressionKey.meshUUID == meshUUID && ExpressionKey.subNetworkKey == subNetworkKey)
+        if let dongleId = id {
+            predicate = predicate.filter(ExpressionKey.dongleId == dongleId)
+        }else if let address = bindNodeAddress {
+            predicate = predicate.filter(ExpressionKey.bindNodeAddress == Int(address))
+        }
+        
+        let filter = predicate.order(ExpressionKey.id.asc)
+        
+        var dongles: [DeviceDongleData] = []
+        if let rows = try? SunSmartDataManager.shared.db?.prepare(filter) {
+            for row in rows {
+                
+                let bindNodeAddress = row[ExpressionKey.bindNodeAddress]
+                var collectionSchedules: [CollectionSchedule] = []
+                if let data = row[ExpressionKey.schedules],
+                   let schedules = try? jsonDecoder.decode([CollectionSchedule].self, from: data) {
+                    collectionSchedules = schedules
+                }
+                
+               let dongleData = DeviceDongleData(id: row[ExpressionKey.dongleId], name: row[ExpressionKey.name], bindNodeAddress: bindNodeAddress != nil ? Address(bindNodeAddress!) : nil, timeAuthority: row[ExpressionKey.timeAuthority], collectionEnable: row[ExpressionKey.collectionEnable], schedules: collectionSchedules)
+                
+                dongleData.firstCollectionTimestamp = row[ExpressionKey.firstCollectionTimestamp]
+                
+                dongles.append(dongleData)
+            }
+        }
+        return dongles
+    }
+    
+    /// 缓存dongle数据
+    /// - Parameters:
+    ///   - meshUUID: 网络id
+    ///   - networkKey: 子网网络key
+    /// - Returns: 是否成功
+    @discardableResult func save(meshUUID: String? = nil, networkId: String? = nil) -> Bool {
+        
+        guard let uuid = meshUUID ?? MeshNetworkManager.instance.meshNetwork?.uuid.uuidString else { return false }
+        let subNetworkey = networkId ?? MeshNetworkManager.instance.currentNetworkKey.networkId.hex
+        
+        var schedulesData: Data?
+        if schedules.count > 0 {
+            schedulesData = try? jsonEncoder.encode(schedules)
+        }
+        
+        let insertOrUpdate = DeviceDongleData.donglesTable.insert(or: .replace, [
+            ExpressionKey.meshUUID <- uuid,
+            ExpressionKey.subNetworkKey <- subNetworkey,
+            ExpressionKey.dongleId <- self.id,
+            ExpressionKey.name <- self.name,
+            ExpressionKey.bindNodeAddress <- self.bindNodeAddress != nil ? Int(self.bindNodeAddress!) : nil,
+            ExpressionKey.timeAuthority <- self.timeAuthority,
+            ExpressionKey.collectionEnable <- self.collectionEnable,
+            ExpressionKey.schedules <- schedulesData,
+            ExpressionKey.firstCollectionTimestamp <- self.firstCollectionTimestamp
+        ])
+        do {
+            try SunSmartDataManager.shared.db?.run(insertOrUpdate)
+        } catch {
+            print(error)
+            return false
+        }
+        return true
+    }
+    
+    /// 删除网络内全部dongle数据
+    /// - Parameter meshUUID: 网络id
+    /// - Parameter networkKey: 子网网络key
+    /// - Returns: 是否成功
+    @discardableResult static func deleteDongles(meshUUID: String, networkId: String) -> Bool {
+        
+        // 指定子网下所有虚拟按键
+        let predicate = ExpressionKey.meshUUID == meshUUID && ExpressionKey.subNetworkKey == networkId
+ 
+        let filter = DeviceDongleData.donglesTable.filter(predicate)
+        do {
+            try SunSmartDataManager.shared.db?.run(filter.delete())
+        } catch {
+            print(error)
+            return false
+        }
+        return true
+    }
+    
+    @discardableResult func delete(meshUUID: String, networkId: String) -> Bool {
+        
+        // 指定删除dongle
+        let predicate = ExpressionKey.meshUUID == meshUUID && ExpressionKey.subNetworkKey == networkId && ExpressionKey.dongleId == self.id
+
+        let filter = DeviceDongleData.donglesTable.filter(predicate)
+        do {
+            try SunSmartDataManager.shared.db?.run(filter.delete())
+        } catch {
+            print(error)
+            return false
+        }
+        return true
+    }
+    
+}
+
 extension MeshDeviceConfigInfo {
     
     private static let deviceConfigInfosTableName = "deviceConfigInfos"
@@ -2237,6 +2385,7 @@ extension MeshDeviceConfigInfo {
         static let categoryName = Expression<String>("categoryName")
         static let elementCount = Expression<Int>("elementCount")
         static let iconCategory = Expression<String>("iconCategory")
+        static let deviceCategory = Expression<String>("deviceCategory")
     }
     
     /// 初始化设备配置信息表
@@ -2249,6 +2398,7 @@ extension MeshDeviceConfigInfo {
             builder.column(ExpressionKey.categoryName)
             builder.column(ExpressionKey.elementCount)
             builder.column(ExpressionKey.iconCategory)
+            builder.column(ExpressionKey.deviceCategory)
             builder.unique(ExpressionKey.companyId, ExpressionKey.productId)
         }))
         // 获取表内存在的属性
@@ -2257,6 +2407,10 @@ extension MeshDeviceConfigInfo {
             // 是否存在”iconCategory“属性
             if !columns.contains(where: { $0.name == "iconCategory" }) {
                 _ = try? SunSmartDataManager.shared.db?.run(MeshDeviceConfigInfo.deviceConfigInfosTable.addColumn(ExpressionKey.iconCategory, defaultValue: "Lighting"))
+            }
+            // 是否存在”iconCategory“属性
+            if !columns.contains(where: { $0.name == "deviceCategory" }) {
+                _ = try? SunSmartDataManager.shared.db?.run(MeshDeviceConfigInfo.deviceConfigInfosTable.addColumn(ExpressionKey.deviceCategory, defaultValue: "Lighting"))
             }
         }
     }
@@ -2282,7 +2436,7 @@ extension MeshDeviceConfigInfo {
         var infos: [MeshDeviceConfigInfo] = []
         if let rows = try? SunSmartDataManager.shared.db?.prepare(query) {
             for row in rows {
-                let info = MeshDeviceConfigInfo(companyId: UInt16(row[ExpressionKey.companyId]), productId: UInt16(row[ExpressionKey.productId]), categoryName: row[ExpressionKey.categoryName], elementCount: row[ExpressionKey.elementCount], iconCategory: row[ExpressionKey.iconCategory])
+                let info = MeshDeviceConfigInfo(companyId: UInt16(row[ExpressionKey.companyId]), productId: UInt16(row[ExpressionKey.productId]), categoryName: row[ExpressionKey.categoryName], elementCount: row[ExpressionKey.elementCount], iconCategory: row[ExpressionKey.iconCategory], deviceCategory: row[ExpressionKey.deviceCategory])
                 infos.append(info)
             }
         }
@@ -2338,7 +2492,8 @@ extension MeshDeviceConfigInfo {
             ExpressionKey.productId <- Int(self.productId),
             ExpressionKey.categoryName <- self.categoryName,
             ExpressionKey.elementCount <- self.elementCount,
-            ExpressionKey.iconCategory <- self.iconCategory
+            ExpressionKey.iconCategory <- self.iconCategory,
+            ExpressionKey.deviceCategory <- self.deviceCategory
         ])
         do {
             try SunSmartDataManager.shared.db?.run(insertOrUpdate)

@@ -202,7 +202,6 @@ class DeviceRestoreViewController: UIViewController {
             unprovisionedDevice.addState = .scaning
             unprovisionedDevice.deviceName = node.name
             unprovisionedDevice.elementCount = Int(node.elementsCount)
-            unprovisionedDevice.isSupport = true
             unprovisionedDevice.icon = node.iconName
             
             var setSection: DeviceRestoreSection!
@@ -416,8 +415,8 @@ class DeviceRestoreViewController: UIViewController {
             addDevice.addState = .adding
             self?.reloadDeviceState(addDevice)
             self?.updateUIState()
-        } appendMessagesBack: {[weak self] addDevice in
-            guard let self = self, let newNode = MeshNetworkManager.instance.meshNetwork?.node(withAddress: addDevice.address) else { return [] }
+        } provisionCompleteCallback: {[weak self] addDevice, node in
+            guard let self = self else { return }
             
             var oldNode = deviceData.node
             var addToGroup = oldNode.group
@@ -434,13 +433,35 @@ class DeviceRestoreViewController: UIViewController {
                 }
             }
             
+            // 恢复数据
+            node.updateResoreData(oldNode: oldNode, resoreGroup: addToGroup)
+            
+        } appendMessagesBack: {[weak self] addDevice in
+            guard let self = self, let newNode = MeshNetworkManager.instance.meshNetwork?.node(withAddress: addDevice.address) else { return [] }
+            
+            var oldNode = deviceData.node
+            var addToGroup = oldNode.group
+//            if oldNode.groupState == .exitFailure {
+//                addToGroup = nil
+//            }
+//            
+            if let section = self.showSections.first(where: { $0.restoreDatas.contains(where: { $0.unprovisionedDevice == addDevice }) }), let data = section.restoreDatas.first(where: { $0.unprovisionedDevice == addDevice }) {
+                oldNode = data.node
+                if oldNode.groupState == .exitFailure {
+                    addToGroup = nil
+                }else {
+                    addToGroup = section.group
+                }
+            }
+//            
+//            // 恢复数据
+//            newNode.updateResoreData(oldNode: oldNode, resoreGroup: addToGroup)
+            
             var appendMessages: [MeshMessageHandle] = []
             // 入网后默认调为最大亮度
             if let model = newNode.lightnessModel {
                 appendMessages.append(MeshMessageHandle(message: LightLightnessSetUnacknowledged(lightness: .max), model: model))
             }
-            // 恢复数据
-            newNode.updateResoreData(oldNode: oldNode, resoreGroup: addToGroup)
             appendMessages.append(contentsOf: newNode.getResoreMessageHandles(oldNode: oldNode))
             
             if addToGroup == nil {
@@ -490,10 +511,10 @@ class DeviceRestoreViewController: UIViewController {
                     node.name = data.node.name
                     
                     // 添加设备时异常断开连接，导致恢复的数据未缓存
-                    if node.restoreData == nil || (section.group != nil && data.node.groupState != .exitFailure && node.restoreData?.addGroup != section.group) {
-                        let oldNode = data.node
-                        node.updateResoreData(oldNode: oldNode, resoreGroup: section.group)
-                    }
+//                    if node.restoreData == nil || (section.group != nil && data.node.groupState != .exitFailure && node.restoreData?.addGroup != section.group) {
+//                        let oldNode = data.node
+//                        node.updateResoreData(oldNode: oldNode, resoreGroup: section.group)
+//                    }
                 }
                 
                 //                node.state = true

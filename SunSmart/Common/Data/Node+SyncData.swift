@@ -18,6 +18,8 @@ enum NodeSyncType {
     case schedules(schedule: Schedule? = nil)
     /// 动能开关 （传入则获取对应的数据）
     case switches(switchData: DeviceSwitchData? = nil)
+    /// Dongle数据
+    case dongle(dongleData: DeviceDongleData)
     /// 全部
     case all
 }
@@ -52,6 +54,10 @@ enum NodeSyncData {
     case deviceInitialize
     /// 设备参数类型list
     case deviceParameterTypes(types: [DeviceParameterType])
+    /// 同步采集能耗日程
+    case syncCollectionSchedules(schedules: [(Int, SchedulerRegistryEntry)])
+    /// 删除采集能耗日程
+    case deleteCollectionSchedules(scheduleIds: [Int])
 }
 
 /// 配置类型
@@ -108,13 +114,16 @@ enum DeviceParameterType {
             if let vendorModel = node.sunricherVendorModel {
                 messageHandles.append(MeshMessageHandle(message: SunricherVendorSet(function: .pwmPeriod(period)), model: vendorModel))
             }
+        case .ratedPower(let value):
+            break
         }
         return messageHandles
     }
     
     /// pwm周期
     case pwmPeriod(period: UInt16)
-    
+    /// 额定功率
+    case ratedPower(value: Int)
 }
 
 enum DeviceReadParameterType {
@@ -239,6 +248,44 @@ extension Node {
             if deleteSwitchData.unlinkSwitchs.count > 0 {
                 syncDatas.append(.deleteSwitchs(switchDatas: deleteSwitchData.unlinkSwitchs))
             }
+        case .dongle(let dongleData):
+            // dongle设备同步dongle预配置数据
+            guard self.deviceType == .dongle else {
+                return syncDatas
+            }
+            // TODO: - TimeAuthority
+            
+            // 日程
+            if let collectionSchedulerSetupModel = self.collectionSchedulerSetupModel {
+                // 设备采集日程数据list
+                let schedulerEntrys = allSchedulerModelEntrys[collectionSchedulerSetupModel] ?? [:]
+                // 启用采集
+                if dongleData.collectionEnable {
+                    // 获取需要同步日程
+                    let syncSchedules = dongleData.schedules.filter { schedule in
+                        let id = Int(schedule.id)
+                        // 判断日程数据是否需同步
+                        if schedulerEntrys[id] == nil || !(schedulerEntrys[id]! == schedule.schedulerEntry) {
+                            return true
+                        }
+                        return false
+                    }
+                    
+                    syncDatas.append(.syncCollectionSchedules(schedules: syncSchedules.map({ (Int($0.id), $0.schedulerEntry) })))
+                    
+                    // 需要删除的日程
+                    let deleteSchedules = schedulerEntrys.filter({ entry in !dongleData.schedules.contains(where: { $0.id == entry.key }) })
+                    syncDatas.append(.deleteCollectionSchedules(scheduleIds: deleteSchedules.map({ $0.key })))
+                }else { // 禁用采集
+                    
+                    // 需要同步的日程（禁用后应设置无效）
+                    let syncScheduleEntrys = schedulerEntrys.filter({ $0.value.isValid })
+                    let ids = syncScheduleEntrys.keys.sorted()
+                    
+                    let syncSchedules = ids.map({ ($0, syncScheduleEntrys[$0]!) })
+                    syncDatas.append(.syncCollectionSchedules(schedules: syncSchedules))
+                }
+            }
             
         case .all:
             
@@ -261,6 +308,12 @@ extension Node {
             if let pwmPeriod = self.restoreData?.pwmPeriod, self.pwmPeriod != pwmPeriod {
                 syncDatas.append(.deviceParameterTypes(types: [.pwmPeriod(period: pwmPeriod)]))
             }
+            
+            // Dongle
+            if self.deviceType == .dongle, let dongleData = MeshNetworkManager.instance.dongles.first(where: { $0.bindNodeAddress == self.primaryUnicastAddress }) {
+                syncDatas.append(contentsOf: getSyncData(type: .dongle(dongleData: dongleData)))
+            }
+            
         }
         return syncDatas
     }

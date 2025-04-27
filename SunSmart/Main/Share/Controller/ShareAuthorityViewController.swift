@@ -907,7 +907,7 @@ class ShareAuthorityViewController: UIViewController {
         view.addSubview(topBarView)
         topBarView.snp.makeConstraints { make in
             make.left.right.equalToSuperview()
-            make.top.equalTo((navigationController?.navigationBar.height ?? 0) + SCRYFrom(7))
+            make.top.equalTo(view.safeAreaLayoutGuide).offset(SCRYFrom(7))
             make.height.equalTo(SCRYFrom(30))
         }
         sortBtn = UIButton(title: "created_date".localizedString, titleSize: 15, titleWeight: .light, titleColor: TextBlack_Color, normalImageName: "arrow_down_black", target: self, action: #selector(sortBtnAction))

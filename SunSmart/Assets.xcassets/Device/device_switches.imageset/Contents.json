@@ -5,12 +5,12 @@
       "scale" : "1x"
     },
     {
-      "filename" : "device_switches@2x.png",
+      "filename" : "space_switch30@2x.png",
       "idiom" : "universal",
       "scale" : "2x"
     },
     {
-      "filename" : "device_switches@3x.png",
+      "filename" : "space_switch30@3x.png",
       "idiom" : "universal",
       "scale" : "3x"
     }

@@ -78,7 +78,7 @@ class BLEUpgradeInstructionsController: UIViewController {
         headerView.snp.makeConstraints { make in
             make.left.equalTo(SCRXFrom(20))
             make.right.equalTo(SCRXFrom(-20))
-            make.top.equalTo(navigationController?.navigationBar.height ?? 0)
+            make.top.equalTo(view.safeAreaLayoutGuide)
             make.height.equalTo(SCRYFrom(108))
         }
         

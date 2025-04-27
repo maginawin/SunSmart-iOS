@@ -408,7 +408,7 @@ class SceneAddViewController: UIViewController {
         view.addSubview(menuView)
 //        menuView.snp.makeConstraints { make in
 //            make.left.right.equalToSuperview()
-//            make.top.equalTo(navigationController?.navigationBar.height ?? 0)
+//            make.top.equalTo(view.safeAreaLayoutGuide)
 //            make.height.equalTo(SCRYFrom(38))
 //        }
         

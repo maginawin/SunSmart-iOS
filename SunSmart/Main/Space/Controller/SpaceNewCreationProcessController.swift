@@ -168,7 +168,7 @@ class SpaceNewCreationProcessController: UIViewController {
         view.addSubview(imageView)
         imageView.snp.makeConstraints { make in
             make.centerX.equalToSuperview()
-            make.top.equalTo((navigationController?.navigationBar.height ?? 0) + SCRYFit(100))
+            make.top.equalTo(view.safeAreaLayoutGuide).offset(SCRYFit(100))
         }
         
         createMoreBtn = UIButton(title: "create_more_scenes".localizedString, titleSize: 16, titleWeight: .light, titleColor: .white, target: self, action: #selector(createMoreBtnAction))

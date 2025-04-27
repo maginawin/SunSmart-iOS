@@ -432,10 +432,10 @@ class SitesViewController: UIViewController {
                     guard let companyIdHex = json["companyId"].string, let companyId = UInt16(hex: companyIdHex),
                           let productIdHex = json["productId"].string, let productId = UInt16(hex: productIdHex),
                           let categoryName = json["categoryName"].string, let elementCount = json["elementCount"].int,
-                          let iconCategory = json["iconCategory"].string else {
+                          let iconCategory = json["iconCategory"].string, let deviceCategory = json["deviceCategory"].string else {
                         return nil
                     }
-                    return MeshDeviceConfigInfo(companyId: companyId, productId: productId, categoryName: categoryName, elementCount: elementCount, iconCategory: iconCategory)
+                    return MeshDeviceConfigInfo(companyId: companyId, productId: productId, categoryName: categoryName, elementCount: elementCount, iconCategory: iconCategory, deviceCategory: deviceCategory)
                 })
                 MeshLibManager.manager.supportDeviceInfos = list
                 MeshDeviceConfigInfo.saveAll(list: list)
@@ -498,13 +498,19 @@ class SitesViewController: UIViewController {
     /// 导入
     @objc private func importClick() {
         
-        ImportProjectView {[weak self] mode in
-            if mode == .scanQRCode {
-                self?.scanQRCode()
-            }else {
-                self?.uuidImport()
-            }
-        }.show()
+
+        
+//        let vc = DongleAddCollectionScheduleController(dongleData: <#DeviceDongleData#>, schedule: nil)
+//        let vc = DeviceDongleViewController(dongleData: nil)
+//        present(NavigationViewController(rootViewController: vc), animated: true)
+        
+//        ImportProjectView {[weak self] mode in
+//            if mode == .scanQRCode {
+//                self?.scanQRCode()
+//            }else {
+//                self?.uuidImport()
+//            }
+//        }.show()
     }
     
     /// 扫码导入数据

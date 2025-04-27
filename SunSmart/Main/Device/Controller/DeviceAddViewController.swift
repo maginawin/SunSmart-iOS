@@ -28,6 +28,8 @@ class DeviceAddViewController: UIViewController {
     private var addResultView: DeviceAddResultView!
     /// 底部全选
     private var footerView: DeviceAddBottomView!
+    /// 类型view
+    private var categoryView: WMMenuView!
     
     /// 搜索设备定时器
     private var scanTimer: Timer?
@@ -55,9 +57,18 @@ class DeviceAddViewController: UIViewController {
     /// 外部传入指定添加该到group
     var appointGroup: Group?
     
+    /// 设备绑定到dongle数据
+    private var bindToDongle: DeviceDongleData?
+    /// 外部传入指定dognle设备绑定该到dognle数据
+    var forceBindToDongle: DeviceDongleData?
+    /// 已存在的dognle数据list
+    private var dongles: [DeviceDongleData] = []
+    
     private var notAddedDevices: [ProvisioningDevice] = []
     /// 最大设备数量
     private var maxDeviceCount = 200
+    /// 展示的设备类型
+    private var showDeviceTypes: [Node.DeviceType] = [.light]
     
     init(space: SpaceData) {
         self.space = space
@@ -71,7 +82,9 @@ class DeviceAddViewController: UIViewController {
     override func viewDidLoad() {
         super.viewDidLoad()
 
-        title = "add_device".localizedString
+        if title == nil {
+            title = "add_device".localizedString
+        }
         view.backgroundColor = Background_Color
         self.isModalInPresentation = true
         
@@ -85,11 +98,20 @@ class DeviceAddViewController: UIViewController {
         filterRSSI = filterRSSIRange.lowerBound
         
         addToGroup = appointGroup
+        bindToDongle = forceBindToDongle
+        dongles = MeshNetworkManager.instance.dongles
         maxDeviceCount = space.maxDevicesCount
         
 //        NetworkRequest.shared.addObserver(self, forKeyPath: "networkable", context: nil)
         
         setupUI()
+        
+        
+        if forceBindToDongle != nil {
+            showDeviceTypes = [.dongle, .unknown]
+            categoryView.selectItem(at: 3)
+        }
+        
     }
     
     override func viewDidDisappear(_ animated: Bool) {
@@ -138,7 +160,6 @@ class DeviceAddViewController: UIViewController {
 //        }
 //    }
     
-    
     // MARK: - Scan
     
     private func startScan() {
@@ -158,6 +179,8 @@ class DeviceAddViewController: UIViewController {
         // 扫描中设置屏幕常亮
         UIApplication.shared.isIdleTimerDisabled = true
         
+        categoryView.isHidden = true
+        
         MeshAPI.startScanDevice(.max, deviceScan: {[weak self] device in
             guard let self = self else { return }
             self.stopScanTimer()
@@ -170,17 +193,22 @@ class DeviceAddViewController: UIViewController {
                 if let info = MeshLibManager.manager.supportDeviceInfos.first(where: { $0.companyId == device.cid && $0.productId == device.pid }) {
                     device.deviceName = info.categoryName
                     device.elementCount = info.elementCount
-                    device.isSupport = true
+//                    device.isSupport = true
                     device.icon = "device_\(info.iconCategory)"
+                    device.deviceType = Node.DeviceType(deviceCategory: info.deviceCategory)
+                    
                 }else {
-                    device.isSupport = false
+//                    device.isSupport = false
+                    device.deviceType = .unknown
                     device.icon = "device_unknown"
                     device.selectedState = .disabled
                 }
                 
 //                print(device.rssi)
+                self.categoryView.isHidden = false
+                self.updateDeviceCategoryCount()
                 
-                if self.filterRSSI == self.filterRSSIRange.lowerBound || device.rssi.intValue >= self.filterRSSI { // 当前设备信号值在筛选范围内可展示
+                if self.showDeviceTypes.contains(device.deviceType), self.filterRSSI == self.filterRSSIRange.lowerBound || device.rssi.intValue >= self.filterRSSI { // 当前设备信号值在筛选范围内可展示
                     self.showDevices.append(device)
                     self.tableView.insertRows(at: [IndexPath(row: self.showDevices.count - 1, section: 0)], with: .automatic)
                 }
@@ -331,7 +359,15 @@ class DeviceAddViewController: UIViewController {
     @objc private func addSelectedBtnClick() {
         let selectDevices = showDevices.filter({ $0.selectedState == .selected })
         
-        checkDeviceAddressesAreSufficient(devices: selectDevices)
+        let dongleDevices = selectDevices.filter({ $0.deviceType == .dongle })
+        // 多个dongle一起添加时提示
+        if dongleDevices.count > 1 {
+            SRAlertView(title: "notification".localizedString, message: "device_add_multiple_dongle_message".localizedString, actions: [.cancelAction, .init(title: "GOT IT".localizedString, actionHandler: {[weak self] _ in
+                self?.checkDeviceAddressesAreSufficient(devices: selectDevices)
+            })]).show()
+        }else {
+            checkDeviceAddressesAreSufficient(devices: selectDevices)
+        }
 //        selectDevices.forEach { device in
 //            addDevice(device)
 //        }
@@ -366,29 +402,61 @@ class DeviceAddViewController: UIViewController {
         if state == .adding {
             return
         }
-        if appointGroup != nil {
-            XWHUDManager.showTipHUD("group_cannot_select_message".localizedString, isLineFeed: true)
-            return
-        }
         
         var titles: [String] = [space.name]
-        let groups = MeshNetworkManager.instance.groups
-        for group in groups {
-            titles.append(group.name)
-        }
         var selectIndex = 0
-        if let selectGroup = addToGroup, let index = groups.firstIndex(where: { $0.address == selectGroup.address }) {
-            selectIndex = index + 1
-        }
         
-        TitleSelectView.show(titles: titles, anchorPoint: CGPoint(x: sender.x, y: sender.frame.maxY + (navigationController?.navigationBar.frame.maxY ?? kNavigationHeight) + SCRYFrom(2)), selectIndex: selectIndex) {[weak self] index in
-            guard let self = self else { return }
-            if index == 0 {
-                self.addToGroup = nil
-            }else {
-                self.addToGroup = groups[index - 1]
+        let touchPoint = CGPoint(x: sender.x, y: sender.frame.maxY + (navigationController?.navigationBar.frame.maxY ?? kNavigationHeight) + SCRYFrom(2))
+        let menuPoint = view.convert(touchPoint, to: UIApplication.shared.keyWindow())
+        
+        if showDeviceTypes.contains(.dongle) { // 选择dongle
+            if forceBindToDongle != nil { // 固定智能绑定该dongle数据
+                XWHUDManager.showTipHUD("dongle_cannot_select_message".localizedString, isLineFeed: true)
+                return
             }
-            sender.setTitle(titles[index], for: .normal)
+            
+            for dongle in dongles {
+                titles.append(dongle.name)
+            }
+
+            if let selectDongle = bindToDongle, let index = dongles.firstIndex(where: { $0.id == selectDongle.id }) {
+                selectIndex = index + 1
+            }
+            
+            TitleSelectView.show(titles: titles, anchorPoint: menuPoint, selectIndex: selectIndex) {[weak self] index in
+                guard let self = self else { return }
+                if index == 0 {
+                    self.bindToDongle = nil
+                }else {
+                    self.bindToDongle = self.dongles[index - 1]
+                }
+                sender.setTitle(titles[index], for: .normal)
+            }
+            
+        }else { // 选择组
+            if appointGroup != nil {
+                XWHUDManager.showTipHUD("group_cannot_select_message".localizedString, isLineFeed: true)
+                return
+            }
+            
+            let groups = MeshNetworkManager.instance.groups
+            for group in groups {
+                titles.append(group.name)
+            }
+            var selectIndex = 0
+            if let selectGroup = addToGroup, let index = groups.firstIndex(where: { $0.address == selectGroup.address }) {
+                selectIndex = index + 1
+            }
+            
+            TitleSelectView.show(titles: titles, anchorPoint: menuPoint, selectIndex: selectIndex) {[weak self] index in
+                guard let self = self else { return }
+                if index == 0 {
+                    self.addToGroup = nil
+                }else {
+                    self.addToGroup = groups[index - 1]
+                }
+                sender.setTitle(titles[index], for: .normal)
+            }
         }
     }
     
@@ -506,6 +574,27 @@ class DeviceAddViewController: UIViewController {
             addDevice.addState = .adding
             self?.reloadDeviceState(addDevice)
             self?.updateUIState()
+        } provisionCompleteCallback: {[weak self] addDevice, node in
+            guard let self = self else { return }
+            // 配网完成
+            if addDevice.deviceType == .dongle { // dongle设备，需要一个dongle虚拟数据与之绑定
+                if let selectDongle = self.bindToDongle { // 已选择dognle
+                    if selectDongle.bindNode != nil { // 已绑定设备则创建新的dongle并绑定设备
+                        let newDongle = DeviceDongleData(id: UUID().uuidString, name: MeshNetworkManager.instance.getNextDongleName(), bindNodeAddress: node.primaryUnicastAddress, timeAuthority: selectDongle.timeAuthority, collectionEnable: selectDongle.collectionEnable, schedules: selectDongle.schedules)
+                        MeshNetworkManager.instance.dongles.append(newDongle)
+                        newDongle.save()
+                    }else { // 未绑定设备则设备绑定到dongle
+                        selectDongle.bindNodeAddress = node.primaryUnicastAddress
+                        selectDongle.save()
+                    }
+                }else { // 添加到space
+                    // 创建一个空的dongle数据做为dongle设备的绑定
+                    let newDongle = DeviceDongleData.default()
+                    MeshNetworkManager.instance.dongles.append(newDongle)
+                    newDongle.save()
+                }
+            }
+            
         } appendMessagesBack: {[weak self] addDevice in
             guard let self = self, let node = MeshNetworkManager.instance.meshNetwork?.node(withAddress: addDevice.address) else { return [] }
             var appendMessages: [MeshMessageHandle] = []
@@ -513,7 +602,7 @@ class DeviceAddViewController: UIViewController {
             if let model = node.lightnessModel {
                 appendMessages.append(MeshMessageHandle(message: LightLightnessSetUnacknowledged(lightness: .max), model: model))
             }
-            if let group = self.addToGroup {
+            if device.deviceType != .dongle, let group = self.addToGroup {
                 // 判断组是否有关联动能开关，如果动能开关还未分配地址则提前分配地址以订阅设备
                 let emptySwitchs = group.info.switchs.filter({ $0.linkGroup == nil })
                 emptySwitchs.forEach { switchData in
@@ -802,7 +891,18 @@ class DeviceAddViewController: UIViewController {
             addResultView.failedCountLabel.text = "\(failedCount)"
             
         }
+    }
+    
+    /// 更新设备类型数量
+    private func updateDeviceCategoryCount() {
+        guard !categoryView.isHidden else {
+            return
+        }
         
+        categoryView.updateTitle("\("lights".localizedString)-\(scanDevices.filter({ $0.deviceType == .light }).count)", at: 0, andWidth: false)
+        categoryView.updateTitle("\("switches".localizedString)-\(scanDevices.filter({ $0.deviceType == .switches }).count)", at: 1, andWidth: false)
+        categoryView.updateTitle("\("sensors".localizedString)-\(scanDevices.filter({ $0.deviceType == .sensor }).count)", at: 2, andWidth: false)
+        categoryView.updateTitle("\("others".localizedString)-\(scanDevices.filter({ $0.deviceType == .dongle || $0.deviceType == .unknown }).count)", at: 3, andWidth: false)
     }
     
     // MARK: - UI
@@ -885,7 +985,17 @@ class DeviceAddViewController: UIViewController {
             make.height.equalTo(SCRYFrom(32))
         }
         
-        addDeviceTargetBtn = UIButton(title: addToGroup?.name ?? space.name, titleSize: 13, titleWeight: .light, titleColor: TextBlack_Color, normalImageName: "space_arrow_down", target: self, action: #selector(addDeviceTargetBtnClick))
+        var targetName = space.name
+        if showDeviceTypes.contains(.dongle) {
+            if let dongleName = bindToDongle?.name {
+                targetName = dongleName
+            }
+        }else {
+            if let groupName = addToGroup?.name {
+                targetName = groupName
+            }
+        }
+        addDeviceTargetBtn = UIButton(title: targetName, titleSize: 13, titleWeight: .light, titleColor: TextBlack_Color, normalImageName: "space_arrow_down", target: self, action: #selector(addDeviceTargetBtnClick))
         addDeviceTargetBtn.contentHorizontalAlignment = .left
         addDeviceTargetBtn.layer.cornerRadius = SCRYFrom(5)
         addDeviceTargetBtn.layer.borderWidth = 1
@@ -908,6 +1018,26 @@ class DeviceAddViewController: UIViewController {
         addDeviceTargetBtn.imageEdgeInsets = UIEdgeInsets(top: 0, left: addDeviceTargetBtn.width - imageW, bottom: 0, right: 0)
         addDeviceTargetBtn.titleEdgeInsets = UIEdgeInsets(top: 0, left: SCRXFrom(8) - imageW, bottom: 0, right: imageW + SCRXFrom(6))
         
+        
+        categoryView = WMMenuView(frame: CGRect(x: 0, y: view.safeAreaInsets.top + SCRYFrom(100) + SCRYFrom(8), width: view.width, height: CGFloat(Int(SCRYFrom(40)))))
+        categoryView.itemBackgroundColor = .clear
+        categoryView.itemCornerRadius = CGFloat(Int(SCRYFrom(20)))
+        if isIPad {
+            categoryView.layoutMode = .center
+        }
+        categoryView.itemRateAnimation = false
+        categoryView.fontWeight = .light
+        categoryView.isHidden = true
+        categoryView.dataSource = self
+        categoryView.delegate = self
+        categoryView.selectItem(at: 0)
+        view.addSubview(categoryView)
+        categoryView.snp.makeConstraints { make in
+            make.left.right.equalToSuperview()
+            make.top.equalTo(headerView.snp.bottom)
+            make.height.equalTo(SCRYFrom(40))
+        }
+        
         tableView = UITableView()
         tableView.separatorStyle = .none
         tableView.rowHeight = SCRYFrom(60)
@@ -920,7 +1050,7 @@ class DeviceAddViewController: UIViewController {
         view.addSubview(tableView)
         tableView.snp.makeConstraints { make in
             make.left.right.bottom.equalToSuperview()
-            make.top.equalTo(headerView.snp.bottom)
+            make.top.equalTo(categoryView.snp.bottom).offset(SCRYFrom(8))
         }
         
         footerView = DeviceAddBottomView()
@@ -943,6 +1073,115 @@ class DeviceAddViewController: UIViewController {
         }
         addResultView.closeBtn.addTarget(self, action: #selector(closeBtnClick), for: .touchUpInside)
         addResultView.stopAddBtn.addTarget(self, action: #selector(stopAddBtnClick), for: .touchUpInside)
+    }
+    
+}
+
+extension DeviceAddViewController: WMMenuViewDataSource, WMMenuViewDelegate {
+    
+    func numbersOfTitles(in menu: WMMenuView!) -> Int {
+        return 4
+    }
+    
+    func menuView(_ menu: WMMenuView!, titleAt index: Int) -> String! {
+        switch index {
+        case 0:
+            return "\("lights".localizedString)-\(scanDevices.filter({ $0.deviceType == .light }).count)"
+        case 1:
+            return "\("switches".localizedString)-\(scanDevices.filter({ $0.deviceType == .switches }).count)"
+        case 2:
+            return "\("sensors".localizedString)-\(scanDevices.filter({ $0.deviceType == .sensor }).count)"
+        case 3:
+            return "\("others".localizedString)-\(scanDevices.filter({ $0.deviceType == .dongle || $0.deviceType == .unknown }).count)"
+        default:
+            return ""
+        }
+    }
+    
+    func menuView(_ menu: WMMenuView!, titleSizeFor state: WMMenuItemState, at index: Int) -> CGFloat {
+        return 14
+    }
+    
+    func menuView(_ menu: WMMenuView!, titleColorFor state: WMMenuItemState, at index: Int) -> UIColor! {
+        return state == .selected ? .white : Bar_Color
+    }
+    
+    func menuView(_ menu: WMMenuView!, widthForItemAt index: Int) -> CGFloat {
+        return isIPad ? SCRXFrom(120) : SCRXFrom(80)
+    }
+    
+    func menuView(_ menu: WMMenuView!, itemMarginAt index: Int) -> CGFloat {
+//        if isIPad {
+//            
+//            return super.menuView(menu, itemMarginAt: index)
+//        }
+        if index == 0 || index == 4 {
+            return SCRXFrom(12)
+        }
+        return SCRXFrom(10)
+    }
+    
+    func menuView(_ menu: WMMenuView!, shouldSelesctedIndex index: Int) -> Bool {
+        if forceBindToDongle != nil && index != 3 {
+            XWHUDManager.showTipHUD("dongle_cannot_select_message".localizedString, isLineFeed: true)
+            return false
+        }
+        return true
+    }
+    
+    func menuView(_ menu: WMMenuView!, didSelectedIndex index: Int, currentIndex: Int) {
+        
+        let item = menu.item(at: index)
+        item?.backgroundColor = Bar_Color
+        item?.font = UIFont.systemFont(ofSize: 14)
+        
+        guard index != currentIndex else {
+            return
+        }
+        
+        let lastItem = menu.item(at: currentIndex)
+        lastItem?.backgroundColor = .white
+        
+        
+        
+        switch index {
+        case 0:
+            showDeviceTypes = [.light]
+        case 1:
+            showDeviceTypes = [.switches]
+        case 2:
+            showDeviceTypes = [.sensor]
+        case 3:
+            showDeviceTypes = [.dongle, .unknown]
+        default:
+            showDeviceTypes = [.light]
+        }
+        self.showDevices = self.scanDevices.filter({ showDeviceTypes.contains($0.deviceType) })
+        tableView.reloadData()
+        updateFooterViewState()
+        
+        // 更新设备添加到哪UI
+        var name = space.name
+        if showDeviceTypes.contains(.dongle) {
+            if let dongleName = bindToDongle?.name {
+                name = dongleName
+            }
+        }else {
+            if let groupName = addToGroup?.name {
+                name = groupName
+            }
+        }
+        addDeviceTargetBtn.setTitle(name, for: .normal)
+    }
+    
+    func menuView(_ menu: WMMenuView!, initialMenuItem: WMMenuItem!, at index: Int) -> WMMenuItem! {
+        if index == 0 {
+            initialMenuItem.backgroundColor = Bar_Color
+        }else {
+            initialMenuItem.backgroundColor = .white
+//                .white.withAlphaComponent(0.95)
+        }
+        return initialMenuItem
     }
     
 }
@@ -1026,6 +1265,7 @@ extension DeviceAddViewController: CustomDeviceSliderDelegate {
             }
             updateFooterViewState()
             tableView.reloadData()
+            updateDeviceCategoryCount()
         }
     }
 }

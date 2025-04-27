@@ -692,16 +692,18 @@ class SRAlertView: UIView {
             }
             self.perform(#selector(textExceededHide), with: nil, afterDelay: 2)
             
-        }else { // 判断是否重名
+        }else {
             if textValueChangedBack != nil {
                 let message = textValueChangedBack?(realText, realText.count >= minInputLength)
                 if message?.isEmpty ?? true {
                     let enabled = realText.count >= self.minInputLength && (self.minInputLength > 0 && !realText.isAllInputTextEmpty())
                     self.secondBtn.isUserInteractionEnabled = enabled
                     self.secondBtn.setTitleColor(enabled ? Bar_Color : Bar_Color.withAlphaComponent(0.5), for: .normal)
+                    messageLabel.textColor = Title_Color
                 }else {
                     secondBtn.isUserInteractionEnabled = false
                     self.secondBtn.setTitleColor(Bar_Color.withAlphaComponent(0.5), for: .normal)
+                    messageLabel.textColor = Red_Color
                 }
                 messageLabel.text = message
             }else {

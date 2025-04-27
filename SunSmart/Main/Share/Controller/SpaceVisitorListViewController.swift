@@ -241,7 +241,7 @@ class SpaceVisitorListViewController: UIViewController {
         view.addSubview(tableView)
         tableView.snp.makeConstraints { make in
             make.left.right.equalToSuperview()
-            make.top.equalTo((navigationController?.navigationBar.height ?? 0))
+            make.top.equalTo(view.safeAreaLayoutGuide)
             make.bottom.equalTo(bottomView.snp.top)
         }
     }

@@ -63,7 +63,7 @@ class DeviceCategorysViewController: UIViewController {
         tableView.delegate = self
         view.addSubview(tableView)
         tableView.snp.makeConstraints { make in
-            make.top.equalTo((navigationController?.navigationBar.height ?? 0) + SCRYFrom(7))
+            make.top.equalTo(view.safeAreaLayoutGuide).offset(SCRYFrom(7))
             make.left.right.bottom.equalToSuperview()
         }
     }

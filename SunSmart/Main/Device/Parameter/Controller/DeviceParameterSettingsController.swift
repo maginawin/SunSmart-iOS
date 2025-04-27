@@ -55,7 +55,9 @@ class DeviceParameterSettingsController: UIViewController {
                     return .pwmPeriod(period: UInt16(value))
                 }
             case .ratedPower(let value):
-                break
+                if let value = value {
+                    return .ratedPower(value: value)
+                }
             }
             return nil
         })
@@ -63,11 +65,13 @@ class DeviceParameterSettingsController: UIViewController {
             return
         }
         
-        let vc = SyncDevicesViewController(type: .devices(devices, parameters: setParameters))
+        let vc = SyncDevicesViewController(type: .devicesParameter(devices.map({ ($0, setParameters) })))
         vc.syncSuccessCallback = {[weak self] _ in
             guard let self = self else { return }
             XWHUDManager.showSuccessTipHUD("done!".localizedString)
-            self.navigationController?.popViewController(animated: true)
+            DispatchQueue.main.asyncAfter(wallDeadline: .now() + 1) {[weak self] in
+                self?.navigationController?.popViewController(animated: true)
+            }
             
             var result: [ParameterType: ([Node], [Node])] = [:]
             self.parameters.forEach { type in
@@ -75,23 +79,49 @@ class DeviceParameterSettingsController: UIViewController {
             }
             self.settingsCompletionCallback?(result)
         }
-        vc.backActionCallback = {[weak self] failedDatas in
+       
+        vc.backActionCallback = {[weak self] resultDatas in
             guard let self = self else { return }
             self.navigationController?.popViewController(animated: true)
-            // 返回失败的设备数据
+
+            // 返回成功、失败的设备数据
             DispatchQueue.global().async {
+                var pwmSuccessNodes: [Node] = []
                 var pwmFailedNodes: [Node] = []
-                var ratedPowerFailedNodes: [Node] = []
                 
-                failedDatas.forEach { data in
-                    data.operationTypes.forEach { operationType in
+                var ratedPowerSuccessNodes: [Node] = []
+                var ratedPowerFailedNodes: [Node] = []
+
+                resultDatas.forEach { data in
+                    data.successOperationTypes.forEach { operationType in
                         switch operationType {
-                        case .configuration(let node, let type):
+                        case .configuration(_, let type):
+                            switch type {
+                            case .deviceParameters(let parameterType):
+                                switch parameterType {
+                                case .pwmPeriod:
+                                    pwmSuccessNodes.append(data.node)
+                                case .ratedPower:
+                                    ratedPowerSuccessNodes.append(data.node)
+                                }
+                            default:
+                                break
+                            }
+                        default:
+                            break
+                        }
+                    }
+                    
+                    data.failedOperationTypes.forEach { operationType in
+                        switch operationType {
+                        case .configuration(_, let type):
                             switch type {
                             case .deviceParameters(let parameterType):
                                 switch parameterType {
                                 case .pwmPeriod:
                                     pwmFailedNodes.append(data.node)
+                                case .ratedPower:
+                                    ratedPowerFailedNodes.append(data.node)
                                 }
                             default:
                                 break
@@ -101,17 +131,13 @@ class DeviceParameterSettingsController: UIViewController {
                         }
                     }
                 }
+                
                 var result: [ParameterType: ([Node], [Node])] = [:]
                 if let pwmType = self.parameters.first(where: { $0.rawValue == ParameterType.pwmFrequency(value: nil).rawValue }) {
-                    
-                    let successNodes = self.devices.filter({ device in pwmFailedNodes.contains(where: { $0.primaryUnicastAddress != device.primaryUnicastAddress }) })
-                    result.updateValue((successNodes, pwmFailedNodes), forKey: pwmType)
+                    result.updateValue((pwmSuccessNodes, pwmFailedNodes), forKey: pwmType)
                 }
                 if let ratedPowerType = self.parameters.first(where: { $0.rawValue == ParameterType.ratedPower(value: nil).rawValue }) {
-                  
-                    let successNodes = self.devices.filter({ device in pwmFailedNodes.contains(where: { $0.primaryUnicastAddress != device.primaryUnicastAddress }) })
-                    
-                    result.updateValue((successNodes, ratedPowerFailedNodes), forKey: ratedPowerType)
+                    result.updateValue((ratedPowerSuccessNodes, ratedPowerFailedNodes), forKey: ratedPowerType)
                 }
                 DispatchQueue.main.async {
                     self.settingsCompletionCallback?(result)
@@ -123,14 +149,20 @@ class DeviceParameterSettingsController: UIViewController {
         
     }
     
+    private func updateSetupBtnState() {
+        bottomView.rightBtn.isEnabled = self.parameters.contains(where: ({ $0.data.value != nil }) )
+    }
+    
     private func setupUI() {
         
         headerView = DeviceParameterPromptView()
         headerView.titleLabel.text = "device_parameter_step_2".localizedString
+        headerView.filterBtn.isHidden = true
         view.addSubview(headerView)
         headerView.snp.makeConstraints { make in
-            make.left.right.top.equalToSuperview()
-            make.height.equalTo(SCRYFrom(32))
+            make.left.right.equalToSuperview()
+            make.top.equalTo(view.safeAreaLayoutGuide)
+            make.height.equalTo(SCRYFrom(44))
         }
         
         bottomView = DeviceParameterBottomView()
@@ -138,6 +170,7 @@ class DeviceParameterSettingsController: UIViewController {
         bottomView.leftBtn.addTarget(self, action: #selector(previousAction), for: .touchUpInside)
         bottomView.rightBtn.setTitle("SET_UP".localizedString, for: .normal)
         bottomView.rightBtn.addTarget(self, action: #selector(setupAction), for: .touchUpInside)
+        bottomView.rightBtn.isEnabled = false
         view.addSubview(bottomView)
         bottomView.snp.makeConstraints { make in
             make.left.right.bottom.equalToSuperview()
@@ -183,16 +216,19 @@ extension DeviceParameterSettingsController: DeviceParameterSettingsViewCellDele
     func cell(_ cell: DeviceParameterSettingsViewCell, settingParameters type: DeviceParameterSettingsController.ParameterType) {
         switch type {
         case .pwmFrequency(let value):
-            DevicePwmFrequencySelectView(selectFrequency: value, selectCallback: { frequency in
+            DevicePwmFrequencySelectView(selectFrequency: value, selectCallback: {[weak self] frequency in
+                guard let self = self else { return }
                 if let index = self.parameters.firstIndex(where: { $0.rawValue == type.rawValue }) {
                     self.parameters[index] = .pwmFrequency(value: frequency)
                     self.tableView.reloadRows(at: [IndexPath(row: index, section: 0)], with: .none)
+                    
+                    self.updateSetupBtnState()
                 }
             }).show()
             
         case .ratedPower(let value):
             let data = type.data
-            let range = data.range!
+            let range = data.range ?? 1...99999
             SRAlertView(title: "\(data.title) \("input".localizedString)", inputText: value != nil ? "\(value!)" : nil, inputFieldStyle: .init(placeholder: "\(range.lowerBound)~\(range.upperBound)", keyboardType: .numberPad, minInputLength: 1), actions: [.cancelAction, SRAlertAction(title: "confirm".localizedString)]) { text, _ in
                 guard let value = Int(text) else {
                     return nil
@@ -208,7 +244,7 @@ extension DeviceParameterSettingsController: DeviceParameterSettingsViewCellDele
                     self.parameters[index] = .ratedPower(value: value)
                     self.tableView.reloadRows(at: [IndexPath(row: index, section: 0)], with: .none)
                 }
-                
+                self.updateSetupBtnState()
             }.show()
 
         }
@@ -225,7 +261,7 @@ extension DeviceParameterSettingsController {
             case .pwmFrequency(let value):
                 return ("pwm_frequency".localizedString, "pwm_frequency_message".localizedString, value, nil, "Hz")
             case .ratedPower(let value):
-                return ("rated_power".localizedString, "rated_power_message".localizedString, value, nil, "W")
+                return ("rated_power".localizedString, "rated_power_message".localizedString, value, 1...99999, "W")
             }
         }
         

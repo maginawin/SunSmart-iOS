@@ -158,7 +158,7 @@ class ShareBacthListViewController: UIViewController {
         view.addSubview(collectionView)
         collectionView.snp.makeConstraints { make in
             make.left.right.bottom.equalToSuperview()
-            make.top.equalTo((navigationController?.navigationBar.height ?? 0))
+            make.top.equalTo(view.safeAreaLayoutGuide)
         }
         let itemW = view.width - collectionView.contentInset.left - collectionView.contentInset.right
         flowLayout.itemSize = CGSize(width: CGFloat(floor(itemW)), height: SCRYFrom(64))

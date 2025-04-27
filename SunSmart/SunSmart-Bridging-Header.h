@@ -12,5 +12,6 @@
 #import "XWHUDManager.h"
 #import "WMPageController.h"
 #import "UIViewController+WMPageController.h"
+#import "FSCalendar.h"
 
 #endif /* SunSmart_Bridging_Header_h */

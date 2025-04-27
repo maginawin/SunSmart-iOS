@@ -19,6 +19,8 @@ class SpaceMoreViewController: UIViewController {
                 return ("ota_mesh", "ota_mesh_title".localizedString)
             case .deviceParameters:
                 return ("device_parameter", "device_parameter_settings".localizedString)
+            case .energyData:
+                return ("space_energy_data", "energy_data".localizedString)
             }
         }
         
@@ -28,6 +30,8 @@ class SpaceMoreViewController: UIViewController {
         case mesh
         /// 设备参数
         case deviceParameters
+        /// 能耗统计
+        case energyData
     }
     
     let space: SpaceData
@@ -35,7 +39,7 @@ class SpaceMoreViewController: UIViewController {
     private var collectionView: UICollectionView!
     private var flowLayout: UICollectionViewFlowLayout!
     
-    private var options: [Options] = [.ble, .mesh, .deviceParameters]
+    private var options: [Options] = [.ble, .mesh, .deviceParameters, .energyData]
     
     init(space: SpaceData) {
         self.space = space
@@ -126,6 +130,9 @@ extension SpaceMoreViewController: UICollectionViewDataSource, UICollectionViewD
                 vc.preferredContentSize = iPadPreferredContentSize
             }
             present(NavigationViewController(rootViewController: vc), animated: true)
+        case .energyData:
+            let vc = EnergyStaticDataViewController()
+            present(vc, animated: true)
         }
         
     }

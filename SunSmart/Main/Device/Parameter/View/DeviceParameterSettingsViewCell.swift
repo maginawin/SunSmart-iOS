@@ -82,6 +82,7 @@ class DeviceParameterSettingsViewCell: UITableViewCell {
         textField.layer.borderWidth = 0.6
         textField.leftView = UIView(frame: CGRect(x: 0, y: 0, width: 12, height: 0))
         textField.leftViewMode = .always
+        textField.textAlignment = .center
         textField.backgroundColor = Background_Color
         textField.delegate = self
         bgView.addSubview(textField)

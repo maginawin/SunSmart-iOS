@@ -88,7 +88,7 @@ class ImagesPickerViewController: UIViewController {
         collectionView.delegate = self
         view.addSubview(collectionView)
         collectionView.snp.makeConstraints { make in
-            make.top.equalTo(navigationController?.navigationBar.height ?? 0)
+            make.top.equalTo(view.safeAreaLayoutGuide)
             make.left.right.equalToSuperview()
             make.bottom.equalTo(bottomView.snp.top)
         }

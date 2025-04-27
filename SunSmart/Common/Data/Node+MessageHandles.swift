@@ -16,7 +16,6 @@ extension Scene {
     ///   - data: 场景执行数据
     /// - Returns: 消息list
     func getSyncMessageHandles(node: Node, data: SceneExecuteData) -> [MeshMessageHandle] {
-        guard let sceneSetupModel = node.sceneSetupModel else { return [] }
         var messageHandles: [MeshMessageHandle] = []
         // 设备是否支持场景model及亮度model
         if let sceneSetupModel = node.sceneSetupModel, let lightnessModel = node.lightnessModel {

@@ -94,7 +94,7 @@ class EnOceanProxyViewController: UIViewController {
             make.bottom.equalToSuperview()
             make.left.equalTo(SCRXFrom(16))
             make.right.equalTo(SCRXFrom(-16))
-            make.top.equalTo((navigationController?.navigationBar.height ?? 0))
+            make.top.equalTo(view.safeAreaLayoutGuide)
         }
         
         view.addSubview(loadingView)

@@ -36,7 +36,7 @@ class BatchImportResultHelpController: UIViewController {
         contentView.snp.makeConstraints { make in
             make.left.equalTo(SCRXFrom(16))
             make.right.equalTo(SCRXFrom(-16))
-            make.top.equalTo((navigationController?.navigationBar.height ?? 0) + SCRYFrom(7))
+            make.top.equalTo(view.safeAreaLayoutGuide).offset(SCRYFrom(7))
         }
         
         let presenceEditorTitleLabel = UILabel(text: "presence_editor".localizedString, textColor: TextBlack_Color, fontSize: 16, fit: false)

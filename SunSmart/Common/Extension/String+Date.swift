@@ -19,7 +19,7 @@ extension String {
         guard var timestamp = CLongLong(millisecond) else {
             return millisecond
         }
-        if timestamp > CLongLong(Date().timeIntervalSince1970) {
+        if timestamp > UInt32.max {
             timestamp = CLongLong(Double(timestamp) / 1000.0)
         }
         let date = Date(timeIntervalSince1970: Double(timestamp))
@@ -46,4 +46,37 @@ extension String {
         return Int64(date.timeIntervalSince1970)
     }
     
+    /// 获取对应时间信息
+    static func getAloneTime(timestamp: String, componentType : Calendar.Component) -> Int {
+        let date = Date(timeIntervalSince1970: TimeInterval(timestamp) ?? 0)
+        let timeInt = Calendar.current.component(componentType, from: date)
+        return timeInt
+    }
+    
+    /// 获取对应年
+    static func getTimeStringYear(timestamp : String) -> Int {
+        
+        return self.getAloneTime(timestamp: timestamp, componentType: .year)
+    }
+    
+    /// 获取月份
+    static func getTimeStringMonth(timestamp : String) -> Int {
+        
+        return self.getAloneTime(timestamp: timestamp, componentType: .month)
+    }
+    
+    /// 获取日
+    static func getTimeStringDay(timestamp : String) -> Int {
+        return self.getAloneTime(timestamp: timestamp, componentType: .day)
+    }
+    
+    /// 获取对应时
+    static func getTimeStringHour(timestamp : String) -> Int {
+        return self.getAloneTime(timestamp: timestamp, componentType: .hour)
+    }
+    
+    /// 获取对应分
+    static func getTimeStringMinute(timestamp : String) -> Int {
+        return self.getAloneTime(timestamp: timestamp, componentType: .minute)
+    }
 }

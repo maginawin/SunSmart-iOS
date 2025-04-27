@@ -43,7 +43,7 @@ class `DevicesReplySetViewController`: UIViewController {
         tableView.snp.makeConstraints { make in
             make.bottom.equalToSuperview()
             make.left.right.equalToSuperview()
-            make.top.equalTo((navigationController?.navigationBar.height ?? 0))
+            make.top.equalTo(view.safeAreaLayoutGuide)
         }
         groups = MeshNetworkManager.instance.groups
 //        devices = MeshNetworkManager.instance.realNodes

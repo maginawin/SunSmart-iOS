@@ -28,9 +28,11 @@ class DeviceParameterDevicesViewController: UIViewController {
     private var filterRatedPower: Int?
     private var showDevices: [Node] = []
     /// 设置pwm失败设备list
-    private var settingPwmFailedNodes: [Node] = []
+    private var settingPwmFailedNodes: [(node: Node, type: DeviceParameterType)] = []
     /// 设置额定功率失败设备list
-    private var settingRatedPowerFailedNodes: [Node] = []
+    private var settingRatedPowerFailedNodes: [(node: Node, type: DeviceParameterType)] = []
+    /// 设置失败的设备list
+//    private var settingFailedNodes: [(Node, [DeviceParameterType])] = []
     
     /// 设备参数list
 //    private var deviceParameterDatas: [Address: (pwm: UInt16?, ratedPower: Int?)] = [:]
@@ -127,6 +129,19 @@ class DeviceParameterDevicesViewController: UIViewController {
             bottomView.leftBtn.isEnabled = false
         }
         tableView.reloadData()
+        
+        if settingPwmFailedNodes.count > 0 || settingRatedPowerFailedNodes.count > 0 {
+            headerView.settingFailedBtn.isHidden = false
+            headerView.snp.updateConstraints { make in
+                make.height.equalTo(SCRYFrom(62))
+            }
+        }else {
+            headerView.settingFailedBtn.isHidden = true
+            headerView.snp.updateConstraints { make in
+                make.height.equalTo(SCRYFrom(44))
+            }
+        }
+        
     }
     
     /// 读取数据
@@ -201,24 +216,24 @@ class DeviceParameterDevicesViewController: UIViewController {
             result.forEach { (key: DeviceParameterSettingsController.ParameterType, value: (successNodes: [Node], failedNodes: [Node])) in
 
                 switch key {
-                case .pwmFrequency:
-                    self.settingPwmFailedNodes.removeAll(where: { node in value.successNodes.contains(where: { $0.primaryUnicastAddress == node.primaryUnicastAddress }) })
+                case .pwmFrequency(let pwmValue):
+                    self.settingPwmFailedNodes.removeAll(where: { data in value.successNodes.contains(where: { $0.primaryUnicastAddress == data.node.primaryUnicastAddress }) })
                     
                     value.failedNodes.forEach({ node in
-                        if !self.settingPwmFailedNodes.contains(where: { $0.primaryUnicastAddress == node.primaryUnicastAddress }) {
-                            self.settingPwmFailedNodes.append(node)
+                        if let pwm = pwmValue, !self.settingPwmFailedNodes.contains(where: { $0.node.primaryUnicastAddress == node.primaryUnicastAddress }) {
+                            self.settingPwmFailedNodes.append((node, .pwmPeriod(period: UInt16(pwm))))
                         }
                     })
                     value.successNodes.forEach { node in
                         node.tempPwm = node.pwmPeriod
                     }
                     
-                case .ratedPower:
-                    self.settingRatedPowerFailedNodes.removeAll(where: { node in value.successNodes.contains(where: { $0.primaryUnicastAddress == node.primaryUnicastAddress }) })
+                case .ratedPower(let powerValue):
+                    self.settingRatedPowerFailedNodes.removeAll(where: { data in value.successNodes.contains(where: { $0.primaryUnicastAddress == data.node.primaryUnicastAddress }) })
                     
                     value.failedNodes.forEach({ node in
-                        if !self.settingRatedPowerFailedNodes.contains(where: { $0.primaryUnicastAddress == node.primaryUnicastAddress }) {
-                            self.settingRatedPowerFailedNodes.append(node)
+                        if let power = powerValue, !self.settingRatedPowerFailedNodes.contains(where: { $0.node.primaryUnicastAddress == node.primaryUnicastAddress }) {
+                            self.settingRatedPowerFailedNodes.append((node, .ratedPower(value: power)))
                         }
                     })
                     value.successNodes.forEach { node in
@@ -229,7 +244,8 @@ class DeviceParameterDevicesViewController: UIViewController {
                 
             }
             self.setupFilterData()
-            self.tableView.reloadData()
+            self.updateUI()
+//            self.tableView.reloadData()
         }
         navigationController?.pushViewController(vc, animated: true)
     }
@@ -239,7 +255,7 @@ class DeviceParameterDevicesViewController: UIViewController {
             if let cell = tableView.cellForRow(at: IndexPath(row: index, section: 0)) as? DeviceParameterDeviceCell {
                 cell.device = device
                 if device.supportPwmFrequency {
-                    cell.pwmFailedImageView.isHidden = !settingPwmFailedNodes.contains(where: { $0.primaryUnicastAddress == device.primaryUnicastAddress })
+                    cell.pwmFailedImageView.isHidden = !settingPwmFailedNodes.contains(where: { $0.node.primaryUnicastAddress == device.primaryUnicastAddress })
                     
                     if let pwm = device.tempPwm {
                         cell.pwmLabel.text = "PWM: \(pwm) Hz"
@@ -257,7 +273,7 @@ class DeviceParameterDevicesViewController: UIViewController {
                     cell.ratedPowerLabel.text = "\("reted_power".localizedString): --"
                 }
                 
-                cell.ratedPowerFailedImageView.isHidden = !settingRatedPowerFailedNodes.contains(where: { $0.primaryUnicastAddress == device.primaryUnicastAddress })
+                cell.ratedPowerFailedImageView.isHidden = !settingRatedPowerFailedNodes.contains(where: { $0.node.primaryUnicastAddress == device.primaryUnicastAddress })
                 
                 if MeshLibManager.manager.isMeshNetworkConnected {
                     cell.selectState = selectDevices.contains(device) ? .selected : .none
@@ -276,8 +292,8 @@ class DeviceParameterDevicesViewController: UIViewController {
         view.addSubview(headerView)
         headerView.snp.makeConstraints { make in
             make.left.right.equalToSuperview()
-            make.top.equalTo(navigationController?.navigationBar.height ?? 0)
-            make.height.equalTo(SCRYFrom(32))
+            make.top.equalTo(view.safeAreaLayoutGuide)
+            make.height.equalTo(SCRYFrom(44))
         }
         
         bottomView = DeviceParameterBottomView()
@@ -333,7 +349,7 @@ extension DeviceParameterDevicesViewController: UITableViewDataSource, UITableVi
         let device = showDevices[indexPath.row]
         cell.device = device
         if device.supportPwmFrequency {
-            cell.pwmFailedImageView.isHidden = !settingPwmFailedNodes.contains(where: { $0.primaryUnicastAddress == device.primaryUnicastAddress })
+            cell.pwmFailedImageView.isHidden = !settingPwmFailedNodes.contains(where: { $0.node.primaryUnicastAddress == device.primaryUnicastAddress })
             
             if let pwm = device.tempPwm {
                 cell.pwmLabel.text = "PWM: \(pwm) Hz"
@@ -351,7 +367,7 @@ extension DeviceParameterDevicesViewController: UITableViewDataSource, UITableVi
             cell.ratedPowerLabel.text = "\("reted_power".localizedString): --"
         }
         
-        cell.ratedPowerFailedImageView.isHidden = !settingRatedPowerFailedNodes.contains(where: { $0.primaryUnicastAddress == device.primaryUnicastAddress })
+        cell.ratedPowerFailedImageView.isHidden = !settingRatedPowerFailedNodes.contains(where: { $0.node.primaryUnicastAddress == device.primaryUnicastAddress })
         
         if MeshLibManager.manager.isMeshNetworkConnected {
             cell.selectState = selectDevices.contains(device) ? .selected : .none
@@ -490,6 +506,84 @@ extension DeviceParameterDevicesViewController: DeviceParameterPromptViewDelegat
             self.tableView.reloadData()
             
         }).show()
+        
+    }
+    
+    /// 重试
+    func promptViewReSyncAction(_ view: DeviceParameterPromptView) {
+//        var datas: [(Node, [DeviceParameterType])] = []
+        var nodes: [Node] = []
+        settingPwmFailedNodes.forEach {
+            if !nodes.contains($0.node) {
+                nodes.append($0.node)
+            }
+        }
+        settingRatedPowerFailedNodes.forEach({
+            if !nodes.contains($0.node) {
+                nodes.append($0.node)
+            }
+        })
+        let datas = nodes.map({ node in
+            var types: [DeviceParameterType] = []
+            if let data = settingPwmFailedNodes.first(where: { $0.node == node }) {
+                types.append(data.type)
+            }
+            if let data = settingRatedPowerFailedNodes.first(where: { $0.node == node }) {
+                types.append(data.type)
+            }
+            return (node, types)
+        })
+        
+        let vc = SyncDevicesViewController(type: .devicesParameter(datas), reSync: true)
+        vc.syncSuccessCallback = {[weak self] type in
+            guard let self = self else { return }
+            switch type {
+            case.devicesParameter(let datas):
+                datas.forEach { (node, types) in
+                    types.forEach { type in
+                        switch type {
+                        case .pwmPeriod:
+                            node.tempPwm = node.pwmPeriod
+                        case .ratedPower:
+                            node.tempRatedPower = node.ratedPower
+                        }
+                    }
+                }
+            default:
+                break
+            }
+            
+            self.settingPwmFailedNodes.removeAll()
+            self.settingRatedPowerFailedNodes.removeAll()
+            self.setupFilterData()
+            self.updateUI()
+        }
+        vc.backActionCallback = {[weak self] resultDatas in
+            guard let self = self else { return }
+            
+            resultDatas.forEach { data in
+                data.successOperationTypes.forEach { operationType in
+                    if case .configuration(let node, let type) = operationType {
+                        switch type {
+                        case .deviceParameters(let parameterType):
+                            switch parameterType {
+                            case .pwmPeriod:
+                                node.tempPwm = node.pwmPeriod
+                                self.settingPwmFailedNodes.removeAll(where: { $0.node.primaryUnicastAddress == node.primaryUnicastAddress })
+                            case .ratedPower:
+                                node.tempRatedPower = node.ratedPower
+                                self.settingRatedPowerFailedNodes.removeAll(where: { $0.node.primaryUnicastAddress == node.primaryUnicastAddress })
+                            }
+                        default:
+                            break
+                        }
+                    }
+                }
+            }
+            
+            self.setupFilterData()
+            self.updateUI()
+        }
         
     }
 }

@@ -538,6 +538,7 @@ extension MeshNetworkManager {
         static var scenesKey = 2
         static var schedulesKey = 3
         static var switchsKey = 4
+        static var donglesKey = 5
     }
     
     /// 日程list
@@ -585,13 +586,21 @@ extension MeshNetworkManager {
         }
     }
     
-
     /// 当前子网内动能开关list
     var switchs: [DeviceSwitchData] {
         get {
             objc_getAssociatedObject(self, &AssociatedKey.switchsKey) as? [DeviceSwitchData] ?? []
         }set {
             objc_setAssociatedObject(self, &AssociatedKey.switchsKey, newValue, .OBJC_ASSOCIATION_RETAIN)
+        }
+    }
+    
+    /// 当前子网内dongle list
+    var dongles: [DeviceDongleData] {
+        get {
+            objc_getAssociatedObject(self, &AssociatedKey.donglesKey) as? [DeviceDongleData] ?? []
+        }set {
+            objc_setAssociatedObject(self, &AssociatedKey.donglesKey, newValue, .OBJC_ASSOCIATION_RETAIN)
         }
     }
     
@@ -605,7 +614,9 @@ extension MeshNetworkManager {
         
         DispatchQueue.global().async {
             
-            self.schedules = Schedule.load(meshUUID: uuid, meshNetworkId: self.currentNetworkKey.networkId.hex)
+            let subNetworkId = self.currentNetworkKey.networkId.hex
+            
+            self.schedules = Schedule.load(meshUUID: uuid, meshNetworkId: subNetworkId)
             
             self.groups.forEach({ group in
                 group.info = GroupInfo.load(meshUUID: uuid, address: group.address.address) ?? GroupInfo(address: group.address.address)
@@ -621,39 +632,9 @@ extension MeshNetworkManager {
                 $0.info = SceneInfo.load(meshUUID: uuid, sceneId: $0.number) ?? SceneInfo(sceneId: $0.number)
             })
             
-            self.switchs = DeviceSwitchData.load(meshUUID: uuid, meshNetworkId: self.currentNetworkKey.networkId.hex)
-            
-//            var isUnsubscribe: Bool = false
-            // 解绑本地节点订阅组信息，用于接收按键发出指令本地显示状态
-//            for element in MeshNetworkManager.instance.localNode?.elements ?? [] {
-//                element.models.forEach { model in
-//                    model.subscriptions.forEach({ group in
-////                        if group.isVirtual {
-//                            model.unsubscribe(from: group)
-////                        }
-//                    })
-//                }
-//            }
-//            if isUnsubscribe {
-//                MeshNetworkManager.instance.localNode?.save()
-//            }
-            
-//            var subnetworkScenes: [Scene] = []
-//            let sceneInfos = SceneInfo.load(meshUUID: uuid, networkKey: self.currentNetworkKey)
-//            sceneInfos.forEach { info in
-//                if let scene = self.scenes.first(where: { $0.number == info.sceneId }) {
-//                    scene.info = info
-//                    let sceneSchedules = self.subnetworkSchedules.filter({ schedule in info.bindSchedules.contains(where: { schedule.id == $0.id }) })
-//                    scene.info.groups.forEach({ group in
-//                        sceneSchedules.forEach({ sceneSchedule in
-//                            if !group.info.bindSchedules.contains(where: {$0.id == sceneSchedule.id }) {
-//                                group.info.bindSchedules.append(sceneSchedule)
-//                            }
-//                        })
-//                    })
-//                    subnetworkScenes.append(scene)
-//                }
-//            }
+            self.switchs = DeviceSwitchData.load(meshUUID: uuid, meshNetworkId: subNetworkId)
+            self.dongles = DeviceDongleData.load(meshUUID: uuid, meshNetworkId: subNetworkId)
+
             DispatchQueue.main.async {
                 result?(true)
             }
@@ -767,7 +748,7 @@ extension MeshNetworkManager {
     }
     
     /// 获取下一个动能开关名称
-    func getNextSwitchName(_ defaultName: String = "switch".localizedString) -> String {
+    func getNextSwitchName(_ defaultName: String = "switch_defalut_name".localizedString) -> String {
         // 已存在的开关名称
         let existNames = switchs.map({ $0.name })
         for index in 1...16 {
@@ -802,6 +783,27 @@ extension MeshNetworkManager {
         }
         print(mac)
         return mac
+    }
+    
+    /// 获取下一个Dongle名称
+    func getNextDongleName(_ defaultName: String = "etc_default_name".localizedString) -> String {
+        
+        // 已存在的开关名称
+        let existNames = dongles.map({ $0.name })
+        for index in 1...16 {
+            let name = defaultName + "\(index)"
+            if !existNames.contains(name) {
+                return name
+            }
+        }
+        return defaultName + "1"
+    }
+    
+    /// Dongle是否重名
+    /// - Parameter name: 名称
+    /// - Returns: 是否重名
+    func isDongleTautonym(name: String) -> Bool {
+        return dongles.contains(where: { $0.name == name })
     }
     
     /// 创建动能开关
@@ -847,6 +849,13 @@ extension MeshNetworkManager {
             try? self.meshNetwork?.remove(group: group)
         }
         
+    }
+    
+    /// 删除dongle
+    func deleteDongle(dongleData: DeviceDongleData) {
+        guard let meshUUID = self.meshNetwork?.uuid.uuidString else { return }
+        dongleData.delete(meshUUID: meshUUID, networkId: self.currentNetworkKey.networkId.hex)
+        self.dongles.removeAll(where: { $0.id == dongleData.id })
     }
     
 }
@@ -1739,9 +1748,52 @@ extension DeviceSwitchData {
     }
 }
 
+extension DeviceDongleData {
+    
+    /// 是否需要同步数据
+    var needSyncData: Bool {
+        guard let node = self.bindNode else {
+            return false
+        }
+        return node.getSyncData(type: .dongle(dongleData: self)).count > 0
+    }
+    
+}
+
 extension Node {
 
     static private var localVersionSEQ = 1
+    static private var deviceConfigInfo = 2
+    
+    /// 设备类型
+    enum DeviceType {
+        /// 灯/灯+传感器
+        case light
+        /// 开关
+        case switches
+        /// 单独传感器
+        case sensor
+    //    case `switch`
+        /// dongle能耗采集
+        case dongle
+        /// 未知
+        case unknown
+        
+        init(deviceCategory: String) {
+            switch deviceCategory {
+            case "Lighting":
+                self = .light
+            case "Sensor":
+                self = .sensor
+            case "Dongle":
+                self = .dongle
+            case "Switches":
+                self = .switches
+            default:
+                self = .unknown
+            }
+        }
+    }
     
     /// 本地缓存的配置版本号
     var localVersionSEQ: UInt32 {
@@ -1768,33 +1820,60 @@ extension Node {
         return nil
     }
     
+    /// 设备配置信息
+    var deviceConfigInfo: MeshDeviceConfigInfo? {
+        get {
+            guard let pid = self.productIdentifier, pid != 0 else {
+                return nil
+            }
+            guard let info = objc_getAssociatedObject(self, &Node.deviceConfigInfo) as? MeshDeviceConfigInfo else {
+                let deviceInfo = MeshLibManager.manager.supportDeviceInfos.first(where: { $0.productId == pid })
+                self.deviceConfigInfo = deviceInfo
+                return deviceInfo
+            }
+            return info
+        }set {
+            objc_setAssociatedObject(self, &Node.deviceConfigInfo, newValue, .OBJC_ASSOCIATION_RETAIN)
+        }
+        
+    }
+    
+    /// 设备类型
+    var deviceType: DeviceType {
+        guard let configInfo = deviceConfigInfo else {
+            return .light
+        }
+        return DeviceType(deviceCategory: configInfo.deviceCategory)
+    }
+    
     /// 图标名称
     var iconName: String {
-        guard let pid = self.productIdentifier, pid != 0, let iconCategory = MeshLibManager.manager.supportDeviceInfos.first(where: { $0.productId == pid })?.iconCategory, iconCategory.count > 0 else {
+        guard let configInfo = deviceConfigInfo else {
             return "device_unknown"
         }
-        return "device_\(iconCategory)"
+        return "device_\(configInfo.iconCategory)"
     }
    
     /// 离线图标名称
     var offlineIconName: String {
-        guard let pid = self.productIdentifier, pid != 0, let iconCategory = MeshLibManager.manager.supportDeviceInfos.first(where: { $0.productId == pid })?.iconCategory, iconCategory.count > 0 else {
+        guard let configInfo = deviceConfigInfo else {
             return "device_offline_unknown"
         }
-        return "device_offline_\(iconCategory)"
+        return "device_offline_\(configInfo.iconCategory)"
     }
     
     /// 待同步图标名称
     var unsyncIconName: String {
-        guard let pid = self.productIdentifier, pid != 0, let iconCategory = MeshLibManager.manager.supportDeviceInfos.first(where: { $0.productId == pid })?.iconCategory, iconCategory.count > 0 else {
+        
+        guard let configInfo = deviceConfigInfo else {
             return "device_unknown"
         }
-        return "device_unsync_\(iconCategory)"
+        return "device_unsync_\(configInfo.iconCategory)"
     }
     
     /// 类别名称
     var categoryName: String? {
-        return MeshLibManager.manager.supportDeviceInfos.first(where: { $0.companyId == companyIdentifier && $0.productId == productIdentifier })?.categoryName
+        return deviceConfigInfo?.categoryName
     }
     
     /// 是否需要同步数据
@@ -1855,6 +1934,12 @@ extension Node {
                 }
             }
         }
+        // Dongle
+        if self.deviceType == .dongle, let dongle = MeshNetworkManager.instance.dongles.first(where: { $0.bindNodeAddress == oldNode.primaryUnicastAddress }) {
+            dongle.bindNodeAddress = self.primaryUnicastAddress
+            dongle.save()
+        }
+        
         
         self.restoreData = restoreData
         self.save()
@@ -1901,6 +1986,32 @@ extension Node {
             let messageHandle = MeshMessageHandle(message: SunricherVendorSet(function: .pwmPeriod(pwmPeriod)), model: vendorModel)
             messageHandles.append(messageHandle)
         }
+        
+        // Dongle
+        if let dongleData = MeshNetworkManager.instance.dongles.first(where: { $0.bindNodeAddress == self.primaryUnicastAddress }) {
+            let dongleSyncDatas = self.getSyncData(type: .dongle(dongleData: dongleData))
+            dongleSyncDatas.forEach { data in
+                switch data {
+                case .syncCollectionSchedules(let schedules):
+                    if let model = self.collectionSchedulerSetupModel {
+                        let collectionMessageHandles = schedules.map({
+                            MeshMessageHandle(message: SchedulerActionSet(index: UInt8($0.0), entry: $0.1), model: model)
+                        })
+                        messageHandles.append(contentsOf: collectionMessageHandles)
+                    }
+                case .deleteCollectionSchedules(let scheduleIds):
+                    if let model = self.collectionSchedulerSetupModel {
+                        let collectionMessageHandles = scheduleIds.map({
+                            MeshMessageHandle(message: SchedulerActionSet(index: UInt8($0), entry: .init()), model: model)
+                        })
+                        messageHandles.append(contentsOf: collectionMessageHandles)
+                    }
+                default:
+                    break
+                }
+            }
+        }
+        
         
         return messageHandles
     }

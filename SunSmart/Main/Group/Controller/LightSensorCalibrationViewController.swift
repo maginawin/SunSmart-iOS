@@ -182,6 +182,44 @@ class LightSensorCalibrationViewController: UIViewController {
         }
         
         
+//        SRAlertView(title: "daylight_sensor".localizedString, titleColor: TextBlack_Color, titleFont: FONTS(SCRYFrom(15)), message: "calibrating".localizedString, messageColor: TextBlack_Color, messageFont: UIFont.systemFont(ofSize: 14, weight: .light), tapBackgroundHide: false, contentPadding: SCRXFrom(14), contentMinHeight: SCRYFrom(114)).show()
+//        
+//        MeshAPI.sendMessage(message: SunricherVendorSet(function: .daylightCalibrate(UInt16(measuredLightLevel))), model: sensor.sunricherVendorModel!) {[weak self] response in
+//            if let vendorStatus = response as? SunricherVendorStatus, vendorStatus.status.isSuccessful {
+//                
+//                guard let self = self else { return }
+//                SRAlertView.hide()
+//                sensor.selectState = .loading
+//                self.sensorSelectView.reloadSensorCell(sensor: sensor)
+//                // 更新profile调节速率
+//                self.group.info.profile.adjustSpeed = self.calibrationView.adjustSpeed
+//
+//                // 通知space数据修改
+//                NotificationCenter.default.post(name: .init(spaceDataChangedNotificaitonName), object: SpaceChangeDataType.device)
+//                
+//                DispatchQueue.main.async {
+//                    self.sensorEnabled(sensor: sensor) {[weak self] result in
+//                        guard let self = self else { return }
+//                        sensor.selectState = result ? .switchOn : .switchOff
+//                        self.sensorSelectView.reloadSensorCell(sensor: sensor)
+//    //                    MeshAPI.sendMessage(message: ConfigRelaySet(count: 0, steps: 1), address: sensor.primaryUnicastAddress)
+//                        if result {
+//                            self.selectSensor = sensor
+//                            // 切换选中的传感器，更新缓存
+//                            self.group.info.ambientLightSensorNodeAddress = sensor.primaryUnicastAddress
+//                            self.calibrationView.measuredLightValue = nil
+//                            self.updateGroupLightSensor()
+//                            self.updateCalibrationState()
+//                        }
+//                    }
+//                }
+//                
+//            }else {
+//                self?.showCalibrationFailed(message: "calibrating_failure".localizedString)
+//            }
+//        }
+//        return
+        
         showConnecting()
         MeshSensorCalibrateServer.shared.calibrate(node: sensor, measuredValue: UInt16(measuredLightLevel)) { step in
             

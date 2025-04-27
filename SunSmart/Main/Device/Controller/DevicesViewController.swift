@@ -72,7 +72,7 @@ class DevicesViewController: WMPageController {
 //    private var settingBtn: UIButton!
     
     /// 菜单功能
-    let menuTitles: [String] = ["lights".localizedString, "switches".localizedString, "sensors".localizedString, "gateway".localizedString]
+    let menuTitles: [String] = ["lights".localizedString, "switches".localizedString, "sensors".localizedString, "others".localizedString]
     
     let space: SpaceData
     
@@ -312,8 +312,10 @@ class DevicesViewController: WMPageController {
                 self.switchAdd()
             case .restoreDevice:
                 self.devicesRestore()
-            case .preCreatedSensors, .preCreatedOthers:
+            case .preCreatedSensors:
                 XWHUDManager.showTipHUD("under_development".localizedString, isLineFeed: true)
+            case .preCreatedDongles:
+                self.preCreatedDongle()
             }
         }).show()
         
@@ -372,8 +374,16 @@ class DevicesViewController: WMPageController {
             vc.preferredContentSize = iPadPreferredContentSize
         }
         present(NavigationViewController(rootViewController: vc), animated: true)
+    }
+    
+    /// 预创建dongle
+    private func preCreatedDongle() {
         
-        NotificationCenter.default.post(name: .init(switchsRefreshNotificationName), object: nil)
+        let vc = DeviceDongleViewController(space: self.space, dongleData: nil)
+        if isIPad {
+            vc.preferredContentSize = iPadPreferredContentSize
+        }
+        present(NavigationViewController(rootViewController: vc), animated: true)
     }
     
     /// 恢复设备数据
@@ -640,7 +650,7 @@ extension DevicesViewController {
             let vc = DeviceSensorsViewController(space: space)
             return vc
         case 3:
-            let vc = GatewaysViewController(space: space)
+            let vc = DeviceOthersViewController(space: space)
             return vc
         default:
             return UIViewController()

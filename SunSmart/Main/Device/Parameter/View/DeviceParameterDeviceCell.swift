@@ -79,6 +79,7 @@ class DeviceParameterDeviceCell: UITableViewCell {
             }else {
                 deviceImageView.image = UIImage(named: device.iconName)
                 nameLabel.textColor = TextBlack_Color
+                selectImageView.isHidden = false
                 selectImageView.image = UIImage(named: selectState == .selected ? "device_select" : "device_select_un")
             }
         }
@@ -184,12 +185,12 @@ class DeviceParameterDeviceCell: UITableViewCell {
             make.top.equalTo(nameLabel.snp.bottom).offset(SCRYFrom(2))
         }
         
-        pwmFailedImageView = UIImageView(image: UIImage(named: "sync_failed_small"))
+        pwmFailedImageView = UIImageView(image: UIImage(named: "setting_failed"))
         pwmFailedImageView.isHidden = true
         contentView.addSubview(pwmFailedImageView)
         pwmFailedImageView.snp.makeConstraints { make in
             make.centerY.equalTo(pwmLabel)
-            make.left.equalTo(pwmLabel.snp.right).offset(SCRXFrom(6))
+            make.left.equalTo(pwmLabel.snp.right).offset(SCRXFrom(4))
         }
         
         ratedPowerLabel = UILabel(text: "", textColor: Message_Color, fontSize: 12, fontWeight: .light)
@@ -199,7 +200,7 @@ class DeviceParameterDeviceCell: UITableViewCell {
             make.left.equalTo(pwmLabel)
         }
         
-        ratedPowerFailedImageView = UIImageView(image: UIImage(named: "sync_failed_small"))
+        ratedPowerFailedImageView = UIImageView(image: UIImage(named: "setting_failed"))
         ratedPowerFailedImageView.isHidden = true
         contentView.addSubview(ratedPowerFailedImageView)
         ratedPowerFailedImageView.snp.makeConstraints { make in
@@ -211,7 +212,7 @@ class DeviceParameterDeviceCell: UITableViewCell {
         contentView.addSubview(groupNameLabel)
         groupNameLabel.snp.makeConstraints { make in
             make.right.equalTo(SCRXFrom(-16))
-            make.top.equalTo(onBtn.snp.bottom).offset(SCRYFrom(6))
+            make.top.equalTo(onBtn.snp.bottom).offset(SCRYFrom(4))
         }
         
         lineView = UIView()

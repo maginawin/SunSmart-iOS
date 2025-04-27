@@ -201,4 +201,14 @@ extension MultiseriatePickerView: UIPickerViewDataSource, UIPickerViewDelegate {
         return SCRYFrom(40)
     }
     
+    func pickerView(_ pickerView: UIPickerView, didSelectRow row: Int, inComponent component: Int) {
+        if pickerBack != nil {
+            var list = Array(repeating: 0, count: pickerView.numberOfComponents)
+            for number in 0..<pickerView.numberOfComponents {
+                list[number] = pickerView.numberOfRows(inComponent: number)
+            }
+            pickerBack?(list)
+        }
+    }
+    
 }

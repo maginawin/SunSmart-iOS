@@ -75,7 +75,7 @@ class DeviceAddViewCell: UITableViewCell {
                     identifyBtn.layer.borderColor = RGB(156, 163, 175, 0.5).cgColor
                 }else {
                     identifyBtn.isEnabled = true
-                    addBtn.isEnabled = device.isSupport
+                    addBtn.isEnabled = device.deviceType != .unknown
                     identifyBtn.layer.borderColor = Bar_Color.cgColor
                 }
                 

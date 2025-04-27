@@ -76,6 +76,8 @@ enum DeviceOperationType {
                 return parameterType.isSuccessful(node: node)
             case .deviceReadParmeters:
                 return true
+            case .collectionSchedule(let index, _):
+                return node.collectionSchedulerEntrys[index] == nil || !node.collectionSchedulerEntrys[index]!.isValid
             }
         case .configuration(let node, let type):
             switch type {
@@ -110,6 +112,8 @@ enum DeviceOperationType {
                 return parameterType.isSuccessful(node: node)
             case .deviceReadParmeters:
                 return true
+            case .collectionSchedule(let index, let entry):
+                return node.collectionSchedulerEntrys[index] != nil && node.collectionSchedulerEntrys[index]! == entry
             }
         case .read:
             return true
@@ -162,6 +166,10 @@ enum DeviceOperationType {
                 messageHandles.append(contentsOf: parameterType.getMessageHandles(node: node))
             case .deviceReadParmeters:
                 break
+            case .collectionSchedule(let index, let entry):
+                if let model = node.collectionSchedulerSetupModel {
+                    messageHandles.append(MeshMessageHandle(message: SchedulerActionSet(index: UInt8(index), entry: entry), model: model))
+                }
             }
         case .configuration(let node, let type): // 添加/配置操作
             
@@ -202,6 +210,13 @@ enum DeviceOperationType {
                 messageHandles.append(contentsOf: parameterType.getMessageHandles(node: node))
             case .deviceReadParmeters:
                 break
+            case .collectionSchedule(let index, let entry):
+                if let timeModel = node.timeModel {
+                    messageHandles.append(MeshMessageHandle(message: Node.setLocalTimeMessage(), model: timeModel))
+                }
+                if let schedulerSetupModel = node.collectionSchedulerSetupModel {
+                    messageHandles.append(MeshMessageHandle(message: SchedulerActionSet(index: UInt8(index), entry: entry), model: schedulerSetupModel))
+                }
             }
         case .read(let node, let type):
             switch type {
@@ -244,6 +259,8 @@ enum ActionType {
     case deviceParameters(parameterType: DeviceParameterType)
     /// 设备参数读取
     case deviceReadParmeters(parameterType: DeviceReadParameterType)
+    /// 采集日程（Dongle）
+    case collectionSchedule(index: Int, entry: SchedulerRegistryEntry)
 }
 
 extension NodeSyncData {
@@ -277,6 +294,10 @@ extension NodeSyncData {
             return 0
         case .deviceParameterTypes:
             return 6
+        case .syncCollectionSchedules:
+            return 4
+        case .deleteCollectionSchedules:
+            return 4
         }
     }
     
@@ -394,6 +415,8 @@ extension DeviceParameterType {
         switch self {
         case .pwmPeriod(let period):
             return node.pwmPeriod == period
+        case .ratedPower(let value):
+            return node.ratedPower == value
         }
     }
     

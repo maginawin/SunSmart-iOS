@@ -198,16 +198,8 @@ class DeviceSwitchViewController: UIViewController {
             NotificationCenter.default.post(name: .init(spaceDataChangedNotificaitonName), object: SpaceChangeDataType.common)
             XWHUDManager.showSuccessTipHUD("done!".localizedString)
             DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) {[weak self] in
-                if isCreate {
-                    self?.fineshed()
-                }else {
-                    self?.updateSaveEnabledState()
-                    self?.tableView.reloadData()
-//                    self?.navigationController?.popViewController(animated: true)
-                    self?.dismiss(animated: true)
-                }
+                self?.dismiss(animated: true)
             }
-            
             return
         }
         

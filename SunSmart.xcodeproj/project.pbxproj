@@ -27,13 +27,26 @@
 		C8047F2F2B8F5E1B00A09FFA /* PowerUpBehaviorInstructionController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8047F2E2B8F5E1B00A09FFA /* PowerUpBehaviorInstructionController.swift */; };
 		C8047F312B8F670200A09FFA /* AdjustSpeedInstructionController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8047F302B8F670200A09FFA /* AdjustSpeedInstructionController.swift */; };
 		C8047F332B8F692A00A09FFA /* CalibrationInstructionController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8047F322B8F692A00A09FFA /* CalibrationInstructionController.swift */; };
+		C80A7F482DB72C1F00A6E36C /* DeviceDongleCollectionStrategyCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = C80A7F472DB72C1F00A6E36C /* DeviceDongleCollectionStrategyCell.swift */; };
+		C80A7F4A2DB72F3500A6E36C /* DeviceDongleStorageUsageCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = C80A7F492DB72F3500A6E36C /* DeviceDongleStorageUsageCell.swift */; };
+		C80A7F4C2DB7331D00A6E36C /* DeviceDongleSectionHeaderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C80A7F4B2DB7331D00A6E36C /* DeviceDongleSectionHeaderView.swift */; };
+		C80A7F4E2DB7361300A6E36C /* DeviceDongleScheduleHeaderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C80A7F4D2DB7361300A6E36C /* DeviceDongleScheduleHeaderView.swift */; };
+		C80A7F502DB7709100A6E36C /* DevicePromptHudView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C80A7F4F2DB7709100A6E36C /* DevicePromptHudView.swift */; };
+		C80A7F522DB790B700A6E36C /* DeviceOfflinePromptView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C80A7F512DB790B700A6E36C /* DeviceOfflinePromptView.swift */; };
+		C80A7F542DB793E200A6E36C /* DongleAddCollectionScheduleController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C80A7F532DB793E200A6E36C /* DongleAddCollectionScheduleController.swift */; };
 		C82AE2EB2B95756600FA4BDB /* GroupSensorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C82AE2EA2B95756600FA4BDB /* GroupSensorView.swift */; };
 		C82AE2ED2B96EC6600FA4BDB /* Profile.swift in Sources */ = {isa = PBXBuildFile; fileRef = C82AE2EC2B96EC6600FA4BDB /* Profile.swift */; };
+		C82F99F22DBE10A90019C3FB /* EnergyDataViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C82F99F12DBE10A90019C3FB /* EnergyDataViewController.swift */; };
+		C82F99F62DBE1AF20019C3FB /* EnergyStaticDataViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C82F99F52DBE1AF20019C3FB /* EnergyStaticDataViewController.swift */; };
+		C82F99F82DBE1C1E0019C3FB /* EnergyStaticDataSpaceView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C82F99F72DBE1C1E0019C3FB /* EnergyStaticDataSpaceView.swift */; };
 		C830CFD92C0DBE520035CD5B /* ShareSpaceListViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C830CFD82C0DBE520035CD5B /* ShareSpaceListViewController.swift */; };
 		C830CFDB2C0DC23F0035CD5B /* SpaceVisitorListViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C830CFDA2C0DC23F0035CD5B /* SpaceVisitorListViewController.swift */; };
 		C830CFDD2C0EBE730035CD5B /* ShareBacthListViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C830CFDC2C0EBE730035CD5B /* ShareBacthListViewController.swift */; };
 		C830CFDF2C0EC0240035CD5B /* ShareBacthListViewCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = C830CFDE2C0EC0240035CD5B /* ShareBacthListViewCell.swift */; };
 		C830CFE32C0F1C6B0035CD5B /* TableSelectView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C830CFE22C0F1C6B0035CD5B /* TableSelectView.swift */; };
+		C83A55982DBA103500E04252 /* DeviceDongleDeleteAlertView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C83A55972DBA103500E04252 /* DeviceDongleDeleteAlertView.swift */; };
+		C83A559C2DBA2B5900E04252 /* DeviceOthersViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C83A559B2DBA2B5900E04252 /* DeviceOthersViewController.swift */; };
+		C83A559F2DBA2C9D00E04252 /* DeviceOthersCollectionViewCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = C83A559E2DBA2C9D00E04252 /* DeviceOthersCollectionViewCell.swift */; };
 		C84A2C552C2D465A0064D3F1 /* ExternalVendorMessage+Extension.swift in Sources */ = {isa = PBXBuildFile; fileRef = C84A2C542C2D465A0064D3F1 /* ExternalVendorMessage+Extension.swift */; };
 		C84A2C572C2D571D0064D3F1 /* BatchSpaceData.swift in Sources */ = {isa = PBXBuildFile; fileRef = C84A2C562C2D571D0064D3F1 /* BatchSpaceData.swift */; };
 		C85120F52DB0A11200714111 /* DeviceParameterFilterView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C85120F42DB0A11200714111 /* DeviceParameterFilterView.swift */; };
@@ -295,8 +308,29 @@
 		C8D6636F2BFEDDC900BFF81A /* ImportData.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8D6636E2BFEDDC900BFF81A /* ImportData.swift */; };
 		C8D663712BFEDDE000BFF81A /* ExportData.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8D663702BFEDDE000BFF81A /* ExportData.swift */; };
 		C8D663732BFF14A000BFF81A /* Int+Hex.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8D663722BFF14A000BFF81A /* Int+Hex.swift */; };
+		C8DA69DB2DB87C9B00E32092 /* DeviceBottomBtnView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8DA69DA2DB87C9B00E32092 /* DeviceBottomBtnView.swift */; };
+		C8DA6A0F2DB8800B00E32092 /* FSCalendarStickyHeader.m in Sources */ = {isa = PBXBuildFile; fileRef = C8DA6A082DB8800B00E32092 /* FSCalendarStickyHeader.m */; };
+		C8DA6A102DB8800B00E32092 /* FSCalendarAppearance.m in Sources */ = {isa = PBXBuildFile; fileRef = C8DA69F12DB8800B00E32092 /* FSCalendarAppearance.m */; };
+		C8DA6A112DB8800B00E32092 /* FSCalendarCalculator.m in Sources */ = {isa = PBXBuildFile; fileRef = C8DA69F32DB8800B00E32092 /* FSCalendarCalculator.m */; };
+		C8DA6A122DB8800B00E32092 /* FSCalendarCell.m in Sources */ = {isa = PBXBuildFile; fileRef = C8DA69F52DB8800B00E32092 /* FSCalendarCell.m */; };
+		C8DA6A132DB8800B00E32092 /* FSCalendarHeaderView.m in Sources */ = {isa = PBXBuildFile; fileRef = C8DA6A042DB8800B00E32092 /* FSCalendarHeaderView.m */; };
+		C8DA6A142DB8800B00E32092 /* FSCalendarSeparatorDecorationView.m in Sources */ = {isa = PBXBuildFile; fileRef = C8DA6A062DB8800B00E32092 /* FSCalendarSeparatorDecorationView.m */; };
+		C8DA6A152DB8800B00E32092 /* FSCalendarExtensions.m in Sources */ = {isa = PBXBuildFile; fileRef = C8DA6A022DB8800B00E32092 /* FSCalendarExtensions.m */; };
+		C8DA6A162DB8800B00E32092 /* FSCalendarWeekdayView.m in Sources */ = {isa = PBXBuildFile; fileRef = C8DA6A0C2DB8800B00E32092 /* FSCalendarWeekdayView.m */; };
+		C8DA6A172DB8800B00E32092 /* FSCalendarCollectionView.m in Sources */ = {isa = PBXBuildFile; fileRef = C8DA69F72DB8800B00E32092 /* FSCalendarCollectionView.m */; };
+		C8DA6A182DB8800B00E32092 /* FSCalendar.m in Sources */ = {isa = PBXBuildFile; fileRef = C8DA69EF2DB8800B00E32092 /* FSCalendar.m */; };
+		C8DA6A192DB8800B00E32092 /* FSCalendarDelegationProxy.m in Sources */ = {isa = PBXBuildFile; fileRef = C8DA69FF2DB8800B00E32092 /* FSCalendarDelegationProxy.m */; };
+		C8DA6A1A2DB8800B00E32092 /* FSCalendarDelegationFactory.m in Sources */ = {isa = PBXBuildFile; fileRef = C8DA69FD2DB8800B00E32092 /* FSCalendarDelegationFactory.m */; };
+		C8DA6A1B2DB8800B00E32092 /* FSCalendarTransitionCoordinator.m in Sources */ = {isa = PBXBuildFile; fileRef = C8DA6A0A2DB8800B00E32092 /* FSCalendarTransitionCoordinator.m */; };
+		C8DA6A1C2DB8800B00E32092 /* FSCalendarConstants.m in Sources */ = {isa = PBXBuildFile; fileRef = C8DA69FB2DB8800B00E32092 /* FSCalendarConstants.m */; };
+		C8DA6A1D2DB8800B00E32092 /* FSCalendarCollectionViewLayout.m in Sources */ = {isa = PBXBuildFile; fileRef = C8DA69F92DB8800B00E32092 /* FSCalendarCollectionViewLayout.m */; };
+		C8DA6A202DB885C500E32092 /* CalendarChooseView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8DA6A1F2DB885C500E32092 /* CalendarChooseView.swift */; };
+		C8DA6A252DB8E6D600E32092 /* Date+Extension.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8DA6A242DB8E6D600E32092 /* Date+Extension.swift */; };
 		C8DC673F2D95523E00C2BC22 /* BleFirmwareUpdateRestoreView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8DC673E2D95523E00C2BC22 /* BleFirmwareUpdateRestoreView.swift */; };
 		C8DCD0FC2CC8E0DE00B8671E /* SiteAddressDataHeaderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8DCD0FB2CC8E0DE00B8671E /* SiteAddressDataHeaderView.swift */; };
+		C8DF84572DB639960070CBD9 /* DeviceDongleViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8DF84562DB639960070CBD9 /* DeviceDongleViewController.swift */; };
+		C8DF845A2DB6464E0070CBD9 /* DeviceDongleData.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8DF84592DB6464E0070CBD9 /* DeviceDongleData.swift */; };
+		C8DF845C2DB65ADF0070CBD9 /* DeviceDongleScheduleViewCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8DF845B2DB65ADF0070CBD9 /* DeviceDongleScheduleViewCell.swift */; };
 		C8E694222D8D407E00005832 /* DeviceAddResultView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8E694212D8D407E00005832 /* DeviceAddResultView.swift */; };
 		C8E694242D8D424100005832 /* DeviceAddBottomView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8E694232D8D424100005832 /* DeviceAddBottomView.swift */; };
 		C8EF54742C1AFA53008389CE /* NetworkLoggerPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8EF54732C1AFA53008389CE /* NetworkLoggerPlugin.swift */; };
@@ -325,13 +359,26 @@
 		C8047F2E2B8F5E1B00A09FFA /* PowerUpBehaviorInstructionController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PowerUpBehaviorInstructionController.swift; sourceTree = "<group>"; };
 		C8047F302B8F670200A09FFA /* AdjustSpeedInstructionController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AdjustSpeedInstructionController.swift; sourceTree = "<group>"; };
 		C8047F322B8F692A00A09FFA /* CalibrationInstructionController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalibrationInstructionController.swift; sourceTree = "<group>"; };
+		C80A7F472DB72C1F00A6E36C /* DeviceDongleCollectionStrategyCell.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceDongleCollectionStrategyCell.swift; sourceTree = "<group>"; };
+		C80A7F492DB72F3500A6E36C /* DeviceDongleStorageUsageCell.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceDongleStorageUsageCell.swift; sourceTree = "<group>"; };
+		C80A7F4B2DB7331D00A6E36C /* DeviceDongleSectionHeaderView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceDongleSectionHeaderView.swift; sourceTree = "<group>"; };
+		C80A7F4D2DB7361300A6E36C /* DeviceDongleScheduleHeaderView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceDongleScheduleHeaderView.swift; sourceTree = "<group>"; };
+		C80A7F4F2DB7709100A6E36C /* DevicePromptHudView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DevicePromptHudView.swift; sourceTree = "<group>"; };
+		C80A7F512DB790B700A6E36C /* DeviceOfflinePromptView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceOfflinePromptView.swift; sourceTree = "<group>"; };
+		C80A7F532DB793E200A6E36C /* DongleAddCollectionScheduleController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DongleAddCollectionScheduleController.swift; sourceTree = "<group>"; };
 		C82AE2EA2B95756600FA4BDB /* GroupSensorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GroupSensorView.swift; sourceTree = "<group>"; };
 		C82AE2EC2B96EC6600FA4BDB /* Profile.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Profile.swift; sourceTree = "<group>"; };
+		C82F99F12DBE10A90019C3FB /* EnergyDataViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EnergyDataViewController.swift; sourceTree = "<group>"; };
+		C82F99F52DBE1AF20019C3FB /* EnergyStaticDataViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EnergyStaticDataViewController.swift; sourceTree = "<group>"; };
+		C82F99F72DBE1C1E0019C3FB /* EnergyStaticDataSpaceView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EnergyStaticDataSpaceView.swift; sourceTree = "<group>"; };
 		C830CFD82C0DBE520035CD5B /* ShareSpaceListViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShareSpaceListViewController.swift; sourceTree = "<group>"; };
 		C830CFDA2C0DC23F0035CD5B /* SpaceVisitorListViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpaceVisitorListViewController.swift; sourceTree = "<group>"; };
 		C830CFDC2C0EBE730035CD5B /* ShareBacthListViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShareBacthListViewController.swift; sourceTree = "<group>"; };
 		C830CFDE2C0EC0240035CD5B /* ShareBacthListViewCell.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShareBacthListViewCell.swift; sourceTree = "<group>"; };
 		C830CFE22C0F1C6B0035CD5B /* TableSelectView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TableSelectView.swift; sourceTree = "<group>"; };
+		C83A55972DBA103500E04252 /* DeviceDongleDeleteAlertView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceDongleDeleteAlertView.swift; sourceTree = "<group>"; };
+		C83A559B2DBA2B5900E04252 /* DeviceOthersViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceOthersViewController.swift; sourceTree = "<group>"; };
+		C83A559E2DBA2C9D00E04252 /* DeviceOthersCollectionViewCell.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceOthersCollectionViewCell.swift; sourceTree = "<group>"; };
 		C84A2C542C2D465A0064D3F1 /* ExternalVendorMessage+Extension.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ExternalVendorMessage+Extension.swift"; sourceTree = "<group>"; };
 		C84A2C562C2D571D0064D3F1 /* BatchSpaceData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BatchSpaceData.swift; sourceTree = "<group>"; };
 		C85120F42DB0A11200714111 /* DeviceParameterFilterView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceParameterFilterView.swift; sourceTree = "<group>"; };
@@ -604,8 +651,45 @@
 		C8D6636E2BFEDDC900BFF81A /* ImportData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImportData.swift; sourceTree = "<group>"; };
 		C8D663702BFEDDE000BFF81A /* ExportData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExportData.swift; sourceTree = "<group>"; };
 		C8D663722BFF14A000BFF81A /* Int+Hex.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Int+Hex.swift"; sourceTree = "<group>"; };
+		C8DA69DA2DB87C9B00E32092 /* DeviceBottomBtnView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceBottomBtnView.swift; sourceTree = "<group>"; };
+		C8DA69EE2DB8800B00E32092 /* FSCalendar.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = FSCalendar.h; sourceTree = "<group>"; };
+		C8DA69EF2DB8800B00E32092 /* FSCalendar.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = FSCalendar.m; sourceTree = "<group>"; };
+		C8DA69F02DB8800B00E32092 /* FSCalendarAppearance.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = FSCalendarAppearance.h; sourceTree = "<group>"; };
+		C8DA69F12DB8800B00E32092 /* FSCalendarAppearance.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = FSCalendarAppearance.m; sourceTree = "<group>"; };
+		C8DA69F22DB8800B00E32092 /* FSCalendarCalculator.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = FSCalendarCalculator.h; sourceTree = "<group>"; };
+		C8DA69F32DB8800B00E32092 /* FSCalendarCalculator.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = FSCalendarCalculator.m; sourceTree = "<group>"; };
+		C8DA69F42DB8800B00E32092 /* FSCalendarCell.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = FSCalendarCell.h; sourceTree = "<group>"; };
+		C8DA69F52DB8800B00E32092 /* FSCalendarCell.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = FSCalendarCell.m; sourceTree = "<group>"; };
+		C8DA69F62DB8800B00E32092 /* FSCalendarCollectionView.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = FSCalendarCollectionView.h; sourceTree = "<group>"; };
+		C8DA69F72DB8800B00E32092 /* FSCalendarCollectionView.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = FSCalendarCollectionView.m; sourceTree = "<group>"; };
+		C8DA69F82DB8800B00E32092 /* FSCalendarCollectionViewLayout.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = FSCalendarCollectionViewLayout.h; sourceTree = "<group>"; };
+		C8DA69F92DB8800B00E32092 /* FSCalendarCollectionViewLayout.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = FSCalendarCollectionViewLayout.m; sourceTree = "<group>"; };
+		C8DA69FA2DB8800B00E32092 /* FSCalendarConstants.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = FSCalendarConstants.h; sourceTree = "<group>"; };
+		C8DA69FB2DB8800B00E32092 /* FSCalendarConstants.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = FSCalendarConstants.m; sourceTree = "<group>"; };
+		C8DA69FC2DB8800B00E32092 /* FSCalendarDelegationFactory.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = FSCalendarDelegationFactory.h; sourceTree = "<group>"; };
+		C8DA69FD2DB8800B00E32092 /* FSCalendarDelegationFactory.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = FSCalendarDelegationFactory.m; sourceTree = "<group>"; };
+		C8DA69FE2DB8800B00E32092 /* FSCalendarDelegationProxy.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = FSCalendarDelegationProxy.h; sourceTree = "<group>"; };
+		C8DA69FF2DB8800B00E32092 /* FSCalendarDelegationProxy.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = FSCalendarDelegationProxy.m; sourceTree = "<group>"; };
+		C8DA6A002DB8800B00E32092 /* FSCalendarDynamicHeader.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = FSCalendarDynamicHeader.h; sourceTree = "<group>"; };
+		C8DA6A012DB8800B00E32092 /* FSCalendarExtensions.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = FSCalendarExtensions.h; sourceTree = "<group>"; };
+		C8DA6A022DB8800B00E32092 /* FSCalendarExtensions.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = FSCalendarExtensions.m; sourceTree = "<group>"; };
+		C8DA6A032DB8800B00E32092 /* FSCalendarHeaderView.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = FSCalendarHeaderView.h; sourceTree = "<group>"; };
+		C8DA6A042DB8800B00E32092 /* FSCalendarHeaderView.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = FSCalendarHeaderView.m; sourceTree = "<group>"; };
+		C8DA6A052DB8800B00E32092 /* FSCalendarSeparatorDecorationView.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = FSCalendarSeparatorDecorationView.h; sourceTree = "<group>"; };
+		C8DA6A062DB8800B00E32092 /* FSCalendarSeparatorDecorationView.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = FSCalendarSeparatorDecorationView.m; sourceTree = "<group>"; };
+		C8DA6A072DB8800B00E32092 /* FSCalendarStickyHeader.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = FSCalendarStickyHeader.h; sourceTree = "<group>"; };
+		C8DA6A082DB8800B00E32092 /* FSCalendarStickyHeader.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = FSCalendarStickyHeader.m; sourceTree = "<group>"; };
+		C8DA6A092DB8800B00E32092 /* FSCalendarTransitionCoordinator.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = FSCalendarTransitionCoordinator.h; sourceTree = "<group>"; };
+		C8DA6A0A2DB8800B00E32092 /* FSCalendarTransitionCoordinator.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = FSCalendarTransitionCoordinator.m; sourceTree = "<group>"; };
+		C8DA6A0B2DB8800B00E32092 /* FSCalendarWeekdayView.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = FSCalendarWeekdayView.h; sourceTree = "<group>"; };
+		C8DA6A0C2DB8800B00E32092 /* FSCalendarWeekdayView.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = FSCalendarWeekdayView.m; sourceTree = "<group>"; };
+		C8DA6A1F2DB885C500E32092 /* CalendarChooseView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalendarChooseView.swift; sourceTree = "<group>"; };
+		C8DA6A242DB8E6D600E32092 /* Date+Extension.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Date+Extension.swift"; sourceTree = "<group>"; };
 		C8DC673E2D95523E00C2BC22 /* BleFirmwareUpdateRestoreView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BleFirmwareUpdateRestoreView.swift; sourceTree = "<group>"; };
 		C8DCD0FB2CC8E0DE00B8671E /* SiteAddressDataHeaderView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SiteAddressDataHeaderView.swift; sourceTree = "<group>"; };
+		C8DF84562DB639960070CBD9 /* DeviceDongleViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceDongleViewController.swift; sourceTree = "<group>"; };
+		C8DF84592DB6464E0070CBD9 /* DeviceDongleData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceDongleData.swift; sourceTree = "<group>"; };
+		C8DF845B2DB65ADF0070CBD9 /* DeviceDongleScheduleViewCell.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceDongleScheduleViewCell.swift; sourceTree = "<group>"; };
 		C8E694212D8D407E00005832 /* DeviceAddResultView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceAddResultView.swift; sourceTree = "<group>"; };
 		C8E694232D8D424100005832 /* DeviceAddBottomView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceAddBottomView.swift; sourceTree = "<group>"; };
 		C8EF54732C1AFA53008389CE /* NetworkLoggerPlugin.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NetworkLoggerPlugin.swift; sourceTree = "<group>"; };
@@ -708,6 +792,32 @@
 			path = Controller;
 			sourceTree = "<group>";
 		};
+		C82F99F02DBE10450019C3FB /* Energy */ = {
+			isa = PBXGroup;
+			children = (
+				C82F99F32DBE10AB0019C3FB /* Controller */,
+				C82F99F42DBE10B10019C3FB /* View */,
+			);
+			path = Energy;
+			sourceTree = "<group>";
+		};
+		C82F99F32DBE10AB0019C3FB /* Controller */ = {
+			isa = PBXGroup;
+			children = (
+				C82F99F12DBE10A90019C3FB /* EnergyDataViewController.swift */,
+				C82F99F52DBE1AF20019C3FB /* EnergyStaticDataViewController.swift */,
+			);
+			path = Controller;
+			sourceTree = "<group>";
+		};
+		C82F99F42DBE10B10019C3FB /* View */ = {
+			isa = PBXGroup;
+			children = (
+				C82F99F72DBE1C1E0019C3FB /* EnergyStaticDataSpaceView.swift */,
+			);
+			path = View;
+			sourceTree = "<group>";
+		};
 		C830CFE02C0EC0480035CD5B /* Model */ = {
 			isa = PBXGroup;
 			children = (
@@ -715,6 +825,31 @@
 				C84A2C562C2D571D0064D3F1 /* BatchSpaceData.swift */,
 			);
 			path = Model;
+			sourceTree = "<group>";
+		};
+		C83A55992DBA2B3900E04252 /* Others */ = {
+			isa = PBXGroup;
+			children = (
+				C83A559A2DBA2B3F00E04252 /* Controller */,
+				C83A559D2DBA2C8A00E04252 /* View */,
+			);
+			path = Others;
+			sourceTree = "<group>";
+		};
+		C83A559A2DBA2B3F00E04252 /* Controller */ = {
+			isa = PBXGroup;
+			children = (
+				C83A559B2DBA2B5900E04252 /* DeviceOthersViewController.swift */,
+			);
+			path = Controller;
+			sourceTree = "<group>";
+		};
+		C83A559D2DBA2C8A00E04252 /* View */ = {
+			isa = PBXGroup;
+			children = (
+				C83A559E2DBA2C9D00E04252 /* DeviceOthersCollectionViewCell.swift */,
+			);
+			path = View;
 			sourceTree = "<group>";
 		};
 		C84A2C4A2C2D022E0064D3F1 /* Mesh */ = {
@@ -832,6 +967,7 @@
 			isa = PBXGroup;
 			children = (
 				C8A68A282DA67B110011A389 /* Gzip */,
+				C8DA6A0E2DB8800B00E32092 /* FSCalendar */,
 				C87EB4592BA17D3E00F9285B /* ScanQRCode */,
 				C896BB852A930C3800217512 /* WYHUDManager */,
 				C898EA502AC2BD8B0023B480 /* WMPageController */,
@@ -892,6 +1028,7 @@
 				C8A29C212B47D3F700104634 /* Timed */,
 				C89BAB182C4F3B6F000A4173 /* Firmware */,
 				C8047F042B8DFA0100A09FFA /* Profile */,
+				C82F99F02DBE10450019C3FB /* Energy */,
 			);
 			path = Main;
 			sourceTree = "<group>";
@@ -1043,11 +1180,13 @@
 		C898EA6C2AC2D5890023B480 /* Device */ = {
 			isa = PBXGroup;
 			children = (
+				C8DF84532DB639750070CBD9 /* Dongle */,
 				C8A011632DA8BD440058E7E7 /* Parameter */,
 				C8A347C52D62CF800092D3E4 /* Dali */,
 				C89FD6672C89841400DE431D /* Lights */,
 				C89FD6612C8983A600DE431D /* Switches */,
 				C8A4C5042C956225003EE5E5 /* Sensors */,
+				C83A55992DBA2B3900E04252 /* Others */,
 				C8A4C5052C95622F003EE5E5 /* Gateway */,
 				C898EA6E2AC2D5A20023B480 /* Controller */,
 				C89941962AD4FB05008DCD76 /* Model */,
@@ -1072,6 +1211,7 @@
 				C8E694212D8D407E00005832 /* DeviceAddResultView.swift */,
 				C8E694232D8D424100005832 /* DeviceAddBottomView.swift */,
 				C8A3516D2D8D73B800325FC6 /* DeviceRestoreEmptyViewCell.swift */,
+				C8DA69DA2DB87C9B00E32092 /* DeviceBottomBtnView.swift */,
 			);
 			path = View;
 			sourceTree = "<group>";
@@ -1562,6 +1702,7 @@
 				C8ACF12F2AA1B2BA00E24B4A /* UIViewController+Extension.swift */,
 				C8ACF1302AA1B2BA00E24B4A /* String+Extension.swift */,
 				C8A09A022AC162660068C814 /* String+Date.swift */,
+				C8DA6A242DB8E6D600E32092 /* Date+Extension.swift */,
 				C8ACF1312AA1B2BA00E24B4A /* CALayer+Animations.swift */,
 				C8ACF1322AA1B2BA00E24B4A /* UIBarButtonItem+Extension.swift */,
 				C898E2DB2AB7E62100C71315 /* String+Localized.swift */,
@@ -1628,6 +1769,87 @@
 				C8D58F652C1D34090066B770 /* CloudSynchronizationManager.swift */,
 			);
 			path = Cloud;
+			sourceTree = "<group>";
+		};
+		C8DA6A0E2DB8800B00E32092 /* FSCalendar */ = {
+			isa = PBXGroup;
+			children = (
+				C8DA69EE2DB8800B00E32092 /* FSCalendar.h */,
+				C8DA69EF2DB8800B00E32092 /* FSCalendar.m */,
+				C8DA69F02DB8800B00E32092 /* FSCalendarAppearance.h */,
+				C8DA69F12DB8800B00E32092 /* FSCalendarAppearance.m */,
+				C8DA69F22DB8800B00E32092 /* FSCalendarCalculator.h */,
+				C8DA69F32DB8800B00E32092 /* FSCalendarCalculator.m */,
+				C8DA69F42DB8800B00E32092 /* FSCalendarCell.h */,
+				C8DA69F52DB8800B00E32092 /* FSCalendarCell.m */,
+				C8DA69F62DB8800B00E32092 /* FSCalendarCollectionView.h */,
+				C8DA69F72DB8800B00E32092 /* FSCalendarCollectionView.m */,
+				C8DA69F82DB8800B00E32092 /* FSCalendarCollectionViewLayout.h */,
+				C8DA69F92DB8800B00E32092 /* FSCalendarCollectionViewLayout.m */,
+				C8DA69FA2DB8800B00E32092 /* FSCalendarConstants.h */,
+				C8DA69FB2DB8800B00E32092 /* FSCalendarConstants.m */,
+				C8DA69FC2DB8800B00E32092 /* FSCalendarDelegationFactory.h */,
+				C8DA69FD2DB8800B00E32092 /* FSCalendarDelegationFactory.m */,
+				C8DA69FE2DB8800B00E32092 /* FSCalendarDelegationProxy.h */,
+				C8DA69FF2DB8800B00E32092 /* FSCalendarDelegationProxy.m */,
+				C8DA6A002DB8800B00E32092 /* FSCalendarDynamicHeader.h */,
+				C8DA6A012DB8800B00E32092 /* FSCalendarExtensions.h */,
+				C8DA6A022DB8800B00E32092 /* FSCalendarExtensions.m */,
+				C8DA6A032DB8800B00E32092 /* FSCalendarHeaderView.h */,
+				C8DA6A042DB8800B00E32092 /* FSCalendarHeaderView.m */,
+				C8DA6A052DB8800B00E32092 /* FSCalendarSeparatorDecorationView.h */,
+				C8DA6A062DB8800B00E32092 /* FSCalendarSeparatorDecorationView.m */,
+				C8DA6A072DB8800B00E32092 /* FSCalendarStickyHeader.h */,
+				C8DA6A082DB8800B00E32092 /* FSCalendarStickyHeader.m */,
+				C8DA6A092DB8800B00E32092 /* FSCalendarTransitionCoordinator.h */,
+				C8DA6A0A2DB8800B00E32092 /* FSCalendarTransitionCoordinator.m */,
+				C8DA6A0B2DB8800B00E32092 /* FSCalendarWeekdayView.h */,
+				C8DA6A0C2DB8800B00E32092 /* FSCalendarWeekdayView.m */,
+			);
+			path = FSCalendar;
+			sourceTree = "<group>";
+		};
+		C8DF84532DB639750070CBD9 /* Dongle */ = {
+			isa = PBXGroup;
+			children = (
+				C8DF84552DB639800070CBD9 /* Controller */,
+				C8DF84582DB6462E0070CBD9 /* Model */,
+				C8DF84542DB6397C0070CBD9 /* View */,
+			);
+			path = Dongle;
+			sourceTree = "<group>";
+		};
+		C8DF84542DB6397C0070CBD9 /* View */ = {
+			isa = PBXGroup;
+			children = (
+				C8DF845B2DB65ADF0070CBD9 /* DeviceDongleScheduleViewCell.swift */,
+				C80A7F472DB72C1F00A6E36C /* DeviceDongleCollectionStrategyCell.swift */,
+				C80A7F492DB72F3500A6E36C /* DeviceDongleStorageUsageCell.swift */,
+				C80A7F4B2DB7331D00A6E36C /* DeviceDongleSectionHeaderView.swift */,
+				C80A7F4D2DB7361300A6E36C /* DeviceDongleScheduleHeaderView.swift */,
+				C80A7F4F2DB7709100A6E36C /* DevicePromptHudView.swift */,
+				C80A7F512DB790B700A6E36C /* DeviceOfflinePromptView.swift */,
+				C8DA6A1F2DB885C500E32092 /* CalendarChooseView.swift */,
+				C83A55972DBA103500E04252 /* DeviceDongleDeleteAlertView.swift */,
+			);
+			path = View;
+			sourceTree = "<group>";
+		};
+		C8DF84552DB639800070CBD9 /* Controller */ = {
+			isa = PBXGroup;
+			children = (
+				C8DF84562DB639960070CBD9 /* DeviceDongleViewController.swift */,
+				C80A7F532DB793E200A6E36C /* DongleAddCollectionScheduleController.swift */,
+			);
+			path = Controller;
+			sourceTree = "<group>";
+		};
+		C8DF84582DB6462E0070CBD9 /* Model */ = {
+			isa = PBXGroup;
+			children = (
+				C8DF84592DB6464E0070CBD9 /* DeviceDongleData.swift */,
+			);
+			path = Model;
 			sourceTree = "<group>";
 		};
 		D768458DC30C9D1E66429902 /* Pods */ = {
@@ -1792,6 +2014,7 @@
 				C8607BE42B9026F700A94F0B /* LightSensorCalibrationSelectView.swift in Sources */,
 				C8B058A92B512C1F006FC36F /* TestDeviceAddManager.swift in Sources */,
 				C8047F1E2B8F1FDC00A09FFA /* ProfileManualOverrideTimeoutView.swift in Sources */,
+				C82F99F62DBE1AF20019C3FB /* EnergyStaticDataViewController.swift in Sources */,
 				C8A130C92B32C5F10008C353 /* SceneTemplates.swift in Sources */,
 				C8BF08662B2842A300144BAC /* BuoySliderView.swift in Sources */,
 				C86B0AB82C106BE00038F669 /* ServerSelectionViewController.swift in Sources */,
@@ -1808,6 +2031,7 @@
 				C8ACF13B2AA1B2BA00E24B4A /* UIViewController+Extension.swift in Sources */,
 				C8A3EF762CA69758000A1226 /* MeshDeviceConfigInfo.swift in Sources */,
 				C87EB4642BA17D3F00F9285B /* LBXScanView.swift in Sources */,
+				C80A7F4C2DB7331D00A6E36C /* DeviceDongleSectionHeaderView.swift in Sources */,
 				C87415DD2ADFD1510020E3C2 /* PopGestureScrollView.swift in Sources */,
 				C86B0ABA2C11434C0038F669 /* ServerSelectionView.swift in Sources */,
 				C8A0116B2DA8F8010058E7E7 /* DeviceParameterDeviceCell.swift in Sources */,
@@ -1843,6 +2067,7 @@
 				C8A29C2C2B47FE2300104634 /* ScheduleAddViewController.swift in Sources */,
 				C8047F0B2B8DFBF700A09FFA /* ProfileInstructionsViewCell.swift in Sources */,
 				C898EA5F2AC2BD8B0023B480 /* UIViewController+WMPageController.m in Sources */,
+				C82F99F82DBE1C1E0019C3FB /* EnergyStaticDataSpaceView.swift in Sources */,
 				C8D663732BFF14A000BFF81A /* Int+Hex.swift in Sources */,
 				C8AFDBFD2D700A1800839A38 /* DaliDevicesViewCell.swift in Sources */,
 				C89C9FE42B3C197B00074031 /* SyncDevicesViewController.swift in Sources */,
@@ -1850,6 +2075,7 @@
 				C8A099FD2AC134C30068C814 /* SiteEditViewController.swift in Sources */,
 				C8A16F6F2C8568F700FB50BD /* AttributedTextViewController.swift in Sources */,
 				C87EB4502BA0822E00F9285B /* GroupSwitchPanelViewCell.swift in Sources */,
+				C8DF845C2DB65ADF0070CBD9 /* DeviceDongleScheduleViewCell.swift in Sources */,
 				C8AADF012A973DA600238C1C /* SpaceData.swift in Sources */,
 				C8BF085B2B27146B00144BAC /* GroupAddHeaderView.swift in Sources */,
 				C89941932AD4E382008DCD76 /* LCWeakTimer.swift in Sources */,
@@ -1869,6 +2095,21 @@
 				C89A1C3F2B566B96004912B9 /* ScheduleScenesView.swift in Sources */,
 				C89B3CB52C08807200820277 /* ShareAuthoritySpaceViewCell.swift in Sources */,
 				C8047F292B8F4C0E00A09FFA /* DaylightSensorInstructionsViewCell.swift in Sources */,
+				C8DA6A0F2DB8800B00E32092 /* FSCalendarStickyHeader.m in Sources */,
+				C8DA6A102DB8800B00E32092 /* FSCalendarAppearance.m in Sources */,
+				C8DA6A112DB8800B00E32092 /* FSCalendarCalculator.m in Sources */,
+				C8DA6A122DB8800B00E32092 /* FSCalendarCell.m in Sources */,
+				C8DA6A132DB8800B00E32092 /* FSCalendarHeaderView.m in Sources */,
+				C8DA6A142DB8800B00E32092 /* FSCalendarSeparatorDecorationView.m in Sources */,
+				C8DA6A152DB8800B00E32092 /* FSCalendarExtensions.m in Sources */,
+				C8DA6A162DB8800B00E32092 /* FSCalendarWeekdayView.m in Sources */,
+				C8DA6A172DB8800B00E32092 /* FSCalendarCollectionView.m in Sources */,
+				C8DA6A182DB8800B00E32092 /* FSCalendar.m in Sources */,
+				C8DA6A192DB8800B00E32092 /* FSCalendarDelegationProxy.m in Sources */,
+				C8DA6A1A2DB8800B00E32092 /* FSCalendarDelegationFactory.m in Sources */,
+				C8DA6A1B2DB8800B00E32092 /* FSCalendarTransitionCoordinator.m in Sources */,
+				C8DA6A1C2DB8800B00E32092 /* FSCalendarConstants.m in Sources */,
+				C8DA6A1D2DB8800B00E32092 /* FSCalendarCollectionViewLayout.m in Sources */,
 				C898EA702AC3C64C0023B480 /* SpaceFunctionFooterView.swift in Sources */,
 				C8E694242D8D424100005832 /* DeviceAddBottomView.swift in Sources */,
 				C85829F22B397F2B002A4367 /* SceneViewController.swift in Sources */,
@@ -1882,6 +2123,7 @@
 				C86618EF2D8BB3DA00FB3D2F /* DeviceAddMenuView.swift in Sources */,
 				C8BF088C2B29903E00144BAC /* GroupDeviceViewCell.swift in Sources */,
 				C8A3EE822B34087A0082A772 /* SceneAddGroupViewCell.swift in Sources */,
+				C8DF845A2DB6464E0070CBD9 /* DeviceDongleData.swift in Sources */,
 				C88B25762ADD399C00CF1AE4 /* DeviceLightBasicController.swift in Sources */,
 				C8A347D02D63103B0092D3E4 /* DeviceBaseViewController.swift in Sources */,
 				C8DC673F2D95523E00C2BC22 /* BleFirmwareUpdateRestoreView.swift in Sources */,
@@ -1932,9 +2174,12 @@
 				C89C82CA2C81B7FE009D43F6 /* FirmwareUpdateTypeData.swift in Sources */,
 				C8EF54742C1AFA53008389CE /* NetworkLoggerPlugin.swift in Sources */,
 				C8A0AC4B2C3E21B200DFE803 /* Array+Split.swift in Sources */,
+				C8DF84572DB639960070CBD9 /* DeviceDongleViewController.swift in Sources */,
+				C8DA6A202DB885C500E32092 /* CalendarChooseView.swift in Sources */,
 				C8B5A1DE2B2BE9B300728E36 /* GroupMembersViewController.swift in Sources */,
 				C830CFDB2C0DC23F0035CD5B /* SpaceVisitorListViewController.swift in Sources */,
 				C89C15732D9A9D8000789F0B /* ContinuousTapGestureRecognizer.swift in Sources */,
+				C83A559F2DBA2C9D00E04252 /* DeviceOthersCollectionViewCell.swift in Sources */,
 				C8A16F782C86E8C100FB50BD /* FirmwareVersionHistoryController.swift in Sources */,
 				C8047F092B8DFA5900A09FFA /* ProfileInstructionsController.swift in Sources */,
 				C830CFE32C0F1C6B0035CD5B /* TableSelectView.swift in Sources */,
@@ -1973,8 +2218,10 @@
 				C8AE17542DACAABD0071A9B1 /* DeviceParameterSettingsViewCell.swift in Sources */,
 				C89B40CE2CEB37CA0082A89A /* MeshDistributionData.swift in Sources */,
 				C8A4C50B2C956262003EE5E5 /* GatewaysViewController.swift in Sources */,
+				C80A7F502DB7709100A6E36C /* DevicePromptHudView.swift in Sources */,
 				C8B058A02B50DE86006FC36F /* HorizontalDirectionFlowLayout.swift in Sources */,
 				C803EC4C2BCCC9F0003C48B1 /* ConfigurationFlowGuidanceView.swift in Sources */,
+				C80A7F4A2DB72F3500A6E36C /* DeviceDongleStorageUsageCell.swift in Sources */,
 				C898EA792AC41AFB0023B480 /* CustomDeviceSlider.swift in Sources */,
 				C8A130C02B327FF40008C353 /* SceneAddCustomView.swift in Sources */,
 				C8A0301A2CD85FC40063FEC4 /* MeshFirmwareSelectDeviceViewCell.swift in Sources */,
@@ -1996,13 +2243,17 @@
 				C898E2FD2ABBD61200C71315 /* SRAlertView.swift in Sources */,
 				C89C9FF02B3D4E6200074031 /* SyncDevicesGroupViewCell.swift in Sources */,
 				C85829F62B398443002A4367 /* CustomProgressView.swift in Sources */,
+				C8DA6A252DB8E6D600E32092 /* Date+Extension.swift in Sources */,
 				C8699DB92C0978F300424A60 /* UserData.swift in Sources */,
 				C898EA632AC2BD8B0023B480 /* WMProgressView.m in Sources */,
+				C8DA69DB2DB87C9B00E32092 /* DeviceBottomBtnView.swift in Sources */,
 				C8AFDBFF2D70326E00839A38 /* DaliSettingViewController.swift in Sources */,
 				C8A09A032AC162660068C814 /* String+Date.swift in Sources */,
 				C898EA742AC400100023B480 /* DeviceLightControlView.swift in Sources */,
 				C8A0116F2DA90A480058E7E7 /* DeviceParameterPromptView.swift in Sources */,
 				C87EB4682BA17D3F00F9285B /* LBXPermissions.swift in Sources */,
+				C80A7F542DB793E200A6E36C /* DongleAddCollectionScheduleController.swift in Sources */,
+				C80A7F482DB72C1F00A6E36C /* DeviceDongleCollectionStrategyCell.swift in Sources */,
 				C8047F222B8F388200A09FFA /* DaylightSensorInstructionsController.swift in Sources */,
 				C87EB44E2BA07E7E00F9285B /* GroupSwitchsHeaderView.swift in Sources */,
 				C8A16F7A2C86EABB00FB50BD /* FirmwareVersionHistoryViewCell.swift in Sources */,
@@ -2013,6 +2264,7 @@
 				C8A030242CDA17FB0063FEC4 /* MeshSelectUpgradeDevicesViewController.swift in Sources */,
 				C8047F332B8F692A00A09FFA /* CalibrationInstructionController.swift in Sources */,
 				C8047F152B8ED37800A09FFA /* ProfileSettingsViewController.swift in Sources */,
+				C80A7F4E2DB7361300A6E36C /* DeviceDongleScheduleHeaderView.swift in Sources */,
 				C898E2DC2AB7E62100C71315 /* String+Localized.swift in Sources */,
 				C8A29C262B47D47500104634 /* TimedViewController.swift in Sources */,
 				C830CFD92C0DBE520035CD5B /* ShareSpaceListViewController.swift in Sources */,
@@ -2032,16 +2284,20 @@
 				C88B257A2ADE1D2100CF1AE4 /* DeviceLightHeaderView.swift in Sources */,
 				C87EB4572BA1500500F9285B /* SwitchSelectSceneViewController.swift in Sources */,
 				C89C70B12CD31DC900B9A76A /* MeshFirmwareTypeUpdateViewCell.swift in Sources */,
+				C83A55982DBA103500E04252 /* DeviceDongleDeleteAlertView.swift in Sources */,
 				C8A09A052AC178910068C814 /* ImageCollectionViewCell.swift in Sources */,
 				C8B0779E2D9D36750078404C /* Node+MessageHandles.swift in Sources */,
 				C89A9A942C8A91ED0032287D /* DeviceSwitchViewController.swift in Sources */,
+				C83A559C2DBA2B5900E04252 /* DeviceOthersViewController.swift in Sources */,
 				C8BF08912B2A8DCD00144BAC /* GroupServer.swift in Sources */,
 				C896BD3A2A930C3A00217512 /* WYProgressHUD.m in Sources */,
 				C89C9FF22B3D60CC00074031 /* SyncDevicesCellModel.swift in Sources */,
+				C80A7F522DB790B700A6E36C /* DeviceOfflinePromptView.swift in Sources */,
 				C89C82CC2C81C8BA009D43F6 /* BLEUpgradeInstructionsController.swift in Sources */,
 				C8A4E8932CDB0F5D00A22C77 /* MeshFirmwareUpdateViewController.swift in Sources */,
 				C89FEF4C2ABD9F2700DCCFB6 /* CustomSegmentedControl.swift in Sources */,
 				C89FB7CD2CF079A500411D96 /* DeviceRestoreViewController.swift in Sources */,
+				C82F99F22DBE10A90019C3FB /* EnergyDataViewController.swift in Sources */,
 				C896BD3B2A930C3A00217512 /* XWHUDManager.m in Sources */,
 				C8A3EE842B34146D0082A772 /* SceneAddGroupTitleSectionView.swift in Sources */,
 				C89C9FE82B3C248100074031 /* SyncDevicesSectionHeaderView.swift in Sources */,

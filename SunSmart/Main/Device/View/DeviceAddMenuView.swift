@@ -17,8 +17,8 @@ class DeviceAddMenuView: UIView {
         case preCreatedSwitches
         /// 预配置传感器
         case preCreatedSensors
-        /// 预配置其它
-        case preCreatedOthers
+        /// 预配置dongle（能耗设备）
+        case preCreatedDongles
         /// 恢复设备
         case restoreDevice
     }
@@ -34,8 +34,8 @@ class DeviceAddMenuView: UIView {
     private var switchesLabel: UILabel!
     private var sensorsBtn: UIButton!
     private var sensorsLabel: UILabel!
-    private var othersBtn: UIButton!
-    private var othersLabel: UILabel!
+    private var donglesBtn: UIButton!
+    private var donglesLabel: UILabel!
     private var preCreatedMessageLabel: UILabel!
     private var restoreDeviceBtn: UIButton!
     
@@ -109,7 +109,7 @@ class DeviceAddMenuView: UIView {
     
     /// 其它设备
     @objc private func othersAction() {
-        selectCallback?(.preCreatedOthers)
+        selectCallback?(.preCreatedDongles)
         hide()
     }
     
@@ -182,18 +182,19 @@ class DeviceAddMenuView: UIView {
             make.height.equalTo(SCRYFrom(38))
         }
         
-        searchDevicesBtn = UIButton(title: "device_add_search_mesh_device".localizedString, titleSize: 15, titleWeight: .light, titleColor: TextBlack_Color, normalImageName: "search_icon", target: self, action: #selector(searchDevicesAction))
+        searchDevicesBtn = UIButton(title: "device_add_search_mesh_device".localizedString, titleSize: 15, titleWeight: .light, titleColor: .white, normalImageName: "search_icon", target: self, action: #selector(searchDevicesAction))
+        searchDevicesBtn.setImage(UIImage(named: "search_icon")?.withTintColor(.white), for: .normal)
         searchDevicesBtn.setImagePosition(position: .left, spacing: SCRXFrom(4))
         searchDevicesBtn.layer.cornerRadius = SCRYFrom(15)
-        searchDevicesBtn.layer.borderColor = Border_Color.cgColor
-        searchDevicesBtn.layer.borderWidth = 1
-        searchDevicesBtn.backgroundColor = Background_Color
+//        searchDevicesBtn.layer.borderColor = Border_Color.cgColor
+//        searchDevicesBtn.layer.borderWidth = 1
+        searchDevicesBtn.backgroundColor = Bar_Color
         contentView.addSubview(searchDevicesBtn)
         searchDevicesBtn.snp.makeConstraints { make in
-            make.left.equalTo(SCRXFrom(24))
-            make.right.equalTo(SCRXFrom(-24))
-            make.top.equalTo(hideBtn.snp.bottom).offset(SCRYFrom(24))
-            make.height.equalTo(SCRYFrom(60))
+            make.left.equalTo(SCRXFrom(38))
+            make.right.equalTo(SCRXFrom(-37))
+            make.top.equalTo(hideBtn.snp.bottom).offset(SCRYFrom(30))
+            make.height.equalTo(SCRYFrom(44))
         }
         
         preCreatedDevicesLabel = UILabel(text: "pre-created_devices".localizedString, textColor: TextBlack_Color, fontSize: 15)
@@ -202,37 +203,35 @@ class DeviceAddMenuView: UIView {
         preCreatedDevicesLabel.snp.makeConstraints { make in
             make.left.equalTo(SCRXFrom(20))
             make.right.equalTo(SCRXFrom(-20))
-            make.top.equalTo(searchDevicesBtn.snp.bottom).offset(SCRYFrom(32))
+            make.top.equalTo(searchDevicesBtn.snp.bottom).offset(SCRYFrom(48))
         }
         
         sensorsBtn = UIButton(normalImageName: "device_sensor", target: self, action: #selector(sensorsAction))
-        sensorsBtn.layer.cornerRadius = SCRYFrom(48)
-        sensorsBtn.layer.borderWidth = 1
-        sensorsBtn.layer.borderColor = Border_Color.cgColor
-        sensorsBtn.backgroundColor = Background_Color
+        sensorsBtn.layer.cornerRadius = SCRXFrom(34)
+        sensorsBtn.backgroundColor = Bar_Color
         contentView.addSubview(sensorsBtn)
         sensorsBtn.snp.makeConstraints { make in
             make.centerX.equalToSuperview()
-            make.top.equalTo(preCreatedDevicesLabel.snp.bottom).offset(SCRYFrom(16))
-            make.width.equalTo(SCRXFrom(96))
-            make.height.equalTo(SCRXFrom(96))
+            make.top.equalTo(preCreatedDevicesLabel.snp.bottom).offset(SCRYFrom(30))
+            make.width.height.equalTo(SCRXFrom(68))
         }
         
         sensorsLabel = UILabel(text: "sensors".localizedString, textColor: Title_Color, fontSize: 14, fontWeight: .light)
         contentView.addSubview(sensorsLabel)
         sensorsLabel.snp.makeConstraints { make in
             make.centerX.equalTo(sensorsBtn)
-            make.top.equalTo(sensorsBtn.snp.bottom).offset(SCRYFrom(8))
+            make.top.equalTo(sensorsBtn.snp.bottom).offset(SCRYFrom(12))
         }
         
         switchesBtn = UIButton(normalImageName: "device_switches", target: self, action: #selector(switchesAction))
         switchesBtn.layer.cornerRadius = sensorsBtn.layer.cornerRadius
-        switchesBtn.layer.borderWidth = 1
-        switchesBtn.layer.borderColor = Border_Color.cgColor
-        switchesBtn.backgroundColor = Background_Color
+//        switchesBtn.layer.borderWidth = 1
+//        switchesBtn.layer.borderColor = Border_Color.cgColor
+        switchesBtn.backgroundColor = Bar_Color
         contentView.addSubview(switchesBtn)
         switchesBtn.snp.makeConstraints { make in
-            make.right.equalTo(sensorsBtn.snp.left).offset(SCRXFrom(-20))
+//            make.right.equalTo(sensorsBtn.snp.left).offset(SCRXFrom(-20))
+            make.left.equalTo(searchDevicesBtn)
             make.centerY.width.height.equalTo(sensorsBtn)
         }
         
@@ -243,21 +242,20 @@ class DeviceAddMenuView: UIView {
             make.top.equalTo(sensorsLabel)
         }
         
-        othersBtn = UIButton(normalImageName: "device_others", target: self, action: #selector(othersAction))
-        othersBtn.layer.cornerRadius = switchesBtn.layer.cornerRadius
-        othersBtn.layer.borderWidth = 1
-        othersBtn.layer.borderColor = Border_Color.cgColor
-        othersBtn.backgroundColor = Background_Color
-        contentView.addSubview(othersBtn)
-        othersBtn.snp.makeConstraints { make in
-            make.left.equalTo(sensorsBtn.snp.right).offset(SCRXFrom(20))
+        donglesBtn = UIButton(normalImageName: "device_menu_dongle", target: self, action: #selector(othersAction))
+        donglesBtn.layer.cornerRadius = switchesBtn.layer.cornerRadius
+        donglesBtn.backgroundColor = Bar_Color
+        contentView.addSubview(donglesBtn)
+        donglesBtn.snp.makeConstraints { make in
+//            make.left.equalTo(sensorsBtn.snp.right).offset(SCRXFrom(20))
+            make.right.equalTo(searchDevicesBtn)
             make.centerY.width.height.equalTo(switchesBtn)
         }
         
-        othersLabel = UILabel(text: "others".localizedString, textColor: Title_Color, fontSize: 14, fontWeight: .light)
-        contentView.addSubview(othersLabel)
-        othersLabel.snp.makeConstraints { make in
-            make.centerX.equalTo(othersBtn)
+        donglesLabel = UILabel(text: "dongles".localizedString, textColor: Title_Color, fontSize: 14, fontWeight: .light)
+        contentView.addSubview(donglesLabel)
+        donglesLabel.snp.makeConstraints { make in
+            make.centerX.equalTo(donglesBtn)
             make.top.equalTo(sensorsLabel)
         }
         

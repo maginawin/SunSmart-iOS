@@ -66,6 +66,9 @@ func SCRXFrom(_ x : CGFloat) -> CGFloat {
 // 屏幕适配 (y)
 func SCRYFrom(_ y : CGFloat) -> CGFloat {
     if isIPad {
+        guard kSafeAreaBottomHeight > 0 else {
+            return y
+        }
         return y * SCREEN_HEIGHT / iPadStandardSize.height
     }
     guard isIphoneX else {
@@ -86,6 +89,9 @@ func SCRYFit(_ y : CGFloat) -> CGFloat {
 }
 
 let isIPad = UIDevice.current.model == "iPad"
+
+// 检查当前首选语言是否是中文
+let isChineseLanguage = Locale.preferredLanguages.first?.hasPrefix("zh") ?? false
 
 //let BACKGROUND_COLOR = RGB(248, 250, 252)
 //背景色

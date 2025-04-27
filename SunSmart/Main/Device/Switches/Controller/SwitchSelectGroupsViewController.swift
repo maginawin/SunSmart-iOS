@@ -11,8 +11,8 @@ import NordicSigMeshSDK
 class SwitchSelectGroupsViewController: UIViewController {
 
     private lazy var tableView: UITableView = {
-        let y = navigationController?.navigationBar.height ?? 0
-        let tableV = UITableView(frame: CGRect(x: SCRXFrom(16), y: y, width: view.width - SCRXFrom(32), height: view.height - y))
+        let y = view.safeAreaLayoutGuide
+        let tableV = UITableView()
         tableV.separatorStyle = .none
         tableV.contentInset = UIEdgeInsets(top: SCRYFrom(7), left: 0, bottom: SCRYFrom(16), right: 0)
         tableV.backgroundColor = Background_Color
@@ -59,6 +59,12 @@ class SwitchSelectGroupsViewController: UIViewController {
         view.backgroundColor = Background_Color
         
         view.addSubview(tableView)
+        tableView.snp.makeConstraints { make in
+            make.left.equalTo(SCRXFrom(16))
+            make.right.equalTo(SCRXFrom(-16))
+            make.top.equalTo(view.safeAreaLayoutGuide)
+            make.bottom.equalToSuperview()
+        }
         
         if groups.isEmpty {
             view.showEmptyDataView(title: "no_groups".localizedString, tipText: "scene_not_groups_message".localizedString)

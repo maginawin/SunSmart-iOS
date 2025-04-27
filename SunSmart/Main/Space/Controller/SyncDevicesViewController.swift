@@ -8,13 +8,18 @@
 import UIKit
 import NordicSigMeshSDK
 
-class SyncDevicesViewController: UIViewController {
+/// 同步结果数据
+struct SyncResultData {
+    let node: Node
+    /// 成功的操作类型list
+    var successOperationTypes: [DeviceOperationType]
+    /// 失败的操作类型list
+    var failedOperationTypes: [DeviceOperationType]
+}
 
-    /// 同步失败数据
-    struct SyncFailedData {
-        let node: Node
-        var operationTypes: [DeviceOperationType]
-    }
+class SyncDevicesViewController: UIViewController {
+    
+
     
     private var tableView: UITableView!
     private var bottomView: UIView!
@@ -38,8 +43,8 @@ class SyncDevicesViewController: UIViewController {
     private var showProressStepModel: SyncDeviceStepModel?
     /// 同步完成回调
     var syncSuccessCallback: ((SyncType)->Void)?
-    /// 点击返回回调（存在失败时）
-    var backActionCallback: (([SyncFailedData])->Void)?
+    /// 点击返回回调（result: 每个设备成功、失败操作）
+    var backActionCallback: ((_ result: [SyncResultData])->Void)?
     /// 更新版本的设备地址
     private var updateVersionAddresses: [Address] = []
     
@@ -334,17 +339,34 @@ class SyncDevicesViewController: UIViewController {
                 let groupModel = SyncDevicesGroupModel(groupName: group.name, groupAddress: group.address.address, deviceModels: deviceModels)
                 deviceModels.forEach({ $0.parentGroupModel = groupModel })
                 configurationSection.groups.append(groupModel)
-            case .devices(let nodes, let parameters):
+            case .devices(let nodes):
 
                 nodes.forEach { node in
-                    if let setParameters = parameters, setParameters.count > 0 {
+                    let result = self.getSyncDeviceModel(group: nil, node: node)
+                    if let configurationDevice = result.configturationDevice {
+                        configurationSection.devices.append(configurationDevice)
+                    }
+                    if let removeDevice = result.removeDevice {
+                        removeSection.devices.append(removeDevice)
+                    }
+                }
+            case .devicesParameter(let datas):
+                datas.forEach { (node: Node, parameters: [DeviceParameterType]) in
+                    
+                    if parameters.count > 0 {
                         var steps: [SyncDeviceStepModel] = []
-                        setParameters.forEach { type in
+                        parameters.forEach { type in
                             switch type {
                             case .pwmPeriod(let period):
                                 let taskModel = SyncDeviceStepTaskModel(name: "pwm_period".localizedString, operationType: .configuration(node: node, type: .deviceParameters(parameterType: .pwmPeriod(period: period))))
                                 
                                 let step = SyncDeviceStepModel(type: "pwm_period".localizedString, state: .none, tasks: [taskModel])
+                                taskModel.parentStepModel = step
+                                steps.append(step)
+                            case .ratedPower(let value):
+                                let taskModel = SyncDeviceStepTaskModel(name: "rated_power".localizedString, operationType: .configuration(node: node, type: .deviceParameters(parameterType: .ratedPower(value: value))))
+                                
+                                let step = SyncDeviceStepModel(type: "rated_power".localizedString, state: .none, tasks: [taskModel])
                                 taskModel.parentStepModel = step
                                 steps.append(step)
                             }
@@ -356,15 +378,68 @@ class SyncDevicesViewController: UIViewController {
                             $0.parentDeviceModel = deviceModel
                         })
                         configurationSection.devices.append(deviceModel)
-                        
-                    }else {
-                        let result = self.getSyncDeviceModel(group: nil, node: node)
-                        if let configurationDevice = result.configturationDevice {
-                            configurationSection.devices.append(configurationDevice)
+                    }
+                }
+            case .dongle(let dongleData):
+                if let node = dongleData.bindNode {
+                    let syncDatas = node.getSyncData(type: .dongle(dongleData: dongleData))
+                    guard syncDatas.count > 0 else {
+                        break
+                    }
+                    let syncDeviceModel = SyncDevicesModel(name: node.name ?? "", address: node.primaryUnicastAddress)
+                    syncDeviceModel.imageName = node.iconName
+                    
+                    let deleteDeviceModel = SyncDevicesModel(name: node.name ?? "", address: node.primaryUnicastAddress)
+                    deleteDeviceModel.imageName = node.iconName
+                    
+                    // 获取日程同步数据
+                    var syncCollectionSchedules: [NodeSyncData] = []
+                    // 获取删除的日程数据
+                    var deleteCollectionSchedules: [NodeSyncData] = []
+                    
+                    syncDatas.forEach { data in
+                        switch data {
+                        case .syncCollectionSchedules:
+                            syncCollectionSchedules.append(data)
+                        case .deleteCollectionSchedules:
+                            deleteCollectionSchedules.append(data)
+                        default:
+                            break
                         }
-                        if let removeDevice = result.removeDevice {
-                            removeSection.devices.append(removeDevice)
+                    }
+                    if syncCollectionSchedules.count > 0 {
+                        syncCollectionSchedules.forEach { syncData in
+                            switch syncData {
+                            case .syncCollectionSchedules(let schedules):
+                                let tasks = schedules.map({ scheduleData in
+                                    SyncDeviceStepTaskModel(name: "collection_schedule".localizedString + " \(scheduleData.0)", operationType: .configuration(node: node, type: .collectionSchedule(index: scheduleData.0, entry: scheduleData.1)))
+                                })
+                                
+                                let stepModel = SyncDeviceStepModel(type: "collection_schedule".localizedString, state: .none, tasks: tasks)
+                                tasks.forEach({ $0.parentStepModel = stepModel })
+                                stepModel.parentDeviceModel = syncDeviceModel
+                                syncDeviceModel.steps.append(stepModel)
+                                
+                            case .deleteCollectionSchedules(let scheduleIds):
+                                
+                                let tasks = scheduleIds.map({ scheduleId in
+                                    SyncDeviceStepTaskModel(name: "collection_schedule".localizedString + " \(scheduleId)", operationType: .configuration(node: node, type: .collectionSchedule(index: scheduleId, entry: SchedulerRegistryEntry())))
+                                })
+                                let stepModel = SyncDeviceStepModel(type: "collection_schedule".localizedString, state: .none, tasks: tasks)
+                                tasks.forEach({ $0.parentStepModel = stepModel })
+                                stepModel.parentDeviceModel = deleteDeviceModel
+                                deleteDeviceModel.steps.append(stepModel)
+                            default:
+                                break
+                            }
                         }
+                    }
+                    
+                    if syncDeviceModel.steps.count > 0 {
+                        configurationSection.devices.append(syncDeviceModel)
+                    }
+                    if deleteDeviceModel.steps.count > 0 {
+                        removeSection.devices.append(deleteDeviceModel)
                     }
                 }
                 
@@ -560,6 +635,9 @@ class SyncDevicesViewController: UIViewController {
                     case .pwmPeriod(let period):
                         let taskModel = SyncDeviceStepTaskModel(name: "pwm_period".localizedString, operationType: .configuration(node: node, type: .deviceParameters(parameterType: .pwmPeriod(period: period))))
                         tasks.append(taskModel)
+                    case .ratedPower(let value):
+                        let taskModel = SyncDeviceStepTaskModel(name: "rated_power".localizedString, operationType: .configuration(node: node, type: .deviceParameters(parameterType: .ratedPower(value: value))))
+                        tasks.append(taskModel)
                     }
                 }
                 let deviceParametersStepModel = SyncDeviceStepModel(type: "device_parameters".localizedString, state: .none, tasks: tasks)
@@ -567,6 +645,8 @@ class SyncDevicesViewController: UIViewController {
                     $0.parentStepModel = deviceParametersStepModel
                 })
                 configturationSteps.append(deviceParametersStepModel)
+            default:
+                break
             }
         }
         
@@ -620,50 +700,58 @@ class SyncDevicesViewController: UIViewController {
     @objc private func backAction() {
         if backActionCallback != nil {
             
-            // 失败的设备数据list
-            var failedDatas: [SyncFailedData] = []
-            var failedDeviceModels: [SyncDevicesModel] = []
+            // 设备数据list
+            var resultDatas: [SyncResultData] = []
+            var deviceModels: [SyncDevicesModel] = []
             self.sections.forEach { section in
-                failedDeviceModels.append(contentsOf: section.devices.filter({ $0.state == .failed }))
+                deviceModels.append(contentsOf: section.devices)
                 section.groups.forEach { groupModel in
-                    failedDeviceModels.append(contentsOf: groupModel.deviceModels.filter({ $0.state == .failed }))
+                    deviceModels.append(contentsOf: groupModel.deviceModels)
                 }
             }
-                // 判断哪些设备有失败
-            if failedDeviceModels.count > 0 {
+            
+            if deviceModels.count > 0 {
                 // 获取读取失败的设备参数类型
-                failedDeviceModels.forEach { deviceModel in
+                deviceModels.forEach { deviceModel in
                     if let node = MeshNetworkManager.instance.meshNetwork?.nodes.first(where: { $0.primaryUnicastAddress == deviceModel.address }) {
                         
-                        var operationTypes: [DeviceOperationType] = []
+                        var successOperationTypes: [DeviceOperationType] = []
+                        var failedOperationTypes: [DeviceOperationType] = []
                         if let operationType = deviceModel.operationType {
-                            operationTypes.append(operationType)
+                            if deviceModel.state == .successful {
+                                successOperationTypes.append(operationType)
+                            }else {
+                                failedOperationTypes.append(operationType)
+                            }
                         }else {
                             deviceModel.steps.forEach { step in
-                                let list: [DeviceOperationType] = step.tasks.map { task in
-                                   return task.operationType
+                                step.tasks.forEach { task in
+                                    if task.state == .successful {
+                                        successOperationTypes.append(task.operationType)
+                                    }else {
+                                        failedOperationTypes.append(task.operationType)
+                                    }
                                 }
-                                operationTypes.append(contentsOf: list)
                             }
                         }
-                        if let index = failedDatas.firstIndex(where: { $0.node == node }) {
-                            var data = failedDatas[index]
-                            data.operationTypes.append(contentsOf: operationTypes)
-                            failedDatas[index] = data
+                        if let index = resultDatas.firstIndex(where: { $0.node == node }) {
+                            var data = resultDatas[index]
+                            data.successOperationTypes.append(contentsOf: successOperationTypes)
+                            data.failedOperationTypes.append(contentsOf: failedOperationTypes)
+                            resultDatas[index] = data
                         }else {
-                            let data = SyncFailedData(node: node, operationTypes: operationTypes)
-                            failedDatas.append(data)
+                            let data = SyncResultData(node: node, successOperationTypes: successOperationTypes, failedOperationTypes: failedOperationTypes)
+                            resultDatas.append(data)
                         }
                     }
                 }
             }
             
-            backActionCallback?(failedDatas)
+            backActionCallback?(resultDatas)
         }else {
             navigationController?.popViewController(animated: true)
         }
     }
-    
     
     @objc private func rightItemAction() {
         if syncState == .inSync { // stop
@@ -1078,7 +1166,7 @@ class SyncDevicesViewController: UIViewController {
         view.addSubview(tableView)
         tableView.snp.makeConstraints { make in
             make.left.right.bottom.equalToSuperview()
-            make.top.equalTo(navigationController?.navigationBar.height ?? 0)
+            make.top.equalTo(view.safeAreaLayoutGuide)
         }
         
         bottomView = UIView()
@@ -1346,8 +1434,12 @@ extension SyncDevicesViewController {
         case enOceanSwitch(_ switchData: DeviceSwitchData, deleteSwitch: Bool = false)
         /// 按组设置pwm频率
         case pwmPeriod(_ period: UInt16, group: Group)
-        /// 同步设备list  parameters: 传入后只同步设备参数list
-        case devices(_ nodes: [Node], parameters: [DeviceParameterType]? = nil)
+        /// 同步设备list
+        case devices(_ nodes: [Node])
+        /// 同步设备参数
+        case devicesParameter(_ datas: [(node: Node, parameters: [DeviceParameterType])])
+        /// Dongle设备
+        case dongle(_ dongleData: DeviceDongleData)
     }
     
     /// 同步状态

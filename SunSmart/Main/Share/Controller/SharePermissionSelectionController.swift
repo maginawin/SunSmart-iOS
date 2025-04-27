@@ -411,7 +411,7 @@ class SharePermissionSelectionController: UIViewController {
         view.addSubview(scrollView)
         scrollView.snp.makeConstraints { make in
             make.left.right.bottom.equalToSuperview()
-            make.top.equalTo((navigationController?.navigationBar.height ?? 0))
+            make.top.equalTo((view.safeAreaLayoutGuide))
         }
         
         contentView = UIView()

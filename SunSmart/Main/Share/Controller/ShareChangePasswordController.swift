@@ -203,7 +203,7 @@ class ShareChangePasswordController: UIViewController {
         view.addSubview(scrollView)
         scrollView.snp.makeConstraints { make in
             make.left.right.bottom.equalToSuperview()
-            make.top.equalTo((navigationController?.navigationBar.height ?? 0))
+            make.top.equalTo((view.safeAreaLayoutGuide))
         }
         
         contentView = UIView()
@@ -233,7 +233,7 @@ class ShareChangePasswordController: UIViewController {
             editorPassword.snp.makeConstraints { make in
                 make.left.equalTo(SCRXFrom(16))
                 make.right.equalTo(SCRXFrom(-16))
-//                make.top.equalTo((navigationController?.navigationBar.height ?? 0) + SCRYFrom(7))
+//                make.top.equalTo((view.safeAreaLayoutGuide) + SCRYFrom(7))
                 make.top.equalTo(SCRYFrom(7))
                 make.height.equalTo(SCRYFrom(226))
                 make.bottom.equalToSuperview()

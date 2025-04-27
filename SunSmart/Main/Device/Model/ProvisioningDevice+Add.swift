@@ -16,8 +16,9 @@ extension ProvisioningDevice {
         static var startAddDateKey = 3
         static var addProgressKey = 4
         static var elementCountKey = 5
-        static var isSupportKey = 6
+//        static var isSupportKey = 6
         static var iconKey = 7
+        static var deviceType = 8
     }
     
     /// 设备选中状态
@@ -116,13 +117,13 @@ extension ProvisioningDevice {
     }
     
     /// 是否支持设备
-    var isSupport: Bool {
-        get {
-            objc_getAssociatedObject(self, &AssociatedKey.isSupportKey) as? Bool ?? false
-        }set {
-            objc_setAssociatedObject(self, &AssociatedKey.isSupportKey, newValue, .OBJC_ASSOCIATION_RETAIN)
-        }
-    }
+//    var isSupport: Bool {
+//        get {
+//            objc_getAssociatedObject(self, &AssociatedKey.isSupportKey) as? Bool ?? false
+//        }set {
+//            objc_setAssociatedObject(self, &AssociatedKey.isSupportKey, newValue, .OBJC_ASSOCIATION_RETAIN)
+//        }
+//    }
     
     /// 图标
     var icon: String? {
@@ -130,6 +131,15 @@ extension ProvisioningDevice {
             objc_getAssociatedObject(self, &AssociatedKey.iconKey) as? String
         }set {
             objc_setAssociatedObject(self, &AssociatedKey.iconKey, newValue, .OBJC_ASSOCIATION_RETAIN)
+        }
+    }
+    
+    /// 设备类型
+    var deviceType: Node.DeviceType {
+        get {
+            objc_getAssociatedObject(self, &AssociatedKey.deviceType) as? Node.DeviceType ?? .unknown
+        }set {
+            objc_setAssociatedObject(self, &AssociatedKey.deviceType, newValue, .OBJC_ASSOCIATION_RETAIN)
         }
     }
   

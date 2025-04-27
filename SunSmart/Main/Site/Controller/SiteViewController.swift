@@ -542,10 +542,12 @@ self.updateAddressData()
     // MARK: - Action
     
     @objc private func moreClick() {
-        // item距离右边间距 iphone6s 8 iphone12promax 12
-        // 19 * 0.5 = 9.5 + 12
-//        let margin: CGFloat = SCRXFrom(15.5)
-//        isIphoneX ? 18 : 15
+
+//        let vc = DeviceDongleViewController(dongleData: nil)
+//        present(NavigationViewController(rootViewController: vc), animated: true)
+//        return
+        
+        
         let touchCenterX = view.width - navigationRightItemMargin - 15
 
         var items: [MenuPopView.MenuItem] = []

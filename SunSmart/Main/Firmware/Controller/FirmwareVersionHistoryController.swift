@@ -20,7 +20,7 @@ class FirmwareVersionHistoryController: UIViewController {
 //    }()
 //    
 //    private lazy var collectionView: UICollectionView = {
-//        let navbarH = navigationController?.navigationBar.height ?? 0
+//        let navbarH = view.safeAreaLayoutGuide
 //        let collectionV = UICollectionView(frame: .zero, collectionViewLayout: self.flowLayout)
 //        collectionV.contentInset = UIEdgeInsets(top: SCRYFrom(7), left: SCRXFrom(16), bottom: SCRYFrom(16), right: SCRXFrom(16))
 //        collectionV.register(FirmwareVersionHistoryViewCell.classForCoder(), forCellWithReuseIdentifier: "cell")
@@ -68,13 +68,13 @@ class FirmwareVersionHistoryController: UIViewController {
         view.addSubview(tableView)
         tableView.snp.makeConstraints { make in
             make.left.right.bottom.equalToSuperview()
-            make.top.equalTo(navigationController?.navigationBar.height ?? 0)
+            make.top.equalTo(view.safeAreaLayoutGuide)
         }
         
 //        view.addSubview(collectionView)
 //        collectionView.snp.makeConstraints { make in
 //            make.left.right.bottom.equalToSuperview()
-//            make.top.equalTo(navigationController?.navigationBar.height ?? 0)
+//            make.top.equalTo(view.safeAreaLayoutGuide)
 //        }
 //        view.layoutIfNeeded()
 
