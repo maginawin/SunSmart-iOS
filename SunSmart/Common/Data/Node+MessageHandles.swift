@@ -212,6 +212,10 @@ extension ProfileType {
             if let vendorModel = node.sunricherVendorModel {
                 messageHandles.append(MeshMessageHandle(message: SunricherVendorSet(function: .daylightCalibrate(value)), model: vendorModel))
             }
+        case .sensitivity(let value):
+            if let vendorModel = node.sunricherVendorModel {
+                messageHandles.append(MeshMessageHandle(message: SunricherVendorSet(function: .motionSensitivity(value)), model: vendorModel))
+            }
         }
         return messageHandles
     }

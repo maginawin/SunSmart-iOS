@@ -62,10 +62,14 @@ class NetworkRequest: NSObject {
         reachabilityManager?.startListening(onUpdatePerforming: { networkStatus in
             switch networkStatus {
             case .reachable:
-                self.networkable = true
+                if !self.networkable {
+                    self.networkable = true
+                }
 //                break
             default:
-                self.networkable = false
+                if self.networkable {
+                    self.networkable = false
+                }
             }
         })
     }

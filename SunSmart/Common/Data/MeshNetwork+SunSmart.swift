@@ -1905,6 +1905,9 @@ extension Node {
         
         // 需要恢复的数据
         let restoreData = NodeRestoreData(addGroupAddress: addToGroup?.address.address, pwmPeriod: oldNode.pwmPeriod)
+        if oldNode.phaseEnergyConsumptions.count > 0 {
+            restoreData.phaseEnergyConsumptions = oldNode.phaseEnergyConsumptions
+        }
         
         if let group = addToGroup {
             // 恢复的设备之前作为组光照传感器，恢复后更新设备地址缓存到组
@@ -1984,6 +1987,12 @@ extension Node {
         
         if let pwmPeriod = restoreData.pwmPeriod, let vendorModel = self.sunricherVendorModel {
             let messageHandle = MeshMessageHandle(message: SunricherVendorSet(function: .pwmPeriod(pwmPeriod)), model: vendorModel)
+            messageHandles.append(messageHandle)
+        }
+        
+        // 能耗设置
+        if let phaseEnergyConsumptions = restoreData.phaseEnergyConsumptions, let vendorModel = self.sunricherVendorModel {
+            let messageHandle = MeshMessageHandle(message: SunricherVendorSet(function: .phaseEnergyConsumption(list: phaseEnergyConsumptions)), model: vendorModel)
             messageHandles.append(messageHandle)
         }
         

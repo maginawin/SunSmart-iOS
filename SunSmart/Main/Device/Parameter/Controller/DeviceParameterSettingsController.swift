@@ -8,16 +8,19 @@
 import UIKit
 import NordicSigMeshSDK
 
+
 class DeviceParameterSettingsController: UIViewController {
 
     /// 设置完成回调  参数：失败的类型及设备
-    typealias ParameterSettingsCompletionCallback = (([ParameterType: (successNodes: [Node], failedNodes: [Node])])->Void)
+    typealias ParameterSettingsCompletionCallback = (([DeviceParameterData.ParameterType: (value: Any, successNodes: [Node], failedNodes: [Node])])->Void)
    
     private var headerView: DeviceParameterPromptView!
     private var tableView: UITableView!
     private var bottomView: DeviceParameterBottomView!
     
-    private var parameters: [ParameterType] = []
+    private var parameterDatas: [DeviceParameterData] = []
+    /// 额定功率阶段数据list
+    private var ratedPowerPhaseDatas: [DeviceParameterRatedPowerPhaseData] = DeviceParameterRatedPowerPhaseData.default()
     
     let devices: [Node]
     
@@ -38,8 +41,12 @@ class DeviceParameterSettingsController: UIViewController {
         title = "device_parameter_settings".localizedString
         view.backgroundColor = Background_Color
         
-        parameters = [.pwmFrequency(value: nil), .ratedPower(value: nil)]
+        parameterDatas = [
+            .init(type: .pwmFrequency, enable: false), .init(type: .ratedPower, data: ratedPowerPhaseDatas, enable: false)
+        ]
         setupUI()
+        
+        updateSetupBtnState()
     }
     
     @objc private func previousAction() {
@@ -48,21 +55,60 @@ class DeviceParameterSettingsController: UIViewController {
     
     @objc private func setupAction() {
         
-        let setParameters: [DeviceParameterType] = parameters.compactMap({ parameter in
-            switch parameter {
-            case .pwmFrequency(let value):
-                if let value = value, value >= UInt16.min && value <= UInt16.max {
+        // 未输入数据
+        if let emptyParameterData = parameterDatas.first(where: { $0.enable && $0.data == nil }) {
+            let title = emptyParameterData.type.data.title
+            XWHUDManager.showTipHUD(String(format: "device_parameter_no_set_message".localizedString, title), isLineFeed: true)
+            return
+        }
+        
+        // 能耗数据
+        if let ratedPowerData = parameterDatas.first(where: { $0.type == .ratedPower }), ratedPowerData.enable {
+            ratedPowerData.data = ratedPowerPhaseDatas
+            // 校验数据
+            guard let phaseDatas = ratedPowerData.data as? [DeviceParameterRatedPowerPhaseData] else {
+                XWHUDManager.showTipHUD("rated_power_no_set_message".localizedString, isLineFeed: true)
+                return
+            }
+            if phaseDatas.contains(where: { $0.lightLevel == nil || $0.power == nil }) {
+                XWHUDManager.showTipHUD("rated_power_no_set_message".localizedString, isLineFeed: true)
+                return
+            }
+        }
+        
+        
+        let setParameters: [DeviceParameterType] = parameterDatas.filter({ $0.enable }).compactMap({ parameterData in
+            switch parameterData.type {
+            case .pwmFrequency:
+                if let value = parameterData.data as? Int, value >= UInt16.min && value <= UInt16.max {
                     return .pwmPeriod(period: UInt16(value))
                 }
-            case .ratedPower(let value):
-                if let value = value {
-                    return .ratedPower(value: value)
+            case .ratedPower:
+                if let phases = parameterData.data as? [DeviceParameterRatedPowerPhaseData] {
+                    return .ratedPower(datas: phases.compactMap({ $0.toNodePhaseEnergyConsumption() }))
                 }
             }
             return nil
         })
         guard devices.count > 0, setParameters.count > 0 else {
             return
+        }
+        
+        setParameters.forEach { type in
+            switch type {
+            case .pwmPeriod(let period):
+                devices.forEach({
+                    if $0.restoreData?.pwmPeriod != nil {
+                        $0.restoreData?.pwmPeriod = nil
+                    }
+                })
+            case .ratedPower:
+                devices.forEach({
+                    if $0.restoreData?.phaseEnergyConsumptions != nil {
+                        $0.restoreData?.phaseEnergyConsumptions = nil
+                    }
+                })
+            }
         }
         
         let vc = SyncDevicesViewController(type: .devicesParameter(devices.map({ ($0, setParameters) })))
@@ -73,9 +119,17 @@ class DeviceParameterSettingsController: UIViewController {
                 self?.navigationController?.popViewController(animated: true)
             }
             
-            var result: [ParameterType: ([Node], [Node])] = [:]
-            self.parameters.forEach { type in
-                result.updateValue((self.devices, []), forKey: type)
+            var result: [DeviceParameterData.ParameterType: (Any, [Node], [Node])] = [:]
+            
+            setParameters.forEach { type in
+                switch type {
+                case .pwmPeriod(let period):
+                    result.updateValue((period, self.devices, []), forKey: .pwmFrequency)
+                case .ratedPower:
+                    if let parameterData = self.parameterDatas.first(where: { $0.type == .ratedPower }), let data = parameterData.data {
+                        result.updateValue((data, self.devices, []), forKey: .ratedPower)
+                    }
+                }
             }
             self.settingsCompletionCallback?(result)
         }
@@ -132,12 +186,16 @@ class DeviceParameterSettingsController: UIViewController {
                     }
                 }
                 
-                var result: [ParameterType: ([Node], [Node])] = [:]
-                if let pwmType = self.parameters.first(where: { $0.rawValue == ParameterType.pwmFrequency(value: nil).rawValue }) {
-                    result.updateValue((pwmSuccessNodes, pwmFailedNodes), forKey: pwmType)
+                var result: [DeviceParameterData.ParameterType: (Any, [Node], [Node])] = [:]
+                if pwmSuccessNodes.count > 0 || pwmFailedNodes.count > 0 {
+                    if let pwmData = self.parameterDatas.first(where: { $0.type == .pwmFrequency }) {
+                        result.updateValue((pwmData.data!, pwmSuccessNodes, pwmFailedNodes), forKey: pwmData.type)
+                    }
                 }
-                if let ratedPowerType = self.parameters.first(where: { $0.rawValue == ParameterType.ratedPower(value: nil).rawValue }) {
-                    result.updateValue((ratedPowerSuccessNodes, ratedPowerFailedNodes), forKey: ratedPowerType)
+                if ratedPowerSuccessNodes.count > 0 || ratedPowerFailedNodes.count > 0 {
+                    if let ratedPowerData = self.parameterDatas.first(where: { $0.type == .ratedPower }) {
+                        result.updateValue((ratedPowerData.data!, ratedPowerSuccessNodes, ratedPowerFailedNodes), forKey: ratedPowerData.type)
+                    }
                 }
                 DispatchQueue.main.async {
                     self.settingsCompletionCallback?(result)
@@ -150,7 +208,7 @@ class DeviceParameterSettingsController: UIViewController {
     }
     
     private func updateSetupBtnState() {
-        bottomView.rightBtn.isEnabled = self.parameters.contains(where: ({ $0.data.value != nil }) )
+        bottomView.rightBtn.isEnabled = self.parameterDatas.contains(where: ({ $0.enable && $0.data != nil }) )
     }
     
     private func setupUI() {
@@ -179,13 +237,17 @@ class DeviceParameterSettingsController: UIViewController {
         
         tableView = UITableView()
         tableView.separatorStyle = .none
+        tableView.backgroundColor = Background_Color
         tableView.register(DeviceParameterSettingsViewCell.classForCoder(), forCellReuseIdentifier: "cell")
+        tableView.register(DeviceParameterRetedPowerViewCell.classForCoder(), forCellReuseIdentifier: "retedPowerCell")
+        
         tableView.estimatedRowHeight = SCRYFrom(148)
         tableView.dataSource = self
         tableView.delegate = self
         view.addSubview(tableView)
         tableView.snp.makeConstraints { make in
-            make.left.right.equalToSuperview()
+            make.left.equalTo(SCRXFrom(16))
+            make.right.equalTo(SCRXFrom(-16))
             make.top.equalTo(headerView.snp.bottom)
             make.bottom.equalTo(bottomView.snp.top)
         }
@@ -197,15 +259,38 @@ class DeviceParameterSettingsController: UIViewController {
 
 extension DeviceParameterSettingsController: UITableViewDataSource, UITableViewDelegate {
     
+    func numberOfSections(in tableView: UITableView) -> Int {
+        return parameterDatas.count
+    }
+    
     func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
-        return parameters.count
+        return 1
     }
     
     func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
-        let cell = tableView.dequeueReusableCell(withIdentifier: "cell", for: indexPath) as! DeviceParameterSettingsViewCell
-        cell.parameterType = parameters[indexPath.row]
-        cell.delegate = self
-        return cell
+        let parameterData = parameterDatas[indexPath.section]
+        switch parameterData.type {
+        case .ratedPower:
+            let ratedPowerCell = tableView.dequeueReusableCell(withIdentifier: "retedPowerCell", for: indexPath) as! DeviceParameterRetedPowerViewCell
+            ratedPowerCell.phases = ratedPowerPhaseDatas
+            ratedPowerCell.delegate = self
+            ratedPowerCell.updateParameterEnable(enable: parameterData.enable)
+            return ratedPowerCell
+        default:
+            let cell = tableView.dequeueReusableCell(withIdentifier: "cell", for: indexPath) as! DeviceParameterSettingsViewCell
+            cell.parameterData = parameterData
+            cell.delegate = self
+            return cell
+        }
+        
+    }
+    
+    func tableView(_ tableView: UITableView, viewForFooterInSection section: Int) -> UIView? {
+        return UIView()
+    }
+    
+    func tableView(_ tableView: UITableView, heightForFooterInSection section: Int) -> CGFloat {
+        return SCRYFrom(16)
     }
     
 }
@@ -213,71 +298,89 @@ extension DeviceParameterSettingsController: UITableViewDataSource, UITableViewD
 extension DeviceParameterSettingsController: DeviceParameterSettingsViewCellDelegate {
     
     /// 设置参数
-    func cell(_ cell: DeviceParameterSettingsViewCell, settingParameters type: DeviceParameterSettingsController.ParameterType) {
-        switch type {
-        case .pwmFrequency(let value):
-            DevicePwmFrequencySelectView(selectFrequency: value, selectCallback: {[weak self] frequency in
+    func cell(_ cell: DeviceParameterSettingsViewCell, settingParameters data: DeviceParameterData) {
+        switch data.type {
+        case .pwmFrequency:
+            DevicePwmFrequencySelectView(selectFrequency: data.data as? Int, selectCallback: {[weak self] frequency in
                 guard let self = self else { return }
-                if let index = self.parameters.firstIndex(where: { $0.rawValue == type.rawValue }) {
-                    self.parameters[index] = .pwmFrequency(value: frequency)
-                    self.tableView.reloadRows(at: [IndexPath(row: index, section: 0)], with: .none)
+                if let index = self.parameterDatas.firstIndex(where: { $0.type == data.type }) {
+                    self.parameterDatas[index].data = frequency
+                    self.tableView.reloadSections(IndexSet(integer: index), with: .none)
                     
                     self.updateSetupBtnState()
                 }
             }).show()
             
-        case .ratedPower(let value):
-            let data = type.data
-            let range = data.range ?? 1...99999
-            SRAlertView(title: "\(data.title) \("input".localizedString)", inputText: value != nil ? "\(value!)" : nil, inputFieldStyle: .init(placeholder: "\(range.lowerBound)~\(range.upperBound)", keyboardType: .numberPad, minInputLength: 1), actions: [.cancelAction, SRAlertAction(title: "confirm".localizedString)]) { text, _ in
-                guard let value = Int(text) else {
-                    return nil
-                }
-                if !range.contains(value) {
-                    return "\("limit_range".localizedString) \(range.lowerBound)~\(range.upperBound)"
-                }
-                return nil
-            } inputDoneBack: {[weak self] text in
-                guard let self = self, let value = Int(text) else { return }
-                
-                if let index = self.parameters.firstIndex(where: { $0.rawValue == type.rawValue }) {
-                    self.parameters[index] = .ratedPower(value: value)
-                    self.tableView.reloadRows(at: [IndexPath(row: index, section: 0)], with: .none)
-                }
-                self.updateSetupBtnState()
-            }.show()
-
+        default:
+            break
+//            let data = type.data
+//            let range = data.range ?? 1...99999
+//            SRAlertView(title: "\(data.title) \("input".localizedString)", inputText: value != nil ? "\(value!)" : nil, inputFieldStyle: .init(placeholder: "\(range.lowerBound)~\(range.upperBound)", keyboardType: .numberPad, minInputLength: 1), actions: [.cancelAction, SRAlertAction(title: "confirm".localizedString)]) { text, _ in
+//                guard let value = Int(text) else {
+//                    return nil
+//                }
+//                if !range.contains(value) {
+//                    return "\("limit_range".localizedString) \(range.lowerBound)~\(range.upperBound)"
+//                }
+//                return nil
+//            } inputDoneBack: {[weak self] text in
+//                guard let self = self, let value = Int(text) else { return }
+//                
+//                if let index = self.parameters.firstIndex(where: { $0.rawValue == type.rawValue }) {
+//                    self.parameters[index] = .ratedPower(value: value)
+//                    self.tableView.reloadRows(at: [IndexPath(row: index, section: 0)], with: .none)
+//                }
+//                self.updateSetupBtnState()
+//            }.show()
+//
         }
     }
+    
+    /// 启用/禁用编辑
+    func cell(_ cell: DeviceParameterSettingsViewCell, parameterEnableStateChanged enable: Bool) {
+        if let indexPath = tableView.indexPath(for: cell) {
+            let data = parameterDatas[indexPath.section]
+            data.enable = enable
+//            tableView.reloadRows(at: [indexPath], with: .none)
+            updateSetupBtnState()
+        }
+        tableView.performBatchUpdates(nil)
+    }
+    
 }
 
-extension DeviceParameterSettingsController {
+extension DeviceParameterSettingsController: DeviceParameterRetedPowerViewCellDelegate {
     
-    /// 参数类型
-    enum ParameterType: Hashable {
-        
-        var data: (title: String, message: String, value: Int?, range: ClosedRange<Int>?, unit: String) {
-            switch self {
-            case .pwmFrequency(let value):
-                return ("pwm_frequency".localizedString, "pwm_frequency_message".localizedString, value, nil, "Hz")
-            case .ratedPower(let value):
-                return ("rated_power".localizedString, "rated_power_message".localizedString, value, 1...99999, "W")
+    /// 添加阶段
+    func ratedPowerCellAddPhase(_ cell: DeviceParameterRetedPowerViewCell) {
+        ratedPowerPhaseDatas.insert(DeviceParameterRatedPowerPhaseData(lightLevel: nil, power: nil, necessary: false), at: ratedPowerPhaseDatas.count - 1)
+        cell.phases = ratedPowerPhaseDatas
+        if let index = tableView.indexPath(for: cell)?.row {
+            tableView.reloadRows(at: [IndexPath(row: 0, section: index)], with: .none)
+        }
+    }
+    
+    /// 删除阶段
+    func cell(_ cell: DeviceParameterRetedPowerViewCell, deletePhase phase: DeviceParameterRatedPowerPhaseData) {
+        if !phase.necessary, let index = ratedPowerPhaseDatas.firstIndex(of: phase) {
+            ratedPowerPhaseDatas.remove(at: index)
+            cell.phases = ratedPowerPhaseDatas
+            if let index = tableView.indexPath(for: cell)?.row {
+                tableView.reloadRows(at: [IndexPath(row: 0, section: index)], with: .none)
             }
         }
-        
-        var rawValue: Int {
-            switch self {
-            case .pwmFrequency:
-                return 1
-            case .ratedPower:
-                return 2
-            }
+    }
+    
+    /// 启用/禁用编辑
+    func cell(_ cell: DeviceParameterRetedPowerViewCell, parameterEnableStateChanged enable: Bool) {
+        if let indexPath = tableView.indexPath(for: cell) {
+            let data = parameterDatas[indexPath.section]
+            data.enable = enable
+//            tableView.reloadRows(at: [indexPath], with: .none)
+            
+            updateSetupBtnState()
         }
-        
-        /// pwm频率
-        case pwmFrequency(value: Int?)
-        /// 额定功率
-        case ratedPower(value: Int?)
+        tableView.performBatchUpdates(nil)
     }
     
 }

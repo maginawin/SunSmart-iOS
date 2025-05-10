@@ -501,8 +501,12 @@ class SitesViewController: UIViewController {
 
         
 //        let vc = DongleAddCollectionScheduleController(dongleData: <#DeviceDongleData#>, schedule: nil)
-//        let vc = DeviceDongleViewController(dongleData: nil)
+        
+//        let vc = DeviceParameterSettingsController(devices: [])
 //        present(NavigationViewController(rootViewController: vc), animated: true)
+        
+        let vc = EnergyDataViewController(space: self.allSites[0].spaces[0])
+        present(NavigationViewController(rootViewController: vc), animated: true)
         
 //        ImportProjectView {[weak self] mode in
 //            if mode == .scanQRCode {

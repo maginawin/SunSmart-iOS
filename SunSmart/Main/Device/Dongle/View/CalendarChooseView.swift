@@ -13,8 +13,11 @@ class CalendarChooseView: UIView {
 //        case specific(date: Date)
 //        case section(startDate: Date, endDate: Date)
 //    }
+    /// 日历控件高度
+    static let calenderViewHeight = SCRYFrom(274)
     
     typealias ChooseDateCallback = ((Date)->Bool)
+    typealias CalenderHideCallback = (()->Void)
     
     private var shadeView: UIView!
     private var contentView: UIView!
@@ -28,14 +31,16 @@ class CalendarChooseView: UIView {
     private var maximumDate: Date = Date()
     private var minimumDate: Date = Date()
     private var selectCallback: ChooseDateCallback?
+    private var hideCallback: CalenderHideCallback?
     private var showOffsetY: CGFloat = 0
     
-    init(minimumDate: Date, maximumDate: Date, selectDate: Date?, showOffsetY: CGFloat, selectCallback: ChooseDateCallback?) {
+    init(minimumDate: Date, maximumDate: Date, selectDate: Date?, showOffsetY: CGFloat, selectCallback: ChooseDateCallback?, hideCallback: CalenderHideCallback? = nil) {
         super.init(frame: UIScreen.main.bounds)
         self.minimumDate = minimumDate
         self.maximumDate = maximumDate
         self.selectCallback = selectCallback
         self.showOffsetY = showOffsetY
+        self.hideCallback = hideCallback
         setupUI()
         
         if let date = selectDate {
@@ -57,6 +62,7 @@ class CalendarChooseView: UIView {
     }
     
     private func hide() {
+        hideCallback?()
         self.removeFromSuperview()
     }
     
@@ -117,7 +123,7 @@ class CalendarChooseView: UIView {
         contentView.snp.makeConstraints { make in
             make.left.equalTo(Int(SCRXFrom(16)))
             make.right.equalTo(Int(SCRXFrom(-17)))
-            make.height.equalTo(SCRYFrom(274))
+            make.height.equalTo(CalendarChooseView.calenderViewHeight)
         }
         
         dateLabel = UILabel(text: nil, textColor: RGB(0, 0, 0, 0.85), fontSize: 14)

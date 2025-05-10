@@ -637,7 +637,7 @@ class SRAlertView: UIView {
             }
         }
         if self.inputDoneBack != nil {
-            self.textField.resignFirstResponder()
+//            self.textField.resignFirstResponder()
             self.inputDoneBack!(self.textField.text ?? "")
         }
         
@@ -654,7 +654,9 @@ class SRAlertView: UIView {
     
     /// 输入框开始输入事件
     @objc private func textFieldEditDidBegin(sender: UITextField) {
-        
+        if isDismiss {
+            return
+        }
         UIView.animate(withDuration: 0.25) {
             self.contentView.y = (self.height - self.contentView.height) * 0.5 - SCRYFrom(80)
         }
@@ -662,6 +664,9 @@ class SRAlertView: UIView {
     
     /// 输入框停止输入事件
     @objc private func textFieldEditDidEnd(sender: UITextField) {
+        if isDismiss {
+            return
+        }
         UIView.animate(withDuration: 0.25) {
             self.contentView.center = self.center
         }

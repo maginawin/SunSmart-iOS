@@ -131,8 +131,11 @@ extension SpaceMoreViewController: UICollectionViewDataSource, UICollectionViewD
             }
             present(NavigationViewController(rootViewController: vc), animated: true)
         case .energyData:
-            let vc = EnergyStaticDataViewController()
-            present(vc, animated: true)
+            let vc = EnergyDataViewController(space: space)
+            if isIPad {
+                vc.preferredContentSize = iPadPreferredContentSize
+            }
+            present(NavigationViewController(rootViewController: vc), animated: true)
         }
         
     }

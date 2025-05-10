@@ -20,6 +20,11 @@ class ReadDevicesDataViewController: UIViewController {
     private var bottomView: UIView!
     private var selectAllBtn: UIButton!
     private var progressLabel: UILabel!
+    
+    /// 读取设备能耗（放弃全部数据）
+    private var abandonAllDataBtn: UIButton!
+    /// 读取设备能耗（使用缺失数据）
+    private var useIncompleteDataBtn: UIButton!
     /// 返回按钮
     private lazy var backBtn: UIButton = {
         let btn = UIButton(normalImageName: "navigation_back", target: self, action: #selector(backAction))
@@ -41,6 +46,8 @@ class ReadDevicesDataViewController: UIViewController {
     var readSuccessCallback: ((ReadType)->Void)?
     /// 点击返回回调
     var backActionCallback: (([ReadFailedData])->Void)?
+    /// 获取能耗数据使用缺失数据回调
+    var harvestEnergyUseIncompleteDataCallback: (()->Void)?
     
     init(type: ReadType) {
         
@@ -56,13 +63,22 @@ class ReadDevicesDataViewController: UIViewController {
         super.viewDidLoad()
         self.isModalInPresentation = true
         
-        title = "sync_device(s)".localizedString
         view.backgroundColor = Background_Color
         
         navigationItem.leftBarButtonItem = UIBarButtonItem(customView: backBtn)
         navigationItem.rightBarButtonItem = UIBarButtonItem(title: "re_read".localizedString, color: Title_Color, font: UIFont.systemFont(ofSize: 16, weight: .light), target: self, sel: #selector(rightItemAction))
         
+        
         setupUI()
+        
+        switch type {
+        case .parameters:
+            title = "read_settings".localizedString
+        case .harvestData:
+            title = "harvest_data".localizedString
+            navigationItem.rightBarButtonItem?.title = "re-harvest".localizedString
+        }
+        
         
         XWHUDManager.showCustomHUD(withMessage: nil, view: view)
         DispatchQueue.global().async {
@@ -110,6 +126,15 @@ class ReadDevicesDataViewController: UIViewController {
                         let step = SyncDeviceStepModel(type: "pwm_period".localizedString, state: .none, tasks: [taskModel])
                         taskModel.parentStepModel = step
                         steps.append(step)
+                    case .ratedPower:
+                        
+                        let taskModel = SyncDeviceStepTaskModel(name: "rated_power".localizedString, operationType: .read(node: node, type: .deviceReadParmeters(parameterType: .ratedPower)))
+                        
+                        let step = SyncDeviceStepModel(type: "rated_power".localizedString, state: .none, tasks: [taskModel])
+                        taskModel.parentStepModel = step
+                        steps.append(step)
+                    default:
+                        break
                     }
                 }
                 
@@ -123,7 +148,11 @@ class ReadDevicesDataViewController: UIViewController {
         case .harvestData(let nodes):
             nodes.forEach { node in
                 let model = SyncDevicesModel(name: node.name ?? "", address: node.primaryUnicastAddress)
-//                model.operationType = .read(node: node, type: .deviceParameters(parameterType: .))
+                model.operationType = .read(node: node, type: .deviceReadParmeters(parameterType: .totalDeviceEnergyUse))
+                model.setRatedPower = node.phaseEnergyConsumptions.count > 0
+                if node.phaseEnergyConsumptions.isEmpty {
+                    model.state = .failed
+                }
                 readSection.devices.append(model)
             }
         }
@@ -174,7 +203,7 @@ class ReadDevicesDataViewController: UIViewController {
                             }else {
                                 deviceModel.steps.forEach { step in
                                     let list: [ActionType] = step.tasks.compactMap { task in
-                                        if case .read(_, let type) = task.operationType {
+                                        if case .read(_, let type) = task.operationType, task.state == .failed {
                                             return type
                                         }
                                         return nil
@@ -266,11 +295,27 @@ class ReadDevicesDataViewController: UIViewController {
         tableView.reloadData()
     }
     
+    /// 使用缺失的数据（设备能耗）
+    @objc private func useIncompleteDataBtnAction() {
+        harvestEnergyUseIncompleteDataCallback?()
+        backAction()
+    }
+    
+    /// 放弃读取的数据（设备能耗）
+    @objc private func abandonAllDataBtnAction() {
+        backAction()
+    }
+    
     /// 更新状态UI
     private func updateSyncStateUI() {
-        
+
         if let section = sections.first {
             progressLabel.text = "\(section.devices.filter({ $0.state == .successful }).count)/\(section.devices.count)"
+        }
+        
+        if case .harvestData = type {
+            useIncompleteDataBtn.isHidden = readState != .failure
+            abandonAllDataBtn.isHidden = readState != .failure
         }
         
         switch readState {
@@ -448,6 +493,9 @@ class ReadDevicesDataViewController: UIViewController {
                             progressView.stepModel = model
                         }
                     }
+                    if let section = self.sections.first {
+                        self.progressLabel.text = "\(section.devices.filter({ $0.state == .successful }).count)/\(section.devices.count)"
+                    }
                 }
             }
             //            _ = MeshNetworkManager.instance.save()
@@ -555,6 +603,33 @@ class ReadDevicesDataViewController: UIViewController {
             make.right.equalTo(SCRXFrom(-26))
             make.top.equalTo(SCRYFrom(17))
         }
+        
+        useIncompleteDataBtn = UIButton(title: "use_incomplete_data".localizedString, titleSize: 13, titleWeight: .light, titleColor: RGB(27, 20, 37), target: self, action: #selector(useIncompleteDataBtnAction))
+        useIncompleteDataBtn.backgroundColor = .white
+        useIncompleteDataBtn.layer.cornerRadius = 10
+        useIncompleteDataBtn.layer.borderWidth = 0.5
+        useIncompleteDataBtn.layer.borderColor = RGB(220, 220, 220).cgColor
+        useIncompleteDataBtn.isHidden = true
+        view.addSubview(useIncompleteDataBtn)
+        useIncompleteDataBtn.snp.makeConstraints { make in
+            make.right.equalTo(view.snp.centerX).offset(SCRXFrom(-7.5))
+            make.bottom.equalTo(bottomView.snp.top).offset(SCRYFrom(-10))
+            make.width.equalTo(SCRXFrom(164))
+            make.height.equalTo(SCRYFrom(40))
+        }
+        
+        abandonAllDataBtn = UIButton(title: "abandon_all_data".localizedString, titleSize: 13, titleWeight: .light, titleColor: RGB(27, 20, 37), target: self, action: #selector(abandonAllDataBtnAction))
+        abandonAllDataBtn.backgroundColor = .white
+        abandonAllDataBtn.layer.cornerRadius = 10
+        abandonAllDataBtn.layer.borderWidth = 0.5
+        abandonAllDataBtn.layer.borderColor = RGB(220, 220, 220).cgColor
+        abandonAllDataBtn.isHidden = true
+        view.addSubview(abandonAllDataBtn)
+        abandonAllDataBtn.snp.makeConstraints { make in
+            make.left.equalTo(view.snp.centerX).offset(SCRXFrom(7.5))
+            make.centerY.width.height.equalTo(useIncompleteDataBtn)
+        }
+        
     }
 
 }
@@ -603,9 +678,16 @@ extension ReadDevicesDataViewController: UITableViewDataSource, UITableViewDeleg
 //            cell.iconImageBtn.setImage(UIImage(named: proxyModel?.imageName ?? ""), for: .normal)
 //            return cell
 //            
-        case is SyncDevicesModel:
+        case let deviceModel as SyncDevicesModel:
             let cell = tableView.dequeueReusableCell(withIdentifier: "deviceCell", for: indexPath) as! SyncDeviceViewCell
-            cell.model = cellModel as? SyncDevicesModel
+            cell.model = deviceModel
+            if case .harvestData = type, !deviceModel.setRatedPower {
+                cell.stateImageView.image = UIImage(named: "rated_power_noset")
+                cell.resyncBtn.isHidden = true
+                cell.stateImageView.isUserInteractionEnabled = true
+            }else {
+                cell.stateImageView.isUserInteractionEnabled = false
+            }
             cell.delegate = self
             return cell
         default:
@@ -719,6 +801,13 @@ extension ReadDevicesDataViewController: SyncDeviceViewCellDelegate {
         startRead()
     }
     
+    /// 状态图标点击回调
+    func cell(_ cell: SyncDeviceViewCell, stateImageClickAction model: SyncDevicesModel) {
+        if !model.setRatedPower {
+            SRAlertView(message: "rated_power_no_set_message".localizedString, actions: [SRAlertAction(title: "GOT IT".localizedString)]).show()
+        }
+    }
+    
 }
 
 extension ReadDevicesDataViewController: SyncDeviceStepViewCellDelegate {
@@ -758,5 +847,20 @@ extension ReadDevicesDataViewController {
         case success
     }
     
+}
+
+
+fileprivate extension SyncDevicesModel {
+    
+    static var setRatedPowerKey = 1
+    
+    /// 是否设置了额定功率
+    var setRatedPower: Bool {
+        get {
+            objc_getAssociatedObject(self, &SyncDevicesModel.setRatedPowerKey) as? Bool ?? false
+        }set {
+            objc_setAssociatedObject(self, &SyncDevicesModel.setRatedPowerKey, newValue, .OBJC_ASSOCIATION_RETAIN)
+        }
+    }
     
 }

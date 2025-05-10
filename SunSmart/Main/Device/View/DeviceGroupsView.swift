@@ -36,6 +36,8 @@ class DeviceGroupsView: UIView {
     
     var lineView: UIView!
     
+    var itemSize: CGSize?
+    
     weak var delegate: DeviceGroupsViewDelegate?
     
     var datas: [DeviceGroupsSelectData] = [] {
@@ -191,6 +193,9 @@ extension DeviceGroupsView: UICollectionViewDataSource, UICollectionViewDelegate
     }
     
     func collectionView(_ collectionView: UICollectionView, layout collectionViewLayout: UICollectionViewLayout, sizeForItemAt indexPath: IndexPath) -> CGSize {
+        if let size = itemSize {
+            return size
+        }
         var itemW = (collectionView.width - collectionView.contentInset.left - collectionView.contentInset.right - flowLayout.sectionInset.left - flowLayout.sectionInset.right - flowLayout.minimumInteritemSpacing * 3.0) / 4.0
         itemW = CGFloat(floorf(Float(itemW) * 100.0) / 100.0)
         
@@ -239,7 +244,7 @@ class DeviceGroupsViewCell: UICollectionViewCell {
         layer.cornerRadius = SCRYFrom(6)
         backgroundColor = RGB(238, 238, 239)
         
-        titleLabel = UILabel(text: "ALL".localizedString, textColor: TextBlack_Color, fontSize: 14, fontWeight: .light)
+        titleLabel = UILabel(text: "ALL".localizedString, textColor: TextBlack_Color, fontSize: 14, fontWeight: .light, fit: false)
         titleLabel.textAlignment = .center
         titleLabel.lineBreakMode = .byTruncatingHead
         contentView.addSubview(titleLabel)

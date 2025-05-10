@@ -18,6 +18,15 @@ protocol SyncDeviceViewCellDelegate: AnyObject {
     /// 失败重试回调
     func cell(_ cell: SyncDeviceViewCell, resyncAction model: SyncDevicesModel)
     
+    /// 状态图标点击回调
+    func cell(_ cell: SyncDeviceViewCell, stateImageClickAction model: SyncDevicesModel)
+    
+}
+
+extension SyncDeviceViewCellDelegate {
+    
+    /// 状态图标点击回调
+    func cell(_ cell: SyncDeviceViewCell, stateImageClickAction model: SyncDevicesModel) {}
 }
 
 class SyncDeviceViewCell: UITableViewCell {
@@ -162,6 +171,11 @@ class SyncDeviceViewCell: UITableViewCell {
         delegate?.cell(self, didSelectedAction: model)
     }
     
+    /// 状态图标点击
+    @objc private func stateImageViewAction() {
+        delegate?.cell(self, stateImageClickAction: model)
+    }
+    
     private func setupUI() {
         
         selectedImageView = UIImageView(image: UIImage(named: "device_select_un"))
@@ -196,6 +210,7 @@ class SyncDeviceViewCell: UITableViewCell {
         }
         
         stateImageView = UIImageView(image: UIImage(named: "loading"))
+        stateImageView.addGestureRecognizer(UITapGestureRecognizer(target: self, action: #selector(stateImageViewAction)))
         contentView.addSubview(stateImageView)
         stateImageView.snp.makeConstraints { make in
             make.right.equalTo(SCRXFrom(-60))

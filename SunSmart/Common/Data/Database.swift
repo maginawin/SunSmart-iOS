@@ -1302,6 +1302,7 @@ extension Profile {
         static let powerUpState = Expression<Int>("powerUpState")
         static let powerUpCct = Expression<Int>("powerUpCct")
         static let adjustSpeed = Expression<Int>("adjustSpeed")
+        static let sensitivity = Expression<Int>("sensitivity")
     }
     
     /// 初始化组扩展信息表
@@ -1329,6 +1330,7 @@ extension Profile {
             builder.column(ExpressionKey.powerUpState)
             builder.column(ExpressionKey.adjustSpeed)
             builder.column(ExpressionKey.powerUpCct)
+            builder.column(ExpressionKey.sensitivity)
             builder.unique(ExpressionKey.meshUUID, ExpressionKey.uuid)
         }))
         
@@ -1339,6 +1341,12 @@ extension Profile {
             if !columns.contains(where: { $0.name == "powerUpCct" }) {
                 _ = try? SunSmartDataManager.shared.db?.run(Profile.profilesTable.addColumn(ExpressionKey.powerUpCct, defaultValue: 4500))
             }
+            
+            // 是否存在”sensitivity“属性
+            if !columns.contains(where: { $0.name == "sensitivity" }) {
+                _ = try? SunSmartDataManager.shared.db?.run(Profile.profilesTable.addColumn(ExpressionKey.sensitivity, defaultValue: 100))
+            }
+            
         }
     }
 
@@ -1367,7 +1375,7 @@ extension Profile {
              
                 let manualOverrideTimeout = UInt32(row[ExpressionKey.manualOverrideTimeout])
                 
-                let profile = Profile(name: row[ExpressionKey.name], id: row[ExpressionKey.uuid], type: profileType, lightData: lightData, powerUpState: powerUpState, powerUpCct: powerUpCct, manualOverrideTimeout: manualOverrideTimeout, adjustSpeed: row[ExpressionKey.adjustSpeed])
+                let profile = Profile(name: row[ExpressionKey.name], id: row[ExpressionKey.uuid], type: profileType, lightData: lightData, powerUpState: powerUpState, powerUpCct: powerUpCct, manualOverrideTimeout: manualOverrideTimeout, adjustSpeed: row[ExpressionKey.adjustSpeed], sensitivity: UInt8(row[ExpressionKey.sensitivity]))
                 profiles.append(profile)
             }
         }
@@ -1416,7 +1424,8 @@ extension Profile {
             ExpressionKey.manualOverrideTimeout <- Int64(self.manualOverrideTimeout),
             ExpressionKey.powerUpState <- Int(self.powerUpState.rawValue),
             ExpressionKey.powerUpCct <- Int(self.powerUpCct),
-            ExpressionKey.adjustSpeed <- self.adjustSpeed
+            ExpressionKey.adjustSpeed <- self.adjustSpeed,
+            ExpressionKey.sensitivity <- Int(self.sensitivity)
         ])
         do {
             try SunSmartDataManager.shared.db?.run(insertOrUpdate)

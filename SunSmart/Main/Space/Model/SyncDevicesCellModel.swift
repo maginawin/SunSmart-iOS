@@ -349,6 +349,8 @@ extension ProfileType {
             return "sensor_disable".localizedString
         case .daylightCalibration:
             return "guidance_sensor_calibration".localizedString
+        case .sensitivity:
+            return "sensitivity".localizedString
         }
     }
     
@@ -404,6 +406,8 @@ extension ProfileType {
             }
         case .daylightCalibration(let value):
             return node.daylightCalibrationValue == value
+        case .sensitivity(let value):
+            return node.motionSensitivity == value
         }
     }
 }
@@ -415,8 +419,8 @@ extension DeviceParameterType {
         switch self {
         case .pwmPeriod(let period):
             return node.pwmPeriod == period
-        case .ratedPower(let value):
-            return node.ratedPower == value
+        case .ratedPower(let list):
+            return node.phaseEnergyConsumptions == list
         }
     }
     

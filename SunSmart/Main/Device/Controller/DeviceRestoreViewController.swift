@@ -203,6 +203,7 @@ class DeviceRestoreViewController: UIViewController {
             unprovisionedDevice.deviceName = node.name
             unprovisionedDevice.elementCount = Int(node.elementsCount)
             unprovisionedDevice.icon = node.iconName
+            unprovisionedDevice.deviceType = node.deviceType
             
             var setSection: DeviceRestoreSection!
             // 是否刷新设备数据（找到同一个设备beacon包）

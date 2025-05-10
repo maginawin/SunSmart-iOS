@@ -19,10 +19,11 @@ class EnergyDataViewController: WMPageController {
         super.init(nibName: nil, bundle: nil)
         
         self.menuViewLayoutMode = .center
-        self.itemMargin = SCRXFrom(53)
-        self.progressWidth = SCRXFrom(115)
+        self.itemMargin = SCRXFrom(41)
+        self.progressWidth = SCRXFrom(120)
         self.progressHeight = 2
         self.progressColor = Bar_Color
+        self.menuViewStyle = .line
     }
     
     required init?(coder: NSCoder) {
@@ -37,6 +38,8 @@ class EnergyDataViewController: WMPageController {
         navigationItem.leftBarButtonItem = UIBarButtonItem(image: UIImage(named: "navigation_back")?.withRenderingMode(.alwaysOriginal), style: .done, target: self, action: #selector(back))
         navigationItem.rightBarButtonItem = UIBarButtonItem(image: UIImage(named: "help")?.withRenderingMode(.alwaysOriginal), style: .done, target: self, action: #selector(help))
         
+        navigationController?.setNavigationBarBackgroundColor(color: .clear)
+        
     }
     
     @objc private func back() {
@@ -44,8 +47,8 @@ class EnergyDataViewController: WMPageController {
     }
     
     @objc private func help() {
-        
-        
+        let vc = EnergyConsumptionInstructionController()
+        navigationController?.pushViewController(vc, animated: true)
     }
 
 }
@@ -60,10 +63,10 @@ extension EnergyDataViewController {
         
         switch index {
         case 0:
-            let vc = DeviceLightsViewController(space: space)
+            let vc = EnergyStaticDataViewController(space: space)
             return vc
         case 1:
-            let vc = DeviceSwitchesViewController(space: space)
+            let vc = EnergyTimeSeriesDataViewController(space: space)
             return vc
         default:
             return UIViewController()
@@ -73,11 +76,13 @@ extension EnergyDataViewController {
     override func pageController(_ pageController: WMPageController, preferredFrameForContentView contentView: WMScrollView) -> CGRect {
 //        let y = SCRYFrom(42)
 //        let footerH = SCRYFrom(44) + kSafeAreaBottomHeight
-        return CGRect(x: 0, y: 0, width: view.width, height: view.height)
+//        let menuFrame = self.pageController(pageController, preferredFrameFor: self.menuView!)
+        let menuMaxY = view.safeAreaInsets.top + SCRYFrom(isIPad ? 20 : 10) + menuHeight
+        return CGRect(x: 0, y: menuMaxY, width: view.width, height: view.height - menuMaxY)
     }
     
     override func pageController(_ pageController: WMPageController, preferredFrameFor menuView: WMMenuView) -> CGRect {
-        return CGRect(x: 0, y: SCRYFrom(isIPad ? 20 : 10), width: view.width, height: menuHeight)
+        return CGRect(x: 0, y: view.safeAreaInsets.top + SCRYFrom(isIPad ? 20 : 10), width: view.width, height: menuHeight)
     }
     
     

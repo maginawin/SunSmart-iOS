@@ -154,7 +154,7 @@ class DeviceParameterFilterView: UIView {
         
         tableView = UITableView()
         tableView.separatorStyle = .none
-        tableView.rowHeight = SCRYFrom(36)
+//        tableView.rowHeight = SCRYFrom(36)
         tableView.register(CustomTableViewCell.classForCoder(), forCellReuseIdentifier: "cell")
         tableView.register(ShareAuthorityFilterHeaderView.classForCoder(), forHeaderFooterViewReuseIdentifier: "header")
         tableView.dataSource = self
@@ -190,8 +190,10 @@ extension DeviceParameterFilterView: UITableViewDataSource, UITableViewDelegate 
         let data = filterDatas[indexPath.section]
         cell.titleLabel.text = data.contents[indexPath.row]
         cell.titleLabel.font = UIFont.systemFont(ofSize: SCRYFrom(14), weight: .light)
+        cell.titleLabel.numberOfLines = 2
         cell.titleLabel.textColor = data.selectIndex == indexPath.row ? Bar_Color : TextBlack_Color
         cell.titleX = SCRXFrom(40)
+        cell.titleMaxWidth = tableView.width * 0.8
         cell.lineView.isHidden = true
         cell.selectionStyle = .none
         return cell
@@ -224,6 +226,15 @@ extension DeviceParameterFilterView: UITableViewDataSource, UITableViewDelegate 
 
     func tableView(_ tableView: UITableView, heightForFooterInSection section: Int) -> CGFloat {
         return section == tableView.numberOfSections - 1 ? 0 : SCRYFrom(8)
+    }
+    
+    func tableView(_ tableView: UITableView, heightForRowAt indexPath: IndexPath) -> CGFloat {
+        
+        let data = filterDatas[indexPath.section]
+        if data.type == .ratedPower {
+            return SCRYFrom(44)
+        }
+        return SCRYFrom(36)
     }
     
     func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {

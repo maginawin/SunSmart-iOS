@@ -31,6 +31,8 @@ class ProfileSettingsViewController: UIViewController {
 //    private var daylightSensorView: ProfileDaylightSensorControlView!
     private var timeoutView: ProfileManualOverrideTimeoutView!
     private var powerUpBehaviorView: ProfilePowerUpBehaviorView!
+    private var sensitivityView: ProfileSensitivityView!
+    
     private let contentMargin: CGFloat = isIPad ? SCRXFrom(20) : SCRXFrom(16)
     
     /// 配置数据
@@ -282,21 +284,38 @@ class ProfileSettingsViewController: UIViewController {
         self.powerUpBehaviorView.powerState = self.selectProfile.powerUpState
         self.powerUpBehaviorView.powerOnCct = self.selectProfile.powerUpCct
         
+        self.sensitivityView.sensitivity = self.selectProfile.sensitivity
+        // 是否显示手动控制超时UI
+        var showTimeout = true
+        // 是否显示灵敏度
+        var showSensitivity = true
         if selectProfile.type == .daylight || selectProfile.type == .manualControl {
-            timeoutView.isHidden = true
-            powerUpBehaviorView.snp.remakeConstraints { make in
-                make.left.right.equalTo(sphasesView)
-                make.top.equalTo(sphasesView.snp.bottom).offset(SCRYFrom(16))
-                make.height.greaterThanOrEqualTo(SCRYFrom(172))
-                make.bottom.equalTo(SCRYFrom(-16))
+            showTimeout = false
+            showSensitivity = false
+        }
+       
+        
+        timeoutView.isHidden = !showTimeout
+        sensitivityView.isHidden = !showSensitivity
+        
+        powerUpBehaviorView.snp.remakeConstraints { make in
+            make.left.right.equalTo(timeoutView)
+            if showTimeout {
+                make.top.equalTo(timeoutView.snp.bottom).offset(contentMargin)
+            }else {
+                make.top.equalTo(sphasesView.snp.bottom).offset(contentMargin)
             }
-        }else {
-            timeoutView.isHidden = false
-            powerUpBehaviorView.snp.remakeConstraints { make in
-                make.left.right.equalTo(timeoutView)
-                make.top.equalTo(timeoutView.snp.bottom).offset(SCRYFrom(16))
-                make.height.greaterThanOrEqualTo(SCRYFrom(172))
-                make.bottom.equalTo(SCRYFrom(-16))
+            make.height.greaterThanOrEqualTo(SCRYFrom(172))
+            if !showSensitivity {
+                make.bottom.equalTo(-contentMargin)
+            }
+        }
+        if showSensitivity {
+            sensitivityView.snp.remakeConstraints { make in
+                make.left.right.equalTo(powerUpBehaviorView)
+                make.top.equalTo(powerUpBehaviorView.snp.bottom).offset(contentMargin)
+                make.height.equalTo(SCRYFrom(130))
+                make.bottom.equalTo(-contentMargin)
             }
         }
         
@@ -368,6 +387,17 @@ class ProfileSettingsViewController: UIViewController {
             make.top.equalTo(timeoutView.snp.bottom).offset(contentMargin)
             make.height.greaterThanOrEqualTo(SCRYFrom(172))
             make.bottom.equalTo(-contentMargin)
+        }
+        
+        sensitivityView = ProfileSensitivityView()
+        sensitivityView.editable = self.editable
+        sensitivityView.delegate = self
+        sensitivityView.isHidden = true
+        contentView.addSubview(sensitivityView)
+        sensitivityView.snp.makeConstraints { make in
+            make.left.right.equalTo(powerUpBehaviorView)
+            make.top.equalTo(powerUpBehaviorView.snp.bottom).offset(contentMargin)
+            make.height.equalTo(SCRYFrom(130))
         }
     }
     
@@ -586,3 +616,20 @@ extension ProfileSettingsViewController: ProfilePowerUpBehaviorViewDelegate {
     
 }
 
+
+extension ProfileSettingsViewController: ProfileSensitivityViewDelegate {
+    
+    /// 灵敏度修改
+    /// - Parameters:
+    ///   - view: view
+    ///   - sensitivity: 灵敏度0~100%
+    func view(_ view: ProfileSensitivityView, sensitivityValueChanged sensitivity: UInt8) {
+        selectProfile.sensitivity = sensitivity
+    }
+    
+    /// 禁止交互下编辑事件
+    func sensitivityViewDisableEditAction(view: ProfileSensitivityView) {
+        XWHUDManager.showTipHUD("no_permission".localizedString + "！")
+    }
+    
+}

@@ -66,6 +66,7 @@ class EnergyStaticDataSpaceView: UIView {
         tableView.separatorStyle = .none
         tableView.register(SpaceTotalHarvestDataCell.classForCoder(), forCellReuseIdentifier: "totalEnergyCell")
         tableView.register(SpaceHarvestDataHistoryCell.classForCoder(), forCellReuseIdentifier: "historyEnergyCell")
+        tableView.backgroundColor = .clear
         tableView.dataSource = self
         tableView.delegate = self
         tableView.contentInset = UIEdgeInsets(top: 0, left: 0, bottom: SCRYFrom(80) + kSafeAreaBottomHeight, right: 0)
@@ -76,7 +77,7 @@ class EnergyStaticDataSpaceView: UIView {
             make.top.bottom.equalToSuperview()
         }
         
-        viewHarvestHistoryBtn = UIButton(titleSize: 15, titleColor: Bar_Color, target: self, action: #selector(viewHarvestHistoryBtnAction))
+        viewHarvestHistoryBtn = UIButton(titleSize: 15, titleColor: Bar_Color, fit: false, target: self, action: #selector(viewHarvestHistoryBtnAction))
         viewHarvestHistoryBtn.setAttributedTitle(NSAttributedString(string: "view_harvest_history".localizedString, attributes: [.underlineStyle: 1]), for: .normal)
         addSubview(viewHarvestHistoryBtn)
         viewHarvestHistoryBtn.snp.makeConstraints { make in
@@ -85,7 +86,7 @@ class EnergyStaticDataSpaceView: UIView {
             make.bottom.equalTo(-kSafeAreaBottomHeight - SCRYFrom(8))
         }
         
-        harvestNewDataBtn = UIButton(title: "harvest_new_energy_data".localizedString, titleSize: 16, titleWeight: .light, titleColor: .white, target: self, action: #selector(harvestNewDataBtnAction))
+        harvestNewDataBtn = UIButton(title: "harvest_new_energy_data".localizedString, titleSize: 16, titleWeight: .light, titleColor: .white, fit: false, target: self, action: #selector(harvestNewDataBtnAction))
         harvestNewDataBtn.layer.cornerRadius = SCRYFrom(10)
         harvestNewDataBtn.backgroundColor = Bar_Color
         addSubview(harvestNewDataBtn)

@@ -28,19 +28,19 @@ class DeviceParameterDeviceCell: UITableViewCell {
         case disable
     }
 
-    private var selectImageView: UIImageView!
-    private var deviceImageView: UIImageView!
-    private var nameLabel: UILabel!
+    var selectImageView: UIImageView!
+    var deviceImageView: UIImageView!
+    var nameLabel: UILabel!
 //    private var contentLabel: UILabel!
     var pwmLabel: UILabel!
     var pwmFailedImageView: UIImageView!
     var ratedPowerLabel: UILabel!
     var ratedPowerFailedImageView: UIImageView!
-    private var identifyBtn: UIButton!
+    var identifyBtn: UIButton!
 //    private var onoffBtn: UIButton!
-    private var onBtn: UIButton!
-    private var offBtn: UIButton!
-    private var groupNameLabel: UILabel!
+    var onBtn: UIButton!
+    var offBtn: UIButton!
+    var groupNameLabel: UILabel!
     private var lineView: UIView!
     
     weak var delegate: DeviceParameterDeviceCellDelegate?
@@ -51,6 +51,8 @@ class DeviceParameterDeviceCell: UITableViewCell {
             nameLabel.text = device.name
             onBtn.isSelected = device.selectOn
             offBtn.isSelected = device.selectOff
+            
+//            onBtn.backgroundColor = onBtn.isSelected ? Bar_Color : Background_Color
             
             if device.supportPwmFrequency {
                 ratedPowerLabel.snp.updateConstraints { make in
@@ -99,11 +101,13 @@ class DeviceParameterDeviceCell: UITableViewCell {
     
     @objc private func offBtnAction(sender: UIButton) {
         sender.isSelected = true
+//        sender.backgroundColor = sender.isSelected ? Bar_Color : Background_Color
         delegate?.cell(self, deviceOnOffAction: device, isOn: false)
     }
     
     @objc private func onBtnAction(sender: UIButton) {
         sender.isSelected = true
+//        sender.backgroundColor = sender.isSelected ? Bar_Color : Background_Color
         delegate?.cell(self, deviceOnOffAction: device, isOn: true)
     }
     
@@ -133,14 +137,15 @@ class DeviceParameterDeviceCell: UITableViewCell {
             make.width.height.equalTo(30)
         }
         
-        let height = CGFloat(floorf(Float(SCRYFrom(30)) * 100) / 100.0)
+        let height = Int(SCRYFrom(30))
         let onoffSize = CGSize(width: height, height: height)
         
         offBtn = UIButton(title: "Off".localizedString, titleSize: 13, titleWeight: .light, titleColor: RGB(20, 46, 79), target: self, action: #selector(offBtnAction))
         offBtn.setTitleColor(.white, for: .selected)
         offBtn.setBackgroundImage(UIImage.image(size: onoffSize, color: Background_Color), for: .normal)
         offBtn.setBackgroundImage(UIImage.image(size: onoffSize, color: Bar_Color), for: .selected)
-        offBtn.layer.cornerRadius = height * 0.5
+        offBtn.backgroundColor = Background_Color
+        offBtn.layer.cornerRadius = CGFloat(height) * 0.5
         offBtn.layer.masksToBounds = true
         contentView.addSubview(offBtn)
         offBtn.snp.makeConstraints { make in
@@ -151,9 +156,10 @@ class DeviceParameterDeviceCell: UITableViewCell {
         
         onBtn = UIButton(title: "On".localizedString, titleSize: 13, titleWeight: .light, titleColor: RGB(20, 46, 79), target: self, action: #selector(onBtnAction))
         onBtn.setTitleColor(.white, for: .selected)
+        onBtn.backgroundColor = Background_Color
         onBtn.setBackgroundImage(UIImage.image(size: onoffSize, color: Background_Color), for: .normal)
         onBtn.setBackgroundImage(UIImage.image(size: onoffSize, color: Bar_Color), for: .selected)
-        onBtn.layer.cornerRadius = height * 0.5
+        onBtn.layer.cornerRadius = CGFloat(height) * 0.5
         onBtn.layer.masksToBounds = true
         contentView.addSubview(onBtn)
         onBtn.snp.makeConstraints { make in
@@ -193,11 +199,20 @@ class DeviceParameterDeviceCell: UITableViewCell {
             make.left.equalTo(pwmLabel.snp.right).offset(SCRXFrom(4))
         }
         
+        groupNameLabel = UILabel(text: "not_in_group".localizedString, textColor: Message_Color, fontSize: 12, fontWeight: .light)
+        contentView.addSubview(groupNameLabel)
+        groupNameLabel.snp.makeConstraints { make in
+            make.right.equalTo(SCRXFrom(-16))
+            make.top.equalTo(onBtn.snp.bottom).offset(SCRYFrom(4))
+        }
+        
         ratedPowerLabel = UILabel(text: "", textColor: Message_Color, fontSize: 12, fontWeight: .light)
+        ratedPowerLabel.numberOfLines = 2
         contentView.addSubview(ratedPowerLabel)
         ratedPowerLabel.snp.makeConstraints { make in
             make.top.equalTo(nameLabel.snp.bottom).offset(SCRYFrom(18))
             make.left.equalTo(pwmLabel)
+            make.width.lessThanOrEqualTo(SCRXFrom(220))
         }
         
         ratedPowerFailedImageView = UIImageView(image: UIImage(named: "setting_failed"))
@@ -208,12 +223,7 @@ class DeviceParameterDeviceCell: UITableViewCell {
             make.left.equalTo(ratedPowerLabel.snp.right).offset(SCRXFrom(6))
         }
         
-        groupNameLabel = UILabel(text: "not_in_group".localizedString, textColor: Message_Color, fontSize: 12, fontWeight: .light)
-        contentView.addSubview(groupNameLabel)
-        groupNameLabel.snp.makeConstraints { make in
-            make.right.equalTo(SCRXFrom(-16))
-            make.top.equalTo(onBtn.snp.bottom).offset(SCRYFrom(4))
-        }
+       
         
         lineView = UIView()
         lineView.backgroundColor = Line_Color

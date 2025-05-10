@@ -364,7 +364,7 @@ class SyncDevicesViewController: UIViewController {
                                 taskModel.parentStepModel = step
                                 steps.append(step)
                             case .ratedPower(let value):
-                                let taskModel = SyncDeviceStepTaskModel(name: "rated_power".localizedString, operationType: .configuration(node: node, type: .deviceParameters(parameterType: .ratedPower(value: value))))
+                                let taskModel = SyncDeviceStepTaskModel(name: "rated_power".localizedString, operationType: .configuration(node: node, type: .deviceParameters(parameterType: .ratedPower(datas: value))))
                                 
                                 let step = SyncDeviceStepModel(type: "rated_power".localizedString, state: .none, tasks: [taskModel])
                                 taskModel.parentStepModel = step
@@ -636,7 +636,7 @@ class SyncDevicesViewController: UIViewController {
                         let taskModel = SyncDeviceStepTaskModel(name: "pwm_period".localizedString, operationType: .configuration(node: node, type: .deviceParameters(parameterType: .pwmPeriod(period: period))))
                         tasks.append(taskModel)
                     case .ratedPower(let value):
-                        let taskModel = SyncDeviceStepTaskModel(name: "rated_power".localizedString, operationType: .configuration(node: node, type: .deviceParameters(parameterType: .ratedPower(value: value))))
+                        let taskModel = SyncDeviceStepTaskModel(name: "rated_power".localizedString, operationType: .configuration(node: node, type: .deviceParameters(parameterType: .ratedPower(datas: value))))
                         tasks.append(taskModel)
                     }
                 }

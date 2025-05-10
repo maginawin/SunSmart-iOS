@@ -102,6 +102,8 @@ enum ProfileType {
     case powerOnState(state: Profile.PowerUpState, cct: UInt16? = nil)
     /// 光照传感器校准
     case daylightCalibration(value: UInt16)
+    /// 灵敏度 0~100%
+    case sensitivity(value: UInt8)
 }
 
 enum DeviceParameterType {
@@ -114,8 +116,10 @@ enum DeviceParameterType {
             if let vendorModel = node.sunricherVendorModel {
                 messageHandles.append(MeshMessageHandle(message: SunricherVendorSet(function: .pwmPeriod(period)), model: vendorModel))
             }
-        case .ratedPower(let value):
-            break
+        case .ratedPower(let datas):
+            if let vendorModel = node.sunricherVendorModel {
+                messageHandles.append(MeshMessageHandle(message: SunricherVendorSet(function: .phaseEnergyConsumption(list: datas)), model: vendorModel))
+            }
         }
         return messageHandles
     }
@@ -123,7 +127,7 @@ enum DeviceParameterType {
     /// pwm周期
     case pwmPeriod(period: UInt16)
     /// 额定功率
-    case ratedPower(value: Int)
+    case ratedPower(datas: [NodePhaseEnergyConsumption])
 }
 
 enum DeviceReadParameterType {
@@ -136,13 +140,25 @@ enum DeviceReadParameterType {
             if let vendorModel = node.sunricherVendorModel {
                 messageHandles.append(MeshMessageHandle(message: SunricherVendorGet(function: .pwmPeriod), model: vendorModel))
             }
+        case .ratedPower:
+            if let vendorModel = node.sunricherVendorModel {
+                messageHandles.append(MeshMessageHandle(message: SunricherVendorGet(function: .phaseEnergyConsumption), model: vendorModel))
+            }
+        case .totalDeviceEnergyUse:
+            
+            if let energyModel = node.energyModel {
+                messageHandles.append(MeshMessageHandle(message: SensorGet(), model: energyModel))
+            }
         }
         return messageHandles
     }
     
     /// pwm周期
     case pwmPeriod
-    
+    /// 额定功率
+    case ratedPower
+    /// 设备已使用的总能耗
+    case totalDeviceEnergyUse
 }
 
 
@@ -304,9 +320,18 @@ extension Node {
                 syncDatas.append(contentsOf: getSyncData(type: .schedules()))
             }
             
+            // 设备参数
+            var deviceParameterTypes: [DeviceParameterType] = []
             // PWM
             if let pwmPeriod = self.restoreData?.pwmPeriod, self.pwmPeriod != pwmPeriod {
-                syncDatas.append(.deviceParameterTypes(types: [.pwmPeriod(period: pwmPeriod)]))
+                deviceParameterTypes.append(.pwmPeriod(period: pwmPeriod))
+            }
+            // Rated power
+            if let phaseEnergyConsumptions = self.restoreData?.phaseEnergyConsumptions, self.phaseEnergyConsumptions != phaseEnergyConsumptions {
+                deviceParameterTypes.append(.ratedPower(datas: phaseEnergyConsumptions))
+            }
+            if deviceParameterTypes.count > 0 {
+                syncDatas.append(.deviceParameterTypes(types: deviceParameterTypes))
             }
             
             // Dongle
@@ -658,6 +683,14 @@ extension Node {
                 }
             }
             
+            // 移动感应配置
+            if occupancyType, self.presenceDetectedSensorModel != nil {
+                // profile 0~100% => 0~255
+                let resultValue = UInt8(min(Int(Float(groupProfile.sensitivity) * 2.55), 255))
+                if self.motionSensitivity != resultValue {
+                    syncProfile.append(.sensitivity(value: resultValue))
+                }
+            }
             
         }else {
             let disableSensorModels = sensorModels.filter({ $0.publish?.publicationAddress == group.address })
@@ -672,6 +705,13 @@ extension Node {
             
             if powerUpState != .restore {
                 syncProfile.append(.powerOnState(state: .restore))
+            }
+            
+            // 移动感应设备 灵敏度还原到默认
+            if self.presenceDetectedSensorModel != nil {
+                if self.motionSensitivity != 255 {
+                    syncProfile.append(.sensitivity(value: 255))
+                }
             }
             
             if lightLCSetupModel != nil {
@@ -788,9 +828,9 @@ extension Node {
         /// 待删除的日程
         return schedules.filter({ schedule in
             // 日程是否关联设备
-            let isBindNode = schedule.nodeAddresses.contains(self.primaryUnicastAddress)
+            let isBindNode = schedule.nodeAddresses.contains(self.primaryUnicastAddress) || schedule.groups.contains(where: { $0.nodes.contains(self) }) || schedule.scene?.info.groups.contains(where: { $0.nodes.contains(self) }) ?? false
             // 判断日程待删除设备中是否存在该设备
-            if schedule.needDeleteNodes.contains(self) || (self.group != nil && ((groupState == .exitFailure && !isBindNode) || (schedule.needDeleteGroups.contains(self.group!) || schedule.needDeleteScenes.contains(where: { scene in scene.info.groups.contains(self.group!) })))) {
+            if !isBindNode, schedule.needDeleteNodes.contains(self) || (self.group != nil && ((groupState == .exitFailure) || (schedule.needDeleteGroups.contains(self.group!) || schedule.needDeleteScenes.contains(where: { scene in scene.info.groups.contains(self.group!) })))) {
                 // 判断日程数据是否存在
                 if self.schedulerActions[schedule.id] != nil {
                     return true

@@ -23,9 +23,9 @@ class DeviceParameterDevicesViewController: UIViewController {
     /// 筛选的pwm值
     private var filterPwmValue: UInt16?
     /// 额定功率list
-    private var ratedPowers: [Int] = []
+    private var ratedPowers: [[NodePhaseEnergyConsumption]] = []
     /// 筛选的额定功率
-    private var filterRatedPower: Int?
+    private var filterRatedPower: [NodePhaseEnergyConsumption]?
     private var showDevices: [Node] = []
     /// 设置pwm失败设备list
     private var settingPwmFailedNodes: [(node: Node, type: DeviceParameterType)] = []
@@ -59,7 +59,7 @@ class DeviceParameterDevicesViewController: UIViewController {
             node.selectOn = false
             node.selectOff = false
             node.tempPwm = node.pwmPeriod
-            node.tempRatedPower = node.ratedPower
+            node.tempRatedPowerPhases = node.phaseEnergyConsumptions
             if let group = node.group {
                 if let data = groupDatas.first(where: { $0.groupAddress == group.address.address }) {
                     data.addresss.append(node.primaryUnicastAddress)
@@ -86,6 +86,12 @@ class DeviceParameterDevicesViewController: UIViewController {
         setupUI()
     }
     
+    override func viewDidLayoutSubviews() {
+        super.viewDidLayoutSubviews()
+        
+        tableView.contentInset = UIEdgeInsets(top: 0, left: 0, bottom: groupsView.height, right: 0)
+    }
+    
     /// 初始化筛选参数
     private func setupFilterData() {
 //        deviceParameterDatas.removeAll()
@@ -101,12 +107,14 @@ class DeviceParameterDevicesViewController: UIViewController {
                 pwmValues.append(pwm)
             }
             // 功率
-            if let ratedPower = node.tempRatedPower {
-                if !ratedPowers.contains(ratedPower) {
-                    ratedPowers.append(ratedPower)
+            if node.tempRatedPowerPhases.count > 0 {
+                if !ratedPowers.contains(node.tempRatedPowerPhases) {
+                    ratedPowers.append(node.tempRatedPowerPhases)
                 }
             }else {
-                ratedPowers.insert(0, at: 0)
+                if !ratedPowers.contains([]) {
+                    ratedPowers.insert([], at: 0)
+                }
             }
            
         })
@@ -151,8 +159,8 @@ class DeviceParameterDevicesViewController: UIViewController {
             return
         }
         
-        let parameters: [DeviceReadParameterType] = [.pwmPeriod]
-        let vc = ReadDevicesDataViewController(type: .parameters(nodes: devices, parameters: [.pwmPeriod]))
+        let parameters: [DeviceReadParameterType] = [.pwmPeriod, .ratedPower]
+        let vc = ReadDevicesDataViewController(type: .parameters(nodes: devices, parameters: parameters))
         vc.readSuccessCallback = {[weak self] _ in
             XWHUDManager.showSuccessTipHUD("done!".localizedString)
             guard let self = self else { return }
@@ -160,11 +168,17 @@ class DeviceParameterDevicesViewController: UIViewController {
                 if parameters.contains(.pwmPeriod) {
                     node.tempPwm = node.pwmPeriod
                 }
+                if parameters.contains(.ratedPower) {
+                    node.tempRatedPowerPhases = node.phaseEnergyConsumptions
+                }
 //                node.tempRatedPower = node.ratedPower
             }
             self.setupFilterData()
             self.tableView.reloadData()
-            self.navigationController?.popViewController(animated: true)
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1) {[weak self] in
+                self?.navigationController?.popViewController(animated: true)
+            }
+            
             
         }
         vc.backActionCallback = {[weak self] failedDatas in
@@ -177,11 +191,18 @@ class DeviceParameterDevicesViewController: UIViewController {
                         switch type {
                         case .pwmPeriod:
                             node.tempPwm = nil
+                        case .ratedPower:
+                            node.tempRatedPowerPhases = []
+                        default:
+                            break
                         }
                     }
                 }else {
                     if parameters.contains(.pwmPeriod) {
                         node.tempPwm = node.pwmPeriod
+                    }
+                    if parameters.contains(.ratedPower) {
+                        node.tempRatedPowerPhases = node.phaseEnergyConsumptions
                     }
                 }
             }
@@ -213,31 +234,42 @@ class DeviceParameterDevicesViewController: UIViewController {
         vc.settingsCompletionCallback = {[weak self] result in
             guard let self = self else { return }
             
-            result.forEach { (key: DeviceParameterSettingsController.ParameterType, value: (successNodes: [Node], failedNodes: [Node])) in
+            result.forEach { (key: DeviceParameterData.ParameterType, value: (value: Any, successNodes: [Node], failedNodes: [Node])) in
 
                 switch key {
-                case .pwmFrequency(let pwmValue):
+                case .pwmFrequency:
                     self.settingPwmFailedNodes.removeAll(where: { data in value.successNodes.contains(where: { $0.primaryUnicastAddress == data.node.primaryUnicastAddress }) })
                     
                     value.failedNodes.forEach({ node in
-                        if let pwm = pwmValue, !self.settingPwmFailedNodes.contains(where: { $0.node.primaryUnicastAddress == node.primaryUnicastAddress }) {
-                            self.settingPwmFailedNodes.append((node, .pwmPeriod(period: UInt16(pwm))))
+                        if let pwm = value.value as? Int {
+                            if let index = self.settingPwmFailedNodes.firstIndex(where: { $0.node.primaryUnicastAddress == node.primaryUnicastAddress }) {
+                                self.settingPwmFailedNodes.replaceSubrange(index...index, with: [(node, .pwmPeriod(period: UInt16(pwm)))])
+                            }else {
+                                self.settingPwmFailedNodes.append((node, .pwmPeriod(period: UInt16(pwm))))
+                            }
                         }
                     })
                     value.successNodes.forEach { node in
                         node.tempPwm = node.pwmPeriod
                     }
                     
-                case .ratedPower(let powerValue):
+                case .ratedPower:
                     self.settingRatedPowerFailedNodes.removeAll(where: { data in value.successNodes.contains(where: { $0.primaryUnicastAddress == data.node.primaryUnicastAddress }) })
                     
                     value.failedNodes.forEach({ node in
-                        if let power = powerValue, !self.settingRatedPowerFailedNodes.contains(where: { $0.node.primaryUnicastAddress == node.primaryUnicastAddress }) {
-                            self.settingRatedPowerFailedNodes.append((node, .ratedPower(value: power)))
+                        if let powerDatas = value.value as? [DeviceParameterRatedPowerPhaseData] {
+                            
+                            let nodePhaseEnergyDatas = powerDatas.map({ NodePhaseEnergyConsumption(percent: $0.lightLevel ?? 0, power: $0.power ?? 0) })
+                            
+                            if let index = self.settingRatedPowerFailedNodes.firstIndex(where: { $0.node.primaryUnicastAddress == node.primaryUnicastAddress }) {
+                                self.settingRatedPowerFailedNodes.replaceSubrange(index...index, with: [(node, .ratedPower(datas: nodePhaseEnergyDatas))])
+                            }else {
+                                self.settingRatedPowerFailedNodes.append((node, .ratedPower(datas: nodePhaseEnergyDatas)))
+                            }
                         }
                     })
                     value.successNodes.forEach { node in
-                        node.tempRatedPower = node.ratedPower
+                        node.tempRatedPowerPhases = node.phaseEnergyConsumptions
                     }
                     
                 }
@@ -255,9 +287,17 @@ class DeviceParameterDevicesViewController: UIViewController {
             if let cell = tableView.cellForRow(at: IndexPath(row: index, section: 0)) as? DeviceParameterDeviceCell {
                 cell.device = device
                 if device.supportPwmFrequency {
-                    cell.pwmFailedImageView.isHidden = !settingPwmFailedNodes.contains(where: { $0.node.primaryUnicastAddress == device.primaryUnicastAddress })
+                    var pwm = device.tempPwm
+                    if let failedData = settingPwmFailedNodes.first(where: { $0.node.primaryUnicastAddress == device.primaryUnicastAddress }) {
+                        cell.pwmFailedImageView.isHidden = false
+                        if case .pwmPeriod(let period) = failedData.type {
+                            pwm = period
+                        }
+                    }else {
+                        cell.pwmFailedImageView.isHidden = true
+                    }
                     
-                    if let pwm = device.tempPwm {
+                    if let pwm = pwm {
                         cell.pwmLabel.text = "PWM: \(pwm) Hz"
                     }else {
                         cell.pwmLabel.text = "PWM: --"
@@ -267,13 +307,16 @@ class DeviceParameterDevicesViewController: UIViewController {
                     cell.pwmFailedImageView.isHidden = true
                     cell.pwmLabel.isHidden = true
                 }
-                if let ratedPower = device.tempRatedPower {
-                    cell.ratedPowerLabel.text = "\("reted_power".localizedString): \(ratedPower)W"
+                var ratedPowerPhases = device.tempRatedPowerPhases
+                if let failedData = settingRatedPowerFailedNodes.first(where: { $0.node.primaryUnicastAddress == device.primaryUnicastAddress }) {
+                    if case .ratedPower(let datas) = failedData.type {
+                        ratedPowerPhases = datas
+                    }
+                    cell.ratedPowerFailedImageView.isHidden = false
                 }else {
-                    cell.ratedPowerLabel.text = "\("reted_power".localizedString): --"
+                    cell.ratedPowerFailedImageView.isHidden = true
                 }
-                
-                cell.ratedPowerFailedImageView.isHidden = !settingRatedPowerFailedNodes.contains(where: { $0.node.primaryUnicastAddress == device.primaryUnicastAddress })
+                cell.ratedPowerLabel.text = "\("reted_power".localizedString): \(getRatedPowerStr(list: ratedPowerPhases))"
                 
                 if MeshLibManager.manager.isMeshNetworkConnected {
                     cell.selectState = selectDevices.contains(device) ? .selected : .none
@@ -282,6 +325,18 @@ class DeviceParameterDevicesViewController: UIViewController {
                 }
             }
         }
+    }
+    
+    /// 获取功耗描述字符串
+    private func getRatedPowerStr(list: [NodePhaseEnergyConsumption]) -> String {
+        guard list.count > 0 else {
+            return "--"
+        }
+        var phaseStr = ""
+        list.forEach({
+            phaseStr.append(String(format: "%@%d%%,%@W", phaseStr.isEmpty ? "" : "/", $0.percent, (Float($0.power) * 0.1).toSimplifyStr(maxDigits: 1)))
+        })
+        return phaseStr
     }
     
     private func setupUI() {
@@ -309,7 +364,6 @@ class DeviceParameterDevicesViewController: UIViewController {
         tableView = UITableView()
         tableView.separatorStyle = .none
         tableView.register(DeviceParameterDeviceCell.classForCoder(), forCellReuseIdentifier: "cell")
-        tableView.rowHeight = SCRYFrom(72)
         tableView.dataSource = self
         tableView.delegate = self
         view.addSubview(tableView)
@@ -321,6 +375,7 @@ class DeviceParameterDevicesViewController: UIViewController {
         
         groupsView = DeviceGroupsView()
         groupsView.sortBtn.isHidden = true
+        groupsView.itemSize = CGSize(width: SCRXFrom(88), height: SCRYFrom(40))
         groupsView.selectCountLabel.isHidden = false
         groupsView.lineView.isHidden = true
         groupsView.datas = groupDatas
@@ -349,9 +404,18 @@ extension DeviceParameterDevicesViewController: UITableViewDataSource, UITableVi
         let device = showDevices[indexPath.row]
         cell.device = device
         if device.supportPwmFrequency {
-            cell.pwmFailedImageView.isHidden = !settingPwmFailedNodes.contains(where: { $0.node.primaryUnicastAddress == device.primaryUnicastAddress })
             
-            if let pwm = device.tempPwm {
+            var pwm = device.tempPwm
+            if let failedData = settingPwmFailedNodes.first(where: { $0.node.primaryUnicastAddress == device.primaryUnicastAddress }) {
+                cell.pwmFailedImageView.isHidden = false
+                if case .pwmPeriod(let period) = failedData.type {
+                    pwm = period
+                }
+            }else {
+                cell.pwmFailedImageView.isHidden = true
+            }
+            
+            if let pwm = pwm {
                 cell.pwmLabel.text = "PWM: \(pwm) Hz"
             }else {
                 cell.pwmLabel.text = "PWM: --"
@@ -361,13 +425,17 @@ extension DeviceParameterDevicesViewController: UITableViewDataSource, UITableVi
             cell.pwmFailedImageView.isHidden = true
             cell.pwmLabel.isHidden = true
         }
-        if let ratedPower = device.tempRatedPower {
-            cell.ratedPowerLabel.text = "\("reted_power".localizedString): \(ratedPower)W"
-        }else {
-            cell.ratedPowerLabel.text = "\("reted_power".localizedString): --"
-        }
         
-        cell.ratedPowerFailedImageView.isHidden = !settingRatedPowerFailedNodes.contains(where: { $0.node.primaryUnicastAddress == device.primaryUnicastAddress })
+        var ratedPowerPhases = device.tempRatedPowerPhases
+        if let failedData = settingRatedPowerFailedNodes.first(where: { $0.node.primaryUnicastAddress == device.primaryUnicastAddress }) {
+            if case .ratedPower(let datas) = failedData.type {
+                ratedPowerPhases = datas
+            }
+            cell.ratedPowerFailedImageView.isHidden = false
+        }else {
+            cell.ratedPowerFailedImageView.isHidden = true
+        }
+        cell.ratedPowerLabel.text = "\("reted_power".localizedString): \(getRatedPowerStr(list: ratedPowerPhases))"
         
         if MeshLibManager.manager.isMeshNetworkConnected {
             cell.selectState = selectDevices.contains(device) ? .selected : .none
@@ -376,6 +444,23 @@ extension DeviceParameterDevicesViewController: UITableViewDataSource, UITableVi
         }
         cell.delegate = self
         return cell
+    }
+    
+    func tableView(_ tableView: UITableView, heightForRowAt indexPath: IndexPath) -> CGFloat {
+        let device = showDevices[indexPath.row]
+        
+        if device.supportPwmFrequency {
+            var ratedPowerPhases = device.tempRatedPowerPhases
+            if let failedData = settingRatedPowerFailedNodes.first(where: { $0.node.primaryUnicastAddress == device.primaryUnicastAddress }) {
+                if case .ratedPower(let datas) = failedData.type {
+                    ratedPowerPhases = datas
+                }
+            }
+            if ratedPowerPhases.count > 2 {
+                return SCRYFrom(92)
+            }
+        }
+        return SCRYFrom(72)
     }
     
     func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
@@ -422,6 +507,9 @@ extension DeviceParameterDevicesViewController: DeviceParameterDeviceCellDelegat
 
 extension DeviceParameterDevicesViewController: DeviceGroupsViewDelegate {
     func view(_ view: DeviceGroupsView, didSelectAllAction selectAll: Bool) {
+        guard MeshLibManager.manager.isMeshNetworkConnected else {
+            return
+        }
         if selectAll {
             selectDevices = devices
         }else {
@@ -438,6 +526,11 @@ extension DeviceParameterDevicesViewController: DeviceGroupsViewDelegate {
     }
     
     func view(_ view: DeviceGroupsView, didSelectData data: DeviceGroupsSelectData) {
+        
+        guard MeshLibManager.manager.isMeshNetworkConnected else {
+            return
+        }
+        
         let groupDevices = data.addresss.compactMap({ address in devices.first(where: { $0.primaryUnicastAddress == address }) })
         if data.isSelected {
             selectDevices.append(contentsOf: groupDevices)
@@ -460,7 +553,7 @@ extension DeviceParameterDevicesViewController: DeviceParameterPromptViewDelegat
     /// 筛选
     func promptViewFilterAction(_ view: DeviceParameterPromptView) {
         
-        let powerDatas: [(name: String, value: Int)] = ratedPowers.map({ ($0 > 0 ? "\($0) W" : "--", $0) })
+        let powerDatas: [(name: String, value: [NodePhaseEnergyConsumption])] = ratedPowers.map({ (getRatedPowerStr(list: $0), $0) })
         
         var pwmSelectIndex: Int?
         if let value = self.filterPwmValue {
@@ -493,11 +586,6 @@ extension DeviceParameterDevicesViewController: DeviceParameterPromptViewDelegat
                 case .ratedPower:
                     let value = self.ratedPowers[selectIndex]
                     self.filterRatedPower = value
-                    if value > 0 {
-                        print("power: \(value)")
-                    }else {
-                        print("power: --")
-                    }
 //                    showDevices = showDevices.filter({ $0. })
                 }
             }
@@ -537,6 +625,7 @@ extension DeviceParameterDevicesViewController: DeviceParameterPromptViewDelegat
         let vc = SyncDevicesViewController(type: .devicesParameter(datas), reSync: true)
         vc.syncSuccessCallback = {[weak self] type in
             guard let self = self else { return }
+            self.navigationController?.popViewController(animated: true)
             switch type {
             case.devicesParameter(let datas):
                 datas.forEach { (node, types) in
@@ -545,7 +634,7 @@ extension DeviceParameterDevicesViewController: DeviceParameterPromptViewDelegat
                         case .pwmPeriod:
                             node.tempPwm = node.pwmPeriod
                         case .ratedPower:
-                            node.tempRatedPower = node.ratedPower
+                            node.tempRatedPowerPhases = node.phaseEnergyConsumptions
                         }
                     }
                 }
@@ -560,7 +649,7 @@ extension DeviceParameterDevicesViewController: DeviceParameterPromptViewDelegat
         }
         vc.backActionCallback = {[weak self] resultDatas in
             guard let self = self else { return }
-            
+            self.navigationController?.popViewController(animated: true)
             resultDatas.forEach { data in
                 data.successOperationTypes.forEach { operationType in
                     if case .configuration(let node, let type) = operationType {
@@ -571,7 +660,7 @@ extension DeviceParameterDevicesViewController: DeviceParameterPromptViewDelegat
                                 node.tempPwm = node.pwmPeriod
                                 self.settingPwmFailedNodes.removeAll(where: { $0.node.primaryUnicastAddress == node.primaryUnicastAddress })
                             case .ratedPower:
-                                node.tempRatedPower = node.ratedPower
+                                node.tempRatedPowerPhases = node.phaseEnergyConsumptions
                                 self.settingRatedPowerFailedNodes.removeAll(where: { $0.node.primaryUnicastAddress == node.primaryUnicastAddress })
                             }
                         default:
@@ -584,7 +673,7 @@ extension DeviceParameterDevicesViewController: DeviceParameterPromptViewDelegat
             self.setupFilterData()
             self.updateUI()
         }
-        
+        navigationController?.pushViewController(vc, animated: true)
     }
 }
 
@@ -623,9 +712,9 @@ extension Node {
     }
     
     /// 临时的额定功率（仅在当前页面使用）
-    var tempRatedPower: Int? {
+    var tempRatedPowerPhases: [NodePhaseEnergyConsumption] {
         get {
-            objc_getAssociatedObject(self, &Node.tempRatedPowerKey) as? Int
+            objc_getAssociatedObject(self, &Node.tempRatedPowerKey) as? [NodePhaseEnergyConsumption] ?? []
         }set {
             objc_setAssociatedObject(self, &Node.tempRatedPowerKey, newValue, .OBJC_ASSOCIATION_RETAIN)
         }

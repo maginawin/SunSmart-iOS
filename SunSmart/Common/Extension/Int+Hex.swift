@@ -158,5 +158,20 @@ extension Float {
         return roundf(self * 100) / 100.0
     }
     
+    /// 转成精简字符串 maxDigits:最大保留几位小数
+    func toSimplifyStr(maxDigits: Int) -> String {
+        
+        // 格式化逻辑
+        let formatter = NumberFormatter()
+        formatter.numberStyle = .decimal
+        formatter.maximumFractionDigits = maxDigits // 最多保留 ? 位小数
+        formatter.minimumFractionDigits = 0 // 最少保留 0 位小数（去掉多余的零）
+//        formatter.roundingMode = .up
+        formatter.groupingSeparator = ""
+        guard let formattedString = formatter.string(from: NSNumber(value: self)) else {
+            return "\(self)"
+        }
+        return "\(formattedString)"
+    }
     
 }

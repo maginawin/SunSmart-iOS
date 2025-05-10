@@ -367,7 +367,7 @@ class CustomCellModel {
 
 extension UITableViewCell {
     
-    func configureCell(isFirst: Bool, isLast: Bool) {
+    func configureCell(isFirst: Bool, isLast: Bool, backgroundColor: UIColor = .white) {
         let cornerRadius: CGFloat = SCRYFrom(10)
         var corners: CACornerMask = []
         
@@ -385,7 +385,7 @@ extension UITableViewCell {
         
         // 设置圆角
         self.backgroundColor = .clear
-        self.contentView.backgroundColor = .white
+        self.contentView.backgroundColor = backgroundColor
         if isFirst || isLast {
             self.contentView.layer.cornerRadius = cornerRadius
             self.contentView.layer.maskedCorners = corners
