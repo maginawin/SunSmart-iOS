@@ -126,10 +126,11 @@ class SyncDeviceViewCell: UITableViewCell {
             }else {
                 selectedImageView.isUserInteractionEnabled = false
                 arrowImageView.isHidden = true
-                if model.isFineshed {
+                if model.isFineshed && model.parentGroupModel != nil {
                     iconImageLeft = SCRXFrom(68)
                 }else {
                     iconImageLeft = SCRXFrom(48)
+                    selectedImageLeft = SCRXFrom(16)
                 }
             }
             

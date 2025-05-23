@@ -426,6 +426,7 @@ extension SpaceData {
         DeviceSwitchData.initDatabase()
         MeshDistributionData.initDatabase()
         DeviceDongleData.initDatabase()
+        EnergyStatisticsStaticData.initDatabase()
     }
  
     
@@ -751,6 +752,7 @@ extension GroupInfo {
         static let daylightSensorAddress = Expression<Int?>("daylightSensorAddress")
         static let scenesData = Expression<Data?>("scenesData")
         static let pwmPeriod = Expression<Int?>("pwmPeriod")
+        static let proximityLightingPath = Expression<Data?>("proximityLightingPath")
     }
     
     /// 初始化组扩展信息表
@@ -767,6 +769,7 @@ extension GroupInfo {
             builder.column(ExpressionKey.daylightSensorAddress)
             builder.column(ExpressionKey.scenesData)
             builder.column(ExpressionKey.pwmPeriod)
+            builder.column(ExpressionKey.proximityLightingPath)
             builder.unique(ExpressionKey.meshUUID, ExpressionKey.groupAddress)
         }))
         
@@ -776,6 +779,10 @@ extension GroupInfo {
             // 是否存在”pwmPeriod“属性
             if !columns.contains(where: { $0.name == "pwmPeriod" }) {
                 _ = try? SunSmartDataManager.shared.db?.run(GroupInfo.groupInfosTable.addColumn(ExpressionKey.pwmPeriod))
+            }
+            
+            if !columns.contains(where: { $0.name == "proximityLightingPath" }) {
+                _ = try? SunSmartDataManager.shared.db?.run(GroupInfo.groupInfosTable.addColumn(ExpressionKey.proximityLightingPath))
             }
         }
     }
@@ -811,6 +818,11 @@ extension GroupInfo {
                 }
                 if let pwmPeriod = row[ExpressionKey.pwmPeriod] {
                     info.pwmPeriod = UInt16(pwmPeriod)
+                }
+                // 邻近照明路径
+                if let proximityLightingPathData = row[ExpressionKey.proximityLightingPath],
+                    let proximityLightingPath = try? jsonDecoder.decode(GroupProximityLightingPathData.self, from: proximityLightingPathData) {
+                    info.proximityLightingPath = proximityLightingPath
                 }
                 // 虚拟按键
 //                info.switchs = GroupSwitch.load(meshUUID: meshUUID, meshNetworkId: row[ExpressionKey.subNetworkKey], groupAddress: address)
@@ -867,6 +879,12 @@ extension GroupInfo {
         let networkId = subnetworkId ?? MeshNetworkManager.instance.currentNetworkKey.networkId.hex
        
         let scenesData = try? jsonEncoder.encode(self.sceneExecuteDatas)
+        
+        var proximityLightingPathData: Data?
+        if let proximityLightingPath = self.proximityLightingPath {
+            proximityLightingPathData = try? jsonEncoder.encode(proximityLightingPath)
+        }
+        
         let insertOrUpdate = GroupInfo.groupInfosTable.insert(or: .replace, [
             ExpressionKey.meshUUID <- uuid,
             ExpressionKey.subNetworkKey <- networkId,
@@ -876,7 +894,8 @@ extension GroupInfo {
             ExpressionKey.profileId <- self.profile.id,
             ExpressionKey.daylightSensorAddress <- self.ambientLightSensorNodeAddress != nil ? Int(self.ambientLightSensorNodeAddress!) : nil,
             ExpressionKey.scenesData <- scenesData,
-            ExpressionKey.pwmPeriod <- self.pwmPeriod != nil ? Int(self.pwmPeriod!) : nil
+            ExpressionKey.pwmPeriod <- self.pwmPeriod != nil ? Int(self.pwmPeriod!) : nil,
+            ExpressionKey.proximityLightingPath <- proximityLightingPathData
         ])
         do {
             try SunSmartDataManager.shared.db?.run(insertOrUpdate)
@@ -1303,6 +1322,7 @@ extension Profile {
         static let powerUpCct = Expression<Int>("powerUpCct")
         static let adjustSpeed = Expression<Int>("adjustSpeed")
         static let sensitivity = Expression<Int>("sensitivity")
+        static let proximityLightingNumber = Expression<Int>("proximityLightingNumber")
     }
     
     /// 初始化组扩展信息表
@@ -1331,6 +1351,7 @@ extension Profile {
             builder.column(ExpressionKey.adjustSpeed)
             builder.column(ExpressionKey.powerUpCct)
             builder.column(ExpressionKey.sensitivity)
+            builder.column(ExpressionKey.proximityLightingNumber)
             builder.unique(ExpressionKey.meshUUID, ExpressionKey.uuid)
         }))
         
@@ -1345,6 +1366,11 @@ extension Profile {
             // 是否存在”sensitivity“属性
             if !columns.contains(where: { $0.name == "sensitivity" }) {
                 _ = try? SunSmartDataManager.shared.db?.run(Profile.profilesTable.addColumn(ExpressionKey.sensitivity, defaultValue: 100))
+            }
+            
+            // 是否存在”proximityLightingNumber“属性
+            if !columns.contains(where: { $0.name == "proximityLightingNumber" }) {
+                _ = try? SunSmartDataManager.shared.db?.run(Profile.profilesTable.addColumn(ExpressionKey.proximityLightingNumber, defaultValue: 2))
             }
             
         }
@@ -1375,7 +1401,7 @@ extension Profile {
              
                 let manualOverrideTimeout = UInt32(row[ExpressionKey.manualOverrideTimeout])
                 
-                let profile = Profile(name: row[ExpressionKey.name], id: row[ExpressionKey.uuid], type: profileType, lightData: lightData, powerUpState: powerUpState, powerUpCct: powerUpCct, manualOverrideTimeout: manualOverrideTimeout, adjustSpeed: row[ExpressionKey.adjustSpeed], sensitivity: UInt8(row[ExpressionKey.sensitivity]))
+                let profile = Profile(name: row[ExpressionKey.name], id: row[ExpressionKey.uuid], type: profileType, lightData: lightData, powerUpState: powerUpState, powerUpCct: powerUpCct, manualOverrideTimeout: manualOverrideTimeout, adjustSpeed: row[ExpressionKey.adjustSpeed], sensitivity: UInt8(row[ExpressionKey.sensitivity]), proximityLightingNumber: UInt8(row[ExpressionKey.proximityLightingNumber]))
                 profiles.append(profile)
             }
         }
@@ -1425,7 +1451,8 @@ extension Profile {
             ExpressionKey.powerUpState <- Int(self.powerUpState.rawValue),
             ExpressionKey.powerUpCct <- Int(self.powerUpCct),
             ExpressionKey.adjustSpeed <- self.adjustSpeed,
-            ExpressionKey.sensitivity <- Int(self.sensitivity)
+            ExpressionKey.sensitivity <- Int(self.sensitivity),
+            ExpressionKey.proximityLightingNumber <- Int(self.proximityLightingNumber)
         ])
         do {
             try SunSmartDataManager.shared.db?.run(insertOrUpdate)
@@ -2512,6 +2539,101 @@ extension MeshDeviceConfigInfo {
         }
         return true
         
+    }
+    
+}
+
+extension EnergyStatisticsStaticData {
+    
+    private static let energyStaticDatasTableName = "energyStaticDatas"
+    private static let energyStaticDatasTable = Table(energyStaticDatasTableName)
+    
+    struct ExpressionKey {
+        static let id = Expression<Int64>("id")
+        static let spaceId = Expression<String>("spaceId")
+        static let timestamp = Expression<Int64>("timestamp")
+        static let incomplete = Expression<Bool>("incomplete")
+        static let deviceEnergys = Expression<Data>("deviceEnergys")
+        static let groups = Expression<Data>("groups")
+    }
+    
+    /// 初始化能耗静态统计数据信息表
+    static func initDatabase() {
+        
+        _ = try? SunSmartDataManager.shared.db?.run(EnergyStatisticsStaticData.energyStaticDatasTable.create(temporary: false, ifNotExists: true, withoutRowid: false, block: { builder in
+            builder.column(ExpressionKey.id, primaryKey: true)
+            builder.column(ExpressionKey.spaceId)
+            builder.column(ExpressionKey.timestamp)
+            builder.column(ExpressionKey.incomplete)
+            builder.column(ExpressionKey.deviceEnergys)
+            builder.column(ExpressionKey.groups)
+            builder.unique(ExpressionKey.timestamp, ExpressionKey.spaceId)
+        }))
+    }
+    
+    /// 加载能耗静态统计数据list（Static Data）最新数据在前面
+    /// - Parameters:
+    ///   - spaceId: 空间id
+    /// - Returns: 能耗静态统计数据list
+    static func load(spaceId: String) -> [EnergyStatisticsStaticData] {
+        
+        let filter = EnergyStatisticsStaticData.energyStaticDatasTable.filter(ExpressionKey.spaceId == spaceId).order(ExpressionKey.timestamp.desc)
+
+        var datas: [EnergyStatisticsStaticData] = []
+        if let rows = try? SunSmartDataManager.shared.db?.prepare(filter) {
+            for row in rows {
+                if let deviceEnergyDatas = try? jsonDecoder.decode([DeviceTotalEnergyData].self, from: row[ExpressionKey.deviceEnergys]) {
+                    
+                    let groups = try? jsonDecoder.decode([Group].self, from: row[ExpressionKey.groups])
+                    
+                    let data = EnergyStatisticsStaticData(timestamp: Int64(row[ExpressionKey.timestamp]), incomplete: row[ExpressionKey.incomplete], deviceEnergyDatas: deviceEnergyDatas, groups: groups ?? [])
+                    datas.append(data)
+                }
+            }
+        }
+        return datas
+    }
+    
+    /// 保存能耗静态数据到数据库
+    /// - Parameter spaceId: 对应spaceId
+    /// - Returns: 是否成功
+    @discardableResult func save(spaceId: String) -> Bool {
+        
+        guard let deviceEnergysData = try? jsonEncoder.encode(self.deviceEnergyDatas), let groupsData = try? jsonEncoder.encode(self.groups) else {
+            return false
+        }
+        let insertOrUpdate = EnergyStatisticsStaticData.energyStaticDatasTable.insert(or: .replace, [
+            ExpressionKey.spaceId <- spaceId,
+            ExpressionKey.timestamp <- self.timestamp,
+            ExpressionKey.incomplete <- self.incomplete,
+            ExpressionKey.deviceEnergys <- deviceEnergysData,
+            ExpressionKey.groups <- groupsData
+        ])
+        do {
+            try SunSmartDataManager.shared.db?.run(insertOrUpdate)
+        } catch {
+            print(error)
+            return false
+        }
+        return true
+        
+    }
+    
+    /// 删除对应能耗静态统计数据数据（Static Data）
+    /// - Parameters:
+    ///   - spaceId: 空间id
+    /// - Returns: 是否成功
+    @discardableResult func delete(spaceId: String) -> Bool {
+        
+        let predicate = EnergyStatisticsStaticData.energyStaticDatasTable.filter(ExpressionKey.spaceId == spaceId && ExpressionKey.timestamp == self.timestamp)
+
+        do {
+            try SunSmartDataManager.shared.db?.run(predicate.delete())
+        } catch {
+            print(error)
+            return false
+        }
+        return true
     }
     
 }

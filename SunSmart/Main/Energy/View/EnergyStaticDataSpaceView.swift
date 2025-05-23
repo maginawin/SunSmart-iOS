@@ -34,9 +34,14 @@ class EnergyStaticDataSpaceView: UIView {
     private var harvestNewDataBtn: UIButton!
     private var viewHarvestHistoryBtn: UIButton!
     
+    /// 最近采集的数据
+    private var latestHarvestData: EnergyStatisticsStaticData?
+    /// 更早采集的数据
+    private var previousHarvestData: EnergyStatisticsStaticData?
+    
     weak var delegate: EnergyStaticDataSpaceViewDelegate?
     
-    private var sections: [[EnergyDataType]] = [[.totalEnergy], [.latestHarvestData, .previousHarvestData, .harvestInterval]]
+    private var sections: [[EnergyDataType]] = [[.totalEnergy], [.latestHarvestData]]
     
     override init(frame: CGRect) {
         super.init(frame: frame)
@@ -46,6 +51,18 @@ class EnergyStaticDataSpaceView: UIView {
     
     required init?(coder: NSCoder) {
         fatalError("init(coder:) has not been implemented")
+    }
+    
+    /// 更新数据
+    func updateData(latestHarvestData: EnergyStatisticsStaticData?, previousHarvestData: EnergyStatisticsStaticData?) {
+        self.latestHarvestData = latestHarvestData
+        self.previousHarvestData = previousHarvestData
+        
+        self.sections = [[.totalEnergy], [.latestHarvestData]]
+        if latestHarvestData != nil && previousHarvestData != nil {
+            self.sections = [[.totalEnergy], [.latestHarvestData, .previousHarvestData, .harvestInterval]]
+        }
+        tableView.reloadData()
     }
     
     /// 查看采集能耗历史数据
@@ -273,12 +290,24 @@ extension EnergyStaticDataSpaceView: UITableViewDataSource, UITableViewDelegate 
         var cell: UITableViewCell!
         if option == .totalEnergy {
             let totalEnergyCell = tableView.dequeueReusableCell(withIdentifier: "totalEnergyCell", for: indexPath) as! SpaceTotalHarvestDataCell
-            totalEnergyCell.totalEnergyDataLabel.text = "26782.02 kWh"
-            totalEnergyCell.maxRatedEnergyDataLabel.text = "43800.68 kWh"
-            totalEnergyCell.totalEnergyDataLabel.text = "26782.02 kWh"
-            totalEnergyCell.ratedPowerBtn.setTitle("1000KW", for: .normal)
-            totalEnergyCell.economyPercentageBtn.setTitle("38.9%", for: .normal)
-            totalEnergyCell.economyValueBtn.setTitle("17018.66 kWh", for: .normal)
+            if let harvestData = latestHarvestData {
+                
+                totalEnergyCell.totalEnergyDataLabel.text = "\((Double(harvestData.preciseTotalEnergyUse) / 1000.0).toSimplifyStr(maxDigits: 2)) kWh"
+                totalEnergyCell.maxRatedEnergyDataLabel.text = "\((Double(harvestData.maxTotalEnergyUse) / 1000.0).toSimplifyStr(maxDigits: 2)) kWh"
+                totalEnergyCell.ratedPowerBtn.setTitle("\((Double(harvestData.totalRatedPower) / 10000.0).toSimplifyStr(maxDigits: 2)) kW", for: .normal)
+                
+                totalEnergyCell.economyPercentageBtn.setTitle("\(harvestData.energySavingPercentage.toSimplifyStr(maxDigits: 1))%", for: .normal)
+                
+                totalEnergyCell.economyValueBtn.setTitle("\((Double(harvestData.energySaving) / 1000).toSimplifyStr(maxDigits: 2)) kWh", for: .normal)
+                
+            }else {
+                totalEnergyCell.totalEnergyDataLabel.text = "--"
+                totalEnergyCell.maxRatedEnergyDataLabel.text = "--"
+                totalEnergyCell.ratedPowerBtn.setTitle("--", for: .normal)
+                totalEnergyCell.economyPercentageBtn.setTitle("--", for: .normal)
+                totalEnergyCell.economyValueBtn.setTitle("--", for: .normal)
+            }
+    
             cell = totalEnergyCell
         }else {
             let historyEnergyCell = tableView.dequeueReusableCell(withIdentifier: "historyEnergyCell", for: indexPath) as! SpaceHarvestDataHistoryCell
@@ -286,19 +315,40 @@ extension EnergyStaticDataSpaceView: UITableViewDataSource, UITableViewDelegate 
             switch option {
             case .latestHarvestData:
                 historyEnergyCell.titleLabel.text = "latest_harvest_data".localizedString
-                historyEnergyCell.harvestDataLabel.text = "26782.02 kWh"
-                historyEnergyCell.timeLabel.text = String.dateConvert(timestamp: "\(Int(Date().timeIntervalSince1970))", dateFormat: "M d, yyyy, hh:mm a")
-                
+                if let harvestData = latestHarvestData {
+                    historyEnergyCell.harvestDataLabel.text = "\(Double(harvestData.preciseTotalEnergyUse / 1000).toSimplifyStr(maxDigits: 2)) kWh"
+                    historyEnergyCell.timeLabel.text = String.dateConvert(timestamp: "\(harvestData.timestamp)", dateFormat: "M d, yyyy, hh:mm a")
+                    historyEnergyCell.incompleteImageView.isHidden = !harvestData.incomplete
+                }else {
+                    historyEnergyCell.harvestDataLabel.text = "0 kWh"
+                    historyEnergyCell.timeLabel.text = "--"
+                    historyEnergyCell.incompleteImageView.isHidden = true
+                }
             case .previousHarvestData:
+                
                 historyEnergyCell.titleLabel.text = "previous_harvest_data".localizedString
-                historyEnergyCell.harvestDataLabel.text = "26000.00 kWh"
-                historyEnergyCell.timeLabel.text = String.dateConvert(timestamp: "\(Int(Date().timeIntervalSince1970))", dateFormat: "M d, yyyy, hh:mm a")
+                if let harvestData = previousHarvestData {
+                    historyEnergyCell.harvestDataLabel.text = "\(Double(harvestData.preciseTotalEnergyUse / 1000).toSimplifyStr(maxDigits: 2)) kWh"
+                    historyEnergyCell.timeLabel.text = String.dateConvert(timestamp: "\(harvestData.timestamp)", dateFormat: "M d, yyyy, hh:mm a")
+                    historyEnergyCell.incompleteImageView.isHidden = !harvestData.incomplete
+                }else {
+                    historyEnergyCell.harvestDataLabel.text = "0 kWh"
+                    historyEnergyCell.timeLabel.text = "--"
+                    historyEnergyCell.incompleteImageView.isHidden = true
+                }
             case .harvestInterval:
                 
                 historyEnergyCell.titleLabel.text = "interval".localizedString
-                historyEnergyCell.harvestDataLabel.text = "782.02 kWh"
-                let interval = 7500
-                historyEnergyCell.timeLabel.text = String(format: "hour_minutes_interval".localizedString, interval / 3600, interval % 3600 / 60)
+                if let latestHarvestData = latestHarvestData, let previousHarvestData = previousHarvestData {
+                    let kwh = Double(latestHarvestData.preciseTotalEnergyUse - previousHarvestData.preciseTotalEnergyUse) / 1000
+                    historyEnergyCell.harvestDataLabel.text = "\(kwh.toSimplifyStr(maxDigits: 2)) kWh"
+                    
+                    let interval = latestHarvestData.timestamp - previousHarvestData.timestamp
+                    historyEnergyCell.timeLabel.text = String(format: "hour_minutes_interval".localizedString, interval / 3600, interval % 3600 / 60)
+                }else {
+                    historyEnergyCell.harvestDataLabel.text = "0 kWh"
+                    historyEnergyCell.timeLabel.text = "--"
+                }
             default:
                 break
             }

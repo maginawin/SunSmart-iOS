@@ -1259,6 +1259,10 @@ class GroupInfo {
         return MeshNetworkManager.instance.switchs.filter({ $0.bindGroupAddresses.contains(self.address) || $0.unbindGroupAddresses.contains(self.address) })
     }
     
+    /// 邻近照明路径数据
+    var proximityLightingPath: GroupProximityLightingPathData?
+    
+    
     init(address: Address, imageId: Int = 0, imageText: String? = nil, sceneExecuteDatas: [SceneExecuteData] = [], bindSchedules: [Schedule] = [], profile: Profile = .init(type: .occupancy_daylight)) {
         self.address = address
         self.imageId = imageId
@@ -1776,6 +1780,8 @@ extension Node {
     //    case `switch`
         /// dongle能耗采集
         case dongle
+        /// 网关
+        case gateway
         /// 未知
         case unknown
         
@@ -1789,6 +1795,8 @@ extension Node {
                 self = .dongle
             case "Switches":
                 self = .switches
+            case "Gateway":
+                self = .gateway
             default:
                 self = .unknown
             }

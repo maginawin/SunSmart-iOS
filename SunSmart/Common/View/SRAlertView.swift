@@ -390,7 +390,7 @@ class SRAlertView: UIView {
         messageLabel.font = messageFont
         messageLabel.textAlignment = .left
         messageLabel.text = message
-        if message == nil || message?.isEmpty ?? true {
+        if message == nil || message?.isEmpty ?? true || textValueChangedBack == nil {
             messageLabel.snp.remakeConstraints { make in
                 make.left.equalTo(textField).offset(SCRXFrom(8))
                 make.right.equalTo(textField)

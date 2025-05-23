@@ -58,9 +58,12 @@ extension UIButton {
 //    #pragma clang diagnostic ignored "-Wdeprecated-declarations"
         // Single line, no wrapping. Truncation based on the NSLineBreakMode.
         
+        let attibutes = [NSAttributedString.Key.font : self.titleLabel?.font ?? FONTS(14)]
         
-        
-        let size = (self.currentTitle as? NSString)?.size(withAttributes: [NSAttributedString.Key.font : self.titleLabel?.font ?? FONTS(14)]) ?? CGSizeZero
+        var size = (self.currentTitle as? NSString)?.size(withAttributes: attibutes) ?? .zero
+        if self.titleLabel?.numberOfLines != 1 {
+            size = (self.currentTitle as? NSString)?.boundingRect(with: CGSize(width: self.frame.size.width, height: CGFloat(MAXFLOAT)), options: .usesLineFragmentOrigin, attributes: attibutes, context: nil).size ?? .zero
+        }
         var labelWidth = size.width
         
         
@@ -101,6 +104,7 @@ extension UIButton {
                 contentEdgeInsets = UIEdgeInsets(top: 0, left: spacing/2, bottom: 0, right: spacing/2)
                 
         case .top:
+//            imageOffsetY = (labelHeight + imageHeight + spacing) / 2
             imageEdgeInsets = UIEdgeInsets(top: -imageOffsetY, left: imageOffsetX, bottom: imageOffsetY, right: -imageOffsetX)
             titleEdgeInsets = UIEdgeInsets(top: labelOffsetY, left: -labelOffsetX, bottom: -labelOffsetY, right: labelOffsetX)
             contentEdgeInsets = UIEdgeInsets(top: imageOffsetY, left: -changedWidth/2, bottom: changedHeight-imageOffsetY, right: -changedWidth/2)

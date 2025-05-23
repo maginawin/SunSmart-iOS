@@ -195,10 +195,15 @@ extension ProfileType {
             if let vendorModel = node.sunricherVendorModel {
                 messageHandles.append(MeshMessageHandle(message: SunricherVendorSet(function: .lightAutoAdjustEnabled(enabled: enabled)), model: vendorModel))
             }
-        case .sensorEnabled(let sensorModels, let group):
+        case .sensorEnabled(let sensorModels, let publishAddress, let delay):
             let models = sensorModels.filter({ $0.modelIdentifier == .sensorServerModelId })
+            
+            var period: Publish.Period = .disabled
+            if delay > 0 {
+                period = .init(delay)
+            }
             models.forEach({
-                let message = ConfigModelPublicationSet(Publish(to: group.address, using: MeshNetworkManager.instance.currentApplicationKey, usingFriendshipMaterial: false, ttl: MeshNetworkManager.instance.networkParameters.defaultTtl, period: .disabled, retransmit: .disabled), to: $0)!
+                let message = ConfigModelPublicationSet(Publish(to: MeshAddress(publishAddress), using: MeshNetworkManager.instance.currentApplicationKey, usingFriendshipMaterial: false, ttl: MeshNetworkManager.instance.networkParameters.defaultTtl, period: period, retransmit: .disabled), to: $0)!
                 messageHandles.append(MeshMessageHandle(message: message, address: node.primaryUnicastAddress))
             })
       

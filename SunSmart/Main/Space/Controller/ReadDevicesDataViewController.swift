@@ -47,7 +47,7 @@ class ReadDevicesDataViewController: UIViewController {
     /// 点击返回回调
     var backActionCallback: (([ReadFailedData])->Void)?
     /// 获取能耗数据使用缺失数据回调
-    var harvestEnergyUseIncompleteDataCallback: (()->Void)?
+    var harvestEnergyUseIncompleteDataCallback: (([ReadFailedData])->Void)?
     
     init(type: ReadType) {
         
@@ -149,8 +149,8 @@ class ReadDevicesDataViewController: UIViewController {
             nodes.forEach { node in
                 let model = SyncDevicesModel(name: node.name ?? "", address: node.primaryUnicastAddress)
                 model.operationType = .read(node: node, type: .deviceReadParmeters(parameterType: .totalDeviceEnergyUse))
-                model.setRatedPower = node.phaseEnergyConsumptions.count > 0
-                if node.phaseEnergyConsumptions.isEmpty {
+                model.missingData = node.phaseEnergyConsumptions.isEmpty
+                if model.missingData {
                     model.state = .failed
                 }
                 readSection.devices.append(model)
@@ -179,58 +179,64 @@ class ReadDevicesDataViewController: UIViewController {
     /// 返回
     @objc private func backAction() {
         if backActionCallback != nil {
-            // 失败的设备数据list
-            var failedDatas: [ReadFailedData] = []
-            if let section = self.sections.first {
-                let failedDevices = section.devices.filter({ $0.state == .failed })
-                // 判断哪些设备有失败
-                if failedDevices.count > 0 {
-                    var allNodes: [Node] = []
-                    switch type {
-                    case .parameters(let nodes, _):
-                        allNodes = nodes
-                    case .harvestData(let nodes):
-                        allNodes = nodes
-                    }
-                    // 获取读取失败的设备参数类型
-                    failedDevices.forEach { deviceModel in
-                        if let node = allNodes.first(where: { $0.primaryUnicastAddress == deviceModel.address }) {
-                            
-                            var actionTypes: [ActionType] = []
-                            if let operationType = deviceModel.operationType, case .read(_, let type) = operationType {
-                                
-                                actionTypes.append(type)
-                            }else {
-                                deviceModel.steps.forEach { step in
-                                    let list: [ActionType] = step.tasks.compactMap { task in
-                                        if case .read(_, let type) = task.operationType, task.state == .failed {
-                                            return type
-                                        }
-                                        return nil
-                                    }
-                                    actionTypes.append(contentsOf: list)
-                                }
-                            }
-                            
-                            let parameterTypes: [DeviceReadParameterType] = actionTypes.compactMap({ type in
-                                switch type {
-                                case .deviceReadParmeters(let parameterType):
-                                    return parameterType
-                                default:
-                                    return nil
-                                }
-                            })
-                            failedDatas.append(ReadFailedData(node: node, parameterTypes: parameterTypes))
-                        }
-                    }
-                }
-            }
-            backActionCallback?(failedDatas)
+           
+            backActionCallback?(getReadFailedDatas())
         }else {
             navigationController?.popViewController(animated: true)
         }
     }
     
+    /// 获取失败数据list
+    private func getReadFailedDatas() -> [ReadFailedData] {
+        
+        // 失败的设备数据list
+        var failedDatas: [ReadFailedData] = []
+        if let section = self.sections.first {
+            let failedDevices = section.devices.filter({ $0.state == .failed })
+            // 判断哪些设备有失败
+            if failedDevices.count > 0 {
+                var allNodes: [Node] = []
+                switch type {
+                case .parameters(let nodes, _):
+                    allNodes = nodes
+                case .harvestData(let nodes):
+                    allNodes = nodes
+                }
+                // 获取读取失败的设备参数类型
+                failedDevices.forEach { deviceModel in
+                    if let node = allNodes.first(where: { $0.primaryUnicastAddress == deviceModel.address }) {
+                        
+                        var actionTypes: [ActionType] = []
+                        if let operationType = deviceModel.operationType, case .read(_, let type) = operationType {
+                            
+                            actionTypes.append(type)
+                        }else {
+                            deviceModel.steps.forEach { step in
+                                let list: [ActionType] = step.tasks.compactMap { task in
+                                    if case .read(_, let type) = task.operationType, task.state == .failed {
+                                        return type
+                                    }
+                                    return nil
+                                }
+                                actionTypes.append(contentsOf: list)
+                            }
+                        }
+                        
+                        let parameterTypes: [DeviceReadParameterType] = actionTypes.compactMap({ type in
+                            switch type {
+                            case .deviceReadParmeters(let parameterType):
+                                return parameterType
+                            default:
+                                return nil
+                            }
+                        })
+                        failedDatas.append(ReadFailedData(node: node, parameterTypes: parameterTypes))
+                    }
+                }
+            }
+        }
+        return failedDatas
+    }
     
     @objc private func rightItemAction() {
         if readState == .inRead { // stop
@@ -254,7 +260,7 @@ class ReadDevicesDataViewController: UIViewController {
             var selectModels: [SyncDevicesModel] = []
             
             sections.forEach({
-                let models = $0.allModels.filter({ (($0 as? SyncDevicesModel)?.isSelected ?? false) && $0.state == .failed }) as! [SyncDevicesModel]
+                let models = $0.allModels.filter({ (($0 as? SyncDevicesModel)?.isSelected ?? false) && $0.state == .failed && !($0 as! SyncDevicesModel).missingData }) as! [SyncDevicesModel]
                  selectModels.append(contentsOf: models)
             })
             if selectModels.count > 0 {
@@ -283,21 +289,25 @@ class ReadDevicesDataViewController: UIViewController {
         sender.isSelected = !sender.isSelected
         
 //        var failedModels: [SyncDevicesModel] = []
+        var reReadEnabled = false
         sections.forEach({
-            let models = $0.allModels.filter({ ($0 is SyncDevicesModel || $0 is SyncDevicesGroupModel) && $0.state == .failed })
+            let models = $0.allModels.filter({ ($0 is SyncDevicesModel || $0 is SyncDevicesGroupModel) && $0.state == .failed && !(($0 as? SyncDevicesModel)?.missingData ?? false) })
 //            failedModels.append(contentsOf: models)
             models.forEach({
                 ($0 as? SyncDevicesModel)?.isSelected = sender.isSelected
                 ($0 as? SyncDevicesGroupModel)?.isSelected = sender.isSelected
             })
+            if !reReadEnabled, models.count > 0 {
+                reReadEnabled = true
+            }
         })
-        navigationItem.rightBarButtonItem?.isEnabled = sender.isSelected
+        navigationItem.rightBarButtonItem?.isEnabled = reReadEnabled
         tableView.reloadData()
     }
     
     /// 使用缺失的数据（设备能耗）
     @objc private func useIncompleteDataBtnAction() {
-        harvestEnergyUseIncompleteDataCallback?()
+        harvestEnergyUseIncompleteDataCallback?(getReadFailedDatas())
         backAction()
     }
     
@@ -309,29 +319,44 @@ class ReadDevicesDataViewController: UIViewController {
     /// 更新状态UI
     private func updateSyncStateUI() {
 
+        var devices: [SyncDevicesModel] = []
         if let section = sections.first {
-            progressLabel.text = "\(section.devices.filter({ $0.state == .successful }).count)/\(section.devices.count)"
+            devices = section.devices
         }
+        progressLabel.text = "\(devices.filter({ $0.state == .successful }).count)/\(devices.count)"
         
         if case .harvestData = type {
             useIncompleteDataBtn.isHidden = readState != .failure
             abandonAllDataBtn.isHidden = readState != .failure
+
+            if devices.contains(where: { !$0.missingData }) {
+                useIncompleteDataBtn.backgroundColor = .white
+                useIncompleteDataBtn.isUserInteractionEnabled = true
+            }else {
+                useIncompleteDataBtn.backgroundColor = RGB(220, 220, 220)
+                useIncompleteDataBtn.isUserInteractionEnabled = false
+            }
         }
         
         switch readState {
         case .inRead:
-            navigationItem.rightBarButtonItem?.title = "stop".localizedString
+            navigationItem.rightBarButtonItem?.title = "STOP".localizedString
             navigationItem.rightBarButtonItem?.isEnabled = true
             bottomView.isHidden = false
             selectAllBtn.isHidden = true
-            tableView.contentInset = .zero
+            tableView.contentInset = UIEdgeInsets(top: SCRYFrom(7), left: 0, bottom: 0, right: 0)
             backBtn.isHidden = true
         case .success:
             bottomView.isHidden = true
             navigationItem.rightBarButtonItem = UIBarButtonItem()
             backBtn.isHidden = false
         case .failure:
-            navigationItem.rightBarButtonItem?.title = "re_sync".localizedString
+            if case .harvestData = type {
+                navigationItem.rightBarButtonItem?.title = "re-harvest".localizedString
+            }else {
+                navigationItem.rightBarButtonItem?.title = "re_read".localizedString
+            }
+            
             bottomView.isHidden = false
             selectAllBtn.isHidden = false
             backBtn.isHidden = false
@@ -341,19 +366,19 @@ class ReadDevicesDataViewController: UIViewController {
             
              sections.forEach({
                  
-                 let failedDevices = $0.allModels.filter({ $0 is SyncDevicesModel && $0.state == .failed  }) as! [SyncDevicesModel]
+                 let failedDevices = $0.allModels.filter({ $0 is SyncDevicesModel && $0.state == .failed && !($0 as! SyncDevicesModel).missingData  }) as! [SyncDevicesModel]
                  failedModels.append(contentsOf: failedDevices)
                  
-                 let selectDevices = $0.allModels.filter({ (($0 as? SyncDevicesModel)?.isSelected ?? false) && $0.state == .failed }) as! [SyncDevicesModel]
+                 let selectDevices = $0.allModels.filter({ (($0 as? SyncDevicesModel)?.isSelected ?? false) && $0.state == .failed && !($0 as! SyncDevicesModel).missingData }) as! [SyncDevicesModel]
                  
                  selectModels.append(contentsOf: selectDevices)
             })
             
-            selectAllBtn.isSelected = selectModels.count == failedModels.count
+            selectAllBtn.isSelected = selectModels.count > 0 && selectModels.count == failedModels.count
             if bottomView.frame == .zero {
                 bottomView.layoutIfNeeded()
             }
-            tableView.contentInset = UIEdgeInsets(top: 0, left: 0, bottom: bottomView.height, right: 0)
+            tableView.contentInset = UIEdgeInsets(top: SCRYFrom(7), left: 0, bottom: bottomView.height, right: 0)
             navigationItem.rightBarButtonItem?.isEnabled = selectModels.count > 0
         }
         
@@ -681,10 +706,11 @@ extension ReadDevicesDataViewController: UITableViewDataSource, UITableViewDeleg
         case let deviceModel as SyncDevicesModel:
             let cell = tableView.dequeueReusableCell(withIdentifier: "deviceCell", for: indexPath) as! SyncDeviceViewCell
             cell.model = deviceModel
-            if case .harvestData = type, !deviceModel.setRatedPower {
+            if case .harvestData = type, deviceModel.missingData {
                 cell.stateImageView.image = UIImage(named: "rated_power_noset")
                 cell.resyncBtn.isHidden = true
                 cell.stateImageView.isUserInteractionEnabled = true
+                cell.selectedImageView.isHidden = true
             }else {
                 cell.stateImageView.isUserInteractionEnabled = false
             }
@@ -712,12 +738,13 @@ extension ReadDevicesDataViewController: UITableViewDataSource, UITableViewDeleg
     }
     
     func tableView(_ tableView: UITableView, heightForHeaderInSection section: Int) -> CGFloat {
-        switch section {
-        case 0:
-            return SCRYFrom(32)
-        default:
-            return SCRYFrom(40)
-        }
+//        switch section {
+//        case 0:
+//            return SCRYFrom(32)
+//        default:
+//            return SCRYFrom(40)
+//        }
+        return 0.01
     }
     
     func tableView(_ tableView: UITableView, heightForRowAt indexPath: IndexPath) -> CGFloat {
@@ -739,7 +766,7 @@ extension ReadDevicesDataViewController: UITableViewDataSource, UITableViewDeleg
                     deviceModel.isShow = !deviceModel.isShow
                 }
             }else { // 选择
-                if deviceModel.state == .successful || deviceModel.state == .failed {
+                if deviceModel.state == .successful || (deviceModel.state == .failed && !deviceModel.missingData) {
                     deviceModel.isSelected = !deviceModel.isSelected
                     
                     if let groupModel = deviceModel.parentGroupModel {
@@ -803,7 +830,7 @@ extension ReadDevicesDataViewController: SyncDeviceViewCellDelegate {
     
     /// 状态图标点击回调
     func cell(_ cell: SyncDeviceViewCell, stateImageClickAction model: SyncDevicesModel) {
-        if !model.setRatedPower {
+        if model.missingData {
             SRAlertView(message: "rated_power_no_set_message".localizedString, actions: [SRAlertAction(title: "GOT IT".localizedString)]).show()
         }
     }
@@ -852,14 +879,14 @@ extension ReadDevicesDataViewController {
 
 fileprivate extension SyncDevicesModel {
     
-    static var setRatedPowerKey = 1
+    static var missingDataKey = 1
     
-    /// 是否设置了额定功率
-    var setRatedPower: Bool {
+    /// 是否缺失数据（如缺少额定功率设置，导致读取能耗前置条件缺失）
+    var missingData: Bool {
         get {
-            objc_getAssociatedObject(self, &SyncDevicesModel.setRatedPowerKey) as? Bool ?? false
+            objc_getAssociatedObject(self, &SyncDevicesModel.missingDataKey) as? Bool ?? false
         }set {
-            objc_setAssociatedObject(self, &SyncDevicesModel.setRatedPowerKey, newValue, .OBJC_ASSOCIATION_RETAIN)
+            objc_setAssociatedObject(self, &SyncDevicesModel.missingDataKey, newValue, .OBJC_ASSOCIATION_RETAIN)
         }
     }
     

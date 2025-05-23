@@ -221,7 +221,7 @@ class Profile: Copyable {
                 
                 levels = [.lightnessRange(lowEndTrim...highEndTrim), .occupancyLevel(occupancyLevel), .vacantLevel(vacantLevel), .autoMinValue(autoMinLevel, enabled: autoMinLevel <= 30)]
                 times = [.t1(t1), .t2(t2), .t3(t3), .t4(t4), .t5(t5)]
-            case .occupancy, .vacancy:
+            case .occupancy, .vacancy, .proximityLighting:
                 levels = [.lightnessRange(lowEndTrim...highEndTrim), .occupancyLevel(occupancyLevel), .vacantLevel(vacantLevel)]
                 times = [.t1(t1), .t2(t2), .t3(t3), .t4(t4), .t5(t5)]
             case .daylight:
@@ -266,6 +266,8 @@ class Profile: Copyable {
                 return 5
             case .manualControl:
                 return 6
+            case .proximityLighting:
+                return 7
             }
         }
         
@@ -284,6 +286,8 @@ class Profile: Copyable {
                 self = .daylight
             case 6:
                 self = .manualControl
+            case 7:
+                self = .proximityLighting
             default:
                 return nil
             }
@@ -328,6 +332,8 @@ class Profile: Copyable {
                 return ("profile_daylight".localizedString, "profile_daylight", "profile_daylight_desc".localizedString, [.luminaire, .lightSensor])
             case .manualControl:
                 return ("profile_manual_control".localizedString, "profile_manual_control", "profile_manual_control_desc".localizedString, [.luminaire, .manualControl])
+            case .proximityLighting:
+                return ("profile_predictive_lighting".localizedString, "profile_occupancy", "profile_occupancy_desc".localizedString, [.luminaire, .occupancySensor])
             }
         }
         
@@ -343,6 +349,8 @@ class Profile: Copyable {
         case daylight
         /// 手动控制
         case manualControl
+        /// 邻近照明
+        case proximityLighting
     }
     
     /// 上电状态
@@ -396,8 +404,10 @@ class Profile: Copyable {
 //    var adjustSpeed: Int = 50
     /// 灵敏度（移动检测）
     var sensitivity: UInt8 = 80
+    /// 邻近照明数量
+    var proximityLightingNumber: UInt8 = 2
     
-    init(name: String = "", id: String = UUID().uuidString, type: ProfileType = .occupancy_daylight, lightData: LightData, powerUpState: PowerUpState, powerUpCct: UInt16 = 4500, manualOverrideTimeout: UInt32, adjustSpeed: Int = 50, sensitivity: UInt8 = 80) {
+    init(name: String = "", id: String = UUID().uuidString, type: ProfileType = .occupancy_daylight, lightData: LightData, powerUpState: PowerUpState, powerUpCct: UInt16 = 4500, manualOverrideTimeout: UInt32, adjustSpeed: Int = 50, sensitivity: UInt8 = 80, proximityLightingNumber: UInt8 = 2) {
         self.name = name
         self.id = id
         self.type = type
@@ -407,6 +417,7 @@ class Profile: Copyable {
         self.manualOverrideTimeout = manualOverrideTimeout
         self.adjustSpeed = adjustSpeed
         self.sensitivity = sensitivity
+        self.proximityLightingNumber = proximityLightingNumber
     }
     
     init(type: ProfileType) {
@@ -452,14 +463,15 @@ class Profile: Copyable {
         self.manualOverrideTimeout = profile.manualOverrideTimeout
         self.adjustSpeed = profile.adjustSpeed
         self.sensitivity = profile.sensitivity
+        self.proximityLightingNumber = profile.proximityLightingNumber
     }
     
     func copy() -> Self {
-        return Profile(name: name, id: id, type: type, lightData: lightData.copy(), powerUpState: powerUpState, powerUpCct: powerUpCct, manualOverrideTimeout: manualOverrideTimeout, adjustSpeed: adjustSpeed, sensitivity: sensitivity) as! Self
+        return Profile(name: name, id: id, type: type, lightData: lightData.copy(), powerUpState: powerUpState, powerUpCct: powerUpCct, manualOverrideTimeout: manualOverrideTimeout, adjustSpeed: adjustSpeed, sensitivity: sensitivity, proximityLightingNumber: proximityLightingNumber) as! Self
     }
     
     static func == (lhs: Profile, rhs: Profile) -> Bool {
-        return lhs.id == rhs.id && lhs.type == rhs.type && lhs.lightData == rhs.lightData && lhs.powerUpState.rawValue == rhs.powerUpState.rawValue && lhs.powerUpCct == rhs.powerUpCct && lhs.manualOverrideTimeout == rhs.manualOverrideTimeout && lhs.adjustSpeed == rhs.adjustSpeed && lhs.sensitivity == rhs.sensitivity
+        return lhs.id == rhs.id && lhs.type == rhs.type && lhs.lightData == rhs.lightData && lhs.powerUpState.rawValue == rhs.powerUpState.rawValue && lhs.powerUpCct == rhs.powerUpCct && lhs.manualOverrideTimeout == rhs.manualOverrideTimeout && lhs.adjustSpeed == rhs.adjustSpeed && lhs.sensitivity == rhs.sensitivity && lhs.proximityLightingNumber == rhs.proximityLightingNumber
     }
     
 }

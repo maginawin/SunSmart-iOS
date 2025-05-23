@@ -442,7 +442,38 @@ class SyncDevicesViewController: UIViewController {
                         removeSection.devices.append(deleteDeviceModel)
                     }
                 }
-                
+            case .proximityLightingPath(let path):
+                path.nodes.forEach { node in
+                    if let syncData = node.getNodeSyncProximityLighting() {
+                        let syncDeviceModel = SyncDevicesModel(name: node.name ?? "", address: node.primaryUnicastAddress)
+                        syncDeviceModel.imageName = node.iconName
+                        
+                        switch syncData {
+                        case .proximityLightingNeighbor(let relayNumber, let neighborAddresses):
+                            
+                            let taskModel = SyncDeviceStepTaskModel(name: "proximity_lighting_path".localizedString, operationType: .configuration(node: node, type: .proximityLightingNeighbor(relayNumber: relayNumber, neighborAddresses: neighborAddresses)))
+                            
+                            let step = SyncDeviceStepModel(type: "proximity_lighting_path".localizedString, state: .none, tasks: [taskModel])
+                            taskModel.parentStepModel = step
+                            
+                            step.parentDeviceModel = syncDeviceModel
+                            syncDeviceModel.steps.append(step)
+                            
+                        case .proximityLightingEnabled(let enabled):
+                            let name = enabled ? "proximity_lighting_enabled".localizedString : "proximity_lighting_disable".localizedString
+                            let taskModel = SyncDeviceStepTaskModel(name: name, operationType: .configuration(node: node, type: .proximityLightingEnabled(enabled: enabled)))
+                            
+                            let step = SyncDeviceStepModel(type: name, state: .none, tasks: [taskModel])
+                            taskModel.parentStepModel = step
+                            
+                            step.parentDeviceModel = syncDeviceModel
+                            syncDeviceModel.steps.append(step)
+                        default:
+                            break
+                        }
+                        configurationSection.devices.append(syncDeviceModel)
+                    }
+                }
             }
         
             if removeSection.groups.count > 0 || removeSection.devices.count > 0 || removeSection.switchProxy != nil {
@@ -645,6 +676,24 @@ class SyncDevicesViewController: UIViewController {
                     $0.parentStepModel = deviceParametersStepModel
                 })
                 configturationSteps.append(deviceParametersStepModel)
+            case .proximityLightingEnabled(let enabled):
+                
+                let name = enabled ? "proximity_lighting_enabled".localizedString : "proximity_lighting_disable".localizedString
+                let taskModel = SyncDeviceStepTaskModel(name: name, operationType: .configuration(node: node, type: .proximityLightingEnabled(enabled: enabled)))
+                
+                let step = SyncDeviceStepModel(type: name, state: .none, tasks: [taskModel])
+                taskModel.parentStepModel = step
+                
+                configturationSteps.append(step)
+                
+            case .proximityLightingNeighbor(let relayNumber, let neighborAddresses):
+                
+                let taskModel = SyncDeviceStepTaskModel(name: "proximity_lighting_path".localizedString, operationType: .configuration(node: node, type: .proximityLightingNeighbor(relayNumber: relayNumber, neighborAddresses: neighborAddresses)))
+                
+                let step = SyncDeviceStepModel(type: "proximity_lighting_path".localizedString, state: .none, tasks: [taskModel])
+                taskModel.parentStepModel = step
+                configturationSteps.append(step)
+                
             default:
                 break
             }
@@ -994,9 +1043,9 @@ class SyncDevicesViewController: UIViewController {
                         }
                     }
                     
-                    let resultSuccessful = !resultMessageHandles.contains(where: { !$0.isSuccessful })
+//                    let resultSuccessful = !resultMessageHandles.contains(where: { !$0.isSuccessful })
                     let operationSuccessful = ((model as? SyncDevicesModel)?.operationType?.isSuccessful ?? (model as? SyncDeviceStepTaskModel)?.operationType.isSuccessful) ?? false
-                    if resultSuccessful && operationSuccessful {
+                    if operationSuccessful {
                         model.state = .successful
                     }else {
                         model.state = .failed
@@ -1440,6 +1489,8 @@ extension SyncDevicesViewController {
         case devicesParameter(_ datas: [(node: Node, parameters: [DeviceParameterType])])
         /// Dongle设备
         case dongle(_ dongleData: DeviceDongleData)
+        /// 邻近照明路径
+        case proximityLightingPath(path: GroupProximityLightingPathData)
     }
     
     /// 同步状态

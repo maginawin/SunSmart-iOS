@@ -8,6 +8,13 @@
 
 import UIKit
 
+protocol LYCirclePieViewDelegate: AnyObject {
+    
+    /// 点击饼状图对应扇区回调 percent：对应扇区 pieColor: 颜色 point: 扇区中心点
+    func circlePieView(_ circlePieView: LYCirclePieView, didSelectedPiePercent percent: LYAnglePercent, pieColor: UIColor, point: CGPoint)
+    
+}
+
 /// 饼状图
 @IBDesignable
 class LYCirclePieView: UIView {
@@ -24,6 +31,13 @@ class LYCirclePieView: UIView {
     var colors:[UIColor] {
         pieVisual.colors
     }
+    
+    lazy var markerView: CirclePieMarkerView = {
+        let markerView = CirclePieMarkerView()
+        return markerView
+    }()
+    
+    weak var delegate: LYCirclePieViewDelegate?
     
     let bottomColor: UIColor = #colorLiteral(red: 0.9254901961, green: 0.9254901961, blue: 0.9254901961, alpha: 1)
     
@@ -279,6 +293,68 @@ class LYCirclePieView: UIView {
     override func prepareForInterfaceBuilder() {
         super.prepareForInterfaceBuilder()
         self.pieVisual = LYPieVisual.demo
+    }
+    
+    // MARK: - Action
+    
+    override func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent?) {
+        super.touchesBegan(touches, with: event)
+        
+        guard let point = touches.first?.location(in: self) else { return }
+        
+        let center = CGPoint(x: bounds.midX, y: bounds.midY)
+        
+        // Step 1: 判断是否在圆内
+        let dx = point.x - center.x
+        let dy = point.y - center.y
+        let distance = sqrt(dx*dx + dy*dy)
+        
+        if distance > pieRadius || distance < centerRadius {
+            return  // 不在扇形范围内
+        }
+        
+        // Step 2: 计算点击点对应角度
+        let angle = atan2(dy, dx)
+        // 3. 将角度转换到与你系统相同的坐标系（-π/2作为起点）
+        let normalizedTouchAngle = (angle + .pi * 2 + .pi / 2).truncatingRemainder(dividingBy: .pi * 2)
+        
+        // 4. 转换为百分比形式（0.0~1.0）
+        let touchPercent = normalizedTouchAngle / (.pi * 2)
+        
+        
+        // Step 3: 判断点击命中哪个扇区
+        
+        for (index, pieAngle) in angles.enumerated() {
+            if touchPercent >= pieAngle.percentStart && touchPercent <= pieAngle.percentStart + pieAngle.percentLength {
+                // ✅ 命中扇区
+                //                    selectedSector = sector
+                //                    showAnnotation(for: sector, at: point)
+                let midAngle = (pieAngle.startAngle + pieAngle.endAngle) / 2
+                let r = pieRadius * 0.8 // 控制偏移距离，比如 0.7 表示 70% 半径处放置标注
+                
+                let x = center.x + r * cos(midAngle)
+                let y = center.y + r * sin(midAngle)
+                
+                delegate?.circlePieView(self, didSelectedPiePercent: pieAngle, pieColor: colors[index % colors.count], point: CGPoint(x: x, y: y))
+//                markerView.updateData(data: pieAngle, color: colors[index % colors.count])
+//                
+//                if markerView.superview == nil {
+//                    markerView.isHidden = false
+//                    addSubview(markerView)
+//                    markerView.snp.makeConstraints { make in
+//                        make.center.equalTo(CGPoint(x: x, y: y))
+//                        make.height.equalTo(38)
+//                    }
+//                }else {
+//                    markerView.isHidden = false
+//                    markerView.snp.updateConstraints { make in
+//                        make.center.equalTo(CGPoint(x: x, y: y))
+//                    }
+//                }
+                break
+            }
+        }
+        
     }
     
 }

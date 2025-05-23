@@ -20,6 +20,8 @@ enum NodeSyncType {
     case switches(switchData: DeviceSwitchData? = nil)
     /// Dongle数据
     case dongle(dongleData: DeviceDongleData)
+    /// 邻近照明
+    case proximityLightingPath(path: GroupProximityLightingPathData)
     /// 全部
     case all
 }
@@ -58,12 +60,16 @@ enum NodeSyncData {
     case syncCollectionSchedules(schedules: [(Int, SchedulerRegistryEntry)])
     /// 删除采集能耗日程
     case deleteCollectionSchedules(scheduleIds: [Int])
+    /// 设置邻近照明启用禁用
+    case proximityLightingEnabled(_ enabled: Bool)
+    /// 设置邻近照明邻居数量+邻居list
+    case proximityLightingNeighbor(relayNumber: UInt8, neighborAddresses: [Address])
 }
 
 /// 配置类型
 enum ProfileType {
     /// 传感器启用（启用后才能与接收传感器状态）
-    case sensorEnabled(sensorModels: [Model], group: Group)
+    case sensorEnabled(sensorModels: [Model], publishAddress: Address, delay: TimeInterval = 0)
     /// 禁用传感器状态发布（禁用发布传感器状态）
     case sensorDisable(sensorModels: [Model])
     /// 灯光控制模式是否打开
@@ -225,6 +231,10 @@ extension Node {
                 syncDatas.append(.deleteSwitchs(switchDatas: deleteSwitchData.unlinkSwitchs))
             }
             
+            // 邻近照明
+            if let syncData = getNodeSyncProximityLighting(group: group) {
+                syncDatas.append(syncData)
+            }
             
         case .scenes(let scene):
             
@@ -302,7 +312,11 @@ extension Node {
                     syncDatas.append(.syncCollectionSchedules(schedules: syncSchedules))
                 }
             }
-            
+        case .proximityLightingPath(let path):
+            // 邻近照明
+            if let syncData = getNodeSyncProximityLighting() {
+                syncDatas.append(syncData)
+            }
         case .all:
             
             // 未配置完成
@@ -394,6 +408,12 @@ extension Node {
         if deleteSwitchData.unlinkSwitchs.count > 0 {
             return true
         }
+        
+        // 邻近照明
+        if getNodeSyncProximityLighting(group: group) != nil {
+            return true
+        }
+        
         return false
     }
     
@@ -454,6 +474,12 @@ extension Node {
         var enableSensorModels: [Model] = []
         // 禁用的传感器model
         var disableSensorModels: [Model] = []
+        /// 传感器model上报地址
+        var publishAddress = group.address.address
+        // 邻近照明profile不能将publish发送到组里，否则会让全部设备进入第一阶段，但客户端需要收到传感器状态，所以设置上报到客户端组
+        if groupProfile.type == .proximityLighting {
+            publishAddress = .localClientGroupAddress
+        }
         
         if self.group == nil || groupState == .inGroup {
             
@@ -461,7 +487,7 @@ extension Node {
             let daylightType = groupProfile.type == .occupancy_daylight || groupProfile.type == .vacancy_daylight || groupProfile.type == .daylight
         
             // 占用类型
-            let occupancyType = groupProfile.type == .occupancy_daylight || groupProfile.type == .vacancy_daylight || groupProfile.type == .occupancy || groupProfile.type == .vacancy
+            let occupancyType = groupProfile.type == .occupancy_daylight || groupProfile.type == .vacancy_daylight || groupProfile.type == .occupancy || groupProfile.type == .vacancy || groupProfile.type == .proximityLighting
             // 组内是否启用了光照传感器
             var daylightEnabled = false
             if let daylightNode = group.info.ambientLightSensorNode, daylightNode.sensorCalibrated || daylightNode.restoreData?.daylightCalibrationValue != nil {
@@ -472,23 +498,23 @@ extension Node {
                     enableSensorModels.append(model)
                 }
             }else {
-                if let model = ambientLightSensorModel, model.publish?.publicationAddress == group.address {
+                if let model = ambientLightSensorModel, model.publish != nil {
                     disableSensorModels.append(model)
                 }
             }
             
             if occupancyType {
-                if let model = presenceDetectedSensorModel, model.publish?.publicationAddress != group.address {
+                if let model = presenceDetectedSensorModel, model.publish?.publicationAddress.address != publishAddress {
                     enableSensorModels.append(model)
                 }
             }else {
-                if let model = presenceDetectedSensorModel, model.publish?.publicationAddress == group.address {
+                if let model = presenceDetectedSensorModel, model.publish?.publicationAddress.address == publishAddress {
                     disableSensorModels.append(model)
                 }
             }
             
             if enableSensorModels.count > 0 {
-                syncProfile.append(.sensorEnabled(sensorModels: enableSensorModels, group: group))
+                syncProfile.append(.sensorEnabled(sensorModels: enableSensorModels, publishAddress: publishAddress, delay: 0))
             }
             if disableSensorModels.count > 0 {
                 syncProfile.append(.sensorDisable(sensorModels: disableSensorModels))
@@ -693,7 +719,7 @@ extension Node {
             }
             
         }else {
-            let disableSensorModels = sensorModels.filter({ $0.publish?.publicationAddress == group.address })
+            let disableSensorModels = sensorModels.filter({ $0.publish != nil })
             if disableSensorModels.count > 0 {
                 syncProfile.append(.sensorDisable(sensorModels: disableSensorModels))
             }
@@ -900,4 +926,81 @@ extension Node {
         return (delteSwitchProxy, unlinkSwitchs)
     }
     
+    
+    /// 获取需要同步的邻近照明数据
+    func getNodeSyncProximityLighting(group: Group? = nil) -> NodeSyncData? {
+        guard let group = group ?? self.group else { return nil }
+        // 检查所在组的profile类型是否是临近照明
+        guard group.info.profile.type == .proximityLighting, groupState == .inGroup else {
+            if self.proximityLightingEnabled { // 禁用邻近照明功能
+                return .proximityLightingEnabled(false)
+            }
+            return nil
+        }
+        
+        // 邻居数量
+        let neighborNumber = group.info.profile.proximityLightingNumber
+        guard let proximityLightingPath = group.info.proximityLightingPath else {
+            return nil
+        }
+        // 邻居地址list
+        var neighborAddresses: [Address] = []
+        
+        // 获取路径上的邻居
+        for path in proximityLightingPath.paths {
+            // 包含当前设备的item index
+            if let pathItemIndex = path.items.firstIndex(where: { $0.address != nil && self.contains(elementWithAddress: $0.address!) }) {
+                
+                // 获取设备前一个邻居
+                if pathItemIndex > 0 {
+//                    let neighborItems = path.items[max(0, pathItemIndex - Int(neighborNumber))..<pathItemIndex]
+//                    neighborItems.forEach({ item in
+//                        if let address = item.address, !neighborAddresses.contains(address) {
+//                            neighborAddresses.append(address)
+//                        }
+//                    })
+                    let neighborItem = path.items[pathItemIndex - 1]
+                    if let address = neighborItem.address, !neighborAddresses.contains(address) {
+                        neighborAddresses.append(address)
+                    }
+                }
+                
+                // 获取设备后一个邻居
+                if pathItemIndex + 1 < path.items.count {
+//                    let start = pathItemIndex + 1
+//                    let neighborItems = path.items[start..<min(start + Int(neighborNumber), path.items.count)]
+//                    neighborItems.forEach({ item in
+//                        if let address = item.address, !neighborAddresses.contains(address) {
+//                            neighborAddresses.append(address)
+//                        }
+//                    })
+                    let neighborItem = path.items[pathItemIndex + 1]
+                    if let address = neighborItem.address, !neighborAddresses.contains(address) {
+                        neighborAddresses.append(address)
+                    }
+                }
+            }
+        }
+        
+        // 获取zone内的邻居
+        for zone in proximityLightingPath.zones {
+            var addresses = zone.addresses
+            if let index = addresses.firstIndex(where: { self.contains(elementWithAddress: $0) }) {
+                addresses.remove(at: index)
+                let zoneNeighborAddresses = addresses.filter({ address in !neighborAddresses.contains(address)  })
+                neighborAddresses.append(contentsOf: zoneNeighborAddresses)
+            }
+        }
+
+        // 需配置的邻居列表与设备是否相符
+        if self.proximityLightingNeighborAddresses.sorted() == neighborAddresses.sorted(), self.proximityLightingRelayCount == neighborNumber {
+            if !self.proximityLightingEnabled {
+                return .proximityLightingEnabled(true)
+            }
+        }else {
+            // 同步邻居数据
+            return .proximityLightingNeighbor(relayNumber: neighborNumber, neighborAddresses: neighborAddresses)
+        }
+        return nil
+    }
 }

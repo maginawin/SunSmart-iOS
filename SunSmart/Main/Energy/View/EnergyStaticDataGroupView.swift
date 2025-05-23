@@ -23,9 +23,58 @@ class EnergyStaticDataGroupView: UIView {
     private var collectionView: UICollectionView!
     private var flowLayout: UICollectionViewFlowLayout!
     
-    var energyPieDatas: [EnergyPieData] = []
+    lazy var markerView: CirclePieMarkerView = {
+        let markerView = CirclePieMarkerView()
+        return markerView
+    }()
+    
     /// 优化排序后的数据
     private var sortEnergyPieDatas: [EnergyPieData] = []
+    var energyPieDatas: [EnergyPieData] = []
+    
+    /// 更新数据
+    func updateData(latestHarvestData: EnergyStatisticsStaticData?, energyPieDatas: [EnergyPieData]) {
+        
+        self.energyPieDatas = energyPieDatas
+        
+        if let harvestData = latestHarvestData {
+            
+            let totalEnergyAttStr = NSMutableAttributedString(string: "\((Double(harvestData.preciseTotalEnergyUse) / 1000).toSimplifyStr(maxDigits: 2)) kWh", attributes: [.font: UIFont.systemFont(ofSize: 16, weight: .semibold)])
+            totalEnergyAttStr.addAttributes([.font: UIFont.systemFont(ofSize: 16)], range: (totalEnergyAttStr.string as NSString).range(of: "kWh"))
+            totalEnergyDataLabel.attributedText = totalEnergyAttStr
+            
+            economyValueBtn.setTitle("\((Double(harvestData.energySaving) / 1000).toSimplifyStr(maxDigits: 2)) kWh", for: .normal)
+            economyPercentageBtn.setTitle(harvestData.energySavingPercentage.toSimplifyStr(maxDigits: 1), for: .normal)
+        }else {
+            totalEnergyDataLabel.attributedText = NSAttributedString(string: "--")
+            economyValueBtn.setTitle("--", for: .normal)
+            economyPercentageBtn.setTitle("--", for: .normal)
+        }
+       
+        
+        if energyPieDatas.isEmpty {
+            sortEnergyPieDatas = []
+            contentView.showEmptyDataView(title: "no_data".localizedString)
+        }else {
+            contentView.hideEmptyDataView()
+            
+            sortEnergyPieDatas = EnergyTestData.smartReorderEntryPicDatas(energyPieDatas)
+            let tempDatas = sortEnergyPieDatas.map({
+                LYPieData(title: $0.name, detail: String(format: "%d%%", Int($0.percent * 100.0)), percent: $0.percent)
+            })
+            
+            let tempColors = sortEnergyPieDatas.map({ $0.color })
+            let data = LYPieVisual.init(datas: tempDatas, colors: tempColors)
+            pieChartView.pieVisual = data
+            pieChartView.setNeedsDisplay()
+        }
+        
+        collectionView.snp.updateConstraints { make in
+            make.height.equalTo(SCRYFrom(41 + 4) * ceil(Double(energyPieDatas.count) / 3.0))
+        }
+        collectionView.reloadData()
+    }
+
 
     override init(frame: CGRect) {
         super.init(frame: frame)
@@ -33,7 +82,7 @@ class EnergyStaticDataGroupView: UIView {
         layer.cornerRadius = SCRYFrom(10)
         backgroundColor = .white
         
-        setupData()
+//        setupData()
         
         setupUI()
     }
@@ -42,20 +91,23 @@ class EnergyStaticDataGroupView: UIView {
         fatalError("init(coder:) has not been implemented")
     }
     
-
     
-    private func setupData() {
-        
-        let total: Double = 26782.02
-        let tempColors = UIColor.generateDistinctColors(count: 16)
-        let tempPercentages = EnergyTestData.generateRandomPercentages(count: 16, minimum: 0.01)
-        let preDatas = tempColors.enumerated().map({
-            let percentage = tempPercentages[$0.offset]
-            return EnergyPieData(name: "Group \($0.offset + 1)", color: $0.element, percent: tempPercentages[$0.offset], data: String(format: "%.2f kWh", total * percentage))
-        })
-        
-        energyPieDatas = preDatas
-        sortEnergyPieDatas = EnergyTestData.smartReorderEntryPicDatas(preDatas)
+//    private func setupData() {
+//        
+//        let total: Double = 26782.02
+//        let tempColors = UIColor.generateDistinctColors(count: 16)
+//        let tempPercentages = EnergyTestData.generateRandomPercentages(count: 16, minimum: 0.01)
+//        let preDatas = tempColors.enumerated().map({
+//            let percentage = tempPercentages[$0.offset]
+//            return EnergyPieData(name: "Group \($0.offset + 1)", color: $0.element, percent: tempPercentages[$0.offset], data: String(format: "%.2f kWh", total * percentage))
+//        })
+//        
+//        energyPieDatas = preDatas
+//        sortEnergyPieDatas = EnergyTestData.smartReorderEntryPicDatas(preDatas)
+//    }
+    
+    @objc private func hidePieMarker() {
+        markerView.isHidden = true
     }
     
     private func setupUI() {
@@ -63,6 +115,11 @@ class EnergyStaticDataGroupView: UIView {
         scrollView = UIScrollView()
         scrollView.alwaysBounceVertical = false
         scrollView.showsVerticalScrollIndicator = false
+        
+        let tap = UITapGestureRecognizer(target: self, action: #selector(hidePieMarker))
+        tap.cancelsTouchesInView = false
+        scrollView.addGestureRecognizer(tap)
+        
         addSubview(scrollView)
         scrollView.snp.makeConstraints { make in
             make.edges.equalToSuperview()
@@ -74,18 +131,11 @@ class EnergyStaticDataGroupView: UIView {
             make.edges.width.equalToSuperview()
         }
         
-        let tempDatas = sortEnergyPieDatas.map({
-            LYPieData(title: $0.name, detail: String(format: "%d%%", Int($0.percent * 100.0)), percent: $0.percent)
-        })
-        
-        let tempColors = sortEnergyPieDatas.map({ $0.color })
-        let data = LYPieVisual.init(datas: tempDatas, colors: tempColors)
-        
         pieChartView = LYCirclePieView()
         pieChartView.centerRadius = SCRXFrom(60)
         pieChartView.pieRadius = SCRXFrom(88)
-        pieChartView.pieVisual = data
         pieChartView.backgroundColor = .white
+        pieChartView.delegate = self
         contentView.addSubview(pieChartView)
         pieChartView.snp.makeConstraints { make in
             make.top.equalTo(SCRYFrom(16))
@@ -93,10 +143,7 @@ class EnergyStaticDataGroupView: UIView {
             make.height.equalTo(SCRYFrom(282))
         }
         
-        totalEnergyDataLabel = UILabel(text: "26782.02 kWh", textColor: TextBlack_Color)
-        let totalEnergyAttStr = NSMutableAttributedString(string: "26782.02 kWh", attributes: [.font: UIFont.systemFont(ofSize: 16, weight: .semibold)])
-        totalEnergyAttStr.addAttributes([.font: UIFont.systemFont(ofSize: 16)], range: (totalEnergyAttStr.string as NSString).range(of: "kWh"))
-        totalEnergyDataLabel.attributedText = totalEnergyAttStr
+        totalEnergyDataLabel = UILabel(text: "", textColor: TextBlack_Color)
         contentView.addSubview(totalEnergyDataLabel)
         totalEnergyDataLabel.snp.makeConstraints { make in
             make.center.equalTo(pieChartView)
@@ -109,7 +156,7 @@ class EnergyStaticDataGroupView: UIView {
             make.bottom.equalTo(totalEnergyDataLabel.snp.top).offset(SCRYFrom(-10))
         }
         
-        economyValueBtn = UIButton(title: "17018.66 kWh", titleSize: 12, titleWeight: .light, titleColor: TextBlack_Color, fit: false, normalImageName: "energy_reduce")
+        economyValueBtn = UIButton(title: "--", titleSize: 12, titleWeight: .light, titleColor: TextBlack_Color, fit: false, normalImageName: "energy_reduce")
         economyValueBtn.isUserInteractionEnabled = false
         economyValueBtn.setImagePosition(position: .left, spacing: SCRXFrom(4))
         contentView.addSubview(economyValueBtn)
@@ -118,7 +165,7 @@ class EnergyStaticDataGroupView: UIView {
             make.centerX.equalTo(totalEnergyDataLabel)
         }
         
-        economyPercentageBtn = UIButton(title: "38.9%", titleSize: 12, titleWeight: .light, titleColor: TextBlack_Color, fit: false, normalImageName: "energy_reduce")
+        economyPercentageBtn = UIButton(title: "--", titleSize: 12, titleWeight: .light, titleColor: TextBlack_Color, fit: false, normalImageName: "energy_reduce")
         economyPercentageBtn.isUserInteractionEnabled = false
         economyPercentageBtn.setImagePosition(position: .left, spacing: SCRXFrom(4))
         contentView.addSubview(economyPercentageBtn)
@@ -268,6 +315,33 @@ class EnergyStaticDataGroupView: UIView {
 //        pieChartView.data = data
 //    }
     
+}
+
+extension EnergyStaticDataGroupView: LYCirclePieViewDelegate {
+    
+    /// 点击饼状图对应扇区回调 percent：对应扇区
+    func circlePieView(_ circlePieView: LYCirclePieView, didSelectedPiePercent percent: LYAnglePercent, pieColor: UIColor, point: CGPoint) {
+        
+        let contentPoint = circlePieView.convert(point, to: contentView)
+        markerView.isHidden = false
+        if markerView.superview == nil {
+            contentView.addSubview(markerView)
+            markerView.snp.makeConstraints { make in
+                make.center.equalTo(contentPoint)
+                make.height.equalTo(38)
+            }
+        }else {
+            markerView.snp.updateConstraints { make in
+                make.center.equalTo(contentPoint)
+            }
+        }
+        markerView.updateData(data: percent, color: pieColor)
+        
+    }
+    
+    func circlePieView(_ circlePieView: LYCirclePieView, didDeselectedPiePercent percent: LYAnglePercent) {
+        markerView.isHidden = true
+    }
 }
 
 extension EnergyStaticDataGroupView: UICollectionViewDataSource, UICollectionViewDelegateFlowLayout {

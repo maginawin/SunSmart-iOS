@@ -8,6 +8,9 @@
 import UIKit
 import NordicSigMeshSDK
 
+/// 静态能耗数据通信通知
+let energyStaticDataUpdateNotificationName = "EnergyStaticDataUpdateNotification"
+
 class EnergyStaticDataViewController: UIViewController {
     
     /// 能耗数据显示类型
@@ -81,12 +84,18 @@ class EnergyStaticDataViewController: UIViewController {
     private var deviceFilterType: GroupFilterSelectView.FilterType?
     /// 设备排序类型
     private var deviceSortType: DeviceEnergySortType = .descending
-    /// 空间内组list
+    /// 有统计数据的组list
     private var groups: [Group] = []
-    /// 空间内设备list
-    private var devices: [Node] = []
+    /// 统计数据设备list
+    private var devices: [DeviceTotalEnergyData] = []
     /// 页面展示的设备list
-    private var showDevices: [Node] = []
+    private var showDevices: [DeviceTotalEnergyData] = []
+    /// 最近采集的数据
+    private var latestHarvestData: EnergyStatisticsStaticData?
+    /// 更早采集的数据
+    private var previousHarvestData: EnergyStatisticsStaticData?
+    /// 组能耗统计数据
+    private var groupEnergyPieDatas: [EnergyPieData] = []
     
     let space: SpaceData
     
@@ -94,8 +103,8 @@ class EnergyStaticDataViewController: UIViewController {
         self.space = space
         super.init(nibName: nil, bundle: nil)
         
-        groups = MeshNetworkManager.instance.groups
-        devices = MeshNetworkManager.instance.realNodes.filter({ $0.deviceType == .light })
+//        groups = MeshNetworkManager.instance.groups
+//        devices = MeshNetworkManager.instance.realNodes.filter({ $0.deviceType == .light })
     }
     
     required init?(coder: NSCoder) {
@@ -107,27 +116,112 @@ class EnergyStaticDataViewController: UIViewController {
         
         view.backgroundColor = Background_Color
         
+        setupData()
+        
         setupUI()
         
         updateUI()
+        
+        // 更新能耗数据
+        NotificationCenter.default.addObserver(forName: .init(energyStaticDataUpdateNotificationName), object: nil, queue: nil) {[weak self] _ in
+            self?.viewType = .space
+            self?.setupData()
+            self?.updateUI()
+        }
+//        energySpaceView.updateData(latestHarvestData: self.latestHarvestData, previousHarvestData: self.previousHarvestData)
     }
     
-    private func convertDeviceTotalEnergyDatas(nodes: [Node]) {
-        // 有能耗的设备list
-        let validNodes = nodes.filter({ $0.phaseEnergyConsumptions.count > 0 })
+    private func setupData() {
+        
+        let staticDatas = EnergyStatisticsStaticData.load(spaceId: space.id)
+        
+        latestHarvestData = staticDatas.first
+        if staticDatas.count > 1 {
+            previousHarvestData = staticDatas[1]
+        }
+        
+        // Group数据
+        if let harvestData = latestHarvestData {
+            groups.removeAll()
+            // 未在组里的设备能耗数据list
+            let notInGroupDeviceEnergyDatas = harvestData.deviceEnergyDatas.filter({ deviceEnergyData in deviceEnergyData.groupAddress == nil })
+            
+            let colors = UIColor.generateDistinctColors(count: harvestData.groups.count + (notInGroupDeviceEnergyDatas.count > 0 ? 1 : 0))
+            
+            var energyPieDatas: [EnergyPieData] = []
+            
+            
+            for (index, group) in harvestData.groups.enumerated() {
+                
+                let deviceEnergyDatas = harvestData.deviceEnergyDatas.filter({ deviceEnergyData in deviceEnergyData.groupAddress == group.address.address })
+                
+                let total = deviceEnergyDatas.reduce(UInt64(0)) { partial, energyData in
+                    partial + UInt64(energyData.preciseTotalEnergyUse ?? 0)
+                }
+                let percent = Double(total) / Double(harvestData.preciseTotalEnergyUse)
+                
+                let data = EnergyPieData(name: group.name, color: colors[index], percent: percent, data: "\((Double(total) / 1000).toSimplifyStr(maxDigits: 1)) kWh")
+                energyPieDatas.append(data)
+                if deviceEnergyDatas.count > 0 {
+                    groups.append(group)
+                }
+            }
+            
+            // 不在组里面设备能耗数据
+            if notInGroupDeviceEnergyDatas.count > 0 {
+                
+                let total = notInGroupDeviceEnergyDatas.reduce(UInt64(0)) { partial, energyData in
+                    partial + UInt64(energyData.preciseTotalEnergyUse ?? 0)
+                }
+                let percent = Double(total) / Double(harvestData.preciseTotalEnergyUse)
+                let data = EnergyPieData(name: "not_in_group".localizedString, color: colors.last!, percent: percent, data: "\((Double(total) / 1000).toSimplifyStr(maxDigits: 1)) kWh")
+                energyPieDatas.append(data)
+            }
+            groupEnergyPieDatas = energyPieDatas
+            
+            groups = harvestData.groups
+            devices = harvestData.deviceEnergyDatas
+        }else {
+            groupEnergyPieDatas = []
+            groups = []
+            devices = []
+        }
+        
+    }
+    
+    
+    private func convertDeviceTotalEnergyDatas(nodes: [Node], failedNodes: [Node]) {
         
         let timestamp = Int64(Date().timeIntervalSince1970)
-        let enrtgyDatas: [DeviceTotalEnergyData] = validNodes.compactMap({ node in
-            guard let maxRatedPower = node.phaseEnergyConsumptions.first(where: { $0.percent == 100 })?.power,
-               let totalDeviceEnergyUse = node.totalDeviceEnergyUse,
-               let preciseTotalDeviceEnergyUse = node.preciseTotalDeviceEnergyUse else {
-                return nil
+        let enrtgyDatas = nodes.map({ node in
+            // 状态
+            var state: DeviceTotalEnergyData.State = failedNodes.contains(where: { $0.primaryUnicastAddress == node.primaryUnicastAddress }) ? .failed : .success
+            // 最大功率
+            var maxRatedPower: UInt16?
+            /// 最大功率下已使用总能耗 W/h
+            var totalDeviceEnergyUse: UInt32?
+            /// 准确的已使用总能耗 W/h
+            var preciseTotalEnergyUse: UInt32?
+            // 采集成功状态下才记录最新数据
+            if state == .success {
+                totalDeviceEnergyUse = node.totalDeviceEnergyUse
+                preciseTotalEnergyUse = node.preciseTotalDeviceEnergyUse
             }
-            return DeviceTotalEnergyData(name: node.name ?? "", address: node.primaryUnicastAddress, timestamp: timestamp, maxRatedPower: maxRatedPower, maxTotalEnergyUse: totalDeviceEnergyUse, preciseTotalEnergyUse: preciseTotalDeviceEnergyUse)
+            
+            if node.phaseEnergyConsumptions.isEmpty {
+                state = .notSetPower
+            }else {
+                maxRatedPower = (node.phaseEnergyConsumptions.first(where: { $0.percent == 100 }) ?? node.phaseEnergyConsumptions.last)?.power
+            }
+            return DeviceTotalEnergyData(name: node.name ?? "", address: node.primaryUnicastAddress, productId: node.productIdentifier, groupAddress: node.group?.address.address, timestamp: timestamp, maxRatedPower: maxRatedPower, maxTotalEnergyUse: totalDeviceEnergyUse, preciseTotalEnergyUse: preciseTotalEnergyUse, state: state)
         })
         
-        print(enrtgyDatas)
+        let staticData = EnergyStatisticsStaticData(timestamp: timestamp, incomplete: failedNodes.count > 0, deviceEnergyDatas: enrtgyDatas, groups: MeshNetworkManager.instance.groups)
+        staticData.save(spaceId: space.id)
         
+        setupData()
+        // 更新数据
+        updateUI()
     }
     
     /// 读取mesh设备能耗
@@ -142,15 +236,17 @@ class EnergyStaticDataViewController: UIViewController {
                 self?.navigationController?.popViewController(animated: true)
             }
             // 保存采集的设备总能耗
-            self.convertDeviceTotalEnergyDatas(nodes: nodes)
+            self.convertDeviceTotalEnergyDatas(nodes: nodes, failedNodes: [])
         }
-        vc.harvestEnergyUseIncompleteDataCallback = {[weak self] in
+        vc.harvestEnergyUseIncompleteDataCallback = {[weak self] result in
             // 使用缺失的能耗数据
-            
+            var failedNodes: [Node] = []
+            result.forEach { failedData in
+                failedNodes.append(failedData.node)
+            }
             // 保存采集的设备总能耗
-            self?.convertDeviceTotalEnergyDatas(nodes: nodes)
+            self?.convertDeviceTotalEnergyDatas(nodes: nodes, failedNodes: failedNodes)
         }
-        
         navigationController?.pushViewController(vc, animated: true)
     }
     
@@ -165,12 +261,14 @@ class EnergyStaticDataViewController: UIViewController {
             devicesTableView.isHidden = true
             deviceSortBtn.isHidden = true
             deviceFilterBtn.isHidden = true
+            energySpaceView.updateData(latestHarvestData: self.latestHarvestData, previousHarvestData: self.previousHarvestData)
         case .group:
             energySpaceView.isHidden = true
             energyGroupView.isHidden = false
             devicesTableView.isHidden = true
             deviceSortBtn.isHidden = true
             deviceFilterBtn.isHidden = true
+            energyGroupView.updateData(latestHarvestData: self.latestHarvestData, energyPieDatas: self.groupEnergyPieDatas)
         case .device:
             energySpaceView.isHidden = true
             energyGroupView.isHidden = true
@@ -185,20 +283,20 @@ class EnergyStaticDataViewController: UIViewController {
             if let filterType = deviceFilterType {
                 switch filterType {
                 case .notInGroup:
-                    showDevices = devices.filter({ $0.group == nil })
+                    showDevices = devices.filter({ $0.groupAddress == nil })
                 case .group(let group):
-                    showDevices = devices.filter({ $0.group?.address.address == group.address.address })
+                    showDevices = devices.filter({ $0.groupAddress == group.address.address })
                 }
             }else {
                 showDevices = devices
             }
             // 排序
             if deviceSortType == .descending {
-                showDevices.sort(by: { ($0.totalDeviceEnergyUse ?? 0) < ($1.totalDeviceEnergyUse ?? 0) })
+                showDevices.sort(by: { ($0.preciseTotalEnergyUse ?? 0) > ($1.preciseTotalEnergyUse ?? 0) })
             }else {
-                showDevices.sort(by: { ($0.totalDeviceEnergyUse ?? 0) > ($1.totalDeviceEnergyUse ?? 0) })
+                showDevices.sort(by: { ($0.preciseTotalEnergyUse ?? 0) < ($1.preciseTotalEnergyUse ?? 0) })
             }
-            
+            devicesTableView.reloadData()
         }
 
     }
@@ -214,6 +312,9 @@ class EnergyStaticDataViewController: UIViewController {
         TitleSelectView.show(titles: types.map({ $0.title }), anchorPoint: menuPoint, selectIndex: selectIndex ?? 0, menuWidth: menuWidth) {[weak self] index in
             guard let self = self else { return }
             self.statisticsFilterType = types[index]
+            sender.setTitle(types[index].title, for: .normal)
+            sender.sizeToFit()
+            sender.setImagePosition(position: .right, spacing: SCRXFrom(4))
             self.updateUI()
             
 //            self.devicesTableView.reloadData()
@@ -231,6 +332,10 @@ class EnergyStaticDataViewController: UIViewController {
         
         TitleSelectView.show(titles: types.map({ $0.title }), anchorPoint: menuPoint, selectIndex: selectIndex ?? 0, menuWidth: sender.width) {[weak self] index in
             guard let self = self else { return }
+            if self.latestHarvestData == nil, types[index] != .space {
+                XWHUDManager.showTipHUD("no_data".localizedString, isLineFeed: true)
+                return
+            }
             self.viewType = types[index]
             self.updateUI()
         }
@@ -252,7 +357,6 @@ class EnergyStaticDataViewController: UIViewController {
         sender.isSelected = !sender.isSelected
         deviceSortType = sender.isSelected ? .ascending : .descending
         updateUI()
-        devicesTableView.reloadData()
     }
     
     private func setupUI() {
@@ -329,7 +433,7 @@ class EnergyStaticDataViewController: UIViewController {
         
         devicesTableView = UITableView()
         devicesTableView.separatorStyle = .none
-        devicesTableView.register(DeviceParameterDeviceCell.classForCoder(), forCellReuseIdentifier: "cell")
+        devicesTableView.register(EnergyStaticDataDeviceViewCell.classForCoder(), forCellReuseIdentifier: "cell")
         devicesTableView.rowHeight = SCRYFrom(72)
         devicesTableView.backgroundColor = .clear
         devicesTableView.dataSource = self
@@ -351,26 +455,24 @@ class EnergyStaticDataViewController: UIViewController {
 extension EnergyStaticDataViewController: UITableViewDataSource, UITableViewDelegate {
     
     func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
-        return 3//showDevices.count
+        return showDevices.count
     }
     
     func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
-        let cell = tableView.dequeueReusableCell(withIdentifier: "cell", for: indexPath) as! DeviceParameterDeviceCell
-//        let device = showDevices[indexPath.row]
+        let cell = tableView.dequeueReusableCell(withIdentifier: "cell", for: indexPath) as! EnergyStaticDataDeviceViewCell
+        let device = showDevices[indexPath.row]
 //        cell.device = device
 //        cell.selectState = .none
-        cell.deviceImageView.image = UIImage(named: "device_Lighting")
-        cell.nameLabel.text = "ID001"
-        cell.selectImageView.isHidden = true
-        cell.deviceImageView.snp.remakeConstraints { make in
-            make.left.equalTo(SCRXFrom(16))
-            make.top.equalTo(SCRYFrom(12))
-            make.width.height.equalTo(30)
+        cell.deviceImageView.image =  UIImage(named: device.iconName ?? "device_unknown")
+        cell.nameLabel.text = device.name
+        if let preciseTotalEnergyUse = device.preciseTotalEnergyUse {
+            cell.energyLabel.text = "\((Double(preciseTotalEnergyUse) / 1000).toSimplifyStr(maxDigits: 2)) kWh"
+        }else {
+            cell.energyLabel.text = "--"
         }
-        cell.ratedPowerLabel.text = "101.1 kWh"
-        cell.ratedPowerLabel.snp.updateConstraints { make in
-            make.top.equalTo(cell.nameLabel.snp.bottom).offset(SCRYFrom(12))
-        }
+        cell.groupNameLabel.text = latestHarvestData?.groups.first(where: { $0.address.address == device.groupAddress })?.name ?? "not_in_group".localizedString
+        cell.onBtn.isSelected = device.selectOn
+        cell.offBtn.isSelected = device.selectOff
         cell.delegate = self
         cell.configureCell(isFirst: indexPath.row == 0, isLast: indexPath.row == tableView.numberOfRows(inSection: 0) - 1)
         return cell
@@ -378,24 +480,26 @@ extension EnergyStaticDataViewController: UITableViewDataSource, UITableViewDele
     
 }
 
-extension EnergyStaticDataViewController: DeviceParameterDeviceCellDelegate {
-    
+extension EnergyStaticDataViewController: EnergyStaticDataDeviceViewCellDelegate {
+  
     /// 设备identity事件
-    func cell(_ cell: DeviceParameterDeviceCell, deviceIdentifyAction device: Node) {
-        MeshAPI.identify(address: device.primaryUnicastAddress)
+    func deviceCellIdentifyAction(_ cell: EnergyStaticDataDeviceViewCell) {
+        guard let index = devicesTableView.indexPath(for: cell)?.row else { return }
+        MeshAPI.identify(address: showDevices[index].address)
     }
     
     /// 设备onoff事件
-    func cell(_ cell: DeviceParameterDeviceCell, deviceOnOffAction device: Node, isOn: Bool) {
-        device.isOn = isOn
+    func cell(_ cell: EnergyStaticDataDeviceViewCell, deviceOnOffAction isOn: Bool) {
+        guard let index = devicesTableView.indexPath(for: cell)?.row else { return }
+        let device = showDevices[index]
         device.selectOn = isOn
         device.selectOff = !isOn
         
         cell.onBtn.isSelected = device.selectOn
         cell.offBtn.isSelected = device.selectOff
-        
-        MeshAPI.setNodeOnOffState(address: device.primaryUnicastAddress, isOn: isOn)
+        MeshAPI.setNodeOnOffState(address: device.address, isOn: isOn)
     }
+
     
 }
 
@@ -424,7 +528,7 @@ extension EnergyStaticDataViewController: EnergyStaticDataSpaceViewDelegate {
     /// 查看历史采集的能耗数据事件
     func spaceViewViewHarvestHistoryAction(_ view: EnergyStaticDataSpaceView) {
         
-        let vc = EnergyHarvestHistoryViewController()
+        let vc = EnergyHarvestHistoryViewController(space: space)
         navigationController?.pushViewController(vc, animated: true)
     }
     
@@ -476,6 +580,31 @@ extension EnergyStaticDataViewController: EnergyHarvestSelectViewDelegate {
     /// 选择mesh设备获取能耗
     func meshDevicesEnergyHarvest(_ view: EnergyHarvestSelectView) {
         readMeshDevicesEnergy()
+    }
+    
+}
+ 
+fileprivate extension DeviceTotalEnergyData {
+    
+    static var selectOnKey = 1
+    static var selectOffKey = 2
+    
+    /// 是否选中On
+    var selectOn: Bool {
+        get {
+            objc_getAssociatedObject(self, &DeviceTotalEnergyData.selectOnKey) as? Bool ?? false
+        }set {
+            objc_setAssociatedObject(self, &DeviceTotalEnergyData.selectOnKey, newValue, .OBJC_ASSOCIATION_RETAIN)
+        }
+    }
+    
+    /// 是否选中Off
+    var selectOff: Bool {
+        get {
+            objc_getAssociatedObject(self, &DeviceTotalEnergyData.selectOffKey) as? Bool ?? false
+        }set {
+            objc_setAssociatedObject(self, &DeviceTotalEnergyData.selectOffKey, newValue, .OBJC_ASSOCIATION_RETAIN)
+        }
     }
     
 }

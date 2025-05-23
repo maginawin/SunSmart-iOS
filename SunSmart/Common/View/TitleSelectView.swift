@@ -9,6 +9,11 @@ import UIKit
 
 class TitleSelectView: UIView {
 
+    enum Style {
+        case `default`
+        case select
+    }
+    
     /// 默认内容宽度
     static let defalutWidth = SCRXFrom(164)
     /// 默认item高度
@@ -29,11 +34,12 @@ class TitleSelectView: UIView {
     private var selectBackgroundColor: UIColor = RGB(216, 216, 216, 0.1)
     private var titleColor: UIColor = .white
     private var titleFont: UIFont = FONTS(13)
+    private var style: Style = .select
 //    required init?(coder: NSCoder) {
 //        fatalError("init(coder:) has not been implemented")
 //    }
     
-    static func show(titles: [String], anchorPoint: CGPoint, selectIndex: Int = 0, menuWidth: CGFloat = TitleSelectView.defalutWidth, itemHeight: CGFloat = TitleSelectView.defalutItemHeight, titleColor: UIColor = .white, titleFont: UIFont = FONTS(13), backgroundColor: UIColor = RGB(102, 102, 102), selectBackgroundColor: UIColor = RGB(216, 216, 216, 0.1), shadowColor: UIColor? = nil, selectBack: TitleSelectCallback?) {
+    static func show(titles: [String], style: Style = .select, anchorPoint: CGPoint, selectIndex: Int = 0, menuWidth: CGFloat = TitleSelectView.defalutWidth, itemHeight: CGFloat = TitleSelectView.defalutItemHeight, titleColor: UIColor = .white, titleFont: UIFont = FONTS(13), backgroundColor: UIColor = RGB(102, 102, 102), selectBackgroundColor: UIColor = RGB(216, 216, 216, 0.1), shadowColor: UIColor? = nil, selectBack: TitleSelectCallback?) {
         
         let view = TitleSelectView(frame: UIScreen.main.bounds)
         view.menuWidth = menuWidth
@@ -44,6 +50,7 @@ class TitleSelectView: UIView {
         view.titleFont = titleFont
         view.titleColor = titleColor
         view.selectBackgroundColor = selectBackgroundColor
+        view.style = style
         view.selectCallback = selectBack
         view.setupUI()
         view.contentView.backgroundColor = backgroundColor
@@ -133,14 +140,24 @@ extension TitleSelectView: UITableViewDataSource, UITableViewDelegate {
     
     func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
         let cell = tableView.dequeueReusableCell(withIdentifier: "cell", for: indexPath) as! CustomTableViewCell
-        cell.cellStyle = .icon
+        if style == .select {
+            cell.cellStyle = .icon
+            cell.iconImageView.image = UIImage(named: "menu_select")
+            cell.iconImageView.isHidden = selectIndex != indexPath.row
+            cell.iconX = 0
+            cell.titleX = SCRXFrom(35)
+            cell.backgroundColor = selectIndex == indexPath.row ? self.selectBackgroundColor : .clear
+        }else {
+            cell.titleX =  SCRXFrom(4)
+            cell.titleLabel.textAlignment = .center
+            cell.titleMaxWidth = tableView.width - SCRXFrom(4)
+            cell.backgroundColor = .clear
+        }
+        
         cell.titleLabel.text = titles[indexPath.row]
         cell.titleLabel.textColor = titleColor
         cell.titleLabel.font = titleFont
-        cell.iconImageView.image = UIImage(named: "menu_select")
-        cell.iconImageView.isHidden = selectIndex != indexPath.row
-        cell.iconX = 0
-        cell.titleX = SCRXFrom(35)
+        
         cell.lineView.isHidden = true
         cell.arrowImageView.isHidden = true
         cell.layer.cornerRadius = 5
@@ -149,7 +166,7 @@ extension TitleSelectView: UITableViewDataSource, UITableViewDelegate {
 //        let bgView = UIView()
 //        bgView.backgroundColor = RGB(216, 216, 216, 0.1)
 //        cell.selectedBackgroundView = bgView
-        cell.backgroundColor = selectIndex == indexPath.row ? self.selectBackgroundColor : .clear
+        
         return cell
     }
     

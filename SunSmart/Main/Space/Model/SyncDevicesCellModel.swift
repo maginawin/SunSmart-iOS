@@ -78,6 +78,10 @@ enum DeviceOperationType {
                 return true
             case .collectionSchedule(let index, _):
                 return node.collectionSchedulerEntrys[index] == nil || !node.collectionSchedulerEntrys[index]!.isValid
+            case .proximityLightingEnabled:
+                return true
+            case .proximityLightingNeighbor:
+                return true
             }
         case .configuration(let node, let type):
             switch type {
@@ -114,6 +118,10 @@ enum DeviceOperationType {
                 return true
             case .collectionSchedule(let index, let entry):
                 return node.collectionSchedulerEntrys[index] != nil && node.collectionSchedulerEntrys[index]! == entry
+            case .proximityLightingEnabled(let enabled):
+                return node.proximityLightingEnabled == enabled
+            case .proximityLightingNeighbor(let relayNumber, let neighborAddresses):
+                return node.proximityLightingRelayCount == relayNumber && node.proximityLightingNeighborAddresses.sorted() == neighborAddresses.sorted()
             }
         case .read:
             return true
@@ -170,6 +178,10 @@ enum DeviceOperationType {
                 if let model = node.collectionSchedulerSetupModel {
                     messageHandles.append(MeshMessageHandle(message: SchedulerActionSet(index: UInt8(index), entry: entry), model: model))
                 }
+            case .proximityLightingEnabled:
+                break
+            case .proximityLightingNeighbor:
+                break
             }
         case .configuration(let node, let type): // 添加/配置操作
             
@@ -217,6 +229,14 @@ enum DeviceOperationType {
                 if let schedulerSetupModel = node.collectionSchedulerSetupModel {
                     messageHandles.append(MeshMessageHandle(message: SchedulerActionSet(index: UInt8(index), entry: entry), model: schedulerSetupModel))
                 }
+            case .proximityLightingNeighbor(let relayNumber, let neighborAddresses):
+                if let vendorModel = node.sunricherVendorModel {
+                    messageHandles.append(MeshMessageHandle(message: SunricherVendorSet(function: .proximityLightingNeighborSet(enabled: true, relay: relayNumber, ttl: 0, relayAppKeyIndex: MeshNetworkManager.instance.currentApplicationKey.index, neighborAddresses: neighborAddresses)), model: vendorModel))
+                }
+            case .proximityLightingEnabled(let enabled):
+                if let vendorModel = node.sunricherVendorModel {
+                    messageHandles.append(MeshMessageHandle(message: SunricherVendorSet(function: .proximityLightingEnabled(enabled)), model: vendorModel))
+                }
             }
         case .read(let node, let type):
             switch type {
@@ -261,6 +281,10 @@ enum ActionType {
     case deviceReadParmeters(parameterType: DeviceReadParameterType)
     /// 采集日程（Dongle）
     case collectionSchedule(index: Int, entry: SchedulerRegistryEntry)
+    /// 设置邻近照明邻居数量+邻居list
+    case proximityLightingNeighbor(relayNumber: UInt8, neighborAddresses: [Address])
+    /// 启用/禁用邻近照明
+    case proximityLightingEnabled(enabled: Bool)
 }
 
 extension NodeSyncData {
@@ -298,6 +322,8 @@ extension NodeSyncData {
             return 4
         case .deleteCollectionSchedules:
             return 4
+        case .proximityLightingEnabled, .proximityLightingNeighbor:
+            return 2
         }
     }
     
@@ -357,8 +383,8 @@ extension ProfileType {
     /// 判断是否设置成功
     func isSuccessful(node: Node) -> Bool {
         switch self {
-        case .sensorEnabled(let sensorModels, let group):
-           return !sensorModels.contains(where: { $0.publish?.publicationAddress != group.address })
+        case .sensorEnabled(let sensorModels, let publishAddress, _):
+            return !sensorModels.contains(where: { $0.publish?.publicationAddress.address != publishAddress })
         case .sensorDisable(let sensorModels):
             return !sensorModels.contains(where: { $0.publish?.publicationAddress != nil })
         case .mode(let enabled):

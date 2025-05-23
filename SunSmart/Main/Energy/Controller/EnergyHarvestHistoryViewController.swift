@@ -8,12 +8,6 @@
 import UIKit
 
 class EnergyHarvestHistoryViewController: UIViewController {
-
-    struct FileData {
-        let id: String
-        let name: String
-        let data: Data
-    }
     
     private var tableView: UITableView!
     private var bottomView: UIView!
@@ -23,13 +17,20 @@ class EnergyHarvestHistoryViewController: UIViewController {
     private var exportBtn: UIButton!
     private var deleteBtn: UIButton!
     
-    private var selectFiles: [FileData] = []
+    private var selectDatas: [EnergyStatisticsStaticData] = []
     
-    private var files: [FileData] = [
-        FileData(id: UUID().uuidString, name: "Static Data 2-18-2025 10:30 PM", data: Data()),
-        FileData(id: UUID().uuidString, name: "Static Data 3-18-2025 10:30 PM", data: Data()),
-        FileData(id: UUID().uuidString, name: "Static Data 4-18-2025 10:30 PM", data: Data())
-    ]
+    let space: SpaceData
+    
+    private var harvestDatas: [EnergyStatisticsStaticData] = []
+    
+    init(space: SpaceData) {
+        self.space = space
+        super.init(nibName: nil, bundle: nil)
+    }
+    
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
     
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -37,6 +38,9 @@ class EnergyHarvestHistoryViewController: UIViewController {
         title = "harvest_history".localizedString
         
         view.backgroundColor = Background_Color
+        
+        harvestDatas = EnergyStatisticsStaticData.load(spaceId: space.id)
+        
         setupUI()
         
         updateBottomUI()
@@ -44,17 +48,55 @@ class EnergyHarvestHistoryViewController: UIViewController {
     
     override func viewDidLayoutSubviews() {
         super.viewDidLayoutSubviews()
-        
-        if files.isEmpty {
-            bottomView.isHidden = true
-            tableView.showEmptyDataView(title: "no_data".localizedString)
-        }
-        
+        updateEmptyUI()
     }
     
-    private func exportFiles(_ files: [FileData]) {
+    private func updateEmptyUI() {
         
+        if harvestDatas.isEmpty {
+            bottomView.isHidden = true
+            tableView.showEmptyDataView(title: "no_data".localizedString)
+        }else {
+            bottomView.isHidden = false
+            tableView.hideEmptyDataView()
+        }
+    }
+    
+    /// 导出分享文件
+    private func exportFiles(_ staticDatas: [EnergyStatisticsStaticData]) {
         
+        var fileURLs: [URL] = []
+        for staticData in staticDatas {
+            var fileName = "\("static_data".localizedString) \(String.dateConvert(timestamp: "\(staticData.timestamp)", dateFormat: "M-d-yyyy hh:mm a"))"
+            fileName = fileName.replacingOccurrences(of: ":", with: "_")
+            guard let fileURL = staticData.convertingCVSFile(spaceName: space.name, fileName: fileName) else {
+                XWHUDManager.showTipHUD("\(fileName) \("export_error".localizedString)", isLineFeed: true)
+                return
+            }
+            fileURLs.append(fileURL)
+        }
+        let activityVc = UIActivityViewController(activityItems: fileURLs, applicationActivities: nil)
+        // 适配 iPad
+        if let popoverController = activityVc.popoverPresentationController {
+            // 设置 sourceView（可以是按钮或视图）
+            popoverController.sourceView = self.view
+            // 设置 sourceRect（浮层的锚点位置）
+            popoverController.sourceRect = CGRect(x: self.view.bounds.midX, y: self.view.bounds.midY, width: 0, height: 0)
+        }
+        activityVc.completionWithItemsHandler = {[weak self] (type, completion, _, error) in
+            if completion {
+                if error == nil {
+                    XWHUDManager.showSuccessTipHUD("successfully".localizedString + " !")
+                    self?.selectDatas.removeAll()
+                    self?.updateBottomUI()
+                    self?.tableView.reloadData()
+                }else {
+                    XWHUDManager.showSuccessTipHUD("failed".localizedString)
+                }
+                activityVc.dismiss(animated: true)
+            }
+        }
+        self.present(activityVc, animated: true)
         
     }
     
@@ -62,37 +104,43 @@ class EnergyHarvestHistoryViewController: UIViewController {
         
         sender.isSelected = !sender.isSelected
         if sender.isSelected {
-            selectFiles = files
+            selectDatas = harvestDatas
         }else {
-            selectFiles.removeAll()
+            selectDatas.removeAll()
         }
         tableView.reloadData()
         updateBottomUI()
     }
     
     @objc private func exportBtnAction() {
-        guard selectFiles.count > 0 else {
+        guard selectDatas.count > 0 else {
             return
         }
-        exportFiles(selectFiles)
+        exportFiles(selectDatas)
     }
     
     @objc private func deleteBtnAction() {
-        guard selectFiles.count > 0 else {
+        guard selectDatas.count > 0 else {
             return
         }
+        harvestDatas.removeAll(where: { data in selectDatas.contains(where: { $0.timestamp == data.timestamp })  })
         // 删除文件
+        selectDatas.forEach({
+            $0.delete(spaceId: space.id)
+        })
+        selectDatas.removeAll()
         
-        
-        
+        tableView.reloadData()
+        updateBottomUI()
+        updateEmptyUI()
     }
     
     private func updateBottomUI() {
         
-        selectAllBtn.isSelected = selectFiles.count == files.count
-        selectCountLabel.text = "\(selectFiles.count)/\(files.count)"
-        deleteBtn.isEnabled = selectFiles.count > 0
-        exportBtn.isEnabled = selectFiles.count > 0
+        selectAllBtn.isSelected = selectDatas.count == harvestDatas.count
+        selectCountLabel.text = "\(selectDatas.count)/\(harvestDatas.count)"
+        deleteBtn.isEnabled = selectDatas.count > 0
+        exportBtn.isEnabled = selectDatas.count > 0
     }
     
     private func setupUI() {
@@ -163,17 +211,17 @@ class EnergyHarvestHistoryViewController: UIViewController {
 extension EnergyHarvestHistoryViewController: UITableViewDataSource, UITableViewDelegate {
     
     func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
-        return files.count
+        return harvestDatas.count
     }
     
     func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
         let cell = tableView.dequeueReusableCell(withIdentifier: "cell", for: indexPath) as! EnergyHarvestHistoryViewCell
-        let fileData = files[indexPath.row]
-        cell.fileNameLabel.text = fileData.name
-        cell.isSelect = selectFiles.contains(where: { $0.id == fileData.id })
+        let data = harvestDatas[indexPath.row]
+        cell.fileNameLabel.text = "\("static_data".localizedString) \(String.dateConvert(timestamp: "\(data.timestamp)", dateFormat: "M-d-yyyy hh:MM a"))"
+        cell.isSelect = selectDatas.contains(where: { $0.timestamp == data.timestamp })
         cell.exportCallback = {[weak self] in
             // 导出单个数据
-            self?.exportFiles([fileData])
+            self?.exportFiles([data])
         }
         cell.configureCell(isFirst: indexPath.row == 0, isLast: indexPath.row == tableView.numberOfRows(inSection: indexPath.section) - 1)
         return cell
@@ -181,11 +229,11 @@ extension EnergyHarvestHistoryViewController: UITableViewDataSource, UITableView
     
     func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
         
-        let fileData = files[indexPath.row]
-        if let index = selectFiles.firstIndex(where: { $0.id == fileData.id }) {
-            selectFiles.remove(at: index)
+        let fileData = harvestDatas[indexPath.row]
+        if let index = selectDatas.firstIndex(where: { $0.timestamp == fileData.timestamp }) {
+            selectDatas.remove(at: index)
         }else {
-            selectFiles.append(fileData)
+            selectDatas.append(fileData)
         }
         updateBottomUI()
         tableView.reloadData()

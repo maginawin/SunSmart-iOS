@@ -151,12 +151,12 @@ extension Int32 {
     
 }
 
-extension Float {
-    
-    /// 精确两位小数，小数位四舍五入
-    var roundf2: Float {
-        return roundf(self * 100) / 100.0
-    }
+//protocol BinaryFloatingPoint {
+//    /// 转成精简字符串 maxDigits:最大保留几位小数
+//    func toSimplifyStr(maxDigits: Int) -> String
+//}
+
+extension BinaryFloatingPoint {
     
     /// 转成精简字符串 maxDigits:最大保留几位小数
     func toSimplifyStr(maxDigits: Int) -> String {
@@ -168,10 +168,19 @@ extension Float {
         formatter.minimumFractionDigits = 0 // 最少保留 0 位小数（去掉多余的零）
 //        formatter.roundingMode = .up
         formatter.groupingSeparator = ""
-        guard let formattedString = formatter.string(from: NSNumber(value: self)) else {
+        let number = NSNumber(value: Double(self))
+        guard let formattedString = formatter.string(from: number) else {
             return "\(self)"
         }
         return "\(formattedString)"
+    }
+}
+
+extension Float {
+    
+    /// 精确两位小数，小数位四舍五入
+    var roundf2: Float {
+        return roundf(self * 100) / 100.0
     }
     
 }

@@ -125,7 +125,7 @@ class ProfileSettingsSphasesView: UIView {
             
             var profileChartImageName = "profile_chart_occupancy"
             switch profile.type {
-            case .occupancy_daylight, .vacancy_daylight, .occupancy, .vacancy:
+            case .occupancy_daylight, .vacancy_daylight, .occupancy, .vacancy, .proximityLighting:
                 timeT1Btn.isHidden = false
                 timeT1Label.isHidden = false
                 timeT2Btn.isHidden = false
@@ -141,7 +141,7 @@ class ProfileSettingsSphasesView: UIView {
                 occupancyLevelBtn.isHidden = false
                 occupancyLevelLabel.isHidden = false
                 
-                if profile.type == .occupancy || profile.type == .vacancy {
+                if profile.type == .occupancy || profile.type == .vacancy || profile.type == .proximityLighting {
                     autoMinLevelBtn.isHidden = true
                     autoMinLevelLabel.isHidden = true
                     profileChartImageName = "profile_chart_occupancy"

@@ -781,6 +781,9 @@ class DeviceRestoreViewController: UIViewController {
         footerView.selectAllBtn.isHidden = false
         footerView.selectAllLabel.text = "select_all".localizedString
         footerView.addSelectedBtn.isHidden = false
+        if footerView.frame == .zero {
+            footerView.layoutIfNeeded()
+        }
         
         switch state {
         case .none:

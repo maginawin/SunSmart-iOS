@@ -129,6 +129,10 @@ let SubText_Color = RGB(100, 116, 139)
 let Chart_Text_Color = RGB(72, 72, 74)
 /// 绿色
 let Green_Color = RGB(0, 209, 124, 1)
+/// 辅助文字颜色
+let AssistText_Color = RGB(148, 163, 184)
+/// 黄色
+let Yellow_Color = RGB(255, 193, 71)
 
 /// RGB颜色
 func RGB(_ red:Int,_ green:Int,_ blue:Int, _ alpha:CGFloat=1) -> UIColor {

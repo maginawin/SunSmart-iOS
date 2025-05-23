@@ -498,23 +498,36 @@ class SitesViewController: UIViewController {
     /// 导入
     @objc private func importClick() {
         
-
+        
+//        let groups = [
+//            try! Group(name: "Group 1", address: .minGroupAddress),
+//            try! Group(name: "Group 2", address: .minGroupAddress + 1),
+//            try! Group(name: "Group 3", address: .minGroupAddress + 2)
+//        ]
+//        
+//        GroupFilterSelectView(filters: GroupFilterSelectView.FilterData.defalutFilters(groups: groups), selectFilterType: .group(groups.last!), selectCallback: { _ in
+//            
+//        }).show()
         
 //        let vc = DongleAddCollectionScheduleController(dongleData: <#DeviceDongleData#>, schedule: nil)
+        
+//        let group = try! Group(name: "Test", address: .minGroupAddress)
+//        let vc = GroupPathSequencePageController(group: group, groupPath: nil)
         
 //        let vc = DeviceParameterSettingsController(devices: [])
 //        present(NavigationViewController(rootViewController: vc), animated: true)
         
-        let vc = EnergyDataViewController(space: self.allSites[0].spaces[0])
-        present(NavigationViewController(rootViewController: vc), animated: true)
+//        let vc = EnergyDataViewController(space: self.allSites[0].spaces[0])
+//        present(NavigationViewController(rootViewController: vc), animated: true)
         
-//        ImportProjectView {[weak self] mode in
-//            if mode == .scanQRCode {
-//                self?.scanQRCode()
-//            }else {
-//                self?.uuidImport()
-//            }
-//        }.show()
+        ImportProjectView {[weak self] mode in
+            if mode == .scanQRCode {
+                self?.scanQRCode()
+            }else {
+                self?.uuidImport()
+            }
+        }.show()
+
     }
     
     /// 扫码导入数据

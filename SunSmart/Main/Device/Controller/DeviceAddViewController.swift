@@ -646,6 +646,17 @@ class DeviceAddViewController: UIViewController {
             if let healthModel = node.healthModel {
                 appendMessages.append(MeshMessageHandle(message: AttentionSet(attentionTimer: 6), model: healthModel))
             }
+            
+            if device.deviceType == .gateway, let vendorModel = node.sunricherVendorModel {
+                appendMessages.append(MeshMessageHandle(message: SunricherVendorSet(function: .gatewaySimInfoSet(cid: 1, ipType: .ip, apn: "3gnet")), model: vendorModel))
+                
+                appendMessages.append(MeshMessageHandle(message: SunricherVendorSet(function: .gatewayMQTTConnectInfoSet(platformType: 0, serverAddress: "tcp://mqtt.sunsmart-cn.mericher.com:1883", userName: "Signature|Gateway|C2FB3109B9E0", password: "5dc9bc1d274548739b6a17cbd2298274", clientId: "sunsmart@@@C2FB3109B9E0", keepalive: 60, clearSession: true, authMode: .none, sslVersion: .all)), model: vendorModel))
+                
+                if let mac = device.macAddress {
+                    appendMessages.append(MeshMessageHandle(message: SunricherVendorSet(function: .gatewayProjectRelevance(gatewayId: mac, projectId: space.siteId)), model: vendorModel))
+                }
+            }
+        
 //            appendMessages.insert(MeshMessageHandle(message: ConfigRelaySet(), address: node.primaryUnicastAddress), at: 0)
             
             // 获取对应传感器model，识别传感器类型
@@ -1152,7 +1163,7 @@ extension DeviceAddViewController: WMMenuViewDataSource, WMMenuViewDelegate {
         case 2:
             showDeviceTypes = [.sensor]
         case 3:
-            showDeviceTypes = [.dongle, .unknown]
+            showDeviceTypes = [.dongle, .gateway, .unknown]
         default:
             showDeviceTypes = [.light]
         }

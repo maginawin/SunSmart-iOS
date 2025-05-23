@@ -33,6 +33,10 @@ class ProfileSettingsViewController: UIViewController {
     private var powerUpBehaviorView: ProfilePowerUpBehaviorView!
     private var sensitivityView: ProfileSensitivityView!
     
+    /// 邻近照明
+    private var proximityLightingStepView: ProfileProximityLightingStepView?
+    private var proximityLightingNumberView: ProfileProximityLightingNumberView?
+    
     private let contentMargin: CGFloat = isIPad ? SCRXFrom(20) : SCRXFrom(16)
     
     /// 配置数据
@@ -42,7 +46,8 @@ class ProfileSettingsViewController: UIViewController {
         .init(type: .occupancy),
         .init(type: .vacancy),
         .init(type: .daylight),
-        .init(type: .manualControl)
+        .init(type: .manualControl),
+        .init(type: .proximityLighting)
     ]
     /// 选择的配置数据
     private var selectProfile: Profile!
@@ -285,6 +290,31 @@ class ProfileSettingsViewController: UIViewController {
         self.powerUpBehaviorView.powerOnCct = self.selectProfile.powerUpCct
         
         self.sensitivityView.sensitivity = self.selectProfile.sensitivity
+        
+        if selectProfile.type == .proximityLighting {
+            if proximityLightingStepView == nil || proximityLightingNumberView == nil {
+                setupProximityLightingUI()
+            }
+            proximityLightingNumberView?.number = self.selectProfile.proximityLightingNumber
+            proximityLightingStepView?.isHidden = false
+            proximityLightingNumberView?.isHidden = false
+            sphasesView.snp.remakeConstraints { make in
+                make.left.equalTo(contentMargin)
+                make.right.equalTo(-contentMargin)
+                make.top.equalTo(proximityLightingNumberView!.snp.bottom).offset(contentMargin)
+                make.height.greaterThanOrEqualTo(SCRYFrom(selectProfile.lightData.times.count > 0 ? 344 : 264))
+            }
+        }else {
+            proximityLightingStepView?.isHidden = true
+            proximityLightingNumberView?.isHidden = true
+            sphasesView.snp.remakeConstraints { make in
+                make.left.equalTo(contentMargin)
+                make.right.equalTo(-contentMargin)
+                make.top.equalTo(headerView.snp.bottom).offset(SCRYFrom(13))
+                make.height.greaterThanOrEqualTo(SCRYFrom(selectProfile.lightData.times.count > 0 ? 344 : 264))
+            }
+        }
+        
         // 是否显示手动控制超时UI
         var showTimeout = true
         // 是否显示灵敏度
@@ -297,6 +327,9 @@ class ProfileSettingsViewController: UIViewController {
         
         timeoutView.isHidden = !showTimeout
         sensitivityView.isHidden = !showSensitivity
+        if !showSensitivity {
+            sensitivityView.snp.removeConstraints()
+        }
         
         powerUpBehaviorView.snp.remakeConstraints { make in
             make.left.right.equalTo(timeoutView)
@@ -310,6 +343,7 @@ class ProfileSettingsViewController: UIViewController {
                 make.bottom.equalTo(-contentMargin)
             }
         }
+        
         if showSensitivity {
             sensitivityView.snp.remakeConstraints { make in
                 make.left.right.equalTo(powerUpBehaviorView)
@@ -401,6 +435,25 @@ class ProfileSettingsViewController: UIViewController {
         }
     }
     
+    private func setupProximityLightingUI() {
+        
+        proximityLightingStepView = ProfileProximityLightingStepView()
+        contentView.addSubview(proximityLightingStepView!)
+        proximityLightingStepView!.snp.makeConstraints { make in
+            make.left.right.equalTo(sphasesView)
+            make.top.equalTo(headerView.snp.bottom).offset(SCRYFrom(13))
+        }
+        
+        proximityLightingNumberView = ProfileProximityLightingNumberView()
+        proximityLightingNumberView?.delegate = self
+        contentView.addSubview(proximityLightingNumberView!)
+        proximityLightingNumberView!.snp.makeConstraints { make in
+            make.left.right.equalTo(proximityLightingStepView!)
+            make.top.equalTo(proximityLightingStepView!.snp.bottom).offset(contentMargin)
+            make.height.equalTo(SCRYFrom(240))
+        }
+        
+    }
 
 }
 
@@ -629,6 +682,24 @@ extension ProfileSettingsViewController: ProfileSensitivityViewDelegate {
     
     /// 禁止交互下编辑事件
     func sensitivityViewDisableEditAction(view: ProfileSensitivityView) {
+        XWHUDManager.showTipHUD("no_permission".localizedString + "！")
+    }
+    
+}
+
+extension ProfileSettingsViewController: ProfileProximityLightingNumberViewDelegate {
+    
+    /// 邻近照明数量修改
+    /// - Parameters:
+    ///   - view: view
+    ///   - number: 数量 0-5 | 255
+    func view(_ view: ProfileProximityLightingNumberView, lightingNumberChanged number: UInt8) {
+        
+        selectProfile.proximityLightingNumber = number
+    }
+    
+    /// 禁止交互下编辑事件
+    func proximityLightingNumberViewDisableEditAction(view: ProfileProximityLightingNumberView) {
         XWHUDManager.showTipHUD("no_permission".localizedString + "！")
     }
     

@@ -22,6 +22,7 @@ class EmptyDataView: UIView {
     
     private var position: ContentPosition = .bottomCenter
     private var bottomMargin: CGFloat = 0
+    private var margin: CGFloat = SCRXFrom(20)
     
     private var btnClickBack: (()->())?
     
@@ -31,15 +32,21 @@ class EmptyDataView: UIView {
         super.init(frame: frame)
         self.position = position
         self.bottomMargin = bottomMargin
+        self.margin = margin
         setupUI()
         
         imageView.image = UIImage(named: imageName)
         titleLabel.text = title
         tipLabel.text = tipText
-        contentView.snp.updateConstraints { make in
-            make.left.equalTo(margin)
-            make.right.equalTo(-margin)
-        }
+//        contentView.snp.remakeConstraints { make in
+//            make.left.equalTo(margin)
+//            make.right.equalTo(-margin)
+//            if position == .bottomCenter {
+//                make.bottom.equalTo(self.snp.centerY).offset(-bottomMargin)
+//            }else {
+//                make.centerY.equalTo(self).offset(-bottomMargin)
+//            }
+//        }
         
         if buttonText != nil {
             button.isHidden = false
@@ -115,8 +122,8 @@ class EmptyDataView: UIView {
                     make.centerY.equalTo(self).offset(-bottomMargin)
                 }
 //            }
-            make.left.equalTo(SCRXFrom(20))
-            make.right.equalTo(-SCRXFrom(20))
+            make.left.equalTo(margin)
+            make.right.equalTo(-margin)
         }
         
         

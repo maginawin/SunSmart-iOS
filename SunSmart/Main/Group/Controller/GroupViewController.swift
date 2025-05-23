@@ -20,6 +20,10 @@ class GroupViewController: UIViewController {
     
     private var calibrateLabel: UILabel!
     private var calibrateBtn: UIButton!
+    
+    private var setPathLabel: UILabel!
+    private var setPathBtn: UIButton!
+    
     private var sensorView: GroupSensorView?
     
     /// 列数
@@ -279,13 +283,23 @@ class GroupViewController: UIViewController {
             calibrateLabel.isHidden = true
         }
         
+        // 临近照明提示路径设置
+        if profileType == .proximityLighting, group.info.proximityLightingPath == nil {
+            setPathBtn.isHidden = false
+            setPathLabel.isHidden = false
+        }else {
+            setPathBtn.isHidden = true
+            setPathLabel.isHidden = true
+        }
+        
+        
         if profileType != .manualControl {
             sensorView?.isHidden = false
             sensorView?.sensors = group.sensorNodes
             switch profileType {
             case .occupancy_daylight, .vacancy_daylight:
                 sensorView?.supportSensorType = .all
-            case .occupancy, .vacancy:
+            case .occupancy, .vacancy, .proximityLighting:
                 sensorView?.supportSensorType = .presenceDetected
             case .daylight:
                 sensorView?.supportSensorType = .ambientLight
@@ -357,6 +371,12 @@ class GroupViewController: UIViewController {
             if profileType == .occupancy_daylight || profileType == .vacancy_daylight || profileType == .daylight {
                 items.append( .init(icon: UIImage(named: "menu_calibrate"), title: "calibrate".localizedString, hideAnimation: false, tapItemBack: {[weak self] item in
                     self?.calibrate()
+                }))
+            }
+            
+            if profileType == .proximityLighting {
+                items.append( .init(icon: UIImage(named: "menu_path"), title: "path".localizedString, hideAnimation: false, tapItemBack: {[weak self] item in
+                    self?.setPath()
                 }))
             }
         }
@@ -632,6 +652,13 @@ class GroupViewController: UIViewController {
         navigationController?.pushViewController(vc, animated: true)
     }
     
+    /// 设置临近照明路径
+    @objc private func setPath() {
+        
+        let vc = GroupPathSequencePageController(group: group, groupPath: group.info.proximityLightingPath)
+        navigationController?.pushViewController(vc, animated: true)
+    }
+    
     /// 刷新
     private func refresh() {
         
@@ -831,6 +858,26 @@ class GroupViewController: UIViewController {
         calibrateBtn.snp.makeConstraints { make in
             make.right.equalTo(collectionView)
             make.centerY.equalTo(calibrateLabel)
+            make.width.equalTo(SCRXFrom(88))
+            make.height.equalTo(SCRYFrom(32))
+        }
+        
+        setPathLabel = UILabel(text: "set_the_path_sequence".localizedString, textColor: SubText_Color, fontSize: 14, fontWeight: .light)
+        setPathLabel.isHidden = true
+        view.addSubview(setPathLabel)
+        setPathLabel.snp.makeConstraints { make in
+            make.left.equalTo(collectionView)
+            make.bottom.equalTo(collectionView.snp.top).offset(SCRYFit(-16))
+        }
+        
+        setPathBtn = UIButton(title: "SET".localizedString, titleSize: 14, titleWeight: .light, titleColor: .white, target: self, action: #selector(setPath))
+        setPathBtn.backgroundColor = Bar_Color
+        setPathBtn.layer.cornerRadius = SCRYFrom(15)
+        setPathBtn.isHidden = true
+        view.addSubview(setPathBtn)
+        setPathBtn.snp.makeConstraints { make in
+            make.right.equalTo(collectionView)
+            make.centerY.equalTo(setPathLabel)
             make.width.equalTo(SCRXFrom(88))
             make.height.equalTo(SCRYFrom(32))
         }

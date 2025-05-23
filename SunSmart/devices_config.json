@@ -217,6 +217,30 @@
     },
     {
         "companyId" : "0A78",
+        "productId" : "1022",
+        "categoryName" : "PIR Sensor Lighting",
+        "elementCount" : 2,
+        "iconCategory" : "Lighting",
+        "deviceCategory" : "Lighting"
+    },
+    {
+        "companyId" : "0A78",
+        "productId" : "1023",
+        "categoryName" : "PIR Sensor Lighting",
+        "elementCount" : 2,
+        "iconCategory" : "Lighting",
+        "deviceCategory" : "Lighting"
+    },
+    {
+        "companyId" : "0A78",
+        "productId" : "1024",
+        "categoryName" : "PIR Sensor Lighting",
+        "elementCount" : 2,
+        "iconCategory" : "Lighting",
+        "deviceCategory" : "Lighting"
+    },
+    {
+        "companyId" : "0A78",
         "productId" : "1031",
         "categoryName" : "ZLLC PIR Sensor",
         "elementCount" : 2,
@@ -229,6 +253,22 @@
         "categoryName" : "ZLLC PIR Sensor",
         "elementCount" : 2,
         "iconCategory" : "Standalone Sensor",
+        "deviceCategory" : "Lighting"
+    },
+    {
+        "companyId" : "0A78",
+        "productId" : "1051",
+        "categoryName" : "PIR Sensor Lighting",
+        "elementCount" : 2,
+        "iconCategory" : "Lighting",
+        "deviceCategory" : "Lighting"
+    },
+    {
+        "companyId" : "0A78",
+        "productId" : "1052",
+        "categoryName" : "PIR EL Lighting",
+        "elementCount" : 2,
+        "iconCategory" : "Lighting",
         "deviceCategory" : "Lighting"
     },
     {
@@ -430,6 +470,14 @@
         "elementCount" : 2,
         "iconCategory" : "Dongle",
         "deviceCategory" : "Dongle"
+    },
+    {
+        "companyId" : "0A78",
+        "productId" : "1701",
+        "categoryName" : "Gateway",
+        "elementCount" : 2,
+        "iconCategory" : "Gateway",
+        "deviceCategory" : "Gateway"
     }
 ]
 

@@ -151,7 +151,7 @@ class GroupFilterSelectView: UIView {
         
         tableView = UITableView()
         tableView.separatorStyle = .none
-        tableView.rowHeight = SCRYFrom(32)
+        tableView.rowHeight = SCRYFrom(36)
         tableView.register(CustomTableViewCell.classForCoder(), forCellReuseIdentifier: "cell")
 //        tableView.register(SyncDevicesTitleHeaderView.classForCoder(), forHeaderFooterViewReuseIdentifier: "header")
         tableView.showsVerticalScrollIndicator = false
@@ -169,13 +169,28 @@ class GroupFilterSelectView: UIView {
 
 extension GroupFilterSelectView: UITableViewDataSource, UITableViewDelegate {
     
-    func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
+    func numberOfSections(in tableView: UITableView) -> Int {
         return filters.count
+    }
+    
+    func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
+        return 1
+    }
+    
+    func tableView(_ tableView: UITableView, viewForFooterInSection section: Int) -> UIView? {
+        return UIView()
+    }
+    
+    func tableView(_ tableView: UITableView, heightForFooterInSection section: Int) -> CGFloat {
+        if section == 0 || section == 1 {
+            return SCRYFrom(8)
+        }
+        return 0.01
     }
     
     func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
         let cell = tableView.dequeueReusableCell(withIdentifier: "cell", for: indexPath) as! CustomTableViewCell
-        let filter = filters[indexPath.row]
+        let filter = filters[indexPath.section]
         cell.cellStyle = .icon
         if let imageName = filter.icon {
             cell.iconImageView.image = UIImage(named: imageName)
@@ -197,7 +212,15 @@ extension GroupFilterSelectView: UITableViewDataSource, UITableViewDelegate {
         }else {
             cell.arrowImageView.isHidden = true
         }
-        cell.selectionStyle = .gray
+        
+        if indexPath.section == 0 || indexPath.section == 1 {
+            cell.backgroundColor = RGB(216, 216, 216, 0.1)
+            cell.selectionStyle = .none
+        }else {
+            cell.backgroundColor = .clear
+            cell.selectionStyle = .gray
+        }
+        
         cell.layer.cornerRadius = 8
         cell.clipsToBounds = true
         cell.lineView.isHidden = true
@@ -207,7 +230,7 @@ extension GroupFilterSelectView: UITableViewDataSource, UITableViewDelegate {
     func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
         tableView.deselectRow(at: indexPath, animated: true)
         
-        let filter = filters[indexPath.row]
+        let filter = filters[indexPath.section]
         
         switch filter.options {
         case .filter(let type):
@@ -216,27 +239,29 @@ extension GroupFilterSelectView: UITableViewDataSource, UITableViewDelegate {
         case .section(let items):
             // 是否展开
             if filter.spread {
-                var indexPaths: [IndexPath] = []
+//                var indexPaths: [IndexPath] = []
                 items.enumerated().forEach { (index, item) in
-                    filters.remove(at: indexPath.item + 1)
-                    indexPaths.append(IndexPath(row: indexPath.item + 1 + index, section: 0))
+                    filters.remove(at: indexPath.section + 1)
+//                    indexPaths.append(IndexPath(row: 0, section: indexPath.section + 1 + index))
                 }
                 // 展开状态点击后收起，删除展开的数据
-                tableView.deleteRows(at: indexPaths, with: .automatic)
+//                tableView.deleteRows(at: indexPaths, with: .automatic)
             }else {
                 // 收起状态点击后展开，显示展开的数据
-                var indexPaths: [IndexPath] = []
+//                var indexPaths: [IndexPath] = []
                 items.enumerated().forEach { (index, item) in
-                    filters.insert(item, at: indexPath.item + index + 1)
-                    indexPaths.append(IndexPath(row: indexPath.item + 1 + index, section: 0))
+                    filters.insert(item, at: indexPath.section + index + 1)
+//                    indexPaths.append(IndexPath(row: 0, section: indexPath.section + 1 + index))
                 }
-                tableView.insertRows(at: indexPaths, with: .automatic)
+//                tableView.insertRows(at: indexPaths, with: .automatic)
             }
             filter.spread = !filter.spread
             
-            if let cell = tableView.cellForRow(at: indexPath) as? CustomTableViewCell {
-                cell.arrowImageView.image = UIImage(named: filter.spread ? "arrow_down_black" : "arrow_right_black")
-            }
+            tableView.reloadData()
+            
+//            if let cell = tableView.cellForRow(at: indexPath) as? CustomTableViewCell {
+//                cell.arrowImageView.image = UIImage(named: filter.spread ? "arrow_down_black" : "arrow_right_black")
+//            }
             
         }
         
@@ -251,7 +276,13 @@ extension GroupFilterSelectView {
     enum FilterType {
         
         static func == (lhs: FilterType, rhs: FilterType) -> Bool {
-            return lhs.rawValue == rhs.rawValue
+            guard lhs.rawValue == rhs.rawValue else {
+                return false
+            }
+            if case .group(let group1) = lhs, case .group(let group2) = rhs {
+                return group1.address == group2.address
+            }
+            return true
         }
         
         /// 对应类型值
