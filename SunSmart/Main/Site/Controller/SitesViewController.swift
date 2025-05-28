@@ -512,10 +512,26 @@ class SitesViewController: UIViewController {
 //        let vc = DongleAddCollectionScheduleController(dongleData: <#DeviceDongleData#>, schedule: nil)
         
 //        let group = try! Group(name: "Test", address: .minGroupAddress)
-//        let vc = GroupPathSequencePageController(group: group, groupPath: nil)
         
-//        let vc = DeviceParameterSettingsController(devices: [])
-//        present(NavigationViewController(rootViewController: vc), animated: true)
+//        guard let space = SpaceData.load(siteId: "25300E88-41F0-456E-A0A9-AD615069017C", spaceId: "88BF1DEC-264E-4D00-A93C-729A88030D58").first else {
+//            return
+//        }
+//        
+//        XWHUDManager.showCustomHUD(withMessage: nil, isWindow: true)
+//        
+//        DispatchQueue.global().async {
+//            MeshLibManager.manager.setMeshNetworkConnected(meshUUID: space.meshUUID, subNetworkId: space.meshNetworkId)
+//            DispatchQueue.main.async {
+//                let group = MeshNetworkManager.instance.groups.first!
+////                let vc = GroupViewController(space: space, group: group)
+//                let vc = GroupPathSequencePageController(group: group)
+//        //        let vc = DeviceParameterSettingsController(devices: [])
+//                self.present(NavigationViewController(rootViewController: vc), animated: true)
+//            }
+//        }
+        
+        
+       
         
 //        let vc = EnergyDataViewController(space: self.allSites[0].spaces[0])
 //        present(NavigationViewController(rootViewController: vc), animated: true)

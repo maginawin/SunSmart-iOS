@@ -942,7 +942,7 @@ extension SpaceData {
 //            network.getNetworkExclusionAddresses().filter { (ivIndex: UInt32, addresses: [Address]) in
 //                
 //            }
-            let exclusions = network.getNetworkExclusionAddresses()
+//            let exclusions = network.getNetworkExclusionAddresses()
             nodes.forEach({
                 // 判断设备是否存在废弃地址内，如果存在则清空废弃地址内缓存（如多用户编辑数据并未及时提交，使用了旧数据则可能出现导入的设备地址在废弃地址内）
                 if network.isAddressInExclusion(node: $0) {

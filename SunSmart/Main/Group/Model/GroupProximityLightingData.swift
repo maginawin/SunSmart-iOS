@@ -42,10 +42,48 @@ class GroupProximityLightingPathData: Codable, Copyable {
         return nodes
     }
     
+    /// 是否空数据
+    func isEmpty() -> Bool {
+        return paths.isEmpty && zones.isEmpty
+    }
     
     func copy() -> Self {
         return GroupProximityLightingPathData(paths: self.paths.map({ $0.copy() }), zones: self.zones.map({ $0.copy() })) as! Self
     }
+    
+    /// 删除设备
+    func removeNode(_ node: Node) {
+        let address = node.sunricherVendorModel?.parentElement?.unicastAddress ?? node.primaryUnicastAddress
+        paths.forEach { path in
+            if let itemIndex = path.items.firstIndex(where: { $0.address == address }) {
+                path.items[itemIndex].address = nil
+            }
+        }
+        
+        
+//        if let path = paths.first(where: { path in path.items.contains(where: { $0.address == address }) }) {
+//            if let item = path.items.first(where: { $0.address == address }) {
+//                item.address = nil
+//            }
+//        }
+        zones.forEach { zone in
+            if let index = zone.addresses.firstIndex(of: address) {
+                zone.addresses.remove(at: index)
+            }
+        }
+//        if let zone = zones.first(where: { $0.addresses.contains(address) }) {
+//            zone.addresses.removeAll(where: { $0 == address })
+//        }
+    }
+    
+    /// 更新路径
+//    func updatePath(_ path: GroupProximityLightingSequencePath) {
+//        if let currentPath = self.paths.first(where: { $0.id == path.id }) {
+//            currentPath.items = path.items.map({ $0.copy() })
+//        }else {
+//            self.paths.append(path.copy())
+//        }
+//    }
     
 }
 
@@ -77,6 +115,13 @@ class GroupProximityLightingSequencePath: NSObject, Codable, Copyable {
             return GroupProximityLightingPathItem(address: address) as! Self
         }
         
+        func isEqualData(_ item: GroupProximityLightingPathItem?) -> Bool {
+            guard let compareItem = item else {
+                return false
+            }
+            return self.address == compareItem.address
+        }
+        
         /// 默认创建n个item
         static func `default`(count: Int) -> [GroupProximityLightingPathItem] {
             var items: [GroupProximityLightingPathItem] = []
@@ -86,9 +131,16 @@ class GroupProximityLightingSequencePath: NSObject, Codable, Copyable {
             return items
         }
     }
-
     
     var items: [GroupProximityLightingPathItem] = []
+    
+    /// 使用的设备list
+    var nodes: [Node] {
+        guard items.count > 0 else {
+            return []
+        }
+        return items.compactMap({ $0.node })
+    }
     
     init(items: [GroupProximityLightingPathItem]) {
         self.items = items
@@ -97,6 +149,16 @@ class GroupProximityLightingSequencePath: NSObject, Codable, Copyable {
     func copy() -> Self {
         return GroupProximityLightingSequencePath(items: self.items.map({ $0.copy() }) ) as! Self
     }
+    
+    /// 判断数据是否相等
+    static func == (lhs: GroupProximityLightingSequencePath, rhs: GroupProximityLightingSequencePath) -> Bool {
+        return lhs.items.count == rhs.items.count && lhs.items.compactMap({ $0.address }) == rhs.items.compactMap({ $0.address })
+    }
+    
+    func updateData(path: GroupProximityLightingSequencePath) {
+        self.items = path.items.map({ $0.copy() })
+    }
+    
     
     /// 默认创建n条路径，每条路径3个item
     static func `default`(count: Int) -> [GroupProximityLightingSequencePath] {

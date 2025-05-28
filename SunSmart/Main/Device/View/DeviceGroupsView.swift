@@ -60,7 +60,7 @@ class DeviceGroupsView: UIView {
                 }
             }
             progressView.numberOfPages = Int(ceil(Double(datas.count) / 8.0))
-            flowLayout.itemRowCount = datas.count > 4 ? 2 : 1
+            flowLayout.itemColCount = datas.count > 4 ? 2 : 1
             collectionView.reloadData()
             
         }
@@ -130,12 +130,13 @@ class DeviceGroupsView: UIView {
         }
         
         flowLayout = HorizontalDirectionFlowLayout()
-        flowLayout.itemRowCount = 1
-        flowLayout.itmeColCount = 4
+        flowLayout.itemRowCount = 4
+        flowLayout.itemColCount = 1
         flowLayout.minimumLineSpacing = SCRXFrom(8)
         flowLayout.minimumInteritemSpacing = SCRXFrom(8)
         flowLayout.scrollDirection = .horizontal
         flowLayout.sectionInset = UIEdgeInsets(top: 0, left: SCRXFrom(4), bottom: 0, right: SCRXFrom(4))
+        flowLayout.itemHeight = SCRYFrom(40)
         
         collectionView = UICollectionView(frame: .zero, collectionViewLayout: flowLayout)
         collectionView.backgroundColor = .clear
@@ -192,15 +193,15 @@ extension DeviceGroupsView: UICollectionViewDataSource, UICollectionViewDelegate
         return cell
     }
     
-    func collectionView(_ collectionView: UICollectionView, layout collectionViewLayout: UICollectionViewLayout, sizeForItemAt indexPath: IndexPath) -> CGSize {
-        if let size = itemSize {
-            return size
-        }
-        var itemW = (collectionView.width - collectionView.contentInset.left - collectionView.contentInset.right - flowLayout.sectionInset.left - flowLayout.sectionInset.right - flowLayout.minimumInteritemSpacing * 3.0) / 4.0
-        itemW = CGFloat(floorf(Float(itemW) * 100.0) / 100.0)
-        
-        return CGSize(width: itemW, height: SCRYFrom(40))
-    }
+//    func collectionView(_ collectionView: UICollectionView, layout collectionViewLayout: UICollectionViewLayout, sizeForItemAt indexPath: IndexPath) -> CGSize {
+//        if let size = itemSize {
+//            return size
+//        }
+//        var itemW = (collectionView.width - collectionView.contentInset.left - collectionView.contentInset.right - flowLayout.sectionInset.left - flowLayout.sectionInset.right - flowLayout.minimumInteritemSpacing * 3.0) / 4.0
+//        itemW = CGFloat(floorf(Float(itemW) * 100.0) / 100.0)
+//        
+//        return CGSize(width: itemW, height: SCRYFrom(40))
+//    }
     func collectionView(_ collectionView: UICollectionView, didSelectItemAt indexPath: IndexPath) {
        
         let data = datas[indexPath.item]

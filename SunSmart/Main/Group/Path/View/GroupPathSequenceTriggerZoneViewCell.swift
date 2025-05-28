@@ -18,6 +18,9 @@ protocol GroupPathSequenceTriggerZoneViewCellDelegate: AnyObject {
     
     /// 点击选择zone
     func cell(_ cell: GroupPathSequenceTriggerZoneViewCell, didSelectZone zone: GroupProximityLightingPathZone)
+    
+    /// 添加设备 address：关联的设备地址
+    func cell(_ cell: GroupPathSequenceTriggerZoneViewCell, addDevice address: Address)
 }
 
 
@@ -45,6 +48,8 @@ class GroupPathSequenceTriggerZoneViewCell: UITableViewCell {
         
         backgroundColor = .clear
         setupUI()
+        
+        addInteraction(UIDropInteraction(delegate: self))
     }
     
     required init?(coder: NSCoder) {
@@ -54,11 +59,11 @@ class GroupPathSequenceTriggerZoneViewCell: UITableViewCell {
     override func layoutSubviews() {
         super.layoutSubviews()
         
-        if collectionView.frame != .zero {
-            var itemW = ((collectionView.width - collectionView.contentInset.left - collectionView.contentInset.right) - CGFloat(colCount - 1) * flowLayout.minimumInteritemSpacing) / CGFloat(colCount)
-            itemW = CGFloat(floorf(Float(itemW) * 100) / 100.0)
-            flowLayout.itemSize = CGSize(width: itemW, height: itemW)
-        }
+//        if collectionView.frame != .zero {
+//            var itemW = ((collectionView.width - collectionView.contentInset.left - collectionView.contentInset.right) - CGFloat(colCount - 1) * flowLayout.minimumInteritemSpacing) / CGFloat(colCount)
+//            itemW = CGFloat(floorf(Float(itemW) * 100) / 100.0)
+//            flowLayout.itemSize = CGSize(width: itemW, height: itemW)
+//        }
         
     }
     
@@ -79,7 +84,7 @@ class GroupPathSequenceTriggerZoneViewCell: UITableViewCell {
         
         let row = ceil(Double(zone.nodes.count) / Double(colCount))
         collectionView.snp.updateConstraints { make in
-            make.height.equalTo(max(row * flowLayout.itemSize.height + (row - 1) * flowLayout.minimumLineSpacing + collectionView.contentInset.top + collectionView.contentInset.bottom, SCRYFrom(60)))
+            make.height.equalTo(max(row * flowLayout.itemSize.height + (row - 1) * flowLayout.minimumLineSpacing + collectionView.contentInset.top + collectionView.contentInset.bottom + flowLayout.sectionInset.top + flowLayout.sectionInset.bottom, SCRYFrom(60)))
         }
         collectionView.reloadData() 
     }
@@ -89,9 +94,10 @@ class GroupPathSequenceTriggerZoneViewCell: UITableViewCell {
         flowLayout = UICollectionViewFlowLayout()
         flowLayout.minimumInteritemSpacing = SCRXFrom(18)
         flowLayout.minimumLineSpacing = SCRYFrom(8)
+        flowLayout.sectionInset = UIEdgeInsets(top: SCRYFrom(16), left: 0, bottom: SCRYFrom(16), right: 0)
         
         collectionView = UICollectionView(frame: .zero, collectionViewLayout: flowLayout)
-        collectionView.contentInset = UIEdgeInsets(top: SCRYFrom(16), left: SCRXFrom(17), bottom: SCRYFrom(16), right: SCRXFrom(18))
+        collectionView.contentInset = UIEdgeInsets(top: 0, left: SCRXFrom(17), bottom: 0, right: SCRXFrom(18))
         collectionView.backgroundColor = .white
         collectionView.layer.cornerRadius = SCRYFrom(10)
         collectionView.layer.borderColor = Yellow_Color.cgColor
@@ -172,3 +178,23 @@ extension GroupPathSequenceTriggerZoneViewCell: UICollectionViewDataSource, UICo
     
 }
 
+extension GroupPathSequenceTriggerZoneViewCell: UIDropInteractionDelegate {
+    
+    func dropInteraction(_ interaction: UIDropInteraction, canHandle session: UIDropSession) -> Bool {
+        return session.canLoadObjects(ofClass: NSString.self)
+    }
+    
+    func dropInteraction(_ interaction: UIDropInteraction, sessionDidUpdate session: UIDropSession) -> UIDropProposal {
+        return UIDropProposal(operation: .copy)
+    }
+    
+    func dropInteraction(_ interaction: UIDropInteraction, performDrop session: UIDropSession) {
+        session.loadObjects(ofClass: NSString.self) {[weak self] items in
+            guard let self = self, self.isSelect else { return }
+            
+            guard let addressHex = items.first as? String, let address = Address(hex: addressHex) else { return }
+            self.delegate?.cell(self, addDevice: address)
+        }
+    }
+    
+}

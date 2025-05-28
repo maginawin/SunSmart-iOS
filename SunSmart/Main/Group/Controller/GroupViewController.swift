@@ -284,7 +284,7 @@ class GroupViewController: UIViewController {
         }
         
         // 临近照明提示路径设置
-        if profileType == .proximityLighting, group.info.proximityLightingPath == nil {
+        if profileType == .proximityLighting, group.info.proximityLightingPath?.isEmpty() ?? true {
             setPathBtn.isHidden = false
             setPathLabel.isHidden = false
         }else {
@@ -380,6 +380,7 @@ class GroupViewController: UIViewController {
                 }))
             }
         }
+    
         
         items.append( .init(icon: UIImage(named: "menu_switch"), title: "switch".localizedString, hideAnimation: false, tapItemBack: {[weak self] item in
             self?.pushToSwitch()
@@ -403,6 +404,11 @@ class GroupViewController: UIViewController {
             self?.refresh()
         }))
         
+        if space.groupOperates.contains(.edit) {
+            items.append(.init(icon: UIImage(named: "menu_profile_test"), title: "test".localizedString, hideAnimation: false, tapItemBack: {[weak self] _ in
+                self?.pathTest()
+            }))
+        }
         
         
         let touchCenterX = view.width - navigationRightItemMargin - 15
@@ -566,18 +572,7 @@ class GroupViewController: UIViewController {
             }
             
             XWHUDManager.showCustomHUD(withMessage: "deleting".localizedString, isWindow: true)
-            
-//            group.nodes.forEach({ node in
-//                node.unsubscribe(from: self.group)
-//                node.sceneDatas.removeAll()
-//                // 删除设备场景数据
-//                SceneExecuteData.deleteData(meshUUID: self.space.meshUUID, address: node.primaryUnicastAddress)
-//                // 删除设备关联组的日程数据
-//                self.group.info.bindSchedules.forEach{ schedule in
-//                    Node.deleteSchedule(meshUUID: self.space.meshUUID, address: node.primaryUnicastAddress, scheduleId: schedule.id)
-//                }
-//            })
-            
+
             GroupServer.deleteGroup(group: self.group, progress: nil) {[weak self] _ in
                 XWHUDManager.hide()
                 guard let self = self else { return }
@@ -655,8 +650,13 @@ class GroupViewController: UIViewController {
     /// 设置临近照明路径
     @objc private func setPath() {
         
-        let vc = GroupPathSequencePageController(group: group, groupPath: group.info.proximityLightingPath)
+        let vc = GroupPathSequencePageController(group: group)
         navigationController?.pushViewController(vc, animated: true)
+    }
+    
+    /// 邻近照明路径测试
+    @objc private func pathTest() {
+        MeshAPI.sendMessage(message: LightLCLightOnOffSetUnacknowledged(false), address: group.address.address)
     }
     
     /// 刷新
@@ -757,10 +757,10 @@ class GroupViewController: UIViewController {
             make.left.equalTo(SCRXFrom(30))
             make.right.equalTo(SCRXFrom(-29))
             if isIPad {
-                make.top.equalTo(SCRYFit(60) + (navigationController?.navigationBar.frame.maxY ?? 0))
+                make.top.equalTo(view.safeAreaLayoutGuide).offset(SCRYFit(60))
                 make.height.equalTo(SCRYFrom(498))
             }else {
-                make.top.equalTo(SCRYFit(40) + (navigationController?.navigationBar.frame.maxY ?? 0))
+                make.top.equalTo(view.safeAreaLayoutGuide).offset(SCRYFit(40))
                 make.height.equalTo(SCRYFrom(340))
             }
         }
@@ -847,7 +847,8 @@ class GroupViewController: UIViewController {
         view.addSubview(calibrateLabel)
         calibrateLabel.snp.makeConstraints { make in
             make.left.equalTo(collectionView)
-            make.bottom.equalTo(collectionView.snp.top).offset(SCRYFit(-16))
+            make.top.equalTo(view.safeAreaLayoutGuide)
+//            make.bottom.equalTo(collectionView.snp.top).offset(SCRYFit(-16))
         }
         
         calibrateBtn = UIButton(title: "CALIBRATE".localizedString, titleSize: 14, titleWeight: .light, titleColor: .white, target: self, action: #selector(calibrateBtnAction))

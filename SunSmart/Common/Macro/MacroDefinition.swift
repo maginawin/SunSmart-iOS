@@ -111,8 +111,6 @@ let Default_Black_Color = RGB(28, 28, 35)
 /// 描述文字颜色
 let Message_Color = RGB(134, 138, 160)
 
-/// 主色
-let Bar_Color = RGB(102, 103, 171)
 /// 线条颜色
 let Line_Color = RGB(243, 243, 243)    //RGB(126, 126, 126, 0.1)
 let Line_Color1 = RGB(236, 236, 236)
@@ -133,6 +131,10 @@ let Green_Color = RGB(0, 209, 124, 1)
 let AssistText_Color = RGB(148, 163, 184)
 /// 黄色
 let Yellow_Color = RGB(255, 193, 71)
+
+
+/// 主色
+let Bar_Color = RGB(102, 103, 171)
 
 /// RGB颜色
 func RGB(_ red:Int,_ green:Int,_ blue:Int, _ alpha:CGFloat=1) -> UIColor {

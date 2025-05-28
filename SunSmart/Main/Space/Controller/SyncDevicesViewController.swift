@@ -451,9 +451,9 @@ class SyncDevicesViewController: UIViewController {
                         switch syncData {
                         case .proximityLightingNeighbor(let relayNumber, let neighborAddresses):
                             
-                            let taskModel = SyncDeviceStepTaskModel(name: "proximity_lighting_path".localizedString, operationType: .configuration(node: node, type: .proximityLightingNeighbor(relayNumber: relayNumber, neighborAddresses: neighborAddresses)))
+                            let taskModel = SyncDeviceStepTaskModel(name: "path_sequence".localizedString, operationType: .configuration(node: node, type: .proximityLightingNeighbor(relayNumber: relayNumber, neighborAddresses: neighborAddresses)))
                             
-                            let step = SyncDeviceStepModel(type: "proximity_lighting_path".localizedString, state: .none, tasks: [taskModel])
+                            let step = SyncDeviceStepModel(type: "path_sequence".localizedString, state: .none, tasks: [taskModel])
                             taskModel.parentStepModel = step
                             
                             step.parentDeviceModel = syncDeviceModel
@@ -688,12 +688,11 @@ class SyncDevicesViewController: UIViewController {
                 
             case .proximityLightingNeighbor(let relayNumber, let neighborAddresses):
                 
-                let taskModel = SyncDeviceStepTaskModel(name: "proximity_lighting_path".localizedString, operationType: .configuration(node: node, type: .proximityLightingNeighbor(relayNumber: relayNumber, neighborAddresses: neighborAddresses)))
+                let taskModel = SyncDeviceStepTaskModel(name: "path_sequence".localizedString, operationType: .configuration(node: node, type: .proximityLightingNeighbor(relayNumber: relayNumber, neighborAddresses: neighborAddresses)))
                 
-                let step = SyncDeviceStepModel(type: "proximity_lighting_path".localizedString, state: .none, tasks: [taskModel])
+                let step = SyncDeviceStepModel(type: "path_sequence".localizedString, state: .none, tasks: [taskModel])
                 taskModel.parentStepModel = step
                 configturationSteps.append(step)
-                
             default:
                 break
             }

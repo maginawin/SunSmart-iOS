@@ -260,6 +260,9 @@ class DeviceRestoreViewController: UIViewController {
                 // 已找到全部设备
                 if self.allDevices.count >= nodes.count {
                     stopScan()
+                    DispatchQueue.main.async {
+                        NSObject.cancelPreviousPerformRequests(withTarget: self, selector: #selector(self.stopScan), object: nil)
+                    }
                     return
                 }
             }
@@ -520,7 +523,8 @@ class DeviceRestoreViewController: UIViewController {
                 
                 //                node.state = true
                 node.save()
-                if node.needSync {
+                // 恢复数据不包括邻近照明邻居关系，因涉及邻居节点，需要各设备恢复后再去外部同步数据
+                if node.needSync && node.getNodeSyncProximityLighting() == nil {
                     addDevice.addState = .syncFailed
                 }
                 self.restoreNodes.append(node)

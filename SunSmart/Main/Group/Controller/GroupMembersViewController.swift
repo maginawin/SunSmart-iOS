@@ -144,7 +144,18 @@ class GroupMembersViewController: UIViewController {
         }
         
         let exitNodes = group.nodes.filter({ !selectNodes.contains($0) })
-        exitNodes.forEach({ $0.groupState = .exitFailure })
+        exitNodes.forEach({
+            $0.groupState = .exitFailure
+        })
+        // 退出组的设备，整理邻近照明路径关系
+        if exitNodes.count > 0, group.info.profile.type == .proximityLighting, let path = group.info.proximityLightingPath {
+//            let proximityNodes = path.nodes
+            exitNodes.forEach { node in
+                path.removeNode(node)
+            }
+            group.info.save()
+        }
+        
         let addNodes = selectNodes.filter({ !group.nodes.contains($0) })
         addNodes.forEach({ $0.groupState = .inGroup })
         guard exitNodes.count > 0 || addNodes.count > 0 else {

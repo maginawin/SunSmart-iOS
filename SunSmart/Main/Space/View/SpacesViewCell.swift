@@ -52,7 +52,7 @@ class SpacesViewCell: UICollectionViewCell {
             nameLabel.text = space.name
             iconImageView.image = UIImage(named: "space_picture_\(space.imageId)")
             timeLabel.text = space.create > 0 ? String.dateConvert(timestamp: "\(space.create)", dateFormat: "M/d/yyyy hh:mm a") : "--"
-            luminairesLabel.text = "luminaires".localizedString + ":\(space.luminairesCount)"
+            luminairesLabel.text = "luminaires".localizedString + ":\(space.deviceCount)"
             switchesLabel.text = "switches".localizedString + ":\(space.switchesCount)"
             groupsLabel.text = "groups".localizedString + ":\(space.groupCount)"
             scenesLabel.text = "scenes".localizedString + ":\(space.sceneCount)"

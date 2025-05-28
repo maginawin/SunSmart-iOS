@@ -703,4 +703,9 @@ extension ProfileSettingsViewController: ProfileProximityLightingNumberViewDeleg
         XWHUDManager.showTipHUD("no_permission".localizedString + "！")
     }
     
+    /// 帮助
+    func proximityLightingNumberViewHelpAction(_ view: ProfileProximityLightingNumberView) {
+        navigationController?.pushViewController(NumberOfNeghbourNodeInstructionsController(), animated: true)
+    }
+    
 }

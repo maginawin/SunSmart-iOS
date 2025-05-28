@@ -366,16 +366,16 @@ extension Group {
                 // 保存场景
                 messages.append(MeshMessageHandle(message: SceneStore(data.sceneNumber), model: sceneSetupModel))
                 
-                if let vendorModel = node.sunricherVendorModel {
-                    // 保存场景前禁用灯光控制
-//                    if node.lightLCProperty.lightControlEnabled {
-                        messages.insert(MeshMessageHandle(message: SunricherVendorSet(function: .lightControlEnabled(enabled: false)), model: vendorModel), at: 0)
-//                    }
-                    // 保存完场景开启灯光控制
-//                    if !node.lightLCProperty.lightControlEnabled {
-//                        messages.append(MeshMessageHandle(message: SunricherVendorSet(code: .lightControlEnabled, parameters: .lightControlEnabled(enabled: true)), model: vendorModel))
-//                    }
-                }
+//                if let vendorModel = node.sunricherVendorModel {
+//                    // 保存场景前禁用灯光控制
+////                    if node.lightLCProperty.lightControlEnabled {
+//                        messages.insert(MeshMessageHandle(message: SunricherVendorSet(function: .lightControlEnabled(enabled: false)), model: vendorModel), at: 0)
+////                    }
+//                    // 保存完场景开启灯光控制
+////                    if !node.lightLCProperty.lightControlEnabled {
+////                        messages.append(MeshMessageHandle(message: SunricherVendorSet(code: .lightControlEnabled, parameters: .lightControlEnabled(enabled: true)), model: vendorModel))
+////                    }
+//                }
                 
             }
         }

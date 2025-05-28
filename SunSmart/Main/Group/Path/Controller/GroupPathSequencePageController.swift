@@ -11,30 +11,27 @@ import NordicSigMeshSDK
 class GroupPathSequencePageController: WMPageController {
 
     let group: Group
-    let groupPath: GroupProximityLightingPathData?
+    let groupPath: GroupProximityLightingPathData
     private let vcTitles: [String] = ["sequence".localizedString, "trigger_zone".localizedString]
     private var addBtn: UIButton!
+    private var segmentedControl: CustomSegmentedControl!
+    private var syncFailedBtn: UIButton!
     
     private weak var sequenceVc: GroupPathSequenceViewController?
     private weak var triggerZoneVc: GroupPathSequenceTriggerZoneController?
     
-    init(group: Group, groupPath: GroupProximityLightingPathData?) {
+    init(group: Group) {
         self.group = group
-        self.groupPath = groupPath
+        self.groupPath = group.info.proximityLightingPath ?? .init(paths: [], zones: [])
         super.init(nibName: nil, bundle: nil)
         
-        self.menuViewStyle = .line
-        self.progressHeight = 2
-        self.progressWidth = SCRXFrom(90)
-        self.menuViewLayoutMode = .center
-        self.progressColor = Bar_Color
-        self.progressViewBottomSpace = SCRYFrom(6)
-        self.titleSizeNormal = 15
-        self.titleSizeSelected = 15
-        self.titleColorNormal = SubText_Color
-        self.titleColorSelected = Bar_Color
-        self.menuItemWidth = SCRXFrom(90)
-        self.itemMargin = SCRXFrom(20)
+        self.scrollEnable = false
+//        self.menuViewLayoutMode = .center
+//        self.titleSizeNormal = 15
+//        self.titleSizeSelected = 15
+//        self.titleColorNormal = SubText_Color
+//        self.titleColorSelected = Bar_Color
+//        self.menuItemWidth = SCRXFrom(90)
     }
     
     required init?(coder: NSCoder) {
@@ -49,36 +46,92 @@ class GroupPathSequencePageController: WMPageController {
         
         navigationController?.setNavigationBarBackgroundColor(color: .clear)
         
-//        navigationItem.rightBarButtonItem = UIBarButtonItem(image: UIImage(named: "path_add")?.withRenderingMode(.alwaysOriginal), style: .done, target: self, action: #selector(addItemAction))
+        navigationItem.rightBarButtonItems = [
+            UIBarButtonItem(title: "save".localizedString, color: TextBlack_Color, target: self, sel: #selector(saveAction)),
+            UIBarButtonItem(image: UIImage(named: "path_add")?.withRenderingMode(.alwaysOriginal), style: .done, target: self, action: #selector(addItemAction))
+        ]
+        self.isModalInPresentation = true
         
-        navigationItem.rightBarButtonItem = UIBarButtonItem(title: "save".localizedString, color: TextBlack_Color, target: self, sel: #selector(saveAction))
-        
-        addBtn = UIButton(normalImageName: "path_add", target: self, action: #selector(addItemAction))
-        menuView?.addSubview(addBtn)
-        addBtn.snp.makeConstraints { make in
-            make.right.equalTo(-20)
-            make.centerY.equalToSuperview()
-        }
+//        navigationItem.rightBarButtonItem = UIBarButtonItem(title: "save".localizedString, color: TextBlack_Color, target: self, sel: #selector(saveAction))
+        setupUI()
     }
     
+    override func viewDidAppear(_ animated: Bool) {
+        super.viewDidAppear(animated)
+        
+        navigationController?.navigationBar.addSubview(syncFailedBtn)
+        syncFailedBtn.snp.makeConstraints { make in
+            make.centerX.bottom.equalToSuperview()
+        }
+        
+        syncFailedBtn.isHidden = !groupPath.nodes.contains(where: { $0.getNodeSyncProximityLighting() != nil })
+    }
+    
+    override func viewWillDisappear(_ animated: Bool) {
+        super.viewWillDisappear(animated)
+        
+        syncFailedBtn.removeFromSuperview()
+    }
+    
+    private func setupUI() {
+        
+        syncFailedBtn = UIButton(title: "devices_not_synced".localizedString, titleSize: 14, titleWeight: .light, titleColor: Red_Color, fit: false, normalImageName: "schedule_sync_failed", target: self, action: #selector(syncFailedBtnAction))
+        syncFailedBtn.setImagePosition(position: .left, spacing: SCRXFrom(4))
+        syncFailedBtn.isHidden = true
+        
+        segmentedControl = CustomSegmentedControl(frame: .zero, titles: vcTitles)
+        segmentedControl.margin = 0
+        segmentedControl.titleFont = UIFont.systemFont(ofSize: SCRYFrom(14), weight: .light)
+//        segmented.selectedIndex = 1
+        segmentedControl.delegate = self
+        menuView?.addSubview(segmentedControl)
+//        CGRect(x: SCRXFrom(16), y: SCRYFrom(16) + kNavigationHeight, width: view.width - SCRXFrom(32), height: SCRYFrom(44))
+        segmentedControl.snp.makeConstraints { make in
+            make.top.equalTo(view.safeAreaLayoutGuide).offset(SCRYFrom(8))
+            make.left.equalTo(SCRXFrom(16))
+            make.right.equalTo(SCRXFrom(-16))
+            make.height.equalToSuperview()
+        }
+        
+    }
+    
+    @objc private func syncFailedBtnAction() {
+        
+        let vc = SyncDevicesViewController(type: .proximityLightingPath(path: groupPath), reSync: true)
+        vc.syncSuccessCallback = {[weak self] _ in
+            XWHUDManager.showSuccessTipHUD("done!".localizedString)
+            guard let self = self else { return }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1) {[weak self] in
+                self?.navigationController?.popViewController(animated: true)
+            }
+        }
+        navigationController?.pushViewController(vc, animated: true)
+    }
+    
+    
     @objc private func saveAction() {
-        
-        let groupPath = groupPath ?? .init(paths: [], zones: [])
-        
+   
         if let vc = self.sequenceVc {
+            vc.stopSetPath()
             groupPath.paths = vc.setPaths
         }
         if let vc = self.triggerZoneVc {
+            vc.stopSetZone()
             groupPath.zones = vc.setZones
         }
         group.info.proximityLightingPath = groupPath
         group.info.save()
         
+        guard groupPath.nodes.contains(where: { $0.getNodeSyncProximityLighting() != nil }) else {
+            navigationController?.popViewController(animated: true)
+            return
+        }
+        
         let vc = SyncDevicesViewController(type: .proximityLightingPath(path: groupPath))
         vc.syncSuccessCallback = {[weak self] _ in
             XWHUDManager.showSuccessTipHUD("done!".localizedString)
             DispatchQueue.main.asyncAfter(deadline: .now() + 1) {[weak self] in
-                self?.navigationController?.popViewController(animated: true)
+                self?.navigationController?.popToViewController(vcClass: GroupViewController.classForCoder())
             }
         }
         navigationController?.pushViewController(vc, animated: true)
@@ -109,11 +162,11 @@ extension GroupPathSequencePageController {
     override func pageController(_ pageController: WMPageController, viewControllerAt index: Int) -> UIViewController {
         switch index {
         case 0:
-            let vc = GroupPathSequenceViewController(group: group, paths: groupPath?.paths ?? [])
+            let vc = GroupPathSequenceViewController(group: group, groupPath: groupPath)
             self.sequenceVc = vc
             return vc
         case 1:
-            let vc = GroupPathSequenceTriggerZoneController(group: group, zones: groupPath?.zones ?? [])
+            let vc = GroupPathSequenceTriggerZoneController(group: group, zones: groupPath.zones)
             self.triggerZoneVc = vc
             return vc
         default:
@@ -122,35 +175,34 @@ extension GroupPathSequencePageController {
     }
     
     override func pageController(_ pageController: WMPageController, preferredFrameForContentView contentView: WMScrollView) -> CGRect {
-        let y = view.safeAreaInsets.top + SCRYFrom(45)
+        let y = view.safeAreaInsets.top + SCRYFrom(36 + 8)
         return CGRect(x: 0, y: y, width: view.width, height: view.height - y)
     }
     
     override func pageController(_ pageController: WMPageController, preferredFrameFor menuView: WMMenuView) -> CGRect {
-        return CGRect(x: 0, y: view.safeAreaInsets.top, width: view.width, height: SCRYFrom(45))
+        return CGRect(x: 0, y: view.safeAreaInsets.top + SCRYFrom(8), width: view.width, height: SCRYFrom(36))
     }
     
+    
+    
     override func menuView(_ menu: WMMenuView!, titleAt index: Int) -> String! {
-        return vcTitles[index]
+        return ""
     }
     
 //    override func pageController(_ pageController: WMPageController, didEnter viewController: UIViewController, withInfo info: [AnyHashable : Any]) {
-//        mainMenuView.selectIndex = Int(self.selectIndex)
-//        if let disablePageIndex = self.disablePageIndex, selectIndex == disablePageIndex {
-//            self.scrollEnable = false
-//        }
-//    }
-    
-    
-//    override func menuView(_ menu: WMMenuView!, didSelectedIndex index: Int, currentIndex: Int) {
-//        super.menuView(menu, didSelectedIndex: index, currentIndex: currentIndex)
-//
-//        if let disablePageIndex = self.disablePageIndex, index == disablePageIndex {
-//            self.scrollEnable = false
-//        }else {
-//            self.scrollEnable = true
-//        }
+//        segmentedControl?.selectedIndex = Int(self.selectIndex)
 //    }
     
 }
 
+extension GroupPathSequencePageController: CustomSegmentedControlDelegate {
+    
+    /// 分段控制器切换item回调
+    /// - Parameters:
+    ///   - segmentedControl: 分段控制器
+    ///   - index: 点击索引
+    func segmentedControl(_ segmentedControl: CustomSegmentedControl, didSelectedItem index: Int) {
+        self.selectIndex = Int32(index)
+    }
+    
+}

@@ -110,16 +110,20 @@ class GroupPathSequenceTriggerAddView: UIView {
         }
         
         flowLayout = HorizontalDirectionFlowLayout()
-        flowLayout.itmeColCount = 5
-        flowLayout.itemRowCount = 1
+        flowLayout.itemColCount = 1
+        flowLayout.itemRowCount = colCount
         flowLayout.minimumInteritemSpacing = SCRXFrom(18)
+        flowLayout.sectionInset = UIEdgeInsets(top: 0, left: SCRXFrom(26), bottom: 0, right: SCRXFrom(25))
+        flowLayout.scrollDirection = .horizontal
         
         collectionView = UICollectionView(frame: .zero, collectionViewLayout: flowLayout)
         collectionView.backgroundColor = .clear
-        collectionView.contentInset = UIEdgeInsets(top: 0, left: SCRXFrom(26), bottom: 0, right: SCRXFrom(25))
+//        collectionView.contentInset = UIEdgeInsets(top: 0, left: SCRXFrom(26), bottom: 0, right: SCRXFrom(25))
+        collectionView.isPagingEnabled = true
         collectionView.register(GroupPathSequenceAddDeviceCell.classForCoder(), forCellWithReuseIdentifier: "cell")
         collectionView.dataSource = self
         collectionView.delegate = self
+        collectionView.showsHorizontalScrollIndicator = false
         addSubview(collectionView)
         collectionView.snp.makeConstraints { make in
             make.left.right.equalToSuperview()
@@ -175,12 +179,12 @@ extension GroupPathSequenceTriggerAddView: UICollectionViewDataSource, UICollect
         return cell
     }
     
-    func collectionView(_ collectionView: UICollectionView, layout collectionViewLayout: UICollectionViewLayout, sizeForItemAt indexPath: IndexPath) -> CGSize {
-    
-        var itemW = (collectionView.width - collectionView.contentInset.left - collectionView.contentInset.right - flowLayout.minimumInteritemSpacing * CGFloat(colCount - 1)) / CGFloat(colCount)
-        itemW = CGFloat(floorf(Float(itemW) * 100) / 100.0)
-        return CGSize(width: itemW, height: itemW)
-    }
+//    func collectionView(_ collectionView: UICollectionView, layout collectionViewLayout: UICollectionViewLayout, sizeForItemAt indexPath: IndexPath) -> CGSize {
+//    
+//        var itemW = (collectionView.width - collectionView.contentInset.left - collectionView.contentInset.right - flowLayout.minimumInteritemSpacing * CGFloat(colCount - 1)) / CGFloat(colCount)
+//        itemW = CGFloat(floorf(Float(itemW) * 100) / 100.0)
+//        return CGSize(width: itemW, height: itemW)
+//    }
     
     func collectionView(_ collectionView: UICollectionView, didSelectItemAt indexPath: IndexPath) {
         

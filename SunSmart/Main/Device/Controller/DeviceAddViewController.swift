@@ -621,13 +621,15 @@ class DeviceAddViewController: UIViewController {
                 }
                 appendMessages.append(contentsOf: group.getNodeAddMessageHandles(node: node))
             }else {
-                if let vendorModel = node.sunricherVendorModel { // 未加入组的设备默认设置一个手动控制延迟时间，避免默认30s后状态被LC修改
-                    appendMessages.append(MeshMessageHandle(message: SunricherVendorSet(function: .manualOverrideTimeout(enabled: true, state: .standby, interval: .max)), model: vendorModel))
-                }
-                if let powerOnOffSetupModel = node.powerOnOffSetupModel { // 设置默认上电状态为上一次亮度
-                    appendMessages.append(MeshMessageHandle(message: GenericOnPowerUpSet(state: .restore), model: powerOnOffSetupModel))
-//                    appendMessages.append(MeshMessageHandle(message: GenericOnPowerUpSet(state: .default), model: powerOnOffSetupModel))
-//                    appendMessages.append(MeshMessageHandle(message: LightLightnessDefaultSet(lightness: .max), model: lightnessSetupModel))
+                if device.deviceType != .dongle && device.deviceType != .gateway {
+                    if let vendorModel = node.sunricherVendorModel { // 未加入组的设备默认设置一个手动控制延迟时间，避免默认30s后状态被LC修改
+                        appendMessages.append(MeshMessageHandle(message: SunricherVendorSet(function: .manualOverrideTimeout(enabled: true, state: .standby, interval: .max)), model: vendorModel))
+                    }
+                    if let powerOnOffSetupModel = node.powerOnOffSetupModel { // 设置默认上电状态为上一次亮度
+                        appendMessages.append(MeshMessageHandle(message: GenericOnPowerUpSet(state: .restore), model: powerOnOffSetupModel))
+                        //                    appendMessages.append(MeshMessageHandle(message: GenericOnPowerUpSet(state: .default), model: powerOnOffSetupModel))
+                        //                    appendMessages.append(MeshMessageHandle(message: LightLightnessDefaultSet(lightness: .max), model: lightnessSetupModel))
+                    }
                 }
             }
             // 需要追加发送的消息
@@ -730,7 +732,7 @@ class DeviceAddViewController: UIViewController {
 //                MeshLibManager.manager.currentProxy?.nodeAddress = node.primaryUnicastAddress
 //            }
             self.space.deviceCount = MeshNetworkManager.instance.realNodes.count
-            self.space.luminairesCount = MeshNetworkManager.instance.lightNodes.count
+            self.space.luminairesCount = MeshNetworkManager.instance.realNodes.filter({ $0.deviceType == .light }).count //MeshNetworkManager.instance.lightNodes.count
             self.space.save()
             // 通知space数据修改
 //            NotificationCenter.default.post(name: .init(spaceDataChangedNotificaitonName), object: SpaceChangeDataType.device)
@@ -913,7 +915,7 @@ class DeviceAddViewController: UIViewController {
         categoryView.updateTitle("\("lights".localizedString)-\(scanDevices.filter({ $0.deviceType == .light }).count)", at: 0, andWidth: false)
         categoryView.updateTitle("\("switches".localizedString)-\(scanDevices.filter({ $0.deviceType == .switches }).count)", at: 1, andWidth: false)
         categoryView.updateTitle("\("sensors".localizedString)-\(scanDevices.filter({ $0.deviceType == .sensor }).count)", at: 2, andWidth: false)
-        categoryView.updateTitle("\("others".localizedString)-\(scanDevices.filter({ $0.deviceType == .dongle || $0.deviceType == .unknown }).count)", at: 3, andWidth: false)
+        categoryView.updateTitle("\("others".localizedString)-\(scanDevices.filter({ $0.deviceType == .dongle || $0.deviceType == .gateway || $0.deviceType == .unknown }).count)", at: 3, andWidth: false)
     }
     
     // MARK: - UI

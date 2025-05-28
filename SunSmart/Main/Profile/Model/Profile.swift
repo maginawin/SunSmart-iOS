@@ -305,6 +305,8 @@ class Profile: Copyable {
                     return ("profile_required_occupancy_sensor".localizedString, "profile_device_occupancy_sensor")
                 case .manualControl:
                     return ("profile_required_manual_control".localizedString, "profile_device_manual_control")
+                case .pathSequenceSetting:
+                    return ("path_sequence_setting".localizedString, "profile_path_sequence_setting")
                 }
             }
             /// 灯
@@ -315,6 +317,8 @@ class Profile: Copyable {
             case occupancySensor
             /// 开关面板
             case manualControl
+            /// 路径
+            case pathSequenceSetting
         }
         
         /// 简介
@@ -333,7 +337,7 @@ class Profile: Copyable {
             case .manualControl:
                 return ("profile_manual_control".localizedString, "profile_manual_control", "profile_manual_control_desc".localizedString, [.luminaire, .manualControl])
             case .proximityLighting:
-                return ("profile_predictive_lighting".localizedString, "profile_occupancy", "profile_occupancy_desc".localizedString, [.luminaire, .occupancySensor])
+                return ("profile_predictive_lighting".localizedString, "profile_proximity_lighting", "profile_predictive_lighting_desc".localizedString, [.luminaire, .occupancySensor, .pathSequenceSetting])
             }
         }
         

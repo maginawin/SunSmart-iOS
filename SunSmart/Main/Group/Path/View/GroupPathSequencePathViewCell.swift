@@ -6,6 +6,7 @@
 //
 
 import UIKit
+import NordicSigMeshSDK
 
 protocol GroupPathSequencePathViewCellDelegate: AnyObject {
     
@@ -33,6 +34,9 @@ protocol GroupPathSequencePathViewCellDelegate: AnyObject {
     /// 删除item
     func cell(_ cell: GroupPathSequencePathViewCell, deleteItem item: GroupProximityLightingSequencePath.GroupProximityLightingPathItem)
     
+    /// 设置item关联设备 address：关联的设备地址
+    func cell(_ cell: GroupPathSequencePathViewCell, bindDevice item: GroupProximityLightingSequencePath.GroupProximityLightingPathItem, address: Address)
+    
 }
 
 /// 路径item操作选项
@@ -46,10 +50,10 @@ enum PathItemOptions {
             return "start_right".localizedString
         case .startLeft:
             return "start_left".localizedString
-        case .insertBehind:
-            return "insert_behind".localizedString
-        case .insertFront:
-            return "insert_front".localizedString
+        case .insertRight:
+            return "insert_right".localizedString
+        case .insertLeft:
+            return "insert_left".localizedString
         case .identify:
             return "identify".localizedString
         case .remove:
@@ -65,10 +69,10 @@ enum PathItemOptions {
     case startRight
     /// item往左添加设备
     case startLeft
-    /// 在item后面插入一个item
-    case insertBehind
-    /// 在item前面插入一个item
-    case insertFront
+    /// 在item右边插入一个item
+    case insertRight
+    /// 在item左边插入一个item
+    case insertLeft
     /// 识别
     case identify
     /// 删除设备
@@ -106,6 +110,8 @@ class GroupPathSequencePathViewCell: UITableViewCell {
         
         backgroundColor = .clear
         setupUI()
+        
+        addInteraction(UIDropInteraction(delegate: self))
     }
     
     required init?(coder: NSCoder) {
@@ -151,7 +157,7 @@ class GroupPathSequencePathViewCell: UITableViewCell {
             make.height.equalTo(SCRYFrom(82))
         }
     }
-
+    
     @objc private func collectionViewLongPressAction(sender: UIGestureRecognizer) {
         guard sender.state == .began else {
             return
@@ -189,7 +195,7 @@ class GroupPathSequencePathViewCell: UITableViewCell {
     /// 刷新Item
     func reloadPathItem(item: GroupProximityLightingSequencePath.GroupProximityLightingPathItem) {
         if let index = path.items.firstIndex(of: item) {
-            collectionView.reloadItems(at: [IndexPath(item: index, section: 0)])
+            collectionView.reloadItems(at: [IndexPath(item: index + 1, section: 0)])
         }else {
             collectionView.reloadData()
         }
@@ -217,12 +223,20 @@ extension GroupPathSequencePathViewCell: UICollectionViewDataSource, UICollectio
                 pathItem.nameLabel.isHidden = false
                 pathItem.nameLabel.text = node.name
                 pathItem.arrowImageView.isHidden = true
+                if node.state {
+                    pathItem.nameLabel.textColor = SubText_Color
+                    pathItem.iconImageView.image = UIImage(named: "path_device")
+                }else {
+                    pathItem.nameLabel.textColor = AssistText_Color
+                    pathItem.iconImageView.image = UIImage(named: "path_device_offline")
+                }
+                
             }else {
                 // 当前选中的item
                 if let selectPathData = selectPathData, selectPathData.path == path && selectPathData.item == itemData {
                     pathItem.arrowImageView.isHidden = false
                     var direction = selectPathData.direction
-                    // 偶数行，排列为倒序，需要将方向调转
+                    // 奇数行，排列为倒序，需要将方向调转
                     if indexPath.item / colCount % 2 == 1 {
                         direction = direction == .left ? .right : .left
                     }
@@ -238,11 +252,11 @@ extension GroupPathSequencePathViewCell: UICollectionViewDataSource, UICollectio
         }
     }
     
-//    func collectionView(_ collectionView: UICollectionView, layout collectionViewLayout: UICollectionViewLayout, sizeForItemAt indexPath: IndexPath) -> CGSize {
-//        var itemW = ((collectionView.width - collectionView.contentInset.left - collectionView.contentInset.right) - CGFloat(colCount - 1) * flowLayout.minimumInteritemSpacing) / CGFloat(colCount)
-//        itemW = CGFloat(floorf(Float(itemW) * 100) / 100.0)
-//        return CGSize(width: itemW, height: SCRYFrom(62))
-//    }
+    //    func collectionView(_ collectionView: UICollectionView, layout collectionViewLayout: UICollectionViewLayout, sizeForItemAt indexPath: IndexPath) -> CGSize {
+    //        var itemW = ((collectionView.width - collectionView.contentInset.left - collectionView.contentInset.right) - CGFloat(colCount - 1) * flowLayout.minimumInteritemSpacing) / CGFloat(colCount)
+    //        itemW = CGFloat(floorf(Float(itemW) * 100) / 100.0)
+    //        return CGSize(width: itemW, height: SCRYFrom(62))
+    //    }
     
     func collectionView(_ collectionView: UICollectionView, didSelectItemAt indexPath: IndexPath) {
         
@@ -252,7 +266,7 @@ extension GroupPathSequencePathViewCell: UICollectionViewDataSource, UICollectio
             }else {
                 delegate?.cell(self, didAddItem: 1, insertIndex: indexPath.row - 1)
             }
-
+            
         }else {
             guard let cell = collectionView.cellForItem(at: indexPath) else {
                 return
@@ -262,13 +276,13 @@ extension GroupPathSequencePathViewCell: UICollectionViewDataSource, UICollectio
             let pathItem = path.items[indexPath.row - 1]
             // 判断是否有设备
             if pathItem.node != nil {
-                options = [.identify, .remove, .insertBehind, .insertFront, .delete]
+                options = [.identify, .remove, .insertRight, .insertLeft, .delete]
             }else {
                 // 判断是否是当前选中的item
                 if selectPathData?.path == path && selectPathData?.item == pathItem {
-                    options = [.overturn, .insertBehind, .insertFront, .delete]
+                    options = [.overturn, .insertRight, .insertLeft, .delete]
                 }else {
-                    options = [.startRight, .startLeft, .insertBehind, .insertFront, .delete]
+                    options = [.startRight, .startLeft, .insertRight, .insertLeft, .delete]
                 }
             }
             
@@ -288,10 +302,20 @@ extension GroupPathSequencePathViewCell: UICollectionViewDataSource, UICollectio
                     let direction: PathDirection = selectPathData?.direction == .left ? .right : .left
                     self.selectPathData?.direction = direction
                     self.delegate?.cell(self, didSelectDirection: pathItem, direction: direction)
-                case .insertBehind:
-                    self.delegate?.cell(self, didAddItem: 1, insertIndex: indexPath.row)
-                case .insertFront:
-                    self.delegate?.cell(self, didAddItem: 1, insertIndex: min(indexPath.row - 1, 0))
+                case .insertRight:
+                    var index = indexPath.row
+                    // 奇数行，排列为倒序，需要将方向调转
+                    if indexPath.item / colCount % 2 == 1 {
+                        index = min(indexPath.row - 1, 0)
+                    }
+                    self.delegate?.cell(self, didAddItem: 1, insertIndex: index)
+                case .insertLeft:
+                    var index = min(indexPath.row - 1, 0)
+                    // 奇数行，排列为倒序，需要将方向调转
+                    if indexPath.item / colCount % 2 == 1 {
+                        index = indexPath.row
+                    }
+                    self.delegate?.cell(self, didAddItem: 1, insertIndex: index)
                 case .startLeft:
                     self.selectPathData?.direction = .left
                     self.delegate?.cell(self, didSelectDirection: pathItem, direction: .left)
@@ -308,6 +332,33 @@ extension GroupPathSequencePathViewCell: UICollectionViewDataSource, UICollectio
                 
             }
             
+        }
+    }
+    
+}
+
+extension GroupPathSequencePathViewCell: UIDropInteractionDelegate {
+    
+    func dropInteraction(_ interaction: UIDropInteraction, canHandle session: UIDropSession) -> Bool {
+        return session.canLoadObjects(ofClass: NSString.self)
+    }
+    
+    func dropInteraction(_ interaction: UIDropInteraction, sessionDidUpdate session: UIDropSession) -> UIDropProposal {
+        return UIDropProposal(operation: .copy)
+    }
+    
+    func dropInteraction(_ interaction: UIDropInteraction, performDrop session: UIDropSession) {
+        session.loadObjects(ofClass: NSString.self) {[weak self] items in
+            guard let self = self, selectPathData?.path == self.path else { return }
+            let dropPoint = session.location(in: self)
+            let collectionPoint = self.convert(dropPoint, to: self.collectionView)
+            
+            guard let addressHex = items.first as? String, let address = Address(hex: addressHex), let indexPath = self.collectionView.indexPathForItem(at: collectionPoint), indexPath.row > 0 && indexPath.item - 1 < self.path.items.count else { return }
+            
+            let item = self.path.items[indexPath.item - 1]
+            //                item.address = address
+            //                self.collectionView.reloadItems(at: [indexPath])
+            self.delegate?.cell(self, bindDevice: item, address: address)
         }
     }
     
@@ -353,7 +404,7 @@ class GroupPathSequencePathItem: UICollectionViewCell {
         boxView = UIView()
         boxView.layer.borderColor = RGB(241, 242, 244).cgColor
         boxView.layer.borderWidth = 1
-//        boxView.addGestureRecognizer(UITapGestureRecognizer(target: self, action: #selector(boxViewTapGesture)))
+        //        boxView.addGestureRecognizer(UITapGestureRecognizer(target: self, action: #selector(boxViewTapGesture)))
         contentView.addSubview(boxView)
         boxView.snp.makeConstraints { make in
             make.left.right.bottom.equalToSuperview()
@@ -422,7 +473,7 @@ class GroupPathSequencePathAddItem: UICollectionViewCell {
     
     private func setupUI() {
         boxView = UIView()
-//        boxView.addGestureRecognizer(UITapGestureRecognizer(target: self, action: #selector(boxViewTapGesture)))
+        //        boxView.addGestureRecognizer(UITapGestureRecognizer(target: self, action: #selector(boxViewTapGesture)))
         contentView.addSubview(boxView)
         boxView.snp.makeConstraints { make in
             make.left.right.bottom.equalToSuperview()

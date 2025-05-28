@@ -12,8 +12,9 @@ class GroupPathSequenceViewController: UIViewController {
 
     let group: Group
     
+    let groupPath: GroupProximityLightingPathData
     /// 路径list
-    let paths: [GroupProximityLightingSequencePath]
+//    let paths: [GroupProximityLightingSequencePath]
     private var tableView: UITableView!
     private var deviceAddView: GroupPathSequenceDeviceAddView!
     
@@ -28,12 +29,13 @@ class GroupPathSequenceViewController: UIViewController {
     /// 触发的设备list
     private var triggerDevices: [Node] = []
     
-    init(group: Group, paths: [GroupProximityLightingSequencePath]) {
+    init(group: Group, groupPath: GroupProximityLightingPathData) {
         self.group = group
-        self.paths = paths
+        self.groupPath = groupPath
+//        self.paths = paths
         super.init(nibName: nil, bundle: nil)
         
-        setPaths = paths.map({ $0.copy() })
+        setPaths = groupPath.paths.map({ $0.copy() })
         selectPathData = GroupPathSequenceSelectData()
     }
     
@@ -62,10 +64,21 @@ class GroupPathSequenceViewController: UIViewController {
         MeshLibManager.manager.messageDelegate = self
     }
     
+    override func viewDidDisappear(_ animated: Bool) {
+        super.viewDidDisappear(animated)
+        
+        if selectPathData.isSelect, let section = setPaths.firstIndex(of: selectPathData.path!) {
+            selectPathData.path = nil
+            selectPathData.item = nil
+            tableView.reloadSections(IndexSet(integer: section), with: .none)
+            updateDeviceAddViewUI()
+        }
+    }
+    
     private func updateEmptyUI() {
         if setPaths.isEmpty {
 //            view.layoutIfNeeded()
-            tableView.showEmptyDataView(title: "no_sequences".localizedString, backgroundColor: Background_Color, buttonText: "add_sequence".localizedString, buttomWidth: SCRXFrom(216), position: .center) {[weak self] in
+            tableView.showEmptyDataView(title: "no_sequences".localizedString, backgroundColor: Background_Color, buttonText: "add_sequence".localizedString, buttomWidth: SCRXFrom(216), position: .center, bottomMargin: SCRYFrom(20)) {[weak self] in
                 self?.addPath()
             }
             tableView.isScrollEnabled = false
@@ -101,7 +114,8 @@ class GroupPathSequenceViewController: UIViewController {
                 return
             }
             let list = GroupProximityLightingSequencePath.default(count: number)
-            self.setPaths.append(contentsOf: list)
+            self.groupPath.paths.append(contentsOf: list)
+            self.setPaths.append(contentsOf: list.map({ $0.copy() }))
 //            let indexPaths = list.enumerated().map({ self.setPaths.count + $0.offset - 1 })
             self.tableView.reloadData()
 //            self.tableView.insertSections(IndexSet(indexPaths), with: .automatic)
@@ -111,14 +125,28 @@ class GroupPathSequenceViewController: UIViewController {
         }.show()
     }
     
+    /// 停止设置路径
+    func stopSetPath() {
+        selectPathData.path = nil
+        selectPathData.item = nil
+        updateDeviceAddViewUI()
+    }
+    
     /// 路径操作
     private func pathOperation(path: GroupProximityLightingSequencePath,type: GroupPathSequencePathHeaderView.OperationType) {
         
         switch type {
         case .save:
             break
+//            groupPath.updatePath(path)
+//            group.info.save()
+            
+//            SyncDevicesViewController(type: .proximityLightingSequencePath(sequencePath: path))
+            
         case .test:
-            break
+            
+            GroupPathSequencePathTestView(group: group, addresses: path.items.compactMap({ $0.address })).show()
+            
         case .reset:
             SRAlertView(title: "notification".localizedString, message: "path_reset_devices_message".localizedString, actions: [.cancelAction, SRAlertAction(title: "confirm".localizedString, actionHandler: {[weak self] _ in
                 
@@ -174,7 +202,8 @@ class GroupPathSequenceViewController: UIViewController {
             }
         }
         if let section = setPaths.firstIndex(of: path) {
-            tableView.reloadRows(at: [IndexPath(row: 0, section: section)], with: .none)
+//            tableView.reloadRows(at: [IndexPath(row: 0, section: section)], with: .none)
+            tableView.reloadSections(IndexSet(integer: section), with: .none)
         }
       
         
@@ -203,9 +232,10 @@ class GroupPathSequenceViewController: UIViewController {
         deviceAddView.delegate = self
         view.addSubview(deviceAddView)
         deviceAddView.snp.makeConstraints { make in
-            make.left.right.equalTo(tableView)
+//            make.left.right.equalTo(tableView)
+            make.left.right.equalToSuperview()
             make.bottom.equalTo(-max(kSafeAreaBottomHeight, SCRYFrom(16)))
-            make.height.equalTo(SCRYFrom(163))
+            make.height.greaterThanOrEqualTo(SCRYFrom(163))
         }
         
     }
@@ -239,7 +269,7 @@ extension GroupPathSequenceViewController: UITableViewDataSource, UITableViewDel
         let path = setPaths[section]
         headerView.isSelect = selectPathData.path == path
         headerView.testBtn.isEnabled = path.items.contains(where: { $0.address != nil })
-//        headerView.resetBtn
+        headerView.resetBtn.isEnabled = path.items.contains(where: { $0.address != nil })
         headerView.nameLabel.text = "\("path".localizedString) \(section + 1)"
         headerView.operationActionCallback = {[weak self] type in
             guard let self = self else { return }
@@ -308,6 +338,17 @@ extension GroupPathSequenceViewController: GroupPathSequencePathViewCellDelegate
         
         tableView.reloadSections(IndexSet(reloadSections), with: .none)
         
+        let addedNodes = showAddedDevices ? selectPathData.path?.nodes ?? [] : setPaths.flatMap { $0.nodes }
+        
+        // 更新触发添加、手动添加可选设备列表
+        if self.deviceAddMode == .triggerAdd {
+            deviceAddView.triggerAddView.reloadData(devices: triggerDevices.filter({ !addedNodes.contains($0) }), selectDevice: deviceAddView.triggerAddView.selectDevice)
+        }else if self.deviceAddMode == .manuallyAdd {
+            let showNodes = group.nodes.filter({ !addedNodes.contains($0) })
+            deviceAddView.manuallyAddView.reloadData(devices: showNodes, selectDevice: deviceAddView.manuallyAddView.selectDevice)
+        }
+        
+        
         updateDeviceAddViewUI()
     }
     
@@ -344,6 +385,12 @@ extension GroupPathSequenceViewController: GroupPathSequencePathViewCellDelegate
         item.address = nil
         cell.reloadPathItem(item: item)
 
+        if deviceAddMode == .manuallyAdd {
+            let addedNodes = showAddedDevices ? selectPathData.path?.nodes ?? [] : setPaths.flatMap { $0.nodes }
+            let showNodes = group.nodes.filter({ !addedNodes.contains($0) })
+            deviceAddView.manuallyAddView.reloadData(devices: showNodes, selectDevice: nil)
+            deviceAddView.updateUnfoldState()
+        }
     }
     
     /// 删除item
@@ -362,7 +409,39 @@ extension GroupPathSequenceViewController: GroupPathSequencePathViewCellDelegate
             updateDeviceAddViewUI()
         }
         
+        if deviceAddMode == .manuallyAdd {
+            let addedNodes = setPaths.flatMap { $0.nodes }
+            let showNodes = showAddedDevices ? group.nodes : group.nodes.filter({ !addedNodes.contains($0) })
+            deviceAddView.manuallyAddView.reloadData(devices: showNodes, selectDevice: nil)
+            deviceAddView.updateUnfoldState()
+        }
+        
         tableView.performBatchUpdates(nil)
+    }
+    
+    func cell(_ cell: GroupPathSequencePathViewCell, bindDevice item: GroupProximityLightingSequencePath.GroupProximityLightingPathItem, address: Address) {
+        
+        guard let section = tableView.indexPath(for: cell)?.section else { return }
+        
+        if self.deviceAddMode == .manuallyAdd {
+            
+            //            if let selectPathData = selectPathData, let item = selectPathData.item {
+            item.address = address
+            
+            let addedNodes = showAddedDevices ? selectPathData.path?.nodes ?? [] : setPaths.flatMap { $0.nodes }
+            let showNodes = group.nodes.filter({ !addedNodes.contains($0) })
+            deviceAddView.manuallyAddView.reloadData(devices: showNodes, selectDevice: nil)
+            deviceAddView.updateUnfoldState()
+            if let selectPathData = selectPathData, let selectItem = selectPathData.item, item == selectItem {
+                setNextPathItem()
+            }else {
+//                cell.reloadPathItem(item: item)
+                tableView.reloadSections(IndexSet(integer: section), with: .none)
+            }
+            //            }
+            
+        }
+        
     }
     
 }
@@ -376,6 +455,15 @@ extension GroupPathSequenceViewController: GroupPathSequenceDeviceAddViewDelegat
             deviceAddView.triggerAddView.reloadData(devices: triggerDevices, selectDevice: nil)
             deviceAddView.refreshBtn.isHidden = true
         }
+        
+        // 手动控制
+        if mode == .manuallyAdd {
+            let addedNodes = showAddedDevices ? selectPathData.path?.nodes ?? [] : setPaths.flatMap { $0.nodes }
+            let showNodes = group.nodes.filter({ !addedNodes.contains($0) })
+            deviceAddView.manuallyAddView.reloadData(devices: showNodes, selectDevice: nil)
+            deviceAddView.updateUnfoldState()
+        }
+        
         self.deviceAddMode = mode
         
     }
@@ -383,6 +471,23 @@ extension GroupPathSequenceViewController: GroupPathSequenceDeviceAddViewDelegat
     /// 已使用设备是否可重复使用选项更新 enabled true：可重复使用 false: 忽略
     func deviceAddView(_ view: GroupPathSequenceDeviceAddView, showAddedDevices enabled: Bool) {
         self.showAddedDevices = enabled
+        
+        let addedNodes = showAddedDevices ? selectPathData.path?.nodes ?? [] : setPaths.flatMap { $0.nodes }
+        // 更新触发添加、手动添加可选设备列表
+        if self.deviceAddMode == .triggerAdd {
+            deviceAddView.triggerAddView.reloadData(devices: triggerDevices.filter({ !addedNodes.contains($0) }), selectDevice: deviceAddView.triggerAddView.selectDevice)
+        }else if self.deviceAddMode == .manuallyAdd {
+            let showNodes = group.nodes.filter({ !addedNodes.contains($0) })
+            deviceAddView.manuallyAddView.reloadData(devices: showNodes, selectDevice: deviceAddView.manuallyAddView.selectDevice)
+        }
+        
+        
+        // 手动控制
+//        if deviceAddMode == .manuallyAdd {
+//            let addedNodes = showAddedDevices ? selectPathData.path?.nodes ?? [] : setPaths.flatMap { $0.nodes }
+//            let showNodes = group.nodes.filter({ !addedNodes.contains($0) })
+//            deviceAddView.manuallyAddView.reloadData(devices: showNodes, selectDevice: view.triggerAddView.selectDevice)
+//        }
     }
     
     /// 快速添加状态更新
@@ -401,6 +506,18 @@ extension GroupPathSequenceViewController: GroupPathSequenceDeviceAddViewDelegat
                 }
                 setNextPathItem()
             }
+        }else if self.deviceAddMode == .manuallyAdd {
+            
+            if let selectPathData = selectPathData, let item = selectPathData.item {
+                item.address = device.sunricherVendorModel?.parentElement?.unicastAddress ?? device.primaryUnicastAddress
+                
+                let addedNodes = showAddedDevices ? selectPathData.path?.nodes ?? [] : setPaths.flatMap { $0.nodes }
+                let showNodes = group.nodes.filter({ !addedNodes.contains($0) })
+                view.manuallyAddView.reloadData(devices: showNodes, selectDevice: nil)
+                view.updateUnfoldState()
+                setNextPathItem()
+            }
+            
         }
     }
     
@@ -468,7 +585,6 @@ extension GroupPathSequenceViewController: MeshLibManagerMessageDelegate {
                 deviceAddView.triggerAddView.reloadData(devices: triggerDevices, selectDevice: deviceAddView.triggerAddView.selectDevice)
                 deviceAddView.refreshBtn.isHidden = false
             }
-            
         default:
             break
         }

@@ -82,18 +82,22 @@ class GroupPathSequencePathHeaderView: UITableViewHeaderFooterView {
             make.top.equalTo(SCRYFrom(15))
         }
         
+        let btnSize = CGSize(width: SCRXFrom(44), height: CGFloat(Int(SCRYFrom(28))))
+        
         deleteBtn = UIButton(title: "delete".localizedString, titleSize: 12, titleColor: Bar_Color, target: self, action: #selector(deleteBtnAction))
+        deleteBtn.setTitleColor(Bar_Color.withAlphaComponent(0.5), for: .disabled)
         deleteBtn.isHidden = true
         deleteBtn.layer.cornerRadius = SCRYFrom(5)
         deleteBtn.layer.borderColor = RGB(220, 220, 220).cgColor
         deleteBtn.layer.borderWidth = 1
-        deleteBtn.backgroundColor = .white
+        deleteBtn.layer.masksToBounds = true
+        deleteBtn.setBackgroundImage(UIImage.image(size: btnSize, color: .white), for: .normal)
+        deleteBtn.setBackgroundImage(UIImage.image(size: btnSize, color: .white.withAlphaComponent(0.5)), for: .disabled)
         contentView.addSubview(deleteBtn)
         deleteBtn.snp.makeConstraints { make in
             make.right.equalTo(SCRXFrom(-9))
             make.top.equalTo(SCRYFrom(8))
-            make.width.equalTo(SCRXFrom(44))
-            make.height.equalTo(SCRYFrom(28))
+            make.size.equalTo(btnSize)
         }
         
         resetBtn = UIButton(title: "reset".localizedString, titleSize: 12, titleColor: Bar_Color, target: self, action: #selector(resetBtnAction))
@@ -101,7 +105,10 @@ class GroupPathSequencePathHeaderView: UITableViewHeaderFooterView {
         resetBtn.layer.cornerRadius = SCRYFrom(5)
         resetBtn.layer.borderColor = RGB(220, 220, 220).cgColor
         resetBtn.layer.borderWidth = 1
-        resetBtn.backgroundColor = .white
+        resetBtn.layer.masksToBounds = true
+        resetBtn.setTitleColor(Bar_Color.withAlphaComponent(0.5), for: .disabled)
+        resetBtn.setBackgroundImage(UIImage.image(size: btnSize, color: .white), for: .normal)
+        resetBtn.setBackgroundImage(UIImage.image(size: btnSize, color: .white.withAlphaComponent(0.5)), for: .disabled)
         contentView.addSubview(resetBtn)
         resetBtn.snp.makeConstraints { make in
             make.right.equalTo(deleteBtn.snp.left).offset(SCRXFrom(-8))
@@ -113,7 +120,10 @@ class GroupPathSequencePathHeaderView: UITableViewHeaderFooterView {
         testBtn.layer.cornerRadius = SCRYFrom(5)
         testBtn.layer.borderColor = RGB(220, 220, 220).cgColor
         testBtn.layer.borderWidth = 1
-        testBtn.backgroundColor = .white
+        testBtn.layer.masksToBounds = true
+        testBtn.setTitleColor(Bar_Color.withAlphaComponent(0.5), for: .disabled)
+        testBtn.setBackgroundImage(UIImage.image(size: btnSize, color: .white), for: .normal)
+        testBtn.setBackgroundImage(UIImage.image(size: btnSize, color: .white.withAlphaComponent(0.5)), for: .disabled)
         contentView.addSubview(testBtn)
         testBtn.snp.makeConstraints { make in
             make.right.equalTo(resetBtn.snp.left).offset(SCRXFrom(-8))
@@ -125,7 +135,10 @@ class GroupPathSequencePathHeaderView: UITableViewHeaderFooterView {
         saveBtn.layer.cornerRadius = SCRYFrom(5)
         saveBtn.layer.borderColor = RGB(220, 220, 220).cgColor
         saveBtn.layer.borderWidth = 1
-        saveBtn.backgroundColor = .white
+        saveBtn.layer.masksToBounds = true
+        saveBtn.setTitleColor(Bar_Color.withAlphaComponent(0.5), for: .disabled)
+        saveBtn.setBackgroundImage(UIImage.image(size: btnSize, color: .white), for: .normal)
+        saveBtn.setBackgroundImage(UIImage.image(size: btnSize, color: .white.withAlphaComponent(0.5)), for: .disabled)
         contentView.addSubview(saveBtn)
         saveBtn.snp.makeConstraints { make in
             make.right.equalTo(testBtn.snp.left).offset(SCRXFrom(-8))

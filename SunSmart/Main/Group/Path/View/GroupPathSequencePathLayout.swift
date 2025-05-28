@@ -10,6 +10,7 @@ import UIKit
 class GroupPathSequencePathLayout: UICollectionViewFlowLayout {
     
     private var lineWidth: CGFloat = 1
+    private var cornerLineWidth: CGFloat = 8
     private var lineColor: UIColor = Message_Color
     var colCount: Int = 5
     
@@ -76,72 +77,9 @@ class GroupPathSequencePathLayout: UICollectionViewFlowLayout {
             //            ConnectingLine
             // 如果是第一个item之后，添加连接线
             if item > 0 {
-//                let currentItem = item
+                let currentItem = item
                 let prevItem = item - 1
-                
-//                let currentRow = currentItem / colCount
-//                let prevRow = prevItem / colCount
-                
-//                // 判断是否是换行的转角位置
-//                let isCorner = (currentRow != prevRow)
-//                
-//                let lineIndexPath = IndexPath(item: item, section: 0)
-//                let lineAttributes = UICollectionViewLayoutAttributes(
-//                    forDecorationViewOfKind: "ConnectingLine",
-//                    with: lineIndexPath
-//                )
-//                
-//                // 获取当前和前一个item的中心点
-//                let currentCenter = centerForItem(at: currentItem)
-//                let prevCenter = centerForItem(at: prevItem)
-//                
-//                // 计算连接线的frame
-//                let minX = min(prevCenter.x, currentCenter.x)
-//                let minY = min(prevCenter.y, currentCenter.y)
-//                let maxX = max(prevCenter.x, currentCenter.x)
-//                let maxY = max(prevCenter.y, currentCenter.y)
-//                
-//                lineAttributes.frame = CGRect(
-//                    x: minX - lineWidth/2,
-//                    y: minY - lineWidth/2,
-//                    width: maxX - minX + lineWidth,
-//                    height: maxY - minY + lineWidth
-//                )
-//                
-//                // 设置连接线类型
-//                if let lineViewClass = ConnectingLineView.self as? UICollectionReusableView.Type {
-//                    lineViewClass.appearance().setValue(
-//                        isCorner ? "corner" : "straight",
-//                        forKey: "lineType"
-//                    )
-//                    
-//                    // 如果是偶数行到奇数行的转角，需要反向
-//                    let isReversed = (prevRow % 2 == 0) && (currentRow % 2 == 1)
-//                    lineViewClass.appearance().setValue(isReversed, forKey: "isReversed")
-//                }
-//                
-//                lineAttributes.zIndex = -1
-                let lineAttributes = createLineAttributes(from: prevItem, to: item)
-                // 特殊处理换行时的连接线
-//                if currentRow != prevRow {
-//                    lineAttributes.lineType = .corner
-//                    
-//                    // 判断是否需要反向（偶数行→奇数行）
-//                    let isFromEven = (prevRow % 2 == 0)
-//                    let isToEven = (currentRow % 2 == 0)
-//                    lineAttributes.isReversed = isFromEven && !isToEven
-//                    let cornerSize: CGFloat = 10
-//                    // 调整转角连接线的frame
-//                    if lineAttributes.isReversed {
-//                        // 反向"]"形（从右到左换行）
-//                        lineAttributes.frame.origin.x = lineAttributes.frame.maxX - lineWidth - cornerSize
-//                        lineAttributes.frame.size.width = cornerSize + lineWidth
-//                    } else {
-//                        // 正向"]"形（从左到右换行）
-//                        lineAttributes.frame.size.width = cornerSize + lineWidth
-//                    }
-//                    lineAttributes.frame.size.height = itemSize.height + minimumLineSpacing + lineWidth
-//                }
+                let lineAttributes = createLineAttributes(from: prevItem, to: currentItem)
                 self.lineAttributes.append(lineAttributes)
             }
         }
@@ -166,7 +104,7 @@ class GroupPathSequencePathLayout: UICollectionViewFlowLayout {
         // 设置连接线样式
         attributes.color = lineColor
         attributes.lineWidth = lineWidth
-        
+        attributes.cornerLineWidth = cornerLineWidth
         // 判断是否是转角
         let fromRow = from / colCount
         let toRow = to / colCount
@@ -181,11 +119,21 @@ class GroupPathSequencePathLayout: UICollectionViewFlowLayout {
         let fromCenter = centerForItem(at: from)
         let toCenter = centerForItem(at: to)
         
+        var x = min(fromCenter.x, toCenter.x) - lineWidth/2
+        var width = abs(fromCenter.x - toCenter.x) + attributes.lineWidth
+        if fromRow != toRow {
+            width = cornerLineWidth
+            if attributes.isReversed {
+                x = fromCenter.x + itemSize.width * 0.5
+            }else {
+                x = fromCenter.x - itemSize.width * 0.5 - width
+            }
+        }
         attributes.frame = CGRect(
-            x: min(fromCenter.x, toCenter.x) - lineWidth/2,
-            y: min(fromCenter.y, toCenter.y) - lineWidth/2 + (self.collectionView?.contentInset.top ?? 0),
-            width: abs(fromCenter.x - toCenter.x) + lineWidth,
-            height: abs(fromCenter.y - toCenter.y) + lineWidth
+            x: x,
+            y: min(fromCenter.y, toCenter.y) - attributes.lineWidth/2 + (self.collectionView?.contentInset.top ?? 0),
+            width: width,
+            height: abs(fromCenter.y - toCenter.y) + attributes.lineWidth
         )
         
         attributes.zIndex = -1
@@ -235,7 +183,8 @@ class GroupPathSequencePathLayout: UICollectionViewFlowLayout {
 
 class LineAttributes: UICollectionViewLayoutAttributes {
     var color: UIColor = .red
-    var lineWidth: CGFloat = 2
+    var lineWidth: CGFloat = 1
+    var cornerLineWidth: CGFloat = 8
     var lineType: ConnectingLineView.LineType = .straight
     var isReversed: Bool = false
     
@@ -266,16 +215,31 @@ class ConnectingLineView: UICollectionReusableView {
     }
     
     var color: UIColor = Message_Color {
-        didSet { setNeedsDisplay() }
+        didSet {
+            self.setNeedsDisplay()
+        }
     }
     var lineWidth: CGFloat = 1 {
-        didSet { setNeedsDisplay() }
+        didSet {
+            self.setNeedsDisplay()
+        }
+    }
+    
+    var cornerLineWidth: CGFloat = 8 {
+        didSet {
+            self.setNeedsDisplay()
+        }
     }
     var lineType: LineType = .straight {
-        didSet { setNeedsDisplay() }
+        didSet {
+            self.setNeedsDisplay()
+        }
     }
+    
     var isReversed: Bool = false {
-        didSet { setNeedsDisplay() }
+        didSet {
+            self.setNeedsDisplay()
+        }
     }
     
     override init(frame: CGRect) {
@@ -287,6 +251,17 @@ class ConnectingLineView: UICollectionReusableView {
         fatalError("init(coder:) has not been implemented")
     }
     
+    override func apply(_ layoutAttributes: UICollectionViewLayoutAttributes) {
+        super.apply(layoutAttributes)
+        
+        guard let attr = layoutAttributes as? LineAttributes else { return }
+        self.color = attr.color
+        self.lineWidth = attr.lineWidth
+        self.lineType = attr.lineType
+        self.isReversed = attr.isReversed
+        self.cornerLineWidth = attr.cornerLineWidth
+    }
+    
     override func draw(_ rect: CGRect) {
         guard let context = UIGraphicsGetCurrentContext() else { return }
         
@@ -295,36 +270,40 @@ class ConnectingLineView: UICollectionReusableView {
         context.setLineCap(.round)
         context.setLineJoin(.round)
         
-        let cornerSize: CGFloat = 10 // 直角转角的大小
+        let cornerSize: CGFloat = 8 // 直角转角的大小
         
         switch lineType {
         case .straight:
             // 绘制直线
-            if isReversed {
-                context.move(to: CGPoint(x: bounds.width, y: 0))
-                context.addLine(to: CGPoint(x: 0, y: bounds.height))
-            } else {
-                context.move(to: CGPoint(x: 0, y: 0))
-                context.addLine(to: CGPoint(x: bounds.width, y: bounds.height))
-            }
-            
+            context.move(to: CGPoint(x: 0, y: 0))
+                context.addLine(to: CGPoint(x: bounds.width, y: 0))
+ 
         case .corner:
-            // "]" 形转角
+
+            let path = UIBezierPath()
             if isReversed {
                 // 反向 "]"
-                let arcCenter = CGPoint(x: bounds.width - cornerSize, y: cornerSize)
-                context.move(to: CGPoint(x: bounds.width, y: 0))
-                context.addLine(to: CGPoint(x: arcCenter.x, y: 0))
-                context.addArc(center: arcCenter, radius: cornerSize,
-                               startAngle: .pi * 1.5, endAngle: .pi, clockwise: true)
+                let startPoint = CGPoint(x: bounds.minX, y: bounds.minY)
+                let endPoint = CGPoint(x: bounds.minX, y: bounds.maxY)
+                
+                path.move(to: startPoint)
+                path.addLine(to: CGPoint(x: bounds.minX + cornerSize, y: bounds.minY))
+                path.addLine(to: CGPoint(x: bounds.minX + cornerSize, y: bounds.maxY))
+                path.addLine(to: endPoint)
+
             } else {
                 // 正向 "]"
-                let arcCenter = CGPoint(x: cornerSize, y: bounds.height - cornerSize)
-                context.move(to: CGPoint(x: 0, y: 0))
-                context.addLine(to: CGPoint(x: 0, y: arcCenter.y))
-                context.addArc(center: arcCenter, radius: cornerSize,
-                               startAngle: .pi, endAngle: .pi * 0.5, clockwise: false)
+                
+                let startPoint = CGPoint(x: bounds.maxX, y: bounds.minY)
+                let endPoint = CGPoint(x: bounds.maxX, y: bounds.maxY)
+                
+                path.move(to: startPoint)
+                path.addLine(to: CGPoint(x: bounds.maxX - cornerSize, y: bounds.minY))
+                path.addLine(to: CGPoint(x: bounds.maxX - cornerSize, y: bounds.maxY))
+                path.addLine(to: endPoint)
+
             }
+            context.addPath(path.cgPath)
         }
         
         context.strokePath()

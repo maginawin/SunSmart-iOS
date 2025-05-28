@@ -1978,6 +1978,44 @@ extension Node {
                 let handles = self.getEnOceanSwitchBindMessageHandles(enOceanMacAddress: enOceanMacAddress, securityKey: enOceanSecurityKey, enabled: switchData.enabled, switchKeys: switchData.switchKeys)
                 messageHandles.append(contentsOf: handles)
             }
+            
+            // 邻近照明路径
+            if let proximityLightingPath = group.info.proximityLightingPath {
+                let oldAddress = oldNode.sunricherVendorModel?.parentElement?.unicastAddress ?? oldNode.primaryUnicastAddress
+                
+//                oldNode.proximityLightingNeighborAddresses.map
+                
+                let newAddress = self.sunricherVendorModel?.parentElement?.unicastAddress ?? self.primaryUnicastAddress
+                /// 是否更新数据
+                var update = false
+                
+                // 替换之前路径的设备地址
+                if let path = proximityLightingPath.paths.first(where: { $0.items.contains(where: { $0.address == oldAddress }) }),
+                    let item = path.items.first(where: { $0.address == oldAddress }) {
+                    item.address = newAddress
+                    update = true
+                }
+                if let zone = proximityLightingPath.zones.first(where: { $0.addresses.contains(oldAddress) }) {
+                    if let index = zone.addresses.firstIndex(of: oldAddress) {
+                        zone.addresses.replaceSubrange(index...index, with: [newAddress])
+                        update = true
+                    }
+                }
+                if update {
+                    group.info.save()
+                }
+//                if let syncData = self.getNodeSyncProximityLighting(group: group), let model = self.sunricherVendorModel {
+//                    switch syncData {
+//                    case .proximityLightingEnabled(let enable):
+//                        messageHandles.append(MeshMessageHandle(message: SunricherVendorSet(function: .proximityLightingEnabled(enable)), model: model))
+//                    case .proximityLightingNeighbor(let relayNumber, let neighborAddresses):
+//                        messageHandles.append(MeshMessageHandle(message: SunricherVendorSet(function: .proximityLightingNeighborSet(enabled: true, relay: relayNumber, ttl: 0, relayAppKeyIndex: MeshNetworkManager.instance.currentApplicationKey.index, neighborAddresses: neighborAddresses)), model: model))
+//                    default:
+//                        break
+//                    }
+//                }
+            }
+            
         }
         
         // 日程

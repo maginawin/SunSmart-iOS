@@ -739,7 +739,8 @@ class SpaceViewController: WMPageController {
     private func updateSpaceData() {
         var saveData = false
         let nodes = MeshNetworkManager.instance.realNodes
-        let lightNodes = MeshNetworkManager.instance.lightNodes
+        let lightNodes = nodes.filter({ $0.deviceType == .light })
+//        MeshNetworkManager.instance.lightNodes
         if self.space.deviceCount != nodes.count {
             self.space.deviceCount = nodes.count
             saveData = true

@@ -1173,8 +1173,8 @@
 "add_point" = "Add point";
 "start_right" = "Start right";
 "start_left" = "Start left";
-"insert_behind" = "Insert behind";
-"insert_front" = "Insert front";
+"insert_right" = "Insert right";
+"insert_left" = "Insert left";
 "overturn" = "Overturn";
 "not_paths_remaining" = "Not paths remaining";
 "not_points_remaining" = "Not points remaining";
@@ -1186,6 +1186,7 @@
 "zone_add_step2" = "Go under the\nsensor at the\ntrigger zone";
 "path_trigger_add_step3" = "Identify and pick\nup the correct\ndevice";
 "zone_quick_add_step3" = "Click to start and\ntrigger the desired\ndevices";
+"zone_manual_add_step3" = "After adding,\nTest whether it\nis correct";
 "not_zones_remaining" = "Not zones remaining";
 "No_Data" = "No Data";
 "zone" = "Zone";
@@ -1196,5 +1197,13 @@
 "proximity_lighting_disable" = "Proximity lighting disable";
 "path_reset_devices_message" = "Resetting will clear all devices. You need to save after resetting.";
 "path_need_save_message" = "You have not saved the modified items yet. Do you need to save it before further operations?";
-"path_delete_message" = "Do you want to delete this path?";
-"zone_delete_message" = "Do you want to delete this zone?";
+"path_delete_message" = "Do you want to delete this item? You need to save after delete.";
+"zone_delete_message" = "Do you want to delete this item? You need to save after delete.";
+"path_test_start_message" = "After the test, all devices will trun off, and then turn on one by one in sequence.";
+"path_testing_message" = "After the test, all devices in the sequence will trun off, and then turn on one by one in sequence.";
+"click_start_test" = "Click to start test";
+"testing…" = "Testing…";
+"pause_test" = "Pause test";
+"number_neighbour_node_instruction_desc" = "The number of neighbor nodes that are triggered.\n\nFor example, assuming there are 7 sensors in a row which are configured to listen to 2 immediate neighbours. If motion is detected by say sensor 4, which will turn on its own light and lights in sensor 2, 3, 5, and 6 will be tuned on as well by the respective sensors. \n\nIf you select 0, only the device will light up after being triggered. \nIf you select all, the entire group will light up after the sensor is triggered.";
+"profile_predictive_lighting_desc" = "Proximity lighting is used to turn on lights in advance in a straight path where the pedestrian is heading. This is achieved by listening to the neighbour nodes and turning on light whenever neighbour nodes detect motion.\nPredictive lighting is used to turn on lights in open areas and multiple paths such that when motion is detected by a sensor (trigger node), the lights in the corresponding trigger zones will be turned on. ";
+"path_sequence_setting" = "Path Sequence setting";

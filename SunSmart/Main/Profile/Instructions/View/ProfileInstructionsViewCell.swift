@@ -18,7 +18,26 @@ class ProfileInstructionsViewCell: UITableViewCell {
     var type: Profile.ProfileType! {
         didSet {
             let data = type.instruction
-            guideImageView.image = UIImage(named: data.imageName)
+            let image = UIImage(named: data.imageName)
+            guideImageView.image = image
+            
+            guideImageView.snp.remakeConstraints({ make in
+                if isIPad {
+                    make.top.equalTo(SCRYFrom(12))
+                    make.centerX.equalToSuperview()
+                    make.width.equalTo(SCRXFrom(343))
+                }else {
+                    make.left.equalTo(SCRXFrom(16))
+                    make.right.equalTo(SCRXFrom(-16))
+                    make.top.equalTo(SCRYFrom(8))
+                }
+                if let image = image {
+                    make.height.equalTo(guideImageView.snp.width).multipliedBy(image.size.height / image.size.width)
+                }else {
+                    make.height.equalTo(guideImageView.snp.width).multipliedBy(138 / 343.0)
+                }
+            })
+            
             
             let paragraphStyle = NSMutableParagraphStyle()
             paragraphStyle.lineSpacing = 2

@@ -68,7 +68,7 @@ class GroupPathSequenceTriggerZoneController: UIViewController {
     private func updateEmptyUI() {
         if setZones.isEmpty {
 //            view.layoutIfNeeded()
-            tableView.showEmptyDataView(title: "no_trigger_zones".localizedString, backgroundColor: Background_Color, buttonText: "add_trigger_zone".localizedString, buttomWidth: SCRXFrom(216), position: .center) {[weak self] in
+            tableView.showEmptyDataView(title: "no_trigger_zones".localizedString, backgroundColor: Background_Color, buttonText: "add_trigger_zone".localizedString, buttomWidth: SCRXFrom(216), position: .center, bottomMargin: SCRYFrom(20)) {[weak self] in
                 self?.addZone()
             }
             tableView.isScrollEnabled = false
@@ -115,20 +115,33 @@ class GroupPathSequenceTriggerZoneController: UIViewController {
         
     }
     
+    /// 停止设置路径
+    func stopSetZone() {
+        selectZone = nil
+        updateDeviceAddViewUI()
+    }
+    
     /// 区域操作
-    private func zoneOperation(zone: GroupProximityLightingPathZone,type: GroupPathSequencePathHeaderView.OperationType) {
+    private func zoneOperation(zone: GroupProximityLightingPathZone, type: GroupPathSequencePathHeaderView.OperationType) {
         
         switch type {
         case .save:
             break
         case .test:
-            break
+            GroupPathSequencePathTestView(group: group, addresses: zone.addresses).show()
         case .reset:
           
             SRAlertView(title: "notification".localizedString, message: "path_reset_devices_message".localizedString, actions: [.cancelAction, SRAlertAction(title: "confirm".localizedString, actionHandler: {[weak self] _ in
-                
+                guard let self = self else { return }
                 zone.addresses.removeAll()
-                self?.reloadZone(zone)
+                self.reloadZone(zone)
+                
+                if self.deviceAddMode == .manuallyAdd {
+                    let addedNodes = showAddedDevices ? zone.nodes : self.setZones.flatMap { $0.nodes }
+                    let showNodes = group.nodes.filter({ !addedNodes.contains($0) })
+                    deviceAddView.manuallyAddView.reloadData(devices: showNodes, selectDevice: deviceAddView.manuallyAddView.selectDevice)
+                }
+                
             })]).show()
             
         case .delete:
@@ -140,8 +153,14 @@ class GroupPathSequenceTriggerZoneController: UIViewController {
                         self.selectZone = nil
                         self.updateDeviceAddViewUI()
                     }
+//                    if self.deviceAddMode == .manuallyAdd {
+//                        let addedNodes = showAddedDevices ? zone.nodes : self.setZones.flatMap { $0.nodes }
+//                        let showNodes = group.nodes.filter({ !addedNodes.contains($0) })
+//                        deviceAddView.manuallyAddView.reloadData(devices: showNodes, selectDevice: deviceAddView.manuallyAddView.selectDevice)
+//                    }
                     self.updateEmptyUI()
-                    self.tableView.deleteSections(IndexSet(integer: index), with: .fade)
+//                    self.tableView.deleteSections(IndexSet(integer: index), with: .fade)
+                    self.tableView.reloadData()
                 }
             })]).show()
         }
@@ -174,20 +193,24 @@ class GroupPathSequenceTriggerZoneController: UIViewController {
         }
         
         deviceAddView = GroupPathSequenceDeviceAddView()
-        
+        deviceAddView.isSequence = false
         deviceAddView.quickAddView.guideView.step1View.titleLabel.text = "zone_add_step1".localizedString
         deviceAddView.quickAddView.guideView.step2View.titleLabel.text = "zone_add_step2".localizedString
         deviceAddView.quickAddView.guideView.step3View.titleLabel.text = "zone_quick_add_step3".localizedString
-        deviceAddView.triggerAddView.isSequence = false
         deviceAddView.triggerAddView.guideView.step1View.titleLabel.text = "zone_add_step1".localizedString
         deviceAddView.triggerAddView.guideView.step2View.titleLabel.text = "zone_add_step2".localizedString
         deviceAddView.triggerAddView.guideView.step3View.titleLabel.text = "path_trigger_add_step3".localizedString
+        
+        deviceAddView.manuallyAddView.guideView.step1View.titleLabel.text = "zone_add_step1".localizedString
+        deviceAddView.manuallyAddView.guideView.step2View.titleLabel.text = "path_trigger_add_step3".localizedString
+        deviceAddView.manuallyAddView.guideView.step3View.titleLabel.text = "zone_manual_add_step3".localizedString
+        
         deviceAddView.delegate = self
         view.addSubview(deviceAddView)
         deviceAddView.snp.makeConstraints { make in
-            make.left.right.equalTo(tableView)
+            make.left.right.equalToSuperview()
             make.bottom.equalTo(-max(kSafeAreaBottomHeight, SCRYFrom(16)))
-            make.height.equalTo(SCRYFrom(163))
+            make.height.greaterThanOrEqualTo(SCRYFrom(163))
         }
         
     }
@@ -219,8 +242,11 @@ extension GroupPathSequenceTriggerZoneController: UITableViewDataSource, UITable
     
     func tableView(_ tableView: UITableView, viewForHeaderInSection section: Int) -> UIView? {
         let headerView = tableView.dequeueReusableHeaderFooterView(withIdentifier: "header") as! GroupPathSequencePathHeaderView
-        headerView.isSelect = selectZone == setZones[section]
+        let zone = setZones[section]
+        headerView.isSelect = selectZone == zone
         headerView.nameLabel.text = "\("zone".localizedString) \(section + 1)"
+        headerView.testBtn.isEnabled = zone.addresses.count > 0
+        headerView.resetBtn.isEnabled = zone.addresses.count > 0
         headerView.operationActionCallback = {[weak self] type in
             guard let self = self else { return }
             self.zoneOperation(zone: setZones[section], type: type)
@@ -239,6 +265,16 @@ extension GroupPathSequenceTriggerZoneController: UITableViewDataSource, UITable
             }
             reloadSections.append(section)
             self.selectZone = self.setZones[section]
+            
+            let addedNodes = showAddedDevices ? zone.nodes : self.setZones.flatMap { $0.nodes }
+            // 更新触发添加、手动添加可选设备列表
+            if self.deviceAddMode == .triggerAdd {
+                deviceAddView.triggerAddView.reloadData(devices: triggerDevices.filter({ !addedNodes.contains($0) }), selectDevice: deviceAddView.triggerAddView.selectDevice)
+            }else if self.deviceAddMode == .manuallyAdd {
+                let showNodes = group.nodes.filter({ !addedNodes.contains($0) })
+                deviceAddView.manuallyAddView.reloadData(devices: showNodes, selectDevice: deviceAddView.manuallyAddView.selectDevice)
+            }
+            
             self.tableView.reloadSections(IndexSet(reloadSections), with: .none)
             self.updateDeviceAddViewUI()
         }
@@ -259,6 +295,7 @@ extension GroupPathSequenceTriggerZoneController: UITableViewDataSource, UITable
 }
 
 extension GroupPathSequenceTriggerZoneController: GroupPathSequenceTriggerZoneViewCellDelegate {
+    
     
     func cell(_ cell: GroupPathSequenceTriggerZoneViewCell, didSelectZone zone: GroupProximityLightingPathZone) {
         cell.isSelect = true
@@ -291,6 +328,35 @@ extension GroupPathSequenceTriggerZoneController: GroupPathSequenceTriggerZoneVi
         cell.reloadData(zoneIndex: section, zone: zone)
         tableView.performBatchUpdates(nil)
     }
+    
+    /// 添加设备
+    func cell(_ cell: GroupPathSequenceTriggerZoneViewCell, addDevice address: Address) {
+        guard let section = tableView.indexPath(for: cell)?.section else { return }
+        let zone = setZones[section]
+        if !zone.addresses.contains(address) {
+            zone.addresses.append(address)
+//            cell.reloadData(zoneIndex: section, zone: zone)
+//            tableView.performBatchUpdates(nil)
+        }
+        
+        if self.deviceAddMode == .triggerAdd {
+   
+            if !zone.addresses.contains(address) {
+                zone.addresses.append(address)
+            }
+            if let index = triggerDevices.firstIndex(where: { $0.contains(elementWithAddress: address) }) {
+                triggerDevices.remove(at: index)
+                deviceAddView.triggerAddView.reloadData(devices: triggerDevices, selectDevice: nil)
+            }
+            deviceAddView.refreshBtn.isHidden = triggerDevices.isEmpty
+        }else if self.deviceAddMode == .manuallyAdd {
+            let addedNodes = showAddedDevices ? selectZone?.nodes ?? [] : setZones.flatMap { $0.nodes }
+            let showNodes = group.nodes.filter({ !addedNodes.contains($0) })
+            deviceAddView.manuallyAddView.reloadData(devices: showNodes, selectDevice: nil)
+            deviceAddView.updateUnfoldState()
+        }
+        tableView.reloadSections(IndexSet(integer: section), with: .none)
+    }
 }
 
 extension GroupPathSequenceTriggerZoneController: GroupPathSequenceDeviceAddViewDelegate {
@@ -298,12 +364,37 @@ extension GroupPathSequenceTriggerZoneController: GroupPathSequenceDeviceAddView
      
     /// 设备添加模式切换
     func deviceAddView(_ view: GroupPathSequenceDeviceAddView, deviceAddModeChanged mode: PathSequenceDeviceAddMode) {
+        
+        if self.deviceAddMode == .triggerAdd {
+            triggerDevices.removeAll()
+            deviceAddView.triggerAddView.reloadData(devices: triggerDevices, selectDevice: nil)
+            deviceAddView.refreshBtn.isHidden = true
+        }
+        
+        // 手动控制
+        if mode == .manuallyAdd {
+            let addedNodes = showAddedDevices ? selectZone?.nodes ?? [] : setZones.flatMap { $0.nodes }
+            let showNodes = group.nodes.filter({ !addedNodes.contains($0) })
+            deviceAddView.manuallyAddView.reloadData(devices: showNodes, selectDevice: nil)
+            deviceAddView.updateUnfoldState()
+        }
+        
         self.deviceAddMode = mode
     }
     
     /// 已使用设备是否可重复使用选项更新 enabled true：可重复使用 false: 忽略
     func deviceAddView(_ view: GroupPathSequenceDeviceAddView, showAddedDevices enabled: Bool) {
         self.showAddedDevices = enabled
+        
+        let addedNodes = showAddedDevices ? selectZone?.nodes ?? [] : setZones.flatMap { $0.nodes }
+        // 更新触发添加、手动添加可选设备列表
+        if self.deviceAddMode == .triggerAdd {
+            deviceAddView.triggerAddView.reloadData(devices: triggerDevices.filter({ !addedNodes.contains($0) }), selectDevice: deviceAddView.triggerAddView.selectDevice)
+        }else if self.deviceAddMode == .manuallyAdd {
+            let showNodes = group.nodes.filter({ !addedNodes.contains($0) })
+            deviceAddView.manuallyAddView.reloadData(devices: showNodes, selectDevice: deviceAddView.manuallyAddView.selectDevice)
+        }
+        
     }
     
     /// 快速添加状态更新
@@ -313,21 +404,36 @@ extension GroupPathSequenceTriggerZoneController: GroupPathSequenceDeviceAddView
     
     /// 选择设备回调
     func deviceAddView(_ view: GroupPathSequenceDeviceAddView, selectDevice device: Node) {
+        guard let zone = selectZone else {
+            return
+        }
+        let address = device.sunricherVendorModel?.parentElement?.unicastAddress ?? device.primaryUnicastAddress
+        
         if self.deviceAddMode == .triggerAdd {
-            if let zone = selectZone {
-                let address = device.sunricherVendorModel?.parentElement?.unicastAddress ?? device.primaryUnicastAddress
-                if !zone.addresses.contains(address) {
-                    zone.addresses.append(address)
-                }
-                if let index = triggerDevices.firstIndex(of: device) {
-                    triggerDevices.remove(at: index)
-                    view.triggerAddView.reloadData(devices: triggerDevices, selectDevice: nil)
-                }
-                view.refreshBtn.isHidden = triggerDevices.isEmpty
-                if let section = setZones.firstIndex(of: zone) {
-                    tableView.reloadRows(at: [IndexPath(row: 0, section: section)], with: .none)
-                }
+   
+            if !zone.addresses.contains(address) {
+                zone.addresses.append(address)
             }
+            if let index = triggerDevices.firstIndex(of: device) {
+                triggerDevices.remove(at: index)
+                view.triggerAddView.reloadData(devices: triggerDevices, selectDevice: nil)
+            }
+            view.refreshBtn.isHidden = triggerDevices.isEmpty
+            
+        }else if self.deviceAddMode == .manuallyAdd {
+            
+            if !zone.addresses.contains(address) {
+                zone.addresses.append(address)
+            }
+            
+            let addedNodes = showAddedDevices ? selectZone?.nodes ?? [] : setZones.flatMap { $0.nodes }
+            let showNodes = group.nodes.filter({ !addedNodes.contains($0) })
+            view.manuallyAddView.reloadData(devices: showNodes, selectDevice: nil)
+            view.updateUnfoldState()
+        }
+        
+        if let section = setZones.firstIndex(of: zone) {
+            tableView.reloadSections(IndexSet(integer: section), with: .none)
         }
     }
     

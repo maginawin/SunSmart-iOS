@@ -312,7 +312,7 @@ extension Node {
                     syncDatas.append(.syncCollectionSchedules(schedules: syncSchedules))
                 }
             }
-        case .proximityLightingPath(let path):
+        case .proximityLightingPath:
             // 邻近照明
             if let syncData = getNodeSyncProximityLighting() {
                 syncDatas.append(syncData)
@@ -459,11 +459,13 @@ extension Node {
         var syncProfile: [ProfileType] = []
         
         guard let group = group ?? self.group else {
-            if powerUpState != .restore {
-                syncProfile.append(.powerOnState(state: .restore))
-            }
-            if sunricherVendorModel != nil, lightLCProperty.manualOverrideEnabled == nil || !lightLCProperty.manualOverrideEnabled! || lightLCProperty.manualOverrideTimeout != .max {
-                syncProfile.append(.manualOverrideTimeout(enabled: true, second: .max))
+            if self.deviceType != .dongle && self.deviceType != .gateway {
+                if powerUpState != .restore {
+                    syncProfile.append(.powerOnState(state: .restore))
+                }
+                if sunricherVendorModel != nil, lightLCProperty.manualOverrideEnabled == nil || !lightLCProperty.manualOverrideEnabled! || lightLCProperty.manualOverrideTimeout != .max {
+                    syncProfile.append(.manualOverrideTimeout(enabled: true, second: .max))
+                }
             }
             return syncProfile
         }
@@ -929,9 +931,9 @@ extension Node {
     
     /// 获取需要同步的邻近照明数据
     func getNodeSyncProximityLighting(group: Group? = nil) -> NodeSyncData? {
-        guard let group = group ?? self.group else { return nil }
+        guard let group = group ?? self.group, self.sunricherVendorModel != nil else { return nil }
         // 检查所在组的profile类型是否是临近照明
-        guard group.info.profile.type == .proximityLighting, groupState == .inGroup else {
+        guard group.info.profile.type == .proximityLighting, groupState != .exitFailure else {
             if self.proximityLightingEnabled { // 禁用邻近照明功能
                 return .proximityLightingEnabled(false)
             }
@@ -946,6 +948,7 @@ extension Node {
         // 邻居地址list
         var neighborAddresses: [Address] = []
         
+        let groupNodes = group.nodes
         // 获取路径上的邻居
         for path in proximityLightingPath.paths {
             // 包含当前设备的item index
@@ -960,7 +963,7 @@ extension Node {
 //                        }
 //                    })
                     let neighborItem = path.items[pathItemIndex - 1]
-                    if let address = neighborItem.address, !neighborAddresses.contains(address) {
+                    if let address = neighborItem.address, groupNodes.contains(where: { $0.contains(elementWithAddress: address) }), !neighborAddresses.contains(address) {
                         neighborAddresses.append(address)
                     }
                 }
@@ -975,7 +978,7 @@ extension Node {
 //                        }
 //                    })
                     let neighborItem = path.items[pathItemIndex + 1]
-                    if let address = neighborItem.address, !neighborAddresses.contains(address) {
+                    if let address = neighborItem.address, groupNodes.contains(where: { $0.contains(elementWithAddress: address) }), !neighborAddresses.contains(address) {
                         neighborAddresses.append(address)
                     }
                 }
@@ -987,7 +990,7 @@ extension Node {
             var addresses = zone.addresses
             if let index = addresses.firstIndex(where: { self.contains(elementWithAddress: $0) }) {
                 addresses.remove(at: index)
-                let zoneNeighborAddresses = addresses.filter({ address in !neighborAddresses.contains(address)  })
+                let zoneNeighborAddresses = addresses.filter({ address in groupNodes.contains(where: { $0.contains(elementWithAddress: address) }) && !neighborAddresses.contains(address)  })
                 neighborAddresses.append(contentsOf: zoneNeighborAddresses)
             }
         }

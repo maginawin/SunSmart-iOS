@@ -29,10 +29,10 @@ extension Scene {
             }
             // 保存场景
             messageHandles.append(MeshMessageHandle(message: SceneStore(self.number), model: sceneSetupModel))
-            if let vendorModel = node.sunricherVendorModel, node.lightLCModel != nil {
-                // 保存场景前禁用灯光控制
-                messageHandles.insert(MeshMessageHandle(message: SunricherVendorSet(function: .lightControlEnabled(enabled: false)), model: vendorModel), at: 0)
-            }
+//            if let vendorModel = node.sunricherVendorModel, node.lightLCModel != nil {
+//                // 保存场景前禁用灯光控制
+//                messageHandles.insert(MeshMessageHandle(message: SunricherVendorSet(function: .lightControlEnabled(enabled: false)), model: vendorModel), at: 0)
+//            }
         }
         return messageHandles
     }

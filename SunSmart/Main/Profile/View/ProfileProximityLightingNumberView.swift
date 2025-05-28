@@ -18,6 +18,8 @@ protocol ProfileProximityLightingNumberViewDelegate: AnyObject {
     /// 禁止交互下编辑事件
     func proximityLightingNumberViewDisableEditAction(view: ProfileProximityLightingNumberView)
     
+    /// 帮助
+    func proximityLightingNumberViewHelpAction(_ view: ProfileProximityLightingNumberView)
 }
 
 class ProfileProximityLightingNumberView: UIView {
@@ -88,7 +90,7 @@ class ProfileProximityLightingNumberView: UIView {
     }
     
     @objc private func helpBtnAction() {
-        
+        delegate?.proximityLightingNumberViewHelpAction(self)
     }
     
     private func setupUI() {
@@ -100,7 +102,7 @@ class ProfileProximityLightingNumberView: UIView {
             make.top.equalTo(SCRYFrom(16))
         }
         
-        helpBtn = UIButton(normalImageName: "profile_help", target: self, action: #selector(helpBtnAction))
+        helpBtn = UIButton(normalImageName: "help", target: self, action: #selector(helpBtnAction))
         addSubview(helpBtn)
         helpBtn.snp.makeConstraints { make in
             make.right.equalTo(SCRXFrom(-4))
