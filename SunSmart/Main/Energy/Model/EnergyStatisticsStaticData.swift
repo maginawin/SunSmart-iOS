@@ -117,35 +117,45 @@ class EnergyStatisticsStaticData {
             String.dateConvert(timestamp: "\(self.timestamp)", dateFormat: "yyyy/M/d HH:mm"),
             "\(spaceName) (\("ALL".localizedString))",
             self.incomplete ? "incomplete_data".localizedString : "full_data".localizedString,
-            (Double(self.totalRatedPower) / 10).toSimplifyStr(maxDigits: 1),
-            (Double(maxTotalEnergyUse) / 1000).toSimplifyStr(maxDigits: 2),
-            (Double(preciseTotalEnergyUse) / 1000).toSimplifyStr(maxDigits: 2),
-            (Double(energySaving) / 1000).toSimplifyStr(maxDigits: 2),
-            "\(energySavingPercentage.toSimplifyStr(maxDigits: 2))%"
+            String(format: "%.1f", Double(totalRatedPower) / 10),
+//            (Double(self.totalRatedPower) / 10).toSimplifyStr(maxDigits: 1),
+            String(format: "%.2f", Double(maxTotalEnergyUse) / 1000),
+//            (Double(maxTotalEnergyUse) / 1000).toSimplifyStr(maxDigits: 2),
+            String(format: "%.2f", Double(preciseTotalEnergyUse) / 1000),
+//            (Double(preciseTotalEnergyUse) / 1000).toSimplifyStr(maxDigits: 2),
+            String(format: "%.2f", Double(energySaving) / 1000),
+//            (Double(energySaving) / 1000).toSimplifyStr(maxDigits: 2),
+            String(format: "%.2f%%", energySavingPercentage),
+//            "\(energySavingPercentage.toSimplifyStr(maxDigits: 2))%"
         ].joined(separator: ",")
         csvText += totalRow + "\n"
         
         for device in deviceEnergyDatas {
-            let maximumRatedPowerStr = device.maxRatedPower != nil ? (Double(device.maxRatedPower!) / 10).toSimplifyStr(maxDigits: 1) : ""
+//            let maximumRatedPowerStr = device.maxRatedPower != nil ? (Double(device.maxRatedPower!) / 10).toSimplifyStr(maxDigits: 1) : ""
+            let maximumRatedPowerStr = device.maxRatedPower != nil ? String(format: "%.1f", Double(device.maxRatedPower!) / 10) : ""
             
             var maximumRatedEnergyConsumptionStr = ""
             if let maxTotalEnergyUse = device.maxTotalEnergyUse {
-                maximumRatedEnergyConsumptionStr = (Double(maxTotalEnergyUse) / 1000).toSimplifyStr(maxDigits: 2)
+                maximumRatedEnergyConsumptionStr = String(format: "%.2f", Double(maxTotalEnergyUse) / 1000)
+//                (Double(maxTotalEnergyUse) / 1000).toSimplifyStr(maxDigits: 2)
             }
             
             var energyConsumptionStr = ""
             if let preciseTotalEnergyUse = device.preciseTotalEnergyUse {
-                energyConsumptionStr = (Double(preciseTotalEnergyUse) / 1000).toSimplifyStr(maxDigits: 2)
+                energyConsumptionStr = String(format: "%.2f", Double(preciseTotalEnergyUse) / 1000)
+//                (Double(preciseTotalEnergyUse) / 1000).toSimplifyStr(maxDigits: 2)
             }
             
             var energySavingStr = ""
             if device.preciseTotalEnergyUse != nil, device.maxTotalEnergyUse != nil {
-                energySavingStr = (Double(device.energySaving) / 1000).toSimplifyStr(maxDigits: 2)
+                energySavingStr = String(format: "%.2f", Double(device.energySaving) / 1000)
+//                (Double(device.energySaving) / 1000).toSimplifyStr(maxDigits: 2)
             }
             
             var energySavingPercentageStr = ""
             if device.preciseTotalEnergyUse != nil, device.maxTotalEnergyUse != nil {
-                energySavingPercentageStr = "\(device.energySavingPercentage.toSimplifyStr(maxDigits: 2))%"
+                energySavingPercentageStr = String(format: "%.2f%%", device.energySavingPercentage)
+//                "\(device.energySavingPercentage.toSimplifyStr(maxDigits: 2))%"
             }
             
             let row = [

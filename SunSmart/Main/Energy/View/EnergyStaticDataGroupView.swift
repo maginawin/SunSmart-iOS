@@ -33,34 +33,43 @@ class EnergyStaticDataGroupView: UIView {
     var energyPieDatas: [EnergyPieData] = []
     
     /// 更新数据
-    func updateData(latestHarvestData: EnergyStatisticsStaticData?, energyPieDatas: [EnergyPieData]) {
+    func updateData(latestHarvestData: EnergyStatisticsStaticData?, energyPieDatas: [EnergyPieData], statisticsType: EnergyStaticDataViewController.StatisticsType) {
         
         self.energyPieDatas = energyPieDatas
         
         if let harvestData = latestHarvestData {
+            var preciseTotalEnergyUse = Double(harvestData.preciseTotalEnergyUse) / 1000
+            var energySaving = Double(harvestData.energySaving) / 1000
+            var energySavingPercentage = harvestData.energySavingPercentage
+            if statisticsType == .realPower {
+                preciseTotalEnergyUse = 0
+                energySaving = 0
+                energySavingPercentage = 0
+            }
             
-            let totalEnergyAttStr = NSMutableAttributedString(string: "\((Double(harvestData.preciseTotalEnergyUse) / 1000).toSimplifyStr(maxDigits: 2)) kWh", attributes: [.font: UIFont.systemFont(ofSize: 16, weight: .semibold)])
+            let totalEnergyAttStr = NSMutableAttributedString(string: String(format: "%.2f kWh", preciseTotalEnergyUse), attributes: [.font: UIFont.systemFont(ofSize: 16, weight: .semibold)])
             totalEnergyAttStr.addAttributes([.font: UIFont.systemFont(ofSize: 16)], range: (totalEnergyAttStr.string as NSString).range(of: "kWh"))
             totalEnergyDataLabel.attributedText = totalEnergyAttStr
             
-            economyValueBtn.setTitle("\((Double(harvestData.energySaving) / 1000).toSimplifyStr(maxDigits: 2)) kWh", for: .normal)
-            economyPercentageBtn.setTitle(harvestData.energySavingPercentage.toSimplifyStr(maxDigits: 1), for: .normal)
+            economyValueBtn.setTitle(String(format: "%.2f kWh", energySaving), for: .normal)
+            economyPercentageBtn.setTitle(String(format: "%.1f%%", energySavingPercentage), for: .normal)
         }else {
             totalEnergyDataLabel.attributedText = NSAttributedString(string: "--")
             economyValueBtn.setTitle("--", for: .normal)
             economyPercentageBtn.setTitle("--", for: .normal)
         }
-       
         
         if energyPieDatas.isEmpty {
             sortEnergyPieDatas = []
             contentView.showEmptyDataView(title: "no_data".localizedString)
         }else {
             contentView.hideEmptyDataView()
+            // 图表去掉无能耗比例的数据
+            let pieShowDatas = energyPieDatas.filter({ $0.percent > 0 })
             
-            sortEnergyPieDatas = EnergyTestData.smartReorderEntryPicDatas(energyPieDatas)
+            sortEnergyPieDatas = EnergyTestData.smartReorderEntryPicDatas(pieShowDatas)
             let tempDatas = sortEnergyPieDatas.map({
-                LYPieData(title: $0.name, detail: String(format: "%d%%", Int($0.percent * 100.0)), percent: $0.percent)
+                LYPieData(title: $0.name, detail: String(format: "%.1f%%", $0.percent * 100.0), percent: $0.percent)
             })
             
             let tempColors = sortEnergyPieDatas.map({ $0.color })

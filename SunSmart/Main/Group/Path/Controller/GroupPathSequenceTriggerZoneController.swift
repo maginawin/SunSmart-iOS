@@ -23,6 +23,8 @@ class GroupPathSequenceTriggerZoneController: UIViewController {
     private var deviceAddMode: PathSequenceDeviceAddMode = .quickAdd
     /// 快速添加状态
     private var quickAddState: QuickAddState = .stop
+    /// 快速添加忙碌中，防止触发太频繁
+    private var quickAddingBusy: Bool = false
     /// 是否展示已添加的设备（启用后使用过的设备可能重复使用）
     private var showAddedDevices: Bool = false
     /// 触发的设备list
@@ -65,6 +67,16 @@ class GroupPathSequenceTriggerZoneController: UIViewController {
         MeshLibManager.manager.messageDelegate = self
     }
     
+    override func viewDidDisappear(_ animated: Bool) {
+        super.viewDidDisappear(animated)
+        
+        if let zone = selectZone, let section = setZones.firstIndex(of: zone) {
+            selectZone = nil
+            tableView.reloadSections(IndexSet(integer: section), with: .none)
+            updateDeviceAddViewUI()
+        }
+    }
+    
     private func updateEmptyUI() {
         if setZones.isEmpty {
 //            view.layoutIfNeeded()
@@ -80,6 +92,7 @@ class GroupPathSequenceTriggerZoneController: UIViewController {
     }
     
     private func updateDeviceAddViewUI() {
+        quickAddState = .stop
         if selectZone != nil {
             deviceAddView.canAddDevice = true
         }else {
@@ -128,18 +141,25 @@ class GroupPathSequenceTriggerZoneController: UIViewController {
         case .save:
             break
         case .test:
-            GroupPathSequencePathTestView(group: group, addresses: zone.addresses).show()
+            GroupPathSequencePathTestView(type: .zone, group: group, addresses: zone.addresses).show()
         case .reset:
           
             SRAlertView(title: "notification".localizedString, message: "path_reset_devices_message".localizedString, actions: [.cancelAction, SRAlertAction(title: "confirm".localizedString, actionHandler: {[weak self] _ in
                 guard let self = self else { return }
                 zone.addresses.removeAll()
-                self.reloadZone(zone)
-                
-                if self.deviceAddMode == .manuallyAdd {
+                if let section = self.setZones.firstIndex(of: zone), let cell = tableView.cellForRow(at: IndexPath(row: 0, section: section)) as? GroupPathSequenceTriggerZoneViewCell {
+                    cell.reloadData(zoneIndex: section, zone: zone)
+                }
+//                self.reloadZone(zone)
+                tableView.performBatchUpdates(nil)
+                if self.deviceAddMode == .triggerAdd {
+                    self.triggerDevices.removeAll()
+                    deviceAddView.triggerAddView.reloadData(devices: self.triggerDevices, selectDevice: nil)
+                    
+                } else if self.deviceAddMode == .manuallyAdd {
                     let addedNodes = showAddedDevices ? zone.nodes : self.setZones.flatMap { $0.nodes }
                     let showNodes = group.nodes.filter({ !addedNodes.contains($0) })
-                    deviceAddView.manuallyAddView.reloadData(devices: showNodes, selectDevice: deviceAddView.manuallyAddView.selectDevice)
+                    deviceAddView.manuallyAddView.reloadData(devices: showNodes, selectDevice: nil)
                 }
                 
             })]).show()
@@ -311,7 +331,18 @@ extension GroupPathSequenceTriggerZoneController: GroupPathSequenceTriggerZoneVi
         // 取消选中之前的section
         if let lastSelectZone = lastSelectZone, lastSelectZone != zone, let index = self.setZones.firstIndex(of: lastSelectZone) {
             tableView.reloadSections(IndexSet(integer: index), with: .none)
+            
+            // 更新触发添加、手动添加可选设备列表
+            if self.deviceAddMode == .triggerAdd {
+                triggerDevices.removeAll()
+                deviceAddView.triggerAddView.reloadData(devices: triggerDevices, selectDevice: deviceAddView.triggerAddView.selectDevice)
+            }else if self.deviceAddMode == .manuallyAdd {
+                let addedNodes = showAddedDevices ? selectZone?.nodes ?? [] : setZones.flatMap { $0.nodes }
+                let showNodes = group.nodes.filter({ !addedNodes.contains($0) })
+                deviceAddView.manuallyAddView.reloadData(devices: showNodes, selectDevice: deviceAddView.manuallyAddView.selectDevice)
+            }
         }
+        
         updateDeviceAddViewUI()
     }
     
@@ -477,19 +508,31 @@ extension GroupPathSequenceTriggerZoneController: MeshLibManagerMessageDelegate 
         let address = node.sunricherVendorModel?.parentElement?.unicastAddress ?? node.primaryUnicastAddress
         
         // 判断zone list内是否已经有感应的设备
-        if let sameZone = setZones.first(where: { $0.addresses.contains(address) }) {
+        let sameZones = setZones.filter({ $0.addresses.contains(address) })
+        // 重复的设备不让添加到同一个zone内
+        if showAddedDevices {
+            if sameZones.contains(zone) {
+                return
+            }
+        }else {
             // 重复的设备不让添加到zone内
-            if !showAddedDevices || zone == sameZone {
+            if sameZones.count > 0 {
                 return
             }
         }
         
         switch deviceAddMode {
         case .quickAdd:
-            if quickAddState == .adding { // 判断是否在添加中
+            if quickAddState == .adding, !quickAddingBusy { // 判断是否在添加中
                 if !zone.addresses.contains(address) {
-                    zone.addresses.append(address)
-                    reloadZone(zone)
+                    self.quickAddingBusy = true
+                    // 防止触发太快，间隔200ms生效
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {[weak self] in
+                        // 获取下一个空的point item
+                        zone.addresses.append(address)
+                        self?.reloadZone(zone)
+                        self?.quickAddingBusy = false
+                    }
                 }
             }
         case .triggerAdd:

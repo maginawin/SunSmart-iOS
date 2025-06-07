@@ -272,7 +272,7 @@ class ScheduleAddView: UIView {
     
     @objc private func nameEditAction() {
         
-        SRAlertView(title: "edit_name".localizedString, titleColor: RGB(39, 37, 54), messageColor: Red_Color, messageFont: UIFont.systemFont(ofSize: 13, weight: .light), inputText: nameField.text, inputFieldStyle: .init(textColor: RGB(39, 37, 54)), actions: [SRAlertAction(title: "cancel".localizedString, titleFont: UIFont.systemFont(ofSize: SCRYFrom(17), weight: .light), style: .cancel), SRAlertAction(title: "done".localizedString, titleFont: UIFont.systemFont(ofSize: SCRYFrom(17), weight: .light))]) { [weak self] text, validRange in
+        SRAlertView(title: "edit_name".localizedString, titleColor: RGB(39, 37, 54), messageColor: Red_Color, messageFont: UIFont.systemFont(ofSize: 13, weight: .light), inputText: nameField.text, inputFieldStyle: .init(textColor: RGB(39, 37, 54)), actions: [SRAlertAction(title: "cancel".localizedString, titleColor: Title_Color, titleFont: UIFont.systemFont(ofSize: 17, weight: .light), style: .cancel), SRAlertAction(title: "done".localizedString, titleFont: UIFont.systemFont(ofSize: 17, weight: .light))]) { [weak self] text, validRange in
             guard let self = self else { return nil }
             
             return self.delegate?.view(self, nameDidEditing: text)
@@ -422,7 +422,7 @@ class ScheduleAddView: UIView {
             make.top.equalTo(actionOnBtn.snp.bottom).offset(SCRYFrom(16))
         }
         
-        fadeTimeView = DeviceSliderFunctionView(frame: .zero, title: "", value: 0, functionType: .level(min: 0, max: 60, step: 1, unit: "s", sliderColors: [RGB(255, 167, 44), RGB(229, 229, 229)]))
+        fadeTimeView = DeviceSliderFunctionView(frame: .zero, title: "", value: 0, functionType: .level(min: 0, max: 60, step: 1, unit: "s", sliderColors: [Slider_Color, RGB(229, 229, 229)]))
         fadeTimeView.titleLabel.font = UIFont.systemFont(ofSize: SCRYFrom(15), weight: .light)
         fadeTimeView.minLabel.font = UIFont.systemFont(ofSize: SCRYFrom(14), weight: .light)
         fadeTimeView.minLabel.textColor = RGB(148, 163, 184)

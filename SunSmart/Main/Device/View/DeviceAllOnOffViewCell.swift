@@ -16,10 +16,10 @@ class DeviceAllOnOffViewCell: DevicesViewCell {
             switch state {
             case .on:
                 backgroundColor = .white
-                iconImageView.image = UIImage(named: "device_all_on")
+                iconImageView.image = UIImage(named: "device_all_on")?.withTintColor(Bar_Color)
                 nameLabel.textColor = Title_Color
             case .off:
-                iconImageView.image = UIImage(named: "device_all_on")
+                iconImageView.image = UIImage(named: "device_all_on")?.withTintColor(Bar_Color)
                 nameLabel.textColor = Title_Color
                 backgroundColor = RGB(226, 226, 226)
             case .disable:

@@ -443,8 +443,8 @@ extension DeviceParameterType {
     /// 判断是否设置成功
     func isSuccessful(node: Node) -> Bool {
         switch self {
-        case .pwmPeriod(let period):
-            return node.pwmPeriod == period
+        case .pwmFrequency(let frequency):
+            return node.pwmFrequency == frequency
         case .ratedPower(let list):
             return node.phaseEnergyConsumptions == list
         }

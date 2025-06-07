@@ -29,7 +29,7 @@ class DeviceAddBottomView: UIView {
     
     private func setupUI() {
         
-        selectAllBtn = UIButton(normalImageName: "select_un", selectedImageName: "select")
+        selectAllBtn = UIButton(normalImageName: "device_select_un", selectedImageName: "device_select")
         addSubview(selectAllBtn)
         selectAllBtn.snp.makeConstraints { make in
             make.left.equalTo(SCRXFrom(8))
@@ -50,12 +50,13 @@ class DeviceAddBottomView: UIView {
             make.left.equalTo(selectAllLabel)
             make.top.equalTo(selectAllLabel.snp.bottom).offset(SCRYFrom(3))
         }
+        let btnSize = CGSize(width: CGFloat(Int(SCRXFrom(114))), height: CGFloat(Int(SCRYFrom(40))))
         
         addSelectedBtn = UIButton(title: "add_selected".localizedString, titleSize: 14, titleColor: .white)
-        addSelectedBtn.titleLabel?.font = Font_Medium_Size(14)
-        addSelectedBtn.layer.cornerRadius = SCRYFrom(5)
+//        addSelectedBtn.titleLabel?.font = Font_Medium_Size(14)
+        addSelectedBtn.layer.cornerRadius = btnSize.height * 0.5
         addSelectedBtn.clipsToBounds = true
-        let btnSize = CGSize(width: SCRXFrom(114), height: SCRYFrom(40))
+        
         addSelectedBtn.setBackgroundImage(UIImage.image(size: btnSize, color: Bar_Color), for: .normal)
         addSelectedBtn.setBackgroundImage(UIImage.image(size: btnSize, color: Bar_Color.withAlphaComponent(0.5)), for: .disabled)
         addSubview(addSelectedBtn)

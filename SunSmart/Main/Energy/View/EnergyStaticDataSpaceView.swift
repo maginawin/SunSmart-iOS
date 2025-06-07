@@ -38,6 +38,8 @@ class EnergyStaticDataSpaceView: UIView {
     private var latestHarvestData: EnergyStatisticsStaticData?
     /// 更早采集的数据
     private var previousHarvestData: EnergyStatisticsStaticData?
+    /// 能耗统计类型
+    private var statisticsType: EnergyStaticDataViewController.StatisticsType = .all
     
     weak var delegate: EnergyStaticDataSpaceViewDelegate?
     
@@ -54,10 +56,10 @@ class EnergyStaticDataSpaceView: UIView {
     }
     
     /// 更新数据
-    func updateData(latestHarvestData: EnergyStatisticsStaticData?, previousHarvestData: EnergyStatisticsStaticData?) {
+    func updateData(latestHarvestData: EnergyStatisticsStaticData?, previousHarvestData: EnergyStatisticsStaticData?, statisticsType: EnergyStaticDataViewController.StatisticsType) {
         self.latestHarvestData = latestHarvestData
         self.previousHarvestData = previousHarvestData
-        
+        self.statisticsType = statisticsType
         self.sections = [[.totalEnergy], [.latestHarvestData]]
         if latestHarvestData != nil && previousHarvestData != nil {
             self.sections = [[.totalEnergy], [.latestHarvestData, .previousHarvestData, .harvestInterval]]
@@ -217,6 +219,8 @@ class EnergyStaticDataSpaceView: UIView {
         var incompleteImageView: UIImageView!
         var lineView: UIView!
         
+        var incompleteActionCallback: (()->Void)?
+        
         override init(style: UITableViewCell.CellStyle, reuseIdentifier: String?) {
             super.init(style: style, reuseIdentifier: reuseIdentifier)
             
@@ -227,6 +231,10 @@ class EnergyStaticDataSpaceView: UIView {
         
         required init?(coder: NSCoder) {
             fatalError("init(coder:) has not been implemented")
+        }
+        
+        @objc private func incompleteAction() {
+            incompleteActionCallback?()
         }
         
         private func setupUI() {
@@ -246,6 +254,8 @@ class EnergyStaticDataSpaceView: UIView {
             
             incompleteImageView = UIImageView(image: UIImage(named: "energy_incomplete"))
             incompleteImageView.isHidden = true
+            incompleteImageView.isUserInteractionEnabled = true
+            incompleteImageView.addGestureRecognizer(UITapGestureRecognizer(target: self, action: #selector(incompleteAction)))
             contentView.addSubview(incompleteImageView)
             incompleteImageView.snp.makeConstraints { make in
                 make.right.equalTo(harvestDataLabel.snp.left).offset(SCRXFrom(-4))
@@ -292,13 +302,23 @@ extension EnergyStaticDataSpaceView: UITableViewDataSource, UITableViewDelegate 
             let totalEnergyCell = tableView.dequeueReusableCell(withIdentifier: "totalEnergyCell", for: indexPath) as! SpaceTotalHarvestDataCell
             if let harvestData = latestHarvestData {
                 
-                totalEnergyCell.totalEnergyDataLabel.text = "\((Double(harvestData.preciseTotalEnergyUse) / 1000.0).toSimplifyStr(maxDigits: 2)) kWh"
-                totalEnergyCell.maxRatedEnergyDataLabel.text = "\((Double(harvestData.maxTotalEnergyUse) / 1000.0).toSimplifyStr(maxDigits: 2)) kWh"
-                totalEnergyCell.ratedPowerBtn.setTitle("\((Double(harvestData.totalRatedPower) / 10000.0).toSimplifyStr(maxDigits: 2)) kW", for: .normal)
-                
-                totalEnergyCell.economyPercentageBtn.setTitle("\(harvestData.energySavingPercentage.toSimplifyStr(maxDigits: 1))%", for: .normal)
-                
-                totalEnergyCell.economyValueBtn.setTitle("\((Double(harvestData.energySaving) / 1000).toSimplifyStr(maxDigits: 2)) kWh", for: .normal)
+                var totalEnergy = Double(harvestData.preciseTotalEnergyUse) / 1000.0
+                var maxTotalEnergyUse = Double(harvestData.maxTotalEnergyUse) / 1000.0
+                var totalRatedPower = Double(harvestData.totalRatedPower) / 10000.0
+                var energySavingPercentage = harvestData.energySavingPercentage
+                var energySaving = Double(harvestData.energySaving) / 1000
+                if statisticsType == .realPower {
+                    totalEnergy = 0
+                    maxTotalEnergyUse = 0
+                    totalRatedPower = 0
+                    energySaving = 0
+                    energySavingPercentage = 0
+                }
+                totalEnergyCell.totalEnergyDataLabel.text = String(format: "%.2f kWh", totalEnergy)
+                totalEnergyCell.maxRatedEnergyDataLabel.text = String(format: "%.2f kWh", maxTotalEnergyUse)
+                totalEnergyCell.ratedPowerBtn.setTitle(String(format: "%.2f kW", totalRatedPower), for: .normal)
+                totalEnergyCell.economyPercentageBtn.setTitle(String(format: "%.1f%%", energySavingPercentage), for: .normal)
+                totalEnergyCell.economyValueBtn.setTitle(String(format: "%.2f kWh", energySaving), for: .normal)
                 
             }else {
                 totalEnergyCell.totalEnergyDataLabel.text = "--"
@@ -312,12 +332,20 @@ extension EnergyStaticDataSpaceView: UITableViewDataSource, UITableViewDelegate 
         }else {
             let historyEnergyCell = tableView.dequeueReusableCell(withIdentifier: "historyEnergyCell", for: indexPath) as! SpaceHarvestDataHistoryCell
             historyEnergyCell.incompleteImageView.isHidden = true
+            historyEnergyCell.incompleteActionCallback = {
+                XWHUDManager.showTipHUD("energy_incomplete_message".localizedString, isLineFeed: true)
+            }
             switch option {
             case .latestHarvestData:
                 historyEnergyCell.titleLabel.text = "latest_harvest_data".localizedString
                 if let harvestData = latestHarvestData {
-                    historyEnergyCell.harvestDataLabel.text = "\(Double(harvestData.preciseTotalEnergyUse / 1000).toSimplifyStr(maxDigits: 2)) kWh"
-                    historyEnergyCell.timeLabel.text = String.dateConvert(timestamp: "\(harvestData.timestamp)", dateFormat: "M d, yyyy, hh:mm a")
+                    var preciseTotalEnergyUse = Double(harvestData.preciseTotalEnergyUse) / 1000.0
+                    if statisticsType == .realPower {
+                        preciseTotalEnergyUse = 0
+                    }
+                    
+                    historyEnergyCell.harvestDataLabel.text = String(format: "%.2f kWh", preciseTotalEnergyUse)
+                    historyEnergyCell.timeLabel.text = String.dateConvert(timestamp: "\(harvestData.timestamp)", dateFormat: "MMMM d, yyyy, hh:mm a")
                     historyEnergyCell.incompleteImageView.isHidden = !harvestData.incomplete
                 }else {
                     historyEnergyCell.harvestDataLabel.text = "0 kWh"
@@ -328,8 +356,12 @@ extension EnergyStaticDataSpaceView: UITableViewDataSource, UITableViewDelegate 
                 
                 historyEnergyCell.titleLabel.text = "previous_harvest_data".localizedString
                 if let harvestData = previousHarvestData {
-                    historyEnergyCell.harvestDataLabel.text = "\(Double(harvestData.preciseTotalEnergyUse / 1000).toSimplifyStr(maxDigits: 2)) kWh"
-                    historyEnergyCell.timeLabel.text = String.dateConvert(timestamp: "\(harvestData.timestamp)", dateFormat: "M d, yyyy, hh:mm a")
+                    var preciseTotalEnergyUse = Double(harvestData.preciseTotalEnergyUse) / 1000
+                    if statisticsType == .realPower {
+                        preciseTotalEnergyUse = 0
+                    }
+                    historyEnergyCell.harvestDataLabel.text = String(format: "%.2f kWh", preciseTotalEnergyUse)
+                    historyEnergyCell.timeLabel.text = String.dateConvert(timestamp: "\(harvestData.timestamp)", dateFormat: "MMMM d, yyyy, hh:mm a")
                     historyEnergyCell.incompleteImageView.isHidden = !harvestData.incomplete
                 }else {
                     historyEnergyCell.harvestDataLabel.text = "0 kWh"
@@ -340,8 +372,11 @@ extension EnergyStaticDataSpaceView: UITableViewDataSource, UITableViewDelegate 
                 
                 historyEnergyCell.titleLabel.text = "interval".localizedString
                 if let latestHarvestData = latestHarvestData, let previousHarvestData = previousHarvestData {
-                    let kwh = Double(latestHarvestData.preciseTotalEnergyUse - previousHarvestData.preciseTotalEnergyUse) / 1000
-                    historyEnergyCell.harvestDataLabel.text = "\(kwh.toSimplifyStr(maxDigits: 2)) kWh"
+                    var kwh = Double(Int(latestHarvestData.preciseTotalEnergyUse) - Int(previousHarvestData.preciseTotalEnergyUse)) / 1000
+                    if statisticsType == .realPower {
+                        kwh = 0
+                    }
+                    historyEnergyCell.harvestDataLabel.text = String(format: "%.2f kWh", kwh)
                     
                     let interval = latestHarvestData.timestamp - previousHarvestData.timestamp
                     historyEnergyCell.timeLabel.text = String(format: "hour_minutes_interval".localizedString, interval / 3600, interval % 3600 / 60)

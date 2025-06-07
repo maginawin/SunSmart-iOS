@@ -31,7 +31,7 @@ protocol ProfileSettingsSphasesViewDelegate: AnyObject {
 
 class ProfileSettingsSphasesView: UIView {
 
-    ///
+    private var titleLabel: UILabel!
     private var imageView: UIImageView!
     private var helpBtn: UIButton!
     /// 阶段图
@@ -105,6 +105,8 @@ class ProfileSettingsSphasesView: UIView {
                 taskLevelLabel.text = "\(data.taskLevel)%"
             }
             
+            
+            
             autoMinLevelLabel.text = data.autoMinLevelEnabled ? "\(data.autoMinLevel)%" : "N/A"
             
             timeT1Btn.isHidden = true
@@ -122,6 +124,7 @@ class ProfileSettingsSphasesView: UIView {
             taskLevelLabel.isHidden = true
             autoMinLevelBtn.isHidden = true
             autoMinLevelLabel.isHidden = true
+            titleLabel.isHidden = true
             
             var profileChartImageName = "profile_chart_occupancy"
             switch profile.type {
@@ -145,6 +148,9 @@ class ProfileSettingsSphasesView: UIView {
                     autoMinLevelBtn.isHidden = true
                     autoMinLevelLabel.isHidden = true
                     profileChartImageName = "profile_chart_occupancy"
+                    if profile.type == .proximityLighting {
+                        titleLabel.isHidden = false
+                    }
 //                    chartImageView.image = UIImage(named: "profile_chart_occupancy")
                 }else {
                     autoMinLevelBtn.isHidden = false
@@ -156,6 +162,8 @@ class ProfileSettingsSphasesView: UIView {
                     make.right.width.height.equalTo(highEndTrimBtn)
                     make.top.equalTo(vacantLevelBtn.snp.bottom).offset(SCRYFrom(8))
                 }
+                
+                
    
             case .daylight:
 //                chartImageView.image = UIImage(named: "profile_chart_daylight")
@@ -209,8 +217,18 @@ class ProfileSettingsSphasesView: UIView {
             }
             chartImageView.image = UIImage(named: profileChartImageName)
             chartImageView.sizeToFit()
+            
+            var chartImageTopMargin = SCRYFrom(46)
+            var helpTopMargin = SCRYFrom(4)
+            var highEndTrimMargin = SCRYFrom(60)
+            if profile.type == .proximityLighting {
+                chartImageTopMargin = SCRYFrom(62)
+                helpTopMargin = SCRYFrom(10)
+                highEndTrimMargin = SCRYFrom(76)
+            }
             chartImageView.snp.remakeConstraints { make in
-                make.top.equalTo(SCRYFrom(46))
+                
+                make.top.equalTo(chartImageTopMargin)
                 if isIPad {
                     make.left.equalTo(SCRXFrom(136))
                     make.right.equalTo(SCRXFrom(-56.7))
@@ -222,6 +240,12 @@ class ProfileSettingsSphasesView: UIView {
                     make.height.equalTo(chartImageView.snp.width).multipliedBy(chartImageView.height / chartImageView.width)
                 }
                 make.bottom.equalTo(SCRYFrom(-68))
+            }
+            helpBtn.snp.updateConstraints { make in
+                make.top.equalTo(helpTopMargin)
+            }
+            highEndTrimBtn.snp.updateConstraints { make in
+                make.top.equalTo(highEndTrimMargin)
             }
         }
     }
@@ -344,6 +368,14 @@ class ProfileSettingsSphasesView: UIView {
     
     private func setupUI() {
         
+        titleLabel = UILabel(text: "device_trigger_curve".localizedString, textColor: TextBlack_Color, fontSize: 16, fontWeight: .light)
+        titleLabel.isHidden = true
+        addSubview(titleLabel)
+        titleLabel.snp.makeConstraints { make in
+            make.left.equalTo(SCRXFrom(16))
+            make.top.equalTo(SCRYFrom(16))
+        }
+        
         helpBtn = UIButton(normalImageName: "help", target: self, action: #selector(helpBtnAction))
         addSubview(helpBtn)
         helpBtn.snp.makeConstraints { make in
@@ -378,7 +410,8 @@ class ProfileSettingsSphasesView: UIView {
         addSubview(imageView)
         imageView.snp.makeConstraints { make in
             make.left.equalTo(SCRXFrom(isIPad ? 13 : 2))
-            make.top.equalTo(SCRYFrom(34))
+//            make.top.equalTo(SCRYFrom(34))
+            make.top.equalTo(chartImageView).offset(SCRYFrom(-12))
             make.bottom.equalTo(chartImageView)
         }
         

@@ -53,7 +53,7 @@ class EnergyHarvestHistoryViewController: UIViewController {
     
     private func updateEmptyUI() {
         
-        if harvestDatas.isEmpty {
+        if harvestDatas.isEmpty { 
             bottomView.isHidden = true
             tableView.showEmptyDataView(title: "no_data".localizedString)
         }else {
@@ -133,6 +133,8 @@ class EnergyHarvestHistoryViewController: UIViewController {
         tableView.reloadData()
         updateBottomUI()
         updateEmptyUI()
+        
+        NotificationCenter.default.post(name: .init(energyStaticDataUpdateNotificationName), object: nil)
     }
     
     private func updateBottomUI() {
@@ -217,7 +219,7 @@ extension EnergyHarvestHistoryViewController: UITableViewDataSource, UITableView
     func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
         let cell = tableView.dequeueReusableCell(withIdentifier: "cell", for: indexPath) as! EnergyHarvestHistoryViewCell
         let data = harvestDatas[indexPath.row]
-        cell.fileNameLabel.text = "\("static_data".localizedString) \(String.dateConvert(timestamp: "\(data.timestamp)", dateFormat: "M-d-yyyy hh:MM a"))"
+        cell.fileNameLabel.text = "\("static_data".localizedString) \(String.dateConvert(timestamp: "\(data.timestamp)", dateFormat: "M-d-yyyy hh:mm a"))"
         cell.isSelect = selectDatas.contains(where: { $0.timestamp == data.timestamp })
         cell.exportCallback = {[weak self] in
             // 导出单个数据

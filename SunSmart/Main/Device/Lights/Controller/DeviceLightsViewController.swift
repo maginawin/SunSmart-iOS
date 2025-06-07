@@ -196,7 +196,7 @@ class DeviceLightsViewController: UIViewController {
         
 //        MeshAPI.sendMessage(message: LightCTLTemperatureRangeGet(), address: .allNodes)
         
-//        MeshLibManager.manager.refreshNodesRSSI(withWaitFor: 5, result: nil)
+        MeshLibManager.manager.refreshNodesRSSI(withWaitFor: 5, finished: nil)
         if refreshControl.isRefreshing {
             DispatchQueue.main.asyncAfter(deadline: .now() + 5) {[weak self] in
                 guard let self = self else { return }

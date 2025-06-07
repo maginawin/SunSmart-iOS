@@ -131,10 +131,24 @@ let Green_Color = RGB(0, 209, 124, 1)
 let AssistText_Color = RGB(148, 163, 184)
 /// 黄色
 let Yellow_Color = RGB(255, 193, 71)
+/// 紫色
+let Purple_Color = RGB(102, 103, 171)
 
+#if Archipelago
+/// 主色
+let Bar_Color = RGB(213, 32, 39)
+let Bottom_Done_Color = RGB(27, 20, 37)
+let Slider_Color = RGB(213, 32, 39)
+
+#else
 
 /// 主色
 let Bar_Color = RGB(102, 103, 171)
+let Bottom_Done_Color = RGB(102, 103, 171)
+let Slider_Color = RGB(255, 167, 44)
+
+#endif
+
 
 /// RGB颜色
 func RGB(_ red:Int,_ green:Int,_ blue:Int, _ alpha:CGFloat=1) -> UIColor {
@@ -164,3 +178,7 @@ func Font_Bold_Size(_ size : CGFloat) -> UIFont {
 let termsOfUseUrlStr = "https://srdocs.gitee.io/privacypolicy/#/ble/en"
 /// 隐私政策
 let privacyPolicyUrlStr = "https://srdocs.gitee.io/privacypolicy/#/ble/en"
+/// App名称
+let appName = Bundle.main.object(forInfoDictionaryKey: "CFBundleDisplayName") as? String
+?? Bundle.main.object(forInfoDictionaryKey: "CFBundleName") as? String
+?? "SunSmart"

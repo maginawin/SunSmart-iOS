@@ -327,18 +327,18 @@ class SyncDevicesViewController: UIViewController {
                 syncSwitchGroupModels = syncSwitchGroupModels.sorted(by: { $0.address < $1.address })
                 configurationSection.groups.append(contentsOf: syncSwitchGroupModels)
                 
-            case .pwmPeriod(let period, let group):
-                
-                let nodes = group.nodes.filter({ $0.pwmPeriod != period })
-                let deviceModels = nodes.map({
-                    let model = SyncDevicesModel(name: $0.name ?? "", address: $0.primaryUnicastAddress)
-                    model.imageName = $0.iconName
-                    model.operationType = .configuration(node: $0, type: .deviceParameters(parameterType: .pwmPeriod(period: period)))
-                    return model
-                })
-                let groupModel = SyncDevicesGroupModel(groupName: group.name, groupAddress: group.address.address, deviceModels: deviceModels)
-                deviceModels.forEach({ $0.parentGroupModel = groupModel })
-                configurationSection.groups.append(groupModel)
+//            case .pwmPeriod(let period, let group):
+//                
+//                let nodes = group.nodes.filter({ $0.pwmFrequency != period })
+//                let deviceModels = nodes.map({
+//                    let model = SyncDevicesModel(name: $0.name ?? "", address: $0.primaryUnicastAddress)
+//                    model.imageName = $0.iconName
+//                    model.operationType = .configuration(node: $0, type: .deviceParameters(parameterType: .pwmPeriod(period: period)))
+//                    return model
+//                })
+//                let groupModel = SyncDevicesGroupModel(groupName: group.name, groupAddress: group.address.address, deviceModels: deviceModels)
+//                deviceModels.forEach({ $0.parentGroupModel = groupModel })
+//                configurationSection.groups.append(groupModel)
             case .devices(let nodes):
 
                 nodes.forEach { node in
@@ -357,8 +357,8 @@ class SyncDevicesViewController: UIViewController {
                         var steps: [SyncDeviceStepModel] = []
                         parameters.forEach { type in
                             switch type {
-                            case .pwmPeriod(let period):
-                                let taskModel = SyncDeviceStepTaskModel(name: "pwm_period".localizedString, operationType: .configuration(node: node, type: .deviceParameters(parameterType: .pwmPeriod(period: period))))
+                            case .pwmFrequency(let frequency):
+                                let taskModel = SyncDeviceStepTaskModel(name: "pwm_period".localizedString, operationType: .configuration(node: node, type: .deviceParameters(parameterType: .pwmFrequency(frequency: frequency))))
                                 
                                 let step = SyncDeviceStepModel(type: "pwm_period".localizedString, state: .none, tasks: [taskModel])
                                 taskModel.parentStepModel = step
@@ -442,8 +442,9 @@ class SyncDevicesViewController: UIViewController {
                         removeSection.devices.append(deleteDeviceModel)
                     }
                 }
-            case .proximityLightingPath(let path):
-                path.nodes.forEach { node in
+            case .proximityLightingPath(let group, let path):
+                
+                group.nodes.forEach { node in
                     if let syncData = node.getNodeSyncProximityLighting() {
                         let syncDeviceModel = SyncDevicesModel(name: node.name ?? "", address: node.primaryUnicastAddress)
                         syncDeviceModel.imageName = node.iconName
@@ -663,8 +664,8 @@ class SyncDevicesViewController: UIViewController {
                 var tasks: [SyncDeviceStepTaskModel] = []
                 types.forEach { type in
                     switch type {
-                    case .pwmPeriod(let period):
-                        let taskModel = SyncDeviceStepTaskModel(name: "pwm_period".localizedString, operationType: .configuration(node: node, type: .deviceParameters(parameterType: .pwmPeriod(period: period))))
+                    case .pwmFrequency(let frequency):
+                        let taskModel = SyncDeviceStepTaskModel(name: "pwm_frequency".localizedString, operationType: .configuration(node: node, type: .deviceParameters(parameterType: .pwmFrequency(frequency: frequency))))
                         tasks.append(taskModel)
                     case .ratedPower(let value):
                         let taskModel = SyncDeviceStepTaskModel(name: "rated_power".localizedString, operationType: .configuration(node: node, type: .deviceParameters(parameterType: .ratedPower(datas: value))))
@@ -1481,7 +1482,7 @@ extension SyncDevicesViewController {
         /// 动能开关 deleteSwitch: 是否删除动能开关
         case enOceanSwitch(_ switchData: DeviceSwitchData, deleteSwitch: Bool = false)
         /// 按组设置pwm频率
-        case pwmPeriod(_ period: UInt16, group: Group)
+//        case pwmPeriod(_ period: UInt16, group: Group)
         /// 同步设备list
         case devices(_ nodes: [Node])
         /// 同步设备参数
@@ -1489,7 +1490,7 @@ extension SyncDevicesViewController {
         /// Dongle设备
         case dongle(_ dongleData: DeviceDongleData)
         /// 邻近照明路径
-        case proximityLightingPath(path: GroupProximityLightingPathData)
+        case proximityLightingPath(group: Group, path: GroupProximityLightingPathData)
     }
     
     /// 同步状态

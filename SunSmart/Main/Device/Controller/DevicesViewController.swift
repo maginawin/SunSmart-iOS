@@ -94,7 +94,7 @@ class DevicesViewController: WMPageController {
     // 分发状态view
     private var distributionStateView: FirmwareDistributeUpdateStateView?
 
-    private var menuHeight = SCRYFrom(40)
+    private var menuHeight = CGFloat(Int(SCRYFrom(40)))
 //    private var meunView: WMMenuView!
     
  
@@ -388,8 +388,7 @@ class DevicesViewController: WMPageController {
     
     /// 恢复设备数据
     private func devicesRestore() {
-//        let vc = DeviceRestoreViewController(restoreMode: .default)
-        let vc = DeviceRestoreViewController(restoreMode: .specified(nodes: MeshNetworkManager.instance.realNodes))
+        let vc = DeviceRestoreViewController(restoreMode: .default)
         vc.deviceRestoreCallback = { _ in
             NotificationCenter.default.post(name: .init(devicesAddNotificationName), object: nil)
         }
@@ -724,8 +723,6 @@ extension DevicesViewController {
         
         let lastItem = menu.item(at: currentIndex)
         lastItem?.backgroundColor = RGB(254, 254, 254)
-        lastItem?.layer.borderColor = RGB(220, 220, 220).cgColor
-        lastItem?.layer.borderWidth = 0.6
 //        self.selectIndex = Int32(index)
         
         super.menuView(menu, didSelectedIndex: index, currentIndex: currentIndex)
@@ -734,12 +731,9 @@ extension DevicesViewController {
     override func menuView(_ menu: WMMenuView!, initialMenuItem: WMMenuItem!, at index: Int) -> WMMenuItem! {
         
         if index == 0 {
-            initialMenuItem.layer.borderWidth = 0
             initialMenuItem.font = UIFont.systemFont(ofSize: 14)
             initialMenuItem.backgroundColor = Bar_Color
         }else {
-            initialMenuItem.layer.borderColor = RGB(220, 220, 220).cgColor
-            initialMenuItem.layer.borderWidth = 0.6
             initialMenuItem.backgroundColor = RGB(254, 254, 254)
 //                .white.withAlphaComponent(0.95)
         }

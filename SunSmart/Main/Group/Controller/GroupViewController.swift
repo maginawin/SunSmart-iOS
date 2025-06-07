@@ -474,35 +474,6 @@ class GroupViewController: UIViewController {
 //        }
     }
     
-    private func setPwmPeriod() {
-        let pwmPeriod = group.info.pwmPeriod
-        
-        
-        SRAlertView(title: "set_pwm_period".localizedString, inputText: pwmPeriod != nil ? "\(pwmPeriod!)" : nil, inputFieldStyle: .init(placeholder: "0-65535", keyboardType: .numberPad), actions: [.cancelAction, SRAlertAction(title: "confirm".localizedString, style: .default)], textValueChangedBack: nil) {[weak self] text in
-            guard let self = self else { return }
-            guard let value = UInt16(text) else {
-                XWHUDManager.showTipHUD("invalid".localizedString + "!", isLineFeed: true)
-                return
-            }
-            self.group.info.pwmPeriod = value
-            self.group.info.save()
-            
-            guard self.group.nodes.count > 0 else {
-                return
-            }
-            
-            let vc = SyncDevicesViewController(type: .pwmPeriod(value, group: self.group))
-            vc.syncSuccessCallback = {[weak self] _ in
-                guard let self = self else { return }
-                XWHUDManager.showSuccessTipHUD("done!".localizedString)
-                self.navigationController?.popViewController(animated: true)
-            }
-            self.navigationController?.pushViewController(vc, animated: true)
-        }.show()
-    
-    }
-    
-    
     private func bindSliderAciton() {
         lightnessSlider.valueThrottleChangedCallback = {[weak self] (value, ended) in
             print("lightness: \(value)")
@@ -863,7 +834,7 @@ class GroupViewController: UIViewController {
             make.height.equalTo(SCRYFrom(32))
         }
         
-        setPathLabel = UILabel(text: "set_the_path_sequence".localizedString, textColor: SubText_Color, fontSize: 14, fontWeight: .light)
+        setPathLabel = UILabel(text: "group_set_the_path_sequence".localizedString, textColor: SubText_Color, fontSize: 14, fontWeight: .light)
         setPathLabel.isHidden = true
         view.addSubview(setPathLabel)
         setPathLabel.snp.makeConstraints { make in

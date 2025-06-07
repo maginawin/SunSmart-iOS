@@ -24,6 +24,8 @@ class GroupPathSequenceViewController: UIViewController {
     private var deviceAddMode: PathSequenceDeviceAddMode = .quickAdd
     /// 快速添加状态
     private var quickAddState: QuickAddState = .stop
+    /// 快速添加忙碌中，防止触发太频繁
+    private var quickAddingBusy: Bool = false
     /// 是否展示已添加的设备（启用后使用过的设备可能重复使用）
     private var showAddedDevices: Bool = false
     /// 触发的设备list
@@ -94,6 +96,7 @@ class GroupPathSequenceViewController: UIViewController {
             deviceAddView.canAddDevice = true
         }else {
             deviceAddView.canAddDevice = false
+            quickAddState = .stop
         }
     }
     
@@ -149,9 +152,17 @@ class GroupPathSequenceViewController: UIViewController {
             
         case .reset:
             SRAlertView(title: "notification".localizedString, message: "path_reset_devices_message".localizedString, actions: [.cancelAction, SRAlertAction(title: "confirm".localizedString, actionHandler: {[weak self] _ in
-                
+                guard let self = self else { return }
+                if self.selectPathData.path == path {
+                    self.selectPathData.item = nil
+                }
+                self.updateDeviceAddViewUI()
+//                self.triggerDevices.removeAll()
+//                if self.deviceAddMode == .triggerAdd {
+//                    self.deviceAddView.manuallyAddView.reloadData(devices: self.triggerDevices, selectDevice: nil)
+//                }
                 path.items.forEach({ $0.address = nil })
-                self?.reloadPath(path)
+                self.reloadPath(path)
             })]).show()
             
         case .delete:
@@ -165,7 +176,8 @@ class GroupPathSequenceViewController: UIViewController {
                         self.updateDeviceAddViewUI()
                     }
                     self.updateEmptyUI()
-                    self.tableView.deleteSections(IndexSet(integer: index), with: .fade)
+//                    self.tableView.deleteSections(IndexSet(integer: index), with: .fade)
+                    self.tableView.reloadData()
                 }
             })]).show()
             
@@ -311,6 +323,28 @@ extension GroupPathSequenceViewController: UITableViewDataSource, UITableViewDel
 
 extension GroupPathSequenceViewController: GroupPathSequencePathViewCellDelegate {
     
+    /// 选择路径
+    func cell(_ cell: GroupPathSequencePathViewCell, didSelectPath path: GroupProximityLightingSequencePath) {
+        guard let section = setPaths.firstIndex(of: path) else {
+            return
+        }
+        var reloadSections: [Int] = []
+        if let path = self.selectPathData.path, let index = self.setPaths.firstIndex(of: path) {
+            if index == section {
+                return
+            }
+            if let lastHeaderView = tableView.headerView(forSection: index) as? GroupPathSequencePathHeaderView {
+                lastHeaderView.isSelect = false
+            }
+            reloadSections.append(index)
+        }
+        reloadSections.append(section)
+        self.selectPathData.path = self.setPaths[section]
+        self.selectPathData.item = nil
+        self.tableView.reloadSections(IndexSet(reloadSections), with: .none)
+        self.updateDeviceAddViewUI()
+    }
+    
     /// 选择item路径方向
     /// - Parameters:
     ///   - cell: cell
@@ -329,8 +363,11 @@ extension GroupPathSequenceViewController: GroupPathSequencePathViewCellDelegate
             if let lastHeaderView = tableView.headerView(forSection: lastSection) as? GroupPathSequencePathHeaderView {
                 lastHeaderView.isSelect = false
             }
+            
+//            deviceAddView.quickAddView.updateQuickAddState(.stop)
         }
         reloadSections.append(section)
+        
         
         selectPathData.path = setPaths[section]
         selectPathData.item = item
@@ -563,21 +600,30 @@ extension GroupPathSequenceViewController: MeshLibManagerMessageDelegate {
         }
         
         // 判断路径list内是否已经有感应的设备
-        if let samePath = setPaths.first(where: { path in path.items.contains(where: { $0.address != nil && node.contains(elementWithAddress: $0.address!)  }) }) {
-            
-            // 重复的设备不让添加到路径
-            if !showAddedDevices || path == samePath {
+        let samePaths = setPaths.filter({ path in path.items.contains(where: { $0.address != nil && node.contains(elementWithAddress: $0.address!) }) })
+        // 重复的设备不让添加到路径
+        if showAddedDevices {
+            if samePaths.contains(path) {
+                return
+            }
+        }else {
+            if samePaths.count > 0 {
                 return
             }
         }
         
+        
         switch deviceAddMode {
         case .quickAdd:
-            if quickAddState == .adding { // 判断是否在添加中
-                
+            if quickAddState == .adding, !quickAddingBusy { // 判断是否在添加中
                 item.address = node.sunricherVendorModel?.parentElement?.unicastAddress ?? node.primaryUnicastAddress
-                // 获取下一个空的point item
-                setNextPathItem()
+                self.quickAddingBusy = true
+                // 防止触发太快，间隔200ms生效
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {[weak self] in
+                    // 获取下一个空的point item
+                    self?.setNextPathItem()
+                    self?.quickAddingBusy = false
+                }
             }
         case .triggerAdd:
             if !triggerDevices.contains(node) {

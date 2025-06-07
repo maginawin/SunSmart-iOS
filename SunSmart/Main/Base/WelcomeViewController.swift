@@ -38,7 +38,7 @@ class WelcomeViewController: UIViewController {
             self.startedBtn.backgroundColor = Bar_Color
         }else {
             self.startedBtn.isUserInteractionEnabled = false
-            self.startedBtn.backgroundColor = RGB(147, 148, 196)
+            self.startedBtn.backgroundColor = Bar_Color.withAlphaComponent(0.5)
         }
     }
     
@@ -63,10 +63,11 @@ class WelcomeViewController: UIViewController {
             make.top.equalTo(view.safeAreaLayoutGuide).offset(SCRYFrom(64))
         }
         
-        welcomeLabel = UILabel(text: "welcome_title".localizedString, textColor: TextBlack_Color, fontSize: 20, fit: false)
+        welcomeLabel = UILabel(text: nil, textColor: TextBlack_Color, fontSize: 20, fit: false)
         welcomeLabel.numberOfLines = 0
-        let welcomeAttStr = NSMutableAttributedString(string: "welcome_title".localizedString)
-        welcomeAttStr.addAttribute(.foregroundColor, value: Bar_Color, range: (welcomeAttStr.string as NSString).range(of: "SunSmart"))
+        
+        let welcomeAttStr = NSMutableAttributedString(string: String(format: "welcome_title".localizedString, appName))
+        welcomeAttStr.addAttribute(.foregroundColor, value: Bar_Color, range: (welcomeAttStr.string as NSString).range(of: appName))
         let style = NSMutableParagraphStyle()
         style.lineSpacing = 6
         welcomeAttStr.addAttribute(.paragraphStyle, value: style, range: NSRange(location: 0, length: welcomeAttStr.string.count))
@@ -80,7 +81,7 @@ class WelcomeViewController: UIViewController {
         }
         
         startedBtn = UIButton(title: "get_started".localizedString, titleSize: 16, titleWeight: .medium, titleColor: .white, target: self, action: #selector(startedBtnAction))
-        startedBtn.backgroundColor = RGB(147, 148, 196)
+        startedBtn.backgroundColor = Bar_Color.withAlphaComponent(0.5)
         startedBtn.isUserInteractionEnabled = false
         startedBtn.layer.cornerRadius = SCRYFrom(8)
         view.addSubview(startedBtn)

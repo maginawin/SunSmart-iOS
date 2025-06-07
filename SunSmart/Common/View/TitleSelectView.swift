@@ -20,6 +20,8 @@ class TitleSelectView: UIView {
     static let defalutItemHeight = SCRYFrom(36)
     /// 选择回调
     typealias TitleSelectCallback = ((Int)->Void)
+    /// 关闭回调
+    typealias HideCallback = (()->Void)
     
     private var shadeView: UIView!
     private var contentView: UIView!
@@ -31,6 +33,7 @@ class TitleSelectView: UIView {
     private var menuWidth: CGFloat = defalutWidth
     private var itemHeight: CGFloat = defalutItemHeight
     private var selectCallback: TitleSelectCallback?
+    private var hideCallback: HideCallback?
     private var selectBackgroundColor: UIColor = RGB(216, 216, 216, 0.1)
     private var titleColor: UIColor = .white
     private var titleFont: UIFont = FONTS(13)
@@ -39,7 +42,7 @@ class TitleSelectView: UIView {
 //        fatalError("init(coder:) has not been implemented")
 //    }
     
-    static func show(titles: [String], style: Style = .select, anchorPoint: CGPoint, selectIndex: Int = 0, menuWidth: CGFloat = TitleSelectView.defalutWidth, itemHeight: CGFloat = TitleSelectView.defalutItemHeight, titleColor: UIColor = .white, titleFont: UIFont = FONTS(13), backgroundColor: UIColor = RGB(102, 102, 102), selectBackgroundColor: UIColor = RGB(216, 216, 216, 0.1), shadowColor: UIColor? = nil, selectBack: TitleSelectCallback?) {
+    static func show(titles: [String], style: Style = .select, anchorPoint: CGPoint, selectIndex: Int = 0, menuWidth: CGFloat = TitleSelectView.defalutWidth, itemHeight: CGFloat = TitleSelectView.defalutItemHeight, titleColor: UIColor = .white, titleFont: UIFont = FONTS(13), backgroundColor: UIColor = RGB(102, 102, 102), selectBackgroundColor: UIColor = RGB(216, 216, 216, 0.1), shadowColor: UIColor? = nil, selectBack: TitleSelectCallback?, hideCallback: HideCallback? = nil) {
         
         let view = TitleSelectView(frame: UIScreen.main.bounds)
         view.menuWidth = menuWidth
@@ -52,6 +55,7 @@ class TitleSelectView: UIView {
         view.selectBackgroundColor = selectBackgroundColor
         view.style = style
         view.selectCallback = selectBack
+        view.hideCallback = hideCallback
         view.setupUI()
         view.contentView.backgroundColor = backgroundColor
         if shadowColor != nil {
@@ -84,6 +88,8 @@ class TitleSelectView: UIView {
         } completion: { _ in
             self.removeFromSuperview()
         }
+        
+        hideCallback?()
     }
     
     @objc private func shadeViewClick() {

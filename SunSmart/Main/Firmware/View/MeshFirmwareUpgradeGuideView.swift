@@ -140,7 +140,7 @@ class MeshFirmwareUpgradeGuideView: UIView {
 //            make.top.equalTo(SCRYFrom(76))
 //            make.bottom.equalTo(SCRYFrom(76))
             make.centerY.equalToSuperview()
-            make.height.equalTo(contentHeight)
+            make.height.lessThanOrEqualTo(contentHeight)
         }
         
         
@@ -164,6 +164,16 @@ class MeshFirmwareUpgradeGuideView: UIView {
             make.centerY.equalTo(titleLabel)
         }
         
+        headerView = UIView()
+        messageLabel = UILabel(text: message, textColor: Message_Color, fontSize: FontFit(13), fontWeight: .light, fit: false)
+        messageLabel.numberOfLines = 0
+        headerView.addSubview(messageLabel)
+
+        let messageWidth = self.width - SCRXFrom(15) - SCRXFrom(88)
+        let messageSize = (message as NSString).boundingRect(with: CGSize(width: messageWidth, height: CGFloat(MAXFLOAT)), options: .usesLineFragmentOrigin, attributes: [.font: UIFont.systemFont(ofSize: FontFit(13), weight: .light)], context: nil).size
+        messageLabel.frame = CGRect(x: SCRXFrom(44), y: SCRYFrom(16), width: messageWidth, height: messageSize.height)
+        headerView.frame = CGRect(x: 0, y: 0, width: self.width - SCRXFrom(15), height: messageSize.height + SCRYFrom(33))
+        
         tableView = UITableView()
         tableView.separatorStyle = .none
         tableView.register(MeshFirmwareUpgradeGuideStepViewCell.classForCoder(), forCellReuseIdentifier: "cell")
@@ -173,23 +183,14 @@ class MeshFirmwareUpgradeGuideView: UIView {
         tableView.snp.makeConstraints { make in
             make.left.right.bottom.equalToSuperview()
             make.top.equalTo(titleView.snp.bottom)
+            var contentHeight = steps.reduce(0) { partialResult, step in
+                partialResult + step.height
+            }
+            contentHeight += headerView.height
+            make.height.equalTo(contentHeight).priority(.low)
         }
         
-        headerView = UIView()
-        messageLabel = UILabel(text: message, textColor: Message_Color, fontSize: FontFit(13), fontWeight: .light, fit: false)
-        messageLabel.numberOfLines = 0
-        headerView.addSubview(messageLabel)
-//        messageLabel.snp.makeConstraints { make in
-//            make.top.equalTo(SCRYFrom(16))
-//            make.left.equalTo(SCRXFrom(44))
-//            make.right.equalTo(SCRXFrom(-44))
-//            make.bottom.equalTo(SCRYFrom(-17))
-//        }
-        
-        let messageWidth = self.width - SCRXFrom(15) - SCRXFrom(88)
-        let messageSize = (message as NSString).boundingRect(with: CGSize(width: messageWidth, height: CGFloat(MAXFLOAT)), options: .usesLineFragmentOrigin, attributes: [.font: UIFont.systemFont(ofSize: FontFit(13), weight: .light)], context: nil).size
-        messageLabel.frame = CGRect(x: SCRXFrom(44), y: SCRYFrom(16), width: messageWidth, height: messageSize.height)
-        headerView.frame = CGRect(x: 0, y: 0, width: self.width - SCRXFrom(15), height: messageSize.height + SCRYFrom(33))
+       
         tableView.tableHeaderView = headerView
         
     }

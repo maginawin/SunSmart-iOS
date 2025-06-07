@@ -118,9 +118,9 @@ enum DeviceParameterType {
     func getMessageHandles(node: Node) -> [MeshMessageHandle] {
         var messageHandles: [MeshMessageHandle] = []
         switch self {
-        case .pwmPeriod(let period):
+        case .pwmFrequency(let frequency):
             if let vendorModel = node.sunricherVendorModel {
-                messageHandles.append(MeshMessageHandle(message: SunricherVendorSet(function: .pwmPeriod(period)), model: vendorModel))
+                messageHandles.append(MeshMessageHandle(message: SunricherVendorSet(function: .pwmFrequency(frequency)), model: vendorModel))
             }
         case .ratedPower(let datas):
             if let vendorModel = node.sunricherVendorModel {
@@ -130,8 +130,8 @@ enum DeviceParameterType {
         return messageHandles
     }
     
-    /// pwm周期
-    case pwmPeriod(period: UInt16)
+    /// pwm频率
+    case pwmFrequency(frequency: UInt16)
     /// 额定功率
     case ratedPower(datas: [NodePhaseEnergyConsumption])
 }
@@ -142,9 +142,9 @@ enum DeviceReadParameterType {
     func getMessageHandles(node: Node) -> [MeshMessageHandle] {
         var messageHandles: [MeshMessageHandle] = []
         switch self {
-        case .pwmPeriod:
+        case .pwmFrequency:
             if let vendorModel = node.sunricherVendorModel {
-                messageHandles.append(MeshMessageHandle(message: SunricherVendorGet(function: .pwmPeriod), model: vendorModel))
+                messageHandles.append(MeshMessageHandle(message: SunricherVendorGet(function: .pwmFrequency), model: vendorModel))
             }
         case .ratedPower:
             if let vendorModel = node.sunricherVendorModel {
@@ -159,8 +159,8 @@ enum DeviceReadParameterType {
         return messageHandles
     }
     
-    /// pwm周期
-    case pwmPeriod
+    /// pwm频率
+    case pwmFrequency
     /// 额定功率
     case ratedPower
     /// 设备已使用的总能耗
@@ -337,8 +337,8 @@ extension Node {
             // 设备参数
             var deviceParameterTypes: [DeviceParameterType] = []
             // PWM
-            if let pwmPeriod = self.restoreData?.pwmPeriod, self.pwmPeriod != pwmPeriod {
-                deviceParameterTypes.append(.pwmPeriod(period: pwmPeriod))
+            if let pwmFrequency = self.restoreData?.pwmFrequency, self.pwmFrequency != pwmFrequency {
+                deviceParameterTypes.append(.pwmFrequency(frequency: pwmFrequency))
             }
             // Rated power
             if let phaseEnergyConsumptions = self.restoreData?.phaseEnergyConsumptions, self.phaseEnergyConsumptions != phaseEnergyConsumptions {
@@ -447,7 +447,7 @@ extension Node {
         }
         
         // PWM
-        if let pwmPeriod = self.restoreData?.pwmPeriod, self.pwmPeriod != pwmPeriod {
+        if let pwmFrequency = self.restoreData?.pwmFrequency, self.pwmFrequency != pwmFrequency {
             return true
         }
         return false
@@ -942,15 +942,16 @@ extension Node {
         
         // 邻居数量
         let neighborNumber = group.info.profile.proximityLightingNumber
-        guard let proximityLightingPath = group.info.proximityLightingPath else {
-            return nil
-        }
+        let proximityLightingPath = group.info.proximityLightingPath
+//        guard let proximityLightingPath = group.info.proximityLightingPath else {
+//            return nil
+//        }
         // 邻居地址list
         var neighborAddresses: [Address] = []
         
         let groupNodes = group.nodes
         // 获取路径上的邻居
-        for path in proximityLightingPath.paths {
+        for path in proximityLightingPath?.paths ?? [] {
             // 包含当前设备的item index
             if let pathItemIndex = path.items.firstIndex(where: { $0.address != nil && self.contains(elementWithAddress: $0.address!) }) {
                 
@@ -986,7 +987,7 @@ extension Node {
         }
         
         // 获取zone内的邻居
-        for zone in proximityLightingPath.zones {
+        for zone in proximityLightingPath?.zones ?? [] {
             var addresses = zone.addresses
             if let index = addresses.firstIndex(where: { self.contains(elementWithAddress: $0) }) {
                 addresses.remove(at: index)

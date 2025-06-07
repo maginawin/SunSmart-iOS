@@ -24,7 +24,8 @@ protocol GroupPathSequenceTriggerAddViewDelegate: AnyObject {
 class GroupPathSequenceTriggerAddView: UIView {
     
     private var titleLabel: UILabel!
-    private var switchBtn: UIButton!
+    private var addTypeView: UIView!
+    private var arrowImageView: UIImageView!
     private var flowLayout: HorizontalDirectionFlowLayout!
     private var collectionView: UICollectionView!
     private var pageControl: UIPageControl!
@@ -65,9 +66,9 @@ class GroupPathSequenceTriggerAddView: UIView {
         pageControl.numberOfPages = Int(ceilf(Float(devices.count) / Float(colCount)))
     }
 
-    @objc private func switchBtnAction(sender: UIButton) {
+    @objc private func addTypeSelectAction() {
         let menuWidth = SCRXFrom(256)
-        let btnPoint = CGPoint(x: self.width - menuWidth, y: sender.frame.maxY)
+        let btnPoint = CGPoint(x: self.width - menuWidth, y: arrowImageView.frame.maxY)
         let windowPoint = self.convert(btnPoint, to: UIApplication.shared.keyWindow())
         var titles = ["trigger_add_hide_added_devices".localizedString, "trigger_add_show_added_devices".localizedString]
         if !isSequence {
@@ -94,19 +95,29 @@ class GroupPathSequenceTriggerAddView: UIView {
     
     private func setupUI() {
         
-        titleLabel = UILabel(text: "trigger_add_hide_added_devices".localizedString, textColor: TextBlack_Color, fontSize: 14, fontWeight: .light, fit: false)
-        addSubview(titleLabel)
-        titleLabel.snp.makeConstraints { make in
+        addTypeView = UIView()
+        addTypeView.addGestureRecognizer(UITapGestureRecognizer(target: self, action: #selector(addTypeSelectAction)))
+        addSubview(addTypeView)
+        addTypeView.snp.makeConstraints { make in
             make.left.equalTo(SCRXFrom(8))
-            make.top.equalTo(SCRYFrom(12))
-            make.right.equalTo(SCRXFrom(-60))
+            make.top.equalTo(SCRYFrom(4))
+            make.height.equalTo(SCRYFrom(30))
+            make.right.equalTo(SCRXFrom(-8))
         }
         
-        switchBtn = UIButton(normalImageName: "arrow_down_black", target: self, action: #selector(switchBtnAction))
-        addSubview(switchBtn)
-        switchBtn.snp.makeConstraints { make in
-            make.right.equalTo(SCRXFrom(-8))
-            make.top.equalTo(SCRYFrom(4))
+        arrowImageView = UIImageView(image: UIImage(named: "arrow_down_black"))
+        addTypeView.addSubview(arrowImageView)
+        arrowImageView.snp.makeConstraints { make in
+            make.right.equalToSuperview()
+            make.centerY.equalToSuperview()
+            make.width.height.equalTo(30)
+        }
+        
+        titleLabel = UILabel(text: "trigger_add_hide_added_devices".localizedString, textColor: TextBlack_Color, fontSize: 14, fontWeight: .light, fit: false)
+        addTypeView.addSubview(titleLabel)
+        titleLabel.snp.makeConstraints { make in
+            make.left.centerY.equalToSuperview()
+            make.right.equalTo(arrowImageView.snp.left).offset(SCRXFrom(-20))
         }
         
         flowLayout = HorizontalDirectionFlowLayout()

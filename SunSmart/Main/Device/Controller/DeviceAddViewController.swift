@@ -657,6 +657,8 @@ class DeviceAddViewController: UIViewController {
                 if let mac = device.macAddress {
                     appendMessages.append(MeshMessageHandle(message: SunricherVendorSet(function: .gatewayProjectRelevance(gatewayId: mac, projectId: space.siteId)), model: vendorModel))
                 }
+                
+                appendMessages.append(MeshMessageHandle(message: SunricherVendorSet(function: .gatewaySubnetsRelevanceSet(subnetAppkeyIndexs: node.applicationKeys.map({ $0.index }))), model: vendorModel))
             }
         
 //            appendMessages.insert(MeshMessageHandle(message: ConfigRelaySet(), address: node.primaryUnicastAddress), at: 0)
@@ -864,10 +866,10 @@ class DeviceAddViewController: UIViewController {
         
         if rssiSlider.isEnabled {
             rssiSlider.setThumbImage(UIImage(named: "slider_point"), for: .normal)
-            rssiSlider.minimumTrackTintColor = RGB(255, 167, 44)
+            rssiSlider.minimumTrackTintColor = Slider_Color
         }else {
             rssiSlider.setThumbImage(UIImage(named: "slider_point_disable"), for: .normal)
-            rssiSlider.minimumTrackTintColor = RGB(255, 167, 44, 0.5)
+            rssiSlider.minimumTrackTintColor = Slider_Color.withAlphaComponent(0.5)
         }
         
         UIApplication.shared.isIdleTimerDisabled = false
@@ -907,15 +909,15 @@ class DeviceAddViewController: UIViewController {
     }
     
     /// 更新设备类型数量
-    private func updateDeviceCategoryCount() {
+    private func updateDeviceCategoryCount(devices: [ProvisioningDevice]? = nil) {
         guard !categoryView.isHidden else {
             return
         }
-        
-        categoryView.updateTitle("\("lights".localizedString)-\(scanDevices.filter({ $0.deviceType == .light }).count)", at: 0, andWidth: false)
-        categoryView.updateTitle("\("switches".localizedString)-\(scanDevices.filter({ $0.deviceType == .switches }).count)", at: 1, andWidth: false)
-        categoryView.updateTitle("\("sensors".localizedString)-\(scanDevices.filter({ $0.deviceType == .sensor }).count)", at: 2, andWidth: false)
-        categoryView.updateTitle("\("others".localizedString)-\(scanDevices.filter({ $0.deviceType == .dongle || $0.deviceType == .gateway || $0.deviceType == .unknown }).count)", at: 3, andWidth: false)
+        let resultDevices = devices ?? scanDevices
+        categoryView.updateTitle("\("lights".localizedString)-\(resultDevices.filter({ $0.deviceType == .light }).count)", at: 0, andWidth: false)
+        categoryView.updateTitle("\("switches".localizedString)-\(resultDevices.filter({ $0.deviceType == .switches }).count)", at: 1, andWidth: false)
+        categoryView.updateTitle("\("sensors".localizedString)-\(resultDevices.filter({ $0.deviceType == .sensor }).count)", at: 2, andWidth: false)
+        categoryView.updateTitle("\("others".localizedString)-\(resultDevices.filter({ $0.deviceType == .dongle || $0.deviceType == .gateway || $0.deviceType == .unknown }).count)", at: 3, andWidth: false)
     }
     
     // MARK: - UI
@@ -951,7 +953,7 @@ class DeviceAddViewController: UIViewController {
         }
         
         rssiSlider = CustomDeviceSlider()
-        rssiSlider.minimumTrackTintColor = RGB(255, 167, 44)
+        rssiSlider.minimumTrackTintColor = Slider_Color
         rssiSlider.maximumTrackTintColor = RGB(229, 229, 229)
         rssiSlider.layer.cornerRadius = 2.5
         rssiSlider.minimumValue = Float(abs(filterRSSIRange.upperBound))
@@ -979,9 +981,9 @@ class DeviceAddViewController: UIViewController {
             make.width.equalTo(addDeviceToLabel.width)
         }
         
-        scanBtn = UIButton(title: "scan".localizedString, titleSize: 13, titleColor: Bar_Color, normalImageName: "device_scan", target: self, action: #selector(scanBtnClick))
+        scanBtn = UIButton(title: "scan".localizedString, titleSize: 13, titleColor: Bottom_Done_Color, normalImageName: "device_scan", target: self, action: #selector(scanBtnClick))
         scanBtn.setTitle("stop".localizedString, for: .selected)
-        scanBtn.setTitleColor(Bar_Color.withAlphaComponent(0.5), for: .disabled)
+        scanBtn.setTitleColor(Purple_Color.withAlphaComponent(0.5), for: .disabled)
         scanBtn.layer.cornerRadius = SCRYFrom(5)
         scanBtn.layer.borderWidth = 1
         scanBtn.layer.borderColor = RGB(220, 220, 220).cgColor
@@ -1270,15 +1272,18 @@ extension DeviceAddViewController: CustomDeviceSliderDelegate {
         if filterRSSI != rssi {
             filterRSSI = rssi
 //            print(rssi)
+            var showCategoryDevices: [ProvisioningDevice] = []
             // 筛选展示的设备
             if rssi == filterRSSIRange.lowerBound {
-                showDevices = scanDevices
+                showCategoryDevices = scanDevices
+                showDevices = scanDevices.filter({ showDeviceTypes.contains($0.deviceType) })
             }else {
-                showDevices = scanDevices.filter({ $0.rssi.intValue >= rssi })
+                showCategoryDevices = scanDevices.filter({ $0.rssi.intValue >= rssi })
+                showDevices = scanDevices.filter({ showDeviceTypes.contains($0.deviceType) && $0.rssi.intValue >= rssi })
             }
             updateFooterViewState()
             tableView.reloadData()
-            updateDeviceCategoryCount()
+            updateDeviceCategoryCount(devices: showCategoryDevices)
         }
     }
 }

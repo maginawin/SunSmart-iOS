@@ -108,7 +108,7 @@ class EnergyTimeSeriesDataViewController: UIViewController {
         
         if exportEndDate == nil || exportStartDate == nil || devices.isEmpty { // || 文件不存在
             exportView.exportBtn.isUserInteractionEnabled = false
-            exportView.exportBtn.backgroundColor = RGB(147, 148, 196)
+            exportView.exportBtn.backgroundColor = Bar_Color.withAlphaComponent(0.5)
         }else {
             exportView.exportBtn.isUserInteractionEnabled = true
             exportView.exportBtn.backgroundColor = Bar_Color

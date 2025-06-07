@@ -20,7 +20,7 @@ class LinePageControl: UIView {
     }
     
     
-    var progressColor: UIColor = RGB(102, 103, 171) {
+    var progressColor: UIColor = Bar_Color {
         didSet {
             progressView.backgroundColor = progressColor
         }

@@ -70,7 +70,7 @@ class EnergyTimeSeriesDataImportView: UIView {
             make.width.equalTo(fileImageView.width)
         }
         
-        fileNameLabel = UILabel(text: "Time Series Data 2-20-2025 10:30 PM", textColor: TextBlack_Color, fontSize: 13, fontWeight: .light)
+        fileNameLabel = UILabel(text: "Time Series Data 2-20-2025 10:30 PM", textColor: TextBlack_Color, fontSize: 13, fontWeight: .light, fit: false)
         fileDataView.addSubview(fileNameLabel)
         fileNameLabel.snp.makeConstraints { make in
             make.left.equalTo(fileImageView.snp.right).offset(SCRXFrom(8))

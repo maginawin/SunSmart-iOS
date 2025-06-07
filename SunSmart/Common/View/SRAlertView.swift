@@ -703,18 +703,18 @@ class SRAlertView: UIView {
                 if message?.isEmpty ?? true {
                     let enabled = realText.count >= self.minInputLength && (self.minInputLength > 0 && !realText.isAllInputTextEmpty())
                     self.secondBtn.isUserInteractionEnabled = enabled
-                    self.secondBtn.setTitleColor(enabled ? Bar_Color : Bar_Color.withAlphaComponent(0.5), for: .normal)
+                    self.secondBtn.setTitleColor(enabled ? Bottom_Done_Color : Bottom_Done_Color.withAlphaComponent(0.5), for: .normal)
                     messageLabel.textColor = Title_Color
                 }else {
                     secondBtn.isUserInteractionEnabled = false
-                    self.secondBtn.setTitleColor(Bar_Color.withAlphaComponent(0.5), for: .normal)
+                    self.secondBtn.setTitleColor(Bottom_Done_Color.withAlphaComponent(0.5), for: .normal)
                     messageLabel.textColor = Red_Color
                 }
                 messageLabel.text = message
             }else {
                 let enabled = realText.count >= self.minInputLength && (self.minInputLength > 0 && !realText.isAllInputTextEmpty())
                 self.secondBtn.isUserInteractionEnabled = enabled
-                self.secondBtn.setTitleColor(enabled ? Bar_Color : Bar_Color.withAlphaComponent(0.5), for: .normal)
+                self.secondBtn.setTitleColor(enabled ? Bottom_Done_Color : Bottom_Done_Color.withAlphaComponent(0.5), for: .normal)
             }
         }
     }
@@ -1278,7 +1278,11 @@ struct SRAlertAction {
         
         switch style {
         case .default:
+            #if Archipelago
+            self.titleColor = Title_Color
+            #else
             self.titleColor = Bar_Color
+            #endif
             self.titleFont = FONTS(15)
         case .cancel:
             self.titleColor = Title_Color

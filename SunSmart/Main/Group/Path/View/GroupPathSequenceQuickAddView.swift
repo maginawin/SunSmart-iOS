@@ -31,8 +31,8 @@ class GroupPathSequenceQuickAddView: UIView {
     
     private var titleLabel: UILabel!
     var addView: UIView!
-//    private var showAddedSwitch: UISwitch!
-    private var switchBtn: UIButton!
+    private var addTypeView: UIView!
+    private var arrowImageView: UIImageView!
     private var startBtn: UIButton!
     private var stopBtn: UIButton!
 //    private var pauseBtn: UIButton!
@@ -92,6 +92,8 @@ class GroupPathSequenceQuickAddView: UIView {
             }
             
         case .stop:
+            addStateLabel.text = "click_to_start".localizedString
+            addStateLabel.textColor = TextBlack_Color
             stopBtn.isHidden = true
             startBtn.isSelected = false
             startBtn.snp.updateConstraints { make in
@@ -131,15 +133,15 @@ class GroupPathSequenceQuickAddView: UIView {
         delegate?.quickAddView(self, addStateChanged: .stop)
     }
     
-    @objc private func switchBtnAction(sender: UIButton) {
-        let menuWidth = SCRXFrom(256)
-        let btnPoint = CGPoint(x: self.width - menuWidth, y: sender.frame.maxY)
+    @objc private func addTypeSelectAction() {
+        var menuWidth = SCRXFrom(256)
+        let btnPoint = CGPoint(x: self.width - menuWidth, y: arrowImageView.frame.maxY)
         let windowPoint = self.convert(btnPoint, to: UIApplication.shared.keyWindow())
         
         var titles = ["quick_add_ignore_added_devices".localizedString, "quick_add_show_added_devices".localizedString]
         if !isSequence {
             titles = ["quick_add_ignore_added_devices".localizedString, "zone_quick_add_show_added_devices".localizedString]
-            
+            menuWidth = SCRXFrom(270)
         }
       
         TitleSelectView.show(titles: titles, style: .default, anchorPoint: windowPoint, menuWidth: menuWidth, itemHeight: SCRYFrom(44), titleFont: UIFont.systemFont(ofSize: 14, weight: .light)) {[weak self] index in
@@ -161,20 +163,31 @@ class GroupPathSequenceQuickAddView: UIView {
             make.edges.equalToSuperview()
         }
         
-        titleLabel = UILabel(text: "quick_add_ignore_added_devices".localizedString, textColor: TextBlack_Color, fontSize: 14, fontWeight: .light, fit: false)
-        addView.addSubview(titleLabel)
-        titleLabel.snp.makeConstraints { make in
+        addTypeView = UIView()
+        addTypeView.addGestureRecognizer(UITapGestureRecognizer(target: self, action: #selector(addTypeSelectAction)))
+        addView.addSubview(addTypeView)
+        addTypeView.snp.makeConstraints { make in
             make.left.equalTo(SCRXFrom(8))
-            make.top.equalTo(SCRYFrom(12))
-            make.right.equalTo(SCRXFrom(-60))
+            make.top.equalTo(SCRYFrom(4))
+            make.height.equalTo(SCRYFrom(30))
+            make.right.equalTo(SCRXFrom(-8))
         }
         
-        switchBtn = UIButton(normalImageName: "arrow_down_black", target: self, action: #selector(switchBtnAction))
-        addView.addSubview(switchBtn)
-        switchBtn.snp.makeConstraints { make in
-            make.right.equalTo(SCRXFrom(-8))
-            make.top.equalTo(SCRYFrom(4))
+        arrowImageView = UIImageView(image: UIImage(named: "arrow_down_black"))
+        addTypeView.addSubview(arrowImageView)
+        arrowImageView.snp.makeConstraints { make in
+            make.right.equalToSuperview()
+            make.centerY.equalToSuperview()
+            make.width.height.equalTo(30)
         }
+        
+        titleLabel = UILabel(text: "quick_add_ignore_added_devices".localizedString, textColor: TextBlack_Color, fontSize: 14, fontWeight: .light, fit: false)
+        addTypeView.addSubview(titleLabel)
+        titleLabel.snp.makeConstraints { make in
+            make.left.centerY.equalToSuperview()
+            make.right.equalTo(arrowImageView.snp.left).offset(SCRXFrom(-20))
+        }
+
         
 //        showAddedSwitch = UISwitch()
 //        showAddedSwitch.onTintColor = Bar_Color
@@ -189,7 +202,7 @@ class GroupPathSequenceQuickAddView: UIView {
         addView.addSubview(startBtn)
         startBtn.snp.makeConstraints { make in
             make.centerX.equalToSuperview()
-            make.top.equalTo(SCRYFrom(40))
+            make.top.equalTo(addTypeView.snp.bottom).offset(SCRYFrom(6))
         }
         
 //        pauseBtn = UIButton(normalImageName: "quick_add_pause", target: self, action: #selector(startBtnAction))

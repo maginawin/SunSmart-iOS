@@ -8,6 +8,16 @@
 import Foundation
 
 class DeviceParameterData {
+    
+    /// pwm频率list
+    static var pwmFrequencys: [Int] {
+        var list: [Int] = []
+        for index in 1...40 {
+            list.append(index * 490)
+        }
+        return list
+    }
+    
     /// 类型
     let type: ParameterType
     /// 数据
@@ -50,5 +60,4 @@ class DeviceParameterData {
 
     
 }
-
 

@@ -120,10 +120,10 @@ class ReadDevicesDataViewController: UIViewController {
                 var steps: [SyncDeviceStepModel] = []
                 parameters.forEach { type in
                     switch type {
-                    case .pwmPeriod:
-                        let taskModel = SyncDeviceStepTaskModel(name: "pwm_period".localizedString, operationType: .read(node: node, type: .deviceReadParmeters(parameterType: .pwmPeriod)))
+                    case .pwmFrequency:
+                        let taskModel = SyncDeviceStepTaskModel(name: "pwm_frequency".localizedString, operationType: .read(node: node, type: .deviceReadParmeters(parameterType: .pwmFrequency)))
                         
-                        let step = SyncDeviceStepModel(type: "pwm_period".localizedString, state: .none, tasks: [taskModel])
+                        let step = SyncDeviceStepModel(type: "pwm_frequency".localizedString, state: .none, tasks: [taskModel])
                         taskModel.parentStepModel = step
                         steps.append(step)
                     case .ratedPower:
@@ -373,8 +373,11 @@ class ReadDevicesDataViewController: UIViewController {
                  
                  selectModels.append(contentsOf: selectDevices)
             })
-            
-            selectAllBtn.isSelected = selectModels.count > 0 && selectModels.count == failedModels.count
+            if failedModels.count > 0 {
+                selectAllBtn.isSelected = selectModels.count > 0 && selectModels.count == failedModels.count
+            }else {
+                selectAllBtn.isHidden = true
+            }
             if bottomView.frame == .zero {
                 bottomView.layoutIfNeeded()
             }
@@ -831,7 +834,7 @@ extension ReadDevicesDataViewController: SyncDeviceViewCellDelegate {
     /// 状态图标点击回调
     func cell(_ cell: SyncDeviceViewCell, stateImageClickAction model: SyncDevicesModel) {
         if model.missingData {
-            SRAlertView(message: "rated_power_no_set_message".localizedString, actions: [SRAlertAction(title: "GOT IT".localizedString)]).show()
+            SRAlertView(message: "rated_power_no_set_message".localizedString, actions: [SRAlertAction(title: "GOT IT".localizedString, titleColor: Bar_Color)]).show()
         }
     }
     

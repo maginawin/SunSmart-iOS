@@ -75,7 +75,7 @@ class DeviceLightViewController: UIViewController {
         bindSliderAction()
         // 获取设备数据
         getNodeState()
-     
+        
 #if DEBUG
         replySwitch.isHidden = false
         replyLabel.isHidden = false
@@ -135,13 +135,13 @@ class DeviceLightViewController: UIViewController {
         
         MeshAPI.getNodeState(address: node.primaryUnicastAddress)
         
-//        MeshLibManager.manager.refreshNodesRSSI(withWaitFor: 5) {[weak self] nodes in
-//            guard let self = self else { return }
-//            if !nodes.contains(where: { $0.primaryUnicastAddress == self.node.primaryUnicastAddress }) {
-//                self.node.rssi = nil
-//            }
-//        }
-        
+        MeshLibManager.manager.refreshNodesRSSI(withWaitFor: 5, nodeScan: {[weak self] data in
+            guard let self = self else { return }
+            if data.node.primaryUnicastAddress == self.node.primaryUnicastAddress {
+                self.node.rssi = data.rssi.intValue
+                MeshLibManager.manager.stopRefreshNodesRSSI()
+            }
+        }, finished: nil)
     }
     
     /// 更新UI数据
@@ -350,9 +350,9 @@ class DeviceLightViewController: UIViewController {
     }
     
     
-    /// 设置pwm周期
-    private func setPwmPeriod() {
-        let pwmPeriod = node.pwmPeriod
+    /// 设置pwm频率
+    private func setPwmFrequency() {
+        let pwmPeriod = node.pwmFrequency
         SRAlertView(title: "set_pwm_period".localizedString, inputText: pwmPeriod != nil ? "\(pwmPeriod!)" : nil, inputFieldStyle: .init(placeholder: "0-65535", keyboardType: .numberPad), actions: [.cancelAction, SRAlertAction(title: "confirm".localizedString, style: .default)], textValueChangedBack: nil) {[weak self] text in
             guard let self = self else { return }
             guard let value = UInt16(text) else {
@@ -361,7 +361,7 @@ class DeviceLightViewController: UIViewController {
             }
             if let model = self.node.sunricherVendorModel {
                 XWHUDManager.showCustomHUD(withMessage: nil, view: self.view)
-                MeshAPI.sendMessage(message: SunricherVendorSet(function: .pwmPeriod(value)), model: model) {[weak self] response in
+                MeshAPI.sendMessage(message: SunricherVendorSet(function: .pwmFrequency(value)), model: model) {[weak self] response in
                     guard let self = self else { return }
                     XWHUDManager.hideInView(with: self.view)
                     guard let statusMessage = response as? SunricherVendorStatus, statusMessage.status.isSuccessful else {
@@ -404,7 +404,7 @@ class DeviceLightViewController: UIViewController {
     /// 删除设备
     private func deleteNode() {
         
-        SRAlertView(title: "notification".localizedString, message: "device_delete_message".localizedString, actions: [.cancelAction, SRAlertAction(title: "alert_item_continue".localizedString, actionHandler: {[weak self] _ in
+        SRAlertView(title: "notification".localizedString, message: "device_delete_message".localizedString, actions: [.cancelAction, SRAlertAction(title: "alert_item_continue".localizedString, style: .destructive, actionHandler: {[weak self] _ in
             guard let self = self else { return }
             XWHUDManager.showCustomHUD(withMessage: "deleting".localizedString, isWindow: true)
   
@@ -424,7 +424,7 @@ class DeviceLightViewController: UIViewController {
             } resetFail: { _, error in
                 XWHUDManager.hide()
                 
-                let alertView = SRAlertView(title: "notification".localizedString, actions: [.cancelAction, SRAlertAction(title: "force_delete".localizedString, actionHandler: {[weak self] _ in
+                let alertView = SRAlertView(title: "notification".localizedString, actions: [.cancelAction, SRAlertAction(title: "force_delete".localizedString, style: .destructive, actionHandler: {[weak self] _ in
                     guard let self = self else { return }
                     self.node.deleteExtension()
                     MeshNetworkManager.instance.meshNetwork?.remove(node: self.node)

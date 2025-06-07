@@ -22,7 +22,12 @@ class MainMenuView: UIView {
     private var shadeView: UIView!
     
     private var menuTapBack: MenuTapActionCallback?
+    #if Archipelago
+    private var options: [Options] = [.user, .about]
+    #else
     private var options: [Options] = [.user, .serverSelection, .about]
+    #endif
+    
     
     override init(frame: CGRect) {
         super.init(frame: frame)
@@ -224,8 +229,8 @@ class MainMenuView: UIView {
             make.top.equalTo(kNavigationHeight + SCRYFit(30))
             make.width.height.equalTo(SCRYFrom(88))
         }
-        
-        titleLabel = UILabel(text: "SunSmart", textColor: TextBlack_Color, fontSize: 18, fit: false)
+                
+        titleLabel = UILabel(text: appName, textColor: TextBlack_Color, fontSize: 18, fit: false)
         contentView.addSubview(titleLabel)
         titleLabel.snp.makeConstraints { make in
             make.centerX.equalTo(logoImageView)

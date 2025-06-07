@@ -88,6 +88,13 @@ class DeviceGroupsView: UIView {
         fatalError("init(coder:) has not been implemented")
     }
     
+    /// 刷新组数据
+    func reloadGroupData(data: DeviceGroupsSelectData) {
+        if let index = datas.firstIndex(where: { $0.groupAddress == data.groupAddress }) {
+            collectionView.reloadItems(at: [IndexPath(item: index, section: 0)])
+        }
+    }
+    
     @objc private func selectAllBtnAction(sender: UIButton) {
         
         delegate?.view(self, didSelectAllAction: !sender.isSelected)

@@ -74,6 +74,7 @@ class GroupPathSequenceDeviceAddView: UIView {
                 triggerAddView.guideView.isHidden = true
                 manuallyAddView.guideView.isHidden = true
             }else {
+                quickAddView.updateQuickAddState(.stop)
                 quickAddView.showStepGuideUI()
                 triggerAddView.guideView.isHidden = false
                 manuallyAddView.guideView.isHidden = false

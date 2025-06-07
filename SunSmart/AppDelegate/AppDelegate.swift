@@ -19,8 +19,6 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         
         window = UIWindow(frame: UIScreen.main.bounds)
         
-        
-        
 //        let mainNavVc = NavigationViewController(rootViewController: GroupViewController(space: space!, group: space!.groups.first!)) //SitesViewController
         if UserData.isTermsOfService { // 是否同意使用协议
 //            let site = SiteData.loadAll()[3]
@@ -59,6 +57,11 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
             MeshLibManager.manager.supportDeviceInfos = configInfos
         }
         
+        #if Archipelago
+        if Keychain.getServerRegion() == nil { // 还未选择服务器地区
+            UserData.currentServerRegion = .northAmerica
+        }
+        #endif
         NetworkRequest.shared.networkListener()
         
 //        UIApplication.shared.statusBarStyle = .default

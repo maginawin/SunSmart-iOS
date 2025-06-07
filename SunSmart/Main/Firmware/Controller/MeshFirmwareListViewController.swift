@@ -305,14 +305,17 @@ class MeshFirmwareListViewController: UIViewController {
         
         /// mesh分发升级中
         if meshDistribution {
+            guard let space = SpaceViewController.currentSpaceVc()?.space, !space.meshOTADistribution else {
+                self.dismiss(animated: true)
+                return
+            }
             SRAlertView(title: "notification".localizedString, message: "mesh_distributor_permission_changed_message".localizedString, actions: [.cancelAction, SRAlertAction(title: "ok".localizedString, hideAnimation: false, actionHandler: {[weak self] _ in
                 // 禁用编辑权限
-                if let space = SpaceViewController.currentSpaceVc()?.space, !space.meshOTADistribution {
-                    space.meshOTADistribution = true
-                    NotificationCenter.default.post(name: .init(spacePermissionChangedNotificaitonName), object: nil)
-                }
+                space.meshOTADistribution = true
+                NotificationCenter.default.post(name: .init(spacePermissionChangedNotificaitonName), object: nil)
                 self?.dismiss(animated: true)
             })]).show()
+            
         }else {
             // 开启编辑权限
             if let space = SpaceViewController.currentSpaceVc()?.space, space.meshOTADistribution {

@@ -69,7 +69,15 @@ class DeviceInformationViewController: UIViewController {
         
         let singleStrengthModel = CustomCellModel(title: "signal_strength".localizedString, content: node.rssi != nil ? "\(node.rssi!)dB" : "--", style: .none)
         
+        #if DEBUG
+        
+        let addressModel = CustomCellModel(title: "Address", content: "\(node.primaryUnicastAddress)", style: .none)
+        
+        deviceInfoModels = [nameModel, macModel, addressModel, devModel, deviceTypeModel, firmwareModel, singleStrengthModel]
+        #else
         deviceInfoModels = [nameModel, macModel, devModel, deviceTypeModel, firmwareModel, singleStrengthModel]
+        #endif
+        
     }
     
     private func setupTableView() {

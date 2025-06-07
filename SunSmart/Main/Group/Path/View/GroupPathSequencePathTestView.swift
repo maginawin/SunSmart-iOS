@@ -18,6 +18,14 @@ class GroupPathSequencePathTestView: UIView {
         /// 暂停
         case pause
     }
+    
+    /// 测试类型
+    enum TestType {
+        /// 路径
+        case path
+        /// 区域
+        case zone
+    }
 
     private var shadeView: UIView!
     private var contentView: UIView!
@@ -30,6 +38,7 @@ class GroupPathSequencePathTestView: UIView {
     private var stateLabel: UILabel!
     private var progressLabel: UILabel!
     
+    private let type: TestType
     private let group: Group
     private var addresses: [Address]
     private var state: State = .none
@@ -37,7 +46,8 @@ class GroupPathSequencePathTestView: UIView {
     
     private var progress: Int = 0
 
-    init(group: Group, addresses: [Address]) {
+    init(type: TestType = .path, group: Group, addresses: [Address]) {
+        self.type = type
         self.group = group
         self.addresses = addresses
         
@@ -78,10 +88,14 @@ class GroupPathSequencePathTestView: UIView {
     }
     
     private func updateUI() {
-        
+//        zone_test_start_message
         switch state {
         case .none:
-            messageLabel.text = "path_test_start_message".localizedString
+            if type == .path {
+                messageLabel.text = "path_test_start_message".localizedString
+            }else {
+                messageLabel.text = "zone_test_start_message".localizedString
+            }
             startBtn.isSelected = false
             startBtn.snp.remakeConstraints { make in
                 make.centerX.equalToSuperview()
@@ -92,7 +106,11 @@ class GroupPathSequencePathTestView: UIView {
             stateLabel.textColor = TextBlack_Color
         case .testing:
             
-            messageLabel.text = "path_testing_message".localizedString
+            if type == .path {
+                messageLabel.text = "path_testing_message".localizedString
+            }else {
+                messageLabel.text = "zone_test_start_message".localizedString
+            }
             startBtn.isSelected = true
             startBtn.snp.remakeConstraints { make in
                 make.right.equalTo(contentView.snp.centerX).offset(SCRXFrom(-20))
@@ -103,8 +121,12 @@ class GroupPathSequencePathTestView: UIView {
             stateLabel.textColor = Green_Color
             
         case .pause:
+            if type == .path {
+                messageLabel.text = "path_testing_message".localizedString
+            }else {
+                messageLabel.text = "zone_test_start_message".localizedString
+            }
             
-            messageLabel.text = "path_testing_message".localizedString
             startBtn.isSelected = false
             startBtn.snp.remakeConstraints { make in
                 make.right.equalTo(contentView.snp.centerX).offset(SCRXFrom(-20))

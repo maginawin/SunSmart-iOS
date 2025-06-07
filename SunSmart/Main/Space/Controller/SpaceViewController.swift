@@ -171,7 +171,7 @@ class SpaceViewController: WMPageController {
         MeshLibManager.manager.publishTimeModelIDs = []
         MeshLibManager.manager.publishModeloOnly = true
         MeshLibManager.manager.groupSubscriptionModelIDs = [.genericOnOffServerModelId, .lightLightnessServerModelId, .lightCTLTemperatureServerModelId, .lightCTLServerModelId, .sensorServerModelId, .lightLCServerModelId]
-        MeshLibManager.manager.subElementGroupSubscriptionModelIDs = [.lightCTLTemperatureServerModelId]
+        MeshLibManager.manager.subElementGroupSubscriptionModelIDs = [.lightCTLTemperatureServerModelId, .lightLCServerModelId]
         checkBluetoothState()
         MeshNodeHeartbeatManager.shared.autoHeartbeatLoop = true
    
@@ -800,7 +800,7 @@ class SpaceViewController: WMPageController {
     
     private func showBluetoothRequiredAlertView() {
         
-        let alertView = SRAlertView(title: "bluetooth_required_title".localizedString, message: "bluetooth_required_message".localizedString, actions: [SRAlertAction(title: "settings".localizedString, titleColor: RGB(61, 110, 246), titleFont: FONTS(SCRYFrom(15)), closeAlert: false, actionHandler: { _ in
+        let alertView = SRAlertView(title: String(format: "bluetooth_required_title".localizedString, appName), message: "bluetooth_required_message".localizedString, actions: [SRAlertAction(title: "settings".localizedString, titleColor: RGB(61, 110, 246), titleFont: FONTS(SCRYFrom(15)), closeAlert: false, actionHandler: { _ in
             if let openUrl = URL(string: "App-Prefs:root=Bluetooth") {
                 UIApplication.shared.open(openUrl)
             }

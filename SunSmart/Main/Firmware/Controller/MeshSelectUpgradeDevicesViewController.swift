@@ -93,6 +93,12 @@ class MeshSelectUpgradeDevicesViewController: UIViewController {
     /// 开始分发
     private func startDistribution() {
         
+        // 分发设备也需要升级时将分发设备放到最后
+        if let index = selectNodes.firstIndex(where: { $0.primaryUnicastAddress == distributorNode.primaryUnicastAddress }) {
+            selectNodes.remove(at: index)
+            selectNodes.append(distributorNode)
+        }
+        
         XWHUDManager.showCustomHUD(withMessage: nil, isWindow: true)
         MeshFirmwareDistributionManager.shared.startDistribution(distributionNode: self.distributorNode, targetNodes: self.selectNodes) {[weak self] _, state
             in
@@ -242,11 +248,11 @@ class MeshSelectUpgradeDevicesViewController: UIViewController {
         }
         
         upgradeBtn = UIButton(title: "mesh_upgrade".localizedString, titleSize: 14, titleWeight: .light, titleColor: .white, target: self, action: #selector(upgradeBtnAction))
-        let btnSize = CGSize(width: SCRXFrom(114), height: SCRYFrom(40))
+        let btnSize = CGSize(width: CGFloat(Int(SCRXFrom(114))), height: CGFloat(Int(SCRYFrom(40))))
         upgradeBtn.setBackgroundImage(UIImage.image(size: btnSize, color: Bar_Color.withAlphaComponent(0.5)), for: .disabled)
         upgradeBtn.setBackgroundImage(UIImage.image(size: btnSize, color: Bar_Color), for: .normal)
         upgradeBtn.isEnabled = false
-        upgradeBtn.layer.cornerRadius = SCRYFrom(20)
+        upgradeBtn.layer.cornerRadius = btnSize.height * 0.5
         upgradeBtn.layer.masksToBounds = true
         bottomView.addSubview(upgradeBtn)
         upgradeBtn.snp.makeConstraints { make in
@@ -259,7 +265,7 @@ class MeshSelectUpgradeDevicesViewController: UIViewController {
         headerView = MeshFirmwareUpgradeHeaderView(frame: CGRect(x: 0, y: 0, width: view.width, height: SCRYFrom(126)))
         headerView.step = .upgradeNodes
         headerView.promptCallback = {
-            MeshFirmwareUpgradeGuideView(title: "how_to_mesh_upgrade".localizedString, message: "mesh_upgrade_prompt_message".localizedString, steps: [.selectDistributor, .selectDevices, .waiting], contentHeight: SCRYFit(660)).show()
+            MeshFirmwareUpgradeGuideView(title: "how_to_mesh_upgrade".localizedString, message: "mesh_upgrade_prompt_message".localizedString, steps: [.selectDistributor, .selectDevices, .waiting], contentHeight: SCREEN_HEIGHT * 0.821).show()
         }
         
         tableView = UITableView()

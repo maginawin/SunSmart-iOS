@@ -18,6 +18,12 @@ protocol GroupPathSequencePathViewCellDelegate: AnyObject {
     ///   - direction: 方向
     func cell(_ cell: GroupPathSequencePathViewCell, didSelectDirection item: GroupProximityLightingSequencePath.GroupProximityLightingPathItem, direction: PathDirection)
     
+    /// 选择路径
+    /// - Parameters:
+    ///   - cell: cell
+    ///   - path: 选择的路径
+    func cell(_ cell: GroupPathSequencePathViewCell, didSelectPath path: GroupProximityLightingSequencePath)
+    
     /// 添加item
     /// - Parameters:
     ///   - cell: cell
@@ -144,9 +150,12 @@ class GroupPathSequencePathViewCell: UITableViewCell {
         collectionView.layer.borderColor = Yellow_Color.cgColor
         collectionView.dataSource = self
         collectionView.delegate = self
-        let longPress = UILongPressGestureRecognizer(target: self, action: #selector(collectionViewLongPressAction))
-        longPress.minimumPressDuration = 0.5
-        collectionView.addGestureRecognizer(longPress)
+        collectionView.isScrollEnabled = false
+        let tapGesture = UITapGestureRecognizer(target: self, action: #selector(collectionViewDidTapAction))
+        tapGesture.cancelsTouchesInView = false
+//        longPress.minimumPressDuration = 0.5
+//        longPress.cancelsTouchesInView = false
+        collectionView.addGestureRecognizer(tapGesture)
         collectionView.register(GroupPathSequencePathItem.classForCoder(), forCellWithReuseIdentifier: "pathItem")
         collectionView.register(GroupPathSequencePathAddItem.classForCoder(), forCellWithReuseIdentifier: "addItem")
         contentView.addSubview(collectionView)
@@ -158,20 +167,30 @@ class GroupPathSequencePathViewCell: UITableViewCell {
         }
     }
     
-    @objc private func collectionViewLongPressAction(sender: UIGestureRecognizer) {
-        guard sender.state == .began else {
+    @objc private func collectionViewDidTapAction(sender: UIGestureRecognizer) {
+        guard sender.state == .ended else {
             return
         }
         let point = sender.location(in: collectionView)
-        guard let indexPath = collectionView.indexPathForItem(at: point) else { return }
-        if indexPath.row == 0 || indexPath.row == collectionView.numberOfItems(inSection: indexPath.section) - 1 { // Add
-            if indexPath.row == 0 {
-                addPoint(location: indexPath.row)
-            }else {
-                addPoint(location: indexPath.row - 1)
-            }
+        if collectionView.indexPathForItem(at: point) == nil, selectPathData?.path != path {
+            delegate?.cell(self, didSelectPath: path)
         }
     }
+    
+//    @objc private func collectionViewLongPressAction(sender: UIGestureRecognizer) {
+//        guard sender.state == .began else {
+//            return
+//        }
+//        let point = sender.location(in: collectionView)
+//        guard let indexPath = collectionView.indexPathForItem(at: point) else { return }
+//        if indexPath.row == 0 || indexPath.row == collectionView.numberOfItems(inSection: indexPath.section) - 1 { // Add
+//            if indexPath.row == 0 {
+//                addPoint(location: indexPath.row)
+//            }else {
+//                addPoint(location: indexPath.row - 1)
+//            }
+//        }
+//    }
     
     private func addPoint(location: Int) {
         
@@ -212,6 +231,13 @@ extension GroupPathSequencePathViewCell: UICollectionViewDataSource, UICollectio
     func collectionView(_ collectionView: UICollectionView, cellForItemAt indexPath: IndexPath) -> UICollectionViewCell {
         if indexPath.item == 0 || indexPath.item == collectionView.numberOfItems(inSection: indexPath.section) - 1 { // Add
             let addItem = collectionView.dequeueReusableCell(withReuseIdentifier: "addItem", for: indexPath) as! GroupPathSequencePathAddItem
+            addItem.viewLongPressCallback = {[weak self] in
+                if indexPath.row == 0 {
+                    self?.addPoint(location: indexPath.row)
+                }else {
+                    self?.addPoint(location: indexPath.row - 1)
+                }
+            }
             return addItem
         }else {
             let pathItem = collectionView.dequeueReusableCell(withReuseIdentifier: "pathItem", for: indexPath) as! GroupPathSequencePathItem
@@ -372,8 +398,6 @@ class GroupPathSequencePathItem: UICollectionViewCell {
     var nameLabel: UILabel!
     var arrowImageView: UIImageView!
     
-    var boxSelectCallback: (()->Void)?
-    
     override init(frame: CGRect) {
         super.init(frame: frame)
         
@@ -387,11 +411,7 @@ class GroupPathSequencePathItem: UICollectionViewCell {
     required init?(coder: NSCoder) {
         fatalError("init(coder:) has not been implemented")
     }
-    
-    
-    @objc private func boxViewTapGesture() {
-        boxSelectCallback?()
-    }
+
     
     private func setupUI() {
         
@@ -445,7 +465,7 @@ class GroupPathSequencePathAddItem: UICollectionViewCell {
     var boxView: UIView!
     var addImageView: UIImageView!
     
-    var boxSelectCallback: (()->Void)?
+    var viewLongPressCallback: (()->Void)?
     
     override init(frame: CGRect) {
         super.init(frame: frame)
@@ -453,6 +473,10 @@ class GroupPathSequencePathAddItem: UICollectionViewCell {
         backgroundColor = .white
         
         setupUI()
+        
+        let longPress = UILongPressGestureRecognizer(target: self, action: #selector(viewLongPressAction))
+        longPress.minimumPressDuration = 0.5
+        addGestureRecognizer(longPress)
         
         boxView.layoutIfNeeded()
         boxView.layer.cornerRadius = boxView.height * 0.5
@@ -466,9 +490,12 @@ class GroupPathSequencePathAddItem: UICollectionViewCell {
         fatalError("init(coder:) has not been implemented")
     }
     
-    
-    @objc private func boxViewTapGesture() {
-        boxSelectCallback?()
+
+    @objc private func viewLongPressAction(sender: UIGestureRecognizer) {
+        guard sender.state == .began else {
+            return
+        }
+        viewLongPressCallback?()
     }
     
     private func setupUI() {

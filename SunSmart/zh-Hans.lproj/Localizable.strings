@@ -133,7 +133,7 @@
 "complete!" = "完成！";
 "repair_failed_message" = "维修失败，请检查设备是否已通电。如果多次维修失败，建议删除设备后重新添加。";
 
-"bluetooth_required_title" = "“SunSmart”需要使用蓝牙建立新连接";
+"bluetooth_required_title" = "“%@”需要使用蓝牙建立新连接";
 "bluetooth_required_message" = "您可以在设置中允许新连接。";
 "settings" = "设置";
 "Settings" = "设置";
@@ -917,7 +917,7 @@
 "mesh_distributor_apply_wait_message" = "现场其他设备固件正在分发，请等待完成后重试。";
 
 "get_started" = "开始";
-"welcome_title" = "欢迎使用\nSunSmart\n应用！";
+"welcome_title" = "欢迎使用\n%@\n应用 !";
 "welcome_policy_message" = "我接受并同意用户协议及隐私政策";
 "welcome_policy_use" = "用户协议";
 "welcome_privacy_policy" = "隐私政策";
@@ -1122,6 +1122,7 @@
 "incomplete_data" = "Incomplete data";
 "full_data" = "Full data";
 "invalid_power_value" = "Invalid power value";
+"collection_failed" = "Collection failed";
 "export_error" = "Export error";
 "energy_data_reporting_timestamp" = "Energy data reporting timestamp";
 "node_id/name" = "Node ID/Name";
@@ -1201,9 +1202,13 @@
 "zone_delete_message" = "Do you want to delete this item? You need to save after delete.";
 "path_test_start_message" = "After the test, all devices will trun off, and then turn on one by one in sequence.";
 "path_testing_message" = "After the test, all devices in the sequence will trun off, and then turn on one by one in sequence.";
+"zone_test_start_message" = "After the test, all devices will trun off, and then turn on one by one.";
 "click_start_test" = "Click to start test";
 "testing…" = "Testing…";
 "pause_test" = "Pause test";
 "number_neighbour_node_instruction_desc" = "The number of neighbor nodes that are triggered.\n\nFor example, assuming there are 7 sensors in a row which are configured to listen to 2 immediate neighbours. If motion is detected by say sensor 4, which will turn on its own light and lights in sensor 2, 3, 5, and 6 will be tuned on as well by the respective sensors. \n\nIf you select 0, only the device will light up after being triggered. \nIf you select all, the entire group will light up after the sensor is triggered.";
 "profile_predictive_lighting_desc" = "Proximity lighting is used to turn on lights in advance in a straight path where the pedestrian is heading. This is achieved by listening to the neighbour nodes and turning on light whenever neighbour nodes detect motion.\nPredictive lighting is used to turn on lights in open areas and multiple paths such that when motion is detected by a sensor (trigger node), the lights in the corresponding trigger zones will be turned on. ";
 "path_sequence_setting" = "Path Sequence setting";
+"group_set_the_path_sequence" = " Set the path sequence";
+"device_trigger_curve" = "Device trigger curve";
+"energy_incomplete_message" = "Not all data has been collected";

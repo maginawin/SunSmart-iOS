@@ -19,18 +19,18 @@ class DevicePwmFrequencySelectView: UIView {
     private var selectFrequency: Int = 0
     private var selectCallback: SelectCallBack?
     
-    lazy private var frequencys: [Int] = {
-        var list: [Int] = []
-        for index in 1...40 {
-            list.append(index * 490)
-        }
-        return list
-    }()
+//    lazy private var frequencys: [Int] = {
+//        var list: [Int] = []
+//        for index in 1...40 {
+//            list.append(index * 490)
+//        }
+//        return list
+//    }()
     
     init(selectFrequency: Int?, selectCallback: SelectCallBack?) {
         super.init(frame: UIScreen.main.bounds)
         self.selectCallback = selectCallback
-        self.selectFrequency = selectFrequency ?? self.frequencys[0]
+        self.selectFrequency = selectFrequency ?? DeviceParameterData.pwmFrequencys[0]
         setupUI()
     }
     
@@ -44,7 +44,7 @@ class DevicePwmFrequencySelectView: UIView {
         var itemW = (collectionView.width - flowLayout.minimumInteritemSpacing * 4) / 5.0
         itemW = CGFloat(floorf(Float(itemW) * 100) / 100.0)
         flowLayout.itemSize = CGSize(width: itemW, height: SCRYFrom(32))
-        let row = Int(ceil(Float(frequencys.count) / 5.0))
+        let row = Int(ceil(Float(DeviceParameterData.pwmFrequencys.count) / 5.0))
         collectionView.snp.updateConstraints { make in
             make.height.equalTo(flowLayout.itemSize.height * CGFloat(row) + flowLayout.minimumLineSpacing * CGFloat(row - 1))
         }
@@ -125,12 +125,12 @@ class DevicePwmFrequencySelectView: UIView {
 extension DevicePwmFrequencySelectView: UICollectionViewDataSource, UICollectionViewDelegateFlowLayout {
     
     func collectionView(_ collectionView: UICollectionView, numberOfItemsInSection section: Int) -> Int {
-        return frequencys.count
+        return DeviceParameterData.pwmFrequencys.count
     }
     
     func collectionView(_ collectionView: UICollectionView, cellForItemAt indexPath: IndexPath) -> UICollectionViewCell {
         let cell = collectionView.dequeueReusableCell(withReuseIdentifier: "cell", for: indexPath) as! DevicePwmFrequencyViewCell
-        let frequency = frequencys[indexPath.item]
+        let frequency = DeviceParameterData.pwmFrequencys[indexPath.item]
         cell.titleLabel.text = "\(frequency)"
         
         if frequency == selectFrequency {
@@ -152,7 +152,7 @@ extension DevicePwmFrequencySelectView: UICollectionViewDataSource, UICollection
     
     func collectionView(_ collectionView: UICollectionView, didSelectItemAt indexPath: IndexPath) {
         
-        let frequency = frequencys[indexPath.item]
+        let frequency = DeviceParameterData.pwmFrequencys[indexPath.item]
 //        selectFrequency = frequency
 //        collectionView.reloadData()
         

@@ -244,7 +244,7 @@ extension DeviceSliderFunctionView {
             }
         }
         /// 亮度
-        case level(min: Int = 0, max: Int = 100, step: Int = 1, limitRange: ClosedRange<Int>? = nil, unit: String = "%", sliderColors: [UIColor] = [RGB(255, 167, 44), RGB(229, 229, 229)])
+        case level(min: Int = 0, max: Int = 100, step: Int = 1, limitRange: ClosedRange<Int>? = nil, unit: String = "%", sliderColors: [UIColor] = [Slider_Color, RGB(229, 229, 229)])
         /// 色温
         case cct(min: Int = 2700, max: Int = 6500, step: Int = 10, unit: String = "K", sliderColors: [UIColor] = [RGB(255, 108, 0), .white, RGB(114, 179, 255)])
     }

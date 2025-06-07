@@ -1912,7 +1912,7 @@ extension Node {
         }
         
         // 需要恢复的数据
-        let restoreData = NodeRestoreData(addGroupAddress: addToGroup?.address.address, pwmPeriod: oldNode.pwmPeriod)
+        let restoreData = NodeRestoreData(addGroupAddress: addToGroup?.address.address, pwmFrequency: oldNode.pwmFrequency)
         if oldNode.phaseEnergyConsumptions.count > 0 {
             restoreData.phaseEnergyConsumptions = oldNode.phaseEnergyConsumptions
         }
@@ -2031,8 +2031,8 @@ extension Node {
             }
         }
         
-        if let pwmPeriod = restoreData.pwmPeriod, let vendorModel = self.sunricherVendorModel {
-            let messageHandle = MeshMessageHandle(message: SunricherVendorSet(function: .pwmPeriod(pwmPeriod)), model: vendorModel)
+        if let pwmFrequency = restoreData.pwmFrequency, let vendorModel = self.sunricherVendorModel {
+            let messageHandle = MeshMessageHandle(message: SunricherVendorSet(function: .pwmFrequency(pwmFrequency)), model: vendorModel)
             messageHandles.append(messageHandle)
         }
         
@@ -2418,9 +2418,9 @@ extension Node {
                         self.restoreData?.daylightCalibrationValue = nil
                         save()
                     }
-                case .pwmPeriod:
-                    if self.restoreData?.pwmPeriod != nil {
-                        self.restoreData?.pwmPeriod = nil
+                case .pwmFrequency:
+                    if self.restoreData?.pwmFrequency != nil {
+                        self.restoreData?.pwmFrequency = nil
                         save()
                     }
                 default:

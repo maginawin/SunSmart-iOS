@@ -295,7 +295,7 @@ class MeshSelectDistributorViewController: UIViewController {
         headerView = MeshFirmwareUpgradeHeaderView(frame: CGRect(x: 0, y: 0, width: view.width, height: SCRYFrom(126)))
         headerView.step = .distributor
         headerView.promptCallback = {
-            MeshFirmwareUpgradeGuideView(title: "how_to_select_a_distributor".localizedString, message: "mesh_distributor_prompt_message".localizedString, steps: [.location, .signal, .identify, .distributor], contentHeight: SCRYFit(738)).show()
+            MeshFirmwareUpgradeGuideView(title: "how_to_select_a_distributor".localizedString, message: "mesh_distributor_prompt_message".localizedString, steps: [.location, .signal, .identify, .distributor], contentHeight: SCREEN_HEIGHT - SCRYFit(74)).show()
         }
         
         refreshControl = UIRefreshControl()

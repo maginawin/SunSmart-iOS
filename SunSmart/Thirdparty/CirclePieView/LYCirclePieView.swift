@@ -233,59 +233,59 @@ class LYCirclePieView: UIView {
         
         path.fill()
         
-        // 三角函数
-        let rad30 = 30.0 * CGFloat.pi / 180.0
-        
-        // 绘外置点
-        let textStartPoint = CGPoint(
-            x: circleCenter.x + (pieRadius + 15) * cos(rad30),
-            y: circleCenter.y + (pieRadius + 15) * sin(rad30)
-        )
-        
-        context.move(to: textStartPoint)
-        context.addArc(center: textStartPoint, radius: 4, startAngle: 0, endAngle: CGFloat.pi * 2, clockwise: false)
-        context.closePath()
-        
-        context.setFillColor(#colorLiteral(red: 1, green: 0.4392156863, blue: 0.2392156863, alpha: 1))
-        context.fillPath()
-        
-        // 延长线
-        context.move(to: textStartPoint)
-        context.setStrokeColor(#colorLiteral(red: 1, green: 0.4392156863, blue: 0.2392156863, alpha: 1))
-        context.setLineWidth(1.5)
-        
-        // 折线
-        let line_1_point = CGPoint(
-            x: circleCenter.x + (pieRadius + 25) * cos(rad30),
-            y: circleCenter.y + (pieRadius + 25) * sin(rad30)
-        )
-        
-        // 平线
-        let line_2_x_offset:CGFloat = 62
-        let line_2_point = CGPoint(
-            x: line_1_point.x + line_2_x_offset,
-            y: line_1_point.y
-        )
-        
-        context.addLines(between: [textStartPoint, line_1_point, line_2_point])
-        context.strokePath()
-        
-        // 上字
-        let topText = NSAttributedString(
-            string: "0%",
-            attributes: [
-                NSAttributedString.Key.font : UIFont.systemFont(ofSize: 14),
-                NSAttributedString.Key.foregroundColor: UIColor.black.withAlphaComponent(0.7)
-            ]
-        )
-        
-        let topTextSize = topText.size()
-        let topTextPoint = CGPoint(
-            x: line_2_point.x +  -topTextSize.width,
-            y: line_2_point.y - 5 - topTextSize.height
-        )
-        
-        topText.draw(at: topTextPoint)
+//        // 三角函数
+//        let rad30 = 30.0 * CGFloat.pi / 180.0
+//        
+//        // 绘外置点
+//        let textStartPoint = CGPoint(
+//            x: circleCenter.x + (pieRadius + 15) * cos(rad30),
+//            y: circleCenter.y + (pieRadius + 15) * sin(rad30)
+//        )
+//        
+//        context.move(to: textStartPoint)
+//        context.addArc(center: textStartPoint, radius: 4, startAngle: 0, endAngle: CGFloat.pi * 2, clockwise: false)
+//        context.closePath()
+//        
+//        context.setFillColor(#colorLiteral(red: 1, green: 0.4392156863, blue: 0.2392156863, alpha: 1))
+//        context.fillPath()
+//        
+//        // 延长线
+//        context.move(to: textStartPoint)
+//        context.setStrokeColor(#colorLiteral(red: 1, green: 0.4392156863, blue: 0.2392156863, alpha: 1))
+//        context.setLineWidth(1.5)
+//        
+//        // 折线
+//        let line_1_point = CGPoint(
+//            x: circleCenter.x + (pieRadius + 25) * cos(rad30),
+//            y: circleCenter.y + (pieRadius + 25) * sin(rad30)
+//        )
+//        
+//        // 平线
+//        let line_2_x_offset:CGFloat = 62
+//        let line_2_point = CGPoint(
+//            x: line_1_point.x + line_2_x_offset,
+//            y: line_1_point.y
+//        )
+//        
+//        context.addLines(between: [textStartPoint, line_1_point, line_2_point])
+//        context.strokePath()
+//        
+//        // 上字
+//        let topText = NSAttributedString(
+//            string: "0%",
+//            attributes: [
+//                NSAttributedString.Key.font : UIFont.systemFont(ofSize: 14),
+//                NSAttributedString.Key.foregroundColor: UIColor.black.withAlphaComponent(0.7)
+//            ]
+//        )
+//        
+//        let topTextSize = topText.size()
+//        let topTextPoint = CGPoint(
+//            x: line_2_point.x +  -topTextSize.width,
+//            y: line_2_point.y - 5 - topTextSize.height
+//        )
+//        
+//        topText.draw(at: topTextPoint)
     }
     
     // MARK: - nib

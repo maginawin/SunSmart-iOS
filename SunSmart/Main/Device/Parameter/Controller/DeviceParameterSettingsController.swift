@@ -42,7 +42,7 @@ class DeviceParameterSettingsController: UIViewController {
         view.backgroundColor = Background_Color
         
         parameterDatas = [
-            .init(type: .pwmFrequency, enable: false), .init(type: .ratedPower, data: ratedPowerPhaseDatas, enable: false)
+            .init(type: .pwmFrequency, data: 2940, enable: false), .init(type: .ratedPower, data: ratedPowerPhaseDatas, enable: false)
         ]
         setupUI()
         
@@ -81,7 +81,7 @@ class DeviceParameterSettingsController: UIViewController {
             switch parameterData.type {
             case .pwmFrequency:
                 if let value = parameterData.data as? Int, value >= UInt16.min && value <= UInt16.max {
-                    return .pwmPeriod(period: UInt16(value))
+                    return .pwmFrequency(frequency: UInt16(value))
                 }
             case .ratedPower:
                 if let phases = parameterData.data as? [DeviceParameterRatedPowerPhaseData] {
@@ -96,10 +96,10 @@ class DeviceParameterSettingsController: UIViewController {
         
         setParameters.forEach { type in
             switch type {
-            case .pwmPeriod(let period):
+            case .pwmFrequency:
                 devices.forEach({
-                    if $0.restoreData?.pwmPeriod != nil {
-                        $0.restoreData?.pwmPeriod = nil
+                    if $0.restoreData?.pwmFrequency != nil {
+                        $0.restoreData?.pwmFrequency = nil
                     }
                 })
             case .ratedPower:
@@ -123,8 +123,8 @@ class DeviceParameterSettingsController: UIViewController {
             
             setParameters.forEach { type in
                 switch type {
-                case .pwmPeriod(let period):
-                    result.updateValue((period, self.devices, []), forKey: .pwmFrequency)
+                case .pwmFrequency(let frequency):
+                    result.updateValue((frequency, self.devices, []), forKey: .pwmFrequency)
                 case .ratedPower:
                     if let parameterData = self.parameterDatas.first(where: { $0.type == .ratedPower }), let data = parameterData.data {
                         result.updateValue((data, self.devices, []), forKey: .ratedPower)
@@ -153,7 +153,7 @@ class DeviceParameterSettingsController: UIViewController {
                             switch type {
                             case .deviceParameters(let parameterType):
                                 switch parameterType {
-                                case .pwmPeriod:
+                                case .pwmFrequency:
                                     pwmSuccessNodes.append(data.node)
                                 case .ratedPower:
                                     ratedPowerSuccessNodes.append(data.node)
@@ -172,7 +172,7 @@ class DeviceParameterSettingsController: UIViewController {
                             switch type {
                             case .deviceParameters(let parameterType):
                                 switch parameterType {
-                                case .pwmPeriod:
+                                case .pwmFrequency:
                                     pwmFailedNodes.append(data.node)
                                 case .ratedPower:
                                     ratedPowerFailedNodes.append(data.node)
@@ -301,7 +301,7 @@ extension DeviceParameterSettingsController: DeviceParameterSettingsViewCellDele
     func cell(_ cell: DeviceParameterSettingsViewCell, settingParameters data: DeviceParameterData) {
         switch data.type {
         case .pwmFrequency:
-            DevicePwmFrequencySelectView(selectFrequency: data.data as? Int, selectCallback: {[weak self] frequency in
+            DevicePwmFrequencySelectView(selectFrequency: (data.data as? Int) ?? 2940, selectCallback: {[weak self] frequency in
                 guard let self = self else { return }
                 if let index = self.parameterDatas.firstIndex(where: { $0.type == data.type }) {
                     self.parameterDatas[index].data = frequency

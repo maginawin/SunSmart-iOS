@@ -186,6 +186,13 @@ class SceneAddViewController: UIViewController {
                 dismiss(animated: true)
             }
         }else {
+            groups.forEach({
+                $0.executeSceneData = nil
+                $0.sceneDataIndex = nil
+                $0.isSelected = false
+            })
+            self.name = MeshNetworkManager.instance.getNextSceneName()
+            self.imageId = 1
             showTemplateCreate = false
             updateUI()
         }

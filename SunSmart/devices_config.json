@@ -209,6 +209,14 @@
     },
     {
         "companyId" : "0A78",
+        "productId" : "1012",
+        "categoryName" : "PIR Sensor Lighting",
+        "elementCount" : 2,
+        "iconCategory" : "Lighting",
+        "deviceCategory" : "Lighting"
+    },
+    {
+        "companyId" : "0A78",
         "productId" : "1021",
         "categoryName" : "PIR Sensor Lighting",
         "elementCount" : 2,

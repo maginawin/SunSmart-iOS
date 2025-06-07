@@ -64,7 +64,7 @@ class GroupPathSequencePageController: WMPageController {
             make.centerX.bottom.equalToSuperview()
         }
         
-        syncFailedBtn.isHidden = !groupPath.nodes.contains(where: { $0.getNodeSyncProximityLighting() != nil })
+        syncFailedBtn.isHidden = !group.nodes.contains(where: { $0.getNodeSyncProximityLighting() != nil })
     }
     
     override func viewWillDisappear(_ animated: Bool) {
@@ -97,7 +97,7 @@ class GroupPathSequencePageController: WMPageController {
     
     @objc private func syncFailedBtnAction() {
         
-        let vc = SyncDevicesViewController(type: .proximityLightingPath(path: groupPath), reSync: true)
+        let vc = SyncDevicesViewController(type: .proximityLightingPath(group: group, path: groupPath), reSync: true)
         vc.syncSuccessCallback = {[weak self] _ in
             XWHUDManager.showSuccessTipHUD("done!".localizedString)
             guard let self = self else { return }
@@ -121,13 +121,13 @@ class GroupPathSequencePageController: WMPageController {
         }
         group.info.proximityLightingPath = groupPath
         group.info.save()
-        
-        guard groupPath.nodes.contains(where: { $0.getNodeSyncProximityLighting() != nil }) else {
+
+        guard group.nodes.contains(where: { $0.getNodeSyncProximityLighting() != nil }) else {
             navigationController?.popViewController(animated: true)
             return
         }
         
-        let vc = SyncDevicesViewController(type: .proximityLightingPath(path: groupPath))
+        let vc = SyncDevicesViewController(type: .proximityLightingPath(group: group, path: groupPath))
         vc.syncSuccessCallback = {[weak self] _ in
             XWHUDManager.showSuccessTipHUD("done!".localizedString)
             DispatchQueue.main.asyncAfter(deadline: .now() + 1) {[weak self] in

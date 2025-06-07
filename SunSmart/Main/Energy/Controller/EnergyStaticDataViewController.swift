@@ -124,7 +124,6 @@ class EnergyStaticDataViewController: UIViewController {
         
         // 更新能耗数据
         NotificationCenter.default.addObserver(forName: .init(energyStaticDataUpdateNotificationName), object: nil, queue: nil) {[weak self] _ in
-            self?.viewType = .space
             self?.setupData()
             self?.updateUI()
         }
@@ -158,9 +157,9 @@ class EnergyStaticDataViewController: UIViewController {
                 let total = deviceEnergyDatas.reduce(UInt64(0)) { partial, energyData in
                     partial + UInt64(energyData.preciseTotalEnergyUse ?? 0)
                 }
-                let percent = Double(total) / Double(harvestData.preciseTotalEnergyUse)
+                let percent = Double(total) / Double(max(harvestData.preciseTotalEnergyUse, 1))
                 
-                let data = EnergyPieData(name: group.name, color: colors[index], percent: percent, data: "\((Double(total) / 1000).toSimplifyStr(maxDigits: 1)) kWh")
+                let data = EnergyPieData(name: group.name, color: colors[index], percent: percent, data: String(format: "%.2f kWh", Double(total) / 1000))
                 energyPieDatas.append(data)
                 if deviceEnergyDatas.count > 0 {
                     groups.append(group)
@@ -173,8 +172,9 @@ class EnergyStaticDataViewController: UIViewController {
                 let total = notInGroupDeviceEnergyDatas.reduce(UInt64(0)) { partial, energyData in
                     partial + UInt64(energyData.preciseTotalEnergyUse ?? 0)
                 }
-                let percent = Double(total) / Double(harvestData.preciseTotalEnergyUse)
-                let data = EnergyPieData(name: "not_in_group".localizedString, color: colors.last!, percent: percent, data: "\((Double(total) / 1000).toSimplifyStr(maxDigits: 1)) kWh")
+                let percent = Double(total) / Double(max(harvestData.preciseTotalEnergyUse, 1))
+                
+                let data = EnergyPieData(name: "not_in_group".localizedString, color: colors.last!, percent: percent, data: String(format: "%.2f kWh", Double(total) / 1000))
                 energyPieDatas.append(data)
             }
             groupEnergyPieDatas = energyPieDatas
@@ -182,6 +182,7 @@ class EnergyStaticDataViewController: UIViewController {
             groups = harvestData.groups
             devices = harvestData.deviceEnergyDatas
         }else {
+            viewType = .space
             groupEnergyPieDatas = []
             groups = []
             devices = []
@@ -261,14 +262,18 @@ class EnergyStaticDataViewController: UIViewController {
             devicesTableView.isHidden = true
             deviceSortBtn.isHidden = true
             deviceFilterBtn.isHidden = true
-            energySpaceView.updateData(latestHarvestData: self.latestHarvestData, previousHarvestData: self.previousHarvestData)
+            energySpaceView.updateData(latestHarvestData: self.latestHarvestData, previousHarvestData: self.previousHarvestData, statisticsType: self.statisticsFilterType)
         case .group:
             energySpaceView.isHidden = true
             energyGroupView.isHidden = false
             devicesTableView.isHidden = true
             deviceSortBtn.isHidden = true
             deviceFilterBtn.isHidden = true
-            energyGroupView.updateData(latestHarvestData: self.latestHarvestData, energyPieDatas: self.groupEnergyPieDatas)
+            var groupEnergyPieDatas = self.groupEnergyPieDatas
+            if statisticsFilterType == .realPower {
+                groupEnergyPieDatas = self.groupEnergyPieDatas.map({ EnergyPieData(name: $0.name, color: $0.color, percent: 0, data: "0.00 kWh") })
+            }
+            energyGroupView.updateData(latestHarvestData: self.latestHarvestData, energyPieDatas: groupEnergyPieDatas, statisticsType: self.statisticsFilterType)
         case .device:
             energySpaceView.isHidden = true
             energyGroupView.isHidden = true
@@ -290,6 +295,16 @@ class EnergyStaticDataViewController: UIViewController {
             }else {
                 showDevices = devices
             }
+            
+            switch statisticsFilterType {
+            case .all:
+                break
+            case .realPower:
+                showDevices = []
+            case .manualDataEnrty:
+                showDevices = showDevices.filter({ $0.state != .notSetPower })
+            }
+            
             // 排序
             if deviceSortType == .descending {
                 showDevices.sort(by: { ($0.preciseTotalEnergyUse ?? 0) > ($1.preciseTotalEnergyUse ?? 0) })
@@ -465,11 +480,19 @@ extension EnergyStaticDataViewController: UITableViewDataSource, UITableViewDele
 //        cell.selectState = .none
         cell.deviceImageView.image =  UIImage(named: device.iconName ?? "device_unknown")
         cell.nameLabel.text = device.name
-        if let preciseTotalEnergyUse = device.preciseTotalEnergyUse {
-            cell.energyLabel.text = "\((Double(preciseTotalEnergyUse) / 1000).toSimplifyStr(maxDigits: 2)) kWh"
-        }else {
-            cell.energyLabel.text = "--"
+        switch device.state {
+        case .success:
+            if let preciseTotalEnergyUse = device.preciseTotalEnergyUse {
+                cell.energyLabel.text = String(format: "%.2f kWh", Double(preciseTotalEnergyUse) / 1000)
+            }else {
+                cell.energyLabel.text = "--"
+            }
+        case .failed:
+            cell.energyLabel.text = "collection_failed".localizedString
+        case .notSetPower:
+            cell.energyLabel.text = "invalid_power_value".localizedString
         }
+        
         cell.groupNameLabel.text = latestHarvestData?.groups.first(where: { $0.address.address == device.groupAddress })?.name ?? "not_in_group".localizedString
         cell.onBtn.isSelected = device.selectOn
         cell.offBtn.isSelected = device.selectOff

@@ -141,7 +141,7 @@ class ScheduleScenesView: UIView {
             make.right.equalTo(lineView.snp.left)
         }
         
-        confirmBtn = UIButton(title: "confirm".localizedString, titleSize: 16, titleWeight: .light, titleColor: RGB(102, 103, 171), target: self, action: #selector(confirmBtnAction))
+        confirmBtn = UIButton(title: "confirm".localizedString, titleSize: 16, titleWeight: .light, titleColor: Bottom_Done_Color, target: self, action: #selector(confirmBtnAction))
         bottomView.addSubview(confirmBtn)
         confirmBtn.snp.makeConstraints { make in
             make.left.equalTo(lineView.snp.right)

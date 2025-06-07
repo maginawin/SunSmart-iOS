@@ -37,7 +37,7 @@ class DeviceParameterRatedPowerPhaseData: NSObject {
         guard let level = lightLevel, let power = power else {
             return nil
         }
-        return NodePhaseEnergyConsumption(percent: level, power: power)
+        return NodePhaseEnergyConsumption(percent: UInt8(Float(level) * 2.55), power: power)
     }
     
 }

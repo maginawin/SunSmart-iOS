@@ -603,11 +603,11 @@ class BleFirmwareUpdateViewController: UIViewController {
         }
         
         upgradeBtn = UIButton(title: "upgrade_selected".localizedString, titleSize: 14, titleWeight: .light, titleColor: .white, target: self, action: #selector(upgradeBtnAction))
-        let btnSize = CGSize(width: SCRXFrom(140), height: SCRYFrom(40))
+        let btnSize = CGSize(width: SCRXFrom(140), height: CGFloat(Int(SCRYFrom(40))))
         upgradeBtn.setBackgroundImage(UIImage.image(size: btnSize, color: Bar_Color.withAlphaComponent(0.5)), for: .disabled)
         upgradeBtn.setBackgroundImage(UIImage.image(size: btnSize, color: Bar_Color), for: .normal)
         upgradeBtn.isEnabled = false
-        upgradeBtn.layer.cornerRadius = SCRYFrom(20)
+        upgradeBtn.layer.cornerRadius = btnSize.height * 0.5
         upgradeBtn.layer.masksToBounds = true
         bottomView.addSubview(upgradeBtn)
         upgradeBtn.snp.makeConstraints { make in

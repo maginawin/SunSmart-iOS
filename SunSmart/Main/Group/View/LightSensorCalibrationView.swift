@@ -288,7 +288,7 @@ class LightSensorCalibrationView: UIView {
         
         lightLevelSlider = CustomDeviceSlider()
         lightLevelSlider.setThumbImage(UIImage(named: "slider_point"), for: .normal)
-        lightLevelSlider.minimumTrackTintColor = RGB(255, 167, 44)
+        lightLevelSlider.minimumTrackTintColor = Slider_Color
         lightLevelSlider.maximumTrackTintColor = RGB(229, 229, 229)
         lightLevelSlider.layer.cornerRadius = 2
         lightLevelSlider.minimumValue = 0
@@ -334,7 +334,7 @@ class LightSensorCalibrationView: UIView {
         
         speedSlider = CustomDeviceSlider()
         speedSlider.setThumbImage(UIImage(named: "slider_point"), for: .normal)
-        speedSlider.minimumTrackTintColor = RGB(255, 167, 44)
+        speedSlider.minimumTrackTintColor = Slider_Color
         speedSlider.maximumTrackTintColor = RGB(229, 229, 229)
         speedSlider.layer.cornerRadius = 2
         speedSlider.minimumValue = 0

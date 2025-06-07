@@ -151,7 +151,7 @@ class DeviceRestoreViewController: UIViewController {
         case .specified(let nodes):
             sections.removeAll()
             /// 需要继续恢复的设备，如已恢复的设备将不展示
-            let nextRestoreNodes = nodes.filter({ node in !restoreNodes.contains(where: { $0.macAddress == node.macAddress }) })
+            let nextRestoreNodes = nodes.filter({ node in !restoreNodes.contains(where: { $0.macAddress == node.macAddress || $0.macAddress?.toOldMacAddress() == node.macAddress }) })
             nextRestoreNodes.forEach { node in
                 let data = DeviceRestoreData(node: node)
                 if let section = sections.first(where: { $0.group == node.group }) {
@@ -774,10 +774,10 @@ class DeviceRestoreViewController: UIViewController {
         
         if rssiSlider.isEnabled {
             rssiSlider.setThumbImage(UIImage(named: "slider_point"), for: .normal)
-            rssiSlider.minimumTrackTintColor = RGB(255, 167, 44)
+            rssiSlider.minimumTrackTintColor = Slider_Color
         }else {
             rssiSlider.setThumbImage(UIImage(named: "slider_point_disable"), for: .normal)
-            rssiSlider.minimumTrackTintColor = RGB(255, 167, 44, 0.5)
+            rssiSlider.minimumTrackTintColor = Slider_Color.withAlphaComponent(0.5)
         }
         
         UIApplication.shared.isIdleTimerDisabled = false
@@ -865,7 +865,7 @@ class DeviceRestoreViewController: UIViewController {
             make.height.equalTo(SCRYFrom(64))
         }
         
-        scanBtn = UIButton(title: "scan".localizedString, titleSize: 13, titleColor: Bar_Color, normalImageName: "device_scan", target: self, action: #selector(scanBtnClick))
+        scanBtn = UIButton(title: "scan".localizedString, titleSize: 13, titleColor: Bottom_Done_Color, normalImageName: "device_scan", target: self, action: #selector(scanBtnClick))
         scanBtn.setTitle("stop".localizedString, for: .selected)
         scanBtn.setTitleColor(Bar_Color.withAlphaComponent(0.5), for: .disabled)
         scanBtn.layer.cornerRadius = SCRYFrom(5)
@@ -902,7 +902,7 @@ class DeviceRestoreViewController: UIViewController {
         }
         
         rssiSlider = CustomDeviceSlider()
-        rssiSlider.minimumTrackTintColor = RGB(255, 167, 44)
+        rssiSlider.minimumTrackTintColor = Slider_Color
         rssiSlider.maximumTrackTintColor = RGB(229, 229, 229)
         rssiSlider.layer.cornerRadius = 2.5
         rssiSlider.minimumValue = Float(abs(filterRSSIRange.upperBound))

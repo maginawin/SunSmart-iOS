@@ -81,7 +81,7 @@ class BluetoothRequiredViewController: UIViewController {
     private func showAlertView() {
         
         isShowAlert = true
-        let alertView = SRAlertView(title: "bluetooth_required_title".localizedString, message: "bluetooth_required_message".localizedString, actions: [SRAlertAction(title: "settings".localizedString, titleColor: RGB(61, 110, 246), titleFont: FONTS(SCRYFrom(15)), actionHandler: {[weak self] _ in
+        let alertView = SRAlertView(title: String(format: "bluetooth_required_title".localizedString, appName), message: "bluetooth_required_message".localizedString, actions: [SRAlertAction(title: "settings".localizedString, titleColor: RGB(61, 110, 246), titleFont: FONTS(SCRYFrom(15)), actionHandler: {[weak self] _ in
             self?.isShowAlert = false
             if let openUrl = URL(string: "App-Prefs:root=Bluetooth") {
                 UIApplication.shared.open(openUrl)

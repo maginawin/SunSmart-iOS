@@ -59,20 +59,25 @@ class GroupPathSequenceTriggerZoneViewCell: UITableViewCell {
     override func layoutSubviews() {
         super.layoutSubviews()
         
-//        if collectionView.frame != .zero {
-//            var itemW = ((collectionView.width - collectionView.contentInset.left - collectionView.contentInset.right) - CGFloat(colCount - 1) * flowLayout.minimumInteritemSpacing) / CGFloat(colCount)
-//            itemW = CGFloat(floorf(Float(itemW) * 100) / 100.0)
-//            flowLayout.itemSize = CGSize(width: itemW, height: itemW)
-//        }
+        if collectionView.frame != .zero {
+            var itemW = ((collectionView.width - collectionView.contentInset.left - collectionView.contentInset.right) - CGFloat(colCount - 1) * flowLayout.minimumInteritemSpacing) / CGFloat(colCount)
+            itemW = CGFloat(floorf(Float(itemW) * 100) / 100.0)
+            flowLayout.itemSize = CGSize(width: itemW, height: itemW)
+        }
         
     }
     
-    override func hitTest(_ point: CGPoint, with event: UIEvent?) -> UIView? {
-        let touchView = super.hitTest(point, with: event)
-        if !self.isSelect, touchView == self.collectionView, self.collectionView.indexPathForItem(at: point) == nil {
+//    override func hitTest(_ point: CGPoint, with event: UIEvent?) -> UIView? {
+//        let touchView = super.hitTest(point, with: event)
+//        if !self.isSelect, touchView == self.collectionView, self.collectionView.indexPathForItem(at: point) == nil {
+//            delegate?.cell(self, didSelectZone: zone)
+//        }
+//        return touchView
+//    }
+    @objc private func collectionViewDidTapAction(sender: UIGestureRecognizer) {
+        if !isSelect {
             delegate?.cell(self, didSelectZone: zone)
         }
-        return touchView
     }
     
     /// 刷新数据
@@ -103,9 +108,10 @@ class GroupPathSequenceTriggerZoneViewCell: UITableViewCell {
         collectionView.layer.borderColor = Yellow_Color.cgColor
         collectionView.dataSource = self
         collectionView.delegate = self
-//        let longPress = UILongPressGestureRecognizer(target: self, action: #selector(collectionViewLongPressAction))
+        let tapGesture = UITapGestureRecognizer(target: self, action: #selector(collectionViewDidTapAction))
 //        longPress.minimumPressDuration = 0.5
-//        collectionView.addGestureRecognizer(longPress)
+        tapGesture.cancelsTouchesInView = false
+        collectionView.addGestureRecognizer(tapGesture)
         collectionView.register(GroupPathSequencePathItem.classForCoder(), forCellWithReuseIdentifier: "cell")
         contentView.addSubview(collectionView)
         collectionView.snp.makeConstraints { make in
@@ -136,6 +142,13 @@ extension GroupPathSequenceTriggerZoneViewCell: UICollectionViewDataSource, UICo
         let node = zone.nodes[indexPath.item]
         cell.sequenceLabel.isHidden = true
         cell.nameLabel.text = node.name
+        if node.state {
+            cell.nameLabel.textColor = SubText_Color
+            cell.iconImageView.image = UIImage(named: "path_device")
+        }else {
+            cell.nameLabel.textColor = AssistText_Color
+            cell.iconImageView.image = UIImage(named: "path_device_offline")
+        }
         return cell
     }
     
@@ -147,9 +160,12 @@ extension GroupPathSequenceTriggerZoneViewCell: UICollectionViewDataSource, UICo
     
     func collectionView(_ collectionView: UICollectionView, didSelectItemAt indexPath: IndexPath) {
         
-        guard let cell = collectionView.cellForItem(at: indexPath) else {
+        guard let cell = collectionView.cellForItem(at: indexPath) as? GroupPathSequencePathItem else {
             return
         }
+        
+        cell.boxView.layer.borderColor = Yellow_Color.cgColor
+        
         let menuWidth = SCRXFrom(71)
         let options: [PathItemOptions] = [.identify, .remove]
         
@@ -171,7 +187,8 @@ extension GroupPathSequenceTriggerZoneViewCell: UICollectionViewDataSource, UICo
             default:
                 break
             }
-            
+        } hideCallback: {
+            cell.boxView.layer.borderColor = RGB(241, 242, 244).cgColor
         }
         
     }

@@ -151,6 +151,8 @@ class ProfileProximityLightingNumberView: UIView {
         }
         
         numberSlider = PowerUpLightSliderView()
+//        numberSlider.slider.valueRound = true
+        numberSlider.slider.step = 1
         numberSlider.slider.minimumValue = 0
         numberSlider.slider.maximumValue = 6
         numberSlider.slider.value = min(Float(number), numberSlider.slider.maximumValue)

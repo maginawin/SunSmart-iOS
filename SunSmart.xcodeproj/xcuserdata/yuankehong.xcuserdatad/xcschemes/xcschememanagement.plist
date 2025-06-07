@@ -4,7 +4,7 @@
 <dict>
 	<key>SchemeUserState</key>
 	<dict>
-		<key>SunSmart copy.xcscheme_^#shared#^_</key>
+		<key>Archipelago.xcscheme_^#shared#^_</key>
 		<dict>
 			<key>orderHint</key>
 			<integer>12</integer>
@@ -17,6 +17,11 @@
 	</dict>
 	<key>SuppressBuildableAutocreation</key>
 	<dict>
+		<key>C88553AD2DE6B44C00C8B688</key>
+		<dict>
+			<key>primary</key>
+			<true/>
+		</dict>
 		<key>C896B9A32A930BA800217512</key>
 		<dict>
 			<key>primary</key>

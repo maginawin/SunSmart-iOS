@@ -125,9 +125,9 @@ static XWHUDManagerType kXWHUDManagerType = XWHUDManagerTypeDark;
         hud.bezelView.layer.shadowRadius = 8;
 //    }
     
-    NSString *scale = UIScreen.mainScreen.scale >= 3.0 ? @"@3x" : @"@2x";
-    NSString *normalImgName = [NSString stringWithFormat:@"XWHUDManager_%@%@.png", @"loading", scale];
-    hud.customView = [[UIImageView alloc] initWithImage:[UIImage imageNamed:normalImgName]];
+//    NSString *scale = UIScreen.mainScreen.scale >= 3.0 ? @"@3x" : @"@2x";
+//    NSString *normalImgName = [NSString stringWithFormat:@"XWHUDManager_%@%@.png", @"loading", scale];
+    hud.customView = [[UIImageView alloc] initWithImage:[UIImage imageNamed:@"hud_loading"]];
     
     [hud hideAnimated:YES afterDelay:afterSecond];
     

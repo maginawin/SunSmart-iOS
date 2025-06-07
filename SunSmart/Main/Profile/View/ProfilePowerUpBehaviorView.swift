@@ -346,7 +346,7 @@ class PowerUpLightSliderView: UIView {
         
         slider = CustomDeviceSlider()
         slider.setThumbImage(UIImage(named: "slider_point"), for: .normal)
-        slider.minimumTrackTintColor = RGB(255, 167, 44)
+        slider.minimumTrackTintColor = Slider_Color
         slider.maximumTrackTintColor = RGB(229, 229, 229)
         slider.layer.cornerRadius = 2
         slider.minimumValue = 0

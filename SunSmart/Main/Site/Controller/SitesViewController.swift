@@ -498,21 +498,6 @@ class SitesViewController: UIViewController {
     /// 导入
     @objc private func importClick() {
         
-        
-//        let groups = [
-//            try! Group(name: "Group 1", address: .minGroupAddress),
-//            try! Group(name: "Group 2", address: .minGroupAddress + 1),
-//            try! Group(name: "Group 3", address: .minGroupAddress + 2)
-//        ]
-//        
-//        GroupFilterSelectView(filters: GroupFilterSelectView.FilterData.defalutFilters(groups: groups), selectFilterType: .group(groups.last!), selectCallback: { _ in
-//            
-//        }).show()
-        
-//        let vc = DongleAddCollectionScheduleController(dongleData: <#DeviceDongleData#>, schedule: nil)
-        
-//        let group = try! Group(name: "Test", address: .minGroupAddress)
-        
 //        guard let space = SpaceData.load(siteId: "25300E88-41F0-456E-A0A9-AD615069017C", spaceId: "88BF1DEC-264E-4D00-A93C-729A88030D58").first else {
 //            return
 //        }
