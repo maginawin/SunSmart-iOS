@@ -309,30 +309,6 @@ class CustomDeviceSlider: UISlider {
         sliderEndValueChange()
     }
     
-//    override func hitTest(_ point: CGPoint, with event: UIEvent?) -> UIView? {
-//
-//        //调用父类方法,找到能够处理event的view
-//        var result = super.hitTest(point, with: event)
-//        if result != self {
-//            /*如果这个view不是self,我们给slider扩充一下响应范围,
-//             这里的扩充范围数据就可以自己设置了
-//             */
-//
-//            // 滑块图片宽度
-//            let thumbW = self.currentThumbImage?.size.width ?? 0
-//
-//            if ((point.y >= -thumbW * 0.5) &&
-//                point.y < (lastBounds?.size.height ?? self.height) &&
-//                (point.x >= 0 && point.x < CGRectGetWidth(self.bounds))) {
-//                //如果在扩充的范围类,就将event的处理权交给self
-//                result = self
-//            }
-//        }
-//        //否则,返回能够处理的view
-//        return result;
-//
-//    }
-    
     //检查是点击事件的点是否在slider范围内
     override func point(inside point: CGPoint, with event: UIEvent?) -> Bool {
 

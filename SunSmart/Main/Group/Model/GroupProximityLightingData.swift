@@ -71,19 +71,25 @@ class GroupProximityLightingPathData: Codable, Copyable {
                 zone.addresses.remove(at: index)
             }
         }
-//        if let zone = zones.first(where: { $0.addresses.contains(address) }) {
-//            zone.addresses.removeAll(where: { $0 == address })
-//        }
     }
     
-    /// 更新路径
-//    func updatePath(_ path: GroupProximityLightingSequencePath) {
-//        if let currentPath = self.paths.first(where: { $0.id == path.id }) {
-//            currentPath.items = path.items.map({ $0.copy() })
-//        }else {
-//            self.paths.append(path.copy())
-//        }
-//    }
+    /// 判断数据是否相等
+    static func == (lhs: GroupProximityLightingPathData, rhs: GroupProximityLightingPathData) -> Bool {
+        // 比较 paths
+        guard lhs.paths.count == rhs.paths.count, lhs.zones.count == rhs.zones.count else { return false }
+          
+          let pathsEqual = zip(lhs.paths, rhs.paths).allSatisfy { lhsPath, rhsPath in
+              lhsPath.items.count == rhsPath.items.count &&
+              zip(lhsPath.items, rhsPath.items).allSatisfy { $0.address == $1.address }
+          }
+          
+          // 比较 zones
+          let zonesEqual = lhs.zones.count == rhs.zones.count &&
+                          zip(lhs.zones, rhs.zones).allSatisfy { $0.addresses == $1.addresses }
+          
+          return pathsEqual && zonesEqual
+    }
+    
     
 }
 

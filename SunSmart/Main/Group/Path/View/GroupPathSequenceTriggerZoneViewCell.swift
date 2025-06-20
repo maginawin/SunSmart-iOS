@@ -30,7 +30,7 @@ class GroupPathSequenceTriggerZoneViewCell: UITableViewCell {
     private var flowLayout: UICollectionViewFlowLayout!
     private var collectionView: UICollectionView!
     
-    private let colCount: Int = 5
+    private let colCount: Int = isIPad ? 8 : 5
     
     var zone: GroupProximityLightingPathZone!
     private var zoneIndex: Int = 0
@@ -49,6 +49,7 @@ class GroupPathSequenceTriggerZoneViewCell: UITableViewCell {
         backgroundColor = .clear
         setupUI()
         
+        contentView.autoresizingMask = .flexibleHeight
         addInteraction(UIDropInteraction(delegate: self))
     }
     
@@ -56,24 +57,17 @@ class GroupPathSequenceTriggerZoneViewCell: UITableViewCell {
         fatalError("init(coder:) has not been implemented")
     }
     
-    override func layoutSubviews() {
-        super.layoutSubviews()
+    override func systemLayoutSizeFitting(_ targetSize: CGSize, withHorizontalFittingPriority horizontalFittingPriority: UILayoutPriority, verticalFittingPriority: UILayoutPriority) -> CGSize {
+
+        var itemW = ((targetSize.width - collectionView.contentInset.left - collectionView.contentInset.right) - CGFloat(colCount - 1) * flowLayout.minimumInteritemSpacing) / CGFloat(colCount)
+        itemW = CGFloat(floorf(Float(itemW) * 100) / 100.0)
+                
+        let row = ceil(Double(zone.nodes.count) / Double(colCount))
         
-        if collectionView.frame != .zero {
-            var itemW = ((collectionView.width - collectionView.contentInset.left - collectionView.contentInset.right) - CGFloat(colCount - 1) * flowLayout.minimumInteritemSpacing) / CGFloat(colCount)
-            itemW = CGFloat(floorf(Float(itemW) * 100) / 100.0)
-            flowLayout.itemSize = CGSize(width: itemW, height: itemW)
+        let height = max(row * itemW + (row - 1) * flowLayout.minimumLineSpacing + collectionView.contentInset.top + collectionView.contentInset.bottom + flowLayout.sectionInset.top + flowLayout.sectionInset.bottom, SCRYFrom(60))
+        return CGSizeMake(targetSize.width, height)
         }
-        
-    }
     
-//    override func hitTest(_ point: CGPoint, with event: UIEvent?) -> UIView? {
-//        let touchView = super.hitTest(point, with: event)
-//        if !self.isSelect, touchView == self.collectionView, self.collectionView.indexPathForItem(at: point) == nil {
-//            delegate?.cell(self, didSelectZone: zone)
-//        }
-//        return touchView
-//    }
     @objc private func collectionViewDidTapAction(sender: UIGestureRecognizer) {
         if !isSelect {
             delegate?.cell(self, didSelectZone: zone)
@@ -86,11 +80,7 @@ class GroupPathSequenceTriggerZoneViewCell: UITableViewCell {
         self.zone = zone
         
         noDataLabel.isHidden = zone.nodes.count > 0
-        
-        let row = ceil(Double(zone.nodes.count) / Double(colCount))
-        collectionView.snp.updateConstraints { make in
-            make.height.equalTo(max(row * flowLayout.itemSize.height + (row - 1) * flowLayout.minimumLineSpacing + collectionView.contentInset.top + collectionView.contentInset.bottom + flowLayout.sectionInset.top + flowLayout.sectionInset.bottom, SCRYFrom(60)))
-        }
+
         collectionView.reloadData() 
     }
     
@@ -108,6 +98,7 @@ class GroupPathSequenceTriggerZoneViewCell: UITableViewCell {
         collectionView.layer.borderColor = Yellow_Color.cgColor
         collectionView.dataSource = self
         collectionView.delegate = self
+        collectionView.translatesAutoresizingMaskIntoConstraints = false
         let tapGesture = UITapGestureRecognizer(target: self, action: #selector(collectionViewDidTapAction))
 //        longPress.minimumPressDuration = 0.5
         tapGesture.cancelsTouchesInView = false
@@ -117,8 +108,9 @@ class GroupPathSequenceTriggerZoneViewCell: UITableViewCell {
         collectionView.snp.makeConstraints { make in
             make.left.equalTo(SCRXFrom(8))
             make.right.equalTo(SCRXFrom(-8))
-            make.top.bottom.equalToSuperview()
-            make.height.equalTo(SCRYFrom(60))
+            make.top.equalToSuperview()
+            make.bottom.equalToSuperview().priority(.medium)
+//            make.height.equalTo(SCRYFrom(60))
         }
         
         noDataLabel = UILabel(text: "No_Data".localizedString, textColor: Message_Color, fontSize: 14, fontWeight: .light)
@@ -152,11 +144,11 @@ extension GroupPathSequenceTriggerZoneViewCell: UICollectionViewDataSource, UICo
         return cell
     }
     
-//    func collectionView(_ collectionView: UICollectionView, layout collectionViewLayout: UICollectionViewLayout, sizeForItemAt indexPath: IndexPath) -> CGSize {
-//        var itemW = ((collectionView.width - collectionView.contentInset.left - collectionView.contentInset.right) - CGFloat(colCount - 1) * flowLayout.minimumInteritemSpacing) / CGFloat(colCount)
-//        itemW = CGFloat(floorf(Float(itemW) * 100) / 100.0)
-//        return CGSize(width: itemW, height: itemW)
-//    }
+    func collectionView(_ collectionView: UICollectionView, layout collectionViewLayout: UICollectionViewLayout, sizeForItemAt indexPath: IndexPath) -> CGSize {
+        var itemW = ((collectionView.width - collectionView.contentInset.left - collectionView.contentInset.right) - CGFloat(colCount - 1) * flowLayout.minimumInteritemSpacing) / CGFloat(colCount)
+        itemW = CGFloat(floorf(Float(itemW) * 100) / 100.0)
+        return CGSize(width: itemW, height: itemW)
+    }
     
     func collectionView(_ collectionView: UICollectionView, didSelectItemAt indexPath: IndexPath) {
         

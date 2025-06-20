@@ -932,6 +932,19 @@ extension SpaceData {
                     if let daylightCalibrationValue = nodeJson["daylightCalibrationValue"].uInt16 {
                         node.daylightCalibrationValue = daylightCalibrationValue
                     }
+                    // pwm频率
+                    if let pwmFrequency = nodeJson["pwmFrequency"].uInt16 {
+                        node.pwmFrequency = pwmFrequency
+                    }
+                    // 设备亮度阶段额定功率
+                    if let ratedPowerPhases = nodeJson["ratedPowerPhases"].arrayObject as? [[String: Int]] {
+                        let phaseEnergyConsumptions: [NodePhaseEnergyConsumption] = ratedPowerPhases.compactMap { phaseDict in
+                            guard let percent = phaseDict["percent"], let power = phaseDict["power"],
+                                  percent >= UInt8.min && percent <= UInt8.max, power >= UInt16.min && power <= UInt16.max else { return nil }
+                            return NodePhaseEnergyConsumption(percent: UInt8(percent), power: UInt16(power))
+                        }
+                        node.phaseEnergyConsumptions = phaseEnergyConsumptions
+                    }
                     
                     return node
                 }
@@ -1050,32 +1063,46 @@ extension SpaceData {
                     })
                     group.info.bindSchedules = bindSchedules
                     
-                    // switches
-//                    if let switcheDicts = groupJson["switches"].arrayObject {
-//                        switcheDicts.forEach { switcheDict in
-//                            let switcheJson = JSON(switcheDict)
-//                            if let id = switcheJson["id"].string, let name = switcheJson["name"].string {
-//                                var sceneA: SceneNumber?
-//                                var sceneB: SceneNumber?
-//                                if let sceneAHex = switcheJson["sceneA"].string,
-//                                   let sceneANumber = SceneNumber(sceneAHex) {
-//                                    sceneA = sceneANumber
-//                                }
-//                                if let sceneBHex = switcheJson["sceneB"].string,
-//                                   let sceneBNumber = SceneNumber(sceneBHex) {
-//                                    sceneB = sceneBNumber
-//                                }
-//                                
-//                                var proxyNode: Node?
-//                                if let macAddress = switcheJson["enOceanMacAddress"].string {
-//                                    proxyNode = nodes.first(where: { $0.enOceanMacAddress == macAddress })
-//                                }
-//                                let groupSwitch = GroupSwitch(id: id, groupAddress: group.address.address, enabled: switcheJson["enabled"].bool ?? true, name: name, sceneANumber: sceneA, sceneBNumber: sceneB, proxyNodeAddress: proxyNode?.primaryUnicastAddress)
-//                                group.info.switchs.append(groupSwitch)
-//                                switches.append(groupSwitch)
-//                            }
-//                        }
-//                    }
+                    // 临近照明
+                    if let proximityLightingPathDict = groupJson["proximityLightingPath"].dictionaryObject {
+                        let proximityLightingPath = GroupProximityLightingPathData(paths: [], zones: [])
+                        // path list
+                        if let pathDicts = proximityLightingPathDict["paths"] as? [[String: Any]] {
+                            let paths: [GroupProximityLightingSequencePath] = pathDicts.compactMap({ dict in
+                                guard let itemAddresses = dict["items"] as? [Int] else {
+                                    return nil
+                                }
+                                let items: [GroupProximityLightingSequencePath.GroupProximityLightingPathItem] = itemAddresses.compactMap({ itemAddress in
+                                    let address = Address(itemAddress)
+                                    // address = 0 表示这个item/point是空的，address=设备地址表示绑定对应设备
+                                    guard address == 0 || address.isUnicast else {
+                                        return nil
+                                    }
+                                    return GroupProximityLightingSequencePath.GroupProximityLightingPathItem(address: address.isUnicast ? address : nil)
+                                })
+                                return GroupProximityLightingSequencePath(items: items)
+                            })
+                            proximityLightingPath.paths = paths
+                        }
+                        // zone list
+                        if let zoneDicts = proximityLightingPathDict["paths"] as? [[String: Any]] {
+                            let zones: [GroupProximityLightingPathZone] = zoneDicts.compactMap { dict in
+                                guard let zoneAddresses = dict["addresses"] as? [Int] else {
+                                    return nil
+                                }
+                                let addresses = zoneAddresses.compactMap({ zoneAddress in
+                                    let address = Address(zoneAddress)
+                                    if address.isUnicast {
+                                        return address
+                                    }
+                                    return nil
+                                })
+                                return GroupProximityLightingPathZone(addresses: addresses)
+                            }
+                            proximityLightingPath.zones = zones
+                        }
+                    }
+                    
                     return group
                 }
                 return nil

@@ -219,7 +219,7 @@ extension GroupPathSequenceDeviceAddView: WMMenuViewDataSource, WMMenuViewDelega
     }
     
     func menuView(_ menu: WMMenuView!, widthForItemAt index: Int) -> CGFloat {
-        return SCRXFrom(92)
+        return isIPad ? SCRXFrom(150) : SCRXFrom(92)
     }
     
     func menuView(_ menu: WMMenuView!, itemMarginAt index: Int) -> CGFloat {

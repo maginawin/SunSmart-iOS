@@ -111,7 +111,7 @@
 "device_scan_notfound_message" = "- Close to device\n- Powered on device\n- The device is in the network configuration\nstate";
 "stop_waiting" = "Stop waiting";
 "device_add_adding" = "adding";
-"device_add_failed" = "failed";
+"device_identify_failed" = "failed";
 "device_add_waiting" = "waiting";
 "device_add_connecting" = "connecting";
 "device" = "Device";
@@ -1185,3 +1185,6 @@
 "group_set_the_path_sequence" = " Set the path sequence";
 "device_trigger_curve" = "Device trigger curve";
 "energy_incomplete_message" = "Not all data has been collected";
+
+"classic_mode" = "Classic Mode";
+"professional_mode" = "Professional Mode";

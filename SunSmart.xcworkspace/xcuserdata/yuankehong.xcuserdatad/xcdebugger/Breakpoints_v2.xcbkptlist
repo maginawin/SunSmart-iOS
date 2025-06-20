@@ -142,8 +142,8 @@
             filePath = "SunSmart/Common/Data/MeshNetwork+SunSmart.swift"
             startingColumnNumber = "9223372036854775807"
             endingColumnNumber = "9223372036854775807"
-            startingLineNumber = "2309"
-            endingLineNumber = "2309"
+            startingLineNumber = "2321"
+            endingLineNumber = "2321"
             landmarkName = "updateData(message:isSuccess:)"
             landmarkType = "7">
          </BreakpointContent>
@@ -177,22 +177,6 @@
             startingLineNumber = "60"
             endingLineNumber = "60"
             landmarkName = "storageDevices"
-            landmarkType = "24">
-         </BreakpointContent>
-      </BreakpointProxy>
-      <BreakpointProxy
-         BreakpointExtensionID = "Xcode.Breakpoint.FileBreakpoint">
-         <BreakpointContent
-            uuid = "FFF0464B-6881-4D6B-B74C-E1B395128D86"
-            shouldBeEnabled = "Yes"
-            ignoreCount = "0"
-            continueAfterRunningActions = "No"
-            filePath = "SunSmart/Main/Device/View/DeviceAddViewCell.swift"
-            startingColumnNumber = "9223372036854775807"
-            endingColumnNumber = "9223372036854775807"
-            startingLineNumber = "134"
-            endingLineNumber = "134"
-            landmarkName = "device"
             landmarkType = "24">
          </BreakpointContent>
       </BreakpointProxy>
@@ -257,6 +241,102 @@
             startingLineNumber = "726"
             endingLineNumber = "726"
             landmarkName = "reloadDeviceState(_:)"
+            landmarkType = "7">
+         </BreakpointContent>
+      </BreakpointProxy>
+      <BreakpointProxy
+         BreakpointExtensionID = "Xcode.Breakpoint.FileBreakpoint">
+         <BreakpointContent
+            uuid = "575F2508-ED08-4FAE-A5A6-11EB27C897F0"
+            shouldBeEnabled = "Yes"
+            ignoreCount = "0"
+            continueAfterRunningActions = "No"
+            filePath = "../../Library/Developer/Xcode/DerivedData/SunSmart-bsknqvobukouwgfvklwtoruhrcgz/SourcePackages/checkouts/nordic-sig-mesh-sdk/Sources/NordicSigMeshSDK/MeshLib/Manager/MeshLibManager.swift"
+            startingColumnNumber = "9223372036854775807"
+            endingColumnNumber = "9223372036854775807"
+            startingLineNumber = "323"
+            endingLineNumber = "323"
+            landmarkName = "MeshLibManager"
+            landmarkType = "3">
+         </BreakpointContent>
+      </BreakpointProxy>
+      <BreakpointProxy
+         BreakpointExtensionID = "Xcode.Breakpoint.FileBreakpoint">
+         <BreakpointContent
+            uuid = "2CC1DBA1-7DD4-42BD-ADB6-BADB408CF4C0"
+            shouldBeEnabled = "No"
+            ignoreCount = "0"
+            continueAfterRunningActions = "No"
+            filePath = "../../Library/Developer/Xcode/DerivedData/SunSmart-bsknqvobukouwgfvklwtoruhrcgz/SourcePackages/checkouts/nordic-sig-mesh-sdk/Sources/NordicSigMeshSDK/MeshLib/Message/Vendor/SunricherVendorStatus.swift"
+            startingColumnNumber = "9223372036854775807"
+            endingColumnNumber = "9223372036854775807"
+            startingLineNumber = "23"
+            endingLineNumber = "23"
+            landmarkName = "init?(parameters:)"
+            landmarkType = "7">
+         </BreakpointContent>
+      </BreakpointProxy>
+      <BreakpointProxy
+         BreakpointExtensionID = "Xcode.Breakpoint.FileBreakpoint">
+         <BreakpointContent
+            uuid = "9A177331-5B27-4C12-8B7B-670DE29E9089"
+            shouldBeEnabled = "Yes"
+            ignoreCount = "0"
+            continueAfterRunningActions = "No"
+            filePath = "../../Library/Developer/Xcode/DerivedData/SunSmart-bsknqvobukouwgfvklwtoruhrcgz/SourcePackages/checkouts/nordic-sig-mesh-sdk/Sources/NordicSigMeshSDK/MeshLib/Node/Node+Config.swift"
+            startingColumnNumber = "9223372036854775807"
+            endingColumnNumber = "9223372036854775807"
+            startingLineNumber = "50"
+            endingLineNumber = "50"
+            landmarkName = "isKeybindComplete"
+            landmarkType = "24">
+         </BreakpointContent>
+      </BreakpointProxy>
+      <BreakpointProxy
+         BreakpointExtensionID = "Xcode.Breakpoint.FileBreakpoint">
+         <BreakpointContent
+            uuid = "29A7BBFE-550A-4E28-9145-918A1F1C8D66"
+            shouldBeEnabled = "Yes"
+            ignoreCount = "0"
+            continueAfterRunningActions = "No"
+            filePath = "../../Library/Developer/Xcode/DerivedData/SunSmart-bsknqvobukouwgfvklwtoruhrcgz/SourcePackages/checkouts/nordic-sig-mesh-sdk/Sources/NordicSigMeshSDK/MeshLib/Node/Node+Config.swift"
+            startingColumnNumber = "9223372036854775807"
+            endingColumnNumber = "9223372036854775807"
+            startingLineNumber = "55"
+            endingLineNumber = "55"
+            landmarkName = "isKeybindComplete"
+            landmarkType = "24">
+         </BreakpointContent>
+      </BreakpointProxy>
+      <BreakpointProxy
+         BreakpointExtensionID = "Xcode.Breakpoint.FileBreakpoint">
+         <BreakpointContent
+            uuid = "9C870C17-10C6-4290-AE64-0626CE8443CA"
+            shouldBeEnabled = "Yes"
+            ignoreCount = "0"
+            continueAfterRunningActions = "No"
+            filePath = "../../Library/Developer/Xcode/DerivedData/SunSmart-bsknqvobukouwgfvklwtoruhrcgz/SourcePackages/checkouts/nordic-sig-mesh-sdk/Sources/NordicSigMeshSDK/MeshLib/MessageDelegate/VendorServerDelegate.swift"
+            startingColumnNumber = "9223372036854775807"
+            endingColumnNumber = "9223372036854775807"
+            startingLineNumber = "133"
+            endingLineNumber = "133"
+            landmarkName = "model(_:didReceiveAcknowledgedMessage:from:sentTo:)"
+            landmarkType = "7">
+         </BreakpointContent>
+      </BreakpointProxy>
+      <BreakpointProxy
+         BreakpointExtensionID = "Xcode.Breakpoint.FileBreakpoint">
+         <BreakpointContent
+            uuid = "73E045FF-3E7B-4980-A44B-8EF1E098F44A"
+            shouldBeEnabled = "Yes"
+            ignoreCount = "0"
+            continueAfterRunningActions = "No"
+            filePath = "SunSmart/Main/Group/Path/Controller/GroupPathSequenceViewController.swift"
+            startingColumnNumber = "9223372036854775807"
+            endingColumnNumber = "9223372036854775807"
+            startingLineNumber = "358"
+            endingLineNumber = "358"
+            landmarkName = "cell(_:didSelectDirection:direction:)"
             landmarkType = "7">
          </BreakpointContent>
       </BreakpointProxy>

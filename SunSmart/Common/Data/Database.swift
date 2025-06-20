@@ -819,6 +819,7 @@ extension GroupInfo {
                 if let pwmPeriod = row[ExpressionKey.pwmPeriod] {
                     info.pwmPeriod = UInt16(pwmPeriod)
                 }
+                
                 // 邻近照明路径
                 if let proximityLightingPathData = row[ExpressionKey.proximityLightingPath],
                     let proximityLightingPath = try? jsonDecoder.decode(GroupProximityLightingPathData.self, from: proximityLightingPathData) {

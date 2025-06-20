@@ -251,6 +251,17 @@ extension Group {
         syncProfile.forEach({
             messages.append(contentsOf: $0.getMessageHandles(node: node))
         })
+        // 临近照明
+        if let model = node.sunricherVendorModel, let syncPath = node.getNodeSyncProximityLighting(group: self) {
+            switch syncPath {
+            case .proximityLightingEnabled(let enabled):
+                messages.append(MeshMessageHandle(message: SunricherVendorSet(function: .proximityLightingEnabled(enabled)), model: model))
+            case .proximityLightingNeighbor(let relayNumber, let neighborAddresses):
+                messages.append(MeshMessageHandle(message: SunricherVendorSet(function: .proximityLightingNeighborSet(enabled: true, relay: relayNumber, ttl: MeshNetworkManager.instance.networkParameters.defaultTtl, relayAppKeyIndex: MeshNetworkManager.instance.currentApplicationKey.index, neighborAddresses: neighborAddresses)), model: model))
+            default:
+                break
+            }
+        }
 //        }
         // 添加需要同步的场景、日程消息处理list
         messages.append(contentsOf: getNodeSyncDataMessageHandles(node: node))

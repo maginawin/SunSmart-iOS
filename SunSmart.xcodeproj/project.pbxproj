@@ -720,6 +720,12 @@
 		C8CD5C2B2DDB0F9200F09467 /* GroupPathSequencePathHeaderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8CD5C2A2DDB0F9200F09467 /* GroupPathSequencePathHeaderView.swift */; };
 		C8CD5C2D2DDB6CD900F09467 /* GroupPathSequencePathLayout.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8CD5C2C2DDB6CD900F09467 /* GroupPathSequencePathLayout.swift */; };
 		C8CD5C302DDC6E9700F09467 /* GroupPathSequenceSelectData.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8CD5C2F2DDC6E9700F09467 /* GroupPathSequenceSelectData.swift */; };
+		C8D22E002E010A47001A2BDA /* GatewayViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8D22DFF2E010A47001A2BDA /* GatewayViewController.swift */; };
+		C8D22E012E010A47001A2BDA /* GatewayViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8D22DFF2E010A47001A2BDA /* GatewayViewController.swift */; };
+		C8D22E1D2E04100D001A2BDA /* DeviceAddProfessionalModeController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8D22E1C2E04100D001A2BDA /* DeviceAddProfessionalModeController.swift */; };
+		C8D22E1E2E04100D001A2BDA /* DeviceAddProfessionalModeController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8D22E1C2E04100D001A2BDA /* DeviceAddProfessionalModeController.swift */; };
+		C8D22E202E041020001A2BDA /* DeviceAddClassicModeController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8D22E1F2E041020001A2BDA /* DeviceAddClassicModeController.swift */; };
+		C8D22E212E041020001A2BDA /* DeviceAddClassicModeController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8D22E1F2E041020001A2BDA /* DeviceAddClassicModeController.swift */; };
 		C8D58F662C1D34090066B770 /* CloudSynchronizationManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8D58F652C1D34090066B770 /* CloudSynchronizationManager.swift */; };
 		C8D6636D2BFED12B00BFF81A /* Keychain.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8D6636C2BFED12B00BFF81A /* Keychain.swift */; };
 		C8D6636F2BFEDDC900BFF81A /* ImportData.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8D6636E2BFEDDC900BFF81A /* ImportData.swift */; };
@@ -1112,6 +1118,9 @@
 		C8CD5C2A2DDB0F9200F09467 /* GroupPathSequencePathHeaderView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GroupPathSequencePathHeaderView.swift; sourceTree = "<group>"; };
 		C8CD5C2C2DDB6CD900F09467 /* GroupPathSequencePathLayout.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GroupPathSequencePathLayout.swift; sourceTree = "<group>"; };
 		C8CD5C2F2DDC6E9700F09467 /* GroupPathSequenceSelectData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GroupPathSequenceSelectData.swift; sourceTree = "<group>"; };
+		C8D22DFF2E010A47001A2BDA /* GatewayViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GatewayViewController.swift; sourceTree = "<group>"; };
+		C8D22E1C2E04100D001A2BDA /* DeviceAddProfessionalModeController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceAddProfessionalModeController.swift; sourceTree = "<group>"; };
+		C8D22E1F2E041020001A2BDA /* DeviceAddClassicModeController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceAddClassicModeController.swift; sourceTree = "<group>"; };
 		C8D58F652C1D34090066B770 /* CloudSynchronizationManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CloudSynchronizationManager.swift; sourceTree = "<group>"; };
 		C8D6636C2BFED12B00BFF81A /* Keychain.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Keychain.swift; sourceTree = "<group>"; };
 		C8D6636E2BFEDDC900BFF81A /* ImportData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImportData.swift; sourceTree = "<group>"; };
@@ -1789,6 +1798,8 @@
 			children = (
 				C8A3290A2AC568A300BC7389 /* DevicesViewController.swift */,
 				C8A3290C2AC5690D00BC7389 /* DeviceAddViewController.swift */,
+				C8D22E1F2E041020001A2BDA /* DeviceAddClassicModeController.swift */,
+				C8D22E1C2E04100D001A2BDA /* DeviceAddProfessionalModeController.swift */,
 				C88B25732ADD180900CF1AE4 /* DeviceLightViewController.swift */,
 				C89FB7CC2CF079A500411D96 /* DeviceRestoreViewController.swift */,
 				C85CB5F82BB6BE8E006598C0 /* DeviceInformationViewController.swift */,
@@ -2175,6 +2186,7 @@
 			isa = PBXGroup;
 			children = (
 				C8A4C50A2C956262003EE5E5 /* GatewaysViewController.swift */,
+				C8D22DFF2E010A47001A2BDA /* GatewayViewController.swift */,
 			);
 			path = Controller;
 			sourceTree = "<group>";
@@ -2329,8 +2341,8 @@
 				C8BF08612B2840D800144BAC /* GroupViewController.swift */,
 				C8B5A1DD2B2BE9B300728E36 /* GroupMembersViewController.swift */,
 				C8B5A1E12B2C48DE00728E36 /* GroupCheckViewController.swift */,
-				C8BF08582B2705B400144BAC /* GroupAddViewController.swift */,
 				C89AABE32B52376A00A17FB0 /* GroupProfilesViewController.swift */,
+				C8BF08582B2705B400144BAC /* GroupAddViewController.swift */,
 				C8607BE12B90267F00A94F0B /* LightSensorCalibrationViewController.swift */,
 			);
 			path = Controller;
@@ -2815,6 +2827,7 @@
 				C88554312DE6B44C00C8B688 /* MainMenuView.swift in Sources */,
 				C88554322DE6B44C00C8B688 /* ShareBacthListViewCell.swift in Sources */,
 				C88554332DE6B44C00C8B688 /* String+Extension.swift in Sources */,
+				C8D22E002E010A47001A2BDA /* GatewayViewController.swift in Sources */,
 				C88554342DE6B44C00C8B688 /* UIView+Extension.swift in Sources */,
 				C88554352DE6B44C00C8B688 /* ScenesViewCell.swift in Sources */,
 				C88554362DE6B44C00C8B688 /* DeviceLightInfoSectionView.swift in Sources */,
@@ -2882,6 +2895,7 @@
 				C88554742DE6B44C00C8B688 /* NumberOfNeghbourNodeInstructionsController.swift in Sources */,
 				C88554752DE6B44C00C8B688 /* Array+Split.swift in Sources */,
 				C88554762DE6B44C00C8B688 /* DeviceDongleViewController.swift in Sources */,
+				C8D22E1E2E04100D001A2BDA /* DeviceAddProfessionalModeController.swift in Sources */,
 				C88554772DE6B44C00C8B688 /* EnergyHarvestSelectView.swift in Sources */,
 				C88554782DE6B44C00C8B688 /* CalendarChooseView.swift in Sources */,
 				C88554792DE6B44C00C8B688 /* GroupMembersViewController.swift in Sources */,
@@ -2949,6 +2963,7 @@
 				C88554B72DE6B44C00C8B688 /* AppDelegate.swift in Sources */,
 				C88554B82DE6B44C00C8B688 /* UserSettingsViewController.swift in Sources */,
 				C88554B92DE6B44C00C8B688 /* ShareAuthorityFilterView.swift in Sources */,
+				C8D22E212E041020001A2BDA /* DeviceAddClassicModeController.swift in Sources */,
 				C88554BA2DE6B44C00C8B688 /* EnergySelectExportDevicesController.swift in Sources */,
 				C88554BB2DE6B44C00C8B688 /* SharingSettingViewController.swift in Sources */,
 				C88554BC2DE6B44C00C8B688 /* DeviceLightsViewController.swift in Sources */,
@@ -3174,6 +3189,7 @@
 				C898E2ED2ABA8BAD00C71315 /* MainMenuView.swift in Sources */,
 				C830CFDF2C0EC0240035CD5B /* ShareBacthListViewCell.swift in Sources */,
 				C8ACF13C2AA1B2BA00E24B4A /* String+Extension.swift in Sources */,
+				C8D22E012E010A47001A2BDA /* GatewayViewController.swift in Sources */,
 				C8ACF1372AA1B2BA00E24B4A /* UIView+Extension.swift in Sources */,
 				C89F98432B5E5AC8007EABF5 /* ScenesViewCell.swift in Sources */,
 				C89AC9312B62372300744868 /* DeviceLightInfoSectionView.swift in Sources */,
@@ -3241,6 +3257,7 @@
 				C8A18D912DE45CE0009AC6A2 /* NumberOfNeghbourNodeInstructionsController.swift in Sources */,
 				C8A0AC4B2C3E21B200DFE803 /* Array+Split.swift in Sources */,
 				C8DF84572DB639960070CBD9 /* DeviceDongleViewController.swift in Sources */,
+				C8D22E1D2E04100D001A2BDA /* DeviceAddProfessionalModeController.swift in Sources */,
 				C8A7A6B82DC216FA00191E9C /* EnergyHarvestSelectView.swift in Sources */,
 				C8DA6A202DB885C500E32092 /* CalendarChooseView.swift in Sources */,
 				C8B5A1DE2B2BE9B300728E36 /* GroupMembersViewController.swift in Sources */,
@@ -3308,6 +3325,7 @@
 				C896B9A82A930BA800217512 /* AppDelegate.swift in Sources */,
 				C85BC5F22C3BEEF8002D4CB6 /* UserSettingsViewController.swift in Sources */,
 				C8699DB72C09661700424A60 /* ShareAuthorityFilterView.swift in Sources */,
+				C8D22E202E041020001A2BDA /* DeviceAddClassicModeController.swift in Sources */,
 				C8BA436B2DC0D75A00018392 /* EnergySelectExportDevicesController.swift in Sources */,
 				C884EF7B2C05C9C500B5F869 /* SharingSettingViewController.swift in Sources */,
 				C89FD66B2C89845D00DE431D /* DeviceLightsViewController.swift in Sources */,
@@ -3657,7 +3675,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.0.5;
+				MARKETING_VERSION = 1.0.6;
 				PRODUCT_BUNDLE_IDENTIFIER = com.azoula.sunsmart;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
@@ -3698,7 +3716,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.0.5;
+				MARKETING_VERSION = 1.0.6;
 				PRODUCT_BUNDLE_IDENTIFIER = com.azoula.sunsmart;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";

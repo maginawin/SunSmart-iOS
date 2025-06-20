@@ -93,8 +93,8 @@ class GroupPathSequencePathViewCell: UITableViewCell {
     private var flowLayout: GroupPathSequencePathLayout!
     private var collectionView: UICollectionView!
     
-    private let colCount: Int = 5
-    
+    private let colCount: Int = isIPad ? 8 : 5
+    private let itemHeight = isIPad ? SCRYFrom(90) : SCRYFrom(62)
     var path: GroupProximityLightingSequencePath!
     private var pathIndex: Int = 0
     
@@ -130,7 +130,7 @@ class GroupPathSequencePathViewCell: UITableViewCell {
         self.path = path
         let row = ceil(Double(path.items.count + 2) / Double(colCount))
         collectionView.snp.updateConstraints { make in
-            make.height.equalTo(row * SCRYFrom(62) + (row - 1) * flowLayout.minimumLineSpacing + collectionView.contentInset.top + collectionView.contentInset.bottom)
+            make.height.equalTo(row * itemHeight + (row - 1) * flowLayout.minimumLineSpacing + collectionView.contentInset.top + collectionView.contentInset.bottom)
         }
         if reloadCollectionView {
             collectionView.reloadData()
@@ -140,6 +140,8 @@ class GroupPathSequencePathViewCell: UITableViewCell {
     private func setupUI() {
         
         flowLayout = GroupPathSequencePathLayout()
+        flowLayout.colCount = colCount
+        flowLayout.itemHeight = itemHeight
         flowLayout.minimumInteritemSpacing = SCRXFrom(18)
         flowLayout.minimumLineSpacing = SCRYFrom(8)
         
@@ -332,22 +334,36 @@ extension GroupPathSequencePathViewCell: UICollectionViewDataSource, UICollectio
                     var index = indexPath.row
                     // 奇数行，排列为倒序，需要将方向调转
                     if indexPath.item / colCount % 2 == 1 {
-                        index = min(indexPath.row - 1, 0)
+                        index = max(indexPath.row - 1, 0)
                     }
                     self.delegate?.cell(self, didAddItem: 1, insertIndex: index)
                 case .insertLeft:
-                    var index = min(indexPath.row - 1, 0)
+                    var index = max(indexPath.row - 1, 0)
                     // 奇数行，排列为倒序，需要将方向调转
                     if indexPath.item / colCount % 2 == 1 {
                         index = indexPath.row
                     }
                     self.delegate?.cell(self, didAddItem: 1, insertIndex: index)
                 case .startLeft:
-                    self.selectPathData?.direction = .left
-                    self.delegate?.cell(self, didSelectDirection: pathItem, direction: .left)
+                    // 奇数行，排列为倒序，需要将方向调转
+                    var direction: PathDirection!
+                    if indexPath.item / colCount % 2 == 1 {
+                        direction = .right
+                    }else {
+                        direction = .left
+                    }
+                    self.selectPathData?.direction = direction
+                    self.delegate?.cell(self, didSelectDirection: pathItem, direction: direction)
                 case .startRight:
-                    self.selectPathData?.direction = .right
-                    self.delegate?.cell(self, didSelectDirection: pathItem, direction: .right)
+                    // 奇数行，排列为倒序，需要将方向调转
+                    var direction: PathDirection!
+                    if indexPath.item / colCount % 2 == 1 {
+                        direction = .left
+                    }else {
+                        direction = .right
+                    }
+                    self.selectPathData?.direction = direction
+                    self.delegate?.cell(self, didSelectDirection: pathItem, direction: direction)
                 case .identify:
                     self.delegate?.cell(self, deviceIdentify: pathItem)
                 case .remove:
@@ -405,13 +421,16 @@ class GroupPathSequencePathItem: UICollectionViewCell {
         
         setupUI()
         
-        boxView.layer.cornerRadius = self.width * 0.5
     }
     
     required init?(coder: NSCoder) {
         fatalError("init(coder:) has not been implemented")
     }
 
+    override func layoutSubviews() {
+        super.layoutSubviews()
+        boxView.layer.cornerRadius = self.width * 0.5
+    }
     
     private func setupUI() {
         
@@ -435,7 +454,7 @@ class GroupPathSequencePathItem: UICollectionViewCell {
         boxView.addSubview(iconImageView)
         iconImageView.snp.makeConstraints { make in
             make.centerX.equalToSuperview()
-            make.top.equalTo(SCRYFrom(3))
+            make.top.equalTo(SCRYFrom(isIPad ? 7 : 3))
         }
         
         nameLabel = UILabel(text: "ID001", textColor: SubText_Color, fontSize: 12, fontWeight: .light, fit: false)

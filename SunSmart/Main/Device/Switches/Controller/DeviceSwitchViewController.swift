@@ -198,7 +198,8 @@ class DeviceSwitchViewController: UIViewController {
             NotificationCenter.default.post(name: .init(spaceDataChangedNotificaitonName), object: SpaceChangeDataType.common)
             XWHUDManager.showSuccessTipHUD("done!".localizedString)
             DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) {[weak self] in
-                self?.dismiss(animated: true)
+                self?.fineshed()
+//                self?.dismiss(animated: true)
             }
             return
         }
@@ -341,7 +342,7 @@ class DeviceSwitchViewController: UIViewController {
             make.height.equalTo(SCRYFrom(40))
         }
         
-        saveBtn = UIButton(title: "save".localizedString, titleSize: 16, titleWeight: .light, titleColor: Bar_Color, target: self, action: #selector(saveBtnAction))
+        saveBtn = UIButton(title: "save".localizedString, titleSize: 16, titleWeight: .light, titleColor: Title_Done_Color, target: self, action: #selector(saveBtnAction))
         bottomView.addSubview(saveBtn)
         saveBtn.snp.makeConstraints { make in
             make.right.top.equalToSuperview()
@@ -349,7 +350,7 @@ class DeviceSwitchViewController: UIViewController {
             make.height.equalTo(deleteBtn)
         }
         
-        createBtn = UIButton(title: "CREATE".localizedString, titleSize: 16, titleWeight: .light, titleColor: Bar_Color, target: self, action: #selector(saveBtnAction))
+        createBtn = UIButton(title: "CREATE".localizedString, titleSize: 16, titleWeight: .light, titleColor: Title_Done_Color, target: self, action: #selector(saveBtnAction))
         createBtn.isHidden = true
         bottomView.addSubview(createBtn)
         createBtn.snp.makeConstraints { make in
@@ -395,10 +396,10 @@ class DeviceSwitchViewController: UIViewController {
             saveBtn.setTitleColor(Message_Color, for: .normal)
         }else {
             createBtn.isUserInteractionEnabled = true
-            createBtn.setTitleColor(Bar_Color, for: .normal)
+            createBtn.setTitleColor(Title_Done_Color, for: .normal)
             
             saveBtn.isUserInteractionEnabled = true
-            saveBtn.setTitleColor(Bar_Color, for: .normal)
+            saveBtn.setTitleColor(Title_Done_Color, for: .normal)
         }
         
         self.isModalInPresentation = !(setSwitchData == (switchData ?? DeviceSwitchData.default()))

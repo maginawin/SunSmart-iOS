@@ -38,7 +38,7 @@ class GroupPathSequenceAddDeviceCell: UICollectionViewCell {
         contentView.addSubview(iconImageView)
         iconImageView.snp.makeConstraints { make in
             make.centerX.equalToSuperview()
-            make.top.equalTo(SCRYFrom(3))
+            make.top.equalTo(isIPad ? SCRYFrom(8) : SCRYFrom(3))
         }
         
         nameLabel = UILabel(text: "ID001", textColor: SubText_Color, fontSize: 12, fontWeight: .light, fit: false)

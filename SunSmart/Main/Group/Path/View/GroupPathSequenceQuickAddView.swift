@@ -134,14 +134,14 @@ class GroupPathSequenceQuickAddView: UIView {
     }
     
     @objc private func addTypeSelectAction() {
-        var menuWidth = SCRXFrom(256)
+        var menuWidth = isIPad ? SCRXFrom(300) : SCRXFrom(256)
         let btnPoint = CGPoint(x: self.width - menuWidth, y: arrowImageView.frame.maxY)
         let windowPoint = self.convert(btnPoint, to: UIApplication.shared.keyWindow())
         
         var titles = ["quick_add_ignore_added_devices".localizedString, "quick_add_show_added_devices".localizedString]
         if !isSequence {
             titles = ["quick_add_ignore_added_devices".localizedString, "zone_quick_add_show_added_devices".localizedString]
-            menuWidth = SCRXFrom(270)
+            menuWidth += SCRXFrom(14)
         }
       
         TitleSelectView.show(titles: titles, style: .default, anchorPoint: windowPoint, menuWidth: menuWidth, itemHeight: SCRYFrom(44), titleFont: UIFont.systemFont(ofSize: 14, weight: .light)) {[weak self] index in

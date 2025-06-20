@@ -263,19 +263,19 @@ extension SpaceData {
                     if let data = try? jsonEncoder.encode(node.sceneExecuteDatas), let scenesDatas = try? JSONSerialization.jsonObject(with: data) as? [[String: Any]] {
                         nodeDict.updateValue(scenesDatas, forKey: "scenesDatas")
                     }
-//                                    let scenesDatas = node.sceneExecuteDatas.map({ data in
-//                                        [
-//                                            "sceneNumber" : data.sceneNumber,
-//                                            "isOn" : data.isOn,
-//                                            "lightness" : data.lightness,
-//                                            "cct" : data.cct,
-//                                            "hue" : data.hue,
-//                                            "saturation" : data.saturation,
-//                                            "state" : data.state
-//                                        ]
-//                                    })
-//                                    nodeDict.updateValue(scenesDatas, forKey: "scenesDatas")
-//                     .filter({ $0.value.isValid })
+                    //                                    let scenesDatas = node.sceneExecuteDatas.map({ data in
+                    //                                        [
+                    //                                            "sceneNumber" : data.sceneNumber,
+                    //                                            "isOn" : data.isOn,
+                    //                                            "lightness" : data.lightness,
+                    //                                            "cct" : data.cct,
+                    //                                            "hue" : data.hue,
+                    //                                            "saturation" : data.saturation,
+                    //                                            "state" : data.state
+                    //                                        ]
+                    //                                    })
+                    //                                    nodeDict.updateValue(scenesDatas, forKey: "scenesDatas")
+                    //                     .filter({ $0.value.isValid })
                     let scheduleDatas = node.schedulerActions.map { (key: Int, value: SchedulerRegistryEntry) in
                         [
                             "id" : key,
@@ -300,6 +300,12 @@ extension SpaceData {
                     if node.sensorCalibrated, let daylightCalibrationValue = node.daylightCalibrationValue {
                         nodeDict.updateValue(daylightCalibrationValue, forKey: "daylightCalibrationValue")
                     }
+                    // pwm频率
+                    if let pwmFrequency = node.pwmFrequency {
+                        nodeDict.updateValue(pwmFrequency, forKey: "pwmFrequency")
+                    }
+                    // 阶段功率
+                    nodeDict.updateValue(node.phaseEnergyConsumptions.map({ ["percent": $0.percent, "power": $0.power] }), forKey: "ratedPowerPhases")
                     
                     nodeDicts.append(nodeDict)
                 }
@@ -346,6 +352,19 @@ extension SpaceData {
                     if let scenesDatas = try? jsonEncoder.encode(group.info.sceneExecuteDatas), let scenesDicts = try? JSONSerialization.jsonObject(with: scenesDatas) as? [[String : Any]] {
                         groupDict.updateValue(scenesDicts, forKey: "scenesDatas")
                     }
+                    
+                    // 临近照明
+                    if let proximityLightingPath = group.info.proximityLightingPath {
+                        
+                        let pathDicts = proximityLightingPath.paths.map({ path in
+                            ["items": path.items.map({ Int($0.address ?? 0) })]
+                        })
+                        let zoneDicts = proximityLightingPath.zones.map({ zone in
+                            ["addresses": zone.addresses.map({ Int($0) })]
+                        })
+                        groupDict.updateValue(["paths": pathDicts, "zones": zoneDicts], forKey: "proximityLightingPath")
+                    }
+                    
                     groupDicts.append(groupDict)
                 }
             }

@@ -111,6 +111,8 @@ class GroupPathSequencePageController: WMPageController {
     
     @objc private func saveAction() {
    
+        var edit = false
+        let equalPath = groupPath.copy()
         if let vc = self.sequenceVc {
             vc.stopSetPath()
             groupPath.paths = vc.setPaths
@@ -119,11 +121,17 @@ class GroupPathSequencePageController: WMPageController {
             vc.stopSetZone()
             groupPath.zones = vc.setZones
         }
+        if !(equalPath == groupPath) {
+            edit = true
+        }
         group.info.proximityLightingPath = groupPath
         group.info.save()
 
         guard group.nodes.contains(where: { $0.getNodeSyncProximityLighting() != nil }) else {
             navigationController?.popViewController(animated: true)
+            if edit {
+                NotificationCenter.default.post(name: .init(spaceDataChangedNotificaitonName), object: SpaceChangeDataType.common)
+            }
             return
         }
         

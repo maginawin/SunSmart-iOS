@@ -109,7 +109,7 @@
 "device_scan_notfound_message" = "- 靠近设备\n- 确保设备已通电\n- 设备处于可配网状态";
 "stop_waiting" = "停止等待";
 "device_add_adding" = "添加中";
-"device_add_failed" = "添加失败";
+"device_identify_failed" = "失败";
 "device_add_waiting" = "等待中";
 "device_add_connecting" = "连接中";
 "device" = "设备";
@@ -1212,3 +1212,6 @@
 "group_set_the_path_sequence" = " Set the path sequence";
 "device_trigger_curve" = "Device trigger curve";
 "energy_incomplete_message" = "Not all data has been collected";
+
+"classic_mode" = "Classic Mode";
+"professional_mode" = "Professional Mode";

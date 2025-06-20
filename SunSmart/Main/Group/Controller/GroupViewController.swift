@@ -135,6 +135,12 @@ class GroupViewController: UIViewController {
         
         MeshLibManager.manager.messageDelegate = self
         
+        // 检查连接的设备白名单有该组
+        let proxyFilter = MeshNetworkManager.instance.proxyFilter
+        if proxyFilter.proxy != nil, !proxyFilter.addresses.contains(group.address.address) {
+            proxyFilter.add(address: group.address.address)
+        }
+        
     }
     
     override func viewDidAppear(_ animated: Bool) {
@@ -284,7 +290,7 @@ class GroupViewController: UIViewController {
         }
         
         // 临近照明提示路径设置
-        if profileType == .proximityLighting, group.info.proximityLightingPath?.isEmpty() ?? true {
+        if profileType == .proximityLighting, group.info.proximityLightingPath?.isEmpty() ?? true, space.groupOperates.contains(.edit) {
             setPathBtn.isHidden = false
             setPathLabel.isHidden = false
         }else {
@@ -751,14 +757,15 @@ class GroupViewController: UIViewController {
         
         var offImageName = "group_off"
         var onImageName = "group_on"
-        var disableImageName = "group_control_disable"
+//        var disableImageName = "group_control_disable"
         if isIPad {
             offImageName = "group_off_big"
             onImageName = "group_on_big"
-            disableImageName = "group_control_disable_big"
+//            disableImageName = "group_control_disable_big"
         }
         onoffBtn = UIButton(normalImageName: offImageName, selectedImageName: onImageName, target: self, action: #selector(onoffBtnClick))
-        onoffBtn.setImage(UIImage(named: disableImageName), for: .disabled)
+        
+//        onoffBtn.setImage(UIImage(named: offImageName), for: .disabled)
         view.addSubview(onoffBtn)
         onoffBtn.snp.makeConstraints { make in
             if isIPad {
@@ -937,6 +944,14 @@ extension GroupViewController: MeshLibManagerMessageDelegate {
                 if case .presentAmbientLightLevel = property, sensorNode.primaryUnicastAddress == group.info.ambientLightSensorNode?.primaryUnicastAddress {
                     sensorView?.reloadSensorData(sensor: sensorNode, sensorType: .ambientLight)
                 }
+            }
+        }
+        
+        /// 邻近照明pir触发信号
+        if let vendorSet = message as? SunricherVendorSet, case .proximityLightingTrigger(_, let source) = vendorSet.function {
+            if let sensorNode = group.sensorNodes.first(where: { $0.contains(elementWithAddress: source) }), sensorNode.presenceDetectedSensorModel != nil {
+                sensorNode.occupancyState = true
+                sensorView?.reloadSensorData(sensor: sensorNode, sensorType: .presenceDetected)
             }
         }
         

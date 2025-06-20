@@ -212,7 +212,8 @@ class SpaceViewController: WMPageController {
 
     
     deinit {
-        if MeshLibManager.manager.meshNetworkManager?.meshNetwork?.uuid.uuidString == space.meshUUID {
+        
+        if MeshNetworkManager.instance.meshNetwork?.uuid.uuidString == space.meshUUID {
             MeshLibManager.manager.meshNetworkDisconnect()
         }
         MeshLibManager.manager.removeObserver(self, forKeyPath: "bluetoothState")

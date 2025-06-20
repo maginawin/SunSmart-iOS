@@ -13,6 +13,7 @@ class GroupPathSequencePathLayout: UICollectionViewFlowLayout {
     private var cornerLineWidth: CGFloat = 8
     private var lineColor: UIColor = Message_Color
     var colCount: Int = 5
+    var itemHeight: CGFloat = SCRYFrom(64)
     
     // 布局缓存
     private var itemAttributes: [UICollectionViewLayoutAttributes] = []
@@ -37,7 +38,7 @@ class GroupPathSequencePathLayout: UICollectionViewFlowLayout {
         itemWidth = CGFloat(floorf(Float(itemWidth) * 100) / 100.0)
         //        var itemHeight = itemWidth
         if itemSize == .zero || itemSize == CGSize(width: 50, height: 50) {
-            itemSize = CGSize(width: itemWidth, height: SCRYFrom(62))
+            itemSize = CGSize(width: itemWidth, height: itemHeight)
         }
         
         // 重置缓存

@@ -195,23 +195,6 @@ class GroupPathSequenceTriggerZoneController: UIViewController {
     
     private func setupUI() {
         
-        tableView = UITableView(frame: .zero, style: .grouped)
-        tableView.separatorStyle = .none
-        tableView.backgroundColor = RGB(236, 238, 239)
-        tableView.layer.cornerRadius = SCRYFrom(10)
-        tableView.register(GroupPathSequencePathHeaderView.classForCoder(), forHeaderFooterViewReuseIdentifier: "header")
-        tableView.register(GroupPathSequenceTriggerZoneViewCell.classForCoder(), forCellReuseIdentifier: "cell")
-        tableView.estimatedRowHeight = UITableView.automaticDimension
-        tableView.dataSource = self
-        tableView.delegate = self
-        view.addSubview(tableView)
-        tableView.snp.makeConstraints { make in
-            make.left.equalTo(SCRXFrom(16))
-            make.right.equalTo(SCRXFrom(-16))
-            make.top.equalTo(SCRYFrom(16))
-            make.bottom.equalTo(-SCRYFrom(178) - kSafeAreaBottomHeight)
-        }
-        
         deviceAddView = GroupPathSequenceDeviceAddView()
         deviceAddView.isSequence = false
         deviceAddView.quickAddView.guideView.step1View.titleLabel.text = "zone_add_step1".localizedString
@@ -232,6 +215,26 @@ class GroupPathSequenceTriggerZoneController: UIViewController {
             make.bottom.equalTo(-max(kSafeAreaBottomHeight, SCRYFrom(16)))
             make.height.greaterThanOrEqualTo(SCRYFrom(163))
         }
+        
+        tableView = UITableView(frame: .zero, style: .grouped)
+        tableView.separatorStyle = .none
+        tableView.backgroundColor = RGB(236, 238, 239)
+        tableView.layer.cornerRadius = SCRYFrom(10)
+        tableView.register(GroupPathSequencePathHeaderView.classForCoder(), forHeaderFooterViewReuseIdentifier: "header")
+        tableView.register(GroupPathSequenceTriggerZoneViewCell.classForCoder(), forCellReuseIdentifier: "cell")
+        tableView.estimatedRowHeight = isIPad ? SCRYFrom(90) : SCRYFrom(60)
+        tableView.rowHeight = UITableView.automaticDimension
+        tableView.dataSource = self
+        tableView.delegate = self
+        view.addSubview(tableView)
+        tableView.snp.makeConstraints { make in
+            make.left.equalTo(SCRXFrom(16))
+            make.right.equalTo(SCRXFrom(-16))
+            make.top.equalTo(SCRYFrom(16))
+            make.bottom.equalTo(deviceAddView.snp.top)
+        }
+        
+        
         
     }
 
@@ -494,14 +497,25 @@ extension GroupPathSequenceTriggerZoneController: MeshLibManagerMessageDelegate 
                             didReceiveMessage message: MeshMessage,
                             sentFrom source: Address, to destination: Address) {
         // 确保是占用传感器model发出的数据
-        guard let zone = selectZone,
-            let sensorStatus = message as? SensorStatus,
-              let pirSensorValue = sensorStatus.values.first(where: { $0.property.id == DeviceProperty.presenceDetected.id }), case .bool(let presenceDetected) = pirSensorValue.value else {
+        guard let zone = selectZone else {
             return
+        }
+        // 触发设备地址
+        var triggerAddress = source
+        // pir是否触发
+        var pirTrigger = false
+        if let sensorStatus = message as? SensorStatus,
+           let pirSensorValue = sensorStatus.values.first(where: { $0.property.id == DeviceProperty.presenceDetected.id }), case .bool(let presenceDetected) = pirSensorValue.value {
+            pirTrigger = presenceDetected
+        }
+        /// 邻近照明pir触发信号
+        if let vendorSet = message as? SunricherVendorSet, case .proximityLightingTrigger(_, let source) = vendorSet.function {
+            pirTrigger = true
+            triggerAddress = source
         }
         
         // 判断是否感应及感应的设备
-        guard presenceDetected, let node = manager.realNodes.first(where: { $0.contains(elementWithAddress: source) }), group.nodes.contains(node), deviceAddMode == .quickAdd || deviceAddMode == .triggerAdd else {
+        guard pirTrigger, let node = manager.realNodes.first(where: { $0.contains(elementWithAddress: triggerAddress) }), group.nodes.contains(node), deviceAddMode == .quickAdd || deviceAddMode == .triggerAdd else {
             return
         }
         

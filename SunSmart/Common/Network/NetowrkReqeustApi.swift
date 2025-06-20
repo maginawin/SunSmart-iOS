@@ -369,7 +369,7 @@ extension NetowrkReqeustApi: TargetType {
             // 是否回收废弃地址数据
             if let exclusions = exclusions {
                 parameters.updateValue(exclusions.map({ ["ivIndex": $0.ivIndex, "addresses": $0.addresses] }), forKey: "exclusions")
-            }
+            }   
             return parameters
         case .spaceActiveMembers(let siteId, let spaceId):
             return ["siteId": siteId, "spaceId": spaceId]

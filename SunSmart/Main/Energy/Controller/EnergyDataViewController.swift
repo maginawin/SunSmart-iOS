@@ -87,7 +87,13 @@ extension EnergyDataViewController {
     
     
     override func menuView(_ menu: WMMenuView!, shouldSelesctedIndex index: Int) -> Bool {
-        return !XWHUDManager.isVisible()
+        #if Archipelago
+        if index == 1 {
+            XWHUDManager.showTipHUD("under_development".localizedString, isLineFeed: true)
+            return false
+        }
+        #endif
+        return true
 //        return index < 3
     }
     

@@ -114,6 +114,7 @@ class SpaceNewCreationProcessController: UIViewController {
                 vc.preferredContentSize = iPadPreferredContentSize
             }
             present(NavigationViewController(rootViewController: vc), animated: true)
+            NotificationCenter.default.post(name: .init(spaceMenuIndexChangeNotificaitonName), object: 0)
         }
         
     }

@@ -74,7 +74,7 @@ class GroupMembersViewController: UIViewController {
         super.viewWillAppear(animated)
         
 //        if space.nodes.filter({ $0.group == nil || $0.group?.address.address == group.address.address }).count != nodes.count || group.nodes.count != selectNodes.count {
-        nodes = MeshNetworkManager.instance.realNodes.filter({ $0.group == nil || $0.group?.address.address == group.address.address })
+        nodes = MeshNetworkManager.instance.realNodes.filter({ $0.deviceType != .gateway && ($0.group == nil || $0.group?.address.address == group.address.address) })
         
         selectNodes.append(contentsOf: nodes.filter({ $0.group?.address.address == group.address.address }).filter({ !selectNodes.contains($0) && $0.group?.address.address == group.address.address }))
 //        }
@@ -85,6 +85,13 @@ class GroupMembersViewController: UIViewController {
             }
         }
         MeshLibManager.manager.messageDelegate = self
+        
+//        if collectionView.frame != .zero {
+            updateEmptyUI()
+//        }
+        
+        collectionView.reloadData()
+        updateFunctionView()
     }
     
     override func viewDidAppear(_ animated: Bool) {
@@ -93,14 +100,18 @@ class GroupMembersViewController: UIViewController {
             navigationController?.interactivePopGestureRecognizer?.isEnabled = false
         }
         
-        updateEmptyUI()
-        collectionView.reloadData()
-        updateFunctionView()
+ 
     }
     
     override func viewDidDisappear(_ animated: Bool) {
         super.viewDidDisappear(animated)
         navigationController?.interactivePopGestureRecognizer?.isEnabled = true
+    }
+    
+    override func viewDidLayoutSubviews() {
+        super.viewDidLayoutSubviews()
+        
+//        updateEmptyUI()
     }
     
     deinit {

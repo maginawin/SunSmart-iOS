@@ -223,6 +223,16 @@ class GroupPathSequenceViewController: UIViewController {
     
     private func setupUI() {
         
+        deviceAddView = GroupPathSequenceDeviceAddView()
+        deviceAddView.delegate = self
+        view.addSubview(deviceAddView)
+        deviceAddView.snp.makeConstraints { make in
+//            make.left.right.equalTo(tableView)
+            make.left.right.equalToSuperview()
+            make.bottom.equalTo(-max(kSafeAreaBottomHeight, SCRYFrom(16)))
+            make.height.greaterThanOrEqualTo(isIPad ? SCRXFrom(183) : SCRYFrom(163))
+        }
+        
         tableView = UITableView(frame: .zero, style: .grouped)
         tableView.separatorStyle = .none
         tableView.backgroundColor = RGB(236, 238, 239)
@@ -237,18 +247,10 @@ class GroupPathSequenceViewController: UIViewController {
             make.left.equalTo(SCRXFrom(16))
             make.right.equalTo(SCRXFrom(-16))
             make.top.equalTo(SCRYFrom(16))
-            make.bottom.equalTo(-SCRYFrom(178) - kSafeAreaBottomHeight)
+            make.bottom.equalTo(deviceAddView.snp.top)
         }
         
-        deviceAddView = GroupPathSequenceDeviceAddView()
-        deviceAddView.delegate = self
-        view.addSubview(deviceAddView)
-        deviceAddView.snp.makeConstraints { make in
-//            make.left.right.equalTo(tableView)
-            make.left.right.equalToSuperview()
-            make.bottom.equalTo(-max(kSafeAreaBottomHeight, SCRYFrom(16)))
-            make.height.greaterThanOrEqualTo(SCRYFrom(163))
-        }
+      
         
     }
 
@@ -584,14 +586,25 @@ extension GroupPathSequenceViewController: MeshLibManagerMessageDelegate {
                             didReceiveMessage message: MeshMessage,
                             sentFrom source: Address, to destination: Address) {
         // 确保是占用传感器model发出的数据
-        guard selectPathData.isSelect,
-            let sensorStatus = message as? SensorStatus,
-              let pirSensorValue = sensorStatus.values.first(where: { $0.property.id == DeviceProperty.presenceDetected.id }), case .bool(let presenceDetected) = pirSensorValue.value else {
+        guard selectPathData.isSelect else {
             return
+        }
+        // 触发设备地址
+        var triggerAddress = source
+        // pir是否触发
+        var pirTrigger = false
+        if let sensorStatus = message as? SensorStatus,
+           let pirSensorValue = sensorStatus.values.first(where: { $0.property.id == DeviceProperty.presenceDetected.id }), case .bool(let presenceDetected) = pirSensorValue.value {
+            pirTrigger = presenceDetected
+        }
+        /// 邻近照明pir触发信号
+        if let vendorSet = message as? SunricherVendorSet, case .proximityLightingTrigger(_, let source) = vendorSet.function {
+            pirTrigger = true
+            triggerAddress = source
         }
         
         // 判断是否感应及感应的设备
-        guard presenceDetected, let node = manager.realNodes.first(where: { $0.contains(elementWithAddress: source) }), deviceAddMode == .quickAdd || deviceAddMode == .triggerAdd else {
+        guard pirTrigger, let node = manager.realNodes.first(where: { $0.contains(elementWithAddress: triggerAddress) }), deviceAddMode == .quickAdd || deviceAddMode == .triggerAdd else {
             return
         }
         

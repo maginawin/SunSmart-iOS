@@ -95,7 +95,7 @@ class DeviceAddViewCell: UITableViewCell {
 //                    deviceImageView.layer.addOpacityAnimation(fromOpacity: 1, toOpacity: 0, duration: 0.5, repeatCount: 10, animationKey: "identify")
                     identifyAnimationView.layer.addScaleAnimation(fromScale: 0, toScale: 1, duration: 1, repeatCount: .max, timingName: .easeInEaseOut, animationKey: "identify")
                 }else if device.addState == .identifyFail {
-                    identifyStateLabel.text = "device_add_failed".localizedString
+                    identifyStateLabel.text = "device_identify_failed".localizedString
                     identifyStateLabel.textColor = Red_Color
                 }
                 let textSize = identifyStateLabel.sizeThatFits(CGSize(width: 120, height: 30))

@@ -30,8 +30,8 @@ class GroupPathSequenceManuallyAddView: UIView {
     private var pageControl: UIPageControl!
     private var noDevicesLabel: UILabel!
     /// 每行几个
-    let colNum: Int = 5
-    
+    let colNum: Int = isIPad ? 8 : 5
+
     /// 行数
     var rowNum: Int = 1 {
         didSet {
@@ -100,7 +100,7 @@ class GroupPathSequenceManuallyAddView: UIView {
     }
     
     @objc private func addTypeSelectAction() {
-        let menuWidth = SCRXFrom(256)
+        let menuWidth = isIPad ? SCRXFrom(300) : SCRXFrom(256)
         let btnPoint = CGPoint(x: self.width - menuWidth, y: arrowImageView.frame.maxY)
         let windowPoint = self.convert(btnPoint, to: UIApplication.shared.keyWindow())
         var titles = ["trigger_add_hide_added_devices".localizedString, "trigger_add_show_added_devices".localizedString]

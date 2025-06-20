@@ -31,7 +31,7 @@ class GroupPathSequenceTriggerAddView: UIView {
     private var pageControl: UIPageControl!
     private var noDevicesLabel: UILabel!
     
-    let colCount: Int = 5
+    let colCount: Int = isIPad ? 8 : 5
     
     var guideView: GroupPathSequenceDeviceAddStepView!
     
@@ -67,7 +67,7 @@ class GroupPathSequenceTriggerAddView: UIView {
     }
 
     @objc private func addTypeSelectAction() {
-        let menuWidth = SCRXFrom(256)
+        let menuWidth = isIPad ? SCRXFrom(300) : SCRXFrom(256)
         let btnPoint = CGPoint(x: self.width - menuWidth, y: arrowImageView.frame.maxY)
         let windowPoint = self.convert(btnPoint, to: UIApplication.shared.keyWindow())
         var titles = ["trigger_add_hide_added_devices".localizedString, "trigger_add_show_added_devices".localizedString]
@@ -139,7 +139,7 @@ class GroupPathSequenceTriggerAddView: UIView {
         collectionView.snp.makeConstraints { make in
             make.left.right.equalToSuperview()
             make.top.equalTo(SCRYFrom(50))
-            make.height.equalTo(SCRYFrom(44))
+            make.height.equalTo(isIPad ? SCRYFrom(64) : SCRYFrom(44))
         }
         
         noDevicesLabel = UILabel(text: "filter_no_devices".localizedString, textColor: Message_Color, fontSize: 14, fontWeight: .light)

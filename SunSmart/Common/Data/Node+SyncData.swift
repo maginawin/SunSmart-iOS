@@ -489,7 +489,11 @@ extension Node {
             let daylightType = groupProfile.type == .occupancy_daylight || groupProfile.type == .vacancy_daylight || groupProfile.type == .daylight
         
             // 占用类型
-            let occupancyType = groupProfile.type == .occupancy_daylight || groupProfile.type == .vacancy_daylight || groupProfile.type == .occupancy || groupProfile.type == .vacancy || groupProfile.type == .proximityLighting
+            var occupancyType = groupProfile.type == .occupancy_daylight || groupProfile.type == .vacancy_daylight || groupProfile.type == .occupancy || groupProfile.type == .vacancy //|| groupProfile.type == .proximityLighting
+            
+            if groupProfile.type == .proximityLighting, group.info.proximityLightingPath == nil ||  group.info.proximityLightingPath!.isEmpty() || !group.info.proximityLightingPath!.paths.contains(where: { $0.nodes.count > 0 }) {
+                occupancyType = true
+            }
             // 组内是否启用了光照传感器
             var daylightEnabled = false
             if let daylightNode = group.info.ambientLightSensorNode, daylightNode.sensorCalibrated || daylightNode.restoreData?.daylightCalibrationValue != nil {
@@ -532,7 +536,7 @@ extension Node {
                    syncProfile.append(.mode(enabled: true))
                }
              
-               if groupProfile.type == .occupancy_daylight || groupProfile.type == .occupancy {
+               if groupProfile.type == .occupancy_daylight || groupProfile.type == .occupancy || groupProfile.type == .proximityLighting {
                    if lightLCProperty.occupancyMode == nil || !lightLCProperty.occupancyMode! {
                        syncProfile.append(.occupancyMode(enabled: true))
                    }
@@ -712,7 +716,7 @@ extension Node {
             }
             
             // 移动感应配置
-            if occupancyType, self.presenceDetectedSensorModel != nil {
+            if occupancyType || groupProfile.type == .proximityLighting, self.presenceDetectedSensorModel != nil {
                 // profile 0~100% => 0~255
                 let resultValue = UInt8(min(Int(Float(groupProfile.sensitivity) * 2.55), 255))
                 if self.motionSensitivity != resultValue {
@@ -995,7 +999,9 @@ extension Node {
                 neighborAddresses.append(contentsOf: zoneNeighborAddresses)
             }
         }
-
+//        let proximityLightingNeighborNodes = self.proximityLightingNeighborAddresses.compactMap({ self.network?.node(withAddress: $0) })
+//        print("node: \((self.name ?? "", self.primaryUnicastAddress)) neighbors: \(proximityLightingNeighborNodes.compactMap({ ($0.name, $0.primaryUnicastAddress) }))")
+        
         // 需配置的邻居列表与设备是否相符
         if self.proximityLightingNeighborAddresses.sorted() == neighborAddresses.sorted(), self.proximityLightingRelayCount == neighborNumber {
             if !self.proximityLightingEnabled {

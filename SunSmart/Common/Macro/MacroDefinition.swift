@@ -138,6 +138,7 @@ let Purple_Color = RGB(102, 103, 171)
 /// 主色
 let Bar_Color = RGB(213, 32, 39)
 let Bottom_Done_Color = RGB(27, 20, 37)
+let Title_Done_Color = RGB(64, 79, 102)
 let Slider_Color = RGB(213, 32, 39)
 
 #else
@@ -145,6 +146,7 @@ let Slider_Color = RGB(213, 32, 39)
 /// 主色
 let Bar_Color = RGB(102, 103, 171)
 let Bottom_Done_Color = RGB(102, 103, 171)
+let Title_Done_Color = RGB(102, 103, 171)
 let Slider_Color = RGB(255, 167, 44)
 
 #endif

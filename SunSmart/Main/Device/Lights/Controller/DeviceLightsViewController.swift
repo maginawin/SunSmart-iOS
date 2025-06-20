@@ -196,7 +196,7 @@ class DeviceLightsViewController: UIViewController {
         
 //        MeshAPI.sendMessage(message: LightCTLTemperatureRangeGet(), address: .allNodes)
         
-        MeshLibManager.manager.refreshNodesRSSI(withWaitFor: 5, finished: nil)
+//        MeshLibManager.manager.refreshNodesRSSI(withWaitFor: 5, finished: nil)
         if refreshControl.isRefreshing {
             DispatchQueue.main.asyncAfter(deadline: .now() + 5) {[weak self] in
                 guard let self = self else { return }
@@ -593,7 +593,7 @@ class DeviceLightsViewController: UIViewController {
 //        guard MeshLibManager.manager.isMeshNetworkConnected else {
 //            return
 //        }
-        SRAlertView(title: "notification".localizedString, message: "devices_delete_message".localizedString, actions: [.cancelAction, SRAlertAction(title: "alert_item_continue".localizedString, actionHandler: {[weak self] _ in
+        SRAlertView(title: "notification".localizedString, message: "devices_delete_message".localizedString, actions: [.cancelAction, SRAlertAction(title: "alert_item_continue".localizedString, style: .destructive, actionHandler: {[weak self] _ in
             guard let self = self else { return }
             XWHUDManager.showCustomHUD(withMessage: "deleting".localizedString, isWindow: true)
             
@@ -713,10 +713,12 @@ class DeviceLightsViewController: UIViewController {
 //                    $0.saveNodeInfo(meshUUID: self.space.meshUUID, networkKey: self.space.meshNetworkKey)
 //                })
                 if failList.isEmpty { // 全部修复成功
-                    if MeshLibManager.manager.bluetoothState == .poweredOn {
-                        XWHUDManager.showSuccessTipHUD("complete!".localizedString)
+                    if successList.count > 0 {
+                        if MeshLibManager.manager.bluetoothState == .poweredOn {
+                            XWHUDManager.showSuccessTipHUD("complete!".localizedString)
+                        }
+                        self.getNodesState()
                     }
-                    self.getNodesState()
                 }else { // 全部/部分修复失败
                     self.repairFailed(nodes: failList)
                 }
