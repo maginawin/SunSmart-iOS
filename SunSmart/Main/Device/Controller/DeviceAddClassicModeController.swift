@@ -15,7 +15,7 @@ class DeviceAddClassicModeController: UIViewController {
     /// header
     private var headerView: UIView!
     private var nearLabel: UILabel!
-    private var rssiSlider: CustomDeviceSlider!
+    private var rssiSlider: RangeSlider!
     private var farLabel: UILabel!
     private var addDeviceToLabel: UILabel!
     private var addDeviceTargetBtn: UIButton!
@@ -35,10 +35,11 @@ class DeviceAddClassicModeController: UIViewController {
     private var scanDevices: [ProvisioningDevice] = []
     /// 展示的设备list（信号值筛选）
     private var showDevices: [ProvisioningDevice] = []
-    /// 筛选的信号值
-    private var filterRSSI: Int = 0
+    /// 选择的信号值范围
+//    private var filterRSSI: Int = 0
+    private var selectRSSIRange: ClosedRange<Int> = -100 ... -25
     /// 筛选信号值范围
-    private let filterRSSIRange: ClosedRange<Int> = -80 ... -40
+    private let filterRSSIRange: ClosedRange<Int> = -100 ... -25
     /// 添加设备页面状态
     private var state: State = .none
     /// identify中的设备
@@ -67,6 +68,8 @@ class DeviceAddClassicModeController: UIViewController {
     /// 展示的设备类型
     private var showDeviceTypes: [Node.DeviceType] = [.light]
     
+    private var rssiSortTimer: Timer?
+    
     init(space: SpaceData) {
         self.space = space
         super.init(nibName: nil, bundle: nil)
@@ -81,7 +84,7 @@ class DeviceAddClassicModeController: UIViewController {
 
         view.backgroundColor = Background_Color
       
-        filterRSSI = filterRSSIRange.lowerBound
+//        filterRSSI = filterRSSIRange.lowerBound
         
         addToGroup = appointGroup
         bindToDongle = forceBindToDongle
@@ -118,18 +121,18 @@ class DeviceAddClassicModeController: UIViewController {
             if state == .adding {
                 MeshAPI.stopFastAddDevice(finishBack: nil)
             }
-            if self.addSuccessNodes.count > 0 {
-                // 找出未命名的设备
-                let unnamedNodes = addSuccessNodes.filter({ !($0.name?.contains("ID") ?? true) })
-                if unnamedNodes.count > 0 {
-                    unnamedNodes.forEach({
-                        $0.name = MeshNetworkManager.instance.getNextNodeName()
-                        $0.save()
-                    })
-//                    _ = MeshNetworkManager.instance.save()
-                }
-                self.deviceAddCallback?(self.addSuccessNodes)
-            }
+//            if self.addSuccessNodes.count > 0 {
+//                // 找出未命名的设备
+//                let unnamedNodes = addSuccessNodes.filter({ !($0.name?.contains("ID") ?? true) })
+//                if unnamedNodes.count > 0 {
+//                    unnamedNodes.forEach({
+//                        $0.name = MeshNetworkManager.instance.getNextNodeName()
+//                        $0.save()
+//                    })
+////                    _ = MeshNetworkManager.instance.save()
+//                }
+//                self.deviceAddCallback?(self.addSuccessNodes)
+//            }
         // 关闭设置屏幕常亮
         UIApplication.shared.isIdleTimerDisabled = false
 //        }
@@ -150,7 +153,7 @@ class DeviceAddClassicModeController: UIViewController {
     
     private func startScan() {
         
-//        (wm_pageController as? DeviceAddViewController)?.startScan()
+        (wm_pageController as? DeviceAddViewController)?.startScan()
         
         state = .scanning
         
@@ -169,7 +172,15 @@ class DeviceAddClassicModeController: UIViewController {
         MeshAPI.startScanDevice(.max, deviceScan: {[weak self] device in
             guard let self = self else { return }
             // 新发现设备
-            if device.macAddress != nil && !self.scanDevices.contains(where: { $0.peripheral.identifier.uuidString == device.peripheral.identifier.uuidString }) {
+            if device.macAddress != nil && !self.scanDevices.contains(where: { $0.peripheral.identifier.uuidString == device.peripheral.identifier.uuidString }), device.rssi.intValue >= self.filterRSSIRange.lowerBound {
+                
+                if device.rssi.intValue > self.filterRSSIRange.upperBound {
+                    device.rssi = NSNumber(value: self.filterRSSIRange.upperBound)
+                }
+                
+                if device.triggerActionType != nil {
+                    device.activityDate = Date()
+                }
                 
                 self.stopScanTimer()
                 
@@ -195,13 +206,15 @@ class DeviceAddClassicModeController: UIViewController {
                 self.categoryView.isHidden = false
                 
                 // 当前设备信号值在筛选范围内可展示
-                if self.filterRSSI == self.filterRSSIRange.lowerBound || device.rssi.intValue >= self.filterRSSI {
+                
+//                if self.filterRSSI == self.filterRSSIRange.lowerBound || device.rssi.intValue >= self.filterRSSI {
+                if self.selectRSSIRange.contains(device.rssi.intValue) {
                     
                     self.updateDeviceCategoryCount()
-                    
+                    self.startRssiSortTimer()
                     if self.showDeviceTypes.contains(device.deviceType) {
-                            self.showDevices.append(device)
-                            self.tableView.insertRows(at: [IndexPath(row: self.showDevices.count - 1, section: 0)], with: .automatic)
+                        self.showDevices.append(device)
+//                            self.tableView.insertRows(at: [IndexPath(row: self.showDevices.count - 1, section: 0)], with: .automatic)
                     }
                 }
                 
@@ -217,7 +230,7 @@ class DeviceAddClassicModeController: UIViewController {
     @objc private func stopScan() {
 
         
-//        (wm_pageController as? DeviceAddViewController)?.stopScan()
+        (wm_pageController as? DeviceAddViewController)?.stopScan()
         
         scanBtn.isSelected = false
         MeshAPI.stopScan()
@@ -226,13 +239,19 @@ class DeviceAddClassicModeController: UIViewController {
         // 停止扫描设备状态设置为空状态
         scanDevices.forEach({
             $0.addState = .none
-            reloadDeviceState($0)
+//            reloadDeviceState($0)
         })
         
         updateUIState()
         
         stopScanTimer()
+        if rssiSortTimer != nil {
+            devicesRssiSort()
+        }else {
+            tableView.reloadData()
+        }
     }
+    
     // MARK: - Scan Timer
     private func startScanTimer() {
         scanTimer = LCWeakTimer.scheduledTimer(timeInterval: 10, aTarget: self, selector: #selector(showDeviceNotFound), userInfo: nil, repeats: true)
@@ -284,6 +303,26 @@ class DeviceAddClassicModeController: UIViewController {
             NSObject.cancelPreviousPerformRequests(withTarget: self, selector: #selector(self.hideDeviceNotFound), object: nil)
         }
         view.hideEmptyDataView()
+    }
+    
+    // MARK: - 信号排序定时器
+    private func startRssiSortTimer() {
+        
+        rssiSortTimer = LCWeakTimer.scheduledTimer(timeInterval: 0.5, aTarget: self, selector: #selector(devicesRssiSort), userInfo: nil, repeats: false)
+        RunLoop.current.add(rssiSortTimer!, forMode: .common)
+    }
+    
+    /// 设备信号排序定时刷新，避免接收广播包后刷新频率过高
+    @objc private func devicesRssiSort() {
+        
+        rssiSortTimer?.invalidate()
+        rssiSortTimer = nil
+        
+        scanDevices.sort(by: { $0.rssi.intValue >= $1.rssi.intValue })
+//        if showDevices.count > 0 {
+            showDevices.sort(by: { $0.rssi.intValue >= $1.rssi.intValue })
+            tableView.reloadData()
+//        }
     }
     
     // MARK: - Action
@@ -500,10 +539,16 @@ class DeviceAddClassicModeController: UIViewController {
         } identifyFail: {[weak self] _ in
             guard let self = self else { return }
             device.addState = .identifyFail
-            self.identifyDevice = nil
             self.reloadDeviceState(device)
-            if self.state == .identifying {
-                self.updateUIState()
+            DispatchQueue.main.asyncAfter(wallDeadline: .now() + 1) {[weak self] in
+                guard let self = self else { return }
+                if device.addState == .identifyFail {
+                    device.addState = .none
+                    self.reloadDeviceState(device)
+                }
+                if self.state == .identifying {
+                    self.updateUIState()
+                }
             }
         }
     }
@@ -695,6 +740,8 @@ class DeviceAddClassicModeController: UIViewController {
 //            if MeshLibManager.manager.currentProxy?.node == nil, let node = successNodes.last {
 //                MeshLibManager.manager.currentProxy?.nodeAddress = node.primaryUnicastAddress
 //            }
+            self.deviceAddCallback?(self.addSuccessNodes)
+            
             self.space.deviceCount = MeshNetworkManager.instance.realNodes.count
             self.space.luminairesCount = MeshNetworkManager.instance.realNodes.filter({ $0.deviceType == .light }).count //MeshNetworkManager.instance.lightNodes.count
             self.space.save()
@@ -823,13 +870,13 @@ class DeviceAddClassicModeController: UIViewController {
         rssiSlider.isEnabled = state == .none || state == .addFineshed
         scanBtn.isEnabled = state == .none || state == .scanning || state == .addFineshed
         
-        if rssiSlider.isEnabled {
-            rssiSlider.setThumbImage(UIImage(named: "slider_point"), for: .normal)
-            rssiSlider.minimumTrackTintColor = Slider_Color
-        }else {
-            rssiSlider.setThumbImage(UIImage(named: "slider_point_disable"), for: .normal)
-            rssiSlider.minimumTrackTintColor = Slider_Color.withAlphaComponent(0.5)
-        }
+//        if rssiSlider.isEnabled {
+//            rssiSlider.setThumbImage(UIImage(named: "slider_point"), for: .normal)
+//            rssiSlider.minimumTrackTintColor = Slider_Color
+//        }else {
+//            rssiSlider.setThumbImage(UIImage(named: "slider_point_disable"), for: .normal)
+//            rssiSlider.minimumTrackTintColor = Slider_Color.withAlphaComponent(0.5)
+//        }
         
         UIApplication.shared.isIdleTimerDisabled = false
         
@@ -874,18 +921,40 @@ class DeviceAddClassicModeController: UIViewController {
 //        }
         var showCategoryDevices: [ProvisioningDevice] = []
         
-        let filterRSSI = Int(-rssiSlider.value)
+//        let filterRSSI = Int(-rssiSlider.value)
+//        if self.selectRSSIRange.contains(device.rssi.intValue) || device.rssi.intValue > self.selectRSSIRange.upperBound
+        
         // 筛选展示的设备
-        if filterRSSI == filterRSSIRange.lowerBound {
-            showCategoryDevices = scanDevices
-        }else {
-            showCategoryDevices = scanDevices.filter({ $0.rssi.intValue >= filterRSSI })
-        }
+//        if filterRSSI == filterRSSIRange.lowerBound {
+//            showCategoryDevices = scanDevices
+//        }else {
+        showCategoryDevices = scanDevices.filter({ selectRSSIRange.contains($0.rssi.intValue) })
+//        }
         
         categoryView.updateTitle("\("lights".localizedString)-\(showCategoryDevices.filter({ $0.deviceType == .light }).count)", at: 0, andWidth: false)
         categoryView.updateTitle("\("switches".localizedString)-\(showCategoryDevices.filter({ $0.deviceType == .switches }).count)", at: 1, andWidth: false)
         categoryView.updateTitle("\("sensors".localizedString)-\(showCategoryDevices.filter({ $0.deviceType == .sensor }).count)", at: 2, andWidth: false)
         categoryView.updateTitle("\("others".localizedString)-\(showCategoryDevices.filter({ $0.deviceType == .dongle || $0.deviceType == .gateway || $0.deviceType == .unknown }).count)", at: 3, andWidth: false)
+    }
+    
+    /// 信号滑条修改
+    @objc private func rssiSliderValueChanged(sender: RangeSlider) {
+        let changeRSSIRange = Int(-sender.upperValue)...Int(-sender.lowerValue)
+        guard selectRSSIRange != changeRSSIRange else {
+            return
+        }
+        print(changeRSSIRange)
+        selectRSSIRange = changeRSSIRange
+        // 筛选展示的设备
+        showDevices = scanDevices.filter({ showDeviceTypes.contains($0.deviceType) && selectRSSIRange.contains($0.rssi.intValue) })
+
+        farLabel.text = "\(selectRSSIRange.lowerBound) dBm"
+        nearLabel.text = "\(selectRSSIRange.upperBound) dBm"
+         
+        updateFooterViewState()
+        tableView.reloadData()
+        updateDeviceCategoryCount()
+        
     }
     
     // MARK: - UI
@@ -902,40 +971,38 @@ class DeviceAddClassicModeController: UIViewController {
             make.height.equalTo(SCRYFrom(100))
         }
         
-        nearLabel = UILabel(text: "near".localizedString, textColor: TextBlack_Color, fontSize: 15, fontWeight: .light)
-        nearLabel.sizeToFit()
+        nearLabel = UILabel(text: "\(selectRSSIRange.upperBound) dBm", textColor: TextBlack_Color, fontSize: 12, fontWeight: .light)
+//        nearLabel.sizeToFit()
         headerView.addSubview(nearLabel)
         nearLabel.snp.makeConstraints { make in
             make.left.equalTo(SCRXFrom(16))
-            make.top.equalTo(SCRYFrom(24))
-            make.width.equalTo(nearLabel.width)
+            make.top.equalTo(SCRYFrom(21))
+//            make.width.equalTo(nearLabel.width)
         }
         
-        farLabel = UILabel(text: "far".localizedString, textColor: TextBlack_Color, fontSize: 15, fontWeight: .light)
-        farLabel.sizeToFit()
+        farLabel = UILabel(text: "\(selectRSSIRange.lowerBound) dBm", textColor: TextBlack_Color, fontSize: 12, fontWeight: .light)
+//        farLabel.sizeToFit()
         headerView.addSubview(farLabel)
         farLabel.snp.makeConstraints { make in
             make.right.equalTo(SCRXFrom(-16))
             make.top.equalTo(nearLabel)
-            make.width.equalTo(farLabel.width)
+//            make.width.equalTo(farLabel.width)
         }
         
-        rssiSlider = CustomDeviceSlider()
-        rssiSlider.minimumTrackTintColor = Slider_Color
-        rssiSlider.maximumTrackTintColor = RGB(229, 229, 229)
-        rssiSlider.layer.cornerRadius = 2.5
-        rssiSlider.minimumValue = Float(abs(filterRSSIRange.upperBound))
-        rssiSlider.maximumValue = Float(abs(filterRSSIRange.lowerBound))
-        rssiSlider.value = Float(abs(filterRSSI))
-//        rssiSlider.maximumValue - Float(filterRSSI - filterRSSIRange.lowerBound) / Float(filterRSSIRange.upperBound - filterRSSIRange.lowerBound) * 100
-        rssiSlider.setThumbImage(UIImage(named: "slider_point"), for: .normal)
-//        rssiSlider.setThumbImage(UIImage(named: "slider_point")?.withTintColor(RGB(220, 220, 220)), for: .normal)
-//        rssiSlider.minimumTrackTintColor = RGB(229, 229, 229)
-        rssiSlider.delegate = self
+        rssiSlider = RangeSlider()
+        rssiSlider.trackHighlightTintColor = Slider_Color
+        rssiSlider.trackHighlightDisableTintColor = Slider_Color.withAlphaComponent(0.5)
+        rssiSlider.trackTintColor = RGB(229, 229, 229)
+        rssiSlider.thumbDisableTintColor = Background_Color
+        rssiSlider.minimumValue = Double(abs(filterRSSIRange.upperBound))
+        rssiSlider.maximumValue = Double(abs(filterRSSIRange.lowerBound))
+        rssiSlider.lowerValue = Double(abs(selectRSSIRange.upperBound))
+        rssiSlider.upperValue = Double(abs(selectRSSIRange.lowerBound))
+        rssiSlider.addTarget(self, action: #selector(rssiSliderValueChanged), for: .valueChanged)
         headerView.addSubview(rssiSlider)
         rssiSlider.snp.makeConstraints { make in
-            make.left.equalTo(nearLabel.snp.right).offset(SCRXFrom(15))
-            make.right.equalTo(farLabel.snp.left).offset(SCRXFrom(-20))
+            make.left.equalTo(SCRXFrom(64))
+            make.right.equalTo(SCRXFrom(-65))
             make.centerY.equalTo(nearLabel)
             make.height.equalTo(SCRYFrom(40))
         }
@@ -945,7 +1012,7 @@ class DeviceAddClassicModeController: UIViewController {
         headerView.addSubview(addDeviceToLabel)
         addDeviceToLabel.snp.makeConstraints { make in
             make.left.equalTo(nearLabel)
-            make.bottom.equalTo(SCRYFrom(-14))
+            make.bottom.equalTo(SCRYFrom(-18))
             make.width.equalTo(addDeviceToLabel.width)
         }
         
@@ -1002,9 +1069,9 @@ class DeviceAddClassicModeController: UIViewController {
         addDeviceTargetBtn.titleEdgeInsets = UIEdgeInsets(top: 0, left: SCRXFrom(8) - imageW, bottom: 0, right: imageW + SCRXFrom(6))
         
         
-        categoryView = WMMenuView(frame: CGRect(x: 0, y: view.safeAreaInsets.top + SCRYFrom(100) + SCRYFrom(8), width: view.width, height: CGFloat(Int(SCRYFrom(40)))))
+        categoryView = WMMenuView(frame: CGRect(x: 0, y: view.safeAreaInsets.top + SCRYFrom(100) + SCRYFrom(12), width: view.width, height: CGFloat(Int(SCRYFrom(32)))))
         categoryView.itemBackgroundColor = .clear
-        categoryView.itemCornerRadius = CGFloat(Int(SCRYFrom(20)))
+        categoryView.itemCornerRadius = CGFloat(Int(SCRYFrom(16)))
         if isIPad {
             categoryView.layoutMode = .center
         }
@@ -1018,12 +1085,12 @@ class DeviceAddClassicModeController: UIViewController {
         categoryView.snp.makeConstraints { make in
             make.left.right.equalToSuperview()
             make.top.equalTo(headerView.snp.bottom)
-            make.height.equalTo(SCRYFrom(40))
+            make.height.equalTo(SCRYFrom(32))
         }
         
         tableView = UITableView()
         tableView.separatorStyle = .none
-        tableView.rowHeight = SCRYFrom(60)
+        tableView.rowHeight = SCRYFrom(70)
         tableView.backgroundColor = .clear
         tableView.contentInsetAdjustmentBehavior = .never
         tableView.register(DeviceAddViewCell.classForCoder(), forCellReuseIdentifier: "cell")
@@ -1033,7 +1100,7 @@ class DeviceAddClassicModeController: UIViewController {
         view.addSubview(tableView)
         tableView.snp.makeConstraints { make in
             make.left.right.bottom.equalToSuperview()
-            make.top.equalTo(categoryView.snp.bottom).offset(SCRYFrom(8))
+            make.top.equalTo(categoryView.snp.bottom).offset(SCRYFrom(12))
         }
         
         footerView = DeviceAddBottomView()
@@ -1069,13 +1136,13 @@ extension DeviceAddClassicModeController: WMMenuViewDataSource, WMMenuViewDelega
     func menuView(_ menu: WMMenuView!, titleAt index: Int) -> String! {
         
         var showCategoryDevices: [ProvisioningDevice] = []
-        let filterRSSI = Int(-rssiSlider.value)
-        // 筛选展示的设备
-        if filterRSSI == filterRSSIRange.lowerBound {
-            showCategoryDevices = scanDevices
-        }else {
-            showCategoryDevices = scanDevices.filter({ $0.rssi.intValue >= filterRSSI })
-        }
+//        let filterRSSI = Int(-rssiSlider.value)
+//        // 筛选展示的设备
+//        if filterRSSI == filterRSSIRange.lowerBound {
+//            showCategoryDevices = scanDevices
+//        }else {
+        showCategoryDevices = scanDevices.filter({ selectRSSIRange.contains($0.rssi.intValue) })
+//        }
         
         switch index {
         case 0:
@@ -1150,14 +1217,14 @@ extension DeviceAddClassicModeController: WMMenuViewDataSource, WMMenuViewDelega
             showDeviceTypes = [.light]
         }
         
-        let filterRSSI = Int(-rssiSlider.value)
-        var showDevices: [ProvisioningDevice] = []
-        // 筛选展示的设备
-        if filterRSSI == filterRSSIRange.lowerBound {
-            showDevices = scanDevices
-        }else {
-            showDevices = scanDevices.filter({ $0.rssi.intValue >= filterRSSI })
-        }
+//        let filterRSSI = Int(-rssiSlider.value)
+//        var showDevices: [ProvisioningDevice] = []
+//        // 筛选展示的设备
+//        if filterRSSI == filterRSSIRange.lowerBound {
+//            showDevices = scanDevices
+//        }else {
+           let showDevices = scanDevices.filter({ selectRSSIRange.contains($0.rssi.intValue) })
+//        }
         self.showDevices = showDevices.filter({ showDeviceTypes.contains($0.deviceType) })
         tableView.reloadData()
         updateFooterViewState()
@@ -1248,31 +1315,6 @@ extension DeviceAddClassicModeController: UITableViewDataSource, UITableViewDele
         updateFooterViewState()
     }
     
-}
-
-extension DeviceAddClassicModeController: CustomDeviceSliderDelegate {
-    
-    func slider(_ slider: CustomDeviceSlider, valueChanged value: Float, ended: Bool) {
-        
-        let rssi = Int(-value)
-//        filterRSSIRange.lowerBound + abs(Int(((value - 100) / 100.0) * Float(filterRSSIRange.upperBound - filterRSSIRange.lowerBound)))
-        if filterRSSI != rssi {
-            filterRSSI = rssi
-//            print(rssi)
-//            var showCategoryDevices: [ProvisioningDevice] = []
-            // 筛选展示的设备
-            if rssi == filterRSSIRange.lowerBound {
-//                showCategoryDevices = scanDevices
-                showDevices = scanDevices.filter({ showDeviceTypes.contains($0.deviceType) })
-            }else {
-//                showCategoryDevices = scanDevices.filter({ $0.rssi.intValue >= rssi })
-                showDevices = scanDevices.filter({ showDeviceTypes.contains($0.deviceType) && $0.rssi.intValue >= rssi })
-            }
-            updateFooterViewState()
-            tableView.reloadData()
-            updateDeviceCategoryCount()
-        }
-    }
 }
 
 extension DeviceAddClassicModeController: DeviceAddViewCellDelegate {

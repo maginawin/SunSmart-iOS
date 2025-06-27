@@ -7,6 +7,7 @@
 
 import UIKit
 import NordicSigMeshSDK
+import SwiftyJSON
 
 class DeviceRestoreViewController: UIViewController {
 
@@ -15,7 +16,7 @@ class DeviceRestoreViewController: UIViewController {
     private var scanAnimationView: UIImageView!
     private var headerView: UIView!
     private var nearLabel: UILabel!
-    private var rssiSlider: CustomDeviceSlider!
+    private var rssiSlider: RangeSlider!
     private var farLabel: UILabel!
     private var addDeviceToLabel: UILabel!
     private var addDeviceTargetBtn: UIButton!
@@ -35,10 +36,10 @@ class DeviceRestoreViewController: UIViewController {
 //    private var scanDevices: [Node] = []
     /// 展示的设备list（信号值筛选）
     private var showSections: [DeviceRestoreSection] = []
-    /// 筛选的信号值
-    private var filterRSSI: Int = 0
+    /// 选择筛选的信号值
+    private var selectRSSIRange: ClosedRange<Int> = -100 ... -25
     /// 筛选信号值范围
-    private let filterRSSIRange: ClosedRange<Int> = -80 ... -40
+    private let filterRSSIRange: ClosedRange<Int> = -100 ... -25
     /// 添加设备页面状态
     private var state: State = .none
     /// identify中的设备
@@ -66,12 +67,15 @@ class DeviceRestoreViewController: UIViewController {
         return devices
     }
     
+    private var rssiSortTimer: Timer?
     
+    let space: SpaceData
     
     /// 恢复数据模式
     let restoreMode: RestoreMode
     
-    init(restoreMode: RestoreMode) {
+    init(space: SpaceData, restoreMode: RestoreMode) {
+        self.space = space
         self.restoreMode = restoreMode
         super.init(nibName: nil, bundle: nil)
     }
@@ -95,7 +99,6 @@ class DeviceRestoreViewController: UIViewController {
         scanAnimationView.isHidden = true
         navigationItem.rightBarButtonItem = UIBarButtonItem(customView: scanAnimationView)
         
-        filterRSSI = filterRSSIRange.lowerBound
         
         setupUI()
         
@@ -189,7 +192,12 @@ class DeviceRestoreViewController: UIViewController {
         UIApplication.shared.isIdleTimerDisabled = true
         
         MeshAPI.startScanRecoverDevices(duration: .max, scanDevice: {[weak self] unprovisionedDevice, node in
-            guard let self = self else { return }
+            guard let self = self, unprovisionedDevice.rssi.intValue >= self.filterRSSIRange.lowerBound else { return }
+            
+            if unprovisionedDevice.rssi.intValue > self.filterRSSIRange.upperBound {
+                unprovisionedDevice.rssi = NSNumber(value: self.filterRSSIRange.upperBound)
+            }
+            
             self.stopScanTimer()
             // 只有指定设备才显示
             if case .specified(let nodes) = self.restoreMode {
@@ -231,25 +239,26 @@ class DeviceRestoreViewController: UIViewController {
     
             
             // 当前设备信号值在筛选范围内可展示
-            if self.filterRSSI == self.filterRSSIRange.lowerBound || unprovisionedDevice.rssi.intValue >= self.filterRSSI {
+            if self.selectRSSIRange.contains(unprovisionedDevice.rssi.intValue) {
                 if let showSectionIndex = self.showSections.firstIndex(where: { $0.group == setSection.group }) {
-                    let showSection = self.showSections[showSectionIndex]
-                    if let row = showSection.restoreDatas.firstIndex(where: { $0.unprovisionedDevice == unprovisionedDevice }), refreshDevice {
-                        self.tableView.reloadRows(at: [IndexPath(row: row, section: showSectionIndex)], with: .none)
-                    }else {
-                        self.tableView.insertRows(at: [IndexPath(row: showSection.restoreDatas.count - 1, section: showSectionIndex)], with: .automatic)
-                    }
+//                    let showSection = self.showSections[showSectionIndex]
+//                    if let row = showSection.restoreDatas.firstIndex(where: { $0.unprovisionedDevice == unprovisionedDevice }), refreshDevice {
+//                        self.tableView.reloadRows(at: [IndexPath(row: row, section: showSectionIndex)], with: .none)
+//                    }else {
+//                        self.tableView.insertRows(at: [IndexPath(row: showSection.restoreDatas.count - 1, section: showSectionIndex)], with: .automatic)
+//                    }
                 }else {
                     if setSection.group == nil {
                         self.showSections.insert(setSection, at: 0)
-                        self.tableView.insertSections(IndexSet(integer: 0), with: .none)
+//                        self.tableView.insertSections(IndexSet(integer: 0), with: .none)
                     }else {
                         self.showSections.append(setSection)
-                        self.tableView.insertSections(IndexSet(integer: self.showSections.count - 1), with: .none)
+//                        self.tableView.insertSections(IndexSet(integer: self.showSections.count - 1), with: .none)
                     }
                                                           
                 }
             }
+            devicesRssiSort()
             
             switch self.restoreMode {
             case .default:
@@ -294,6 +303,34 @@ class DeviceRestoreViewController: UIViewController {
         updateUIState()
         
         stopScanTimer()
+    }
+    
+    // MARK: - 信号排序定时器
+    private func startRssiSortTimer() {
+        
+        rssiSortTimer = LCWeakTimer.scheduledTimer(timeInterval: 0.5, aTarget: self, selector: #selector(devicesRssiSort), userInfo: nil, repeats: false)
+        RunLoop.current.add(rssiSortTimer!, forMode: .common)
+    }
+    
+    /// 设备信号排序定时刷新，避免接收广播包后刷新频率过高
+    @objc private func devicesRssiSort() {
+        
+        rssiSortTimer?.invalidate()
+        rssiSortTimer = nil
+        guard sections.count > 0 else {
+            return
+        }
+        // 筛选展示的设备
+        var currentShowSections: [DeviceRestoreSection] = []
+        sections.forEach { section in
+            let devices = section.restoreDatas.filter({ $0.unprovisionedDevice == nil || selectRSSIRange.contains($0.unprovisionedDevice!.rssi.intValue) })
+            if devices.count > 0 {
+                currentShowSections.append(DeviceRestoreSection(group: section.group, restoreDatas: devices))
+            }
+        }
+        showSections = currentShowSections
+        tableView.reloadData()
+        
     }
     
     // MARK: - Mesh API
@@ -544,6 +581,73 @@ class DeviceRestoreViewController: UIViewController {
         }
     }
     
+    /// 检查设备地址是否足够
+    private func checkDeviceAddressesAreSufficient(devices: [DeviceRestoreData]) {
+        
+        // 添加设备需要地址-剩余地址 +（site中所有space已经添加的设备地址+正在添加的设备地址）*20%
+        let estimatedAddressCount = devices.reduce(0, { (result, device) in result + (device.unprovisionedDevice?.elementCount ?? 2) })
+        // 获取网络内已存在的设备地址数量
+        let existingAddressCount = Node.loadAddresses(meshUUID: self.space.meshUUID).count
+        // 申请的地址数量
+        let applyAddressCount = estimatedAddressCount - MeshAPI.getNumberOfAvailableUnicastAddresses(meshUUID: self.space.meshUUID) + Int(Float(existingAddressCount) * 0.2)
+        
+        // 检查剩余地址是否足够添加设备
+        guard MeshAPI.getNumberOfAvailableUnicastAddresses(meshUUID: self.space.meshUUID) >= estimatedAddressCount else {
+            // 地址不够
+            // 手机是否联网
+            guard NetworkRequest.shared.networkable else {
+                // 未联网提示联网以获取地址
+                self.space.applyDeviceAddressCount = applyAddressCount
+                self.space.save()
+                
+                SRAlertView(title: "notification".localizedString, message: "device_address_insufficient".localizedString, actions: [SRAlertAction(title: "ok".localizedString, actionHandler: {[weak self] _ in
+                    if NetworkRequest.shared.networkable {
+                        self?.space.applyDeviceAddressCount = nil
+                        self?.space.save()
+                        self?.applyDeviceAddressesRequest(applyAddressCount: applyAddressCount)
+                    }
+                })]).show()
+                return
+            }
+            // 向服务器申请地址
+            applyDeviceAddressesRequest(applyAddressCount: applyAddressCount, devices: devices)
+            return
+        }
+        devices.forEach({
+            
+            addDevice($0)
+        })
+    }
+    
+    /// 申请设备地址请求
+    /// - Parameters:
+    ///   - applyAddressCount: 申请地址数量
+    ///   - devices: 需要添加的设备
+    private func applyDeviceAddressesRequest(applyAddressCount: Int, devices: [DeviceRestoreData] = []) {
+
+        XWHUDManager.showCustomHUD(withMessage: nil, isWindow: true)
+        NetworkRequest.shared.request(.applyAddress(siteId: self.space.siteId, type: .device, number: applyAddressCount)) {[weak self] result in
+            XWHUDManager.hide()
+            guard let self = self else { return }
+            switch result {
+            case .success(let repsonsed):
+                // 新增地址
+                if let site = SiteData.load(siteId: self.space.siteId), let provisionerData = JSON(repsonsed)["data"]["provisioner"].dictionaryObject {
+                    site.setProvisioner(provisionerData: provisionerData)
+                    // 继续添加设备
+                    devices.forEach({
+                        self.addDevice($0)
+                    })
+                }else {
+                    XWHUDManager.showErrorTipHUD(NetworkApiError.unknown.localizedDescription)
+                }
+            case .failure(let error):
+                XWHUDManager.showErrorTipHUD(error.localizedDescription)
+            }
+        }
+       
+    }
+    
     
     // MARK: - Action
     /// 扫描
@@ -599,9 +703,10 @@ class DeviceRestoreViewController: UIViewController {
         showSections.forEach { section in
             selectDeviceDatas.append(contentsOf: section.restoreDatas.filter({ $0.unprovisionedDevice != nil && $0.unprovisionedDevice?.selectedState == .selected }))
         }
-        selectDeviceDatas.forEach { device in
-            addDevice(device)
-        }
+        checkDeviceAddressesAreSufficient(devices: selectDeviceDatas)
+//        selectDeviceDatas.forEach { device in
+//            addDevice(device)
+//        }
     }
     
     /// 隐藏添加结果view
@@ -772,13 +877,13 @@ class DeviceRestoreViewController: UIViewController {
         rssiSlider.isEnabled = state == .none || state == .addFineshed
         scanBtn.isEnabled = state == .none || state == .scanning || state == .addFineshed
         
-        if rssiSlider.isEnabled {
-            rssiSlider.setThumbImage(UIImage(named: "slider_point"), for: .normal)
-            rssiSlider.minimumTrackTintColor = Slider_Color
-        }else {
-            rssiSlider.setThumbImage(UIImage(named: "slider_point_disable"), for: .normal)
-            rssiSlider.minimumTrackTintColor = Slider_Color.withAlphaComponent(0.5)
-        }
+//        if rssiSlider.isEnabled {
+//            rssiSlider.setThumbImage(UIImage(named: "slider_point"), for: .normal)
+//            rssiSlider.minimumTrackTintColor = Slider_Color
+//        }else {
+//            rssiSlider.setThumbImage(UIImage(named: "slider_point_disable"), for: .normal)
+//            rssiSlider.minimumTrackTintColor = Slider_Color.withAlphaComponent(0.5)
+//        }
         
         UIApplication.shared.isIdleTimerDisabled = false
         
@@ -850,6 +955,34 @@ class DeviceRestoreViewController: UIViewController {
         
     }
     
+    @objc private func rssiSliderValueChanged(sender: RangeSlider) {
+        
+        let changeRSSIRange = Int(-sender.upperValue)...Int(-sender.lowerValue)
+        guard selectRSSIRange != changeRSSIRange else {
+            return
+        }
+        print(changeRSSIRange)
+        selectRSSIRange = changeRSSIRange
+        // 筛选展示的设备
+//        showDevices = scanDevices.filter({ showDeviceTypes.contains($0.deviceType) && selectRSSIRange.contains($0.rssi.intValue) })
+
+        farLabel.text = "\(selectRSSIRange.lowerBound) dBm"
+        nearLabel.text = "\(selectRSSIRange.upperBound) dBm"
+        
+        // 筛选展示的设备
+        var currentShowSections: [DeviceRestoreSection] = []
+        sections.forEach { section in
+            let devices = section.restoreDatas.filter({ $0.unprovisionedDevice == nil || selectRSSIRange.contains($0.unprovisionedDevice!.rssi.intValue) })
+            if devices.count > 0 {
+                currentShowSections.append(DeviceRestoreSection(group: section.group, restoreDatas: devices))
+            }
+        }
+        showSections = currentShowSections
+        
+        updateFooterViewState()
+        tableView.reloadData()
+    }
+    
     
     // MARK: - UI
     
@@ -883,7 +1016,7 @@ class DeviceRestoreViewController: UIViewController {
             make.height.equalTo(SCRYFrom(32))
         }
         
-        nearLabel = UILabel(text: "near".localizedString, textColor: TextBlack_Color, fontSize: 15, fontWeight: .light)
+        nearLabel = UILabel(text: "\(selectRSSIRange.upperBound) dBm", textColor: TextBlack_Color, fontSize: 12, fontWeight: .light)
         nearLabel.sizeToFit()
         headerView.addSubview(nearLabel)
         nearLabel.snp.makeConstraints { make in
@@ -892,7 +1025,7 @@ class DeviceRestoreViewController: UIViewController {
             make.width.equalTo(nearLabel.width)
         }
         
-        farLabel = UILabel(text: "far".localizedString, textColor: TextBlack_Color, fontSize: 15, fontWeight: .light)
+        farLabel = UILabel(text: "\(selectRSSIRange.lowerBound) dBm", textColor: TextBlack_Color, fontSize: 12, fontWeight: .light)
         farLabel.sizeToFit()
         headerView.addSubview(farLabel)
         farLabel.snp.makeConstraints { make in
@@ -901,22 +1034,20 @@ class DeviceRestoreViewController: UIViewController {
             make.width.equalTo(farLabel.width)
         }
         
-        rssiSlider = CustomDeviceSlider()
-        rssiSlider.minimumTrackTintColor = Slider_Color
-        rssiSlider.maximumTrackTintColor = RGB(229, 229, 229)
-        rssiSlider.layer.cornerRadius = 2.5
-        rssiSlider.minimumValue = Float(abs(filterRSSIRange.upperBound))
-        rssiSlider.maximumValue = Float(abs(filterRSSIRange.lowerBound))
-        rssiSlider.value = Float(abs(filterRSSI))
-//        rssiSlider.maximumValue - Float(filterRSSI - filterRSSIRange.lowerBound) / Float(filterRSSIRange.upperBound - filterRSSIRange.lowerBound) * 100
-        rssiSlider.setThumbImage(UIImage(named: "slider_point"), for: .normal)
-//        rssiSlider.setThumbImage(UIImage(named: "slider_point")?.withTintColor(RGB(220, 220, 220)), for: .normal)
-//        rssiSlider.minimumTrackTintColor = RGB(229, 229, 229)
-        rssiSlider.delegate = self
+        rssiSlider = RangeSlider()
+        rssiSlider.trackHighlightTintColor = Slider_Color
+        rssiSlider.trackHighlightDisableTintColor = Slider_Color.withAlphaComponent(0.5)
+        rssiSlider.trackTintColor = RGB(229, 229, 229)
+        rssiSlider.thumbDisableTintColor = Background_Color
+        rssiSlider.minimumValue = Double(abs(filterRSSIRange.upperBound))
+        rssiSlider.maximumValue = Double(abs(filterRSSIRange.lowerBound))
+        rssiSlider.lowerValue = Double(abs(selectRSSIRange.upperBound))
+        rssiSlider.upperValue = Double(abs(selectRSSIRange.lowerBound))
+        rssiSlider.addTarget(self, action: #selector(rssiSliderValueChanged), for: .valueChanged)
         headerView.addSubview(rssiSlider)
         rssiSlider.snp.makeConstraints { make in
-            make.left.equalTo(nearLabel.snp.right).offset(SCRXFrom(16))
-            make.right.equalTo(farLabel.snp.left).offset(SCRXFrom(-16))
+            make.left.equalTo(nearLabel.snp.right).offset(SCRXFrom(-3))
+            make.right.equalTo(farLabel.snp.left).offset(SCRXFrom(3))
             make.centerY.equalTo(nearLabel)
             make.height.equalTo(SCRYFrom(40))
         }
@@ -924,7 +1055,7 @@ class DeviceRestoreViewController: UIViewController {
         
         tableView = UITableView()
         tableView.separatorStyle = .none
-        tableView.rowHeight = SCRYFrom(60)
+        tableView.rowHeight = SCRYFrom(70)
         tableView.backgroundColor = .clear
         tableView.contentInsetAdjustmentBehavior = .never
         tableView.register(DeviceAddViewCell.classForCoder(), forCellReuseIdentifier: "cell")
@@ -1088,35 +1219,6 @@ extension DeviceRestoreViewController: UITableViewDataSource, UITableViewDelegat
     
 }
 
-extension DeviceRestoreViewController: CustomDeviceSliderDelegate {
-    
-    func slider(_ slider: CustomDeviceSlider, valueChanged value: Float, ended: Bool) {
-        
-        let rssi = Int(-value)
-//        filterRSSIRange.lowerBound + abs(Int(((value - 100) / 100.0) * Float(filterRSSIRange.upperBound - filterRSSIRange.lowerBound)))
-        if filterRSSI != rssi {
-            filterRSSI = rssi
-//            print(rssi)
-            // 筛选展示的设备
-            if rssi == filterRSSIRange.lowerBound {
-                sections.forEach({ $0.isShow = true })
-                showSections = sections
-            }else {
-                var currentShowSections: [DeviceRestoreSection] = []
-                sections.forEach { section in
-                   let devices = section.restoreDatas.filter({ $0.unprovisionedDevice == nil || $0.unprovisionedDevice!.rssi.intValue >= rssi })
-                    if devices.count > 0 {
-                        currentShowSections.append(DeviceRestoreSection(group: section.group, restoreDatas: devices))
-                    }
-                }
-                showSections = currentShowSections
-            }
-            updateFooterViewState()
-            tableView.reloadData()
-        }
-    }
-}
-
 extension DeviceRestoreViewController: DeviceAddViewCellDelegate {
     
     /// 设备identify点击事件回调
@@ -1151,7 +1253,8 @@ extension DeviceRestoreViewController: DeviceAddViewCellDelegate {
             return
         }
         if let deviceData = showSections.compactMap({ $0.restoreDatas.first(where: { $0.unprovisionedDevice == device }) }).first {
-            addDevice(deviceData)
+//            addDevice(deviceData)
+            checkDeviceAddressesAreSufficient(devices: [deviceData])
         }
     }
     

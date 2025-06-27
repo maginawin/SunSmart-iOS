@@ -61,7 +61,7 @@ class DeviceInformationViewController: UIViewController {
         
         let macModel = CustomCellModel(icon: UIImage(named: "copy"), title: "MAC", content: node.macAddressResult, style: .icon)
         
-        let devModel = CustomCellModel(title: "model".localizedString, content: "--", style: .none)
+        let devModel = CustomCellModel(title: "model".localizedString, content: node.modelName ?? "--", style: .none)
         let typeName = node.categoryName
         let deviceTypeModel = CustomCellModel(title: "device_type".localizedString, content: typeName ?? "--", style: .none)
         

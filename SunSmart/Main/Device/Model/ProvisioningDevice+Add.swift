@@ -19,6 +19,7 @@ extension ProvisioningDevice {
 //        static var isSupportKey = 6
         static var iconKey = 7
         static var deviceType = 8
+        static var activityDate = 9
     }
     
     /// 设备选中状态
@@ -141,6 +142,26 @@ extension ProvisioningDevice {
         }set {
             objc_setAssociatedObject(self, &AssociatedKey.deviceType, newValue, .OBJC_ASSOCIATION_RETAIN)
         }
+    }
+    
+    /// 设备触发时间（触感器感应等）
+    var activityDate: Date? {
+        get {
+            objc_getAssociatedObject(self, &AssociatedKey.activityDate) as? Date
+        }
+        set {
+            objc_setAssociatedObject(self, &AssociatedKey.activityDate, newValue, .OBJC_ASSOCIATION_RETAIN)
+        }
+    }
+    
+    /// 更新数据 rssi/触发类型（适用于搜索到重复设备时）
+    func updateData(device: ProvisioningDevice) {
+        self.triggerActionType = device.triggerActionType
+        self.rssi = device.rssi
+        self.deviceName = device.deviceName
+        self.elementCount = self.elementCount
+        self.icon = device.icon
+        self.deviceType = device.deviceType
     }
   
 }

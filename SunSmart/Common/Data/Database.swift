@@ -2423,6 +2423,7 @@ extension MeshDeviceConfigInfo {
         static let elementCount = Expression<Int>("elementCount")
         static let iconCategory = Expression<String>("iconCategory")
         static let deviceCategory = Expression<String>("deviceCategory")
+        static let modelName = Expression<String?>("modelName")
     }
     
     /// 初始化设备配置信息表
@@ -2436,6 +2437,7 @@ extension MeshDeviceConfigInfo {
             builder.column(ExpressionKey.elementCount)
             builder.column(ExpressionKey.iconCategory)
             builder.column(ExpressionKey.deviceCategory)
+            builder.column(ExpressionKey.modelName)
             builder.unique(ExpressionKey.companyId, ExpressionKey.productId)
         }))
         // 获取表内存在的属性
@@ -2448,6 +2450,10 @@ extension MeshDeviceConfigInfo {
             // 是否存在”iconCategory“属性
             if !columns.contains(where: { $0.name == "deviceCategory" }) {
                 _ = try? SunSmartDataManager.shared.db?.run(MeshDeviceConfigInfo.deviceConfigInfosTable.addColumn(ExpressionKey.deviceCategory, defaultValue: "Lighting"))
+            }
+            // 是否存在”modelName“属性
+            if !columns.contains(where: { $0.name == "modelName" }) {
+                _ = try? SunSmartDataManager.shared.db?.run(MeshDeviceConfigInfo.deviceConfigInfosTable.addColumn(ExpressionKey.modelName))
             }
         }
     }
@@ -2473,7 +2479,7 @@ extension MeshDeviceConfigInfo {
         var infos: [MeshDeviceConfigInfo] = []
         if let rows = try? SunSmartDataManager.shared.db?.prepare(query) {
             for row in rows {
-                let info = MeshDeviceConfigInfo(companyId: UInt16(row[ExpressionKey.companyId]), productId: UInt16(row[ExpressionKey.productId]), categoryName: row[ExpressionKey.categoryName], elementCount: row[ExpressionKey.elementCount], iconCategory: row[ExpressionKey.iconCategory], deviceCategory: row[ExpressionKey.deviceCategory])
+                let info = MeshDeviceConfigInfo(companyId: UInt16(row[ExpressionKey.companyId]), productId: UInt16(row[ExpressionKey.productId]), categoryName: row[ExpressionKey.categoryName], elementCount: row[ExpressionKey.elementCount], iconCategory: row[ExpressionKey.iconCategory], deviceCategory: row[ExpressionKey.deviceCategory], modelName: row[ExpressionKey.modelName])
                 infos.append(info)
             }
         }
@@ -2530,7 +2536,8 @@ extension MeshDeviceConfigInfo {
             ExpressionKey.categoryName <- self.categoryName,
             ExpressionKey.elementCount <- self.elementCount,
             ExpressionKey.iconCategory <- self.iconCategory,
-            ExpressionKey.deviceCategory <- self.deviceCategory
+            ExpressionKey.deviceCategory <- self.deviceCategory,
+            ExpressionKey.modelName <- self.modelName
         ])
         do {
             try SunSmartDataManager.shared.db?.run(insertOrUpdate)

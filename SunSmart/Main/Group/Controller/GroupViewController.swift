@@ -863,6 +863,7 @@ class GroupViewController: UIViewController {
         
         sensorView = GroupSensorView()
         sensorView?.isHidden = true
+        sensorView?.delegate = self
         view.addSubview(sensorView!)
         sensorView!.snp.makeConstraints { make in
             make.left.right.bottom.equalToSuperview()
@@ -977,4 +978,18 @@ extension GroupViewController: MeshLibManagerMessageDelegate {
         }
     }
     
+}
+
+extension GroupViewController: GroupSensorViewDelegate {
+
+    
+    func sensorViewDidShow(view: GroupSensorView) {
+        
+        self.isModalInPresentation = true
+    }
+    
+    func sensorViewDidHide(view: GroupSensorView) {
+  
+        self.isModalInPresentation = false
+    }
 }

@@ -8,6 +8,13 @@
 import UIKit
 import NordicSigMeshSDK
 
+protocol GroupSensorViewDelegate: AnyObject {
+    
+    func sensorViewDidShow(view: GroupSensorView)
+    
+    func sensorViewDidHide(view: GroupSensorView)
+}
+
 class GroupSensorView: UIView {
     
     /// 支持传感器类型
@@ -40,7 +47,7 @@ class GroupSensorView: UIView {
     private var moveImageView: UIImageView!
     private var occupyStateImageView: UIImageView!
     /// list
-    private var tableView: UITableView!
+    var tableView: UITableView!
     
     private(set) var isShow: Bool = false
     /// 更新感应状态定时器
@@ -49,6 +56,8 @@ class GroupSensorView: UIView {
     private var updateLuxTimer: Timer?
     
     private var lastScrollOffsetY: CGFloat = 0
+    
+    weak var delegate: GroupSensorViewDelegate?
     
     /// 支持的传感器类型
     var supportSensorType: SupportSensorType = .all {
@@ -149,7 +158,7 @@ class GroupSensorView: UIView {
     func show() {
         
         isShow = true
-    
+        delegate?.sensorViewDidShow(view: self)
         shadeView.isHidden = false
         topView.snp.updateConstraints { make in
             make.top.equalTo(SCRYFrom(8))
@@ -178,7 +187,7 @@ class GroupSensorView: UIView {
     func hide() {
      
         isShow = false
-        
+        delegate?.sensorViewDidHide(view: self)
         shadeView.isHidden = true
         topView.snp.updateConstraints { make in
             make.top.equalTo(0)
@@ -223,7 +232,7 @@ class GroupSensorView: UIView {
             }
         }
         
-        if let index = sensors.firstIndex(of: sensor) {
+        if let index = sensors.firstIndex(where: { $0.primaryUnicastAddress == sensor.primaryUnicastAddress }) {
 //            tableView.reloadRows(at: [IndexPath(row: index, section: 0)], with: .none)
             if let cell = tableView.cellForRow(at: IndexPath(row: index, section: 0)) as? GroupSensorViewCell {
                 cell.reloadSensorData(sensor: sensor, sensorType: sensorType)
@@ -290,27 +299,27 @@ class GroupSensorView: UIView {
             lastScrollOffsetY = offset.y
         }else if sender.state == .changed {
             
-            let offsetY = offset.y - lastScrollOffsetY
-            
-            if offsetY < 0 { // 向上
-                let showContentY = self.height - self.contentView.height
-                if contentView.y > showContentY {
-                    contentView.y += offsetY
-                }else {
-                    if tableView.contentOffset.y + tableView.height < tableView.contentSize.height {
-                        tableView.contentOffset = CGPoint(x: 0, y: tableView.contentOffset.y - offsetY)
-                    }
-                }
-                
-            }else {
-                
-                if tableView.contentOffset.y < 0 {
-                    contentView.y += offsetY
-                }else {
-                    tableView.contentOffset = CGPoint(x: 0, y: tableView.contentOffset.y - offsetY)
-                }
-            }
-            lastScrollOffsetY = offset.y
+//            let offsetY = offset.y - lastScrollOffsetY
+//            
+//            if offsetY < 0 { // 向上
+//                let showContentY = self.height - self.contentView.height
+//                if contentView.y > showContentY {
+//                    contentView.y += offsetY
+//                }else {
+//                    if tableView.contentOffset.y + tableView.height < tableView.contentSize.height {
+//                        tableView.contentOffset = CGPoint(x: 0, y: tableView.contentOffset.y - offsetY)
+//                    }
+//                }
+//                
+//            }else {
+//                
+//                if tableView.contentOffset.y < 0 {
+//                    contentView.y += offsetY
+//                }else {
+//                    tableView.contentOffset = CGPoint(x: 0, y: tableView.contentOffset.y - offsetY)
+//                }
+//            }
+//            lastScrollOffsetY = offset.y
         }else if sender.state == .ended {
             
             // 判断滑动结束后距离起始点距离，>100则认为隐藏，否则还原；velocity滑动力度大的时候直接退出
@@ -406,14 +415,15 @@ class GroupSensorView: UIView {
         
         tableView = UITableView()
 //        tableView.backgroundColor = .white
-        tableView.isScrollEnabled = false
+//        tableView.isScrollEnabled = false
         tableView.separatorStyle = .none
         tableView.isHidden = true
         tableView.rowHeight = SCRYFrom(40)
         tableView.register(GroupSensorViewCell.classForCoder(), forCellReuseIdentifier: "cell")
-        let pan = UIPanGestureRecognizer(target: self, action: #selector(tableViewScroll))
-        self.addGestureRecognizer(pan)
-        tableView.addGestureRecognizer(pan)
+//        tableView.panGestureRecognizer.delegate = self
+//        let pan = UIPanGestureRecognizer(target: self, action: #selector(tableViewScroll))
+//        self.addGestureRecognizer(pan)
+//        tableView.addGestureRecognizer(pan)
         tableView.dataSource = self
         tableView.delegate = self
         contentView.addSubview(tableView)
@@ -428,7 +438,37 @@ class GroupSensorView: UIView {
     
 }
 
-extension GroupSensorView: UITableViewDataSource, UITableViewDelegate, UIGestureRecognizerDelegate {
+class SensorTableView: UITableView, UIGestureRecognizerDelegate {
+    
+//    override func gestureRecognizerShouldBegin(_ gestureRecognizer: UIGestureRecognizer) -> Bool {
+//        guard let panGesture = gestureRecognizer as? UIPanGestureRecognizer else {
+//            return true
+//        }
+//        
+//        // 获取手势速度（方向）
+//        let velocity = panGesture.velocity(in: self)
+//        
+//        // 情况1：如果是下拉手势（velocity.y > 0），且 TableView 已经在顶部
+//        if velocity.y > 0 && contentOffset.y <= 0 {
+//            return false // 禁止 TableView 响应下拉，避免触发 Modal 关闭
+//        }
+//        
+//        // 情况2：其他情况允许手势
+//        return true
+//    }
+    
+    public func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer, shouldRequireFailureOf otherGestureRecognizer: UIGestureRecognizer) -> Bool {
+        // 判断是否是系统的modal手势
+        if String(describing: type(of: otherGestureRecognizer)) == "_UIPresentationControllerPanGestureRecognizer" {
+            return true
+        }
+        return false
+    }
+    
+    
+}
+
+extension GroupSensorView: UITableViewDataSource, UITableViewDelegate {
     
     func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
         return sensors.count
@@ -442,8 +482,37 @@ extension GroupSensorView: UITableViewDataSource, UITableViewDelegate, UIGesture
         return cell
     }
     
-//    func scrollViewDidScroll(_ scrollView: UIScrollView) {
-//        let offsetY = scrollView.contentOffset.y
+    
+    func scrollViewDidScroll(_ scrollView: UIScrollView) {
+        guard scrollView.isTracking else {
+            return
+        }
+        
+        let offsetY = scrollView.contentOffset.y
+        
+        if offsetY < 0 { // 向上
+            let showContentY = self.height - self.contentView.height
+            if contentView.y >= showContentY {
+                contentView.y += abs(offsetY)
+                scrollView.contentOffset = .zero
+            }else {
+//                if tableView.contentOffset.y + tableView.height < tableView.contentSize.height {
+//                    tableView.contentOffset = CGPoint(x: 0, y: tableView.contentOffset.y - offsetY)
+//                }
+                if contentView.y > showContentY {
+                    contentView.y -= offsetY
+                    scrollView.contentOffset = .zero
+                }
+            }
+//            
+        }else {
+            let showContentY = self.height - self.contentView.height
+            if contentView.y > showContentY {
+                contentView.y -= offsetY
+                scrollView.contentOffset = .zero
+            }
+        }
+        
 //        if offsetY < 0 {
 //            
 //            contentView.y += abs(offsetY)
@@ -455,23 +524,25 @@ extension GroupSensorView: UITableViewDataSource, UITableViewDelegate, UIGesture
 //                scrollView.contentOffset = .zero
 //            }
 //        }
-//    }
-//    
-//    func scrollViewWillEndDragging(_ scrollView: UIScrollView, withVelocity velocity: CGPoint, targetContentOffset: UnsafeMutablePointer<CGPoint>) {
-//        // 判断滑动结束后距离起始点距离，>100则认为隐藏，否则还原；velocity滑动力度大的时候直接退出
-//        let showContentY = self.height - self.contentView.height
-//        if contentView.y - showContentY >= 100 || velocity.y < -0.5 {
-//            hide()
-//        }else {
-//            UIView.animate(withDuration: 0.25) {
-//                self.contentView.y = showContentY
-//            }
-//        }
-//    }
+        
+        lastScrollOffsetY = offsetY
+    }
+    
+    func scrollViewWillEndDragging(_ scrollView: UIScrollView, withVelocity velocity: CGPoint, targetContentOffset: UnsafeMutablePointer<CGPoint>) {
+        
+        // 判断滑动结束后距离起始点距离，>100则认为隐藏，否则还原；velocity滑动力度大的时候直接退出
+        let showContentY = self.height - self.contentView.height
+        if scrollView.contentOffset.y <= 0 && (contentView.y - showContentY >= 100 || velocity.y < -0.5) {
+            hide()
+        }else {
+            UIView.animate(withDuration: 0.25) {
+                self.contentView.y = showContentY
+            }
+        }
+    }
+    
     
 }
-
-
 
 
 class GroupSensorViewCell: UITableViewCell {

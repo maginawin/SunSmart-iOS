@@ -1884,6 +1884,11 @@ extension Node {
         return deviceConfigInfo?.categoryName
     }
     
+    /// 设备型号
+    var modelName: String? {
+        return deviceConfigInfo?.modelName
+    }
+    
     /// 是否需要同步数据
     var needSync: Bool {
         return self.getNeedSync()

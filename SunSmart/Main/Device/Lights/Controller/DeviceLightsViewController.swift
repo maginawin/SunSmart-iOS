@@ -402,7 +402,7 @@ class DeviceLightsViewController: UIViewController {
 
         repairView = UIView()
 //        repairView.addRoundedCorners(corners: [.topLeft, .topRight], cornerRadii: CGSize(width: SCRYFrom(8), height: SCRYFrom(8)), rect: CGRect(x: 0, y: 0, width: view.width, height: SCRYFrom(60)))
-        repairView.layer.cornerRadius = SCRYFrom(8)
+//        repairView.layer.cornerRadius = SCRYFrom(8)
         repairView.layer.shadowColor = RGB(0, 0, 0, 0.1).cgColor
         repairView.layer.shadowOpacity = 1
         repairView.layer.shadowRadius = 6

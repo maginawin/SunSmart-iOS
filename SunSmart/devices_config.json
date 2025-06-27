@@ -5,7 +5,8 @@
         "categoryName" : "PIR Sensor Lighting",
         "elementCount" : 2,
         "iconCategory" : "Lighting",
-        "deviceCategory" : "Lighting"
+        "deviceCategory" : "Lighting",
+        "modelName" : "SR-BL9032A-PIR-V"
     },
     {
         "companyId" : "0A78",
@@ -13,7 +14,8 @@
         "categoryName" : "PIR Sensor Lighting",
         "elementCount" : 2,
         "iconCategory" : "Lighting",
-        "deviceCategory" : "Lighting"
+        "deviceCategory" : "Lighting",
+        "modelName" : "SR-BL9035A-PIR-V"
     },
     {
         "companyId" : "0A78",
@@ -21,7 +23,8 @@
         "categoryName" : "PIR Sensor Lighting",
         "elementCount" : 2,
         "iconCategory" : "Lighting",
-        "deviceCategory" : "Lighting"
+        "deviceCategory" : "Lighting",
+        "modelName" : "SR-BL9033A-PIR-V"
     },
     {
         "companyId" : "0A78",
@@ -29,7 +32,8 @@
         "categoryName" : "ZLLC PIR Sensor",
         "elementCount" : 2,
         "iconCategory" : "Standalone Sensor",
-        "deviceCategory" : "Lighting"
+        "deviceCategory" : "Lighting",
+        "modelName" : "SR-BL9030A-PIR-V"
     },
     {
         "companyId" : "0A78",
@@ -37,7 +41,8 @@
         "categoryName" : "ZLLC PIR Sensor",
         "elementCount" : 2,
         "iconCategory" : "Standalone Sensor",
-        "deviceCategory" : "Lighting"
+        "deviceCategory" : "Lighting",
+        "modelName" : "SR-BL9030B-PIR-V"
     },
     {
         "companyId" : "0A78",
@@ -45,7 +50,8 @@
         "categoryName" : "0-10V Converter",
         "elementCount" : 2,
         "iconCategory" : "Powerpack",
-        "deviceCategory" : "Lighting"
+        "deviceCategory" : "Lighting",
+        "modelName" : "SR-BL2421-SSV"
     },
     {
         "companyId" : "0A78",
@@ -53,7 +59,8 @@
         "categoryName" : "0-10V Load Controller",
         "elementCount" : 2,
         "iconCategory" : "Powerpack",
-        "deviceCategory" : "Lighting"
+        "deviceCategory" : "Lighting",
+        "modelName" : "SR-BL2421-SSVT"
     },
     {
         "companyId" : "0A78",
@@ -61,7 +68,8 @@
         "categoryName" : "Driver Lighting",
         "elementCount" : 2,
         "iconCategory" : "Lighting",
-        "deviceCategory" : "Lighting"
+        "deviceCategory" : "Lighting",
+        "modelName" : "SRP-BL9105N"
     },
     {
         "companyId" : "0A78",
@@ -69,7 +77,8 @@
         "categoryName" : "Driver Lighting",
         "elementCount" : 2,
         "iconCategory" : "Lighting",
-        "deviceCategory" : "Lighting"
+        "deviceCategory" : "Lighting",
+        "modelName" : "SRP-BL9105N"
     },
     {
         "companyId" : "0A78",
@@ -77,7 +86,8 @@
         "categoryName" : "Driver Lighting",
         "elementCount" : 2,
         "iconCategory" : "Lighting",
-        "deviceCategory" : "Lighting"
+        "deviceCategory" : "Lighting",
+        "modelName" : "SRP-BL9105N"
     },
     {
         "companyId" : "0A78",
@@ -85,7 +95,8 @@
         "categoryName" : "Driver Lighting",
         "elementCount" : 2,
         "iconCategory" : "Lighting",
-        "deviceCategory" : "Lighting"
+        "deviceCategory" : "Lighting",
+        "modelName" : "SRPL-BL9105N"
     },
     {
         "companyId" : "0A78",
@@ -93,7 +104,8 @@
         "categoryName" : "Driver Lighting",
         "elementCount" : 2,
         "iconCategory" : "Lighting",
-        "deviceCategory" : "Lighting"
+        "deviceCategory" : "Lighting",
+        "modelName" : "SRPL-BL9105N"
     },
     {
         "companyId" : "0A78",
@@ -101,7 +113,8 @@
         "categoryName" : "Driver Lighting",
         "elementCount" : 2,
         "iconCategory" : "Lighting",
-        "deviceCategory" : "Lighting"
+        "deviceCategory" : "Lighting",
+        "modelName" : "SRPL-BL9105N"
     },
     {
         "companyId" : "0A78",
@@ -109,7 +122,8 @@
         "categoryName" : "Controller Lighting",
         "elementCount" : 2,
         "iconCategory" : "Lighting",
-        "deviceCategory" : "Lighting"
+        "deviceCategory" : "Lighting",
+        "modelName" : "SR-BL9101CS"
     },
     {
         "companyId" : "0A78",
@@ -117,7 +131,8 @@
         "categoryName" : "Controller Lighting",
         "elementCount" : 2,
         "iconCategory" : "Lighting",
-        "deviceCategory" : "Lighting"
+        "deviceCategory" : "Lighting",
+        "modelName" : "SR-BL1029-SS-2PIN"
     },
     {
         "companyId" : "0A78",
@@ -125,7 +140,8 @@
         "categoryName" : "Controller Lighting",
         "elementCount" : 4,
         "iconCategory" : "Lighting",
-        "deviceCategory" : "Lighting"
+        "deviceCategory" : "Lighting",
+        "modelName" : "SR-BL1029-5C"
     },
     {
         "companyId" : "0A78",
@@ -133,7 +149,8 @@
         "categoryName" : "Controller Lighting",
         "elementCount" : 4,
         "iconCategory" : "Lighting",
-        "deviceCategory" : "Lighting"
+        "deviceCategory" : "Lighting",
+        "modelName" : "SR-BL1029-5C"
     },
     {
         "companyId" : "0A78",
@@ -141,7 +158,8 @@
         "categoryName" : "Controller Lighting",
         "elementCount" : 4,
         "iconCategory" : "Lighting",
-        "deviceCategory" : "Lighting"
+        "deviceCategory" : "Lighting",
+        "modelName" : "SR-BL1029-5C"
     },
     {
         "companyId" : "0A78",
@@ -149,7 +167,8 @@
         "categoryName" : "Controller Lighting",
         "elementCount" : 4,
         "iconCategory" : "Lighting",
-        "deviceCategory" : "Lighting"
+        "deviceCategory" : "Lighting",
+        "modelName" : "SR-BL1029-5C"
     },
     {
         "companyId" : "0A78",
@@ -157,7 +176,8 @@
         "categoryName" : "Controller Lighting",
         "elementCount" : 4,
         "iconCategory" : "Lighting",
-        "deviceCategory" : "Lighting"
+        "deviceCategory" : "Lighting",
+        "modelName" : "SR-BL9101EA-5C"
     },
     {
         "companyId" : "0A78",
@@ -165,7 +185,8 @@
         "categoryName" : "Controller Lighting",
         "elementCount" : 2,
         "iconCategory" : "Lighting",
-        "deviceCategory" : "Lighting"
+        "deviceCategory" : "Lighting",
+        "modelName" : "SR-BL9032A-V"
     },
     {
         "companyId" : "0A78",
@@ -173,7 +194,8 @@
         "categoryName" : "Controller Lighting",
         "elementCount" : 2,
         "iconCategory" : "Lighting",
-        "deviceCategory" : "Lighting"
+        "deviceCategory" : "Lighting",
+        "modelName" : "SR-BL9035A-V"
     },
     {
         "companyId" : "0A78",
@@ -181,7 +203,8 @@
         "categoryName" : "Controller Lighting",
         "elementCount" : 2,
         "iconCategory" : "Lighting",
-        "deviceCategory" : "Lighting"
+        "deviceCategory" : "Lighting",
+        "modelName" : "SR-BL9033A-V"
     },
     {
         "companyId" : "0A78",
@@ -189,71 +212,80 @@
         "categoryName" : "Controller Lighting",
         "elementCount" : 2,
         "iconCategory" : "Lighting",
-        "deviceCategory" : "Lighting"
+        "deviceCategory" : "Lighting",
+        "modelName" : "SR-BL9032A-V"
     },
     {
         "companyId" : "0A78",
         "productId" : "1001",
         "categoryName" : "PIR Sensor Lighting",
-        "elementCount" : 2,
+        "elementCount" : 3,
         "iconCategory" : "Lighting",
-        "deviceCategory" : "Lighting"
+        "deviceCategory" : "Lighting",
+        "modelName" : "SR-BL9032A-PIR-V"
     },
     {
         "companyId" : "0A78",
         "productId" : "1011",
         "categoryName" : "PIR Sensor Lighting",
-        "elementCount" : 2,
+        "elementCount" : 3,
         "iconCategory" : "Lighting",
-        "deviceCategory" : "Lighting"
+        "deviceCategory" : "Lighting",
+        "modelName" : "SR-BL9035A-PIR-V"
     },
     {
         "companyId" : "0A78",
         "productId" : "1012",
         "categoryName" : "PIR Sensor Lighting",
-        "elementCount" : 2,
+        "elementCount" : 3,
         "iconCategory" : "Lighting",
-        "deviceCategory" : "Lighting"
+        "deviceCategory" : "Lighting",
+        "modelName" : "SR-BL9035AJ-PIR-V"
     },
     {
         "companyId" : "0A78",
         "productId" : "1013",
         "categoryName" : "PIR Sensor Lighting",
-        "elementCount" : 2,
-        "iconCategory" : "Lighting",·
-        "deviceCategory" : "Lighting"
+        "elementCount" : 3,
+        "iconCategory" : "Lighting",
+        "deviceCategory" : "Lighting",
+        "modelName" : "SR-BL9035AJ-PIR-V-54"
     },
     {
         "companyId" : "0A78",
         "productId" : "1021",
         "categoryName" : "PIR Sensor Lighting",
-        "elementCount" : 2,
+        "elementCount" : 3,
         "iconCategory" : "Lighting",
-        "deviceCategory" : "Lighting"
+        "deviceCategory" : "Lighting",
+        "modelName" : "SR-BL9033A-PIR-V"
     },
     {
         "companyId" : "0A78",
         "productId" : "1022",
         "categoryName" : "PIR Sensor Lighting",
-        "elementCount" : 2,
+        "elementCount" : 3,
         "iconCategory" : "Lighting",
-        "deviceCategory" : "Lighting"
+        "deviceCategory" : "Lighting",
+        "modelName" : "SR-BL9033Z-PIR-V"
     },
     {
         "companyId" : "0A78",
         "productId" : "1023",
         "categoryName" : "PIR Sensor Lighting",
-        "elementCount" : 2,
+        "elementCount" : 3,
         "iconCategory" : "Lighting",
-        "deviceCategory" : "Lighting"
+        "deviceCategory" : "Lighting",
+        "modelName" : "SR-BL9033P-PIR-V"
     },
     {
         "companyId" : "0A78",
         "productId" : "1024",
         "categoryName" : "PIR Sensor Lighting",
-        "elementCount" : 2,
+        "elementCount" : 3,
         "iconCategory" : "Lighting",
-        "deviceCategory" : "Lighting"
+        "deviceCategory" : "Lighting",
+        "modelName" : "SR-BL9033J-PIR-V"
     },
     {
         "companyId" : "0A78",
@@ -261,7 +293,8 @@
         "categoryName" : "ZLLC PIR Sensor",
         "elementCount" : 2,
         "iconCategory" : "Standalone Sensor",
-        "deviceCategory" : "Lighting"
+        "deviceCategory" : "Lighting",
+        "modelName" : "SR-BL9030A-PIR-V"
     },
     {
         "companyId" : "0A78",
@@ -269,15 +302,17 @@
         "categoryName" : "ZLLC PIR Sensor",
         "elementCount" : 2,
         "iconCategory" : "Standalone Sensor",
-        "deviceCategory" : "Lighting"
+        "deviceCategory" : "Lighting",
+        "modelName" : "SR-SS9030B-PIR-V"
     },
     {
         "companyId" : "0A78",
         "productId" : "1051",
         "categoryName" : "PIR Sensor Lighting",
-        "elementCount" : 2,
+        "elementCount" : 3,
         "iconCategory" : "Lighting",
-        "deviceCategory" : "Lighting"
+        "deviceCategory" : "Lighting",
+        "modelName" : "SR-BL9036T-PIR-WPV"
     },
     {
         "companyId" : "0A78",
@@ -285,7 +320,8 @@
         "categoryName" : "PIR EL Lighting",
         "elementCount" : 2,
         "iconCategory" : "Lighting",
-        "deviceCategory" : "Lighting"
+        "deviceCategory" : "Lighting",
+        "modelName" : "SR-BL9036T-PIR-WPV-EL"
     },
     {
         "companyId" : "0A78",
@@ -293,7 +329,8 @@
         "categoryName" : "0-10V Converter",
         "elementCount" : 2,
         "iconCategory" : "Powerpack",
-        "deviceCategory" : "Lighting"
+        "deviceCategory" : "Lighting",
+        "modelName" : "SR-BL2421-SSV"
     },
     {
         "companyId" : "0A78",
@@ -301,7 +338,8 @@
         "categoryName" : "0-10V Load Controller",
         "elementCount" : 2,
         "iconCategory" : "Powerpack",
-        "deviceCategory" : "Lighting"
+        "deviceCategory" : "Lighting",
+        "modelName" : "SR-BL2421-SSVT"
     },
     {
         "companyId" : "0A78",
@@ -309,7 +347,8 @@
         "categoryName" : "Driver Lighting",
         "elementCount" : 2,
         "iconCategory" : "Lighting",
-        "deviceCategory" : "Lighting"
+        "deviceCategory" : "Lighting",
+        "modelName" : "SRP-BL9105N"
     },
     {
         "companyId" : "0A78",
@@ -317,7 +356,8 @@
         "categoryName" : "Driver Lighting",
         "elementCount" : 2,
         "iconCategory" : "Lighting",
-        "deviceCategory" : "Lighting"
+        "deviceCategory" : "Lighting",
+        "modelName" : "SRP-BL9105N"
     },
     {
         "companyId" : "0A78",
@@ -325,7 +365,8 @@
         "categoryName" : "Driver Lighting",
         "elementCount" : 2,
         "iconCategory" : "Lighting",
-        "deviceCategory" : "Lighting"
+        "deviceCategory" : "Lighting",
+        "modelName" : "SRP-BL9105N"
     },
     {
         "companyId" : "0A78",
@@ -333,7 +374,8 @@
         "categoryName" : "Driver Lighting",
         "elementCount" : 2,
         "iconCategory" : "Lighting",
-        "deviceCategory" : "Lighting"
+        "deviceCategory" : "Lighting",
+        "modelName" : "SRPL-BL9105N"
     },
     {
         "companyId" : "0A78",
@@ -341,7 +383,8 @@
         "categoryName" : "Driver Lighting",
         "elementCount" : 2,
         "iconCategory" : "Lighting",
-        "deviceCategory" : "Lighting"
+        "deviceCategory" : "Lighting",
+        "modelName" : "SRPL-BL9105N"
     },
     {
         "companyId" : "0A78",
@@ -349,7 +392,8 @@
         "categoryName" : "Driver Lighting",
         "elementCount" : 2,
         "iconCategory" : "Lighting",
-        "deviceCategory" : "Lighting"
+        "deviceCategory" : "Lighting",
+        "modelName" : "SRPL-BL9105N"
     },
     {
         "companyId" : "0A78",
@@ -357,7 +401,8 @@
         "categoryName" : "Controller Lighting",
         "elementCount" : 2,
         "iconCategory" : "Lighting",
-        "deviceCategory" : "Lighting"
+        "deviceCategory" : "Lighting",
+        "modelName" : "SR-BL9101CS"
     },
     {
         "companyId" : "0A78",
@@ -365,7 +410,8 @@
         "categoryName" : "Controller Lighting",
         "elementCount" : 2,
         "iconCategory" : "Lighting",
-        "deviceCategory" : "Lighting"
+        "deviceCategory" : "Lighting",
+        "modelName" : "SR-BL1029-SS-2PIN"
     },
     {
         "companyId" : "0A78",
@@ -373,7 +419,8 @@
         "categoryName" : "Controller Lighting",
         "elementCount" : 4,
         "iconCategory" : "Lighting",
-        "deviceCategory" : "Lighting"
+        "deviceCategory" : "Lighting",
+        "modelName" : "SR-BL1029-5C"
     },
     {
         "companyId" : "0A78",
@@ -381,7 +428,8 @@
         "categoryName" : "Controller Lighting",
         "elementCount" : 4,
         "iconCategory" : "Lighting",
-        "deviceCategory" : "Lighting"
+        "deviceCategory" : "Lighting",
+        "modelName" : "SR-BL1029-5C"
     },
     {
         "companyId" : "0A78",
@@ -389,7 +437,8 @@
         "categoryName" : "Controller Lighting",
         "elementCount" : 4,
         "iconCategory" : "Lighting",
-        "deviceCategory" : "Lighting"
+        "deviceCategory" : "Lighting",
+        "modelName" : "SR-BL1029-5C"
     },
     {
         "companyId" : "0A78",
@@ -397,7 +446,8 @@
         "categoryName" : "Controller Lighting",
         "elementCount" : 4,
         "iconCategory" : "Lighting",
-        "deviceCategory" : "Lighting"
+        "deviceCategory" : "Lighting",
+        "modelName" : "SR-BL1029-5C"
     },
     {
         "companyId" : "0A78",
@@ -405,7 +455,8 @@
         "categoryName" : "Controller Lighting",
         "elementCount" : 4,
         "iconCategory" : "Lighting",
-        "deviceCategory" : "Lighting"
+        "deviceCategory" : "Lighting",
+        "modelName" : "SR-BL9101EA-5C-PUSH"
     },
     {
         "companyId" : "0A78",
@@ -413,7 +464,8 @@
         "categoryName" : "Controller Lighting",
         "elementCount" : 4,
         "iconCategory" : "Lighting",
-        "deviceCategory" : "Lighting"
+        "deviceCategory" : "Lighting",
+        "modelName" : "SR-BL9101EA-5C-PUSH"
     },
     {
         "companyId" : "0A78",
@@ -421,7 +473,8 @@
         "categoryName" : "Controller Lighting",
         "elementCount" : 4,
         "iconCategory" : "Lighting",
-        "deviceCategory" : "Lighting"
+        "deviceCategory" : "Lighting",
+        "modelName" : "SR-BL9101EA-5C-PUSH"
     },
     {
         "companyId" : "0A78",
@@ -429,7 +482,8 @@
         "categoryName" : "Controller Lighting",
         "elementCount" : 4,
         "iconCategory" : "Lighting",
-        "deviceCategory" : "Lighting"
+        "deviceCategory" : "Lighting",
+        "modelName" : "SR-BL9101EA-5C-PUSH"
     },
     {
         "companyId" : "0A78",
@@ -437,7 +491,8 @@
         "categoryName" : "Controller Lighting",
         "elementCount" : 2,
         "iconCategory" : "Lighting",
-        "deviceCategory" : "Lighting"
+        "deviceCategory" : "Lighting",
+        "modelName" : "SR-BL9032A-AMB-V"
     },
     {
         "companyId" : "0A78",
@@ -445,7 +500,8 @@
         "categoryName" : "Controller Lighting",
         "elementCount" : 2,
         "iconCategory" : "Lighting",
-        "deviceCategory" : "Lighting"
+        "deviceCategory" : "Lighting",
+        "modelName" : "SR-BL9035A-V"
     },
     {
         "companyId" : "0A78",
@@ -453,7 +509,8 @@
         "categoryName" : "Controller Lighting",
         "elementCount" : 2,
         "iconCategory" : "Lighting",
-        "deviceCategory" : "Lighting"
+        "deviceCategory" : "Lighting",
+        "modelName" : "SR-BL9033A-V"
     },
     {
         "companyId" : "0A78",
@@ -461,23 +518,26 @@
         "categoryName" : "Controller Lighting",
         "elementCount" : 2,
         "iconCategory" : "Lighting",
-        "deviceCategory" : "Lighting"
+        "deviceCategory" : "Lighting",
+        "modelName" : "SR-BL9032A-V"
+    },
+    {
+        "companyId" : "0A78",
+        "productId" : "1481",
+        "categoryName" : "Controller Lighting",
+        "elementCount" : 2,
+        "iconCategory" : "Lighting",
+        "deviceCategory" : "Lighting",
+        "modelName" : "SR-BL9035A-AMB-V"
     },
     {
         "companyId" : "0A78",
         "productId" : "1502",
         "categoryName" : "PIR Sensor Lighting",
-        "elementCount" : 2,
+        "elementCount" : 3,
         "iconCategory" : "Lighting",
-        "deviceCategory" : "Lighting"
-    },
-    {
-        "companyId" : "0A78",
-        "productId" : "1502",
-        "categoryName" : "PIR Sensor Lighting",
-        "elementCount" : 2,
-        "iconCategory" : "Lighting",
-        "deviceCategory" : "Lighting"
+        "deviceCategory" : "Lighting",
+        "modelName" : "SunSmart DemoBorad NRF-EVK"
     },
     {
         "companyId" : "0A78",
@@ -485,7 +545,8 @@
         "categoryName" : "ETC USB Dongle",
         "elementCount" : 2,
         "iconCategory" : "Dongle",
-        "deviceCategory" : "Dongle"
+        "deviceCategory" : "Dongle",
+        "modelName" : "SR-BL2100ETC-NodeX"
     },
     {
         "companyId" : "0A78",

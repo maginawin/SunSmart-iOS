@@ -196,6 +196,17 @@ class BleFirmwareUpdateViewController: UIViewController {
     private var refreshing: Bool = false
     private var rssiSortTimer: Timer?
     
+    let space: SpaceData
+    
+    init(space: SpaceData) {
+        self.space = space
+        super.init(nibName: nil, bundle: nil)
+    }
+    
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
+    
     override func viewDidLoad() {
         super.viewDidLoad()
 
@@ -952,7 +963,8 @@ extension BleFirmwareUpdateViewController: BleFirmwareUpdateRestoreViewDelegate 
         guard self.restoreNodes.count > 0 else {
             return
         }
-        let vc = DeviceRestoreViewController(restoreMode: .specified(nodes: self.restoreNodes))
+        
+        let vc = DeviceRestoreViewController(space: space, restoreMode: .specified(nodes: self.restoreNodes))
         vc.deviceRestoreCallback = {[weak self] nodes in
             guard let self = self else { return }
             self.restoreNodes.removeAll(where: { oldNode in nodes.contains(where: { $0.macAddress == oldNode.macAddress }) })

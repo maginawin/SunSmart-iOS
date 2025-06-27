@@ -230,7 +230,7 @@ class FirmwareVersionViewController: UIViewController {
                     
                     stateLabel.text = "new_version_found".localizedString
                     
-                    let sizeStr = String(format: "%.1fKB", Float(newFirmwareData.size) / 1000.0)
+                    let sizeStr = String(format: "%.1fKB", Float(newFirmwareData.size) / 1024.0)
                     let time = "\("release_date".localizedString): \(String.dateConvert(timestamp: "\(newFirmwareData.releaseDate)", dateFormat: "MMM dd, yyyy"))"
                     let versionDesc = newFirmwareData.content
                     let content = "\(newFirmwareData.version)\n\(sizeStr)\n\(time)\n\(versionDesc)"

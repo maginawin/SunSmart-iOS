@@ -435,7 +435,8 @@ class SitesViewController: UIViewController {
                           let iconCategory = json["iconCategory"].string, let deviceCategory = json["deviceCategory"].string else {
                         return nil
                     }
-                    return MeshDeviceConfigInfo(companyId: companyId, productId: productId, categoryName: categoryName, elementCount: elementCount, iconCategory: iconCategory, deviceCategory: deviceCategory)
+                    let modelName = json["modelName"].string
+                    return MeshDeviceConfigInfo(companyId: companyId, productId: productId, categoryName: categoryName, elementCount: elementCount, iconCategory: iconCategory, deviceCategory: deviceCategory, modelName: modelName)
                 })
                 MeshLibManager.manager.supportDeviceInfos = list
                 MeshDeviceConfigInfo.saveAll(list: list)
@@ -499,12 +500,12 @@ class SitesViewController: UIViewController {
     @objc private func importClick() {
         
         
-        guard let space = SpaceData.load(siteId: "25300E88-41F0-456E-A0A9-AD615069017C", spaceId: "88BF1DEC-264E-4D00-A93C-729A88030D58").first else {
-            return
-        }
-        let vc = DeviceAddViewController(space: space)
-        navigationController?.pushViewController(vc, animated: true)
-//
+//        guard let space = SpaceData.load(siteId: "25300E88-41F0-456E-A0A9-AD615069017C", spaceId: "88BF1DEC-264E-4D00-A93C-729A88030D58").first else {
+//            return
+//        }
+//        let vc = DeviceAddViewController(space: space)
+//        navigationController?.pushViewController(vc, animated: true)
+
 //        XWHUDManager.showCustomHUD(withMessage: nil, isWindow: true)
 //        
 //        DispatchQueue.global().async {
@@ -524,13 +525,13 @@ class SitesViewController: UIViewController {
 //        let vc = EnergyDataViewController(space: self.allSites[0].spaces[0])
 //        present(NavigationViewController(rootViewController: vc), animated: true)
         
-//        ImportProjectView {[weak self] mode in
-//            if mode == .scanQRCode {
-//                self?.scanQRCode()
-//            }else {
-//                self?.uuidImport()
-//            }
-//        }.show()
+        ImportProjectView {[weak self] mode in
+            if mode == .scanQRCode {
+                self?.scanQRCode()
+            }else {
+                self?.uuidImport()
+            }
+        }.show()
 
     }
     
@@ -587,8 +588,13 @@ class SitesViewController: UIViewController {
     
     @objc private func moreClick() {
         
-//        let margin: CGFloat = SCRXFrom(15.5)
-//        isIphoneX ? 18 : 15
+//        guard let space = SpaceData.load(siteId: "25300E88-41F0-456E-A0A9-AD615069017C", spaceId: "88BF1DEC-264E-4D00-A93C-729A88030D58").first else {
+//            return
+//        }
+//        let vc = DeviceAddViewController(space: space)
+//        navigationController?.pushViewController(vc, animated: true)
+        
+//        return
         let touchCenterX = view.width - navigationRightItemMargin - 15
         
         let items: [MenuPopView.MenuItem] = [

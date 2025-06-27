@@ -106,8 +106,8 @@ class SyncDevicesProgressView: UIView {
         addSubview(tableView)
         tableView.snp.makeConstraints { make in
             make.center.equalToSuperview()
-            make.left.equalTo(SCRXFrom(8))
-            make.right.equalTo(SCRXFrom(-8))
+            make.left.equalTo(SCRXFrom(isIPad ? 100 : 8))
+            make.right.equalTo(SCRXFrom(isIPad ? -100 : -8))
             make.height.equalTo(tableView.rowHeight * CGFloat(min(stepModel.tasks.count, 5)) + tableView.contentInset.top + tableView.contentInset.bottom)
         }
         

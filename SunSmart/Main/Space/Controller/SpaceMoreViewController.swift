@@ -105,7 +105,7 @@ extension SpaceMoreViewController: UICollectionViewDataSource, UICollectionViewD
                 return
             }
             
-            let vc = BleFirmwareUpdateViewController()
+            let vc = BleFirmwareUpdateViewController(space: space)
             if isIPad {
                 vc.preferredContentSize = iPadPreferredContentSize
             }

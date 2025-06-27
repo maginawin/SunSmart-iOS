@@ -104,6 +104,8 @@ let TextBlack_Color = RGB(30, 35, 41)
 let TextBlack_Color1 = RGB(13, 16, 36)
 
 let Title_Color = RGB(64, 79, 102)
+/// 重要文本
+let ImportantText_Color = RGB(46, 49, 93)
 
 /// 常规的黑色
 let Default_Black_Color = RGB(28, 28, 35)

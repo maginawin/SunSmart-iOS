@@ -142,8 +142,8 @@
             filePath = "SunSmart/Common/Data/MeshNetwork+SunSmart.swift"
             startingColumnNumber = "9223372036854775807"
             endingColumnNumber = "9223372036854775807"
-            startingLineNumber = "2321"
-            endingLineNumber = "2321"
+            startingLineNumber = "2326"
+            endingLineNumber = "2326"
             landmarkName = "updateData(message:isSuccess:)"
             landmarkType = "7">
          </BreakpointContent>
@@ -190,8 +190,8 @@
             filePath = "SunSmart/Main/Device/Controller/DeviceRestoreViewController.swift"
             startingColumnNumber = "9223372036854775807"
             endingColumnNumber = "9223372036854775807"
-            startingLineNumber = "592"
-            endingLineNumber = "592"
+            startingLineNumber = "696"
+            endingLineNumber = "696"
             landmarkName = "selectAllBtnClick(sender:)"
             landmarkType = "7">
          </BreakpointContent>
@@ -206,8 +206,8 @@
             filePath = "SunSmart/Main/Device/Controller/DeviceRestoreViewController.swift"
             startingColumnNumber = "9223372036854775807"
             endingColumnNumber = "9223372036854775807"
-            startingLineNumber = "627"
-            endingLineNumber = "627"
+            startingLineNumber = "732"
+            endingLineNumber = "732"
             landmarkName = "stopAddBtnClick()"
             landmarkType = "7">
          </BreakpointContent>
@@ -222,8 +222,8 @@
             filePath = "SunSmart/Main/Device/Controller/DeviceRestoreViewController.swift"
             startingColumnNumber = "9223372036854775807"
             endingColumnNumber = "9223372036854775807"
-            startingLineNumber = "729"
-            endingLineNumber = "729"
+            startingLineNumber = "834"
+            endingLineNumber = "834"
             landmarkName = "reloadDeviceState(_:)"
             landmarkType = "7">
          </BreakpointContent>
@@ -238,8 +238,8 @@
             filePath = "SunSmart/Main/Device/Controller/DeviceRestoreViewController.swift"
             startingColumnNumber = "9223372036854775807"
             endingColumnNumber = "9223372036854775807"
-            startingLineNumber = "726"
-            endingLineNumber = "726"
+            startingLineNumber = "831"
+            endingLineNumber = "831"
             landmarkName = "reloadDeviceState(_:)"
             landmarkType = "7">
          </BreakpointContent>
@@ -321,22 +321,6 @@
             startingLineNumber = "133"
             endingLineNumber = "133"
             landmarkName = "model(_:didReceiveAcknowledgedMessage:from:sentTo:)"
-            landmarkType = "7">
-         </BreakpointContent>
-      </BreakpointProxy>
-      <BreakpointProxy
-         BreakpointExtensionID = "Xcode.Breakpoint.FileBreakpoint">
-         <BreakpointContent
-            uuid = "73E045FF-3E7B-4980-A44B-8EF1E098F44A"
-            shouldBeEnabled = "Yes"
-            ignoreCount = "0"
-            continueAfterRunningActions = "No"
-            filePath = "SunSmart/Main/Group/Path/Controller/GroupPathSequenceViewController.swift"
-            startingColumnNumber = "9223372036854775807"
-            endingColumnNumber = "9223372036854775807"
-            startingLineNumber = "358"
-            endingLineNumber = "358"
-            landmarkName = "cell(_:didSelectDirection:direction:)"
             landmarkType = "7">
          </BreakpointContent>
       </BreakpointProxy>

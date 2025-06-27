@@ -388,7 +388,7 @@ class DevicesViewController: WMPageController {
     
     /// 恢复设备数据
     private func devicesRestore() {
-        let vc = DeviceRestoreViewController(restoreMode: .default)
+        let vc = DeviceRestoreViewController(space: space, restoreMode: .default)
         vc.deviceRestoreCallback = { _ in
             NotificationCenter.default.post(name: .init(devicesAddNotificationName), object: nil)
         }

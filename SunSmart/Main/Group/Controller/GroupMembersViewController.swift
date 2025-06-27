@@ -153,50 +153,60 @@ class GroupMembersViewController: UIViewController {
             backAction()
             return
         }
-        
-        let exitNodes = group.nodes.filter({ !selectNodes.contains($0) })
-        exitNodes.forEach({
-            $0.groupState = .exitFailure
-        })
-        // 退出组的设备，整理邻近照明路径关系
-        if exitNodes.count > 0, group.info.profile.type == .proximityLighting, let path = group.info.proximityLightingPath {
-//            let proximityNodes = path.nodes
-            exitNodes.forEach { node in
-                path.removeNode(node)
-            }
-            group.info.save()
-        }
-        
-        let addNodes = selectNodes.filter({ !group.nodes.contains($0) })
-        addNodes.forEach({ $0.groupState = .inGroup })
-        guard exitNodes.count > 0 || addNodes.count > 0 else {
-            backAction()
-            return
-        }
-        guard MeshLibManager.manager.isMeshNetworkConnected else {
-            XWHUDManager.showTipHUD("device_notconnect_message".localizedString, isLineFeed: true)
-            return
-        }
-        
-        let vc = SyncDevicesViewController(type: .group(group, inNodes: addNodes, outNodes: exitNodes))
-        vc.syncSuccessCallback = {[weak self] _ in
-            XWHUDManager.showSuccessTipHUD("done!".localizedString)
-            guard let self = self else { return }
-            DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
-                NotificationCenter.default.post(name: .init(groupDataUpdateNotificationName), object: self.group)
-                if self.isAddDevices {
-                    self.backAction()
-                }else {
-                    self.navigationController?.popToViewController(vcClass: GroupViewController.classForCoder(), animated: true)
+        XWHUDManager.showCustomHUD(withMessage: nil, isWindow: false)
+        DispatchQueue.global().async {
+            let exitNodes = self.group.nodes.filter({ !self.selectNodes.contains($0) })
+            exitNodes.forEach({
+                $0.groupState = .exitFailure
+            })
+            // 退出组的设备，整理邻近照明路径关系
+            if exitNodes.count > 0, self.group.info.profile.type == .proximityLighting, let path = self.group.info.proximityLightingPath {
+    //            let proximityNodes = path.nodes
+                exitNodes.forEach { node in
+                    path.removeNode(node)
                 }
+                self.group.info.save()
             }
+            
+            let addNodes = self.selectNodes.filter({ !self.group.nodes.contains($0) })
+            addNodes.forEach({ $0.groupState = .inGroup })
+            guard exitNodes.count > 0 || addNodes.count > 0 else {
+                DispatchQueue.main.async {
+                    XWHUDManager.hide()
+                    self.backAction()
+                }
+                return
+            }
+            
+            DispatchQueue.main.async {
+                XWHUDManager.hide()
+                guard MeshLibManager.manager.isMeshNetworkConnected else {
+                    XWHUDManager.showTipHUD("device_notconnect_message".localizedString, isLineFeed: true)
+                    return
+                }
+                let vc = SyncDevicesViewController(type: .group(self.group, inNodes: addNodes, outNodes: exitNodes))
+                vc.syncSuccessCallback = {[weak self] _ in
+                    XWHUDManager.showSuccessTipHUD("done!".localizedString)
+                    guard let self = self else { return }
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+                        NotificationCenter.default.post(name: .init(groupDataUpdateNotificationName), object: self.group)
+                        if self.isAddDevices {
+                            self.backAction()
+                        }else {
+                            self.navigationController?.popToViewController(vcClass: GroupViewController.classForCoder(), animated: true)
+                        }
+                    }
+                }
+                vc.backActionCallback = {[weak self] _ in
+                    guard let self = self else { return }
+                    NotificationCenter.default.post(name: .init(groupDataUpdateNotificationName), object: self.group)
+                    self.navigationController?.popToViewController(vcClass: GroupViewController.classForCoder())
+                }
+                self.navigationController?.pushViewController(vc, animated: true)
+            }
+           
+            
         }
-        vc.backActionCallback = {[weak self] _ in
-            guard let self = self else { return }
-            NotificationCenter.default.post(name: .init(groupDataUpdateNotificationName), object: self.group)
-            self.navigationController?.popToViewController(vcClass: GroupViewController.classForCoder())
-        }
-        navigationController?.pushViewController(vc, animated: true)
     }
     
     private func updateEmptyUI() {

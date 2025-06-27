@@ -635,6 +635,10 @@
 		C8A4E8952CDB1C3600A22C77 /* FirmwareDistributeUpdateStateView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A4E8942CDB1C3600A22C77 /* FirmwareDistributeUpdateStateView.swift */; };
 		C8A68A292DA67B110011A389 /* Data+Gzip.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A68A272DA67B110011A389 /* Data+Gzip.swift */; };
 		C8A7A6B82DC216FA00191E9C /* EnergyHarvestSelectView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A7A6B72DC216FA00191E9C /* EnergyHarvestSelectView.swift */; };
+		C8A85CDE2E09014B007F9B81 /* DeviceAddSelectAllViewCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A85CDD2E09014B007F9B81 /* DeviceAddSelectAllViewCell.swift */; };
+		C8A85CDF2E09014B007F9B81 /* DeviceAddSelectAllViewCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A85CDD2E09014B007F9B81 /* DeviceAddSelectAllViewCell.swift */; };
+		C8A85CE12E0A4886007F9B81 /* DeviceAddCandidateDeviceListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A85CE02E0A4886007F9B81 /* DeviceAddCandidateDeviceListView.swift */; };
+		C8A85CE22E0A4886007F9B81 /* DeviceAddCandidateDeviceListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A85CE02E0A4886007F9B81 /* DeviceAddCandidateDeviceListView.swift */; };
 		C8AADEFF2A97350400238C1C /* SiteData.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8AADEFE2A97350400238C1C /* SiteData.swift */; };
 		C8AADF012A973DA600238C1C /* SpaceData.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8AADF002A973DA600238C1C /* SpaceData.swift */; };
 		C8AAE2772A97435A00238C1C /* Database.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8AAE2762A97435A00238C1C /* Database.swift */; };
@@ -692,6 +696,10 @@
 		C8BA43692DC0AE9900018392 /* TimeSeriesDataGuideView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8BA43682DC0AE9900018392 /* TimeSeriesDataGuideView.swift */; };
 		C8BA436B2DC0D75A00018392 /* EnergySelectExportDevicesController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8BA436A2DC0D75A00018392 /* EnergySelectExportDevicesController.swift */; };
 		C8BC494C2C1C1CD5006BAF89 /* XWHUDManager_loading.gif in Resources */ = {isa = PBXBuildFile; fileRef = C8BC494B2C1C1CD5006BAF89 /* XWHUDManager_loading.gif */; };
+		C8BC95E22E04FC830058D41E /* RangeSlider.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8BC95E12E04FC830058D41E /* RangeSlider.swift */; };
+		C8BC95E32E04FC830058D41E /* RangeSlider.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8BC95E12E04FC830058D41E /* RangeSlider.swift */; };
+		C8BC95E82E055C540058D41E /* DeviceSignalStrengthView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8BC95E72E055C540058D41E /* DeviceSignalStrengthView.swift */; };
+		C8BC95E92E055C540058D41E /* DeviceSignalStrengthView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8BC95E72E055C540058D41E /* DeviceSignalStrengthView.swift */; };
 		C8BF08462B26A45100144BAC /* TitleSelectView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8BF08452B26A45100144BAC /* TitleSelectView.swift */; };
 		C8BF084C2B26F78100144BAC /* GroupsViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8BF084B2B26F78100144BAC /* GroupsViewController.swift */; };
 		C8BF084E2B26F84800144BAC /* AlignCenterFlowLayout.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8BF084D2B26F84800144BAC /* AlignCenterFlowLayout.swift */; };
@@ -756,6 +764,8 @@
 		C8DF845C2DB65ADF0070CBD9 /* DeviceDongleScheduleViewCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8DF845B2DB65ADF0070CBD9 /* DeviceDongleScheduleViewCell.swift */; };
 		C8E694222D8D407E00005832 /* DeviceAddResultView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8E694212D8D407E00005832 /* DeviceAddResultView.swift */; };
 		C8E694242D8D424100005832 /* DeviceAddBottomView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8E694232D8D424100005832 /* DeviceAddBottomView.swift */; };
+		C8E6F3582E0E4A3F00730971 /* DeviceAddInstructionsController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8E6F3572E0E4A3F00730971 /* DeviceAddInstructionsController.swift */; };
+		C8E6F3592E0E4A3F00730971 /* DeviceAddInstructionsController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8E6F3572E0E4A3F00730971 /* DeviceAddInstructionsController.swift */; };
 		C8ED59F92DD743960074A5BB /* GroupPathSequencePageController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8ED59F82DD743960074A5BB /* GroupPathSequencePageController.swift */; };
 		C8EF54742C1AFA53008389CE /* NetworkLoggerPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8EF54732C1AFA53008389CE /* NetworkLoggerPlugin.swift */; };
 		C8FDE9A72DD595A30002394B /* GroupProximityLightingData.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8FDE9A62DD595A30002394B /* GroupProximityLightingData.swift */; };
@@ -1032,6 +1042,8 @@
 		C8A4E8942CDB1C3600A22C77 /* FirmwareDistributeUpdateStateView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FirmwareDistributeUpdateStateView.swift; sourceTree = "<group>"; };
 		C8A68A272DA67B110011A389 /* Data+Gzip.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Data+Gzip.swift"; sourceTree = "<group>"; };
 		C8A7A6B72DC216FA00191E9C /* EnergyHarvestSelectView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EnergyHarvestSelectView.swift; sourceTree = "<group>"; };
+		C8A85CDD2E09014B007F9B81 /* DeviceAddSelectAllViewCell.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceAddSelectAllViewCell.swift; sourceTree = "<group>"; };
+		C8A85CE02E0A4886007F9B81 /* DeviceAddCandidateDeviceListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceAddCandidateDeviceListView.swift; sourceTree = "<group>"; };
 		C8AADEFE2A97350400238C1C /* SiteData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SiteData.swift; sourceTree = "<group>"; };
 		C8AADF002A973DA600238C1C /* SpaceData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpaceData.swift; sourceTree = "<group>"; };
 		C8AAE2762A97435A00238C1C /* Database.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Database.swift; sourceTree = "<group>"; };
@@ -1090,6 +1102,8 @@
 		C8BA43682DC0AE9900018392 /* TimeSeriesDataGuideView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TimeSeriesDataGuideView.swift; sourceTree = "<group>"; };
 		C8BA436A2DC0D75A00018392 /* EnergySelectExportDevicesController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EnergySelectExportDevicesController.swift; sourceTree = "<group>"; };
 		C8BC494B2C1C1CD5006BAF89 /* XWHUDManager_loading.gif */ = {isa = PBXFileReference; lastKnownFileType = image.gif; path = XWHUDManager_loading.gif; sourceTree = "<group>"; };
+		C8BC95E12E04FC830058D41E /* RangeSlider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RangeSlider.swift; sourceTree = "<group>"; };
+		C8BC95E72E055C540058D41E /* DeviceSignalStrengthView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceSignalStrengthView.swift; sourceTree = "<group>"; };
 		C8BF08452B26A45100144BAC /* TitleSelectView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TitleSelectView.swift; sourceTree = "<group>"; };
 		C8BF084B2B26F78100144BAC /* GroupsViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GroupsViewController.swift; sourceTree = "<group>"; };
 		C8BF084D2B26F84800144BAC /* AlignCenterFlowLayout.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = AlignCenterFlowLayout.swift; sourceTree = "<group>"; };
@@ -1167,6 +1181,7 @@
 		C8DF845B2DB65ADF0070CBD9 /* DeviceDongleScheduleViewCell.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceDongleScheduleViewCell.swift; sourceTree = "<group>"; };
 		C8E694212D8D407E00005832 /* DeviceAddResultView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceAddResultView.swift; sourceTree = "<group>"; };
 		C8E694232D8D424100005832 /* DeviceAddBottomView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceAddBottomView.swift; sourceTree = "<group>"; };
+		C8E6F3572E0E4A3F00730971 /* DeviceAddInstructionsController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceAddInstructionsController.swift; sourceTree = "<group>"; };
 		C8ED59F82DD743960074A5BB /* GroupPathSequencePageController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GroupPathSequencePageController.swift; sourceTree = "<group>"; };
 		C8EF54732C1AFA53008389CE /* NetworkLoggerPlugin.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NetworkLoggerPlugin.swift; sourceTree = "<group>"; };
 		C8FDE9A62DD595A30002394B /* GroupProximityLightingData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GroupProximityLightingData.swift; sourceTree = "<group>"; };
@@ -1628,6 +1643,7 @@
 				C85829F52B398443002A4367 /* CustomProgressView.swift */,
 				C89A1C352B54C64B004912B9 /* MultiseriatePickerView.swift */,
 				C89C15722D9A9D8000789F0B /* ContinuousTapGestureRecognizer.swift */,
+				C8BC95E12E04FC830058D41E /* RangeSlider.swift */,
 			);
 			path = View;
 			sourceTree = "<group>";
@@ -1781,6 +1797,9 @@
 				C898EA732AC400100023B480 /* DeviceLightControlView.swift */,
 				C898EA752AC409230023B480 /* DeviceSliderFunctionView.swift */,
 				C89941942AD4F192008DCD76 /* DeviceAddViewCell.swift */,
+				C8A85CDD2E09014B007F9B81 /* DeviceAddSelectAllViewCell.swift */,
+				C8BC95E72E055C540058D41E /* DeviceSignalStrengthView.swift */,
+				C8A85CE02E0A4886007F9B81 /* DeviceAddCandidateDeviceListView.swift */,
 				C88B25792ADE1D2100CF1AE4 /* DeviceLightHeaderView.swift */,
 				C88B257D2ADE594600CF1AE4 /* DeviceLightControlViewCell.swift */,
 				C89AC9302B62372300744868 /* DeviceLightInfoSectionView.swift */,
@@ -1800,6 +1819,7 @@
 				C8A3290C2AC5690D00BC7389 /* DeviceAddViewController.swift */,
 				C8D22E1F2E041020001A2BDA /* DeviceAddClassicModeController.swift */,
 				C8D22E1C2E04100D001A2BDA /* DeviceAddProfessionalModeController.swift */,
+				C8E6F3572E0E4A3F00730971 /* DeviceAddInstructionsController.swift */,
 				C88B25732ADD180900CF1AE4 /* DeviceLightViewController.swift */,
 				C89FB7CC2CF079A500411D96 /* DeviceRestoreViewController.swift */,
 				C85CB5F82BB6BE8E006598C0 /* DeviceInformationViewController.swift */,
@@ -2808,6 +2828,7 @@
 				C885541E2DE6B44C00C8B688 /* FSCalendarAppearance.m in Sources */,
 				C885541F2DE6B44C00C8B688 /* FSCalendarCalculator.m in Sources */,
 				C88554202DE6B44C00C8B688 /* FSCalendarCell.m in Sources */,
+				C8A85CE22E0A4886007F9B81 /* DeviceAddCandidateDeviceListView.swift in Sources */,
 				C88554212DE6B44C00C8B688 /* GroupPathSequenceDeviceAddView.swift in Sources */,
 				C88554222DE6B44C00C8B688 /* FSCalendarHeaderView.m in Sources */,
 				C88554232DE6B44C00C8B688 /* EnergyConsumptionInstructionView.swift in Sources */,
@@ -2841,6 +2862,7 @@
 				C885543E2DE6B44C00C8B688 /* BleFirmwareUpdateRestoreView.swift in Sources */,
 				C885543F2DE6B44C00C8B688 /* FirmwareVersionViewController.swift in Sources */,
 				C88554402DE6B44C00C8B688 /* SitesViewCell.swift in Sources */,
+				C8BC95E22E04FC830058D41E /* RangeSlider.swift in Sources */,
 				C88554412DE6B44C00C8B688 /* ProfileInstructionsHeaderView.swift in Sources */,
 				C88554422DE6B44C00C8B688 /* DeviceGroupsSelectData.swift in Sources */,
 				C88554432DE6B44C00C8B688 /* CharacterSelectView.swift in Sources */,
@@ -2858,12 +2880,14 @@
 				C885544F2DE6B44C00C8B688 /* EnergyStaticDataGroupView.swift in Sources */,
 				C88554502DE6B44C00C8B688 /* DeviceParameterRetedPowerViewCell.swift in Sources */,
 				C88554512DE6B44C00C8B688 /* SitesTransferredView.swift in Sources */,
+				C8A85CDF2E09014B007F9B81 /* DeviceAddSelectAllViewCell.swift in Sources */,
 				C88554522DE6B44C00C8B688 /* SyncDeviceStepViewCell.swift in Sources */,
 				C88554532DE6B44C00C8B688 /* ScenesViewController.swift in Sources */,
 				C88554542DE6B44C00C8B688 /* DeviceAddViewCell.swift in Sources */,
 				C88554552DE6B44C00C8B688 /* ImportProjectView.swift in Sources */,
 				C88554562DE6B44C00C8B688 /* CollectionTitleHeaderView.swift in Sources */,
 				C88554572DE6B44C00C8B688 /* BluetoothRequiredViewController.swift in Sources */,
+				C8E6F3582E0E4A3F00730971 /* DeviceAddInstructionsController.swift in Sources */,
 				C88554582DE6B44C00C8B688 /* DeviceAddResultView.swift in Sources */,
 				C88554592DE6B44C00C8B688 /* NetworkRequest.swift in Sources */,
 				C885545A2DE6B44C00C8B688 /* ExternalVendorMessage+Extension.swift in Sources */,
@@ -2953,6 +2977,7 @@
 				C88554AD2DE6B44C00C8B688 /* CustomDeviceSlider.swift in Sources */,
 				C88554AE2DE6B44C00C8B688 /* SceneAddCustomView.swift in Sources */,
 				C88554AF2DE6B44C00C8B688 /* MeshFirmwareSelectDeviceViewCell.swift in Sources */,
+				C8BC95E82E055C540058D41E /* DeviceSignalStrengthView.swift in Sources */,
 				C88554B02DE6B44C00C8B688 /* MeshFirmwareUpgradeSectionView.swift in Sources */,
 				C88554B12DE6B44C00C8B688 /* Data+Gzip.swift in Sources */,
 				C88554B22DE6B44C00C8B688 /* SitesViewController.swift in Sources */,
@@ -3170,6 +3195,7 @@
 				C8DA6A102DB8800B00E32092 /* FSCalendarAppearance.m in Sources */,
 				C8DA6A112DB8800B00E32092 /* FSCalendarCalculator.m in Sources */,
 				C8DA6A122DB8800B00E32092 /* FSCalendarCell.m in Sources */,
+				C8A85CE12E0A4886007F9B81 /* DeviceAddCandidateDeviceListView.swift in Sources */,
 				C8CD5BE82DDABF5C00F09467 /* GroupPathSequenceDeviceAddView.swift in Sources */,
 				C8DA6A132DB8800B00E32092 /* FSCalendarHeaderView.m in Sources */,
 				C8AEB9A52DCB45FD0053102B /* EnergyConsumptionInstructionView.swift in Sources */,
@@ -3203,6 +3229,7 @@
 				C8DC673F2D95523E00C2BC22 /* BleFirmwareUpdateRestoreView.swift in Sources */,
 				C8A16F722C86A3CF00FB50BD /* FirmwareVersionViewController.swift in Sources */,
 				C89FEF4F2ABEB37900DCCFB6 /* SitesViewCell.swift in Sources */,
+				C8BC95E32E04FC830058D41E /* RangeSlider.swift in Sources */,
 				C8047F0F2B8E049E00A09FFA /* ProfileInstructionsHeaderView.swift in Sources */,
 				C8B058A72B5115B2006FC36F /* DeviceGroupsSelectData.swift in Sources */,
 				C8BF085E2B27F2C300144BAC /* CharacterSelectView.swift in Sources */,
@@ -3220,12 +3247,14 @@
 				C84FBCAD2DBF28D80030E136 /* EnergyStaticDataGroupView.swift in Sources */,
 				C8AEB9A92DCC5A660053102B /* DeviceParameterRetedPowerViewCell.swift in Sources */,
 				C86760A52C37F4B4006AD978 /* SitesTransferredView.swift in Sources */,
+				C8A85CDE2E09014B007F9B81 /* DeviceAddSelectAllViewCell.swift in Sources */,
 				C89C9FEC2B3C26BA00074031 /* SyncDeviceStepViewCell.swift in Sources */,
 				C8A130B92B3129960008C353 /* ScenesViewController.swift in Sources */,
 				C89941952AD4F192008DCD76 /* DeviceAddViewCell.swift in Sources */,
 				C884EF722C057B5100B5F869 /* ImportProjectView.swift in Sources */,
 				C8A437B22D35F11A00F3424C /* CollectionTitleHeaderView.swift in Sources */,
 				C8A18FEB2AE105F300260707 /* BluetoothRequiredViewController.swift in Sources */,
+				C8E6F3592E0E4A3F00730971 /* DeviceAddInstructionsController.swift in Sources */,
 				C8E694222D8D407E00005832 /* DeviceAddResultView.swift in Sources */,
 				C884EF752C05B93200B5F869 /* NetworkRequest.swift in Sources */,
 				C84A2C552C2D465A0064D3F1 /* ExternalVendorMessage+Extension.swift in Sources */,
@@ -3315,6 +3344,7 @@
 				C898EA792AC41AFB0023B480 /* CustomDeviceSlider.swift in Sources */,
 				C8A130C02B327FF40008C353 /* SceneAddCustomView.swift in Sources */,
 				C8A0301A2CD85FC40063FEC4 /* MeshFirmwareSelectDeviceViewCell.swift in Sources */,
+				C8BC95E92E055C540058D41E /* DeviceSignalStrengthView.swift in Sources */,
 				C8A030202CD89EC00063FEC4 /* MeshFirmwareUpgradeSectionView.swift in Sources */,
 				C8A68A292DA67B110011A389 /* Data+Gzip.swift in Sources */,
 				C898E2F12ABA9BB900C71315 /* SitesViewController.swift in Sources */,

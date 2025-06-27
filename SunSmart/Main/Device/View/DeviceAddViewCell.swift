@@ -18,6 +18,10 @@ protocol DeviceAddViewCellDelegate: AnyObject {
     
     /// 设备状态图标点击
     func cell(_ cell: DeviceAddViewCell, deviceStateImageClick device: ProvisioningDevice)
+    
+//    func cell(_ cell: DeviceAddViewCell, ) -> <#return type#> {
+//        <#function body#>
+//    }
 }
 
 class DeviceAddViewCell: UITableViewCell {
@@ -33,6 +37,12 @@ class DeviceAddViewCell: UITableViewCell {
     var addStateLabel: UILabel!
     var identifyLoadingView: UIImageView!
     var identifyStateLabel: UILabel!
+    var signalStrengthView: DeviceSignalStrengthView!
+    var signalLabel: UILabel!
+    var lineView: UIView!
+    var activityImageView: UIImageView!
+    
+    var activityTimer: Timer?
     
     weak var delegate: DeviceAddViewCellDelegate?
     
@@ -51,9 +61,13 @@ class DeviceAddViewCell: UITableViewCell {
             identifyLoadingView.isHidden = true
             identifyStateLabel.isHidden = true
             
+            if !(device.addState == .identifying || device.addState == .identifyConnecting || device.addState == .identifyWait) {
+                identifyLoadingView.layer.removeAnimation(forKey: "loading")
+            }
+            if device.addState != .identifying {
+                deviceImageView.layer.removeAnimation(forKey: "identify")
+            }
             stateImageView.layer.removeAnimation(forKey: "loading")
-            deviceImageView.layer.removeAnimation(forKey: "identify")
-            identifyLoadingView.layer.removeAnimation(forKey: "loading")
             
             switch device.selectedState {
             case .unselected:
@@ -93,7 +107,9 @@ class DeviceAddViewCell: UITableViewCell {
                     identifyStateLabel.text = "identifying".localizedString
                     identifyAnimationView.isHidden = false
 //                    deviceImageView.layer.addOpacityAnimation(fromOpacity: 1, toOpacity: 0, duration: 0.5, repeatCount: 10, animationKey: "identify")
-                    identifyAnimationView.layer.addScaleAnimation(fromScale: 0, toScale: 1, duration: 1, repeatCount: .max, timingName: .easeInEaseOut, animationKey: "identify")
+                    if identifyAnimationView.layer.animation(forKey: "identify") == nil {
+                        identifyAnimationView.layer.addScaleAnimation(fromScale: 0, toScale: 1, duration: 1, repeatCount: .max, timingName: .easeInEaseOut, animationKey: "identify")
+                    }
                 }else if device.addState == .identifyFail {
                     identifyStateLabel.text = "device_identify_failed".localizedString
                     identifyStateLabel.textColor = Red_Color
@@ -102,7 +118,9 @@ class DeviceAddViewCell: UITableViewCell {
                 identifyStateLabel.snp.updateConstraints { make in
                     make.width.equalTo(textSize.width + SCRXFrom(12))
                 }
-                identifyLoadingView.layer.addRotationAnimation(duration: 1.5, repeatCount: .max, animationKey: "loading")
+                if identifyLoadingView.layer.animation(forKey: "loading") == nil {
+                    identifyLoadingView.layer.addRotationAnimation(duration: 1.5, repeatCount: .max, animationKey: "loading")
+                }
             case .wait:
                 stateImageView.isHidden = false
                 stateImageView.image = UIImage(named: "device_add_waiting")
@@ -144,6 +162,22 @@ class DeviceAddViewCell: UITableViewCell {
                 macAddressLabel.text = device.peripheral.identifier.uuidString
             }
 
+            
+            let activityDuration = device.activityDate != nil ? device.activityDate!.distance(to: Date()) : 0
+            
+            if device.triggerActionType != nil && activityDuration < 3 && device.addState != .identifying {
+                activityImageView.isHidden = false
+                startActivityTimer(interval: 3 - activityDuration)
+//                if device.macAddress == "D8A6F671810F" {
+//                    
+//                    print("activity: \(Date().timeIntervalSince1970 - device.activityDate!.timeIntervalSince1970)")
+//                }
+            }else {
+                activityImageView.isHidden = true
+                stopActivityTimer()
+            }
+            signalStrengthView.setSignalStrength(rssi: device.rssi.intValue)
+            signalLabel.text = "\(device.rssi.intValue)dB"
         }
     }
     
@@ -157,6 +191,24 @@ class DeviceAddViewCell: UITableViewCell {
     
     required init?(coder: NSCoder) {
         fatalError("init(coder:) has not been implemented")
+    }
+    
+    private func startActivityTimer(interval: TimeInterval) {
+        stopActivityTimer()
+        
+        activityTimer = LCWeakTimer.scheduledTimer(timeInterval: interval, aTarget: self, selector: #selector(deviceActivityFinish), userInfo: nil, repeats: false)
+        RunLoop.current.add(activityTimer!, forMode: .common)
+    }
+    
+    private func stopActivityTimer() {
+        activityTimer?.invalidate()
+        activityTimer = nil
+    }
+    
+    @objc private func deviceActivityFinish() {
+        device.triggerActionType = nil
+        
+        activityImageView.isHidden = true
     }
     
     // MARK: - Action
@@ -190,7 +242,7 @@ class DeviceAddViewCell: UITableViewCell {
         deviceImageView = UIImageView()
         contentView.addSubview(deviceImageView)
         deviceImageView.snp.makeConstraints { make in
-            make.left.equalTo(SCRXFrom(42))
+            make.left.equalTo(SCRXFrom(40))
             make.centerY.equalToSuperview()
             make.width.height.equalTo(SCRYFrom(30))
         }
@@ -206,7 +258,16 @@ class DeviceAddViewCell: UITableViewCell {
             make.width.height.equalTo(SCRYFrom(10))
         }
         
-        nameLabel = UILabel(text: "Device", textColor: RGB(13, 14, 28), fontSize: 15, fontWeight: .light)
+        activityImageView = UIImageView(image: UIImage(named: "device_activity"))
+        activityImageView.isHidden = true
+        deviceImageView.addSubview(activityImageView)
+        activityImageView.snp.makeConstraints { make in
+            make.centerX.equalToSuperview().offset(-0.3)
+            make.top.equalTo(SCRYFrom(3))
+            make.width.height.equalTo(SCRYFrom(15))
+        }
+        
+        nameLabel = UILabel(text: "Device", textColor: RGB(13, 14, 28), fontSize: 15, fontWeight: .light, fit: false)
         contentView.addSubview(nameLabel)
         nameLabel.snp.makeConstraints { make in
             make.left.equalTo(deviceImageView.snp.right).offset(SCRXFrom(8))
@@ -214,26 +275,26 @@ class DeviceAddViewCell: UITableViewCell {
             make.right.equalTo(SCRXFrom(-135))
         }
         
-        macAddressLabel = UILabel(text: "DF:EF:32:DG:HJ:67", textColor: RGB(142, 142, 147), fontSize: 13, fontWeight: .light)
+        macAddressLabel = UILabel(text: "DF:EF:32:DG:HJ:67", textColor: RGB(142, 142, 147), fontSize: 12, fontWeight: .light, fit: false)
         contentView.addSubview(macAddressLabel)
         macAddressLabel.snp.makeConstraints { make in
             make.left.right.equalTo(nameLabel)
-            make.top.equalTo(nameLabel.snp.bottom).offset(SCRYFrom(4))
+            make.top.equalTo(nameLabel.snp.bottom).offset(SCRYFrom(3))
         }
         
         addBtn = UIButton(normalImageName: nil, target: self, action: #selector(addBtnClick))
-        addBtn.setBackgroundImage(UIImage(named: "device_add"), for: .normal)
-        addBtn.setBackgroundImage(UIImage(named: "device_add_disable"), for: .disabled)
+        addBtn.setImage(UIImage(named: "device_add"), for: .normal)
+        addBtn.setImage(UIImage(named: "device_add_disable"), for: .disabled)
         contentView.addSubview(addBtn)
         addBtn.snp.makeConstraints { make in
-            make.right.equalTo(SCRXFrom(-20))
+            make.right.equalTo(SCRXFrom(-16))
             make.centerY.equalToSuperview()
-            make.width.height.equalTo(SCRYFrom(30))
+//            make.width.height.equalTo(SCRYFrom(30))
         }
         
         identifyBtn = UIButton(title: "identify".localizedString, titleSize: 14, titleWeight: .light, titleColor: Bar_Color, target: self, action: #selector(identifyBtnClick))
         identifyBtn.setTitleColor(RGB(39, 37, 54, 0.5), for: .disabled)
-        identifyBtn.layer.cornerRadius = SCRYFrom(15)
+        identifyBtn.layer.cornerRadius = 15
         identifyBtn.layer.borderColor = Bar_Color.cgColor
         identifyBtn.layer.borderWidth = 0.6
         identifyBtn.contentEdgeInsets = UIEdgeInsets(top: 0, left: SCRXFrom(14), bottom: 0, right: SCRXFrom(14))
@@ -288,6 +349,31 @@ class DeviceAddViewCell: UITableViewCell {
             make.center.equalTo(stateImageView)
             make.height.equalTo(22)
             make.width.equalTo(50)
+        }
+        
+        signalStrengthView = DeviceSignalStrengthView()
+        contentView.addSubview(signalStrengthView)
+        signalStrengthView.snp.makeConstraints { make in
+            make.left.equalTo(macAddressLabel)
+            make.top.equalTo(macAddressLabel.snp.bottom).offset(SCRYFrom(8))
+            make.width.equalTo(SCRXFrom(56))
+            make.height.equalTo(2)
+        }
+        
+        signalLabel = UILabel(text: "", textColor: AssistText_Color, fontSize: 12, fontWeight: .light, fit: false)
+        contentView.addSubview(signalLabel)
+        signalLabel.snp.makeConstraints { make in
+            make.left.equalTo(signalStrengthView.snp.right).offset(SCRXFrom(9))
+            make.centerY.equalTo(signalStrengthView)
+        }
+        
+        lineView = UIView()
+        lineView.backgroundColor = Line_Color
+        contentView.addSubview(lineView)
+        lineView.snp.makeConstraints { make in
+            make.left.equalTo(SCRXFrom(16))
+            make.right.bottom.equalToSuperview()
+            make.height.equalTo(1)
         }
     }
 

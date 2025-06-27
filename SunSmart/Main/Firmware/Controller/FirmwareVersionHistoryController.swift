@@ -101,7 +101,7 @@ class FirmwareVersionHistoryController: UIViewController {
             switch result {
             case .success(let response):
                 let list = JSON(response)["data"].arrayValue
-                var results: [FirmwareServerData] = list.compactMap { data in
+                let results: [FirmwareServerData] = list.compactMap { data in
                     guard let version = data["version"].string,
                           let companyId = data["manufacturerId"].string,
                           let customId = data["customerId"].string,
@@ -117,7 +117,7 @@ class FirmwareVersionHistoryController: UIViewController {
                     let serverData = FirmwareServerData(productId: self.productId, version: version.replacingOccurrences(of: "v", with: ""), companyId: UInt16(companyId) ?? 0x0A78, customId: UInt16(customId) ?? 0, url: "", filename: data["filename"].stringValue, size: size, releaseDate: timeInterval, content: data["describe"].stringValue)
                     return serverData
                 }
-                results = results.sorted(by: { $0.releaseDate >= $1.releaseDate })
+//                results = results.sorted(by: { $0.releaseDate >= $1.releaseDate })
                 self.versionDatas = results
                 if self.versionDatas.isEmpty {
                     self.tableView.showEmptyDataView(title: "no_record".localizedString)

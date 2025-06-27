@@ -477,11 +477,11 @@ extension Node {
         // 禁用的传感器model
         var disableSensorModels: [Model] = []
         /// 传感器model上报地址
-        var publishAddress = group.address.address
+        let publishAddress = group.address.address
         // 邻近照明profile不能将publish发送到组里，否则会让全部设备进入第一阶段，但客户端需要收到传感器状态，所以设置上报到客户端组
-        if groupProfile.type == .proximityLighting {
-            publishAddress = .localClientGroupAddress
-        }
+//        if groupProfile.type == .proximityLighting {
+//            publishAddress = .localClientGroupAddress
+//        }
         
         if self.group == nil || groupState == .inGroup {
             
@@ -489,11 +489,9 @@ extension Node {
             let daylightType = groupProfile.type == .occupancy_daylight || groupProfile.type == .vacancy_daylight || groupProfile.type == .daylight
         
             // 占用类型
-            var occupancyType = groupProfile.type == .occupancy_daylight || groupProfile.type == .vacancy_daylight || groupProfile.type == .occupancy || groupProfile.type == .vacancy //|| groupProfile.type == .proximityLighting
+            let occupancyType = groupProfile.type == .occupancy_daylight || groupProfile.type == .vacancy_daylight || groupProfile.type == .occupancy || groupProfile.type == .vacancy //|| groupProfile.type == .proximityLighting
             
-            if groupProfile.type == .proximityLighting, group.info.proximityLightingPath == nil ||  group.info.proximityLightingPath!.isEmpty() || !group.info.proximityLightingPath!.paths.contains(where: { $0.nodes.count > 0 }) {
-                occupancyType = true
-            }
+       
             // 组内是否启用了光照传感器
             var daylightEnabled = false
             if let daylightNode = group.info.ambientLightSensorNode, daylightNode.sensorCalibrated || daylightNode.restoreData?.daylightCalibrationValue != nil {

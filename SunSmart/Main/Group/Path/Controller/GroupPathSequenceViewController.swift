@@ -200,8 +200,9 @@ class GroupPathSequenceViewController: UIViewController {
         
         if let itemIndex = path.items.firstIndex(of: item) {
           
+            
             if selectPathData.direction == .left { // 左边 ←
-                nextItem = path.items[0..<itemIndex].first(where: { $0.address == nil || $0.node == nil })
+                nextItem = path.items[0..<itemIndex].last(where: { $0.address == nil || $0.node == nil })
             }else { // 右边 →
                 if itemIndex < path.items.count - 1 {
                     nextItem = path.items[itemIndex + 1..<path.items.count].first(where: { $0.address == nil || $0.node == nil })

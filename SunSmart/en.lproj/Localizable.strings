@@ -1188,3 +1188,16 @@
 
 "classic_mode" = "Classic Mode";
 "professional_mode" = "Professional Mode";
+"professional_mode_message" = "Adjust the filter until only the target device appears in the selection box. This will filter out the devices outside the range and facilitate quick location of the target device.";
+"device_add_mode_motionSensing" = "Add based on motion sensing";
+"device_add_mode_manual" = "Add based on manual";
+"device_add_mode_rssiRange" = "Add based on RSSI range";
+"candidate_device_list" = "Candidate Device List";
+"the_remaining_rssi_devices" = "The Remaining RSSI Devices";
+"stop_scaning_to_add_devices" = "STOP SCANNING TO ADD DEVICES";
+"classic_mode_instructions" = "Search all devices, identify them, and add them to the corresponding space or group.Suitable for projects with a relatively small number of devices.";
+"professional_mode_instructions" = "Based on the accuracy of RSSI, walk under the device and adjust the RSSI strength to filter out the target device. Then, based on this filtering condition, each time you walk under a device, the target device will be displayed.Use the recommended methods to select devices again as candidate devices, and finally add them to the mesh at once.Suitable for large installation sites.";
+"professional_mode_step_1" = "Adjust the RSSI of the target device";
+"professional_mode_step_2" = "Walk around the site with the app to add devices";
+"professional_mode_step_3" = "Check if the device is correct and add to group";
+"add_device_instructions" = "Add device instructions";
