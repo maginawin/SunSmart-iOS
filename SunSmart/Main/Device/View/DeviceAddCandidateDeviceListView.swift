@@ -17,13 +17,16 @@ protocol DeviceAddCandidateDeviceListViewDelegate: AnyObject {
     func candidateViewStopScan(_ view: DeviceAddCandidateDeviceListView)
     
     /// 设备预选撤销
-    func candidateView(_ view: DeviceAddCandidateDeviceListView, candidateRevoke device: ProvisioningDevice)
+    func candidateView(_ view: DeviceAddCandidateDeviceListView, candidateRevoke devices: [ProvisioningDevice])
     
     /// 设备开始添加
     func candidateView(_ view: DeviceAddCandidateDeviceListView, startAdd devices: [ProvisioningDevice])
     
     /// 选择设备添加目地的
     func candidateView(_ view: DeviceAddCandidateDeviceListView, selectAddDevicesTarget touchPoint: CGPoint, currentDeviceTypes: [Node.DeviceType])
+    
+    /// 更新刷新状态
+    func candidateView(_ view: DeviceAddCandidateDeviceListView, refreshStateUpdate isRefresh: Bool)
     
 }
 
@@ -33,20 +36,21 @@ class DeviceAddCandidateDeviceListView: UIView {
     private var shadeView: UIView!
     private var contentView: UIView!
     private var candidateBtn: UIButton!
+    private var candidateCountLabel: UILabel!
     private var addDeviceToLabel: UILabel!
     private var addDeviceTargetBtn: UIButton!
+    private var pauseBtn: UIButton!
     /// 设备列表
     private var tableView: UITableView!
     /// 添加设备结果
     private var addResultView: DeviceAddResultView!
     /// 底部全选
     private var footerView: DeviceAddBottomView!
-    /// 停止扫描
-    private var stopScanView: UIView!
-    private var stopScanBtn: UIButton!
+    private var revokeBtn: UIButton!
     /// 类型view
     private var categoryView: WMMenuView!
-
+    /// 提示view
+    private var promptView: DevicePromptHudView?
     
     /// 最大设备数量
     private var maxDeviceCount = 200
@@ -66,10 +70,13 @@ class DeviceAddCandidateDeviceListView: UIView {
                 categoryView.isHidden = true
             }
             updateUIState()
-            showDevices = candidateDevices.filter({ showDeviceTypes.contains($0.deviceType) })
+            showDevices = candidateDevices.filter({ showDeviceTypes.contains($0.deviceType) && $0.addState != .success })
             if superview != nil {
                 tableView.reloadData()
             }
+           
+            updateCandidateUI()
+            updateFooterViewState()
         }
     }
     private var showDevices: [ProvisioningDevice] = []
@@ -101,9 +108,26 @@ class DeviceAddCandidateDeviceListView: UIView {
     
     weak var delegate: DeviceAddCandidateDeviceListViewDelegate?
     
+    /// 是否刷新
+    var isRefresh: Bool = true {
+        didSet {
+            pauseBtn.isSelected = !isRefresh
+            if pauseBtn.isSelected {
+                pauseBtn.setImage(UIImage(named: "device_add_start"), for: .normal)
+            }else {
+                pauseBtn.setImage(UIImage(named: "device_add_pause"), for: .normal)
+            }
+            promptView?.isHidden = candidateDevices.isEmpty || state != .scanning || !isRefresh || !addResultView.isHidden
+            tableView.reloadData()
+            updateUIState()
+            updateFooterViewState()
+        }
+    }
+    
     var state: DeviceAddState = .none {
         didSet {
             updateUIState()
+            updateFooterViewState()
         }
     }
     
@@ -158,7 +182,16 @@ class DeviceAddCandidateDeviceListView: UIView {
 //                showDevices.replaceSubrange(showIndex...showIndex, with: [device])
 //            }
 //        }
-        reloadDeviceState(device)
+        if device.addState == .success {
+//            if showDevices.contains(where: { $0.dev })
+            showDevices = candidateDevices.filter({ showDeviceTypes.contains($0.deviceType) && $0.addState != .success })
+            updateCandidateUI()
+            updateDeviceCategoryCount()
+            tableView.reloadData()
+        }else {
+            reloadDeviceState(device)
+        }
+        updateUIState()
     }
     
     // MARK: - Action
@@ -170,7 +203,7 @@ class DeviceAddCandidateDeviceListView: UIView {
     /// 添加目标选择事件
     @objc private func addDeviceTargetBtnClick(sender: UIButton) {
         
-        if state == .adding {
+        if candidateDevices.contains(where: { $0.addState == .addConnecting || $0.addState == .adding }) {
             return
         }
         
@@ -223,19 +256,23 @@ class DeviceAddCandidateDeviceListView: UIView {
     
     /// 隐藏添加结果view
     @objc private func closeBtnClick() {
-        addResultView.isHidden = true
+//        addResultView.isHidden = true
+        addResultView.removeFromSuperview()
         tableView.contentInset = UIEdgeInsets(top: 0, left: 0, bottom: footerView.height + SCRYFrom(8), right: 0)
     }
     
     /// 停止添加（取消正在排队的设备）
     @objc private func stopAddBtnClick() {
-        guard state == .adding else {
+        
+        let waitDevices = candidateDevices.filter({ $0.addState == .wait })
+        
+        guard waitDevices.count > 0 else {
             return
         }
         TestDeviceAddManager.manager.cancelAwaitOperations()
         
         MeshAPI.cancelFastAddAwaitOperations()
-        let waitDevices = candidateDevices.filter({ $0.addState == .wait })
+        
         waitDevices.forEach({
             $0.addState = .none
             $0.selectedState = .selected
@@ -252,52 +289,85 @@ class DeviceAddCandidateDeviceListView: UIView {
         delegate?.candidateViewStopScan(self)
     }
     
+    @objc private func pauseBtnAction(sender: UIButton) {
+        sender.isSelected = !sender.isSelected
+        
+        if sender.isSelected {
+            sender.setImage(UIImage(named: "device_add_start"), for: .normal)
+        }else {
+            sender.setImage(UIImage(named: "device_add_pause"), for: .normal)
+        }
+//        isRefresh = !sender.isSelected
+        delegate?.candidateView(self, refreshStateUpdate: !sender.isSelected)
+    }
+    
+    @objc private func revokeBtnAction() {
+        
+        let selectDevices = showDevices.filter({ $0.selectedState == .selected })
+        delegate?.candidateView(self, candidateRevoke: selectDevices)
+    }
+    
     /// 更新UI
     private func updateUIState() {
+        pauseBtn.isEnabled = true
+        revokeBtn.isHidden = !(state == .scanning && isRefresh)
+        revokeBtn.isEnabled = showDevices.contains(where: { $0.selectedState == .selected })
+        footerView.addSelectedBtn.isHidden = !revokeBtn.isHidden
         
-        stopScanView.isHidden = state != .scanning
+        pauseBtn.isHidden = state != .scanning
         
-        switch state {
-        case .none:
-            footerView.isHidden = false
-            addResultView.isHidden = true
-            updateFooterViewState()
-            tableView.contentInset = UIEdgeInsets(top: 0, left: 0, bottom: SCRYFrom(8), right: 0)
-        case .scanning:
+        if candidateDevices.isEmpty {
             footerView.isHidden = true
             tableView.contentInset = .zero
             addResultView.isHidden = true
-        case .identifying:
-            break
-        case .adding, .addFineshed:
+        }else {
             
+            var tableViewInsetBottom = SCRYFrom(8)
+            
+            addResultView.isHidden = true
             footerView.isHidden = false
-            updateFooterViewState()
-            if state == .adding {
-                addResultView.isHidden = false
-                tableView.contentInset = UIEdgeInsets(top: 0, left: 0, bottom: addResultView.height + SCRYFrom(8), right: 0)
-                addResultView.closeBtn.isHidden = true
-                addResultView.stopAddBtn.isHidden = !showDevices.contains(where: { $0.addState == .wait})
-                // 添加中设置屏幕常亮
-                UIApplication.shared.isIdleTimerDisabled = true
-            }else {
-                addResultView.closeBtn.isHidden = false
-                addResultView.stopAddBtn.isHidden = true
-            }
-            let successCount = candidateDevices.filter({ $0.addState == .success }).count
-            let failedCount = candidateDevices.filter({ $0.addState == .failed }).count
-            addResultView.successCountLabel.text = "\("successfully".localizedString) : \(successCount)"
-            addResultView.failedCountLabel.text = "\(failedCount)"
             
+            if candidateDevices.contains(where: { $0.addState == .addConnecting || $0.addState == .adding || $0.addState == .success || $0.addState == .failed }) {
+                addResultView.isHidden = false
+                
+                if candidateDevices.contains(where: { $0.addState == .addConnecting || $0.addState == .adding }) {
+                    if addResultView.superview == nil {
+                        contentView.addSubview(addResultView)
+                        addResultView.snp.makeConstraints { make in
+                            make.bottom.equalTo(footerView.snp.top).offset(SCRYFrom(-1))
+                            make.left.right.equalToSuperview()
+                            make.height.equalTo(SCRYFrom(72))
+                        }
+                    }
+                    pauseBtn.isEnabled = false
+                    addResultView.closeBtn.isHidden = true
+                    addResultView.stopAddBtn.isHidden = !showDevices.contains(where: { $0.addState == .wait})
+                }else {
+                    addResultView.closeBtn.isHidden = false
+                    addResultView.stopAddBtn.isHidden = true
+                }
+                let successCount = candidateDevices.filter({ $0.addState == .success }).count
+                let failedCount = candidateDevices.filter({ $0.addState == .failed }).count
+                addResultView.successCountLabel.text = "\("successfully".localizedString) : \(successCount)"
+                addResultView.failedCountLabel.text = "\(failedCount)"
+                if addResultView.superview != nil {
+                    tableViewInsetBottom += addResultView.height
+                }
+            }
+            
+            if tableView.contentInset.bottom != tableViewInsetBottom {
+                tableView.contentInset = UIEdgeInsets(top: 0, left: 0, bottom: tableViewInsetBottom, right: 0)
+            }
+           
         }
     }
     
     /// 更新设备类型数量
     private func updateDeviceCategoryCount() {
-        categoryView.updateTitle("\("lights".localizedString)-\(candidateDevices.filter({ $0.deviceType == .light }).count)", at: 0, andWidth: false)
-        categoryView.updateTitle("\("switches".localizedString)-\(candidateDevices.filter({ $0.deviceType == .switches }).count)", at: 1, andWidth: false)
-        categoryView.updateTitle("\("sensors".localizedString)-\(candidateDevices.filter({ $0.deviceType == .sensor }).count)", at: 2, andWidth: false)
-        categoryView.updateTitle("\("others".localizedString)-\(candidateDevices.filter({ $0.deviceType == .dongle || $0.deviceType == .gateway || $0.deviceType == .unknown }).count)", at: 3, andWidth: false)
+        categoryView.updateTitle("\("lights".localizedString)-\(candidateDevices.filter({ $0.deviceType == .light && $0.addState != .success }).count)", at: 0, andWidth: false)
+        categoryView.updateTitle("\("switches".localizedString)-\(candidateDevices.filter({ $0.deviceType == .switches && $0.addState != .success }).count)", at: 1, andWidth: false)
+        categoryView.updateTitle("\("sensors".localizedString)-\(candidateDevices.filter({ $0.deviceType == .sensor && $0.addState != .success }).count)", at: 2, andWidth: false)
+        categoryView.updateTitle("\("others".localizedString)-\(candidateDevices.filter({ ($0.deviceType == .dongle || $0.deviceType == .gateway || $0.deviceType == .unknown) && $0.addState != .success }).count)", at: 3, andWidth: false)
     }
     
     /// 更新底部view数量状态
@@ -326,6 +396,26 @@ class DeviceAddCandidateDeviceListView: UIView {
                 cell.device = device
             }
         }
+    }
+    
+    private func updateCandidateUI() {
+        
+        let showCandidateCount = candidateDevices.filter({ $0.addState != .success }).count
+        candidateCountLabel.text = "\(showCandidateCount)"
+        candidateCountLabel.isHidden = showCandidateCount == 0
+        
+//        addDeviceTargetBtn.snp.remakeConstraints { make in
+//            if showCandidateCount > 0 {
+//                make.left.equalTo(addDeviceToLabel.snp.right).offset(SCRXFrom(21))
+//            }else {
+//                make.right.equalTo(SCRXFrom(-16))
+//            }
+//            make.top.equalTo(candidateBtn.snp.bottom)
+//            make.width.equalTo(SCRXFrom(128))
+//            make.height.equalTo(SCRYFrom(32))
+//        }
+        promptView?.isHidden = showCandidateCount == 0 || state != .scanning || !isRefresh || !addResultView.isHidden
+        
     }
     
     private func setupUI() {
@@ -360,6 +450,21 @@ class DeviceAddCandidateDeviceListView: UIView {
             make.height.equalTo(SCRYFrom(54))
         }
         
+        candidateCountLabel = UILabel(text: "", textColor: TextBlack_Color, fontSize: 15, fontWeight: .light)
+        contentView.addSubview(candidateCountLabel)
+        candidateCountLabel.snp.makeConstraints { make in
+            make.right.equalTo(SCRXFrom(-18))
+            make.centerY.equalTo(candidateBtn)
+        }
+        
+        addDeviceToLabel = UILabel(text: "add_device_to".localizedString, textColor: TextBlack_Color, fontSize: 14, fontWeight: .light)
+        contentView.addSubview(addDeviceToLabel)
+        addDeviceToLabel.snp.makeConstraints { make in
+            make.left.equalTo(SCRXFrom(17))
+//            make.centerY.equalTo(addDeviceTargetBtn)
+            make.top.equalTo(candidateBtn.snp.bottom).offset(SCRYFrom(8))
+        }
+        
         addDeviceTargetBtn = UIButton(title: "space", titleSize: 13, titleWeight: .light, titleColor: TextBlack_Color, normalImageName: "space_arrow_down", target: self, action: #selector(addDeviceTargetBtnClick))
         addDeviceTargetBtn.contentHorizontalAlignment = .left
         addDeviceTargetBtn.layer.cornerRadius = SCRYFrom(5)
@@ -368,9 +473,10 @@ class DeviceAddCandidateDeviceListView: UIView {
         addDeviceTargetBtn.backgroundColor = .white
         contentView.addSubview(addDeviceTargetBtn)
         addDeviceTargetBtn.snp.makeConstraints { make in
-            make.right.equalTo(SCRXFrom(-16))
+//            make.right.equalTo(SCRXFrom(-16))
+            make.left.equalTo(addDeviceToLabel.snp.right).offset(SCRXFrom(21))
             make.top.equalTo(candidateBtn.snp.bottom)
-            make.width.equalTo(SCRXFrom(128))
+            make.width.equalTo(SCRXFrom(isIPad ? 200 : 128))
             make.height.equalTo(SCRYFrom(32))
         }
         addDeviceTargetBtn.layoutIfNeeded()
@@ -379,10 +485,12 @@ class DeviceAddCandidateDeviceListView: UIView {
         addDeviceTargetBtn.imageEdgeInsets = UIEdgeInsets(top: 0, left: addDeviceTargetBtn.width - imageW, bottom: 0, right: 0)
         addDeviceTargetBtn.titleEdgeInsets = UIEdgeInsets(top: 0, left: SCRXFrom(8) - imageW, bottom: 0, right: imageW + SCRXFrom(6))
         
-        addDeviceToLabel = UILabel(text: "add_device_to".localizedString, textColor: TextBlack_Color, fontSize: 14, fontWeight: .light)
-        contentView.addSubview(addDeviceToLabel)
-        addDeviceToLabel.snp.makeConstraints { make in
-            make.left.equalTo(SCRXFrom(17))
+        
+        pauseBtn = UIButton(normalImageName: "device_add_pause", target: self, action: #selector(pauseBtnAction))
+        pauseBtn.isHidden = true
+        contentView.addSubview(pauseBtn)
+        pauseBtn.snp.makeConstraints { make in
+            make.right.equalTo(SCRXFrom(-16))
             make.centerY.equalTo(addDeviceTargetBtn)
         }
         
@@ -404,21 +512,6 @@ class DeviceAddCandidateDeviceListView: UIView {
             make.top.equalTo(addDeviceTargetBtn.snp.bottom).offset(SCRYFrom(12))
             make.height.equalTo(SCRYFrom(32))
         }
-        
-        stopScanView = UIView()
-        stopScanView.backgroundColor = .white
-        contentView.addSubview(stopScanView)
-        stopScanView.snp.makeConstraints { make in
-            make.left.right.bottom.equalToSuperview()
-            make.height.equalTo(SCRYFrom(60) + kSafeAreaBottomHeight)
-        }
-        
-        stopScanBtn = UIButton(title: "stop_scaning_to_add_devices".localizedString, titleSize: 15, titleWeight: .light, titleColor: TextBlack_Color, target: self, action: #selector(stopScanBtnAction))
-        stopScanView.addSubview(stopScanBtn)
-        stopScanBtn.snp.makeConstraints { make in
-            make.left.right.top.equalToSuperview()
-            make.height.equalTo(SCRYFrom(60))
-        }
        
         footerView = DeviceAddBottomView()
         footerView.isHidden = true
@@ -430,16 +523,13 @@ class DeviceAddCandidateDeviceListView: UIView {
         footerView.selectAllBtn.addTarget(self, action: #selector(selectAllBtnClick), for: .touchUpInside)
         footerView.addSelectedBtn.addTarget(self, action: #selector(addSelectedBtnClick), for: .touchUpInside)
         
-        addResultView = DeviceAddResultView()
-        addResultView.isHidden = true
-        contentView.addSubview(addResultView)
-        addResultView.snp.makeConstraints { make in
-            make.bottom.equalTo(footerView.snp.top).offset(SCRYFrom(-1))
-            make.left.right.equalToSuperview()
-            make.height.equalTo(SCRYFrom(72))
+        revokeBtn = UIButton(normalImageName: "device_add_revoke", target: self, action: #selector(revokeBtnAction))
+        revokeBtn.isHidden = true
+        footerView.addSubview(revokeBtn)
+        revokeBtn.snp.makeConstraints { make in
+            make.right.equalTo(SCRXFrom(-16))
+            make.centerY.equalTo(footerView.addSelectedBtn)
         }
-        addResultView.closeBtn.addTarget(self, action: #selector(closeBtnClick), for: .touchUpInside)
-        addResultView.stopAddBtn.addTarget(self, action: #selector(stopAddBtnClick), for: .touchUpInside)
         
         tableView = UITableView()
         tableView.separatorStyle = .none
@@ -457,6 +547,28 @@ class DeviceAddCandidateDeviceListView: UIView {
             make.top.equalTo(categoryView.snp.bottom).offset(SCRYFrom(12))
         }
         
+        promptView = DevicePromptHudView()
+        promptView?.promptLabel.text = "device_add_pause_message".localizedString
+        promptView?.closeBtn.setImage(UIImage(named: "close_white"), for: .normal)
+        promptView?.isHidden = true
+        contentView.addSubview(promptView!)
+        promptView!.snp.makeConstraints { make in
+            make.bottom.equalTo(footerView.snp.top)
+            make.left.equalTo(SCRXFrom(16))
+            make.right.equalTo(SCRXFrom(-16))
+        }
+        
+        addResultView = DeviceAddResultView()
+        addResultView.isHidden = true
+        contentView.addSubview(addResultView)
+        addResultView.snp.makeConstraints { make in
+            make.bottom.equalTo(footerView.snp.top).offset(SCRYFrom(-1))
+            make.left.right.equalToSuperview()
+            make.height.equalTo(SCRYFrom(72))
+        }
+        addResultView.closeBtn.addTarget(self, action: #selector(closeBtnClick), for: .touchUpInside)
+        addResultView.stopAddBtn.addTarget(self, action: #selector(stopAddBtnClick), for: .touchUpInside)
+        
     }
     
 }
@@ -471,13 +583,13 @@ extension DeviceAddCandidateDeviceListView: WMMenuViewDataSource, WMMenuViewDele
 
         switch index {
         case 0:
-            return "\("lights".localizedString)-\(candidateDevices.filter({ $0.deviceType == .light }).count)"
+            return "\("lights".localizedString)-\(candidateDevices.filter({ $0.deviceType == .light && $0.addState == .success }).count)"
         case 1:
-            return "\("switches".localizedString)-\(candidateDevices.filter({ $0.deviceType == .switches }).count)"
+            return "\("switches".localizedString)-\(candidateDevices.filter({ $0.deviceType == .switches && $0.addState == .success }).count)"
         case 2:
-            return "\("sensors".localizedString)-\(candidateDevices.filter({ $0.deviceType == .sensor }).count)"
+            return "\("sensors".localizedString)-\(candidateDevices.filter({ $0.deviceType == .sensor && $0.addState == .success }).count)"
         case 3:
-            return "\("others".localizedString)-\(candidateDevices.filter({ $0.deviceType == .dongle || $0.deviceType == .unknown }).count)"
+            return "\("others".localizedString)-\(candidateDevices.filter({ ($0.deviceType == .dongle || $0.deviceType == .unknown) && $0.addState == .success }).count)"
         default:
             return ""
         }
@@ -537,9 +649,10 @@ extension DeviceAddCandidateDeviceListView: WMMenuViewDataSource, WMMenuViewDele
             showDeviceTypes = [.light]
         }
         
-        self.showDevices = candidateDevices.filter({ showDeviceTypes.contains($0.deviceType) })
+        self.showDevices = candidateDevices.filter({ showDeviceTypes.contains($0.deviceType) && $0.addState != .success })
         tableView.reloadData()
         updateFooterViewState()
+        updateUIState()
         
         // 更新设备添加到哪UI
         var name = space.name
@@ -578,7 +691,7 @@ extension DeviceAddCandidateDeviceListView: UITableViewDataSource, UITableViewDe
         cell.selectionStyle = .none
         let device = showDevices[indexPath.row]
         cell.device = device
-        if state == .scanning {
+        if state == .scanning && isRefresh {
             cell.addBtn.setImage(UIImage(named: "device_add_revoke"), for: .normal)
             cell.addBtn.setImage(nil, for: .disabled)
         }else {
@@ -689,8 +802,8 @@ extension DeviceAddCandidateDeviceListView: DeviceAddViewCellDelegate {
     
     /// 设备添加点击事件回调
     func cell(_ cell: DeviceAddViewCell, deviceAdd device: ProvisioningDevice) {
-        if state == .scanning {
-            delegate?.candidateView(self, candidateRevoke: device)
+        if state == .scanning && isRefresh {
+            delegate?.candidateView(self, candidateRevoke: [device])
 //            candidateDevices.removeAll(where: { $0.macAddress == device.macAddress })
 //            showDevices.removeAll(where: { $0.macAddress == device.macAddress })
 //            if let index = self.tableView.indexPath(for: cell)?.row {

@@ -66,16 +66,18 @@ class EnergyTimeSeriesDataViewController: UIViewController {
     
     private func updateUI() {
         // 是否有导出能耗数据文件
-        if true {
+        if false {
             importView.fileDataView.isHidden = false
             importView.noDataLabel.isHidden = true
             // 文件名称
             importView.fileNameLabel.text = "Time Series Data 2-20-2025 10:30 PM"
             // 文件大小
             importView.fileSizeLabel.text = "10M"
+            importView.importBtn.isEnabled = true
         }else {
             importView.fileDataView.isHidden = true
             importView.noDataLabel.isHidden = false
+            importView.importBtn.isEnabled = false
         }
         
         if exportTarget == .space {
@@ -199,7 +201,7 @@ class EnergyTimeSeriesDataViewController: UIViewController {
         
         sender.layer.borderColor = Bar_Color.cgColor
         
-        CalendarChooseView(minimumDate: Date().getExpectDate(year: -3, month: 0, day: 0), maximumDate: self.exportEndDate ?? Date(), selectDate: exportStartDate, showOffsetY: showOffsetY) {[weak self] date in
+        CalendarChooseView(minimumDate: Date().getExpectDate(year: -3, month: 0, day: 0), maximumDate: self.exportEndDate ?? Date(), selectDate: exportStartDate, margin: (SCREEN_WIDTH - view.width + SCRXFrom(32)) * 0.5, showOffsetY: showOffsetY) {[weak self] date in
             guard let self = self else { return false }
             
             // 开始时间大于结束时间
@@ -233,6 +235,8 @@ class EnergyTimeSeriesDataViewController: UIViewController {
     ///  导出数据结束日期
     @objc private func exportEndDateAction(sender: UIButton) {
         
+        sender.layer.borderColor = Bar_Color.cgColor
+        
         let viewPoint = exportView.convert(CGPoint(x: 0, y: sender.frame.maxY + SCRYFrom(4)), to: view)
         var showOffsetY = view.convert(viewPoint, to: UIApplication.shared.keyWindow()).y
         // 高度超出屏幕时显示到按键上面
@@ -240,7 +244,7 @@ class EnergyTimeSeriesDataViewController: UIViewController {
             showOffsetY -= (sender.height + SCRYFrom(8) + CalendarChooseView.calenderViewHeight)
         }
         
-        CalendarChooseView(minimumDate: self.exportStartDate ?? Date().getExpectDate(year: -3, month: 0, day: 0), maximumDate: Date(), selectDate: exportEndDate, showOffsetY: showOffsetY) {[weak self] date in
+        CalendarChooseView(minimumDate: self.exportStartDate ?? Date().getExpectDate(year: -3, month: 0, day: 0), maximumDate: Date(), selectDate: exportEndDate, margin: (SCREEN_WIDTH - view.width + SCRXFrom(32)) * 0.5, showOffsetY: showOffsetY) {[weak self] date in
             guard let self = self else { return false }
             
             if let startDate = self.exportStartDate {

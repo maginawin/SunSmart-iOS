@@ -68,6 +68,9 @@ class DeviceAddClassicModeController: UIViewController {
     /// 展示的设备类型
     private var showDeviceTypes: [Node.DeviceType] = [.light]
     
+    /// 添加状态回调 是否添加中
+    var deviceStateCallback: ((Bool)->Void)?
+    
     private var rssiSortTimer: Timer?
     
     init(space: SpaceData) {
@@ -108,6 +111,12 @@ class DeviceAddClassicModeController: UIViewController {
         if state == .scanning { // 退出页面/切换停止扫描
             stopScan()
         }
+        scanDevices.removeAll()
+        showDevices.removeAll()
+        tableView.reloadData()
+        categoryView.isHidden = true
+        footerView.isHidden = true
+        addResultView.isHidden = true
     }
     
     @objc private func backClick() {
@@ -172,7 +181,7 @@ class DeviceAddClassicModeController: UIViewController {
         MeshAPI.startScanDevice(.max, deviceScan: {[weak self] device in
             guard let self = self else { return }
             // 新发现设备
-            if device.macAddress != nil && !self.scanDevices.contains(where: { $0.peripheral.identifier.uuidString == device.peripheral.identifier.uuidString }), device.rssi.intValue >= self.filterRSSIRange.lowerBound {
+            if device.macAddress != nil && device.rssi.intValue >= self.filterRSSIRange.lowerBound {
                 
                 if device.rssi.intValue > self.filterRSSIRange.upperBound {
                     device.rssi = NSNumber(value: self.filterRSSIRange.upperBound)
@@ -184,7 +193,6 @@ class DeviceAddClassicModeController: UIViewController {
                 
                 self.stopScanTimer()
                 
-                self.scanDevices.append(device)
                 device.selectedState = .selected
                 device.addState = .scaning
                 
@@ -202,26 +210,38 @@ class DeviceAddClassicModeController: UIViewController {
                     device.selectedState = .disabled
                 }
                 
+                if let index = self.scanDevices.firstIndex(where: { $0.peripheral.identifier.uuidString == device.peripheral.identifier.uuidString }) {
+                    let cacheDevice = self.scanDevices[index]
+                    cacheDevice.updateData(device: device)
+                }else {
+                    self.scanDevices.append(device)
+                    
+                    DispatchQueue.main.async {
+                        NSObject.cancelPreviousPerformRequests(withTarget: self, selector: #selector(self.stopScan), object: nil)
+                        self.perform(#selector(self.stopScan), with: nil, afterDelay: 8)
+                    }
+                }
+                
 //                print(device.rssi)
                 self.categoryView.isHidden = false
                 
                 // 当前设备信号值在筛选范围内可展示
                 
 //                if self.filterRSSI == self.filterRSSIRange.lowerBound || device.rssi.intValue >= self.filterRSSI {
-                if self.selectRSSIRange.contains(device.rssi.intValue) {
-                    
-                    self.updateDeviceCategoryCount()
+//                if self.selectRSSIRange.contains(device.rssi.intValue) {
+                if self.showDeviceTypes.contains(device.deviceType) {
                     self.startRssiSortTimer()
-                    if self.showDeviceTypes.contains(device.deviceType) {
-                        self.showDevices.append(device)
+                }
+//                        if let index = self.showDevices.firstIndex(where: { $0.peripheral.identifier.uuidString == device.peripheral.identifier.uuidString }) {
+//                            let cacheDevice = self.showDevices[index]
+//                            cacheDevice.updateData(device: device)
+//                        }else {
+//                            self.showDevices.append(device)
+//                            self.startRssiSortTimer()
+//                        }
 //                            self.tableView.insertRows(at: [IndexPath(row: self.showDevices.count - 1, section: 0)], with: .automatic)
-                    }
-                }
-                
-                DispatchQueue.main.async {
-                    NSObject.cancelPreviousPerformRequests(withTarget: self, selector: #selector(self.stopScan), object: nil)
-                    self.perform(#selector(self.stopScan), with: nil, afterDelay: 8)
-                }
+//                    }
+//                }
             }
             
         }, deviceScanFinish: nil)
@@ -229,7 +249,9 @@ class DeviceAddClassicModeController: UIViewController {
     
     @objc private func stopScan() {
 
-        
+        DispatchQueue.main.async {
+            NSObject.cancelPreviousPerformRequests(withTarget: self, selector: #selector(self.stopScan), object: nil)
+        }
         (wm_pageController as? DeviceAddViewController)?.stopScan()
         
         scanBtn.isSelected = false
@@ -308,7 +330,11 @@ class DeviceAddClassicModeController: UIViewController {
     // MARK: - 信号排序定时器
     private func startRssiSortTimer() {
         
-        rssiSortTimer = LCWeakTimer.scheduledTimer(timeInterval: 0.5, aTarget: self, selector: #selector(devicesRssiSort), userInfo: nil, repeats: false)
+        guard rssiSortTimer == nil || !rssiSortTimer!.isValid else {
+            return
+        }
+        
+        rssiSortTimer = LCWeakTimer.scheduledTimer(timeInterval: 1, aTarget: self, selector: #selector(devicesRssiSort), userInfo: nil, repeats: false)
         RunLoop.current.add(rssiSortTimer!, forMode: .common)
     }
     
@@ -319,9 +345,12 @@ class DeviceAddClassicModeController: UIViewController {
         rssiSortTimer = nil
         
         scanDevices.sort(by: { $0.rssi.intValue >= $1.rssi.intValue })
+        showDevices = scanDevices.filter({ selectRSSIRange.contains($0.rssi.intValue) })
 //        if showDevices.count > 0 {
-            showDevices.sort(by: { $0.rssi.intValue >= $1.rssi.intValue })
+//            showDevices.sort(by: { $0.rssi.intValue >= $1.rssi.intValue })
             tableView.reloadData()
+        
+        self.updateDeviceCategoryCount()
 //        }
     }
     
@@ -514,6 +543,8 @@ class DeviceAddClassicModeController: UIViewController {
         }
         
         if identifyDevice != nil {
+            identifyDevice?.addState = .none
+            reloadDeviceState(identifyDevice!)
             identifyDevice = nil
             MeshAPI.stopUnprovisionedDeviceIdentify()
         }
@@ -557,21 +588,24 @@ class DeviceAddClassicModeController: UIViewController {
     private func addDevice(_ device: ProvisioningDevice) {
         
         // 设备identify中添加不需要再闪烁
-        if device.addState == .identifyConnecting || device.addState == .identifyWait || device.addState == .failed || device.addState == .identifying {
+//        if device.addState == .identifyConnecting || device.addState == .identifyWait || device.addState == .failed || device.addState == .identifying {
 //            if device.addState == .identifying {
 //                device.identifyAttentionTimer = 0
 //            }
-            if device == identifyDevice {
+            if device.peripheral.identifier.uuidString == identifyDevice?.peripheral.identifier.uuidString {
+                identifyDevice = nil
                 MeshAPI.stopUnprovisionedDeviceIdentify()
             }
-        }
+//        }
         // 添加设备不需要闪烁
         device.identifyAttentionTimer = 0
-        device.addState = .wait
-        device.selectedState = .disabled
-        reloadDeviceState(device)
+        if device.addState == .none {
+            device.addState = .wait
+            device.selectedState = .disabled
+            reloadDeviceState(device)
+        }
         updateUIState()
-        
+        deviceStateCallback?(true)
         MeshAPI.startFastAddDevices(devices: [device]) { [weak self] addDevice in
             addDevice.addState = .addConnecting
             self?.reloadDeviceState(addDevice)
@@ -655,18 +689,18 @@ class DeviceAddClassicModeController: UIViewController {
                 appendMessages.append(MeshMessageHandle(message: AttentionSet(attentionTimer: 6), model: healthModel))
             }
             
-            if device.deviceType == .gateway, let vendorModel = node.sunricherVendorModel {
-                appendMessages.append(MeshMessageHandle(message: SunricherVendorSet(function: .gatewaySimInfoSet(cid: 1, ipType: .ip, apn: "3gnet")), model: vendorModel))
-                
-                appendMessages.append(MeshMessageHandle(message: SunricherVendorSet(function: .gatewayMQTTConnectInfoSet(platformType: 0, serverAddress: "tcp://mqtt.sunsmart-cn.mericher.com:1883", userName: "Signature|Gateway|C2FB3109B9E0", password: "5dc9bc1d274548739b6a17cbd2298274", clientId: "sunsmart@@@C2FB3109B9E0", keepalive: 60, clearSession: true, authMode: .none, sslVersion: .all)), model: vendorModel))
-//                appendMessages.append(MeshMessageHandle(message: SunricherVendorSet(function: .gatewayMQTTConnectInfoSet(platformType: 0, serverAddress: "tcp://mqtt.sunsmart-cn.mericher.com:1883", userName: "Signature|Gateway|DDCDBC6F7308", password: "97636b9c647140b48363378b6c730f0c", clientId: "sunsmart@@@DDCDBC6F7308", keepalive: 60, clearSession: true, authMode: .none, sslVersion: .all)), model: vendorModel))
-                
-                if let mac = device.macAddress {
-                    appendMessages.append(MeshMessageHandle(message: SunricherVendorSet(function: .gatewayProjectRelevance(gatewayId: mac, projectId: space.siteId)), model: vendorModel))
-                }
-                
-                appendMessages.append(MeshMessageHandle(message: SunricherVendorSet(function: .gatewaySubnetsRelevanceSet(subnetAppkeyIndexs: node.applicationKeys.map({ $0.index }))), model: vendorModel))
-            }
+//            if device.deviceType == .gateway, let vendorModel = node.sunricherVendorModel {
+//                appendMessages.append(MeshMessageHandle(message: SunricherVendorSet(function: .gatewaySimInfoSet(cid: 1, ipType: .ip, apn: "3gnet")), model: vendorModel))
+//                
+//                appendMessages.append(MeshMessageHandle(message: SunricherVendorSet(function: .gatewayMQTTConnectInfoSet(platformType: 0, serverAddress: "tcp://mqtt.sunsmart-cn.mericher.com:1883", userName: "Signature|Gateway|C2FB3109B9E0", password: "5dc9bc1d274548739b6a17cbd2298274", clientId: "sunsmart@@@C2FB3109B9E0", keepalive: 60, clearSession: true, authMode: .none, sslVersion: .all)), model: vendorModel))
+////                appendMessages.append(MeshMessageHandle(message: SunricherVendorSet(function: .gatewayMQTTConnectInfoSet(platformType: 0, serverAddress: "tcp://mqtt.sunsmart-cn.mericher.com:1883", userName: "Signature|Gateway|DDCDBC6F7308", password: "97636b9c647140b48363378b6c730f0c", clientId: "sunsmart@@@DDCDBC6F7308", keepalive: 60, clearSession: true, authMode: .none, sslVersion: .all)), model: vendorModel))
+//                
+//                if let mac = device.macAddress {
+//                    appendMessages.append(MeshMessageHandle(message: SunricherVendorSet(function: .gatewayProjectRelevance(gatewayId: mac, projectId: space.siteId)), model: vendorModel))
+//                }
+//                
+//                appendMessages.append(MeshMessageHandle(message: SunricherVendorSet(function: .gatewaySubnetsRelevanceSet(subnetAppkeyIndexs: node.applicationKeys.map({ $0.index }))), model: vendorModel))
+//            }
         
 //            appendMessages.insert(MeshMessageHandle(message: ConfigRelaySet(), address: node.primaryUnicastAddress), at: 0)
             
@@ -740,6 +774,7 @@ class DeviceAddClassicModeController: UIViewController {
 //            if MeshLibManager.manager.currentProxy?.node == nil, let node = successNodes.last {
 //                MeshLibManager.manager.currentProxy?.nodeAddress = node.primaryUnicastAddress
 //            }
+            self.deviceStateCallback?(false)
             self.deviceAddCallback?(self.addSuccessNodes)
             
             self.space.deviceCount = MeshNetworkManager.instance.realNodes.count
@@ -756,39 +791,70 @@ class DeviceAddClassicModeController: UIViewController {
     
     /// 检查设备地址是否足够
     private func checkDeviceAddressesAreSufficient(devices: [ProvisioningDevice]) {
+
+        let bleConnectCount = max(showDevices.filter({ $0.addState == .adding || $0.addState == .addConnecting }).count, MeshLibManager.manager.getConnectedPeripherals().count)
+        for (index, device) in devices.enumerated() {
+            if index < (5 - bleConnectCount) {
+                device.addState = .addConnecting
+            }else {
+                device.addState = .wait
+            }
+            device.selectedState = .disabled
+            reloadDeviceState(device)
+        }
         
-        // 添加设备需要地址-剩余地址 +（site中所有space已经添加的设备地址+正在添加的设备地址）*20%
-        let estimatedAddressCount = devices.reduce(0, { (result, device) in result + device.elementCount })
-        // 获取网络内已存在的设备地址数量
-        let existingAddressCount = Node.loadAddresses(meshUUID: self.space.meshUUID).count
-        // 申请的地址数量
-        let applyAddressCount = estimatedAddressCount - MeshAPI.getNumberOfAvailableUnicastAddresses(meshUUID: self.space.meshUUID) + Int(Float(existingAddressCount) * 0.2)
-        
-        // 检查剩余地址是否足够添加设备
-        guard MeshAPI.getNumberOfAvailableUnicastAddresses(meshUUID: self.space.meshUUID) >= estimatedAddressCount else {
-            // 地址不够
-            // 手机是否联网
-            guard NetworkRequest.shared.networkable else {
-                // 未联网提示联网以获取地址
-                self.space.applyDeviceAddressCount = applyAddressCount
-                self.space.save()
+        DispatchQueue.global().async {
+            // 添加设备需要地址-剩余地址 +（site中所有space已经添加的设备地址+正在添加的设备地址）*20%
+            let estimatedAddressCount = devices.reduce(0, { (result, device) in result + device.elementCount })
+            // 可用地址数量
+            let availableUnicastCount = MeshAPI.getNumberOfAvailableUnicastAddresses(meshUUID: self.space.meshUUID)
+            
+            // 检查剩余地址是否足够添加设备
+            guard availableUnicastCount >= estimatedAddressCount else {
                 
-                SRAlertView(title: "notification".localizedString, message: "device_address_insufficient".localizedString, actions: [SRAlertAction(title: "ok".localizedString, actionHandler: {[weak self] _ in
-                    if NetworkRequest.shared.networkable {
-                        self?.space.applyDeviceAddressCount = nil
-                        self?.space.save()
-                        self?.applyDeviceAddressesRequest(applyAddressCount: applyAddressCount)
+                // 获取网络内已存在的设备地址数量
+                let existingAddressCount = Node.loadAddresses(meshUUID: self.space.meshUUID).count
+                // 申请的地址数量
+                let applyAddressCount = estimatedAddressCount - availableUnicastCount + Int(Float(existingAddressCount) * 0.2)
+                
+                // 地址不够
+                // 手机是否联网
+                guard NetworkRequest.shared.networkable else {
+                    // 未联网提示联网以获取地址
+                    self.space.applyDeviceAddressCount = applyAddressCount
+                    self.space.save()
+                    
+                    DispatchQueue.main.async {
+//                        XWHUDManager.hide()
+                        devices.forEach({
+                            $0.addState = .none
+                            $0.selectedState = .selected
+                            self.reloadDeviceState($0)
+                        })
+                        SRAlertView(title: "notification".localizedString, message: "device_address_insufficient".localizedString, actions: [SRAlertAction(title: "ok".localizedString, actionHandler: {[weak self] _ in
+                            if NetworkRequest.shared.networkable {
+                                self?.space.applyDeviceAddressCount = nil
+                                self?.space.save()
+                                self?.applyDeviceAddressesRequest(applyAddressCount: applyAddressCount)
+                            }
+                        })]).show()
                     }
-                })]).show()
+                    return
+                }
+                // 向服务器申请地址
+                DispatchQueue.main.async {
+//                    XWHUDManager.hide()
+                    self.applyDeviceAddressesRequest(applyAddressCount: applyAddressCount, devices: devices)
+                }
                 return
             }
-            // 向服务器申请地址
-            applyDeviceAddressesRequest(applyAddressCount: applyAddressCount, devices: devices)
-            return
+            DispatchQueue.main.async {
+                XWHUDManager.hide()
+                devices.forEach({
+                    self.addDevice($0)
+                })
+            }
         }
-        devices.forEach({
-            addDevice($0)
-        })
     }
     
     /// 申请设备地址请求
@@ -818,9 +884,19 @@ class DeviceAddClassicModeController: UIViewController {
                         self.addDevice($0)
                     })
                 }else {
+                    devices.forEach({
+                        $0.addState = .none
+                        $0.selectedState = .selected
+                        self.reloadDeviceState($0)
+                    })
                     XWHUDManager.showErrorTipHUD(NetworkApiError.unknown.localizedDescription)
                 }
             case .failure(let error):
+                devices.forEach({
+                    $0.addState = .none
+                    $0.selectedState = .selected
+                    self.reloadDeviceState($0)
+                })
                 XWHUDManager.showErrorTipHUD(error.localizedDescription)
             }
         }
@@ -1056,7 +1132,7 @@ class DeviceAddClassicModeController: UIViewController {
             make.left.equalTo(addDeviceToLabel.snp.right).offset(SCRXFrom(5))
             make.centerY.equalTo(addDeviceToLabel)
             if isIPad {
-                make.width.equalTo(SCRXFrom(128))
+                make.width.equalTo(SCRXFrom(isIPad ? 200 : 128))
             }else {
                 make.right.equalTo(scanBtn.snp.left).offset(SCRXFrom(-27))
             }

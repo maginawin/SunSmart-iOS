@@ -279,6 +279,7 @@ class GroupMembersViewController: UIViewController {
         
         functionView = GroupDevicesFunctionView()
         functionView.delegate = self
+        functionView.syncBtn.isHidden = true
         view.addSubview(functionView)
         functionView.snp.makeConstraints { make in
             make.left.right.bottom.equalToSuperview()

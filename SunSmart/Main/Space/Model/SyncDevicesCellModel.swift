@@ -86,10 +86,15 @@ enum DeviceOperationType {
         case .configuration(let node, let type):
             switch type {
             case .scene(let sceneId, let sceneData):
-                guard sceneData != nil, let nodeScene = node.sceneExecuteDatas.first(where: { $0.sceneNumber == sceneId }) else {
+                guard let sceneData = sceneData, let nodeScene = node.sceneExecuteDatas.first(where: { $0.sceneNumber == sceneId }) else {
                     return false
                 }
-                return nodeScene == sceneData!
+                guard nodeScene == sceneData else {
+                    print("scene\(sceneData.sceneNumber) target: lightness \(sceneData.lightness) cct \(sceneData.cct)")
+                    print("scene\(nodeScene.sceneNumber) real: lightness \(nodeScene.lightness) cct \(nodeScene.cct)")
+                    return false
+                }
+                return true
             case .schedule(let schedule):
                 return node.schedulerActions[schedule.id] != nil && node.schedulerActions[schedule.id]! == schedule.schedulerEntry
             case .group(let group):

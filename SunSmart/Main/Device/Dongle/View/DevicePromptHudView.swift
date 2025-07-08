@@ -8,9 +8,9 @@
 import UIKit
 
 class DevicePromptHudView: UIView {
-
+    
     var promptLabel: UILabel!
-    private var closeBtn: UIButton!
+    var closeBtn: UIButton!
     
     override init(frame: CGRect) {
         super.init(frame: frame)
@@ -21,6 +21,7 @@ class DevicePromptHudView: UIView {
         layer.shadowOffset = CGSize(width: 0, height: 2)
         layer.shadowOpacity = 1
         layer.shadowRadius = 6
+        
         
         promptLabel = UILabel(text: "Please note that energy consumption collection is disabled by default.", textColor: .white, fontSize: 15, fontWeight: .light, fit: false)
         promptLabel.numberOfLines = 0
@@ -33,10 +34,11 @@ class DevicePromptHudView: UIView {
             make.bottom.equalTo(SCRYFrom(-12))
         }
         
-        closeBtn = UIButton(normalImageName: "close", target: self, action: #selector(closeBtnAction))
+        closeBtn = UIButton(normalImageName: "close_white", target: self, action: #selector(closeBtnAction))
+        closeBtn.showsTouchWhenHighlighted = false
         addSubview(closeBtn)
         closeBtn.snp.makeConstraints { make in
-            make.centerX.equalTo(self.snp.right)
+            make.right.equalTo(8)
             make.centerY.equalTo(self.snp.top)
         }
     }
@@ -49,16 +51,11 @@ class DevicePromptHudView: UIView {
         self.removeFromSuperview()
     }
     
-    override func point(inside point: CGPoint, with event: UIEvent?) -> Bool {
-        var result = super.point(inside: point, with: event)
-        if !result {
-            // 判断是否在关闭按键点击范围内
-            if point.x <= self.frame.maxX + closeBtn.width * 0.5 && point.y >= -closeBtn.height * 0.5 {
-                result = true
-            }
+    override func hitTest(_ point: CGPoint, with event: UIEvent?) -> UIView? {
+        let pointInCloseButton = closeBtn.convert(point, from: self)
+        if closeBtn.bounds.contains(pointInCloseButton) {
+            return closeBtn
         }
-        return result
+        return super.hitTest(point, with: event)
     }
-        
-        
 }

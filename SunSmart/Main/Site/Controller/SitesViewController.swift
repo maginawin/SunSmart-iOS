@@ -81,10 +81,11 @@ class SitesViewController: UIViewController {
         view.backgroundColor = Background_Color
         
         navigationItem.leftBarButtonItem = UIBarButtonItem(image: UIImage(named: "menu_icon")?.withRenderingMode(.alwaysOriginal), style: .done, target: self, action: #selector(menuClick))
-        navigationItem.rightBarButtonItems = [
-            UIBarButtonItem(customView: UIButton(normalImageName: "more_vertical", target: self, action: #selector(moreClick))),
-            UIBarButtonItem(customView: UIButton(normalImageName: "import", target: self, action: #selector(importClick))),
-        ]
+//        navigationItem.rightBarButtonItems = [
+//            UIBarButtonItem(customView: UIButton(normalImageName: "more_vertical", target: self, action: #selector(moreClick))),
+//            UIBarButtonItem(customView: UIButton(normalImageName: "import", target: self, action: #selector(importClick))),
+//        ]
+        navigationItem.rightBarButtonItem = UIBarButtonItem(customView: UIButton(normalImageName: "import", target: self, action: #selector(importClick)))
 
         NotificationCenter.default.addObserver(self, selector: #selector(refreshData), name: .init(SitesDataRefreshNotifiacationName), object: nil)
         
@@ -499,7 +500,6 @@ class SitesViewController: UIViewController {
     /// 导入
     @objc private func importClick() {
         
-        
 //        guard let space = SpaceData.load(siteId: "25300E88-41F0-456E-A0A9-AD615069017C", spaceId: "88BF1DEC-264E-4D00-A93C-729A88030D58").first else {
 //            return
 //        }
@@ -591,6 +591,8 @@ class SitesViewController: UIViewController {
 //        guard let space = SpaceData.load(siteId: "25300E88-41F0-456E-A0A9-AD615069017C", spaceId: "88BF1DEC-264E-4D00-A93C-729A88030D58").first else {
 //            return
 //        }
+//        
+//        MeshLibManager.manager.setMeshNetworkConnected(meshUUID: space.meshUUID, subNetworkId: space.meshNetworkId)
 //        let vc = DeviceAddViewController(space: space)
 //        navigationController?.pushViewController(vc, animated: true)
         

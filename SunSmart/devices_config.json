@@ -318,10 +318,28 @@
         "companyId" : "0A78",
         "productId" : "1052",
         "categoryName" : "PIR EL Lighting",
-        "elementCount" : 2,
-        "iconCategory" : "Lighting",
+        "elementCount" : 3,
+        "iconCategory" : "Emergency",
         "deviceCategory" : "Lighting",
         "modelName" : "SR-BL9036T-PIR-WPV-EL"
+    },
+    {
+        "companyId" : "0A78",
+        "productId" : "1053",
+        "categoryName" : "MW Sensor Lighting",
+        "elementCount" : 3,
+        "iconCategory" : "Lighting",
+        "deviceCategory" : "Lighting",
+        "modelName" : "SR-BL9036T-MW-WPV"
+    },
+    {
+        "companyId" : "0A78",
+        "productId" : "1054",
+        "categoryName" : "MW EL Lighting",
+        "elementCount" : 3,
+        "iconCategory" : "Emergency",
+        "deviceCategory" : "Lighting",
+        "modelName" : "SR-BL9036T-MW-WPV-EL"
     },
     {
         "companyId" : "0A78",

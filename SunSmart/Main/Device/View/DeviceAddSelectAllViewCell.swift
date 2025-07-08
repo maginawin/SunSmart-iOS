@@ -54,7 +54,7 @@ class DeviceAddSelectAllViewCell: UITableViewCell {
         contentView.addSubview(selectBtn)
         selectBtn.snp.makeConstraints { make in
             make.left.equalTo(SCRXFrom(8))
-            make.bottom.equalToSuperview()
+            make.top.equalTo(SCRYFrom(4))
         }
         
         selectAllLabel = UILabel(text: "select_all".localizedString, textColor: ImportantText_Color, fontSize: 14, fontWeight: .light)

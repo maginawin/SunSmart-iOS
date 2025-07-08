@@ -44,7 +44,6 @@ class DeviceRestoreViewController: UIViewController {
     private var state: State = .none
     /// identify中的设备
     private var identifyDevice: ProvisioningDevice?
-    private var identifyBearer: PBGattBearer?
     /// 设备恢复完成回调
     var deviceRestoreCallback: (([Node])->Void)?
     /// 已恢复的设备
@@ -339,11 +338,7 @@ class DeviceRestoreViewController: UIViewController {
     private func identify(_ device: ProvisioningDevice) {
         
         // 判断连接量是否达到上限
-        var inAddDevicesCount = 0
-        showSections.forEach { section in
-            inAddDevicesCount += section.restoreDatas.filter({ $0.unprovisionedDevice?.addState == .adding || $0.unprovisionedDevice?.addState == .addConnecting }).count
-        }
-        let bleConnectCount = max(inAddDevicesCount, MeshLibManager.manager.getConnectedPeripherals().count)
+        let bleConnectCount = max(showDevices.filter({ $0.addState == .adding || $0.addState == .addConnecting }).count, MeshLibManager.manager.getConnectedPeripherals().count)
         guard bleConnectCount < 5 else {
             device.addState = .identifyWait
             reloadDeviceState(device)
@@ -355,68 +350,47 @@ class DeviceRestoreViewController: UIViewController {
             }
             return
         }
-
+        
         if identifyDevice != nil {
-            stopDeviceIdentify()
+            identifyDevice?.addState = .none
+            reloadDeviceState(identifyDevice!)
+            identifyDevice = nil
+            MeshAPI.stopUnprovisionedDeviceIdentify()
         }
         
         device.addState = .identifyConnecting
         reloadDeviceState(device)
-        identifyDevice = device
-        
-        identifyBearer = PBGattBearer(target: device.peripheral)
-        identifyBearer?.delegate = self
-        identifyBearer?.open()
-        
         if state == .none || state == .addFineshed {
             state = .identifying
             updateUIState()
         }
-        
-        DispatchQueue.main.async {
-            NSObject.cancelPreviousPerformRequests(withTarget: self, selector: #selector(self.identifyConnectTimeout), object: nil)
-            self.perform(#selector(self.identifyConnectTimeout), with: nil, afterDelay: 10)
-        }
-    }
-    
-    /// identify连接设备超时
-    @objc private func identifyConnectTimeout() {
-        if let device = identifyDevice {
-            identifyDevice?.addState = .identifyFail
-            reloadDeviceState(device)
-            identifyBearer?.close()
-            identifyBearer = nil
-            
-            DispatchQueue.main.asyncAfter(wallDeadline: .now() + 1) {[weak self] in
-                self?.stopDeviceIdentify()
-            }
-        }else {
-            stopDeviceIdentify()
-        }
-    }
-    
-    /// 停止设备identify
-    private func stopDeviceIdentify(close: Bool = true) {
-        if let device = identifyDevice {
+        identifyDevice = device
+        MeshAPI.unprovisionedDeviceIdentify(device: device) {[weak self] _, _ in
+            device.addState = .identifying
+            self?.reloadDeviceState(device)
+        } identifyFinished: {[weak self] _ in
+            guard let self = self else { return }
             device.addState = .none
-            reloadDeviceState(device)
-            identifyDevice = nil
+            self.identifyDevice = nil
+            self.reloadDeviceState(device)
+            if self.state == .identifying {
+                self.updateUIState()
+            }
+        } identifyFail: {[weak self] _ in
+            guard let self = self else { return }
+            device.addState = .identifyFail
+            self.reloadDeviceState(device)
+            DispatchQueue.main.asyncAfter(wallDeadline: .now() + 1) {[weak self] in
+                guard let self = self else { return }
+                if device.addState == .identifyFail {
+                    device.addState = .none
+                    self.reloadDeviceState(device)
+                }
+                if self.state == .identifying {
+                    self.updateUIState()
+                }
+            }
         }
-        if close {
-            identifyBearer?.close()
-        }
-        identifyBearer = nil
-        if state == .identifying {
-            updateUIState()
-        }
-        DispatchQueue.main.async {
-            NSObject.cancelPreviousPerformRequests(withTarget: self, selector: #selector(self.identifyConnectTimeout), object: nil)
-            NSObject.cancelPreviousPerformRequests(withTarget: self, selector: #selector(self.identifyFinnished), object: nil)
-        }
-    }
-    /// identify完成
-    @objc private func identifyFinnished() {
-        stopDeviceIdentify()
     }
     
     // MARK: - Device Restore
@@ -428,24 +402,26 @@ class DeviceRestoreViewController: UIViewController {
         }
         
         // 设备identify中添加不需要再闪烁
-        if unprovisionedDevice.addState == .identifyConnecting || unprovisionedDevice.addState == .identifyWait || unprovisionedDevice.addState == .failed || unprovisionedDevice.addState == .identifying {
+//        if unprovisionedDevice.addState == .identifyConnecting || unprovisionedDevice.addState == .identifyWait || unprovisionedDevice.addState == .failed || unprovisionedDevice.addState == .identifying {
             //            if device.addState == .identifying {
             //                device.identifyAttentionTimer = 0
             //            }
-            if deviceData.unprovisionedDevice == identifyDevice {
+        if deviceData.unprovisionedDevice?.peripheral.identifier.uuidString == identifyDevice.unsafelyUnwrapped.peripheral.identifier.uuidString {
                 //                if let bearer = identifyBearer { // 将identify连接的设备数据传入添加设备操作，避免二次连接
                 //                    device.gattBearer = PBGattBearer(bearer: bearer)
                 //                    stopDeviceIdentify(close: false)
                 //                }else {
-                stopDeviceIdentify()
+            MeshAPI.stopUnprovisionedDeviceIdentify()
                 //                }
             }
-        }
+//        }
         // 添加设备不需要闪烁
         unprovisionedDevice.identifyAttentionTimer = 0
-        unprovisionedDevice.addState = .wait
-        unprovisionedDevice.selectedState = .disabled
-        reloadDeviceState(unprovisionedDevice)
+        if unprovisionedDevice.addState == .none {
+            unprovisionedDevice.addState = .wait
+            unprovisionedDevice.selectedState = .disabled
+            reloadDeviceState(unprovisionedDevice)
+        }
         updateUIState()
         
         MeshAPI.startFastAddDevices(devices: [unprovisionedDevice]) { [weak self] addDevice in
@@ -584,39 +560,73 @@ class DeviceRestoreViewController: UIViewController {
     /// 检查设备地址是否足够
     private func checkDeviceAddressesAreSufficient(devices: [DeviceRestoreData]) {
         
-        // 添加设备需要地址-剩余地址 +（site中所有space已经添加的设备地址+正在添加的设备地址）*20%
-        let estimatedAddressCount = devices.reduce(0, { (result, device) in result + (device.unprovisionedDevice?.elementCount ?? 2) })
-        // 获取网络内已存在的设备地址数量
-        let existingAddressCount = Node.loadAddresses(meshUUID: self.space.meshUUID).count
-        // 申请的地址数量
-        let applyAddressCount = estimatedAddressCount - MeshAPI.getNumberOfAvailableUnicastAddresses(meshUUID: self.space.meshUUID) + Int(Float(existingAddressCount) * 0.2)
+        let bleConnectCount = max(showDevices.filter({ $0.addState == .adding || $0.addState == .addConnecting }).count, MeshLibManager.manager.getConnectedPeripherals().count)
+        for (index, device) in devices.enumerated() {
+            if index < (5 - bleConnectCount) {
+                device.unprovisionedDevice?.addState = .addConnecting
+            }else {
+                device.unprovisionedDevice?.addState = .wait
+            }
+            device.unprovisionedDevice?.selectedState = .disabled
+            if let unprovisionedDevice = device.unprovisionedDevice {
+                reloadDeviceState(unprovisionedDevice)
+            }
+        }
         
-        // 检查剩余地址是否足够添加设备
-        guard MeshAPI.getNumberOfAvailableUnicastAddresses(meshUUID: self.space.meshUUID) >= estimatedAddressCount else {
-            // 地址不够
-            // 手机是否联网
-            guard NetworkRequest.shared.networkable else {
-                // 未联网提示联网以获取地址
-                self.space.applyDeviceAddressCount = applyAddressCount
-                self.space.save()
+        DispatchQueue.global().async {
+            // 添加设备需要地址-剩余地址 +（site中所有space已经添加的设备地址+正在添加的设备地址）*20%
+            let estimatedAddressCount = devices.reduce(0, { (result, device) in result + (device.unprovisionedDevice?.elementCount ?? 0) })
+            // 可用地址数量
+            let availableUnicastCount = MeshAPI.getNumberOfAvailableUnicastAddresses(meshUUID: self.space.meshUUID)
+            
+            // 检查剩余地址是否足够添加设备
+            guard availableUnicastCount >= estimatedAddressCount else {
                 
-                SRAlertView(title: "notification".localizedString, message: "device_address_insufficient".localizedString, actions: [SRAlertAction(title: "ok".localizedString, actionHandler: {[weak self] _ in
-                    if NetworkRequest.shared.networkable {
-                        self?.space.applyDeviceAddressCount = nil
-                        self?.space.save()
-                        self?.applyDeviceAddressesRequest(applyAddressCount: applyAddressCount)
+                // 获取网络内已存在的设备地址数量
+                let existingAddressCount = Node.loadAddresses(meshUUID: self.space.meshUUID).count
+                // 申请的地址数量
+                let applyAddressCount = estimatedAddressCount - availableUnicastCount + Int(Float(existingAddressCount) * 0.2)
+                
+                // 地址不够
+                // 手机是否联网
+                guard NetworkRequest.shared.networkable else {
+                    // 未联网提示联网以获取地址
+                    self.space.applyDeviceAddressCount = applyAddressCount
+                    self.space.save()
+                    
+                    DispatchQueue.main.async {
+//                        XWHUDManager.hide()
+                        devices.forEach({
+                            if let unprovisionedDevice = $0.unprovisionedDevice {
+                                unprovisionedDevice.addState = .none
+                                unprovisionedDevice.selectedState = .selected
+                                self.reloadDeviceState(unprovisionedDevice)
+                            }
+                        })
+                        SRAlertView(title: "notification".localizedString, message: "device_address_insufficient".localizedString, actions: [SRAlertAction(title: "ok".localizedString, actionHandler: {[weak self] _ in
+                            if NetworkRequest.shared.networkable {
+                                self?.space.applyDeviceAddressCount = nil
+                                self?.space.save()
+                                self?.applyDeviceAddressesRequest(applyAddressCount: applyAddressCount)
+                            }
+                        })]).show()
                     }
-                })]).show()
+                    return
+                }
+                // 向服务器申请地址
+                DispatchQueue.main.async {
+//                    XWHUDManager.hide()
+                    self.applyDeviceAddressesRequest(applyAddressCount: applyAddressCount, devices: devices)
+                }
                 return
             }
-            // 向服务器申请地址
-            applyDeviceAddressesRequest(applyAddressCount: applyAddressCount, devices: devices)
-            return
+            DispatchQueue.main.async {
+                XWHUDManager.hide()
+                devices.forEach({
+                    self.addDevice($0)
+                })
+            }
         }
-        devices.forEach({
-            
-            addDevice($0)
-        })
     }
     
     /// 申请设备地址请求
@@ -639,9 +649,23 @@ class DeviceRestoreViewController: UIViewController {
                         self.addDevice($0)
                     })
                 }else {
+                    devices.forEach({
+                        if let unprovisionedDevice = $0.unprovisionedDevice {
+                            unprovisionedDevice.addState = .none
+                            unprovisionedDevice.selectedState = .selected
+                            self.reloadDeviceState(unprovisionedDevice)
+                        }
+                    })
                     XWHUDManager.showErrorTipHUD(NetworkApiError.unknown.localizedDescription)
                 }
             case .failure(let error):
+                devices.forEach({
+                    if let unprovisionedDevice = $0.unprovisionedDevice {
+                        unprovisionedDevice.addState = .none
+                        unprovisionedDevice.selectedState = .selected
+                        self.reloadDeviceState(unprovisionedDevice)
+                    }
+                })
                 XWHUDManager.showErrorTipHUD(error.localizedDescription)
             }
         }
@@ -1149,8 +1173,8 @@ extension DeviceRestoreViewController: UITableViewDataSource, UITableViewDelegat
                 cell.selectImageView.isHidden = true
                 cell.stateImageView.isHidden = true
             }
-            cell.addBtn.setBackgroundImage(UIImage(named: "device_restore"), for: .normal)
-            cell.addBtn.setBackgroundImage(UIImage(named: "device_restore_disable"), for: .disabled)
+            cell.addBtn.setImage(UIImage(named: "device_restore"), for: .normal)
+            cell.addBtn.setImage(UIImage(named: "device_restore_disable"), for: .disabled)
             cell.delegate = self
             return cell
 //        }
@@ -1275,29 +1299,6 @@ extension DeviceRestoreViewController: DeviceAddViewCellDelegate {
         
         updateUIState()
     }
-}
-
-extension DeviceRestoreViewController: BearerDelegate {
-    
-    func bearerDidOpen(_ bearer: Bearer) {
-        identifyBearer?.identify()
-        if let device = identifyDevice {
-            device.addState = .identifying
-            reloadDeviceState(device)
-        }
-        
-        DispatchQueue.main.async {
-            NSObject.cancelPreviousPerformRequests(withTarget: self, selector: #selector(self.identifyConnectTimeout), object: nil)
-            self.perform(#selector(self.identifyFinnished), with: nil, afterDelay: 5)
-        }
-    }
-    
-    func bearer(_ bearer: Bearer, didClose error: Error?) {
-        if (bearer as? PBGattBearer) == identifyBearer {
-            stopDeviceIdentify()
-        }
-    }
-    
 }
 
 extension DeviceRestoreViewController {

@@ -314,7 +314,7 @@ class BleFirmwareUpdateViewController: UIViewController {
             
             DispatchQueue.main.async {
                 NSObject.cancelPreviousPerformRequests(withTarget: self, selector: #selector(self.refreshNodesRSSIFinish), object: nil)
-                self.perform(#selector(self.refreshNodesRSSIFinish), with: nil, afterDelay: 6)
+                self.perform(#selector(self.refreshNodesRSSIFinish), with: nil, afterDelay: 10)
             }
             
             node.peripheral = data.peripheral

@@ -68,7 +68,8 @@ class DeviceAddViewController: WMPageController {
     var appointGroup: Group?
     /// 外部传入指定dognle设备绑定该到dognle数据
     var forceBindToDongle: DeviceDongleData?
-    
+    /// 是否添加设备中
+    var addingDevice: Bool = false
     
     init(space: SpaceData) {
         self.space = space
@@ -182,6 +183,12 @@ class DeviceAddViewController: WMPageController {
         }
     }
     
+    private func updateDeviceAddingUIState() {
+        segmentedControl.isUserInteractionEnabled = !self.addingDevice
+        navigationBackBtn.isHidden = self.addingDevice
+        navigationController?.interactivePopGestureRecognizer?.isEnabled = !self.addingDevice
+    }
+    
 }
 
 extension DeviceAddViewController {
@@ -200,9 +207,23 @@ extension DeviceAddViewController {
                 guard let self = self else { return }
                 self.addSuccessNodes.append(contentsOf: nodes)
             }
+            vc.deviceStateCallback = {[weak self] adding in
+                guard let self = self else { return }
+                self.addingDevice = adding
+                self.updateDeviceAddingUIState()
+            }
             return vc
         case 1:
             let vc = DeviceAddProfessionalModeController(space: space)
+            vc.deviceAddCallback = {[weak self] nodes in
+                guard let self = self else { return }
+                self.addSuccessNodes.append(contentsOf: nodes)
+            }
+            vc.deviceStateCallback = {[weak self] adding in
+                guard let self = self else { return }
+                self.addingDevice = adding
+                self.updateDeviceAddingUIState()
+            }
             return vc
         default:
             return UIViewController()
@@ -218,11 +239,16 @@ extension DeviceAddViewController {
         return CGRect(x: 0, y: view.safeAreaInsets.top + SCRYFrom(16), width: view.width, height: SCRYFrom(32))
     }
     
-    
+    override func menuView(_ menu: WMMenuView!, shouldSelesctedIndex index: Int) -> Bool {
+        return !addingDevice
+//        return index < 3
+    }
     
     override func menuView(_ menu: WMMenuView!, titleAt index: Int) -> String! {
         return ""
     }
+    
+    
     
 //    override func pageController(_ pageController: WMPageController, didEnter viewController: UIViewController, withInfo info: [AnyHashable : Any]) {
 //        segmentedControl?.selectedIndex = Int(self.selectIndex)

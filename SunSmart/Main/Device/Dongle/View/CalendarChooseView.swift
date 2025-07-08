@@ -33,14 +33,16 @@ class CalendarChooseView: UIView {
     private var selectCallback: ChooseDateCallback?
     private var hideCallback: CalenderHideCallback?
     private var showOffsetY: CGFloat = 0
+    private var margin: CGFloat = SCRXFrom(16)
     
-    init(minimumDate: Date, maximumDate: Date, selectDate: Date?, showOffsetY: CGFloat, selectCallback: ChooseDateCallback?, hideCallback: CalenderHideCallback? = nil) {
+    init(minimumDate: Date, maximumDate: Date, selectDate: Date?, margin: CGFloat = SCRXFrom(16), showOffsetY: CGFloat, selectCallback: ChooseDateCallback?, hideCallback: CalenderHideCallback? = nil) {
         super.init(frame: UIScreen.main.bounds)
         self.minimumDate = minimumDate
         self.maximumDate = maximumDate
         self.selectCallback = selectCallback
         self.showOffsetY = showOffsetY
         self.hideCallback = hideCallback
+        self.margin = margin
         setupUI()
         
         if let date = selectDate {
@@ -121,8 +123,8 @@ class CalendarChooseView: UIView {
         contentView.layer.shadowOffset = CGSize(width: 0, height: 3)
         addSubview(contentView)
         contentView.snp.makeConstraints { make in
-            make.left.equalTo(Int(SCRXFrom(16)))
-            make.right.equalTo(Int(SCRXFrom(-17)))
+            make.left.equalTo(Int(margin))
+            make.right.equalTo(Int(-margin))
             make.height.equalTo(CalendarChooseView.calenderViewHeight)
         }
         

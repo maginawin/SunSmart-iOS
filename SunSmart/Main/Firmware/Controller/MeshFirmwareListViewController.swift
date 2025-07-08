@@ -114,6 +114,10 @@ class MeshFirmwareListViewController: UIViewController {
     override func viewDidLayoutSubviews() {
         super.viewDidLayoutSubviews()
         
+        if firmwareTypeDatas.isEmpty {
+            showEmptyUI()
+        }
+        
         flowLayout.itemSize = CGSize(width: view.width - collectionView.contentInset.left - collectionView.contentInset.right, height: SCRYFrom(206))
     }
     
@@ -154,9 +158,11 @@ class MeshFirmwareListViewController: UIViewController {
     }
     
     private func showEmptyUI() {
-        
-        view.layoutIfNeeded()
-        collectionView.showEmptyDataView(title: "no_data".localizedString)
+        if collectionView.frame != .zero {
+            CATransaction.setDisableActions(true)
+            collectionView.showEmptyDataView(frame: collectionView.frame, title: "no_data".localizedString)
+            CATransaction.commit()
+        }
     }
     
     @objc private func refresh() {

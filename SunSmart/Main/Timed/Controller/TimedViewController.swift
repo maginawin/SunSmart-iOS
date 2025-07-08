@@ -211,16 +211,16 @@ class TimedViewController: UIViewController {
             make.height.equalTo(kSafeAreaBottomHeight + SCRYFrom(44))
         }
         
-        selectTypeView = TimedSelectTypeView()
-        selectTypeView.delegate = self
-        view.addSubview(selectTypeView)
-        selectTypeView.snp.makeConstraints { make in
-            make.left.right.equalToSuperview()
-            make.height.equalTo(SCRYFrom(106))
-            make.bottom.equalTo(footerView.snp.top)
-        }
+//        selectTypeView = TimedSelectTypeView()
+//        selectTypeView.delegate = self
+//        view.addSubview(selectTypeView)
+//        selectTypeView.snp.makeConstraints { make in
+//            make.left.right.equalToSuperview()
+//            make.height.equalTo(SCRYFrom(106))
+//            make.bottom.equalTo(footerView.snp.top)
+//        }
         
-        view.sendSubviewToBack(selectTypeView)
+//        view.sendSubviewToBack(selectTypeView)
         
         scheduleFlowLayout = UICollectionViewFlowLayout()
         scheduleFlowLayout.minimumLineSpacing = SCRXFrom(16)
@@ -239,7 +239,7 @@ class TimedViewController: UIViewController {
         view.addSubview(scheduleCollectionView)
         scheduleCollectionView.snp.makeConstraints { make in
             make.left.right.top.equalToSuperview()
-            make.bottom.equalTo(selectTypeView.snp.top)
+            make.bottom.equalTo(footerView.snp.top)
         }
         
     }

@@ -67,7 +67,9 @@ class DeviceAddViewCell: UITableViewCell {
             if device.addState != .identifying {
                 deviceImageView.layer.removeAnimation(forKey: "identify")
             }
-            stateImageView.layer.removeAnimation(forKey: "loading")
+            if !(device.addState == .addConnecting || device.addState == .adding) {
+                stateImageView.layer.removeAnimation(forKey: "loading")
+            }
             
             switch device.selectedState {
             case .unselected:
@@ -133,7 +135,9 @@ class DeviceAddViewCell: UITableViewCell {
                 }
                 stateImageView.isHidden = false
                 stateImageView.image = UIImage(named: "loading")
-                stateImageView.layer.addRotationAnimation(duration: 1.5, repeatCount: .max, animationKey: "loading")
+                if stateImageView.layer.animation(forKey: "loading") == nil {
+                    stateImageView.layer.addRotationAnimation(duration: 1.5, repeatCount: .max, animationKey: "loading")
+                }
                 stateImageView.snp.updateConstraints { make in
                     make.width.height.equalTo(SCRYFrom(40))
                 }
@@ -176,6 +180,22 @@ class DeviceAddViewCell: UITableViewCell {
                 activityImageView.isHidden = true
                 stopActivityTimer()
             }
+            if device.icon?.contains("Lighting") ?? true {
+                activityImageView.snp.updateConstraints { make in
+        //            make.centerX.equalToSuperview().offset(-0.3)
+        //            make.top.equalTo(SCRYFrom(3))
+                    make.centerX.equalToSuperview().offset(-0.2)
+                    make.centerY.equalToSuperview().offset(SCRYFrom(-4))
+                }
+            }else {
+                activityImageView.snp.updateConstraints { make in
+        //            make.centerX.equalToSuperview().offset(-0.3)
+        //            make.top.equalTo(SCRYFrom(3))
+                    make.centerX.equalToSuperview().offset(-0.2)
+                    make.centerY.equalToSuperview().offset(-0.2)
+                }
+            }
+            
             signalStrengthView.setSignalStrength(rssi: device.rssi.intValue)
             signalLabel.text = "\(device.rssi.intValue)dB"
         }
@@ -262,8 +282,10 @@ class DeviceAddViewCell: UITableViewCell {
         activityImageView.isHidden = true
         deviceImageView.addSubview(activityImageView)
         activityImageView.snp.makeConstraints { make in
-            make.centerX.equalToSuperview().offset(-0.3)
-            make.top.equalTo(SCRYFrom(3))
+//            make.centerX.equalToSuperview().offset(-0.3)
+//            make.top.equalTo(SCRYFrom(3))
+            make.centerX.equalToSuperview().offset(-0.2)
+            make.centerY.equalToSuperview().offset(-0.2)
             make.width.height.equalTo(SCRYFrom(15))
         }
         

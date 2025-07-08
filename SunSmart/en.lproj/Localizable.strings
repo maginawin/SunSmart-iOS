@@ -1201,3 +1201,4 @@
 "professional_mode_step_2" = "Walk around the site with the app to add devices";
 "professional_mode_step_3" = "Check if the device is correct and add to group";
 "add_device_instructions" = "Add device instructions";
+"device_add_pause_message" = "Pause or Stop Scanning to add devices";

@@ -173,12 +173,27 @@ class DeviceLightsViewController: UIViewController {
         updateUI(reloadTableView: false)
     }
     
-    /// 获取节点状态
-    @objc private func getNodesState() {
+    @objc private func refreshControlAction() {
         guard MeshLibManager.manager.isMeshNetworkConnected else {
             if refreshControl.isRefreshing {
                 refreshControl.endRefreshing()
             }
+            return
+        }
+        
+        if refreshControl.isRefreshing {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 5) {[weak self] in
+                guard let self = self else { return }
+                self.refreshControl.endRefreshing()
+            }
+        }
+        
+        getNodesState()
+    }
+    
+    /// 获取节点状态
+    private func getNodesState() {
+        guard MeshLibManager.manager.isMeshNetworkConnected else {
             return
         }
 //        if let view = self.wm_pageController?.view {
@@ -186,7 +201,7 @@ class DeviceLightsViewController: UIViewController {
 //        }else {
 //            XWHUDManager.hide()
 //        }
-
+        
         MeshNodeHeartbeatManager.shared.refresh()
 //        MeshAPI.sendMessage(message: LightLightnessGet(), address: .allNodes)
 //        
@@ -197,12 +212,7 @@ class DeviceLightsViewController: UIViewController {
 //        MeshAPI.sendMessage(message: LightCTLTemperatureRangeGet(), address: .allNodes)
         
 //        MeshLibManager.manager.refreshNodesRSSI(withWaitFor: 5, finished: nil)
-        if refreshControl.isRefreshing {
-            DispatchQueue.main.asyncAfter(deadline: .now() + 5) {[weak self] in
-                guard let self = self else { return }
-                self.refreshControl.endRefreshing()
-            }
-        }
+     
 //        }
     }
     
@@ -386,7 +396,7 @@ class DeviceLightsViewController: UIViewController {
         
         refreshControl = UIRefreshControl()
         refreshControl.tintColor = UIColor.lightGray
-        refreshControl.addTarget(self, action: #selector(getNodesState), for: .valueChanged)
+        refreshControl.addTarget(self, action: #selector(refreshControlAction), for: .valueChanged)
         
         
         groupsView = DeviceGroupsView()
@@ -639,9 +649,11 @@ class DeviceLightsViewController: UIViewController {
                 }else { // 删除失败（提示是否强制删除这部分设备）
                     
                     let alertView = SRAlertView(title: "notification".localizedString, actions: [SRAlertAction(title: "alert_item_cancel".localizedString, style: .cancel, actionHandler: {[weak self] _ in
-                        self?.updateUI()
+                        self?.devices.removeAll(where: { successAddressList.contains($0.primaryUnicastAddress) })
+                        self?.updateUI(reloadTableView: false)
                         self?.updateEditUI()
                         self?.isDeletingDevice = false
+                        self?.collectionView.reloadData()
                         if successAddressList.count > 0 {
                             // 通知space数据修改
 //                            NotificationCenter.default.post(name: .init(spaceDataChangedNotificaitonName), object: SpaceChangeDataType.device)
@@ -1058,7 +1070,9 @@ extension DeviceLightsViewController: MeshLibManagerDelegate, MeshLibManagerMess
 //        MeshAPI.resetNodes(addressList: addressList, resetSuccess: nil, resetFail: nil, resetFinish: nil)
         
         if view.window != nil {
-            getNodesState()
+            if !MeshNodeHeartbeatManager.shared.autoHeartbeatLoop {
+                getNodesState()
+            }
         }
     }
  
@@ -1106,26 +1120,28 @@ extension DeviceLightsViewController: MeshLibManagerDelegate, MeshLibManagerMess
         if let node = manager.meshNetwork?.node(withAddress: source), !node.isProvisioner {
             node.updateData(message: message)
             // 动能开关事件
-            if message is LightLCLightOnOffSetUnacknowledged || message is GenericOnOffSetUnacknowledged || message is SceneRecallUnacknowledged {
-//                reloadCollectionItem(node: node)
-                if view.window != nil {
-                    collectionView.reloadData()
-                    updateAllOnOffItemUI()
-                }
-            }else if message is GenericMoveSetUnacknowledged {
-                if let moveLevelMessage = message as? GenericMoveSetUnacknowledged, moveLevelMessage.deltaLevel == 0 { // 动能开关长按结束
-                    
-                    /// 动能开关组设备list
-                    var groupNodes: [Node] = []
-                    if let group = manager.meshNetwork?.group(withAddress: destination) {
-                        if group.isVirtual { // 虚拟组（动能开关）
-                            groupNodes = manager.realNodes.filter({ $0.levelModels.contains(where: { $0.isSubscribed(to: group) }) })
-                        }else { // 真实组
-                            groupNodes = group.nodes.filter({ $0.lightnessModel != nil })
-                        }
+            if MeshNodeHeartbeatManager.shared.heartbeatMode == .general {
+                if message is LightLCLightOnOffSetUnacknowledged || message is GenericOnOffSetUnacknowledged || message is SceneRecallUnacknowledged {
+                    //                reloadCollectionItem(node: node)
+                    if view.window != nil {
+                        collectionView.reloadData()
+                        updateAllOnOffItemUI()
                     }
-                    // 获取动能开关更新的设备列表状态
-                    MeshNodeHeartbeatManager.shared.refresh(nodes: groupNodes)
+                }else if message is GenericMoveSetUnacknowledged {
+                    if let moveLevelMessage = message as? GenericMoveSetUnacknowledged, moveLevelMessage.deltaLevel == 0 { // 动能开关长按结束
+                        
+                        /// 动能开关组设备list
+                        var groupNodes: [Node] = []
+                        if let group = manager.meshNetwork?.group(withAddress: destination) {
+                            if group.isVirtual { // 虚拟组（动能开关）
+                                groupNodes = manager.realNodes.filter({ $0.levelModels.contains(where: { $0.isSubscribed(to: group) }) })
+                            }else { // 真实组
+                                groupNodes = group.nodes.filter({ $0.lightnessModel != nil })
+                            }
+                        }
+                        // 获取动能开关更新的设备列表状态
+                        MeshNodeHeartbeatManager.shared.refresh(nodes: groupNodes)
+                    }
                 }
             }
         }

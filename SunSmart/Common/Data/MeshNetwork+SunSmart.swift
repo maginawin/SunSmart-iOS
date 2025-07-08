@@ -2282,13 +2282,13 @@ extension Node {
                 }
             }
             
-            
-            if let sceneData = self.sceneExecuteDatas.first(where: { $0.sceneNumber == sceneId }) {
-                sceneData.isOn = lightness > 0
-                sceneData.lightness = lightness
-                sceneData.cct = cct
+            let sceneData = SceneExecuteData(sceneNumber: sceneId, isOn: lightness > 0, lightness: lightness, cct: cct)
+//            let sceneData = self.sceneExecuteDatas.first(where: { $0.sceneNumber == sceneId })
+            if let sceneIndex = self.sceneExecuteDatas.firstIndex(where: { $0.sceneNumber == sceneId }) {
+                self.sceneExecuteDatas.replaceSubrange(sceneIndex...sceneIndex, with: [sceneData])
             }else {
-                self.sceneExecuteDatas.append(SceneExecuteData(sceneNumber: sceneId, isOn: lightness > 0, lightness: lightness, cct: cct))
+                self.sceneExecuteDatas.append(sceneData)
+//                self.sceneExecuteDatas.append(SceneExecuteData(sceneNumber: sceneId, isOn: lightness > 0, lightness: lightness, cct: cct))
             }
             self.savePropertys()
 //            let executeData = SceneExecuteData(scenenumber: sceneId, lightness: self.lightness, cct: cct)
