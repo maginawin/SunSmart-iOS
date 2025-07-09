@@ -406,7 +406,7 @@ class DeviceRestoreViewController: UIViewController {
             //            if device.addState == .identifying {
             //                device.identifyAttentionTimer = 0
             //            }
-        if deviceData.unprovisionedDevice?.peripheral.identifier.uuidString == identifyDevice.unsafelyUnwrapped.peripheral.identifier.uuidString {
+        if deviceData.unprovisionedDevice?.peripheral.identifier.uuidString == identifyDevice?.peripheral.identifier.uuidString {
                 //                if let bearer = identifyBearer { // 将identify连接的设备数据传入添加设备操作，避免二次连接
                 //                    device.gattBearer = PBGattBearer(bearer: bearer)
                 //                    stopDeviceIdentify(close: false)

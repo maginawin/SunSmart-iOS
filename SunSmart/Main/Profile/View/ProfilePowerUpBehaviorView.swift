@@ -238,6 +238,7 @@ class ProfilePowerUpBehaviorView: UIView {
         }
         
         lightnessSliderView = PowerUpLightSliderView()
+        lightnessSliderView.slider.minimumValue = 1
         lightnessSliderView.isHidden = true
         
         addSubview(lightnessSliderView)

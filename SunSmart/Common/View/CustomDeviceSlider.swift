@@ -309,26 +309,27 @@ class CustomDeviceSlider: UISlider {
         sliderEndValueChange()
     }
     
+    
     //检查是点击事件的点是否在slider范围内
     override func point(inside point: CGPoint, with event: UIEvent?) -> Bool {
 
+        let extendedBounds = bounds.insetBy(dx: -20, dy: -20)
+        return extendedBounds.contains(point)
+        
         //调用父类判断
-        var result = super.point(inside: point, with: event)
-        if !result {
-            
-            // 滑块图片宽度
-            let thumbW = (self.currentThumbImage?.size.width ?? 20) * 0.5
-            
-            //同理,如果不在slider范围类,扩充响应范围
-            if point.x >= ((lastBounds?.origin.x ?? self.frame.origin.x) - thumbW) && (point.x <= ((lastBounds?.origin.x ?? self.frame.origin.x) + (lastBounds?.size.width ?? self.frame.size.width) + thumbW)) && point.y > 0 {
-                //在扩充范围内,返回yes
-                result = true
-            }
-        }
-//        else if !(lastBounds?.contains(point) ?? true) {
-//            result = false
+//        var result = super.point(inside: point, with: event)
+//        if !result {
+//            
+//            // 滑块图片宽度
+//            let thumbW = (self.currentThumbImage?.size.width ?? 20) * 0.5
+//            
+//            //同理,如果不在slider范围类,扩充响应范围
+//            if point.x >= ((lastBounds?.origin.x ?? self.frame.origin.x) - thumbW) && (point.x <= ((lastBounds?.origin.x ?? self.frame.origin.x) + (lastBounds?.size.width ?? self.frame.size.width) + thumbW)) && point.y > 0 {
+//                //在扩充范围内,返回yes
+//                result = true
+//            }
 //        }
-        return result
+//        return result
     }
     
 }
