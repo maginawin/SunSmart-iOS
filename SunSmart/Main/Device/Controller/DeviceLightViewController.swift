@@ -93,25 +93,6 @@ class DeviceLightViewController: UIViewController {
     }
     
     
-    @objc private func test() {
-        
-        
-        
-        SRAlertView(title: "输入亮度值", messageColor: Red_Color, messageFont: UIFont.systemFont(ofSize: 13, weight: .light), inputText: "\(self.node.lightness)", inputFieldStyle: .init(placeholder: "0~65535", keyboardType: .numberPad), actions: [.cancelAction, .init(title: "Settings".localizedString, style: .default)]) { _, _ in
-            return nil
-        } inputDoneBack: {[weak self] text in
-            guard let self = self, let value = UInt16(text), node.lightnessRange.contains(value) else { return }
-            
-            self.node.lightness = value
-            self.node.isOn = value > 0
-            self.updateData()
-            
-            MeshAPI.setNodeLightnessState(address: self.node.primaryUnicastAddress, lightness: value)
-        }.show()
-
-        
-    }
-    
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
         
@@ -260,8 +241,16 @@ class DeviceLightViewController: UIViewController {
 //        }))
 //        #endif
 //        items.append(.init(icon: UIImage(named: "menu_edit"), title: "Test", tapItemBack: {[weak self] _ in
-//            self?.nodeTest()
+//            self?.test()
 //        }))
+//        if let group = self.node.group {
+//            let profileType = group.info.profile.type
+//            if profileType == .occupancy_daylight || profileType == .occupancy || profileType == .vacancy_daylight || profileType == .vacancy || profileType == .proximityLighting {
+//                items.append(.init(icon: UIImage(named: "settings"), title: "settings".localizedString, tapItemBack: {[weak self] _ in
+//                    
+//                }))
+//            }
+//        }
         
         items.append(.init(icon: UIImage(named: "menu_refresh"), title: "refresh".localizedString, tapItemBack: {[weak self] _ in
             self?.refresh()
@@ -276,77 +265,6 @@ class DeviceLightViewController: UIViewController {
         MenuPopView.show(items: items, anchorPoint: windowPoint, menuWidth: SCRXFrom(114))
         
 //        MenuPopView.show(items: items, anchorPoint: CGPoint(x: view.width - SCRXFrom(17) - 15, y: y), menuWidth: MenuPopView.defalutMenuWidth + SCRXFrom(10))
-    }
-    
-    private func nodeTest() {
-//        
-//        if let testGroup = MeshNetworkManager.instance.groups.first {
-//            
-//            var messageHandles: [MeshMessageHandle] = []
-//            if node.group == testGroup {
-//                
-//                node.groupState = .exitFailure
-//                
-//                let syncData = node.getNeedSyncGroupData(group: testGroup)
-//                for schedule in testGroup.info.bindSchedules {
-//                    messageHandles.append(contentsOf: DeviceOperationType.delete(node: node, type: .schedule(schedule: schedule)).messageHandles)
-//                }
-//                for switchData in testGroup.info.switchs {
-//                    messageHandles.append(contentsOf: DeviceOperationType.delete(node: node, type: .enOceanSwitch(switchData: switchData)).messageHandles)
-//                }
-//                
-//                for scene in testGroup.info.sceneExecuteDatas {
-//                    messageHandles.append(contentsOf: DeviceOperationType.delete(node: node, type: .scene(sceneId: scene.sceneNumber, executeData: nil)).messageHandles)
-//                }
-//                for profile in syncData.syncProfile {
-//                    messageHandles.append(contentsOf: DeviceOperationType.delete(node: node, type: .profile(type: profile)).messageHandles)
-//                }
-//                messageHandles.append(contentsOf: DeviceOperationType.delete(node: node, type: .group(group: testGroup)).messageHandles)
-//            }else {
-//                
-//                node.groupState = .inGroup
-//                
-//                let syncData = node.getNeedSyncGroupData(group: testGroup)
-//                messageHandles.append(contentsOf: DeviceOperationType.configuration(node: node, type: .group(group: testGroup)).messageHandles)
-//                for profile in syncData.syncProfile {
-//                    messageHandles.append(contentsOf: DeviceOperationType.configuration(node: node, type: .profile(type: profile)).messageHandles)
-//                }
-//                for scene in syncData.syncScenes {
-//                    messageHandles.append(contentsOf: DeviceOperationType.configuration(node: node, type: .scene(sceneId: scene.sceneNumber, executeData: scene)).messageHandles)
-//                }
-//                for schedule in syncData.syncSchedules {
-//                    messageHandles.append(contentsOf: DeviceOperationType.configuration(node: node, type: .schedule(schedule: schedule)).messageHandles)
-//                }
-//                for switchData in syncData.syncSwitchs {
-//                    messageHandles.append(contentsOf: DeviceOperationType.configuration(node: node, type: .enOceanSwitch(switchData: switchData)).messageHandles)
-//                }
-////                if let switchProxy = syncData.syncSwitchProxy {
-////                    messageHandles.append(contentsOf: DeviceOperationType.configuration(node: node, type: .enOceanProxy(switchData: switchProxy)).messageHandles)
-////                }
-//            }
-//            
-//            MeshProxyMessageCommand.shared.addMessage(messageHandles: messageHandles, ackMessageTimeout: 10) {[weak self] resultMessageHandles in
-//                
-//                resultMessageHandles.forEach { handle in
-//                    if let address = handle.address ?? handle.model?.parentElement?.unicastAddress, let node = MeshNetworkManager.instance.meshNetwork?.node(withAddress: address) {
-//                        node.updateData(message: handle.message, isSuccess: handle.isSuccessful)
-//                    }
-//                }
-//                
-////                if MeshNetworkManager.instance.scenes.count >= 2 {
-////                    let sceneA = MeshNetworkManager.instance.scenes[0]
-////                    let sceneB = MeshNetworkManager.instance.scenes[1]
-////                    MeshAPI.startScene(sceneNumber: sceneA.number)
-////                    DispatchQueue.main.asyncAfter(wallDeadline: .now() + 3) {
-////                        MeshAPI.startScene(sceneNumber: sceneB.number)
-////                    }
-////                }
-//                DispatchQueue.main.asyncAfter(wallDeadline: .now() + 15, execute: {
-//                    self?.nodeTest()
-//                })
-//            }
-//        }
-//        
     }
     
     
@@ -507,6 +425,13 @@ class DeviceLightViewController: UIViewController {
         
 //        MeshAPI.setLightnessRange(address: node.primaryUnicastAddress, range: 255...65535)
         navigationController?.pushViewController(DeviceInformationViewController(node: self.node), animated: true)
+    }
+    
+    /// 设置
+    private func settings() {
+        
+        
+        
     }
     
     /// 刷新

@@ -109,10 +109,21 @@ enum ProfileType {
     /// 光照传感器校准
     case daylightCalibration(value: UInt16)
     /// 灵敏度 0~100%
-    case sensitivity(value: UInt8)
+    case sensitivity(value: UInt8, range: ClosedRange<UInt8>? = nil)
 }
 
 enum DeviceParameterType {
+    
+    var rawValue: Int {
+        switch self {
+        case .pwmFrequency:
+            return 1
+        case .ratedPower:
+            return 2
+        case .motionSensitivityRange:
+            return 3
+        }
+    }
     
     /// 根据设备参数类型获取对应消息发送对象
     func getMessageHandles(node: Node) -> [MeshMessageHandle] {
@@ -126,6 +137,11 @@ enum DeviceParameterType {
             if let vendorModel = node.sunricherVendorModel {
                 messageHandles.append(MeshMessageHandle(message: SunricherVendorSet(function: .phaseEnergyConsumption(list: datas)), model: vendorModel))
             }
+        case .motionSensitivityRange(let range):
+            if let vendorModel = node.sunricherVendorModel {
+                let sensitivity = node.motionSensitivity ?? node.group?.info.profile.sensitivity ?? 100
+                messageHandles.append(MeshMessageHandle(message: SunricherVendorSet(function: .motionSensitivity(sensitivity, maxValue: range.upperBound, minValue: range.lowerBound)), model: vendorModel))
+            }
         }
         return messageHandles
     }
@@ -134,6 +150,8 @@ enum DeviceParameterType {
     case pwmFrequency(frequency: UInt16)
     /// 额定功率
     case ratedPower(datas: [NodePhaseEnergyConsumption])
+    /// 移动感应灵敏度范围
+    case motionSensitivityRange(range: ClosedRange<UInt8>)
 }
 
 enum DeviceReadParameterType {
@@ -155,6 +173,10 @@ enum DeviceReadParameterType {
             if let energyModel = node.energyModel {
                 messageHandles.append(MeshMessageHandle(message: SensorGet(), model: energyModel))
             }
+        case .motionSensitivityRange:
+            if let vendorModel = node.sunricherVendorModel {
+                messageHandles.append(MeshMessageHandle(message: SunricherVendorGet(function: .motionSensitivity), model: vendorModel))
+            }
         }
         return messageHandles
     }
@@ -165,6 +187,8 @@ enum DeviceReadParameterType {
     case ratedPower
     /// 设备已使用的总能耗
     case totalDeviceEnergyUse
+    /// 移动感应灵敏度范围
+    case motionSensitivityRange
 }
 
 

@@ -34,7 +34,16 @@ class SunSmartDataManager {
     private(set) var db: Connection?
     
     init() {
-        db = try? Connection("\(docPath)/sunsmart.sqlite3")
+        // 1. 创建用户专属目录
+        let userDir = docPath + "/\(UserData.currentUserId)"
+        // 确保目录存在
+        try? FileManager.default.createDirectory(
+            atPath: userDir,
+            withIntermediateDirectories: true,
+            attributes: nil
+        )
+        
+        db = try? Connection("\(userDir)/sunsmart.sqlite3")
         db?.busyTimeout = 1.5
     }
     
@@ -43,6 +52,7 @@ class SunSmartDataManager {
         
         FirmwareData.initDatabase()
         // 初始化网络数据库
+        MeshDataManager.customDatabasePath = "\(docPath)/\(UserData.currentUserId)/mesh.sqlite3"
         MeshDataManager.shared.initDatabase()
         
         // 初始化设备配置信息数据库
@@ -349,7 +359,8 @@ extension SiteData {
 
 extension SpaceData {
     
-    private static let spacesTable = Table("spaces")
+    private static let spacesTableName = "spaces"
+    private static let spacesTable = Table(spacesTableName)
     
     struct ExpressionKey {
         static let id = Expression<Int64>("id")
@@ -380,6 +391,7 @@ extension SpaceData {
         static let vistorPasswordEnable = Expression<Bool>("vistorPasswordEnable")
         static let shareCode = Expression<String?>("shareCode")
         static let applyDeviceAddressCount = Expression<Int?>("applyDeviceAddressCount")
+        static let applyGroupAddressCount = Expression<Int?>("applyGroupAddressCount")
         static let isReleaseAddress = Expression<Bool?>("isReleaseAddress")
     }
     
@@ -415,8 +427,19 @@ extension SpaceData {
             builder.column(ExpressionKey.vistorPasswordEnable)
             builder.column(ExpressionKey.shareCode)
             builder.column(ExpressionKey.applyDeviceAddressCount)
+            builder.column(ExpressionKey.applyGroupAddressCount)
             builder.column(ExpressionKey.isReleaseAddress)
         }))
+        
+        // 获取表内存在的属性
+        if let columns = try? SunSmartDataManager.shared.db?.schema.columnDefinitions(table: spacesTableName) {
+            // 插入字段
+            // 是否存在”applyGroupAddressCount“属性
+            if !columns.contains(where: { $0.name == "applyGroupAddressCount" }) {
+                _ = try? SunSmartDataManager.shared.db?.run(SpaceData.spacesTable.addColumn(ExpressionKey.applyGroupAddressCount))
+            }
+        }
+        
         GroupInfo.initDatabase()
         Profile.initDatabase()
         SceneInfo.initDatabase()
@@ -468,6 +491,7 @@ extension SpaceData {
                 space.visitors = UserData.load(spaceId: space.id, permisson: .visitor)
                 space.shareCode = row[ExpressionKey.shareCode]
                 space.applyDeviceAddressCount = row[ExpressionKey.applyDeviceAddressCount]
+                space.applyGroupAddressCount = row[ExpressionKey.applyGroupAddressCount]
                 space.releaseAddress = row[ExpressionKey.isReleaseAddress] ?? false
                 spaces.append(space)
             }
@@ -535,6 +559,7 @@ extension SpaceData {
             ExpressionKey.vistorPasswordEnable <- self.vistorPasswordEnable,
             ExpressionKey.shareCode <- self.shareCode,
             ExpressionKey.applyDeviceAddressCount <- self.applyDeviceAddressCount,
+            ExpressionKey.applyGroupAddressCount <- self.applyGroupAddressCount,
             ExpressionKey.isReleaseAddress <- self.releaseAddress
         ])
         do {

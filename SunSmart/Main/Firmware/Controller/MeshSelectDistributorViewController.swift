@@ -89,6 +89,11 @@ class MeshSelectDistributorViewController: UIViewController {
     
     private weak var uploadStateView: FirmwareDistributeUpdateStateView?
     
+    private var scanAnimationView: UIImageView!
+    /// 是否正在刷新设备信号
+    private var refreshing: Bool = false
+    private var rssiSortTimer: Timer?
+    
     /// 分发的固件数据
     let firmwareData: FirmwareData?
     let productId: UInt16
@@ -108,66 +113,198 @@ class MeshSelectDistributorViewController: UIViewController {
 
         title = "select_distributor".localizedString
         view.backgroundColor = Background_Color
+        
+        scanAnimationView = UIImageView(image: UIImage(named: "loading"))
+        scanAnimationView.isHidden = true
+        
+        navigationItem.rightBarButtonItem = UIBarButtonItem(customView: scanAnimationView)
+        
         setupUI()
         
         nodes = MeshNetworkManager.instance.realNodes.filter({ $0.productIdentifier == productId })
-        setupData()
+//        setupData()
+        refreshRSSI()
         updateUI()
     }
     
-    @objc private func setupData() {
-        
-        guard nodes.count > 0 else {
+    /// 刷新信号值
+    @objc private func refreshRSSI() {
+        guard MeshNetworkManager.instance.realNodes.count > 0 else {
             showEmptyUI()
             return
         }
+        self.refreshControl.endRefreshing()
+        if self.refreshing {
+            return
+        }
         
-        nodes.forEach({ 
+        MeshNetworkManager.instance.realNodes.forEach({
             $0.rssi = nil
-            $0.rssiState = .none
-            $0.distributorSelectedState = .none
+            $0.peripheral = nil
         })
-        XWHUDManager.showCustomHUD(withMessage: nil, view: view)
-        MeshLibManager.manager.refreshNodesRSSI(withWaitFor: 6) {[weak self] nodes in
-            guard let self = self else { return }
-            self.refreshControl.endRefreshing()
-            self.nodes.forEach { node in
-                if let rssi = node.rssi {
-                    if rssi >= -90 {
-                        node.rssiState = .normal
-                    }else {
-                        node.rssiState = .low
-                    }
+        self.tableView.reloadData()
+//        self.setupData(loadServerData: true)
+        
+//        XWHUDManager.showCustomHUD(withMessage: nil, view: view)
+//        // 每多50个设备刷新信号时间加多1s
+//        let time = ceil(Double(MeshNetworkManager.instance.realNodes.count - 100) / 50.0)
+        DispatchQueue.main.async {
+            NSObject.cancelPreviousPerformRequests(withTarget: self, selector: #selector(self.refreshNodesRSSIFinish), object: nil)
+            self.perform(#selector(self.refreshNodesRSSIFinish), with: nil, afterDelay: 10)
+        }
+        self.refreshing = true
+        self.scanAnimationView.isHidden = false
+        self.scanAnimationView.layer.addRotationAnimation(duration: 1.2, repeatCount: 999, animationKey: "loading")
+        
+        MeshLibManager.manager.refreshNodesRSSI(withWaitFor: 99999, nodeScan: {[weak self] data in
+            
+            guard let self = self, let node = MeshNetworkManager.instance.realNodes.first(where: { $0.primaryUnicastAddress == data.node.primaryUnicastAddress }), node.peripheral == nil else { return }
+            
+            DispatchQueue.main.async {
+                NSObject.cancelPreviousPerformRequests(withTarget: self, selector: #selector(self.refreshNodesRSSIFinish), object: nil)
+                self.perform(#selector(self.refreshNodesRSSIFinish), with: nil, afterDelay: 10)
+            }
+            
+            node.peripheral = data.peripheral
+           
+            if let rssi = node.rssi {
+                if rssi >= -90 {
+                    node.rssiState = .normal
                 }else {
-                    node.rssiState = .none
+                    node.rssiState = .low
                 }
-                switch node.rssiState {
-                case .none:
-                    node.distributorSelectedState = .none
-                case .normal:
-                    if self.firmwareData == nil { // 本地没有固件包, 判断设备内是否有固件包并大于其它设备固件版本
-                        if node.distributionVersion == nil || self.nodes.contains(where: { $0.distributionVersion?.compare(node.distributionVersion!, options: .numeric) == .orderedDescending }) {
-                            node.distributorSelectedState = .none
-                        }else {
-                            node.distributorSelectedState = self.selectNode == node ? .selected : .unselected
-                        }
+            }else {
+                node.rssiState = .none
+            }
+            switch node.rssiState {
+            case .none:
+                node.distributorSelectedState = .none
+            case .normal:
+                if self.firmwareData == nil { // 本地没有固件包, 判断设备内是否有固件包并大于其它设备固件版本
+                    if node.distributionVersion == nil || self.nodes.contains(where: { $0.distributionVersion?.compare(node.distributionVersion!, options: .numeric) == .orderedDescending }) {
+                        node.distributorSelectedState = .none
                     }else {
                         node.distributorSelectedState = self.selectNode == node ? .selected : .unselected
                     }
-                case .low:
-                    node.distributorSelectedState = .unselected
+                }else {
+                    node.distributorSelectedState = self.selectNode == node ? .selected : .unselected
                 }
+            case .low:
+                node.distributorSelectedState = .unselected
             }
-            if self.selectNode?.rssiState != .normal {
+            if node.primaryUnicastAddress == self.selectNode?.primaryUnicastAddress, node.rssiState != .normal {
                 self.selectNode = nil
             }
-            self.nodes.sort(by: { $0.rssi ?? -99 >= $1.rssi ?? -99 })
+                
+            // 查找完所有设备后停止搜索
+            if !MeshNetworkManager.instance.realNodes.contains(where: { $0.rssi == nil || $0.peripheral == nil }) {
+                DispatchQueue.main.async {
+                    NSObject.cancelPreviousPerformRequests(withTarget: self, selector: #selector(self.refreshNodesRSSIFinish), object: nil)
+                    self.refreshNodesRSSIFinish()
+                }
+                devicesRssiSort()
+            }else {
+                if self.rssiSortTimer == nil {
+                    self.startRssiSortTimer()
+                }
+            }
+          
             
-            self.updateUI()
-            XWHUDManager.hideInView(with: self.view)
-        }
+        }, finished: nil)
         
+        
+//        MeshLibManager.manager.refreshNodesRSSI(withWaitFor: 6 + time) {[weak self] nodes in
+//            guard let self = self else { return }
+//            nodes.forEach { data in
+//                let node = MeshNetworkManager.instance.realNodes.first(where: { $0.primaryUnicastAddress == data.node.primaryUnicastAddress })
+//                node?.peripheral = data.peripheral
+//            }
+//            self.refreshControl.endRefreshing()
+//            self.setupData(loadServerData: true)
+//
+//            XWHUDManager.hideInView(with: self.view)
+//        }
     }
+    
+    /// 刷新信号结束
+    @objc private func refreshNodesRSSIFinish() {
+        MeshLibManager.manager.stopRefreshNodesRSSI()
+        refreshing = false
+        scanAnimationView.layer.removeAnimation(forKey: "loading")
+        scanAnimationView.isHidden = true
+        
+        self.updateUI()
+    }
+    
+    // MARK: - 信号排序定时器
+    private func startRssiSortTimer() {
+        
+        rssiSortTimer = LCWeakTimer.scheduledTimer(timeInterval: 0.5, aTarget: self, selector: #selector(devicesRssiSort), userInfo: nil, repeats: false)
+        RunLoop.current.add(rssiSortTimer!, forMode: .common)
+    }
+    
+    /// 设备信号排序定时刷新，避免接收广播包后刷新频率过高
+    @objc private func devicesRssiSort() {
+        
+        rssiSortTimer?.invalidate()
+        rssiSortTimer = nil
+        nodes.sort(by: { $0.rssi ?? -99 >= $1.rssi ?? -99 })
+        tableView.reloadData()
+    }
+    
+//    @objc private func setupData() {
+//        
+//        guard nodes.count > 0 else {
+//            showEmptyUI()
+//            return
+//        }
+//        
+//        nodes.forEach({ 
+//            $0.rssi = nil
+//            $0.rssiState = .none
+//            $0.distributorSelectedState = .none
+//        })
+//        XWHUDManager.showCustomHUD(withMessage: nil, view: view)
+//        MeshLibManager.manager.refreshNodesRSSI(withWaitFor: 6) {[weak self] nodes in
+//            guard let self = self else { return }
+//            self.refreshControl.endRefreshing()
+//            self.nodes.forEach { node in
+//                if let rssi = node.rssi {
+//                    if rssi >= -90 {
+//                        node.rssiState = .normal
+//                    }else {
+//                        node.rssiState = .low
+//                    }
+//                }else {
+//                    node.rssiState = .none
+//                }
+//                switch node.rssiState {
+//                case .none:
+//                    node.distributorSelectedState = .none
+//                case .normal:
+//                    if self.firmwareData == nil { // 本地没有固件包, 判断设备内是否有固件包并大于其它设备固件版本
+//                        if node.distributionVersion == nil || self.nodes.contains(where: { $0.distributionVersion?.compare(node.distributionVersion!, options: .numeric) == .orderedDescending }) {
+//                            node.distributorSelectedState = .none
+//                        }else {
+//                            node.distributorSelectedState = self.selectNode == node ? .selected : .unselected
+//                        }
+//                    }else {
+//                        node.distributorSelectedState = self.selectNode == node ? .selected : .unselected
+//                    }
+//                case .low:
+//                    node.distributorSelectedState = .unselected
+//                }
+//            }
+//            if self.selectNode?.rssiState != .normal {
+//                self.selectNode = nil
+//            }
+//            self.nodes.sort(by: { $0.rssi ?? -99 >= $1.rssi ?? -99 })
+//            
+//            self.updateUI()
+//            XWHUDManager.hideInView(with: self.view)
+//        }
+//        
+//    }
     
     /// 固件上传
     private func startFirmwareUpload(node: Node) {
@@ -223,7 +360,7 @@ class MeshSelectDistributorViewController: UIViewController {
     
     private func updateUI() {
         
-        if let selectNode = self.selectNode {
+        if !refreshing, let selectNode = self.selectNode {
             if let firmwareData = self.firmwareData {
                 if let distributionVersion = selectNode.distributionVersion, firmwareData.version.compare(distributionVersion, options: .numeric) != .orderedDescending {
                     self.operateState = .next
@@ -300,7 +437,7 @@ class MeshSelectDistributorViewController: UIViewController {
         
         refreshControl = UIRefreshControl()
         refreshControl.tintColor = UIColor.lightGray
-        refreshControl.addTarget(self, action: #selector(setupData), for: .valueChanged)
+        refreshControl.addTarget(self, action: #selector(refreshRSSI), for: .valueChanged)
         
         tableView = UITableView()
         tableView.backgroundColor = Background_Color
@@ -370,6 +507,10 @@ extension MeshSelectDistributorViewController: UITableViewDataSource, UITableVie
     
     func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
         
+        if refreshing {
+            XWHUDManager.showTipHUD("device_search_disable_select".localizedString, isLineFeed: true)
+            return
+        }
         let node = nodes[indexPath.row]
         guard node.distributorSelectedState == .unselected else {
             return

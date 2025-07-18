@@ -319,10 +319,10 @@ class GroupMembersViewController: UIViewController {
     /// 创建更多组
     @objc private func createGroupsBtnAction() {
         
-        guard MeshNetworkManager.instance.groups.count < 16 else {
-            XWHUDManager.showTipHUD("groups_overrun_message".localizedString, isLineFeed: true)
-            return
-        }
+//        guard MeshNetworkManager.instance.groups.count < 16 else {
+//            XWHUDManager.showTipHUD("groups_overrun_message".localizedString, isLineFeed: true)
+//            return
+//        }
         
         let vc = GroupAddViewController(space: space)
         space.isConfiguring = true

@@ -76,7 +76,7 @@ class DeviceParameterRetedPowerViewCell: UITableViewCell {
             
             ratedPowerLabel.snp.remakeConstraints { make in
                 make.left.equalTo(SCRXFrom(16))
-                make.top.equalTo(SCRYFrom(16))
+                make.top.equalTo(SCRYFrom(24))
             }
             noteLabel.snp.makeConstraints { make in
                 make.left.right.equalTo(tableView)
@@ -93,8 +93,8 @@ class DeviceParameterRetedPowerViewCell: UITableViewCell {
             
             ratedPowerLabel.snp.remakeConstraints { make in
                 make.left.equalTo(SCRXFrom(16))
-                make.top.equalTo(SCRYFrom(16))
-                make.bottom.equalTo(SCRYFrom(-16))
+                make.top.equalTo(SCRYFrom(24))
+                make.bottom.equalTo(SCRYFrom(-23))
             }
             noteLabel.snp.remakeConstraints { make in
                 make.left.right.equalTo(tableView)

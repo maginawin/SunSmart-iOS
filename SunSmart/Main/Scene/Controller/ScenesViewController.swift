@@ -344,7 +344,7 @@ class ScenesViewController: UIViewController {
 //        flowLayout.sectionInset = UIEdgeInsets(top: SCRXFrom(16), left: SCRXFrom(12), bottom: SCRXFrom(16), right: SCRXFrom(12))
         
         collectionView = UICollectionView(frame: .zero, collectionViewLayout: flowLayout)
-        collectionView.contentInset = UIEdgeInsets(top: collectionViewMargin, left: collectionViewMargin, bottom: collectionViewMargin, right: collectionViewMargin)
+        collectionView.contentInset = UIEdgeInsets(top: collectionViewMargin, left: collectionViewMargin, bottom: collectionViewMargin + 10, right: collectionViewMargin)
         collectionView.register(ScenesViewCell.classForCoder(), forCellWithReuseIdentifier: "cell")
         collectionView.showsVerticalScrollIndicator = false
         collectionView.backgroundColor = .clear

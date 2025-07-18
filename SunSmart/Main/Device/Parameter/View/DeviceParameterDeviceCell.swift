@@ -36,6 +36,9 @@ class DeviceParameterDeviceCell: UITableViewCell {
     var pwmFailedImageView: UIImageView!
     var ratedPowerLabel: UILabel!
     var ratedPowerFailedImageView: UIImageView!
+    var sensitivityLabel: UILabel!
+    var sensitivityImageView: UIImageView!
+    
     var identifyBtn: UIButton!
 //    private var onoffBtn: UIButton!
     var onBtn: UIButton!
@@ -223,7 +226,20 @@ class DeviceParameterDeviceCell: UITableViewCell {
             make.left.equalTo(ratedPowerLabel.snp.right).offset(SCRXFrom(6))
         }
         
-       
+        sensitivityLabel = UILabel(text: "", textColor: Message_Color, fontSize: 12, fontWeight: .light)
+        contentView.addSubview(sensitivityLabel)
+        sensitivityLabel.snp.makeConstraints { make in
+            make.left.equalTo(ratedPowerLabel)
+            make.top.equalTo(ratedPowerLabel.snp.bottom).offset(SCRYFrom(2))
+        }
+        
+        sensitivityImageView = UIImageView(image: UIImage(named: "setting_failed"))
+        sensitivityImageView.isHidden = true
+        contentView.addSubview(sensitivityImageView)
+        sensitivityImageView.snp.makeConstraints { make in
+            make.centerY.equalTo(sensitivityLabel)
+            make.left.equalTo(sensitivityLabel.snp.right).offset(SCRXFrom(4))
+        }
         
         lineView = UIView()
         lineView.backgroundColor = Line_Color

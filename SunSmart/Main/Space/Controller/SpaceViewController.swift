@@ -176,6 +176,7 @@ class SpaceViewController: WMPageController {
         MeshNodeHeartbeatManager.shared.autoHeartbeatLoop = true
         MeshNodeHeartbeatManager.shared.openHeartbeatShare = false
         MeshNodeHeartbeatManager.shared.heartbeatMode = .general
+        MeshLibManager.manager.showLogs = [.network, .access, .lowerTransport, .upperTransport, .proxy, .bearer]
         // 添加通知监听
         addNotificaiton()
         // 获取space数据
@@ -954,7 +955,8 @@ class SpaceViewController: WMPageController {
     
         var networkApi: NetowrkReqeustApi!
         // 有分享code则读取之前的数据
-        if let shareCode = space.shareCode, space.editorPassword != nil || space.permission == .editor {
+//        if let shareCode = space.shareCode, space.editorPassword != nil || space.permission == .editor {
+        if let shareCode = space.shareCode {
             networkApi = .shareInfo(shareId: shareCode)
         }else {
             // 还没有设置编辑者密码

@@ -196,6 +196,7 @@ class GroupSwitchsViewController: UIViewController {
                 XWHUDManager.showErrorTipHUD("failed".localizedString + " !")
                 return
             }
+            
             let subLinkGroup = try? MeshAPI.createGroup(name: switchData.name + "-Group_1", isVirtual: true)
             
             switchData.linkGroupAddress = linkGroup.address.address

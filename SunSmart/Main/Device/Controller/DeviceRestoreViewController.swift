@@ -365,7 +365,7 @@ class DeviceRestoreViewController: UIViewController {
             updateUIState()
         }
         identifyDevice = device
-        MeshAPI.unprovisionedDeviceIdentify(device: device) {[weak self] _, _ in
+        MeshAPI.unprovisionedDeviceIdentify(device: device, attentionTimer: 6) {[weak self] _, _ in
             device.addState = .identifying
             self?.reloadDeviceState(device)
         } identifyFinished: {[weak self] _ in
@@ -572,6 +572,7 @@ class DeviceRestoreViewController: UIViewController {
                 reloadDeviceState(unprovisionedDevice)
             }
         }
+        self.updateUIState()
         
         DispatchQueue.global().async {
             // 添加设备需要地址-剩余地址 +（site中所有space已经添加的设备地址+正在添加的设备地址）*20%
@@ -603,6 +604,7 @@ class DeviceRestoreViewController: UIViewController {
                                 self.reloadDeviceState(unprovisionedDevice)
                             }
                         })
+                        self.updateUIState()
                         SRAlertView(title: "notification".localizedString, message: "device_address_insufficient".localizedString, actions: [SRAlertAction(title: "ok".localizedString, actionHandler: {[weak self] _ in
                             if NetworkRequest.shared.networkable {
                                 self?.space.applyDeviceAddressCount = nil
@@ -666,6 +668,7 @@ class DeviceRestoreViewController: UIViewController {
                         self.reloadDeviceState(unprovisionedDevice)
                     }
                 })
+                self.updateUIState()
                 XWHUDManager.showErrorTipHUD(error.localizedDescription)
             }
         }

@@ -352,7 +352,6 @@ extension SiteData {
                         recycleGroupAddresCount += 32 - usedGroupAddresses.count
                         
                         // 每解绑一个space，其APP都回收这个space未使用的场景地址给服务器  1个空间16个场景
-                        let spaceScenes = Scene.load(meshUUID: space.meshUUID, subnetworkId: space.meshNetworkId)
                         recycleSceneAddresCount += 16 - usedSceneAddresses.count
                     }
                     
@@ -1906,6 +1905,14 @@ extension Node {
         default:
             return true
         }
+    }
+    
+    /// 是否支持移动感应灵敏度
+    var supportMotionSensitivity: Bool {
+        guard self.sunricherVendorModel != nil else {
+            return false
+        }
+        return self.presenceDetectedSensorModel != nil
     }
     
     /// 更新新设备的恢复数据

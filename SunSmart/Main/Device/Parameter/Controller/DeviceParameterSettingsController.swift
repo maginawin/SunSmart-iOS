@@ -42,7 +42,7 @@ class DeviceParameterSettingsController: UIViewController {
         view.backgroundColor = Background_Color
         
         parameterDatas = [
-            .init(type: .pwmFrequency, data: 2940, enable: false), .init(type: .ratedPower, data: ratedPowerPhaseDatas, enable: false)
+            .init(type: .pwmFrequency, data: 2940, enable: false), .init(type: .ratedPower, data: ratedPowerPhaseDatas, enable: false), .init(type: .motionSensitivityRange, data: UInt8(0)...UInt8(80), enable: false)
         ]
         setupUI()
         
@@ -87,6 +87,10 @@ class DeviceParameterSettingsController: UIViewController {
                 if let phases = parameterData.data as? [DeviceParameterRatedPowerPhaseData] {
                     return .ratedPower(datas: phases.compactMap({ $0.toNodePhaseEnergyConsumption() }))
                 }
+            case .motionSensitivityRange:
+                if let range = parameterData.data as? ClosedRange<UInt8> {
+                    return .motionSensitivityRange(range: UInt8(Double(range.lowerBound) * 2.55)...UInt8(Double(range.upperBound) * 2.55))
+                }
             }
             return nil
         })
@@ -106,6 +110,12 @@ class DeviceParameterSettingsController: UIViewController {
                 devices.forEach({
                     if $0.restoreData?.phaseEnergyConsumptions != nil {
                         $0.restoreData?.phaseEnergyConsumptions = nil
+                    }
+                })
+            case .motionSensitivityRange:
+                devices.forEach({
+                    if $0.restoreData?.motionSensitivityRange != nil {
+                        $0.restoreData?.motionSensitivityRange = nil
                     }
                 })
             }
@@ -129,6 +139,8 @@ class DeviceParameterSettingsController: UIViewController {
                     if let parameterData = self.parameterDatas.first(where: { $0.type == .ratedPower }), let data = parameterData.data {
                         result.updateValue((data, self.devices, []), forKey: .ratedPower)
                     }
+                case .motionSensitivityRange(let range):
+                    result.updateValue((range, self.devices, []), forKey: .motionSensitivityRange)
                 }
             }
             self.settingsCompletionCallback?(result)
@@ -145,6 +157,9 @@ class DeviceParameterSettingsController: UIViewController {
                 
                 var ratedPowerSuccessNodes: [Node] = []
                 var ratedPowerFailedNodes: [Node] = []
+                
+                var sensitivityRangeSuccessNodes: [Node] = []
+                var sensitivityRangeFailedNodes: [Node] = []
 
                 resultDatas.forEach { data in
                     data.successOperationTypes.forEach { operationType in
@@ -157,6 +172,8 @@ class DeviceParameterSettingsController: UIViewController {
                                     pwmSuccessNodes.append(data.node)
                                 case .ratedPower:
                                     ratedPowerSuccessNodes.append(data.node)
+                                case .motionSensitivityRange:
+                                    sensitivityRangeSuccessNodes.append(data.node)
                                 }
                             default:
                                 break
@@ -176,6 +193,8 @@ class DeviceParameterSettingsController: UIViewController {
                                     pwmFailedNodes.append(data.node)
                                 case .ratedPower:
                                     ratedPowerFailedNodes.append(data.node)
+                                case .motionSensitivityRange:
+                                    sensitivityRangeFailedNodes.append(data.node)
                                 }
                             default:
                                 break
@@ -195,6 +214,11 @@ class DeviceParameterSettingsController: UIViewController {
                 if ratedPowerSuccessNodes.count > 0 || ratedPowerFailedNodes.count > 0 {
                     if let ratedPowerData = self.parameterDatas.first(where: { $0.type == .ratedPower }) {
                         result.updateValue((ratedPowerData.data!, ratedPowerSuccessNodes, ratedPowerFailedNodes), forKey: ratedPowerData.type)
+                    }
+                }
+                if sensitivityRangeSuccessNodes.count > 0 || sensitivityRangeFailedNodes.count > 0 {
+                    if let sensitivityRangeData = self.parameterDatas.first(where: { $0.type == .motionSensitivityRange }) {
+                        result.updateValue((sensitivityRangeData.data!, sensitivityRangeSuccessNodes, sensitivityRangeFailedNodes), forKey: sensitivityRangeData.type)
                     }
                 }
                 DispatchQueue.main.async {
@@ -237,9 +261,11 @@ class DeviceParameterSettingsController: UIViewController {
         
         tableView = UITableView()
         tableView.separatorStyle = .none
+        tableView.showsVerticalScrollIndicator = false
         tableView.backgroundColor = Background_Color
         tableView.register(DeviceParameterSettingsViewCell.classForCoder(), forCellReuseIdentifier: "cell")
         tableView.register(DeviceParameterRetedPowerViewCell.classForCoder(), forCellReuseIdentifier: "retedPowerCell")
+        tableView.register(DeviceParameterAbsoluteSensitivityViewCell.classForCoder(), forCellReuseIdentifier: "sensitivityCell")
         
         tableView.estimatedRowHeight = SCRYFrom(148)
         tableView.dataSource = self
@@ -276,6 +302,14 @@ extension DeviceParameterSettingsController: UITableViewDataSource, UITableViewD
             ratedPowerCell.delegate = self
             ratedPowerCell.updateParameterEnable(enable: parameterData.enable)
             return ratedPowerCell
+        case .motionSensitivityRange:
+            let sensitivityCell = tableView.dequeueReusableCell(withIdentifier: "sensitivityCell", for: indexPath) as! DeviceParameterAbsoluteSensitivityViewCell
+            if let range = parameterData.data as? ClosedRange<UInt8> {
+                sensitivityCell.selectRange = range
+            }
+            sensitivityCell.updateParameterEnable(enable: parameterData.enable)
+            sensitivityCell.delegate = self
+            return sensitivityCell
         default:
             let cell = tableView.dequeueReusableCell(withIdentifier: "cell", for: indexPath) as! DeviceParameterSettingsViewCell
             cell.parameterData = parameterData
@@ -313,26 +347,6 @@ extension DeviceParameterSettingsController: DeviceParameterSettingsViewCellDele
             
         default:
             break
-//            let data = type.data
-//            let range = data.range ?? 1...99999
-//            SRAlertView(title: "\(data.title) \("input".localizedString)", inputText: value != nil ? "\(value!)" : nil, inputFieldStyle: .init(placeholder: "\(range.lowerBound)~\(range.upperBound)", keyboardType: .numberPad, minInputLength: 1), actions: [.cancelAction, SRAlertAction(title: "confirm".localizedString)]) { text, _ in
-//                guard let value = Int(text) else {
-//                    return nil
-//                }
-//                if !range.contains(value) {
-//                    return "\("limit_range".localizedString) \(range.lowerBound)~\(range.upperBound)"
-//                }
-//                return nil
-//            } inputDoneBack: {[weak self] text in
-//                guard let self = self, let value = Int(text) else { return }
-//                
-//                if let index = self.parameters.firstIndex(where: { $0.rawValue == type.rawValue }) {
-//                    self.parameters[index] = .ratedPower(value: value)
-//                    self.tableView.reloadRows(at: [IndexPath(row: index, section: 0)], with: .none)
-//                }
-//                self.updateSetupBtnState()
-//            }.show()
-//
         }
     }
     
@@ -378,6 +392,29 @@ extension DeviceParameterSettingsController: DeviceParameterRetedPowerViewCellDe
             data.enable = enable
 //            tableView.reloadRows(at: [indexPath], with: .none)
             
+            updateSetupBtnState()
+        }
+        tableView.performBatchUpdates(nil)
+    }
+    
+}
+
+extension DeviceParameterSettingsController: DeviceParameterAbsoluteSensitivityViewCellDelegate {
+    
+    /// 修改灵敏度范围
+    func cell(_ cell: DeviceParameterAbsoluteSensitivityViewCell, changeSensitivityRange range: ClosedRange<UInt8>) {
+        
+        if let index = self.parameterDatas.firstIndex(where: { $0.type == .motionSensitivityRange }) {
+            self.parameterDatas[index].data = range
+            self.updateSetupBtnState()
+        }
+    }
+    
+    /// 修改启用/禁用开关
+    func cell(_ cell: DeviceParameterAbsoluteSensitivityViewCell, parameterEnableStateChanged enable: Bool) {
+        if let indexPath = tableView.indexPath(for: cell) {
+            let data = parameterDatas[indexPath.section]
+            data.enable = enable
             updateSetupBtnState()
         }
         tableView.performBatchUpdates(nil)

@@ -451,29 +451,6 @@ class SitesViewController: UIViewController {
     /// 菜单
     @objc private func menuClick() {
         
-//        SRAlertView(title: "notification".localizedString, message: "device_sync_message".localizedString + "\n\n", messageColor: Title_Color, messageFont: UIFont.systemFont(ofSize: 14, weight: .light), messageAttBtnStyle: SRAlertMessageAttBtnStyle(offset: CGPoint(x: 0, y: 30), text: "device_sync_message_more".localizedString, textColor: SubText_Color, textFont: UIFont.systemFont(ofSize: FontFit(14), weight: .light), imageName: "space_arrow_down",selectImageName: "space_arrow_up", underline: false, actionHandler: {
-//            guard let alertView = SRAlertView.getCurrentAlertView() else { return }
-//            if alertView.messageAttStrBtn.isSelected {
-//                alertView.messageLabel.text = "device_sync_message".localizedString + "\n\n\n\n" + "device_sync_sub_message".localizedString
-//                alertView.messageAttStrBtn.snp.updateConstraints { make in
-//                    make.centerX.equalTo(alertView.messageLabel).offset(0)
-//                    make.centerY.equalTo(alertView.messageLabel).offset(-10)
-//                }
-//            }else {
-//                alertView.messageLabel.text = "device_sync_message".localizedString + "\n\n"
-//                alertView.messageAttStrBtn.snp.updateConstraints { make in
-//                    make.centerX.equalTo(alertView.messageLabel).offset(0)
-//                    make.centerY.equalTo(alertView.messageLabel).offset(30)
-//                }
-//            }
-//            
-//        }), actions: [SRAlertAction(title: "confirm".localizedString, style: .cancel, actionHandler: {[weak self] _ in
-//            guard let self = self else { return }
-//            
-//        }), SRAlertAction(title: "still_to_set".localizedString)]).show()
-
-        
-        
         MainMenuView.show {[weak self] option in
             
             guard let self = self else { return }
@@ -503,27 +480,17 @@ class SitesViewController: UIViewController {
 //        guard let space = SpaceData.load(siteId: "25300E88-41F0-456E-A0A9-AD615069017C", spaceId: "88BF1DEC-264E-4D00-A93C-729A88030D58").first else {
 //            return
 //        }
-//        let vc = DeviceAddViewController(space: space)
-//        navigationController?.pushViewController(vc, animated: true)
-
-//        XWHUDManager.showCustomHUD(withMessage: nil, isWindow: true)
-//        
+//
 //        DispatchQueue.global().async {
 //            MeshLibManager.manager.setMeshNetworkConnected(meshUUID: space.meshUUID, subNetworkId: space.meshNetworkId)
 //            DispatchQueue.main.async {
-//                let group = MeshNetworkManager.instance.groups.first!
+////                let group = MeshNetworkManager.instance.groups.first!
 ////                let vc = GroupViewController(space: space, group: group)
-//                let vc = GroupPathSequencePageController(group: group)
-//        //        let vc = DeviceParameterSettingsController(devices: [])
+////                let vc = GroupPathSequencePageController(group: group)
+//                let vc = DeviceParameterSettingsController(devices: [])
 //                self.present(NavigationViewController(rootViewController: vc), animated: true)
 //            }
 //        }
-        
-        
-       
-        
-//        let vc = EnergyDataViewController(space: self.allSites[0].spaces[0])
-//        present(NavigationViewController(rootViewController: vc), animated: true)
         
         ImportProjectView {[weak self] mode in
             if mode == .scanQRCode {

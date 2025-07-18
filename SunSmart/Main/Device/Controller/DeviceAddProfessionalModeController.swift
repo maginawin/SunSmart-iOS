@@ -363,7 +363,7 @@ class DeviceAddProfessionalModeController: UIViewController {
         
         
         identifyDevice = cacheDevice ?? device
-        MeshAPI.unprovisionedDeviceIdentify(device: cacheDevice ?? device) {[weak self] _, _ in
+        MeshAPI.unprovisionedDeviceIdentify(device: cacheDevice ?? device, attentionTimer: 6) {[weak self] _, _ in
             guard let self = self else { return }
             
             device.addState = .identifying

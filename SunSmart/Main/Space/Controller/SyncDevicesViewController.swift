@@ -369,6 +369,12 @@ class SyncDevicesViewController: UIViewController {
                                 let step = SyncDeviceStepModel(type: "rated_power".localizedString, state: .none, tasks: [taskModel])
                                 taskModel.parentStepModel = step
                                 steps.append(step)
+                            case .motionSensitivityRange(range: let range):
+                                let taskModel = SyncDeviceStepTaskModel(name: "relative_sensitivity".localizedString, operationType: .configuration(node: node, type: .deviceParameters(parameterType: .motionSensitivityRange(range: range))))
+                                
+                                let step = SyncDeviceStepModel(type: "relative_sensitivity".localizedString, state: .none, tasks: [taskModel])
+                                taskModel.parentStepModel = step
+                                steps.append(step)
                             }
                         }
                         
@@ -442,7 +448,7 @@ class SyncDevicesViewController: UIViewController {
                         removeSection.devices.append(deleteDeviceModel)
                     }
                 }
-            case .proximityLightingPath(let group, let path):
+            case .proximityLightingPath(let group, _):
                 
                 group.nodes.forEach { node in
                     if let syncData = node.getNodeSyncProximityLighting() {
@@ -670,6 +676,9 @@ class SyncDevicesViewController: UIViewController {
                     case .ratedPower(let value):
                         let taskModel = SyncDeviceStepTaskModel(name: "rated_power".localizedString, operationType: .configuration(node: node, type: .deviceParameters(parameterType: .ratedPower(datas: value))))
                         tasks.append(taskModel)
+                    case .motionSensitivityRange(range: let range):
+                        let taskModel = SyncDeviceStepTaskModel(name: "relative_sensitivity".localizedString, operationType: .configuration(node: node, type: .deviceParameters(parameterType: .motionSensitivityRange(range: range))))
+                        tasks.append(taskModel)
                     }
                 }
                 let deviceParametersStepModel = SyncDeviceStepModel(type: "device_parameters".localizedString, state: .none, tasks: tasks)
@@ -832,9 +841,9 @@ class SyncDevicesViewController: UIViewController {
                     device.state = .wait
                     device.steps.forEach({
                         $0.tasks.forEach({ task in
-                            if task.state == .failed {
+//                            if task.state == .failed {
                                 task.state = .wait
-                            }
+//                            }
                         })
                     })
                 })

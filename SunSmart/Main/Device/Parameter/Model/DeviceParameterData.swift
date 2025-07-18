@@ -40,6 +40,8 @@ class DeviceParameterData {
                 return ("pwm_frequency".localizedString, "pwm_frequency_message".localizedString, nil, "Hz")
             case .ratedPower:
                 return ("rated_power".localizedString, "rated_power_message".localizedString, 1...99999, "W")
+            case .motionSensitivityRange:
+                return ("absolute_sensitivity".localizedString, "absolute_sensitivity_messsage".localizedString, 0...100, "%")
             }
         }
         
@@ -49,6 +51,8 @@ class DeviceParameterData {
                 return 1
             case .ratedPower:
                 return 2
+            case .motionSensitivityRange:
+                return 3
             }
         }
         
@@ -56,6 +60,8 @@ class DeviceParameterData {
         case pwmFrequency
         /// 额定功率
         case ratedPower
+        /// 移动感应灵敏度范围
+        case motionSensitivityRange
     }
 
     

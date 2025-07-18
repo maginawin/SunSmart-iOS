@@ -640,6 +640,9 @@
 "device_address_insufficient" = "设备地址不足，请连接网络获取更多。连接网络后，设备地址将自动获取。";
 "devices_number_exceeds_message" = "设备数量超过%d，无法添加。请创建新空间添加设备。";
 "device_address_apply_message" = "您已向服务器申请设备地址，确定获取？";
+"group_address_apply_message" = "您已向服务器申请组地址，确定获取？";
+"group_address_insufficient" = "组地址不足，请连接网络获取更多。连接网络后，组地址将自动获取。";
+"group_address_insufficient_no_network" = "组地址不足，请连接网络获取更多。";
 "phone_no_network" = "需要网络连接！";
 "network_request_timeout" = "网络请求超时";
 "site_delete_have_devies_message" = "项目内有部分空间存在设备，无法删除。";
@@ -1012,8 +1015,8 @@
 "rated_power_message" = "注意：此功能用于计算功耗。某些设备不具备测量功能。正确输入对功耗计算的准确性至关重要。";
 "limit_range" = "限制范围";
 "input" = "输入";
-"On" = "开启";
-"Off" = "关闭";
+"On" = "开";
+"Off" = "关";
 "re_read" = "重新读取";
 "device_parameter_setting_failed" = "部分设置失败，点击重试。";
 "dongles" = "Dongles";
@@ -1229,3 +1232,7 @@
 "professional_mode_step_3" = "检查设备是否正确并添加到群组";
 "add_device_instructions" = "添加设备说明";
 "device_add_pause_message" = "暂停或停止扫描以添加设备";
+
+"relative_sensitivity" = "相对灵敏度";
+"absolute_sensitivity" = "绝对灵敏度";
+"absolute_sensitivity_messsage" = "Note: Absolute sensitivity is the maximum range that a device can support. The purpose is to adjust the device individually to avoid false triggering due to component errors.Different from relative sensitivity, the maximum value of relative sensitivity 100% corresponds to the adjustment value here.";

@@ -7,6 +7,7 @@
 
 import UIKit
 import NordicSigMeshSDK
+import SwiftyJSON
 
 class GroupAddViewController: UIViewController {
     /// 数据类型
@@ -136,38 +137,89 @@ class GroupAddViewController: UIViewController {
             // 通知space数据修改
             NotificationCenter.default.post(name: .init(spaceDataChangedNotificaitonName), object: SpaceChangeDataType.common)
         }else { // 新增
-            
-            MeshAPI.createGroup(name: name) {[weak self] group in
-//                MeshNetworkManager.instance.groups.append(group)
-                guard let self = self else { return }
-                self.group = group
-                XWHUDManager.showSuccessTipHUD("done!".localizedString)
-                self.finnished()
-                DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {[weak self] in
-                    guard let self = self else { return }
-                    if self.addFinishedCallback != nil {
-                        self.addFinishedCallback?(group)
-                        close()
-                    }else {
-                        let memberVc = GroupMembersViewController(space: self.space, group: group)
-                        memberVc.isAddDevices = true
-                        self.navigationController?.pushViewController(memberVc, animated: true)
-                    }
-                    NotificationCenter.default.post(name: .init(groupsRefreshNotificationName), object: nil)
-//                    self.navigationController?.removeVc(vc: self)
+            // 判断组地址是否足够创建
+            guard MeshAPI.getAvailableGroupAddresses(meshUUID: self.space.meshUUID, subnetworkId: self.space.meshNetworkId).count > 0 else {
+                let applyAddressCount = 16
+                // 地址不够
+                // 手机是否联网
+                guard NetworkRequest.shared.networkable else {
+                    // 未联网提示联网以获取地址
+                    SRAlertView(title: "notification".localizedString, message: "group_address_insufficient".localizedString, actions: [SRAlertAction(title: "ok".localizedString, actionHandler: {[weak self] _ in
+                        guard let self = self else { return }
+                        if NetworkRequest.shared.networkable {
+                            self.space.applyGroupAddressCount = nil
+                            self.space.save()
+                            self.applyGroupAddressesRequest(applyAddressCount: applyAddressCount)
+                        }else {
+                            self.space.applyGroupAddressCount = applyAddressCount
+                            self.space.save()
+                        }
+                    })]).show()
+                    return
                 }
-                // 通知space数据修改
-                NotificationCenter.default.post(name: .init(spaceDataChangedNotificaitonName), object: SpaceChangeDataType.common)
-            } fail: { _, error in
-                // 没有地址
+                self.applyGroupAddressesRequest(applyAddressCount: applyAddressCount)
+                return
+            }
+            createGroup()
+        }
+    }
+    
+    /// 申请地址请求
+    private func applyGroupAddressesRequest(applyAddressCount: Int) {
+        
+        XWHUDManager.showCustomHUD(withMessage: nil, isWindow: true)
+        NetworkRequest.shared.request(.applyAddress(siteId: self.space.siteId, type: .group, number: applyAddressCount)) {[weak self] result in
+            XWHUDManager.hide()
+            guard let self = self else { return }
+            switch result {
+            case .success(let repsonsed):
+                self.space.applyGroupAddressCount = nil
+                self.space.save()
+                // 新增地址
+                if let site = SiteData.load(siteId: self.space.siteId), let provisionerData = JSON(repsonsed)["data"]["provisioner"].dictionaryObject {
+                    site.setProvisioner(provisionerData: provisionerData)
+                    // 继续添加组
+                    self.createGroup()
+                }else {
+                    XWHUDManager.showErrorTipHUD(NetworkApiError.unknown.localizedDescription)
+                }
+            case .failure(let error):
+                XWHUDManager.showErrorTipHUD(error.localizedDescription)
+            }
+        }
+        
+    }
+    
+    private func createGroup() {
+        
+        MeshAPI.createGroup(name: self.name) {[weak self] group in
+            guard let self = self else { return }
+            self.group = group
+            XWHUDManager.showSuccessTipHUD("done!".localizedString)
+            self.finnished()
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {[weak self] in
+                guard let self = self else { return }
+                if self.addFinishedCallback != nil {
+                    self.addFinishedCallback?(group)
+                    close()
+                }else {
+                    let memberVc = GroupMembersViewController(space: self.space, group: group)
+                    memberVc.isAddDevices = true
+                    self.navigationController?.pushViewController(memberVc, animated: true)
+                }
+                NotificationCenter.default.post(name: .init(groupsRefreshNotificationName), object: nil)
+            }
+            // 通知space数据修改
+            NotificationCenter.default.post(name: .init(spaceDataChangedNotificaitonName), object: SpaceChangeDataType.common)
+        } fail: { _, error in
+            // 没有地址
 //                if let network = MeshNetworkManager.instance.meshNetwork, network.localProvisioner == nil || MeshNetworkManager.instance.meshNetwork?.nextAvailableGroupAddress(for: network.localProvisioner!) == nil {
 //
 //                }else {
-                XWHUDManager.showErrorTipHUD("group_address_insufficient_message".localizedString, timer: 2)
+            XWHUDManager.showErrorTipHUD("group_address_insufficient_message".localizedString, timer: 2)
 //                }
-            }
         }
-       
+        
     }
     
     private func finnished() {

@@ -347,7 +347,7 @@ class ShareAuthorityViewController: UIViewController {
         
         var networkApi: NetowrkReqeustApi!
         // 有site转让code则读取之前的数据
-        if let shareCode = space.shareCode, space.editorPassword != nil || space.permission == .editor {
+        if let shareCode = space.shareCode { //, space.editorPassword != nil || space.permission == .editor
             networkApi = .shareInfo(shareId: shareCode)
         }else {
             // 还没有设置编辑者密码

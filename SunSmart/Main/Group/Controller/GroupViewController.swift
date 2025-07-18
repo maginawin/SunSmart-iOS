@@ -166,6 +166,12 @@ class GroupViewController: UIViewController {
         automationTimer?.invalidate()
         automationTimer = nil
         
+        // 检查连接的设备白名单有该组
+        let proxyFilter = MeshNetworkManager.instance.proxyFilter
+        if proxyFilter.proxy != nil, proxyFilter.addresses.contains(group.address.address) {
+            proxyFilter.remove(address: group.address.address)
+        }
+        
         MeshLibManager.manager.removeObserver(self, forKeyPath: "isMeshNetworkConnected")
     }
     

@@ -7,6 +7,7 @@
 
 import UIKit
 import NordicSigMeshSDK
+import SwiftyJSON
 
 /// 组列表刷新通知
 let groupsRefreshNotificationName = "groupsRefreshNotification"
@@ -53,11 +54,14 @@ class GroupsViewController: UIViewController {
         
         setupUI()
         
-        footerView.countBtn.setTitle("\(MeshNetworkManager.instance.groups.count)/16", for: .normal)
+        footerView.countBtn.setTitle("\(MeshNetworkManager.instance.groups.count)", for: .normal)
         
         addNotificationObserver()
         
-  
+        // 判断是否需要申请地址
+        if space.applyGroupAddressCount != nil {
+            applyGroupAddressAlert()
+        }
     }
     
     override func viewWillAppear(_ animated: Bool) {
@@ -77,6 +81,9 @@ class GroupsViewController: UIViewController {
         updateGroupesEmptyUI()
     }
 
+    deinit {
+        NetworkRequest.shared.removeObserver(self, forKeyPath: "networkable")
+    }
     
     private func addNotificationObserver() {
         NotificationCenter.default.addObserver(forName: .init(groupsRefreshNotificationName), object: nil, queue: nil) {[weak self] _ in
@@ -97,6 +104,49 @@ class GroupsViewController: UIViewController {
             self.updateUI()
         }
         
+        NetworkRequest.shared.addObserver(self, forKeyPath: "networkable", context: nil)
+    }
+    
+    override func observeValue(forKeyPath keyPath: String?, of object: Any?, change: [NSKeyValueChangeKey : Any]?, context: UnsafeMutableRawPointer?) {
+        if NetworkRequest.shared.networkable {
+            applyGroupAddressAlert()
+        }
+    }
+    
+    /// 申请地址提示
+    private func applyGroupAddressAlert() {
+        guard NetworkRequest.shared.networkable, let applyAddressCount = space.applyGroupAddressCount, applyAddressCount > 0 else { return }
+        
+        self.space.applyDeviceAddressCount = nil
+        self.space.save()
+        
+        SRAlertView(title: "notification".localizedString, message: "group_address_apply_message".localizedString, actions: [SRAlertAction(title: "alert_item_cancel".localizedString, style: .cancel, actionHandler: {[weak self] _ in
+            self?.space.applyGroupAddressCount = nil
+            self?.space.save()
+        }), SRAlertAction(title: "ok".localizedString, actionHandler: {[weak self] _ in
+            guard let self = self else { return }
+            // 申请地址
+            XWHUDManager.showCustomHUD(withMessage: nil, isWindow: true)
+            NetworkRequest.shared.request(.applyAddress(siteId: self.space.siteId, type: .group, number: applyAddressCount)) {[weak self] result in
+                XWHUDManager.hide()
+                guard let self = self else { return }
+                switch result {
+                case .success(let repsonsed):
+                    // 新增地址
+                    self.space.applyGroupAddressCount = nil
+                    self.space.save()
+                    if let site = SiteData.load(siteId: self.space.siteId), let provisionerData = JSON(repsonsed)["data"]["provisioner"].dictionaryObject {
+                        site.setProvisioner(provisionerData: provisionerData)
+                        CloudSynchronizationManager.shared.addSynchronizationHandle(operation: .syncSite(site: site), level: .promptly)
+                    }else {
+                        XWHUDManager.showErrorTipHUD(NetworkApiError.unknown.localizedDescription)
+                    }
+                case .failure(let error):
+                    XWHUDManager.showErrorTipHUD(error.localizedDescription)
+                }
+            }
+            
+        })]).show()
     }
     
     /// 长按事件，跳转到组详情
@@ -215,7 +265,7 @@ class GroupsViewController: UIViewController {
     private func updateUI() {
         
         let groups = MeshNetworkManager.instance.groups
-        self.footerView.countBtn.setTitle("\(groups.count)/16", for: .normal)
+        self.footerView.countBtn.setTitle("\(groups.count)", for: .normal)
         if self.space.groupCount != groups.count {
             self.space.groupCount = groups.count
             self.space.save()
@@ -351,7 +401,7 @@ class GroupsViewController: UIViewController {
 //        flowLayout.sectionInset = UIEdgeInsets(top: 0, left: SCRXFrom(12), bottom: 0, right: SCRXFrom(12))
         
         collectionView = UICollectionView(frame: .zero, collectionViewLayout: flowLayout)
-        collectionView.contentInset = UIEdgeInsets(top: 0, left: collectionViewMargin, bottom: 0, right: collectionViewMargin)
+        collectionView.contentInset = UIEdgeInsets(top: isIPad ? 34 : 12, left: collectionViewMargin, bottom: isIPad ? 34 : 22, right: collectionViewMargin)
         collectionView.register(GroupsViewCell.classForCoder(), forCellWithReuseIdentifier: "cell")
         collectionView.backgroundColor = .clear
         collectionView.dataSource = self
@@ -418,10 +468,10 @@ extension GroupsViewController: SpaceFunctionFooterViewDelegate {
     /// 点击添加回调
     func functionDidClickAdd(view: SpaceFunctionFooterView) {
         
-        guard MeshNetworkManager.instance.groups.count < 16 else {
-            SRAlertView(title: "notification".localizedString, message: "groups_overrun_message".localizedString, actions: [SRAlertAction(title: "GOT_IT".localizedString)]).show()
-            return
-        }
+//        guard MeshNetworkManager.instance.groups.count < 16 else {
+//            SRAlertView(title: "notification".localizedString, message: "groups_overrun_message".localizedString, actions: [SRAlertAction(title: "GOT_IT".localizedString)]).show()
+//            return
+//        }
         
         let vc = GroupAddViewController(space: space)
 //        vc.doneCallback = {[weak self] group in

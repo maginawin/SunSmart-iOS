@@ -402,7 +402,7 @@ class DeviceAddClassicModeController: UIViewController {
         let canAddDevices = showDevices.filter({ $0.selectedState != .disabled && !($0.addState == .wait || $0.addState == .adding || $0.addState == .addConnecting) })
         if sender.isSelected {
             if existNodeCount + canAddDevices.count > maxDeviceCount {
-                SRAlertView(title: "notification".localizedString, message: "devices_number_exceeds_message".localizedString, actions: [SRAlertAction(title: "ok".localizedString)]).show()
+                SRAlertView(title: "notification".localizedString, message: String(format: "devices_number_exceeds_message".localizedString, maxDeviceCount), actions: [SRAlertAction(title: "ok".localizedString)]).show()
                 canAddDevices.prefix(maxDeviceCount - existNodeCount).forEach({ $0.selectedState = .selected })
             }else {
                 canAddDevices.forEach({ $0.selectedState = .selected })
@@ -556,7 +556,7 @@ class DeviceAddClassicModeController: UIViewController {
             updateUIState()
         }
         identifyDevice = device
-        MeshAPI.unprovisionedDeviceIdentify(device: device) {[weak self] _, _ in
+        MeshAPI.unprovisionedDeviceIdentify(device: device, attentionTimer: 6) {[weak self] _, _ in
             device.addState = .identifying
             self?.reloadDeviceState(device)
         } identifyFinished: {[weak self] _ in
@@ -689,25 +689,19 @@ class DeviceAddClassicModeController: UIViewController {
                 appendMessages.append(MeshMessageHandle(message: AttentionSet(attentionTimer: 6), model: healthModel))
             }
             
-//            if device.deviceType == .gateway, let vendorModel = node.sunricherVendorModel {
-//                appendMessages.append(MeshMessageHandle(message: SunricherVendorSet(function: .gatewaySimInfoSet(cid: 1, ipType: .ip, apn: "3gnet")), model: vendorModel))
-//                
-//                appendMessages.append(MeshMessageHandle(message: SunricherVendorSet(function: .gatewayMQTTConnectInfoSet(platformType: 0, serverAddress: "tcp://mqtt.sunsmart-cn.mericher.com:1883", userName: "Signature|Gateway|C2FB3109B9E0", password: "5dc9bc1d274548739b6a17cbd2298274", clientId: "sunsmart@@@C2FB3109B9E0", keepalive: 60, clearSession: true, authMode: .none, sslVersion: .all)), model: vendorModel))
-////                appendMessages.append(MeshMessageHandle(message: SunricherVendorSet(function: .gatewayMQTTConnectInfoSet(platformType: 0, serverAddress: "tcp://mqtt.sunsmart-cn.mericher.com:1883", userName: "Signature|Gateway|DDCDBC6F7308", password: "97636b9c647140b48363378b6c730f0c", clientId: "sunsmart@@@DDCDBC6F7308", keepalive: 60, clearSession: true, authMode: .none, sslVersion: .all)), model: vendorModel))
-//                
-//                if let mac = device.macAddress {
-//                    appendMessages.append(MeshMessageHandle(message: SunricherVendorSet(function: .gatewayProjectRelevance(gatewayId: mac, projectId: space.siteId)), model: vendorModel))
-//                }
-//                
-//                appendMessages.append(MeshMessageHandle(message: SunricherVendorSet(function: .gatewaySubnetsRelevanceSet(subnetAppkeyIndexs: node.applicationKeys.map({ $0.index }))), model: vendorModel))
-//            }
+            if device.deviceType == .gateway, let vendorModel = node.sunricherVendorModel {
+                appendMessages.append(MeshMessageHandle(message: SunricherVendorSet(function: .gatewaySimInfoSet(cid: 1, ipType: .ip, apn: "3gnet")), model: vendorModel))
+                
+                appendMessages.append(MeshMessageHandle(message: SunricherVendorSet(function: .gatewayMQTTConnectInfoSet(platformType: 0, serverAddress: "tcp://mqtt.sunsmart-cn.mericher.com:1883", userName: "Signature|Gateway|C2FB3109B9E0", password: "5dc9bc1d274548739b6a17cbd2298274", clientId: "sunsmart@@@C2FB3109B9E0", keepalive: 60, clearSession: true, authMode: .none, sslVersion: .all)), model: vendorModel))
+//                appendMessages.append(MeshMessageHandle(message: SunricherVendorSet(function: .gatewayMQTTConnectInfoSet(platformType: 0, serverAddress: "tcp://mqtt.sunsmart-cn.mericher.com:1883", userName: "Signature|Gateway|DDCDBC6F7308", password: "97636b9c647140b48363378b6c730f0c", clientId: "sunsmart@@@DDCDBC6F7308", keepalive: 60, clearSession: true, authMode: .none, sslVersion: .all)), model: vendorModel))
+                
+                if let mac = device.macAddress {
+                    appendMessages.append(MeshMessageHandle(message: SunricherVendorSet(function: .gatewayProjectRelevance(gatewayId: mac, projectId: space.siteId)), model: vendorModel))
+                }
+                
+                appendMessages.append(MeshMessageHandle(message: SunricherVendorSet(function: .gatewaySubnetsRelevanceSet(subnetAppkeyIndexs: node.applicationKeys.map({ $0.index }))), model: vendorModel))
+            }
         
-//            appendMessages.insert(MeshMessageHandle(message: ConfigRelaySet(), address: node.primaryUnicastAddress), at: 0)
-            
-            // 获取对应传感器model，识别传感器类型
-//            node.sensorModels.forEach { sensorModel in
-//                appendMessages.append(MeshMessageHandle(message: SensorGet(), model: sensorModel))
-//            }
             return appendMessages
         } appendMessageSuccessBack: { messageHandle in
             // 发送扩展消息成功更新缓存数据
@@ -802,6 +796,7 @@ class DeviceAddClassicModeController: UIViewController {
             device.selectedState = .disabled
             reloadDeviceState(device)
         }
+        updateUIState()
         
         DispatchQueue.global().async {
             // 添加设备需要地址-剩余地址 +（site中所有space已经添加的设备地址+正在添加的设备地址）*20%
@@ -831,6 +826,7 @@ class DeviceAddClassicModeController: UIViewController {
                             $0.selectedState = .selected
                             self.reloadDeviceState($0)
                         })
+                        self.updateUIState()
                         SRAlertView(title: "notification".localizedString, message: "device_address_insufficient".localizedString, actions: [SRAlertAction(title: "ok".localizedString, actionHandler: {[weak self] _ in
                             if NetworkRequest.shared.networkable {
                                 self?.space.applyDeviceAddressCount = nil
@@ -889,6 +885,7 @@ class DeviceAddClassicModeController: UIViewController {
                         $0.selectedState = .selected
                         self.reloadDeviceState($0)
                     })
+                    self.updateUIState()
                     XWHUDManager.showErrorTipHUD(NetworkApiError.unknown.localizedDescription)
                 }
             case .failure(let error):
@@ -897,6 +894,7 @@ class DeviceAddClassicModeController: UIViewController {
                     $0.selectedState = .selected
                     self.reloadDeviceState($0)
                 })
+                self.updateUIState()
                 XWHUDManager.showErrorTipHUD(error.localizedDescription)
             }
         }
@@ -1354,7 +1352,7 @@ extension DeviceAddClassicModeController: UITableViewDataSource, UITableViewDele
         }
         // space只能添加200个设备
         guard MeshNetworkManager.instance.realNodes.count + showDevices.filter({ $0.addState == .wait || $0.addState == .adding || $0.addState == .addConnecting }).count < maxDeviceCount else {
-            SRAlertView(title: "notification".localizedString, message: "devices_number_exceeds_message".localizedString, actions: [SRAlertAction(title: "ok".localizedString)]).show()
+            SRAlertView(title: "notification".localizedString, message: String(format: "devices_number_exceeds_message".localizedString, maxDeviceCount), actions: [SRAlertAction(title: "ok".localizedString)]).show()
             return
         }
         

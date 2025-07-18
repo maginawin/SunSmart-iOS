@@ -81,7 +81,7 @@ class DeviceParameterSettingsViewCell: UITableViewCell {
             
             titleLabel.snp.remakeConstraints { make in
                 make.left.equalTo(SCRXFrom(16))
-                make.top.equalTo(SCRYFrom(16))
+                make.top.equalTo(SCRYFrom(24))
             }
             
             messageLabel.snp.remakeConstraints { make in
@@ -99,8 +99,8 @@ class DeviceParameterSettingsViewCell: UITableViewCell {
             
             titleLabel.snp.remakeConstraints { make in
                 make.left.equalTo(SCRXFrom(16))
-                make.top.equalTo(SCRYFrom(16))
-                make.bottom.equalTo(SCRYFrom(-16))
+                make.top.equalTo(SCRYFrom(24))
+                make.bottom.equalTo(SCRYFrom(-23))
             }
             
             messageLabel.snp.remakeConstraints { make in
@@ -135,7 +135,7 @@ class DeviceParameterSettingsViewCell: UITableViewCell {
         contentView.addSubview(titleLabel)
         titleLabel.snp.makeConstraints { make in
             make.left.equalTo(SCRXFrom(16))
-            make.top.equalTo(SCRYFrom(16))
+            make.top.equalTo(SCRYFrom(24))
         }
         
         enableSwitch = UISwitch()

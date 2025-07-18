@@ -193,7 +193,7 @@ class GroupPathSequencePathTestView: UIView {
             if state == .none {
                 // 把组内灯熄灭
                 MeshAPI.setGroupOnOffState(address: group.address.address, isOn: false)
-                startControlTimer(fireDelay: 2)
+                startControlTimer(fireDelay: 2.5)
             }else {
                 startControlTimer()
             }

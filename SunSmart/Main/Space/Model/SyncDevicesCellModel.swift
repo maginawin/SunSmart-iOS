@@ -129,6 +129,19 @@ enum DeviceOperationType {
                 return node.proximityLightingRelayCount == relayNumber && node.proximityLightingNeighborAddresses.sorted() == neighborAddresses.sorted()
             }
         case .read:
+            switch self {
+            case .read(let node, let type):
+                if case .deviceReadParmeters(let parameterType) = type {
+                    switch parameterType {
+                    case .motionSensitivityRange:
+                        return node.motionSensitivityRange != nil
+                    default:
+                        break
+                    }
+                }
+            default:
+                break
+            }
             return true
         }
         
@@ -437,7 +450,7 @@ extension ProfileType {
             }
         case .daylightCalibration(let value):
             return node.daylightCalibrationValue == value
-        case .sensitivity(let value):
+        case .sensitivity(let value, _):
             return node.motionSensitivity == value
         }
     }
@@ -452,6 +465,8 @@ extension DeviceParameterType {
             return node.pwmFrequency == frequency
         case .ratedPower(let list):
             return node.phaseEnergyConsumptions == list
+        case .motionSensitivityRange(range: let range):
+            return node.motionSensitivityRange == range
         }
     }
     

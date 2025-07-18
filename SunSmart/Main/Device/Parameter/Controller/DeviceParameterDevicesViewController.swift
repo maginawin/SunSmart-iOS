@@ -26,11 +26,19 @@ class DeviceParameterDevicesViewController: UIViewController {
     private var ratedPowers: [[NodePhaseEnergyConsumption]] = []
     /// 筛选的额定功率
     private var filterRatedPower: [NodePhaseEnergyConsumption]?
+    /// 绝对灵敏度范围list
+    private var absoluteSensitivitys: [ClosedRange<UInt8>] = []
+    /// 筛选的绝对灵敏度范围
+    private var filterAbsoluteSensitivityRange: ClosedRange<UInt8>?
+    
     private var showDevices: [Node] = []
     /// 设置pwm失败设备list
-    private var settingPwmFailedNodes: [(node: Node, type: DeviceParameterType)] = []
+//    private var settingPwmFailedNodes: [(node: Node, type: DeviceParameterType)] = []
     /// 设置额定功率失败设备list
-    private var settingRatedPowerFailedNodes: [(node: Node, type: DeviceParameterType)] = []
+//    private var settingRatedPowerFailedNodes: [(node: Node, type: DeviceParameterType)] = []
+    
+    /// 设置失败的设备及参数
+    private var settingFailedDatas: [Address: [DeviceParameterType]] = [:]
     /// 设置失败的设备list
 //    private var settingFailedNodes: [(Node, [DeviceParameterType])] = []
     
@@ -62,6 +70,7 @@ class DeviceParameterDevicesViewController: UIViewController {
             node.selectOff = false
             node.tempPwm = node.pwmFrequency
             node.tempRatedPowerPhases = node.phaseEnergyConsumptions
+            node.tempSensitivityRange = node.motionSensitivityRange
             if let group = node.group {
                 if let data = groupDatas.first(where: { $0.groupAddress == group.address.address }) {
                     data.addresss.append(node.primaryUnicastAddress)
@@ -98,6 +107,7 @@ class DeviceParameterDevicesViewController: UIViewController {
 //        deviceParameterDatas.removeAll()
         pwmValues.removeAll()
         ratedPowers.removeAll()
+        absoluteSensitivitys.removeAll()
         
         devices.forEach({ node in
             
@@ -116,6 +126,10 @@ class DeviceParameterDevicesViewController: UIViewController {
                 if !ratedPowers.contains([]) {
                     ratedPowers.insert([], at: 0)
                 }
+            }
+            // 灵敏度范围
+            if let range = node.tempSensitivityRange, !absoluteSensitivitys.contains(range) {
+                absoluteSensitivitys.append(range)
             }
            
         })
@@ -139,7 +153,7 @@ class DeviceParameterDevicesViewController: UIViewController {
         }
         tableView.reloadData()
         
-        if settingPwmFailedNodes.count > 0 || settingRatedPowerFailedNodes.count > 0 {
+        if settingFailedDatas.count > 0 {
             headerView.settingFailedBtn.isHidden = false
             headerView.snp.updateConstraints { make in
                 make.height.equalTo(SCRYFrom(62))
@@ -160,7 +174,7 @@ class DeviceParameterDevicesViewController: UIViewController {
             return
         }
         
-        let parameters: [DeviceReadParameterType] = [.pwmFrequency, .ratedPower]
+        let parameters: [DeviceReadParameterType] = [.pwmFrequency, .ratedPower, .motionSensitivityRange]
         let vc = ReadDevicesDataViewController(type: .parameters(nodes: devices, parameters: parameters))
         vc.readSuccessCallback = {[weak self] _ in
             XWHUDManager.showSuccessTipHUD("done!".localizedString)
@@ -175,6 +189,9 @@ class DeviceParameterDevicesViewController: UIViewController {
                 }
                 if parameters.contains(.ratedPower) {
                     node.tempRatedPowerPhases = node.phaseEnergyConsumptions
+                }
+                if parameters.contains(.motionSensitivityRange) {
+                    node.tempSensitivityRange = node.motionSensitivityRange
                 }
 //                node.tempRatedPower = node.ratedPower
             }
@@ -197,7 +214,9 @@ class DeviceParameterDevicesViewController: UIViewController {
                             node.tempPwm = nil
                         case .ratedPower:
                             node.tempRatedPowerPhases = []
-                        default:
+                        case .motionSensitivityRange:
+                            node.tempSensitivityRange = nil
+                        case .totalDeviceEnergyUse:
                             break
                         }
                     }
@@ -211,6 +230,9 @@ class DeviceParameterDevicesViewController: UIViewController {
                     }
                     if parameters.contains(.ratedPower) {
                         node.tempRatedPowerPhases = node.phaseEnergyConsumptions
+                    }
+                    if parameters.contains(.motionSensitivityRange) {
+                        node.tempSensitivityRange = node.motionSensitivityRange
                     }
                 }
             }
@@ -249,44 +271,58 @@ class DeviceParameterDevicesViewController: UIViewController {
             
             result.forEach { (key: DeviceParameterData.ParameterType, value: (value: Any, successNodes: [Node], failedNodes: [Node])) in
 
-                switch key {
-                case .pwmFrequency:
-                    self.settingPwmFailedNodes.removeAll(where: { data in value.successNodes.contains(where: { $0.primaryUnicastAddress == data.node.primaryUnicastAddress }) })
-                    
-                    value.failedNodes.forEach({ node in
-                        if let pwm = value.value as? Int {
-                            if let index = self.settingPwmFailedNodes.firstIndex(where: { $0.node.primaryUnicastAddress == node.primaryUnicastAddress }) {
-                                self.settingPwmFailedNodes.replaceSubrange(index...index, with: [(node, .pwmFrequency(frequency: UInt16(pwm)))])
-                            }else {
-                                self.settingPwmFailedNodes.append((node, .pwmFrequency(frequency: UInt16(pwm))))
-                            }
+                value.successNodes.forEach { node in
+                    if var data = self.settingFailedDatas[node.primaryUnicastAddress] {
+                        data.removeAll(where: { $0.rawValue == key.rawValue })
+                        if data.isEmpty {
+                            self.settingFailedDatas.removeValue(forKey: node.primaryUnicastAddress)
+                        }else {
+                            self.settingFailedDatas.updateValue(data, forKey: node.primaryUnicastAddress)
                         }
-                    })
-                    value.successNodes.forEach { node in
+                    }
+                    switch key {
+                    case .pwmFrequency:
                         node.tempPwm = node.pwmFrequency
-                    }
-                    
-                case .ratedPower:
-                    self.settingRatedPowerFailedNodes.removeAll(where: { data in value.successNodes.contains(where: { $0.primaryUnicastAddress == data.node.primaryUnicastAddress }) })
-                    
-                    value.failedNodes.forEach({ node in
-                        if let powerDatas = value.value as? [DeviceParameterRatedPowerPhaseData] {
-                            
-                            let nodePhaseEnergyDatas = powerDatas.map({ NodePhaseEnergyConsumption(percent: UInt8(Float($0.lightLevel ?? 0) * 2.55), power: $0.power ?? 0) })
-                            
-                            if let index = self.settingRatedPowerFailedNodes.firstIndex(where: { $0.node.primaryUnicastAddress == node.primaryUnicastAddress }) {
-                                self.settingRatedPowerFailedNodes.replaceSubrange(index...index, with: [(node, .ratedPower(datas: nodePhaseEnergyDatas))])
-                            }else {
-                                self.settingRatedPowerFailedNodes.append((node, .ratedPower(datas: nodePhaseEnergyDatas)))
-                            }
-                        }
-                    })
-                    value.successNodes.forEach { node in
+                    case .ratedPower:
                         node.tempRatedPowerPhases = node.phaseEnergyConsumptions
+                    case .motionSensitivityRange:
+                        node.tempSensitivityRange = node.motionSensitivityRange
                     }
-                    
                 }
                 
+                value.failedNodes.forEach({ node in
+//                    if var data = self.settingFailedDatas[node.primaryUnicastAddress] {
+                        var type: DeviceParameterType?
+                        switch key {
+                        case .pwmFrequency:
+                            if let pwm = value.value as? Int {
+                                type = .pwmFrequency(frequency: UInt16(pwm))
+                            }
+                        case .ratedPower:
+                            if let powerDatas = value.value as? [DeviceParameterRatedPowerPhaseData] {
+                                let nodePhaseEnergyDatas = powerDatas.map({ NodePhaseEnergyConsumption(percent: UInt8(Float($0.lightLevel ?? 0) * 2.55), power: $0.power ?? 0) })
+                                type = .ratedPower(datas: nodePhaseEnergyDatas)
+                            }
+                        case .motionSensitivityRange:
+                            if let range = value.value as? ClosedRange<UInt8> {
+                                type = .motionSensitivityRange(range: UInt8(Double(range.lowerBound) * 2.55)...UInt8(Double(range.upperBound) * 2.55))
+                            }
+                        }
+
+                        if let type = type {
+                            if var data = self.settingFailedDatas[node.primaryUnicastAddress] {
+                                if let index = data.firstIndex(where: { $0.rawValue == key.rawValue }) {
+                                    data.replaceSubrange(index...index, with: [type])
+                                }else {
+                                    data.append(type)
+                                }
+                                self.settingFailedDatas.updateValue(data, forKey: node.primaryUnicastAddress)
+                            }else {
+                                self.settingFailedDatas.updateValue([type], forKey: node.primaryUnicastAddress)
+                            }
+                        }
+//                    }
+                })
             }
             self.selectDevices.removeAll()
             self.setupFilterData()
@@ -309,9 +345,10 @@ class DeviceParameterDevicesViewController: UIViewController {
                 cell.device = device
                 if device.supportPwmFrequency {
                     var pwm = device.tempPwm
-                    if let failedData = settingPwmFailedNodes.first(where: { $0.node.primaryUnicastAddress == device.primaryUnicastAddress }) {
+                    
+                    if let failedData = settingFailedDatas[device.primaryUnicastAddress]?.first(where: { $0.rawValue == DeviceParameterData.ParameterType.pwmFrequency.rawValue }) {
                         cell.pwmFailedImageView.isHidden = false
-                        if case .pwmFrequency(let frequency) = failedData.type {
+                        if case .pwmFrequency(let frequency) = failedData {
                             pwm = frequency
                         }
                     }else {
@@ -329,15 +366,37 @@ class DeviceParameterDevicesViewController: UIViewController {
                     cell.pwmLabel.isHidden = true
                 }
                 var ratedPowerPhases = device.tempRatedPowerPhases
-                if let failedData = settingRatedPowerFailedNodes.first(where: { $0.node.primaryUnicastAddress == device.primaryUnicastAddress }) {
-                    if case .ratedPower(let datas) = failedData.type {
+                if let failedData = settingFailedDatas[device.primaryUnicastAddress]?.first(where: { $0.rawValue == DeviceParameterData.ParameterType.ratedPower.rawValue }) {
+                    if case .ratedPower(let datas) = failedData {
                         ratedPowerPhases = datas
                     }
                     cell.ratedPowerFailedImageView.isHidden = false
                 }else {
                     cell.ratedPowerFailedImageView.isHidden = true
                 }
-                cell.ratedPowerLabel.text = "\("reted_power".localizedString): \(getRatedPowerStr(list: ratedPowerPhases))"
+                cell.ratedPowerLabel.text = "\("rated_power".localizedString): \(getRatedPowerStr(list: ratedPowerPhases))"
+                
+                if device.supportMotionSensitivity {
+                    var range = device.tempSensitivityRange
+                    
+                    if let failedData = settingFailedDatas[device.primaryUnicastAddress]?.first(where: { $0.rawValue == DeviceParameterData.ParameterType.motionSensitivityRange.rawValue }) {
+                        cell.sensitivityImageView.isHidden = false
+                        if case .motionSensitivityRange(let sensitivityRange) = failedData {
+                            range = sensitivityRange
+                        }
+                    }else {
+                        cell.sensitivityImageView.isHidden = true
+                    }
+                    if let range = range {
+                        cell.sensitivityLabel.text = "\("absolute_sensitivity".localizedString) :\(range.lowerBound.percentage)%~\(range.upperBound.percentage)%"
+                    }else {
+                        cell.sensitivityLabel.text = "\("absolute_sensitivity".localizedString) : --"
+                    }
+                    cell.sensitivityLabel.isHidden = false
+                }else {
+                    cell.sensitivityImageView.isHidden = true
+                    cell.sensitivityLabel.isHidden = true
+                }
                 
                 if MeshLibManager.manager.isMeshNetworkConnected {
                     cell.selectState = selectDevices.contains(device) ? .selected : .none
@@ -355,7 +414,7 @@ class DeviceParameterDevicesViewController: UIViewController {
         }
         var phaseStr = ""
         list.forEach({
-            phaseStr.append(String(format: "%@%d%%,%@W", phaseStr.isEmpty ? "" : "/", Int(Float($0.percent) / 2.55), (Float($0.power) * 0.1).toSimplifyStr(maxDigits: 1)))
+            phaseStr.append(String(format: "%@%d%%,%@W", phaseStr.isEmpty ? "" : "/", $0.percent.percentage, (Float($0.power) * 0.1).toSimplifyStr(maxDigits: 1)))
         })
         return phaseStr
     }
@@ -427,9 +486,9 @@ extension DeviceParameterDevicesViewController: UITableViewDataSource, UITableVi
         if device.supportPwmFrequency {
             
             var pwm = device.tempPwm
-            if let failedData = settingPwmFailedNodes.first(where: { $0.node.primaryUnicastAddress == device.primaryUnicastAddress }) {
+            if let failedData = settingFailedDatas[device.primaryUnicastAddress]?.first(where: { $0.rawValue == DeviceParameterData.ParameterType.pwmFrequency.rawValue }) {
                 cell.pwmFailedImageView.isHidden = false
-                if case .pwmFrequency(let frequency) = failedData.type {
+                if case .pwmFrequency(let frequency) = failedData {
                     pwm = frequency
                 }
             }else {
@@ -448,15 +507,37 @@ extension DeviceParameterDevicesViewController: UITableViewDataSource, UITableVi
         }
         
         var ratedPowerPhases = device.tempRatedPowerPhases
-        if let failedData = settingRatedPowerFailedNodes.first(where: { $0.node.primaryUnicastAddress == device.primaryUnicastAddress }) {
-            if case .ratedPower(let datas) = failedData.type {
+        if let failedData = settingFailedDatas[device.primaryUnicastAddress]?.first(where: { $0.rawValue == DeviceParameterData.ParameterType.ratedPower.rawValue }) {
+            if case .ratedPower(let datas) = failedData {
                 ratedPowerPhases = datas
             }
             cell.ratedPowerFailedImageView.isHidden = false
         }else {
             cell.ratedPowerFailedImageView.isHidden = true
         }
-        cell.ratedPowerLabel.text = "\("reted_power".localizedString): \(getRatedPowerStr(list: ratedPowerPhases))"
+        cell.ratedPowerLabel.text = "\("rated_power".localizedString): \(getRatedPowerStr(list: ratedPowerPhases))"
+
+        if device.supportMotionSensitivity {
+            var range = device.tempSensitivityRange
+            
+            if let failedData = settingFailedDatas[device.primaryUnicastAddress]?.first(where: { $0.rawValue == DeviceParameterData.ParameterType.motionSensitivityRange.rawValue }) {
+                cell.sensitivityImageView.isHidden = false
+                if case .motionSensitivityRange(let sensitivityRange) = failedData {
+                    range = sensitivityRange
+                }
+            }else {
+                cell.sensitivityImageView.isHidden = true
+            }
+            if let range = range {
+                cell.sensitivityLabel.text = "\("absolute_sensitivity".localizedString) :\(range.lowerBound.percentage)%~\(range.upperBound.percentage)%"
+            }else {
+                cell.sensitivityLabel.text = "\("absolute_sensitivity".localizedString) : --"
+            }
+            cell.sensitivityLabel.isHidden = false
+        }else {
+            cell.sensitivityImageView.isHidden = true
+            cell.sensitivityLabel.isHidden = true
+        }
         
         if MeshLibManager.manager.isMeshNetworkConnected {
             cell.selectState = selectDevices.contains(device) ? .selected : .none
@@ -470,18 +551,22 @@ extension DeviceParameterDevicesViewController: UITableViewDataSource, UITableVi
     func tableView(_ tableView: UITableView, heightForRowAt indexPath: IndexPath) -> CGFloat {
         let device = showDevices[indexPath.row]
         
+        var height = SCRYFrom(72)
         if device.supportPwmFrequency {
             var ratedPowerPhases = device.tempRatedPowerPhases
-            if let failedData = settingRatedPowerFailedNodes.first(where: { $0.node.primaryUnicastAddress == device.primaryUnicastAddress }) {
-                if case .ratedPower(let datas) = failedData.type {
+            if let failedData = settingFailedDatas[device.primaryUnicastAddress]?.first(where: { $0.rawValue == DeviceParameterData.ParameterType.ratedPower.rawValue }) {
+                if case .ratedPower(let datas) = failedData {
                     ratedPowerPhases = datas
                 }
             }
             if ratedPowerPhases.count > 2 {
-                return SCRYFrom(92)
+                height += SCRYFrom(20)
             }
         }
-        return SCRYFrom(72)
+        if device.supportMotionSensitivity {
+            height += SCRYFrom(26)
+        }
+        return height
     }
     
     func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
@@ -588,11 +673,21 @@ extension DeviceParameterDevicesViewController: DeviceParameterPromptViewDelegat
             retedPowerSelectIndex = powerDatas.firstIndex(where: { $0.value == value })
         }
         
+        var sensitivitySelectIndex: Int?
+        if let value = self.filterAbsoluteSensitivityRange {
+            sensitivitySelectIndex = absoluteSensitivitys.firstIndex(of: value)
+        }
+        
         var filterDatas: [ParameterFilterData] = []
         if pwmValues.count > 0 {
             filterDatas.append(.init(type: .pwm, isShow: pwmSelectIndex != nil, contents: pwmValues.map({ "\($0) Hz" }), selectIndex: pwmSelectIndex))
         }
         filterDatas.append(.init(type: .ratedPower, isShow: retedPowerSelectIndex != nil, contents: powerDatas.map({ $0.name }), selectIndex: retedPowerSelectIndex))
+        
+        if absoluteSensitivitys.count > 0 {
+            
+            filterDatas.append(.init(type: .absoluteSensitivity, isShow: sensitivitySelectIndex != nil, contents: absoluteSensitivitys.map({ range in "\(range.lowerBound.percentage)%~\(range.upperBound.percentage)" }), selectIndex: sensitivitySelectIndex))
+        }
         
         DeviceParameterFilterView(filterDatas: filterDatas, doneCallback: {[weak self] filterDatas in
             guard let self = self else { return }
@@ -611,10 +706,13 @@ extension DeviceParameterDevicesViewController: DeviceParameterPromptViewDelegat
                     let value = self.ratedPowers[selectIndex]
                     self.filterRatedPower = value
                     showDevices = showDevices.filter({ $0.tempRatedPowerPhases == value })
+                case .absoluteSensitivity:
+                    self.filterAbsoluteSensitivityRange = self.absoluteSensitivitys[selectIndex]
+                    showDevices = showDevices.filter({ $0.tempSensitivityRange == self.filterAbsoluteSensitivityRange })
                 }
             }
             
-            self.headerView.filterBtn.isSelected = self.filterPwmValue != nil || self.filterRatedPower != nil
+            self.headerView.filterBtn.isSelected = self.filterPwmValue != nil || self.filterRatedPower != nil || self.filterAbsoluteSensitivityRange != nil
             self.showDevices = showDevices
             self.tableView.reloadData()
             
@@ -625,26 +723,12 @@ extension DeviceParameterDevicesViewController: DeviceParameterPromptViewDelegat
     /// 重试
     func promptViewReSyncAction(_ view: DeviceParameterPromptView) {
 //        var datas: [(Node, [DeviceParameterType])] = []
-        var nodes: [Node] = []
-        settingPwmFailedNodes.forEach {
-            if !nodes.contains($0.node) {
-                nodes.append($0.node)
+       
+        let datas = settingFailedDatas.compactMap({ data in
+            if let node = self.devices.first(where: { $0.primaryUnicastAddress == data.key }) {
+                return (node, data.value)
             }
-        }
-        settingRatedPowerFailedNodes.forEach({
-            if !nodes.contains($0.node) {
-                nodes.append($0.node)
-            }
-        })
-        let datas = nodes.map({ node in
-            var types: [DeviceParameterType] = []
-            if let data = settingPwmFailedNodes.first(where: { $0.node == node }) {
-                types.append(data.type)
-            }
-            if let data = settingRatedPowerFailedNodes.first(where: { $0.node == node }) {
-                types.append(data.type)
-            }
-            return (node, types)
+            return nil
         })
         
         let vc = SyncDevicesViewController(type: .devicesParameter(datas), reSync: true)
@@ -660,6 +744,8 @@ extension DeviceParameterDevicesViewController: DeviceParameterPromptViewDelegat
                             node.tempPwm = node.pwmFrequency
                         case .ratedPower:
                             node.tempRatedPowerPhases = node.phaseEnergyConsumptions
+                        case .motionSensitivityRange:
+                            node.tempSensitivityRange = node.motionSensitivityRange
                         }
                     }
                 }
@@ -667,8 +753,7 @@ extension DeviceParameterDevicesViewController: DeviceParameterPromptViewDelegat
                 break
             }
             
-            self.settingPwmFailedNodes.removeAll()
-            self.settingRatedPowerFailedNodes.removeAll()
+            self.settingFailedDatas.removeAll()
             self.setupFilterData()
             self.updateUI()
         }
@@ -683,10 +768,18 @@ extension DeviceParameterDevicesViewController: DeviceParameterPromptViewDelegat
                             switch parameterType {
                             case .pwmFrequency:
                                 node.tempPwm = node.pwmFrequency
-                                self.settingPwmFailedNodes.removeAll(where: { $0.node.primaryUnicastAddress == node.primaryUnicastAddress })
                             case .ratedPower:
                                 node.tempRatedPowerPhases = node.phaseEnergyConsumptions
-                                self.settingRatedPowerFailedNodes.removeAll(where: { $0.node.primaryUnicastAddress == node.primaryUnicastAddress })
+                            case .motionSensitivityRange:
+                                node.tempSensitivityRange = node.motionSensitivityRange
+                            }
+                            if var data = self.settingFailedDatas[node.primaryUnicastAddress], let index = data.firstIndex(where: { $0.rawValue == parameterType.rawValue }) {
+                                data.remove(at: index)
+                                if data.isEmpty {
+                                    self.settingFailedDatas.removeValue(forKey: node.primaryUnicastAddress)
+                                }else {
+                                    self.settingFailedDatas.updateValue(data, forKey: node.primaryUnicastAddress)
+                                }
                             }
                         default:
                             break
@@ -708,6 +801,7 @@ extension Node {
     static var selectOffKey = 2
     static var tempPwmKey = 3
     static var tempRatedPowerKey = 4
+    static var tempSensitivityRangeKey = 5
     
     /// 是否选中On
     var selectOn: Bool {
@@ -742,6 +836,15 @@ extension Node {
             objc_getAssociatedObject(self, &Node.tempRatedPowerKey) as? [NodePhaseEnergyConsumption] ?? []
         }set {
             objc_setAssociatedObject(self, &Node.tempRatedPowerKey, newValue, .OBJC_ASSOCIATION_RETAIN)
+        }
+    }
+    
+    /// 临时的额定功率（仅在当前页面使用）
+    var tempSensitivityRange: ClosedRange<UInt8>? {
+        get {
+            objc_getAssociatedObject(self, &Node.tempSensitivityRangeKey) as? ClosedRange<UInt8>
+        }set {
+            objc_setAssociatedObject(self, &Node.tempSensitivityRangeKey, newValue, .OBJC_ASSOCIATION_RETAIN)
         }
     }
 }

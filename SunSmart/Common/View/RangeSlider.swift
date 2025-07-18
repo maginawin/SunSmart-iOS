@@ -96,6 +96,9 @@ class RangeSliderThumbLayer: CALayer {
 
 @IBDesignable
 public class RangeSlider: UIControl {
+    
+    private var internalPanGesture: UIPanGestureRecognizer!
+    
   @IBInspectable public var minimumValue: Double = 0.0 {
 //    willSet(newValue) {
 //      assert(newValue < maximumValue, "RangeSlider: minimumValue should be lower than maximumValue")
@@ -113,23 +116,51 @@ public class RangeSlider: UIControl {
       updateLayerFrames()
     }
   }
+    
+    private var _lowerValue: Double = 0.2
   
-  @IBInspectable public var lowerValue: Double = 0.2 {
-    didSet {
-      if lowerValue < minimumValue {
-        lowerValue = minimumValue
+  @IBInspectable public var lowerValue: Double {
+      get {
+          return _lowerValue
+      }set {
+          var newValue = newValue
+          
+          // 限制不能大于 upper - gap
+          if newValue > upperValue - gapBetweenThumbs {
+              newValue = upperValue - gapBetweenThumbs
+          }
+          // 限制不能超过最大值
+          if newValue > maximumValue {
+              newValue = maximumValue
+          }
+          _lowerValue = newValue
+          updateLayerFrames()
       }
-      updateLayerFrames()
-    }
   }
   
-  @IBInspectable public var upperValue: Double = 0.8 {
-    didSet {
-      if upperValue > maximumValue {
-        upperValue = maximumValue
+    private var _upperValue: Double = 0.8
+    
+  @IBInspectable public var upperValue: Double {
+      get {
+          return _upperValue
       }
-      updateLayerFrames()
-    }
+      set {
+          var newValue = newValue
+          
+          // 限制不能小于 lower + gap
+          if newValue < lowerValue + gapBetweenThumbs {
+              newValue = lowerValue + gapBetweenThumbs
+          }
+          
+          // 限制不能超过最大值
+          if newValue > maximumValue {
+              newValue = maximumValue
+          }
+          
+          _upperValue = newValue
+          updateLayerFrames()
+      }
+    
   }
     
     var trackLineHeight: CGFloat = 2 {
@@ -248,8 +279,18 @@ public class RangeSlider: UIControl {
     upperThumbLayer.rangeSlider = self
     upperThumbLayer.contentsScale = UIScreen.main.scale
     layer.addSublayer(upperThumbLayer)
+      
+      // 添加一个透明的 pan 手势，为了抢占 gesture 权限
+        internalPanGesture = UIPanGestureRecognizer(target: self, action: #selector(dummyPan))
+//        internalPanGesture.delegate = self
+        internalPanGesture.cancelsTouchesInView = false // 不拦截 touchesBegan
+        self.addGestureRecognizer(internalPanGesture)
   }
   
+    @objc private func dummyPan() {
+        
+    }
+    
   func updateLayerFrames() {
       guard self.frame != .zero else {
           return
@@ -323,4 +364,10 @@ public class RangeSlider: UIControl {
     lowerThumbLayer.highlighted = false
     upperThumbLayer.highlighted = false
   }
+    
+    public override func cancelTracking(with event: UIEvent?) {
+        print("cancel")
+    }
+
 }
+

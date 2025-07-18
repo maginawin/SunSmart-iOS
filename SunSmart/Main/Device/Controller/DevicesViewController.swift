@@ -143,13 +143,11 @@ class DevicesViewController: WMPageController {
             // 获取设备信号
 //            MeshLibManager.manager.refreshNodesRSSI(withWaitFor: 5, result: nil)
         }else {
-//            XWHUDManager.hideInView()
             // 判断是否需要申请地址
             if space.applyDeviceAddressCount != nil {
                 applyDeviceAddressAlert()
             }
         }
-        
 //        meunView = WMMenuView(frame: CGRect(x: 0, y: SCRYFrom(10), width: view.width, height: SCRYFrom(32)))
 //        meunView.fontWeight = .light
 //        meunView.style = .segmented
@@ -214,9 +212,9 @@ class DevicesViewController: WMPageController {
                     // 同步时间
                     if MeshNetworkManager.instance.realNodes.contains(where: { $0.scheduleIds.count > 0 }) && MeshNetworkManager.instance.schedules.filter({ $0.enabled }).count > 0 {
                         // 延迟3s发送广播节点同步时间消息，避免与获取设备状态冲突
-                        DispatchQueue.main.asyncAfter(deadline: .now() + 3) {[weak self] in
-                            self?.syncTimeNodes()
-                        }
+//                        DispatchQueue.main.asyncAfter(deadline: .now() + 3) {[weak self] in
+//                            self?.syncTimeNodes()
+//                        }
                     }
                 }
             }
@@ -271,24 +269,29 @@ class DevicesViewController: WMPageController {
     
     /// 申请地址提示
     private func applyDeviceAddressAlert() {
-        guard let applyAddressCount = space.applyDeviceAddressCount else { return }
+        guard NetworkRequest.shared.networkable, let applyAddressCount = space.applyDeviceAddressCount, applyAddressCount > 0 else { return }
         
         self.space.applyDeviceAddressCount = nil
         self.space.save()
         
-        SRAlertView(title: "notification".localizedString, message: "device_address_apply_message".localizedString, actions: [.cancelAction, SRAlertAction(title: "ok".localizedString, actionHandler: {[weak self] _ in
+        SRAlertView(title: "notification".localizedString, message: "device_address_apply_message".localizedString, actions: [SRAlertAction(title: "alert_item_cancel".localizedString, style: .cancel, actionHandler: {[weak self] _ in
+            self?.space.applyDeviceAddressCount = nil
+            self?.space.save()
+        }), SRAlertAction(title: "ok".localizedString, actionHandler: {[weak self] _ in
             guard let self = self else { return }
             // 申请地址
             XWHUDManager.showCustomHUD(withMessage: nil, isWindow: true)
             NetworkRequest.shared.request(.applyAddress(siteId: self.space.siteId, type: .device, number: applyAddressCount)) {[weak self] result in
-                XWHUDManager.hide()
+                XWHUDManager.hideInWindow()
                 guard let self = self else { return }
                 switch result {
                 case .success(let repsonsed):
+                    self.space.applyDeviceAddressCount = nil
+                    self.space.save()
                     // 新增地址
                     if let site = SiteData.load(siteId: self.space.siteId), let provisionerData = JSON(repsonsed)["data"]["provisioner"].dictionaryObject {
                         site.setProvisioner(provisionerData: provisionerData)
-//                        CloudSynchronizationManager.shared.addSynchronizationHandle(operation: .syncSite(site: site), level: .promptly)
+                        CloudSynchronizationManager.shared.addSynchronizationHandle(operation: .syncSite(site: site), level: .promptly)
                     }else {
                         XWHUDManager.showErrorTipHUD(NetworkApiError.unknown.localizedDescription)
                     }
@@ -345,7 +348,7 @@ class DevicesViewController: WMPageController {
     private func deviceAdd() {
         
         guard MeshNetworkManager.instance.realNodes.count < space.maxDevicesCount else {
-            XWHUDManager.showTipHUD("devices_number_exceeds_message".localizedString, isLineFeed: true)
+            XWHUDManager.showTipHUD(String(format: "devices_number_exceeds_message".localizedString, space.maxDevicesCount), isLineFeed: true)
             return
         }
 //        navigationController?.pushViewController(DeviceRestoreViewController(), animated: true)

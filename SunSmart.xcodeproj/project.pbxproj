@@ -712,6 +712,12 @@
 		C8BF088C2B29903E00144BAC /* GroupDeviceViewCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8BF088B2B29903E00144BAC /* GroupDeviceViewCell.swift */; };
 		C8BF088E2B299DD700144BAC /* LinePageControl.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8BF088D2B299DD700144BAC /* LinePageControl.swift */; };
 		C8BF08912B2A8DCD00144BAC /* GroupServer.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8BF08902B2A8DCD00144BAC /* GroupServer.swift */; };
+		C8C0E4452E2633B80024E77E /* DeviceSettingsViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8C0E4442E2633B80024E77E /* DeviceSettingsViewController.swift */; };
+		C8C0E4462E2633B80024E77E /* DeviceSettingsViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8C0E4442E2633B80024E77E /* DeviceSettingsViewController.swift */; };
+		C8C0E4482E2774C60024E77E /* DeviceSettingsCollectionViewCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8C0E4472E2774C60024E77E /* DeviceSettingsCollectionViewCell.swift */; };
+		C8C0E4492E2774C60024E77E /* DeviceSettingsCollectionViewCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8C0E4472E2774C60024E77E /* DeviceSettingsCollectionViewCell.swift */; };
+		C8C0E44B2E28869F0024E77E /* DeviceParameterAbsoluteSensitivityViewCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8C0E44A2E28869F0024E77E /* DeviceParameterAbsoluteSensitivityViewCell.swift */; };
+		C8C0E44C2E28869F0024E77E /* DeviceParameterAbsoluteSensitivityViewCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8C0E44A2E28869F0024E77E /* DeviceParameterAbsoluteSensitivityViewCell.swift */; };
 		C8C1E5A72B6A1FA500F60E62 /* XWHUDManager_successful@2x.png in Resources */ = {isa = PBXBuildFile; fileRef = C8C1E5A52B6A1FA400F60E62 /* XWHUDManager_successful@2x.png */; };
 		C8C1E5A82B6A1FA500F60E62 /* XWHUDManager_successful@3x.png in Resources */ = {isa = PBXBuildFile; fileRef = C8C1E5A62B6A1FA500F60E62 /* XWHUDManager_successful@3x.png */; };
 		C8C1E5AB2B6A1FDC00F60E62 /* XWHUDManager_error@2x.png in Resources */ = {isa = PBXBuildFile; fileRef = C8C1E5A92B6A1FDC00F60E62 /* XWHUDManager_error@2x.png */; };
@@ -1116,6 +1122,9 @@
 		C8BF088B2B29903E00144BAC /* GroupDeviceViewCell.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GroupDeviceViewCell.swift; sourceTree = "<group>"; };
 		C8BF088D2B299DD700144BAC /* LinePageControl.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LinePageControl.swift; sourceTree = "<group>"; };
 		C8BF08902B2A8DCD00144BAC /* GroupServer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GroupServer.swift; sourceTree = "<group>"; };
+		C8C0E4442E2633B80024E77E /* DeviceSettingsViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceSettingsViewController.swift; sourceTree = "<group>"; };
+		C8C0E4472E2774C60024E77E /* DeviceSettingsCollectionViewCell.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceSettingsCollectionViewCell.swift; sourceTree = "<group>"; };
+		C8C0E44A2E28869F0024E77E /* DeviceParameterAbsoluteSensitivityViewCell.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceParameterAbsoluteSensitivityViewCell.swift; sourceTree = "<group>"; };
 		C8C1E5A52B6A1FA400F60E62 /* XWHUDManager_successful@2x.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "XWHUDManager_successful@2x.png"; sourceTree = "<group>"; };
 		C8C1E5A62B6A1FA500F60E62 /* XWHUDManager_successful@3x.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "XWHUDManager_successful@3x.png"; sourceTree = "<group>"; };
 		C8C1E5A92B6A1FDC00F60E62 /* XWHUDManager_error@2x.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "XWHUDManager_error@2x.png"; sourceTree = "<group>"; };
@@ -1808,6 +1817,7 @@
 				C8E694232D8D424100005832 /* DeviceAddBottomView.swift */,
 				C8A3516D2D8D73B800325FC6 /* DeviceRestoreEmptyViewCell.swift */,
 				C8DA69DA2DB87C9B00E32092 /* DeviceBottomBtnView.swift */,
+				C8C0E4472E2774C60024E77E /* DeviceSettingsCollectionViewCell.swift */,
 			);
 			path = View;
 			sourceTree = "<group>";
@@ -1821,6 +1831,7 @@
 				C8D22E1C2E04100D001A2BDA /* DeviceAddProfessionalModeController.swift */,
 				C8E6F3572E0E4A3F00730971 /* DeviceAddInstructionsController.swift */,
 				C88B25732ADD180900CF1AE4 /* DeviceLightViewController.swift */,
+				C8C0E4442E2633B80024E77E /* DeviceSettingsViewController.swift */,
 				C89FB7CC2CF079A500411D96 /* DeviceRestoreViewController.swift */,
 				C85CB5F82BB6BE8E006598C0 /* DeviceInformationViewController.swift */,
 				C88B25752ADD399C00CF1AE4 /* DeviceLightBasicController.swift */,
@@ -2037,6 +2048,7 @@
 				C8A0116C2DA90A290058E7E7 /* DeviceParameterBottomView.swift */,
 				C8AE17532DACAABD0071A9B1 /* DeviceParameterSettingsViewCell.swift */,
 				C8AEB9A82DCC5A660053102B /* DeviceParameterRetedPowerViewCell.swift */,
+				C8C0E44A2E28869F0024E77E /* DeviceParameterAbsoluteSensitivityViewCell.swift */,
 				C85120F42DB0A11200714111 /* DeviceParameterFilterView.swift */,
 				C87141B52DB24C86007A64B4 /* DevicePwmFrequencySelectView.swift */,
 			);
@@ -2770,6 +2782,7 @@
 				C88553E42DE6B44C00C8B688 /* LBXScanLineAnimation.swift in Sources */,
 				C88553E52DE6B44C00C8B688 /* GroupDevicesFunctionView.swift in Sources */,
 				C88553E62DE6B44C00C8B688 /* DeviceSwitchData.swift in Sources */,
+				C8C0E4482E2774C60024E77E /* DeviceSettingsCollectionViewCell.swift in Sources */,
 				C88553E72DE6B44C00C8B688 /* SwitchSelectGroupsViewController.swift in Sources */,
 				C88553E82DE6B44C00C8B688 /* SiteViewController.swift in Sources */,
 				C88553E92DE6B44C00C8B688 /* ScheduleDevicesView.swift in Sources */,
@@ -3000,6 +3013,7 @@
 				C88554C22DE6B44C00C8B688 /* SyncDevicesGroupViewCell.swift in Sources */,
 				C88554C32DE6B44C00C8B688 /* CustomProgressView.swift in Sources */,
 				C88554C42DE6B44C00C8B688 /* Date+Extension.swift in Sources */,
+				C8C0E4462E2633B80024E77E /* DeviceSettingsViewController.swift in Sources */,
 				C88554C52DE6B44C00C8B688 /* UserData.swift in Sources */,
 				C88554C62DE6B44C00C8B688 /* WMProgressView.m in Sources */,
 				C88554C72DE6B44C00C8B688 /* DeviceBottomBtnView.swift in Sources */,
@@ -3032,6 +3046,7 @@
 				C88554E22DE6B44C00C8B688 /* SceneSettingsViewController.swift in Sources */,
 				C88554E32DE6B44C00C8B688 /* GroupSwitchsViewController.swift in Sources */,
 				C88554E42DE6B44C00C8B688 /* GroupSensorView.swift in Sources */,
+				C8C0E44C2E28869F0024E77E /* DeviceParameterAbsoluteSensitivityViewCell.swift in Sources */,
 				C88554E52DE6B44C00C8B688 /* AlignCenterFlowLayout.swift in Sources */,
 				C88554E62DE6B44C00C8B688 /* SwitchSelectPanelTypeController.swift in Sources */,
 				C88554E72DE6B44C00C8B688 /* EmptyDataView.swift in Sources */,
@@ -3137,6 +3152,7 @@
 				C87EB4662BA17D3F00F9285B /* LBXScanLineAnimation.swift in Sources */,
 				C8B5A1E02B2C2AFD00728E36 /* GroupDevicesFunctionView.swift in Sources */,
 				C89FD66F2C89A2FF00DE431D /* DeviceSwitchData.swift in Sources */,
+				C8C0E4492E2774C60024E77E /* DeviceSettingsCollectionViewCell.swift in Sources */,
 				C89A9A9A2C8AF9430032287D /* SwitchSelectGroupsViewController.swift in Sources */,
 				C8A099FF2AC138E30068C814 /* SiteViewController.swift in Sources */,
 				C89A1C392B5535A8004912B9 /* ScheduleDevicesView.swift in Sources */,
@@ -3367,6 +3383,7 @@
 				C89C9FF02B3D4E6200074031 /* SyncDevicesGroupViewCell.swift in Sources */,
 				C85829F62B398443002A4367 /* CustomProgressView.swift in Sources */,
 				C8DA6A252DB8E6D600E32092 /* Date+Extension.swift in Sources */,
+				C8C0E4452E2633B80024E77E /* DeviceSettingsViewController.swift in Sources */,
 				C8699DB92C0978F300424A60 /* UserData.swift in Sources */,
 				C898EA632AC2BD8B0023B480 /* WMProgressView.m in Sources */,
 				C8DA69DB2DB87C9B00E32092 /* DeviceBottomBtnView.swift in Sources */,
@@ -3399,6 +3416,7 @@
 				C898F7022B3A810E008B4124 /* SceneSettingsViewController.swift in Sources */,
 				C87EB44C2BA07D1800F9285B /* GroupSwitchsViewController.swift in Sources */,
 				C82AE2EB2B95756600FA4BDB /* GroupSensorView.swift in Sources */,
+				C8C0E44B2E28869F0024E77E /* DeviceParameterAbsoluteSensitivityViewCell.swift in Sources */,
 				C8BF084E2B26F84800144BAC /* AlignCenterFlowLayout.swift in Sources */,
 				C8CAE8E52D76EF9500FCCA5A /* SwitchSelectPanelTypeController.swift in Sources */,
 				C89FEF512ABECEEC00DCCFB6 /* EmptyDataView.swift in Sources */,

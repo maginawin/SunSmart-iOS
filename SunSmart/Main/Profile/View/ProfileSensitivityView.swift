@@ -59,7 +59,7 @@ class ProfileSensitivityView: UIView {
     
     private func setupUI() {
         
-        titleLabel = UILabel(text: "sensitivity".localizedString, textColor: TextBlack_Color, fontSize: 16, fontWeight: .light)
+        titleLabel = UILabel(text: "relative_sensitivity".localizedString, textColor: TextBlack_Color, fontSize: 16, fontWeight: .light)
         addSubview(titleLabel)
         titleLabel.snp.makeConstraints { make in
             make.left.equalTo(SCRXFrom(16))

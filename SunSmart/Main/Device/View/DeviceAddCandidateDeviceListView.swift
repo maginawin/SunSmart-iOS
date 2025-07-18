@@ -222,7 +222,7 @@ class DeviceAddCandidateDeviceListView: UIView {
         let canAddDevices = candidateDevices.filter({ $0.selectedState != .disabled && !($0.addState == .wait || $0.addState == .adding || $0.addState == .addConnecting) })
         if sender.isSelected {
             if existNodeCount + canAddDevices.count > maxDeviceCount {
-                SRAlertView(title: "notification".localizedString, message: "devices_number_exceeds_message".localizedString, actions: [SRAlertAction(title: "ok".localizedString)]).show()
+                SRAlertView(title: "notification".localizedString, message: String(format: "devices_number_exceeds_message".localizedString, maxDeviceCount), actions: [SRAlertAction(title: "ok".localizedString)]).show()
                 canAddDevices.prefix(maxDeviceCount - existNodeCount).forEach({ $0.selectedState = .selected })
             }else {
                 canAddDevices.forEach({ $0.selectedState = .selected })
@@ -710,7 +710,7 @@ extension DeviceAddCandidateDeviceListView: UITableViewDataSource, UITableViewDe
         }
         // space只能添加200个设备
         guard MeshNetworkManager.instance.realNodes.count + showDevices.filter({ $0.addState == .wait || $0.addState == .adding || $0.addState == .addConnecting }).count < maxDeviceCount else {
-            SRAlertView(title: "notification".localizedString, message: "devices_number_exceeds_message".localizedString, actions: [SRAlertAction(title: "ok".localizedString)]).show()
+            SRAlertView(title: "notification".localizedString, message: String(format: "devices_number_exceeds_message".localizedString, maxDeviceCount), actions: [SRAlertAction(title: "ok".localizedString)]).show()
             return
         }
         

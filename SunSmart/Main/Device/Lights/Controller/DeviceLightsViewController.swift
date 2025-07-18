@@ -84,7 +84,7 @@ class DeviceLightsViewController: UIViewController {
     
     override func viewDidAppear(_ animated: Bool) {
         super.viewDidAppear(animated)
-        
+//        devices.filter({ !$0.state }).count
         MeshLibManager.manager.register(self)
         MeshLibManager.manager.messageDelegate = self
     }

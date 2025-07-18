@@ -155,6 +155,7 @@ class SharePermissionSelectionController: UIViewController {
                     localSpace.permission = permission
                     localSpace.requiresPasswordVerification = false
                     localSpace.applyDeviceAddressCount = nil
+                    localSpace.applyGroupAddressCount = nil
                     localSpace.releaseAddress = false
                     localSpace.state = .normal
                     localSpace.save()
@@ -203,6 +204,7 @@ class SharePermissionSelectionController: UIViewController {
                                     space?.authorizationPassword = spaceData["editorPasswd"] as? String
                                     space?.requiresPasswordVerification = false
                                     space?.applyDeviceAddressCount = nil
+                                    space?.applyGroupAddressCount = nil
                                     space?.releaseAddress = false
                                 }
                                 // 是否之前存在该space，并且处理权限回收未清空地址状态

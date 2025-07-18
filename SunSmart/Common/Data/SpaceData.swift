@@ -127,6 +127,8 @@ class SpaceData: Copyable {
     var isConfiguring: Bool = false
     // 需要申请的设备地址数量
     var applyDeviceAddressCount: Int?
+    // 需要申请的组地址数量
+    var applyGroupAddressCount: Int?
     /// 是否已释放地址
     var releaseAddress: Bool = false
     
@@ -135,7 +137,7 @@ class SpaceData: Copyable {
     /// Mesh OTA分发中
     var meshOTADistribution: Bool = false
     /// space最多设备数量
-    var maxDevicesCount: Int = 200
+    var maxDevicesCount: Int = 300
     
     /// space操作权限list
     var spaceOperates: [SpaceOperate] {

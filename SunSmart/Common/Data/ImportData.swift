@@ -82,7 +82,9 @@ extension SiteData {
         self.permission = permission
         
         let currentNetwork = MeshNetworkManager.instance.meshNetwork?.uuid.uuidString == self.meshUUID ? MeshNetworkManager.instance.meshNetwork : nil
+//        print("读取网络数据：\(Date().timeIntervalSince1970)")
         var meshNetwork = currentNetwork ?? MeshNetwork.load(meshUUID: self.meshUUID, allData: false)
+//        print("读取网络数据完成：\(Date().timeIntervalSince1970)")
         var updateNetwork = false
         // 服务器最后更新时间比本地时间新才覆盖本地数据
         if lastUpdate > self.lastUpdate || initialize {
@@ -309,7 +311,7 @@ extension SiteData {
         
         // 修改供应者地址资源
         if let provisionerData = json["provisioner"].dictionaryObject {
-            self.setProvisioner(provisionerData: provisionerData)
+            self.setProvisioner(meshNetwork: meshNetwork, provisionerData: provisionerData)
         }
         
         if let spaceDicts = json["spaces"].arrayObject as? [[String: Any]] {
@@ -367,7 +369,7 @@ extension SiteData {
         guard let meshNetwork = currentNetwork ?? MeshNetwork.load(meshUUID: self.meshUUID, allData: false) else { return }
         // 如没有供应者，则新建一个
         guard let localProvisioner = meshNetwork.localProvisioner else {
-            setProvisioner(provisionerData: provisionerData)
+            setProvisioner(meshNetwork: meshNetwork, provisionerData: provisionerData)
             return
         }
         
@@ -497,11 +499,12 @@ extension SiteData {
     }
     
     /// 设置site内用户资源（覆盖）
-    func setProvisioner(provisionerData: [String: Any]) {
+    func setProvisioner(meshNetwork: MeshNetwork? = nil, provisionerData: [String: Any]) {
         
         let provisionerJson = JSON(provisionerData)
+        
         let currentNetwork = MeshNetworkManager.instance.meshNetwork?.uuid.uuidString == self.meshUUID ? MeshNetworkManager.instance.meshNetwork : nil
-        guard let meshNetwork = currentNetwork ?? MeshNetwork.load(meshUUID: self.meshUUID, allData: false) else {
+        guard let meshNetwork = meshNetwork ?? currentNetwork ?? MeshNetwork.load(meshUUID: self.meshUUID, allData: false) else {
             return
         }
         
@@ -728,6 +731,7 @@ extension SpaceData {
                 self.state = .normal
                 self.requiresPasswordVerification = false
                 self.applyDeviceAddressCount = nil
+                self.applyGroupAddressCount = nil
                 self.releaseAddress = false
                 self.disableEditorPermission = false
             }
@@ -1170,7 +1174,7 @@ extension SpaceData {
                 switchData.save(meshUUID: meshUUID, networkId: self.meshNetworkId)
             }
             
-            self.deviceCount = (meshNetwork?.nodes ?? nodes).count
+            self.deviceCount = (meshNetwork?.nodes.filter({ !$0.isLocalProvisioner && !$0.isProvisioner && !$0.isConfigComplete }) ?? nodes).count
             self.luminairesCount = nodes.filter({ $0.lightnessModel != nil }).count
             self.groupCount = groups.filter({ !$0.isVirtual }).count
             self.sceneCount = scenes.count

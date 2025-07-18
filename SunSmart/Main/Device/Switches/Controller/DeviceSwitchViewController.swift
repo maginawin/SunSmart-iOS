@@ -7,6 +7,7 @@
 
 import UIKit
 import NordicSigMeshSDK
+import SwiftyJSON
 
 class DeviceSwitchViewController: UIViewController {
 
@@ -149,95 +150,116 @@ class DeviceSwitchViewController: UIViewController {
                 deleteProxyNodeAddress = self.switchData?.proxyNodeAddress
             }
             setSwitchData.deleteProxyNodeAddress = deleteProxyNodeAddress
-            self.switchData?.update(switchData: setSwitchData)
-//            self.switchData?.deleteProxyNodeAddress = deleteProxyNodeAddress
+//            self.switchData?.update(switchData: setSwitchData)
         }else {
 //            setSwitchData.save()
             isCreate = true
-            MeshNetworkManager.instance.switchs.append(setSwitchData)
-            NotificationCenter.default.post(name: .init(switchsRefreshNotificationName), object: nil)
+//            MeshNetworkManager.instance.switchs.append(setSwitchData)
+//            NotificationCenter.default.post(name: .init(switchsRefreshNotificationName), object: nil)
         }
         
-        
-        // 未创建动能开关通讯组
-        if (setSwitchData.proxyNodeAddress != nil || setSwitchData.bindGroups.contains(where: { $0.nodes.count > 0 })) && setSwitchData.linkGroup == nil {
-            // 判断组地址是否足够分配
-            guard MeshAPI.getAvailableGroupAddresses(meshUUID: self.space.meshUUID, subnetworkId: self.space.meshNetworkId).count >= setSwitchData.panelType.usedAddressesNumber else {
-                XWHUDManager.showErrorTipHUD("group_address_insufficient_message".localizedString, timer: 2)
-                return
-            }
-            
-            guard let linkGroup = try? MeshAPI.createGroup(name: self.setSwitchData.name + "-Group", isVirtual: true) else {
-                XWHUDManager.showErrorTipHUD("failed".localizedString + " !")
-                return
-            }
-            let subLinkGroup = try? MeshAPI.createGroup(name: self.setSwitchData.name + "-Group_1", isVirtual: true)
-            
-            
-            self.setSwitchData.linkGroupAddress = linkGroup.address.address
-            self.setSwitchData.subLinkGroupAddress = subLinkGroup?.address.address
-            self.switchData?.linkGroupAddress = linkGroup.address.address
-            self.switchData?.subLinkGroupAddress = subLinkGroup?.address.address
-//            self.setSwitchData?.save()
-        }
-        
-        let syncData = setSwitchData.getNeedSyncDatas()
-        // 判断哪些移出的组需要同步数据，不需要同步数据则直接更新缓存，需要同步的组在同步操作后做数据更新
-        let unbindGroupAddresses = syncData.deleteGroups.map({ $0.key.address.address })
-        setSwitchData.unbindGroupAddresses = unbindGroupAddresses
-        self.switchData?.update(switchData: setSwitchData)
-        setSwitchData.save()
-        
-//        self.switchData?.unbindGroupAddresses = unbindGroupAddresses
-//        self.switchData?.save()
-        
-        // 是否需要同步数据
-        guard setSwitchData.needSyncData else {
-            
-            NotificationCenter.default.post(name: .init(switchsRefreshNotificationName), object: nil)
-            NotificationCenter.default.post(name: .init(spaceDataChangedNotificaitonName), object: SpaceChangeDataType.common)
-            XWHUDManager.showSuccessTipHUD("done!".localizedString)
-            DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) {[weak self] in
-                self?.fineshed()
-//                self?.dismiss(animated: true)
-            }
-            return
-        }
-        
-        let vc = SyncDevicesViewController(type: .enOceanSwitch(setSwitchData))
-        vc.syncSuccessCallback = {[weak self] _ in
-            guard let self = self else { return }
-            NotificationCenter.default.post(name: .init(switchsRefreshNotificationName), object: nil)
-            XWHUDManager.showSuccessTipHUD("done!".localizedString)
-            if self.switchData != nil {
-                self.setSwitchData.update(switchData: self.switchData!)
-            }
-            DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) {[weak self] in
-                if isCreate {
-                    self?.fineshed()
-                }else {
-                    self?.updateSaveEnabledState()
-                    self?.tableView.reloadData()
-                    self?.navigationController?.popViewController(animated: true)
+        Task {
+            // 未创建动能开关通讯组
+            if (setSwitchData.proxyNodeAddress != nil || setSwitchData.bindGroups.contains(where: { $0.nodes.count > 0 })) && setSwitchData.linkGroup == nil {
+                // 判断组地址是否足够分配
+                let availableGroupAddresses = MeshAPI.getAvailableGroupAddresses(meshUUID: self.space.meshUUID, subnetworkId: self.space.meshNetworkId)
+                if availableGroupAddresses.count < setSwitchData.panelType.usedAddressesNumber {
+                    
+                    let applyAddressCount = 16
+                    // 地址不够
+                    // 手机是否联网
+                    guard NetworkRequest.shared.networkable else {
+                        // 未联网提示联网以获取地址
+                        XWHUDManager.showErrorTipHUD("group_address_insufficient_no_network".localizedString)
+                        return
+                    }
+                    XWHUDManager.showCustomHUD(withMessage: nil, isWindow: true)
+                    let result = await self.applyGroupAddressesRequest(applyAddressCount: applyAddressCount)
+                    XWHUDManager.hide()
+                    if case .failure(let error) = result {
+                        XWHUDManager.showErrorTipHUD(error.localizedDescription)
+                        return
+                    }
                 }
-            }
-            
-        }
-        vc.backActionCallback = {[weak self] _ in
-            guard let self = self else { return }
-            NotificationCenter.default.post(name: .init(switchsRefreshNotificationName), object: nil)
-            if self.switchData != nil {
-                self.setSwitchData.update(switchData: self.switchData!)
+                
+                guard let linkGroup = try? MeshAPI.createGroup(name: self.setSwitchData.name + "-Group", isVirtual: true) else {
+                    XWHUDManager.showErrorTipHUD("failed".localizedString + " !")
+                    return
+                }
+                let subLinkGroup = try? MeshAPI.createGroup(name: self.setSwitchData.name + "-Group_1", isVirtual: true)
+                
+                self.setSwitchData.linkGroupAddress = linkGroup.address.address
+                self.setSwitchData.subLinkGroupAddress = subLinkGroup?.address.address
+                self.switchData?.linkGroupAddress = linkGroup.address.address
+                self.switchData?.subLinkGroupAddress = subLinkGroup?.address.address
+                //            self.setSwitchData?.save()
             }
             if isCreate {
-                self.dismiss(animated: true)
+                MeshNetworkManager.instance.switchs.append(setSwitchData)
+                NotificationCenter.default.post(name: .init(switchsRefreshNotificationName), object: nil)
+                setSwitchData.save()
             }else {
-                self.navigationController?.popViewController(animated: true)
-                self.updateSaveEnabledState()
-                self.tableView.reloadData()
+                let syncData = setSwitchData.getNeedSyncDatas()
+                // 判断哪些移出的组需要同步数据，不需要同步数据则直接更新缓存，需要同步的组在同步操作后做数据更新
+                let unbindGroupAddresses = syncData.deleteGroups.map({ $0.key.address.address })
+                setSwitchData.unbindGroupAddresses = unbindGroupAddresses
+                self.switchData?.update(switchData: setSwitchData)
+                setSwitchData.save()
             }
+            
+           
+            
+            //        self.switchData?.unbindGroupAddresses = unbindGroupAddresses
+            //        self.switchData?.save()
+            
+            // 是否需要同步数据
+            guard setSwitchData.needSyncData else {
+                
+                NotificationCenter.default.post(name: .init(switchsRefreshNotificationName), object: nil)
+                NotificationCenter.default.post(name: .init(spaceDataChangedNotificaitonName), object: SpaceChangeDataType.common)
+                XWHUDManager.showSuccessTipHUD("done!".localizedString)
+                DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) {[weak self] in
+                    self?.fineshed()
+                    //                self?.dismiss(animated: true)
+                }
+                return
+            }
+            
+            let vc = SyncDevicesViewController(type: .enOceanSwitch(setSwitchData))
+            vc.syncSuccessCallback = {[weak self] _ in
+                guard let self = self else { return }
+                NotificationCenter.default.post(name: .init(switchsRefreshNotificationName), object: nil)
+                XWHUDManager.showSuccessTipHUD("done!".localizedString)
+                if self.switchData != nil {
+                    self.setSwitchData.update(switchData: self.switchData!)
+                }
+                DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) {[weak self] in
+                    if isCreate {
+                        self?.fineshed()
+                    }else {
+                        self?.updateSaveEnabledState()
+                        self?.tableView.reloadData()
+                        self?.navigationController?.popViewController(animated: true)
+                    }
+                }
+                
+            }
+            vc.backActionCallback = {[weak self] _ in
+                guard let self = self else { return }
+                NotificationCenter.default.post(name: .init(switchsRefreshNotificationName), object: nil)
+                if self.switchData != nil {
+                    self.setSwitchData.update(switchData: self.switchData!)
+                }
+                if isCreate {
+                    self.dismiss(animated: true)
+                }else {
+                    self.navigationController?.popViewController(animated: true)
+                    self.updateSaveEnabledState()
+                    self.tableView.reloadData()
+                }
+            }
+            navigationController?.pushViewController(vc, animated: true)
         }
-        navigationController?.pushViewController(vc, animated: true)
     }
     
     /// 重新同步
@@ -304,6 +326,35 @@ class DeviceSwitchViewController: UIViewController {
         }
         navigationController?.pushViewController(vc, animated: true)
                
+    }
+    
+    /// 申请地址请求
+    private func applyGroupAddressesRequest(applyAddressCount: Int) async -> Result<Void, NetworkApiError> {
+        
+        return await withCheckedContinuation { continuation in
+            NetworkRequest.shared.request(.applyAddress(siteId: self.space.siteId, type: .group, number: applyAddressCount)) {[weak self] result in
+                XWHUDManager.hide()
+                guard let self = self else { return }
+                switch result {
+                case .success(let repsonsed):
+                    self.space.applyGroupAddressCount = nil
+                    self.space.save()
+                    // 新增地址
+                    if let site = SiteData.load(siteId: self.space.siteId), let provisionerData = JSON(repsonsed)["data"]["provisioner"].dictionaryObject {
+                        site.setProvisioner(provisionerData: provisionerData)
+                        continuation.resume(returning: .success(()))
+                    }else {
+                        continuation.resume(returning: .failure(NetworkApiError.unknown))
+//                        XWHUDManager.showErrorTipHUD(NetworkApiError.unknown.localizedDescription)
+                    }
+                case .failure(let error):
+                    continuation.resume(returning: .failure(error))
+//                    XWHUDManager.showErrorTipHUD(error.localizedDescription)
+                }
+            }
+            
+        }
+       
     }
     
     private func setupUI() {
@@ -651,7 +702,6 @@ extension DeviceSwitchViewController: UITableViewDataSource, UITableViewDelegate
                 ])
             }
             let vc = SwitchSelectScenePageController(scenes: MeshNetworkManager.instance.scenes, sceneDatas: datas)
-//            SwitchSelectSceneViewController(scenes: MeshNetworkManager.instance.scenes, sceneA: groupSwitch.sceneA, sceneB: groupSwitch.sceneB)
             vc.scenesSelectCallback = {[weak self] sceneDatas in
                 guard let self = self else { return }
                 sceneDatas.forEach { data in
@@ -670,14 +720,6 @@ extension DeviceSwitchViewController: UITableViewDataSource, UITableViewDelegate
                 self.updateSaveEnabledState()
             }
             
-//            let vc = SwitchSelectSceneViewController(scenes: MeshNetworkManager.instance.scenes, sceneData: <#SwitchSceneData#>, sceneA: setSwitchData.sceneA, sceneB: setSwitchData.sceneB)
-//            vc.sceneSelectCallback = {[weak self] sceneA, sceneB in
-//                guard let self = self else { return }
-//                self.setSwitchData.sceneANumber = sceneA?.number
-//                self.setSwitchData.sceneBNumber = sceneB?.number
-//                tableView.reloadData()
-//                self.updateSaveEnabledState()
-//            }
             navigationController?.pushViewController(vc, animated: true)
         case .proxy:
             if SRAlertView.isVisible() {

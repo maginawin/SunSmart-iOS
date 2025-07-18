@@ -623,6 +623,9 @@
 "device_address_insufficient" = "Insufficient device address, please connect to the internet to get more.Once connected to the network, the device address is automatically obtained.";
 "devices_number_exceeds_message" = "Devices cannot be added because the number of devices exceeds %d. Please create a new space to add devices.";
 "device_address_apply_message" = "You have applied for the device address from the server, are you sure to get it.";
+"group_address_apply_message" = "You have applied for the group address from the server, are you sure to get it.";
+"group_address_insufficient" = "Insufficient group address, please connect to the internet to get more.Once connected to the network, the group address is automatically obtained.";
+"group_address_insufficient_no_network" = "Insufficient group address, please connect to the internet to get more.";
 "phone_no_network" = "internet connection required!";
 "network_request_timeout" = "The network request timed out";
 "site_delete_have_devies_message" = "Some spaces within the site have devies that cannot be deleted.";
@@ -728,7 +731,6 @@
 "the_space_cleared_visitor_message" = "You have been cleared of visitor permissions and can no longer use the space.";
 "the_space_password_change_message" = "The password of this space has been changed, you can no longer use it, please enter a new password to continue using it.";
 "user_settings" = "User settings";
-"device_address_apply_message" = "You have applied for the device address from the server, are you sure to get it.";
 "space_permission_transition_message" = "The person with editing permission is currently operating the space. Do you want to enter the space as a vistor?";
 "help" = "Help";
 "phone_network_disconnect" = "Network error. You can continue to edit offline. Once you have completed offline editing, ensure that the modified data is saved to the server.";
@@ -979,7 +981,7 @@
 "device_parameter_settings" = "Device Parameter Settings";
 "READ" = "READ";
 "not_in_group" = "Not in group";
-"reted_power" = "Reted power";
+"rated_power" = "Reted power";
 "not_set" = "Not set";
 "device_parameter_step_1" = "1.Select the device to be set up";
 "device_parameter_step_2" = "2.Parameter selection";
@@ -1202,3 +1204,7 @@
 "professional_mode_step_3" = "Check if the device is correct and add to group";
 "add_device_instructions" = "Add device instructions";
 "device_add_pause_message" = "Pause or Stop Scanning to add devices";
+
+"relative_sensitivity" = "Relative sensitivity";
+"absolute_sensitivity" = "Absolute Sensitivity";
+"absolute_sensitivity_messsage" = "Note: Absolute sensitivity is the maximum range that a device can support. The purpose is to adjust the device individually to avoid false triggering due to component errors.Different from relative sensitivity, the maximum value of relative sensitivity 100% corresponds to the adjustment value here.";

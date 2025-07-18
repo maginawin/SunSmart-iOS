@@ -133,6 +133,12 @@ class ReadDevicesDataViewController: UIViewController {
                         let step = SyncDeviceStepModel(type: "rated_power".localizedString, state: .none, tasks: [taskModel])
                         taskModel.parentStepModel = step
                         steps.append(step)
+                    case .motionSensitivityRange:
+                        let taskModel = SyncDeviceStepTaskModel(name: "absolute_sensitivity".localizedString, operationType: .read(node: node, type: .deviceReadParmeters(parameterType: .motionSensitivityRange)))
+                        
+                        let step = SyncDeviceStepModel(type: "absolute_sensitivity".localizedString, state: .none, tasks: [taskModel])
+                        taskModel.parentStepModel = step
+                        steps.append(step)
                     default:
                         break
                     }

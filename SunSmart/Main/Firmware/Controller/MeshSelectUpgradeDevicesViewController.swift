@@ -326,6 +326,9 @@ extension MeshSelectUpgradeDevicesViewController: UITableViewDataSource, UITable
             upgradable = false
         }
         cell.updateData(device: node, upgradeStep: .upgradeNodes, showSelect: node.state && state == .normal && upgradable, selected: selectNodes.contains(where: { $0.primaryUnicastAddress == node.primaryUnicastAddress }), enabled: state == .normal, isDistributor: node.primaryUnicastAddress == distributorNode.primaryUnicastAddress)
+        cell.identifyCallback = {
+            MeshAPI.identify(address: node.primaryUnicastAddress, attentionTimer: 6)
+        }
         return cell
     }
     

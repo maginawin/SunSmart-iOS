@@ -151,11 +151,6 @@ extension Int32 {
     
 }
 
-//protocol BinaryFloatingPoint {
-//    /// 转成精简字符串 maxDigits:最大保留几位小数
-//    func toSimplifyStr(maxDigits: Int) -> String
-//}
-
 extension BinaryFloatingPoint {
     
     /// 转成精简字符串 maxDigits:最大保留几位小数
@@ -182,5 +177,13 @@ extension Float {
     var roundf2: Float {
         return roundf(self * 100) / 100.0
     }
-    
 }
+
+extension UInt8 {
+    
+    /// UInt8 => 0~100%
+    var percentage: UInt8 {
+        return UInt8((Double(self) / 2.55).rounded())
+    }
+}
+
