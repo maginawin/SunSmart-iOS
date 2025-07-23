@@ -143,6 +143,14 @@ let Bottom_Done_Color = RGB(27, 20, 37)
 let Title_Done_Color = RGB(64, 79, 102)
 let Slider_Color = RGB(213, 32, 39)
 
+#elseif SylSmart
+
+/// 主色
+let Bar_Color = RGB(0, 128, 101)
+let Bottom_Done_Color = RGB(102, 103, 171)
+let Title_Done_Color = RGB(64, 79, 102)
+let Slider_Color = RGB(213, 32, 39)
+
 #else
 
 /// 主色

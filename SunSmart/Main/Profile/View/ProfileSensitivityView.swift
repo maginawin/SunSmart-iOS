@@ -18,6 +18,9 @@ protocol ProfileSensitivityViewDelegate: AnyObject {
     /// 禁止交互下编辑事件
     func sensitivityViewDisableEditAction(view: ProfileSensitivityView)
     
+    /// 帮助
+    func sensitivityViewHelpAction(_ view: ProfileSensitivityView)
+    
 }
 
 class ProfileSensitivityView: UIView {
@@ -25,6 +28,7 @@ class ProfileSensitivityView: UIView {
     private var titleLabel: UILabel!
     /// 滑条
     var sensitivitySlider: PowerUpLightSliderView!
+    private var helpBtn: UIButton!
     
     weak var delegate: ProfileSensitivityViewDelegate?
     
@@ -56,6 +60,9 @@ class ProfileSensitivityView: UIView {
         fatalError("init(coder:) has not been implemented")
     }
     
+    @objc private func helpBtnAction() {
+        delegate?.sensitivityViewHelpAction(self)
+    }
     
     private func setupUI() {
         
@@ -64,6 +71,13 @@ class ProfileSensitivityView: UIView {
         titleLabel.snp.makeConstraints { make in
             make.left.equalTo(SCRXFrom(16))
             make.top.equalTo(SCRYFrom(16))
+        }
+        
+        helpBtn = UIButton(normalImageName: "help", target: self, action: #selector(helpBtnAction))
+        addSubview(helpBtn)
+        helpBtn.snp.makeConstraints { make in
+            make.left.equalTo(titleLabel.snp.right).offset(SCRXFrom(8))
+            make.centerY.equalTo(titleLabel)
         }
         
         sensitivitySlider = PowerUpLightSliderView()

@@ -24,6 +24,8 @@ struct MeshDeviceConfigInfo {
     let deviceCategory: String
     /// 型号名称
     let modelName: String?
+    /// 灵敏度范围（传感器）
+    let sensitivityRange: ClosedRange<UInt16>?
     
     /// 默认设备配置信息
     static var defaultConfigInfos: [MeshDeviceConfigInfo] {
@@ -39,7 +41,13 @@ struct MeshDeviceConfigInfo {
                        let categoryName = dict["categoryName"] as? String, let elementCount = dict["elementCount"] as? Int,
                        let iconCategory = dict["iconCategory"] as? String,
                        let deviceCategory = dict["deviceCategory"] as? String {
-                        return .init(companyId: companyId, productId: productId, categoryName: categoryName, elementCount: elementCount, iconCategory: iconCategory, deviceCategory: deviceCategory, modelName: dict["modelName"] as? String)
+                        
+                        var sensitivityRange: ClosedRange<UInt16>?
+                        if let sensitivityRangeMin = dict["sensitivityRangeMin"] as? UInt16, let sensitivityRangeMax = dict["sensitivityRangeMax"] as? UInt16 {
+                            sensitivityRange = sensitivityRangeMin...sensitivityRangeMax
+                        }
+                        
+                        return .init(companyId: companyId, productId: productId, categoryName: categoryName, elementCount: elementCount, iconCategory: iconCategory, deviceCategory: deviceCategory, modelName: dict["modelName"] as? String, sensitivityRange: sensitivityRange)
                     }
                     return nil
                 })

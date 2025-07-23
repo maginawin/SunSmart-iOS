@@ -7,16 +7,28 @@
 		<key>Archipelago.xcscheme_^#shared#^_</key>
 		<dict>
 			<key>orderHint</key>
-			<integer>12</integer>
+			<integer>1</integer>
 		</dict>
 		<key>SunSmart.xcscheme_^#shared#^_</key>
 		<dict>
 			<key>orderHint</key>
 			<integer>0</integer>
 		</dict>
+		<key>SylSmart.xcscheme_^#shared#^_</key>
+		<dict>
+			<key>isShown</key>
+			<true/>
+			<key>orderHint</key>
+			<integer>2</integer>
+		</dict>
 	</dict>
 	<key>SuppressBuildableAutocreation</key>
 	<dict>
+		<key>C8469F8B2E2F3BA8008848FE</key>
+		<dict>
+			<key>primary</key>
+			<true/>
+		</dict>
 		<key>C88553AD2DE6B44C00C8B688</key>
 		<dict>
 			<key>primary</key>

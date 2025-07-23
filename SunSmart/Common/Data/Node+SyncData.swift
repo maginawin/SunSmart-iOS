@@ -109,7 +109,7 @@ enum ProfileType {
     /// 光照传感器校准
     case daylightCalibration(value: UInt16)
     /// 灵敏度 0~100%
-    case sensitivity(value: UInt8, range: ClosedRange<UInt8>? = nil)
+    case sensitivity(value: UInt16, range: ClosedRange<UInt16>? = nil)
 }
 
 enum DeviceParameterType {
@@ -139,7 +139,7 @@ enum DeviceParameterType {
             }
         case .motionSensitivityRange(let range):
             if let vendorModel = node.sunricherVendorModel {
-                let sensitivity = node.motionSensitivity ?? node.group?.info.profile.sensitivity ?? 100
+                let sensitivity = node.motionSensitivity ?? min(UInt8(node.group?.info.profile.sensitivity ?? 100).value16, 65535)
                 messageHandles.append(MeshMessageHandle(message: SunricherVendorSet(function: .motionSensitivity(sensitivity, maxValue: range.upperBound, minValue: range.lowerBound)), model: vendorModel))
             }
         }
@@ -151,7 +151,7 @@ enum DeviceParameterType {
     /// 额定功率
     case ratedPower(datas: [NodePhaseEnergyConsumption])
     /// 移动感应灵敏度范围
-    case motionSensitivityRange(range: ClosedRange<UInt8>)
+    case motionSensitivityRange(range: ClosedRange<UInt16>)
 }
 
 enum DeviceReadParameterType {
@@ -368,6 +368,12 @@ extension Node {
             if let phaseEnergyConsumptions = self.restoreData?.phaseEnergyConsumptions, self.phaseEnergyConsumptions != phaseEnergyConsumptions {
                 deviceParameterTypes.append(.ratedPower(datas: phaseEnergyConsumptions))
             }
+            // Absolute Sensitivity
+            if let motionSensitivityRange = self.restoreData?.motionSensitivityRange,
+               self.motionSensitivityRange != motionSensitivityRange {
+                deviceParameterTypes.append(.motionSensitivityRange(range: motionSensitivityRange))
+            }
+            
             if deviceParameterTypes.count > 0 {
                 syncDatas.append(.deviceParameterTypes(types: deviceParameterTypes))
             }
@@ -740,7 +746,7 @@ extension Node {
             // 移动感应配置
             if occupancyType || groupProfile.type == .proximityLighting, self.presenceDetectedSensorModel != nil {
                 // profile 0~100% => 0~255
-                let resultValue = UInt8(min(Int(Float(groupProfile.sensitivity) * 2.55), 255))
+                let resultValue = groupProfile.sensitivity.value16
                 if self.motionSensitivity != resultValue {
                     syncProfile.append(.sensitivity(value: resultValue))
                 }
@@ -763,8 +769,8 @@ extension Node {
             
             // 移动感应设备 灵敏度还原到默认
             if self.presenceDetectedSensorModel != nil {
-                if self.motionSensitivity != 255 {
-                    syncProfile.append(.sensitivity(value: 255))
+                if self.motionSensitivity != 65535 {
+                    syncProfile.append(.sensitivity(value: 65535))
                 }
             }
             

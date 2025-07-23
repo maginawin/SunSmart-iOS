@@ -436,8 +436,13 @@ class SitesViewController: UIViewController {
                           let iconCategory = json["iconCategory"].string, let deviceCategory = json["deviceCategory"].string else {
                         return nil
                     }
+                    var sensitivityRange: ClosedRange<UInt16>?
+                    if let min = json["sensitivityRangeMin"].uInt16, let max = json["sensitivityRangeMax"].uInt16 {
+                        sensitivityRange = min...max
+                    }
+                    
                     let modelName = json["modelName"].string
-                    return MeshDeviceConfigInfo(companyId: companyId, productId: productId, categoryName: categoryName, elementCount: elementCount, iconCategory: iconCategory, deviceCategory: deviceCategory, modelName: modelName)
+                    return MeshDeviceConfigInfo(companyId: companyId, productId: productId, categoryName: categoryName, elementCount: elementCount, iconCategory: iconCategory, deviceCategory: deviceCategory, modelName: modelName, sensitivityRange: sensitivityRange)
                 })
                 MeshLibManager.manager.supportDeviceInfos = list
                 MeshDeviceConfigInfo.saveAll(list: list)
@@ -477,20 +482,22 @@ class SitesViewController: UIViewController {
     /// 导入
     @objc private func importClick() {
         
-//        guard let space = SpaceData.load(siteId: "25300E88-41F0-456E-A0A9-AD615069017C", spaceId: "88BF1DEC-264E-4D00-A93C-729A88030D58").first else {
-//            return
-//        }
-//
-//        DispatchQueue.global().async {
-//            MeshLibManager.manager.setMeshNetworkConnected(meshUUID: space.meshUUID, subNetworkId: space.meshNetworkId)
-//            DispatchQueue.main.async {
-////                let group = MeshNetworkManager.instance.groups.first!
-////                let vc = GroupViewController(space: space, group: group)
-////                let vc = GroupPathSequencePageController(group: group)
-//                let vc = DeviceParameterSettingsController(devices: [])
-//                self.present(NavigationViewController(rootViewController: vc), animated: true)
-//            }
-//        }
+        guard let space = SpaceData.load(siteId: "25300E88-41F0-456E-A0A9-AD615069017C", spaceId: "88BF1DEC-264E-4D00-A93C-729A88030D58").first else {
+            return
+        }
+
+        DispatchQueue.global().async {
+            MeshLibManager.manager.setMeshNetworkConnected(meshUUID: space.meshUUID, subNetworkId: space.meshNetworkId)
+            DispatchQueue.main.async {
+//                let group = MeshNetworkManager.instance.groups.first!
+//                let vc = GroupViewController(space: space, group: group)
+//                let vc = GroupPathSequencePageController(group: group)
+                let vc = DeviceParameterSettingsController(devices: [])
+                self.present(NavigationViewController(rootViewController: vc), animated: true)
+            }
+        }
+//        self.present(NavigationViewController(rootViewController: RelativeSensitivityInstructionsController()), animated: true)
+        return
         
         ImportProjectView {[weak self] mode in
             if mode == .scanQRCode {

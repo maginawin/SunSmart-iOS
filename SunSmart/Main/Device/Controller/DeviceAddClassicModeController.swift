@@ -1072,6 +1072,7 @@ class DeviceAddClassicModeController: UIViewController {
         rssiSlider.maximumValue = Double(abs(filterRSSIRange.lowerBound))
         rssiSlider.lowerValue = Double(abs(selectRSSIRange.upperBound))
         rssiSlider.upperValue = Double(abs(selectRSSIRange.lowerBound))
+        rssiSlider.minimumRange = 10
         rssiSlider.addTarget(self, action: #selector(rssiSliderValueChanged), for: .valueChanged)
         headerView.addSubview(rssiSlider)
         rssiSlider.snp.makeConstraints { make in

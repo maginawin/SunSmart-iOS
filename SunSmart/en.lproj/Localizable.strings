@@ -1208,3 +1208,9 @@
 "relative_sensitivity" = "Relative sensitivity";
 "absolute_sensitivity" = "Absolute Sensitivity";
 "absolute_sensitivity_messsage" = "Note: Absolute sensitivity is the maximum range that a device can support. The purpose is to adjust the device individually to avoid false triggering due to component errors.Different from relative sensitivity, the maximum value of relative sensitivity 100% corresponds to the adjustment value here.";
+"absolute_sensitivity_instructions_1" = "Absolute sensitivity is the maximum range that a device can support. The purpose is to adjust the device individually to avoid false triggering due to component errors.";
+"absolute_sensitivity_instructions_2" = "Relative sensitivity, 100% corresponds to the adjustment value of absolute sensitivity, such as 200.";
+"absolute_sensitivity_instructions_3" = "If you find that the relative sensitivity of the device is already 100%, but it is still not sensitive enough, you can appropriately increase the absolute sensitivity limit value without false triggering.";
+"absolute_sensitivity_instructions_4" = "Note: \n1.You can set the absolute sensitivity in 'More'-'Device Parameter Settings'.
+2.You can adjust the device individually on the Device 'More' page.";
+

@@ -10,6 +10,23 @@ import NordicSigMeshSDK
 
 class DeviceParameterDevicesViewController: UIViewController {
 
+    enum FilterSelectionState {
+        var rawValue: Int {
+            switch self {
+            case . unselected:
+                return 0
+            case .emptySelection:
+                return 1
+            case .selected:
+                return 2
+            }
+        }
+        
+        case unselected       // 未点开
+        case emptySelection   // 点开了，但没设置（显示 --）
+        case selected(value: Any, name: String) // 设置了具体内容
+    }
+    
     private var headerView: DeviceParameterPromptView!
     private var tableView: UITableView!
     private var groupsView: DeviceGroupsView!
@@ -21,15 +38,15 @@ class DeviceParameterDevicesViewController: UIViewController {
     /// pwm参数list
     private var pwmValues: [UInt16] = []
     /// 筛选的pwm值
-    private var filterPwmValue: UInt16?
+    private var filterPwmValue: FilterSelectionState = .unselected
     /// 额定功率list
     private var ratedPowers: [[NodePhaseEnergyConsumption]] = []
     /// 筛选的额定功率
-    private var filterRatedPower: [NodePhaseEnergyConsumption]?
+    private var filterRatedPower: FilterSelectionState = .unselected
     /// 绝对灵敏度范围list
-    private var absoluteSensitivitys: [ClosedRange<UInt8>] = []
+    private var absoluteSensitivitys: [ClosedRange<UInt16>] = []
     /// 筛选的绝对灵敏度范围
-    private var filterAbsoluteSensitivityRange: ClosedRange<UInt8>?
+    private var filterAbsoluteSensitivityRange: FilterSelectionState = .unselected
     
     private var showDevices: [Node] = []
     /// 设置pwm失败设备list
@@ -121,10 +138,6 @@ class DeviceParameterDevicesViewController: UIViewController {
             if node.tempRatedPowerPhases.count > 0 {
                 if !ratedPowers.contains(node.tempRatedPowerPhases) {
                     ratedPowers.append(node.tempRatedPowerPhases)
-                }
-            }else {
-                if !ratedPowers.contains([]) {
-                    ratedPowers.insert([], at: 0)
                 }
             }
             // 灵敏度范围
@@ -304,8 +317,8 @@ class DeviceParameterDevicesViewController: UIViewController {
                                 type = .ratedPower(datas: nodePhaseEnergyDatas)
                             }
                         case .motionSensitivityRange:
-                            if let range = value.value as? ClosedRange<UInt8> {
-                                type = .motionSensitivityRange(range: UInt8(Double(range.lowerBound) * 2.55)...UInt8(Double(range.upperBound) * 2.55))
+                            if let range = value.value as? ClosedRange<Double> {
+                                type = .motionSensitivityRange(range: range.lowerBound.value16...range.upperBound.value16)
                             }
                         }
 
@@ -388,7 +401,8 @@ class DeviceParameterDevicesViewController: UIViewController {
                         cell.sensitivityImageView.isHidden = true
                     }
                     if let range = range {
-                        cell.sensitivityLabel.text = "\("absolute_sensitivity".localizedString) :\(range.lowerBound.percentage)%~\(range.upperBound.percentage)%"
+                        
+                        cell.sensitivityLabel.text = "\("absolute_sensitivity".localizedString) :\(range.lowerBound.percentageFloat.toSimplifyStr(maxDigits: 1))%~\(range.upperBound.percentageFloat.toSimplifyStr(maxDigits: 1))%"
                     }else {
                         cell.sensitivityLabel.text = "\("absolute_sensitivity".localizedString) : --"
                     }
@@ -529,7 +543,8 @@ extension DeviceParameterDevicesViewController: UITableViewDataSource, UITableVi
                 cell.sensitivityImageView.isHidden = true
             }
             if let range = range {
-                cell.sensitivityLabel.text = "\("absolute_sensitivity".localizedString) :\(range.lowerBound.percentage)%~\(range.upperBound.percentage)%"
+                
+                cell.sensitivityLabel.text = "\("absolute_sensitivity".localizedString) :\(range.lowerBound.percentageFloat.toSimplifyStr(maxDigits: 1))%~\(range.upperBound.percentageFloat.toSimplifyStr(maxDigits: 1))%"
             }else {
                 cell.sensitivityLabel.text = "\("absolute_sensitivity".localizedString) : --"
             }
@@ -662,57 +677,109 @@ extension DeviceParameterDevicesViewController: DeviceParameterPromptViewDelegat
     /// 筛选
     func promptViewFilterAction(_ view: DeviceParameterPromptView) {
         
-        let powerDatas: [(name: String, value: [NodePhaseEnergyConsumption])] = ratedPowers.map({ (getRatedPowerStr(list: $0), $0) })
-        
+        var pwmContents: [(name: String, value: UInt16?)] = pwmValues.map({ ("\($0) Hz", $0) })
+        if devices.contains(where: { $0.tempPwm == nil }) {
+            pwmContents.insert(("--", nil), at: 0)
+        }
         var pwmSelectIndex: Int?
-        if let value = self.filterPwmValue {
-            pwmSelectIndex = pwmValues.firstIndex(of: value)
+        switch self.filterPwmValue {
+        case .emptySelection:
+            pwmSelectIndex = 0
+        case .selected(let value, _):
+            if let pwm = value as? UInt16 {
+                pwmSelectIndex = pwmContents.firstIndex(where: { $0.value == pwm })
+            }
+        default:
+            break
+        }
+       
+        var powerDatas: [(name: String, value: [NodePhaseEnergyConsumption])] = ratedPowers.map({ (getRatedPowerStr(list: $0), $0) })
+        if devices.contains(where: { $0.tempRatedPowerPhases.isEmpty }) {
+            powerDatas.insert(("--", []), at: 0)
         }
         var retedPowerSelectIndex: Int?
-        if let value = self.filterRatedPower {
-            retedPowerSelectIndex = powerDatas.firstIndex(where: { $0.value == value })
+        switch self.filterRatedPower {
+        case .emptySelection:
+            retedPowerSelectIndex = 0
+        case .selected(let value, _):
+            if let powerData = value as? [NodePhaseEnergyConsumption] {
+                retedPowerSelectIndex = powerDatas.firstIndex(where: { $0.value == powerData })
+            }
+        default:
+            break
         }
-        
+     
+        var sensitivityContents: [(name: String, value: ClosedRange<UInt16>?)] = absoluteSensitivitys.map({ range in ("\(range.lowerBound.percentage)%~\(range.upperBound.percentage)%", range) })
+        if devices.contains(where: { $0.tempSensitivityRange == nil }) {
+            sensitivityContents.insert(("--", nil), at: 0)
+        }
         var sensitivitySelectIndex: Int?
-        if let value = self.filterAbsoluteSensitivityRange {
-            sensitivitySelectIndex = absoluteSensitivitys.firstIndex(of: value)
+        switch self.filterAbsoluteSensitivityRange {
+        case .emptySelection:
+            sensitivitySelectIndex = 0
+        case .selected(let value, _):
+            if let range = value as? ClosedRange<UInt16> {
+                sensitivitySelectIndex = sensitivityContents.firstIndex(where: { $0.value == range })
+            }
+        default:
+            break
         }
         
         var filterDatas: [ParameterFilterData] = []
-        if pwmValues.count > 0 {
-            filterDatas.append(.init(type: .pwm, isShow: pwmSelectIndex != nil, contents: pwmValues.map({ "\($0) Hz" }), selectIndex: pwmSelectIndex))
-        }
-        filterDatas.append(.init(type: .ratedPower, isShow: retedPowerSelectIndex != nil, contents: powerDatas.map({ $0.name }), selectIndex: retedPowerSelectIndex))
         
-        if absoluteSensitivitys.count > 0 {
-            
-            filterDatas.append(.init(type: .absoluteSensitivity, isShow: sensitivitySelectIndex != nil, contents: absoluteSensitivitys.map({ range in "\(range.lowerBound.percentage)%~\(range.upperBound.percentage)" }), selectIndex: sensitivitySelectIndex))
+        if pwmContents.count > 0 {
+            filterDatas.append(.init(type: .pwm, isShow: pwmSelectIndex != nil, contents: pwmContents.map({ $0.name }), selectIndex: pwmSelectIndex))
+        }
+        if powerDatas.count > 0 {
+            filterDatas.append(.init(type: .ratedPower, isShow: retedPowerSelectIndex != nil, contents: powerDatas.map({ $0.name }), selectIndex: retedPowerSelectIndex))
+        }
+        
+        if sensitivityContents.count > 0 {
+            filterDatas.append(.init(type: .absoluteSensitivity, isShow: sensitivitySelectIndex != nil, contents: sensitivityContents.map({ $0.name }), selectIndex: sensitivitySelectIndex))
         }
         
         DeviceParameterFilterView(filterDatas: filterDatas, doneCallback: {[weak self] filterDatas in
             guard let self = self else { return }
             
-            self.filterPwmValue = nil
-            self.filterRatedPower = nil
+            self.filterPwmValue = .unselected
+            self.filterRatedPower = .unselected
+            self.filterAbsoluteSensitivityRange = .unselected
             var showDevices = self.devices
             
-            filterDatas.forEach { (type: ParameterFilterData.ParameterType, selectIndex: Int) in
+            filterDatas.forEach { (type: ParameterFilterData.ParameterType, content: String, selectIndex: Int) in
                 switch type {
                 case .pwm:
-                    print("pwm: \(self.pwmValues[selectIndex])")
-                    self.filterPwmValue = self.pwmValues[selectIndex]
-                    showDevices = showDevices.filter({ $0.pwmFrequency == self.filterPwmValue })
+                    let data = pwmContents[selectIndex]
+                    if let value = data.value {
+                        self.filterPwmValue = .selected(value: value, name: data.name)
+                        showDevices = showDevices.filter({ $0.tempPwm == data.value })
+                    }else {
+                        self.filterPwmValue = .emptySelection
+                        showDevices = showDevices.filter({ $0.tempPwm == nil })
+                    }
                 case .ratedPower:
-                    let value = self.ratedPowers[selectIndex]
-                    self.filterRatedPower = value
-                    showDevices = showDevices.filter({ $0.tempRatedPowerPhases == value })
+                    let data = powerDatas[selectIndex]
+                    if data.value.isEmpty {
+                        self.filterRatedPower = .emptySelection
+                        showDevices = showDevices.filter({ $0.tempRatedPowerPhases.isEmpty })
+                    }else {
+                        self.filterRatedPower = .selected(value: data.value, name: data.name)
+                        showDevices = showDevices.filter({ $0.tempRatedPowerPhases == data.value })
+                    }
                 case .absoluteSensitivity:
-                    self.filterAbsoluteSensitivityRange = self.absoluteSensitivitys[selectIndex]
-                    showDevices = showDevices.filter({ $0.tempSensitivityRange == self.filterAbsoluteSensitivityRange })
+                    
+                    let data = sensitivityContents[selectIndex]
+                    if let value = data.value {
+                        self.filterAbsoluteSensitivityRange = .selected(value: value, name: data.name)
+                        showDevices = showDevices.filter({ $0.tempSensitivityRange == value })
+                    }else {
+                        self.filterAbsoluteSensitivityRange = .emptySelection
+                        showDevices = showDevices.filter({ $0.tempSensitivityRange == nil })
+                    }
                 }
             }
             
-            self.headerView.filterBtn.isSelected = self.filterPwmValue != nil || self.filterRatedPower != nil || self.filterAbsoluteSensitivityRange != nil
+            self.headerView.filterBtn.isSelected = self.filterPwmValue.rawValue != FilterSelectionState.unselected.rawValue || self.filterRatedPower.rawValue != FilterSelectionState.unselected.rawValue || self.filterAbsoluteSensitivityRange.rawValue != FilterSelectionState.unselected.rawValue
             self.showDevices = showDevices
             self.tableView.reloadData()
             
@@ -840,9 +907,9 @@ extension Node {
     }
     
     /// 临时的额定功率（仅在当前页面使用）
-    var tempSensitivityRange: ClosedRange<UInt8>? {
+    var tempSensitivityRange: ClosedRange<UInt16>? {
         get {
-            objc_getAssociatedObject(self, &Node.tempSensitivityRangeKey) as? ClosedRange<UInt8>
+            objc_getAssociatedObject(self, &Node.tempSensitivityRangeKey) as? ClosedRange<UInt16>
         }set {
             objc_setAssociatedObject(self, &Node.tempSensitivityRangeKey, newValue, .OBJC_ASSOCIATION_RETAIN)
         }

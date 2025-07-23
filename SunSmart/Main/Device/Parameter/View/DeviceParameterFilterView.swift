@@ -46,7 +46,7 @@ class ParameterFilterData {
 class DeviceParameterFilterView: UIView {
 
     /// 完成回调
-    typealias DoneCallback = (([(type: ParameterFilterData.ParameterType, selectIndex: Int)])->Void)
+    typealias DoneCallback = (([(type: ParameterFilterData.ParameterType, content: String, selectIndex: Int)])->Void)
     
     private let filterDatas: [ParameterFilterData]
     
@@ -107,7 +107,7 @@ class DeviceParameterFilterView: UIView {
     
     @objc private func shadeViewAction() {
         let selectDatas = filterDatas.filter({ $0.selectIndex != nil })
-        doneCallback?(selectDatas.map({ ($0.type, $0.selectIndex!) }))
+        doneCallback?(selectDatas.map({ ($0.type, $0.contents[$0.selectIndex!], $0.selectIndex!) }))
         hide()
     }
     
@@ -243,7 +243,11 @@ extension DeviceParameterFilterView: UITableViewDataSource, UITableViewDelegate 
     func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
 //        tableView.deselectRow(at: indexPath, animated: true)
         let data = filterDatas[indexPath.section]
-        data.selectIndex = indexPath.row
+        if data.selectIndex == indexPath.row {
+            data.selectIndex = nil
+        }else {
+            data.selectIndex = indexPath.row
+        }
         tableView.reloadSections(IndexSet(integer: indexPath.section), with: .none)
     }
 }

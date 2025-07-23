@@ -235,14 +235,15 @@ class DeviceLightViewController: UIViewController {
             self?.information()
         }))
            
-//        #if DEBUG
+        #if DEBUG
 //        items.append(.init(icon: UIImage(named: "menu_edit"), title: "pwm_period".localizedString, hideAnimation: false, tapItemBack: {[weak self] _ in
 //            self?.setPwmPeriod()
 //        }))
 //        #endif
-//        items.append(.init(icon: UIImage(named: "menu_edit"), title: "Test", tapItemBack: {[weak self] _ in
-//            self?.test()
-//        }))
+        items.append(.init(icon: UIImage(named: "menu_edit"), title: "LED inverse", tapItemBack: {[weak self] _ in
+            self?.test()
+        }))
+        #endif
 //        if let group = self.node.group {
 //            let profileType = group.info.profile.type
 //            if profileType == .occupancy_daylight || profileType == .occupancy || profileType == .vacancy_daylight || profileType == .vacancy || profileType == .proximityLighting {
@@ -267,6 +268,11 @@ class DeviceLightViewController: UIViewController {
 //        MenuPopView.show(items: items, anchorPoint: CGPoint(x: view.width - SCRXFrom(17) - 15, y: y), menuWidth: MenuPopView.defalutMenuWidth + SCRXFrom(10))
     }
     
+    private func test() {
+        if let model = node.sunricherVendorModel {
+            MeshAPI.sendMessage(message: SunricherVendorSet(function: .ledInversion(inversion: !node.ledInversion)), model: model)
+        }
+    }
     
     /// 设置pwm频率
     private func setPwmFrequency() {

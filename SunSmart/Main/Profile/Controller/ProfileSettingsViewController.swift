@@ -685,6 +685,11 @@ extension ProfileSettingsViewController: ProfileSensitivityViewDelegate {
         XWHUDManager.showTipHUD("no_permission".localizedString + "！")
     }
     
+    /// 帮助
+    func sensitivityViewHelpAction(_ view: ProfileSensitivityView) {
+        navigationController?.pushViewController(RelativeSensitivityInstructionsController(), animated: true)
+    }
+    
 }
 
 extension ProfileSettingsViewController: ProfileProximityLightingNumberViewDelegate {

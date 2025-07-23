@@ -219,7 +219,7 @@ extension ProfileType {
             }
         case .sensitivity(let value, let range):
             if let vendorModel = node.sunricherVendorModel {
-                messageHandles.append(MeshMessageHandle(message: SunricherVendorSet(function: .motionSensitivity(value, maxValue: range?.lowerBound, minValue: range?.upperBound)), model: vendorModel))
+                messageHandles.append(MeshMessageHandle(message: SunricherVendorSet(function: .motionSensitivity(value, maxValue: range?.upperBound, minValue: range?.lowerBound)), model: vendorModel))
             }
         }
         return messageHandles

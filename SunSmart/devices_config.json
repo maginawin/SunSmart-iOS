@@ -222,7 +222,9 @@
         "elementCount" : 3,
         "iconCategory" : "Lighting",
         "deviceCategory" : "Lighting",
-        "modelName" : "SR-BL9032A-PIR-V"
+        "modelName" : "SR-BL9032A-PIR-V",
+        "sensitivityRangeMin" : 0,
+        "sensitivityRangeMax" : 65535
     },
     {
         "companyId" : "0A78",
@@ -231,7 +233,9 @@
         "elementCount" : 3,
         "iconCategory" : "Lighting",
         "deviceCategory" : "Lighting",
-        "modelName" : "SR-BL9035A-PIR-V"
+        "modelName" : "SR-BL9035A-PIR-V",
+        "sensitivityRangeMin" : 0,
+        "sensitivityRangeMax" : 65535
     },
     {
         "companyId" : "0A78",
@@ -240,7 +244,9 @@
         "elementCount" : 3,
         "iconCategory" : "Lighting",
         "deviceCategory" : "Lighting",
-        "modelName" : "SR-BL9035AJ-PIR-V"
+        "modelName" : "SR-BL9035AJ-PIR-V",
+        "sensitivityRangeMin" : 19532,
+        "sensitivityRangeMax" : 58853
     },
     {
         "companyId" : "0A78",
@@ -258,7 +264,9 @@
         "elementCount" : 3,
         "iconCategory" : "Lighting",
         "deviceCategory" : "Lighting",
-        "modelName" : "SR-BL9033A-PIR-V"
+        "modelName" : "SR-BL9033A-PIR-V",
+        "sensitivityRangeMin" : 0,
+        "sensitivityRangeMax" : 53199
     },
     {
         "companyId" : "0A78",
@@ -267,7 +275,9 @@
         "elementCount" : 3,
         "iconCategory" : "Lighting",
         "deviceCategory" : "Lighting",
-        "modelName" : "SR-BL9033Z-PIR-V"
+        "modelName" : "SR-BL9033Z-PIR-V",
+        "sensitivityRangeMin" : 53199,
+        "sensitivityRangeMax" : 62194
     },
     {
         "companyId" : "0A78",
@@ -276,7 +286,9 @@
         "elementCount" : 3,
         "iconCategory" : "Lighting",
         "deviceCategory" : "Lighting",
-        "modelName" : "SR-BL9033P-PIR-V"
+        "modelName" : "SR-BL9033P-PIR-V",
+        "sensitivityRangeMin" : 45232,
+        "sensitivityRangeMax" : 62194
     },
     {
         "companyId" : "0A78",
@@ -285,7 +297,9 @@
         "elementCount" : 3,
         "iconCategory" : "Lighting",
         "deviceCategory" : "Lighting",
-        "modelName" : "SR-BL9033J-PIR-V"
+        "modelName" : "SR-BL9033J-PIR-V",
+        "sensitivityRangeMin" : 9766,
+        "sensitivityRangeMax" : 55769
     },
     {
         "companyId" : "0A78",
@@ -294,7 +308,9 @@
         "elementCount" : 2,
         "iconCategory" : "Standalone Sensor",
         "deviceCategory" : "Lighting",
-        "modelName" : "SR-BL9030A-PIR-V"
+        "modelName" : "SR-BL9030A-PIR-V",
+        "sensitivityRangeMin" : 0,
+        "sensitivityRangeMax" : 65535
     },
     {
         "companyId" : "0A78",
@@ -303,7 +319,9 @@
         "elementCount" : 2,
         "iconCategory" : "Standalone Sensor",
         "deviceCategory" : "Lighting",
-        "modelName" : "SR-SS9030B-PIR-V"
+        "modelName" : "SR-SS9030B-PIR-V",
+        "sensitivityRangeMin" : 16448,
+        "sensitivityRangeMax" : 52428
     },
     {
         "companyId" : "0A78",
@@ -555,7 +573,9 @@
         "elementCount" : 3,
         "iconCategory" : "Lighting",
         "deviceCategory" : "Lighting",
-        "modelName" : "SunSmart DemoBorad NRF-EVK"
+        "modelName" : "SunSmart DemoBorad NRF-EVK",
+        "sensitivityRangeMin" : 0,
+        "sensitivityRangeMax" : 65535
     },
     {
         "companyId" : "0A78",

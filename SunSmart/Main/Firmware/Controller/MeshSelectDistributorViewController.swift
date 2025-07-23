@@ -141,6 +141,7 @@ class MeshSelectDistributorViewController: UIViewController {
         MeshNetworkManager.instance.realNodes.forEach({
             $0.rssi = nil
             $0.peripheral = nil
+            $0.rssiState = .none
         })
         self.tableView.reloadData()
 //        self.setupData(loadServerData: true)

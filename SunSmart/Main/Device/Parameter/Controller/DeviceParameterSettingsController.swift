@@ -25,6 +25,8 @@ class DeviceParameterSettingsController: UIViewController {
     let devices: [Node]
     
     var settingsCompletionCallback: ParameterSettingsCompletionCallback?
+    /// 默认的传感器灵敏度
+    private var defaultMotionSensitivityRange: ClosedRange<Double> = 0...100
     
     init(devices: [Node]) {
         self.devices = devices
@@ -41,8 +43,14 @@ class DeviceParameterSettingsController: UIViewController {
         title = "device_parameter_settings".localizedString
         view.backgroundColor = Background_Color
         
+        var motionSensitivityRange: ClosedRange<Double>?
+        // 获取设备配置的灵敏度
+        if let device = devices.first(where: { $0.deviceConfigInfo?.sensitivityRange != nil }), let sensitivityValueRange = device.deviceConfigInfo?.sensitivityRange {
+            motionSensitivityRange = Double(sensitivityValueRange.lowerBound.percentageFloat)...Double(sensitivityValueRange.upperBound.percentageFloat)
+        }
+        
         parameterDatas = [
-            .init(type: .pwmFrequency, data: 2940, enable: false), .init(type: .ratedPower, data: ratedPowerPhaseDatas, enable: false), .init(type: .motionSensitivityRange, data: UInt8(0)...UInt8(80), enable: false)
+            .init(type: .pwmFrequency, data: 2940, enable: false), .init(type: .ratedPower, data: ratedPowerPhaseDatas, enable: false), .init(type: .motionSensitivityRange, data: motionSensitivityRange ?? defaultMotionSensitivityRange, enable: false)
         ]
         setupUI()
         
@@ -88,8 +96,8 @@ class DeviceParameterSettingsController: UIViewController {
                     return .ratedPower(datas: phases.compactMap({ $0.toNodePhaseEnergyConsumption() }))
                 }
             case .motionSensitivityRange:
-                if let range = parameterData.data as? ClosedRange<UInt8> {
-                    return .motionSensitivityRange(range: UInt8(Double(range.lowerBound) * 2.55)...UInt8(Double(range.upperBound) * 2.55))
+                if let range = parameterData.data as? ClosedRange<Double> {
+                    return .motionSensitivityRange(range: range.lowerBound.value16...range.upperBound.value16)
                 }
             }
             return nil
@@ -304,7 +312,7 @@ extension DeviceParameterSettingsController: UITableViewDataSource, UITableViewD
             return ratedPowerCell
         case .motionSensitivityRange:
             let sensitivityCell = tableView.dequeueReusableCell(withIdentifier: "sensitivityCell", for: indexPath) as! DeviceParameterAbsoluteSensitivityViewCell
-            if let range = parameterData.data as? ClosedRange<UInt8> {
+            if let range = parameterData.data as? ClosedRange<Double> {
                 sensitivityCell.selectRange = range
             }
             sensitivityCell.updateParameterEnable(enable: parameterData.enable)
@@ -402,7 +410,7 @@ extension DeviceParameterSettingsController: DeviceParameterRetedPowerViewCellDe
 extension DeviceParameterSettingsController: DeviceParameterAbsoluteSensitivityViewCellDelegate {
     
     /// 修改灵敏度范围
-    func cell(_ cell: DeviceParameterAbsoluteSensitivityViewCell, changeSensitivityRange range: ClosedRange<UInt8>) {
+    func cell(_ cell: DeviceParameterAbsoluteSensitivityViewCell, changeSensitivityRange range: ClosedRange<Double>) {
         
         if let index = self.parameterDatas.firstIndex(where: { $0.type == .motionSensitivityRange }) {
             self.parameterDatas[index].data = range
@@ -418,6 +426,11 @@ extension DeviceParameterSettingsController: DeviceParameterAbsoluteSensitivityV
             updateSetupBtnState()
         }
         tableView.performBatchUpdates(nil)
+    }
+    
+    /// 恢复默认值
+    func sensitivityViewCellResetAction(_ cell: DeviceParameterAbsoluteSensitivityViewCell) {
+        cell.selectRange = defaultMotionSensitivityRange
     }
     
 }

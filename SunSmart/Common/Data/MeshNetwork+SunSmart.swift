@@ -698,7 +698,7 @@ extension MeshNetworkManager {
     func getNextGroupName(_ defaultName: String = "group_defalut_name".localizedString) -> String {
         // 已存在的组名称
         let existNames = groups.map({ $0.name })
-        for index in 1...16 {
+        for index in 1...1000 {
             let name = defaultName + "\(index)"
             if !existNames.contains(name) {
                 return name
@@ -1928,6 +1928,9 @@ extension Node {
         if oldNode.phaseEnergyConsumptions.count > 0 {
             restoreData.phaseEnergyConsumptions = oldNode.phaseEnergyConsumptions
         }
+        if oldNode.motionSensitivityRange != nil {
+            restoreData.motionSensitivityRange = oldNode.motionSensitivityRange
+        }
         
         if let group = addToGroup {
             // 恢复的设备之前作为组光照传感器，恢复后更新设备地址缓存到组
@@ -2063,6 +2066,17 @@ extension Node {
         // 能耗设置
         if let phaseEnergyConsumptions = restoreData.phaseEnergyConsumptions, let vendorModel = self.sunricherVendorModel {
             let messageHandle = MeshMessageHandle(message: SunricherVendorSet(function: .phaseEnergyConsumption(list: phaseEnergyConsumptions)), model: vendorModel)
+            messageHandles.append(messageHandle)
+        }
+        
+        // 灵敏度范围
+        if let motionSensitivityRange = self.restoreData?.motionSensitivityRange,
+           self.motionSensitivityRange != motionSensitivityRange,
+           self.supportMotionSensitivity,
+           let vendorModel = self.sunricherVendorModel {
+            
+            let sensitivity = self.motionSensitivity ?? min(UInt8(group?.info.profile.sensitivity ?? 100).value16, 65535)
+            let messageHandle = MeshMessageHandle(message: SunricherVendorSet(function: .motionSensitivity(sensitivity, maxValue: motionSensitivityRange.upperBound, minValue: motionSensitivityRange.lowerBound)), model: vendorModel)
             messageHandles.append(messageHandle)
         }
         

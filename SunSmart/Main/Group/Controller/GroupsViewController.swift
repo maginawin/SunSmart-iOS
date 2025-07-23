@@ -108,7 +108,7 @@ class GroupsViewController: UIViewController {
     }
     
     override func observeValue(forKeyPath keyPath: String?, of object: Any?, change: [NSKeyValueChangeKey : Any]?, context: UnsafeMutableRawPointer?) {
-        if NetworkRequest.shared.networkable {
+        if NetworkRequest.shared.networkable, space.applyGroupAddressCount != nil {
             applyGroupAddressAlert()
         }
     }

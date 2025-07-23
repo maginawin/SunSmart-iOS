@@ -179,11 +179,48 @@ extension Float {
     }
 }
 
-extension UInt8 {
+protocol PercentageProtocol {
+    var percentage: UInt8 { get }
+    var value16: UInt16 { get }
+}
+
+extension UInt8: PercentageProtocol {
     
     /// UInt8 => 0~100%
     var percentage: UInt8 {
         return UInt8((Double(self) / 2.55).rounded())
     }
+    
+    /// 0~100% => UInt16 value
+    var value16: UInt16 {
+        return UInt16(Double(self) / 100.0 * Double(UInt16.max))
+    }
 }
 
+extension UInt16: PercentageProtocol {
+    
+    /// UInt16 => 0~100%
+    var percentage: UInt8 {
+        return UInt8((Double(self) / 65535.0 * 100.0).rounded())
+    }
+    
+    /// UInt16 => 0.0~100.0%
+    var percentageFloat: Float {
+        return roundf((Float(self) / 65535.0 * 100.0) * 10) / 10
+    }
+    
+    var value16: UInt16 {
+        return self
+    }
+}
+
+extension Double: PercentageProtocol {
+    var percentage: UInt8 {
+        return UInt8(self.rounded())
+    }
+    
+    /// 0.0~100.0% => UInt16 value
+    var value16: UInt16 {
+        return UInt16(Double(self) / 100.0 * Double(UInt16.max))
+    }
+}

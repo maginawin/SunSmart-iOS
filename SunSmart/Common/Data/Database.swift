@@ -2449,6 +2449,8 @@ extension MeshDeviceConfigInfo {
         static let iconCategory = Expression<String>("iconCategory")
         static let deviceCategory = Expression<String>("deviceCategory")
         static let modelName = Expression<String?>("modelName")
+        static let sensitivityRangeMin = Expression<Int?>("sensitivityRangeMin")
+        static let sensitivityRangeMax = Expression<Int?>("sensitivityRangeMax")
     }
     
     /// 初始化设备配置信息表
@@ -2463,6 +2465,8 @@ extension MeshDeviceConfigInfo {
             builder.column(ExpressionKey.iconCategory)
             builder.column(ExpressionKey.deviceCategory)
             builder.column(ExpressionKey.modelName)
+            builder.column(ExpressionKey.sensitivityRangeMin)
+            builder.column(ExpressionKey.sensitivityRangeMax)
             builder.unique(ExpressionKey.companyId, ExpressionKey.productId)
         }))
         // 获取表内存在的属性
@@ -2479,6 +2483,14 @@ extension MeshDeviceConfigInfo {
             // 是否存在”modelName“属性
             if !columns.contains(where: { $0.name == "modelName" }) {
                 _ = try? SunSmartDataManager.shared.db?.run(MeshDeviceConfigInfo.deviceConfigInfosTable.addColumn(ExpressionKey.modelName))
+            }
+            // 是否存在”sensitivityRangeMin“属性
+            if !columns.contains(where: { $0.name == "sensitivityRangeMin" }) {
+                _ = try? SunSmartDataManager.shared.db?.run(MeshDeviceConfigInfo.deviceConfigInfosTable.addColumn(ExpressionKey.sensitivityRangeMin))
+            }
+            // 是否存在”sensitivityRangeMax“属性
+            if !columns.contains(where: { $0.name == "sensitivityRangeMax" }) {
+                _ = try? SunSmartDataManager.shared.db?.run(MeshDeviceConfigInfo.deviceConfigInfosTable.addColumn(ExpressionKey.sensitivityRangeMax))
             }
         }
     }
@@ -2504,7 +2516,13 @@ extension MeshDeviceConfigInfo {
         var infos: [MeshDeviceConfigInfo] = []
         if let rows = try? SunSmartDataManager.shared.db?.prepare(query) {
             for row in rows {
-                let info = MeshDeviceConfigInfo(companyId: UInt16(row[ExpressionKey.companyId]), productId: UInt16(row[ExpressionKey.productId]), categoryName: row[ExpressionKey.categoryName], elementCount: row[ExpressionKey.elementCount], iconCategory: row[ExpressionKey.iconCategory], deviceCategory: row[ExpressionKey.deviceCategory], modelName: row[ExpressionKey.modelName])
+                
+                var sensitivityRange: ClosedRange<UInt16>?
+                if let min = row[ExpressionKey.sensitivityRangeMin], let max = row[ExpressionKey.sensitivityRangeMax] {
+                    sensitivityRange = UInt16(min)...UInt16(max)
+                }
+                
+                let info = MeshDeviceConfigInfo(companyId: UInt16(row[ExpressionKey.companyId]), productId: UInt16(row[ExpressionKey.productId]), categoryName: row[ExpressionKey.categoryName], elementCount: row[ExpressionKey.elementCount], iconCategory: row[ExpressionKey.iconCategory], deviceCategory: row[ExpressionKey.deviceCategory], modelName: row[ExpressionKey.modelName], sensitivityRange: sensitivityRange)
                 infos.append(info)
             }
         }
@@ -2562,7 +2580,9 @@ extension MeshDeviceConfigInfo {
             ExpressionKey.elementCount <- self.elementCount,
             ExpressionKey.iconCategory <- self.iconCategory,
             ExpressionKey.deviceCategory <- self.deviceCategory,
-            ExpressionKey.modelName <- self.modelName
+            ExpressionKey.modelName <- self.modelName,
+            ExpressionKey.sensitivityRangeMin <- self.sensitivityRange != nil ? Int(self.sensitivityRange!.lowerBound) : nil,
+            ExpressionKey.sensitivityRangeMax <- self.sensitivityRange != nil ? Int(self.sensitivityRange!.upperBound) : nil
         ])
         do {
             try SunSmartDataManager.shared.db?.run(insertOrUpdate)

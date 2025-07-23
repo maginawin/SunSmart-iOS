@@ -176,7 +176,7 @@ class SpaceViewController: WMPageController {
         MeshNodeHeartbeatManager.shared.autoHeartbeatLoop = true
         MeshNodeHeartbeatManager.shared.openHeartbeatShare = false
         MeshNodeHeartbeatManager.shared.heartbeatMode = .general
-        MeshLibManager.manager.showLogs = [.network, .access, .lowerTransport, .upperTransport, .proxy, .bearer]
+//        MeshLibManager.manager.showLogs = [.network, .access, .lowerTransport, .upperTransport, .proxy, .bearer]
         // 添加通知监听
         addNotificaiton()
         // 获取space数据

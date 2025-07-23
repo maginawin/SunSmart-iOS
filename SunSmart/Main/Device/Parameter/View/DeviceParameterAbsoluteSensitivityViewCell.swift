@@ -10,15 +10,18 @@ import UIKit
 protocol DeviceParameterAbsoluteSensitivityViewCellDelegate: AnyObject {
     
     /// 修改灵敏度范围
-    func cell(_ cell: DeviceParameterAbsoluteSensitivityViewCell, changeSensitivityRange range: ClosedRange<UInt8>)
+    func cell(_ cell: DeviceParameterAbsoluteSensitivityViewCell, changeSensitivityRange range: ClosedRange<Double>)
     
     /// 修改启用/禁用开关
     func cell(_ cell: DeviceParameterAbsoluteSensitivityViewCell, parameterEnableStateChanged enable: Bool)
     
+    /// 恢复
+    func sensitivityViewCellResetAction(_ cell: DeviceParameterAbsoluteSensitivityViewCell)
+    
 }
 
 class DeviceParameterAbsoluteSensitivityViewCell: UITableViewCell {
-
+    
     private var titleLabel: UILabel!
     private var enableSwitch: UISwitch!
     private var sliderView: UIView!
@@ -35,13 +38,15 @@ class DeviceParameterAbsoluteSensitivityViewCell: UITableViewCell {
     /// 提示信息
     private var noteLabel: UILabel!
     
+    private var resetBtn: UIButton!
+    
     weak var delegate: DeviceParameterAbsoluteSensitivityViewCellDelegate?
 
     /// 选择的范围
-    var selectRange: ClosedRange<UInt8> = 0...80 {
+    var selectRange: ClosedRange<Double> = 0...80 {
         didSet {
-            slider.lowerValue = Double(selectRange.lowerBound)
-            slider.upperValue = Double(selectRange.upperBound)
+            slider.lowerValue = selectRange.lowerBound
+            slider.upperValue = selectRange.upperBound
             updateSliderUI()
         }
     }
@@ -73,22 +78,38 @@ class DeviceParameterAbsoluteSensitivityViewCell: UITableViewCell {
     }
     
     @objc private func addBtnClick() {
-        slider.upperValue = min(slider.upperValue + 1, slider.maximumValue)
+        
+        if slider.lowerThumbLayer.highlighted {
+            slider.lowerValue = min(slider.lowerValue + 1, slider.maximumValue)
+        }else {
+            slider.upperValue = min(slider.upperValue + 1, slider.maximumValue)
+        }
+        
         updateSliderUI()
     }
     
     @objc private func minusBtnClick() {
-        slider.upperValue = max(slider.upperValue - 1, slider.minimumValue)
+        if slider.lowerThumbLayer.highlighted {
+            slider.lowerValue = max(slider.lowerValue - 1, slider.minimumValue)
+        }else {
+            slider.upperValue = max(slider.upperValue - 1, slider.minimumValue)
+        }
         updateSliderUI()
     }
     
     @objc private func sliderValueChanged() {
         updateSliderUI()
-        delegate?.cell(self, changeSensitivityRange: UInt8(slider.lowerValue)...UInt8(slider.upperValue))
+        delegate?.cell(self, changeSensitivityRange: Double(slider.lowerValue)...Double(slider.upperValue))
+    }
+    
+    @objc private func resetBtnAction() {
+        delegate?.sensitivityViewCellResetAction(self)
     }
     
     func updateParameterEnable(enable: Bool) {
         enableSwitch.isOn = enable
+        
+        resetBtn.isHidden = !enable
         if enable {
             
             noteLabel.isHidden = false
@@ -123,15 +144,14 @@ class DeviceParameterAbsoluteSensitivityViewCell: UITableViewCell {
     }
     
     private func updateSliderUI() {
-        let range = UInt8(slider.lowerValue)...UInt8(slider.upperValue)
         
-        minLabel.text = "\(range.lowerBound)%"
-        maxLabel.text = "\(range.upperBound)%"
+        minLabel.text = "\(slider.lowerValue.toSimplifyStr(maxDigits: 1))%"
+        maxLabel.text = "\(slider.upperValue.toSimplifyStr(maxDigits: 1))%"
         guard slider.frame != .zero else {
             return
         }
-        let minProgress = (Double(range.lowerBound) - slider.minimumValue) / (slider.maximumValue - slider.minimumValue)
-        let maxProgress = (Double(range.upperBound) - slider.minimumValue) / (slider.maximumValue - slider.minimumValue)
+        let minProgress = (slider.lowerValue - slider.minimumValue) / (slider.maximumValue - slider.minimumValue)
+        let maxProgress = (slider.upperValue - slider.minimumValue) / (slider.maximumValue - slider.minimumValue)
         
         minLabel.snp.updateConstraints { make in
             let x = 24 + (slider.width - 44) * CGFloat(minProgress)
@@ -159,6 +179,19 @@ class DeviceParameterAbsoluteSensitivityViewCell: UITableViewCell {
         enableSwitch.snp.makeConstraints { make in
             make.right.equalTo(SCRXFrom(-16))
             make.centerY.equalTo(titleLabel)
+        }
+        
+        resetBtn = UIButton(title: "reset".localizedString, titleSize: 14, titleWeight: .light, titleColor: Bar_Color, target: self, action: #selector(resetBtnAction))
+        resetBtn.contentEdgeInsets = UIEdgeInsets(top: 0, left: SCRXFrom(11.5), bottom: 0, right: SCRXFrom(11.5))
+        resetBtn.layer.cornerRadius = SCRYFrom(14)
+        resetBtn.layer.borderWidth = 0.5
+        resetBtn.layer.borderColor = RGB(220, 220, 220).cgColor
+        resetBtn.isHidden = true
+        contentView.addSubview(resetBtn)
+        resetBtn.snp.makeConstraints { make in
+            make.right.equalTo(enableSwitch.snp.left).offset(SCRXFrom(-24))
+            make.centerY.equalTo(enableSwitch)
+            make.height.equalTo(SCRYFrom(28))
         }
         
         sliderView = UIView()
@@ -191,8 +224,11 @@ class DeviceParameterAbsoluteSensitivityViewCell: UITableViewCell {
         slider.thumbDisableTintColor = Background_Color
         slider.minimumValue = 0
         slider.maximumValue = 100
+        slider.minimumRange = 10
         slider.lowerValue = Double(selectRange.lowerBound)
         slider.upperValue = Double(selectRange.upperBound)
+        slider.upperThumbLayer.highlighted = true
+        slider.keepThumbHighlighted = true
         slider.addTarget(self, action: #selector(sliderValueChanged), for: .valueChanged)
         sliderView.addSubview(slider)
         slider.snp.makeConstraints { make in
@@ -210,7 +246,7 @@ class DeviceParameterAbsoluteSensitivityViewCell: UITableViewCell {
 //            make.width.greaterThanOrEqualTo(SCRXFrom(30))
         }
         
-        maxLabel = UILabel(text: "", textColor: ImportantText_Color, fontSize: 14, fontWeight: .light, fit: false)
+        maxLabel = UILabel(text: "\(selectRange.upperBound)%", textColor: ImportantText_Color, fontSize: 14, fontWeight: .light, fit: false)
         sliderView.addSubview(maxLabel)
         maxLabel.snp.makeConstraints { make in
             make.centerX.equalTo(slider.snp.left).offset(20)
