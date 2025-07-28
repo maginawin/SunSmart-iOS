@@ -17,7 +17,5 @@
 		<string>bluetooth-central</string>
 		<string>bluetooth-peripheral</string>
 	</array>
-	<key>UILaunchScreen</key>
-	<false/>
 </dict>
 </plist>

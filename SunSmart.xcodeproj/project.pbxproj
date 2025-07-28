@@ -855,7 +855,7 @@
 		C886E1932E30E20500D0C3A6 /* Archipelago-Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = C88555332DE6B5F400C8B688 /* Archipelago-Assets.xcassets */; };
 		C886E1942E30E24100D0C3A6 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = C896B9B02A930BAA00217512 /* Assets.xcassets */; };
 		C886E19A2E30E55C00D0C3A6 /* SylSmart-LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = C886E1992E30E55C00D0C3A6 /* SylSmart-LaunchScreen.storyboard */; };
-		C886E1A02E30E63200D0C3A6 /* Archipelago-Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = C886E19F2E30E63200D0C3A6 /* Archipelago-Assets.xcassets */; };
+		C886E1A02E30E63200D0C3A6 /* Assets-SylSmart.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = C886E19F2E30E63200D0C3A6 /* Assets-SylSmart.xcassets */; };
 		C88B25742ADD180900CF1AE4 /* DeviceLightViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C88B25732ADD180900CF1AE4 /* DeviceLightViewController.swift */; };
 		C88B25762ADD399C00CF1AE4 /* DeviceLightBasicController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C88B25752ADD399C00CF1AE4 /* DeviceLightBasicController.swift */; };
 		C88B257A2ADE1D2100CF1AE4 /* DeviceLightHeaderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C88B25792ADE1D2100CF1AE4 /* DeviceLightHeaderView.swift */; };
@@ -1268,7 +1268,7 @@
 		C886E1882E30DE4900D0C3A6 /* SylSmart.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = SylSmart.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		C886E18F2E30DF9000D0C3A6 /* SylSmart-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "SylSmart-Info.plist"; sourceTree = "<group>"; };
 		C886E1992E30E55C00D0C3A6 /* SylSmart-LaunchScreen.storyboard */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; path = "SylSmart-LaunchScreen.storyboard"; sourceTree = "<group>"; };
-		C886E19F2E30E63200D0C3A6 /* Archipelago-Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = "Archipelago-Assets.xcassets"; sourceTree = "<group>"; };
+		C886E19F2E30E63200D0C3A6 /* Assets-SylSmart.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = "Assets-SylSmart.xcassets"; sourceTree = "<group>"; };
 		C88B25732ADD180900CF1AE4 /* DeviceLightViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceLightViewController.swift; sourceTree = "<group>"; };
 		C88B25752ADD399C00CF1AE4 /* DeviceLightBasicController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceLightBasicController.swift; sourceTree = "<group>"; };
 		C88B25792ADE1D2100CF1AE4 /* DeviceLightHeaderView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceLightHeaderView.swift; sourceTree = "<group>"; };
@@ -1913,7 +1913,7 @@
 			children = (
 				C8CD4F4A2E337A6D00E4DE1F /* Privacy Policy.html */,
 				C8CD4F4E2E337D8500E4DE1F /* User Agreement.html */,
-				C886E19F2E30E63200D0C3A6 /* Archipelago-Assets.xcassets */,
+				C886E19F2E30E63200D0C3A6 /* Assets-SylSmart.xcassets */,
 				C886E18F2E30DF9000D0C3A6 /* SylSmart-Info.plist */,
 				C886E1992E30E55C00D0C3A6 /* SylSmart-LaunchScreen.storyboard */,
 			);
@@ -3074,7 +3074,7 @@
 				C886E17A2E30DE4900D0C3A6 /* XWHUDManager_error@2x.png in Resources */,
 				C886E17B2E30DE4900D0C3A6 /* CodeScan.bundle in Resources */,
 				C886E17C2E30DE4900D0C3A6 /* devices_config.json in Resources */,
-				C886E1A02E30E63200D0C3A6 /* Archipelago-Assets.xcassets in Resources */,
+				C886E1A02E30E63200D0C3A6 /* Assets-SylSmart.xcassets in Resources */,
 				C8CD4F4F2E337D8500E4DE1F /* User Agreement.html in Resources */,
 				C886E17D2E30DE4900D0C3A6 /* XWHUDManager_error@3x.png in Resources */,
 				C886E17E2E30DE4900D0C3A6 /* Assets.xcassets in Resources */,

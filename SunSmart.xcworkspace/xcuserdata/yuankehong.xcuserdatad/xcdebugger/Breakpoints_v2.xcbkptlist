@@ -52,12 +52,12 @@
             landmarkType = "7">
             <Locations>
                <Location
-                  uuid = "470A2B50-EF47-4C75-98BF-386F15DE560A - 76f780269f68565d"
+                  uuid = "470A2B50-EF47-4C75-98BF-386F15DE560A - ec0fc24a52aab651"
                   shouldBeEnabled = "Yes"
                   ignoreCount = "0"
                   continueAfterRunningActions = "No"
-                  symbolName = "SunSmart.DeviceParameterSettingsController.viewDidLoad() -&gt; ()"
-                  moduleName = "SunSmart.debug.dylib"
+                  symbolName = "SylSmart.DeviceParameterSettingsController.viewDidLoad() -&gt; ()"
+                  moduleName = "SylSmart.debug.dylib"
                   usesParentBreakpointCondition = "Yes"
                   urlString = "file:///Users/yuankehong/Desktop/SunSmart/SunSmart/Main/Device/Parameter/Controller/DeviceParameterSettingsController.swift"
                   startingColumnNumber = "9223372036854775807"
@@ -66,12 +66,12 @@
                   endingLineNumber = "48">
                </Location>
                <Location
-                  uuid = "470A2B50-EF47-4C75-98BF-386F15DE560A - 76f780269f68565d"
+                  uuid = "470A2B50-EF47-4C75-98BF-386F15DE560A - ec0fc24a52aab651"
                   shouldBeEnabled = "Yes"
                   ignoreCount = "0"
                   continueAfterRunningActions = "No"
-                  symbolName = "SunSmart.DeviceParameterSettingsController.viewDidLoad() -&gt; ()"
-                  moduleName = "SunSmart.debug.dylib"
+                  symbolName = "SylSmart.DeviceParameterSettingsController.viewDidLoad() -&gt; ()"
+                  moduleName = "SylSmart.debug.dylib"
                   usesParentBreakpointCondition = "Yes"
                   urlString = "file:///Users/yuankehong/Desktop/SunSmart/SunSmart/Main/Device/Parameter/Controller/DeviceParameterSettingsController.swift"
                   startingColumnNumber = "9223372036854775807"
@@ -80,12 +80,12 @@
                   endingLineNumber = "48">
                </Location>
                <Location
-                  uuid = "470A2B50-EF47-4C75-98BF-386F15DE560A - 7745399d81c8f67"
+                  uuid = "470A2B50-EF47-4C75-98BF-386F15DE560A - 6042ce1f80e8167"
                   shouldBeEnabled = "Yes"
                   ignoreCount = "0"
                   continueAfterRunningActions = "No"
-                  symbolName = "closure #1 (NordicSigMeshSDK.Node) -&gt; Swift.Bool in SunSmart.DeviceParameterSettingsController.viewDidLoad() -&gt; ()"
-                  moduleName = "SunSmart.debug.dylib"
+                  symbolName = "closure #1 (NordicSigMeshSDK.Node) -&gt; Swift.Bool in SylSmart.DeviceParameterSettingsController.viewDidLoad() -&gt; ()"
+                  moduleName = "SylSmart.debug.dylib"
                   usesParentBreakpointCondition = "Yes"
                   urlString = "file:///Users/yuankehong/Desktop/SunSmart/SunSmart/Main/Device/Parameter/Controller/DeviceParameterSettingsController.swift"
                   startingColumnNumber = "9223372036854775807"
