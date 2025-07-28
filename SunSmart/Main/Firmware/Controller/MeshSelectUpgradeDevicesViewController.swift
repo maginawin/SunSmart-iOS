@@ -98,77 +98,77 @@ class MeshSelectUpgradeDevicesViewController: UIViewController {
             selectNodes.append(distributorNode)
         }
         
-//        XWHUDManager.showCustomHUD(withMessage: nil, isWindow: true)
-        
-        var compositionHash: Data?
-        // 截取compositionHash值
-        if let metadata = distributorNode.distributionIncomingFirmwareMetadata, metadata.count >= 16 {
-            compositionHash = metadata.subdata(in: 12..<16)
-        }
-        guard let compositionHash = compositionHash, let distributionFirmwareSize = distributorNode.distributionFirmwareSize else {
-            return
-        }
-        let session = UInt8(arc4random_uniform(254) + 1)
         XWHUDManager.showCustomHUD(withMessage: nil, isWindow: true)
-        MeshVendorOTAManager.shared.startMeshOTA(distributionNode: self.distributorNode, targetNodes: self.selectNodes, session: session, updateFirmwareImageIndex: 0, firmwareHash: UInt32(data: compositionHash), firmwareSize: distributionFirmwareSize, chunkSize: 100) {[weak self] result in
-            guard let self = self else { return }
-            DispatchQueue.main.async {
-                XWHUDManager.hide()
-                switch result {
-                case .success:
-                    XWHUDManager.showSuccessTipHUD("已开始升级")
-                    
-                case .failure(let error):
-                    XWHUDManager.showErrorTipHUD(error.localizedDescription)
-                }
-            }
-        }
         
-//        MeshFirmwareDistributionManager.shared.startDistribution(distributionNode: self.distributorNode, targetNodes: self.selectNodes) {[weak self] _, state
-//            in
+//        var compositionHash: Data?
+//        // 截取compositionHash值
+//        if let metadata = distributorNode.distributionIncomingFirmwareMetadata, metadata.count >= 16 {
+//            compositionHash = metadata.subdata(in: 12..<16)
+//        }
+//        guard let compositionHash = compositionHash, let distributionFirmwareSize = distributorNode.distributionFirmwareSize else {
+//            return
+//        }
+//        let session = UInt8(arc4random_uniform(254) + 1)
+//        XWHUDManager.showCustomHUD(withMessage: nil, isWindow: true)
+//        MeshVendorOTAManager.shared.startMeshOTA(distributionNode: self.distributorNode, targetNodes: self.selectNodes, session: session, updateFirmwareImageIndex: 0, firmwareHash: UInt32(data: compositionHash), firmwareSize: distributionFirmwareSize, chunkSize: 100) {[weak self] result in
 //            guard let self = self else { return }
-//            switch state {
-//            case .check:
-//                print("分发设备检查固件中")
-//            case .relation:
-//                print("关联分发设备中")
-//            case .await, .started, .waitManualInstall:
+//            DispatchQueue.main.async {
 //                XWHUDManager.hide()
-//                var distributionData = MeshDistributionData(distributionAddress: distributorNode.primaryUnicastAddress, targetAddresses: selectNodes.map({ $0.primaryUnicastAddress }), distributionState: .await)
-//                
-//                switch state {
-//                case .started, .waitManualInstall:
-//                    if case .waitManualInstall = state {
-//                        distributionData.distributionState = .waitingInstall(currentDistributionNode: nil)
-//                    }
-//                    distributionData.distributionState = .updating(updatePhase: .blob(progress: 0, estimateTime: -1))
-//                    let vc = MeshFirmwareUpdateViewController(distributorData: distributionData, initial: true)
-//                    self.navigationController?.pushViewController(vc, animated: true)
-////                    self.navigationController?.removeVc(vc: self)
-//                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.5, execute: {
-//                        if let selectDistributorVc = self.navigationController?.viewControllers.first(where: { $0.isKind(of: MeshSelectDistributorViewController.classForCoder()) }) {
-//                            self.navigationController?.removeViewControllers(viewControllers: [self, selectDistributorVc])
-//                        }
-//                    })
-//                case .await: // 排队中
-//                    self.state = .waiting
-//                    self.updateBottomUIState()
-//                    self.tableView.reloadData()
-//                    if let selectDistributorVc = self.navigationController?.viewControllers.first(where: { $0.isKind(of: MeshSelectDistributorViewController.classForCoder()) }) {
-//                        self.navigationController?.removeVc(vc: selectDistributorVc)
-//                    }
-//                default:
-//                    break
+//                switch result {
+//                case .success:
+//                    XWHUDManager.showSuccessTipHUD("已开始升级")
+//                    
+//                case .failure(let error):
+//                    XWHUDManager.showErrorTipHUD(error.localizedDescription)
 //                }
-//                distributionData.save(productId: distributorNode.productIdentifier!)
-//                
-//                NotificationCenter.default.post(name: .init(firmwareListRefreshNotificationName), object: nil)
-//                
-//            case .failure(let error):
-//                XWHUDManager.hide()
-//                XWHUDManager.showErrorTipHUD(error.message)
 //            }
 //        }
+        
+        MeshFirmwareDistributionManager.shared.startDistribution(distributionNode: self.distributorNode, targetNodes: self.selectNodes) {[weak self] _, state
+            in
+            guard let self = self else { return }
+            switch state {
+            case .check:
+                print("分发设备检查固件中")
+            case .relation:
+                print("关联分发设备中")
+            case .await, .started, .waitManualInstall:
+                XWHUDManager.hide()
+                var distributionData = MeshDistributionData(distributionAddress: distributorNode.primaryUnicastAddress, targetAddresses: selectNodes.map({ $0.primaryUnicastAddress }), distributionState: .await)
+                
+                switch state {
+                case .started, .waitManualInstall:
+                    if case .waitManualInstall = state {
+                        distributionData.distributionState = .waitingInstall(currentDistributionNode: nil)
+                    }
+                    distributionData.distributionState = .updating(updatePhase: .blob(progress: 0, estimateTime: -1))
+                    let vc = MeshFirmwareUpdateViewController(distributorData: distributionData, initial: true)
+                    self.navigationController?.pushViewController(vc, animated: true)
+//                    self.navigationController?.removeVc(vc: self)
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.5, execute: {
+                        if let selectDistributorVc = self.navigationController?.viewControllers.first(where: { $0.isKind(of: MeshSelectDistributorViewController.classForCoder()) }) {
+                            self.navigationController?.removeViewControllers(viewControllers: [self, selectDistributorVc])
+                        }
+                    })
+                case .await: // 排队中
+                    self.state = .waiting
+                    self.updateBottomUIState()
+                    self.tableView.reloadData()
+                    if let selectDistributorVc = self.navigationController?.viewControllers.first(where: { $0.isKind(of: MeshSelectDistributorViewController.classForCoder()) }) {
+                        self.navigationController?.removeVc(vc: selectDistributorVc)
+                    }
+                default:
+                    break
+                }
+                distributionData.save(productId: distributorNode.productIdentifier!)
+                
+                NotificationCenter.default.post(name: .init(firmwareListRefreshNotificationName), object: nil)
+                
+            case .failure(let error):
+                XWHUDManager.hide()
+                XWHUDManager.showErrorTipHUD(error.message)
+            }
+        }
         
     }
     

@@ -194,7 +194,7 @@ class DeviceAddProfessionalModeController: UIViewController {
                 if device.rssi.intValue > self.filterRSSIRange.upperBound {
                     device.rssi = NSNumber(value: self.filterRSSIRange.upperBound)
                 }
-                if device.triggerActionType != nil {
+                if device.triggerActionTypes.count > 0 {
                     device.activityDate = Date()
                 }
                 
@@ -231,7 +231,7 @@ class DeviceAddProfessionalModeController: UIViewController {
                     if !self.candidateDevices.contains(where: { $0.peripheral.identifier.uuidString == device.peripheral.identifier.uuidString }), self.selectRSSIRange.contains(device.rssi.intValue) {
                         switch addMode {
                         case .motionSensing:
-                            if device.triggerActionType != nil {
+                            if device.triggerActionTypes.contains(.motionSensing) {
                                 self.candidateDevices.append(device)
                             }
                         case .manual:
@@ -931,7 +931,7 @@ class DeviceAddProfessionalModeController: UIViewController {
             let devices = self.scanDevices.filter({ device in !self.candidateDevices.contains(where: { $0.peripheral.identifier.uuidString == device.peripheral.identifier.uuidString }) && self.selectRSSIRange.contains(device.rssi.intValue) })
             switch addMode {
             case .motionSensing:
-                self.candidateDevices.append(contentsOf: devices.filter({ $0.triggerActionType != nil }))
+                self.candidateDevices.append(contentsOf: devices.filter({ $0.triggerActionTypes.contains(.motionSensing) }))
             case .manual:
                 break
             case .rssiRange:

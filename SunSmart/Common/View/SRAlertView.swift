@@ -342,6 +342,7 @@ class SRAlertView: UIView {
                      messageFont: UIFont = UIFont.systemFont(ofSize: 15, weight: .light),
                      inputText: String? = nil,
                      inputFieldStyle: TextFieldStyle,
+                     showPrompt: Bool = true,
                      margin: CGFloat = isIPad ? SCRXFrom(150) : SCRXFrom(35),
                      actions: [SRAlertAction] = [],
                      textValueChangedBack: InputTextChangedBack?,
@@ -388,9 +389,13 @@ class SRAlertView: UIView {
         
         messageLabel.textColor = messageColor
         messageLabel.font = messageFont
-        messageLabel.textAlignment = .left
+        if showPrompt {
+            messageLabel.textAlignment = .left
+        }else {
+            messageLabel.textAlignment = .center
+        }
         messageLabel.text = message
-        if message == nil || message?.isEmpty ?? true || textValueChangedBack == nil {
+        if message == nil || message?.isEmpty ?? true || showPrompt { // || textValueChangedBack == nil
             messageLabel.snp.remakeConstraints { make in
                 make.left.equalTo(textField).offset(SCRXFrom(8))
                 make.right.equalTo(textField)
@@ -698,23 +703,25 @@ class SRAlertView: UIView {
             self.perform(#selector(textExceededHide), with: nil, afterDelay: 2)
             
         }else {
+            let btnColor = actions.last?.titleColor ?? Bottom_Done_Color
             if textValueChangedBack != nil {
                 let message = textValueChangedBack?(realText, realText.count >= minInputLength)
                 if message?.isEmpty ?? true {
                     let enabled = realText.count >= self.minInputLength && (self.minInputLength > 0 && !realText.isAllInputTextEmpty())
+                    
                     self.secondBtn.isUserInteractionEnabled = enabled
-                    self.secondBtn.setTitleColor(enabled ? Bottom_Done_Color : Bottom_Done_Color.withAlphaComponent(0.5), for: .normal)
+                    self.secondBtn.setTitleColor(enabled ? btnColor : btnColor.withAlphaComponent(0.5), for: .normal)
                     messageLabel.textColor = Title_Color
                 }else {
                     secondBtn.isUserInteractionEnabled = false
-                    self.secondBtn.setTitleColor(Bottom_Done_Color.withAlphaComponent(0.5), for: .normal)
+                    self.secondBtn.setTitleColor(btnColor.withAlphaComponent(0.5), for: .normal)
                     messageLabel.textColor = Red_Color
                 }
                 messageLabel.text = message
             }else {
                 let enabled = realText.count >= self.minInputLength && (self.minInputLength > 0 && !realText.isAllInputTextEmpty())
                 self.secondBtn.isUserInteractionEnabled = enabled
-                self.secondBtn.setTitleColor(enabled ? Bottom_Done_Color : Bottom_Done_Color.withAlphaComponent(0.5), for: .normal)
+                self.secondBtn.setTitleColor(enabled ? btnColor : btnColor.withAlphaComponent(0.5), for: .normal)
             }
         }
     }

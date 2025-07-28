@@ -156,7 +156,7 @@ extension ProvisioningDevice {
     
     /// 更新数据 rssi/触发类型（适用于搜索到重复设备时）
     func updateData(device: ProvisioningDevice) {
-        self.triggerActionType = device.triggerActionType
+        self.triggerActionTypes = device.triggerActionTypes
         self.activityDate = device.activityDate
         self.rssi = device.rssi
         self.deviceName = device.deviceName

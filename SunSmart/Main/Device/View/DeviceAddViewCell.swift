@@ -18,10 +18,7 @@ protocol DeviceAddViewCellDelegate: AnyObject {
     
     /// 设备状态图标点击
     func cell(_ cell: DeviceAddViewCell, deviceStateImageClick device: ProvisioningDevice)
-    
-//    func cell(_ cell: DeviceAddViewCell, ) -> <#return type#> {
-//        <#function body#>
-//    }
+
 }
 
 class DeviceAddViewCell: UITableViewCell {
@@ -169,7 +166,7 @@ class DeviceAddViewCell: UITableViewCell {
             
             let activityDuration = device.activityDate != nil ? device.activityDate!.distance(to: Date()) : 0
             
-            if device.triggerActionType != nil && activityDuration < 3 && device.addState != .identifying {
+            if device.triggerActionTypes.count > 0 && activityDuration < 3 && device.addState != .identifying {
                 activityImageView.isHidden = false
                 startActivityTimer(interval: 3 - activityDuration)
 //                if device.macAddress == "D8A6F671810F" {
@@ -226,7 +223,7 @@ class DeviceAddViewCell: UITableViewCell {
     }
     
     @objc private func deviceActivityFinish() {
-        device.triggerActionType = nil
+        device.triggerActionTypes.removeAll()
         
         activityImageView.isHidden = true
     }

@@ -1435,7 +1435,7 @@ self.updateAddressData()
     /// 验证space密码
     private func verificationSpacePassword(space: SpaceData, callback:((Bool)->Void)? = nil) {
         let message = space.permission == .editor ? "space_editor_password_changed_message".localizedString : "space_vistor_password_changed_message".localizedString
-        SRAlertView(title: "notification".localizedString, message: message, inputText: nil, inputFieldStyle: .init(placeholder: "Password".localizedString, keyboardType: .numberPad, margin: SCRXFrom(56), height: SCRYFrom(32), minInputLength: 4, maxInputLength: 4, borderColor: RGB(153, 153, 153, 0.3), textAlignment: .center, secret: true, showClear: false), actions: [.cancelAction, SRAlertAction(title: "confirm".localizedString)], textValueChangedBack: nil) {[weak self] password in
+        SRAlertView(title: "notification".localizedString, message: message, inputText: nil, inputFieldStyle: .init(placeholder: "Password".localizedString, keyboardType: .numberPad, margin: SCRXFrom(56), height: SCRYFrom(32), minInputLength: 4, maxInputLength: 4, borderColor: RGB(153, 153, 153, 0.3), textAlignment: .center, secret: true, showClear: false), showPrompt: false, actions: [.cancelAction, SRAlertAction(title: "confirm".localizedString)], textValueChangedBack: nil) {[weak self] password in
             guard let self = self else { return }
             self.loadSpaceReqeust(space: space, verificationPassword: password, callback: callback)
         }.show()

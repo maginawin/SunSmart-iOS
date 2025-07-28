@@ -255,7 +255,9 @@
         "elementCount" : 3,
         "iconCategory" : "Lighting",
         "deviceCategory" : "Lighting",
-        "modelName" : "SR-BL9035AJ-PIR-V-54"
+        "modelName" : "SR-BL9035AJ-PIR-V-54",
+        "sensitivityRangeMin" : 26214,
+        "sensitivityRangeMax" : 58981
     },
     {
         "companyId" : "0A78",

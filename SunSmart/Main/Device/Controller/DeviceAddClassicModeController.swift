@@ -187,7 +187,7 @@ class DeviceAddClassicModeController: UIViewController {
                     device.rssi = NSNumber(value: self.filterRSSIRange.upperBound)
                 }
                 
-                if device.triggerActionType != nil {
+                if device.triggerActionTypes.count > 0 {
                     device.activityDate = Date()
                 }
                 
@@ -345,7 +345,7 @@ class DeviceAddClassicModeController: UIViewController {
         rssiSortTimer = nil
         
         scanDevices.sort(by: { $0.rssi.intValue >= $1.rssi.intValue })
-        showDevices = scanDevices.filter({ selectRSSIRange.contains($0.rssi.intValue) })
+        showDevices = scanDevices.filter({ selectRSSIRange.contains($0.rssi.intValue) && showDeviceTypes.contains($0.deviceType) })
 //        if showDevices.count > 0 {
 //            showDevices.sort(by: { $0.rssi.intValue >= $1.rssi.intValue })
             tableView.reloadData()

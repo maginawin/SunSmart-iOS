@@ -597,7 +597,7 @@ extension DeviceParameterDevicesViewController: UITableViewDataSource, UITableVi
         }
         tableView.reloadRows(at: [indexPath], with: .none)
         
-        if let group = device.group, let data = groupDatas.first(where: { $0.groupAddress == group.address.address }) {
+        if let data = groupDatas.first(where: { $0.groupAddress == device.group?.address.address ?? 0 }) {
             let groupSelectDevices = selectDevices.filter({ device in data.addresss.contains(device.primaryUnicastAddress) })
             data.isSelected = groupSelectDevices.count == data.addresss.count
 //            !selectDevices.contains(where: { device in !data.addresss.contains(device.primaryUnicastAddress) })
@@ -639,7 +639,7 @@ extension DeviceParameterDevicesViewController: DeviceGroupsViewDelegate {
         }
         tableView.reloadData()
         groupDatas.forEach({
-            $0.isSelected = selectAll
+            $0.isSelected = selectAll && $0.addresss.count > 0
         })
         groupsView.datas = groupDatas
         groupsView.selectAllBtn.isSelected = selectDevices.count == devices.count
@@ -709,7 +709,7 @@ extension DeviceParameterDevicesViewController: DeviceParameterPromptViewDelegat
             break
         }
      
-        var sensitivityContents: [(name: String, value: ClosedRange<UInt16>?)] = absoluteSensitivitys.map({ range in ("\(range.lowerBound.percentage)%~\(range.upperBound.percentage)%", range) })
+        var sensitivityContents: [(name: String, value: ClosedRange<UInt16>?)] = absoluteSensitivitys.map({ range in ("\(range.lowerBound.percentageFloat)%~\(range.upperBound.percentageFloat)%", range) })
         if devices.contains(where: { $0.tempSensitivityRange == nil }) {
             sensitivityContents.insert(("--", nil), at: 0)
         }

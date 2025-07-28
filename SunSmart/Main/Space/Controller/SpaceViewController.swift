@@ -173,10 +173,10 @@ class SpaceViewController: WMPageController {
         MeshLibManager.manager.groupSubscriptionModelIDs = [.genericOnOffServerModelId, .lightLightnessServerModelId, .lightCTLTemperatureServerModelId, .lightCTLServerModelId, .sensorServerModelId, .lightLCServerModelId]
         MeshLibManager.manager.subElementGroupSubscriptionModelIDs = [.lightCTLTemperatureServerModelId, .lightLCServerModelId]
         checkBluetoothState()
-        MeshNodeHeartbeatManager.shared.autoHeartbeatLoop = true
+        MeshNodeHeartbeatManager.shared.autoHeartbeatLoop = false
         MeshNodeHeartbeatManager.shared.openHeartbeatShare = false
         MeshNodeHeartbeatManager.shared.heartbeatMode = .general
-//        MeshLibManager.manager.showLogs = [.network, .access, .lowerTransport, .upperTransport, .proxy, .bearer]
+        MeshLibManager.manager.showLogs = [.network, .access, .lowerTransport, .upperTransport, .proxy, .bearer]
         // 添加通知监听
         addNotificaiton()
         // 获取space数据
