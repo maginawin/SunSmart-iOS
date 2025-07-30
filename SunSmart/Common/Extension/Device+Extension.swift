@@ -56,7 +56,7 @@ public extension UIDevice {
         case "iPhone17,2":                              return "iPhone 16 Pro Max"
         case "iPhone17,3":                              return "iPhone 16"
         case "iPhone17,4":                              return "iPhone 16 Plus"
-            
+        case "iPhone17,5":                              return "iPhone 16e"
         case "iPad6,11", "iPad6,12":                    return "iPad 5"
         case "iPad7,5", "iPad7,6":                      return "iPad 6"
         case "iPad7,11", "iPad7,12":                    return "iPad 7"

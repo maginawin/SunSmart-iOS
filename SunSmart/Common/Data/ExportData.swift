@@ -306,6 +306,21 @@ extension SpaceData {
                     }
                     // 阶段功率
                     nodeDict.updateValue(node.phaseEnergyConsumptions.map({ ["percent": $0.percent, "power": $0.power] }), forKey: "ratedPowerPhases")
+                    // 相对灵敏度
+                    if let motionSensitivity = node.motionSensitivity {
+                        nodeDict.updateValue(motionSensitivity, forKey: "motionSensitivity")
+                    }
+                    // 灵敏度范围
+                    if let motionSensitivityRange = node.motionSensitivityRange {
+                        nodeDict.updateValue(motionSensitivityRange.lowerBound, forKey: "motionSensitivityRangeMin")
+                        nodeDict.updateValue(motionSensitivityRange.upperBound, forKey: "motionSensitivityRangeMax")
+                    }
+                    // 邻近照明
+                    nodeDict.updateValue(node.proximityLightingEnabled, forKey: "proximityLightingEnabled")
+                    if let proximityLightingRelayCount = node.proximityLightingRelayCount {
+                        nodeDict.updateValue(proximityLightingRelayCount, forKey: "proximityLightingRelayCount")
+                    }
+                    nodeDict.updateValue(node.proximityLightingNeighborAddresses, forKey: "proximityLightingNeighborAddresses")
                     
                     nodeDicts.append(nodeDict)
                 }
@@ -326,7 +341,7 @@ extension SpaceData {
                     }
                     let profile = group.info.profile
                     let lightData = profile.lightData.data
-                    let profileDict: [String: Any] = [
+                    var profileDict: [String: Any] = [
                         "id": profile.id,
                         "type": profile.type.rawValue,
                         "highEndTrim": lightData.highEndTrim,
@@ -345,7 +360,13 @@ extension SpaceData {
                         "powerOnCct": profile.powerUpCct,
                         "adjustSpeed": profile.adjustSpeed
                     ]
+                    if profile.type == .proximityLighting {
+                        profileDict.updateValue(profile.proximityLightingNumber, forKey: "proximityLightingNumber")
+                    }
+                    profileDict.updateValue(profile.sensitivity, forKey: "relativeSensitivity")
                     groupDict.updateValue(profileDict, forKey: "profile")
+                    
+                    
                     if let sensorNode = group.info.ambientLightSensorNode {
                         groupDict.updateValue(sensorNode.primaryUnicastAddress.hex, forKey: "daylightSensorAddress")
                     }

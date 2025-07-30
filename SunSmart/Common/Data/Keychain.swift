@@ -22,7 +22,7 @@ struct Keychain {
 
         guard let data = getData(key: account), let retrievedUUID = String(data: data, encoding: .utf8) else {
             // 钥匙串没有缓存，则创建一个uuid并缓存到钥匙串
-            let uuid = UIDevice.current.identifierForVendor?.uuidString ?? UUID().uuidString
+            let uuid = UUID().uuidString
             guard saveUUID(uuid) else {
                 return ""
             }
@@ -48,7 +48,7 @@ struct Keychain {
     }
     
     /// 设置最后使用的APP VendorIdentifier
-    static func saveLastVendorIdentifier(vendorIdentifier: String = UIDevice.current.identifierForVendor?.uuidString ?? getUUID()) -> Bool {
+    static func saveLastVendorIdentifier(vendorIdentifier: String = getUUID()) -> Bool {
         guard let data = vendorIdentifier.data(using: .utf8) else {
             return false
         }

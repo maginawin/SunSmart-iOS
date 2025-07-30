@@ -118,7 +118,7 @@ class BuoySliderView: UIView {
     }
     
     override func hitTest(_ point: CGPoint, with event: UIEvent?) -> UIView? {
-        if let slider = slider {
+        if let slider = slider, !self.isHidden, self.isUserInteractionEnabled {
             let pointInSlider = slider.convert(point, from: self)
             let extendedBounds = slider.bounds.insetBy(dx: -20, dy: -20)
             if extendedBounds.contains(pointInSlider) {

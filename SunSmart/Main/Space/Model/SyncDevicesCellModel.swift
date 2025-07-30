@@ -630,22 +630,6 @@ class SyncDevicesGroupModel: SyncCellModel {
 
 class SyncDevicesModel: SyncCellModel {
     
-//    /// 状态
-//    enum State {
-//        /// 空
-//        case none
-//        /// 等待
-////        case wait
-//        /// 设置中
-//        case inSettings
-//        /// 成功
-//        case successful
-//        /// 失败
-//        case failure
-//        /// 重复失败
-//        case repeatedFailure
-//    }
-//    
     /// 图标名称
     var imageName: String = "device_light"
     /// 设备名称

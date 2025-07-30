@@ -275,11 +275,12 @@ class SitesViewController: UIViewController {
                         var sites: [SiteData] = []
                         // 导入site数据属于耗时操作，等待异步线程完成
                         print("导入数据: \(Date().timeIntervalSince1970)")
+                        let reinstallation = UserData.isReinstallation
                         await withTaskGroup(of: SiteData?.self) { group in
                             for data in siteDatas {
                                 group.addTask {
                                     // 异步处理每个数据
-                                    return await SiteData.import(siteJsonData: data)
+                                    return await SiteData.import(siteJsonData: data, changeAddress: reinstallation)
                                 }
                             }
                             // 收集结果
@@ -290,9 +291,9 @@ class SitesViewController: UIViewController {
                             }
                         }
                         print("导入数据完成: \(Date().timeIntervalSince1970)")
-                        if UserData.isReinstallation {
-                           _ = Keychain.saveLastVendorIdentifier()
-                        }
+//                        if UserData.isReinstallation {
+//                           _ = Keychain.saveLastVendorIdentifier()
+//                        }
                         
                         // 转移site事件信息
                         let transferredEvents: [(siteId: String, username: String)] = JSON(response)["data"]["events"].arrayValue.filter({ $0["eventType"].string == "OwnerTransfer" }).compactMap({
@@ -334,9 +335,9 @@ class SitesViewController: UIViewController {
                         }
                         
                         // 上传到云端
-//                        self.allSites.filter({ $0.needUploadCloud && $0.state == .normal }).forEach { site in
-//                            CloudSynchronizationManager.shared.addSynchronizationHandle(operation: .syncSite(site: site, syncSpaces: []), level: .promptly)
-//                        }
+                        self.allSites.filter({ $0.needUploadCloud && $0.state == .normal }).forEach { site in
+                            CloudSynchronizationManager.shared.addSynchronizationHandle(operation: .syncSite(site: site, syncSpaces: []), level: .promptly)
+                        }
                         
                     }
                 }else {

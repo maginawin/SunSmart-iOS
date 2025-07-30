@@ -1107,6 +1107,24 @@
 		C8C1E5A82B6A1FA500F60E62 /* XWHUDManager_successful@3x.png in Resources */ = {isa = PBXBuildFile; fileRef = C8C1E5A62B6A1FA500F60E62 /* XWHUDManager_successful@3x.png */; };
 		C8C1E5AB2B6A1FDC00F60E62 /* XWHUDManager_error@2x.png in Resources */ = {isa = PBXBuildFile; fileRef = C8C1E5A92B6A1FDC00F60E62 /* XWHUDManager_error@2x.png */; };
 		C8C1E5AC2B6A1FDC00F60E62 /* XWHUDManager_error@3x.png in Resources */ = {isa = PBXBuildFile; fileRef = C8C1E5AA2B6A1FDC00F60E62 /* XWHUDManager_error@3x.png */; };
+		C8C3A1502E37257500876028 /* GatewayNameViewCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8C3A14F2E37257500876028 /* GatewayNameViewCell.swift */; };
+		C8C3A1512E37257500876028 /* GatewayNameViewCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8C3A14F2E37257500876028 /* GatewayNameViewCell.swift */; };
+		C8C3A1522E37257500876028 /* GatewayNameViewCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8C3A14F2E37257500876028 /* GatewayNameViewCell.swift */; };
+		C8C3A1542E374C7500876028 /* GatewayAssociatedSpacesController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8C3A1532E374C7500876028 /* GatewayAssociatedSpacesController.swift */; };
+		C8C3A1552E374C7500876028 /* GatewayAssociatedSpacesController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8C3A1532E374C7500876028 /* GatewayAssociatedSpacesController.swift */; };
+		C8C3A1562E374C7500876028 /* GatewayAssociatedSpacesController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8C3A1532E374C7500876028 /* GatewayAssociatedSpacesController.swift */; };
+		C8C3A1582E37509800876028 /* GatewayAssociatedSpacesViewCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8C3A1572E37509800876028 /* GatewayAssociatedSpacesViewCell.swift */; };
+		C8C3A1592E37509800876028 /* GatewayAssociatedSpacesViewCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8C3A1572E37509800876028 /* GatewayAssociatedSpacesViewCell.swift */; };
+		C8C3A15A2E37509800876028 /* GatewayAssociatedSpacesViewCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8C3A1572E37509800876028 /* GatewayAssociatedSpacesViewCell.swift */; };
+		C8C3A15C2E37551C00876028 /* GatewayAssociatedSpacesInstructionsController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8C3A15B2E37551C00876028 /* GatewayAssociatedSpacesInstructionsController.swift */; };
+		C8C3A15D2E37551C00876028 /* GatewayAssociatedSpacesInstructionsController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8C3A15B2E37551C00876028 /* GatewayAssociatedSpacesInstructionsController.swift */; };
+		C8C3A15E2E37551C00876028 /* GatewayAssociatedSpacesInstructionsController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8C3A15B2E37551C00876028 /* GatewayAssociatedSpacesInstructionsController.swift */; };
+		C8C3A1602E375D9400876028 /* GatewayServerInformationViewCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8C3A15F2E375D9400876028 /* GatewayServerInformationViewCell.swift */; };
+		C8C3A1612E375D9400876028 /* GatewayServerInformationViewCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8C3A15F2E375D9400876028 /* GatewayServerInformationViewCell.swift */; };
+		C8C3A1622E375D9400876028 /* GatewayServerInformationViewCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8C3A15F2E375D9400876028 /* GatewayServerInformationViewCell.swift */; };
+		C8C3A1642E37705500876028 /* GatewayInformationHeaderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8C3A1632E37705500876028 /* GatewayInformationHeaderView.swift */; };
+		C8C3A1652E37705500876028 /* GatewayInformationHeaderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8C3A1632E37705500876028 /* GatewayInformationHeaderView.swift */; };
+		C8C3A1662E37705500876028 /* GatewayInformationHeaderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8C3A1632E37705500876028 /* GatewayInformationHeaderView.swift */; };
 		C8C663E62C199DCF0058A5F5 /* CustomActivityItemSource.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8C663E52C199DCF0058A5F5 /* CustomActivityItemSource.swift */; };
 		C8CAE8E32D75D76A00FCCA5A /* DevicesReplySetViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8CAE8E22D75D76A00FCCA5A /* DevicesReplySetViewController.swift */; };
 		C8CAE8E52D76EF9500FCCA5A /* SwitchSelectPanelTypeController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8CAE8E42D76EF9500FCCA5A /* SwitchSelectPanelTypeController.swift */; };
@@ -1524,6 +1542,12 @@
 		C8C1E5A62B6A1FA500F60E62 /* XWHUDManager_successful@3x.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "XWHUDManager_successful@3x.png"; sourceTree = "<group>"; };
 		C8C1E5A92B6A1FDC00F60E62 /* XWHUDManager_error@2x.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "XWHUDManager_error@2x.png"; sourceTree = "<group>"; };
 		C8C1E5AA2B6A1FDC00F60E62 /* XWHUDManager_error@3x.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "XWHUDManager_error@3x.png"; sourceTree = "<group>"; };
+		C8C3A14F2E37257500876028 /* GatewayNameViewCell.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GatewayNameViewCell.swift; sourceTree = "<group>"; };
+		C8C3A1532E374C7500876028 /* GatewayAssociatedSpacesController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GatewayAssociatedSpacesController.swift; sourceTree = "<group>"; };
+		C8C3A1572E37509800876028 /* GatewayAssociatedSpacesViewCell.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GatewayAssociatedSpacesViewCell.swift; sourceTree = "<group>"; };
+		C8C3A15B2E37551C00876028 /* GatewayAssociatedSpacesInstructionsController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GatewayAssociatedSpacesInstructionsController.swift; sourceTree = "<group>"; };
+		C8C3A15F2E375D9400876028 /* GatewayServerInformationViewCell.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GatewayServerInformationViewCell.swift; sourceTree = "<group>"; };
+		C8C3A1632E37705500876028 /* GatewayInformationHeaderView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GatewayInformationHeaderView.swift; sourceTree = "<group>"; };
 		C8C663E52C199DCF0058A5F5 /* CustomActivityItemSource.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CustomActivityItemSource.swift; sourceTree = "<group>"; };
 		C8CAE8E22D75D76A00FCCA5A /* DevicesReplySetViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DevicesReplySetViewController.swift; sourceTree = "<group>"; };
 		C8CAE8E42D76EF9500FCCA5A /* SwitchSelectPanelTypeController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SwitchSelectPanelTypeController.swift; sourceTree = "<group>"; };
@@ -2629,6 +2653,7 @@
 			isa = PBXGroup;
 			children = (
 				C8A4C5092C956255003EE5E5 /* Controller */,
+				C8C3A14E2E37250700876028 /* View */,
 			);
 			path = Gateway;
 			sourceTree = "<group>";
@@ -2646,6 +2671,8 @@
 			children = (
 				C8A4C50A2C956262003EE5E5 /* GatewaysViewController.swift */,
 				C8D22DFF2E010A47001A2BDA /* GatewayViewController.swift */,
+				C8C3A1532E374C7500876028 /* GatewayAssociatedSpacesController.swift */,
+				C8C3A15B2E37551C00876028 /* GatewayAssociatedSpacesInstructionsController.swift */,
 			);
 			path = Controller;
 			sourceTree = "<group>";
@@ -2814,6 +2841,17 @@
 				C8FDE9A62DD595A30002394B /* GroupProximityLightingData.swift */,
 			);
 			path = Model;
+			sourceTree = "<group>";
+		};
+		C8C3A14E2E37250700876028 /* View */ = {
+			isa = PBXGroup;
+			children = (
+				C8C3A14F2E37257500876028 /* GatewayNameViewCell.swift */,
+				C8C3A15F2E375D9400876028 /* GatewayServerInformationViewCell.swift */,
+				C8C3A1572E37509800876028 /* GatewayAssociatedSpacesViewCell.swift */,
+				C8C3A1632E37705500876028 /* GatewayInformationHeaderView.swift */,
+			);
+			path = View;
 			sourceTree = "<group>";
 		};
 		C8CD5C2E2DDC6D4800F09467 /* Model */ = {
@@ -3296,6 +3334,7 @@
 				C88553DA2DE6B44C00C8B688 /* LBXScanViewController.swift in Sources */,
 				C88553DB2DE6B44C00C8B688 /* SceneAddTemplateTitleHeaderView.swift in Sources */,
 				C88553DC2DE6B44C00C8B688 /* MacroDefinition.swift in Sources */,
+				C8C3A1502E37257500876028 /* GatewayNameViewCell.swift in Sources */,
 				C88553DD2DE6B44C00C8B688 /* DeviceGroupsView.swift in Sources */,
 				C88553DE2DE6B44C00C8B688 /* Database.swift in Sources */,
 				C88553DF2DE6B44C00C8B688 /* DeviceInformationViewController.swift in Sources */,
@@ -3433,6 +3472,7 @@
 				C885545D2DE6B44C00C8B688 /* GroupPathSequenceSelectData.swift in Sources */,
 				C885545E2DE6B44C00C8B688 /* GroupPathSequenceViewController.swift in Sources */,
 				C885545F2DE6B44C00C8B688 /* DaliMasterMultipleControlsView.swift in Sources */,
+				C8C3A1552E374C7500876028 /* GatewayAssociatedSpacesController.swift in Sources */,
 				C88554602DE6B44C00C8B688 /* DeviceProtocol.swift in Sources */,
 				C88554612DE6B44C00C8B688 /* BleFirmwareUpdateViewController.swift in Sources */,
 				C88554622DE6B44C00C8B688 /* SceneAddTemplateTitleCell.swift in Sources */,
@@ -3474,6 +3514,7 @@
 				C88554852DE6B44C00C8B688 /* DeviceParameterSettingsController.swift in Sources */,
 				C88554862DE6B44C00C8B688 /* GroupPathSequencePathLayout.swift in Sources */,
 				C88554872DE6B44C00C8B688 /* DaliMasterSingleControlView.swift in Sources */,
+				C8C3A1662E37705500876028 /* GatewayInformationHeaderView.swift in Sources */,
 				C88554882DE6B44C00C8B688 /* MenuPopView.swift in Sources */,
 				C88554892DE6B44C00C8B688 /* SyncDevicesProgressView.swift in Sources */,
 				C885548A2DE6B44C00C8B688 /* MeshFirmwareListViewController.swift in Sources */,
@@ -3488,6 +3529,7 @@
 				C88554922DE6B44C00C8B688 /* BetaTestingAlertView.swift in Sources */,
 				C88554932DE6B44C00C8B688 /* TimedSelectTypeView.swift in Sources */,
 				C88554942DE6B44C00C8B688 /* AdjustSpeedInstructionController.swift in Sources */,
+				C8C3A1602E375D9400876028 /* GatewayServerInformationViewCell.swift in Sources */,
 				C88554952DE6B44C00C8B688 /* LBXScanViewStyle.swift in Sources */,
 				C88554962DE6B44C00C8B688 /* UIView+frame.swift in Sources */,
 				C88554972DE6B44C00C8B688 /* SwitchSelectGroupsViewCell.swift in Sources */,
@@ -3499,6 +3541,7 @@
 				C885549D2DE6B44C00C8B688 /* DeviceParameterFilterView.swift in Sources */,
 				C885549E2DE6B44C00C8B688 /* DeviceSwitchesViewCell.swift in Sources */,
 				C885549F2DE6B44C00C8B688 /* Device+Extension.swift in Sources */,
+				C8C3A15D2E37551C00876028 /* GatewayAssociatedSpacesInstructionsController.swift in Sources */,
 				C88554A02DE6B44C00C8B688 /* GroupsViewController.swift in Sources */,
 				C88554A12DE6B44C00C8B688 /* GroupPathSequenceManuallyAddView.swift in Sources */,
 				C88554A22DE6B44C00C8B688 /* AboutViewController.swift in Sources */,
@@ -3578,6 +3621,7 @@
 				C88554E82DE6B44C00C8B688 /* NetowrkReqeustApi.swift in Sources */,
 				C88554E92DE6B44C00C8B688 /* PowerUpBehaviorInstructionController.swift in Sources */,
 				C88554EA2DE6B44C00C8B688 /* Profile.swift in Sources */,
+				C8C3A15A2E37509800876028 /* GatewayAssociatedSpacesViewCell.swift in Sources */,
 				C88554EB2DE6B44C00C8B688 /* ImportData.swift in Sources */,
 				C88554EC2DE6B44C00C8B688 /* DeviceLightViewController.swift in Sources */,
 				C88554ED2DE6B44C00C8B688 /* FirmwareData.swift in Sources */,
@@ -3667,6 +3711,7 @@
 				C886E02A2E30DE4900D0C3A6 /* LBXScanViewController.swift in Sources */,
 				C886E02B2E30DE4900D0C3A6 /* SceneAddTemplateTitleHeaderView.swift in Sources */,
 				C886E02C2E30DE4900D0C3A6 /* MacroDefinition.swift in Sources */,
+				C8C3A1512E37257500876028 /* GatewayNameViewCell.swift in Sources */,
 				C886E02D2E30DE4900D0C3A6 /* DeviceGroupsView.swift in Sources */,
 				C886E02E2E30DE4900D0C3A6 /* Database.swift in Sources */,
 				C886E02F2E30DE4900D0C3A6 /* DeviceInformationViewController.swift in Sources */,
@@ -3804,6 +3849,7 @@
 				C886E0B32E30DE4900D0C3A6 /* GroupPathSequenceSelectData.swift in Sources */,
 				C886E0B42E30DE4900D0C3A6 /* GroupPathSequenceViewController.swift in Sources */,
 				C886E0B52E30DE4900D0C3A6 /* DaliMasterMultipleControlsView.swift in Sources */,
+				C8C3A1542E374C7500876028 /* GatewayAssociatedSpacesController.swift in Sources */,
 				C886E0B62E30DE4900D0C3A6 /* DeviceProtocol.swift in Sources */,
 				C886E0B72E30DE4900D0C3A6 /* BleFirmwareUpdateViewController.swift in Sources */,
 				C886E0B82E30DE4900D0C3A6 /* SceneAddTemplateTitleCell.swift in Sources */,
@@ -3845,6 +3891,7 @@
 				C886E0DC2E30DE4900D0C3A6 /* DeviceParameterSettingsController.swift in Sources */,
 				C886E0DD2E30DE4900D0C3A6 /* GroupPathSequencePathLayout.swift in Sources */,
 				C886E0DE2E30DE4900D0C3A6 /* DaliMasterSingleControlView.swift in Sources */,
+				C8C3A1642E37705500876028 /* GatewayInformationHeaderView.swift in Sources */,
 				C886E0DF2E30DE4900D0C3A6 /* MenuPopView.swift in Sources */,
 				C886E0E02E30DE4900D0C3A6 /* SyncDevicesProgressView.swift in Sources */,
 				C886E0E12E30DE4900D0C3A6 /* MeshFirmwareListViewController.swift in Sources */,
@@ -3859,6 +3906,7 @@
 				C886E0EA2E30DE4900D0C3A6 /* BetaTestingAlertView.swift in Sources */,
 				C886E0EB2E30DE4900D0C3A6 /* TimedSelectTypeView.swift in Sources */,
 				C886E0EC2E30DE4900D0C3A6 /* AdjustSpeedInstructionController.swift in Sources */,
+				C8C3A1612E375D9400876028 /* GatewayServerInformationViewCell.swift in Sources */,
 				C886E0ED2E30DE4900D0C3A6 /* LBXScanViewStyle.swift in Sources */,
 				C886E0EE2E30DE4900D0C3A6 /* UIView+frame.swift in Sources */,
 				C886E0EF2E30DE4900D0C3A6 /* SwitchSelectGroupsViewCell.swift in Sources */,
@@ -3870,6 +3918,7 @@
 				C886E0F52E30DE4900D0C3A6 /* DeviceParameterFilterView.swift in Sources */,
 				C886E0F62E30DE4900D0C3A6 /* DeviceSwitchesViewCell.swift in Sources */,
 				C886E0F72E30DE4900D0C3A6 /* Device+Extension.swift in Sources */,
+				C8C3A15C2E37551C00876028 /* GatewayAssociatedSpacesInstructionsController.swift in Sources */,
 				C886E0F82E30DE4900D0C3A6 /* GroupsViewController.swift in Sources */,
 				C886E0F92E30DE4900D0C3A6 /* GroupPathSequenceManuallyAddView.swift in Sources */,
 				C886E0FA2E30DE4900D0C3A6 /* AboutViewController.swift in Sources */,
@@ -3949,6 +3998,7 @@
 				C886E1442E30DE4900D0C3A6 /* NetowrkReqeustApi.swift in Sources */,
 				C886E1452E30DE4900D0C3A6 /* PowerUpBehaviorInstructionController.swift in Sources */,
 				C886E1462E30DE4900D0C3A6 /* Profile.swift in Sources */,
+				C8C3A1582E37509800876028 /* GatewayAssociatedSpacesViewCell.swift in Sources */,
 				C886E1472E30DE4900D0C3A6 /* ImportData.swift in Sources */,
 				C886E1482E30DE4900D0C3A6 /* DeviceLightViewController.swift in Sources */,
 				C886E1492E30DE4900D0C3A6 /* FirmwareData.swift in Sources */,
@@ -4038,6 +4088,7 @@
 				C87EB4652BA17D3F00F9285B /* LBXScanViewController.swift in Sources */,
 				C8A130C62B32C2EC0008C353 /* SceneAddTemplateTitleHeaderView.swift in Sources */,
 				C8ACF1342AA1B2BA00E24B4A /* MacroDefinition.swift in Sources */,
+				C8C3A1522E37257500876028 /* GatewayNameViewCell.swift in Sources */,
 				C8B0589E2B50C9C6006FC36F /* DeviceGroupsView.swift in Sources */,
 				C8AAE2772A97435A00238C1C /* Database.swift in Sources */,
 				C85CB5F92BB6BE8E006598C0 /* DeviceInformationViewController.swift in Sources */,
@@ -4175,6 +4226,7 @@
 				C8CD5C302DDC6E9700F09467 /* GroupPathSequenceSelectData.swift in Sources */,
 				C88CCD932DD480B9003D5754 /* GroupPathSequenceViewController.swift in Sources */,
 				C8AFDBFB2D6FF6D600839A38 /* DaliMasterMultipleControlsView.swift in Sources */,
+				C8C3A1562E374C7500876028 /* GatewayAssociatedSpacesController.swift in Sources */,
 				C8A347CE2D6307CC0092D3E4 /* DeviceProtocol.swift in Sources */,
 				C89F089E2C77112F005C0711 /* BleFirmwareUpdateViewController.swift in Sources */,
 				C8A130C42B32C2B90008C353 /* SceneAddTemplateTitleCell.swift in Sources */,
@@ -4216,6 +4268,7 @@
 				C8AE17522DACA8E80071A9B1 /* DeviceParameterSettingsController.swift in Sources */,
 				C8CD5C2D2DDB6CD900F09467 /* GroupPathSequencePathLayout.swift in Sources */,
 				C8A347CC2D62E8660092D3E4 /* DaliMasterSingleControlView.swift in Sources */,
+				C8C3A1652E37705500876028 /* GatewayInformationHeaderView.swift in Sources */,
 				C898E2F32ABAD3DF00C71315 /* MenuPopView.swift in Sources */,
 				C8B0B48B2B468BC700747CF4 /* SyncDevicesProgressView.swift in Sources */,
 				C89BAB1F2C4F3CF4000A4173 /* MeshFirmwareListViewController.swift in Sources */,
@@ -4230,6 +4283,7 @@
 				C89C15712D9A873500789F0B /* BetaTestingAlertView.swift in Sources */,
 				C8A29C282B47D5CF00104634 /* TimedSelectTypeView.swift in Sources */,
 				C8047F312B8F670200A09FFA /* AdjustSpeedInstructionController.swift in Sources */,
+				C8C3A1622E375D9400876028 /* GatewayServerInformationViewCell.swift in Sources */,
 				C87EB4672BA17D3F00F9285B /* LBXScanViewStyle.swift in Sources */,
 				C8ACF13A2AA1B2BA00E24B4A /* UIView+frame.swift in Sources */,
 				C89A9A9C2C8AFA2D0032287D /* SwitchSelectGroupsViewCell.swift in Sources */,
@@ -4241,6 +4295,7 @@
 				C85120F52DB0A11200714111 /* DeviceParameterFilterView.swift in Sources */,
 				C89FD66D2C899D4B00DE431D /* DeviceSwitchesViewCell.swift in Sources */,
 				C85BC5F02C3BBE39002D4CB6 /* Device+Extension.swift in Sources */,
+				C8C3A15E2E37551C00876028 /* GatewayAssociatedSpacesInstructionsController.swift in Sources */,
 				C8BF084C2B26F78100144BAC /* GroupsViewController.swift in Sources */,
 				C8AC845C2DE15F6000213DE2 /* GroupPathSequenceManuallyAddView.swift in Sources */,
 				C89FEF432ABD657F00DCCFB6 /* AboutViewController.swift in Sources */,
@@ -4320,6 +4375,7 @@
 				C884EF772C05B96600B5F869 /* NetowrkReqeustApi.swift in Sources */,
 				C8047F2F2B8F5E1B00A09FFA /* PowerUpBehaviorInstructionController.swift in Sources */,
 				C82AE2ED2B96EC6600FA4BDB /* Profile.swift in Sources */,
+				C8C3A1592E37509800876028 /* GatewayAssociatedSpacesViewCell.swift in Sources */,
 				C8D6636F2BFEDDC900BFF81A /* ImportData.swift in Sources */,
 				C88B25742ADD180900CF1AE4 /* DeviceLightViewController.swift in Sources */,
 				C8A16F7E2C8725EF00FB50BD /* FirmwareData.swift in Sources */,
@@ -4485,7 +4541,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = JTD3WYUC58;
+				DEVELOPMENT_TEAM = FNFEMS8D6J;
 				GCC_PREFIX_HEADER = "";
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = "SylSmart/SylSmart-Info.plist";
@@ -4505,7 +4561,7 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.azoula.sylsmart;
+				PRODUCT_BUNDLE_IDENTIFIER = com.sylvania.sylsmartconnect;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
 				SUPPORTS_MACCATALYST = NO;
@@ -4527,7 +4583,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = JTD3WYUC58;
+				DEVELOPMENT_TEAM = FNFEMS8D6J;
 				GCC_PREFIX_HEADER = "";
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = "SylSmart/SylSmart-Info.plist";
@@ -4547,7 +4603,7 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.azoula.sylsmart;
+				PRODUCT_BUNDLE_IDENTIFIER = com.sylvania.sylsmartconnect;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
 				SUPPORTS_MACCATALYST = NO;
@@ -4684,7 +4740,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 5;
+				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = JTD3WYUC58;
 				GCC_PREFIX_HEADER = "";
 				GENERATE_INFOPLIST_FILE = YES;
@@ -4704,7 +4760,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.0.6;
+				MARKETING_VERSION = 1.0.7;
 				PRODUCT_BUNDLE_IDENTIFIER = com.azoula.sunsmart;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
@@ -4725,7 +4781,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 5;
+				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = JTD3WYUC58;
 				GCC_PREFIX_HEADER = "";
 				GENERATE_INFOPLIST_FILE = YES;
@@ -4745,7 +4801,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.0.6;
+				MARKETING_VERSION = 1.0.7;
 				PRODUCT_BUNDLE_IDENTIFIER = com.azoula.sunsmart;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";

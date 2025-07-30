@@ -33,12 +33,12 @@ class ManualOverrideTimeoutInstructionController: UIViewController {
             make.height.equalTo(imageView.snp.width).multipliedBy(141.0 / 328.0)
         }
         
-        personImageView = UIImageView(image: UIImage(named: "person_movement"))
-        imageView.addSubview(personImageView)
-        personImageView.snp.makeConstraints { make in
-            make.left.equalTo(SCRXFrom(130))
-            make.bottom.equalTo(-21)
-        }
+//        personImageView = UIImageView(image: UIImage(named: "person_movement"))
+//        imageView.addSubview(personImageView)
+//        personImageView.snp.makeConstraints { make in
+//            make.left.equalTo(SCRXFrom(130))
+//            make.bottom.equalTo(-21)
+//        }
         
         
         contentLabel = UILabel(text: "", textColor: SubText_Color, fontSize: 14, fontWeight: .light, fit: false)

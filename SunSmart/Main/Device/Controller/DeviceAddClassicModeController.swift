@@ -676,6 +676,9 @@ class DeviceAddClassicModeController: UIViewController {
             if let ctlModel = node.ctlModel, node.temperatureModel != nil {
                 appendMessages.insert(MeshMessageHandle(message: LightCTLTemperatureRangeGet(), model: ctlModel), at: 0)
             }
+            if let lightLCSetupModel = node.lightLCSetupModel {
+                appendMessages.append(MeshMessageHandle(message: LightLCModeSet(false), model: lightLCSetupModel))
+            }
             // 设置默认过渡时间
 //            if let defaultTransitionTimeModel = node.defaultTransitionTimeModel {
 //                appendMessages.append(MeshMessageHandle(message: GenericDefaultTransitionTimeSet(transitionTime: .default), model: defaultTransitionTimeModel))
@@ -689,18 +692,18 @@ class DeviceAddClassicModeController: UIViewController {
                 appendMessages.append(MeshMessageHandle(message: AttentionSet(attentionTimer: 6), model: healthModel))
             }
             
-            if device.deviceType == .gateway, let vendorModel = node.sunricherVendorModel {
-                appendMessages.append(MeshMessageHandle(message: SunricherVendorSet(function: .gatewaySimInfoSet(cid: 1, ipType: .ip, apn: "3gnet")), model: vendorModel))
-                
-                appendMessages.append(MeshMessageHandle(message: SunricherVendorSet(function: .gatewayMQTTConnectInfoSet(platformType: 0, serverAddress: "tcp://mqtt.sunsmart-cn.mericher.com:1883", userName: "Signature|Gateway|C2FB3109B9E0", password: "5dc9bc1d274548739b6a17cbd2298274", clientId: "sunsmart@@@C2FB3109B9E0", keepalive: 60, clearSession: true, authMode: .none, sslVersion: .all)), model: vendorModel))
-//                appendMessages.append(MeshMessageHandle(message: SunricherVendorSet(function: .gatewayMQTTConnectInfoSet(platformType: 0, serverAddress: "tcp://mqtt.sunsmart-cn.mericher.com:1883", userName: "Signature|Gateway|DDCDBC6F7308", password: "97636b9c647140b48363378b6c730f0c", clientId: "sunsmart@@@DDCDBC6F7308", keepalive: 60, clearSession: true, authMode: .none, sslVersion: .all)), model: vendorModel))
-                
-                if let mac = device.macAddress {
-                    appendMessages.append(MeshMessageHandle(message: SunricherVendorSet(function: .gatewayProjectRelevance(gatewayId: mac, projectId: space.siteId)), model: vendorModel))
-                }
-                
-                appendMessages.append(MeshMessageHandle(message: SunricherVendorSet(function: .gatewaySubnetsRelevanceSet(subnetAppkeyIndexs: node.applicationKeys.map({ $0.index }))), model: vendorModel))
-            }
+//            if device.deviceType == .gateway, let vendorModel = node.sunricherVendorModel {
+//                appendMessages.append(MeshMessageHandle(message: SunricherVendorSet(function: .gatewaySimInfoSet(cid: 1, ipType: .ip, apn: "3gnet")), model: vendorModel))
+//                
+//                appendMessages.append(MeshMessageHandle(message: SunricherVendorSet(function: .gatewayMQTTConnectInfoSet(platformType: 0, serverAddress: "tcp://mqtt.sunsmart-cn.mericher.com:1883", userName: "Signature|Gateway|C2FB3109B9E0", password: "5dc9bc1d274548739b6a17cbd2298274", clientId: "sunsmart@@@C2FB3109B9E0", keepalive: 60, clearSession: true, authMode: .none, sslVersion: .all)), model: vendorModel))
+////                appendMessages.append(MeshMessageHandle(message: SunricherVendorSet(function: .gatewayMQTTConnectInfoSet(platformType: 0, serverAddress: "tcp://mqtt.sunsmart-cn.mericher.com:1883", userName: "Signature|Gateway|DDCDBC6F7308", password: "97636b9c647140b48363378b6c730f0c", clientId: "sunsmart@@@DDCDBC6F7308", keepalive: 60, clearSession: true, authMode: .none, sslVersion: .all)), model: vendorModel))
+//                
+//                if let mac = device.macAddress {
+//                    appendMessages.append(MeshMessageHandle(message: SunricherVendorSet(function: .gatewayProjectRelevance(gatewayId: mac, projectId: space.siteId)), model: vendorModel))
+//                }
+//                
+//                appendMessages.append(MeshMessageHandle(message: SunricherVendorSet(function: .gatewaySubnetsRelevanceSet(subnetAppkeyIndexs: node.applicationKeys.map({ $0.index }))), model: vendorModel))
+//            }
         
             return appendMessages
         } appendMessageSuccessBack: { messageHandle in

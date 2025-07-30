@@ -487,6 +487,9 @@ class DeviceAddProfessionalModeController: UIViewController {
                         //                    appendMessages.append(MeshMessageHandle(message: GenericOnPowerUpSet(state: .default), model: powerOnOffSetupModel))
                         //                    appendMessages.append(MeshMessageHandle(message: LightLightnessDefaultSet(lightness: .max), model: lightnessSetupModel))
                     }
+                    if let lightLCSetupModel = node.lightLCSetupModel {
+                        appendMessages.append(MeshMessageHandle(message: LightLCModeSet(false), model: lightLCSetupModel))
+                    }
                 }
             }
             // 需要追加发送的消息

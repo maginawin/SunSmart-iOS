@@ -237,7 +237,7 @@ extension SiteData {
             }
             
             // 是否卸载后重装APP，需要更新site手机地址
-            if UserData.isReinstallation || changeAddress {
+            if changeAddress {
                 // 重新分配设备地址
                 if let provisioner = meshNetwork?.localProvisioner {
                     if let newAddress = meshNetwork?.nextAvailableUnicastAddress(elementsCount: 1, elementsUsing: provisioner, lockInAddress: false) {
@@ -950,6 +950,27 @@ extension SpaceData {
                         node.phaseEnergyConsumptions = phaseEnergyConsumptions
                     }
                     
+                    // 相对灵敏度
+                    if let motionSensitivity = nodeJson["motionSensitivity"].uInt16 {
+                        node.motionSensitivity = motionSensitivity
+                    }
+                    // 灵敏度范围
+                    if let motionSensitivityRangeMin = nodeJson["motionSensitivityRangeMin"].uInt16,
+                       let motionSensitivityRangeMax = nodeJson["motionSensitivityRangeMax"].uInt16, motionSensitivityRangeMin < motionSensitivityRangeMax {
+                        node.motionSensitivityRange = motionSensitivityRangeMin...motionSensitivityRangeMax
+                    }
+                    
+                    // 邻近照明
+                    if let proximityLightingEnabled = nodeJson["proximityLightingEnabled"].bool {
+                        node.proximityLightingEnabled = proximityLightingEnabled
+                    }
+                    if let proximityLightingRelayCount = nodeJson["proximityLightingRelayCount"].uInt8 {
+                        node.proximityLightingRelayCount = proximityLightingRelayCount
+                    }
+                    if let proximityLightingNeighborAddresses = nodeJson["proximityLightingNeighborAddresses"].arrayObject as? [String] {
+                        node.proximityLightingNeighborAddresses = proximityLightingNeighborAddresses.compactMap({ Address(hex: $0) })
+                    }
+                    
                     return node
                 }
                 return nil
@@ -1044,6 +1065,14 @@ extension SpaceData {
                                 profile.powerUpCct = powerOnCct
                             }
                             profile.adjustSpeed = profileJson["adjustSpeed"].int ?? 50
+                            
+                            if let proximityLightingNumber = profileJson["proximityLightingNumber"].uInt8 {
+                                profile.proximityLightingNumber = proximityLightingNumber
+                            }
+                            if let relativeSensitivity = profileJson["relativeSensitivity"].uInt8 {
+                                profile.sensitivity = relativeSensitivity
+                            }
+                            
                             group.info.profile = profile
                         }
                     }

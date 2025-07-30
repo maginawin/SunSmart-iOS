@@ -1235,9 +1235,23 @@
 
 "relative_sensitivity" = "相对灵敏度";
 "absolute_sensitivity" = "绝对灵敏度";
-"absolute_sensitivity_messsage" = "Note: Absolute sensitivity is the maximum range that a device can support. The purpose is to adjust the device individually to avoid false triggering due to component errors.Different from relative sensitivity, the maximum value of relative sensitivity 100% corresponds to the adjustment value here.";
-"absolute_sensitivity_instructions_1" = "Absolute sensitivity is the maximum range that a device can support. The purpose is to adjust the device individually to avoid false triggering due to component errors.";
-"absolute_sensitivity_instructions_2" = "Relative sensitivity, 100% corresponds to the adjustment value of absolute sensitivity, such as 200.";
-"absolute_sensitivity_instructions_3" = "If you find that the relative sensitivity of the device is already 100%, but it is still not sensitive enough, you can appropriately increase the absolute sensitivity limit value without false triggering.";
-"absolute_sensitivity_instructions_4" = "Note: \n1.You can set the absolute sensitivity in 'More'-'Device Parameter Settings'.
-2.You can adjust the device individually on the Device 'More' page.";
+"absolute_sensitivity_messsage" = "注意：绝对灵敏度是设备所能支持的最大范围。其作用是针对设备进行个别调整，以避免由于元件误差引起的误触发。不同于相对灵敏度，相对灵敏度的最大值 100% 对应于此处的调整值。";
+"absolute_sensitivity_instructions_1" = "绝对灵敏度是设备所能支持的最大范围。其作用是针对设备进行个别调整，以避免由于元件误差引起的误触发。";
+"absolute_sensitivity_instructions_2" = "相对灵敏度中，100% 对应于绝对灵敏度的调整值，例如 200。";
+"absolute_sensitivity_instructions_3" = "如果发现设备的相对灵敏度已经是 100%，但仍然不够灵敏，可以适当提高绝对灵敏度的限制值，而不会造成误触发。";
+"absolute_sensitivity_instructions_4" = "注意：\n1.你可以在“更多”-“设备参数设置”中设置绝对灵敏度。\n2.你可以在设备“更多”页面中单独调整设备。";
+"mac" = "Mac";
+"activate" = "激活";
+"associated_spaces" = "关联空间";
+"apn" = "APN（接入点名称）";
+"server_information" = "服务器信息";
+"server_address" = "服务器地址";
+"port" = "端口";
+"client_id" = "客户端 ID";
+"copy_gateway_information" = "复制网关信息";
+"associated_spaces" = "关联空间";
+"associated_spaces_message" = "最多 %d 个空间，共 %d 个设备";
+"associated_spaces_instructions" = "关联空间说明";
+"associated_spaces_instructions_message" = "请注意，当网关与空间关联时，关联空间列表中每个空间内必须至少有一个节点在网关的蓝牙通信范围内。";
+"gateway_connecting_message" = "正在通过蓝牙连接网关";
+

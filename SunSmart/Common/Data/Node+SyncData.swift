@@ -775,9 +775,9 @@ extension Node {
             }
             
             if lightLCSetupModel != nil {
-                //            if lightLCProperty.mode {
-//                syncProfile.append(.mode(enabled: false))
-                //            }
+                if lightLCProperty.mode ?? false {
+                    syncProfile.append(.mode(enabled: false))
+                }
                 // 占用类型
                 let occupancyType = groupProfile.type == .occupancy_daylight || groupProfile.type == .vacancy_daylight || groupProfile.type == .occupancy || groupProfile.type == .vacancy
                 if occupancyType {

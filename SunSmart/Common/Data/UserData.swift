@@ -26,13 +26,29 @@ extension UserData {
     private static var userNameKey = 2
     
     private static let isTermsOfServiceKey = "isTermsOfService"
+    private static let lastVendorIdentifier = "lastVendorIdentifier"
     
     /// 当前用户id
     static let currentUserId = Keychain.getUUID()
     /// 是否重装APP
     static var isReinstallation: Bool {
-        let lastVendorIdentifier = Keychain.getLastVendorIdentifier()
-        return lastVendorIdentifier != UIDevice.current.identifierForVendor?.uuidString
+        // 1. 钥匙串缓存的uuid
+        let keychainExists = Keychain.getLastVendorIdentifier() != nil
+        // 2. 检查 UserDefaults
+        let defaults = UserDefaults.standard
+        let defaultsExists = defaults.bool(forKey: UserData.lastVendorIdentifier)
+        
+        // 钥匙串有数据但 UserDefaults 无标记 卸载 → 重装
+        if keychainExists && !defaultsExists {
+            defaults.set(true, forKey: UserData.lastVendorIdentifier)
+            defaults.synchronize()
+            return true
+        } else if !keychainExists { // 首次安装
+            _ = Keychain.saveLastVendorIdentifier()
+            defaults.set(true, forKey: UserData.lastVendorIdentifier)
+            defaults.synchronize()
+        }
+        return false // 非重装
     }
     
     /// 是否同意使用协议

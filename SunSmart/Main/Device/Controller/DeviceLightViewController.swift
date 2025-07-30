@@ -76,7 +76,7 @@ class DeviceLightViewController: UIViewController {
         // 获取设备数据
         getNodeState()
         
-#if DEBUG
+//#if DEBUG
         replySwitch.isHidden = false
         replyLabel.isHidden = false
         // 获取节点转发功能是否启用
@@ -86,10 +86,10 @@ class DeviceLightViewController: UIViewController {
 //        if let model = node.sunricherVendorModel {
 //            MeshAPI.sendMessage(message: SunricherVendorGet(function: .pwmPeriod), model: model)
 //        }
-#else
-        replySwitch.isHidden = true
-        replyLabel.isHidden = true
-#endif
+//#else
+//        replySwitch.isHidden = true
+//        replyLabel.isHidden = true
+//#endif
     }
     
     
@@ -235,15 +235,15 @@ class DeviceLightViewController: UIViewController {
             self?.information()
         }))
            
-        #if DEBUG
+//        #if DEBUG
 //        items.append(.init(icon: UIImage(named: "menu_edit"), title: "pwm_period".localizedString, hideAnimation: false, tapItemBack: {[weak self] _ in
 //            self?.setPwmPeriod()
 //        }))
 //        #endif
-        items.append(.init(icon: UIImage(named: "menu_edit"), title: "LED inverse", tapItemBack: {[weak self] _ in
-            self?.test()
-        }))
-        #endif
+//        items.append(.init(icon: UIImage(named: "menu_edit"), title: "LED inverse", tapItemBack: {[weak self] _ in
+//            self?.test()
+//        }))
+//        #endif
 //        if let group = self.node.group {
 //            let profileType = group.info.profile.type
 //            if profileType == .occupancy_daylight || profileType == .occupancy || profileType == .vacancy_daylight || profileType == .vacancy || profileType == .proximityLighting {
