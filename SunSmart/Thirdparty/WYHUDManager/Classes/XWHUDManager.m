@@ -255,6 +255,15 @@ static XWHUDManagerType kXWHUDManagerType = XWHUDManagerTypeDark;
     [self p_showCustomIcon:@"successful" message:message isWindow:YES timer:kXWHUDHideTimeInterval];
 }
 
+/**
+ 在 KeyWindow 展示 有文本的成功提示,默认成功图片在 XWHUDImages.bundle 中, - 指定时间消失
+ 
+ @param message 提示语
+ */
++ (void)showSuccessTipHUD:(NSString *)message timer:(NSTimeInterval)aTimer {
+    [self p_showCustomIcon:@"successful" message:message isWindow:YES timer:aTimer];
+}
+
 /// 在view展示有文本正确提示
 + (void)showSuccessTipHUDInView:(NSString *)message {
     [self p_showCustomIcon:@"successful" message:message isWindow:NO timer:kXWHUDHideTimeInterval];

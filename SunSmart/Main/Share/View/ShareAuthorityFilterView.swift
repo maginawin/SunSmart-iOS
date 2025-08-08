@@ -423,6 +423,7 @@ class ShareAuthorityFilterHeaderView: UITableViewHeaderFooterView {
     var iconImageView: UIImageView!
     var nameLabel: UILabel!
     var arrowImageView: UIImageView!
+    var lineView: UIView!
     
     var clickActionCallback: (()->Void)?
     
@@ -464,6 +465,14 @@ class ShareAuthorityFilterHeaderView: UITableViewHeaderFooterView {
             make.right.centerY.equalToSuperview()
         }
         
+        lineView = UIView()
+        lineView.backgroundColor = Line_Color.withAlphaComponent(0.5)
+        lineView.isHidden = true
+        contentView.addSubview(lineView)
+        lineView.snp.makeConstraints { make in
+            make.left.right.bottom.equalToSuperview()
+            make.height.equalTo(0.5)
+        }
     }
     
 }

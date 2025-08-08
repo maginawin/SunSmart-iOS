@@ -72,6 +72,7 @@ class DeviceBottomBtnView: UIView {
         }
         
         saveBtn = UIButton(title: "save".localizedString, titleSize: 16, titleWeight: .light, titleColor: Bar_Color)
+        saveBtn.setTitleColor(Bar_Color.withAlphaComponent(0.5), for: .disabled)
         addSubview(saveBtn)
         saveBtn.snp.makeConstraints { make in
             make.right.top.equalToSuperview()

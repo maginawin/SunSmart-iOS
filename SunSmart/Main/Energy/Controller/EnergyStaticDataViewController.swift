@@ -537,15 +537,14 @@ extension EnergyStaticDataViewController: EnergyStaticDataSpaceViewDelegate {
         }
         
         // 有能耗统计设备
-        if MeshNetworkManager.instance.dongles.count > 0 {
-            let selectView = EnergyHarvestSelectView(frame: UIScreen.main.bounds)
-            selectView.delegate = self
-            selectView.show()
-        }else { // 无能耗统计设备
+//        if MeshNetworkManager.instance.dongles.count > 0 {
+//            let selectView = EnergyHarvestSelectView(frame: UIScreen.main.bounds)
+//            selectView.delegate = self
+//            selectView.show()
+//        }else { // 无能耗统计设备
             readMeshDevicesEnergy()
-        }
+//        }
         
-      
     }
     
     /// 查看历史采集的能耗数据事件

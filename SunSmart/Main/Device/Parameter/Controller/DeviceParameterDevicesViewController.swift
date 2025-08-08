@@ -231,6 +231,8 @@ class DeviceParameterDevicesViewController: UIViewController {
                             node.tempSensitivityRange = nil
                         case .totalDeviceEnergyUse:
                             break
+                        default:
+                            break
                         }
                     }
                 }else {

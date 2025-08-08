@@ -68,6 +68,9 @@ class DeviceAddClassicModeController: UIViewController {
     /// 展示的设备类型
     private var showDeviceTypes: [Node.DeviceType] = [.light]
     
+    /// 其它网关数据
+    private var otherGateways: [GatewayModel] = []
+    
     /// 添加状态回调 是否添加中
     var deviceStateCallback: ((Bool)->Void)?
     
@@ -97,7 +100,7 @@ class DeviceAddClassicModeController: UIViewController {
 //        NetworkRequest.shared.addObserver(self, forKeyPath: "networkable", context: nil)
         
         setupUI()
-        
+        otherGateways = GatewayModel.load(siteId: space.siteId)
         
         if forceBindToDongle != nil {
             showDeviceTypes = [.dongle, .unknown]
@@ -231,6 +234,8 @@ class DeviceAddClassicModeController: UIViewController {
 //                if self.selectRSSIRange.contains(device.rssi.intValue) {
                 if self.showDeviceTypes.contains(device.deviceType) {
                     self.startRssiSortTimer()
+                }else {
+                    self.updateDeviceCategoryCount()
                 }
 //                        if let index = self.showDevices.firstIndex(where: { $0.peripheral.identifier.uuidString == device.peripheral.identifier.uuidString }) {
 //                            let cacheDevice = self.showDevices[index]
@@ -616,6 +621,21 @@ class DeviceAddClassicModeController: UIViewController {
             self?.updateUIState()
         } provisionCompleteCallback: {[weak self] addDevice, node in
             guard let self = self else { return }
+            node.rssi = addDevice.rssi.intValue
+            if let macAddress = addDevice.macAddress {
+                node.macAddress = macAddress
+            }else {
+                // 没有MAC，自动生成一个随机数
+                let mac = MeshNetworkManager.instance.getRandomMacAddress()
+                node.macAddress = mac
+            }
+            if device.deviceType == .gateway {
+                node.name = MeshNetworkManager.instance.getNextNodeName("gateway".localizedString, length: 1)
+            }else {
+                node.name = MeshNetworkManager.instance.getNextNodeName()
+            }
+            node.save()
+            
             // 配网完成
             if addDevice.deviceType == .dongle { // dongle设备，需要一个dongle虚拟数据与之绑定
                 if let selectDongle = self.bindToDongle { // 已选择dognle
@@ -633,10 +653,23 @@ class DeviceAddClassicModeController: UIViewController {
                     MeshNetworkManager.instance.dongles.append(newDongle)
                     newDongle.save()
                 }
+            }else if addDevice.deviceType == .gateway { // 网关设备，创建一个网关model数据映射
+                guard let mac = node.macAddress else {
+                    return
+                }
+                let gatewayModel = GatewayModel(siteId: space.siteId, address: node.primaryUnicastAddress, mac: mac)
+                if !otherGateways.contains(where: { $0.activate }) {
+                    gatewayModel.activate = true
+                }
+                node.gatewayModel = gatewayModel
+                gatewayModel.save()
             }
             
-        } appendMessagesBack: {[weak self] addDevice in
-            guard let self = self, let node = MeshNetworkManager.instance.meshNetwork?.node(withAddress: addDevice.address) else { return [] }
+        } appendMessagesBack: {[weak self] addDevice, appendCompletion in
+            guard let self = self, let node = MeshNetworkManager.instance.meshNetwork?.node(withAddress: addDevice.address) else {
+                appendCompletion([])
+                return
+            }
             var appendMessages: [MeshMessageHandle] = []
             // 入网后默认调为最大亮度
             if let model = node.lightnessModel {
@@ -659,7 +692,12 @@ class DeviceAddClassicModeController: UIViewController {
 //                        print("创建动能开关组")
                     }
                 }
-                appendMessages.append(contentsOf: group.getNodeAddMessageHandles(node: node))
+                
+                let syncDatas = node.getSyncData(type: .group(group))
+                syncDatas.forEach({
+                    appendMessages.append(contentsOf: $0.getMessageHandles(node: node))
+                })
+//                appendMessages.append(contentsOf: group.getNodeAddMessageHandles(node: node))
             }else {
                 if device.deviceType != .dongle && device.deviceType != .gateway {
                     if let vendorModel = node.sunricherVendorModel { // 未加入组的设备默认设置一个手动控制延迟时间，避免默认30s后状态被LC修改
@@ -670,14 +708,14 @@ class DeviceAddClassicModeController: UIViewController {
                         //                    appendMessages.append(MeshMessageHandle(message: GenericOnPowerUpSet(state: .default), model: powerOnOffSetupModel))
                         //                    appendMessages.append(MeshMessageHandle(message: LightLightnessDefaultSet(lightness: .max), model: lightnessSetupModel))
                     }
+                    if let lightLCSetupModel = node.lightLCSetupModel {
+                        appendMessages.append(MeshMessageHandle(message: LightLCModeSet(false), model: lightLCSetupModel))
+                    }
                 }
             }
             // 需要追加发送的消息
             if let ctlModel = node.ctlModel, node.temperatureModel != nil {
                 appendMessages.insert(MeshMessageHandle(message: LightCTLTemperatureRangeGet(), model: ctlModel), at: 0)
-            }
-            if let lightLCSetupModel = node.lightLCSetupModel {
-                appendMessages.append(MeshMessageHandle(message: LightLCModeSet(false), model: lightLCSetupModel))
             }
             // 设置默认过渡时间
 //            if let defaultTransitionTimeModel = node.defaultTransitionTimeModel {
@@ -687,25 +725,65 @@ class DeviceAddClassicModeController: UIViewController {
             if let vendorModel = node.sunricherVendorModel {
                 appendMessages.append(MeshMessageHandle(message: SunricherVendorGet(function: .compositionHash), model: vendorModel))
             }
-            // 添加成功后闪烁
-            if let healthModel = node.healthModel {
-                appendMessages.append(MeshMessageHandle(message: AttentionSet(attentionTimer: 6), model: healthModel))
-            }
             
-//            if device.deviceType == .gateway, let vendorModel = node.sunricherVendorModel {
-//                appendMessages.append(MeshMessageHandle(message: SunricherVendorSet(function: .gatewaySimInfoSet(cid: 1, ipType: .ip, apn: "3gnet")), model: vendorModel))
-//                
-//                appendMessages.append(MeshMessageHandle(message: SunricherVendorSet(function: .gatewayMQTTConnectInfoSet(platformType: 0, serverAddress: "tcp://mqtt.sunsmart-cn.mericher.com:1883", userName: "Signature|Gateway|C2FB3109B9E0", password: "5dc9bc1d274548739b6a17cbd2298274", clientId: "sunsmart@@@C2FB3109B9E0", keepalive: 60, clearSession: true, authMode: .none, sslVersion: .all)), model: vendorModel))
-////                appendMessages.append(MeshMessageHandle(message: SunricherVendorSet(function: .gatewayMQTTConnectInfoSet(platformType: 0, serverAddress: "tcp://mqtt.sunsmart-cn.mericher.com:1883", userName: "Signature|Gateway|DDCDBC6F7308", password: "97636b9c647140b48363378b6c730f0c", clientId: "sunsmart@@@DDCDBC6F7308", keepalive: 60, clearSession: true, authMode: .none, sslVersion: .all)), model: vendorModel))
-//                
-//                if let mac = device.macAddress {
-//                    appendMessages.append(MeshMessageHandle(message: SunricherVendorSet(function: .gatewayProjectRelevance(gatewayId: mac, projectId: space.siteId)), model: vendorModel))
-//                }
-//                
-//                appendMessages.append(MeshMessageHandle(message: SunricherVendorSet(function: .gatewaySubnetsRelevanceSet(subnetAppkeyIndexs: node.applicationKeys.map({ $0.index }))), model: vendorModel))
-//            }
-        
-            return appendMessages
+            if device.deviceType == .gateway, let mac = node.macAddress, NetworkRequest.shared.networkable {
+                Task {
+                    // 注册网关
+                    let gatewayRegisterResult = await NetworkRequest.shared.request(.gatewayRegister(gatewayId: mac))
+                    switch gatewayRegisterResult {
+                    case .success(let response):
+                        // MQTT参数
+                        if let data = response["data"] as? [String: Any],
+                           let username = data["mqttUsername"] as? String,
+                           let password = data["mqttPassword"] as? String,
+                           let clientId = data["mqttClientId"] as? String,
+                           let host = data["host"] as? String, let port = data["port"] as? Int {
+                            
+                            node.gatewayModel?.mqttServerInfo = GatewayInformation.MQTTConnectInformation(customId: customId, serverAddress: "\(host):\(port)", userName: username, password: password, clientId: clientId, keepalive: 60, clearSession: true, authMode: .none, sslVersion: .all)
+                            node.gatewayModel?.save()
+                        }
+                    case .failure:
+                        break
+                    }
+                    
+                    // 网关绑定到space
+                    let bindSpaceResult = await NetworkRequest.shared.request(.gatewayBindSpace(spaceId: self.space.id, gatewayId: mac))
+                    switch bindSpaceResult {
+                    case .success:
+                        node.gatewayModel?.associatedSpaces.append(self.space)
+                        node.gatewayModel?.save()
+                    case .failure:
+                        break
+                    }
+                    
+                    if let gateway = node.gatewayModel {
+                        let syncDatas = node.getNodeSyncGatewayData(gateway: gateway)
+                        syncDatas.forEach({
+                            appendMessages.append(contentsOf: $0.getMessageHandles(node: node))
+                        })
+                    }
+                    
+                    // 添加成功后闪烁
+                    if let healthModel = node.healthModel {
+                        appendMessages.append(MeshMessageHandle(message: AttentionSet(attentionTimer: 6), model: healthModel))
+                    }
+                    appendCompletion(appendMessages)
+                }
+            }else {
+                
+                if let gateway = node.gatewayModel {
+                    let syncDatas = node.getNodeSyncGatewayData(gateway: gateway)
+                    syncDatas.forEach({
+                        appendMessages.append(contentsOf: $0.getMessageHandles(node: node))
+                    })
+                }
+                // 添加成功后闪烁
+                if let healthModel = node.healthModel {
+                    appendMessages.append(MeshMessageHandle(message: AttentionSet(attentionTimer: 6), model: healthModel))
+                }
+                appendCompletion(appendMessages)
+            }
+//            return appendMessages
         } appendMessageSuccessBack: { messageHandle in
             // 发送扩展消息成功更新缓存数据
             if let address = messageHandle.model?.parentElement?.unicastAddress ?? messageHandle.address, let node = MeshNetworkManager.instance.meshNetwork?.node(withAddress: address) {
@@ -722,31 +800,13 @@ class DeviceAddClassicModeController: UIViewController {
                 if let repalceNode = addDevice.repalceNode { // 删除被替换节点的缓存数据
                     repalceNode.deleteExtension()
                 }
-                node.rssi = addDevice.rssi.intValue
-                if let macAddress = addDevice.macAddress {
-                    node.macAddress = macAddress
-                }else {
-                    // 没有MAC，自动生成一个随机数
-                    let mac = MeshNetworkManager.instance.getRandomMacAddress()
-                    node.macAddress = mac
-                }
-                node.name = MeshNetworkManager.instance.getNextNodeName()
                 // 需添加到组里
                 if let group = self.addToGroup {
                     if node.group == nil { // 未添加组成功，需要记录组数据下次同步恢复到组里
                         node.restoreData = NodeRestoreData(addGroupAddress: group.address.address)
+                        node.save()
                     }
                 }
-//                node.state = true
-                node.save()
-//                node.saveNodeInfo(meshUUID: self.space.meshUUID, networkKey: self.space.meshNetworkKey)
-//                self?.space.getNextNodeName(resultCallback: { name in
-//                    node.name = name
-//                    print("address:\(node.primaryUnicastAddress), name:\(name)")
-//                })
-//                if let name = self?.space.getNextNodeName() {
-//                    node.name = name
-//                }
                 self.addSuccessNodes.append(node)
             }
         } addFail: {[weak self] addDevice, error in
@@ -1245,7 +1305,8 @@ extension DeviceAddClassicModeController: WMMenuViewDataSource, WMMenuViewDelega
     }
     
     func menuView(_ menu: WMMenuView!, widthForItemAt index: Int) -> CGFloat {
-        return isIPad ? SCRXFrom(120) : SCRXFrom(80)
+        let itemW = isIPad ? SCRXFrom(120) : SCRXFrom(80)
+        return CGFloat(Int(itemW))
     }
     
     func menuView(_ menu: WMMenuView!, itemMarginAt index: Int) -> CGFloat {

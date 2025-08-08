@@ -77,6 +77,8 @@ class MeshFirmwareListViewController: UIViewController {
     /// 是否刷新列表
     private var refreshData: Bool = false
     
+    private var helpBtn: UIButton!
+    
     override func viewDidLoad() {
         super.viewDidLoad()
         
@@ -86,7 +88,14 @@ class MeshFirmwareListViewController: UIViewController {
         
         navigationItem.leftBarButtonItem = UIBarButtonItem(image: UIImage(named: "navigation_back")?.withRenderingMode(.alwaysOriginal), style: .done, target: self, action: #selector(backAction))
         
-        navigationItem.rightBarButtonItem = UIBarButtonItem(image: UIImage(named: "help")?.withRenderingMode(.alwaysOriginal), style: .done, target: self, action: #selector(helpAction))
+        helpBtn = UIButton(normalImageName: "help", target: self, action: #selector(helpAction))
+        #if DEBUG
+//        let testTap = ContinuousTapGestureRecognizer(target: self, action: #selector(test), numberOfTouchesRequired: 3, duration: 2)
+        let testTap = UILongPressGestureRecognizer(target: self, action: #selector(test))
+        helpBtn.addGestureRecognizer(testTap)
+        #endif
+        
+        navigationItem.rightBarButtonItem = UIBarButtonItem(customView: helpBtn)
         setupUI()
         self.isModalInPresentation = true
         
@@ -119,6 +128,22 @@ class MeshFirmwareListViewController: UIViewController {
         }
         
         flowLayout.itemSize = CGSize(width: view.width - collectionView.contentInset.left - collectionView.contentInset.right, height: SCRYFrom(206))
+    }
+    
+    @objc private func test(sender: UIGestureRecognizer) {
+        guard sender.state == .began else {
+            return
+        }
+        let vc = ReadDevicesDataViewController(type: .parameters(nodes: MeshNetworkManager.instance.realNodes, parameters: [.firmwareVension]))
+        vc.readSuccessCallback = {[weak self] _ in
+            self?.setupData(loadServerData: true)
+            self?.navigationController?.popViewController(animated: true)
+        }
+        vc.backActionCallback = {[weak self] _ in
+            self?.setupData(loadServerData: true)
+            self?.navigationController?.popViewController(animated: true)
+        }
+        navigationController?.pushViewController(vc, animated: true)
     }
     
     /// 获取云端固件

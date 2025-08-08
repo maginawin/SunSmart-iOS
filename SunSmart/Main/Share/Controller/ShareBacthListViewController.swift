@@ -43,6 +43,13 @@ class ShareBacthListViewController: UIViewController {
         loadDataReqeust()
     }
     
+    override func viewDidLayoutSubviews() {
+        super.viewDidLayoutSubviews()
+        
+        let itemW = collectionView.width - collectionView.contentInset.left - collectionView.contentInset.right
+        flowLayout.itemSize = CGSize(width: CGFloat(floor(itemW)), height: SCRYFrom(64))
+    }
+    
     // MARK: - Reqeust
     
     private func loadDataReqeust() {
@@ -160,8 +167,6 @@ class ShareBacthListViewController: UIViewController {
             make.left.right.bottom.equalToSuperview()
             make.top.equalTo(view.safeAreaLayoutGuide)
         }
-        let itemW = view.width - collectionView.contentInset.left - collectionView.contentInset.right
-        flowLayout.itemSize = CGSize(width: CGFloat(floor(itemW)), height: SCRYFrom(64))
     }
     
     

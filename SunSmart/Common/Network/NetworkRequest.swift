@@ -74,6 +74,13 @@ class NetworkRequest: NSObject {
         })
     }
     
+    @discardableResult func request(_ target: NetowrkReqeustApi) async -> Result<[String: Any], NetworkApiError> {
+        return await withCheckedContinuation { continuation in
+            self.request(target) { result in
+                continuation.resume(returning: result)
+            }
+        }
+    }
     
     @discardableResult func request(_ target: NetowrkReqeustApi, completion: @escaping Completion) -> Cancellable {
         

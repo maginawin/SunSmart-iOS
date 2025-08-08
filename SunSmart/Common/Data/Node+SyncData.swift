@@ -22,12 +22,22 @@ enum NodeSyncType {
     case dongle(dongleData: DeviceDongleData)
     /// 邻近照明
     case proximityLightingPath(path: GroupProximityLightingPathData)
+    /// 网关信息
+    case gateway(_ gateway: GatewayModel)
     /// 全部
     case all
 }
 
 enum NodeSyncData {
     
+    /// 添加网络key
+    case addNetworkKey(networkKey: NetworkKey)
+    /// 删除网络key
+    case removeNetworkKey(networkKey: NetworkKey)
+    /// 添加appkey
+    case addApplicationkey(applicationKey: ApplicationKey)
+    /// 删除appkey
+    case removeApplicationkey(applicationKey: ApplicationKey)
     /// 设备是否需要订阅/加入组（订阅信息不完整）
     case subscribeGroup(group: Group)
     /// 设备需要退出组
@@ -64,6 +74,14 @@ enum NodeSyncData {
     case proximityLightingEnabled(_ enabled: Bool)
     /// 设置邻近照明邻居数量+邻居list
     case proximityLightingNeighbor(relayNumber: UInt8, neighborAddresses: [Address])
+    /// 同步网关SIM卡APN
+    case syncGatewaySIMAPN(apn: String)
+    /// 同步网关MQTT参数
+    case syncGatewayMQTTInformation(mqttInformation: GatewayInformation.MQTTConnectInformation)
+    /// 同步网关项目id  projectId: siteid
+    case syncGatewayProjectId(projectId: String)
+    /// 同步网关关联的子网appkey index list
+    case syncGatewaySubnetAppkeyIndexs(appkeyIndexs: [KeyIndex])
 }
 
 /// 配置类型
@@ -177,6 +195,10 @@ enum DeviceReadParameterType {
             if let vendorModel = node.sunricherVendorModel {
                 messageHandles.append(MeshMessageHandle(message: SunricherVendorGet(function: .motionSensitivity), model: vendorModel))
             }
+        case .firmwareVension:
+            if let firmwareUpdateServerModel = node.firmwareUpdateServerModel {
+                messageHandles.append(MeshMessageHandle(message: FirmwareUpdateInformationGet(firstIndex: 0, entriesLimit: 1), model: firmwareUpdateServerModel))
+            }
         }
         return messageHandles
     }
@@ -189,6 +211,8 @@ enum DeviceReadParameterType {
     case totalDeviceEnergyUse
     /// 移动感应灵敏度范围
     case motionSensitivityRange
+    /// 固件版本
+    case firmwareVension
 }
 
 
@@ -341,6 +365,8 @@ extension Node {
             if let syncData = getNodeSyncProximityLighting() {
                 syncDatas.append(syncData)
             }
+        case .gateway(let gatewayModel): // 网关
+            syncDatas.append(contentsOf: getNodeSyncGatewayData(gateway: gatewayModel))
         case .all:
             
             // 未配置完成
@@ -381,6 +407,11 @@ extension Node {
             // Dongle
             if self.deviceType == .dongle, let dongleData = MeshNetworkManager.instance.dongles.first(where: { $0.bindNodeAddress == self.primaryUnicastAddress }) {
                 syncDatas.append(contentsOf: getSyncData(type: .dongle(dongleData: dongleData)))
+            }
+            
+            // Gateway
+            if self.deviceType == .gateway, let gatewayModel = self.gatewayModel {
+                syncDatas.append(contentsOf: getNodeSyncGatewayData(gateway: gatewayModel))
             }
             
         }
@@ -480,6 +511,31 @@ extension Node {
         if let pwmFrequency = self.restoreData?.pwmFrequency, self.pwmFrequency != pwmFrequency {
             return true
         }
+        
+        // Rated power
+        if let phaseEnergyConsumptions = self.restoreData?.phaseEnergyConsumptions, self.phaseEnergyConsumptions != phaseEnergyConsumptions {
+            return true
+        }
+        // Absolute Sensitivity
+        if let motionSensitivityRange = self.restoreData?.motionSensitivityRange,
+           self.motionSensitivityRange != motionSensitivityRange {
+            return true
+        }
+ 
+        // Dongle
+        if self.deviceType == .dongle, let dongleData = MeshNetworkManager.instance.dongles.first(where: { $0.bindNodeAddress == self.primaryUnicastAddress }) {
+            if getSyncData(type: .dongle(dongleData: dongleData)).count > 0 {
+                return true
+            }
+        }
+
+        // Gateway
+        if self.deviceType == .gateway, let gatewayModel = self.gatewayModel {
+            if getNodeSyncGatewayData(gateway: gatewayModel).count > 0 {
+                return true
+            }
+        }
+        
         return false
     }
     
@@ -1041,4 +1097,67 @@ extension Node {
         }
         return nil
     }
+    
+    /// 获取网关设备同步的配置
+    func getNodeSyncGatewayData(gateway: GatewayModel) -> [NodeSyncData] {
+        var syncDatas: [NodeSyncData] = []
+        guard deviceType == .gateway else {
+            return syncDatas
+        }
+        // 关联项目，siteid
+        if gateway.siteId != gatewayInfo?.projectId {
+            syncDatas.append(.syncGatewayProjectId(projectId: gateway.siteId))
+        }
+
+//        if let meshNetwork = MeshNetworkManager.instance.meshNetwork {
+//            var configNetKeys: [NetworkKey] = []
+//            var configAppKeys: [ApplicationKey] = []
+//            
+//            var deleteNetKeys: [NetworkKey] = []
+//            gateway.associatedSpaces.forEach { space in
+//                let networkKey = networkKeys.first(where: { $0.networkId.hex == space.meshNetworkId })
+//                if networkKey == nil {
+//                    if let bindNetworkKey = meshNetwork.networkKeys.first(where: { $0.networkId.hex == space.meshNetworkId }) {
+//                        configNetKeys.append(bindNetworkKey)
+//                        if let bindAppkey = meshNetwork.applicationKeys.first(where: { $0.isBound(to: bindNetworkKey) }) {
+//                            configAppKeys.append(bindAppkey)
+//                        }
+//                    }
+//                }else if !applicationKeys.contains(keyBoundTo: networkKey!) {
+//                    if let bindAppkey = meshNetwork.applicationKeys.first(where: { $0.isBound(to: networkKey!) }) {
+//                        configAppKeys.append(bindAppkey)
+//                    }
+//                }
+//            }
+//            
+//            deleteNetKeys = networkKeys.filter({ netKey in !gateway.associatedSpaces.contains(where: { $0.meshNetworkId == netKey.networkId.hex }) })
+//            
+////            syncDatas.append(.)
+//        }
+      
+        
+        
+        // 同步绑定哪些子网appkey index
+        // 网格激活状态同步关联子网数据
+        let currentAppkeyIndexs = gateway.activate ? self.applicationKeys.map({ $0.index }).sorted() : []
+        if currentAppkeyIndexs != gatewayInfo?.subnetAppkeyIndexs.sorted() {
+            syncDatas.append(.syncGatewaySubnetAppkeyIndexs(appkeyIndexs: currentAppkeyIndexs))
+        }
+        
+        // 判断SIM卡apn是否需要同步
+        if let apn = gateway.apn, gatewayInfo?.simInfo?.apn != apn {
+            syncDatas.append(.syncGatewaySIMAPN(apn: apn))
+        }
+        
+        if let mqttServerInfo = gateway.mqttServerInfo {
+            // 判断MQTT信息是否需要同步
+            if mqttServerInfo.serverAddress != gatewayInfo?.mqttConnectInfo?.serverAddress || mqttServerInfo.clientId != gatewayInfo?.mqttConnectInfo?.clientId ||
+                mqttServerInfo.userName != gatewayInfo?.mqttConnectInfo?.userName ||
+                mqttServerInfo.password != gatewayInfo?.mqttConnectInfo?.password {
+                syncDatas.append(.syncGatewayMQTTInformation(mqttInformation: mqttServerInfo))
+            }
+        }
+        return syncDatas
+    }
+    
 }

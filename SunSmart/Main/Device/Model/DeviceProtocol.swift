@@ -20,7 +20,7 @@ protocol DeviceProtocol {
     func showRepairFailed(continue nodes: [Node], result: DevicesResultCallback?)
     
     /// 删除设备
-    func deleteNodes(nodes: [Node], result: DevicesResultCallback?)
+    func deleteNodes(nodes: [Node], forceDeleteMessage: String?, forceDeleteNote: String?, result: DevicesResultCallback?)
     
 }
 
@@ -114,7 +114,7 @@ extension DeviceProtocol {
     }
     
     /// 删除设备
-    func deleteNodes(nodes: [Node], result: DevicesResultCallback?) {
+    func deleteNodes(nodes: [Node], forceDeleteMessage: String? = nil, forceDeleteNote: String? = nil, result: DevicesResultCallback?) {
         
         XWHUDManager.showCustomHUD(withMessage: "deleting".localizedString, isWindow: true)
         
@@ -150,8 +150,8 @@ extension DeviceProtocol {
                     XWHUDManager.showSuccessTipHUD("done!".localizedString)
                     result?(nodes, [])
                 })])
-                let messageAttStr = NSMutableAttributedString(string: "devices_force_delete_message".localizedString, attributes: [.foregroundColor: TextBlack_Color])
-                messageAttStr.append(NSAttributedString(string: "devices_force_delete_note".localizedString, attributes: [.foregroundColor: Message_Color]))
+                let messageAttStr = NSMutableAttributedString(string: forceDeleteMessage ?? "devices_force_delete_message".localizedString, attributes: [.foregroundColor: TextBlack_Color])
+                messageAttStr.append(NSAttributedString(string: forceDeleteNote ?? "devices_force_delete_note".localizedString, attributes: [.foregroundColor: Message_Color]))
                 alertView.messageLabel.attributedText = messageAttStr
                 alertView.show()
             }

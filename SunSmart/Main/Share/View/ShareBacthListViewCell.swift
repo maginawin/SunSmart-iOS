@@ -37,7 +37,7 @@ class ShareBacthListViewCell: UICollectionViewCell {
     private func setupUI() {
         
         nameLabel = UILabel(text: "Batch 253487", textColor: TextBlack_Color, fontSize: 14)
-        nameLabel.sizeToFit()
+//        nameLabel.sizeToFit()
         contentView.addSubview(nameLabel)
         nameLabel.snp.makeConstraints { make in
             make.left.equalTo(SCRXFrom(16))

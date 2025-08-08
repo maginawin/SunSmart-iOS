@@ -122,7 +122,7 @@ class DeviceAddViewController: WMPageController {
     deinit {
         if self.addSuccessNodes.count > 0 {
             // 找出未命名的设备
-            let unnamedNodes = addSuccessNodes.filter({ !($0.name?.contains("ID") ?? true) })
+            let unnamedNodes = addSuccessNodes.filter({ $0.deviceType != .gateway && !($0.name?.contains("ID") ?? true) })
             if unnamedNodes.count > 0 {
                 unnamedNodes.forEach({
                     $0.name = MeshNetworkManager.instance.getNextNodeName()

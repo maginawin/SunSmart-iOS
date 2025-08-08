@@ -438,36 +438,6 @@ class GroupSensorView: UIView {
     
 }
 
-class SensorTableView: UITableView, UIGestureRecognizerDelegate {
-    
-//    override func gestureRecognizerShouldBegin(_ gestureRecognizer: UIGestureRecognizer) -> Bool {
-//        guard let panGesture = gestureRecognizer as? UIPanGestureRecognizer else {
-//            return true
-//        }
-//        
-//        // 获取手势速度（方向）
-//        let velocity = panGesture.velocity(in: self)
-//        
-//        // 情况1：如果是下拉手势（velocity.y > 0），且 TableView 已经在顶部
-//        if velocity.y > 0 && contentOffset.y <= 0 {
-//            return false // 禁止 TableView 响应下拉，避免触发 Modal 关闭
-//        }
-//        
-//        // 情况2：其他情况允许手势
-//        return true
-//    }
-    
-    public func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer, shouldRequireFailureOf otherGestureRecognizer: UIGestureRecognizer) -> Bool {
-        // 判断是否是系统的modal手势
-        if String(describing: type(of: otherGestureRecognizer)) == "_UIPresentationControllerPanGestureRecognizer" {
-            return true
-        }
-        return false
-    }
-    
-    
-}
-
 extension GroupSensorView: UITableViewDataSource, UITableViewDelegate {
     
     func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {

@@ -512,7 +512,7 @@ class DevicesViewController: WMPageController {
             return
         }
         // 固件大小
-        let firmwareSize = distributionNode.distributionFirmwareSize ?? UInt32(FirmwareData.load(productId: productId).first?.data.count ?? 300 * 1024)
+        let firmwareSize = distributionNode.distributionFirmwareSize ?? UInt32(FirmwareData.load(productId: productId).first?.data.count ?? 256 * 1024)
         MeshFirmwareDistributionManager.shared.getDistributionState(distributionNode: distributionNode, firmwareSize: firmwareSize) {[weak self] _, state in
             guard let self = self, state != nil else { return }
             
@@ -700,7 +700,8 @@ extension DevicesViewController {
     }
     
     override func menuView(_ menu: WMMenuView!, widthForItemAt index: Int) -> CGFloat {
-        return isIPad ? SCRXFrom(120) : SCRXFrom(80)
+        let itemW = isIPad ? SCRXFrom(120) : SCRXFrom(80)
+        return CGFloat(Int(itemW))
     }
     
     override func menuView(_ menu: WMMenuView!, itemMarginAt index: Int) -> CGFloat {

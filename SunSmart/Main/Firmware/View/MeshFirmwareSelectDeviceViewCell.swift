@@ -201,8 +201,8 @@ class MeshFirmwareSelectDeviceViewCell: UITableViewCell {
         nameLabel = UILabel(text: "ID001", textColor: TextBlack_Color, fontSize: 15, fontWeight: .light)
         contentView.addSubview(nameLabel)
         nameLabel.snp.makeConstraints { make in
-//            make.left.equalTo(deviceImageView.snp.right).offset(SCRXFrom(8))
-            make.centerX.equalTo(self.snp.left).offset(SCRXFrom(94))
+            make.left.equalTo(deviceImageView.snp.right).offset(SCRXFrom(8))
+//            make.centerX.equalTo(self.snp.left).offset(SCRXFrom(94))
             make.top.equalTo(SCRYFrom(12))
             make.width.lessThanOrEqualTo(SCRXFrom(99))
         }

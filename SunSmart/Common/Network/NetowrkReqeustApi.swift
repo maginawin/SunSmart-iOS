@@ -120,6 +120,14 @@ enum NetowrkReqeustApi {
     case firmwareVersionList(companyId: String = "0A78", deviceType: String, customId: String = "00", isTesting: Bool = false)
     /// 设备配置数据
     case devicesConfig
+    
+    // #****** Gateway ******#
+    /// 网关绑定到space
+    case gatewayBindSpace(spaceId: String, gatewayId: String)
+    /// 网关解绑space
+    case gatewayUnbindSpace(spaceId: String, gatewayId: String)
+    /// 网关注册
+    case gatewayRegister(gatewayId: String)
 }
 
 extension NetowrkReqeustApi: TargetType {
@@ -195,6 +203,12 @@ extension NetowrkReqeustApi: TargetType {
             return "/sitespace/ota/history"
         case .devicesConfig:
             return "/sitespace/ota/configfile"
+        case .gatewayBindSpace:
+            return "/sitespace/sapce/gateway/bind"
+        case .gatewayUnbindSpace:
+            return "/sitespace/sapce/gateway/unbind"
+        case .gatewayRegister:
+            return "/sitespace/sapce/gateway/regist"
         }
     }
     
@@ -387,6 +401,12 @@ extension NetowrkReqeustApi: TargetType {
             return parameters
         case .devicesConfig:
             return nil
+        case .gatewayBindSpace(let spaceId, let gatewayId):
+            return ["spaceId": spaceId, "gatewayId": gatewayId, "userId": UserData.currentUserId]
+        case .gatewayUnbindSpace(let spaceId, let gatewayId):
+            return ["spaceId": spaceId, "gatewayId": gatewayId, "userId": UserData.currentUserId]
+        case .gatewayRegister(let gatewayId):
+            return ["gatewayId": gatewayId, "userId": UserData.currentUserId]
         }
     }
     

@@ -99,30 +99,38 @@ class MeshSelectUpgradeDevicesViewController: UIViewController {
         }
         
         XWHUDManager.showCustomHUD(withMessage: nil, isWindow: true)
+#if DEBUG
+        var compositionHash: Data?
+        // 截取compositionHash值
+        if let metadata = distributorNode.distributionIncomingFirmwareMetadata, metadata.count >= 16 {
+            compositionHash = metadata.subdata(in: 12..<16)
+        }
+        guard let compositionHash = compositionHash, let distributionFirmwareSize = distributorNode.distributionFirmwareSize else {
+            return
+        }
+        let session = UInt8(arc4random_uniform(254) + 1)
         
-//        var compositionHash: Data?
-//        // 截取compositionHash值
-//        if let metadata = distributorNode.distributionIncomingFirmwareMetadata, metadata.count >= 16 {
-//            compositionHash = metadata.subdata(in: 12..<16)
-//        }
-//        guard let compositionHash = compositionHash, let distributionFirmwareSize = distributorNode.distributionFirmwareSize else {
-//            return
-//        }
-//        let session = UInt8(arc4random_uniform(254) + 1)
-//        XWHUDManager.showCustomHUD(withMessage: nil, isWindow: true)
-//        MeshVendorOTAManager.shared.startMeshOTA(distributionNode: self.distributorNode, targetNodes: self.selectNodes, session: session, updateFirmwareImageIndex: 0, firmwareHash: UInt32(data: compositionHash), firmwareSize: distributionFirmwareSize, chunkSize: 100) {[weak self] result in
-//            guard let self = self else { return }
-//            DispatchQueue.main.async {
-//                XWHUDManager.hide()
-//                switch result {
-//                case .success:
-//                    XWHUDManager.showSuccessTipHUD("已开始升级")
-//                    
-//                case .failure(let error):
-//                    XWHUDManager.showErrorTipHUD(error.localizedDescription)
-//                }
-//            }
-//        }
+        
+        MeshVendorOTAManager.shared.startMeshOTA(distributionNode: self.distributorNode, targetNodes: self.selectNodes, session: session, updateFirmwareImageIndex: 0, firmwareHash: UInt32(data: compositionHash), firmwareSize: distributionFirmwareSize, chunkSize: 100) {[weak self] result in
+            guard let self = self else { return }
+            DispatchQueue.main.async {
+                XWHUDManager.hide()
+                switch result {
+                case .success((_, let failNodes)):
+                    if failNodes.count > 0 {
+                        let content = failNodes.map({ $0.name ?? "" }).joined(separator: ",")
+                        XWHUDManager.showSuccessTipHUD("已开始升级\n失败设备: \(content)", timer: 10)
+                    }else {
+                        XWHUDManager.showSuccessTipHUD("已开始升级")
+                    }
+                    
+                case .failure(let error):
+                    XWHUDManager.showErrorTipHUD(error.localizedDescription)
+                }
+            }
+        }
+        
+#else
         
         MeshFirmwareDistributionManager.shared.startDistribution(distributionNode: self.distributorNode, targetNodes: self.selectNodes) {[weak self] _, state
             in
@@ -144,7 +152,7 @@ class MeshSelectUpgradeDevicesViewController: UIViewController {
                     distributionData.distributionState = .updating(updatePhase: .blob(progress: 0, estimateTime: -1))
                     let vc = MeshFirmwareUpdateViewController(distributorData: distributionData, initial: true)
                     self.navigationController?.pushViewController(vc, animated: true)
-//                    self.navigationController?.removeVc(vc: self)
+                    //                    self.navigationController?.removeVc(vc: self)
                     DispatchQueue.main.asyncAfter(deadline: .now() + 0.5, execute: {
                         if let selectDistributorVc = self.navigationController?.viewControllers.first(where: { $0.isKind(of: MeshSelectDistributorViewController.classForCoder()) }) {
                             self.navigationController?.removeViewControllers(viewControllers: [self, selectDistributorVc])
@@ -169,7 +177,7 @@ class MeshSelectUpgradeDevicesViewController: UIViewController {
                 XWHUDManager.showErrorTipHUD(error.message)
             }
         }
-        
+#endif
     }
     
     /// 取消排队

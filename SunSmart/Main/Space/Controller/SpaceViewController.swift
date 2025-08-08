@@ -27,6 +27,9 @@ let spacePermissionChangedNotificaitonName = "spacePermissionChangedNotificaiton
 /// 空间页面分页滑动禁用通知
 let spacePageDisableScrollNotificaitonName = "spacePageDisableScrollNotificaiton"
 
+/// 网络代理设备切换通知
+let meshNetworkProxyDidReplaceNotificationName = "meshNetworkProxyDidReplaceNotification"
+
 /// space修改数据类型
 enum SpaceChangeDataType {
     /// 网络数据类型
@@ -173,7 +176,11 @@ class SpaceViewController: WMPageController {
         MeshLibManager.manager.groupSubscriptionModelIDs = [.genericOnOffServerModelId, .lightLightnessServerModelId, .lightCTLTemperatureServerModelId, .lightCTLServerModelId, .sensorServerModelId, .lightLCServerModelId]
         MeshLibManager.manager.subElementGroupSubscriptionModelIDs = [.lightCTLTemperatureServerModelId, .lightLCServerModelId]
         checkBluetoothState()
-        MeshNodeHeartbeatManager.shared.autoHeartbeatLoop = false
+        #if DEBUG
+        MeshNodeHeartbeatManager.shared.autoHeartbeatLoop = true
+        #else
+        MeshNodeHeartbeatManager.shared.autoHeartbeatLoop = true
+        #endif
         MeshNodeHeartbeatManager.shared.openHeartbeatShare = false
         MeshNodeHeartbeatManager.shared.heartbeatMode = .general
         MeshLibManager.manager.showLogs = [.network, .access, .lowerTransport, .upperTransport, .proxy, .bearer]

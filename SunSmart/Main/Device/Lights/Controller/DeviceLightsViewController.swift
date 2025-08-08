@@ -89,7 +89,6 @@ class DeviceLightsViewController: UIViewController {
         MeshLibManager.manager.messageDelegate = self
     }
     
-    
     override func viewDidLayoutSubviews() {
         super.viewDidLayoutSubviews()
         
@@ -506,7 +505,14 @@ class DeviceLightsViewController: UIViewController {
                 if isEdit && node.state { // 不在编辑状态/编辑状态+设备离线可以进入设备控制页
                     return
                 }
-                let deviceVc = DeviceLightViewController(space: space, node: node)
+                var deviceVc: UIViewController!
+                switch node.deviceType {
+                case .gateway:
+                    deviceVc = GatewayViewController(space: space, node: node)
+                default:
+                    deviceVc = DeviceLightViewController(space: space, node: node)
+                }
+
 //                let deviceVc = DaliMasterViewController(space: space, node: node)
                 if isIPad {
                     deviceVc.preferredContentSize = iPadPreferredContentSize
@@ -1108,6 +1114,7 @@ extension DeviceLightsViewController: MeshLibManagerDelegate, MeshLibManagerMess
         if view.window != nil {
             collectionView.reloadData()
         }
+        NotificationCenter.default.post(name: .init(meshNetworkProxyDidReplaceNotificationName), object: nil)
     }
     
     /// 收到消息回调

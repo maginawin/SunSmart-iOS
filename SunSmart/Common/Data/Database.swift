@@ -126,7 +126,7 @@ extension SiteData {
         
         if let rows = try? SunSmartDataManager.shared.db?.prepare(filter.order(ExpressionKey.createTimestamp.asc)) {
             for row in rows {
-                let site = SiteData(id: row[ExpressionKey.uuid], meshUUID: row[ExpressionKey.uuid], name: row[ExpressionKey.name], imageId: row[ExpressionKey.imageId], type: .init(rawValue: row[ExpressionKey.type]) ?? .office, permission: .init(rawValue: row[ExpressionKey.permission]) ?? .owner, create: row[ExpressionKey.createTimestamp], lastUpdate: row[ExpressionKey.lastUpdateTimestamp], isFavourite: row[ExpressionKey.favourite], sourceType: .init(rawValue: row[ExpressionKey.source]) ?? .create)
+                let site = SiteData(region: ServerRegion(rawValue: row[ExpressionKey.regionType]) ?? UserData.currentServerRegion,id: row[ExpressionKey.uuid], meshUUID: row[ExpressionKey.uuid], name: row[ExpressionKey.name], imageId: row[ExpressionKey.imageId], type: .init(rawValue: row[ExpressionKey.type]) ?? .office, permission: .init(rawValue: row[ExpressionKey.permission]) ?? .owner, create: row[ExpressionKey.createTimestamp], lastUpdate: row[ExpressionKey.lastUpdateTimestamp], isFavourite: row[ExpressionKey.favourite], sourceType: .init(rawValue: row[ExpressionKey.source]) ?? .create)
                 site.lastUploadCloudTimestamp = row[ExpressionKey.lastUploadCloudTimestamp]
                 if let errorCode = row[ExpressionKey.syncCloudError] {
                     site.syncCloudError = .init(code: errorCode)
@@ -165,7 +165,7 @@ extension SiteData {
         var site: SiteData?
         if let rows = try? SunSmartDataManager.shared.db?.prepare(filter) {
             for row in rows {
-                site = SiteData(id: row[ExpressionKey.uuid], meshUUID: row[ExpressionKey.uuid], name: row[ExpressionKey.name], imageId: row[ExpressionKey.imageId], type: .init(rawValue: row[ExpressionKey.type]) ?? .office, permission: .init(rawValue: row[ExpressionKey.permission]) ?? .owner, create: row[ExpressionKey.createTimestamp], lastUpdate: row[ExpressionKey.lastUpdateTimestamp], isFavourite: row[ExpressionKey.favourite], sourceType: .init(rawValue: row[ExpressionKey.source]) ?? .create)
+                site = SiteData(region: ServerRegion(rawValue: row[ExpressionKey.regionType]) ?? UserData.currentServerRegion, id: row[ExpressionKey.uuid], meshUUID: row[ExpressionKey.uuid], name: row[ExpressionKey.name], imageId: row[ExpressionKey.imageId], type: .init(rawValue: row[ExpressionKey.type]) ?? .office, permission: .init(rawValue: row[ExpressionKey.permission]) ?? .owner, create: row[ExpressionKey.createTimestamp], lastUpdate: row[ExpressionKey.lastUpdateTimestamp], isFavourite: row[ExpressionKey.favourite], sourceType: .init(rawValue: row[ExpressionKey.source]) ?? .create)
                 site?.lastUploadCloudTimestamp = row[ExpressionKey.lastUploadCloudTimestamp]
                 if let errorCode = row[ExpressionKey.syncCloudError] {
                     site?.syncCloudError = .init(code: errorCode)
@@ -334,7 +334,7 @@ extension SiteData {
             ExpressionKey.createTimestamp <- self.create,
             ExpressionKey.lastUpdateTimestamp <- self.lastUpdate,
             ExpressionKey.lastUploadCloudTimestamp <- self.lastUploadCloudTimestamp,
-            ExpressionKey.regionType <- UserData.currentServerRegion.rawValue,
+            ExpressionKey.regionType <- self.region.rawValue,
             ExpressionKey.syncCloudError <- self.syncCloudError?.code,
             ExpressionKey.state <- self.state.rawValue,
             ExpressionKey.spaceCount <- self.spaceCount,
@@ -450,6 +450,7 @@ extension SpaceData {
         MeshDistributionData.initDatabase()
         DeviceDongleData.initDatabase()
         EnergyStatisticsStaticData.initDatabase()
+        GatewayModel.initDatabase()
     }
  
     
@@ -1796,12 +1797,10 @@ extension FirmwareData {
         var query = FirmwareData.firmwaresTable.filter(ExpressionKey.deviceType == Int(productId))
         
         if let vendorId = vendorId {
-            let vendorQuery = FirmwareData.firmwaresTable.filter(ExpressionKey.vendorId == Int(vendorId))
-            query = query.union(vendorQuery)
+            query = query.filter(ExpressionKey.vendorId == Int(vendorId))
         }
         if let customId = customId {
-            let customIdQuery = FirmwareData.firmwaresTable.filter(ExpressionKey.customId == Int(customId))
-            query = query.union(customIdQuery)
+            query = query.filter(ExpressionKey.customId == Int(customId))
         }
         
         var list: [FirmwareData] = []
@@ -1846,8 +1845,8 @@ extension FirmwareData {
         
         var filter = FirmwareData.firmwaresTable.filter(ExpressionKey.deviceType == Int(self.productId) && ExpressionKey.vendorId == Int(self.vendorId))
         if self.customId != nil {
-            let customIdQuery = FirmwareData.firmwaresTable.filter(ExpressionKey.customId == Int(self.customId!))
-            filter = filter.union(customIdQuery)
+//            let customIdQuery = FirmwareData.firmwaresTable.filter(ExpressionKey.customId == Int(self.customId!))
+            filter = filter.filter(ExpressionKey.customId == Int(self.customId!))
         }
         
         do {
@@ -2505,12 +2504,12 @@ extension MeshDeviceConfigInfo {
         var query = MeshDeviceConfigInfo.deviceConfigInfosTable
         
         if let companyId = companyId {
-            let vendorQuery = MeshDeviceConfigInfo.deviceConfigInfosTable.filter(ExpressionKey.companyId == Int(companyId))
-            query = query.union(vendorQuery)
+//            let vendorQuery = MeshDeviceConfigInfo.deviceConfigInfosTable.filter(ExpressionKey.companyId == Int(companyId))
+            query = query.filter(ExpressionKey.companyId == Int(companyId))
         }
         if let productId = productId {
-            let productIdQuery = MeshDeviceConfigInfo.deviceConfigInfosTable.filter(ExpressionKey.productId == Int(productId))
-            query = query.union(productIdQuery)
+//            let productIdQuery = MeshDeviceConfigInfo.deviceConfigInfosTable.filter(ExpressionKey.productId == Int(productId))
+            query = query.filter(ExpressionKey.productId == Int(productId))
         }
         
         var infos: [MeshDeviceConfigInfo] = []
@@ -2540,12 +2539,12 @@ extension MeshDeviceConfigInfo {
         var predicate = MeshDeviceConfigInfo.deviceConfigInfosTable
         
         if let companyId = companyId {
-            let vendorQuery = MeshDeviceConfigInfo.deviceConfigInfosTable.filter(ExpressionKey.companyId == Int(companyId))
-            predicate = predicate.union(vendorQuery)
+//            let vendorQuery = MeshDeviceConfigInfo.deviceConfigInfosTable.filter(ExpressionKey.companyId == Int(companyId))
+            predicate = predicate.filter(ExpressionKey.companyId == Int(companyId))
         }
         if let productId = productId {
-            let productIdQuery = MeshDeviceConfigInfo.deviceConfigInfosTable.filter(ExpressionKey.productId == Int(productId))
-            predicate = predicate.union(productIdQuery)
+//            let productIdQuery = MeshDeviceConfigInfo.deviceConfigInfosTable.filter(ExpressionKey.productId == Int(productId))
+            predicate = predicate.filter(ExpressionKey.productId == Int(productId))
         }
 
         do {
@@ -2688,5 +2687,139 @@ extension EnergyStatisticsStaticData {
         }
         return true
     }
+    
+}
+
+extension GatewayModel {
+    
+    private static let gatewaysTableName = "gateways"
+    private static let gatewaysTable = Table(gatewaysTableName)
+    
+    struct ExpressionKey {
+        static let id = Expression<Int64>("id")
+        static let siteUUID = Expression<String>("siteUUID")
+        static let macAddress = Expression<String>("macAddress")
+        static let address = Expression<Int>("address")
+        static let activate = Expression<Bool>("activate")
+        static let associatedSpaces = Expression<Data>("associatedSpaces")
+        static let apn = Expression<String?>("apn")
+        static let mqttServerInfo = Expression<Data?>("mqttServerInfo")
+    }
+    
+    /// 初始化能耗静态统计数据信息表
+    static func initDatabase() {
+        
+        _ = try? SunSmartDataManager.shared.db?.run(GatewayModel.gatewaysTable.create(temporary: false, ifNotExists: true, withoutRowid: false, block: { builder in
+            builder.column(ExpressionKey.id, primaryKey: true)
+            builder.column(ExpressionKey.siteUUID)
+            builder.column(ExpressionKey.macAddress)
+            builder.column(ExpressionKey.address)
+            builder.column(ExpressionKey.activate)
+            builder.column(ExpressionKey.associatedSpaces)
+            builder.column(ExpressionKey.apn)
+            builder.column(ExpressionKey.mqttServerInfo)
+            builder.unique(ExpressionKey.siteUUID, ExpressionKey.macAddress)
+        }))
+    }
+    
+    /// 加载site内所有网关list
+    /// - Parameters:
+    ///   - siteId: site id
+    /// - Returns: 网关list
+    static func load(siteId: String, macAddress: String? = nil, address: Address? = nil) -> [GatewayModel] {
+        
+        var query = GatewayModel.gatewaysTable.filter(ExpressionKey.siteUUID == siteId)
+        if let macAddress = macAddress {
+            query = query.filter(ExpressionKey.macAddress == macAddress)
+//            query = GatewayModel.gatewaysTable.filter(ExpressionKey.siteUUID == siteId && ExpressionKey.macAddress == macAddress)
+        }else if let address = address {
+            query = query.filter(ExpressionKey.address == Int(address))
+        }
+        
+        var gateways: [GatewayModel] = []
+        if let rows = try? SunSmartDataManager.shared.db?.prepare(query) {
+            for row in rows {
+                var spaceDatas: [SpaceData] = []
+                if let spaceIds = try? jsonDecoder.decode([String].self, from: row[ExpressionKey.associatedSpaces]) {
+                    spaceDatas = spaceIds.compactMap({
+                        return SpaceData.load(siteId: siteId, spaceId: $0).first
+                    })
+                }
+                
+                let gateway = GatewayModel(siteId: siteId,address: Address(row[ExpressionKey.address]), mac: row[ExpressionKey.macAddress], activate: row[ExpressionKey.activate], associatedSpaces: spaceDatas, apn: row[ExpressionKey.apn], mqttServerInfo: nil)
+                
+                if let data = row[ExpressionKey.mqttServerInfo],
+                   let serverInformation = try? jsonDecoder.decode(GatewayInformation.MQTTConnectInformation.self, from: data) {
+                    gateway.mqttServerInfo = serverInformation
+                }
+                gateways.append(gateway)
+            }
+        }
+        return gateways
+    }
+    
+    /// 保存网关model数据
+    @discardableResult func save() -> Bool {
+        
+        let spacesData = (try? jsonEncoder.encode(associatedSpaces.map({ $0.id }))) ?? Data()
+        
+        var mqttServerInfoData: Data?
+        if let mqttServerInfo = self.mqttServerInfo {
+            mqttServerInfoData = try? jsonEncoder.encode(mqttServerInfo)
+        }
+        
+        let insertOrUpdate = GatewayModel.gatewaysTable.insert(or: .replace, [
+            ExpressionKey.siteUUID <- self.siteId,
+            ExpressionKey.macAddress <- self.mac,
+            ExpressionKey.address <- Int(self.address),
+            ExpressionKey.activate <- self.activate,
+            ExpressionKey.apn <- self.apn,
+            ExpressionKey.associatedSpaces <- spacesData,
+            ExpressionKey.mqttServerInfo <- mqttServerInfoData
+        ])
+        do {
+            try SunSmartDataManager.shared.db?.run(insertOrUpdate)
+        } catch {
+            print(error)
+            return false
+        }
+        return true
+        
+    }
+    
+    /// 删除对应网关
+    /// - Parameters:
+    ///   - siteId: siteid
+    ///   - macAddress: 网关mac地址
+    /// - Returns: 是否成功
+    @discardableResult static func delete(siteId: String, macAddress: String) -> Bool {
+        
+        let predicate = GatewayModel.gatewaysTable.filter(ExpressionKey.siteUUID == siteId && ExpressionKey.macAddress == macAddress)
+        do {
+            try SunSmartDataManager.shared.db?.run(predicate.delete())
+        } catch {
+            print(error)
+            return false
+        }
+        return true
+    }
+    
+    /// 删除对应网关
+    /// - Parameters:
+    ///   - siteId: siteid
+    ///   - macAddress: 网关mac地址
+    /// - Returns: 是否成功
+    @discardableResult func delete() -> Bool {
+        
+        let predicate = GatewayModel.gatewaysTable.filter(ExpressionKey.siteUUID == self.siteId && ExpressionKey.macAddress == mac)
+        do {
+            try SunSmartDataManager.shared.db?.run(predicate.delete())
+        } catch {
+            print(error)
+            return false
+        }
+        return true
+    }
+    
     
 }

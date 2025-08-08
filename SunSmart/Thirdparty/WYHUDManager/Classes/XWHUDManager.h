@@ -226,6 +226,13 @@ typedef NS_ENUM(NSUInteger, XWHUDManagerType) {
 + (void)showSuccessTipHUD:(NSString *)message;
 
 /**
+ 在 KeyWindow 展示 有文本的成功提示,默认成功图片在 XWHUDImages.bundle 中, - 指定时间消失
+ 
+ @param message 提示语
+ */
++ (void)showSuccessTipHUD:(NSString *)message timer:(NSTimeInterval)aTimer;
+
+/**
  在 View 展示 成功提示,默认成功图片在 XWHUDImages.bundle 中, - 1秒消失
  */
 + (void)showSuccessTipHUDInView:(NSString *)message;

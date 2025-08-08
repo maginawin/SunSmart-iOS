@@ -456,7 +456,9 @@ class SitesViewController: UIViewController {
     
     /// 菜单
     @objc private func menuClick() {
-        
+        if XWHUDManager.isVisible() {
+            return
+        }
         MainMenuView.show {[weak self] option in
             
             guard let self = self else { return }
@@ -497,7 +499,7 @@ class SitesViewController: UIViewController {
 //                self.present(NavigationViewController(rootViewController: vc), animated: true)
 //            }
 //        }
-////        self.present(NavigationViewController(rootViewController: RelativeSensitivityInstructionsController()), animated: true)
+//        self.present(NavigationViewController(rootViewController: GatewayViewController(node: )), animated: true)
 //        return
         
         ImportProjectView {[weak self] mode in

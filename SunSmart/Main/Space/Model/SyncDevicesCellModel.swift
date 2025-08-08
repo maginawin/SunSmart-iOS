@@ -82,6 +82,8 @@ enum DeviceOperationType {
                 return true
             case .proximityLightingNeighbor:
                 return true
+            case .gatewaySIMAPN, .gatewayMQTTInformation, .gatewaySubnetAppkeyIndexs, .gatewayAssociationProjectId:
+                return true
             }
         case .configuration(let node, let type):
             switch type {
@@ -127,6 +129,15 @@ enum DeviceOperationType {
                 return node.proximityLightingEnabled == enabled
             case .proximityLightingNeighbor(let relayNumber, let neighborAddresses):
                 return node.proximityLightingRelayCount == relayNumber && node.proximityLightingNeighborAddresses.sorted() == neighborAddresses.sorted()
+            case .gatewaySIMAPN(let apn):
+                return node.gatewayInfo?.simInfo?.apn == apn
+            case .gatewayMQTTInformation(let mqttInformation):
+                guard let mqttConnectInfo = node.gatewayInfo?.mqttConnectInfo else { return false }
+                return mqttConnectInfo == mqttInformation
+            case .gatewayAssociationProjectId(let projectId):
+                return node.gatewayInfo?.projectId == projectId
+            case .gatewaySubnetAppkeyIndexs(let appkeyIndexs):
+                return node.gatewayInfo?.subnetAppkeyIndexs.sorted() == appkeyIndexs.sorted()
             }
         case .read:
             switch self {
@@ -200,6 +211,8 @@ enum DeviceOperationType {
                 break
             case .proximityLightingNeighbor:
                 break
+            case .gatewaySIMAPN, .gatewayMQTTInformation, .gatewayAssociationProjectId, .gatewaySubnetAppkeyIndexs:
+                break
             }
         case .configuration(let node, let type): // 添加/配置操作
             
@@ -255,6 +268,14 @@ enum DeviceOperationType {
                 if let vendorModel = node.sunricherVendorModel {
                     messageHandles.append(MeshMessageHandle(message: SunricherVendorSet(function: .proximityLightingEnabled(enabled)), model: vendorModel))
                 }
+            case .gatewaySIMAPN(let apn):
+                messageHandles.append(contentsOf: NodeSyncData.syncGatewaySIMAPN(apn: apn).getMessageHandles(node: node))
+            case .gatewayMQTTInformation(let mqttInformation):
+                messageHandles.append(contentsOf: NodeSyncData.syncGatewayMQTTInformation(mqttInformation: mqttInformation).getMessageHandles(node: node))
+            case .gatewayAssociationProjectId(let projectId):
+                messageHandles.append(contentsOf: NodeSyncData.syncGatewayProjectId(projectId: projectId).getMessageHandles(node: node))
+            case .gatewaySubnetAppkeyIndexs(let appkeyIndexs):
+                messageHandles.append(contentsOf: NodeSyncData.syncGatewaySubnetAppkeyIndexs(appkeyIndexs: appkeyIndexs).getMessageHandles(node: node))
             }
         case .read(let node, let type):
             switch type {
@@ -303,6 +324,14 @@ enum ActionType {
     case proximityLightingNeighbor(relayNumber: UInt8, neighborAddresses: [Address])
     /// 启用/禁用邻近照明
     case proximityLightingEnabled(enabled: Bool)
+    /// 网关关联项目id
+    case gatewayAssociationProjectId(projectId: String)
+    /// 同步网关子网appkey indexs
+    case gatewaySubnetAppkeyIndexs(appkeyIndexs: [KeyIndex])
+    /// 同步网关SIM卡APN
+    case gatewaySIMAPN(apn: String)
+    /// 同步网关MQTT参数
+    case gatewayMQTTInformation(mqttInformation: GatewayInformation.MQTTConnectInformation)
 }
 
 extension NodeSyncData {
@@ -342,6 +371,12 @@ extension NodeSyncData {
             return 4
         case .proximityLightingEnabled, .proximityLightingNeighbor:
             return 2
+        case .addNetworkKey, .addApplicationkey, .removeNetworkKey, .removeApplicationkey:
+            return 1
+        case .syncGatewaySubnetAppkeyIndexs:
+            return 2
+        case .syncGatewayProjectId, .syncGatewaySIMAPN, .syncGatewayMQTTInformation:
+            return 3
         }
     }
     

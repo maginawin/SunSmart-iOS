@@ -604,7 +604,8 @@ extension DeviceAddCandidateDeviceListView: WMMenuViewDataSource, WMMenuViewDele
     }
     
     func menuView(_ menu: WMMenuView!, widthForItemAt index: Int) -> CGFloat {
-        return isIPad ? SCRXFrom(120) : SCRXFrom(80)
+        let itemW = isIPad ? SCRXFrom(120) : SCRXFrom(80)
+        return CGFloat(Int(itemW))
     }
     
     func menuView(_ menu: WMMenuView!, itemMarginAt index: Int) -> CGFloat {

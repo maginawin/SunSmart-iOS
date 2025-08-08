@@ -84,8 +84,8 @@ class DeviceParameterAbsoluteSensitivityViewCell: UITableViewCell {
         }else {
             slider.upperValue = min(slider.upperValue + 1, slider.maximumValue)
         }
-        
         updateSliderUI()
+        delegate?.cell(self, changeSensitivityRange: Double(slider.lowerValue)...Double(slider.upperValue))
     }
     
     @objc private func minusBtnClick() {
@@ -95,6 +95,7 @@ class DeviceParameterAbsoluteSensitivityViewCell: UITableViewCell {
             slider.upperValue = max(slider.upperValue - 1, slider.minimumValue)
         }
         updateSliderUI()
+        delegate?.cell(self, changeSensitivityRange: Double(slider.lowerValue)...Double(slider.upperValue))
     }
     
     @objc private func sliderValueChanged() {

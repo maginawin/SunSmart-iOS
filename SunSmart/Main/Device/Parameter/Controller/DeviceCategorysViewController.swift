@@ -40,7 +40,7 @@ class DeviceCategorysViewController: UIViewController {
     private func setupData() {
         
         MeshNetworkManager.instance.realNodes.forEach { node in
-            if let pid = node.productIdentifier, node.isKeybindComplete {
+            if let pid = node.productIdentifier, node.isKeybindComplete, node.supportSetParameter {
                 if let categoryData = categorys.first(where: { $0.pid == pid }) {
                     categoryData.devices.append(node)
                 }else {

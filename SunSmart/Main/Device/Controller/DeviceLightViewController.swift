@@ -30,7 +30,7 @@ class DeviceLightViewController: UIViewController {
     private var replySwitch: UISwitch!
     private var pwmPeriodLabel: UILabel!
     
-    private var lastMessageDelegate: MeshLibManagerMessageDelegate?
+    private weak var lastMessageDelegate: MeshLibManagerMessageDelegate?
     
     let space: SpaceData
     let node: Node
@@ -103,12 +103,17 @@ class DeviceLightViewController: UIViewController {
         updateSliderValue()
     }
     
-    override func viewDidDisappear(_ animated: Bool) {
-        super.viewDidDisappear(animated)
+//    override func viewDidDisappear(_ animated: Bool) {
+//        super.viewDidDisappear(animated)
         
+//        MeshLibManager.manager.messageDelegate = self.lastMessageDelegate
+        
+//        NotificationCenter.default.post(name: .init(deviceStateUpdateNotificationName), object: self.node)
+//    }
+    
+    deinit {
         MeshLibManager.manager.messageDelegate = self.lastMessageDelegate
-        
-        NotificationCenter.default.post(name: .init(deviceStateUpdateNotificationName), object: self.node)
+        NotificationCenter.default.post(name: .init(devicesUpdateNotificationName), object: nil)
     }
     
     /// 获取设备数据

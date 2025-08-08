@@ -58,6 +58,7 @@ class GroupViewController: UIViewController {
         super.init(nibName: nil, bundle: nil)
         
         MeshLibManager.manager.addObserver(self, forKeyPath: "isMeshNetworkConnected", context: nil)
+        MeshLibManager.manager.addObserver(self, forKeyPath: "isMeshNetworkConnected", context: nil)
     }
     
     required init?(coder: NSCoder) {
@@ -75,15 +76,7 @@ class GroupViewController: UIViewController {
         if self.presentingViewController != nil && navigationController?.viewControllers.count ?? 0 == 1 {
             
             navigationController?.setNavigationBarBackgroundColor(color: .clear)
-            
-            //            let appearance = UINavigationBarAppearance()
-            //            appearance.configureWithOpaqueBackground()
-            //            appearance.backgroundColor = .clear
-            //            appearance.shadowImage = UIImage.image(size: CGSize(width: 1, height: 1), color: .clear)
-            ////            appearance.titleTextAttributes = [.font: UIFont.systemFont(ofSize: 18, weight: .light)]
-            //            navigationController?.navigationBar.standardAppearance = appearance
-            //            navigationController?.navigationBar.scrollEdgeAppearance = appearance
-            
+
             navigationItem.leftBarButtonItem = UIBarButtonItem(image: UIImage(named: "navigation_back")?.withRenderingMode(.alwaysOriginal), style: .done, target: self, action: #selector(close))
         }
         
@@ -136,11 +129,7 @@ class GroupViewController: UIViewController {
         MeshLibManager.manager.messageDelegate = self
         
         // 检查连接的设备白名单有该组
-        let proxyFilter = MeshNetworkManager.instance.proxyFilter
-        if proxyFilter.proxy != nil, !proxyFilter.addresses.contains(group.address.address) {
-            proxyFilter.add(address: group.address.address)
-        }
-        
+        proxyFilterAddGroup()
     }
     
     override func viewDidAppear(_ animated: Bool) {
@@ -166,11 +155,7 @@ class GroupViewController: UIViewController {
         automationTimer?.invalidate()
         automationTimer = nil
         
-        // 检查连接的设备白名单有该组
-        let proxyFilter = MeshNetworkManager.instance.proxyFilter
-        if proxyFilter.proxy != nil, proxyFilter.addresses.contains(group.address.address) {
-            proxyFilter.remove(address: group.address.address)
-        }
+        proxyFilterRemoveGroup()
         
         MeshLibManager.manager.removeObserver(self, forKeyPath: "isMeshNetworkConnected")
     }
@@ -182,22 +167,6 @@ class GroupViewController: UIViewController {
 //        }
     }
     
-    override func viewDidLayoutSubviews() {
-        super.viewDidLayoutSubviews()
-        
-//        var itemW = (collectionView.width - collectionView.contentInset.left - collectionView.contentInset.right - flowLayout.minimumInteritemSpacing * CGFloat(rowNum - 1) - flowLayout.sectionInset.left - flowLayout.sectionInset.right) / CGFloat(rowNum)
-//        itemW = CGFloat(floorf(Float(itemW) * 100) / 100.0)
-//        let itemSize = CGSize(width: itemW, height: itemW)
-//        flowLayout.itemSize = itemSize
-        
-//        collectionView.snp.updateConstraints { make in
-//            var height = itemSize.height * CGFloat(columnNum) + flowLayout.minimumLineSpacing * CGFloat(columnNum - 1) + collectionView.contentInset.top + collectionView.contentInset.bottom + flowLayout.sectionInset.top + flowLayout.sectionInset.bottom
-//            height = CGFloat(ceil(Float(height)))
-////            CGFloat(floorf(Float(height) * 100) / 100.0)
-//            make.height.equalTo(height)
-//        }
-        
-    }
     
     private func addNotificationObserver() {
         NotificationCenter.default.addObserver(forName: .init(groupDataUpdateNotificationName), object: nil, queue: nil) {[weak self] notification in
@@ -208,16 +177,44 @@ class GroupViewController: UIViewController {
             self.updateUI()
         }
         
+        // 代理切换通知
+        NotificationCenter.default.addObserver(forName: .init(meshNetworkProxyDidReplaceNotificationName), object: nil, queue: nil) {[weak self] notification in
+            guard let self = self else {
+                return
+            }
+            self.proxyFilterAddGroup()
+        }
+        
     }
     
     override func observeValue(forKeyPath keyPath: String?, of object: Any?, change: [NSKeyValueChangeKey : Any]?, context: UnsafeMutableRawPointer?) {
         
         if MeshLibManager.manager.isMeshNetworkConnected {
             onoffBtn.isEnabled = true
+            // 检查连接的设备白名单有该组
+            proxyFilterAddGroup()
         }else {
             if group.nodes.count > 0 {
                 onoffBtn.isEnabled = false
             }
+        }
+    }
+    
+    /// 添加组地址到代理白名单
+    private func proxyFilterAddGroup() {
+        // 检查连接的设备白名单有该组
+        let proxyFilter = MeshNetworkManager.instance.proxyFilter
+        if proxyFilter.proxy != nil, !proxyFilter.addresses.contains(group.address.address) {
+            proxyFilter.add(address: group.address.address)
+        }
+    }
+    
+    /// 代理白名单删除组地址
+    private func proxyFilterRemoveGroup() {
+        // 检查连接的设备白名单有该组
+        let proxyFilter = MeshNetworkManager.instance.proxyFilter
+        if proxyFilter.proxy != nil, proxyFilter.addresses.contains(group.address.address) {
+            proxyFilter.remove(address: group.address.address)
         }
     }
     

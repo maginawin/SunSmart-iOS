@@ -322,6 +322,40 @@ extension SpaceData {
                     }
                     nodeDict.updateValue(node.proximityLightingNeighborAddresses, forKey: "proximityLightingNeighborAddresses")
                     
+                    // 网关
+                    if node.deviceType == .gateway {
+                        // 设备真实网关数据
+                        if let gatewaInfo = node.gatewayInfo,
+                           let data = try? jsonEncoder.encode(gatewaInfo), let gatewayInfoDict = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
+                            nodeDict.updateValue(gatewayInfoDict, forKey: "gatewayInfo")
+                        }
+                        // 预配置网关数据
+                        if let mac = node.macAddress, let gatewayModel = node.gatewayModel ?? GatewayModel.load(siteId: siteId, macAddress: mac).first {
+                            var gatewayPreconfigured: [String: Any] = [:]
+                            gatewayPreconfigured.updateValue(gatewayModel.activate, forKey: "activate")
+                            gatewayPreconfigured.updateValue(gatewayModel.associatedSpaces.map({ $0.id }), forKey: "associatedSpaces")
+                            if let apn = gatewayModel.apn {
+                                gatewayPreconfigured.updateValue(apn, forKey: "apn")
+                            }
+                            if let mqttServerInfo = gatewayModel.mqttServerInfo {
+                                var mqttConnectInfo: [String: Any] = [:]
+                                mqttConnectInfo.updateValue(mqttServerInfo.serverAddress, forKey: "serverAddress")
+                                if let userName = mqttServerInfo.userName {
+                                    mqttConnectInfo.updateValue(userName, forKey: "userName")
+                                }
+                                if let password = mqttServerInfo.password {
+                                    mqttConnectInfo.updateValue(password, forKey: "password")
+                                }
+                                mqttConnectInfo.updateValue(mqttServerInfo.clientId, forKey: "clientId")
+                                mqttConnectInfo.updateValue(mqttServerInfo.keepalive, forKey: "keepalive")
+                                mqttConnectInfo.updateValue(mqttServerInfo.clearSession, forKey: "clearSession")
+                                mqttConnectInfo.updateValue(mqttServerInfo.authMode.rawValue, forKey: "authMode")
+                                mqttConnectInfo.updateValue(mqttServerInfo.sslVersion.rawValue, forKey: "sslVersion")
+                                gatewayPreconfigured.updateValue(mqttConnectInfo, forKey: "mqttConnectInfo")
+                            }
+                            nodeDict.updateValue(gatewayPreconfigured, forKey: "gatewayPreconfigured")
+                        }
+                    }
                     nodeDicts.append(nodeDict)
                 }
             }

@@ -44,7 +44,7 @@ extension SiteData {
         let id = UUID().uuidString
         _ = MeshNetworkManager.createMeshNetwork(meshUUID: id, meshNetworkName: name, localAddress: Address.minUnicastAddress)
 //        MeshLibManager.manager.createMeshNetwork(meshUUID: id, meshNetworkName: name, connected: false)
-        let site = SiteData(id: id, meshUUID: id, name: name, imageId: 1, type: .office, permission: .owner, create: time,isFavourite: false, sourceType: .create)
+        let site = SiteData(region: UserData.currentServerRegion, id: id, meshUUID: id, name: name, imageId: 1, type: .office, permission: .owner, create: time,isFavourite: false, sourceType: .create)
         site.localAddress = Address.minUnicastAddress
 //        site.meshManager = meshManager
         site.save()
@@ -615,6 +615,10 @@ extension MeshNetworkManager {
             
             let subNetworkId = self.currentNetworkKey.networkId.hex
             
+            self.realNodes.filter({ $0.macAddress != nil && $0.deviceType == .gateway }).forEach { node in
+                node.gatewayModel = GatewayModel.load(siteId: uuid, macAddress: node.macAddress).first ?? GatewayModel(siteId: uuid, address: node.primaryUnicastAddress, mac: node.macAddress!)
+            }
+            
             self.schedules = Schedule.load(meshUUID: uuid, meshNetworkId: subNetworkId)
             
             self.groups.forEach({ group in
@@ -644,15 +648,16 @@ extension MeshNetworkManager {
     /// 获取下一个节点名称
     /// - Parameter defaultName: 默认名称
     /// - Returns: 分配的节点名称
-    func getNextNodeName(_ defaultName: String = "device_defalut_name".localizedString) -> String {
+    func getNextNodeName(_ defaultName: String = "device_defalut_name".localizedString, length: Int = 3) -> String {
         objc_sync_enter(self)
         
-        var resultName = defaultName + "001"
+        var resultName = defaultName + String(format: "%0\(length)d", 1)
         // 已存在的节点名称
         let existNames = realNodes.map({ $0.name ?? "" })
         for index in 1...32767 {
             // ID001
-            let name = defaultName + String(format: "%03d", index)
+            
+            let name = defaultName + String(format: "%0\(length)d", index)
             if !existNames.contains(name) {
                 resultName = name
                 break
@@ -1766,7 +1771,8 @@ extension DeviceDongleData {
 extension Node {
 
     static private var localVersionSEQ = 1
-    static private var deviceConfigInfo = 2
+    static private var deviceConfigInfo = 202
+    static private var gateway = 203
     
     /// 设备类型
     enum DeviceType {
@@ -1894,9 +1900,20 @@ extension Node {
 //        return self.getSyncData(type: .all).count > 0
     }
     
+    /// 是否支持设置参数
+    var supportSetParameter: Bool {
+        guard self.sunricherVendorModel != nil, self.productIdentifier != nil else {
+            return false
+        }
+        if self.deviceType == .dongle || self.deviceType == .gateway {
+            return false
+        }
+        return true
+    }
+    
     /// 是否支持pwm频率
     var supportPwmFrequency: Bool {
-        guard self.sunricherVendorModel != nil, let pid = self.productIdentifier else {
+        guard self.sunricherVendorModel != nil, let pid = self.productIdentifier, self.lightnessModel != nil else {
             return false
         }
         switch pid {
@@ -1913,6 +1930,15 @@ extension Node {
             return false
         }
         return self.presenceDetectedSensorModel != nil
+    }
+    
+    /// 业务层网关model（网关节点）
+    var gatewayModel: GatewayModel? {
+        get {
+            objc_getAssociatedObject(self, &Node.gateway) as? GatewayModel
+        }set {
+            objc_setAssociatedObject(self, &Node.gateway, newValue, .OBJC_ASSOCIATION_RETAIN)
+        }
     }
     
     /// 更新新设备的恢复数据
@@ -1947,6 +1973,34 @@ extension Node {
                 switchData.proxyNodeAddress = self.primaryUnicastAddress
                 switchData.save()
             }
+            
+            // 邻近照明路径
+            if let proximityLightingPath = group.info.proximityLightingPath {
+                let oldAddress = oldNode.sunricherVendorModel?.parentElement?.unicastAddress ?? oldNode.primaryUnicastAddress
+  
+                let newAddress = self.sunricherVendorModel?.parentElement?.unicastAddress ?? self.primaryUnicastAddress
+                /// 是否更新数据
+                var update = false
+                
+                // 替换之前路径的设备地址
+                let paths = proximityLightingPath.paths.filter({ $0.items.contains(where: { $0.address == oldAddress }) })
+                paths.forEach({ path in
+                    if let item = path.items.first(where: { $0.address == oldAddress }) {
+                        item.address = newAddress
+                        update = true
+                    }
+                })
+                let zones = proximityLightingPath.zones.filter({ $0.addresses.contains(oldAddress) })
+                zones.forEach { zone in
+                    if let index = zone.addresses.firstIndex(of: oldAddress) {
+                        zone.addresses.replaceSubrange(index...index, with: [newAddress])
+                        update = true
+                    }
+                }
+                if update {
+                    group.info.save()
+                }
+            }
         }
         
         // 日程
@@ -1965,7 +2019,12 @@ extension Node {
             dongle.bindNodeAddress = self.primaryUnicastAddress
             dongle.save()
         }
-        
+        // Gateway
+        if self.deviceType == .gateway, let gatewayModel = oldNode.gatewayModel {
+            gatewayModel.address = self.primaryUnicastAddress
+            self.gatewayModel = gatewayModel
+            self.gatewayModel?.save()
+        }
         
         self.restoreData = restoreData
         self.save()
@@ -1988,59 +2047,8 @@ extension Node {
             // 如果恢复的设备之前作为动能开关代理
             if let enOceanMacAddress = oldNode.enOceanMacAddress, let switchData = group.info.switchs.first(where: { $0.enOceanMacAddress == enOceanMacAddress && $0.proxyNodeAddress == oldNode.primaryUnicastAddress }), switchData.linkGroup != nil, let enOceanSecurityKey = switchData.enOceanSecurityKey {
                 
-                switchData.proxyNodeAddress = self.primaryUnicastAddress
-                switchData.save()
                 let handles = self.getEnOceanSwitchBindMessageHandles(enOceanMacAddress: enOceanMacAddress, securityKey: enOceanSecurityKey, enabled: switchData.enabled, switchKeys: switchData.switchKeys)
                 messageHandles.append(contentsOf: handles)
-            }
-            
-            // 邻近照明路径
-            if let proximityLightingPath = group.info.proximityLightingPath {
-                let oldAddress = oldNode.sunricherVendorModel?.parentElement?.unicastAddress ?? oldNode.primaryUnicastAddress
-  
-                let newAddress = self.sunricherVendorModel?.parentElement?.unicastAddress ?? self.primaryUnicastAddress
-                /// 是否更新数据
-                var update = false
-                
-                // 替换之前路径的设备地址
-                let paths = proximityLightingPath.paths.filter({ $0.items.contains(where: { $0.address == oldAddress }) })
-                paths.forEach({ path in
-                    if let item = path.items.first(where: { $0.address == oldAddress }) {
-                        item.address = newAddress
-                        update = true
-                    }
-                })
-//                if let path = proximityLightingPath.paths.first(where: { $0.items.contains(where: { $0.address == oldAddress }) }),
-//                    let item = path.items.first(where: { $0.address == oldAddress }) {
-//                    item.address = newAddress
-//                    update = true
-//                }
-                let zones = proximityLightingPath.zones.filter({ $0.addresses.contains(oldAddress) })
-                zones.forEach { zone in
-                    if let index = zone.addresses.firstIndex(of: oldAddress) {
-                        zone.addresses.replaceSubrange(index...index, with: [newAddress])
-                        update = true
-                    }
-                }
-//                if let zone = proximityLightingPath.zones.first(where: { $0.addresses.contains(oldAddress) }) {
-//                    if let index = zone.addresses.firstIndex(of: oldAddress) {
-//                        zone.addresses.replaceSubrange(index...index, with: [newAddress])
-//                        update = true
-//                    }
-//                }
-                if update {
-                    group.info.save()
-                }
-//                if let syncData = self.getNodeSyncProximityLighting(group: group), let model = self.sunricherVendorModel {
-//                    switch syncData {
-//                    case .proximityLightingEnabled(let enable):
-//                        messageHandles.append(MeshMessageHandle(message: SunricherVendorSet(function: .proximityLightingEnabled(enable)), model: model))
-//                    case .proximityLightingNeighbor(let relayNumber, let neighborAddresses):
-//                        messageHandles.append(MeshMessageHandle(message: SunricherVendorSet(function: .proximityLightingNeighborSet(enabled: true, relay: relayNumber, ttl: 0, relayAppKeyIndex: MeshNetworkManager.instance.currentApplicationKey.index, neighborAddresses: neighborAddresses)), model: model))
-//                    default:
-//                        break
-//                    }
-//                }
             }
             
         }
@@ -2161,6 +2169,9 @@ extension Node {
             if let distributionData = MeshDistributionData.load(productId: productId), distributionData.distributionAddress == self.primaryUnicastAddress {
                 distributionData.delete(productId: productId)
             }
+        }
+        if let gatewayModel = self.gatewayModel {
+            gatewayModel.delete()
         }
     }
     

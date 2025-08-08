@@ -16,9 +16,11 @@ class GatewayNameViewCell: UITableViewCell {
     override init(style: UITableViewCell.CellStyle, reuseIdentifier: String?) {
         super.init(style: style, reuseIdentifier: reuseIdentifier)
         
+        selectionStyle = .none
+        
         nameField = UITextField()
         nameField.textColor = TextBlack_Color
-        nameField.font = UIFont.systemFont(ofSize: SCRYFrom(14), weight: .light)
+        nameField.font = UIFont.systemFont(ofSize: 14)
         nameField.clearButtonMode = .whileEditing
         nameField.rightViewMode = .whileEditing
         nameField.returnKeyType = .done
@@ -26,7 +28,7 @@ class GatewayNameViewCell: UITableViewCell {
         nameField.delegate = self
         contentView.addSubview(nameField)
         nameField.snp.makeConstraints { make in
-            make.left.equalTo(SCRXFrom(10))
+            make.left.equalTo(SCRXFrom(16))
             make.right.equalTo(SCRXFrom(-6))
             make.top.bottom.equalToSuperview()
         }

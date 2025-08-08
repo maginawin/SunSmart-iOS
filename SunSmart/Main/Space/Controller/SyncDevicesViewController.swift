@@ -703,6 +703,31 @@ class SyncDevicesViewController: UIViewController {
                 let step = SyncDeviceStepModel(type: "path_sequence".localizedString, state: .none, tasks: [taskModel])
                 taskModel.parentStepModel = step
                 configturationSteps.append(step)
+            case .syncGatewayProjectId(let projectId):
+                let taskModel = SyncDeviceStepTaskModel(name: "association_project".localizedString, operationType: .configuration(node: node, type: .gatewayAssociationProjectId(projectId: projectId)))
+                
+                let step = SyncDeviceStepModel(type: "association_project".localizedString, state: .none, tasks: [taskModel])
+                taskModel.parentStepModel = step
+                configturationSteps.append(step)
+            case .syncGatewaySubnetAppkeyIndexs(let appkeyIndexs):
+                let taskModel = SyncDeviceStepTaskModel(name: "associated_spaces".localizedString, operationType: .configuration(node: node, type: .gatewaySubnetAppkeyIndexs(appkeyIndexs: appkeyIndexs)))
+                
+                let step = SyncDeviceStepModel(type: "associated_spaces".localizedString, state: .none, tasks: [taskModel])
+                taskModel.parentStepModel = step
+                configturationSteps.append(step)
+                
+            case .syncGatewaySIMAPN(let apn):
+                let taskModel = SyncDeviceStepTaskModel(name: "apn".localizedString, operationType: .configuration(node: node, type: .gatewaySIMAPN(apn: apn)))
+                
+                let step = SyncDeviceStepModel(type: "apn".localizedString, state: .none, tasks: [taskModel])
+                taskModel.parentStepModel = step
+                configturationSteps.append(step)
+            case .syncGatewayMQTTInformation(let mqttInformation):
+                let taskModel = SyncDeviceStepTaskModel(name: "server_information".localizedString, operationType: .configuration(node: node, type: .gatewayMQTTInformation(mqttInformation: mqttInformation)))
+                
+                let step = SyncDeviceStepModel(type: "server_information".localizedString, state: .none, tasks: [taskModel])
+                taskModel.parentStepModel = step
+                configturationSteps.append(step)
             default:
                 break
             }

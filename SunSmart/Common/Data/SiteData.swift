@@ -72,6 +72,8 @@ protocol Copyable {
 
 class SiteData: Copyable {
     
+    /// 地区
+    let region: ServerRegion
     /// 场所id
     var id: String
     /// 网络uuid
@@ -84,7 +86,6 @@ class SiteData: Copyable {
     let type: SiteType
     /// 权限
     var permission: Permission
-
     /// 创建时间（时间戳秒）
 //    let create: TimeInterval
     var create: Int64
@@ -144,6 +145,7 @@ class SiteData: Copyable {
     
     /// 初始化场所数据
     /// - Parameters:
+    ///   - region: 服务器地区
     ///   - id: id
     ///   - meshUUID: Mesh UUID
     ///   - name: 名称
@@ -152,7 +154,8 @@ class SiteData: Copyable {
     ///   - create: 创建时间（时间戳秒）
     ///   - lastUpdate: 上次更新时间（时间戳秒）
     ///   - isFavourite: 是否喜欢
-    init(id: String, meshUUID: String, name: String, imageId: Int = 0, type: SiteType, permission: Permission, create: Int64, lastUpdate: Int64? = nil, isFavourite: Bool, sourceType: DataSourceType) {
+    init(region: ServerRegion, id: String, meshUUID: String, name: String, imageId: Int = 0, type: SiteType, permission: Permission, create: Int64, lastUpdate: Int64? = nil, isFavourite: Bool, sourceType: DataSourceType) {
+        self.region = region
         self.name = name
         self.id = id
         self.meshUUID = meshUUID
@@ -167,7 +170,7 @@ class SiteData: Copyable {
     
     func copy() -> Self {
         
-        let site = SiteData(id: self.id, meshUUID: self.meshUUID, name: self.name, imageId: self.imageId, type: self.type, permission: self.permission, create: self.create, lastUpdate: self.lastUpdate, isFavourite: self.isFavourite, sourceType: self.sourceType)
+        let site = SiteData(region: self.region, id: self.id, meshUUID: self.meshUUID, name: self.name, imageId: self.imageId, type: self.type, permission: self.permission, create: self.create, lastUpdate: self.lastUpdate, isFavourite: self.isFavourite, sourceType: self.sourceType)
         let spaces = self.spaces.map({ $0.copy() })
         site.spaces = spaces
         return site as! Self

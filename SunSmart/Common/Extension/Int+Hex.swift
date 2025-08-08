@@ -117,7 +117,7 @@ extension UInt32 {
     }
     
     init(data: Data) {
-        self = data.withUnsafeBytes { $0.load(as: UInt32.self) }
+        self = data.isEmpty ? 0 : data.withUnsafeBytes { $0.load(as: UInt32.self) }
     }
     
     var data: Data {

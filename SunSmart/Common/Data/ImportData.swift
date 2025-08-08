@@ -44,7 +44,7 @@ extension SiteData {
             default:
                 break
             }
-            site = SiteData(id: uuid, meshUUID: uuid, name: name, type: .init(rawValue: json["type"].intValue) ?? .office, permission: permission, create: json["createTimestamp"].int64Value, lastUpdate: json["updateTimestamp"].int64Value, isFavourite: false, sourceType: .create)
+            site = SiteData(region: UserData.currentServerRegion, id: uuid, meshUUID: uuid, name: name, type: .init(rawValue: json["type"].intValue) ?? .office, permission: permission, create: json["createTimestamp"].int64Value, lastUpdate: json["updateTimestamp"].int64Value, isFavourite: false, sourceType: .create)
             initialize = true
         }else if site?.state == .waitDeleted { // 已转让site再次加入算重新
             initialize = true
@@ -205,20 +205,10 @@ extension SiteData {
                 }
                 
                 meshNetwork = MeshNetworkManager.createMeshNetwork(meshUUID: self.meshUUID, meshNetworkName: name, localAddress: self.localAddress, provisionerUUID: provisionerUuid.uuidString, provisioner: localProvisioner, networkKey: netKey, applicationKey: appKey).meshNetwork
-                if let deviceUsedAddresses = json["provisioner"]["usedAddresses"].arrayObject as? [String] {
-                    meshNetwork?.deviceUsedAddresses = deviceUsedAddresses.compactMap({ Address(hex: $0) })
-                }
                 
                 if let ivIndex = json["ivIndex"].uInt32 {
                     meshNetwork?.currentIVIndex = ivIndex
                 }
-                
-                if !(meshNetwork?.networkKeys.contains(where: { $0.index == netKey.index }) ?? false) {
-                    meshNetwork?.add(networkKey: netKey)
-                    try? appKey.bind(to: netKey)
-                    meshNetwork?.add(applicationKey: appKey)
-                }
-               
                 // 废弃的设备地址
                 if let exclusions = json["exclusions"].array {
                     let exclusionDataList = exclusions.compactMap({
@@ -228,11 +218,31 @@ extension SiteData {
                         return nil
                     })
                     meshNetwork?.setNetworkExclusionAddresses(list: exclusionDataList)
-                    // 判断是否使用了废弃地址
-                    //                if let localAddress = meshNetwork?.localProvisioner?.primaryUnicastAddress, exclusionDataList.contains(where: { $0.1.contains(localAddress) }) {
-                    //                    resetLocalAddress = true
-                    //                }
                 }
+                
+                if let deviceUsedAddresses = json["provisioner"]["usedAddresses"].arrayObject as? [String] {
+                    
+                    var usedAddresses = deviceUsedAddresses.compactMap({ Address(hex: $0) })
+                    // 当废弃地址回收后，已使用地址也相应删除
+                    if meshNetwork!.currentIVIndex >= 2 {
+                        // 废弃地址回收后，删除已使用地址
+                        meshNetwork!.getNetworkExclusionAddresses().forEach { exclusionList in
+                            if exclusionList.ivIndex <= meshNetwork!.currentIVIndex - 2 {
+                                usedAddresses.removeAll(where: { exclusionList.addresses.contains($0) })
+                            }
+                        }
+                    }
+                    meshNetwork?.deviceUsedAddresses = usedAddresses
+                }
+                
+                
+                if !(meshNetwork?.networkKeys.contains(where: { $0.index == netKey.index }) ?? false) {
+                    meshNetwork?.add(networkKey: netKey)
+                    try? appKey.bind(to: netKey)
+                    meshNetwork?.add(applicationKey: appKey)
+                }
+               
+            
 //                meshNetworkSave = true
             }
             
@@ -293,6 +303,8 @@ extension SiteData {
                                 appendAddresses = addresses.filter({ !exclusionData.addresses.contains($0) })
                             }
                             appendExclusionDatas.append((ivIndex: ivIndex, addresses: appendAddresses))
+                        }else { // 废弃地址回收后，删除已使用地址
+                            meshNetwork?.deviceUsedAddresses.removeAll(where: { addresses.contains($0) })
                         }
                     }
                 }
@@ -822,6 +834,7 @@ extension SpaceData {
                 if let uuid = nodeDict["uuid"] as? String { // 换算成大写UUID提供Node解码
                     decodeNodeDict.updateValue(uuid, forKey: "UUID")
                 }
+                
                 if let data = try? JSONSerialization.data(withJSONObject: decodeNodeDict), let node = try? jsonDecoder.decode(Node.self, from: data) {
                     let nodeJson = JSON(nodeDict)
                     if let version = nodeJson["versionSEQ"].uInt32 {
@@ -971,16 +984,51 @@ extension SpaceData {
                         node.proximityLightingNeighborAddresses = proximityLightingNeighborAddresses.compactMap({ Address(hex: $0) })
                     }
                     
+                    // 网关
+                    if let gatewayInfo = nodeJson["gatewayInfo"].dictionaryObject, let gatewayInfoData = try? JSONSerialization.data(withJSONObject: gatewayInfo) {
+                        node.gatewayInfo = try? jsonDecoder.decode(GatewayInformation.self, from: gatewayInfoData)
+                    }
+                    // 预配置网关数据
+                    if let mac = node.macAddress, let gatewayPreconfigured = nodeJson["gatewayPreconfigured"].dictionaryObject {
+                        let json = JSON(gatewayPreconfigured)
+                        var associatedSpaces: [SpaceData] = []
+                        if let spaceIds = json["associatedSpaces"].arrayObject as? [String] {
+                            associatedSpaces = spaceIds.compactMap({
+                                if self.id == $0 {
+                                    return self
+                                }
+                                return SpaceData.load(siteId: siteId, spaceId: $0).first
+                            })
+                        }
+                        var mqttConnectInfo: GatewayInformation.MQTTConnectInformation?
+                        if let mqttConnectInfoDict = json["mqttConnectInfo"].dictionaryObject,
+                           let serverAddress = mqttConnectInfoDict["serverAddress"] as? String,
+                           let userName = mqttConnectInfoDict["userName"] as? String,
+                           let password = mqttConnectInfoDict["password"] as? String,
+                           let clientId = mqttConnectInfoDict["clientId"] as? String {
+                            
+                            var authMode: GatewayInformation.MQTTAuthMode = .none
+                            var sslVersion: GatewayInformation.MQTTSSLVersion = .all
+                            if let authModeValue = mqttConnectInfoDict["authMode"] as? UInt8, let resultAuthMode = GatewayInformation.MQTTAuthMode.init(rawValue: authModeValue) {
+                                authMode = resultAuthMode
+                            }
+                            if let sslVersionValue = mqttConnectInfoDict["sslVersion"] as? UInt8, let resultSslVersion = GatewayInformation.MQTTSSLVersion(rawValue: sslVersionValue) {
+                                sslVersion = resultSslVersion
+                            }
+ 
+                            mqttConnectInfo = .init(customId: customId, serverAddress: serverAddress, userName: userName, password: password, clientId: clientId, keepalive: mqttConnectInfoDict["keepalive"] as? UInt16 ?? 60, clearSession: mqttConnectInfoDict["clearSession"] as? Bool ?? true, authMode: authMode, sslVersion: sslVersion)
+                        }
+                        
+                       let gatewayModel = GatewayModel(siteId: siteId, address: node.primaryUnicastAddress, mac: mac, activate: json["activate"].boolValue, associatedSpaces: associatedSpaces, apn: json["apn"].string, mqttServerInfo: mqttConnectInfo)
+                        gatewayModel.save()
+                        node.gatewayModel = gatewayModel
+                    }
+                    
                     return node
                 }
                 return nil
             }
             
-            
-//            network.getNetworkExclusionAddresses().filter { (ivIndex: UInt32, addresses: [Address]) in
-//                
-//            }
-//            let exclusions = network.getNetworkExclusionAddresses()
             nodes.forEach({
                 // 判断设备是否存在废弃地址内，如果存在则清空废弃地址内缓存（如多用户编辑数据并未及时提交，使用了旧数据则可能出现导入的设备地址在废弃地址内）
                 if network.isAddressInExclusion(node: $0) {

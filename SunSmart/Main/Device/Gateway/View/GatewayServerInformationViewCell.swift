@@ -30,7 +30,7 @@ class GatewayServerInformationViewCell: UITableViewCell {
     
     private func setupUI() {
         
-        serverAddressLabel = UILabel(text: "server_address".localizedString, textColor: ImportantText_Color, fontSize: 14, fontWeight: .light)
+        serverAddressLabel = UILabel(text: "server_address".localizedString, textColor: ImportantText_Color, fontSize: 14, fit: false)
         contentView.addSubview(serverAddressLabel)
         serverAddressLabel.snp.makeConstraints { make in
             make.left.equalTo(SCRXFrom(16))
@@ -38,21 +38,25 @@ class GatewayServerInformationViewCell: UITableViewCell {
         }
         
         serverAddressField = UITextField()
+        serverAddressField.font = UIFont.systemFont(ofSize: 13, weight: .light)
         serverAddressField.backgroundColor = Background_Color
+        serverAddressField.layer.cornerRadius = SCRYFrom(5)
         serverAddressField.layer.borderColor = RGB(220, 220, 220).cgColor
         serverAddressField.layer.borderWidth = 0.5
         serverAddressField.textColor = Message_Color
         serverAddressField.textAlignment = .right
+        serverAddressField.rightViewMode = .always
+        serverAddressField.rightView = UIView(frame: CGRect(x: 0, y: 0, width: 8, height: 0))
         serverAddressField.isEnabled = false
         contentView.addSubview(serverAddressField)
         serverAddressField.snp.makeConstraints { make in
             make.right.equalTo(SCRXFrom(-16))
             make.centerY.equalTo(serverAddressLabel)
             make.height.equalTo(SCRYFrom(32))
-            make.width.equalTo(SCRXFrom(156))
+            make.width.equalTo(SCRXFrom(200))
         }
         
-        portLabel = UILabel(text: "port".localizedString, textColor: ImportantText_Color, fontSize: 14, fontWeight: .light)
+        portLabel = UILabel(text: "port".localizedString, textColor: ImportantText_Color, fontSize: 14, fit: false)
         contentView.addSubview(portLabel)
         portLabel.snp.makeConstraints { make in
             make.left.equalTo(serverAddressLabel)
@@ -60,11 +64,15 @@ class GatewayServerInformationViewCell: UITableViewCell {
         }
         
         portField = UITextField()
+        portField.font = UIFont.systemFont(ofSize: 13, weight: .light)
         portField.backgroundColor = Background_Color
+        portField.layer.cornerRadius = SCRYFrom(5)
         portField.layer.borderColor = RGB(220, 220, 220).cgColor
         portField.layer.borderWidth = 0.5
         portField.textColor = Message_Color
         portField.textAlignment = .right
+        portField.rightViewMode = .always
+        portField.rightView = UIView(frame: CGRect(x: 0, y: 0, width: 8, height: 0))
         portField.isEnabled = false
         contentView.addSubview(portField)
         portField.snp.makeConstraints { make in
@@ -73,7 +81,7 @@ class GatewayServerInformationViewCell: UITableViewCell {
             make.width.height.equalTo(serverAddressField)
         }
         
-        clientIdLabel = UILabel(text: "client_id".localizedString, textColor: ImportantText_Color, fontSize: 14, fontWeight: .light)
+        clientIdLabel = UILabel(text: "client_id".localizedString, textColor: ImportantText_Color, fontSize: 14, fit: false)
         contentView.addSubview(clientIdLabel)
         clientIdLabel.snp.makeConstraints { make in
             make.left.equalTo(portLabel)
@@ -81,11 +89,15 @@ class GatewayServerInformationViewCell: UITableViewCell {
         }
         
         clientIdField = UITextField()
+        clientIdField.font = UIFont.systemFont(ofSize: 13, weight: .light)
         clientIdField.backgroundColor = Background_Color
+        clientIdField.layer.cornerRadius = SCRYFrom(5)
         clientIdField.layer.borderColor = RGB(220, 220, 220).cgColor
         clientIdField.layer.borderWidth = 0.5
         clientIdField.textColor = Message_Color
         clientIdField.textAlignment = .right
+        clientIdField.rightViewMode = .always
+        clientIdField.rightView = UIView(frame: CGRect(x: 0, y: 0, width: 8, height: 0))
         clientIdField.isEnabled = false
         contentView.addSubview(clientIdField)
         clientIdField.snp.makeConstraints { make in

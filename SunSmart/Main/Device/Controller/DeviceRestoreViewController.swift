@@ -449,12 +449,28 @@ class DeviceRestoreViewController: UIViewController {
                     addToGroup = section.group
                 }
             }
+            if addDevice.deviceType == .gateway, let mac = node.macAddress, NetworkRequest.shared.networkable {
+                Task {
+                    // 网关绑定到space
+                    let bindSpaceResult = await NetworkRequest.shared.request(.gatewayBindSpace(spaceId: self.space.id, gatewayId: mac))
+                    switch bindSpaceResult {
+                    case .success:
+                        node.gatewayModel?.associatedSpaces.append(self.space)
+                        node.gatewayModel?.save()
+                    case .failure:
+                        break
+                    }
+                }
+            }
             
             // 恢复数据
             node.updateResoreData(oldNode: oldNode, resoreGroup: addToGroup)
             
-        } appendMessagesBack: {[weak self] addDevice in
-            guard let self = self, let newNode = MeshNetworkManager.instance.meshNetwork?.node(withAddress: addDevice.address) else { return [] }
+        } appendMessagesBack: {[weak self] addDevice, appendCompletion in
+            guard let self = self, let newNode = MeshNetworkManager.instance.meshNetwork?.node(withAddress: addDevice.address) else {
+                appendCompletion([])
+                return
+            }
             
             var oldNode = deviceData.node
             var addToGroup = oldNode.group
@@ -479,7 +495,11 @@ class DeviceRestoreViewController: UIViewController {
             if let model = newNode.lightnessModel {
                 appendMessages.append(MeshMessageHandle(message: LightLightnessSetUnacknowledged(lightness: .max), model: model))
             }
-            appendMessages.append(contentsOf: newNode.getResoreMessageHandles(oldNode: oldNode))
+            let syncDatas = newNode.getSyncData(type: .all)
+            syncDatas.forEach({
+                appendMessages.append(contentsOf: $0.getMessageHandles(node: newNode))
+            })
+//            appendMessages.append(contentsOf: newNode.getResoreMessageHandles(oldNode: oldNode))
             
             if addToGroup == nil {
                 if let vendorModel = newNode.sunricherVendorModel { // 未加入组的设备默认设置一个手动控制延迟时间，避免默认30s后状态被LC修改
@@ -505,8 +525,8 @@ class DeviceRestoreViewController: UIViewController {
             if let healthModel = newNode.healthModel {
                 appendMessages.append(MeshMessageHandle(message: AttentionSet(attentionTimer: 6), model: healthModel))
             }
- 
-            return appendMessages
+            appendCompletion(appendMessages)
+//            return appendMessages
         } appendMessageSuccessBack: { messageHandle in
             // 发送扩展消息成功更新缓存数据
             if let address = messageHandle.model?.parentElement?.unicastAddress ?? messageHandle.address, let node = MeshNetworkManager.instance.meshNetwork?.node(withAddress: address) {

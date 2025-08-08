@@ -50,7 +50,6 @@
 		C83A559C2DBA2B5900E04252 /* DeviceOthersViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C83A559B2DBA2B5900E04252 /* DeviceOthersViewController.swift */; };
 		C83A559F2DBA2C9D00E04252 /* DeviceOthersCollectionViewCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = C83A559E2DBA2C9D00E04252 /* DeviceOthersCollectionViewCell.swift */; };
 		C83D8C502DD1A0C300A59AFA /* EnergyFileData.swift in Sources */ = {isa = PBXBuildFile; fileRef = C83D8C4F2DD1A0C300A59AFA /* EnergyFileData.swift */; };
-		C8469F8A2E2F3B53008848FE /* NordicSigMeshSDK in Frameworks */ = {isa = PBXBuildFile; productRef = C8469F892E2F3B53008848FE /* NordicSigMeshSDK */; };
 		C84A2C552C2D465A0064D3F1 /* ExternalVendorMessage+Extension.swift in Sources */ = {isa = PBXBuildFile; fileRef = C84A2C542C2D465A0064D3F1 /* ExternalVendorMessage+Extension.swift */; };
 		C84A2C572C2D571D0064D3F1 /* BatchSpaceData.swift in Sources */ = {isa = PBXBuildFile; fileRef = C84A2C562C2D571D0064D3F1 /* BatchSpaceData.swift */; };
 		C84FBCAD2DBF28D80030E136 /* EnergyStaticDataGroupView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C84FBCAC2DBF28D80030E136 /* EnergyStaticDataGroupView.swift */; };
@@ -1065,6 +1064,9 @@
 		C8B058A92B512C1F006FC36F /* TestDeviceAddManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8B058A82B512C1F006FC36F /* TestDeviceAddManager.swift */; };
 		C8B0779E2D9D36750078404C /* Node+MessageHandles.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8B0779D2D9D36750078404C /* Node+MessageHandles.swift */; };
 		C8B0B48B2B468BC700747CF4 /* SyncDevicesProgressView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8B0B48A2B468BC700747CF4 /* SyncDevicesProgressView.swift */; };
+		C8B337222E44983E006931C2 /* UITableView+Keyboard.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8B337212E44983E006931C2 /* UITableView+Keyboard.swift */; };
+		C8B337232E44983E006931C2 /* UITableView+Keyboard.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8B337212E44983E006931C2 /* UITableView+Keyboard.swift */; };
+		C8B337242E44983E006931C2 /* UITableView+Keyboard.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8B337212E44983E006931C2 /* UITableView+Keyboard.swift */; };
 		C8B57F712DB0DD1100E5CD7E /* ReadDevicesDataViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8B57F702DB0DD1100E5CD7E /* ReadDevicesDataViewController.swift */; };
 		C8B5A1DE2B2BE9B300728E36 /* GroupMembersViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8B5A1DD2B2BE9B300728E36 /* GroupMembersViewController.swift */; };
 		C8B5A1E02B2C2AFD00728E36 /* GroupDevicesFunctionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8B5A1DF2B2C2AFD00728E36 /* GroupDevicesFunctionView.swift */; };
@@ -1072,6 +1074,7 @@
 		C8B707042DCF2FDC0002133E /* EnergyStatisticsStaticData.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8B707032DCF2FDC0002133E /* EnergyStatisticsStaticData.swift */; };
 		C8B707062DCF2FF50002133E /* EnergyStatisticsTimeSeriesData.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8B707052DCF2FF50002133E /* EnergyStatisticsTimeSeriesData.swift */; };
 		C8B707082DCF349D0002133E /* ProfileSensitivityView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8B707072DCF349D0002133E /* ProfileSensitivityView.swift */; };
+		C8B754DB2E3B02670000CBD6 /* NordicSigMeshSDK in Frameworks */ = {isa = PBXBuildFile; productRef = C8B754DA2E3B02670000CBD6 /* NordicSigMeshSDK */; };
 		C8BA43612DC0724C00018392 /* GroupFilterSelectView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8BA43602DC0724C00018392 /* GroupFilterSelectView.swift */; };
 		C8BA43632DC0A6FD00018392 /* EnergyTimeSeriesDataViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8BA43622DC0A6FD00018392 /* EnergyTimeSeriesDataViewController.swift */; };
 		C8BA43652DC0A7A700018392 /* EnergyTimeSeriesDataImportView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8BA43642DC0A7A700018392 /* EnergyTimeSeriesDataImportView.swift */; };
@@ -1180,6 +1183,15 @@
 		C8E6F3592E0E4A3F00730971 /* DeviceAddInstructionsController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8E6F3572E0E4A3F00730971 /* DeviceAddInstructionsController.swift */; };
 		C8ED59F92DD743960074A5BB /* GroupPathSequencePageController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8ED59F82DD743960074A5BB /* GroupPathSequencePageController.swift */; };
 		C8EF54742C1AFA53008389CE /* NetworkLoggerPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8EF54732C1AFA53008389CE /* NetworkLoggerPlugin.swift */; };
+		C8F837402E3B52560003B292 /* GatewaySectionHeaderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8F8373F2E3B52560003B292 /* GatewaySectionHeaderView.swift */; };
+		C8F837412E3B52560003B292 /* GatewaySectionHeaderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8F8373F2E3B52560003B292 /* GatewaySectionHeaderView.swift */; };
+		C8F837422E3B52560003B292 /* GatewaySectionHeaderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8F8373F2E3B52560003B292 /* GatewaySectionHeaderView.swift */; };
+		C8F89D382E3B6F8500FA1544 /* GatewayAPNMenuView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8F89D372E3B6F8500FA1544 /* GatewayAPNMenuView.swift */; };
+		C8F89D392E3B6F8500FA1544 /* GatewayAPNMenuView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8F89D372E3B6F8500FA1544 /* GatewayAPNMenuView.swift */; };
+		C8F89D3A2E3B6F8500FA1544 /* GatewayAPNMenuView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8F89D372E3B6F8500FA1544 /* GatewayAPNMenuView.swift */; };
+		C8F89D3D2E3CBD1F00FA1544 /* GatewayModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8F89D3C2E3CBD1F00FA1544 /* GatewayModel.swift */; };
+		C8F89D3E2E3CBD1F00FA1544 /* GatewayModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8F89D3C2E3CBD1F00FA1544 /* GatewayModel.swift */; };
+		C8F89D3F2E3CBD1F00FA1544 /* GatewayModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8F89D3C2E3CBD1F00FA1544 /* GatewayModel.swift */; };
 		C8FDE9A72DD595A30002394B /* GroupProximityLightingData.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8FDE9A62DD595A30002394B /* GroupProximityLightingData.swift */; };
 		EAB7CC4E471C03663E94EFE1 /* Pods_Common_SylSmart.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = D1025845F30FDFC9F8C9ACCB /* Pods_Common_SylSmart.framework */; };
 /* End PBXBuildFile section */
@@ -1506,6 +1518,7 @@
 		C8B058A82B512C1F006FC36F /* TestDeviceAddManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TestDeviceAddManager.swift; sourceTree = "<group>"; };
 		C8B0779D2D9D36750078404C /* Node+MessageHandles.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; lineEnding = 0; path = "Node+MessageHandles.swift"; sourceTree = "<group>"; };
 		C8B0B48A2B468BC700747CF4 /* SyncDevicesProgressView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SyncDevicesProgressView.swift; sourceTree = "<group>"; };
+		C8B337212E44983E006931C2 /* UITableView+Keyboard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "UITableView+Keyboard.swift"; sourceTree = "<group>"; };
 		C8B57F702DB0DD1100E5CD7E /* ReadDevicesDataViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReadDevicesDataViewController.swift; sourceTree = "<group>"; };
 		C8B5A1DD2B2BE9B300728E36 /* GroupMembersViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GroupMembersViewController.swift; sourceTree = "<group>"; };
 		C8B5A1DF2B2C2AFD00728E36 /* GroupDevicesFunctionView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GroupDevicesFunctionView.swift; sourceTree = "<group>"; };
@@ -1614,6 +1627,9 @@
 		C8E6F3572E0E4A3F00730971 /* DeviceAddInstructionsController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceAddInstructionsController.swift; sourceTree = "<group>"; };
 		C8ED59F82DD743960074A5BB /* GroupPathSequencePageController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GroupPathSequencePageController.swift; sourceTree = "<group>"; };
 		C8EF54732C1AFA53008389CE /* NetworkLoggerPlugin.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NetworkLoggerPlugin.swift; sourceTree = "<group>"; };
+		C8F8373F2E3B52560003B292 /* GatewaySectionHeaderView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GatewaySectionHeaderView.swift; sourceTree = "<group>"; };
+		C8F89D372E3B6F8500FA1544 /* GatewayAPNMenuView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GatewayAPNMenuView.swift; sourceTree = "<group>"; };
+		C8F89D3C2E3CBD1F00FA1544 /* GatewayModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GatewayModel.swift; sourceTree = "<group>"; };
 		C8FDE9A62DD595A30002394B /* GroupProximityLightingData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GroupProximityLightingData.swift; sourceTree = "<group>"; };
 		CA14D3D265B3B74E304A61D7 /* Pods-Common-Archipelago.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Common-Archipelago.debug.xcconfig"; path = "Target Support Files/Pods-Common-Archipelago/Pods-Common-Archipelago.debug.xcconfig"; sourceTree = "<group>"; };
 		D1025845F30FDFC9F8C9ACCB /* Pods_Common_SylSmart.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_Common_SylSmart.framework; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -1646,7 +1662,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				52E33BFFE69E79FD53F962FA /* (null) in Frameworks */,
-				C8469F8A2E2F3B53008848FE /* NordicSigMeshSDK in Frameworks */,
+				C8B754DB2E3B02670000CBD6 /* NordicSigMeshSDK in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -2653,6 +2669,7 @@
 			isa = PBXGroup;
 			children = (
 				C8A4C5092C956255003EE5E5 /* Controller */,
+				C8F89D3B2E3CBCF800FA1544 /* Model */,
 				C8C3A14E2E37250700876028 /* View */,
 			);
 			path = Gateway;
@@ -2778,6 +2795,7 @@
 				C8A0AC4A2C3E21B200DFE803 /* Array+Split.swift */,
 				C8D663722BFF14A000BFF81A /* Int+Hex.swift */,
 				C84FBCC02DBF72070030E136 /* UIColor+Extension.swift */,
+				C8B337212E44983E006931C2 /* UITableView+Keyboard.swift */,
 				C85BC5EF2C3BBE39002D4CB6 /* Device+Extension.swift */,
 			);
 			path = Extension;
@@ -2847,9 +2865,11 @@
 			isa = PBXGroup;
 			children = (
 				C8C3A14F2E37257500876028 /* GatewayNameViewCell.swift */,
+				C8C3A1632E37705500876028 /* GatewayInformationHeaderView.swift */,
 				C8C3A15F2E375D9400876028 /* GatewayServerInformationViewCell.swift */,
 				C8C3A1572E37509800876028 /* GatewayAssociatedSpacesViewCell.swift */,
-				C8C3A1632E37705500876028 /* GatewayInformationHeaderView.swift */,
+				C8F8373F2E3B52560003B292 /* GatewaySectionHeaderView.swift */,
+				C8F89D372E3B6F8500FA1544 /* GatewayAPNMenuView.swift */,
 			);
 			path = View;
 			sourceTree = "<group>";
@@ -2951,6 +2971,14 @@
 			path = Model;
 			sourceTree = "<group>";
 		};
+		C8F89D3B2E3CBCF800FA1544 /* Model */ = {
+			isa = PBXGroup;
+			children = (
+				C8F89D3C2E3CBD1F00FA1544 /* GatewayModel.swift */,
+			);
+			path = Model;
+			sourceTree = "<group>";
+		};
 		D768458DC30C9D1E66429902 /* Pods */ = {
 			isa = PBXGroup;
 			children = (
@@ -3027,7 +3055,7 @@
 			);
 			name = SunSmart;
 			packageProductDependencies = (
-				C8469F892E2F3B53008848FE /* NordicSigMeshSDK */,
+				C8B754DA2E3B02670000CBD6 /* NordicSigMeshSDK */,
 			);
 			productName = SunSmart;
 			productReference = C896B9A42A930BA800217512 /* SunSmart.app */;
@@ -3059,7 +3087,7 @@
 			);
 			mainGroup = C896B99B2A930BA800217512;
 			packageReferences = (
-				C8469F882E2F3B53008848FE /* XCRemoteSwiftPackageReference "nordic-sig-mesh-sdk" */,
+				C8B754D92E3B02670000CBD6 /* XCRemoteSwiftPackageReference "nordic-sig-mesh-sdk" */,
 			);
 			productRefGroup = C896B9A52A930BA800217512 /* Products */;
 			projectDirPath = "";
@@ -3371,6 +3399,7 @@
 				C88553FD2DE6B44C00C8B688 /* DaliDevicesViewCell.swift in Sources */,
 				C88553FE2DE6B44C00C8B688 /* SyncDevicesViewController.swift in Sources */,
 				C88553FF2DE6B44C00C8B688 /* DevicePwmFrequencySelectView.swift in Sources */,
+				C8F89D392E3B6F8500FA1544 /* GatewayAPNMenuView.swift in Sources */,
 				C88554002DE6B44C00C8B688 /* SiteEditViewController.swift in Sources */,
 				C88554012DE6B44C00C8B688 /* AttributedTextViewController.swift in Sources */,
 				C88554022DE6B44C00C8B688 /* GroupSwitchPanelViewCell.swift in Sources */,
@@ -3398,6 +3427,7 @@
 				C88554182DE6B44C00C8B688 /* ProfilePowerUpBehaviorView.swift in Sources */,
 				C88554192DE6B44C00C8B688 /* ScheduleScenesView.swift in Sources */,
 				C885541A2DE6B44C00C8B688 /* ShareAuthoritySpaceViewCell.swift in Sources */,
+				C8F89D3E2E3CBD1F00FA1544 /* GatewayModel.swift in Sources */,
 				C885541B2DE6B44C00C8B688 /* DaylightSensorInstructionsViewCell.swift in Sources */,
 				C885541C2DE6B44C00C8B688 /* FSCalendarStickyHeader.m in Sources */,
 				C885541D2DE6B44C00C8B688 /* EnergyHarvestHistoryViewCell.swift in Sources */,
@@ -3539,6 +3569,7 @@
 				C885549B2DE6B44C00C8B688 /* ProfilePhasesTimePickerView.swift in Sources */,
 				C885549C2DE6B44C00C8B688 /* ProfileLevelSettingsView.swift in Sources */,
 				C885549D2DE6B44C00C8B688 /* DeviceParameterFilterView.swift in Sources */,
+				C8B337232E44983E006931C2 /* UITableView+Keyboard.swift in Sources */,
 				C885549E2DE6B44C00C8B688 /* DeviceSwitchesViewCell.swift in Sources */,
 				C885549F2DE6B44C00C8B688 /* Device+Extension.swift in Sources */,
 				C8C3A15D2E37551C00876028 /* GatewayAssociatedSpacesInstructionsController.swift in Sources */,
@@ -3595,6 +3626,7 @@
 				C88554CF2DE6B44C00C8B688 /* DongleAddCollectionScheduleController.swift in Sources */,
 				C88554D02DE6B44C00C8B688 /* ProfileProximityLightingNumberView.swift in Sources */,
 				C88554D12DE6B44C00C8B688 /* DeviceDongleCollectionStrategyCell.swift in Sources */,
+				C8F837402E3B52560003B292 /* GatewaySectionHeaderView.swift in Sources */,
 				C88554D22DE6B44C00C8B688 /* DaylightSensorInstructionsController.swift in Sources */,
 				C88554D32DE6B44C00C8B688 /* GroupSwitchsHeaderView.swift in Sources */,
 				C88554D42DE6B44C00C8B688 /* FirmwareVersionHistoryViewCell.swift in Sources */,
@@ -3748,6 +3780,7 @@
 				C886E04E2E30DE4900D0C3A6 /* DaliDevicesViewCell.swift in Sources */,
 				C886E04F2E30DE4900D0C3A6 /* SyncDevicesViewController.swift in Sources */,
 				C886E0502E30DE4900D0C3A6 /* DevicePwmFrequencySelectView.swift in Sources */,
+				C8F89D382E3B6F8500FA1544 /* GatewayAPNMenuView.swift in Sources */,
 				C886E0512E30DE4900D0C3A6 /* SiteEditViewController.swift in Sources */,
 				C886E0522E30DE4900D0C3A6 /* AttributedTextViewController.swift in Sources */,
 				C886E0532E30DE4900D0C3A6 /* GroupSwitchPanelViewCell.swift in Sources */,
@@ -3775,6 +3808,7 @@
 				C886E0692E30DE4900D0C3A6 /* ProfilePowerUpBehaviorView.swift in Sources */,
 				C886E06A2E30DE4900D0C3A6 /* ScheduleScenesView.swift in Sources */,
 				C886E06B2E30DE4900D0C3A6 /* ShareAuthoritySpaceViewCell.swift in Sources */,
+				C8F89D3D2E3CBD1F00FA1544 /* GatewayModel.swift in Sources */,
 				C886E06C2E30DE4900D0C3A6 /* DaylightSensorInstructionsViewCell.swift in Sources */,
 				C886E06D2E30DE4900D0C3A6 /* FSCalendarStickyHeader.m in Sources */,
 				C886E06E2E30DE4900D0C3A6 /* EnergyHarvestHistoryViewCell.swift in Sources */,
@@ -3916,6 +3950,7 @@
 				C886E0F32E30DE4900D0C3A6 /* ProfilePhasesTimePickerView.swift in Sources */,
 				C886E0F42E30DE4900D0C3A6 /* ProfileLevelSettingsView.swift in Sources */,
 				C886E0F52E30DE4900D0C3A6 /* DeviceParameterFilterView.swift in Sources */,
+				C8B337222E44983E006931C2 /* UITableView+Keyboard.swift in Sources */,
 				C886E0F62E30DE4900D0C3A6 /* DeviceSwitchesViewCell.swift in Sources */,
 				C886E0F72E30DE4900D0C3A6 /* Device+Extension.swift in Sources */,
 				C8C3A15C2E37551C00876028 /* GatewayAssociatedSpacesInstructionsController.swift in Sources */,
@@ -3972,6 +4007,7 @@
 				C886E12A2E30DE4900D0C3A6 /* DongleAddCollectionScheduleController.swift in Sources */,
 				C886E12B2E30DE4900D0C3A6 /* ProfileProximityLightingNumberView.swift in Sources */,
 				C886E12C2E30DE4900D0C3A6 /* DeviceDongleCollectionStrategyCell.swift in Sources */,
+				C8F837422E3B52560003B292 /* GatewaySectionHeaderView.swift in Sources */,
 				C886E12D2E30DE4900D0C3A6 /* DaylightSensorInstructionsController.swift in Sources */,
 				C886E12E2E30DE4900D0C3A6 /* GroupSwitchsHeaderView.swift in Sources */,
 				C886E12F2E30DE4900D0C3A6 /* FirmwareVersionHistoryViewCell.swift in Sources */,
@@ -4125,6 +4161,7 @@
 				C8AFDBFD2D700A1800839A38 /* DaliDevicesViewCell.swift in Sources */,
 				C89C9FE42B3C197B00074031 /* SyncDevicesViewController.swift in Sources */,
 				C87141B62DB24C86007A64B4 /* DevicePwmFrequencySelectView.swift in Sources */,
+				C8F89D3A2E3B6F8500FA1544 /* GatewayAPNMenuView.swift in Sources */,
 				C8A099FD2AC134C30068C814 /* SiteEditViewController.swift in Sources */,
 				C8A16F6F2C8568F700FB50BD /* AttributedTextViewController.swift in Sources */,
 				C87EB4502BA0822E00F9285B /* GroupSwitchPanelViewCell.swift in Sources */,
@@ -4152,6 +4189,7 @@
 				C8047F202B8F28B400A09FFA /* ProfilePowerUpBehaviorView.swift in Sources */,
 				C89A1C3F2B566B96004912B9 /* ScheduleScenesView.swift in Sources */,
 				C89B3CB52C08807200820277 /* ShareAuthoritySpaceViewCell.swift in Sources */,
+				C8F89D3F2E3CBD1F00FA1544 /* GatewayModel.swift in Sources */,
 				C8047F292B8F4C0E00A09FFA /* DaylightSensorInstructionsViewCell.swift in Sources */,
 				C8DA6A0F2DB8800B00E32092 /* FSCalendarStickyHeader.m in Sources */,
 				C8AEB9972DCA11F30053102B /* EnergyHarvestHistoryViewCell.swift in Sources */,
@@ -4293,6 +4331,7 @@
 				C8607BEA2B91D56B00A94F0B /* ProfilePhasesTimePickerView.swift in Sources */,
 				C8607BE82B9165AC00A94F0B /* ProfileLevelSettingsView.swift in Sources */,
 				C85120F52DB0A11200714111 /* DeviceParameterFilterView.swift in Sources */,
+				C8B337242E44983E006931C2 /* UITableView+Keyboard.swift in Sources */,
 				C89FD66D2C899D4B00DE431D /* DeviceSwitchesViewCell.swift in Sources */,
 				C85BC5F02C3BBE39002D4CB6 /* Device+Extension.swift in Sources */,
 				C8C3A15E2E37551C00876028 /* GatewayAssociatedSpacesInstructionsController.swift in Sources */,
@@ -4349,6 +4388,7 @@
 				C80A7F542DB793E200A6E36C /* DongleAddCollectionScheduleController.swift in Sources */,
 				C88CCD992DD4A8AD003D5754 /* ProfileProximityLightingNumberView.swift in Sources */,
 				C80A7F482DB72C1F00A6E36C /* DeviceDongleCollectionStrategyCell.swift in Sources */,
+				C8F837412E3B52560003B292 /* GatewaySectionHeaderView.swift in Sources */,
 				C8047F222B8F388200A09FFA /* DaylightSensorInstructionsController.swift in Sources */,
 				C87EB44E2BA07E7E00F9285B /* GroupSwitchsHeaderView.swift in Sources */,
 				C8A16F7A2C86EABB00FB50BD /* FirmwareVersionHistoryViewCell.swift in Sources */,
@@ -4456,7 +4496,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 2;
 				DEVELOPMENT_TEAM = JTD3WYUC58;
 				GCC_PREFIX_HEADER = "";
 				GENERATE_INFOPLIST_FILE = YES;
@@ -4498,7 +4538,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 2;
 				DEVELOPMENT_TEAM = JTD3WYUC58;
 				GCC_PREFIX_HEADER = "";
 				GENERATE_INFOPLIST_FILE = YES;
@@ -4540,7 +4580,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 2;
 				DEVELOPMENT_TEAM = FNFEMS8D6J;
 				GCC_PREFIX_HEADER = "";
 				GENERATE_INFOPLIST_FILE = YES;
@@ -4582,7 +4622,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 2;
 				DEVELOPMENT_TEAM = FNFEMS8D6J;
 				GCC_PREFIX_HEADER = "";
 				GENERATE_INFOPLIST_FILE = YES;
@@ -4740,7 +4780,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 2;
 				DEVELOPMENT_TEAM = JTD3WYUC58;
 				GCC_PREFIX_HEADER = "";
 				GENERATE_INFOPLIST_FILE = YES;
@@ -4760,7 +4800,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.0.7;
+				MARKETING_VERSION = 1.0.8;
 				PRODUCT_BUNDLE_IDENTIFIER = com.azoula.sunsmart;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
@@ -4781,7 +4821,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 2;
 				DEVELOPMENT_TEAM = JTD3WYUC58;
 				GCC_PREFIX_HEADER = "";
 				GENERATE_INFOPLIST_FILE = YES;
@@ -4801,7 +4841,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.0.7;
+				MARKETING_VERSION = 1.0.8;
 				PRODUCT_BUNDLE_IDENTIFIER = com.azoula.sunsmart;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
@@ -4857,14 +4897,6 @@
 /* End XCConfigurationList section */
 
 /* Begin XCRemoteSwiftPackageReference section */
-		C8469F882E2F3B53008848FE /* XCRemoteSwiftPackageReference "nordic-sig-mesh-sdk" */ = {
-			isa = XCRemoteSwiftPackageReference;
-			repositoryURL = "https://gitee.com/sunricher-i-os/nordic-sig-mesh-sdk.git";
-			requirement = {
-				branch = master;
-				kind = branch;
-			};
-		};
 		C88553AF2DE6B44C00C8B688 /* XCRemoteSwiftPackageReference "nordic-sig-mesh-sdk" */ = {
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://gitee.com/sunricher-i-os/nordic-sig-mesh-sdk.git";
@@ -4881,14 +4913,17 @@
 				kind = branch;
 			};
 		};
+		C8B754D92E3B02670000CBD6 /* XCRemoteSwiftPackageReference "nordic-sig-mesh-sdk" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://gitee.com/sunricher-i-os/nordic-sig-mesh-sdk.git";
+			requirement = {
+				branch = master;
+				kind = branch;
+			};
+		};
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
-		C8469F892E2F3B53008848FE /* NordicSigMeshSDK */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = C8469F882E2F3B53008848FE /* XCRemoteSwiftPackageReference "nordic-sig-mesh-sdk" */;
-			productName = NordicSigMeshSDK;
-		};
 		C88553AE2DE6B44C00C8B688 /* NordicSigMeshSDK */ = {
 			isa = XCSwiftPackageProductDependency;
 			package = C88553AF2DE6B44C00C8B688 /* XCRemoteSwiftPackageReference "nordic-sig-mesh-sdk" */;
@@ -4897,6 +4932,11 @@
 		C886DFFE2E30DE4900D0C3A6 /* NordicSigMeshSDK */ = {
 			isa = XCSwiftPackageProductDependency;
 			package = C886DFFF2E30DE4900D0C3A6 /* XCRemoteSwiftPackageReference "nordic-sig-mesh-sdk" */;
+			productName = NordicSigMeshSDK;
+		};
+		C8B754DA2E3B02670000CBD6 /* NordicSigMeshSDK */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = C8B754D92E3B02670000CBD6 /* XCRemoteSwiftPackageReference "nordic-sig-mesh-sdk" */;
 			productName = NordicSigMeshSDK;
 		};
 /* End XCSwiftPackageProductDependency section */

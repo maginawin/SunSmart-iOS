@@ -50,6 +50,128 @@ extension Scene {
     
 }
 
+extension NodeSyncData {
+    
+    /// 根据同步数据获取需要发送的mesh消息list
+    func getMessageHandles(node: Node) -> [MeshMessageHandle] {
+        var messageHandles: [MeshMessageHandle] = []
+        switch self {
+        case .addNetworkKey(let networkKey):
+            messageHandles.append(MeshMessageHandle(message: ConfigNetKeyAdd(networkKey: networkKey), address: node.primaryUnicastAddress))
+        case .removeNetworkKey(let networkKey):
+            messageHandles.append(MeshMessageHandle(message: ConfigNetKeyDelete(networkKey: networkKey), address: node.primaryUnicastAddress))
+        case .addApplicationkey(let applicationKey):
+            messageHandles.append(MeshMessageHandle(message: ConfigAppKeyAdd(applicationKey: applicationKey), address: node.primaryUnicastAddress))
+        case .removeApplicationkey(let applicationKey):
+            messageHandles.append(MeshMessageHandle(message: ConfigAppKeyDelete(applicationKey: applicationKey), address: node.primaryUnicastAddress))
+        case .subscribeGroup(let group):
+            node.getSubscribeToGroupMessages(group).forEach({
+                let handle = MeshMessageHandle(message: $0, address: node.primaryUnicastAddress)
+                handle.continuous = false
+                messageHandles.append(handle)
+            })
+        case .unsubscribeGroup(let group):
+            node.getUnsubscribeGroupMessages(group).forEach({
+                let handle = MeshMessageHandle(message: $0, address: node.primaryUnicastAddress)
+                handle.continuous = false
+                messageHandles.append(handle)
+            })
+        case .profile(let types):
+            types.forEach({
+                messageHandles.append(contentsOf: $0.getMessageHandles(node: node))
+            })
+        case .syncScenes(let datas):
+            datas.forEach { (scene: Scene, data: SceneExecuteData) in
+                messageHandles.append(contentsOf: scene.getSyncMessageHandles(node: node, data: data))
+            }
+        case .deleteScenes(let scenes):
+            scenes.forEach({
+                messageHandles.append(contentsOf: $0.getDeleteMessageHandles(node: node))
+            })
+        case .syncSchedules(let schedules):
+            schedules.forEach({
+                messageHandles.append(contentsOf: $0.getMessageHandles(node: node))
+            })
+        case .deleteSchedules(let schedules):
+            schedules.forEach({
+                messageHandles.append(contentsOf: $0.getMessageHandles(node: node, delete: true))
+            })
+        case .syncSwitchProxy(let switchData):
+            if switchData.linkGroup != nil, node.primaryUnicastAddress == switchData.proxyNodeAddress, let macAddress = switchData.enOceanMacAddress, let key = switchData.enOceanSecurityKey {
+                let handles = node.getEnOceanSwitchBindMessageHandles(enOceanMacAddress: macAddress, securityKey: key, enabled: switchData.enabled, switchKeys: switchData.switchKeys)
+                messageHandles.append(contentsOf: handles)
+            }
+        case .deleteSwitchProxy(let switchData):
+            if switchData.linkGroup != nil, node.primaryUnicastAddress == switchData.proxyNodeAddress || node.primaryUnicastAddress == switchData.deleteProxyNodeAddress {
+                messageHandles.append(contentsOf: node.getEnOceanSwitchUnBindMessageHandles())
+            }
+        case .syncSwitchs(let switchDatas):
+            switchDatas.forEach { switchData in
+                if switchData.linkGroup != nil {
+                    // 判断是否已订阅动能开关按键事件
+                    messageHandles.append(contentsOf: node.getEnOceanSubscriptionMessageHandles(switchKeys: switchData.switchKeys))
+                }
+            }
+        case .deleteSwitchs(let switchDatas):
+            switchDatas.forEach { switchData in
+                if switchData.linkGroup != nil {
+                    messageHandles.append(contentsOf: node.getEnOceanUnSubscriptionMessageHandles(switchKeys: switchData.switchKeys))
+                }
+            }
+        case .deviceInitialize:
+            if !node.isInitialize {
+                messageHandles.append(contentsOf: node.getInitializeMessageHandles())
+            }else {
+                messageHandles.append(contentsOf: node.getConfigMessageHandles())
+            }
+        case .deviceParameterTypes(let types):
+            types.forEach({
+                messageHandles.append(contentsOf: $0.getMessageHandles(node: node))
+            })
+        case .syncCollectionSchedules(let schedules):
+            if let timeModel = node.timeModel {
+                messageHandles.append(MeshMessageHandle(message: Node.setLocalTimeMessage(), model: timeModel))
+            }
+            if let schedulerSetupModel = node.collectionSchedulerSetupModel {
+                schedules.forEach { (index, entry) in
+                    messageHandles.append(MeshMessageHandle(message: SchedulerActionSet(index: UInt8(index), entry: entry), model: schedulerSetupModel))
+                }
+            }
+        case .deleteCollectionSchedules(let scheduleIds):
+            if let model = node.collectionSchedulerSetupModel {
+                scheduleIds.forEach { index in
+                    messageHandles.append(MeshMessageHandle(message: SchedulerActionSet(index: UInt8(index), entry: .init()), model: model))
+                }
+            }
+        case .proximityLightingEnabled(let enabled):
+            if let vendorModel = node.sunricherVendorModel {
+                messageHandles.append(MeshMessageHandle(message: SunricherVendorSet(function: .proximityLightingEnabled(enabled)), model: vendorModel))
+            }
+        case .proximityLightingNeighbor(let relayNumber, let neighborAddresses):
+            if let vendorModel = node.sunricherVendorModel {
+                messageHandles.append(MeshMessageHandle(message: SunricherVendorSet(function: .proximityLightingNeighborSet(enabled: true, relay: relayNumber, ttl: 0, relayAppKeyIndex: MeshNetworkManager.instance.currentApplicationKey.index, neighborAddresses: neighborAddresses)), model: vendorModel))
+            }
+        case .syncGatewayProjectId(let projectId):
+            if let mac = node.gatewayModel?.mac, let vendorModel = node.sunricherVendorModel {
+                messageHandles.append(MeshMessageHandle(message: SunricherVendorSet(function: .gatewayProjectRelevance(gatewayId: mac, projectId: projectId)), model: vendorModel))
+            }
+        case .syncGatewaySubnetAppkeyIndexs(let appkeyIndexs):
+            if let vendorModel = node.sunricherVendorModel {
+                messageHandles.append(MeshMessageHandle(message: SunricherVendorSet(function: .gatewaySubnetsRelevanceSet(subnetAppkeyIndexs: appkeyIndexs)), model: vendorModel))
+            }
+        case .syncGatewaySIMAPN(let apn):
+            if let vendorModel = node.sunricherVendorModel {
+                messageHandles.append(MeshMessageHandle(message: SunricherVendorSet(function: .gatewaySimInfoSet(simInfo: .init(customId: customId, ipType: .ip, apn: apn))), model: vendorModel))
+            }
+        case .syncGatewayMQTTInformation(let mqttInformation):
+            if let vendorModel = node.sunricherVendorModel {
+                messageHandles.append(MeshMessageHandle(message: SunricherVendorSet(function: .gatewayMQTTConnectInfoSet(connectInfo: mqttInformation)), model: vendorModel))
+            }
+        }
+        return messageHandles
+    }
+}
+
 extension Schedule {
     
     /// 获取对应消息数据

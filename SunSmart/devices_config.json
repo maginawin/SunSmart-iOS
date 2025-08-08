@@ -322,8 +322,8 @@
         "iconCategory" : "Standalone Sensor",
         "deviceCategory" : "Lighting",
         "modelName" : "SR-SS9030B-PIR-V",
-        "sensitivityRangeMin" : 16448,
-        "sensitivityRangeMax" : 52428
+        "sensitivityRangeMin" : 13565,
+        "sensitivityRangeMax" : 56229
     },
     {
         "companyId" : "0A78",
@@ -332,7 +332,9 @@
         "elementCount" : 3,
         "iconCategory" : "Lighting",
         "deviceCategory" : "Lighting",
-        "modelName" : "SR-BL9036T-PIR-WPV"
+        "modelName" : "SR-BL9036T-PIR-WPV",
+        "sensitivityRangeMin" : 26214,
+        "sensitivityRangeMax" : 58853
     },
     {
         "companyId" : "0A78",
@@ -341,7 +343,9 @@
         "elementCount" : 3,
         "iconCategory" : "Emergency",
         "deviceCategory" : "Lighting",
-        "modelName" : "SR-BL9036T-PIR-WPV-EL"
+        "modelName" : "SR-BL9036T-PIR-WPV-EL",
+        "sensitivityRangeMin" : 26214,
+        "sensitivityRangeMax" : 58853
     },
     {
         "companyId" : "0A78",
@@ -350,7 +354,9 @@
         "elementCount" : 3,
         "iconCategory" : "Lighting",
         "deviceCategory" : "Lighting",
-        "modelName" : "SR-BL9036T-MW-WPV"
+        "modelName" : "SR-BL9036T-MW-WPV",
+        "sensitivityRangeMin" : 7880,
+        "sensitivityRangeMax" : 62973
     },
     {
         "companyId" : "0A78",
@@ -576,8 +582,8 @@
         "iconCategory" : "Lighting",
         "deviceCategory" : "Lighting",
         "modelName" : "SunSmart DemoBorad NRF-EVK",
-        "sensitivityRangeMin" : 0,
-        "sensitivityRangeMax" : 65535
+        "sensitivityRangeMin" : 39321,
+        "sensitivityRangeMax" : 62586
     },
     {
         "companyId" : "0A78",

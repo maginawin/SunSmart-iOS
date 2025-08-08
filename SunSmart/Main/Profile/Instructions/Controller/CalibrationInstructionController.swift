@@ -20,8 +20,8 @@ class CalibrationInstructionController: UIViewController {
         navigationController?.setNavigationBarBackgroundColor(color: Background_Color)
         
         view.backgroundColor = Background_Color
-        navigationItem.leftBarButtonItem = UIBarButtonItem()
-        navigationItem.rightBarButtonItem = UIBarButtonItem(image: UIImage(named: "close")?.withRenderingMode(.alwaysOriginal), style: .done, target: self, action: #selector(back))
+        navigationItem.leftBarButtonItem = UIBarButtonItem(image: UIImage(named: "close")?.withRenderingMode(.alwaysOriginal), style: .done, target: self, action: #selector(back))
+//        navigationItem.rightBarButtonItem = UIBarButtonItem(image: UIImage(named: "close")?.withRenderingMode(.alwaysOriginal), style: .done, target: self, action: #selector(back))
         
         setupUI()
         
