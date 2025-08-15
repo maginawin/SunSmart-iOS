@@ -15,7 +15,8 @@ extension UILabel {
         
         self.text = text
         self.textColor = textColor
-        let size = fit ? SCRYFrom(fontSize) : fontSize
+        
+        let size = fit ? FontFit(fontSize) : fontSize
         if fontName != nil {
             self.font = UIFont(name: fontName!, size: size)
         }else if fontWeight != nil {

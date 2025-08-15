@@ -108,6 +108,13 @@ class DeviceAddCandidateDeviceListView: UIView {
     
     weak var delegate: DeviceAddCandidateDeviceListViewDelegate?
     
+    /// 是否光感添加模式
+    var lightSeningMode: Bool = false {
+        didSet {
+            
+        }
+    }
+    
     /// 是否刷新
     var isRefresh: Bool = true {
         didSet {

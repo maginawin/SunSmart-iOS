@@ -29,7 +29,7 @@ class SceneAddViewController: UIViewController {
     private var backBtn: UIButton!
     private var templateLabel: UILabel!
     private var flowLayout: UICollectionViewFlowLayout!
-    private var collectionView: TemplateCollectionView!
+    private var collectionView: UICollectionView!
     private var bottomView: UIView!
     private var saveBtn: UIButton!
     private var previewBtn: UIButton!
@@ -105,7 +105,7 @@ class SceneAddViewController: UIViewController {
         setupUI()
 //        setupTemplateDataUI()
 
-        navigationController?.setNavigationBarBackgroundColor(color: .clear)
+        navigationController?.setNavigationBarBackgroundColor(color: Background_Color)
         
 //        sceneDatas = defalutSceneDatas
      
@@ -172,7 +172,7 @@ class SceneAddViewController: UIViewController {
     /// 返回/退出处理
     private func backHandle(close: Bool) {
         
-        hideKeyboard()
+        view.endEditing(true)
         if close {
 //            let spaceVc = UIViewController.getVisibleVc()?.presentingViewController
             if self.createMode == .template && self.scene != nil && self.space.isConfiguring { //  && spaceVc?.isKind(of: SpaceViewController.classForCoder()) ?? false  // 创建成功并在引导配置流程中
@@ -337,10 +337,6 @@ class SceneAddViewController: UIViewController {
         createMode = .template
         createScene()
     }
-
-    @objc private func hideKeyboard() {
-        view.endEditing(true)
-    }
     
     /// 更新预览按钮状态
     private func updatePreviewBtnState() {
@@ -444,6 +440,7 @@ class SceneAddViewController: UIViewController {
         templatesTableView.register(SceneAddTemplateTitleCell.classForCoder(), forCellReuseIdentifier: "cell")
         templatesTableView.dataSource = self
         templatesTableView.delegate = self
+        templatesTableView.enableKeyboardDismissal()
         scrollView.addSubview(templatesTableView)
         templatesTableView.snp.makeConstraints { make in
             make.left.equalTo(customView.snp.right)
@@ -512,17 +509,19 @@ class SceneAddViewController: UIViewController {
         flowLayout.minimumLineSpacing = 0
         flowLayout.minimumInteritemSpacing = 0
         
-        collectionView = TemplateCollectionView(frame: .zero, collectionViewLayout: flowLayout)
+        collectionView = UICollectionView(frame: .zero, collectionViewLayout: flowLayout)
         collectionView.backgroundColor = Background_Color
         collectionView.dataSource = self
         collectionView.delegate = self
+        collectionView.showsVerticalScrollIndicator = false
         collectionView.register(SceneAddTemplateInfoSectionView.classForCoder(), forSupplementaryViewOfKind: UICollectionView.elementKindSectionHeader, withReuseIdentifier: "infoSection")
         collectionView.register(SceneAddGroupTitleSectionView.classForCoder(), forSupplementaryViewOfKind: UICollectionView.elementKindSectionHeader, withReuseIdentifier: "titleSection")
         collectionView.register(SceneAddDataListViewCell.classForCoder(), forCellWithReuseIdentifier: "dataCell")
         collectionView.register(SceneAddGroupViewCell.classForCoder(), forCellWithReuseIdentifier: "groupCell")
         collectionView.register(SceneAddGroupEmptyCell.classForCoder(), forCellWithReuseIdentifier: "groupEmptyCell")
+        collectionView.enableKeyboardDismissal()
 //        collectionView.addGestureRecognizer(UITapGestureRecognizer(target: self, action: #selector(hideKeyboard)))
-//        collectionView.contentInset = UIEdgeInsets(top: 0, left: SCRXFrom(16), bottom: SCRYFrom(16), right: SCRXFrom(16))
+        collectionView.contentInset = UIEdgeInsets(top: 0, left: 0, bottom: SCRYFrom(16), right: 0)
         templateCreateView.addSubview(collectionView)
         collectionView.snp.makeConstraints { make in
             make.top.equalToSuperview()
@@ -534,26 +533,6 @@ class SceneAddViewController: UIViewController {
         
     }
     
-}
-
-class TemplateCollectionView: UICollectionView {
-    
-    override func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent?) {
-        super.touchesBegan(touches, with: event)
-//        if self.subviews.contains(where: { $0.isFirstResponder }) {
-            endEditing(true)
-//        }
-    }
-    
-//    override func point(inside point: CGPoint, with event: UIEvent?) -> Bool {
-//        endEditing(true)
-//        return super.point(inside: point, with: event)
-//    }
-    
-//    override func hitTest(_ point: CGPoint, with event: UIEvent?) -> UIView? {
-//        endEditing(true)
-//        return super.hitTest(point, with: event)
-//    }
 }
 
 extension SceneAddViewController: UITableViewDataSource, UITableViewDelegate {
@@ -615,10 +594,6 @@ extension SceneAddViewController: UITableViewDataSource, UITableViewDelegate {
         updateUI()
     }
     
-    func scrollViewWillBeginDragging(_ scrollView: UIScrollView) {
-        view.endEditing(true)
-    }
-    
     func scrollViewDidScroll(_ scrollView: UIScrollView) {
         guard scrollView == self.scrollView else {
             return
@@ -661,6 +636,9 @@ extension SceneAddViewController: WMMenuViewDataSource, WMMenuViewDelegate {
     }
     
     func menuView(_ menu: WMMenuView!, didSelectedIndex index: Int, currentIndex: Int) {
+        
+        view.endEditing(true)
+        
         scrollView.setContentOffset(CGPoint(x: CGFloat(index) * scrollView.width, y: 0), animated: true)
     }
 }
@@ -792,8 +770,6 @@ extension SceneAddViewController: UICollectionViewDataSource, UICollectionViewDe
     
     func collectionView(_ collectionView: UICollectionView, didSelectItemAt indexPath: IndexPath) {
         
-        hideKeyboard()
-        
         guard indexPath.section == 1 else { return }
         
         if groups.isEmpty {
@@ -893,7 +869,7 @@ extension SceneAddViewController: SceneAddTemplateInfoSectionViewDelegate {
     
     /// 重置点击回调
     func sectionViewDidResetAction(_ sectionView: SceneAddTemplateInfoSectionView) {
-        hideKeyboard()
+        
         guard let subTemplate = self.selectSubTemplate else { return }
         // 场景数据是否修改
         let defalutSceneDatas = subTemplate.parameters.map({
@@ -959,7 +935,6 @@ extension SceneAddViewController: SceneAddDataListViewCellDelegate {
     
     /// 选择数据回调
     func cell(_ cell: SceneAddDataListViewCell, didSelectData index: Int) {
-        hideKeyboard()
         if sceneDataSelectIndex == index {
             sceneDataSelectIndex = nil
         }else {
@@ -970,7 +945,9 @@ extension SceneAddViewController: SceneAddDataListViewCellDelegate {
     
     /// 长按编辑数据回调
     func cell(_ cell: SceneAddDataListViewCell, didLongPressData index: Int) {
-        hideKeyboard()
+        guard index < sceneDatas.count else {
+            return
+        }
         let data = sceneDatas[index]
         SceneExecuteDataPickerView.show(lightness: data.lightness, cct: data.cct) {[weak self] lightness, cct in
             guard let self = self else { return }
@@ -992,7 +969,7 @@ extension SceneAddViewController: SceneAddDataListViewCellDelegate {
     
     /// 新增数据回调
     func cellDidAddAction(_ cell: SceneAddDataListViewCell) {
-        hideKeyboard()
+        
         SceneExecuteDataPickerView.show(showDelete: false) {[weak self] lightness, cct in
             let data = ExecuteSceneData(lightness: lightness, cct: cct)
             self?.sceneDatas.append(data)
@@ -1065,7 +1042,7 @@ extension SceneAddViewController: SceneAddGroupEmptyCellDelegate {
     
     /// 创建组回调
     func cellDidCreateGroupAction(_ cell: SceneAddGroupEmptyCell) {
-        hideKeyboard()
+        
         let groupAddVc = GroupAddViewController(space: space)
 //        groupAddVc.doneCallback = {[weak self] group in
 //            self?.groups = [group]

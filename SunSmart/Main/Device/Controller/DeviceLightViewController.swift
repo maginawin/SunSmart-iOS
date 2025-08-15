@@ -26,8 +26,8 @@ class DeviceLightViewController: UIViewController {
     private var lightnessSlider: BuoySliderView!
     private var cctSlider: BuoySliderView!
     
-    private var replyLabel: UILabel!
-    private var replySwitch: UISwitch!
+    private var relayLabel: UILabel!
+    private var relaySwitch: UISwitch!
     private var pwmPeriodLabel: UILabel!
     
     private weak var lastMessageDelegate: MeshLibManagerMessageDelegate?
@@ -77,8 +77,8 @@ class DeviceLightViewController: UIViewController {
         getNodeState()
         
 //#if DEBUG
-        replySwitch.isHidden = false
-        replyLabel.isHidden = false
+        relaySwitch.isHidden = false
+        relayLabel.isHidden = false
         // 获取节点转发功能是否启用
         MeshAPI.getReplyState(address: node.primaryUnicastAddress, result: nil)
         
@@ -133,7 +133,7 @@ class DeviceLightViewController: UIViewController {
     /// 更新UI数据
     private func updateData() {
         
-        self.replySwitch.isOn = node.features?.relay == .enabled
+        self.relaySwitch.isOn = node.features?.relay == .enabled
         
         if node.isKeybindComplete {
             
@@ -507,7 +507,7 @@ class DeviceLightViewController: UIViewController {
         }
     }
     
-    @objc private func replySwitchValueChanged(sender: UISwitch) {
+    @objc private func relaySwitchValueChanged(sender: UISwitch) {
         sender.isEnabled = false
 //        if sender.isOn {
 //            MeshAPI.sendMessage(message: ConfigRelaySet(count: 1, steps: 1), address: node.primaryUnicastAddress)
@@ -705,22 +705,22 @@ class DeviceLightViewController: UIViewController {
             }
         }
         
-        replySwitch = UISwitch()
-        replySwitch.onTintColor = Bar_Color
-        replySwitch.tintColor = RGB(207, 207, 207)
-        replySwitch.addTarget(self, action: #selector(replySwitchValueChanged), for: .valueChanged)
-        view.addSubview(replySwitch)
-        replySwitch.snp.makeConstraints { make in
+        relaySwitch = UISwitch()
+        relaySwitch.onTintColor = Bar_Color
+        relaySwitch.tintColor = RGB(207, 207, 207)
+        relaySwitch.addTarget(self, action: #selector(relaySwitchValueChanged), for: .valueChanged)
+        view.addSubview(relaySwitch)
+        relaySwitch.snp.makeConstraints { make in
             make.right.equalTo(SCRXFrom(-16))
             make.bottom.equalTo(lightBgView.snp.top)
         }
         
-        replyLabel = UILabel(text: "Reply", textColor: TextBlack_Color, fontSize: 13)
-        replyLabel.isHidden = true
-        view.addSubview(replyLabel)
-        replyLabel.snp.makeConstraints { make in
-            make.centerY.equalTo(replySwitch)
-            make.right.equalTo(replySwitch.snp.left).offset(SCRXFrom(-6))
+        relayLabel = UILabel(text: "Relay", textColor: TextBlack_Color, fontSize: 13)
+        relayLabel.isHidden = true
+        view.addSubview(relayLabel)
+        relayLabel.snp.makeConstraints { make in
+            make.centerY.equalTo(relaySwitch)
+            make.right.equalTo(relaySwitch.snp.left).offset(SCRXFrom(-6))
         }
         
 //        pwmPeriodLabel = UILabel(text: nil, textColor: TextBlack_Color, fontSize: 14)

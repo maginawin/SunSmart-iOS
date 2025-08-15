@@ -18,6 +18,8 @@ class DeviceAddProfessionalModeController: UIViewController {
             switch self {
             case .motionSensing:
                 return "device_add_mode_motionSensing".localizedString
+            case .lightSening:
+                return "device_add_light_sensing".localizedString
             case .manual:
                 return "device_add_mode_manual".localizedString
             case .rssiRange:
@@ -27,6 +29,8 @@ class DeviceAddProfessionalModeController: UIViewController {
         
         /// 移动感应
         case motionSensing
+        /// 光照感应
+        case lightSening
         /// 手动添加
         case manual
         /// 信号范围
@@ -50,6 +54,7 @@ class DeviceAddProfessionalModeController: UIViewController {
     
     private var addModeBtn: UIButton!
     private var pauseBtn: UIButton!
+    private var settingsBtn: UIButton!
     private var scanBtn: UIButton!
     
     private var messageLabel: UILabel!
@@ -94,6 +99,18 @@ class DeviceAddProfessionalModeController: UIViewController {
     private var reloadDataing: Bool = false
     /// 预选view
     private var candidateView: DeviceAddCandidateDeviceListView?
+    /// 参数设置view
+    private var parameterSettingsView :DeviceAddParameterSettingsView?
+    /// 参数
+    private var parameterData: DeviceAddParameterData = .init(notificationEnable: true, volume: 50, vibrationEnable: true)
+    /// 无定向广播
+    private let broadcaster = BluetoothBroadcaster()
+    /// 广播时设备配置持续时长
+    private let broadcasterDuration: UInt8 = 3
+    /// 广播时设备亮度 70%
+    private let broadcasterLightness: UInt8 = UInt8(70).value8
+    /// 广播是光感上报阈值
+    private let lightSensorDelta: UInt16 = 500
     /// 添加目标
     private var addTarget: AddDeviceToTarget!
     /// 添加成功的节点
@@ -179,10 +196,11 @@ class DeviceAddProfessionalModeController: UIViewController {
         isRefresh = true
         candidateView?.isRefresh = isRefresh
         pauseBtn.isSelected = false
-        addModeBtn.isHidden = false
         messageLabel.isHidden = true
         pauseBtn.isHidden = false
         bottomView.isHidden = false
+        
+        startBroadcasting()
         
         // 扫描中设置屏幕常亮
         UIApplication.shared.isIdleTimerDisabled = true
@@ -197,7 +215,7 @@ class DeviceAddProfessionalModeController: UIViewController {
                 if device.rssi.intValue > self.filterRSSIRange.upperBound {
                     device.rssi = NSNumber(value: self.filterRSSIRange.upperBound)
                 }
-                if device.triggerActionTypes.count > 0 {
+                if (self.addMode == .lightSening || self.addMode == .motionSensing) && device.triggerActionTypes.count > 0 {
                     device.activityDate = Date()
                 }
                 
@@ -236,11 +254,18 @@ class DeviceAddProfessionalModeController: UIViewController {
                         case .motionSensing:
                             if device.triggerActionTypes.contains(.motionSensing) {
                                 self.candidateDevices.append(device)
+                                self.playerNotificationAudio()
+                            }
+                        case .lightSening:
+                            if device.triggerActionTypes.contains(.lightSensing) {
+                                self.candidateDevices.append(device)
+                                self.playerNotificationAudio()
                             }
                         case .manual:
                             break
                         case .rssiRange:
                             self.candidateDevices.append(device)
+                            self.playerNotificationAudio()
                         }
                     }
                     self.startRssiSortTimer()
@@ -283,17 +308,17 @@ class DeviceAddProfessionalModeController: UIViewController {
         MeshAPI.stopScan()
         UIApplication.shared.isIdleTimerDisabled = false
         state = .none
+        
+        stopBroadcasting()
         // 停止扫描设备状态设置为空状态
 //        scanDevices.forEach({
 //            $0.addState = .none
 ////            reloadDeviceState($0)
 //        })
         if scanDevices.count > 0 {
-            addModeBtn.isHidden = false
             messageLabel.isHidden = true
             bottomView.isHidden = false
         }else {
-            addModeBtn.isHidden = true
             messageLabel.isHidden = false
             bottomView.isHidden = true
         }
@@ -305,6 +330,35 @@ class DeviceAddProfessionalModeController: UIViewController {
         }else {
             tableView.reloadData()
         }
+    }
+    
+    /// 开始无定向广播（添加模式：移动感应、光照感应）
+    private func startBroadcasting() {
+        
+//        switch self.addMode {
+//        case .motionSensing:
+//            broadcaster.startBroadcasting(type: .pirDiscoverAdd(timeout: broadcasterDuration, lightness: broadcasterLightness))
+//        case .lightSening:
+//            broadcaster.startBroadcasting(type: .ambientLightDiscoverAdd(timeout: broadcasterDuration, lightness: broadcasterLightness, delta: lightSensorDelta))
+//        default:
+//            break
+//        }
+    }
+    
+    /// 停止无定向广播
+    private func stopBroadcasting() {
+//        broadcaster.stopBroadcasting()
+    }
+    
+    /// 播放添加设备通知
+    private func playerNotificationAudio() {
+        
+//        if parameterData.notificationEnable {
+//            try? DeviceAudioManager.manager.startAudio(type: .deviceAdd, volume: parameterData.volume)
+//        }
+//        if parameterData.vibrationEnable {
+//            DeviceAudioManager.manager.vibration()
+//        }
     }
     
     /// 更新UI
@@ -557,7 +611,7 @@ class DeviceAddProfessionalModeController: UIViewController {
                            let clientId = data["mqttClientId"] as? String,
                            let host = data["host"] as? String, let port = data["port"] as? Int {
                             
-                            node.gatewayModel?.mqttServerInfo = GatewayInformation.MQTTConnectInformation(customId: customId, serverAddress: "\(host):\(port)", userName: username, password: password, clientId: clientId, keepalive: 60, clearSession: true, authMode: .none, sslVersion: .all)
+                            node.gatewayModel?.mqttServerInfo = GatewayInformation.MQTTConnectInformation(customId: customId, serverAddress: "tcp://\(host):\(port)", userName: username, password: password, clientId: clientId, keepalive: 60, clearSession: true, authMode: .none, sslVersion: .all)
                             node.gatewayModel?.save()
                         }
                     case .failure:
@@ -972,6 +1026,12 @@ class DeviceAddProfessionalModeController: UIViewController {
             sender.sizeToFit()
             sender.setImagePosition(position: .right, spacing: 0)
             
+            if self.addMode == .motionSensing || self.addMode == .lightSening {
+                self.startBroadcasting()
+            }else {
+                self.stopBroadcasting()
+            }
+            
             if self.isRefresh, self.addMode == .rssiRange {
                 // 筛选出满足预选条件的设备
                 let devices = self.scanDevices.filter({ device in !self.candidateDevices.contains(where: { $0.peripheral.identifier.uuidString == device.peripheral.identifier.uuidString }) && self.selectRSSIRange.contains(device.rssi.intValue) })
@@ -1012,10 +1072,15 @@ class DeviceAddProfessionalModeController: UIViewController {
             switch addMode {
             case .motionSensing:
                 self.candidateDevices.append(contentsOf: devices.filter({ $0.triggerActionTypes.contains(.motionSensing) }))
+                self.playerNotificationAudio()
+            case .lightSening:
+                self.candidateDevices.append(contentsOf: devices.filter({ $0.triggerActionTypes.contains(.lightSensing) }))
+                self.playerNotificationAudio()
             case .manual:
                 break
             case .rssiRange:
                 self.candidateDevices.append(contentsOf: devices)
+                self.playerNotificationAudio()
             }
         }
         
@@ -1032,6 +1097,24 @@ class DeviceAddProfessionalModeController: UIViewController {
             stopScanTimer()
         }
         candidateView?.isRefresh = isRefresh
+    }
+    
+    /// 设置参数
+    @objc private func settingsBtnAction() {
+        
+        if parameterSettingsView == nil {
+            parameterSettingsView = DeviceAddParameterSettingsView(frame: UIScreen.main.bounds, parameterData: self.parameterData)
+            parameterSettingsView?.volumeChangedEndCallback = { volume in
+                try? DeviceAudioManager.manager.startAudio(type: .deviceAdd, volume: volume)
+            }
+            parameterSettingsView?.settingsCallback = {[weak self] data in
+                guard let self = self else { return }
+                self.parameterData = data
+//                try? DeviceAudioManager.manager.startAudio(type: .deviceAdd)
+//                DeviceAudioManager.manager.vibration()
+            }
+        }
+        parameterSettingsView?.show()
     }
     
     @objc private func showDeviceListBtnAction() {
@@ -1095,11 +1178,11 @@ class DeviceAddProfessionalModeController: UIViewController {
         
         addModeBtn = UIButton(title: addMode.title, titleSize: 12, titleWeight: .light, titleColor: ImportantText_Color, normalImageName: "arrow_down_black", target: self, action: #selector(addModeBtnAction))
         addModeBtn.setImagePosition(position: .right, spacing: 0)
-        addModeBtn.isHidden = true
         headerView.addSubview(addModeBtn)
         addModeBtn.snp.makeConstraints { make in
             make.left.equalTo(SCRXFrom(16))
             make.top.equalTo(rssiSlider.snp.bottom).offset(SCRYFrom(14))
+            make.width.lessThanOrEqualTo(SCRXFrom(176))
         }
         
         scanBtn = UIButton(title: "scan".localizedString, titleSize: 13, titleColor: Bottom_Done_Color, normalImageName: "device_scan", target: self, action: #selector(scanBtnClick))
@@ -1127,6 +1210,14 @@ class DeviceAddProfessionalModeController: UIViewController {
         pauseBtn.snp.makeConstraints { make in
             make.right.equalTo(scanBtn.snp.left).offset(SCRXFrom(-29))
             make.centerY.equalTo(scanBtn)
+        }
+        
+        settingsBtn = UIButton(normalImageName: "device_add_setting", target: self, action: #selector(settingsBtnAction))
+        settingsBtn.isHidden = true
+        headerView.addSubview(settingsBtn)
+        settingsBtn.snp.makeConstraints { make in
+            make.left.equalTo(addModeBtn.snp.right).offset(SCRXFrom(10))
+            make.centerY.equalTo(pauseBtn)
         }
         
         bottomView = UIView()

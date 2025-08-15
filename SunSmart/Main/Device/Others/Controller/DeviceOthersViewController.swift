@@ -67,7 +67,7 @@ class DeviceOthersViewController: UIViewController {
     
     private func updateUI() {
         
-        footerView.countBtn.setTitle("0/\(MeshNetworkManager.instance.realNodes.count)", for: .normal)
+        footerView.countBtn.setTitle("0/\(space.deviceCount)", for: .normal)
 //        if !space.deviceOperates.contains(.add) {
 //            footerView.addBtn.isEnabled = false
 //        }

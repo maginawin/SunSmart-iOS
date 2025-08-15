@@ -53,7 +53,7 @@ class GatewayServerInformationViewCell: UITableViewCell {
             make.right.equalTo(SCRXFrom(-16))
             make.centerY.equalTo(serverAddressLabel)
             make.height.equalTo(SCRYFrom(32))
-            make.width.equalTo(SCRXFrom(200))
+            make.width.equalTo(SCRXFrom(230))
         }
         
         portLabel = UILabel(text: "port".localizedString, textColor: ImportantText_Color, fontSize: 14, fit: false)
@@ -78,7 +78,8 @@ class GatewayServerInformationViewCell: UITableViewCell {
         portField.snp.makeConstraints { make in
             make.right.equalTo(serverAddressField)
             make.centerY.equalTo(portLabel)
-            make.width.height.equalTo(serverAddressField)
+            make.height.equalTo(serverAddressField)
+            make.width.equalTo(SCRXFrom(120))
         }
         
         clientIdLabel = UILabel(text: "client_id".localizedString, textColor: ImportantText_Color, fontSize: 14, fit: false)

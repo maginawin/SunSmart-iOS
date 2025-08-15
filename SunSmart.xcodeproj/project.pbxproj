@@ -1067,6 +1067,18 @@
 		C8B337222E44983E006931C2 /* UITableView+Keyboard.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8B337212E44983E006931C2 /* UITableView+Keyboard.swift */; };
 		C8B337232E44983E006931C2 /* UITableView+Keyboard.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8B337212E44983E006931C2 /* UITableView+Keyboard.swift */; };
 		C8B337242E44983E006931C2 /* UITableView+Keyboard.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8B337212E44983E006931C2 /* UITableView+Keyboard.swift */; };
+		C8B483CE2E4AEEBB006D85BC /* DeviceAddParameterSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8B483CD2E4AEEBB006D85BC /* DeviceAddParameterSettingsView.swift */; };
+		C8B483CF2E4AEEBB006D85BC /* DeviceAddParameterSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8B483CD2E4AEEBB006D85BC /* DeviceAddParameterSettingsView.swift */; };
+		C8B483D02E4AEEBB006D85BC /* DeviceAddParameterSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8B483CD2E4AEEBB006D85BC /* DeviceAddParameterSettingsView.swift */; };
+		C8B483D32E4B361F006D85BC /* device_add.mp3 in Resources */ = {isa = PBXBuildFile; fileRef = C8B483D12E4B361F006D85BC /* device_add.mp3 */; };
+		C8B483D42E4B361F006D85BC /* device_reset.mp3 in Resources */ = {isa = PBXBuildFile; fileRef = C8B483D22E4B361F006D85BC /* device_reset.mp3 */; };
+		C8B483D52E4B361F006D85BC /* device_add.mp3 in Resources */ = {isa = PBXBuildFile; fileRef = C8B483D12E4B361F006D85BC /* device_add.mp3 */; };
+		C8B483D62E4B361F006D85BC /* device_reset.mp3 in Resources */ = {isa = PBXBuildFile; fileRef = C8B483D22E4B361F006D85BC /* device_reset.mp3 */; };
+		C8B483D72E4B361F006D85BC /* device_add.mp3 in Resources */ = {isa = PBXBuildFile; fileRef = C8B483D12E4B361F006D85BC /* device_add.mp3 */; };
+		C8B483D82E4B361F006D85BC /* device_reset.mp3 in Resources */ = {isa = PBXBuildFile; fileRef = C8B483D22E4B361F006D85BC /* device_reset.mp3 */; };
+		C8B483DA2E4B37CB006D85BC /* DeviceAudioManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8B483D92E4B37CB006D85BC /* DeviceAudioManager.swift */; };
+		C8B483DB2E4B37CB006D85BC /* DeviceAudioManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8B483D92E4B37CB006D85BC /* DeviceAudioManager.swift */; };
+		C8B483DC2E4B37CB006D85BC /* DeviceAudioManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8B483D92E4B37CB006D85BC /* DeviceAudioManager.swift */; };
 		C8B57F712DB0DD1100E5CD7E /* ReadDevicesDataViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8B57F702DB0DD1100E5CD7E /* ReadDevicesDataViewController.swift */; };
 		C8B5A1DE2B2BE9B300728E36 /* GroupMembersViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8B5A1DD2B2BE9B300728E36 /* GroupMembersViewController.swift */; };
 		C8B5A1E02B2C2AFD00728E36 /* GroupDevicesFunctionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8B5A1DF2B2C2AFD00728E36 /* GroupDevicesFunctionView.swift */; };
@@ -1075,6 +1087,12 @@
 		C8B707062DCF2FF50002133E /* EnergyStatisticsTimeSeriesData.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8B707052DCF2FF50002133E /* EnergyStatisticsTimeSeriesData.swift */; };
 		C8B707082DCF349D0002133E /* ProfileSensitivityView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8B707072DCF349D0002133E /* ProfileSensitivityView.swift */; };
 		C8B754DB2E3B02670000CBD6 /* NordicSigMeshSDK in Frameworks */ = {isa = PBXBuildFile; productRef = C8B754DA2E3B02670000CBD6 /* NordicSigMeshSDK */; };
+		C8B95F982E4DDE5A000576F5 /* DeviceForceResetDeviceController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8B95F972E4DDE5A000576F5 /* DeviceForceResetDeviceController.swift */; };
+		C8B95F992E4DDE5A000576F5 /* DeviceForceResetDeviceController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8B95F972E4DDE5A000576F5 /* DeviceForceResetDeviceController.swift */; };
+		C8B95F9A2E4DDE5A000576F5 /* DeviceForceResetDeviceController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8B95F972E4DDE5A000576F5 /* DeviceForceResetDeviceController.swift */; };
+		C8B95F9C2E4DDEF2000576F5 /* DeviceForceResetDevicePageController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8B95F9B2E4DDEF2000576F5 /* DeviceForceResetDevicePageController.swift */; };
+		C8B95F9D2E4DDEF2000576F5 /* DeviceForceResetDevicePageController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8B95F9B2E4DDEF2000576F5 /* DeviceForceResetDevicePageController.swift */; };
+		C8B95F9E2E4DDEF2000576F5 /* DeviceForceResetDevicePageController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8B95F9B2E4DDEF2000576F5 /* DeviceForceResetDevicePageController.swift */; };
 		C8BA43612DC0724C00018392 /* GroupFilterSelectView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8BA43602DC0724C00018392 /* GroupFilterSelectView.swift */; };
 		C8BA43632DC0A6FD00018392 /* EnergyTimeSeriesDataViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8BA43622DC0A6FD00018392 /* EnergyTimeSeriesDataViewController.swift */; };
 		C8BA43652DC0A7A700018392 /* EnergyTimeSeriesDataImportView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8BA43642DC0A7A700018392 /* EnergyTimeSeriesDataImportView.swift */; };
@@ -1519,6 +1537,10 @@
 		C8B0779D2D9D36750078404C /* Node+MessageHandles.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; lineEnding = 0; path = "Node+MessageHandles.swift"; sourceTree = "<group>"; };
 		C8B0B48A2B468BC700747CF4 /* SyncDevicesProgressView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SyncDevicesProgressView.swift; sourceTree = "<group>"; };
 		C8B337212E44983E006931C2 /* UITableView+Keyboard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "UITableView+Keyboard.swift"; sourceTree = "<group>"; };
+		C8B483CD2E4AEEBB006D85BC /* DeviceAddParameterSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceAddParameterSettingsView.swift; sourceTree = "<group>"; };
+		C8B483D12E4B361F006D85BC /* device_add.mp3 */ = {isa = PBXFileReference; lastKnownFileType = audio.mp3; path = device_add.mp3; sourceTree = "<group>"; };
+		C8B483D22E4B361F006D85BC /* device_reset.mp3 */ = {isa = PBXFileReference; lastKnownFileType = audio.mp3; path = device_reset.mp3; sourceTree = "<group>"; };
+		C8B483D92E4B37CB006D85BC /* DeviceAudioManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceAudioManager.swift; sourceTree = "<group>"; };
 		C8B57F702DB0DD1100E5CD7E /* ReadDevicesDataViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReadDevicesDataViewController.swift; sourceTree = "<group>"; };
 		C8B5A1DD2B2BE9B300728E36 /* GroupMembersViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GroupMembersViewController.swift; sourceTree = "<group>"; };
 		C8B5A1DF2B2C2AFD00728E36 /* GroupDevicesFunctionView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GroupDevicesFunctionView.swift; sourceTree = "<group>"; };
@@ -1526,6 +1548,8 @@
 		C8B707032DCF2FDC0002133E /* EnergyStatisticsStaticData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EnergyStatisticsStaticData.swift; sourceTree = "<group>"; };
 		C8B707052DCF2FF50002133E /* EnergyStatisticsTimeSeriesData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EnergyStatisticsTimeSeriesData.swift; sourceTree = "<group>"; };
 		C8B707072DCF349D0002133E /* ProfileSensitivityView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileSensitivityView.swift; sourceTree = "<group>"; };
+		C8B95F972E4DDE5A000576F5 /* DeviceForceResetDeviceController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceForceResetDeviceController.swift; sourceTree = "<group>"; };
+		C8B95F9B2E4DDEF2000576F5 /* DeviceForceResetDevicePageController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceForceResetDevicePageController.swift; sourceTree = "<group>"; };
 		C8BA43602DC0724C00018392 /* GroupFilterSelectView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GroupFilterSelectView.swift; sourceTree = "<group>"; };
 		C8BA43622DC0A6FD00018392 /* EnergyTimeSeriesDataViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EnergyTimeSeriesDataViewController.swift; sourceTree = "<group>"; };
 		C8BA43642DC0A7A700018392 /* EnergyTimeSeriesDataImportView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EnergyTimeSeriesDataImportView.swift; sourceTree = "<group>"; };
@@ -2284,6 +2308,7 @@
 				C8E694232D8D424100005832 /* DeviceAddBottomView.swift */,
 				C8A3516D2D8D73B800325FC6 /* DeviceRestoreEmptyViewCell.swift */,
 				C8DA69DA2DB87C9B00E32092 /* DeviceBottomBtnView.swift */,
+				C8B483CD2E4AEEBB006D85BC /* DeviceAddParameterSettingsView.swift */,
 				C8C0E4472E2774C60024E77E /* DeviceSettingsCollectionViewCell.swift */,
 			);
 			path = View;
@@ -2304,6 +2329,8 @@
 				C88B25752ADD399C00CF1AE4 /* DeviceLightBasicController.swift */,
 				C8A347CF2D63103B0092D3E4 /* DeviceBaseViewController.swift */,
 				C8CAE8E22D75D76A00FCCA5A /* DevicesReplySetViewController.swift */,
+				C8B95F9B2E4DDEF2000576F5 /* DeviceForceResetDevicePageController.swift */,
+				C8B95F972E4DDE5A000576F5 /* DeviceForceResetDeviceController.swift */,
 			);
 			path = Controller;
 			sourceTree = "<group>";
@@ -2315,6 +2342,7 @@
 				C8B058A62B5115B2006FC36F /* DeviceGroupsSelectData.swift */,
 				C8B058A82B512C1F006FC36F /* TestDeviceAddManager.swift */,
 				C8A347CD2D6307CC0092D3E4 /* DeviceProtocol.swift */,
+				C8B483D92E4B37CB006D85BC /* DeviceAudioManager.swift */,
 			);
 			path = Model;
 			sourceTree = "<group>";
@@ -2750,6 +2778,8 @@
 			children = (
 				C89B34202C93E2B600A77DB6 /* User Agreement.html */,
 				C89B34222C93E3B700A77DB6 /* Privacy Policy.html */,
+				C8B483D12E4B361F006D85BC /* device_add.mp3 */,
+				C8B483D22E4B361F006D85BC /* device_reset.mp3 */,
 				C89B78802CC1EFEA0048B746 /* devices_config.json */,
 				C896B9B02A930BAA00217512 /* Assets.xcassets */,
 				C896B9B22A930BAA00217512 /* LaunchScreen.storyboard */,
@@ -3110,6 +3140,8 @@
 				C88555162DE6B44C00C8B688 /* Privacy Policy.html in Resources */,
 				C88555172DE6B44C00C8B688 /* XWHUDManager_right@3x.png in Resources */,
 				C88555182DE6B44C00C8B688 /* User Agreement.html in Resources */,
+				C8B483D72E4B361F006D85BC /* device_add.mp3 in Resources */,
+				C8B483D82E4B361F006D85BC /* device_reset.mp3 in Resources */,
 				C88555192DE6B44C00C8B688 /* Localizable.strings in Resources */,
 				C885551A2DE6B44C00C8B688 /* XWHUDManager_successful@2x.png in Resources */,
 				C885551B2DE6B44C00C8B688 /* XWHUDManager_tip@3x.png in Resources */,
@@ -3137,6 +3169,8 @@
 				C886E1762E30DE4900D0C3A6 /* XWHUDManager_successful@2x.png in Resources */,
 				C886E1772E30DE4900D0C3A6 /* XWHUDManager_tip@3x.png in Resources */,
 				C886E1782E30DE4900D0C3A6 /* XWHUDManager_loading.gif in Resources */,
+				C8B483D32E4B361F006D85BC /* device_add.mp3 in Resources */,
+				C8B483D42E4B361F006D85BC /* device_reset.mp3 in Resources */,
 				C886E17A2E30DE4900D0C3A6 /* XWHUDManager_error@2x.png in Resources */,
 				C886E17B2E30DE4900D0C3A6 /* CodeScan.bundle in Resources */,
 				C886E17C2E30DE4900D0C3A6 /* devices_config.json in Resources */,
@@ -3163,6 +3197,8 @@
 				C896BD3E2A930C3A00217512 /* XWHUDManager_right@3x.png in Resources */,
 				C89B34212C93E2B600A77DB6 /* User Agreement.html in Resources */,
 				C898E2D52AB7E46300C71315 /* Localizable.strings in Resources */,
+				C8B483D52E4B361F006D85BC /* device_add.mp3 in Resources */,
+				C8B483D62E4B361F006D85BC /* device_reset.mp3 in Resources */,
 				C8C1E5A72B6A1FA500F60E62 /* XWHUDManager_successful@2x.png in Resources */,
 				C896BD402A930C3A00217512 /* XWHUDManager_tip@3x.png in Resources */,
 				C8BC494C2C1C1CD5006BAF89 /* XWHUDManager_loading.gif in Resources */,
@@ -3337,6 +3373,7 @@
 				C88553C12DE6B44C00C8B688 /* ImagesPickerViewController.swift in Sources */,
 				C88553C22DE6B44C00C8B688 /* GroupSwitch.swift in Sources */,
 				C88553C32DE6B44C00C8B688 /* MeshFirmwareListViewCell.swift in Sources */,
+				C8B95F9D2E4DDEF2000576F5 /* DeviceForceResetDevicePageController.swift in Sources */,
 				C88553C42DE6B44C00C8B688 /* WebViewController.swift in Sources */,
 				C88553C52DE6B44C00C8B688 /* SpaceMenuView.swift in Sources */,
 				C88553C62DE6B44C00C8B688 /* ReadDevicesDataViewController.swift in Sources */,
@@ -3423,6 +3460,7 @@
 				C88554142DE6B44C00C8B688 /* CALayer+Animations.swift in Sources */,
 				C88554152DE6B44C00C8B688 /* WMPageController.m in Sources */,
 				C88554162DE6B44C00C8B688 /* FirmwareVersionData.swift in Sources */,
+				C8B95F9A2E4DDE5A000576F5 /* DeviceForceResetDeviceController.swift in Sources */,
 				C88554172DE6B44C00C8B688 /* DeviceAllOnOffViewCell.swift in Sources */,
 				C88554182DE6B44C00C8B688 /* ProfilePowerUpBehaviorView.swift in Sources */,
 				C88554192DE6B44C00C8B688 /* ScheduleScenesView.swift in Sources */,
@@ -3447,6 +3485,7 @@
 				C885542A2DE6B44C00C8B688 /* FSCalendarDelegationFactory.m in Sources */,
 				C885542B2DE6B44C00C8B688 /* FSCalendarTransitionCoordinator.m in Sources */,
 				C885542C2DE6B44C00C8B688 /* FSCalendarConstants.m in Sources */,
+				C8B483DA2E4B37CB006D85BC /* DeviceAudioManager.swift in Sources */,
 				C885542D2DE6B44C00C8B688 /* FSCalendarCollectionViewLayout.m in Sources */,
 				C885542E2DE6B44C00C8B688 /* SpaceFunctionFooterView.swift in Sources */,
 				C885542F2DE6B44C00C8B688 /* DeviceAddBottomView.swift in Sources */,
@@ -3462,6 +3501,7 @@
 				C88554382DE6B44C00C8B688 /* DeviceAddMenuView.swift in Sources */,
 				C88554392DE6B44C00C8B688 /* GroupDeviceViewCell.swift in Sources */,
 				C885543A2DE6B44C00C8B688 /* SceneAddGroupViewCell.swift in Sources */,
+				C8B483D02E4AEEBB006D85BC /* DeviceAddParameterSettingsView.swift in Sources */,
 				C885543B2DE6B44C00C8B688 /* DeviceDongleData.swift in Sources */,
 				C885543C2DE6B44C00C8B688 /* DeviceLightBasicController.swift in Sources */,
 				C885543D2DE6B44C00C8B688 /* DeviceBaseViewController.swift in Sources */,
@@ -3718,6 +3758,7 @@
 				C886E0112E30DE4900D0C3A6 /* ImagesPickerViewController.swift in Sources */,
 				C886E0122E30DE4900D0C3A6 /* GroupSwitch.swift in Sources */,
 				C886E0132E30DE4900D0C3A6 /* MeshFirmwareListViewCell.swift in Sources */,
+				C8B95F9E2E4DDEF2000576F5 /* DeviceForceResetDevicePageController.swift in Sources */,
 				C886E0142E30DE4900D0C3A6 /* WebViewController.swift in Sources */,
 				C886E0152E30DE4900D0C3A6 /* SpaceMenuView.swift in Sources */,
 				C886E0162E30DE4900D0C3A6 /* ReadDevicesDataViewController.swift in Sources */,
@@ -3804,6 +3845,7 @@
 				C886E0652E30DE4900D0C3A6 /* CALayer+Animations.swift in Sources */,
 				C886E0662E30DE4900D0C3A6 /* WMPageController.m in Sources */,
 				C886E0672E30DE4900D0C3A6 /* FirmwareVersionData.swift in Sources */,
+				C8B95F992E4DDE5A000576F5 /* DeviceForceResetDeviceController.swift in Sources */,
 				C886E0682E30DE4900D0C3A6 /* DeviceAllOnOffViewCell.swift in Sources */,
 				C886E0692E30DE4900D0C3A6 /* ProfilePowerUpBehaviorView.swift in Sources */,
 				C886E06A2E30DE4900D0C3A6 /* ScheduleScenesView.swift in Sources */,
@@ -3828,6 +3870,7 @@
 				C886E07C2E30DE4900D0C3A6 /* FSCalendarDelegationFactory.m in Sources */,
 				C886E07D2E30DE4900D0C3A6 /* FSCalendarTransitionCoordinator.m in Sources */,
 				C886E07E2E30DE4900D0C3A6 /* FSCalendarConstants.m in Sources */,
+				C8B483DC2E4B37CB006D85BC /* DeviceAudioManager.swift in Sources */,
 				C886E07F2E30DE4900D0C3A6 /* FSCalendarCollectionViewLayout.m in Sources */,
 				C886E0802E30DE4900D0C3A6 /* SpaceFunctionFooterView.swift in Sources */,
 				C886E0812E30DE4900D0C3A6 /* DeviceAddBottomView.swift in Sources */,
@@ -3843,6 +3886,7 @@
 				C886E08B2E30DE4900D0C3A6 /* DeviceAddMenuView.swift in Sources */,
 				C886E08C2E30DE4900D0C3A6 /* GroupDeviceViewCell.swift in Sources */,
 				C886E08D2E30DE4900D0C3A6 /* SceneAddGroupViewCell.swift in Sources */,
+				C8B483CE2E4AEEBB006D85BC /* DeviceAddParameterSettingsView.swift in Sources */,
 				C886E08E2E30DE4900D0C3A6 /* DeviceDongleData.swift in Sources */,
 				C886E08F2E30DE4900D0C3A6 /* DeviceLightBasicController.swift in Sources */,
 				C886E0902E30DE4900D0C3A6 /* DeviceBaseViewController.swift in Sources */,
@@ -4099,6 +4143,7 @@
 				C8A130CF2B32EE220008C353 /* ImagesPickerViewController.swift in Sources */,
 				C87EB4532BA0856700F9285B /* GroupSwitch.swift in Sources */,
 				C89BAB212C4F3EC8000A4173 /* MeshFirmwareListViewCell.swift in Sources */,
+				C8B95F9C2E4DDEF2000576F5 /* DeviceForceResetDevicePageController.swift in Sources */,
 				C89FEF482ABD6A6300DCCFB6 /* WebViewController.swift in Sources */,
 				C898EA6B2AC2C3270023B480 /* SpaceMenuView.swift in Sources */,
 				C8B57F712DB0DD1100E5CD7E /* ReadDevicesDataViewController.swift in Sources */,
@@ -4185,6 +4230,7 @@
 				C8ACF13D2AA1B2BA00E24B4A /* CALayer+Animations.swift in Sources */,
 				C898EA5E2AC2BD8B0023B480 /* WMPageController.m in Sources */,
 				C8A16F7C2C86EEFA00FB50BD /* FirmwareVersionData.swift in Sources */,
+				C8B95F982E4DDE5A000576F5 /* DeviceForceResetDeviceController.swift in Sources */,
 				C8B0589C2B500D21006FC36F /* DeviceAllOnOffViewCell.swift in Sources */,
 				C8047F202B8F28B400A09FFA /* ProfilePowerUpBehaviorView.swift in Sources */,
 				C89A1C3F2B566B96004912B9 /* ScheduleScenesView.swift in Sources */,
@@ -4209,6 +4255,7 @@
 				C8DA6A1A2DB8800B00E32092 /* FSCalendarDelegationFactory.m in Sources */,
 				C8DA6A1B2DB8800B00E32092 /* FSCalendarTransitionCoordinator.m in Sources */,
 				C8DA6A1C2DB8800B00E32092 /* FSCalendarConstants.m in Sources */,
+				C8B483DB2E4B37CB006D85BC /* DeviceAudioManager.swift in Sources */,
 				C8DA6A1D2DB8800B00E32092 /* FSCalendarCollectionViewLayout.m in Sources */,
 				C898EA702AC3C64C0023B480 /* SpaceFunctionFooterView.swift in Sources */,
 				C8E694242D8D424100005832 /* DeviceAddBottomView.swift in Sources */,
@@ -4224,6 +4271,7 @@
 				C86618EF2D8BB3DA00FB3D2F /* DeviceAddMenuView.swift in Sources */,
 				C8BF088C2B29903E00144BAC /* GroupDeviceViewCell.swift in Sources */,
 				C8A3EE822B34087A0082A772 /* SceneAddGroupViewCell.swift in Sources */,
+				C8B483CF2E4AEEBB006D85BC /* DeviceAddParameterSettingsView.swift in Sources */,
 				C8DF845A2DB6464E0070CBD9 /* DeviceDongleData.swift in Sources */,
 				C88B25762ADD399C00CF1AE4 /* DeviceLightBasicController.swift in Sources */,
 				C8A347D02D63103B0092D3E4 /* DeviceBaseViewController.swift in Sources */,
@@ -4496,7 +4544,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 2;
+				CURRENT_PROJECT_VERSION = 3;
 				DEVELOPMENT_TEAM = JTD3WYUC58;
 				GCC_PREFIX_HEADER = "";
 				GENERATE_INFOPLIST_FILE = YES;
@@ -4538,7 +4586,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 2;
+				CURRENT_PROJECT_VERSION = 3;
 				DEVELOPMENT_TEAM = JTD3WYUC58;
 				GCC_PREFIX_HEADER = "";
 				GENERATE_INFOPLIST_FILE = YES;
@@ -4580,7 +4628,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 2;
+				CURRENT_PROJECT_VERSION = 4;
 				DEVELOPMENT_TEAM = FNFEMS8D6J;
 				GCC_PREFIX_HEADER = "";
 				GENERATE_INFOPLIST_FILE = YES;
@@ -4622,7 +4670,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 2;
+				CURRENT_PROJECT_VERSION = 4;
 				DEVELOPMENT_TEAM = FNFEMS8D6J;
 				GCC_PREFIX_HEADER = "";
 				GENERATE_INFOPLIST_FILE = YES;
@@ -4780,7 +4828,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 2;
+				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = JTD3WYUC58;
 				GCC_PREFIX_HEADER = "";
 				GENERATE_INFOPLIST_FILE = YES;
@@ -4800,7 +4848,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.0.8;
+				MARKETING_VERSION = 1.0.9;
 				PRODUCT_BUNDLE_IDENTIFIER = com.azoula.sunsmart;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
@@ -4821,7 +4869,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 2;
+				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = JTD3WYUC58;
 				GCC_PREFIX_HEADER = "";
 				GENERATE_INFOPLIST_FILE = YES;
@@ -4841,7 +4889,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.0.8;
+				MARKETING_VERSION = 1.0.9;
 				PRODUCT_BUNDLE_IDENTIFIER = com.azoula.sunsmart;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";

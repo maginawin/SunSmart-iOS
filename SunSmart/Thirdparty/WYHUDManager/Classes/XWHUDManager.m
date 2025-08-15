@@ -228,6 +228,11 @@ static XWHUDManagerType kXWHUDManagerType = XWHUDManagerTypeDark;
     [self p_showTipMessage:message isLineFeed:isLineFeed isWindow:NO timer:kXWHUDHideTimeInterval];
 }
 
+/// 在自定义view上显示文本提示框
++ (void)showTipHUDInView:(UIView *)view message:(NSString *)message isLineFeed:(BOOL)isLineFeed {
+    [self p_showTipMessage:message view: view isLineFeed:isLineFeed timer:kXWHUDHideTimeInterval];
+}
+
 /// 限时隐藏在window展示一个有文本提示框
 + (void)showTipHUD:(NSString *)message isLineFeed:(BOOL)isLineFeed afterDelay:(NSTimeInterval)afterSecond {
     [self p_showTipMessage:message isLineFeed:isLineFeed isWindow:YES timer:afterSecond];
@@ -460,7 +465,14 @@ static XWHUDManagerType kXWHUDManagerType = XWHUDManagerTypeDark;
 #pragma mark - private
 /// 文本框
 + (void)p_showTipMessage:(NSString*)message isLineFeed:(BOOL)isLineFeed isWindow:(BOOL)isWindow timer:(NSTimeInterval)aTimer {
-    WYProgressHUD *hud = [self p_createWYProgressHUDviewWithMessage:message isWindiw:isWindow animated:YES];
+    
+    UIView *view = isWindow ? [self p_getKeyWindow] : [self p_getCurrentUIVC].view;
+    [self p_showTipMessage:message view:view isLineFeed:isLineFeed timer:aTimer];
+}
+
+/// 文本框
++ (void)p_showTipMessage:(NSString*)message view:(UIView *)view isLineFeed:(BOOL)isLineFeed timer:(NSTimeInterval)aTimer {
+    WYProgressHUD *hud = [self p_createWYProgressHUDviewWithView:view message:message animated:YES];
     // 提示文本框不拦截响应
 //    hud.userInteractionEnabled = NO;
     hud.minSize = CGSizeZero;

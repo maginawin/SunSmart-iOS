@@ -1222,6 +1222,7 @@
 "device_add_mode_motionSensing" = "基于运动感应添加";
 "device_add_mode_manual" = "基于手动添加";
 "device_add_mode_rssiRange" = "基于RSSI范围添加";
+"device_add_light_sensing" = "基于光感添加";
 "candidate_device_list" = "候选设备列表";
 "the_remaining_rssi_devices" = "剩余的RSSI设备";
 "stop_scaning_to_add_devices" = "停止扫描以添加设备";
@@ -1276,3 +1277,8 @@
 "gateway_no_authorize_force_delete_message" = "删除网关失败。\n该网关已离线或信号弱，您可以强制删除网关。\n\n";
 "gateway_force_delete_note" = "注意：强制删除后需手动重置网关设备。";
 "server_failure" = "服务器故障";
+"notification_volume" = "Notification volume";
+"vibration" = "Vibration";
+"system_volume_insufficient" = "The system volume needs to be higher than 20%.";
+"force_reset_the_device" = "Force Reset The Device";
+"force_reset_the_device_message" = "Please enter a 4-digit password";

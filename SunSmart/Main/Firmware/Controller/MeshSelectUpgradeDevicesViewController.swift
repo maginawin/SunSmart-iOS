@@ -108,10 +108,9 @@ class MeshSelectUpgradeDevicesViewController: UIViewController {
         guard let compositionHash = compositionHash, let distributionFirmwareSize = distributorNode.distributionFirmwareSize else {
             return
         }
-        let session = UInt8(arc4random_uniform(254) + 1)
+        let randomSession = UInt8.random(in: 1...255)
         
-        
-        MeshVendorOTAManager.shared.startMeshOTA(distributionNode: self.distributorNode, targetNodes: self.selectNodes, session: session, updateFirmwareImageIndex: 0, firmwareHash: UInt32(data: compositionHash), firmwareSize: distributionFirmwareSize, chunkSize: 100) {[weak self] result in
+        MeshVendorOTAManager.shared.startMeshOTA(distributionNode: self.distributorNode, targetNodes: self.selectNodes, session: randomSession, updateFirmwareImageIndex: 0, firmwareHash: UInt32(data: compositionHash), firmwareSize: distributionFirmwareSize, chunkSize: 100) {[weak self] result in
             guard let self = self else { return }
             DispatchQueue.main.async {
                 XWHUDManager.hide()

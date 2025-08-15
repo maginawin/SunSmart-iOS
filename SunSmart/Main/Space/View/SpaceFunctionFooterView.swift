@@ -23,6 +23,9 @@ protocol SpaceFunctionFooterViewDelegate: AnyObject {
     
     /// 点击修复
     func functionDidClickSync(view: SpaceFunctionFooterView)
+    
+    /// 进入测试删除
+    func functionEnterIntoTestDelete(view: SpaceFunctionFooterView)
 }
 
 extension SpaceFunctionFooterViewDelegate {
@@ -51,6 +54,11 @@ extension SpaceFunctionFooterViewDelegate {
     func functionDidClickSync(view: SpaceFunctionFooterView) {
         
     }
+    
+    /// 进入测试删除
+    func functionEnterIntoTestDelete(view: SpaceFunctionFooterView) {
+        
+    }
 
 }
 
@@ -67,6 +75,9 @@ class SpaceFunctionFooterView: UIView {
     var cancelBtn: UIButton!
     var lineView: UIView!
     var deleteBtn: UIButton!
+    private weak var promptLabel: UILabel?
+    
+    private var longPressTestBtn: UIButton!
     
     /// 是否正在编辑
     var isEditing: Bool = false {
@@ -122,6 +133,47 @@ class SpaceFunctionFooterView: UIView {
         delegate?.functionDidClickSync(view: self)
     }
     
+    /// 删除（test）
+    @objc private func deleteBtnLongPress(sender: UILongPressGestureRecognizer) {
+        if sender.state == .began {
+            // 输入密码
+            let alertView = SRAlertView(title: "force_reset_the_device".localizedString, message: "force_reset_the_device_message".localizedString, inputText: nil, inputFieldStyle: .init(keyboardType: .numberPad, minInputLength: 4, maxInputLength: 4, borderColor: Bar_Color, textAlignment: .center, showClear: false), showPrompt: false, showClose: true, textValueChangedBack: {[weak self] password, _ in
+                guard let self = self else { return nil }
+                guard password.count >= 4 else {
+                    self.promptLabel?.isHidden = true
+                    SRAlertView.getCurrentAlertView()?.textField.layer.borderColor = Bar_Color.cgColor
+                    return nil
+                }
+                guard password == "1314" else {
+                    self.promptLabel?.isHidden = false
+                    SRAlertView.getCurrentAlertView()?.textField.layer.borderColor = Red_Color.cgColor
+                    return nil
+                }
+                SRAlertView.hide()
+                self.delegate?.functionEnterIntoTestDelete(view: self)
+                return nil
+            }, inputDoneBack: nil)
+            
+            alertView.hLineView.snp.remakeConstraints { make in
+                make.left.right.equalTo(0)
+                make.height.equalTo(0.5)
+                make.top.equalTo(alertView.textField.snp.bottom).offset(SCRYFrom(54))
+            }
+            
+            let promptLabel = UILabel(text: "incorrect_password".localizedString, textColor: Red_Color, fontSize: 14, fontWeight: .light)
+            promptLabel.isHidden = true
+            alertView.contentView.addSubview(promptLabel)
+            self.promptLabel = promptLabel
+            promptLabel.snp.makeConstraints { make in
+                make.top.equalTo(alertView.textField.snp.bottom).offset(SCRYFrom(8))
+                make.centerX.equalToSuperview()
+                make.height.equalTo(SCRYFrom(22))
+            }
+            alertView.show()
+            
+        }
+    }
+    
     /// 更新UI
     private func updateUI() {
         if isEditing {
@@ -134,6 +186,7 @@ class SpaceFunctionFooterView: UIView {
             addBtn.isHidden = true
             sortBtn.isHidden = true
             syncBtn.isHidden = true
+//            longPressTestBtn.isHidden = true
 //            switchCountBtn.isHidden = true
         }else {
             cancelBtn.isHidden = true
@@ -143,6 +196,7 @@ class SpaceFunctionFooterView: UIView {
             editBtn.isHidden = false
             addBtn.isHidden = false
             sortBtn.isHidden = false
+//            longPressTestBtn.isHidden = false
 //            switchCountBtn.isHidden = false
         }
     }
@@ -209,7 +263,20 @@ class SpaceFunctionFooterView: UIView {
             make.centerY.equalTo(countBtn)
         }
         
-        editBtn = UIButton(normalImageName: "space_edit", target: self, action: #selector(editBtnClick))
+//        longPressTestBtn = UIButton()
+//        let testLongPress = UILongPressGestureRecognizer(target: self, action: #selector(deleteBtnLongPress))
+//        testLongPress.minimumPressDuration = 5
+//        longPressTestBtn.addGestureRecognizer(testLongPress)
+//        addSubview(longPressTestBtn)
+//        longPressTestBtn.snp.makeConstraints { make in
+//            make.right.equalTo(addBtn.snp.left).offset(SCRXFrom(-20))
+//            make.centerY.equalTo(addBtn)
+//        }
+        
+        editBtn = UIButton(normalImageName: "share_delete", target: self, action: #selector(editBtnClick))
+//        let editLongPress = UILongPressGestureRecognizer(target: self, action: #selector(deleteBtnLongPress))
+//        editLongPress.minimumPressDuration = 5
+//        editBtn.addGestureRecognizer(editLongPress)
         addSubview(editBtn)
         editBtn.snp.makeConstraints { make in
             make.right.equalTo(addBtn.snp.left).offset(SCRXFrom(-20))

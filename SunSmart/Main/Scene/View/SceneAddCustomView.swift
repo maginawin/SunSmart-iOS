@@ -140,6 +140,7 @@ class SceneAddCustomView: UIView {
         collectionView.showsVerticalScrollIndicator = false
         collectionView.dataSource = self
         collectionView.delegate = self
+        collectionView.enableKeyboardDismissal()
         addSubview(collectionView)
         collectionView.snp.makeConstraints { make in
             make.top.equalTo(nameField.snp.bottom).offset(SCRYFrom(26))
@@ -185,9 +186,6 @@ extension SceneAddCustomView: UICollectionViewDataSource, UICollectionViewDelega
         return CGSize(width: itemW, height: itemW)
     }
     
-    func scrollViewWillBeginDragging(_ scrollView: UIScrollView) {
-        endEditing(true)
-    }
     
 }
 

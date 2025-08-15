@@ -161,7 +161,7 @@ extension NodeSyncData {
             }
         case .syncGatewaySIMAPN(let apn):
             if let vendorModel = node.sunricherVendorModel {
-                messageHandles.append(MeshMessageHandle(message: SunricherVendorSet(function: .gatewaySimInfoSet(simInfo: .init(customId: customId, ipType: .ip, apn: apn))), model: vendorModel))
+                messageHandles.append(MeshMessageHandle(message: SunricherVendorSet(function: .gatewaySimInfoSet(simInfo: .init(cid: 1, ipType: .ip, apn: apn))), model: vendorModel))
             }
         case .syncGatewayMQTTInformation(let mqttInformation):
             if let vendorModel = node.sunricherVendorModel {

@@ -359,7 +359,6 @@ class DeviceLightsViewController: UIViewController {
         
         footerView = SpaceFunctionFooterView()
         footerView.sortBtn.isHidden = true
-        footerView.editBtn.setImage(UIImage(named: "share_delete"), for: .normal)
         footerView.delegate = self
         view.addSubview(footerView)
         footerView.snp.makeConstraints { make in
@@ -700,6 +699,7 @@ class DeviceLightsViewController: UIViewController {
         
     }
     
+    
     /// 修复设备
     func repairNodes(nodes: [Node]) {
         if nodes.isEmpty  {
@@ -973,6 +973,11 @@ extension DeviceLightsViewController: SpaceFunctionFooterViewDelegate {
             self?.navigationController?.popViewController(animated: true)
         }
         navigationController?.pushViewController(vc, animated: true)
+    }
+    
+    /// 进入调试删除页面
+    func functionEnterIntoTestDelete(view: SpaceFunctionFooterView) {
+        
     }
     
 }

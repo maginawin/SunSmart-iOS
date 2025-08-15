@@ -1194,6 +1194,7 @@
 "device_add_mode_motionSensing" = "Add based on motion sensing";
 "device_add_mode_manual" = "Add based on manual";
 "device_add_mode_rssiRange" = "Add based on RSSI range";
+"device_add_light_sensing" = "Add based on light sensing";
 "candidate_device_list" = "Candidate Device List";
 "the_remaining_rssi_devices" = "The Remaining RSSI Devices";
 "stop_scaning_to_add_devices" = "STOP SCANNING TO ADD DEVICES";
@@ -1248,3 +1249,8 @@
 "gateway_no_authorize_force_delete_message" = "Failed to delete the gateway. \nThe gateway is offline or the signal is weak.You can force delete the gateway.\n\n";
 "gateway_force_delete_note" = "Note:  you need to manually reset the gateway after force delete.";
 "server_failure" = "Server failure";
+"notification_volume" = "Notification volume";
+"vibration" = "Vibration";
+"system_volume_insufficient" = "The system volume needs to be higher than 20%.";
+"force_reset_the_device" = "Force Reset The Device";
+"force_reset_the_device_message" = "Please enter a 4-digit password";

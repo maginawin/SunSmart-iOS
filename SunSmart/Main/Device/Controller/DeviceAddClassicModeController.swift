@@ -225,28 +225,14 @@ class DeviceAddClassicModeController: UIViewController {
                     }
                 }
                 
-//                print(device.rssi)
                 self.categoryView.isHidden = false
                 
                 // 当前设备信号值在筛选范围内可展示
-                
-//                if self.filterRSSI == self.filterRSSIRange.lowerBound || device.rssi.intValue >= self.filterRSSI {
-//                if self.selectRSSIRange.contains(device.rssi.intValue) {
                 if self.showDeviceTypes.contains(device.deviceType) {
                     self.startRssiSortTimer()
                 }else {
                     self.updateDeviceCategoryCount()
                 }
-//                        if let index = self.showDevices.firstIndex(where: { $0.peripheral.identifier.uuidString == device.peripheral.identifier.uuidString }) {
-//                            let cacheDevice = self.showDevices[index]
-//                            cacheDevice.updateData(device: device)
-//                        }else {
-//                            self.showDevices.append(device)
-//                            self.startRssiSortTimer()
-//                        }
-//                            self.tableView.insertRows(at: [IndexPath(row: self.showDevices.count - 1, section: 0)], with: .automatic)
-//                    }
-//                }
             }
             
         }, deviceScanFinish: nil)
@@ -739,7 +725,7 @@ class DeviceAddClassicModeController: UIViewController {
                            let clientId = data["mqttClientId"] as? String,
                            let host = data["host"] as? String, let port = data["port"] as? Int {
                             
-                            node.gatewayModel?.mqttServerInfo = GatewayInformation.MQTTConnectInformation(customId: customId, serverAddress: "\(host):\(port)", userName: username, password: password, clientId: clientId, keepalive: 60, clearSession: true, authMode: .none, sslVersion: .all)
+                            node.gatewayModel?.mqttServerInfo = GatewayInformation.MQTTConnectInformation(customId: customId, serverAddress: "tcp://\(host):\(port)", userName: username, password: password, clientId: clientId, keepalive: 60, clearSession: true, authMode: .none, sslVersion: .all)
                             node.gatewayModel?.save()
                         }
                     case .failure:

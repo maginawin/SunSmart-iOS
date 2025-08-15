@@ -36,7 +36,7 @@ class SRAlertView: UIView {
     private var messageAttBtnStyle: SRAlertMessageAttBtnStyle?
     
     /// 输入框
-    private var textField: UITextField!
+    var textField: UITextField!
     
     /// 第一个按钮
     var firstBtn: UIButton!
@@ -75,6 +75,8 @@ class SRAlertView: UIView {
     private var bottomBtnClickBack: BottomBtnClickBack?
     /// 是否关闭弹窗（关闭动画过程防止触发事件）
     private var isDismiss: Bool = false
+    /// 是否显示输入框提示
+    private var showTextFieldPrompt: Bool = true
     
     override init(frame: CGRect) {
         super.init(frame: frame)
@@ -345,6 +347,7 @@ class SRAlertView: UIView {
                      showPrompt: Bool = true,
                      margin: CGFloat = isIPad ? SCRXFrom(150) : SCRXFrom(35),
                      actions: [SRAlertAction] = [],
+                     showClose: Bool = false,
                      textValueChangedBack: InputTextChangedBack?,
                      inputDoneBack: InputTextDoneBack?) {
         
@@ -385,7 +388,7 @@ class SRAlertView: UIView {
         self.minInputLength = inputFieldStyle.minInputLength
         self.maxInputLength = inputFieldStyle.maxInputLength
         self.textValueChangedBack = textValueChangedBack
-
+        self.showTextFieldPrompt = showPrompt
         
         messageLabel.textColor = messageColor
         messageLabel.font = messageFont
@@ -420,6 +423,11 @@ class SRAlertView: UIView {
                 make.height.equalTo(inputFieldStyle.height)
                 make.top.equalTo(messageLabel.snp.bottom).offset(SCRYFrom(12))
             }
+        }
+        
+        // 关闭按钮
+        if showClose {
+            self.closeBtn.isHidden = false
         }
         
         hLineView.snp.remakeConstraints { make in
@@ -698,9 +706,11 @@ class SRAlertView: UIView {
             
             if textValueChangedBack != nil {
                 let message = textValueChangedBack?(realText, false)
+                if showTextFieldPrompt {
                     messageLabel.text = message
+                    self.perform(#selector(textExceededHide), with: nil, afterDelay: 2)
+                }
             }
-            self.perform(#selector(textExceededHide), with: nil, afterDelay: 2)
             
         }else {
             let btnColor = actions.last?.titleColor ?? Bottom_Done_Color
@@ -711,13 +721,19 @@ class SRAlertView: UIView {
                     
                     self.secondBtn.isUserInteractionEnabled = enabled
                     self.secondBtn.setTitleColor(enabled ? btnColor : btnColor.withAlphaComponent(0.5), for: .normal)
-                    messageLabel.textColor = Title_Color
+                    if showTextFieldPrompt {
+                        messageLabel.textColor = Title_Color
+                    }
                 }else {
                     secondBtn.isUserInteractionEnabled = false
                     self.secondBtn.setTitleColor(btnColor.withAlphaComponent(0.5), for: .normal)
-                    messageLabel.textColor = Red_Color
+                    if showTextFieldPrompt {
+                        messageLabel.textColor = Red_Color
+                    }
                 }
-                messageLabel.text = message
+                if showTextFieldPrompt {
+                    messageLabel.text = message
+                }
             }else {
                 let enabled = realText.count >= self.minInputLength && (self.minInputLength > 0 && !realText.isAllInputTextEmpty())
                 self.secondBtn.isUserInteractionEnabled = enabled

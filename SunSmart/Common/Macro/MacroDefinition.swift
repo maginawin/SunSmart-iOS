@@ -79,7 +79,11 @@ func SCRYFrom(_ y : CGFloat) -> CGFloat {
 }
 
 func FontFit(_ size: CGFloat) -> CGFloat {
-    return size * min(SCREEN_HEIGHT / iPhoneStandardSize.height, 1.05)
+    var scale: CGFloat = 1.0
+    if kSafeAreaBottomHeight > 0 { // 全面屏
+        scale = SCREEN_HEIGHT / (isIPad ? iPadStandardSize.height : iPhoneStandardSize.height)
+    }
+    return size * min(scale, 1.2)
 }
 
 // 屏幕等比适配 (y)

@@ -191,6 +191,11 @@ extension UInt8: PercentageProtocol {
         return UInt8((Double(self) / 2.55).rounded())
     }
     
+    /// 0~100% => UInt18 value
+    var value8: UInt8 {
+        return UInt8(Double(self) / 100.0 * Double(UInt8.max))
+    }
+    
     /// 0~100% => UInt16 value
     var value16: UInt16 {
         return UInt16(Double(self) / 100.0 * Double(UInt16.max))

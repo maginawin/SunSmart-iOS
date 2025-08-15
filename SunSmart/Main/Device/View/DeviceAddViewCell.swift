@@ -167,6 +167,11 @@ class DeviceAddViewCell: UITableViewCell {
             let activityDuration = device.activityDate != nil ? device.activityDate!.distance(to: Date()) : 0
             
             if device.triggerActionTypes.count > 0 && activityDuration < 3 && device.addState != .identifying {
+                if device.triggerActionTypes.contains(.lightSensing) {
+                    activityImageView.image = UIImage(named: "device_lightsensor_activity")
+                }else if device.triggerActionTypes.contains(.motionSensing) {
+                    activityImageView.image = UIImage(named: "device_motion_activity")
+                }
                 activityImageView.isHidden = false
                 startActivityTimer(interval: 3 - activityDuration)
 //                if device.macAddress == "D8A6F671810F" {
@@ -275,7 +280,7 @@ class DeviceAddViewCell: UITableViewCell {
             make.width.height.equalTo(SCRYFrom(10))
         }
         
-        activityImageView = UIImageView(image: UIImage(named: "device_activity"))
+        activityImageView = UIImageView(image: UIImage(named: "device_motion_activity"))
         activityImageView.isHidden = true
         deviceImageView.addSubview(activityImageView)
         activityImageView.snp.makeConstraints { make in

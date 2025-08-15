@@ -160,7 +160,7 @@ class DeviceParameterDevicesViewController: UIViewController {
     private func updateUI() {
         
         if MeshLibManager.manager.isMeshNetworkConnected {
-            bottomView.leftBtn.isEnabled = true
+            bottomView.leftBtn.isEnabled = selectDevices.count > 0
         }else {
             bottomView.leftBtn.isEnabled = false
         }
@@ -188,7 +188,7 @@ class DeviceParameterDevicesViewController: UIViewController {
         }
         
         let parameters: [DeviceReadParameterType] = [.pwmFrequency, .ratedPower, .motionSensitivityRange]
-        let vc = ReadDevicesDataViewController(type: .parameters(nodes: devices, parameters: parameters))
+        let vc = ReadDevicesDataViewController(type: .parameters(nodes: selectDevices, parameters: parameters))
         vc.readSuccessCallback = {[weak self] _ in
             XWHUDManager.showSuccessTipHUD("done!".localizedString)
             guard let self = self else { return }
@@ -219,6 +219,22 @@ class DeviceParameterDevicesViewController: UIViewController {
             guard let self = self else { return }
             
             self.devices.forEach { node in
+                
+                if parameters.contains(.pwmFrequency) {
+                    // 如果获取的pwm频率有精度问题，则获取pwm频率list中最接近的数值
+                    if let pwmFrequency = node.pwmFrequency, !DeviceParameterData.pwmFrequencys.contains(Int(pwmFrequency)) {
+                        node.pwmFrequency = UInt16(self.pwmFrequencyFindClosestValue(list: DeviceParameterData.pwmFrequencys, target: Int(pwmFrequency)))
+                    }
+                    node.tempPwm = node.pwmFrequency
+                }
+                if parameters.contains(.ratedPower) {
+                    node.tempRatedPowerPhases = node.phaseEnergyConsumptions
+                }
+                if parameters.contains(.motionSensitivityRange) {
+                    node.tempSensitivityRange = node.motionSensitivityRange
+                }
+                
+                
                 // 失败的数据展示“--”
                 if let data = failedDatas.first(where: { $0.node.primaryUnicastAddress == node.primaryUnicastAddress }) {
                     data.parameterTypes.forEach { type in
@@ -234,20 +250,6 @@ class DeviceParameterDevicesViewController: UIViewController {
                         default:
                             break
                         }
-                    }
-                }else {
-                    if parameters.contains(.pwmFrequency) {
-                        // 如果获取的pwm频率有精度问题，则获取pwm频率list中最接近的数值
-                        if let pwmFrequency = node.pwmFrequency, !DeviceParameterData.pwmFrequencys.contains(Int(pwmFrequency)) {
-                            node.pwmFrequency = UInt16(self.pwmFrequencyFindClosestValue(list: DeviceParameterData.pwmFrequencys, target: Int(pwmFrequency)))
-                        }
-                        node.tempPwm = node.pwmFrequency
-                    }
-                    if parameters.contains(.ratedPower) {
-                        node.tempRatedPowerPhases = node.phaseEnergyConsumptions
-                    }
-                    if parameters.contains(.motionSensitivityRange) {
-                        node.tempSensitivityRange = node.motionSensitivityRange
                     }
                 }
             }
@@ -449,6 +451,7 @@ class DeviceParameterDevicesViewController: UIViewController {
         
         bottomView = DeviceParameterBottomView()
         bottomView.leftBtn.addTarget(self, action: #selector(readAction), for: .touchUpInside)
+        bottomView.leftBtn.isEnabled = false
         bottomView.rightBtn.addTarget(self, action: #selector(nextAction), for: .touchUpInside)
         bottomView.rightBtn.isEnabled = false
         view.addSubview(bottomView)
@@ -556,7 +559,7 @@ extension DeviceParameterDevicesViewController: UITableViewDataSource, UITableVi
             cell.sensitivityLabel.isHidden = true
         }
         
-        if MeshLibManager.manager.isMeshNetworkConnected {
+        if MeshLibManager.manager.isMeshNetworkConnected && device.state {
             cell.selectState = selectDevices.contains(device) ? .selected : .none
         }else {
             cell.selectState = .disable
@@ -608,6 +611,7 @@ extension DeviceParameterDevicesViewController: UITableViewDataSource, UITableVi
         groupsView.selectAllBtn.isSelected = selectDevices.count == devices.count
         groupsView.selectCountLabel.text = "\(selectDevices.count)/\(devices.count)"
         bottomView.rightBtn.isEnabled = selectDevices.count > 0
+        bottomView.leftBtn.isEnabled = selectDevices.count > 0
     }
     
 }
@@ -635,7 +639,7 @@ extension DeviceParameterDevicesViewController: DeviceGroupsViewDelegate {
             return
         }
         if selectAll {
-            selectDevices = devices
+            selectDevices = devices.filter({ $0.state })
         }else {
             selectDevices.removeAll()
         }
@@ -644,9 +648,10 @@ extension DeviceParameterDevicesViewController: DeviceGroupsViewDelegate {
             $0.isSelected = selectAll && $0.addresss.count > 0
         })
         groupsView.datas = groupDatas
-        groupsView.selectAllBtn.isSelected = selectDevices.count == devices.count
+        groupsView.selectAllBtn.isSelected = selectDevices.count == devices.filter({ $0.state }).count
         groupsView.selectCountLabel.text = "\(selectDevices.count)/\(devices.count)"
         bottomView.rightBtn.isEnabled = selectDevices.count > 0
+        bottomView.leftBtn.isEnabled = selectDevices.count > 0
     }
     
     func view(_ view: DeviceGroupsView, didSelectData data: DeviceGroupsSelectData) {
@@ -667,6 +672,7 @@ extension DeviceParameterDevicesViewController: DeviceGroupsViewDelegate {
         groupsView.selectCountLabel.text = "\(selectDevices.count)/\(devices.count)"
         tableView.reloadData()
         bottomView.rightBtn.isEnabled = selectDevices.count > 0
+        bottomView.leftBtn.isEnabled = selectDevices.count > 0
     }
     
     func viewDidSortAction(_ view: DeviceGroupsView) {

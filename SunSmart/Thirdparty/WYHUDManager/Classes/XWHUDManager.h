@@ -180,6 +180,15 @@ typedef NS_ENUM(NSUInteger, XWHUDManagerType) {
  */
 + (void)showTipHUDInView:(NSString *)message isLineFeed:(BOOL)isLineFeed;
 
+
+/**
+ 在自定义view上显示文本提示框
+ @param view 自定义view
+ @param message 提示语
+ @param isLineFeed 是否自动换行
+ */
++ (void)showTipHUDInView:(UIView *)view message:(NSString *)message isLineFeed:(BOOL)isLineFeed;
+
 /**
  限时隐藏在KeyWindow展示一个有文本提示框
  

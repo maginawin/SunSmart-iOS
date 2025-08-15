@@ -107,7 +107,8 @@ class GatewayViewController: UIViewController, DeviceProtocol {
             copyContent.append("\n\("apn".localizedString): N/A")
         }
         if let mqttServerInfo = node.gatewayModel?.mqttServerInfo {
-            let serverAddressArray = mqttServerInfo.serverAddress.components(separatedBy: ":")
+            let serverStr = mqttServerInfo.serverAddress.replacingOccurrences(of: "tcp://", with: "")
+            let serverAddressArray = serverStr.components(separatedBy: ":")
             if let ip = serverAddressArray.first {
                 copyContent.append("\n\("server_address".localizedString): \(ip)")
             }else {
@@ -310,7 +311,7 @@ class GatewayViewController: UIViewController, DeviceProtocol {
                        let password = data["mqttPassword"] as? String,
                        let clientId = data["mqttClientId"] as? String,
                        let host = data["host"] as? String, let port = data["port"] as? Int {
-                        let mqttServerInfo = GatewayInformation.MQTTConnectInformation(customId: customId, serverAddress: "\(host):\(port)", userName: username, password: password, clientId: clientId, keepalive: 60, clearSession: true, authMode: .none, sslVersion: .all)
+                        let mqttServerInfo = GatewayInformation.MQTTConnectInformation(customId: customId, serverAddress: "tcp://\(host):\(port)", userName: username, password: password, clientId: clientId, keepalive: 60, clearSession: true, authMode: .none, sslVersion: .all)
                         self.setGatewayModel?.mqttServerInfo = mqttServerInfo
                         self.node.gatewayModel?.mqttServerInfo = mqttServerInfo
                         self.node.gatewayModel?.save()
