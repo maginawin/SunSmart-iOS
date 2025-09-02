@@ -19,7 +19,7 @@ internal extension Node {
     
     // 是否可以升级 设备版本小于当前升级版本 & 信号量 >= -90dB
     // 是否可以选择 可以升级 & 升级状态为待升级
-    // 状态展示 待升级、升级成功、升级失败、不可用
+    // 状态展示 可升级、等待升级、升级中、升级成功、升级失败
     
     /// 更新状态
     enum UpdateState {
@@ -28,15 +28,23 @@ internal extension Node {
             switch self {
             case .none:
                 return 0
-            case .successful:
+            case .await:
                 return 1
-            case .failure:
+            case .updating:
                 return 2
+            case .successful:
+                return 3
+            case .failure:
+                return 4
             }
         }
         
         /// 无
         case none
+        /// 等待
+        case await
+        /// 升级中 progress：进度0~100%
+        case updating(progress: Int)
         /// 成功
         case successful
         /// 失败
@@ -171,6 +179,16 @@ internal extension FirmwareUpdateError {
 
 class BleFirmwareUpdateViewController: UIViewController {
     
+    /// 升级状态
+    enum UpdateState {
+        /// 未升级
+        case none
+        /// 升级中
+        case updating
+        /// 升级完成
+        case updateFinish
+    }
+    
     private var flowLayout: UICollectionViewFlowLayout!
     private var collectionView: UICollectionView!
     private var bottomView: UIView!
@@ -186,15 +204,26 @@ class BleFirmwareUpdateViewController: UIViewController {
     private var firmwareTypeDatas: [FirmwareUpdateTypeData] = []
     private var selectNodes: [Node] = []
     /// 上一个升级失败的设备list
-    private var failedNodes: [Node] = []
+//    private var failedNodes: [Node] = []
     /// 需要恢复的设备list
     private var restoreNodes: [Node] = []
     /// 是否展开恢复数据提示
     private var unfold: Bool = true
     private weak var restoreView: BleFirmwareUpdateRestoreView?
+    
+    // 升级设备结果
+    private var updateResultView: DeviceAddResultView!
+    
     /// 是否正在刷新设备信号
     private var refreshing: Bool = false
     private var rssiSortTimer: Timer?
+    /// 升级状态
+    private var updateState: UpdateState = .none
+    
+    /// 自动化恢复倒计时
+    private var countdownTimer: Timer?
+    private weak var countdownLabel: UILabel?
+    private var currentCountDown: Int = 30
     
     let space: SpaceData
     
@@ -430,18 +459,13 @@ class BleFirmwareUpdateViewController: UIViewController {
                     if cacheVersion != nil, let nodeVersion = node.firmwareVersion {
                         enableUpgrade = cacheVersion!.compare(nodeVersion, options: .numeric) == .orderedDescending
                     }
+                node.enableUpgrade = enableUpgrade
                     if let deviceTypeData = deviceTypes.first(where: { $0.productId == node.productIdentifier }) {
                         deviceTypeData.nodes.append(node)
-                        if enableUpgrade {
-                            deviceTypeData.upgradedNodes.append(node)
-                        }
                     }else {
                         let data = FirmwareUpdateTypeData(productId: pid, targetVersion: localFirmwareData?.version, nodes: [node])
                         data.targetVersionHash = localFirmwareData?.compositionHash
                         data.isShow = self.showData[pid] ?? false
-                        if enableUpgrade {
-                            data.upgradedNodes.append(node)
-                        }
                         deviceTypes.append(data)
                     }
                     
@@ -505,72 +529,157 @@ class BleFirmwareUpdateViewController: UIViewController {
             return
         }
         
-        let stateView = FirmwareUpdateStateView(frame: UIScreen.main.bounds)
-        stateView.delegate = self
-        stateView.show()
-        self.upgradeView = stateView
+//        let stateView = FirmwareUpdateStateView(frame: UIScreen.main.bounds)
+//        stateView.delegate = self
+//        stateView.show()
+//        self.upgradeView = stateView
         // 设置屏幕常亮
         UIApplication.shared.isIdleTimerDisabled = true
+        nodes.forEach({
+            $0.updateState = .await
+            $0.selectedState = .disabled
+            reloadNodeUI(node: $0)
+        })
+        self.selectNodes.removeAll(where: { nodes.contains($0) })
         
+//        collectionView.reloadData()
+        updateState = .updating
+        updateUI()
         MeshFirmwareUpdateManager.shared.startFirmwareUpdate(targets: targets) {[weak self] node, state in
             guard let self = self else { return }
             switch state {
             case .connecting, .ready:
-                let index = targets.firstIndex(where: { $0.node.primaryUnicastAddress == node.primaryUnicastAddress }) ?? 0
-                stateView.start(title: "\("updating".localizedString): \(index + 1)/\(targets.count)", deviceName: node.name ?? "", currentVersion: node.firmwareVersion ?? "--", targetVersion: node.targetFirmwareData?.version ?? "--")
-                if case .connecting = state {
-                    stateView.update(state: .connect)
-                }else {
-                    stateView.update(state: .start)
-                }
-            case .updating(let progress, let estimatedTime):
-                let minutes = estimatedTime / 60
-                let second = estimatedTime % 60
-                let str = "\(minutes) \("minutes".localizedString) \(second) \("sec".localizedString)"
-                stateView.update(state: .inProgress(progress: Int(progress), estimatedTime: str))
+                node.updateState = .updating(progress: 0)
+                self.reloadNodeUI(node: node)
+                
+                self.updateUI()
+//                let index = targets.firstIndex(where: { $0.node.primaryUnicastAddress == node.primaryUnicastAddress }) ?? 0
+//                stateView.start(title: "\("updating".localizedString): \(index + 1)/\(targets.count)", deviceName: node.name ?? "", currentVersion: node.firmwareVersion ?? "--", targetVersion: node.targetFirmwareData?.version ?? "--")
+//                if case .connecting = state {
+//                    stateView.update(state: .connect)
+//                }else {
+//                    stateView.update(state: .start)
+//                }
+            case .updating(let progress, _):
+//                let minutes = estimatedTime / 60
+//                let second = estimatedTime % 60
+//                let str = "\(minutes) \("minutes".localizedString) \(second) \("sec".localizedString)"
+//                stateView.update(state: .inProgress(progress: Int(progress), estimatedTime: str))
+                node.updateState = .updating(progress: Int(progress))
+                self.reloadNodeUI(node: node)
             case .complete:
                 node.updateState = .successful
+                self.reloadNodeUI(node: node)
+                
                 // 判断是否升级成功后会被重置
                 if !self.restoreNodes.contains(node), let type = self.firmwareTypeDatas.first(where: { $0.productId == node.productIdentifier }), node.compositionHash != nil, node.compositionHash != type.targetVersionHash {
                     self.restoreNodes.append(node)
-                    if self.restoreNodes.count == 1 {
-                        self.collectionView.reloadData()
-                    }
-                    self.restoreView?.resetDevicesCount = self.restoreNodes.count
                 }
+                
+                self.updateUI()
             case .failed(let error):
-                node.updateState = .failure(error)
+                if case .stop = error {
+                    node.updateState = .none
+                }else {
+                    node.updateState = .failure(error)
+                }
+                node.selectedState = .selected
+                self.reloadNodeUI(node: node)
+                
+                self.selectNodes = self.firmwareTypeDatas.flatMap({ $0.nodes.filter({ $0.updateState.rawValue == Node.UpdateState.none.rawValue && $0.enableUpgrade && $0.selectedState == .selected }) })
+                
+                self.updateUI()
             }
             
-        } complete: {[weak self] successfulList, failureList in
+        } completeCallback: {[weak self] successfulList, failureList in
             
             // 关闭设置屏幕常亮
             UIApplication.shared.isIdleTimerDisabled = false
             guard let self = self else { return  }
-            var selectNodes: [Node] = []
-            self.firmwareTypeDatas.forEach { data in
-                selectNodes.append(contentsOf: data.nodes.filter({ $0.updateState.rawValue == Node.UpdateState.none.rawValue && $0.enableUpgrade && $0.selectedState == .selected }))
-            }
-            self.selectNodes = selectNodes
             
-            if targets.count > 1 { // 多设备升级
-                stateView.update(state: .result(successfuly: successfulList.count, failed: failureList.count))
-            }else { // 单设备升级
-                if let failedTarget = failureList.first {
-                    stateView.update(state: .failure(message: failedTarget.1.message))
-                }else {
-                    stateView.update(state: .completed)
-                }
+            self.updateState = .updateFinish
+            self.selectNodes = self.firmwareTypeDatas.flatMap({ $0.nodes.filter({ $0.updateState.rawValue == Node.UpdateState.none.rawValue && $0.enableUpgrade && $0.selectedState == .selected }) })
+             
+            if self.restoreNodes.count > 0 {
+                self.collectionView.reloadData()
+                self.showAutomaticallyRestoreAlert()
             }
+            
+            self.updateUI()
+            
+//            if targets.count > 1 { // 多设备升级
+//                stateView.update(state: .result(successfuly: successfulList.count, failed: failureList.count))
+//            }else { // 单设备升级
+//                if let failedTarget = failureList.first {
+//                    stateView.update(state: .failure(message: failedTarget.1.message))
+//                }else {
+//                    stateView.update(state: .completed)
+//                }
+//            }
             if successfulList.count > 0 {
                 NotificationCenter.default.post(name: .init(spaceDataChangedNotificaitonName), object: SpaceChangeDataType.device)
             }
-            self.failedNodes = failureList.map({ $0.0.node })
-            self.setupData()
+//            self.failedNodes = failureList
+//            self.setupData()
         }
 
     }
     
+    /// 隐藏添加结果view
+    @objc private func closeBtnClick() {
+        updateResultView.isHidden = true
+        
+        collectionView.contentInset = UIEdgeInsets(top: 0, left: 0, bottom: SCRYFrom(16), right: 0)
+    }
+    
+    /// 停止升级
+    @objc private func stopUpgradingBtnClick() {
+//        guard state == .adding else {
+//            return
+//        }
+        MeshFirmwareUpdateManager.shared.stopFirmwareUpdate(complete: nil)
+//        MeshAPI.cancelFastAddAwaitOperations()
+//        let waitDevices = showDevices.filter({ $0.addState == .wait })
+//        waitDevices.forEach({
+//            $0.addState = .none
+//            $0.selectedState = .selected
+//        })
+//        tableView.reloadData()
+//        updateUIState()
+    }
+    
+    
+    private func updateUI() {
+        
+        if updateState == .none {
+            updateResultView.isHidden = true
+            collectionView.contentInset = UIEdgeInsets(top: 0, left: 0, bottom: SCRYFrom(16), right: 0)
+            
+        }else if updateState == .updating {
+            updateResultView.isHidden = false
+            updateResultView.closeBtn.isHidden = true
+            updateResultView.stopAddBtn.isHidden = false
+            collectionView.contentInset = UIEdgeInsets(top: 0, left: 0, bottom: SCRYFrom(16) + updateResultView.height, right: 0)
+        }else {
+            updateResultView.closeBtn.isHidden = false
+            updateResultView.stopAddBtn.isHidden = true
+        }
+        
+        if updateState != .none {
+            // 等待的设备list
+            let awaitNodes = firmwareTypeDatas.flatMap({ $0.nodes.filter({ node in node.updateState.rawValue == Node.UpdateState.await.rawValue }) })
+            if awaitNodes.count > 0 {
+                updateResultView.syncFailedLabel.isHidden = false
+                updateResultView.syncFailedCountLabel.isHidden = false
+                updateResultView.syncFailedCountLabel.text = "\(awaitNodes.count)"
+            }else {
+                updateResultView.syncFailedLabel.isHidden = true
+                updateResultView.syncFailedCountLabel.isHidden = true
+            }
+        }
+        
+        updateSelectAllState()
+    }
     
     private func setupUI() {
         
@@ -653,6 +762,29 @@ class BleFirmwareUpdateViewController: UIViewController {
             make.top.equalTo(view.safeAreaLayoutGuide).offset(SCRYFrom(7))
         }
         
+        updateResultView = DeviceAddResultView()
+        updateResultView.addResultLabel.text = "upgrade_results".localizedString
+        updateResultView.stopAddBtn.layer.borderWidth = 0.6
+        updateResultView.stopAddBtn.layer.cornerRadius = SCRYFrom(16)
+        updateResultView.stopAddBtn.titleLabel?.font = UIFont.systemFont(ofSize: FontFit(14), weight: .light)
+        updateResultView.stopAddBtn.setTitle("stop_upgrading".localizedString, for: .normal)
+        updateResultView.syncFailedLabel.text = "\("waiting".localizedString) : "
+        updateResultView.syncFailedCountLabel.textColor = Message_Color
+        updateResultView.isHidden = true
+        view.addSubview(updateResultView)
+        updateResultView.snp.makeConstraints { make in
+            make.bottom.equalTo(bottomView.snp.top).offset(SCRYFrom(-1))
+            make.left.right.equalToSuperview()
+            make.height.equalTo(SCRYFrom(72))
+        }
+        updateResultView.stopAddBtn.snp.remakeConstraints { make in
+            make.right.equalTo(SCRXFrom(-16.5))
+            make.top.equalTo(SCRYFrom(7))
+            make.height.equalTo(SCRYFrom(32))
+        }
+        updateResultView.closeBtn.addTarget(self, action: #selector(closeBtnClick), for: .touchUpInside)
+        updateResultView.stopAddBtn.addTarget(self, action: #selector(stopUpgradingBtnClick), for: .touchUpInside)
+        
     }
     
     private func updateSelectAllState() {
@@ -686,11 +818,9 @@ class BleFirmwareUpdateViewController: UIViewController {
             guard firmwareTypeData.isShow else {
                 return
             }
-            if let cell = collectionView.cellForItem(at: IndexPath(row: typeIndex, section: 0)) as? BleFirmwareTypeUpdateViewCell,
-               let row = firmwareTypeData.nodes.firstIndex(of: node) {
-                cell.deviceTableView.reloadRows(at: [IndexPath(row: row, section: 0)], with: .none)
-            }else {
-                collectionView.reloadItems(at: [IndexPath(row: typeIndex, section: 0)])
+            if let cell = collectionView.cellForItem(at: IndexPath(row: typeIndex, section: 0)) as? BleFirmwareTypeUpdateViewCell { // 刷新已升级的设备数量
+                cell.upgradedNumberLabel.text = "\(firmwareTypeData.upgradedNodes.count)"
+                cell.reload(device: node)
             }
         }else {
             collectionView.reloadSections(IndexSet(integer: 0))
@@ -701,12 +831,27 @@ class BleFirmwareUpdateViewController: UIViewController {
     
     /// 返回
     @objc private func backAction() {
+        
+        if self.updateState == .updating {
+            SRAlertView(title: "notification".localizedString, message: "firmware_update_return_message".localizedString, actions: [.cancelAction, SRAlertAction(title: "YES".localizedString, actionHandler: {[weak self] _ in
+                MeshFirmwareUpdateManager.shared.stopFirmwareUpdate(complete: nil)
+                self?.dismiss()
+                UIApplication.shared.isIdleTimerDisabled = false
+            })]).show()
+            return
+        }
+        dismiss()
+    }
+    
+    private func dismiss() {
+        
         self.dismiss(animated: true)
         
         if refreshing {
             NSObject.cancelPreviousPerformRequests(withTarget: self, selector: #selector(self.refreshNodesRSSIFinish), object: nil)
             MeshLibManager.manager.stopRefreshNodesRSSI()
         }
+        
     }
 
     /// 帮助
@@ -784,6 +929,124 @@ class BleFirmwareUpdateViewController: UIViewController {
         
     }
     
+    // MARK: - Automatically restore
+    /// 弹出自动恢复弹窗
+    private func showAutomaticallyRestoreAlert() {
+        
+        currentCountDown = 30
+        
+        let alertView = SRAlertView(title: "notification".localizedString, message: "After the upgrade, the device has automatically reset. The system will automatically restore the data in …", actions: [SRAlertAction(title: "cancel".localizedString, style: .cancel, actionHandler: {[weak self] _ in
+            self?.stopCountdownTimer()
+        }), SRAlertAction(title: "restore_now".localizedString, actionHandler: {[weak self] _ in
+            self?.stopCountdownTimer()
+            self?.restoreDevices()
+        })])
+        
+        let countdownLabel = UILabel(text: nil, textColor: ImportantText_Color, fontSize: 24, fit: false)
+        let attStr = NSMutableAttributedString(string: "\(currentCountDown)s")
+        attStr.addAttribute(.font, value: UIFont.systemFont(ofSize: 20), range: (attStr.string as NSString).range(of: "s"))
+        countdownLabel.attributedText = attStr
+        alertView.contentView.addSubview(countdownLabel)
+        self.countdownLabel = countdownLabel
+        countdownLabel.snp.makeConstraints { make in
+            make.centerX.equalToSuperview()
+            make.top.equalTo(alertView.messageLabel.snp.bottom).offset(SCRYFrom(20))
+        }
+        alertView.hLineView.snp.remakeConstraints { make in
+            make.left.right.equalTo(0)
+            make.height.equalTo(1)
+            make.top.equalTo(countdownLabel.snp.bottom).offset(SCRYFrom(22)).priority(.low)
+        }
+        alertView.show()
+        
+        
+        startCountdownTimer()
+    }
+    
+    /// 开始倒计时
+    private func startCountdownTimer() {
+        countdownTimer = LCWeakTimer.scheduledTimer(timeInterval: 1, aTarget: self, selector: #selector(countdownTimerEvent), userInfo: nil, repeats: true)
+        RunLoop.current.add(countdownTimer!, forMode: .common)
+    }
+    
+    /// 停止倒计时
+    private func stopCountdownTimer() {
+        countdownTimer?.invalidate()
+        countdownTimer = nil
+    }
+    
+    @objc private func countdownTimerEvent() {
+        currentCountDown -= 1
+        if currentCountDown <= 0 {
+            stopCountdownTimer()
+            SRAlertView.hide()
+            restoreDevices(automatically: true)
+        }else {
+            let attStr = NSMutableAttributedString(string: "\(currentCountDown)s")
+            attStr.addAttribute(.font, value: UIFont.systemFont(ofSize: 20), range: (attStr.string as NSString).range(of: "s"))
+            countdownLabel?.attributedText = attStr
+        }
+    }
+    
+    /// 恢复设备  automatically：是否自动化恢复
+    private func restoreDevices(automatically: Bool = false) {
+        
+        guard self.restoreNodes.count > 0 else {
+            return
+        }
+        
+        let vc = DeviceRestoreViewController(space: space, restoreMode: .specified(nodes: self.restoreNodes))
+        vc.automationRestore = automatically
+        vc.deviceRestoreCallback = {[weak self] nodes in
+            guard let self = self else { return }
+            if automatically {
+                if nodes.isEmpty { // 提示未找到设备，需要手动恢复
+                    SRAlertView(title: "notification".localizedString, message: "device_automatic_restore_notfound_message".localizedString, actions: [.cancelAction, SRAlertAction(title: "RESTORE".localizedString, actionHandler: {[weak self] _ in
+                        self?.restoreDevices()
+                    })]).show()
+                }else if nodes.count < self.restoreNodes.count { // 只恢复部分设备
+                    if nodes.contains(where: { $0.needSync }) { // 部分恢复的设备数据同步失败
+                        SRAlertView(title: "notification".localizedString, message: "device_automatic_restore_incomplete_sync_message".localizedString, actions: [.cancelAction, SRAlertAction(title: "GOT IT".localizedString)]).show()
+                    }else {
+                        SRAlertView(title: "notification".localizedString, message: "device_automatic_restore_incomplete_message".localizedString, actions: [.cancelAction, SRAlertAction(title: "RESTORE".localizedString, actionHandler: {[weak self] _ in
+                            self?.restoreDevices()
+                        })]).show()
+                    }
+                }else { // 设备全部恢复成功
+                    if nodes.contains(where: { $0.needSync }) { // 部分设备数据同步失败
+                        SRAlertView(title: "notification".localizedString, message: "device_automatic_restore_sync_message".localizedString, actions: [.cancelAction, SRAlertAction(title: "SYNC".localizedString, actionHandler: {[weak self] _ in
+                            // 去同步设备
+                            self?.resyncRestoreNodes(nodes: nodes.filter({ $0.needSync }))
+                        })]).show()
+                    }else { // 完全成功
+                        SRAlertView(title: "notification".localizedString, message: "device_automatic_restore_success_message".localizedString, actions: [.cancelAction, SRAlertAction(title: "GOT IT".localizedString)]).show()
+                    }
+                }
+            }
+            
+            self.restoreNodes.removeAll(where: { oldNode in nodes.contains(where: { $0.macAddress == oldNode.macAddress }) })
+            if self.restoreNodes.isEmpty {
+                self.collectionView.reloadData()
+            }else {
+                self.restoreView?.resetDevicesCount = self.restoreNodes.count
+            }
+        }
+        navigationController?.pushViewController(vc, animated: true)
+        
+    }
+    
+    /// 重新同步恢复的设备list
+    private func resyncRestoreNodes(nodes: [Node]) {
+        
+        let vc = SyncDevicesViewController(type: .devices(nodes))
+        vc.syncSuccessCallback = { _ in
+            XWHUDManager.showSuccessTipHUD("done!".localizedString)
+            DispatchQueue.main.asyncAfter(wallDeadline: .now() + 1.5) {[weak self] in
+                self?.navigationController?.popViewController(animated: true)
+            }
+        }
+        navigationController?.pushViewController(vc, animated: true)
+    }
 }
 
 extension BleFirmwareUpdateViewController: UICollectionViewDataSource, UICollectionViewDelegateFlowLayout {
@@ -810,7 +1073,7 @@ extension BleFirmwareUpdateViewController: UICollectionViewDataSource, UICollect
     }
     
     func collectionView(_ collectionView: UICollectionView, layout collectionViewLayout: UICollectionViewLayout, referenceSizeForHeaderInSection section: Int) -> CGSize {
-        if self.restoreNodes.count > 0 {
+        if self.updateState != .updating && self.restoreNodes.count > 0 {
             return CGSize(width: collectionView.width, height: BleFirmwareUpdateRestoreView.getSectionHeight(unfold: self.unfold))
         }else {
             return .zero
@@ -840,11 +1103,8 @@ extension BleFirmwareUpdateViewController: BleFirmwareTypeUpdateViewCellDelegate
             return
         }
         
-        var selectNodes: [Node] = []
-        firmwareTypeDatas.forEach { data in
-            selectNodes.append(contentsOf: data.nodes.filter({ $0.updateState.rawValue == Node.UpdateState.none.rawValue && $0.enableUpgrade && $0.selectedState == .selected }))
-        }
-        self.selectNodes = selectNodes
+        self.selectNodes = self.firmwareTypeDatas.flatMap({ $0.nodes.filter({ $0.updateState.rawValue == Node.UpdateState.none.rawValue && $0.enableUpgrade && $0.selectedState == .selected }) })
+        
         updateSelectAllState()
     }
     
@@ -872,6 +1132,20 @@ extension BleFirmwareUpdateViewController: BleFirmwareTypeUpdateViewCellDelegate
         
         upgradeCheak(nodes: [device])
 //        startUpgraded(nodes: [device])
+    }
+    
+    /// 设备停止等待
+    func cell(cell: BleFirmwareTypeUpdateViewCell, stopWaitAction device: Node) {
+        MeshFirmwareUpdateManager.shared.cancelAwaitOperations(nodes: [device])
+        if case .await = device.updateState {
+            device.updateState = .none
+            cell.reload(device: device)
+        }
+    }
+    
+    /// 设备停止升级
+    func cell(cell: BleFirmwareTypeUpdateViewCell, cancelUpdateAction device: Node) {
+        MeshFirmwareUpdateManager.shared.cancelFirmwareUpdate(nodes: [device])
     }
     
     /// 设备升级失败原因
@@ -905,6 +1179,10 @@ extension BleFirmwareUpdateViewController: BleFirmwareTypeUpdateViewCellDelegate
     
     /// 固件版本查看
     func cell(_ cell: BleFirmwareTypeUpdateViewCell, viewCurrentTargetVersion firmwareTypeData: FirmwareUpdateTypeData) {
+        if updateState == .updating {
+            XWHUDManager.showTipHUD("firmware_update_disable_operated".localizedString, isLineFeed: true)
+            return
+        }
         
         let vc = FirmwareVersionViewController(type: firmwareTypeData)
         vc.localFirmwareData = FirmwareData.load(productId: firmwareTypeData.productId).first
@@ -916,7 +1194,7 @@ extension BleFirmwareUpdateViewController: BleFirmwareTypeUpdateViewCellDelegate
                 $0.updateState = .none
                 $0.selectedState = .unselected
             })
-            self.failedNodes.removeAll()
+//            self.failedNodes.removeAll()
             self.setupData()
         }
         navigationController?.pushViewController(vc, animated: true)
@@ -941,10 +1219,10 @@ extension BleFirmwareUpdateViewController: FirmwareUpdateStateViewDelegate {
     func firmwareUpdateRetryAction(_ view: FirmwareUpdateStateView) {
         self.upgradeView = nil
         
-        guard self.failedNodes.count > 0 else {
-            return
-        }
-        self.startUpgraded(nodes: failedNodes)
+//        guard self.failedNodes.count > 0 else {
+//            return
+//        }
+//        self.startUpgraded(nodes: failedNodes)
     }
     
     /// 点击ok回调
@@ -959,22 +1237,7 @@ extension BleFirmwareUpdateViewController: BleFirmwareUpdateRestoreViewDelegate 
     
     /// 点击恢复数据
     func firmwareUpdateDidRestoreAction(_ view: BleFirmwareUpdateRestoreView) {
-//        self.failedNodes
-        guard self.restoreNodes.count > 0 else {
-            return
-        }
-        
-        let vc = DeviceRestoreViewController(space: space, restoreMode: .specified(nodes: self.restoreNodes))
-        vc.deviceRestoreCallback = {[weak self] nodes in
-            guard let self = self else { return }
-            self.restoreNodes.removeAll(where: { oldNode in nodes.contains(where: { $0.macAddress == oldNode.macAddress }) })
-            if self.restoreNodes.isEmpty {
-                self.collectionView.reloadData()
-            }else {
-                self.restoreView?.resetDevicesCount = self.restoreNodes.count
-            }
-        }
-        navigationController?.pushViewController(vc, animated: true)
+        restoreDevices()
     }
     
     /// 点击展开/收起

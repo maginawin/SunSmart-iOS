@@ -201,7 +201,7 @@ class SceneExecuteDataPickerView: UIView {
             make.left.equalTo(SCRXFrom(20))
             make.right.equalTo(SCRXFrom(-29))
             make.top.equalTo(lightnessLabel.snp.bottom).offset(SCRYFrom(14))
-            make.height.equalTo(SCRYFrom(40))
+            make.height.equalTo(SCRYFrom(76))
         }
         lightnessSliderView.minusBtn.snp.remakeConstraints { make in
             make.left.equalToSuperview()

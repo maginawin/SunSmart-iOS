@@ -77,7 +77,7 @@ class DeviceDongleViewController: UIViewController, DeviceProtocol {
     
     @objc private func back() {
         if !(setDongleData == (dongleData ?? DeviceDongleData.default(id: setDongleData.id))) {
-            SRAlertView(title: "notification".localizedString, message: "profile_exiting_message".localizedString, actions: [SRAlertAction(title: "keep_edit".localizedString, style: .cancel), SRAlertAction(title: "exit".localizedString, actionHandler: {[weak self] _ in
+            SRAlertView(title: "notification".localizedString, message: "profile_exiting_message".localizedString, actions: [SRAlertAction(title: "keep_edit".localizedString, style: .cancel), SRAlertAction(title: "EXIT".localizedString, actionHandler: {[weak self] _ in
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
                     //                        self?.fineshed()
                     self?.dismiss(animated: true)

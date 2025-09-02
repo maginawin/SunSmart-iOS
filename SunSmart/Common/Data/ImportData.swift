@@ -21,7 +21,7 @@ extension SiteData {
     /// - Parameters:
     ///   - siteJsonData: site json数据
     ///   - changeAddress: 当第一次导入site时是否需要修改手机地址，分以下两种情况：
-    ///      1：第一次加入space，服务器生成site数据并分配新的手机地址，则不需要再修改地址；
+    ///      1：第一次加入site/space，服务器生成site数据并分配新的手机地址，则不需要再修改地址；
     ///      2：卸载app后由于没有缓存数据，之前使用的手机地址对应SEQ序列号未知，所以把旧的地址放到地址回收池内回收，并分配新的手机地址
     /// - Returns: site
     static func `import`(siteJsonData: [String: Any], changeAddress: Bool = false) async -> SiteData? {
@@ -946,11 +946,11 @@ extension SpaceData {
                     }
                     
                     // 光感校准值
-                    if let daylightCalibrationValue = nodeJson["daylightCalibrationValue"].uInt16 {
+                    if let daylightCalibrationValue = nodeJson["daylightCalibrationValue"].uInt16, daylightCalibrationValue > 0 {
                         node.daylightCalibrationValue = daylightCalibrationValue
                     }
                     // pwm频率
-                    if let pwmFrequency = nodeJson["pwmFrequency"].uInt16 {
+                    if let pwmFrequency = nodeJson["pwmFrequency"].uInt16, pwmFrequency > 0 {
                         node.pwmFrequency = pwmFrequency
                     }
                     // 设备亮度阶段额定功率

@@ -85,7 +85,7 @@ class MeshSelectUpgradeDevicesViewController: UIViewController {
         }
         setupUI()
         
-        nodes = MeshNetworkManager.instance.realNodes.filter({ $0.productIdentifier == distributorNode.productIdentifier })
+        nodes = MeshNetworkManager.instance.realNodes.filter({ $0 != distributorNode && $0.productIdentifier == distributorNode.productIdentifier })
         updateBottomUIState()
     }
     

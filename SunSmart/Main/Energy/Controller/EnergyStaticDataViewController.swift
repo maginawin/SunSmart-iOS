@@ -159,7 +159,7 @@ class EnergyStaticDataViewController: UIViewController {
                 }
                 let percent = Double(total) / Double(max(harvestData.preciseTotalEnergyUse, 1))
                 
-                let data = EnergyPieData(name: group.name, color: colors[index], percent: percent, data: String(format: "%.2f kWh", Double(total) / 1000))
+                let data = EnergyPieData(name: group.name, color: colors[index], percent: percent, data: String(format: "%.3f kWh", Double(total) / 1000))
                 energyPieDatas.append(data)
                 if deviceEnergyDatas.count > 0 {
                     groups.append(group)
@@ -174,7 +174,7 @@ class EnergyStaticDataViewController: UIViewController {
                 }
                 let percent = Double(total) / Double(max(harvestData.preciseTotalEnergyUse, 1))
                 
-                let data = EnergyPieData(name: "not_in_group".localizedString, color: colors.last!, percent: percent, data: String(format: "%.2f kWh", Double(total) / 1000))
+                let data = EnergyPieData(name: "not_in_group".localizedString, color: colors.last!, percent: percent, data: String(format: "%.3f kWh", Double(total) / 1000))
                 energyPieDatas.append(data)
             }
             groupEnergyPieDatas = energyPieDatas
@@ -483,7 +483,7 @@ extension EnergyStaticDataViewController: UITableViewDataSource, UITableViewDele
         switch device.state {
         case .success:
             if let preciseTotalEnergyUse = device.preciseTotalEnergyUse {
-                cell.energyLabel.text = String(format: "%.2f kWh", Double(preciseTotalEnergyUse) / 1000)
+                cell.energyLabel.text = String(format: "%.3f kWh", Double(preciseTotalEnergyUse) / 1000)
             }else {
                 cell.energyLabel.text = "--"
             }

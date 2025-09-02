@@ -75,6 +75,9 @@ class SpaceFunctionFooterView: UIView {
     var cancelBtn: UIButton!
     var lineView: UIView!
     var deleteBtn: UIButton!
+    /// 是否启用测试删除
+    var enableTestDelete: Bool = false
+    
     private weak var promptLabel: UILabel?
     
     private var longPressTestBtn: UIButton!
@@ -135,7 +138,7 @@ class SpaceFunctionFooterView: UIView {
     
     /// 删除（test）
     @objc private func deleteBtnLongPress(sender: UILongPressGestureRecognizer) {
-        if sender.state == .began {
+        if sender.state == .began, enableTestDelete {
             // 输入密码
             let alertView = SRAlertView(title: "force_reset_the_device".localizedString, message: "force_reset_the_device_message".localizedString, inputText: nil, inputFieldStyle: .init(keyboardType: .numberPad, minInputLength: 4, maxInputLength: 4, borderColor: Bar_Color, textAlignment: .center, showClear: false), showPrompt: false, showClose: true, textValueChangedBack: {[weak self] password, _ in
                 guard let self = self else { return nil }
@@ -150,7 +153,10 @@ class SpaceFunctionFooterView: UIView {
                     return nil
                 }
                 SRAlertView.hide()
-                self.delegate?.functionEnterIntoTestDelete(view: self)
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.5, execute: {[weak self] in
+                    guard let self = self else { return }
+                    self.delegate?.functionEnterIntoTestDelete(view: self)
+                })
                 return nil
             }, inputDoneBack: nil)
             
@@ -174,6 +180,7 @@ class SpaceFunctionFooterView: UIView {
         }
     }
     
+    
     /// 更新UI
     private func updateUI() {
         if isEditing {
@@ -186,7 +193,7 @@ class SpaceFunctionFooterView: UIView {
             addBtn.isHidden = true
             sortBtn.isHidden = true
             syncBtn.isHidden = true
-//            longPressTestBtn.isHidden = true
+            longPressTestBtn.isHidden = true
 //            switchCountBtn.isHidden = true
         }else {
             cancelBtn.isHidden = true
@@ -196,7 +203,7 @@ class SpaceFunctionFooterView: UIView {
             editBtn.isHidden = false
             addBtn.isHidden = false
             sortBtn.isHidden = false
-//            longPressTestBtn.isHidden = false
+            longPressTestBtn.isHidden = false
 //            switchCountBtn.isHidden = false
         }
     }
@@ -263,20 +270,20 @@ class SpaceFunctionFooterView: UIView {
             make.centerY.equalTo(countBtn)
         }
         
-//        longPressTestBtn = UIButton()
-//        let testLongPress = UILongPressGestureRecognizer(target: self, action: #selector(deleteBtnLongPress))
-//        testLongPress.minimumPressDuration = 5
-//        longPressTestBtn.addGestureRecognizer(testLongPress)
-//        addSubview(longPressTestBtn)
-//        longPressTestBtn.snp.makeConstraints { make in
-//            make.right.equalTo(addBtn.snp.left).offset(SCRXFrom(-20))
-//            make.centerY.equalTo(addBtn)
-//        }
+        longPressTestBtn = UIButton()
+        let testLongPress = UILongPressGestureRecognizer(target: self, action: #selector(deleteBtnLongPress))
+        testLongPress.minimumPressDuration = 3
+        longPressTestBtn.addGestureRecognizer(testLongPress)
+        addSubview(longPressTestBtn)
+        longPressTestBtn.snp.makeConstraints { make in
+            make.right.equalTo(addBtn.snp.left).offset(SCRXFrom(-20))
+            make.centerY.equalTo(addBtn)
+        }
         
         editBtn = UIButton(normalImageName: "share_delete", target: self, action: #selector(editBtnClick))
-//        let editLongPress = UILongPressGestureRecognizer(target: self, action: #selector(deleteBtnLongPress))
-//        editLongPress.minimumPressDuration = 5
-//        editBtn.addGestureRecognizer(editLongPress)
+        let editLongPress = UILongPressGestureRecognizer(target: self, action: #selector(deleteBtnLongPress))
+        editLongPress.minimumPressDuration = 3
+        editBtn.addGestureRecognizer(editLongPress)
         addSubview(editBtn)
         editBtn.snp.makeConstraints { make in
             make.right.equalTo(addBtn.snp.left).offset(SCRXFrom(-20))

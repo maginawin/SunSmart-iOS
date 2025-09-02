@@ -455,7 +455,7 @@
 "remove_profile" = "Remove profile";
 "profile_exiting_message" = "Exiting will lose unsaved changes";
 "keep_edit" = "KEEP EDIT";
-"exit" = "EXIT";
+"exit" = "Exit";
 "not_in_groups" = "Not in groups";
 "remove_kinetic_switch_proxy" = "Remove Kinetic Switch Proxy";
 "refresh" = "Refresh";
@@ -1073,6 +1073,7 @@
 "harvest_storage_devices_select" = "Energy storage device(s) are detected:";
 "harvest_mesh_mode_prompt" = "B. I need the data to be real-time, I can wait.";
 "Start" = "Start";
+"START" = "START";
 "energy_harvest_message" = "Do not move during the collection process.";
 "energy_harvest_cancel_prompt" = "The data cache will be cleared, are you sure to cancel?";
 "NO" = "NO";
@@ -1205,6 +1206,7 @@
 "professional_mode_step_3" = "Check if the device is correct and add to group";
 "add_device_instructions" = "Add device instructions";
 "device_add_pause_message" = "Pause or Stop Scanning to add devices";
+"device_add_stop_scan_message" = "Stop Scanning to add devices";
 
 "relative_sensitivity" = "Relative sensitivity";
 "absolute_sensitivity" = "Absolute Sensitivity";
@@ -1254,3 +1256,42 @@
 "system_volume_insufficient" = "The system volume needs to be higher than 20%.";
 "force_reset_the_device" = "Force Reset The Device";
 "force_reset_the_device_message" = "Please enter a 4-digit password";
+"force_reset_message" = "You can use this method to reset devices that have been added to other networks. For security reasons, you can only reset one device at a time.";
+"force_reset_step_1" = "Keep in this interface";
+"force_reset_flashlight_step_2" = "Shine the sensor until the device appears(up to 20 seconds)";
+"force_reset_motion_step_2" = "Trigger target\ndevice";
+"force_reset_step_3" = "Reset after identification";
+"RESELECT" = "RESELECT";
+"reset_failed" = "Failed to reset.";
+"based_on_flashlight" = "Based On Flashlight";
+"based_on_motion" = "Based On Motion";
+"for_example:" = "For example:";
+"force_reset_instructions_1" = "In some scenarios, you may need to use this method to force a device reset.";
+"force_reset_instructions_2" = "For example:\na) The device was forgotten to be removed from the network at the factory, and after being installed at high altitude, it cannot be discovered and controlled;\nb) High-mounted high-bay lights in warehouses sometimes require individual device resets.";
+"force_reset_instructions_3" = "Note: This requires the device to have motion sensing or illumination capabilities.";
+"note:" = "Note:";
+
+"brightness_of_the_device_in_mode" = "Brightness of the device in mode";
+"illumination_fluctuation_range" = "Illumination fluctuation range";
+"illumination_fluctuation_range_tip" = "(Light sensing mode takes effect)";
+
+"upgrade_results" = "Upgrade Results";
+"stop_upgrading" = "Stop Upgrading";
+"restore_now" = "RESTORE NOW";
+"firmware_update_return_message" = "The device is being upgraded. Do you want to cancel the upgrade and return?";
+"firmware_update_disable_operated" = "The device is being upgraded and cannot be operated.";
+"setup_instructions" = "Setup Instructions";
+"brightness_instructions" = "When you switch to adding devices to the candidate list based on light sensing or motion sensing.The device receiving the signal will adjust to this brightness so that you can operate it comfortably, and can clearly identify different device states.Manual or RSSI range based modes are not affected.";
+"illuminance_instructions" = "The illuminance fluctuation range affects the device's sensitivity to light intensity. The smaller the value, the less light a device can activate.\nThe device's light-sensing components have a maximum range. If the base illuminance is close to the upper limit of light sensitivity, even stronger light will not activate the device.\nThere are two situations where a small range is needed:";
+"illuminance_instructions_case1" = "Case 1: The device is installed very high and the flashlight intensity is not enough";
+"illuminance_instructions_case2" = "Case 2: The environment is very bright, close to the light sensitivity limit of the device";
+"illuminance_instructions_note" = "Note: Too small a value may cause false activation, such as when clouds pass by the window,flashing when device is identify or added.Due to different environments and reflectivity, you need to adjust according to the actual situation.";
+"notification_volume_instructions" = "When a device is successfully added to the candidate list, a beep will alert you so you don't have to look back and forth between the screen and the fixture.";
+"vibration_instructions" = "When operating in a noisy environment, you may not hear the prompt sound. In this case, you can choose to vibrate the prompt.";
+"device_automatic_restore_message" = "Currently in automatic recovery mode, click Exit to resume manual operation";
+"device_automatic_restore_notfound_message" = "The device cannot be found, please restore it manually";
+"device_automatic_restore_success_message" = "Congratulations, the upgrade is complete!";
+"device_automatic_restore_incomplete_message" = "Some devices have not completed data recovery, please restore manually.";
+"device_automatic_restore_incomplete_sync_message" = "Some devices have not completed data recovery, please restore manually.Please synchronize the data manually";
+"device_automatic_restore_sync_message" = "Congratulations! You have completed the upgrade. However, the data of some devices has not been synchronized successfully. Please synchronize the data manually";
+"RESTORE" = "RESTORE";

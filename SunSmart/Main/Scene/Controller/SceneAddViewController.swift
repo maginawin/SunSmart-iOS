@@ -69,11 +69,12 @@ class SceneAddViewController: UIViewController {
     /// 创建成功的场景
     private var scene: Scene?
     
+    private var meshNetworkConnectedObservation: NSKeyValueObservation?
+    
     init(space: SpaceData) {
         self.space = space
         super.init(nibName: nil, bundle: nil)
         
-        MeshLibManager.manager.addObserver(self, forKeyPath: "isMeshNetworkConnected", context: nil)
     }
     
     required init?(coder: NSCoder) {
@@ -116,10 +117,22 @@ class SceneAddViewController: UIViewController {
         if self.scene == nil && self.space.isConfiguring { // 未创建场景退出页面，停止引导配置流程
             self.space.isConfiguring = false
         }
-        MeshLibManager.manager.removeObserver(self, forKeyPath: "isMeshNetworkConnected")
+        meshNetworkConnectedObservation = nil
     }
     
     private func addNotificationObserver() {
+        
+        // mesh网络连接观察者
+        meshNetworkConnectedObservation = MeshLibManager.manager.observe(\.isMeshNetworkConnected, options: [.new], changeHandler: {[weak self] _, _ in
+            guard let self = self else { return }
+            guard self.showTemplateCreate else {
+                return
+            }
+            DispatchQueue.main.asyncAfter(wallDeadline: .now() + 1) {[weak self] in
+                self?.collectionView?.reloadSections(IndexSet(integer: 1))
+            }
+        })
+        
         NotificationCenter.default.addObserver(forName: .init(groupsRefreshNotificationName), object: nil, queue: nil) {[weak self] _ in
             //            self?.refreshData = true
             guard let self = self else { return }
@@ -132,15 +145,6 @@ class SceneAddViewController: UIViewController {
         
     }
     
-    override func observeValue(forKeyPath keyPath: String?, of object: Any?, change: [NSKeyValueChangeKey : Any]?, context: UnsafeMutableRawPointer?) {
-        
-        guard showTemplateCreate else {
-            return
-        }
-        DispatchQueue.main.asyncAfter(wallDeadline: .now() + 1) {[weak self] in
-            self?.collectionView?.reloadSections(IndexSet(integer: 1))
-        }
-    }
     
     @objc private func backAction() {
 //        backHandle(close: false)

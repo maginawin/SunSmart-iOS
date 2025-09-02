@@ -29,6 +29,8 @@ class GroupMembersViewController: UIViewController {
     /// item间距
     private var itemMargin: CGFloat = isIPad ? SCRXFrom(30) : SCRXFrom(16)
     
+    private var meshNetworkConnectedObservation: NSKeyValueObservation?
+    
     let space: SpaceData
     var group: Group
     
@@ -38,7 +40,6 @@ class GroupMembersViewController: UIViewController {
         self.group = group
         super.init(nibName: nil, bundle: nil)
         
-        MeshLibManager.manager.addObserver(self, forKeyPath: "isMeshNetworkConnected", context: nil)
     }
     
     required init?(coder: NSCoder) {
@@ -62,6 +63,24 @@ class GroupMembersViewController: UIViewController {
                 title = group.name
             }
         }
+        
+        // mesh网络连接观察者
+        meshNetworkConnectedObservation = MeshLibManager.manager.observe(\.isMeshNetworkConnected, options: [.new], changeHandler: {[weak self] _, _ in
+            guard let self = self else { return }
+            DispatchQueue.main.async {
+                if MeshLibManager.manager.isMeshNetworkConnected {
+                    let inGroupNodes = self.nodes.filter({ $0.group?.address.address == self.group.address.address })
+                    self.selectNodes.append(contentsOf: inGroupNodes.filter({ !self.selectNodes.contains($0) }))
+            //        nodes.filter({ $0.group?.address.address == group.address.address })
+                    self.collectionView.reloadData()
+                    self.updateFunctionView()
+                    
+                }else {
+                    self.functionView.selectAllBtn.isEnabled = false
+                    self.functionView.sortBtn.isEnabled = false
+                }
+            }
+        })
         
 //        nodes = space.nodes.filter({ $0.group == nil || $0.group?.address.address == group.address.address })
 //        selectNodes = nodes.filter({ $0.group?.address.address == group.address.address })
@@ -121,23 +140,9 @@ class GroupMembersViewController: UIViewController {
             }
         }
         
-        MeshLibManager.manager.removeObserver(self, forKeyPath: "isMeshNetworkConnected")
+        meshNetworkConnectedObservation = nil
     }
     
-    override func observeValue(forKeyPath keyPath: String?, of object: Any?, change: [NSKeyValueChangeKey : Any]?, context: UnsafeMutableRawPointer?) {
-        
-        if MeshLibManager.manager.isMeshNetworkConnected {
-            let inGroupNodes = nodes.filter({ $0.group?.address.address == group.address.address })
-            selectNodes.append(contentsOf: inGroupNodes.filter({ !selectNodes.contains($0) }))
-    //        nodes.filter({ $0.group?.address.address == group.address.address })
-            collectionView.reloadData()
-            updateFunctionView()
-            
-        }else {
-            functionView.selectAllBtn.isEnabled = false
-            functionView.sortBtn.isEnabled = false
-        }
-    }
     
     @objc private func backAction() {
         if parent != nil && isAddDevices {

@@ -112,18 +112,21 @@ class DeviceParameterSettingsController: UIViewController {
                 devices.forEach({
                     if $0.restoreData?.pwmFrequency != nil {
                         $0.restoreData?.pwmFrequency = nil
+                        $0.save()
                     }
                 })
             case .ratedPower:
                 devices.forEach({
                     if $0.restoreData?.phaseEnergyConsumptions != nil {
                         $0.restoreData?.phaseEnergyConsumptions = nil
+                        $0.save()
                     }
                 })
             case .motionSensitivityRange:
                 devices.forEach({
                     if $0.restoreData?.motionSensitivityRange != nil {
                         $0.restoreData?.motionSensitivityRange = nil
+                        $0.save()
                     }
                 })
             }

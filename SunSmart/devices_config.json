@@ -356,7 +356,7 @@
         "deviceCategory" : "Lighting",
         "modelName" : "SR-BL9036T-MW-WPV",
         "sensitivityRangeMin" : 7880,
-        "sensitivityRangeMax" : 62973
+        "sensitivityRangeMax" : 63634
     },
     {
         "companyId" : "0A78",
@@ -384,6 +384,15 @@
         "iconCategory" : "Powerpack",
         "deviceCategory" : "Lighting",
         "modelName" : "SR-BL2421-SSVT"
+    },
+    {
+        "companyId" : "0A78",
+        "productId" : "1121",
+        "categoryName" : "0-10V Load Controller",
+        "elementCount" : 2,
+        "iconCategory" : "Powerpack",
+        "deviceCategory" : "Lighting",
+        "modelName" : "SR-BL2421-SVV-AUX"
     },
     {
         "companyId" : "0A78",

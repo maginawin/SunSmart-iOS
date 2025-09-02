@@ -464,7 +464,6 @@ extension SpaceData {
             Profile.deleteProfiles(meshUUID: self.meshUUID, meshNetworkId: self.meshNetworkId)
 //            GroupSwitch.deleteSwitchs(meshUUID: self.meshUUID, networkId: self.meshNetworkId)
             DeviceSwitchData.deleteSwitchs(meshUUID: self.meshUUID, networkId: self.meshNetworkId)
-            UserData.delete(spaceId: self.id)
             self.deleteData()
         }
         return true

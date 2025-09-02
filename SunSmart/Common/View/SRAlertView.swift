@@ -665,6 +665,10 @@ class SRAlertView: UIView {
         }
     }
     
+    @objc private func closeBtnAction() {
+        dismiss()
+    }
+    
     /// 输入框开始输入事件
     @objc private func textFieldEditDidBegin(sender: UITextField) {
         if isDismiss {
@@ -825,7 +829,7 @@ class SRAlertView: UIView {
 //            make.height.greaterThanOrEqualTo(140)
         }
         
-        closeBtn = UIButton(normalImageName: "close", target: self, action: #selector(shadeViewClick))
+        closeBtn = UIButton(normalImageName: "close", target: self, action: #selector(closeBtnAction))
         closeBtn.isHidden = true
         contentView.addSubview(closeBtn)
         closeBtn.snp.makeConstraints { make in

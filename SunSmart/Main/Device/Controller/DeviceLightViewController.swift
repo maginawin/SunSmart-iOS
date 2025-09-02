@@ -55,7 +55,7 @@ class DeviceLightViewController: UIViewController {
 
         if self.presentingViewController != nil && navigationController?.viewControllers.count ?? 0 == 1 {
             
-            navigationController?.setNavigationBarBackgroundColor(color: .clear)
+            navigationController?.setNavigationBarBackgroundColor(color: Background_Color)
             navigationItem.leftBarButtonItem = UIBarButtonItem(image: UIImage(named: "navigation_back")?.withRenderingMode(.alwaysOriginal), style: .done, target: self, action: #selector(backAction))
         }
 //        menuView?.backgroundColor = .white
@@ -97,7 +97,6 @@ class DeviceLightViewController: UIViewController {
         super.viewWillAppear(animated)
         
         MeshLibManager.manager.messageDelegate = self
-        
         // 更新数据
         updateData()
         updateSliderValue()

@@ -99,7 +99,7 @@ extension SiteData {
         }
         
         if spaceIds != nil {
-            var exportSpaces = self.spaces.filter({ space in spaceIds!.contains(where: { $0 == space.id }) })
+            let exportSpaces = self.spaces.filter({ space in spaceIds!.contains(where: { $0 == space.id }) })
             var spaceDicts: [[String: Any]] = []
             
             await withTaskGroup(of: [String: Any]?.self) { group in
@@ -218,6 +218,9 @@ extension SpaceData {
                     let types = node.sensorModels.compactMap({ node.sensorModelTypes[$0]?.id.hex })
                     nodeDict.updateValue(types, forKey: "sensorTypes")
                     nodeDict.updateValue(node.groupState.rawValue, forKey: "groupState")
+                    if let group = node.group {
+                        nodeDict.updateValue(group.address.address.hex, forKey: "groupAddress")
+                    }
                     nodeDict.updateValue(node.versionSEQ, forKey: "versionSEQ")
                     nodeDict.updateValue(node.lightnessRange.lowerBound, forKey: "lightnessRangeMin")
                     nodeDict.updateValue(node.lightnessRange.upperBound, forKey: "lightnessRangeMax")

@@ -28,6 +28,8 @@ class DeviceRestoreViewController: UIViewController {
     /// 底部全选
     private var footerView: DeviceAddBottomView!
     
+        
+    
     /// 搜索设备定时器
     private var scanTimer: Timer?
     /// 恢复数据sections
@@ -48,6 +50,16 @@ class DeviceRestoreViewController: UIViewController {
     var deviceRestoreCallback: (([Node])->Void)?
     /// 已恢复的设备
     private var restoreNodes: [Node] = []
+    
+    
+    /// 展示的设备恢复数据list
+    private var showRestoreData: [DeviceRestoreData] {
+        var restoreDatas: [DeviceRestoreData] = []
+        showSections.forEach { section in
+            restoreDatas.append(contentsOf: section.restoreDatas)
+        }
+        return restoreDatas
+    }
     
     /// 所有的设备list
     private var allDevices: [ProvisioningDevice] {
@@ -72,6 +84,11 @@ class DeviceRestoreViewController: UIViewController {
     
     /// 恢复数据模式
     let restoreMode: RestoreMode
+    /// 自动化恢复（设置以后自动扫描恢复设备）
+    var automationRestore: Bool = false
+    /// 自动重试次数
+    var automationRetryCount: Int = 1
+    
     
     init(space: SpaceData, restoreMode: RestoreMode) {
         self.space = space
@@ -91,6 +108,7 @@ class DeviceRestoreViewController: UIViewController {
         view.backgroundColor = Background_Color
         self.isModalInPresentation = true
         
+        
         navigationBackBtn = UIButton(normalImageName: "navigation_back", target: self, action: #selector(backClick))
         navigationItem.leftBarButtonItem = UIBarButtonItem(customView: navigationBackBtn)
         
@@ -98,11 +116,24 @@ class DeviceRestoreViewController: UIViewController {
         scanAnimationView.isHidden = true
         navigationItem.rightBarButtonItem = UIBarButtonItem(customView: scanAnimationView)
         
-        
         setupUI()
-        
         scanBtn.isSelected = true
         startScan()
+        
+        if automationRestore {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.35, execute: {[weak self] in
+                guard let self = self else { return }
+                self.navigationController?.showAutomaticHud(messsage: "device_automatic_restore_message".localizedString) {[weak self] in
+                    guard let self = self else { return }
+                    self.navigationController?.hideAutomaticHud()
+                    self.automationRestore = false
+                    DispatchQueue.main.async {
+                        NSObject.cancelPreviousPerformRequests(withTarget: self, selector: #selector(self.automationRestoreScanTimeout), object: nil)
+                    }
+                }
+            })
+        }
+        
     }
     
     override func viewDidDisappear(_ animated: Bool) {
@@ -112,6 +143,11 @@ class DeviceRestoreViewController: UIViewController {
         }
     }
     
+    override func viewDidAppear(_ animated: Bool) {
+        super.viewDidAppear(animated)
+    }
+
+    
     deinit {
 //        if state == .scanning {
 //            stopScan()
@@ -119,9 +155,9 @@ class DeviceRestoreViewController: UIViewController {
             if state == .adding {
                 MeshAPI.stopFastAddDevice(finishBack: nil)
             }
-            if self.restoreNodes.count > 0 {
-                self.deviceRestoreCallback?(self.restoreNodes)
-            }
+//            if self.restoreNodes.count > 0 {
+        self.deviceRestoreCallback?(self.restoreNodes)
+//            }
         // 关闭设置屏幕常亮
         UIApplication.shared.isIdleTimerDisabled = false
 //        }
@@ -130,10 +166,22 @@ class DeviceRestoreViewController: UIViewController {
     @objc private func backClick() {
         if allDevices.contains(where: { $0.addState == .syncFailed }) {
             SRAlertView(title: "notification".localizedString, message: "devices_unrestored_message".localizedString, actions: [SRAlertAction(title: "ok".localizedString, actionHandler: {[weak self] _ in
-                self?.navigationController?.popViewController(animated: true)
+                self?.dismiss()
             })]).show()
         }else {
+//            navigationController?.popViewController(animated: true)
+            dismiss()
+        }
+    }
+    
+    private func dismiss() {
+        if automationRestore {
+            navigationController?.hideAutomaticHud()
+        }
+        if navigationController?.viewControllers.count ?? 0 > 1 {
             navigationController?.popViewController(animated: true)
+        }else {
+            dismiss(animated: true)
         }
     }
     
@@ -189,9 +237,21 @@ class DeviceRestoreViewController: UIViewController {
         updateUIState()
         // 扫描中设置屏幕常亮
         UIApplication.shared.isIdleTimerDisabled = true
+        if automationRestore { // 自动化恢复，开启30秒定时器
+            DispatchQueue.main.async {
+                NSObject.cancelPreviousPerformRequests(withTarget: self, selector: #selector(self.automationRestoreScanTimeout), object: nil)
+                self.perform(#selector(self.automationRestoreScanTimeout), with: nil, afterDelay: 30)
+            }
+        }
         
         MeshAPI.startScanRecoverDevices(duration: .max, scanDevice: {[weak self] unprovisionedDevice, node in
             guard let self = self, unprovisionedDevice.rssi.intValue >= self.filterRSSIRange.lowerBound else { return }
+            
+            if self.automationRestore {
+                DispatchQueue.main.async {
+                    NSObject.cancelPreviousPerformRequests(withTarget: self, selector: #selector(self.automationRestoreScanTimeout), object: nil)
+                }
+            }
             
             if unprovisionedDevice.rssi.intValue > self.filterRSSIRange.upperBound {
                 unprovisionedDevice.rssi = NSNumber(value: self.filterRSSIRange.upperBound)
@@ -214,13 +274,13 @@ class DeviceRestoreViewController: UIViewController {
             
             var setSection: DeviceRestoreSection!
             // 是否刷新设备数据（找到同一个设备beacon包）
-            var refreshDevice: Bool = false
+//            var refreshDevice: Bool = false
             
             if let sectionIndex = self.sections.firstIndex(where: { $0.group == node.group }) {
                 let section = self.sections[sectionIndex]
                 if let data = section.restoreDatas.first(where: { $0.node.primaryUnicastAddress == node.primaryUnicastAddress }) {
                     data.unprovisionedDevice = unprovisionedDevice
-                    refreshDevice = true
+//                    refreshDevice = true
                 }else {
                     section.restoreDatas.append(DeviceRestoreData(node: node, unprovisionedDevice: unprovisionedDevice))
                 }
@@ -239,14 +299,7 @@ class DeviceRestoreViewController: UIViewController {
             
             // 当前设备信号值在筛选范围内可展示
             if self.selectRSSIRange.contains(unprovisionedDevice.rssi.intValue) {
-                if let showSectionIndex = self.showSections.firstIndex(where: { $0.group == setSection.group }) {
-//                    let showSection = self.showSections[showSectionIndex]
-//                    if let row = showSection.restoreDatas.firstIndex(where: { $0.unprovisionedDevice == unprovisionedDevice }), refreshDevice {
-//                        self.tableView.reloadRows(at: [IndexPath(row: row, section: showSectionIndex)], with: .none)
-//                    }else {
-//                        self.tableView.insertRows(at: [IndexPath(row: showSection.restoreDatas.count - 1, section: showSectionIndex)], with: .automatic)
-//                    }
-                }else {
+                if !self.showSections.contains(where: { $0.group == setSection.group }) {
                     if setSection.group == nil {
                         self.showSections.insert(setSection, at: 0)
 //                        self.tableView.insertSections(IndexSet(integer: 0), with: .none)
@@ -268,23 +321,39 @@ class DeviceRestoreViewController: UIViewController {
                 // 已找到全部设备
                 if self.allDevices.count >= nodes.count {
                     stopScan()
+                    if self.automationRestore { // 自动恢复设备流程
+                        addSelectedBtnClick()
+                    }
                     DispatchQueue.main.async {
-                        NSObject.cancelPreviousPerformRequests(withTarget: self, selector: #selector(self.stopScan), object: nil)
+                        NSObject.cancelPreviousPerformRequests(withTarget: self, selector: #selector(self.scanTimeout), object: nil)
                     }
                     return
                 }
             }
             
             DispatchQueue.main.async {
-                NSObject.cancelPreviousPerformRequests(withTarget: self, selector: #selector(self.stopScan), object: nil)
-                self.perform(#selector(self.stopScan), with: nil, afterDelay: 10)
+                NSObject.cancelPreviousPerformRequests(withTarget: self, selector: #selector(self.scanTimeout), object: nil)
+                self.perform(#selector(self.scanTimeout), with: nil, afterDelay: self.automationRestore ? 20 : 10)
             }
 
         }, scanFinish: nil)
                     
     }
     
+    /// 扫描超时（未找到新设备）
+    @objc private func scanTimeout() {
+        stopScan()
+        if self.automationRestore { // 自动恢复设备流程
+            addSelectedBtnClick()
+        }
+    }
+    
     @objc private func stopScan() {
+        
+        DispatchQueue.main.async {
+            NSObject.cancelPreviousPerformRequests(withTarget: self, selector: #selector(self.scanTimeout), object: nil)
+        }
+        
         scanAnimationView.isHidden = true
         scanAnimationView.layer.removeAnimation(forKey: "scan")
         scanBtn.isSelected = false
@@ -330,6 +399,15 @@ class DeviceRestoreViewController: UIViewController {
         showSections = currentShowSections
         tableView.reloadData()
         
+    }
+    
+    /// 自动恢复扫描设备超时
+    @objc private func automationRestoreScanTimeout() {
+        stopScan()
+        // 回调超时状态到外部
+        if automationRestore {
+            dismiss()
+        }
     }
     
     // MARK: - Mesh API
@@ -517,10 +595,10 @@ class DeviceRestoreViewController: UIViewController {
                 newNode.lightCTLTemperatureRange = oldNode.lightCTLTemperatureRange
             }
             // 节点数据hash
-            if let vendorModel = newNode.sunricherVendorModel {
-                appendMessages.append(MeshMessageHandle(message: SunricherVendorGet(function: .compositionHash), model: vendorModel))
-                newNode.compositionHash = oldNode.compositionHash
-            }
+//            if let vendorModel = newNode.sunricherVendorModel {
+//                appendMessages.append(MeshMessageHandle(message: SunricherVendorGet(function: .compositionHash), model: vendorModel))
+//                newNode.compositionHash = oldNode.compositionHash
+//            }
             // 添加成功后闪烁
             if let healthModel = newNode.healthModel {
                 appendMessages.append(MeshMessageHandle(message: AttentionSet(attentionTimer: 6), model: healthModel))
@@ -546,15 +624,7 @@ class DeviceRestoreViewController: UIViewController {
                 node.name = deviceData.node.name
                 if let section = self.showSections.first(where: { $0.restoreDatas.contains(where: { $0.unprovisionedDevice == addDevice }) }), let data = section.restoreDatas.first(where: { $0.unprovisionedDevice == addDevice }) {
                     node.name = data.node.name
-                    
-                    // 添加设备时异常断开连接，导致恢复的数据未缓存
-//                    if node.restoreData == nil || (section.group != nil && data.node.groupState != .exitFailure && node.restoreData?.addGroup != section.group) {
-//                        let oldNode = data.node
-//                        node.updateResoreData(oldNode: oldNode, resoreGroup: section.group)
-//                    }
                 }
-                
-                //                node.state = true
                 node.save()
                 // 恢复数据不包括邻近照明邻居关系，因涉及邻居节点，需要各设备恢复后再去外部同步数据
                 if node.needSync && node.getNodeSyncProximityLighting() == nil {
@@ -574,6 +644,25 @@ class DeviceRestoreViewController: UIViewController {
         } addFinish: {[weak self] successList, failList in
             guard let self = self else { return }
             NotificationCenter.default.post(name: .init(spaceDataChangedNotificaitonName), object: SpaceChangeDataType.network(type: .address))
+            // 是否自动化恢复流程
+            if self.automationRestore {
+                if failList.count > 0 && automationRetryCount > 0 {
+                    automationRetryCount -= 1
+                    failList.compactMap({ device in self.showRestoreData.first(where: { $0.unprovisionedDevice?.peripheral.identifier == device.peripheral.identifier }) }).forEach({
+                        self.addDevice($0)
+                    })
+                }else {
+                    
+                    // TODO: 等几秒钟进入同步页面，添加设备完成后代理可能还在连接中
+                    // 恢复设备后是否有同步失败的设备
+                    if self.allDevices.contains(where: { $0.addState == .syncFailed }) {
+                        syncBtnAction()
+                    }else {
+                        dismiss()
+                    }
+                }
+               
+            }
         }
     }
     
@@ -790,16 +879,22 @@ class DeviceRestoreViewController: UIViewController {
             return
         }
         let vc = SyncDevicesViewController(type: .devices(syncFailedNodes))
+        vc.automationRestore = automationRestore
         vc.syncSuccessCallback = {[weak self] _ in
             guard let self = self else { return }
-            self.navigationController?.popViewController(animated: true)
-            syncFailedDevices.forEach { device in
-                if let node = syncFailedNodes.first(where: { $0.primaryUnicastAddress == device.address }), !node.needSync {
-                    device.addState = .success
+            if self.automationRestore, case .specified = restoreMode {
+                self.deviceRestoreCallback?(self.restoreNodes)
+                self.navigationController?.popToViewController(vcClass: BleFirmwareUpdateViewController.classForCoder())
+            }else {
+                self.navigationController?.popViewController(animated: true)
+                syncFailedDevices.forEach { device in
+                    if let node = syncFailedNodes.first(where: { $0.primaryUnicastAddress == device.address }), !node.needSync {
+                        device.addState = .success
+                    }
                 }
+                self.tableView.reloadData()
+                self.updateUIState()
             }
-            self.tableView.reloadData()
-            self.updateUIState()
         }
         vc.backActionCallback = {[weak self] _ in
             guard let self = self else { return }

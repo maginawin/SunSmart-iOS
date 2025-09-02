@@ -36,6 +36,9 @@
 		C80A7F502DB7709100A6E36C /* DevicePromptHudView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C80A7F4F2DB7709100A6E36C /* DevicePromptHudView.swift */; };
 		C80A7F522DB790B700A6E36C /* DeviceOfflinePromptView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C80A7F512DB790B700A6E36C /* DeviceOfflinePromptView.swift */; };
 		C80A7F542DB793E200A6E36C /* DongleAddCollectionScheduleController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C80A7F532DB793E200A6E36C /* DongleAddCollectionScheduleController.swift */; };
+		C8219F6A2E585F3500253A9A /* RoundProgressView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8219F692E585F3500253A9A /* RoundProgressView.swift */; };
+		C8219F6B2E585F3500253A9A /* RoundProgressView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8219F692E585F3500253A9A /* RoundProgressView.swift */; };
+		C8219F6C2E585F3500253A9A /* RoundProgressView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8219F692E585F3500253A9A /* RoundProgressView.swift */; };
 		C82AE2EB2B95756600FA4BDB /* GroupSensorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C82AE2EA2B95756600FA4BDB /* GroupSensorView.swift */; };
 		C82AE2ED2B96EC6600FA4BDB /* Profile.swift in Sources */ = {isa = PBXBuildFile; fileRef = C82AE2EC2B96EC6600FA4BDB /* Profile.swift */; };
 		C82F99F22DBE10A90019C3FB /* EnergyDataViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C82F99F12DBE10A90019C3FB /* EnergyDataViewController.swift */; };
@@ -65,6 +68,12 @@
 		C85BC5F02C3BBE39002D4CB6 /* Device+Extension.swift in Sources */ = {isa = PBXBuildFile; fileRef = C85BC5EF2C3BBE39002D4CB6 /* Device+Extension.swift */; };
 		C85BC5F22C3BEEF8002D4CB6 /* UserSettingsViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C85BC5F12C3BEEF8002D4CB6 /* UserSettingsViewController.swift */; };
 		C85CB5F92BB6BE8E006598C0 /* DeviceInformationViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C85CB5F82BB6BE8E006598C0 /* DeviceInformationViewController.swift */; };
+		C85D550F2E6182DC00BFEEDA /* broadcast_loading.gif in Resources */ = {isa = PBXBuildFile; fileRef = C85D550E2E6182DC00BFEEDA /* broadcast_loading.gif */; };
+		C85D55102E6182DC00BFEEDA /* broadcast_loading.gif in Resources */ = {isa = PBXBuildFile; fileRef = C85D550E2E6182DC00BFEEDA /* broadcast_loading.gif */; };
+		C85D55112E6182DC00BFEEDA /* broadcast_loading.gif in Resources */ = {isa = PBXBuildFile; fileRef = C85D550E2E6182DC00BFEEDA /* broadcast_loading.gif */; };
+		C85D55132E6189D300BFEEDA /* DeviceParameterSetupInstructionsController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C85D55122E6189D300BFEEDA /* DeviceParameterSetupInstructionsController.swift */; };
+		C85D55142E6189D300BFEEDA /* DeviceParameterSetupInstructionsController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C85D55122E6189D300BFEEDA /* DeviceParameterSetupInstructionsController.swift */; };
+		C85D55152E6189D300BFEEDA /* DeviceParameterSetupInstructionsController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C85D55122E6189D300BFEEDA /* DeviceParameterSetupInstructionsController.swift */; };
 		C8607BE22B90267F00A94F0B /* LightSensorCalibrationViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8607BE12B90267F00A94F0B /* LightSensorCalibrationViewController.swift */; };
 		C8607BE42B9026F700A94F0B /* LightSensorCalibrationSelectView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8607BE32B9026F700A94F0B /* LightSensorCalibrationSelectView.swift */; };
 		C8607BE62B905F5100A94F0B /* LightSensorCalibrationView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8607BE52B905F5100A94F0B /* LightSensorCalibrationView.swift */; };
@@ -1079,6 +1088,9 @@
 		C8B483DA2E4B37CB006D85BC /* DeviceAudioManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8B483D92E4B37CB006D85BC /* DeviceAudioManager.swift */; };
 		C8B483DB2E4B37CB006D85BC /* DeviceAudioManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8B483D92E4B37CB006D85BC /* DeviceAudioManager.swift */; };
 		C8B483DC2E4B37CB006D85BC /* DeviceAudioManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8B483D92E4B37CB006D85BC /* DeviceAudioManager.swift */; };
+		C8B4DE212E540A1E00AF6CE0 /* GlobalData.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8B4DE202E540A1E00AF6CE0 /* GlobalData.swift */; };
+		C8B4DE222E540A1E00AF6CE0 /* GlobalData.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8B4DE202E540A1E00AF6CE0 /* GlobalData.swift */; };
+		C8B4DE232E540A1E00AF6CE0 /* GlobalData.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8B4DE202E540A1E00AF6CE0 /* GlobalData.swift */; };
 		C8B57F712DB0DD1100E5CD7E /* ReadDevicesDataViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8B57F702DB0DD1100E5CD7E /* ReadDevicesDataViewController.swift */; };
 		C8B5A1DE2B2BE9B300728E36 /* GroupMembersViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8B5A1DD2B2BE9B300728E36 /* GroupMembersViewController.swift */; };
 		C8B5A1E02B2C2AFD00728E36 /* GroupDevicesFunctionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8B5A1DF2B2C2AFD00728E36 /* GroupDevicesFunctionView.swift */; };
@@ -1093,6 +1105,12 @@
 		C8B95F9C2E4DDEF2000576F5 /* DeviceForceResetDevicePageController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8B95F9B2E4DDEF2000576F5 /* DeviceForceResetDevicePageController.swift */; };
 		C8B95F9D2E4DDEF2000576F5 /* DeviceForceResetDevicePageController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8B95F9B2E4DDEF2000576F5 /* DeviceForceResetDevicePageController.swift */; };
 		C8B95F9E2E4DDEF2000576F5 /* DeviceForceResetDevicePageController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8B95F9B2E4DDEF2000576F5 /* DeviceForceResetDevicePageController.swift */; };
+		C8B95FA02E4EE25D000576F5 /* DeviceForceResetDeviceView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8B95F9F2E4EE25D000576F5 /* DeviceForceResetDeviceView.swift */; };
+		C8B95FA12E4EE25D000576F5 /* DeviceForceResetDeviceView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8B95F9F2E4EE25D000576F5 /* DeviceForceResetDeviceView.swift */; };
+		C8B95FA22E4EE25D000576F5 /* DeviceForceResetDeviceView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8B95F9F2E4EE25D000576F5 /* DeviceForceResetDeviceView.swift */; };
+		C8B95FA42E502F25000576F5 /* DeviceForceResetDeviceInstructionsController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8B95FA32E502F25000576F5 /* DeviceForceResetDeviceInstructionsController.swift */; };
+		C8B95FA52E502F25000576F5 /* DeviceForceResetDeviceInstructionsController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8B95FA32E502F25000576F5 /* DeviceForceResetDeviceInstructionsController.swift */; };
+		C8B95FA62E502F25000576F5 /* DeviceForceResetDeviceInstructionsController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8B95FA32E502F25000576F5 /* DeviceForceResetDeviceInstructionsController.swift */; };
 		C8BA43612DC0724C00018392 /* GroupFilterSelectView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8BA43602DC0724C00018392 /* GroupFilterSelectView.swift */; };
 		C8BA43632DC0A6FD00018392 /* EnergyTimeSeriesDataViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8BA43622DC0A6FD00018392 /* EnergyTimeSeriesDataViewController.swift */; };
 		C8BA43652DC0A7A700018392 /* EnergyTimeSeriesDataImportView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8BA43642DC0A7A700018392 /* EnergyTimeSeriesDataImportView.swift */; };
@@ -1246,6 +1264,7 @@
 		C80A7F4F2DB7709100A6E36C /* DevicePromptHudView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DevicePromptHudView.swift; sourceTree = "<group>"; };
 		C80A7F512DB790B700A6E36C /* DeviceOfflinePromptView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceOfflinePromptView.swift; sourceTree = "<group>"; };
 		C80A7F532DB793E200A6E36C /* DongleAddCollectionScheduleController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DongleAddCollectionScheduleController.swift; sourceTree = "<group>"; };
+		C8219F692E585F3500253A9A /* RoundProgressView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RoundProgressView.swift; sourceTree = "<group>"; };
 		C82AE2EA2B95756600FA4BDB /* GroupSensorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GroupSensorView.swift; sourceTree = "<group>"; };
 		C82AE2EC2B96EC6600FA4BDB /* Profile.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Profile.swift; sourceTree = "<group>"; };
 		C82F99F12DBE10A90019C3FB /* EnergyDataViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EnergyDataViewController.swift; sourceTree = "<group>"; };
@@ -1275,6 +1294,8 @@
 		C85BC5EF2C3BBE39002D4CB6 /* Device+Extension.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Device+Extension.swift"; sourceTree = "<group>"; };
 		C85BC5F12C3BEEF8002D4CB6 /* UserSettingsViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UserSettingsViewController.swift; sourceTree = "<group>"; };
 		C85CB5F82BB6BE8E006598C0 /* DeviceInformationViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceInformationViewController.swift; sourceTree = "<group>"; };
+		C85D550E2E6182DC00BFEEDA /* broadcast_loading.gif */ = {isa = PBXFileReference; lastKnownFileType = image.gif; path = broadcast_loading.gif; sourceTree = "<group>"; };
+		C85D55122E6189D300BFEEDA /* DeviceParameterSetupInstructionsController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceParameterSetupInstructionsController.swift; sourceTree = "<group>"; };
 		C8607BE12B90267F00A94F0B /* LightSensorCalibrationViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LightSensorCalibrationViewController.swift; sourceTree = "<group>"; };
 		C8607BE32B9026F700A94F0B /* LightSensorCalibrationSelectView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LightSensorCalibrationSelectView.swift; sourceTree = "<group>"; };
 		C8607BE52B905F5100A94F0B /* LightSensorCalibrationView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LightSensorCalibrationView.swift; sourceTree = "<group>"; };
@@ -1541,6 +1562,7 @@
 		C8B483D12E4B361F006D85BC /* device_add.mp3 */ = {isa = PBXFileReference; lastKnownFileType = audio.mp3; path = device_add.mp3; sourceTree = "<group>"; };
 		C8B483D22E4B361F006D85BC /* device_reset.mp3 */ = {isa = PBXFileReference; lastKnownFileType = audio.mp3; path = device_reset.mp3; sourceTree = "<group>"; };
 		C8B483D92E4B37CB006D85BC /* DeviceAudioManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceAudioManager.swift; sourceTree = "<group>"; };
+		C8B4DE202E540A1E00AF6CE0 /* GlobalData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GlobalData.swift; sourceTree = "<group>"; };
 		C8B57F702DB0DD1100E5CD7E /* ReadDevicesDataViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReadDevicesDataViewController.swift; sourceTree = "<group>"; };
 		C8B5A1DD2B2BE9B300728E36 /* GroupMembersViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GroupMembersViewController.swift; sourceTree = "<group>"; };
 		C8B5A1DF2B2C2AFD00728E36 /* GroupDevicesFunctionView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GroupDevicesFunctionView.swift; sourceTree = "<group>"; };
@@ -1550,6 +1572,8 @@
 		C8B707072DCF349D0002133E /* ProfileSensitivityView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileSensitivityView.swift; sourceTree = "<group>"; };
 		C8B95F972E4DDE5A000576F5 /* DeviceForceResetDeviceController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceForceResetDeviceController.swift; sourceTree = "<group>"; };
 		C8B95F9B2E4DDEF2000576F5 /* DeviceForceResetDevicePageController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceForceResetDevicePageController.swift; sourceTree = "<group>"; };
+		C8B95F9F2E4EE25D000576F5 /* DeviceForceResetDeviceView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceForceResetDeviceView.swift; sourceTree = "<group>"; };
+		C8B95FA32E502F25000576F5 /* DeviceForceResetDeviceInstructionsController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceForceResetDeviceInstructionsController.swift; sourceTree = "<group>"; };
 		C8BA43602DC0724C00018392 /* GroupFilterSelectView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GroupFilterSelectView.swift; sourceTree = "<group>"; };
 		C8BA43622DC0A6FD00018392 /* EnergyTimeSeriesDataViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EnergyTimeSeriesDataViewController.swift; sourceTree = "<group>"; };
 		C8BA43642DC0A7A700018392 /* EnergyTimeSeriesDataImportView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EnergyTimeSeriesDataImportView.swift; sourceTree = "<group>"; };
@@ -1898,6 +1922,14 @@
 			path = CirclePieView;
 			sourceTree = "<group>";
 		};
+		C85D550D2E6182A000BFEEDA /* Rescource */ = {
+			isa = PBXGroup;
+			children = (
+				C85D550E2E6182DC00BFEEDA /* broadcast_loading.gif */,
+			);
+			path = Rescource;
+			sourceTree = "<group>";
+		};
 		C87EB4482BA07CEA00F9285B /* Switch */ = {
 			isa = PBXGroup;
 			children = (
@@ -2141,6 +2173,7 @@
 				C8BF084D2B26F84800144BAC /* AlignCenterFlowLayout.swift */,
 				C8BF088D2B299DD700144BAC /* LinePageControl.swift */,
 				C85829F52B398443002A4367 /* CustomProgressView.swift */,
+				C8219F692E585F3500253A9A /* RoundProgressView.swift */,
 				C89A1C352B54C64B004912B9 /* MultiseriatePickerView.swift */,
 				C89C15722D9A9D8000789F0B /* ContinuousTapGestureRecognizer.swift */,
 				C8BC95E12E04FC830058D41E /* RangeSlider.swift */,
@@ -2310,6 +2343,7 @@
 				C8DA69DA2DB87C9B00E32092 /* DeviceBottomBtnView.swift */,
 				C8B483CD2E4AEEBB006D85BC /* DeviceAddParameterSettingsView.swift */,
 				C8C0E4472E2774C60024E77E /* DeviceSettingsCollectionViewCell.swift */,
+				C8B95F9F2E4EE25D000576F5 /* DeviceForceResetDeviceView.swift */,
 			);
 			path = View;
 			sourceTree = "<group>";
@@ -2331,6 +2365,8 @@
 				C8CAE8E22D75D76A00FCCA5A /* DevicesReplySetViewController.swift */,
 				C8B95F9B2E4DDEF2000576F5 /* DeviceForceResetDevicePageController.swift */,
 				C8B95F972E4DDE5A000576F5 /* DeviceForceResetDeviceController.swift */,
+				C8B95FA32E502F25000576F5 /* DeviceForceResetDeviceInstructionsController.swift */,
+				C85D55122E6189D300BFEEDA /* DeviceParameterSetupInstructionsController.swift */,
 			);
 			path = Controller;
 			sourceTree = "<group>";
@@ -2760,6 +2796,7 @@
 				C8D6636E2BFEDDC900BFF81A /* ImportData.swift */,
 				C8D663702BFEDDE000BFF81A /* ExportData.swift */,
 				C89B40CD2CEB37C90082A89A /* MeshDistributionData.swift */,
+				C8B4DE202E540A1E00AF6CE0 /* GlobalData.swift */,
 			);
 			path = Data;
 			sourceTree = "<group>";
@@ -2776,6 +2813,7 @@
 		C8AAE2792A9743A300238C1C /* Support */ = {
 			isa = PBXGroup;
 			children = (
+				C85D550D2E6182A000BFEEDA /* Rescource */,
 				C89B34202C93E2B600A77DB6 /* User Agreement.html */,
 				C89B34222C93E3B700A77DB6 /* Privacy Policy.html */,
 				C8B483D12E4B361F006D85BC /* device_add.mp3 */,
@@ -3142,6 +3180,7 @@
 				C88555182DE6B44C00C8B688 /* User Agreement.html in Resources */,
 				C8B483D72E4B361F006D85BC /* device_add.mp3 in Resources */,
 				C8B483D82E4B361F006D85BC /* device_reset.mp3 in Resources */,
+				C85D55112E6182DC00BFEEDA /* broadcast_loading.gif in Resources */,
 				C88555192DE6B44C00C8B688 /* Localizable.strings in Resources */,
 				C885551A2DE6B44C00C8B688 /* XWHUDManager_successful@2x.png in Resources */,
 				C885551B2DE6B44C00C8B688 /* XWHUDManager_tip@3x.png in Resources */,
@@ -3171,6 +3210,7 @@
 				C886E1782E30DE4900D0C3A6 /* XWHUDManager_loading.gif in Resources */,
 				C8B483D32E4B361F006D85BC /* device_add.mp3 in Resources */,
 				C8B483D42E4B361F006D85BC /* device_reset.mp3 in Resources */,
+				C85D550F2E6182DC00BFEEDA /* broadcast_loading.gif in Resources */,
 				C886E17A2E30DE4900D0C3A6 /* XWHUDManager_error@2x.png in Resources */,
 				C886E17B2E30DE4900D0C3A6 /* CodeScan.bundle in Resources */,
 				C886E17C2E30DE4900D0C3A6 /* devices_config.json in Resources */,
@@ -3205,6 +3245,7 @@
 				C896B9B42A930BAA00217512 /* LaunchScreen.storyboard in Resources */,
 				C8C1E5AB2B6A1FDC00F60E62 /* XWHUDManager_error@2x.png in Resources */,
 				C87EB4622BA17D3F00F9285B /* CodeScan.bundle in Resources */,
+				C85D55102E6182DC00BFEEDA /* broadcast_loading.gif in Resources */,
 				C89B78812CC1EFEB0048B746 /* devices_config.json in Resources */,
 				C8C1E5AC2B6A1FDC00F60E62 /* XWHUDManager_error@3x.png in Resources */,
 				C896B9B12A930BAA00217512 /* Assets.xcassets in Resources */,
@@ -3387,6 +3428,7 @@
 				C88553CE2DE6B44C00C8B688 /* MeshDeviceConfigInfo.swift in Sources */,
 				C88553CF2DE6B44C00C8B688 /* LBXScanView.swift in Sources */,
 				C88553D02DE6B44C00C8B688 /* GroupPathSequencePathViewCell.swift in Sources */,
+				C8219F6C2E585F3500253A9A /* RoundProgressView.swift in Sources */,
 				C88553D12DE6B44C00C8B688 /* EnergyConsumptionInstructionController.swift in Sources */,
 				C88553D22DE6B44C00C8B688 /* DeviceDongleSectionHeaderView.swift in Sources */,
 				C88553D32DE6B44C00C8B688 /* PopGestureScrollView.swift in Sources */,
@@ -3532,6 +3574,7 @@
 				C88554542DE6B44C00C8B688 /* DeviceAddViewCell.swift in Sources */,
 				C88554552DE6B44C00C8B688 /* ImportProjectView.swift in Sources */,
 				C88554562DE6B44C00C8B688 /* CollectionTitleHeaderView.swift in Sources */,
+				C8B4DE232E540A1E00AF6CE0 /* GlobalData.swift in Sources */,
 				C88554572DE6B44C00C8B688 /* BluetoothRequiredViewController.swift in Sources */,
 				C8E6F3582E0E4A3F00730971 /* DeviceAddInstructionsController.swift in Sources */,
 				C88554582DE6B44C00C8B688 /* DeviceAddResultView.swift in Sources */,
@@ -3632,6 +3675,7 @@
 				C8BC95E82E055C540058D41E /* DeviceSignalStrengthView.swift in Sources */,
 				C88554B02DE6B44C00C8B688 /* MeshFirmwareUpgradeSectionView.swift in Sources */,
 				C88554B12DE6B44C00C8B688 /* Data+Gzip.swift in Sources */,
+				C85D55142E6189D300BFEEDA /* DeviceParameterSetupInstructionsController.swift in Sources */,
 				C88554B22DE6B44C00C8B688 /* SitesViewController.swift in Sources */,
 				C88554B32DE6B44C00C8B688 /* MeshFirmwareUpgradeHeaderView.swift in Sources */,
 				C88554B42DE6B44C00C8B688 /* GroupPathSequencePageController.swift in Sources */,
@@ -3680,12 +3724,14 @@
 				C88554DC2DE6B44C00C8B688 /* DeviceDongleScheduleHeaderView.swift in Sources */,
 				C88554DD2DE6B44C00C8B688 /* String+Localized.swift in Sources */,
 				C88554DE2DE6B44C00C8B688 /* TimedViewController.swift in Sources */,
+				C8B95FA02E4EE25D000576F5 /* DeviceForceResetDeviceView.swift in Sources */,
 				C88554DF2DE6B44C00C8B688 /* ShareSpaceListViewController.swift in Sources */,
 				C88554E02DE6B44C00C8B688 /* SceneServer.swift in Sources */,
 				C88554E12DE6B44C00C8B688 /* ProfileSensitivityView.swift in Sources */,
 				C88554E22DE6B44C00C8B688 /* SceneSettingsViewController.swift in Sources */,
 				C88554E32DE6B44C00C8B688 /* GroupSwitchsViewController.swift in Sources */,
 				C88554E42DE6B44C00C8B688 /* GroupSensorView.swift in Sources */,
+				C8B95FA42E502F25000576F5 /* DeviceForceResetDeviceInstructionsController.swift in Sources */,
 				C8C0E44C2E28869F0024E77E /* DeviceParameterAbsoluteSensitivityViewCell.swift in Sources */,
 				C88554E52DE6B44C00C8B688 /* AlignCenterFlowLayout.swift in Sources */,
 				C88554E62DE6B44C00C8B688 /* SwitchSelectPanelTypeController.swift in Sources */,
@@ -3772,6 +3818,7 @@
 				C886E01E2E30DE4900D0C3A6 /* MeshDeviceConfigInfo.swift in Sources */,
 				C886E01F2E30DE4900D0C3A6 /* LBXScanView.swift in Sources */,
 				C886E0202E30DE4900D0C3A6 /* GroupPathSequencePathViewCell.swift in Sources */,
+				C8219F6A2E585F3500253A9A /* RoundProgressView.swift in Sources */,
 				C886E0212E30DE4900D0C3A6 /* EnergyConsumptionInstructionController.swift in Sources */,
 				C886E0222E30DE4900D0C3A6 /* DeviceDongleSectionHeaderView.swift in Sources */,
 				C886E0232E30DE4900D0C3A6 /* PopGestureScrollView.swift in Sources */,
@@ -3917,6 +3964,7 @@
 				C886E0A92E30DE4900D0C3A6 /* DeviceAddViewCell.swift in Sources */,
 				C886E0AA2E30DE4900D0C3A6 /* ImportProjectView.swift in Sources */,
 				C886E0AB2E30DE4900D0C3A6 /* CollectionTitleHeaderView.swift in Sources */,
+				C8B4DE212E540A1E00AF6CE0 /* GlobalData.swift in Sources */,
 				C886E0AC2E30DE4900D0C3A6 /* BluetoothRequiredViewController.swift in Sources */,
 				C886E0AD2E30DE4900D0C3A6 /* DeviceAddInstructionsController.swift in Sources */,
 				C886E0AE2E30DE4900D0C3A6 /* DeviceAddResultView.swift in Sources */,
@@ -4017,6 +4065,7 @@
 				C886E1082E30DE4900D0C3A6 /* DeviceSignalStrengthView.swift in Sources */,
 				C886E1092E30DE4900D0C3A6 /* MeshFirmwareUpgradeSectionView.swift in Sources */,
 				C886E10A2E30DE4900D0C3A6 /* Data+Gzip.swift in Sources */,
+				C85D55152E6189D300BFEEDA /* DeviceParameterSetupInstructionsController.swift in Sources */,
 				C886E10B2E30DE4900D0C3A6 /* SitesViewController.swift in Sources */,
 				C886E10C2E30DE4900D0C3A6 /* MeshFirmwareUpgradeHeaderView.swift in Sources */,
 				C886E10D2E30DE4900D0C3A6 /* GroupPathSequencePageController.swift in Sources */,
@@ -4065,12 +4114,14 @@
 				C886E1372E30DE4900D0C3A6 /* DeviceDongleScheduleHeaderView.swift in Sources */,
 				C886E1382E30DE4900D0C3A6 /* String+Localized.swift in Sources */,
 				C886E1392E30DE4900D0C3A6 /* TimedViewController.swift in Sources */,
+				C8B95FA12E4EE25D000576F5 /* DeviceForceResetDeviceView.swift in Sources */,
 				C886E13A2E30DE4900D0C3A6 /* ShareSpaceListViewController.swift in Sources */,
 				C886E13B2E30DE4900D0C3A6 /* SceneServer.swift in Sources */,
 				C886E13C2E30DE4900D0C3A6 /* ProfileSensitivityView.swift in Sources */,
 				C886E13D2E30DE4900D0C3A6 /* SceneSettingsViewController.swift in Sources */,
 				C886E13E2E30DE4900D0C3A6 /* GroupSwitchsViewController.swift in Sources */,
 				C886E13F2E30DE4900D0C3A6 /* GroupSensorView.swift in Sources */,
+				C8B95FA52E502F25000576F5 /* DeviceForceResetDeviceInstructionsController.swift in Sources */,
 				C886E1402E30DE4900D0C3A6 /* DeviceParameterAbsoluteSensitivityViewCell.swift in Sources */,
 				C886E1412E30DE4900D0C3A6 /* AlignCenterFlowLayout.swift in Sources */,
 				C886E1422E30DE4900D0C3A6 /* SwitchSelectPanelTypeController.swift in Sources */,
@@ -4157,6 +4208,7 @@
 				C8A3EF762CA69758000A1226 /* MeshDeviceConfigInfo.swift in Sources */,
 				C87EB4642BA17D3F00F9285B /* LBXScanView.swift in Sources */,
 				C8CD5C292DDB06A300F09467 /* GroupPathSequencePathViewCell.swift in Sources */,
+				C8219F6B2E585F3500253A9A /* RoundProgressView.swift in Sources */,
 				C8AEB9A32DCB45C60053102B /* EnergyConsumptionInstructionController.swift in Sources */,
 				C80A7F4C2DB7331D00A6E36C /* DeviceDongleSectionHeaderView.swift in Sources */,
 				C87415DD2ADFD1510020E3C2 /* PopGestureScrollView.swift in Sources */,
@@ -4302,6 +4354,7 @@
 				C89941952AD4F192008DCD76 /* DeviceAddViewCell.swift in Sources */,
 				C884EF722C057B5100B5F869 /* ImportProjectView.swift in Sources */,
 				C8A437B22D35F11A00F3424C /* CollectionTitleHeaderView.swift in Sources */,
+				C8B4DE222E540A1E00AF6CE0 /* GlobalData.swift in Sources */,
 				C8A18FEB2AE105F300260707 /* BluetoothRequiredViewController.swift in Sources */,
 				C8E6F3592E0E4A3F00730971 /* DeviceAddInstructionsController.swift in Sources */,
 				C8E694222D8D407E00005832 /* DeviceAddResultView.swift in Sources */,
@@ -4402,6 +4455,7 @@
 				C8BC95E92E055C540058D41E /* DeviceSignalStrengthView.swift in Sources */,
 				C8A030202CD89EC00063FEC4 /* MeshFirmwareUpgradeSectionView.swift in Sources */,
 				C8A68A292DA67B110011A389 /* Data+Gzip.swift in Sources */,
+				C85D55132E6189D300BFEEDA /* DeviceParameterSetupInstructionsController.swift in Sources */,
 				C898E2F12ABA9BB900C71315 /* SitesViewController.swift in Sources */,
 				C8A0301E2CD878C10063FEC4 /* MeshFirmwareUpgradeHeaderView.swift in Sources */,
 				C8ED59F92DD743960074A5BB /* GroupPathSequencePageController.swift in Sources */,
@@ -4450,12 +4504,14 @@
 				C80A7F4E2DB7361300A6E36C /* DeviceDongleScheduleHeaderView.swift in Sources */,
 				C898E2DC2AB7E62100C71315 /* String+Localized.swift in Sources */,
 				C8A29C262B47D47500104634 /* TimedViewController.swift in Sources */,
+				C8B95FA22E4EE25D000576F5 /* DeviceForceResetDeviceView.swift in Sources */,
 				C830CFD92C0DBE520035CD5B /* ShareSpaceListViewController.swift in Sources */,
 				C89C9FE22B3BC1B900074031 /* SceneServer.swift in Sources */,
 				C8B707082DCF349D0002133E /* ProfileSensitivityView.swift in Sources */,
 				C898F7022B3A810E008B4124 /* SceneSettingsViewController.swift in Sources */,
 				C87EB44C2BA07D1800F9285B /* GroupSwitchsViewController.swift in Sources */,
 				C82AE2EB2B95756600FA4BDB /* GroupSensorView.swift in Sources */,
+				C8B95FA62E502F25000576F5 /* DeviceForceResetDeviceInstructionsController.swift in Sources */,
 				C8C0E44B2E28869F0024E77E /* DeviceParameterAbsoluteSensitivityViewCell.swift in Sources */,
 				C8BF084E2B26F84800144BAC /* AlignCenterFlowLayout.swift in Sources */,
 				C8CAE8E52D76EF9500FCCA5A /* SwitchSelectPanelTypeController.swift in Sources */,
@@ -4842,7 +4898,6 @@
 				INFOPLIST_KEY_UIMainStoryboardFile = "";
 				INFOPLIST_KEY_UIRequiresFullScreen = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
-				INFOPLIST_KEY_UIUserInterfaceStyle = Light;
 				IPHONEOS_DEPLOYMENT_TARGET = 13.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -4883,7 +4938,6 @@
 				INFOPLIST_KEY_UIMainStoryboardFile = "";
 				INFOPLIST_KEY_UIRequiresFullScreen = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
-				INFOPLIST_KEY_UIUserInterfaceStyle = Light;
 				IPHONEOS_DEPLOYMENT_TARGET = 13.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",

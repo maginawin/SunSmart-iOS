@@ -42,6 +42,8 @@ class GroupViewController: UIViewController {
         return btn
     }()
     
+    private var meshNetworkConnectedObservation: NSKeyValueObservation?
+    
     let space: SpaceData
     let group: Group
     
@@ -57,8 +59,6 @@ class GroupViewController: UIViewController {
         self.group = group
         super.init(nibName: nil, bundle: nil)
         
-        MeshLibManager.manager.addObserver(self, forKeyPath: "isMeshNetworkConnected", context: nil)
-        MeshLibManager.manager.addObserver(self, forKeyPath: "isMeshNetworkConnected", context: nil)
     }
     
     required init?(coder: NSCoder) {
@@ -79,7 +79,6 @@ class GroupViewController: UIViewController {
 
             navigationItem.leftBarButtonItem = UIBarButtonItem(image: UIImage(named: "navigation_back")?.withRenderingMode(.alwaysOriginal), style: .done, target: self, action: #selector(close))
         }
-        
         
         
         navigationItem.rightBarButtonItem = UIBarButtonItem(image: UIImage(named: "more_vertical")?.withRenderingMode(.alwaysOriginal), style: .done, target: self, action: #selector(moreClick))
@@ -156,8 +155,8 @@ class GroupViewController: UIViewController {
         automationTimer = nil
         
         proxyFilterRemoveGroup()
-        
-        MeshLibManager.manager.removeObserver(self, forKeyPath: "isMeshNetworkConnected")
+        meshNetworkConnectedObservation = nil
+//        MeshLibManager.manager.removeObserver(self, forKeyPath: "isMeshNetworkConnected")
     }
     
     override func viewWillDisappear(_ animated: Bool) {
@@ -169,6 +168,23 @@ class GroupViewController: UIViewController {
     
     
     private func addNotificationObserver() {
+        
+        // mesh网络连接观察者
+        meshNetworkConnectedObservation = MeshLibManager.manager.observe(\.isMeshNetworkConnected, options: [.new], changeHandler: {[weak self] _, _ in
+            guard let self = self else { return }
+            DispatchQueue.main.async {
+                if MeshLibManager.manager.isMeshNetworkConnected {
+                    self.onoffBtn.isEnabled = true
+                    // 检查连接的设备白名单有该组
+                    self.proxyFilterAddGroup()
+                }else {
+                    if self.group.nodes.count > 0 {
+                        self.onoffBtn.isEnabled = false
+                    }
+                }
+            }
+        })
+        
         NotificationCenter.default.addObserver(forName: .init(groupDataUpdateNotificationName), object: nil, queue: nil) {[weak self] notification in
             //            self?.refreshData = true
             guard let self = self, let group = notification.object as? Group else { return }
@@ -185,19 +201,6 @@ class GroupViewController: UIViewController {
             self.proxyFilterAddGroup()
         }
         
-    }
-    
-    override func observeValue(forKeyPath keyPath: String?, of object: Any?, change: [NSKeyValueChangeKey : Any]?, context: UnsafeMutableRawPointer?) {
-        
-        if MeshLibManager.manager.isMeshNetworkConnected {
-            onoffBtn.isEnabled = true
-            // 检查连接的设备白名单有该组
-            proxyFilterAddGroup()
-        }else {
-            if group.nodes.count > 0 {
-                onoffBtn.isEnabled = false
-            }
-        }
     }
     
     /// 添加组地址到代理白名单

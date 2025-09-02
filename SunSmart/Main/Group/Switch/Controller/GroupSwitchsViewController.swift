@@ -72,7 +72,7 @@ class GroupSwitchsViewController: UIViewController {
         
         if copySwitchs.contains(where: { copySwitch in !group.info.switchs.contains(where: { $0 == copySwitch }) }) {
             
-            SRAlertView(title: "notification".localizedString, message: "profile_exiting_message".localizedString, actions: [SRAlertAction(title: "keep_edit".localizedString, style: .cancel), SRAlertAction(title: "exit".localizedString, actionHandler: {[weak self] _ in
+            SRAlertView(title: "notification".localizedString, message: "profile_exiting_message".localizedString, actions: [SRAlertAction(title: "keep_edit".localizedString, style: .cancel), SRAlertAction(title: "EXIT".localizedString, actionHandler: {[weak self] _ in
                 self?.navigationController?.popViewController(animated: true)
             })]).show()
         }else {

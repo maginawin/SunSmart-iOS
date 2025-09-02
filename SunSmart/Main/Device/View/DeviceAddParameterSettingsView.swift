@@ -8,24 +8,29 @@
 import UIKit
 import MediaPlayer
 
-struct DeviceAddParameterData {
-    
-    static let `default`: DeviceAddParameterData = .init(notificationEnable: true, volume: 50, vibrationEnable: true)
-    
-    let notificationEnable: Bool
-    let volume: Int
-    let vibrationEnable: Bool
-}
 
 class DeviceAddParameterSettingsView: UIView {
   
     /// 设置数据回调
-    typealias SettingsCallback = (DeviceAddParameterData) -> Void
+    typealias SettingsCallback = (DeviceSettingsParameterData) -> Void
     
     private var shadeView: UIView!
     private var contentView: UIView!
     private var titleLabel: UILabel!
     
+    /// 亮度
+    private var brightnessTitleLabel: UILabel!
+    private var brightnessLabel: UILabel!
+    private var brightnessView: DeviceSliderFunctionView!
+    
+    /// 光照差值
+    private var illuminationTitleLabel: UILabel!
+    private var illuminationTipLabel: UILabel!
+    private var illuminationLabel: UILabel!
+    private var illuminationView: DeviceSliderFunctionView!
+    private var illuminationTagsView: UIStackView!
+    
+    /// 通知
     private var notificationLabel: UILabel!
     private var notificationSwitch: UISwitch!
     private var notificationSwitchBtn: UIButton!
@@ -33,21 +38,47 @@ class DeviceAddParameterSettingsView: UIView {
     private var volumeLabel: UILabel!
     private var volumeSliderView: DeviceSliderFunctionView!
 
+    /// 震动
     private var vibrationLabel: UILabel!
     private var vibrationSwitch: UISwitch!
+    
+    /// 帮助
+    private var helpBtn: UIButton!
     
     private var functionView: UIView!
     private var lineView: UIView!
     private var saveBtn: UIButton!
     private var cancelBtn: UIButton!
+    /// 照度值标签
+    private let illuminationTags: [(title: String, illumination: Int)] = [
+        ("＞15m", 10), ("12m", 20), ("9m", 30), ("6m", 40), ("＜3m", 50)
+    ]
+    
+    /// 系统音量监听者
+    private var systemVolumeObservation: NSKeyValueObservation?
    
-    private var parameterData: DeviceAddParameterData = .default
+    var parameterData: DeviceSettingsParameterData = .default {
+        didSet {
+            brightnessView.value = Int(parameterData.brightness)
+            brightnessLabel.text = "\(parameterData.brightness)%"
+            illuminationView.value = Int(parameterData.illuminationDelta)
+            illuminationLabel.text = "\(parameterData.illuminationDelta)"
+            notificationSwitch.isOn = parameterData.notificationEnable
+            volumeSliderView.value = parameterData.volume
+            volumeLabel.text = "\(parameterData.volume)%"
+            vibrationSwitch.isOn = parameterData.vibrationEnable
+        }
+    }
     var volumeChangedEndCallback: ((Int)->Void)?
     var settingsCallback: SettingsCallback?
     
-    init(frame: CGRect, parameterData: DeviceAddParameterData = .default) {
+    /// 帮助事件回调
+    var helpActionCallback: (()->Void)?
+    /// 是否显示亮度值
+    var showBrightness: Bool = true
+    
+    init(frame: CGRect, parameterData: DeviceSettingsParameterData = .default, showBrightness: Bool = true) {
         super.init(frame: frame)
-        self.parameterData = parameterData
         
         // 监听系统音量变化
 //        NotificationCenter.default.addObserver(
@@ -56,7 +87,16 @@ class DeviceAddParameterSettingsView: UIView {
 //            name: NSNotification.Name(rawValue: "AVSystemController_SystemVolumeDidChangeNotification"),
 //            object: nil
 //        )
-        AVAudioSession.sharedInstance().addObserver(self, forKeyPath: "outputVolume", options: .new, context: nil)
+        // 激活 AVAudioSession（否则监听可能无效）
+        try? AVAudioSession.sharedInstance().setActive(true, options: [])
+
+        systemVolumeObservation = AVAudioSession.sharedInstance().observe(\.outputVolume, options: [.new], changeHandler: {[weak self] _, _ in
+            DispatchQueue.main.async {
+                self?.volumeUpdateUI()
+            }
+        })
+        self.showBrightness = showBrightness
+        self.parameterData = parameterData
         
         setupUI()
     }
@@ -66,7 +106,7 @@ class DeviceAddParameterSettingsView: UIView {
     }
     
     deinit {
-        AVAudioSession.sharedInstance().removeObserver(self, forKeyPath: "outputVolume")
+        systemVolumeObservation = nil
     }
     
     func show() {
@@ -105,9 +145,6 @@ class DeviceAddParameterSettingsView: UIView {
             self.removeFromSuperview()
         }
 
-    }
-    override func observeValue(forKeyPath keyPath: String?, of object: Any?, change: [NSKeyValueChangeKey : Any]?, context: UnsafeMutableRawPointer?) {
-        self.volumeUpdateUI()
     }
 
     @objc private func volumeUpdateUI() {
@@ -148,13 +185,24 @@ class DeviceAddParameterSettingsView: UIView {
     
     @objc private func saveBtnAction() {
         
-        let data = DeviceAddParameterData(notificationEnable: notificationSwitch.isOn, volume: volumeSliderView.value, vibrationEnable: vibrationSwitch.isOn)
+        let data = DeviceSettingsParameterData(brightness: UInt8(brightnessView.value), illuminationDelta: UInt16(illuminationView.value), notificationEnable: notificationSwitch.isOn, volume: volumeSliderView.value, vibrationEnable: vibrationSwitch.isOn)
         settingsCallback?(data)
         dismiss()
     }
     
+    /// 帮助
+    @objc private func helpBtnAction() {
+        helpActionCallback?()
+    }
+    
     @objc private func cancelBtnAction() {
         dismiss()
+    }
+    
+    @objc private func illuminationBtnAction(sender: UIButton) {
+        let tag = illuminationTags[sender.tag - 100]
+        self.illuminationView.value = tag.illumination
+        self.illuminationLabel.text = "△\(tag.illumination)"
     }
     
     private func setupUI() {
@@ -212,7 +260,7 @@ class DeviceAddParameterSettingsView: UIView {
             make.left.equalTo(SCRXFrom(8))
             make.right.equalTo(SCRXFrom(-8))
             make.bottom.equalTo(functionView.snp.top).offset(SCRYFrom(-8))
-            make.height.equalTo(SCRYFrom(240))
+//            make.height.equalTo(SCRYFrom(240))
         }
         
         titleLabel = UILabel(text: "settings".localizedString, textColor: ImportantText_Color, fontSize: 16)
@@ -222,11 +270,125 @@ class DeviceAddParameterSettingsView: UIView {
             make.top.equalTo(SCRYFrom(16))
         }
         
+        helpBtn = UIButton(normalImageName: "help", target: self, action: #selector(helpBtnAction))
+        contentView.addSubview(helpBtn)
+        helpBtn.snp.makeConstraints { make in
+            make.right.equalTo(SCRXFrom(-20))
+            make.centerY.equalTo(titleLabel)
+        }
+        
+        brightnessTitleLabel = UILabel(text: "brightness_of_the_device_in_mode".localizedString, textColor: Title_Color, fontSize: 15)
+        contentView.addSubview(brightnessTitleLabel)
+        brightnessTitleLabel.snp.makeConstraints { make in
+            make.left.equalTo(SCRXFrom(20))
+            make.top.equalTo(titleLabel.snp.bottom).offset(SCRYFrom(16))
+        }
+        
+        brightnessLabel = UILabel(text: "\(parameterData.brightness)%", textColor: TextBlack_Color, fontSize: 14, fontWeight: .light)
+        contentView.addSubview(brightnessLabel)
+        brightnessLabel.snp.makeConstraints { make in
+            make.right.equalTo(SCRXFrom(-67))
+            make.top.equalTo(brightnessTitleLabel.snp.bottom).offset(SCRYFrom(15))
+        }
+        
+        brightnessView = DeviceSliderFunctionView(frame: .zero, title: "", value: Int(parameterData.brightness), functionType: .level())
+        brightnessView.minLabel.isHidden = true
+        brightnessView.maxLabel.isHidden = true
+        brightnessView.minusBtn.setImage(UIImage(named: "scene_data_value_minus"), for: .normal)
+        brightnessView.addBtn.setImage(UIImage(named: "scene_data_value_add"), for: .normal)
+        brightnessView.lineView.isHidden = true
+        brightnessView.titleLabel.isHidden = true
+        brightnessView.valueChangedCallback = {[weak self] value in
+            self?.brightnessLabel.text = "\(value)%"
+        }
+        contentView.addSubview(brightnessView)
+        brightnessView.snp.makeConstraints { make in
+            make.left.equalTo(SCRXFrom(20))
+            make.right.equalTo(SCRXFrom(-20))
+            make.top.equalTo(brightnessTitleLabel.snp.bottom).offset(SCRYFrom(44))
+            make.height.equalTo(SCRYFrom(40))
+        }
+        brightnessView.minusBtn.snp.remakeConstraints { make in
+            make.left.equalToSuperview()
+            make.centerY.equalToSuperview()
+        }
+        brightnessView.addBtn.snp.remakeConstraints { make in
+            make.right.equalToSuperview()
+            make.centerY.equalToSuperview()
+        }
+        brightnessView.slider.snp.remakeConstraints { make in
+            make.left.equalTo(SCRXFrom(48))
+            make.right.equalTo(SCRXFrom(-47))
+            make.top.bottom.equalToSuperview()
+        }
+        
+        
+        illuminationTitleLabel = UILabel(text: "illumination_fluctuation_range".localizedString, textColor: Title_Color, fontSize: 15)
+        contentView.addSubview(illuminationTitleLabel)
+        illuminationTitleLabel.snp.makeConstraints { make in
+            make.left.equalTo(SCRXFrom(20))
+            make.top.equalTo(brightnessView.snp.bottom).offset(SCRYFrom(20))
+        }
+        
+        illuminationTipLabel = UILabel(text: "illumination_fluctuation_range_tip".localizedString, textColor: SubText_Color, fontSize: 12)
+        contentView.addSubview(illuminationTipLabel)
+        illuminationTipLabel.snp.makeConstraints { make in
+            make.top.equalTo(illuminationTitleLabel.snp.bottom).offset(SCRYFrom(3))
+            make.left.equalTo(illuminationTitleLabel)
+        }
+        
+        illuminationLabel = UILabel(text: "△\(parameterData.illuminationDelta)", textColor: TextBlack_Color, fontSize: 14, fontWeight: .light)
+        contentView.addSubview(illuminationLabel)
+        illuminationLabel.snp.makeConstraints { make in
+            make.right.equalTo(brightnessLabel)
+            make.top.equalTo(illuminationTipLabel.snp.bottom)
+        }
+        
+        illuminationView = DeviceSliderFunctionView(frame: .zero, title: "", value: Int(parameterData.illuminationDelta), functionType: .level(min: 0, max: 500, step: 1))
+        illuminationView.minLabel.isHidden = true
+        illuminationView.maxLabel.isHidden = true
+        illuminationView.minusBtn.setImage(UIImage(named: "scene_data_value_minus"), for: .normal)
+        illuminationView.addBtn.setImage(UIImage(named: "scene_data_value_add"), for: .normal)
+        illuminationView.lineView.isHidden = true
+        illuminationView.titleLabel.isHidden = true
+        illuminationView.valueChangedCallback = {[weak self] value in
+            self?.illuminationLabel.text = "△\(value)"
+        }
+        contentView.addSubview(illuminationView)
+        illuminationView.snp.makeConstraints { make in
+            make.left.right.height.equalTo(brightnessView)
+            make.top.equalTo(illuminationTitleLabel.snp.bottom).offset(SCRYFrom(44))
+        }
+        illuminationView.minusBtn.snp.remakeConstraints { make in
+            make.left.equalToSuperview()
+            make.centerY.equalToSuperview()
+        }
+        illuminationView.addBtn.snp.remakeConstraints { make in
+            make.right.equalToSuperview()
+            make.centerY.equalToSuperview()
+        }
+        illuminationView.slider.snp.remakeConstraints { make in
+            make.left.equalTo(SCRXFrom(48))
+            make.right.equalTo(SCRXFrom(-47))
+            make.top.bottom.equalToSuperview()
+        }
+        
+        illuminationTagsView = UIStackView()
+        illuminationTagsView.axis = .horizontal
+        illuminationTagsView.spacing = SCRXFrom(10)
+        illuminationTagsView.distribution = .fillEqually
+        contentView.addSubview(illuminationTagsView)
+        illuminationTagsView.snp.makeConstraints { make in
+            make.left.right.equalTo(illuminationView)
+            make.top.equalTo(illuminationView.snp.bottom).offset(SCRYFrom(8))
+            make.height.equalTo(SCRYFrom(30))
+        }
+        
         notificationLabel = UILabel(text: "notification_volume".localizedString, textColor: ImportantText_Color, fontSize: 15)
         contentView.addSubview(notificationLabel)
         notificationLabel.snp.makeConstraints { make in
             make.left.equalTo(SCRXFrom(20))
-            make.top.equalTo(titleLabel.snp.bottom).offset(SCRYFrom(20))
+            make.top.equalTo(illuminationTagsView.snp.bottom).offset(SCRYFrom(27))
         }
         
         notificationSwitch = UISwitch()
@@ -250,7 +412,7 @@ class DeviceAddParameterSettingsView: UIView {
         volumeLabel = UILabel(text: "\(parameterData.volume)%", textColor: TextBlack_Color, fontSize: 14, fontWeight: .light)
         contentView.addSubview(volumeLabel)
         volumeLabel.snp.makeConstraints { make in
-            make.right.equalTo(SCRXFrom(-47))
+            make.right.equalTo(illuminationLabel)
             make.top.equalTo(notificationSwitch.snp.bottom).offset(SCRYFrom(8))
         }
         
@@ -295,6 +457,7 @@ class DeviceAddParameterSettingsView: UIView {
         vibrationLabel.snp.makeConstraints { make in
             make.left.equalTo(notificationLabel)
             make.top.equalTo(volumeSliderView.snp.bottom).offset(SCRYFrom(27))
+            make.bottom.equalTo(SCRYFrom(-37))
         }
         
         vibrationSwitch = UISwitch()
@@ -306,6 +469,23 @@ class DeviceAddParameterSettingsView: UIView {
             make.centerY.equalTo(vibrationLabel)
         }
         
+        if !showBrightness {
+            brightnessTitleLabel.isHidden = true
+            brightnessLabel.isHidden = true
+            brightnessView.isHidden = true
+            illuminationTitleLabel.snp.remakeConstraints({ make in
+                make.left.equalTo(SCRXFrom(20))
+                make.top.equalTo(titleLabel.snp.bottom).offset(SCRYFrom(16))
+            })
+        }
+        
+        if isIPad {
+            vibrationLabel.isHidden = true
+            vibrationSwitch.isHidden = true
+            vibrationSwitch.isOn = false
+        }
+        
+        setupIlluminationTags()
         
 //        // 添加系统音量滑块（会显示系统音量UI）
 //        let volumeView = MPVolumeView(frame: CGRect(x: 0, y: 0, width: 100, height: 100))
@@ -313,6 +493,20 @@ class DeviceAddParameterSettingsView: UIView {
 //        contentView.addSubview(volumeView)
 //        volumeView.vol
     }
+    
+    private func setupIlluminationTags() {
+        
+        illuminationTags.enumerated().forEach { (index, data) in
+            let button = UIButton(title: data.title, titleSize: 14, titleWeight: .light, titleColor: Bar_Color, target: self, action: #selector(illuminationBtnAction))
+            button.tag = 100 + index
+            button.layer.borderColor = Bar_Color.withAlphaComponent(0.5).cgColor
+            button.layer.borderWidth = 0.6
+            button.layer.cornerRadius = SCRYFrom(15)
+            illuminationTagsView.addArrangedSubview(button)
+        }
+        
+    }
+    
 }
 
 class VolumeManager {

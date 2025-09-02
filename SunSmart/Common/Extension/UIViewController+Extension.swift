@@ -224,4 +224,126 @@ extension UINavigationController {
     }
     
     
+    /// 显示自动化浮窗（顶部）
+    /// - Parameters:
+    ///   - messsage: 提示内容
+    ///   - exitCallback: 退出回调
+    func showAutomaticHud(messsage: String, exitCallback: (()->Void)?) {
+        
+        navigationBar.transform = CGAffineTransform(translationX: 0, y: 32)
+        
+        topViewController?.additionalSafeAreaInsets.top = 44
+        
+        let bannerHud = BannerAutomaticHud(frame: CGRect(x: self.view.x, y: 0, width: self.view.width, height: self.view.height + kNavigationHeight))
+        bannerHud.messageLabel.text = messsage
+        bannerHud.exitCallback = {[weak self] in
+            self?.hideAutomaticHud()
+            exitCallback?()
+        }
+        UIApplication.shared.keyWindow().addSubview(bannerHud)
+        
+    }
+    
+    /// 关闭自动化浮窗
+    func hideAutomaticHud() {
+        navigationBar.transform = .identity
+        topViewController?.additionalSafeAreaInsets.top = 0
+        
+        let hud = currentAutomaticBannerHud()
+        hud?.removeFromSuperview()
+    }
+    
+    /// 当前显示的自动化浮窗
+    func currentAutomaticBannerHud() -> BannerAutomaticHud? {
+        return UIApplication.shared.keyWindow().subviews.first(where: { $0.isKind(of: BannerAutomaticHud.classForCoder()) }) as? BannerAutomaticHud
+    }
+    
+}
+
+class BannerAutomaticHud: UIView {
+    
+    private var statusBarView: UIView!
+    var shadeView: UIView!
+    var bannerView: UIView!
+    var messageLabel: UILabel!
+    var exitBtn: UIButton!
+    var exitCallback: (()->Void)?
+    
+    override init(frame: CGRect) {
+        super.init(frame: frame)
+        
+        
+        seutpUI()
+    }
+    
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
+    
+    override func layoutSubviews() {
+        super.layoutSubviews()
+        
+        bannerView.addRoundedCorners(corners: [.topLeft, .topRight], cornerRadii: CGSize(width: 20, height: 20))
+    }
+    
+    @objc private func exitBtnAction() {
+        exitCallback?()
+    }
+    
+    private func seutpUI() {
+        
+        statusBarView = UIView()
+        statusBarView.backgroundColor = .black
+        addSubview(statusBarView)
+        statusBarView.snp.makeConstraints { make in
+            make.top.left.right.equalToSuperview()
+            make.height.equalTo(44)
+        }
+        
+        bannerView = UIView()
+        bannerView.backgroundColor = Background_Color
+        addSubview(bannerView)
+        bannerView.snp.makeConstraints { make in
+            make.left.right.equalToSuperview()
+            make.top.equalTo(statusBarView.snp.bottom)
+            make.height.equalTo(SCRYFrom(44))
+        }
+        
+        messageLabel = UILabel(text: nil, textColor: Red_Color, fontSize: 12, fit: false)
+        messageLabel.textAlignment = .left
+        messageLabel.numberOfLines = 0
+        bannerView.addSubview(messageLabel)
+        messageLabel.snp.makeConstraints { make in
+            make.left.equalTo(SCRXFrom(16))
+            make.right.equalTo(SCRXFrom(-110))
+            make.centerY.equalToSuperview()
+        }
+        
+        exitBtn = UIButton(title: "exit".localizedString, titleSize: 14, titleColor: .white, fit: false, target: self, action: #selector(exitBtnAction))
+        exitBtn.backgroundColor = Bar_Color
+        exitBtn.layer.cornerRadius = SCRYFrom(16)
+        bannerView.addSubview(exitBtn)
+        exitBtn.snp.makeConstraints { make in
+            make.right.equalTo(SCRXFrom(-16))
+            make.centerY.equalToSuperview()
+            make.width.equalTo(SCRXFrom(64))
+            make.height.equalTo(SCRYFrom(32))
+        }
+        
+        shadeView = UIView()
+        shadeView.backgroundColor = RGB(0, 0, 0, 0.1)
+        addSubview(shadeView)
+        shadeView.snp.makeConstraints { make in
+            make.left.right.bottom.equalToSuperview()
+            make.top.equalTo(bannerView.snp.bottom)
+        }
+        
+        
+    }
+    
+    
+    
+    
+    
+    
 }

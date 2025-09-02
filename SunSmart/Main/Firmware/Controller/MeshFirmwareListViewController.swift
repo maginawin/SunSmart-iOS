@@ -215,17 +215,12 @@ class MeshFirmwareListViewController: UIViewController {
                 if cacheVersion != nil, let nodeVersion = node.firmwareVersion {
                     enableUpgrade = cacheVersion!.compare(nodeVersion, options: .numeric) == .orderedDescending
                 }
+                node.enableUpgrade = enableUpgrade
                 if let deviceTypeData = deviceTypes.first(where: { $0.productId == node.productIdentifier }) {
                     deviceTypeData.nodes.append(node)
-                    if enableUpgrade {
-                        deviceTypeData.upgradedNodes.append(node)
-                    }
                 }else {
                     let data = FirmwareUpdateTypeData(productId: pid, targetVersion: localFirmwareData?.version, nodes: [node])
                     data.targetVersionHash = localFirmwareData?.compositionHash
-                    if enableUpgrade {
-                        data.upgradedNodes.append(node)
-                    }
                     deviceTypes.append(data)
                 }
                 //                }
@@ -245,7 +240,7 @@ class MeshFirmwareListViewController: UIViewController {
                 if $0.targetVersion == nil {
                     $0.versionState = .none
                 }else {
-                    if $0.upgradedNodes.count > 0 {
+                    if $0.canUpgradNodes.count > 0 {
                         $0.versionState = .updatable
                     }else {
                         $0.versionState = .latest

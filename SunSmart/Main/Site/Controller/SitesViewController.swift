@@ -94,11 +94,18 @@ class SitesViewController: UIViewController {
         setupUI()
         setupData()
         
+        
+//        let reinstallation = UserData.isReinstallation
 //        print(UserData.currentUserId, UserData.currentUserName, UserData.currentServerRegion)
         
      
 //        allSitesTableView.tableHeaderView = allSitesNoInternetView
 //        favouritesTableView.tableHeaderView = favouritesNoInternetView
+        
+        // 重装APP把服务器内的site本地地址都切换
+        if UserData.isReinstallation {
+            UserData.siteChangeAddressRegions = ServerRegion.defaultRegions
+        }
         
         if Keychain.getServerRegion() == nil { // 还未选择服务器地区
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
@@ -116,6 +123,7 @@ class SitesViewController: UIViewController {
         // 获取设备配置数据
         loadMeshDeviceConfigRequest()
     }
+    
     
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
@@ -178,7 +186,9 @@ class SitesViewController: UIViewController {
                 }
                 
             }else { // 有网络=>无网络
-                SRAlertView(title: "notification".localizedString, message: "phone_network_disconnect".localizedString, actions: [.init(title: "confirm".localizedString)]).show()
+                if SRAlertView.getCurrentAlertView() == nil {
+                    SRAlertView(title: "notification".localizedString, message: "phone_network_disconnect".localizedString, actions: [.init(title: "confirm".localizedString)]).show()
+                }
                 if view.window !=  nil, XWHUDManager.isVisible() {
                     XWHUDManager.hideInView(with: self.view)
                 }
@@ -273,14 +283,24 @@ class SitesViewController: UIViewController {
                 if let siteDatas = JSON(response)["data"]["sites"].arrayObject as? [[String: Any]] {
                     Task {
                         var sites: [SiteData] = []
+                        // 是否修改site本地地址
+                        var changeAddress = false
+                        // 服务器地区需要修改site地址
+                        if let index = UserData.siteChangeAddressRegions.firstIndex(of: UserData.currentServerRegion) {
+                            changeAddress = true
+                            var regions = UserData.siteChangeAddressRegions
+                            regions.remove(at: index)
+                            UserData.siteChangeAddressRegions = regions
+                        }
+                        
                         // 导入site数据属于耗时操作，等待异步线程完成
                         print("导入数据: \(Date().timeIntervalSince1970)")
-                        let reinstallation = UserData.isReinstallation
+
                         await withTaskGroup(of: SiteData?.self) { group in
                             for data in siteDatas {
                                 group.addTask {
                                     // 异步处理每个数据
-                                    return await SiteData.import(siteJsonData: data, changeAddress: reinstallation)
+                                    return await SiteData.import(siteJsonData: data, changeAddress: changeAddress)
                                 }
                             }
                             // 收集结果
@@ -489,7 +509,8 @@ class SitesViewController: UIViewController {
 //        guard let space = SpaceData.load(siteId: "25300E88-41F0-456E-A0A9-AD615069017C", spaceId: "88BF1DEC-264E-4D00-A93C-729A88030D58").first else {
 //            return
 //        }
-
+//        guard let space = allSites.last?.spaces.first else { return }
+        
 //        DispatchQueue.global().async {
 //            MeshLibManager.manager.setMeshNetworkConnected(meshUUID: space.meshUUID, subNetworkId: space.meshNetworkId)
 //            DispatchQueue.main.async {
@@ -500,7 +521,10 @@ class SitesViewController: UIViewController {
 //                self.present(NavigationViewController(rootViewController: vc), animated: true)
 //            }
 //        }
-//        self.present(NavigationViewController(rootViewController: GatewayViewController(node: )), animated: true)
+        
+//        let vc = DeviceRestoreViewController(space: space, restoreMode: .default)
+//        vc.automationRestore = true
+//        self.present(NavigationViewController(rootViewController: vc), animated: true)
         
         ImportProjectView {[weak self] mode in
             if mode == .scanQRCode {

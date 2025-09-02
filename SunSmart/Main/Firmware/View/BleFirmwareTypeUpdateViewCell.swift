@@ -19,6 +19,12 @@ protocol BleFirmwareTypeUpdateViewCellDelegate: AnyObject {
     /// 设备开始升级
     func cell(_ cell: BleFirmwareTypeUpdateViewCell, startUpgraded device: Node)
     
+    /// 设备停止等待
+    func cell(cell: BleFirmwareTypeUpdateViewCell, stopWaitAction device: Node)
+    
+    /// 设备取消升级
+    func cell(cell: BleFirmwareTypeUpdateViewCell, cancelUpdateAction device: Node)
+    
     /// 设备升级失败原因
     func cell(_ cell: BleFirmwareTypeUpdateViewCell, failureReasonAction device: Node)
     
@@ -51,7 +57,7 @@ class BleFirmwareTypeUpdateViewCell: UICollectionViewCell {
     private var totalLabel: UILabel!
     private var totalNumberLabel: UILabel!
     private var upgradedLabel: UILabel!
-    private var upgradedNumberLabel: UILabel!
+    var upgradedNumberLabel: UILabel!
     
     /// 设备列表
     var deviceTableView: UITableView!
@@ -74,10 +80,11 @@ class BleFirmwareTypeUpdateViewCell: UICollectionViewCell {
             targetVersionLabel.text = firmwareTypeData.targetVersion ?? "none".localizedString
             
             totalNumberLabel.text = "\(firmwareTypeData.nodes.count)"
-            if let targetVersion = firmwareTypeData.targetVersion{
+            if firmwareTypeData.targetVersion != nil {
                 
                 // 已升级的设备
-                let upgradedCount = firmwareTypeData.nodes.filter({ $0.firmwareVersion != nil && targetVersion.compare($0.firmwareVersion!, options: .numeric) == .orderedSame }).count
+                let upgradedCount = firmwareTypeData.upgradedNodes.count
+//                firmwareTypeData.nodes.filter({ $0.firmwareVersion != nil && targetVersion.compare($0.firmwareVersion!, options: .numeric) == .orderedSame }).count
                 
 //                let  firmwareTypeData.nodes.count - firmwareTypeData.upgradedNodes.count
                 upgradedNumberLabel.text = "\(upgradedCount)"
@@ -157,6 +164,16 @@ class BleFirmwareTypeUpdateViewCell: UICollectionViewCell {
         
 //        CATransaction.commit()
 //        self.layoutIfNeeded()
+    }
+    
+    /// 刷新设备UI
+    func reload(device: Node) {
+        if firmwareTypeData.isShow, let index = firmwareTypeData.nodes.firstIndex(of: device) {
+            if let cell = deviceTableView.cellForRow(at: IndexPath(row: index, section: 0)) as? BleFirmwareUpdateDeviceCell {
+                cell.device = device
+            }
+//            deviceTableView.reloadRows(at: [IndexPath(row: index, section: 0)], with: .none)
+        }
     }
     
     /// 展开/收起
@@ -454,6 +471,16 @@ extension BleFirmwareTypeUpdateViewCell: BleFirmwareUpdateDeviceCellDelegate {
         delegate?.cell(self, startUpgraded: device)
     }
     
+    /// 停止等待点击回调
+    func cell(cell: BleFirmwareUpdateDeviceCell, stopWaitAction device: Node) {
+        delegate?.cell(cell: self, stopWaitAction: device)
+    }
+    
+    /// 停止设备升级点击回调
+    func cell(cell: BleFirmwareUpdateDeviceCell, cancelUpdateAction device: Node) {
+        delegate?.cell(cell: self, cancelUpdateAction: device)
+    }
+    
     /// 失败原因点击回调
     func cell(cell: BleFirmwareUpdateDeviceCell, failureReasonAction device: Node) {
         delegate?.cell(self, failureReasonAction: device)
@@ -514,6 +541,12 @@ protocol BleFirmwareUpdateDeviceCellDelegate: AnyObject {
     /// 开始升级点击回调
     func cell(cell: BleFirmwareUpdateDeviceCell, startUpgradeAction device: Node)
     
+    /// 停止等待点击回调
+    func cell(cell: BleFirmwareUpdateDeviceCell, stopWaitAction device: Node)
+    
+    /// 停止设备升级点击回调
+    func cell(cell: BleFirmwareUpdateDeviceCell, cancelUpdateAction device: Node)
+    
     /// 失败原因点击回调
     func cell(cell: BleFirmwareUpdateDeviceCell, failureReasonAction device: Node)
 }
@@ -527,6 +560,9 @@ class BleFirmwareUpdateDeviceCell: UITableViewCell {
     private var versionLabel: UILabel!
     private var updateStateBtn: UIButton!
     
+    private var progressLabel: UILabel!
+    private var progressView: RoundProgressView!
+    
     weak var delegate: BleFirmwareUpdateDeviceCellDelegate?
     
     var device: Node! {
@@ -536,7 +572,8 @@ class BleFirmwareUpdateDeviceCell: UITableViewCell {
             
             selectedImageView.isHidden = !device.enableUpgrade
             updateStateBtn.isHidden = !device.enableUpgrade
-            
+            progressView.isHidden = true
+            progressLabel.isHidden = true
             
             switch device.updateState {
             case .none:
@@ -551,6 +588,19 @@ class BleFirmwareUpdateDeviceCell: UITableViewCell {
                     }
                     updateStateBtn.setImage(UIImage(named: "firmware_update"), for: .normal)
                 }
+                progressView.progress = 0
+            case .await:
+                selectedImageView.image = UIImage(named: "device_select_disable")
+                updateStateBtn.setImage(UIImage(named: "device_add_waiting"), for: .normal)
+                
+            case .updating(let progress):
+                progressView.isHidden = false
+                progressView.progress = Float(progress) / 100.0
+                progressLabel.text = "\(progress)%"
+                progressLabel.isHidden = false
+                updateStateBtn.setImage(nil, for: .normal)
+//                updateStateBtn.isHidden = true
+                selectedImageView.image = UIImage(named: "device_select_disable")
             case .successful:
                 selectedImageView.isHidden = true
                 updateStateBtn.isHidden = false
@@ -598,6 +648,10 @@ class BleFirmwareUpdateDeviceCell: UITableViewCell {
         switch device.updateState {
         case .none:
             delegate?.cell(cell: self, startUpgradeAction: device)
+        case .await:
+            delegate?.cell(cell: self, stopWaitAction: device)
+        case .updating:
+            delegate?.cell(cell: self, cancelUpdateAction: device)
         case .failure:
             delegate?.cell(cell: self, failureReasonAction: device)
         default:
@@ -639,13 +693,6 @@ class BleFirmwareUpdateDeviceCell: UITableViewCell {
             make.top.equalTo(nameLabel.snp.bottom).offset(SCRYFrom(3))
         }
         
-        versionLabel = UILabel(text: "1.0.0", textColor: SubText_Color, fontSize: 13, fontWeight: .light)
-        contentView.addSubview(versionLabel)
-        versionLabel.snp.makeConstraints { make in
-            make.centerX.equalTo(self.snp.right).offset(SCRXFrom(-77))
-            make.centerY.equalToSuperview()
-        }
-        
         updateStateBtn = UIButton(normalImageName: "firmware_update", target: self, action: #selector(updateStateBtnAction))
         contentView.addSubview(updateStateBtn)
         updateStateBtn.snp.makeConstraints { make in
@@ -653,6 +700,28 @@ class BleFirmwareUpdateDeviceCell: UITableViewCell {
             make.centerY.equalToSuperview()
         }
         
+        versionLabel = UILabel(text: "1.0.0", textColor: SubText_Color, fontSize: 13, fontWeight: .light)
+        contentView.addSubview(versionLabel)
+        versionLabel.snp.makeConstraints { make in
+            make.right.equalTo(updateStateBtn.snp.left).offset(SCRXFrom(-17))
+            make.centerY.equalToSuperview()
+        }
+        
+        progressView = RoundProgressView(frame: .zero, progressColor: Bar_Color, roundColor: RGB(204, 206, 227), lineWidth: 2)
+        progressView.isUserInteractionEnabled = false
+        progressView.isHidden = true
+        contentView.addSubview(progressView)
+        progressView.snp.makeConstraints { make in
+            make.center.equalTo(updateStateBtn)
+            make.width.height.equalTo(26)
+        }
+        
+        progressLabel = UILabel(text: "", textColor: .black, fontSize: 8, fontWeight: .light, fit: false)
+        progressLabel.isHidden = true
+        contentView.addSubview(progressLabel)
+        progressLabel.snp.makeConstraints { make in
+            make.center.equalTo(progressView)
+        }
         
     }
 }

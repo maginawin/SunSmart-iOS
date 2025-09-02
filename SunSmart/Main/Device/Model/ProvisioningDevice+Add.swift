@@ -154,10 +154,20 @@ extension ProvisioningDevice {
         }
     }
     
+    /// 设备是否触发中（1.5s内）
+    var isActivitying: Bool {
+        guard let activityDate = self.activityDate else {
+            return false
+        }
+        return Date().distance(to: activityDate) < 1.5
+    }
+    
     /// 更新数据 rssi/触发类型（适用于搜索到重复设备时）
     func updateData(device: ProvisioningDevice) {
-        self.triggerActionTypes = device.triggerActionTypes
-        self.activityDate = device.activityDate
+        if device.triggerActionTypes.count > 0 || !device.isActivitying {
+            self.triggerActionTypes = device.triggerActionTypes
+            self.activityDate = device.activityDate
+        }
         self.rssi = device.rssi
         self.deviceName = device.deviceName
         self.elementCount = self.elementCount

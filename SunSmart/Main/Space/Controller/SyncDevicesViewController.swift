@@ -48,6 +48,11 @@ class SyncDevicesViewController: UIViewController {
     /// 更新版本的设备地址
     private var updateVersionAddresses: [Address] = []
     
+    /// 自动化恢复
+    var automationRestore: Bool = false
+    /// 重试次数
+    private var retryCount: Int = 0
+    
     init(type: SyncType, reSync: Bool = false) {
         
         self.type = type
@@ -69,6 +74,10 @@ class SyncDevicesViewController: UIViewController {
         
         navigationItem.leftBarButtonItem = UIBarButtonItem(customView: backBtn)
         navigationItem.rightBarButtonItem = UIBarButtonItem(title: "re_sync".localizedString, color: Title_Color, font: UIFont.systemFont(ofSize: 16, weight: .light), target: self, sel: #selector(rightItemAction))
+        
+        if automationRestore {
+            retryCount = 2
+        }
         
         setupUI()
         
@@ -1117,19 +1126,34 @@ class SyncDevicesViewController: UIViewController {
             DispatchQueue.main.async {
                 self.tableView.reloadData()
                 self.updateSyncStateUI()
+                
                 // 通知space数据修改
                 NotificationCenter.default.post(name: .init(spaceDataChangedNotificaitonName), object: SpaceChangeDataType.device)
+                
                 if self.syncState == .syncSuccess {
                     // 同步完成回调
                     self.syncSuccessCallback?(self.type)
                     if let progressView = SyncDevicesProgressView.current() {
                         progressView.hide()
                     }
-                }else {
+                }else { // 同步失败
                     if let progressView = SyncDevicesProgressView.current() {
                         progressView.reload()
                     }
+                    if self.automationRestore { // 自动化恢复流程
+                        if self.retryCount <= 0 { // 重试机会已用完
+                            self.navigationController?.hideAutomaticHud()
+                            // 退出到ble页面
+                            self.navigationController?.popToViewController(vcClass: BleFirmwareUpdateViewController.classForCoder())
+                        }else {
+                            // 模拟点击重试
+                            self.retryCount -= 1
+                            self.selectAllBtnAction(sender: self.selectAllBtn)
+                            self.rightItemAction()
+                        }
+                    }
                 }
+              
 //                self.bottomView.isHidden = self.syncState != .syncFailure
             }
             

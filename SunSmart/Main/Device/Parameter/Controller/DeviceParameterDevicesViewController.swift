@@ -59,8 +59,7 @@ class DeviceParameterDevicesViewController: UIViewController {
     /// 设置失败的设备list
 //    private var settingFailedNodes: [(Node, [DeviceParameterType])] = []
     
-    /// 设备参数list
-//    private var deviceParameterDatas: [Address: (pwm: UInt16?, ratedPower: Int?)] = [:]
+    private var meshNetworkConnectedObservation: NSKeyValueObservation?
     
     let devices: [Node]
     
@@ -104,7 +103,14 @@ class DeviceParameterDevicesViewController: UIViewController {
         
         groupDatas.sort(by: { $0.groupAddress < $1.groupAddress })
         
-        MeshLibManager.manager.addObserver(self, forKeyPath: "isMeshNetworkConnected", context: nil)
+        
+        // mesh网络连接观察者
+        meshNetworkConnectedObservation = MeshLibManager.manager.observe(\.isMeshNetworkConnected, options: [.new], changeHandler: { _, _ in
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {[weak self] in
+                self?.updateUI()
+            }
+        })
+        
         
         setupFilterData()
         
@@ -150,11 +156,8 @@ class DeviceParameterDevicesViewController: UIViewController {
     }
     
     deinit {
-        MeshLibManager.manager.removeObserver(self, forKeyPath: "isMeshNetworkConnected")
-    }
-    
-    override func observeValue(forKeyPath keyPath: String?, of object: Any?, change: [NSKeyValueChangeKey : Any]?, context: UnsafeMutableRawPointer?) {
-        updateUI()
+        meshNetworkConnectedObservation = nil
+//        MeshLibManager.manager.removeObserver(self, forKeyPath: "isMeshNetworkConnected")
     }
     
     private func updateUI() {

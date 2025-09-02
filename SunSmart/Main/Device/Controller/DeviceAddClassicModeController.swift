@@ -438,7 +438,7 @@ class DeviceAddClassicModeController: UIViewController {
         guard state == .adding else {
             return
         }
-        TestDeviceAddManager.manager.cancelAwaitOperations()
+//        TestDeviceAddManager.manager.cancelAwaitOperations()
         
         MeshAPI.cancelFastAddAwaitOperations()
         let waitDevices = showDevices.filter({ $0.addState == .wait })
@@ -708,9 +708,9 @@ class DeviceAddClassicModeController: UIViewController {
 //                appendMessages.append(MeshMessageHandle(message: GenericDefaultTransitionTimeSet(transitionTime: .default), model: defaultTransitionTimeModel))
 //            }
             // 节点数据hash
-            if let vendorModel = node.sunricherVendorModel {
-                appendMessages.append(MeshMessageHandle(message: SunricherVendorGet(function: .compositionHash), model: vendorModel))
-            }
+//            if let vendorModel = node.sunricherVendorModel {
+//                appendMessages.append(MeshMessageHandle(message: SunricherVendorGet(function: .compositionHash), model: vendorModel))
+//            }
             
             if device.deviceType == .gateway, let mac = node.macAddress, NetworkRequest.shared.networkable {
                 Task {

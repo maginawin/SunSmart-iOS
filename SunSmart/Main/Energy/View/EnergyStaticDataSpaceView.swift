@@ -314,11 +314,11 @@ extension EnergyStaticDataSpaceView: UITableViewDataSource, UITableViewDelegate 
                     energySaving = 0
                     energySavingPercentage = 0
                 }
-                totalEnergyCell.totalEnergyDataLabel.text = String(format: "%.2f kWh", totalEnergy)
-                totalEnergyCell.maxRatedEnergyDataLabel.text = String(format: "%.2f kWh", maxTotalEnergyUse)
-                totalEnergyCell.ratedPowerBtn.setTitle(String(format: "%.2f kW", totalRatedPower), for: .normal)
+                totalEnergyCell.totalEnergyDataLabel.text = String(format: "%.3f kWh", totalEnergy)
+                totalEnergyCell.maxRatedEnergyDataLabel.text = String(format: "%.3f kWh", maxTotalEnergyUse)
+                totalEnergyCell.ratedPowerBtn.setTitle(String(format: "%.3f kW", totalRatedPower), for: .normal)
                 totalEnergyCell.economyPercentageBtn.setTitle(String(format: "%.1f%%", energySavingPercentage), for: .normal)
-                totalEnergyCell.economyValueBtn.setTitle(String(format: "%.2f kWh", energySaving), for: .normal)
+                totalEnergyCell.economyValueBtn.setTitle(String(format: "%.3f kWh", energySaving), for: .normal)
                 
             }else {
                 totalEnergyCell.totalEnergyDataLabel.text = "--"
@@ -344,7 +344,7 @@ extension EnergyStaticDataSpaceView: UITableViewDataSource, UITableViewDelegate 
                         preciseTotalEnergyUse = 0
                     }
                     
-                    historyEnergyCell.harvestDataLabel.text = String(format: "%.2f kWh", preciseTotalEnergyUse)
+                    historyEnergyCell.harvestDataLabel.text = String(format: "%.3f kWh", preciseTotalEnergyUse)
                     historyEnergyCell.timeLabel.text = String.dateConvert(timestamp: "\(harvestData.timestamp)", dateFormat: "MMMM d, yyyy, hh:mm a")
                     historyEnergyCell.incompleteImageView.isHidden = !harvestData.incomplete
                 }else {
@@ -360,7 +360,7 @@ extension EnergyStaticDataSpaceView: UITableViewDataSource, UITableViewDelegate 
                     if statisticsType == .realPower {
                         preciseTotalEnergyUse = 0
                     }
-                    historyEnergyCell.harvestDataLabel.text = String(format: "%.2f kWh", preciseTotalEnergyUse)
+                    historyEnergyCell.harvestDataLabel.text = String(format: "%.3f kWh", preciseTotalEnergyUse)
                     historyEnergyCell.timeLabel.text = String.dateConvert(timestamp: "\(harvestData.timestamp)", dateFormat: "MMMM d, yyyy, hh:mm a")
                     historyEnergyCell.incompleteImageView.isHidden = !harvestData.incomplete
                 }else {
@@ -376,7 +376,7 @@ extension EnergyStaticDataSpaceView: UITableViewDataSource, UITableViewDelegate 
                     if statisticsType == .realPower {
                         kwh = 0
                     }
-                    historyEnergyCell.harvestDataLabel.text = String(format: "%.2f kWh", kwh)
+                    historyEnergyCell.harvestDataLabel.text = String(format: "%.3f kWh", kwh)
                     
                     let interval = latestHarvestData.timestamp - previousHarvestData.timestamp
                     historyEnergyCell.timeLabel.text = String(format: "hour_minutes_interval".localizedString, interval / 3600, interval % 3600 / 60)

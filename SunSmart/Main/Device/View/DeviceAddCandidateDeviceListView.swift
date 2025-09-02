@@ -12,6 +12,9 @@ protocol DeviceAddCandidateDeviceListViewDelegate: AnyObject {
     
     /// 设备开始identity
     func candidateView(_ view: DeviceAddCandidateDeviceListView, identify device: ProvisioningDevice)
+ 
+    /// 开始扫描
+    func candidateViewStartScan(_ view: DeviceAddCandidateDeviceListView)
     
     /// 停止扫描
     func candidateViewStopScan(_ view: DeviceAddCandidateDeviceListView)
@@ -40,6 +43,7 @@ class DeviceAddCandidateDeviceListView: UIView {
     private var addDeviceToLabel: UILabel!
     private var addDeviceTargetBtn: UIButton!
     private var pauseBtn: UIButton!
+    private var scanBtn: UIButton!
     /// 设备列表
     private var tableView: UITableView!
     /// 添加设备结果
@@ -111,7 +115,14 @@ class DeviceAddCandidateDeviceListView: UIView {
     /// 是否光感添加模式
     var lightSeningMode: Bool = false {
         didSet {
-            
+            if lightSeningMode != oldValue {
+                
+                pauseBtn.snp.updateConstraints { make in
+                    make.right.equalTo(SCRXFrom(lightSeningMode ? -98 : -16))
+                }
+                
+                updateUIState()
+            }
         }
     }
     
@@ -124,7 +135,7 @@ class DeviceAddCandidateDeviceListView: UIView {
             }else {
                 pauseBtn.setImage(UIImage(named: "device_add_pause"), for: .normal)
             }
-            promptView?.isHidden = candidateDevices.isEmpty || state != .scanning || !isRefresh || !addResultView.isHidden
+            promptView?.isHidden = candidateDevices.isEmpty || state != .scanning || (!isRefresh && !lightSeningMode) || !addResultView.isHidden
             tableView.reloadData()
             updateUIState()
             updateFooterViewState()
@@ -288,12 +299,15 @@ class DeviceAddCandidateDeviceListView: UIView {
         updateUIState()
     }
     
-    /// 停止扫描
-    @objc private func stopScanBtnAction() {
-        state = .none
-        updateUIState()
-        tableView.reloadData()
-        delegate?.candidateViewStopScan(self)
+    @objc private func scanBtnClick(sender: UIButton) {
+        if sender.isSelected {
+//            state = .none
+//            updateUIState()
+//            tableView.reloadData()
+            delegate?.candidateViewStopScan(self)
+        }else {
+            delegate?.candidateViewStartScan(self)
+        }
     }
     
     @objc private func pauseBtnAction(sender: UIButton) {
@@ -317,11 +331,15 @@ class DeviceAddCandidateDeviceListView: UIView {
     /// 更新UI
     private func updateUIState() {
         pauseBtn.isEnabled = true
-        revokeBtn.isHidden = !(state == .scanning && isRefresh)
+        revokeBtn.isHidden = !(state == .scanning && (isRefresh || lightSeningMode))
         revokeBtn.isEnabled = showDevices.contains(where: { $0.selectedState == .selected })
         footerView.addSelectedBtn.isHidden = !revokeBtn.isHidden
+        promptView?.promptLabel.text = lightSeningMode ? "device_add_stop_scan_message".localizedString : "device_add_pause_message".localizedString
         
         pauseBtn.isHidden = state != .scanning
+        scanBtn.isHidden = !lightSeningMode
+        scanBtn.isEnabled = true
+        scanBtn.isSelected = state == .scanning
         
         if candidateDevices.isEmpty {
             footerView.isHidden = true
@@ -346,6 +364,7 @@ class DeviceAddCandidateDeviceListView: UIView {
                             make.height.equalTo(SCRYFrom(72))
                         }
                     }
+                    scanBtn.isEnabled = false
                     pauseBtn.isEnabled = false
                     addResultView.closeBtn.isHidden = true
                     addResultView.stopAddBtn.isHidden = !showDevices.contains(where: { $0.addState == .wait})
@@ -421,7 +440,7 @@ class DeviceAddCandidateDeviceListView: UIView {
 //            make.width.equalTo(SCRXFrom(128))
 //            make.height.equalTo(SCRYFrom(32))
 //        }
-        promptView?.isHidden = showCandidateCount == 0 || state != .scanning || !isRefresh || !addResultView.isHidden
+        promptView?.isHidden = showCandidateCount == 0 || state != .scanning || (!isRefresh && !lightSeningMode) || !addResultView.isHidden
         
     }
     
@@ -481,7 +500,7 @@ class DeviceAddCandidateDeviceListView: UIView {
         contentView.addSubview(addDeviceTargetBtn)
         addDeviceTargetBtn.snp.makeConstraints { make in
 //            make.right.equalTo(SCRXFrom(-16))
-            make.left.equalTo(addDeviceToLabel.snp.right).offset(SCRXFrom(21))
+            make.left.equalTo(addDeviceToLabel.snp.right).offset(SCRXFrom(12))
             make.top.equalTo(candidateBtn.snp.bottom)
             make.width.equalTo(SCRXFrom(isIPad ? 200 : 128))
             make.height.equalTo(SCRYFrom(32))
@@ -492,6 +511,24 @@ class DeviceAddCandidateDeviceListView: UIView {
         addDeviceTargetBtn.imageEdgeInsets = UIEdgeInsets(top: 0, left: addDeviceTargetBtn.width - imageW, bottom: 0, right: 0)
         addDeviceTargetBtn.titleEdgeInsets = UIEdgeInsets(top: 0, left: SCRXFrom(8) - imageW, bottom: 0, right: imageW + SCRXFrom(6))
         
+        scanBtn = UIButton(title: "scan".localizedString, titleSize: 13, titleColor: Bottom_Done_Color, normalImageName: "device_scan", target: self, action: #selector(scanBtnClick))
+        scanBtn.setTitle("stop".localizedString, for: .selected)
+        scanBtn.setTitleColor(Purple_Color.withAlphaComponent(0.5), for: .disabled)
+        scanBtn.layer.cornerRadius = SCRYFrom(5)
+        scanBtn.layer.borderWidth = 1
+        scanBtn.layer.borderColor = RGB(220, 220, 220).cgColor
+        scanBtn.backgroundColor = .white
+        scanBtn.contentHorizontalAlignment = .left
+        scanBtn.imageEdgeInsets = UIEdgeInsets(top: 0, left: SCRXFrom(8), bottom: 0, right: 0)
+        scanBtn.titleEdgeInsets = UIEdgeInsets(top: 0, left: SCRXFrom(10), bottom: 0, right: 0)
+        scanBtn.isHidden = true
+        contentView.addSubview(scanBtn)
+        scanBtn.snp.makeConstraints { make in
+            make.right.equalTo(SCRXFrom(-16))
+            make.centerY.equalTo(addDeviceTargetBtn)
+            make.width.equalTo(SCRXFrom(72))
+            make.height.equalTo(SCRYFrom(32))
+        }
         
         pauseBtn = UIButton(normalImageName: "device_add_pause", target: self, action: #selector(pauseBtnAction))
         pauseBtn.isHidden = true
@@ -699,7 +736,7 @@ extension DeviceAddCandidateDeviceListView: UITableViewDataSource, UITableViewDe
         cell.selectionStyle = .none
         let device = showDevices[indexPath.row]
         cell.device = device
-        if state == .scanning && isRefresh {
+        if state == .scanning && (isRefresh || lightSeningMode) {
             cell.addBtn.setImage(UIImage(named: "device_add_revoke"), for: .normal)
             cell.addBtn.setImage(nil, for: .disabled)
         }else {
@@ -810,7 +847,7 @@ extension DeviceAddCandidateDeviceListView: DeviceAddViewCellDelegate {
     
     /// 设备添加点击事件回调
     func cell(_ cell: DeviceAddViewCell, deviceAdd device: ProvisioningDevice) {
-        if state == .scanning && isRefresh {
+        if state == .scanning && (isRefresh || lightSeningMode) {
             delegate?.candidateView(self, candidateRevoke: [device])
 //            candidateDevices.removeAll(where: { $0.macAddress == device.macAddress })
 //            showDevices.removeAll(where: { $0.macAddress == device.macAddress })

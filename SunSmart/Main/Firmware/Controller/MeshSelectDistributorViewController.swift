@@ -116,6 +116,10 @@ class MeshSelectDistributorViewController: UIViewController {
         
         scanAnimationView = UIImageView(image: UIImage(named: "loading"))
         scanAnimationView.isHidden = true
+        #if DEBUG
+        scanAnimationView.isUserInteractionEnabled = true
+        scanAnimationView.addGestureRecognizer(UITapGestureRecognizer(target: self, action: #selector(stopRefreshRSSI)))
+        #endif
         
         navigationItem.rightBarButtonItem = UIBarButtonItem(customView: scanAnimationView)
         
@@ -225,6 +229,15 @@ class MeshSelectDistributorViewController: UIViewController {
 //
 //            XWHUDManager.hideInView(with: self.view)
 //        }
+    }
+    
+    /// 停止刷新信号
+    @objc private func stopRefreshRSSI() {
+        DispatchQueue.main.async {
+            NSObject.cancelPreviousPerformRequests(withTarget: self, selector: #selector(self.refreshNodesRSSIFinish), object: nil)
+            self.refreshNodesRSSIFinish()
+        }
+        devicesRssiSort()
     }
     
     /// 刷新信号结束

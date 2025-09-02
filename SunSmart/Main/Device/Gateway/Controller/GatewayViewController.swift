@@ -561,7 +561,8 @@ extension GatewayViewController: UITableViewDataSource, UITableViewDelegate {
         case .serverInformation:
             let cell = tableView.dequeueReusableCell(withIdentifier: "serverInformation", for: indexPath) as! GatewayServerInformationViewCell
             if let serverInfo = setGatewayModel?.mqttServerInfo {
-                let serverAddressArray = serverInfo.serverAddress.components(separatedBy: ":")
+                let serverStr = serverInfo.serverAddress.replacingOccurrences(of: "tcp://", with: "")
+                let serverAddressArray = serverStr.components(separatedBy: ":")
                 cell.serverAddressField.text = serverAddressArray.first ?? "N/A"
                 cell.portField.text = serverAddressArray.count >= 2 ? serverAddressArray[1] : "N/A"
                 cell.clientIdField.text = serverInfo.clientId

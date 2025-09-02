@@ -94,6 +94,11 @@ class SpaceViewController: WMPageController {
     private var autoTestTimer: Timer?
     private var isAllOn: Bool = true
     
+    private var networkableObservation: NSKeyValueObservation?
+    private var meshNetworkConnectedObservation: NSKeyValueObservation?
+    private var bluetoothStateObservation: NSKeyValueObservation?
+    
+    
     private lazy var autoBtn: UIButton = {
         let btn = UIButton(title: "Auto", titleSize: 17, titleWeight: .light, titleColor: .black, target: self, action: #selector(autoTestBtnAction))
         btn.setTitleColor(Bar_Color, for: .selected)
@@ -136,9 +141,10 @@ class SpaceViewController: WMPageController {
         
         space.disableEditorPermission = false
         
-        NetworkRequest.shared.addObserver(self, forKeyPath: "networkable", context: nil)
-        MeshLibManager.manager.addObserver(self, forKeyPath: "isMeshNetworkConnected", context: nil)
-        MeshLibManager.manager.addObserver(self, forKeyPath: "bluetoothState", context: nil)
+         
+//        NetworkRequest.shared.addObserver(self, forKeyPath: "networkable", context: nil)
+//        MeshLibManager.manager.addObserver(self, forKeyPath: "isMeshNetworkConnected", context: nil)
+//        MeshLibManager.manager.addObserver(self, forKeyPath: "bluetoothState", context: nil)
     }
     
     required init?(coder: NSCoder) {
@@ -178,12 +184,16 @@ class SpaceViewController: WMPageController {
         checkBluetoothState()
         #if DEBUG
         MeshNodeHeartbeatManager.shared.autoHeartbeatLoop = true
+        MeshLibManager.manager.showLogs = [.access, .upperTransport,.model]
+//        [.network, .access, .lowerTransport, .upperTransport, .proxy, .bearer]
+        MeshNodeHeartbeatManager.shared.heartbeatMode = .general
         #else
         MeshNodeHeartbeatManager.shared.autoHeartbeatLoop = true
+        MeshNodeHeartbeatManager.shared.heartbeatMode = .general
         #endif
         MeshNodeHeartbeatManager.shared.openHeartbeatShare = false
-        MeshNodeHeartbeatManager.shared.heartbeatMode = .general
-        MeshLibManager.manager.showLogs = [.network, .access, .lowerTransport, .upperTransport, .proxy, .bearer]
+        
+        
         // 添加通知监听
         addNotificaiton()
         // 获取space数据
@@ -225,51 +235,54 @@ class SpaceViewController: WMPageController {
         if MeshNetworkManager.instance.meshNetwork?.uuid.uuidString == space.meshUUID {
             MeshLibManager.manager.meshNetworkDisconnect()
         }
-        MeshLibManager.manager.removeObserver(self, forKeyPath: "bluetoothState")
-        NetworkRequest.shared.removeObserver(self, forKeyPath: "networkable")
-        MeshLibManager.manager.removeObserver(self, forKeyPath: "isMeshNetworkConnected")
+//        MeshLibManager.manager.removeObserver(self, forKeyPath: "bluetoothState")
+//        NetworkRequest.shared.removeObserver(self, forKeyPath: "networkable")
+//        MeshLibManager.manager.removeObserver(self, forKeyPath: "isMeshNetworkConnected")
+        bluetoothStateObservation = nil
+        networkableObservation = nil
+        meshNetworkConnectedObservation = nil
         print("dealloc")
         stopHeartbeatTimer()
         stopUserAskTimer()
         stopAutoTestTimer()
     }
     
-    override func observeValue(forKeyPath keyPath: String?, of object: Any?, change: [NSKeyValueChangeKey : Any]?, context: UnsafeMutableRawPointer?) {
-        
-//        let newState = change![.newKey] as! CBManagerState
-//        let oldState = change![NSKeyValueChangeKey.oldKey] as! CBManagerState
-        guard let key = keyPath else { return }
-        switch key {
-        case "bluetoothState":
-            checkBluetoothState()
-        case "networkable":
-            if NetworkRequest.shared.networkable { // 无网->有网 开始发送心跳
-                self.startHeartbeatTimer()
-            }else {
-                
-            }
-        case "isMeshNetworkConnected": // mesh连接成功/断开连接
-            // 连接上mesh网络
-            if MeshLibManager.manager.isMeshNetworkConnected && self.space.deviceOperates.contains(.edit) && !self.space.disableEditorPermission {
-                // 如果未完成mesh权限校验，有space编辑权限的用户进入空间连接网络后需判定是否有其他的编辑用户
-                if !self.meshPermissionValidation && (space.permission == .owner || space.permission == .editor) {
-                    MeshLibManager.manager.externalVendorMessageDelegate = self
-                    MeshAPI.sendMessage(message: ExternalVendorMessage(operation: .userPermission(.ask)), address: .localClientGroupAddress)
-                    
-                    DispatchQueue.main.async {
-                        self.startUserAskTimer()
-                    }
-                    
+//    override func observeValue(forKeyPath keyPath: String?, of object: Any?, change: [NSKeyValueChangeKey : Any]?, context: UnsafeMutableRawPointer?) {
+//        
+////        let newState = change![.newKey] as! CBManagerState
+////        let oldState = change![NSKeyValueChangeKey.oldKey] as! CBManagerState
+//        guard let key = keyPath else { return }
+//        switch key {
+//        case "bluetoothState":
+//            checkBluetoothState()
+//        case "networkable":
+//            if NetworkRequest.shared.networkable { // 无网->有网 开始发送心跳
+//                self.startHeartbeatTimer()
+//            }else {
+//                
+//            }
+//        case "isMeshNetworkConnected": // mesh连接成功/断开连接
+//            // 连接上mesh网络
+//            if MeshLibManager.manager.isMeshNetworkConnected && self.space.deviceOperates.contains(.edit) && !self.space.disableEditorPermission {
+//                // 如果未完成mesh权限校验，有space编辑权限的用户进入空间连接网络后需判定是否有其他的编辑用户
+//                if !self.meshPermissionValidation && (space.permission == .owner || space.permission == .editor) {
+//                    MeshLibManager.manager.externalVendorMessageDelegate = self
+//                    MeshAPI.sendMessage(message: ExternalVendorMessage(operation: .userPermission(.ask)), address: .localClientGroupAddress)
+//                    
 //                    DispatchQueue.main.async {
-//                        NSObject.cancelPreviousPerformRequests(withTarget: self, selector: #selector(self.userPermissionAskTimeout), object: nil)
-//                        self.perform(#selector(self.userPermissionAskTimeout), with: nil, afterDelay: 5)
+//                        self.startUserAskTimer()
 //                    }
-                }
-            }
-        default:
-            break
-        }
-    }
+//                    
+////                    DispatchQueue.main.async {
+////                        NSObject.cancelPreviousPerformRequests(withTarget: self, selector: #selector(self.userPermissionAskTimeout), object: nil)
+////                        self.perform(#selector(self.userPermissionAskTimeout), with: nil, afterDelay: 5)
+////                    }
+//                }
+//            }
+//        default:
+//            break
+//        }
+//    }
     
     // MARK: - Auto AllControl Test
     
@@ -321,6 +334,39 @@ class SpaceViewController: WMPageController {
     
      /// 添加通知监听
     private func addNotificaiton() {
+        
+        // 蓝牙状态观察者
+        bluetoothStateObservation = MeshLibManager.manager.observe(\.bluetoothState, options: [.new], changeHandler: {[weak self] _, _ in
+            DispatchQueue.main.async {
+                self?.checkBluetoothState()
+            }
+        })
+        
+        // 手机网络状态观察者
+        networkableObservation = NetworkRequest.shared.observe(\.networkable, options: [.new], changeHandler: {[weak self] _, _ in
+            DispatchQueue.main.async {
+                if NetworkRequest.shared.networkable { // 无网->有网 开始发送心跳
+                    self?.startHeartbeatTimer()
+                }
+            }
+        })
+        
+        // mesh网络连接观察者
+        meshNetworkConnectedObservation = MeshLibManager.manager.observe(\.isMeshNetworkConnected, options: [.new], changeHandler: {[weak self] _, _ in
+            guard let self = self else { return }
+            DispatchQueue.main.async {
+                // 连接上mesh网络
+                if MeshLibManager.manager.isMeshNetworkConnected && self.space.deviceOperates.contains(.edit) && !self.space.disableEditorPermission {
+                    // 如果未完成mesh权限校验，有space编辑权限的用户进入空间连接网络后需判定是否有其他的编辑用户
+                    if !self.meshPermissionValidation && (self.space.permission == .owner || self.space.permission == .editor) {
+                        MeshLibManager.manager.externalVendorMessageDelegate = self
+                        MeshAPI.sendMessage(message: ExternalVendorMessage(operation: .userPermission(.ask)), address: .localClientGroupAddress)
+                        self.startUserAskTimer()
+                    }
+                }
+            }
+        })
+        
         
         // 设备列表更新通知
         NotificationCenter.default.addObserver(forName: .init(devicesUpdateNotificationName), object: nil, queue: nil) {[weak self] _ in
@@ -685,9 +731,9 @@ class SpaceViewController: WMPageController {
                 break
             case .failure(let error): 
 //                print(error.localizedDescription)
-                guard self.space.permission == .visitor else {
-                    return
-                }
+//                if self.space.permission == .visitor {
+//                    return
+//                }
                 switch error {
                 case .noSitePermission: // 被回收权限/转让site
                     XWHUDManager.showErrorTipHUD(error.localizedDescription)

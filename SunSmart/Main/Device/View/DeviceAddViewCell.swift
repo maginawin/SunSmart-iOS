@@ -183,6 +183,11 @@ class DeviceAddViewCell: UITableViewCell {
                 stopActivityTimer()
             }
             if device.icon?.contains("Lighting") ?? true {
+                identifyAnimationView.snp.updateConstraints { make in
+                    make.centerX.equalToSuperview()
+                    make.centerY.equalToSuperview().offset(SCRYFrom(-4))
+                }
+                
                 activityImageView.snp.updateConstraints { make in
         //            make.centerX.equalToSuperview().offset(-0.3)
         //            make.top.equalTo(SCRYFrom(3))
@@ -190,6 +195,11 @@ class DeviceAddViewCell: UITableViewCell {
                     make.centerY.equalToSuperview().offset(SCRYFrom(-4))
                 }
             }else {
+                
+                identifyAnimationView.snp.updateConstraints { make in
+                    make.centerX.centerY.equalToSuperview()
+                }
+                
                 activityImageView.snp.updateConstraints { make in
         //            make.centerX.equalToSuperview().offset(-0.3)
         //            make.top.equalTo(SCRYFrom(3))
@@ -275,7 +285,7 @@ class DeviceAddViewCell: UITableViewCell {
 //        identifyAnimationView.layer.cornerRadius = SCRYFrom(6)
         deviceImageView.addSubview(identifyAnimationView)
         identifyAnimationView.snp.makeConstraints { make in
-            make.center.equalToSuperview()
+            make.centerX.centerY.equalToSuperview()
 //            make.top.equalTo(SCRYFrom(3))
             make.width.height.equalTo(SCRYFrom(10))
         }

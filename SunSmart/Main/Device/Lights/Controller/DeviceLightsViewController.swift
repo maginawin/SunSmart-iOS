@@ -359,6 +359,7 @@ class DeviceLightsViewController: UIViewController {
         
         footerView = SpaceFunctionFooterView()
         footerView.sortBtn.isHidden = true
+        footerView.enableTestDelete = true
         footerView.delegate = self
         view.addSubview(footerView)
         footerView.snp.makeConstraints { make in
@@ -978,6 +979,11 @@ extension DeviceLightsViewController: SpaceFunctionFooterViewDelegate {
     /// 进入调试删除页面
     func functionEnterIntoTestDelete(view: SpaceFunctionFooterView) {
         
+        let vc = DeviceForceResetDevicePageController()
+        vc.deviceResetCallback = { devices in
+            
+        }
+        navigationController?.pushViewController(vc, animated: true)
     }
     
 }

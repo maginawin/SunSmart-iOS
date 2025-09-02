@@ -47,11 +47,11 @@ class EnergyStaticDataGroupView: UIView {
                 energySavingPercentage = 0
             }
             
-            let totalEnergyAttStr = NSMutableAttributedString(string: String(format: "%.2f kWh", preciseTotalEnergyUse), attributes: [.font: UIFont.systemFont(ofSize: 16, weight: .semibold)])
+            let totalEnergyAttStr = NSMutableAttributedString(string: String(format: "%.3f kWh", preciseTotalEnergyUse), attributes: [.font: UIFont.systemFont(ofSize: 16, weight: .semibold)])
             totalEnergyAttStr.addAttributes([.font: UIFont.systemFont(ofSize: 16)], range: (totalEnergyAttStr.string as NSString).range(of: "kWh"))
             totalEnergyDataLabel.attributedText = totalEnergyAttStr
             
-            economyValueBtn.setTitle(String(format: "%.2f kWh", energySaving), for: .normal)
+            economyValueBtn.setTitle(String(format: "%.3f kWh", energySaving), for: .normal)
             economyPercentageBtn.setTitle(String(format: "%.1f%%", energySavingPercentage), for: .normal)
         }else {
             totalEnergyDataLabel.attributedText = NSAttributedString(string: "--")

@@ -107,7 +107,7 @@ class ProfileSettingsViewController: UIViewController {
         if initProfile == nil || selectProfile == initProfile! {
             navigationController?.popViewController(animated: true)
         }else {
-            SRAlertView(title: "notification".localizedString, message: "profile_exiting_message".localizedString, actions: [SRAlertAction(title: "keep_edit".localizedString, style: .cancel), SRAlertAction(title: "exit".localizedString, actionHandler: {[weak self] _ in
+            SRAlertView(title: "notification".localizedString, message: "profile_exiting_message".localizedString, actions: [SRAlertAction(title: "keep_edit".localizedString, style: .cancel), SRAlertAction(title: "EXIT".localizedString, actionHandler: {[weak self] _ in
                 self?.navigationController?.popViewController(animated: true)
             })]).show()
         }

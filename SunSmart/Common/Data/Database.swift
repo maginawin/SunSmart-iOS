@@ -393,6 +393,8 @@ extension SpaceData {
         static let applyDeviceAddressCount = Expression<Int?>("applyDeviceAddressCount")
         static let applyGroupAddressCount = Expression<Int?>("applyGroupAddressCount")
         static let isReleaseAddress = Expression<Bool?>("isReleaseAddress")
+        static let editor = Expression<Data?>("editor")
+        static let vistors = Expression<Data?>("vistors")
     }
     
     /// 初始化空间表
@@ -429,6 +431,8 @@ extension SpaceData {
             builder.column(ExpressionKey.applyDeviceAddressCount)
             builder.column(ExpressionKey.applyGroupAddressCount)
             builder.column(ExpressionKey.isReleaseAddress)
+            builder.column(ExpressionKey.editor)
+            builder.column(ExpressionKey.vistors)
         }))
         
         // 获取表内存在的属性
@@ -438,6 +442,15 @@ extension SpaceData {
             if !columns.contains(where: { $0.name == "applyGroupAddressCount" }) {
                 _ = try? SunSmartDataManager.shared.db?.run(SpaceData.spacesTable.addColumn(ExpressionKey.applyGroupAddressCount))
             }
+            
+            // 是否存在”editor“属性
+            if !columns.contains(where: { $0.name == "editor" }) {
+                _ = try? SunSmartDataManager.shared.db?.run(SpaceData.spacesTable.addColumn(ExpressionKey.editor))
+            }
+            // 是否存在”vistors“属性
+            if !columns.contains(where: { $0.name == "vistors" }) {
+                _ = try? SunSmartDataManager.shared.db?.run(SpaceData.spacesTable.addColumn(ExpressionKey.vistors))
+            }
         }
         
         GroupInfo.initDatabase()
@@ -445,7 +458,6 @@ extension SpaceData {
         SceneInfo.initDatabase()
         Schedule.initDatabase()
 //        GroupSwitch.initDatabase()
-        UserData.initDatabase()
         DeviceSwitchData.initDatabase()
         MeshDistributionData.initDatabase()
         DeviceDongleData.initDatabase()
@@ -488,12 +500,20 @@ extension SpaceData {
                 space.authorizationPassword = row[ExpressionKey.authorizationPassword]
                 space.requiresPasswordVerification = row[ExpressionKey.requiresPasswordVerification]
                 space.vistorPasswordEnable = row[ExpressionKey.vistorPasswordEnable]
-                space.editor = UserData.load(spaceId: space.id, permisson: .editor).first
-                space.visitors = UserData.load(spaceId: space.id, permisson: .visitor)
                 space.shareCode = row[ExpressionKey.shareCode]
                 space.applyDeviceAddressCount = row[ExpressionKey.applyDeviceAddressCount]
                 space.applyGroupAddressCount = row[ExpressionKey.applyGroupAddressCount]
                 space.releaseAddress = row[ExpressionKey.isReleaseAddress] ?? false
+                
+                if let editorData = row[ExpressionKey.editor] {
+                    space.editor = try? jsonDecoder.decode(UserData.self, from: editorData)
+                }
+                if let vistorsData = row[ExpressionKey.vistors] {
+                    space.visitors = (try? jsonDecoder.decode([UserData].self, from: vistorsData)) ?? []
+                }
+//                space.editor = UserData.load(spaceId: space.id, permisson: .editor).first
+//                space.visitors = UserData.load(spaceId: space.id, permisson: .visitor)
+                
                 spaces.append(space)
             }
         }
@@ -532,6 +552,16 @@ extension SpaceData {
     /// 缓存当前空间数据
     @discardableResult func save() -> Bool {
 
+        var editorData: Data?
+        if self.editor != nil {
+            editorData = try? jsonEncoder.encode(self.editor!)
+        }
+        
+        var vistorsData: Data?
+        if self.visitors.count > 0 {
+            vistorsData = try? jsonEncoder.encode(self.visitors)
+        }
+        
         let interOrUpdate = SpaceData.spacesTable.insert(or: .replace, [
             ExpressionKey.uuid <- self.id,
             ExpressionKey.siteUUID <- self.siteId,
@@ -561,19 +591,21 @@ extension SpaceData {
             ExpressionKey.shareCode <- self.shareCode,
             ExpressionKey.applyDeviceAddressCount <- self.applyDeviceAddressCount,
             ExpressionKey.applyGroupAddressCount <- self.applyGroupAddressCount,
-            ExpressionKey.isReleaseAddress <- self.releaseAddress
+            ExpressionKey.isReleaseAddress <- self.releaseAddress,
+            ExpressionKey.editor <- editorData,
+            ExpressionKey.vistors <- vistorsData
         ])
         do {
             try SunSmartDataManager.shared.db?.run(interOrUpdate)
             
             // 更新editor、visitor用户数据
-            UserData.delete(spaceId: self.id)
-            if let editorUser = self.editor {
-                editorUser.save(spaceId: self.id, permisson: .editor)
-            }
-            self.visitors.forEach({
-                $0.save(spaceId: self.id, permisson: .visitor)
-            })
+//            UserData.delete(spaceId: self.id)
+//            if let editorUser = self.editor {
+//                editorUser.save(spaceId: self.id, permisson: .editor)
+//            }
+//            self.visitors.forEach({
+//                $0.save(spaceId: self.id, permisson: .visitor)
+//            })
             
         } catch {
             print(error)
@@ -668,96 +700,6 @@ extension SpaceData {
             return true
         }
         return false
-    }
-    
-}
-
-extension UserData {
-    
-    private static let usersTable = Table("users")
-    
-    struct ExpressionKey {
-        static let id = Expression<Int64>("id")
-        static let spaceId = Expression<String>("spaceId")
-        static let userId = Expression<String>("userId")
-        static let name = Expression<String>("name")
-        static let permisson = Expression<Int>("permisson")
-    }
-    
-    /// 初始化空间表
-    static func initDatabase() {
-        
-        _ = try? SunSmartDataManager.shared.db?.run(UserData.usersTable.create(temporary: false, ifNotExists: true, withoutRowid: false, block: { builder in
-            builder.column(ExpressionKey.id, primaryKey: true)
-            builder.column(ExpressionKey.spaceId)
-            builder.column(ExpressionKey.userId)
-            builder.column(ExpressionKey.name)
-            builder.column(ExpressionKey.permisson)
-            builder.unique(ExpressionKey.spaceId, ExpressionKey.userId)
-        }))
-    }
-    
-    /// 根据空间id获取对应权限的用户数据
-    /// - Parameter spaceId: 空间id
-    /// - Parameter permisson: 对应权限
-    /// - Returns: 用户数据list
-    static func load(spaceId: String, permisson: Permission) -> [UserData] {
-        
-        let predicate: Expression<Bool> = ExpressionKey.spaceId == spaceId && ExpressionKey.permisson == permisson.rawValue
-        let filter = UserData.usersTable.filter(predicate)
-        var users: [UserData] = []
-        if let rows = try? SunSmartDataManager.shared.db?.prepare(filter) {
-            for row in rows {
-                let user = UserData(name: row[ExpressionKey.name], uuid: row[ExpressionKey.userId])
-                users.append(user)
-            }
-        }
-        return users
-    }
- 
-    /// 删除用户
-    /// - Parameters:
-    ///   - spaceId: 空间id
-    ///   - permisson: 用户权限（传入删除空间下拥有该权限的用户）二选一
-    ///   - userId: 用户id（传入删除空间下对应用户）二选一
-    /// - Returns: 是否成功
-    @discardableResult static func delete(spaceId: String, permisson: Permission? = nil, userId: String? = nil) -> Bool {
-        
-        var predicate: Expression<Bool> = ExpressionKey.spaceId == spaceId
-        if userId != nil {
-            predicate = ExpressionKey.spaceId == spaceId && ExpressionKey.userId == userId!
-        } else if permisson != nil {
-            predicate = ExpressionKey.spaceId == spaceId && ExpressionKey.permisson == permisson!.rawValue
-        }
-        let filter = UserData.usersTable.filter(predicate)
-        do {
-            try SunSmartDataManager.shared.db?.run(filter.delete())
-        } catch {
-            print(error)
-            return false
-        }
-        return true
-    }
-    
-    /// 保存用户数据
-    /// - Parameter spaceId: 空间id
-    /// - Parameter permisson: 权限
-    /// - Returns: 是否成功
-    @discardableResult func save(spaceId: String, permisson: Permission) -> Bool {
-        
-        let interOrUpdate = UserData.usersTable.insert(or: .replace, [
-            ExpressionKey.spaceId <- spaceId,
-            ExpressionKey.userId <- self.uuid,
-            ExpressionKey.name <- self.name,
-            ExpressionKey.permisson <- permisson.rawValue
-        ])
-        do {
-            try SunSmartDataManager.shared.db?.run(interOrUpdate)
-        } catch {
-            print(error)
-            return false
-        }
-        return true
     }
     
 }

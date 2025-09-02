@@ -84,6 +84,7 @@ class DeviceSwitchesViewController: UIViewController {
         
         footerView = SpaceFunctionFooterView()
         footerView.sortBtn.isHidden = true
+        footerView.enableTestDelete = true
         footerView.delegate = self
         view.addSubview(footerView)
         footerView.snp.makeConstraints { make in

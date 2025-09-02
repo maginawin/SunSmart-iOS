@@ -91,6 +91,7 @@ class DeviceSensorsViewController: UIViewController {
         
         footerView = SpaceFunctionFooterView()
         footerView.sortBtn.isHidden = true
+        footerView.enableTestDelete = true
         footerView.editBtn.isEnabled = false
         footerView.delegate = self
         view.addSubview(footerView)

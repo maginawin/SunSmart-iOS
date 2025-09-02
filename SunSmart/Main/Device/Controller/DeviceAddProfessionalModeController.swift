@@ -8,6 +8,7 @@
 import UIKit
 import NordicSigMeshSDK
 import SwiftyJSON
+import AVFAudio
 
 class DeviceAddProfessionalModeController: UIViewController {
 
@@ -52,9 +53,15 @@ class DeviceAddProfessionalModeController: UIViewController {
     private var rssiSlider: RangeSlider!
     private var farLabel: UILabel!
     
+    /// 搜索的设备list view
+    private var devicesFoundView: UIView!
+    private var devicesFoundLabel: UILabel!
+    private var rssiRangeLabel: UILabel!
+    
     private var addModeBtn: UIButton!
     private var pauseBtn: UIButton!
     private var settingsBtn: UIButton!
+    private var settingsTipView: UIView!
     private var scanBtn: UIButton!
     
     private var messageLabel: UILabel!
@@ -101,20 +108,22 @@ class DeviceAddProfessionalModeController: UIViewController {
     private var candidateView: DeviceAddCandidateDeviceListView?
     /// 参数设置view
     private var parameterSettingsView :DeviceAddParameterSettingsView?
-    /// 参数
-    private var parameterData: DeviceAddParameterData = .init(notificationEnable: true, volume: 50, vibrationEnable: true)
     /// 无定向广播
     private let broadcaster = BluetoothBroadcaster()
     /// 广播时设备配置持续时长
-    private let broadcasterDuration: UInt8 = 3
-    /// 广播时设备亮度 70%
-    private let broadcasterLightness: UInt8 = UInt8(70).value8
-    /// 广播是光感上报阈值
-    private let lightSensorDelta: UInt16 = 500
+    private let broadcasterDuration: UInt8 = 1
+    /// 移动感应广播时设备亮度 70%
+    private let broadcasterMotionLightness: UInt8 = UInt8(50).value8
+    /// 光照感应广播时设备亮度 30%
+    private let broadcasterLightSensorLightness: UInt8 = UInt8(15).value8
+    /// 广播时光感上报阈值
+//    private let lightSensorDelta: UInt16 = 80
     /// 添加目标
     private var addTarget: AddDeviceToTarget!
     /// 添加成功的节点
     private var addSuccessNodes: [Node] = []
+    /// 系统音量监听者
+    private var systemVolumeObservation: NSKeyValueObservation?
     
     /// 其它网关数据
     private var otherGateways: [GatewayModel] = []
@@ -157,6 +166,8 @@ class DeviceAddProfessionalModeController: UIViewController {
         dongles = MeshNetworkManager.instance.dongles
         
         setupUI()
+        
+        addObserver()
     }
     
     override func viewDidDisappear(_ animated: Bool) {
@@ -175,6 +186,23 @@ class DeviceAddProfessionalModeController: UIViewController {
         tableView.reloadData()
     }
     
+    deinit {
+        systemVolumeObservation = nil
+    }
+    
+    private func addObserver() {
+        
+        // 激活 AVAudioSession（否则监听可能无效）
+        try? AVAudioSession.sharedInstance().setActive(true, options: [])
+
+        systemVolumeObservation = AVAudioSession.sharedInstance().observe(\.outputVolume, options: [.new], changeHandler: {[weak self] _, _ in
+            DispatchQueue.main.async {
+                self?.settingsTipView.isHidden = AVAudioSession.sharedInstance().outputVolume >= DeviceSettingsParameterData.systemMinimumVolumeRequire
+            }
+        })
+        
+    }
+    
     // MARK: - Scan
     
     private func startScan() {
@@ -182,7 +210,7 @@ class DeviceAddProfessionalModeController: UIViewController {
         (wm_pageController as? DeviceAddViewController)?.startScan()
         
         state = .scanning
-        
+        scanBtn.isSelected = true
         startScanTimer()
 
         scanDevices.removeAll()
@@ -215,8 +243,13 @@ class DeviceAddProfessionalModeController: UIViewController {
                 if device.rssi.intValue > self.filterRSSIRange.upperBound {
                     device.rssi = NSNumber(value: self.filterRSSIRange.upperBound)
                 }
+//                if device.macAddress == "EA2CCBC2B7A0" {
+//                    print("收到广播包, activity:\(device.triggerActionTypes.count > 0 ? true : false)")
+//                }
+                
                 if (self.addMode == .lightSening || self.addMode == .motionSensing) && device.triggerActionTypes.count > 0 {
                     device.activityDate = Date()
+                    print("触发了: \(device.macAddress!)")
                 }
                 
                 if let info = MeshLibManager.manager.supportDeviceInfos.first(where: { $0.companyId == device.cid && $0.productId == device.pid }) {
@@ -231,10 +264,12 @@ class DeviceAddProfessionalModeController: UIViewController {
                     device.selectedState = .disabled
                 }
                 
+                var newDevice = device
                 
                 if let index = self.scanDevices.firstIndex(where: { $0.peripheral.identifier.uuidString == device.peripheral.identifier.uuidString }) {
                     let cacheDevice = self.scanDevices[index]
                     cacheDevice.updateData(device: device)
+                    newDevice = cacheDevice
 
                     if let index = self.candidateDevices.firstIndex(where: { $0.peripheral.identifier.uuidString == device.peripheral.identifier.uuidString }) {
                         let cacheDevice = self.candidateDevices[index]
@@ -249,40 +284,40 @@ class DeviceAddProfessionalModeController: UIViewController {
                 }
                 
                 if self.isRefresh {
-                    if !self.candidateDevices.contains(where: { $0.peripheral.identifier.uuidString == device.peripheral.identifier.uuidString }), self.selectRSSIRange.contains(device.rssi.intValue) {
+                    if !self.candidateDevices.contains(where: { $0.peripheral.identifier.uuidString == newDevice.peripheral.identifier.uuidString }), self.selectRSSIRange.contains(newDevice.rssi.intValue) {
                         switch addMode {
                         case .motionSensing:
                             if device.triggerActionTypes.contains(.motionSensing) {
-                                self.candidateDevices.append(device)
+                                self.candidateDevices.append(newDevice)
                                 self.playerNotificationAudio()
                             }
                         case .lightSening:
                             if device.triggerActionTypes.contains(.lightSensing) {
-                                self.candidateDevices.append(device)
+                                self.candidateDevices.append(newDevice)
                                 self.playerNotificationAudio()
                             }
                         case .manual:
                             break
                         case .rssiRange:
-                            self.candidateDevices.append(device)
+                            self.candidateDevices.append(newDevice)
                             self.playerNotificationAudio()
                         }
                     }
                     self.startRssiSortTimer()
                 }else {
                     var reloadDevice = device
-                    if let index = self.inRSSIDevices.firstIndex(where: { $0.peripheral.identifier.uuidString == device.peripheral.identifier.uuidString }) {
+                    if let index = self.inRSSIDevices.firstIndex(where: { $0.peripheral.identifier.uuidString == newDevice.peripheral.identifier.uuidString }) {
                         let cacheDevice = self.inRSSIDevices[index]
-                        cacheDevice.updateData(device: device)
+                        cacheDevice.updateData(device: newDevice)
                         reloadDevice = cacheDevice
 //                        device.selectedState = cacheDevice.selectedState
 //                        device.addState = cacheDevice.addState
 //                        self.inRSSIDevices.replaceSubrange(index...index, with: [device])
                     }
                     
-                    if let index = self.remainingRSSIDevices.firstIndex(where: { $0.peripheral.identifier.uuidString == device.peripheral.identifier.uuidString }) {
+                    if let index = self.remainingRSSIDevices.firstIndex(where: { $0.peripheral.identifier.uuidString == newDevice.peripheral.identifier.uuidString }) {
                         let cacheDevice = self.remainingRSSIDevices[index]
-                        cacheDevice.updateData(device: device)
+                        cacheDevice.updateData(device: newDevice)
                         reloadDevice = cacheDevice
 //                        device.selectedState = cacheDevice.selectedState
 //                        device.addState = cacheDevice.addState
@@ -335,30 +370,30 @@ class DeviceAddProfessionalModeController: UIViewController {
     /// 开始无定向广播（添加模式：移动感应、光照感应）
     private func startBroadcasting() {
         
-//        switch self.addMode {
-//        case .motionSensing:
-//            broadcaster.startBroadcasting(type: .pirDiscoverAdd(timeout: broadcasterDuration, lightness: broadcasterLightness))
-//        case .lightSening:
-//            broadcaster.startBroadcasting(type: .ambientLightDiscoverAdd(timeout: broadcasterDuration, lightness: broadcasterLightness, delta: lightSensorDelta))
-//        default:
-//            break
-//        }
+        switch self.addMode {
+        case .motionSensing:
+            broadcaster.startBroadcasting(type: .pirDiscoverAdd(timeout: broadcasterDuration, lightness: deviceSettingsParameterData.brightness.value8))
+        case .lightSening:
+            broadcaster.startBroadcasting(type: .ambientLightDiscoverAdd(timeout: broadcasterDuration, lightness: deviceSettingsParameterData.brightness.value8, delta: deviceSettingsParameterData.illuminationDelta))
+        default:
+            break
+        }
     }
     
     /// 停止无定向广播
     private func stopBroadcasting() {
-//        broadcaster.stopBroadcasting()
+        broadcaster.stopBroadcasting()
     }
     
     /// 播放添加设备通知
     private func playerNotificationAudio() {
         
-//        if parameterData.notificationEnable {
-//            try? DeviceAudioManager.manager.startAudio(type: .deviceAdd, volume: parameterData.volume)
-//        }
-//        if parameterData.vibrationEnable {
-//            DeviceAudioManager.manager.vibration()
-//        }
+        if deviceSettingsParameterData.notificationEnable {
+            try? DeviceAudioManager.manager.startAudio(type: .deviceAdd, volume: deviceSettingsParameterData.volume)
+        }
+        if deviceSettingsParameterData.vibrationEnable {
+            DeviceAudioManager.manager.vibration()
+        }
     }
     
     /// 更新UI
@@ -401,10 +436,13 @@ class DeviceAddProfessionalModeController: UIViewController {
             return
         }
         
-        if identifyDevice != nil {
-            let reloadDevice = scanDevices.first(where: { $0.peripheral.identifier == identifyDevice!.peripheral.identifier }) ?? identifyDevice!
-            reloadDevice.addState = .none
-            reloadDeviceState(reloadDevice)
+        if let identifyDevice = self.identifyDevice {
+            
+            identifyDevice.addState = .none
+            
+            let cacheDevice = scanDevices.first(where: { $0.peripheral.identifier == identifyDevice.peripheral.identifier })
+            cacheDevice?.addState = .none
+            reloadDeviceState(identifyDevice)
             
             MeshAPI.stopUnprovisionedDeviceIdentify()
         }
@@ -591,9 +629,9 @@ class DeviceAddProfessionalModeController: UIViewController {
 //                appendMessages.append(MeshMessageHandle(message: GenericDefaultTransitionTimeSet(transitionTime: .default), model: defaultTransitionTimeModel))
 //            }
             // 节点数据hash
-            if let vendorModel = node.sunricherVendorModel {
-                appendMessages.append(MeshMessageHandle(message: SunricherVendorGet(function: .compositionHash), model: vendorModel))
-            }
+//            if let vendorModel = node.sunricherVendorModel {
+//                appendMessages.append(MeshMessageHandle(message: SunricherVendorGet(function: .compositionHash), model: vendorModel))
+//            }
             // 添加成功后闪烁
 //            if let healthModel = node.healthModel {
 //                appendMessages.append(MeshMessageHandle(message: AttentionSet(attentionTimer: 6), model: healthModel))
@@ -1017,7 +1055,7 @@ class DeviceAddProfessionalModeController: UIViewController {
         let touchPoint = CGPoint(x: sender.x, y: sender.frame.maxY + SCRYFrom(2))
         let menuPoint = view.convert(touchPoint, to: UIApplication.shared.keyWindow())
         
-        let modes: [AddMode] = [.manual, .motionSensing, .rssiRange]
+        let modes: [AddMode] = [.manual, .motionSensing, .lightSening, .rssiRange]
         
         TitleSelectView.show(titles: modes.map({ $0.title }), anchorPoint: menuPoint, selectIndex: modes.firstIndex(of: addMode) ?? 0, menuWidth: SCRXFrom(250)) {[weak self] index in
             guard let self = self else { return }
@@ -1026,12 +1064,14 @@ class DeviceAddProfessionalModeController: UIViewController {
             sender.sizeToFit()
             sender.setImagePosition(position: .right, spacing: 0)
             
-            if self.addMode == .motionSensing || self.addMode == .lightSening {
-                self.startBroadcasting()
-            }else {
-                self.stopBroadcasting()
+            if self.state == .scanning {
+                if self.addMode == .motionSensing || self.addMode == .lightSening {
+                    self.startBroadcasting()
+                }else {
+                    self.stopBroadcasting()
+                }
             }
-            
+//            self.candidateView?.lightSeningMode = self.addMode == .lightSening
             if self.isRefresh, self.addMode == .rssiRange {
                 // 筛选出满足预选条件的设备
                 let devices = self.scanDevices.filter({ device in !self.candidateDevices.contains(where: { $0.peripheral.identifier.uuidString == device.peripheral.identifier.uuidString }) && self.selectRSSIRange.contains(device.rssi.intValue) })
@@ -1068,20 +1108,30 @@ class DeviceAddProfessionalModeController: UIViewController {
         rssiSortTimer = nil
         if self.isRefresh {
             // 筛选出满足预选条件的设备
-            let devices = self.scanDevices.filter({ device in !self.candidateDevices.contains(where: { $0.peripheral.identifier.uuidString == device.peripheral.identifier.uuidString }) && self.selectRSSIRange.contains(device.rssi.intValue) })
-            switch addMode {
-            case .motionSensing:
-                self.candidateDevices.append(contentsOf: devices.filter({ $0.triggerActionTypes.contains(.motionSensing) }))
-                self.playerNotificationAudio()
-            case .lightSening:
-                self.candidateDevices.append(contentsOf: devices.filter({ $0.triggerActionTypes.contains(.lightSensing) }))
-                self.playerNotificationAudio()
-            case .manual:
-                break
-            case .rssiRange:
-                self.candidateDevices.append(contentsOf: devices)
-                self.playerNotificationAudio()
+            if addMode == .rssiRange {
+                let devices = self.scanDevices.filter({ device in !self.candidateDevices.contains(where: { $0.peripheral.identifier.uuidString == device.peripheral.identifier.uuidString }) && self.selectRSSIRange.contains(device.rssi.intValue) })
+                if devices.count > 0 {
+                    self.candidateDevices.append(contentsOf: devices)
+                    self.playerNotificationAudio()
+                }
             }
+     
+//            switch addMode {
+//            case .motionSensing:
+//                self.candidateDevices.append(contentsOf: devices.filter({ $0.triggerActionTypes.contains(.motionSensing) }))
+//                if devices.count > 0 {
+//                    self.playerNotificationAudio()
+//                }
+//                
+//            case .lightSening:
+//                self.candidateDevices.append(contentsOf: devices.filter({ $0.triggerActionTypes.contains(.lightSensing) }))
+//                self.playerNotificationAudio()
+//            case .manual:
+//                break
+//            case .rssiRange:
+//                self.candidateDevices.append(contentsOf: devices)
+//                self.playerNotificationAudio()
+//            }
         }
         
         setupDevicesData()
@@ -1103,16 +1153,31 @@ class DeviceAddProfessionalModeController: UIViewController {
     @objc private func settingsBtnAction() {
         
         if parameterSettingsView == nil {
-            parameterSettingsView = DeviceAddParameterSettingsView(frame: UIScreen.main.bounds, parameterData: self.parameterData)
+            parameterSettingsView = DeviceAddParameterSettingsView(frame: UIScreen.main.bounds, parameterData: deviceSettingsParameterData)
             parameterSettingsView?.volumeChangedEndCallback = { volume in
                 try? DeviceAudioManager.manager.startAudio(type: .deviceAdd, volume: volume)
             }
             parameterSettingsView?.settingsCallback = {[weak self] data in
+                deviceSettingsParameterData = data
                 guard let self = self else { return }
-                self.parameterData = data
+                if self.state == .scanning && (self.addMode == .motionSensing || self.addMode == .lightSening) { // 如果正在发送广播包，修改广播包参数后重新发送广播包
+                    self.startBroadcasting()
+                }
 //                try? DeviceAudioManager.manager.startAudio(type: .deviceAdd)
 //                DeviceAudioManager.manager.vibration()
             }
+            parameterSettingsView?.helpActionCallback = {[weak self] in
+                guard let self = self else { return }
+                let vc = DeviceParameterSetupInstructionsController()
+                if self.presentingViewController == nil {
+                    self.present(NavigationViewController(rootViewController: vc), animated: true)
+                }else {
+                    self.navigationController?.pushViewController(vc, animated: true)
+                }
+            }
+            
+        }else {
+            parameterSettingsView?.parameterData = deviceSettingsParameterData
         }
         parameterSettingsView?.show()
     }
@@ -1125,6 +1190,7 @@ class DeviceAddProfessionalModeController: UIViewController {
         candidateView?.candidateDevices = candidateDevices
         candidateView?.addTarget = addTarget
         candidateView?.isRefresh = isRefresh
+//        candidateView?.lightSeningMode = addMode == .lightSening
         candidateView?.state = state
         candidateView?.delegate = self
         candidateView?.show()
@@ -1176,13 +1242,13 @@ class DeviceAddProfessionalModeController: UIViewController {
             make.height.equalTo(SCRYFrom(40))
         }
         
-        addModeBtn = UIButton(title: addMode.title, titleSize: 12, titleWeight: .light, titleColor: ImportantText_Color, normalImageName: "arrow_down_black", target: self, action: #selector(addModeBtnAction))
+        addModeBtn = UIButton(title: addMode.title, titleSize: 12, titleWeight: .medium, titleColor: ImportantText_Color, normalImageName: "arrow_down_black", target: self, action: #selector(addModeBtnAction))
         addModeBtn.setImagePosition(position: .right, spacing: 0)
         headerView.addSubview(addModeBtn)
         addModeBtn.snp.makeConstraints { make in
             make.left.equalTo(SCRXFrom(16))
             make.top.equalTo(rssiSlider.snp.bottom).offset(SCRYFrom(14))
-            make.width.lessThanOrEqualTo(SCRXFrom(176))
+//            make.width.lessThanOrEqualTo(SCRXFrom(176))
         }
         
         scanBtn = UIButton(title: "scan".localizedString, titleSize: 13, titleColor: Bottom_Done_Color, normalImageName: "device_scan", target: self, action: #selector(scanBtnClick))
@@ -1213,11 +1279,22 @@ class DeviceAddProfessionalModeController: UIViewController {
         }
         
         settingsBtn = UIButton(normalImageName: "device_add_setting", target: self, action: #selector(settingsBtnAction))
-        settingsBtn.isHidden = true
         headerView.addSubview(settingsBtn)
         settingsBtn.snp.makeConstraints { make in
             make.left.equalTo(addModeBtn.snp.right).offset(SCRXFrom(10))
             make.centerY.equalTo(pauseBtn)
+        }
+        
+        settingsTipView = UIView()
+        settingsTipView.layer.cornerRadius = 2.5
+        settingsTipView.backgroundColor = RGB(255, 167, 44)
+        settingsTipView.isUserInteractionEnabled = false
+        settingsTipView.isHidden = AVAudioSession.sharedInstance().outputVolume >= DeviceSettingsParameterData.systemMinimumVolumeRequire
+        settingsBtn.addSubview(settingsTipView)
+        settingsTipView.snp.makeConstraints { make in
+            make.right.equalTo(-8.5)
+            make.centerY.equalToSuperview().offset(0.5)
+            make.width.height.equalTo(5)
         }
         
         bottomView = UIView()
@@ -1511,8 +1588,15 @@ extension DeviceAddProfessionalModeController: DeviceAddCandidateDeviceListViewD
         identify(device)
     }
     
+    /// 开始扫描
+    func candidateViewStartScan(_ view: DeviceAddCandidateDeviceListView) {
+        view.state = .scanning
+        startScan()
+    }
+    
     /// 停止扫描
     func candidateViewStopScan(_ view: DeviceAddCandidateDeviceListView) {
+        view.state = .none
         stopScan()
     }
     
@@ -1638,5 +1722,6 @@ extension DeviceAddProfessionalModeController: DeviceAddCandidateDeviceListViewD
         }
         view.isRefresh = isRefresh
     }
+    
     
 }

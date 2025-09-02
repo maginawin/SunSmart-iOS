@@ -457,7 +457,13 @@ extension NetowrkReqeustApi: TargetType {
 /// 服务器地区
 enum ServerRegion {
     
+#if Archipelago
+    static let defaultRegions: [ServerRegion] = [.northAmerica]
+#elseif SylSmart
+    static let defaultRegions: [ServerRegion] = [.asiaPacific]
+#else
     static let defaultRegions: [ServerRegion] = [.chinaMainland, .asiaPacific, .northAmerica, .europe]
+#endif
     
     var rawValue: Int {
         switch self {

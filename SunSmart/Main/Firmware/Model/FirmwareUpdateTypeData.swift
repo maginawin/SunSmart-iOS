@@ -20,8 +20,18 @@ class FirmwareUpdateTypeData {
     
     /// 设备类型下设备list
     var nodes: [Node] = []
+    /// 已升级的设备list
+    var upgradedNodes: [Node] {
+        guard let targetVersion = self.targetVersion else {
+            return []
+        }
+        return nodes.filter({ $0.firmwareVersion != nil && targetVersion.compare($0.firmwareVersion!, options: .numeric) == .orderedSame })
+    }
     /// 可升级的设备list
-    var upgradedNodes: [Node] = []
+    var canUpgradNodes: [Node] {
+        return nodes.filter({ $0.enableUpgrade })
+    }
+    
     /// 是否展开
     var isShow: Bool = false
     /// 类别名称
@@ -29,11 +39,10 @@ class FirmwareUpdateTypeData {
         return MeshLibManager.manager.supportDeviceInfos.first(where: { $0.productId == self.productId })?.categoryName
     }
     
-    init(productId: UInt16, targetVersion: String?, nodes: [Node], upgradedNodes: [Node] = []) {
+    init(productId: UInt16, targetVersion: String?, nodes: [Node]) {
         self.productId = productId
         self.targetVersion = targetVersion
         self.nodes = nodes
-        self.upgradedNodes = upgradedNodes
     }
     
 }

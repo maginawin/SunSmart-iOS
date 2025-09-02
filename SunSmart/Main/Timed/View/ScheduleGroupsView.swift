@@ -34,6 +34,8 @@ class ScheduleGroupsView: UIView {
     /// 选择组完成回调
     private let selectCallback: GroupsSelectFinishedCallback?
     
+    private var meshNetworkConnectedObservation: NSKeyValueObservation?
+    
     init(groups: [Group], selectGroups: [Group], schedule: Schedule? = nil, selectBack: GroupsSelectFinishedCallback?) {
         self.groups = groups
         self.selectGroups = selectGroups
@@ -42,8 +44,7 @@ class ScheduleGroupsView: UIView {
         super.init(frame: UIScreen.main.bounds)
         
         setupUI()
-        
-        MeshLibManager.manager.addObserver(self, forKeyPath: "isMeshNetworkConnected", context: nil)
+        addObserver()
     }
     
     required init?(coder: NSCoder) {
@@ -51,15 +52,17 @@ class ScheduleGroupsView: UIView {
     }
     
     deinit {
-        MeshLibManager.manager.removeObserver(self, forKeyPath: "isMeshNetworkConnected")
+        meshNetworkConnectedObservation = nil
     }
     
-    override func observeValue(forKeyPath keyPath: String?, of object: Any?, change: [NSKeyValueChangeKey : Any]?, context: UnsafeMutableRawPointer?) {
-        if keyPath == "isMeshNetworkConnected" { // 网络连接/断开连接回调
+    private func addObserver() {
+        
+        // mesh网络连接观察者
+        meshNetworkConnectedObservation = MeshLibManager.manager.observe(\.isMeshNetworkConnected, options: [.new], changeHandler: { _, _ in
             DispatchQueue.main.asyncAfter(wallDeadline: .now() + 1) {[weak self] in
                 self?.collectionView.reloadData()
             }
-        }
+        })
     }
     
     func show() {

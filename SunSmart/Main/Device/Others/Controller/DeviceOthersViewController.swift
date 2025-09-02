@@ -104,6 +104,7 @@ class DeviceOthersViewController: UIViewController {
         footerView = SpaceFunctionFooterView()
         footerView.sortBtn.isHidden = true
         footerView.editBtn.isEnabled = false
+        footerView.enableTestDelete = true
         footerView.delegate = self
         view.addSubview(footerView)
         footerView.snp.makeConstraints { make in

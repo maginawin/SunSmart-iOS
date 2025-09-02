@@ -7,26 +7,33 @@
 
 import Foundation
 
-class UserData {
+class UserData: Codable {
+    
+    /// 当前用户数据
+    static let current = UserData(name: UserData.currentUserName, uuid: UserData.currentUserId)
     
     /// 名称
     let name: String
     /// uuid
     let uuid: String
+
     
     init(name: String, uuid: String) {
         self.name = name
         self.uuid = uuid
     }
+    
 }
 
 extension UserData {
 
     private static var regionKey = 1
     private static var userNameKey = 2
+    private static var siteChangeAddressRegionsKey = 3
     
     private static let isTermsOfServiceKey = "isTermsOfService"
     private static let lastVendorIdentifier = "lastVendorIdentifier"
+    private static var siteChangeAddressRegionsUserDefaults = "siteChangeAddressRegions"
     
     /// 当前用户id
     static let currentUserId = Keychain.getUUID()
@@ -101,6 +108,24 @@ extension UserData {
         }set {
             Keychain.saveServerRegion(newValue)
             objc_setAssociatedObject(self, &regionKey, newValue, .OBJC_ASSOCIATION_RETAIN)
+        }
+    }
+    
+    /// 需要修改site地址的地区list（处理卸载重装后加载site列表切换手机地址）
+    static var siteChangeAddressRegions: [ServerRegion] {
+        get {
+            guard let regions = objc_getAssociatedObject(self, &siteChangeAddressRegionsKey) as? [ServerRegion] else {
+                var cacheRegions: [ServerRegion] = []
+                if let regionTypes = UserDefaults.standard.array(forKey: siteChangeAddressRegionsUserDefaults) as? [Int] {
+                    cacheRegions = regionTypes.compactMap({ ServerRegion(rawValue: $0) })
+                }
+                self.siteChangeAddressRegions = cacheRegions
+                return cacheRegions
+            }
+            return regions
+        }set {
+            objc_setAssociatedObject(self, &siteChangeAddressRegionsKey, newValue, .OBJC_ASSOCIATION_RETAIN)
+            UserDefaults.standard.set(newValue.map({ $0.rawValue }), forKey: siteChangeAddressRegionsUserDefaults)
         }
     }
     

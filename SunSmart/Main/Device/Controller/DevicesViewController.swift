@@ -63,13 +63,13 @@ extension DevicesFunctionProtocol {
 }
 
 class DevicesViewController: WMPageController {
-
+    
     let footerHeight = SCRYFrom(44) + kSafeAreaBottomHeight
     /// 头部
-//    private var headerView: UIView!
-//    private var allOnBtn: UIButton!
-//    private var allOffBtn: UIButton!
-//    private var settingBtn: UIButton!
+    //    private var headerView: UIView!
+    //    private var allOnBtn: UIButton!
+    //    private var allOffBtn: UIButton!
+    //    private var settingBtn: UIButton!
     
     /// 菜单功能
     let menuTitles: [String] = ["lights".localizedString, "switches".localizedString, "sensors".localizedString, "others".localizedString]
@@ -93,24 +93,25 @@ class DevicesViewController: WMPageController {
     private var currentDistributionNode: Node?
     // 分发状态view
     private var distributionStateView: FirmwareDistributeUpdateStateView?
-
-    private var menuHeight = CGFloat(Int(SCRYFrom(40)))
-//    private var meunView: WMMenuView!
     
- 
+    private var menuHeight = CGFloat(Int(SCRYFrom(40)))
+    //    private var meunView: WMMenuView!
+    private var meshNetworkConnectedObservation: NSKeyValueObservation?
+    
+    
     init(space: SpaceData) {
         self.space = space
         super.init(nibName: nil, bundle: nil)
         
-//        self.menuViewStyle = .flood
+        //        self.menuViewStyle = .flood
         if isIPad {
             self.menuViewLayoutMode = .center
             self.itemMargin = SCRXFrom(24)
         }
         self.menuItemCornerRadius = menuHeight * 0.5
-//        self.progressViewIsNaughty = false
+        //        self.progressViewIsNaughty = false
         self.menuItemBackgroundColor = .clear
-//        self.scrollEnable = false
+        //        self.scrollEnable = false
         space.meshOTADistribution = false
     }
     
@@ -123,13 +124,13 @@ class DevicesViewController: WMPageController {
         
         view.backgroundColor = Background_Color
         
-//        view.layoutIfNeeded()
+        //        view.layoutIfNeeded()
         
-        MeshLibManager.manager.addObserver(self, forKeyPath: "isMeshNetworkConnected", context: nil)
+        addObservation()
         
         // 未连接上mesh网络
         if !MeshNetworkManager.instance.realNodes.isEmpty && !MeshLibManager.manager.isMeshNetworkConnected && (MeshLibManager.manager.bluetoothState == .poweredOn || MeshLibManager.manager.bluetoothState == .unknown) {
-//            XWHUDManager.showCustomHUD(withMessage: nil, isWindow: false, afterDelay: 10)
+            //            XWHUDManager.showCustomHUD(withMessage: nil, isWindow: false, afterDelay: 10)
             // loading
             let margin: CGFloat = isIPad ? 100 : 36
             XWHUDManager.showGifImagesHUD(inView: "XWHUDManager_loading", message: getNextGuidanceMessage() ?? "", timer: 10, margin: margin)
@@ -141,40 +142,37 @@ class DevicesViewController: WMPageController {
             }
             startGuidanceTimer()
             // 获取设备信号
-//            MeshLibManager.manager.refreshNodesRSSI(withWaitFor: 5, result: nil)
+            //            MeshLibManager.manager.refreshNodesRSSI(withWaitFor: 5, result: nil)
         }else {
             // 判断是否需要申请地址
             if space.applyDeviceAddressCount != nil {
                 applyDeviceAddressAlert()
             }
         }
-//        meunView = WMMenuView(frame: CGRect(x: 0, y: SCRYFrom(10), width: view.width, height: SCRYFrom(32)))
-//        meunView.fontWeight = .light
-//        meunView.style = .segmented
-//        meunView.lineColor = Bar_Color
+        //        meunView = WMMenuView(frame: CGRect(x: 0, y: SCRYFrom(10), width: view.width, height: SCRYFrom(32)))
+        //        meunView.fontWeight = .light
+        //        meunView.style = .segmented
+        //        meunView.lineColor = Bar_Color
         
-//        let node = MeshNetworkManager.instance.realNodes.first!
-//        MeshDistributionData(distributionAddress: node.primaryUnicastAddress, targetAddresses: [node.primaryUnicastAddress], distributionState: .updating(updatePhase: .verifying)).save(productId: 0x11)
-//        MeshDistributionData(distributionAddress: node.primaryUnicastAddress, targetAddresses: [node.primaryUnicastAddress], distributionState: .updating(updatePhase: .blob(progress: 0, estimateTime: 0))).save(productId: 0x12)
         
-//        meunView.contentMargin = SCRXFrom(12)
+        //        meunView.contentMargin = SCRXFrom(12)
         self.scrollEnable = false
         self.menuView?.itemRateAnimation = false
         self.menuView?.delegate = self
         self.menuView?.dataSource = self
-//        view.addSubview(self.menuView!)
-//        meunView.snp.makeConstraints { make in
-//            make.left.right.equalToSuperview()
-//            make.top.equalTo(SCRYFrom(10))
-//            make.height.equalTo(SCRYFrom(32))
-//        }
+        //        view.addSubview(self.menuView!)
+        //        meunView.snp.makeConstraints { make in
+        //            make.left.right.equalToSuperview()
+        //            make.top.equalTo(SCRYFrom(10))
+        //            make.height.equalTo(SCRYFrom(32))
+        //        }
         
-//        XWHUDManager.showGifImagesHUD(inView: "XWHUDManager_loading", message: "Some devices prompt REPAIR when they are added because some models cannot be set to the device.", timer: 10)
-//        addNotificaiton()
-   
+        //        XWHUDManager.showGifImagesHUD(inView: "XWHUDManager_loading", message: "Some devices prompt REPAIR when they are added because some models cannot be set to the device.", timer: 10)
+        //        addNotificaiton()
+        
         startGuidanceTimer()
         
-//        selectIndex = 1
+        //        selectIndex = 1
     }
     
     override func viewDidDisappear(_ animated: Bool) {
@@ -184,41 +182,47 @@ class DevicesViewController: WMPageController {
     }
     
     deinit {
-        MeshLibManager.manager.removeObserver(self, forKeyPath: "isMeshNetworkConnected")
+        meshNetworkConnectedObservation = nil
         stopDistributionStateTimer()
     }
     
-    override func observeValue(forKeyPath keyPath: String?, of object: Any?, change: [NSKeyValueChangeKey : Any]?, context: UnsafeMutableRawPointer?) {
-        if keyPath == "isMeshNetworkConnected" { // 网络连接/断开连接回调
-            if MeshLibManager.manager.isMeshNetworkConnected {
-                // 首次连接上mesh网络
-                if firstConnectionNetwork {
-                    firstConnectionNetwork = false
+    /// 添加KVO观察者
+    private func addObservation() {
+        
+        // mesh网络连接观察者
+        meshNetworkConnectedObservation = MeshLibManager.manager.observe(\.isMeshNetworkConnected, options: [.new], changeHandler: {[weak self] _, _ in
+            guard let self = self else { return }
+            DispatchQueue.main.async {
+                if MeshLibManager.manager.isMeshNetworkConnected, self.firstConnectionNetwork {
+                    // 首次连接上mesh网络
+                    self.firstConnectionNetwork = false
                     
                     if let view = self.wm_pageController?.view {
                         XWHUDManager.hideInView(with: view)
                     }else {
                         XWHUDManager.hide()
                     }
-                    stopGuidanceTimer()
+                    self.stopGuidanceTimer()
                     
                     // 判断是否需要申请地址
-                    if space.applyDeviceAddressCount != nil {
-                        applyDeviceAddressAlert()
+                    if self.space.applyDeviceAddressCount != nil {
+                        self.applyDeviceAddressAlert()
                     }
-                        // 检查mesh分发情况
+                    // 检查mesh分发情况
                     self.getMeshDistribution()
-               
+                    
                     // 同步时间
                     if MeshNetworkManager.instance.realNodes.contains(where: { $0.scheduleIds.count > 0 }) && MeshNetworkManager.instance.schedules.filter({ $0.enabled }).count > 0 {
                         // 延迟3s发送广播节点同步时间消息，避免与获取设备状态冲突
-//                        DispatchQueue.main.asyncAfter(deadline: .now() + 3) {[weak self] in
-//                            self?.syncTimeNodes()
-//                        }
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 3) {[weak self] in
+                            self?.syncTimeNodes()
+                        }
                     }
+                    
                 }
             }
-        }
+        })
+        
     }
     
     // MARK: - Guidance
@@ -233,7 +237,7 @@ class DevicesViewController: WMPageController {
         let index = Int(arc4random_uniform(UInt32(maxIndex))) + 1
         // 排除重复文案
         if useGuidanceMessageIndexs.contains(Int(index)) {
-           return getNextGuidanceMessage()
+            return getNextGuidanceMessage()
         }
         useGuidanceMessageIndexs.append(index)
         return "guidance_message_\(index)".localizedString
@@ -249,7 +253,7 @@ class DevicesViewController: WMPageController {
         })
         RunLoop.current.add(guidanceTimer!, forMode: .common)
     }
-
+    
     /// 停止网络连接引导提示
     private func stopGuidanceTimer() {
         guidanceTimer?.invalidate()
@@ -322,16 +326,16 @@ class DevicesViewController: WMPageController {
             }
         }).show()
         
-//        let items: [MenuPopView.MenuItem] = [
-//            .init(icon: UIImage(named: "menu_light"), title: "light".localizedString, hideAnimation: false, tapItemBack: {[weak self] _ in
-//                guard let self = self else { return }
-//                self.deviceAdd()
-//            }),
-//            .init(icon: UIImage(named: "menu_switch"), title: "switch".localizedString, tapItemBack: { _ in
-//                self.switchAdd()
-//            })
-//        ]
-//        MenuPopView.show(items: items, anchorPoint: point, direction: .up)
+        //        let items: [MenuPopView.MenuItem] = [
+        //            .init(icon: UIImage(named: "menu_light"), title: "light".localizedString, hideAnimation: false, tapItemBack: {[weak self] _ in
+        //                guard let self = self else { return }
+        //                self.deviceAdd()
+        //            }),
+        //            .init(icon: UIImage(named: "menu_switch"), title: "switch".localizedString, tapItemBack: { _ in
+        //                self.switchAdd()
+        //            })
+        //        ]
+        //        MenuPopView.show(items: items, anchorPoint: point, direction: .up)
     }
     
     /// 节点同步时间
@@ -351,16 +355,16 @@ class DevicesViewController: WMPageController {
             XWHUDManager.showTipHUD(String(format: "devices_number_exceeds_message".localizedString, space.maxDevicesCount), isLineFeed: true)
             return
         }
-//        navigationController?.pushViewController(DeviceRestoreViewController(), animated: true)
-//        return
+        //        navigationController?.pushViewController(DeviceRestoreViewController(), animated: true)
+        //        return
         let vc = DeviceAddViewController(space: space)
         vc.deviceAddCallback = { nodes in
             NotificationCenter.default.post(name: .init(devicesAddNotificationName), object: nil)
             
-//            self?.loadDevices()
-//            self?.getNodesState()
-//            self?.collectionView.reloadData()
-//            self?.updateAllOnOffItemUI()
+            //            self?.loadDevices()
+            //            self?.getNodesState()
+            //            self?.collectionView.reloadData()
+            //            self?.updateAllOnOffItemUI()
         }
         navigationController?.pushViewController(vc, animated: true)
     }
@@ -392,8 +396,10 @@ class DevicesViewController: WMPageController {
     /// 恢复设备数据
     private func devicesRestore() {
         let vc = DeviceRestoreViewController(space: space, restoreMode: .default)
-        vc.deviceRestoreCallback = { _ in
-            NotificationCenter.default.post(name: .init(devicesAddNotificationName), object: nil)
+        vc.deviceRestoreCallback = { nodes in
+            if nodes.count > 0 {
+                NotificationCenter.default.post(name: .init(devicesAddNotificationName), object: nil)
+            }
         }
         navigationController?.pushViewController(vc, animated: true)
     }
@@ -589,7 +595,7 @@ class DevicesViewController: WMPageController {
         present(NavigationViewController(rootViewController: vc), animated: true)
         
     }
-
+    
 }
 
 extension DevicesViewController: MeshLibManagerDelegate, MeshLibManagerMessageDelegate {
@@ -598,10 +604,10 @@ extension DevicesViewController: MeshLibManagerDelegate, MeshLibManagerMessageDe
     /// - Parameters:
     ///   - state: 蓝牙状态
     func meshNetworkManager(bluetoothDidUpdateState state: CBManagerState) {
-//        if state == .poweredOn && devices.count > 0 {
-//            // 获取设备信号
-//            MeshLibManager.manager.refreshNodesRSSI(withWaitFor: 3, result: nil)
-//        }
+        //        if state == .poweredOn && devices.count > 0 {
+        //            // 获取设备信号
+        //            MeshLibManager.manager.refreshNodesRSSI(withWaitFor: 3, result: nil)
+        //        }
     }
     
     
@@ -610,14 +616,14 @@ extension DevicesViewController: MeshLibManagerDelegate, MeshLibManagerMessageDe
     ///   - manager: mesh网络管理
     ///   - bearer: 代理设备
     func meshNetworkManager(_ manager: MeshNetworkManager, bearerDidOpen bearer: Bearer) {
-//       let addressList = space.meshManager?.realNodes.map({ $0.primaryUnicastAddress }) ?? []
-//        MeshAPI.resetNodes(addressList: addressList, resetSuccess: nil, resetFail: nil, resetFinish: nil)
+        //       let addressList = space.meshManager?.realNodes.map({ $0.primaryUnicastAddress }) ?? []
+        //        MeshAPI.resetNodes(addressList: addressList, resetSuccess: nil, resetFail: nil, resetFinish: nil)
         
-//        if view.window != nil {
-//            getNodesState()
-//        }
+        //        if view.window != nil {
+        //            getNodesState()
+        //        }
     }
- 
+    
     ///  mesh设备断开连接
     /// - Parameters:
     ///   - manager: mesh网络管理
@@ -661,8 +667,8 @@ extension DevicesViewController {
     }
     
     override func pageController(_ pageController: WMPageController, preferredFrameForContentView contentView: WMScrollView) -> CGRect {
-//        let y = SCRYFrom(42)
-//        let footerH = SCRYFrom(44) + kSafeAreaBottomHeight
+        //        let y = SCRYFrom(42)
+        //        let footerH = SCRYFrom(44) + kSafeAreaBottomHeight
         return CGRect(x: 0, y: 0, width: view.width, height: view.height)
     }
     
@@ -671,12 +677,12 @@ extension DevicesViewController {
     }
     
     override func pageController(_ pageController: WMPageController, didEnter viewController: UIViewController, withInfo info: [AnyHashable : Any]) {
-//        mainMenuView.selectIndex = Int(self.selectIndex)
+        //        mainMenuView.selectIndex = Int(self.selectIndex)
     }
     
     override func menuView(_ menu: WMMenuView!, shouldSelesctedIndex index: Int) -> Bool {
         return !XWHUDManager.isVisible()
-//        return index < 3
+        //        return index < 3
     }
     
 }
@@ -715,7 +721,7 @@ extension DevicesViewController {
     }
     
     override func menuView(_ menu: WMMenuView!, didSelectedIndex index: Int, currentIndex: Int) {
-       
+        
         let item = menu.item(at: index)
         item?.backgroundColor = Bar_Color
         item?.layer.borderWidth = 0
@@ -727,7 +733,7 @@ extension DevicesViewController {
         
         let lastItem = menu.item(at: currentIndex)
         lastItem?.backgroundColor = RGB(254, 254, 254)
-//        self.selectIndex = Int32(index)
+        //        self.selectIndex = Int32(index)
         
         super.menuView(menu, didSelectedIndex: index, currentIndex: currentIndex)
     }
@@ -739,7 +745,7 @@ extension DevicesViewController {
             initialMenuItem.backgroundColor = Bar_Color
         }else {
             initialMenuItem.backgroundColor = RGB(254, 254, 254)
-//                .white.withAlphaComponent(0.95)
+            //                .white.withAlphaComponent(0.95)
         }
         return initialMenuItem
     }
@@ -752,7 +758,7 @@ extension DevicesViewController: FirmwareDistributeUpdateStateViewDelegate {
     func firmwareUpdateCancelAction(_ view: FirmwareDistributeUpdateStateView) {
         stopDistributionStateTimer()
     }
-
+    
     /// 点击详情回调
     func firmwareUpdateDetailsAction(_ view: FirmwareDistributeUpdateStateView) {
         stopDistributionStateTimer()
