@@ -93,6 +93,7 @@ func SCRYFit(_ y : CGFloat) -> CGFloat {
 }
 
 let isIPad = UIDevice.current.model == "iPad"
+let isIPhone = UIDevice.current.model == "iPhone"
 
 // 检查当前首选语言是否是中文
 let isChineseLanguage = Locale.preferredLanguages.first?.hasPrefix("zh") ?? false

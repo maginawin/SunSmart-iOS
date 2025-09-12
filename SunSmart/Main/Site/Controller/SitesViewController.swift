@@ -114,14 +114,16 @@ class SitesViewController: UIViewController {
                     UserData.currentServerRegion = region
                     self?.setupData()
                     self?.loadSitesRequest()
+                    // 获取设备配置数据
+                    self?.loadMeshDeviceConfigRequest()
                 }.show()
             }
         }else if NetworkRequest.shared.networkable {
             loadSitesRequest()
+            // 获取设备配置数据
+            loadMeshDeviceConfigRequest()
         }
       
-        // 获取设备配置数据
-        loadMeshDeviceConfigRequest()
     }
     
     
@@ -183,6 +185,8 @@ class SitesViewController: UIViewController {
                 // 自动上传
                 if view.window != nil, Keychain.getServerRegion() != nil {
                     loadSitesRequest()
+                    // 获取设备配置数据
+                    loadMeshDeviceConfigRequest()
                 }
                 
             }else { // 有网络=>无网络
@@ -506,25 +510,32 @@ class SitesViewController: UIViewController {
     @objc private func importClick() {
         
         
-//        guard let space = SpaceData.load(siteId: "25300E88-41F0-456E-A0A9-AD615069017C", spaceId: "88BF1DEC-264E-4D00-A93C-729A88030D58").first else {
+//        guard let space = favouriteSites.first?.spaces.last else {
 //            return
 //        }
 //        guard let space = allSites.last?.spaces.first else { return }
         
 //        DispatchQueue.global().async {
 //            MeshLibManager.manager.setMeshNetworkConnected(meshUUID: space.meshUUID, subNetworkId: space.meshNetworkId)
-//            DispatchQueue.main.async {
-////                let group = MeshNetworkManager.instance.groups.first!
-////                let vc = GroupViewController(space: space, group: group)
-////                let vc = GroupPathSequencePageController(group: group)
-//                let vc = DeviceAddViewController(space: space)
-//                self.present(NavigationViewController(rootViewController: vc), animated: true)
+//            MeshLibManager.manager.publishModelIDs = []
+//            MeshNetworkManager.instance.loadExtensionData { _ in
+//                DispatchQueue.main.async {
+//    //                let group = MeshNetworkManager.instance.groups.first!
+//    //                let vc = GroupViewController(space: space, group: group)
+//    //                let vc = GroupPathSequencePageController(group: group)
+//                    let vc = DaliMasterViewController(space: space, node: MeshNetworkManager.instance.realNodes[0])
+//                    self.present(NavigationViewController(rootViewController: vc), animated: true)
+//                }
 //            }
 //        }
         
 //        let vc = DeviceRestoreViewController(space: space, restoreMode: .default)
 //        vc.automationRestore = true
+//        if isIPad {
+//            vc.preferredContentSize = iPadStandardSize
+//        }
 //        self.present(NavigationViewController(rootViewController: vc), animated: true)
+        
         
         ImportProjectView {[weak self] mode in
             if mode == .scanQRCode {

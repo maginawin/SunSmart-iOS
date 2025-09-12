@@ -78,6 +78,10 @@ class DeviceLightsViewController: UIViewController {
     
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
+        
+        if refreshControl.isRefreshing {
+            refreshControl.endRefreshing()
+        }
         loadDevices()
     }
     
@@ -411,31 +415,31 @@ class DeviceLightsViewController: UIViewController {
 
         repairView = UIView()
 //        repairView.addRoundedCorners(corners: [.topLeft, .topRight], cornerRadii: CGSize(width: SCRYFrom(8), height: SCRYFrom(8)), rect: CGRect(x: 0, y: 0, width: view.width, height: SCRYFrom(60)))
-//        repairView.layer.cornerRadius = SCRYFrom(8)
+        repairView.layer.cornerRadius = SCRYFrom(8)
         repairView.layer.shadowColor = RGB(0, 0, 0, 0.1).cgColor
         repairView.layer.shadowOpacity = 1
         repairView.layer.shadowRadius = 6
         repairView.layer.shadowOffset = CGSize(width: 0, height: -2)
-//        repairView.layer.shadowPath = UIBezierPath(rect: CGRect(x: 0, y: -2, width: view.width, height: SCRYFrom(11))).cgPath
+        repairView.layer.shadowPath = UIBezierPath(rect: CGRect(x: 0, y: -2, width: view.width, height: SCRYFrom(11))).cgPath
         repairView.isHidden = true
         repairView.backgroundColor = .white
         view.addSubview(repairView)
         repairView.snp.makeConstraints { make in
             make.left.right.equalToSuperview()
-            make.bottom.equalTo(groupsView)
+            make.bottom.equalTo(groupsView).offset(-1)
 //            make.bottom.equalToSuperview()
             make.height.equalTo(SCRYFrom(60))
         }
         
-        repairCountLabel = UILabel(text: "", textColor: TextBlack_Color, fontSize: 16)
+        repairCountLabel = UILabel(text: "", textColor: TextBlack_Color, fontSize: 16, fontWeight: .light)
         repairView.addSubview(repairCountLabel)
         repairCountLabel.snp.makeConstraints { make in
             make.left.equalTo(SCRXFrom(16))
             make.centerY.equalToSuperview()
         }
         
-        repairBtn = UIButton(title: "repair".localizedString, titleSize: 14, titleColor: .white, target: self, action: #selector(repairBtnClick))
-        repairBtn.titleLabel?.font = Font_Medium_Size(SCRYFrom(14))
+        repairBtn = UIButton(title: "repair".localizedString, titleSize: 14, titleWeight: .light, titleColor: .white, target: self, action: #selector(repairBtnClick))
+//        repairBtn.titleLabel?.font = Font_Medium_Size(SCRYFrom(14))
         repairBtn.layer.cornerRadius = SCRYFrom(5)
         repairBtn.backgroundColor = Bar_Color
         repairView.addSubview(repairBtn)
@@ -452,21 +456,25 @@ class DeviceLightsViewController: UIViewController {
     
     /// 全关
      private func allOffAction() {
-        devices.forEach({
-            $0.isOn = false
-            // 关灯，记录关灯前的亮度值
-            if $0.lightness > 0 {
-                $0.trunOffLightness = $0.lightness
-            }
-        })
-        collectionView.reloadData()
+         if !routeTest {
+             devices.forEach({
+                 $0.isOn = false
+                 // 关灯，记录关灯前的亮度值
+                 if $0.lightness > 0 {
+                     $0.trunOffLightness = $0.lightness
+                 }
+             })
+             collectionView.reloadData()
+         }
         MeshAPI.setAllOnOffState(isOn: false)
     }
     
     /// 全开
     private func allOnAction() {
-        devices.forEach({ $0.isOn = true })
-        collectionView.reloadData()
+        if !routeTest {
+            devices.forEach({ $0.isOn = true })
+            collectionView.reloadData()
+        }
         MeshAPI.setAllOnOffState(isOn: true)
     }
     
@@ -528,6 +536,7 @@ class DeviceLightsViewController: UIViewController {
         devices.forEach({
             if let index = devices.firstIndex(of: $0), let item = collectionView.cellForItem(at: IndexPath(item: index + 1, section: 0)) as? DevicesViewCell {
                 item.device = $0
+                item.displayDeviceNamePrefix = space.displayDeviceNamePrefix
             }
         })
     }
@@ -564,6 +573,7 @@ class DeviceLightsViewController: UIViewController {
                     }
                 }
                 item.device = node
+                item.displayDeviceNamePrefix = space.displayDeviceNamePrefix
             }
             
         }
@@ -827,6 +837,7 @@ extension DeviceLightsViewController: UICollectionViewDataSource, UICollectionVi
             cell.selectImageView.isHidden = true
         }
         cell.device = device
+        cell.displayDeviceNamePrefix = space.displayDeviceNamePrefix
         // 编辑选中点击
         cell.editClickCallback = {[weak self] node in
             guard let self = self else { return }

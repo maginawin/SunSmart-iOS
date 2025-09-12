@@ -685,7 +685,7 @@ extension MeshFirmwareUpdateViewController {
                 message = "mesh_distributor_log_not_firmware".localizedString
             case .transferBlob(let distributionName, let version, let estimateTime):
                 
-                var message = String(format: "mesh_distributor_log_transfer".localizedString, " \(distributionName)(\(version))")
+                let message = String(format: "mesh_distributor_log_transfer".localizedString, " \(distributionName)(\(version))")
                 let attStr = NSMutableAttributedString(string: message, attributes: attributes)
                 
                 if let time = estimateTime {

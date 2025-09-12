@@ -384,6 +384,12 @@ class SyncDevicesViewController: UIViewController {
                                 let step = SyncDeviceStepModel(type: "relative_sensitivity".localizedString, state: .none, tasks: [taskModel])
                                 taskModel.parentStepModel = step
                                 steps.append(step)
+                            case .defaultTransitionTime(let transitionTime):
+                                let taskModel = SyncDeviceStepTaskModel(name: "transition_time".localizedString, operationType: .configuration(node: node, type: .deviceParameters(parameterType: .defaultTransitionTime(transitionTime: transitionTime))))
+                                
+                                let step = SyncDeviceStepModel(type: "transition_time".localizedString, state: .none, tasks: [taskModel])
+                                taskModel.parentStepModel = step
+                                steps.append(step)
                             }
                         }
                         
@@ -688,6 +694,9 @@ class SyncDevicesViewController: UIViewController {
                     case .motionSensitivityRange(range: let range):
                         let taskModel = SyncDeviceStepTaskModel(name: "relative_sensitivity".localizedString, operationType: .configuration(node: node, type: .deviceParameters(parameterType: .motionSensitivityRange(range: range))))
                         tasks.append(taskModel)
+                    case .defaultTransitionTime(let transitionTime):
+                        let taskModel = SyncDeviceStepTaskModel(name: "transition_time".localizedString, operationType: .configuration(node: node, type: .deviceParameters(parameterType: .defaultTransitionTime(transitionTime: transitionTime))))
+                        tasks.append(taskModel)
                     }
                 }
                 let deviceParametersStepModel = SyncDeviceStepModel(type: "device_parameters".localizedString, state: .none, tasks: tasks)
@@ -914,7 +923,7 @@ class SyncDevicesViewController: UIViewController {
             navigationItem.rightBarButtonItem?.title = "stop".localizedString
             navigationItem.rightBarButtonItem?.isEnabled = true
             bottomView.isHidden = true
-            tableView.contentInset = .zero
+            tableView.contentInset = UIEdgeInsets(top: 0, left: 0, bottom: bottomView.height, right: 0)
             backBtn.isHidden = true
         }else if syncState == .syncSuccess {
             bottomView.isHidden = true

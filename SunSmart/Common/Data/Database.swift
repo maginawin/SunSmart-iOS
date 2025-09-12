@@ -395,6 +395,7 @@ extension SpaceData {
         static let isReleaseAddress = Expression<Bool?>("isReleaseAddress")
         static let editor = Expression<Data?>("editor")
         static let vistors = Expression<Data?>("vistors")
+        static let displayDeviceNamePrefix = Expression<Bool>("displayDeviceNamePrefix")
     }
     
     /// 初始化空间表
@@ -433,6 +434,7 @@ extension SpaceData {
             builder.column(ExpressionKey.isReleaseAddress)
             builder.column(ExpressionKey.editor)
             builder.column(ExpressionKey.vistors)
+            builder.column(ExpressionKey.displayDeviceNamePrefix, defaultValue: true)
         }))
         
         // 获取表内存在的属性
@@ -450,6 +452,10 @@ extension SpaceData {
             // 是否存在”vistors“属性
             if !columns.contains(where: { $0.name == "vistors" }) {
                 _ = try? SunSmartDataManager.shared.db?.run(SpaceData.spacesTable.addColumn(ExpressionKey.vistors))
+            }
+            // 是否存在”displayDeviceNamePrefix“属性
+            if !columns.contains(where: { $0.name == "displayDeviceNamePrefix" }) {
+                _ = try? SunSmartDataManager.shared.db?.run(SpaceData.spacesTable.addColumn(ExpressionKey.displayDeviceNamePrefix, defaultValue: true))
             }
         }
         
@@ -504,6 +510,7 @@ extension SpaceData {
                 space.applyDeviceAddressCount = row[ExpressionKey.applyDeviceAddressCount]
                 space.applyGroupAddressCount = row[ExpressionKey.applyGroupAddressCount]
                 space.releaseAddress = row[ExpressionKey.isReleaseAddress] ?? false
+                space.displayDeviceNamePrefix = row[ExpressionKey.displayDeviceNamePrefix]
                 
                 if let editorData = row[ExpressionKey.editor] {
                     space.editor = try? jsonDecoder.decode(UserData.self, from: editorData)
@@ -593,7 +600,8 @@ extension SpaceData {
             ExpressionKey.applyGroupAddressCount <- self.applyGroupAddressCount,
             ExpressionKey.isReleaseAddress <- self.releaseAddress,
             ExpressionKey.editor <- editorData,
-            ExpressionKey.vistors <- vistorsData
+            ExpressionKey.vistors <- vistorsData,
+            ExpressionKey.displayDeviceNamePrefix <- self.displayDeviceNamePrefix
         ])
         do {
             try SunSmartDataManager.shared.db?.run(interOrUpdate)

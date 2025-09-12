@@ -43,11 +43,14 @@ class DeviceForceResetDeviceView: UIView {
         fatalError("init(coder:) has not been implemented")
     }
     
-    func update(device: ProvisioningDevice, state: DeviceForceResetDeviceController.DeviceState) {
+    func update(device: ProvisioningDevice, displayDeviceNamePrefix: Bool = true, deviceGroup: Group? = nil, state: DeviceForceResetDeviceController.DeviceState) {
         
         deviceImageView.image = UIImage(named: device.icon ?? "")
-        
-        nameLabel.text = device.deviceName ?? "device".localizedString
+        var name = device.deviceName ?? "device".localizedString
+        if displayDeviceNamePrefix, let group = deviceGroup {
+            name = "\(group.name)-\(name)"
+        }
+        nameLabel.text = name
         
         if let macAddress = device.macAddress, !macAddress.isEmpty {
             macAddressLabel.text = macAddress.getMacAddressSegmentString()
@@ -76,6 +79,7 @@ class DeviceForceResetDeviceView: UIView {
             resetBtn.isHidden = false
             resetBtn.isEnabled = false
             resetBtn.setImage(nil, for: .normal)
+            resetBtn.layer.borderColor = Red_Color.withAlphaComponent(0.5).cgColor
         case .idenfityFinish:
             identifyBtn.isEnabled = true
             identifyBtn.setTitle("identify".localizedString, for: .normal)
@@ -84,6 +88,7 @@ class DeviceForceResetDeviceView: UIView {
             resetBtn.isEnabled = true
             resetBtn.setImage(nil, for: .normal)
             resetBtn.setTitle("reset".localizedString, for: .normal)
+            resetBtn.layer.borderColor = Red_Color.cgColor
         case .reseting:
             identifyBtn.isEnabled = false
             resetBtn.isHidden = false
@@ -91,11 +96,12 @@ class DeviceForceResetDeviceView: UIView {
             resetBtn.setTitle(nil, for: .normal)
             resetBtn.setImage(UIImage(named: "device_reset_loading"), for: .normal)
             resetBtn.imageView?.layer.addRotationAnimation(duration: 1.2, repeatCount: 999, animationKey: "loading")
+            resetBtn.layer.borderColor = Bar_Color.withAlphaComponent(0.5).cgColor
         }
 
         identifyBtn.layer.borderColor = identifyBtn.isEnabled ? Bar_Color.cgColor : Bar_Color.withAlphaComponent(0.5).cgColor
         
-        resetBtn.layer.borderColor = resetBtn.isEnabled ? Red_Color.cgColor : Bar_Color.withAlphaComponent(0.5).cgColor
+        
         
     }
     

@@ -10,7 +10,7 @@ import UIKit
 class GroupPathSequenceAddDeviceCell: UICollectionViewCell {
     
     var iconImageView: UIImageView!
-    var nameLabel: UILabel!
+    var nameLabel: AdaptiveTextView!
     
     override init(frame: CGRect) {
         super.init(frame: frame)
@@ -35,20 +35,25 @@ class GroupPathSequenceAddDeviceCell: UICollectionViewCell {
     private func setupUI() {
         
         iconImageView = UIImageView(image: UIImage(named: "path_device"))
+        iconImageView.sizeToFit()
         contentView.addSubview(iconImageView)
         iconImageView.snp.makeConstraints { make in
             make.centerX.equalToSuperview()
             make.top.equalTo(isIPad ? SCRYFrom(8) : SCRYFrom(3))
+            make.height.equalTo(iconImageView.height)
         }
         
-        nameLabel = UILabel(text: "ID001", textColor: SubText_Color, fontSize: 12, fontWeight: .light, fit: false)
-        nameLabel.textAlignment = .center
-        nameLabel.lineBreakMode = .byTruncatingHead
+        nameLabel = AdaptiveTextView()
+        nameLabel.textColor = Title_Color
+        nameLabel.maxFontSize = FontFit(10)
+        nameLabel.minFontSize = FontFit(8)
+        nameLabel.lineHeightMultiple = 0.9
         contentView.addSubview(nameLabel)
         nameLabel.snp.makeConstraints { make in
-            make.left.equalTo(SCRXFrom(4))
-            make.right.equalTo(SCRXFrom(-4))
-            make.bottom.equalTo(SCRYFrom(-7))
+            make.left.equalTo(SCRXFrom(6))
+            make.right.equalTo(SCRXFrom(-6))
+            make.top.equalTo(iconImageView.snp.bottom)
+            make.bottom.equalToSuperview()
         }
         
     }

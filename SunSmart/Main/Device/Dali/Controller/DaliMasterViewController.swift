@@ -46,7 +46,7 @@ class DaliMasterViewController: DeviceBaseViewController {
         }))
         
         items.append(.init(icon: UIImage(named: "menu_dali_setting"), title: "dali_setting".localizedString, tapItemBack: {[weak self] _ in
-            self?.refresh()
+            self?.daliSettings()
         }))
         
         
@@ -77,7 +77,7 @@ class DaliMasterViewController: DeviceBaseViewController {
         view.addSubview(singleControlView)
         singleControlView.snp.makeConstraints { make in
             make.left.right.bottom.equalToSuperview()
-            make.top.equalTo(view.safeAreaInsets.top)
+            make.top.equalTo(view.safeAreaLayoutGuide)
         }
         
         multipleControlsView = DaliMasterMultipleControlsView()
@@ -86,7 +86,7 @@ class DaliMasterViewController: DeviceBaseViewController {
         view.addSubview(multipleControlsView)
         multipleControlsView.snp.makeConstraints { make in
             make.left.right.bottom.equalToSuperview()
-            make.top.equalTo(view.safeAreaInsets.top)
+            make.top.equalTo(view.safeAreaLayoutGuide)
         }
         
     }
@@ -102,6 +102,8 @@ class DaliMasterViewController: DeviceBaseViewController {
             let lightness100 = node.isOn ? Node.getLightness100(lightness: node.lightness) : 0
             
             if node.isOn {
+                singleControlView.isHidden = true
+                multipleControlsView.isHidden = false
                 singleControlView.lightImageBtn.isSelected = true
                 singleControlView.onoffBtn.isSelected = true
                 
@@ -144,6 +146,10 @@ class DaliMasterViewController: DeviceBaseViewController {
         }
     }
     
+    private func daliSettings() {
+        let vc = DaliSettingViewController(node: node)
+        navigationController?.pushViewController(vc, animated: true)
+    }
     
     /// 设备开关控制
     private func meshOnoff(isOn: Bool) {

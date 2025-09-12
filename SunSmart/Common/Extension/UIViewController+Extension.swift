@@ -331,7 +331,7 @@ class BannerAutomaticHud: UIView {
         }
         
         shadeView = UIView()
-        shadeView.backgroundColor = RGB(0, 0, 0, 0.1)
+        shadeView.backgroundColor = RGB(0, 0, 0, 0.4)
         addSubview(shadeView)
         shadeView.snp.makeConstraints { make in
             make.left.right.bottom.equalToSuperview()

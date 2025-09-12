@@ -203,7 +203,10 @@ class MeshSelectUpgradeDevicesViewController: UIViewController {
             sender.isSelected = false
         }else {
             // 可升级设备
-            let upgradableNodes = nodes.filter({ $0.state && ($0.firmwareVersion == nil || distributorNode.distributionVersion?.compare($0.firmwareVersion!, options: .numeric) == .orderedDescending) })
+            var upgradableNodes = nodes.filter({ $0.state && ($0.firmwareVersion == nil || distributorNode.distributionVersion?.compare($0.firmwareVersion!, options: .numeric) == .orderedDescending) })
+            if routeTest {
+                upgradableNodes = nodes.filter({ ($0.firmwareVersion == nil || distributorNode.distributionVersion?.compare($0.firmwareVersion!, options: .numeric) == .orderedDescending) })
+            }
 
             // 判断是否超出限制
             if let maxSize = distributorNode.maxDistributionReceiversListSize, selectNodes.count >= maxSize {
@@ -320,7 +323,11 @@ class MeshSelectUpgradeDevicesViewController: UIViewController {
     private func updateBottomUIState() {
         
         /// 可升级的设备
-        let upgradableNodes = nodes.filter({ $0.state && ($0.firmwareVersion == nil || distributorNode.distributionVersion?.compare($0.firmwareVersion!, options: .numeric) == .orderedDescending) })
+        var upgradableNodes = nodes.filter({ $0.state && ($0.firmwareVersion == nil || distributorNode.distributionVersion?.compare($0.firmwareVersion!, options: .numeric) == .orderedDescending) })
+        
+        if routeTest {
+            upgradableNodes = nodes.filter({ ($0.firmwareVersion == nil || distributorNode.distributionVersion?.compare($0.firmwareVersion!, options: .numeric) == .orderedDescending) })
+        }
         
         selectAllBtn.isSelected = selectNodes.count == upgradableNodes.count
         selectCountLabel.text = "\(selectNodes.count)/\(upgradableNodes.count)"
@@ -388,7 +395,7 @@ extension MeshSelectUpgradeDevicesViewController: UITableViewDataSource, UITable
     
     func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
         let node = nodes[indexPath.row]
-        guard state == .normal, node.state else {
+        guard state == .normal, node.state || routeTest else {
             return
         }
         

@@ -391,6 +391,7 @@ class GroupMembersViewController: UIViewController {
             
             if let item = collectionView.cellForItem(at: IndexPath(item: index, section: 0)) as? DevicesViewCell {
                 item.device = node
+                item.displayDeviceNamePrefix = space.displayDeviceNamePrefix
 //                if node.state && node.isKeybindComplete {
 //                    item.selectImageView.isHidden = false
 //                }else {
@@ -435,6 +436,7 @@ class GroupMembersViewController: UIViewController {
                 }
                 if let index = self.nodes.firstIndex(of: node), let cell = collectionView.cellForItem(at: IndexPath(row: index, section: 0)) as? DevicesViewCell {
                     cell.device = node
+                    cell.displayDeviceNamePrefix = space.displayDeviceNamePrefix
                     cell.selectImageView.isHidden = false
                     cell.selectImageView.image = selectNodes.contains(node) ? UIImage(named: "device_select") : UIImage(named: "device_select_un")
                 }
@@ -509,7 +511,7 @@ extension GroupMembersViewController: UICollectionViewDataSource, UICollectionVi
         let cell = collectionView.dequeueReusableCell(withReuseIdentifier: "cell", for: indexPath) as! DevicesViewCell
         let node = nodes[indexPath.item]
         cell.device = node
-        
+        cell.displayDeviceNamePrefix = space.displayDeviceNamePrefix
 //        if node.state && node.isKeybindComplete {
 //            cell.selectImageView.isHidden = false
 //        }else {

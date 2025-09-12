@@ -36,7 +36,9 @@ class GatewayViewController: UIViewController, DeviceProtocol {
         
         setGatewayModel = node.gatewayModel?.copy()
         
-        otherGateways = GatewayModel.load(siteId: space.siteId).filter({ $0.mac != node.gatewayModel?.mac })
+        let gateways = GatewayModel.load(siteId: space.siteId).filter({ $0.mac != node.gatewayModel?.mac })
+        // 确保是space内的网关
+        otherGateways = gateways.filter({ MeshNetworkManager.instance.meshNetwork?.node(withAddress: $0.address) != nil })
     }
     
     required init?(coder: NSCoder) {

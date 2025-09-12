@@ -140,6 +140,8 @@ enum DeviceParameterType {
             return 2
         case .motionSensitivityRange:
             return 3
+        case .defaultTransitionTime:
+            return 4
         }
     }
     
@@ -160,6 +162,10 @@ enum DeviceParameterType {
                 let sensitivity = node.motionSensitivity ?? min(UInt8(node.group?.info.profile.sensitivity ?? 100).value16, 65535)
                 messageHandles.append(MeshMessageHandle(message: SunricherVendorSet(function: .motionSensitivity(sensitivity, maxValue: range.upperBound, minValue: range.lowerBound)), model: vendorModel))
             }
+        case .defaultTransitionTime(let transitionTime):
+            if let defaultTransitionTimeModel = node.defaultTransitionTimeModel {
+                messageHandles.append(MeshMessageHandle(message: GenericDefaultTransitionTimeSet(transitionTime: transitionTime), model: defaultTransitionTimeModel))
+            }
         }
         return messageHandles
     }
@@ -170,6 +176,8 @@ enum DeviceParameterType {
     case ratedPower(datas: [NodePhaseEnergyConsumption])
     /// 移动感应灵敏度范围
     case motionSensitivityRange(range: ClosedRange<UInt16>)
+    /// 默认过渡时间
+    case defaultTransitionTime(transitionTime: TransitionTime)
 }
 
 enum DeviceReadParameterType {
@@ -199,6 +207,10 @@ enum DeviceReadParameterType {
             if let firmwareUpdateServerModel = node.firmwareUpdateServerModel {
                 messageHandles.append(MeshMessageHandle(message: FirmwareUpdateInformationGet(firstIndex: 0, entriesLimit: 1), model: firmwareUpdateServerModel))
             }
+        case .defaultTransitionTime:
+            if let defaultTransitionTimeModel = node.defaultTransitionTimeModel {
+                messageHandles.append(MeshMessageHandle(message: GenericDefaultTransitionTimeGet(), model: defaultTransitionTimeModel))
+            }
         }
         return messageHandles
     }
@@ -213,6 +225,8 @@ enum DeviceReadParameterType {
     case motionSensitivityRange
     /// 固件版本
     case firmwareVension
+    /// 默认过渡时间
+    case defaultTransitionTime
 }
 
 

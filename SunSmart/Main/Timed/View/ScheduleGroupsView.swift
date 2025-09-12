@@ -315,7 +315,7 @@ class ScheduleGroupsViewCell: UICollectionViewCell {
         nameLabel.snp.makeConstraints { make in
             make.left.equalTo(selectedImageView.snp.right).offset(SCRXFrom(8))
             make.centerY.equalToSuperview()
-            make.width.lessThanOrEqualTo(SCRXFrom(150))
+            make.width.lessThanOrEqualTo(SCRXFrom(220))
         }
         
         failedImageView = UIImageView(image: UIImage(named: "sync_failed"))

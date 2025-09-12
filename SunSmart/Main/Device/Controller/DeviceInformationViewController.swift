@@ -56,8 +56,11 @@ class DeviceInformationViewController: UIViewController {
     private func setupDeviceInfoDataSource() {
         
 //        let messageColor = RGB(13, 14, 28, 0.5)
-        
-        let nameModel = CustomCellModel(title: "name".localizedString, content: node.name, style: .none)
+        var name = node.name ?? ""
+        if let group = node.group, SpaceViewController.currentSpace()?.displayDeviceNamePrefix ?? false {
+            name = "\(group.name)-\(name)"
+        }
+        let nameModel = CustomCellModel(title: "name".localizedString, content: name, style: .none)
         
         let macModel = CustomCellModel(icon: UIImage(named: "copy"), title: "MAC", content: node.macAddressResult, style: .icon)
         

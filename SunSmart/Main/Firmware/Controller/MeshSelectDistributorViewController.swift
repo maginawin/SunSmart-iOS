@@ -93,6 +93,8 @@ class MeshSelectDistributorViewController: UIViewController {
     /// 是否正在刷新设备信号
     private var refreshing: Bool = false
     private var rssiSortTimer: Timer?
+    /// 是否显示设备前缀
+    private var displayDeviceNamePrefix: Bool = true
     
     /// 分发的固件数据
     let firmwareData: FirmwareData?
@@ -124,6 +126,8 @@ class MeshSelectDistributorViewController: UIViewController {
         navigationItem.rightBarButtonItem = UIBarButtonItem(customView: scanAnimationView)
         
         setupUI()
+        
+        displayDeviceNamePrefix = SpaceViewController.currentSpace()?.displayDeviceNamePrefix ?? true
         
         nodes = MeshNetworkManager.instance.realNodes.filter({ $0.productIdentifier == productId })
 //        setupData()
@@ -484,7 +488,7 @@ extension MeshSelectDistributorViewController: UITableViewDataSource, UITableVie
     func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
         let cell = tableView.dequeueReusableCell(withIdentifier: "cell", for: indexPath) as! MeshFirmwareSelectDeviceViewCell
         let node = nodes[indexPath.row]
-        cell.updateData(device: node, upgradeStep: .distributor, showSelect: node.distributorSelectedState != .none, selected: node.distributorSelectedState == .selected, enabled: node.distributorSelectedState != .disabled)
+        cell.updateData(device: node, upgradeStep: .distributor, showSelect: node.distributorSelectedState != .none, selected: node.distributorSelectedState == .selected, enabled: node.distributorSelectedState != .disabled, displayDeviceNamePrefix: displayDeviceNamePrefix)
         cell.identifyCallback = {
             MeshAPI.identify(address: node.primaryUnicastAddress)
         }

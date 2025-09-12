@@ -66,6 +66,11 @@ class DeviceForceResetDeviceController: UIViewController {
     private var scrollView: UIScrollView!
     private var contentView: UIView!
     
+    private var sliderView: UIView!
+    private var nearLabel: UILabel!
+    private var rssiSlider: RangeSlider!
+    private var farLabel: UILabel!
+    
     private var headerView: UIView!
     private var titleLabel: UILabel!
     private var imageView: UIImageView!
@@ -83,6 +88,8 @@ class DeviceForceResetDeviceController: UIViewController {
 //    private var scanDevices: [ProvisioningDevice] = []
     /// 待删除的设备
     private var device: ProvisioningDevice?
+    /// 待删除设备所在组（当前space内设备）
+    private var deviceGroup: Group?
     
     /// 无定向广播
     private let broadcaster = BluetoothBroadcaster()
@@ -95,6 +102,14 @@ class DeviceForceResetDeviceController: UIViewController {
     private let broadcasterDuration: UInt8 = 1
     /// 广播时光感上报阈值
 //    private let lightSensorDelta: UInt16 = 80
+    private var displayDeviceNamePrefix: Bool = true
+    /// 可选的信号值范围
+    private var selectRSSIRange: ClosedRange<Int> = -100 ... -25
+    /// 筛选信号值范围
+    private let filterRSSIRange: ClosedRange<Int> = -100 ... -25
+    /// 重新选择倒计时
+    private var reselectDowncount: Int = 5
+    private var reselectTimer: Timer?
     
     let resetMode: ResetMode
     
@@ -112,6 +127,8 @@ class DeviceForceResetDeviceController: UIViewController {
 
         view.backgroundColor = Background_Color
         
+        displayDeviceNamePrefix = SpaceViewController.currentSpace()?.displayDeviceNamePrefix ?? true
+        
         setupUI()
         updateUI()
     }
@@ -128,6 +145,7 @@ class DeviceForceResetDeviceController: UIViewController {
                 device = nil
                 deviceState = .none
                 state = .none
+                stopReselectTimer()
                 updateUI()
                 stopBroadcaster()
             }
@@ -146,7 +164,12 @@ class DeviceForceResetDeviceController: UIViewController {
                   let provisioningDevice = ProvisioningDevice(peripheral: peripheral, advertisementData: advertisementData, rssi: rssi),
                   provisioningDevice.macAddress != nil else { return }
             
-            if let currentDevice = self.device, currentDevice.peripheral.identifier == provisioningDevice.peripheral.identifier, provisioningDevice.networkId == nil { // 删除设备成功
+            // 过滤移动感应不在信号范围内的设备
+            if self.resetMode == .motion, !self.filterRSSIRange.contains(rssi.intValue) {
+                return
+            }
+            
+            if let currentDevice = self.device, currentDevice.peripheral.identifier == provisioningDevice.peripheral.identifier, provisioningDevice.networkId == nil, self.deviceState == .reseting { // 删除设备成功
                 self.deviceResetSuccess()
 
             }else if provisioningDevice.networkId != nil { // 只显示已入网设备
@@ -159,16 +182,21 @@ class DeviceForceResetDeviceController: UIViewController {
                         
                         provisioningDevice.deviceName = node.name
                         provisioningDevice.icon = node.iconName
+                        provisioningDevice.address = node.primaryUnicastAddress
+                        self.deviceGroup = node.group
                         
                     }else if let info = MeshLibManager.manager.supportDeviceInfos.first(where: { $0.companyId == provisioningDevice.cid && $0.productId == provisioningDevice.pid }) {
                         provisioningDevice.deviceName = info.categoryName
                         provisioningDevice.icon = "device_\(info.iconCategory)"
+                        self.deviceGroup = nil
                     }
                     
                     self.device = provisioningDevice
                     self.state = .discovered
+                    self.startReselectTimer()
                     self.updateUI()
-                    self.deviceView.update(device: provisioningDevice, state: .none)
+
+                    self.deviceView.update(device: provisioningDevice, displayDeviceNamePrefix: self.displayDeviceNamePrefix, deviceGroup: self.deviceGroup, state: .none)
                     // 找到一个设备后停止扫描
                     self.stopScan()
                     
@@ -192,15 +220,43 @@ class DeviceForceResetDeviceController: UIViewController {
         let randomKey = UInt16.random(in: 1...65535)
         self.randomKey = randomKey
         if resetMode == .flashlight {
-            broadcaster.startBroadcasting(type: .ambientLightDiscoverReset(timeout: broadcasterDuration, key: randomKey, delta: deviceSettingsParameterData.illuminationDelta))
+            broadcaster.startBroadcasting(type: .ambientLightDiscoverReset(timeout: broadcasterDuration, key: randomKey, delta: deviceSettingsParameterData.illuminationDelta), interval: 0.5)
         }else if resetMode == .motion {
-            broadcaster.startBroadcasting(type: .pirDiscoverReset(timeout: broadcasterDuration, key: randomKey))
+            broadcaster.startBroadcasting(type: .pirDiscoverReset(timeout: broadcasterDuration, key: randomKey), interval: 0.5)
         }
     }
     
     /// 停止无定向广播
     private func stopBroadcaster() {
         broadcaster.stopBroadcasting()
+    }
+    
+    /// 开始重新选择倒计时
+    private func startReselectTimer() {
+        
+        reselectDowncount = 5
+        
+        reselectTimer?.invalidate()
+        reselectTimer = LCWeakTimer.scheduledTimer(timeInterval: 1, aTarget: self, selector: #selector(reselectTimerEvent), userInfo: nil, repeats: true)
+        RunLoop.current.add(reselectTimer!, forMode: .common)
+    }
+    
+    @objc private func reselectTimerEvent() {
+        guard self.state == .discovered else {
+            stopReselectTimer()
+            updateUI()
+            return
+        }
+        reselectDowncount -= 1
+        if reselectDowncount == 0 {
+            stopReselectTimer()
+        }
+        updateUI()
+    }
+    
+    private func stopReselectTimer() {
+        reselectTimer?.invalidate()
+        reselectTimer = nil
     }
     
     // MARK: - Action
@@ -234,6 +290,7 @@ class DeviceForceResetDeviceController: UIViewController {
         state = .none
         deviceState = .none
         delegate?.controller(self, deviceStateChanged: deviceState)
+        stopReselectTimer()
         updateUI()
         if let device = self.device {
             delegate?.controller(self, deviceResetFinish: device)
@@ -243,15 +300,35 @@ class DeviceForceResetDeviceController: UIViewController {
     
     /// 重置设备超时
     @objc private func deviceResetTimeout() {
-        guard let device = self.device, state == .discovered, deviceState == .reseting else { return }
+        
+        guard let device = self.device, deviceState == .reseting else {
+            deviceState = .idenfityFinish
+            self.delegate?.controller(self, deviceStateChanged: deviceState)
+            broadcaster.stopBroadcasting()
+            return
+        }
+        
         deviceState = .idenfityFinish
-        deviceView.update(device: device, state: deviceState)
-        XWHUDManager.showErrorTipHUD("reset_failed".localizedString)
-        
-        broadcaster.stopBroadcasting()
-        
         self.delegate?.controller(self, deviceStateChanged: deviceState)
+        broadcaster.stopBroadcasting()
+        updateUI()
+        deviceView.update(device: device, displayDeviceNamePrefix: self.displayDeviceNamePrefix, deviceGroup: self.deviceGroup, state: deviceState)
+        XWHUDManager.showErrorTipHUD("reset_failed".localizedString)
     }
+    
+    /// 信号滑条修改
+    @objc private func rssiSliderValueChanged(sender: RangeSlider) {
+        let changeRSSIRange = Int(-sender.upperValue)...Int(-sender.lowerValue)
+        guard selectRSSIRange != changeRSSIRange else {
+            return
+        }
+        print(changeRSSIRange)
+        selectRSSIRange = changeRSSIRange
+
+        farLabel.text = "\(selectRSSIRange.lowerBound) dBm"
+        nearLabel.text = "\(selectRSSIRange.upperBound) dBm"
+    }
+    
 
     // MARK: - UI
     private func updateUI() {
@@ -275,10 +352,17 @@ class DeviceForceResetDeviceController: UIViewController {
             loadingImageView.image = nil
             deviceView.isHidden = false
             
-            bottomBtn.setTitle("RESELECT".localizedString, for: .normal)
-            if deviceState == .identifying || deviceState == .reseting {
+            if reselectTimer != nil && reselectDowncount > 0 {
+                bottomBtn.setTitle("\("RESELECT".localizedString) \(reselectDowncount)", for: .normal)
                 bottomBtn.isEnabled = false
+            }else {
+                bottomBtn.setTitle("RESELECT".localizedString, for: .normal)
+                if deviceState == .identifying || deviceState == .reseting {
+                    bottomBtn.isEnabled = false
+                }
             }
+            
+           
         }
         bottomBtn.layer.borderColor = bottomBtn.isEnabled ? Bar_Color.cgColor : Bar_Color.withAlphaComponent(0.5).cgColor
     }
@@ -298,6 +382,53 @@ class DeviceForceResetDeviceController: UIViewController {
             make.edges.equalToSuperview()
             make.width.equalToSuperview()
 //            make.height.greaterThanOrEqualToSuperview()
+        }
+        
+        sliderView = UIView()
+        sliderView.isHidden = true
+        contentView.addSubview(sliderView)
+        sliderView.snp.makeConstraints { make in
+            make.left.equalTo(SCRXFrom(16))
+            make.right.equalTo(SCRXFrom(-16))
+            make.top.equalTo(SCRYFit(8))
+            make.height.equalTo(SCRYFrom(40))
+        }
+        
+        nearLabel = UILabel(text: "\(selectRSSIRange.upperBound) dBm", textColor: TextBlack_Color, fontSize: 12, fontWeight: .light)
+//        nearLabel.sizeToFit()
+        sliderView.addSubview(nearLabel)
+        nearLabel.snp.makeConstraints { make in
+            make.left.equalToSuperview()
+            make.centerY.equalToSuperview()
+//            make.width.equalTo(nearLabel.width)
+        }
+        
+        farLabel = UILabel(text: "\(selectRSSIRange.lowerBound) dBm", textColor: TextBlack_Color, fontSize: 12, fontWeight: .light)
+//        farLabel.sizeToFit()
+        sliderView.addSubview(farLabel)
+        farLabel.snp.makeConstraints { make in
+            make.right.equalToSuperview()
+            make.top.equalTo(nearLabel)
+//            make.width.equalTo(farLabel.width)
+        }
+        
+        rssiSlider = RangeSlider()
+        rssiSlider.trackHighlightTintColor = Slider_Color
+        rssiSlider.trackHighlightDisableTintColor = Slider_Color.withAlphaComponent(0.5)
+        rssiSlider.trackTintColor = RGB(229, 229, 229)
+        rssiSlider.thumbDisableTintColor = Background_Color
+        rssiSlider.minimumValue = Double(abs(filterRSSIRange.upperBound))
+        rssiSlider.maximumValue = Double(abs(filterRSSIRange.lowerBound))
+        rssiSlider.lowerValue = Double(abs(selectRSSIRange.upperBound))
+        rssiSlider.upperValue = Double(abs(selectRSSIRange.lowerBound))
+        rssiSlider.minimumRange = 10
+        rssiSlider.addTarget(self, action: #selector(rssiSliderValueChanged), for: .valueChanged)
+        sliderView.addSubview(rssiSlider)
+        rssiSlider.snp.makeConstraints { make in
+            make.left.equalTo(SCRXFrom(48))
+            make.right.equalTo(SCRXFrom(-49))
+            make.centerY.equalTo(nearLabel)
+            make.height.equalToSuperview()
         }
         
         headerView = UIView()
@@ -325,11 +456,11 @@ class DeviceForceResetDeviceController: UIViewController {
         imageView = UIImageView(image: UIImage(named: info.imageName))
         headerView.addSubview(imageView)
         imageView.snp.makeConstraints { make in
-            make.left.equalTo(SCRXFrom(isIPad ? 100 : 45))
-            make.right.equalTo(SCRXFrom(isIPad ? -100 : -23))
+            make.left.equalTo(SCRXFrom(isIPad ? 100 : 16))
+            make.right.equalTo(SCRXFrom(isIPad ? -100 : -16))
             make.top.equalTo(titleLabel.snp.bottom).offset(SCRYFrom(17))
 //            make.centerX.equalToSuperview().offset(SCRXFrom(15))
-            make.height.equalTo(imageView.snp.width).multipliedBy(170 / 275.0)
+            make.height.equalTo(imageView.snp.width).multipliedBy(170 / 311.0)
         }
         
         stepView = GroupPathSequenceDeviceAddStepView()
@@ -375,6 +506,7 @@ class DeviceForceResetDeviceController: UIViewController {
         }
         
         bottomBtn = UIButton(title: "START".localizedString, titleSize: 16, titleWeight: .light, titleColor: Bar_Color, target: self, action: #selector(bottomBtnAction))
+        bottomBtn.setTitleColor(Bar_Color.withAlphaComponent(0.5), for: .disabled)
         bottomBtn.layer.cornerRadius = SCRYFrom(10)
         bottomBtn.layer.borderWidth = 0.5
         bottomBtn.layer.borderColor = Bar_Color.cgColor
@@ -384,6 +516,15 @@ class DeviceForceResetDeviceController: UIViewController {
             make.bottom.equalTo(-kSafeAreaBottomHeight - SCRYFrom(24))
             make.width.equalTo(SCRXFrom(216))
             make.height.equalTo(SCRYFrom(44))
+        }
+        
+        if resetMode == .motion {
+            sliderView.isHidden = false
+            headerView.snp.remakeConstraints { make in
+                make.left.equalTo(SCRXFrom(16))
+                make.right.equalTo(SCRXFrom(-16))
+                make.top.equalTo(sliderView.snp.bottom).offset(SCRYFrom(8))
+            }
         }
         
     }
@@ -397,20 +538,21 @@ extension DeviceForceResetDeviceController: DeviceForceResetDeviceViewDelegate {
         guard let device = self.device, let macAddress = device.macAddress else { return }
         
         // 发送identity无定向广播
-        broadcaster.startBroadcasting(type: .identifyNode(key: randomKey, macAddress: macAddress))
+        broadcaster.startBroadcasting(type: .identifyNode(key: randomKey, macAddress: macAddress), interval: 0.5)
         deviceState = .identifying
         
         self.delegate?.controller(self, deviceStateChanged: deviceState)
         updateUI()
-        view.update(device: device, state: deviceState)
+        view.update(device: device, displayDeviceNamePrefix: self.displayDeviceNamePrefix, deviceGroup: self.deviceGroup, state: deviceState)
         DispatchQueue.main.asyncAfter(deadline: .now() + 2) {[weak self] in
             guard let self = self, self.state == .discovered, self.deviceState == .identifying else { return }
             self.deviceState = .idenfityFinish
-            view.update(device: device, state: self.deviceState)
+            view.update(device: device, displayDeviceNamePrefix: self.displayDeviceNamePrefix, deviceGroup: self.deviceGroup, state: self.deviceState)
             
             self.delegate?.controller(self, deviceStateChanged: deviceState)
+            self.stopBroadcaster()
             // 继续发送查找设备广播
-            self.startBroadcaster()
+//            self.startBroadcaster()
             self.updateUI()
         }
         
@@ -421,10 +563,10 @@ extension DeviceForceResetDeviceController: DeviceForceResetDeviceViewDelegate {
         guard let device = self.device, let macAddress = device.macAddress else { return }
         
         // 发送重置设备无定向广播
-        broadcaster.startBroadcasting(type: .resetNode(key: randomKey, macAddress: macAddress))
+        broadcaster.startBroadcasting(type: .resetNode(key: randomKey, macAddress: macAddress), interval: 0.5)
         deviceState = .reseting
         updateUI()
-        view.update(device: device, state: deviceState)
+        view.update(device: device, displayDeviceNamePrefix: self.displayDeviceNamePrefix, deviceGroup: self.deviceGroup, state: deviceState)
         
         self.delegate?.controller(self, deviceStateChanged: deviceState)
         state = .scaning

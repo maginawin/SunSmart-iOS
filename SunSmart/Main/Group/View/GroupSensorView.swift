@@ -617,7 +617,7 @@ class GroupSensorViewCell: UITableViewCell {
         nameLabel.snp.makeConstraints { make in
             make.left.equalTo(iconImageView.snp.right).offset(SCRXFrom(2))
             make.centerY.equalTo(iconImageView)
-            make.width.lessThanOrEqualTo(SCRXFrom(130))
+            make.width.lessThanOrEqualTo(SCRXFrom(230))
         }
         
         lightLuxLabel = UILabel(text: "", textColor: .black, fontSize: 12)

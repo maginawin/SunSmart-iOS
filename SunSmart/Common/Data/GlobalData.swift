@@ -10,7 +10,7 @@ import Foundation
 /// 设备配置数据（添加、删除）
 struct DeviceSettingsParameterData {
     
-    static let `default`: DeviceSettingsParameterData = .init(brightness: 30, illuminationDelta: 50, notificationEnable: true, volume: 50, vibrationEnable: true)
+    static let `default`: DeviceSettingsParameterData = .init(brightness: 15, illuminationDelta: 50, notificationEnable: true, volume: 50, vibrationEnable: true)
     
     /// 亮度 0~100%
     let brightness: UInt8

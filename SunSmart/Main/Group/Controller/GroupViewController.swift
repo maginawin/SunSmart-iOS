@@ -677,6 +677,7 @@ class GroupViewController: UIViewController {
         if let index = group.nodes.firstIndex(where: {$0.primaryUnicastAddress == node.primaryUnicastAddress}) {
             if let item = collectionView.cellForItem(at: IndexPath(item: index, section: 0)) as? DevicesViewCell {
                 item.device = node
+                item.displayDeviceNamePrefix = space.displayDeviceNamePrefix
                 if node.state && node.getNeedSyncGroup() {
                     item.iconImageView.image = UIImage(named: node.unsyncIconName)
                 }
@@ -890,6 +891,7 @@ extension GroupViewController: UICollectionViewDataSource, UICollectionViewDeleg
         let cell = collectionView.dequeueReusableCell(withReuseIdentifier: "cell", for: indexPath) as! GroupDeviceViewCell
         let node = group.nodes[indexPath.item]
         cell.device = node
+        cell.displayDeviceNamePrefix = space.displayDeviceNamePrefix
         if node.state && node.getNeedSyncGroup() {
             cell.iconImageView.image = UIImage(named: node.unsyncIconName)
         }

@@ -264,10 +264,10 @@ class DaliMasterMultipleControlsView: UIView {
             make.left.equalTo(SCRXFrom(30))
             make.right.equalTo(SCRXFrom(-29))
             if isIPad {
-                make.top.equalTo(SCRYFit(60) + 56)
+                make.top.equalTo(SCRYFit(60))
                 make.height.equalTo(SCRYFrom(498))
             }else {
-                make.top.equalTo(SCRYFit(40) + 56)
+                make.top.equalTo(SCRYFit(40))
                 make.height.equalTo(SCRYFrom(340))
             }
         }

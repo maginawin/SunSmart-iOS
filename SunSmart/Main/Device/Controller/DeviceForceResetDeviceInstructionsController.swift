@@ -88,9 +88,9 @@ class DeviceForceResetDeviceInstructionsController: UIViewController {
         flashlightImageView = UIImageView(image: UIImage(named: "device_reset_flashlight"))
         contentView.addSubview(flashlightImageView)
         flashlightImageView.snp.makeConstraints { make in
-            make.left.equalTo(SCRXFrom(isIPad ? 100 : 45))
-            make.right.equalTo(SCRXFrom(isIPad ? -100 : -23))
-            make.height.equalTo(flashlightImageView.snp.width).multipliedBy(170 / 275.0)
+            make.left.equalTo(SCRXFrom(isIPad ? 100 : 32))
+            make.right.equalTo(SCRXFrom(isIPad ? -100 : -32))
+            make.height.equalTo(flashlightImageView.snp.width).multipliedBy(170 / 311.0)
             
             make.top.equalTo(flashlightLabel.snp.bottom).offset(SCRYFrom(24))
         }
@@ -105,9 +105,9 @@ class DeviceForceResetDeviceInstructionsController: UIViewController {
         motionImageView = UIImageView(image: UIImage(named: "device_reset_motion"))
         contentView.addSubview(motionImageView)
         motionImageView.snp.makeConstraints { make in
-            make.left.equalTo(SCRXFrom(isIPad ? 100 : 45))
-            make.right.equalTo(SCRXFrom(isIPad ? -100 : -23))
-            make.height.equalTo(flashlightImageView.snp.width).multipliedBy(170 / 275.0)
+            make.left.equalTo(SCRXFrom(isIPad ? 100 : 32))
+            make.right.equalTo(SCRXFrom(isIPad ? -100 : -32))
+            make.height.equalTo(flashlightImageView.snp.width).multipliedBy(170 / 311.0)
             make.top.equalTo(motionLabel.snp.bottom).offset(SCRYFrom(24))
             make.bottom.equalTo(SCRYFrom(-20))
         }

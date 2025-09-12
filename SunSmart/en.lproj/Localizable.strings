@@ -950,6 +950,22 @@
 "scan_dali_devices" = "Scan DALI devices";
 "address_conflicts_detected" = "Address conflicts detected";
 "unaddressed_gear_present" = "Unaddressed gear present";
+"list_of_replaceable_devices" = "List of Replaceable Devices";
+"dali_master_replaceable_devices_message" = "After the Master is replaced, both replaced devices need to be set up again";
+"identify_address" = "Identify address";
+"initialize_dali_address" = "Initialize/Extend DALl addresses";
+"fixture_initialization_commands" = "Fixture initialization commands";
+"reset_dali_devices" = "RESET DALl devices";
+"remove_dali_addresses" = "Remove DALl addresses";
+"readdress_dali_addresses" = "Re-address DALl devices";
+"clear_dali_details" = "Clear DALl details";
+"scan_dali_devices" = "Scan DALl devices";
+"dali_addressing" = "DALI addressing";
+"dali_address_scan_message" = "It takes a few seconds per device.";
+"dali_address_scan_ready_message" = "Scan when ready.";
+"dali_address_scan_count_message" = "START [%d/%d]";
+"dali_address_scan_complete_message" = "Found %d new device(s).";
+
 
 "pwm_period" = "PWM Period";
 "set_pwm_period" = "Set Pwm Period";
@@ -1212,7 +1228,7 @@
 "absolute_sensitivity" = "Absolute Sensitivity";
 "absolute_sensitivity_messsage" = "Note: Absolute sensitivity is the maximum range that a device can support. The purpose is to adjust the device individually to avoid false triggering due to component errors.Different from relative sensitivity, the maximum value of relative sensitivity 100% corresponds to the adjustment value here.";
 "absolute_sensitivity_instructions_1" = "Absolute sensitivity is the maximum range that a device can support. The purpose is to adjust the device individually to avoid false triggering due to component errors.";
-"absolute_sensitivity_instructions_2" = "Relative sensitivity, 100% corresponds to the adjustment value of absolute sensitivity, such as 200.";
+"absolute_sensitivity_instructions_2" = "Relative sensitivity, 100% corresponds to the adjustment value of absolute sensitivity, such as 80%.";
 "absolute_sensitivity_instructions_3" = "If you find that the relative sensitivity of the device is already 100%, but it is still not sensitive enough, you can appropriately increase the absolute sensitivity limit value without false triggering.";
 "absolute_sensitivity_instructions_4" = "Note: \nYou can set the absolute sensitivity in 'More'-'Device Parameter Settings'.";
 "mac" = "Mac";
@@ -1257,7 +1273,7 @@
 "force_reset_the_device" = "Force Reset The Device";
 "force_reset_the_device_message" = "Please enter a 4-digit password";
 "force_reset_message" = "You can use this method to reset devices that have been added to other networks. For security reasons, you can only reset one device at a time.";
-"force_reset_step_1" = "Keep in this interface";
+"force_reset_step_1" = "Click \"Start\"";
 "force_reset_flashlight_step_2" = "Shine the sensor until the device appears(up to 20 seconds)";
 "force_reset_motion_step_2" = "Trigger target\ndevice";
 "force_reset_step_3" = "Reset after identification";
@@ -1272,6 +1288,7 @@
 "note:" = "Note:";
 
 "brightness_of_the_device_in_mode" = "Brightness of the device in mode";
+"brightness_of_the_device_in_mode_tip" = "(Light&Motion sensing mode takes effect)";
 "illumination_fluctuation_range" = "Illumination fluctuation range";
 "illumination_fluctuation_range_tip" = "(Light sensing mode takes effect)";
 
@@ -1282,6 +1299,7 @@
 "firmware_update_disable_operated" = "The device is being upgraded and cannot be operated.";
 "setup_instructions" = "Setup Instructions";
 "brightness_instructions" = "When you switch to adding devices to the candidate list based on light sensing or motion sensing.The device receiving the signal will adjust to this brightness so that you can operate it comfortably, and can clearly identify different device states.Manual or RSSI range based modes are not affected.";
+"brightness_reset_instructions" = "Forced removal of a device does not provide the ability to reduce brightness, as this would force a brightness change that cannot be restored after exiting the mode.";
 "illuminance_instructions" = "The illuminance fluctuation range affects the device's sensitivity to light intensity. The smaller the value, the less light a device can activate.\nThe device's light-sensing components have a maximum range. If the base illuminance is close to the upper limit of light sensitivity, even stronger light will not activate the device.\nThere are two situations where a small range is needed:";
 "illuminance_instructions_case1" = "Case 1: The device is installed very high and the flashlight intensity is not enough";
 "illuminance_instructions_case2" = "Case 2: The environment is very bright, close to the light sensitivity limit of the device";
@@ -1295,3 +1313,12 @@
 "device_automatic_restore_incomplete_sync_message" = "Some devices have not completed data recovery, please restore manually.Please synchronize the data manually";
 "device_automatic_restore_sync_message" = "Congratulations! You have completed the upgrade. However, the data of some devices has not been synchronized successfully. Please synchronize the data manually";
 "RESTORE" = "RESTORE";
+"list_of_devices_found" = "List of Devices Found";
+
+"transition_time" = "Transition Time";
+"transition_time_message" = "Note: The system connects to a variety of devices (such as 0-10V power supplies), and some power supplies tend to flicker during operation. Therefore, adjusting this parameter can help prevent flickering.\nTransition time refers to the time it takes to switch a device from OFF to ON, power off to power on, scene transitions, pressing a switch, brightness changes (e.g., from 10% to 20%), and color temperature changes.\nPlease note that if multiple devices have different values ​​after modification, inconsistencies may occur.";
+
+"content_display" = "Content Display";
+"device_name_display" = "Device name display";
+"display_device_name_prefix" = "Display device name prefix";
+"device_name_display_note" = "Displaying prefixes helps clearly distinguish devices.\n-Only devices added to a group have prefixes.\n-Device not added to a group have an empty prefix.";

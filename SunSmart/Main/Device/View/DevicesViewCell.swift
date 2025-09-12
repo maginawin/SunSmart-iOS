@@ -15,7 +15,7 @@ class DevicesViewCell: UICollectionViewCell {
     
     var progressView: CustomProgressView!
     /// 名称
-    var nameLabel: UILabel!
+    var nameLabel: AdaptiveTextView!
     /// 离线/off
 //    var stateLabel: UILabel!
     /// 代理节点标识
@@ -33,7 +33,13 @@ class DevicesViewCell: UICollectionViewCell {
         didSet {
 
             backgroundColor = .white
-            nameLabel.text = device.name
+
+            var name = device.name ?? ""
+            if let group = device.group, displayDeviceNamePrefix {
+                name = "\(group.name)-\(name)"
+            }
+            nameLabel.text = name
+            
 //            if device.isKeybindComplete {
             if device.isKeybindComplete {
                 progressView.isHidden = false
@@ -103,6 +109,17 @@ class DevicesViewCell: UICollectionViewCell {
                 proxyFlagView.isHidden = true
             }
             
+        }
+    }
+    
+    /// 是否显示设备名称前缀
+    var displayDeviceNamePrefix: Bool = true {
+        didSet {
+            var name = device.name ?? ""
+            if let group = device.group, displayDeviceNamePrefix {
+                name = "\(group.name)-\(name)"
+            }
+            nameLabel.text = name
         }
     }
     
@@ -180,14 +197,29 @@ class DevicesViewCell: UICollectionViewCell {
             make.height.equalTo(4)
         }
         
-        nameLabel = UILabel(text: "ID001", textColor: Title_Color, fontSize: 14, fontWeight: .light)
-        nameLabel.textAlignment = .center
-        nameLabel.lineBreakMode = .byTruncatingHead
+        nameLabel = AdaptiveTextView()
+        nameLabel.textColor = Title_Color
+//        nameLabel.adaptiveText = "ID001-sjjdjdjdjdjjdjdshsjjsj还是说结"
+//        UILabel(text: "ID001", textColor: Title_Color, fontSize: 14, fontWeight: .light)
+//        nameLabel.textAlignment = .center
+//        nameLabel.lineBreakMode = .byTruncatingHead
+//        nameLabel.minimumScaleFactor = 10.0 / 14.0
+//        nameLabel.adjustsFontSizeToFitWidth = true
+//        nameLabel.numberOfLines = 2
+        nameLabel.maxFontSize = FontFit(14)
+        nameLabel.minFontSize = FontFit(10)
+        nameLabel.lineHeightMultiple = 0.9
+//        nameLabel.numberOfLines = 2
         contentView.addSubview(nameLabel)
         nameLabel.snp.makeConstraints { make in
-            make.left.equalTo(SCRXFrom(20))
-            make.right.equalTo(SCRXFrom(-20))
-            make.bottom.equalTo(SCRYFit(-14))
+            make.left.equalTo(SCRXFrom(23))
+            make.right.equalTo(SCRXFrom(-23))
+            make.top.equalTo(contentView.snp.bottom).offset(SCRYFrom(-30))
+//            make.bottom.equalToSuperview()
+            make.height.equalTo(SCRYFrom(25))
+//            lessThanOrEqualTo(SCRYFrom(25))
+            
+//            make.bottom.equalTo(SCRYFit(-14))
         }
 
         selectImageView = UIImageView(image: UIImage(named: "select_un"))

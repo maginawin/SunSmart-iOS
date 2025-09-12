@@ -1173,10 +1173,10 @@ class SRSheetView: UIView {
         }
 
         tableView = UITableView()
-        tableView.backgroundColor = RGB(19, 19, 23)
-        tableView.layer.cornerRadius = 20
+        tableView.backgroundColor = .white
+        tableView.layer.cornerRadius = 15
         tableView.layer.masksToBounds = true
-        tableView.rowHeight = SCRYFrom(60)
+        tableView.rowHeight = SCRYFrom(44)
         tableView.showsVerticalScrollIndicator = false
         tableView.separatorStyle = .none
         tableView.isScrollEnabled = false

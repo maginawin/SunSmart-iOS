@@ -61,7 +61,7 @@ class GroupPathSequenceDeviceAddStepView: UIView {
         addSubview(step3View)
         step3View.snp.makeConstraints { make in
             make.left.equalTo(step2View.snp.right).offset(SCRXFrom(4))
-            make.centerY.equalTo(step2View)
+            make.top.equalTo(step1View)
             make.width.equalTo(SCRXFrom(108))
 //            make.width.lessThanOrEqualTo(SCRXFrom(102))
 //            make.height.greaterThanOrEqualTo(SCRYFrom(40))

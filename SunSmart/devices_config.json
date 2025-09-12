@@ -567,6 +567,33 @@
     },
     {
         "companyId" : "0A78",
+        "productId" : "1462",
+        "categoryName" : "Controller Lighting",
+        "elementCount" : 2,
+        "iconCategory" : "Lighting",
+        "deviceCategory" : "Lighting",
+        "modelName" : "SR-BL9033Z-V"
+    },
+    {
+        "companyId" : "0A78",
+        "productId" : "1463",
+        "categoryName" : "Controller Lighting",
+        "elementCount" : 2,
+        "iconCategory" : "Lighting",
+        "deviceCategory" : "Lighting",
+        "modelName" : "SR-BL9033P-V"
+    },
+    {
+        "companyId" : "0A78",
+        "productId" : "1464",
+        "categoryName" : "Controller Lighting",
+        "elementCount" : 2,
+        "iconCategory" : "Lighting",
+        "deviceCategory" : "Lighting",
+        "modelName" : "SR-BL9033J-V"
+    },
+    {
+        "companyId" : "0A78",
         "productId" : "1471",
         "categoryName" : "Controller Lighting",
         "elementCount" : 2,
@@ -610,6 +637,25 @@
         "elementCount" : 2,
         "iconCategory" : "Gateway",
         "deviceCategory" : "Gateway"
+    },
+    {
+        "companyId" : "0A78",
+        "productId" : "2801",
+        "categoryName" : "Dimmer",
+        "elementCount" : 2,
+        "iconCategory" : "Gateway",
+        "deviceCategory" : "Lighting",
+        "modelName" : "SR-BL9041A-D"
+    },
+    {
+        "companyId" : "0A78",
+        "productId" : "2491",
+        "categoryName" : "Controller Lighting",
+        "elementCount" : 2,
+        "iconCategory" : "Lighting",
+        "deviceCategory" : "BidirectionalController",
+        "modelName" : ""
     }
+    
 ]
 

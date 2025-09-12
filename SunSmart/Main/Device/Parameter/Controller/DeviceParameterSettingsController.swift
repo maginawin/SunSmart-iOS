@@ -27,6 +27,8 @@ class DeviceParameterSettingsController: UIViewController {
     var settingsCompletionCallback: ParameterSettingsCompletionCallback?
     /// 默认的传感器灵敏度
     private var defaultMotionSensitivityRange: ClosedRange<Double> = 0...100
+    /// 默认过渡时间
+    private var defaultTransitionTime: TransitionTime = .init(1)
     
     init(devices: [Node]) {
         self.devices = devices
@@ -49,8 +51,12 @@ class DeviceParameterSettingsController: UIViewController {
             motionSensitivityRange = Double(sensitivityValueRange.lowerBound.percentageFloat)...Double(sensitivityValueRange.upperBound.percentageFloat)
         }
         
+        
         parameterDatas = [
-            .init(type: .pwmFrequency, data: 2940, enable: false), .init(type: .ratedPower, data: ratedPowerPhaseDatas, enable: false), .init(type: .motionSensitivityRange, data: motionSensitivityRange ?? defaultMotionSensitivityRange, enable: false)
+            .init(type: .pwmFrequency, data: 2940, enable: false),
+            .init(type: .ratedPower, data: ratedPowerPhaseDatas, enable: false),
+            .init(type: .motionSensitivityRange, data: motionSensitivityRange ?? defaultMotionSensitivityRange, enable: false),
+            .init(type: .defalutTransitionTime, data: defaultTransitionTime, enable: false)
         ]
         setupUI()
         
@@ -99,6 +105,10 @@ class DeviceParameterSettingsController: UIViewController {
                 if let range = parameterData.data as? ClosedRange<Double> {
                     return .motionSensitivityRange(range: range.lowerBound.value16...range.upperBound.value16)
                 }
+            case .defalutTransitionTime:
+                if let value = parameterData.data as? TransitionTime {
+                    return .defaultTransitionTime(transitionTime: value)
+                }
             }
             return nil
         })
@@ -106,29 +116,45 @@ class DeviceParameterSettingsController: UIViewController {
             return
         }
         
+        var saveDevices: [Node] = []
         setParameters.forEach { type in
             switch type {
             case .pwmFrequency:
                 devices.forEach({
                     if $0.restoreData?.pwmFrequency != nil {
                         $0.restoreData?.pwmFrequency = nil
-                        $0.save()
+                        if !saveDevices.contains($0) {
+                            saveDevices.append($0)
+                        }
                     }
                 })
             case .ratedPower:
                 devices.forEach({
                     if $0.restoreData?.phaseEnergyConsumptions != nil {
                         $0.restoreData?.phaseEnergyConsumptions = nil
-                        $0.save()
+                        if !saveDevices.contains($0) {
+                            saveDevices.append($0)
+                        }
                     }
                 })
             case .motionSensitivityRange:
                 devices.forEach({
                     if $0.restoreData?.motionSensitivityRange != nil {
                         $0.restoreData?.motionSensitivityRange = nil
-                        $0.save()
+                        if !saveDevices.contains($0) {
+                            saveDevices.append($0)
+                        }
                     }
                 })
+            case .defaultTransitionTime:
+                devices.forEach {
+                    if $0.restoreData?.defaultTransitionTime != nil {
+                        $0.restoreData?.defaultTransitionTime = nil
+                        if !saveDevices.contains($0) {
+                            saveDevices.append($0)
+                        }
+                    }
+                }
             }
         }
         
@@ -152,6 +178,8 @@ class DeviceParameterSettingsController: UIViewController {
                     }
                 case .motionSensitivityRange(let range):
                     result.updateValue((range, self.devices, []), forKey: .motionSensitivityRange)
+                case .defaultTransitionTime(let transitionTime):
+                    result.updateValue((transitionTime, self.devices, []), forKey: .defalutTransitionTime)
                 }
             }
             self.settingsCompletionCallback?(result)
@@ -171,6 +199,9 @@ class DeviceParameterSettingsController: UIViewController {
                 
                 var sensitivityRangeSuccessNodes: [Node] = []
                 var sensitivityRangeFailedNodes: [Node] = []
+                
+                var transitionTimeSuccessNodes: [Node] = []
+                var transitionTimeFailedNodes: [Node] = []
 
                 resultDatas.forEach { data in
                     data.successOperationTypes.forEach { operationType in
@@ -185,6 +216,8 @@ class DeviceParameterSettingsController: UIViewController {
                                     ratedPowerSuccessNodes.append(data.node)
                                 case .motionSensitivityRange:
                                     sensitivityRangeSuccessNodes.append(data.node)
+                                case .defaultTransitionTime:
+                                    transitionTimeSuccessNodes.append(data.node)
                                 }
                             default:
                                 break
@@ -206,6 +239,8 @@ class DeviceParameterSettingsController: UIViewController {
                                     ratedPowerFailedNodes.append(data.node)
                                 case .motionSensitivityRange:
                                     sensitivityRangeFailedNodes.append(data.node)
+                                case .defaultTransitionTime:
+                                    transitionTimeFailedNodes.append(data.node)
                                 }
                             default:
                                 break
@@ -277,6 +312,7 @@ class DeviceParameterSettingsController: UIViewController {
         tableView.register(DeviceParameterSettingsViewCell.classForCoder(), forCellReuseIdentifier: "cell")
         tableView.register(DeviceParameterRetedPowerViewCell.classForCoder(), forCellReuseIdentifier: "retedPowerCell")
         tableView.register(DeviceParameterAbsoluteSensitivityViewCell.classForCoder(), forCellReuseIdentifier: "sensitivityCell")
+        tableView.register(DeviceParameterSliderViewCell.classForCoder(), forCellReuseIdentifier: "sliderCell")
         
         tableView.estimatedRowHeight = SCRYFrom(148)
         tableView.dataSource = self
@@ -321,6 +357,22 @@ extension DeviceParameterSettingsController: UITableViewDataSource, UITableViewD
             sensitivityCell.updateParameterEnable(enable: parameterData.enable)
             sensitivityCell.delegate = self
             return sensitivityCell
+        case .defalutTransitionTime:
+            let sliderCell = tableView.dequeueReusableCell(withIdentifier: "sliderCell", for: indexPath) as! DeviceParameterSliderViewCell
+            let data = parameterData.type.data
+            sliderCell.titleLabel.text = "\(data.title):"
+            sliderCell.noteLabel.text = data.message
+            let list = DeviceParameterData.transitionTimeDatas
+            sliderCell.slider.minimumValue = 0
+            sliderCell.slider.maximumValue = Float(list.count - 1)
+            if let transitionTime = parameterData.data as? TransitionTime, let index = list.firstIndex(where: { $0.timeInterval == transitionTime.interval }) {
+                sliderCell.slider.value = Float(index)
+                sliderCell.valueLabel.text = list[index].timeStr
+            }
+            
+            sliderCell.updateParameterEnable(enable: parameterData.enable)
+            sliderCell.delegate = self
+            return sliderCell
         default:
             let cell = tableView.dequeueReusableCell(withIdentifier: "cell", for: indexPath) as! DeviceParameterSettingsViewCell
             cell.parameterData = parameterData
@@ -434,6 +486,46 @@ extension DeviceParameterSettingsController: DeviceParameterAbsoluteSensitivityV
     /// 恢复默认值
     func sensitivityViewCellResetAction(_ cell: DeviceParameterAbsoluteSensitivityViewCell) {
         cell.selectRange = defaultMotionSensitivityRange
+    }
+    
+}
+
+extension DeviceParameterSettingsController: DeviceParameterSliderViewCellDelegate {
+    
+    /// 修改滑条数值
+    func cell(_ cell: DeviceParameterSliderViewCell, sliderValueChange value: Int) {
+        guard let index = tableView.indexPath(for: cell)?.section else {
+            return
+        }
+        switch parameterDatas[index].type {
+        case .defalutTransitionTime:
+            let data = DeviceParameterData.transitionTimeDatas[value]
+            cell.valueLabel.text = data.timeStr
+            self.parameterDatas[index].data = TransitionTime(data.timeInterval)
+            self.updateSetupBtnState()
+        default:
+            break
+        }
+        
+    }
+    
+    /// 修改启用/禁用开关
+    func cell(_ cell: DeviceParameterSliderViewCell, parameterEnableStateChanged enable: Bool) {
+        if let indexPath = tableView.indexPath(for: cell) {
+            let data = parameterDatas[indexPath.section]
+            data.enable = enable
+            updateSetupBtnState()
+        }
+        tableView.performBatchUpdates(nil)
+    }
+    
+    /// 恢复
+    func sensitivityViewCellResetAction(_ cell: DeviceParameterSliderViewCell) {
+        guard let indexPath = tableView.indexPath(for: cell) else {
+            return
+        }
+        parameterDatas[indexPath.section].data = defaultTransitionTime
+        tableView.reloadRows(at: [indexPath], with: .none)
     }
     
 }

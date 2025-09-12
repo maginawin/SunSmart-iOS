@@ -411,7 +411,7 @@ class GroupPathSequencePathItem: UICollectionViewCell {
     var sequenceLabel: UILabel!
     var boxView: UIView!
     var iconImageView: UIImageView!
-    var nameLabel: UILabel!
+    var nameLabel: AdaptiveTextView!
     var arrowImageView: UIImageView!
     
     override init(frame: CGRect) {
@@ -451,20 +451,29 @@ class GroupPathSequencePathItem: UICollectionViewCell {
         }
         
         iconImageView = UIImageView(image: UIImage(named: "path_device"))
+        iconImageView.sizeToFit()
         boxView.addSubview(iconImageView)
         iconImageView.snp.makeConstraints { make in
             make.centerX.equalToSuperview()
             make.top.equalTo(SCRYFrom(isIPad ? 7 : 3))
+            make.height.equalTo(iconImageView.height)
         }
         
-        nameLabel = UILabel(text: "ID001", textColor: SubText_Color, fontSize: 12, fontWeight: .light, fit: false)
-        nameLabel.textAlignment = .center
-        nameLabel.lineBreakMode = .byTruncatingHead
+        nameLabel = AdaptiveTextView()
+        nameLabel.textColor = Title_Color
+        nameLabel.maxFontSize = FontFit(10)
+        nameLabel.minFontSize = FontFit(8)
+        nameLabel.lineHeightMultiple = 0.9
+//        UILabel(text: "ID001", textColor: SubText_Color, fontSize: 12, fontWeight: .light, fit: false)
+//        nameLabel.textAlignment = .center
+//        nameLabel.lineBreakMode = .byTruncatingHead
         boxView.addSubview(nameLabel)
         nameLabel.snp.makeConstraints { make in
-            make.left.equalTo(SCRXFrom(4))
-            make.right.equalTo(SCRXFrom(-4))
-            make.bottom.equalTo(SCRYFrom(-7))
+            make.left.equalTo(SCRXFrom(6))
+            make.right.equalTo(SCRXFrom(-6))
+//            make.bottom.equalTo(SCRYFrom(-7))
+            make.top.equalTo(iconImageView.snp.bottom)
+            make.bottom.equalToSuperview()
         }
         
         arrowImageView = UIImageView(image: UIImage(named: "path_direction_right"))

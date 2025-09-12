@@ -238,7 +238,13 @@ class DeviceLightViewController: UIViewController {
         items.append(.init(icon: UIImage(named: "menu_information"), title: "information".localizedString, hideAnimation: false, tapItemBack: {[weak self] _ in
             self?.information()
         }))
-           
+        #if DEBUG
+        if routeTest {
+            items.append(.init(icon: UIImage(named: "menu_information"), title: "Route", hideAnimation: false, tapItemBack: {[weak self] _ in
+                self?.readRoute()
+            }))
+        }
+        #endif
 //        #if DEBUG
 //        items.append(.init(icon: UIImage(named: "menu_edit"), title: "pwm_period".localizedString, hideAnimation: false, tapItemBack: {[weak self] _ in
 //            self?.setPwmPeriod()
@@ -275,6 +281,83 @@ class DeviceLightViewController: UIViewController {
     private func test() {
         if let model = node.sunricherVendorModel {
             MeshAPI.sendMessage(message: SunricherVendorSet(function: .ledInversion(inversion: !node.ledInversion)), model: model)
+        }
+    }
+    
+    /// 读取路由表
+    private func readRoute() {
+        let otherNodes = MeshNetworkManager.instance.realNodes.filter({ $0.primaryUnicastAddress != self.node.primaryUnicastAddress })
+        otherNodes.forEach({
+            $0.routes.removeAll()
+        })
+        let vc = ReadDevicesDataViewController(type: .routeTableList(proxyAddress: self.node.primaryUnicastAddress, nodes: otherNodes))
+        vc.readSuccessCallback = {[weak self] _ in
+            self?.navigationController?.popViewController(animated: true)
+            self?.exportRouteTableFile(nodes: otherNodes)
+        }
+        vc.backActionCallback = {[weak self] _ in
+            self?.navigationController?.popViewController(animated: true)
+            self?.exportRouteTableFile(nodes: otherNodes)
+        }
+        navigationController?.pushViewController(vc, animated: true)
+    }
+    
+    private func exportRouteTableFile(nodes: [Node]) {
+        guard nodes.contains(where: { $0.routes.count > 0 }) else {
+            XWHUDManager.showErrorTipHUD("未找到路由信息")
+            return
+        }
+        let routeTables = nodes.compactMap({ node in
+            if node.routes.count > 0 {
+                return ["name": node.name ?? "", "primaryUnicastAddress": node.primaryUnicastAddress, "routes": node.routes.map({ ["address": $0.address, "totalRssi": $0.totalRssi, "rssi": $0.rssi] })]
+            }
+            return nil
+        })
+        guard let data = try? JSONSerialization.data(withJSONObject: routeTables) else {
+            XWHUDManager.showErrorTipHUD("导出数据失败")
+            return
+        }
+        
+        XWHUDManager.showHUD()
+        DispatchQueue.global(qos: .userInitiated).async { [weak self] in
+            guard let self = self else { return }
+            // 文件名称 网络名称_网络更新时间
+            let date = Date()
+            let formatter = DateFormatter.init()
+            formatter.dateFormat = "yyyy-MM-dd HH:mm:ss"
+            var timeStr = formatter.string(from: date)
+            timeStr = timeStr.replacingOccurrences(of: " ", with: "T")
+            timeStr = timeStr.replacingOccurrences(of: ":", with: "")
+            
+            let name = "\((node.name ?? ""))_routes_\(timeStr)"
+            
+            let fileURL = FileManager.default.temporaryDirectory.appendingPathComponent("\(name).json")
+            try? data.write(to: fileURL)
+            
+            DispatchQueue.main.async { [weak self] in
+                guard let self = self else { return }
+                
+                let controller = UIActivityViewController(activityItems: [fileURL], applicationActivities: nil)
+                // 适配 iPad
+                if let popoverController = controller.popoverPresentationController {
+                    // 设置 sourceView（可以是按钮或视图）
+                    popoverController.sourceView = self.view
+                    
+                    // 设置 sourceRect（浮层的锚点位置）
+                    popoverController.sourceRect = CGRect(x: self.view.bounds.midX, y: self.view.bounds.midY, width: 0, height: 0)
+                    
+                    // 或者设置 barButtonItem（如果是导航栏按钮）
+                    // popoverController.barButtonItem = self.shareButton
+                }
+                controller.completionWithItemsHandler = { type, success, items, error in
+                    if success {
+                        XWHUDManager.showSuccessTipHUD("done!".localizedString)
+                    }
+                }
+                self.present(controller, animated: true)
+                
+                XWHUDManager.hide()
+            }
         }
     }
     
@@ -490,7 +573,7 @@ class DeviceLightViewController: UIViewController {
         }
         lightnessSlider.valueThrottleChangedCallback = {[weak self] (value, ended) in
             guard let self = self else { return }
-            let lightness = Node.getLightness(lightness100: value, range: self.node.lightnessRange)
+            let lightness = Node.getLightness(lightness100: value)
             MeshAPI.setNodeLightnessState(address: self.node.primaryUnicastAddress, lightness: lightness, ack: ended)
            
         }

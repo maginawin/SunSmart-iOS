@@ -115,6 +115,10 @@ class CustomSegmentedControl: UIView {
         guard index != selectedIndex else {
             return
         }
+        guard delegate?.segmentedControl(self, shouldSelesctedItem: index) ?? true else {
+            return
+        }
+        
         let lastBtn = actionBtns[selectedIndex]
         lastBtn.isSelected = false
 //        lastBtn.layer.borderWidth = 0
@@ -179,9 +183,28 @@ class CustomSegmentedControl: UIView {
 
 protocol CustomSegmentedControlDelegate: AnyObject {
     
+    /// 分段控制器是否可以点击item回调
+    /// - Parameters:
+    ///   - segmentedControl: 分段控制器
+    ///   - index: 点击索引
+    func segmentedControl(_ segmentedControl: CustomSegmentedControl, shouldSelesctedItem index: Int) -> Bool
+    
+    
     /// 分段控制器切换item回调
     /// - Parameters:
     ///   - segmentedControl: 分段控制器
     ///   - index: 点击索引
     func segmentedControl(_ segmentedControl: CustomSegmentedControl, didSelectedItem index: Int)
+}
+
+extension CustomSegmentedControlDelegate {
+    
+    /// 分段控制器是否可以点击item回调
+    /// - Parameters:
+    ///   - segmentedControl: 分段控制器
+    ///   - index: 点击索引
+    func segmentedControl(_ segmentedControl: CustomSegmentedControl, shouldSelesctedItem index: Int) -> Bool {
+        return true
+    }
+    
 }

@@ -84,6 +84,8 @@ enum DeviceOperationType {
                 return true
             case .gatewaySIMAPN, .gatewayMQTTInformation, .gatewaySubnetAppkeyIndexs, .gatewayAssociationProjectId:
                 return true
+            case .deviceRouteList:
+                return true
             }
         case .configuration(let node, let type):
             switch type {
@@ -138,17 +140,22 @@ enum DeviceOperationType {
                 return node.gatewayInfo?.projectId == projectId
             case .gatewaySubnetAppkeyIndexs(let appkeyIndexs):
                 return node.gatewayInfo?.subnetAppkeyIndexs.sorted() == appkeyIndexs.sorted()
+            case .deviceRouteList:
+                return true
             }
         case .read:
             switch self {
             case .read(let node, let type):
-                if case .deviceReadParmeters(let parameterType) = type {
+                switch type {
+                case .deviceParameters(let parameterType):
                     switch parameterType {
                     case .motionSensitivityRange:
                         return node.motionSensitivityRange != nil
                     default:
                         break
                     }
+                default:
+                    return true
                 }
             default:
                 break
@@ -213,6 +220,8 @@ enum DeviceOperationType {
                 break
             case .gatewaySIMAPN, .gatewayMQTTInformation, .gatewayAssociationProjectId, .gatewaySubnetAppkeyIndexs:
                 break
+            case .deviceRouteList:
+                break
             }
         case .configuration(let node, let type): // 添加/配置操作
             
@@ -276,11 +285,17 @@ enum DeviceOperationType {
                 messageHandles.append(contentsOf: NodeSyncData.syncGatewayProjectId(projectId: projectId).getMessageHandles(node: node))
             case .gatewaySubnetAppkeyIndexs(let appkeyIndexs):
                 messageHandles.append(contentsOf: NodeSyncData.syncGatewaySubnetAppkeyIndexs(appkeyIndexs: appkeyIndexs).getMessageHandles(node: node))
+            case .deviceRouteList:
+                break
             }
         case .read(let node, let type):
             switch type {
             case .deviceReadParmeters(let parameterType):
                 messageHandles.append(contentsOf: parameterType.getMessageHandles(node: node))
+            case .deviceRouteList(let proxyAddress):
+                if let vendorModel = node.sunricherVendorModel {
+                    messageHandles.append(MeshMessageHandle(message: SunricherVendorGet(function: .routeTableGet(proxyAddress: proxyAddress)), model: vendorModel))
+                }
             default:
                 break
             }
@@ -332,6 +347,8 @@ enum ActionType {
     case gatewaySIMAPN(apn: String)
     /// 同步网关MQTT参数
     case gatewayMQTTInformation(mqttInformation: GatewayInformation.MQTTConnectInformation)
+    /// 设备路由list
+    case deviceRouteList(proxyAddress: Address)
 }
 
 extension NodeSyncData {
@@ -502,6 +519,8 @@ extension DeviceParameterType {
             return node.phaseEnergyConsumptions == list
         case .motionSensitivityRange(range: let range):
             return node.motionSensitivityRange == range
+        case .defaultTransitionTime(let transitionTime):
+            return node.defaultTransitionTime?.rawValue == transitionTime.rawValue
         }
     }
     

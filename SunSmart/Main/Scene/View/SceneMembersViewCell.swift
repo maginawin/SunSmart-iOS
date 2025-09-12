@@ -27,7 +27,8 @@ class SceneMembersViewCell: SceneGroupsViewCell {
         
         nameLabel.font = UIFont.systemFont(ofSize: SCRYFrom(14), weight: .light)
         nameLabel.snp.updateConstraints({ make in
-            make.bottom.equalTo(SCRYFrom(-18))
+//            make.bottom.equalTo(SCRYFrom(-18))
+            make.top.equalTo(bgView.snp.bottom).offset(SCRYFrom(-30))
         })
         
         selectBtn = UIButton(normalImageName: "device_select_un", selectedImageName: "device_select", target: self, action: #selector(selectBtnClick))

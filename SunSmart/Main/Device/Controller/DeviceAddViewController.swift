@@ -57,6 +57,8 @@ class DeviceAddViewController: WMPageController {
     
     private let vcTitles: [String] = ["classic_mode".localizedString, "professional_mode".localizedString]
     
+    private let menuHeight: CGFloat = isIPad ? SCRYFrom(40) : SCRYFrom(32)
+    
     /// 所属空间
     let space: SpaceData
     /// 设备添加完成回调
@@ -116,20 +118,24 @@ class DeviceAddViewController: WMPageController {
     }
     
     @objc private func backClick() {
-        navigationController?.popViewController(animated: true)
+        if navigationController?.viewControllers.count ?? 0 > 1 {
+            navigationController?.popViewController(animated: true)
+        }else {
+            dismiss(animated: true)
+        }
     }
     
     deinit {
         if self.addSuccessNodes.count > 0 {
             // 找出未命名的设备
-            let unnamedNodes = addSuccessNodes.filter({ $0.deviceType != .gateway && !($0.name?.contains("ID") ?? true) })
-            if unnamedNodes.count > 0 {
-                unnamedNodes.forEach({
-                    $0.name = MeshNetworkManager.instance.getNextNodeName()
-                    $0.save()
-                })
-                //                    _ = MeshNetworkManager.instance.save()
-            }
+//            let unnamedNodes = addSuccessNodes.filter({ $0.deviceType != .gateway && !($0.name?.contains("ID") ?? true) })
+//            if unnamedNodes.count > 0 {
+//                unnamedNodes.forEach({
+//                    $0.name = MeshNetworkManager.instance.getNextNodeName()
+//                    $0.save()
+//                })
+//                //                    _ = MeshNetworkManager.instance.save()
+//            }
             self.deviceAddCallback?(self.addSuccessNodes)
         }
     }
@@ -231,12 +237,12 @@ extension DeviceAddViewController {
     }
     
     override func pageController(_ pageController: WMPageController, preferredFrameForContentView contentView: WMScrollView) -> CGRect {
-        let y = view.safeAreaInsets.top + SCRYFrom(32 + 16)
+        let y = view.safeAreaInsets.top + SCRYFrom(16) + menuHeight
         return CGRect(x: 0, y: y, width: view.width, height: view.height - y)
     }
     
     override func pageController(_ pageController: WMPageController, preferredFrameFor menuView: WMMenuView) -> CGRect {
-        return CGRect(x: 0, y: view.safeAreaInsets.top + SCRYFrom(16), width: view.width, height: SCRYFrom(32))
+        return CGRect(x: 0, y: view.safeAreaInsets.top + SCRYFrom(16), width: view.width, height: menuHeight)
     }
     
     override func menuView(_ menu: WMMenuView!, shouldSelesctedIndex index: Int) -> Bool {

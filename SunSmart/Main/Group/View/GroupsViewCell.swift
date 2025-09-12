@@ -12,7 +12,7 @@ class GroupsViewCell: UICollectionViewCell {
     
     var imageView: UIImageView!
     var imageLabel: UILabel!
-    var nameLabel: UILabel!
+    var nameLabel: AdaptiveTextView!
     var deleteBtn: UIButton!
     var deleteActionCallback: (()->Void)?
     
@@ -71,14 +71,19 @@ class GroupsViewCell: UICollectionViewCell {
 //            make.bottom.equalTo(self.snp.centerY)
         }
         
-        nameLabel = UILabel(text: nil, textColor: RGB(64, 79, 102), fontSize: 14, fontWeight: .light)
-        nameLabel.textAlignment = .center
-        nameLabel.lineBreakMode = .byTruncatingHead
+        
+        nameLabel = AdaptiveTextView()
+        nameLabel.textColor = Title_Color
+        nameLabel.maxFontSize = FontFit(14)
+        nameLabel.minFontSize = FontFit(10)
+        nameLabel.lineHeightMultiple = 0.9
         contentView.addSubview(nameLabel)
         nameLabel.snp.makeConstraints { make in
-            make.left.equalTo(SCRXFrom(18))
-            make.right.equalTo(SCRXFrom(-18))
-            make.bottom.equalTo(SCRYFrom(-18))
+            make.left.equalTo(SCRXFrom(23))
+            make.right.equalTo(SCRXFrom(-23))
+//            make.bottom.equalTo(SCRYFrom(-18))
+            make.top.equalTo(contentView.snp.bottom).offset(SCRYFrom(-30))
+            make.height.equalTo(SCRYFrom(25))
         }
         
         deleteBtn = UIButton(normalImageName: "scene_delete", target: self, action: #selector(deleteBtnClick))

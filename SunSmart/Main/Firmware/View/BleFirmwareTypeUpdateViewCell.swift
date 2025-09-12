@@ -68,6 +68,8 @@ class BleFirmwareTypeUpdateViewCell: UICollectionViewCell {
     private var pinchView: UIView!
     private var arrowImageView: UIImageView!
     
+    var displayDeviceNamePrefix: Bool = true
+    
     var firmwareTypeData: FirmwareUpdateTypeData! {
         didSet {
             deviceTypeLabel.text = firmwareTypeData.categoryName
@@ -171,6 +173,7 @@ class BleFirmwareTypeUpdateViewCell: UICollectionViewCell {
         if firmwareTypeData.isShow, let index = firmwareTypeData.nodes.firstIndex(of: device) {
             if let cell = deviceTableView.cellForRow(at: IndexPath(row: index, section: 0)) as? BleFirmwareUpdateDeviceCell {
                 cell.device = device
+                cell.displayDeviceNamePrefix = displayDeviceNamePrefix
             }
 //            deviceTableView.reloadRows(at: [IndexPath(row: index, section: 0)], with: .none)
         }
@@ -567,7 +570,11 @@ class BleFirmwareUpdateDeviceCell: UITableViewCell {
     
     var device: Node! {
         didSet {
-            nameLabel.text = device.name
+            var name = device.name ?? ""
+            if let group = device.group, displayDeviceNamePrefix {
+                name = "\(group.name)-\(name)"
+            }
+            nameLabel.text = name
             versionLabel.text = device.firmwareVersion
             
             selectedImageView.isHidden = !device.enableUpgrade
@@ -606,7 +613,7 @@ class BleFirmwareUpdateDeviceCell: UITableViewCell {
                 updateStateBtn.isHidden = false
                 updateStateBtn.setImage(UIImage(named: "device_add_success"), for: .normal)
             case .failure:
-                selectedImageView.image = UIImage(named: "device_select_disable")
+                selectedImageView.image = UIImage(named: "device_select")
                 updateStateBtn.setImage(UIImage(named: "device_add_fail"), for: .normal)
             }
             if let rssi = device.rssi {
@@ -625,6 +632,15 @@ class BleFirmwareUpdateDeviceCell: UITableViewCell {
         }
     }
     
+    var displayDeviceNamePrefix: Bool = true {
+        didSet {
+            var name = device.name ?? ""
+            if let group = device.group, displayDeviceNamePrefix {
+                name = "\(group.name)-\(name)"
+            }
+            nameLabel.text = name
+        }
+    }
     
     override init(style: UITableViewCell.CellStyle, reuseIdentifier: String?) {
         super.init(style: style, reuseIdentifier: reuseIdentifier)

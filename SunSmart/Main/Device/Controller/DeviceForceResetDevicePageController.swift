@@ -24,8 +24,8 @@ class DeviceForceResetDevicePageController: WMPageController {
     
     /// 参数设置view
     private var parameterSettingsView :DeviceAddParameterSettingsView?
-    
-    private var resetingDevice: Bool = false
+    /// 是否操作设备中
+    private var operatingDevice: Bool = false
     
     /// 设备重置完成回调
     var deviceResetCallback: (([Node])->Void)?
@@ -59,9 +59,6 @@ class DeviceForceResetDevicePageController: WMPageController {
         navigationItem.rightBarButtonItem = UIBarButtonItem(customView: settingsView)
         
         addObserver()
-        if MeshLibManager.manager.currentProxy != nil {
-            MeshLibManager.manager.close()
-        }
     }
     
     override func viewDidAppear(_ animated: Bool) {
@@ -77,6 +74,7 @@ class DeviceForceResetDevicePageController: WMPageController {
                 make.centerY.equalToSuperview()
             }
         }
+        MeshLibManager.manager.close()
     }
     
     override func viewWillDisappear(_ animated: Bool) {
@@ -85,10 +83,15 @@ class DeviceForceResetDevicePageController: WMPageController {
         helpBtn.isHidden = true
     }
     
+    override func viewDidDisappear(_ animated: Bool) {
+        super.viewDidDisappear(animated)
+        
+        MeshLibManager.manager.open()
+    }
+    
     deinit {
         systemVolumeObservation = nil
      
-        MeshLibManager.manager.open()
     }
     
     private func addObserver() {
@@ -124,8 +127,11 @@ class DeviceForceResetDevicePageController: WMPageController {
             parameterSettingsView?.helpActionCallback = {[weak self] in
                 guard let self = self else { return }
 //                self.parameterSettingsView?.dismiss()
-                let vc = DeviceParameterSetupInstructionsController()
-                vc.showBrightnessInstructions = false
+                let vc = DeviceParameterSetupInstructionsController(mode: .reset)
+                if isIPad {
+                    vc.preferredContentSize = iPadPreferredContentSize
+                    self.parameterSettingsView?.dismiss()
+                }
                 if self.presentingViewController == nil {
                     self.present(NavigationViewController(rootViewController: vc), animated: true)
                 }else {
@@ -221,7 +227,7 @@ extension DeviceForceResetDevicePageController {
     }
     
     override func menuView(_ menu: WMMenuView!, shouldSelesctedIndex index: Int) -> Bool {
-        return !resetingDevice
+        return !operatingDevice
     }
     
     override func menuView(_ menu: WMMenuView!, titleAt index: Int) -> String! {
@@ -232,12 +238,22 @@ extension DeviceForceResetDevicePageController {
 
 extension DeviceForceResetDevicePageController: CustomSegmentedControlDelegate {
     
+    /// 分段控制器是否可以点击item回调
+    /// - Parameters:
+    ///   - segmentedControl: 分段控制器
+    ///   - index: 点击索引
+    func segmentedControl(_ segmentedControl: CustomSegmentedControl, shouldSelesctedItem index: Int) -> Bool {
+        return !operatingDevice
+    }
+    
     /// 分段控制器切换item回调
     /// - Parameters:
     ///   - segmentedControl: 分段控制器
     ///   - index: 点击索引
     func segmentedControl(_ segmentedControl: CustomSegmentedControl, didSelectedItem index: Int) {
         self.selectIndex = Int32(index)
+        navigationBackBtn.isHidden = false
+        navigationController?.interactivePopGestureRecognizer?.isEnabled = true
     }
     
 }
@@ -258,9 +274,9 @@ extension DeviceForceResetDevicePageController: DeviceForceResetDeviceController
     /// 设备操作状态
     func controller(_ controller: DeviceForceResetDeviceController, deviceStateChanged deviceState: DeviceForceResetDeviceController.DeviceState) {
         
-        resetingDevice = deviceState == .reseting
+        operatingDevice = deviceState == .reseting || deviceState == .identifying
         
-        if resetingDevice {
+        if operatingDevice {
             navigationBackBtn.isHidden = true
             navigationController?.interactivePopGestureRecognizer?.isEnabled = false
         }else {
@@ -273,9 +289,10 @@ extension DeviceForceResetDevicePageController: DeviceForceResetDeviceController
     /// 设备重置成功
     func controller(_ controller: DeviceForceResetDeviceController, deviceResetFinish device: ProvisioningDevice) {
  
-        if let node = MeshNetworkManager.instance.meshNetwork?.nodes.first(where: { $0.macAddress ==  device.macAddress }) {
-            node.delete()
+        if let meshNetwork = MeshNetworkManager.instance.meshNetwork, let node = meshNetwork.nodes.first(where: { $0.macAddress ==  device.macAddress }) {
+            meshNetwork.remove(node: node)
             node.deleteExtension()
+            NotificationCenter.default.post(name: .init(spaceDataChangedNotificaitonName), object: SpaceChangeDataType.device)
         }
         if !resetSuccessDevices.contains(where: { $0.peripheral.identifier ==  device.peripheral.identifier }) {
             resetSuccessDevices.append(device)

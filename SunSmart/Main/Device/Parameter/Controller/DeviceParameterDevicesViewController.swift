@@ -45,8 +45,13 @@ class DeviceParameterDevicesViewController: UIViewController {
     private var filterRatedPower: FilterSelectionState = .unselected
     /// 绝对灵敏度范围list
     private var absoluteSensitivitys: [ClosedRange<UInt16>] = []
+    /// 过渡时间list
+    private var transitionTimes: [TransitionTime] = []
+    
     /// 筛选的绝对灵敏度范围
     private var filterAbsoluteSensitivityRange: FilterSelectionState = .unselected
+    /// 筛选的过渡时间
+    private var filterTransitionTime: FilterSelectionState = .unselected
     
     private var showDevices: [Node] = []
     /// 设置pwm失败设备list
@@ -87,6 +92,7 @@ class DeviceParameterDevicesViewController: UIViewController {
             node.tempPwm = node.pwmFrequency
             node.tempRatedPowerPhases = node.phaseEnergyConsumptions
             node.tempSensitivityRange = node.motionSensitivityRange
+            node.tempTransitionTime = node.defaultTransitionTime
             if let group = node.group {
                 if let data = groupDatas.first(where: { $0.groupAddress == group.address.address }) {
                     data.addresss.append(node.primaryUnicastAddress)
@@ -131,6 +137,7 @@ class DeviceParameterDevicesViewController: UIViewController {
         pwmValues.removeAll()
         ratedPowers.removeAll()
         absoluteSensitivitys.removeAll()
+        transitionTimes.removeAll()
         
         devices.forEach({ node in
             
@@ -149,6 +156,10 @@ class DeviceParameterDevicesViewController: UIViewController {
             // 灵敏度范围
             if let range = node.tempSensitivityRange, !absoluteSensitivitys.contains(range) {
                 absoluteSensitivitys.append(range)
+            }
+            // 过渡时间
+            if let transitionTime = node.tempTransitionTime {
+                transitionTimes.append(transitionTime)
             }
            
         })
@@ -190,7 +201,7 @@ class DeviceParameterDevicesViewController: UIViewController {
             return
         }
         
-        let parameters: [DeviceReadParameterType] = [.pwmFrequency, .ratedPower, .motionSensitivityRange]
+        let parameters: [DeviceReadParameterType] = [.pwmFrequency, .ratedPower, .motionSensitivityRange, .defaultTransitionTime]
         let vc = ReadDevicesDataViewController(type: .parameters(nodes: selectDevices, parameters: parameters))
         vc.readSuccessCallback = {[weak self] _ in
             XWHUDManager.showSuccessTipHUD("done!".localizedString)
@@ -208,6 +219,9 @@ class DeviceParameterDevicesViewController: UIViewController {
                 }
                 if parameters.contains(.motionSensitivityRange) {
                     node.tempSensitivityRange = node.motionSensitivityRange
+                }
+                if parameters.contains(.defaultTransitionTime) {
+                    node.tempTransitionTime = node.defaultTransitionTime
                 }
 //                node.tempRatedPower = node.ratedPower
             }
@@ -307,6 +321,8 @@ class DeviceParameterDevicesViewController: UIViewController {
                         node.tempRatedPowerPhases = node.phaseEnergyConsumptions
                     case .motionSensitivityRange:
                         node.tempSensitivityRange = node.motionSensitivityRange
+                    case .defalutTransitionTime:
+                        node.tempTransitionTime = node.defaultTransitionTime
                     }
                 }
                 
@@ -326,6 +342,10 @@ class DeviceParameterDevicesViewController: UIViewController {
                         case .motionSensitivityRange:
                             if let range = value.value as? ClosedRange<Double> {
                                 type = .motionSensitivityRange(range: range.lowerBound.value16...range.upperBound.value16)
+                            }
+                        case .defalutTransitionTime:
+                            if let time = value.value as? TransitionTime {
+                                type = .defaultTransitionTime(transitionTime: time)
                             }
                         }
 
@@ -418,6 +438,26 @@ class DeviceParameterDevicesViewController: UIViewController {
                     cell.sensitivityImageView.isHidden = true
                     cell.sensitivityLabel.isHidden = true
                 }
+                
+                var transitionTime = device.tempTransitionTime
+                
+                if let failedData = settingFailedDatas[device.primaryUnicastAddress]?.first(where: { $0.rawValue == DeviceParameterData.ParameterType.defalutTransitionTime.rawValue }) {
+                    cell.transitionTimeImageView.isHidden = false
+                    if case .defaultTransitionTime(let time) = failedData {
+                        transitionTime = time
+                    }
+                }else {
+                    cell.transitionTimeImageView.isHidden = true
+                }
+                
+                if let transitionTime = transitionTime {
+                    let timeStr = DeviceParameterData.transitionTimeDatas.first(where: { $0.timeInterval == transitionTime.interval })?.timeStr ?? "\(transitionTime.interval ?? 0)s"
+                    cell.transitionTimeLabel.text = "\("transition_time".localizedString): \(timeStr)"
+                }else {
+                    cell.transitionTimeLabel.text = "\("transition_time".localizedString): --"
+                }
+                cell.transitionTimeLabel.isHidden = false
+                
                 
                 if MeshLibManager.manager.isMeshNetworkConnected {
                     cell.selectState = selectDevices.contains(device) ? .selected : .none
@@ -562,6 +602,25 @@ extension DeviceParameterDevicesViewController: UITableViewDataSource, UITableVi
             cell.sensitivityLabel.isHidden = true
         }
         
+        var transitionTime = device.tempTransitionTime
+        
+        if let failedData = settingFailedDatas[device.primaryUnicastAddress]?.first(where: { $0.rawValue == DeviceParameterData.ParameterType.defalutTransitionTime.rawValue }) {
+            cell.transitionTimeImageView.isHidden = false
+            if case .defaultTransitionTime(let time) = failedData {
+                transitionTime = time
+            }
+        }else {
+            cell.transitionTimeImageView.isHidden = true
+        }
+        
+        if let transitionTime = transitionTime {
+            let timeStr = DeviceParameterData.transitionTimeDatas.first(where: { $0.timeInterval == transitionTime.interval })?.timeStr ?? "\(transitionTime.interval ?? 0)s"
+            cell.transitionTimeLabel.text = "\("transition_time".localizedString): \(timeStr)"
+        }else {
+            cell.transitionTimeLabel.text = "\("transition_time".localizedString): --"
+        }
+        cell.transitionTimeLabel.isHidden = false
+        
         if MeshLibManager.manager.isMeshNetworkConnected && device.state {
             cell.selectState = selectDevices.contains(device) ? .selected : .none
         }else {
@@ -574,7 +633,7 @@ extension DeviceParameterDevicesViewController: UITableViewDataSource, UITableVi
     func tableView(_ tableView: UITableView, heightForRowAt indexPath: IndexPath) -> CGFloat {
         let device = showDevices[indexPath.row]
         
-        var height = SCRYFrom(72)
+        var height = SCRYFrom(72 + 16)
         if device.supportPwmFrequency {
             var ratedPowerPhases = device.tempRatedPowerPhases
             if let failedData = settingFailedDatas[device.primaryUnicastAddress]?.first(where: { $0.rawValue == DeviceParameterData.ParameterType.ratedPower.rawValue }) {
@@ -736,6 +795,24 @@ extension DeviceParameterDevicesViewController: DeviceParameterPromptViewDelegat
             break
         }
         
+        
+        var transitionTimeDatas: [(name: String, value: TransitionTime?)] = transitionTimes.map({ time in (DeviceParameterData.transitionTimeDatas.first(where: { $0.timeInterval == time.interval })?.timeStr ?? "\(time.interval ?? 0)s", time) })
+        if devices.contains(where: { $0.tempTransitionTime == nil }) {
+            transitionTimeDatas.insert(("--", nil), at: 0)
+        }
+        var transitionTimSelectIndex: Int?
+        switch self.filterTransitionTime {
+        case .emptySelection:
+            transitionTimSelectIndex = 0
+        case .selected(let value, _):
+            if let transitionTime = value as? TransitionTime {
+                transitionTimSelectIndex = transitionTimeDatas.firstIndex(where: { $0.value?.rawValue == transitionTime.rawValue })
+            }
+        default:
+            break
+        }
+        
+        
         var filterDatas: [ParameterFilterData] = []
         
         if pwmContents.count > 0 {
@@ -749,12 +826,17 @@ extension DeviceParameterDevicesViewController: DeviceParameterPromptViewDelegat
             filterDatas.append(.init(type: .absoluteSensitivity, isShow: sensitivitySelectIndex != nil, contents: sensitivityContents.map({ $0.name }), selectIndex: sensitivitySelectIndex))
         }
         
+        if transitionTimeDatas.count > 0 {
+            filterDatas.append(.init(type: .transitionTime, isShow: transitionTimSelectIndex != nil, contents: transitionTimeDatas.map({ $0.name }), selectIndex: transitionTimSelectIndex))
+        }
+        
         DeviceParameterFilterView(filterDatas: filterDatas, doneCallback: {[weak self] filterDatas in
             guard let self = self else { return }
             
             self.filterPwmValue = .unselected
             self.filterRatedPower = .unselected
             self.filterAbsoluteSensitivityRange = .unselected
+            self.filterTransitionTime = .unselected
             var showDevices = self.devices
             
             filterDatas.forEach { (type: ParameterFilterData.ParameterType, content: String, selectIndex: Int) in
@@ -787,10 +869,19 @@ extension DeviceParameterDevicesViewController: DeviceParameterPromptViewDelegat
                         self.filterAbsoluteSensitivityRange = .emptySelection
                         showDevices = showDevices.filter({ $0.tempSensitivityRange == nil })
                     }
+                case .transitionTime:
+                    let data = transitionTimeDatas[selectIndex]
+                    if let value = data.value {
+                        self.filterTransitionTime = .selected(value: value, name: data.name)
+                        showDevices = showDevices.filter({ $0.tempTransitionTime?.rawValue == value.rawValue })
+                    }else {
+                        self.filterTransitionTime = .emptySelection
+                        showDevices = showDevices.filter({ $0.tempTransitionTime == nil })
+                    }
                 }
             }
             
-            self.headerView.filterBtn.isSelected = self.filterPwmValue.rawValue != FilterSelectionState.unselected.rawValue || self.filterRatedPower.rawValue != FilterSelectionState.unselected.rawValue || self.filterAbsoluteSensitivityRange.rawValue != FilterSelectionState.unselected.rawValue
+            self.headerView.filterBtn.isSelected = self.filterPwmValue.rawValue != FilterSelectionState.unselected.rawValue || self.filterRatedPower.rawValue != FilterSelectionState.unselected.rawValue || self.filterAbsoluteSensitivityRange.rawValue != FilterSelectionState.unselected.rawValue || self.filterTransitionTime.rawValue != FilterSelectionState.unselected.rawValue
             self.showDevices = showDevices
             self.tableView.reloadData()
             
@@ -824,6 +915,8 @@ extension DeviceParameterDevicesViewController: DeviceParameterPromptViewDelegat
                             node.tempRatedPowerPhases = node.phaseEnergyConsumptions
                         case .motionSensitivityRange:
                             node.tempSensitivityRange = node.motionSensitivityRange
+                        case .defaultTransitionTime:
+                            node.tempTransitionTime = node.defaultTransitionTime
                         }
                     }
                 }
@@ -850,6 +943,8 @@ extension DeviceParameterDevicesViewController: DeviceParameterPromptViewDelegat
                                 node.tempRatedPowerPhases = node.phaseEnergyConsumptions
                             case .motionSensitivityRange:
                                 node.tempSensitivityRange = node.motionSensitivityRange
+                            case.defaultTransitionTime:
+                                node.tempTransitionTime = node.defaultTransitionTime
                             }
                             if var data = self.settingFailedDatas[node.primaryUnicastAddress], let index = data.firstIndex(where: { $0.rawValue == parameterType.rawValue }) {
                                 data.remove(at: index)
@@ -880,6 +975,8 @@ extension Node {
     static var tempPwmKey = 3
     static var tempRatedPowerKey = 4
     static var tempSensitivityRangeKey = 5
+    static var tempTransitionTimeKey = 6
+    
     
     /// 是否选中On
     var selectOn: Bool {
@@ -923,6 +1020,15 @@ extension Node {
             objc_getAssociatedObject(self, &Node.tempSensitivityRangeKey) as? ClosedRange<UInt16>
         }set {
             objc_setAssociatedObject(self, &Node.tempSensitivityRangeKey, newValue, .OBJC_ASSOCIATION_RETAIN)
+        }
+    }
+    
+    /// 临时的过渡时间（仅在当前页面使用）
+    var tempTransitionTime: TransitionTime? {
+        get {
+            objc_getAssociatedObject(self, &Node.tempTransitionTimeKey) as? TransitionTime
+        }set {
+            objc_setAssociatedObject(self, &Node.tempTransitionTimeKey, newValue, .OBJC_ASSOCIATION_RETAIN)
         }
     }
 }

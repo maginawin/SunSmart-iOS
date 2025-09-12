@@ -139,6 +139,9 @@ class SpaceData: Copyable {
     /// space最多设备数量
     var maxDevicesCount: Int = 300
     
+    /// 是否显示设备前缀（默认true）  true：【group name - device name】 false：device name
+    var displayDeviceNamePrefix: Bool = true
+    
     /// space操作权限list
     var spaceOperates: [SpaceOperate] {
         switch permission {

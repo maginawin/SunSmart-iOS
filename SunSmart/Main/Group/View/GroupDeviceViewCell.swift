@@ -62,11 +62,15 @@ class GroupDeviceViewCell: DevicesViewCell {
         
 //        progressValueView.height = 1.5
         
-        nameLabel.font = FONTS(SCRYFrom(10.5))
+        nameLabel.maxFontSize = FontFit(12)
+        nameLabel.minFontSize = FontFit(8.5)
         nameLabel.snp.updateConstraints({ make in
-            make.left.equalTo(SCRXFrom(16))
-            make.right.equalTo(SCRXFrom(-16))
-            make.bottom.equalTo(SCRYFit(-11))
+            make.left.equalTo(SCRXFrom(18))
+            make.right.equalTo(SCRXFrom(-18))
+//            make.bottom.equalTo(SCRYFit(-11))
+            make.top.equalTo(contentView.snp.bottom).offset(SCRYFrom(-23))
+//            make.bottom.equalToSuperview()
+            make.height.equalTo(SCRYFrom(20))
         })
     
     }

@@ -35,14 +35,8 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
             let welcomeNavVc = NavigationViewController(rootViewController: WelcomeViewController())
             window?.rootViewController = welcomeNavVc
         }
-        
-//        let mainNavVc = NavigationViewController(rootViewController: WelcomeViewController())
-//        NavigationViewController(rootViewController: SitesViewController())
-//        let mainNavVc = NavigationViewController(rootViewController: DeviceAddViewController())
-        
-//        let node = space?.meshManager?.meshNetwork?.nodes.first
-        
-        
+        // 禁用暗黑模式
+        window?.overrideUserInterfaceStyle = .light
         window?.makeKeyAndVisible()
         
         SunSmartDataManager.shared.initDatabase()
@@ -69,6 +63,8 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         NetworkRequest.shared.networkListener()
         
 //        UIApplication.shared.statusBarStyle = .default
+        
+        
         
         if #available(iOS 15.0, *) {
             UITableView.appearance().sectionHeaderTopPadding = 0

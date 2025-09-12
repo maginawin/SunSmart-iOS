@@ -156,7 +156,7 @@ class DeviceLightBasicController: UIViewController {
                 if let levelCell = tableView.cellForRow(at: IndexPath(row: 0, section: index)) as? DeviceLightControlViewCell {
                     if isOn {
                         if let trunOffLightness = self.node.trunOffLightness, self.node.lightness == 0 {
-                            levelCell.value = Node.getLightness100(lightness: trunOffLightness, range: self.node.lightnessRange)
+                            levelCell.value = Node.getLightness100(lightness: trunOffLightness)
                         }else {
                             levelCell.value = self.node.lightness100
                         }
@@ -510,7 +510,7 @@ extension DeviceLightBasicController: DeviceLightControlViewCellDelegate {
     func cell(_ cell: DeviceLightControlViewCell, type: DeviceSliderFunctionView.FunctionType, throttleValueChanged value: Int, ended: Bool) {
         switch type {
         case .level:
-            let lightness = Node.getLightness(lightness100: value, range: node.lightnessRange)
+            let lightness = Node.getLightness(lightness100: value)
             MeshAPI.setNodeLightnessState(address: node.primaryUnicastAddress, lightness: lightness, ack: ended)
             if lightness == 0, lastSendLightness > 0 {
                 node.trunOffLightness = lastSendLightness
@@ -526,7 +526,7 @@ extension DeviceLightBasicController: DeviceLightControlViewCellDelegate {
         
         switch type {
         case .level:
-            let lightness = Node.getLightness(lightness100: value, range: node.lightnessRange)
+            let lightness = Node.getLightness(lightness100: value)
             node.lightness = lightness
             node.isOn = lightness > 0
         case .cct:

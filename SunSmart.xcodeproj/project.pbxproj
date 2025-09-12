@@ -1076,6 +1076,15 @@
 		C8B337222E44983E006931C2 /* UITableView+Keyboard.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8B337212E44983E006931C2 /* UITableView+Keyboard.swift */; };
 		C8B337232E44983E006931C2 /* UITableView+Keyboard.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8B337212E44983E006931C2 /* UITableView+Keyboard.swift */; };
 		C8B337242E44983E006931C2 /* UITableView+Keyboard.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8B337212E44983E006931C2 /* UITableView+Keyboard.swift */; };
+		C8B444A32E669DD8002F4CD6 /* DeviceAddSectionBackgroundView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8B444A22E669DD8002F4CD6 /* DeviceAddSectionBackgroundView.swift */; };
+		C8B444A42E669DD8002F4CD6 /* DeviceAddSectionBackgroundView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8B444A22E669DD8002F4CD6 /* DeviceAddSectionBackgroundView.swift */; };
+		C8B444A52E669DD8002F4CD6 /* DeviceAddSectionBackgroundView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8B444A22E669DD8002F4CD6 /* DeviceAddSectionBackgroundView.swift */; };
+		C8B444A72E67D00D002F4CD6 /* DeviceParameterSliderViewCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8B444A62E67D00D002F4CD6 /* DeviceParameterSliderViewCell.swift */; };
+		C8B444A82E67D00D002F4CD6 /* DeviceParameterSliderViewCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8B444A62E67D00D002F4CD6 /* DeviceParameterSliderViewCell.swift */; };
+		C8B444A92E67D00D002F4CD6 /* DeviceParameterSliderViewCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8B444A62E67D00D002F4CD6 /* DeviceParameterSliderViewCell.swift */; };
+		C8B444AC2E682A3B002F4CD6 /* DaliReplaceMasterSelectView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8B444AB2E682A3B002F4CD6 /* DaliReplaceMasterSelectView.swift */; };
+		C8B444AD2E682A3B002F4CD6 /* DaliReplaceMasterSelectView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8B444AB2E682A3B002F4CD6 /* DaliReplaceMasterSelectView.swift */; };
+		C8B444AE2E682A3B002F4CD6 /* DaliReplaceMasterSelectView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8B444AB2E682A3B002F4CD6 /* DaliReplaceMasterSelectView.swift */; };
 		C8B483CE2E4AEEBB006D85BC /* DeviceAddParameterSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8B483CD2E4AEEBB006D85BC /* DeviceAddParameterSettingsView.swift */; };
 		C8B483CF2E4AEEBB006D85BC /* DeviceAddParameterSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8B483CD2E4AEEBB006D85BC /* DeviceAddParameterSettingsView.swift */; };
 		C8B483D02E4AEEBB006D85BC /* DeviceAddParameterSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8B483CD2E4AEEBB006D85BC /* DeviceAddParameterSettingsView.swift */; };
@@ -1095,6 +1104,18 @@
 		C8B5A1DE2B2BE9B300728E36 /* GroupMembersViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8B5A1DD2B2BE9B300728E36 /* GroupMembersViewController.swift */; };
 		C8B5A1E02B2C2AFD00728E36 /* GroupDevicesFunctionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8B5A1DF2B2C2AFD00728E36 /* GroupDevicesFunctionView.swift */; };
 		C8B5A1E22B2C48DE00728E36 /* GroupCheckViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8B5A1E12B2C48DE00728E36 /* GroupCheckViewController.swift */; };
+		C8B6D7CC2E6E768B004FB923 /* AdaptiveTextView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8B6D7CB2E6E768B004FB923 /* AdaptiveTextView.swift */; };
+		C8B6D7CD2E6E768B004FB923 /* AdaptiveTextView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8B6D7CB2E6E768B004FB923 /* AdaptiveTextView.swift */; };
+		C8B6D7CE2E6E768B004FB923 /* AdaptiveTextView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8B6D7CB2E6E768B004FB923 /* AdaptiveTextView.swift */; };
+		C8B6D7D82E6EB6D9004FB923 /* ContentDisplayViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8B6D7D72E6EB6D9004FB923 /* ContentDisplayViewController.swift */; };
+		C8B6D7D92E6EB6D9004FB923 /* ContentDisplayViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8B6D7D72E6EB6D9004FB923 /* ContentDisplayViewController.swift */; };
+		C8B6D7DA2E6EB6D9004FB923 /* ContentDisplayViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8B6D7D72E6EB6D9004FB923 /* ContentDisplayViewController.swift */; };
+		C8B6D7DC2E6EB8E8004FB923 /* ContentDisplayViewCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8B6D7DB2E6EB8E8004FB923 /* ContentDisplayViewCell.swift */; };
+		C8B6D7DD2E6EB8E8004FB923 /* ContentDisplayViewCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8B6D7DB2E6EB8E8004FB923 /* ContentDisplayViewCell.swift */; };
+		C8B6D7DE2E6EB8E8004FB923 /* ContentDisplayViewCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8B6D7DB2E6EB8E8004FB923 /* ContentDisplayViewCell.swift */; };
+		C8B6D7E02E702BF7004FB923 /* SystemVoiumeManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8B6D7DF2E702BF7004FB923 /* SystemVoiumeManager.swift */; };
+		C8B6D7E12E702BF7004FB923 /* SystemVoiumeManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8B6D7DF2E702BF7004FB923 /* SystemVoiumeManager.swift */; };
+		C8B6D7E22E702BF7004FB923 /* SystemVoiumeManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8B6D7DF2E702BF7004FB923 /* SystemVoiumeManager.swift */; };
 		C8B707042DCF2FDC0002133E /* EnergyStatisticsStaticData.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8B707032DCF2FDC0002133E /* EnergyStatisticsStaticData.swift */; };
 		C8B707062DCF2FF50002133E /* EnergyStatisticsTimeSeriesData.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8B707052DCF2FF50002133E /* EnergyStatisticsTimeSeriesData.swift */; };
 		C8B707082DCF349D0002133E /* ProfileSensitivityView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8B707072DCF349D0002133E /* ProfileSensitivityView.swift */; };
@@ -1558,6 +1579,9 @@
 		C8B0779D2D9D36750078404C /* Node+MessageHandles.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; lineEnding = 0; path = "Node+MessageHandles.swift"; sourceTree = "<group>"; };
 		C8B0B48A2B468BC700747CF4 /* SyncDevicesProgressView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SyncDevicesProgressView.swift; sourceTree = "<group>"; };
 		C8B337212E44983E006931C2 /* UITableView+Keyboard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "UITableView+Keyboard.swift"; sourceTree = "<group>"; };
+		C8B444A22E669DD8002F4CD6 /* DeviceAddSectionBackgroundView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceAddSectionBackgroundView.swift; sourceTree = "<group>"; };
+		C8B444A62E67D00D002F4CD6 /* DeviceParameterSliderViewCell.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceParameterSliderViewCell.swift; sourceTree = "<group>"; };
+		C8B444AB2E682A3B002F4CD6 /* DaliReplaceMasterSelectView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DaliReplaceMasterSelectView.swift; sourceTree = "<group>"; };
 		C8B483CD2E4AEEBB006D85BC /* DeviceAddParameterSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceAddParameterSettingsView.swift; sourceTree = "<group>"; };
 		C8B483D12E4B361F006D85BC /* device_add.mp3 */ = {isa = PBXFileReference; lastKnownFileType = audio.mp3; path = device_add.mp3; sourceTree = "<group>"; };
 		C8B483D22E4B361F006D85BC /* device_reset.mp3 */ = {isa = PBXFileReference; lastKnownFileType = audio.mp3; path = device_reset.mp3; sourceTree = "<group>"; };
@@ -1567,6 +1591,10 @@
 		C8B5A1DD2B2BE9B300728E36 /* GroupMembersViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GroupMembersViewController.swift; sourceTree = "<group>"; };
 		C8B5A1DF2B2C2AFD00728E36 /* GroupDevicesFunctionView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GroupDevicesFunctionView.swift; sourceTree = "<group>"; };
 		C8B5A1E12B2C48DE00728E36 /* GroupCheckViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GroupCheckViewController.swift; sourceTree = "<group>"; };
+		C8B6D7CB2E6E768B004FB923 /* AdaptiveTextView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AdaptiveTextView.swift; sourceTree = "<group>"; };
+		C8B6D7D72E6EB6D9004FB923 /* ContentDisplayViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentDisplayViewController.swift; sourceTree = "<group>"; };
+		C8B6D7DB2E6EB8E8004FB923 /* ContentDisplayViewCell.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentDisplayViewCell.swift; sourceTree = "<group>"; };
+		C8B6D7DF2E702BF7004FB923 /* SystemVoiumeManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SystemVoiumeManager.swift; sourceTree = "<group>"; };
 		C8B707032DCF2FDC0002133E /* EnergyStatisticsStaticData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EnergyStatisticsStaticData.swift; sourceTree = "<group>"; };
 		C8B707052DCF2FF50002133E /* EnergyStatisticsTimeSeriesData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EnergyStatisticsTimeSeriesData.swift; sourceTree = "<group>"; };
 		C8B707072DCF349D0002133E /* ProfileSensitivityView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileSensitivityView.swift; sourceTree = "<group>"; };
@@ -2177,6 +2205,7 @@
 				C89A1C352B54C64B004912B9 /* MultiseriatePickerView.swift */,
 				C89C15722D9A9D8000789F0B /* ContinuousTapGestureRecognizer.swift */,
 				C8BC95E12E04FC830058D41E /* RangeSlider.swift */,
+				C8B6D7CB2E6E768B004FB923 /* AdaptiveTextView.swift */,
 			);
 			path = View;
 			sourceTree = "<group>";
@@ -2251,6 +2280,7 @@
 				C89C9FEB2B3C26BA00074031 /* SyncDeviceStepViewCell.swift */,
 				C8B0B48A2B468BC700747CF4 /* SyncDevicesProgressView.swift */,
 				C8AC50992C4E3234003CE437 /* SpaceMoreViewCell.swift */,
+				C8B6D7DB2E6EB8E8004FB923 /* ContentDisplayViewCell.swift */,
 			);
 			path = View;
 			sourceTree = "<group>";
@@ -2272,6 +2302,7 @@
 				C8B57F702DB0DD1100E5CD7E /* ReadDevicesDataViewController.swift */,
 				C87B2D2E2BCFC6CD0034E9C2 /* SpaceNewCreationProcessController.swift */,
 				C8AC50972C4E2FF1003CE437 /* SpaceMoreViewController.swift */,
+				C8B6D7D72E6EB6D9004FB923 /* ContentDisplayViewController.swift */,
 			);
 			path = Controller;
 			sourceTree = "<group>";
@@ -2333,6 +2364,7 @@
 				C8A85CDD2E09014B007F9B81 /* DeviceAddSelectAllViewCell.swift */,
 				C8BC95E72E055C540058D41E /* DeviceSignalStrengthView.swift */,
 				C8A85CE02E0A4886007F9B81 /* DeviceAddCandidateDeviceListView.swift */,
+				C8B444A22E669DD8002F4CD6 /* DeviceAddSectionBackgroundView.swift */,
 				C88B25792ADE1D2100CF1AE4 /* DeviceLightHeaderView.swift */,
 				C88B257D2ADE594600CF1AE4 /* DeviceLightControlViewCell.swift */,
 				C89AC9302B62372300744868 /* DeviceLightInfoSectionView.swift */,
@@ -2379,6 +2411,7 @@
 				C8B058A82B512C1F006FC36F /* TestDeviceAddManager.swift */,
 				C8A347CD2D6307CC0092D3E4 /* DeviceProtocol.swift */,
 				C8B483D92E4B37CB006D85BC /* DeviceAudioManager.swift */,
+				C8B6D7DF2E702BF7004FB923 /* SystemVoiumeManager.swift */,
 			);
 			path = Model;
 			sourceTree = "<group>";
@@ -2580,6 +2613,7 @@
 				C8AE17532DACAABD0071A9B1 /* DeviceParameterSettingsViewCell.swift */,
 				C8AEB9A82DCC5A660053102B /* DeviceParameterRetedPowerViewCell.swift */,
 				C8C0E44A2E28869F0024E77E /* DeviceParameterAbsoluteSensitivityViewCell.swift */,
+				C8B444A62E67D00D002F4CD6 /* DeviceParameterSliderViewCell.swift */,
 				C85120F42DB0A11200714111 /* DeviceParameterFilterView.swift */,
 				C87141B52DB24C86007A64B4 /* DevicePwmFrequencySelectView.swift */,
 			);
@@ -2693,6 +2727,7 @@
 				C8AFDBFA2D6FF6D600839A38 /* DaliMasterMultipleControlsView.swift */,
 				C8AFDBFC2D700A1800839A38 /* DaliDevicesViewCell.swift */,
 				C8AFDC002D70557100839A38 /* DaliSettingDeviceWarnHeaderView.swift */,
+				C8B444AB2E682A3B002F4CD6 /* DaliReplaceMasterSelectView.swift */,
 			);
 			path = View;
 			sourceTree = "<group>";
@@ -3468,6 +3503,7 @@
 				C88553F32DE6B44C00C8B688 /* SceneExecuteDataPickerView.swift in Sources */,
 				C88553F42DE6B44C00C8B688 /* SiteData.swift in Sources */,
 				C88553F52DE6B44C00C8B688 /* BatchImportResultHelpController.swift in Sources */,
+				C8B444A32E669DD8002F4CD6 /* DeviceAddSectionBackgroundView.swift in Sources */,
 				C88553F62DE6B44C00C8B688 /* Node+SyncData.swift in Sources */,
 				C88553F72DE6B44C00C8B688 /* MeshFirmwareUpgradeResultsView.swift in Sources */,
 				C88553F82DE6B44C00C8B688 /* ScheduleAddViewController.swift in Sources */,
@@ -3552,6 +3588,7 @@
 				C88554402DE6B44C00C8B688 /* SitesViewCell.swift in Sources */,
 				C8BC95E22E04FC830058D41E /* RangeSlider.swift in Sources */,
 				C88554412DE6B44C00C8B688 /* ProfileInstructionsHeaderView.swift in Sources */,
+				C8B444AD2E682A3B002F4CD6 /* DaliReplaceMasterSelectView.swift in Sources */,
 				C88554422DE6B44C00C8B688 /* DeviceGroupsSelectData.swift in Sources */,
 				C88554432DE6B44C00C8B688 /* CharacterSelectView.swift in Sources */,
 				C88554442DE6B44C00C8B688 /* ZipHandler.swift in Sources */,
@@ -3567,6 +3604,7 @@
 				C885544E2DE6B44C00C8B688 /* EnergyTestData.swift in Sources */,
 				C885544F2DE6B44C00C8B688 /* EnergyStaticDataGroupView.swift in Sources */,
 				C88554502DE6B44C00C8B688 /* DeviceParameterRetedPowerViewCell.swift in Sources */,
+				C8B6D7DA2E6EB6D9004FB923 /* ContentDisplayViewController.swift in Sources */,
 				C88554512DE6B44C00C8B688 /* SitesTransferredView.swift in Sources */,
 				C8A85CDF2E09014B007F9B81 /* DeviceAddSelectAllViewCell.swift in Sources */,
 				C88554522DE6B44C00C8B688 /* SyncDeviceStepViewCell.swift in Sources */,
@@ -3599,6 +3637,7 @@
 				C885546A2DE6B44C00C8B688 /* SceneAddDataListViewCell.swift in Sources */,
 				C885546B2DE6B44C00C8B688 /* EnergyStaticDataDeviceViewCell.swift in Sources */,
 				C885546C2DE6B44C00C8B688 /* LinePageControl.swift in Sources */,
+				C8B444A92E67D00D002F4CD6 /* DeviceParameterSliderViewCell.swift in Sources */,
 				C885546D2DE6B44C00C8B688 /* InfoEditViewController.swift in Sources */,
 				C885546E2DE6B44C00C8B688 /* BatchSpaceData.swift in Sources */,
 				C885546F2DE6B44C00C8B688 /* ShareChangePasswordController.swift in Sources */,
@@ -3726,6 +3765,7 @@
 				C88554DE2DE6B44C00C8B688 /* TimedViewController.swift in Sources */,
 				C8B95FA02E4EE25D000576F5 /* DeviceForceResetDeviceView.swift in Sources */,
 				C88554DF2DE6B44C00C8B688 /* ShareSpaceListViewController.swift in Sources */,
+				C8B6D7DC2E6EB8E8004FB923 /* ContentDisplayViewCell.swift in Sources */,
 				C88554E02DE6B44C00C8B688 /* SceneServer.swift in Sources */,
 				C88554E12DE6B44C00C8B688 /* ProfileSensitivityView.swift in Sources */,
 				C88554E22DE6B44C00C8B688 /* SceneSettingsViewController.swift in Sources */,
@@ -3758,9 +3798,11 @@
 				C88554FA2DE6B44C00C8B688 /* WYProgressHUD.m in Sources */,
 				C88554FB2DE6B44C00C8B688 /* SyncDevicesCellModel.swift in Sources */,
 				C88554FC2DE6B44C00C8B688 /* DeviceOfflinePromptView.swift in Sources */,
+				C8B6D7E22E702BF7004FB923 /* SystemVoiumeManager.swift in Sources */,
 				C88554FD2DE6B44C00C8B688 /* BLEUpgradeInstructionsController.swift in Sources */,
 				C88554FE2DE6B44C00C8B688 /* MeshFirmwareUpdateViewController.swift in Sources */,
 				C88554FF2DE6B44C00C8B688 /* CustomSegmentedControl.swift in Sources */,
+				C8B6D7CD2E6E768B004FB923 /* AdaptiveTextView.swift in Sources */,
 				C88555002DE6B44C00C8B688 /* DeviceRestoreViewController.swift in Sources */,
 				C88555012DE6B44C00C8B688 /* EnergyDataViewController.swift in Sources */,
 				C88555022DE6B44C00C8B688 /* XWHUDManager.m in Sources */,
@@ -3858,6 +3900,7 @@
 				C886E0442E30DE4900D0C3A6 /* SceneExecuteDataPickerView.swift in Sources */,
 				C886E0452E30DE4900D0C3A6 /* SiteData.swift in Sources */,
 				C886E0462E30DE4900D0C3A6 /* BatchImportResultHelpController.swift in Sources */,
+				C8B444A52E669DD8002F4CD6 /* DeviceAddSectionBackgroundView.swift in Sources */,
 				C886E0472E30DE4900D0C3A6 /* Node+SyncData.swift in Sources */,
 				C886E0482E30DE4900D0C3A6 /* MeshFirmwareUpgradeResultsView.swift in Sources */,
 				C886E0492E30DE4900D0C3A6 /* ScheduleAddViewController.swift in Sources */,
@@ -3942,6 +3985,7 @@
 				C886E0932E30DE4900D0C3A6 /* SitesViewCell.swift in Sources */,
 				C886E0942E30DE4900D0C3A6 /* RangeSlider.swift in Sources */,
 				C886E0952E30DE4900D0C3A6 /* ProfileInstructionsHeaderView.swift in Sources */,
+				C8B444AC2E682A3B002F4CD6 /* DaliReplaceMasterSelectView.swift in Sources */,
 				C886E0962E30DE4900D0C3A6 /* DeviceGroupsSelectData.swift in Sources */,
 				C886E0972E30DE4900D0C3A6 /* CharacterSelectView.swift in Sources */,
 				C886E0982E30DE4900D0C3A6 /* ZipHandler.swift in Sources */,
@@ -3957,6 +4001,7 @@
 				C886E0A22E30DE4900D0C3A6 /* EnergyTestData.swift in Sources */,
 				C886E0A32E30DE4900D0C3A6 /* EnergyStaticDataGroupView.swift in Sources */,
 				C886E0A42E30DE4900D0C3A6 /* DeviceParameterRetedPowerViewCell.swift in Sources */,
+				C8B6D7D82E6EB6D9004FB923 /* ContentDisplayViewController.swift in Sources */,
 				C886E0A52E30DE4900D0C3A6 /* SitesTransferredView.swift in Sources */,
 				C886E0A62E30DE4900D0C3A6 /* DeviceAddSelectAllViewCell.swift in Sources */,
 				C886E0A72E30DE4900D0C3A6 /* SyncDeviceStepViewCell.swift in Sources */,
@@ -3989,6 +4034,7 @@
 				C886E0C02E30DE4900D0C3A6 /* SceneAddDataListViewCell.swift in Sources */,
 				C886E0C12E30DE4900D0C3A6 /* EnergyStaticDataDeviceViewCell.swift in Sources */,
 				C886E0C22E30DE4900D0C3A6 /* LinePageControl.swift in Sources */,
+				C8B444A72E67D00D002F4CD6 /* DeviceParameterSliderViewCell.swift in Sources */,
 				C886E0C32E30DE4900D0C3A6 /* InfoEditViewController.swift in Sources */,
 				C886E0C42E30DE4900D0C3A6 /* BatchSpaceData.swift in Sources */,
 				C886E0C52E30DE4900D0C3A6 /* ShareChangePasswordController.swift in Sources */,
@@ -4116,6 +4162,7 @@
 				C886E1392E30DE4900D0C3A6 /* TimedViewController.swift in Sources */,
 				C8B95FA12E4EE25D000576F5 /* DeviceForceResetDeviceView.swift in Sources */,
 				C886E13A2E30DE4900D0C3A6 /* ShareSpaceListViewController.swift in Sources */,
+				C8B6D7DD2E6EB8E8004FB923 /* ContentDisplayViewCell.swift in Sources */,
 				C886E13B2E30DE4900D0C3A6 /* SceneServer.swift in Sources */,
 				C886E13C2E30DE4900D0C3A6 /* ProfileSensitivityView.swift in Sources */,
 				C886E13D2E30DE4900D0C3A6 /* SceneSettingsViewController.swift in Sources */,
@@ -4148,9 +4195,11 @@
 				C886E1562E30DE4900D0C3A6 /* WYProgressHUD.m in Sources */,
 				C886E1572E30DE4900D0C3A6 /* SyncDevicesCellModel.swift in Sources */,
 				C886E1582E30DE4900D0C3A6 /* DeviceOfflinePromptView.swift in Sources */,
+				C8B6D7E12E702BF7004FB923 /* SystemVoiumeManager.swift in Sources */,
 				C886E1592E30DE4900D0C3A6 /* BLEUpgradeInstructionsController.swift in Sources */,
 				C886E15A2E30DE4900D0C3A6 /* MeshFirmwareUpdateViewController.swift in Sources */,
 				C886E15B2E30DE4900D0C3A6 /* CustomSegmentedControl.swift in Sources */,
+				C8B6D7CE2E6E768B004FB923 /* AdaptiveTextView.swift in Sources */,
 				C886E15C2E30DE4900D0C3A6 /* DeviceRestoreViewController.swift in Sources */,
 				C886E15D2E30DE4900D0C3A6 /* EnergyDataViewController.swift in Sources */,
 				C886E15E2E30DE4900D0C3A6 /* XWHUDManager.m in Sources */,
@@ -4248,6 +4297,7 @@
 				C8A3EE862B3420F60082A772 /* SceneExecuteDataPickerView.swift in Sources */,
 				C8AADEFF2A97350400238C1C /* SiteData.swift in Sources */,
 				C88DE4492C085A5D005A38C1 /* BatchImportResultHelpController.swift in Sources */,
+				C8B444A42E669DD8002F4CD6 /* DeviceAddSectionBackgroundView.swift in Sources */,
 				C8A351702D8EB1FF00325FC6 /* Node+SyncData.swift in Sources */,
 				C89D560F2D0A87F100FC7890 /* MeshFirmwareUpgradeResultsView.swift in Sources */,
 				C8A29C2C2B47FE2300104634 /* ScheduleAddViewController.swift in Sources */,
@@ -4332,6 +4382,7 @@
 				C89FEF4F2ABEB37900DCCFB6 /* SitesViewCell.swift in Sources */,
 				C8BC95E32E04FC830058D41E /* RangeSlider.swift in Sources */,
 				C8047F0F2B8E049E00A09FFA /* ProfileInstructionsHeaderView.swift in Sources */,
+				C8B444AE2E682A3B002F4CD6 /* DaliReplaceMasterSelectView.swift in Sources */,
 				C8B058A72B5115B2006FC36F /* DeviceGroupsSelectData.swift in Sources */,
 				C8BF085E2B27F2C300144BAC /* CharacterSelectView.swift in Sources */,
 				C8A0CB4F2C9A81E1009A37E3 /* ZipHandler.swift in Sources */,
@@ -4347,6 +4398,7 @@
 				C84FBCC32DBF79D00030E136 /* EnergyTestData.swift in Sources */,
 				C84FBCAD2DBF28D80030E136 /* EnergyStaticDataGroupView.swift in Sources */,
 				C8AEB9A92DCC5A660053102B /* DeviceParameterRetedPowerViewCell.swift in Sources */,
+				C8B6D7D92E6EB6D9004FB923 /* ContentDisplayViewController.swift in Sources */,
 				C86760A52C37F4B4006AD978 /* SitesTransferredView.swift in Sources */,
 				C8A85CDE2E09014B007F9B81 /* DeviceAddSelectAllViewCell.swift in Sources */,
 				C89C9FEC2B3C26BA00074031 /* SyncDeviceStepViewCell.swift in Sources */,
@@ -4379,6 +4431,7 @@
 				C8A3EE802B33E43C0082A772 /* SceneAddDataListViewCell.swift in Sources */,
 				C8002CD22DD33D60002A8629 /* EnergyStaticDataDeviceViewCell.swift in Sources */,
 				C8BF088E2B299DD700144BAC /* LinePageControl.swift in Sources */,
+				C8B444A82E67D00D002F4CD6 /* DeviceParameterSliderViewCell.swift in Sources */,
 				C8A09A072AC1790B0068C814 /* InfoEditViewController.swift in Sources */,
 				C84A2C572C2D571D0064D3F1 /* BatchSpaceData.swift in Sources */,
 				C88DE4412C070D3F005A38C1 /* ShareChangePasswordController.swift in Sources */,
@@ -4506,6 +4559,7 @@
 				C8A29C262B47D47500104634 /* TimedViewController.swift in Sources */,
 				C8B95FA22E4EE25D000576F5 /* DeviceForceResetDeviceView.swift in Sources */,
 				C830CFD92C0DBE520035CD5B /* ShareSpaceListViewController.swift in Sources */,
+				C8B6D7DE2E6EB8E8004FB923 /* ContentDisplayViewCell.swift in Sources */,
 				C89C9FE22B3BC1B900074031 /* SceneServer.swift in Sources */,
 				C8B707082DCF349D0002133E /* ProfileSensitivityView.swift in Sources */,
 				C898F7022B3A810E008B4124 /* SceneSettingsViewController.swift in Sources */,
@@ -4538,9 +4592,11 @@
 				C896BD3A2A930C3A00217512 /* WYProgressHUD.m in Sources */,
 				C89C9FF22B3D60CC00074031 /* SyncDevicesCellModel.swift in Sources */,
 				C80A7F522DB790B700A6E36C /* DeviceOfflinePromptView.swift in Sources */,
+				C8B6D7E02E702BF7004FB923 /* SystemVoiumeManager.swift in Sources */,
 				C89C82CC2C81C8BA009D43F6 /* BLEUpgradeInstructionsController.swift in Sources */,
 				C8A4E8932CDB0F5D00A22C77 /* MeshFirmwareUpdateViewController.swift in Sources */,
 				C89FEF4C2ABD9F2700DCCFB6 /* CustomSegmentedControl.swift in Sources */,
+				C8B6D7CC2E6E768B004FB923 /* AdaptiveTextView.swift in Sources */,
 				C89FB7CD2CF079A500411D96 /* DeviceRestoreViewController.swift in Sources */,
 				C82F99F22DBE10A90019C3FB /* EnergyDataViewController.swift in Sources */,
 				C896BD3B2A930C3A00217512 /* XWHUDManager.m in Sources */,

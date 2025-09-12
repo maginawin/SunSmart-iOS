@@ -421,16 +421,19 @@ class BleFirmwareUpdateViewController: UIViewController {
         rssiSortTimer?.invalidate()
         rssiSortTimer = nil
         
-        var selectNodes: [Node] = []
+//        var selectNodes: [Node] = []
         var reloadTypeDatas: [FirmwareUpdateTypeData] = []
         firmwareTypeDatas.forEach { data in
             data.nodes.sort(by: { $0.rssi ?? -99 >= $1.rssi ?? -99 })
             if data.isShow {
                 reloadTypeDatas.append(data)
             }
-            selectNodes.append(contentsOf: data.nodes.filter({ $0.updateState.rawValue == Node.UpdateState.none.rawValue && $0.enableUpgrade && $0.selectedState == .selected }))
+//            selectNodes.append(contentsOf: data.nodes.filter({ $0.updateState.rawValue == Node.UpdateState.none.rawValue && $0.enableUpgrade && $0.selectedState == .selected }))
         }
-        self.selectNodes = selectNodes
+//        self.selectNodes = selectNodes
+        self.updateSelectNodes()
+        
+        updateUI()
         updateSelectAllState()
         
         reloadTypeDatas.forEach({
@@ -495,12 +498,13 @@ class BleFirmwareUpdateViewController: UIViewController {
                 collectionView.refreshControl = refreshControl
             }
             bottomView.isHidden = false
-            var selectNodes: [Node] = []
+//            var selectNodes: [Node] = []
             firmwareTypeDatas.forEach { data in
                 data.nodes.sort(by: { $0.rssi ?? -99 >= $1.rssi ?? -99 })
-                selectNodes.append(contentsOf: data.nodes.filter({ $0.updateState.rawValue == Node.UpdateState.none.rawValue && $0.enableUpgrade && $0.selectedState == .selected }))
+//                selectNodes.append(contentsOf: data.nodes.filter({ $0.updateState.rawValue == Node.UpdateState.none.rawValue && $0.enableUpgrade && $0.selectedState == .selected }))
             }
-            self.selectNodes = selectNodes
+            updateSelectNodes()
+//            self.selectNodes = selectNodes
             updateSelectAllState()
             
             if loadServerData {
@@ -585,8 +589,7 @@ class BleFirmwareUpdateViewController: UIViewController {
                 }
                 node.selectedState = .selected
                 self.reloadNodeUI(node: node)
-                
-                self.selectNodes = self.firmwareTypeDatas.flatMap({ $0.nodes.filter({ $0.updateState.rawValue == Node.UpdateState.none.rawValue && $0.enableUpgrade && $0.selectedState == .selected }) })
+                self.updateSelectNodes()
                 
                 self.updateUI()
             }
@@ -598,7 +601,7 @@ class BleFirmwareUpdateViewController: UIViewController {
             guard let self = self else { return  }
             
             self.updateState = .updateFinish
-            self.selectNodes = self.firmwareTypeDatas.flatMap({ $0.nodes.filter({ $0.updateState.rawValue == Node.UpdateState.none.rawValue && $0.enableUpgrade && $0.selectedState == .selected }) })
+            self.updateSelectNodes()
              
             if self.restoreNodes.count > 0 {
                 self.collectionView.reloadData()
@@ -678,6 +681,18 @@ class BleFirmwareUpdateViewController: UIViewController {
             }
         }
         
+        if !updateResultView.isHidden {
+            let allNodes = firmwareTypeDatas.flatMap({ $0.nodes })
+            updateResultView.successCountLabel.text = "\("successfully".localizedString) : \(allNodes.filter({ $0.updateState.rawValue == Node.UpdateState.successful.rawValue }).count)"
+            
+            let failNodes = allNodes.filter({
+                if case .failure = $0.updateState {
+                    return true
+                }
+                return false
+            })
+            updateResultView.failedCountLabel.text = "\(failNodes.count)"
+        }
         updateSelectAllState()
     }
     
@@ -787,11 +802,40 @@ class BleFirmwareUpdateViewController: UIViewController {
         
     }
     
+    /// 更新获取选中的设备list
+    private func updateSelectNodes() {
+        self.selectNodes = self.firmwareTypeDatas.flatMap({ data in
+            data.nodes.filter({
+                guard $0.enableUpgrade && $0.selectedState == .selected else {
+                    return false
+                }
+                switch $0.updateState {
+                case .none, .failure:
+                    return true
+                default:
+                    return false
+                }
+            })
+        })
+    }
+    
     private func updateSelectAllState() {
         
         var canSelectNodes: [Node] = []
+        
         firmwareTypeDatas.forEach { data in
-            canSelectNodes.append(contentsOf: data.nodes.filter({ $0.updateState.rawValue == Node.UpdateState.none.rawValue && $0.enableUpgrade }))
+           let nodes = data.nodes.filter({
+                guard $0.enableUpgrade else {
+                    return false
+                }
+                switch $0.updateState {
+                case .none, .failure:
+                    return true
+                default:
+                    return false
+                }
+            })
+            canSelectNodes.append(contentsOf: nodes)
         }
         selectAllBtn.isSelected = canSelectNodes.count > 0 && selectNodes.count == canSelectNodes.count
         selectCountLabel.text = "\(selectNodes.count)/\(canSelectNodes.count)"
@@ -905,7 +949,7 @@ class BleFirmwareUpdateViewController: UIViewController {
         let resetTypes = self.firmwareTypeDatas.filter({ type in
             return nodes.contains(where: { $0.productIdentifier == type.productId && $0.compositionHash != nil && $0.compositionHash != type.targetVersionHash })
         })
-        
+        // 7a74366e
 //        let resetNodes = nodes.filter({ node in node.compositionHash != self.firmwareTypeDatas.first(where: { $0.productId == node.productIdentifier })?.targetVersionHash })
         if resetTypes.count > 0 {
             var firmwareStr = ""
@@ -997,9 +1041,9 @@ class BleFirmwareUpdateViewController: UIViewController {
         
         let vc = DeviceRestoreViewController(space: space, restoreMode: .specified(nodes: self.restoreNodes))
         vc.automationRestore = automatically
-        vc.deviceRestoreCallback = {[weak self] nodes in
+        vc.deviceRestoreCallback = {[weak self] nodes, automationRestore in
             guard let self = self else { return }
-            if automatically {
+            if automationRestore {
                 if nodes.isEmpty { // 提示未找到设备，需要手动恢复
                     SRAlertView(title: "notification".localizedString, message: "device_automatic_restore_notfound_message".localizedString, actions: [.cancelAction, SRAlertAction(title: "RESTORE".localizedString, actionHandler: {[weak self] _ in
                         self?.restoreDevices()
@@ -1057,6 +1101,7 @@ extension BleFirmwareUpdateViewController: UICollectionViewDataSource, UICollect
     
     func collectionView(_ collectionView: UICollectionView, cellForItemAt indexPath: IndexPath) -> UICollectionViewCell {
         let cell = collectionView.dequeueReusableCell(withReuseIdentifier: "cell", for: indexPath) as! BleFirmwareTypeUpdateViewCell
+        cell.displayDeviceNamePrefix = space.displayDeviceNamePrefix
         cell.firmwareTypeData = firmwareTypeDatas[indexPath.row]
         cell.delegate = self
 //        cell.isShow = showData[indexPath.item] ?? false
@@ -1103,7 +1148,8 @@ extension BleFirmwareUpdateViewController: BleFirmwareTypeUpdateViewCellDelegate
             return
         }
         
-        self.selectNodes = self.firmwareTypeDatas.flatMap({ $0.nodes.filter({ $0.updateState.rawValue == Node.UpdateState.none.rawValue && $0.enableUpgrade && $0.selectedState == .selected }) })
+//        self.selectNodes = self.firmwareTypeDatas.flatMap({ $0.nodes.filter({ $0.updateState.rawValue == Node.UpdateState.none.rawValue && $0.enableUpgrade && $0.selectedState == .selected }) })
+        updateSelectNodes()
         
         updateSelectAllState()
     }

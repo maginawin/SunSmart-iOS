@@ -66,11 +66,11 @@ class DeviceAddBottomView: UIView {
             make.size.equalTo(btnSize)
         }
         
-        syncBtn = UIButton(title: "sync".localizedString, titleSize: 14, titleColor: .white)
+        syncBtn = UIButton(title: "sync_all".localizedString, titleSize: 14, titleColor: .white)
         syncBtn.titleLabel?.font = Font_Medium_Size(14)
-        syncBtn.layer.cornerRadius = SCRYFrom(20)
+        let syncBtnSize = CGSize(width: CGFloat(Int(SCRXFrom(80))), height: CGFloat(Int(SCRYFrom(40))))
+        syncBtn.layer.cornerRadius = syncBtnSize.height / 2
         syncBtn.clipsToBounds = true
-        let syncBtnSize = CGSize(width: SCRXFrom(80), height: SCRYFrom(40))
         syncBtn.setBackgroundImage(UIImage.image(size: syncBtnSize, color: Bar_Color), for: .normal)
         syncBtn.setBackgroundImage(UIImage.image(size: syncBtnSize, color: Bar_Color.withAlphaComponent(0.5)), for: .disabled)
         syncBtn.isHidden = true

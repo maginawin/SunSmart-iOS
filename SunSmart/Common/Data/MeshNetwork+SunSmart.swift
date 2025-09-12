@@ -647,16 +647,17 @@ extension MeshNetworkManager {
     /// 获取下一个节点名称
     /// - Parameter defaultName: 默认名称
     /// - Returns: 分配的节点名称
-    func getNextNodeName(_ defaultName: String = "device_defalut_name".localizedString, length: Int = 3) -> String {
+    func getNextNodeName(_ defaultName: String? = nil) -> String {
         objc_sync_enter(self)
         
-        var resultName = defaultName + String(format: "%0\(length)d", 1)
+        
+        var resultName = (defaultName ?? "device_defalut_name".localizedString) + String(format: "%d", 1)
         // 已存在的节点名称
         let existNames = realNodes.map({ $0.name ?? "" })
         for index in 1...32767 {
             // ID001
             
-            let name = defaultName + String(format: "%0\(length)d", index)
+            let name = (defaultName ?? "device_defalut_name".localizedString) + String(format: "%d", index)
             if !existNames.contains(name) {
                 resultName = name
                 break
@@ -1725,7 +1726,7 @@ extension DeviceSwitchData {
 //                }
                 if let node = self.deleteProxyNode, node.enOceanMacAddress?.count ?? 0 > 0 {
                     deleteProxy = node
-                }
+                }   
             }
         }
         let data = SwitchSyncData(syncGroups: syncGroupData, deleteGroups: deleteGroupData, syncProxy: syncProxy, deleteProxy: deleteProxy)
@@ -1891,6 +1892,24 @@ extension Node {
     /// 设备型号
     var modelName: String? {
         return deviceConfigInfo?.modelName
+    }
+    
+    /// 默认的设备名称类型
+    var defaultNameCategory: String? {
+        switch self.deviceType {
+        case .light:
+            return "L"
+        case .sensor:
+            return "S"
+        case .switches:
+            return "SW"
+        case .gateway:
+            return "gateway".localizedString
+        case .dongle:
+            return "dongle".localizedString
+        case .unknown:
+            return nil
+        }
     }
     
     /// 是否需要同步数据

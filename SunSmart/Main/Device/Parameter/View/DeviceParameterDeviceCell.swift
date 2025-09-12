@@ -39,6 +39,9 @@ class DeviceParameterDeviceCell: UITableViewCell {
     var sensitivityLabel: UILabel!
     var sensitivityImageView: UIImageView!
     
+    var transitionTimeLabel: UILabel!
+    var transitionTimeImageView: UIImageView!
+    
     var identifyBtn: UIButton!
 //    private var onoffBtn: UIButton!
     var onBtn: UIButton!
@@ -239,6 +242,21 @@ class DeviceParameterDeviceCell: UITableViewCell {
         sensitivityImageView.snp.makeConstraints { make in
             make.centerY.equalTo(sensitivityLabel)
             make.left.equalTo(sensitivityLabel.snp.right).offset(SCRXFrom(4))
+        }
+        
+        transitionTimeLabel = UILabel(text: "", textColor: Message_Color, fontSize: 12, fontWeight: .light)
+        contentView.addSubview(transitionTimeLabel)
+        transitionTimeLabel.snp.makeConstraints { make in
+            make.left.equalTo(sensitivityLabel)
+            make.top.equalTo(sensitivityLabel.snp.bottom).offset(SCRYFrom(2))
+        }
+        
+        transitionTimeImageView = UIImageView(image: UIImage(named: "setting_failed"))
+        transitionTimeImageView.isHidden = true
+        contentView.addSubview(transitionTimeImageView)
+        transitionTimeImageView.snp.makeConstraints { make in
+            make.centerY.equalTo(transitionTimeLabel)
+            make.left.equalTo(transitionTimeLabel.snp.right).offset(SCRXFrom(4))
         }
         
         lineView = UIView()

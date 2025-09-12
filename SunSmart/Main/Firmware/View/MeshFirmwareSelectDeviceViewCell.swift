@@ -39,7 +39,8 @@ class MeshFirmwareSelectDeviceViewCell: UITableViewCell {
     ///   - selected: 是否选中
     ///   - enabled: 是否可以选择
     ///   - isDistributor: 是否是分发者（选择升级设备流程）
-    func updateData(device: Node, upgradeStep: MeshFirmwareUpgradeStep, showSelect: Bool, selected: Bool, enabled: Bool, isDistributor: Bool = false) {
+    ///   - displayDeviceNamePrefix: 是否显示设备前缀
+    func updateData(device: Node, upgradeStep: MeshFirmwareUpgradeStep, showSelect: Bool, selected: Bool, enabled: Bool, isDistributor: Bool = false, displayDeviceNamePrefix: Bool = true) {
         
         selectImageView.isHidden = !showSelect
         if selected {
@@ -53,7 +54,11 @@ class MeshFirmwareSelectDeviceViewCell: UITableViewCell {
         }else {
             deviceImageView.isUserInteractionEnabled = true
         }
-        nameLabel.text = device.name
+        var name = device.name ?? ""
+        if let group = device.group, displayDeviceNamePrefix {
+            name = "\(group.name)-\(name)"
+        }
+        nameLabel.text = name
         
 //        switch device.distributorSelectedState {
 //        case .none:

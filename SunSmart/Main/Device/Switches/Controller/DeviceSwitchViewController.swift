@@ -576,7 +576,11 @@ extension DeviceSwitchViewController: UITableViewDataSource, UITableViewDelegate
                     self?.navigationController?.pushViewController(SwitchProxyInstructionsViewController(), animated: true)
                 }
                 if let node = setSwitchData.proxyNode {
-                    infoCell.contentLabel.text = node.name ?? "\(node.primaryUnicastAddress)"
+                    var name = node.name ?? "\(node.primaryUnicastAddress)"
+                    if let group = node.group, space.displayDeviceNamePrefix {
+                        name = "\(group.name)-\(name)"
+                    }
+                    infoCell.contentLabel.text = name
                 }else {
                     infoCell.contentLabel.text = "N/A"
                 }

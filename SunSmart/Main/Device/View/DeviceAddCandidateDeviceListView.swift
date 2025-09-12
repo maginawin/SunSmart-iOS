@@ -162,11 +162,20 @@ class DeviceAddCandidateDeviceListView: UIView {
         fatalError("init(coder:) has not been implemented")
     }
     
-//    override func layoutSubviews() {
-//        super.layoutSubviews()
-//        
-//        contentView.addRoundedCorners(corners: [.topLeft, .topRight], cornerRadii: CGSize(width: SCRYFrom(15), height: SCRYFrom(15)))
-//    }
+    override func layoutSubviews() {
+        super.layoutSubviews()
+        
+        addDeviceTargetBtn.imageView?.sizeToFit()
+        let imageW = addDeviceTargetBtn.imageView?.image?.size.width ?? 0
+        addDeviceTargetBtn.imageEdgeInsets = UIEdgeInsets(top: 0, left: addDeviceTargetBtn.width - imageW, bottom: 0, right: 0)
+        addDeviceTargetBtn.titleEdgeInsets = UIEdgeInsets(top: 0, left: SCRXFrom(8) - imageW, bottom: 0, right: imageW + SCRXFrom(6))
+        if categoryView.frame == .zero {
+            contentView.layoutIfNeeded()
+            
+            categoryView.frame = CGRect(x: 0, y: addDeviceTargetBtn.frame.maxY + SCRYFrom(12), width: contentView.width, height: CGFloat(Int(SCRYFrom(32))))
+            categoryView.resetFrames()
+        }
+    }
 
     func show() {
         if self.superview == nil {
@@ -224,9 +233,9 @@ class DeviceAddCandidateDeviceListView: UIView {
         if candidateDevices.contains(where: { $0.addState == .addConnecting || $0.addState == .adding }) {
             return
         }
-        
-        let touchPoint = CGPoint(x: sender.frame.maxX - TitleSelectView.defalutWidth, y: sender.frame.maxY + SCRYFrom(2))
-        delegate?.candidateView(self, selectAddDevicesTarget: contentView.convert(touchPoint, to: self), currentDeviceTypes: showDeviceTypes)
+        let x = isIPad ? sender.frame.minX : sender.frame.maxX - TitleSelectView.defalutWidth
+        let touchPoint = CGPoint(x: x, y: sender.frame.maxY + SCRYFrom(2))
+        delegate?.candidateView(self, selectAddDevicesTarget: contentView.convert(touchPoint, to: UIApplication.shared.keyWindow()), currentDeviceTypes: showDeviceTypes)
     }
     
     /// 全选/取消全选
@@ -336,7 +345,7 @@ class DeviceAddCandidateDeviceListView: UIView {
         footerView.addSelectedBtn.isHidden = !revokeBtn.isHidden
         promptView?.promptLabel.text = lightSeningMode ? "device_add_stop_scan_message".localizedString : "device_add_pause_message".localizedString
         
-        pauseBtn.isHidden = state != .scanning
+        pauseBtn.isHidden = isIPad || state != .scanning
         scanBtn.isHidden = !lightSeningMode
         scanBtn.isEnabled = true
         scanBtn.isSelected = state == .scanning
@@ -428,7 +437,7 @@ class DeviceAddCandidateDeviceListView: UIView {
         
         let showCandidateCount = candidateDevices.filter({ $0.addState != .success }).count
         candidateCountLabel.text = "\(showCandidateCount)"
-        candidateCountLabel.isHidden = showCandidateCount == 0
+        candidateCountLabel.isHidden = isIPad || showCandidateCount == 0
         
 //        addDeviceTargetBtn.snp.remakeConstraints { make in
 //            if showCandidateCount > 0 {
@@ -456,16 +465,11 @@ class DeviceAddCandidateDeviceListView: UIView {
         
         contentView = UIView()
         contentView.backgroundColor = Background_Color
-        contentView.layer.cornerRadius = SCRYFrom(15)
-        contentView.layer.shadowOffset = CGSize(width: 0, height: -5)
-        contentView.layer.shadowRadius = 6
-        contentView.layer.shadowColor = UIColor.black.withAlphaComponent(0.1).cgColor
-        contentView.layer.shadowOpacity = 1
         addSubview(contentView)
         contentView.snp.makeConstraints { make in
             make.left.right.equalToSuperview()
             make.top.equalTo(self.snp.bottom)
-            make.height.equalTo(height - kNavigationHeight + 8)
+            make.height.equalTo(SCREEN_HEIGHT - kNavigationHeight + 8)
         }
         
         candidateBtn = UIButton(title: "candidate_device_list".localizedString, titleSize: 15, titleColor: TextBlack_Color, normalImageName: "arrow_down_black", target: self, action: #selector(candidateBtnAction))
@@ -501,15 +505,10 @@ class DeviceAddCandidateDeviceListView: UIView {
         addDeviceTargetBtn.snp.makeConstraints { make in
 //            make.right.equalTo(SCRXFrom(-16))
             make.left.equalTo(addDeviceToLabel.snp.right).offset(SCRXFrom(12))
-            make.top.equalTo(candidateBtn.snp.bottom)
-            make.width.equalTo(SCRXFrom(isIPad ? 200 : 128))
+            make.centerY.equalTo(addDeviceToLabel)
+            make.width.equalTo(SCRXFrom(128))
             make.height.equalTo(SCRYFrom(32))
         }
-        addDeviceTargetBtn.layoutIfNeeded()
-        addDeviceTargetBtn.imageView?.sizeToFit()
-        let imageW = addDeviceTargetBtn.imageView?.image?.size.width ?? 0
-        addDeviceTargetBtn.imageEdgeInsets = UIEdgeInsets(top: 0, left: addDeviceTargetBtn.width - imageW, bottom: 0, right: 0)
-        addDeviceTargetBtn.titleEdgeInsets = UIEdgeInsets(top: 0, left: SCRXFrom(8) - imageW, bottom: 0, right: imageW + SCRXFrom(6))
         
         scanBtn = UIButton(title: "scan".localizedString, titleSize: 13, titleColor: Bottom_Done_Color, normalImageName: "device_scan", target: self, action: #selector(scanBtnClick))
         scanBtn.setTitle("stop".localizedString, for: .selected)
@@ -538,12 +537,9 @@ class DeviceAddCandidateDeviceListView: UIView {
             make.centerY.equalTo(addDeviceTargetBtn)
         }
         
-        categoryView = WMMenuView(frame: CGRect(x: 0, y: 0, width: self.width, height: CGFloat(Int(SCRYFrom(32)))))
+        categoryView = WMMenuView()
         categoryView.itemBackgroundColor = .clear
         categoryView.itemCornerRadius = CGFloat(Int(SCRYFrom(16)))
-        if isIPad {
-            categoryView.layoutMode = .center
-        }
         categoryView.itemRateAnimation = false
         categoryView.fontWeight = .light
         categoryView.isHidden = true
@@ -551,11 +547,11 @@ class DeviceAddCandidateDeviceListView: UIView {
         categoryView.delegate = self
         categoryView.selectItem(at: 0)
         contentView.addSubview(categoryView)
-        categoryView.snp.makeConstraints { make in
-            make.left.right.equalToSuperview()
-            make.top.equalTo(addDeviceTargetBtn.snp.bottom).offset(SCRYFrom(12))
-            make.height.equalTo(SCRYFrom(32))
-        }
+//        categoryView.snp.makeConstraints { make in
+//            make.left.right.equalToSuperview()
+//            make.top.equalTo(addDeviceTargetBtn.snp.bottom).offset(SCRYFrom(12))
+//            make.height.equalTo(SCRYFrom(32))
+//        }
        
         footerView = DeviceAddBottomView()
         footerView.isHidden = true
@@ -588,7 +584,7 @@ class DeviceAddCandidateDeviceListView: UIView {
         tableView.snp.makeConstraints { make in
             make.left.right.equalToSuperview()
             make.bottom.equalTo(footerView.snp.top)
-            make.top.equalTo(categoryView.snp.bottom).offset(SCRYFrom(12))
+            make.top.equalTo(addDeviceTargetBtn.snp.bottom).offset(SCRYFrom(56))
         }
         
         promptView = DevicePromptHudView()
@@ -613,6 +609,47 @@ class DeviceAddCandidateDeviceListView: UIView {
         addResultView.closeBtn.addTarget(self, action: #selector(closeBtnClick), for: .touchUpInside)
         addResultView.stopAddBtn.addTarget(self, action: #selector(stopAddBtnClick), for: .touchUpInside)
         
+        
+        if isIPad {
+            shadeView.isHidden = true
+            candidateCountLabel.isHidden = true
+            candidateBtn.isUserInteractionEnabled = false
+            candidateBtn.setImage(nil, for: .normal)
+            pauseBtn.isHidden = true
+            contentView.backgroundColor = RGB(244, 244, 244)
+            categoryView.layoutMode = .center
+            
+            contentView.snp.remakeConstraints { make in
+                make.edges.equalToSuperview()
+            }
+            
+            candidateBtn.snp.remakeConstraints { make in
+                make.centerX.equalToSuperview()
+                make.top.equalTo(SCRYFrom(24))
+            }
+            
+            addDeviceToLabel.snp.updateConstraints { make in
+                make.left.equalTo(SCRXFrom(24))
+                make.top.equalTo(candidateBtn.snp.bottom).offset(SCRXFrom(24))
+            }
+            
+            addDeviceTargetBtn.snp.remakeConstraints { make in
+    //            make.right.equalTo(SCRXFrom(-16))
+                make.left.equalTo(addDeviceToLabel.snp.right).offset(SCRXFrom(18))
+                make.centerY.equalTo(addDeviceToLabel)
+                make.right.equalTo(SCRXFrom(-16))
+                make.height.equalTo(SCRYFrom(32))
+            }
+            footerView.snp.updateConstraints { make in
+                make.height.equalTo(SCRYFrom(60))
+            }
+        }else {
+            contentView.layer.cornerRadius = SCRYFrom(15)
+            contentView.layer.shadowOffset = CGSize(width: 0, height: -5)
+            contentView.layer.shadowRadius = 6
+            contentView.layer.shadowColor = UIColor.black.withAlphaComponent(0.1).cgColor
+            contentView.layer.shadowOpacity = 1
+        }
     }
     
 }
@@ -648,7 +685,7 @@ extension DeviceAddCandidateDeviceListView: WMMenuViewDataSource, WMMenuViewDele
     }
     
     func menuView(_ menu: WMMenuView!, widthForItemAt index: Int) -> CGFloat {
-        let itemW = isIPad ? SCRXFrom(120) : SCRXFrom(80)
+        let itemW = max(SCRXFrom(80), 80)
         return CGFloat(Int(itemW))
     }
     
@@ -734,6 +771,9 @@ extension DeviceAddCandidateDeviceListView: UITableViewDataSource, UITableViewDe
     func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
         let cell = tableView.dequeueReusableCell(withIdentifier: "cell", for: indexPath) as! DeviceAddViewCell
         cell.selectionStyle = .none
+        if isIPad {
+            cell.backgroundColor = .clear
+        }
         let device = showDevices[indexPath.row]
         cell.device = device
         if state == .scanning && (isRefresh || lightSeningMode) {
@@ -788,7 +828,7 @@ extension DeviceAddCandidateDeviceListView: UITableViewDataSource, UITableViewDe
     }
     
     func scrollViewDidScroll(_ scrollView: UIScrollView) {
-        guard scrollView.isTracking else {
+        guard scrollView.isTracking, isIPhone else {
             return
         }
         
@@ -815,11 +855,17 @@ extension DeviceAddCandidateDeviceListView: UITableViewDataSource, UITableViewDe
     }
     
     func scrollViewWillBeginDragging(_ scrollView: UIScrollView) {
+        guard isIPhone else {
+            return
+        }
         self.contentView.isUserInteractionEnabled = false
         self.shadeView.isUserInteractionEnabled = false
     }
     
     func scrollViewWillEndDragging(_ scrollView: UIScrollView, withVelocity velocity: CGPoint, targetContentOffset: UnsafeMutablePointer<CGPoint>) {
+        guard isIPhone else {
+            return
+        }
         self.contentView.isUserInteractionEnabled = true
         self.shadeView.isUserInteractionEnabled = true
         // 判断滑动结束后距离起始点距离，>100则认为隐藏，否则还原；velocity滑动力度大的时候直接退出

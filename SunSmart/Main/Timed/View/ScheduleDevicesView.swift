@@ -45,12 +45,18 @@ class ScheduleDevicesView: UIView {
     /// item间距
     private var itemMargin: CGFloat = isIPad ? SCRXFrom(30) : SCRXFrom(16)
     
+    private var displayDeviceNamePrefix: Bool = true
+    
     init(nodes: [Node], selectNodes: [Node], schedule: Schedule? = nil, selectBack: DevicesSelectFinishedCallback?) {
         self.nodes = nodes
         self.selectNodes = selectNodes
         self.schedule = schedule
         super.init(frame: UIScreen.main.bounds)
         self.selectCallback = selectBack
+        
+        if let displayDeviceNamePrefix = SpaceViewController.currentSpace()?.displayDeviceNamePrefix {
+            self.displayDeviceNamePrefix = displayDeviceNamePrefix
+        }
         
         setupUI()
         
@@ -266,6 +272,7 @@ class ScheduleDevicesView: UIView {
             
             if let index = self.nodes.firstIndex(of: node), let cell = collectionView.cellForItem(at: IndexPath(row: index, section: 0)) as? DevicesViewCell {
                 cell.device = node
+                cell.displayDeviceNamePrefix = displayDeviceNamePrefix
                 cell.selectImageView.isHidden = false
             }
 //                MeshAPI.getNodeCTLState(address: node.primaryUnicastAddress)
@@ -311,6 +318,7 @@ extension ScheduleDevicesView: UICollectionViewDataSource, UICollectionViewDeleg
         let cell = collectionView.dequeueReusableCell(withReuseIdentifier: "cell", for: indexPath) as! DevicesViewCell
         let node = nodes[indexPath.item]
         cell.device = node
+        cell.displayDeviceNamePrefix = displayDeviceNamePrefix
         if needSyncNodes.contains(node) {
             cell.iconImageView.image = UIImage(named: node.unsyncIconName)
         }
@@ -354,6 +362,7 @@ extension ScheduleDevicesView: UICollectionViewDataSource, UICollectionViewDeleg
         MeshAPI.setNodeOnOffState(address: node.primaryUnicastAddress, isOn: node.isOn)
         if let cell = collectionView.cellForItem(at: indexPath) as? DevicesViewCell {
             cell.device = node
+            cell.displayDeviceNamePrefix = displayDeviceNamePrefix
         }
         
     }

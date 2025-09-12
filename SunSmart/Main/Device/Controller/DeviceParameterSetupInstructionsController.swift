@@ -9,10 +9,27 @@ import UIKit
 
 class DeviceParameterSetupInstructionsController: UIViewController {
 
+    /// 模式
+    enum Mode {
+        /// 添加
+        case add
+        /// 重置
+        case reset
+    }
+    
     private var scrollView: UIScrollView!
     private var contentView: UIView!
-    /// 是否显示亮度说明
-    var showBrightnessInstructions: Bool = true
+
+    let mode: Mode
+    
+    init(mode: Mode) {
+        self.mode = mode
+        super.init(nibName: nil, bundle: nil)
+    }
+    
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
     
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -66,7 +83,8 @@ class DeviceParameterSetupInstructionsController: UIViewController {
         
         let brightnessNote = UILabel(text: nil, textColor: ImportantText_Color)
         brightnessNote.numberOfLines = 0
-        brightnessNote.attributedText = NSAttributedString(string: "brightness_instructions".localizedString, attributes: attributes)
+        let brightnessString = mode == .add ? "brightness_instructions".localizedString : "brightness_reset_instructions".localizedString
+        brightnessNote.attributedText = NSAttributedString(string: brightnessString, attributes: attributes)
         contentView.addSubview(brightnessNote)
         brightnessNote.snp.makeConstraints { make in
             make.left.right.equalTo(brightnessTitle)
@@ -90,7 +108,7 @@ class DeviceParameterSetupInstructionsController: UIViewController {
         
         let illuminationMessage = UILabel(text: nil, textColor: ImportantText_Color)
         illuminationMessage.numberOfLines = 0
-        illuminationMessage.attributedText = NSAttributedString(string: "brightness_instructions".localizedString, attributes: attributes)
+        illuminationMessage.attributedText = NSAttributedString(string: "illuminance_instructions".localizedString, attributes: attributes)
         contentView.addSubview(illuminationMessage)
         illuminationMessage.snp.makeConstraints { make in
             make.left.right.equalTo(illuminationTitle)
@@ -175,14 +193,13 @@ class DeviceParameterSetupInstructionsController: UIViewController {
             make.bottom.equalTo(-SCRYFrom(16))
         }
         
-        if !showBrightnessInstructions {
-            brightnessTitle.isHidden = true
+        if mode == .reset {
             brightnessImage.isHidden = true
-            brightnessNote.isHidden = true
             illuminationTitle.snp.remakeConstraints { make in
-                make.left.right.equalTo(brightnessTitle)
-                make.top.equalTo(brightnessTitle)
+                make.left.right.equalTo(brightnessNote)
+                make.top.equalTo(brightnessNote.snp.bottom).offset(SCRYFrom(16))
             }
+            
         }
         
     }

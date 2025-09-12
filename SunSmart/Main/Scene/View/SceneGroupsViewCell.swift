@@ -10,10 +10,10 @@ import NordicSigMeshSDK
 
 class SceneGroupsViewCell: UICollectionViewCell {
     
-    private var bgView: UIView!
+    var bgView: UIView!
     var iconImageView: UIImageView!
     var imageLabel: UILabel!
-    var nameLabel: UILabel!
+    var nameLabel: AdaptiveTextView!
     var progressView: CustomProgressView!
     var syncFailImageView: UIImageView!
     
@@ -115,14 +115,20 @@ class SceneGroupsViewCell: UICollectionViewCell {
         
      
         
-        nameLabel = UILabel(text: "Group 1", textColor: Title_Color, fontSize: 12, fontWeight: .light)
-        nameLabel.textAlignment = .center
-        nameLabel.lineBreakMode = .byTruncatingHead
+        nameLabel = AdaptiveTextView()
+        nameLabel.textColor = Title_Color
+        nameLabel.maxFontSize = FontFit(12)
+        nameLabel.minFontSize = FontFit(8.5)
+        nameLabel.lineHeightMultiple = 0.9
+//        UILabel(text: "Group 1", textColor: Title_Color, fontSize: 12, fontWeight: .light)
+//        nameLabel.textAlignment = .center
+//        nameLabel.lineBreakMode = .byTruncatingHead
         bgView.addSubview(nameLabel)
         nameLabel.snp.makeConstraints { make in
-            make.left.equalTo(SCRXFrom(12))
-            make.right.equalTo(SCRXFrom(-12))
-            make.bottom.equalTo(SCRYFrom(-12))
+            make.left.equalTo(SCRXFrom(18))
+            make.right.equalTo(SCRXFrom(-18))
+            make.top.equalTo(bgView.snp.bottom).offset(SCRYFrom(-23))
+            make.height.equalTo(SCRYFrom(20))
         }
         
         progressView = CustomProgressView()

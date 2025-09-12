@@ -20,6 +20,7 @@ class DeviceAddParameterSettingsView: UIView {
     
     /// 亮度
     private var brightnessTitleLabel: UILabel!
+    private var brightnessTipLabel: UILabel!
     private var brightnessLabel: UILabel!
     private var brightnessView: DeviceSliderFunctionView!
     
@@ -87,14 +88,26 @@ class DeviceAddParameterSettingsView: UIView {
 //            name: NSNotification.Name(rawValue: "AVSystemController_SystemVolumeDidChangeNotification"),
 //            object: nil
 //        )
+        // 后台进入前台通知
+//        NotificationCenter.default.addObserver(forName: UIApplication.didBecomeActiveNotification, object: nil, queue: nil) {[weak self] _ in
+//            
+//            SystemVolumeManager.shared.refreshVolume()
+//            self?.volumeUpdateUI()
+//        }
+        
+        SystemVolumeManager.shared.onVolumeChanged = {[weak self] volume in
+//            print(volume)
+            self?.volumeUpdateUI()
+        }
+        
         // 激活 AVAudioSession（否则监听可能无效）
-        try? AVAudioSession.sharedInstance().setActive(true, options: [])
+//        try? AVAudioSession.sharedInstance().setActive(true, options: [])
 
-        systemVolumeObservation = AVAudioSession.sharedInstance().observe(\.outputVolume, options: [.new], changeHandler: {[weak self] _, _ in
-            DispatchQueue.main.async {
-                self?.volumeUpdateUI()
-            }
-        })
+//        systemVolumeObservation = AVAudioSession.sharedInstance().observe(\.outputVolume, options: [.new], changeHandler: {[weak self] _, _ in
+//            DispatchQueue.main.async {
+//                self?.volumeUpdateUI()
+//            }
+//        })
         self.showBrightness = showBrightness
         self.parameterData = parameterData
         
@@ -106,7 +119,8 @@ class DeviceAddParameterSettingsView: UIView {
     }
     
     deinit {
-        systemVolumeObservation = nil
+//        systemVolumeObservation = nil
+//        NotificationCenter.default.removeObserver(self)
     }
     
     func show() {
@@ -127,8 +141,9 @@ class DeviceAddParameterSettingsView: UIView {
             self.shadeView.alpha = 1
             self.contentView.alpha = 1
             self.functionView?.alpha = 1
-        } completion: { _ in
-            if AVAudioSession.sharedInstance().outputVolume < 0.2 {
+        } completion: {[weak self] _ in
+            guard let self = self else { return }
+            if SystemVolumeManager.shared.currentVolume < 0.2 {
                 XWHUDManager.showTipHUD(in: self.contentView, message: "系统音量不足20%", isLineFeed: true)
             }
         }
@@ -148,8 +163,8 @@ class DeviceAddParameterSettingsView: UIView {
     }
 
     @objc private func volumeUpdateUI() {
-        let volume = AVAudioSession.sharedInstance().outputVolume
         
+        let volume = SystemVolumeManager.shared.currentVolume //VolumeManager.getSystemVolume()
         notificationSwitch.isEnabled = volume > 0.2
         notificationSwitchBtn.isUserInteractionEnabled = !notificationSwitch.isEnabled
         
@@ -284,10 +299,18 @@ class DeviceAddParameterSettingsView: UIView {
             make.top.equalTo(titleLabel.snp.bottom).offset(SCRYFrom(16))
         }
         
+        brightnessTipLabel = UILabel(text: "brightness_of_the_device_in_mode_tip".localizedString, textColor: SubText_Color, fontSize: 12)
+        contentView.addSubview(brightnessTipLabel)
+        brightnessTipLabel.snp.makeConstraints { make in
+            make.top.equalTo(brightnessTitleLabel.snp.bottom).offset(SCRYFrom(3))
+            make.left.equalTo(brightnessTitleLabel)
+            make.right.equalTo(SCRXFrom(-20))
+        }
+        
         brightnessLabel = UILabel(text: "\(parameterData.brightness)%", textColor: TextBlack_Color, fontSize: 14, fontWeight: .light)
         contentView.addSubview(brightnessLabel)
         brightnessLabel.snp.makeConstraints { make in
-            make.right.equalTo(SCRXFrom(-67))
+            make.right.equalTo(SCRXFrom(-20))
             make.top.equalTo(brightnessTitleLabel.snp.bottom).offset(SCRYFrom(15))
         }
         
@@ -334,7 +357,7 @@ class DeviceAddParameterSettingsView: UIView {
         contentView.addSubview(illuminationTipLabel)
         illuminationTipLabel.snp.makeConstraints { make in
             make.top.equalTo(illuminationTitleLabel.snp.bottom).offset(SCRYFrom(3))
-            make.left.equalTo(illuminationTitleLabel)
+            make.left.right.equalTo(illuminationTitleLabel)
         }
         
         illuminationLabel = UILabel(text: "△\(parameterData.illuminationDelta)", textColor: TextBlack_Color, fontSize: 14, fontWeight: .light)
@@ -375,7 +398,7 @@ class DeviceAddParameterSettingsView: UIView {
         
         illuminationTagsView = UIStackView()
         illuminationTagsView.axis = .horizontal
-        illuminationTagsView.spacing = SCRXFrom(10)
+        illuminationTagsView.spacing = SCRXFrom(isIPad ? 20 : 10)
         illuminationTagsView.distribution = .fillEqually
         contentView.addSubview(illuminationTagsView)
         illuminationTagsView.snp.makeConstraints { make in
@@ -472,6 +495,7 @@ class DeviceAddParameterSettingsView: UIView {
         if !showBrightness {
             brightnessTitleLabel.isHidden = true
             brightnessLabel.isHidden = true
+            brightnessTipLabel.isHidden = true
             brightnessView.isHidden = true
             illuminationTitleLabel.snp.remakeConstraints({ make in
                 make.left.equalTo(SCRXFrom(20))
@@ -509,25 +533,26 @@ class DeviceAddParameterSettingsView: UIView {
     
 }
 
-class VolumeManager {
-    private static let volumeView = MPVolumeView(frame: .zero)
-    
-    static func setSystemVolume(_ volume: Float) {
-        // 确保在主线程执行
-        guard Thread.isMainThread else {
-            return
-        }
-        guard let slider = volumeView.subviews.compactMap({ $0 as? UISlider }).first else {
-            print("无法找到音量滑块")
-            return
-        }
-        
-        // 设置音量值（0.0到1.0之间）
-        slider.value = min(max(volume, 0.0), 1.0)
-        
-    }
-    
-    static func getSystemVolume() -> Float {
-        return AVAudioSession.sharedInstance().outputVolume
-    }
-}
+//class VolumeManager {
+//    private static let volumeView = MPVolumeView(frame: .zero)
+//    
+//    static func setSystemVolume(_ volume: Float) {
+//        // 确保在主线程执行
+//        guard Thread.isMainThread else {
+//            return
+//        }
+//        guard let slider = volumeView.subviews.compactMap({ $0 as? UISlider }).first else {
+//            print("无法找到音量滑块")
+//            return
+//        }
+//        
+//        // 设置音量值（0.0到1.0之间）
+//        slider.value = min(max(volume, 0.0), 1.0)
+//        
+//    }
+//    
+//    static func getSystemVolume() -> Float {
+//        try? AVAudioSession.sharedInstance().setActive(true)
+//        return AVAudioSession.sharedInstance().outputVolume
+//    }
+//}

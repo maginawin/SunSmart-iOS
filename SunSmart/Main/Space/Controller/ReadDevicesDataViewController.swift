@@ -77,6 +77,8 @@ class ReadDevicesDataViewController: UIViewController {
         case .harvestData:
             title = "harvest_data".localizedString
             navigationItem.rightBarButtonItem?.title = "re-harvest".localizedString
+        case .routeTableList:
+            title = "Read route".localizedString
         }
         
         
@@ -167,6 +169,12 @@ class ReadDevicesDataViewController: UIViewController {
                 }
                 readSection.devices.append(model)
             }
+        case .routeTableList(let proxyAddress, let nodes):
+            nodes.forEach { node in
+                let model = SyncDevicesModel(name: node.name ?? "", address: node.primaryUnicastAddress)
+                model.operationType = .read(node: node, type: .deviceRouteList(proxyAddress: proxyAddress))
+                readSection.devices.append(model)
+            }
         }
         
         if readSection.devices.count > 0 {
@@ -212,6 +220,8 @@ class ReadDevicesDataViewController: UIViewController {
                 case .parameters(let nodes, _):
                     allNodes = nodes
                 case .harvestData(let nodes):
+                    allNodes = nodes
+                case .routeTableList(_, let nodes):
                     allNodes = nodes
                 }
                 // 获取读取失败的设备参数类型
@@ -877,6 +887,8 @@ extension ReadDevicesDataViewController {
         case parameters(nodes: [Node], parameters: [DeviceReadParameterType])
         /// 能耗数据
         case harvestData(nodes: [Node])
+        /// 获取设备路由表 proxyAddress：代理设备 nodes：获取路由表的设备list
+        case routeTableList(proxyAddress: Address, nodes: [Node])
     }
     
     /// 读取状态

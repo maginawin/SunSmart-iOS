@@ -21,6 +21,8 @@ class SpaceMoreViewController: UIViewController {
                 return ("device_parameter", "device_parameter_settings".localizedString)
             case .energyData:
                 return ("space_energy_data", "energy_data".localizedString)
+            case .contentDisplay:
+                return ("content_display", "content_display".localizedString)
             }
         }
         
@@ -32,6 +34,8 @@ class SpaceMoreViewController: UIViewController {
         case deviceParameters
         /// 能耗统计
         case energyData
+        /// 内容显示
+        case contentDisplay
     }
     
     let space: SpaceData
@@ -39,7 +43,7 @@ class SpaceMoreViewController: UIViewController {
     private var collectionView: UICollectionView!
     private var flowLayout: UICollectionViewFlowLayout!
     
-    private var options: [Options] = [.ble, .mesh, .deviceParameters, .energyData]
+    private var options: [Options] = [.ble, .mesh, .deviceParameters, .energyData, .contentDisplay]
     
     init(space: SpaceData) {
         self.space = space
@@ -132,6 +136,12 @@ extension SpaceMoreViewController: UICollectionViewDataSource, UICollectionViewD
             present(NavigationViewController(rootViewController: vc), animated: true)
         case .energyData:
             let vc = EnergyDataViewController(space: space)
+            if isIPad {
+                vc.preferredContentSize = iPadPreferredContentSize
+            }
+            present(NavigationViewController(rootViewController: vc), animated: true)
+        case .contentDisplay:
+            let vc = ContentDisplayViewController(space: space)
             if isIPad {
                 vc.preferredContentSize = iPadPreferredContentSize
             }

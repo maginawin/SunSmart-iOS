@@ -73,11 +73,17 @@ class EnergyTimeSeriesDataViewController: UIViewController {
             importView.fileNameLabel.text = "Time Series Data 2-20-2025 10:30 PM"
             // 文件大小
             importView.fileSizeLabel.text = "10M"
-            importView.importBtn.isEnabled = true
+//            importView.importBtn.isEnabled = true
+            
+            importView.importBtn.isUserInteractionEnabled = true
+            importView.importBtn.backgroundColor = Bar_Color
+            
         }else {
             importView.fileDataView.isHidden = true
             importView.noDataLabel.isHidden = false
-            importView.importBtn.isEnabled = false
+//            importView.importBtn.isEnabled = false
+            importView.importBtn.isUserInteractionEnabled = false
+            importView.importBtn.backgroundColor = Bar_Color.withAlphaComponent(0.5)
         }
         
         if exportTarget == .space {

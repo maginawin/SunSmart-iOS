@@ -53,10 +53,10 @@ class DeviceAddProfessionalModeController: UIViewController {
     private var rssiSlider: RangeSlider!
     private var farLabel: UILabel!
     
-    /// 搜索的设备list view
-    private var devicesFoundView: UIView!
-    private var devicesFoundLabel: UILabel!
-    private var rssiRangeLabel: UILabel!
+    /// 搜索的设备list view（iPad）
+    private var devicesFoundView: UIView?
+    private var devicesFoundLabel: UILabel?
+    private var rssiRangeLabel: UILabel?
     
     private var addModeBtn: UIButton!
     private var pauseBtn: UIButton!
@@ -64,15 +64,15 @@ class DeviceAddProfessionalModeController: UIViewController {
     private var settingsTipView: UIView!
     private var scanBtn: UIButton!
     
-    private var messageLabel: UILabel!
+    private var messageLabel: UILabel?
     /// 设备列表
     private var tableView: UITableView!
     
     
     private var bottomView: UIView!
     private var lineView: UIView!
-    private var candidateCountLabel: UILabel!
-    private var showDeviceListBtn: UIButton!
+    private var candidateCountLabel: UILabel?
+    private var showDeviceListBtn: UIButton?
     
     private var selectRSSIRange: ClosedRange<Int> = -65 ... -25
     /// 筛选信号值范围
@@ -96,7 +96,7 @@ class DeviceAddProfessionalModeController: UIViewController {
     /// 候选的设备list
     private var candidateDevices: [ProvisioningDevice] = []
     
-    private var sectionTypes: [SectionType] = []
+    private var sectionTypes: [SectionType] = [.inRSSI, .remainingRSSI]
     
     /// identify中的设备
     private var identifyDevice: ProvisioningDevice?
@@ -105,19 +105,13 @@ class DeviceAddProfessionalModeController: UIViewController {
     /// 刷新数据中
     private var reloadDataing: Bool = false
     /// 预选view
-    private var candidateView: DeviceAddCandidateDeviceListView?
+    private var candidateView: DeviceAddCandidateDeviceListView!
     /// 参数设置view
     private var parameterSettingsView :DeviceAddParameterSettingsView?
     /// 无定向广播
     private let broadcaster = BluetoothBroadcaster()
     /// 广播时设备配置持续时长
     private let broadcasterDuration: UInt8 = 1
-    /// 移动感应广播时设备亮度 70%
-    private let broadcasterMotionLightness: UInt8 = UInt8(50).value8
-    /// 光照感应广播时设备亮度 30%
-    private let broadcasterLightSensorLightness: UInt8 = UInt8(15).value8
-    /// 广播时光感上报阈值
-//    private let lightSensorDelta: UInt16 = 80
     /// 添加目标
     private var addTarget: AddDeviceToTarget!
     /// 添加成功的节点
@@ -180,9 +174,9 @@ class DeviceAddProfessionalModeController: UIViewController {
         candidateDevices.removeAll()
         inRSSIDevices.removeAll()
         remainingRSSIDevices.removeAll()
-        sectionTypes.removeAll()
-        candidateView?.candidateDevices = candidateDevices
-        candidateView?.state = state
+//        sectionTypes.removeAll()
+        candidateView.candidateDevices = candidateDevices
+        candidateView.state = state
         tableView.reloadData()
     }
     
@@ -193,11 +187,12 @@ class DeviceAddProfessionalModeController: UIViewController {
     private func addObserver() {
         
         // 激活 AVAudioSession（否则监听可能无效）
-        try? AVAudioSession.sharedInstance().setActive(true, options: [])
+//        try? AVAudioSession.sharedInstance().setActive(true, options: [])
 
-        systemVolumeObservation = AVAudioSession.sharedInstance().observe(\.outputVolume, options: [.new], changeHandler: {[weak self] _, _ in
+        
+        systemVolumeObservation = SystemVolumeManager.shared.observe(\.currentVolume, options: [.new], changeHandler: {[weak self] _, value in
             DispatchQueue.main.async {
-                self?.settingsTipView.isHidden = AVAudioSession.sharedInstance().outputVolume >= DeviceSettingsParameterData.systemMinimumVolumeRequire
+                self?.settingsTipView.isHidden = (value.newValue ?? 0) >= DeviceSettingsParameterData.systemMinimumVolumeRequire
             }
         })
         
@@ -215,16 +210,20 @@ class DeviceAddProfessionalModeController: UIViewController {
 
         scanDevices.removeAll()
         candidateDevices.removeAll()
-        candidateCountLabel.text = "\(candidateDevices.filter({ $0.addState != .success }).count)"
-        candidateView?.candidateDevices = candidateDevices
+        candidateCountLabel?.text = "\(candidateDevices.filter({ $0.addState != .success }).count)"
+        candidateView.candidateDevices = candidateDevices
+        candidateView.state = state
         inRSSIDevices.removeAll()
         remainingRSSIDevices.removeAll()
-        sectionTypes.removeAll()
+//        if !isIPad {
+//            sectionTypes.removeAll()
+//        }
+        tableView.isHidden = false
         tableView.reloadData()
         isRefresh = true
-        candidateView?.isRefresh = isRefresh
+        candidateView.isRefresh = isRefresh
         pauseBtn.isSelected = false
-        messageLabel.isHidden = true
+        messageLabel?.isHidden = true
         pauseBtn.isHidden = false
         bottomView.isHidden = false
         
@@ -351,13 +350,20 @@ class DeviceAddProfessionalModeController: UIViewController {
 ////            reloadDeviceState($0)
 //        })
         if scanDevices.count > 0 {
-            messageLabel.isHidden = true
+            messageLabel?.isHidden = true
             bottomView.isHidden = false
+            tableView.isHidden = false
         }else {
-            messageLabel.isHidden = false
+            messageLabel?.isHidden = false
             bottomView.isHidden = true
+            if isIPhone {
+                tableView.isHidden = true
+            }
         }
         pauseBtn.isHidden = true
+        if isIPad {
+            bottomView.isHidden = true
+        }
         updateUIState()
         stopScanTimer()
         if rssiSortTimer != nil {
@@ -372,9 +378,9 @@ class DeviceAddProfessionalModeController: UIViewController {
         
         switch self.addMode {
         case .motionSensing:
-            broadcaster.startBroadcasting(type: .pirDiscoverAdd(timeout: broadcasterDuration, lightness: deviceSettingsParameterData.brightness.value8))
+            broadcaster.startBroadcasting(type: .pirDiscoverAdd(timeout: broadcasterDuration, lightness: deviceSettingsParameterData.brightness.value8), interval: 0.5)
         case .lightSening:
-            broadcaster.startBroadcasting(type: .ambientLightDiscoverAdd(timeout: broadcasterDuration, lightness: deviceSettingsParameterData.brightness.value8, delta: deviceSettingsParameterData.illuminationDelta))
+            broadcaster.startBroadcasting(type: .ambientLightDiscoverAdd(timeout: broadcasterDuration, lightness: deviceSettingsParameterData.brightness.value8, delta: deviceSettingsParameterData.illuminationDelta), interval: 0.5)
         default:
             break
         }
@@ -412,9 +418,9 @@ class DeviceAddProfessionalModeController: UIViewController {
             scanBtn.isEnabled = !scanDevices.contains(where: { $0.addState == .wait || $0.addState == .adding || $0.addState == .addConnecting })
         }
         
-        candidateView?.state = state
+        candidateView.state = state
         
-        candidateCountLabel.text = "\(candidateDevices.filter({ $0.addState != .success }).count)"
+        candidateCountLabel?.text = "\(candidateDevices.filter({ $0.addState != .success }).count)"
         
        
     }
@@ -537,11 +543,12 @@ class DeviceAddProfessionalModeController: UIViewController {
                 let mac = MeshNetworkManager.instance.getRandomMacAddress()
                 node.macAddress = mac
             }
-            if device.deviceType == .gateway {
-                node.name = MeshNetworkManager.instance.getNextNodeName("gateway".localizedString, length: 1)
-            }else {
-                node.name = MeshNetworkManager.instance.getNextNodeName()
-            }
+//            if device.deviceType == .gateway {
+//                node.name = MeshNetworkManager.instance.getNextNodeName("gateway".localizedString, length: 1)
+//            }else {
+//                node.name = MeshNetworkManager.instance.getNextNodeName()
+//            }
+            node.name = MeshNetworkManager.instance.getNextNodeName(node.defaultNameCategory)
             node.save()
             
             if addDevice.deviceType == .dongle { // dongle设备，需要一个dongle虚拟数据与之绑定
@@ -884,7 +891,7 @@ class DeviceAddProfessionalModeController: UIViewController {
     /// 刷新设备UI状态
     private func reloadDeviceState(_ device: ProvisioningDevice, force: Bool = true) {
         
-        candidateView?.updateDeviceData(device: device)
+        candidateView.updateDeviceData(device: device)
 //        setDataing = true
         var indexPath: IndexPath?
         if let index = inRSSIDevices.firstIndex(where: { $0.peripheral.identifier == device.peripheral.identifier }) {
@@ -916,16 +923,15 @@ class DeviceAddProfessionalModeController: UIViewController {
         
         self.candidateDevices.sort(by: { $0.rssi.intValue >= $1.rssi.intValue })
         self.candidateView?.candidateDevices = self.candidateDevices
-        self.candidateCountLabel.text = "\(candidateDevices.filter({ $0.addState != .success }).count)"
+        self.candidateCountLabel?.text = "\(candidateDevices.filter({ $0.addState != .success }).count)"
         
         
-//        sectionTypes.removeAll()
-        if !sectionTypes.contains(.inRSSI) {
-            sectionTypes.insert(.inRSSI, at: 0)
-        }
-        if !sectionTypes.contains(.remainingRSSI) {
-            sectionTypes.append(.remainingRSSI)
-        }
+//        if !sectionTypes.contains(.inRSSI) {
+//            sectionTypes.insert(.inRSSI, at: 0)
+//        }
+//        if !sectionTypes.contains(.remainingRSSI) {
+//            sectionTypes.append(.remainingRSSI)
+//        }
         self.tableView.reloadData()
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.5, execute: {
             self.reloadDataing = false
@@ -1053,7 +1059,7 @@ class DeviceAddProfessionalModeController: UIViewController {
     @objc private func addModeBtnAction(sender: UIButton) {
         
         let touchPoint = CGPoint(x: sender.x, y: sender.frame.maxY + SCRYFrom(2))
-        let menuPoint = view.convert(touchPoint, to: UIApplication.shared.keyWindow())
+        let menuPoint = (devicesFoundView ?? view).convert(touchPoint, to: UIApplication.shared.keyWindow())
         
         let modes: [AddMode] = [.manual, .motionSensing, .lightSening, .rssiRange]
         
@@ -1062,7 +1068,7 @@ class DeviceAddProfessionalModeController: UIViewController {
             self.addMode = modes[index]
             sender.setTitle(self.addMode.title, for: .normal)
             sender.sizeToFit()
-            sender.setImagePosition(position: .right, spacing: 0)
+            sender.setImagePosition(position: .right, spacing: SCRXFrom(-2))
             
             if self.state == .scanning {
                 if self.addMode == .motionSensing || self.addMode == .lightSening {
@@ -1076,7 +1082,7 @@ class DeviceAddProfessionalModeController: UIViewController {
                 // 筛选出满足预选条件的设备
                 let devices = self.scanDevices.filter({ device in !self.candidateDevices.contains(where: { $0.peripheral.identifier.uuidString == device.peripheral.identifier.uuidString }) && self.selectRSSIRange.contains(device.rssi.intValue) })
                 self.candidateDevices.append(contentsOf: devices)
-                self.candidateCountLabel.text = "\(self.candidateDevices.count)"
+                self.candidateCountLabel?.text = "\(self.candidateDevices.count)"
             }
         }
         
@@ -1100,6 +1106,7 @@ class DeviceAddProfessionalModeController: UIViewController {
         farLabel.text = "\(selectRSSIRange.lowerBound) dBm"
         nearLabel.text = "\(selectRSSIRange.upperBound) dBm"
          
+        rssiRangeLabel?.attributedText = NSAttributedString(string: "\(selectRSSIRange.upperBound) dBm \("to".localizedString) \(selectRSSIRange.lowerBound) dBm", attributes: [.underlineStyle: 1])
         
 //        if rssiSortTimer?.isValid ?? false {
 //            rssiSortTimer?.fireDate = Date(timeIntervalSinceNow: 0.5)
@@ -1146,7 +1153,7 @@ class DeviceAddProfessionalModeController: UIViewController {
         if !isRefresh {
             stopScanTimer()
         }
-        candidateView?.isRefresh = isRefresh
+        candidateView.isRefresh = isRefresh
     }
     
     /// 设置参数
@@ -1168,7 +1175,11 @@ class DeviceAddProfessionalModeController: UIViewController {
             }
             parameterSettingsView?.helpActionCallback = {[weak self] in
                 guard let self = self else { return }
-                let vc = DeviceParameterSetupInstructionsController()
+                let vc = DeviceParameterSetupInstructionsController(mode: .add)
+                if isIPad {
+                    vc.preferredContentSize = iPadPreferredContentSize
+                    self.parameterSettingsView?.dismiss()
+                }
                 if self.presentingViewController == nil {
                     self.present(NavigationViewController(rootViewController: vc), animated: true)
                 }else {
@@ -1184,19 +1195,24 @@ class DeviceAddProfessionalModeController: UIViewController {
     
     @objc private func showDeviceListBtnAction() {
         
-        if candidateView == nil {
-            candidateView = DeviceAddCandidateDeviceListView(frame: UIScreen.main.bounds, space: space)
-        }
-        candidateView?.candidateDevices = candidateDevices
-        candidateView?.addTarget = addTarget
-        candidateView?.isRefresh = isRefresh
+        candidateView.candidateDevices = candidateDevices
+        candidateView.addTarget = addTarget
+        candidateView.isRefresh = isRefresh
 //        candidateView?.lightSeningMode = addMode == .lightSening
-        candidateView?.state = state
-        candidateView?.delegate = self
-        candidateView?.show()
+        candidateView.state = state
+        candidateView.show()
     }
     
     private func setupUI() {
+        if isIPad {
+            setupIpadUI()
+        }else {
+            setupIphoneUI()
+        }
+    }
+    
+    /// 设置Iphone UI
+    private func setupIphoneUI() {
         
         headerView = UIView()
         view.addSubview(headerView)
@@ -1243,11 +1259,11 @@ class DeviceAddProfessionalModeController: UIViewController {
         }
         
         addModeBtn = UIButton(title: addMode.title, titleSize: 12, titleWeight: .medium, titleColor: ImportantText_Color, normalImageName: "arrow_down_black", target: self, action: #selector(addModeBtnAction))
-        addModeBtn.setImagePosition(position: .right, spacing: 0)
+        addModeBtn.setImagePosition(position: .right, spacing: -5)
         headerView.addSubview(addModeBtn)
         addModeBtn.snp.makeConstraints { make in
             make.left.equalTo(SCRXFrom(16))
-            make.top.equalTo(rssiSlider.snp.bottom).offset(SCRYFrom(14))
+            make.top.equalTo(rssiSlider.snp.bottom).offset(SCRYFrom(9))
 //            make.width.lessThanOrEqualTo(SCRXFrom(176))
         }
         
@@ -1256,7 +1272,7 @@ class DeviceAddProfessionalModeController: UIViewController {
         scanBtn.setTitleColor(Purple_Color.withAlphaComponent(0.5), for: .disabled)
         scanBtn.layer.cornerRadius = SCRYFrom(5)
         scanBtn.layer.borderWidth = 1
-        scanBtn.layer.borderColor = RGB(220, 220, 220).cgColor
+        scanBtn.layer.borderColor = Border_Color.cgColor
         scanBtn.backgroundColor = .white
         scanBtn.contentHorizontalAlignment = .left
         scanBtn.imageEdgeInsets = UIEdgeInsets(top: 0, left: SCRXFrom(8), bottom: 0, right: 0)
@@ -1266,7 +1282,7 @@ class DeviceAddProfessionalModeController: UIViewController {
         scanBtn.snp.makeConstraints { make in
             make.right.equalTo(SCRXFrom(-16))
             make.centerY.equalTo(addModeBtn)
-            make.width.equalTo(SCRXFrom(80))
+            make.width.equalTo(SCRXFrom(72))
             make.height.equalTo(SCRYFrom(32))
         }
         
@@ -1274,14 +1290,14 @@ class DeviceAddProfessionalModeController: UIViewController {
         pauseBtn.isHidden = true
         headerView.addSubview(pauseBtn)
         pauseBtn.snp.makeConstraints { make in
-            make.right.equalTo(scanBtn.snp.left).offset(SCRXFrom(-29))
+            make.right.equalTo(scanBtn.snp.left).offset(SCRXFrom(-10))
             make.centerY.equalTo(scanBtn)
         }
         
         settingsBtn = UIButton(normalImageName: "device_add_setting", target: self, action: #selector(settingsBtnAction))
         headerView.addSubview(settingsBtn)
         settingsBtn.snp.makeConstraints { make in
-            make.left.equalTo(addModeBtn.snp.right).offset(SCRXFrom(10))
+            make.right.equalTo(pauseBtn.snp.left).offset(SCRXFrom(-10))
             make.centerY.equalTo(pauseBtn)
         }
         
@@ -1289,7 +1305,7 @@ class DeviceAddProfessionalModeController: UIViewController {
         settingsTipView.layer.cornerRadius = 2.5
         settingsTipView.backgroundColor = RGB(255, 167, 44)
         settingsTipView.isUserInteractionEnabled = false
-        settingsTipView.isHidden = AVAudioSession.sharedInstance().outputVolume >= DeviceSettingsParameterData.systemMinimumVolumeRequire
+        settingsTipView.isHidden = SystemVolumeManager.shared.currentVolume >= DeviceSettingsParameterData.systemMinimumVolumeRequire
         settingsBtn.addSubview(settingsTipView)
         settingsTipView.snp.makeConstraints { make in
             make.right.equalTo(-8.5)
@@ -1307,17 +1323,18 @@ class DeviceAddProfessionalModeController: UIViewController {
         }
         
         showDeviceListBtn = UIButton(title: "candidate_device_list".localizedString, titleSize: 15, titleWeight: .light, titleColor: TextBlack_Color, normalImageName: "arrow_up_black", target: self, action: #selector(showDeviceListBtnAction))
-        bottomView.addSubview(showDeviceListBtn)
-        showDeviceListBtn.snp.makeConstraints { make in
+        showDeviceListBtn?.setImagePosition(position: .right, spacing: SCRXFrom(2))
+        bottomView.addSubview(showDeviceListBtn!)
+        showDeviceListBtn!.snp.makeConstraints { make in
             make.left.right.top.equalToSuperview()
             make.height.equalTo(SCRYFrom(60))
         }
         
         candidateCountLabel = UILabel(text: "", textColor: TextBlack_Color, fontSize: 15, fontWeight: .light)
-        bottomView.addSubview(candidateCountLabel)
-        candidateCountLabel.snp.makeConstraints { make in
+        bottomView.addSubview(candidateCountLabel!)
+        candidateCountLabel!.snp.makeConstraints { make in
             make.right.equalTo(SCRXFrom(-22))
-            make.centerY.equalTo(showDeviceListBtn)
+            make.centerY.equalTo(showDeviceListBtn!)
         }
         
         lineView = UIView()
@@ -1329,6 +1346,7 @@ class DeviceAddProfessionalModeController: UIViewController {
         }
         
         tableView = UITableView(frame: .zero, style: .grouped)
+        tableView.isHidden = true
         tableView.backgroundColor = Background_Color
         tableView.separatorStyle = .none
         tableView.showsVerticalScrollIndicator = false
@@ -1347,14 +1365,210 @@ class DeviceAddProfessionalModeController: UIViewController {
         }
         
         messageLabel = UILabel(text: "professional_mode_message".localizedString, textColor: ImportantText_Color, fontSize: 14, fontWeight: .light, fit: false)
-        messageLabel.textAlignment = .center
-        messageLabel.numberOfLines = 0
-        view.addSubview(messageLabel)
-        messageLabel.snp.makeConstraints { make in
+        messageLabel!.textAlignment = .center
+        messageLabel!.numberOfLines = 0
+        view.addSubview(messageLabel!)
+        messageLabel!.snp.makeConstraints { make in
             make.left.equalTo(SCRXFrom(20))
             make.right.equalTo(SCRXFrom(-20))
             make.top.equalTo(headerView.snp.bottom).offset(SCRYFrom(88))
         }
+        
+        candidateView = DeviceAddCandidateDeviceListView(frame: UIScreen.main.bounds, space: space)
+        candidateView.delegate = self
+    }
+    
+    /// 设置Ipad UI
+    private func setupIpadUI() {
+        
+        headerView = UIView()
+        view.addSubview(headerView)
+        headerView.snp.makeConstraints { make in
+            make.left.right.top.equalToSuperview()
+            make.height.equalTo(SCRYFrom(76))
+        }
+        
+        scanBtn = UIButton(title: "scan".localizedString, titleSize: 13, titleColor: Bottom_Done_Color, normalImageName: "device_scan", target: self, action: #selector(scanBtnClick))
+        scanBtn.setTitle("stop".localizedString, for: .selected)
+        scanBtn.setTitleColor(Purple_Color.withAlphaComponent(0.5), for: .disabled)
+        scanBtn.layer.cornerRadius = SCRYFrom(5)
+        scanBtn.layer.borderWidth = 1
+        scanBtn.layer.borderColor = Border_Color.cgColor
+        scanBtn.backgroundColor = .white
+        scanBtn.contentHorizontalAlignment = .left
+        scanBtn.imageEdgeInsets = UIEdgeInsets(top: 0, left: SCRXFrom(8), bottom: 0, right: 0)
+        scanBtn.titleEdgeInsets = UIEdgeInsets(top: 0, left: SCRXFrom(10), bottom: 0, right: 0)
+        headerView.addSubview(scanBtn)
+        scanBtn.snp.makeConstraints { make in
+            make.right.equalTo(SCRXFrom(-16))
+            make.centerY.equalToSuperview()
+            make.width.equalTo(SCRXFrom(126))
+            make.height.equalTo(SCRYFrom(44))
+        }
+        
+        let rssiRangeView = UIView()
+        rssiRangeView.layer.cornerRadius = SCRYFrom(10)
+        rssiRangeView.backgroundColor = .white
+        headerView.addSubview(rssiRangeView)
+        rssiRangeView.snp.makeConstraints { make in
+            make.centerY.equalToSuperview()
+            make.left.equalTo(SCRXFrom(16))
+            make.right.equalTo(scanBtn.snp.left).offset(SCRXFrom(-16))
+            make.height.equalTo(SCRYFrom(44))
+        }
+        
+        nearLabel = UILabel(text: "\(selectRSSIRange.upperBound) dBm", textColor: TextBlack_Color, fontSize: 12, fontWeight: .light)
+//        nearLabel.sizeToFit()
+        rssiRangeView.addSubview(nearLabel)
+        nearLabel.snp.makeConstraints { make in
+            make.left.equalTo(SCRXFrom(16))
+            make.centerY.equalToSuperview()
+//            make.width.equalTo(nearLabel.width)
+        }
+        
+        farLabel = UILabel(text: "\(selectRSSIRange.lowerBound) dBm", textColor: TextBlack_Color, fontSize: 12, fontWeight: .light)
+//        farLabel.sizeToFit()
+        rssiRangeView.addSubview(farLabel)
+        farLabel.snp.makeConstraints { make in
+            make.right.equalTo(SCRXFrom(-16))
+            make.top.equalTo(nearLabel)
+//            make.width.equalTo(farLabel.width)
+        }
+        
+        rssiSlider = RangeSlider()
+        rssiSlider.trackHighlightTintColor = Slider_Color
+        rssiSlider.trackHighlightDisableTintColor = Slider_Color.withAlphaComponent(0.5)
+        rssiSlider.trackTintColor = RGB(229, 229, 229)
+        rssiSlider.thumbDisableTintColor = Background_Color
+        rssiSlider.minimumValue = Double(abs(filterRSSIRange.upperBound))
+        rssiSlider.maximumValue = Double(abs(filterRSSIRange.lowerBound))
+        rssiSlider.lowerValue = Double(abs(selectRSSIRange.upperBound))
+        rssiSlider.upperValue = Double(abs(selectRSSIRange.lowerBound))
+        rssiSlider.minimumRange = 10
+        rssiSlider.addTarget(self, action: #selector(rssiSliderValueChanged), for: .valueChanged)
+        rssiRangeView.addSubview(rssiSlider)
+        rssiSlider.snp.makeConstraints { make in
+            make.left.equalTo(SCRXFrom(74))
+            make.right.equalTo(SCRXFrom(-74))
+            make.centerY.equalToSuperview()
+            make.height.equalTo(SCRYFrom(40))
+        }
+        
+        let lineView = UIView()
+        lineView.backgroundColor = Line_Color1
+        headerView.addSubview(lineView)
+        lineView.snp.makeConstraints { make in
+            make.left.right.bottom.equalToSuperview()
+            make.height.equalTo(1)
+        }
+        
+        devicesFoundView = UIView()
+        devicesFoundView!.backgroundColor = .white
+        view.addSubview(devicesFoundView!)
+        devicesFoundView!.snp.makeConstraints { make in
+            make.left.equalToSuperview()
+            make.right.equalTo(view.snp.centerX)
+            make.top.equalTo(headerView.snp.bottom)
+            make.bottom.equalTo(-kSafeAreaBottomHeight)
+        }
+        
+        devicesFoundLabel = UILabel(text: "list_of_devices_found".localizedString, textColor: TextBlack_Color, fontSize: 15)
+        devicesFoundView!.addSubview(devicesFoundLabel!)
+        devicesFoundLabel!.snp.makeConstraints { make in
+            make.centerX.equalToSuperview()
+            make.top.equalTo(SCRYFrom(24))
+        }
+        
+        rssiRangeLabel = UILabel(text: "", textColor: ImportantText_Color, fontSize: 12, fontWeight: .light)
+        rssiRangeLabel?.attributedText = NSAttributedString(string: "\(selectRSSIRange.upperBound) dBm \("to".localizedString) \(selectRSSIRange.lowerBound) dBm", attributes: [.underlineStyle: 1])
+        devicesFoundView!.addSubview(rssiRangeLabel!)
+        rssiRangeLabel!.snp.makeConstraints { make in
+            make.left.equalTo(SCRXFrom(16))
+            make.top.equalTo(SCRYFrom(65))
+        }
+        
+        settingsBtn = UIButton(normalImageName: "device_add_setting", target: self, action: #selector(settingsBtnAction))
+        devicesFoundView!.addSubview(settingsBtn)
+        settingsBtn.snp.makeConstraints { make in
+            make.right.equalTo(SCRXFrom(-16))
+            make.centerY.equalTo(rssiRangeLabel!)
+        }
+        
+        settingsTipView = UIView()
+        settingsTipView.layer.cornerRadius = 2.5
+        settingsTipView.backgroundColor = RGB(255, 167, 44)
+        settingsTipView.isUserInteractionEnabled = false
+        settingsTipView.isHidden = SystemVolumeManager.shared.currentVolume >= DeviceSettingsParameterData.systemMinimumVolumeRequire
+        settingsBtn.addSubview(settingsTipView)
+        settingsTipView.snp.makeConstraints { make in
+            make.right.equalTo(-8.5)
+            make.centerY.equalToSuperview().offset(0.5)
+            make.width.height.equalTo(5)
+        }
+        
+        addModeBtn = UIButton(title: addMode.title, titleSize: 12, titleWeight: .medium, titleColor: ImportantText_Color, normalImageName: "arrow_down_black", target: self, action: #selector(addModeBtnAction))
+        addModeBtn.titleLabel?.lineBreakMode = .byTruncatingHead
+        addModeBtn.setImagePosition(position: .right, spacing: SCRXFrom(-2))
+        devicesFoundView!.addSubview(addModeBtn)
+        addModeBtn.snp.makeConstraints { make in
+            make.right.equalTo(settingsBtn.snp.left).offset(SCRXFrom(-8))
+            make.centerY.equalTo(settingsBtn)
+            make.width.lessThanOrEqualTo(SCRXFrom(186))
+        }
+        
+        bottomView = UIView()
+        bottomView.isHidden = true
+        devicesFoundView!.addSubview(bottomView)
+        bottomView.snp.makeConstraints { make in
+            make.left.right.bottom.equalToSuperview()
+            make.height.equalTo(SCRYFrom(60))
+        }
+        
+        let bottomLineView = UIView()
+        bottomLineView.backgroundColor = Line_Color1
+        bottomView.addSubview(bottomLineView)
+        bottomLineView.snp.makeConstraints { make in
+            make.left.right.top.equalToSuperview()
+            make.height.equalTo(1)
+        }
+        
+        pauseBtn = UIButton(normalImageName: "device_add_pause", selectedImageName: "device_add_start", target: self, action: #selector(pauseBtnAction))
+        bottomView.addSubview(pauseBtn)
+        pauseBtn.snp.makeConstraints { make in
+            make.center.equalToSuperview()
+        }
+        
+        tableView = UITableView(frame: .zero, style: .grouped)
+        tableView.separatorStyle = .none
+        tableView.backgroundColor = .clear
+        tableView.showsVerticalScrollIndicator = false
+        tableView.register(DeviceAddViewCell.classForCoder(), forCellReuseIdentifier: "cell")
+        tableView.register(DeviceAddSelectAllViewCell.classForCoder(), forCellReuseIdentifier: "selectAllCell")
+        tableView.register(SyncDevicesTitleHeaderView.classForCoder(), forHeaderFooterViewReuseIdentifier: "titleHeader")
+        tableView.dataSource = self
+        tableView.delegate = self
+        devicesFoundView!.addSubview(tableView)
+        tableView.snp.makeConstraints { make in
+            make.left.equalTo(SCRXFrom(16))
+            make.right.equalTo(SCRXFrom(-16))
+            make.top.equalTo(settingsBtn.snp.bottom).offset(SCRYFrom(4))
+            make.bottom.equalTo(bottomView.snp.top)
+        }
+        
+        candidateView = DeviceAddCandidateDeviceListView(frame: .zero, space: space)
+        candidateView.candidateDevices = candidateDevices
+        candidateView.addTarget = addTarget
+        candidateView.isRefresh = isRefresh
+//        candidateView?.lightSeningMode = addMode == .lightSening
+        candidateView.state = state
+        candidateView.delegate = self
+        view.addSubview(candidateView)
+        candidateView.snp.makeConstraints { make in
+            make.left.equalTo(devicesFoundView!.snp.right)
+            make.top.bottom.equalTo(devicesFoundView!)
+            make.right.equalToSuperview()
+        }
+        
     }
 
 }
@@ -1395,7 +1609,7 @@ extension DeviceAddProfessionalModeController: UITableViewDataSource, UITableVie
             selectCell.countLabel.text = "\(selectDevices.count)/\(devices.count)"
             selectCell.candidateBtn.isEnabled = selectDevices.count > 0
             selectCell.delegate = self
-            if type == .inRSSI {
+            if type == .inRSSI && !isIPad {
                 selectCell.configureCell(isFirst: true, isLast: inRSSIDevices.count == 0)
             }else {
                 selectCell.backgroundColor = .clear
@@ -1420,11 +1634,14 @@ extension DeviceAddProfessionalModeController: UITableViewDataSource, UITableVie
             cell.addBtn.setImage(UIImage(named: "device_add_candidate"), for: .normal)
             cell.addBtn.setImage(nil, for: .disabled)
             cell.delegate = self
-            if type == .inRSSI {
+            if type == .inRSSI && !isIPad {
                 cell.configureCell(isFirst: false, isLast: indexPath.row == tableView.numberOfRows(inSection: indexPath.section) - 1)
             }else {
                 cell.backgroundColor = .clear
                 cell.contentView.backgroundColor = .clear
+            }
+            if isIPad {
+                cell.lineView.isHidden = tableView.numberOfRows(inSection: indexPath.section) - 1 == indexPath.row
             }
             return cell
         }
@@ -1454,6 +1671,7 @@ extension DeviceAddProfessionalModeController: UITableViewDataSource, UITableVie
         return UIView()
     }
     
+    
     func tableView(_ tableView: UITableView, heightForHeaderInSection section: Int) -> CGFloat {
         let type = sectionTypes[section]
         return type == .remainingRSSI ? SCRYFrom(36) : 0.01
@@ -1466,6 +1684,22 @@ extension DeviceAddProfessionalModeController: UITableViewDataSource, UITableVie
     func tableView(_ tableView: UITableView, heightForFooterInSection section: Int) -> CGFloat {
         return 0.01
     }
+    
+    // 每个 section 的背景
+    func tableView(_ tableView: UITableView, willDisplayHeaderView view: UIView, forSection section: Int) {
+        guard isIPad, sectionTypes[section] == .inRSSI else { return }
+        
+        // 先移除旧的
+        tableView.subviews.filter { $0 is DeviceAddSectionBackgroundView }.forEach { $0.removeFromSuperview() }
+        
+        // 计算整个 section 的 rect
+        let sectionRect = tableView.rect(forSection: section)
+        
+        // 添加背景视图
+        let bgView = DeviceAddSectionBackgroundView(frame: sectionRect)
+        tableView.insertSubview(bgView, at: 0)
+    }
+
     
     func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
         guard indexPath.row > 0, indexPath.section < sectionTypes.count else {
@@ -1571,7 +1805,10 @@ extension DeviceAddProfessionalModeController: DeviceAddSelectAllViewCellDelegat
                 candidateDevices.append(contentsOf: remainingRSSIDevices.filter({ $0.selectedState == .selected }))
                 remainingRSSIDevices.removeAll(where: { $0.selectedState == .selected })
             }
-            self.candidateCountLabel.text = "\(candidateDevices.filter({ $0.addState != .success }).count)"
+            self.candidateCountLabel?.text = "\(candidateDevices.filter({ $0.addState != .success }).count)"
+            if self.candidateView.window != nil {
+                self.candidateView.candidateDevices = candidateDevices
+            }
             DispatchQueue.main.async {
                 self.tableView.reloadData()
             }
@@ -1616,7 +1853,7 @@ extension DeviceAddProfessionalModeController: DeviceAddCandidateDeviceListViewD
             cacheDevice?.addState = .none
         }
        
-        self.candidateCountLabel.text = "\(candidateDevices.count)"
+        self.candidateCountLabel?.text = "\(candidateDevices.count)"
         DispatchQueue.main.async {
             self.tableView.reloadData()
         }

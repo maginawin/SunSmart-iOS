@@ -615,11 +615,12 @@ class DeviceAddClassicModeController: UIViewController {
                 let mac = MeshNetworkManager.instance.getRandomMacAddress()
                 node.macAddress = mac
             }
-            if device.deviceType == .gateway {
-                node.name = MeshNetworkManager.instance.getNextNodeName("gateway".localizedString, length: 1)
-            }else {
-                node.name = MeshNetworkManager.instance.getNextNodeName()
-            }
+            node.name = MeshNetworkManager.instance.getNextNodeName(node.defaultNameCategory)
+//            if device.deviceType == .gateway {
+//                node.name = MeshNetworkManager.instance.getNextNodeName("gateway".localizedString)
+//            }else {
+//                node.name = MeshNetworkManager.instance.getNextNodeName(node.defaultNameCategory)
+//            }
             node.save()
             
             // 配网完成
@@ -1136,7 +1137,8 @@ class DeviceAddClassicModeController: UIViewController {
         headerView.addSubview(addDeviceToLabel)
         addDeviceToLabel.snp.makeConstraints { make in
             make.left.equalTo(nearLabel)
-            make.bottom.equalTo(SCRYFrom(-18))
+//            make.bottom.equalTo(SCRYFrom(-18))
+            make.top.equalTo(rssiSlider.snp.bottom).offset(SCRYFrom(14))
             make.width.equalTo(addDeviceToLabel.width)
         }
         
@@ -1145,7 +1147,7 @@ class DeviceAddClassicModeController: UIViewController {
         scanBtn.setTitleColor(Purple_Color.withAlphaComponent(0.5), for: .disabled)
         scanBtn.layer.cornerRadius = SCRYFrom(5)
         scanBtn.layer.borderWidth = 1
-        scanBtn.layer.borderColor = RGB(220, 220, 220).cgColor
+        scanBtn.layer.borderColor = Border_Color.cgColor
         scanBtn.backgroundColor = .white
         scanBtn.contentHorizontalAlignment = .left
         scanBtn.imageEdgeInsets = UIEdgeInsets(top: 0, left: SCRXFrom(8), bottom: 0, right: 0)
@@ -1153,9 +1155,9 @@ class DeviceAddClassicModeController: UIViewController {
         
         headerView.addSubview(scanBtn)
         scanBtn.snp.makeConstraints { make in
-            make.right.equalTo(SCRXFrom(-18))
+            make.right.equalTo(SCRXFrom(-16))
             make.centerY.equalTo(addDeviceToLabel)
-            make.width.equalTo(SCRXFrom(80))
+            make.width.equalTo(SCRXFrom(72))
             make.height.equalTo(SCRYFrom(32))
         }
         
@@ -1173,7 +1175,7 @@ class DeviceAddClassicModeController: UIViewController {
         addDeviceTargetBtn.contentHorizontalAlignment = .left
         addDeviceTargetBtn.layer.cornerRadius = SCRYFrom(5)
         addDeviceTargetBtn.layer.borderWidth = 1
-        addDeviceTargetBtn.layer.borderColor = RGB(220, 220, 220).cgColor
+        addDeviceTargetBtn.layer.borderColor = Border_Color.cgColor
         addDeviceTargetBtn.backgroundColor = .white
         headerView.addSubview(addDeviceTargetBtn)
         addDeviceTargetBtn.snp.makeConstraints { make in

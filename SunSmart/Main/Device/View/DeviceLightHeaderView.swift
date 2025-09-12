@@ -31,7 +31,7 @@ class DeviceLightHeaderView: UIView {
             
             var lightness100 = node.lightness100
             if node.isOn, node.lightness == 0, let trunOffLightness = node.trunOffLightness { // 开灯并且亮度0，设备亮度未上报；先显示设备关灯前的亮度值
-                lightness100 = Node.getLightness100(lightness: trunOffLightness, range: node.lightnessRange)
+                lightness100 = Node.getLightness100(lightness: trunOffLightness)
             }
             
             if node.isOn {

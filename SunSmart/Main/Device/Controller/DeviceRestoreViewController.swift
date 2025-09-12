@@ -47,7 +47,7 @@ class DeviceRestoreViewController: UIViewController {
     /// identify中的设备
     private var identifyDevice: ProvisioningDevice?
     /// 设备恢复完成回调
-    var deviceRestoreCallback: (([Node])->Void)?
+    var deviceRestoreCallback: (([Node], Bool)->Void)?
     /// 已恢复的设备
     private var restoreNodes: [Node] = []
     
@@ -156,7 +156,7 @@ class DeviceRestoreViewController: UIViewController {
                 MeshAPI.stopFastAddDevice(finishBack: nil)
             }
 //            if self.restoreNodes.count > 0 {
-        self.deviceRestoreCallback?(self.restoreNodes)
+        self.deviceRestoreCallback?(self.restoreNodes, self.automationRestore)
 //            }
         // 关闭设置屏幕常亮
         UIApplication.shared.isIdleTimerDisabled = false
@@ -648,9 +648,14 @@ class DeviceRestoreViewController: UIViewController {
             if self.automationRestore {
                 if failList.count > 0 && automationRetryCount > 0 {
                     automationRetryCount -= 1
-                    failList.compactMap({ device in self.showRestoreData.first(where: { $0.unprovisionedDevice?.peripheral.identifier == device.peripheral.identifier }) }).forEach({
-                        self.addDevice($0)
-                    })
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 1) {[weak self] in
+                        guard let self = self, self.automationRestore else { return }
+                        self.addSelectedBtnClick()
+//                        failList.compactMap({ device in self.showRestoreData.first(where: { $0.unprovisionedDevice?.peripheral.identifier == device.peripheral.identifier }) }).forEach({
+//                            self.addDevice($0)
+//                        })
+                    }
+                  
                 }else {
                     
                     // TODO: 等几秒钟进入同步页面，添加设备完成后代理可能还在连接中
@@ -883,7 +888,7 @@ class DeviceRestoreViewController: UIViewController {
         vc.syncSuccessCallback = {[weak self] _ in
             guard let self = self else { return }
             if self.automationRestore, case .specified = restoreMode {
-                self.deviceRestoreCallback?(self.restoreNodes)
+                self.deviceRestoreCallback?(self.restoreNodes, self.automationRestore)
                 self.navigationController?.popToViewController(vcClass: BleFirmwareUpdateViewController.classForCoder())
             }else {
                 self.navigationController?.popViewController(animated: true)
@@ -1290,6 +1295,8 @@ extension DeviceRestoreViewController: UITableViewDataSource, UITableViewDelegat
                 cell.identifyBtn.layer.borderColor = RGB(156, 163, 175, 0.5).cgColor
                 cell.selectImageView.isHidden = true
                 cell.stateImageView.isHidden = true
+                cell.signalStrengthView.setSignalStrength(rssi: -999)
+                cell.signalLabel.text = nil
             }
             cell.addBtn.setImage(UIImage(named: "device_restore"), for: .normal)
             cell.addBtn.setImage(UIImage(named: "device_restore_disable"), for: .disabled)

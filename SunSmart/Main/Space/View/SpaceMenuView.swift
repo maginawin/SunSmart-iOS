@@ -30,7 +30,7 @@ class SpaceMenuView: UIView {
             itemBtns.removeAll()
              
             for (index, itemData) in itemDatas.enumerated() {
-                let btn = UIButton(title: itemData.title, titleSize: 12, titleColor: RGB(148, 163, 184), normalImageName: itemData.imageName, selectedImageName: itemData.selectImageName, target: nil, action: nil)
+                let btn = UIButton(title: itemData.title, titleSize: 12, titleWeight: .light, titleColor: RGB(148, 163, 184), normalImageName: itemData.imageName, selectedImageName: itemData.selectImageName, target: nil, action: nil)
                 btn.setTitleColor(Bar_Color, for: .selected)
                 btn.contentHorizontalAlignment = .center
                 btn.isUserInteractionEnabled = false
@@ -61,8 +61,8 @@ class SpaceMenuView: UIView {
         
         let itemW: CGFloat = (self.frame.size.width - margin * CGFloat(2) - CGFloat(itemBtns.count - 1) * itemMargin) / CGFloat(itemBtns.count)
         for (index, itemBtn) in itemBtns.enumerated() {
-            itemBtn.frame = CGRect(x: margin + (itemW + itemMargin) * CGFloat(index), y: 0, width: itemW, height: self.frame.size.height)
-            itemBtn.setImagePosition(position: .top, spacing: SCRYFrom(1))
+            itemBtn.frame = CGRect(x: margin + (itemW + itemMargin) * CGFloat(index), y: 0, width: itemW, height: self.frame.size.height - 6)
+            itemBtn.setImagePosition(position: .top, spacing: 0)
         }
     }
     

@@ -18,12 +18,15 @@ class ParameterFilterData {
                 return ("rated_power", "rated_power".localizedString)
             case .absoluteSensitivity:
                 return ("absolute_sensitivity", "absolute_sensitivity".localizedString)
+            case .transitionTime:
+                return ("transition_time", "transition_time".localizedString)
             }
         }
         
         case pwm
         case ratedPower
         case absoluteSensitivity
+        case transitionTime
     }
     
     /// 参数类型

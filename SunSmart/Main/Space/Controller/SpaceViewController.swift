@@ -42,11 +42,11 @@ enum SpaceChangeDataType {
     /// 设备数据类型
     enum DeviceDataType {
         /// 配置设备
-    case config
+        case config
         /// 添加设备
-    case add
-        ///
-    case delete
+        case add
+        /// 删除设备
+        case delete
     }
     
     /// 设备数据（包含device、group/scene等配置数据-与设备数据交互）
@@ -66,7 +66,17 @@ extension SpaceViewController {
         }
         return rootVc.viewControllers.first(where: { $0.isKind(of: self) }) as? SpaceViewController
     }
+    
+    /// 当前space
+    static func currentSpace() -> SpaceData? {
+        return currentSpaceVc()?.space
+    }
 }
+
+/// 是否显示设备名称前缀
+//var displayDeviceNamePrefix: Bool = SpaceViewController.currentSpace()?.displayDeviceNamePrefix ?? false
+
+let routeTest: Bool = false
 
 class SpaceViewController: WMPageController {
 
@@ -164,7 +174,7 @@ class SpaceViewController: WMPageController {
         mainMenuView.snp.makeConstraints { make in
             make.left.right.equalToSuperview()
             make.top.equalTo(view.safeAreaLayoutGuide)
-            make.height.equalTo(meunHeight - 2)
+            make.height.equalTo(meunHeight)
         }
         
 //        #if DEBUG
@@ -183,10 +193,17 @@ class SpaceViewController: WMPageController {
         MeshLibManager.manager.subElementGroupSubscriptionModelIDs = [.lightCTLTemperatureServerModelId, .lightLCServerModelId]
         checkBluetoothState()
         #if DEBUG
-        MeshNodeHeartbeatManager.shared.autoHeartbeatLoop = true
-        MeshLibManager.manager.showLogs = [.access, .upperTransport,.model]
+        
+        MeshLibManager.manager.showLogs = [.access, .bearer, .upperTransport,.model]
 //        [.network, .access, .lowerTransport, .upperTransport, .proxy, .bearer]
-        MeshNodeHeartbeatManager.shared.heartbeatMode = .general
+        if routeTest {
+            MeshNodeHeartbeatManager.shared.autoHeartbeatLoop = false
+            MeshNodeHeartbeatManager.shared.heartbeatMode = .publish
+        }else {
+            MeshNodeHeartbeatManager.shared.autoHeartbeatLoop = true
+            MeshNodeHeartbeatManager.shared.heartbeatMode = .general
+        }
+        
         #else
         MeshNodeHeartbeatManager.shared.autoHeartbeatLoop = true
         MeshNodeHeartbeatManager.shared.heartbeatMode = .general
