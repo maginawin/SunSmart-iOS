@@ -99,7 +99,7 @@ class DeviceForceResetDeviceController: UIViewController {
     weak var delegate: DeviceForceResetDeviceControllerDelegate?
     
     /// 广播时设备配置持续时长
-    private let broadcasterDuration: UInt8 = 1
+    private let broadcasterDuration: UInt8 = 2
     /// 广播时光感上报阈值
 //    private let lightSensorDelta: UInt16 = 80
     private var displayDeviceNamePrefix: Bool = true
@@ -165,7 +165,7 @@ class DeviceForceResetDeviceController: UIViewController {
                   provisioningDevice.macAddress != nil else { return }
             
             // 过滤移动感应不在信号范围内的设备
-            if self.resetMode == .motion, !self.filterRSSIRange.contains(rssi.intValue) {
+            if self.resetMode == .motion, !self.selectRSSIRange.contains(rssi.intValue) {
                 return
             }
             

@@ -178,6 +178,9 @@ extension SpaceData {
             if let data = try? jsonEncoder.encode(appKey), let appKeyDict = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
                 spaceJsonData.updateValue(appKeyDict, forKey: "appKey")
             }
+            if let applicationKey = appKey {
+                spaceJsonData.updateValue(applicationKey.index, forKey: "appKeyIndex")
+            }
             
             //        let networkKeyDict: [String: Any] = [
             //            "oldKey" : networkKey.oldKey?.hex ?? "00000000000000000000000000000000",

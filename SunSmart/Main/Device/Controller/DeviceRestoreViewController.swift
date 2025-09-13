@@ -950,9 +950,14 @@ class DeviceRestoreViewController: UIViewController {
                 make.top.equalTo(emptyView.titleLabel.snp.bottom).offset(SCRYFrom(16))
                 make.bottom.equalTo(SCRYFrom(-28))
             }
-            let shadeView = UIView(frame: view.bounds)
-            shadeView.backgroundColor = RGB(0, 0, 0, 0.4)
-            emptyView.insertSubview(shadeView, belowSubview: emptyView.contentView)
+//            if !automationRestore {
+                let shadeView = UIView(frame: view.bounds)
+                shadeView.backgroundColor = RGB(0, 0, 0, 0.4)
+                emptyView.insertSubview(shadeView, belowSubview: emptyView.contentView)
+//            }
+            if isIPad && self.automationRestore {
+                shadeView.layer.cornerRadius = 20
+            }
         }
         DispatchQueue.main.async {
             NSObject.cancelPreviousPerformRequests(withTarget: self, selector: #selector(self.hideDeviceNotFound), object: nil)

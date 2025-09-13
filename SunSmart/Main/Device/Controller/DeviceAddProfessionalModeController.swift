@@ -111,7 +111,7 @@ class DeviceAddProfessionalModeController: UIViewController {
     /// 无定向广播
     private let broadcaster = BluetoothBroadcaster()
     /// 广播时设备配置持续时长
-    private let broadcasterDuration: UInt8 = 1
+    private let broadcasterDuration: UInt8 = 2
     /// 添加目标
     private var addTarget: AddDeviceToTarget!
     /// 添加成功的节点

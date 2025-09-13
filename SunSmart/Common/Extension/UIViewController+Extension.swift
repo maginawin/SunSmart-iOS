@@ -230,17 +230,33 @@ extension UINavigationController {
     ///   - exitCallback: 退出回调
     func showAutomaticHud(messsage: String, exitCallback: (()->Void)?) {
         
+        guard let topVc = topViewController else {
+            return
+        }
+        if let hud = currentAutomaticBannerHud() {
+            hud.removeFromSuperview()
+        }
+        
         navigationBar.transform = CGAffineTransform(translationX: 0, y: 32)
+        topVc.additionalSafeAreaInsets.top = 44
         
-        topViewController?.additionalSafeAreaInsets.top = 44
+        var bannerFrame: CGRect = CGRect(x: self.view.x, y: 0, width: self.view.width, height: self.view.height + kNavigationHeight)
+        if isIPad {
+            bannerFrame = view.bounds
+//            bannerFrame = topVc.view.convert(topVc.view.bounds, to: UIApplication.shared.keyWindow())
+        }
         
-        let bannerHud = BannerAutomaticHud(frame: CGRect(x: self.view.x, y: 0, width: self.view.width, height: self.view.height + kNavigationHeight))
+        let bannerHud = BannerAutomaticHud(frame: bannerFrame)
         bannerHud.messageLabel.text = messsage
         bannerHud.exitCallback = {[weak self] in
             self?.hideAutomaticHud()
             exitCallback?()
         }
-        UIApplication.shared.keyWindow().addSubview(bannerHud)
+        if isIPhone {
+            UIApplication.shared.keyWindow().addSubview(bannerHud)
+        }else {
+            view.addSubview(bannerHud)
+        }
         
     }
     
@@ -255,7 +271,11 @@ extension UINavigationController {
     
     /// 当前显示的自动化浮窗
     func currentAutomaticBannerHud() -> BannerAutomaticHud? {
-        return UIApplication.shared.keyWindow().subviews.first(where: { $0.isKind(of: BannerAutomaticHud.classForCoder()) }) as? BannerAutomaticHud
+        if isIPad {
+            return view.subviews.first(where: { $0.isKind(of: BannerAutomaticHud.classForCoder()) }) as? BannerAutomaticHud
+        }else {
+            return UIApplication.shared.keyWindow().subviews.first(where: { $0.isKind(of: BannerAutomaticHud.classForCoder()) }) as? BannerAutomaticHud
+        }
     }
     
 }
@@ -338,6 +358,14 @@ class BannerAutomaticHud: UIView {
             make.top.equalTo(bannerView.snp.bottom)
         }
         
+        if isIPad {
+            statusBarView.isHidden = true
+            
+            bannerView.snp.remakeConstraints { make in
+                make.left.right.top.equalToSuperview()
+                make.height.equalTo(SCRYFrom(44))
+            }
+        }
         
     }
     

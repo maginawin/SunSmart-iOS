@@ -965,6 +965,31 @@
 "dali_address_scan_ready_message" = "Scan when ready.";
 "dali_address_scan_count_message" = "START [%d/%d]";
 "dali_address_scan_complete_message" = "Found %d new device(s).";
+"dali_address" = "DALI address";
+"dali_groups" = "DALI groups";
+"dali_status" = "DALI status";
+"GTIN" = "GTIN";
+"serial" = "Serial";
+"device_manufacturer" = "Device manufacturer";
+"device_model" = "Device model";
+"fw_version" = "FW Version";
+"manufacture_time" = "Manufacture Time";
+"last_update_energy" = "Last update (energy)";
+"active_energy" = "Active Energy";
+"active_power" = "Active Power";
+"apparent_energy" = "Apparent Energy";
+"apparent_power" = "Apparent Power";
+"active_energy_load_side" = "Active Energy (Load side)";
+"active_power_load_side" = "Active Power (Load side)";
+"system_starts" = "System Starts";
+"operating_time" = "Operating Time";
+"lamp_on_time" = "Lamp On Time";
+"operating_temperature" = "Operating Temperature,℃";
+"power_factor_percentage" = "Power Factor (%)";
+"output_current_percentage" = "Output Current (%)";
+"output_current" = "Output Current";
+"output_voltage" = "Output Voltage";
+"lamp_starts" = "Lamp Starts";
 
 
 "pwm_period" = "PWM Period";

@@ -991,9 +991,9 @@ extension DeviceLightsViewController: SpaceFunctionFooterViewDelegate {
     func functionEnterIntoTestDelete(view: SpaceFunctionFooterView) {
         
         let vc = DeviceForceResetDevicePageController()
-        vc.deviceResetCallback = { devices in
-            
-        }
+//        vc.deviceResetCallback = { devices in
+//            
+//        }
         navigationController?.pushViewController(vc, animated: true)
     }
     
