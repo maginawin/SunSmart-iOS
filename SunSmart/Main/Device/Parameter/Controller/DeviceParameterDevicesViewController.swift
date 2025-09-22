@@ -175,9 +175,18 @@ class DeviceParameterDevicesViewController: UIViewController {
         
         if MeshLibManager.manager.isMeshNetworkConnected {
             bottomView.leftBtn.isEnabled = selectDevices.count > 0
+            bottomView.rightBtn.isEnabled = selectDevices.count > 0
         }else {
+            selectDevices.removeAll()
             bottomView.leftBtn.isEnabled = false
+            bottomView.rightBtn.isEnabled = false
+            groupDatas.forEach({
+                $0.isSelected = false
+            })
+            groupsView.datas = groupDatas
         }
+        groupsView.selectCountLabel.text = "\(selectDevices.count)/\(devices.count)"
+        groupsView.selectAllBtn.isSelected = selectDevices.count == devices.count
         tableView.reloadData()
         
         if settingFailedDatas.count > 0 {

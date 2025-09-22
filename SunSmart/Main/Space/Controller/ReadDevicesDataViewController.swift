@@ -141,6 +141,11 @@ class ReadDevicesDataViewController: UIViewController {
                         let step = SyncDeviceStepModel(type: "absolute_sensitivity".localizedString, state: .none, tasks: [taskModel])
                         taskModel.parentStepModel = step
                         steps.append(step)
+                    case .defaultTransitionTime:
+                        let taskModel = SyncDeviceStepTaskModel(name: "transition_time".localizedString, operationType: .read(node: node, type: .deviceReadParmeters(parameterType: .defaultTransitionTime)))
+                        let step = SyncDeviceStepModel(type: "transition_time".localizedString, state: .none, tasks: [taskModel])
+                        taskModel.parentStepModel = step
+                        steps.append(step)
                     case .firmwareVension:
                         let taskModel = SyncDeviceStepTaskModel(name: "firmware_version".localizedString, operationType: .read(node: node, type: .deviceReadParmeters(parameterType: .firmwareVension)))
                         

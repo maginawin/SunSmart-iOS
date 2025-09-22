@@ -113,6 +113,15 @@ class SceneAddViewController: UIViewController {
         addNotificationObserver()
     }
     
+    override func viewDidLayoutSubviews() {
+        super.viewDidLayoutSubviews()
+        
+        if menuView.frame == .zero || menuView.width == 0 {
+            menuView.frame = CGRectMake(0, navigationController?.navigationBar.height ?? 0, view.width, SCRYFrom(38))
+            menuView.resetFrames()
+        }
+    }
+    
     deinit {
         if self.scene == nil && self.space.isConfiguring { // 未创建场景退出页面，停止引导配置流程
             self.space.isConfiguring = false
@@ -403,7 +412,7 @@ class SceneAddViewController: UIViewController {
     
     private func setupUI() {
         
-        menuView = WMMenuView(frame: CGRectMake(0, navigationController?.navigationBar.height ?? 0, view.width, SCRYFrom(38)))
+        menuView = WMMenuView(frame: CGRectMake(0, navigationController?.navigationBar.height ?? 0, 0, SCRYFrom(38)))
         menuView.style = .line
         menuView.layoutMode = .center
         menuView.lineColor = Bar_Color

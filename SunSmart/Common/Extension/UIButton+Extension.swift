@@ -50,7 +50,12 @@ extension UIButton {
     }
     
 
-    func setImagePosition(position: ImagePosition, spacing: CGFloat) {
+    func setImagePosition(position: ImagePosition, spacing: CGFloat, btnMaxWidth: CGFloat? = nil) {
+        
+        var btnW = self.width
+        if btnMaxWidth != nil {
+            btnW = min(btnMaxWidth!, btnW)
+        }
         
         let imageWidth = self.currentImage?.size.width ?? 0
         let imageHeight = self.currentImage?.size.height ?? 0
@@ -62,15 +67,15 @@ extension UIButton {
         
         var size = (self.currentTitle as? NSString)?.size(withAttributes: attibutes) ?? .zero
         if self.titleLabel?.numberOfLines != 1 {
-            size = (self.currentTitle as? NSString)?.boundingRect(with: CGSize(width: self.frame.size.width, height: CGFloat(MAXFLOAT)), options: .usesLineFragmentOrigin, attributes: attibutes, context: nil).size ?? .zero
+            size = (self.currentTitle as? NSString)?.boundingRect(with: CGSize(width: btnW, height: CGFloat(MAXFLOAT)), options: .usesLineFragmentOrigin, attributes: attibutes, context: nil).size ?? .zero
         }
         var labelWidth = size.width
         
         
         
         if position == .left || position == .right {
-            if self.width > 0 && labelWidth > self.width - imageWidth - self.contentEdgeInsets.left - self.contentEdgeInsets.right {
-                labelWidth = self.width - imageWidth - spacing - self.contentEdgeInsets.left - self.contentEdgeInsets.right
+            if btnW > 0 && labelWidth > btnW - imageWidth - self.contentEdgeInsets.left - self.contentEdgeInsets.right {
+                labelWidth = btnW - imageWidth - spacing - self.contentEdgeInsets.left - self.contentEdgeInsets.right
             }
         }
     

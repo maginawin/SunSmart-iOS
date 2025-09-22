@@ -7,7 +7,6 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		52E33BFFE69E79FD53F962FA /* (null) in Frameworks */ = {isa = PBXBuildFile; };
 		6116D0D0F05DFA292964E9B9 /* (null) in Frameworks */ = {isa = PBXBuildFile; };
 		C8002CD22DD33D60002A8629 /* EnergyStaticDataDeviceViewCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8002CD12DD33D60002A8629 /* EnergyStaticDataDeviceViewCell.swift */; };
 		C803EC4C2BCCC9F0003C48B1 /* ConfigurationFlowGuidanceView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C803EC4B2BCCC9F0003C48B1 /* ConfigurationFlowGuidanceView.swift */; };
@@ -1119,7 +1118,6 @@
 		C8B707042DCF2FDC0002133E /* EnergyStatisticsStaticData.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8B707032DCF2FDC0002133E /* EnergyStatisticsStaticData.swift */; };
 		C8B707062DCF2FF50002133E /* EnergyStatisticsTimeSeriesData.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8B707052DCF2FF50002133E /* EnergyStatisticsTimeSeriesData.swift */; };
 		C8B707082DCF349D0002133E /* ProfileSensitivityView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8B707072DCF349D0002133E /* ProfileSensitivityView.swift */; };
-		C8B754DB2E3B02670000CBD6 /* NordicSigMeshSDK in Frameworks */ = {isa = PBXBuildFile; productRef = C8B754DA2E3B02670000CBD6 /* NordicSigMeshSDK */; };
 		C8B95F982E4DDE5A000576F5 /* DeviceForceResetDeviceController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8B95F972E4DDE5A000576F5 /* DeviceForceResetDeviceController.swift */; };
 		C8B95F992E4DDE5A000576F5 /* DeviceForceResetDeviceController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8B95F972E4DDE5A000576F5 /* DeviceForceResetDeviceController.swift */; };
 		C8B95F9A2E4DDE5A000576F5 /* DeviceForceResetDeviceController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8B95F972E4DDE5A000576F5 /* DeviceForceResetDeviceController.swift */; };
@@ -1253,6 +1251,8 @@
 		C8FC6B9F2E7502F6004EE2BA /* DaliDeviceInformationController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8FC6B9D2E7502F6004EE2BA /* DaliDeviceInformationController.swift */; };
 		C8FC6BA02E7502F6004EE2BA /* DaliDeviceInformationController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8FC6B9D2E7502F6004EE2BA /* DaliDeviceInformationController.swift */; };
 		C8FDE9A72DD595A30002394B /* GroupProximityLightingData.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8FDE9A62DD595A30002394B /* GroupProximityLightingData.swift */; };
+		C8FFD7D32E7D03810074CC6A /* NordicSigMeshSDK in Frameworks */ = {isa = PBXBuildFile; productRef = C8FFD7D22E7D03810074CC6A /* NordicSigMeshSDK */; };
+		C8FFD7D52E7D03B20074CC6A /* Pods_Common_SunSmart.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = C8FFD7D42E7D03B20074CC6A /* Pods_Common_SunSmart.framework */; };
 		EAB7CC4E471C03663E94EFE1 /* Pods_Common_SylSmart.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = D1025845F30FDFC9F8C9ACCB /* Pods_Common_SylSmart.framework */; };
 /* End PBXBuildFile section */
 
@@ -1711,6 +1711,7 @@
 		C8F89D3C2E3CBD1F00FA1544 /* GatewayModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GatewayModel.swift; sourceTree = "<group>"; };
 		C8FC6B9D2E7502F6004EE2BA /* DaliDeviceInformationController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DaliDeviceInformationController.swift; sourceTree = "<group>"; };
 		C8FDE9A62DD595A30002394B /* GroupProximityLightingData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GroupProximityLightingData.swift; sourceTree = "<group>"; };
+		C8FFD7D42E7D03B20074CC6A /* Pods_Common_SunSmart.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; path = Pods_Common_SunSmart.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		CA14D3D265B3B74E304A61D7 /* Pods-Common-Archipelago.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Common-Archipelago.debug.xcconfig"; path = "Target Support Files/Pods-Common-Archipelago/Pods-Common-Archipelago.debug.xcconfig"; sourceTree = "<group>"; };
 		D1025845F30FDFC9F8C9ACCB /* Pods_Common_SylSmart.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_Common_SylSmart.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		DAC2135080FD55773BEDFE9A /* Pods-Common-SunSmart.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Common-SunSmart.debug.xcconfig"; path = "Target Support Files/Pods-Common-SunSmart/Pods-Common-SunSmart.debug.xcconfig"; sourceTree = "<group>"; };
@@ -1741,8 +1742,8 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				52E33BFFE69E79FD53F962FA /* (null) in Frameworks */,
-				C8B754DB2E3B02670000CBD6 /* NordicSigMeshSDK in Frameworks */,
+				C8FFD7D52E7D03B20074CC6A /* Pods_Common_SunSmart.framework in Frameworks */,
+				C8FFD7D32E7D03810074CC6A /* NordicSigMeshSDK in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -1752,6 +1753,7 @@
 		4EFDC03D8D0C5DDD54D9D8A8 /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
+				C8FFD7D42E7D03B20074CC6A /* Pods_Common_SunSmart.framework */,
 				D1025845F30FDFC9F8C9ACCB /* Pods_Common_SylSmart.framework */,
 				8F7ED1D6D6BFC3B3813C473D /* Pods_Common_Archipelago.framework */,
 			);
@@ -3163,7 +3165,7 @@
 			);
 			name = SunSmart;
 			packageProductDependencies = (
-				C8B754DA2E3B02670000CBD6 /* NordicSigMeshSDK */,
+				C8FFD7D22E7D03810074CC6A /* NordicSigMeshSDK */,
 			);
 			productName = SunSmart;
 			productReference = C896B9A42A930BA800217512 /* SunSmart.app */;
@@ -3195,7 +3197,7 @@
 			);
 			mainGroup = C896B99B2A930BA800217512;
 			packageReferences = (
-				C8B754D92E3B02670000CBD6 /* XCRemoteSwiftPackageReference "nordic-sig-mesh-sdk" */,
+				C8FFD7CF2E7D02D00074CC6A /* XCRemoteSwiftPackageReference "nordic-sig-mesh-sdk" */,
 			);
 			productRefGroup = C896B9A52A930BA800217512 /* Products */;
 			projectDirPath = "";
@@ -4664,7 +4666,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 4;
+				CURRENT_PROJECT_VERSION = 5;
 				DEVELOPMENT_TEAM = JTD3WYUC58;
 				GCC_PREFIX_HEADER = "";
 				GENERATE_INFOPLIST_FILE = YES;
@@ -4706,7 +4708,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 4;
+				CURRENT_PROJECT_VERSION = 5;
 				DEVELOPMENT_TEAM = JTD3WYUC58;
 				GCC_PREFIX_HEADER = "";
 				GENERATE_INFOPLIST_FILE = YES;
@@ -4748,7 +4750,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 5;
+				CURRENT_PROJECT_VERSION = 9;
 				DEVELOPMENT_TEAM = FNFEMS8D6J;
 				GCC_PREFIX_HEADER = "";
 				GENERATE_INFOPLIST_FILE = YES;
@@ -4790,7 +4792,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 5;
+				CURRENT_PROJECT_VERSION = 9;
 				DEVELOPMENT_TEAM = FNFEMS8D6J;
 				GCC_PREFIX_HEADER = "";
 				GENERATE_INFOPLIST_FILE = YES;
@@ -4948,7 +4950,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 5;
 				DEVELOPMENT_TEAM = JTD3WYUC58;
 				GCC_PREFIX_HEADER = "";
 				GENERATE_INFOPLIST_FILE = YES;
@@ -4988,7 +4990,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 5;
 				DEVELOPMENT_TEAM = JTD3WYUC58;
 				GCC_PREFIX_HEADER = "";
 				GENERATE_INFOPLIST_FILE = YES;
@@ -5079,7 +5081,7 @@
 				kind = branch;
 			};
 		};
-		C8B754D92E3B02670000CBD6 /* XCRemoteSwiftPackageReference "nordic-sig-mesh-sdk" */ = {
+		C8FFD7CF2E7D02D00074CC6A /* XCRemoteSwiftPackageReference "nordic-sig-mesh-sdk" */ = {
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://gitee.com/sunricher-i-os/nordic-sig-mesh-sdk.git";
 			requirement = {
@@ -5100,9 +5102,9 @@
 			package = C886DFFF2E30DE4900D0C3A6 /* XCRemoteSwiftPackageReference "nordic-sig-mesh-sdk" */;
 			productName = NordicSigMeshSDK;
 		};
-		C8B754DA2E3B02670000CBD6 /* NordicSigMeshSDK */ = {
+		C8FFD7D22E7D03810074CC6A /* NordicSigMeshSDK */ = {
 			isa = XCSwiftPackageProductDependency;
-			package = C8B754D92E3B02670000CBD6 /* XCRemoteSwiftPackageReference "nordic-sig-mesh-sdk" */;
+			package = C8FFD7CF2E7D02D00074CC6A /* XCRemoteSwiftPackageReference "nordic-sig-mesh-sdk" */;
 			productName = NordicSigMeshSDK;
 		};
 /* End XCSwiftPackageProductDependency section */

@@ -216,14 +216,15 @@ class SpaceViewController: WMPageController {
         // 获取space数据
         setNetworkConnected()
 //        loadSpaceReqeust()
-        if space.permission == .visitor {
-            // 开始定时发送心跳
-            startHeartbeatTimer()
-        }else {
-            // 读取space内是否有其他编辑者
-            checkTheSpaceMembersRequest()
+        if space.uploadCloud {
+            if space.permission == .visitor {
+                // 开始定时发送心跳
+                startHeartbeatTimer()
+            }else {
+                // 读取space内是否有其他编辑者
+                checkTheSpaceMembersRequest()
+            }
         }
-        
         
     }
     

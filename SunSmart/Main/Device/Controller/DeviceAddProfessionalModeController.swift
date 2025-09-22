@@ -64,6 +64,8 @@ class DeviceAddProfessionalModeController: UIViewController {
     private var settingsTipView: UIView!
     private var scanBtn: UIButton!
     
+    private var addModeBtnMaxWidth: CGFloat = SCRXFrom(192)
+    
     private var messageLabel: UILabel?
     /// 设备列表
     private var tableView: UITableView!
@@ -136,6 +138,7 @@ class DeviceAddProfessionalModeController: UIViewController {
     var deviceStateCallback: ((Bool)->Void)?
     var deviceAddCallback: (([Node])->Void)?
     
+    
     init(space: SpaceData) {
         self.space = space
         super.init(nibName: nil, bundle: nil)
@@ -159,6 +162,13 @@ class DeviceAddProfessionalModeController: UIViewController {
         }
         dongles = MeshNetworkManager.instance.dongles
         
+        if isIPad {
+            if self.presentingViewController != nil {
+                addModeBtnMaxWidth = SCRXFrom(160)
+            }else {
+                addModeBtnMaxWidth = SCRXFrom(200)
+            }
+        }
         setupUI()
         
         addObserver()
@@ -1068,7 +1078,7 @@ class DeviceAddProfessionalModeController: UIViewController {
             self.addMode = modes[index]
             sender.setTitle(self.addMode.title, for: .normal)
             sender.sizeToFit()
-            sender.setImagePosition(position: .right, spacing: SCRXFrom(-2))
+            sender.setImagePosition(position: .right, spacing: SCRXFrom(-2), btnMaxWidth: self.addModeBtnMaxWidth)
             
             if self.state == .scanning {
                 if self.addMode == .motionSensing || self.addMode == .lightSening {
@@ -1259,12 +1269,13 @@ class DeviceAddProfessionalModeController: UIViewController {
         }
         
         addModeBtn = UIButton(title: addMode.title, titleSize: 12, titleWeight: .medium, titleColor: ImportantText_Color, normalImageName: "arrow_down_black", target: self, action: #selector(addModeBtnAction))
-        addModeBtn.setImagePosition(position: .right, spacing: -5)
+        addModeBtn.titleLabel?.lineBreakMode = .byTruncatingHead
+        addModeBtn.setImagePosition(position: .right, spacing: -5, btnMaxWidth: self.addModeBtnMaxWidth)
         headerView.addSubview(addModeBtn)
         addModeBtn.snp.makeConstraints { make in
             make.left.equalTo(SCRXFrom(16))
             make.top.equalTo(rssiSlider.snp.bottom).offset(SCRYFrom(9))
-//            make.width.lessThanOrEqualTo(SCRXFrom(176))
+            make.width.lessThanOrEqualTo(addModeBtnMaxWidth)
         }
         
         scanBtn = UIButton(title: "scan".localizedString, titleSize: 13, titleColor: Bottom_Done_Color, normalImageName: "device_scan", target: self, action: #selector(scanBtnClick))
@@ -1323,7 +1334,7 @@ class DeviceAddProfessionalModeController: UIViewController {
         }
         
         showDeviceListBtn = UIButton(title: "candidate_device_list".localizedString, titleSize: 15, titleWeight: .light, titleColor: TextBlack_Color, normalImageName: "arrow_up_black", target: self, action: #selector(showDeviceListBtnAction))
-        showDeviceListBtn?.setImagePosition(position: .right, spacing: SCRXFrom(2))
+        showDeviceListBtn?.setImagePosition(position: .right, spacing: SCRXFrom(2), btnMaxWidth: self.addModeBtnMaxWidth)
         bottomView.addSubview(showDeviceListBtn!)
         showDeviceListBtn!.snp.makeConstraints { make in
             make.left.right.top.equalToSuperview()
@@ -1508,12 +1519,13 @@ class DeviceAddProfessionalModeController: UIViewController {
         
         addModeBtn = UIButton(title: addMode.title, titleSize: 12, titleWeight: .medium, titleColor: ImportantText_Color, normalImageName: "arrow_down_black", target: self, action: #selector(addModeBtnAction))
         addModeBtn.titleLabel?.lineBreakMode = .byTruncatingHead
-        addModeBtn.setImagePosition(position: .right, spacing: SCRXFrom(-2))
+        addModeBtn.setImagePosition(position: .right, spacing: SCRXFrom(-2), btnMaxWidth: self.addModeBtnMaxWidth)
         devicesFoundView!.addSubview(addModeBtn)
         addModeBtn.snp.makeConstraints { make in
             make.right.equalTo(settingsBtn.snp.left).offset(SCRXFrom(-8))
             make.centerY.equalTo(settingsBtn)
-            make.width.lessThanOrEqualTo(SCRXFrom(186))
+            make.width.lessThanOrEqualTo(addModeBtnMaxWidth)
+            
         }
         
         bottomView = UIView()

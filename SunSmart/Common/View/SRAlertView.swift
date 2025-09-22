@@ -712,6 +712,7 @@ class SRAlertView: UIView {
                 let message = textValueChangedBack?(realText, false)
                 if showTextFieldPrompt {
                     messageLabel.text = message
+                    messageLabel.textColor = Red_Color
                     self.perform(#selector(textExceededHide), with: nil, afterDelay: 2)
                 }
             }

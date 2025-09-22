@@ -221,6 +221,8 @@ extension DeviceAddViewController {
             return vc
         case 1:
             let vc = DeviceAddProfessionalModeController(space: space)
+            vc.appointGroup = appointGroup
+            vc.forceBindToDongle = forceBindToDongle
             vc.deviceAddCallback = {[weak self] nodes in
                 guard let self = self else { return }
                 self.addSuccessNodes.append(contentsOf: nodes)
