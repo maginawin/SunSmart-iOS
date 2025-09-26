@@ -297,7 +297,7 @@ extension NetworkApiError: LocalizedError {
         case .resourceNotFound:
             return "resource_not_found".localizedString
         case .visitorBeingUsedSpace:
-            return "space_visitor_are_using".localizedString
+            return "space_visitors_are_using".localizedString
         case .editorBeingUsedSpace:
             return "space_editor_are_using".localizedString
         case .noSitePermission, .noSpacePermission, .userUnauthorized:

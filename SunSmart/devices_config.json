@@ -658,6 +658,17 @@
     },
     {
         "companyId" : "0A78",
+        "productId" : "2012",
+        "categoryName" : "PIR Sensor Lighting",
+        "elementCount" : 3,
+        "iconCategory" : "Lighting",
+        "deviceCategory" : "Lighting",
+        "modelName" : "SR-BL9035J-PIR-V",
+        "sensitivityRangeMin" : 26214,
+        "sensitivityRangeMax" : 58981
+    },
+    {
+        "companyId" : "0A78",
         "productId" : "2021",
         "categoryName" : "PIR Sensor Lighting",
         "elementCount" : 3,
@@ -913,9 +924,9 @@
         "productId" : "2491",
         "categoryName" : "Controller Lighting",
         "elementCount" : 3,
-        "iconCategory" : "Lighting",
-        "deviceCategory" : "BidirectionalController",
-        "modelName" : ""
+        "iconCategory" : "BidirectionalController",
+        "deviceCategory" : "Lighting",
+        "modelName" : "SR-BL2421_SSV_2CH"
     },
     {
         "companyId" : "0A78",

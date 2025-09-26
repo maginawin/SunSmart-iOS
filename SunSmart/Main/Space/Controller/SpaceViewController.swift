@@ -361,10 +361,11 @@ class SpaceViewController: WMPageController {
         })
         
         // 手机网络状态观察者
-        networkableObservation = NetworkRequest.shared.observe(\.networkable, options: [.new], changeHandler: {[weak self] _, _ in
-            DispatchQueue.main.async {
-                if NetworkRequest.shared.networkable { // 无网->有网 开始发送心跳
-                    self?.startHeartbeatTimer()
+        networkableObservation = NetworkRequest.shared.observe(\.networkable, options: [.new], changeHandler: { _, _ in
+            DispatchQueue.main.async {[weak self] in
+                guard let self = self else { return }
+                if self.space.uploadCloud, NetworkRequest.shared.networkable { // 无网->有网 开始发送心跳
+                    self.startHeartbeatTimer()
                 }
             }
         })
@@ -678,7 +679,9 @@ class SpaceViewController: WMPageController {
                             self.configurationFlowGuidance()
                         }
                         // 开始定时发送心跳
-                        self.startHeartbeatTimer()
+                        if self.space.uploadCloud {
+                            self.startHeartbeatTimer()
+                        }
                     }
                 }
             case .failure(_):
@@ -687,7 +690,9 @@ class SpaceViewController: WMPageController {
                     self.configurationFlowGuidance()
                 }
                 // 开始定时发送心跳
-                self.startHeartbeatTimer()
+                if self.space.uploadCloud {
+                    self.startHeartbeatTimer()
+                }
             }
         }
         
