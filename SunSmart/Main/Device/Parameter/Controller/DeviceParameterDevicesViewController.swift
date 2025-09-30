@@ -111,7 +111,8 @@ class DeviceParameterDevicesViewController: UIViewController {
         
         
         // mesh网络连接观察者
-        meshNetworkConnectedObservation = MeshLibManager.manager.observe(\.isMeshNetworkConnected, options: [.new], changeHandler: { _, _ in
+        meshNetworkConnectedObservation = MeshLibManager.manager.observe(\.isMeshNetworkConnected, options: [.new], changeHandler: {[weak self] _, _ in
+            guard let self = self else { return }
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {[weak self] in
                 self?.updateUI()
             }

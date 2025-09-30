@@ -64,7 +64,7 @@ class DeviceSignalStrengthView: UIView {
     /// 根据 RSSI 值获取格数（1~5）
     private func signalLevel(for rssi: Int) -> Int {
         switch rssi {
-        case -40...(-25):
+        case -40...0:
             return 5
         case -55...(-41):
             return 4

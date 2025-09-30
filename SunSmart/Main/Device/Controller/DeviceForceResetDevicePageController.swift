@@ -100,8 +100,9 @@ class DeviceForceResetDevicePageController: WMPageController {
         try? AVAudioSession.sharedInstance().setActive(true, options: [])
 
         systemVolumeObservation = AVAudioSession.sharedInstance().observe(\.outputVolume, options: [.new], changeHandler: {[weak self] _, _ in
+            guard let self = self else { return }
             DispatchQueue.main.async {
-                self?.settingsTipView.isHidden = AVAudioSession.sharedInstance().outputVolume >= DeviceSettingsParameterData.systemMinimumVolumeRequire
+                self.settingsTipView.isHidden = AVAudioSession.sharedInstance().outputVolume >= DeviceSettingsParameterData.systemMinimumVolumeRequire
             }
         })
     }
@@ -264,7 +265,7 @@ extension DeviceForceResetDevicePageController: DeviceForceResetDeviceController
     func controller(_ controller: DeviceForceResetDeviceController, deviceDiscovered device: ProvisioningDevice) {
         // 播放声音
         if deviceSettingsParameterData.notificationEnable {
-            try? DeviceAudioManager.manager.startAudio(type: .deviceAdd, volume: deviceSettingsParameterData.volume)
+            try? DeviceAudioManager.manager.startAudio(type: .deviceReset, volume: deviceSettingsParameterData.volume)
         }
         if deviceSettingsParameterData.vibrationEnable {
             DeviceAudioManager.manager.vibration()

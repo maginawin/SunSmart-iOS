@@ -91,8 +91,10 @@ class MenuPopView: UIView {
         contentView.layer.anchorPoint = anchorPoint
         contentView.transform = CGAffineTransformMakeScale(0.01, 0.01)
         self.contentView.frame.origin = contentPoint
+        self.contentView.alpha = 0
         UIView.animate(withDuration: 0.3) {
-            self.contentView.transform = CGAffineTransformIdentity;
+            self.contentView.transform = .identity
+            self.contentView.alpha = 1
         } completion: { _ in
             self.isShow = true
         }
@@ -100,10 +102,11 @@ class MenuPopView: UIView {
     
     func dismiss(animation: Bool = true) {
         isShow = false
-        contentView.layer.anchorPoint = contentView.layer.anchorPoint
+//        contentView.layer.anchorPoint = contentView.layer.anchorPoint
         if animation {
             UIView.animate(withDuration: 0.3) {
-                self.contentView.transform = CGAffineTransformMakeScale(0.01, 0.01)
+                self.contentView.alpha = 0
+//                self.contentView.transform = CGAffineTransformMakeScale(0.01, 0.01)
             } completion: { _ in
                 self.removeFromSuperview()
             }

@@ -101,22 +101,6 @@
       <BreakpointProxy
          BreakpointExtensionID = "Xcode.Breakpoint.FileBreakpoint">
          <BreakpointContent
-            uuid = "FE270DD1-AFA3-44B8-96B9-EDD56F8ACAF6"
-            shouldBeEnabled = "Yes"
-            ignoreCount = "0"
-            continueAfterRunningActions = "No"
-            filePath = "../../Library/Developer/Xcode/DerivedData/SunSmart-bsknqvobukouwgfvklwtoruhrcgz/SourcePackages/checkouts/nordic-sig-mesh-sdk/Sources/NordicSigMeshSDK/nRFMeshProvision/MeshNetworkManager.swift"
-            startingColumnNumber = "9223372036854775807"
-            endingColumnNumber = "9223372036854775807"
-            startingLineNumber = "657"
-            endingLineNumber = "657"
-            landmarkName = "send(_:to:withTtl:)"
-            landmarkType = "7">
-         </BreakpointContent>
-      </BreakpointProxy>
-      <BreakpointProxy
-         BreakpointExtensionID = "Xcode.Breakpoint.FileBreakpoint">
-         <BreakpointContent
             uuid = "C499D97A-198E-4673-8FE3-D48D7ECE6BFD"
             shouldBeEnabled = "Yes"
             ignoreCount = "0"
@@ -143,22 +127,6 @@
             startingLineNumber = "128"
             endingLineNumber = "128"
             landmarkName = "init?(data:)"
-            landmarkType = "7">
-         </BreakpointContent>
-      </BreakpointProxy>
-      <BreakpointProxy
-         BreakpointExtensionID = "Xcode.Breakpoint.FileBreakpoint">
-         <BreakpointContent
-            uuid = "21D0F50B-5FEF-46AA-AE20-CC78DD412EB7"
-            shouldBeEnabled = "Yes"
-            ignoreCount = "0"
-            continueAfterRunningActions = "No"
-            filePath = "../../Library/Developer/Xcode/DerivedData/SunSmart-bsknqvobukouwgfvklwtoruhrcgz/SourcePackages/checkouts/nordic-sig-mesh-sdk/Sources/NordicSigMeshSDK/MeshLib/Manager/MeshFastAddDeviceManager.swift"
-            startingColumnNumber = "9223372036854775807"
-            endingColumnNumber = "9223372036854775807"
-            startingLineNumber = "1043"
-            endingLineNumber = "1043"
-            landmarkName = "bearer(_:didClose:)"
             landmarkType = "7">
          </BreakpointContent>
       </BreakpointProxy>

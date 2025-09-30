@@ -355,15 +355,17 @@ class SpaceViewController: WMPageController {
         
         // 蓝牙状态观察者
         bluetoothStateObservation = MeshLibManager.manager.observe(\.bluetoothState, options: [.new], changeHandler: {[weak self] _, _ in
+            guard let self = self else { return }
             DispatchQueue.main.async {
-                self?.checkBluetoothState()
+                self.checkBluetoothState()
             }
         })
         
         // 手机网络状态观察者
-        networkableObservation = NetworkRequest.shared.observe(\.networkable, options: [.new], changeHandler: { _, _ in
-            DispatchQueue.main.async {[weak self] in
-                guard let self = self else { return }
+        networkableObservation = NetworkRequest.shared.observe(\.networkable, options: [.new], changeHandler: {[weak self] _, _ in
+            guard let self = self else { return }
+            DispatchQueue.main.async {//[weak self] in
+//                guard let self = self else { return }
                 if self.space.uploadCloud, NetworkRequest.shared.networkable { // 无网->有网 开始发送心跳
                     self.startHeartbeatTimer()
                 }
@@ -748,7 +750,8 @@ class SpaceViewController: WMPageController {
     /// 心跳请求
     @objc private func heartbeatRequest() {
         
-        NetworkRequest.shared.request(.heartbeat(siteId: self.space.siteId, spaceId: self.space.id, permission: self.space.permission)) { result in
+        NetworkRequest.shared.request(.heartbeat(siteId: self.space.siteId, spaceId: self.space.id, permission: self.space.permission)) {[weak self] result in
+            guard let self else { return }
             switch result {
             case .success(_):
                 break

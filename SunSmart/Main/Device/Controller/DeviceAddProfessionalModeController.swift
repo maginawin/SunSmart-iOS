@@ -201,8 +201,9 @@ class DeviceAddProfessionalModeController: UIViewController {
 
         
         systemVolumeObservation = SystemVolumeManager.shared.observe(\.currentVolume, options: [.new], changeHandler: {[weak self] _, value in
+            guard let self = self else { return }
             DispatchQueue.main.async {
-                self?.settingsTipView.isHidden = (value.newValue ?? 0) >= DeviceSettingsParameterData.systemMinimumVolumeRequire
+                self.settingsTipView.isHidden = (value.newValue ?? 0) >= DeviceSettingsParameterData.systemMinimumVolumeRequire
             }
         })
         
@@ -388,9 +389,9 @@ class DeviceAddProfessionalModeController: UIViewController {
         
         switch self.addMode {
         case .motionSensing:
-            broadcaster.startBroadcasting(type: .pirDiscoverAdd(timeout: broadcasterDuration, lightness: deviceSettingsParameterData.brightness.value8), interval: 0.5)
+            broadcaster.startBroadcasting(type: .pirDiscoverAdd(timeout: broadcasterDuration, lightness: max(deviceSettingsParameterData.brightness.value8, 1)), interval: 0.5)
         case .lightSening:
-            broadcaster.startBroadcasting(type: .ambientLightDiscoverAdd(timeout: broadcasterDuration, lightness: deviceSettingsParameterData.brightness.value8, delta: deviceSettingsParameterData.illuminationDelta), interval: 0.5)
+            broadcaster.startBroadcasting(type: .ambientLightDiscoverAdd(timeout: broadcasterDuration, lightness: max(deviceSettingsParameterData.brightness.value8, 1), delta: deviceSettingsParameterData.illuminationDelta), interval: 0.5)
         default:
             break
         }

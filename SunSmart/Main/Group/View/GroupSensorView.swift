@@ -453,63 +453,59 @@ extension GroupSensorView: UITableViewDataSource, UITableViewDelegate {
     }
     
     
-    func scrollViewDidScroll(_ scrollView: UIScrollView) {
-        guard scrollView.isTracking else {
-            return
-        }
-        
-        let offsetY = scrollView.contentOffset.y
-        
-        if offsetY < 0 { // 向上
-            let showContentY = self.height - self.contentView.height
-            if contentView.y >= showContentY {
-                contentView.y += abs(offsetY)
-                scrollView.contentOffset = .zero
-            }else {
-//                if tableView.contentOffset.y + tableView.height < tableView.contentSize.height {
-//                    tableView.contentOffset = CGPoint(x: 0, y: tableView.contentOffset.y - offsetY)
+//    func scrollViewDidScroll(_ scrollView: UIScrollView) {
+//        guard scrollView.isTracking else {
+//            return
+//        }
+//        
+//        let offsetY = scrollView.contentOffset.y
+//        
+//        if offsetY < 0 { // 向上
+//            let showContentY = self.height - self.contentView.height
+//            if contentView.y >= showContentY {
+//                contentView.y += abs(offsetY)
+//                scrollView.contentOffset = .zero
+//            }else {
+////                if tableView.contentOffset.y + tableView.height < tableView.contentSize.height {
+////                    tableView.contentOffset = CGPoint(x: 0, y: tableView.contentOffset.y - offsetY)
 //                }
-                if contentView.y > showContentY {
-                    contentView.y -= offsetY
-                    scrollView.contentOffset = .zero
-                }
-            }
-//            
-        }else {
-            let showContentY = self.height - self.contentView.height
-            if contentView.y > showContentY {
-                contentView.y -= offsetY
-                scrollView.contentOffset = .zero
-            }
-        }
-        
-//        if offsetY < 0 {
-//            
-//            contentView.y += abs(offsetY)
-//            scrollView.contentOffset = .zero
-//        }else if offsetY > 0 {
+//            }
+////            
+//        }else {
 //            let showContentY = self.height - self.contentView.height
 //            if contentView.y > showContentY {
 //                contentView.y -= offsetY
 //                scrollView.contentOffset = .zero
 //            }
 //        }
-        
-        lastScrollOffsetY = offsetY
-    }
-    
-    func scrollViewWillEndDragging(_ scrollView: UIScrollView, withVelocity velocity: CGPoint, targetContentOffset: UnsafeMutablePointer<CGPoint>) {
-        
-        // 判断滑动结束后距离起始点距离，>100则认为隐藏，否则还原；velocity滑动力度大的时候直接退出
-        let showContentY = self.height - self.contentView.height
-        if scrollView.contentOffset.y <= 0 && (contentView.y - showContentY >= 100 || velocity.y < -0.5) {
-            hide()
-        }else {
-            UIView.animate(withDuration: 0.25) {
-                self.contentView.y = showContentY
-            }
-        }
-    }
+//        
+////        if offsetY < 0 {
+////            
+////            contentView.y += abs(offsetY)
+////            scrollView.contentOffset = .zero
+////        }else if offsetY > 0 {
+//            let showContentY = self.height - self.contentView.height
+//            if contentView.y > showContentY {
+//                contentView.y -= offsetY
+//                scrollView.contentOffset = .zero
+//            }
+//        }
+//        
+//        lastScrollOffsetY = offsetY
+//    }
+//    
+//    func scrollViewWillEndDragging(_ scrollView: UIScrollView, withVelocity velocity: CGPoint, targetContentOffset: UnsafeMutablePointer<CGPoint>) {
+//        
+//        // 判断滑动结束后距离起始点距离，>100则认为隐藏，否则还原；velocity滑动力度大的时候直接退出
+//        let showContentY = self.height - self.contentView.height
+//        if scrollView.contentOffset.y <= 0 && (contentView.y - showContentY >= 100 || velocity.y < -0.5) {
+//            hide()
+//        }else {
+//            UIView.animate(withDuration: 0.25) {
+//                self.contentView.y = showContentY
+//            }
+//        }
+//    }
     
     
 }
@@ -548,6 +544,12 @@ class GroupSensorViewCell: UITableViewCell {
                     make.right.equalTo(SCRXFrom(-88))
                 }
             }
+            
+            nameLabel.snp.updateConstraints { make in
+                let maxWidth = supportSensorType == .all ? SCRXFrom(160) : SCRXFrom(230)
+                make.width.lessThanOrEqualTo(maxWidth)
+            }
+            
         }
     }
     

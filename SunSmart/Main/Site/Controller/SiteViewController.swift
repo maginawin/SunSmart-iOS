@@ -60,6 +60,8 @@ class SiteViewController: UIViewController {
     
     private var reloadData: Bool = false
     
+    private var networkableObservation: NSKeyValueObservation?
+    
     init(site: SiteData, addSite: Bool = false) {
         self.site = site
         self.addSite = addSite
@@ -82,10 +84,7 @@ class SiteViewController: UIViewController {
         
         allSpaces = site.spaces
         favouriteSpaces = allSpaces.filter({ $0.isFavourite })
-        
-        NetworkRequest.shared.addObserver(self, forKeyPath: "networkable", context: nil)
-//        MeshLibManager.manager.setMeshNetworkConnected(meshUUID: site.meshUUID, connected: false)
-        
+
         NotificationCenter.default.addObserver(forName: .init(SiteStateChangeNotificationName), object: nil, queue: nil) {[weak self] _ in
             guard let self = self else { return }
             if self.site.state == .waitDeleted {
@@ -118,16 +117,25 @@ class SiteViewController: UIViewController {
                 self.updateEmptyView()
             }
         }
+
+        // 手机网络状态观察者
+        networkableObservation = NetworkRequest.shared.observe(\.networkable, options: [.new], changeHandler: {[weak self] _, _ in
+            guard let self = self else { return }
+            DispatchQueue.main.async {[weak self] in
+                guard let self = self else { return }
+                self.updateNoInternetUI()
+                if !NetworkRequest.shared.networkable {
+                    // 有网络=>无网络
+                        SRAlertView(title: "notification".localizedString, message: "phone_network_disconnect".localizedString, actions: [.init(title: "confirm".localizedString)]).show()
+                }
+            }
+        })
         
 //        updateEmptyView()
         updateNoInternetUI()
         
         if NetworkRequest.shared.networkable && site.uploadCloud {
             loadSiteRequest()
-            // 判断是否有放弃的地址需要回收
-//            if let addressData = site.recycleAddressData {
-//                recyclingAddressRequest(abandonAddressData: addressData)
-//            }
         }
         
 //        MeshLibManager.manager.setMeshNetworkConnected(meshUUID: self.site.meshUUID, subNetwork: self.allSpaces.first?.meshNetworkKey, connected: true)
@@ -170,24 +178,11 @@ self.updateAddressData()
     }
     
     deinit {
-        NetworkRequest.shared.removeObserver(self, forKeyPath: "networkable")
+//        NetworkRequest.shared.removeObserver(self, forKeyPath: "networkable")
+        networkableObservation = nil
 //        MeshLibManager.manager.meshNetworkDisconnect()
     }
     
-    /// KVO监听
-    override func observeValue(forKeyPath keyPath: String?, of object: Any?, change: [NSKeyValueChangeKey : Any]?, context: UnsafeMutableRawPointer?) {
-        if keyPath == "networkable" { // 手机网络连接状态
-            updateNoInternetUI()
-            
-            if NetworkRequest.shared.networkable { // 无网络=>有网络
-                // 自动上传
-                
-                
-            }else { // 有网络=>无网络
-                SRAlertView(title: "notification".localizedString, message: "phone_network_disconnect".localizedString, actions: [.init(title: "confirm".localizedString)]).show()
-            }
-        }
-    }
     
 //    #if DEBUG
     /// 更新地址数据

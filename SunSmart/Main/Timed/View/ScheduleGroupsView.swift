@@ -58,7 +58,8 @@ class ScheduleGroupsView: UIView {
     private func addObserver() {
         
         // mesh网络连接观察者
-        meshNetworkConnectedObservation = MeshLibManager.manager.observe(\.isMeshNetworkConnected, options: [.new], changeHandler: { _, _ in
+        meshNetworkConnectedObservation = MeshLibManager.manager.observe(\.isMeshNetworkConnected, options: [.new], changeHandler: {[weak self] _, _ in
+            guard let self = self else { return }
             DispatchQueue.main.asyncAfter(wallDeadline: .now() + 1) {[weak self] in
                 self?.collectionView.reloadData()
             }

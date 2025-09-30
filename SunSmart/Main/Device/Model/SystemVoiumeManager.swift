@@ -33,8 +33,9 @@ class SystemVolumeManager: NSObject {
             object: nil
         )
         systemVolumeObservation = AVAudioSession.sharedInstance().observe(\.outputVolume, options: [.new], changeHandler: {[weak self] _, _ in
+            guard let self = self else { return }
             DispatchQueue.main.async {
-                self?.refreshVolume()
+                self.refreshVolume()
             }
         })
     }

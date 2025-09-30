@@ -65,7 +65,7 @@ class SitesViewController: UIViewController {
     private var favouriteSites: [SiteData] = []
     private var reloadState: ReloadState = .list
     /// 导航控制器是否点击back返回
-    private var navitionItemBack: Bool = false
+//    private var navitionItemBack: Bool = false
     /// 扫码页面
     private weak var scanCodeVc: LBXScanViewController?
     
@@ -130,7 +130,7 @@ class SitesViewController: UIViewController {
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
         
-        (navigationController as? NavigationViewController)?.navigationDelegate = self
+//        (navigationController as? NavigationViewController)?.navigationDelegate = self
         
         switch reloadState {
         case .list:
@@ -145,11 +145,11 @@ class SitesViewController: UIViewController {
         }
         
         // 点击back返回，回到menu页面
-        if navitionItemBack && showMenu {
-            showMenu = false
-            menuClick()
-        }
-        navitionItemBack = false
+//        if navitionItemBack && showMenu {
+//            showMenu = false
+//            menuClick()
+//        }
+//        navitionItemBack = false
         
         CloudSynchronizationManager.shared.delegate = self
     }
@@ -174,7 +174,7 @@ class SitesViewController: UIViewController {
     override func viewWillDisappear(_ animated: Bool) {
         super.viewWillDisappear(animated)
         
-        (navigationController as? NavigationViewController)?.navigationDelegate = nil
+//        (navigationController as? NavigationViewController)?.navigationDelegate = nil
     }
     
     /// KVO监听
@@ -1232,14 +1232,14 @@ extension SitesViewController {
     }
 }
 
-extension SitesViewController: NavigationViewControllerDelegate {
-    /// 导航控制器点击back事件
-    func navigationController(_ navigationController: NavigationViewController, backItemAction showViewController: UIViewController) {
-        if navigationController.children.count > 1 {
-            navitionItemBack = true
-        }
-    }
-}
+//extension SitesViewController: NavigationViewControllerDelegate {
+//    /// 导航控制器点击back事件
+//    func navigationController(_ navigationController: NavigationViewController, backItemAction showViewController: UIViewController) {
+//        if navigationController.children.count > 1 {
+//            navitionItemBack = true
+//        }
+//    }
+//}
 
 extension SitesViewController: CustomSegmentedControlDelegate {
     
