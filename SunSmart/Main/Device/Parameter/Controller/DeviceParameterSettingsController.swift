@@ -45,17 +45,17 @@ class DeviceParameterSettingsController: UIViewController {
         title = "device_parameter_settings".localizedString
         view.backgroundColor = Background_Color
         
-        var motionSensitivityRange: ClosedRange<Double>?
+//        var motionSensitivityRange: ClosedRange<Double>?
         // 获取设备配置的灵敏度
         if let device = devices.first(where: { $0.deviceConfigInfo?.sensitivityRange != nil }), let sensitivityValueRange = device.deviceConfigInfo?.sensitivityRange {
-            motionSensitivityRange = Double(sensitivityValueRange.lowerBound.percentageFloat)...Double(sensitivityValueRange.upperBound.percentageFloat)
+            defaultMotionSensitivityRange = Double(sensitivityValueRange.lowerBound.percentageFloat)...Double(sensitivityValueRange.upperBound.percentageFloat)
         }
         
         
         parameterDatas = [
             .init(type: .pwmFrequency, data: 2940, enable: false),
             .init(type: .ratedPower, data: ratedPowerPhaseDatas, enable: false),
-            .init(type: .motionSensitivityRange, data: motionSensitivityRange ?? defaultMotionSensitivityRange, enable: false),
+            .init(type: .motionSensitivityRange, data: defaultMotionSensitivityRange, enable: false),
             .init(type: .defalutTransitionTime, data: defaultTransitionTime, enable: false)
         ]
         setupUI()
@@ -103,7 +103,11 @@ class DeviceParameterSettingsController: UIViewController {
                 }
             case .motionSensitivityRange:
                 if let range = parameterData.data as? ClosedRange<Double> {
-                    return .motionSensitivityRange(range: range.lowerBound.value16...range.upperBound.value16)
+                    
+                    let min = (range.lowerBound * 10).rounded() / 10.0
+                    let max = (range.upperBound * 10).rounded() / 10.0
+                    
+                    return .motionSensitivityRange(range: min.value16...max.value16)
                 }
             case .defalutTransitionTime:
                 if let value = parameterData.data as? TransitionTime {
@@ -315,6 +319,7 @@ class DeviceParameterSettingsController: UIViewController {
         tableView.register(DeviceParameterSliderViewCell.classForCoder(), forCellReuseIdentifier: "sliderCell")
         
         tableView.estimatedRowHeight = SCRYFrom(148)
+        tableView.rowHeight = UITableView.automaticDimension
         tableView.dataSource = self
         tableView.delegate = self
         view.addSubview(tableView)
@@ -456,8 +461,11 @@ extension DeviceParameterSettingsController: DeviceParameterRetedPowerViewCellDe
 //            tableView.reloadRows(at: [indexPath], with: .none)
             
             updateSetupBtnState()
+            
+            tableView.reloadSections(IndexSet(integer: indexPath.section), with: .automatic)
         }
-        tableView.performBatchUpdates(nil)
+      
+//        tableView.performBatchUpdates(nil)
     }
     
 }

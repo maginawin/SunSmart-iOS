@@ -48,6 +48,7 @@ class ImportProjectView: UIView {
     func show() {
         
         if superview == nil {
+            self.tag = 100
             UIApplication.shared.keyWindow().addSubview(self)
         }
         

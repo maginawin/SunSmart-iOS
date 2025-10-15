@@ -371,7 +371,7 @@ class ReadDevicesDataViewController: UIViewController {
             navigationItem.rightBarButtonItem?.isEnabled = true
             bottomView.isHidden = false
             selectAllBtn.isHidden = true
-            tableView.contentInset = UIEdgeInsets(top: SCRYFrom(7), left: 0, bottom: 0, right: 0)
+            tableView.contentInset = UIEdgeInsets(top: SCRYFrom(7), left: 0, bottom: bottomView.height, right: 0)
             backBtn.isHidden = true
         case .success:
             bottomView.isHidden = true

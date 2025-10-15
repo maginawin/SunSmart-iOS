@@ -53,7 +53,7 @@ class BetaTestingAlertView: UIView {
         if let alartView = SRAlertView.getCurrentAlertView(){
             alartView.dismiss(animation: false)
         }
-        
+        self.tag = 100
         UIApplication.shared.keyWindow().addSubview(self)
         contentView.layoutIfNeeded()
         contentView.transform = CGAffineTransformMakeScale(0.1, 0.1)

@@ -80,12 +80,13 @@ extension SiteData {
             break
         }
         self.permission = permission
-        
+//        print("导入数据：site start \(Date().timeIntervalSince1970)")
         let currentNetwork = MeshNetworkManager.instance.meshNetwork?.uuid.uuidString == self.meshUUID ? MeshNetworkManager.instance.meshNetwork : nil
 //        print("读取网络数据：\(Date().timeIntervalSince1970)")
         var meshNetwork = currentNetwork ?? MeshNetwork.load(meshUUID: self.meshUUID, allData: false)
 //        print("读取网络数据完成：\(Date().timeIntervalSince1970)")
         var updateNetwork = false
+//        print("导入数据：site load network \(Date().timeIntervalSince1970)")
         // 服务器最后更新时间比本地时间新才覆盖本地数据
         if lastUpdate > self.lastUpdate || initialize {
             
@@ -219,7 +220,7 @@ extension SiteData {
                     })
                     meshNetwork?.setNetworkExclusionAddresses(list: exclusionDataList)
                 }
-                
+                 
                 if let deviceUsedAddresses = json["provisioner"]["usedAddresses"].arrayObject as? [String] {
                     
                     var usedAddresses = deviceUsedAddresses.compactMap({ Address(hex: $0) })
@@ -277,7 +278,7 @@ extension SiteData {
 //                meshNetwork?.save()
 //            }
         }else {
-            
+//            print("导入数据：site update proversioner \(Date().timeIntervalSince1970)")
             if let ivIndex = json["ivIndex"].uInt32, meshNetwork?.currentIVIndex != ivIndex {
                 meshNetwork?.currentIVIndex = ivIndex
                 updateNetwork = true
@@ -292,28 +293,51 @@ extension SiteData {
                     return nil
                 })
                 
-                // 之前有服务器不存在的废弃地址，更新数据时追加保存到本地
-                var appendExclusionDatas: [(ivIndex: UInt32, addresses: [Address])] = []
-                // 检查不符合回收条件并且未记录的废弃地址
-                if let currentExclusionAddresses = meshNetwork?.getNetworkExclusionAddresses() {
-                    currentExclusionAddresses.forEach { (ivIndex: UInt32, addresses: [Address]) in
-                        if (meshNetwork?.currentIVIndex ?? 0) - ivIndex <= 1 {
-                            var appendAddresses = addresses
-                            if let exclusionData = exclusionDataList.first(where: { $0.ivIndex == ivIndex }) {
-                                appendAddresses = addresses.filter({ !exclusionData.addresses.contains($0) })
+                let currentExclusionAddresses = meshNetwork?.getNetworkExclusionAddresses() ?? []
+                
+                // 判断是否有更新
+                let hasUpdate = exclusionDataList.contains { newData in
+                    if let currentData = currentExclusionAddresses.first(where: { $0.ivIndex == newData.ivIndex }) {
+                        return currentData.addresses != newData.addresses
+                    } else {
+                        return true
+                    }
+                } || currentExclusionAddresses.contains { currentData in
+                    !exclusionDataList.contains(where: { $0.ivIndex == currentData.ivIndex })
+                }
+                
+                if hasUpdate {
+                        
+                    // 之前有服务器不存在的废弃地址，更新数据时追加保存到本地
+                    var appendExclusionDatas: [(ivIndex: UInt32, addresses: [Address])] = []
+                    // 检查不符合回收条件并且未记录的废弃地址
+                    if currentExclusionAddresses.count > 0 {
+                        currentExclusionAddresses.forEach { (ivIndex: UInt32, addresses: [Address]) in
+                            if (meshNetwork?.currentIVIndex ?? 0) - ivIndex <= 1 {
+                                var appendAddresses = addresses
+                                if let exclusionData = exclusionDataList.first(where: { $0.ivIndex == ivIndex }) {
+                                    appendAddresses = addresses.filter({ !exclusionData.addresses.contains($0) })
+                                }
+                                if appendAddresses.count > 0 {
+                                    appendExclusionDatas.append((ivIndex: ivIndex, addresses: appendAddresses))
+                                }
+                            }else { // 废弃地址回收后，删除已使用地址
+                                meshNetwork?.deviceUsedAddresses.removeAll(where: { addresses.contains($0) })
                             }
-                            appendExclusionDatas.append((ivIndex: ivIndex, addresses: appendAddresses))
-                        }else { // 废弃地址回收后，删除已使用地址
-                            meshNetwork?.deviceUsedAddresses.removeAll(where: { addresses.contains($0) })
+                        }
+                    }
+                    meshNetwork?.setNetworkExclusionAddresses(list: exclusionDataList)
+                    if appendExclusionDatas.count > 0 {
+                        // 更新到服务器
+                        self.lastUpdate = Int64(Date().timeIntervalSince1970)
+                        appendExclusionDatas.forEach { (ivIndex: UInt32, addresses: [Address]) in
+                            addresses.forEach({
+                                meshNetwork?.insetExclusionAddress(ivIndex: ivIndex, address: $0)
+                            })
                         }
                     }
                 }
-                meshNetwork?.setNetworkExclusionAddresses(list: exclusionDataList)
-                appendExclusionDatas.forEach { (ivIndex: UInt32, addresses: [Address]) in
-                    addresses.forEach({
-                        meshNetwork?.insetExclusionAddress(ivIndex: ivIndex, address: $0)
-                    })
-                }
+                
             }
         }
       
@@ -326,6 +350,7 @@ extension SiteData {
             self.setProvisioner(meshNetwork: meshNetwork, provisionerData: provisionerData)
         }
         
+//        print("导入数据：site update proversioner success \(Date().timeIntervalSince1970)")
         if let spaceDicts = json["spaces"].arrayObject as? [[String: Any]] {
             var spaces: [SpaceData] = []
             await withTaskGroup(of: SpaceData?.self) { group in
@@ -369,6 +394,7 @@ extension SiteData {
         }else {
             self.spaceCount = json["spaceCount"].int
         }
+//        print("导入数据：site update spaces success \(Date().timeIntervalSince1970)")
         self.save()
     }
     

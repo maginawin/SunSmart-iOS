@@ -41,6 +41,7 @@ class SceneExecuteDataPickerView: UIView {
         pickerView.deleteCallback = delete
         pickerView.cct = cct
         pickerView.setupUI()
+        pickerView.tag = 100
         UIApplication.shared.keyWindow().addSubview(pickerView)
         pickerView.showAnimation()
     }

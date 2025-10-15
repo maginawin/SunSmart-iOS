@@ -51,6 +51,7 @@ class TableSelectView: UIView {
             view.contentView.layer.shadowOffset = CGSize(width: 0, height: 2)
             view.contentView.layer.cornerRadius = 6
         }
+        view.tag = 100
         UIApplication.shared.keyWindow().addSubview(view)
         view.showAnimation()
     }

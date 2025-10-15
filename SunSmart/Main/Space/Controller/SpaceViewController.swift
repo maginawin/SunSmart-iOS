@@ -265,6 +265,15 @@ class SpaceViewController: WMPageController {
         stopAutoTestTimer()
     }
     
+    /// 删除当前窗口的自定义view（防止权限清空强制退出页面时未关闭自定义view）
+    private func removeFromWindowSubviews() {
+        
+        // 关闭一切在窗口的自定义view
+        let subviews = UIApplication.shared.keyWindow().subviews.filter({ $0.tag == 100 })
+        subviews.forEach({ $0.removeFromSuperview() })
+        
+    }
+    
 //    override func observeValue(forKeyPath keyPath: String?, of object: Any?, change: [NSKeyValueChangeKey : Any]?, context: UnsafeMutableRawPointer?) {
 //        
 ////        let newState = change![.newKey] as! CBManagerState
@@ -755,7 +764,7 @@ class SpaceViewController: WMPageController {
             switch result {
             case .success(_):
                 break
-            case .failure(let error): 
+            case .failure(let error):
 //                print(error.localizedDescription)
 //                if self.space.permission == .visitor {
 //                    return
@@ -767,7 +776,10 @@ class SpaceViewController: WMPageController {
                         NotificationCenter.default.post(name: .init(SiteStateChangeNotificationName), object: nil)
                     }
                     DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {[weak self] in
-                        self?.navigationController?.popViewController(animated: true)
+                        if let currentVc = UIViewController.getVisibleVc(), currentVc.presentingViewController != nil { // 退出modal页面
+                            currentVc.dismiss(animated: false)
+                        }
+                        self?.navigationController?.popToViewController(vcClass: SiteViewController.classForCoder())
                     }
                     // 返回到site列表 通知刷新site
                     NotificationCenter.default.post(name: .init(rawValue: SitesDataRefreshNotifiacationName), object: true)
@@ -778,7 +790,12 @@ class SpaceViewController: WMPageController {
                         if self?.space.permission == .owner {
                             NotificationCenter.default.post(name: .init(SiteStateChangeNotificationName), object: nil)
                         }
-                        self?.navigationController?.popViewController(animated: true)
+                        if let currentVc = UIViewController.getVisibleVc(), currentVc.presentingViewController != nil { // 退出modal页面
+                            currentVc.dismiss(animated: false)
+                        }
+                        self?.removeFromWindowSubviews()
+                        self?.navigationController?.popToViewController(vcClass: SiteViewController.classForCoder())
+//                        self?.navigationController?.popViewController(animated: true)
                     })]).show()
                 case .incorrectPassword, .spacePasswordOverdue: // 密码修改
                     // 正在提示
@@ -788,7 +805,11 @@ class SpaceViewController: WMPageController {
                     self.space.requiresPasswordVerification = true
                     self.space.save()
                     SRAlertView(title: "notification".localizedString, message: "the_space_password_change_message".localizedString, actions: [SRAlertAction(title: "confirm".localizedString, actionHandler: {[weak self] _ in
-                        self?.navigationController?.popViewController(animated: true)
+                        if let currentVc = UIViewController.getVisibleVc(), currentVc.presentingViewController != nil { // 退出modal页面
+                            currentVc.dismiss(animated: false)
+                        }
+                        self?.removeFromWindowSubviews()
+                        self?.navigationController?.popToViewController(vcClass: SiteViewController.classForCoder())
                     })]).show()
                 default:
                     break

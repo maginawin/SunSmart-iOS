@@ -199,7 +199,7 @@ class SyncDeviceViewCell: UITableViewCell {
         contentView.addSubview(nameLabel)
         nameLabel.snp.makeConstraints { make in
             make.left.equalTo(iconImageBtn.snp.right).offset(SCRXFrom(6))
-            make.width.lessThanOrEqualTo(SCRXFrom(220))
+            make.width.lessThanOrEqualTo(SCRXFrom(180))
             make.centerY.equalTo(iconImageBtn)
         }
         

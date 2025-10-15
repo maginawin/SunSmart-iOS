@@ -45,6 +45,7 @@ class SyncDevicesProgressView: UIView {
         let view = SyncDevicesProgressView(frame: UIScreen.main.bounds, stepModel: stepModel)
         view.resyncCallback = resync
         view.hideCallback = hide
+        view.tag = 100
         UIApplication.shared.keyWindow().addSubview(view)
         view.showAnimation()
     }

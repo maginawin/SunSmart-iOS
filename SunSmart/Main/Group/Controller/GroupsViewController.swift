@@ -155,6 +155,7 @@ class GroupsViewController: UIViewController {
         guard sender.state == .began else {
             return
         }
+        print("长按")
         let point = sender.location(in: collectionView)
         if let indexPath = collectionView.indexPathForItem(at: point), indexPath.item < MeshNetworkManager.instance.groups.count {
             let group = MeshNetworkManager.instance.groups[indexPath.item]
@@ -406,6 +407,7 @@ class GroupsViewController: UIViewController {
         collectionView.backgroundColor = .clear
         collectionView.dataSource = self
         collectionView.delegate = self
+        collectionView.showsVerticalScrollIndicator = true
         let longPress = UILongPressGestureRecognizer(target: self, action: #selector(collectionLongPressAction))
         longPress.minimumPressDuration = 0.5
         collectionView.addGestureRecognizer(longPress)

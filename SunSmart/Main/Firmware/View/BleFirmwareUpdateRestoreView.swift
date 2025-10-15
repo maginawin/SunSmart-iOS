@@ -65,8 +65,8 @@ class BleFirmwareUpdateRestoreView: UICollectionReusableView {
             paragraphStyle.lineSpacing = 2
             paragraphStyle.paragraphSpacing = 4
             
-            let attStr = NSAttributedString(string: "ble_ota_reset_message".localizedString, attributes: [.paragraphStyle: paragraphStyle])
-            let size = attStr.boundingRect(with: CGSize(width: SCREEN_WIDTH - SCRXFrom(38 + 18), height: CGFloat(MAXFLOAT)), options: .usesLineFragmentOrigin, context: nil).size
+            let attStr = NSAttributedString(string: "ble_ota_reset_message".localizedString, attributes: [.paragraphStyle: paragraphStyle, .font: UIFont.systemFont(ofSize: 13, weight: .light)])
+            let size = attStr.boundingRect(with: CGSize(width: SCREEN_WIDTH - SCRXFrom(38 + 18), height: .greatestFiniteMagnitude), options: [.usesLineFragmentOrigin, .usesFontLeading], context: nil).size
             height += size.height + SCRYFrom(16)
         }
         return height

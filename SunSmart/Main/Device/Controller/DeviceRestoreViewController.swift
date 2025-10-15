@@ -1062,7 +1062,8 @@ class DeviceRestoreViewController: UIViewController {
             case .default:
                 footerView.selectCountLabel.text = "\(showDevices.count)"
             case .specified(let nodes):
-                footerView.selectCountLabel.text = "\(showDevices.count)/\(nodes.count)"
+                
+                footerView.selectCountLabel.text = "\(showDevices.count)/\(nodes.count - restoreNodes.count)"
             }
             
             tableView.contentInset = UIEdgeInsets(top: 0, left: 0, bottom: footerView.height + SCRYFrom(8), right: 0)
@@ -1254,6 +1255,11 @@ class DeviceRestoreViewController: UIViewController {
         }
         addResultView.closeBtn.addTarget(self, action: #selector(closeBtnClick), for: .touchUpInside)
         addResultView.stopAddBtn.addTarget(self, action: #selector(stopAddBtnClick), for: .touchUpInside)
+        addResultView.stopAddBtn.snp.remakeConstraints { make in
+            make.right.equalTo(SCRXFrom(-18))
+            make.top.equalTo(SCRYFrom(7))
+            make.height.equalTo(SCRYFrom(32))
+        }
     }
 
 }

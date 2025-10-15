@@ -93,6 +93,7 @@ class ConfigurationFlowGuidanceView: UIView {
     func show() {
         
         if superview == nil {
+            self.tag = 100
             UIApplication.shared.keyWindow().addSubview(self)
             self.layoutIfNeeded()
         }

@@ -42,6 +42,7 @@ class MainMenuView: UIView {
         
         let menuView = MainMenuView(frame: UIScreen.main.bounds)
         menuView.menuTapBack = menuTap
+        menuView.tag = 100
         UIApplication.shared.keyWindow().addSubview(menuView)
 //        UIViewController.getVisibleVc()?.navigationController?.view.addSubview(menuView)
         menuView.showAnimation()

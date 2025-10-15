@@ -58,6 +58,7 @@ class EnergyHarvestStateView: UIView {
     
     func show() {
         if self.superview == nil {
+            self.tag = 100
             UIApplication.shared.keyWindow().addSubview(self)
         }
         contentView.layoutIfNeeded()

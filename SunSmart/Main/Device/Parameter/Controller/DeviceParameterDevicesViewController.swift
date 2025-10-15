@@ -439,7 +439,7 @@ class DeviceParameterDevicesViewController: UIViewController {
                     }
                     if let range = range {
                         
-                        cell.sensitivityLabel.text = "\("absolute_sensitivity".localizedString) :\(range.lowerBound.percentageFloat.toSimplifyStr(maxDigits: 1))%~\(range.upperBound.percentageFloat.toSimplifyStr(maxDigits: 1))%"
+                        cell.sensitivityLabel.text = "\("absolute_sensitivity".localizedString): \(range.lowerBound.percentageFloat.toSimplifyStr(maxDigits: 1))%~\(range.upperBound.percentageFloat.toSimplifyStr(maxDigits: 1))%"
                     }else {
                         cell.sensitivityLabel.text = "\("absolute_sensitivity".localizedString) : --"
                     }
@@ -602,7 +602,7 @@ extension DeviceParameterDevicesViewController: UITableViewDataSource, UITableVi
             }
             if let range = range {
                 
-                cell.sensitivityLabel.text = "\("absolute_sensitivity".localizedString) :\(range.lowerBound.percentageFloat.toSimplifyStr(maxDigits: 1))%~\(range.upperBound.percentageFloat.toSimplifyStr(maxDigits: 1))%"
+                cell.sensitivityLabel.text = "\("absolute_sensitivity".localizedString): \(range.lowerBound.percentageFloat.toSimplifyStr(maxDigits: 1))%~\(range.upperBound.percentageFloat.toSimplifyStr(maxDigits: 1))%"
             }else {
                 cell.sensitivityLabel.text = "\("absolute_sensitivity".localizedString) : --"
             }

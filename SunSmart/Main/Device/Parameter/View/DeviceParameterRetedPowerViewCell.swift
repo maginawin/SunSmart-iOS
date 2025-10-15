@@ -47,6 +47,8 @@ class DeviceParameterRetedPowerViewCell: UITableViewCell {
                 make.height.equalTo(headerView.height + SCRYFrom(12) + tableView.rowHeight * CGFloat(min(phases.count, 5)))
             }
             tableView.reloadData()
+            
+            updateLayout()
         }
     }
     
@@ -67,7 +69,13 @@ class DeviceParameterRetedPowerViewCell: UITableViewCell {
     func updateParameterEnable(enable: Bool) {
         
         enableSwitch.isOn = enable
-        if enable {
+        
+        updateLayout()
+    }
+    
+    private func updateLayout() {
+        
+        if enableSwitch.isOn {
             countLabel.isHidden = false
             addBtn.isHidden = false
             tableView.isHidden = false
@@ -78,10 +86,16 @@ class DeviceParameterRetedPowerViewCell: UITableViewCell {
                 make.left.equalTo(SCRXFrom(16))
                 make.top.equalTo(SCRYFrom(24))
             }
-            noteLabel.snp.makeConstraints { make in
+//            tableView.snp.updateConstraints { make in
+//                make.height.equalTo(headerView.height + SCRYFrom(12) + tableView.rowHeight * CGFloat(min(phases.count, 5)))
+//            }
+//            let  ((noteLabel.text ?? "") as NSString).boundingRect(with: CGSize(width: contentView.width, height: .greatestFiniteMagnitude), context: nil)
+            
+            
+            noteLabel.snp.remakeConstraints { make in
                 make.left.right.equalTo(tableView)
                 make.top.equalTo(tableView.snp.bottom).offset(SCRYFrom(16))
-                make.bottom.equalTo(SCRYFit(-26))
+                make.bottom.equalTo(SCRYFit(-26)).priority(.high)
             }
             
         }else {
@@ -96,6 +110,7 @@ class DeviceParameterRetedPowerViewCell: UITableViewCell {
                 make.top.equalTo(SCRYFrom(24))
                 make.bottom.equalTo(SCRYFrom(-23))
             }
+           
             noteLabel.snp.remakeConstraints { make in
                 make.left.right.equalTo(tableView)
                 make.top.equalTo(tableView.snp.bottom).offset(SCRYFrom(16))
@@ -191,7 +206,7 @@ class DeviceParameterRetedPowerViewCell: UITableViewCell {
         noteLabel.snp.makeConstraints { make in
             make.left.right.equalTo(tableView)
             make.top.equalTo(tableView.snp.bottom).offset(SCRYFrom(16))
-            make.bottom.equalTo(SCRYFit(-26))
+//            make.bottom.equalTo(SCRYFit(-26))
         }
         
     }

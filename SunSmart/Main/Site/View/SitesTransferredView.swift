@@ -41,7 +41,7 @@ class SitesTransferredView: UIView {
     }
     
     func show() {
-        
+        self.tag = 100
         UIApplication.shared.keyWindow().addSubview(self)
         
     }

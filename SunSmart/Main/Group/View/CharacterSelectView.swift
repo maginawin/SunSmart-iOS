@@ -44,6 +44,7 @@ class CharacterSelectView: UIView {
         }
         view.selectCallback = selectBack
         view.setupUI()
+        view.tag = 100
         UIApplication.shared.keyWindow().addSubview(view)
         view.showAnimation()
     }

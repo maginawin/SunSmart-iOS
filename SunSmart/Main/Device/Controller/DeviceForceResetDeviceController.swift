@@ -7,6 +7,7 @@
 
 import UIKit
 import NordicSigMeshSDK
+import CoreBluetooth
 
 protocol DeviceForceResetDeviceControllerDelegate: AnyObject {
     
@@ -76,6 +77,7 @@ class DeviceForceResetDeviceController: UIViewController {
     private var imageView: UIImageView!
     private var stepView: GroupPathSequenceDeviceAddStepView!
     private var deviceView: DeviceForceResetDeviceView!
+
     
     private var loadingView: UIView!
     private var loadingImageView: UIImageView!
@@ -110,6 +112,8 @@ class DeviceForceResetDeviceController: UIViewController {
     /// 重新选择倒计时
     private var reselectDowncount: Int = 5
     private var reselectTimer: Timer?
+    /// 扫描到的已配网设备list
+    private var provisionedDeviceDevices: [ProvisioningDevice] = []
     
     let resetMode: ResetMode
     
@@ -128,7 +132,6 @@ class DeviceForceResetDeviceController: UIViewController {
         view.backgroundColor = Background_Color
         
         displayDeviceNamePrefix = SpaceViewController.currentSpace()?.displayDeviceNamePrefix ?? true
-        
         setupUI()
         updateUI()
     }
@@ -159,48 +162,68 @@ class DeviceForceResetDeviceController: UIViewController {
         if broadcaster {
             startBroadcaster()
         }
-        MeshLibManager.manager.scanDevice(withServices: [MeshProvisioningService.uuid, MeshProxyService.uuid]) {[weak self] peripheral, advertisementData, rssi in
+        provisionedDeviceDevices.removeAll()
+        // MeshProvisioningService.uuid, MeshProxyService.uuid,
+        MeshLibManager.manager.scanDevice(withServices: []) {[weak self] peripheral, advertisementData, rssi in
+            
             guard let self = self,
-                  let provisioningDevice = ProvisioningDevice(peripheral: peripheral, advertisementData: advertisementData, rssi: rssi),
-                  provisioningDevice.macAddress != nil else { return }
+                  let scanDevice = ProvisioningDevice(peripheral: peripheral, advertisementData: advertisementData, rssi: rssi),
+                  scanDevice.cid == CompanyId,
+                  scanDevice.macAddress != nil else { return }
             
-            // 过滤移动感应不在信号范围内的设备
-            if self.resetMode == .motion, !self.selectRSSIRange.contains(rssi.intValue) {
-                return
-            }
-            
-            if let currentDevice = self.device, currentDevice.peripheral.identifier == provisioningDevice.peripheral.identifier, provisioningDevice.networkId == nil, self.deviceState == .reseting { // 删除设备成功
-                self.deviceResetSuccess()
-
-            }else if provisioningDevice.networkId != nil { // 只显示已入网设备
+            if scanDevice.connectable { // 是否可被连接，1827/1828服务
+                // 过滤移动感应不在信号范围内的设备
+                if self.resetMode == .motion, !self.selectRSSIRange.contains(rssi.intValue) {
+                    return
+                }
+                if let currentDevice = self.device, currentDevice.macAddress == scanDevice.macAddress, scanDevice.networkId == nil, self.deviceState == .reseting { // 删除设备成功
+                    self.deviceResetSuccess()
+                    
+                }else if scanDevice.networkId != nil { // 只显示已入网设备
+                    if self.device != nil {
+                        return
+                    }
+                    
+                    if !provisionedDeviceDevices.contains(where: { $0.macAddress == scanDevice.macAddress }) {
+                        provisionedDeviceDevices.append(scanDevice)
+                    }
+                    
+                }
+            }else { // 无定向广播包
                 if self.device != nil {
                     return
                 }
-                if (self.resetMode == .flashlight && provisioningDevice.triggerActionTypes.contains(.lightSensing)) || (self.resetMode == .motion && provisioningDevice.triggerActionTypes.contains(.motionSensing)) {
+                // 找到已配网对应设备
+                if let provisionedDevice = self.provisionedDeviceDevices.first(where: { $0.macAddress == scanDevice.macAddress }) {
+                    provisionedDevice.triggerActionTypes = scanDevice.triggerActionTypes
                     
-                    if let node = MeshNetworkManager.instance.meshNetwork?.nodes.first(where: { $0.macAddress == provisioningDevice.macAddress }) {
+                    if (self.resetMode == .flashlight && provisionedDevice.triggerActionTypes.contains(.lightSensing)) || (self.resetMode == .motion && provisionedDevice.triggerActionTypes.contains(.motionSensing)) {
                         
-                        provisioningDevice.deviceName = node.name
-                        provisioningDevice.icon = node.iconName
-                        provisioningDevice.address = node.primaryUnicastAddress
-                        self.deviceGroup = node.group
+                        if let node = MeshNetworkManager.instance.meshNetwork?.nodes.first(where: { $0.macAddress == provisionedDevice.macAddress }) {
+                            
+                            provisionedDevice.deviceName = node.name
+                            provisionedDevice.icon = node.iconName
+                            provisionedDevice.address = node.primaryUnicastAddress
+                            self.deviceGroup = node.group
+                            
+                        }else if let info = MeshLibManager.manager.supportDeviceInfos.first(where: { $0.companyId == provisionedDevice.cid && $0.productId == provisionedDevice.pid }) {
+                            provisionedDevice.deviceName = info.categoryName
+                            provisionedDevice.icon = "device_\(info.iconCategory)"
+                            self.deviceGroup = nil
+                        }
                         
-                    }else if let info = MeshLibManager.manager.supportDeviceInfos.first(where: { $0.companyId == provisioningDevice.cid && $0.productId == provisioningDevice.pid }) {
-                        provisioningDevice.deviceName = info.categoryName
-                        provisioningDevice.icon = "device_\(info.iconCategory)"
-                        self.deviceGroup = nil
+                        self.device = provisionedDevice
+                        self.state = .discovered
+//                        self.startReselectTimer()
+                        self.updateUI()
+                        
+                        self.deviceView.update(device: provisionedDevice, displayDeviceNamePrefix: self.displayDeviceNamePrefix, deviceGroup: self.deviceGroup, state: .none)
+                        // 找到一个设备后停止扫描
+                        self.stopScan()
+                        
+                        self.delegate?.controller(self, deviceDiscovered: provisionedDevice)
                     }
                     
-                    self.device = provisioningDevice
-                    self.state = .discovered
-                    self.startReselectTimer()
-                    self.updateUI()
-
-                    self.deviceView.update(device: provisioningDevice, displayDeviceNamePrefix: self.displayDeviceNamePrefix, deviceGroup: self.deviceGroup, state: .none)
-                    // 找到一个设备后停止扫描
-                    self.stopScan()
-                    
-                    self.delegate?.controller(self, deviceDiscovered: provisioningDevice)
                 }
             }
         }

@@ -64,6 +64,7 @@ class TitleSelectView: UIView {
             view.contentView.layer.shadowOffset = CGSize(width: 0, height: 2)
             view.contentView.layer.cornerRadius = 6
         }
+        view.tag = 100
         UIApplication.shared.keyWindow().addSubview(view)
         view.showAnimation()
     }
@@ -153,11 +154,12 @@ extension TitleSelectView: UITableViewDataSource, UITableViewDelegate {
             cell.iconX = 0
             cell.titleX = SCRXFrom(35)
             cell.backgroundColor = selectIndex == indexPath.row ? self.selectBackgroundColor : .clear
+            cell.titleMaxWidth = tableView.width - SCRXFrom(4) - 30
         }else {
             cell.titleX =  SCRXFrom(4)
             cell.titleLabel.textAlignment = .center
-            cell.titleMaxWidth = tableView.width - SCRXFrom(4)
             cell.backgroundColor = .clear
+            cell.titleMaxWidth = tableView.width - SCRXFrom(4)
         }
         
         cell.titleLabel.text = titles[indexPath.row]

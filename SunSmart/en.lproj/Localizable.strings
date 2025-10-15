@@ -1156,7 +1156,8 @@
 "energy_saving" = "Energy saving (kWh)";
 "energy_saving_percentage" = "Energy saving percentage";
 
-"profile_predictive_lighting" = "Proximity/Predictive Lighting";"profile_predictive_lighting_message" = "This function will only work after adding devices to the group and completing the path sequence.";
+"profile_predictive_lighting" = "Proximity/Predictive Lighting";
+"profile_predictive_lighting_message" = "This function will only work after adding devices to the group and completing the path sequence.";
 "save_profile" = "Save profile";
 "add_devices_to_the_group" = "Add devices to\nthe group";
 "set_the_path_sequence" = " Set the path\nsequence";

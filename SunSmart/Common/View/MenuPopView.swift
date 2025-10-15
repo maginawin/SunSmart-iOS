@@ -44,6 +44,7 @@ class MenuPopView: UIView {
         view.items = items
         view.direction = direction
         view.setupUI()
+        view.tag = 100
         UIApplication.shared.keyWindow().addSubview(view)
         
         view.showAnimation()

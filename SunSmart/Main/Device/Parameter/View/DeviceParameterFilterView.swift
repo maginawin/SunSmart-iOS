@@ -77,6 +77,7 @@ class DeviceParameterFilterView: UIView {
     
     func show() {
         if superview == nil {
+            self.tag = 100
             UIApplication.shared.keyWindow().addSubview(self)
             self.layoutIfNeeded()
             contentView.addRoundedCorners(corners: [.topLeft, .topRight], cornerRadii: CGSize(width: SCRYFrom(20), height: SCRYFrom(20)))

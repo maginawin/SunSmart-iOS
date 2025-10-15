@@ -48,6 +48,7 @@ class ProfileLevelSettingsView: UIView {
     
     func show() {
         if self.superview == nil {
+            self.tag = 100
             UIApplication.shared.keyWindow().addSubview(self)
 //            layoutIfNeeded()
         }

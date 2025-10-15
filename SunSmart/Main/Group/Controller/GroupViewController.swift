@@ -45,7 +45,7 @@ class GroupViewController: UIViewController {
     private var meshNetworkConnectedObservation: NSKeyValueObservation?
     
     let space: SpaceData
-    let group: Group
+    var group: Group
     
     //    private var devices: [String] = []
     //    private var isGroupUpdateData = false
@@ -80,6 +80,13 @@ class GroupViewController: UIViewController {
             navigationItem.leftBarButtonItem = UIBarButtonItem(image: UIImage(named: "navigation_back")?.withRenderingMode(.alwaysOriginal), style: .done, target: self, action: #selector(close))
         }
         
+        let previousSwipe = UISwipeGestureRecognizer(target: self, action: #selector(groupPreviousSwipeAction))
+        previousSwipe.direction = .right
+        view.addGestureRecognizer(previousSwipe)
+        
+        let nextSwipe = UISwipeGestureRecognizer(target: self, action: #selector(groupNextSwipeAction))
+        nextSwipe.direction = .left
+        view.addGestureRecognizer(nextSwipe)
         
         navigationItem.rightBarButtonItem = UIBarButtonItem(image: UIImage(named: "more_vertical")?.withRenderingMode(.alwaysOriginal), style: .done, target: self, action: #selector(moreClick))
         
@@ -98,6 +105,53 @@ class GroupViewController: UIViewController {
         }
         // 刷新设备状态
 //        refresh()
+    }
+    
+    /// 切换上一个group手势
+    @objc private func groupPreviousSwipeAction() {
+        
+        guard !(sensorView?.isShow ?? false), let index = MeshNetworkManager.instance.groups.firstIndex(of: group) else {
+            return
+        }
+        
+        guard index > 0 else {
+            XWHUDManager.showTipHUD("当前已经是第一个组", isLineFeed: true)
+            return
+        }
+        
+        let previousGroup = MeshNetworkManager.instance.groups[index - 1]
+        self.group = previousGroup
+//        updateUI()
+      
+        view.layer.addMoveInAnimation(duration: 0.4, animationOrientation: .fromLeft)
+        
+//        UIView.transition(with: view, duration: 0.6, options: [.transitionFlipFromLeft, .curveEaseInOut], animations: {
+            self.updateUI()
+        self.pageControl.currentPage = 0
+        self.collectionView.setContentOffset(CGPoint(x: 0, y: self.collectionView.contentOffset.y), animated: false)
+//        }, completion: nil)
+        
+    }
+    
+    /// 切换下一个group手势
+    @objc private func groupNextSwipeAction() {
+        
+        guard !(sensorView?.isShow ?? false), let index = MeshNetworkManager.instance.groups.firstIndex(of: group) else {
+            return
+        }
+        
+        guard index < MeshNetworkManager.instance.groups.count - 1 else {
+            XWHUDManager.showTipHUD("当前已经是最后一个组", isLineFeed: true)
+            return
+        }
+        
+        let nextGroup = MeshNetworkManager.instance.groups[index + 1]
+        self.group = nextGroup
+        view.layer.addMoveInAnimation(duration: 0.4, animationOrientation: .fromRight)
+//        UIView.transition(with: view, duration: 0.6, options: [.transitionCrossDissolve, .curveEaseInOut], animations: {
+            self.updateUI()
+//        }, completion: nil)
+//        updateUI()
     }
     
     @objc private func test(sender: UIButton) {
@@ -133,6 +187,10 @@ class GroupViewController: UIViewController {
     
     override func viewDidAppear(_ animated: Bool) {
         super.viewDidAppear(animated)
+        
+//        if pageControl.numberOfPages > 0 {
+//            collectionView.flashScrollIndicators()
+//        }
         
         var messageHandles: [MeshMessageHandle] = []
         // 检查校准后的光照传感器是否有上报
@@ -222,7 +280,9 @@ class GroupViewController: UIViewController {
     }
     
     @objc private func close() {
-        dismiss(animated: true)
+
+        self.dismissLikeSystem()
+        
     }
     
     /// 传感器上报检查，未上报的传感器设置上报
@@ -268,6 +328,9 @@ class GroupViewController: UIViewController {
     }
     
     private func updateUI() {
+        
+        title = group.name
+        
         pageControl.numberOfPages = Int(ceil(Double(group.nodes.count) / Double(columnNum * rowNum)))
         //        pageControl.currentPage = 0
         updateEmptyUI()
@@ -884,7 +947,7 @@ class GroupViewController: UIViewController {
 extension GroupViewController: UICollectionViewDataSource, UICollectionViewDelegateFlowLayout {
     
     func collectionView(_ collectionView: UICollectionView, numberOfItemsInSection section: Int) -> Int {
-        group.nodes.count
+        return group.nodes.count
     }
     
     func collectionView(_ collectionView: UICollectionView, cellForItemAt indexPath: IndexPath) -> UICollectionViewCell {

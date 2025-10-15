@@ -545,9 +545,11 @@ class BleFirmwareUpdateViewController: UIViewController {
             reloadNodeUI(node: $0)
         })
         self.selectNodes.removeAll(where: { nodes.contains($0) })
-        
-//        collectionView.reloadData()
         updateState = .updating
+        
+        if restoreView != nil, restoreView!.height > 0 {
+            collectionView.reloadSections(IndexSet(integer: 0))
+        }
         updateUI()
         MeshFirmwareUpdateManager.shared.startFirmwareUpdate(targets: targets) {[weak self] node, state in
             guard let self = self else { return }
@@ -1073,6 +1075,10 @@ class BleFirmwareUpdateViewController: UIViewController {
                 self.collectionView.reloadData()
             }else {
                 self.restoreView?.resetDevicesCount = self.restoreNodes.count
+            }
+            
+            if nodes.count > 0 {
+                NotificationCenter.default.post(name: .init(devicesAddNotificationName), object: nil)
             }
         }
         navigationController?.pushViewController(vc, animated: true)

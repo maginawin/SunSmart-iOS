@@ -28,26 +28,26 @@ extension UIViewController {
         }else {
             if rootVc?.isKind(of: UINavigationController.self) ?? false {
                 let topVc = (rootVc as? UINavigationController)?.visibleViewController
-//                if topVc?.presentedViewController != nil {
-//                    return topVc?.presentedViewController
-//                }else {
-//                    if let childVc = topVc?.children.first {
-                        if let presentingVc = topVc?.presentedViewController {
-                            if presentingVc.isKind(of: UINavigationController.self) {
-                                return (presentingVc as! UINavigationController).topViewController
-                            }else {
-                                return presentingVc
-                            }
-                        }
-//                        return childVc
-//                    }
-//                }
+                //                if topVc?.presentedViewController != nil {
+                //                    return topVc?.presentedViewController
+                //                }else {
+                //                    if let childVc = topVc?.children.first {
+                if let presentingVc = topVc?.presentedViewController {
+                    if presentingVc.isKind(of: UINavigationController.self) {
+                        return (presentingVc as! UINavigationController).topViewController
+                    }else {
+                        return presentingVc
+                    }
+                }
+                //                        return childVc
+                //                    }
+                //                }
                 return topVc
             }else {
                 return rootVc
             }
         }
-
+        
     }
     
     func showNavigationBarLoading() {
@@ -78,7 +78,7 @@ extension UIViewController {
         
         if stateImageView?.superview == nil, titleView.x > 0 {
             contentView.addSubview(stateImageView!)
-//            navVc.navigationBar.setNeedsFocusUpdate()
+            //            navVc.navigationBar.setNeedsFocusUpdate()
             stateImageView!.snp.makeConstraints { make in
                 make.right.equalTo(titleView.snp.left).offset(SCRXFrom(-4))
                 make.centerY.equalToSuperview()
@@ -106,11 +106,11 @@ extension UIViewController {
             stateImageView?.image = UIImage(named: "cloud_sync_failed")
             stateImageView?.layer.removeAnimation(forKey: "loading")
             stateImageView!.snp.remakeConstraints { make in
-                make.right.equalTo(titleView.snp.left) 
+                make.right.equalTo(titleView.snp.left)
                 make.centerY.equalToSuperview()
             }
         }
-     
+        
     }
     
     /// 点击事件
@@ -129,7 +129,7 @@ extension UIViewController {
     func hideNavigationBarState() {
         navigationController?.stateImageView?.removeFromSuperview()
         navigationController?.stateImageView = nil
-       NSObject.cancelPreviousPerformRequests(withTarget: self, selector: #selector(navigationBarStateFinished), object: nil)
+        NSObject.cancelPreviousPerformRequests(withTarget: self, selector: #selector(navigationBarStateFinished), object: nil)
     }
     
     enum NavigationBarState {
@@ -138,6 +138,39 @@ extension UIViewController {
         case failure
     }
     
+}
+
+extension UIViewController {
+    
+    /// 模仿系统 modal 的 dismiss 动画（从上往下平移）
+    /// 动画完成后再调用系统 dismiss(animated: false)
+    func dismissLikeSystem(duration: TimeInterval = 0.35,
+                           completion: (() -> Void)? = nil) {
+        
+        let view = (self.navigationController ?? self).view!
+        
+        // 确保 view 在层级中
+        guard let container = view.superview else {
+            self.dismiss(animated: false, completion: completion)
+            return
+        }
+        
+        let screenHeight = container.bounds.height
+        let originalTransform = view.transform
+
+        // 动画（与系统一致：curveEaseInOut + 平移动画）
+        UIView.animate(withDuration: duration,
+                       delay: 0,
+                       options: [.curveEaseInOut],
+                       animations: {
+            view.transform = CGAffineTransform(translationX: 0, y: screenHeight)
+            view.alpha = 0.98 // 系统动画轻微淡化
+            self.dismiss(animated: false, completion: completion)
+        }, completion: { _ in
+            // 恢复 transform（防止 layout 问题）
+            view.transform = originalTransform
+        })
+    }
 }
 
 
@@ -151,10 +184,10 @@ extension UINavigationController {
     /// 导航条状态图标
     var stateImageView: UIImageView? {
         get  {
-//            guard let imageView = objc_getAssociatedObject(self, &UINavigationController.stateImageKey) as? UIImageView else {
-//                self.stateImageView = UIImageView()
-//                return self.stateImageView
-//            }
+            //            guard let imageView = objc_getAssociatedObject(self, &UINavigationController.stateImageKey) as? UIImageView else {
+            //                self.stateImageView = UIImageView()
+            //                return self.stateImageView
+            //            }
             objc_getAssociatedObject(self, &UINavigationController.stateImageKey) as? UIImageView
         }set {
             objc_setAssociatedObject(self, &UINavigationController.stateImageKey, newValue, .OBJC_ASSOCIATION_RETAIN)
@@ -162,7 +195,7 @@ extension UINavigationController {
     }
     
     /// 状态图标点击事件回调
-   fileprivate var stateImageActionCallback: StateImageActionCallback? {
+    fileprivate var stateImageActionCallback: StateImageActionCallback? {
         get {
             objc_getAssociatedObject(self, &UINavigationController.stateImageActionCallbackKey) as? StateImageActionCallback
         }set {
@@ -189,7 +222,7 @@ extension UINavigationController {
     /// - Parameter color: 颜色
     func setNavigationBarBackgroundColor(color: UIColor, showShadow: Bool = false) {
         
-        let appearance = navigationBar.standardAppearance 
+        let appearance = navigationBar.standardAppearance
         appearance.configureWithOpaqueBackground()
         appearance.backgroundColor = color
         if !showShadow {
@@ -243,7 +276,7 @@ extension UINavigationController {
         var bannerFrame: CGRect = CGRect(x: self.view.x, y: 0, width: self.view.width, height: self.view.height + kNavigationHeight)
         if isIPad {
             bannerFrame = view.bounds
-//            bannerFrame = topVc.view.convert(topVc.view.bounds, to: UIApplication.shared.keyWindow())
+            //            bannerFrame = topVc.view.convert(topVc.view.bounds, to: UIApplication.shared.keyWindow())
         }
         
         let bannerHud = BannerAutomaticHud(frame: bannerFrame)
@@ -368,10 +401,5 @@ class BannerAutomaticHud: UIView {
         }
         
     }
-    
-    
-    
-    
-    
     
 }

@@ -182,12 +182,14 @@ class DeviceParameterDeviceCell: UITableViewCell {
         }
         
         nameLabel = UILabel(text: "", textColor: TextBlack_Color, fontSize: 15, fontWeight: .light)
+        nameLabel.lineBreakMode = .byTruncatingHead
         contentView.addSubview(nameLabel)
         nameLabel.snp.makeConstraints { make in
             make.left.equalTo(deviceImageView.snp.right).offset(SCRXFrom(8))
 //            make.top.equalTo(deviceImageView).offset(SCRYFrom(-3))
             make.centerY.equalTo(deviceImageView)
-            make.right.equalTo(identifyBtn.snp.left).offset(SCRXFrom(-30)).priority(.low)
+            make.width.lessThanOrEqualTo(SCRXFrom(170))
+//            make.right.equalTo(identifyBtn.snp.left).offset(SCRXFrom(-30)).priority(.medium)
         }
         
         pwmLabel = UILabel(text: "", textColor: Message_Color, fontSize: 12, fontWeight: .light)
@@ -206,10 +208,12 @@ class DeviceParameterDeviceCell: UITableViewCell {
         }
         
         groupNameLabel = UILabel(text: "not_in_group".localizedString, textColor: Message_Color, fontSize: 12, fontWeight: .light)
+        groupNameLabel.lineBreakMode = .byTruncatingHead
         contentView.addSubview(groupNameLabel)
         groupNameLabel.snp.makeConstraints { make in
             make.right.equalTo(SCRXFrom(-16))
             make.top.equalTo(onBtn.snp.bottom).offset(SCRYFrom(4))
+            make.width.lessThanOrEqualTo(SCRXFrom(100))
         }
         
         ratedPowerLabel = UILabel(text: "", textColor: Message_Color, fontSize: 12, fontWeight: .light)

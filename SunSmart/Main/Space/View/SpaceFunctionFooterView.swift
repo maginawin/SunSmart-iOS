@@ -273,6 +273,7 @@ class SpaceFunctionFooterView: UIView {
         longPressTestBtn = UIButton()
         let testLongPress = UILongPressGestureRecognizer(target: self, action: #selector(deleteBtnLongPress))
         testLongPress.minimumPressDuration = 3
+        testLongPress.allowableMovement = 30
         longPressTestBtn.addGestureRecognizer(testLongPress)
         addSubview(longPressTestBtn)
         longPressTestBtn.snp.makeConstraints { make in
@@ -283,6 +284,7 @@ class SpaceFunctionFooterView: UIView {
         editBtn = UIButton(normalImageName: "share_delete", target: self, action: #selector(editBtnClick))
         let editLongPress = UILongPressGestureRecognizer(target: self, action: #selector(deleteBtnLongPress))
         editLongPress.minimumPressDuration = 3
+        editLongPress.allowableMovement = 30
         editBtn.addGestureRecognizer(editLongPress)
         addSubview(editBtn)
         editBtn.snp.makeConstraints { make in

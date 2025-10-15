@@ -527,6 +527,52 @@ extension SpaceData {
         
         return spaces
     }
+    
+    /// 根据子网id获取所属空间
+    /// - Parameters:
+    ///   - subNetworkId: 子网网络id
+    /// - Returns: 空间
+    static func load(subNetworkId: String) -> SpaceData? {
+        let predicate: Expression<Bool> = ExpressionKey.subNetworkKey == subNetworkId
+        let filter = SpaceData.spacesTable.filter(predicate)
+        
+        var space: SpaceData?
+        if let rows = try? SunSmartDataManager.shared.db?.prepare(filter) {
+            for row in rows {
+                let newSpace = SpaceData(name: row[ExpressionKey.name], id: row[ExpressionKey.uuid], siteId: row[ExpressionKey.siteUUID], imageId: row[ExpressionKey.imageId], create: row[ExpressionKey.createTimestamp], lastUpdate: row[ExpressionKey.lastUpdateTimestamp], isFavourite: row[ExpressionKey.favourite], permission: .init(rawValue: row[ExpressionKey.permission]) ?? .owner, sourceType: .init(rawValue: row[ExpressionKey.source]) ?? .create, meshUUID: row[ExpressionKey.siteUUID], meshNetworkId: row[ExpressionKey.subNetworkKey])
+                newSpace.deviceCount = row[ExpressionKey.deviceNumber]
+                newSpace.luminairesCount = row[ExpressionKey.luminaireNumber]
+                newSpace.groupCount = row[ExpressionKey.groupNumber]
+                newSpace.sceneCount = row[ExpressionKey.sceneNumber]
+                newSpace.scheheduleCount = row[ExpressionKey.scheduleNumber]
+                newSpace.switchesCount = row[ExpressionKey.switchesNumber]
+                newSpace.lastUploadCloudTimestamp = row[ExpressionKey.lastUploadCloudTimestamp]
+                if let errorCode = row[ExpressionKey.syncCloudError] {
+                    newSpace.syncCloudError = .init(code: errorCode)
+                }
+                newSpace.state = .init(rawValue: row[ExpressionKey.state]) ?? .normal
+                newSpace.editorPassword = row[ExpressionKey.editorPassword]
+                newSpace.vistorPassword = row[ExpressionKey.vistorPassword]
+                newSpace.authorizationPassword = row[ExpressionKey.authorizationPassword]
+                newSpace.requiresPasswordVerification = row[ExpressionKey.requiresPasswordVerification]
+                newSpace.vistorPasswordEnable = row[ExpressionKey.vistorPasswordEnable]
+                newSpace.shareCode = row[ExpressionKey.shareCode]
+                newSpace.applyDeviceAddressCount = row[ExpressionKey.applyDeviceAddressCount]
+                newSpace.applyGroupAddressCount = row[ExpressionKey.applyGroupAddressCount]
+                newSpace.releaseAddress = row[ExpressionKey.isReleaseAddress] ?? false
+                newSpace.displayDeviceNamePrefix = row[ExpressionKey.displayDeviceNamePrefix]
+                
+                if let editorData = row[ExpressionKey.editor] {
+                    newSpace.editor = try? jsonDecoder.decode(UserData.self, from: editorData)
+                }
+                if let vistorsData = row[ExpressionKey.vistors] {
+                    newSpace.visitors = (try? jsonDecoder.decode([UserData].self, from: vistorsData)) ?? []
+                }
+                space = newSpace
+            }
+        }
+        return space
+    }
  
     /// 删除所有空间数据
     /// - Parameter siteId: 对应场所
