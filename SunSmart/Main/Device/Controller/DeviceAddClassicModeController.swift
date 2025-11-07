@@ -100,7 +100,10 @@ class DeviceAddClassicModeController: UIViewController {
 //        NetworkRequest.shared.addObserver(self, forKeyPath: "networkable", context: nil)
         
         setupUI()
-        otherGateways = GatewayModel.load(siteId: space.siteId)
+
+        let gateways = GatewayModel.load(siteId: space.siteId)
+        // 确保是space内的网关
+        otherGateways = gateways.filter({ MeshNetworkManager.instance.meshNetwork?.node(withAddress: $0.address) != nil })
         
         if forceBindToDongle != nil {
             showDeviceTypes = [.dongle, .unknown]
@@ -645,7 +648,8 @@ class DeviceAddClassicModeController: UIViewController {
                     return
                 }
                 let gatewayModel = GatewayModel(siteId: space.siteId, address: node.primaryUnicastAddress, mac: mac)
-                if !otherGateways.contains(where: { $0.activate }) {
+                // 检查是否有其他网关已激活
+                if !(otherGateways.filter({ $0.mac != mac }).contains(where: { $0.activate })) {
                     gatewayModel.activate = true
                 }
                 node.gatewayModel = gatewayModel
@@ -959,8 +963,6 @@ class DeviceAddClassicModeController: UIViewController {
             }else {
                 tableView.reloadRows(at: [IndexPath(row: index, section: 0)], with: .none)
             }
-        }else {
-            tableView.reloadData()
         }
     }
     

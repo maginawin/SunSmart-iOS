@@ -28,8 +28,8 @@ class EnergyTimeSeriesDataViewController: UIViewController {
         case devices
     }
     
-    private var scrollView: UIScrollView!
-    private var contentView: UIView!
+//    private var scrollView: UIScrollView!
+//    private var contentView: UIView!
     private var importView: EnergyTimeSeriesDataImportView!
     private var exportView: EnergyTimeSeriesDataExportView!
     private var exportTarget: ExportTarget = .space

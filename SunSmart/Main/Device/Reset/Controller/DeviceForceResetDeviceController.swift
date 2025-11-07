@@ -561,7 +561,7 @@ extension DeviceForceResetDeviceController: DeviceForceResetDeviceViewDelegate {
         guard let device = self.device, let macAddress = device.macAddress else { return }
         
         // 发送identity无定向广播
-        broadcaster.startBroadcasting(type: .identifyNode(key: randomKey, macAddress: macAddress), interval: 0.5)
+        broadcaster.startBroadcasting(type: .identifySensorNode(key: randomKey, macAddress: macAddress), interval: 0.5)
         deviceState = .identifying
         
         self.delegate?.controller(self, deviceStateChanged: deviceState)
@@ -586,7 +586,7 @@ extension DeviceForceResetDeviceController: DeviceForceResetDeviceViewDelegate {
         guard let device = self.device, let macAddress = device.macAddress else { return }
         
         // 发送重置设备无定向广播
-        broadcaster.startBroadcasting(type: .resetNode(key: randomKey, macAddress: macAddress), interval: 0.5)
+        broadcaster.startBroadcasting(type: .resetSensorNode(key: randomKey, macAddress: macAddress), interval: 0.5)
         deviceState = .reseting
         updateUI()
         view.update(device: device, displayDeviceNamePrefix: self.displayDeviceNamePrefix, deviceGroup: self.deviceGroup, state: deviceState)

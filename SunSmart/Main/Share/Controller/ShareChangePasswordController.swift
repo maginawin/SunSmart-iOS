@@ -53,6 +53,14 @@ class ShareChangePasswordController: UIViewController {
         addKeyboardNotification()
     }
     
+    override func viewDidAppear(_ animated: Bool) {
+        super.viewDidAppear(animated)
+        
+        if self.scrollView.firstShowFlashScrollIndicators {
+            self.scrollView.flashScrollIndicatorsIfNeeded()
+        }
+    }
+    
     override func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent?) {
         view.endEditing(true)
     }
@@ -196,7 +204,7 @@ class ShareChangePasswordController: UIViewController {
     private func setupUI() {
         
         scrollView = UIScrollView()
-        scrollView.showsVerticalScrollIndicator = false
+//        scrollView.showsVerticalScrollIndicator = false
         scrollView.alwaysBounceVertical = true
         scrollView.delegate = self
         scrollView.addGestureRecognizer(UITapGestureRecognizer(target: self, action: #selector(hideKeyboard)))

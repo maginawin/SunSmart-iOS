@@ -50,6 +50,14 @@ class GatewaysViewController: UIViewController {
         updateUI()
     }
     
+    override func viewDidAppear(_ animated: Bool) {
+        super.viewDidAppear(animated)
+        
+        if collectionView.firstShowFlashScrollIndicators {
+            collectionView.flashScrollIndicatorsIfNeeded()
+        }
+    }
+    
     private func updateUI() {
         
         footerView.countBtn.setTitle("0/\(space.maxDevicesCount)", for: .normal)

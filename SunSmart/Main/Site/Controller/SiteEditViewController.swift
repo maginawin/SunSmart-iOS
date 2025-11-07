@@ -41,6 +41,13 @@ class SiteEditViewController: UIViewController {
         setupUI()
     }
     
+    override func viewDidAppear(_ animated: Bool) {
+        super.viewDidAppear(animated)
+        if collectionView.firstShowFlashScrollIndicators {
+            collectionView.flashScrollIndicatorsIfNeeded()
+        }
+    }
+    
     @objc private func cancelBtnClick() {
         
         

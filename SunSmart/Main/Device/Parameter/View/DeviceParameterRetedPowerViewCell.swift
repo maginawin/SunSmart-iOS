@@ -48,6 +48,12 @@ class DeviceParameterRetedPowerViewCell: UITableViewCell {
             }
             tableView.reloadData()
             
+            if tableView.isScrollEnabled && tableView.firstShowFlashScrollIndicators {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {[weak self] in
+                    self?.tableView.flashScrollIndicatorsIfNeeded()
+                }
+            }
+            
             updateLayout()
         }
     }

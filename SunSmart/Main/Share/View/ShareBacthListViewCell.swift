@@ -37,13 +37,14 @@ class ShareBacthListViewCell: UICollectionViewCell {
     private func setupUI() {
         
         nameLabel = UILabel(text: "Batch 253487", textColor: TextBlack_Color, fontSize: 14)
+        nameLabel.setContentHuggingPriority(.defaultHigh, for: .vertical)
 //        nameLabel.sizeToFit()
         contentView.addSubview(nameLabel)
         nameLabel.snp.makeConstraints { make in
             make.left.equalTo(SCRXFrom(16))
             make.top.equalTo(SCRYFrom(13))
             make.width.lessThanOrEqualTo(SCRXFrom(240))
-            make.height.equalTo(nameLabel.height)
+//            make.height.equalTo(nameLabel.height)
         }
         
         shareIdLabel = UILabel(text: "XXXXXXXX", textColor: SubText_Color, fontSize: 12, fontWeight: .light)

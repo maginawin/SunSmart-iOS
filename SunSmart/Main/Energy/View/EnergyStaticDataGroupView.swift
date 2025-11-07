@@ -123,7 +123,7 @@ class EnergyStaticDataGroupView: UIView {
         
         scrollView = UIScrollView()
         scrollView.alwaysBounceVertical = false
-        scrollView.showsVerticalScrollIndicator = false
+//        scrollView.showsVerticalScrollIndicator = false
         
         let tap = UITapGestureRecognizer(target: self, action: #selector(hidePieMarker))
         tap.cancelsTouchesInView = false

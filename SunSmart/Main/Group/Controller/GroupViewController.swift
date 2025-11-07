@@ -44,6 +44,15 @@ class GroupViewController: UIViewController {
     
     private var meshNetworkConnectedObservation: NSKeyValueObservation?
     
+    struct LightLuxData {
+        let name: String
+        let address: Address
+        let lux: UInt16
+    }
+    
+    private var lightLuxPhaseDatas: [[LightLuxData]] = []
+    private var currentPhaseLuxDatas: [LightLuxData] = []
+    
     let space: SpaceData
     var group: Group
     
@@ -80,14 +89,17 @@ class GroupViewController: UIViewController {
             navigationItem.leftBarButtonItem = UIBarButtonItem(image: UIImage(named: "navigation_back")?.withRenderingMode(.alwaysOriginal), style: .done, target: self, action: #selector(close))
         }
         
+        // 添加左滑手势
         let previousSwipe = UISwipeGestureRecognizer(target: self, action: #selector(groupPreviousSwipeAction))
         previousSwipe.direction = .right
         view.addGestureRecognizer(previousSwipe)
-        
+        // 添加右滑手势
         let nextSwipe = UISwipeGestureRecognizer(target: self, action: #selector(groupNextSwipeAction))
         nextSwipe.direction = .left
         view.addGestureRecognizer(nextSwipe)
         
+        
+//        navigationItem.rightBarButtonItems = [UIBarButtonItem(image: UIImage(named: "more_vertical")?.withRenderingMode(.alwaysOriginal), style: .done, target: self, action: #selector(moreClick)), UIBarButtonItem(customView: testBtn)]
         navigationItem.rightBarButtonItem = UIBarButtonItem(image: UIImage(named: "more_vertical")?.withRenderingMode(.alwaysOriginal), style: .done, target: self, action: #selector(moreClick))
         
         setupUI()
@@ -115,7 +127,7 @@ class GroupViewController: UIViewController {
         }
         
         guard index > 0 else {
-            XWHUDManager.showTipHUD("当前已经是第一个组", isLineFeed: true)
+            XWHUDManager.showTipHUD("this_is_the_first_group".localizedString, isLineFeed: true)
             return
         }
         
@@ -126,7 +138,7 @@ class GroupViewController: UIViewController {
         view.layer.addMoveInAnimation(duration: 0.4, animationOrientation: .fromLeft)
         
 //        UIView.transition(with: view, duration: 0.6, options: [.transitionFlipFromLeft, .curveEaseInOut], animations: {
-            self.updateUI()
+        self.updateUI()
         self.pageControl.currentPage = 0
         self.collectionView.setContentOffset(CGPoint(x: 0, y: self.collectionView.contentOffset.y), animated: false)
 //        }, completion: nil)
@@ -141,7 +153,7 @@ class GroupViewController: UIViewController {
         }
         
         guard index < MeshNetworkManager.instance.groups.count - 1 else {
-            XWHUDManager.showTipHUD("当前已经是最后一个组", isLineFeed: true)
+            XWHUDManager.showTipHUD("this_is_the_last_group".localizedString, isLineFeed: true)
             return
         }
         
@@ -159,17 +171,94 @@ class GroupViewController: UIViewController {
         sender.isSelected = !sender.isSelected
         
         if sender.isSelected {
-            automationTimer = LCWeakTimer.scheduledTimer(timeInterval: 10, aTarget: self, selector: #selector(automationTimerAction), userInfo: nil, repeats: true)
+            lightLuxPhaseDatas.removeAll()
+            
+            automationTimer = LCWeakTimer.scheduledTimer(timeInterval: 5, aTarget: self, selector: #selector(automationTimerAction), userInfo: nil, repeats: true)
             RunLoop.current.add(automationTimer!, forMode: .common)
         }else {
             automationTimer?.invalidate()
             automationTimer = nil
+            if lightLuxPhaseDatas.count > 0 {
+                
+                exportPhaseLuxFile()
+            }
+            
         }
     }
     
     @objc private func automationTimerAction() {
-        group.isOn = !group.isOn
-        MeshAPI.setGroupOnOffState(address: group.address.address, isOn: group.isOn)
+//        group.isOn = !group.isOn
+//        MeshAPI.setGroupOnOffState(address: group.address.address, isOn: group.isOn)
+        
+        if currentPhaseLuxDatas.count > 0 {
+            currentPhaseLuxDatas.sort(by: { $0.address < $1.address })
+            
+            lightLuxPhaseDatas.append(currentPhaseLuxDatas)
+        }
+        
+        currentPhaseLuxDatas.removeAll()
+        
+        group.ambientLightSensorNodes.forEach({
+            if let model = $0.ambientLightSensorModel {
+                MeshAPI.sendMessage(message: SensorGet(), model: model)
+            }
+        })
+    }
+    
+    private func exportPhaseLuxFile() {
+        guard lightLuxPhaseDatas.count > 0 else {
+            XWHUDManager.showErrorTipHUD("未获取到光感数据")
+            return
+        }
+        let routeTables = lightLuxPhaseDatas.compactMap({ phaseData in
+            return phaseData.map({ ["name": $0.name, "lux": $0.lux] })
+        })
+        guard let data = try? JSONSerialization.data(withJSONObject: routeTables) else {
+            XWHUDManager.showErrorTipHUD("导出数据失败")
+            return
+        }
+        
+        XWHUDManager.showCustomHUD(withMessage: nil, view: view)
+        DispatchQueue.global(qos: .userInitiated).async { [weak self] in
+            guard let self = self else { return }
+            // 文件名称 网络名称_网络更新时间
+            let date = Date()
+            let formatter = DateFormatter.init()
+            formatter.dateFormat = "yyyy-MM-dd HH:mm:ss"
+            var timeStr = formatter.string(from: date)
+            timeStr = timeStr.replacingOccurrences(of: " ", with: "T")
+            timeStr = timeStr.replacingOccurrences(of: ":", with: "")
+            
+            let name = "luxs_\(timeStr)"
+            
+            let fileURL = FileManager.default.temporaryDirectory.appendingPathComponent("\(name).json")
+            try? data.write(to: fileURL)
+            
+            DispatchQueue.main.async { [weak self] in
+                guard let self = self else { return }
+                
+                let controller = UIActivityViewController(activityItems: [fileURL], applicationActivities: nil)
+                // 适配 iPad
+                if let popoverController = controller.popoverPresentationController {
+                    // 设置 sourceView（可以是按钮或视图）
+                    popoverController.sourceView = self.view
+                    
+                    // 设置 sourceRect（浮层的锚点位置）
+                    popoverController.sourceRect = CGRect(x: self.view.bounds.midX, y: self.view.bounds.midY, width: 0, height: 0)
+                    
+                    // 或者设置 barButtonItem（如果是导航栏按钮）
+                    // popoverController.barButtonItem = self.shareButton
+                }
+                controller.completionWithItemsHandler = { type, success, items, error in
+                    if success {
+                        XWHUDManager.showSuccessTipHUD("done!".localizedString)
+                    }
+                }
+                self.present(controller, animated: true)
+                
+                XWHUDManager.hide()
+            }
+        }
     }
     
     override func viewWillAppear(_ animated: Bool) {
@@ -191,7 +280,9 @@ class GroupViewController: UIViewController {
 //        if pageControl.numberOfPages > 0 {
 //            collectionView.flashScrollIndicators()
 //        }
-        
+        if collectionView.firstShowFlashScrollIndicators {
+            collectionView.flashScrollIndicatorsIfNeeded()
+        }
         var messageHandles: [MeshMessageHandle] = []
         // 检查校准后的光照传感器是否有上报
         if let publishAmbientLightSensor = self.group.info.ambientLightSensorNode, let sensorModel = publishAmbientLightSensor.ambientLightSensorModel {
@@ -421,6 +512,12 @@ class GroupViewController: UIViewController {
     @objc private func moreClick() {
         
         var items: [MenuPopView.MenuItem] = []
+        if space.deviceOperates.contains(.add) {
+            items.append(.init(icon: UIImage(named: "path_add")?.withTintColor(.white), title: "group_add_device".localizedString, hideAnimation: false, tapItemBack: {[weak self] _ in
+                self?.addDevices()
+            }))
+        }
+        
         if space.groupOperates.contains(.edit) {
             items.append(.init(icon: UIImage(named: "menu_edit"), title: "edit".localizedString, tapItemBack: {[weak self] item in
                 self?.editGroup()
@@ -490,7 +587,7 @@ class GroupViewController: UIViewController {
         let touchCenterY = view.safeAreaInsets.top - 10
 //        SCREEN_HEIGHT - view.height + view.safeAreaInsets.top - 15
         let windowPoint = view.convert(CGPoint(x: touchCenterX, y: touchCenterY), to: UIApplication.shared.keyWindow())
-        MenuPopView.show(items: items, anchorPoint: windowPoint)
+        MenuPopView.show(items: items, anchorPoint: windowPoint, menuWidth: SCRXFrom(128))
         // (navigationController?.navigationBar.frame.maxY ?? kNavigationHeight) + StatusBarManager.statusBarFrame.height
                          
         
@@ -516,23 +613,42 @@ class GroupViewController: UIViewController {
         MeshAPI.sendMessage(message: LightLCLightOnOffSetUnacknowledged(true, transitionTime: .default, delay: 0), address: group.address.address)
         
         // 更新本地数据
-        let profile = group.info.profile
-        let lightData = profile.lightData.data
+//        let profile = group.info.profile
+//        let lightData = profile.lightData.data
         // daylight并且已校准则不更新本地数据，更新设备状态到第一阶段
+//        if !((profile.type == .occupancy_daylight || profile.type == .vacancy_daylight || profile.type == .daylight) && group.info.ambientLightSensorNode != nil) {
+//            let lightness = Node.getLightness(lightness100: lightData.occupancyLevel)
+//            group.lightnessNodes.forEach({
+//                $0.lightness = lightness
+//                $0.isOn = lightness > 0
+//            })
+//            collectionView.reloadData()
+//            
+//            if group.isOn != onoffBtn.isSelected {
+//                lightnessSlider.value = Node.getLightness100(lightness: group.lightness)
+//            }
+//            onoffBtn.isSelected = group.isOn
+//        }
+        // daylight harvesting校准后无效
+        let profile = group.info.profile
         if !((profile.type == .occupancy_daylight || profile.type == .vacancy_daylight || profile.type == .daylight) && group.info.ambientLightSensorNode != nil) {
-            let lightness = Node.getLightness(lightness100: lightData.occupancyLevel)
+            
             group.lightnessNodes.forEach({
-                $0.lightness = lightness
-                $0.isOn = lightness > 0
+                // profile第一阶段亮度，如果profile是daylight harvesting无法估算亮度则为nil
+                if let lightLCOnLightness = $0.lightLCOnLightness {
+                    $0.lightness = lightLCOnLightness
+                    $0.isOn = lightLCOnLightness > 0
+                }
             })
             collectionView.reloadData()
-            
+                
             if group.isOn != onoffBtn.isSelected {
                 lightnessSlider.value = Node.getLightness100(lightness: group.lightness)
             }
             onoffBtn.isSelected = group.isOn
+            
         }
-        
+       
     }
     
     /// 按键按下回调
@@ -589,6 +705,17 @@ class GroupViewController: UIViewController {
 //            collectionView.reloadData()
 //            self.isGroupUpdateData = true
         }
+    }
+    
+    /// 添加设备
+    private func addDevices() {
+        guard MeshNetworkManager.instance.realNodes.count < space.maxDevicesCount else {
+            XWHUDManager.showTipHUD(String(format: "devices_number_exceeds_message".localizedString, space.maxDevicesCount), isLineFeed: true)
+            return
+        }
+        let addVc = DeviceAddViewController(space: space)
+        addVc.appointGroup = group
+        navigationController?.pushViewController(addVc, animated: true)
     }
     
     /// 编辑组
@@ -794,7 +921,7 @@ class GroupViewController: UIViewController {
         collectionView.dataSource = self
         collectionView.delegate = self
         collectionView.isPagingEnabled = true
-        collectionView.showsHorizontalScrollIndicator = false
+//        collectionView.showsHorizontalScrollIndicator = false
         collectionView.register(GroupDeviceViewCell.classForCoder(), forCellWithReuseIdentifier: "cell")
         let longPress = UILongPressGestureRecognizer(target: self, action: #selector(collectionLongPressAction))
         longPress.minimumPressDuration = 0.5
@@ -890,15 +1017,6 @@ class GroupViewController: UIViewController {
             make.top.equalTo(lightnessSlider.snp.bottom).offset(SCRYFit(2))
         }
         
-        calibrateLabel = UILabel(text: "not_calibrated".localizedString, textColor: SubText_Color, fontSize: 14, fontWeight: .light)
-        calibrateLabel.isHidden = true
-        view.addSubview(calibrateLabel)
-        calibrateLabel.snp.makeConstraints { make in
-            make.left.equalTo(collectionView)
-            make.top.equalTo(view.safeAreaLayoutGuide)
-//            make.bottom.equalTo(collectionView.snp.top).offset(SCRYFit(-16))
-        }
-        
         calibrateBtn = UIButton(title: "CALIBRATE".localizedString, titleSize: 14, titleWeight: .light, titleColor: .white, target: self, action: #selector(calibrateBtnAction))
         calibrateBtn.backgroundColor = Bar_Color
         calibrateBtn.layer.cornerRadius = SCRYFrom(15)
@@ -906,17 +1024,19 @@ class GroupViewController: UIViewController {
         view.addSubview(calibrateBtn)
         calibrateBtn.snp.makeConstraints { make in
             make.right.equalTo(collectionView)
-            make.centerY.equalTo(calibrateLabel)
+            make.top.equalTo(view.safeAreaLayoutGuide)
             make.width.equalTo(SCRXFrom(88))
             make.height.equalTo(SCRYFrom(32))
         }
         
-        setPathLabel = UILabel(text: "group_set_the_path_sequence".localizedString, textColor: SubText_Color, fontSize: 14, fontWeight: .light)
-        setPathLabel.isHidden = true
-        view.addSubview(setPathLabel)
-        setPathLabel.snp.makeConstraints { make in
+        calibrateLabel = UILabel(text: "not_calibrated".localizedString, textColor: SubText_Color, fontSize: 14, fontWeight: .light)
+        calibrateLabel.isHidden = true
+        view.addSubview(calibrateLabel)
+        calibrateLabel.snp.makeConstraints { make in
             make.left.equalTo(collectionView)
-            make.bottom.equalTo(collectionView.snp.top).offset(SCRYFit(-16))
+            make.top.equalTo(view.safeAreaLayoutGuide)
+            make.centerY.equalTo(calibrateBtn)
+//            make.bottom.equalTo(collectionView.snp.top).offset(SCRYFit(-16))
         }
         
         setPathBtn = UIButton(title: "SET".localizedString, titleSize: 14, titleWeight: .light, titleColor: .white, target: self, action: #selector(setPath))
@@ -926,10 +1046,19 @@ class GroupViewController: UIViewController {
         view.addSubview(setPathBtn)
         setPathBtn.snp.makeConstraints { make in
             make.right.equalTo(collectionView)
-            make.centerY.equalTo(setPathLabel)
-            make.width.equalTo(SCRXFrom(88))
-            make.height.equalTo(SCRYFrom(32))
+            make.width.height.centerY.equalTo(calibrateBtn)
         }
+        
+        setPathLabel = UILabel(text: "group_set_the_path_sequence".localizedString, textColor: SubText_Color, fontSize: 14, fontWeight: .light)
+        setPathLabel.isHidden = true
+        view.addSubview(setPathLabel)
+        setPathLabel.snp.makeConstraints { make in
+            make.left.equalTo(collectionView)
+            make.centerY.equalTo(setPathBtn)
+//            make.bottom.equalTo(collectionView.snp.top).offset(SCRYFit(-16))
+        }
+        
+   
         
         sensorView = GroupSensorView()
         sensorView?.isHidden = true
@@ -979,7 +1108,7 @@ extension GroupViewController: UICollectionViewDataSource, UICollectionViewDeleg
             node.lightness = 0
         }
         reloadCollectionItem(node: node)
-        MeshAPI.setNodeOnOffState(address: node.primaryUnicastAddress, isOn: node.isOn)
+        MeshAPI.setNodeOnOffState(address: node.primaryUnicastAddress, isOn: node.isOn, ack: true)
     }
     
     func scrollViewDidEndDecelerating(_ scrollView: UIScrollView) {
@@ -1010,6 +1139,10 @@ extension GroupViewController: MeshLibManagerMessageDelegate {
                 // 人体存在传感器model
                 if case .presenceDetected = property {
                     sensorView?.reloadSensorData(sensor: sensorNode, sensorType: .presenceDetected)
+                }
+                
+                if case .presentAmbientLightLevel = property, automationTimer != nil {
+                    currentPhaseLuxDatas.append(LightLuxData(name: sensorNode.name ?? "", address: sensorNode.primaryUnicastAddress, lux: sensorNode.daylightLux ?? 0))
                 }
                 
                 // 环境光传感器model

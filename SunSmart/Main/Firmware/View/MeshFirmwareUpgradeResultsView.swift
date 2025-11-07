@@ -60,6 +60,10 @@ class MeshFirmwareUpgradeResultsView: UIView {
         UIView.animate(withDuration: 0.5, delay: 0, usingSpringWithDamping: 0.7, initialSpringVelocity: 1, options: .curveEaseInOut) {
             self.contentView.y = (self.height - self.contentView.height) * 0.5
             self.shadeView.alpha = 1
+        }completion: { _ in
+            if self.tableView.firstShowFlashScrollIndicators {
+                self.tableView.flashScrollIndicatorsIfNeeded()
+            }
         }
     }
     

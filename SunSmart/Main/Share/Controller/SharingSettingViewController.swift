@@ -82,6 +82,14 @@ class SharingSettingViewController: UIViewController {
         setupUI()
     }
     
+    override func viewDidAppear(_ animated: Bool) {
+        super.viewDidAppear(animated)
+        
+        if self.scrollView.firstShowFlashScrollIndicators {
+            self.scrollView.flashScrollIndicatorsIfNeeded()
+        }
+    }
+    
 //    override func viewDidAppear(_ animated: Bool) {
 //        super.viewDidAppear(animated)
 //        // 生成二维码，耗时操作避免影响页面展示
@@ -271,7 +279,7 @@ class SharingSettingViewController: UIViewController {
     private func setupUI() {
         
         scrollView = UIScrollView()
-        scrollView.showsVerticalScrollIndicator = false
+//        scrollView.showsVerticalScrollIndicator = false
         scrollView.alwaysBounceVertical = true
         view.addSubview(scrollView)
         scrollView.snp.makeConstraints { make in

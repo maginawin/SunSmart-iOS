@@ -41,6 +41,7 @@ class AdaptiveTextView: UITextView {
     
     private func setup() {
         isEditable = false
+        isUserInteractionEnabled = false
         isScrollEnabled = false
         isSelectable = false
         backgroundColor = .clear

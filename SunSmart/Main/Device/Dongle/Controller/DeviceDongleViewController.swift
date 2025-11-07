@@ -66,6 +66,14 @@ class DeviceDongleViewController: UIViewController, DeviceProtocol {
         updateUI()
     }
     
+    override func viewDidAppear(_ animated: Bool) {
+        super.viewDidAppear(animated)
+        
+        if self.tableView.firstShowFlashScrollIndicators {
+            self.tableView.flashScrollIndicatorsIfNeeded()
+        }
+    }
+    
     private func getNodeState() {
         
         // TODO: 获取设备内存信息
@@ -429,7 +437,6 @@ class DeviceDongleViewController: UIViewController, DeviceProtocol {
         tableView.register(DeviceSwitchHeaderView.classForCoder(), forHeaderFooterViewReuseIdentifier: "infoHeader")
         tableView.register(DeviceDongleScheduleHeaderView.classForCoder(), forHeaderFooterViewReuseIdentifier: "scheduleHeader")
         tableView.register(DeviceDongleSectionHeaderView.classForCoder(), forHeaderFooterViewReuseIdentifier: "titleHeader")
-        tableView.showsVerticalScrollIndicator = false
         tableView.dataSource = self
         tableView.delegate = self
         tableView.separatorStyle = .none

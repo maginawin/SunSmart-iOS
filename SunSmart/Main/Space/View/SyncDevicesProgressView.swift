@@ -77,6 +77,10 @@ class SyncDevicesProgressView: UIView {
         UIView.animate(withDuration: 0.3) {
             self.shadeView.alpha = 1
             self.tableView.alpha = 1
+        }completion: { _ in
+            if self.tableView.firstShowFlashScrollIndicators {
+                self.tableView.flashScrollIndicatorsIfNeeded()
+            }
         }
     }
     

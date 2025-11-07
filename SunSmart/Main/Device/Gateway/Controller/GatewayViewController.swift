@@ -67,6 +67,14 @@ class GatewayViewController: UIViewController, DeviceProtocol {
         
         MeshLibManager.manager.messageDelegate = self
     }
+    
+    override func viewDidAppear(_ animated: Bool) {
+        super.viewDidAppear(animated)
+        
+        if self.tableView.firstShowFlashScrollIndicators {
+            self.tableView.flashScrollIndicatorsIfNeeded()
+        }
+    }
 
     @objc private func close() {
         if self.presentingViewController != nil && navigationController?.viewControllers.count ?? 0 == 1  {
@@ -395,7 +403,7 @@ class GatewayViewController: UIViewController, DeviceProtocol {
         tableView.register(GatewayServerInformationViewCell.classForCoder(), forCellReuseIdentifier: "serverInformation")
         tableView.register(GatewaySectionHeaderView.classForCoder(), forHeaderFooterViewReuseIdentifier: "header")
         tableView.estimatedSectionHeaderHeight = UITableView.automaticDimension
-        tableView.showsVerticalScrollIndicator = false
+//        tableView.showsVerticalScrollIndicator = false
         tableView.backgroundColor = .clear
         tableView.dataSource = self
         tableView.delegate = self

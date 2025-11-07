@@ -428,7 +428,7 @@ extension EnOceanProxyViewController: UITableViewDataSource, UITableViewDelegate
         headerView.contentLabel.text = nil
         headerView.isShow = showSections.contains(section)
         let isLast = section == tableView.numberOfSections - 1 && !showSections.contains(section)
-        headerView.configureCell(isFirst: section == 0, isLast: isLast)
+        headerView.configureCorners(isFirst: section == 0, isLast: isLast)
         headerView.lineView.isHidden = isLast
         headerView.viewActionCallback = {[weak self] isShow in
             if isShow {

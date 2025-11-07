@@ -56,6 +56,14 @@ class GroupSwitchsViewController: UIViewController {
         (navigationController as? NavigationViewController)?.navigationDelegate = self
     }
     
+    override func viewDidAppear(_ animated: Bool) {
+        super.viewDidAppear(animated)
+        
+        if self.tableView.firstShowFlashScrollIndicators {
+            self.tableView.flashScrollIndicatorsIfNeeded()
+        }
+    }
+    
     override func viewWillDisappear(_ animated: Bool) {
         super.viewWillDisappear(animated)
         
@@ -448,7 +456,7 @@ class GroupSwitchsViewController: UIViewController {
         tableView.register(CustomTableViewCell.classForCoder(), forCellReuseIdentifier: "info")
         tableView.register(GroupSwitchPanelViewCell.classForCoder(), forCellReuseIdentifier: "panel")
         tableView.register(GroupSwitchsHeaderView.classForCoder(), forHeaderFooterViewReuseIdentifier: "header")
-        tableView.showsVerticalScrollIndicator = false
+//        tableView.showsVerticalScrollIndicator = false
         tableView.dataSource = self
         tableView.delegate = self
         tableView.separatorStyle = .none

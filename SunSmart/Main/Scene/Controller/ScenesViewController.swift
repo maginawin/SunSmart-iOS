@@ -72,6 +72,14 @@ class ScenesViewController: UIViewController {
 //        }
     }
     
+    override func viewDidAppear(_ animated: Bool) {
+        super.viewDidAppear(animated)
+        
+        if collectionView.firstShowFlashScrollIndicators {
+            collectionView.flashScrollIndicatorsIfNeeded()
+        }
+    }
+    
     override func viewDidLayoutSubviews() {
         super.viewDidLayoutSubviews()
         
@@ -327,14 +335,14 @@ class ScenesViewController: UIViewController {
         view.addSubview(editView)
         editView.snp.makeConstraints { make in
             make.left.right.bottom.equalToSuperview()
-            make.height.equalTo(kSafeAreaBottomHeight + SCRYFrom(56))
+            make.height.equalTo(kSafeAreaBottomHeight + SCRYFrom(44))
         }
         
         doneBtn = UIButton(title: "done".localizedString, titleSize: 16, titleWeight: .light, titleColor: Title_Color, target: self, action: #selector(doneBtnAction))
         editView.addSubview(doneBtn)
         doneBtn.snp.makeConstraints { make in
             make.left.right.top.equalToSuperview()
-            make.height.equalTo(SCRYFrom(56))
+            make.height.equalTo(SCRYFrom(44))
         }
         
         flowLayout = AlignCenterFlowLayout()
@@ -346,7 +354,8 @@ class ScenesViewController: UIViewController {
         collectionView = UICollectionView(frame: .zero, collectionViewLayout: flowLayout)
         collectionView.contentInset = UIEdgeInsets(top: collectionViewMargin, left: collectionViewMargin, bottom: collectionViewMargin + 10, right: collectionViewMargin)
         collectionView.register(ScenesViewCell.classForCoder(), forCellWithReuseIdentifier: "cell")
-        collectionView.showsVerticalScrollIndicator = false
+        collectionView.showsVerticalScrollIndicator = true
+        collectionView.alwaysBounceVertical = true
         collectionView.backgroundColor = .clear
         collectionView.dataSource = self
         collectionView.delegate = self

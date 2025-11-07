@@ -26,6 +26,14 @@ class SwitchSelectPanelTypeController: UIViewController {
         setupTableView()
     }
     
+    override func viewDidAppear(_ animated: Bool) {
+        super.viewDidAppear(animated)
+        
+        if self.tableView.firstShowFlashScrollIndicators {
+            self.tableView.flashScrollIndicatorsIfNeeded()
+        }
+    }
+    
     private func setupTableView() {
         
         tableView = UITableView(frame: .zero, style: .grouped)
@@ -33,7 +41,7 @@ class SwitchSelectPanelTypeController: UIViewController {
         tableView.contentInset = UIEdgeInsets(top: 0, left: 0, bottom: SCRYFrom(16), right: 0)
         tableView.register(GroupSwitchPanelViewCell.classForCoder(), forCellReuseIdentifier: "panel")
         tableView.register(SyncDevicesTitleHeaderView.classForCoder(), forHeaderFooterViewReuseIdentifier: "header")
-        tableView.showsVerticalScrollIndicator = false
+//        tableView.showsVerticalScrollIndicator = false
         tableView.dataSource = self
         tableView.delegate = self
         tableView.separatorStyle = .none

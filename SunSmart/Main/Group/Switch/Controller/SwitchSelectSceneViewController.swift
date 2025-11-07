@@ -50,6 +50,14 @@ class SwitchSelectSceneViewController: UIViewController {
         updateEmptyUI()
     }
     
+    override func viewDidAppear(_ animated: Bool) {
+        super.viewDidAppear(animated)
+        
+        if self.sceneTableView.firstShowFlashScrollIndicators {
+            self.sceneTableView.flashScrollIndicatorsIfNeeded()
+        }
+    }
+    
     private func updateEmptyUI() {
         if scenes.isEmpty && sceneTableView.emptyView == nil {
             view.layoutIfNeeded()

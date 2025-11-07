@@ -54,6 +54,10 @@ class GatewayAPNMenuView: UIView {
 //        self.contentView.frame.origin = contentPoint
         UIView.animate(withDuration: 0.3) {
             self.contentView.alpha = 1
+        }completion: { _ in
+            if self.tableView.firstShowFlashScrollIndicators {
+                self.tableView.flashScrollIndicatorsIfNeeded()
+            }
         }
     }
     

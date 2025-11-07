@@ -165,6 +165,14 @@ class SiteViewController: UIViewController {
             addSpace()
         }
         
+        if allSpacesCollectionView.firstShowFlashScrollIndicators {
+            allSpacesCollectionView.flashScrollIndicatorsIfNeeded()
+        }
+        if favouritesCollectionView.firstShowFlashScrollIndicators {
+            favouritesCollectionView.flashScrollIndicatorsIfNeeded()
+        }
+
+        
         updateSyncState()
 #if DEBUG
 self.updateAddressData()

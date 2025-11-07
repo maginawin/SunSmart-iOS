@@ -189,6 +189,7 @@ class BleFirmwareUpdateViewController: UIViewController {
         case updateFinish
     }
     
+    private var helpBtn: UIButton!
     private var flowLayout: UICollectionViewFlowLayout!
     private var collectionView: UICollectionView!
     private var bottomView: UIView!
@@ -248,7 +249,12 @@ class BleFirmwareUpdateViewController: UIViewController {
         scanAnimationView = UIImageView(image: UIImage(named: "loading"))
         scanAnimationView.isHidden = true
         
-        navigationItem.rightBarButtonItems = [UIBarButtonItem(image: UIImage(named: "help")?.withRenderingMode(.alwaysOriginal), style: .done, target: self, action: #selector(helpAction)), UIBarButtonItem(customView: scanAnimationView)]
+        helpBtn = UIButton(normalImageName: "help", target: self, action: #selector(helpAction))
+        navigationItem.rightBarButtonItems = [UIBarButtonItem(customView: helpBtn), UIBarButtonItem(customView: scanAnimationView)]
+    #if DEBUG
+        let testTap = UILongPressGestureRecognizer(target: self, action: #selector(test))
+        helpBtn.addGestureRecognizer(testTap)
+    #endif
         setupUI()
         self.isModalInPresentation = true
 //        setupData()
@@ -261,6 +267,14 @@ class BleFirmwareUpdateViewController: UIViewController {
         refreshRSSI()
     }
     
+    override func viewDidAppear(_ animated: Bool) {
+        super.viewDidAppear(animated)
+        
+        if collectionView.firstShowFlashScrollIndicators {
+            collectionView.flashScrollIndicatorsIfNeeded()
+        }
+    }
+    
     override func viewDidLayoutSubviews() {
         super.viewDidLayoutSubviews()
         
@@ -271,6 +285,21 @@ class BleFirmwareUpdateViewController: UIViewController {
         }
     }
     
+    @objc private func test(sender: UIGestureRecognizer) {
+        guard sender.state == .began else {
+            return
+        }
+        let vc = ReadDevicesDataViewController(type: .parameters(nodes: MeshNetworkManager.instance.realNodes, parameters: [.firmwareVension]))
+        vc.readSuccessCallback = {[weak self] _ in
+            self?.setupData(loadServerData: true)
+            self?.navigationController?.popViewController(animated: true)
+        }
+        vc.backActionCallback = {[weak self] _ in
+            self?.setupData(loadServerData: true)
+            self?.navigationController?.popViewController(animated: true)
+        }
+        navigationController?.pushViewController(vc, animated: true)
+    }
     
     /// 获取云端固件
     private func loadCloudFirmwareRequest(type: FirmwareUpdateTypeData) {
@@ -548,7 +577,11 @@ class BleFirmwareUpdateViewController: UIViewController {
         updateState = .updating
         
         if restoreView != nil, restoreView!.height > 0 {
-            collectionView.reloadSections(IndexSet(integer: 0))
+//            collectionView.reloadSections(IndexSet(integer: 0))
+            // 只刷新特定的 section header
+            if let layout = collectionView.collectionViewLayout as? UICollectionViewFlowLayout {
+                layout.invalidateLayout(with: UICollectionViewFlowLayoutInvalidationContext())
+            }
         }
         updateUI()
         MeshFirmwareUpdateManager.shared.startFirmwareUpdate(targets: targets) {[weak self] node, state in
@@ -590,6 +623,9 @@ class BleFirmwareUpdateViewController: UIViewController {
                     node.updateState = .failure(error)
                 }
                 node.selectedState = .selected
+                if !self.selectNodes.contains(node) {
+                    self.selectNodes.append(node)
+                }
                 self.reloadNodeUI(node: node)
                 self.updateSelectNodes()
                 
@@ -1218,7 +1254,7 @@ extension BleFirmwareUpdateViewController: BleFirmwareTypeUpdateViewCellDelegate
                         self.selectNodes.append(device)
                     }
                 }
-                self.updateSelectAllState()
+                self.updateUI()
                 
             })]).show()
         }
@@ -1296,5 +1332,8 @@ extension BleFirmwareUpdateViewController: BleFirmwareUpdateRestoreViewDelegate 
     func firmwareUpdateDidUnfoldAction(_ view: BleFirmwareUpdateRestoreView) {
         self.unfold = !self.unfold
         self.collectionView.reloadSections(IndexSet(integer: 0))
+//        if let layout = collectionView.collectionViewLayout as? UICollectionViewFlowLayout {
+//            layout.invalidateLayout(with: UICollectionViewFlowLayoutInvalidationContext())
+//        }
     }
 }

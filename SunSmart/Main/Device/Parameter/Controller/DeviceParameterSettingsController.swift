@@ -51,16 +51,35 @@ class DeviceParameterSettingsController: UIViewController {
             defaultMotionSensitivityRange = Double(sensitivityValueRange.lowerBound.percentageFloat)...Double(sensitivityValueRange.upperBound.percentageFloat)
         }
         
-        
-        parameterDatas = [
-            .init(type: .pwmFrequency, data: 2940, enable: false),
-            .init(type: .ratedPower, data: ratedPowerPhaseDatas, enable: false),
-            .init(type: .motionSensitivityRange, data: defaultMotionSensitivityRange, enable: false),
-            .init(type: .defalutTransitionTime, data: defaultTransitionTime, enable: false)
-        ]
+        if let node = devices.first {
+            if node.supportPwmFrequency {
+                parameterDatas.append(.init(type: .pwmFrequency, data: 2940, enable: false))
+            }
+            parameterDatas.append(.init(type: .ratedPower, data: ratedPowerPhaseDatas, enable: false))
+            if node.supportMotionSensitivity {
+                parameterDatas.append(.init(type: .motionSensitivityRange, data: defaultMotionSensitivityRange, enable: false))
+            }
+            parameterDatas.append(.init(type: .defalutTransitionTime, data: defaultTransitionTime, enable: false))
+            
+        }else {
+            parameterDatas = [
+                .init(type: .pwmFrequency, data: 2940, enable: false),
+                .init(type: .ratedPower, data: ratedPowerPhaseDatas, enable: false),
+                .init(type: .motionSensitivityRange, data: defaultMotionSensitivityRange, enable: false),
+                .init(type: .defalutTransitionTime, data: defaultTransitionTime, enable: false)
+            ]
+        }
         setupUI()
         
         updateSetupBtnState()
+    }
+    
+    override func viewDidAppear(_ animated: Bool) {
+        super.viewDidAppear(animated)
+        
+        if self.tableView.firstShowFlashScrollIndicators {
+            self.tableView.flashScrollIndicatorsIfNeeded()
+        }
     }
     
     @objc private func previousAction() {
@@ -311,7 +330,6 @@ class DeviceParameterSettingsController: UIViewController {
         
         tableView = UITableView()
         tableView.separatorStyle = .none
-        tableView.showsVerticalScrollIndicator = false
         tableView.backgroundColor = Background_Color
         tableView.register(DeviceParameterSettingsViewCell.classForCoder(), forCellReuseIdentifier: "cell")
         tableView.register(DeviceParameterRetedPowerViewCell.classForCoder(), forCellReuseIdentifier: "retedPowerCell")

@@ -139,6 +139,15 @@ class DevicesViewController: WMPageController {
                 hud.bezelView.layer.cornerRadius = 20
                 hud.minSize = CGSizeMake(SCREEN_WIDTH - margin * 2, 185)
                 self.connectLoadingHUD = hud
+                hud.addCloseButton {[weak self] in
+                    guard let self = self else { return }
+                    self.stopGuidanceTimer()
+                    
+                    // 判断是否需要申请地址
+                    if self.space.applyDeviceAddressCount != nil {
+                        applyDeviceAddressAlert()
+                    }
+                }
             }
             startGuidanceTimer()
             // 获取设备信号

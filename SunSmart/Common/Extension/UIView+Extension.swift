@@ -70,5 +70,29 @@ extension UIView {
         }
     }
     
+    /// view截图
+    func snapshot() -> UIImage {
+        UIGraphicsBeginImageContextWithOptions(bounds.size, false, UIScreen.main.scale)
+        self.drawHierarchy(in: CGRect(x: 0, y: 0, width: self.bounds.width, height: self.bounds.height), afterScreenUpdates: true)
+        let snapshot = UIGraphicsGetImageFromCurrentImageContext()
+        UIGraphicsEndImageContext()
+        return snapshot ?? UIImage()
+    }
+    
+    /// view生成高斯模糊图片
+    func toBlurredImage() -> UIImage {
+
+        //  应用高斯模糊
+        let ciImage = CIImage(image: snapshot())
+        let filter = CIFilter(name: "CIGaussianBlur")!
+        filter.setValue(ciImage, forKey: kCIInputImageKey)
+        filter.setValue(8, forKey: kCIInputRadiusKey) // 模糊强度
+        
+        let context = CIContext()
+        let result = filter.outputImage!
+        let cgImage = context.createCGImage(result, from: ciImage!.extent)!
+        return UIImage(cgImage: cgImage)
+    }
+    
 }
 

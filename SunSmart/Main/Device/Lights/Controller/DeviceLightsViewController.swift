@@ -91,6 +91,11 @@ class DeviceLightsViewController: UIViewController {
 //        devices.filter({ !$0.state }).count
         MeshLibManager.manager.register(self)
         MeshLibManager.manager.messageDelegate = self
+        
+        if collectionView.firstShowFlashScrollIndicators {
+            collectionView.flashScrollIndicatorsIfNeeded()
+        }
+        
     }
     
     override func viewDidLayoutSubviews() {
@@ -185,7 +190,8 @@ class DeviceLightsViewController: UIViewController {
         }
         
         if refreshControl.isRefreshing {
-            DispatchQueue.main.asyncAfter(deadline: .now() + 5) {[weak self] in
+            let duration = max(2, min(Double(devices.count) *  0.3, 5))
+            DispatchQueue.main.asyncAfter(deadline: .now() + duration) {[weak self] in
                 guard let self = self else { return }
                 self.refreshControl.endRefreshing()
             }
@@ -322,11 +328,11 @@ class DeviceLightsViewController: UIViewController {
         let groups = MeshNetworkManager.instance.groups
 //            .filter({ $0.nodes.count > 0 })
         showSelectDatas = groups.map({
-            let nodes = $0.nodes.filter({ $0.state && $0.isKeybindComplete })
+            let nodes = $0.nodes
             let isSelected = nodes.count > 0 && !nodes.contains(where: { !self.selectedAddresss.contains($0.primaryUnicastAddress) })
             return DeviceGroupsSelectData(name: $0.name, groupAddress: $0.address.address,addresss: nodes.map({ $0.primaryUnicastAddress }), isSelected: isSelected)
         })
-        let canEditDeviceAddresss = devices.filter({ $0.state && $0.isKeybindComplete }).map({ $0.primaryUnicastAddress })
+        let canEditDeviceAddresss = devices.map({ $0.primaryUnicastAddress })
         // 全选
 //        showSelectDatas.insert(DeviceGroupsSelectData(name: "ALL".localizedString, addresss: canEditDeviceAddresss, isSelected: canEditDeviceAddresss.count == selectedAddresss.count && canEditDeviceAddresss.count > 0), at: 0)
         self.groupsView.datas = showSelectDatas
@@ -490,6 +496,8 @@ class DeviceLightsViewController: UIViewController {
         let supportCct = devices.contains(where: { $0.temperatureModel != nil })
         lightControlView.supportOptions = supportCct ? [.level, .cct] : [.level]
         lightControlView.show()
+        // 禁用侧滑返回手势
+        navigationController?.interactivePopGestureRecognizer?.isEnabled = false
     }
     
     /// 修复设备
@@ -510,7 +518,7 @@ class DeviceLightsViewController: UIViewController {
                 
             }else if indexPath.item <= devices.count {
                 let node = devices[indexPath.item - 1]
-                if isEdit && node.state { // 不在编辑状态/编辑状态+设备离线可以进入设备控制页
+                if isEdit { // 不在编辑状态可以进入设备控制页
                     return
                 }
                 var deviceVc: UIViewController!
@@ -551,27 +559,27 @@ class DeviceLightsViewController: UIViewController {
         if let index = devices.firstIndex(where: {$0.primaryUnicastAddress == node.primaryUnicastAddress}) {
 //            CATransaction.setDisableActions(true)
 //            collectionView.reloadItems(at: [IndexPath(row: index, section: 0)])
-            if isEdit {
-                if !node.state { // 离线
-                    if selectedAddresss.contains(node.primaryUnicastAddress) { // 是否编辑选中
-                        // 离线时清空选中地址数据
-                        selectedAddresss.removeAll(where: { $0 == node.primaryUnicastAddress })
-                        updateEditUI()
-                    }
-                }
-            }
+//            if isEdit {
+//                if !node.state { // 离线
+//                    if selectedAddresss.contains(node.primaryUnicastAddress) { // 是否编辑选中
+//                        // 离线时清空选中地址数据
+//                        selectedAddresss.removeAll(where: { $0 == node.primaryUnicastAddress })
+//                        updateEditUI()
+//                    }
+//                }
+//            }
             
             if let item = collectionView.cellForItem(at: IndexPath(item: index + 1, section: 0)) as? DevicesViewCell {
-                if isEdit {
-                    if node.state { // 离线->在线
-                        if item.selectImageView.isHidden {
-                            item.selectImageView.isHidden = false
-                            item.selectImageView.image = UIImage(named: selectedAddresss.contains(node.primaryUnicastAddress) ? "select" : "select_un")
-                        }
-                    }else { // 在线->离线
-                        item.selectImageView.isHidden = true
-                    }
-                }
+//                if isEdit {
+//                    if node.state { // 离线->在线
+//                        if item.selectImageView.isHidden {
+//                            item.selectImageView.isHidden = false
+//                            item.selectImageView.image = UIImage(named: selectedAddresss.contains(node.primaryUnicastAddress) ? "select" : "select_un")
+//                        }
+//                    }else { // 在线->离线
+//                        item.selectImageView.isHidden = true
+//                    }
+//                }
                 item.device = node
                 item.displayDeviceNamePrefix = space.displayDeviceNamePrefix
             }
@@ -619,94 +627,146 @@ class DeviceLightsViewController: UIViewController {
 //        guard MeshLibManager.manager.isMeshNetworkConnected else {
 //            return
 //        }
-        SRAlertView(title: "notification".localizedString, message: "devices_delete_message".localizedString, actions: [.cancelAction, SRAlertAction(title: "alert_item_continue".localizedString, style: .destructive, actionHandler: {[weak self] _ in
+        
+        
+        let selectDevices = devices.filter({ node in selectedAddresss.contains(where: { $0 == node.primaryUnicastAddress }) })
+        
+        guard selectDevices.count > 0 else {
+            return
+        }
+        
+        let alertView = SRAlertView(message: "devices_delete_message".localizedString, actions: [.cancelAction, SRAlertAction(title: "alert_item_continue".localizedString, style: .destructive, actionHandler: {[weak self] _ in
             guard let self = self else { return }
-            XWHUDManager.showCustomHUD(withMessage: "deleting".localizedString, isWindow: true)
             
-            var resetAddressList = self.selectedAddresss
+            // 提供重置的设备地址+超时时长list数据
+            var addressDataList: [(address: Address, timeout: TimeInterval)] = selectDevices.map({ ($0.primaryUnicastAddress, $0.state ? 10 : 2) })
             // 如果重置节点中存在代理节点，将代理节点放到最后重置
-            if let proxyNode = self.devices.first(where: { $0.isProxy }), self.selectedAddresss.contains(proxyNode.primaryUnicastAddress) {
-                resetAddressList.removeAll(where: { $0 == proxyNode.primaryUnicastAddress })
-                resetAddressList.append(proxyNode.primaryUnicastAddress)
+            if let proxyNode = selectDevices.first(where: { $0.isProxy }) {
+                addressDataList.removeAll(where: { $0.address == proxyNode.primaryUnicastAddress })
+                addressDataList.append((proxyNode.primaryUnicastAddress, 10))
             }
             isDeletingDevice = true
-            MeshAPI.resetNodes(addressList: resetAddressList, resetSuccess: nil, resetFail: nil) {[weak self] successAddressList, failAddressList in
-                XWHUDManager.hide()
+            XWHUDManager.showCustomHUD(withMessage: "deleting".localizedString, isWindow: true)
+            MeshAPI.resetNodes(addressDataList: addressDataList, resetSuccess: nil, resetFail: nil) {[weak self] successAddressList, failAddressList in
                 guard let self = self else { return }
-                
-                successAddressList.forEach({ address in
-                    if let index = self.devices.firstIndex(where: { $0.primaryUnicastAddress == address }) {
-                        let node = self.devices[index]
-                        node.deleteExtension()
-                        self.devices.remove(at: index)
-                    }
+                self.isDeletingDevice = false
+                XWHUDManager.hide()
+                XWHUDManager.showSuccessTipHUD("done!".localizedString)
+                let networkManager = MeshNetworkManager.instance
+                selectDevices.forEach({
+                    networkManager.meshNetwork?.remove(node: $0)
+                    $0.deleteExtension()
                 })
-                
-//                self.devices.removeAll(where: { successAddressList.contains($0.primaryUnicastAddress) })
-                self.selectedAddresss.removeAll(where: { successAddressList.contains($0) })
-                self.space.deviceCount = self.devices.count
-                self.space.luminairesCount = self.devices.count
-                self.space.save()
-                
-                if failAddressList.isEmpty { // 删除成功
-                    XWHUDManager.showSuccessTipHUD("done!".localizedString)
-                    self.isEdit = false
-                    self.updateUI()
-                    self.isDeletingDevice = false
-                    self.collectionView.reloadData()
-                    if MeshNetworkManager.instance.realNodes.isEmpty, MeshLibManager.manager.isMeshNetworkConnected {
-                        MeshLibManager.manager.close()
-                    }
-                    
-                    // 通知space数据修改
-//                    NotificationCenter.default.post(name: .init(spaceDataChangedNotificaitonName), object: SpaceChangeDataType.device)
-                    NotificationCenter.default.post(name: .init(spaceDataChangedNotificaitonName), object: SpaceChangeDataType.network(type: .address))
-                    
-                }else { // 删除失败（提示是否强制删除这部分设备）
-                    
-                    let alertView = SRAlertView(title: "notification".localizedString, actions: [SRAlertAction(title: "alert_item_cancel".localizedString, style: .cancel, actionHandler: {[weak self] _ in
-                        self?.devices.removeAll(where: { successAddressList.contains($0.primaryUnicastAddress) })
-                        self?.updateUI(reloadTableView: false)
-                        self?.updateEditUI()
-                        self?.isDeletingDevice = false
-                        self?.collectionView.reloadData()
-                        if successAddressList.count > 0 {
-                            // 通知space数据修改
-//                            NotificationCenter.default.post(name: .init(spaceDataChangedNotificaitonName), object: SpaceChangeDataType.device)
-                            NotificationCenter.default.post(name: .init(spaceDataChangedNotificaitonName), object: SpaceChangeDataType.network(type: .address))
-                        }
-                        
-                    }), SRAlertAction(title: "force_delete".localizedString, actionHandler: {[weak self] _ in
-                        guard let self = self else { return }
-                        let forceDeleteNodes = self.devices.filter({ failAddressList.contains($0.primaryUnicastAddress) })
-                        forceDeleteNodes.forEach({
-                            $0.deleteExtension()
-                            MeshNetworkManager.instance.meshNetwork?.remove(node: $0)
-                        })
-//                        _ = self.space.meshManager?.save()
-                        self.devices.removeAll(where: { failAddressList.contains($0.primaryUnicastAddress) })
-                        self.isEdit = false
-                        self.isDeletingDevice = false
-                        self.selectedAddresss.removeAll()
-                        self.updateUI()
-                        self.collectionView.reloadData()
-                        
-                        self.space.deviceCount = self.devices.count
-                        self.space.luminairesCount = self.devices.count
-                        self.space.save()
-                        
-                        XWHUDManager.showSuccessTipHUD("done!".localizedString)
-                        // 通知space数据修改
-                        NotificationCenter.default.post(name: .init(spaceDataChangedNotificaitonName), object: SpaceChangeDataType.network(type: .address))
-                        
-                    })])
-                    let messageAttStr = NSMutableAttributedString(string: "devices_force_delete_message".localizedString, attributes: [.foregroundColor: TextBlack_Color])
-                    messageAttStr.append(NSAttributedString(string: "devices_force_delete_note".localizedString, attributes: [.foregroundColor: Message_Color]))
-                    alertView.messageLabel.attributedText = messageAttStr
-                    alertView.show()
-                }
+                self.isEdit = false
+                self.loadDevices()
+//                self.updateUI()
+//                self.collectionView.reloadData()
+//                if MeshNetworkManager.instance.realNodes.isEmpty, MeshLibManager.manager.isMeshNetworkConnected {
+//                    MeshLibManager.manager.close()
+//                }
+                // 通知space数据修改
+                NotificationCenter.default.post(name: .init(spaceDataChangedNotificaitonName), object: SpaceChangeDataType.network(type: .address))
             }
-        })]).show()
+            
+        })])
+        // 存在离线设备
+        if selectDevices.contains(where: { !$0.state }) {
+            let messageAttStr = NSMutableAttributedString(string: "devices_force_delete_message".localizedString, attributes: [.foregroundColor: TextBlack_Color])
+            messageAttStr.append(NSAttributedString(string: "devices_force_delete_note".localizedString, attributes: [.foregroundColor: Message_Color]))
+            alertView.messageLabel.attributedText = messageAttStr
+        }
+        alertView.show()
+        
+        
+        
+//        SRAlertView(title: "notification".localizedString, message: "devices_delete_message".localizedString, actions: [.cancelAction, SRAlertAction(title: "alert_item_continue".localizedString, style: .destructive, actionHandler: {[weak self] _ in
+//            guard let self = self else { return }
+//            XWHUDManager.showCustomHUD(withMessage: "deleting".localizedString, isWindow: true)
+//            
+//            var resetAddressList = self.selectedAddresss
+//            // 如果重置节点中存在代理节点，将代理节点放到最后重置
+//            if let proxyNode = self.devices.first(where: { $0.isProxy }), self.selectedAddresss.contains(proxyNode.primaryUnicastAddress) {
+//                resetAddressList.removeAll(where: { $0 == proxyNode.primaryUnicastAddress })
+//                resetAddressList.append(proxyNode.primaryUnicastAddress)
+//            }
+//            isDeletingDevice = true
+//            MeshAPI.resetNodes(addressList: resetAddressList, resetSuccess: nil, resetFail: nil) {[weak self] successAddressList, failAddressList in
+//                XWHUDManager.hide()
+//                guard let self = self else { return }
+//                
+//                successAddressList.forEach({ address in
+//                    if let index = self.devices.firstIndex(where: { $0.primaryUnicastAddress == address }) {
+//                        let node = self.devices[index]
+//                        node.deleteExtension()
+//                        self.devices.remove(at: index)
+//                    }
+//                })
+//                
+////                self.devices.removeAll(where: { successAddressList.contains($0.primaryUnicastAddress) })
+//                self.selectedAddresss.removeAll(where: { successAddressList.contains($0) })
+//                self.space.deviceCount = self.devices.count
+//                self.space.luminairesCount = self.devices.count
+//                self.space.save()
+//                
+//                if failAddressList.isEmpty { // 删除成功
+//                    XWHUDManager.showSuccessTipHUD("done!".localizedString)
+//                    self.isEdit = false
+//                    self.updateUI()
+//                    self.isDeletingDevice = false
+//                    self.collectionView.reloadData()
+//                    if MeshNetworkManager.instance.realNodes.isEmpty, MeshLibManager.manager.isMeshNetworkConnected {
+//                        MeshLibManager.manager.close()
+//                    }
+//                    
+//                    // 通知space数据修改
+////                    NotificationCenter.default.post(name: .init(spaceDataChangedNotificaitonName), object: SpaceChangeDataType.device)
+//                    NotificationCenter.default.post(name: .init(spaceDataChangedNotificaitonName), object: SpaceChangeDataType.network(type: .address))
+//                    
+//                }else { // 删除失败（提示是否强制删除这部分设备）
+//                    
+//                    let alertView = SRAlertView(title: "notification".localizedString, actions: [SRAlertAction(title: "alert_item_cancel".localizedString, style: .cancel, actionHandler: {[weak self] _ in
+//                        self?.devices.removeAll(where: { successAddressList.contains($0.primaryUnicastAddress) })
+//                        self?.updateUI(reloadTableView: false)
+//                        self?.updateEditUI()
+//                        self?.isDeletingDevice = false
+//                        self?.collectionView.reloadData()
+//                        if successAddressList.count > 0 {
+//                            // 通知space数据修改
+////                            NotificationCenter.default.post(name: .init(spaceDataChangedNotificaitonName), object: SpaceChangeDataType.device)
+//                            NotificationCenter.default.post(name: .init(spaceDataChangedNotificaitonName), object: SpaceChangeDataType.network(type: .address))
+//                        }
+//                        
+//                    }), SRAlertAction(title: "force_delete".localizedString, actionHandler: {[weak self] _ in
+//                        guard let self = self else { return }
+//                        let forceDeleteNodes = self.devices.filter({ failAddressList.contains($0.primaryUnicastAddress) })
+//                        forceDeleteNodes.forEach({
+//                            $0.deleteExtension()
+//                            MeshNetworkManager.instance.meshNetwork?.remove(node: $0)
+//                        })
+////                        _ = self.space.meshManager?.save()
+//                        self.devices.removeAll(where: { failAddressList.contains($0.primaryUnicastAddress) })
+//                        self.isEdit = false
+//                        self.isDeletingDevice = false
+//                        self.selectedAddresss.removeAll()
+//                        self.updateUI()
+//                        self.collectionView.reloadData()
+//                        
+//                        self.space.deviceCount = self.devices.count
+//                        self.space.luminairesCount = self.devices.count
+//                        self.space.save()
+//                        
+//                        XWHUDManager.showSuccessTipHUD("done!".localizedString)
+//                        // 通知space数据修改
+//                        NotificationCenter.default.post(name: .init(spaceDataChangedNotificaitonName), object: SpaceChangeDataType.network(type: .address))
+//                        
+//                    })])
+//                    let messageAttStr = NSMutableAttributedString(string: "devices_force_delete_message".localizedString, attributes: [.foregroundColor: TextBlack_Color])
+//                    messageAttStr.append(NSAttributedString(string: "devices_force_delete_note".localizedString, attributes: [.foregroundColor: Message_Color]))
+//                    alertView.messageLabel.attributedText = messageAttStr
+//                    alertView.show()
+//                }
+//            }
+//        })]).show()
         
     }
     
@@ -830,7 +890,7 @@ extension DeviceLightsViewController: UICollectionViewDataSource, UICollectionVi
         }
         let cell = collectionView.dequeueReusableCell(withReuseIdentifier: "cell", for: indexPath) as! DevicesViewCell
         let device = devices[indexPath.item - 1]
-        if isEdit && device.state && device.isKeybindComplete {
+        if isEdit {
             cell.selectImageView.isHidden = false
             cell.selectImageView.image = UIImage(named: selectedAddresss.contains(device.primaryUnicastAddress) ? "select" : "select_un")
         }else {
@@ -908,7 +968,7 @@ extension DeviceLightsViewController: UICollectionViewDataSource, UICollectionVi
 //                }
                 
                 reloadCollectionItem(node: node)
-                MeshAPI.setNodeOnOffState(address: node.primaryUnicastAddress, isOn: node.isOn)
+                MeshAPI.setNodeOnOffState(address: node.primaryUnicastAddress, isOn: node.isOn, ack: true)
 //                if let model = node.sunricherVendorModel {
 //                    MeshAPI.sendMessage(message: SunricherVendorSet(code: .lightSensorCalibrate, parameters: .lightSensorCalibrate(214)), model: model)
 //                }
@@ -1039,6 +1099,23 @@ extension DeviceLightsViewController: DeviceLightControlViewDelegate {
     
     func lightControlDidHide(_ view: DeviceLightControlView) {
         NotificationCenter.default.post(name: .init(spacePageDisableScrollNotificaitonName), object: nil)
+        /// 启用导航控制器侧滑手势
+        navigationController?.interactivePopGestureRecognizer?.isEnabled = true
+    }
+    
+    /// Auto
+    func lightControlAutoAction(_ view: DeviceLightControlView) {
+        devices.forEach({
+            // profile第一阶段亮度，如果profile是daylight harvesting无法估算亮度则为nil
+            if let lightLCOnLightness = $0.lightLCOnLightness {
+                $0.lightness = lightLCOnLightness
+                $0.isOn = lightLCOnLightness > 0
+            }
+        })
+        updateAllOnOffItemUI()
+        collectionView.reloadData()
+        // 所有灯Auto
+        MeshAPI.sendMessage(message: LightLCLightOnOffSetUnacknowledged(true), address: .subElementBroadcastGroupAddress)
     }
 }
 
@@ -1047,7 +1124,7 @@ extension DeviceLightsViewController: DeviceGroupsViewDelegate {
     func view(_ view: DeviceGroupsView, didSelectAllAction selectAll: Bool) {
         
         if selectAll {
-            selectedAddresss = devices.filter({ $0.isKeybindComplete && $0.state }).map({ $0.primaryUnicastAddress })
+            selectedAddresss = devices.map({ $0.primaryUnicastAddress })
         }else {
             selectedAddresss.removeAll()
         }

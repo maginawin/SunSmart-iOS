@@ -244,6 +244,20 @@ class DeviceLightViewController: UIViewController {
                 self?.readRoute()
             }))
         }
+        items.append(.init(icon: UIImage(named: "menu_information"), title: "Set Proxy", tapItemBack: {[weak self] _ in
+            guard let self = self else { return }
+            XWHUDManager.showCustomHUD(withMessage: nil, view: self.view)
+            MeshLibManager.manager.connectProxy(node: self.node) {[weak self] result in
+                guard let self = self else { return }
+                XWHUDManager.hideInView(with: self.view)
+                if result {
+                    XWHUDManager.showSuccessTipHUD("successful".localizedString + " !")
+                }else {
+                    XWHUDManager.showErrorTipHUD("failed".localizedString + " !")
+                }
+                
+            }
+        }))
         #endif
 //        #if DEBUG
 //        items.append(.init(icon: UIImage(named: "menu_edit"), title: "pwm_period".localizedString, hideAnimation: false, tapItemBack: {[weak self] _ in
@@ -551,7 +565,7 @@ class DeviceLightViewController: UIViewController {
             node.trunOffLightness = node.lightness
             node.lightness = 0
         }
-        MeshAPI.setNodeOnOffState(address: node.primaryUnicastAddress, isOn: node.isOn)
+        MeshAPI.setNodeOnOffState(address: node.primaryUnicastAddress, isOn: node.isOn, ack: true)
         updateData()
         updateSliderValue()
     }

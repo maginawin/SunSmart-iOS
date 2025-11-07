@@ -87,7 +87,7 @@ open class LBXScanViewController: UIViewController {
         view.addSubview(messageLabel)
         
         flashlightBtn = UIButton()
-        flashlightBtn.setImage(UIImage(named: "flashlight"), for: .normal)
+        flashlightBtn.setImage(UIImage(named: "camera_flashlight"), for: .normal)
         flashlightBtn.addTarget(self, action: #selector(flashlight), for: .touchUpInside)
         flashlightBtn.translatesAutoresizingMaskIntoConstraints = false
         view.addSubview(flashlightBtn)

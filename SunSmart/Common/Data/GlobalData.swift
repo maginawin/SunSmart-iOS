@@ -16,6 +16,8 @@ struct DeviceSettingsParameterData {
     let brightness: UInt8
     /// 光照lux差值
     let illuminationDelta: UInt16
+    /// 手电筒闪烁频率
+    var flashFrequency: UInt16 = 10
     /// 是否开启音频通知
     let notificationEnable: Bool
     /// 音量
@@ -29,3 +31,10 @@ struct DeviceSettingsParameterData {
 
 /// 参数
 var deviceSettingsParameterData: DeviceSettingsParameterData = .default
+/// 手电筒安全模式下参数
+var flashlightSafeModeParameterData: DeviceSettingsParameterData = .default
+/// 手电筒暴力模式下参数
+var flashlightBeastModeParameterData: DeviceSettingsParameterData = .default
+/// 移动感应模式下参数
+var motionModeParameterData: DeviceSettingsParameterData = .default
+

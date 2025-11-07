@@ -62,6 +62,13 @@ class DeviceGroupsView: UIView {
             progressView.numberOfPages = Int(ceil(Double(datas.count) / 8.0))
             flowLayout.itemColCount = datas.count > 4 ? 2 : 1
             collectionView.reloadData()
+         
+            if collectionView.firstShowFlashScrollIndicators {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {[weak self] in
+                    self?.collectionView.flashScrollIndicatorsIfNeeded()
+                }
+            }
+            
             
         }
     }

@@ -53,6 +53,14 @@ class SceneAddCustomView: UIView {
         fatalError("init(coder:) has not been implemented")
     }
     
+    override func layoutSubviews() {
+        super.layoutSubviews()
+        
+        if collectionView.firstShowFlashScrollIndicators {
+            collectionView.flashScrollIndicatorsIfNeeded()
+        }
+    }
+    
     @objc private func createBtnClick() {
         
         delegate?.customViewDidCreateAction(self)
@@ -137,7 +145,7 @@ class SceneAddCustomView: UIView {
         collectionView.contentInset = UIEdgeInsets(top: 0, left: SCRXFrom(20), bottom: SCRXFrom(16), right: SCRXFrom(20))
         collectionView.backgroundColor = .clear
         collectionView.register(GroupImageViewCell.classForCoder(), forCellWithReuseIdentifier: "cell")
-        collectionView.showsVerticalScrollIndicator = false
+//        collectionView.showsVerticalScrollIndicator = false
         collectionView.dataSource = self
         collectionView.delegate = self
         collectionView.enableKeyboardDismissal()

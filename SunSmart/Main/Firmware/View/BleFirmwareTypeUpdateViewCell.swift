@@ -128,6 +128,9 @@ class BleFirmwareTypeUpdateViewCell: UICollectionViewCell {
             
             if firmwareTypeData.nodes.count > 4 {
                 deviceTableView.isScrollEnabled = true
+                if deviceTableView.firstShowFlashScrollIndicators {
+                    deviceTableView.flashScrollIndicatorsIfNeeded()
+                }
             }else {
                 deviceTableView.isScrollEnabled = false
             }

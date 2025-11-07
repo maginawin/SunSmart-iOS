@@ -61,6 +61,15 @@ class EnergySelectExportDevicesController: UIViewController {
         
         setupUI()
     }
+    
+    override func viewDidAppear(_ animated: Bool) {
+        super.viewDidAppear(animated)
+        
+        if self.tableView.firstShowFlashScrollIndicators {
+            self.tableView.flashScrollIndicatorsIfNeeded()
+        }
+    }
+    
     override func viewDidLayoutSubviews() {
         super.viewDidLayoutSubviews()
         
@@ -209,7 +218,7 @@ extension EnergySelectExportDevicesController: DeviceParameterDeviceCellDelegate
         device.selectOn = isOn
         device.selectOff = !isOn
         cell.device = device
-        MeshAPI.setNodeOnOffState(address: device.primaryUnicastAddress, isOn: isOn)
+        MeshAPI.setNodeOnOffState(address: device.primaryUnicastAddress, isOn: isOn, ack: true)
     }
 }
 

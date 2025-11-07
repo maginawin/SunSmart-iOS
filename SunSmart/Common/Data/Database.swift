@@ -2783,14 +2783,18 @@ extension GatewayModel {
         
     }
     
-    /// 删除对应网关
+    
+    /// 删除网关
     /// - Parameters:
     ///   - siteId: siteid
-    ///   - macAddress: 网关mac地址
+    ///   - macAddress: 网关mac地址（设置时删除对应网关，否则删除site内网关）
     /// - Returns: 是否成功
-    @discardableResult static func delete(siteId: String, macAddress: String) -> Bool {
+    @discardableResult static func delete(siteId: String, macAddress: String? = nil) -> Bool {
         
-        let predicate = GatewayModel.gatewaysTable.filter(ExpressionKey.siteUUID == siteId && ExpressionKey.macAddress == macAddress)
+        var predicate = GatewayModel.gatewaysTable.filter(ExpressionKey.siteUUID == siteId)
+        if let macAddress = macAddress {
+            predicate = predicate.filter(ExpressionKey.macAddress == macAddress)
+        }
         do {
             try SunSmartDataManager.shared.db?.run(predicate.delete())
         } catch {

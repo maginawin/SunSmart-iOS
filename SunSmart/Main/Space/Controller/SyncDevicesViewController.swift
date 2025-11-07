@@ -101,6 +101,10 @@ class SyncDevicesViewController: UIViewController {
         if backActionCallback != nil {
             navigationController?.interactivePopGestureRecognizer?.isEnabled = false
         }
+        
+        if self.tableView.firstShowFlashScrollIndicators {
+            self.tableView.flashScrollIndicatorsIfNeeded()
+        }
     }
     
     override func viewWillDisappear(_ animated: Bool) {
@@ -367,9 +371,9 @@ class SyncDevicesViewController: UIViewController {
                         parameters.forEach { type in
                             switch type {
                             case .pwmFrequency(let frequency):
-                                let taskModel = SyncDeviceStepTaskModel(name: "pwm_period".localizedString, operationType: .configuration(node: node, type: .deviceParameters(parameterType: .pwmFrequency(frequency: frequency))))
+                                let taskModel = SyncDeviceStepTaskModel(name: "pwm_frequency".localizedString, operationType: .configuration(node: node, type: .deviceParameters(parameterType: .pwmFrequency(frequency: frequency))))
                                 
-                                let step = SyncDeviceStepModel(type: "pwm_period".localizedString, state: .none, tasks: [taskModel])
+                                let step = SyncDeviceStepModel(type: "pwm_frequency".localizedString, state: .none, tasks: [taskModel])
                                 taskModel.parentStepModel = step
                                 steps.append(step)
                             case .ratedPower(let value):

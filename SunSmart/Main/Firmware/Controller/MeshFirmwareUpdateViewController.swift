@@ -58,6 +58,14 @@ class MeshFirmwareUpdateViewController: UIViewController {
         }
     }
     
+    override func viewDidAppear(_ animated: Bool) {
+        super.viewDidAppear(animated)
+        
+        if tableView.firstShowFlashScrollIndicators {
+            tableView.flashScrollIndicatorsIfNeeded()
+        }
+    }
+    
     private func setupData() {
         
         let targetNodes = distributorData.targetNodes

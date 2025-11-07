@@ -708,19 +708,21 @@
     {
         "companyId" : "0A78",
         "productId" : "2031",
-        "categoryName" : "ZLLC PIR Sensor",
+        "categoryName" : "PIR Sensor Lighting",
         "elementCount" : 3,
         "iconCategory" : "Lighting",
-        "deviceCategory" : "StandaloneSensor",
-        "modelName" : "SR-BL9030B-PIR-HBV/LBV"
+        "deviceCategory" : "Lighting",
+        "modelName" : "SR-BL9030A_PIR_V_54L15",
+        "sensitivityRangeMin" : 26214,
+        "sensitivityRangeMax" : 58981
     },
     {
         "companyId" : "0A78",
         "productId" : "2041",
         "categoryName" : "ZLLC PIR Sensor",
         "elementCount" : 3,
-        "iconCategory" : "Lighting",
-        "deviceCategory" : "StandaloneSensor",
+        "iconCategory" : "Standalone Sensor",
+        "deviceCategory" : "Lighting",
         "modelName" : "SR-SS9030B-PIR-V"
     },
     {
@@ -965,6 +967,15 @@
         "iconCategory" : "Lighting",
         "deviceCategory" : "Lighting",
         "modelName" : "SR-BL9041A-D"
+    },
+    {
+        "companyId" : "0A78",
+        "productId" : "2802",
+        "categoryName" : "Dimmer",
+        "elementCount" : 2,
+        "iconCategory" : "Lighting",
+        "deviceCategory" : "Lighting",
+        "modelName" : "SR-BL9041A-R"
     },
     {
         "companyId" : "0A78",

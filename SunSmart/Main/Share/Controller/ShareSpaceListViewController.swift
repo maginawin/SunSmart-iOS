@@ -31,6 +31,14 @@ class ShareSpaceListViewController: UIViewController {
         
         setupUI()
     }
+    
+    override func viewDidAppear(_ animated: Bool) {
+        super.viewDidAppear(animated)
+        
+        if collectionView.firstShowFlashScrollIndicators {
+            collectionView.flashScrollIndicatorsIfNeeded()
+        }
+    }
 
     private func setupUI() {
         

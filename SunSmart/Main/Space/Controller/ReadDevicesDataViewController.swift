@@ -102,6 +102,10 @@ class ReadDevicesDataViewController: UIViewController {
         if backActionCallback != nil {
             navigationController?.interactivePopGestureRecognizer?.isEnabled = false
         }
+        
+        if self.tableView.firstShowFlashScrollIndicators {
+            self.tableView.flashScrollIndicatorsIfNeeded()
+        }
     }
     
     override func viewWillDisappear(_ animated: Bool) {

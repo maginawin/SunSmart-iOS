@@ -232,7 +232,13 @@ class CustomTableViewCell: UITableViewCell {
         }
     }
     
-    
+    var lineX: CGFloat = SCRXFrom(16) {
+        didSet {
+            lineView.snp.updateConstraints({ make in
+                make.left.equalTo(lineX)
+            })
+        }
+    }
     
     override init(style: UITableViewCell.CellStyle, reuseIdentifier: String?) {
         super.init(style: style, reuseIdentifier: reuseIdentifier)

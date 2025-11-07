@@ -78,6 +78,11 @@ class SharePermissionSelectionController: UIViewController {
                 showImportResult(results: results)
             }
         }
+        
+        if self.scrollView.firstShowFlashScrollIndicators {
+            self.scrollView.flashScrollIndicatorsIfNeeded()
+        }
+        
     }
     
     @objc private func back() {
@@ -407,7 +412,7 @@ class SharePermissionSelectionController: UIViewController {
     private func setupUI() {
         
         scrollView = UIScrollView()
-        scrollView.showsVerticalScrollIndicator = false
+//        scrollView.showsVerticalScrollIndicator = false
         scrollView.alwaysBounceVertical = true
         scrollView.delegate = self
         view.addSubview(scrollView)

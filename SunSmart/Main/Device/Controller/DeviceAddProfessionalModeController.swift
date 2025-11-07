@@ -174,6 +174,18 @@ class DeviceAddProfessionalModeController: UIViewController {
         addObserver()
     }
     
+    override func viewWillAppear(_ animated: Bool) {
+        super.viewWillAppear(animated)
+        
+        SystemVolumeManager.shared.startObserveVolume()
+    }
+    
+    override func viewWillDisappear(_ animated: Bool) {
+        super.viewWillDisappear(animated)
+        
+        SystemVolumeManager.shared.stopObserveVolume()
+    }
+    
     override func viewDidDisappear(_ animated: Bool) {
         super.viewDidDisappear(animated)
         

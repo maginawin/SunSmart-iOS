@@ -179,8 +179,10 @@ class GroupSensorView: UIView {
 //            self.contentView.setNeedsLayout()
             self.contentView.y = self.height - self.contentView.height
 //            self.arrowImageView.layer.addRotationAnimation(endLocation: 0.5, duration: 0.5)
-        }completion: { _ in
-            
+        } completion: { _ in
+            if self.tableView.firstShowFlashScrollIndicators {
+                self.tableView.flashScrollIndicatorsIfNeeded()
+            }
         }
     }
     

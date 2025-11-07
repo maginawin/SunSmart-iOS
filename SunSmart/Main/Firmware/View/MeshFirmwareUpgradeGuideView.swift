@@ -109,6 +109,10 @@ class MeshFirmwareUpgradeGuideView: UIView {
         UIView.animate(withDuration: 0.3) {
             self.shadeView.alpha = 1
             self.contentView.y = (self.height - self.contentView.height) * 0.5
+        }completion: { _ in
+            if self.tableView.firstShowFlashScrollIndicators {
+                self.tableView.flashScrollIndicatorsIfNeeded()
+            }
         }
     }
     

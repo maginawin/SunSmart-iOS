@@ -80,6 +80,10 @@ class ScheduleGroupsView: UIView {
         UIView.animate(withDuration: 0.3) {
             self.contentView.y = self.height - self.contentView.height
             self.shadeView.alpha = 1
+        } completion: { _ in
+            if self.collectionView.firstShowFlashScrollIndicators {
+                self.collectionView.flashScrollIndicatorsIfNeeded()
+            }
         }
     }
     
@@ -176,7 +180,7 @@ class ScheduleGroupsView: UIView {
         flowLayout.minimumLineSpacing = SCRYFrom(8)
         
         collectionView = UICollectionView(frame: .zero, collectionViewLayout: flowLayout)
-        collectionView.showsVerticalScrollIndicator = false
+//        collectionView.showsVerticalScrollIndicator = false
         collectionView.contentInset = UIEdgeInsets(top: SCRYFrom(60), left: SCRXFrom(16), bottom: SCRXFrom(16), right: SCRXFrom(16))
         collectionView.dataSource = self
         collectionView.delegate = self

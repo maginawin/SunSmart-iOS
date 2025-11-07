@@ -113,6 +113,14 @@ class SceneAddViewController: UIViewController {
         addNotificationObserver()
     }
     
+    override func viewDidAppear(_ animated: Bool) {
+        super.viewDidAppear(animated)
+        
+        if collectionView?.firstShowFlashScrollIndicators ?? false {
+            collectionView?.flashScrollIndicatorsIfNeeded()
+        }
+    }
+    
     override func viewDidLayoutSubviews() {
         super.viewDidLayoutSubviews()
         
@@ -431,7 +439,7 @@ class SceneAddViewController: UIViewController {
         scrollView = UIScrollView()
         scrollView.delegate = self
         scrollView.isPagingEnabled = true
-        scrollView.showsHorizontalScrollIndicator = false
+//        scrollView.showsHorizontalScrollIndicator = false
         view.addSubview(scrollView)
         scrollView.snp.makeConstraints { make in
             make.left.right.bottom.equalToSuperview()
@@ -526,7 +534,7 @@ class SceneAddViewController: UIViewController {
         collectionView.backgroundColor = Background_Color
         collectionView.dataSource = self
         collectionView.delegate = self
-        collectionView.showsVerticalScrollIndicator = false
+//        collectionView.showsVerticalScrollIndicator = false
         collectionView.register(SceneAddTemplateInfoSectionView.classForCoder(), forSupplementaryViewOfKind: UICollectionView.elementKindSectionHeader, withReuseIdentifier: "infoSection")
         collectionView.register(SceneAddGroupTitleSectionView.classForCoder(), forSupplementaryViewOfKind: UICollectionView.elementKindSectionHeader, withReuseIdentifier: "titleSection")
         collectionView.register(SceneAddDataListViewCell.classForCoder(), forCellWithReuseIdentifier: "dataCell")

@@ -74,6 +74,14 @@ class TimedViewController: UIViewController {
 //        }
     }
     
+    override func viewDidAppear(_ animated: Bool) {
+        super.viewDidAppear(animated)
+        
+        if scheduleCollectionView.firstShowFlashScrollIndicators {
+            scheduleCollectionView.flashScrollIndicatorsIfNeeded()
+        }
+    }
+    
     override func viewDidLayoutSubviews() {
         super.viewDidLayoutSubviews()
         
@@ -229,7 +237,7 @@ class TimedViewController: UIViewController {
 //        scheduleFlowLayout.sectionInset = UIEdgeInsets(top: SCRXFrom(16), left: SCRXFrom(16), bottom: SCRXFrom(16), right: SCRXFrom(16))
         
         scheduleCollectionView = UICollectionView(frame: .zero, collectionViewLayout: scheduleFlowLayout)
-        scheduleCollectionView.showsVerticalScrollIndicator = false
+//        scheduleCollectionView.showsVerticalScrollIndicator = false
         scheduleCollectionView.backgroundColor = .clear
         scheduleCollectionView.alwaysBounceVertical = true
         scheduleCollectionView.dataSource = self

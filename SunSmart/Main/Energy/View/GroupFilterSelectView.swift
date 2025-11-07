@@ -84,7 +84,9 @@ class GroupFilterSelectView: UIView {
             self.contentView.y = self.height - self.contentView.height
             self.shadeView.alpha = 1
         } completion: { _ in
-            
+            if self.tableView.firstShowFlashScrollIndicators {
+                self.tableView.flashScrollIndicatorsIfNeeded()
+            }
         }
     }
     
@@ -155,7 +157,7 @@ class GroupFilterSelectView: UIView {
         tableView.rowHeight = SCRYFrom(36)
         tableView.register(CustomTableViewCell.classForCoder(), forCellReuseIdentifier: "cell")
 //        tableView.register(SyncDevicesTitleHeaderView.classForCoder(), forHeaderFooterViewReuseIdentifier: "header")
-        tableView.showsVerticalScrollIndicator = false
+//        tableView.showsVerticalScrollIndicator = false
         tableView.dataSource = self
         tableView.delegate = self
         contentView.addSubview(tableView)

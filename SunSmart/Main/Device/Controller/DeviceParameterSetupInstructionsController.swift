@@ -11,10 +11,21 @@ class DeviceParameterSetupInstructionsController: UIViewController {
 
     /// 模式
     enum Mode {
+        
+        /// 重置模式
+        enum ResetMode {
+            /// 手电筒
+            case flashlight
+            /// 手电筒闪烁频率
+            case flashlight_beast
+            /// 移动感应
+            case motion
+        }
+        
         /// 添加
         case add
         /// 重置
-        case reset
+        case reset(mode: ResetMode)
     }
     
     private var scrollView: UIScrollView!
@@ -43,6 +54,14 @@ class DeviceParameterSetupInstructionsController: UIViewController {
         setupUI()
     }
     
+    override func viewDidAppear(_ animated: Bool) {
+        super.viewDidAppear(animated)
+        
+        if self.scrollView.firstShowFlashScrollIndicators {
+            self.scrollView.flashScrollIndicatorsIfNeeded()
+        }
+    }
+    
     @objc private func closeAction() {
         if navigationController?.viewControllers.count ?? 0 == 1 {
             dismiss(animated: true)
@@ -54,7 +73,7 @@ class DeviceParameterSetupInstructionsController: UIViewController {
     private func setupUI() {
         
         scrollView = UIScrollView()
-        scrollView.showsVerticalScrollIndicator = false
+//        scrollView.showsVerticalScrollIndicator = false
         view.addSubview(scrollView)
         scrollView.snp.makeConstraints { make in
             make.top.equalTo(view.safeAreaLayoutGuide)
@@ -83,7 +102,7 @@ class DeviceParameterSetupInstructionsController: UIViewController {
         
         let brightnessNote = UILabel(text: nil, textColor: ImportantText_Color)
         brightnessNote.numberOfLines = 0
-        let brightnessString = mode == .add ? "brightness_instructions".localizedString : "brightness_reset_instructions".localizedString
+        let brightnessString = "brightness_instructions".localizedString
         brightnessNote.attributedText = NSAttributedString(string: brightnessString, attributes: attributes)
         contentView.addSubview(brightnessNote)
         brightnessNote.snp.makeConstraints { make in
@@ -193,11 +212,40 @@ class DeviceParameterSetupInstructionsController: UIViewController {
             make.bottom.equalTo(-SCRYFrom(16))
         }
         
-        if mode == .reset {
-            brightnessImage.isHidden = true
-            illuminationTitle.snp.remakeConstraints { make in
-                make.left.right.equalTo(brightnessNote)
-                make.top.equalTo(brightnessNote.snp.bottom).offset(SCRYFrom(16))
+        if case .reset(let mode) = mode {
+            switch mode {
+            case .flashlight_beast:
+                brightnessTitle.text = "flashing_frequency_range".localizedString
+                brightnessNote.text = "flashing_frequency_range_instructions".localizedString
+                brightnessImage.isHidden = true
+                illuminationTitle.snp.remakeConstraints { make in
+                    make.left.right.equalTo(brightnessNote)
+                    make.top.equalTo(brightnessNote.snp.bottom).offset(SCRYFrom(16))
+                }
+            case .flashlight:
+                brightnessTitle.isHidden = true
+                brightnessNote.isHidden = true
+                brightnessImage.isHidden = true
+                illuminationTitle.snp.remakeConstraints { make in
+                    make.left.equalTo(SCRXFrom(20))
+                    make.right.equalTo(SCRXFrom(-20))
+                    make.top.equalTo(SCRYFrom(7))
+                }
+            case .motion:
+                brightnessTitle.isHidden = true
+                brightnessNote.isHidden = true
+                brightnessImage.isHidden = true
+                illuminationTitle.isHidden = true
+                illuminationMessage.isHidden = true
+                illuminationCase1.isHidden = true
+                illuminationCase2.isHidden = true
+                illuminationCase1Image.isHidden = true
+                illuminationCase2Image.isHidden = true
+                notificationVolumeTitle.snp.remakeConstraints { make in
+                    make.left.equalTo(SCRXFrom(20))
+                    make.right.equalTo(SCRXFrom(-20))
+                    make.top.equalTo(SCRYFrom(7))
+                }
             }
             
         }

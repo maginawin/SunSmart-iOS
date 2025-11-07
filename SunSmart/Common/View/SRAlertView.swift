@@ -381,6 +381,9 @@ class SRAlertView: UIView {
         }
         if inputFieldStyle.showClear {
             textField.clearButtonMode = .whileEditing
+            if textField.textAlignment == .center {
+                textField.leftView = UIView(frame: textField.rightView?.frame ?? CGRect(x: 0, y: 0, width: 30, height: 30))
+            }
         }else {
             textField.clearButtonMode = .never
             textField.rightViewMode = .never

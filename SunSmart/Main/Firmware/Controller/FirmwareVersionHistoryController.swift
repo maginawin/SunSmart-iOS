@@ -88,6 +88,14 @@ class FirmwareVersionHistoryController: UIViewController {
 //        setupData()
         loadVersionHistoryRequest()
     }
+    
+    override func viewDidAppear(_ animated: Bool) {
+        super.viewDidAppear(animated)
+        
+        if self.tableView.firstShowFlashScrollIndicators {
+            self.tableView.flashScrollIndicatorsIfNeeded()
+        }
+    }
 
     
     /// 获取历史版本list请求

@@ -11,6 +11,16 @@ import MediaPlayer
 
 class DeviceAddParameterSettingsView: UIView {
   
+    /// 照度lux标签
+    struct IlluminationTagData {
+        /// 默认标签名称
+        let defaultTitle: String
+        /// 美规标签名称
+        let ftTitle: String
+        /// 数值
+        let value: Int
+    }
+    
     /// 设置数据回调
     typealias SettingsCallback = (DeviceSettingsParameterData) -> Void
     
@@ -29,7 +39,17 @@ class DeviceAddParameterSettingsView: UIView {
     private var illuminationTipLabel: UILabel!
     private var illuminationLabel: UILabel!
     private var illuminationView: DeviceSliderFunctionView!
+    private var illuminationTagUnitBtn: UIButton!
     private var illuminationTagsView: UIStackView!
+    private var installHeightTipLabel: UILabel!
+    
+    /// 手电筒频率范围
+    private var flashFrequencyTitleLabel: UILabel!
+    private var flashFrequencyTipLabel: UILabel!
+    private var flashFrequencyLabel: UILabel!
+    private var flashFrequencyView: DeviceSliderFunctionView!
+    private var flashFrequencySlowLabel: UILabel!
+    private var flashFrequencyFastLabel: UILabel!
     
     /// 通知
     private var notificationLabel: UILabel!
@@ -51,8 +71,12 @@ class DeviceAddParameterSettingsView: UIView {
     private var saveBtn: UIButton!
     private var cancelBtn: UIButton!
     /// 照度值标签
-    private let illuminationTags: [(title: String, illumination: Int)] = [
-        ("＞15m", 10), ("12m", 20), ("9m", 30), ("6m", 40), ("＜3m", 50)
+    private let illuminationTags: [IlluminationTagData] = [
+        .init(defaultTitle: ">15m", ftTitle: ">50ft", value: 10),
+        .init(defaultTitle: "12m", ftTitle: "40ft", value: 20),
+        .init(defaultTitle: "9m", ftTitle: "30ft", value: 30),
+        .init(defaultTitle: "6m", ftTitle: "20ft", value: 40),
+        .init(defaultTitle: "<3m", ftTitle: "<10ft", value: 50)
     ]
     
     /// 系统音量监听者
@@ -63,11 +87,12 @@ class DeviceAddParameterSettingsView: UIView {
             brightnessView.value = Int(parameterData.brightness)
             brightnessLabel.text = "\(parameterData.brightness)%"
             illuminationView.value = Int(parameterData.illuminationDelta)
-            illuminationLabel.text = "\(parameterData.illuminationDelta)"
+            illuminationLabel.text = "△\(parameterData.illuminationDelta)"
             notificationSwitch.isOn = parameterData.notificationEnable
             volumeSliderView.value = parameterData.volume
             volumeLabel.text = "\(parameterData.volume)%"
             vibrationSwitch.isOn = parameterData.vibrationEnable
+            flashFrequencyLabel.text = "\(parameterData.flashFrequency) Hz"
         }
     }
     var volumeChangedEndCallback: ((Int)->Void)?
@@ -76,51 +101,46 @@ class DeviceAddParameterSettingsView: UIView {
     /// 帮助事件回调
     var helpActionCallback: (()->Void)?
     /// 是否显示亮度值
-    var showBrightness: Bool = true
+    var showBrightness: Bool = true {
+        didSet {
+            updateUI()
+        }
+    }
+    /// 是否显示手电筒闪烁频率
+    var showFlashFrequency: Bool = false {
+        didSet {
+            updateUI()
+        }
+    }
     
-    init(frame: CGRect, parameterData: DeviceSettingsParameterData = .default, showBrightness: Bool = true) {
+    /// 是否显示照度阈值
+    var showIllumination: Bool = true {
+        didSet {
+            updateUI()
+        }
+    }
+    
+    init(frame: CGRect, parameterData: DeviceSettingsParameterData = .default, showBrightness: Bool = true, showIllumination: Bool = true, illuminationTip: String = "illumination_fluctuation_range_tip".localizedString, showFlashFrequency: Bool = false) {
         super.init(frame: frame)
-        
-        // 监听系统音量变化
-//        NotificationCenter.default.addObserver(
-//            self,
-//            selector: #selector(volumeUpdateUI),
-//            name: NSNotification.Name(rawValue: "AVSystemController_SystemVolumeDidChangeNotification"),
-//            object: nil
-//        )
-        // 后台进入前台通知
-//        NotificationCenter.default.addObserver(forName: UIApplication.didBecomeActiveNotification, object: nil, queue: nil) {[weak self] _ in
-//            
-//            SystemVolumeManager.shared.refreshVolume()
-//            self?.volumeUpdateUI()
-//        }
         
         SystemVolumeManager.shared.onVolumeChanged = {[weak self] volume in
 //            print(volume)
             self?.volumeUpdateUI()
         }
         
-        // 激活 AVAudioSession（否则监听可能无效）
-//        try? AVAudioSession.sharedInstance().setActive(true, options: [])
-
-//        systemVolumeObservation = AVAudioSession.sharedInstance().observe(\.outputVolume, options: [.new], changeHandler: {[weak self] _, _ in
-//            DispatchQueue.main.async {
-//                self?.volumeUpdateUI()
-//            }
-//        })
         self.showBrightness = showBrightness
+        self.showFlashFrequency = showFlashFrequency
+        self.showIllumination = showIllumination
         self.parameterData = parameterData
         
         setupUI()
+        illuminationTipLabel.text = illuminationTip
+        
+        updateUI()
     }
     
     required init?(coder: NSCoder) {
         fatalError("init(coder:) has not been implemented")
-    }
-    
-    deinit {
-//        systemVolumeObservation = nil
-//        NotificationCenter.default.removeObserver(self)
     }
     
     func show() {
@@ -201,7 +221,7 @@ class DeviceAddParameterSettingsView: UIView {
     
     @objc private func saveBtnAction() {
         
-        let data = DeviceSettingsParameterData(brightness: UInt8(brightnessView.value), illuminationDelta: UInt16(illuminationView.value), notificationEnable: notificationSwitch.isOn, volume: volumeSliderView.value, vibrationEnable: vibrationSwitch.isOn)
+        let data = DeviceSettingsParameterData(brightness: UInt8(brightnessView.value), illuminationDelta: UInt16(illuminationView.value), flashFrequency: UInt16(flashFrequencyView.value), notificationEnable: notificationSwitch.isOn, volume: volumeSliderView.value, vibrationEnable: vibrationSwitch.isOn)
         settingsCallback?(data)
         dismiss()
     }
@@ -217,8 +237,115 @@ class DeviceAddParameterSettingsView: UIView {
     
     @objc private func illuminationBtnAction(sender: UIButton) {
         let tag = illuminationTags[sender.tag - 100]
-        self.illuminationView.value = tag.illumination
-        self.illuminationLabel.text = "△\(tag.illumination)"
+        self.illuminationView.value = tag.value
+        self.illuminationLabel.text = "△\(tag.value)"
+    }
+    
+    @objc private func illuminationTagUnitBtnAction(sender: UIButton) {
+        sender.isSelected = !sender.isSelected
+        
+        if let tagBtns = illuminationTagsView.arrangedSubviews as? [UIButton] {
+            tagBtns.enumerated().forEach { (index, btn) in
+                let data = illuminationTags[index]
+                btn.setTitle(sender.isSelected ? data.ftTitle : data.defaultTitle, for: .normal)
+            }
+        }
+    }
+    
+    private func updateUI() {
+        
+        if showBrightness {
+            brightnessTitleLabel.isHidden = false
+            brightnessLabel.isHidden = false
+            brightnessTipLabel.isHidden = false
+            brightnessView.isHidden = false
+            illuminationTitleLabel.snp.remakeConstraints({ make in
+                make.left.equalTo(SCRXFrom(20))
+                make.top.equalTo(brightnessView.snp.bottom).offset(SCRYFrom(20))
+            })
+        }else {
+            brightnessTitleLabel.isHidden = true
+            brightnessLabel.isHidden = true
+            brightnessTipLabel.isHidden = true
+            brightnessView.isHidden = true
+            illuminationTitleLabel.snp.remakeConstraints({ make in
+                make.left.equalTo(SCRXFrom(20))
+                make.top.equalTo(titleLabel.snp.bottom).offset(SCRYFrom(16))
+            })
+        }
+        
+        if showFlashFrequency {
+            
+            flashFrequencyTitleLabel.isHidden = false
+            flashFrequencyTipLabel.isHidden = false
+            flashFrequencyLabel.isHidden = false
+            flashFrequencyView.isHidden = false
+            flashFrequencySlowLabel.isHidden = false
+            flashFrequencyFastLabel.isHidden = false
+            
+            if showBrightness {
+                flashFrequencyTitleLabel.snp.remakeConstraints({ make in
+                    make.left.equalTo(SCRXFrom(20))
+                    make.top.equalTo(brightnessView.snp.bottom).offset(SCRYFrom(20))
+                })
+            }
+            illuminationTitleLabel.snp.remakeConstraints { make in
+                make.left.equalTo(SCRXFrom(20))
+                make.top.equalTo(flashFrequencyView.snp.bottom).offset(SCRYFrom(40))
+            }
+            
+        }else {
+            flashFrequencyTitleLabel.isHidden = true
+            flashFrequencyTipLabel.isHidden = true
+            flashFrequencyLabel.isHidden = true
+            flashFrequencyView.isHidden = true
+            flashFrequencySlowLabel.isHidden = true
+            flashFrequencyFastLabel.isHidden = true
+            illuminationTitleLabel.snp.remakeConstraints { make in
+                make.left.equalTo(SCRXFrom(20))
+                if showBrightness {
+                    make.top.equalTo(brightnessView.snp.bottom).offset(SCRYFrom(20))
+                }else {
+                    make.top.equalTo(titleLabel.snp.bottom).offset(SCRYFrom(16))
+                }
+            }
+        }
+        
+        if showIllumination {
+            illuminationTitleLabel.isHidden = false
+            illuminationTipLabel.isHidden = false
+            illuminationLabel.isHidden = false
+            illuminationView.isHidden = false
+            illuminationTagsView.isHidden = false
+            illuminationTagUnitBtn.isHidden = false
+            installHeightTipLabel.isHidden = false
+            
+            notificationLabel.snp.remakeConstraints { make in
+                make.left.equalTo(SCRXFrom(20))
+                make.top.equalTo(installHeightTipLabel.snp.bottom).offset(SCRYFrom(27))
+            }
+           
+        }else {
+            illuminationTitleLabel.isHidden = true
+            illuminationTipLabel.isHidden = true
+            illuminationLabel.isHidden = true
+            illuminationView.isHidden = true
+            illuminationTagsView.isHidden = true
+            illuminationTagUnitBtn.isHidden = true
+            installHeightTipLabel.isHidden = true
+            
+            notificationLabel.snp.remakeConstraints { make in
+                make.left.equalTo(SCRXFrom(20))
+                if showFlashFrequency {
+                    make.top.equalTo(flashFrequencyView.snp.bottom).offset(SCRYFrom(40))
+                }else if showBrightness {
+                    make.top.equalTo(brightnessView.snp.bottom).offset(SCRYFrom(20))
+                }else {
+                    make.top.equalTo(titleLabel.snp.bottom).offset(SCRYFrom(16))
+                }
+            }
+        }
+        
     }
     
     private func setupUI() {
@@ -346,6 +473,69 @@ class DeviceAddParameterSettingsView: UIView {
             make.top.bottom.equalToSuperview()
         }
         
+        flashFrequencyTitleLabel = UILabel(text: "flashing_frequency_range".localizedString, textColor: Title_Color, fontSize: 15)
+        contentView.addSubview(flashFrequencyTitleLabel)
+        flashFrequencyTitleLabel.snp.makeConstraints { make in
+            make.left.equalTo(SCRXFrom(20))
+            make.top.equalTo(titleLabel.snp.bottom).offset(SCRYFrom(16))
+        }
+        
+        flashFrequencyTipLabel = UILabel(text: "flashing_frequency_range_tip".localizedString, textColor: SubText_Color, fontSize: 12)
+        contentView.addSubview(flashFrequencyTipLabel)
+        flashFrequencyTipLabel.snp.makeConstraints { make in
+            make.top.equalTo(flashFrequencyTitleLabel.snp.bottom).offset(SCRYFrom(3))
+            make.left.right.equalTo(flashFrequencyTitleLabel)
+        }
+        
+        flashFrequencyLabel = UILabel(text: "\(parameterData.flashFrequency) Hz", textColor: TextBlack_Color, fontSize: 14, fontWeight: .light)
+        contentView.addSubview(flashFrequencyLabel)
+        flashFrequencyLabel.snp.makeConstraints { make in
+            make.right.equalTo(SCRXFrom(-20))
+            make.top.equalTo(flashFrequencyTipLabel.snp.bottom)
+        }
+        
+        flashFrequencyView = DeviceSliderFunctionView(frame: .zero, title: "", value: Int(parameterData.flashFrequency), functionType: .level(min: 10, max: 1000, step: 10))
+        flashFrequencyView.minLabel.isHidden = true
+        flashFrequencyView.maxLabel.isHidden = true
+        flashFrequencyView.minusBtn.setImage(UIImage(named: "scene_data_value_minus"), for: .normal)
+        flashFrequencyView.addBtn.setImage(UIImage(named: "scene_data_value_add"), for: .normal)
+        flashFrequencyView.lineView.isHidden = true
+        flashFrequencyView.titleLabel.isHidden = true
+        flashFrequencyView.valueChangedCallback = {[weak self] value in
+            self?.flashFrequencyLabel.text = "\(value) Hz"
+        }
+        contentView.addSubview(flashFrequencyView)
+        flashFrequencyView.snp.makeConstraints { make in
+            make.left.right.height.equalTo(brightnessView)
+            make.top.equalTo(flashFrequencyTitleLabel.snp.bottom).offset(SCRYFrom(44))
+        }
+        flashFrequencyView.minusBtn.snp.remakeConstraints { make in
+            make.left.equalToSuperview()
+            make.centerY.equalToSuperview()
+        }
+        flashFrequencyView.addBtn.snp.remakeConstraints { make in
+            make.right.equalToSuperview()
+            make.centerY.equalToSuperview()
+        }
+        flashFrequencyView.slider.snp.remakeConstraints { make in
+            make.left.equalTo(SCRXFrom(48))
+            make.right.equalTo(SCRXFrom(-47))
+            make.top.bottom.equalToSuperview()
+        }
+        
+        flashFrequencySlowLabel = UILabel(text: "slow".localizedString, textColor: TextBlack_Color, fontSize: 14, fontWeight: .light)
+        contentView.addSubview(flashFrequencySlowLabel)
+        flashFrequencySlowLabel.snp.makeConstraints { make in
+            make.top.equalTo(flashFrequencyView.snp.bottom)
+            make.left.equalTo(flashFrequencyView)
+        }
+        
+        flashFrequencyFastLabel = UILabel(text: "fast".localizedString, textColor: TextBlack_Color, fontSize: 14, fontWeight: .light)
+        contentView.addSubview(flashFrequencyFastLabel)
+        flashFrequencyFastLabel.snp.makeConstraints { make in
+            make.top.equalTo(flashFrequencyView.snp.bottom)
+            make.right.equalTo(flashFrequencyView)
+        }
         
         illuminationTitleLabel = UILabel(text: "illumination_fluctuation_range".localizedString, textColor: Title_Color, fontSize: 15)
         contentView.addSubview(illuminationTitleLabel)
@@ -397,22 +587,41 @@ class DeviceAddParameterSettingsView: UIView {
             make.top.bottom.equalToSuperview()
         }
         
+        illuminationTagUnitBtn = UIButton(title: "ft".localizedString, titleSize: 14, titleWeight: .light, titleColor: .white, target: self, action: #selector(illuminationTagUnitBtnAction))
+        illuminationTagUnitBtn.setTitle("m".localizedString, for: .selected)
+        illuminationTagUnitBtn.backgroundColor = Default_Black_Color
+        illuminationTagUnitBtn.layer.cornerRadius = SCRYFrom(6)
+        contentView.addSubview(illuminationTagUnitBtn)
+        illuminationTagUnitBtn.snp.makeConstraints { make in
+            make.left.equalTo(illuminationView)
+            make.top.equalTo(illuminationView.snp.bottom).offset(SCRYFrom(8))
+            make.width.height.equalTo(SCRYFrom(30))
+        }
+        
         illuminationTagsView = UIStackView()
         illuminationTagsView.axis = .horizontal
         illuminationTagsView.spacing = SCRXFrom(isIPad ? 20 : 10)
         illuminationTagsView.distribution = .fillEqually
         contentView.addSubview(illuminationTagsView)
         illuminationTagsView.snp.makeConstraints { make in
+            make.right.equalTo(illuminationView)
+            make.left.equalTo(illuminationTagUnitBtn.snp.right).offset(illuminationTagsView.spacing)
+            make.centerY.height.equalTo(illuminationTagUnitBtn)
+        }
+        
+        installHeightTipLabel = UILabel(text: "install_height_tip".localizedString, textColor: SubText_Color, fontSize: 12)
+        installHeightTipLabel.numberOfLines = 2
+        contentView.addSubview(installHeightTipLabel)
+        installHeightTipLabel.snp.makeConstraints { make in
             make.left.right.equalTo(illuminationView)
-            make.top.equalTo(illuminationView.snp.bottom).offset(SCRYFrom(8))
-            make.height.equalTo(SCRYFrom(30))
+            make.top.equalTo(illuminationTagsView.snp.bottom).offset(SCRYFrom(10))
         }
         
         notificationLabel = UILabel(text: "notification_volume".localizedString, textColor: ImportantText_Color, fontSize: 15)
         contentView.addSubview(notificationLabel)
         notificationLabel.snp.makeConstraints { make in
             make.left.equalTo(SCRXFrom(20))
-            make.top.equalTo(illuminationTagsView.snp.bottom).offset(SCRYFrom(27))
+            make.top.equalTo(installHeightTipLabel.snp.bottom).offset(SCRYFrom(27))
         }
         
         notificationSwitch = UISwitch()
@@ -493,17 +702,6 @@ class DeviceAddParameterSettingsView: UIView {
             make.centerY.equalTo(vibrationLabel)
         }
         
-        if !showBrightness {
-            brightnessTitleLabel.isHidden = true
-            brightnessLabel.isHidden = true
-            brightnessTipLabel.isHidden = true
-            brightnessView.isHidden = true
-            illuminationTitleLabel.snp.remakeConstraints({ make in
-                make.left.equalTo(SCRXFrom(20))
-                make.top.equalTo(titleLabel.snp.bottom).offset(SCRYFrom(16))
-            })
-        }
-        
         if isIPad {
             vibrationLabel.isHidden = true
             vibrationSwitch.isHidden = true
@@ -511,18 +709,12 @@ class DeviceAddParameterSettingsView: UIView {
         }
         
         setupIlluminationTags()
-        
-//        // 添加系统音量滑块（会显示系统音量UI）
-//        let volumeView = MPVolumeView(frame: CGRect(x: 0, y: 0, width: 100, height: 100))
-//        volumeView.isHidden = true  // 隐藏但保持功能
-//        contentView.addSubview(volumeView)
-//        volumeView.vol
     }
     
     private func setupIlluminationTags() {
         
         illuminationTags.enumerated().forEach { (index, data) in
-            let button = UIButton(title: data.title, titleSize: 14, titleWeight: .light, titleColor: Bar_Color, target: self, action: #selector(illuminationBtnAction))
+            let button = UIButton(title: data.defaultTitle, titleSize: 14, titleWeight: .light, titleColor: Bar_Color, target: self, action: #selector(illuminationBtnAction))
             button.tag = 100 + index
             button.layer.borderColor = Bar_Color.withAlphaComponent(0.5).cgColor
             button.layer.borderWidth = 0.6
@@ -533,27 +725,3 @@ class DeviceAddParameterSettingsView: UIView {
     }
     
 }
-
-//class VolumeManager {
-//    private static let volumeView = MPVolumeView(frame: .zero)
-//    
-//    static func setSystemVolume(_ volume: Float) {
-//        // 确保在主线程执行
-//        guard Thread.isMainThread else {
-//            return
-//        }
-//        guard let slider = volumeView.subviews.compactMap({ $0 as? UISlider }).first else {
-//            print("无法找到音量滑块")
-//            return
-//        }
-//        
-//        // 设置音量值（0.0到1.0之间）
-//        slider.value = min(max(volume, 0.0), 1.0)
-//        
-//    }
-//    
-//    static func getSystemVolume() -> Float {
-//        try? AVAudioSession.sharedInstance().setActive(true)
-//        return AVAudioSession.sharedInstance().outputVolume
-//    }
-//}

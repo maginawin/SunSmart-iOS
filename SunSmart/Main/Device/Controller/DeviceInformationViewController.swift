@@ -41,6 +41,13 @@ class DeviceInformationViewController: UIViewController {
         getData()
     }
     
+    override func viewDidAppear(_ animated: Bool) {
+        super.viewDidAppear(animated)
+        if self.tableView.firstShowFlashScrollIndicators {
+            self.tableView.flashScrollIndicatorsIfNeeded()
+        }
+    }
+    
     private func getData() {
         
         if let model = node.firmwareUpdateServerModel {
@@ -90,7 +97,7 @@ class DeviceInformationViewController: UIViewController {
         tableView.backgroundColor = Background_Color
         tableView.register(CustomTableViewCell.classForCoder(), forCellReuseIdentifier: "cell")
         tableView.register(DeviceLightInfoSectionView.classForCoder(), forHeaderFooterViewReuseIdentifier: "header")
-        tableView.showsVerticalScrollIndicator = false
+//        tableView.showsVerticalScrollIndicator = false
         tableView.dataSource = self
         tableView.delegate = self
         view.addSubview(tableView)

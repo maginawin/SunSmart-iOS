@@ -825,6 +825,11 @@ extension MeshNetworkManager {
     /// 删除动能开关
     func deleteSwitch(switchData: DeviceSwitchData) {
         guard let meshUUID = self.meshNetwork?.uuid.uuidString else { return }
+        // 检查代理设备的数据有没有清空
+        if let proxyNode = MeshNetworkManager.instance.realNodes.first(where: { $0.enOceanMacAddress == switchData.enOceanMacAddress }) {
+            proxyNode.enOceanMacAddress = nil
+            proxyNode.savePropertys()
+        }
         switchData.delete(meshUUID: meshUUID, networkId: self.currentNetworkKey.networkId.hex)
         self.switchs.removeAll(where: { $0.id == switchData.id })
         
@@ -1794,7 +1799,7 @@ extension Node {
             switch deviceCategory {
             case "Lighting":
                 self = .light
-            case "Sensor":
+            case "Sensor", "StandaloneSensor":
                 self = .sensor
             case "Dongle":
                 self = .dongle
@@ -1918,6 +1923,14 @@ extension Node {
 //        return self.getSyncData(type: .all).count > 0
     }
     
+    /// lightLC第一阶段 lightness
+    var lightLCOnLightness: UInt16? {
+        guard lightLCModel != nil, let lightnessOn = self.lightLCProperty.lightnessOn, lightnessOn > 0 else {
+            return nil
+        }
+        return lightnessOn
+    }
+    
     /// 是否支持设置参数
     var supportSetParameter: Bool {
         guard self.sunricherVendorModel != nil, self.productIdentifier != nil else {
@@ -1935,7 +1948,7 @@ extension Node {
             return false
         }
         switch pid {
-        case 0x0031, 0x0041, 0x1031, 0x1041: // 单独传感器设备不支持pwm调节
+        case 0x0031, 0x0041, 0x1031, 0x1041, 0x1302: // 单独传感器设备不支持pwm调节
             return false
         default:
             return true

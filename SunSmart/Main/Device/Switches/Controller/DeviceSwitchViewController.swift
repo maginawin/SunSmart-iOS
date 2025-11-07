@@ -55,6 +55,14 @@ class DeviceSwitchViewController: UIViewController {
         updateSaveEnabledState()
     }
     
+    override func viewDidAppear(_ animated: Bool) {
+        super.viewDidAppear(animated)
+        
+        if self.tableView.firstShowFlashScrollIndicators {
+            self.tableView.flashScrollIndicatorsIfNeeded()
+        }
+    }
+    
     deinit {
         if space.isConfiguring {
             space.isConfiguring = false
@@ -416,7 +424,7 @@ class DeviceSwitchViewController: UIViewController {
         tableView.register(CustomTableViewCell.classForCoder(), forCellReuseIdentifier: "info")
         tableView.register(GroupSwitchPanelViewCell.classForCoder(), forCellReuseIdentifier: "panel")
         tableView.register(DeviceSwitchHeaderView.classForCoder(), forHeaderFooterViewReuseIdentifier: "header")
-        tableView.showsVerticalScrollIndicator = false
+//        tableView.showsVerticalScrollIndicator = false
         tableView.dataSource = self
         tableView.delegate = self
         tableView.separatorStyle = .none

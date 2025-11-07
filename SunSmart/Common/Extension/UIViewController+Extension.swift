@@ -156,20 +156,29 @@ extension UIViewController {
         }
         
         let screenHeight = container.bounds.height
-        let originalTransform = view.transform
-
-        // 动画（与系统一致：curveEaseInOut + 平移动画）
-        UIView.animate(withDuration: duration,
-                       delay: 0,
-                       options: [.curveEaseInOut],
-                       animations: {
-            view.transform = CGAffineTransform(translationX: 0, y: screenHeight)
-            view.alpha = 0.98 // 系统动画轻微淡化
-            self.dismiss(animated: false, completion: completion)
-        }, completion: { _ in
-            // 恢复 transform（防止 layout 问题）
-            view.transform = originalTransform
-        })
+//        let originalTransform = view.transform
+        self.dismiss(animated: false)
+        
+        DispatchQueue.main.async {
+            // 动画（与系统一致：curveEaseInOut + 平移动画）
+            UIView.animate(withDuration: duration,
+                           delay: 0,
+                           options: [.curveEaseInOut],
+                           animations: {
+                view.transform = CGAffineTransform(translationX: 0, y: screenHeight)
+                view.alpha = 0.98 // 系统动画轻微淡化
+//                self.dismiss(animated: false, completion: completion)
+            }, completion: { _ in
+                // 恢复 transform（防止 layout 问题）
+//                view.transform = originalTransform
+            })
+        }
+        
+//        DispatchQueue.main.asyncAfter(deadline: .now() + animationDuration * 0.5) {
+//            self.dismiss(animated: false, completion: completion)
+//        }
+        
+        
     }
 }
 

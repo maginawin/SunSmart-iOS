@@ -57,6 +57,10 @@ class CharacterSelectView: UIView {
         UIView.animate(withDuration: 0.5, delay: 0, usingSpringWithDamping: 0.7, initialSpringVelocity: 1, options: .curveEaseInOut) {
             self.contentView.transform = .identity
             self.shadeView.alpha = 1
+        } completion: { _ in
+            if self.collectionView.firstShowFlashScrollIndicators {
+                self.collectionView.flashScrollIndicatorsIfNeeded()
+            }
         }
         
     }

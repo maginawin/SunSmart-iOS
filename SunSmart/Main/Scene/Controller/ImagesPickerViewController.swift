@@ -47,6 +47,14 @@ class ImagesPickerViewController: UIViewController {
         
         setupUI()
     }
+    
+    override func viewDidAppear(_ animated: Bool) {
+        super.viewDidAppear(animated)
+        
+        if collectionView.firstShowFlashScrollIndicators {
+            collectionView.flashScrollIndicatorsIfNeeded()
+        }
+    }
 
     @objc private func close() {
         
@@ -83,7 +91,7 @@ class ImagesPickerViewController: UIViewController {
         collectionView.contentInset = UIEdgeInsets(top: SCRYFrom(24), left: SCRXFrom(20), bottom: SCRXFrom(16), right: SCRXFrom(20))
         collectionView.backgroundColor = .clear
         collectionView.register(ImagePickerViewCell.classForCoder(), forCellWithReuseIdentifier: "cell")
-        collectionView.showsVerticalScrollIndicator = false
+//        collectionView.showsVerticalScrollIndicator = false
         collectionView.dataSource = self
         collectionView.delegate = self
         view.addSubview(collectionView)

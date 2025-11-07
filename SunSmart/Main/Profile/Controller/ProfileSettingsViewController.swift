@@ -96,6 +96,14 @@ class ProfileSettingsViewController: UIViewController {
         (navigationController as? NavigationViewController)?.navigationDelegate = self
     }
     
+    override func viewDidAppear(_ animated: Bool) {
+        super.viewDidAppear(animated)
+        
+        if self.scrollView.firstShowFlashScrollIndicators {
+            self.scrollView.flashScrollIndicatorsIfNeeded()
+        }
+    }
+    
     override func viewWillDisappear(_ animated: Bool) {
         super.viewWillDisappear(animated)
         
@@ -358,7 +366,7 @@ class ProfileSettingsViewController: UIViewController {
     private func setupUI() {
         
         scrollView = UIScrollView()
-        scrollView.showsVerticalScrollIndicator = false
+//        scrollView.showsVerticalScrollIndicator = false
         view.addSubview(scrollView)
         scrollView.snp.makeConstraints { make in
             make.left.right.bottom.equalToSuperview()

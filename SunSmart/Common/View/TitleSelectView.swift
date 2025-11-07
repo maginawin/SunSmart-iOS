@@ -79,6 +79,10 @@ class TitleSelectView: UIView {
 //        self.contentView.frame.origin = contentPoint
         UIView.animate(withDuration: 0.3) {
             self.contentView.alpha = 1
+        } completion: { _ in
+            if self.tableView.firstShowFlashScrollIndicators {
+                self.tableView.flashScrollIndicatorsIfNeeded()
+            }
         }
     }
     
@@ -122,7 +126,7 @@ class TitleSelectView: UIView {
         tableView.register(CustomTableViewCell.classForCoder(), forCellReuseIdentifier: "cell")
         tableView.backgroundColor = .clear
         tableView.rowHeight = itemHeight
-        tableView.showsVerticalScrollIndicator = false
+//        tableView.showsVerticalScrollIndicator = false
         tableView.dataSource = self
         tableView.delegate = self
         tableView.isScrollEnabled = titles.count > 8

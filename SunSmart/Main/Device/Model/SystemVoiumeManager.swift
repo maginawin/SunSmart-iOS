@@ -20,6 +20,11 @@ class SystemVolumeManager: NSObject {
     
     override init() {
         super.init()
+     
+    }
+    
+    /// 开始监听系统音量
+    func startObserveVolume() {
         NotificationCenter.default.addObserver(
             self,
             selector: #selector(volumeChanged(_:)),
@@ -32,12 +37,21 @@ class SystemVolumeManager: NSObject {
             name: UIApplication.didBecomeActiveNotification,
             object: nil
         )
-        systemVolumeObservation = AVAudioSession.sharedInstance().observe(\.outputVolume, options: [.new], changeHandler: {[weak self] _, _ in
+        systemVolumeObservation = AVAudioSession.sharedInstance().observe(\.outputVolume, options: [.new], changeHandler: {[weak self] _, change in
             guard let self = self else { return }
+            guard let newVolume = change.newValue else { return }
             DispatchQueue.main.async {
-                self.refreshVolume()
+                self.currentVolume = newVolume
+                self.onVolumeChanged?(newVolume)
             }
         })
+        
+    }
+    
+    /// 停止监听系统音量
+    func stopObserveVolume() {
+        NotificationCenter.default.removeObserver(self)
+        systemVolumeObservation = nil
     }
     
     @objc private func volumeChanged(_ notification: Notification) {

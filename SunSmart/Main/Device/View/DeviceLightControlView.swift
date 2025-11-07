@@ -26,6 +26,9 @@ protocol DeviceLightControlViewDelegate: AnyObject {
     /// 灯控制消失回调
     func lightControlDidHide(_ view: DeviceLightControlView)
     
+    /// 点击Auto回调
+    func lightControlAutoAction(_ view: DeviceLightControlView)
+    
 }
 
 class DeviceLightControlView: UIView {
@@ -40,6 +43,7 @@ class DeviceLightControlView: UIView {
     
     private var shadeView: UIView!
     private var contentView: UIView!
+    private var autoBtn: UIButton!
     private var levelSliderView: BuoySliderView!
     private var cctSliderView: BuoySliderView!
     
@@ -137,6 +141,21 @@ class DeviceLightControlView: UIView {
         hide()
     }
     
+    @objc private func autoBtnAction() {
+        delegate?.lightControlAutoAction(self)
+    }
+    
+    override func hitTest(_ point: CGPoint, with event: UIEvent?) -> UIView? {
+        
+        if !autoBtn.isHidden, autoBtn.isUserInteractionEnabled, autoBtn.isEnabled {
+            let pointInAutoBtn = autoBtn.convert(point, from: self)
+            if autoBtn.point(inside: pointInAutoBtn, with: event) {
+                return autoBtn
+            }
+        }
+        return super.hitTest(point, with: event)
+    }
+    
     private func setupUI() {
         
         shadeView = UIView()
@@ -158,6 +177,17 @@ class DeviceLightControlView: UIView {
             make.right.equalTo(SCRXFrom(-8))
             make.bottom.equalTo(kSafeAreaBottomHeight != 0 ? -kSafeAreaBottomHeight : SCRXFrom(-8))
             make.height.greaterThanOrEqualTo(SCRYFrom(156))
+        }
+        
+        autoBtn = UIButton(title: "AUTO", titleSize: 12, titleWeight: .light, titleColor: .white, target: self, action: #selector(autoBtnAction))
+        autoBtn.layer.cornerRadius = SCRYFrom(10)
+        autoBtn.backgroundColor = Bar_Color
+        contentView.addSubview(autoBtn)
+        autoBtn.snp.makeConstraints { make in
+            make.right.equalTo(SCRXFrom(-20))
+            make.top.equalTo(SCRYFrom(16))
+            make.width.equalTo(SCRXFrom(52))
+            make.height.equalTo(SCRYFrom(32))
         }
         
         levelSliderView = BuoySliderView(frame: .zero, functionType: .level())

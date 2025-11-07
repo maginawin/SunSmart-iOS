@@ -46,6 +46,14 @@ class SpaceVisitorListViewController: UIViewController {
         loadMemberRequest()
     }
     
+    override func viewDidAppear(_ animated: Bool) {
+        super.viewDidAppear(animated)
+        
+        if tableView.firstShowFlashScrollIndicators {
+            tableView.flashScrollIndicatorsIfNeeded()
+        }
+    }
+    
     /// 获取space成员数据
     private func loadMemberRequest() {
 

@@ -53,7 +53,7 @@ class GatewayServerInformationViewCell: UITableViewCell {
             make.right.equalTo(SCRXFrom(-16))
             make.centerY.equalTo(serverAddressLabel)
             make.height.equalTo(SCRYFrom(32))
-            make.width.equalTo(SCRXFrom(230))
+            make.width.equalTo(SCRXFrom(210))
         }
         
         portLabel = UILabel(text: "port".localizedString, textColor: ImportantText_Color, fontSize: 14, fit: false)

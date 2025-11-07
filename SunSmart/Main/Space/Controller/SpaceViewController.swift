@@ -194,7 +194,7 @@ class SpaceViewController: WMPageController {
         checkBluetoothState()
         #if DEBUG
         
-        MeshLibManager.manager.showLogs = [.access, .bearer, .upperTransport,.model]
+        MeshLibManager.manager.showLogs = [.model, .access]
 //        [.network, .access, .lowerTransport, .upperTransport, .proxy, .bearer]
         if routeTest {
             MeshNodeHeartbeatManager.shared.autoHeartbeatLoop = false
@@ -223,6 +223,10 @@ class SpaceViewController: WMPageController {
             }else {
                 // 读取space内是否有其他编辑者
                 checkTheSpaceMembersRequest()
+            }
+        }else {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {[weak self] in
+                self?.configurationFlowGuidance()
             }
         }
         
@@ -525,6 +529,7 @@ class SpaceViewController: WMPageController {
             MeshLibManager.manager.setMeshNetworkConnected(meshUUID: self.space.meshUUID, subNetworkId: self.space.meshNetworkId)
             if let manager = MeshLibManager.manager.meshNetworkManager, let meshNetwork = manager.meshNetwork {
 //                self.space.meshManager = manager
+                
                 if meshNetwork.localProvisioner == nil || meshNetwork.localProvisioner?.primaryUnicastAddress == nil { // 缺少手机供应者或手机地址
                     // 如果用户有地址则自己分配一个作为手机地址
                     if let localProvisioner = manager.meshNetwork?.localProvisioner, let address = meshNetwork.nextAvailableUnicastAddress(elementsCount: 1, elementsUsing: localProvisioner, lockInAddress: false) {

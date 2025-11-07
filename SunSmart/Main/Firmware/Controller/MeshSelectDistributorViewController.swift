@@ -135,6 +135,14 @@ class MeshSelectDistributorViewController: UIViewController {
         updateUI()
     }
     
+    override func viewDidAppear(_ animated: Bool) {
+        super.viewDidAppear(animated)
+        
+        if tableView.firstShowFlashScrollIndicators {
+            tableView.flashScrollIndicatorsIfNeeded()
+        }
+    }
+    
     /// 刷新信号值
     @objc private func refreshRSSI() {
         guard MeshNetworkManager.instance.realNodes.count > 0 else {

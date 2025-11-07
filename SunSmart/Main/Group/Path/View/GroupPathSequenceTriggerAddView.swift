@@ -63,7 +63,7 @@ class GroupPathSequenceTriggerAddView: UIView {
         
         noDevicesLabel.isHidden = devices.count > 0
         collectionView.reloadData()
-        pageControl.numberOfPages = Int(ceilf(Float(devices.count) / Float(colCount)))
+        pageControl.numberOfPages = Int(ceilf(Float(devices.count) / Float(colCount)))        
     }
 
     @objc private func addTypeSelectAction() {

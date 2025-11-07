@@ -126,6 +126,14 @@ class DeviceParameterDevicesViewController: UIViewController {
         updateUI()
     }
     
+    override func viewDidAppear(_ animated: Bool) {
+        super.viewDidAppear(animated)
+        
+        if self.tableView.firstShowFlashScrollIndicators {
+            self.tableView.flashScrollIndicatorsIfNeeded()
+        }
+    }
+    
     override func viewDidLayoutSubviews() {
         super.viewDidLayoutSubviews()
         
@@ -159,7 +167,7 @@ class DeviceParameterDevicesViewController: UIViewController {
                 absoluteSensitivitys.append(range)
             }
             // 过渡时间
-            if let transitionTime = node.tempTransitionTime {
+            if let transitionTime = node.tempTransitionTime, !transitionTimes.contains(where: { $0.interval == transitionTime.interval }) {
                 transitionTimes.append(transitionTime)
             }
            
@@ -211,7 +219,21 @@ class DeviceParameterDevicesViewController: UIViewController {
             return
         }
         
-        let parameters: [DeviceReadParameterType] = [.pwmFrequency, .ratedPower, .motionSensitivityRange, .defaultTransitionTime]
+        
+        var parameters: [DeviceReadParameterType] = []
+        if let node = devices.first {
+            if node.supportPwmFrequency {
+                parameters.append(.pwmFrequency)
+            }
+            parameters.append(.ratedPower)
+            if node.supportMotionSensitivity {
+                parameters.append(.motionSensitivityRange)
+            }
+            parameters.append(.defaultTransitionTime)
+        }else {
+            parameters = [.pwmFrequency, .ratedPower, .motionSensitivityRange, .defaultTransitionTime]
+        }
+        
         let vc = ReadDevicesDataViewController(type: .parameters(nodes: selectDevices, parameters: parameters))
         vc.readSuccessCallback = {[weak self] _ in
             XWHUDManager.showSuccessTipHUD("done!".localizedString)
@@ -701,7 +723,7 @@ extension DeviceParameterDevicesViewController: DeviceParameterDeviceCellDelegat
         device.selectOn = isOn
         device.selectOff = !isOn
         cell.device = device
-        MeshAPI.setNodeOnOffState(address: device.primaryUnicastAddress, isOn: isOn)
+        MeshAPI.setNodeOnOffState(address: device.primaryUnicastAddress, isOn: isOn, ack: true)
     }
 }
 

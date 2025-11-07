@@ -349,7 +349,6 @@ extension SiteData {
         if let provisionerData = json["provisioner"].dictionaryObject {
             self.setProvisioner(meshNetwork: meshNetwork, provisionerData: provisionerData)
         }
-        
 //        print("导入数据：site update proversioner success \(Date().timeIntervalSince1970)")
         if let spaceDicts = json["spaces"].arrayObject as? [[String: Any]] {
             var spaces: [SpaceData] = []
@@ -850,9 +849,12 @@ extension SpaceData {
             //            }
 //            let localNodes = Node.load(meshUUID: self.meshUUID, subnetworkId: self.meshNetworkId)
             
+            
             network.nodes.filter({ !$0.isLocalProvisioner }).forEach { node in
                 network.forceRemove(node: node)
-//                node.deleteExtension()
+                if let mac = node.macAddress {
+                    GatewayModel.delete(siteId: self.siteId, macAddress: mac)
+                }
             }
             // 设备
             let nodes = nodeDicts.compactMap { nodeDict in
@@ -1010,44 +1012,46 @@ extension SpaceData {
                         node.proximityLightingNeighborAddresses = proximityLightingNeighborAddresses.compactMap({ Address(hex: $0) })
                     }
                     
-                    // 网关
-                    if let gatewayInfo = nodeJson["gatewayInfo"].dictionaryObject, let gatewayInfoData = try? JSONSerialization.data(withJSONObject: gatewayInfo) {
-                        node.gatewayInfo = try? jsonDecoder.decode(GatewayInformation.self, from: gatewayInfoData)
-                    }
-                    // 预配置网关数据
-                    if let mac = node.macAddress, let gatewayPreconfigured = nodeJson["gatewayPreconfigured"].dictionaryObject {
-                        let json = JSON(gatewayPreconfigured)
-                        var associatedSpaces: [SpaceData] = []
-                        if let spaceIds = json["associatedSpaces"].arrayObject as? [String] {
-                            associatedSpaces = spaceIds.compactMap({
-                                if self.id == $0 {
-                                    return self
+                    if node.deviceType == .gateway {
+                        // 网关
+                        if let gatewayInfo = nodeJson["gatewayInfo"].dictionaryObject, let gatewayInfoData = try? JSONSerialization.data(withJSONObject: gatewayInfo) {
+                            node.gatewayInfo = try? jsonDecoder.decode(GatewayInformation.self, from: gatewayInfoData)
+                        }
+                        // 预配置网关数据
+                        if let mac = node.macAddress, let gatewayPreconfigured = nodeJson["gatewayPreconfigured"].dictionaryObject {
+                            let json = JSON(gatewayPreconfigured)
+                            var associatedSpaces: [SpaceData] = []
+                            if let spaceIds = json["associatedSpaces"].arrayObject as? [String] {
+                                associatedSpaces = spaceIds.compactMap({
+                                    if self.id == $0 {
+                                        return self
+                                    }
+                                    return SpaceData.load(siteId: siteId, spaceId: $0).first
+                                })
+                            }
+                            var mqttConnectInfo: GatewayInformation.MQTTConnectInformation?
+                            if let mqttConnectInfoDict = json["mqttConnectInfo"].dictionaryObject,
+                               let serverAddress = mqttConnectInfoDict["serverAddress"] as? String,
+                               let userName = mqttConnectInfoDict["userName"] as? String,
+                               let password = mqttConnectInfoDict["password"] as? String,
+                               let clientId = mqttConnectInfoDict["clientId"] as? String {
+                                
+                                var authMode: GatewayInformation.MQTTAuthMode = .none
+                                var sslVersion: GatewayInformation.MQTTSSLVersion = .all
+                                if let authModeValue = mqttConnectInfoDict["authMode"] as? UInt8, let resultAuthMode = GatewayInformation.MQTTAuthMode.init(rawValue: authModeValue) {
+                                    authMode = resultAuthMode
                                 }
-                                return SpaceData.load(siteId: siteId, spaceId: $0).first
-                            })
-                        }
-                        var mqttConnectInfo: GatewayInformation.MQTTConnectInformation?
-                        if let mqttConnectInfoDict = json["mqttConnectInfo"].dictionaryObject,
-                           let serverAddress = mqttConnectInfoDict["serverAddress"] as? String,
-                           let userName = mqttConnectInfoDict["userName"] as? String,
-                           let password = mqttConnectInfoDict["password"] as? String,
-                           let clientId = mqttConnectInfoDict["clientId"] as? String {
+                                if let sslVersionValue = mqttConnectInfoDict["sslVersion"] as? UInt8, let resultSslVersion = GatewayInformation.MQTTSSLVersion(rawValue: sslVersionValue) {
+                                    sslVersion = resultSslVersion
+                                }
+                                
+                                mqttConnectInfo = .init(customId: customId, serverAddress: serverAddress, userName: userName, password: password, clientId: clientId, keepalive: mqttConnectInfoDict["keepalive"] as? UInt16 ?? 60, clearSession: mqttConnectInfoDict["clearSession"] as? Bool ?? true, authMode: authMode, sslVersion: sslVersion)
+                            }
                             
-                            var authMode: GatewayInformation.MQTTAuthMode = .none
-                            var sslVersion: GatewayInformation.MQTTSSLVersion = .all
-                            if let authModeValue = mqttConnectInfoDict["authMode"] as? UInt8, let resultAuthMode = GatewayInformation.MQTTAuthMode.init(rawValue: authModeValue) {
-                                authMode = resultAuthMode
-                            }
-                            if let sslVersionValue = mqttConnectInfoDict["sslVersion"] as? UInt8, let resultSslVersion = GatewayInformation.MQTTSSLVersion(rawValue: sslVersionValue) {
-                                sslVersion = resultSslVersion
-                            }
- 
-                            mqttConnectInfo = .init(customId: customId, serverAddress: serverAddress, userName: userName, password: password, clientId: clientId, keepalive: mqttConnectInfoDict["keepalive"] as? UInt16 ?? 60, clearSession: mqttConnectInfoDict["clearSession"] as? Bool ?? true, authMode: authMode, sslVersion: sslVersion)
+                            let gatewayModel = GatewayModel(siteId: siteId, address: node.primaryUnicastAddress, mac: mac, activate: json["activate"].boolValue, associatedSpaces: associatedSpaces, apn: json["apn"].string, mqttServerInfo: mqttConnectInfo)
+                            gatewayModel.save()
+                            node.gatewayModel = gatewayModel
                         }
-                        
-                       let gatewayModel = GatewayModel(siteId: siteId, address: node.primaryUnicastAddress, mac: mac, activate: json["activate"].boolValue, associatedSpaces: associatedSpaces, apn: json["apn"].string, mqttServerInfo: mqttConnectInfo)
-                        gatewayModel.save()
-                        node.gatewayModel = gatewayModel
                     }
                     
                     return node

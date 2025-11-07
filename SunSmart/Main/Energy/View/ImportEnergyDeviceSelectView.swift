@@ -75,7 +75,9 @@ class ImportEnergyDeviceSelectView: UIView {
             self.contentView.transform = .identity
             self.shadeView.alpha = 1
         } completion: { _ in
-            
+            if self.storageDevicesTableView.firstShowFlashScrollIndicators {
+                self.storageDevicesTableView.flashScrollIndicatorsIfNeeded()
+            }
         }
     }
     

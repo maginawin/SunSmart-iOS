@@ -118,7 +118,9 @@ class GroupMembersViewController: UIViewController {
         if isAddDevices {
             navigationController?.interactivePopGestureRecognizer?.isEnabled = false
         }
-        
+        if collectionView.firstShowFlashScrollIndicators {
+            collectionView.flashScrollIndicatorsIfNeeded()
+        }
  
     }
     
@@ -220,7 +222,12 @@ class GroupMembersViewController: UIViewController {
             
             view.showEmptyDataView(title: "no_devices".localizedString, tipText: "group_not_devices_message".localizedString, buttonText: "group_add_device".localizedString, buttomWidth: SCRXFrom(216), position: .center, bottomMargin: SCRYFit(50)) {[weak self] in
                 guard let self = self else { return }
-                let addVc = DeviceAddViewController(space: space)
+                guard MeshNetworkManager.instance.realNodes.count < self.space.maxDevicesCount else {
+                    XWHUDManager.showTipHUD(String(format: "devices_number_exceeds_message".localizedString, self.space.maxDevicesCount), isLineFeed: true)
+                    return
+                }
+                
+                let addVc = DeviceAddViewController(space: self.space)
                 addVc.appointGroup = self.group
 //                addVc.deviceAddCallback = {[weak self] _ in
 //                    self?.updateEmptyUI()
@@ -574,7 +581,7 @@ extension GroupMembersViewController: UICollectionViewDataSource, UICollectionVi
         if !node.isOn, node.lightness > 0 { // 关灯，记录关灯前的亮度值
             node.trunOffLightness = node.lightness
         }
-        MeshAPI.setNodeOnOffState(address: node.primaryUnicastAddress, isOn: node.isOn)
+        MeshAPI.setNodeOnOffState(address: node.primaryUnicastAddress, isOn: node.isOn, ack: true)
         reloadCollectionItem(node: node)
     }
     

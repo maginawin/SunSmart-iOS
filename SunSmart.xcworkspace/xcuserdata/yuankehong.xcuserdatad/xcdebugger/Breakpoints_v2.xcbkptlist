@@ -85,22 +85,6 @@
       <BreakpointProxy
          BreakpointExtensionID = "Xcode.Breakpoint.FileBreakpoint">
          <BreakpointContent
-            uuid = "FAF5976E-C543-4BF2-937C-83ECE015C5EA"
-            shouldBeEnabled = "Yes"
-            ignoreCount = "0"
-            continueAfterRunningActions = "No"
-            filePath = "SunSmart/Main/Firmware/Controller/FirmwareVersionViewController.swift"
-            startingColumnNumber = "9223372036854775807"
-            endingColumnNumber = "9223372036854775807"
-            startingLineNumber = "114"
-            endingLineNumber = "114"
-            landmarkName = "loadCloudFirmwareRequest()"
-            landmarkType = "7">
-         </BreakpointContent>
-      </BreakpointProxy>
-      <BreakpointProxy
-         BreakpointExtensionID = "Xcode.Breakpoint.FileBreakpoint">
-         <BreakpointContent
             uuid = "C499D97A-198E-4673-8FE3-D48D7ECE6BFD"
             shouldBeEnabled = "Yes"
             ignoreCount = "0"
@@ -133,16 +117,16 @@
       <BreakpointProxy
          BreakpointExtensionID = "Xcode.Breakpoint.FileBreakpoint">
          <BreakpointContent
-            uuid = "A109A263-D8BE-487F-B9C8-A137CD711D76"
+            uuid = "6C6B2123-6E13-4A37-B09A-05190206EC0C"
             shouldBeEnabled = "Yes"
             ignoreCount = "0"
             continueAfterRunningActions = "No"
-            filePath = "../../Library/Developer/Xcode/DerivedData/SunSmart-bsknqvobukouwgfvklwtoruhrcgz/SourcePackages/checkouts/nordic-sig-mesh-sdk/Sources/NordicSigMeshSDK/MeshLib/Manager/MeshFirmwareBLOBServer.swift"
+            filePath = "SunSmart/Main/Device/Reset/Model/DeviceMeshNetworkResetHandle.swift"
             startingColumnNumber = "9223372036854775807"
             endingColumnNumber = "9223372036854775807"
-            startingLineNumber = "858"
-            endingLineNumber = "858"
-            landmarkName = "blobFailed(error:)"
+            startingLineNumber = "259"
+            endingLineNumber = "259"
+            landmarkName = "checkMeshNetworkResetResult()"
             landmarkType = "7">
          </BreakpointContent>
       </BreakpointProxy>

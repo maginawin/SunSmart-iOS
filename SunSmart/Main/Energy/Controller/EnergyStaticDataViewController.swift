@@ -130,6 +130,13 @@ class EnergyStaticDataViewController: UIViewController {
 //        energySpaceView.updateData(latestHarvestData: self.latestHarvestData, previousHarvestData: self.previousHarvestData)
     }
     
+    override func viewDidAppear(_ animated: Bool) {
+        super.viewDidAppear(animated)
+        if self.devicesTableView.firstShowFlashScrollIndicators {
+            self.devicesTableView.flashScrollIndicatorsIfNeeded()
+        }
+    }
+    
     private func setupData() {
         
         let staticDatas = EnergyStatisticsStaticData.load(spaceId: space.id)
@@ -520,7 +527,7 @@ extension EnergyStaticDataViewController: EnergyStaticDataDeviceViewCellDelegate
         
         cell.onBtn.isSelected = device.selectOn
         cell.offBtn.isSelected = device.selectOff
-        MeshAPI.setNodeOnOffState(address: device.address, isOn: isOn)
+        MeshAPI.setNodeOnOffState(address: device.address, isOn: isOn, ack: true)
     }
 
     

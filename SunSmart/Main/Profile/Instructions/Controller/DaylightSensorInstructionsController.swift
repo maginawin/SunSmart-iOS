@@ -34,6 +34,14 @@ class DaylightSensorInstructionsController: UIViewController {
         setupUI()
     }
     
+    override func viewDidAppear(_ animated: Bool) {
+        super.viewDidAppear(animated)
+        
+        if collectionView.firstShowFlashScrollIndicators {
+            collectionView.flashScrollIndicatorsIfNeeded()
+        }
+    }
+    
     @objc private func back() {
         navigationController?.popViewController(animated: true)
     }
@@ -50,7 +58,6 @@ class DaylightSensorInstructionsController: UIViewController {
         
         collectionView.register(DaylightSensorInstructionsHeaderView.classForCoder(), forSupplementaryViewOfKind: UICollectionView.elementKindSectionHeader, withReuseIdentifier: "header")
         collectionView.register(DaylightSensorInstructionsViewCell.classForCoder(), forCellWithReuseIdentifier: "cell")
-        collectionView.showsVerticalScrollIndicator = false
         collectionView.dataSource = self
         collectionView.delegate = self
         view.addSubview(collectionView)

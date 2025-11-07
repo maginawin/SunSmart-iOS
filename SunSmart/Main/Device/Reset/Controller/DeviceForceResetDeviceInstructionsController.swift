@@ -16,6 +16,8 @@ class DeviceForceResetDeviceInstructionsController: UIViewController {
     private var flashlightImageView: UIImageView!
     private var motionLabel: UILabel!
     private var motionImageView: UIImageView!
+    private var meshNetworkLabel: UILabel!
+    private var meshNetworkImageView: UIImageView!
     
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -28,6 +30,14 @@ class DeviceForceResetDeviceInstructionsController: UIViewController {
         setupUI()
     }
     
+    override func viewDidAppear(_ animated: Bool) {
+        super.viewDidAppear(animated)
+        
+        if self.scrollView.firstShowFlashScrollIndicators {
+            self.scrollView.flashScrollIndicatorsIfNeeded()
+        }
+    }
+    
     @objc private func closeAction() {
         
         dismiss(animated: true)
@@ -36,7 +46,7 @@ class DeviceForceResetDeviceInstructionsController: UIViewController {
     private func setupUI() {
         
         scrollView = UIScrollView()
-        scrollView.showsVerticalScrollIndicator = false
+//        scrollView.showsVerticalScrollIndicator = false
         view.addSubview(scrollView)
         scrollView.snp.makeConstraints { make in
             make.left.right.bottom.equalToSuperview()
@@ -105,10 +115,24 @@ class DeviceForceResetDeviceInstructionsController: UIViewController {
         motionImageView = UIImageView(image: UIImage(named: "device_reset_motion"))
         contentView.addSubview(motionImageView)
         motionImageView.snp.makeConstraints { make in
-            make.left.equalTo(SCRXFrom(isIPad ? 100 : 32))
-            make.right.equalTo(SCRXFrom(isIPad ? -100 : -32))
+            make.left.right.equalTo(flashlightImageView)
             make.height.equalTo(flashlightImageView.snp.width).multipliedBy(170 / 311.0)
             make.top.equalTo(motionLabel.snp.bottom).offset(SCRYFrom(24))
+        }
+     
+        meshNetworkLabel = UILabel(text: "based_on_mesh_network".localizedString, textColor: ImportantText_Color, fontSize: 15)
+        contentView.addSubview(meshNetworkLabel)
+        meshNetworkLabel.snp.makeConstraints { make in
+            make.left.equalTo(motionLabel)
+            make.top.equalTo(motionImageView.snp.bottom).offset(SCRYFrom(32))
+        }
+        
+        meshNetworkImageView = UIImageView(image: UIImage(named: "device_reset_network"))
+        contentView.addSubview(meshNetworkImageView)
+        meshNetworkImageView.snp.makeConstraints { make in
+            make.left.right.equalTo(motionImageView)
+            make.height.equalTo(meshNetworkImageView.snp.width).multipliedBy(170 / 311.0)
+            make.top.equalTo(meshNetworkLabel.snp.bottom).offset(SCRYFrom(24))
             make.bottom.equalTo(SCRYFrom(-20))
         }
         

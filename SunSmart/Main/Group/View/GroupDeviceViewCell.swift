@@ -68,7 +68,7 @@ class GroupDeviceViewCell: DevicesViewCell {
             make.left.equalTo(SCRXFrom(18))
             make.right.equalTo(SCRXFrom(-18))
 //            make.bottom.equalTo(SCRYFit(-11))
-            make.top.equalTo(contentView.snp.bottom).offset(SCRYFrom(-23))
+            make.top.equalTo(contentView.snp.bottom).offset(SCRYFrom(-25))
 //            make.bottom.equalToSuperview()
             make.height.equalTo(SCRYFrom(20))
         })

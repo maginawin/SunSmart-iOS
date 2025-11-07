@@ -66,7 +66,7 @@ class LightSensorCalibrationView: UIView {
         }
     }
     /// 最大测量值
-    var maximunValue: Int = 1000 {
+    var maximunValue: Int = 1500 {
         didSet {
             minimunLabel.text = String(format: "light_sensor_lux_range".localizedString, minimunValue, maximunValue)
         }

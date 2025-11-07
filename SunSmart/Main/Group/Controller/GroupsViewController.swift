@@ -35,6 +35,13 @@ class GroupsViewController: UIViewController {
     /// item间距
     private var itemMargin: CGFloat = isIPad ? SCRXFrom(30) : SCRXFrom(16)
     
+    /// 组点击定时器
+    private var tapTimer: Timer?
+    /// 最后点击的组indexpath
+    private var lastTappedIndexPath: IndexPath?
+    /// 组菜单view
+    private weak var groupMenuView: GroupMenuView?
+    
     private var isEdit: Bool = false
     
     init(space: SpaceData) {
@@ -73,6 +80,13 @@ class GroupsViewController: UIViewController {
 //            collectionView.reloadData()
 //            updateGroupesEmptyUI()
 //        }
+    }
+    
+    override func viewDidAppear(_ animated: Bool) {
+        super.viewDidAppear(animated)
+        if collectionView.firstShowFlashScrollIndicators {
+            collectionView.flashScrollIndicatorsIfNeeded()
+        }
     }
     
     override func viewDidLayoutSubviews() {
@@ -176,6 +190,55 @@ class GroupsViewController: UIViewController {
             let navVc = NavigationViewController(rootViewController: groupVc)
             present(navVc, animated: true)
         }
+    }
+    
+    /// 组点击事件
+    private func groupHandleSingleTap(_ indexPath: IndexPath) {
+        
+        let group = MeshNetworkManager.instance.groups[indexPath.item]
+        
+        group.isOn = !group.isOn
+        // 修改缓存数据
+        group.nodes.forEach({
+            $0.isOn = group.isOn
+            if !$0.isOn, $0.lightness > 0 { // 关灯，记录关灯前的亮度值
+                $0.trunOffLightness = $0.lightness
+            }
+        })
+        MeshAPI.setGroupOnOffState(address: group.address.address, isOn: group.isOn)
+        reloadCollectionItem(group: group)
+    }
+    
+    /// 组双击事件
+    private func groupHandleDoubleTap(_ indexPath: IndexPath) {
+    
+        guard let item = collectionView.cellForItem(at: indexPath) else { return }
+        
+        let menuItems: [MenuPopView.MenuItem] = [
+            .init(icon: UIImage(named: "group_auto"), title: "AUTO", tapItemBack: { _ in
+                guard indexPath.row < MeshNetworkManager.instance.groups.count else {
+                    return
+                }
+                let group = MeshNetworkManager.instance.groups[indexPath.item]
+                MeshAPI.sendMessage(message: LightLCLightOnOffSetUnacknowledged(true), address: group.address.address)
+            }),
+            .init(icon: UIImage(named: "menu_profile_test"), title: "TEST".localizedString, tapItemBack: { _ in
+                guard indexPath.row < MeshNetworkManager.instance.groups.count else {
+                    return
+                }
+                let group = MeshNetworkManager.instance.groups[indexPath.item]
+                MeshAPI.sendMessage(message: LightLCLightOnOffSetUnacknowledged(false), address: group.address.address)
+            })
+        ]
+        
+        let point = view.convert(item.center, from: collectionView)
+        item.layer.shadowOpacity = 0
+        let groupImage = item.snapshot()
+        item.layer.shadowOpacity = 1
+        let menuView = GroupMenuView(frame: collectionView.frame, groupImage: groupImage, bgBlurredImage: collectionView.toBlurredImage(), menuItems: menuItems, groupCenterPoint: point)
+        menuView.show(to: view)
+        
+        groupMenuView = menuView
     }
     
     private func deleteGroup(group: Group) {
@@ -385,14 +448,14 @@ class GroupsViewController: UIViewController {
         view.addSubview(editView)
         editView.snp.makeConstraints { make in
             make.left.right.bottom.equalToSuperview()
-            make.height.equalTo(kSafeAreaBottomHeight + SCRYFrom(56))
+            make.height.equalTo(kSafeAreaBottomHeight + SCRYFrom(44))
         }
         
         doneBtn = UIButton(title: "done".localizedString, titleSize: 16, titleWeight: .light, titleColor: Title_Color, target: self, action: #selector(doneBtnAction))
         editView.addSubview(doneBtn)
         doneBtn.snp.makeConstraints { make in
             make.left.right.top.equalToSuperview()
-            make.height.equalTo(SCRYFrom(56))
+            make.height.equalTo(SCRYFrom(44))
         }
         
         flowLayout = AlignCenterFlowLayout()
@@ -404,13 +467,26 @@ class GroupsViewController: UIViewController {
         collectionView = UICollectionView(frame: .zero, collectionViewLayout: flowLayout)
         collectionView.contentInset = UIEdgeInsets(top: isIPad ? 34 : 12, left: collectionViewMargin, bottom: isIPad ? 34 : 22, right: collectionViewMargin)
         collectionView.register(GroupsViewCell.classForCoder(), forCellWithReuseIdentifier: "cell")
-        collectionView.backgroundColor = .clear
+        collectionView.alwaysBounceVertical = true
+        collectionView.backgroundColor = Background_Color
         collectionView.dataSource = self
         collectionView.delegate = self
         collectionView.showsVerticalScrollIndicator = true
         let longPress = UILongPressGestureRecognizer(target: self, action: #selector(collectionLongPressAction))
         longPress.minimumPressDuration = 0.5
         collectionView.addGestureRecognizer(longPress)
+        
+//        let singleTap = UITapGestureRecognizer(target: self, action: #selector(collectionViewSingleTapAction))
+//        singleTap.numberOfTapsRequired = 1
+//        singleTap.numberOfTouchesRequired = 1
+//        collectionView.addGestureRecognizer(singleTap)
+//        
+//        let doubleTap = UITapGestureRecognizer(target: self, action: #selector(collectionViewDoubleTapAction))
+//        doubleTap.numberOfTapsRequired = 2
+//        collectionView.addGestureRecognizer(doubleTap)
+//        
+//        singleTap.require(toFail: doubleTap)
+        
         view.addSubview(collectionView)
         collectionView.snp.makeConstraints { make in
             make.left.right.top.equalToSuperview()
@@ -447,20 +523,45 @@ extension GroupsViewController: UICollectionViewDataSource, UICollectionViewDele
     
     func collectionView(_ collectionView: UICollectionView, didSelectItemAt indexPath: IndexPath) {
         
-        let group = MeshNetworkManager.instance.groups[indexPath.item]
- 
-        group.isOn = !group.isOn
-//        if group.nodes.count > 0 {
-            // 修改缓存数据
-            group.nodes.forEach({
-                $0.isOn = group.isOn
-                if !$0.isOn, $0.lightness > 0 { // 关灯，记录关灯前的亮度值
-                    $0.trunOffLightness = $0.lightness
-                }
+        if let last = lastTappedIndexPath, last == indexPath {
+            // ✅ 检测到双击
+            tapTimer?.invalidate()
+            tapTimer = nil
+            lastTappedIndexPath = nil
+//            print("✅ 双击触发: \(indexPath)")
+            groupHandleDoubleTap(indexPath)
+            
+        } else {
+            // ✅ 第一次点击 → 延迟判断是否双击
+            if let lastTappedIndexPath = self.lastTappedIndexPath, tapTimer != nil { // 当0.22s内快速点击多个了item时，将上一个点击的设备响应事件触发，否则快速点击时之前的点击事件则无效
+                self.groupHandleSingleTap(lastTappedIndexPath)
+            }
+
+            lastTappedIndexPath = indexPath
+            
+            tapTimer?.invalidate()
+            tapTimer = Timer.scheduledTimer(withTimeInterval: 0.22, repeats: false, block: { [weak self] _ in
+                guard let self = self else { return }
+//                print("✅ 单击触发: \(indexPath)")
+                self.groupHandleSingleTap(indexPath)
+                self.lastTappedIndexPath = nil
             })
-            MeshAPI.setGroupOnOffState(address: group.address.address, isOn: group.isOn)
-//        }
-        reloadCollectionItem(group: group)
+        }
+        
+//        let group = MeshNetworkManager.instance.groups[indexPath.item]
+// 
+//        group.isOn = !group.isOn
+////        if group.nodes.count > 0 {
+//            // 修改缓存数据
+//            group.nodes.forEach({
+//                $0.isOn = group.isOn
+//                if !$0.isOn, $0.lightness > 0 { // 关灯，记录关灯前的亮度值
+//                    $0.trunOffLightness = $0.lightness
+//                }
+//            })
+//            MeshAPI.setGroupOnOffState(address: group.address.address, isOn: group.isOn)
+////        }
+//        reloadCollectionItem(group: group)
     }
     
 }
@@ -474,6 +575,7 @@ extension GroupsViewController: SpaceFunctionFooterViewDelegate {
 //            SRAlertView(title: "notification".localizedString, message: "groups_overrun_message".localizedString, actions: [SRAlertAction(title: "GOT_IT".localizedString)]).show()
 //            return
 //        }
+        groupMenuView?.dismiss()
         
         let vc = GroupAddViewController(space: space)
 //        vc.doneCallback = {[weak self] group in
@@ -492,6 +594,8 @@ extension GroupsViewController: SpaceFunctionFooterViewDelegate {
     
     /// 编辑/取消编辑状态修改  editing：是否正在编辑
     func function(view: SpaceFunctionFooterView, editStateChanged editing: Bool) {
+        
+        groupMenuView?.dismiss()
         
         isEdit = editing
         view.isEditing = false

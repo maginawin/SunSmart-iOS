@@ -64,6 +64,13 @@ class DaliSettingViewController: UIViewController {
         setupTableView()
     }
     
+    override func viewDidAppear(_ animated: Bool) {
+        super.viewDidAppear(animated)
+        
+        if self.tableView.firstShowFlashScrollIndicators {
+            self.tableView.flashScrollIndicatorsIfNeeded()
+        }
+    }
 
     private func setupTableView() {
         
@@ -73,7 +80,7 @@ class DaliSettingViewController: UIViewController {
         tableView.register(CustomTableViewCell.classForCoder(), forCellReuseIdentifier: "cell")
         tableView.register(DaliSettingDeviceWarnViewCell.classForCoder(), forCellReuseIdentifier: "warnCell")
 //        tableView.register(DaliSettingDeviceWarnHeaderView.classForCoder(), forHeaderFooterViewReuseIdentifier: "header")
-        tableView.showsVerticalScrollIndicator = false
+//        tableView.showsVerticalScrollIndicator = false
         tableView.rowHeight = SCRYFrom(44)
         tableView.dataSource = self
         tableView.delegate = self

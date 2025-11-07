@@ -68,7 +68,9 @@ class BatchImportResultView: UIView {
             self.contentView.transform = .identity
             self.shadeView.alpha = 1
         } completion: { _ in
-            
+            if self.tableView.firstShowFlashScrollIndicators {
+                self.tableView.flashScrollIndicatorsIfNeeded()
+            }
         }
     }
     

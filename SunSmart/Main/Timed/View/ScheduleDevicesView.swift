@@ -88,6 +88,10 @@ class ScheduleDevicesView: UIView {
         UIView.animate(withDuration: 0.3) {
             self.contentView.y = self.height - self.contentView.height
             self.shadeView.alpha = 1
+        }completion: { _ in
+            if self.collectionView.firstShowFlashScrollIndicators {
+                self.collectionView.flashScrollIndicatorsIfNeeded()
+            }
         }
     }
     
@@ -217,7 +221,7 @@ class ScheduleDevicesView: UIView {
         flowLayout.offsetY = SCRYFrom(-53)
         
         collectionView = UICollectionView(frame: .zero, collectionViewLayout: flowLayout)
-        collectionView.showsVerticalScrollIndicator = false
+//        collectionView.showsVerticalScrollIndicator = false
         collectionView.contentInset = collectionViewInsets
         collectionView.dataSource = self
         collectionView.delegate = self
@@ -360,7 +364,7 @@ extension ScheduleDevicesView: UICollectionViewDataSource, UICollectionViewDeleg
             return
         }
         node.isOn = !node.isOn
-        MeshAPI.setNodeOnOffState(address: node.primaryUnicastAddress, isOn: node.isOn)
+        MeshAPI.setNodeOnOffState(address: node.primaryUnicastAddress, isOn: node.isOn, ack: true)
         if let cell = collectionView.cellForItem(at: indexPath) as? DevicesViewCell {
             cell.device = node
             cell.displayDeviceNamePrefix = displayDeviceNamePrefix

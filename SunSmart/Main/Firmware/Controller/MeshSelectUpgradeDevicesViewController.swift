@@ -89,6 +89,14 @@ class MeshSelectUpgradeDevicesViewController: UIViewController {
         updateBottomUIState()
     }
     
+    override func viewDidAppear(_ animated: Bool) {
+        super.viewDidAppear(animated)
+        
+        if tableView.firstShowFlashScrollIndicators {
+            tableView.flashScrollIndicatorsIfNeeded()
+        }
+    }
+    
     /// 开始分发
     private func startDistribution() {
         

@@ -313,7 +313,7 @@ class CustomDeviceSlider: UISlider {
     //检查是点击事件的点是否在slider范围内
     override func point(inside point: CGPoint, with event: UIEvent?) -> Bool {
 
-        let extendedBounds = bounds.insetBy(dx: -20, dy: -20)
+        let extendedBounds = bounds.insetBy(dx: -15, dy: -10)
         return extendedBounds.contains(point)
         
         //调用父类判断

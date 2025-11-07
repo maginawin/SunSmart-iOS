@@ -65,6 +65,14 @@ class DeviceLightBasicController: UIViewController {
         MeshLibManager.manager.messageDelegate = self
     }
     
+    override func viewDidAppear(_ animated: Bool) {
+        super.viewDidAppear(animated)
+        
+        if self.tableView.firstShowFlashScrollIndicators {
+            self.tableView.flashScrollIndicatorsIfNeeded()
+        }
+    }
+    
     override func viewWillDisappear(_ animated: Bool) {
         super.viewWillDisappear(animated)
         
@@ -135,7 +143,7 @@ class DeviceLightBasicController: UIViewController {
         tableView.register(DeviceLightControlViewCell.classForCoder(), forCellReuseIdentifier: "controlCell")
         tableView.register(CustomTableViewCell.classForCoder(), forCellReuseIdentifier: "cell")
         tableView.register(DeviceLightInfoSectionView.classForCoder(), forHeaderFooterViewReuseIdentifier: "header")
-        tableView.showsVerticalScrollIndicator = false
+//        tableView.showsVerticalScrollIndicator = false
         tableView.dataSource = self
         tableView.delegate = self
         view.addSubview(tableView)
@@ -146,7 +154,7 @@ class DeviceLightBasicController: UIViewController {
         headerView = DeviceLightHeaderView(frame: CGRect(x: 0, y: 0, width: view.width, height: SCRYFrom(122)))
         headerView.onoffControlCallback = {[weak self] isOn in
             guard let self = self else { return }
-            MeshAPI.setNodeOnOffState(address: self.node.primaryUnicastAddress, isOn: isOn)
+            MeshAPI.setNodeOnOffState(address: self.node.primaryUnicastAddress, isOn: isOn, ack: true)
             self.node.isOn = isOn
             if !isOn && self.node.lightness > 0 {
                 // 记录关灯前亮度

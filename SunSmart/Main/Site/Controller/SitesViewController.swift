@@ -162,6 +162,14 @@ class SitesViewController: UIViewController {
             menuClick()
         }
         updateSyncState()
+        
+        if allSitesCollectionView.firstShowFlashScrollIndicators {
+            allSitesCollectionView.flashScrollIndicatorsIfNeeded()
+        }
+        
+        if favouritesCollectionView.firstShowFlashScrollIndicators {
+            favouritesCollectionView.flashScrollIndicatorsIfNeeded()
+        }
 //        self.showNavigationBarLoading()
         
 //        DispatchQueue.main.asyncAfter(deadline: .now() + 3, execute: {
@@ -529,13 +537,13 @@ class SitesViewController: UIViewController {
 //            }
 //        }
         
-//        let vc = DeviceRestoreViewController(space: space, restoreMode: .default)
-//        vc.automationRestore = true
+//        let vc = DeviceForceResetDevicePageController()
+////        let vc = DeviceMeshNetworkResetController()
 //        if isIPad {
 //            vc.preferredContentSize = iPadStandardSize
 //        }
 //        self.present(NavigationViewController(rootViewController: vc), animated: true)
-        
+
         
         ImportProjectView {[weak self] mode in
             if mode == .scanQRCode {

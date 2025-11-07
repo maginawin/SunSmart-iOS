@@ -134,6 +134,14 @@ class ShareAuthorityViewController: UIViewController {
         print(view.frame.size)
     }
     
+    override func viewDidAppear(_ animated: Bool) {
+        super.viewDidAppear(animated)
+        
+        if collectionView.firstShowFlashScrollIndicators {
+            collectionView.flashScrollIndicatorsIfNeeded()
+        }
+    }
+    
     // MARK: - Request
     /// 获取spaces请求
     private func loadSpacesReqeust() {

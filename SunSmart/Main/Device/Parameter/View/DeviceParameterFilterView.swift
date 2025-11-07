@@ -89,7 +89,9 @@ class DeviceParameterFilterView: UIView {
             self.contentView.y = self.height - self.contentView.height
             self.shadeView.alpha = 1
         } completion: { _ in
-            
+            if self.tableView.firstShowFlashScrollIndicators {
+                self.tableView.flashScrollIndicatorsIfNeeded()
+            }
         }
     }
     

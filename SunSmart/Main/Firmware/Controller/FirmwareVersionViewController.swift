@@ -109,6 +109,11 @@ class FirmwareVersionViewController: UIViewController {
                 self.type.serverData = serverData
                 self.noServerFirmware = false
                 self.updateUI()
+      
+                if self.versionScrollView.firstShowFlashScrollIndicators {
+                    self.versionScrollView.flashScrollIndicatorsIfNeeded()
+                }
+                
                 
             case .failure(let error):
                 if error == .resourceNotFound {
