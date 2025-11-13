@@ -1183,6 +1183,15 @@
 		C8BC95E32E04FC830058D41E /* RangeSlider.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8BC95E12E04FC830058D41E /* RangeSlider.swift */; };
 		C8BC95E82E055C540058D41E /* DeviceSignalStrengthView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8BC95E72E055C540058D41E /* DeviceSignalStrengthView.swift */; };
 		C8BC95E92E055C540058D41E /* DeviceSignalStrengthView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8BC95E72E055C540058D41E /* DeviceSignalStrengthView.swift */; };
+		C8BE621E2EC4624C0075ED42 /* LightSensorCalibrationPointLuxView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8BE621D2EC4624C0075ED42 /* LightSensorCalibrationPointLuxView.swift */; };
+		C8BE621F2EC4624C0075ED42 /* LightSensorCalibrationPointLuxView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8BE621D2EC4624C0075ED42 /* LightSensorCalibrationPointLuxView.swift */; };
+		C8BE62202EC4624C0075ED42 /* LightSensorCalibrationPointLuxView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8BE621D2EC4624C0075ED42 /* LightSensorCalibrationPointLuxView.swift */; };
+		C8BE62232EC467510075ED42 /* LightSensorCalibrationAdjustSpeedView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8BE62222EC467510075ED42 /* LightSensorCalibrationAdjustSpeedView.swift */; };
+		C8BE62242EC467510075ED42 /* LightSensorCalibrationAdjustSpeedView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8BE62222EC467510075ED42 /* LightSensorCalibrationAdjustSpeedView.swift */; };
+		C8BE62252EC467510075ED42 /* LightSensorCalibrationAdjustSpeedView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8BE62222EC467510075ED42 /* LightSensorCalibrationAdjustSpeedView.swift */; };
+		C8BE62272EC488E90075ED42 /* LightSensorManualCorrectionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8BE62262EC488E90075ED42 /* LightSensorManualCorrectionView.swift */; };
+		C8BE62282EC488E90075ED42 /* LightSensorManualCorrectionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8BE62262EC488E90075ED42 /* LightSensorManualCorrectionView.swift */; };
+		C8BE62292EC488E90075ED42 /* LightSensorManualCorrectionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8BE62262EC488E90075ED42 /* LightSensorManualCorrectionView.swift */; };
 		C8BEA9FF2EAC5FC5006D0F32 /* DeviceMeshNetworkResetConfiguredController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8BEA9FE2EAC5FC5006D0F32 /* DeviceMeshNetworkResetConfiguredController.swift */; };
 		C8BEAA002EAC5FC5006D0F32 /* DeviceMeshNetworkResetConfiguredController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8BEA9FE2EAC5FC5006D0F32 /* DeviceMeshNetworkResetConfiguredController.swift */; };
 		C8BEAA012EAC5FC5006D0F32 /* DeviceMeshNetworkResetConfiguredController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8BEA9FE2EAC5FC5006D0F32 /* DeviceMeshNetworkResetConfiguredController.swift */; };
@@ -1688,6 +1697,9 @@
 		C8BC6D5C2EA249F9009E79A3 /* DeviceFlashlightBeastModeController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceFlashlightBeastModeController.swift; sourceTree = "<group>"; };
 		C8BC95E12E04FC830058D41E /* RangeSlider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RangeSlider.swift; sourceTree = "<group>"; };
 		C8BC95E72E055C540058D41E /* DeviceSignalStrengthView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceSignalStrengthView.swift; sourceTree = "<group>"; };
+		C8BE621D2EC4624C0075ED42 /* LightSensorCalibrationPointLuxView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LightSensorCalibrationPointLuxView.swift; sourceTree = "<group>"; };
+		C8BE62222EC467510075ED42 /* LightSensorCalibrationAdjustSpeedView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LightSensorCalibrationAdjustSpeedView.swift; sourceTree = "<group>"; };
+		C8BE62262EC488E90075ED42 /* LightSensorManualCorrectionView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LightSensorManualCorrectionView.swift; sourceTree = "<group>"; };
 		C8BEA9FE2EAC5FC5006D0F32 /* DeviceMeshNetworkResetConfiguredController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceMeshNetworkResetConfiguredController.swift; sourceTree = "<group>"; };
 		C8BF08452B26A45100144BAC /* TitleSelectView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TitleSelectView.swift; sourceTree = "<group>"; };
 		C8BF084B2B26F78100144BAC /* GroupsViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GroupsViewController.swift; sourceTree = "<group>"; };
@@ -3075,6 +3087,9 @@
 				C82AE2EA2B95756600FA4BDB /* GroupSensorView.swift */,
 				C8607BE32B9026F700A94F0B /* LightSensorCalibrationSelectView.swift */,
 				C8607BE52B905F5100A94F0B /* LightSensorCalibrationView.swift */,
+				C8BE621D2EC4624C0075ED42 /* LightSensorCalibrationPointLuxView.swift */,
+				C8BE62222EC467510075ED42 /* LightSensorCalibrationAdjustSpeedView.swift */,
+				C8BE62262EC488E90075ED42 /* LightSensorManualCorrectionView.swift */,
 				C8C958B82EBC876900F0E6E2 /* GroupMenuView.swift */,
 			);
 			path = View;
@@ -3597,6 +3612,7 @@
 				C88553C92DE6B44C00C8B688 /* MeshSelectDistributorViewController.swift in Sources */,
 				C88553CA2DE6B44C00C8B688 /* EnergyTimeSeriesDataImportView.swift in Sources */,
 				C88553CB2DE6B44C00C8B688 /* NoInternetHeaderView.swift in Sources */,
+				C8BE62282EC488E90075ED42 /* LightSensorManualCorrectionView.swift in Sources */,
 				C88553CC2DE6B44C00C8B688 /* DeviceParameterData.swift in Sources */,
 				C88553CD2DE6B44C00C8B688 /* UIViewController+Extension.swift in Sources */,
 				C88553CE2DE6B44C00C8B688 /* MeshDeviceConfigInfo.swift in Sources */,
@@ -3648,6 +3664,7 @@
 				C88553F62DE6B44C00C8B688 /* Node+SyncData.swift in Sources */,
 				C88553F72DE6B44C00C8B688 /* MeshFirmwareUpgradeResultsView.swift in Sources */,
 				C8C958B92EBC876900F0E6E2 /* GroupMenuView.swift in Sources */,
+				C8BE62252EC467510075ED42 /* LightSensorCalibrationAdjustSpeedView.swift in Sources */,
 				C88553F82DE6B44C00C8B688 /* ScheduleAddViewController.swift in Sources */,
 				C8BC57372E9FC501009E79A3 /* DeviceResetDeviceStepController.swift in Sources */,
 				C88553F92DE6B44C00C8B688 /* ProfileInstructionsViewCell.swift in Sources */,
@@ -3826,6 +3843,7 @@
 				C885548D2DE6B44C00C8B688 /* MeshFirmwareUpdateStepHeaderView.swift in Sources */,
 				C885548E2DE6B44C00C8B688 /* ManualOverrideTimeoutInstructionController.swift in Sources */,
 				C885548F2DE6B44C00C8B688 /* DevicesViewCell.swift in Sources */,
+				C8BE621E2EC4624C0075ED42 /* LightSensorCalibrationPointLuxView.swift in Sources */,
 				C88554902DE6B44C00C8B688 /* LightSensorCalibrationView.swift in Sources */,
 				C8C0E5E32E2A3D190024E77E /* RelativeSensitivityInstructionsController.swift in Sources */,
 				C88554912DE6B44C00C8B688 /* EnergyHarvestStateView.swift in Sources */,
@@ -4015,6 +4033,7 @@
 				C886E0192E30DE4900D0C3A6 /* MeshSelectDistributorViewController.swift in Sources */,
 				C886E01A2E30DE4900D0C3A6 /* EnergyTimeSeriesDataImportView.swift in Sources */,
 				C886E01B2E30DE4900D0C3A6 /* NoInternetHeaderView.swift in Sources */,
+				C8BE62272EC488E90075ED42 /* LightSensorManualCorrectionView.swift in Sources */,
 				C886E01C2E30DE4900D0C3A6 /* DeviceParameterData.swift in Sources */,
 				C886E01D2E30DE4900D0C3A6 /* UIViewController+Extension.swift in Sources */,
 				C886E01E2E30DE4900D0C3A6 /* MeshDeviceConfigInfo.swift in Sources */,
@@ -4066,6 +4085,7 @@
 				C886E0472E30DE4900D0C3A6 /* Node+SyncData.swift in Sources */,
 				C886E0482E30DE4900D0C3A6 /* MeshFirmwareUpgradeResultsView.swift in Sources */,
 				C8C958BA2EBC876900F0E6E2 /* GroupMenuView.swift in Sources */,
+				C8BE62232EC467510075ED42 /* LightSensorCalibrationAdjustSpeedView.swift in Sources */,
 				C886E0492E30DE4900D0C3A6 /* ScheduleAddViewController.swift in Sources */,
 				C8BC57382E9FC501009E79A3 /* DeviceResetDeviceStepController.swift in Sources */,
 				C886E04A2E30DE4900D0C3A6 /* ProfileInstructionsViewCell.swift in Sources */,
@@ -4244,6 +4264,7 @@
 				C886E0E42E30DE4900D0C3A6 /* MeshFirmwareUpdateStepHeaderView.swift in Sources */,
 				C886E0E52E30DE4900D0C3A6 /* ManualOverrideTimeoutInstructionController.swift in Sources */,
 				C886E0E62E30DE4900D0C3A6 /* DevicesViewCell.swift in Sources */,
+				C8BE62202EC4624C0075ED42 /* LightSensorCalibrationPointLuxView.swift in Sources */,
 				C886E0E72E30DE4900D0C3A6 /* LightSensorCalibrationView.swift in Sources */,
 				C886E0E82E30DE4900D0C3A6 /* RelativeSensitivityInstructionsController.swift in Sources */,
 				C886E0E92E30DE4900D0C3A6 /* EnergyHarvestStateView.swift in Sources */,
@@ -4433,6 +4454,7 @@
 				C89C70B32CD3731C00B9A76A /* MeshSelectDistributorViewController.swift in Sources */,
 				C8BA43652DC0A7A700018392 /* EnergyTimeSeriesDataImportView.swift in Sources */,
 				C884EF702C05788900B5F869 /* NoInternetHeaderView.swift in Sources */,
+				C8BE62292EC488E90075ED42 /* LightSensorManualCorrectionView.swift in Sources */,
 				C8AEB9B02DCC98F80053102B /* DeviceParameterData.swift in Sources */,
 				C8ACF13B2AA1B2BA00E24B4A /* UIViewController+Extension.swift in Sources */,
 				C8A3EF762CA69758000A1226 /* MeshDeviceConfigInfo.swift in Sources */,
@@ -4484,6 +4506,7 @@
 				C8A351702D8EB1FF00325FC6 /* Node+SyncData.swift in Sources */,
 				C89D560F2D0A87F100FC7890 /* MeshFirmwareUpgradeResultsView.swift in Sources */,
 				C8C958BB2EBC876900F0E6E2 /* GroupMenuView.swift in Sources */,
+				C8BE62242EC467510075ED42 /* LightSensorCalibrationAdjustSpeedView.swift in Sources */,
 				C8A29C2C2B47FE2300104634 /* ScheduleAddViewController.swift in Sources */,
 				C8BC57392E9FC501009E79A3 /* DeviceResetDeviceStepController.swift in Sources */,
 				C8047F0B2B8DFBF700A09FFA /* ProfileInstructionsViewCell.swift in Sources */,
@@ -4662,6 +4685,7 @@
 				C8AC83C72D068A670033513E /* MeshFirmwareUpdateStepHeaderView.swift in Sources */,
 				C8047F2D2B8F5C9200A09FFA /* ManualOverrideTimeoutInstructionController.swift in Sources */,
 				C898EA722AC3D17C0023B480 /* DevicesViewCell.swift in Sources */,
+				C8BE621F2EC4624C0075ED42 /* LightSensorCalibrationPointLuxView.swift in Sources */,
 				C8607BE62B905F5100A94F0B /* LightSensorCalibrationView.swift in Sources */,
 				C8C0E5E12E2A3D190024E77E /* RelativeSensitivityInstructionsController.swift in Sources */,
 				C8AEB9932DC9A0300053102B /* EnergyHarvestStateView.swift in Sources */,
@@ -5142,7 +5166,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 3;
+				CURRENT_PROJECT_VERSION = 7;
 				DEVELOPMENT_TEAM = JTD3WYUC58;
 				GCC_PREFIX_HEADER = "";
 				GENERATE_INFOPLIST_FILE = YES;
@@ -5182,7 +5206,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 3;
+				CURRENT_PROJECT_VERSION = 7;
 				DEVELOPMENT_TEAM = JTD3WYUC58;
 				GCC_PREFIX_HEADER = "";
 				GENERATE_INFOPLIST_FILE = YES;

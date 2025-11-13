@@ -445,8 +445,13 @@ extension ProfileType {
             return "sensor_disable".localizedString
         case .daylightCalibration:
             return "guidance_sensor_calibration".localizedString
+        case .daylightCalibrateRate:
+            return "calibration_ratio".localizedString
+        case .daylightCalibrateInflectionPoint:
+            return "calibration_light_point".localizedString
         case .sensitivity:
             return "sensitivity".localizedString
+        
         }
     }
     
@@ -504,6 +509,8 @@ extension ProfileType {
             return node.daylightCalibrationValue == value
         case .sensitivity(let value, _):
             return node.motionSensitivity == value
+        case .daylightCalibrateRate, .daylightCalibrateInflectionPoint:
+            return true
         }
     }
 }

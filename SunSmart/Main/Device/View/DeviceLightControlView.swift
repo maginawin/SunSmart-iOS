@@ -202,7 +202,7 @@ class DeviceLightControlView: UIView {
         levelSliderView.snp.makeConstraints { make in
             make.left.equalTo(SCRXFrom(22))
             make.right.equalTo(SCRXFrom(-21))
-            make.top.equalTo(SCRYFrom(8))
+            make.top.equalTo(SCRYFrom(20))
             make.height.equalTo(SCRYFrom(83))
         }
         

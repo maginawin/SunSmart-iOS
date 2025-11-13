@@ -1991,8 +1991,14 @@ extension Node {
         
         if let group = addToGroup {
             // 恢复的设备之前作为组光照传感器，恢复后更新设备地址缓存到组
-            if oldNode.sensorCalibrated, let calibrationValue = oldNode.daylightCalibrationValue, group.info.ambientLightSensorNodeAddress == oldNode.primaryUnicastAddress {
-                restoreData.daylightCalibrationValue = calibrationValue
+            if oldNode.sensorCalibrated, group.info.ambientLightSensorNodeAddress == oldNode.primaryUnicastAddress {
+                if let calibrationValue = oldNode.daylightCalibrationValue, calibrationValue > 0 && calibrationValue < 65535 {
+                    restoreData.daylightCalibrationValue = calibrationValue
+                }
+                // 校准数据
+                if let data = oldNode.sensorCalibrationData {
+                    restoreData.daylightCalibrationData = data
+                }
                 group.info.ambientLightSensorNodeAddress = self.primaryUnicastAddress
                 group.info.save()
             }
@@ -2498,6 +2504,12 @@ extension Node {
                         self.restoreData?.daylightCalibrationValue = nil
                         save()
                     }
+                case .daylightCalibrateRate:
+                    self.restoreData?.daylightCalibrationData?.sensorRatio = nil
+                    self.restoreData?.daylightCalibrationData?.ambientlightRatio = nil
+                case .daylightCalibrateIlluminanceInflectionPoint:
+                    self.restoreData?.daylightCalibrationData?.minLightInflectionPointData = nil
+                    self.restoreData?.daylightCalibrationData?.maxLightInflectionPointData = nil
                 case .pwmFrequency:
                     if self.restoreData?.pwmFrequency != nil {
                         self.restoreData?.pwmFrequency = nil

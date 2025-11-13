@@ -15,7 +15,12 @@ class LightSensorCalibrationViewController: UIViewController {
     private var scrollView: UIScrollView!
     private var contentView: UIView!
     private var sensorSelectView: LightSensorCalibrationSelectView!
-    private var calibrationView: LightSensorCalibrationView!
+//    private var calibrationView: LightSensorCalibrationView!
+    private var onPointLuxView: LightSensorCalibrationPointLuxView!
+    private var offPointLuxView: LightSensorCalibrationPointLuxView!
+    private var adjustSpeedView: LightSensorCalibrationAdjustSpeedView!
+    private var manualCorrectionBtn: UIButton!
+    
     /// 配置中成功设备
     private var configurCompletedBtn: UIButton?
     /// 配置中失败设备
@@ -24,6 +29,8 @@ class LightSensorCalibrationViewController: UIViewController {
     private var selectSensor: Node?
     /// 是否停止配置
     private var stopConfig: Bool = false
+    /// 手动调节校准view
+    private weak var manualCorrectionView: LightSensorManualCorrectionView?
     
     /// 最小设置的lux值
     var minimunLux: Int = 100
@@ -60,6 +67,8 @@ class LightSensorCalibrationViewController: UIViewController {
         navigationItem.leftBarButtonItem = UIBarButtonItem(image: UIImage(named: "navigation_back")?.withRenderingMode(.alwaysOriginal), style: .done, target: self, action: #selector(backAction))
 //        navigationItem.rightBarButtonItem = UIBarButtonItem(image: UIImage(named: "more_vertical")?.withRenderingMode(.alwaysOriginal), style: .done, target: nil, action: #selector(moreAction))
         
+        self.isModalInPresentation = true
+        
         setupUI()
         
         group.ambientLightSensorNodes.forEach({ $0.selectState = .switchOff })
@@ -70,10 +79,16 @@ class LightSensorCalibrationViewController: UIViewController {
             selectSensor = publishSensor
         }
         sensorSelectView.daylightSensors = group.ambientLightSensorNodes
-        
+        updateManualCorrectionBtn()
         // 组关灯
-        MeshAPI.setGroupOnOffState(address: self.group.address.address, isOn: false)
+//        MeshAPI.setGroupOnOffState(address: self.group.address.address, isOn: false)
         
+    }
+    
+    override func viewWillAppear(_ animated: Bool) {
+        super.viewWillAppear(animated)
+        
+        MeshLibManager.manager.messageDelegate = self
     }
     
     override func viewDidAppear(_ animated: Bool) {
@@ -132,11 +147,57 @@ class LightSensorCalibrationViewController: UIViewController {
     /// 更新组光感传感器
     private func updateGroupLightSensor() {
         
-        self.group.info.profile.adjustSpeed = self.calibrationView.adjustSpeed
+        self.group.info.profile.adjustSpeed = self.adjustSpeedView.adjustSpeed
         self.group.info.save()
         self.group.info.profile.save()
         
         NotificationCenter.default.post(name: .init(groupDataUpdateNotificationName), object: self.group)
+    }
+    
+    /// 更新修改校准按钮
+    private func updateManualCorrectionBtn() {
+        
+        self.manualCorrectionBtn.isHidden = !(selectSensor?.sensorCalibrationData?.isCalibration ?? false)
+    }
+    
+    /// 修改校准倍率
+    @objc private func manualCorrectionBtnAction() {
+        guard let sensor = selectSensor, let calibrationData = sensor.sensorCalibrationData, let lastSensorRatio = calibrationData.sensorRatio, let lastAmbientlightRatio = calibrationData.ambientlightRatio else { return }
+        
+        let view = LightSensorManualCorrectionView(daylightLux: sensor.daylightLux ?? 0, sensorRatio: lastSensorRatio, ambientLightRatio: lastAmbientlightRatio) {[weak self] sensorRatio, ambientLightRatio in
+            guard let self = self else { return }
+            if sensorRatio != lastSensorRatio || ambientLightRatio != lastAmbientlightRatio {
+                self.updateCalibrationRate(sensorRatio: sensorRatio, ambientLightRatio: ambientLightRatio)
+            }else {
+                self.manualCorrectionView?.dismiss()
+            }
+        }
+        view.show()
+        self.manualCorrectionView = view
+        
+        if let sensorModel = sensor.ambientLightSensorModel {
+            MeshAPI.sendMessage(message: SensorGet(), model: sensorModel)
+        }
+        
+    }
+    
+    /// 更新校准倍率
+    private func updateCalibrationRate(sensorRatio: UInt16, ambientLightRatio: UInt16) {
+        guard let vendorModel = selectSensor?.sunricherVendorModel else { return }
+        
+        XWHUDManager.showCustomHUD(withMessage: nil, isWindow: true, afterDelay: 10)
+        MeshAPI.sendMessage(message: SunricherVendorSet(function: .daylightCalibrateRate(sensorRate: sensorRatio, ambientLightRate: ambientLightRatio)), model: vendorModel) {[weak self] response in
+            XWHUDManager.hide()
+            guard let self = self else { return }
+            
+            guard let statusMessage = response as? SunricherVendorStatus, statusMessage.status.isSuccessful else {
+                XWHUDManager.showErrorTipHUD("failed".localizedString + " !")
+                return
+            }
+            XWHUDManager.showSuccessTipHUD("done!".localizedString)
+            self.manualCorrectionView?.dismiss()
+        }
+        
     }
     
     /// 校准
@@ -144,43 +205,48 @@ class LightSensorCalibrationViewController: UIViewController {
         // 加载中
         
         guard !group.ambientLightSensorNodes.contains(where: { $0.selectState == .loading }),
-              let sensor = self.selectSensor, let measuredLightLevel = calibrationView.measuredLightValue else {
+              let sensor = self.selectSensor else {
+            return
+        }
+        let validRange = Int(UInt16.min)...Int(UInt16.max)
+        guard let onLux = onPointLuxView.measuredLightValue, let offLux = offPointLuxView.measuredLightValue, validRange.contains(onLux), validRange.contains(offLux) else {
+            
             return
         }
         
-        if measuredLightLevel < calibrationView.minimunValue || measuredLightLevel > calibrationView.maximunValue { // 输入测量值低于最小值、大于最大值
-            calibrationView.verifyMeasuredValue()
-            return
-        }
+//        if measuredLightLevel < calibrationView.minimunValue || measuredLightLevel > calibrationView.maximunValue { // 输入测量值低于最小值、大于最大值
+//            calibrationView.verifyMeasuredValue()
+//            return
+//        }
         
         // 禁用组内移动传感器上报
 //        disablePresenceDetectedSensorPublish()
         
-        if sensor.sensorCalibrated, sensor.daylightCalibrationValue == UInt16(measuredLightLevel) {
-            sensor.selectState = .loading
-            self.sensorSelectView.reloadSensorCell(sensor: sensor)
-            // 更新profile调节速率
-            self.group.info.profile.adjustSpeed = self.calibrationView.adjustSpeed
-            
-            self.sensorEnabled(sensor: sensor) {[weak self] result in
-                guard let self = self else { return }
-                sensor.selectState = result ? .switchOn : .switchOff
-                self.sensorSelectView.reloadSensorCell(sensor: sensor)
-                //                    MeshAPI.sendMessage(message: ConfigRelaySet(count: 0, steps: 1), address: sensor.primaryUnicastAddress)
-                if result {
-                    self.selectSensor = sensor
-                    // 切换选中的传感器，更新缓存
-                    self.group.info.ambientLightSensorNodeAddress = sensor.primaryUnicastAddress
-                    self.calibrationView.measuredLightValue = nil
-                    self.updateGroupLightSensor()
-                    self.updateCalibrationState()
-                    if self.group.nodes.filter({ $0.getNodeSyncProfiles().count > 0 }).isEmpty {
-                        XWHUDManager.showSuccessTipHUD("done!".localizedString)
-                    }
-                }
-            }
-            return
-        }
+//        if sensor.sensorCalibrated, sensor.daylightCalibrationValue == UInt16(measuredLightLevel) {
+//            sensor.selectState = .loading
+//            self.sensorSelectView.reloadSensorCell(sensor: sensor)
+//            // 更新profile调节速率
+//            self.group.info.profile.adjustSpeed = self.calibrationView.adjustSpeed
+//            
+//            self.sensorEnabled(sensor: sensor) {[weak self] result in
+//                guard let self = self else { return }
+//                sensor.selectState = result ? .switchOn : .switchOff
+//                self.sensorSelectView.reloadSensorCell(sensor: sensor)
+//                //                    MeshAPI.sendMessage(message: ConfigRelaySet(count: 0, steps: 1), address: sensor.primaryUnicastAddress)
+//                if result {
+//                    self.selectSensor = sensor
+//                    // 切换选中的传感器，更新缓存
+//                    self.group.info.ambientLightSensorNodeAddress = sensor.primaryUnicastAddress
+//                    self.calibrationView.measuredLightValue = nil
+//                    self.updateGroupLightSensor()
+//                    self.updateCalibrationState()
+//                    if self.group.nodes.filter({ $0.getNodeSyncProfiles().count > 0 }).isEmpty {
+//                        XWHUDManager.showSuccessTipHUD("done!".localizedString)
+//                    }
+//                }
+//            }
+//            return
+//        }
         
         showConnecting()
         
@@ -224,20 +290,19 @@ class LightSensorCalibrationViewController: UIViewController {
 //            }
 //            return
 //        }
+//        var sensorRate: UInt16 = 1 * 100
+//        var ambientLightRate: UInt16 = 1 * 100
         
-        
-        MeshSensorCalibrateServer.shared.calibrate(node: sensor, measuredValue: UInt16(measuredLightLevel)) { step in
-            
+        MeshSensorCalibrateManager.manager.calibrate(node: sensor, ambientLightOffLux: UInt16(offLux), ambientLightOnLux: UInt16(onLux)) { step in
             switch step {
-            case .calibrating, .stabilityChecking:
+            case .ready, .stabilityChecking:
                 SRAlertView.getCurrentAlertView()?.messageLabel.text = "calibrating".localizedString
-            case .lightsChecking:
+            case .lightsChecking, .lightInflectionPoints:
                 SRAlertView.getCurrentAlertView()?.messageLabel.text = "checking_correct".localizedString
             default:
                 break
             }
-            
-        } successful: {[weak self] _ in
+        } successful: { [weak self] _ in
             guard let self = self else { return }
             SRAlertView.hide()
             sensor.selectState = .loading
@@ -245,12 +310,12 @@ class LightSensorCalibrationViewController: UIViewController {
             // 切换选中的光照传感器
 //            self.group.info.ambientLightSensorNode = sensor
             // 更新profile调节速率
-            self.group.info.profile.adjustSpeed = self.calibrationView.adjustSpeed
+            self.group.info.profile.adjustSpeed = self.adjustSpeedView.adjustSpeed
 //            if let uuid = MeshNetworkManager.instance.meshNetwork?.uuid.uuidString {
 //                sensor.saveNodeInfo(meshUUID: uuid, networkKey: MeshNetworkManager.instance.currentNetworkKey)
 //            }
 //            self.updateGroupLightSensor()
-            
+            XWHUDManager.showSuccessTipHUD("done!".localizedString)
             // 通知space数据修改
             NotificationCenter.default.post(name: .init(spaceDataChangedNotificaitonName), object: SpaceChangeDataType.device)
             
@@ -264,26 +329,89 @@ class LightSensorCalibrationViewController: UIViewController {
                         self.selectSensor = sensor
                         // 切换选中的传感器，更新缓存
                         self.group.info.ambientLightSensorNodeAddress = sensor.primaryUnicastAddress
-                        self.calibrationView.measuredLightValue = nil
+                        self.onPointLuxView.measuredLightValue = nil
+                        self.offPointLuxView.measuredLightValue = nil
                         self.updateGroupLightSensor()
                         self.updateCalibrationState()
                     }
                 }
             }
-            
         } failed: {[weak self] _, error in
-            guard let self = self  else { return  }
+            guard let self = self  else { return }
             switch error {
-            case .deviceNotsupport, .connectTimeout, .disconnect, .noResponse:
+            case .connectTimeout, .disconnect:
                 self.showConnectFailed()
+            case .deviceNotsupport, .noResponse:
+                self.showCalibrationFailed(message: "connection_failure".localizedString)
             case .ambientInstability(let minLux, let maxLux):
                 self.showCalibrationFailed(message: "calibrating_failure".localizedString) //  + "min: \(minLux) max:\(maxLux)"
             case .lightNoEffect:
                 self.showCalibrationFailed(message: "checking_correct_failure".localizedString)
+            case .inflectionPointError:
+                self.showCalibrationFailed(message: "checking_correct_failure".localizedString)
             }
         }
         
+        
+//        MeshSensorCalibrateServer.shared.calibrate(node: sensor, measuredValue: UInt16(measuredLightLevel)) { step in
+//            
+//            switch step {
+//            case .calibrating, .stabilityChecking:
+//                SRAlertView.getCurrentAlertView()?.messageLabel.text = "calibrating".localizedString
+//            case .lightsChecking:
+//                SRAlertView.getCurrentAlertView()?.messageLabel.text = "checking_correct".localizedString
+//            default:
+//                break
+//            }
+//            
+//        } successful: {[weak self] _ in
+//            guard let self = self else { return }
+//            SRAlertView.hide()
+//            sensor.selectState = .loading
+//            self.sensorSelectView.reloadSensorCell(sensor: sensor)
+//            // 切换选中的光照传感器
+////            self.group.info.ambientLightSensorNode = sensor
+//            // 更新profile调节速率
+//            self.group.info.profile.adjustSpeed = self.calibrationView.adjustSpeed
+////            if let uuid = MeshNetworkManager.instance.meshNetwork?.uuid.uuidString {
+////                sensor.saveNodeInfo(meshUUID: uuid, networkKey: MeshNetworkManager.instance.currentNetworkKey)
+////            }
+////            self.updateGroupLightSensor()
+//            
+//            // 通知space数据修改
+//            NotificationCenter.default.post(name: .init(spaceDataChangedNotificaitonName), object: SpaceChangeDataType.device)
+//            
+//            DispatchQueue.main.async {
+//                self.sensorEnabled(sensor: sensor) {[weak self] result in
+//                    guard let self = self else { return }
+//                    sensor.selectState = result ? .switchOn : .switchOff
+//                    self.sensorSelectView.reloadSensorCell(sensor: sensor)
+////                    MeshAPI.sendMessage(message: ConfigRelaySet(count: 0, steps: 1), address: sensor.primaryUnicastAddress)
+//                    if result {
+//                        self.selectSensor = sensor
+//                        // 切换选中的传感器，更新缓存
+//                        self.group.info.ambientLightSensorNodeAddress = sensor.primaryUnicastAddress
+//                        self.calibrationView.measuredLightValue = nil
+//                        self.updateGroupLightSensor()
+//                        self.updateCalibrationState()
+//                    }
+//                }
+//            }
+//            
+//        } failed: {[weak self] _, error in
+//            guard let self = self  else { return  }
+//            switch error {
+//            case .deviceNotsupport, .connectTimeout, .disconnect, .noResponse:
+//                self.showConnectFailed()
+//            case .ambientInstability(let minLux, let maxLux):
+//                self.showCalibrationFailed(message: "calibrating_failure".localizedString) //  + "min: \(minLux) max:\(maxLux)"
+//            case .lightNoEffect:
+//                self.showCalibrationFailed(message: "checking_correct_failure".localizedString)
+//            }
+//        }
+        
     }
+    
     
     /// 开始配置
     private func configuring(lightNodes: [Node]) {
@@ -447,7 +575,7 @@ class LightSensorCalibrationViewController: UIViewController {
     
     private func updateCalibrationState() {
         
-        if calibrationView.measuredLightValue != nil, selectSensor != nil {
+        if onPointLuxView.measuredLightValue != nil, offPointLuxView.measuredLightValue != nil, selectSensor != nil {
             calibrationBtn.isEnabled = true
         }else {
             calibrationBtn.isEnabled = false
@@ -456,7 +584,7 @@ class LightSensorCalibrationViewController: UIViewController {
     }
     
     /// 传感器启用
-    private func sensorEnabled(sensor: Node, result: ((Bool)->Void)?) {
+    private func sensorEnabled(sensor: Node, resetCalibrated: Bool = false, result: ((Bool)->Void)?) {
         
         guard let ambientLightSensorModel = sensor.ambientLightSensorModel else {
             result?(false)
@@ -588,20 +716,62 @@ class LightSensorCalibrationViewController: UIViewController {
             make.top.equalToSuperview()
             make.height.greaterThanOrEqualTo(SCRYFrom(86))
         }
-        
-        calibrationView = LightSensorCalibrationView()
-        let profileData = group.info.profile.lightData.data
-        calibrationView.limitRange = profileData.lowEndTrim...profileData.highEndTrim
-        calibrationView.speedSlider.value = Float(group.info.profile.adjustSpeed)
-        calibrationView.delegate = self
-        calibrationView.minimunValue = minimunLux
-        contentView.addSubview(calibrationView)
-        calibrationView.snp.makeConstraints { make in
-            make.left.right.equalTo(sensorSelectView)
+       
+        onPointLuxView = LightSensorCalibrationPointLuxView()
+        onPointLuxView.titleLabel.text = "sensor_calibration_on_lux".localizedString
+        onPointLuxView.onoffBtn.setTitle("on".localizedString, for: .normal)
+        onPointLuxView.noteLabel.text = "sensor_calibration_on_lux_note".localizedString
+        onPointLuxView.delegate = self
+        contentView.addSubview(onPointLuxView)
+        onPointLuxView.snp.makeConstraints { make in
+            make.left.equalTo(SCRXFrom(16))
+            make.right.equalTo(SCRXFrom(-16))
             make.top.equalTo(sensorSelectView.snp.bottom).offset(SCRYFrom(16))
-            make.height.greaterThanOrEqualTo(SCRYFrom(178))
-            make.bottom.equalToSuperview()
         }
+        
+        offPointLuxView = LightSensorCalibrationPointLuxView()
+        offPointLuxView.titleLabel.text = "sensor_calibration_off_lux".localizedString
+        offPointLuxView.onoffBtn.setTitle("off".localizedString, for: .normal)
+        offPointLuxView.noteLabel.text = "sensor_calibration_off_lux_note".localizedString
+        offPointLuxView.delegate = self
+        contentView.addSubview(offPointLuxView)
+        offPointLuxView.snp.makeConstraints { make in
+            make.left.right.equalTo(onPointLuxView)
+            make.top.equalTo(onPointLuxView.snp.bottom).offset(SCRYFrom(16))
+        }
+        
+        adjustSpeedView = LightSensorCalibrationAdjustSpeedView()
+        adjustSpeedView.delegate = self
+        contentView.addSubview(adjustSpeedView)
+        adjustSpeedView.snp.makeConstraints { make in
+            make.left.right.equalTo(offPointLuxView)
+            make.top.equalTo(offPointLuxView.snp.bottom).offset(SCRYFrom(16))
+            make.height.equalTo(SCRYFrom(104))
+            make.bottom.equalTo(SCRYFrom(-77))
+        }
+        
+        manualCorrectionBtn = UIButton(titleSize: 15, titleWeight: .light, titleColor: Title_Color, target: self, action: #selector(manualCorrectionBtnAction))
+        manualCorrectionBtn.setAttributedTitle( NSAttributedString(string: "manual_correction".localizedString, attributes: [.underlineStyle: 1]), for: .normal)
+        manualCorrectionBtn.isHidden = true
+        contentView.addSubview(manualCorrectionBtn)
+        manualCorrectionBtn.snp.makeConstraints { make in
+            make.centerX.equalToSuperview()
+            make.top.equalTo(adjustSpeedView.snp.bottom).offset(SCRYFrom(24))
+        }
+        
+//        calibrationView = LightSensorCalibrationView()
+//        let profileData = group.info.profile.lightData.data
+//        calibrationView.limitRange = profileData.lowEndTrim...profileData.highEndTrim
+//        calibrationView.speedSlider.value = Float(group.info.profile.adjustSpeed)
+//        calibrationView.delegate = self
+//        calibrationView.minimunValue = minimunLux
+//        contentView.addSubview(calibrationView)
+//        calibrationView.snp.makeConstraints { make in
+//            make.left.right.equalTo(sensorSelectView)
+//            make.top.equalTo(sensorSelectView.snp.bottom).offset(SCRYFrom(16))
+//            make.height.greaterThanOrEqualTo(SCRYFrom(178))
+//            make.bottom.equalToSuperview()
+//        }
         
     }
    
@@ -709,13 +879,14 @@ extension LightSensorCalibrationViewController: LightSensorCalibrationSelectView
                 semaphore.wait()
             }
             if selectSensorPublish {
-                self.sensorEnabled(sensor: selectSensor) {[weak self] result in
+                self.sensorEnabled(sensor: selectSensor, resetCalibrated: true) {[weak self] result in
                     DispatchQueue.main.async {
                         selectSensor.selectState = result ? .switchOn : .switchOff
                         view.reloadSensorCell(sensor: selectSensor)
                         if result {
                             self?.selectSensor = selectSensor
-                            self?.calibrationView.measuredLightValue = nil
+                            self?.onPointLuxView.measuredLightValue = nil
+                            self?.offPointLuxView.measuredLightValue = nil
                             // 通知space数据修改
                             NotificationCenter.default.post(name: .init(spaceDataChangedNotificaitonName), object: SpaceChangeDataType.device)
                         }
@@ -726,6 +897,7 @@ extension LightSensorCalibrationViewController: LightSensorCalibrationSelectView
             }
             DispatchQueue.main.async {
                 self.updateCalibrationState()
+                self.updateManualCorrectionBtn()
             }
         }
         
@@ -751,6 +923,7 @@ extension LightSensorCalibrationViewController: LightSensorCalibrationSelectView
                         self?.updateCalibrationState()
                         // 通知space数据修改
                         NotificationCenter.default.post(name: .init(spaceDataChangedNotificaitonName), object: SpaceChangeDataType.device)
+                        self?.updateManualCorrectionBtn()
                     }
                 }
             }
@@ -759,6 +932,7 @@ extension LightSensorCalibrationViewController: LightSensorCalibrationSelectView
             self.selectSensor = nil
             view.reloadSensorCell(sensor: sensor)
             updateCalibrationState()
+            updateManualCorrectionBtn()
         }
            
     }
@@ -776,43 +950,55 @@ extension LightSensorCalibrationViewController: UIScrollViewDelegate {
     }
 }
 
-extension LightSensorCalibrationViewController: LightSensorCalibrationViewDelegate {
-   
+extension LightSensorCalibrationViewController: LightSensorCalibrationPointLuxViewDelegate {
+    
     /// 输入测量值回调
     /// - Parameters:
     ///   - view: view
     ///   - lux: 测量值 为空则未输入
-    func view(_ view: LightSensorCalibrationView, measuredLightValueEditing lux: Int?) {
+    func view(_ view: LightSensorCalibrationPointLuxView, measuredLightValueEditing lux: Int?) {
         updateCalibrationState()
     }
     
-    /// 点击校准帮助
-    func calibrationViewHelpAction(_ view: LightSensorCalibrationView) {
-        navigationController?.pushViewController(CalibrationInstructionController(), animated: true)
+    /// 点击onoff事件
+    func sensorCalibrationPointLuxViewOnOffAction(_ view: LightSensorCalibrationPointLuxView) {
+        if view == onPointLuxView {
+            MeshAPI.setGroupLightnessState(address: group.address.address, lightness: .max)
+        }else {
+            MeshAPI.setGroupLightnessState(address: group.address.address, lightness: 0)
+        }
     }
-    
-    /// 亮度修改回调
-    /// - Parameters:
-    ///   - view: view
-    ///   - level: 0~100
-    func view(_ view: LightSensorCalibrationView, lightLevelValueChanged level: Int) {
-        
-        MeshAPI.setGroupLightnessState(address: group.address.address, lightness: Node.getLightness(lightness100: level))
-    }
+
+}
+
+extension LightSensorCalibrationViewController: LightSensorCalibrationAdjustSpeedViewDelegate {
     
     /// 调节速率修改回调
     /// - Parameters:
     ///   - view: view
     ///   - speed: 0~100
-    func view(_ view: LightSensorCalibrationView, adjustSpeedChanged speed: Int) {
+    func view(_ view: LightSensorCalibrationAdjustSpeedView, adjustSpeedChanged speed: Int) {
         
     }
     
     /// 点击调整速率帮助
-    func calibrationViewAdjustSpeedHelpAction(_ view: LightSensorCalibrationView) {
+    func calibrationAdjustSpeedHelpAction(_ view: LightSensorCalibrationAdjustSpeedView) {
         navigationController?.pushViewController(AdjustSpeedInstructionController(), animated: true)
     }
     
+}
+
+extension LightSensorCalibrationViewController: MeshLibManagerMessageDelegate {
     
+    func meshNetworkManager(_ manager: MeshNetworkManager, didReceiveMessage message: any MeshMessage, sentFrom source: Address, to destination: Address) {
+        guard selectSensor?.contains(elementWithAddress: source) ?? false, let sensorMessage = message as? SensorStatus else {
+            return
+        }
+        
+        // 光感更新
+        if case .presentAmbientLightLevel = sensorMessage.values.first?.property, let lux = selectSensor?.daylightLux {
+            manualCorrectionView?.daylightLux = lux
+        }
+    }
     
 }

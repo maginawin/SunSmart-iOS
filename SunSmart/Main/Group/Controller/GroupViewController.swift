@@ -112,9 +112,6 @@ class GroupViewController: UIViewController {
         
         addNotificationObserver()
         
-        if let sensor = self.group.info.ambientLightSensorNode {
-            MeshAPI.getAmbientSensorValue(node: sensor, result: nil)
-        }
         // 刷新设备状态
 //        refresh()
     }
@@ -272,6 +269,11 @@ class GroupViewController: UIViewController {
         
         // 检查连接的设备白名单有该组
         proxyFilterAddGroup()
+        
+        if let sensor = self.group.info.ambientLightSensorNode {
+            MeshAPI.getAmbientSensorValue(node: sensor, result: nil)
+        }
+        
     }
     
     override func viewDidAppear(_ animated: Bool) {
@@ -285,7 +287,7 @@ class GroupViewController: UIViewController {
         }
         var messageHandles: [MeshMessageHandle] = []
         // 检查校准后的光照传感器是否有上报
-        if let publishAmbientLightSensor = self.group.info.ambientLightSensorNode, let sensorModel = publishAmbientLightSensor.ambientLightSensorModel {
+        if let publishAmbientLightSensor = self.group.info.ambientLightSensorNode, let sensorModel = publishAmbientLightSensor.ambientLightSensorModel, sensorModel.publish?.publicationAddress != group.address {
             let message = ConfigModelPublicationSet(Publish(to: group.address, using: MeshNetworkManager.instance.currentApplicationKey, usingFriendshipMaterial: false, ttl: MeshNetworkManager.instance.networkParameters.defaultTtl, period: .disabled, retransmit: .disabled), to: sensorModel)!
             let messageHandle = MeshMessageHandle(message: message, address: publishAmbientLightSensor.primaryUnicastAddress)
             messageHandles.append(messageHandle)
@@ -513,7 +515,7 @@ class GroupViewController: UIViewController {
         
         var items: [MenuPopView.MenuItem] = []
         if space.deviceOperates.contains(.add) {
-            items.append(.init(icon: UIImage(named: "path_add")?.withTintColor(.white), title: "group_add_device".localizedString, hideAnimation: false, tapItemBack: {[weak self] _ in
+            items.append(.init(icon: UIImage(named: "group_device_add")?.withTintColor(.white), title: "group_add_device".localizedString, hideAnimation: false, tapItemBack: {[weak self] _ in
                 self?.addDevices()
             }))
         }
@@ -802,8 +804,8 @@ class GroupViewController: UIViewController {
             guard let self = self else {
                 return
             }
-//             profile.type
-            if profile.type == .occupancy || profile.type == .vacancy || profile.type == .manualControl {
+
+            if !(profile.type == .occupancy_daylight || profile.type == .vacancy_daylight || profile.type == .daylight) {
                 self.group.info.ambientLightSensorNodeAddress = nil
             }
             self.group.info.profile.updateData(profile: profile)

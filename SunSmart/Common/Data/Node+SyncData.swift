@@ -126,6 +126,10 @@ enum ProfileType {
     case powerOnState(state: Profile.PowerUpState, cct: UInt16? = nil)
     /// 光照传感器校准
     case daylightCalibration(value: UInt16)
+    /// 光感校准倍率
+    case daylightCalibrateRate(sensorRatio: UInt16, ambientlightRatio: UInt16)
+    /// 光感校准灯光拐点
+    case daylightCalibrateInflectionPoint(minLightPoint: DaylightSensorCalibrationData.LightnessLuxData, maxLightPoint: DaylightSensorCalibrationData.LightnessLuxData)
     /// 灵敏度 0~100%
     case sensitivity(value: UInt16, range: ClosedRange<UInt16>? = nil)
 }
@@ -594,7 +598,7 @@ extension Node {
        
             // 组内是否启用了光照传感器
             var daylightEnabled = false
-            if let daylightNode = group.info.ambientLightSensorNode, daylightNode.sensorCalibrated || daylightNode.restoreData?.daylightCalibrationValue != nil {
+            if let daylightNode = group.info.ambientLightSensorNode, daylightNode.sensorCalibrated || daylightNode.restoreData?.daylightCalibrationValue != nil || daylightNode.restoreData?.daylightCalibrationData != nil {
                 daylightEnabled = true
             }
             if daylightType {
@@ -625,8 +629,19 @@ extension Node {
             }
             
             // 恢复光照校准值
-            if daylightEnabled, let value = self.restoreData?.daylightCalibrationValue, self.sunricherVendorModel != nil {
+            if daylightEnabled, let value = self.restoreData?.daylightCalibrationValue, value > 0, value < 0xFFFF, self.sunricherVendorModel != nil {
                 syncProfile.append(.daylightCalibration(value: value))
+            }
+            // 恢复光照校准数据
+            if daylightEnabled, self.sunricherVendorModel != nil {
+                if let calibrationData = self.restoreData?.daylightCalibrationData {
+                    if let sensorRatio = calibrationData.sensorRatio, let ambientlightRatio = calibrationData.ambientlightRatio {
+                        syncProfile.append(.daylightCalibrateRate(sensorRatio: sensorRatio, ambientlightRatio: ambientlightRatio))
+                    }
+                    if let minLightInflectionPointData = calibrationData.minLightInflectionPointData, let maxLightInflectionPointData = calibrationData.maxLightInflectionPointData {
+                        syncProfile.append(.daylightCalibrateInflectionPoint(minLightPoint: minLightInflectionPointData, maxLightPoint: maxLightInflectionPointData))
+                    }
+                }
             }
             
            if self.lightLCSetupModel != nil { // 灯设备

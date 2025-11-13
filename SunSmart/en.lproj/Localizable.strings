@@ -1393,3 +1393,15 @@
 "this_is_the_first_group" = "This is the first group.";
 "this_is_the_last_group" = "This is the last group.";
 "TEST" = "TEST";
+
+"sensor_calibration_on_lux" = "ON - Calibration Point LUX";
+"sensor_calibration_on_lux_note" = "After turning on the lights, please enter the illuminance meter reading at the calibration point.";
+"sensor_calibration_off_lux" = "OFF - Calibration Point LUX";
+"sensor_calibration_off_lux_note" = "After turning off the lights, please enter the illuminance meter reading at the calibration point.";
+"manual_correction" = "Manual Correction";
+"manual_correction_note" = "You can manually adjust the ratio to correct the reading and make it consistent with the lux meter, thus reducing errors.";
+"calibration_point_title" = "Illuminance value at calibration point";
+"sensor_ratio" = "Sensor ratio";
+"ambient_light_ratio" = "Ambient light ratio";
+"calibration_ratio" = "Calibration ratio";
+"calibration_light_point" = "Calibration light point";

@@ -278,6 +278,10 @@ class ProfileLevelSettingsItem: UIView {
     private var addBtn: UIButton!
     /// 减少
     private var minusBtn: UIButton!
+    /// 最小值
+    private var minValueLabel: UILabel!
+    /// 最大值
+    private var maxValueLabel: UILabel!
     /// 加载图标
     private var loadingImageView: UIImageView!
     /// 类型
@@ -441,6 +445,8 @@ class ProfileLevelSettingsItem: UIView {
             make.centerY.equalTo(addBtn)
             make.height.equalTo(SCRYFrom(40))
         }
+        
+//        minValueLabel = UILabel(text: "", textColor: <#T##UIColor#>, fontSize: <#T##CGFloat#>, fontWeight: <#T##UIFont.Weight?#>)
         
     }
     

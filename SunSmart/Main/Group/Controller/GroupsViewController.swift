@@ -475,18 +475,6 @@ class GroupsViewController: UIViewController {
         let longPress = UILongPressGestureRecognizer(target: self, action: #selector(collectionLongPressAction))
         longPress.minimumPressDuration = 0.5
         collectionView.addGestureRecognizer(longPress)
-        
-//        let singleTap = UITapGestureRecognizer(target: self, action: #selector(collectionViewSingleTapAction))
-//        singleTap.numberOfTapsRequired = 1
-//        singleTap.numberOfTouchesRequired = 1
-//        collectionView.addGestureRecognizer(singleTap)
-//        
-//        let doubleTap = UITapGestureRecognizer(target: self, action: #selector(collectionViewDoubleTapAction))
-//        doubleTap.numberOfTapsRequired = 2
-//        collectionView.addGestureRecognizer(doubleTap)
-//        
-//        singleTap.require(toFail: doubleTap)
-        
         view.addSubview(collectionView)
         collectionView.snp.makeConstraints { make in
             make.left.right.top.equalToSuperview()

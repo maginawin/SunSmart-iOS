@@ -555,8 +555,21 @@ extension ProfileSettingsViewController: ProfileSettingsSphasesViewDelegate {
         case .occupancy_daylight, .vacancy_daylight, .daylight:
             // Occupancy sensing with daylight harvesting / Vacancy sensing with daylight harvesting / Daylight harvesting
             // TODO: 判断是否已校准
-            if let sensorNode = group?.info.ambientLightSensorNode, sensorNode.ambientLightSensorModel != nil, sensorNode.sensorCalibrated {
-                showLevelSettings(type: .occupancyAndVacantLux(occupanyLux: data.occupancyLevel, vacantLux: data.vacantLevel, inputRange: data.lowEndTrim...data.highEndTrim, calibrated: true))
+            if let sensorNode = group?.info.ambientLightSensorNode, sensorNode.ambientLightSensorModel != nil { // , sensorNode.sensorCalibrated
+//                showLevelSettings(type: .occupancyAndVacantLux(occupanyLux: data.occupancyLevel, vacantLux: data.vacantLevel, inputRange: data.lowEndTrim...data.highEndTrim, calibrated: true))
+//                if sensorNode.sensorCalibrated {
+//                    showLevelSettings(type: .occupancyAndVacantLux(occupanyLux: data.occupancyLevel, vacantLux: data.vacantLevel, inputRange: data.lowEndTrim...data.highEndTrim, calibrated: true))
+//                }else {
+                    let levelAction = SRAlertAction(title: "Level", style: .default, actionHandler: {[weak self] _ in
+                        self?.showLevelSettings(type: .occupancyAndVacantLux(occupanyLux: data.occupancyLevel, vacantLux: data.vacantLevel, inputRange: data.lowEndTrim...data.highEndTrim, calibrated: true))
+                    })
+                    let luxAction = SRAlertAction(title: "Lux", style: .default) {[weak self] _ in
+                        self?.showLevelSettings(type: .occupancyAndVacantLux(occupanyLux: data.occupancyLevel, vacantLux: data.vacantLevel, calibrated: false))
+                    }
+                    SRSheetView(actions: [levelAction, luxAction]).show()
+//                }
+                
+                
             }else {
                 // 未校准
                 showLevelSettings(type: .occupancyAndVacantLux(occupanyLux: data.occupancyLevel, vacantLux: data.vacantLevel, calibrated: false))
@@ -588,8 +601,19 @@ extension ProfileSettingsViewController: ProfileSettingsSphasesViewDelegate {
         case .occupancy_daylight, .vacancy_daylight, .daylight:
             // Occupancy sensing with daylight harvesting / Vacancy sensing with daylight harvesting / Daylight harvesting
             // TODO: 判断是否已校准
-            if let sensorNode = group?.info.ambientLightSensorNode, sensorNode.ambientLightSensorModel != nil, sensorNode.sensorCalibrated {
-                showLevelSettings(type: .taskLux(lux: data.taskLevel, inputRange: data.lowEndTrim...data.highEndTrim, calibrated: true))
+            if let sensorNode = group?.info.ambientLightSensorNode, sensorNode.ambientLightSensorModel != nil { // , sensorNode.sensorCalibrated
+//                if sensorNode.sensorCalibrated {
+//                    showLevelSettings(type: .taskLux(lux: data.taskLevel, inputRange: data.lowEndTrim...data.highEndTrim, calibrated: true))
+//                }else {
+                    let levelAction = SRAlertAction(title: "Level", style: .default, actionHandler: {[weak self] _ in
+                        self?.showLevelSettings(type: .taskLux(lux: data.taskLevel, inputRange: data.lowEndTrim...data.highEndTrim, calibrated: true))
+                    })
+                    let luxAction = SRAlertAction(title: "Lux", style: .default) {[weak self] _ in
+                        self?.showLevelSettings(type: .taskLux(lux: data.taskLevel, calibrated: false))
+                    }
+                    SRSheetView(actions: [levelAction, luxAction]).show()
+//                }
+
             }else { // 未校准
                 showLevelSettings(type: .taskLux(lux: data.taskLevel, calibrated: false))
             }

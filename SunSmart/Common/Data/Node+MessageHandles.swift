@@ -343,6 +343,14 @@ extension ProfileType {
             if let vendorModel = node.sunricherVendorModel {
                 messageHandles.append(MeshMessageHandle(message: SunricherVendorSet(function: .motionSensitivity(value, maxValue: range?.upperBound, minValue: range?.lowerBound)), model: vendorModel))
             }
+        case .daylightCalibrateRate(let sensorRatio, let ambientlightRatio):
+            if let vendorModel = node.sunricherVendorModel {
+                messageHandles.append(MeshMessageHandle(message: SunricherVendorSet(function: .daylightCalibrateRate(sensorRate: sensorRatio, ambientLightRate: ambientlightRatio)), model: vendorModel))
+            }
+        case .daylightCalibrateInflectionPoint(let minLightPoint, let maxLightPoint):
+            if let vendorModel = node.sunricherVendorModel {
+                messageHandles.append(MeshMessageHandle(message: SunricherVendorSet(function: .daylightCalibrateIlluminanceInflectionPoint(minLightness: minLightPoint.lightness, minLux: minLightPoint.lux, maxLightness: maxLightPoint.lightness, maxLux: maxLightPoint.lux)), model: vendorModel))
+            }
         }
         return messageHandles
     }
