@@ -89,11 +89,11 @@ class MeshFirmwareListViewController: UIViewController {
         navigationItem.leftBarButtonItem = UIBarButtonItem(image: UIImage(named: "navigation_back")?.withRenderingMode(.alwaysOriginal), style: .done, target: self, action: #selector(backAction))
         
         helpBtn = UIButton(normalImageName: "help", target: self, action: #selector(helpAction))
-        #if DEBUG
+//        #if DEBUG
 //        let testTap = ContinuousTapGestureRecognizer(target: self, action: #selector(test), numberOfTouchesRequired: 3, duration: 2)
         let testTap = UILongPressGestureRecognizer(target: self, action: #selector(test))
         helpBtn.addGestureRecognizer(testTap)
-        #endif
+//        #endif
         
         navigationItem.rightBarButtonItem = UIBarButtonItem(customView: helpBtn)
         setupUI()

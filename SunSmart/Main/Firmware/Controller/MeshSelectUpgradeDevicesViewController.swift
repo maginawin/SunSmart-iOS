@@ -37,6 +37,8 @@ internal extension FirmwareDistributionError {
     }
 }
 
+let meshUpdateTest = true
+
 class MeshSelectUpgradeDevicesViewController: UIViewController {
 
     /// 状态
@@ -107,84 +109,86 @@ class MeshSelectUpgradeDevicesViewController: UIViewController {
         }
         
         XWHUDManager.showCustomHUD(withMessage: nil, isWindow: true)
-#if DEBUG
-        var compositionHash: Data?
-        // 截取compositionHash值
-        if let metadata = distributorNode.distributionIncomingFirmwareMetadata, metadata.count >= 16 {
-            compositionHash = metadata.subdata(in: 12..<16)
-        }
-        guard let compositionHash = compositionHash, let distributionFirmwareSize = distributorNode.distributionFirmwareSize else {
-            return
-        }
-        let randomSession = UInt8.random(in: 1...255)
-        
-        MeshVendorOTAManager.shared.startMeshOTA(distributionNode: self.distributorNode, targetNodes: self.selectNodes, session: randomSession, updateFirmwareImageIndex: 0, firmwareHash: UInt32(data: compositionHash), firmwareSize: distributionFirmwareSize, chunkSize: 100) {[weak self] result in
-            guard let self = self else { return }
-            DispatchQueue.main.async {
-                XWHUDManager.hide()
-                switch result {
-                case .success((_, let failNodes)):
-                    if failNodes.count > 0 {
-                        let content = failNodes.map({ $0.name ?? "" }).joined(separator: ",")
-                        XWHUDManager.showSuccessTipHUD("已开始升级\n失败设备: \(content)", timer: 10)
-                    }else {
-                        XWHUDManager.showSuccessTipHUD("已开始升级")
+//#if DEBUG
+        if meshUpdateTest {
+            var compositionHash: Data?
+            // 截取compositionHash值
+            if let metadata = distributorNode.distributionIncomingFirmwareMetadata, metadata.count >= 16 {
+                compositionHash = metadata.subdata(in: 12..<16)
+            }
+            guard let compositionHash = compositionHash, let distributionFirmwareSize = distributorNode.distributionFirmwareSize else {
+                return
+            }
+            let randomSession = UInt8.random(in: 1...255)
+            
+            MeshVendorOTAManager.shared.startMeshOTA(distributionNode: self.distributorNode, targetNodes: self.selectNodes, session: randomSession, updateFirmwareImageIndex: 0, firmwareHash: UInt32(data: compositionHash), firmwareSize: distributionFirmwareSize, chunkSize: 100) {[weak self] result in
+                guard let self = self else { return }
+                DispatchQueue.main.async {
+                    XWHUDManager.hide()
+                    switch result {
+                    case .success((_, let failNodes)):
+                        if failNodes.count > 0 {
+                            let content = failNodes.map({ $0.name ?? "" }).joined(separator: ",")
+                            XWHUDManager.showSuccessTipHUD("已开始升级\n失败设备: \(content)", timer: 10)
+                        }else {
+                            XWHUDManager.showSuccessTipHUD("已开始升级")
+                        }
+                        
+                    case .failure(let error):
+                        XWHUDManager.showErrorTipHUD(error.localizedDescription)
                     }
+                }
+            }
+        }else {
+            //#else
+            
+            MeshFirmwareDistributionManager.shared.startDistribution(distributionNode: self.distributorNode, targetNodes: self.selectNodes) {[weak self] _, state
+                in
+                guard let self = self else { return }
+                switch state {
+                case .check:
+                    print("分发设备检查固件中")
+                case .relation:
+                    print("关联分发设备中")
+                case .await, .started, .waitManualInstall:
+                    XWHUDManager.hide()
+                    var distributionData = MeshDistributionData(distributionAddress: distributorNode.primaryUnicastAddress, targetAddresses: selectNodes.map({ $0.primaryUnicastAddress }), distributionState: .await)
+                    
+                    switch state {
+                    case .started, .waitManualInstall:
+                        if case .waitManualInstall = state {
+                            distributionData.distributionState = .waitingInstall(currentDistributionNode: nil)
+                        }
+                        distributionData.distributionState = .updating(updatePhase: .blob(progress: 0, estimateTime: -1))
+                        let vc = MeshFirmwareUpdateViewController(distributorData: distributionData, initial: true)
+                        self.navigationController?.pushViewController(vc, animated: true)
+                        //                    self.navigationController?.removeVc(vc: self)
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5, execute: {
+                            if let selectDistributorVc = self.navigationController?.viewControllers.first(where: { $0.isKind(of: MeshSelectDistributorViewController.classForCoder()) }) {
+                                self.navigationController?.removeViewControllers(viewControllers: [self, selectDistributorVc])
+                            }
+                        })
+                    case .await: // 排队中
+                        self.state = .waiting
+                        self.updateBottomUIState()
+                        self.tableView.reloadData()
+                        if let selectDistributorVc = self.navigationController?.viewControllers.first(where: { $0.isKind(of: MeshSelectDistributorViewController.classForCoder()) }) {
+                            self.navigationController?.removeVc(vc: selectDistributorVc)
+                        }
+                    default:
+                        break
+                    }
+                    distributionData.save(productId: distributorNode.productIdentifier!)
+                    
+                    NotificationCenter.default.post(name: .init(firmwareListRefreshNotificationName), object: nil)
                     
                 case .failure(let error):
-                    XWHUDManager.showErrorTipHUD(error.localizedDescription)
+                    XWHUDManager.hide()
+                    XWHUDManager.showErrorTipHUD(error.message)
                 }
             }
         }
-        
-#else
-        
-        MeshFirmwareDistributionManager.shared.startDistribution(distributionNode: self.distributorNode, targetNodes: self.selectNodes) {[weak self] _, state
-            in
-            guard let self = self else { return }
-            switch state {
-            case .check:
-                print("分发设备检查固件中")
-            case .relation:
-                print("关联分发设备中")
-            case .await, .started, .waitManualInstall:
-                XWHUDManager.hide()
-                var distributionData = MeshDistributionData(distributionAddress: distributorNode.primaryUnicastAddress, targetAddresses: selectNodes.map({ $0.primaryUnicastAddress }), distributionState: .await)
-                
-                switch state {
-                case .started, .waitManualInstall:
-                    if case .waitManualInstall = state {
-                        distributionData.distributionState = .waitingInstall(currentDistributionNode: nil)
-                    }
-                    distributionData.distributionState = .updating(updatePhase: .blob(progress: 0, estimateTime: -1))
-                    let vc = MeshFirmwareUpdateViewController(distributorData: distributionData, initial: true)
-                    self.navigationController?.pushViewController(vc, animated: true)
-                    //                    self.navigationController?.removeVc(vc: self)
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.5, execute: {
-                        if let selectDistributorVc = self.navigationController?.viewControllers.first(where: { $0.isKind(of: MeshSelectDistributorViewController.classForCoder()) }) {
-                            self.navigationController?.removeViewControllers(viewControllers: [self, selectDistributorVc])
-                        }
-                    })
-                case .await: // 排队中
-                    self.state = .waiting
-                    self.updateBottomUIState()
-                    self.tableView.reloadData()
-                    if let selectDistributorVc = self.navigationController?.viewControllers.first(where: { $0.isKind(of: MeshSelectDistributorViewController.classForCoder()) }) {
-                        self.navigationController?.removeVc(vc: selectDistributorVc)
-                    }
-                default:
-                    break
-                }
-                distributionData.save(productId: distributorNode.productIdentifier!)
-                
-                NotificationCenter.default.post(name: .init(firmwareListRefreshNotificationName), object: nil)
-                
-            case .failure(let error):
-                XWHUDManager.hide()
-                XWHUDManager.showErrorTipHUD(error.message)
-            }
-        }
-#endif
+//#endif
     }
     
     /// 取消排队
@@ -212,7 +216,7 @@ class MeshSelectUpgradeDevicesViewController: UIViewController {
         }else {
             // 可升级设备
             var upgradableNodes = nodes.filter({ $0.state && ($0.firmwareVersion == nil || distributorNode.distributionVersion?.compare($0.firmwareVersion!, options: .numeric) == .orderedDescending) })
-            if routeTest {
+            if meshUpdateTest {
                 upgradableNodes = nodes.filter({ ($0.firmwareVersion == nil || distributorNode.distributionVersion?.compare($0.firmwareVersion!, options: .numeric) == .orderedDescending) })
             }
 
@@ -333,7 +337,7 @@ class MeshSelectUpgradeDevicesViewController: UIViewController {
         /// 可升级的设备
         var upgradableNodes = nodes.filter({ $0.state && ($0.firmwareVersion == nil || distributorNode.distributionVersion?.compare($0.firmwareVersion!, options: .numeric) == .orderedDescending) })
         
-        if routeTest {
+        if meshUpdateTest {
             upgradableNodes = nodes.filter({ ($0.firmwareVersion == nil || distributorNode.distributionVersion?.compare($0.firmwareVersion!, options: .numeric) == .orderedDescending) })
         }
         
@@ -403,7 +407,7 @@ extension MeshSelectUpgradeDevicesViewController: UITableViewDataSource, UITable
     
     func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
         let node = nodes[indexPath.row]
-        guard state == .normal, node.state || routeTest else {
+        guard state == .normal, node.state || meshUpdateTest else {
             return
         }
         

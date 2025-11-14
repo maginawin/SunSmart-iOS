@@ -251,10 +251,10 @@ class BleFirmwareUpdateViewController: UIViewController {
         
         helpBtn = UIButton(normalImageName: "help", target: self, action: #selector(helpAction))
         navigationItem.rightBarButtonItems = [UIBarButtonItem(customView: helpBtn), UIBarButtonItem(customView: scanAnimationView)]
-    #if DEBUG
+//    #if DEBUG
         let testTap = UILongPressGestureRecognizer(target: self, action: #selector(test))
         helpBtn.addGestureRecognizer(testTap)
-    #endif
+//    #endif
         setupUI()
         self.isModalInPresentation = true
 //        setupData()
