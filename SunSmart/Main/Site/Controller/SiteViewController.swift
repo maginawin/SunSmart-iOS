@@ -24,6 +24,8 @@ class SiteViewController: UIViewController {
     private var allSpacesNoInternetView: NoInternetHeaderView?
     private var favouritesNoInternetView: NoInternetHeaderView?
     
+    private var gatewayListView: GatewayListView!
+    
     private let noInternetHeight = SCRYFrom(54)
     
     private var addSpaceBtn: UIButton!
@@ -210,23 +212,23 @@ self.updateAddressData()
 //        localProvisioner.allocatedSceneRange.forEach({
 //            sceneAddressCount += Int(($0.lastScene - $0.firstScene) + 1)
 //        })
-//        
+//
 //        var recycleAddressCount = 0
 //        MeshAPI.getExclusionAddresses(meshUUID: self.site.id).forEach({
 //            recycleAddressCount += $0.addresses.count
 //        })
-//        
+//
 //        allDeviceAddressNum = deviceAddressCount
 //        usedDeviceAddressNum = deviceAddressCount - MeshAPI.getNumberOfAvailableUnicastAddresses(meshUUID: self.site.id)
-//        
+//
 //        allGroupAddressNum = groupAddressCount
 //        usedGroupAddressNum = groupAddressCount - MeshAPI.getNumberOfAvailableGroupAddresses(meshUUID: self.site.id)
-//        
+//
 //        allSceneAddressNum = sceneAddressCount
 //        usedSceneAddressNum = sceneAddressCount - MeshAPI.getNumberOfAvailableSceneAddresses(meshUUID: self.site.id)
-//        
+//
 //        recycleAddressNum = recycleAddressCount
-//        
+//
 //        self.allSpacesTableView.reloadData()
     }
 //    #endif
@@ -270,7 +272,7 @@ self.updateAddressData()
                         // 需要回收地址的space
                         let recyclingSpaces = self.site.spaces.filter({ $0.state == .waitDeleted  && !$0.releaseAddress })
                         if recyclingSpaces.count > 0 {
-                            recyclingSpaces.forEach({ 
+                            recyclingSpaces.forEach({
                                 $0.releaseAddress = true
                                 $0.save()
                             })
@@ -653,7 +655,7 @@ self.updateAddressData()
 //        let vc = BleFirmwareUpdateViewController()
 //
 //        present(NavigationViewController(rootViewController: vc), animated: true)
-//        
+//
 //        return
         
         var imageNames: [String] = []
@@ -1597,6 +1599,17 @@ self.updateAddressData()
             make.height.equalTo(SCRYFrom(44))
         }
         
+        gatewayListView = GatewayListView()
+        gatewayListView.updateItems([GatewayListItem(id: "overview", title: "Overview", status: .none, isSelected: true), GatewayListItem(id: "AABBCCDDEEFF", title: "Gateway 1", status: .online, isSelected: false), GatewayListItem(id: "GGCCSSAADDFF", title: "Gateway 2", status: .offline, isSelected: false), GatewayListItem(id: "11BBCCDDEEFF", title: "Gateway 3", status: .warning, isSelected: false)])
+        gatewayListView.delegate = self
+        view.addSubview(gatewayListView)
+        gatewayListView.snp.makeConstraints { make in
+            make.left.equalTo(SCRXFrom(16))
+            make.right.equalTo(SCRXFrom(-16))
+            make.top.equalTo(segmentedControl.snp.bottom).offset( SCRYFrom(8))
+            make.height.equalTo(SCRYFrom(40))
+        }
+        
         scrollView = PopGestureScrollView()
         scrollView.isPagingEnabled = true
         scrollView.bounces = false
@@ -1686,6 +1699,20 @@ self.updateAddressData()
 
 }
 
+extension SiteViewController: GatewayListViewDelegate {
+    
+    /// 点击网关项回调
+    func gatewayListView(_ view: GatewayListView, didSelectItem item: GatewayListItem, at index: Int) {
+        
+    }
+    
+    /// 点击菜单按钮回调
+    func gatewayListViewDidClickMenu(_ view: GatewayListView) {
+        
+    }
+    
+}
+
 extension SiteViewController: CustomSegmentedControlDelegate {
     
     func segmentedControl(_ segmentedControl: CustomSegmentedControl, didSelectedItem index: Int) {
@@ -1762,15 +1789,15 @@ extension SiteViewController: UICollectionViewDataSource, UICollectionViewDelega
 //        headerView.recycleAddressLabel.text = "Recycle Address: \(self.recycleAddressNum)"
 //        return headerView
 //    }
-//    
-//    
+//
+//
 //    func tableView(_ tableView: UITableView, heightForHeaderInSection section: Int) -> CGFloat {
 //        guard tableView == self.allSpacesTableView else {
 //            return 0
 //        }
 //        return SCRYFrom(44)
 //    }
-//    
+//
 //    #endif
     
 }

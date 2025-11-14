@@ -63,6 +63,9 @@
 		C830CFDD2C0EBE730035CD5B /* ShareBacthListViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C830CFDC2C0EBE730035CD5B /* ShareBacthListViewController.swift */; };
 		C830CFDF2C0EC0240035CD5B /* ShareBacthListViewCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = C830CFDE2C0EC0240035CD5B /* ShareBacthListViewCell.swift */; };
 		C830CFE32C0F1C6B0035CD5B /* TableSelectView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C830CFE22C0F1C6B0035CD5B /* TableSelectView.swift */; };
+		C833B8522EC7257C0005F84F /* GatewayListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C833B8512EC7257C0005F84F /* GatewayListView.swift */; };
+		C833B8532EC7257C0005F84F /* GatewayListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C833B8512EC7257C0005F84F /* GatewayListView.swift */; };
+		C833B8542EC7257C0005F84F /* GatewayListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C833B8512EC7257C0005F84F /* GatewayListView.swift */; };
 		C83A55982DBA103500E04252 /* DeviceDongleDeleteAlertView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C83A55972DBA103500E04252 /* DeviceDongleDeleteAlertView.swift */; };
 		C83A559C2DBA2B5900E04252 /* DeviceOthersViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C83A559B2DBA2B5900E04252 /* DeviceOthersViewController.swift */; };
 		C83A559F2DBA2C9D00E04252 /* DeviceOthersCollectionViewCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = C83A559E2DBA2C9D00E04252 /* DeviceOthersCollectionViewCell.swift */; };
@@ -1364,6 +1367,7 @@
 		C830CFDC2C0EBE730035CD5B /* ShareBacthListViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShareBacthListViewController.swift; sourceTree = "<group>"; };
 		C830CFDE2C0EC0240035CD5B /* ShareBacthListViewCell.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShareBacthListViewCell.swift; sourceTree = "<group>"; };
 		C830CFE22C0F1C6B0035CD5B /* TableSelectView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TableSelectView.swift; sourceTree = "<group>"; };
+		C833B8512EC7257C0005F84F /* GatewayListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GatewayListView.swift; sourceTree = "<group>"; };
 		C83A55972DBA103500E04252 /* DeviceDongleDeleteAlertView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceDongleDeleteAlertView.swift; sourceTree = "<group>"; };
 		C83A559B2DBA2B5900E04252 /* DeviceOthersViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceOthersViewController.swift; sourceTree = "<group>"; };
 		C83A559E2DBA2C9D00E04252 /* DeviceOthersCollectionViewCell.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceOthersCollectionViewCell.swift; sourceTree = "<group>"; };
@@ -3106,6 +3110,7 @@
 		C8C3A14E2E37250700876028 /* View */ = {
 			isa = PBXGroup;
 			children = (
+				C833B8512EC7257C0005F84F /* GatewayListView.swift */,
 				C8C3A14F2E37257500876028 /* GatewayNameViewCell.swift */,
 				C8C3A1632E37705500876028 /* GatewayInformationHeaderView.swift */,
 				C8C3A15F2E375D9400876028 /* GatewayServerInformationViewCell.swift */,
@@ -3827,6 +3832,7 @@
 				C885548E2DE6B44C00C8B688 /* ManualOverrideTimeoutInstructionController.swift in Sources */,
 				C885548F2DE6B44C00C8B688 /* DevicesViewCell.swift in Sources */,
 				C88554902DE6B44C00C8B688 /* LightSensorCalibrationView.swift in Sources */,
+				C833B8532EC7257C0005F84F /* GatewayListView.swift in Sources */,
 				C8C0E5E32E2A3D190024E77E /* RelativeSensitivityInstructionsController.swift in Sources */,
 				C88554912DE6B44C00C8B688 /* EnergyHarvestStateView.swift in Sources */,
 				C88554922DE6B44C00C8B688 /* BetaTestingAlertView.swift in Sources */,
@@ -4245,6 +4251,7 @@
 				C886E0E52E30DE4900D0C3A6 /* ManualOverrideTimeoutInstructionController.swift in Sources */,
 				C886E0E62E30DE4900D0C3A6 /* DevicesViewCell.swift in Sources */,
 				C886E0E72E30DE4900D0C3A6 /* LightSensorCalibrationView.swift in Sources */,
+				C833B8522EC7257C0005F84F /* GatewayListView.swift in Sources */,
 				C886E0E82E30DE4900D0C3A6 /* RelativeSensitivityInstructionsController.swift in Sources */,
 				C886E0E92E30DE4900D0C3A6 /* EnergyHarvestStateView.swift in Sources */,
 				C886E0EA2E30DE4900D0C3A6 /* BetaTestingAlertView.swift in Sources */,
@@ -4663,6 +4670,7 @@
 				C8047F2D2B8F5C9200A09FFA /* ManualOverrideTimeoutInstructionController.swift in Sources */,
 				C898EA722AC3D17C0023B480 /* DevicesViewCell.swift in Sources */,
 				C8607BE62B905F5100A94F0B /* LightSensorCalibrationView.swift in Sources */,
+				C833B8542EC7257C0005F84F /* GatewayListView.swift in Sources */,
 				C8C0E5E12E2A3D190024E77E /* RelativeSensitivityInstructionsController.swift in Sources */,
 				C8AEB9932DC9A0300053102B /* EnergyHarvestStateView.swift in Sources */,
 				C89C15712D9A873500789F0B /* BetaTestingAlertView.swift in Sources */,
