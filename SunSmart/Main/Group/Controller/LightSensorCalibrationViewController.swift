@@ -280,6 +280,8 @@ class LightSensorCalibrationViewController: UIViewController {
                 self.showCalibrationFailed(message: "calibrating_failure".localizedString) //  + "min: \(minLux) max:\(maxLux)"
             case .lightNoEffect:
                 self.showCalibrationFailed(message: "checking_correct_failure".localizedString)
+            case .inflectionPointError:
+                self.showCalibrationFailed(message: "checking_correct_failure".localizedString)
             }
         }
         

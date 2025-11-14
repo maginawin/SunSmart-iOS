@@ -124,7 +124,7 @@ class SiteViewController: UIViewController {
             DispatchQueue.main.async {[weak self] in
                 guard let self = self else { return }
                 self.updateNoInternetUI()
-                if !NetworkRequest.shared.networkable {
+                if !NetworkRequest.shared.networkable && SRAlertView.getCurrentAlertView() == nil {
                     // 有网络=>无网络
                         SRAlertView(title: "notification".localizedString, message: "phone_network_disconnect".localizedString, actions: [.init(title: "confirm".localizedString)]).show()
                 }
