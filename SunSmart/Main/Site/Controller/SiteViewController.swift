@@ -1618,7 +1618,7 @@ self.updateAddressData()
         view.addSubview(scrollView)
         scrollView.snp.makeConstraints { make in
             make.left.right.bottom.equalToSuperview()
-            make.top.equalTo(segmentedControl.snp.bottom).offset(SCRYFrom(20))
+            make.top.equalTo(segmentedControl.snp.bottom).offset(SCRYFrom(20) + SCRYFrom(48))
         }
         
         allSpacesRefreshControl = UIRefreshControl()

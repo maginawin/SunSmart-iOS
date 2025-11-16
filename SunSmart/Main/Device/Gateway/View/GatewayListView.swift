@@ -89,6 +89,7 @@ class GatewayListView: UIView {
         scrollView.showsVerticalScrollIndicator = false
         scrollView.bounces = true
         scrollView.alwaysBounceHorizontal = true
+        scrollView.alwaysBounceVertical = false
         addSubview(scrollView)
         scrollView.snp.makeConstraints { make in
             make.left.equalToSuperview()
@@ -105,17 +106,8 @@ class GatewayListView: UIView {
 //            make.width.greaterThanOrEqualTo(scrollView.snp.width)
         }
         
-        menuButton = UIButton(type: .custom)
-        // 使用系统图标创建三条横线菜单图标
-        if #available(iOS 13.0, *) {
-            let config = UIImage.SymbolConfiguration(pointSize: 18, weight: .regular)
-            menuButton.setImage(UIImage(systemName: "line.horizontal.3", withConfiguration: config), for: .normal)
-        } else {
-            // iOS 13 以下使用其他图标或自定义绘制
-            menuButton.setImage(UIImage(named: "menu_select"), for: .normal)
-        }
-        menuButton.tintColor = ImportantText_Color
-        menuButton.addTarget(self, action: #selector(menuButtonAction), for: .touchUpInside)
+        menuButton = UIButton(normalImageName: "space_more", target: self, action: #selector(menuButtonAction))
+        menuButton.setImage(UIImage(named: "space_more")?.withTintColor(Title_Color), for: .normal)
         addSubview(menuButton)
         menuButton.snp.makeConstraints { make in
             make.right.equalTo(SCRXFrom(-16))
@@ -190,7 +182,7 @@ class GatewayListView: UIView {
     private func updateLayout() {
         guard !itemViews.isEmpty, !frame.isEmpty else { return }
         
-        var currentX: CGFloat = SCRXFrom(16)
+        var currentX: CGFloat = 0// SCRXFrom(16)
         let itemHeight = max(frame.height, SCRYFrom(44))
         
         for (index, itemView) in itemViews.enumerated() {
@@ -206,8 +198,8 @@ class GatewayListView: UIView {
             
             // 如果有状态指示器，增加宽度
             let statusDotWidth: CGFloat = item.status != nil ? SCRXFrom(8) + SCRXFrom(6) : 0
-            let itemPadding: CGFloat = SCRXFrom(16)
-            let itemWidth = max(SCRXFrom(80), titleWidth + statusDotWidth + itemPadding * 2)
+            let itemPadding: CGFloat = SCRXFrom(3) //SCRXFrom(16)
+            let itemWidth = max(SCRXFrom(76), titleWidth + statusDotWidth + itemPadding * 2)
             
             itemView.frame = CGRect(x: currentX, y: 0, width: itemWidth, height: itemHeight)
             currentX += itemWidth
@@ -217,11 +209,11 @@ class GatewayListView: UIView {
                 let separator = separatorViews[index]
                 let separatorHeight = itemHeight - SCRYFrom(16)
                 separator.frame = CGRect(x: currentX, y: SCRYFrom(8), width: 0.5, height: separatorHeight)
-                currentX += SCRXFrom(1)
+                currentX += SCRXFrom(4)
             }
         }
         
-        let totalWidth = currentX + SCRXFrom(16)
+        let totalWidth = currentX// + SCRXFrom(16)
         
         // 更新 contentView 的宽度
         contentView.snp.updateConstraints { make in
@@ -262,7 +254,7 @@ class GatewayItemView: UIView {
         titleLabel = UILabel()
         titleLabel.font = UIFont.systemFont(ofSize: SCRYFrom(14))
         titleLabel.textColor = ImportantText_Color
-        titleLabel.textAlignment = .left
+        titleLabel.textAlignment = .center
         addSubview(titleLabel)
         titleLabel.snp.makeConstraints { make in
             make.left.equalTo(statusDot.snp.right).offset(SCRXFrom(6))
