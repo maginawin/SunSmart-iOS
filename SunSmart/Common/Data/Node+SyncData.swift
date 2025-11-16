@@ -163,7 +163,8 @@ enum DeviceParameterType {
             }
         case .motionSensitivityRange(let range):
             if let vendorModel = node.sunricherVendorModel {
-                let sensitivity = node.motionSensitivity ?? min(UInt8(node.group?.info.profile.sensitivity ?? 100).value16, 65535)
+                let addToGroup = node.group ?? node.restoreData?.addGroup
+                let sensitivity = node.motionSensitivity ?? min(UInt8(addToGroup?.info.profile.sensitivity ?? 100).value16, 65535)
                 messageHandles.append(MeshMessageHandle(message: SunricherVendorSet(function: .motionSensitivity(sensitivity, maxValue: range.upperBound, minValue: range.lowerBound)), model: vendorModel))
             }
         case .defaultTransitionTime(let transitionTime):

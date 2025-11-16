@@ -164,7 +164,7 @@ class LightSensorCalibrationViewController: UIViewController {
     @objc private func manualCorrectionBtnAction() {
         guard let sensor = selectSensor, let calibrationData = sensor.sensorCalibrationData, let lastSensorRatio = calibrationData.sensorRatio, let lastAmbientlightRatio = calibrationData.ambientlightRatio else { return }
         
-        let view = LightSensorManualCorrectionView(daylightLux: sensor.daylightLux ?? 0, sensorRatio: lastSensorRatio, ambientLightRatio: lastAmbientlightRatio) {[weak self] sensorRatio, ambientLightRatio in
+        let view = LightSensorManualCorrectionView(daylightLux: sensor.steadyDaylightLux ?? 0, sensorRatio: lastSensorRatio, ambientLightRatio: lastAmbientlightRatio) {[weak self] sensorRatio, ambientLightRatio in
             guard let self = self else { return }
             if sensorRatio != lastSensorRatio || ambientLightRatio != lastAmbientlightRatio {
                 self.updateCalibrationRate(sensorRatio: sensorRatio, ambientLightRatio: ambientLightRatio)
@@ -996,7 +996,7 @@ extension LightSensorCalibrationViewController: MeshLibManagerMessageDelegate {
         }
         
         // 光感更新
-        if case .presentAmbientLightLevel = sensorMessage.values.first?.property, let lux = selectSensor?.daylightLux {
+        if case .presentAmbientLightLevel = sensorMessage.values.first?.property, let lux = selectSensor?.steadyDaylightLux {
             manualCorrectionView?.daylightLux = lux
         }
     }

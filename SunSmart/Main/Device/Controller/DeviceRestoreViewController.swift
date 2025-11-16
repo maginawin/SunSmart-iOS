@@ -643,6 +643,19 @@ class DeviceRestoreViewController: UIViewController {
             
         } addFinish: {[weak self] successList, failList in
             guard let self = self else { return }
+            
+            // 添加完成后检查是否有设备需要同步
+            let needSyncNodes = self.restoreNodes.filter({ $0.needSync })
+            if needSyncNodes.count > 0 {
+                needSyncNodes.forEach({ node in
+                    if let device = successList.first(where: { $0.address == node.primaryUnicastAddress }) {
+                        device.addState = .syncFailed
+                    }
+                })
+                self.tableView.reloadData()
+                self.updateUIState()
+            }
+            
             NotificationCenter.default.post(name: .init(spaceDataChangedNotificaitonName), object: SpaceChangeDataType.network(type: .address))
             // 是否自动化恢复流程
             if self.automationRestore {
@@ -887,6 +900,7 @@ class DeviceRestoreViewController: UIViewController {
         vc.automationRestore = automationRestore
         vc.syncSuccessCallback = {[weak self] _ in
             guard let self = self else { return }
+            self.navigationController?.hideAutomaticHud()
             if self.automationRestore, case .specified = restoreMode {
                 self.deviceRestoreCallback?(self.restoreNodes, self.automationRestore)
                 self.navigationController?.popToViewController(vcClass: BleFirmwareUpdateViewController.classForCoder())

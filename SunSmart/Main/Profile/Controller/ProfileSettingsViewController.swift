@@ -168,7 +168,7 @@ class ProfileSettingsViewController: UIViewController {
                             DispatchQueue.main.async {
                                 if lux != nil {
                                     item.value = Int(lux!)
-                                }else if let currentLux = sensorNode.daylightLux {
+                                }else if let currentLux = sensorNode.steadyDaylightLux {
                                     item.value = Int(currentLux)
                                 }
                                 item.hideLoadingAnimation()

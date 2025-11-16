@@ -1144,7 +1144,7 @@ extension GroupViewController: MeshLibManagerMessageDelegate {
                 }
                 
                 if case .presentAmbientLightLevel = property, automationTimer != nil {
-                    currentPhaseLuxDatas.append(LightLuxData(name: sensorNode.name ?? "", address: sensorNode.primaryUnicastAddress, lux: sensorNode.daylightLux ?? 0))
+                    currentPhaseLuxDatas.append(LightLuxData(name: sensorNode.name ?? "", address: sensorNode.primaryUnicastAddress, lux: sensorNode.steadyDaylightLux ?? 0))
                 }
                 
                 // 环境光传感器model
@@ -1159,6 +1159,7 @@ extension GroupViewController: MeshLibManagerMessageDelegate {
             if let sensorNode = group.sensorNodes.first(where: { $0.contains(elementWithAddress: source) }), sensorNode.presenceDetectedSensorModel != nil {
                 sensorNode.occupancyState = true
                 sensorView?.reloadSensorData(sensor: sensorNode, sensorType: .presenceDetected)
+                sensorNode.occupancyState = false
             }
         }
         

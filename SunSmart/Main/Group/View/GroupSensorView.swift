@@ -126,8 +126,8 @@ class GroupSensorView: UIView {
 //                lightImageView.isHidden = false
 //                lightLuxLabel.isHidden = false
                 // 显示第一个光照传感器lux
-                if let sensor = sensors.first(where: { $0.ambientLightSensorModel?.publish != nil && $0.sensorCalibrated && $0.daylightLux != nil && $0.state }) {
-                    lightLuxLabel.text = "\(sensor.daylightLux!)lx"
+                if let sensor = sensors.first(where: { $0.ambientLightSensorModel?.publish != nil && $0.sensorCalibrated && $0.steadyDaylightLux != nil && $0.state }) {
+                    lightLuxLabel.text = "\(sensor.steadyDaylightLux!)lx"
                     lightLuxLabel.backgroundColor = RGB(245, 245, 245)
                     startUpdateLuxTimer()
                 }else {
@@ -224,7 +224,7 @@ class GroupSensorView: UIView {
                 occupyStateImageView.image = UIImage(named: "sensor_unoccupy")
             }
         }else {
-            if sensor.state, sensor.sensorCalibrated, let lux = sensor.daylightLux {
+            if sensor.state, sensor.sensorCalibrated, let lux = sensor.steadyDaylightLux {
                 lightLuxLabel.text = "\(lux)lx"
                 lightLuxLabel.backgroundColor = RGB(179, 237, 103)
                 startUpdateLuxTimer()
@@ -581,7 +581,7 @@ class GroupSensorViewCell: UITableViewCell {
             }
             
             // 判断是否有光照传感器
-            if sensor.sensorCalibrated, let model = sensor.ambientLightSensorModel, model.publish != nil, sensor.state, let lux = sensor.daylightLux {
+            if sensor.sensorCalibrated, let model = sensor.ambientLightSensorModel, model.publish != nil, sensor.state, let lux = sensor.steadyDaylightLux {
                 lightLuxLabel.text = "\(lux)lx"
                 startUpdateLuxTimer()
             }else {
@@ -661,7 +661,7 @@ class GroupSensorViewCell: UITableViewCell {
                 occupyStateImageView.image = UIImage(named: "sensor_unoccupy")
             }
         }else {
-            if sensor.sensorCalibrated, let lux = sensor.daylightLux {
+            if sensor.sensorCalibrated, let lux = sensor.steadyDaylightLux {
                 lightLuxLabel.text = "\(lux)lx"
                 lightLuxLabel.backgroundColor = RGB(179, 237, 103)
                 startUpdateLuxTimer()

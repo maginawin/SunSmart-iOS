@@ -108,20 +108,33 @@ class MeshSelectUpgradeDevicesViewController: UIViewController {
             selectNodes.append(distributorNode)
         }
         
-        XWHUDManager.showCustomHUD(withMessage: nil, isWindow: true)
+        
 //#if DEBUG
         if meshUpdateTest {
+            XWHUDManager.showCustomHUD(withMessage: nil, isWindow: true, afterDelay: 600)
+            let hud = XWHUDManager.currentHUD()
+            if let loadingHud = hud {
+                loadingHud.minSize = CGSizeMake(164, 140)
+            }
             var compositionHash: Data?
             // 截取compositionHash值
             if let metadata = distributorNode.distributionIncomingFirmwareMetadata, metadata.count >= 16 {
                 compositionHash = metadata.subdata(in: 12..<16)
             }
             guard let compositionHash = compositionHash, let distributionFirmwareSize = distributorNode.distributionFirmwareSize else {
+                XWHUDManager.hide()
+                XWHUDManager.showErrorTipHUD("failed".localizedString + " !")
                 return
             }
             let randomSession = UInt8.random(in: 1...255)
             
-            MeshVendorOTAManager.shared.startMeshOTA(distributionNode: self.distributorNode, targetNodes: self.selectNodes, session: randomSession, updateFirmwareImageIndex: 0, firmwareHash: UInt32(data: compositionHash), firmwareSize: distributionFirmwareSize, chunkSize: 100) {[weak self] result in
+            MeshVendorOTAManager.shared.startMeshOTA(distributionNode: self.distributorNode, targetNodes: self.selectNodes, session: randomSession, updateFirmwareImageIndex: 0, firmwareHash: UInt32(data: compositionHash), firmwareSize: distributionFirmwareSize, chunkSize: 100, progress: { current, total in
+                DispatchQueue.main.async {
+                    if let loadingHud = hud {
+                        loadingHud.detailsLabel.text = "\(current)/\(total)"
+                    }
+                }
+            }) {[weak self] result in
                 guard let self = self else { return }
                 DispatchQueue.main.async {
                     XWHUDManager.hide()
@@ -131,17 +144,17 @@ class MeshSelectUpgradeDevicesViewController: UIViewController {
                             let content = failNodes.map({ $0.name ?? "" }).joined(separator: ",")
                             XWHUDManager.showSuccessTipHUD("已开始升级\n失败设备: \(content)", timer: 10)
                         }else {
-                            XWHUDManager.showSuccessTipHUD("已开始升级")
+                            XWHUDManager.showSuccessTipHUD("已开始升级", timer: 5)
                         }
                         
                     case .failure(let error):
-                        XWHUDManager.showErrorTipHUD(error.localizedDescription)
+                        XWHUDManager.showErrorTipHUD(error.localizedDescription, timer: 5)
                     }
                 }
             }
         }else {
             //#else
-            
+            XWHUDManager.showCustomHUD(withMessage: nil, isWindow: true)
             MeshFirmwareDistributionManager.shared.startDistribution(distributionNode: self.distributorNode, targetNodes: self.selectNodes) {[weak self] _, state
                 in
                 guard let self = self else { return }

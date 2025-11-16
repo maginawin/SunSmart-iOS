@@ -74,13 +74,17 @@
 "light_level" = "调光水平";
 "brightness" = "亮度";
 "color_temperature" = "色温";
-"devices_delete_message" = "是否删除所选设备？";
-"device_delete_message" = "是否要删除该设备？";
+
+"devices_delete_message" = "删除设备将恢复出厂设置，是否继续？";
+"device_delete_message" = "删除该设备将恢复出厂设置，是否继续？";
+"devices_force_delete_message" = "部分设备无响应，设备可能处于离线或故障状态，是否强制删除？ \n\n";
+"devices_force_delete_note" = "注意：强制删除后，硬件设备需要手动重置。";
 "force_delete" = "强制删除";
-//"devices_force_delete_message" = "部分设备无响应，设备可能处于离线或故障状态，是否强制删除？ \n\n";
-//"devices_force_delete_note" = "注意：强制删除后，硬件设备需要手动重置。";
-"devices_force_delete_message" = "所选设备中存在离线设备。您确定要删除它们吗？ \n\n";
-"devices_force_delete_note" = "注意：删除离线设备仅删除应用程序中的缓存，并未实际重置设备。设备仍然可以被控制。";
+
+"devices_new_delete_message" = "是否删除所选设备？";
+"device_new_delete_message" = "是否要删除该设备？";
+"devices_new_force_delete_message" = "所选设备中存在离线设备。您确定要删除它们吗？ \n\n";
+"devices_new_force_delete_note" = "注意：删除离线设备仅删除应用程序中的缓存，并未实际重置设备。设备仍然可以被控制。";
 
 "ALL" = "全部";
 "all" = "全部";

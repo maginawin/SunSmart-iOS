@@ -76,11 +76,18 @@
 "light_level" = "Light Level";
 "brightness" = "Brightness";
 "color_temperature" = "Color Temperature";
-"devices_delete_message" = "Do you want to delete the selected device(s)?";
-"device_delete_message" = "Do you want to delete the device?";
+
+"devices_delete_message" = "Deleting the device(s) will restore the factory settings, whether to continue?";
+"device_delete_message" = "Deleting the device will restore the factory settings, whether to continue?";
+"devices_force_delete_message" = "Some devices are not responding, the device(s) may be off-line or faulty, do you want to force delete? \n\n";
+"devices_force_delete_note" = "Note: The hardware device needs to be reset manually after force delete.";
+
 "force_delete" = "FORCE DELETE";
-"devices_force_delete_message" = "There are offline devices among the selected devices. Are you sure you want to delete them? \n\n";
-"devices_force_delete_note" = "Note: Deleting an offline device only deletes the cache in the APP and does not actually reset the device. The device can still be controlled.";
+
+"devices_new_delete_message" = "Do you want to delete the selected device(s)?";
+"device_new_delete_message" = "Do you want to delete the device?";
+"devices_new_force_delete_message" = "There are offline devices among the selected devices. Are you sure you want to delete them? \n\n";
+"devices_new_force_delete_note" = "Note: Deleting an offline device only deletes the cache in the APP and does not actually reset the device. The device can still be controlled.";
 "ALL" = "ALL";
 "all" = "All";
 "devices" = "Devices";
