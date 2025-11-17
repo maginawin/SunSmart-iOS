@@ -1400,3 +1400,9 @@
 "this_is_the_first_group" = "当前已经是第一个组";
 "this_is_the_last_group" = "当前已经是最后一个组";
 "TEST" = "TEST";
+
+"click_add_gateway" = "Click to add a gateway";
+"internet_online" = "Internet Online";
+"internet_offline" = "Internet Offline";
+"no_gateway" = "No Gateway";
+"last_online" = "Last online";

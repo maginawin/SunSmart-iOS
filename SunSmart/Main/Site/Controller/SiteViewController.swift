@@ -25,6 +25,7 @@ class SiteViewController: UIViewController {
     private var favouritesNoInternetView: NoInternetHeaderView?
     
     private var gatewayListView: GatewayListView!
+    private var gatewayStatusView: SiteGatewayStatusView!
     
     private let noInternetHeight = SCRYFrom(54)
     
@@ -1600,13 +1601,25 @@ self.updateAddressData()
         }
         
         gatewayListView = GatewayListView()
-        gatewayListView.updateItems([GatewayListItem(id: "overview", title: "Overview", status: .none, isSelected: true), GatewayListItem(id: "AABBCCDDEEFF", title: "Gateway 1", status: .online, isSelected: false), GatewayListItem(id: "GGCCSSAADDFF", title: "Gateway 2", status: .offline, isSelected: false), GatewayListItem(id: "11BBCCDDEEFF", title: "Gateway 3", status: .warning, isSelected: false)])
+//        gatewayListView.updateItems([GatewayListItem(id: "overview", title: "Overview", status: .none, isSelected: true), GatewayListItem(id: "AABBCCDDEEFF", title: "Gateway 1", status: .online, isSelected: false), GatewayListItem(id: "GGCCSSAADDFF", title: "Gateway 2", status: .offline, isSelected: false), GatewayListItem(id: "11BBCCDDEEFF", title: "Gateway 3", status: .warning, isSelected: false)])
+        gatewayListView.updateItems([])
         gatewayListView.delegate = self
         view.addSubview(gatewayListView)
         gatewayListView.snp.makeConstraints { make in
             make.left.equalTo(SCRXFrom(16))
             make.right.equalTo(SCRXFrom(-16))
             make.top.equalTo(segmentedControl.snp.bottom).offset( SCRYFrom(8))
+            make.height.equalTo(SCRYFrom(40))
+        }
+        
+        gatewayStatusView = SiteGatewayStatusView()
+        gatewayStatusView.updateOverviewStats(.init(internetOnlineCount: 3, internetOfflineCount: 2, noGatewayCount: 3))
+        gatewayStatusView.setDisplayMode(.gateway)
+        gatewayStatusView.updateGatewayStatus(.init(isInternetOnline: false, lastOnlineTime: "2025-11-18 15:30"))
+        view.addSubview(gatewayStatusView)
+        gatewayStatusView.snp.makeConstraints { make in
+            make.left.right.equalTo(gatewayListView)
+            make.top.equalTo(gatewayListView.snp.bottom).offset(SCRYFrom(8))
             make.height.equalTo(SCRYFrom(40))
         }
         
@@ -1618,7 +1631,7 @@ self.updateAddressData()
         view.addSubview(scrollView)
         scrollView.snp.makeConstraints { make in
             make.left.right.bottom.equalToSuperview()
-            make.top.equalTo(segmentedControl.snp.bottom).offset(SCRYFrom(20) + SCRYFrom(48))
+            make.top.equalTo(segmentedControl.snp.bottom).offset(SCRYFrom(20) + SCRYFrom(48) + SCRYFrom(48))
         }
         
         allSpacesRefreshControl = UIRefreshControl()
@@ -1709,6 +1722,12 @@ extension SiteViewController: GatewayListViewDelegate {
     /// 点击菜单按钮回调
     func gatewayListViewDidClickMenu(_ view: GatewayListView) {
         
+    }
+    
+    /// 点击添加网关
+    func gatewayListViewDidClickAdd(_ view: GatewayListView) {
+        let vc = SiteDeviceAddViewController(site: site)
+        navigationController?.pushViewController(vc, animated: true)
     }
     
 }

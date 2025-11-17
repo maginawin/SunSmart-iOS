@@ -1393,3 +1393,9 @@
 "this_is_the_first_group" = "This is the first group.";
 "this_is_the_last_group" = "This is the last group.";
 "TEST" = "TEST";
+
+"click_add_gateway" = "Click to add a gateway";
+"internet_online" = "Internet Online";
+"internet_offline" = "Internet Offline";
+"no_gateway" = "No Gateway";
+"last_online" = "Last online";
