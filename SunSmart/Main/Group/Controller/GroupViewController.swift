@@ -44,6 +44,9 @@ class GroupViewController: UIViewController {
     
     private var meshNetworkConnectedObservation: NSKeyValueObservation?
     
+    private var fileWriteTimer: Timer?
+    private var luxFileURL = FileManager.default.temporaryDirectory.appendingPathComponent("luxs.json")
+    
     struct LightLuxData {
         let name: String
         let address: Address
@@ -169,12 +172,22 @@ class GroupViewController: UIViewController {
         
         if sender.isSelected {
             lightLuxPhaseDatas.removeAll()
+            loadCacheLuxsData()
             
             automationTimer = LCWeakTimer.scheduledTimer(timeInterval: 5, aTarget: self, selector: #selector(automationTimerAction), userInfo: nil, repeats: true)
             RunLoop.current.add(automationTimer!, forMode: .common)
+            
+            
+            fileWriteTimer = LCWeakTimer.scheduledTimer(timeInterval: 5 * 60, aTarget: self, selector: #selector(fileWriteTimerAction), userInfo: nil, repeats: true)
+            RunLoop.current.add(fileWriteTimer!, forMode: .common)
+            
         }else {
             automationTimer?.invalidate()
             automationTimer = nil
+            
+            fileWriteTimer?.invalidate()
+            fileWriteTimer = nil
+            
             if lightLuxPhaseDatas.count > 0 {
                 
                 exportPhaseLuxFile()
@@ -202,13 +215,26 @@ class GroupViewController: UIViewController {
         })
     }
     
+    @objc private func fileWriteTimerAction() {
+        guard lightLuxPhaseDatas.count > 0 else {
+            return
+        }
+        let routeTables = lightLuxPhaseDatas.compactMap({ phaseData in
+            return phaseData.map({ ["name": $0.name, "address": $0.address, "lux": $0.lux] })
+        })
+        guard let data = try? JSONSerialization.data(withJSONObject: routeTables) else {
+            return
+        }
+        try? data.write(to: luxFileURL)
+    }
+    
     private func exportPhaseLuxFile() {
         guard lightLuxPhaseDatas.count > 0 else {
             XWHUDManager.showErrorTipHUD("未获取到光感数据")
             return
         }
         let routeTables = lightLuxPhaseDatas.compactMap({ phaseData in
-            return phaseData.map({ ["name": $0.name, "lux": $0.lux] })
+            return phaseData.map({ ["name": $0.name, "address": $0.address, "lux": $0.lux] })
         })
         guard let data = try? JSONSerialization.data(withJSONObject: routeTables) else {
             XWHUDManager.showErrorTipHUD("导出数据失败")
@@ -248,6 +274,7 @@ class GroupViewController: UIViewController {
                 }
                 controller.completionWithItemsHandler = { type, success, items, error in
                     if success {
+                        try? FileManager.default.removeItem(at: self.luxFileURL)
                         XWHUDManager.showSuccessTipHUD("done!".localizedString)
                     }
                 }
@@ -256,6 +283,22 @@ class GroupViewController: UIViewController {
                 XWHUDManager.hide()
             }
         }
+    }
+    
+    /// 加载缓存的lux数据
+    private func loadCacheLuxsData() {
+        
+        if let luxsData = try? Data(contentsOf: luxFileURL), let jsonDatas = try? JSONSerialization.jsonObject(with: luxsData) as? [[[String: Any]]] {
+            lightLuxPhaseDatas = jsonDatas.compactMap({ data in
+               return data.compactMap { data in
+                    if let name = data["name"] as? String, let address = data["address"] as? Address, let lux = data["lux"] as? UInt16 {
+                        return LightLuxData(name: name, address: address, lux: lux)
+                    }
+                   return nil
+                }
+            })
+        }
+        
     }
     
     override func viewWillAppear(_ animated: Bool) {
@@ -539,6 +582,14 @@ class GroupViewController: UIViewController {
         items.append(.init(icon: UIImage(named: "menu_profile"), title: "profile".localizedString, hideAnimation: false, tapItemBack: {[weak self] item in
             self?.groupProfile()
         }))
+        
+//        #if DEBUG
+//        items.append(.init(icon: UIImage(named: "menu_share"), title: "Export file", tapItemBack: {[weak self] _ in
+//            self?.lightLuxPhaseDatas.removeAll()
+//            self?.loadCacheLuxsData()
+//            self?.exportPhaseLuxFile()
+//        }))
+//        #endif
         
         if space.groupOperates.contains(.edit) {
             let profileType = group.info.profile.type

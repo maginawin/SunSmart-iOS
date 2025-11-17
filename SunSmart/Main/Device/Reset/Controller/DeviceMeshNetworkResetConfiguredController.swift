@@ -115,6 +115,7 @@ class DeviceMeshNetworkResetConfiguredController: UIViewController {
                 scanDevice.address = node.primaryUnicastAddress
                 scanDevice.deviceType = node.deviceType
                 scanDevice.selectedState = .selected
+                scanDevice.version = node.firmwareVersion
                 
             }else if let info = MeshLibManager.manager.supportDeviceInfos.first(where: { $0.companyId == scanDevice.cid && $0.productId == scanDevice.pid }) {
                 scanDevice.deviceName = info.categoryName

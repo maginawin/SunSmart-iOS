@@ -333,6 +333,7 @@ class LightSensorCalibrationViewController: UIViewController {
                         self.offPointLuxView.measuredLightValue = nil
                         self.updateGroupLightSensor()
                         self.updateCalibrationState()
+                        self.updateManualCorrectionBtn()
                     }
                 }
             }

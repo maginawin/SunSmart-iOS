@@ -1008,8 +1008,8 @@ extension SpaceData {
                     if let proximityLightingRelayCount = nodeJson["proximityLightingRelayCount"].uInt8 {
                         node.proximityLightingRelayCount = proximityLightingRelayCount
                     }
-                    if let proximityLightingNeighborAddresses = nodeJson["proximityLightingNeighborAddresses"].arrayObject as? [String] {
-                        node.proximityLightingNeighborAddresses = proximityLightingNeighborAddresses.compactMap({ Address(hex: $0) })
+                    if let proximityLightingNeighborAddresses = nodeJson["proximityLightingNeighborAddresses"].arrayObject as? [UInt16] {
+                        node.proximityLightingNeighborAddresses = proximityLightingNeighborAddresses.compactMap({ Address($0) })
                     }
                     
                     if node.deviceType == .gateway {
@@ -1196,7 +1196,7 @@ extension SpaceData {
                             proximityLightingPath.paths = paths
                         }
                         // zone list
-                        if let zoneDicts = proximityLightingPathDict["paths"] as? [[String: Any]] {
+                        if let zoneDicts = proximityLightingPathDict["zones"] as? [[String: Any]] {
                             let zones: [GroupProximityLightingPathZone] = zoneDicts.compactMap { dict in
                                 guard let zoneAddresses = dict["addresses"] as? [Int] else {
                                     return nil
@@ -1212,6 +1212,7 @@ extension SpaceData {
                             }
                             proximityLightingPath.zones = zones
                         }
+                        group.info.proximityLightingPath = proximityLightingPath
                     }
                     
                     return group

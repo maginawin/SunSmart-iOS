@@ -130,7 +130,6 @@
 		C88553B72DE6B44C00C8B688 /* SiteAddressDataHeaderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8DCD0FB2CC8E0DE00B8671E /* SiteAddressDataHeaderView.swift */; };
 		C88553B82DE6B44C00C8B688 /* ProvisioningDevice+Add.swift in Sources */ = {isa = PBXBuildFile; fileRef = C89941972AD4FB0C008DCD76 /* ProvisioningDevice+Add.swift */; };
 		C88553B92DE6B44C00C8B688 /* LightSensorCalibrationSelectView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8607BE32B9026F700A94F0B /* LightSensorCalibrationSelectView.swift */; };
-		C88553BA2DE6B44C00C8B688 /* TestDeviceAddManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8B058A82B512C1F006FC36F /* TestDeviceAddManager.swift */; };
 		C88553BB2DE6B44C00C8B688 /* ProfileManualOverrideTimeoutView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8047F1D2B8F1FDC00A09FFA /* ProfileManualOverrideTimeoutView.swift */; };
 		C88553BC2DE6B44C00C8B688 /* EnergyStaticDataViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C82F99F52DBE1AF20019C3FB /* EnergyStaticDataViewController.swift */; };
 		C88553BD2DE6B44C00C8B688 /* SceneTemplates.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A130C82B32C5F00008C353 /* SceneTemplates.swift */; };
@@ -501,7 +500,6 @@
 		C886E0072E30DE4900D0C3A6 /* SiteAddressDataHeaderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8DCD0FB2CC8E0DE00B8671E /* SiteAddressDataHeaderView.swift */; };
 		C886E0082E30DE4900D0C3A6 /* ProvisioningDevice+Add.swift in Sources */ = {isa = PBXBuildFile; fileRef = C89941972AD4FB0C008DCD76 /* ProvisioningDevice+Add.swift */; };
 		C886E0092E30DE4900D0C3A6 /* LightSensorCalibrationSelectView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8607BE32B9026F700A94F0B /* LightSensorCalibrationSelectView.swift */; };
-		C886E00A2E30DE4900D0C3A6 /* TestDeviceAddManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8B058A82B512C1F006FC36F /* TestDeviceAddManager.swift */; };
 		C886E00B2E30DE4900D0C3A6 /* ProfileManualOverrideTimeoutView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8047F1D2B8F1FDC00A09FFA /* ProfileManualOverrideTimeoutView.swift */; };
 		C886E00C2E30DE4900D0C3A6 /* EnergyStaticDataViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C82F99F52DBE1AF20019C3FB /* EnergyStaticDataViewController.swift */; };
 		C886E00D2E30DE4900D0C3A6 /* SceneTemplates.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A130C82B32C5F00008C353 /* SceneTemplates.swift */; };
@@ -1084,7 +1082,6 @@
 		C8B0589E2B50C9C6006FC36F /* DeviceGroupsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8B0589D2B50C9C6006FC36F /* DeviceGroupsView.swift */; };
 		C8B058A02B50DE86006FC36F /* HorizontalDirectionFlowLayout.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8B0589F2B50DE86006FC36F /* HorizontalDirectionFlowLayout.swift */; };
 		C8B058A72B5115B2006FC36F /* DeviceGroupsSelectData.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8B058A62B5115B2006FC36F /* DeviceGroupsSelectData.swift */; };
-		C8B058A92B512C1F006FC36F /* TestDeviceAddManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8B058A82B512C1F006FC36F /* TestDeviceAddManager.swift */; };
 		C8B0779E2D9D36750078404C /* Node+MessageHandles.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8B0779D2D9D36750078404C /* Node+MessageHandles.swift */; };
 		C8B0B48B2B468BC700747CF4 /* SyncDevicesProgressView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8B0B48A2B468BC700747CF4 /* SyncDevicesProgressView.swift */; };
 		C8B337222E44983E006931C2 /* UITableView+Keyboard.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8B337212E44983E006931C2 /* UITableView+Keyboard.swift */; };
@@ -1652,7 +1649,6 @@
 		C8B0589D2B50C9C6006FC36F /* DeviceGroupsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceGroupsView.swift; sourceTree = "<group>"; };
 		C8B0589F2B50DE86006FC36F /* HorizontalDirectionFlowLayout.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HorizontalDirectionFlowLayout.swift; sourceTree = "<group>"; };
 		C8B058A62B5115B2006FC36F /* DeviceGroupsSelectData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceGroupsSelectData.swift; sourceTree = "<group>"; };
-		C8B058A82B512C1F006FC36F /* TestDeviceAddManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TestDeviceAddManager.swift; sourceTree = "<group>"; };
 		C8B0779D2D9D36750078404C /* Node+MessageHandles.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; lineEnding = 0; path = "Node+MessageHandles.swift"; sourceTree = "<group>"; };
 		C8B0B48A2B468BC700747CF4 /* SyncDevicesProgressView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SyncDevicesProgressView.swift; sourceTree = "<group>"; };
 		C8B337212E44983E006931C2 /* UITableView+Keyboard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "UITableView+Keyboard.swift"; sourceTree = "<group>"; };
@@ -2555,7 +2551,6 @@
 			children = (
 				C89941972AD4FB0C008DCD76 /* ProvisioningDevice+Add.swift */,
 				C8B058A62B5115B2006FC36F /* DeviceGroupsSelectData.swift */,
-				C8B058A82B512C1F006FC36F /* TestDeviceAddManager.swift */,
 				C8A347CD2D6307CC0092D3E4 /* DeviceProtocol.swift */,
 				C8B483D92E4B37CB006D85BC /* DeviceAudioManager.swift */,
 				C8B6D7DF2E702BF7004FB923 /* SystemVoiumeManager.swift */,
@@ -3593,7 +3588,6 @@
 				C88553B72DE6B44C00C8B688 /* SiteAddressDataHeaderView.swift in Sources */,
 				C88553B82DE6B44C00C8B688 /* ProvisioningDevice+Add.swift in Sources */,
 				C88553B92DE6B44C00C8B688 /* LightSensorCalibrationSelectView.swift in Sources */,
-				C88553BA2DE6B44C00C8B688 /* TestDeviceAddManager.swift in Sources */,
 				C88553BB2DE6B44C00C8B688 /* ProfileManualOverrideTimeoutView.swift in Sources */,
 				C88553BC2DE6B44C00C8B688 /* EnergyStaticDataViewController.swift in Sources */,
 				C88553BD2DE6B44C00C8B688 /* SceneTemplates.swift in Sources */,
@@ -4014,7 +4008,6 @@
 				C886E0072E30DE4900D0C3A6 /* SiteAddressDataHeaderView.swift in Sources */,
 				C886E0082E30DE4900D0C3A6 /* ProvisioningDevice+Add.swift in Sources */,
 				C886E0092E30DE4900D0C3A6 /* LightSensorCalibrationSelectView.swift in Sources */,
-				C886E00A2E30DE4900D0C3A6 /* TestDeviceAddManager.swift in Sources */,
 				C886E00B2E30DE4900D0C3A6 /* ProfileManualOverrideTimeoutView.swift in Sources */,
 				C886E00C2E30DE4900D0C3A6 /* EnergyStaticDataViewController.swift in Sources */,
 				C886E00D2E30DE4900D0C3A6 /* SceneTemplates.swift in Sources */,
@@ -4435,7 +4428,6 @@
 				C8DCD0FC2CC8E0DE00B8671E /* SiteAddressDataHeaderView.swift in Sources */,
 				C89941982AD4FB0C008DCD76 /* ProvisioningDevice+Add.swift in Sources */,
 				C8607BE42B9026F700A94F0B /* LightSensorCalibrationSelectView.swift in Sources */,
-				C8B058A92B512C1F006FC36F /* TestDeviceAddManager.swift in Sources */,
 				C8047F1E2B8F1FDC00A09FFA /* ProfileManualOverrideTimeoutView.swift in Sources */,
 				C82F99F62DBE1AF20019C3FB /* EnergyStaticDataViewController.swift in Sources */,
 				C8A130C92B32C5F10008C353 /* SceneTemplates.swift in Sources */,
@@ -5166,7 +5158,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 9;
+				CURRENT_PROJECT_VERSION = 12;
 				DEVELOPMENT_TEAM = JTD3WYUC58;
 				GCC_PREFIX_HEADER = "";
 				GENERATE_INFOPLIST_FILE = YES;
@@ -5206,7 +5198,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 9;
+				CURRENT_PROJECT_VERSION = 12;
 				DEVELOPMENT_TEAM = JTD3WYUC58;
 				GCC_PREFIX_HEADER = "";
 				GENERATE_INFOPLIST_FILE = YES;

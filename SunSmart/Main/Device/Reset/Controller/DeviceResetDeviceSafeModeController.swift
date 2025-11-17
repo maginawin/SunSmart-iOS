@@ -1104,6 +1104,8 @@ extension ProvisioningDevice {
     
     static var resetStateKey = 20
     
+    static var versionKey = 21
+    
     /// 设备重置状态
     enum DeviceResetState {
         /// 无
@@ -1134,6 +1136,15 @@ extension ProvisioningDevice {
             objc_getAssociatedObject(self, &ProvisioningDevice.resetStateKey) as? DeviceResetState ?? .none
         }set {
             objc_setAssociatedObject(self, &ProvisioningDevice.resetStateKey, newValue, .OBJC_ASSOCIATION_RETAIN)
+        }
+    }
+    
+    /// 设备版本
+    var version: String? {
+        get {
+            objc_getAssociatedObject(self, &ProvisioningDevice.versionKey) as? String
+        }set {
+            objc_setAssociatedObject(self, &ProvisioningDevice.versionKey, newValue, .OBJC_ASSOCIATION_RETAIN)
         }
     }
     

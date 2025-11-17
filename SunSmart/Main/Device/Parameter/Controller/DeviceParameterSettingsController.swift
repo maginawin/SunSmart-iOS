@@ -453,6 +453,9 @@ extension DeviceParameterSettingsController: DeviceParameterRetedPowerViewCellDe
     
     /// 添加阶段
     func ratedPowerCellAddPhase(_ cell: DeviceParameterRetedPowerViewCell) {
+        guard ratedPowerPhaseDatas.count < 10 else {
+            return
+        }
         ratedPowerPhaseDatas.insert(DeviceParameterRatedPowerPhaseData(lightLevel: nil, power: nil, necessary: false), at: ratedPowerPhaseDatas.count - 1)
         cell.phases = ratedPowerPhaseDatas
         if let index = tableView.indexPath(for: cell)?.row {

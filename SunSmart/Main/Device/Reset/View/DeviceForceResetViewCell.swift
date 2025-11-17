@@ -28,6 +28,7 @@ class DeviceForceResetViewCell: UITableViewCell {
     var identifyAnimationView: UIImageView!
     var nameLabel: UILabel!
     var macAddressLabel: UILabel!
+    var versionLabel: UILabel!
     var identifyBtn: UIButton!
     var resetBtn: UIButton!
     var stateImageView: UIImageView!
@@ -156,6 +157,7 @@ class DeviceForceResetViewCell: UITableViewCell {
             
             signalStrengthView.setSignalStrength(rssi: device.rssi.intValue)
             signalLabel.text = "\(device.rssi.intValue)dB"
+            versionLabel.text = device.version
         }
     }
     
@@ -303,6 +305,14 @@ class DeviceForceResetViewCell: UITableViewCell {
             make.left.equalTo(signalStrengthView.snp.right).offset(SCRXFrom(9))
             make.centerY.equalTo(signalStrengthView)
         }
+        
+        versionLabel = UILabel(text: "", textColor: AssistText_Color, fontSize: 12, fontWeight: .light, fit: false)
+        contentView.addSubview(versionLabel)
+        versionLabel.snp.makeConstraints { make in
+            make.left.equalTo(signalLabel.snp.right).offset(SCRXFrom(10))
+            make.centerY.equalTo(signalLabel)
+        }
+        
         
         lineView = UIView()
         lineView.backgroundColor = Line_Color

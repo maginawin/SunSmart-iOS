@@ -138,6 +138,8 @@ class DeviceAddProfessionalModeController: UIViewController {
     var deviceStateCallback: ((Bool)->Void)?
     var deviceAddCallback: (([Node])->Void)?
     
+    /// 是否在分配设备地址
+    private var applyDeviceAddress: Bool = false
     
     init(space: SpaceData) {
         self.space = space
@@ -772,13 +774,28 @@ class DeviceAddProfessionalModeController: UIViewController {
                 self.addSuccessNodes.append(node)
             }
         } addFail: {[weak self] addDevice, error in
+            guard let self = self else { return }
             addDevice.addState = .failed
             addDevice.selectedState = .selected
-            self?.reloadDeviceState(addDevice)
-            self?.updateUIState()
+            self.reloadDeviceState(addDevice)
+            self.updateUIState()
             // 设备地址已分配完
-            if let provisioningError = error as? ProvisioningError, case .noAddressAvailable = provisioningError {
-//                applyDeviceAddressesRequest(applyAddressCount: applyAddressCount, devices: [])
+            if case .noAddressAvailable = error, !self.applyDeviceAddress {
+                let applyAddressCount = 100
+                guard NetworkRequest.shared.networkable else {
+                    if SRAlertView.getCurrentAlertView() == nil {
+                        SRAlertView(title: "notification".localizedString, message: "device_address_insufficient".localizedString, actions: [SRAlertAction(title: "ok".localizedString, actionHandler: {[weak self] _ in
+                            if NetworkRequest.shared.networkable {
+                                self?.space.applyDeviceAddressCount = nil
+                                self?.space.save()
+                                self?.applyDeviceAddressesRequest(applyAddressCount: applyAddressCount)
+                            }
+                        })]).show()
+                    }
+                    self.space.applyDeviceAddressCount = applyAddressCount
+                    self.space.save()
+                    return
+                }
             }
             
         } addFinish: {[weak self] successList, failList in
@@ -878,10 +895,12 @@ class DeviceAddProfessionalModeController: UIViewController {
 //        // 申请的地址数量
 //        let applyAddressCount = estimatedAddressCount - MeshAPI.getNumberOfAvailableUnicastAddresses() + Int(Float(existingAddressCount) * 0.2)
         // request
+        self.applyDeviceAddress = true
         XWHUDManager.showCustomHUD(withMessage: nil, isWindow: true)
         NetworkRequest.shared.request(.applyAddress(siteId: self.space.siteId, type: .device, number: applyAddressCount)) {[weak self] result in
             XWHUDManager.hide()
             guard let self = self else { return }
+            self.applyDeviceAddress = false
             switch result {
             case .success(let repsonsed):
                 // 新增地址

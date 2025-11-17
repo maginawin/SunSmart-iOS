@@ -472,7 +472,7 @@ class GroupPathSequencePathItem: UICollectionViewCell {
             make.left.equalTo(SCRXFrom(6))
             make.right.equalTo(SCRXFrom(-6))
 //            make.bottom.equalTo(SCRYFrom(-7))
-            make.top.equalTo(iconImageView.snp.bottom)
+            make.top.equalTo(iconImageView.snp.bottom).offset(SCRYFrom(2))
             make.bottom.equalToSuperview()
         }
         

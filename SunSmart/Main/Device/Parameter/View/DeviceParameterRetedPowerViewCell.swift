@@ -83,7 +83,7 @@ class DeviceParameterRetedPowerViewCell: UITableViewCell {
         
         if enableSwitch.isOn {
             countLabel.isHidden = false
-            addBtn.isHidden = false
+            addBtn.isHidden = phases.count >= 10
             tableView.isHidden = false
             noteLabel.isHidden = false
             

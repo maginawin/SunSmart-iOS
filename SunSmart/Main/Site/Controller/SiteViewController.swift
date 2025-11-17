@@ -577,6 +577,10 @@ self.updateAddressData()
             }))
         }
         
+        items.append(.init(icon: UIImage(named: "energy_export")?.withTintColor(.white), title: "Import Space", tapItemBack: {[weak self] _ in
+            self?.importSpace()
+        }))
+        
         MenuPopView.show(items: items, anchorPoint: CGPoint(x: touchCenterX, y: (navigationController?.navigationBar.frame.maxY ?? kNavigationHeight)), menuWidth: SCRXFrom(154))
     }
     
@@ -1059,6 +1063,61 @@ self.updateAddressData()
     
     }
     
+    private func exportSpace(_ space: SpaceData) {
+        Task {
+            let spaceJsonDict = await space.export()
+            let name = space.name
+            guard let data = try? JSONSerialization.data(withJSONObject: spaceJsonDict) else {
+                XWHUDManager.showErrorTipHUD("导出数据失败")
+                return
+            }
+            
+            XWHUDManager.showCustomHUD(withMessage: nil, view: view)
+            DispatchQueue.global(qos: .userInitiated).async { [weak self] in
+                guard let self = self else { return }
+                // 文件名称 site名称+space名称
+                let name = "\(self.site.name)_\(name)"
+                
+                let fileURL = FileManager.default.temporaryDirectory.appendingPathComponent("\(name).json")
+                try? data.write(to: fileURL)
+                
+                DispatchQueue.main.async { [weak self] in
+                    guard let self = self else { return }
+                    
+                    let controller = UIActivityViewController(activityItems: [fileURL], applicationActivities: nil)
+                    // 适配 iPad
+                    if let popoverController = controller.popoverPresentationController {
+                        // 设置 sourceView（可以是按钮或视图）
+                        popoverController.sourceView = self.view
+                        
+                        // 设置 sourceRect（浮层的锚点位置）
+                        popoverController.sourceRect = CGRect(x: self.view.bounds.midX, y: self.view.bounds.midY, width: 0, height: 0)
+                        
+                        // 或者设置 barButtonItem（如果是导航栏按钮）
+                        // popoverController.barButtonItem = self.shareButton
+                    }
+                    controller.completionWithItemsHandler = { type, success, items, error in
+                        if success {
+                            XWHUDManager.showSuccessTipHUD("done!".localizedString)
+                        }
+                    }
+                    self.present(controller, animated: true)
+                    
+                    XWHUDManager.hide()
+                }
+            }
+            
+            
+        }
+    }
+    
+    private func importSpace() {
+        
+        let picker = UIDocumentPickerViewController(documentTypes: ["public.data", "public.content"], in: .import)
+        picker.delegate = self
+        present(picker, animated: true, completion: nil)
+    }
+    
     /// 解绑space
     private func unbindSpace(_ space: SpaceData) {
         
@@ -1242,6 +1301,11 @@ self.updateAddressData()
                 self?.shareSpace(space)
             }))
         }
+       
+        items.append(.init(icon: UIImage(named: "menu_share"), title: "Export", tapItemBack: {[weak self] _ in
+            self?.exportSpace(space)
+        }))
+        
         if space.spaceOperates.contains(.exit) {
             items.append(.init(icon: UIImage(named: "menu_unbind"), title: "unbind".localizedString, tapItemBack: { _ in
                 
@@ -1931,3 +1995,29 @@ extension SiteViewController: CloudSynchronizationManagerDelegate {
         updateSyncState()
     }
 }
+
+extension SiteViewController: UIDocumentPickerDelegate {
+    
+    /// 选择文件导入回调
+    func documentPicker(_ controller: UIDocumentPickerViewController, didPickDocumentsAt urls: [URL]) {
+        guard let url = urls.first else { return }
+        do {
+            let data = try Data(contentsOf: url)
+            if var json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
+                json.updateValue("\(Int64(Date().timeIntervalSince1970))", forKey: "updateTimestamp")
+                
+                Task {
+                    _ = await SpaceData.import(siteId: site.id, meshUUID: site.meshUUID, spaceJsonData: json)
+                    XWHUDManager.showSuccessTipHUD("done!".localizedString)
+                    self.loadSiteRequest()
+                }
+            }
+            
+        } catch { // 失败提示
+            XWHUDManager.showErrorTipHUD("failed".localizedString)
+        }
+    }
+    
+}
+
+
