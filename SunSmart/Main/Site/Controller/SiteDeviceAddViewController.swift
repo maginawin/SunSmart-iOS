@@ -12,7 +12,7 @@ import SwiftyJSON
 
 class SiteDeviceAddViewController: UIViewController {
 
-    /// header
+    private var navigationBackBtn: UIButton!
     private var scanAnimationView: UIImageView!
     /// header
     private var headerView: UIView!
@@ -47,6 +47,9 @@ class SiteDeviceAddViewController: UIViewController {
     
     private var rssiSortTimer: Timer?
     
+    /// 添加设备回调
+    var deviceAddCallback: (([Node])->Void)?
+    
     let site: SiteData
     
     init(site: SiteData) {
@@ -64,11 +67,39 @@ class SiteDeviceAddViewController: UIViewController {
         view.backgroundColor = Background_Color
         title = "add_device".localizedString
         
+        navigationBackBtn = UIButton(normalImageName: "navigation_back", target: self, action: #selector(backClick))
+        navigationItem.leftBarButtonItem = UIBarButtonItem(customView: navigationBackBtn)
+        
         scanAnimationView = UIImageView(image: UIImage(named: "loading"))
         scanAnimationView.isHidden = true
         navigationItem.rightBarButtonItem = UIBarButtonItem(customView: scanAnimationView)
         
         setupUI()
+    }
+    
+    override func viewDidDisappear(_ animated: Bool) {
+        super.viewDidDisappear(animated)
+        if state == .scanning { // 退出页面/切换停止扫描
+            stopScan()
+        }
+    }
+    
+    @objc private func backClick() {
+        navigationController?.popViewController(animated: true)
+    }
+    
+    deinit {
+        if state == .adding {
+            MeshAPI.stopFastAddDevice(finishBack: nil)
+        }
+        self.deviceAddCallback?(self.addSuccessNodes)
+        
+        if MeshNetworkManager.instance.currentNetworkKey.isPrimary {
+            MeshLibManager.manager.meshNetworkDisconnect()
+        }
+        
+        // 关闭设置屏幕常亮
+        UIApplication.shared.isIdleTimerDisabled = false
     }
     
     // MARK: - Scan
@@ -277,18 +308,6 @@ class SiteDeviceAddViewController: UIViewController {
     /// 全选/取消全选
     @objc private func selectAllBtnClick(sender: UIButton) {
         
-        // space只能添加200个设备
-        let existNodeCount = MeshNetworkManager.instance.realNodes.count + showDevices.filter({ $0.addState == .wait || $0.addState == .adding || $0.addState == .addConnecting }).count
-//        guard !sender.isSelected, existNodeCount < 200 else {
-//            let canSelectCount = 200 - existNodeCount
-//
-//
-//            devices.forEach({ $0.selectedState = .selected })
-//
-//            SRAlertView(title: "notification".localizedString, message: "devices_number_exceeds_message".localizedString, actions: [SRAlertAction(title: "ok".localizedString)]).show()
-//            return
-//        }
-        
         sender.isSelected = !sender.isSelected
         
         let canAddDevices = showDevices.filter({ $0.selectedState != .disabled && !($0.addState == .wait || $0.addState == .adding || $0.addState == .addConnecting) })
@@ -305,15 +324,7 @@ class SiteDeviceAddViewController: UIViewController {
     @objc private func addSelectedBtnClick() {
         let selectDevices = showDevices.filter({ $0.selectedState == .selected })
         
-        let dongleDevices = selectDevices.filter({ $0.deviceType == .dongle })
-        // 多个dongle一起添加时提示
-        if dongleDevices.count > 1 {
-            SRAlertView(title: "notification".localizedString, message: "device_add_multiple_dongle_message".localizedString, actions: [.cancelAction, .init(title: "GOT IT".localizedString, actionHandler: {[weak self] _ in
-                self?.checkDeviceAddressesAreSufficient(devices: selectDevices)
-            })]).show()
-        }else {
-            checkDeviceAddressesAreSufficient(devices: selectDevices)
-        }
+        checkDeviceAddressesAreSufficient(devices: selectDevices)      
 //        selectDevices.forEach { device in
 //            addDevice(device)
 //        }
@@ -405,6 +416,10 @@ class SiteDeviceAddViewController: UIViewController {
     
     /// 添加设备
     private func addDevice(_ device: ProvisioningDevice) {
+        
+        if MeshNetworkManager.instance.meshNetwork?.uuid == self.site.meshUUID, !MeshNetworkManager.instance.currentNetworkKey.isPrimary {
+            MeshLibManager.manager.setMeshNetworkConnected(meshUUID: <#T##String#>, connected: false)
+        }
         
         // 设备identify中添加不需要再闪烁
 //        if device.addState == .identifyConnecting || device.addState == .identifyWait || device.addState == .failed || device.addState == .identifying {
@@ -717,6 +732,8 @@ class SiteDeviceAddViewController: UIViewController {
         scanBtn.isEnabled = state == .none || state == .scanning || state == .addFineshed
         
         UIApplication.shared.isIdleTimerDisabled = false
+        navigationBackBtn.isHidden = false
+        navigationController?.interactivePopGestureRecognizer?.isEnabled = true
         
         switch state {
         case .none:
@@ -740,6 +757,8 @@ class SiteDeviceAddViewController: UIViewController {
                 addResultView.stopAddBtn.isHidden = !showDevices.contains(where: { $0.addState == .wait})
                 // 添加中设置屏幕常亮
                 UIApplication.shared.isIdleTimerDisabled = true
+                navigationBackBtn.isHidden = true
+                navigationController?.interactivePopGestureRecognizer?.isEnabled = false
             }else {
                 addResultView.closeBtn.isHidden = false
                 addResultView.stopAddBtn.isHidden = true

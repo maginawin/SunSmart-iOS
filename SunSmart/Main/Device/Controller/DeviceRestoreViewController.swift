@@ -861,7 +861,6 @@ class DeviceRestoreViewController: UIViewController {
         guard state == .adding else {
             return
         }
-        TestDeviceAddManager.manager.cancelAwaitOperations()
         
         MeshAPI.cancelFastAddAwaitOperations()
 

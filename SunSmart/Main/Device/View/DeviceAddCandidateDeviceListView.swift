@@ -297,7 +297,6 @@ class DeviceAddCandidateDeviceListView: UIView {
         guard waitDevices.count > 0 else {
             return
         }
-        TestDeviceAddManager.manager.cancelAwaitOperations()
         
         MeshAPI.cancelFastAddAwaitOperations()
         
