@@ -416,9 +416,9 @@ class SiteDeviceAddViewController: UIViewController {
     
     /// 添加设备
     private func addDevice(_ device: ProvisioningDevice) {
-        
-        if MeshNetworkManager.instance.meshNetwork?.uuid == self.site.meshUUID, !MeshNetworkManager.instance.currentNetworkKey.isPrimary {
-            MeshLibManager.manager.setMeshNetworkConnected(meshUUID: <#T##String#>, connected: false)
+        // 设置连接当前site网络
+        if MeshNetworkManager.instance.meshNetwork?.uuid.uuidString == self.site.meshUUID, !MeshNetworkManager.instance.currentNetworkKey.isPrimary {
+            MeshLibManager.manager.setMeshNetworkConnected(meshUUID: site.meshUUID, subNetworkId: site.meshNetworkId, connected: false)
         }
         
         // 设备identify中添加不需要再闪烁
