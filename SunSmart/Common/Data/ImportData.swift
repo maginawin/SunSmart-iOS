@@ -974,9 +974,30 @@ extension SpaceData {
                     }
                     
                     // 光感校准值
-                    if let daylightCalibrationValue = nodeJson["daylightCalibrationValue"].uInt16, daylightCalibrationValue > 0 {
+                    if let daylightCalibrationValue = nodeJson["daylightCalibrationValue"].uInt16, daylightCalibrationValue > 0 && daylightCalibrationValue < 0xFFFF {
                         node.daylightCalibrationValue = daylightCalibrationValue
                     }
+                    
+                    // 光感校准数据（新版）
+                    if let daylightCalibrationData = nodeJson["daylightCalibrationData"].dictionaryObject {
+                        if let sensorRatio = daylightCalibrationData["sensorRatio"] as? UInt16 {
+                            node.sensorCalibrationData?.sensorRatio = sensorRatio
+                        }
+                        if let ambientlightRatio = daylightCalibrationData["ambientlightRatio"] as? UInt16 {
+                            node.sensorCalibrationData?.ambientlightRatio = ambientlightRatio
+                        }
+                        if let minLightInflectionPointData = daylightCalibrationData["minLightInflectionPointData"] as? [String: Any],
+                            let lightness = minLightInflectionPointData["lightness"] as? UInt16,
+                            let lux = minLightInflectionPointData["lux"] as? UInt16 {
+                            node.sensorCalibrationData?.minLightInflectionPointData = .init(lightness: lightness, lux: lux)
+                        }
+                        if let maxLightInflectionPointData = daylightCalibrationData["maxLightInflectionPointData"] as? [String: Any],
+                            let lightness = maxLightInflectionPointData["lightness"] as? UInt16,
+                            let lux = maxLightInflectionPointData["lux"] as? UInt16 {
+                            node.sensorCalibrationData?.maxLightInflectionPointData = .init(lightness: lightness, lux: lux)
+                        }
+                    }
+                    
                     // pwm频率
                     if let pwmFrequency = nodeJson["pwmFrequency"].uInt16, pwmFrequency > 0 {
                         node.pwmFrequency = pwmFrequency

@@ -796,6 +796,7 @@ class DeviceAddProfessionalModeController: UIViewController {
                     self.space.save()
                     return
                 }
+                self.applyDeviceAddressesRequest(applyAddressCount: applyAddressCount)
             }
             
         } addFinish: {[weak self] successList, failList in

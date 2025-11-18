@@ -164,6 +164,8 @@ class LightSensorCalibrationViewController: UIViewController {
     @objc private func manualCorrectionBtnAction() {
         guard let sensor = selectSensor, let calibrationData = sensor.sensorCalibrationData, let lastSensorRatio = calibrationData.sensorRatio, let lastAmbientlightRatio = calibrationData.ambientlightRatio else { return }
         
+        MeshAPI.getAmbientSensorValue(node: sensor, result: nil)
+        
         let view = LightSensorManualCorrectionView(daylightLux: sensor.steadyDaylightLux ?? 0, sensorRatio: lastSensorRatio, ambientLightRatio: lastAmbientlightRatio) {[weak self] sensorRatio, ambientLightRatio in
             guard let self = self else { return }
             if sensorRatio != lastSensorRatio || ambientLightRatio != lastAmbientlightRatio {
@@ -196,6 +198,8 @@ class LightSensorCalibrationViewController: UIViewController {
             }
             XWHUDManager.showSuccessTipHUD("done!".localizedString)
             self.manualCorrectionView?.dismiss()
+            
+            NotificationCenter.default.post(name: .init(spaceDataChangedNotificaitonName), object: SpaceChangeDataType.device)
         }
         
     }

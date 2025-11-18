@@ -644,7 +644,7 @@ class DeviceRestoreViewController: UIViewController {
             self.reloadDeviceState(addDevice)
             self.updateUIState()
             if case .noAddressAvailable = error, !self.applyDeviceAddress {
-                let applyAddressCount = 100
+                let applyAddressCount = 200
                 guard NetworkRequest.shared.networkable else {
                     if SRAlertView.getCurrentAlertView() == nil {
                         SRAlertView(title: "notification".localizedString, message: "device_address_insufficient".localizedString, actions: [SRAlertAction(title: "ok".localizedString, actionHandler: {[weak self] _ in
@@ -659,6 +659,7 @@ class DeviceRestoreViewController: UIViewController {
                     self.space.save()
                     return
                 }
+                self.applyDeviceAddressesRequest(applyAddressCount: applyAddressCount)
             }
             
         } addFinish: {[weak self] successList, failList in

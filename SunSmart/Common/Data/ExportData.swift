@@ -303,9 +303,27 @@ extension SpaceData {
                         nodeDict.updateValue(lightLCPropertyDict, forKey: "lightLCPropertys")
                     }
                     // 光感校准值
-                    if node.sensorCalibrated, let daylightCalibrationValue = node.daylightCalibrationValue {
+                    if let daylightCalibrationValue = node.daylightCalibrationValue, daylightCalibrationValue > 0 && daylightCalibrationValue < 65535 {
                         nodeDict.updateValue(daylightCalibrationValue, forKey: "daylightCalibrationValue")
                     }
+                    // 光感校准参数（新版）
+                    if let sensorCalibrationData = node.sensorCalibrationData, sensorCalibrationData.isCalibration {
+                        var sensorCalibrationDataDict: [String: Any] = [:]
+                        if let sensorRatio = sensorCalibrationData.sensorRatio {
+                            sensorCalibrationDataDict.updateValue(sensorRatio, forKey: "sensorRatio")
+                        }
+                        if let ambientlightRatio = sensorCalibrationData.ambientlightRatio {
+                            sensorCalibrationDataDict.updateValue(ambientlightRatio, forKey: "ambientlightRatio")
+                        }
+                        if let minLightInflectionPointData = sensorCalibrationData.minLightInflectionPointData {
+                            sensorCalibrationDataDict.updateValue(["lightness": minLightInflectionPointData.lightness, "lux": minLightInflectionPointData.lux], forKey: "minLightInflectionPointData")
+                        }
+                        if let maxLightInflectionPointData = sensorCalibrationData.maxLightInflectionPointData {
+                            sensorCalibrationDataDict.updateValue(["lightness": maxLightInflectionPointData.lightness, "lux": maxLightInflectionPointData.lux], forKey: "maxLightInflectionPointData")
+                        }
+                        nodeDict.updateValue(sensorCalibrationDataDict, forKey: "daylightCalibrationData")
+                    }
+                    
                     // pwm频率
                     if let pwmFrequency = node.pwmFrequency {
                         nodeDict.updateValue(pwmFrequency, forKey: "pwmFrequency")

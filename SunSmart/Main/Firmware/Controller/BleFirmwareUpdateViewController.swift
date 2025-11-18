@@ -131,7 +131,7 @@ internal extension FirmwareUpdateError {
             localized = "firmware_update_check_error"
         case .startFailure:
             localized = "firmware_update_start_error"
-        case .blobFailure:
+        case .blobFailure, .blobFirmwareUploadError:
             localized = "firmware_update_blob_error"
         case .updateFailure:
             localized = "firmware_update_error"
@@ -163,7 +163,7 @@ internal extension FirmwareUpdateError {
             localized = "firmware_update_check_error_message"
         case .startFailure:
             localized = "firmware_update_start_error_message"
-        case .blobFailure:
+        case .blobFailure, .blobFirmwareUploadError:
             localized = "firmware_update_blob_error_message"
         case .updateFailure:
             localized = "firmware_update_error_message"
