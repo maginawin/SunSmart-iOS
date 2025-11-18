@@ -52,7 +52,12 @@ class GroupPathSequenceAddDeviceCell: UICollectionViewCell {
         nameLabel.snp.makeConstraints { make in
             make.left.equalTo(SCRXFrom(6))
             make.right.equalTo(SCRXFrom(-6))
-            make.top.equalTo(iconImageView.snp.bottom)
+            if isIPad {
+                make.top.equalTo(iconImageView.snp.bottom).offset(SCRYFrom(8))
+            }else {
+                make.top.equalTo(iconImageView.snp.bottom).offset(SCRYFrom(2))
+            }
+//            make.top.equalTo(iconImageView.snp.bottom)
             make.bottom.equalToSuperview()
         }
         
