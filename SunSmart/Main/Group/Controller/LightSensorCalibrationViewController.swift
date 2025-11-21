@@ -543,10 +543,11 @@ class LightSensorCalibrationViewController: UIViewController {
                 
                 // 启用传感器，更新缓存
                 self.group.info.ambientLightSensorNodeAddress = sensor.primaryUnicastAddress
-                self.updateGroupLightSensor()
-                
                 result?(true)
-                self.configuring(lightNodes: self.group.nodes)
+                DispatchQueue.main.async {
+                    self.updateGroupLightSensor()
+                    self.configuring(lightNodes: self.group.nodes)
+                }
             }else {
                 result?(false)
             }
@@ -593,12 +594,15 @@ class LightSensorCalibrationViewController: UIViewController {
                 
                 // 禁用传感器，更新缓存
                 self.group.info.ambientLightSensorNodeAddress = nil
-                self.updateGroupLightSensor()
-                
                 result?(handle.isSuccessful)
-                if lightConfig {
-                    self.configuring(lightNodes: self.group.nodes)
+                
+                DispatchQueue.main.async {
+                    self.updateGroupLightSensor()
+                    if lightConfig {
+                        self.configuring(lightNodes: self.group.nodes)
+                    }
                 }
+                
             }else {
                 result?(false)
             }

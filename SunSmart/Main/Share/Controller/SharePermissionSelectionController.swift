@@ -654,7 +654,7 @@ extension SharePermissionSelectionController {
                         let siteName = data["siteName"].string,
                       let userId = data["owner"]["userId"].string,
                       let username = data["owner"]["username"].string else { return nil }
-                let site = SiteData(region: UserData.currentServerRegion, id: siteId, meshUUID: siteId, name: siteName, type: .office, permission: userId == UserData.currentUserId ? .owner : .visitor, create: 0, isFavourite: false, sourceType: .share)
+                let site = SiteData(region: UserData.currentServerRegion, id: siteId, meshUUID: siteId, meshNetworkId: "", name: siteName, type: .office, permission: userId == UserData.currentUserId ? .owner : .visitor, create: 0, isFavourite: false, sourceType: .share)
                 self = .site(site: site, owner: UserData(name: username, uuid: userId), shareId: shareId)
             default:
                 return nil

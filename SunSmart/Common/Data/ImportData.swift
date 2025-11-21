@@ -44,7 +44,13 @@ extension SiteData {
             default:
                 break
             }
-            site = SiteData(region: UserData.currentServerRegion, id: uuid, meshUUID: uuid, name: name, type: .init(rawValue: json["type"].intValue) ?? .office, permission: permission, create: json["createTimestamp"].int64Value, lastUpdate: json["updateTimestamp"].int64Value, isFavourite: false, sourceType: .create)
+            guard let netKeyDict = json["netKey"].dictionaryObject,
+                  let netKeyData = try? JSONSerialization.data(withJSONObject: netKeyDict),
+                  let netKey = try? jsonDecoder.decode(NetworkKey.self, from: netKeyData) else {
+                return nil
+            }
+            
+            site = SiteData(region: UserData.currentServerRegion, id: uuid, meshUUID: uuid, meshNetworkId: netKey.networkId.hex, name: name, type: .init(rawValue: json["type"].intValue) ?? .office, permission: permission, create: json["createTimestamp"].int64Value, lastUpdate: json["updateTimestamp"].int64Value, isFavourite: false, sourceType: .create)
             initialize = true
         }else if site?.state == .waitDeleted { // 已转让site再次加入算重新
             initialize = true
@@ -84,6 +90,10 @@ extension SiteData {
         let currentNetwork = MeshNetworkManager.instance.meshNetwork?.uuid.uuidString == self.meshUUID ? MeshNetworkManager.instance.meshNetwork : nil
 //        print("读取网络数据：\(Date().timeIntervalSince1970)")
         var meshNetwork = currentNetwork ?? MeshNetwork.load(meshUUID: self.meshUUID, allData: false)
+        // 增加主网络id
+        if let mainNetworkKey = meshNetwork?.networkKeys.first(where: { $0.isPrimary }), self.meshNetworkId != mainNetworkKey.networkId.hex {
+            self.meshNetworkId = mainNetworkKey.networkId.hex
+        }
 //        print("读取网络数据完成：\(Date().timeIntervalSince1970)")
         var updateNetwork = false
 //        print("导入数据：site load network \(Date().timeIntervalSince1970)")

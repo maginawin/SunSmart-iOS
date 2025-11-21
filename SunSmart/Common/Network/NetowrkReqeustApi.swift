@@ -122,6 +122,8 @@ enum NetowrkReqeustApi {
     case devicesConfig
     
     // #****** Gateway ******#
+    /// 网关list
+    case gatewayList(siteId: String)
     /// 网关绑定到space
     case gatewayBindSpace(spaceId: String, gatewayId: String)
     /// 网关解绑space
@@ -203,6 +205,8 @@ extension NetowrkReqeustApi: TargetType {
             return "/sitespace/ota/history"
         case .devicesConfig:
             return "/sitespace/ota/configfile"
+        case .gatewayList:
+            return "/sitespace/site/gateways"
         case .gatewayBindSpace:
             return "/sitespace/sapce/gateway/bind"
         case .gatewayUnbindSpace:
@@ -401,6 +405,8 @@ extension NetowrkReqeustApi: TargetType {
             return parameters
         case .devicesConfig:
             return nil
+        case .gatewayList(let siteId):
+            return ["siteId": siteId]
         case .gatewayBindSpace(let spaceId, let gatewayId):
             return ["spaceId": spaceId, "gatewayId": gatewayId, "userId": UserData.currentUserId]
         case .gatewayUnbindSpace(let spaceId, let gatewayId):

@@ -8,28 +8,17 @@
 import Foundation
 import NordicSigMeshSDK
 
+
+/// 网关连接状态
+enum GatewayConnectStatus {
+    case online      // 在线（绿色）
+    case offline     // 离线（灰色）
+    case inactive     // 未激活（黄色）
+}
+
 class GatewayModel: Copyable {
     
-    /// MQTT服务器信息
-//    struct ServerInformation: Codable {
-//        /// 服务器地址 ip+端口
-//        let serverAddress: String
-//        /// 客户端id
-//        let clientId: String
-//        /// 用户名
-//        let userName: String
-//        /// 密码
-//        let password: String
-//        /// 保持心跳时长（s）
-//        let keepalive: UInt16
-//        /// 连接清空session缓存
-//        let clearSession: Bool
-//        /// 授权模式
-//        let authMode: MQTTAuthMode
-//        /// ssl版本
-//        let sslVersion: MQTTSSLVersion
-//    }
-    
+    /// site id
     let siteId: String
     /// 设备地址
     var address: Address

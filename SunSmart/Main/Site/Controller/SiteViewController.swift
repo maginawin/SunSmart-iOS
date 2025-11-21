@@ -24,6 +24,9 @@ class SiteViewController: UIViewController {
     private var allSpacesNoInternetView: NoInternetHeaderView?
     private var favouritesNoInternetView: NoInternetHeaderView?
     
+    private var gatewayListView: GatewayListView!
+    private var gatewayStatusView: SiteGatewayStatusView!
+    
     private let noInternetHeight = SCRYFrom(54)
     
     private var addSpaceBtn: UIButton!
@@ -62,6 +65,8 @@ class SiteViewController: UIViewController {
     
     private var networkableObservation: NSKeyValueObservation?
     
+    private var gatewayModels: [GatewayModel] = []
+    
     init(site: SiteData, addSite: Bool = false) {
         self.site = site
         self.addSite = addSite
@@ -74,13 +79,14 @@ class SiteViewController: UIViewController {
     
     override func viewDidLoad() {
         super.viewDidLoad()
-
         title = site.name
         view.backgroundColor = Background_Color
         navigationController?.navigationBar.barTintColor = .clear
         navigationItem.rightBarButtonItem = UIBarButtonItem(image: UIImage(named: "more_vertical")?.withRenderingMode(.alwaysOriginal), style: .done, target: self, action: #selector(moreClick))
 
         setupUI()
+        
+        gatewayModels = GatewayModel.load(siteId: site.id)
         
         allSpaces = site.spaces
         favouriteSpaces = allSpaces.filter({ $0.isFavourite })
@@ -210,23 +216,23 @@ self.updateAddressData()
 //        localProvisioner.allocatedSceneRange.forEach({
 //            sceneAddressCount += Int(($0.lastScene - $0.firstScene) + 1)
 //        })
-//        
+//
 //        var recycleAddressCount = 0
 //        MeshAPI.getExclusionAddresses(meshUUID: self.site.id).forEach({
 //            recycleAddressCount += $0.addresses.count
 //        })
-//        
+//
 //        allDeviceAddressNum = deviceAddressCount
 //        usedDeviceAddressNum = deviceAddressCount - MeshAPI.getNumberOfAvailableUnicastAddresses(meshUUID: self.site.id)
-//        
+//
 //        allGroupAddressNum = groupAddressCount
 //        usedGroupAddressNum = groupAddressCount - MeshAPI.getNumberOfAvailableGroupAddresses(meshUUID: self.site.id)
-//        
+//
 //        allSceneAddressNum = sceneAddressCount
 //        usedSceneAddressNum = sceneAddressCount - MeshAPI.getNumberOfAvailableSceneAddresses(meshUUID: self.site.id)
-//        
+//
 //        recycleAddressNum = recycleAddressCount
-//        
+//
 //        self.allSpacesTableView.reloadData()
     }
 //    #endif
@@ -270,7 +276,7 @@ self.updateAddressData()
                         // 需要回收地址的space
                         let recyclingSpaces = self.site.spaces.filter({ $0.state == .waitDeleted  && !$0.releaseAddress })
                         if recyclingSpaces.count > 0 {
-                            recyclingSpaces.forEach({ 
+                            recyclingSpaces.forEach({
                                 $0.releaseAddress = true
                                 $0.save()
                             })
@@ -542,6 +548,16 @@ self.updateAddressData()
         
     }
     
+    /// 加载网关list请求
+    private func loadGatewaysReqeust() {
+        
+//        NetworkRequest.shared.request(.gatewayList(siteId: site.id)) { result in
+            
+            
+            
+        
+    }
+    
     // MARK: - Action
     
     @objc private func moreClick() {
@@ -657,7 +673,7 @@ self.updateAddressData()
 //        let vc = BleFirmwareUpdateViewController()
 //
 //        present(NavigationViewController(rootViewController: vc), animated: true)
-//        
+//
 //        return
         
         var imageNames: [String] = []
@@ -1663,6 +1679,29 @@ self.updateAddressData()
             make.height.equalTo(SCRYFrom(44))
         }
         
+        gatewayListView = GatewayListView()
+//        gatewayListView.updateItems([GatewayListItem(id: "overview", title: "Overview", status: .none, isSelected: true), GatewayListItem(id: "AABBCCDDEEFF", title: "Gateway 1", status: .online, isSelected: false), GatewayListItem(id: "GGCCSSAADDFF", title: "Gateway 2", status: .offline, isSelected: false), GatewayListItem(id: "11BBCCDDEEFF", title: "Gateway 3", status: .warning, isSelected: false)])
+        gatewayListView.updateItems([])
+        gatewayListView.delegate = self
+        view.addSubview(gatewayListView)
+        gatewayListView.snp.makeConstraints { make in
+            make.left.equalTo(SCRXFrom(16))
+            make.right.equalTo(SCRXFrom(-16))
+            make.top.equalTo(segmentedControl.snp.bottom).offset( SCRYFrom(8))
+            make.height.equalTo(SCRYFrom(40))
+        }
+        
+        gatewayStatusView = SiteGatewayStatusView()
+        gatewayStatusView.updateOverviewStats(.init(internetOnlineCount: 3, internetOfflineCount: 2, noGatewayCount: 3))
+        gatewayStatusView.setDisplayMode(.gateway)
+        gatewayStatusView.updateGatewayStatus(.init(isInternetOnline: false, lastOnlineTime: "2025-11-18 15:30"))
+        view.addSubview(gatewayStatusView)
+        gatewayStatusView.snp.makeConstraints { make in
+            make.left.right.equalTo(gatewayListView)
+            make.top.equalTo(gatewayListView.snp.bottom).offset(SCRYFrom(8))
+            make.height.equalTo(SCRYFrom(40))
+        }
+        
         scrollView = PopGestureScrollView()
         scrollView.isPagingEnabled = true
         scrollView.bounces = false
@@ -1671,7 +1710,7 @@ self.updateAddressData()
         view.addSubview(scrollView)
         scrollView.snp.makeConstraints { make in
             make.left.right.bottom.equalToSuperview()
-            make.top.equalTo(segmentedControl.snp.bottom).offset(SCRYFrom(20))
+            make.top.equalTo(segmentedControl.snp.bottom).offset(SCRYFrom(20) + SCRYFrom(48) + SCRYFrom(48))
         }
         
         allSpacesRefreshControl = UIRefreshControl()
@@ -1752,6 +1791,26 @@ self.updateAddressData()
 
 }
 
+extension SiteViewController: GatewayListViewDelegate {
+    
+    /// 点击网关项回调
+    func gatewayListView(_ view: GatewayListView, didSelectItem item: GatewayListItem, at index: Int) {
+        
+    }
+    
+    /// 点击菜单按钮回调
+    func gatewayListViewDidClickMenu(_ view: GatewayListView) {
+        
+    }
+    
+    /// 点击添加网关
+    func gatewayListViewDidClickAdd(_ view: GatewayListView) {
+        let vc = SiteDeviceAddViewController(site: site)
+        navigationController?.pushViewController(vc, animated: true)
+    }
+    
+}
+
 extension SiteViewController: CustomSegmentedControlDelegate {
     
     func segmentedControl(_ segmentedControl: CustomSegmentedControl, didSelectedItem index: Int) {
@@ -1828,15 +1887,15 @@ extension SiteViewController: UICollectionViewDataSource, UICollectionViewDelega
 //        headerView.recycleAddressLabel.text = "Recycle Address: \(self.recycleAddressNum)"
 //        return headerView
 //    }
-//    
-//    
+//
+//
 //    func tableView(_ tableView: UITableView, heightForHeaderInSection section: Int) -> CGFloat {
 //        guard tableView == self.allSpacesTableView else {
 //            return 0
 //        }
 //        return SCRYFrom(44)
 //    }
-//    
+//
 //    #endif
     
 }
