@@ -1108,6 +1108,13 @@ extension DeviceLightsViewController: DeviceLightControlViewDelegate {
     
     /// Auto
     func lightControlAutoAction(_ view: DeviceLightControlView) {
+        guard view.autoState == .normal else {
+            return
+        }
+        view.updateAutoStateUI(autoState: .progress)
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1) {[weak self] in
+            self?.lightControlView.updateAutoStateUI(autoState: .normal)
+        }
         devices.forEach({
             // profile第一阶段亮度，如果profile是daylight harvesting无法估算亮度则为nil
             if let lightLCOnLightness = $0.lightLCOnLightness {

@@ -212,24 +212,30 @@ class GroupsViewController: UIViewController {
     /// 组双击事件
     private func groupHandleDoubleTap(_ indexPath: IndexPath) {
     
-        guard let item = collectionView.cellForItem(at: indexPath) else { return }
+        guard let item = collectionView.cellForItem(at: indexPath), indexPath.row < MeshNetworkManager.instance.groups.count else { return }
         
-        let menuItems: [MenuPopView.MenuItem] = [
+        var menuItems: [MenuPopView.MenuItem] = [
             .init(icon: UIImage(named: "group_auto"), title: "AUTO", tapItemBack: { _ in
                 guard indexPath.row < MeshNetworkManager.instance.groups.count else {
                     return
                 }
                 let group = MeshNetworkManager.instance.groups[indexPath.item]
                 MeshAPI.sendMessage(message: LightLCLightOnOffSetUnacknowledged(true), address: group.address.address)
-            }),
-            .init(icon: UIImage(named: "menu_profile_test"), title: "TEST".localizedString, tapItemBack: { _ in
-                guard indexPath.row < MeshNetworkManager.instance.groups.count else {
-                    return
-                }
-                let group = MeshNetworkManager.instance.groups[indexPath.item]
-                MeshAPI.sendMessage(message: LightLCLightOnOffSetUnacknowledged(false), address: group.address.address)
             })
         ]
+        
+        let group = MeshNetworkManager.instance.groups[indexPath.item]
+        if space.groupOperates.contains(.edit), group.info.profile.type != .daylight && group.info.profile.type != .manualControl {
+            menuItems.append(
+                .init(icon: UIImage(named: "menu_profile_test"), title: "TEST".localizedString, tapItemBack: { _ in
+                    guard indexPath.row < MeshNetworkManager.instance.groups.count else {
+                        return
+                    }
+                    let group = MeshNetworkManager.instance.groups[indexPath.item]
+                    MeshAPI.sendMessage(message: LightLCLightOnOffSetUnacknowledged(false), address: group.address.address)
+                })
+            )
+        }
         
         let point = view.convert(item.center, from: collectionView)
         item.layer.shadowOpacity = 0

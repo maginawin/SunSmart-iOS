@@ -1412,3 +1412,5 @@
 "ambient_light_ratio" = "Ambient light ratio";
 "calibration_ratio" = "Calibration ratio";
 "calibration_light_point" = "Calibration light point";
+"sensor_calibration_disable_failed_message" = "The light sensor cannot be enabled. The previous light sensor was offline or malfunctioning. You need to restore it to online status or force reset it, and then delete the device.";
+"sensor_calibration_minimum_version_message" = "Your firmware version is too low. Please upgrade to version %@ or higher before calibrating.";

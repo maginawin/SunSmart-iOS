@@ -32,6 +32,8 @@ class ProfileSettingsViewController: UIViewController {
     private var timeoutView: ProfileManualOverrideTimeoutView!
     private var powerUpBehaviorView: ProfilePowerUpBehaviorView!
     private var sensitivityView: ProfileSensitivityView!
+    /// 速率调节
+    private var adjustSpeedView: LightSensorCalibrationAdjustSpeedView!
     
     /// 邻近照明
     private var proximityLightingStepView: ProfileProximityLightingStepView?
@@ -298,6 +300,7 @@ class ProfileSettingsViewController: UIViewController {
         self.powerUpBehaviorView.powerOnCct = self.selectProfile.powerUpCct
         
         self.sensitivityView.sensitivity = self.selectProfile.sensitivity
+        self.adjustSpeedView.adjustSpeed = self.selectProfile.adjustSpeed
         
         if selectProfile.type == .proximityLighting {
             if proximityLightingStepView == nil || proximityLightingNumberView == nil {
@@ -322,17 +325,24 @@ class ProfileSettingsViewController: UIViewController {
                 make.height.greaterThanOrEqualTo(SCRYFrom(selectProfile.lightData.times.count > 0 ? 344 : 264))
             }
         }
-        
+        // 是否显示灯光调节速率
+        var showLightAdjustSpeed = false
         // 是否显示手动控制超时UI
         var showTimeout = true
         // 是否显示灵敏度
         var showSensitivity = true
         if selectProfile.type == .daylight || selectProfile.type == .manualControl {
-            showTimeout = false
+            if selectProfile.type == .manualControl {
+                showTimeout = false
+            }
             showSensitivity = false
         }
-       
         
+        if selectProfile.type == .occupancy_daylight || selectProfile.type == .vacancy_daylight || selectProfile.type == .daylight {
+            showLightAdjustSpeed = true
+        }
+       
+        adjustSpeedView.isHidden = !showLightAdjustSpeed
         timeoutView.isHidden = !showTimeout
         sensitivityView.isHidden = !showSensitivity
         if !showSensitivity {
@@ -347,7 +357,7 @@ class ProfileSettingsViewController: UIViewController {
                 make.top.equalTo(sphasesView.snp.bottom).offset(contentMargin)
             }
             make.height.greaterThanOrEqualTo(SCRYFrom(172))
-            if !showSensitivity {
+            if !showSensitivity && !showLightAdjustSpeed {
                 make.bottom.equalTo(-contentMargin)
             }
         }
@@ -357,6 +367,21 @@ class ProfileSettingsViewController: UIViewController {
                 make.left.right.equalTo(powerUpBehaviorView)
                 make.top.equalTo(powerUpBehaviorView.snp.bottom).offset(contentMargin)
                 make.height.equalTo(SCRYFrom(130))
+                if !showLightAdjustSpeed {
+                    make.bottom.equalTo(-contentMargin)
+                }
+            }
+        }
+        
+        if showLightAdjustSpeed {
+            adjustSpeedView.snp.remakeConstraints { make in
+                make.left.right.equalTo(sphasesView)
+                if showSensitivity {
+                    make.top.equalTo(sensitivityView.snp.bottom).offset(contentMargin)
+                }else {
+                    make.top.equalTo(powerUpBehaviorView.snp.bottom).offset(contentMargin)
+                }
+                make.height.equalTo(SCRYFrom(104))
                 make.bottom.equalTo(-contentMargin)
             }
         }
@@ -440,6 +465,17 @@ class ProfileSettingsViewController: UIViewController {
             make.left.right.equalTo(powerUpBehaviorView)
             make.top.equalTo(powerUpBehaviorView.snp.bottom).offset(contentMargin)
             make.height.equalTo(SCRYFrom(130))
+        }
+        
+        adjustSpeedView = LightSensorCalibrationAdjustSpeedView()
+        adjustSpeedView.delegate = self
+        adjustSpeedView.editable = self.editable
+        adjustSpeedView.isHidden = true
+        contentView.addSubview(adjustSpeedView)
+        adjustSpeedView.snp.makeConstraints { make in
+            make.left.right.equalTo(sphasesView)
+            make.top.equalTo(powerUpBehaviorView.snp.bottom).offset(contentMargin)
+            make.height.equalTo(SCRYFrom(104))
         }
     }
     
@@ -743,6 +779,23 @@ extension ProfileSettingsViewController: ProfileProximityLightingNumberViewDeleg
     /// 帮助
     func proximityLightingNumberViewHelpAction(_ view: ProfileProximityLightingNumberView) {
         navigationController?.pushViewController(NumberOfNeghbourNodeInstructionsController(), animated: true)
+    }
+    
+}
+
+extension ProfileSettingsViewController: LightSensorCalibrationAdjustSpeedViewDelegate {
+    
+    /// 调节速率修改回调
+    /// - Parameters:
+    ///   - view: view
+    ///   - speed: 0~100
+    func view(_ view: LightSensorCalibrationAdjustSpeedView, adjustSpeedChanged speed: Int) {
+        selectProfile.adjustSpeed = speed
+    }
+    
+    /// 点击调整速率帮助
+    func calibrationAdjustSpeedHelpAction(_ view: LightSensorCalibrationAdjustSpeedView) {
+        navigationController?.pushViewController(AdjustSpeedInstructionController(), animated: true)
     }
     
 }

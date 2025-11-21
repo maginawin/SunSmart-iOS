@@ -1963,6 +1963,31 @@ extension Node {
         return self.presenceDetectedSensorModel != nil
     }
     
+    /// 是否支持校准
+    var supportSensorCalibration: Bool {
+        guard self.productIdentifier != nil, let version = self.firmwareVersion, self.ambientLightSensorModel != nil, self.sunricherVendorModel != nil else {
+            return false
+        }
+        return version.compare(sensorCalibrationMinimumVersion, options: .numeric) != .orderedAscending
+    }
+    
+    /// 传感器校准最低支持版本
+    var sensorCalibrationMinimumVersion: String {
+        guard let pid = self.productIdentifier else {
+            return "1.3.0"
+        }
+        switch pid {
+        case 0x1013:
+            return "1.2.33"
+        case 0x1041:
+            return "1.2.26"
+        case 0x1051:
+            return "1.2.16"
+        default:
+            return "1.3.0"
+        }
+    }
+    
     /// 业务层网关model（网关节点）
     var gatewayModel: GatewayModel? {
         get {

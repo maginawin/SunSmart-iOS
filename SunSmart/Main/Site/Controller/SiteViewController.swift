@@ -577,9 +577,9 @@ self.updateAddressData()
             }))
         }
         
-        items.append(.init(icon: UIImage(named: "energy_export")?.withTintColor(.white), title: "Import Space", tapItemBack: {[weak self] _ in
-            self?.importSpace()
-        }))
+//        items.append(.init(icon: UIImage(named: "energy_export")?.withTintColor(.white), title: "Import Space", tapItemBack: {[weak self] _ in
+//            self?.importSpace()
+//        }))
         
         MenuPopView.show(items: items, anchorPoint: CGPoint(x: touchCenterX, y: (navigationController?.navigationBar.frame.maxY ?? kNavigationHeight)), menuWidth: SCRXFrom(154))
     }
@@ -1302,9 +1302,9 @@ self.updateAddressData()
             }))
         }
        
-        items.append(.init(icon: UIImage(named: "menu_share"), title: "Export", tapItemBack: {[weak self] _ in
-            self?.exportSpace(space)
-        }))
+//        items.append(.init(icon: UIImage(named: "menu_share"), title: "Export", tapItemBack: {[weak self] _ in
+//            self?.exportSpace(space)
+//        }))
         
         if space.spaceOperates.contains(.exit) {
             items.append(.init(icon: UIImage(named: "menu_unbind"), title: "unbind".localizedString, tapItemBack: { _ in
@@ -1483,6 +1483,8 @@ self.updateAddressData()
         guard self.view.window != nil else {
             return
         }
+        
+        MenuPopView.hide()
         
         let spaceVc = SpaceViewController(space: space)
         spaceVc.site = site

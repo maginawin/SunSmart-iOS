@@ -29,9 +29,18 @@ class LightSensorCalibrationAdjustSpeedView: UIView {
 
     weak var delegate: LightSensorCalibrationAdjustSpeedViewDelegate?
     
+    /// 是否可编辑
+    var editable: Bool = true {
+        didSet {
+            speedSlider.isEnabled = editable
+        }
+    }
+    
     /// 调节速率 0~100
-    var adjustSpeed: Int {
-        return Int(speedSlider.value)
+    var adjustSpeed: Int = 50 {
+        didSet {
+            speedSlider.value = Float(adjustSpeed)
+        }
     }
     
     
@@ -53,11 +62,11 @@ class LightSensorCalibrationAdjustSpeedView: UIView {
     
     private func setupUI() {
         
-        speedLabel = UILabel(text: "adjust_speed".localizedString, textColor: SubText_Color, fontSize: 14, fontWeight: .light)
+        speedLabel = UILabel(text: "adjust_speed".localizedString, textColor: TextBlack_Color, fontSize: 16, fontWeight: .light)
         addSubview(speedLabel)
         speedLabel.snp.makeConstraints { make in
             make.left.equalTo(SCRXFrom(16))
-            make.top.equalTo(SCRYFrom(10.5))
+            make.top.equalTo(SCRYFrom(16))
         }
 
         speedHelpBtn = UIButton(normalImageName: "help", target: self, action: #selector(speedHelpBtnAction))

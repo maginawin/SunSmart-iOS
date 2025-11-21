@@ -118,8 +118,8 @@ enum ProfileType {
     case t4(second: Int)
     /// 进入休眠阶段时间（s）
     case t5(second: Int)
-    /// 手动控制后延迟时间（期间内保存控制后状态） enabled：是否开启  second： 0xFFFFFFFF无限长 默认10min
-    case manualOverrideTimeout(enabled: Bool, second: UInt32 = 600)
+    /// 手动控制后延迟时间（期间内保存控制后状态） enabled：是否开启 manualOverrideState: 手动控制结束后状态  second： 0xFFFFFFFF无限长 默认10min
+    case manualOverrideTimeout(enabled: Bool, manualOverrideState: ManualOverrideState = .standby, second: UInt32 = 600)
     /// 是否手动控制后进入感应状态
     case manualControl(enabled: Bool)
     /// 上电状态
@@ -668,10 +668,15 @@ extension Node {
 //               if groupProfile.type == .daylight || groupProfile.type == .manualControl {
 //                   manualOverrideTimeout = .max
 //               }
+               // daylight配置手动控制后恢复on，其它恢复到off
+               var manualOverrideState: ManualOverrideState = .standby
+               if groupProfile.type == .daylight {
+                   manualOverrideState = .on
+               }
                
                // 手动控制后延时开启灯光控制
-               if lightLCProperty.manualOverrideEnabled == nil || !lightLCProperty.manualOverrideEnabled! || lightLCProperty.manualOverrideTimeout != manualOverrideTimeout {
-                   syncProfile.append(.manualOverrideTimeout(enabled: true, second: groupProfile.manualOverrideTimeout))
+               if lightLCProperty.manualOverrideEnabled == nil || !lightLCProperty.manualOverrideEnabled! || lightLCProperty.manualOverrideTimeout != manualOverrideTimeout ||  lightLCProperty.manualControlState != manualOverrideState {
+                   syncProfile.append(.manualOverrideTimeout(enabled: true, manualOverrideState: manualOverrideState, second: groupProfile.manualOverrideTimeout))
                }
                
                // 手动控制后进入第一阶段
@@ -1049,9 +1054,11 @@ extension Node {
     
     /// 获取需要同步的邻近照明数据
     func getNodeSyncProximityLighting(group: Group? = nil) -> NodeSyncData? {
-        guard let group = group ?? self.group, self.sunricherVendorModel != nil else { return nil }
+        guard self.sunricherVendorModel != nil else {
+            return nil
+        }
         // 检查所在组的profile类型是否是临近照明
-        guard group.info.profile.type == .proximityLighting, groupState != .exitFailure else {
+        guard let group = group ?? self.group, group.info.profile.type == .proximityLighting, groupState != .exitFailure else {
             if self.proximityLightingEnabled { // 禁用邻近照明功能
                 return .proximityLightingEnabled(false)
             }

@@ -69,6 +69,12 @@ class ImportProjectView: UIView {
         }
     }
     
+    static func dismiss() {
+        if let importView = UIApplication.shared.keyWindow().subviews.first(where: { $0.isKind(of: ImportProjectView.classForCoder()) }) as? ImportProjectView {
+            importView.hide()
+        }
+    }
+    
     @objc private func scanQRCodeAction() {
         hide()
         selectCallback?(.scanQRCode)

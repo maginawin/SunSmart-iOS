@@ -716,7 +716,11 @@ class SyncDevicesViewController: UIViewController {
                 let step = SyncDeviceStepModel(type: name, state: .none, tasks: [taskModel])
                 taskModel.parentStepModel = step
                 
-                configturationSteps.append(step)
+                if node.groupState == .exitFailure || removeGroupStep != nil {
+                    deleteSteps.append(step)
+                }else {
+                    configturationSteps.append(step)
+                }
                 
             case .proximityLightingNeighbor(let relayNumber, let neighborAddresses):
                 
@@ -724,7 +728,11 @@ class SyncDevicesViewController: UIViewController {
                 
                 let step = SyncDeviceStepModel(type: "path_sequence".localizedString, state: .none, tasks: [taskModel])
                 taskModel.parentStepModel = step
-                configturationSteps.append(step)
+                if node.groupState == .exitFailure || removeGroupStep != nil {
+                    deleteSteps.append(step)
+                }else {
+                    configturationSteps.append(step)
+                }
             case .syncGatewayProjectId(let projectId):
                 let taskModel = SyncDeviceStepTaskModel(name: "association_project".localizedString, operationType: .configuration(node: node, type: .gatewayAssociationProjectId(projectId: projectId)))
                 

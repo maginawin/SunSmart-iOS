@@ -51,6 +51,14 @@ class LightSensorCalibrationSelectView: UIView {
             }
             tableView.isScrollEnabled = daylightSensors.count > 5
             tableView.reloadData()
+            
+            if tableView.isScrollEnabled {
+                if self.tableView.firstShowFlashScrollIndicators {
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.5, execute: {[weak self] in
+                        self?.tableView.flashScrollIndicatorsIfNeeded()
+                    })
+                }
+            }
         }
     }
     
@@ -117,7 +125,7 @@ class LightSensorCalibrationSelectView: UIView {
         tableView.dataSource = self
         tableView.delegate = self
         tableView.rowHeight = SCRYFrom(40)
-        tableView.showsVerticalScrollIndicator = false
+//        tableView.showsVerticalScrollIndicator = false
         tableView.register(LightSensorCalibrationSelectViewCell.classForCoder(), forCellReuseIdentifier: "cell")
         addSubview(tableView)
         tableView.snp.makeConstraints { make in

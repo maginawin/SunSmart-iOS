@@ -46,6 +46,7 @@ class GroupSensorView: UIView {
     private var lightLuxLabel: UILabel!
     private var moveImageView: UIImageView!
     private var occupyStateImageView: UIImageView!
+    var controlStateImageView: UIImageView!
     /// list
     var tableView: UITableView!
     
@@ -62,6 +63,7 @@ class GroupSensorView: UIView {
     /// 支持的传感器类型
     var supportSensorType: SupportSensorType = .all {
         didSet {
+            controlStateImageView.isHidden = true
             switch supportSensorType {
             case .none:
                 moveImageView.isHidden = true
@@ -86,7 +88,6 @@ class GroupSensorView: UIView {
                 occupyStateImageView.isHidden = false
                 lightImageView.isHidden = false
                 lightLuxLabel.isHidden = false
-                
                 lightLuxLabel.snp.updateConstraints { make in
                     make.right.equalTo(SCRXFrom(-88))
                 }
@@ -129,10 +130,14 @@ class GroupSensorView: UIView {
                 if let sensor = sensors.first(where: { $0.ambientLightSensorModel?.publish != nil && $0.sensorCalibrated && $0.steadyDaylightLux != nil && $0.state }) {
                     lightLuxLabel.text = "\(sensor.steadyDaylightLux!)lx"
                     lightLuxLabel.backgroundColor = RGB(245, 245, 245)
+                    
+                    controlStateImageView.isHidden = !sensor.lightControlOn
                     startUpdateLuxTimer()
                 }else {
+                    controlStateImageView.isHidden = true
                     lightLuxLabel.text = nil
                     lightLuxLabel.backgroundColor = RGB(245, 245, 245)
+                    controlStateImageView.tintColor = .black
                 }
             }
             tableView.reloadData()
@@ -413,6 +418,13 @@ class GroupSensorView: UIView {
         lightImageView.snp.makeConstraints { make in
             make.right.equalTo(lightLuxLabel.snp.left).offset(SCRXFrom(-8))
             make.centerY.equalTo(lightLuxLabel)
+        }
+        
+        controlStateImageView = UIImageView(image: UIImage(named: "group_auto")?.withTintColor(.black))
+        topView.addSubview(controlStateImageView)
+        controlStateImageView.snp.makeConstraints { make in
+            make.right.equalTo(lightImageView.snp.left).offset(SCRXFrom(-16))
+            make.centerY.equalTo(lightImageView)
         }
         
         tableView = UITableView()

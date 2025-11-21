@@ -40,12 +40,19 @@ class DeviceLightControlView: UIView {
         /// 色温
         case cct
     }
+    /// Auto状态
+    enum AutoButtonState {
+        case normal
+        case progress
+    }
     
     private var shadeView: UIView!
     private var contentView: UIView!
     private var autoBtn: UIButton!
     private var levelSliderView: BuoySliderView!
     private var cctSliderView: BuoySliderView!
+    
+    var autoState: AutoButtonState = .normal
     
     private var lastSupportOptions: [SupportOptions] = [.level, .cct]
     
@@ -134,6 +141,24 @@ class DeviceLightControlView: UIView {
         } completion: { _ in
             self.isHidden = true
             self.delegate?.lightControlDidHide(self)
+        }
+    }
+    
+    /// 更新Auto状态
+    func updateAutoStateUI(autoState: AutoButtonState) {
+        self.autoState = autoState
+        if autoState == .normal {
+            autoBtn.backgroundColor = Bar_Color
+            autoBtn.setImage(nil, for: .normal)
+            autoBtn.setTitle("AUTO", for: .normal)
+            autoBtn.imageView?.layer.removeAnimation(forKey: "loading")
+            autoBtn.isUserInteractionEnabled = true
+        }else {
+            autoBtn.backgroundColor = Bar_Color.withAlphaComponent(0.5)
+            autoBtn.setTitle(nil, for: .normal)
+            autoBtn.setImage(UIImage(named: "loading_small_white"), for: .normal)
+            autoBtn.imageView?.layer.addRotationAnimation(duration: 1, repeatCount: 100, animationKey: "loading")
+            autoBtn.isUserInteractionEnabled = false
         }
     }
     

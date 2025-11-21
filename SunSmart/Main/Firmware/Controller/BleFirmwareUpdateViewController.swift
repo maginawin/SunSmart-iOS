@@ -200,7 +200,6 @@ class BleFirmwareUpdateViewController: UIViewController {
     private weak var upgradeView: FirmwareUpdateStateView?
     private var showData: [UInt16: Bool] = [:]
     private var refreshControl: UIRefreshControl!
-    private var scanAnimationView: UIImageView!
     
     private var firmwareTypeDatas: [FirmwareUpdateTypeData] = []
     private var selectNodes: [Node] = []
@@ -246,11 +245,11 @@ class BleFirmwareUpdateViewController: UIViewController {
         
         navigationItem.leftBarButtonItem = UIBarButtonItem(image: UIImage(named: "navigation_back")?.withRenderingMode(.alwaysOriginal), style: .done, target: self, action: #selector(backAction))
         
-        scanAnimationView = UIImageView(image: UIImage(named: "loading"))
-        scanAnimationView.isHidden = true
+//        scanAnimationView = UIImageView(image: UIImage(named: "loading"))
+//        scanAnimationView.isHidden = true
         
         helpBtn = UIButton(normalImageName: "help", target: self, action: #selector(helpAction))
-        navigationItem.rightBarButtonItems = [UIBarButtonItem(customView: helpBtn), UIBarButtonItem(customView: scanAnimationView)]
+        navigationItem.rightBarButtonItem = UIBarButtonItem(customView: helpBtn)
 //    #if DEBUG
         let testTap = UILongPressGestureRecognizer(target: self, action: #selector(test))
         helpBtn.addGestureRecognizer(testTap)
@@ -344,7 +343,7 @@ class BleFirmwareUpdateViewController: UIViewController {
             return
         }
         self.refreshControl.endRefreshing()
-        if self.refreshing {
+        if self.refreshing || self.updateState == .updating {
             return
         }
         
@@ -363,8 +362,9 @@ class BleFirmwareUpdateViewController: UIViewController {
             self.perform(#selector(self.refreshNodesRSSIFinish), with: nil, afterDelay: 10)
         }
         self.refreshing = true
-        self.scanAnimationView.isHidden = false
-        self.scanAnimationView.layer.addRotationAnimation(duration: 1.2, repeatCount: 999, animationKey: "loading")
+        self.updateUI()
+//        self.scanAnimationView.isHidden = false
+//        self.scanAnimationView.layer.addRotationAnimation(duration: 1.2, repeatCount: 999, animationKey: "loading")
         
         MeshLibManager.manager.refreshNodesRSSI(withWaitFor: 99999, nodeScan: {[weak self] data in
             
@@ -420,12 +420,27 @@ class BleFirmwareUpdateViewController: UIViewController {
 //        }
     }
     
+    /// 停止扫描
+    private func stopRefreshRSSI() {
+        
+        refreshing = false
+        MeshLibManager.manager.stopRefreshNodesRSSI()
+        DispatchQueue.main.async {
+            NSObject.cancelPreviousPerformRequests(withTarget: self, selector: #selector(self.refreshNodesRSSIFinish), object: nil)
+        }
+        rssiSortTimer?.invalidate()
+        rssiSortTimer = nil
+        devicesRssiSort()
+     
+    }
+    
     /// 刷新信号结束
     @objc private func refreshNodesRSSIFinish() {
         MeshLibManager.manager.stopRefreshNodesRSSI()
         refreshing = false
-        scanAnimationView.layer.removeAnimation(forKey: "loading")
-        scanAnimationView.isHidden = true
+        updateUI()
+//        scanAnimationView.layer.removeAnimation(forKey: "loading")
+//        scanAnimationView.isHidden = true
     }
     
     private func showEmptyUI() {
@@ -695,15 +710,17 @@ class BleFirmwareUpdateViewController: UIViewController {
         if updateState == .none {
             updateResultView.isHidden = true
             collectionView.contentInset = UIEdgeInsets(top: 0, left: 0, bottom: SCRYFrom(16), right: 0)
-            
+            collectionView.refreshControl = refreshControl
         }else if updateState == .updating {
             updateResultView.isHidden = false
             updateResultView.closeBtn.isHidden = true
             updateResultView.stopAddBtn.isHidden = false
             collectionView.contentInset = UIEdgeInsets(top: 0, left: 0, bottom: SCRYFrom(16) + updateResultView.height, right: 0)
+            collectionView.refreshControl = nil
         }else {
             updateResultView.closeBtn.isHidden = false
             updateResultView.stopAddBtn.isHidden = true
+            collectionView.refreshControl = refreshControl
         }
         
         if updateState != .none {
@@ -881,7 +898,21 @@ class BleFirmwareUpdateViewController: UIViewController {
     }
     
     private func updateUpgradeBtnState() {
-        upgradeBtn.isEnabled = !selectNodes.isEmpty
+        if refreshing {
+            upgradeBtn.setTitle("STOP".localizedString, for: .normal)
+            upgradeBtn.setImage(UIImage(named: "loading_white"), for: .normal)
+            
+            if upgradeBtn.imageView?.layer.animation(forKey: "loading") == nil {
+                upgradeBtn.imageView?.layer.addRotationAnimation(duration: 1.2, repeatCount: 9999, animationKey: "loading")
+            }
+            upgradeBtn.setImagePosition(position: .left, spacing: SCRXFrom(5))
+            upgradeBtn.isEnabled = true
+        }else {
+            upgradeBtn.isEnabled = !selectNodes.isEmpty
+            upgradeBtn.setTitle("upgrade_selected".localizedString, for: .normal)
+            upgradeBtn.imageView?.layer.removeAnimation(forKey: "loading")
+            upgradeBtn.setImage(nil, for: .normal)
+        }
     }
     
     /// 刷新设备类型UI
@@ -974,6 +1005,11 @@ class BleFirmwareUpdateViewController: UIViewController {
     
     /// 开始升级
     @objc private func upgradeBtnAction() {
+        if refreshing {
+            stopRefreshRSSI()
+            return
+        }
+        
         guard self.selectNodes.count > 0 else {
             return
         }

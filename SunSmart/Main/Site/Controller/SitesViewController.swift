@@ -1426,6 +1426,8 @@ extension SitesViewController: UICollectionViewDataSource, UICollectionViewDeleg
             XWHUDManager.showTipHUD("have_been_transferred".localizedString, isLineFeed: true)
             return
         }
+        ImportProjectView.dismiss()
+        MenuPopView.hide()
         
         let vc = SiteViewController(site: site)
         navigationController?.pushViewController(vc, animated: true)

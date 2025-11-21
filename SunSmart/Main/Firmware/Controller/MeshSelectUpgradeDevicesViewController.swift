@@ -37,7 +37,7 @@ internal extension FirmwareDistributionError {
     }
 }
 
-let meshUpdateTest = true
+let meshUpdateTest = false
 
 class MeshSelectUpgradeDevicesViewController: UIViewController {
 

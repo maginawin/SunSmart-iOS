@@ -298,13 +298,13 @@ extension ProfileType {
             messageHandles.append(MeshMessageHandle(message: LightLCPropertySet(of: .lightControlTimeProlong, value: .timeMillisecond24(UInt32(min(second * 1000, 0xFFFFFE)))), model: lightLCSetupModel))
         case .t5(let second):
             messageHandles.append(MeshMessageHandle(message: LightLCPropertySet(of: .lightControlTimeFadeStandbyAuto, value: .timeMillisecond24(UInt32(second * 1000))), model: lightLCSetupModel))
-        case .manualOverrideTimeout(let enabled, let second):
+        case .manualOverrideTimeout(let enabled, let state, let second):
             if let vendorModel = node.sunricherVendorModel {
                 var interval = second
                 if second < UInt32.max {
                     interval = min(interval * 1000, UInt32.max)
                 }
-                messageHandles.append(MeshMessageHandle(message: SunricherVendorSet(function: .manualOverrideTimeout(enabled: enabled, state: .standby, interval: interval)), model: vendorModel))
+                messageHandles.append(MeshMessageHandle(message: SunricherVendorSet(function: .manualOverrideTimeout(enabled: enabled, state: state, interval: interval)), model: vendorModel))
             }
         case .manualControl(let enabled):
             if let vendorModel = node.sunricherVendorModel {

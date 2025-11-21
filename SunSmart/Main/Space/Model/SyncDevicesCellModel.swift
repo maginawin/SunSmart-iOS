@@ -492,8 +492,8 @@ extension ProfileType {
             return node.lightLCProperty.timeProlong == UInt32(min(second * 1000, 0xFFFFFE))
         case .t5(let second):
             return node.lightLCProperty.timeFadeStandbyAuto == UInt32(min(second * 1000, 0xFFFFFE))
-        case .manualOverrideTimeout(let enabled, let second):
-            return node.lightLCProperty.manualOverrideEnabled == enabled && node.lightLCProperty.manualOverrideTimeout == min(second != .max ? second * 1000 : second, UInt32.max)
+        case .manualOverrideTimeout(let enabled, let state, let second):
+            return node.lightLCProperty.manualOverrideEnabled == enabled && node.lightLCProperty.manualOverrideTimeout == min(second != .max ? second * 1000 : second, UInt32.max) && node.lightLCProperty.manualControlState == state
         case .manualControl(let enabled):
             return node.lightLCProperty.manualControlMode == enabled
         case .powerOnState(let state, let cct):

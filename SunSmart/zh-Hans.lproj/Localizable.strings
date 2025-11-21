@@ -1416,3 +1416,5 @@
 "ambient_light_ratio" = "环境光比例";
 "calibration_ratio" = "校准比例";
 "calibration_light_point" = "校准光点";
+"sensor_calibration_disable_failed_message" = "无法启用光照传感器。之前的光照传感器离线或故障。需要将其恢复到在线状态或强制复位，然后再删除该设备。";
+"sensor_calibration_minimum_version_message" = "你的固件版本较低，请升级到%@或更高的版本后再校准。";

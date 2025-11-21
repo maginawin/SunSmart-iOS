@@ -118,10 +118,10 @@ class MeshSelectDistributorViewController: UIViewController {
         
         scanAnimationView = UIImageView(image: UIImage(named: "loading"))
         scanAnimationView.isHidden = true
-        #if DEBUG
+//        #if DEBUG
         scanAnimationView.isUserInteractionEnabled = true
         scanAnimationView.addGestureRecognizer(UITapGestureRecognizer(target: self, action: #selector(stopRefreshRSSI)))
-        #endif
+//        #endif
         
         navigationItem.rightBarButtonItem = UIBarButtonItem(customView: scanAnimationView)
         
