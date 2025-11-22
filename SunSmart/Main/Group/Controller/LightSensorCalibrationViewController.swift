@@ -356,13 +356,16 @@ class LightSensorCalibrationViewController: UIViewController {
         // 判断哪些需要设置的灯
         let setLightNodes = lightNodes.filter({ $0.getNodeSyncProfiles().count > 0 })
         if setLightNodes.isEmpty {
-            SRAlertView.hide()
+            DispatchQueue.main.async {
+                SRAlertView.hide()
+            }
             return
         }
         
         self.stopConfig = false
-        
-        self.showConfiguring()
+        DispatchQueue.main.async {
+            self.showConfiguring()
+        }
         DispatchQueue.global().async {
             let semaphore = DispatchSemaphore(value: 0)
             
@@ -530,7 +533,9 @@ class LightSensorCalibrationViewController: UIViewController {
         // 判断传感器是否已启用
         if ambientLightSensorModel.publish?.publicationAddress == self.group.address {
             result?(true)
-            self.configuring(lightNodes: self.group.nodes)
+            DispatchQueue.main.async {
+                self.configuring(lightNodes: self.group.nodes)
+            }
             return
         }
         
