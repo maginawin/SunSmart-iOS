@@ -67,6 +67,9 @@ class SiteViewController: UIViewController {
     
     private var gatewayModels: [GatewayModel] = []
     
+    private var allSpaceGatewayIndex: Int = 0
+    private var favouriteSpaceGatewayIndex: Int = 0
+    
     init(site: SiteData, addSite: Bool = false) {
         self.site = site
         self.addSite = addSite
@@ -85,8 +88,6 @@ class SiteViewController: UIViewController {
         navigationItem.rightBarButtonItem = UIBarButtonItem(image: UIImage(named: "more_vertical")?.withRenderingMode(.alwaysOriginal), style: .done, target: self, action: #selector(moreClick))
 
         setupUI()
-        
-        gatewayModels = GatewayModel.load(siteId: site.id)
         
         allSpaces = site.spaces
         favouriteSpaces = allSpaces.filter({ $0.isFavourite })
@@ -142,6 +143,7 @@ class SiteViewController: UIViewController {
         
         if NetworkRequest.shared.networkable && site.uploadCloud {
             loadSiteRequest()
+//            loadGatewaysReqeust()
         }
         
 //        MeshLibManager.manager.setMeshNetworkConnected(meshUUID: self.site.meshUUID, subNetwork: self.allSpaces.first?.meshNetworkKey, connected: true)
@@ -295,12 +297,22 @@ self.updateAddressData()
                         }
                         
                         self.title = self.site.name
+                        
+//                        self.gatewayModels = await self.loadGatewaysData()
+                        
 //                        self.site.save(allData: true)
 //                        // 未提交到服务器的本地数据
 //                        let localSpaces = self.allSpaces.filter({ localSpace in !self.site.spaces.contains(where: { $0.id == localSpace.id }) && !localSpace.uploadCloud })
 //                        self.site.spaces.append(contentsOf: localSpaces)
 //                        self.site.spaces.append(contentsOf: deleteSpaces)
 //                        self.site.spaces.sort(by: { $0.create < $1.create })
+//                        self.site.spaces.forEach({ space in
+//                            if let gateway = self.gatewayModels.first(where: { gateway in gateway.associatedSpaces.contains(where: { $0.id == space.id }) }) {
+//                                space.gatewayStatus = gateway.connectStatus == .online ? .online : .offline
+//                            }else {
+//                                space.gatewayStatus = .notBound
+//                            }
+//                        })
                         
                         self.allSpaces = self.site.spaces
                         self.favouriteSpaces = self.allSpaces.filter({ $0.isFavourite })
@@ -548,14 +560,17 @@ self.updateAddressData()
         
     }
     
-    /// 加载网关list请求
-    private func loadGatewaysReqeust() {
+    /// 加载网关list及网络请求
+    private func loadGatewaysData() async -> [GatewayModel] {
         
-//        NetworkRequest.shared.request(.gatewayList(siteId: site.id)) { result in
-            
-            
-            
+        let result = await NetworkRequest.shared.request(.gatewayList(siteId: site.id))
         
+        let gatewayModels = GatewayModel.load(siteId: site.id)
+        // 合并服务器数据
+        if let response = try? result.get() {
+            
+        }
+        return gatewayModels
     }
     
     // MARK: - Action
@@ -1679,29 +1694,6 @@ self.updateAddressData()
             make.height.equalTo(SCRYFrom(44))
         }
         
-        gatewayListView = GatewayListView()
-//        gatewayListView.updateItems([GatewayListItem(id: "overview", title: "Overview", status: .none, isSelected: true), GatewayListItem(id: "AABBCCDDEEFF", title: "Gateway 1", status: .online, isSelected: false), GatewayListItem(id: "GGCCSSAADDFF", title: "Gateway 2", status: .offline, isSelected: false), GatewayListItem(id: "11BBCCDDEEFF", title: "Gateway 3", status: .warning, isSelected: false)])
-        gatewayListView.updateItems([])
-        gatewayListView.delegate = self
-        view.addSubview(gatewayListView)
-        gatewayListView.snp.makeConstraints { make in
-            make.left.equalTo(SCRXFrom(16))
-            make.right.equalTo(SCRXFrom(-16))
-            make.top.equalTo(segmentedControl.snp.bottom).offset( SCRYFrom(8))
-            make.height.equalTo(SCRYFrom(40))
-        }
-        
-        gatewayStatusView = SiteGatewayStatusView()
-        gatewayStatusView.updateOverviewStats(.init(internetOnlineCount: 3, internetOfflineCount: 2, noGatewayCount: 3))
-        gatewayStatusView.setDisplayMode(.gateway)
-        gatewayStatusView.updateGatewayStatus(.init(isInternetOnline: false, lastOnlineTime: "2025-11-18 15:30"))
-        view.addSubview(gatewayStatusView)
-        gatewayStatusView.snp.makeConstraints { make in
-            make.left.right.equalTo(gatewayListView)
-            make.top.equalTo(gatewayListView.snp.bottom).offset(SCRYFrom(8))
-            make.height.equalTo(SCRYFrom(40))
-        }
-        
         scrollView = PopGestureScrollView()
         scrollView.isPagingEnabled = true
         scrollView.bounces = false
@@ -1710,7 +1702,7 @@ self.updateAddressData()
         view.addSubview(scrollView)
         scrollView.snp.makeConstraints { make in
             make.left.right.bottom.equalToSuperview()
-            make.top.equalTo(segmentedControl.snp.bottom).offset(SCRYFrom(20) + SCRYFrom(48) + SCRYFrom(48))
+            make.top.equalTo(segmentedControl.snp.bottom).offset(SCRYFrom(20))
         }
         
         allSpacesRefreshControl = UIRefreshControl()
@@ -1729,6 +1721,7 @@ self.updateAddressData()
         allSpacesCollectionView = UICollectionView(frame: .zero, collectionViewLayout: allSpacesFlowLayout)
         allSpacesCollectionView.backgroundColor = .clear
         allSpacesCollectionView.register(SpacesViewCell.classForCoder(), forCellWithReuseIdentifier: "cell")
+//        allSpacesCollectionView.register(SiteGatewayHeaderView.classForCoder(), forSupplementaryViewOfKind: UICollectionView.elementKindSectionHeader, withReuseIdentifier: "header")
 //#if DEBUG
 //        allSpacesCollectionView.register(SiteAddressDataHeaderView.classForCoder(), forHeaderFooterViewReuseIdentifier: "header")
 //#endif
@@ -1758,6 +1751,7 @@ self.updateAddressData()
         
         favouritesCollectionView = UICollectionView(frame: .zero, collectionViewLayout: favouritesFlowLayout)
         favouritesCollectionView.backgroundColor = .clear
+//        favouritesCollectionView.register(SiteGatewayHeaderView.classForCoder(), forSupplementaryViewOfKind: UICollectionView.elementKindSectionHeader, withReuseIdentifier: "header")
         favouritesCollectionView.register(SpacesViewCell.classForCoder(), forCellWithReuseIdentifier: "cell")
         favouritesCollectionView.dataSource = self
         favouritesCollectionView.delegate = self
@@ -1795,7 +1789,13 @@ extension SiteViewController: GatewayListViewDelegate {
     
     /// 点击网关项回调
     func gatewayListView(_ view: GatewayListView, didSelectItem item: GatewayListItem, at index: Int) {
-        
+        if segmentedControl.selectedIndex == 0 {
+            allSpaceGatewayIndex = index
+            allSpacesCollectionView.reloadData()
+        }else {
+            favouriteSpaceGatewayIndex = index
+            favouritesCollectionView.reloadData()
+        }
     }
     
     /// 点击菜单按钮回调
@@ -1856,6 +1856,69 @@ extension SiteViewController: UICollectionViewDataSource, UICollectionViewDelega
         
         return cell
     }
+    
+//    func collectionView(_ collectionView: UICollectionView, viewForSupplementaryElementOfKind kind: String, at indexPath: IndexPath) -> UICollectionReusableView {
+//        let headerView = collectionView.dequeueReusableSupplementaryView(ofKind: kind, withReuseIdentifier: "header", for: indexPath) as! SiteGatewayHeaderView
+//        
+//        var items = gatewayModels.map({ GatewayListItem(id: $0.mac, title: $0.name, status: .online, gatewayModel: $0)})
+//        if items.count > 0 {
+//            items.insert(.init(id: "", title: "overview".localizedString), at: 0)
+//        }
+//        headerView.gatewayListView.updateItems(items)
+//        var selectIndex: Int = 0
+//        var spaces: [SpaceData] = []
+//        if collectionView == allSpacesCollectionView {
+//            selectIndex = allSpaceGatewayIndex
+//            spaces = allSpaces
+//        }else {
+//            selectIndex = favouriteSpaceGatewayIndex
+//            spaces = favouriteSpaces
+//        }
+//        headerView.gatewayListView.selectedIndex = selectIndex
+//        if selectIndex == 0 {
+//            headerView.gatewayStatusView.setDisplayMode(.overview)
+//            
+//            let onlineSpaces = spaces.filter({ $0.gatewayStatus == .online })
+//            let offlineSpaces = spaces.filter({ $0.gatewayStatus == .offline })
+//            let notBoundSpaces = spaces.filter({ $0.gatewayStatus == .notBound })
+//            
+//            headerView.gatewayStatusView.updateOverviewStats(.init(internetOnlineCount: onlineSpaces.count, internetOfflineCount: offlineSpaces.count, noGatewayCount: notBoundSpaces.count))
+//        }else {
+//            headerView.gatewayStatusView.setDisplayMode(.gateway)
+//            if selectIndex < gatewayModels.count {
+//                let gateway = gatewayModels[selectIndex]
+//                switch gateway.connectStatus {
+//                case .online:
+//                    headerView.gatewayStatusView.updateGatewayStatus(.online)
+//                case .offline:
+//                    headerView.gatewayStatusView.updateGatewayStatus(.offline(lastOnlineTime: gateway.lastOnlineTime ?? ""))
+//                case .inactive:
+//                    headerView.gatewayStatusView.updateGatewayStatus(.noActivated)
+//                case .reset:
+//                    headerView.gatewayStatusView.updateGatewayStatus(.reset(resetTime: gateway.resetTime ?? ""))
+//                }
+//            }
+//        }
+//        headerView.gatewayListView.delegate = self
+//        return headerView
+//    }
+    
+//    func collectionView(_ collectionView: UICollectionView, layout collectionViewLayout: UICollectionViewLayout, referenceSizeForHeaderInSection section: Int) -> CGSize {
+//        var spaces = allSpaces
+//        if collectionView == favouritesCollectionView {
+//            spaces = favouriteSpaces
+//        }
+//        guard spaces.count > 0 else {
+//            return .zero
+//        }
+//        
+//        let headerW = collectionView.width - collectionView.contentInset.left - collectionView.contentInset.right
+//        var headerH = SCRYFrom(48)
+//        if gatewayModels.count > 0 {
+//            headerH += SCRYFrom(48)
+//        }
+//        return CGSize(width: headerW, height: headerH)
+//    }
     
     func collectionView(_ collectionView: UICollectionView, didSelectItemAt indexPath: IndexPath) {
         var space: SpaceData!
@@ -2081,4 +2144,27 @@ extension SiteViewController: UIDocumentPickerDelegate {
     
 }
 
-
+extension SpaceData {
+    
+    /// space网关状态
+    enum GatewayStatus {
+        /// 网关在线
+    case online
+        /// 网关离线
+    case offline
+        /// 未绑定
+    case notBound
+    }
+    
+    static private var gatewayStatusKey = 10
+    
+    /// 网关状态
+    var gatewayStatus: GatewayStatus {
+        get {
+            objc_getAssociatedObject(self, &SpaceData.gatewayStatusKey) as? GatewayStatus ?? .notBound
+        }set {
+            objc_setAssociatedObject(self, &SpaceData.gatewayStatusKey, newValue, .OBJC_ASSOCIATION_RETAIN)
+        }
+    }
+    
+}

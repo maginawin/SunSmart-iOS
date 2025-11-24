@@ -113,8 +113,16 @@ class SpacesViewCell: UICollectionViewCell {
                 stackSubViews.append(permissionLabel)
             }
             
-            gatewayStateImageView.image = UIImage(named: "gateway_internet_online_big")
-            stackSubViews.append(gatewayStateImageView)
+            switch space.gatewayStatus {
+            case .online:
+                gatewayStateImageView.image = UIImage(named: "gateway_internet_online_big")
+                stackSubViews.append(gatewayStateImageView)
+            case .offline:
+                gatewayStateImageView.image = UIImage(named: "gateway_internet_offline_big")
+                stackSubViews.append(gatewayStateImageView)
+            case .notBound:
+                break
+            }
             
             if space.showSyncCloudError != nil && space.permission != .visitor {
 //                syncFailedImageBtn.isHidden = false

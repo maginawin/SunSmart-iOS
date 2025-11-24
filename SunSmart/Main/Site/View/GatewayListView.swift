@@ -316,32 +316,34 @@ class GatewayItemView: UIView {
         contentView.alignment = .center
         addSubview(contentView)
         contentView.snp.makeConstraints { make in
-            make.left.right.equalToSuperview()
+//            make.left.right.equalToSuperview()
+            make.centerX.equalToSuperview()
             make.centerY.equalToSuperview()
+//            make.width.lessThanOrEqualToSuperview()
         }
         
         statusDot = UIView()
         statusDot.layer.cornerRadius = SCRXFrom(4)
         statusDot.isHidden = true
 //        addSubview(statusDot)
-        contentView.addArrangedSubview(statusDot)
-        statusDot.snp.makeConstraints { make in
-            make.left.equalTo(SCRXFrom(8))
-            make.centerY.equalToSuperview()
-            make.width.height.equalTo(SCRXFrom(8))
-        }
+//        contentView.addArrangedSubview(statusDot)
+//        statusDot.snp.makeConstraints { make in
+//            make.left.equalTo(SCRXFrom(8))
+//            make.centerY.equalToSuperview()
+//            make.width.height.equalTo(SCRXFrom(8))
+//        }
         
         titleLabel = UILabel()
         titleLabel.font = UIFont.systemFont(ofSize: SCRYFrom(12), weight: .light)
         titleLabel.textColor = ImportantText_Color
 //        titleLabel.textAlignment = .center
 //        addSubview(titleLabel)
-        contentView.addArrangedSubview(titleLabel)
-        titleLabel.snp.makeConstraints { make in
-            make.left.equalTo(statusDot.snp.right).offset(SCRXFrom(6))
-            make.right.equalToSuperview()
-            make.centerY.equalToSuperview()
-        }
+//        contentView.addArrangedSubview(titleLabel)
+//        titleLabel.snp.makeConstraints { make in
+//            make.left.equalTo(statusDot.snp.right).offset(SCRXFrom(6))
+//            make.right.equalToSuperview()
+//            make.centerY.equalToSuperview()
+//        }
         
         underlineView = UIView()
         underlineView.backgroundColor = Bar_Color
@@ -359,24 +361,33 @@ class GatewayItemView: UIView {
     func update(with item: GatewayListItem) {
         titleLabel.text = item.title
         titleLabel.textColor = item.isSelected ? Bar_Color : ImportantText_Color
+        contentView.subviews.forEach({ $0.removeFromSuperview() })
+        
         // 更新状态指示器
         if let status = item.status {
             statusDot.isHidden = false
             switch status {
             case .online:
                 statusDot.backgroundColor = Green_Color
-            case .offline:
+            case .offline, .reset:
                 statusDot.backgroundColor = RGB(156, 163, 175) // 灰色
             case .inactive:
                 statusDot.backgroundColor = Yellow_Color
             }
             titleLabel.textAlignment = .left
             titleLabel.font = UIFont.systemFont(ofSize: FontFit(12), weight: .light)
+            contentView.addArrangedSubview(statusDot)
+            statusDot.snp.makeConstraints { make in
+                make.width.height.equalTo(SCRXFrom(6))
+            }
+            
         } else {
             titleLabel.textAlignment = .center
             statusDot.isHidden = true
             titleLabel.font = UIFont.systemFont(ofSize: FontFit(12))
         }
+        
+        contentView.addArrangedSubview(titleLabel)
         
         // 更新选中状态
         underlineView.isHidden = !item.isSelected

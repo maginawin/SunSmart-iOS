@@ -615,7 +615,7 @@ extension MeshNetworkManager {
             let subNetworkId = self.currentNetworkKey.networkId.hex
             
             self.realNodes.filter({ $0.macAddress != nil && $0.deviceType == .gateway }).forEach { node in
-                node.gatewayModel = GatewayModel.load(siteId: uuid, macAddress: node.macAddress).first ?? GatewayModel(siteId: uuid, address: node.primaryUnicastAddress, mac: node.macAddress!)
+                node.gatewayModel = GatewayModel.load(siteId: uuid, macAddress: node.macAddress).first ?? GatewayModel(siteId: uuid, name: node.name ?? "", address: node.primaryUnicastAddress, mac: node.macAddress!)
             }
             
             self.schedules = Schedule.load(meshUUID: uuid, meshNetworkId: subNetworkId)

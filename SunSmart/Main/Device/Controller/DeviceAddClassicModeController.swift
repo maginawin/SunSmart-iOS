@@ -650,7 +650,7 @@ class DeviceAddClassicModeController: UIViewController {
                 guard let mac = node.macAddress else {
                     return
                 }
-                let gatewayModel = GatewayModel(siteId: space.siteId, address: node.primaryUnicastAddress, mac: mac)
+                let gatewayModel = GatewayModel(siteId: space.siteId, name: node.name ?? "", address: node.primaryUnicastAddress, mac: mac)
                 // 检查是否有其他网关已激活
                 if !(otherGateways.filter({ $0.mac != mac }).contains(where: { $0.activate })) {
                     gatewayModel.activate = true

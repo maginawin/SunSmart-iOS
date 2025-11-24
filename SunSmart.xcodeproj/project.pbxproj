@@ -1278,6 +1278,12 @@
 		C8D6636F2BFEDDC900BFF81A /* ImportData.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8D6636E2BFEDDC900BFF81A /* ImportData.swift */; };
 		C8D663712BFEDDE000BFF81A /* ExportData.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8D663702BFEDDE000BFF81A /* ExportData.swift */; };
 		C8D663732BFF14A000BFF81A /* Int+Hex.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8D663722BFF14A000BFF81A /* Int+Hex.swift */; };
+		C8DA57D72ED14B7A00C4FCFD /* GatewayInformationViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8DA57D62ED14B7A00C4FCFD /* GatewayInformationViewController.swift */; };
+		C8DA57D82ED14B7A00C4FCFD /* GatewayInformationViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8DA57D62ED14B7A00C4FCFD /* GatewayInformationViewController.swift */; };
+		C8DA57D92ED14B7A00C4FCFD /* GatewayInformationViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8DA57D62ED14B7A00C4FCFD /* GatewayInformationViewController.swift */; };
+		C8DA57DB2ED18AA300C4FCFD /* SiteGatewayHeaderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8DA57DA2ED18AA300C4FCFD /* SiteGatewayHeaderView.swift */; };
+		C8DA57DC2ED18AA300C4FCFD /* SiteGatewayHeaderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8DA57DA2ED18AA300C4FCFD /* SiteGatewayHeaderView.swift */; };
+		C8DA57DD2ED18AA300C4FCFD /* SiteGatewayHeaderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8DA57DA2ED18AA300C4FCFD /* SiteGatewayHeaderView.swift */; };
 		C8DA69DB2DB87C9B00E32092 /* DeviceBottomBtnView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8DA69DA2DB87C9B00E32092 /* DeviceBottomBtnView.swift */; };
 		C8DA6A0F2DB8800B00E32092 /* FSCalendarStickyHeader.m in Sources */ = {isa = PBXBuildFile; fileRef = C8DA6A082DB8800B00E32092 /* FSCalendarStickyHeader.m */; };
 		C8DA6A102DB8800B00E32092 /* FSCalendarAppearance.m in Sources */ = {isa = PBXBuildFile; fileRef = C8DA69F12DB8800B00E32092 /* FSCalendarAppearance.m */; };
@@ -1760,6 +1766,8 @@
 		C8D6636E2BFEDDC900BFF81A /* ImportData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImportData.swift; sourceTree = "<group>"; };
 		C8D663702BFEDDE000BFF81A /* ExportData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExportData.swift; sourceTree = "<group>"; };
 		C8D663722BFF14A000BFF81A /* Int+Hex.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Int+Hex.swift"; sourceTree = "<group>"; };
+		C8DA57D62ED14B7A00C4FCFD /* GatewayInformationViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GatewayInformationViewController.swift; sourceTree = "<group>"; };
+		C8DA57DA2ED18AA300C4FCFD /* SiteGatewayHeaderView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SiteGatewayHeaderView.swift; sourceTree = "<group>"; };
 		C8DA69DA2DB87C9B00E32092 /* DeviceBottomBtnView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceBottomBtnView.swift; sourceTree = "<group>"; };
 		C8DA69EE2DB8800B00E32092 /* FSCalendar.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = FSCalendar.h; sourceTree = "<group>"; };
 		C8DA69EF2DB8800B00E32092 /* FSCalendar.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = FSCalendar.m; sourceTree = "<group>"; };
@@ -2400,6 +2408,7 @@
 				C86760A42C37F4B4006AD978 /* SitesTransferredView.swift */,
 				C8DCD0FB2CC8E0DE00B8671E /* SiteAddressDataHeaderView.swift */,
 				C8A437B12D35F11A00F3424C /* CollectionTitleHeaderView.swift */,
+				C8DA57DA2ED18AA300C4FCFD /* SiteGatewayHeaderView.swift */,
 				C833B8512EC7257C0005F84F /* GatewayListView.swift */,
 				C833B8552ECACF110005F84F /* SiteGatewayStatusView.swift */,
 			);
@@ -2945,6 +2954,7 @@
 			children = (
 				C8A4C50A2C956262003EE5E5 /* GatewaysViewController.swift */,
 				C8D22DFF2E010A47001A2BDA /* GatewayViewController.swift */,
+				C8DA57D62ED14B7A00C4FCFD /* GatewayInformationViewController.swift */,
 				C8C3A1532E374C7500876028 /* GatewayAssociatedSpacesController.swift */,
 				C8C3A15B2E37551C00876028 /* GatewayAssociatedSpacesInstructionsController.swift */,
 			);
@@ -3800,6 +3810,7 @@
 				C8BC573B2E9FC79E009E79A3 /* DeviceResetDeviceSafeModeController.swift in Sources */,
 				C885545F2DE6B44C00C8B688 /* DaliMasterMultipleControlsView.swift in Sources */,
 				C8C3A1552E374C7500876028 /* GatewayAssociatedSpacesController.swift in Sources */,
+				C8DA57DB2ED18AA300C4FCFD /* SiteGatewayHeaderView.swift in Sources */,
 				C88554602DE6B44C00C8B688 /* DeviceProtocol.swift in Sources */,
 				C88554612DE6B44C00C8B688 /* BleFirmwareUpdateViewController.swift in Sources */,
 				C88554622DE6B44C00C8B688 /* SceneAddTemplateTitleCell.swift in Sources */,
@@ -4007,6 +4018,7 @@
 				C885550B2DE6B44C00C8B688 /* GroupPathSequenceAddDeviceCell.swift in Sources */,
 				C885550C2DE6B44C00C8B688 /* EnergyHarvestHistoryViewController.swift in Sources */,
 				C885550D2DE6B44C00C8B688 /* LBXScanNetAnimation.swift in Sources */,
+				C8DA57D82ED14B7A00C4FCFD /* GatewayInformationViewController.swift in Sources */,
 				C885550E2DE6B44C00C8B688 /* DeviceParameterBottomView.swift in Sources */,
 				C885550F2DE6B44C00C8B688 /* GroupPathSequenceTriggerAddView.swift in Sources */,
 				C88555102DE6B44C00C8B688 /* DeviceSwitchesViewController.swift in Sources */,
@@ -4223,6 +4235,7 @@
 				C8BC573C2E9FC79E009E79A3 /* DeviceResetDeviceSafeModeController.swift in Sources */,
 				C886E0B52E30DE4900D0C3A6 /* DaliMasterMultipleControlsView.swift in Sources */,
 				C8C3A1542E374C7500876028 /* GatewayAssociatedSpacesController.swift in Sources */,
+				C8DA57DC2ED18AA300C4FCFD /* SiteGatewayHeaderView.swift in Sources */,
 				C886E0B62E30DE4900D0C3A6 /* DeviceProtocol.swift in Sources */,
 				C886E0B72E30DE4900D0C3A6 /* BleFirmwareUpdateViewController.swift in Sources */,
 				C886E0B82E30DE4900D0C3A6 /* SceneAddTemplateTitleCell.swift in Sources */,
@@ -4430,6 +4443,7 @@
 				C886E1672E30DE4900D0C3A6 /* GroupPathSequenceAddDeviceCell.swift in Sources */,
 				C886E1682E30DE4900D0C3A6 /* EnergyHarvestHistoryViewController.swift in Sources */,
 				C886E1692E30DE4900D0C3A6 /* LBXScanNetAnimation.swift in Sources */,
+				C8DA57D92ED14B7A00C4FCFD /* GatewayInformationViewController.swift in Sources */,
 				C886E16A2E30DE4900D0C3A6 /* DeviceParameterBottomView.swift in Sources */,
 				C886E16B2E30DE4900D0C3A6 /* GroupPathSequenceTriggerAddView.swift in Sources */,
 				C886E16C2E30DE4900D0C3A6 /* DeviceSwitchesViewController.swift in Sources */,
@@ -4646,6 +4660,7 @@
 				C8BC573D2E9FC79E009E79A3 /* DeviceResetDeviceSafeModeController.swift in Sources */,
 				C8AFDBFB2D6FF6D600839A38 /* DaliMasterMultipleControlsView.swift in Sources */,
 				C8C3A1562E374C7500876028 /* GatewayAssociatedSpacesController.swift in Sources */,
+				C8DA57DD2ED18AA300C4FCFD /* SiteGatewayHeaderView.swift in Sources */,
 				C8A347CE2D6307CC0092D3E4 /* DeviceProtocol.swift in Sources */,
 				C89F089E2C77112F005C0711 /* BleFirmwareUpdateViewController.swift in Sources */,
 				C8A130C42B32C2B90008C353 /* SceneAddTemplateTitleCell.swift in Sources */,
@@ -4853,6 +4868,7 @@
 				C8CD5BEE2DDADEE100F09467 /* GroupPathSequenceAddDeviceCell.swift in Sources */,
 				C8AEB9952DCA11370053102B /* EnergyHarvestHistoryViewController.swift in Sources */,
 				C87EB4632BA17D3F00F9285B /* LBXScanNetAnimation.swift in Sources */,
+				C8DA57D72ED14B7A00C4FCFD /* GatewayInformationViewController.swift in Sources */,
 				C8A0116D2DA90A290058E7E7 /* DeviceParameterBottomView.swift in Sources */,
 				C8CD5BEC2DDAD45100F09467 /* GroupPathSequenceTriggerAddView.swift in Sources */,
 				C89FD6662C89840400DE431D /* DeviceSwitchesViewController.swift in Sources */,

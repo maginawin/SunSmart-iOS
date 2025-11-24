@@ -1079,7 +1079,7 @@ extension SpaceData {
                                 mqttConnectInfo = .init(customId: customId, serverAddress: serverAddress, userName: userName, password: password, clientId: clientId, keepalive: mqttConnectInfoDict["keepalive"] as? UInt16 ?? 60, clearSession: mqttConnectInfoDict["clearSession"] as? Bool ?? true, authMode: authMode, sslVersion: sslVersion)
                             }
                             
-                            let gatewayModel = GatewayModel(siteId: siteId, address: node.primaryUnicastAddress, mac: mac, activate: json["activate"].boolValue, associatedSpaces: associatedSpaces, apn: json["apn"].string, mqttServerInfo: mqttConnectInfo)
+                            let gatewayModel = GatewayModel(siteId: siteId, name: node.name ?? "", address: node.primaryUnicastAddress, mac: mac, activate: json["activate"].boolValue, associatedSpaces: associatedSpaces, apn: json["apn"].string, mqttServerInfo: mqttConnectInfo)
                             gatewayModel.save()
                             node.gatewayModel = gatewayModel
                         }

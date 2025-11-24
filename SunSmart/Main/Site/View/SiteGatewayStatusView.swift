@@ -22,15 +22,29 @@ struct GatewayOverviewStats {
 }
 
 /// 单个网关状态数据
-struct GatewayStatusData {
-    var isInternetOnline: Bool = false    // 是否互联网在线
-    var lastOnlineTime: String?           // 最后在线时间
+enum GatewayStatusType {
+    /// 在线
+    case online
+    /// 离线
+    case offline(lastOnlineTime: String)
+    /// 重置
+    case reset(resetTime: String)
+    /// 未激活
+    case noActivated
+}
+
+protocol SiteGatewayStatusViewDelegate: AnyObject {
+    
+    /// 网关状态view点击回调
+    func gatewayStatusViewClickAction(_ view: SiteGatewayStatusView)
 }
 
 class SiteGatewayStatusView: UIView {
     
     private var contentView: UIView!
     private var stackView: UIStackView!
+    
+    weak var delegate: SiteGatewayStatusViewDelegate?
     
     /// 显示模式
     var displayMode: GatewayStatusDisplayMode = .overview {
@@ -49,7 +63,7 @@ class SiteGatewayStatusView: UIView {
     }
     
     /// 单个网关状态数据
-    var gatewayStatus: GatewayStatusData = GatewayStatusData() {
+    var gatewayStatusType: GatewayStatusType = .noActivated {
         didSet {
             if displayMode == .gateway {
                 updateDisplay()
@@ -66,6 +80,10 @@ class SiteGatewayStatusView: UIView {
         fatalError("init(coder:) has not been implemented")
     }
     
+    @objc private func statusViewTapAction() {
+        delegate?.gatewayStatusViewClickAction(self)
+    }
+    
     private func setupUI() {
         backgroundColor = .white
         layer.cornerRadius = SCRYFrom(10)
@@ -79,6 +97,7 @@ class SiteGatewayStatusView: UIView {
         stackView = UIStackView()
         stackView.axis = .horizontal
         stackView.distribution = .equalSpacing
+        stackView.addGestureRecognizer(UITapGestureRecognizer(target: self, action: #selector(statusViewTapAction)))
         contentView.addSubview(stackView)
         stackView.snp.makeConstraints { make in
             make.left.right.centerY.equalToSuperview()
@@ -100,31 +119,28 @@ class SiteGatewayStatusView: UIView {
     /// 设置概览显示
     private func setupOverviewDisplay() {
         // Internet Online
-        if overviewStats.internetOnlineCount > 0 {
-            let onlineView = createStatusItemView(
-                iconName: "gateway_internet_online",
-                title: "\("internet_online".localizedString): \(overviewStats.internetOnlineCount)",
-            )
-            stackView.addArrangedSubview(onlineView)
-        }
+        let onlineView = createStatusItemView(
+            iconName: "gateway_internet_online",
+            title: "\("internet_online".localizedString): \(overviewStats.internetOnlineCount)",
+        )
+        stackView.addArrangedSubview(onlineView)
+        
         
         // Internet Offline
-        if overviewStats.internetOfflineCount > 0 {
-            let offlineView = createStatusItemView(
-                iconName: "gateway_internet_offline",
-                title: "\("internet_offline".localizedString): \(overviewStats.internetOfflineCount)"
-            )
-            stackView.addArrangedSubview(offlineView)
-        }
+        let offlineView = createStatusItemView(
+            iconName: "gateway_internet_offline",
+            title: "\("internet_offline".localizedString): \(overviewStats.internetOfflineCount)"
+        )
+        stackView.addArrangedSubview(offlineView)
+        
         
         // No Gateway
-        if overviewStats.noGatewayCount > 0 {
-            let noGatewayView = createStatusItemView(
-                iconName: nil, // 使用圆形图标
-                title: "\("no_gateway".localizedString): \(overviewStats.noGatewayCount)",
-            )
-            stackView.addArrangedSubview(noGatewayView)
-        }
+        let noGatewayView = createStatusItemView(
+            iconName: nil, // 使用圆形图标
+            title: "\("no_gateway".localizedString): \(overviewStats.noGatewayCount)",
+        )
+        stackView.addArrangedSubview(noGatewayView)
+        
         
         // 如果没有数据，显示空状态
         if overviewStats.internetOnlineCount == 0 &&
@@ -142,23 +158,54 @@ class SiteGatewayStatusView: UIView {
     
     /// 设置单个网关显示
     private func setupGatewayDisplay() {
+        
+        var iconImageName: String!
+        var title: String!
+        var messageAttStr: NSAttributedString?
+        
+        switch gatewayStatusType {
+        case .online:
+            iconImageName = "gateway_internet_online"
+            title = "internet_online".localizedString
+        case .offline(let lastOnlineTime):
+            iconImageName = "gateway_internet_offline"
+            title = "internet_offline".localizedString
+            
+            let attStr = NSMutableAttributedString(string: "\("last_online".localizedString): \(lastOnlineTime)")
+            attStr.addAttribute(.foregroundColor, value: ImportantText_Color, range: (attStr.string as NSString).range(of: lastOnlineTime))
+            messageAttStr = attStr
+            
+        case .reset(let resetTime):
+            iconImageName = "gateway_internet_offline"
+            title = "gateway_reset_title".localizedString
+            
+            let attStr = NSMutableAttributedString(string: "\("reset_time".localizedString): \(resetTime)")
+            attStr.addAttribute(.foregroundColor, value: ImportantText_Color, range: (attStr.string as NSString).range(of: resetTime))
+            messageAttStr = attStr
+            
+        case .noActivated:
+            iconImageName = "gateway_no_activate"
+            title = "gateway_not_activated".localizedString
+            
+            let attStr = NSMutableAttributedString(string: "\("click_to_setup".localizedString)", attributes: [.underlineStyle: 1])
+            messageAttStr = attStr
+        }
+        
         // Internet状态
         let statusView = createStatusItemView(
-            iconName: gatewayStatus.isInternetOnline ? "gateway_internet_online" : "gateway_internet_offline", // 使用圆形图标
-            title: gatewayStatus.isInternetOnline ? "internet_online".localizedString : "internet_offline".localizedString
+            iconName: iconImageName,
+            title: title
         )
         stackView.addArrangedSubview(statusView)
         
-        // 最后在线时间
-        if let lastOnlineTime = gatewayStatus.lastOnlineTime {
+        // 描述
+        if let attStr = messageAttStr {
             let timeLabel = UILabel(
-                text: "\("last_online".localizedString): \(lastOnlineTime)",
+                text: nil,
                 textColor: SubText_Color,
                 fontSize: 12,
                 fontWeight: .light
             )
-            let attStr = NSMutableAttributedString(string: "\("last_online".localizedString): \(lastOnlineTime)")
-            attStr.addAttribute(.foregroundColor, value: ImportantText_Color, range: (attStr.string as NSString).range(of: lastOnlineTime))
             timeLabel.attributedText = attStr
             stackView.addArrangedSubview(timeLabel)
         }
@@ -215,8 +262,8 @@ class SiteGatewayStatusView: UIView {
     
     /// 更新单个网关状态
     /// - Parameter status: 网关状态数据
-    func updateGatewayStatus(_ status: GatewayStatusData) {
-        gatewayStatus = status
+    func updateGatewayStatus(_ type: GatewayStatusType) {
+        gatewayStatusType = type
     }
     
     /// 设置显示模式

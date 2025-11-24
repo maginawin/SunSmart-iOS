@@ -2706,6 +2706,7 @@ extension GatewayModel {
     struct ExpressionKey {
         static let id = Expression<Int64>("id")
         static let siteUUID = Expression<String>("siteUUID")
+        static let name = Expression<String>("name")
         static let macAddress = Expression<String>("macAddress")
         static let address = Expression<Int>("address")
         static let activate = Expression<Bool>("activate")
@@ -2720,6 +2721,7 @@ extension GatewayModel {
         _ = try? SunSmartDataManager.shared.db?.run(GatewayModel.gatewaysTable.create(temporary: false, ifNotExists: true, withoutRowid: false, block: { builder in
             builder.column(ExpressionKey.id, primaryKey: true)
             builder.column(ExpressionKey.siteUUID)
+            builder.column(ExpressionKey.name)
             builder.column(ExpressionKey.macAddress)
             builder.column(ExpressionKey.address)
             builder.column(ExpressionKey.activate)
@@ -2728,6 +2730,15 @@ extension GatewayModel {
             builder.column(ExpressionKey.mqttServerInfo)
             builder.unique(ExpressionKey.siteUUID, ExpressionKey.macAddress)
         }))
+        
+        // 获取表内存在的属性
+        if let columns = try? SunSmartDataManager.shared.db?.schema.columnDefinitions(table: gatewaysTableName) {
+            // 插入字段
+            // 是否存在”iconCategory“属性
+            if !columns.contains(where: { $0.name == "name" }) {
+                _ = try? SunSmartDataManager.shared.db?.run(GatewayModel.gatewaysTable.addColumn(ExpressionKey.name, defaultValue: "Gateway"))
+            }
+        }
     }
     
     /// 加载site内所有网关list
@@ -2754,7 +2765,7 @@ extension GatewayModel {
                     })
                 }
                 
-                let gateway = GatewayModel(siteId: siteId,address: Address(row[ExpressionKey.address]), mac: row[ExpressionKey.macAddress], activate: row[ExpressionKey.activate], associatedSpaces: spaceDatas, apn: row[ExpressionKey.apn], mqttServerInfo: nil)
+                let gateway = GatewayModel(siteId: siteId, name: row[ExpressionKey.name], address: Address(row[ExpressionKey.address]), mac: row[ExpressionKey.macAddress], activate: row[ExpressionKey.activate], associatedSpaces: spaceDatas, apn: row[ExpressionKey.apn], mqttServerInfo: nil)
                 
                 if let data = row[ExpressionKey.mqttServerInfo],
                    let serverInformation = try? jsonDecoder.decode(GatewayInformation.MQTTConnectInformation.self, from: data) {

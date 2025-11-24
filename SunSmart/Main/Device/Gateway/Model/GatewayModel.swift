@@ -14,12 +14,15 @@ enum GatewayConnectStatus {
     case online      // 在线（绿色）
     case offline     // 离线（灰色）
     case inactive     // 未激活（黄色）
+    case reset       // 已重置
 }
 
 class GatewayModel: Copyable {
     
     /// site id
     let siteId: String
+    /// 网关名称
+    var name: String
     /// 设备地址
     var address: Address
     /// mac地址
@@ -32,9 +35,16 @@ class GatewayModel: Copyable {
     var apn: String?
     /// MQTT服务器信息
     var mqttServerInfo: GatewayInformation.MQTTConnectInformation?
+    /// 网关连接状态
+    var connectStatus: GatewayConnectStatus = .offline
+    /// 最后在线时间
+    var lastOnlineTime: String?
+    /// 重置时间
+    var resetTime: String?
     
-    init(siteId: String,address: Address, mac: String, activate: Bool = false, associatedSpaces: [SpaceData] = [], apn: String? = nil, mqttServerInfo: GatewayInformation.MQTTConnectInformation? = nil) {
+    init(siteId: String, name: String, address: Address, mac: String, activate: Bool = false, associatedSpaces: [SpaceData] = [], apn: String? = nil, mqttServerInfo: GatewayInformation.MQTTConnectInformation? = nil) {
         self.siteId = siteId
+        self.name = name
         self.address = address
         self.mac = mac
         self.activate = activate
@@ -44,11 +54,11 @@ class GatewayModel: Copyable {
     }
     
     func copy() -> Self {
-        return GatewayModel(siteId: self.siteId, address: self.address, mac: self.mac, activate: self.activate, associatedSpaces: self.associatedSpaces, apn: self.apn, mqttServerInfo: self.mqttServerInfo) as! Self
+        return GatewayModel(siteId: self.siteId, name: self.name, address: self.address, mac: self.mac, activate: self.activate, associatedSpaces: self.associatedSpaces, apn: self.apn, mqttServerInfo: self.mqttServerInfo) as! Self
     }
     
     static func == (lhs: GatewayModel, rhs: GatewayModel) -> Bool {
-        guard lhs.siteId == rhs.siteId && lhs.address == rhs.address && lhs.mac == rhs.mac && lhs.activate == rhs.activate && lhs.associatedSpaces.map({ $0.id }) == rhs.associatedSpaces.map({ $0.id }) && lhs.apn == rhs.apn else {
+        guard lhs.siteId == rhs.siteId && lhs.name == rhs.name && lhs.address == rhs.address && lhs.mac == rhs.mac && lhs.activate == rhs.activate && lhs.associatedSpaces.map({ $0.id }) == rhs.associatedSpaces.map({ $0.id }) && lhs.apn == rhs.apn else {
             return false
         }
         if lhs.mqttServerInfo == nil || rhs.mqttServerInfo == nil {
@@ -61,6 +71,7 @@ class GatewayModel: Copyable {
     }
     
     func update(gatewayModel: GatewayModel) {
+        self.name = gatewayModel.name
         self.associatedSpaces = gatewayModel.associatedSpaces
         self.apn = gatewayModel.apn
         self.activate = gatewayModel.activate
