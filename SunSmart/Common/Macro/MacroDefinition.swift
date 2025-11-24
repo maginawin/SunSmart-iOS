@@ -158,6 +158,15 @@ let Title_Done_Color = RGB(64, 79, 102)
 let Slider_Color = RGB(0, 128, 101)
 let customId: UInt8 = 0x01
 
+#elseif SLGSync
+
+/// 主色
+let Bar_Color = RGB(111, 180, 70)
+let Bottom_Done_Color = RGB(111, 180, 70)
+let Title_Done_Color = RGB(111, 180, 70)
+let Slider_Color = RGB(255, 167, 44)
+let customId: UInt8 = 0x03
+
 #else
 
 /// 主色

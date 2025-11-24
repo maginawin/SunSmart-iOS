@@ -59,6 +59,10 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         if Keychain.getServerRegion() == nil { // 还未选择服务器地区,默认亚太服务器
             UserData.currentServerRegion = .asiaPacific
         }
+        #elseif SLGSync
+        if Keychain.getServerRegion() == nil { // 还未选择服务器地区,默认北美服务器
+            UserData.currentServerRegion = .northAmerica
+        }
         #endif
         NetworkRequest.shared.networkListener()
         

@@ -467,6 +467,8 @@ enum ServerRegion {
     static let defaultRegions: [ServerRegion] = [.northAmerica]
 #elseif SylSmart
     static let defaultRegions: [ServerRegion] = [.asiaPacific]
+#elseif SLGSync
+    static let defaultRegions: [ServerRegion] = [.northAmerica]
 #else
     static let defaultRegions: [ServerRegion] = [.chinaMainland, .asiaPacific, .northAmerica, .europe]
 #endif

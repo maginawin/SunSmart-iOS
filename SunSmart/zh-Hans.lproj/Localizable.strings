@@ -1387,6 +1387,7 @@
 "reset_results" = "重置结果";
 "flashlight_beast_mode_reset_note" = "以设定的频率晃动手电筒来激活并直接重置设备。";
 "mesh_network_reset" = "Mesh网络重置";
+"static_sorting" = "静态排序";
 "dynamic_sorting" = "动态排序";
 "configured" = "已配置";
 "not_configured" = "未配置";
