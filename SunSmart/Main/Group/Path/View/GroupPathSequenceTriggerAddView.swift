@@ -210,5 +210,12 @@ extension GroupPathSequenceTriggerAddView: UICollectionViewDataSource, UICollect
         collectionView.reloadData()
     }
     
+    func scrollViewDidEndDecelerating(_ scrollView: UIScrollView) {
+        let page = Int(scrollView.contentOffset.x / scrollView.frame.size.width + 0.5)
+        
+        pageControl.currentPage = page
+        //            pageControl.setCurrentPage(page, animated: true)
+    }
+    
     
 }

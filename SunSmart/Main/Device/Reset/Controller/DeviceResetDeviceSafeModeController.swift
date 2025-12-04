@@ -46,7 +46,7 @@ class DeviceResetDeviceSafeModeController: UIViewController {
     private var parameterSettingsView: DeviceAddParameterSettingsView?
     
     /// 扫描到的已配网设备list
-    private var provisionedDeviceDevices: [ProvisioningDevice] = []
+//    private var provisionedDeviceDevices: [ProvisioningDevice] = []
     /// 触发设备list
     private var triggerDevices: [ProvisioningDevice] = []
     /// 展示的触发设备list
@@ -145,7 +145,7 @@ class DeviceResetDeviceSafeModeController: UIViewController {
         }
         state = .scanning
         resetScanning = false
-        provisionedDeviceDevices.removeAll()
+//        provisionedDeviceDevices.removeAll()
         triggerDevices.removeAll()
         showDevices.removeAll()
         tableView.reloadData()
@@ -156,10 +156,11 @@ class DeviceResetDeviceSafeModeController: UIViewController {
             guard let self = self,
                   let scanDevice = ProvisioningDevice(peripheral: peripheral, advertisementData: advertisementData, rssi: rssi),
                   scanDevice.cid == CompanyId,
-                  scanDevice.macAddress != nil else { return }
+                  scanDevice.macAddress != nil, !scanDevice.connectable else { return }
             
-            if scanDevice.connectable { // 是否可被连接，1827/1828服务
-                if scanDevice.networkId != nil { // 已入网设备
+//            if scanDevice.connectable { // 是否可被连接，1827/1828服务
+                
+//                if scanDevice.provisioned { // 已入网设备
                     // 过滤移动感应不在信号范围内的设备
                     if rssi.intValue > self.filterRSSIRange.upperBound {
                         scanDevice.rssi = NSNumber(value: self.filterRSSIRange.upperBound)
@@ -188,11 +189,11 @@ class DeviceResetDeviceSafeModeController: UIViewController {
                         }
                     }
                           
-                    if let index = self.provisionedDeviceDevices.firstIndex(where: { $0.macAddress == scanDevice.macAddress }) {
-                        self.provisionedDeviceDevices.replaceSubrange(index...index, with: [scanDevice])
-                    }else {
-                        self.provisionedDeviceDevices.append(scanDevice)
-                    }
+//                    if let index = self.provisionedDeviceDevices.firstIndex(where: { $0.macAddress == scanDevice.macAddress }) {
+//                        self.provisionedDeviceDevices.replaceSubrange(index...index, with: [scanDevice])
+//                    }else {
+//                        self.provisionedDeviceDevices.append(scanDevice)
+//                    }
                     
                     if let index = self.triggerDevices.firstIndex(where: { $0.macAddress == scanDevice.macAddress }) {
                         let cacheDevice = self.triggerDevices[index]
@@ -232,7 +233,7 @@ class DeviceResetDeviceSafeModeController: UIViewController {
 //                        }
 //                    }
                     
-                }
+//                }
 //                else { // 未入网设备
 //                    // 判断是否从已入网触发=>未入网，说明重置成功
 //                    if let device = showDevices.first(where: { $0.macAddress == scanDevice.macAddress }) {
@@ -241,29 +242,29 @@ class DeviceResetDeviceSafeModeController: UIViewController {
 //                        self.updateUIState()
 //                    }
 //                }
-            }else { // 无定向广播包
+//            }else { // 无定向广播包
               
                 // 找到已配网对应设备
-                if let provisionedDevice = self.provisionedDeviceDevices.first(where: { $0.macAddress == scanDevice.macAddress }) {
-                    provisionedDevice.triggerActionTypes = scanDevice.triggerActionTypes
-                    
-                    if let index = self.triggerDevices.firstIndex(where: { $0.macAddress == provisionedDevice.macAddress }) {
-                        let cacheDevice = self.triggerDevices[index]
-                        provisionedDevice.resetState = cacheDevice.resetState
-                        provisionedDevice.selectedState = cacheDevice.selectedState
-                        self.triggerDevices.replaceSubrange(index...index, with: [provisionedDevice])
-                        self.startRssiSortTimer()
-                    }else {
-                        // 判断是否触发
-                        if (self.resetMode == .flashlight && provisionedDevice.triggerActionTypes.contains(.lightSensing)) || (self.resetMode == .motion && provisionedDevice.triggerActionTypes.contains(.motionSensing) && self.selectRSSIRange.contains(provisionedDevice.rssi.intValue)) {
-                            if self.state == .scanning {
-                                provisionedDevice.resetState = .scanning
-                            }
-                            self.triggerDevices.append(provisionedDevice)
-                            self.playerNotificationAudio()
-                            self.startRssiSortTimer()
-                        }
-                    }
+//                if let provisionedDevice = self.provisionedDeviceDevices.first(where: { $0.macAddress == scanDevice.macAddress }) {
+//                    provisionedDevice.triggerActionTypes = scanDevice.triggerActionTypes
+//                    
+//                    if let index = self.triggerDevices.firstIndex(where: { $0.macAddress == provisionedDevice.macAddress }) {
+//                        let cacheDevice = self.triggerDevices[index]
+//                        provisionedDevice.resetState = cacheDevice.resetState
+//                        provisionedDevice.selectedState = cacheDevice.selectedState
+//                        self.triggerDevices.replaceSubrange(index...index, with: [provisionedDevice])
+//                        self.startRssiSortTimer()
+//                    }else {
+//                        // 判断是否触发
+//                        if (self.resetMode == .flashlight && provisionedDevice.triggerActionTypes.contains(.lightSensing)) || (self.resetMode == .motion && provisionedDevice.triggerActionTypes.contains(.motionSensing) && self.selectRSSIRange.contains(provisionedDevice.rssi.intValue)) {
+//                            if self.state == .scanning {
+//                                provisionedDevice.resetState = .scanning
+//                            }
+//                            self.triggerDevices.append(provisionedDevice)
+//                            self.playerNotificationAudio()
+//                            self.startRssiSortTimer()
+//                        }
+//                    }
                     
                     
 //                    if (self.resetMode == .flashlight && provisionedDevice.triggerActionTypes.contains(.lightSensing)) || (self.resetMode == .motion && provisionedDevice.triggerActionTypes.contains(.motionSensing)) {
@@ -276,8 +277,8 @@ class DeviceResetDeviceSafeModeController: UIViewController {
 //                        self.playerNotificationAudio()
 //                    }
                     
-                }
-            }
+//                }
+//            }
         }
         
     }
