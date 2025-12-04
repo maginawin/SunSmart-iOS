@@ -723,28 +723,29 @@ class DeviceAddClassicModeController: UIViewController {
             if device.deviceType == .gateway, let mac = node.macAddress, NetworkRequest.shared.networkable {
                 Task {
                     // 注册网关
-                    let gatewayRegisterResult = await NetworkRequest.shared.request(.gatewayRegister(gatewayId: mac))
-                    switch gatewayRegisterResult {
-                    case .success(let response):
-                        // MQTT参数
-                        if let data = response["data"] as? [String: Any],
-                           let username = data["mqttUsername"] as? String,
-                           let password = data["mqttPassword"] as? String,
-                           let clientId = data["mqttClientId"] as? String,
-                           let host = data["host"] as? String, let port = data["port"] as? Int {
-                            
-                            node.gatewayModel?.mqttServerInfo = GatewayInformation.MQTTConnectInformation(customId: customId, serverAddress: "tcp://\(host):\(port)", userName: username, password: password, clientId: clientId, keepalive: 60, clearSession: true, authMode: .none, sslVersion: .all)
-                            node.gatewayModel?.save()
-                        }
-                    case .failure:
-                        break
-                    }
+//                    let gatewayRegisterResult = await NetworkRequest.shared.request(.gatewayRegister(gatewayId: mac))
+//                    switch gatewayRegisterResult {
+//                    case .success(let response):
+//                        // MQTT参数
+//                        if let data = response["data"] as? [String: Any],
+//                           let username = data["mqttUsername"] as? String,
+//                           let password = data["mqttPassword"] as? String,
+//                           let clientId = data["mqttClientId"] as? String,
+//                           let host = data["host"] as? String, let port = data["port"] as? Int {
+//                            
+//                            node.gatewayModel?.mqttServerInfo = GatewayInformation.MQTTConnectInformation(customId: customId, serverAddress: "tcp://\(host):\(port)", userName: username, password: password, clientId: clientId, keepalive: 60, clearSession: true, authMode: .none, sslVersion: .all)
+//                            node.gatewayModel?.save()
+//                        }
+//                    case .failure:
+//                        break
+//                    }
                     
                     // 网关绑定到space
                     let bindSpaceResult = await NetworkRequest.shared.request(.gatewayBindSpace(spaceId: self.space.id, gatewayId: mac))
                     switch bindSpaceResult {
                     case .success:
-                        node.gatewayModel?.associatedSpaces.append(self.space)
+                        let gatewaySpaceData = GatewaySpaceData(spaceId: self.space.id, spaceName: self.space.name, deviceCount: self.space.deviceCount, appKeyIndex: MeshNetworkManager.instance.currentApplicationKey.index)
+                        node.gatewayModel?.associatedSpaces.append(gatewaySpaceData)
                         node.gatewayModel?.save()
                     case .failure:
                         break

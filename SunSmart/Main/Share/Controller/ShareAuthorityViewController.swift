@@ -89,7 +89,7 @@ class ShareAuthorityViewController: UIViewController {
             }else {
                 navigationItem.rightBarButtonItem = UIBarButtonItem(image: UIImage(named: "share_unbind")?.withRenderingMode(.alwaysOriginal), style: .done, target: self, action: #selector(unbindItemAction))
             }
-            NotificationCenter.default.addObserver(forName: .init(SpacesRefreshChangeNotificationName), object: nil, queue: nil) {[weak self] _ in
+            NotificationCenter.default.addObserver(forName: .init(spacesRefreshChangeNotificationName), object: nil, queue: nil) {[weak self] _ in
                 self?.setupData()
             }
             
@@ -219,7 +219,7 @@ class ShareAuthorityViewController: UIViewController {
                     self.updateUI()
                     
                     // 通知外部site刷新space列表
-                    NotificationCenter.default.post(name: .init(SpacesRefreshChangeNotificationName), object: true)
+                    NotificationCenter.default.post(name: .init(spacesRefreshChangeNotificationName), object: true)
                     
                     if usedEditorIds.count > 0 { // 部分用户正在使用space，无法删除
                         SRAlertView(title: "notification".localizedString, message: "spaces_clear_editor_failed".localizedString, actions: [SRAlertAction(title: "confirm".localizedString)]).show()
@@ -433,7 +433,7 @@ class ShareAuthorityViewController: UIViewController {
                 if saveSpace {
                     space.save()
                     // 通知外部site刷新space列表
-                    NotificationCenter.default.post(name: .init(SpacesRefreshChangeNotificationName), object: true)
+                    NotificationCenter.default.post(name: .init(spacesRefreshChangeNotificationName), object: true)
                 }
                 let vc = SharingSettingViewController(type: .space(site: self.site, space: space))
                 self.navigationController?.pushViewController(vc, animated: true)
@@ -473,7 +473,7 @@ class ShareAuthorityViewController: UIViewController {
                     }
                 })
                 // 通知外部site刷新space列表
-                NotificationCenter.default.post(name: .init(SpacesRefreshChangeNotificationName), object: true)
+                NotificationCenter.default.post(name: .init(spacesRefreshChangeNotificationName), object: true)
                 
                 if callback != nil {
                     callback?(true)
@@ -516,7 +516,7 @@ class ShareAuthorityViewController: UIViewController {
 //                    }
                 })
                 // 通知外部site刷新space列表
-                NotificationCenter.default.post(name: .init(SpacesRefreshChangeNotificationName), object: true)
+                NotificationCenter.default.post(name: .init(spacesRefreshChangeNotificationName), object: true)
                 self.isSelectState = false
                 self.selectSpaces.removeAll()
                 self.updateUI()
@@ -595,7 +595,7 @@ class ShareAuthorityViewController: UIViewController {
                     SRAlertView(title: "notification".localizedString, message: "spaces_delete_failed".localizedString, actions: [SRAlertAction(title: "confirm".localizedString)]).show()
                 }
                 NotificationCenter.default.post(name: .init(rawValue: SitesDataRefreshNotifiacationName), object: nil)
-                NotificationCenter.default.post(name: .init(SpacesRefreshChangeNotificationName), object: true)
+                NotificationCenter.default.post(name: .init(spacesRefreshChangeNotificationName), object: true)
             case .failure(let error):
                 XWHUDManager.showErrorTipHUD(error.localizedDescription)
             }

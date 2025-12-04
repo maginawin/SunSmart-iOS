@@ -636,7 +636,8 @@
         "categoryName" : "Gateway",
         "elementCount" : 2,
         "iconCategory" : "Gateway",
-        "deviceCategory" : "Gateway"
+        "deviceCategory" : "Gateway",
+        "modelName" : "SR-BL9036T-GW-WP4G"
     },
     {
         "companyId" : "0A78",

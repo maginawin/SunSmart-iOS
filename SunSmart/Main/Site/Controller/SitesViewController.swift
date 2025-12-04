@@ -1479,6 +1479,8 @@ extension SitesViewController: CloudSynchronizationManagerDelegate {
             }
         case .addSpaces(let site, _):
             reloadSiteData(site)
+        case .syncGateway(let gateway, _):
+            break
         }
     }
     
@@ -1498,6 +1500,8 @@ extension SitesViewController: CloudSynchronizationManagerDelegate {
             }
         case .addSpaces(let site, _):
             reloadSiteData(site)
+        default:
+            break
         }
     }
     

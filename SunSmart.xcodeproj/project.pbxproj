@@ -1606,6 +1606,10 @@
 		C8BB67732ED3F13A000C63EE /* Assets-SLGSync.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = C8BB67722ED3F13A000C63EE /* Assets-SLGSync.xcassets */; };
 		C8BB67752ED3F164000C63EE /* SLGSync-LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = C8BB67742ED3F164000C63EE /* SLGSync-LaunchScreen.storyboard */; };
 		C8BB67762ED42EAB000C63EE /* SLGSync-Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = C8BB67702ED3F056000C63EE /* SLGSync-Info.plist */; };
+		C8BB67782ED46298000C63EE /* SiteGatewaysMenuView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8BB67772ED46298000C63EE /* SiteGatewaysMenuView.swift */; };
+		C8BB67792ED46298000C63EE /* SiteGatewaysMenuView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8BB67772ED46298000C63EE /* SiteGatewaysMenuView.swift */; };
+		C8BB677A2ED46298000C63EE /* SiteGatewaysMenuView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8BB67772ED46298000C63EE /* SiteGatewaysMenuView.swift */; };
+		C8BB677B2ED46298000C63EE /* SiteGatewaysMenuView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8BB67772ED46298000C63EE /* SiteGatewaysMenuView.swift */; };
 		C8BC494C2C1C1CD5006BAF89 /* XWHUDManager_loading.gif in Resources */ = {isa = PBXBuildFile; fileRef = C8BC494B2C1C1CD5006BAF89 /* XWHUDManager_loading.gif */; };
 		C8BC57332E9F88A0009E79A3 /* DeviceResetBroadcasterCentral.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8BC57322E9F88A0009E79A3 /* DeviceResetBroadcasterCentral.swift */; };
 		C8BC57342E9F88A0009E79A3 /* DeviceResetBroadcasterCentral.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8BC57322E9F88A0009E79A3 /* DeviceResetBroadcasterCentral.swift */; };
@@ -2148,6 +2152,7 @@
 		C8BB67702ED3F056000C63EE /* SLGSync-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; name = "SLGSync-Info.plist"; path = "/Users/yuankehong/Desktop/SunSmart/SLGSync/SLGSync-Info.plist"; sourceTree = "<absolute>"; };
 		C8BB67722ED3F13A000C63EE /* Assets-SLGSync.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = "Assets-SLGSync.xcassets"; sourceTree = "<group>"; };
 		C8BB67742ED3F164000C63EE /* SLGSync-LaunchScreen.storyboard */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; path = "SLGSync-LaunchScreen.storyboard"; sourceTree = "<group>"; };
+		C8BB67772ED46298000C63EE /* SiteGatewaysMenuView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SiteGatewaysMenuView.swift; sourceTree = "<group>"; };
 		C8BC494B2C1C1CD5006BAF89 /* XWHUDManager_loading.gif */ = {isa = PBXFileReference; lastKnownFileType = image.gif; path = XWHUDManager_loading.gif; sourceTree = "<group>"; };
 		C8BC57322E9F88A0009E79A3 /* DeviceResetBroadcasterCentral.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceResetBroadcasterCentral.swift; sourceTree = "<group>"; };
 		C8BC57362E9FC501009E79A3 /* DeviceResetDeviceStepController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceResetDeviceStepController.swift; sourceTree = "<group>"; };
@@ -2869,6 +2874,7 @@
 				C8DA57DA2ED18AA300C4FCFD /* SiteGatewayHeaderView.swift */,
 				C833B8512EC7257C0005F84F /* GatewayListView.swift */,
 				C833B8552ECACF110005F84F /* SiteGatewayStatusView.swift */,
+				C8BB67772ED46298000C63EE /* SiteGatewaysMenuView.swift */,
 			);
 			path = View;
 			sourceTree = "<group>";
@@ -4480,6 +4486,7 @@
 				C88554B32DE6B44C00C8B688 /* MeshFirmwareUpgradeHeaderView.swift in Sources */,
 				C88554B42DE6B44C00C8B688 /* GroupPathSequencePageController.swift in Sources */,
 				C88554B52DE6B44C00C8B688 /* MotionSensorInstructionsViewCell.swift in Sources */,
+				C8BB67782ED46298000C63EE /* SiteGatewaysMenuView.swift in Sources */,
 				C88554B62DE6B44C00C8B688 /* SceneExecuteAnimationView.swift in Sources */,
 				C88554B72DE6B44C00C8B688 /* AppDelegate.swift in Sources */,
 				C88554B82DE6B44C00C8B688 /* UserSettingsViewController.swift in Sources */,
@@ -4905,6 +4912,7 @@
 				C886E10C2E30DE4900D0C3A6 /* MeshFirmwareUpgradeHeaderView.swift in Sources */,
 				C886E10D2E30DE4900D0C3A6 /* GroupPathSequencePageController.swift in Sources */,
 				C886E10E2E30DE4900D0C3A6 /* MotionSensorInstructionsViewCell.swift in Sources */,
+				C8BB67792ED46298000C63EE /* SiteGatewaysMenuView.swift in Sources */,
 				C886E10F2E30DE4900D0C3A6 /* SceneExecuteAnimationView.swift in Sources */,
 				C886E1102E30DE4900D0C3A6 /* AppDelegate.swift in Sources */,
 				C886E1112E30DE4900D0C3A6 /* UserSettingsViewController.swift in Sources */,
@@ -5330,6 +5338,7 @@
 				C8A0301E2CD878C10063FEC4 /* MeshFirmwareUpgradeHeaderView.swift in Sources */,
 				C8ED59F92DD743960074A5BB /* GroupPathSequencePageController.swift in Sources */,
 				C8047F132B8E14F800A09FFA /* MotionSensorInstructionsViewCell.swift in Sources */,
+				C8BB677A2ED46298000C63EE /* SiteGatewaysMenuView.swift in Sources */,
 				C89F98412B5E5A56007EABF5 /* SceneExecuteAnimationView.swift in Sources */,
 				C896B9A82A930BA800217512 /* AppDelegate.swift in Sources */,
 				C85BC5F22C3BEEF8002D4CB6 /* UserSettingsViewController.swift in Sources */,
@@ -5755,6 +5764,7 @@
 				C8BB66E42ED3F056000C63EE /* MeshFirmwareUpgradeHeaderView.swift in Sources */,
 				C8BB66E52ED3F056000C63EE /* GroupPathSequencePageController.swift in Sources */,
 				C8BB66E62ED3F056000C63EE /* MotionSensorInstructionsViewCell.swift in Sources */,
+				C8BB677B2ED46298000C63EE /* SiteGatewaysMenuView.swift in Sources */,
 				C8BB66E72ED3F056000C63EE /* SceneExecuteAnimationView.swift in Sources */,
 				C8BB66E82ED3F056000C63EE /* AppDelegate.swift in Sources */,
 				C8BB66E92ED3F056000C63EE /* UserSettingsViewController.swift in Sources */,

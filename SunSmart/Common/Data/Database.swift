@@ -2713,6 +2713,9 @@ extension GatewayModel {
         static let associatedSpaces = Expression<Data>("associatedSpaces")
         static let apn = Expression<String?>("apn")
         static let mqttServerInfo = Expression<Data?>("mqttServerInfo")
+        static let lastUpdateTimestamp = Expression<Int64>("lastUpdateTimestamp")
+        static let lastUploadCloudTimestamp = Expression<Int64?>("lastUploadCloudTimestamp")
+        static let syncCloudError = Expression<Int?>("syncCloudError")
     }
     
     /// 初始化能耗静态统计数据信息表
@@ -2728,6 +2731,9 @@ extension GatewayModel {
             builder.column(ExpressionKey.associatedSpaces)
             builder.column(ExpressionKey.apn)
             builder.column(ExpressionKey.mqttServerInfo)
+            builder.column(ExpressionKey.lastUpdateTimestamp)
+            builder.column(ExpressionKey.lastUploadCloudTimestamp)
+            builder.column(ExpressionKey.syncCloudError)
             builder.unique(ExpressionKey.siteUUID, ExpressionKey.macAddress)
         }))
         
@@ -2737,6 +2743,18 @@ extension GatewayModel {
             // 是否存在”iconCategory“属性
             if !columns.contains(where: { $0.name == "name" }) {
                 _ = try? SunSmartDataManager.shared.db?.run(GatewayModel.gatewaysTable.addColumn(ExpressionKey.name, defaultValue: "Gateway"))
+            }
+            // 是否存在“lastUpdateTimestamp”属性
+            if !columns.contains(where: { $0.name == "lastUpdateTimestamp" }) {
+                _ = try? SunSmartDataManager.shared.db?.run(GatewayModel.gatewaysTable.addColumn(ExpressionKey.lastUpdateTimestamp, defaultValue: 1))
+            }
+            // 是否存在“lastUpdateTimestamp”属性
+            if !columns.contains(where: { $0.name == "lastUploadCloudTimestamp" }) {
+                _ = try? SunSmartDataManager.shared.db?.run(GatewayModel.gatewaysTable.addColumn(ExpressionKey.lastUploadCloudTimestamp))
+            }
+            // 是否存在“syncCloudError”属性
+            if !columns.contains(where: { $0.name == "syncCloudError" }) {
+                _ = try? SunSmartDataManager.shared.db?.run(GatewayModel.gatewaysTable.addColumn(ExpressionKey.syncCloudError))
             }
         }
     }
@@ -2758,14 +2776,23 @@ extension GatewayModel {
         var gateways: [GatewayModel] = []
         if let rows = try? SunSmartDataManager.shared.db?.prepare(query) {
             for row in rows {
-                var spaceDatas: [SpaceData] = []
-                if let spaceIds = try? jsonDecoder.decode([String].self, from: row[ExpressionKey.associatedSpaces]) {
-                    spaceDatas = spaceIds.compactMap({
-                        return SpaceData.load(siteId: siteId, spaceId: $0).first
-                    })
+                var spaceDatas: [GatewaySpaceData] = []
+                let address = Address(row[ExpressionKey.address])
+                // 需要有对应网关节点设备
+                guard Node.load(meshUUID: siteId, address: address).count > 0 else {
+                    continue
                 }
                 
-                let gateway = GatewayModel(siteId: siteId, name: row[ExpressionKey.name], address: Address(row[ExpressionKey.address]), mac: row[ExpressionKey.macAddress], activate: row[ExpressionKey.activate], associatedSpaces: spaceDatas, apn: row[ExpressionKey.apn], mqttServerInfo: nil)
+                if let gatewaySpaceDatas = try? jsonDecoder.decode([GatewaySpaceData].self, from: row[ExpressionKey.associatedSpaces]) {
+                    spaceDatas = gatewaySpaceDatas
+                }
+                
+                let gateway = GatewayModel(siteId: siteId, name: row[ExpressionKey.name], address: Address(row[ExpressionKey.address]), mac: row[ExpressionKey.macAddress], lastUpdate: row[ExpressionKey.lastUpdateTimestamp], activate: row[ExpressionKey.activate], associatedSpaces: spaceDatas, apn: row[ExpressionKey.apn], mqttServerInfo: nil)
+                
+                gateway.lastUploadCloudTimestamp = row[ExpressionKey.lastUploadCloudTimestamp]
+                if let errorCode = row[ExpressionKey.syncCloudError] {
+                    gateway.syncCloudError = .init(code: errorCode)
+                }
                 
                 if let data = row[ExpressionKey.mqttServerInfo],
                    let serverInformation = try? jsonDecoder.decode(GatewayInformation.MQTTConnectInformation.self, from: data) {
@@ -2780,7 +2807,7 @@ extension GatewayModel {
     /// 保存网关model数据
     @discardableResult func save() -> Bool {
         
-        let spacesData = (try? jsonEncoder.encode(associatedSpaces.map({ $0.id }))) ?? Data()
+        let spacesData = (try? jsonEncoder.encode(associatedSpaces)) ?? Data()
         
         var mqttServerInfoData: Data?
         if let mqttServerInfo = self.mqttServerInfo {
@@ -2790,11 +2817,15 @@ extension GatewayModel {
         let insertOrUpdate = GatewayModel.gatewaysTable.insert(or: .replace, [
             ExpressionKey.siteUUID <- self.siteId,
             ExpressionKey.macAddress <- self.mac,
+            ExpressionKey.name <- self.name,
+            ExpressionKey.lastUpdateTimestamp <- self.lastUpdate,
+            ExpressionKey.lastUploadCloudTimestamp <- self.lastUploadCloudTimestamp,
             ExpressionKey.address <- Int(self.address),
             ExpressionKey.activate <- self.activate,
             ExpressionKey.apn <- self.apn,
             ExpressionKey.associatedSpaces <- spacesData,
-            ExpressionKey.mqttServerInfo <- mqttServerInfoData
+            ExpressionKey.mqttServerInfo <- mqttServerInfoData,
+            ExpressionKey.syncCloudError <- self.syncCloudError?.code
         ])
         do {
             try SunSmartDataManager.shared.db?.run(insertOrUpdate)

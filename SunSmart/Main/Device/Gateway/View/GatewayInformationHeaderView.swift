@@ -38,9 +38,31 @@ class GatewayInformationHeaderView: UIView {
         fatalError("init(coder:) has not been implemented")
     }
     
+    /// 展示连接中UI
+    func showConnectingUI() {
+        
+        if let filePath = Bundle.main.path(forResource: "XWHUDManager_loading", ofType: "gif"),
+            let imageData = try? Data(contentsOf: URL(fileURLWithPath: filePath)) {
+            connectImageView.image = XWHUDManager.imageGIF(with: imageData)
+        }
+
+        connectImageView.isHidden = false
+        contentLabel.isHidden = false
+        
+        informationView.isHidden = true
+    }
+    
+    /// 隐藏连接中UI
+    func hideConnectingUI() {
+        connectImageView.image = nil
+        connectImageView.isHidden = true
+        contentLabel.isHidden = true
+        
+        informationView.isHidden = false
+    }
+    
     private func setupUI() {
         
-//        XWHUDManager.imageGIF(with: <#T##Data#>)
         connectImageView = UIImageView()
         connectImageView.isHidden = true
         addSubview(connectImageView)
@@ -64,32 +86,33 @@ class GatewayInformationHeaderView: UIView {
             make.edges.equalToSuperview()
         }
         
-        gatewayStateImageView = UIImageView(image: UIImage(named: "gateway_online"))
-        informationView.addSubview(gatewayStateImageView)
-        gatewayStateImageView.snp.makeConstraints { make in
-            make.centerX.equalToSuperview().multipliedBy(0.5)
-            make.top.equalTo(4)
-        }
         
         gatewayStateLabel = UILabel(text: "online".localizedString, textColor: TextBlack_Color, fontSize: 12, fontWeight: .light, fit: false)
         informationView.addSubview(gatewayStateLabel)
         gatewayStateLabel.snp.makeConstraints { make in
-            make.centerX.equalTo(gatewayStateImageView)
-            make.bottom.equalTo(-12)
+            make.centerX.equalToSuperview().multipliedBy(0.5)
+            make.bottom.equalTo(SCRYFrom(-12))
         }
         
-        nodeCountLabel = UILabel(text: "(70)", textColor: SubText_Color, fontSize: 14, fontWeight: .light, fit: false)
-        informationView.addSubview(nodeCountLabel)
-        nodeCountLabel.snp.makeConstraints { make in
-            make.centerX.equalToSuperview()
-            make.top.equalTo(19)
+        gatewayStateImageView = UIImageView(image: UIImage(named: "gateway_online"))
+        informationView.addSubview(gatewayStateImageView)
+        gatewayStateImageView.snp.makeConstraints { make in
+            make.centerX.equalTo(gatewayStateLabel)
+            make.bottom.equalTo(gatewayStateLabel.snp.top).offset(SCRYFrom(-2))
         }
         
         nodeLabel = UILabel(text: "node".localizedString, textColor: TextBlack_Color, fontSize: 12, fontWeight: .light, fit: false)
         informationView.addSubview(nodeLabel)
         nodeLabel.snp.makeConstraints { make in
-            make.centerX.equalTo(nodeCountLabel)
+            make.centerX.equalToSuperview()
             make.centerY.equalTo(gatewayStateLabel)
+        }
+        
+        nodeCountLabel = UILabel(text: "(70)", textColor: SubText_Color, fontSize: 14, fontWeight: .light, fit: false)
+        informationView.addSubview(nodeCountLabel)
+        nodeCountLabel.snp.makeConstraints { make in
+            make.centerX.equalTo(nodeLabel)
+            make.bottom.equalTo(nodeLabel.snp.top).offset(SCRYFrom(-10))
         }
         
         signalContentView = UIView()

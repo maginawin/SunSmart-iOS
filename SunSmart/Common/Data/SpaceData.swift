@@ -88,7 +88,7 @@ class SpaceData: Copyable {
 //        }
         // 有错误则显示之前上传服务器错误，如没有错误并需要上传服务器并不在同步过程，则说明同步过程退出APP
         return syncCloudError ?? (CloudSynchronizationManager.shared.getSpaceCurrentSyncState(self) == nil ? .unknown : nil)
-    }
+    }   
     
     /// 同步服务器错误信息
     var syncCloudError: NetworkApiError?
@@ -268,19 +268,6 @@ extension SpaceData {
         case shareEditor
         /// 分享访客权限
         case shareVisitor
-    }
-    
-    /// Mesh网络操作权限
-    enum MeshOperate {
-        /// 添加
-        case add
-        /// 删除
-        case delete
-        /// 编辑/修改配置
-        case edit
-        /// 控制（设备、组、场景）
-        case control
-//        case view
     }
     
     /// Space状态

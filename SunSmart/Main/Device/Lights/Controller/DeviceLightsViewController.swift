@@ -29,6 +29,7 @@ class DeviceLightsViewController: UIViewController {
     /// 刷新
     private var refreshControl: UIRefreshControl!
     
+    let site: SiteData
     let space: SpaceData
     
     /// 列数
@@ -59,7 +60,8 @@ class DeviceLightsViewController: UIViewController {
         return view
     }()
     
-    init(space: SpaceData) {
+    init(site: SiteData,space: SpaceData) {
+        self.site = site
         self.space = space
         super.init(nibName: nil, bundle: nil)
     }
@@ -524,7 +526,11 @@ class DeviceLightsViewController: UIViewController {
                 var deviceVc: UIViewController!
                 switch node.deviceType {
                 case .gateway:
-                    deviceVc = GatewayViewController(space: space, node: node)
+                    guard let gateway = node.gatewayModel else {
+                        return
+                    }
+                    deviceVc = GatewayViewController(site: site, gateway: gateway)
+//                    deviceVc = GatewayViewController(space: space, node: node)
                 default:
                     deviceVc = DeviceLightViewController(space: space, node: node)
                 }

@@ -85,7 +85,7 @@ class DeviceInformationViewController: UIViewController {
         
         #if DEBUG
         
-        let addressModel = CustomCellModel(title: "Address", content: "\(node.primaryUnicastAddress)", style: .none)
+        let addressModel = CustomCellModel(title: "address".localizedString, content: "\(node.primaryUnicastAddress)", style: .none)
         
         deviceInfoModels = [nameModel, macModel, addressModel, devModel, deviceTypeModel, firmwareModel, singleStrengthModel]
         #else

@@ -74,6 +74,7 @@ class DevicesViewController: WMPageController {
     /// 菜单功能
     let menuTitles: [String] = ["lights".localizedString, "switches".localizedString, "sensors".localizedString, "others".localizedString]
     
+    let site: SiteData
     let space: SpaceData
     
     
@@ -99,7 +100,8 @@ class DevicesViewController: WMPageController {
     private var meshNetworkConnectedObservation: NSKeyValueObservation?
     
     
-    init(space: SpaceData) {
+    init(site: SiteData, space: SpaceData) {
+        self.site = site
         self.space = space
         super.init(nibName: nil, bundle: nil)
         
@@ -660,7 +662,7 @@ extension DevicesViewController {
         
         switch index {
         case 0:
-            let vc = DeviceLightsViewController(space: space)
+            let vc = DeviceLightsViewController(site: site, space: space)
             return vc
         case 1:
             let vc = DeviceSwitchesViewController(space: space)

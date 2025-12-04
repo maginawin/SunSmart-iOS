@@ -186,16 +186,19 @@ class SpaceViewController: WMPageController {
         navigationItem.rightBarButtonItem = UIBarButtonItem(image: UIImage(named: "more_vertical")?.withRenderingMode(.alwaysOriginal), style: .done, target: self, action: #selector(moreClick))
 //        #endif
         
-        MeshLibManager.manager.publishModelIDs = []// .genericOnOffServerModelId, .lightLightnessServerModelId, .lightCTLServerModelId
-        MeshLibManager.manager.publishTimeModelIDs = []
-        MeshLibManager.manager.publishModeloOnly = true
-        MeshLibManager.manager.groupSubscriptionModelIDs = [.genericOnOffServerModelId, .lightLightnessServerModelId, .lightCTLTemperatureServerModelId, .lightCTLServerModelId, .sensorServerModelId, .lightLCServerModelId]
-        MeshLibManager.manager.subElementGroupSubscriptionModelIDs = [.lightCTLTemperatureServerModelId, .lightLCServerModelId]
+//        MeshLibManager.manager.publishModelIDs = []// .genericOnOffServerModelId, .lightLightnessServerModelId, .lightCTLServerModelId
+//        MeshLibManager.manager.publishTimeModelIDs = []
+//        MeshLibManager.manager.publishModeloOnly = true
+//        MeshLibManager.manager.groupSubscriptionModelIDs = [.genericOnOffServerModelId, .lightLightnessServerModelId, .lightCTLTemperatureServerModelId, .lightCTLServerModelId, .sensorServerModelId, .lightLCServerModelId]
+//        MeshLibManager.manager.subElementGroupSubscriptionModelIDs = [.lightCTLTemperatureServerModelId, .lightLCServerModelId]
         checkBluetoothState()
         #if DEBUG
         
-        MeshLibManager.manager.showLogs = [.model, .access]
-//        [.network, .access, .lowerTransport, .upperTransport, .proxy, .bearer]
+        MeshLibManager.manager.showLogs =
+//        [.model, .access]
+        [.network, .access, .lowerTransport, .upperTransport, .proxy, .bearer]
+        
+       
         if routeTest {
             MeshNodeHeartbeatManager.shared.autoHeartbeatLoop = false
             MeshNodeHeartbeatManager.shared.heartbeatMode = .publish
@@ -254,7 +257,7 @@ class SpaceViewController: WMPageController {
     
     deinit {
         
-        if MeshNetworkManager.instance.meshNetwork?.uuid.uuidString == space.meshUUID {
+        if MeshNetworkManager.instance.meshNetwork?.uuid.uuidString == space.meshUUID && MeshNetworkManager.instance.currentNetworkKey.networkId.hex == space.meshNetworkId {
             MeshLibManager.manager.meshNetworkDisconnect()
         }
 //        MeshLibManager.manager.removeObserver(self, forKeyPath: "bluetoothState")
@@ -1213,7 +1216,7 @@ extension SpaceViewController {
         
         switch index {
         case 0:
-            let vc = DevicesViewController(space: space)
+            let vc = DevicesViewController(site: site, space: space)
             return vc
         case 1:
             let vc = GroupsViewController(space: space)

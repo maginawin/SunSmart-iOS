@@ -95,11 +95,12 @@ class SiteDeviceAddViewController: UIViewController {
         if state == .adding {
             MeshAPI.stopFastAddDevice(finishBack: nil)
         }
-        self.deviceAddCallback?(self.addSuccessNodes)
-        
-        if MeshNetworkManager.instance.currentNetworkKey.isPrimary {
-            MeshLibManager.manager.meshNetworkDisconnect()
+        if addSuccessNodes.count > 0 {
+            self.deviceAddCallback?(self.addSuccessNodes)
         }
+//        if MeshNetworkManager.instance.currentNetworkKey.isPrimary {
+//            MeshLibManager.manager.meshNetworkDisconnect()
+//        }
         
         // 关闭设置屏幕常亮
         UIApplication.shared.isIdleTimerDisabled = false
@@ -128,7 +129,13 @@ class SiteDeviceAddViewController: UIViewController {
         MeshAPI.startScanDevice(.max, deviceScan: {[weak self] device in
             guard let self = self else { return }
             // 新发现设备
-            if device.macAddress != nil && device.rssi.intValue >= self.filterRSSIRange.lowerBound, device.deviceType == .gateway {
+            if device.macAddress != nil && device.rssi.intValue >= self.filterRSSIRange.lowerBound {
+                if let info = MeshLibManager.manager.supportDeviceInfos.first(where: { $0.companyId == device.cid && $0.productId == device.pid }) {
+                    device.deviceType = Node.DeviceType(deviceCategory: info.deviceCategory)
+                }
+                if device.deviceType != .gateway {
+                    return
+                }
                 
                 if device.rssi.intValue > self.filterRSSIRange.upperBound {
                     device.rssi = NSNumber(value: self.filterRSSIRange.upperBound)
@@ -471,7 +478,7 @@ class SiteDeviceAddViewController: UIViewController {
             guard let mac = node.macAddress else {
                 return
             }
-            let gatewayModel = GatewayModel(siteId: self.site.id, name: node.name ?? "", address: node.primaryUnicastAddress, mac: mac)
+            let gatewayModel = GatewayModel(siteId: self.site.id, name: node.name ?? "", address: node.primaryUnicastAddress, mac: mac, lastUpdate: Int64(Date().timeIntervalSince1970))
             
             node.gatewayModel = gatewayModel
             gatewayModel.save()
@@ -486,8 +493,9 @@ class SiteDeviceAddViewController: UIViewController {
 
             if device.deviceType == .gateway, let mac = node.macAddress, NetworkRequest.shared.networkable {
                 Task {
+                    let nodeDict = await node.export() ?? [:]
                     // 注册网关
-                    let gatewayRegisterResult = await NetworkRequest.shared.request(.gatewayRegister(gatewayId: mac))
+                    let gatewayRegisterResult = await NetworkRequest.shared.request(.gatewayRegister(siteId: self.site.id, gatewayId: mac, nodeId: node.uuid.uuidString, node: nodeDict, updateTimestamp: node.gatewayModel!.lastUpdate))
                     switch gatewayRegisterResult {
                     case .success(let response):
                         // MQTT参数
@@ -584,8 +592,9 @@ class SiteDeviceAddViewController: UIViewController {
         } addFinish: {[weak self] successList, failList in
             guard let self = self else { return }
             
-            // 通知space数据修改
-//            NotificationCenter.default.post(name: .init(spaceDataChangedNotificaitonName), object: SpaceChangeDataType.device)
+            
+            // 通知site网关数据修改
+            NotificationCenter.default.post(name: .init(siteAddGatewaysDataNotificaitonName), object: self.addSuccessNodes.compactMap({ $0.gatewayModel }))
 //            NotificationCenter.default.post(name: .init(spaceDataChangedNotificaitonName), object: SpaceChangeDataType.network(type: .address))
 //            self.addSuccessNodes.append(contentsOf: successNodes)
         }

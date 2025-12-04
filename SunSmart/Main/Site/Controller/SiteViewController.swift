@@ -10,7 +10,9 @@ import NordicSigMeshSDK
 import SwiftyJSON
 
 let SiteStateChangeNotificationName = "siteStateChangeNotification"
-let SpacesRefreshChangeNotificationName = "SpacesRefreshChangeNotification"
+let spacesRefreshChangeNotificationName = "spacesRefreshChangeNotification"
+let siteAddGatewaysDataNotificaitonName = "siteAddGatewaysDataNotificaiton"
+let siteGatewayDataChangedNotificaitonName = "siteGatewayDataChangedNotificaiton"
 
 class SiteViewController: UIViewController {
 
@@ -67,8 +69,11 @@ class SiteViewController: UIViewController {
     
     private var gatewayModels: [GatewayModel] = []
     
-    private var allSpaceGatewayIndex: Int = 0
-    private var favouriteSpaceGatewayIndex: Int = 0
+    private var allSpaceSelectGateway: GatewayModel?
+    private var favouriteSpaceSelectGateway: GatewayModel?
+    
+    private weak var allSpaceGatewayHeaderView: SiteGatewayHeaderView?
+    private weak var favouriteSpaceGatewayHeaderView: SiteGatewayHeaderView?
     
     init(site: SiteData, addSite: Bool = false) {
         self.site = site
@@ -92,51 +97,7 @@ class SiteViewController: UIViewController {
         allSpaces = site.spaces
         favouriteSpaces = allSpaces.filter({ $0.isFavourite })
 
-        NotificationCenter.default.addObserver(forName: .init(SiteStateChangeNotificationName), object: nil, queue: nil) {[weak self] _ in
-            guard let self = self else { return }
-            if self.site.state == .waitDeleted {
-                NotificationCenter.default.post(name: .init(SitesDataRefreshNotifiacationName), object: true)
-                self.navigationController?.popViewController(animated: true)
-            }else {
-                if self.view.window != nil {
-                    self.reloadData = false
-                    allSpaces = site.spaces
-                    favouriteSpaces = allSpaces.filter({ $0.isFavourite })
-                    loadSiteRequest()
-                }else {
-                    self.reloadData = true
-                }
-            }
-        }
-        
-        /// 刷新spaces列表通知回调
-        NotificationCenter.default.addObserver(forName: .init(SpacesRefreshChangeNotificationName), object: nil, queue: nil) {[weak self] notification in
-            guard let self = self else { return }
-            if notification.object as? Bool ?? false {
-                // 更新缓存数据
-                site.spaces = SpaceData.load(siteId: site.id)
-            }
-            allSpaces = site.spaces
-            favouriteSpaces = allSpaces.filter({ $0.isFavourite })
-            if self.view.window != nil {
-                self.allSpacesCollectionView.reloadData()
-                self.favouritesCollectionView.reloadData()
-                self.updateEmptyView()
-            }
-        }
-
-        // 手机网络状态观察者
-        networkableObservation = NetworkRequest.shared.observe(\.networkable, options: [.new], changeHandler: {[weak self] _, _ in
-            guard let self = self else { return }
-            DispatchQueue.main.async {[weak self] in
-                guard let self = self else { return }
-                self.updateNoInternetUI()
-                if !NetworkRequest.shared.networkable && SRAlertView.getCurrentAlertView() == nil {
-                    // 有网络=>无网络
-                        SRAlertView(title: "notification".localizedString, message: "phone_network_disconnect".localizedString, actions: [.init(title: "confirm".localizedString)]).show()
-                }
-            }
-        })
+        addNotificationObserver()
         
 //        updateEmptyView()
         updateNoInternetUI()
@@ -146,6 +107,16 @@ class SiteViewController: UIViewController {
 //            loadGatewaysReqeust()
         }
         
+        MeshLibManager.manager.publishModelIDs = []// .genericOnOffServerModelId, .lightLightnessServerModelId, .lightCTLServerModelId
+        MeshLibManager.manager.publishTimeModelIDs = []
+        MeshLibManager.manager.publishModeloOnly = true
+        MeshLibManager.manager.groupSubscriptionModelIDs = [.genericOnOffServerModelId, .lightLightnessServerModelId, .lightCTLTemperatureServerModelId, .lightCTLServerModelId, .sensorServerModelId, .lightLCServerModelId]
+        MeshLibManager.manager.subElementGroupSubscriptionModelIDs = [.lightCTLTemperatureServerModelId, .lightLCServerModelId]
+        #if DEBUG
+        MeshLibManager.manager.showLogs = [.network, .access, .lowerTransport, .upperTransport, .proxy, .bearer]
+        #endif
+        MeshNodeHeartbeatManager.shared.openHeartbeatShare = false
+        
 //        MeshLibManager.manager.setMeshNetworkConnected(meshUUID: self.site.meshUUID, subNetwork: self.allSpaces.first?.meshNetworkKey, connected: true)
     }
     
@@ -154,14 +125,14 @@ class SiteViewController: UIViewController {
         
         if reloadData {
             reloadData = false
-            allSpaces = site.spaces
-            favouriteSpaces = allSpaces.filter({ $0.isFavourite })
+//            allSpaces = site.spaces
+//            favouriteSpaces = allSpaces.filter({ $0.isFavourite })
             loadSiteRequest()
         }
-        self.allSpacesCollectionView.reloadData()
-        self.favouritesCollectionView.reloadData()
-        self.updateEmptyView()
-     
+//        self.allSpacesCollectionView.reloadData()
+//        self.favouritesCollectionView.reloadData()
+//        self.updateEmptyView()
+        setupData()
         CloudSynchronizationManager.shared.delegate = self
     }
     
@@ -180,6 +151,10 @@ class SiteViewController: UIViewController {
             favouritesCollectionView.flashScrollIndicatorsIfNeeded()
         }
 
+        // 读取当前site网络数据
+        if MeshNetworkManager.instance.meshNetwork?.uuid.uuidString != self.site.meshUUID || !MeshNetworkManager.instance.currentNetworkKey.isPrimary {
+            MeshLibManager.manager.setMeshNetworkConnected(meshUUID: site.meshUUID, subNetworkId: site.meshNetworkId, connected: false)
+        }
         
         updateSyncState()
 #if DEBUG
@@ -196,6 +171,10 @@ self.updateAddressData()
     deinit {
 //        NetworkRequest.shared.removeObserver(self, forKeyPath: "networkable")
         networkableObservation = nil
+        
+        if MeshNetworkManager.instance.meshNetwork?.uuid.uuidString == site.meshUUID && MeshNetworkManager.instance.currentNetworkKey.networkId.hex == site.meshNetworkId {
+            MeshLibManager.manager.meshNetworkDisconnect()
+        }
 //        MeshLibManager.manager.meshNetworkDisconnect()
     }
     
@@ -238,6 +217,103 @@ self.updateAddressData()
 //        self.allSpacesTableView.reloadData()
     }
 //    #endif
+    
+    private func setupData() {
+        
+        allSpaces = site.spaces
+        if let gateway = allSpaceSelectGateway {
+            allSpaces = allSpaces.filter({ space in gateway.associatedSpaces.contains(where: { $0.spaceId == space.id }) })
+        }
+        
+        favouriteSpaces = allSpaces.filter({ $0.isFavourite })
+        if let gateway = favouriteSpaceSelectGateway {
+            favouriteSpaces = favouriteSpaces.filter({ space in gateway.associatedSpaces.contains(where: { $0.spaceId == space.id }) })
+        }
+        
+        self.allSpacesCollectionView.reloadData()
+        self.favouritesCollectionView.reloadData()
+        self.updateEmptyView()
+    }
+    
+    /// 添加通知监听
+    private func addNotificationObserver() {
+        
+        NotificationCenter.default.addObserver(forName: .init(SiteStateChangeNotificationName), object: nil, queue: nil) {[weak self] _ in
+            guard let self = self else { return }
+            if self.site.state == .waitDeleted {
+                NotificationCenter.default.post(name: .init(SitesDataRefreshNotifiacationName), object: true)
+                self.navigationController?.popViewController(animated: true)
+            }else {
+                if self.view.window != nil {
+                    self.reloadData = false
+//                    allSpaces = site.spaces
+//                    favouriteSpaces = allSpaces.filter({ $0.isFavourite })
+                    self.setupData()
+                    self.loadSiteRequest()
+                }else {
+                    self.reloadData = true
+                }
+            }
+        }
+        
+        /// 刷新spaces列表通知回调
+        NotificationCenter.default.addObserver(forName: .init(spacesRefreshChangeNotificationName), object: nil, queue: nil) {[weak self] notification in
+            guard let self = self else { return }
+            if notification.object as? Bool ?? false {
+                // 更新缓存数据
+                self.site.spaces = SpaceData.load(siteId: site.id)
+            }
+            self.setupData()
+        }
+        
+        /// 网关添加回调
+        NotificationCenter.default.addObserver(forName: .init(siteAddGatewaysDataNotificaitonName), object: nil, queue: nil) { notification in
+            guard let gateways = notification.object as? [GatewayModel] else { return }
+            gateways.forEach({
+                if let node = $0.node {
+                    $0.lastUpdate = Int64(Date().timeIntervalSince1970)
+                    $0.save()
+                    CloudSynchronizationManager.shared.addSynchronizationHandle(operation: .syncGateway(gateway: $0, node: node), level: .promptly)
+                }
+            })
+            if self.view.window != nil {
+                self.reloadData = false
+                self.loadSiteRequest()
+            }else {
+                self.reloadData = true
+            }
+        }
+        
+        /// 网关数据更新回调
+        NotificationCenter.default.addObserver(forName: .init(siteGatewayDataChangedNotificaitonName), object: nil, queue: nil) { notification in
+            guard let gateway = notification.object as? GatewayModel else { return }
+            if let node = gateway.node {
+                gateway.lastUpdate = Int64(Date().timeIntervalSince1970)
+                gateway.save()
+                CloudSynchronizationManager.shared.addSynchronizationHandle(operation: .syncGateway(gateway: gateway, node: node), level: .promptly)
+            }
+            if self.view.window != nil {
+                self.reloadData = false
+                self.setupData()
+            }else {
+                self.reloadData = true
+            }
+        }
+
+        // 手机网络状态观察者
+        networkableObservation = NetworkRequest.shared.observe(\.networkable, options: [.new], changeHandler: {[weak self] _, _ in
+            guard let self = self else { return }
+            DispatchQueue.main.async {[weak self] in
+                guard let self = self else { return }
+                self.updateNoInternetUI()
+                if !NetworkRequest.shared.networkable && SRAlertView.getCurrentAlertView() == nil {
+                    // 有网络=>无网络
+                        SRAlertView(title: "notification".localizedString, message: "phone_network_disconnect".localizedString, actions: [.init(title: "confirm".localizedString)]).show()
+                }
+            }
+        })
+        
+    }
     
     // MARK: - Request
     /// 获取site数据请求
@@ -298,7 +374,7 @@ self.updateAddressData()
                         
                         self.title = self.site.name
                         
-//                        self.gatewayModels = await self.loadGatewaysData()
+                        self.gatewayModels = await self.loadGatewaysData()
                         
 //                        self.site.save(allData: true)
 //                        // 未提交到服务器的本地数据
@@ -306,19 +382,15 @@ self.updateAddressData()
 //                        self.site.spaces.append(contentsOf: localSpaces)
 //                        self.site.spaces.append(contentsOf: deleteSpaces)
 //                        self.site.spaces.sort(by: { $0.create < $1.create })
-//                        self.site.spaces.forEach({ space in
-//                            if let gateway = self.gatewayModels.first(where: { gateway in gateway.associatedSpaces.contains(where: { $0.id == space.id }) }) {
-//                                space.gatewayStatus = gateway.connectStatus == .online ? .online : .offline
-//                            }else {
-//                                space.gatewayStatus = .notBound
-//                            }
-//                        })
+                        self.site.spaces.forEach({ space in
+                            if let gateway = self.gatewayModels.first(where: { gateway in gateway.associatedSpaces.contains(where: { $0.spaceId == space.id }) }) {
+                                space.gatewayStatus = gateway.connectStatus == .online ? .online : .offline
+                            }else {
+                                space.gatewayStatus = .notBound
+                            }
+                        })
                         
-                        self.allSpaces = self.site.spaces
-                        self.favouriteSpaces = self.allSpaces.filter({ $0.isFavourite })
-                        self.allSpacesCollectionView.reloadData()
-                        self.favouritesCollectionView.reloadData()
-                        self.updateEmptyView()
+                        self.setupData()
                     #if DEBUG
                         self.updateAddressData()
                     #endif
@@ -1392,6 +1464,66 @@ self.updateAddressData()
         }
     }
     
+    /// 更新网关同步状态
+    private func updateGatewaySyncState(gateway: GatewayModel, state: CloudSynchronizationState?) {
+        
+        var gatewayStatus: GatewayStatusType = .online
+        switch gateway.connectStatus {
+        case .online:
+            gatewayStatus = .online
+        case .offline:
+            gatewayStatus = .offline(lastOnlineTime: gateway.lastOnlineTime ?? "")
+        case .inactive:
+            gatewayStatus = .noActivated
+        case .reset:
+            gatewayStatus = .reset(resetTime: gateway.resetTime ?? "")
+        }
+        
+        let permissionState: GatewayPermissionState = (site.permission == .owner || gateway.associatedSpaces.compactMap({ data in allSpaces.first(where: { $0.id == data.spaceId }) }).contains(where: { $0.state == .normal })) ? .normal : .noPermission
+        
+        if gateway.mac == allSpaceSelectGateway?.mac {
+            allSpaceGatewayHeaderView?.gatewayStatusView.updateGatewayStatus(gatewayStatus, syncState: state, permissionState: permissionState)
+            if case .successful = state { // 同步成功后清除状态
+                if gateway.syncCloudError != nil {
+                    gateway.syncCloudError = nil
+                    var items = gatewayModels.map({ GatewayListItem(id: $0.mac, title: $0.name, status: $0.connectStatus, gatewayModel: $0)})
+                    if items.count > 0 {
+                        items.insert(.init(id: "", title: "overview".localizedString), at: 0)
+                    }
+                    allSpaceGatewayHeaderView?.gatewayListView.updateItems(items)
+                }
+                DispatchQueue.main.asyncAfter(deadline: .now() + 1) {[weak self] in
+                    guard let self = self else { return }
+                    if gateway.mac == self.allSpaceSelectGateway?.mac, self.allSpaceGatewayHeaderView?.gatewayStatusView.gatewaySyncState?.rawValue == CloudSynchronizationState.successful.rawValue {
+                        self.allSpaceGatewayHeaderView?.gatewayStatusView.updateGatewayStatus(gatewayStatus, syncState: nil, permissionState: permissionState)
+                    }
+                }
+            }
+        }else if gateway.mac == favouriteSpaceSelectGateway?.mac {
+            favouriteSpaceGatewayHeaderView?.gatewayStatusView.updateGatewayStatus(gatewayStatus, syncState: state, permissionState: permissionState)
+            
+            if gateway.syncCloudError != nil {
+                gateway.syncCloudError = nil
+                var items = gatewayModels.map({ GatewayListItem(id: $0.mac, title: $0.name, status: $0.connectStatus, gatewayModel: $0)})
+                if items.count > 0 {
+                    items.insert(.init(id: "", title: "overview".localizedString), at: 0)
+                }
+                favouriteSpaceGatewayHeaderView?.gatewayListView.updateItems(items)
+            }
+            
+            if case .successful = state { // 同步成功后清除状态
+                DispatchQueue.main.asyncAfter(deadline: .now() + 1) {[weak self] in
+                    guard let self = self else { return }
+                    if gateway.mac == self.favouriteSpaceSelectGateway?.mac, self.favouriteSpaceGatewayHeaderView?.gatewayStatusView.gatewaySyncState?.rawValue == CloudSynchronizationState.successful.rawValue {
+                        self.favouriteSpaceGatewayHeaderView?.gatewayStatusView.updateGatewayStatus(gatewayStatus, syncState: nil, permissionState: permissionState)
+                    }
+                }
+            }
+        }
+        
+        
+    }
+
     /// spaces批量同步提示
     private func showSpacesBatchesSyncAlert() {
         
@@ -1618,61 +1750,64 @@ self.updateAddressData()
         }
         
         if allSpaces.isEmpty {
-            var frame = allSpacesCollectionView.bounds
-            frame.origin.y = 0
-            allSpacesCollectionView.showEmptyDataView(frame: frame,imageName: "space_empty", title: "no_spaces_title".localizedString, tipText: nil)
-            if let emptyView = allSpacesCollectionView.emptyView {
-//                let margin = NetworkRequest.shared.networkable ? 0 : (allSpacesNoInternetView?.height ?? 0)
-                
-                if isIPad {
+            if site.spaces.isEmpty {
+                var frame = allSpacesCollectionView.bounds
+                frame.origin.y = 0
+                allSpacesCollectionView.showEmptyDataView(frame: frame,imageName: "space_empty", title: "no_spaces_title".localizedString, tipText: nil)
+                if let emptyView = allSpacesCollectionView.emptyView {
+    //                let margin = NetworkRequest.shared.networkable ? 0 : (allSpacesNoInternetView?.height ?? 0)
                     
-                    emptyView.contentView.snp.remakeConstraints({ make in
-                        make.centerX.equalToSuperview()
-                        make.centerY.equalToSuperview().offset(SCRYFit(-80))
-                        make.width.equalToSuperview().multipliedBy(0.7)
-                    })
-                    emptyView.imageView.snp.remakeConstraints { make in
-                        make.top.equalToSuperview()
-                        make.centerX.equalToSuperview()
-                        make.left.equalTo(SCRXFrom(-10))
-                        make.right.equalTo(SCRXFrom(10))
-                        make.height.equalTo(emptyView.imageView.snp.width).multipliedBy(298.0 / 353)
+                    if isIPad {
+                        
+                        emptyView.contentView.snp.remakeConstraints({ make in
+                            make.centerX.equalToSuperview()
+                            make.centerY.equalToSuperview().offset(SCRYFit(-80))
+                            make.width.equalToSuperview().multipliedBy(0.7)
+                        })
+                        emptyView.imageView.snp.remakeConstraints { make in
+                            make.top.equalToSuperview()
+                            make.centerX.equalToSuperview()
+                            make.left.equalTo(SCRXFrom(-10))
+                            make.right.equalTo(SCRXFrom(10))
+                            make.height.equalTo(emptyView.imageView.snp.width).multipliedBy(298.0 / 353)
+                        }
+                        
+                    }else {
+                        
+                        emptyView.contentView.snp.remakeConstraints({ make in
+                            //                    make.top.equalTo(SCRYFrom(7) + margin)
+                            make.top.equalTo(SCRYFrom(7))
+                            make.left.equalTo(SCRXFrom(20))
+                            make.right.equalTo(-SCRXFrom(20))
+                        })
+                        emptyView.imageView.snp.remakeConstraints { make in
+                            make.top.equalToSuperview()
+                            make.centerX.equalToSuperview()
+                            make.left.equalTo(SCRXFrom(-10))
+                            make.right.equalTo(SCRXFrom(10))
+                            make.height.equalTo(emptyView.snp.width).multipliedBy(298.0 / 353)
+                        }
                     }
-                    
-                }else {
-                    
-                    emptyView.contentView.snp.remakeConstraints({ make in
-                        //                    make.top.equalTo(SCRYFrom(7) + margin)
-                        make.top.equalTo(SCRYFrom(7))
-                        make.left.equalTo(SCRXFrom(20))
-                        make.right.equalTo(-SCRXFrom(20))
-                    })
-                    emptyView.imageView.snp.remakeConstraints { make in
-                        make.top.equalToSuperview()
-                        make.centerX.equalToSuperview()
-                        make.left.equalTo(SCRXFrom(-10))
-                        make.right.equalTo(SCRXFrom(10))
-                        make.height.equalTo(emptyView.snp.width).multipliedBy(298.0 / 353)
+                    emptyView.titleLabel.snp.updateConstraints { make in
+                        make.top.equalTo(emptyView.imageView.snp.bottom).offset(SCRYFrom(9))
                     }
+                    emptyView.tipLabel.textAlignment = .left
+                    
+                    
+                    let paragraphStyle = NSMutableParagraphStyle()
+                    paragraphStyle.lineSpacing = 6
+                    let attStr = NSAttributedString(string: "no_spaces_message".localizedString, attributes: [.paragraphStyle: paragraphStyle])
+                    emptyView.tipLabel.attributedText = attStr
                 }
-                emptyView.titleLabel.snp.updateConstraints { make in
-                    make.top.equalTo(emptyView.imageView.snp.bottom).offset(SCRYFrom(9))
-                }
-                emptyView.tipLabel.textAlignment = .left
-                
-                
-                let paragraphStyle = NSMutableParagraphStyle()
-                paragraphStyle.lineSpacing = 6
-                let attStr = NSAttributedString(string: "no_spaces_message".localizedString, attributes: [.paragraphStyle: paragraphStyle])
-                emptyView.tipLabel.attributedText = attStr
+            }else {
+                allSpacesCollectionView.showEmptyDataView(frame: favouritesCollectionView.bounds.offsetBy(dx: 0, dy: SCRYFrom(96)), title: "no_spaces_title".localizedString, bottomMargin: SCRYFrom(32))
             }
-           
         }else {
             allSpacesCollectionView.hideEmptyDataView()
         }
         
         if favouriteSpaces.isEmpty {
-            favouritesCollectionView.showEmptyDataView(frame: favouritesCollectionView.bounds, title: "no_favourites_spaces".localizedString, bottomMargin: SCRYFrom(32))
+            favouritesCollectionView.showEmptyDataView(frame: favouritesCollectionView.bounds.offsetBy(dx: 0, dy: site.spaces.count > 0 ? SCRYFrom(96) : 0), title: "no_favourites_spaces".localizedString, bottomMargin: SCRYFrom(32))
         }else {
             favouritesCollectionView.hideEmptyDataView()
         }
@@ -1702,7 +1837,7 @@ self.updateAddressData()
         view.addSubview(scrollView)
         scrollView.snp.makeConstraints { make in
             make.left.right.bottom.equalToSuperview()
-            make.top.equalTo(segmentedControl.snp.bottom).offset(SCRYFrom(20))
+            make.top.equalTo(segmentedControl.snp.bottom).offset(SCRYFrom(8))
         }
         
         allSpacesRefreshControl = UIRefreshControl()
@@ -1721,7 +1856,7 @@ self.updateAddressData()
         allSpacesCollectionView = UICollectionView(frame: .zero, collectionViewLayout: allSpacesFlowLayout)
         allSpacesCollectionView.backgroundColor = .clear
         allSpacesCollectionView.register(SpacesViewCell.classForCoder(), forCellWithReuseIdentifier: "cell")
-//        allSpacesCollectionView.register(SiteGatewayHeaderView.classForCoder(), forSupplementaryViewOfKind: UICollectionView.elementKindSectionHeader, withReuseIdentifier: "header")
+        allSpacesCollectionView.register(SiteGatewayHeaderView.classForCoder(), forSupplementaryViewOfKind: UICollectionView.elementKindSectionHeader, withReuseIdentifier: "header")
 //#if DEBUG
 //        allSpacesCollectionView.register(SiteAddressDataHeaderView.classForCoder(), forHeaderFooterViewReuseIdentifier: "header")
 //#endif
@@ -1751,7 +1886,7 @@ self.updateAddressData()
         
         favouritesCollectionView = UICollectionView(frame: .zero, collectionViewLayout: favouritesFlowLayout)
         favouritesCollectionView.backgroundColor = .clear
-//        favouritesCollectionView.register(SiteGatewayHeaderView.classForCoder(), forSupplementaryViewOfKind: UICollectionView.elementKindSectionHeader, withReuseIdentifier: "header")
+        favouritesCollectionView.register(SiteGatewayHeaderView.classForCoder(), forSupplementaryViewOfKind: UICollectionView.elementKindSectionHeader, withReuseIdentifier: "header")
         favouritesCollectionView.register(SpacesViewCell.classForCoder(), forCellWithReuseIdentifier: "cell")
         favouritesCollectionView.dataSource = self
         favouritesCollectionView.delegate = self
@@ -1790,23 +1925,96 @@ extension SiteViewController: GatewayListViewDelegate {
     /// 点击网关项回调
     func gatewayListView(_ view: GatewayListView, didSelectItem item: GatewayListItem, at index: Int) {
         if segmentedControl.selectedIndex == 0 {
-            allSpaceGatewayIndex = index
-            allSpacesCollectionView.reloadData()
+            if index == 0 || index > gatewayModels.count {
+                allSpaceSelectGateway = nil
+            }else {
+                allSpaceSelectGateway = gatewayModels[index - 1]
+            }
         }else {
-            favouriteSpaceGatewayIndex = index
-            favouritesCollectionView.reloadData()
+            if index == 0 || index > gatewayModels.count {
+                favouriteSpaceSelectGateway = nil
+            }else {
+                favouriteSpaceSelectGateway = gatewayModels[index - 1]
+            }
         }
+        setupData()
     }
     
     /// 点击菜单按钮回调
     func gatewayListViewDidClickMenu(_ view: GatewayListView) {
+        let datas = gatewayModels.map({ SiteGatewaysMenuView.GatewayMenuData(name: $0.name, status: $0.connectStatus) })
         
+        let menuPoint = CGPoint(x: view.width - SiteGatewaysMenuView.defalutWidth, y: view.frame.maxY + SCRYFrom(4))
+        let windowPoint = view.convert(menuPoint, to: UIApplication.shared.keyWindow())
+        
+        var selectIndex: Int?
+        if segmentedControl.selectedIndex == 0 {
+            selectIndex = gatewayModels.firstIndex(where: { $0.mac == allSpaceSelectGateway?.mac })
+        }else {
+            selectIndex = gatewayModels.firstIndex(where: { $0.mac == favouriteSpaceSelectGateway?.mac })
+        }
+        
+        SiteGatewaysMenuView.show(datas: datas, anchorPoint: windowPoint, selectIndex: selectIndex) {[weak self] index in
+            guard let self = self else { return }
+            if self.segmentedControl.selectedIndex == 0 {
+                self.allSpaceSelectGateway = self.gatewayModels[safe: index]
+            }else {
+                self.favouriteSpaceSelectGateway = self.gatewayModels[safe: index]
+            }
+            self.setupData()
+        } addCallback: {[weak self] in
+            guard let self = self else { return }
+            let vc = SiteDeviceAddViewController(site: self.site)
+            vc.deviceAddCallback = {[weak self] _ in
+                self?.loadSiteRequest()
+            }
+            self.navigationController?.pushViewController(vc, animated: true)
+        }
     }
     
     /// 点击添加网关
     func gatewayListViewDidClickAdd(_ view: GatewayListView) {
         let vc = SiteDeviceAddViewController(site: site)
+        vc.deviceAddCallback = {[weak self] _ in
+            self?.loadSiteRequest()
+        }
         navigationController?.pushViewController(vc, animated: true)
+    }
+    
+}
+
+extension SiteViewController: SiteGatewayStatusViewDelegate {
+    
+    /// 网关状态view点击回调
+    func gatewayStatusViewClickAction(_ view: SiteGatewayStatusView) {
+        if case .failure = view.gatewaySyncState {
+            var selectGateway: GatewayModel?
+            if segmentedControl.selectedIndex == 0 {
+                selectGateway = allSpaceSelectGateway
+            }else {
+                selectGateway = favouriteSpaceSelectGateway
+            }
+            if let gateway = selectGateway, let node = gateway.node {
+                CloudSynchronizationManager.shared.addSynchronizationHandle(operation: .syncGateway(gateway: gateway, node: node), level: .promptly)
+            }
+        }
+    }
+    
+    func gatewayOperationClickAction(_ view: SiteGatewayStatusView) {
+        
+        let selectGateway = segmentedControl.selectedIndex == 0 ? allSpaceSelectGateway : favouriteSpaceSelectGateway
+        guard let gateway = selectGateway else {
+            return
+        }
+        guard let gatewayVc = GatewayViewController(site: site, gateway: gateway) else {
+            XWHUDManager.showErrorTipHUD("failed".localizedString + " !")
+            return
+        }
+        if isIPad {
+            gatewayVc.preferredContentSize = iPadStandardSize
+        }
+        present(NavigationViewController(rootViewController: gatewayVc), animated: true)
+        
     }
     
 }
@@ -1857,68 +2065,78 @@ extension SiteViewController: UICollectionViewDataSource, UICollectionViewDelega
         return cell
     }
     
-//    func collectionView(_ collectionView: UICollectionView, viewForSupplementaryElementOfKind kind: String, at indexPath: IndexPath) -> UICollectionReusableView {
-//        let headerView = collectionView.dequeueReusableSupplementaryView(ofKind: kind, withReuseIdentifier: "header", for: indexPath) as! SiteGatewayHeaderView
-//        
-//        var items = gatewayModels.map({ GatewayListItem(id: $0.mac, title: $0.name, status: .online, gatewayModel: $0)})
-//        if items.count > 0 {
-//            items.insert(.init(id: "", title: "overview".localizedString), at: 0)
-//        }
-//        headerView.gatewayListView.updateItems(items)
-//        var selectIndex: Int = 0
-//        var spaces: [SpaceData] = []
-//        if collectionView == allSpacesCollectionView {
-//            selectIndex = allSpaceGatewayIndex
-//            spaces = allSpaces
-//        }else {
-//            selectIndex = favouriteSpaceGatewayIndex
-//            spaces = favouriteSpaces
-//        }
-//        headerView.gatewayListView.selectedIndex = selectIndex
-//        if selectIndex == 0 {
-//            headerView.gatewayStatusView.setDisplayMode(.overview)
-//            
-//            let onlineSpaces = spaces.filter({ $0.gatewayStatus == .online })
-//            let offlineSpaces = spaces.filter({ $0.gatewayStatus == .offline })
-//            let notBoundSpaces = spaces.filter({ $0.gatewayStatus == .notBound })
-//            
-//            headerView.gatewayStatusView.updateOverviewStats(.init(internetOnlineCount: onlineSpaces.count, internetOfflineCount: offlineSpaces.count, noGatewayCount: notBoundSpaces.count))
-//        }else {
-//            headerView.gatewayStatusView.setDisplayMode(.gateway)
-//            if selectIndex < gatewayModels.count {
-//                let gateway = gatewayModels[selectIndex]
-//                switch gateway.connectStatus {
-//                case .online:
-//                    headerView.gatewayStatusView.updateGatewayStatus(.online)
-//                case .offline:
-//                    headerView.gatewayStatusView.updateGatewayStatus(.offline(lastOnlineTime: gateway.lastOnlineTime ?? ""))
-//                case .inactive:
-//                    headerView.gatewayStatusView.updateGatewayStatus(.noActivated)
-//                case .reset:
-//                    headerView.gatewayStatusView.updateGatewayStatus(.reset(resetTime: gateway.resetTime ?? ""))
-//                }
-//            }
-//        }
-//        headerView.gatewayListView.delegate = self
-//        return headerView
-//    }
+    func collectionView(_ collectionView: UICollectionView, viewForSupplementaryElementOfKind kind: String, at indexPath: IndexPath) -> UICollectionReusableView {
+        let headerView = collectionView.dequeueReusableSupplementaryView(ofKind: kind, withReuseIdentifier: "header", for: indexPath) as! SiteGatewayHeaderView
+        
+        var items = gatewayModels.map({ GatewayListItem(id: $0.mac, title: $0.name, status: $0.connectStatus, gatewayModel: $0)})
+        if items.count > 0 {
+            items.insert(.init(id: "", title: "overview".localizedString), at: 0)
+        }
+        headerView.gatewayListView.updateItems(items)
+        var selectIndex: Int = 0
+        var spaces: [SpaceData] = []
+        if collectionView == allSpacesCollectionView {
+            if let index = gatewayModels.firstIndex(where: { $0.mac == allSpaceSelectGateway?.mac }) {
+                selectIndex = index + 1
+            }
+            spaces = allSpaces
+        }else {
+            if let index = gatewayModels.firstIndex(where: { $0.mac == favouriteSpaceSelectGateway?.mac }) {
+                selectIndex = index + 1
+            }
+            spaces = favouriteSpaces
+        }
+        headerView.gatewayListView.selectedIndex = selectIndex
+        headerView.gatewayStatusView.isHidden = gatewayModels.isEmpty
+        if selectIndex == 0 {
+            headerView.gatewayStatusView.setDisplayMode(.overview)
+            
+            let onlineSpaces = spaces.filter({ $0.gatewayStatus == .online })
+            let offlineSpaces = spaces.filter({ $0.gatewayStatus == .offline })
+            let notBoundSpaces = spaces.filter({ $0.gatewayStatus == .notBound })
+            
+            headerView.gatewayStatusView.updateOverviewStats(.init(internetOnlineCount: onlineSpaces.count, internetOfflineCount: offlineSpaces.count, noGatewayCount: notBoundSpaces.count))
+        }else {
+            headerView.gatewayStatusView.setDisplayMode(.gateway)
+            if selectIndex <= gatewayModels.count {
+                let gateway = gatewayModels[selectIndex - 1]
+                let syncState = CloudSynchronizationManager.shared.getGatewayCurrentSyncState(gateway)?.state
+                let permissionState: GatewayPermissionState = (site.permission == .owner || gateway.associatedSpaces.compactMap({ data in allSpaces.first(where: { $0.id == data.spaceId }) }).contains(where: { $0.state == .normal })) ? .normal : .noPermission
+                switch gateway.connectStatus {
+                case .online:
+                    headerView.gatewayStatusView.updateGatewayStatus(.online, syncState: syncState, permissionState: permissionState)
+                case .offline:
+                    headerView.gatewayStatusView.updateGatewayStatus(.offline(lastOnlineTime: gateway.lastOnlineTime ?? ""), syncState: syncState, permissionState: permissionState)
+                case .inactive:
+                    headerView.gatewayStatusView.updateGatewayStatus(.noActivated, syncState: syncState, permissionState: permissionState)
+                case .reset:
+                    headerView.gatewayStatusView.updateGatewayStatus(.reset(resetTime: gateway.resetTime ?? ""), syncState: syncState, permissionState: permissionState)
+                }
+            }
+        }
+        headerView.gatewayListView.delegate = self
+        headerView.gatewayStatusView.delegate = self
+        if collectionView == allSpacesCollectionView {
+            allSpaceGatewayHeaderView = headerView
+        }else {
+            favouriteSpaceGatewayHeaderView = headerView
+        }
+        return headerView
+    }
     
-//    func collectionView(_ collectionView: UICollectionView, layout collectionViewLayout: UICollectionViewLayout, referenceSizeForHeaderInSection section: Int) -> CGSize {
-//        var spaces = allSpaces
-//        if collectionView == favouritesCollectionView {
-//            spaces = favouriteSpaces
-//        }
-//        guard spaces.count > 0 else {
-//            return .zero
-//        }
-//        
-//        let headerW = collectionView.width - collectionView.contentInset.left - collectionView.contentInset.right
-//        var headerH = SCRYFrom(48)
-//        if gatewayModels.count > 0 {
-//            headerH += SCRYFrom(48)
-//        }
-//        return CGSize(width: headerW, height: headerH)
-//    }
+    func collectionView(_ collectionView: UICollectionView, layout collectionViewLayout: UICollectionViewLayout, referenceSizeForHeaderInSection section: Int) -> CGSize {
+
+        guard site.spaces.count > 0 else {
+            return .zero
+        }
+        
+        let headerW = collectionView.width - collectionView.contentInset.left - collectionView.contentInset.right
+        var headerH = SCRYFrom(48)
+        if gatewayModels.count > 0 {
+            headerH += SCRYFrom(48)
+        }
+        return CGSize(width: headerW, height: headerH)
+    }
     
     func collectionView(_ collectionView: UICollectionView, didSelectItemAt indexPath: IndexPath) {
         var space: SpaceData!
@@ -2004,18 +2222,20 @@ extension SiteViewController: SpacesViewCellDelegate {
         space.isFavourite = favourite
 //        space.lastUpdate = Int64(Date().timeIntervalSince1970)
         space.save()
-        if favourite {
-            self.favouriteSpaces.append(space)
-            // 创建时间排序
-            self.favouriteSpaces = self.favouriteSpaces.sorted { space1, space2 in
-                return space1.create < space2.create
-            }
-        }else {
-            self.favouriteSpaces.removeAll(where: { $0.id == space.id })
-        }
-        self.allSpacesCollectionView.reloadData()
-        self.favouritesCollectionView.reloadData()
-        self.updateEmptyView()
+        setupData()
+//        if favourite {
+//            
+//            self.favouriteSpaces.append(space)
+//            // 创建时间排序
+////            self.favouriteSpaces = self.favouriteSpaces.sorted { space1, space2 in
+////                return space1.create < space2.create
+////            }
+//        }else {
+//            self.favouriteSpaces.removeAll(where: { $0.id == space.id })
+//        }
+//        self.allSpacesCollectionView.reloadData()
+//        self.favouritesCollectionView.reloadData()
+//        self.updateEmptyView()
 //        CloudSynchronizationManager.shared.addSynchronizationHandle(operation: .syncSpace(space: space), level: .normal)
         
     }
@@ -2069,6 +2289,8 @@ extension SiteViewController: CloudSynchronizationManagerDelegate {
             spaces.forEach({
                 self.reloadSpaceData($0)
             })
+        case .syncGateway(let gateway, _):
+            updateGatewaySyncState(gateway: gateway, state: .inProgress)
         default:
             break
         }
@@ -2090,6 +2312,8 @@ extension SiteViewController: CloudSynchronizationManagerDelegate {
             spaces.forEach({
                 self.reloadSpaceData($0)
             })
+        case .syncGateway(let gateway, _):
+            updateGatewaySyncState(gateway: gateway, state: .successful)
         }
     }
     
@@ -2110,6 +2334,8 @@ extension SiteViewController: CloudSynchronizationManagerDelegate {
             spaces.forEach({
                 self.reloadSpaceData($0)
             })
+        case .syncGateway(let gateway, _):
+            updateGatewaySyncState(gateway: gateway, state: .failure(error: error))
         }
         
     }

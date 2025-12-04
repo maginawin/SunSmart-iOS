@@ -535,7 +535,8 @@ class DeviceRestoreViewController: UIViewController {
                     let bindSpaceResult = await NetworkRequest.shared.request(.gatewayBindSpace(spaceId: self.space.id, gatewayId: mac))
                     switch bindSpaceResult {
                     case .success:
-                        node.gatewayModel?.associatedSpaces.append(self.space)
+                        let gatewaySpaceData = GatewaySpaceData(spaceId: self.space.id, spaceName: self.space.name, deviceCount: self.space.deviceCount, appKeyIndex: MeshNetworkManager.instance.currentApplicationKey.index)
+                        node.gatewayModel?.associatedSpaces.append(gatewaySpaceData)
                         node.gatewayModel?.save()
                     case .failure:
                         break

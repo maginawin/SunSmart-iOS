@@ -17,6 +17,14 @@ enum GatewayConnectStatus {
     case reset       // 已重置
 }
 
+/// 网关权限状态
+enum GatewayPermissionState: Int {
+    /// 正常
+    case normal = 1
+    /// 无权限
+    case noPermission = 2
+}
+
 class GatewayModel: Copyable {
     
     /// site id
@@ -25,12 +33,17 @@ class GatewayModel: Copyable {
     var name: String
     /// 设备地址
     var address: Address
+    /// 网关节点
+    var node: Node? {
+        return MeshNetworkManager.instance.meshNetwork?.node(withAddress: address)
+    }
+    
     /// mac地址
     let mac: String
     /// 是否启用
     var activate: Bool = false
     /// 关联的space list
-    var associatedSpaces: [SpaceData]
+    var associatedSpaces: [GatewaySpaceData]
     /// sim卡APN
     var apn: String?
     /// MQTT服务器信息
@@ -41,8 +54,36 @@ class GatewayModel: Copyable {
     var lastOnlineTime: String?
     /// 重置时间
     var resetTime: String?
+    /// 最近更新的时间（时间戳秒）
+    var lastUpdate: Int64
+    /// 最近上传到云端的时间
+    var lastUploadCloudTimestamp: Int64?
+    /// 同步服务器错误信息
+    var syncCloudError: NetworkApiError?
     
-    init(siteId: String, name: String, address: Address, mac: String, activate: Bool = false, associatedSpaces: [SpaceData] = [], apn: String? = nil, mqttServerInfo: GatewayInformation.MQTTConnectInformation? = nil) {
+    /// 网关绑定的所有space数据
+//    var allBindSpaceDatas: [GatewaySpaceData]
+    
+    /// 是否需要上传到云端
+    var needUploadCloud: Bool {
+        return lastUpdate > lastUploadCloudTimestamp ?? 0
+    }
+    
+    
+    
+    /// 展示的同步服务区错误信息
+//    var showSyncCloudError: NetworkApiError? {
+//        
+//        guard needUploadCloud else {
+//            return nil
+//        }
+//        
+//        // 有错误则显示之前上传服务器错误，如没有错误并需要上传服务器并不在同步过程，则说明同步过程退出APP
+////        return syncCloudError ?? (CloudSynchronizationManager.shared.getSpaceCurrentSyncState(self) == nil ? .unknown : nil)
+//    }
+    
+    
+    init(siteId: String, name: String, address: Address, mac: String, lastUpdate: Int64 = Int64(Date().timeIntervalSince1970), activate: Bool = false, associatedSpaces: [GatewaySpaceData] = [], apn: String? = nil, mqttServerInfo: GatewayInformation.MQTTConnectInformation? = nil) {
         self.siteId = siteId
         self.name = name
         self.address = address
@@ -51,14 +92,15 @@ class GatewayModel: Copyable {
         self.associatedSpaces = associatedSpaces
         self.apn = apn
         self.mqttServerInfo = mqttServerInfo
+        self.lastUpdate = lastUpdate
     }
     
     func copy() -> Self {
-        return GatewayModel(siteId: self.siteId, name: self.name, address: self.address, mac: self.mac, activate: self.activate, associatedSpaces: self.associatedSpaces, apn: self.apn, mqttServerInfo: self.mqttServerInfo) as! Self
+        return GatewayModel(siteId: self.siteId, name: self.name, address: self.address, mac: self.mac, lastUpdate: self.lastUpdate, activate: self.activate, associatedSpaces: self.associatedSpaces, apn: self.apn, mqttServerInfo: self.mqttServerInfo) as! Self
     }
     
     static func == (lhs: GatewayModel, rhs: GatewayModel) -> Bool {
-        guard lhs.siteId == rhs.siteId && lhs.name == rhs.name && lhs.address == rhs.address && lhs.mac == rhs.mac && lhs.activate == rhs.activate && lhs.associatedSpaces.map({ $0.id }) == rhs.associatedSpaces.map({ $0.id }) && lhs.apn == rhs.apn else {
+        guard lhs.siteId == rhs.siteId && lhs.name == rhs.name && lhs.address == rhs.address && lhs.mac == rhs.mac && lhs.activate == rhs.activate && lhs.associatedSpaces.map({ $0.spaceId }) == rhs.associatedSpaces.map({ $0.spaceId }) && lhs.apn == rhs.apn else {
             return false
         }
         if lhs.mqttServerInfo == nil || rhs.mqttServerInfo == nil {
@@ -78,4 +120,16 @@ class GatewayModel: Copyable {
         self.mqttServerInfo = gatewayModel.mqttServerInfo
     }
     
+}
+
+/// 网关space数据
+struct GatewaySpaceData: Codable {
+    /// space id
+    let spaceId: String
+    /// space名称
+    let spaceName: String
+    /// space内设备数量
+    let deviceCount: Int
+    /// space appkey index
+    let appKeyIndex: UInt16
 }

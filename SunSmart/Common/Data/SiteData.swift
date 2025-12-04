@@ -66,6 +66,19 @@ enum Permission: Int {
     case visitor = 3
 }
 
+/// Mesh网络操作权限
+enum MeshOperate {
+    /// 添加
+    case add
+    /// 删除
+    case delete
+    /// 编辑/修改配置
+    case edit
+    /// 控制（设备、组、场景）
+    case control
+//        case view
+}
+
 protocol Copyable {
     func copy() -> Self
 }
@@ -144,6 +157,19 @@ class SiteData: Copyable {
         return []
     }
     
+    /// 设备权限操作list
+    var deviceOperates: [MeshOperate] {
+        switch permission {
+        case .owner:
+            return [.add, .edit, .delete, .control]
+        default:
+            if spaces.contains(where: { $0.permission == .editor }) {
+                return [.add, .edit, .delete, .control]
+            }else {
+                return []
+            }
+        }
+    }
     
     /// 初始化场所数据
     /// - Parameters:

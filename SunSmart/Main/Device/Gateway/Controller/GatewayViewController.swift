@@ -16,8 +16,10 @@ class GatewayViewController: UIViewController, DeviceProtocol {
     private var copyInformationBtn: UIButton!
     private var bottomView: DeviceBottomBtnView!
     
-    let space: SpaceData
-    let node: Node
+    let gateway: GatewayModel
+    
+    let site: SiteData
+//    let node: Node
     
     private var name: String?
     
@@ -26,17 +28,25 @@ class GatewayViewController: UIViewController, DeviceProtocol {
     private var otherGateways: [GatewayModel] = []
     
     private var sections: [SectionType] = [.name, .info, .apn, .serverInformation]
+    private let infoTypes: [InfoCellType] = [.mac, .address, .model, .deviceType, .firmwareVersion, .activate]
     
+    let node: Node
     private weak var lastMessageDelegate: MeshLibManagerMessageDelegate?
     
-    init(space: SpaceData, node: Node) {
-        self.space = space
+    init?(site: SiteData, gateway: GatewayModel) {
+        guard let node = gateway.node else {
+            return nil
+        }
+        
+        self.site = site
+        self.gateway = gateway
         self.node = node
+        node.gatewayModel = gateway
         super.init(nibName: nil, bundle: nil)
         
-        setGatewayModel = node.gatewayModel?.copy()
+        setGatewayModel = gateway.copy()
         
-        let gateways = GatewayModel.load(siteId: space.siteId).filter({ $0.mac != node.gatewayModel?.mac })
+        let gateways = GatewayModel.load(siteId: gateway.siteId).filter({ $0.mac != gateway.mac })
         // 确保是space内的网关
         otherGateways = gateways.filter({ MeshNetworkManager.instance.meshNetwork?.node(withAddress: $0.address) != nil })
     }
@@ -48,13 +58,13 @@ class GatewayViewController: UIViewController, DeviceProtocol {
     override func viewDidLoad() {
         super.viewDidLoad()
 
-        title = node.name
+        title = gateway.name
         view.backgroundColor = Background_Color
         navigationController?.setNavigationBarBackgroundColor(color: Background_Color)
         
         navigationItem.rightBarButtonItem = UIBarButtonItem(image: UIImage(named: "close")?.withRenderingMode(.alwaysOriginal), style: .done, target: self, action: #selector(close))
         
-        name = node.name
+        name = gateway.name
         lastMessageDelegate = MeshLibManager.manager.messageDelegate
         
         setupUI()
@@ -70,7 +80,14 @@ class GatewayViewController: UIViewController, DeviceProtocol {
 //            _ = await MeshAPI.sendMessage(message: SunricherVendorGet(function: .gatewaySimCpsi), model: vendorModel)
 //            
 //        }
-        
+//        if MeshNetworkManager.instance.meshNetwork?.uuid.uuidString != self.site.meshUUID {
+//            MeshLibManager.manager.setMeshNetworkConnected(meshUUID: self.site.meshUUID, subNetworkId: self.site.meshNetworkId, connected: false)
+//            self.node = self.gateway.node
+//            DispatchQueue.main.asyncAfter(deadline: .now() + 1) {[weak self] in
+//                self?.setNetworkConnected()
+//            }
+//        }
+        setNetworkConnected()
     }
     
     override func viewWillAppear(_ animated: Bool) {
@@ -79,13 +96,6 @@ class GatewayViewController: UIViewController, DeviceProtocol {
         MeshLibManager.manager.messageDelegate = self
     }
     
-    override func viewDidAppear(_ animated: Bool) {
-        super.viewDidAppear(animated)
-        
-        if self.tableView.firstShowFlashScrollIndicators {
-            self.tableView.flashScrollIndicatorsIfNeeded()
-        }
-    }
 
     @objc private func close() {
         if self.presentingViewController != nil && navigationController?.viewControllers.count ?? 0 == 1  {
@@ -97,37 +107,74 @@ class GatewayViewController: UIViewController, DeviceProtocol {
     
     deinit {
         MeshLibManager.manager.messageDelegate = self.lastMessageDelegate
+        
+        MeshLibManager.manager.close()
+        
         NotificationCenter.default.post(name: .init(devicesUpdateNotificationName), object: nil)
     }
 
+    /// 获取网络数据+网络连接
+    private func setNetworkConnected() {
+        // 读取网络数据
+//        XWHUDManager.showCustomHUD(withMessage: nil, isWindow: false, afterDelay: 10)
+//        DispatchQueue.global().async {[weak self] in
+//            guard let self = self else { return }
+//            
+//            DispatchQueue.main.async {
+//                XWHUDManager.hide()
+        self.headerView.showConnectingUI()
+   
+        MeshLibManager.manager.connectProxy(node: self.node) {[weak self] result in
+            self?.headerView.hideConnectingUI()
+            self?.updateData()
+        }
+                
+               
+//            }
+           
+//        }
+    }
     
     @objc private func copyInformationBtnAction() {
         
         var copyContent: String = ""
-        if let name = node.name {
-            copyContent.append("\("name".localizedString): \(name)")
+//        if gateway.name {
+            copyContent.append("\("name".localizedString): \(gateway.name)")
+//        }else {
+//            copyContent.append("\("name".localizedString): N/A")
+//        }
+        
+//        if let mac = node.gatewayModel?.mac {
+        copyContent.append("\n\("MAC".localizedString): \(gateway.mac)")
+//        }else {
+//            copyContent.append("\n\("MAC".localizedString): N/A")
+//        }
+        copyContent.append("\n\("address".localizedString): \(node.primaryUnicastAddress)")
+        
+        if let modelName = node.modelName {
+            copyContent.append("\n\("model".localizedString): \(modelName)")
         }else {
-            copyContent.append("\("name".localizedString): N/A")
+            copyContent.append("\n\("model".localizedString): N/A")
         }
         
-        if let mac = node.gatewayModel?.mac {
-            copyContent.append("\n\("MAC".localizedString): \(mac)")
+        if let categoryName = node.categoryName {
+            copyContent.append("\n\("device_type".localizedString): \(categoryName)")
         }else {
-            copyContent.append("\n\("MAC".localizedString): N/A")
+            copyContent.append("\n\("device_type".localizedString): N/A")
         }
+  
+//        if let activate = gateway.activate {
+            copyContent.append("\n\("activate".localizedString): \(gateway.activate ? "Yes".localizedString : "No".localizedString)")
+//        }else {
+//            copyContent.append("\n\("activate".localizedString): N/A")
+//        }
         
-        if let activate = node.gatewayModel?.activate {
-            copyContent.append("\n\("activate".localizedString): \(activate ? "Yes".localizedString : "No".localizedString)")
-        }else {
-            copyContent.append("\n\("activate".localizedString): N/A")
-        }
-        
-        if let apn = node.gatewayModel?.apn {
+        if let apn = gateway.apn {
             copyContent.append("\n\("apn".localizedString): \(apn)")
         }else {
             copyContent.append("\n\("apn".localizedString): N/A")
         }
-        if let mqttServerInfo = node.gatewayModel?.mqttServerInfo {
+        if let mqttServerInfo = gateway.mqttServerInfo {
             let serverStr = mqttServerInfo.serverAddress.replacingOccurrences(of: "tcp://", with: "")
             let serverAddressArray = serverStr.components(separatedBy: ":")
             if let ip = serverAddressArray.first {
@@ -158,14 +205,26 @@ class GatewayViewController: UIViewController, DeviceProtocol {
             
             view.hideEmptyDataView()
             
-            guard node.state else { // 离线
-                
-                view.showEmptyDataView(imageName: "device_state_offline", title: "device_offline_message".localizedString, backgroundColor: Background_Color)
-                bottomView.showCreateUI()
-                view.bringSubviewToFront(bottomView)
-                return
+//            guard node.state else { // 离线
+//                
+//                view.showEmptyDataView(imageName: "device_state_offline", title: "device_offline_message".localizedString, backgroundColor: Background_Color)
+//                bottomView.showCreateUI()
+//                view.bringSubviewToFront(bottomView)
+//                return
+//            }
+//            view.hideEmptyDataView()
+            let totalDeviceCount = gateway.associatedSpaces.reduce(0, { (result, space) -> Int in result + space.deviceCount })
+            headerView.nodeCountLabel.text = "(\(totalDeviceCount))"
+            if node.state {
+                headerView.gatewayStateImageView.image = UIImage(named: "gateway_online")
+                headerView.gatewayStateLabel.text = "online".localizedString
+            }else {
+                headerView.gatewayStateImageView.image = UIImage(named: "gateway_offline")
+                headerView.gatewayStateLabel.text = "Offline".localizedString
             }
-            view.hideEmptyDataView()
+            
+            
+            
             bottomView.showEditUI()
         } else {
             if view.emptyView == nil {
@@ -174,7 +233,7 @@ class GatewayViewController: UIViewController, DeviceProtocol {
                     self?.repair()
                 }
                 if let emptyView = view.emptyView {
-                    if space.deviceOperates.contains(.edit) { // 是否有编辑设备权限
+                    if site.deviceOperates.contains(.edit) { // 是否有编辑设备权限
                         emptyView.button.snp.updateConstraints { make in
                             make.top.equalTo(emptyView.titleLabel.snp.bottom).offset(SCRYFrom(78))
                         }
@@ -190,8 +249,8 @@ class GatewayViewController: UIViewController, DeviceProtocol {
     
     /// 修复
     private func repair() {
-        
-        repairDevices(nodes: [self.node], result: {[weak self] _, _ in
+     
+        repairDevices(nodes: [node], result: {[weak self] _, _ in
             guard let self = self else { return }
             if self.node.isKeybindComplete {
                 self.updateData()
@@ -204,43 +263,55 @@ class GatewayViewController: UIViewController, DeviceProtocol {
     
     /// 保存
     @objc private func saveBtnAction() {
-        
-        guard self.space.deviceOperates.contains(.edit) else {
+        guard let name = self.name, !name.isAllInputTextEmpty() else {
+            return
+        }
+        guard self.site.permissionOperates.contains(.edit) else {
             XWHUDManager.showTipHUD("no_permission".localizedString + "！")
             return
         }
         
-        if node.name != name {
+        if gateway.name != name {
+            self.setGatewayModel?.name = name
+            self.gateway.name = name
             self.node.name = name
             self.title = name
             self.node.save()
         }
         guard let setGatewayModel = self.setGatewayModel else {
+            self.gateway.save()
             return
         }
-        node.gatewayModel?.update(gatewayModel: setGatewayModel)
-        node.gatewayModel?.save()
+        gateway.update(gatewayModel: setGatewayModel)
+        gateway.save()
+//        node.gatewayModel?.update(gatewayModel: setGatewayModel)
+//        node.gatewayModel?.save()
         updateSaveBtnState()
         // 判断是否需要同步设备数据
         guard node.getNodeSyncGatewayData(gateway: setGatewayModel).count > 0 else {
             XWHUDManager.showSuccessTipHUD("done!".localizedString)
             // 通知space数据修改
-            NotificationCenter.default.post(name: .init(spaceDataChangedNotificaitonName), object: SpaceChangeDataType.common)
+            NotificationCenter.default.post(name: .init(siteGatewayDataChangedNotificaitonName), object: self.gateway)
             return
         }
         let vc = SyncDevicesViewController(type: .devices([node]))
         vc.syncSuccessCallback = {[weak self] _ in
             XWHUDManager.showSuccessTipHUD("done!".localizedString)
-            DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
+            guard let self = self else { return }
+            NotificationCenter.default.post(name: .init(siteGatewayDataChangedNotificaitonName), object: self.gateway)
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1) {[weak self] in
                 self?.navigationController?.popViewController(animated: true)
                 self?.updateSaveBtnState()
                 self?.tableView.reloadData()
             }
         }
         vc.backActionCallback = {[weak self] _ in
-            self?.navigationController?.popViewController(animated: true)
-            self?.updateSaveBtnState()
-            self?.tableView.reloadData()
+            guard let self = self else { return }
+            self.navigationController?.popViewController(animated: true)
+            self.updateSaveBtnState()
+            self.tableView.reloadData()
+            
+            NotificationCenter.default.post(name: .init(siteGatewayDataChangedNotificaitonName), object: self.gateway)
         }
         navigationController?.pushViewController(vc, animated: true)
     }
@@ -248,7 +319,7 @@ class GatewayViewController: UIViewController, DeviceProtocol {
     /// 删除
     @objc private func deleteBtnAction() {
         
-        guard self.space.deviceOperates.contains(.edit) else {
+        guard self.site.deviceOperates.contains(.edit) else {
             XWHUDManager.showTipHUD("no_permission".localizedString + "！")
             return
         }
@@ -256,27 +327,27 @@ class GatewayViewController: UIViewController, DeviceProtocol {
         SRAlertView(title: "notification".localizedString, message: "gateway_delete_message".localizedString, actions: [.cancelAction, SRAlertAction(title: "alert_item_continue".localizedString, style: .destructive, actionHandler: {[weak self] _ in
             guard let self = self else { return }
             
-            if let gatewayModel = node.gatewayModel, gatewayModel.associatedSpaces.contains(where: { $0.id == self.space.id }) {
-                XWHUDManager.showCustomHUD(withMessage: "deleting".localizedString, isWindow: true)
-                NetworkRequest.shared.request(.gatewayUnbindSpace(spaceId: space.id, gatewayId: gatewayModel.mac)) {[weak self] result in
-                    XWHUDManager.hide()
-                    guard let self = self else { return }
-                    switch result {
-                    case .success(_):
-                        if let index = gatewayModel.associatedSpaces.firstIndex(where: { $0.id == self.space.id }) {
-                            gatewayModel.associatedSpaces.remove(at: index)
-                            gatewayModel.save()
-                        }
-                        if let index = self.setGatewayModel?.associatedSpaces.firstIndex(where: { $0.id == self.space.id }) {
-                            self.setGatewayModel?.associatedSpaces.remove(at: index)
-                        }
-                        self.tableView.reloadData()
-                        
-                        self.resetNode(authorize: true)
-                    case .failure:
-                        XWHUDManager.showErrorTipHUD("delete_no_connect_server_message".localizedString)
-                    }
-                }
+            if gateway.associatedSpaces.count > 0 {
+//                XWHUDManager.showCustomHUD(withMessage: "deleting".localizedString, isWindow: true)
+//                NetworkRequest.shared.request(.gatewayUnbindSpace(spaceId: space.id, gatewayId: gateway.mac)) {[weak self] result in
+//                    XWHUDManager.hide()
+//                    guard let self = self else { return }
+//                    switch result {
+//                    case .success(_):
+//                        if let index = gatewayModel.associatedSpaces.firstIndex(where: { $0.id == self.space.id }) {
+//                            gatewayModel.associatedSpaces.remove(at: index)
+//                            gatewayModel.save()
+//                        }
+//                        if let index = self.setGatewayModel?.associatedSpaces.firstIndex(where: { $0.id == self.space.id }) {
+//                            self.setGatewayModel?.associatedSpaces.remove(at: index)
+//                        }
+//                        self.tableView.reloadData()
+//                        
+//                        self.resetNode(authorize: true)
+//                    case .failure:
+//                        XWHUDManager.showErrorTipHUD("delete_no_connect_server_message".localizedString)
+//                    }
+//                }
             }else {
                 self.resetNode()
             }
@@ -293,14 +364,15 @@ class GatewayViewController: UIViewController, DeviceProtocol {
         self.deleteNodes(nodes: [node], forceDeleteMessage: message, forceDeleteNote: "gateway_force_delete_note".localizedString) {[weak self] successNodes, failedNodes in
             guard let self = self else { return }
             if successNodes.contains(where: { $0.primaryUnicastAddress == self.node.primaryUnicastAddress }) {
-                self.space.deviceCount = MeshNetworkManager.instance.realNodes.count
-                self.space.luminairesCount = MeshNetworkManager.instance.lightNodes.count
-                self.space.save()
+//                self.space.deviceCount = MeshNetworkManager.instance.realNodes.count
+//                self.space.luminairesCount = MeshNetworkManager.instance.lightNodes.count
+//                self.space.save()
                 DispatchQueue.main.asyncAfter(wallDeadline: .now() + 1) {
                     NotificationCenter.default.post(name: .init(devicesUpdateNotificationName), object: nil)
                     // 通知space数据修改
                     NotificationCenter.default.post(name: .init(spaceDataChangedNotificaitonName), object: SpaceChangeDataType.network(type: .address))
                     self.close()
+                    self.gateway.delete()
                 }
             }
         }
@@ -309,10 +381,7 @@ class GatewayViewController: UIViewController, DeviceProtocol {
     
     /// 服务器授权绑定网关
     private func authorizeRequest() {
-        guard let gatewayModel = node.gatewayModel else {
-            XWHUDManager.showErrorTipHUD("failed".localizedString + " !")
-            return
-        }
+
         guard NetworkRequest.shared.networkable else {
             XWHUDManager.showTipHUD("phone_no_network".localizedString, isLineFeed: true)
             return
@@ -322,8 +391,8 @@ class GatewayViewController: UIViewController, DeviceProtocol {
             XWHUDManager.showCustomHUD(withMessage: nil, isWindow: true)
             
             // 判断网关是否注册mqtt服务
-            if gatewayModel.mqttServerInfo == nil {
-                let gatewayRegisterResult = await NetworkRequest.shared.request(.gatewayRegister(gatewayId: gatewayModel.mac))
+            if self.gateway.mqttServerInfo == nil, let nodeDict = await node.export() {
+                let gatewayRegisterResult = await NetworkRequest.shared.request(.gatewayRegister(siteId: self.site.id, gatewayId: self.gateway.mac, nodeId: self.node.uuid.uuidString, node: nodeDict, updateTimestamp: self.gateway.lastUpdate))
                 switch gatewayRegisterResult {
                 case .success(let response):
                     // MQTT参数
@@ -334,8 +403,8 @@ class GatewayViewController: UIViewController, DeviceProtocol {
                        let host = data["host"] as? String, let port = data["port"] as? Int {
                         let mqttServerInfo = GatewayInformation.MQTTConnectInformation(customId: customId, serverAddress: "tcp://\(host):\(port)", userName: username, password: password, clientId: clientId, keepalive: 60, clearSession: true, authMode: .none, sslVersion: .all)
                         self.setGatewayModel?.mqttServerInfo = mqttServerInfo
-                        self.node.gatewayModel?.mqttServerInfo = mqttServerInfo
-                        self.node.gatewayModel?.save()
+                        self.gateway.mqttServerInfo = mqttServerInfo
+                        self.gateway.save()
                         
                         // 同步到设备
                         if let vendorModel = self.node.sunricherVendorModel {
@@ -349,22 +418,22 @@ class GatewayViewController: UIViewController, DeviceProtocol {
                 }
             }
             
-            // 判断网关是否绑定到space
-            if !gatewayModel.associatedSpaces.contains(where: { $0.id == self.space.id }) {
-                let bindSpaceResult = await NetworkRequest.shared.request(.gatewayBindSpace(spaceId: self.space.id, gatewayId: gatewayModel.mac))
-                switch bindSpaceResult {
-                case .success:
-                    gatewayModel.associatedSpaces.append(self.space)
-                    self.setGatewayModel?.associatedSpaces.append(self.space)
-                    gatewayModel.save()
-                    break
-                case .failure:
-                    XWHUDManager.hide()
-//                    XWHUDManager.showErrorTipHUD(error.localizedDescription)
-                    XWHUDManager.showErrorTipHUD("server_failure".localizedString)
-                    return
-                }
-            }
+//             判断网关是否绑定到space
+//            if !gateway.associatedSpaces.contains(where: { $0.id == self.space.id }) {
+//                let bindSpaceResult = await NetworkRequest.shared.request(.gatewayBindSpace(spaceId: self.space.id, gatewayId: gateway.mac))
+//                switch bindSpaceResult {
+//                case .success:
+//                    gateway.associatedSpaces.append(self.space)
+//                    self.setGatewayModel?.associatedSpaces.append(self.space)
+//                    gateway.save()
+//                    break
+//                case .failure:
+//                    XWHUDManager.hide()
+////                    XWHUDManager.showErrorTipHUD(error.localizedDescription)
+//                    XWHUDManager.showErrorTipHUD("server_failure".localizedString)
+//                    return
+//                }
+//            }
             
             XWHUDManager.hide()
             self.tableView.reloadData()
@@ -397,7 +466,8 @@ class GatewayViewController: UIViewController, DeviceProtocol {
             make.height.equalTo(kSafeAreaBottomHeight + SCRYFrom(56))
         }
         
-//        headerView = GatewayInformationHeaderView(frame: CGRect(x: 0, y: 0, width: view.width - SCRXFrom(32), height: 72))
+        headerView = GatewayInformationHeaderView(frame: CGRect(x: 0, y: 0, width: view.width - SCRXFrom(32), height: SCRYFrom(72)))
+        
         
         footerView = UIView(frame: CGRect(x: 0, y: 0, width: view.width - SCRXFrom(32), height: SCRYFrom(62)))
         copyInformationBtn = UIButton(title: "copy_gateway_information".localizedString, titleSize: 14, titleColor: ImportantText_Color, normalImageName: "share_copy", target: self, action: #selector(copyInformationBtnAction))
@@ -414,14 +484,13 @@ class GatewayViewController: UIViewController, DeviceProtocol {
         tableView.register(GatewayServerInformationViewCell.classForCoder(), forCellReuseIdentifier: "serverInformation")
         tableView.register(GatewaySectionHeaderView.classForCoder(), forHeaderFooterViewReuseIdentifier: "header")
         tableView.estimatedSectionHeaderHeight = UITableView.automaticDimension
-//        tableView.showsVerticalScrollIndicator = false
+        tableView.showsVerticalScrollIndicator = false
         tableView.backgroundColor = .clear
         tableView.dataSource = self
         tableView.delegate = self
-        tableView.keyboardDismissMode = .onDrag
         tableView.enableKeyboardDismissal()
 //        tableView.contentInset = UIEdgeInsets(top: 0, left: SCRXFrom(16), bottom: 0, right: SCRXFrom(16))
-//        tableView.tableHeaderView = headerView
+        tableView.tableHeaderView = headerView
         tableView.tableFooterView = footerView
         view.addSubview(tableView)
         tableView.snp.makeConstraints { make in
@@ -431,7 +500,7 @@ class GatewayViewController: UIViewController, DeviceProtocol {
             make.bottom.equalTo(bottomView.snp.top)
         }
         
-        if !space.deviceOperates.contains(.edit) {
+        if !site.deviceOperates.contains(.edit) {
             bottomView.isHidden = true
             tableView.snp.remakeConstraints { make in
                 make.left.equalTo(SCRXFrom(16))
@@ -445,11 +514,11 @@ class GatewayViewController: UIViewController, DeviceProtocol {
     
     /// 更新保存按钮状态
     private func updateSaveBtnState() {
-        guard let setGatewayModel = self.setGatewayModel, let initialGatewayModel = node.gatewayModel else {
+        guard let setGatewayModel = self.setGatewayModel else {
             return
         }
         
-        bottomView.saveBtn.isEnabled = self.space.deviceOperates.contains(.edit) && (!(setGatewayModel == initialGatewayModel) || (!(name?.isAllInputTextEmpty() ?? true) && node.name != name))
+        bottomView.saveBtn.isEnabled = self.site.deviceOperates.contains(.edit) && (!(setGatewayModel == gateway) || (!(name?.isAllInputTextEmpty() ?? true) && node.name != name))
     }
     
     /// 选择sim卡 APN
@@ -493,7 +562,7 @@ extension GatewayViewController: UITableViewDataSource, UITableViewDelegate {
         case .associatedSpaces:
             return 1
         case .info:
-            return 2
+            return infoTypes.count
         default:
             return 1
         }
@@ -507,7 +576,7 @@ extension GatewayViewController: UITableViewDataSource, UITableViewDelegate {
         case .name:
             let nameCell = tableView.dequeueReusableCell(withIdentifier: "name", for: indexPath) as! GatewayNameViewCell
             nameCell.nameField.text = name
-            nameCell.nameField.isEnabled = self.space.deviceOperates.contains(.edit)
+            nameCell.nameField.isEnabled = self.site.deviceOperates.contains(.edit)
             nameCell.nameEditChangedCallback = {[weak self] name in
                 if name.count > 32 && !name.isEmpty { // 长度超限
                     self?.bottomView.saveBtn.isEnabled = false
@@ -527,21 +596,30 @@ extension GatewayViewController: UITableViewDataSource, UITableViewDelegate {
             cell.contentLabel.font = UIFont.systemFont(ofSize: 14, weight: .light)
             cell.contentLabel.textColor = SubText_Color
             cell.contentLabel.text = nil
-            if indexPath.row == 0 {
-                cell.titleLabel.text = "mac".localizedString
+            cell.cellStyle = .none
+            let cellType = infoTypes[indexPath.row]
+            cell.titleLabel.text = cellType.title
+            switch cellType {
+            case .mac:
                 cell.contentLabel.text = node.macAddressResult
-                cell.cellStyle = .none
-            }else if indexPath.row == 1 {
-                cell.titleLabel.text = "activate".localizedString
+            case .address:
+                cell.contentLabel.text = "\(node.primaryUnicastAddress)"
+            case .model:
+                cell.contentLabel.text = node.modelName ?? "--"
+            case .deviceType:
+                cell.contentLabel.text = node.categoryName ?? "--"
+            case .firmwareVersion:
+                cell.contentLabel.text = node.firmwareVersion ?? "--"
+            case .activate:
                 cell.cellStyle = .switch
                 cell.enabledSwitch.isOn = setGatewayModel?.activate ?? false
                 cell.switchActionCallback = {[weak self] enable in
                     guard let self = self else { return }
-                    guard self.space.deviceOperates.contains(.edit) else {
+                    guard self.site.deviceOperates.contains(.edit) else {
                         XWHUDManager.showTipHUD("no_permission".localizedString + "！")
                         return
                     }
-                    guard self.node.gatewayModel?.mqttServerInfo != nil else {
+                    guard self.gateway.mqttServerInfo != nil else {
                         XWHUDManager.showErrorTipHUD("gateway_not_authorize_message".localizedString)
                         return
                     }
@@ -554,6 +632,7 @@ extension GatewayViewController: UITableViewDataSource, UITableViewDelegate {
                     self.updateSaveBtnState()
                 }
             }
+            
             tableviewCell = cell
         case .associatedSpaces:
             let cell = tableView.dequeueReusableCell(withIdentifier: "cell", for: indexPath) as! CustomTableViewCell
@@ -629,7 +708,7 @@ extension GatewayViewController: UITableViewDataSource, UITableViewDelegate {
         switch sectionType {
         case .name:
             headerView.titleLabel.text = "name".localizedString
-            if let gateway = node.gatewayModel, node.getNodeSyncGatewayData(gateway: gateway).count > 0 {
+            if node.getNodeSyncGatewayData(gateway: gateway).count > 0 {
                 headerView.operationBtn.isHidden = false
                 headerView.operationBtn.setImage(UIImage(named: "schedule_sync_failed"), for: .normal)
                 headerView.operationBtn.titleLabel?.font = UIFont.systemFont(ofSize: 14, weight: .light)
@@ -694,7 +773,7 @@ extension GatewayViewController: UITableViewDataSource, UITableViewDelegate {
             guard let self = self else { return }
             switch sectionType {
             case .name: // 同步
-                guard self.space.deviceOperates.contains(.edit) else {
+                guard self.site.deviceOperates.contains(.edit) else {
                     XWHUDManager.showTipHUD("no_permission".localizedString + "！")
                     return
                 }
@@ -702,7 +781,7 @@ extension GatewayViewController: UITableViewDataSource, UITableViewDelegate {
             case .associatedSpaces: // 添加space
                 print("添加space")
             case .serverInformation: // 服务器授权
-                guard self.space.deviceOperates.contains(.edit) else {
+                guard self.site.deviceOperates.contains(.edit) else {
                     XWHUDManager.showTipHUD("no_permission".localizedString + "！")
                     return
                 }
@@ -727,7 +806,7 @@ extension GatewayViewController: UITableViewDataSource, UITableViewDelegate {
         let sectionType = sections[indexPath.section]
         switch sectionType {
         case .apn:
-            guard self.space.deviceOperates.contains(.edit) else {
+            guard self.site.deviceOperates.contains(.edit) else {
                 XWHUDManager.showTipHUD("no_permission".localizedString + "！")
                 return
             }
@@ -769,28 +848,31 @@ extension GatewayViewController {
         case serverInformation
     }
     
-    enum CellType {
+    /// 设备信息cell类型
+    enum InfoCellType {
         
         var title: String {
             switch self {
-            case .name:
-                return "name".localizedString
             case .mac:
                 return "mac".localizedString
+            case .address:
+                return "address".localizedString
+            case .model:
+                return "model".localizedString
+            case .deviceType:
+                return "device_type".localizedString
+            case .firmwareVersion:
+                return "firmware".localizedString
             case .activate:
                 return "activate".localizedString
-            case .apn:
-                return "apn_full".localizedString
-            case .serverInformation:
-                return "server_information".localizedString
             }
         }
         
-        case name
         case mac
+        case address
+        case model
+        case deviceType
+        case firmwareVersion
         case activate
-//        case space
-        case apn
-        case serverInformation
     }
 }

@@ -32,6 +32,8 @@ enum SyncOperation {
             return 2
         case .addSpaces:
             return 3
+        case .syncGateway:
+            return 4
         }
     }
     
@@ -41,6 +43,8 @@ enum SyncOperation {
     case syncSpace(space: SpaceData)
     /// 添加spaces
     case addSpaces(site: SiteData, spaces: [SpaceData])
+    /// 同步网关
+    case syncGateway(gateway: GatewayModel, node: Node)
     
     /// 判断操作是否相等
     static func == (lhs: SyncOperation, rhs: SyncOperation) -> Bool {
@@ -48,22 +52,22 @@ enum SyncOperation {
         guard lhs.type == rhs.type else {
             return false
         }
-        switch lhs {
-        case .syncSite(let site, let syncSpaces):
-            if case .syncSite(let rhsSite, let rhsSyncSpaces) = rhs {
+        
+        switch (lhs, rhs) {
+        case (.syncSite(let lhsSite, let lhsSyncSpaces), .syncSite(let rhsSite, let rhsSyncSpaces)):
+//            if case .syncSite(let rhsSite, let rhsSyncSpaces) = rhs {
                 // 后面同步的spaces包含上一个同步的所有spaces
-                return site.id == rhsSite.id && (!rhsSyncSpaces.contains(where: { rhsSpace in !syncSpaces.contains(where: { $0.id == rhsSpace.id }) }) || syncSpaces.isEmpty)
-            }
-        case .syncSpace(let space):
-            if case .syncSpace(let rhsSpace) = rhs {
-                return space.id == rhsSpace.id
-            }
-        case .addSpaces(let site, _):
-            if case .addSpaces(let rhsSite, _) = rhs {
-                return site.id == rhsSite.id
-            }
+            return lhsSite.id == rhsSite.id && (!rhsSyncSpaces.contains(where: { rhsSpace in !lhsSyncSpaces.contains(where: { $0.id == rhsSpace.id }) }) || lhsSyncSpaces.isEmpty)
+//            }
+        case (.syncSpace(let lhsSpace), .syncSpace(let rhsSpace)):
+            return lhsSpace.id == rhsSpace.id
+        case (.addSpaces(let lhsSite, _), .addSpaces(let rhsSite, _)):
+            return lhsSite.id == rhsSite.id
+        case (.syncGateway(let lhsGateway, _), .syncGateway(let rhsGateway, _)):
+            return lhsGateway.mac == rhsGateway.mac
+        default:
+            return false
         }
-        return false
     }
     
     func getNetworkApi() async -> NetowrkReqeustApi {
@@ -83,6 +87,8 @@ enum SyncOperation {
             let siteData = await site.export(spaceIds: spaces.map({ $0.id }))
             return .siteUpload(siteData: siteData)
 //                .spacesAdd(siteId: site.id, spaceDatas: spaceDicts)
+        case .syncGateway(let gateway, let node):
+            return .gatewayRegister(siteId: gateway.siteId, gatewayId: gateway.mac, nodeId: node.uuid.uuidString, node: await node.export() ?? [:], updateTimestamp: gateway.lastUpdate)
         }
     }
     
@@ -266,6 +272,8 @@ class CloudSynchronizationManager {
                 return space.siteId == site.id
             case .addSpaces(let site, _):
                 return site.id == site.id
+            case .syncGateway(let gateway, _):
+                return gateway.siteId == site.id
             }
         })
         handles.forEach { handle in
@@ -290,6 +298,8 @@ class CloudSynchronizationManager {
                 return space.id == syncSpace.id
             case .addSpaces(_, let spaces):
                 return spaces.contains(where: { $0.id == space.id })
+            default:
+                return false
             }
         }) {
             handle.cancel()
@@ -315,7 +325,7 @@ class CloudSynchronizationManager {
     
     /// 根据sites数据获取当前同步状态
     /// - Returns: 当前同步操作(所有site)
-    func getSitesCurrentSyncState() -> CloudSynchronizationHandle.State? {
+    func getSitesCurrentSyncState() -> CloudSynchronizationState? {
         
         // 获取site相关同步操作
         let siteHandles = syncHandles.filter({ handle in
@@ -325,18 +335,18 @@ class CloudSynchronizationManager {
             return false
         })
         
-        var state: CloudSynchronizationHandle.State?
+        var state: CloudSynchronizationState?
         // 进行中
-        if siteHandles.contains(where: { $0.state.rawValue == CloudSynchronizationHandle.State.inProgress.rawValue }) {
+        if siteHandles.contains(where: { $0.state.rawValue == CloudSynchronizationState.inProgress.rawValue }) {
             state = .inProgress
         }else if let failedHandle = siteHandles.first(where: { // 操作全部完成并存在失败
             if case .failure = $0.state { return true }
             return false
         }) {
             state = failedHandle.state
-        }else if siteHandles.contains(where: { $0.state.rawValue == CloudSynchronizationHandle.State.successful.rawValue }) { // 操作全部完成并全部成功
+        }else if siteHandles.contains(where: { $0.state.rawValue == CloudSynchronizationState.successful.rawValue }) { // 操作全部完成并全部成功
             state = .successful
-        }else if siteHandles.contains(where: { $0.state.rawValue == CloudSynchronizationHandle.State.wait.rawValue }) { // 操作全部都在等待
+        }else if siteHandles.contains(where: { $0.state.rawValue == CloudSynchronizationState.wait.rawValue }) { // 操作全部都在等待
             state = .wait
         }
         return state
@@ -356,6 +366,8 @@ class CloudSynchronizationManager {
                 return space.siteId == site.id
             case .addSpaces(let site, _):
                 return site.id == site.id
+            default:
+                return false
             }
         })
         return handle
@@ -364,7 +376,7 @@ class CloudSynchronizationManager {
     /// 根据site数据获取当前同步状态（复合状态可能包含下级多个space状态）
     /// - Parameter site: site
     /// - Returns: 当前同步操作
-    func getSiteCurrentSyncState(_ site: SiteData) -> CloudSynchronizationHandle.State? {
+    func getSiteCurrentSyncState(_ site: SiteData) -> CloudSynchronizationState? {
         
         // 获取site/space相关同步操作
         let handles = syncHandles.filter({ handle in
@@ -375,23 +387,25 @@ class CloudSynchronizationManager {
                 return space.siteId == site.id
             case .addSpaces(let syncSite, _):
                 return site.id == syncSite.id
+            default:
+                return false
             }
         })
         
-        var state: CloudSynchronizationHandle.State?
+        var state: CloudSynchronizationState?
         // 进行中
-        if handles.contains(where: { $0.state.rawValue == CloudSynchronizationHandle.State.inProgress.rawValue }) {
+        if handles.contains(where: { $0.state.rawValue == CloudSynchronizationState.inProgress.rawValue }) {
             state = .inProgress
         }else if let failedHandle = handles.first(where: { // 操作全部完成并存在失败
             if case .failure = $0.state { return true }
             return false
         }) {
             state = failedHandle.state
-        }else if handles.contains(where: { $0.state.rawValue == CloudSynchronizationHandle.State.successful.rawValue }) { // 操作全部完成并全部成功
+        }else if handles.contains(where: { $0.state.rawValue == CloudSynchronizationState.successful.rawValue }) { // 操作全部完成并全部成功
             state = .successful
-        }else if handles.contains(where: { $0.state.rawValue == CloudSynchronizationHandle.State.wait.rawValue }) { // 操作全部都在等待
+        }else if handles.contains(where: { $0.state.rawValue == CloudSynchronizationState.wait.rawValue }) { // 操作全部都在等待
             state = .wait
-        }else if handles.contains(where: { $0.state.rawValue == CloudSynchronizationHandle.State.cancel.rawValue }) { // 取消
+        }else if handles.contains(where: { $0.state.rawValue == CloudSynchronizationState.cancel.rawValue }) { // 取消
             state = .cancel
         }
         return state
@@ -411,6 +425,24 @@ class CloudSynchronizationManager {
                 return space.id == syncSpace.id
             case .addSpaces(_, let spaces):
                 return spaces.contains(where: { $0.id == space.id })
+            default:
+                return false
+            }
+        })
+        return handle
+    }
+    
+    /// 根据gateway数据获取当前同步状态
+    /// - Parameter gateway: gateway
+    /// - Returns: 当前同步操作
+    func getGatewayCurrentSyncState(_ gateway: GatewayModel) -> CloudSynchronizationHandle? {
+        
+        let handle = syncHandles.first(where: { handle in
+            switch handle.operation {
+            case .syncGateway(let syncGateway, _):
+                return gateway.mac == syncGateway.mac
+            default:
+                return false
             }
         })
         return handle
@@ -418,41 +450,41 @@ class CloudSynchronizationManager {
     
 }
 
+/// 云端同步状态
+enum CloudSynchronizationState {
+    
+    var rawValue: Int {
+        switch self {
+        case .wait:
+            return 0
+        case .inProgress:
+            return 1
+        case .successful:
+            return 2
+        case .failure:
+            return 3
+        case .cancel:
+            return 4
+        }
+    }
+    /// 等待
+    case wait
+    /// 进行中
+    case inProgress
+    /// 成功
+    case successful
+    /// 失败
+    case failure(error: NetworkApiError)
+    /// 已取消
+    case cancel
+}
+
 class CloudSynchronizationHandle: NSObject {
     
     /// 同步操作回调   state：状态
-    typealias SyncHandleCallback = ((CloudSynchronizationHandle, State)->Void)
+    typealias SyncHandleCallback = ((CloudSynchronizationHandle, CloudSynchronizationState)->Void)
     
     typealias AsyncTask = _Concurrency.Task
-    
-    /// 状态
-    enum State {
-        
-        var rawValue: Int {
-            switch self {
-            case .wait:
-                return 0
-            case .inProgress:
-                return 1
-            case .successful:
-                return 2
-            case .failure:
-                return 3
-            case .cancel:
-                return 4
-            }
-        }
-        /// 等待
-        case wait
-        /// 进行中
-        case inProgress
-        /// 成功
-        case successful
-        /// 失败
-        case failure(error: NetworkApiError)
-        /// 已取消
-        case cancel
-    }
     
     /// 操作类型
     let operation: SyncOperation
@@ -466,7 +498,7 @@ class CloudSynchronizationHandle: NSObject {
         }
     }
     /// 状态
-    var state: State = .wait
+    var state: CloudSynchronizationState = .wait
     /// 等待定时器
 //    private var waitTimer: Timer?
     /// 网络请求操作
@@ -519,6 +551,9 @@ class CloudSynchronizationHandle: NSObject {
             case .syncSpace(let space):
                 space.syncCloudError = error
                 space.save()
+            case .syncGateway(let gateway, _):
+                gateway.syncCloudError = error
+                gateway.save()
             }
             DispatchQueue.main.async {
                 self.handleCallback?(self, self.state)
@@ -618,6 +653,10 @@ class CloudSynchronizationHandle: NSObject {
                         space.lastUploadCloudTimestamp = space.lastUpdate
                         space.syncCloudError = nil
                         space.save()
+                    case .syncGateway(let gateway, _):
+                        gateway.lastUploadCloudTimestamp = gateway.lastUpdate
+                        gateway.syncCloudError = nil
+                        gateway.save()
                     }
                     
                 case .failure(let error):
@@ -640,10 +679,14 @@ class CloudSynchronizationHandle: NSObject {
                     case .syncSpace(let space):
                         space.syncCloudError = error
                         space.save()
+                    case .syncGateway(let gateway, _):
+                        gateway.syncCloudError = error
+                        gateway.save()
                     }
                     
                     
                 }
+                
                 DispatchQueue.main.async {
                     self.handleCallback?(self, self.state)
                 }

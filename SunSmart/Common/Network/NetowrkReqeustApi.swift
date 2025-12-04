@@ -129,7 +129,10 @@ enum NetowrkReqeustApi {
     /// 网关解绑space
     case gatewayUnbindSpace(spaceId: String, gatewayId: String)
     /// 网关注册
-    case gatewayRegister(gatewayId: String)
+//    case gatewayRegister(gatewayId: String)
+    case gatewayRegister(siteId: String, gatewayId: String, nodeId: String, node: [String: Any], updateTimestamp: Int64)
+    /// 获取网关关联的所有space数据
+    case gatewayAssociationSpaceList(siteId: String, gatewayId: String)
 }
 
 extension NetowrkReqeustApi: TargetType {
@@ -213,6 +216,8 @@ extension NetowrkReqeustApi: TargetType {
             return "/sitespace/sapce/gateway/unbind"
         case .gatewayRegister:
             return "/sitespace/sapce/gateway/regist"
+        case .gatewayAssociationSpaceList:
+            return "/sitespace/sapce/gateway/reference"
         }
     }
     
@@ -411,8 +416,12 @@ extension NetowrkReqeustApi: TargetType {
             return ["spaceId": spaceId, "gatewayId": gatewayId, "userId": UserData.currentUserId]
         case .gatewayUnbindSpace(let spaceId, let gatewayId):
             return ["spaceId": spaceId, "gatewayId": gatewayId, "userId": UserData.currentUserId]
-        case .gatewayRegister(let gatewayId):
-            return ["gatewayId": gatewayId, "userId": UserData.currentUserId]
+//        case .gatewayRegister(let gatewayId):
+//            return ["gatewayId": gatewayId, "userId": UserData.currentUserId]
+        case .gatewayRegister(let siteId, let gatewayId, let nodeId, let node, let updateTimestamp):
+            return ["siteId": siteId, "gatewayId": gatewayId, "nodeId": nodeId, "node": node, "updateTimestamp": updateTimestamp, "userId": UserData.currentUserId]
+        case .gatewayAssociationSpaceList(let siteId, let gatewayId):
+            return ["siteId": siteId, "gatewayId": gatewayId]
         }
     }
     

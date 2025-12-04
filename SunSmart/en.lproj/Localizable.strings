@@ -1425,3 +1425,9 @@
 "gateway_not_activated" = "Gateway not activated";
 "reset_time" = "Reset time";
 "click_to_setup" = "Click to set up";
+"add_gateway" = "Add Gateway";
+"address" = "Address";
+"Offline" = "Offline";
+"nodes" = "Nodes";
+"associated_selected" = "Associated selected";
+"gateway_no_permission_message" = "The editor's space is all gateway bound";

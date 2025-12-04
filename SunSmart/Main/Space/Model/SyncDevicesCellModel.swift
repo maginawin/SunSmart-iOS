@@ -134,6 +134,7 @@ enum DeviceOperationType {
             case .gatewaySIMAPN(let apn):
                 return node.gatewayInfo?.simInfo?.apn == apn
             case .gatewayMQTTInformation(let mqttInformation):
+                
                 guard let mqttConnectInfo = node.gatewayInfo?.mqttConnectInfo else { return false }
                 return mqttConnectInfo == mqttInformation
             case .gatewayAssociationProjectId(let projectId):

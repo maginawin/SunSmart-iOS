@@ -350,6 +350,49 @@ extension SiteData {
                 
             }
         }
+        
+        // 更新Site网关数据
+        if let gatewayDicts = json["gateways"].arrayObject as? [[String: Any]] {
+            var gatewayNodes: [Node] = []
+            // 获取网关的最近更新时间与服务器上网关更新时间判断是否更新
+            
+            await withTaskGroup(of: Node?.self) { group in
+                for data in gatewayDicts {
+                    // 判断服务器上更新时间与本地更新时间
+                    if let updateTimestamp = data["updateTimestamp"] as? Int, let addressHex = data["unicastAddress"] as? String, let address = Address(hex: addressHex), let gateway = GatewayModel.load(siteId: self.id, address: address).first, gateway.lastUpdate >= updateTimestamp {
+                        break
+                    }
+                    group.addTask {
+                        // 异步处理每个数据
+                        return await Node.import(siteId: uuid, nodeJsonData: data)
+                    }
+                }
+                // 收集结果
+                for await node in group {
+                    if let node = node {
+                        gatewayNodes.append(node)
+                    }
+                }
+            }
+            
+            if let network = meshNetwork {
+                gatewayNodes.forEach({
+                    // 判断设备是否存在废弃地址内，如果存在则清空废弃地址内缓存（如多用户编辑数据并未及时提交，使用了旧数据则可能出现导入的设备地址在废弃地址内）
+                    if network.isAddressInExclusion(node: $0) {
+                        let range = AddressRange(from: $0.primaryUnicastAddress, elementsCount: $0.elementsCount)
+                        for address in range.range {
+                            network.deleteExclusionAddress(ivIndex: network.currentIVIndex, address: address)
+                            if network.currentIVIndex > 0 {
+                                network.deleteExclusionAddress(ivIndex: network.currentIVIndex - 1, address: address)
+                            }
+                        }
+                    }
+                    try? network.add(node: $0)
+                })
+            }
+        }
+        
+        
       
         if updateNetwork {
             meshNetwork?.save()
@@ -1051,15 +1094,25 @@ extension SpaceData {
                         // 预配置网关数据
                         if let mac = node.macAddress, let gatewayPreconfigured = nodeJson["gatewayPreconfigured"].dictionaryObject {
                             let json = JSON(gatewayPreconfigured)
-                            var associatedSpaces: [SpaceData] = []
-                            if let spaceIds = json["associatedSpaces"].arrayObject as? [String] {
-                                associatedSpaces = spaceIds.compactMap({
-                                    if self.id == $0 {
-                                        return self
+//                            var associatedSpaces: [SpaceData] = []
+//                            if let spaceIds = json["associatedSpaces"].arrayObject as? [String] {
+//                                associatedSpaces = spaceIds.compactMap({
+//                                    if self.id == $0 {
+//                                        return self
+//                                    }
+//                                    return SpaceData.load(siteId: siteId, spaceId: $0).first
+//                                })
+//                            }
+                            var associatedSpaces: [GatewaySpaceData] = []
+                            if let spaceDatas = json["associatedSpaces"].arrayObject as? [[String: Any]] {
+                                associatedSpaces = spaceDatas.compactMap({ spaceData in
+                                    if let id = spaceData["spaceId"] as? String, let name = spaceData["spaceName"] as? String, let deviceCount = spaceData["deviceCount"] as? Int, let appKeyIndex = spaceData["appKeyIndex"] as? UInt16 {
+                                        return GatewaySpaceData(spaceId: id, spaceName: name, deviceCount: deviceCount, appKeyIndex: appKeyIndex)
                                     }
-                                    return SpaceData.load(siteId: siteId, spaceId: $0).first
+                                    return nil
                                 })
                             }
+                            
                             var mqttConnectInfo: GatewayInformation.MQTTConnectInformation?
                             if let mqttConnectInfoDict = json["mqttConnectInfo"].dictionaryObject,
                                let serverAddress = mqttConnectInfoDict["serverAddress"] as? String,
@@ -1080,6 +1133,7 @@ extension SpaceData {
                             }
                             
                             let gatewayModel = GatewayModel(siteId: siteId, name: node.name ?? "", address: node.primaryUnicastAddress, mac: mac, activate: json["activate"].boolValue, associatedSpaces: associatedSpaces, apn: json["apn"].string, mqttServerInfo: mqttConnectInfo)
+                            gatewayModel.lastUploadCloudTimestamp = Int64(Date().timeIntervalSince1970)
                             gatewayModel.save()
                             node.gatewayModel = gatewayModel
                         }
@@ -1324,4 +1378,235 @@ extension SpaceData {
         }
     }
     
+}
+
+extension Node {
+    
+    /// 生成节点数据
+    static func `import`(siteId: String, nodeJsonData: [String: Any]) async -> Node? {
+        
+        await withCheckedContinuation { continuation in
+            
+            var decodeNodeDict = nodeJsonData
+            if let uuid = nodeJsonData["uuid"] as? String { // 换算成大写UUID提供Node解码
+                decodeNodeDict.updateValue(uuid, forKey: "UUID")
+            }
+            
+            guard let data = try? JSONSerialization.data(withJSONObject: decodeNodeDict), let node = try? jsonDecoder.decode(Node.self, from: data) else {
+                continuation.resume(returning: nil)
+                return
+            }
+            let nodeJson = JSON(decodeNodeDict)
+            if let version = nodeJson["versionSEQ"].uInt32 {
+                node.versionSEQ = version
+            }
+
+            node.macAddress = nodeJson["macAddress"].string
+            if let sensorTypes = nodeJson["sensorTypes"].arrayObject as? [String] {
+                let propertys = sensorTypes.map({ DeviceProperty(UInt16(hex: $0) ?? 0) })
+                for index in 0..<propertys.count {
+                    if index < node.sensorModels.count {
+                        node.sensorModelTypes.updateValue(propertys[index], forKey: node.sensorModels[index])
+                    }
+                }
+            }
+            if let state = nodeJson["groupState"].int {
+                node.groupState = Node.GroupState(rawValue: state) ?? .none
+            }
+            if let min = nodeJson["lightnessRangeMin"].uInt16, let max = nodeJson["lightnessRangeMax"].uInt16 {
+                node.lightnessRange = min...max
+            }
+            if let min = nodeJson["lightCTLTemperatureRangeMin"].uInt16, let max = nodeJson["lightCTLTemperatureRangeMax"].uInt16 {
+                node.lightCTLTemperatureRange = min...max
+            }
+            if let powerUpState = nodeJson["powerUpState"].uInt8 {
+                node.powerUpState = OnPowerUp(rawValue: powerUpState)
+            }
+            if let defaultLightness = nodeJson["defaultLightness"].uInt16 {
+                node.defalutLightness = defaultLightness
+            }
+            if let defaultCct = nodeJson["defaultCct"].uInt16 {
+                node.defaultCct = defaultCct
+            }
+            if let timezoneOffset = nodeJson["timezoneOffset"].uInt8, let timestamp = nodeJson["timestamp"].int64, timestamp >= 0 {
+                node.timezone = timezoneOffset.decodeFromTzOffset()
+                node.timestamp = UInt64(timestamp)
+            }
+            if let enOceanMacAddress = nodeJson["enOceanMacAddress"].string {
+                node.enOceanMacAddress = enOceanMacAddress
+                // 动能开关按键配置
+                if let enOceanProxySwitchKeyDicts = nodeJson["enOceanProxySwitchKeys"].arrayObject as? [[String: Any]],
+                   let data = try? JSONSerialization.data(withJSONObject: enOceanProxySwitchKeyDicts),
+                   let enOceanProxySwitchKeys = try? jsonDecoder.decode([SwitchKey].self, from: data) {
+                    node.enOceanProxySwitchKeys = enOceanProxySwitchKeys
+                }
+                
+                if let enOceanKeyScenes = nodeJson["enOceanKeyScenes"].arrayObject as? [String] {
+                    node.enOceanKeySceneNumbers = enOceanKeyScenes.map({ SceneNumber(hex: $0) ?? 0 })
+                }
+            }
+            
+            if let firmwareID = nodeJson["firmwareID"].string, !firmwareID.isEmpty {
+                let data = Data(hex: firmwareID)
+                if data.count == 6 || data.count == 8 {
+                    node.firmwareID = data
+                }
+            }
+            if let distributionFirmwareID = nodeJson["distributionFirmwareID"].string, !distributionFirmwareID.isEmpty {
+                let data = Data(hex: distributionFirmwareID)
+                if data.count == 6 || data.count == 8 {
+                    node.distributionFirmwareID = data
+                }
+            }
+            
+            if let compositionHash = nodeJson["compositionHash"].string, !compositionHash.isEmpty {
+                node.compositionHash = compositionHash
+            }
+            if let defaultTransitionTime = nodeJson["defaultTransitionTime"].uInt8 {
+                node.defaultTransitionTime = .init(rawValue: defaultTransitionTime)
+            }
+            
+            if let sceneDataDicts = nodeJson["scenesDatas"].arrayObject,
+               let data = try? JSONSerialization.data(withJSONObject: sceneDataDicts),
+               let sceneExecuteDatas = try? jsonDecoder.decode([SceneExecuteData].self, from: data) {
+                node.sceneExecuteDatas = sceneExecuteDatas
+            }
+            if let scheduleDicts = nodeJson["schedules"].arrayObject as? [[String: Any]] {
+                
+                scheduleDicts.forEach { dict in
+                    let scheduleJson = JSON(dict)
+                    if let id = scheduleJson["id"].int {
+                        let dayOfWeek = Schedule.getWeekDays(weekValue: scheduleJson["dayOfWeek"].int ?? 0)
+                        let yearValue = scheduleJson["year"].int ?? 0
+                        var year: SchedulerYear = .any()
+                        if yearValue < 100 {
+                            year = .specific(year: yearValue)
+                        }
+                        
+                        let entry = SchedulerRegistryEntry(year: year, month: .any(of: Schedule.allMonths), day: .specific(day: scheduleJson["day"].int ?? 0), hour: .specific(hour: scheduleJson["hour"].int ?? 0), minute: .specific(minute: scheduleJson["minute"].int ?? 0), second: .specific(second: scheduleJson["second"].int ?? 0), dayOfWeek: .any(of: dayOfWeek), action: SchedulerAction(rawValue: scheduleJson["action"].uInt8 ?? 0x0F) ?? .noAction, transitionTime: .init(steps: scheduleJson["transitionTime"].uInt8 ?? 0, stepResolution: .seconds), sceneNumber: scheduleJson["sceneNumber"].uInt16 ?? 0)
+                        node.schedulerActions.updateValue(entry, forKey: id)
+                    }
+                }
+                node.scheduleIds = node.schedulerActions.map({ $0.key })
+            }
+            
+            if let lightLCPropertyDict = nodeJson["lightLCPropertys"].dictionaryObject,
+               let lightLCPropertyData = try? JSONSerialization.data(withJSONObject: lightLCPropertyDict) {
+                
+                if let lightLCProperty = try? jsonDecoder.decode(LightLCProperty.self, from: lightLCPropertyData) {
+                    node.lightLCProperty = lightLCProperty
+                }
+            }
+            
+            // 光感校准值
+            if let daylightCalibrationValue = nodeJson["daylightCalibrationValue"].uInt16, daylightCalibrationValue > 0 && daylightCalibrationValue < 0xFFFF {
+                node.daylightCalibrationValue = daylightCalibrationValue
+            }
+            
+            // 光感校准数据（新版）
+            if let daylightCalibrationData = nodeJson["daylightCalibrationData"].dictionaryObject {
+                if let sensorRatio = daylightCalibrationData["sensorRatio"] as? UInt16 {
+                    node.sensorCalibrationData?.sensorRatio = sensorRatio
+                }
+                if let ambientlightRatio = daylightCalibrationData["ambientlightRatio"] as? UInt16 {
+                    node.sensorCalibrationData?.ambientlightRatio = ambientlightRatio
+                }
+                if let minLightInflectionPointData = daylightCalibrationData["minLightInflectionPointData"] as? [String: Any],
+                   let lightness = minLightInflectionPointData["lightness"] as? UInt16,
+                   let lux = minLightInflectionPointData["lux"] as? UInt16 {
+                    node.sensorCalibrationData?.minLightInflectionPointData = .init(lightness: lightness, lux: lux)
+                }
+                if let maxLightInflectionPointData = daylightCalibrationData["maxLightInflectionPointData"] as? [String: Any],
+                   let lightness = maxLightInflectionPointData["lightness"] as? UInt16,
+                   let lux = maxLightInflectionPointData["lux"] as? UInt16 {
+                    node.sensorCalibrationData?.maxLightInflectionPointData = .init(lightness: lightness, lux: lux)
+                }
+            }
+            
+            // pwm频率
+            if let pwmFrequency = nodeJson["pwmFrequency"].uInt16, pwmFrequency > 0 {
+                node.pwmFrequency = pwmFrequency
+            }
+            // 设备亮度阶段额定功率
+            if let ratedPowerPhases = nodeJson["ratedPowerPhases"].arrayObject as? [[String: Int]] {
+                let phaseEnergyConsumptions: [NodePhaseEnergyConsumption] = ratedPowerPhases.compactMap { phaseDict in
+                    guard let percent = phaseDict["percent"], let power = phaseDict["power"],
+                          percent >= UInt8.min && percent <= UInt8.max, power >= UInt16.min && power <= UInt16.max else { return nil }
+                    return NodePhaseEnergyConsumption(percent: UInt8(percent), power: UInt16(power))
+                }
+                node.phaseEnergyConsumptions = phaseEnergyConsumptions
+            }
+            
+            // 相对灵敏度
+            if let motionSensitivity = nodeJson["motionSensitivity"].uInt16 {
+                node.motionSensitivity = motionSensitivity
+            }
+            // 灵敏度范围
+            if let motionSensitivityRangeMin = nodeJson["motionSensitivityRangeMin"].uInt16,
+               let motionSensitivityRangeMax = nodeJson["motionSensitivityRangeMax"].uInt16, motionSensitivityRangeMin < motionSensitivityRangeMax {
+                node.motionSensitivityRange = motionSensitivityRangeMin...motionSensitivityRangeMax
+            }
+            
+            // 邻近照明
+            if let proximityLightingEnabled = nodeJson["proximityLightingEnabled"].bool {
+                node.proximityLightingEnabled = proximityLightingEnabled
+            }
+            if let proximityLightingRelayCount = nodeJson["proximityLightingRelayCount"].uInt8 {
+                node.proximityLightingRelayCount = proximityLightingRelayCount
+            }
+            if let proximityLightingNeighborAddresses = nodeJson["proximityLightingNeighborAddresses"].arrayObject as? [UInt16] {
+                node.proximityLightingNeighborAddresses = proximityLightingNeighborAddresses.compactMap({ Address($0) })
+            }
+            
+            if node.deviceType == .gateway {
+                // 网关
+                if let gatewayInfo = nodeJson["gatewayInfo"].dictionaryObject, let gatewayInfoData = try? JSONSerialization.data(withJSONObject: gatewayInfo) {
+                    node.gatewayInfo = try? jsonDecoder.decode(GatewayInformation.self, from: gatewayInfoData)
+                }
+                // 预配置网关数据
+                if let mac = node.macAddress, let gatewayPreconfigured = nodeJson["gatewayPreconfigured"].dictionaryObject {
+                    let json = JSON(gatewayPreconfigured)
+                    var associatedSpaces: [GatewaySpaceData] = []
+                    if let spaceDatas = json["associatedSpaces"].arrayObject as? [[String: Any]] {
+                        associatedSpaces = spaceDatas.compactMap({ spaceData in
+                            if let id = spaceData["spaceId"] as? String, let name = spaceData["spaceName"] as? String, let deviceCount = spaceData["deviceCount"] as? Int, let appKeyIndex = spaceData["appKeyIndex"] as? UInt16 {
+                                return GatewaySpaceData(spaceId: id, spaceName: name, deviceCount: deviceCount, appKeyIndex: appKeyIndex)
+                            }
+                            return nil
+                        })
+                    }
+                    var mqttConnectInfo: GatewayInformation.MQTTConnectInformation?
+                    if let mqttConnectInfoDict = json["mqttConnectInfo"].dictionaryObject,
+                       let serverAddress = mqttConnectInfoDict["serverAddress"] as? String,
+                       let userName = mqttConnectInfoDict["userName"] as? String,
+                       let password = mqttConnectInfoDict["password"] as? String,
+                       let clientId = mqttConnectInfoDict["clientId"] as? String {
+                        
+                        var authMode: GatewayInformation.MQTTAuthMode = .none
+                        var sslVersion: GatewayInformation.MQTTSSLVersion = .all
+                        if let authModeValue = mqttConnectInfoDict["authMode"] as? UInt8, let resultAuthMode = GatewayInformation.MQTTAuthMode.init(rawValue: authModeValue) {
+                            authMode = resultAuthMode
+                        }
+                        if let sslVersionValue = mqttConnectInfoDict["sslVersion"] as? UInt8, let resultSslVersion = GatewayInformation.MQTTSSLVersion(rawValue: sslVersionValue) {
+                            sslVersion = resultSslVersion
+                        }
+                        
+                        mqttConnectInfo = .init(customId: customId, serverAddress: serverAddress, userName: userName, password: password, clientId: clientId, keepalive: mqttConnectInfoDict["keepalive"] as? UInt16 ?? 60, clearSession: mqttConnectInfoDict["clearSession"] as? Bool ?? true, authMode: authMode, sslVersion: sslVersion)
+                    }
+                    
+                    let gatewayModel = GatewayModel(siteId: siteId, name: node.name ?? "", address: node.primaryUnicastAddress, mac: mac, activate: json["activate"].boolValue, associatedSpaces: associatedSpaces, apn: json["apn"].string, mqttServerInfo: mqttConnectInfo)
+                    
+                    if let updateTimestamp = nodeJson["updateTimestamp"].int64 {
+                        gatewayModel.lastUpdate = updateTimestamp
+                        gatewayModel.lastUploadCloudTimestamp = updateTimestamp
+                    }
+                    
+                    gatewayModel.save()
+                    node.gatewayModel = gatewayModel
+                }
+            }
+            
+            continuation.resume(returning: node)
+        }
+    }
 }

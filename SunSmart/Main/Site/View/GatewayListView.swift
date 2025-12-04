@@ -119,6 +119,9 @@ class GatewayListView: UIView {
         
         addGatewyaBtn = UIButton(title: "click_add_gateway".localizedString, titleSize: 14, titleWeight: .light, titleColor: ImportantText_Color, normalImageName: "gateway_add", target: self, action: #selector(addGatewyaBtnAction))
         addGatewyaBtn.setImagePosition(position: .left, spacing: SCRXFrom(4))
+        addGatewyaBtn.layer.shadowColor = UIColor.black.withAlphaComponent(0.1).cgColor
+        addGatewyaBtn.layer.shadowOpacity = 1
+        addGatewyaBtn.layer.shadowOffset = CGSize(width: -4, height: 0)
         addGatewyaBtn.isHidden = true
         addSubview(addGatewyaBtn)
         addGatewyaBtn.snp.makeConstraints { make in
@@ -258,10 +261,12 @@ class GatewayListView: UIView {
                 context: nil
             ).width
             
+            
             // 如果有状态指示器，增加宽度
             let statusDotWidth: CGFloat = item.status != nil ? SCRXFrom(8) + SCRXFrom(6) : 0
+            let failImageWidth = item.gatewayModel?.syncCloudError != nil ? 12 + SCRXFrom(6) : 0
             let itemPadding: CGFloat = SCRXFrom(10) //SCRXFrom(16)
-            let itemWidth = max(SCRXFrom(76), titleWidth + statusDotWidth + itemPadding * 2)
+            let itemWidth = max(SCRXFrom(76), titleWidth + statusDotWidth + failImageWidth + itemPadding * 2)
             
             itemView.frame = CGRect(x: currentX, y: 0, width: itemWidth, height: itemHeight)
             currentX += itemWidth
@@ -297,6 +302,7 @@ class GatewayItemView: UIView {
     private var contentView: UIStackView!
     private var statusDot: UIView!
     private var titleLabel: UILabel!
+    private var syncFailImageView: UIImageView!
     private var underlineView: UIView!
     
     override init(frame: CGRect) {
@@ -323,7 +329,7 @@ class GatewayItemView: UIView {
         }
         
         statusDot = UIView()
-        statusDot.layer.cornerRadius = SCRXFrom(4)
+        statusDot.layer.cornerRadius = SCRXFrom(3)
         statusDot.isHidden = true
 //        addSubview(statusDot)
 //        contentView.addArrangedSubview(statusDot)
@@ -344,6 +350,9 @@ class GatewayItemView: UIView {
 //            make.right.equalToSuperview()
 //            make.centerY.equalToSuperview()
 //        }
+        
+        syncFailImageView = UIImageView(image: UIImage(named: "gateway_sync_fail"))
+        syncFailImageView.isHidden = true
         
         underlineView = UIView()
         underlineView.backgroundColor = Bar_Color
@@ -388,6 +397,11 @@ class GatewayItemView: UIView {
         }
         
         contentView.addArrangedSubview(titleLabel)
+        
+        if item.gatewayModel?.syncCloudError != nil {
+            syncFailImageView.isHidden = false
+            contentView.addArrangedSubview(syncFailImageView)
+        }
         
         // 更新选中状态
         underlineView.isHidden = !item.isSelected

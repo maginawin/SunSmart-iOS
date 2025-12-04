@@ -133,7 +133,7 @@ class SharingSettingViewController: UIViewController {
                 self.options = self.type.data.options
                 self.tableView.reloadData()
                 self.editorNameLabel?.text = "no_editor_yet".localizedString
-                NotificationCenter.default.post(name: .init(SpacesRefreshChangeNotificationName), object: nil)
+                NotificationCenter.default.post(name: .init(spacesRefreshChangeNotificationName), object: nil)
                 
             case .failure(let error):
                 if error == .editorBeingUsedSpace { // 正在使用空间
@@ -239,7 +239,7 @@ class SharingSettingViewController: UIViewController {
 //                    space.vistorPasswordEnable = password != nil
                 }
                 space.save()
-                NotificationCenter.default.post(name: .init(SpacesRefreshChangeNotificationName), object: true)
+                NotificationCenter.default.post(name: .init(spacesRefreshChangeNotificationName), object: true)
                 
             case .batchSpace(let data):
                 if password != nil {

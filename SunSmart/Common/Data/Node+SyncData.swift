@@ -429,7 +429,7 @@ extension Node {
             }
             
             // Gateway
-            if self.deviceType == .gateway, let gatewayModel = self.gatewayModel {
+            if self.deviceType == .gateway, let gatewayModel = self.gatewayModel ?? GatewayModel.load(siteId: self.network?.uuid.uuidString ?? "", address: primaryUnicastAddress).first {
                 syncDatas.append(contentsOf: getNodeSyncGatewayData(gateway: gatewayModel))
             }
             
@@ -1176,7 +1176,7 @@ extension Node {
         
         // 同步绑定哪些子网appkey index
         // 网格激活状态同步关联子网数据
-        let currentAppkeyIndexs = gateway.activate ? self.applicationKeys.map({ $0.index }).sorted() : []
+        let currentAppkeyIndexs = gateway.activate ? self.applicationKeys.filter({ $0.boundNetworkKey.isSecondary }).map({ $0.index }).sorted() : []
         if currentAppkeyIndexs != gatewayInfo?.subnetAppkeyIndexs.sorted() {
             syncDatas.append(.syncGatewaySubnetAppkeyIndexs(appkeyIndexs: currentAppkeyIndexs))
         }
