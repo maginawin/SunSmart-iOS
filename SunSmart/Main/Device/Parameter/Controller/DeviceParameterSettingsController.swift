@@ -11,14 +11,21 @@ import NordicSigMeshSDK
 
 class DeviceParameterSettingsController: UIViewController {
 
+    enum SectionType {
+        case energyReporting
+        case parameter
+    }
+    
     /// 设置完成回调  参数：失败的类型及设备
     typealias ParameterSettingsCompletionCallback = (([DeviceParameterData.ParameterType: (value: Any, successNodes: [Node], failedNodes: [Node])])->Void)
    
-    private var headerView: DeviceParameterPromptView!
+//    private var headerView: DeviceParameterPromptView!
     private var tableView: UITableView!
     private var bottomView: DeviceParameterBottomView!
     
+    private var sections: [SectionType] = [.parameter]
     private var parameterDatas: [DeviceParameterData] = []
+    
     /// 额定功率阶段数据list
     private var ratedPowerPhaseDatas: [DeviceParameterRatedPowerPhaseData] = DeviceParameterRatedPowerPhaseData.default()
     
@@ -52,13 +59,20 @@ class DeviceParameterSettingsController: UIViewController {
         }
         
         if let node = devices.first {
+            
+            if node.supportRealPowerMetering {
+                sections.insert(.energyReporting, at: 0)
+            }else {
+                parameterDatas.append(.init(type: .ratedPower, data: ratedPowerPhaseDatas, enable: false))
+            }
+            
             if node.supportPwmFrequency {
                 parameterDatas.append(.init(type: .pwmFrequency, data: 2940, enable: false))
             }
-            parameterDatas.append(.init(type: .ratedPower, data: ratedPowerPhaseDatas, enable: false))
             if node.supportMotionSensitivity {
                 parameterDatas.append(.init(type: .motionSensitivityRange, data: defaultMotionSensitivityRange, enable: false))
             }
+            
             parameterDatas.append(.init(type: .defalutTransitionTime, data: defaultTransitionTime, enable: false))
             
         }else {
@@ -178,6 +192,8 @@ class DeviceParameterSettingsController: UIViewController {
                         }
                     }
                 }
+            default:
+                break
             }
         }
         
@@ -203,6 +219,8 @@ class DeviceParameterSettingsController: UIViewController {
                     result.updateValue((range, self.devices, []), forKey: .motionSensitivityRange)
                 case .defaultTransitionTime(let transitionTime):
                     result.updateValue((transitionTime, self.devices, []), forKey: .defalutTransitionTime)
+                default:
+                    break
                 }
             }
             self.settingsCompletionCallback?(result)
@@ -241,6 +259,8 @@ class DeviceParameterSettingsController: UIViewController {
                                     sensitivityRangeSuccessNodes.append(data.node)
                                 case .defaultTransitionTime:
                                     transitionTimeSuccessNodes.append(data.node)
+                                default:
+                                    break
                                 }
                             default:
                                 break
@@ -264,6 +284,8 @@ class DeviceParameterSettingsController: UIViewController {
                                     sensitivityRangeFailedNodes.append(data.node)
                                 case .defaultTransitionTime:
                                     transitionTimeFailedNodes.append(data.node)
+                                default:
+                                    break
                                 }
                             default:
                                 break
@@ -304,17 +326,81 @@ class DeviceParameterSettingsController: UIViewController {
         bottomView.rightBtn.isEnabled = self.parameterDatas.contains(where: ({ $0.enable && $0.data != nil }) )
     }
     
+    private func reloadEnergyDevice(_ device: Node) {
+        if let cell = tableView.cellForRow(at: IndexPath(row: 0, section: sections.firstIndex(of: .energyReporting) ?? 0)) as? DeviceParameterEnergyReportViewCell {
+            cell.reloadDevice(device: device)
+        }
+    }
+    
+    private func energyInhibit(devices: [Node]) {
+        
+        let vc = SyncDevicesViewController(type: .devicesParameter(devices.map({ ($0, [.ratedPower(datas: [])]) })))
+        vc.vcTitle = "read_rated_power".localizedString
+        vc.syncSuccessCallback = {[weak self] _ in
+            guard let self = self else { return }
+            XWHUDManager.showSuccessTipHUD("done!".localizedString)
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1) {[weak self] in
+                self?.navigationController?.popViewController(animated: true)
+            }
+            devices.forEach({
+                self.reloadEnergyDevice($0)
+            })
+            
+            self.settingsCompletionCallback?([.ratedPower: ([], devices, [])])
+        }
+        vc.backActionCallback = {[weak self] result in
+            guard let self = self else { return }
+            self.navigationController?.popViewController(animated: true)
+            devices.forEach({
+                self.reloadEnergyDevice($0)
+            })
+            let nodes = result.map({ $0.node })
+//                .compactMap({ $0.successOperationTypes.count > 0 ? $0.node : nil })
+//            let failNodes = result.compactMap({ $0.failedOperationTypes.count > 0 ? $0.node : nil })
+            self.settingsCompletionCallback?([.ratedPower: ([], nodes, [])])
+        }
+        navigationController?.pushViewController(vc, animated: true)
+    }
+    
+    private func energyActivate(devices: [Node]) {
+        
+        let vc = ReadDevicesDataViewController(type: .readRatedPower(nodes: devices))
+        vc.readSuccessCallback = {[weak self] _ in
+            guard let self = self else { return }
+            XWHUDManager.showSuccessTipHUD("done!".localizedString)
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1) {[weak self] in
+                self?.navigationController?.popViewController(animated: true)
+            }
+            devices.forEach({
+                self.reloadEnergyDevice($0)
+            })
+            self.settingsCompletionCallback?([.ratedPower: ([], devices, [])])
+        }
+        vc.backActionCallback = {[weak self] result in
+            guard let self = self else { return }
+            self.navigationController?.popViewController(animated: true)
+            devices.forEach({
+                self.reloadEnergyDevice($0)
+            })
+//            let successNodes = result.compactMap({ $0.successOperationTypes.count > 0 ? $0.node : nil })
+//            let nodes = result.map({ $0.node })
+            self.settingsCompletionCallback?([.ratedPower: ([], devices, [])])
+        }
+        navigationController?.pushViewController(vc, animated: true)
+        
+    }
+    
     private func setupUI() {
         
-        headerView = DeviceParameterPromptView()
-        headerView.titleLabel.text = "device_parameter_step_2".localizedString
-        headerView.filterBtn.isHidden = true
-        view.addSubview(headerView)
-        headerView.snp.makeConstraints { make in
-            make.left.right.equalToSuperview()
-            make.top.equalTo(view.safeAreaLayoutGuide)
-            make.height.equalTo(SCRYFrom(44))
-        }
+//        headerView = DeviceParameterPromptView()
+//        headerView.titleLabel.text = "device_parameter_step_2".localizedString
+//        headerView.filterBtn.isHidden = true
+//        view.addSubview(headerView)
+//        headerView.snp.makeConstraints { make in
+//            make.left.right.equalToSuperview()
+//            make.top.equalTo(view.safeAreaLayoutGuide)
+//            make.height.equalTo(SCRYFrom(44))
+//        }
         
         bottomView = DeviceParameterBottomView()
         bottomView.leftBtn.setTitle("PREVIOUS".localizedString, for: .normal)
@@ -335,16 +421,18 @@ class DeviceParameterSettingsController: UIViewController {
         tableView.register(DeviceParameterRetedPowerViewCell.classForCoder(), forCellReuseIdentifier: "retedPowerCell")
         tableView.register(DeviceParameterAbsoluteSensitivityViewCell.classForCoder(), forCellReuseIdentifier: "sensitivityCell")
         tableView.register(DeviceParameterSliderViewCell.classForCoder(), forCellReuseIdentifier: "sliderCell")
-        
+        tableView.register(DeviceParameterEnergyReportViewCell.classForCoder(), forCellReuseIdentifier: "energyReportCell")
+        tableView.register(DeviceParameterTitleHeaderView.classForCoder(), forHeaderFooterViewReuseIdentifier: "header")
         tableView.estimatedRowHeight = SCRYFrom(148)
         tableView.rowHeight = UITableView.automaticDimension
         tableView.dataSource = self
         tableView.delegate = self
         view.addSubview(tableView)
         tableView.snp.makeConstraints { make in
-            make.left.equalTo(SCRXFrom(16))
-            make.right.equalTo(SCRXFrom(-16))
-            make.top.equalTo(headerView.snp.bottom)
+            make.left.right.equalToSuperview()
+//            make.right.equalTo(SCRXFrom(-16))
+//            make.top.equalTo(headerView.snp.bottom)
+            make.top.equalTo(view.safeAreaLayoutGuide).offset(SCRYFrom(7))
             make.bottom.equalTo(bottomView.snp.top)
         }
         
@@ -356,53 +444,82 @@ class DeviceParameterSettingsController: UIViewController {
 extension DeviceParameterSettingsController: UITableViewDataSource, UITableViewDelegate {
     
     func numberOfSections(in tableView: UITableView) -> Int {
-        return parameterDatas.count
+        return sections.count
     }
     
     func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
-        return 1
+        if sections[section] == .energyReporting {
+            return 1
+        }
+        return parameterDatas.count
     }
     
     func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
-        let parameterData = parameterDatas[indexPath.section]
-        switch parameterData.type {
-        case .ratedPower:
-            let ratedPowerCell = tableView.dequeueReusableCell(withIdentifier: "retedPowerCell", for: indexPath) as! DeviceParameterRetedPowerViewCell
-            ratedPowerCell.phases = ratedPowerPhaseDatas
-            ratedPowerCell.delegate = self
-            ratedPowerCell.updateParameterEnable(enable: parameterData.enable)
-            return ratedPowerCell
-        case .motionSensitivityRange:
-            let sensitivityCell = tableView.dequeueReusableCell(withIdentifier: "sensitivityCell", for: indexPath) as! DeviceParameterAbsoluteSensitivityViewCell
-            if let range = parameterData.data as? ClosedRange<Double> {
-                sensitivityCell.selectRange = range
-            }
-            sensitivityCell.updateParameterEnable(enable: parameterData.enable)
-            sensitivityCell.delegate = self
-            return sensitivityCell
-        case .defalutTransitionTime:
-            let sliderCell = tableView.dequeueReusableCell(withIdentifier: "sliderCell", for: indexPath) as! DeviceParameterSliderViewCell
-            let data = parameterData.type.data
-            sliderCell.titleLabel.text = "\(data.title):"
-            sliderCell.noteLabel.text = data.message
-            let list = DeviceParameterData.transitionTimeDatas
-            sliderCell.slider.minimumValue = 0
-            sliderCell.slider.maximumValue = Float(list.count - 1)
-            if let transitionTime = parameterData.data as? TransitionTime, let index = list.firstIndex(where: { $0.timeInterval == transitionTime.interval }) {
-                sliderCell.slider.value = Float(index)
-                sliderCell.valueLabel.text = list[index].timeStr
-            }
-            
-            sliderCell.updateParameterEnable(enable: parameterData.enable)
-            sliderCell.delegate = self
-            return sliderCell
-        default:
-            let cell = tableView.dequeueReusableCell(withIdentifier: "cell", for: indexPath) as! DeviceParameterSettingsViewCell
-            cell.parameterData = parameterData
+        
+        switch sections[indexPath.section] {
+        case .energyReporting:
+            let cell = tableView.dequeueReusableCell(withIdentifier: "energyReportCell", for: indexPath) as! DeviceParameterEnergyReportViewCell
+            cell.devices = devices
             cell.delegate = self
             return cell
+            
+        case .parameter:
+            let parameterData = parameterDatas[indexPath.row]
+            switch parameterData.type {
+            case .ratedPower:
+                let ratedPowerCell = tableView.dequeueReusableCell(withIdentifier: "retedPowerCell", for: indexPath) as! DeviceParameterRetedPowerViewCell
+                ratedPowerCell.phases = ratedPowerPhaseDatas
+                ratedPowerCell.delegate = self
+                ratedPowerCell.updateParameterEnable(enable: parameterData.enable)
+                return ratedPowerCell
+            case .motionSensitivityRange:
+                let sensitivityCell = tableView.dequeueReusableCell(withIdentifier: "sensitivityCell", for: indexPath) as! DeviceParameterAbsoluteSensitivityViewCell
+                if let range = parameterData.data as? ClosedRange<Double> {
+                    sensitivityCell.selectRange = range
+                }
+                sensitivityCell.updateParameterEnable(enable: parameterData.enable)
+                sensitivityCell.delegate = self
+                return sensitivityCell
+            case .defalutTransitionTime:
+                let sliderCell = tableView.dequeueReusableCell(withIdentifier: "sliderCell", for: indexPath) as! DeviceParameterSliderViewCell
+                let data = parameterData.type.data
+                sliderCell.titleLabel.text = "\(data.title):"
+                sliderCell.noteLabel.text = data.message
+                let list = DeviceParameterData.transitionTimeDatas
+                sliderCell.slider.minimumValue = 0
+                sliderCell.slider.maximumValue = Float(list.count - 1)
+                if let transitionTime = parameterData.data as? TransitionTime, let index = list.firstIndex(where: { $0.timeInterval == transitionTime.interval }) {
+                    sliderCell.slider.value = Float(index)
+                    sliderCell.valueLabel.text = list[index].timeStr
+                }
+                
+                sliderCell.updateParameterEnable(enable: parameterData.enable)
+                sliderCell.delegate = self
+                return sliderCell
+            default:
+                let cell = tableView.dequeueReusableCell(withIdentifier: "cell", for: indexPath) as! DeviceParameterSettingsViewCell
+                cell.parameterData = parameterData
+                cell.delegate = self
+                return cell
+            }
         }
-        
+    }
+    
+    func tableView(_ tableView: UITableView, viewForHeaderInSection section: Int) -> UIView? {
+        let header = tableView.dequeueReusableHeaderFooterView(withIdentifier: "header") as! DeviceParameterTitleHeaderView
+        switch sections[section] {
+        case .energyReporting:
+            header.titleLabel.text = "2.\("energy_reporting".localizedString)"
+            header.bottomMargin = SCRYFrom(5)
+        case .parameter:
+            header.titleLabel.text = sections.contains(.energyReporting) ? "3.\("parameter_selection".localizedString)" : "2.\("parameter_selection".localizedString)"
+            header.bottomMargin = SCRYFrom(8)
+        }
+        return header
+    }
+ 
+    func tableView(_ tableView: UITableView, heightForHeaderInSection section: Int) -> CGFloat {
+        return SCRYFrom(32)
     }
     
     func tableView(_ tableView: UITableView, viewForFooterInSection section: Int) -> UIView? {
@@ -410,7 +527,7 @@ extension DeviceParameterSettingsController: UITableViewDataSource, UITableViewD
     }
     
     func tableView(_ tableView: UITableView, heightForFooterInSection section: Int) -> CGFloat {
-        return SCRYFrom(16)
+        return 0.01
     }
     
 }
@@ -425,7 +542,8 @@ extension DeviceParameterSettingsController: DeviceParameterSettingsViewCellDele
                 guard let self = self else { return }
                 if let index = self.parameterDatas.firstIndex(where: { $0.type == data.type }) {
                     self.parameterDatas[index].data = frequency
-                    self.tableView.reloadSections(IndexSet(integer: index), with: .none)
+                    self.tableView.reloadRows(at: [IndexPath(row: index, section: self.sections.firstIndex(of: .parameter) ?? 0)], with: .none)
+//                    self.tableView.reloadSections(IndexSet(integer: index), with: .none)
                     
                     self.updateSetupBtnState()
                 }
@@ -439,7 +557,7 @@ extension DeviceParameterSettingsController: DeviceParameterSettingsViewCellDele
     /// 启用/禁用编辑
     func cell(_ cell: DeviceParameterSettingsViewCell, parameterEnableStateChanged enable: Bool) {
         if let indexPath = tableView.indexPath(for: cell) {
-            let data = parameterDatas[indexPath.section]
+            let data = parameterDatas[indexPath.row]
             data.enable = enable
 //            tableView.reloadRows(at: [indexPath], with: .none)
             updateSetupBtnState()
@@ -458,8 +576,8 @@ extension DeviceParameterSettingsController: DeviceParameterRetedPowerViewCellDe
         }
         ratedPowerPhaseDatas.insert(DeviceParameterRatedPowerPhaseData(lightLevel: nil, power: nil, necessary: false), at: ratedPowerPhaseDatas.count - 1)
         cell.phases = ratedPowerPhaseDatas
-        if let index = tableView.indexPath(for: cell)?.row {
-            tableView.reloadRows(at: [IndexPath(row: 0, section: index)], with: .none)
+        if let indexPath = tableView.indexPath(for: cell) {
+            tableView.reloadRows(at: [indexPath], with: .none)
         }
     }
     
@@ -468,8 +586,8 @@ extension DeviceParameterSettingsController: DeviceParameterRetedPowerViewCellDe
         if !phase.necessary, let index = ratedPowerPhaseDatas.firstIndex(of: phase) {
             ratedPowerPhaseDatas.remove(at: index)
             cell.phases = ratedPowerPhaseDatas
-            if let index = tableView.indexPath(for: cell)?.row {
-                tableView.reloadRows(at: [IndexPath(row: 0, section: index)], with: .none)
+            if let indexPath = tableView.indexPath(for: cell) {
+                tableView.reloadRows(at: [indexPath], with: .none)
             }
         }
     }
@@ -477,13 +595,13 @@ extension DeviceParameterSettingsController: DeviceParameterRetedPowerViewCellDe
     /// 启用/禁用编辑
     func cell(_ cell: DeviceParameterRetedPowerViewCell, parameterEnableStateChanged enable: Bool) {
         if let indexPath = tableView.indexPath(for: cell) {
-            let data = parameterDatas[indexPath.section]
+            let data = parameterDatas[indexPath.row]
             data.enable = enable
 //            tableView.reloadRows(at: [indexPath], with: .none)
             
             updateSetupBtnState()
-            
-            tableView.reloadSections(IndexSet(integer: indexPath.section), with: .automatic)
+            self.tableView.reloadRows(at: [indexPath], with: .automatic)
+//            tableView.reloadSections(IndexSet(integer: indexPath.section), with: .automatic)
         }
       
 //        tableView.performBatchUpdates(nil)
@@ -505,7 +623,7 @@ extension DeviceParameterSettingsController: DeviceParameterAbsoluteSensitivityV
     /// 修改启用/禁用开关
     func cell(_ cell: DeviceParameterAbsoluteSensitivityViewCell, parameterEnableStateChanged enable: Bool) {
         if let indexPath = tableView.indexPath(for: cell) {
-            let data = parameterDatas[indexPath.section]
+            let data = parameterDatas[indexPath.row]
             data.enable = enable
             updateSetupBtnState()
         }
@@ -523,7 +641,7 @@ extension DeviceParameterSettingsController: DeviceParameterSliderViewCellDelega
     
     /// 修改滑条数值
     func cell(_ cell: DeviceParameterSliderViewCell, sliderValueChange value: Int) {
-        guard let index = tableView.indexPath(for: cell)?.section else {
+        guard let index = tableView.indexPath(for: cell)?.row else {
             return
         }
         switch parameterDatas[index].type {
@@ -541,7 +659,7 @@ extension DeviceParameterSettingsController: DeviceParameterSliderViewCellDelega
     /// 修改启用/禁用开关
     func cell(_ cell: DeviceParameterSliderViewCell, parameterEnableStateChanged enable: Bool) {
         if let indexPath = tableView.indexPath(for: cell) {
-            let data = parameterDatas[indexPath.section]
+            let data = parameterDatas[indexPath.row]
             data.enable = enable
             updateSetupBtnState()
         }
@@ -553,8 +671,53 @@ extension DeviceParameterSettingsController: DeviceParameterSliderViewCellDelega
         guard let indexPath = tableView.indexPath(for: cell) else {
             return
         }
-        parameterDatas[indexPath.section].data = defaultTransitionTime
+        parameterDatas[indexPath.row].data = defaultTransitionTime
         tableView.reloadRows(at: [indexPath], with: .none)
+    }
+    
+}
+
+extension DeviceParameterSettingsController: DeviceParameterEnergyReportViewCellDelegate {
+
+    
+    /// 校准点击事件
+    func energyReportViewCellCalibrateAction(_ cell: DeviceParameterEnergyReportViewCell) {
+        
+        let vc = DeviceRatedPowerCalibrationController(devices: devices)
+        navigationController?.pushViewController(vc, animated: true)
+    }
+    
+    /// 禁用所有自动功耗设置
+    func energyReportViewCellInhibitAllAction(_ cell: DeviceParameterEnergyReportViewCell) {
+        
+        SRAlertView(title: "notification".localizedString, message: "energy_inhibit_all_message".localizedString, actions: [.cancelAction, SRAlertAction(title: "Reset".localizedString, actionHandler: {[weak self] _ in
+            guard let self = self else { return }
+            self.energyInhibit(devices: self.devices)
+        })]).show()
+        
+    }
+    
+    /// 启用所有自动功耗设置
+    func energyReportViewCellActivateAllAction(_ cell: DeviceParameterEnergyReportViewCell) {
+        
+        SRAlertView(title: "notification".localizedString, message: "energy_activate_all_message".localizedString, actions: [.cancelAction, SRAlertAction(title: "ACTIVATE".localizedString, actionHandler: {[weak self] _ in
+            guard let self = self else { return }
+            self.energyActivate(devices: self.devices)
+        })]).show()
+    }
+    
+    /// 启用/禁用自动功耗设置
+    func cell(_ cell: DeviceParameterEnergyReportViewCell, deviceActivateAction device: Node, activate: Bool) {
+        if activate {
+            energyActivate(devices: [device])
+        }else {
+            energyInhibit(devices: [device])
+        }
+    }
+    
+    /// 识别设备
+    func cell(_ cell: DeviceParameterEnergyReportViewCell, deviceIdentify device: NordicSigMeshSDK.Node) {
+        MeshAPI.identify(address: device.primaryUnicastAddress)
     }
     
 }

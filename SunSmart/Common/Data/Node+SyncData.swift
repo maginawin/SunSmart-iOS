@@ -146,6 +146,8 @@ enum DeviceParameterType {
             return 3
         case .defaultTransitionTime:
             return 4
+        case .powerCalibration:
+            return 5
         }
     }
     
@@ -171,6 +173,10 @@ enum DeviceParameterType {
             if let defaultTransitionTimeModel = node.defaultTransitionTimeModel {
                 messageHandles.append(MeshMessageHandle(message: GenericDefaultTransitionTimeSet(transitionTime: transitionTime), model: defaultTransitionTimeModel))
             }
+        case .powerCalibration(let calibrationValue):
+            if let vendorModel = node.sunricherVendorModel {
+                messageHandles.append(MeshMessageHandle(message: SunricherVendorSet(function: .dimmerPowerCalibrate(calibrationValue: calibrationValue)), model: vendorModel))
+            }
         }
         return messageHandles
     }
@@ -183,6 +189,8 @@ enum DeviceParameterType {
     case motionSensitivityRange(range: ClosedRange<UInt16>)
     /// 默认过渡时间
     case defaultTransitionTime(transitionTime: TransitionTime)
+    /// 功率校准
+    case powerCalibration(calibrationValue: UInt32)
 }
 
 enum DeviceReadParameterType {

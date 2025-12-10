@@ -19,7 +19,7 @@ protocol DeviceParameterSettingsViewCellDelegate: AnyObject {
 
 class DeviceParameterSettingsViewCell: UITableViewCell {
 
-//    private var bgView: UIView!
+    private var containerView: UIView!
     var titleLabel: UILabel!
     var textField: UITextField!
     var unitLabel: UILabel!
@@ -60,9 +60,10 @@ class DeviceParameterSettingsViewCell: UITableViewCell {
     override init(style: UITableViewCell.CellStyle, reuseIdentifier: String?) {
         super.init(style: style, reuseIdentifier: reuseIdentifier)
         
+        backgroundColor = .clear
         selectionStyle = .none
-        layer.cornerRadius = SCRYFrom(10)
-        backgroundColor = .white
+//        layer.cornerRadius = SCRYFrom(10)
+//        backgroundColor = .white
         setupUI()
     }
     
@@ -81,14 +82,14 @@ class DeviceParameterSettingsViewCell: UITableViewCell {
             
             titleLabel.snp.remakeConstraints { make in
                 make.left.equalTo(SCRXFrom(16))
-                make.top.equalTo(SCRYFrom(24))
+                make.top.equalTo(SCRYFrom(24)).priority(.high)
             }
             
             messageLabel.snp.remakeConstraints { make in
-                make.top.equalTo(textField.snp.bottom).offset(SCRYFrom(10))
+                make.top.equalTo(textField.snp.bottom).offset(SCRYFrom(10)).priority(.high)
                 make.left.equalTo(SCRXFrom(16))
                 make.right.equalTo(SCRXFrom(-16))
-                make.bottom.equalTo(SCRYFrom(-22))
+                make.bottom.equalTo(SCRYFrom(-22)).priority(.high)
             }
         }else {
             
@@ -99,12 +100,12 @@ class DeviceParameterSettingsViewCell: UITableViewCell {
             
             titleLabel.snp.remakeConstraints { make in
                 make.left.equalTo(SCRXFrom(16))
-                make.top.equalTo(SCRYFrom(24))
+                make.top.equalTo(SCRYFrom(24)).priority(.high)
                 make.bottom.equalTo(SCRYFrom(-23))
             }
             
             messageLabel.snp.remakeConstraints { make in
-                make.top.equalTo(textField.snp.bottom).offset(SCRYFrom(10))
+                make.top.equalTo(textField.snp.bottom).offset(SCRYFrom(10)).priority(.high)
                 make.left.equalTo(SCRXFrom(16))
                 make.right.equalTo(SCRXFrom(-16))
             }
@@ -120,28 +121,28 @@ class DeviceParameterSettingsViewCell: UITableViewCell {
     
     private func setupUI() {
         
-//        bgView = UIView()
-//        bgView.backgroundColor = .white
-//        bgView.layer.cornerRadius = SCRYFrom(10)
-//        contentView.addSubview(bgView)
-//        bgView.snp.makeConstraints { make in
-//            make.top.equalToSuperview()
-//            make.left.equalTo(SCRXFrom(16))
-//            make.right.equalTo(SCRXFrom(-16))
-//            make.bottom.equalTo(SCRXFrom(-16))
-//        }
+        containerView = UIView()
+        containerView.backgroundColor = .white
+        containerView.layer.cornerRadius = SCRYFrom(10)
+        contentView.addSubview(containerView)
+        containerView.snp.makeConstraints { make in
+            make.left.equalTo(SCRXFrom(16))
+            make.right.equalTo(SCRXFrom(-16))
+            make.top.equalToSuperview()
+            make.bottom.equalTo(SCRYFrom(-16))
+        }
         
         titleLabel = UILabel(text: "", textColor: TextBlack_Color, fontSize: 14)
-        contentView.addSubview(titleLabel)
+        containerView.addSubview(titleLabel)
         titleLabel.snp.makeConstraints { make in
             make.left.equalTo(SCRXFrom(16))
-            make.top.equalTo(SCRYFrom(24))
+            make.top.equalTo(SCRYFrom(24)).priority(.high)
         }
         
         enableSwitch = UISwitch()
         enableSwitch.onTintColor = Bar_Color
         enableSwitch.addTarget(self, action: #selector(enableSwitchValueChanged), for: .valueChanged)
-        contentView.addSubview(enableSwitch)
+        containerView.addSubview(enableSwitch)
         enableSwitch.snp.makeConstraints { make in
             make.right.equalTo(SCRXFrom(-16))
             make.centerY.equalTo(titleLabel)
@@ -159,16 +160,16 @@ class DeviceParameterSettingsViewCell: UITableViewCell {
         textField.textAlignment = .center
         textField.backgroundColor = Background_Color
         textField.delegate = self
-        contentView.addSubview(textField)
+        containerView.addSubview(textField)
         textField.snp.makeConstraints { make in
-            make.top.equalTo(titleLabel.snp.bottom).offset(SCRYFrom(16))
+            make.top.equalTo(titleLabel.snp.bottom).offset(SCRYFrom(16)).priority(.high)
             make.centerX.equalToSuperview()
             make.width.equalTo(SCRXFrom(96))
             make.height.equalTo(SCRYFrom(32))
         }
         
         unitLabel = UILabel(text: "", textColor: TextBlack_Color, fontSize: 13, fontWeight: .light)
-        contentView.addSubview(unitLabel)
+        containerView.addSubview(unitLabel)
         unitLabel.snp.makeConstraints { make in
             make.left.equalTo(textField.snp.right).offset(SCRXFrom(8))
             make.centerY.equalTo(textField).offset(SCRYFrom(1))
@@ -177,9 +178,9 @@ class DeviceParameterSettingsViewCell: UITableViewCell {
         messageLabel = UILabel(text: "", textColor: SubText_Color, fontSize: 13, fontWeight: .light)
         messageLabel.textAlignment = .center
         messageLabel.numberOfLines = 0
-        contentView.addSubview(messageLabel)
+        containerView.addSubview(messageLabel)
         messageLabel.snp.makeConstraints { make in
-            make.top.equalTo(textField.snp.bottom).offset(SCRYFrom(10))
+            make.top.equalTo(textField.snp.bottom).offset(SCRYFrom(10)).priority(.high)
             make.left.equalTo(SCRXFrom(16))
             make.right.equalTo(SCRXFrom(-16))
             make.bottom.equalTo(SCRYFrom(-22))

@@ -521,7 +521,7 @@ class SitesViewController: UIViewController {
 //        guard let space = favouriteSites.first?.spaces.last else {
 //            return
 //        }
-//        guard let space = allSites.last?.spaces.first else { return }
+//        guard let space = favouriteSites.last?.spaces.last else { return }
         
 //        DispatchQueue.global().async {
 //            MeshLibManager.manager.setMeshNetworkConnected(meshUUID: space.meshUUID, subNetworkId: space.meshNetworkId)
@@ -531,14 +531,18 @@ class SitesViewController: UIViewController {
 //    //                let group = MeshNetworkManager.instance.groups.first!
 //    //                let vc = GroupViewController(space: space, group: group)
 //    //                let vc = GroupPathSequencePageController(group: group)
-//                    let vc = DaliMasterViewController(space: space, node: MeshNetworkManager.instance.realNodes[0])
+////                    let vc = DaliMasterViewController(space: space, node: MeshNetworkManager.instance.realNodes[0])
+////                    let vc = DeviceRatedPowerCalibrationController(devices: MeshNetworkManager.instance.realNodes)
+//                    let vc = DeviceParameterSettingsController(devices: MeshNetworkManager.instance.realNodes)
 //                    self.present(NavigationViewController(rootViewController: vc), animated: true)
 //                }
 //            }
 //        }
         
 //        let vc = DeviceForceResetDevicePageController()
-////        let vc = DeviceMeshNetworkResetController()
+//        let vc = DeviceParameterSettingsController(devices: [])
+//        let vc = DeviceRatedPowerCalibrationController(devices: [])
+//        let vc = DeviceMeshNetworkResetController()
 //        if isIPad {
 //            vc.preferredContentSize = iPadStandardSize
 //        }

@@ -964,7 +964,7 @@
         "productId" : "2801",
         "categoryName" : "Dimmer",
         "elementCount" : 2,
-        "iconCategory" : "Lighting",
+        "iconCategory" : "Dimmer",
         "deviceCategory" : "Lighting",
         "modelName" : "SR-BL9041A-D"
     },
@@ -973,7 +973,7 @@
         "productId" : "2802",
         "categoryName" : "Dimmer",
         "elementCount" : 2,
-        "iconCategory" : "Lighting",
+        "iconCategory" : "Dimmer",
         "deviceCategory" : "Lighting",
         "modelName" : "SR-BL9041A-R"
     },

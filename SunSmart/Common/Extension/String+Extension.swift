@@ -147,6 +147,56 @@ extension String {
         return result
     }
     
+    /// 是否有效的Decimal键盘数据类型
+    func isValidDecimal(maxIntegerDigits: Int, maxFractionDigits: Int) -> Bool {
+           // 空字符串允许（用于删除操作）
+           if self.isEmpty { return true }
+           
+           // 检查是否以点开头
+           if self == "." { return true }
+           
+           // 分割整数和小数部分
+           let components = self.components(separatedBy: ".")
+           
+           // 如果有多于2个部分，无效
+           if components.count > 2 { return false }
+           
+           // 检查整数部分
+           if let integerPart = components.first, !integerPart.isEmpty {
+               // 整数部分不能以0开头，除非是"0"
+               if integerPart.count > 1 && integerPart.hasPrefix("0") && !integerPart.hasPrefix("0.") {
+                   return false
+               }
+               
+               // 检查整数部分长度
+               if integerPart.count > maxIntegerDigits {
+                   return false
+               }
+               
+               // 检查是否为有效数字
+               if integerPart != "0" && !integerPart.isPureNumandCharacters() {
+                   return false
+               }
+           }
+           
+           // 检查小数部分
+           if components.count == 2 {
+               let decimalPart = components[1]
+               
+               // 检查小数部分长度
+               if decimalPart.count > maxFractionDigits {
+                   return false
+               }
+               
+               // 检查是否为有效数字
+               if !decimalPart.isPureNumandCharacters() {
+                   return false
+               }
+           }
+           
+           return true
+       }
+    
 }
 
 

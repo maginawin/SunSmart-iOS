@@ -574,6 +574,8 @@ class DeviceAddProfessionalModeController: UIViewController {
 //                node.name = MeshNetworkManager.instance.getNextNodeName()
 //            }
             node.name = MeshNetworkManager.instance.getNextNodeName(node.defaultNameCategory)
+            // 新添加的设备支持最新功能绑定要求
+            node.requiredFunctionTypes = [.lightLCScene, .lightLCScheduler]
             node.save()
             
             if addDevice.deviceType == .dongle { // dongle设备，需要一个dongle虚拟数据与之绑定

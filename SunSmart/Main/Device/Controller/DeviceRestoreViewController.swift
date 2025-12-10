@@ -542,6 +542,8 @@ class DeviceRestoreViewController: UIViewController {
                     }
                 }
             }
+            // 新添加的设备支持最新功能绑定要求
+            node.requiredFunctionTypes = [.lightLCScene, .lightLCScheduler]
             
             // 恢复数据
             node.updateResoreData(oldNode: oldNode, resoreGroup: addToGroup)

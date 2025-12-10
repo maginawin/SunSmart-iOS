@@ -86,6 +86,8 @@ enum DeviceOperationType {
                 return true
             case .deviceRouteList:
                 return true
+            default:
+                return true
             }
         case .configuration(let node, let type):
             switch type {
@@ -141,6 +143,8 @@ enum DeviceOperationType {
             case .gatewaySubnetAppkeyIndexs(let appkeyIndexs):
                 return node.gatewayInfo?.subnetAppkeyIndexs.sorted() == appkeyIndexs.sorted()
             case .deviceRouteList:
+                return true
+            case .autoSetRatedPower:
                 return true
             }
         case .read:
@@ -222,6 +226,8 @@ enum DeviceOperationType {
                 break
             case .deviceRouteList:
                 break
+            case .autoSetRatedPower:
+                break
             }
         case .configuration(let node, let type): // 添加/配置操作
             
@@ -287,6 +293,10 @@ enum DeviceOperationType {
                 messageHandles.append(contentsOf: NodeSyncData.syncGatewaySubnetAppkeyIndexs(appkeyIndexs: appkeyIndexs).getMessageHandles(node: node))
             case .deviceRouteList:
                 break
+            case .autoSetRatedPower:
+                if let vendorModel = node.sunricherVendorModel, let pid = node.productIdentifier {
+                    messageHandles.append(MeshMessageHandle(message: SunricherVendorSet(function: .ratedPower(pid: pid)), model: vendorModel))
+                }
             }
         case .read(let node, let type):
             switch type {
@@ -349,6 +359,8 @@ enum ActionType {
     case gatewayMQTTInformation(mqttInformation: GatewayInformation.MQTTConnectInformation)
     /// 设备路由list
     case deviceRouteList(proxyAddress: Address)
+    /// 自动设置额定功率
+    case autoSetRatedPower
 }
 
 extension NodeSyncData {
@@ -528,6 +540,8 @@ extension DeviceParameterType {
             return node.motionSensitivityRange == range
         case .defaultTransitionTime(let transitionTime):
             return node.defaultTransitionTime?.rawValue == transitionTime.rawValue
+        case .powerCalibration(let calibrationValue):
+            return node.calibrationRatedPower == calibrationValue
         }
     }
     
@@ -802,7 +816,7 @@ class SyncDeviceStepModel: SyncCellModel {
         }
     }
     /// 任务list
-    let tasks: [SyncDeviceStepTaskModel]
+    var tasks: [SyncDeviceStepTaskModel] = []
     /// 上级model
     var parentDeviceModel: SyncDevicesModel?
     /// 关联的进度model(如果关联model未成功则当前任务进入等待状态)
@@ -815,8 +829,8 @@ class SyncDeviceStepModel: SyncCellModel {
     
     init(type: String, state: SyncDevicesState, tasks: [SyncDeviceStepTaskModel]) {
         self.type = type
-        self.tasks = tasks
         super.init()
+        self.tasks = tasks
         self.state = state
     }
     

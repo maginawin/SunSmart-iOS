@@ -42,12 +42,14 @@ class ReadDevicesDataViewController: UIViewController {
     private var readState: ReadState = .inRead
     /// 是否展示详细进度的model
     private var showProressStepModel: SyncDeviceStepModel?
+    
     /// 读取完成回调
     var readSuccessCallback: ((ReadType)->Void)?
     /// 点击返回回调
     var backActionCallback: (([ReadFailedData])->Void)?
     /// 获取能耗数据使用缺失数据回调
     var harvestEnergyUseIncompleteDataCallback: (([ReadFailedData])->Void)?
+    
     
     init(type: ReadType) {
         
@@ -79,6 +81,12 @@ class ReadDevicesDataViewController: UIViewController {
             navigationItem.rightBarButtonItem?.title = "re-harvest".localizedString
         case .routeTableList:
             title = "Read route".localizedString
+        case.readRatedPower(let nodes):
+            title = "read_rated_power".localizedString
+            nodes.forEach({
+                $0.retedPowerState = nil
+                $0.getRatedPower = false
+            })
         }
         
         
@@ -115,6 +123,7 @@ class ReadDevicesDataViewController: UIViewController {
 
     private func setupDataSource() {
         
+        self.sections.removeAll()
         let readSection = SyncDevicesSectionModel(title: "READ".localizedString)
         
         switch type {
@@ -184,6 +193,36 @@ class ReadDevicesDataViewController: UIViewController {
                 model.operationType = .read(node: node, type: .deviceRouteList(proxyAddress: proxyAddress))
                 readSection.devices.append(model)
             }
+        case .readRatedPower(let nodes):
+            nodes.forEach { node in
+                let deviceModel = SyncDevicesModel(name: node.name ?? "", address: node.primaryUnicastAddress)
+                
+                let ratedPowerStep = SyncDeviceStepModel(type: "rated_power".localizedString, state: .none, tasks: [])
+                
+                let ratedPowerTask = SyncDeviceStepTaskModel(name: "rated_power".localizedString, operationType: .configuration(node: node, type: .autoSetRatedPower))
+                ratedPowerTask.parentStepModel = ratedPowerStep
+                ratedPowerStep.tasks.append(ratedPowerTask)
+                deviceModel.steps.append(ratedPowerStep)
+                ratedPowerStep.parentDeviceModel = deviceModel
+                
+                if let state = node.retedPowerState {
+                    if state {
+                        ratedPowerTask.state = .successful
+                        
+                        let getRatedPowerTask = SyncDeviceStepTaskModel(name: "get_rated_power".localizedString, operationType: .read(node: node, type: .deviceReadParmeters(parameterType: .ratedPower)))
+                        if node.getRatedPower {
+                            getRatedPowerTask.state = .successful
+                        }
+                        let getRatedPowerStep = SyncDeviceStepModel(type: "get_rated_power".localizedString, state: .none, tasks: [getRatedPowerTask])
+                        getRatedPowerTask.parentStepModel = getRatedPowerStep
+                        deviceModel.steps.append(getRatedPowerStep)
+                        getRatedPowerStep.parentDeviceModel = deviceModel
+                    }else {
+                        ratedPowerTask.state = .failed
+                    }
+                }
+                readSection.devices.append(deviceModel)
+            }
         }
         
         if readSection.devices.count > 0 {
@@ -196,8 +235,10 @@ class ReadDevicesDataViewController: UIViewController {
             })
             if self.readState == .failure {
                 section.allModels.forEach({
+                    if $0.state == .none {
+                        $0.state = .failed
+                    }
                     $0.isFineshed = true
-                    $0.state = .failed
                 })
             }
         }
@@ -231,6 +272,8 @@ class ReadDevicesDataViewController: UIViewController {
                 case .harvestData(let nodes):
                     allNodes = nodes
                 case .routeTableList(_, let nodes):
+                    allNodes = nodes
+                case .readRatedPower(let nodes):
                     allNodes = nodes
                 }
                 // 获取读取失败的设备参数类型
@@ -530,19 +573,57 @@ class ReadDevicesDataViewController: UIViewController {
                     resultMessageHandles.forEach { handle in
                         if let address = handle.address ?? handle.model?.parentElement?.unicastAddress, let node = MeshNetworkManager.instance.meshNetwork?.node(withAddress: address) {
                             node.updateData(message: handle.message, isSuccess: handle.isSuccessful)
+                            
+                            if let vendorSet = handle.message as? SunricherVendorSet, case .ratedPower = vendorSet.function {
+                                node.retedPowerState = handle.isSuccessful
+                            }else if let vendorGet = handle.message as? SunricherVendorGet, case .phaseEnergyConsumption = vendorGet.function {
+                                node.getRatedPower = true //handle.isSuccessful
+                            }
                         }
                     }
-                    let resultSuccessful = !resultMessageHandles.contains(where: { !$0.isSuccessful })
-                    let operationSuccessful = ((model as? SyncDevicesModel)?.operationType?.isSuccessful ?? (model as? SyncDeviceStepTaskModel)?.operationType.isSuccessful) ?? false
-                    if resultSuccessful && operationSuccessful {
-                        model.state = .successful
+
+                    if case .readRatedPower(let nodes) = self?.type, self?.getNextHandleModel() == nil, nodes.contains(where: { $0.retedPowerState ?? false && !$0.getRatedPower }) {
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 6) {[weak self] in
+                            guard let self = self else {
+                                return
+                            }
+                            
+                            let resultSuccessful = !resultMessageHandles.contains(where: { !$0.isSuccessful })
+                            let operationSuccessful = ((model as? SyncDevicesModel)?.operationType?.isSuccessful ?? (model as? SyncDeviceStepTaskModel)?.operationType.isSuccessful) ?? false
+                            if resultSuccessful && operationSuccessful {
+                                model.state = .successful
+                            }else {
+                                model.state = .failed
+                                (model as? SyncDevicesModel)?.failedCount += 1
+                                (model as? SyncDeviceStepTaskModel)?.failedCount += 1
+                            }
+                            if let progressView = SyncDevicesProgressView.current() {
+                                progressView.hide()
+                            }
+                            
+                            self.setupDataSource()
+                            if self.readState == .inRead {
+                                self.startRead()
+                            }
+                            self.tableView.reloadData()
+                            self.updateSyncStateUI()
+                            return
+                        }
                     }else {
-                        model.state = .failed
-                        (model as? SyncDevicesModel)?.failedCount += 1
-                        (model as? SyncDeviceStepTaskModel)?.failedCount += 1
+                        
+                        let resultSuccessful = !resultMessageHandles.contains(where: { !$0.isSuccessful })
+                        let operationSuccessful = ((model as? SyncDevicesModel)?.operationType?.isSuccessful ?? (model as? SyncDeviceStepTaskModel)?.operationType.isSuccessful) ?? false
+                        if resultSuccessful && operationSuccessful {
+                            model.state = .successful
+                        }else {
+                            model.state = .failed
+                            (model as? SyncDevicesModel)?.failedCount += 1
+                            (model as? SyncDeviceStepTaskModel)?.failedCount += 1
+                        }
+                        
+                        self?.updateCell(model: model)
+                        semaphore.signal()
                     }
-                    self?.updateCell(model: model)
-                    semaphore.signal()
                 }
                 semaphore.wait()
                 
@@ -898,6 +979,8 @@ extension ReadDevicesDataViewController {
         case harvestData(nodes: [Node])
         /// 获取设备路由表 proxyAddress：代理设备 nodes：获取路由表的设备list
         case routeTableList(proxyAddress: Address, nodes: [Node])
+        ///  启用并读取设备真实功率
+        case readRatedPower(nodes: [Node])
     }
     
     /// 读取状态
@@ -926,4 +1009,28 @@ fileprivate extension SyncDevicesModel {
         }
     }
     
+}
+
+fileprivate extension Node {
+    
+    static var retedPowerStateKey = 120
+    static var getRatedPowerKey = 121
+    
+    /// 额定能耗状态
+    var retedPowerState: Bool? {
+        get {
+            objc_getAssociatedObject(self, &Node.retedPowerStateKey) as? Bool
+        }set {
+            objc_setAssociatedObject(self, &Node.retedPowerStateKey, newValue, .OBJC_ASSOCIATION_RETAIN)
+        }
+    }
+    
+    /// 是否读取阶段功率
+    var getRatedPower: Bool {
+        get {
+            objc_getAssociatedObject(self, &Node.getRatedPowerKey) as? Bool ?? false
+        }set {
+            objc_setAssociatedObject(self, &Node.getRatedPowerKey, newValue, .OBJC_ASSOCIATION_RETAIN)
+        }
+    }
 }

@@ -949,6 +949,8 @@ extension DeviceParameterDevicesViewController: DeviceParameterPromptViewDelegat
                             node.tempSensitivityRange = node.motionSensitivityRange
                         case .defaultTransitionTime:
                             node.tempTransitionTime = node.defaultTransitionTime
+                        default:
+                            break
                         }
                     }
                 }
@@ -977,6 +979,8 @@ extension DeviceParameterDevicesViewController: DeviceParameterPromptViewDelegat
                                 node.tempSensitivityRange = node.motionSensitivityRange
                             case.defaultTransitionTime:
                                 node.tempTransitionTime = node.defaultTransitionTime
+                            default:
+                                break
                             }
                             if var data = self.settingFailedDatas[node.primaryUnicastAddress], let index = data.firstIndex(where: { $0.rawValue == parameterType.rawValue }) {
                                 data.remove(at: index)

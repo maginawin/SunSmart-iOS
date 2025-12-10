@@ -622,6 +622,8 @@ class DeviceAddClassicModeController: UIViewController {
                 node.macAddress = mac
             }
             node.name = MeshNetworkManager.instance.getNextNodeName(node.defaultNameCategory)
+            // 新添加的设备支持最新功能绑定要求
+            node.requiredFunctionTypes = [.lightLCScene, .lightLCScheduler]
 //            if device.deviceType == .gateway {
 //                node.name = MeshNetworkManager.instance.getNextNodeName("gateway".localizedString)
 //            }else {

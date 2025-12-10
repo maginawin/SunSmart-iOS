@@ -24,6 +24,7 @@ protocol DeviceParameterRetedPowerViewCellDelegate: AnyObject {
 
 class DeviceParameterRetedPowerViewCell: UITableViewCell {
 
+    private var containerView: UIView!
     private var ratedPowerLabel: UILabel!
     private var enableSwitch: UISwitch!
     private var countLabel: UILabel!
@@ -62,8 +63,10 @@ class DeviceParameterRetedPowerViewCell: UITableViewCell {
         super.init(style: style, reuseIdentifier: reuseIdentifier)
         
         selectionStyle = .none
-        layer.cornerRadius = SCRYFrom(10)
-        backgroundColor = .white
+//        layer.cornerRadius = SCRYFrom(10)
+//        backgroundColor = .white
+        
+        backgroundColor = .clear
         
         setupUI()
     }
@@ -90,7 +93,7 @@ class DeviceParameterRetedPowerViewCell: UITableViewCell {
             
             ratedPowerLabel.snp.remakeConstraints { make in
                 make.left.equalTo(SCRXFrom(16))
-                make.top.equalTo(SCRYFrom(24))
+                make.top.equalTo(SCRYFrom(24)).priority(.high)
             }
 //            tableView.snp.updateConstraints { make in
 //                make.height.equalTo(headerView.height + SCRYFrom(12) + tableView.rowHeight * CGFloat(min(phases.count, 5)))
@@ -100,7 +103,7 @@ class DeviceParameterRetedPowerViewCell: UITableViewCell {
             
             noteLabel.snp.remakeConstraints { make in
                 make.left.right.equalTo(tableView)
-                make.top.equalTo(tableView.snp.bottom).offset(SCRYFrom(16))
+                make.top.equalTo(tableView.snp.bottom).offset(SCRYFrom(16)).priority(.high)
                 make.bottom.equalTo(SCRYFit(-26)).priority(.high)
             }
             
@@ -113,13 +116,13 @@ class DeviceParameterRetedPowerViewCell: UITableViewCell {
             
             ratedPowerLabel.snp.remakeConstraints { make in
                 make.left.equalTo(SCRXFrom(16))
-                make.top.equalTo(SCRYFrom(24))
+                make.top.equalTo(SCRYFrom(24)).priority(.high)
                 make.bottom.equalTo(SCRYFrom(-23))
             }
            
             noteLabel.snp.remakeConstraints { make in
                 make.left.right.equalTo(tableView)
-                make.top.equalTo(tableView.snp.bottom).offset(SCRYFrom(16))
+                make.top.equalTo(tableView.snp.bottom).offset(SCRYFrom(16)).priority(.high)
             }
         }
         
@@ -138,24 +141,35 @@ class DeviceParameterRetedPowerViewCell: UITableViewCell {
     
     private func setupUI() {
         
+        containerView = UIView()
+        containerView.backgroundColor = .white
+        containerView.layer.cornerRadius = SCRYFrom(10)
+        contentView.addSubview(containerView)
+        containerView.snp.makeConstraints { make in
+            make.left.equalTo(SCRXFrom(16))
+            make.right.equalTo(SCRXFrom(-16))
+            make.top.equalToSuperview()
+            make.bottom.equalTo(SCRYFrom(-16))
+        }
+        
         ratedPowerLabel = UILabel(text: "rated_power".localizedString + ":", textColor: TextBlack_Color, fontSize: 14)
-        contentView.addSubview(ratedPowerLabel)
+        containerView.addSubview(ratedPowerLabel)
         ratedPowerLabel.snp.makeConstraints { make in
             make.left.equalTo(SCRXFrom(16))
-            make.top.equalTo(SCRYFrom(16))
+            make.top.equalTo(SCRYFrom(16)).priority(.high)
         }
         
         enableSwitch = UISwitch()
         enableSwitch.onTintColor = Bar_Color
         enableSwitch.addTarget(self, action: #selector(enableSwitchValueChanged), for: .valueChanged)
-        contentView.addSubview(enableSwitch)
+        containerView.addSubview(enableSwitch)
         enableSwitch.snp.makeConstraints { make in
             make.right.equalTo(SCRXFrom(-16))
             make.centerY.equalTo(ratedPowerLabel)
         }
         
         addBtn = UIButton(title: "＋", titleSize: 14, titleColor: Bar_Color, target: self, action: #selector(addBtnAction))
-        contentView.addSubview(addBtn)
+        containerView.addSubview(addBtn)
         addBtn.snp.makeConstraints { make in
             make.right.equalTo(SCRXFrom(-16))
             make.top.equalTo(enableSwitch.snp.bottom).offset(SCRYFrom(12))
@@ -164,7 +178,7 @@ class DeviceParameterRetedPowerViewCell: UITableViewCell {
         }
         
         countLabel = UILabel(text: "3/10", textColor: Message_Color, fontSize: 14)
-        contentView.addSubview(countLabel)
+        containerView.addSubview(countLabel)
         countLabel.snp.makeConstraints { make in
             make.right.equalTo(addBtn.snp.left).offset(SCRXFrom(-4))
             make.centerY.equalTo(addBtn)
@@ -197,7 +211,7 @@ class DeviceParameterRetedPowerViewCell: UITableViewCell {
         tableView.dataSource = self
         tableView.delegate = self
         tableView.tableHeaderView = headerView
-        contentView.addSubview(tableView)
+        containerView.addSubview(tableView)
         tableView.snp.makeConstraints { make in
             make.left.equalTo(SCRXFrom(16))
             make.right.equalTo(SCRXFrom(-16))
@@ -208,10 +222,10 @@ class DeviceParameterRetedPowerViewCell: UITableViewCell {
         noteLabel = UILabel(text: "device_rated_power_note".localizedString, textColor: SubText_Color, fontSize: 13, fontWeight: .light, fit: false)
         noteLabel.numberOfLines = 0
         noteLabel.textAlignment = .center
-        contentView.addSubview(noteLabel)
+        containerView.addSubview(noteLabel)
         noteLabel.snp.makeConstraints { make in
             make.left.right.equalTo(tableView)
-            make.top.equalTo(tableView.snp.bottom).offset(SCRYFrom(16))
+            make.top.equalTo(tableView.snp.bottom).offset(SCRYFrom(16)).priority(.high)
 //            make.bottom.equalTo(SCRYFit(-26))
         }
         

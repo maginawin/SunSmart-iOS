@@ -789,7 +789,8 @@ class ShareAuthorityViewController: UIViewController {
             selectSpaces.removeAll()
         }else {
             if type == .share {
-                selectSpaces = showSpaces.filter({ ($0.permission == .owner && $0.editor == nil) || ($0.permission == .editor && $0.state == .normal && !($0.authorizationPassword?.isEmpty ?? true || $0.requiresPasswordVerification)) })
+                // ($0.permission == .owner && $0.editor == nil)
+                selectSpaces = showSpaces.filter({ $0.permission == .owner || ($0.permission == .editor && $0.state == .normal && !($0.authorizationPassword?.isEmpty ?? true || $0.requiresPasswordVerification)) })
             }else {
                 selectSpaces = showSpaces
             }
@@ -1149,7 +1150,8 @@ class ShareAuthorityViewController: UIViewController {
             // 判断是否选中所有可选space
             var canSelectSpaces = showSpaces
             if type == .share {
-                canSelectSpaces = showSpaces.filter({ ($0.permission == .owner && $0.editor == nil) || ($0.permission == .editor && $0.state == .normal && !($0.authorizationPassword?.isEmpty ?? true || $0.requiresPasswordVerification))  })
+                // ($0.permission == .owner && $0.editor == nil)
+                canSelectSpaces = showSpaces.filter({ $0.permission == .owner || ($0.permission == .editor && $0.state == .normal && !($0.authorizationPassword?.isEmpty ?? true || $0.requiresPasswordVerification))  })
             }
             
             selectAllBtn.isSelected = selectSpaces.count > 0 && selectSpaces.count == canSelectSpaces.count
@@ -1193,7 +1195,8 @@ extension ShareAuthorityViewController: UICollectionViewDataSource, UICollection
             switch self.type {
             case .share: // 分享授权页面
                 // 不是访客并且未删除
-                if (space.permission == .owner && space.editor == nil) || (space.permission == .editor && space.state == .normal && !space.requiresPasswordVerification) {
+                // (space.permission == .owner && space.editor == nil)
+                if space.permission == .owner || (space.permission == .editor && space.state == .normal && !space.requiresPasswordVerification) {
                     cell.selectImageView.isHidden = false
                     cell.selectImageView.image = UIImage(named: selectSpaces.contains(where: { $0.id == space.id }) ? "select" : "select_un")
                 }else {
@@ -1242,9 +1245,9 @@ extension ShareAuthorityViewController: UICollectionViewDataSource, UICollection
         
         // 可选择状态
         if isSelectState {
-            if type == .share, space.permission == .owner, space.editor != nil { // owner不能选择已有editor的space
-                return
-            }
+//            if type == .share, space.permission == .owner, space.editor != nil { // owner不能选择已有editor的space
+//                return
+//            }
             // 是否提交到云端
             guard space.uploadCloud else {
                 XWHUDManager.showTipHUD("no_upload".localizedString)

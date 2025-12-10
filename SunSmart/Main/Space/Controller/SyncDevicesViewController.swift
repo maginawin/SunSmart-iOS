@@ -53,6 +53,8 @@ class SyncDevicesViewController: UIViewController {
     /// 重试次数
     private var retryCount: Int = 0
     
+    var vcTitle: String?
+    
     init(type: SyncType, reSync: Bool = false) {
         
         self.type = type
@@ -69,7 +71,7 @@ class SyncDevicesViewController: UIViewController {
         super.viewDidLoad()
         self.isModalInPresentation = true
         
-        title = "sync_device(s)".localizedString
+        title = vcTitle ?? "sync_device(s)".localizedString
         view.backgroundColor = Background_Color
         
         navigationItem.leftBarButtonItem = UIBarButtonItem(customView: backBtn)
@@ -394,6 +396,12 @@ class SyncDevicesViewController: UIViewController {
                                 let step = SyncDeviceStepModel(type: "transition_time".localizedString, state: .none, tasks: [taskModel])
                                 taskModel.parentStepModel = step
                                 steps.append(step)
+                            case .powerCalibration(let calibrationValue):
+                                let taskModel = SyncDeviceStepTaskModel(name: "power_calibrate".localizedString, operationType: .configuration(node: node, type: .deviceParameters(parameterType: .powerCalibration(calibrationValue: calibrationValue))))
+                                
+                                let step = SyncDeviceStepModel(type: "power_calibrate".localizedString, state: .none, tasks: [taskModel])
+                                taskModel.parentStepModel = step
+                                steps.append(step)
                             }
                         }
                         
@@ -700,6 +708,9 @@ class SyncDevicesViewController: UIViewController {
                         tasks.append(taskModel)
                     case .defaultTransitionTime(let transitionTime):
                         let taskModel = SyncDeviceStepTaskModel(name: "transition_time".localizedString, operationType: .configuration(node: node, type: .deviceParameters(parameterType: .defaultTransitionTime(transitionTime: transitionTime))))
+                        tasks.append(taskModel)
+                    case .powerCalibration(let calibrationValue):
+                        let taskModel = SyncDeviceStepTaskModel(name: "power_calibrate".localizedString, operationType: .configuration(node: node, type: .deviceParameters(parameterType: .powerCalibration(calibrationValue: calibrationValue))))
                         tasks.append(taskModel)
                     }
                 }
@@ -1102,8 +1113,20 @@ class SyncDevicesViewController: UIViewController {
                         if let address = handle.address ?? handle.model?.parentElement?.unicastAddress, let node = MeshNetworkManager.instance.meshNetwork?.node(withAddress: address) {
                             node.updateNodeStatus(message: statusMessage, source: address)
                         }
+                    }else if let vendorStatusMessage = statusMessage as? SunricherVendorStatus, case .dimmerPowerCalibrate = vendorStatusMessage.status.code {
+                        if vendorStatusMessage.status.errorCode == 2 { // 功率校准异常
+                            if let address = handle.address ?? handle.model?.parentElement?.unicastAddress, let node = MeshNetworkManager.instance.meshNetwork?.node(withAddress: address) {
+                                node.powerCalibrateError = .powerExceed
+                            }
+                        }
                     }
-                }, failedBack: nil) {[weak self] resultMessageHandles in
+                }, failedBack: { handle in
+                    if let vendorSetMessage = handle.message as? SunricherVendorSet, case .dimmerPowerCalibrate = vendorSetMessage.function { // 功率校准超时
+                        if let address = handle.address ?? handle.model?.parentElement?.unicastAddress, let node = MeshNetworkManager.instance.meshNetwork?.node(withAddress: address) {
+                            node.powerCalibrateError = .timeout
+                        }
+                    }
+                }) {[weak self] resultMessageHandles in
 
                     resultMessageHandles.forEach { handle in
                         if let address = handle.address ?? handle.model?.parentElement?.unicastAddress, let node = MeshNetworkManager.instance.meshNetwork?.node(withAddress: address) {

@@ -1948,7 +1948,7 @@ extension Node {
             return false
         }
         switch pid {
-        case 0x0031, 0x0041, 0x1031, 0x1041, 0x1302: // 单独传感器设备不支持pwm调节
+        case 0x0031, 0x0041, 0x1031, 0x1041, 0x1302, 0x2801: // 单独传感器设备不支持pwm调节
             return false
         default:
             return true
@@ -1969,6 +1969,19 @@ extension Node {
             return false
         }
         return version.compare(sensorCalibrationMinimumVersion, options: .numeric) != .orderedAscending
+    }
+    
+    /// 是否支持真实功率计量
+    var supportRealPowerMetering: Bool {
+        guard self.sunricherVendorModel != nil, let pid = self.productIdentifier else {
+            return false
+        }
+        switch pid {
+        case 0x2801, 0x2802:
+            return true
+        default:
+            return false
+        }
     }
     
     /// 传感器校准最低支持版本
