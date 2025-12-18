@@ -10,27 +10,43 @@ import UIKit
 protocol ProfileTriggerConditionPhasesViewDelegate: AnyObject {
     
     /// 帮助
-    func PhasesViewHelpAction(_ view: ProfileTriggerConditionPhasesView)
+    func phasesViewHelpAction(_ view: ProfileTriggerConditionPhasesView)
     
     /// Phases帮助
-    func PhasesViewPhasesHelpAction(_ view: ProfileTriggerConditionPhasesView)
+    func phasesViewPhasesHelpAction(_ view: ProfileTriggerConditionPhasesView)
     
     /// High-end/Low-end trim
-    func PhasesViewHighAndLowEndTrimAction(_ view: ProfileTriggerConditionPhasesView)
+    func phasesViewHighAndLowEndTrimAction(_ view: ProfileTriggerConditionPhasesView)
     
     /// Occupancy/Vacant level
-    func PhasesViewOccupancyAndVacantLevelAction(_ view: ProfileTriggerConditionPhasesView)
+    func phasesViewOccupancyAndVacantLevelAction(_ view: ProfileTriggerConditionPhasesView)
+    
+    /// Standby level
+    func phasesViewStandbyLevelAction(_ view: ProfileTriggerConditionPhasesView)
     
     /// Auto min level
-    func PhasesViewAutoMinValueAction(_ view: ProfileTriggerConditionPhasesView)
+    func phasesViewAutoMinValueAction(_ view: ProfileTriggerConditionPhasesView)
     
     /// Task level (%/lx)
-    func PhasesViewTaskLevelAction(_ view: ProfileTriggerConditionPhasesView)
+    func phasesViewTaskLevelAction(_ view: ProfileTriggerConditionPhasesView)
     
     /// Time  T1/T2/T3/T4/T5
     func view(_ view: ProfileTriggerConditionPhasesView, timeAction timeType: Profile.LightData.TimePickerData.TimeType)
     
+    /// 编辑输入条件lux回调
+    func view(_ view: ProfileTriggerConditionPhasesView, startsBelowLuxEditChanged lux: Int?)
     
+    /// 使用校准值帮助
+    func phasesViewUseCalibrationValuesHelpAction(_ view: ProfileTriggerConditionPhasesView)
+    
+    /// 启用/禁用使用校准值回调
+    func view(_ view: ProfileTriggerConditionPhasesView, useCalibrationValues enabled: Bool)
+    
+    /// 选择执行数据类型回调
+    func view(_ view: ProfileTriggerConditionPhasesView, selectExecuteType executeType: Profile.TriggerConditionData.ExecuteType)
+    
+    /// 固定亮度-Standby level编辑回调
+    func view(_ view: ProfileTriggerConditionPhasesView, fixedLevelValueChnaged standbyLevel: Int)
     
 }
 
@@ -115,6 +131,17 @@ class ProfileTriggerConditionPhasesView: UIView {
     private var standbyLevelMinusBtn: UIButton!
     
     weak var delegate: ProfileTriggerConditionPhasesViewDelegate?
+    
+    var startsBelowLux: Int? {
+        get {
+            guard let inputText = luxField.text, let lux = Int(inputText) else { return nil }
+            return lux
+        }set {
+            luxField.text = newValue != nil ? "\(newValue!)" : nil
+        }
+    }
+    
+    var editable: Bool = true
     
 //    var profile: Profile! {
 //        didSet {
@@ -301,55 +328,59 @@ class ProfileTriggerConditionPhasesView: UIView {
     }
     
     func updateData(profile: Profile, conditionData: Profile.TriggerConditionData) {
+ 
+        let data = conditionData.sceneData.lightControlData
         
-        let data = conditionData.lightData.data
-        
-        timeT1Label.text =  Profile.LightData.TimePickerData.timeDetail(type: .t1, second: data.t1)
-        timeT2Label.text =  Profile.LightData.TimePickerData.timeDetail(type: .t2, second: data.t2)
-        timeT3Label.text =  Profile.LightData.TimePickerData.timeDetail(type: .t3, second: data.t3)
-        timeT4Label.text =  Profile.LightData.TimePickerData.timeDetail(type: .t4, second: data.t4)
-        timeT5Label.text =  Profile.LightData.TimePickerData.timeDetail(type: .t5, second: data.t5)
-        
-        highEndTrimLabel.text = "\(data.highEndTrim)%"
-        lowEndTrimLabel.text = "\(data.lowEndTrim)%"
-        
-        if profile.type == .vacancy_daylight || profile.type == .occupancy_daylight || profile.type == .daylight {
-            occupancyLevelLabel.text = "\(data.occupancyLevel)lx"
-            vacantLevelLabel.text = "\(data.vacantLevel)lx"
-            taskLevelLabel.text = "\(data.taskLevel)lx"
-        }else {
-            occupancyLevelLabel.text = "\(data.occupancyLevel)%"
-            vacantLevelLabel.text = "\(data.vacantLevel)%"
-            taskLevelLabel.text = "\(data.taskLevel)%"
-        }
-        
-        
-        
-        autoMinLevelLabel.text = data.autoMinLevelEnabled ? "\(data.autoMinLevel)%" : "N/A"
-        
-        timeT1Btn.isHidden = true
-        timeT1Label.isHidden = true
-        timeT2Btn.isHidden = true
-        timeT2Label.isHidden = true
-        timeT3Btn.isHidden = true
-        timeT3Label.isHidden = true
-        timeT4Btn.isHidden = true
-        timeT4Label.isHidden = true
-        timeT5Btn.isHidden = true
-        timeT5Label.isHidden = true
-        
-        taskLevelBtn.isHidden = true
-        taskLevelLabel.isHidden = true
-        autoMinLevelBtn.isHidden = true
-        autoMinLevelLabel.isHidden = true
-        titleLabel.isHidden = true
+        calibrationEnableSwitch.isOn = conditionData.useCalibrationValues
         
         switch conditionData.executeType {
         case .adjustWhenOccupied:
             
+            adjustOccupiedBtn.isSelected = true
+            fixedLevelBtn.isSelected = false
+            
+            timeT1Label.text =  Profile.LightData.TimePickerData.timeDetail(type: .t1, second: data.t1)
+            timeT2Label.text =  Profile.LightData.TimePickerData.timeDetail(type: .t2, second: data.t2)
+            timeT3Label.text =  Profile.LightData.TimePickerData.timeDetail(type: .t3, second: data.t3)
+            timeT4Label.text =  Profile.LightData.TimePickerData.timeDetail(type: .t4, second: data.t4)
+            timeT5Label.text =  Profile.LightData.TimePickerData.timeDetail(type: .t5, second: data.t5)
+            
+            highEndTrimLabel.text = "\(data.highEndTrim)%"
+            lowEndTrimLabel.text = "\(data.lowEndTrim)%"
+            
+            if profile.type == .vacancy_daylight || profile.type == .occupancy_daylight || profile.type == .daylight {
+                occupancyLevelLabel.text = "\(data.occupancyLevel)lx"
+                vacantLevelLabel.text = "\(data.vacantLevel)lx"
+                taskLevelLabel.text = "\(data.taskLevel)lx"
+            }else {
+                occupancyLevelLabel.text = "\(data.occupancyLevel)%"
+                vacantLevelLabel.text = "\(data.vacantLevel)%"
+                taskLevelLabel.text = "\(data.taskLevel)%"
+            }
+            
+            phasesStandbyLevelLabel.text = "\(data.standbyLevel)%"
+            
+            autoMinLevelLabel.text = data.autoMinLevelEnabled ? "\(data.autoMinLevel)%" : "N/A"
+            
+            timeT1Btn.isHidden = true
+            timeT1Label.isHidden = true
+            timeT2Btn.isHidden = true
+            timeT2Label.isHidden = true
+            timeT3Btn.isHidden = true
+            timeT3Label.isHidden = true
+            timeT4Btn.isHidden = true
+            timeT4Label.isHidden = true
+            timeT5Btn.isHidden = true
+            timeT5Label.isHidden = true
+            
+            taskLevelBtn.isHidden = true
+            taskLevelLabel.isHidden = true
+            autoMinLevelBtn.isHidden = true
+            autoMinLevelLabel.isHidden = true
+            
             var profileChartImageName = "profile_chart_occupancy"
             switch profile.type {
-            case .occupancy_daylight, .vacancy_daylight, .occupancy, .vacancy, .proximityLighting:
+            case .occupancy_daylight, .vacancy_daylight, .occupancy, .vacancy, .proximityLighting, .proximityLightingWithPhotocell:
                 timeT1Btn.isHidden = false
                 timeT1Label.isHidden = false
                 timeT2Btn.isHidden = false
@@ -365,12 +396,12 @@ class ProfileTriggerConditionPhasesView: UIView {
                 occupancyLevelBtn.isHidden = false
                 occupancyLevelLabel.isHidden = false
                 
-                if profile.type == .occupancy || profile.type == .vacancy || profile.type == .proximityLighting {
+                if profile.type == .occupancy || profile.type == .vacancy || profile.type == .proximityLighting || profile.type == .proximityLightingWithPhotocell {
                     autoMinLevelBtn.isHidden = true
                     autoMinLevelLabel.isHidden = true
                     profileChartImageName = "profile_chart_occupancy"
-                    if profile.type == .proximityLighting {
-                        titleLabel.isHidden = false
+                    if profile.type == .proximityLightingWithPhotocell {
+                        profileChartImageName = "profile_chart_occupancy_standby"
                     }
     //                    chartImageView.image = UIImage(named: "profile_chart_occupancy")
                 }else {
@@ -485,6 +516,9 @@ class ProfileTriggerConditionPhasesView: UIView {
             }
             
         case .fixedLevel:
+            adjustOccupiedBtn.isSelected = false
+            fixedLevelBtn.isSelected = true
+            
             standbyLevelView.isHidden = false
             standbyLevelView.snp.remakeConstraints { make in
                 make.top.equalTo(triggerTypeView.snp.bottom).offset(SCRYFrom(20))
@@ -499,9 +533,22 @@ class ProfileTriggerConditionPhasesView: UIView {
                 make.top.equalTo(triggerTypeView.snp.bottom).offset(SCRYFrom(11))
             }
             
+            updateStandbyLevelUI(standbyLevel: conditionData.fixedStandbyLevel)
+//            standbyLevelSlider.value = conditionData.standbyLevel
+            standbyLevelSlider.limitRange = data.lowEndTrim...data.highEndTrim
+           
+            
         }
-        
-        
+    }
+    
+    /// 更新条件lux 提示
+    func updateStartsBelowLuxTip(tipMessage: String? = nil) {
+        luxTipLabel.text = tipMessage
+        if tipMessage != nil {
+            luxField.layer.borderColor = Red_Color.cgColor
+        }else {
+            luxField.layer.borderColor = Border_Color.cgColor
+        }
     }
     
     
@@ -522,46 +569,56 @@ class ProfileTriggerConditionPhasesView: UIView {
     // MARK: - Action
     /// 帮助
     @objc private func helpBtnAction(sender: UIButton) {
-        delegate?.PhasesViewHelpAction(self)
+        delegate?.phasesViewHelpAction(self)
         btnTouchUpInside(sender: sender)
+    }
+    
+    /// 条件lux输入回调
+    @objc private func luxFieldEditChanged(sender: UITextField) {
+        guard editable else {
+            return
+        }
+        luxField.layer.borderColor = Border_Color.cgColor
+        luxTipLabel.text = nil
+        delegate?.view(self, startsBelowLuxEditChanged: startsBelowLux)
     }
     
     // MARK: - Level
     /// 最高输出亮度
     @objc private func highEndTrimBtnAction(sender: UIButton) {
-        delegate?.PhasesViewHighAndLowEndTrimAction(self)
+        delegate?.phasesViewHighAndLowEndTrimAction(self)
         btnTouchUpInside(sender: sender)
     }
     /// 占用阶段
     @objc private func occupancyLevelBtnAction(sender: UIButton) {
-        delegate?.PhasesViewOccupancyAndVacantLevelAction(self)
+        delegate?.phasesViewOccupancyAndVacantLevelAction(self)
         btnTouchUpInside(sender: sender)
     }
     /// 维持阶段
     @objc private func vacantLevelBtnAction(sender: UIButton) {
-        delegate?.PhasesViewOccupancyAndVacantLevelAction(self)
+        delegate?.phasesViewOccupancyAndVacantLevelAction(self)
         btnTouchUpInside(sender: sender)
     }
     /// 日光补偿最低值
     @objc private func autoMinLevelBtnAction(sender: UIButton) {
-        delegate?.PhasesViewAutoMinValueAction(self)
+        delegate?.phasesViewAutoMinValueAction(self)
         btnTouchUpInside(sender: sender)
     }
     
     /// 待机阶段
     @objc private func phasesStandbyLevelBtnAction(sender: UIButton) {
-        delegate?.PhasesViewAutoMinValueAction(self)
+        delegate?.phasesViewStandbyLevelAction(self)
         btnTouchUpInside(sender: sender)
     }
     
     /// 最低输出亮度
     @objc private func lowEndTrimBtnAction(sender: UIButton) {
-        delegate?.PhasesViewHighAndLowEndTrimAction(self)
+        delegate?.phasesViewHighAndLowEndTrimAction(self)
         btnTouchUpInside(sender: sender)
     }
     /// 维持亮度(手动控制On% / 环境光lx)
     @objc private func taskLevelBtnAction(sender: UIButton) {
-        delegate?.PhasesViewTaskLevelAction(self)
+        delegate?.phasesViewTaskLevelAction(self)
         btnTouchUpInside(sender: sender)
     }
     
@@ -614,48 +671,109 @@ class ProfileTriggerConditionPhasesView: UIView {
     
     /// 切换设备三段式调光执行
     @objc private func adjustOccupiedBtnAction(sender: UIButton) {
+        guard editable else {
+            return
+        }
         sender.isSelected = true
         fixedLevelBtn.isSelected = false
-        
-        
+        delegate?.view(self, selectExecuteType: .adjustWhenOccupied)
     }
     
     /// 切换固定亮度执行
     @objc private func fixedLevelBtnAction(sender: UIButton) {
+        guard editable else {
+            return
+        }
         sender.isSelected = true
         adjustOccupiedBtn.isSelected = false
+        delegate?.view(self, selectExecuteType: .fixedLevel)
     }
     
     /// 使用校准帮助点击事件
     @objc private func useCalibrationHelpBtnAction(sender: UIButton) {
-        
+        btnTouchUpInside(sender: sender)
+        delegate?.phasesViewUseCalibrationValuesHelpAction(self)
     }
     
     /// 调光阶段帮助点击事件
-    @objc private func phasesHelpBtnAction() {
-        
+    @objc private func phasesHelpBtnAction(sender: UIButton) {
+        btnTouchUpInside(sender: sender)
+        delegate?.phasesViewPhasesHelpAction(self)
     }
     
     /// 固定待机亮度"-"事件
     @objc private func standbyLevelMinusBtnAction() {
+        guard editable else {
+            return
+        }
         standbyLevelSlider.value -= 1
         updateStandbyLevel()
+        delegate?.view(self, fixedLevelValueChnaged: Int(standbyLevelSlider.value))
     }
     
     /// 固定待机亮度"+"事件
     @objc private func standbyLevelAddBtnAction() {
+        guard editable else {
+            return
+        }
         standbyLevelSlider.value += 1
         updateStandbyLevel()
+        delegate?.view(self, fixedLevelValueChnaged: Int(standbyLevelSlider.value))
     }
     
     /// 更新固定待机亮度数值UI
     private func updateStandbyLevel() {
-        standbyLevelLabel.text = "\(Int(standbyLevelSlider.value))%"
+        if standbyLevelSlider.value > 0 {
+            standbyLevelLabel.text = "\(Int(standbyLevelSlider.value))%"
+        }else {
+            standbyLevelLabel.text = "off_state".localizedString
+        }
+    }
+    
+    /// 更新固定待机亮度UI
+    private func updateStandbyLevelUI(standbyLevel: Int) {
+        
+        if standbyLevel > 0 {
+            standbyLevelSlider.value = Float(standbyLevel)
+            standbyLevelSlider.isEnabled = true
+            standbyLevelMinusBtn.isEnabled = true
+            standbyLevelAddBtn.isEnabled = true
+            updateStandbyLevel()
+            standbyLevelOffBtn.isSelected = false
+            standbyLevelOffBtn.backgroundColor = .clear
+        }else {
+            standbyLevelSlider.isEnabled = false
+            standbyLevelMinusBtn.isEnabled = false
+            standbyLevelAddBtn.isEnabled = false
+            standbyLevelLabel.text = "off_state".localizedString
+            standbyLevelOffBtn.isSelected = true
+            standbyLevelOffBtn.backgroundColor = Bar_Color
+        }
+        
     }
     
     /// 固定待机亮度off事件
-    @objc private func standbyLevelOffBtnAction() {
-        
+    @objc private func standbyLevelOffBtnAction(sender: UIButton) {
+        guard editable else {
+            return
+        }
+        sender.isSelected = !sender.isSelected
+        if sender.isSelected {
+            updateStandbyLevelUI(standbyLevel: 0)
+            delegate?.view(self, fixedLevelValueChnaged: 0)
+        }else {
+            updateStandbyLevelUI(standbyLevel: Int(standbyLevelSlider.value))
+            delegate?.view(self, fixedLevelValueChnaged: Int(standbyLevelSlider.value))
+        }
+       
+    }
+    
+    /// 使用校准开关事件
+    @objc private func calibrationEnableSwitchValueChanged(sendor: UISwitch) {
+        guard editable else {
+            return
+        }
+        delegate?.view(self, useCalibrationValues: sendor.isOn)
     }
     
     // MARK: - UI
@@ -694,10 +812,13 @@ class ProfileTriggerConditionPhasesView: UIView {
         luxField.textColor = ImportantText_Color
         luxField.textAlignment = .center
         luxField.font = UIFont.systemFont(ofSize: FontFit(12))
+        luxField.keyboardType = .numberPad
         luxField.layer.cornerRadius = SCRYFrom(5)
-        luxField.layer.borderWidth = 0.5
+        luxField.layer.borderWidth = 0.6
         luxField.layer.borderColor = RGB(151, 151, 151, 0.3).cgColor
         luxField.returnKeyType = .done
+        luxField.delegate = self
+        luxField.addTarget(self, action: #selector(luxFieldEditChanged), for: .editingChanged)
         addSubview(luxField)
         luxField.snp.makeConstraints { make in
             make.right.equalTo(luxLabel.snp.left).offset(SCRXFrom(-4))
@@ -706,11 +827,29 @@ class ProfileTriggerConditionPhasesView: UIView {
             make.height.equalTo(SCRYFrom(28))
         }
         
+        luxTipLabel = UILabel(text: "", textColor: Error_Red_Color, fontSize: 12, fontWeight: .light)
+        addSubview(luxTipLabel)
+        luxTipLabel.snp.makeConstraints { make in
+            make.top.equalTo(luxField.snp.bottom).priority(.high)
+            make.right.equalTo(SCRXFrom(-16))
+        }
+        
+        
+        calibrationEnableSwitch = UISwitch()
+        calibrationEnableSwitch.onTintColor = Bar_Color
+        calibrationEnableSwitch.isEnabled = editable
+        calibrationEnableSwitch.addTarget(self, action: #selector(calibrationEnableSwitchValueChanged), for: .valueChanged)
+        addSubview(calibrationEnableSwitch)
+        calibrationEnableSwitch.snp.makeConstraints { make in
+            make.right.equalTo(SCRXFrom(-16))
+            make.top.equalTo(luxField.snp.bottom).offset(SCRYFrom(20))
+        }
+        
         useCalibrationLabel = UILabel(text: "use_calibration_values".localizedString, textColor: TextBlack_Color, fontSize: 16, fontWeight: .light)
         addSubview(useCalibrationLabel)
         useCalibrationLabel.snp.makeConstraints { make in
             make.left.equalTo(startsBelowLabel)
-            make.top.equalTo(luxField.snp.bottom).offset(SCRYFrom(26.5))
+            make.centerY.equalTo(calibrationEnableSwitch)
         }
         
         useCalibrationHelpBtn = UIButton(normalImageName: "help", target: self, action: #selector(useCalibrationHelpBtnAction))
@@ -718,14 +857,6 @@ class ProfileTriggerConditionPhasesView: UIView {
         useCalibrationHelpBtn.snp.makeConstraints { make in
             make.left.equalTo(useCalibrationLabel.snp.right).offset(SCRXFrom(8))
             make.centerY.equalTo(useCalibrationLabel)
-        }
-        
-        calibrationEnableSwitch = UISwitch()
-        calibrationEnableSwitch.onTintColor = Bar_Color
-        addSubview(calibrationEnableSwitch)
-        calibrationEnableSwitch.snp.makeConstraints { make in
-            make.right.equalTo(SCRXFrom(-16))
-            make.centerY.equalTo(useCalibrationHelpBtn)
         }
         
         triggerTypeView = UIView()
@@ -771,8 +902,8 @@ class ProfileTriggerConditionPhasesView: UIView {
         }
         
         phasesHelpBtn = UIButton(normalImageName: "help", target: self, action: #selector(phasesHelpBtnAction))
-        devicePhasesView.addSubview(useCalibrationHelpBtn)
-        useCalibrationHelpBtn.snp.makeConstraints { make in
+        devicePhasesView.addSubview(phasesHelpBtn)
+        phasesHelpBtn.snp.makeConstraints { make in
             make.right.equalTo(SCRXFrom(-4))
             make.centerY.equalTo(deviceTriggerLabel)
         }
@@ -951,9 +1082,9 @@ class ProfileTriggerConditionPhasesView: UIView {
             make.top.equalTo(vacantLevelBtn.snp.bottom).offset(levelSphaseMargin)
         }
         
-        autoMinLevelLabel = UILabel(text: "30%", textColor: Chart_Text_Color, fontSize: 10)
-        devicePhasesView.addSubview(autoMinLevelLabel)
-        autoMinLevelLabel.snp.makeConstraints { make in
+        phasesStandbyLevelLabel = UILabel(text: "30%", textColor: Chart_Text_Color, fontSize: 10)
+        devicePhasesView.addSubview(phasesStandbyLevelLabel)
+        phasesStandbyLevelLabel.snp.makeConstraints { make in
             make.left.equalTo(highEndTrimLabel)
             make.centerY.equalTo(phasesStandbyLevelBtn)
         }
@@ -1124,7 +1255,7 @@ class ProfileTriggerConditionPhasesView: UIView {
         standbyLevelOffBtn.setTitleColor(.white, for: .selected)
         standbyLevelOffBtn.layer.cornerRadius = SCRYFrom(15)
         standbyLevelOffBtn.layer.borderColor = Border_Color.cgColor
-        standbyLevelOffBtn.layer.borderWidth = 0.5
+        standbyLevelOffBtn.layer.borderWidth = 0.6
         standbyLevelView.addSubview(standbyLevelOffBtn)
         standbyLevelOffBtn.snp.makeConstraints { make in
             make.right.equalTo(SCRXFrom(-16))
@@ -1152,9 +1283,9 @@ class ProfileTriggerConditionPhasesView: UIView {
         standbyLevelSlider.minimumTrackTintColor = Slider_Color
         standbyLevelSlider.maximumTrackTintColor = RGB(229, 229, 229)
         standbyLevelSlider.layer.cornerRadius = 2
-        standbyLevelSlider.minimumValue = 0
+        standbyLevelSlider.minimumValue = 1
         standbyLevelSlider.maximumValue = 100
-        standbyLevelSlider.value = 0
+        standbyLevelSlider.value = 1
         standbyLevelSlider.throttle = true
         standbyLevelSlider.delegate = self
         standbyLevelView.addSubview(standbyLevelSlider)
@@ -1180,6 +1311,24 @@ extension ProfileTriggerConditionPhasesView: CustomDeviceSliderDelegate {
     func slider(_ slider: CustomDeviceSlider, valueChanged value: Float, ended: Bool) {
 //        updateValue()
 //        valueChangedCallback?(Int(value), ended)
+        delegate?.view(self, fixedLevelValueChnaged: Int(value))
         updateStandbyLevel()
     }
+}
+
+
+extension ProfileTriggerConditionPhasesView: UITextFieldDelegate {
+    
+    func textFieldShouldReturn(_ textField: UITextField) -> Bool {
+        endEditing(true)
+        return true
+    }
+    
+    func textField(_ textField: UITextField, shouldChangeCharactersIn range: NSRange, replacementString string: String) -> Bool {
+        guard string.isEmpty || string.isPureNumandCharacters() else {
+            return false
+        }
+        return true
+    }
+    
 }

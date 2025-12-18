@@ -79,14 +79,13 @@ class SyncDeviceViewCell: UITableViewCell {
                 stateImageView.isHidden = false
                 stateImageView.image = UIImage(named: "sync_success_small")
             case .failed:
-                
+                stateImageView.image = UIImage(named: "sync_failed_small")
                 if model.failedCount > 1 {
                     failureLabel.isHidden = false
                     stateImageView.isHidden = true
                 }else {
                     stateImageView.isHidden = false
                     failureLabel.isHidden = true
-                    stateImageView.image = UIImage(named: "sync_failed_small")
                 }
                 if model.isFineshed {
                     selectedImageView.isHidden = false
@@ -107,6 +106,7 @@ class SyncDeviceViewCell: UITableViewCell {
             if isGroup {
                 selectedImageView.isUserInteractionEnabled = true
                 resyncBtn.isHidden = true
+                failureLabel.isHidden = true
                 if model.isFineshed {
                     selectedImageLeft = SCRXFrom(16)
                     iconImageLeft = SCRXFrom(48)

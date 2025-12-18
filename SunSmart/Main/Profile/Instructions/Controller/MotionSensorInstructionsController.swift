@@ -75,6 +75,9 @@ class MotionSensorInstructionsController: UIViewController {
                 options.append(.autoMinValue)
             case .taskLevel:
                 options.append(.taskLevel)
+            case .standbyLevel:
+//                options.append(.standbyLevel)
+                break
             }
         })
         
@@ -164,6 +167,8 @@ extension MotionSensorInstructionsController {
                 return "profile_occupancy_level".localizedString
             case .vacantLevel:
                 return "profile_vacant_level".localizedString
+            case .standbyLevel:
+                return "profile_standby_level".localizedString
             case .autoMinValue:
                 return "profile_auto_min_value".localizedString
             case .taskLevel:
@@ -191,6 +196,8 @@ extension MotionSensorInstructionsController {
                 return "profile_occupancy_level_desc".localizedString
             case .vacantLevel:
                 return "profile_vacancy_level_desc".localizedString
+            case .standbyLevel:
+                return "profile_standby_level_desc".localizedString
             case .autoMinValue:
                 return "profile_auto_min_value_desc".localizedString
             case .taskLevel:
@@ -216,10 +223,14 @@ extension MotionSensorInstructionsController {
         case occpancyLevel
         /// 闲置阶段亮度
         case vacantLevel
+        /// 待机阶段亮度
+        case standbyLevel
         /// 恒照度补偿最低值
         case autoMinValue
         /// 维持亮度
         case taskLevel
+        /// 待机亮度
+//        case standbyLevel
         /// 启动到占用阶段过渡时间
         case t1
         /// 占用阶段持续时间

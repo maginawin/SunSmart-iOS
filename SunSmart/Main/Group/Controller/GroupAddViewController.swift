@@ -45,7 +45,8 @@ class GroupAddViewController: UIViewController {
         .init(type: .vacancy),
         .init(type: .daylight),
         .init(type: .manualControl),
-        .init(type: .proximityLighting)
+        .init(type: .proximityLighting),
+        .init(type: .proximityLightingWithPhotocell)
     ]
     private var selectProfile: Profile!
     /// 创建完成回调

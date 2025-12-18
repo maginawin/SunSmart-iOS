@@ -265,6 +265,11 @@ extension ProfileType {
             messageHandles.append(MeshMessageHandle(message: LightLCPropertySet(of: .lightControlLightnessProlong, value: .perceivedLightness(lightness)), model: lightLCSetupModel))
         case .vacantLux(let lux):
             messageHandles.append(MeshMessageHandle(message: LightLCPropertySet(of: .lightControlAmbientLuxLevelProlong, value: .illuminance(Decimal(lux))), model: lightLCSetupModel))
+        case .standbyLevel(let value):
+            let lightness = Node.getLightness(lightness100: value)
+            messageHandles.append(MeshMessageHandle(message: LightLCPropertySet(of: .lightControlLightnessStandby, value: .perceivedLightness(lightness)), model: lightLCSetupModel))
+        case .standbyLux(let lux):
+            messageHandles.append(MeshMessageHandle(message: LightLCPropertySet(of: .lightControlAmbientLuxLevelStandby, value: .illuminance(Decimal(lux))), model: lightLCSetupModel))
 //        case .autoMinValue(let value):
 //            if let vendorModel = node.sunricherVendorModel {
 //
@@ -350,6 +355,34 @@ extension ProfileType {
         case .daylightCalibrateInflectionPoint(let minLightPoint, let maxLightPoint):
             if let vendorModel = node.sunricherVendorModel {
                 messageHandles.append(MeshMessageHandle(message: SunricherVendorSet(function: .daylightCalibrateIlluminanceInflectionPoint(minLightness: minLightPoint.lightness, minLux: minLightPoint.lux, maxLightness: maxLightPoint.lightness, maxLux: maxLightPoint.lux)), model: vendorModel))
+            }
+        case .lightControlSnapshoot(let sceneNumber), .lightControlStore(let sceneNumber):
+            if let controlSceneSetupModel = node.lightLCSceneSetupModel {
+                messageHandles.append(MeshMessageHandle(message: SceneStore(sceneNumber), model: controlSceneSetupModel))
+            }
+        case .lightControlSwitch(let sceneNumber), .lightControlRestore(let sceneNumber):
+            if let controlSceneModel = node.lightLCSceneModel {
+                messageHandles.append(MeshMessageHandle(message: SceneRecall(sceneNumber), model: controlSceneModel))
+            }
+        case .lightControlDelete(let sceneNumber):
+            if let controlSceneModel = node.lightLCSceneModel {
+                messageHandles.append(MeshMessageHandle(message: SceneDelete(sceneNumber), model: controlSceneModel))
+            }
+        case .profileDayToggleTriggerConditionLux(let id, let minLux, let maxLux, let useCalibrationValues, let destination, let sceneNumber), .profileNightToggleTriggerConditionLux(let id, let minLux, let maxLux, let useCalibrationValues, let destination, let sceneNumber):
+            if let vendorModel = node.sunricherVendorModel {
+                messageHandles.append(MeshMessageHandle(message: SunricherVendorSet(function: .daylightExecuteSceneSet(index: id, minLux: minLux, maxLux: maxLux, useCalibrationValues: useCalibrationValues, destination: destination, sceneNumber: sceneNumber)), model: vendorModel))
+            }
+        case .profileToggleTriggerConditionLuxDelete(let id):
+            if let vendorModel = node.sunricherVendorModel {
+                messageHandles.append(MeshMessageHandle(message: SunricherVendorSet(function: .daylightExecuteSceneSet(index: id, minLux: 0, maxLux: 0, useCalibrationValues: false, destination: 0, sceneNumber: 0)), model: vendorModel))
+            }
+        case .profileToggleTriggerConditionLuxLock(let delay):
+            if let vendorModel = node.sunricherVendorModel {
+                messageHandles.append(MeshMessageHandle(message: SunricherVendorSet(function: .daylightLuxTriggerLock(delay: delay)), model: vendorModel))
+            }
+        case .profileToggleTriggerConditionLuxUnLock:
+            if let vendorModel = node.sunricherVendorModel {
+                messageHandles.append(MeshMessageHandle(message: SunricherVendorSet(function: .daylightLuxTriggerLock(delay: 0)), model: vendorModel))
             }
         }
         return messageHandles

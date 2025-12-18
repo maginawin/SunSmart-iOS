@@ -282,9 +282,13 @@ extension Group {
     /// - Returns: 消息处理list
     func getNodeExitMessageHandles(node: Node) -> [MeshMessageHandle] {
         
-        var messages: [MeshMessageHandle] = []
+//        var messages: [MeshMessageHandle] = []
         // 设备中组关联的场景
        
+        node.groupState = .exitFailure
+        let syncDatas = node.getSyncData(type: .group(node.group))
+        let messages = syncDatas.reversed().flatMap({ $0.getMessageHandles(node: node) })
+        
         let removeSceneDatas = self.info.sceneExecuteDatas.filter { data in
             return node.sceneExecuteDatas.contains(where: { $0.sceneNumber == data.sceneNumber })
         }
@@ -292,53 +296,53 @@ extension Group {
 //            return node.bindSceneDatas.contains(where: { $0.sceneId == groupSceneData.sceneId })
 //        }
         // 设备删除组关联的场景
-        removeSceneDatas.forEach { data in
-            // 设备是否支持场景model
-            if let sceneSetupModel = node.sceneSetupModel {
-                // 删除场景
-                messages.append(MeshMessageHandle(message: SceneDelete(data.sceneNumber), model: sceneSetupModel))
-            }
-        }
+//        removeSceneDatas.forEach { data in
+//            // 设备是否支持场景model
+//            if let sceneSetupModel = node.sceneSetupModel {
+//                // 删除场景
+//                messages.append(MeshMessageHandle(message: SceneDelete(data.sceneNumber), model: sceneSetupModel))
+//            }
+//        }
         
         // 设备中组关联的日程
-       let removeSchedules = self.info.bindSchedules.filter { schedule in
-           return node.schedulerActions.filter({ $0.value.isValid }).contains(where: { Int($0.key) == schedule.id })
-        }
+//       let removeSchedules = self.info.bindSchedules.filter { schedule in
+//           return node.schedulerActions.filter({ $0.value.isValid }).contains(where: { Int($0.key) == schedule.id })
+//        }
         // 设备删除日程
-        removeSchedules.forEach { schedule in
-            if let schedulerSetupModel = node.schedulerSetupModel {
-                // 删除日程，协议不支持删除，将对应id的日程设置为无效数据
-                messages.append(MeshMessageHandle(message: SchedulerActionSet(index: UInt8(schedule.id), entry: SchedulerRegistryEntry()), model: schedulerSetupModel))
-            }
-        }
+//        removeSchedules.forEach { schedule in
+//            if let schedulerSetupModel = node.schedulerSetupModel {
+//                // 删除日程，协议不支持删除，将对应id的日程设置为无效数据
+//                messages.append(MeshMessageHandle(message: SchedulerActionSet(index: UInt8(schedule.id), entry: SchedulerRegistryEntry()), model: schedulerSetupModel))
+//            }
+//        }
         
         // 删除节点内model上报到组数据
-        for element in node.elements {
-            let publishModels = element.models.filter({ $0.publish?.publicationAddress == address })
-            publishModels.forEach({
-                messages.append(MeshMessageHandle(message: ConfigModelPublicationSet(disablePublicationFor: $0)!, address: node.primaryUnicastAddress))
-            })
-        }
+//        for element in node.elements {
+//            let publishModels = element.models.filter({ $0.publish?.publicationAddress == address })
+//            publishModels.forEach({
+//                messages.append(MeshMessageHandle(message: ConfigModelPublicationSet(disablePublicationFor: $0)!, address: node.primaryUnicastAddress))
+//            })
+//        }
         
         // 解除动能开关绑定
-        self.info.allSwitchs.forEach { switchData in
-            if switchData.linkGroup != nil {
-                let unbindSwitchMessages = node.getEnOceanUnSubscriptionMessageHandles(switchKeys: switchData.switchKeys)
-                messages.append(contentsOf: unbindSwitchMessages)
-            }
-        }
+//        self.info.allSwitchs.forEach { switchData in
+//            if switchData.linkGroup != nil {
+//                let unbindSwitchMessages = node.getEnOceanUnSubscriptionMessageHandles(switchKeys: switchData.switchKeys)
+//                messages.append(contentsOf: unbindSwitchMessages)
+//            }
+//        }
         // 解除动能开关代理
-        if node.enOceanMacAddress?.count ?? 0 > 0, let switchData = self.info.allSwitchs.first(where: { $0.proxyNodeAddress == node.primaryUnicastAddress && $0.enOceanMacAddress == node.enOceanMacAddress }) {
-            if switchData.linkGroup != nil {
-                let disableSwitchMessages = node.getEnOceanSwitchDisableMessageHandles(switchKeys: switchData.switchKeys)
-                messages.append(contentsOf: disableSwitchMessages)
-            }
-        }
+//        if node.enOceanMacAddress?.count ?? 0 > 0, let switchData = self.info.allSwitchs.first(where: { $0.proxyNodeAddress == node.primaryUnicastAddress && $0.enOceanMacAddress == node.enOceanMacAddress }) {
+//            if switchData.linkGroup != nil {
+//                let disableSwitchMessages = node.getEnOceanSwitchDisableMessageHandles(switchKeys: switchData.switchKeys)
+//                messages.append(contentsOf: disableSwitchMessages)
+//            }
+//        }
         
         // 设备退出组
-        node.getUnsubscribeGroupMessages(self).forEach({
-            messages.append(MeshMessageHandle(message: $0, address: node.primaryUnicastAddress))
-        })
+//        node.getUnsubscribeGroupMessages(self).forEach({
+//            messages.append(MeshMessageHandle(message: $0, address: node.primaryUnicastAddress))
+//        })
         
         
         messages.forEach({ $0.continuous = false })

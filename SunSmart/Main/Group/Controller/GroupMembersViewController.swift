@@ -167,7 +167,7 @@ class GroupMembersViewController: UIViewController {
                 $0.groupState = .exitFailure
             })
             // 退出组的设备，整理邻近照明路径关系
-            if exitNodes.count > 0, self.group.info.profile.type == .proximityLighting, let path = self.group.info.proximityLightingPath {
+            if exitNodes.count > 0, self.group.info.profile.type == .proximityLighting || self.group.info.profile.type == .proximityLightingWithPhotocell, let path = self.group.info.proximityLightingPath {
     //            let proximityNodes = path.nodes
                 exitNodes.forEach { node in
                     path.removeNode(node)
@@ -176,7 +176,15 @@ class GroupMembersViewController: UIViewController {
             }
             
             let addNodes = self.selectNodes.filter({ !self.group.nodes.contains($0) })
-            addNodes.forEach({ $0.groupState = .inGroup })
+            addNodes.forEach({
+                $0.groupState = .inGroup
+                if self.group.info.profile.type == .proximityLightingWithPhotocell {
+                    // 使用最新的profile功能需要绑定对应model
+                    if !$0.requiredFunctionTypes.contains(.lightLCScene) {
+                        $0.requiredFunctionTypes.append(.lightLCScene)
+                    }
+                }
+            })
             guard exitNodes.count > 0 || addNodes.count > 0 else {
                 DispatchQueue.main.async {
                     XWHUDManager.hide()

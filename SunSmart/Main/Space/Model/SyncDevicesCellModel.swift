@@ -429,6 +429,10 @@ extension ProfileType {
             return "profile_vacancy_level".localizedString
         case .vacantLux:
             return "profile_vacancy_lux".localizedString
+        case .standbyLevel:
+            return "profile_standby_level".localizedString
+        case .standbyLux:
+            return "profile_standby_lux".localizedString
 //        case .autoMinValue:
 //            return "profile_auto_min_value".localizedString
         case .adjustSpeed:
@@ -463,7 +467,26 @@ extension ProfileType {
             return "calibration_light_point".localizedString
         case .sensitivity:
             return "sensitivity".localizedString
-        
+        case .lightControlSnapshoot:
+            return "profile_snapshoot".localizedString
+        case .lightControlSwitch:
+            return "profile_switch".localizedString
+        case .lightControlStore:
+            return "profile_store".localizedString
+        case .lightControlRestore:
+            return "profile_restore".localizedString
+        case .lightControlDelete:
+            return "profile_scene_delete".localizedString
+        case .profileDayToggleTriggerConditionLux:
+            return "profile_day_threshold".localizedString
+        case .profileNightToggleTriggerConditionLux:
+            return "profile_night_threshold".localizedString
+        case .profileToggleTriggerConditionLuxDelete(let id):
+            return id == 0 ? "profile_night_threshol_delete".localizedString : "profile_day_threshold_delete".localizedString
+        case .profileToggleTriggerConditionLuxLock:
+            return "profile_lux_trigger_lock".localizedString
+        case .profileToggleTriggerConditionLuxUnLock:
+            return "profile_lux_trigger_unlock".localizedString
         }
     }
     
@@ -489,6 +512,10 @@ extension ProfileType {
             return node.lightLCProperty.lightnessProlong == Node.getLightness(lightness100: value)
         case .vacantLux(let lux):
             return node.lightLCProperty.luxLevelProlong == UInt16(lux)
+        case .standbyLevel(let value):
+            return node.lightLCProperty.lightnessStandby == Node.getLightness(lightness100: value)
+        case .standbyLux(let lux):
+            return node.lightLCProperty.luxLevelStandby == UInt16(lux)
         case .lightAutoAdujustEnabled(let enabled):
             return node.lightLCProperty.lightAutoAdjustEnabled == enabled
         case .adjustSpeed(let speed):
@@ -522,6 +549,24 @@ extension ProfileType {
         case .sensitivity(let value, _):
             return node.motionSensitivity == value
         case .daylightCalibrateRate, .daylightCalibrateInflectionPoint:
+            return true
+        case .lightControlSnapshoot(let sceneNumber):
+            return node.lightControlSnapshotSceneExecuteData != nil && node.lightControlSnapshotSceneExecuteData?.sceneNumber == sceneNumber
+        case .lightControlSwitch:
+            return true
+        case .lightControlStore(let sceneNumber):
+            return node.lightControlSceneExecuteDatas.contains(where: { $0.sceneNumber == sceneNumber })
+        case .lightControlRestore:
+            return true
+        case .lightControlDelete(let sceneNumber):
+            return !node.lightControlSceneExecuteDatas.contains(where: { $0.sceneNumber == sceneNumber })
+        case .profileDayToggleTriggerConditionLux(let id, _, _, _, _, _):
+            return node.lightControlLuxTriggerConditions.contains(where: { $0.index == id })
+        case .profileNightToggleTriggerConditionLux(let id, _, _, _, _, _):
+            return node.lightControlLuxTriggerConditions.contains(where: { $0.index == id })
+        case .profileToggleTriggerConditionLuxDelete(let id):
+            return !node.lightControlLuxTriggerConditions.contains(where: { $0.index == id })
+        case .profileToggleTriggerConditionLuxLock, .profileToggleTriggerConditionLuxUnLock:
             return true
         }
     }
@@ -803,7 +848,10 @@ class SyncDeviceStepModel: SyncCellModel {
         get {
             let notSetTasks = tasks.filter({ $0.state == .none || $0.state == .wait })
             let inSetDevices = tasks.filter({ $0.state == .inSettings })
-            if notSetTasks.count == 0 && inSetDevices.count == 0 { // 设置完成
+            
+            let existRelevance = notSetTasks.contains(where: { $0.relevanceTaskModels.count > 0 && $0.relevanceTaskModels.contains(where: { $0.state == .failed }) && !$0.relevanceTaskModels.contains(where: { $0.state == .inSettings }) })
+            
+            if (notSetTasks.count == 0 && inSetDevices.count == 0) || existRelevance { // 设置完成
                 return tasks.contains(where: { $0.state == .failed }) ? .failed : .successful
             }else if notSetTasks.count == tasks.count || inSetDevices.count == 0 { // 未开始
                 return .wait
@@ -846,6 +894,9 @@ class SyncDeviceStepTaskModel: SyncCellModel {
     let operationType: DeviceOperationType
     /// 上级model
     var parentStepModel: SyncDeviceStepModel?
+    
+    /// 关联的任务model(如果关联model未成功则当前任务进入等待状态)
+    var relevanceTaskModels: [SyncDeviceStepTaskModel] = []
     
     /// 失败次数
     var failedCount: Int = 0

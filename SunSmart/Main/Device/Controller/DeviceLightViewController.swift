@@ -30,6 +30,8 @@ class DeviceLightViewController: UIViewController {
     private var relaySwitch: UISwitch!
     private var pwmPeriodLabel: UILabel!
     
+//    private var luxLabel: UILabel!
+    
     private weak var lastMessageDelegate: MeshLibManagerMessageDelegate?
     
     let space: SpaceData
@@ -82,6 +84,16 @@ class DeviceLightViewController: UIViewController {
         // 获取节点转发功能是否启用
         MeshAPI.getReplyState(address: node.primaryUnicastAddress, result: nil)
         
+//        luxLabel = UILabel(text: "", textColor: TextBlack_Color, fontSize: 14)
+//        view.addSubview(luxLabel)
+//        luxLabel.snp.makeConstraints { make in
+//            make.left.equalTo(brightnessLabel.snp.right).offset(SCRXFrom(30))
+//            make.centerY.equalTo(brightnessLabel)
+//        }
+//        
+//        MeshAPI.getAmbientSensorValue(node: node) {[weak self] value in
+//            self?.luxLabel.text = "\(value ?? self?.node.daylightLux ?? 0)lx"
+//        }
         // 读取pwm周期
 //        if let model = node.sunricherVendorModel {
 //            MeshAPI.sendMessage(message: SunricherVendorGet(function: .pwmPeriod), model: model)

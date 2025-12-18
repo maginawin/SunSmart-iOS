@@ -336,7 +336,8 @@ class GroupViewController: UIViewController {
 //        if pageControl.numberOfPages > 0 {
 //            collectionView.flashScrollIndicators()
 //        }
-  
+        
+//        MeshAPI.sendMessage(message: SceneRecallUnacknowledged(group.info.profile.nightData!.sceneData.sceneNumber), address: group.address.address)
         var messageHandles: [MeshMessageHandle] = []
         // 检查校准后的光照传感器是否有上报
         if let publishAmbientLightSensor = self.group.info.ambientLightSensorNode, let sensorModel = publishAmbientLightSensor.ambientLightSensorModel, sensorModel.publish?.publicationAddress != group.address {
@@ -490,7 +491,7 @@ class GroupViewController: UIViewController {
         onoffBtn.isEnabled = MeshLibManager.manager.isMeshNetworkConnected && group.nodes.contains(where: { $0.state })
         onoffBtn.isSelected = group.isOn
         
-        let data = group.info.profile.lightData.data
+        let data = group.info.profile.lightControlData
         lightnessSlider.slider.limitRange = data.lowEndTrim...data.highEndTrim
         lightnessSlider.value = Node.getLightness100(lightness: group.lightness)
         if group.nodes.contains(where: {$0.temperatureModel != nil }) {
@@ -511,7 +512,7 @@ class GroupViewController: UIViewController {
         }
         
         // 临近照明提示路径设置
-        if profileType == .proximityLighting, group.info.proximityLightingPath?.isEmpty() ?? true, space.groupOperates.contains(.edit) {
+        if profileType == .proximityLighting, profileType == .proximityLightingWithPhotocell, group.info.proximityLightingPath?.isEmpty() ?? true, space.groupOperates.contains(.edit) {
             setPathBtn.isHidden = false
             setPathLabel.isHidden = false
         }else {
@@ -535,7 +536,7 @@ class GroupViewController: UIViewController {
             switch profileType {
             case .occupancy_daylight, .vacancy_daylight:
                 sensorView?.supportSensorType = .all
-            case .occupancy, .vacancy, .proximityLighting:
+            case .occupancy, .vacancy, .proximityLighting, .proximityLightingWithPhotocell:
                 sensorView?.supportSensorType = .presenceDetected
             case .daylight:
                 sensorView?.supportSensorType = .ambientLight
@@ -646,7 +647,7 @@ class GroupViewController: UIViewController {
                 }))
             }
             
-            if profileType == .proximityLighting {
+            if profileType == .proximityLighting || profileType == .proximityLightingWithPhotocell {
                 items.append( .init(icon: UIImage(named: "menu_path"), title: "path".localizedString, hideAnimation: false, tapItemBack: {[weak self] item in
                     self?.setPath()
                 }))

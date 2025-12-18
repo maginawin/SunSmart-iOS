@@ -79,6 +79,8 @@ class ScheduleAddViewController: UIViewController {
                 scheduleAddView.selectTarget = targets[1]
             case .scene:
                 scheduleAddView.selectTarget = targets[2]
+            case .profile:
+                break
             }
             scheduleAddView.actionType = schedule.action
             scheduleAddView.fadeTime = schedule.fadeTime

@@ -1042,6 +1042,44 @@ extension SpaceData {
                     if let proximityLightingNeighborAddresses = nodeJson["proximityLightingNeighborAddresses"].arrayObject as? [UInt16] {
                         node.proximityLightingNeighborAddresses = proximityLightingNeighborAddresses.compactMap({ Address($0) })
                     }
+                    if let lightControlLuxTriggerConditionJsons = nodeJson["lightControlLuxTriggerConditions"].array {
+                        node.lightControlLuxTriggerConditions = lightControlLuxTriggerConditionJsons.compactMap { json in
+                            if let index = json["index"].uInt8, let minLux = json["minLux"].uInt16, let maxLux = json["maxLux"].uInt16, let destinationHex = json["destination"].string, let destination = Address(hex: destinationHex), let sceneNumberHex = json["sceneNumber"].string, let sceneNumber = SceneNumber(hex: sceneNumberHex) {
+                                return LightControlLuxTriggeringCondition(index: index, minLux: minLux, maxLux: maxLux, useCalibrationValues: json["useCalibrationValues"].boolValue, destination: destination, sceneNumber: sceneNumber)
+                            }
+                            return nil
+                        }
+                    }
+                    if let lightControlSceneExecuteDataDicts = nodeJson["lightControlSceneExecuteDatas"].arrayObject as? [[String: Any]] {
+                     
+                        node.lightControlSceneExecuteDatas = lightControlSceneExecuteDataDicts.compactMap { dict in
+                            var lightControlSceneExecuteDataDict = dict
+                            if let sceneNumberHex = lightControlSceneExecuteDataDict["sceneNumber"] as? String, let sceneNumber = SceneNumber(hex: sceneNumberHex) {
+                                lightControlSceneExecuteDataDict.updateValue(sceneNumber, forKey: "sceneNumber")
+                            }
+                            if let data = try? JSONSerialization.data(withJSONObject: lightControlSceneExecuteDataDict), let sceneExecuteData = try? jsonDecoder.decode(SceneExecuteData.self, from: data)  {
+                                return sceneExecuteData
+                            }
+                            return nil
+                        }
+                    }
+                    
+                    // 真实功率
+                    if let calibrationRatedPower = nodeJson["calibrationRatedPower"].uInt32 {
+                        node.calibrationRatedPower = calibrationRatedPower
+                    }
+                    if let calibrationCollectRatedPower = nodeJson["calibrationCollectRatedPower"].uInt32 {
+                        node.calibrationCollectRatedPower = calibrationCollectRatedPower
+                    }
+                    if let calibrationCollectAdcDatumValue = nodeJson["calibrationCollectAdcDatumValue"].uInt32 {
+                        node.calibrationCollectAdcDatumValue = calibrationCollectAdcDatumValue
+                    }
+                    
+                    // 节点所支持功能
+                    if let requiredFunctionTypeValues = nodeJson["calibrationRatedPower"].arrayObject as? [Int] {
+                        node.requiredFunctionTypes = requiredFunctionTypeValues.compactMap({ Node.RequiredFunctionType(rawValue: $0) })
+                    }
+                    
                     
                     if node.deviceType == .gateway {
                         // 网关
@@ -1167,9 +1205,81 @@ extension SpaceData {
                         let profileJson = JSON(profileDict)
                         if let id = profileJson["id"].string, let type = Profile.ProfileType(rawValue: profileJson["type"].int ?? 1) {
                             
-                            let lightData = Profile.LightData(profileType: type, highEndTrim: profileJson["highEndTrim"].int ?? 100, lowEndTrim: profileJson["lowEndTrim"].int ?? 0, occupancyLevel: profileJson["occupancyLevel"].int ?? 100, vacantLevel: profileJson["vacantLevel"].int ?? 50, taskLevel: profileJson["taskLevel"].int ?? 100, autoMinLevel: profileJson["autoMinLevel"].int ?? 0, t1: profileJson["timeT1"].int ?? 0, t2: profileJson["timeT2"].int ?? 0, t3: profileJson["timeT3"].int ?? 0, t4: profileJson["timeT4"].int ?? 0, t5: profileJson["timeT5"].int ?? 0)
+                            let lightControlData = Profile.LightControlData(highEndTrim: profileJson["highEndTrim"].int ?? 100, lowEndTrim: profileJson["lowEndTrim"].int ?? 0, occupancyLevel: profileJson["occupancyLevel"].int ?? 100, vacantLevel: profileJson["vacantLevel"].int ?? 50, standbyLevel: profileJson["standbyLevel"].int ?? 0, taskLevel: profileJson["taskLevel"].int ?? 100, autoMinLevel: profileJson["autoMinLevel"].int ?? 0, t1: profileJson["timeT1"].int ?? 0, t2: profileJson["timeT2"].int ?? 0, t3: profileJson["timeT3"].int ?? 0, t4: profileJson["timeT4"].int ?? 0, t5: profileJson["timeT5"].int ?? 0)
                             
-                            let profile = Profile(id: id, type: type, lightData: lightData, powerUpState: Profile.PowerUpState(rawValue: profileJson["powerUpState"].uInt8 ?? 0), manualOverrideTimeout: profileJson["manualOverrideTimeout"].uInt32 ?? 600)
+                            var scenes: [Profile.LightControlScene] = []
+                            if let sceneJsons = profileJson["scenes"].array {
+                               scenes = sceneJsons.compactMap { sceneJson in
+                                   if let sceneNumberHex = sceneJson["number"].string, let sceneNumber = SceneNumber(hex: sceneNumberHex), let name = sceneJson["name"].string {
+                                        let sceneLightControlData = Profile.LightControlData(highEndTrim: lightControlData.highEndTrim, lowEndTrim: lightControlData.lowEndTrim)
+                                
+                                        if let occupancyLevel = sceneJson["occupancyLevel"].int {
+                                            sceneLightControlData.occupancyLevel = occupancyLevel
+                                        }
+                                        if let vacantLevel = sceneJson["vacantLevel"].int {
+                                            sceneLightControlData.vacantLevel = vacantLevel
+                                        }
+                                        if let standbyLevel = sceneJson["standbyLevel"].int {
+                                            sceneLightControlData.standbyLevel = standbyLevel
+                                        }
+                                        if let taskLevel = sceneJson["taskLevel"].int {
+                                            sceneLightControlData.taskLevel = taskLevel
+                                        }
+                                        if let autoMinLevel = sceneJson["autoMinLevel"].int {
+                                            sceneLightControlData.autoMinLevel = autoMinLevel
+                                        }
+                                        if let timeT1 = sceneJson["timeT1"].int {
+                                            sceneLightControlData.t1 = timeT1
+                                        }
+                                        if let timeT2 = sceneJson["timeT2"].int {
+                                            sceneLightControlData.t2 = timeT2
+                                        }
+                                        if let timeT3 = sceneJson["timeT3"].int {
+                                            sceneLightControlData.t3 = timeT3
+                                        }
+                                        if let timeT4 = sceneJson["timeT4"].int {
+                                            sceneLightControlData.t4 = timeT4
+                                        }
+                                        if let timeT5 = sceneJson["timeT5"].int {
+                                            sceneLightControlData.t5 = timeT5
+                                        }
+                                        return Profile.LightControlScene(sceneNumber: sceneNumber, name: name, lightControlData: sceneLightControlData)
+                                    }
+                                   return nil
+                                }
+                            }
+                            
+                            var dayData: Profile.TriggerConditionData?
+                            var nightData: Profile.TriggerConditionData?
+                            if type == .proximityLightingWithPhotocell {
+                                if let dayDict = profileJson["day"].dictionary {
+                                    if let id = dayDict["id"]?.uInt8, let startsBelowLux = dayDict["startsBelowLux"]?.uInt16, let sceneNumberHex = dayDict["sceneNumber"]?.string, let sceneNumber = SceneNumber(hex: sceneNumberHex), let scene = scenes.first(where: { $0.sceneNumber == sceneNumber }) {
+                                        
+                                        let useCalibrationValues = dayDict["useCalibrationValues"]?.bool ?? false
+                                        var executeType: Profile.TriggerConditionData.ExecuteType = .adjustWhenOccupied
+                                        if let executeTypeRawValue = dayDict["executeType"]?.int {
+                                            executeType = .init(rawValue: executeTypeRawValue) ?? .adjustWhenOccupied
+                                        }
+                                        let fixedStandbyLevel = dayDict["fixedStandbyLevel"]?.int ?? 0
+                                        dayData = Profile.TriggerConditionData(id: id, startsBelowLux: startsBelowLux, useCalibrationValues: useCalibrationValues, executeType: executeType, sceneData: scene, fixedStandbyLevel: fixedStandbyLevel)
+                                    }
+                                }
+                                if let nightDict = profileJson["night"].dictionary {
+                                    if let id = nightDict["id"]?.uInt8, let startsBelowLux = nightDict["startsBelowLux"]?.uInt16, let sceneNumberHex = nightDict["sceneNumber"]?.string, let sceneNumber = SceneNumber(hex: sceneNumberHex), let scene = scenes.first(where: { $0.sceneNumber == sceneNumber }) {
+                                        
+                                        let useCalibrationValues = nightDict["useCalibrationValues"]?.bool ?? false
+                                        var executeType: Profile.TriggerConditionData.ExecuteType = .adjustWhenOccupied
+                                        if let executeTypeRawValue = nightDict["executeType"]?.int {
+                                            executeType = .init(rawValue: executeTypeRawValue) ?? .adjustWhenOccupied
+                                        }
+                                        let fixedStandbyLevel = nightDict["fixedStandbyLevel"]?.int ?? 30
+                                        nightData = Profile.TriggerConditionData(id: id, startsBelowLux: startsBelowLux, useCalibrationValues: useCalibrationValues, executeType: executeType, sceneData: scene, fixedStandbyLevel: fixedStandbyLevel)
+                                    }
+                                }
+                            }
+                            
+                            
+                            let profile = Profile(id: id, type: type, lightControlData: lightControlData, powerUpState: Profile.PowerUpState(rawValue: profileJson["powerUpState"].uInt8 ?? 0), manualOverrideTimeout: profileJson["manualOverrideTimeout"].uInt32 ?? 600, nightData: nightData, dayData: dayData, scenes: scenes)
                             if let powerOnCct = profileJson["powerOnCct"].uInt16 {
                                 profile.powerUpCct = powerOnCct
                             }

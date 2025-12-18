@@ -1345,6 +1345,7 @@ extension Profile {
         static let lowEndTrim = Expression<Int>("lowEndTrim")
         static let occupancyLevel = Expression<Int>("occupancyLevel")
         static let vacantLevel = Expression<Int>("vacantLevel")
+        static let standbyLevel = Expression<Int>("standbyLevel")
         static let taskLevel = Expression<Int>("taskLevel")
         static let autoMinLevel = Expression<Int>("autoMinLevel")
         static let timeT1 = Expression<Int>("timeT1")
@@ -1358,6 +1359,9 @@ extension Profile {
         static let adjustSpeed = Expression<Int>("adjustSpeed")
         static let sensitivity = Expression<Int>("sensitivity")
         static let proximityLightingNumber = Expression<Int>("proximityLightingNumber")
+        static let dayProfile = Expression<Data?>("dayProfile")
+        static let nightProfile = Expression<Data?>("nightProfile")
+        static let scenes = Expression<Data?>("scenes")
     }
     
     /// 初始化组扩展信息表
@@ -1374,6 +1378,7 @@ extension Profile {
             builder.column(ExpressionKey.lowEndTrim)
             builder.column(ExpressionKey.occupancyLevel)
             builder.column(ExpressionKey.vacantLevel)
+            builder.column(ExpressionKey.standbyLevel)
             builder.column(ExpressionKey.taskLevel)
             builder.column(ExpressionKey.autoMinLevel)
             builder.column(ExpressionKey.timeT1)
@@ -1387,6 +1392,9 @@ extension Profile {
             builder.column(ExpressionKey.powerUpCct)
             builder.column(ExpressionKey.sensitivity)
             builder.column(ExpressionKey.proximityLightingNumber)
+            builder.column(ExpressionKey.dayProfile)
+            builder.column(ExpressionKey.nightProfile)
+            builder.column(ExpressionKey.scenes)
             builder.unique(ExpressionKey.meshUUID, ExpressionKey.uuid)
         }))
         
@@ -1406,6 +1414,24 @@ extension Profile {
             // 是否存在”proximityLightingNumber“属性
             if !columns.contains(where: { $0.name == "proximityLightingNumber" }) {
                 _ = try? SunSmartDataManager.shared.db?.run(Profile.profilesTable.addColumn(ExpressionKey.proximityLightingNumber, defaultValue: 2))
+            }
+            
+            // 是否存在”dayProfile“属性
+            if !columns.contains(where: { $0.name == "dayProfile" }) {
+                _ = try? SunSmartDataManager.shared.db?.run(Profile.profilesTable.addColumn(ExpressionKey.dayProfile))
+            }
+            // 是否存在”nightProfile“属性
+            if !columns.contains(where: { $0.name == "nightProfile" }) {
+                _ = try? SunSmartDataManager.shared.db?.run(Profile.profilesTable.addColumn(ExpressionKey.nightProfile))
+            }
+            // 是否存在”standbyLevel“属性
+            if !columns.contains(where: { $0.name == "standbyLevel" }) {
+                _ = try? SunSmartDataManager.shared.db?.run(Profile.profilesTable.addColumn(ExpressionKey.standbyLevel, defaultValue: 0))
+            }
+            
+            // 是否存在”scenes“属性
+            if !columns.contains(where: { $0.name == "scenes" }) {
+                _ = try? SunSmartDataManager.shared.db?.run(Profile.profilesTable.addColumn(ExpressionKey.scenes))
             }
             
         }
@@ -1429,14 +1455,38 @@ extension Profile {
         if let rows = try? SunSmartDataManager.shared.db?.prepare(filter) {
             for row in rows {
                 let profileType: ProfileType = .init(rawValue: row[ExpressionKey.type]) ?? .occupancy_daylight
-                let lightData = LightData(profileType: profileType, highEndTrim: row[ExpressionKey.highEndTrim], lowEndTrim: row[ExpressionKey.lowEndTrim], occupancyLevel: row[ExpressionKey.occupancyLevel], vacantLevel: row[ExpressionKey.vacantLevel], taskLevel: row[ExpressionKey.taskLevel], autoMinLevel: row[ExpressionKey.autoMinLevel], t1: row[ExpressionKey.timeT1], t2: row[ExpressionKey.timeT2], t3: row[ExpressionKey.timeT3], t4: row[ExpressionKey.timeT4], t5: row[ExpressionKey.timeT5])
+                let lightData = LightControlData(highEndTrim: row[ExpressionKey.highEndTrim], lowEndTrim: row[ExpressionKey.lowEndTrim], occupancyLevel: row[ExpressionKey.occupancyLevel], vacantLevel: row[ExpressionKey.vacantLevel], standbyLevel: row[ExpressionKey.standbyLevel], taskLevel: row[ExpressionKey.taskLevel], autoMinLevel: row[ExpressionKey.autoMinLevel], t1: row[ExpressionKey.timeT1], t2: row[ExpressionKey.timeT2], t3: row[ExpressionKey.timeT3], t4: row[ExpressionKey.timeT4], t5: row[ExpressionKey.timeT5])
                 
                 let powerUpState: PowerUpState = .init(rawValue: UInt8(row[ExpressionKey.powerUpState]))
                 let powerUpCct = UInt16(row[ExpressionKey.powerUpCct])
              
                 let manualOverrideTimeout = UInt32(row[ExpressionKey.manualOverrideTimeout])
                 
-                let profile = Profile(name: row[ExpressionKey.name], id: row[ExpressionKey.uuid], type: profileType, lightData: lightData, powerUpState: powerUpState, powerUpCct: powerUpCct, manualOverrideTimeout: manualOverrideTimeout, adjustSpeed: row[ExpressionKey.adjustSpeed], sensitivity: UInt8(row[ExpressionKey.sensitivity]), proximityLightingNumber: UInt8(row[ExpressionKey.proximityLightingNumber]))
+                var scenes: [Profile.LightControlScene] = []
+                if let data = row[ExpressionKey.scenes], let profileScenes = try? jsonDecoder.decode([Profile.LightControlScene].self, from: data) {
+                    scenes = profileScenes
+                }
+                
+                var dayData: Profile.TriggerConditionData?
+                if let data = row[ExpressionKey.dayProfile], let dayProfile = try? jsonDecoder.decode(Profile.TriggerConditionData.self, from: data) {
+                    if let sceneData = scenes.first(where: { $0.sceneNumber == dayProfile.sceneData.sceneNumber }) {
+                        dayProfile.sceneData = sceneData
+                    }
+                    dayData = dayProfile
+                }
+                
+                var nightData: Profile.TriggerConditionData?
+                if let data = row[ExpressionKey.nightProfile], let nightProfile = try? jsonDecoder.decode(Profile.TriggerConditionData.self, from: data) {
+                    
+                    if let sceneData = scenes.first(where: { $0.sceneNumber == nightProfile.sceneData.sceneNumber }) {
+                        nightProfile.sceneData = sceneData
+                    }
+                    nightData = nightProfile
+                }
+                
+            
+                let profile = Profile(name: row[ExpressionKey.name], id: row[ExpressionKey.uuid], type: profileType, lightControlData: lightData, powerUpState: powerUpState, powerUpCct: powerUpCct, manualOverrideTimeout: manualOverrideTimeout, adjustSpeed: row[ExpressionKey.adjustSpeed], sensitivity: UInt8(row[ExpressionKey.sensitivity]), proximityLightingNumber: UInt8(row[ExpressionKey.proximityLightingNumber]), nightData: nightData, dayData: dayData, scenes: scenes)
+                
                 profiles.append(profile)
             }
         }
@@ -1464,7 +1514,11 @@ extension Profile {
 //        let subNetworkey = networkKey
         let subNetworkey = meshNetworkId ?? MeshNetworkManager.instance.currentNetworkKey.networkId.hex
         
-        let data = lightData.data
+        let dayProfileData = try? jsonEncoder.encode(self.dayData)
+        let nightProfileData = try? jsonEncoder.encode(self.nightData)
+        let scenesData = try? jsonEncoder.encode(self.scenes)
+        
+        let data = lightControlData
         let insertOrUpdate = Profile.profilesTable.insert(or: .replace, [
             ExpressionKey.meshUUID <- uuid,
             ExpressionKey.subNetworkKey <- subNetworkey,
@@ -1475,8 +1529,9 @@ extension Profile {
             ExpressionKey.lowEndTrim <- data.lowEndTrim,
             ExpressionKey.occupancyLevel <- data.occupancyLevel,
             ExpressionKey.vacantLevel <- data.vacantLevel,
+            ExpressionKey.standbyLevel <- data.standbyLevel,
             ExpressionKey.taskLevel <- data.taskLevel,
-            ExpressionKey.autoMinLevel <- data.autoMinLevelEnabled ? data.autoMinLevel : 255,
+            ExpressionKey.autoMinLevel <- data.autoMinLevel,
             ExpressionKey.timeT1 <- data.t1,
             ExpressionKey.timeT2 <- data.t2,
             ExpressionKey.timeT3 <- data.t3,
@@ -1487,7 +1542,10 @@ extension Profile {
             ExpressionKey.powerUpCct <- Int(self.powerUpCct),
             ExpressionKey.adjustSpeed <- self.adjustSpeed,
             ExpressionKey.sensitivity <- Int(self.sensitivity),
-            ExpressionKey.proximityLightingNumber <- Int(self.proximityLightingNumber)
+            ExpressionKey.proximityLightingNumber <- Int(self.proximityLightingNumber),
+            ExpressionKey.dayProfile <- dayProfileData,
+            ExpressionKey.nightProfile <- nightProfileData,
+            ExpressionKey.scenes <- scenesData
         ])
         do {
             try SunSmartDataManager.shared.db?.run(insertOrUpdate)

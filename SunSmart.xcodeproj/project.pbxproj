@@ -1051,6 +1051,10 @@
 		C8A85CDF2E09014B007F9B81 /* DeviceAddSelectAllViewCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A85CDD2E09014B007F9B81 /* DeviceAddSelectAllViewCell.swift */; };
 		C8A85CE12E0A4886007F9B81 /* DeviceAddCandidateDeviceListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A85CE02E0A4886007F9B81 /* DeviceAddCandidateDeviceListView.swift */; };
 		C8A85CE22E0A4886007F9B81 /* DeviceAddCandidateDeviceListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A85CE02E0A4886007F9B81 /* DeviceAddCandidateDeviceListView.swift */; };
+		C8A8D7392EF3AEE80025FFF7 /* Scheduler.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A8D7382EF3AEE80025FFF7 /* Scheduler.swift */; };
+		C8A8D73A2EF3AEE80025FFF7 /* Scheduler.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A8D7382EF3AEE80025FFF7 /* Scheduler.swift */; };
+		C8A8D73B2EF3AEE80025FFF7 /* Scheduler.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A8D7382EF3AEE80025FFF7 /* Scheduler.swift */; };
+		C8A8D73C2EF3AEE80025FFF7 /* Scheduler.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A8D7382EF3AEE80025FFF7 /* Scheduler.swift */; };
 		C8AADEFF2A97350400238C1C /* SiteData.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8AADEFE2A97350400238C1C /* SiteData.swift */; };
 		C8AADF012A973DA600238C1C /* SpaceData.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8AADF002A973DA600238C1C /* SpaceData.swift */; };
 		C8AAE2772A97435A00238C1C /* Database.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8AAE2762A97435A00238C1C /* Database.swift */; };
@@ -2101,6 +2105,7 @@
 		C8A7A6B72DC216FA00191E9C /* EnergyHarvestSelectView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EnergyHarvestSelectView.swift; sourceTree = "<group>"; };
 		C8A85CDD2E09014B007F9B81 /* DeviceAddSelectAllViewCell.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceAddSelectAllViewCell.swift; sourceTree = "<group>"; };
 		C8A85CE02E0A4886007F9B81 /* DeviceAddCandidateDeviceListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceAddCandidateDeviceListView.swift; sourceTree = "<group>"; };
+		C8A8D7382EF3AEE80025FFF7 /* Scheduler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Scheduler.swift; sourceTree = "<group>"; };
 		C8AADEFE2A97350400238C1C /* SiteData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SiteData.swift; sourceTree = "<group>"; };
 		C8AADF002A973DA600238C1C /* SpaceData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpaceData.swift; sourceTree = "<group>"; };
 		C8AAE2762A97435A00238C1C /* Database.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Database.swift; sourceTree = "<group>"; };
@@ -3369,6 +3374,7 @@
 			isa = PBXGroup;
 			children = (
 				C898D1CF2B59134A00B2033B /* ScheduleServer.swift */,
+				C8A8D7382EF3AEE80025FFF7 /* Scheduler.swift */,
 			);
 			path = Model;
 			sourceTree = "<group>";
@@ -4435,6 +4441,7 @@
 				C88554642DE6B44C00C8B688 /* SpaceViewController.swift in Sources */,
 				C88554652DE6B44C00C8B688 /* SpaceMoreViewCell.swift in Sources */,
 				C88554662DE6B44C00C8B688 /* GroupFilterSelectView.swift in Sources */,
+				C8A8D7392EF3AEE80025FFF7 /* Scheduler.swift in Sources */,
 				C88554672DE6B44C00C8B688 /* SceneMembersViewCell.swift in Sources */,
 				C88554682DE6B44C00C8B688 /* ScheduleServer.swift in Sources */,
 				C88554692DE6B44C00C8B688 /* SpaceMoreViewController.swift in Sources */,
@@ -4868,6 +4875,7 @@
 				C886E0BA2E30DE4900D0C3A6 /* SpaceViewController.swift in Sources */,
 				C886E0BB2E30DE4900D0C3A6 /* SpaceMoreViewCell.swift in Sources */,
 				C886E0BC2E30DE4900D0C3A6 /* GroupFilterSelectView.swift in Sources */,
+				C8A8D73B2EF3AEE80025FFF7 /* Scheduler.swift in Sources */,
 				C886E0BD2E30DE4900D0C3A6 /* SceneMembersViewCell.swift in Sources */,
 				C886E0BE2E30DE4900D0C3A6 /* ScheduleServer.swift in Sources */,
 				C886E0BF2E30DE4900D0C3A6 /* SpaceMoreViewController.swift in Sources */,
@@ -5301,6 +5309,7 @@
 				C898EA652AC2BDC50023B480 /* SpaceViewController.swift in Sources */,
 				C8AC509A2C4E3234003CE437 /* SpaceMoreViewCell.swift in Sources */,
 				C8BA43612DC0724C00018392 /* GroupFilterSelectView.swift in Sources */,
+				C8A8D73C2EF3AEE80025FFF7 /* Scheduler.swift in Sources */,
 				C898F7042B3AB698008B4124 /* SceneMembersViewCell.swift in Sources */,
 				C898D1D02B59134A00B2033B /* ScheduleServer.swift in Sources */,
 				C8AC50982C4E2FF1003CE437 /* SpaceMoreViewController.swift in Sources */,
@@ -5734,6 +5743,7 @@
 				C8BB66822ED3F056000C63EE /* SpaceViewController.swift in Sources */,
 				C8BB66832ED3F056000C63EE /* SpaceMoreViewCell.swift in Sources */,
 				C8BB66842ED3F056000C63EE /* GroupFilterSelectView.swift in Sources */,
+				C8A8D73A2EF3AEE80025FFF7 /* Scheduler.swift in Sources */,
 				C8BB66852ED3F056000C63EE /* SceneMembersViewCell.swift in Sources */,
 				C8BB66862ED3F056000C63EE /* ScheduleServer.swift in Sources */,
 				C8BB66872ED3F056000C63EE /* SpaceMoreViewController.swift in Sources */,

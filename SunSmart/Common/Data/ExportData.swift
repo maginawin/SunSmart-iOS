@@ -345,6 +345,37 @@ extension SpaceData {
                         nodeDict.updateValue(proximityLightingRelayCount, forKey: "proximityLightingRelayCount")
                     }
                     nodeDict.updateValue(node.proximityLightingNeighborAddresses, forKey: "proximityLightingNeighborAddresses")
+                    // 设备lux触发条件配置数据
+                    if node.lightControlLuxTriggerConditions.count > 0 {
+                        let triggerConditionDicts = node.lightControlLuxTriggerConditions.map { condition in
+                            ["index": condition.index, "minLux": condition.minLux, "maxLux": condition.maxLux, "useCalibrationValues": condition.useCalibrationValues, "destination": condition.destination.hex, "sceneNumber": condition.sceneNumber.hex]
+                        }
+                        nodeDict.updateValue(triggerConditionDicts, forKey: "lightControlLuxTriggerConditions")
+                    }
+                    // 设备lightControl模块场景数据
+                    if node.lightControlSceneExecuteDatas.count > 0 {
+                       let lightControlSceneExecuteDataDicts = node.lightControlSceneExecuteDatas.compactMap { sceneExecuteData in
+                            if let data = try? jsonEncoder.encode(sceneExecuteData), var sceneExecuteDict = try? JSONSerialization.jsonObject(with: data) as? [String : Any] {
+                                sceneExecuteDict.updateValue(sceneExecuteData.sceneNumber.hex, forKey: "sceneNumber")
+                                return sceneExecuteDict
+                            }
+                            return nil
+                        }
+                        nodeDict.updateValue(lightControlSceneExecuteDataDicts, forKey: "lightControlSceneExecuteDatas")
+                    }
+                    
+                    // 真功率设备校准
+                    if let calibrationRatedPower = node.calibrationRatedPower {
+                        nodeDict.updateValue(calibrationRatedPower, forKey: "calibrationRatedPower")
+                    }
+                    if let calibrationCollectRatedPower = node.calibrationCollectRatedPower {
+                        nodeDict.updateValue(calibrationCollectRatedPower, forKey: "calibrationCollectRatedPower")
+                    }
+                    if let calibrationCollectAdcDatumValue = node.calibrationCollectAdcDatumValue {
+                        nodeDict.updateValue(calibrationCollectAdcDatumValue, forKey: "calibrationCollectAdcDatumValue")
+                    }
+                    // 设备需要支持的功能
+                    nodeDict.updateValue(node.requiredFunctionTypes.map({ $0.rawValue }), forKey: "requiredFunctionTypes")
                     
                     // 网关
                     if node.deviceType == .gateway {
@@ -398,7 +429,7 @@ extension SpaceData {
                         groupDict.updateValue(imageText, forKey: "imageText")
                     }
                     let profile = group.info.profile
-                    let lightData = profile.lightData.data
+                    let lightData = profile.lightControlData
                     var profileDict: [String: Any] = [
                         "id": profile.id,
                         "type": profile.type.rawValue,
@@ -406,8 +437,9 @@ extension SpaceData {
                         "lowEndTrim": lightData.lowEndTrim,
                         "occupancyLevel": lightData.occupancyLevel,
                         "vacantLevel": lightData.vacantLevel,
+                        "standbyLevel": lightData.standbyLevel,
                         "taskLevel": lightData.taskLevel,
-                        "autoMinLevel": lightData.autoMinLevelEnabled ? lightData.autoMinLevel : 255, 
+                        "autoMinLevel": lightData.autoMinLevel, 
                         "timeT1": lightData.t1,
                         "timeT2": lightData.t2,
                         "timeT3": lightData.t3,
@@ -418,9 +450,52 @@ extension SpaceData {
                         "powerOnCct": profile.powerUpCct,
                         "adjustSpeed": profile.adjustSpeed
                     ]
-                    if profile.type == .proximityLighting {
+                    if profile.type == .proximityLighting || profile.type == .proximityLightingWithPhotocell {
                         profileDict.updateValue(profile.proximityLightingNumber, forKey: "proximityLightingNumber")
                     }
+                    // 邻近照明白天/晚上配置
+                    if profile.type == .proximityLightingWithPhotocell {
+                        if let day = profile.dayData {
+                            let dayProfileDict: [String: Any] = [
+                                "startsBelowLux": day.startsBelowLux,
+                                "useCalibrationValues": day.useCalibrationValues,
+                                "executeType": day.executeType.rawValue,
+                                "sceneNumber": day.sceneData.sceneNumber.hex,
+                                "fixedStandbyLevel": day.fixedStandbyLevel
+                            ]
+                            profileDict.updateValue(dayProfileDict, forKey: "day")
+                        }
+                        if let night = profile.nightData {
+                            let nightProfileDict: [String: Any] = [
+                                "startsBelowLux": night.startsBelowLux,
+                                "useCalibrationValues": night.useCalibrationValues,
+                                "executeType": night.executeType.rawValue,
+                                "sceneNumber": night.sceneData.sceneNumber.hex,
+                                "fixedStandbyLevel": night.fixedStandbyLevel
+                            ]
+                            profileDict.updateValue(nightProfileDict, forKey: "night")
+                        }
+                    }
+                    // profile多灯光控制场景
+                    let sceneDicts = profile.scenes.map { scene in
+                        let lightControlData = scene.lightControlData
+                        let sceneDict: [String: Any] = [
+                            "number": scene.sceneNumber.hex,
+                            "name": scene.name,
+                            "occupancyLevel": lightControlData.occupancyLevel,
+                            "vacantLevel": lightControlData.vacantLevel,
+                            "standbyLevel": lightControlData.standbyLevel,
+                            "taskLevel": lightControlData.taskLevel,
+                            "autoMinLevel": lightControlData.autoMinLevel,
+                            "timeT1": lightControlData.t1,
+                            "timeT2": lightControlData.t2,
+                            "timeT3": lightControlData.t3,
+                            "timeT4": lightControlData.t4,
+                            "timeT5": lightControlData.t5,
+                        ]
+                        return sceneDict
+                    }
+                    profileDict.updateValue(sceneDicts, forKey: "scenes")
                     profileDict.updateValue(profile.sensitivity, forKey: "relativeSensitivity")
                     groupDict.updateValue(profileDict, forKey: "profile")
                     

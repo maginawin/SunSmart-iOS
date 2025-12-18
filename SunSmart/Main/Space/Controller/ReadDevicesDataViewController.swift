@@ -583,7 +583,7 @@ class ReadDevicesDataViewController: UIViewController {
                     }
 
                     if case .readRatedPower(let nodes) = self?.type, self?.getNextHandleModel() == nil, nodes.contains(where: { $0.retedPowerState ?? false && !$0.getRatedPower }) {
-                        DispatchQueue.main.asyncAfter(deadline: .now() + 6) {[weak self] in
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 10) {[weak self] in
                             guard let self = self else {
                                 return
                             }

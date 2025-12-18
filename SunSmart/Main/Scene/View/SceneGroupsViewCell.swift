@@ -54,9 +54,9 @@ class SceneGroupsViewCell: UICollectionViewCell {
         nameLabel.text = group.name
         
         if let data = sceneData {
-            let groupLightData = group.info.profile.lightData
+            let groupLightData = group.info.profile.lightControlData
             var lightnessValue = data.lightness
-            lightnessValue = max(groupLightData.data.lowEndTrim, min(groupLightData.data.highEndTrim, lightnessValue))
+            lightnessValue = max(groupLightData.lowEndTrim, min(groupLightData.highEndTrim, lightnessValue))
             progressView.progress = lightnessValue
 //            data.lightness
             // max(groupLightData.data.lowEndTrim, min(groupLightData.data.highEndTrim, <#T##y: Comparable##Comparable#>))

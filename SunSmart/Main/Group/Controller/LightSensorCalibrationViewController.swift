@@ -43,7 +43,7 @@ class LightSensorCalibrationViewController: UIViewController {
         let profile = group.info.profile
         if profile.type == .occupancy_daylight || profile.type == .vacancy_daylight || profile.type == .daylight {
             // 75% * occupancyLux, 不小于100lx
-            let data = profile.lightData.data
+            let data = profile.lightControlData
             var value = max(data.occupancyLevel, data.vacantLevel)
             if profile.type == .daylight {
                 value = data.taskLevel

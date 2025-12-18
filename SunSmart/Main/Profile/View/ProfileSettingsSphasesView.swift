@@ -84,7 +84,7 @@ class ProfileSettingsSphasesView: UIView {
         didSet {
             
             
-            let data = profile.lightData.data
+            let data = profile.lightControlData
             
             timeT1Label.text =  Profile.LightData.TimePickerData.timeDetail(type: .t1, second: data.t1)
             timeT2Label.text =  Profile.LightData.TimePickerData.timeDetail(type: .t2, second: data.t2)
@@ -128,7 +128,7 @@ class ProfileSettingsSphasesView: UIView {
             
             var profileChartImageName = "profile_chart_occupancy"
             switch profile.type {
-            case .occupancy_daylight, .vacancy_daylight, .occupancy, .vacancy, .proximityLighting:
+            case .occupancy_daylight, .vacancy_daylight, .occupancy, .vacancy, .proximityLighting, .proximityLightingWithPhotocell:
                 timeT1Btn.isHidden = false
                 timeT1Label.isHidden = false
                 timeT2Btn.isHidden = false

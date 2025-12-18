@@ -594,11 +594,37 @@ class SyncDevicesViewController: UIViewController {
                 removeGroupStep = step
                 
             case .profile(let types):
-                
+                // 保存快照操作
+                var snapshotProfileTask: SyncDeviceStepTaskModel?
+                // 切换到对应profile操作
+                var switchProfileTask: SyncDeviceStepTaskModel?
                 let syncProfileTasks = types.map({
-                    return SyncDeviceStepTaskModel(name: $0.title, operationType: .configuration(node: node, type: .profile(type: $0)))
+                    let task = SyncDeviceStepTaskModel(name: $0.title, operationType: .configuration(node: node, type: .profile(type: $0)))
+                    // 设置前置条件关联
+                    switch $0 {
+                    case .lightControlSnapshoot:
+                        snapshotProfileTask = task
+                    case .lightControlSwitch:
+                        switchProfileTask = task
+                        if snapshotProfileTask != nil {
+                            task.relevanceTaskModels = [snapshotProfileTask!]
+                        }
+                    default:
+                        if snapshotProfileTask != nil {
+                            task.relevanceTaskModels.append(snapshotProfileTask!)
+                        }
+                        if switchProfileTask != nil {
+                            task.relevanceTaskModels.append(switchProfileTask!)
+                        }
+                    }
+                    
+                    if case .lightControlSnapshoot = $0 {
+                        snapshotProfileTask = task
+                    }
+                    return task
                 })
                 if syncProfileTasks.count > 0 {
+                    
                     let step = SyncDeviceStepModel(type: "profile".localizedString, state: .none, tasks: syncProfileTasks)
                     syncProfileTasks.forEach({ $0.parentStepModel = step })
                     if node.groupState == .exitFailure || removeGroupStep != nil {
@@ -881,6 +907,39 @@ class SyncDevicesViewController: UIViewController {
         if syncState == .inSync { // stop
             
             MeshProxyMessageCommand.shared.stopSendMessage(finishedBack: nil)
+            
+            // 当前设置的设备存在profile快照恢复未设置时
+            if let deviceModel = lastDeviceModel, let settingsStep = deviceModel.steps.first(where: { $0.state == .inSettings }) {
+                if let task = settingsStep.tasks.first(where: { task in
+                    switch task.operationType {
+                    case .configuration(_, let type):
+                        if case .profile(let profileType) = type {
+                            if case .lightControlRestore = profileType, task.state == .wait {
+                                return true
+                            }
+                        }
+                        return false
+                    default:
+                        return false
+                    }
+                }) {
+                   // 恢复快照，避免profile运行异常
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                        MeshProxyMessageCommand.shared.addMessage(messageHandles: task.operationType.messageHandles, finishedBack: nil)
+                    }
+               }
+            }
+//            if let stepModel = $0 as? SyncDeviceStepModel {
+//                stepModel.tasks.contains { task in
+//                    switch task.operationType {
+//                    case .configuration(let node, let type):
+//                        if case .profile(let profileType) = type {
+//                            if profileType == .lightControlRestore(sceneNumber)
+//                        }
+//                    }
+//                }
+//            }
+            
             sections.forEach({
                 $0.allModels.forEach({
                     if $0.state == .wait  {//|| $0.state == .none
@@ -1134,9 +1193,9 @@ class SyncDevicesViewController: UIViewController {
                         }
                     }
                     
-//                    let resultSuccessful = !resultMessageHandles.contains(where: { !$0.isSuccessful })
+                    let resultSuccessful = !resultMessageHandles.contains(where: { !$0.isSuccessful })
                     let operationSuccessful = ((model as? SyncDevicesModel)?.operationType?.isSuccessful ?? (model as? SyncDeviceStepTaskModel)?.operationType.isSuccessful) ?? false
-                    if operationSuccessful {
+                    if resultSuccessful && operationSuccessful {
                         model.state = .successful
                     }else {
                         model.state = .failed
@@ -1245,6 +1304,9 @@ class SyncDevicesViewController: UIViewController {
                         continue
                     }
                     if let model = step.tasks.first(where: { $0.state == .none || $0.state == .wait }) {
+                        if model.relevanceTaskModels.contains(where: { $0.state == .failed }) {
+                            continue
+                        }
                         return model
                     }
                 }

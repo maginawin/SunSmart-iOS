@@ -140,6 +140,8 @@ let AssistText_Color = RGB(148, 163, 184)
 let Yellow_Color = RGB(255, 193, 71)
 /// 紫色
 let Purple_Color = RGB(102, 103, 171)
+/// 错误红色
+let Error_Red_Color = RGB(255, 72, 49)
 
 #if Archipelago
 /// 主色

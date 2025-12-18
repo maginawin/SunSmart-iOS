@@ -259,7 +259,7 @@ extension DeviceRatedPowerCalibrationController: DeviceRatedPowerCalibrationSetS
             device.powerCalibrateState = .dimSave
             reloadDeviceCell(device: device)
             MeshAPI.sendMessage(message: SunricherVendorSet(function: .dimmerCollectRatedPower(pid: pid)), model: model)
-            DispatchQueue.main.asyncAfter(deadline: .now() + 6) {[weak self] in
+            DispatchQueue.main.asyncAfter(deadline: .now() + 10) {[weak self] in
                 guard let self = self else { return }
                 if device.powerCalibrateState == .dimSave {
                     device.powerCalibrateState = .none
@@ -290,7 +290,7 @@ extension DeviceRatedPowerCalibrationController: DeviceRatedPowerCalibrationSetS
             device.powerCalibrateState = .powerGet
             reloadDeviceCell(device: device)
             
-            DispatchQueue.main.asyncAfter(deadline: .now() + 6) {[weak self] in
+            DispatchQueue.main.asyncAfter(deadline: .now() + 10) {[weak self] in
                 guard let self = self, device.powerCalibrateState == .powerGet else { return }
                 MeshAPI.sendMessage(message: SunricherVendorGet(function: .dimmerRealPower), model: model) {[weak self] response in
                     if device.powerCalibrateState == .powerGet {
