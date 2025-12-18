@@ -474,9 +474,7 @@
 		C88555102DE6B44C00C8B688 /* DeviceSwitchesViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C89FD6652C89840400DE431D /* DeviceSwitchesViewController.swift */; };
 		C88555112DE6B44C00C8B688 /* DeviceSliderFunctionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C898EA752AC409230023B480 /* DeviceSliderFunctionView.swift */; };
 		C88555142DE6B44C00C8B688 /* NordicSigMeshSDK in Frameworks */ = {isa = PBXBuildFile; productRef = C88553AE2DE6B44C00C8B688 /* NordicSigMeshSDK */; };
-		C88555162DE6B44C00C8B688 /* Privacy Policy.html in Resources */ = {isa = PBXBuildFile; fileRef = C89B34222C93E3B700A77DB6 /* Privacy Policy.html */; };
 		C88555172DE6B44C00C8B688 /* XWHUDManager_right@3x.png in Resources */ = {isa = PBXBuildFile; fileRef = C896BB8E2A930C3800217512 /* XWHUDManager_right@3x.png */; };
-		C88555182DE6B44C00C8B688 /* User Agreement.html in Resources */ = {isa = PBXBuildFile; fileRef = C89B34202C93E2B600A77DB6 /* User Agreement.html */; };
 		C88555192DE6B44C00C8B688 /* Localizable.strings in Resources */ = {isa = PBXBuildFile; fileRef = C898E2D72AB7E46300C71315 /* Localizable.strings */; };
 		C885551A2DE6B44C00C8B688 /* XWHUDManager_successful@2x.png in Resources */ = {isa = PBXBuildFile; fileRef = C8C1E5A52B6A1FA400F60E62 /* XWHUDManager_successful@2x.png */; };
 		C885551B2DE6B44C00C8B688 /* XWHUDManager_tip@3x.png in Resources */ = {isa = PBXBuildFile; fileRef = C896BB902A930C3800217512 /* XWHUDManager_tip@3x.png */; };
@@ -1042,6 +1040,8 @@
 		C8A85CDF2E09014B007F9B81 /* DeviceAddSelectAllViewCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A85CDD2E09014B007F9B81 /* DeviceAddSelectAllViewCell.swift */; };
 		C8A85CE12E0A4886007F9B81 /* DeviceAddCandidateDeviceListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A85CE02E0A4886007F9B81 /* DeviceAddCandidateDeviceListView.swift */; };
 		C8A85CE22E0A4886007F9B81 /* DeviceAddCandidateDeviceListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A85CE02E0A4886007F9B81 /* DeviceAddCandidateDeviceListView.swift */; };
+		C8A8D7412EF3D9C80025FFF7 /* Privacy Policy.html in Resources */ = {isa = PBXBuildFile; fileRef = C8A8D73F2EF3D9C80025FFF7 /* Privacy Policy.html */; };
+		C8A8D7422EF3D9C80025FFF7 /* User Agreement.html in Resources */ = {isa = PBXBuildFile; fileRef = C8A8D7402EF3D9C80025FFF7 /* User Agreement.html */; };
 		C8AADEFF2A97350400238C1C /* SiteData.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8AADEFE2A97350400238C1C /* SiteData.swift */; };
 		C8AADF012A973DA600238C1C /* SpaceData.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8AADF002A973DA600238C1C /* SpaceData.swift */; };
 		C8AAE2772A97435A00238C1C /* Database.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8AAE2762A97435A00238C1C /* Database.swift */; };
@@ -1608,6 +1608,8 @@
 		C8A7A6B72DC216FA00191E9C /* EnergyHarvestSelectView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EnergyHarvestSelectView.swift; sourceTree = "<group>"; };
 		C8A85CDD2E09014B007F9B81 /* DeviceAddSelectAllViewCell.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceAddSelectAllViewCell.swift; sourceTree = "<group>"; };
 		C8A85CE02E0A4886007F9B81 /* DeviceAddCandidateDeviceListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceAddCandidateDeviceListView.swift; sourceTree = "<group>"; };
+		C8A8D73F2EF3D9C80025FFF7 /* Privacy Policy.html */ = {isa = PBXFileReference; lastKnownFileType = text.html; path = "Privacy Policy.html"; sourceTree = "<group>"; };
+		C8A8D7402EF3D9C80025FFF7 /* User Agreement.html */ = {isa = PBXFileReference; lastKnownFileType = text.html; path = "User Agreement.html"; sourceTree = "<group>"; };
 		C8AADEFE2A97350400238C1C /* SiteData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SiteData.swift; sourceTree = "<group>"; };
 		C8AADF002A973DA600238C1C /* SpaceData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpaceData.swift; sourceTree = "<group>"; };
 		C8AAE2762A97435A00238C1C /* Database.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Database.swift; sourceTree = "<group>"; };
@@ -2171,6 +2173,8 @@
 		C88555302DE6B56200C8B688 /* Archipelago */ = {
 			isa = PBXGroup;
 			children = (
+				C8A8D73F2EF3D9C80025FFF7 /* Privacy Policy.html */,
+				C8A8D7402EF3D9C80025FFF7 /* User Agreement.html */,
 				C88555312DE6B5C900C8B688 /* Archipelago-Info.plist */,
 				C88555332DE6B5F400C8B688 /* Archipelago-Assets.xcassets */,
 				C88555382DE6BD3000C8B688 /* Archipelago-LaunchScreen.storyboard */,
@@ -3359,9 +3363,7 @@
 			files = (
 				C886E1942E30E24100D0C3A6 /* Assets.xcassets in Resources */,
 				C886E1932E30E20500D0C3A6 /* Archipelago-Assets.xcassets in Resources */,
-				C88555162DE6B44C00C8B688 /* Privacy Policy.html in Resources */,
 				C88555172DE6B44C00C8B688 /* XWHUDManager_right@3x.png in Resources */,
-				C88555182DE6B44C00C8B688 /* User Agreement.html in Resources */,
 				C8B483D72E4B361F006D85BC /* device_add.mp3 in Resources */,
 				C8B483D82E4B361F006D85BC /* device_reset.mp3 in Resources */,
 				C85D55112E6182DC00BFEEDA /* broadcast_loading.gif in Resources */,
@@ -3374,6 +3376,8 @@
 				C88555212DE6B44C00C8B688 /* devices_config.json in Resources */,
 				C88555322DE6B5C900C8B688 /* Archipelago-Info.plist in Resources */,
 				C88555222DE6B44C00C8B688 /* XWHUDManager_error@3x.png in Resources */,
+				C8A8D7412EF3D9C80025FFF7 /* Privacy Policy.html in Resources */,
+				C8A8D7422EF3D9C80025FFF7 /* User Agreement.html in Resources */,
 				C88555252DE6B44C00C8B688 /* XWHUDManager_info@2x.png in Resources */,
 				C88555262DE6B44C00C8B688 /* XWHUDManager_info@3x.png in Resources */,
 				C88555272DE6B44C00C8B688 /* XWHUDManager_right@2x.png in Resources */,
@@ -4875,7 +4879,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 6;
-				DEVELOPMENT_TEAM = JTD3WYUC58;
+				DEVELOPMENT_TEAM = RJTP8XBT2V;
 				GCC_PREFIX_HEADER = "";
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = "Archipelago/Archipelago-Info.plist";
@@ -4895,7 +4899,7 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.azoula.archipelago;
+				PRODUCT_BUNDLE_IDENTIFIER = com.acslighting.acslighting;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
 				SUPPORTS_MACCATALYST = NO;
@@ -4917,7 +4921,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 6;
-				DEVELOPMENT_TEAM = JTD3WYUC58;
+				DEVELOPMENT_TEAM = RJTP8XBT2V;
 				GCC_PREFIX_HEADER = "";
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = "Archipelago/Archipelago-Info.plist";
@@ -4937,7 +4941,7 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.azoula.archipelago;
+				PRODUCT_BUNDLE_IDENTIFIER = com.acslighting.acslighting;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
 				SUPPORTS_MACCATALYST = NO;
