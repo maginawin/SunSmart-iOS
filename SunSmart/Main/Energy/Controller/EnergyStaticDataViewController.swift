@@ -114,7 +114,12 @@ class EnergyStaticDataViewController: UIViewController {
     override func viewDidLoad() {
         super.viewDidLoad()
         
-        view.backgroundColor = Background_Color
+        if self.wm_pageController == nil {
+            title = "static_data".localizedString
+            navigationController?.setNavigationBarBackgroundColor(color: Background_Color)
+            view.backgroundColor = Background_Color
+            navigationItem.leftBarButtonItem = UIBarButtonItem(image: UIImage(named: "navigation_back")?.withRenderingMode(.alwaysOriginal), style: .done, target: self, action: #selector(back))
+        }
         
         setupData()
         
@@ -135,6 +140,10 @@ class EnergyStaticDataViewController: UIViewController {
         if self.devicesTableView.firstShowFlashScrollIndicators {
             self.devicesTableView.flashScrollIndicatorsIfNeeded()
         }
+    }
+    
+    @objc private func back() {
+        dismiss(animated: true)
     }
     
     private func setupData() {

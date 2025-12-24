@@ -43,8 +43,11 @@ class SpaceMoreViewController: UIViewController {
     private var collectionView: UICollectionView!
     private var flowLayout: UICollectionViewFlowLayout!
     
+    #if SylSmart
+    private var options: [Options] = [.ble, .deviceParameters, .energyData, .contentDisplay]
+    #else
     private var options: [Options] = [.ble, .mesh, .deviceParameters, .energyData, .contentDisplay]
-    
+    #endif
     init(space: SpaceData) {
         self.space = space
         super.init(nibName: nil, bundle: nil)
@@ -135,7 +138,11 @@ extension SpaceMoreViewController: UICollectionViewDataSource, UICollectionViewD
             }
             present(NavigationViewController(rootViewController: vc), animated: true)
         case .energyData:
+            #if SylSmart
+            let vc = EnergyStaticDataViewController(space: space)
+            #else
             let vc = EnergyDataViewController(space: space)
+            #endif
             if isIPad {
                 vc.preferredContentSize = iPadPreferredContentSize
             }
