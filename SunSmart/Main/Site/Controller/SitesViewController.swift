@@ -521,23 +521,23 @@ class SitesViewController: UIViewController {
 //        guard let space = favouriteSites.first?.spaces.last else {
 //            return
 //        }
-        guard let space = favouriteSites.last?.spaces.last else { return }
+//        guard let space = favouriteSites.last?.spaces.last else { return }
         
-        DispatchQueue.global().async {
-            MeshLibManager.manager.setMeshNetworkConnected(meshUUID: space.meshUUID, subNetworkId: space.meshNetworkId)
-            MeshLibManager.manager.publishModelIDs = []
-            MeshNetworkManager.instance.loadExtensionData { _ in
-                DispatchQueue.main.async {
-                    let group = MeshNetworkManager.instance.groups.first!
-                    let vc = ProfileSettingsViewController(group: group, profile: group.info.profile)
-    //                let vc = GroupPathSequencePageController(group: group)
-//                    let vc = DaliMasterViewController(space: space, node: MeshNetworkManager.instance.realNodes[0])
-//                    let vc = DeviceRatedPowerCalibrationController(devices: MeshNetworkManager.instance.realNodes)
-//                    let vc = DeviceParameterSettingsController(devices: MeshNetworkManager.instance.realNodes)
-                    self.present(NavigationViewController(rootViewController: vc), animated: true)
-                }
-            }
-        }
+//        DispatchQueue.global().async {
+//            MeshLibManager.manager.setMeshNetworkConnected(meshUUID: space.meshUUID, subNetworkId: space.meshNetworkId)
+//            MeshLibManager.manager.publishModelIDs = []
+//            MeshNetworkManager.instance.loadExtensionData { _ in
+//                DispatchQueue.main.async {
+//                    let group = MeshNetworkManager.instance.groups.first!
+//                    let vc = ProfileSettingsViewController(group: group, profile: group.info.profile)
+//    //                let vc = GroupPathSequencePageController(group: group)
+////                    let vc = DaliMasterViewController(space: space, node: MeshNetworkManager.instance.realNodes[0])
+////                    let vc = DeviceRatedPowerCalibrationController(devices: MeshNetworkManager.instance.realNodes)
+////                    let vc = DeviceParameterSettingsController(devices: MeshNetworkManager.instance.realNodes)
+//                    self.present(NavigationViewController(rootViewController: vc), animated: true)
+//                }
+//            }
+//        }
         
 //        let vc = DeviceForceResetDevicePageController()
 //        let vc = DeviceParameterSettingsController(devices: [])
@@ -549,13 +549,13 @@ class SitesViewController: UIViewController {
 //        self.present(NavigationViewController(rootViewController: vc), animated: true)
 
         
-//        ImportProjectView {[weak self] mode in
-//            if mode == .scanQRCode {
-//                self?.scanQRCode()
-//            }else {
-//                self?.uuidImport()
-//            }
-//        }.show()
+        ImportProjectView {[weak self] mode in
+            if mode == .scanQRCode {
+                self?.scanQRCode()
+            }else {
+                self?.uuidImport()
+            }
+        }.show()
 
     }
     

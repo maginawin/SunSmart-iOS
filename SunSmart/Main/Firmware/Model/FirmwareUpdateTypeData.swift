@@ -25,7 +25,8 @@ class FirmwareUpdateTypeData {
         guard let targetVersion = self.targetVersion else {
             return []
         }
-        return nodes.filter({ $0.firmwareVersion != nil && targetVersion.compare($0.firmwareVersion!, options: .numeric) == .orderedSame })
+        
+        return nodes.filter({ $0.firmwareVersion != nil && $0.firmwareVersion!.compare(targetVersion, options: .numeric) != .orderedAscending })
     }
     /// 可升级的设备list
     var canUpgradNodes: [Node] {

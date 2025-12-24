@@ -171,7 +171,7 @@
 "device_notconnect_message" = "This operation requires the phone's bluetooth connection to the device.";
 "re_sync" = "RE-SYNC";
 "group_delete_offline" = "All devices are offline and cannot be deleted.At least one device needs to be online.";
-"group_delete_failed" = "failed to delete group";
+"group_delete_failed" = "Failed to delete group";
 "group_cannot_select_message" = "You cannot select other group.";
 "no_members" = "No Members!";
 "group_empty" = "There is no device in the group.";
@@ -1489,3 +1489,16 @@
 "profile_scene_delete" = "Profile scene delete";
 "profile_lux_trigger_lock" = "Lux trigger lock";
 "profile_lux_trigger_unlock" = "Lux trigger unlock";
+"light_sensor_template" = "Light Sensor Template";
+"no_light_sensor_template" = "No Light Sensor Template!";
+"create_new_template" = "Create New Template";
+"device_detail" = "Device detail";
+"night_starts_below" = "Night starts below";
+"day_starts_above" = "Day starts above";
+"create_new_template" = "Create New Template";
+"nightday_illuminance_threshold" = "Night&Day Illuminance threshold";
+"applied_to_device" = "Applied to device";
+"template_detail" = "Template Detail";
+"create_light_sensor_template" = "Create Light Sensor Template";
+"no_device_selected" = "No device selected";
+"modify" = "Modify";

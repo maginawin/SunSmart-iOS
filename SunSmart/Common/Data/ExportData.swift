@@ -457,6 +457,7 @@ extension SpaceData {
                     if profile.type == .proximityLightingWithPhotocell {
                         if let day = profile.dayData {
                             let dayProfileDict: [String: Any] = [
+                                "id": day.id,
                                 "startsBelowLux": day.startsBelowLux,
                                 "useCalibrationValues": day.useCalibrationValues,
                                 "executeType": day.executeType.rawValue,
@@ -467,6 +468,7 @@ extension SpaceData {
                         }
                         if let night = profile.nightData {
                             let nightProfileDict: [String: Any] = [
+                                "id": night.id,
                                 "startsBelowLux": night.startsBelowLux,
                                 "useCalibrationValues": night.useCalibrationValues,
                                 "executeType": night.executeType.rawValue,

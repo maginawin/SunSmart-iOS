@@ -24,6 +24,7 @@ class SyncDevicesViewController: UIViewController {
     private var tableView: UITableView!
     private var bottomView: UIView!
     private var selectAllBtn: UIButton!
+    private var progressLabel: UILabel!
     /// 返回按钮
     private lazy var backBtn: UIButton = {
         let btn = UIButton(normalImageName: "navigation_back", target: self, action: #selector(backAction))
@@ -47,7 +48,8 @@ class SyncDevicesViewController: UIViewController {
     var backActionCallback: ((_ result: [SyncResultData])->Void)?
     /// 更新版本的设备地址
     private var updateVersionAddresses: [Address] = []
-    
+    /// lux触发锁定的设备list
+    var luxTriggerLockDevices: [Node] = []
     /// 自动化恢复
     var automationRestore: Bool = false
     /// 重试次数
@@ -594,32 +596,40 @@ class SyncDevicesViewController: UIViewController {
                 removeGroupStep = step
                 
             case .profile(let types):
-                // 保存快照操作
-                var snapshotProfileTask: SyncDeviceStepTaskModel?
+                // 锁定配置切换操作
+                var luxTriggerLockTask: SyncDeviceStepTaskModel?
                 // 切换到对应profile操作
                 var switchProfileTask: SyncDeviceStepTaskModel?
+                // 保存到profile 场景
+                var lastProfileStoreTask: SyncDeviceStepTaskModel?
+                /// 同步profile场景的操作任务list
+                var syncProfileSceneTasks: [SyncDeviceStepTaskModel] = []
                 let syncProfileTasks = types.map({
                     let task = SyncDeviceStepTaskModel(name: $0.title, operationType: .configuration(node: node, type: .profile(type: $0)))
                     // 设置前置条件关联
                     switch $0 {
-                    case .lightControlSnapshoot:
-                        snapshotProfileTask = task
+                    case .profileToggleTriggerConditionLuxLock:
+                        luxTriggerLockTask = task
                     case .lightControlSwitch:
                         switchProfileTask = task
-                        if snapshotProfileTask != nil {
-                            task.relevanceTaskModels = [snapshotProfileTask!]
+                        if luxTriggerLockTask != nil {
+                            task.relevanceTaskModels.append(luxTriggerLockTask!)
                         }
+                        if lastProfileStoreTask != nil {
+                            task.relevanceTaskModels.append(lastProfileStoreTask!)
+                        }
+                    case .lightControlStore:
+                        task.relevanceTaskModels = syncProfileSceneTasks
+                        syncProfileSceneTasks.removeAll()
+                        lastProfileStoreTask = task
                     default:
-                        if snapshotProfileTask != nil {
-                            task.relevanceTaskModels.append(snapshotProfileTask!)
+                        if luxTriggerLockTask != nil {
+                            task.relevanceTaskModels.append(luxTriggerLockTask!)
                         }
                         if switchProfileTask != nil {
                             task.relevanceTaskModels.append(switchProfileTask!)
                         }
-                    }
-                    
-                    if case .lightControlSnapshoot = $0 {
-                        snapshotProfileTask = task
+                        syncProfileSceneTasks.append(task)
                     }
                     return task
                 })
@@ -848,6 +858,21 @@ class SyncDevicesViewController: UIViewController {
     
     /// 返回
     @objc private func backAction() {
+        
+        // 判断是否有lux触发设备需要解锁
+        if self.luxTriggerLockDevices.count > 0 {
+            let unlockMessage = SunricherVendorSet(function: .daylightLuxTriggerLock(delay: 0))
+            if self.luxTriggerLockDevices.count > 3 { // 超过3个广播解锁
+                MeshAPI.sendMessage(message: unlockMessage, address: .allNodes)
+            }else { // 3个以内单播解锁
+                self.luxTriggerLockDevices.forEach({
+                    if let vendorModel = $0.sunricherVendorModel {
+                        MeshAPI.sendMessage(message: unlockMessage, model: vendorModel)
+                    }
+                })
+            }
+        }
+        
         if backActionCallback != nil {
             
             // 设备数据list
@@ -1001,12 +1026,20 @@ class SyncDevicesViewController: UIViewController {
     
     /// 更新状态UI
     private func updateSyncStateUI() {
+        
+        var devices: [SyncDevicesModel] = []
+        if let section = sections.first {
+            devices = section.devices
+        }
+        progressLabel.text = "\(devices.filter({ $0.state == .successful }).count)/\(devices.count)"
+        
         if syncState == .inSync {
             navigationItem.rightBarButtonItem?.title = "stop".localizedString
             navigationItem.rightBarButtonItem?.isEnabled = true
-            bottomView.isHidden = true
+            bottomView.isHidden = false
             tableView.contentInset = UIEdgeInsets(top: 0, left: 0, bottom: bottomView.height, right: 0)
             backBtn.isHidden = true
+            selectAllBtn.isHidden = true
         }else if syncState == .syncSuccess {
             bottomView.isHidden = true
             navigationItem.rightBarButtonItem = UIBarButtonItem()
@@ -1014,6 +1047,7 @@ class SyncDevicesViewController: UIViewController {
         }else if syncState == .syncFailure{
             navigationItem.rightBarButtonItem?.title = "re_sync".localizedString
             bottomView.isHidden = false
+            selectAllBtn.isHidden = false
             backBtn.isHidden = false
             var failedModels: [SyncDevicesModel] = []
             
@@ -1172,10 +1206,26 @@ class SyncDevicesViewController: UIViewController {
                         if let address = handle.address ?? handle.model?.parentElement?.unicastAddress, let node = MeshNetworkManager.instance.meshNetwork?.node(withAddress: address) {
                             node.updateNodeStatus(message: statusMessage, source: address)
                         }
-                    }else if let vendorStatusMessage = statusMessage as? SunricherVendorStatus, case .dimmerPowerCalibrate = vendorStatusMessage.status.code {
-                        if vendorStatusMessage.status.errorCode == 2 { // 功率校准异常
+                    }else if let vendorStatusMessage = statusMessage as? SunricherVendorStatus {
+                        if vendorStatusMessage.status.code == .dimmerPowerCalibrate {
+                            if vendorStatusMessage.status.errorCode == 2 { // 功率校准异常
+                                if let address = handle.address ?? handle.model?.parentElement?.unicastAddress, let node = MeshNetworkManager.instance.meshNetwork?.node(withAddress: address) {
+                                    node.powerCalibrateError = .powerExceed
+                                }
+                            }
+                        }else if vendorStatusMessage.status.code == .daylightLuxTriggerLock { // lux触发场景锁定/解锁
                             if let address = handle.address ?? handle.model?.parentElement?.unicastAddress, let node = MeshNetworkManager.instance.meshNetwork?.node(withAddress: address) {
-                                node.powerCalibrateError = .powerExceed
+                                if let vendorSet = handle.message as? SunricherVendorSet, case .daylightLuxTriggerLock(let delay) = vendorSet.function {
+                                    if delay > 0 {
+                                        if !self.luxTriggerLockDevices.contains(node) {
+                                            self.luxTriggerLockDevices.append(node)
+                                        }
+                                    }else {
+                                        if let index = self.luxTriggerLockDevices.firstIndex(of: node) {
+                                            self.luxTriggerLockDevices.remove(at: index)
+                                        }
+                                    }
+                                }
                             }
                         }
                     }
@@ -1392,6 +1442,13 @@ class SyncDevicesViewController: UIViewController {
         bottomView.snp.makeConstraints { make in
             make.left.right.bottom.equalToSuperview()
             make.height.equalTo(SCRYFrom(56) + (isIPad ? 0 : kSafeAreaBottomHeight))
+        }
+        
+        progressLabel = UILabel(text: "", textColor: TextBlack_Color, fontSize: 12)
+        bottomView.addSubview(progressLabel)
+        progressLabel.snp.makeConstraints { make in
+            make.left.equalTo(SCRXFrom(18))
+            make.top.equalTo(SCRYFrom(25))
         }
         
         selectAllBtn = UIButton(title: "select_all".localizedString, titleSize: 12, titleWeight: .light, titleColor: TextBlack_Color, normalImageName: "device_select_un", selectedImageName: "device_select", target: self, action: #selector(selectAllBtnAction))

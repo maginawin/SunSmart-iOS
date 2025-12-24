@@ -1065,18 +1065,18 @@ extension SpaceData {
                     }
                     
                     // 真实功率
-                    if let calibrationRatedPower = nodeJson["calibrationRatedPower"].uInt32 {
+                    if let calibrationRatedPower = nodeJson["calibrationRatedPower"].uInt32, calibrationRatedPower > 0 {
                         node.calibrationRatedPower = calibrationRatedPower
                     }
-                    if let calibrationCollectRatedPower = nodeJson["calibrationCollectRatedPower"].uInt32 {
+                    if let calibrationCollectRatedPower = nodeJson["calibrationCollectRatedPower"].uInt32, calibrationCollectRatedPower > 0 {
                         node.calibrationCollectRatedPower = calibrationCollectRatedPower
                     }
-                    if let calibrationCollectAdcDatumValue = nodeJson["calibrationCollectAdcDatumValue"].uInt32 {
+                    if let calibrationCollectAdcDatumValue = nodeJson["calibrationCollectAdcDatumValue"].uInt32, calibrationCollectAdcDatumValue > 0 {
                         node.calibrationCollectAdcDatumValue = calibrationCollectAdcDatumValue
                     }
                     
                     // 节点所支持功能
-                    if let requiredFunctionTypeValues = nodeJson["calibrationRatedPower"].arrayObject as? [Int] {
+                    if let requiredFunctionTypeValues = nodeJson["requiredFunctionTypes"].arrayObject as? [Int] {
                         node.requiredFunctionTypes = requiredFunctionTypeValues.compactMap({ Node.RequiredFunctionType(rawValue: $0) })
                     }
                     

@@ -994,6 +994,17 @@
         "iconCategory" : "Lighting",
         "deviceCategory" : "Lighting",
         "modelName" : "SR-nRF54L15-Moudle"
+    },
+    {
+        "companyId" : "0A78",
+        "productId" : "3024",
+        "categoryName" : "PIR Sensor Lighting",
+        "elementCount" : 3,
+        "iconCategory" : "Lighting",
+        "deviceCategory" : "Lighting",
+        "modelName" : "SR-BL9033J-PIR-V",
+        "sensitivityRangeMin" : 0,
+        "sensitivityRangeMax" : 53083
     }
     
 ]

@@ -252,8 +252,8 @@ extension ProfileType {
         case .highLowEndTrim(let range):
             let minLightness = max(Node.getLightness(lightness100: range.lowerBound), 1)
             let maxLightness = Node.getLightness(lightness100: range.upperBound)
-            if let lightnessModel = node.lightnessModel {
-                messageHandles.append(MeshMessageHandle(message: LightLightnessRangeSet(minLightness...maxLightness), model: lightnessModel))
+            if let lightnessSetupModel = node.lightnessSetupModel {
+                messageHandles.append(MeshMessageHandle(message: LightLightnessRangeSet(minLightness...maxLightness), model: lightnessSetupModel))
             }
         case .occupancyLevel(let value):
             let lightness = Node.getLightness(lightness100: value)

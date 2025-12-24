@@ -676,6 +676,8 @@ class Profile: Copyable {
     var dayData: TriggerConditionData?
     /// profile下场景list
     var scenes: [LightControlScene] = []
+    /// 光照传感器模板
+    var lightSensorTemplates: [ProfileLightSensorTemplate] = []
     
     /// 灯光阶段调节数据（图表）
     var lightData: LightData {
@@ -813,6 +815,35 @@ class Profile: Copyable {
             }
         }
         return nil
+    }
+    
+}
+
+/// profile 光感模板
+class ProfileLightSensorTemplate {
+    
+    let id: String
+    /// 名称
+    var name: String
+    /// 晚上lux
+    var nightStartsBelowLux: UInt16
+    /// 白天lux
+    var dayStartsAboveLux: UInt16
+    /// 模板设备地址list
+    var deviceAddresses: [Address] = []
+    /// 模板设备list
+    var devices: [Node] {
+        return deviceAddresses.compactMap({ address in
+            MeshNetworkManager.instance.realNodes.first(where: { $0.primaryUnicastAddress == address })
+        })
+    }
+    
+    init(id: String = UUID().uuidString, name: String, nightStartsBelowLux: UInt16, dayStartsAboveLux: UInt16, deviceAddresses: [Address]) {
+        self.id = id
+        self.name = name
+        self.nightStartsBelowLux = nightStartsBelowLux
+        self.dayStartsAboveLux = dayStartsAboveLux
+        self.deviceAddresses = deviceAddresses
     }
     
 }

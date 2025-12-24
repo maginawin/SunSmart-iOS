@@ -165,6 +165,12 @@ class GroupMembersViewController: UIViewController {
             let exitNodes = self.group.nodes.filter({ !self.selectNodes.contains($0) })
             exitNodes.forEach({
                 $0.groupState = .exitFailure
+                if $0.sensorCalibrationData?.isCalibration ?? false { // 退出组清空校准数据
+                    $0.preConfiguration.resetDaylightCalibration = true
+                    if let meshUUD = $0.network?.uuid.uuidString {
+                        $0.preConfiguration.save(meshUUID: meshUUD, nodeAddress: $0.primaryUnicastAddress)
+                    }
+                }
             })
             // 退出组的设备，整理邻近照明路径关系
             if exitNodes.count > 0, self.group.info.profile.type == .proximityLighting || self.group.info.profile.type == .proximityLightingWithPhotocell, let path = self.group.info.proximityLightingPath {

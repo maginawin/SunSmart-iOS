@@ -624,11 +624,11 @@ extension MeshNetworkManager {
                 group.info = GroupInfo.load(meshUUID: uuid, address: group.address.address) ?? GroupInfo(address: group.address.address)
                 
                 // 兼容旧版本profile未保存到场景的设备
-                let noGeneralLightControlSceneNodes = group.nodes.filter({ node in node.lightLCSceneSetupModel != nil && !node.lightControlSceneExecuteDatas.contains(where: { $0.sceneNumber == .generalLightControlScene }) })
-                noGeneralLightControlSceneNodes.forEach({ node in
-                    let sceneExecuteData = SceneExecuteData(sceneNumber: .generalLightControlScene, isOn: node.isOn, lightness: node.lightness, cct: node.temperature, lightControlData: node.lightLCProperty.copy())
-                    node.lightControlSceneExecuteDatas.insert(sceneExecuteData, at: 0)
-                })
+//                let noGeneralLightControlSceneNodes = group.nodes.filter({ node in node.requiredFunctionTypes.contains(.lightLCScene) && node.lightLCSceneSetupModel != nil && !node.lightControlSceneExecuteDatas.contains(where: { $0.sceneNumber == .generalLightControlScene }) })
+//                noGeneralLightControlSceneNodes.forEach({ node in
+//                    let sceneExecuteData = SceneExecuteData(sceneNumber: .generalLightControlScene, isOn: node.isOn, lightness: node.lightness, cct: node.temperature, lightControlData: node.lightLCProperty.copy())
+//                    node.lightControlSceneExecuteDatas.insert(sceneExecuteData, at: 0)
+//                })
                 
                let bindSchedules = self.schedules.filter({ schedule in
                    schedule.groups.contains(where: { $0.address == group.address }) ||
@@ -1731,7 +1731,7 @@ extension Node {
     
     /// 是否支持lightControl Scene功能（新版profile）
     var supportLightLCScene: Bool {
-        return self.requiredFunctionTypes.contains(.lightLCScene)
+        return self.requiredFunctionTypes.contains(.lightLCScene) && self.lightLCSceneModel != nil
 //        self.lightLCSceneSetupModel != nil && self.lightLCSceneSetupModel!.boundApplicationKeys.count > 0
     }
     
@@ -2109,44 +2109,49 @@ extension Node {
             
         case is SceneStore:
             let sceneId = (message as! SceneStore).scene
-            var cct = temperature
-            var lightness = self.lightness
-            // 不支持cct，使用group预配置的cct值
-            let groupSceneData = self.group?.info.sceneExecuteDatas.first(where: { $0.sceneNumber == sceneId })
-            if self.temperatureModel == nil, let groupCct = groupSceneData?.cct {
-                cct = groupCct
-            }
-            if let groupSceneExecuteData = groupSceneData {
-                // 判断是否设置了亮度范围，如已设置亮度范围导致达不到目标亮度则判定正确
-                if self.lightnessRange.lowerBound > groupSceneExecuteData.lightness || self.lightnessRange.upperBound < groupSceneExecuteData.lightness {
-                    lightness = groupSceneExecuteData.lightness
+            if !sceneId.isSpecialScene {
+                var cct = temperature
+                var lightness = self.lightness
+                // 不支持cct，使用group预配置的cct值
+                let groupSceneData = self.group?.info.sceneExecuteDatas.first(where: { $0.sceneNumber == sceneId })
+                if self.temperatureModel == nil, let groupCct = groupSceneData?.cct {
+                    cct = groupCct
                 }
+                if let groupSceneExecuteData = groupSceneData {
+                    // 判断是否设置了亮度范围，如已设置亮度范围导致达不到目标亮度则判定正确
+                    if self.lightnessRange.lowerBound > groupSceneExecuteData.lightness || self.lightnessRange.upperBound < groupSceneExecuteData.lightness {
+                        lightness = groupSceneExecuteData.lightness
+                    }
+                }
+                
+                let sceneData = SceneExecuteData(sceneNumber: sceneId, isOn: lightness > 0, lightness: lightness, cct: cct)
+    //            let sceneData = self.sceneExecuteDatas.first(where: { $0.sceneNumber == sceneId })
+                if let sceneIndex = self.sceneExecuteDatas.firstIndex(where: { $0.sceneNumber == sceneId }) {
+                    self.sceneExecuteDatas.replaceSubrange(sceneIndex...sceneIndex, with: [sceneData])
+                }else {
+                    self.sceneExecuteDatas.append(sceneData)
+    //                self.sceneExecuteDatas.append(SceneExecuteData(sceneNumber: sceneId, isOn: lightness > 0, lightness: lightness, cct: cct))
+                }
+                self.savePropertys()
+                
+                //            let executeData = SceneExecuteData(scenenumber: sceneId, lightness: self.lightness, cct: cct)
+                //            print("address: \(primaryUnicastAddress) scene:\(sceneId) lightness: \(self.lightness100) cct: \(cct)")
+                //            let groupScene = self.group?.info.sceneExecuteDatas[sceneId]
+                //            print("target scene:\(sceneId) lightness: \(groupScene!.lightness) cct: \(groupScene!.cct)")
+                //            self.sceneDatas.updateValue(executeData, forKey: sceneId)
+                //            if let uuid = meshUUID {
+                //                SceneExecuteData.save(meshUUID: uuid, networkKey: networkKey, address: primaryUnicastAddress, sceneId: Int(sceneId), sceneData: executeData)
+                //            }
             }
-            
-            let sceneData = SceneExecuteData(sceneNumber: sceneId, isOn: lightness > 0, lightness: lightness, cct: cct)
-//            let sceneData = self.sceneExecuteDatas.first(where: { $0.sceneNumber == sceneId })
-            if let sceneIndex = self.sceneExecuteDatas.firstIndex(where: { $0.sceneNumber == sceneId }) {
-                self.sceneExecuteDatas.replaceSubrange(sceneIndex...sceneIndex, with: [sceneData])
-            }else {
-                self.sceneExecuteDatas.append(sceneData)
-//                self.sceneExecuteDatas.append(SceneExecuteData(sceneNumber: sceneId, isOn: lightness > 0, lightness: lightness, cct: cct))
-            }
-            self.savePropertys()
-//            let executeData = SceneExecuteData(scenenumber: sceneId, lightness: self.lightness, cct: cct)
-//            print("address: \(primaryUnicastAddress) scene:\(sceneId) lightness: \(self.lightness100) cct: \(cct)")
-//            let groupScene = self.group?.info.sceneExecuteDatas[sceneId]
-//            print("target scene:\(sceneId) lightness: \(groupScene!.lightness) cct: \(groupScene!.cct)")
-//            self.sceneDatas.updateValue(executeData, forKey: sceneId)
-//            if let uuid = meshUUID {
-//                SceneExecuteData.save(meshUUID: uuid, networkKey: networkKey, address: primaryUnicastAddress, sceneId: Int(sceneId), sceneData: executeData)
-//            }
+    
             break
         case is SceneDelete:
             let sceneId = (message as! SceneDelete).scene
-//            self.sceneDatas.removeValue(forKey: sceneId)
-            delete(sceneId: sceneId)
-//            if let uuid = meshUUID {
-//                SceneExecuteData.deleteData(meshUUID: uuid, address: primaryUnicastAddress, sceneId: Int(sceneId))
+            if !sceneId.isSpecialScene {
+                //            self.sceneDatas.removeValue(forKey: sceneId)
+                delete(sceneId: sceneId)
+                //            if let uuid = meshUUID {
+                //                SceneExecuteData.deleteData(meshUUID: uuid, address: primaryUnicastAddress, sceneId: Int(sceneId))
                 
                 // 组对应场景数据是否待删除
                 if let scene = MeshNetworkManager.instance.scenes.first(where: {$0.number == sceneId}), let group = self.group, let groupSceneData = group.info.sceneExecuteDatas.first(where: { $0.sceneNumber == sceneId }), groupSceneData.state == .waitDelete {
@@ -2159,6 +2164,7 @@ extension Node {
                         group.info.save()
                     }
                 }
+            }
 //            }
            
         case is SchedulerActionSet:
@@ -2276,12 +2282,25 @@ extension Node {
                         self.restoreData?.daylightCalibrationValue = nil
                         save()
                     }
-                case .daylightCalibrateRate:
+                case .daylightCalibrateRate(let sensorRate, let ambientLightRate):
                     self.restoreData?.daylightCalibrationData?.sensorRatio = nil
                     self.restoreData?.daylightCalibrationData?.ambientlightRatio = nil
+                    if self.preConfiguration.resetDaylightCalibration ?? false {
+                        self.preConfiguration.resetDaylightCalibration = nil
+                        if sensorRate == 100 && ambientLightRate == 100 { // 重置
+                            self.sensorCalibrationData = nil
+                            self.savePropertys()
+                        }
+                        if let meshUUID = self.network?.uuid.uuidString {
+                            self.preConfiguration.save(meshUUID: meshUUID, nodeAddress: self.primaryUnicastAddress)
+                        }
+                    }
                 case .daylightCalibrateIlluminanceInflectionPoint:
-                    self.restoreData?.daylightCalibrationData?.minLightInflectionPointData = nil
-                    self.restoreData?.daylightCalibrationData?.maxLightInflectionPointData = nil
+                    if self.restoreData?.daylightCalibrationData != nil {
+                        self.restoreData?.daylightCalibrationData?.minLightInflectionPointData = nil
+                        self.restoreData?.daylightCalibrationData?.maxLightInflectionPointData = nil
+                        self.save()
+                    }
                 case .pwmFrequency:
                     if self.restoreData?.pwmFrequency != nil {
                         self.restoreData?.pwmFrequency = nil

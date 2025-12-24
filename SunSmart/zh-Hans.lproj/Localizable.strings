@@ -1494,3 +1494,16 @@
 "profile_scene_delete" = "删除场景配置";
 "profile_lux_trigger_lock" = "锁定lux阈值触发";
 "profile_lux_trigger_unlock" = "解锁lux阈值触发";
+"light_sensor_template" = "Light Sensor Template";
+"no_light_sensor_template" = "No Light Sensor Template!";
+"create_new_template" = "Create New Template";
+"device_detail" = "Device detail";
+"night_starts_below" = "Night starts below";
+"day_starts_above" = "Day starts above";
+"create_new_template" = "Create New Template";
+"nightday_illuminance_threshold" = "Night&Day Illuminance threshold";
+"applied_to_device" = "Applied to device";
+"template_detail" = "Template Detail";
+"create_light_sensor_template" = "Create Light Sensor Template";
+"no_device_selected" = "No device selected";
+"modify" = "Modify";

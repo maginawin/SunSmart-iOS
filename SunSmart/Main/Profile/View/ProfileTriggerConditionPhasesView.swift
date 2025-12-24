@@ -55,7 +55,7 @@ class ProfileTriggerConditionPhasesView: UIView {
     var titleLabel: UILabel!
     private var helpBtn: UIButton!
     
-    private var startsBelowLabel: UILabel!
+    var startsBelowLabel: UILabel!
     private var luxField: UITextField!
     private var luxLabel: UILabel!
     private var luxTipLabel: UILabel!

@@ -683,7 +683,24 @@ class GroupViewController: UIViewController {
             }))
         }
         
+        #if DEBUG
+        if space.groupOperates.contains(.edit), group.info.profile.type == .proximityLightingWithPhotocell {
+            items.append(.init(icon: UIImage(named: "menu_profile_test"), title: "night".localizedString, hideAnimation: false, tapItemBack: {[weak self] _ in
+                guard let self = self else { return }
+                if let night = self.group.info.profile.nightData {
+                    MeshAPI.sendMessage(message: SceneRecall(night.sceneData.sceneNumber), address: self.group.address.address)
+                }
+            }))
+            
+            items.append(.init(icon: UIImage(named: "menu_profile_test"), title: "day".localizedString, hideAnimation: false, tapItemBack: {[weak self] _ in
+                guard let self = self else { return }
+                if let day = self.group.info.profile.dayData {
+                    MeshAPI.sendMessage(message: SceneRecall(day.sceneData.sceneNumber), address: self.group.address.address)
+                }
+            }))
+        }
         
+        #endif
         let touchCenterX = view.width - navigationRightItemMargin - 15
         let touchCenterY = view.safeAreaInsets.top - 10
 //        SCREEN_HEIGHT - view.height + view.safeAreaInsets.top - 15
@@ -861,8 +878,15 @@ class GroupViewController: UIViewController {
             }
             
             XWHUDManager.showCustomHUD(withMessage: "deleting".localizedString, isWindow: true)
-
-            GroupServer.deleteGroup(group: self.group, progress: nil) {[weak self] _ in
+            let hud = XWHUDManager.currentHUD()
+            if let loadingHud = hud, group.nodes.count > 0 {
+                loadingHud.minSize = CGSizeMake(128, 128)
+            }
+            GroupServer.deleteGroup(group: self.group, progress: { current, total in
+                if let loadingHud = hud {
+                    loadingHud.detailsLabel.text = "\(current)/\(total)"
+                }
+            }) {[weak self] _ in
                 XWHUDManager.hide()
                 guard let self = self else { return }
                 XWHUDManager.showSuccessTipHUD("done!".localizedString)

@@ -21,10 +21,20 @@ class Schedule: Codable, Copyable {
         case groups = 0
         /// 设备
         case devices = 1
-        /// 设备
+        /// 场景
         case scene = 2
         /// 组profile
         case profile = 3
+    }
+    
+    /// 日程profile数据
+    struct ScheduleProfile: Codable, Equatable {
+        let groupAddress: Address
+        let profileSceneNumber: SceneNumber
+        
+        static func == (lhs: ScheduleProfile, rhs: ScheduleProfile) -> Bool {
+            return lhs.groupAddress == rhs.groupAddress && lhs.profileSceneNumber == rhs.profileSceneNumber
+        }
     }
     
     /// 计划id  0~15
@@ -63,6 +73,8 @@ class Schedule: Codable, Copyable {
     var hour: Int = 0
     /// 分
     var minute: Int = 0
+    /// 日程profile
+    var profiles: [ScheduleProfile] = []
 
     /// 需要移出日程的设备
     var needDeleteNodeAddresses: [Address] = []
@@ -153,13 +165,14 @@ class Schedule: Codable, Copyable {
         return entry
     }
     
-    init(id: Int, name: String, enabled: Bool, nodeAddresses: [Address] = [], groupAddresses: [Address] = [], sceneNumber: SceneNumber?, selectTargetType: TargetType = .groups, action: SchedulerAction, fadeTime: Int, weekDays: [WeekDay], hour: Int, minute: Int) {
+    init(id: Int, name: String, enabled: Bool, nodeAddresses: [Address] = [], groupAddresses: [Address] = [], sceneNumber: SceneNumber?, profiles: [ScheduleProfile] = [], selectTargetType: TargetType = .groups, action: SchedulerAction, fadeTime: Int, weekDays: [WeekDay], hour: Int, minute: Int) {
         self.id = id
         self.enabled = enabled
         self.name = name
         self.nodeAddresses = nodeAddresses
         self.groupAddresses = groupAddresses
         self.sceneNumber = sceneNumber
+        self.profiles = profiles
         self.selectTargetType = selectTargetType
         self.action = action
         self.fadeTime = fadeTime
@@ -189,6 +202,7 @@ class Schedule: Codable, Copyable {
         case nodeAddresses = "deviceAddresses"
         case groupAddresses
         case sceneNumber = "sceneAddress"
+        case profiles
         case target = "selectTarget"
         case action
         case fadeTime
@@ -210,22 +224,29 @@ class Schedule: Codable, Copyable {
         self.minute = try container.decode(Int.self, forKey: .minute)
         self.weekDays = Schedule.getWeekDays(weekValue: try container.decode(Int.self, forKey: .dayOfWeek))
         
-        let nodeAddressStrings = try container.decode([String].self, forKey: .nodeAddresses)
-        nodeAddressStrings.forEach({
-            if let address = Address($0) {
-                self.nodeAddresses.append(address)
-            }
-        })
+        if let nodeAddressStrings = try container.decodeIfPresent([String].self, forKey: .nodeAddresses) {
+            nodeAddressStrings.forEach({
+                if let address = Address($0) {
+                    self.nodeAddresses.append(address)
+                }
+            })
+        }
         
-        let groupAddressStrings = try container.decode([String].self, forKey: .groupAddresses)
-        groupAddressStrings.forEach({
-            if let address = Address($0) {
-                self.groupAddresses.append(address)
-            }
-        })
+        if let groupAddressStrings = try container.decodeIfPresent([String].self, forKey: .groupAddresses) {
+            groupAddressStrings.forEach({
+                if let address = Address($0) {
+                    self.groupAddresses.append(address)
+                }
+            })
+        }
         
-        let sceneNumber = try container.decode(SceneNumber?.self, forKey: .sceneNumber)
-        self.sceneNumber = sceneNumber
+        if let sceneNumber = try? container.decodeIfPresent(SceneNumber?.self, forKey: .sceneNumber) {
+            self.sceneNumber = sceneNumber
+        }else if let sceneNumberHex = try? container.decodeIfPresent(String.self, forKey: .sceneNumber), let sceneNumber = SceneNumber(hex: sceneNumberHex) {
+            self.sceneNumber = sceneNumber
+        }
+        
+        self.profiles = try container.decodeIfPresent([ScheduleProfile].self, forKey: .profiles) ?? []
     }
     
     public func encode(to encoder: Encoder) throws {
@@ -241,12 +262,13 @@ class Schedule: Codable, Copyable {
         try container.encode(Schedule.getWeekValue(weekDays: self.weekDays), forKey: .dayOfWeek)
         try container.encode(self.nodeAddresses.map { $0.hex }, forKey: .nodeAddresses)
         try container.encode(self.groupAddresses.map { $0.hex }, forKey: .groupAddresses)
-        try container.encode(self.scene?.number, forKey: .sceneNumber)
+        try container.encode(self.scene?.number.hex, forKey: .sceneNumber)
+        try container.encode(self.profiles, forKey: .profiles)
     }
     
     /// 复制日程
     func copy() -> Self {
-        let schedule = Schedule(id: id, name: name, enabled: enabled, nodeAddresses: nodeAddresses, groupAddresses: groupAddresses, sceneNumber: sceneNumber, selectTargetType: selectTargetType, action: action, fadeTime: fadeTime, weekDays: weekDays, hour: hour, minute: minute)
+        let schedule = Schedule(id: id, name: name, enabled: enabled, nodeAddresses: nodeAddresses, groupAddresses: groupAddresses, sceneNumber: sceneNumber, profiles: profiles, selectTargetType: selectTargetType, action: action, fadeTime: fadeTime, weekDays: weekDays, hour: hour, minute: minute)
         return schedule as! Self
     }
     
@@ -290,7 +312,7 @@ class Schedule: Codable, Copyable {
     
     static func == (lhs: Schedule, rhs: Schedule) -> Bool {
         
-        return lhs.id == rhs.id && lhs.name == rhs.name && lhs.enabled == rhs.enabled && lhs.selectTargetType == rhs.selectTargetType && lhs.scene?.number == rhs.scene?.number && lhs.action == rhs.action && lhs.fadeTime == rhs.fadeTime && lhs.weekDays == rhs.weekDays && lhs.hour == rhs.hour && lhs.minute == rhs.minute
+        return lhs.id == rhs.id && lhs.name == rhs.name && lhs.enabled == rhs.enabled && lhs.selectTargetType == rhs.selectTargetType && lhs.scene?.number == rhs.scene?.number && lhs.profiles == rhs.profiles && lhs.action == rhs.action && lhs.fadeTime == rhs.fadeTime && lhs.weekDays == rhs.weekDays && lhs.hour == rhs.hour && lhs.minute == rhs.minute
     }
     
 

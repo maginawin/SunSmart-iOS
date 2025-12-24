@@ -199,6 +199,29 @@ class ProfileSettingsViewController: UIViewController {
             }
         }
         
+        if selectProfile.type != group?.info.profile.type { // 切换profile
+            let meshUUID = MeshNetworkManager.instance.meshNetwork?.uuid.uuidString
+            if selectProfile.type != .proximityLightingWithPhotocell { // 清空白天黑夜设置的设备预配置数据
+                group?.nodes.forEach({ node in
+                    node.preConfiguration.dayProfileStartsAboveLux = nil
+                    node.preConfiguration.nightProfileStartsBelowLux = nil
+                    node.preConfiguration.dayProfileLightData = nil
+                    node.preConfiguration.nightProfileLightData = nil
+                    if let meshUUID = meshUUID {
+                        node.preConfiguration.save(meshUUID: meshUUID, nodeAddress: node.primaryUnicastAddress)
+                    }
+                })
+            }
+            
+            // 清空校准设备的校准数据
+            let calibrationNodes = group?.nodes.filter({ $0.sensorCalibrationData?.isCalibration ?? false }) ?? []
+            calibrationNodes.forEach { node in
+                node.preConfiguration.resetDaylightCalibration = true
+                if let meshUUID = meshUUID {
+                    node.preConfiguration.save(meshUUID: meshUUID, nodeAddress: node.primaryUnicastAddress)
+                }
+            }
+        }
         
         saveActionCallback?(selectProfile)
      
@@ -761,6 +784,7 @@ class ProfileSettingsViewController: UIViewController {
         
         nightPhasesView = ProfileTriggerConditionPhasesView()
         nightPhasesView!.titleLabel.text = "night".localizedString
+        nightPhasesView!.startsBelowLabel.text = "starts_below".localizedString
         nightPhasesView!.editable = self.editable
         nightPhasesView!.delegate = self
         contentView.addSubview(nightPhasesView!)
@@ -772,6 +796,7 @@ class ProfileSettingsViewController: UIViewController {
         
         dayPhasesView = ProfileTriggerConditionPhasesView()
         dayPhasesView!.titleLabel.text = "day".localizedString
+        dayPhasesView!.startsBelowLabel.text = "starts_above".localizedString
         dayPhasesView!.editable = self.editable
         dayPhasesView!.delegate = self
         contentView.addSubview(dayPhasesView!)

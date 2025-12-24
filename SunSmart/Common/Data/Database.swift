@@ -481,6 +481,7 @@ extension SpaceData {
         DeviceDongleData.initDatabase()
         EnergyStatisticsStaticData.initDatabase()
         GatewayModel.initDatabase()
+        Node.PreConfiguration.initDatabase()
     }
  
     
@@ -1434,6 +1435,7 @@ extension Profile {
                 _ = try? SunSmartDataManager.shared.db?.run(Profile.profilesTable.addColumn(ExpressionKey.scenes))
             }
             
+            ProfileLightSensorTemplate.initDatabase()
         }
     }
 
@@ -1487,6 +1489,7 @@ extension Profile {
             
                 let profile = Profile(name: row[ExpressionKey.name], id: row[ExpressionKey.uuid], type: profileType, lightControlData: lightData, powerUpState: powerUpState, powerUpCct: powerUpCct, manualOverrideTimeout: manualOverrideTimeout, adjustSpeed: row[ExpressionKey.adjustSpeed], sensitivity: UInt8(row[ExpressionKey.sensitivity]), proximityLightingNumber: UInt8(row[ExpressionKey.proximityLightingNumber]), nightData: nightData, dayData: dayData, scenes: scenes)
                 
+                profile.lightSensorTemplates = ProfileLightSensorTemplate.load(profileId: profile.id)
                 profiles.append(profile)
             }
         }
@@ -2904,3 +2907,297 @@ extension GatewayModel {
     
     
 }
+
+extension Node.PreConfiguration {
+    
+    /// Node预配置数据表
+    private static let nodePreConfigurationTableName = "node_preConfiguration"
+    private static let nodePreConfigurationTable = Table(nodePreConfigurationTableName)
+    
+    struct ExpressionKey {
+        static let id = Expression<Int64>("id")
+        static let meshUUID = Expression<String>("meshUUID")
+        static let nodeAddress = Expression<Int>("nodeAddress")
+        static let dayProfileStartsAboveLux = Expression<Int?>("dayProfileStartsAboveLux")
+        static let dayProfileLightData = Expression<Data?>("dayProfileLightData")
+        static let nightProfileStartsBelowLux = Expression<Int?>("nightProfileStartsBelowLux")
+        static let nightProfileLightData = Expression<Data?>("nightProfileLightData")
+        static let resetDaylightCalibration = Expression<Bool?>("resetDaylightCalibration")
+    }
+    
+    /// 初始化Node业务数据扩展表
+    static func initDatabase() {
+        
+        _ = try? SunSmartDataManager.shared.db?.run(Node.PreConfiguration.nodePreConfigurationTable.create(temporary: false, ifNotExists: true, withoutRowid: false, block: { builder in
+            builder.column(ExpressionKey.id, primaryKey: true)
+            builder.column(ExpressionKey.meshUUID)
+            builder.column(ExpressionKey.nodeAddress)
+            builder.column(ExpressionKey.dayProfileStartsAboveLux)
+            builder.column(ExpressionKey.dayProfileLightData)
+            builder.column(ExpressionKey.nightProfileStartsBelowLux)
+            builder.column(ExpressionKey.nightProfileLightData)
+            builder.column(ExpressionKey.resetDaylightCalibration)
+            builder.unique(ExpressionKey.meshUUID, ExpressionKey.nodeAddress)
+        }))
+        
+        // 获取表内存在的属性
+        if let columns = try? SunSmartDataManager.shared.db?.schema.columnDefinitions(table: nodePreConfigurationTableName) {
+            // 插入字段
+            // 是否存在”dayProfileLightData“属性
+            if !columns.contains(where: { $0.name == "dayProfileLightData" }) {
+                _ = try? SunSmartDataManager.shared.db?.run(Node.PreConfiguration.nodePreConfigurationTable.addColumn(ExpressionKey.dayProfileLightData))
+            }
+            // 是否存在”nightProfileLightData“属性
+            if !columns.contains(where: { $0.name == "nightProfileLightData" }) {
+                _ = try? SunSmartDataManager.shared.db?.run(Node.PreConfiguration.nodePreConfigurationTable.addColumn(ExpressionKey.nightProfileLightData))
+            }
+            // 是否存在”resetDaylightCalibration“属性
+            if !columns.contains(where: { $0.name == "resetDaylightCalibration" }) {
+                _ = try? SunSmartDataManager.shared.db?.run(Node.PreConfiguration.nodePreConfigurationTable.addColumn(ExpressionKey.resetDaylightCalibration))
+            }
+        }
+        
+    }
+    
+    /// 加载node的预配置数据
+    /// - Parameters:
+    ///   - meshUUID: 网络uuid
+    ///   - nodeAddress: 设备地址
+    /// - Returns: 设备预配置数据
+    static func load(meshUUID: String, nodeAddress: Address) -> Node.PreConfiguration? {
+        
+        let query = Node.PreConfiguration.nodePreConfigurationTable.filter(ExpressionKey.meshUUID == meshUUID && ExpressionKey.nodeAddress == Int(nodeAddress))
+        
+        guard let row = try? SunSmartDataManager.shared.db?.pluck(query) else {
+            return nil
+        }
+        
+        let preConfiguration = Node.PreConfiguration()
+        if let nightProfileStartsBelowLux = row[ExpressionKey.nightProfileStartsBelowLux] {
+            preConfiguration.nightProfileStartsBelowLux = UInt16(nightProfileStartsBelowLux)
+        }
+        if let data = row[ExpressionKey.nightProfileLightData], let nightLightData = try? jsonDecoder.decode(Profile.LightControlData.self, from: data) {
+            preConfiguration.nightProfileLightData = nightLightData
+        }
+        
+        if let dayProfileStartsAboveLux = row[ExpressionKey.dayProfileStartsAboveLux] {
+            preConfiguration.dayProfileStartsAboveLux = UInt16(dayProfileStartsAboveLux)
+        }
+        if let data = row[ExpressionKey.dayProfileLightData], let dayLightData = try? jsonDecoder.decode(Profile.LightControlData.self, from: data) {
+            preConfiguration.dayProfileLightData = dayLightData
+        }
+        preConfiguration.resetDaylightCalibration = row[ExpressionKey.resetDaylightCalibration]
+        return preConfiguration
+    }
+    
+    /// 保存
+    @discardableResult func save(meshUUID: String, nodeAddress: Address) -> Bool {
+         
+        var dayLightData: Data?
+        if self.dayProfileLightData != nil {
+            dayLightData = try? jsonEncoder.encode(self.dayProfileLightData!)
+        }
+        
+        var nightLightData: Data?
+        if self.nightProfileLightData != nil {
+            nightLightData = try? jsonEncoder.encode(self.nightProfileLightData!)
+        }
+        
+        let insertOrUpdate = Node.PreConfiguration.nodePreConfigurationTable.insert(or: .replace, [
+            ExpressionKey.meshUUID <- meshUUID,
+            ExpressionKey.nodeAddress <- Int(nodeAddress),
+            ExpressionKey.dayProfileStartsAboveLux <- self.dayProfileStartsAboveLux != nil ? Int(self.dayProfileStartsAboveLux!) : nil,
+            ExpressionKey.dayProfileLightData <- dayLightData,
+            ExpressionKey.nightProfileStartsBelowLux <- self.nightProfileStartsBelowLux != nil ? Int(self.nightProfileStartsBelowLux!) : nil,
+            ExpressionKey.nightProfileLightData <- nightLightData,
+            ExpressionKey.resetDaylightCalibration <- self.resetDaylightCalibration
+        ])
+        do {
+            try SunSmartDataManager.shared.db?.run(insertOrUpdate)
+        } catch {
+            print(error)
+            return false
+        }
+        return true
+    }
+    
+    @discardableResult static func delete(meshUUID: String, nodeAddress: Address) -> Bool {
+        let predicate = Node.PreConfiguration.nodePreConfigurationTable.filter(ExpressionKey.meshUUID == meshUUID && ExpressionKey.nodeAddress == Int(nodeAddress))
+        do {
+            try SunSmartDataManager.shared.db?.run(predicate.delete())
+        } catch {
+            print(error)
+            return false
+        }
+        return true
+    }
+}
+
+extension ProfileLightSensorTemplate {
+    
+    /// profile光照lux模板
+    private static let profileLightSensorTemplateTableName = "profileLightSensorTemplate"
+    private static let profileLightSensorTemplateTable = Table(profileLightSensorTemplateTableName)
+    
+    struct ExpressionKey {
+        static let id = Expression<String>("id")
+        static let profileId = Expression<String>("profileId")
+        static let name = Expression<String>("name")
+        static let dayStartsAboveLux = Expression<Int>("dayStartsAboveLux")
+        static let nightStartsBelowLux = Expression<Int>("nightStartsBelowLux")
+        static let deviceAddresses = Expression<Data?>("deviceAddresses")
+    }
+    
+    /// 初始化Node业务数据扩展表
+    static func initDatabase() {
+        
+        _ = try? SunSmartDataManager.shared.db?.run(ProfileLightSensorTemplate.profileLightSensorTemplateTable.create(temporary: false, ifNotExists: true, withoutRowid: false, block: { builder in
+            builder.column(ExpressionKey.id)
+            builder.column(ExpressionKey.profileId)
+            builder.column(ExpressionKey.name)
+            builder.column(ExpressionKey.dayStartsAboveLux)
+            builder.column(ExpressionKey.nightStartsBelowLux)
+            builder.column(ExpressionKey.deviceAddresses)
+        }))
+        
+    }
+    
+    /// 加载profile下的模板数据
+    /// - Parameters:
+    ///   - profileId: 配置文件id
+    ///   - templateId: 模板id（获取单个模板）
+    /// - Returns: profile下模板数据
+    static func load(profileId: String, templateId: String? = nil) -> [ProfileLightSensorTemplate] {
+        
+        var query = ProfileLightSensorTemplate.profileLightSensorTemplateTable.filter(ExpressionKey.profileId == profileId)
+        if let id = templateId {
+            query = query.filter(ExpressionKey.id == id)
+        }
+        var templates: [ProfileLightSensorTemplate] = []
+        if let rows = try? SunSmartDataManager.shared.db?.prepare(query) {
+            for row in rows {
+                var deviceAddresses: [Address] = []
+                if let addressesData = row[ExpressionKey.deviceAddresses], let addressesStrings = (try? jsonDecoder.decode([String].self, from: addressesData)) {
+                    addressesStrings.forEach {
+                        if let address = UInt16($0, radix: 16), address.isUnicast {
+                            deviceAddresses.append(address)
+                        }
+                    }
+                }
+                 
+                let template = ProfileLightSensorTemplate(id: row[ExpressionKey.id], name: row[ExpressionKey.name], nightStartsBelowLux: UInt16(row[ExpressionKey.nightStartsBelowLux]), dayStartsAboveLux: UInt16(row[ExpressionKey.dayStartsAboveLux]), deviceAddresses: deviceAddresses)
+                templates.append(template)
+            }
+        }
+        return templates
+    }
+    
+    /// 保存
+    @discardableResult func save(profileId: String) -> Bool {
+        
+        let addressData = try? jsonEncoder.encode(deviceAddresses.map({ $0.hex }))
+        
+        let insertOrUpdate = ProfileLightSensorTemplate.profileLightSensorTemplateTable.insert(or: .replace, [
+            ExpressionKey.profileId <- profileId,
+            ExpressionKey.id <- self.id,
+            ExpressionKey.dayStartsAboveLux <- Int(self.dayStartsAboveLux),
+            ExpressionKey.nightStartsBelowLux <- Int(self.nightStartsBelowLux),
+            ExpressionKey.deviceAddresses <- addressData
+        ])
+        do {
+            try SunSmartDataManager.shared.db?.run(insertOrUpdate)
+        } catch {
+            print(error)
+            return false
+        }
+        return true
+    }
+    
+    /// 删除profile下全部模板
+    @discardableResult static func delete(profileId: String) -> Bool {
+        let predicate = ProfileLightSensorTemplate.profileLightSensorTemplateTable.filter(ExpressionKey.profileId == profileId)
+        do {
+            try SunSmartDataManager.shared.db?.run(predicate.delete())
+        } catch {
+            print(error)
+            return false
+        }
+        return true
+    }
+    
+    /// 删除对应模板
+    @discardableResult func delete() -> Bool {
+        let predicate = ProfileLightSensorTemplate.profileLightSensorTemplateTable.filter(ExpressionKey.id == id)
+        do {
+            try SunSmartDataManager.shared.db?.run(predicate.delete())
+        } catch {
+            print(error)
+            return false
+        }
+        return true
+    }
+    
+}
+
+//extension Node {
+//    
+//    /// 用于Sunsmart项目Node业务数据扩展表
+//    private static let nodeSunsmartTableName = "node_sunsmart"
+//    private static let nodeSunsmartTable = Table(nodeSunsmartTableName)
+//    
+//    struct ExpressionKey {
+//        static let id = Expression<Int64>("id")
+//        static let meshUUID = Expression<String>("meshUUID")
+//        static let address = Expression<Int>("address")
+//        static let preConfiguration = Expression<Data?>("preConfiguration")
+//    }
+//    
+//    /// 初始化Node业务数据扩展表
+//    static func initDatabase() {
+//        
+//        _ = try? SunSmartDataManager.shared.db?.run(Node.nodeSunsmartTable.create(temporary: false, ifNotExists: true, withoutRowid: false, block: { builder in
+//            builder.column(ExpressionKey.id, primaryKey: true)
+//            builder.column(ExpressionKey.meshUUID)
+//            builder.column(ExpressionKey.address)
+//            builder.column(ExpressionKey.preConfiguration)
+//            builder.unique(ExpressionKey.meshUUID, ExpressionKey.address)
+//        }))
+//        
+//    }
+//    
+//    /// 加载并设置设备的扩展数据
+//    /// - Parameters:
+//    ///   - siteId: site id
+//    /// - Returns: 网关list
+//    func loadSunsmartExtensionData() {
+//        guard let meshUUID = self.network?.uuid.uuidString else { return }
+//        let query = Node.nodeSunsmartTable.filter(ExpressionKey.meshUUID == meshUUID && ExpressionKey.address == Int(self.primaryUnicastAddress))
+//
+//        if let row = try? SunSmartDataManager.shared.db?.pluck(query) {
+//            if let data = row[ExpressionKey.preConfiguration], let preConfiguration = try? jsonDecoder.decode(Node.PreConfiguration.self, from: data) {
+//                self.preConfiguration = preConfiguration
+//            }
+//        }
+//    }
+//    
+//    /// 保存设备扩展数据
+//    @discardableResult func saveSunsmartExtensionData() -> Bool {
+//        guard let meshUUID = self.network?.uuid.uuidString else { return false }
+//        let preConfigurationData = try? jsonEncoder.encode(preConfiguration)
+//        
+//        let insertOrUpdate = Node.nodeSunsmartTable.insert(or: .replace, [
+//            ExpressionKey.meshUUID <- meshUUID,
+//            ExpressionKey.address <- Int(self.primaryUnicastAddress),
+//            ExpressionKey.preConfiguration <- preConfigurationData
+//        ])
+//        do {
+//            try SunSmartDataManager.shared.db?.run(insertOrUpdate)
+//        } catch {
+//            print(error)
+//            return false
+//        }
+//        return true
+//        
+//    }
+//    
+//}

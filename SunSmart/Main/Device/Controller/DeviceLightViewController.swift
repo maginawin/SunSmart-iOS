@@ -30,7 +30,7 @@ class DeviceLightViewController: UIViewController {
     private var relaySwitch: UISwitch!
     private var pwmPeriodLabel: UILabel!
     
-//    private var luxLabel: UILabel!
+    private var luxLabel: UILabel?
     
     private weak var lastMessageDelegate: MeshLibManagerMessageDelegate?
     
@@ -83,17 +83,16 @@ class DeviceLightViewController: UIViewController {
         relayLabel.isHidden = false
         // 获取节点转发功能是否启用
         MeshAPI.getReplyState(address: node.primaryUnicastAddress, result: nil)
-        
-//        luxLabel = UILabel(text: "", textColor: TextBlack_Color, fontSize: 14)
-//        view.addSubview(luxLabel)
-//        luxLabel.snp.makeConstraints { make in
-//            make.left.equalTo(brightnessLabel.snp.right).offset(SCRXFrom(30))
-//            make.centerY.equalTo(brightnessLabel)
-//        }
-//        
-//        MeshAPI.getAmbientSensorValue(node: node) {[weak self] value in
-//            self?.luxLabel.text = "\(value ?? self?.node.daylightLux ?? 0)lx"
-//        }
+//        #if DEBUG
+        if node.ambientLightSensorModel != nil {
+            luxLabel = UILabel(text: "", textColor: TextBlack_Color, fontSize: 14)
+            view.addSubview(luxLabel!)
+            luxLabel!.snp.makeConstraints { make in
+                make.left.equalTo(brightnessLabel.snp.right).offset(SCRXFrom(30))
+                make.centerY.equalTo(brightnessLabel)
+            }
+        }
+//        #endif
         // 读取pwm周期
 //        if let model = node.sunricherVendorModel {
 //            MeshAPI.sendMessage(message: SunricherVendorGet(function: .pwmPeriod), model: model)
@@ -112,6 +111,12 @@ class DeviceLightViewController: UIViewController {
         // 更新数据
         updateData()
         updateSliderValue()
+        
+        if self.luxLabel != nil {
+            MeshAPI.getAmbientSensorValue(node: node) {[weak self] value in
+                self?.luxLabel?.text = "\(value ?? self?.node.daylightLux ?? 0)lx"
+            }
+        }
     }
     
 //    override func viewDidDisappear(_ animated: Bool) {
@@ -235,6 +240,7 @@ class DeviceLightViewController: UIViewController {
 //        if self.presentingViewController != nil {
 //            y = StatusBarManager.statusBarFrame.height + (navigationController?.navigationBar.height ?? kNavigationHeight)
 //        }
+        var menuWidth = SCRXFrom(114)
         var items: [MenuPopView.MenuItem] = []
         if space.deviceOperates.contains(.edit) {
             items.append(.init(icon: UIImage(named: "edit"), title: "edit".localizedString, tapItemBack: {[weak self] _ in
@@ -280,14 +286,44 @@ class DeviceLightViewController: UIViewController {
 //            self?.test()
 //        }))
 //        #endif
-//        if let group = self.node.group {
-//            let profileType = group.info.profile.type
-//            if profileType == .occupancy_daylight || profileType == .occupancy || profileType == .vacancy_daylight || profileType == .vacancy || profileType == .proximityLighting {
-//                items.append(.init(icon: UIImage(named: "settings"), title: "settings".localizedString, tapItemBack: {[weak self] _ in
-//                    
-//                }))
-//            }
-//        }
+        if let group = self.node.group {
+            let profile = group.info.profile
+            if profile.type == .proximityLightingWithPhotocell {
+                items.append(.init(icon: UIImage(named: "settings"), title: "night_starts_below".localizedString, tapItemBack: {[weak self] _ in
+                    self?.setNightStartsBelowLux()
+                }))
+                items.append(.init(icon: UIImage(named: "settings"), title: "day_starts_above".localizedString, tapItemBack: {[weak self] _ in
+                    self?.setDayStartsAboveLux()
+                }))
+                // 系统失效profile
+                if let nightData = profile.nightData {
+                    if node.preConfiguration.nightProfileLightData != nil {
+                        items.append(.init(icon: UIImage(named: "settings"), title: "Disable system failure", tapItemBack: {[weak self] _ in
+                            guard let self = self else { return }
+                            self.node.preConfiguration.nightProfileLightData = nil
+                            self.node.preConfiguration.save(meshUUID: self.space.meshUUID, nodeAddress: self.node.primaryUnicastAddress)
+                            self.syncDevice()
+                        }))
+                    }else {
+                        items.append(.init(icon: UIImage(named: "settings"), title: "Enable system failure", tapItemBack: {[weak self] _ in
+                            guard let self = self else { return }
+                            let nightProfileLightData = nightData.sceneData.lightControlData.copy()
+                            nightProfileLightData.occupancyLevel = min(100, nightProfileLightData.highEndTrim)
+                            nightProfileLightData.vacantLevel = min(50, nightProfileLightData.highEndTrim)
+                            nightProfileLightData.t4 = 0xFFFFFE
+                            nightProfileLightData.standbyLevel = min(100, nightProfileLightData.highEndTrim)
+                            self.node.preConfiguration.nightProfileLightData = nightProfileLightData
+                            self.node.preConfiguration.save(meshUUID: self.space.meshUUID, nodeAddress: self.node.primaryUnicastAddress)
+                            self.syncDevice()
+                        }))
+                    }
+                    menuWidth = SCRXFrom(180)
+                }
+               
+            }
+        }
+        
+        
         
         items.append(.init(icon: UIImage(named: "menu_refresh"), title: "refresh".localizedString, tapItemBack: {[weak self] _ in
             self?.refresh()
@@ -299,7 +335,7 @@ class DeviceLightViewController: UIViewController {
         let touchCenterY = view.safeAreaInsets.top - 10
 //        SCREEN_HEIGHT - view.height + view.safeAreaInsets.top - 15
         let windowPoint = view.convert(CGPoint(x: touchCenterX, y: touchCenterY), to: UIApplication.shared.keyWindow())
-        MenuPopView.show(items: items, anchorPoint: windowPoint, menuWidth: SCRXFrom(114))
+        MenuPopView.show(items: items, anchorPoint: windowPoint, menuWidth: menuWidth) // SCRXFrom(114)
         
 //        MenuPopView.show(items: items, anchorPoint: CGPoint(x: view.width - SCRXFrom(17) - 15, y: y), menuWidth: MenuPopView.defalutMenuWidth + SCRXFrom(10))
     }
@@ -385,6 +421,72 @@ class DeviceLightViewController: UIViewController {
                 XWHUDManager.hide()
             }
         }
+    }
+    
+    private func setNightStartsBelowLux() {
+        guard let profile = node.group?.info.profile, let nightData = profile.nightData, let dayData = profile.dayData else {
+            return
+        }
+        let nightLux = node.preConfiguration.nightProfileStartsBelowLux ?? nightData.startsBelowLux
+        let dayLux = node.preConfiguration.dayProfileStartsAboveLux ?? dayData.startsBelowLux
+        SRAlertView(title: "night_starts_below".localizedString, inputText: "\(nightLux)", inputFieldStyle: .init(keyboardType: .numberPad), actions: [.cancelAction, SRAlertAction(title: "done".localizedString)], textValueChangedBack: nil) {[weak self] text in
+            guard let self = self else {
+                return
+            }
+            guard let lux = UInt16(text), lux <= 0xFFFF else {
+                XWHUDManager.showTipHUD("\("limit_range".localizedString) 0~5000lux", isLineFeed: true)
+                return
+            }
+            // 晚上必须小于白天lux
+            guard lux < dayLux else {
+                XWHUDManager.showTipHUD("profile_night_startsbelow_less_day".localizedString, isLineFeed: true)
+                return
+            }
+            self.node.preConfiguration.nightProfileStartsBelowLux = lux
+            self.node.preConfiguration.save(meshUUID: self.space.meshUUID, nodeAddress: self.node.primaryUnicastAddress)
+            self.syncDevice()
+            
+        }.show()
+        
+    }
+    
+    private func setDayStartsAboveLux() {
+        guard let profile = node.group?.info.profile, let nightData = profile.nightData, let dayData = profile.dayData else {
+            return
+        }
+        let nightLux = node.preConfiguration.nightProfileStartsBelowLux ?? nightData.startsBelowLux
+        let dayLux = node.preConfiguration.dayProfileStartsAboveLux ?? dayData.startsBelowLux
+        SRAlertView(title: "day_starts_above".localizedString, inputText: "\(dayLux)", inputFieldStyle: .init(keyboardType: .numberPad), actions: [.cancelAction, SRAlertAction(title: "done".localizedString)], textValueChangedBack: nil) {[weak self] text in
+            guard let self = self else {
+                return
+            }
+            guard let lux = UInt16(text), lux <= 0xFFFF else {
+                XWHUDManager.showTipHUD("\("limit_range".localizedString) 0~5000lux", isLineFeed: true)
+                return
+            }
+            //  白天lux-晚上lux必须大于等于5
+            guard lux - nightLux >= 5 else {
+                XWHUDManager.showTipHUD("profile_night_startsbelow_greater_day_threshold".localizedString, isLineFeed: true)
+                return
+            }
+            self.node.preConfiguration.dayProfileStartsAboveLux = lux
+            self.node.preConfiguration.save(meshUUID: self.space.meshUUID, nodeAddress: self.node.primaryUnicastAddress)
+            self.syncDevice()
+        }.show()
+        
+    }
+    
+    
+    private func syncDevice() {
+        let vc = SyncDevicesViewController(type: .devices([node]))
+        vc.syncSuccessCallback = {[weak self] _ in
+            guard let self = self else { return }
+            XWHUDManager.showSuccessTipHUD("done!".localizedString)
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1) {[weak self] in
+                self?.navigationController?.popViewController(animated: true)
+            }
+        }
+        navigationController?.pushViewController(vc, animated: true)
     }
     
     /// 设置pwm频率

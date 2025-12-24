@@ -843,7 +843,7 @@ class BleFirmwareUpdateViewController: UIViewController {
         updateResultView.isHidden = true
         view.addSubview(updateResultView)
         updateResultView.snp.makeConstraints { make in
-            make.bottom.equalTo(bottomView.snp.top).offset(SCRYFrom(-1))
+            make.bottom.equalTo(bottomView.snp.top).offset(SCRYFrom(-0.5))
             make.left.right.equalToSuperview()
             make.height.equalTo(SCRYFrom(72))
         }
@@ -993,7 +993,18 @@ class BleFirmwareUpdateViewController: UIViewController {
         }else {
             var canSelectNodes: [Node] = []
             firmwareTypeDatas.forEach { data in
-                let nodes = data.nodes.filter({ $0.updateState.rawValue == Node.UpdateState.none.rawValue && $0.enableUpgrade })
+                let nodes = data.nodes.filter({
+                    guard $0.enableUpgrade else {
+                        return false
+                    }
+                    switch $0.updateState {
+                    case .none, .failure:
+                        return true
+                    default:
+                        return false
+                    }
+                })
+                
                 nodes.forEach({ $0.selectedState = .selected })
                 canSelectNodes.append(contentsOf: nodes)
             }

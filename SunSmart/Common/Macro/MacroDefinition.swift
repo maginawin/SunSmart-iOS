@@ -123,7 +123,8 @@ let Line_Color = RGB(243, 243, 243)    //RGB(126, 126, 126, 0.1)
 let Line_Color1 = RGB(236, 236, 236)
 /// 边框颜色
 let Border_Color = RGB(236, 236, 236)
-
+/// 输入框边框颜色
+let TextField_Border_Color = RGB(151, 151, 151, 0.3)
 /// 按钮蓝色
 let Blue_Color = RGB(0, 122, 255)
 /// 按钮红色

@@ -245,6 +245,16 @@ class LightSensorCalibrationViewController: UIViewController {
             SRAlertView.hide()
             sensor.selectState = .loading
             self.sensorSelectView.reloadSensorCell(sensor: sensor)
+            if sensor.restoreData != nil {
+                sensor.restoreData?.daylightCalibrationData = nil
+                sensor.save()
+            }
+            if sensor.preConfiguration.resetDaylightCalibration ?? false {
+                sensor.preConfiguration.resetDaylightCalibration = nil
+                if let meshUUID = sensor.network?.uuid.uuidString {
+                    sensor.preConfiguration.save(meshUUID: meshUUID, nodeAddress: sensor.primaryUnicastAddress)
+                }
+            }
             // 切换选中的光照传感器
 //            self.group.info.ambientLightSensorNode = sensor
 //            if let uuid = MeshNetworkManager.instance.meshNetwork?.uuid.uuidString {
@@ -684,7 +694,7 @@ class LightSensorCalibrationViewController: UIViewController {
         offPointLuxView.snp.makeConstraints { make in
             make.left.right.equalTo(onPointLuxView)
             make.top.equalTo(onPointLuxView.snp.bottom).offset(SCRYFrom(16))
-            make.bottom.equalTo(SCRYFrom(-77))
+            make.bottom.equalTo(SCRYFrom(-240))
         }
 
         manualCorrectionBtn = UIButton(titleSize: 15, titleWeight: .light, titleColor: Title_Color, target: self, action: #selector(manualCorrectionBtnAction))
