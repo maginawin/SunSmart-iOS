@@ -244,6 +244,7 @@ class GroupAddViewController: UIViewController {
         group.info.profile.updateData(profile: self.selectProfile)
         group.info.save()
         group.info.profile.save()
+        group.updateGroupSyncState()
         
 //        let groupInfo = GroupInfo(address: group.address.address, imageId: self.selectImageIndex + 1, imageText: source.type == .text ? source.name : nil)
 //        groupInfo.profile = self.selectProfile

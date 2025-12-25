@@ -751,6 +751,13 @@ extension GatewayViewController: MeshLibManagerMessageDelegate {
             updateData()
         }
     }
+    
+    /// 设备数据修改时间戳更新
+    func meshNetworkManager(_ manager: MeshNetworkManager, deviceDataUpdateTimeChange node: Node, lastUpdate: Int64) {
+//        if node.lastUpdateSyncTime != lastUpdate {
+            node.clearSyncStateCache()
+//        }
+    }
 }
 
 extension GatewayViewController {

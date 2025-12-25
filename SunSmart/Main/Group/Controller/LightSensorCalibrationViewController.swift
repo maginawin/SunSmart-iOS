@@ -147,6 +147,7 @@ class LightSensorCalibrationViewController: UIViewController {
     private func updateGroupLightSensor() {
         
         self.group.info.save()
+        self.group.updateGroupSyncState()
         
         NotificationCenter.default.post(name: .init(groupDataUpdateNotificationName), object: self.group)
     }

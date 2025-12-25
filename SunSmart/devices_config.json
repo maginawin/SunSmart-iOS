@@ -997,6 +997,28 @@
     },
     {
         "companyId" : "0A78",
+        "productId" : "3022",
+        "categoryName" : "PIR Sensor Lighting",
+        "elementCount" : 3,
+        "iconCategory" : "Lighting",
+        "deviceCategory" : "Lighting",
+        "modelName" : "SR-BL9033Z-PIR-V",
+        "sensitivityRangeMin" : 0,
+        "sensitivityRangeMax" : 53083
+    },
+    {
+        "companyId" : "0A78",
+        "productId" : "3023",
+        "categoryName" : "PIR Sensor Lighting",
+        "elementCount" : 3,
+        "iconCategory" : "Lighting",
+        "deviceCategory" : "Lighting",
+        "modelName" : "SR-BL9033P-PIR-V",
+        "sensitivityRangeMin" : 0,
+        "sensitivityRangeMax" : 53083
+    },
+    {
+        "companyId" : "0A78",
         "productId" : "3024",
         "categoryName" : "PIR Sensor Lighting",
         "elementCount" : 3,

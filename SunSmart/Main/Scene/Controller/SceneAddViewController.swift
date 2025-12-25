@@ -281,6 +281,7 @@ class SceneAddViewController: UIViewController {
                     let executeData = SceneExecuteData(sceneNumber: scene.number, isOn: data.lightness > 0, lightness: Node.getLightness(lightness100: data.lightness), cct: UInt16(data.cct))
                     $0.info.sceneExecuteDatas.append(executeData)
                     $0.info.save()
+                    $0.updateGroupSyncState()
 //                    SceneExecuteData.save(meshUUID: self.space.meshUUID, networkKey: self.space.meshNetworkKey, address: $0.address.address, sceneId: Int(scene.number), sceneData: data)
 //                    $0.info.bindSceneDatas.updateValue(data, forKey: scene.number)
                 }

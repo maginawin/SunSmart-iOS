@@ -182,6 +182,7 @@ class SceneSettingsViewController: UIViewController {
                 $0.info.sceneExecuteDatas.append(SceneExecuteData(sceneNumber: scene.number, isOn: lightness > 0, lightness: lightness, cct: cct))
             }
             $0.info.save()
+            $0.updateGroupSyncState()
 //            scene.info.groups.sort(by: { $0.address.address < $1.address.address })
         })
         
@@ -254,6 +255,7 @@ class SceneSettingsViewController: UIViewController {
             $0.info.sceneExecuteDatas.append(SceneExecuteData(sceneNumber: scene.number, isOn: $0.executeSceneData!.lightness > 0, lightness: lightness, cct: cct))
             $0.info.save()
             syncNodes.append(contentsOf: $0.getNeedSyncDataNodes(scene: scene).syncNodes)
+            $0.updateGroupSyncState()
         })
         
         updateGroups.forEach({
@@ -261,6 +263,7 @@ class SceneSettingsViewController: UIViewController {
                 data.lightness = Node.getLightness(lightness100: $0.executeSceneData!.lightness)
                 data.cct = UInt16($0.executeSceneData!.cct)
                 $0.info.save()
+                $0.updateGroupSyncState()
             }
             syncNodes.append(contentsOf: $0.getNeedSyncDataNodes(scene: scene).syncNodes)
         })
@@ -276,6 +279,7 @@ class SceneSettingsViewController: UIViewController {
                     $0.info.sceneExecuteDatas.removeAll(where: { $0.sceneNumber == sceneData.sceneNumber })
                 }
                 $0.info.save()
+                $0.updateGroupSyncState()
             }
             // 未同步则直接删除组场景
 //            if deleteNodes.isEmpty {

@@ -644,6 +644,9 @@ class CloudSynchronizationHandle: NSObject {
                     
                     
                 }
+//                await MainActor.run {
+//                    self.handleCallback?(self, self.state)
+//                }
                 DispatchQueue.main.async {
                     self.handleCallback?(self, self.state)
                 }

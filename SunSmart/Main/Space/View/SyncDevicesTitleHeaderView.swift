@@ -32,9 +32,9 @@ class SyncDevicesTitleHeaderView: UITableViewHeaderFooterView {
         super.init(reuseIdentifier: reuseIdentifier)
      
         
-        backgroundView = UIView()
+//        backgroundView = UIView()
          
-        contentView.backgroundColor = .clear
+        contentView.backgroundColor = Background_Color
         
         
         titleLabel = UILabel(text: "Remove", textColor: RGB(100, 136, 139), fontSize: 14, fontWeight: .light)

@@ -532,49 +532,11 @@ extension Provisioner {
 extension MeshNetworkManager {
     
     private struct AssociatedKey {
-        static var groupsKey = 1
-        static var scenesKey = 2
         static var schedulesKey = 3
         static var switchsKey = 4
         static var donglesKey = 5
     }
-    
-    /// 日程list
-//    var schedules: [Schedule] {
-//        get {
-//            objc_getAssociatedObject(self, &MeshNetworkManager.schedulesKey) as? [Schedule] ?? []
-//        }set {
-//            objc_setAssociatedObject(self, &MeshNetworkManager.schedulesKey, newValue, .OBJC_ASSOCIATION_RETAIN)
-//        }
-//    }
-    
-    /// 当前子网内设备list
-//    var subnetworkNodes: [Node] {
-//        return realNodes.filter({ $0.networkKeys.contains(where: { $0.index == currentNetworkKey.index && !$0.isPrimary }) })
-//    }
-    
-//    var subnetworkLightNodes: [Node] {
-//        return subnetworkNodes.filter({ $0.lightnessModel != nil })
-//    }
-    
-    /// 当前子网内组list
-//    var subnetworkGroups: [Group] {
-//        get {
-//            objc_getAssociatedObject(self, &AssociatedKey.groupsKey) as? [Group] ?? []
-//        }set {
-//            objc_setAssociatedObject(self, &AssociatedKey.groupsKey, newValue, .OBJC_ASSOCIATION_RETAIN)
-//        }
-//    }
-//    
-//    /// 当前子网内场景list
-//    var subnetworkScenes: [Scene] {
-//        get {
-//            objc_getAssociatedObject(self, &AssociatedKey.scenesKey) as? [Scene] ?? []
-//        }set {
-//            objc_setAssociatedObject(self, &AssociatedKey.scenesKey, newValue, .OBJC_ASSOCIATION_RETAIN)
-//        }
-//    }
-    
+
     /// 当前子网内日程list
     var schedules: [Schedule] {
         get {
@@ -990,7 +952,8 @@ extension Group {
     
     /// 是否需要同步
     var needSync: Bool {
-        return nodes.contains(where: { $0.getNeedSyncGroup(group: self) })
+//        return nodes.contains(where: { $0.getNeedSyncGroup(group: self) })
+        return nodes.contains(where: { $0.needSyncGroupData })
     }
     
     /// 删除本地化缓存数据（只处理业务扩展数据）
@@ -1032,6 +995,7 @@ extension Group {
         if let index = self.info.sceneExecuteDatas.firstIndex(where: { $0.sceneNumber == sceneId }) {
             self.info.sceneExecuteDatas.remove(at: index)
             self.info.save(meshUUID: self.network?.uuid.uuidString, subnetworkId: self.subNetworkId)
+            self.updateGroupSyncState()
         }
     }
     
@@ -1045,7 +1009,17 @@ extension Group {
 //                return
 //            }
             self.info.save(meshUUID: self.network?.uuid.uuidString, subnetworkId: self.subNetworkId)
+            self.updateGroupSyncState()
         }
+    }
+    
+    /// 更新组设备同步状态
+    func updateGroupSyncState() {
+//        DispatchQueue.global().async {
+            self.nodes.forEach { node in
+                node.clearSyncStateCache()
+            }
+//        }
     }
     
     /// 本地化缓存组数据（只处理业务扩展数据）
@@ -1062,6 +1036,8 @@ extension Group {
 //            SceneExecuteData.save(meshUUID: uuid, networkKey: networkKey, address: address.address, sceneId: Int($0.key), sceneData: $0.value)
 //        })
         self.info.profile.save(meshUUID: uuid, meshNetworkId: self.subNetworkId)
+        
+        updateGroupSyncState()
         // 保存虚拟按键数据
 //        self.info.switchs.forEach({
 //            $0.save(meshUUID: uuid, networkId: subnetworkId)
@@ -1506,6 +1482,9 @@ extension Node {
     static private var localVersionSEQ = 1
     static private var deviceConfigInfo = 202
     static private var gateway = 203
+    static private var cacheNeedSync = 204
+    static private var cacheGroupNeedSync = 205
+//    static private var lastUpdateSyncTime = 206
     
     /// 设备类型
     enum DeviceType {
@@ -1647,9 +1626,53 @@ extension Node {
     
     /// 是否需要同步数据
     var needSync: Bool {
-        return self.getNeedSync()
+        
+        guard let needSync = cacheNeedSync else {
+            let syncState = self.getNeedSync()
+            self.cacheNeedSync = syncState
+            return syncState
+        }
+        return needSync
 //        return self.getSyncData(type: .all).count > 0
     }
+    
+    /// 是否需要同步组数据
+    var needSyncGroupData: Bool {
+        
+        guard let needSync = cacheGroupNeedSync else {
+            let syncState = self.getNeedSyncGroup()
+            self.cacheGroupNeedSync = syncState
+            return syncState
+        }
+        return needSync
+    }
+    
+    /// 缓存是否需要同步数据
+    var cacheNeedSync: Bool? {
+        get {
+            objc_getAssociatedObject(self, &Node.cacheNeedSync) as? Bool
+        } set {
+            objc_setAssociatedObject(self, &Node.cacheNeedSync, newValue, .OBJC_ASSOCIATION_RETAIN)
+        }
+    }
+    
+    /// 缓存是否需要同步组数据
+    var cacheGroupNeedSync: Bool? {
+        get {
+            objc_getAssociatedObject(self, &Node.cacheGroupNeedSync) as? Bool
+        } set {
+            objc_setAssociatedObject(self, &Node.cacheGroupNeedSync, newValue, .OBJC_ASSOCIATION_RETAIN)
+        }
+    }
+    
+    /// 缓存的最后更新同步数据时间戳
+//    var cacheLastUpdateSyncTime: Int64? {
+//        get {
+//            objc_getAssociatedObject(self, &Node.lastUpdateSyncTime) as? Int64
+//        } set {
+//            objc_setAssociatedObject(self, &Node.lastUpdateSyncTime, newValue, .OBJC_ASSOCIATION_RETAIN)
+//        }
+//    }
     
     /// lightLC第一阶段 lightness
     var lightLCOnLightness: UInt16? {
@@ -1744,6 +1767,25 @@ extension Node {
         }
     }
     
+    
+    
+    /// 刷新同步状态缓存
+    func reloadSyncStateCache() {
+        self.cacheGroupNeedSync = self.getNeedSyncGroup()
+        if self.cacheGroupNeedSync ?? false {
+            self.cacheNeedSync = false
+        }else {
+            self.cacheNeedSync = self.getNeedSync()
+        }
+//        self.cacheLastUpdateSyncTime = Int64(Date().timeIntervalSince1970)
+    }
+    
+    /// 清除同步状态缓存
+    func clearSyncStateCache() {
+        self.cacheGroupNeedSync = nil
+        self.cacheNeedSync = nil
+    }
+    
     /// 更新新设备的恢复数据
     func updateResoreData(oldNode: Node, resoreGroup: Group? = nil) {
         
@@ -1773,6 +1815,7 @@ extension Node {
                 }
                 group.info.ambientLightSensorNodeAddress = self.primaryUnicastAddress
                 group.info.save()
+                group.updateGroupSyncState()
             }
             
             // 动能开关
@@ -1808,6 +1851,7 @@ extension Node {
                 }
                 if update {
                     group.info.save()
+                    group.updateGroupSyncState()
                 }
             }
         }
@@ -1834,9 +1878,10 @@ extension Node {
             self.gatewayModel = gatewayModel
             self.gatewayModel?.save()
         }
-        
         self.restoreData = restoreData
         self.save()
+        
+        self.clearSyncStateCache()
     }
     
     /// 获取恢复节点需要数据
@@ -1972,6 +2017,7 @@ extension Node {
         if let group = meshNetwork.groups.first(where: { $0.info.ambientLightSensorNodeAddress == primaryUnicastAddress }) {
             group.info.ambientLightSensorNodeAddress = nil
             group.info.save(meshUUID: meshNetwork.uuid.uuidString, subnetworkId: group.subNetworkId)
+            group.updateGroupSyncState()
         }
         // 检查是否有删除分发者设备，删除分发者需把OTA分发缓存清空
         if let productId = self.productIdentifier {
@@ -1990,6 +2036,7 @@ extension Node {
         if let index = self.sceneExecuteDatas.firstIndex(where: { $0.sceneNumber == sceneId }) {
             self.sceneExecuteDatas.remove(at: index)
             self.savePropertys()
+            self.clearSyncStateCache()
         }
     }
     
@@ -2013,6 +2060,8 @@ extension Node {
                 switchData.deleteProxyNodeAddress = nil
             }
             switchData.save(meshUUID: uuid, networkId: subNetworkId)
+            
+            clearSyncStateCache()
             // 更新开关对应组缓存
 //            if let groupCacheSwitch = groupSwitch.group?.info.switchs.first(where: { $0.id == groupSwitch.id }) {
 //                groupCacheSwitch.proxyNodeAddress = nil
@@ -2095,6 +2144,7 @@ extension Node {
                                 group.info.ambientLightSensorNodeAddress = nil
                                 // 保存缓存
                                 group.info.save()
+                                group.updateGroupSyncState()
                             }
                             self.save()
                         }
@@ -2162,6 +2212,7 @@ extension Node {
                         // 场景加入日程后关联场景的组也加入日程，场景移出组后吧组间接关联的日程删除
                         group.info.bindSchedules.removeAll(where: { groupSchedule in scene.info.bindSchedules.contains(where: { $0.id == groupSchedule.id }) })
                         group.info.save()
+                        group.updateGroupSyncState()
                     }
                 }
             }

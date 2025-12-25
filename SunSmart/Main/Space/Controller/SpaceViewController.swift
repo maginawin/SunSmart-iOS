@@ -549,6 +549,14 @@ class SpaceViewController: WMPageController {
                     XWHUDManager.hide()
                     self.loadNetworkData = true
                     self.reloadData()
+                    DispatchQueue.global().async {
+//                        print("设备同步状态:\(Date().timeIntervalSince1970)")
+                        manager.realNodes.forEach { node in
+                            node.reloadSyncStateCache()
+                        }
+//                        print("设备同步状态完成:\(Date().timeIntervalSince1970)")
+                    }
+                    
 //                    if self.cloudPermissionValidation {
 //                        self.configurationFlowGuidance()
 //                    }

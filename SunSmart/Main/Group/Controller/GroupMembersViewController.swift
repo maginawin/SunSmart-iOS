@@ -97,12 +97,12 @@ class GroupMembersViewController: UIViewController {
         
         selectNodes.append(contentsOf: nodes.filter({ $0.group?.address.address == group.address.address }).filter({ !selectNodes.contains($0) && $0.group?.address.address == group.address.address }))
 //        }
-        DispatchQueue.global().async {
-            let isSync = self.group.needSync
-            DispatchQueue.main.async {
-                self.functionView.syncBtn.isHidden = !isSync
-            }
-        }
+//        DispatchQueue.global().async {
+//            let isSync = self.group.needSync
+//            DispatchQueue.main.async {
+                self.functionView.syncBtn.isHidden = !self.group.needSync
+//            }
+//        }
         MeshLibManager.manager.messageDelegate = self
         
 //        if collectionView.frame != .zero {
@@ -171,6 +171,7 @@ class GroupMembersViewController: UIViewController {
                         $0.preConfiguration.save(meshUUID: meshUUD, nodeAddress: $0.primaryUnicastAddress)
                     }
                 }
+                $0.clearSyncStateCache()
             })
             // 退出组的设备，整理邻近照明路径关系
             if exitNodes.count > 0, self.group.info.profile.type == .proximityLighting || self.group.info.profile.type == .proximityLightingWithPhotocell, let path = self.group.info.proximityLightingPath {
@@ -179,6 +180,7 @@ class GroupMembersViewController: UIViewController {
                     path.removeNode(node)
                 }
                 self.group.info.save()
+                self.group.updateGroupSyncState()
             }
             
             let addNodes = self.selectNodes.filter({ !self.group.nodes.contains($0) })
@@ -430,7 +432,7 @@ class GroupMembersViewController: UIViewController {
                     item.selectImageView.image = UIImage(named: "device_select_un")
                 }
 //                item.selectImageView.image = selectNodes.contains(node) ? UIImage(named: "device_select") : UIImage(named: "device_select_un")
-                if node.state && node.isKeybindComplete && node.getNeedSyncGroup() {
+                if node.state && node.isKeybindComplete && node.needSyncGroupData {
                     item.iconImageView.image = UIImage(named: node.unsyncIconName)
                 }
             }
@@ -520,6 +522,13 @@ extension GroupMembersViewController: MeshLibManagerMessageDelegate {
         }
     }
     
+    /// 设备数据修改时间戳更新
+    func meshNetworkManager(_ manager: MeshNetworkManager, deviceDataUpdateTimeChange node: Node, lastUpdate: Int64) {
+//        if node.lastUpdateSyncTime != lastUpdate {
+            node.clearSyncStateCache()
+//        }
+    }
+    
 }
 
 extension GroupMembersViewController: UICollectionViewDataSource, UICollectionViewDelegateFlowLayout {
@@ -553,7 +562,7 @@ extension GroupMembersViewController: UICollectionViewDataSource, UICollectionVi
         
 //        cell.selectImageView.image = selectNodes.contains(node) ? UIImage(named: "device_select") : UIImage(named: "device_select_un")
         
-        if node.state && node.isKeybindComplete && node.getNeedSyncGroup() {
+        if node.state && node.isKeybindComplete && node.needSyncGroupData {
             cell.iconImageView.image = UIImage(named: node.unsyncIconName)
         }
         cell.editClickCallback = {[weak self] node in

@@ -257,7 +257,7 @@ class ScheduleAddViewController: UIViewController {
     @objc private func deleteBtnAction() {
         
         guard let schedule = self.schedule else { return }
-        guard schedule.exitNodes.count > 0 else {
+        guard schedule.existNodes.count > 0 else {
 //            Schedule.deleteData(meshUUID: self.space.meshUUID, meshNetworkKey: space.meshNetworkKey, scheduleId: schedule.id)
             schedule.deleteData()
             MeshNetworkManager.instance.schedules.removeAll(where: { $0.id == schedule.id })
@@ -353,7 +353,7 @@ class ScheduleAddViewController: UIViewController {
         }
         
         // 日程是否有设备
-        let isExitNodes = schedule.exitNodes.count > 0 || nodes.count > 0 || groups.contains(where: { $0.nodes.count > 0 }) || (scene?.info.groups.contains(where: { $0.nodes.count > 0 }) ?? false)
+        let isExitNodes = schedule.existNodes.count > 0 || nodes.count > 0 || groups.contains(where: { $0.nodes.count > 0 }) || (scene?.info.groups.contains(where: { $0.nodes.count > 0 }) ?? false)
         
         guard MeshLibManager.manager.isMeshNetworkConnected || !isExitNodes else {
             XWHUDManager.showTipHUD("device_notconnect_message".localizedString, isLineFeed: true)
@@ -416,6 +416,9 @@ class ScheduleAddViewController: UIViewController {
         schedule.minute = minute
         
         schedule.save()
+        schedule.existNodes.forEach { node in
+            node.clearSyncStateCache()
+        }
         
         // 判断需要同步设备数据
         if !schedule.getNeedSyncDatas().isEmpty() {

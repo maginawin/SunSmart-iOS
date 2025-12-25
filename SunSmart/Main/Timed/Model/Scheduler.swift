@@ -92,7 +92,7 @@ class Schedule: Codable, Copyable {
         return MeshNetworkManager.instance.scenes.filter({ needDeleteSceneNumbers.contains($0.number) })
     }
     /// 存在的设备
-    var exitNodes: [Node] {
+    var existNodes: [Node] {
         var nodes: [Node] = []
         nodes.append(contentsOf: self.nodes)
         nodes.append(contentsOf: self.needDeleteNodes.filter({ !nodes.contains($0) }))
@@ -226,7 +226,7 @@ class Schedule: Codable, Copyable {
         
         if let nodeAddressStrings = try container.decodeIfPresent([String].self, forKey: .nodeAddresses) {
             nodeAddressStrings.forEach({
-                if let address = Address($0) {
+                if let address = Address(hex: $0) {
                     self.nodeAddresses.append(address)
                 }
             })
@@ -234,7 +234,7 @@ class Schedule: Codable, Copyable {
         
         if let groupAddressStrings = try container.decodeIfPresent([String].self, forKey: .groupAddresses) {
             groupAddressStrings.forEach({
-                if let address = Address($0) {
+                if let address = Address(hex: $0) {
                     self.groupAddresses.append(address)
                 }
             })

@@ -1215,6 +1215,13 @@ extension DeviceLightsViewController: MeshLibManagerDelegate, MeshLibManagerMess
         }
     }
     
+    /// 设备数据修改时间戳更新
+    func meshNetworkManager(_ manager: MeshNetworkManager, deviceDataUpdateTimeChange node: Node, lastUpdate: Int64) {
+//        if node.lastUpdateSyncTime != lastUpdate {
+            node.clearSyncStateCache()
+//        }
+    }
+    
     /// 代理节点切换回调
     /// - Parameters:
     ///   - manager: mesh网络管理

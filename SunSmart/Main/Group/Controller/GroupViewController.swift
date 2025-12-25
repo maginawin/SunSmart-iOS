@@ -446,7 +446,7 @@ class GroupViewController: UIViewController {
         
         var messageHandles: [MeshMessageHandle] = []
         
-//        group.sensorNodes.forEach({
+//        group.sensorNodes.forEach({ 
 //            let  $0.getNeedSyncGroupData(group: self).syncProfile
 //            
 //        })
@@ -950,6 +950,7 @@ class GroupViewController: UIViewController {
             self.group.info.save()
             self.group.info.profile.save(meshUUID: self.space.meshUUID, meshNetworkId: self.space.meshNetworkId)
             self.updateUI()
+            self.group.updateGroupSyncState()
         }
         navigationController?.pushViewController(vc, animated: true)
     }
@@ -1015,7 +1016,7 @@ class GroupViewController: UIViewController {
             if let item = collectionView.cellForItem(at: IndexPath(item: index, section: 0)) as? DevicesViewCell {
                 item.device = node
                 item.displayDeviceNamePrefix = space.displayDeviceNamePrefix
-                if node.state && node.getNeedSyncGroup() {
+                if node.state && node.needSyncGroupData {
                     item.iconImageView.image = UIImage(named: node.unsyncIconName)
                 }
             }
@@ -1244,7 +1245,7 @@ extension GroupViewController: UICollectionViewDataSource, UICollectionViewDeleg
         let node = group.nodes[indexPath.item]
         cell.device = node
         cell.displayDeviceNamePrefix = space.displayDeviceNamePrefix
-        if node.state && node.getNeedSyncGroup() {
+        if node.state && node.needSyncGroupData {
             cell.iconImageView.image = UIImage(named: node.unsyncIconName)
         }
 //        let node = MeshNetworkManager.instance.localNode!
@@ -1289,10 +1290,17 @@ extension GroupViewController: UICollectionViewDataSource, UICollectionViewDeleg
 
 extension GroupViewController: MeshLibManagerMessageDelegate {
     
-    func meshNetworkManager(_ manager: MeshNetworkManager, deviceDataUpdate node: Node) {
-        if view.window != nil, group.nodes.contains(node) {
-            reloadCollectionItem(node: node)
-        }
+//    func meshNetworkManager(_ manager: MeshNetworkManager, deviceDataUpdate node: Node) {
+//        if view.window != nil, group.nodes.contains(node) {
+//            reloadCollectionItem(node: node)
+//        }
+//    }
+    
+    /// 设备数据修改时间戳更新
+    func meshNetworkManager(_ manager: MeshNetworkManager, deviceDataUpdateTimeChange node: Node, lastUpdate: Int64) {
+//        if node.lastUpdateSyncTime != lastUpdate {
+            node.clearSyncStateCache()
+//        }
     }
     
     func meshNetworkManager(_ manager: MeshNetworkManager, didReceiveMessage message: MeshMessage, sentFrom source: Address, to destination: Address) {

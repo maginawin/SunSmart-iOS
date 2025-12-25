@@ -444,6 +444,10 @@ class DeviceLightViewController: UIViewController {
             }
             self.node.preConfiguration.nightProfileStartsBelowLux = lux
             self.node.preConfiguration.save(meshUUID: self.space.meshUUID, nodeAddress: self.node.primaryUnicastAddress)
+            
+            // 清除缓存
+            self.node.clearSyncStateCache()
+            
             self.syncDevice()
             
         }.show()
@@ -471,6 +475,8 @@ class DeviceLightViewController: UIViewController {
             }
             self.node.preConfiguration.dayProfileStartsAboveLux = lux
             self.node.preConfiguration.save(meshUUID: self.space.meshUUID, nodeAddress: self.node.primaryUnicastAddress)
+            // 清除缓存
+            self.node.clearSyncStateCache()
             self.syncDevice()
         }.show()
         
@@ -487,31 +493,6 @@ class DeviceLightViewController: UIViewController {
             }
         }
         navigationController?.pushViewController(vc, animated: true)
-    }
-    
-    /// 设置pwm频率
-    private func setPwmFrequency() {
-        let pwmPeriod = node.pwmFrequency
-        SRAlertView(title: "set_pwm_period".localizedString, inputText: pwmPeriod != nil ? "\(pwmPeriod!)" : nil, inputFieldStyle: .init(placeholder: "0-65535", keyboardType: .numberPad), actions: [.cancelAction, SRAlertAction(title: "confirm".localizedString, style: .default)], textValueChangedBack: nil) {[weak self] text in
-            guard let self = self else { return }
-            guard let value = UInt16(text) else {
-                XWHUDManager.showTipHUD("invalid".localizedString + "!", isLineFeed: true)
-                return
-            }
-            if let model = self.node.sunricherVendorModel {
-                XWHUDManager.showCustomHUD(withMessage: nil, view: self.view)
-                MeshAPI.sendMessage(message: SunricherVendorSet(function: .pwmFrequency(value)), model: model) {[weak self] response in
-                    guard let self = self else { return }
-                    XWHUDManager.hideInView(with: self.view)
-                    guard let statusMessage = response as? SunricherVendorStatus, statusMessage.status.isSuccessful else {
-                        XWHUDManager.showErrorTipHUD("failed!".localizedString)
-                        return
-                    }
-                    XWHUDManager.showSuccessTipHUD("done!".localizedString)
-                    self.updateData()
-                }
-            }
-        }.show()
     }
     
     /// 编辑设备
@@ -950,6 +931,13 @@ extension DeviceLightViewController: MeshLibManagerMessageDelegate {
             updateData()
             updateSliderValue()
         }
+    }
+    
+    /// 设备数据修改时间戳更新
+    func meshNetworkManager(_ manager: MeshNetworkManager, deviceDataUpdateTimeChange node: Node, lastUpdate: Int64) {
+//        if node.lastUpdateSyncTime != lastUpdate {
+            node.clearSyncStateCache()
+//        }
     }
     
     /// 收到消息回调

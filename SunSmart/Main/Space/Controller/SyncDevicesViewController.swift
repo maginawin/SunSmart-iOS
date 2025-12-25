@@ -54,6 +54,8 @@ class SyncDevicesViewController: UIViewController {
     var automationRestore: Bool = false
     /// 重试次数
     private var retryCount: Int = 0
+    /// 同步的设备list
+    private var syncNodes: [Node] = []
     
     var vcTitle: String?
     
@@ -1027,10 +1029,7 @@ class SyncDevicesViewController: UIViewController {
     /// 更新状态UI
     private func updateSyncStateUI() {
         
-        var devices: [SyncDevicesModel] = []
-        if let section = sections.first {
-            devices = section.devices
-        }
+        let devices = self.sections.flatMap({ $0.groups.flatMap({ $0.deviceModels }) + $0.devices })
         progressLabel.text = "\(devices.filter({ $0.state == .successful }).count)/\(devices.count)"
         
         if syncState == .inSync {
@@ -1236,10 +1235,15 @@ class SyncDevicesViewController: UIViewController {
                         }
                     }
                 }) {[weak self] resultMessageHandles in
-
+                    guard let self = self else { return }
                     resultMessageHandles.forEach { handle in
                         if let address = handle.address ?? handle.model?.parentElement?.unicastAddress, let node = MeshNetworkManager.instance.meshNetwork?.node(withAddress: address) {
                             node.updateData(message: handle.message, isSuccess: handle.isSuccessful)
+                            // 清空同步缓存状态
+                            node.clearSyncStateCache()
+//                            if !self.syncNodes.contains(node) {
+//                                self.syncNodes.append(node)
+//                            }
                         }
                     }
                     
@@ -1252,7 +1256,7 @@ class SyncDevicesViewController: UIViewController {
                         (model as? SyncDevicesModel)?.failedCount += 1
                         (model as? SyncDeviceStepTaskModel)?.failedCount += 1
                     }
-                    self?.updateCell(model: model)
+                    self.updateCell(model: model)
                     semaphore.signal()
                 }
                 semaphore.wait()
@@ -1263,6 +1267,8 @@ class SyncDevicesViewController: UIViewController {
                             progressView.stepModel = model
                         }
                     }
+                    let allDevices = self.sections.flatMap({ $0.groups.flatMap({ $0.deviceModels }) + $0.devices })
+                    self.progressLabel.text = "\(allDevices.filter({ $0.state == .successful }).count)/\(allDevices.count)"
                 }
             }
 //            _ = MeshNetworkManager.instance.save()
