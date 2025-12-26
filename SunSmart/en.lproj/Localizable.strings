@@ -1414,3 +1414,14 @@
 "calibration_light_point" = "Calibration light point";
 "sensor_calibration_disable_failed_message" = "The light sensor cannot be enabled. The previous light sensor was offline or malfunctioning. You need to restore it to online status or force reset it, and then delete the device.";
 "sensor_calibration_minimum_version_message" = "Your firmware version is too low. Please upgrade to version %@ or higher before calibrating.";
+
+"click_add_gateway" = "Click to add a gateway";
+"internet_online" = "Internet Online";
+"internet_offline" = "Internet Offline";
+"no_gateway" = "No Gateway";
+"last_online" = "Last online";
+"overview" = "Overview";
+"gateway_reset_title" = "The gateway was reset";
+"gateway_not_activated" = "Gateway not activated";
+"reset_time" = "Reset time";
+"click_to_setup" = "Click to set up";

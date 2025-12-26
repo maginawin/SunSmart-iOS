@@ -445,7 +445,7 @@ class SpaceViewController: WMPageController {
         
         // 空间内数据更新通知
         NotificationCenter.default.addObserver(forName: .init(spaceDataChangedNotificaitonName), object: nil, queue: .main) {[weak self] notification in
-            guard let self = self, let type = notification.object as? SpaceChangeDataType else { return }
+            guard let self = self, let type = notification.object as? SpaceChangeDataType, self.space.permission == .owner || self.space.permission == .editor else { return }
             self.space.lastUpdate = Int64(Date().timeIntervalSince1970)
             self.space.save()
             switch type {

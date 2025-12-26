@@ -572,7 +572,7 @@ class ReadDevicesDataViewController: UIViewController {
                 self.tableView.reloadData()
                 self.updateSyncStateUI()
                 // 通知space数据修改
-//                NotificationCenter.default.post(name: .init(spaceDataChangedNotificaitonName), object: SpaceChangeDataType.device)
+                NotificationCenter.default.post(name: .init(spaceDataChangedNotificaitonName), object: SpaceChangeDataType.device)
                 if self.readState == .success {
                     // 同步完成回调
                     self.readSuccessCallback?(self.type)

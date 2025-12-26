@@ -24,6 +24,9 @@ class SiteViewController: UIViewController {
     private var allSpacesNoInternetView: NoInternetHeaderView?
     private var favouritesNoInternetView: NoInternetHeaderView?
     
+    private var gatewayListView: GatewayListView!
+    private var gatewayStatusView: SiteGatewayStatusView!
+    
     private let noInternetHeight = SCRYFrom(54)
     
     private var addSpaceBtn: UIButton!
@@ -62,6 +65,11 @@ class SiteViewController: UIViewController {
     
     private var networkableObservation: NSKeyValueObservation?
     
+    private var gatewayModels: [GatewayModel] = []
+    
+    private var allSpaceGatewayIndex: Int = 0
+    private var favouriteSpaceGatewayIndex: Int = 0
+    
     init(site: SiteData, addSite: Bool = false) {
         self.site = site
         self.addSite = addSite
@@ -74,7 +82,6 @@ class SiteViewController: UIViewController {
     
     override func viewDidLoad() {
         super.viewDidLoad()
-
         title = site.name
         view.backgroundColor = Background_Color
         navigationController?.navigationBar.barTintColor = .clear
@@ -136,6 +143,7 @@ class SiteViewController: UIViewController {
         
         if NetworkRequest.shared.networkable && site.uploadCloud {
             loadSiteRequest()
+//            loadGatewaysReqeust()
         }
         
 //        MeshLibManager.manager.setMeshNetworkConnected(meshUUID: self.site.meshUUID, subNetwork: self.allSpaces.first?.meshNetworkKey, connected: true)
@@ -210,23 +218,23 @@ self.updateAddressData()
 //        localProvisioner.allocatedSceneRange.forEach({
 //            sceneAddressCount += Int(($0.lastScene - $0.firstScene) + 1)
 //        })
-//        
+//
 //        var recycleAddressCount = 0
 //        MeshAPI.getExclusionAddresses(meshUUID: self.site.id).forEach({
 //            recycleAddressCount += $0.addresses.count
 //        })
-//        
+//
 //        allDeviceAddressNum = deviceAddressCount
 //        usedDeviceAddressNum = deviceAddressCount - MeshAPI.getNumberOfAvailableUnicastAddresses(meshUUID: self.site.id)
-//        
+//
 //        allGroupAddressNum = groupAddressCount
 //        usedGroupAddressNum = groupAddressCount - MeshAPI.getNumberOfAvailableGroupAddresses(meshUUID: self.site.id)
-//        
+//
 //        allSceneAddressNum = sceneAddressCount
 //        usedSceneAddressNum = sceneAddressCount - MeshAPI.getNumberOfAvailableSceneAddresses(meshUUID: self.site.id)
-//        
+//
 //        recycleAddressNum = recycleAddressCount
-//        
+//
 //        self.allSpacesTableView.reloadData()
     }
 //    #endif
@@ -270,7 +278,7 @@ self.updateAddressData()
                         // 需要回收地址的space
                         let recyclingSpaces = self.site.spaces.filter({ $0.state == .waitDeleted  && !$0.releaseAddress })
                         if recyclingSpaces.count > 0 {
-                            recyclingSpaces.forEach({ 
+                            recyclingSpaces.forEach({
                                 $0.releaseAddress = true
                                 $0.save()
                             })
@@ -289,12 +297,22 @@ self.updateAddressData()
                         }
                         
                         self.title = self.site.name
+                        
+//                        self.gatewayModels = await self.loadGatewaysData()
+                        
 //                        self.site.save(allData: true)
 //                        // 未提交到服务器的本地数据
 //                        let localSpaces = self.allSpaces.filter({ localSpace in !self.site.spaces.contains(where: { $0.id == localSpace.id }) && !localSpace.uploadCloud })
 //                        self.site.spaces.append(contentsOf: localSpaces)
 //                        self.site.spaces.append(contentsOf: deleteSpaces)
 //                        self.site.spaces.sort(by: { $0.create < $1.create })
+//                        self.site.spaces.forEach({ space in
+//                            if let gateway = self.gatewayModels.first(where: { gateway in gateway.associatedSpaces.contains(where: { $0.id == space.id }) }) {
+//                                space.gatewayStatus = gateway.connectStatus == .online ? .online : .offline
+//                            }else {
+//                                space.gatewayStatus = .notBound
+//                            }
+//                        })
                         
                         self.allSpaces = self.site.spaces
                         self.favouriteSpaces = self.allSpaces.filter({ $0.isFavourite })
@@ -542,6 +560,19 @@ self.updateAddressData()
         
     }
     
+    /// 加载网关list及网络请求
+    private func loadGatewaysData() async -> [GatewayModel] {
+        
+        let result = await NetworkRequest.shared.request(.gatewayList(siteId: site.id))
+        
+        let gatewayModels = GatewayModel.load(siteId: site.id)
+        // 合并服务器数据
+        if let response = try? result.get() {
+            
+        }
+        return gatewayModels
+    }
+    
     // MARK: - Action
     
     @objc private func moreClick() {
@@ -657,7 +688,7 @@ self.updateAddressData()
 //        let vc = BleFirmwareUpdateViewController()
 //
 //        present(NavigationViewController(rootViewController: vc), animated: true)
-//        
+//
 //        return
         
         var imageNames: [String] = []
@@ -1690,6 +1721,7 @@ self.updateAddressData()
         allSpacesCollectionView = UICollectionView(frame: .zero, collectionViewLayout: allSpacesFlowLayout)
         allSpacesCollectionView.backgroundColor = .clear
         allSpacesCollectionView.register(SpacesViewCell.classForCoder(), forCellWithReuseIdentifier: "cell")
+//        allSpacesCollectionView.register(SiteGatewayHeaderView.classForCoder(), forSupplementaryViewOfKind: UICollectionView.elementKindSectionHeader, withReuseIdentifier: "header")
 //#if DEBUG
 //        allSpacesCollectionView.register(SiteAddressDataHeaderView.classForCoder(), forHeaderFooterViewReuseIdentifier: "header")
 //#endif
@@ -1719,6 +1751,7 @@ self.updateAddressData()
         
         favouritesCollectionView = UICollectionView(frame: .zero, collectionViewLayout: favouritesFlowLayout)
         favouritesCollectionView.backgroundColor = .clear
+//        favouritesCollectionView.register(SiteGatewayHeaderView.classForCoder(), forSupplementaryViewOfKind: UICollectionView.elementKindSectionHeader, withReuseIdentifier: "header")
         favouritesCollectionView.register(SpacesViewCell.classForCoder(), forCellWithReuseIdentifier: "cell")
         favouritesCollectionView.dataSource = self
         favouritesCollectionView.delegate = self
@@ -1750,6 +1783,32 @@ self.updateAddressData()
     }
 
 
+}
+
+extension SiteViewController: GatewayListViewDelegate {
+    
+    /// 点击网关项回调
+    func gatewayListView(_ view: GatewayListView, didSelectItem item: GatewayListItem, at index: Int) {
+        if segmentedControl.selectedIndex == 0 {
+            allSpaceGatewayIndex = index
+            allSpacesCollectionView.reloadData()
+        }else {
+            favouriteSpaceGatewayIndex = index
+            favouritesCollectionView.reloadData()
+        }
+    }
+    
+    /// 点击菜单按钮回调
+    func gatewayListViewDidClickMenu(_ view: GatewayListView) {
+        
+    }
+    
+    /// 点击添加网关
+    func gatewayListViewDidClickAdd(_ view: GatewayListView) {
+        let vc = SiteDeviceAddViewController(site: site)
+        navigationController?.pushViewController(vc, animated: true)
+    }
+    
 }
 
 extension SiteViewController: CustomSegmentedControlDelegate {
@@ -1798,6 +1857,69 @@ extension SiteViewController: UICollectionViewDataSource, UICollectionViewDelega
         return cell
     }
     
+//    func collectionView(_ collectionView: UICollectionView, viewForSupplementaryElementOfKind kind: String, at indexPath: IndexPath) -> UICollectionReusableView {
+//        let headerView = collectionView.dequeueReusableSupplementaryView(ofKind: kind, withReuseIdentifier: "header", for: indexPath) as! SiteGatewayHeaderView
+//        
+//        var items = gatewayModels.map({ GatewayListItem(id: $0.mac, title: $0.name, status: .online, gatewayModel: $0)})
+//        if items.count > 0 {
+//            items.insert(.init(id: "", title: "overview".localizedString), at: 0)
+//        }
+//        headerView.gatewayListView.updateItems(items)
+//        var selectIndex: Int = 0
+//        var spaces: [SpaceData] = []
+//        if collectionView == allSpacesCollectionView {
+//            selectIndex = allSpaceGatewayIndex
+//            spaces = allSpaces
+//        }else {
+//            selectIndex = favouriteSpaceGatewayIndex
+//            spaces = favouriteSpaces
+//        }
+//        headerView.gatewayListView.selectedIndex = selectIndex
+//        if selectIndex == 0 {
+//            headerView.gatewayStatusView.setDisplayMode(.overview)
+//            
+//            let onlineSpaces = spaces.filter({ $0.gatewayStatus == .online })
+//            let offlineSpaces = spaces.filter({ $0.gatewayStatus == .offline })
+//            let notBoundSpaces = spaces.filter({ $0.gatewayStatus == .notBound })
+//            
+//            headerView.gatewayStatusView.updateOverviewStats(.init(internetOnlineCount: onlineSpaces.count, internetOfflineCount: offlineSpaces.count, noGatewayCount: notBoundSpaces.count))
+//        }else {
+//            headerView.gatewayStatusView.setDisplayMode(.gateway)
+//            if selectIndex < gatewayModels.count {
+//                let gateway = gatewayModels[selectIndex]
+//                switch gateway.connectStatus {
+//                case .online:
+//                    headerView.gatewayStatusView.updateGatewayStatus(.online)
+//                case .offline:
+//                    headerView.gatewayStatusView.updateGatewayStatus(.offline(lastOnlineTime: gateway.lastOnlineTime ?? ""))
+//                case .inactive:
+//                    headerView.gatewayStatusView.updateGatewayStatus(.noActivated)
+//                case .reset:
+//                    headerView.gatewayStatusView.updateGatewayStatus(.reset(resetTime: gateway.resetTime ?? ""))
+//                }
+//            }
+//        }
+//        headerView.gatewayListView.delegate = self
+//        return headerView
+//    }
+    
+//    func collectionView(_ collectionView: UICollectionView, layout collectionViewLayout: UICollectionViewLayout, referenceSizeForHeaderInSection section: Int) -> CGSize {
+//        var spaces = allSpaces
+//        if collectionView == favouritesCollectionView {
+//            spaces = favouriteSpaces
+//        }
+//        guard spaces.count > 0 else {
+//            return .zero
+//        }
+//        
+//        let headerW = collectionView.width - collectionView.contentInset.left - collectionView.contentInset.right
+//        var headerH = SCRYFrom(48)
+//        if gatewayModels.count > 0 {
+//            headerH += SCRYFrom(48)
+//        }
+//        return CGSize(width: headerW, height: headerH)
+//    }
+    
     func collectionView(_ collectionView: UICollectionView, didSelectItemAt indexPath: IndexPath) {
         var space: SpaceData!
         if collectionView == allSpacesCollectionView {
@@ -1828,15 +1950,15 @@ extension SiteViewController: UICollectionViewDataSource, UICollectionViewDelega
 //        headerView.recycleAddressLabel.text = "Recycle Address: \(self.recycleAddressNum)"
 //        return headerView
 //    }
-//    
-//    
+//
+//
 //    func tableView(_ tableView: UITableView, heightForHeaderInSection section: Int) -> CGFloat {
 //        guard tableView == self.allSpacesTableView else {
 //            return 0
 //        }
 //        return SCRYFrom(44)
 //    }
-//    
+//
 //    #endif
     
 }
@@ -2022,4 +2144,27 @@ extension SiteViewController: UIDocumentPickerDelegate {
     
 }
 
-
+extension SpaceData {
+    
+    /// space网关状态
+    enum GatewayStatus {
+        /// 网关在线
+    case online
+        /// 网关离线
+    case offline
+        /// 未绑定
+    case notBound
+    }
+    
+    static private var gatewayStatusKey = 10
+    
+    /// 网关状态
+    var gatewayStatus: GatewayStatus {
+        get {
+            objc_getAssociatedObject(self, &SpaceData.gatewayStatusKey) as? GatewayStatus ?? .notBound
+        }set {
+            objc_setAssociatedObject(self, &SpaceData.gatewayStatusKey, newValue, .OBJC_ASSOCIATION_RETAIN)
+        }
+    }
+    
+}

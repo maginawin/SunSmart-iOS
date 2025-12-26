@@ -62,11 +62,13 @@ class SunSmartDataManager {
 
 extension SiteData {
     
-    private static let sitesTable = Table("sites")
+    private static let sitesTableName = "sites"
+    private static let sitesTable = Table(sitesTableName)
     
     struct ExpressionKey {
         static let id = Expression<Int64>("id")
         static let uuid = Expression<String>("uuid")
+        static let meshNetworkId = Expression<String>("meshNetworkId")
         static let name = Expression<String>("name")
         static let imageId = Expression<Int>("imageId")
         static let type = Expression<Int>("type")
@@ -109,8 +111,17 @@ extension SiteData {
             builder.column(ExpressionKey.transferPassword)
             builder.column(ExpressionKey.localAddress)
             builder.column(ExpressionKey.recycleAddressData)
+            builder.column(ExpressionKey.meshNetworkId)
         }))
         
+        // 获取表内存在的属性
+        if let columns = try? SunSmartDataManager.shared.db?.schema.columnDefinitions(table: sitesTableName) {
+            // 插入字段
+            // 是否存在”meshNetworkId“属性
+            if !columns.contains(where: { $0.name == "meshNetworkId" }) {
+                _ = try? SunSmartDataManager.shared.db?.run(SiteData.sitesTable.addColumn(ExpressionKey.meshNetworkId, defaultValue: ""))
+            }
+        }
 //        _ = try? SunSmartDataManager.shared.db?.run(SiteData.sitesTable.addColumn(ExpressionKey.localAddress))
         
         SpaceData.initDatabase()
@@ -126,7 +137,7 @@ extension SiteData {
         
         if let rows = try? SunSmartDataManager.shared.db?.prepare(filter.order(ExpressionKey.createTimestamp.asc)) {
             for row in rows {
-                let site = SiteData(region: ServerRegion(rawValue: row[ExpressionKey.regionType]) ?? UserData.currentServerRegion,id: row[ExpressionKey.uuid], meshUUID: row[ExpressionKey.uuid], name: row[ExpressionKey.name], imageId: row[ExpressionKey.imageId], type: .init(rawValue: row[ExpressionKey.type]) ?? .office, permission: .init(rawValue: row[ExpressionKey.permission]) ?? .owner, create: row[ExpressionKey.createTimestamp], lastUpdate: row[ExpressionKey.lastUpdateTimestamp], isFavourite: row[ExpressionKey.favourite], sourceType: .init(rawValue: row[ExpressionKey.source]) ?? .create)
+                let site = SiteData(region: ServerRegion(rawValue: row[ExpressionKey.regionType]) ?? UserData.currentServerRegion,id: row[ExpressionKey.uuid], meshUUID: row[ExpressionKey.uuid], meshNetworkId: row[ExpressionKey.meshNetworkId], name: row[ExpressionKey.name], imageId: row[ExpressionKey.imageId], type: .init(rawValue: row[ExpressionKey.type]) ?? .office, permission: .init(rawValue: row[ExpressionKey.permission]) ?? .owner, create: row[ExpressionKey.createTimestamp], lastUpdate: row[ExpressionKey.lastUpdateTimestamp], isFavourite: row[ExpressionKey.favourite], sourceType: .init(rawValue: row[ExpressionKey.source]) ?? .create)
                 site.lastUploadCloudTimestamp = row[ExpressionKey.lastUploadCloudTimestamp]
                 if let errorCode = row[ExpressionKey.syncCloudError] {
                     site.syncCloudError = .init(code: errorCode)
@@ -165,7 +176,7 @@ extension SiteData {
         var site: SiteData?
         if let rows = try? SunSmartDataManager.shared.db?.prepare(filter) {
             for row in rows {
-                site = SiteData(region: ServerRegion(rawValue: row[ExpressionKey.regionType]) ?? UserData.currentServerRegion, id: row[ExpressionKey.uuid], meshUUID: row[ExpressionKey.uuid], name: row[ExpressionKey.name], imageId: row[ExpressionKey.imageId], type: .init(rawValue: row[ExpressionKey.type]) ?? .office, permission: .init(rawValue: row[ExpressionKey.permission]) ?? .owner, create: row[ExpressionKey.createTimestamp], lastUpdate: row[ExpressionKey.lastUpdateTimestamp], isFavourite: row[ExpressionKey.favourite], sourceType: .init(rawValue: row[ExpressionKey.source]) ?? .create)
+                site = SiteData(region: ServerRegion(rawValue: row[ExpressionKey.regionType]) ?? UserData.currentServerRegion, id: row[ExpressionKey.uuid], meshUUID: row[ExpressionKey.uuid], meshNetworkId: row[ExpressionKey.meshNetworkId], name: row[ExpressionKey.name], imageId: row[ExpressionKey.imageId], type: .init(rawValue: row[ExpressionKey.type]) ?? .office, permission: .init(rawValue: row[ExpressionKey.permission]) ?? .owner, create: row[ExpressionKey.createTimestamp], lastUpdate: row[ExpressionKey.lastUpdateTimestamp], isFavourite: row[ExpressionKey.favourite], sourceType: .init(rawValue: row[ExpressionKey.source]) ?? .create)
                 site?.lastUploadCloudTimestamp = row[ExpressionKey.lastUploadCloudTimestamp]
                 if let errorCode = row[ExpressionKey.syncCloudError] {
                     site?.syncCloudError = .init(code: errorCode)
@@ -325,6 +336,7 @@ extension SiteData {
         
         let insetOrUpdate = table.insert(or: .replace, [
             ExpressionKey.uuid <- self.id,
+            ExpressionKey.meshNetworkId <- self.meshNetworkId,
             ExpressionKey.name <- self.name,
             ExpressionKey.imageId <- self.imageId,
             ExpressionKey.type <- self.type.rawValue,
@@ -2694,6 +2706,7 @@ extension GatewayModel {
     struct ExpressionKey {
         static let id = Expression<Int64>("id")
         static let siteUUID = Expression<String>("siteUUID")
+        static let name = Expression<String>("name")
         static let macAddress = Expression<String>("macAddress")
         static let address = Expression<Int>("address")
         static let activate = Expression<Bool>("activate")
@@ -2708,6 +2721,7 @@ extension GatewayModel {
         _ = try? SunSmartDataManager.shared.db?.run(GatewayModel.gatewaysTable.create(temporary: false, ifNotExists: true, withoutRowid: false, block: { builder in
             builder.column(ExpressionKey.id, primaryKey: true)
             builder.column(ExpressionKey.siteUUID)
+            builder.column(ExpressionKey.name)
             builder.column(ExpressionKey.macAddress)
             builder.column(ExpressionKey.address)
             builder.column(ExpressionKey.activate)
@@ -2716,6 +2730,15 @@ extension GatewayModel {
             builder.column(ExpressionKey.mqttServerInfo)
             builder.unique(ExpressionKey.siteUUID, ExpressionKey.macAddress)
         }))
+        
+        // 获取表内存在的属性
+        if let columns = try? SunSmartDataManager.shared.db?.schema.columnDefinitions(table: gatewaysTableName) {
+            // 插入字段
+            // 是否存在”iconCategory“属性
+            if !columns.contains(where: { $0.name == "name" }) {
+                _ = try? SunSmartDataManager.shared.db?.run(GatewayModel.gatewaysTable.addColumn(ExpressionKey.name, defaultValue: "Gateway"))
+            }
+        }
     }
     
     /// 加载site内所有网关list
@@ -2742,7 +2765,7 @@ extension GatewayModel {
                     })
                 }
                 
-                let gateway = GatewayModel(siteId: siteId,address: Address(row[ExpressionKey.address]), mac: row[ExpressionKey.macAddress], activate: row[ExpressionKey.activate], associatedSpaces: spaceDatas, apn: row[ExpressionKey.apn], mqttServerInfo: nil)
+                let gateway = GatewayModel(siteId: siteId, name: row[ExpressionKey.name], address: Address(row[ExpressionKey.address]), mac: row[ExpressionKey.macAddress], activate: row[ExpressionKey.activate], associatedSpaces: spaceDatas, apn: row[ExpressionKey.apn], mqttServerInfo: nil)
                 
                 if let data = row[ExpressionKey.mqttServerInfo],
                    let serverInformation = try? jsonDecoder.decode(GatewayInformation.MQTTConnectInformation.self, from: data) {

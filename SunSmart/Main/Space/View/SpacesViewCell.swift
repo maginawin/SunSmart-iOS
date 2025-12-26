@@ -24,18 +24,23 @@ class SpacesViewCell: UICollectionViewCell {
 //    private var bgView: UIView!
     private var iconImageView: UIImageView!
     private var nameLabel: UILabel!
+    private var stackView: UIStackView!
     private var favoriteBtn: UIButton!
     private var moreBtn: UIButton!
+    /// 存在子管理员
+    private var editorImageView: UIImageView!
+    /// 权限
+    private var permissionLabel: UILabel!
+    /// 网关在离线图标
+    private var gatewayStateImageView: UIImageView!
+    
     private var luminairesLabel: UILabel!
     private var switchesLabel: UILabel!
     private var groupsLabel: UILabel!
     private var scenesLabel: UILabel!
     private var schedulesLabel: UILabel!
     private var timeLabel: UILabel!
-    /// 存在子管理员
-    private var editorImageView: UIImageView!
-    /// 权限
-    private var permissionLabel: UILabel!
+
     /// 没有权限图标
     private var lockImageView: UIImageView!
     /// 同步失败标识
@@ -49,6 +54,14 @@ class SpacesViewCell: UICollectionViewCell {
     
     var space: SpaceData! {
         didSet {
+            
+            var stackSubViews: [UIView] = []
+            
+            // 清除旧的视图
+            stackView.arrangedSubviews.forEach { $0.removeFromSuperview() }
+            stackSubViews.append(moreBtn)
+            stackSubViews.append(favoriteBtn)
+            
             nameLabel.text = space.name
             iconImageView.image = UIImage(named: "space_picture_\(space.imageId)")
             timeLabel.text = space.create > 0 ? String.dateConvert(timestamp: "\(space.create)", dateFormat: "M/d/yyyy hh:mm a") : "--"
@@ -65,34 +78,14 @@ class SpacesViewCell: UICollectionViewCell {
             nameLabel.snp.updateConstraints { make in
                 make.left.equalTo(SCRXFrom(16))
             }
-            editorImageView.isHidden = true
-            if space.showSyncCloudError != nil && space.permission != .visitor {
-                syncFailedImageBtn.isHidden = false
-                nameLabel.textColor = Message_Color
-            }else {
-                syncFailedImageBtn.isHidden = true
-            }
-//            syncFailedImageBtn.isHidden = space.showSyncCloudError == nil || space.permission == .visitor
-            
-            
+
             if space.permission == .owner {
                 permissionLabel.isHidden = true
                 if space.editor != nil {
-                    editorImageView.isHidden = false
-                    syncFailedImageBtn.snp.remakeConstraints { make in
-                        make.right.equalTo(editorImageView.snp.left).offset(SCRXFrom(-8))
-                        make.centerY.equalTo(editorImageView)
-                    }
-                }else {
-                    editorImageView.isHidden = true
-                    syncFailedImageBtn.snp.remakeConstraints { make in
-                        make.right.equalTo(favoriteBtn.snp.left).offset(SCRXFrom(-8))
-                        make.centerY.equalTo(favoriteBtn)
-                    }
+                    stackSubViews.append(editorImageView)
                 }
-                
             }else {
-                permissionLabel.isHidden = false
+//                permissionLabel.isHidden = false
                 permissionLabel.textColor = Message_Color
                 // 判断是否回收权限
                 if space.state == .waitDeleted {
@@ -101,22 +94,6 @@ class SpacesViewCell: UICollectionViewCell {
                     permissionLabel.textColor = TextBlack_Color
                     
                 }else { // 判断是否修改密码
-//                    switch space.permission {
-//                    case .editor:
-//                        if (space.authorizationPassword?.isEmpty ?? true || space.requiresPasswordVerification) {
-//                            // 编辑者没有密码/修改密码时需要验证密码
-//                            verificationSpacePassword(space: space)
-//                            return
-//                        }
-//                    case .visitor:
-//                        if space.vistorPasswordEnable && (space.authorizationPassword?.isEmpty ?? true || space.requiresPasswordVerification) {
-//                            // 访客需要密码并修改密码/没有密码时需要验证密码
-//                            verificationSpacePassword(space: space)
-//                            return
-//                        }
-//                    default:
-//                        break
-//                    }
                     // 是否需要验证密码
                     var passwordVerification = false
                     if space.permission == .editor {
@@ -133,14 +110,42 @@ class SpacesViewCell: UICollectionViewCell {
                         }
                     }
                 }
-                
-                syncFailedImageBtn.snp.remakeConstraints { make in
-                    make.right.equalTo(permissionLabel.snp.left).offset(SCRXFrom(-8))
-                    make.centerY.equalTo(permissionLabel)
-                }
+                stackSubViews.append(permissionLabel)
             }
-           
             
+            switch space.gatewayStatus {
+            case .online:
+                gatewayStateImageView.image = UIImage(named: "gateway_internet_online_big")
+                stackSubViews.append(gatewayStateImageView)
+            case .offline:
+                gatewayStateImageView.image = UIImage(named: "gateway_internet_offline_big")
+                stackSubViews.append(gatewayStateImageView)
+            case .notBound:
+                break
+            }
+            
+            if space.showSyncCloudError != nil && space.permission != .visitor {
+//                syncFailedImageBtn.isHidden = false
+                nameLabel.textColor = Message_Color
+                stackSubViews.append(syncFailedImageBtn)
+            }
+            
+            stackSubViews.reversed().forEach({
+                $0.setContentCompressionResistancePriority(.required, for: .horizontal)
+                $0.setContentHuggingPriority(.required, for: .horizontal)
+                stackView.addArrangedSubview($0)
+            })
+            
+            // 自定义间隔，权限label左右间距调整
+            if let index = stackSubViews.firstIndex(of: permissionLabel) {
+                var customSpacingViews: [UIView] = [permissionLabel]
+                if index + 1 < stackSubViews.count {
+                    customSpacingViews.append(stackSubViews[index + 1])
+                }
+                customSpacingViews.forEach({
+                    stackView.setCustomSpacing(SCRXFrom(8), after: $0)
+                })
+            }
         }
     }
     
@@ -167,9 +172,9 @@ class SpacesViewCell: UICollectionViewCell {
         
         let morePoint = CGPoint(x: self.moreBtn.center.x, y: self.moreBtn.frame.maxY)
         
-//        let point = bgView.convert(morePoint, to: self)
+        let point = stackView.convert(morePoint, to: self)
 //        clickMoreCallback?(point)
-        delegate?.cell(self, moreAction: morePoint)
+        delegate?.cell(self, moreAction: point)
 //        delegate?.sitesViewCell(self, didClickMore: point)
     }
     /// 收藏
@@ -202,27 +207,77 @@ class SpacesViewCell: UICollectionViewCell {
 //            make.bottom.equalTo(SCRYFrom(-16))
 //        }
         
+        stackView = UIStackView()
+        stackView.axis = .horizontal
+        stackView.spacing = SCRXFrom(4)
+        stackView.setContentCompressionResistancePriority(.required, for: .horizontal)
+        stackView.setContentHuggingPriority(.required, for: .horizontal)
+//        stackView.alignment = .trailing
+        contentView.addSubview(stackView)
+        stackView.snp.makeConstraints { make in
+            make.right.equalTo(SCRXFrom(-4))
+            make.top.equalTo(SCRYFrom(9))
+            make.height.equalTo(30)
+//            make.width.greaterThanOrEqualTo(60)
+        }
+        
         nameLabel = UILabel(text: "Frist Floor", textColor: TextBlack_Color, fontSize: 14, fontWeight: .light)
+        nameLabel.setContentHuggingPriority(.defaultLow, for: .horizontal)
+        nameLabel.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
         contentView.addSubview(nameLabel)
         nameLabel.snp.makeConstraints { make in
             make.left.equalTo(SCRXFrom(16))
-            make.width.lessThanOrEqualTo(SCRXFrom(140))
-            make.top.equalTo(SCRYFrom(16))
+//            make.width.lessThanOrEqualTo(SCRXFrom(140))
+//            make.top.equalTo(SCRYFrom(16))
+            make.centerY.equalTo(stackView)
+            make.right.equalTo(stackView.snp.left).offset(SCRXFrom(-20))
         }
+        
+  
         
         moreBtn = UIButton(normalImageName: "more_vertical", target: self, action: #selector(moreBtnClick))
-        contentView.addSubview(moreBtn)
-        moreBtn.snp.makeConstraints { make in
-            make.right.equalTo(SCRXFrom(-4))
-            make.centerY.centerY.equalTo(nameLabel)
-        }
+        stackView.addArrangedSubview(moreBtn)
+//        contentView.addSubview(moreBtn)
+//        moreBtn.snp.makeConstraints { make in
+//            make.right.equalTo(SCRXFrom(-4))
+//            make.centerY.centerY.equalTo(nameLabel)
+//        }
         
         favoriteBtn = UIButton(normalImageName: "favourite_normal", selectedImageName: "favourite_selected", target: self, action: #selector(favoriteBtnClick))
-        contentView.addSubview(favoriteBtn)
-        favoriteBtn.snp.makeConstraints { make in
-            make.right.equalTo(moreBtn.snp.left).offset(SCRXFrom(-4))
-            make.centerY.equalTo(moreBtn)
-        }
+        stackView.addArrangedSubview(favoriteBtn)
+//        contentView.addSubview(favoriteBtn)
+//        favoriteBtn.snp.makeConstraints { make in
+//            make.right.equalTo(moreBtn.snp.left).offset(SCRXFrom(-4))
+//            make.centerY.equalTo(moreBtn)
+//        }
+        
+        editorImageView = UIImageView(image: UIImage(named: "space_editor"))
+//        editorImageView.isHidden = true
+//        stackView.addArrangedSubview(editorImageView)
+//        contentView.addSubview(editorImageView)
+//        editorImageView.snp.makeConstraints { make in
+//            make.right.equalTo(favoriteBtn.snp.left).offset(SCRXFrom(-8))
+//            make.centerY.equalTo(favoriteBtn)
+//        }
+        
+        permissionLabel = UILabel(text: "", textColor: Message_Color, fontSize: 14, fontWeight: .light)
+//        permissionLabel.isHidden = true
+//        contentView.addSubview(permissionLabel)
+//        permissionLabel.snp.makeConstraints { make in
+//            make.right.equalTo(favoriteBtn.snp.left).offset(SCRXFrom(-8))
+//            make.centerY.equalTo(favoriteBtn)
+//        }
+        
+        syncFailedImageBtn = UIButton(normalImageName: "cloud_sync_failed", target: self, action: #selector(syncFailedImageBtnAction))
+//        UIImageView(image: UIImage(named: "cloud_sync_failed"))
+//        contentView.addSubview(syncFailedImageBtn)
+//        syncFailedImageBtn.snp.makeConstraints { make in
+//            make.right.equalTo(editorImageView.snp.left).offset(SCRXFrom(-8))
+//            make.centerY.equalTo(editorImageView)
+//        }
+        
+        gatewayStateImageView = UIImageView()
+        
         
         iconImageView = UIImageView()
         iconImageView.backgroundColor = RGB(247, 247, 255)
@@ -280,22 +335,6 @@ class SpacesViewCell: UICollectionViewCell {
             make.bottom.equalTo(iconImageView)
         }
         
-        editorImageView = UIImageView(image: UIImage(named: "space_editor"))
-        editorImageView.isHidden = true
-        contentView.addSubview(editorImageView)
-        editorImageView.snp.makeConstraints { make in
-            make.right.equalTo(favoriteBtn.snp.left).offset(SCRXFrom(-8))
-            make.centerY.equalTo(favoriteBtn)
-        }
-        
-        permissionLabel = UILabel(text: "", textColor: Message_Color, fontSize: 14, fontWeight: .light)
-        permissionLabel.isHidden = true
-        contentView.addSubview(permissionLabel)
-        permissionLabel.snp.makeConstraints { make in
-            make.right.equalTo(favoriteBtn.snp.left).offset(SCRXFrom(-8))
-            make.centerY.equalTo(favoriteBtn)
-        }
-        
         lockImageView = UIImageView(image: UIImage(named: "locked"))
         lockImageView.isHidden = true
         contentView.addSubview(lockImageView)
@@ -303,14 +342,6 @@ class SpacesViewCell: UICollectionViewCell {
             make.left.equalTo(SCRXFrom(16))
 //            make.top.equalTo(SCRYFrom(9))
             make.centerY.equalTo(nameLabel)
-        }
-        
-        syncFailedImageBtn = UIButton(normalImageName: "cloud_sync_failed", target: self, action: #selector(syncFailedImageBtnAction))
-//        UIImageView(image: UIImage(named: "cloud_sync_failed"))
-        contentView.addSubview(syncFailedImageBtn)
-        syncFailedImageBtn.snp.makeConstraints { make in
-            make.right.equalTo(editorImageView.snp.left).offset(SCRXFrom(-8))
-            make.centerY.equalTo(editorImageView)
         }
         
     }

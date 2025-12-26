@@ -51,10 +51,14 @@ class DeviceInformationViewController: UIViewController {
     private func getData() {
         
         if let model = node.firmwareUpdateServerModel {
+            var cacheVersion = node.firmwareVersion
             MeshAPI.sendMessage(message: FirmwareUpdateInformationGet(firstIndex: 0, entriesLimit: 1), model: model) {[weak self] response in
-//                guard let self = self else { return }
-                self?.setupDeviceInfoDataSource()
-                self?.tableView.reloadSections(IndexSet(integer: 0), with: .none)
+                guard let self = self else { return }
+                if self.node.firmwareVersion != cacheVersion {
+                    NotificationCenter.default.post(name: .init(spaceDataChangedNotificaitonName), object: SpaceChangeDataType.device)
+                }
+                self.setupDeviceInfoDataSource()
+                self.tableView.reloadSections(IndexSet(integer: 0), with: .none)
             }
         }
     }

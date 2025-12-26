@@ -356,13 +356,16 @@ class LightSensorCalibrationViewController: UIViewController {
         // 判断哪些需要设置的灯
         let setLightNodes = lightNodes.filter({ $0.getNodeSyncProfiles().count > 0 })
         if setLightNodes.isEmpty {
-            SRAlertView.hide()
+            DispatchQueue.main.async {
+                SRAlertView.hide()
+            }
             return
         }
         
         self.stopConfig = false
-        
-        self.showConfiguring()
+        DispatchQueue.main.async {
+            self.showConfiguring()
+        }
         DispatchQueue.global().async {
             let semaphore = DispatchSemaphore(value: 0)
             
@@ -530,7 +533,9 @@ class LightSensorCalibrationViewController: UIViewController {
         // 判断传感器是否已启用
         if ambientLightSensorModel.publish?.publicationAddress == self.group.address {
             result?(true)
-            self.configuring(lightNodes: self.group.nodes)
+            DispatchQueue.main.async {
+                self.configuring(lightNodes: self.group.nodes)
+            }
             return
         }
         
@@ -543,10 +548,11 @@ class LightSensorCalibrationViewController: UIViewController {
                 
                 // 启用传感器，更新缓存
                 self.group.info.ambientLightSensorNodeAddress = sensor.primaryUnicastAddress
-                self.updateGroupLightSensor()
-                
                 result?(true)
-                self.configuring(lightNodes: self.group.nodes)
+                DispatchQueue.main.async {
+                    self.updateGroupLightSensor()
+                    self.configuring(lightNodes: self.group.nodes)
+                }
             }else {
                 result?(false)
             }
@@ -593,12 +599,15 @@ class LightSensorCalibrationViewController: UIViewController {
                 
                 // 禁用传感器，更新缓存
                 self.group.info.ambientLightSensorNodeAddress = nil
-                self.updateGroupLightSensor()
-                
                 result?(handle.isSuccessful)
-                if lightConfig {
-                    self.configuring(lightNodes: self.group.nodes)
+                
+                DispatchQueue.main.async {
+                    self.updateGroupLightSensor()
+                    if lightConfig {
+                        self.configuring(lightNodes: self.group.nodes)
+                    }
                 }
+                
             }else {
                 result?(false)
             }

@@ -60,6 +60,17 @@ class GatewayViewController: UIViewController, DeviceProtocol {
         setupUI()
         updateData()
         updateSaveBtnState()
+        
+//        Task {
+//            guard let vendorModel = node.sunricherVendorModel else { return }
+//            _ = await MeshAPI.sendMessage(message: SunricherVendorGet(function: .gatewaySimActivateState), model: vendorModel)
+//            _ = await MeshAPI.sendMessage(message: SunricherVendorGet(function: .gatewayMqttState), model: vendorModel)
+//            _ = await MeshAPI.sendMessage(message: SunricherVendorGet(function: .gatewaySimCpin), model: vendorModel)
+//            _ = await MeshAPI.sendMessage(message: SunricherVendorGet(function: .gatewaySimCreg), model: vendorModel)
+//            _ = await MeshAPI.sendMessage(message: SunricherVendorGet(function: .gatewaySimCpsi), model: vendorModel)
+//            
+//        }
+        
     }
     
     override func viewWillAppear(_ animated: Bool) {
