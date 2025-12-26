@@ -1776,6 +1776,10 @@
 		C8D22E1E2E04100D001A2BDA /* DeviceAddProfessionalModeController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8D22E1C2E04100D001A2BDA /* DeviceAddProfessionalModeController.swift */; };
 		C8D22E202E041020001A2BDA /* DeviceAddClassicModeController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8D22E1F2E041020001A2BDA /* DeviceAddClassicModeController.swift */; };
 		C8D22E212E041020001A2BDA /* DeviceAddClassicModeController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8D22E1F2E041020001A2BDA /* DeviceAddClassicModeController.swift */; };
+		C8D3ADB02EFD3599003D15CB /* ProfileDayNightLuxDevicesViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8D3ADAF2EFD3599003D15CB /* ProfileDayNightLuxDevicesViewController.swift */; };
+		C8D3ADB12EFD3599003D15CB /* ProfileDayNightLuxDevicesViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8D3ADAF2EFD3599003D15CB /* ProfileDayNightLuxDevicesViewController.swift */; };
+		C8D3ADB22EFD3599003D15CB /* ProfileDayNightLuxDevicesViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8D3ADAF2EFD3599003D15CB /* ProfileDayNightLuxDevicesViewController.swift */; };
+		C8D3ADB32EFD3599003D15CB /* ProfileDayNightLuxDevicesViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8D3ADAF2EFD3599003D15CB /* ProfileDayNightLuxDevicesViewController.swift */; };
 		C8D3BC5211D39346ECD5E3AF /* Pods_Common_Archipelago.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 8F7ED1D6D6BFC3B3813C473D /* Pods_Common_Archipelago.framework */; };
 		C8D58F662C1D34090066B770 /* CloudSynchronizationManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8D58F652C1D34090066B770 /* CloudSynchronizationManager.swift */; };
 		C8D6636D2BFED12B00BFF81A /* Keychain.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8D6636C2BFED12B00BFF81A /* Keychain.swift */; };
@@ -2283,6 +2287,7 @@
 		C8D22DFF2E010A47001A2BDA /* GatewayViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GatewayViewController.swift; sourceTree = "<group>"; };
 		C8D22E1C2E04100D001A2BDA /* DeviceAddProfessionalModeController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceAddProfessionalModeController.swift; sourceTree = "<group>"; };
 		C8D22E1F2E041020001A2BDA /* DeviceAddClassicModeController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceAddClassicModeController.swift; sourceTree = "<group>"; };
+		C8D3ADAF2EFD3599003D15CB /* ProfileDayNightLuxDevicesViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileDayNightLuxDevicesViewController.swift; sourceTree = "<group>"; };
 		C8D58F652C1D34090066B770 /* CloudSynchronizationManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CloudSynchronizationManager.swift; sourceTree = "<group>"; };
 		C8D6636C2BFED12B00BFF81A /* Keychain.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Keychain.swift; sourceTree = "<group>"; };
 		C8D6636E2BFEDDC900BFF81A /* ImportData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImportData.swift; sourceTree = "<group>"; };
@@ -2444,6 +2449,7 @@
 				C8047F142B8ED37800A09FFA /* ProfileSettingsViewController.swift */,
 				C8A8D7432EF5599B0025FFF7 /* ProfileDayNightLuxViewController.swift */,
 				C8BB3E4D2EF9482500207225 /* ProfileLightSensorTemplateListController.swift */,
+				C8D3ADAF2EFD3599003D15CB /* ProfileDayNightLuxDevicesViewController.swift */,
 				C8BB3E432EF92CDC00207225 /* ProfileLightSensorTemplateController.swift */,
 				C8BCDB3A2EFA748600D35DA5 /* ProfileLightSensorTemplateDevicesController.swift */,
 			);
@@ -4299,6 +4305,7 @@
 				C88553D32DE6B44C00C8B688 /* PopGestureScrollView.swift in Sources */,
 				C88553D42DE6B44C00C8B688 /* ServerSelectionView.swift in Sources */,
 				C88553D52DE6B44C00C8B688 /* DeviceParameterRatedPowerPhaseData.swift in Sources */,
+				C8D3ADB22EFD3599003D15CB /* ProfileDayNightLuxDevicesViewController.swift in Sources */,
 				C88553D62DE6B44C00C8B688 /* DeviceParameterDeviceCell.swift in Sources */,
 				C88553D72DE6B44C00C8B688 /* EnergyFileData.swift in Sources */,
 				C88553D82DE6B44C00C8B688 /* DeviceLightControlViewCell.swift in Sources */,
@@ -4739,6 +4746,7 @@
 				C886E0232E30DE4900D0C3A6 /* PopGestureScrollView.swift in Sources */,
 				C886E0242E30DE4900D0C3A6 /* ServerSelectionView.swift in Sources */,
 				C886E0252E30DE4900D0C3A6 /* DeviceParameterRatedPowerPhaseData.swift in Sources */,
+				C8D3ADB02EFD3599003D15CB /* ProfileDayNightLuxDevicesViewController.swift in Sources */,
 				C886E0262E30DE4900D0C3A6 /* DeviceParameterDeviceCell.swift in Sources */,
 				C886E0272E30DE4900D0C3A6 /* EnergyFileData.swift in Sources */,
 				C886E0282E30DE4900D0C3A6 /* DeviceLightControlViewCell.swift in Sources */,
@@ -5179,6 +5187,7 @@
 				C87415DD2ADFD1510020E3C2 /* PopGestureScrollView.swift in Sources */,
 				C86B0ABA2C11434C0038F669 /* ServerSelectionView.swift in Sources */,
 				C8AEB9AE2DCC98CF0053102B /* DeviceParameterRatedPowerPhaseData.swift in Sources */,
+				C8D3ADB32EFD3599003D15CB /* ProfileDayNightLuxDevicesViewController.swift in Sources */,
 				C8A0116B2DA8F8010058E7E7 /* DeviceParameterDeviceCell.swift in Sources */,
 				C83D8C502DD1A0C300A59AFA /* EnergyFileData.swift in Sources */,
 				C88B257E2ADE594600CF1AE4 /* DeviceLightControlViewCell.swift in Sources */,
@@ -5619,6 +5628,7 @@
 				C8BB65D32ED3F056000C63EE /* PopGestureScrollView.swift in Sources */,
 				C8BB65D42ED3F056000C63EE /* ServerSelectionView.swift in Sources */,
 				C8BB65D52ED3F056000C63EE /* DeviceParameterRatedPowerPhaseData.swift in Sources */,
+				C8D3ADB12EFD3599003D15CB /* ProfileDayNightLuxDevicesViewController.swift in Sources */,
 				C8BB65D62ED3F056000C63EE /* DeviceParameterDeviceCell.swift in Sources */,
 				C8BB65D72ED3F056000C63EE /* EnergyFileData.swift in Sources */,
 				C8BB65D82ED3F056000C63EE /* DeviceLightControlViewCell.swift in Sources */,

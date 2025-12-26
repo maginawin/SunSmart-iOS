@@ -156,8 +156,12 @@ class ProfileLightSensorTemplateController: UIViewController {
         
         bottomView = DeviceBottomBtnView()
         bottomView.createBtn.setTitle("save".localizedString, for: .normal)
+        bottomView.createBtn.setTitleColor(Title_Color, for: .normal)
+        bottomView.createBtn.setTitleColor(Title_Color.withAlphaComponent(0.5), for: .disabled)
         bottomView.createBtn.addTarget(self, action: #selector(saveAction), for: .touchUpInside)
         bottomView.deleteBtn.addTarget(self, action: #selector(deleteAction), for: .touchUpInside)
+        bottomView.saveBtn.setTitleColor(Title_Color, for: .normal)
+        bottomView.saveBtn.setTitleColor(Title_Color.withAlphaComponent(0.5), for: .disabled)
         bottomView.saveBtn.addTarget(self, action: #selector(saveAction), for: .touchUpInside)
 //        bottomView.showCreateUI()
         view.addSubview(bottomView)
@@ -168,6 +172,7 @@ class ProfileLightSensorTemplateController: UIViewController {
         
         scrollView = UIScrollView()
         scrollView.alwaysBounceVertical = true
+        scrollView.enableKeyboardDismissal()
         view.addSubview(scrollView)
         scrollView.snp.makeConstraints { make in
             make.left.right.equalToSuperview()
@@ -198,6 +203,7 @@ class ProfileLightSensorTemplateController: UIViewController {
         nameField.clearButtonMode = .whileEditing
         nameField.rightViewMode = .whileEditing
         nameField.leftView = UIView(frame: CGRect(x: 0, y: 0, width: 8, height: 0))
+        nameField.leftViewMode = .always
         nameField.addTarget(self, action: #selector(updateBottomViewUI), for: .editingChanged)
         nameField.returnKeyType = .done
         nameField.delegate = self
@@ -250,6 +256,7 @@ class ProfileLightSensorTemplateController: UIViewController {
         nightLuxField.keyboardType = .numberPad
         nightLuxField.addTarget(self, action: #selector(nightLuxFieldEditChanged), for: .editingChanged)
         nightLuxField.returnKeyType = .done
+        nightLuxField.textAlignment = .center
         nightLuxField.delegate = self
         contentView.addSubview(nightLuxField)
         nightLuxField.snp.makeConstraints { make in
@@ -290,6 +297,7 @@ class ProfileLightSensorTemplateController: UIViewController {
         dayLuxField.keyboardType = .numberPad
         dayLuxField.addTarget(self, action: #selector(dayLuxFieldEditChanged), for: .editingChanged)
         dayLuxField.returnKeyType = .done
+        dayLuxField.textAlignment = .center
         dayLuxField.delegate = self
         contentView.addSubview(dayLuxField)
         dayLuxField.snp.makeConstraints { make in
@@ -322,6 +330,7 @@ class ProfileLightSensorTemplateController: UIViewController {
             make.left.right.equalTo(nightDayView)
             make.top.equalTo(appliedDeviceTitleLabel.snp.bottom).offset(SCRYFrom(9))
             make.height.equalTo(SCRYFrom(40))
+            make.bottom.equalToSuperview()
         }
         
         appliedDevicesLabel = UILabel(text: "", textColor: Chart_Text_Color, fontSize: 14, fontWeight: .light)
@@ -350,6 +359,14 @@ extension ProfileLightSensorTemplateController: UITextFieldDelegate {
     
     func textFieldShouldReturn(_ textField: UITextField) -> Bool {
         view.endEditing(true)
+        return true
+    }
+    
+    func textField(_ textField: UITextField, shouldChangeCharactersIn range: NSRange, replacementString string: String) -> Bool {
+        guard string.isEmpty || string.isPureNumandCharacters() else {
+            return false
+        }
+        
         return true
     }
 }

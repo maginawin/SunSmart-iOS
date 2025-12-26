@@ -45,8 +45,8 @@ class ProfileDayNightLuxViewController: WMPageController {
 //        CGRect(x: SCRXFrom(16), y: SCRYFrom(16) + kNavigationHeight, width: view.width - SCRXFrom(32), height: SCRYFrom(44))
         segmentedControl.snp.makeConstraints { make in
             make.top.equalTo(view.safeAreaLayoutGuide).offset(SCRYFrom(8))
-            make.left.equalTo(SCRXFrom(16))
-            make.right.equalTo(SCRXFrom(-16))
+            make.left.equalTo(SCRXFrom(16)).priority(.high)
+            make.right.equalTo(SCRXFrom(-16)).priority(.high)
             make.height.equalToSuperview()
         }
         
@@ -61,18 +61,18 @@ extension ProfileDayNightLuxViewController {
     }
     
     override func pageController(_ pageController: WMPageController, viewControllerAt index: Int) -> UIViewController {
-//        switch index {
-//        case 0:
-//            let vc = GroupPathSequenceViewController(group: group, groupPath: groupPath)
+        switch index {
+        case 0:
+            let vc = ProfileLightSensorTemplateListController(group: group)
 //            self.sequenceVc = vc
-//            return vc
-//        case 1:
-//            let vc = GroupPathSequenceTriggerZoneController(group: group, zones: groupPath.zones)
+            return vc
+        case 1:
+            let vc = ProfileDayNightLuxDevicesViewController(nodes: group.nodes)
 //            self.triggerZoneVc = vc
-//            return vc
-//        default:
+            return vc
+        default:
             return UIViewController()
-//        }
+        }
     }
     
     override func pageController(_ pageController: WMPageController, preferredFrameForContentView contentView: WMScrollView) -> CGRect {

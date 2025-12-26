@@ -352,9 +352,16 @@ class DevicesViewController: WMPageController {
         guard MeshLibManager.manager.isMeshNetworkConnected else {
             return
         }
+//        MeshNetworkManager.instance.realNodes.forEach { node in
+//            if let model = node.timeModel {
+//                MeshAPI.sendMessage(message: Node.setLocalTimeMessage(), model: model)
+//            }
+//        }
+//        MeshNetworkManager.instance.realNodes.first?.lightLCSchedulerSetupModel
         MeshAPI.sendMessage(message: Node.setLocalTimeMessage(), address: .allNodes)
         space.lastSyncDateTimestamp = CLongLong(Date().timeIntervalSince1970)
         space.save()
+        
     }
     
     /// 添加设备

@@ -521,7 +521,7 @@ class SitesViewController: UIViewController {
 //        guard let space = favouriteSites.first?.spaces.last else {
 //            return
 //        }
-//        guard let space = favouriteSites.last?.spaces.last else { return }
+//        guard let space = favouriteSites.last?.spaces.first else { return }
         
 //        DispatchQueue.global().async {
 //            MeshLibManager.manager.setMeshNetworkConnected(meshUUID: space.meshUUID, subNetworkId: space.meshNetworkId)
@@ -529,7 +529,8 @@ class SitesViewController: UIViewController {
 //            MeshNetworkManager.instance.loadExtensionData { _ in
 //                DispatchQueue.main.async {
 //                    let group = MeshNetworkManager.instance.groups.first!
-//                    let vc = ProfileSettingsViewController(group: group, profile: group.info.profile)
+//                    let vc = ProfileDayNightLuxViewController(group: group)
+////                    let vc = ProfileSettingsViewController(group: group, profile: group.info.profile)
 //    //                let vc = GroupPathSequencePageController(group: group)
 ////                    let vc = DaliMasterViewController(space: space, node: MeshNetworkManager.instance.realNodes[0])
 ////                    let vc = DeviceRatedPowerCalibrationController(devices: MeshNetworkManager.instance.realNodes)
