@@ -1004,7 +1004,7 @@
         "deviceCategory" : "Lighting",
         "modelName" : "SR-BL9033Z-PIR-V",
         "sensitivityRangeMin" : 0,
-        "sensitivityRangeMax" : 53083
+        "sensitivityRangeMax" : 55049
     },
     {
         "companyId" : "0A78",
@@ -1015,7 +1015,7 @@
         "deviceCategory" : "Lighting",
         "modelName" : "SR-BL9033P-PIR-V",
         "sensitivityRangeMin" : 0,
-        "sensitivityRangeMax" : 53083
+        "sensitivityRangeMax" : 55049
     },
     {
         "companyId" : "0A78",
@@ -1026,7 +1026,7 @@
         "deviceCategory" : "Lighting",
         "modelName" : "SR-BL9033J-PIR-V",
         "sensitivityRangeMin" : 0,
-        "sensitivityRangeMax" : 53083
+        "sensitivityRangeMax" : 55049
     }
     
 ]
