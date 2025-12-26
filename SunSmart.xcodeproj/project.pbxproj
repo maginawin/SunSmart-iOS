@@ -1583,9 +1583,7 @@
 		C8BB67512ED3F056000C63EE /* DeviceSliderFunctionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C898EA752AC409230023B480 /* DeviceSliderFunctionView.swift */; };
 		C8BB67532ED3F056000C63EE /* Pods_Common_SunSmart.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = C8FFD7D42E7D03B20074CC6A /* Pods_Common_SunSmart.framework */; };
 		C8BB67542ED3F056000C63EE /* NordicSigMeshSDK in Frameworks */ = {isa = PBXBuildFile; productRef = C8BB65AC2ED3F056000C63EE /* NordicSigMeshSDK */; };
-		C8BB67562ED3F056000C63EE /* Privacy Policy.html in Resources */ = {isa = PBXBuildFile; fileRef = C89B34222C93E3B700A77DB6 /* Privacy Policy.html */; };
 		C8BB67572ED3F056000C63EE /* XWHUDManager_right@3x.png in Resources */ = {isa = PBXBuildFile; fileRef = C896BB8E2A930C3800217512 /* XWHUDManager_right@3x.png */; };
-		C8BB67582ED3F056000C63EE /* User Agreement.html in Resources */ = {isa = PBXBuildFile; fileRef = C89B34202C93E2B600A77DB6 /* User Agreement.html */; };
 		C8BB67592ED3F056000C63EE /* Localizable.strings in Resources */ = {isa = PBXBuildFile; fileRef = C898E2D72AB7E46300C71315 /* Localizable.strings */; };
 		C8BB675A2ED3F056000C63EE /* device_add.mp3 in Resources */ = {isa = PBXBuildFile; fileRef = C8B483D12E4B361F006D85BC /* device_add.mp3 */; };
 		C8BB675B2ED3F056000C63EE /* device_reset.mp3 in Resources */ = {isa = PBXBuildFile; fileRef = C8B483D22E4B361F006D85BC /* device_reset.mp3 */; };
@@ -1668,6 +1666,8 @@
 		C8C1E5A82B6A1FA500F60E62 /* XWHUDManager_successful@3x.png in Resources */ = {isa = PBXBuildFile; fileRef = C8C1E5A62B6A1FA500F60E62 /* XWHUDManager_successful@3x.png */; };
 		C8C1E5AB2B6A1FDC00F60E62 /* XWHUDManager_error@2x.png in Resources */ = {isa = PBXBuildFile; fileRef = C8C1E5A92B6A1FDC00F60E62 /* XWHUDManager_error@2x.png */; };
 		C8C1E5AC2B6A1FDC00F60E62 /* XWHUDManager_error@3x.png in Resources */ = {isa = PBXBuildFile; fileRef = C8C1E5AA2B6A1FDC00F60E62 /* XWHUDManager_error@3x.png */; };
+		C8C30AC92EFE97B4002BD53D /* User Agreement.html in Resources */ = {isa = PBXBuildFile; fileRef = C8C30AC82EFE97B4002BD53D /* User Agreement.html */; };
+		C8C30ACB2EFE97BA002BD53D /* Privacy Policy.html in Resources */ = {isa = PBXBuildFile; fileRef = C8C30ACA2EFE97BA002BD53D /* Privacy Policy.html */; };
 		C8C3A1502E37257500876028 /* GatewayNameViewCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8C3A14F2E37257500876028 /* GatewayNameViewCell.swift */; };
 		C8C3A1512E37257500876028 /* GatewayNameViewCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8C3A14F2E37257500876028 /* GatewayNameViewCell.swift */; };
 		C8C3A1522E37257500876028 /* GatewayNameViewCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8C3A14F2E37257500876028 /* GatewayNameViewCell.swift */; };
@@ -2184,6 +2184,8 @@
 		C8C1E5A62B6A1FA500F60E62 /* XWHUDManager_successful@3x.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "XWHUDManager_successful@3x.png"; sourceTree = "<group>"; };
 		C8C1E5A92B6A1FDC00F60E62 /* XWHUDManager_error@2x.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "XWHUDManager_error@2x.png"; sourceTree = "<group>"; };
 		C8C1E5AA2B6A1FDC00F60E62 /* XWHUDManager_error@3x.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "XWHUDManager_error@3x.png"; sourceTree = "<group>"; };
+		C8C30AC82EFE97B4002BD53D /* User Agreement.html */ = {isa = PBXFileReference; lastKnownFileType = text.html; path = "User Agreement.html"; sourceTree = "<group>"; };
+		C8C30ACA2EFE97BA002BD53D /* Privacy Policy.html */ = {isa = PBXFileReference; lastKnownFileType = text.html; path = "Privacy Policy.html"; sourceTree = "<group>"; };
 		C8C3A14F2E37257500876028 /* GatewayNameViewCell.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GatewayNameViewCell.swift; sourceTree = "<group>"; };
 		C8C3A1532E374C7500876028 /* GatewayAssociatedSpacesController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GatewayAssociatedSpacesController.swift; sourceTree = "<group>"; };
 		C8C3A1572E37509800876028 /* GatewayAssociatedSpacesViewCell.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GatewayAssociatedSpacesViewCell.swift; sourceTree = "<group>"; };
@@ -3548,6 +3550,8 @@
 		C8BB67712ED3F0F6000C63EE /* SLGSync */ = {
 			isa = PBXGroup;
 			children = (
+				C8C30ACA2EFE97BA002BD53D /* Privacy Policy.html */,
+				C8C30AC82EFE97B4002BD53D /* User Agreement.html */,
 				C8BB67702ED3F056000C63EE /* SLGSync-Info.plist */,
 				C8BB67722ED3F13A000C63EE /* Assets-SLGSync.xcassets */,
 				C8BB67742ED3F164000C63EE /* SLGSync-LaunchScreen.storyboard */,
@@ -3965,9 +3969,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				C8BB67562ED3F056000C63EE /* Privacy Policy.html in Resources */,
 				C8BB67572ED3F056000C63EE /* XWHUDManager_right@3x.png in Resources */,
-				C8BB67582ED3F056000C63EE /* User Agreement.html in Resources */,
 				C8BB67592ED3F056000C63EE /* Localizable.strings in Resources */,
 				C8BB675A2ED3F056000C63EE /* device_add.mp3 in Resources */,
 				C8BB675B2ED3F056000C63EE /* device_reset.mp3 in Resources */,
@@ -3980,12 +3982,14 @@
 				C8BB67732ED3F13A000C63EE /* Assets-SLGSync.xcassets in Resources */,
 				C8BB67622ED3F056000C63EE /* broadcast_loading.gif in Resources */,
 				C8BB67632ED3F056000C63EE /* devices_config.json in Resources */,
+				C8C30ACB2EFE97BA002BD53D /* Privacy Policy.html in Resources */,
 				C8BB67642ED3F056000C63EE /* XWHUDManager_error@3x.png in Resources */,
 				C8BB67652ED3F056000C63EE /* Assets.xcassets in Resources */,
 				C8BB67662ED3F056000C63EE /* XWHUDManager_info@2x.png in Resources */,
 				C8BB67672ED3F056000C63EE /* XWHUDManager_info@3x.png in Resources */,
 				C8BB67682ED3F056000C63EE /* XWHUDManager_right@2x.png in Resources */,
 				C8BB67692ED3F056000C63EE /* XWHUDManager_tip@2x.png in Resources */,
+				C8C30AC92EFE97B4002BD53D /* User Agreement.html in Resources */,
 				C8BB67752ED3F164000C63EE /* SLGSync-LaunchScreen.storyboard in Resources */,
 				C8BB676A2ED3F056000C63EE /* XWHUDManager_successful@3x.png in Resources */,
 			);
@@ -5907,7 +5911,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 6;
+				CURRENT_PROJECT_VERSION = 7;
 				DEVELOPMENT_TEAM = RJTP8XBT2V;
 				GCC_PREFIX_HEADER = "";
 				GENERATE_INFOPLIST_FILE = YES;
@@ -5949,7 +5953,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 6;
+				CURRENT_PROJECT_VERSION = 7;
 				DEVELOPMENT_TEAM = RJTP8XBT2V;
 				GCC_PREFIX_HEADER = "";
 				GENERATE_INFOPLIST_FILE = YES;
@@ -6272,7 +6276,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = JTD3WYUC58;
+				DEVELOPMENT_TEAM = 97QC5USUD2;
 				GCC_PREFIX_HEADER = "";
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = "SLGSync/SLGSync-Info.plist";
@@ -6291,7 +6295,7 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.azoula.slgsync;
+				PRODUCT_BUNDLE_IDENTIFIER = com.slg.slgsyncplus;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
 				SUPPORTS_MACCATALYST = NO;
@@ -6313,7 +6317,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = JTD3WYUC58;
+				DEVELOPMENT_TEAM = 97QC5USUD2;
 				GCC_PREFIX_HEADER = "";
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = "SLGSync/SLGSync-Info.plist";
@@ -6332,7 +6336,7 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.azoula.slgsync;
+				PRODUCT_BUNDLE_IDENTIFIER = com.slg.slgsyncplus;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
 				SUPPORTS_MACCATALYST = NO;
