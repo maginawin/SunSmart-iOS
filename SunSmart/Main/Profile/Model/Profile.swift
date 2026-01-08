@@ -569,24 +569,52 @@ class Profile: Copyable {
         }
         
         /// 简介
-        var instruction: (name: String, imageName: String, description: String, requireds: [RequiredDeviceType]) {
+        var instruction: (name: String, imageName: String, descriptionAttStr: NSAttributedString, requireds: [RequiredDeviceType]) {
+            
+            let paragraphStyle = NSMutableParagraphStyle()
+            paragraphStyle.lineSpacing = 2
+            
             switch self {
             case .occupancy_daylight:
-                return ("profile_occupancy_daylight".localizedString, "profile_occupancy_daylight", "profile_occupancy_daylight_desc".localizedString, [.luminaire, .lightSensor, .occupancySensor])
+                return ("profile_occupancy_daylight".localizedString, "profile_occupancy_daylight", NSAttributedString(string: "profile_occupancy_daylight_desc".localizedString), [.luminaire, .lightSensor, .occupancySensor])
             case .vacancy_daylight:
-                return ("profile_vacancy_daylight".localizedString, "profile_vacancy_daylight", "profile_vacancy_daylight_desc".localizedString, [.luminaire, .lightSensor, .manualControl, .occupancySensor])
+                return ("profile_vacancy_daylight".localizedString, "profile_vacancy_daylight", NSAttributedString(string: "profile_vacancy_daylight_desc".localizedString), [.luminaire, .lightSensor, .manualControl, .occupancySensor])
             case .occupancy:
-                return ("profile_occupancy".localizedString, "profile_occupancy", "profile_occupancy_desc".localizedString, [.luminaire, .occupancySensor])
+                return ("profile_occupancy".localizedString, "profile_occupancy", NSAttributedString(string: "profile_occupancy_desc".localizedString, attributes: [.paragraphStyle: paragraphStyle]), [.luminaire, .occupancySensor])
             case .vacancy:
-                return ("profile_vacancy".localizedString, "profile_vacancy", "profile_vacancy_desc".localizedString, [.luminaire, .occupancySensor, .manualControl])
+                return ("profile_vacancy".localizedString, "profile_vacancy", NSAttributedString(string: "profile_vacancy_desc".localizedString, attributes: [.paragraphStyle: paragraphStyle]), [.luminaire, .occupancySensor, .manualControl])
             case .daylight:
-                return ("profile_daylight".localizedString, "profile_daylight", "profile_daylight_desc".localizedString, [.luminaire, .lightSensor])
+                return ("profile_daylight".localizedString, "profile_daylight", NSAttributedString(string: "profile_daylight_desc".localizedString, attributes: [.paragraphStyle: paragraphStyle]), [.luminaire, .lightSensor])
             case .manualControl:
-                return ("profile_manual_control".localizedString, "profile_manual_control", "profile_manual_control_desc".localizedString, [.luminaire, .manualControl])
+                return ("profile_manual_control".localizedString, "profile_manual_control", NSAttributedString(string: "profile_manual_control_desc".localizedString, attributes: [.paragraphStyle: paragraphStyle]), [.luminaire, .manualControl])
             case .proximityLighting:
-                return ("profile_predictive_lighting".localizedString, "profile_proximity_lighting", "profile_predictive_lighting_desc".localizedString, [.luminaire, .occupancySensor, .pathSequenceSetting])
+                return ("profile_predictive_lighting".localizedString, "profile_proximity_lighting", NSAttributedString(string: "profile_predictive_lighting_desc".localizedString, attributes: [.paragraphStyle: paragraphStyle]), [.luminaire, .occupancySensor, .pathSequenceSetting])
             case .proximityLightingWithPhotocell:
-                return ("profile_predictive_lighting_with_photocell".localizedString, "profile_proximity_lighting", "profile_predictive_lighting_with_photocell_desc".localizedString, [.luminaire, .occupancySensor, .pathSequenceSetting])
+                
+                let attStr1 = NSMutableAttributedString(string: "profile_predictive_lighting_with_photocell_desc_1".localizedString + "\n")
+                attStr1.addAttributes([.font: UIFont.systemFont(ofSize: 14), .foregroundColor: TextBlack_Color], range: (attStr1.string as NSString).range(of: "proximity/predictive_lighting_with_photocell".localizedString))
+                
+                let attStr2 = NSMutableAttributedString(string: "profile_predictive_lighting_with_photocell_desc_2".localizedString + "\n")
+                attStr2.addAttributes([.font: UIFont.systemFont(ofSize: 14), .foregroundColor: TextBlack_Color], range: (attStr2.string as NSString).range(of: "proximity_lighting".localizedString))
+                
+                let attStr3 = NSMutableAttributedString(string: "profile_predictive_lighting_with_photocell_desc_3".localizedString + "\n")
+                attStr3.addAttributes([.font: UIFont.systemFont(ofSize: 14), .foregroundColor: TextBlack_Color], range: (attStr3.string as NSString).range(of: "predictive_lighting".localizedString))
+                
+                let attStr4 = NSMutableAttributedString(string: "profile_predictive_lighting_with_photocell_desc_4".localizedString)
+                attStr4.addAttributes([.font: UIFont.systemFont(ofSize: 14), .foregroundColor: TextBlack_Color], range: (attStr4.string as NSString).range(of: "own_ambient_light_sensor".localizedString))
+                
+                let paragraphStyle = NSMutableParagraphStyle()
+                paragraphStyle.lineSpacing = 2
+                paragraphStyle.paragraphSpacing = 6
+                
+                let descriptionAttStr = NSMutableAttributedString()
+                descriptionAttStr.append(attStr1)
+                descriptionAttStr.append(attStr2)
+                descriptionAttStr.append(attStr3)
+                descriptionAttStr.append(attStr4)
+                descriptionAttStr.addAttribute(.paragraphStyle, value: paragraphStyle, range: NSRange(location: 0, length: descriptionAttStr.string.count))
+                
+                return ("profile_predictive_lighting_with_photocell".localizedString, "profile_proximity_lighting_with_photocell", descriptionAttStr, [.luminaire, .lightSensor, .occupancySensor, .pathSequenceSetting])
             }
         }
         
@@ -772,6 +800,7 @@ class Profile: Copyable {
         if let nightScene = self.scenes.first(where: { $0.sceneNumber == self.nightData?.sceneData.sceneNumber }) {
             self.nightData?.sceneData = nightScene
         }
+        self.lightSensorTemplates = profile.lightSensorTemplates
     }
     
     func copy() -> Self {
@@ -788,6 +817,7 @@ class Profile: Copyable {
         profile.dayData = dayData
         profile.nightData = nightData
         profile.scenes = scenes
+        profile.lightSensorTemplates = self.lightSensorTemplates
         return profile as! Self
     }
     

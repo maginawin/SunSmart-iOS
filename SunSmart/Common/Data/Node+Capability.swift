@@ -1,0 +1,37 @@
+//
+//  Node+Capability.swift
+//  SunSmart
+//
+//  Created by yuankehong on 2026/1/7.
+//
+
+import Foundation
+import NordicSigMeshSDK
+
+extension Node {
+    
+    /// 节点支持的功能类型
+    enum DeviceCapability {
+        /// 设备所有功能
+        static let all: [DeviceCapability] = [.lightSensorConditionSegmentSet]
+        
+        // 每个功能支持的最低版本id
+        var supportedVersionId: Int {
+            switch self {
+            case .lightSensorConditionSegmentSet: return 1
+            }
+        }
+        
+        /// 光照传感器执行条件分段设置
+        case lightSensorConditionSegmentSet
+    }
+    
+    /// 设备所支持的功能/能力
+    var capabilities: [DeviceCapability] {
+        guard let vid = self.versionIdentifier else { return [] }
+        return DeviceCapability.all.filter { capability in
+            capability.supportedVersionId <= vid
+        }
+    }
+    
+}

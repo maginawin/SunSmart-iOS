@@ -192,7 +192,7 @@ class FirmwareVersionViewController: UIViewController {
                 incomingFirmwareMetadata.writeBits(value: UInt8(zipData.test ? 1 : 0), numBits: 1, atOffset: 144)
                 incomingFirmwareMetadata.writeBits(value: UInt8(zipData.versionCheck ? 1 : 0), numBits: 1, atOffset: 145)
                 
-                self.localFirmwareData = .init(name: serverData.filename, version: serverData.version, firmwareID: zipData.firmwareId, data: zipData.firmwareData, updateFirmwareImageIndex: zipData.imageIndex, incomingFirmwareMetadata: incomingFirmwareMetadata, productId: serverData.productId, vendorId: serverData.companyId, customId: serverData.customId, releaseDate: serverData.releaseDate, content: serverData.content, compositionHash: zipData.compositionHash.reversed().toHexString())
+                self.localFirmwareData = .init(name: serverData.filename, version: serverData.version, firmwareID: zipData.firmwareId, data: zipData.firmwareData, updateFirmwareImageIndex: zipData.imageIndex, incomingFirmwareMetadata: incomingFirmwareMetadata, productId: serverData.productId, vendorId: serverData.companyId, customId: serverData.customId, releaseDate: serverData.releaseDate, content: serverData.content, compositionHash: zipData.compositionHash.reversed().toHexString(), versionIdentifier: zipData.versionIdentifier)
                 self.localFirmwareData?.save()
                 self.updateLocalFirmwareDataCallback?(self.localFirmwareData)
                 self.updateUI()
@@ -442,7 +442,7 @@ extension FirmwareVersionViewController: UIDocumentPickerDelegate {
             incomingFirmwareMetadata.writeBits(value: UInt8(zipData.test ? 1 : 0), numBits: 1, atOffset: 144)
             incomingFirmwareMetadata.writeBits(value: UInt8(zipData.versionCheck ? 1 : 0), numBits: 1, atOffset: 145)
             
-            let firmwareData = FirmwareData(name: "", version: zipData.firmwareVersion, firmwareID: zipData.firmwareId, data: zipData.firmwareData, updateFirmwareImageIndex: zipData.imageIndex, incomingFirmwareMetadata: incomingFirmwareMetadata, productId: self.type.productId, vendorId: self.type.serverData?.companyId ?? 0x0A78, customId: self.type.serverData?.customId ?? 0x00, releaseDate: Int64(Date().timeIntervalSince1970), content: "test", compositionHash: zipData.compositionHash.reversed().toHexString())
+            let firmwareData = FirmwareData(name: "", version: zipData.firmwareVersion, firmwareID: zipData.firmwareId, data: zipData.firmwareData, updateFirmwareImageIndex: zipData.imageIndex, incomingFirmwareMetadata: incomingFirmwareMetadata, productId: self.type.productId, vendorId: self.type.serverData?.companyId ?? 0x0A78, customId: self.type.serverData?.customId ?? 0x00, releaseDate: Int64(Date().timeIntervalSince1970), content: "test", compositionHash: zipData.compositionHash.reversed().toHexString(), versionIdentifier: zipData.versionIdentifier)
             firmwareData.save()
             XWHUDManager.showSuccessTipHUD("successfully".localizedString + "!")
             self.localFirmwareData = firmwareData

@@ -143,6 +143,8 @@ let Yellow_Color = RGB(255, 193, 71)
 let Purple_Color = RGB(102, 103, 171)
 /// 错误红色
 let Error_Red_Color = RGB(255, 72, 49)
+/// 警告橘色
+let Orange_Color = RGB(255, 167, 44)
 
 #if Archipelago
 /// 主色

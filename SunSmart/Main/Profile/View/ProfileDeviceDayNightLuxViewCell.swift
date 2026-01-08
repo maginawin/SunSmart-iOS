@@ -16,8 +16,14 @@ protocol ProfileDeviceDayNightLuxViewCellDelegate: AnyObject {
     /// 晚上lux编辑
     func cell(_ cell: ProfileDeviceDayNightLuxViewCell, nightLuxEditChanged nightLux: Int?)
     
+    /// 晚上lux停止编辑
+    func cell(_ cell: ProfileDeviceDayNightLuxViewCell, nightLuxEditEnd nightLux: Int?)
+    
     /// 白天lux编辑
     func cell(_ cell: ProfileDeviceDayNightLuxViewCell, dayLuxEditChanged dayLux: Int?)
+    
+    /// 白天lux停止编辑
+    func cell(_ cell: ProfileDeviceDayNightLuxViewCell, dayLuxEditEnd dayLux: Int?)
     
     /// 获取当前lux
     func deviceDayNightLuxViewCellGetLuxAction(_ cell: ProfileDeviceDayNightLuxViewCell)
@@ -28,6 +34,53 @@ protocol ProfileDeviceDayNightLuxViewCellDelegate: AnyObject {
     /// 确认修改回调
     func deviceDayNightLuxViewCellModifyAction(_ cell: ProfileDeviceDayNightLuxViewCell)
     
+    /// 设备重新同步事件
+    func deviceDayNightLuxViewCellResyncAction(_ cell: ProfileDeviceDayNightLuxViewCell)
+    
+}
+
+extension ProfileDeviceDayNightLuxViewCellDelegate {
+    
+    /// 晚上lux编辑
+    func cell(_ cell: ProfileDeviceDayNightLuxViewCell, nightLuxEditChanged nightLux: Int?) {
+        
+    }
+    
+    /// 晚上lux停止编辑
+    func cell(_ cell: ProfileDeviceDayNightLuxViewCell, nightLuxEditEnd nightLux: Int?) {
+        
+    }
+    
+    /// 白天lux编辑
+    func cell(_ cell: ProfileDeviceDayNightLuxViewCell, dayLuxEditChanged dayLux: Int?) {
+        
+    }
+    
+    /// 白天lux停止编辑
+    func cell(_ cell: ProfileDeviceDayNightLuxViewCell, dayLuxEditEnd dayLux: Int?) {
+        
+    }
+    
+    /// 获取当前lux
+    func deviceDayNightLuxViewCellGetLuxAction(_ cell: ProfileDeviceDayNightLuxViewCell) {
+        
+    }
+    
+    /// 恢复lux修改
+    func deviceDayNightLuxViewCellResetAction(_ cell: ProfileDeviceDayNightLuxViewCell) {
+        
+    }
+    
+    /// 确认修改回调
+    func deviceDayNightLuxViewCellModifyAction(_ cell: ProfileDeviceDayNightLuxViewCell) {
+        
+    }
+    
+    /// 设备重新同步事件
+    func deviceDayNightLuxViewCellResyncAction(_ cell: ProfileDeviceDayNightLuxViewCell) {
+        
+    }
+    
 }
 
 class ProfileDeviceDayNightLuxViewCell: UICollectionViewCell {
@@ -37,6 +90,7 @@ class ProfileDeviceDayNightLuxViewCell: UICollectionViewCell {
     var nameLabel: UILabel!
     var getLuxBtn: UIButton!
     var luxLabel: UILabel!
+    var nonsupportNoteLabel: UILabel!
     private var luxUnitLabel: UILabel!
     
     private var nightStartsBelowLabel: UILabel!
@@ -45,33 +99,46 @@ class ProfileDeviceDayNightLuxViewCell: UICollectionViewCell {
     var dayStartsAboveLabel: UILabel!
     var dayLuxField: UITextField!
     private var dayLuxUnitLabel: UILabel!
+    private var luxLineView: UIView!
+    
     var modifyBtn: UIButton!
     var resetBtn: UIButton!
+    var syncFailBtn: UIButton!
+    
+    private var updateLuxTimer: Timer?
     
     weak var delegate: ProfileDeviceDayNightLuxViewCellDelegate?
     
     var device: Node! {
         didSet {
             
+            nameLabel.text = device.name
             deviceImageView.image = UIImage(named: device.iconName)
             if let lux = device.steadyDaylightLux {
                 luxLabel.text = "\(lux)"
             }else {
                 luxLabel.text = "--"
             }
-            if let nightLux = device.preConfiguration.nightProfileStartsBelowLux ?? device.group?.info.profile.nightData?.startsBelowLux {
+            if let nightLux = device.tempNightLux {
                 nightLuxField.text = "\(nightLux)"
             }else {
-                nightLuxField.text = "--"
+                nightLuxField.text = ""
             }
-            if let dayLux = device.preConfiguration.dayProfileStartsAboveLux ?? device.group?.info.profile.dayData?.startsBelowLux {
+            if let dayLux = device.tempDayLux {
                 dayLuxField.text = "\(dayLux)"
             }else {
-                dayLuxField.text = "--"
+                dayLuxField.text = ""
             }
             
-            
-            
+        }
+    }
+    
+    /// 设备图标左边距
+    var deviceImageLeftMargin: CGFloat = SCRXFrom(12) {
+        didSet {
+            deviceImageView.snp.updateConstraints { make in
+                make.left.equalTo(deviceImageLeftMargin)
+            }
         }
     }
     
@@ -87,6 +154,8 @@ class ProfileDeviceDayNightLuxViewCell: UICollectionViewCell {
     required init?(coder: NSCoder) {
         fatalError("init(coder:) has not been implemented")
     }
+    
+    // MARK: - Action
     
     @objc private func getLuxBtnAction() {
         delegate?.deviceDayNightLuxViewCellGetLuxAction(self)
@@ -108,18 +177,133 @@ class ProfileDeviceDayNightLuxViewCell: UICollectionViewCell {
         delegate?.cell(self, nightLuxEditChanged: lux)
     }
     
-    @objc private func dayLuxFieldEditChanged(sender: UITextField) {
+    
+    @objc private func nightLuxFieldEditEnd(sender: UITextField) {
         guard let text = sender.text, let lux = Int(text) else {
-            delegate?.cell(self, nightLuxEditChanged: nil)
+            delegate?.cell(self, nightLuxEditEnd: nil)
             return
         }
-        delegate?.cell(self, nightLuxEditChanged: lux)
+        delegate?.cell(self, nightLuxEditEnd: lux)
     }
+    
+    @objc private func dayLuxFieldEditChanged(sender: UITextField) {
+        guard let text = sender.text, let lux = Int(text) else {
+            delegate?.cell(self, dayLuxEditChanged: nil)
+            return
+        }
+        delegate?.cell(self, dayLuxEditChanged: lux)
+    }
+    
+    @objc private func dayLuxFieldEditEnd(sender: UITextField) {
+        guard let text = sender.text, let lux = Int(text) else {
+            delegate?.cell(self, dayLuxEditEnd: nil)
+            return
+        }
+        delegate?.cell(self, dayLuxEditEnd: lux)
+    }
+
     
     @objc private func deviceImageViewAction() {
 
         delegate?.cell(self, identify: device)
     }
+    
+    @objc private func syncFailBtnAction() {
+        
+        delegate?.deviceDayNightLuxViewCellResyncAction(self)
+    }
+    
+    // MARK: - Publich Methods
+    
+    /// 刷新节点lux
+    func reloadNodeLux() {
+        if let lux = device.steadyDaylightLux {
+            luxLabel.text = "\(lux)"
+            luxLabel.backgroundColor = RGB(179, 237, 103)
+            luxLabel.layer.borderWidth = 0
+        }
+    }
+    
+    /// 开始get lux loading
+    func startGetLuxLoading() {
+        getLuxBtn.setTitle(nil, for: .normal)
+        getLuxBtn.setImage(UIImage(named: "loading_16"), for: .normal)
+        getLuxBtn.imageView?.layer.addRotationAnimation(duration: 1.2, repeatCount: 999, animationKey: "loading")
+    }
+    
+    /// 停止get lux loading
+    func stopGetLuxLoading() {
+        getLuxBtn.setTitle("get".localizedString, for: .normal)
+        getLuxBtn.setImage(nil, for: .normal)
+        getLuxBtn.imageView?.layer.removeAnimation(forKey: "loading")
+    }
+    
+    /// 显示支持光照传感器UI
+    func showLightSensorLuxUI() {
+        
+        luxLabel.isHidden = false
+        luxUnitLabel.isHidden = false
+        getLuxBtn.isHidden = false
+        nightStartsBelowLabel.isHidden = false
+        nightLuxField.isHidden = false
+        nightLuxUnitLabel.isHidden = false
+        luxLineView.isHidden = false
+        dayStartsAboveLabel.isHidden = false
+        dayLuxField.isHidden = false
+        dayLuxUnitLabel.isHidden = false
+        nonsupportNoteLabel.isHidden = true
+    }
+    
+    /// 显示不支持光照传感器UI
+    func showLightSensorNonsupportUI() {
+        luxLabel.isHidden = true
+        luxUnitLabel.isHidden = true
+        getLuxBtn.isHidden = true
+        nightStartsBelowLabel.isHidden = true
+        nightLuxField.isHidden = true
+        nightLuxUnitLabel.isHidden = true
+        luxLineView.isHidden = true
+        dayStartsAboveLabel.isHidden = true
+        dayLuxField.isHidden = true
+        dayLuxUnitLabel.isHidden = true
+        modifyBtn.isHidden = true
+        resetBtn.isHidden = true
+        syncFailBtn.isHidden = true
+        nonsupportNoteLabel.isHidden = false
+    }
+    
+    // MARK: - Lux Timer
+    
+    /// 开始lux更新倒计时，3s内没有新的数据则变为灰色背景
+    private func startUpdateLuxTimer() {
+        
+        stopUpdateLuxTimer()
+        
+        updateLuxTimer = LCWeakTimer.scheduledTimer(timeInterval: 1, aTarget: self, selector: #selector(updateLuxState), userInfo: nil, repeats: false)
+        RunLoop.current.add(updateLuxTimer!, forMode: .common)
+    }
+    
+    private func stopUpdateLuxTimer() {
+        updateLuxTimer?.invalidate()
+        updateLuxTimer = nil
+    }
+    
+    @objc private func updateLuxState() {
+        stopUpdateLuxTimer()
+        luxLabel.backgroundColor = .clear
+        luxLabel.layer.borderWidth = 1
+    }
+    
+    override func prepareForReuse() {
+        super.prepareForReuse()
+        
+//        stopUpdateLuxTimer()
+        updateLuxState()
+    }
+    
+    
+    
+    // MARK: - UI
     
     private func setupUI() {
         
@@ -136,13 +320,13 @@ class ProfileDeviceDayNightLuxViewCell: UICollectionViewCell {
         deviceImageView.addGestureRecognizer(UITapGestureRecognizer(target: self, action: #selector(deviceImageViewAction)))
         contentView.addSubview(deviceImageView)
         deviceImageView.snp.makeConstraints { make in
-            make.left.equalTo(SCRXFrom(12))
+            make.left.equalTo(deviceImageLeftMargin)
             make.top.equalTo(selectedImageView)
             make.width.height.equalTo(30)
         }
         
         getLuxBtn = UIButton(title: "get".localizedString, titleSize: 12, titleColor: Bar_Color, target: self, action: #selector(getLuxBtnAction))
-        getLuxBtn.layer.cornerRadius = SCRYFrom(15)
+        getLuxBtn.layer.cornerRadius = SCRYFrom(12)
         getLuxBtn.layer.borderColor = Bar_Color.withAlphaComponent(0.3).cgColor
         getLuxBtn.layer.borderWidth = 0.6
         contentView.addSubview(getLuxBtn)
@@ -162,8 +346,11 @@ class ProfileDeviceDayNightLuxViewCell: UICollectionViewCell {
         
         luxLabel = UILabel(text: "--", textColor: ImportantText_Color, fontSize: 12, fontWeight: .light)
         luxLabel.layer.cornerRadius = SCRYFrom(10)
+        luxLabel.layer.masksToBounds = true
         luxLabel.layer.borderColor = RGB(220, 220, 220).cgColor
+        luxLabel.textAlignment = .center
         luxLabel.layer.borderWidth = 1
+        luxLabel.setContentHuggingPriority(.required, for: .horizontal)
         contentView.addSubview(luxLabel)
         luxLabel.snp.makeConstraints { make in
             make.right.equalTo(luxUnitLabel.snp.left).offset(SCRXFrom(-4))
@@ -177,7 +364,7 @@ class ProfileDeviceDayNightLuxViewCell: UICollectionViewCell {
         nameLabel.snp.makeConstraints { make in
             make.left.equalTo(deviceImageView.snp.right).offset(SCRXFrom(8))
             make.centerY.equalTo(deviceImageView)
-            make.right.equalTo(luxLabel.snp.left).offset(SCRXFrom(-30))
+            make.right.equalTo(luxLabel.snp.left).offset(SCRXFrom(-30)).priority(.low)
         }
         
         nightLuxField = UITextField()
@@ -190,6 +377,7 @@ class ProfileDeviceDayNightLuxViewCell: UICollectionViewCell {
         nightLuxField.layer.borderColor = TextField_Border_Color.cgColor
         nightLuxField.returnKeyType = .done
         nightLuxField.addTarget(self, action: #selector(nightLuxFieldEditChanged), for: .editingChanged)
+        nightLuxField.addTarget(self, action: #selector(nightLuxFieldEditEnd), for: .editingDidEnd)
         nightLuxField.delegate = self
         contentView.addSubview(nightLuxField)
         nightLuxField.snp.makeConstraints { make in
@@ -199,7 +387,7 @@ class ProfileDeviceDayNightLuxViewCell: UICollectionViewCell {
             make.height.equalTo(SCRYFrom(28))
         }
         
-        nightStartsBelowLabel = UILabel(text: "night_starts_below", textColor: SubText_Color, fontSize: 10, fontWeight: .light)
+        nightStartsBelowLabel = UILabel(text: "night_starts_below".localizedString, textColor: SubText_Color, fontSize: 10, fontWeight: .light)
         contentView.addSubview(nightStartsBelowLabel)
         nightStartsBelowLabel.snp.makeConstraints { make in
             make.left.equalTo(nightLuxField)
@@ -213,10 +401,10 @@ class ProfileDeviceDayNightLuxViewCell: UICollectionViewCell {
             make.centerY.equalTo(nightLuxField)
         }
         
-        let lineView = UIView()
-        lineView.backgroundColor = Message_Color
-        contentView.addSubview(lineView)
-        lineView.snp.makeConstraints { make in
+        luxLineView = UIView()
+        luxLineView.backgroundColor = Message_Color
+        contentView.addSubview(luxLineView)
+        luxLineView.snp.makeConstraints { make in
             make.centerY.equalTo(nightLuxField)
             make.left.equalTo(nightLuxUnitLabel.snp.right).offset(SCRXFrom(11))
             make.width.equalTo(0.5)
@@ -233,25 +421,34 @@ class ProfileDeviceDayNightLuxViewCell: UICollectionViewCell {
         dayLuxField.textAlignment = .center
         dayLuxField.returnKeyType = .done
         dayLuxField.addTarget(self, action: #selector(dayLuxFieldEditChanged), for: .editingChanged)
+        dayLuxField.addTarget(self, action: #selector(dayLuxFieldEditEnd), for: .editingDidEnd)
         dayLuxField.delegate = self
         contentView.addSubview(dayLuxField)
         dayLuxField.snp.makeConstraints { make in
-            make.left.equalTo(lineView.snp.right).offset(SCRXFrom(10))
+            make.left.equalTo(luxLineView.snp.right).offset(SCRXFrom(10))
             make.centerY.width.height.equalTo(nightLuxField)
         }
         
-        dayStartsAboveLabel = UILabel(text: "day_starts_above", textColor: SubText_Color, fontSize: 10, fontWeight: .light)
+        dayStartsAboveLabel = UILabel(text: "day_starts_above".localizedString, textColor: SubText_Color, fontSize: 10, fontWeight: .light)
         contentView.addSubview(dayStartsAboveLabel)
         dayStartsAboveLabel.snp.makeConstraints { make in
             make.left.equalTo(dayLuxField)
             make.bottom.equalTo(dayLuxField.snp.top).offset(SCRYFrom(-4))
         }
         
-        nightLuxUnitLabel = UILabel(text: "lx", textColor: ImportantText_Color, fontSize: 13, fontWeight: .light)
-        contentView.addSubview(nightLuxUnitLabel)
-        nightLuxUnitLabel.snp.makeConstraints { make in
+        dayLuxUnitLabel = UILabel(text: "lx", textColor: ImportantText_Color, fontSize: 13, fontWeight: .light)
+        contentView.addSubview(dayLuxUnitLabel)
+        dayLuxUnitLabel.snp.makeConstraints { make in
             make.left.equalTo(dayLuxField.snp.right).offset(SCRXFrom(4))
             make.centerY.equalTo(dayLuxField)
+        }
+        
+        syncFailBtn = UIButton(normalImageName: "sync_failed_small", target: self, action: #selector(syncFailBtnAction))
+        syncFailBtn.isHidden = true
+        contentView.addSubview(syncFailBtn)
+        syncFailBtn.snp.makeConstraints { make in
+            make.left.equalTo(SCRXFrom(12))
+            make.centerY.equalTo(nightLuxField)
         }
         
         modifyBtn = UIButton(title: "modify".localizedString, titleSize: 12, titleColor: TextBlack_Color, target: self, action: #selector(modifyBtnAction))
@@ -274,6 +471,21 @@ class ProfileDeviceDayNightLuxViewCell: UICollectionViewCell {
             make.bottom.equalTo(SCRYFrom(-12))
         }
         
+        let paragraphStyle = NSMutableParagraphStyle()
+        paragraphStyle.lineSpacing = 4
+        
+        let noteArrStr = NSAttributedString(string: "light_sensor_nonsupport_note".localizedString, attributes: [.paragraphStyle: paragraphStyle])
+        
+        nonsupportNoteLabel = UILabel(text: nil, textColor: Message_Color, fontSize: 13, fontWeight: .light, fit: false)
+        nonsupportNoteLabel.numberOfLines = 0
+        nonsupportNoteLabel.attributedText = noteArrStr
+        nonsupportNoteLabel.isHidden = true
+        contentView.addSubview(nonsupportNoteLabel)
+        nonsupportNoteLabel.snp.makeConstraints { make in
+            make.left.equalTo(nameLabel)
+            make.right.equalTo(SCRXFrom(-20))
+            make.top.equalTo(nameLabel.snp.bottom).offset(SCRYFrom(12))
+        }
     }
     
 }

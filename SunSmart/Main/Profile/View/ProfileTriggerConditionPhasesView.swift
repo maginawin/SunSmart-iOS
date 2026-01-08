@@ -34,7 +34,7 @@ protocol ProfileTriggerConditionPhasesViewDelegate: AnyObject {
     func view(_ view: ProfileTriggerConditionPhasesView, timeAction timeType: Profile.LightData.TimePickerData.TimeType)
     
     /// 编辑输入条件lux回调
-    func view(_ view: ProfileTriggerConditionPhasesView, startsBelowLuxEditChanged lux: Int?)
+//    func view(_ view: ProfileTriggerConditionPhasesView, startsBelowLuxEditChanged lux: Int?)
     
     /// 使用校准值帮助
     func phasesViewUseCalibrationValuesHelpAction(_ view: ProfileTriggerConditionPhasesView)
@@ -55,14 +55,14 @@ class ProfileTriggerConditionPhasesView: UIView {
     var titleLabel: UILabel!
     private var helpBtn: UIButton!
     
-    var startsBelowLabel: UILabel!
-    private var luxField: UITextField!
-    private var luxLabel: UILabel!
-    private var luxTipLabel: UILabel!
+//    var startsBelowLabel: UILabel!
+//    private var luxField: UITextField!
+//    private var luxLabel: UILabel!
+//    private var luxTipLabel: UILabel!
     
-    private var useCalibrationLabel: UILabel!
-    private var useCalibrationHelpBtn: UIButton!
-    private var calibrationEnableSwitch: UISwitch!
+//    private var useCalibrationLabel: UILabel!
+//    private var useCalibrationHelpBtn: UIButton!
+//    private var calibrationEnableSwitch: UISwitch!
     private var triggerTypeView: UIView!
     private var adjustOccupiedBtn: UIButton!
     private var fixedLevelBtn: UIButton!
@@ -132,186 +132,16 @@ class ProfileTriggerConditionPhasesView: UIView {
     
     weak var delegate: ProfileTriggerConditionPhasesViewDelegate?
     
-    var startsBelowLux: Int? {
-        get {
-            guard let inputText = luxField.text, let lux = Int(inputText) else { return nil }
-            return lux
-        }set {
-            luxField.text = newValue != nil ? "\(newValue!)" : nil
-        }
-    }
-    
-    var editable: Bool = true
-    
-//    var profile: Profile! {
-//        didSet {
-//            
-//            
-//            let data = profile.lightData.data
-//            
-//            timeT1Label.text =  Profile.LightData.TimePickerData.timeDetail(type: .t1, second: data.t1)
-//            timeT2Label.text =  Profile.LightData.TimePickerData.timeDetail(type: .t2, second: data.t2)
-//            timeT3Label.text =  Profile.LightData.TimePickerData.timeDetail(type: .t3, second: data.t3)
-//            timeT4Label.text =  Profile.LightData.TimePickerData.timeDetail(type: .t4, second: data.t4)
-//            timeT5Label.text =  Profile.LightData.TimePickerData.timeDetail(type: .t5, second: data.t5)
-//            
-//            highEndTrimLabel.text = "\(data.highEndTrim)%"
-//            lowEndTrimLabel.text = "\(data.lowEndTrim)%"
-//            
-//            if profile.type == .vacancy_daylight || profile.type == .occupancy_daylight || profile.type == .daylight {
-//                occupancyLevelLabel.text = "\(data.occupancyLevel)lx"
-//                vacantLevelLabel.text = "\(data.vacantLevel)lx"
-//                taskLevelLabel.text = "\(data.taskLevel)lx"
-//            }else {
-//                occupancyLevelLabel.text = "\(data.occupancyLevel)%"
-//                vacantLevelLabel.text = "\(data.vacantLevel)%"
-//                taskLevelLabel.text = "\(data.taskLevel)%"
-//            }
-//            
-//            
-//            
-//            autoMinLevelLabel.text = data.autoMinLevelEnabled ? "\(data.autoMinLevel)%" : "N/A"
-//            
-//            timeT1Btn.isHidden = true
-//            timeT1Label.isHidden = true
-//            timeT2Btn.isHidden = true
-//            timeT2Label.isHidden = true
-//            timeT3Btn.isHidden = true
-//            timeT3Label.isHidden = true
-//            timeT4Btn.isHidden = true
-//            timeT4Label.isHidden = true
-//            timeT5Btn.isHidden = true
-//            timeT5Label.isHidden = true
-//            
-//            taskLevelBtn.isHidden = true
-//            taskLevelLabel.isHidden = true
-//            autoMinLevelBtn.isHidden = true
-//            autoMinLevelLabel.isHidden = true
-//            titleLabel.isHidden = true
-//            
-//            var profileChartImageName = "profile_chart_occupancy"
-//            switch profile.type {
-//            case .occupancy_daylight, .vacancy_daylight, .occupancy, .vacancy, .proximityLighting:
-//                timeT1Btn.isHidden = false
-//                timeT1Label.isHidden = false
-//                timeT2Btn.isHidden = false
-//                timeT2Label.isHidden = false
-//                timeT3Btn.isHidden = false
-//                timeT3Label.isHidden = false
-//                timeT4Btn.isHidden = false
-//                timeT4Label.isHidden = false
-//                timeT5Btn.isHidden = false
-//                timeT5Label.isHidden = false
-//                vacantLevelBtn.isHidden = false
-//                vacantLevelLabel.isHidden = false
-//                occupancyLevelBtn.isHidden = false
-//                occupancyLevelLabel.isHidden = false
-//                
-//                if profile.type == .occupancy || profile.type == .vacancy || profile.type == .proximityLighting {
-//                    autoMinLevelBtn.isHidden = true
-//                    autoMinLevelLabel.isHidden = true
-//                    profileChartImageName = "profile_chart_occupancy"
-//                    if profile.type == .proximityLighting {
-//                        titleLabel.isHidden = false
-//                    }
-////                    chartImageView.image = UIImage(named: "profile_chart_occupancy")
-//                }else {
-//                    autoMinLevelBtn.isHidden = false
-//                    autoMinLevelLabel.isHidden = false
-////                    chartImageView.image = UIImage(named: "profile_chart_occupancy_daylight")
-//                    profileChartImageName = "profile_chart_occupancy_daylight"
-//                }
-//                autoMinLevelBtn.snp.remakeConstraints { make in
-//                    make.right.width.height.equalTo(highEndTrimBtn)
-//                    make.top.equalTo(vacantLevelBtn.snp.bottom).offset(SCRYFrom(8))
-//                }
-//                
-//                
-//   
-//            case .daylight:
-////                chartImageView.image = UIImage(named: "profile_chart_daylight")
-//                profileChartImageName = "profile_chart_daylight"
-//                autoMinLevelBtn.isHidden = false
-//                autoMinLevelLabel.isHidden = false
-//                taskLevelBtn.isHidden = false
-//                taskLevelLabel.isHidden = false
-//                vacantLevelBtn.isHidden = true
-//                vacantLevelLabel.isHidden = true
-//                occupancyLevelBtn.isHidden = true
-//                occupancyLevelLabel.isHidden = true
-//                
-//                timeT1Btn.isHidden = false
-//                timeT1Label.isHidden = false
-//                
-////                autoMinLevelBtn.snp.remakeConstraints { make in
-////                    make.right.width.height.equalTo(highEndTrimBtn)
-////                    make.top.equalTo(taskLevelBtn.snp.bottom).offset(SCRYFrom(8))
-////                }
-//                autoMinLevelBtn.snp.remakeConstraints { make in
-//                    make.right.width.height.equalTo(highEndTrimBtn)
-//                    make.top.equalTo(vacantLevelBtn.snp.bottom).offset(SCRYFrom(8))
-//                }
-//                
-//            case .manualControl:
-////                chartImageView.image = UIImage(named: "profile_chart_manual_control")
-//                profileChartImageName = "profile_chart_manual_control"
-//                timeT1Btn.isHidden = false
-//                timeT1Label.isHidden = false
-////                timeT5Btn.isHidden = false
-////                timeT5Label.isHidden = false
-//                
-//                autoMinLevelBtn.isHidden = true
-//                autoMinLevelLabel.isHidden = true
-//                taskLevelBtn.isHidden = false
-//                taskLevelLabel.isHidden = false
-//                
-//                vacantLevelBtn.isHidden = true
-//                vacantLevelLabel.isHidden = true
-//                occupancyLevelBtn.isHidden = true
-//                occupancyLevelLabel.isHidden = true
-//                
-//                autoMinLevelBtn.snp.remakeConstraints { make in
-//                    make.right.width.height.equalTo(highEndTrimBtn)
-//                    make.top.equalTo(vacantLevelBtn.snp.bottom).offset(SCRYFrom(8))
-//                }
-//            }
-//            if isIPad {
-//                profileChartImageName.append("_ipad")
-//            }
-//            chartImageView.image = UIImage(named: profileChartImageName)
-//            chartImageView.sizeToFit()
-//            
-//            var chartImageTopMargin = SCRYFrom(46)
-//            var helpTopMargin = SCRYFrom(4)
-//            var highEndTrimMargin = SCRYFrom(60)
-//            if profile.type == .proximityLighting {
-//                chartImageTopMargin = SCRYFrom(62)
-//                helpTopMargin = SCRYFrom(10)
-//                highEndTrimMargin = SCRYFrom(76)
-//            }
-//            chartImageView.snp.remakeConstraints { make in
-//                
-//                make.top.equalTo(chartImageTopMargin)
-//                if isIPad {
-//                    make.left.equalTo(SCRXFrom(136))
-//                    make.right.equalTo(SCRXFrom(-56.7))
-////                    make.height.equalTo(chartImageView.snp.width).multipliedBy(230 / 490.0)
-//                    make.height.equalTo(SCRYFrom(230))
-//                }else {
-//                    make.left.equalTo(SCRXFrom(86))
-//                    make.right.equalTo(SCRXFrom(-45))
-//                    make.height.equalTo(chartImageView.snp.width).multipliedBy(chartImageView.height / chartImageView.width)
-//                }
-//                make.bottom.equalTo(SCRYFrom(-68))
-//            }
-//            helpBtn.snp.updateConstraints { make in
-//                make.top.equalTo(helpTopMargin)
-//            }
-//            highEndTrimBtn.snp.updateConstraints { make in
-//                make.top.equalTo(highEndTrimMargin)
-//            }
+//    var startsBelowLux: Int? {
+//        get {
+//            guard let inputText = luxField.text, let lux = Int(inputText) else { return nil }
+//            return lux
+//        }set {
+//            luxField.text = newValue != nil ? "\(newValue!)" : nil
 //        }
 //    }
+    
+    var editable: Bool = true
     
     
     override init(frame: CGRect) {
@@ -331,7 +161,7 @@ class ProfileTriggerConditionPhasesView: UIView {
  
         let data = conditionData.sceneData.lightControlData
         
-        calibrationEnableSwitch.isOn = conditionData.useCalibrationValues
+//        calibrationEnableSwitch.isOn = conditionData.useCalibrationValues
         
         switch conditionData.executeType {
         case .adjustWhenOccupied:
@@ -542,14 +372,14 @@ class ProfileTriggerConditionPhasesView: UIView {
     }
     
     /// 更新条件lux 提示
-    func updateStartsBelowLuxTip(tipMessage: String? = nil) {
-        luxTipLabel.text = tipMessage
-        if tipMessage != nil {
-            luxField.layer.borderColor = Red_Color.cgColor
-        }else {
-            luxField.layer.borderColor = Border_Color.cgColor
-        }
-    }
+//    func updateStartsBelowLuxTip(tipMessage: String? = nil) {
+//        luxTipLabel.text = tipMessage
+//        if tipMessage != nil {
+//            luxField.layer.borderColor = Red_Color.cgColor
+//        }else {
+//            luxField.layer.borderColor = Border_Color.cgColor
+//        }
+//    }
     
     
     override func layoutSubviews() {
@@ -574,14 +404,14 @@ class ProfileTriggerConditionPhasesView: UIView {
     }
     
     /// 条件lux输入回调
-    @objc private func luxFieldEditChanged(sender: UITextField) {
-        guard editable else {
-            return
-        }
-        luxField.layer.borderColor = Border_Color.cgColor
-        luxTipLabel.text = nil
-        delegate?.view(self, startsBelowLuxEditChanged: startsBelowLux)
-    }
+//    @objc private func luxFieldEditChanged(sender: UITextField) {
+//        guard editable else {
+//            return
+//        }
+//        luxField.layer.borderColor = Border_Color.cgColor
+//        luxTipLabel.text = nil
+//        delegate?.view(self, startsBelowLuxEditChanged: startsBelowLux)
+//    }
     
     // MARK: - Level
     /// 最高输出亮度
@@ -794,70 +624,70 @@ class ProfileTriggerConditionPhasesView: UIView {
             make.top.equalTo(SCRYFrom(10))
         }
         
-        startsBelowLabel = UILabel(text: "starts_below".localizedString, textColor: TextBlack_Color, fontSize: 14, fontWeight: .light)
-        addSubview(startsBelowLabel)
-        startsBelowLabel.snp.makeConstraints { make in
-            make.left.equalTo(titleLabel)
-            make.top.equalTo(titleLabel.snp.bottom).offset(SCRYFrom(20))
-        }
-        
-        luxLabel = UILabel(text: "lx", textColor: ImportantText_Color, fontSize: 13, fontWeight: .light)
-        addSubview(luxLabel)
-        luxLabel.snp.makeConstraints { make in
-            make.right.equalTo(SCRXFrom(-16))
-            make.centerY.equalTo(startsBelowLabel)
-        }
-        
-        luxField = UITextField()
-        luxField.textColor = ImportantText_Color
-        luxField.textAlignment = .center
-        luxField.font = UIFont.systemFont(ofSize: FontFit(12))
-        luxField.keyboardType = .numberPad
-        luxField.layer.cornerRadius = SCRYFrom(5)
-        luxField.layer.borderWidth = 0.6
-        luxField.layer.borderColor = RGB(151, 151, 151, 0.3).cgColor
-        luxField.returnKeyType = .done
-        luxField.delegate = self
-        luxField.addTarget(self, action: #selector(luxFieldEditChanged), for: .editingChanged)
-        addSubview(luxField)
-        luxField.snp.makeConstraints { make in
-            make.right.equalTo(luxLabel.snp.left).offset(SCRXFrom(-4))
-            make.centerY.equalTo(luxLabel)
-            make.width.equalTo(isIPad ? SCRXFrom(100) : SCRXFrom(72))
-            make.height.equalTo(SCRYFrom(28))
-        }
-        
-        luxTipLabel = UILabel(text: "", textColor: Error_Red_Color, fontSize: 12, fontWeight: .light)
-        addSubview(luxTipLabel)
-        luxTipLabel.snp.makeConstraints { make in
-            make.top.equalTo(luxField.snp.bottom).priority(.high)
-            make.right.equalTo(SCRXFrom(-16))
-        }
-        
-        
-        calibrationEnableSwitch = UISwitch()
-        calibrationEnableSwitch.onTintColor = Bar_Color
-        calibrationEnableSwitch.isEnabled = editable
-        calibrationEnableSwitch.addTarget(self, action: #selector(calibrationEnableSwitchValueChanged), for: .valueChanged)
-        addSubview(calibrationEnableSwitch)
-        calibrationEnableSwitch.snp.makeConstraints { make in
-            make.right.equalTo(SCRXFrom(-16))
-            make.top.equalTo(luxField.snp.bottom).offset(SCRYFrom(20))
-        }
-        
-        useCalibrationLabel = UILabel(text: "use_calibration_values".localizedString, textColor: TextBlack_Color, fontSize: 16, fontWeight: .light)
-        addSubview(useCalibrationLabel)
-        useCalibrationLabel.snp.makeConstraints { make in
-            make.left.equalTo(startsBelowLabel)
-            make.centerY.equalTo(calibrationEnableSwitch)
-        }
-        
-        useCalibrationHelpBtn = UIButton(normalImageName: "help", target: self, action: #selector(useCalibrationHelpBtnAction))
-        addSubview(useCalibrationHelpBtn)
-        useCalibrationHelpBtn.snp.makeConstraints { make in
-            make.left.equalTo(useCalibrationLabel.snp.right).offset(SCRXFrom(8))
-            make.centerY.equalTo(useCalibrationLabel)
-        }
+//        startsBelowLabel = UILabel(text: "starts_below".localizedString, textColor: TextBlack_Color, fontSize: 14, fontWeight: .light)
+//        addSubview(startsBelowLabel)
+//        startsBelowLabel.snp.makeConstraints { make in
+//            make.left.equalTo(titleLabel)
+//            make.top.equalTo(titleLabel.snp.bottom).offset(SCRYFrom(20))
+//        }
+//        
+//        luxLabel = UILabel(text: "lx", textColor: ImportantText_Color, fontSize: 13, fontWeight: .light)
+//        addSubview(luxLabel)
+//        luxLabel.snp.makeConstraints { make in
+//            make.right.equalTo(SCRXFrom(-16))
+//            make.centerY.equalTo(startsBelowLabel)
+//        }
+//        
+//        luxField = UITextField()
+//        luxField.textColor = ImportantText_Color
+//        luxField.textAlignment = .center
+//        luxField.font = UIFont.systemFont(ofSize: FontFit(12))
+//        luxField.keyboardType = .numberPad
+//        luxField.layer.cornerRadius = SCRYFrom(5)
+//        luxField.layer.borderWidth = 0.6
+//        luxField.layer.borderColor = RGB(151, 151, 151, 0.3).cgColor
+//        luxField.returnKeyType = .done
+//        luxField.delegate = self
+//        luxField.addTarget(self, action: #selector(luxFieldEditChanged), for: .editingChanged)
+//        addSubview(luxField)
+//        luxField.snp.makeConstraints { make in
+//            make.right.equalTo(luxLabel.snp.left).offset(SCRXFrom(-4))
+//            make.centerY.equalTo(luxLabel)
+//            make.width.equalTo(isIPad ? SCRXFrom(100) : SCRXFrom(72))
+//            make.height.equalTo(SCRYFrom(28))
+//        }
+//        
+//        luxTipLabel = UILabel(text: "", textColor: Error_Red_Color, fontSize: 12, fontWeight: .light)
+//        addSubview(luxTipLabel)
+//        luxTipLabel.snp.makeConstraints { make in
+//            make.top.equalTo(luxField.snp.bottom).priority(.high)
+//            make.right.equalTo(SCRXFrom(-16))
+//        }
+//        
+//        
+//        calibrationEnableSwitch = UISwitch()
+//        calibrationEnableSwitch.onTintColor = Bar_Color
+//        calibrationEnableSwitch.isEnabled = editable
+//        calibrationEnableSwitch.addTarget(self, action: #selector(calibrationEnableSwitchValueChanged), for: .valueChanged)
+//        addSubview(calibrationEnableSwitch)
+//        calibrationEnableSwitch.snp.makeConstraints { make in
+//            make.right.equalTo(SCRXFrom(-16))
+//            make.top.equalTo(luxField.snp.bottom).offset(SCRYFrom(20))
+//        }
+//        
+//        useCalibrationLabel = UILabel(text: "use_calibration_values".localizedString, textColor: TextBlack_Color, fontSize: 16, fontWeight: .light)
+//        addSubview(useCalibrationLabel)
+//        useCalibrationLabel.snp.makeConstraints { make in
+//            make.left.equalTo(startsBelowLabel)
+//            make.centerY.equalTo(calibrationEnableSwitch)
+//        }
+//        
+//        useCalibrationHelpBtn = UIButton(normalImageName: "help", target: self, action: #selector(useCalibrationHelpBtnAction))
+//        addSubview(useCalibrationHelpBtn)
+//        useCalibrationHelpBtn.snp.makeConstraints { make in
+//            make.left.equalTo(useCalibrationLabel.snp.right).offset(SCRXFrom(8))
+//            make.centerY.equalTo(useCalibrationLabel)
+//        }
         
         triggerTypeView = UIView()
         triggerTypeView.backgroundColor = Background_Color
@@ -866,7 +696,7 @@ class ProfileTriggerConditionPhasesView: UIView {
         triggerTypeView.snp.makeConstraints { make in
             make.left.equalTo(SCRXFrom(8))
             make.right.equalTo(SCRXFrom(-8))
-            make.top.equalTo(calibrationEnableSwitch.snp.bottom).offset(SCRYFrom(12))
+            make.top.equalTo(titleLabel.snp.bottom).offset(SCRYFrom(15))
             make.height.equalTo(SCRYFrom(40))
         }
         
@@ -1317,18 +1147,18 @@ extension ProfileTriggerConditionPhasesView: CustomDeviceSliderDelegate {
 }
 
 
-extension ProfileTriggerConditionPhasesView: UITextFieldDelegate {
-    
-    func textFieldShouldReturn(_ textField: UITextField) -> Bool {
-        endEditing(true)
-        return true
-    }
-    
-    func textField(_ textField: UITextField, shouldChangeCharactersIn range: NSRange, replacementString string: String) -> Bool {
-        guard string.isEmpty || string.isPureNumandCharacters() else {
-            return false
-        }
-        return true
-    }
-    
-}
+//extension ProfileTriggerConditionPhasesView: UITextFieldDelegate {
+//    
+//    func textFieldShouldReturn(_ textField: UITextField) -> Bool {
+//        endEditing(true)
+//        return true
+//    }
+//    
+//    func textField(_ textField: UITextField, shouldChangeCharactersIn range: NSRange, replacementString string: String) -> Bool {
+//        guard string.isEmpty || string.isPureNumandCharacters() else {
+//            return false
+//        }
+//        return true
+//    }
+//    
+//}

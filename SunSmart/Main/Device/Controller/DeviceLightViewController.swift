@@ -286,42 +286,36 @@ class DeviceLightViewController: UIViewController {
 //            self?.test()
 //        }))
 //        #endif
-        if let group = self.node.group {
-            let profile = group.info.profile
-            if profile.type == .proximityLightingWithPhotocell {
-                items.append(.init(icon: UIImage(named: "settings"), title: "night_starts_below".localizedString, tapItemBack: {[weak self] _ in
-                    self?.setNightStartsBelowLux()
-                }))
-                items.append(.init(icon: UIImage(named: "settings"), title: "day_starts_above".localizedString, tapItemBack: {[weak self] _ in
-                    self?.setDayStartsAboveLux()
-                }))
-                // 系统失效profile
-                if let nightData = profile.nightData {
-                    if node.preConfiguration.nightProfileLightData != nil {
-                        items.append(.init(icon: UIImage(named: "settings"), title: "Disable system failure", tapItemBack: {[weak self] _ in
-                            guard let self = self else { return }
-                            self.node.preConfiguration.nightProfileLightData = nil
-                            self.node.preConfiguration.save(meshUUID: self.space.meshUUID, nodeAddress: self.node.primaryUnicastAddress)
-                            self.syncDevice()
-                        }))
-                    }else {
-                        items.append(.init(icon: UIImage(named: "settings"), title: "Enable system failure", tapItemBack: {[weak self] _ in
-                            guard let self = self else { return }
-                            let nightProfileLightData = nightData.sceneData.lightControlData.copy()
-                            nightProfileLightData.occupancyLevel = min(100, nightProfileLightData.highEndTrim)
-                            nightProfileLightData.vacantLevel = min(50, nightProfileLightData.highEndTrim)
-                            nightProfileLightData.t4 = 0xFFFFFE
-                            nightProfileLightData.standbyLevel = min(100, nightProfileLightData.highEndTrim)
-                            self.node.preConfiguration.nightProfileLightData = nightProfileLightData
-                            self.node.preConfiguration.save(meshUUID: self.space.meshUUID, nodeAddress: self.node.primaryUnicastAddress)
-                            self.syncDevice()
-                        }))
-                    }
-                    menuWidth = SCRXFrom(180)
-                }
-               
-            }
-        }
+//        if let group = self.node.group {
+//            let profile = group.info.profile
+//            if profile.type == .proximityLightingWithPhotocell {
+//                // 系统失效profile
+//                if let nightData = profile.nightData {
+//                    if node.preConfiguration.nightProfileLightData != nil {
+//                        items.append(.init(icon: UIImage(named: "settings"), title: "Disable system failure", tapItemBack: {[weak self] _ in
+//                            guard let self = self else { return }
+//                            self.node.preConfiguration.nightProfileLightData = nil
+//                            self.node.preConfiguration.save(meshUUID: self.space.meshUUID, nodeAddress: self.node.primaryUnicastAddress)
+//                            self.syncDevice()
+//                        }))
+//                    }else {
+//                        items.append(.init(icon: UIImage(named: "settings"), title: "Enable system failure", tapItemBack: {[weak self] _ in
+//                            guard let self = self else { return }
+//                            let nightProfileLightData = nightData.sceneData.lightControlData.copy()
+//                            nightProfileLightData.occupancyLevel = min(100, nightProfileLightData.highEndTrim)
+//                            nightProfileLightData.vacantLevel = min(50, nightProfileLightData.highEndTrim)
+//                            nightProfileLightData.t4 = 0xFFFFFE
+//                            nightProfileLightData.standbyLevel = min(100, nightProfileLightData.highEndTrim)
+//                            self.node.preConfiguration.nightProfileLightData = nightProfileLightData
+//                            self.node.preConfiguration.save(meshUUID: self.space.meshUUID, nodeAddress: self.node.primaryUnicastAddress)
+//                            self.syncDevice()
+//                        }))
+//                    }
+//                    menuWidth = SCRXFrom(180)
+//                }
+//               
+//            }
+//        }
         
         
         
@@ -421,65 +415,6 @@ class DeviceLightViewController: UIViewController {
                 XWHUDManager.hide()
             }
         }
-    }
-    
-    private func setNightStartsBelowLux() {
-        guard let profile = node.group?.info.profile, let nightData = profile.nightData, let dayData = profile.dayData else {
-            return
-        }
-        let nightLux = node.preConfiguration.nightProfileStartsBelowLux ?? nightData.startsBelowLux
-        let dayLux = node.preConfiguration.dayProfileStartsAboveLux ?? dayData.startsBelowLux
-        SRAlertView(title: "night_starts_below".localizedString, inputText: "\(nightLux)", inputFieldStyle: .init(keyboardType: .numberPad), actions: [.cancelAction, SRAlertAction(title: "done".localizedString)], textValueChangedBack: nil) {[weak self] text in
-            guard let self = self else {
-                return
-            }
-            guard let lux = UInt16(text), lux <= 0xFFFF else {
-                XWHUDManager.showTipHUD("\("limit_range".localizedString) 0~5000lux", isLineFeed: true)
-                return
-            }
-            // 晚上必须小于白天lux
-            guard lux < dayLux else {
-                XWHUDManager.showTipHUD("profile_night_startsbelow_less_day".localizedString, isLineFeed: true)
-                return
-            }
-            self.node.preConfiguration.nightProfileStartsBelowLux = lux
-            self.node.preConfiguration.save(meshUUID: self.space.meshUUID, nodeAddress: self.node.primaryUnicastAddress)
-            
-            // 清除缓存
-            self.node.clearSyncStateCache()
-            
-            self.syncDevice()
-            
-        }.show()
-        
-    }
-    
-    private func setDayStartsAboveLux() {
-        guard let profile = node.group?.info.profile, let nightData = profile.nightData, let dayData = profile.dayData else {
-            return
-        }
-        let nightLux = node.preConfiguration.nightProfileStartsBelowLux ?? nightData.startsBelowLux
-        let dayLux = node.preConfiguration.dayProfileStartsAboveLux ?? dayData.startsBelowLux
-        SRAlertView(title: "day_starts_above".localizedString, inputText: "\(dayLux)", inputFieldStyle: .init(keyboardType: .numberPad), actions: [.cancelAction, SRAlertAction(title: "done".localizedString)], textValueChangedBack: nil) {[weak self] text in
-            guard let self = self else {
-                return
-            }
-            guard let lux = UInt16(text), lux <= 0xFFFF else {
-                XWHUDManager.showTipHUD("\("limit_range".localizedString) 0~5000lux", isLineFeed: true)
-                return
-            }
-            //  白天lux-晚上lux必须大于等于5
-            guard lux - nightLux >= 5 else {
-                XWHUDManager.showTipHUD("profile_night_startsbelow_greater_day_threshold".localizedString, isLineFeed: true)
-                return
-            }
-            self.node.preConfiguration.dayProfileStartsAboveLux = lux
-            self.node.preConfiguration.save(meshUUID: self.space.meshUUID, nodeAddress: self.node.primaryUnicastAddress)
-            // 清除缓存
-            self.node.clearSyncStateCache()
-            self.syncDevice()
-        }.show()
-        
     }
     
     

@@ -7,70 +7,6 @@
 
 import Foundation
 
-//extension UITableView {
-//    /// 启用点击空白处隐藏键盘功能
-//    func enableKeyboardDismissal() {
-//        let tapGesture = UITapGestureRecognizer(target: self, action: #selector(dismissKeyboard))
-//        tapGesture.cancelsTouchesInView = false
-//        self.addGestureRecognizer(tapGesture)
-//        
-//        // 同时启用拖动时隐藏键盘
-//        self.keyboardDismissMode = .onDrag
-//        
-//        // 存储手势以避免重复添加
-//        objc_setAssociatedObject(self, &AssociatedKeys.tapGesture, tapGesture, .OBJC_ASSOCIATION_RETAIN_NONATOMIC)
-//    }
-//    
-//    /// 禁用点击空白处隐藏键盘功能
-//    func disableKeyboardDismissal() {
-//        if let gesture = objc_getAssociatedObject(self, &AssociatedKeys.tapGesture) as? UITapGestureRecognizer {
-//            self.removeGestureRecognizer(gesture)
-//        }
-//    }
-//    
-//    @objc private func dismissKeyboard() {
-//        self.window?.endEditing(true)
-//    }
-//    
-//    private struct AssociatedKeys {
-//        static var tapGesture = 100
-//    }
-//}
-//
-//extension UICollectionView {
-//    
-//    /// 启用点击空白处隐藏键盘功能
-//    func enableKeyboardDismissal() {
-//        let tapGesture = UITapGestureRecognizer(target: self, action: #selector(dismissKeyboard))
-//        tapGesture.cancelsTouchesInView = false
-//        self.addGestureRecognizer(tapGesture)
-//        
-//        // 同时启用拖动时隐藏键盘
-//        self.keyboardDismissMode = .onDrag
-//        
-//        // 存储手势以避免重复添加
-//        objc_setAssociatedObject(self, &AssociatedKeys.tapGesture, tapGesture, .OBJC_ASSOCIATION_RETAIN_NONATOMIC)
-//    }
-//    
-//    /// 禁用点击空白处隐藏键盘功能
-//    func disableKeyboardDismissal() {
-//        if let gesture = objc_getAssociatedObject(self, &AssociatedKeys.tapGesture) as? UITapGestureRecognizer {
-//            self.removeGestureRecognizer(gesture)
-//        }
-//    }
-//    
-//    @objc private func dismissKeyboard() {
-//        self.window?.endEditing(true)
-//    }
-//    
-//    private struct AssociatedKeys {
-//        static var tapGesture = 100
-//    }
-//}
-//
-//
-
-
 extension UIScrollView {
     /// 启用点击空白处隐藏键盘功能
     func enableKeyboardDismissal() {
@@ -172,4 +108,83 @@ extension UIView {
         }
         return allSubviews
     }
+}
+
+
+/// 键盘弹出后scrollview自动跟随到对应位置
+protocol KeyboardScrollable: AnyObject {
+    var keyboardScrollView: UIScrollView { get }
+    func registerForKeyboardNotifications()
+    func unregisterFromKeyboardNotifications()
+}
+
+extension KeyboardScrollable where Self: UIViewController {
+    func registerForKeyboardNotifications() {
+        NotificationCenter.default.addObserver(
+            forName: UIResponder.keyboardWillShowNotification,
+            object: nil,
+            queue: .main
+        ) { [weak self] notification in
+            self?.keyboardWillShow(notification)
+        }
+        
+        NotificationCenter.default.addObserver(
+            forName: UIResponder.keyboardWillHideNotification,
+            object: nil,
+            queue: .main
+        ) { [weak self] notification in
+            self?.keyboardWillHide(notification)
+        }
+    }
+    
+    func unregisterFromKeyboardNotifications() {
+        NotificationCenter.default.removeObserver(self)
+    }
+    
+    private func keyboardWillShow(_ notification: Notification) {
+        guard let userInfo = notification.userInfo,
+              let keyboardFrame = userInfo[UIResponder.keyboardFrameEndUserInfoKey] as? CGRect,
+              let activeView = view.firstResponder else {
+            return
+        }
+        
+        if keyboardScrollView.originalContentInset == nil {
+            keyboardScrollView.originalContentInset = keyboardScrollView.contentInset
+        }
+        
+        let keyboardHeight = keyboardFrame.height
+        let contentInsets = UIEdgeInsets(top: keyboardScrollView.contentInset.top, left: keyboardScrollView.contentInset.left, bottom: keyboardHeight, right: keyboardScrollView.contentInset.right)
+        
+        keyboardScrollView.contentInset = contentInsets
+        
+        // 滚动到可见
+        var visibleRect = keyboardScrollView.frame
+        visibleRect.size.height -= keyboardHeight
+        
+        let activeRect = activeView.convert(activeView.bounds, to: keyboardScrollView)
+        
+        if !visibleRect.contains(activeRect.origin) {
+            keyboardScrollView.scrollRectToVisible(activeRect, animated: true)
+        }
+    }
+    
+    private func keyboardWillHide(_ notification: Notification) {
+        keyboardScrollView.contentInset = keyboardScrollView.originalContentInset ?? .zero
+    }
+}
+
+// MARK: - UIScrollView扩展，用于保存原始contentInset
+private var originalContentInsetKey: Void?
+
+extension UIScrollView {
+    // 保存原始的contentInset
+    var originalContentInset: UIEdgeInsets? {
+        get {
+            return objc_getAssociatedObject(self, &originalContentInsetKey) as? UIEdgeInsets
+        }
+        set {
+            objc_setAssociatedObject(self, &originalContentInsetKey, newValue, .OBJC_ASSOCIATION_RETAIN_NONATOMIC)
+        }
+    }
+    
 }

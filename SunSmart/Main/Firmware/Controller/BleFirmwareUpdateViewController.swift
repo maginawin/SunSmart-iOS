@@ -569,7 +569,7 @@ class BleFirmwareUpdateViewController: UIViewController {
         
         let targets: [MeshFirmwareUpdateManager.FirmwareUpdateTarget] = nodes.compactMap({
             if let targetFirmwareData = $0.targetFirmwareData {
-                return MeshFirmwareUpdateManager.FirmwareUpdateTarget(node: $0, peripheral: $0.peripheral, firmwareData: targetFirmwareData.data, firmwareID: targetFirmwareData.firmwareID, updateFirmwareImageIndex: UInt8(targetFirmwareData.updateFirmwareImageIndex), incomingFirmwareMetadata: targetFirmwareData.incomingFirmwareMetadata)
+                return MeshFirmwareUpdateManager.FirmwareUpdateTarget(node: $0, peripheral: $0.peripheral, firmwareData: targetFirmwareData.data, firmwareID: targetFirmwareData.firmwareID, updateFirmwareImageIndex: UInt8(targetFirmwareData.updateFirmwareImageIndex), incomingFirmwareMetadata: targetFirmwareData.incomingFirmwareMetadata, versionIdentifier: targetFirmwareData.versionIdentifier)
             }
             return nil
         })

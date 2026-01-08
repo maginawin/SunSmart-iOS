@@ -599,7 +599,7 @@ extension ScheduleAddTargetView: UITableViewDataSource, UITableViewDelegate {
         var isSelected = false
         switch target {
         case .devices(let devices):
-            cell.titleLabel.text = "devices".localizedString
+            cell.titleLabel.text = "Devices".localizedString
             names = devices.map({ $0.name ?? "" })
             emptyStr = "select_devices".localizedString
             if case .devices = self.selectTarget {

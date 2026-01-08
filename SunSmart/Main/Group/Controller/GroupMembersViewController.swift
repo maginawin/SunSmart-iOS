@@ -163,15 +163,19 @@ class GroupMembersViewController: UIViewController {
         XWHUDManager.showCustomHUD(withMessage: nil, isWindow: false)
         DispatchQueue.global().async {
             let exitNodes = self.group.nodes.filter({ !self.selectNodes.contains($0) })
-            exitNodes.forEach({
-                $0.groupState = .exitFailure
-                if $0.sensorCalibrationData?.isCalibration ?? false { // 退出组清空校准数据
-                    $0.preConfiguration.resetDaylightCalibration = true
-                    if let meshUUD = $0.network?.uuid.uuidString {
-                        $0.preConfiguration.save(meshUUID: meshUUD, nodeAddress: $0.primaryUnicastAddress)
-                    }
+            exitNodes.forEach({ node in
+                node.groupState = .exitFailure
+                node.preConfiguration.dayProfileStartsAboveLux = nil
+                node.preConfiguration.nightProfileStartsBelowLux = nil
+                node.preConfiguration.dayProfileLightData = nil
+                node.preConfiguration.nightProfileLightData = nil
+                if node.sensorCalibrationData?.isCalibration ?? false { // 退出组清空校准数据
+                    node.preConfiguration.resetDaylightCalibration = true
                 }
-                $0.clearSyncStateCache()
+                if let meshUUD = node.network?.uuid.uuidString {
+                    node.preConfiguration.save(meshUUID: meshUUD, nodeAddress: node.primaryUnicastAddress)
+                }
+                node.clearSyncStateCache()
             })
             // 退出组的设备，整理邻近照明路径关系
             if exitNodes.count > 0, self.group.info.profile.type == .proximityLighting || self.group.info.profile.type == .proximityLightingWithPhotocell, let path = self.group.info.proximityLightingPath {

@@ -76,7 +76,7 @@ class MotionSensorInstructionsController: UIViewController {
             case .taskLevel:
                 options.append(.taskLevel)
             case .standbyLevel:
-//                options.append(.standbyLevel)
+                options.append(.standbyLevel)
                 break
             }
         })
@@ -229,8 +229,6 @@ extension MotionSensorInstructionsController {
         case autoMinValue
         /// 维持亮度
         case taskLevel
-        /// 待机亮度
-//        case standbyLevel
         /// 启动到占用阶段过渡时间
         case t1
         /// 占用阶段持续时间

@@ -15,6 +15,18 @@ class DeviceAddBottomView: UIView {
     var addSelectedBtn: UIButton!
     var syncBtn: UIButton!
     
+    var addSelectedBtnSize: CGSize = CGSize(width: SCRXFrom(114).rounded(), height: SCRYFrom(40).rounded()) {
+        didSet {
+            addSelectedBtn.layer.cornerRadius = addSelectedBtnSize.height * 0.5
+            
+            addSelectedBtn.setBackgroundImage(UIImage.image(size: addSelectedBtnSize, color: Bar_Color), for: .normal)
+            addSelectedBtn.setBackgroundImage(UIImage.image(size: addSelectedBtnSize, color: Bar_Color.withAlphaComponent(0.5)), for: .disabled)
+            addSelectedBtn.snp.updateConstraints { make in
+                make.size.equalTo(addSelectedBtnSize)
+            }
+        }
+    }
+    
     override init(frame: CGRect) {
         super.init(frame: frame)
         
@@ -44,26 +56,25 @@ class DeviceAddBottomView: UIView {
             make.bottom.equalTo(selectAllBtn.snp.centerY)
         }
         
-        selectCountLabel = UILabel(text: "3/6", textColor: RGB(148, 163, 184), fontSize: 14, fontWeight: .light)
+        selectCountLabel = UILabel(text: "0/0", textColor: RGB(148, 163, 184), fontSize: 14, fontWeight: .light)
         addSubview(selectCountLabel)
         selectCountLabel.snp.makeConstraints { make in
             make.left.equalTo(selectAllLabel)
             make.top.equalTo(selectAllLabel.snp.bottom).offset(SCRYFrom(3))
         }
-        let btnSize = CGSize(width: CGFloat(Int(SCRXFrom(114))), height: CGFloat(Int(SCRYFrom(40))))
         
         addSelectedBtn = UIButton(title: "add_selected".localizedString, titleSize: 14, titleColor: .white)
 //        addSelectedBtn.titleLabel?.font = Font_Medium_Size(14)
-        addSelectedBtn.layer.cornerRadius = btnSize.height * 0.5
+        addSelectedBtn.layer.cornerRadius = addSelectedBtnSize.height * 0.5
         addSelectedBtn.clipsToBounds = true
         
-        addSelectedBtn.setBackgroundImage(UIImage.image(size: btnSize, color: Bar_Color), for: .normal)
-        addSelectedBtn.setBackgroundImage(UIImage.image(size: btnSize, color: Bar_Color.withAlphaComponent(0.5)), for: .disabled)
+        addSelectedBtn.setBackgroundImage(UIImage.image(size: addSelectedBtnSize, color: Bar_Color), for: .normal)
+        addSelectedBtn.setBackgroundImage(UIImage.image(size: addSelectedBtnSize, color: Bar_Color.withAlphaComponent(0.5)), for: .disabled)
         addSubview(addSelectedBtn)
         addSelectedBtn.snp.makeConstraints { make in
             make.right.equalTo(SCRXFrom(-16))
             make.centerY.equalTo(selectAllBtn)
-            make.size.equalTo(btnSize)
+            make.size.equalTo(addSelectedBtnSize)
         }
         
         syncBtn = UIButton(title: "sync_all".localizedString, titleSize: 14, titleColor: .white)

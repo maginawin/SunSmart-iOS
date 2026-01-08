@@ -22,7 +22,7 @@ class ProfileInstructionsController: UIViewController {
         return tableV
     }()
     
-    private var profiles: [Profile.ProfileType] = [.occupancy_daylight, .vacancy_daylight, .occupancy, .vacancy, .daylight, .manualControl, .proximityLighting]
+    private var profiles: [Profile.ProfileType] = [.occupancy_daylight, .vacancy_daylight, .occupancy, .vacancy, .daylight, .manualControl, .proximityLighting, .proximityLightingWithPhotocell]
     
     /// 是否展开
     private var showProfileMap: [Profile.ProfileType: Bool] = [
@@ -32,7 +32,8 @@ class ProfileInstructionsController: UIViewController {
         .vacancy: false,
         .daylight: false,
         .manualControl: false,
-        .proximityLighting: false
+        .proximityLighting: false,
+        .proximityLightingWithPhotocell: false
     ]
     
     override func viewDidLoad() {

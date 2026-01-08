@@ -632,6 +632,34 @@ extension Node {
         return false
     }
     
+    /// 获取需要同步的白天晚上lux条件profile
+    func getSyncDayNightLuxProfiles() -> [ProfileType] {
+        guard let group = self.group else { return [] }
+        let profile = group.info.profile
+        var profileTypes: [ProfileType] = []
+        if profile.type == .proximityLightingWithPhotocell, let nightData = profile.nightData, let dayData = profile.dayData {
+            
+            // 场景执行的目标地址
+            let sceneDestination = self.lightLCSceneModel?.parentElement?.unicastAddress ?? self.lightLCModel?.parentElement?.unicastAddress ?? self.primaryUnicastAddress
+            
+            let nightTargetLux = preConfiguration.nightProfileStartsBelowLux ?? nightData.startsBelowLux
+            let dayTargetLux = preConfiguration.dayProfileStartsAboveLux ?? dayData.startsBelowLux
+            
+            let nightCondition = self.lightControlLuxTriggerConditions.first(where: { $0.index == nightData.id })
+            let dayCondition = self.lightControlLuxTriggerConditions.first(where: { $0.index == dayData.id })
+            
+            if nightCondition == nil || nightCondition!.maxLux != nightTargetLux || nightCondition!.useCalibrationValues != nightData.useCalibrationValues || nightCondition!.destination != sceneDestination || nightCondition!.sceneNumber != nightData.sceneData.sceneNumber {
+                profileTypes.append(.profileNightToggleTriggerConditionLux(id: nightData.id, minLux: 0, maxLux: nightTargetLux, useCalibrationValues: nightData.useCalibrationValues, destination: sceneDestination, sceneNumber: nightData.sceneData.sceneNumber))
+            }
+            
+            if dayCondition == nil || dayCondition!.minLux != dayTargetLux || dayCondition!.useCalibrationValues != dayData.useCalibrationValues || dayCondition!.destination != sceneDestination || dayCondition!.sceneNumber != dayData.sceneData.sceneNumber {
+                profileTypes.append(.profileDayToggleTriggerConditionLux(id: dayData.id, minLux: dayTargetLux, maxLux: .max, useCalibrationValues: dayData.useCalibrationValues, destination: sceneDestination, sceneNumber: dayData.sceneData.sceneNumber))
+            }
+            
+        }
+        return profileTypes
+    }
+    
     /// 获取需要同步的profile
     func getNodeSyncProfiles(group: Group? = nil) -> [ProfileType] {
         
@@ -1015,7 +1043,7 @@ extension Node {
                 syncProfile.append(.manualControl(enabled: true))
             }
         }else {
-            if lightLCProperty.manualControlMode ?? false {
+            if lightLCProperty.manualControlMode ?? true {
                 syncProfile.append(.manualControl(enabled: false))
             }
         }

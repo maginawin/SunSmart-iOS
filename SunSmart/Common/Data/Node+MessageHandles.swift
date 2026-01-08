@@ -370,7 +370,47 @@ extension ProfileType {
             }
         case .profileDayToggleTriggerConditionLux(let id, let minLux, let maxLux, let useCalibrationValues, let destination, let sceneNumber), .profileNightToggleTriggerConditionLux(let id, let minLux, let maxLux, let useCalibrationValues, let destination, let sceneNumber):
             if let vendorModel = node.sunricherVendorModel {
-                messageHandles.append(MeshMessageHandle(message: SunricherVendorSet(function: .daylightExecuteSceneSet(index: id, minLux: minLux, maxLux: maxLux, useCalibrationValues: useCalibrationValues, destination: destination, sceneNumber: sceneNumber)), model: vendorModel))
+                if node.capabilities.contains(.lightSensorConditionSegmentSet) { // 是否支持分段设置
+                    // 是否配置lux阈值
+                    var setLuxThreshold = true
+                    // 设置执行场景
+                    var setExecuteScene = true
+                    // 设置使用校准值
+                    var setUseCalibrationValues = true
+                    
+                    if let condition = node.lightControlLuxTriggerConditions.first(where: { $0.index == id }) {
+                        if condition.minLux == minLux && condition.maxLux == maxLux {
+                            setLuxThreshold = false
+                        }
+                        if condition.destination == destination && condition.sceneNumber == sceneNumber {
+                            setExecuteScene = false
+                        }
+                        if condition.useCalibrationValues == useCalibrationValues {
+                            setUseCalibrationValues = false
+                        }
+                    }
+                    
+                    if setLuxThreshold {
+                        let luxThresholdMessageHandle = MeshMessageHandle(message: SunricherVendorSet(function: .daylightConditionLuxThresholdSet(index: id, minLux: minLux, maxLux: maxLux)), model: vendorModel)
+                        luxThresholdMessageHandle.continuous = true
+                        messageHandles.append(luxThresholdMessageHandle)
+                    }
+                    
+                    if setExecuteScene {
+                        let executeSceneMessageHandle = MeshMessageHandle(message: SunricherVendorSet(function: .daylightExecuteSceneActionSet(index: id, destination: destination, sceneNumber: sceneNumber)), model: vendorModel)
+                        executeSceneMessageHandle.continuous = true
+                        messageHandles.append(executeSceneMessageHandle)
+                    }
+                    
+                    if setUseCalibrationValues {
+                        let luxUseCalibrationValuesMessageHandle = MeshMessageHandle(message: SunricherVendorSet(function: .daylightConditionLuxUseCalibrationValuesSet(index: id, useCalibrationValues: useCalibrationValues)), model: vendorModel)
+                        messageHandles.append(luxUseCalibrationValuesMessageHandle)
+                    }
+                    
+                }else {
+                    messageHandles.append(MeshMessageHandle(message: SunricherVendorSet(function: .daylightExecuteSceneSet(index: id, minLux: minLux, maxLux: maxLux, useCalibrationValues: useCalibrationValues, destination: destination, sceneNumber: sceneNumber)), model: vendorModel))
+                }
+              
             }
         case .profileToggleTriggerConditionLuxDelete(let id):
             if let vendorModel = node.sunricherVendorModel {

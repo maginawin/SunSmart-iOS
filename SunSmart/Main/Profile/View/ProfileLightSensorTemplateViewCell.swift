@@ -13,11 +13,16 @@ class ProfileLightSensorTemplateViewCell: UICollectionViewCell {
     private var luxLabel: UILabel!
     private var deviceCountLabel: UILabel!
     private var arrowImageView: UIImageView!
+    private var syncFailBtn: UIButton!
+    
+    var resyncActionCallback: (()->Void)?
     
     var templateModel: ProfileLightSensorTemplate! {
         didSet {
             titleLabel.text = templateModel.name
-//            luxLabel.text = templateModel
+            luxLabel.text = "\("threshold".localizedString): \("night".localizedString)-\(templateModel.nightStartsBelowLux) lux/\("day".localizedString)-\(templateModel.dayStartsAboveLux) lux"
+            deviceCountLabel.text = "\("applied_to".localizedString): \(templateModel.devices.count) \("devices".localizedString)"
+            syncFailBtn.isHidden = !templateModel.devices.contains(where: { $0.getSyncDayNightLuxProfiles().count > 0 })
         }
     }
     
@@ -34,6 +39,10 @@ class ProfileLightSensorTemplateViewCell: UICollectionViewCell {
         fatalError("init(coder:) has not been implemented")
     }
     
+    @objc private func syncFailBtnAction() {
+        resyncActionCallback?()
+    }
+    
     private func setupUI() {
         
         titleLabel = UILabel(text: "", textColor: TextBlack_Color, fontSize: 15, fontWeight: .light)
@@ -41,7 +50,7 @@ class ProfileLightSensorTemplateViewCell: UICollectionViewCell {
         titleLabel.snp.makeConstraints { make in
             make.left.equalTo(SCRXFrom(16))
             make.top.equalTo(SCRYFrom(12))
-            make.right.equalTo(SCRXFrom(-50))
+            make.right.equalTo(SCRXFrom(-75))
         }
         
         luxLabel = UILabel(text: "", textColor: Message_Color, fontSize: 12, fontWeight: .light)
@@ -64,6 +73,15 @@ class ProfileLightSensorTemplateViewCell: UICollectionViewCell {
             make.right.equalTo(SCRXFrom(-8))
             make.centerY.equalToSuperview()
         }
+        
+        syncFailBtn = UIButton(normalImageName: "sync_failed_small", target: self, action: #selector(syncFailBtnAction))
+        syncFailBtn.isHidden = true
+        contentView.addSubview(syncFailBtn)
+        syncFailBtn.snp.makeConstraints { make in
+            make.right.equalTo(arrowImageView.snp.left).offset(SCRXFrom(-4))
+            make.centerY.equalTo(arrowImageView)
+        }
+                               
         
     }
     

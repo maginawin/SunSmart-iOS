@@ -529,8 +529,8 @@ class SitesViewController: UIViewController {
 //            MeshNetworkManager.instance.loadExtensionData { _ in
 //                DispatchQueue.main.async {
 //                    let group = MeshNetworkManager.instance.groups.first!
-//                    let vc = ProfileDayNightLuxViewController(group: group)
-////                    let vc = ProfileSettingsViewController(group: group, profile: group.info.profile)
+////                    let vc = ProfileDayNightLuxViewController(group: group)
+//                    let vc = ProfileSettingsViewController(group: group, profile: group.info.profile)
 //    //                let vc = GroupPathSequencePageController(group: group)
 ////                    let vc = DaliMasterViewController(space: space, node: MeshNetworkManager.instance.realNodes[0])
 ////                    let vc = DeviceRatedPowerCalibrationController(devices: MeshNetworkManager.instance.realNodes)

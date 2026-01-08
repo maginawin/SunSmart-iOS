@@ -32,15 +32,24 @@ class ProfileLightSensorTemplateController: UIViewController {
     private var appliedDeviceView: UIView!
     private var appliedDevicesLabel: UILabel!
     private var appliedDeviceArrowImageView: UIImageView!
+    private var devicesResyncBtn: UIButton!
     
+    let profile: Profile
     let canAppliedDevices: [Node]
+    let setMode: ProfileDayNightLuxSetMode
     
     var template: ProfileLightSensorTemplate?
     
     private var appliedDevices: [Node] = []
     
-    init(canAppliedDevices: [Node]) {
+    var createOrEditCallback: ((ProfileLightSensorTemplate)->Void)?
+    
+    var deleteCallback: ((ProfileLightSensorTemplate)->Void)?
+    
+    init(profile: Profile, canAppliedDevices: [Node], setMode: ProfileDayNightLuxSetMode) {
+        self.profile = profile
         self.canAppliedDevices = canAppliedDevices
+        self.setMode = setMode
         super.init(nibName: nil, bundle: nil)
     }
     
@@ -68,6 +77,21 @@ class ProfileLightSensorTemplateController: UIViewController {
             bottomView.showCreateUI()
         }
         
+        updateAppliedDeviceUI()
+        updateBottomViewUI()
+    }
+    
+    private func updateAppliedDeviceUI() {
+        
+        if let template = template {
+            let existSyncDevices = template.devices.contains(where: { $0.getSyncDayNightLuxProfiles().count > 0 })
+            if existSyncDevices {
+                devicesResyncBtn.isHidden = false
+            }else {
+                devicesResyncBtn.isHidden = true
+            }
+        }
+        
         if canAppliedDevices.count > 0 {
             if appliedDevices.count > 0 {
                 appliedDevicesLabel.text = appliedDevices.map({ $0.name ?? "" }).joined(separator: ",")
@@ -78,13 +102,11 @@ class ProfileLightSensorTemplateController: UIViewController {
             appliedDevicesLabel.text = "no_members".localizedString
         }
         
-        updateBottomViewUI()
-        
     }
     
     @objc private func updateBottomViewUI() {
         
-        if let name = nameField.text, !name.isAllInputTextEmpty() {
+        if let name = nameField.text, !name.isAllInputTextEmpty(), let nightLuxText = nightLuxField.text, !nightLuxText.isEmpty, let dayLuxText = dayLuxField.text, !dayLuxText.isEmpty {
             bottomView.saveBtn.isEnabled = true
             bottomView.createBtn.isEnabled = true
         }else {
@@ -99,16 +121,16 @@ class ProfileLightSensorTemplateController: UIViewController {
             return
         }
         
-        // lux必须小于65535
-        let luxRange: ClosedRange<Int> = Int(UInt16.min)...Int(UInt16.max)
+        // lux必须小于5000
+        let luxRange: ClosedRange<Int> = 0...5000
         
         guard luxRange.contains(nightLux) else {
-            nightLuxTipLabel.text = "\("limit_range".localizedString) 0~5000lux"
+            nightLuxTipLabel.text = "\("limit_range".localizedString) \(luxRange.lowerBound)~\(luxRange.upperBound)lux"
             nightLuxField.layer.borderColor = Red_Color.cgColor
             return
         }
         guard luxRange.contains(dayLux) else {
-            dayLuxTipLabel.text = "\("limit_range".localizedString) 0~5000lux"
+            dayLuxTipLabel.text = "\("limit_range".localizedString) \(luxRange.lowerBound)~\(luxRange.upperBound)lux"
             dayLuxField.layer.borderColor = Red_Color.cgColor
             return
         }
@@ -132,24 +154,177 @@ class ProfileLightSensorTemplateController: UIViewController {
             return
         }
         
+        var setTemplate: ProfileLightSensorTemplate!
+        if let editTemplate = template {
+            editTemplate.devices.forEach({
+                $0.preConfiguration.dayProfileStartsAboveLux = nil
+                $0.preConfiguration.nightProfileStartsBelowLux = nil
+                $0.clearSyncStateCache()
+            })
+            
+            editTemplate.name = name
+            editTemplate.nightStartsBelowLux = UInt16(nightLux)
+            editTemplate.dayStartsAboveLux = UInt16(dayLux)
+            editTemplate.deviceAddresses = appliedDevices.map({ $0.primaryUnicastAddress })
+            setTemplate = editTemplate
+        }else {
+            let template = ProfileLightSensorTemplate(name: name, nightStartsBelowLux: UInt16(nightLux), dayStartsAboveLux: UInt16(dayLux), deviceAddresses: appliedDevices.map({ $0.primaryUnicastAddress }))
+            setTemplate = template
+        }
+//        setTemplate.save(profileId: group.info.profile.id)
         
+        // 设置模板值到设备内
+        appliedDevices.forEach {
+            $0.preConfiguration.dayProfileStartsAboveLux = UInt16(dayLux)
+            $0.preConfiguration.nightProfileStartsBelowLux = UInt16(nightLux)
+            $0.clearSyncStateCache()
+            if setMode == .saveAndSync, let meshUUID = $0.network?.uuid.uuidString {
+                $0.preConfiguration.save(meshUUID: meshUUID, nodeAddress: $0.primaryUnicastAddress)
+            }
+        }
         
+        // 是否有需要同步的设备
+        let syncDevices: [(node: Node, profiles: [ProfileType])] = canAppliedDevices.compactMap({ node in
+            let profiles = node.getSyncDayNightLuxProfiles()
+            if profiles.count > 0 {
+                return (node, profiles)
+            }
+            return nil
+        })
+        
+        self.createOrEditCallback?(setTemplate)
+        
+        guard setMode == .saveAndSync, syncDevices.count > 0 else {
+            XWHUDManager.showSuccessTipHUD("done!".localizedString)
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1) {[weak self] in
+                self?.navigationController?.popViewController(animated: true)
+            }
+            return
+        }
+        
+        let vc = SyncDevicesViewController(type: .profile(syncDevices))
+        vc.syncSuccessCallback = {[weak self] _ in
+            XWHUDManager.showSuccessTipHUD("done!".localizedString)
+            guard let self = self else { return }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1) {[weak self] in
+                self?.navigationController?.popToViewController(vcClass: ProfileDayNightLuxViewController.classForCoder())
+            }
+        }
+        vc.backActionCallback = {[weak self] _ in
+            self?.navigationController?.popToViewController(vcClass: ProfileDayNightLuxViewController.classForCoder())
+        }
+        navigationController?.pushViewController(vc, animated: true)
     }
     
     @objc private func deleteAction() {
+        guard let template = self.template else { return }
         
+        template.devices.forEach({
+            $0.preConfiguration.dayProfileStartsAboveLux = nil
+            $0.preConfiguration.nightProfileStartsBelowLux = nil
+            if setMode == .saveAndSync, let meshUUID = $0.network?.uuid.uuidString {
+                $0.preConfiguration.save(meshUUID: meshUUID, nodeAddress: $0.primaryUnicastAddress)
+            }
+        })
+        // 是否有需要同步的设备
+        let syncDevices: [(node: Node, profiles: [ProfileType])] = template.devices.compactMap({ node in
+            let profiles = node.getSyncDayNightLuxProfiles()
+            if profiles.count > 0 {
+                return (node, profiles)
+            }
+            return nil
+        })
+        
+//        template.delete()
+        self.deleteCallback?(template)
+        
+        guard setMode == .saveAndSync, syncDevices.count > 0 else {
+            XWHUDManager.showSuccessTipHUD("done!".localizedString)
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1) {[weak self] in
+                self?.navigationController?.popViewController(animated: true)
+            }
+            return
+        }
+        
+        let vc = SyncDevicesViewController(type: .profile(syncDevices))
+        vc.syncSuccessCallback = {[weak self] _ in
+            XWHUDManager.showSuccessTipHUD("done!".localizedString)
+            guard let self = self else { return }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1) {[weak self] in
+                self?.navigationController?.popToViewController(vcClass: ProfileDayNightLuxViewController.classForCoder())
+            }
+        }
+        vc.backActionCallback = {[weak self] _ in
+            self?.navigationController?.popToViewController(vcClass: ProfileDayNightLuxViewController.classForCoder())
+        }
+        navigationController?.pushViewController(vc, animated: true)
         
     }
     
     @objc private func nightLuxFieldEditChanged(sender: UITextField) {
         
+        
+        updateBottomViewUI()
         sender.layer.borderColor = TextField_Border_Color.cgColor
         nightLuxTipLabel.text = nil
     }
     
     @objc private func dayLuxFieldEditChanged(sender: UITextField) {
+        
+        updateBottomViewUI()
         sender.layer.borderColor = TextField_Border_Color.cgColor
         dayLuxTipLabel.text = nil
+    }
+    
+    @objc private func appliedDeviceViewTapAction() {
+        
+        guard canAppliedDevices.count > 0 else {
+            return
+        }
+        
+        let vc = ProfileLightSensorTemplateDevicesController(profile: profile, canAppliedDevices: canAppliedDevices, appliedDevices: appliedDevices)
+        vc.comfirmCallback = {[weak self] devices in
+            self?.appliedDevices = devices
+            self?.updateAppliedDeviceUI()
+            
+        }
+        navigationController?.pushViewController(vc, animated: true)
+    }
+    
+    @objc private func devicesResyncBtnAction() {
+        
+        guard let template = template else {
+            return
+        }
+        
+        // 是否有需要同步的设备
+        let syncDevices: [(node: Node, profiles: [ProfileType])] = template.devices.compactMap({ node in
+            let profiles = node.getSyncDayNightLuxProfiles()
+            if profiles.count > 0 {
+                return (node, profiles)
+            }
+            return nil
+        })
+        
+        guard syncDevices.count > 0 else {
+            return
+        }
+        
+        let vc = SyncDevicesViewController(type: .profile(syncDevices))
+        vc.syncSuccessCallback = {[weak self] _ in
+            XWHUDManager.showSuccessTipHUD("done!".localizedString)
+            guard let self = self else { return }
+            self.updateAppliedDeviceUI()
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1) {[weak self] in
+                self?.navigationController?.popViewController(animated: true)
+            }
+        }
+        vc.backActionCallback = {[weak self] _ in
+            self?.updateAppliedDeviceUI()
+            self?.navigationController?.popViewController(animated: true)
+        }
+        navigationController?.pushViewController(vc, animated: true)
+        
     }
     
     private func setupUI() {
@@ -320,11 +495,21 @@ class ProfileLightSensorTemplateController: UIViewController {
             make.top.equalTo(nightDayView.snp.bottom).offset(SCRYFrom(16))
         }
         
+        devicesResyncBtn = UIButton(title: "device_resync_note".localizedString, titleSize: 12, titleWeight: .light, titleColor: Error_Red_Color, normalImageName: "sync_failed_small", target: self, action: #selector(devicesResyncBtnAction))
+        devicesResyncBtn.setImagePosition(position: .right, spacing: SCRXFrom(8))
+        devicesResyncBtn.isHidden = true
+        contentView.addSubview(devicesResyncBtn)
+        devicesResyncBtn.snp.makeConstraints { make in
+            make.right.equalTo(SCRXFrom(-20))
+            make.centerY.equalTo(appliedDeviceTitleLabel)
+        }
+        
         appliedDeviceView = UIView()
         appliedDeviceView.backgroundColor = .white
         appliedDeviceView.layer.cornerRadius = SCRYFrom(5)
         appliedDeviceView.layer.borderColor = RGB(151, 151, 151, 0.3).cgColor
         appliedDeviceView.layer.borderWidth = 0.6
+        appliedDeviceView.addGestureRecognizer(UITapGestureRecognizer(target: self, action: #selector(appliedDeviceViewTapAction)))
         contentView.addSubview(appliedDeviceView)
         appliedDeviceView.snp.makeConstraints { make in
             make.left.right.equalTo(nightDayView)

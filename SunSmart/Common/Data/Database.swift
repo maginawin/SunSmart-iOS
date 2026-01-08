@@ -1368,6 +1368,7 @@ extension Profile {
     /// 初始化组扩展信息表
     static func initDatabase() {
         
+        
         _ = try? SunSmartDataManager.shared.db?.run(Profile.profilesTable.create(temporary: false, ifNotExists: true, withoutRowid: false, block: { builder in
             builder.column(ExpressionKey.id, primaryKey: true)
             builder.column(ExpressionKey.meshUUID)
@@ -1398,6 +1399,8 @@ extension Profile {
             builder.column(ExpressionKey.scenes)
             builder.unique(ExpressionKey.meshUUID, ExpressionKey.uuid)
         }))
+        
+        ProfileLightSensorTemplate.initDatabase()
         
         // 获取表内存在的属性
         if let columns = try? SunSmartDataManager.shared.db?.schema.columnDefinitions(table: profilesTableName) {
@@ -1434,8 +1437,6 @@ extension Profile {
             if !columns.contains(where: { $0.name == "scenes" }) {
                 _ = try? SunSmartDataManager.shared.db?.run(Profile.profilesTable.addColumn(ExpressionKey.scenes))
             }
-            
-            ProfileLightSensorTemplate.initDatabase()
         }
     }
 
@@ -1815,7 +1816,8 @@ extension GroupSwitch {
 
 extension FirmwareData {
     
-    private static let firmwaresTable = Table("firmwares")
+    private static let firmwaresTableName = "firmwares"
+    private static let firmwaresTable = Table(firmwaresTableName)
     
     struct ExpressionKey {
         static let id = Expression<Int64>("id")
@@ -1831,6 +1833,7 @@ extension FirmwareData {
         static let releaseDateTimestamp = Expression<Int64>("releaseDate")
         static let content = Expression<String>("content")
         static let compositionHash = Expression<String>("compositionHash")
+        static let versionIdentifier = Expression<Int?>("versionIdentifier")
     }
     
     /// 初始化固件数据扩展信息表
@@ -1850,8 +1853,19 @@ extension FirmwareData {
             builder.column(ExpressionKey.releaseDateTimestamp)
             builder.column(ExpressionKey.content)
             builder.column(ExpressionKey.compositionHash)
+            builder.column(ExpressionKey.versionIdentifier)
             builder.unique(ExpressionKey.deviceType, ExpressionKey.vendorId, ExpressionKey.customId)
         }))
+        
+        // 获取表内存在的属性
+        if let columns = try? SunSmartDataManager.shared.db?.schema.columnDefinitions(table: firmwaresTableName) {
+            // 插入字段
+            // 是否存在”versionIdentifier“属性
+            if !columns.contains(where: { $0.name == "versionIdentifier" }) {
+                _ = try? SunSmartDataManager.shared.db?.run(FirmwareData.firmwaresTable.addColumn(ExpressionKey.versionIdentifier))
+            }
+        }
+        
     }
     
     
@@ -1876,7 +1890,9 @@ extension FirmwareData {
         if let rows = try? SunSmartDataManager.shared.db?.prepare(query) {
             for row in rows {
                 let customId = row[ExpressionKey.customId]
-                let data = FirmwareData(name: row[ExpressionKey.name], version: row[ExpressionKey.version], firmwareID: row[ExpressionKey.firmwareId], data: row[ExpressionKey.firmwareData], updateFirmwareImageIndex: row[ExpressionKey.updateFirmwareImageIndex], incomingFirmwareMetadata: row[ExpressionKey.incomingFirmwareMetadata], productId: UInt16(row[ExpressionKey.deviceType]), vendorId: UInt16(row[ExpressionKey.vendorId]), customId: customId != nil ? UInt16(customId!) : nil, releaseDate: row[ExpressionKey.releaseDateTimestamp], content: row[ExpressionKey.content], compositionHash: row[ExpressionKey.compositionHash])
+                let versionIdentifier = row[ExpressionKey.versionIdentifier]
+                
+                let data = FirmwareData(name: row[ExpressionKey.name], version: row[ExpressionKey.version], firmwareID: row[ExpressionKey.firmwareId], data: row[ExpressionKey.firmwareData], updateFirmwareImageIndex: row[ExpressionKey.updateFirmwareImageIndex], incomingFirmwareMetadata: row[ExpressionKey.incomingFirmwareMetadata], productId: UInt16(row[ExpressionKey.deviceType]), vendorId: UInt16(row[ExpressionKey.vendorId]), customId: customId != nil ? UInt16(customId!) : nil, releaseDate: row[ExpressionKey.releaseDateTimestamp], content: row[ExpressionKey.content], compositionHash: row[ExpressionKey.compositionHash], versionIdentifier: versionIdentifier != nil ? UInt16(versionIdentifier!) : nil)
                 list.append(data)
             }
         }
@@ -1898,7 +1914,8 @@ extension FirmwareData {
             ExpressionKey.customId <- self.customId != nil ? Int(self.customId!) : nil,
             ExpressionKey.releaseDateTimestamp <- self.releaseDate,
             ExpressionKey.content <- self.content,
-            ExpressionKey.compositionHash <- self.compositionHash
+            ExpressionKey.compositionHash <- self.compositionHash,
+            ExpressionKey.versionIdentifier <- self.versionIdentifier != nil ? Int(self.versionIdentifier!) : nil
         ])
        
         do {
@@ -3058,6 +3075,7 @@ extension ProfileLightSensorTemplate {
             builder.column(ExpressionKey.dayStartsAboveLux)
             builder.column(ExpressionKey.nightStartsBelowLux)
             builder.column(ExpressionKey.deviceAddresses)
+            builder.unique(ExpressionKey.id)
         }))
         
     }
@@ -3098,6 +3116,7 @@ extension ProfileLightSensorTemplate {
         let addressData = try? jsonEncoder.encode(deviceAddresses.map({ $0.hex }))
         
         let insertOrUpdate = ProfileLightSensorTemplate.profileLightSensorTemplateTable.insert(or: .replace, [
+            ExpressionKey.name <- self.name,
             ExpressionKey.profileId <- profileId,
             ExpressionKey.id <- self.id,
             ExpressionKey.dayStartsAboveLux <- Int(self.dayStartsAboveLux),

@@ -194,7 +194,7 @@ class SpaceViewController: WMPageController {
         checkBluetoothState()
         #if DEBUG
         
-        MeshLibManager.manager.showLogs = [.model, .access]
+        MeshLibManager.manager.showLogs = [.model, .access, .lowerTransport, .upperTransport, .bearer]
 //        [.network, .access, .lowerTransport, .upperTransport, .proxy, .bearer]
         if routeTest {
             MeshNodeHeartbeatManager.shared.autoHeartbeatLoop = false

@@ -153,6 +153,58 @@ class SyncDevicesViewController: UIViewController {
                         configurationSection.devices.append(configurationDevice)
                     }
                 }
+            case .profile(let datas):
+                datas.forEach { (node: Node, profiles: [ProfileType]) in
+                    // 锁定配置切换操作
+                    var luxTriggerLockStep: SyncDeviceStepModel?
+                    // 切换到对应profile操作
+                    var switchProfileStep: SyncDeviceStepModel?
+                    // 保存到profile 场景
+                    var lastProfileStoreStep: SyncDeviceStepModel?
+                    /// 同步profile场景的操作list
+                    var syncProfileSceneSteps: [SyncDeviceStepModel] = []
+                    let syncProfileSteps = profiles.map({
+                        
+                        let task = SyncDeviceStepTaskModel(name: $0.title, operationType: .configuration(node: node, type: .profile(type: $0)))
+                        
+                        let step = SyncDeviceStepModel(type: $0.title, state: .none, tasks: [task])
+                        task.parentStepModel = step
+                        
+                        // 设置前置条件关联
+                        switch $0 {
+                        case .profileToggleTriggerConditionLuxLock:
+                            luxTriggerLockStep = step
+                        case .lightControlSwitch:
+                            switchProfileStep = step
+                            if luxTriggerLockStep != nil {
+                                step.relevanceStepModels.append(luxTriggerLockStep!)
+                            }
+                            if lastProfileStoreStep != nil {
+                                step.relevanceStepModels.append(lastProfileStoreStep!)
+                            }
+                        case .lightControlStore:
+                            step.relevanceStepModels = syncProfileSceneSteps
+                            syncProfileSceneSteps.removeAll()
+                            lastProfileStoreStep = step
+                        default:
+                            if luxTriggerLockStep != nil {
+                                step.relevanceStepModels.append(luxTriggerLockStep!)
+                            }
+                            if switchProfileStep != nil {
+                                step.relevanceStepModels.append(switchProfileStep!)
+                            }
+                            syncProfileSceneSteps.append(step)
+                        }
+                        return step
+                    })
+                    
+                    let deviceModel = SyncDevicesModel(name: node.name ?? "", address: node.primaryUnicastAddress)
+                    deviceModel.steps = syncProfileSteps
+                    syncProfileSteps.forEach { step in
+                        step.parentDeviceModel = deviceModel
+                    }
+                    configurationSection.devices.append(deviceModel)
+                }
                 
             case .scene(let scene):
                 
@@ -624,6 +676,8 @@ class SyncDevicesViewController: UIViewController {
                         task.relevanceTaskModels = syncProfileSceneTasks
                         syncProfileSceneTasks.removeAll()
                         lastProfileStoreTask = task
+                    case .powerOnState, .daylightCalibration, .daylightCalibrateRate, .daylightCalibrateInflectionPoint, .sensitivity, .lightControlDelete, .profileDayToggleTriggerConditionLux, .profileNightToggleTriggerConditionLux, .profileToggleTriggerConditionLuxDelete:
+                        break
                     default:
                         if luxTriggerLockTask != nil {
                             task.relevanceTaskModels.append(luxTriggerLockTask!)
@@ -993,9 +1047,15 @@ class SyncDevicesViewController: UIViewController {
                     device.state = .wait
                     device.steps.forEach({
                         $0.tasks.forEach({ task in
-//                            if task.state == .failed {
+                            if task.state == .failed {
                                 task.state = .wait
-//                            }
+                                // 检查是否有profile数据需要加锁、切换场景前置要求，需要则重试必须连带前置条件一起设置
+                                if task.relevanceTaskModels.count > 0 {
+                                    task.resyncRelevanceCheck().forEach({
+                                        $0.state = .wait
+                                    })
+                                }
+                            }
                         })
                     })
                 })
@@ -1195,7 +1255,7 @@ class SyncDevicesViewController: UIViewController {
                     self.tableView.reloadData()
                 }
                 
-                MeshProxyMessageCommand.shared.addMessage(messageHandles: messageHandles, ackMessageTimeout: 10, progressBack: nil, successfulBack: { handle, statusMessage in
+                MeshProxyMessageCommand.shared.addMessage(messageHandles: messageHandles, ackMessageTimeout: 15, progressBack: nil, successfulBack: { handle, statusMessage in
                     // 判断如果是设备初始化消息，则需要再初始化完成后完成基本配置
                     if statusMessage is ConfigCompositionDataStatus || statusMessage is ConfigAppKeyStatus {
                         if let address = handle.address ?? handle.model?.parentElement?.unicastAddress, let node = MeshNetworkManager.instance.meshNetwork?.node(withAddress: address), node.isInitialize {
@@ -1370,7 +1430,7 @@ class SyncDevicesViewController: UIViewController {
         }
         return nil
     }
-    
+        
     private func updateCell(model: SyncCellModel) {
         
         
@@ -1584,6 +1644,12 @@ extension SyncDevicesViewController: UITableViewDataSource, UITableViewDelegate 
             }
             SyncDevicesProgressView.show(stepModel: stepModel) { [weak self] task in
                 task.state = .none
+                // 检查是否有profile数据需要加锁、切换场景前置要求，需要则重试必须连带前置条件一起设置
+                if task.relevanceTaskModels.count > 0 {
+                    task.resyncRelevanceCheck().forEach({
+                        $0.state = .wait
+                    })
+                }
                 self?.showProressStepModel = stepModel
                 self?.syncState = .inSync
                 self?.updateSyncStateUI()
@@ -1688,9 +1754,15 @@ extension SyncDevicesViewController: SyncDeviceStepViewCellDelegate {
     /// 重新同步事件回调
     func cell(_ cell: SyncDeviceStepViewCell, resyncAction model: SyncDeviceStepModel) {
         
-        model.tasks.forEach({
-            if $0.state == .failed {
-                $0.state = .none
+        model.tasks.forEach({ task in
+            if task.state == .failed {
+                task.state = .none
+                // 检查是否有profile数据需要加锁、切换场景前置要求，需要则重试必须连带前置条件一起设置
+                if task.relevanceTaskModels.count > 0 {
+                    task.resyncRelevanceCheck().forEach({
+                        $0.state = .wait
+                    })
+                }
             }
         })
         syncState = .inSync
@@ -1706,6 +1778,8 @@ extension SyncDevicesViewController {
     enum SyncType {
         /// 组（设备同步组数据） inNodes：需要进入组的设备list   outNodes：需要组退出的设备list
         case group(_ group: Group, inNodes: [Node]? = nil, outNodes: [Node]? = nil)
+        /// profile数据
+        case profile(_ datas: [(node: Node, profiles: [ProfileType])])
         /// 场景
         case scene(_ scene: Scene)
         /// 日程
@@ -1735,5 +1809,32 @@ extension SyncDevicesViewController {
     }
     
     
+    
+}
+
+extension SyncDeviceStepTaskModel {
+    
+    /// 检查对应task相关联的条件task，如需重试同步时需要把前置关联的task也一起同步
+    /// - Parameter task: 重新同步的task数据
+    /// - Returns: 返回需要一起同步的关联task数据
+    func resyncRelevanceCheck() -> [SyncDeviceStepTaskModel] {
+        
+        var relevanceTaskModels: [SyncDeviceStepTaskModel] = []
+        // 检查是否有profile数据需要加锁、切换场景前置要求，需要则重试必须连带前置条件一起设置
+        if self.relevanceTaskModels.count > 0 {
+            relevanceTaskModels = self.relevanceTaskModels.filter { task in
+                if case .configuration(_, let actionType) = task.operationType, case .profile(let profileType) = actionType {
+                    switch profileType {
+                    case .profileToggleTriggerConditionLuxLock, .lightControlSwitch:
+                        return true
+                    default:
+                        return false
+                    }
+                }
+                return false
+            }
+        }
+        return relevanceTaskModels
+    }
     
 }

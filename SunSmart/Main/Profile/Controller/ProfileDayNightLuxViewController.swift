@@ -8,14 +8,31 @@
 import UIKit
 import NordicSigMeshSDK
 
+/// 修改设备白天黑夜lux模式
+enum ProfileDayNightLuxSetMode {
+    /// 仅修改（不保存、不同步）
+    case onlySet
+    /// 保存并同步
+    case saveAndSync
+}
+
 class ProfileDayNightLuxViewController: WMPageController {
 
-    let group: Group
+    let profile: Profile
+    let groupNodes: [Node]
+    
+    let setMode: ProfileDayNightLuxSetMode
+    
+    var templates: [ProfileLightSensorTemplate] = []
+    var templatesSetCallback: (([ProfileLightSensorTemplate])->Void)?
+    
     private let vcTitles: [String] = ["light_sensor_template".localizedString, "device".localizedString]
     private var segmentedControl: CustomSegmentedControl!
     
-    init(group: Group) {
-        self.group = group
+    init(profile: Profile, groupNodes: [Node], setMode: ProfileDayNightLuxSetMode) {
+        self.profile = profile
+        self.groupNodes = groupNodes
+        self.setMode = setMode
         super.init(nibName: nil, bundle: nil)
         
         self.scrollEnable = false
@@ -63,12 +80,14 @@ extension ProfileDayNightLuxViewController {
     override func pageController(_ pageController: WMPageController, viewControllerAt index: Int) -> UIViewController {
         switch index {
         case 0:
-            let vc = ProfileLightSensorTemplateListController(group: group)
-//            self.sequenceVc = vc
+            let vc = ProfileLightSensorTemplateListController(profile: profile, groupNodes: groupNodes, setMode: setMode)
+            vc.templates = templates
+            vc.templatesSetCallback = {[weak self] templates in
+                self?.templatesSetCallback?(templates)
+            }
             return vc
         case 1:
-            let vc = ProfileDayNightLuxDevicesViewController(nodes: group.nodes)
-//            self.triggerZoneVc = vc
+            let vc = ProfileDayNightLuxDevicesViewController(profile: profile, groupNodes: groupNodes, setMode: setMode)
             return vc
         default:
             return UIViewController()
