@@ -587,7 +587,7 @@ class DeviceRestoreViewController: UIViewController {
                 if let vendorModel = newNode.sunricherVendorModel { // 未加入组的设备默认设置一个手动控制延迟时间，避免默认30s后状态被LC修改
                     appendMessages.append(MeshMessageHandle(message: SunricherVendorSet(function: .manualOverrideTimeout(enabled: true, state: .standby, interval: .max)), model: vendorModel))
                 }
-                if let powerOnOffSetupModel = newNode.powerOnOffSetupModel { // 设置默认上电状态为上一次亮度
+                if let powerOnOffSetupModel = newNode.powerOnOffSetupModel, newNode.lightLCModel != nil { // 设置默认上电状态为上一次亮度
                     appendMessages.append(MeshMessageHandle(message: GenericOnPowerUpSet(state: .restore), model: powerOnOffSetupModel))
                     //                    appendMessages.append(MeshMessageHandle(message: GenericOnPowerUpSet(state: .default), model: powerOnOffSetupModel))
                     //                    appendMessages.append(MeshMessageHandle(message: LightLightnessDefaultSet(lightness: .max), model: lightnessSetupModel))

@@ -477,24 +477,26 @@ extension Node {
                 syncDatas.append(contentsOf: getSyncData(type: .schedules()))
             }
             
-            // 设备参数
-            var deviceParameterTypes: [DeviceParameterType] = []
-            // PWM
-            if let pwmFrequency = self.restoreData?.pwmFrequency, self.pwmFrequency != pwmFrequency {
-                deviceParameterTypes.append(.pwmFrequency(frequency: pwmFrequency))
-            }
-            // Rated power
-            if let phaseEnergyConsumptions = self.restoreData?.phaseEnergyConsumptions, self.phaseEnergyConsumptions != phaseEnergyConsumptions {
-                deviceParameterTypes.append(.ratedPower(datas: phaseEnergyConsumptions))
-            }
-            // Absolute Sensitivity
-            if let motionSensitivityRange = self.restoreData?.motionSensitivityRange,
-               self.motionSensitivityRange != motionSensitivityRange {
-                deviceParameterTypes.append(.motionSensitivityRange(range: motionSensitivityRange))
-            }
-            
-            if deviceParameterTypes.count > 0 {
-                syncDatas.append(.deviceParameterTypes(types: deviceParameterTypes))
+            if self.sunricherVendorModel != nil {
+                // 设备参数
+                var deviceParameterTypes: [DeviceParameterType] = []
+                // PWM
+                if let pwmFrequency = self.restoreData?.pwmFrequency, self.pwmFrequency != pwmFrequency {
+                    deviceParameterTypes.append(.pwmFrequency(frequency: pwmFrequency))
+                }
+                // Rated power
+                if let phaseEnergyConsumptions = self.restoreData?.phaseEnergyConsumptions, self.phaseEnergyConsumptions != phaseEnergyConsumptions {
+                    deviceParameterTypes.append(.ratedPower(datas: phaseEnergyConsumptions))
+                }
+                // Absolute Sensitivity
+                if let motionSensitivityRange = self.restoreData?.motionSensitivityRange,
+                   self.motionSensitivityRange != motionSensitivityRange {
+                    deviceParameterTypes.append(.motionSensitivityRange(range: motionSensitivityRange))
+                }
+                
+                if deviceParameterTypes.count > 0 {
+                    syncDatas.append(.deviceParameterTypes(types: deviceParameterTypes))
+                }
             }
             
             // Dongle
@@ -670,7 +672,7 @@ extension Node {
                 if powerUpState != .restore {
                     syncProfile.append(.powerOnState(state: .restore))
                 }
-                if sunricherVendorModel != nil, lightLCProperty.manualOverrideEnabled == nil || !lightLCProperty.manualOverrideEnabled! || lightLCProperty.manualOverrideTimeout != .max {
+                if sunricherVendorModel != nil, lightLCModel != nil, lightLCProperty.manualOverrideEnabled == nil || !lightLCProperty.manualOverrideEnabled! || lightLCProperty.manualOverrideTimeout != .max {
                     syncProfile.append(.manualOverrideTimeout(enabled: true, second: .max))
                 }
             }
@@ -930,7 +932,7 @@ extension Node {
                 syncProfile.append(.highLowEndTrim(range: 0...100))
             }
             
-            if powerUpState != .restore {
+            if powerOnOffSetupModel != nil, powerUpState != .restore {
                 syncProfile.append(.powerOnState(state: .restore))
             }
             

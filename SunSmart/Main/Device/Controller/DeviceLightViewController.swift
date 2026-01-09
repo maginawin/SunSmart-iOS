@@ -88,7 +88,11 @@ class DeviceLightViewController: UIViewController {
             luxLabel = UILabel(text: "", textColor: TextBlack_Color, fontSize: 14)
             view.addSubview(luxLabel!)
             luxLabel!.snp.makeConstraints { make in
-                make.left.equalTo(brightnessLabel.snp.right).offset(SCRXFrom(30))
+                if cctView.isHidden {
+                    make.left.equalTo(brightnessView.snp.right).offset(SCRXFrom(30))
+                }else {
+                    make.left.equalTo(cctView.snp.right).offset(SCRXFrom(30))
+                }
                 make.centerY.equalTo(brightnessLabel)
             }
         }

@@ -417,6 +417,7 @@ class LightSensorCalibrationViewController: UIViewController {
             DispatchQueue.main.async {
                 // 通知space数据修改
                 NotificationCenter.default.post(name: .init(spaceDataChangedNotificaitonName), object: SpaceChangeDataType.device)
+                self.group.updateGroupSyncState()
                 if failedNodes.count > 0 {
                     self.showCheckingCorrectFailure(total: successNodes.count + failedNodes.count, successCount: successNodes.count, failedNodes: failedNodes)
                 }else {

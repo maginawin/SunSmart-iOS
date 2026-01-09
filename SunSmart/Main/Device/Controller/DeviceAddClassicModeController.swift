@@ -696,7 +696,7 @@ class DeviceAddClassicModeController: UIViewController {
 //                appendMessages.append(contentsOf: group.getNodeAddMessageHandles(node: node))
             }else {
                 if device.deviceType != .dongle && device.deviceType != .gateway {
-                    if let vendorModel = node.sunricherVendorModel { // 未加入组的设备默认设置一个手动控制延迟时间，避免默认30s后状态被LC修改
+                    if let vendorModel = node.sunricherVendorModel, node.lightLCModel != nil { // 未加入组的设备默认设置一个手动控制延迟时间，避免默认30s后状态被LC修改
                         appendMessages.append(MeshMessageHandle(message: SunricherVendorSet(function: .manualOverrideTimeout(enabled: true, state: .standby, interval: .max)), model: vendorModel))
                     }
                     if let powerOnOffSetupModel = node.powerOnOffSetupModel { // 设置默认上电状态为上一次亮度
