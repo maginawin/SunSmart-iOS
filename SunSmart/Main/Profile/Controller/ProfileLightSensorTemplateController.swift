@@ -154,11 +154,17 @@ class ProfileLightSensorTemplateController: UIViewController {
             return
         }
         
+        // 修改的设备list（新添加到模板设备+退出模板设备）
+        var changeDevices: [Node] = []
+        changeDevices.append(contentsOf: appliedDevices)
         var setTemplate: ProfileLightSensorTemplate!
         if let editTemplate = template {
             editTemplate.devices.forEach({
                 $0.preConfiguration.dayProfileStartsAboveLux = nil
                 $0.preConfiguration.nightProfileStartsBelowLux = nil
+                if !changeDevices.contains($0) {
+                    changeDevices.append($0)
+                }
                 $0.clearSyncStateCache()
             })
             
@@ -184,7 +190,7 @@ class ProfileLightSensorTemplateController: UIViewController {
         }
         
         // 是否有需要同步的设备
-        let syncDevices: [(node: Node, profiles: [ProfileType])] = canAppliedDevices.compactMap({ node in
+        let syncDevices: [(node: Node, profiles: [ProfileType])] = changeDevices.compactMap({ node in
             let profiles = node.getSyncDayNightLuxProfiles()
             if profiles.count > 0 {
                 return (node, profiles)
@@ -219,45 +225,52 @@ class ProfileLightSensorTemplateController: UIViewController {
     @objc private func deleteAction() {
         guard let template = self.template else { return }
         
-        template.devices.forEach({
-            $0.preConfiguration.dayProfileStartsAboveLux = nil
-            $0.preConfiguration.nightProfileStartsBelowLux = nil
-            if setMode == .saveAndSync, let meshUUID = $0.network?.uuid.uuidString {
-                $0.preConfiguration.save(meshUUID: meshUUID, nodeAddress: $0.primaryUnicastAddress)
-            }
-        })
-        // 是否有需要同步的设备
-        let syncDevices: [(node: Node, profiles: [ProfileType])] = template.devices.compactMap({ node in
-            let profiles = node.getSyncDayNightLuxProfiles()
-            if profiles.count > 0 {
-                return (node, profiles)
-            }
-            return nil
-        })
+//        template.devices.forEach({
+//            $0.preConfiguration.dayProfileStartsAboveLux = nil
+//            $0.preConfiguration.nightProfileStartsBelowLux = nil
+//            if setMode == .saveAndSync, let meshUUID = $0.network?.uuid.uuidString {
+//                $0.preConfiguration.save(meshUUID: meshUUID, nodeAddress: $0.primaryUnicastAddress)
+//            }
+//        })
+//        // 是否有需要同步的设备
+//        let syncDevices: [(node: Node, profiles: [ProfileType])] = template.devices.compactMap({ node in
+//            let profiles = node.getSyncDayNightLuxProfiles()
+//            if profiles.count > 0 {
+//                return (node, profiles)
+//            }
+//            return nil
+//        })
         
 //        template.delete()
+        
         self.deleteCallback?(template)
         
-        guard setMode == .saveAndSync, syncDevices.count > 0 else {
-            XWHUDManager.showSuccessTipHUD("done!".localizedString)
-            DispatchQueue.main.asyncAfter(deadline: .now() + 1) {[weak self] in
-                self?.navigationController?.popViewController(animated: true)
-            }
-            return
+        XWHUDManager.showSuccessTipHUD("done!".localizedString)
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1) {[weak self] in
+            self?.navigationController?.popViewController(animated: true)
         }
         
-        let vc = SyncDevicesViewController(type: .profile(syncDevices))
-        vc.syncSuccessCallback = {[weak self] _ in
-            XWHUDManager.showSuccessTipHUD("done!".localizedString)
-            guard let self = self else { return }
-            DispatchQueue.main.asyncAfter(deadline: .now() + 1) {[weak self] in
-                self?.navigationController?.popToViewController(vcClass: ProfileDayNightLuxViewController.classForCoder())
-            }
-        }
-        vc.backActionCallback = {[weak self] _ in
-            self?.navigationController?.popToViewController(vcClass: ProfileDayNightLuxViewController.classForCoder())
-        }
-        navigationController?.pushViewController(vc, animated: true)
+        
+//        guard setMode == .saveAndSync, syncDevices.count > 0 else {
+//            XWHUDManager.showSuccessTipHUD("done!".localizedString)
+//            DispatchQueue.main.asyncAfter(deadline: .now() + 1) {[weak self] in
+//                self?.navigationController?.popViewController(animated: true)
+//            }
+//            return
+//        }
+//        
+//        let vc = SyncDevicesViewController(type: .profile(syncDevices))
+//        vc.syncSuccessCallback = {[weak self] _ in
+//            XWHUDManager.showSuccessTipHUD("done!".localizedString)
+//            guard let self = self else { return }
+//            DispatchQueue.main.asyncAfter(deadline: .now() + 1) {[weak self] in
+//                self?.navigationController?.popToViewController(vcClass: ProfileDayNightLuxViewController.classForCoder())
+//            }
+//        }
+//        vc.backActionCallback = {[weak self] _ in
+//            self?.navigationController?.popToViewController(vcClass: ProfileDayNightLuxViewController.classForCoder())
+//        }
+//        navigationController?.pushViewController(vc, animated: true)
         
     }
     
@@ -548,10 +561,12 @@ extension ProfileLightSensorTemplateController: UITextFieldDelegate {
     }
     
     func textField(_ textField: UITextField, shouldChangeCharactersIn range: NSRange, replacementString string: String) -> Bool {
-        guard string.isEmpty || string.isPureNumandCharacters() else {
-            return false
-        }
         
+        if textField.keyboardType == .numberPad {
+            if !string.isEmpty && !string.isPureNumandCharacters() {
+                return false
+            }
+        }
         return true
     }
 }

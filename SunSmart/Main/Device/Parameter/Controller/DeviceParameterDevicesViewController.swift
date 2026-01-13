@@ -1006,12 +1006,12 @@ extension DeviceParameterDevicesViewController: DeviceParameterPromptViewDelegat
 
 extension Node {
     
-    static var selectOnKey = 1
-    static var selectOffKey = 2
-    static var tempPwmKey = 3
-    static var tempRatedPowerKey = 4
-    static var tempSensitivityRangeKey = 5
-    static var tempTransitionTimeKey = 6
+    static var selectOnKey: UInt8 = 0
+    static var selectOffKey: UInt8 = 0
+    static var tempPwmKey: UInt8 = 0
+    static var tempRatedPowerKey: UInt8 = 0
+    static var tempSensitivityRangeKey: UInt8 = 0
+    static var tempTransitionTimeKey: UInt8 = 0
     
     
     /// 是否选中On

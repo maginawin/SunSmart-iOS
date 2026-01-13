@@ -205,16 +205,23 @@ class GroupPathSequenceTriggerZoneController: UIViewController {
         
         deviceAddView = GroupPathSequenceDeviceAddView()
         deviceAddView.isSequence = false
-        deviceAddView.quickAddView.guideView.step1View.titleLabel.text = "zone_add_step1".localizedString
-        deviceAddView.quickAddView.guideView.step2View.titleLabel.text = "zone_add_step2".localizedString
-        deviceAddView.quickAddView.guideView.step3View.titleLabel.text = "zone_quick_add_step3".localizedString
-        deviceAddView.triggerAddView.guideView.step1View.titleLabel.text = "zone_add_step1".localizedString
-        deviceAddView.triggerAddView.guideView.step2View.titleLabel.text = "zone_add_step2".localizedString
-        deviceAddView.triggerAddView.guideView.step3View.titleLabel.text = "path_trigger_add_step3".localizedString
+        deviceAddView.quickAddView.guideView.steps = [
+            .init(imageName: "proximity_lighting_step1", title: "zone_add_step1".localizedString, textColor: SubText_Color),
+            .init(imageName: "proximity_lighting_step2", title: "zone_add_step2".localizedString, textColor: SubText_Color),
+            .init(imageName: "proximity_lighting_step3", title: "zone_quick_add_step3".localizedString, textColor: SubText_Color),
+        ]
         
-        deviceAddView.manuallyAddView.guideView.step1View.titleLabel.text = "zone_add_step1".localizedString
-        deviceAddView.manuallyAddView.guideView.step2View.titleLabel.text = "path_trigger_add_step3".localizedString
-        deviceAddView.manuallyAddView.guideView.step3View.titleLabel.text = "zone_manual_add_step3".localizedString
+        deviceAddView.triggerAddView.guideView.steps = [
+            .init(imageName: "proximity_lighting_step1", title: "zone_add_step1".localizedString, textColor: SubText_Color),
+            .init(imageName: "proximity_lighting_step2", title: "zone_add_step2".localizedString, textColor: SubText_Color),
+            .init(imageName: "proximity_lighting_step3", title: "path_trigger_add_step3".localizedString, textColor: SubText_Color),
+        ]
+        
+        deviceAddView.manuallyAddView.guideView.steps = [
+            .init(imageName: "proximity_lighting_step1", title: "zone_add_step1".localizedString, textColor: SubText_Color),
+            .init(imageName: "proximity_lighting_step2", title: "path_trigger_add_step3".localizedString, textColor: SubText_Color),
+            .init(imageName: "proximity_lighting_step3", title: "zone_manual_add_step3".localizedString, textColor: SubText_Color),
+        ]
         
         deviceAddView.delegate = self
         view.addSubview(deviceAddView)

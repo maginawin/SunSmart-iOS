@@ -1098,11 +1098,11 @@ class ExecuteSceneData {
   
 private extension Group {
     
-    static var executeSceneDataKey = 1
+    static var executeSceneDataKey: UInt8 = 0
     
-    static var isSelectedKey = 2
+    static var isSelectedKey: UInt8 = 0
     
-    static var sceneDataIndexKey = 3
+    static var sceneDataIndexKey: UInt8 = 0
     
     /// 赋值的场景数据
     var executeSceneData: ExecuteSceneData? {

@@ -379,12 +379,12 @@ extension Node {
         case powerGet
     }
     
-    static var unfoldKey = 210
-    static var inputPowerKey = 211
-    static var powerCalibrateErrorKey = 212
-    static var testCurrentPowerKey = 213
-    static var powerCalibrateStateKey = 214
-    static var powerTestLightness = 215
+    static var unfoldKey: UInt8 = 0
+    static var inputPowerKey: UInt8 = 0
+    static var powerCalibrateErrorKey: UInt8 = 0
+    static var testCurrentPowerKey: UInt8 = 0
+    static var powerCalibrateStateKey: UInt8 = 0
+    static var powerTestLightness: UInt8 = 0
     
     /// 是否展开
     var unfold: Bool {

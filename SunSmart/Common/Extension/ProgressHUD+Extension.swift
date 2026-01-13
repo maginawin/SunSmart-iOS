@@ -9,8 +9,8 @@ import Foundation
 
 extension WYProgressHUD {
     
-    static var closeCallback = 100
-    static var closeButton = 101
+    static var closeCallback: UInt8 = 0
+    static var closeButton: UInt8 = 0
     
     /// HUD添加关闭按钮
     func addCloseButton(closeCallback: (()->Void)?) {

@@ -688,14 +688,16 @@ class GroupViewController: UIViewController {
             items.append(.init(icon: UIImage(named: "menu_profile_test"), title: "night".localizedString, hideAnimation: false, tapItemBack: {[weak self] _ in
                 guard let self = self else { return }
                 if let night = self.group.info.profile.nightData {
-                    MeshAPI.sendMessage(message: SceneRecall(night.sceneData.sceneNumber), address: self.group.address.address)
+                    MeshAPI.sendMessage(message: SunricherVendorSet(function: .daylightConditionRecall(index: night.id)), address: self.group.address.address)
+//                    MeshAPI.sendMessage(message: SceneRecall(night.sceneData.sceneNumber), address: self.group.address.address)
                 }
             }))
             
             items.append(.init(icon: UIImage(named: "menu_profile_test"), title: "day".localizedString, hideAnimation: false, tapItemBack: {[weak self] _ in
                 guard let self = self else { return }
                 if let day = self.group.info.profile.dayData {
-                    MeshAPI.sendMessage(message: SceneRecall(day.sceneData.sceneNumber), address: self.group.address.address)
+//                    MeshAPI.sendMessage(message: SceneRecall(day.sceneData.sceneNumber), address: self.group.address.address)
+                    MeshAPI.sendMessage(message: SunricherVendorSet(function: .daylightConditionRecall(index: day.id)), address: self.group.address.address)
                 }
             }))
         }
@@ -1377,7 +1379,7 @@ extension GroupViewController: GroupSensorViewDelegate {
 }
 
 extension Node {
-    static var lightControlOnKey = 210
+    static var lightControlOnKey: UInt8 = 0
     
     /// 是否在control on状态
     var lightControlOn: Bool {

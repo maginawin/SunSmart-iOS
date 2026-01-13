@@ -737,7 +737,7 @@ extension Node {
         /// 切换中
         case loading
     }
-    static var selectStateKey = 1
+    static var selectStateKey: UInt8 = 0
     
     var selectState: DaylightSelectState {
         get {

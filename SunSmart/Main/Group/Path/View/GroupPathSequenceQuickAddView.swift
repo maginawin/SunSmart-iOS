@@ -39,7 +39,7 @@ class GroupPathSequenceQuickAddView: UIView {
     private var addStateLabel: UILabel!
     private var messageLabel: UILabel!
     
-    
+    var guideContentView: UIView!
     var guideView: GroupPathSequenceDeviceAddStepView!
     
     var showAdded: Bool = false
@@ -61,7 +61,7 @@ class GroupPathSequenceQuickAddView: UIView {
     
     /// 展示流程UI
     func showStepGuideUI() {
-        guideView.isHidden = false
+        guideContentView.isHidden = false
         addView.isHidden = true
         stopBtn.isHidden = true
         startBtn.snp.updateConstraints { make in
@@ -71,7 +71,7 @@ class GroupPathSequenceQuickAddView: UIView {
     
     /// 更新快速添加状态
     func updateQuickAddState(_ state: QuickAddState) {
-        guideView.isHidden = true
+        guideContentView.isHidden = true
         addView.isHidden = false
         switch state {
         case .adding:
@@ -238,11 +238,23 @@ class GroupPathSequenceQuickAddView: UIView {
             make.bottom.equalTo(SCRYFrom(-6))
         }
         
-        guideView = GroupPathSequenceDeviceAddStepView()
-        guideView.isHidden = true
-        addSubview(guideView)
-        guideView.snp.makeConstraints { make in
+        guideContentView = UIView()
+        guideContentView.backgroundColor = .white
+        guideContentView.layer.cornerRadius = SCRYFrom(10)
+        guideContentView.isHidden = true
+        addSubview(guideContentView)
+        guideContentView.snp.makeConstraints { make in
             make.edges.equalToSuperview()
+        }
+        
+        guideView = GroupPathSequenceDeviceAddStepView(frame: .zero, steps: [
+            .init(imageName: "proximity_lighting_step1", title: "quick_add_step1".localizedString, textColor: SubText_Color),
+            .init(imageName: "proximity_lighting_step2", title: "quick_add_step2".localizedString, textColor: SubText_Color),
+            .init(imageName: "proximity_lighting_step3", title: "quick_add_step3".localizedString, textColor: SubText_Color)
+        ])
+        guideContentView.addSubview(guideView)
+        guideView.snp.makeConstraints { make in
+            make.left.right.centerY.equalToSuperview()
         }
         
     }

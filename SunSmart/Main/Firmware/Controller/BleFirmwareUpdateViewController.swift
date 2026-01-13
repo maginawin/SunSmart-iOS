@@ -11,11 +11,11 @@ import SwiftyJSON
 import CoreBluetooth
 
 internal extension Node {
-    static var selectedStateKey = 1
-    static var updateStateKey = 2
-    static var enableUpgradeKey = 3
-    static var targetFirmwareDataKey = 4
-    static var peripheral = 5
+    static var selectedStateKey: UInt8 = 0
+    static var updateStateKey: UInt8 = 0
+    static var enableUpgradeKey: UInt8 = 0
+    static var targetFirmwareDataKey: UInt8 = 0
+    static var peripheral: UInt8 = 0
     
     // 是否可以升级 设备版本小于当前升级版本 & 信号量 >= -90dB
     // 是否可以选择 可以升级 & 升级状态为待升级

@@ -600,8 +600,10 @@ class Profile: Copyable {
                 let attStr3 = NSMutableAttributedString(string: "profile_predictive_lighting_with_photocell_desc_3".localizedString + "\n")
                 attStr3.addAttributes([.font: UIFont.systemFont(ofSize: 14), .foregroundColor: TextBlack_Color], range: (attStr3.string as NSString).range(of: "predictive_lighting".localizedString))
                 
-                let attStr4 = NSMutableAttributedString(string: "profile_predictive_lighting_with_photocell_desc_4".localizedString)
+                let attStr4 = NSMutableAttributedString(string: "profile_predictive_lighting_with_photocell_desc_4".localizedString + "\n")
                 attStr4.addAttributes([.font: UIFont.systemFont(ofSize: 14), .foregroundColor: TextBlack_Color], range: (attStr4.string as NSString).range(of: "own_ambient_light_sensor".localizedString))
+                
+                let attStr5 = NSMutableAttributedString(string: "profile_predictive_lighting_with_photocell_desc_5".localizedString)
                 
                 let paragraphStyle = NSMutableParagraphStyle()
                 paragraphStyle.lineSpacing = 2
@@ -612,6 +614,7 @@ class Profile: Copyable {
                 descriptionAttStr.append(attStr2)
                 descriptionAttStr.append(attStr3)
                 descriptionAttStr.append(attStr4)
+                descriptionAttStr.append(attStr5)
                 descriptionAttStr.addAttribute(.paragraphStyle, value: paragraphStyle, range: NSRange(location: 0, length: descriptionAttStr.string.count))
                 
                 return ("profile_predictive_lighting_with_photocell".localizedString, "profile_proximity_lighting_with_photocell", descriptionAttStr, [.luminaire, .lightSensor, .occupancySensor, .pathSequenceSetting])
@@ -769,7 +772,7 @@ class Profile: Copyable {
         if type == .proximityLightingWithPhotocell {
             
             let nightScene = LightControlScene(sceneNumber: .generalLightControlScene + 1, name: "Night Scene", lightControlData: .init(standbyLevel: 30))
-            let dayScene = LightControlScene(sceneNumber: .generalLightControlScene + 2, name: "Day Scene", lightControlData: .init())
+            let dayScene = LightControlScene(sceneNumber: .generalLightControlScene + 2, name: "Day Scene", lightControlData: .init(occupancyLevel: 0, vacantLevel: 0, standbyLevel: 0))
             
             self.nightData = TriggerConditionData(id: 0, startsBelowLux: 30, useCalibrationValues: false, executeType: .adjustWhenOccupied, sceneData: nightScene, fixedStandbyLevel: 30)
 

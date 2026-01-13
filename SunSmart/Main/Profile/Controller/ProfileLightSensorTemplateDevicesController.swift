@@ -208,7 +208,7 @@ class ProfileLightSensorTemplateDevicesController: UIViewController {
     @objc private func selectAllDevicesAction(sender: UIButton) {
         sender.isSelected = !sender.isSelected
         if sender.isSelected {
-            appliedDevices = canAppliedDevices
+            appliedDevices = canAppliedDevices.filter({ $0.ambientLightSensorModel != nil })
         }else {
             appliedDevices.removeAll()
         }
@@ -232,8 +232,10 @@ class ProfileLightSensorTemplateDevicesController: UIViewController {
     
     private func updateBottomViewUI() {
         
-        bottomView.selectAllBtn.isSelected = appliedDevices.count == canAppliedDevices.count
-        bottomView.selectCountLabel.text = "\(appliedDevices.count)/\(canAppliedDevices.count)"
+        let ambientLightDevices = canAppliedDevices.filter({ $0.ambientLightSensorModel != nil })
+        
+        bottomView.selectAllBtn.isSelected = appliedDevices.count == ambientLightDevices.count
+        bottomView.selectCountLabel.text = "\(appliedDevices.count)/\(ambientLightDevices.count)"
     }
     
 
@@ -312,6 +314,10 @@ extension ProfileLightSensorTemplateDevicesController: UICollectionViewDataSourc
     func collectionView(_ collectionView: UICollectionView, didSelectItemAt indexPath: IndexPath) {
         
         let device = canAppliedDevices[indexPath.item]
+        guard device.ambientLightSensorModel != nil else {
+            return
+        }
+        
         if let index = appliedDevices.firstIndex(of: device) {
             appliedDevices.remove(at: index)
         }else {
@@ -337,6 +343,11 @@ extension ProfileLightSensorTemplateDevicesController: ProfileDeviceDayNightLuxV
         guard node != self.luxGetNode else {
             return
         }
+        guard MeshLibManager.manager.isMeshNetworkConnected else {
+            XWHUDManager.showTipHUD("device_notconnect_message".localizedString, isLineFeed: true)
+            return
+        }
+        
         var reloadIndexPaths: [IndexPath] = [indexPath]
         if let lastNode = self.luxGetNode, let index = self.canAppliedDevices.firstIndex(of: lastNode) {
             reloadIndexPaths.append(IndexPath(item: index, section: 0))

@@ -473,7 +473,7 @@ extension SpaceData {
 
 extension MeshLibManager {
     
-    static var supportDeviceInfosKey = 5
+    static var supportDeviceInfosKey: UInt8 = 0
     
     /// 支持的设备信息list（未配置设备则不可添加）
     var supportDeviceInfos: [MeshDeviceConfigInfo] {
@@ -532,9 +532,9 @@ extension Provisioner {
 extension MeshNetworkManager {
     
     private struct AssociatedKey {
-        static var schedulesKey = 3
-        static var switchsKey = 4
-        static var donglesKey = 5
+        static var schedulesKey: UInt8 = 0
+        static var switchsKey: UInt8 = 0
+        static var donglesKey: UInt8 = 0
     }
 
     /// 当前子网内日程list
@@ -840,10 +840,10 @@ extension MeshNetworkManager {
 
 extension Group {
     
-    private static var infoKey = 0
-    private static var lightnessKey = 1
-    private static var cctKey = 2
-    private static var isOnKey = 3
+    private static var infoKey: UInt8 = 0
+    private static var lightnessKey: UInt8 = 0
+    private static var cctKey: UInt8 = 0
+    private static var isOnKey: UInt8 = 0
     
     static let defaultLightness: UInt16 = .max
     static let defaultCct: Int = 4500
@@ -1098,7 +1098,7 @@ extension Group {
 
 extension Scene {
     
-    private static var infoKey = 0
+    private static var infoKey: UInt8 = 0
     /// 扩展信息
     var info: SceneInfo {
         get {
@@ -1479,11 +1479,11 @@ extension DeviceDongleData {
 
 extension Node {
 
-    static private var localVersionSEQ = 1
-    static private var deviceConfigInfo = 202
-    static private var gateway = 203
-    static private var cacheNeedSync = 204
-    static private var cacheGroupNeedSync = 205
+    static private var localVersionSEQ: UInt8 = 0
+    static private var deviceConfigInfo: UInt8 = 0
+    static private var gateway: UInt8 = 0
+    static private var cacheNeedSync: UInt8 = 0
+    static private var cacheGroupNeedSync: UInt8 = 0
 //    static private var lastUpdateSyncTime = 206
     
     /// 设备类型
@@ -1632,7 +1632,7 @@ extension Node {
             self.cacheNeedSync = syncState
             return syncState
         }
-        return needSync
+        return needSync || needSyncGroupData
 //        return self.getSyncData(type: .all).count > 0
     }
     
@@ -1699,7 +1699,7 @@ extension Node {
             return false
         }
         switch pid {
-        case 0x0031, 0x0041, 0x1031, 0x1041, 0x1302, 0x2801: // 单独传感器设备不支持pwm调节
+        case 0x0031, 0x0041, 0x0302, 0x0303, 0x1031, 0x1041, 0x1302, 0x1303, 0x2302, 0x2303, 0x2801: // 单独传感器等设备不支持pwm调节
             return false
         default:
             return true
@@ -2192,6 +2192,9 @@ extension Node {
                 //            if let uuid = meshUUID {
                 //                SceneExecuteData.save(meshUUID: uuid, networkKey: networkKey, address: primaryUnicastAddress, sceneId: Int(sceneId), sceneData: executeData)
                 //            }
+            }else {
+                let property = self.lightLCProperty
+                print("scene store:\(sceneId) on:\(property.lightnessOn) onTime:\(property.timeRunOn) prolong:\(property.lightnessProlong) prolongTime:\(property.timeProlong) standy:\(property.lightnessStandby) standyTime:\(property.timeFadeStandbyAuto)")
             }
     
             break

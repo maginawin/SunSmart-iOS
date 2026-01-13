@@ -11,14 +11,19 @@ extension UIScrollView {
     /// 启用点击空白处隐藏键盘功能
     func enableKeyboardDismissal() {
         let tapGesture = UITapGestureRecognizer(target: self, action: #selector(dismissKeyboard))
-        tapGesture.cancelsTouchesInView = false
+        tapGesture.cancelsTouchesInView = true
+        
+        let delegateProxy = TapGestureDelegateProxy(scrollView: self)
+        tapGesture.delegate = delegateProxy
+        
         self.addGestureRecognizer(tapGesture)
         
         // 同时启用拖动时隐藏键盘
         self.keyboardDismissMode = .onDrag
         
-        // 存储手势以避免重复添加
+        // 存储手势和代理
         objc_setAssociatedObject(self, &AssociatedKeys.tapGesture, tapGesture, .OBJC_ASSOCIATION_RETAIN_NONATOMIC)
+        objc_setAssociatedObject(self, &AssociatedKeys.gestureDelegate, delegateProxy, .OBJC_ASSOCIATION_RETAIN_NONATOMIC)
     }
     
     /// 禁用点击空白处隐藏键盘功能
@@ -48,7 +53,8 @@ extension UIScrollView {
     }
     
     private struct AssociatedKeys {
-        static var tapGesture = 100
+        static var tapGesture: UInt8 = 0
+        static var gestureDelegate: UInt8 = 0
     }
     
     /// 检查是否点击了可编辑的视图
@@ -86,6 +92,43 @@ extension UIScrollView {
           return clearButtonRect.contains(point)
       }
     
+}
+
+
+private class TapGestureDelegateProxy: NSObject, UIGestureRecognizerDelegate {
+    weak var scrollView: UIScrollView?
+
+    init(scrollView: UIScrollView) {
+        self.scrollView = scrollView
+    }
+
+    func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer, shouldReceive touch: UITouch) -> Bool {
+          guard let scrollView = scrollView else { return false }
+
+          // ✅ 键盘没弹出（没有第一响应者）就别参与，完全不拦截
+          guard scrollView.firstResponder != nil else { return false }
+
+          let location = touch.location(in: scrollView)
+          let touchedView = scrollView.hitTest(location, with: nil)
+
+          // ✅ 键盘弹出时：
+          if let v = touchedView {
+              // 点到输入控件本身：不收起（继续编辑体验）
+              if v is UITextField || v is UITextView || v is UISearchBar {
+                  return false
+              }
+
+              // 点到 UIControl（比如 UIButton）：要收起键盘，但不能吞掉点击
+              if v is UIControl {
+                  gestureRecognizer.cancelsTouchesInView = false
+                  return true
+              }
+          }
+
+          // 点到空白/Cell背景等：收起键盘，并吞掉点击，避免“点透”触发选中/按钮等
+          gestureRecognizer.cancelsTouchesInView = true
+          return true
+      }
 }
 
 // UIView 扩展，用于查找第一响应者

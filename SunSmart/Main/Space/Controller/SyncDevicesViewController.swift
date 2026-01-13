@@ -157,6 +157,8 @@ class SyncDevicesViewController: UIViewController {
                 datas.forEach { (node: Node, profiles: [ProfileType]) in
                     // 锁定配置切换操作
                     var luxTriggerLockStep: SyncDeviceStepModel?
+                    // 设置白天/晚上lux阈值操作
+                    var luxThresholdStep: SyncDeviceStepModel?
                     // 切换到对应profile操作
                     var switchProfileStep: SyncDeviceStepModel?
                     // 保存到profile 场景
@@ -174,10 +176,15 @@ class SyncDevicesViewController: UIViewController {
                         switch $0 {
                         case .profileToggleTriggerConditionLuxLock:
                             luxTriggerLockStep = step
-                        case .lightControlSwitch:
+                        case .profileDayToggleTriggerConditionLux, .profileNightToggleTriggerConditionLux:
+                            luxThresholdStep = step
+                        case .lightControlSwitch, .daylightSensorConditionRecall:
                             switchProfileStep = step
                             if luxTriggerLockStep != nil {
                                 step.relevanceStepModels.append(luxTriggerLockStep!)
+                            }
+                            if luxThresholdStep != nil {
+                                step.relevanceStepModels.append(luxThresholdStep!)
                             }
                             if lastProfileStoreStep != nil {
                                 step.relevanceStepModels.append(lastProfileStoreStep!)
@@ -186,6 +193,8 @@ class SyncDevicesViewController: UIViewController {
                             step.relevanceStepModels = syncProfileSceneSteps
                             syncProfileSceneSteps.removeAll()
                             lastProfileStoreStep = step
+                        case .powerOnState, .daylightCalibration, .daylightCalibrateRate, .daylightCalibrateInflectionPoint, .sensitivity, .lightControlDelete, .profileToggleTriggerConditionLuxDelete:
+                            break
                         default:
                             if luxTriggerLockStep != nil {
                                 step.relevanceStepModels.append(luxTriggerLockStep!)
@@ -652,6 +661,8 @@ class SyncDevicesViewController: UIViewController {
             case .profile(let types):
                 // 锁定配置切换操作
                 var luxTriggerLockTask: SyncDeviceStepTaskModel?
+                /// 白天/晚上lux阈值操作
+                var luxThresholdTask: SyncDeviceStepTaskModel?
                 // 切换到对应profile操作
                 var switchProfileTask: SyncDeviceStepTaskModel?
                 // 保存到profile 场景
@@ -664,10 +675,15 @@ class SyncDevicesViewController: UIViewController {
                     switch $0 {
                     case .profileToggleTriggerConditionLuxLock:
                         luxTriggerLockTask = task
-                    case .lightControlSwitch:
+                    case .profileDayToggleTriggerConditionLux, .profileNightToggleTriggerConditionLux:
+                        luxThresholdTask = task
+                    case .lightControlSwitch, .daylightSensorConditionRecall:
                         switchProfileTask = task
                         if luxTriggerLockTask != nil {
                             task.relevanceTaskModels.append(luxTriggerLockTask!)
+                        }
+                        if luxThresholdTask != nil {
+                            task.relevanceTaskModels.append(luxThresholdTask!)
                         }
                         if lastProfileStoreTask != nil {
                             task.relevanceTaskModels.append(lastProfileStoreTask!)
@@ -676,7 +692,7 @@ class SyncDevicesViewController: UIViewController {
                         task.relevanceTaskModels = syncProfileSceneTasks
                         syncProfileSceneTasks.removeAll()
                         lastProfileStoreTask = task
-                    case .powerOnState, .daylightCalibration, .daylightCalibrateRate, .daylightCalibrateInflectionPoint, .sensitivity, .lightControlDelete, .profileDayToggleTriggerConditionLux, .profileNightToggleTriggerConditionLux, .profileToggleTriggerConditionLuxDelete:
+                    case .powerOnState, .daylightCalibration, .daylightCalibrateRate, .daylightCalibrateInflectionPoint, .sensitivity, .lightControlDelete, .profileToggleTriggerConditionLuxDelete:
                         break
                     default:
                         if luxTriggerLockTask != nil {
@@ -1213,6 +1229,24 @@ class SyncDevicesViewController: UIViewController {
                     
                 }else if let taskModel = model as? SyncDeviceStepTaskModel {
                     messageHandles = taskModel.operationType.messageHandles
+                    // 设置白天、晚上数据时记录下当前运行的配置，设置完成后恢复对应配置
+                    if case .configuration(let node, let type) = taskModel.operationType, node.capabilities.contains(.lightSensorConditionRecall), case .profile(let profiletType) = type {
+                        if let vendorModel = node.sunricherVendorModel {
+                            switch profiletType {
+                            case .profileToggleTriggerConditionLuxLock: // 加锁
+                                node.daylightRecallConditionId = nil
+                                messageHandles.insert(MeshMessageHandle(message: SunricherVendorGet(function: .daylightConditionRecallGet), model: vendorModel), at: 0)
+                            case .profileToggleTriggerConditionLuxUnLock: // 解锁
+                                if let index = node.daylightRecallConditionId {
+                                    messageHandles.insert(MeshMessageHandle(message: SunricherVendorSet(function: .daylightConditionRecall(index: index)), model: vendorModel), at: 0)
+                                }
+                            default:
+                                break
+                            }
+                        }
+                    }
+                    
+                    
                     taskModel.state = .inSettings
                     
                     if self.showProressStepModel == taskModel.parentStepModel {
@@ -1285,6 +1319,10 @@ class SyncDevicesViewController: UIViewController {
                                         }
                                     }
                                 }
+                            }
+                        }else if handle.message is SunricherVendorGet, case .daylightConditionRecall(let index) = vendorStatusMessage.status.paramters, index >= 0 { // 记录当前运行的白天/黑夜条件配置
+                            if let address = handle.address ?? handle.model?.parentElement?.unicastAddress, let node = MeshNetworkManager.instance.meshNetwork?.node(withAddress: address) {
+                                node.daylightRecallConditionId = UInt8(index)
                             }
                         }
                     }
@@ -1808,8 +1846,19 @@ extension SyncDevicesViewController {
         case syncSuccess
     }
     
+}
+
+private extension Node {
     
-    
+    static var daylightRecallConditionIdKey: UInt8 = 0
+    /// 光照传感器当前激活的条件id
+    var daylightRecallConditionId: UInt8? {
+        get {
+            objc_getAssociatedObject(self, &Node.daylightRecallConditionIdKey) as? UInt8
+        }set {
+            objc_setAssociatedObject(self, &Node.daylightRecallConditionIdKey, newValue, .OBJC_ASSOCIATION_RETAIN)
+        }
+    }
 }
 
 extension SyncDeviceStepTaskModel {
@@ -1825,7 +1874,7 @@ extension SyncDeviceStepTaskModel {
             relevanceTaskModels = self.relevanceTaskModels.filter { task in
                 if case .configuration(_, let actionType) = task.operationType, case .profile(let profileType) = actionType {
                     switch profileType {
-                    case .profileToggleTriggerConditionLuxLock, .lightControlSwitch:
+                    case .profileToggleTriggerConditionLuxLock, .lightControlSwitch, .daylightSensorConditionRecall:
                         return true
                     default:
                         return false

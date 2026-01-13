@@ -175,7 +175,7 @@ class EmptyDataView: UIView {
 
 extension UIView {
     
-    private static var emptyViewKey = 1
+    private static var emptyViewKey: UInt8 = 0
     
     var emptyView: EmptyDataView? {
         get {

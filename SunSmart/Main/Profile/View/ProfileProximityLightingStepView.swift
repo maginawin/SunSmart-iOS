@@ -9,13 +9,21 @@ import UIKit
 
 class ProfileProximityLightingStepView: UIView {
 
-    private var messageLabel: UILabel!
-    private var stepView: GroupPathSequenceDeviceAddStepView!
-//    private var step1Btn: UIButton!
-//    private var step2Btn: UIButton!
-//    private var step3Btn: UIButton!
-//    private var step1LineView: UIView!
-//    private var step2LineView: UIView!
+    var messageLabel: UILabel!
+    var stepView: GroupPathSequenceDeviceAddStepView!
+    
+    var message: String? {
+        didSet {
+            guard let string = message else {
+                messageLabel.attributedText = nil
+                return
+            }
+            let paragraphStyle = NSMutableParagraphStyle()
+            paragraphStyle.lineSpacing = 4
+            paragraphStyle.alignment = .center
+            messageLabel.attributedText = NSAttributedString(string: string, attributes: [.paragraphStyle: paragraphStyle])
+        }
+    }
     
     override init(frame: CGRect) {
         super.init(frame: frame)
@@ -32,7 +40,11 @@ class ProfileProximityLightingStepView: UIView {
     
     private func setupUI() {
         
-        messageLabel = UILabel(text: "profile_predictive_lighting_message".localizedString, textColor: SubText_Color, fontSize: 14, fontWeight: .light, fit: false)
+        messageLabel = UILabel(text: "", textColor: SubText_Color, fontSize: 14, fontWeight: .light, fit: false)
+        let paragraphStyle = NSMutableParagraphStyle()
+        paragraphStyle.lineSpacing = 4
+        paragraphStyle.alignment = .center
+        messageLabel.attributedText = NSAttributedString(string: "profile_predictive_lighting_message".localizedString, attributes: [.paragraphStyle: paragraphStyle])
         messageLabel.textAlignment = .center
         messageLabel.numberOfLines = 0
         addSubview(messageLabel)
@@ -42,13 +54,11 @@ class ProfileProximityLightingStepView: UIView {
             make.top.equalTo(SCRYFrom(12))
         }
         
-        stepView = GroupPathSequenceDeviceAddStepView()
-        stepView.step1View.titleLabel.text = "save_profile".localizedString
-        stepView.step1View.titleLabel.textColor = TextBlack_Color
-        stepView.step2View.titleLabel.text = "add_devices_to_the_group".localizedString
-        stepView.step2View.titleLabel.textColor = TextBlack_Color
-        stepView.step3View.titleLabel.text = "set_the_path_sequence".localizedString
-        stepView.step3View.titleLabel.textColor = TextBlack_Color
+        stepView = GroupPathSequenceDeviceAddStepView(frame: .zero, steps: [
+            .init(imageName: "proximity_lighting_step1", title: "save_profile".localizedString, textColor: TextBlack_Color),
+            .init(imageName: "proximity_lighting_step2", title: "add_devices_to_the_group".localizedString, textColor: TextBlack_Color),
+            .init(imageName: "proximity_lighting_step3", title: "set_the_path_sequence".localizedString, textColor: TextBlack_Color)
+        ])
         addSubview(stepView)
         stepView.snp.makeConstraints { make in
             make.left.right.equalToSuperview()

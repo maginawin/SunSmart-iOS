@@ -1047,7 +1047,8 @@ extension SceneInfo {
 
 extension Schedule {
     
-    private static let schedulesTable = Table("schedules")
+    private static let schedulesTableName = "schedules"
+    private static let schedulesTable = Table(schedulesTableName)
     
     struct ExpressionKey {
         static let id = Expression<Int64>("id")
@@ -1069,6 +1070,7 @@ extension Schedule {
         static let groupDeleteAddresses = Expression<Data?>("groupDeleteAddresses")
         static let sceneAddress = Expression<Int?>("sceneAddress")
         static let sceneDeleteAddresses = Expression<Data?>("sceneDeleteAddresses")
+        static let profiles = Expression<Data?>("profiles")
     }
 
     /// 初始化组扩展信息表
@@ -1094,8 +1096,19 @@ extension Schedule {
             builder.column(ExpressionKey.groupDeleteAddresses)
             builder.column(ExpressionKey.sceneAddress)
             builder.column(ExpressionKey.sceneDeleteAddresses)
+            builder.column(ExpressionKey.profiles)
             builder.unique(ExpressionKey.meshUUID, ExpressionKey.subNetworkKey, ExpressionKey.scheduleId)
         }))
+        
+        // 获取表内存在的属性
+        if let columns = try? SunSmartDataManager.shared.db?.schema.columnDefinitions(table: schedulesTableName) {
+            // 插入字段
+            // 是否存在”profiles“属性
+            if !columns.contains(where: { $0.name == "profiles" }) {
+                _ = try? SunSmartDataManager.shared.db?.run(Schedule.schedulesTable.addColumn(ExpressionKey.profiles))
+            }
+        }
+        
     }
 
 
@@ -1176,7 +1189,13 @@ extension Schedule {
                     }
                 }
                 
-                let schedule = Schedule(id: row[ExpressionKey.scheduleId], name: row[ExpressionKey.name], enabled: row[ExpressionKey.enabled], nodeAddresses: nodeAddresses, groupAddresses: groupAddresses, sceneNumber: sceneNumber, selectTargetType: .init(rawValue: row[ExpressionKey.selectTarget]) ?? .groups, action: .init(rawValue: UInt8(row[ExpressionKey.action])) ?? .noAction, fadeTime: row[ExpressionKey.fadeTime], weekDays: selectWeekDays, hour: row[ExpressionKey.hour], minute: row[ExpressionKey.minute])
+                // profile类型日程数据
+                var profiles: [ScheduleProfile] = []
+                if let profilesData = row[ExpressionKey.profiles], let scheduleProfiles = try? jsonDecoder.decode([ScheduleProfile].self, from: profilesData) {
+                    profiles = scheduleProfiles
+                }
+                
+                let schedule = Schedule(id: row[ExpressionKey.scheduleId], name: row[ExpressionKey.name], enabled: row[ExpressionKey.enabled], nodeAddresses: nodeAddresses, groupAddresses: groupAddresses, sceneNumber: sceneNumber, profiles: profiles, selectTargetType: .init(rawValue: row[ExpressionKey.selectTarget]) ?? .groups, action: .init(rawValue: UInt8(row[ExpressionKey.action])) ?? .noAction, fadeTime: row[ExpressionKey.fadeTime], weekDays: selectWeekDays, hour: row[ExpressionKey.hour], minute: row[ExpressionKey.minute])
                 schedule.needDeleteNodeAddresses = nodeDeleteAddresses
                 schedule.needDeleteGroupAddresses = groupDeleteAddresses
                 schedule.needDeleteSceneNumbers = sceneDeleteNumbers
@@ -1247,6 +1266,11 @@ extension Schedule {
         
         let weekDays = self.weekDays.reduce(0, { (result, day) -> UInt8 in result + day.rawValue})
         
+        var profilesData: Data?
+        if self.profiles.count > 0 {
+            profilesData = try? jsonEncoder.encode(self.profiles)
+        }
+        
         let insertOrUpdate = Schedule.schedulesTable.insert(or: .replace, [
             ExpressionKey.meshUUID <- uuid,
             ExpressionKey.subNetworkKey <- subNetworkKey,
@@ -1265,7 +1289,8 @@ extension Schedule {
             ExpressionKey.groupAddresses <- groupAddressesData,
             ExpressionKey.groupDeleteAddresses <- groupDeleteAddressesData,
             ExpressionKey.sceneAddress <- sceneNumber,
-            ExpressionKey.sceneDeleteAddresses <- sceneDeleteNumbersData
+            ExpressionKey.sceneDeleteAddresses <- sceneDeleteNumbersData,
+            ExpressionKey.profiles <- profilesData
         ])
         do {
             try SunSmartDataManager.shared.db?.run(insertOrUpdate)

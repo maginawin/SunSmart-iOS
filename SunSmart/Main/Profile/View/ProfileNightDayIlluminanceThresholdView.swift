@@ -125,11 +125,39 @@ class ProfileNightDayIlluminanceThresholdView: UIView {
             deviceDetailTipLabel.text = "profile_all_start_lux_same_group".localizedString
             deviceDetailTipLabel.textColor = Green_Color
         case .someDifferentGroup:
-            deviceDetailTipLabel.text = "profile_all_start_lux_same_group".localizedString
+            deviceDetailTipLabel.text = "profile_some_start_lux_different_group".localizedString
             deviceDetailTipLabel.textColor = Orange_Color
         case .noDevices:
             deviceDetailTipLabel.text = "profile_group_no_devices".localizedString
             deviceDetailTipLabel.textColor = AssistText_Color
+        }
+        
+        if state == .someDifferentGroup {
+            deviceDetailNoteView.isHidden = false
+            deviceDetailView.snp.remakeConstraints { make in
+                make.left.right.equalToSuperview()
+                make.top.equalTo(dayLuxField.snp.bottom).offset(SCRYFrom(16))
+                make.height.equalTo(SCRYFrom(30))
+            }
+            deviceDetailNoteView.snp.remakeConstraints { make in
+                make.left.equalTo(SCRXFrom(16))
+                make.right.equalTo(SCRXFrom(-16))
+                make.top.equalTo(deviceDetailView.snp.bottom).offset(SCRYFrom(8))
+                make.bottom.equalTo(SCRYFrom(-24))
+            }
+        }else {
+            deviceDetailNoteView.isHidden = true
+            deviceDetailView.snp.remakeConstraints { make in
+                make.left.right.equalToSuperview()
+                make.top.equalTo(dayLuxField.snp.bottom).offset(SCRYFrom(16))
+                make.height.equalTo(SCRYFrom(30))
+                make.bottom.equalTo(SCRYFrom(-24))
+            }
+            deviceDetailNoteView.snp.remakeConstraints { make in
+                make.left.equalTo(SCRXFrom(16))
+                make.right.equalTo(SCRXFrom(-16))
+                make.top.equalTo(deviceDetailView.snp.bottom).offset(SCRYFrom(8))
+            }
         }
         
     }

@@ -13,17 +13,20 @@ extension Node {
     /// 节点支持的功能类型
     enum DeviceCapability {
         /// 设备所有功能
-        static let all: [DeviceCapability] = [.lightSensorConditionSegmentSet]
+        static let all: [DeviceCapability] = [.lightSensorConditionSegmentSet, .lightSensorConditionRecall]
         
         // 每个功能支持的最低版本id
         var supportedVersionId: Int {
             switch self {
             case .lightSensorConditionSegmentSet: return 1
+            case .lightSensorConditionRecall: return 2
             }
         }
         
         /// 光照传感器执行条件分段设置
         case lightSensorConditionSegmentSet
+        /// 光照传感器执行事件激活
+        case lightSensorConditionRecall
     }
     
     /// 设备所支持的功能/能力

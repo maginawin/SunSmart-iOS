@@ -185,8 +185,8 @@ extension UIViewController {
 
 extension UINavigationController {
     
-    static var stateImageKey = 1
-    static var stateImageActionCallbackKey = 2
+    static var stateImageKey: UInt8 = 0
+    static var stateImageActionCallbackKey: UInt8 = 0
     
     typealias StateImageActionCallback = (()->Void)
     

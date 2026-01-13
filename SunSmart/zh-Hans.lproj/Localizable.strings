@@ -1170,7 +1170,7 @@
 "set_the_path_sequence" = " 设置路径\n序列";
 "number_of_neighbour_node" = "邻居节点数量";
 "number" = "数量";
-"set_the_path_sequence" = " 设置路径\n序列";
+"set_night_day_lux_threshold" = "Set Night&Day\nlux threshold";
 "SET" = " 设置";
 "path" = "路径";
 "path_sequence" = "路径序列";
@@ -1479,11 +1479,12 @@
 "standby_level" = "待机亮度";
 "threshold_is_required" = "需要设置阈值";
 "profile_predictive_lighting_with_photocell" = "邻近/预测照明（带光照）";
+"profile_predictive_lighting_with_photocell_message" = "This function will only work after adding devices to the group and completing the path sequence(and calibrate light sensor).";
 "profile_predictive_lighting_with_photocell_desc_1" = "Proximity / Predictive Lighting with Photocell combines occupancy detection and ambient light sensing to deliver intelligent and energy-efficient lighting control.";
 "profile_predictive_lighting_with_photocell_desc_2" = "Proximity Lighting turns on luminaires in advance along a defined walking path by listening to neighboring nodes.";
 "profile_predictive_lighting_with_photocell_desc_3" = "Predictive Lighting activates lights within a trigger zone when motion is detected in open or multi-directional areas.";
 "profile_predictive_lighting_with_photocell_desc_4" = "Each device uses its own ambient light sensor to determine whether it is in Day or Night mode and automatically switches between the two lighting behaviors.";
-"profile_predictive_lighting_with_photocell_desc_5" = "Below the night threshold → Night mode Above the day threshold → Day mode This process is handled locally by each device, ensuring fast response and reliable operation without dependency on other nodes.";
+"profile_predictive_lighting_with_photocell_desc_5" = "Below the night threshold → Night mode\nAbove the day threshold → Day mode\nThis process is handled locally by each device, ensuring fast response and reliable operation without dependency on other nodes.";
 "proximity_lighting" = "Proximity Lighting";
 "predictive_lighting" = "Predictive Lighting";
 "proximity/predictive_lighting_with_photocell" = "Proximity / Predictive Lighting with Photocell";
@@ -1492,6 +1493,7 @@
 "profile_night_startsbelow_greater_day" = "必须大于夜间阈值";
 "profile_night_startsbelow_less_day_threshold" = "至少比白天阈值低5lux";
 "profile_night_startsbelow_greater_day_threshold" = "至少比晚上阈值高5lux";
+"profile_night_day_threshold_limit" = "The two values differ by at least 5 lux";
 "profile_snapshoot" = "配置文件快照";
 "profile_store" = "配置文件存储";
 "profile_switch" = "配置文件切换";
@@ -1533,7 +1535,7 @@
 "day_mode_description_note" = "Day mode is activated when the ambient light level exceeds the Day starts above lux threshold.\nIn this mode, luminaires typically remain off or at a low output level and only increase brightness when occupancy is detected, providing supplemental lighting when necessary.\nThis mode is ideal for areas with sufficient natural daylight, such as spaces near windows or daytime working environments.";
 "important_notes" = "Important Notes";
 "night_day_illuminance_threshold" = "Night & Day Illuminance Threshold";
-"night_day_illuminance_threshold_note" = "1. A hysteresis range exists between Night and Day thresholds to prevent frequent switching.\n2. It is recommended that the Night threshold is lower than the Day threshold for stable operation.\n3. Threshold values should be adjusted according to installation height, sensor position, and ambient daylight conditions.";
+"important_notes_note" = "1. A hysteresis range exists between Night and Day thresholds to prevent frequent switching.\n2. It is recommended that the Night threshold is lower than the Day threshold for stable operation.\n3. Threshold values should be adjusted according to installation height, sensor position, and ambient daylight conditions.";
 "light_sensor_template_note" = "Used to assign different illuminance thresholds to devices within the same group.\nTemplates allow customized Night / Day thresholds for more accurate light sensing behavior.";
 "design_intent" = "Design Intent";
 "light_sensor_template_design_intent_note" = "Template-based configuration simplifies commissioning, reduces repetitive setup work, and ensures consistent yet flexible system behavior.";

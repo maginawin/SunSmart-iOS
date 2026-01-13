@@ -18,8 +18,8 @@ enum MeshFirmwareUpgradeStep {
 
 internal extension Node {
     
-    static var distributorSelectedStateKey = 1
-    static var rssiStateKey = 2
+    static var distributorSelectedStateKey: UInt8 = 0
+    static var rssiStateKey: UInt8 = 0
     
     /// 设备选择状态
     enum DistributorSelectedState {

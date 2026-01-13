@@ -32,8 +32,45 @@ class Schedule: Codable, Copyable {
         let groupAddress: Address
         let profileSceneNumber: SceneNumber
         
+        private enum CodingKeys: String, CodingKey {
+            case groupAddress
+            case profileSceneNumber
+        }
+            
         static func == (lhs: ScheduleProfile, rhs: ScheduleProfile) -> Bool {
             return lhs.groupAddress == rhs.groupAddress && lhs.profileSceneNumber == rhs.profileSceneNumber
+        }
+        
+        init(from decoder: Decoder) throws {
+            let container = try decoder.container(keyedBy: CodingKeys.self)
+            
+            let groupAddressHex = try container.decode(String.self, forKey: .groupAddress)
+            guard let address = Address(hex: groupAddressHex) else {
+                throw DecodingError.dataCorruptedError(forKey: .groupAddress, in: container,
+                                                       debugDescription: "Invalid Group address: \(groupAddressHex).")
+            }
+            guard address.isGroup || address.isVirtual else {
+                throw DecodingError.dataCorruptedError(forKey: .groupAddress, in: container,
+                                                       debugDescription: "Not a Group address: \(groupAddressHex).")
+            }
+            guard !address.isSpecialGroup else {
+                throw DecodingError.dataCorruptedError(forKey: .groupAddress, in: container,
+                                                       debugDescription: "Illegal Group address: \(groupAddressHex).")
+            }
+            self.groupAddress = address
+            
+            let sceneNumberHex = try container.decode(String.self, forKey: .profileSceneNumber)
+            guard let sceneNumber = SceneNumber(hex: sceneNumberHex) else {
+                throw DecodingError.dataCorruptedError(forKey: .profileSceneNumber, in: container,
+                                                       debugDescription: "Invalid Scene number: \(sceneNumberHex).")
+            }
+            self.profileSceneNumber = sceneNumber
+        }
+        
+        func encode(to encoder: any Encoder) throws {
+            var container = encoder.container(keyedBy: CodingKeys.self)
+            try container.encode(self.groupAddress.hex, forKey: .groupAddress)
+            try container.encode(self.profileSceneNumber.hex, forKey: .profileSceneNumber)
         }
     }
     

@@ -140,6 +140,8 @@ enum ProfileType {
     case sensitivity(value: UInt16, range: ClosedRange<UInt16>? = nil)
     /// 当前灯光控制数据保存快照
     case lightControlSnapshoot(sceneNumber: SceneNumber = .snapshotScene)
+    /// 切换光照传感器配置的灯光控制数据场景（白天/晚上）
+    case daylightSensorConditionRecall(id: UInt8)
     /// 切换灯光控制数据场景（profile SceneA => SceneB）
     case lightControlSwitch(sceneNumber: SceneNumber)
     /// 灯光数据缓存到场景
@@ -273,7 +275,7 @@ enum DeviceReadParameterType {
 
 extension Node {
     
-    static var preConfigurationKey = 600
+    static var preConfigurationKey: UInt8 = 0
     
     /// 设备预配置数据
     class PreConfiguration: Codable {
@@ -639,6 +641,10 @@ extension Node {
         guard let group = self.group else { return [] }
         let profile = group.info.profile
         var profileTypes: [ProfileType] = []
+        guard self.ambientLightSensorModel != nil, self.sunricherVendorModel != nil else {
+            return profileTypes
+        }
+        
         if profile.type == .proximityLightingWithPhotocell, let nightData = profile.nightData, let dayData = profile.dayData {
             
             // 场景执行的目标地址
@@ -786,6 +792,8 @@ extension Node {
                 }
                 
                 scenes.forEach { profileScene in
+                    /// 白天/晚上场景条件id
+                    var nightDayCooditionId: UInt8?
                     
                     var syncSceneProfiles: [ProfileType] = []
                     // 固定的待机亮度
@@ -805,11 +813,13 @@ extension Node {
                                 lightControlData = preConfigurationNightData
                             }
                         }
-                        
-                        let coodition = self.lightControlLuxTriggerConditions.first(where: { $0.index == nightData.id })
-                        let targetLux = preConfiguration.nightProfileStartsBelowLux ?? nightData.startsBelowLux
-                        if coodition == nil || coodition!.maxLux != targetLux || coodition!.useCalibrationValues != nightData.useCalibrationValues || coodition!.destination != sceneDestination || coodition!.sceneNumber != nightData.sceneData.sceneNumber {
-                            syncSceneProfiles.insert(.profileNightToggleTriggerConditionLux(id: nightData.id, minLux: 0, maxLux: targetLux, useCalibrationValues: nightData.useCalibrationValues, destination: sceneDestination, sceneNumber: nightData.sceneData.sceneNumber), at: 0)
+                        nightDayCooditionId = nightData.id
+                        if self.ambientLightSensorModel != nil && self.sunricherVendorModel != nil {
+                            let coodition = self.lightControlLuxTriggerConditions.first(where: { $0.index == nightData.id })
+                            let targetLux = preConfiguration.nightProfileStartsBelowLux ?? nightData.startsBelowLux
+                            if coodition == nil || coodition!.maxLux != targetLux || coodition!.useCalibrationValues != nightData.useCalibrationValues || coodition!.destination != sceneDestination || coodition!.sceneNumber != nightData.sceneData.sceneNumber {
+                                syncSceneProfiles.insert(.profileNightToggleTriggerConditionLux(id: nightData.id, minLux: 0, maxLux: targetLux, useCalibrationValues: nightData.useCalibrationValues, destination: sceneDestination, sceneNumber: nightData.sceneData.sceneNumber), at: 0)
+                            }
                         }
                     }
                     // 白天
@@ -821,10 +831,13 @@ extension Node {
                                 lightControlData = preConfigurationDayData
                             }
                         }
-                        let coodition = self.lightControlLuxTriggerConditions.first(where: { $0.index == dayData.id })
-                        let targetLux = preConfiguration.dayProfileStartsAboveLux ?? dayData.startsBelowLux
-                        if coodition == nil || coodition!.minLux != targetLux || coodition!.useCalibrationValues != dayData.useCalibrationValues || coodition!.destination != sceneDestination || coodition!.sceneNumber != dayData.sceneData.sceneNumber {
-                            syncSceneProfiles.insert(.profileDayToggleTriggerConditionLux(id: dayData.id, minLux: targetLux, maxLux: .max, useCalibrationValues: dayData.useCalibrationValues, destination: sceneDestination, sceneNumber: dayData.sceneData.sceneNumber), at: 0)
+                        nightDayCooditionId = dayData.id
+                        if self.ambientLightSensorModel != nil && self.sunricherVendorModel != nil {
+                            let coodition = self.lightControlLuxTriggerConditions.first(where: { $0.index == dayData.id })
+                            let targetLux = preConfiguration.dayProfileStartsAboveLux ?? dayData.startsBelowLux
+                            if coodition == nil || coodition!.minLux != targetLux || coodition!.useCalibrationValues != dayData.useCalibrationValues || coodition!.destination != sceneDestination || coodition!.sceneNumber != dayData.sceneData.sceneNumber {
+                                syncSceneProfiles.insert(.profileDayToggleTriggerConditionLux(id: dayData.id, minLux: targetLux, maxLux: .max, useCalibrationValues: dayData.useCalibrationValues, destination: sceneDestination, sceneNumber: dayData.sceneData.sceneNumber), at: 0)
+                            }
                         }
                     }
                     
@@ -848,7 +861,14 @@ extension Node {
                         // 是否修改control数据
                         if self.supportLightLCScene {
                             // 切换到对应场景
-                            syncProfile.append(.lightControlSwitch(sceneNumber: profileScene.sceneNumber))
+                            if self.sunricherVendorModel != nil,
+                               self.ambientLightSensorModel != nil,
+                               self.capabilities.contains(.lightSensorConditionRecall),
+                                let id = nightDayCooditionId { // 使用光感模块激活对应场景
+                                syncProfile.append(.daylightSensorConditionRecall(id: id))
+                            }else {
+                                syncProfile.append(.lightControlSwitch(sceneNumber: profileScene.sceneNumber))
+                            }
                         }
                         // 设置profile数据
                         syncProfile.append(contentsOf: syncSceneProfiles)
@@ -866,7 +886,7 @@ extension Node {
                 // 判断是否需要切换profile
                 if syncProfile.contains(where: { type in
                     switch type {
-                    case .lightControlSwitch:
+                    case .lightControlSwitch, .daylightSensorConditionRecall:
                         return true
                     default:
                         return false

@@ -69,7 +69,7 @@ class DeviceForceResetStepView: UIView {
             make.top.equalTo(titleLabel.snp.bottom).offset(SCRYFrom(8))
         }
         
-        stepView = GroupPathSequenceDeviceAddStepView()
+        stepView = GroupPathSequenceDeviceAddStepView(frame: .zero, steps: [])
         addSubview(stepView)
         stepView.snp.makeConstraints { make in
             make.left.equalTo(SCRXFrom(14))
@@ -77,9 +77,9 @@ class DeviceForceResetStepView: UIView {
             make.top.equalTo(noteLabel.snp.bottom).offset(SCRYFrom(16))
             make.height.greaterThanOrEqualTo(SCRYFrom(56))
         }
-        stepView.step1View.snp.updateConstraints { make in
-            make.top.equalTo(stepView.step2View)
-        }
+//        stepView.step1View.snp.updateConstraints { make in
+//            make.top.equalTo(stepView.step2View)
+//        }
         
         startBtn = UIButton(title: "START".localizedString, titleSize: 16, titleWeight: .light, titleColor: Bar_Color, target: self, action: #selector(startBtnAction))
         startBtn.layer.cornerRadius = SCRYFrom(10)

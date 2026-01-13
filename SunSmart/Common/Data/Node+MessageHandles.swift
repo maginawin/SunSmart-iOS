@@ -29,10 +29,10 @@ extension Scene {
             }
             // 保存场景
             messageHandles.append(MeshMessageHandle(message: SceneStore(self.number), model: sceneSetupModel))
-            if let vendorModel = node.sunricherVendorModel, node.lightLCModel != nil {
-                // 保存场景前开启灯光控制
-                messageHandles.insert(MeshMessageHandle(message: SunricherVendorSet(function: .lightControlEnabled(enabled: true)), model: vendorModel), at: 0)
-            }
+//            if let vendorModel = node.sunricherVendorModel, node.lightLCModel != nil {
+//                // 保存场景前开启灯光控制
+//                messageHandles.insert(MeshMessageHandle(message: SunricherVendorSet(function: .lightControlEnabled(enabled: true)), model: vendorModel), at: 0)
+//            }
         }
         return messageHandles
     }
@@ -78,7 +78,14 @@ extension NodeSyncData {
             })
         case .profile(let types):
             types.forEach({
-                messageHandles.append(contentsOf: $0.getMessageHandles(node: node))
+                let profileMessageHandles = $0.getMessageHandles(node: node)
+                switch $0 {
+                case .profileToggleTriggerConditionLuxLock, .profileDayToggleTriggerConditionLux, .profileNightToggleTriggerConditionLux, .lightControlSwitch, .lightControlStore:
+                    profileMessageHandles.forEach({ $0.continuous = false })
+                default:
+                    break
+                }
+                messageHandles.append(contentsOf: profileMessageHandles)
             })
         case .syncScenes(let datas):
             datas.forEach { (scene: Scene, data: SceneExecuteData) in
@@ -359,6 +366,11 @@ extension ProfileType {
         case .lightControlSnapshoot(let sceneNumber), .lightControlStore(let sceneNumber):
             if let controlSceneSetupModel = node.lightLCSceneSetupModel {
                 messageHandles.append(MeshMessageHandle(message: SceneStore(sceneNumber), model: controlSceneSetupModel))
+            }
+        case .daylightSensorConditionRecall(let id):
+            if node.lightLCSceneModel != nil, let vendorModel = node.sunricherVendorModel, node.capabilities.contains(.lightSensorConditionRecall) {
+          
+                messageHandles.append(MeshMessageHandle(message: SunricherVendorSet(function: .daylightConditionRecall(index: id)), model: vendorModel))
             }
         case .lightControlSwitch(let sceneNumber), .lightControlRestore(let sceneNumber):
             if let controlSceneModel = node.lightLCSceneModel {

@@ -615,8 +615,8 @@ extension EnergyStaticDataViewController: EnergyHarvestSelectViewDelegate {
  
 fileprivate extension DeviceTotalEnergyData {
     
-    static var selectOnKey = 1
-    static var selectOffKey = 2
+    static var selectOnKey: UInt8 = 0
+    static var selectOffKey: UInt8 = 0
     
     /// 是否选中On
     var selectOn: Bool {

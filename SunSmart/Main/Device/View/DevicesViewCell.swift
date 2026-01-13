@@ -236,7 +236,7 @@ class DevicesViewCell: UICollectionViewCell {
  
 private extension Node {
     
-    static var lastLightnessKey = 100
+    static var lastLightnessKey: UInt8 = 0
     /// 最后保存的亮度值
     var lastLightness: UInt16 {
         get {

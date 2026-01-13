@@ -998,7 +998,7 @@ extension ReadDevicesDataViewController {
 
 fileprivate extension SyncDevicesModel {
     
-    static var missingDataKey = 1
+    static var missingDataKey: UInt8 = 0
     
     /// 是否缺失数据（如缺少额定功率设置，导致读取能耗前置条件缺失）
     var missingData: Bool {
@@ -1013,8 +1013,8 @@ fileprivate extension SyncDevicesModel {
 
 fileprivate extension Node {
     
-    static var retedPowerStateKey = 120
-    static var getRatedPowerKey = 121
+    static var retedPowerStateKey: UInt8 = 0
+    static var getRatedPowerKey: UInt8 = 0
     
     /// 额定能耗状态
     var retedPowerState: Bool? {

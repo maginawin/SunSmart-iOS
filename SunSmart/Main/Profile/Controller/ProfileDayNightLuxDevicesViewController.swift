@@ -256,6 +256,7 @@ class ProfileDayNightLuxDevicesViewController: UIViewController, KeyboardScrolla
         }else {
             selectDevices.removeAll()
         }
+        collectionView.reloadData()
         updateBottomViewUI()
     }
     
@@ -276,9 +277,9 @@ class ProfileDayNightLuxDevicesViewController: UIViewController, KeyboardScrolla
                 node.preConfiguration.save(meshUUID: meshUUID, nodeAddress: node.primaryUnicastAddress)
             }
         }
+        syncDevices(selectDevices)
         selectDevices.removeAll()
         collectionView.reloadData()
-        syncDevices(selectDevices)
     }
     
     /// 同步设备
@@ -382,6 +383,28 @@ class ProfileDayNightLuxDevicesViewController: UIViewController, KeyboardScrolla
         
     }
 
+    /// 恢复设备白天晚上lux值
+    private func restoreNodeNightDayLux(node: Node) {
+        guard let index = nodes.firstIndex(of: node) else { return }
+        if let nightLux = node.preConfiguration.nightProfileStartsBelowLux ?? profile.nightData?.startsBelowLux {
+            node.tempNightLux = Int(nightLux)
+        }
+        if let dayLux = node.preConfiguration.dayProfileStartsAboveLux ?? profile.dayData?.startsBelowLux {
+            node.tempDayLux = Int(dayLux)
+        }
+        collectionView.reloadItems(at: [IndexPath(item: index, section: 0)])
+    }
+    
+    /// 是否修改设备白天晚上lux值
+    private func isChangedNightDayLux(device: Node) -> Bool {
+        
+        guard let setNightLux = device.tempNightLux, let setDayLux = device.tempDayLux,
+              let initNightLux = device.preConfiguration.nightProfileStartsBelowLux ?? profile.nightData?.startsBelowLux,
+              let initDayLux = device.preConfiguration.dayProfileStartsAboveLux ?? profile.dayData?.startsBelowLux else {
+            return false
+        }
+        return Int(initNightLux) != setNightLux || Int(initDayLux) != setDayLux
+    }
 
 }
 
@@ -406,18 +429,8 @@ extension ProfileDayNightLuxDevicesViewController: UICollectionViewDataSource, U
             }else {
                 cell.syncFailBtn.isHidden = true
             }
-            
-            if let setNightLux = device.tempNightLux, let setDayLux = device.tempDayLux,
-               let initNightLux = device.preConfiguration.nightProfileStartsBelowLux ?? profile.nightData?.startsBelowLux,
-               let initDayLux = device.preConfiguration.dayProfileStartsAboveLux ?? profile.dayData?.startsBelowLux,
-               Int(initNightLux) != setNightLux || Int(initDayLux) != setDayLux {
-                
-                cell.resetBtn.isHidden = false
-                cell.modifyBtn.isHidden = false
-            }else {
-                cell.resetBtn.isHidden = true
-                cell.modifyBtn.isHidden = true
-            }
+            cell.resetBtn.isHidden = !isChangedNightDayLux(device: device)
+            cell.modifyBtn.isHidden = false
             if luxGetNode == device {
                 cell.startGetLuxLoading()
             }else {
@@ -459,6 +472,9 @@ extension ProfileDayNightLuxDevicesViewController: UICollectionViewDataSource, U
     
     func collectionView(_ collectionView: UICollectionView, didSelectItemAt indexPath: IndexPath) {
         let device = nodes[indexPath.item]
+        guard device.ambientLightSensorModel != nil else {
+            return
+        }
         if let index = selectDevices.firstIndex(of: device) {
             selectDevices.remove(at: index)
         }else {
@@ -487,7 +503,9 @@ extension ProfileDayNightLuxDevicesViewController: ProfileDeviceDayNightLuxViewC
     /// 晚上lux停止编辑
     func cell(_ cell: ProfileDeviceDayNightLuxViewCell, nightLuxEditEnd nightLux: Int?) {
         guard let indexPath = collectionView.indexPath(for: cell) else { return }
-        collectionView.reloadItems(at: [indexPath])
+//        collectionView.reloadItems(at: [indexPath])
+        let device = nodes[indexPath.item]
+        cell.resetBtn.isHidden = !isChangedNightDayLux(device: device)
     }
     
     /// 白天lux编辑
@@ -500,16 +518,28 @@ extension ProfileDayNightLuxDevicesViewController: ProfileDeviceDayNightLuxViewC
     /// 白天lux停止编辑
     func cell(_ cell: ProfileDeviceDayNightLuxViewCell, dayLuxEditEnd dayLux: Int?) {
         guard let indexPath = collectionView.indexPath(for: cell) else { return }
-        collectionView.reloadItems(at: [indexPath])
+        let device = nodes[indexPath.item]
+        cell.resetBtn.isHidden = !isChangedNightDayLux(device: device)
+        
+//        collectionView.reloadItems(at: [indexPath])
     }
     
     /// 获取当前lux
     func deviceDayNightLuxViewCellGetLuxAction(_ cell: ProfileDeviceDayNightLuxViewCell) {
         guard let indexPath = collectionView.indexPath(for: cell) else { return }
         let node = nodes[indexPath.item]
-        guard node != self.luxGetNode else {
+        if node == self.luxGetNode { // 停止
+            self.stopLuxGetTimer()
             return
         }
+//        guard node != self.luxGetNode else {
+//            return
+//        }
+        guard MeshLibManager.manager.isMeshNetworkConnected else {
+            XWHUDManager.showTipHUD("device_notconnect_message".localizedString, isLineFeed: true)
+            return
+        }
+        
         var reloadIndexPaths: [IndexPath] = [indexPath]
         if let lastNode = self.luxGetNode, let index = self.nodes.firstIndex(of: lastNode) {
             reloadIndexPaths.append(IndexPath(item: index, section: 0))
@@ -525,14 +555,7 @@ extension ProfileDayNightLuxDevicesViewController: ProfileDeviceDayNightLuxViewC
     func deviceDayNightLuxViewCellResetAction(_ cell: ProfileDeviceDayNightLuxViewCell) {
         guard let indexPath = collectionView.indexPath(for: cell) else { return }
         let node = nodes[indexPath.item]
-//        let profile = group.info.profile
-        if let nightLux = node.preConfiguration.nightProfileStartsBelowLux ?? profile.nightData?.startsBelowLux {
-            node.tempNightLux = Int(nightLux)
-        }
-        if let dayLux = node.preConfiguration.dayProfileStartsAboveLux ?? profile.dayData?.startsBelowLux {
-            node.tempDayLux = Int(dayLux)
-        }
-        collectionView.reloadItems(at: [indexPath])
+        restoreNodeNightDayLux(node: node)
     }
     
     /// 确认修改回调
@@ -547,17 +570,20 @@ extension ProfileDayNightLuxDevicesViewController: ProfileDeviceDayNightLuxViewC
         let luxRange: ClosedRange<Int> = 0...5000
         
         guard luxRange.contains(nightLux) else {
-            XWHUDManager.showErrorTipHUD("\("night_starts_below".localizedString) \("limit_range".localizedString) \(luxRange.lowerBound)~\(luxRange.upperBound)lux")
+            XWHUDManager.showTipHUD("\("night_starts_below".localizedString) \("limit_range".localizedString) \(luxRange.lowerBound)~\(luxRange.upperBound)lux", isLineFeed: true)
+            restoreNodeNightDayLux(node: node)
             return
         }
         guard luxRange.contains(dayLux) else {
-            XWHUDManager.showErrorTipHUD("\("day_starts_above".localizedString) \("limit_range".localizedString) \(luxRange.lowerBound)~\(luxRange.upperBound)lux")
+            XWHUDManager.showTipHUD("\("day_starts_above".localizedString) \("limit_range".localizedString) \(luxRange.lowerBound)~\(luxRange.upperBound)lux", isLineFeed: true)
+            restoreNodeNightDayLux(node: node)
             return
         }
  
         // 白天lux-晚上lux必须大于等于5
         guard dayLux - nightLux >= 5 else {
-            XWHUDManager.showErrorTipHUD("profile_night_startsbelow_greater_day_threshold".localizedString)
+            XWHUDManager.showTipHUD("profile_night_day_threshold_limit".localizedString, isLineFeed: true)
+            restoreNodeNightDayLux(node: node)
             return
         }
         
@@ -598,9 +624,9 @@ extension Node {
         case loading
     }
     
-    static var tempNightLuxKey = 10
-    static var tempDayLuxKey = 11
-    static var daylightLuxGetStateKey = 12
+    static var tempNightLuxKey: UInt8 = 0
+    static var tempDayLuxKey: UInt8 = 0
+    static var daylightLuxGetStateKey: UInt8 = 0
     
     /// 临时的晚上lux
     var tempNightLux: Int? {

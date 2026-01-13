@@ -2156,7 +2156,7 @@ extension SpaceData {
     case notBound
     }
     
-    static private var gatewayStatusKey = 10
+    static private var gatewayStatusKey: UInt8 = 0
     
     /// 网关状态
     var gatewayStatus: GatewayStatus {

@@ -101,19 +101,20 @@ class ProfileLightSensorTemplateListController: UIViewController {
         let vc = ProfileLightSensorTemplateController(profile: profile, canAppliedDevices: canAddDevices, setMode: setMode)
         vc.createOrEditCallback = {[weak self] template in
             guard let self = self else { return }
+
+            if let index = self.templates.firstIndex(where: { $0.id == template.id }) {
+                self.templates.replaceSubrange(index...index, with: [template])
+                self.collectionView.reloadItems(at: [IndexPath(item: index, section: 0)])
+            }else {
+                self.templates.append(template)
+                self.collectionView.insertItems(at: [IndexPath(item: self.templates.count - 1, section: 0)])
+                self.updateEmptyUI()
+            }
+            
             if template.devices.contains(where: { $0.getSyncDayNightLuxProfiles().count > 0 }) {
                 self.collectionView.reloadData()
-                self.updateEmptyUI()
-            }else {
-                if let index = self.templates.firstIndex(where: { $0.id == template.id }) {
-                    self.templates.replaceSubrange(index...index, with: [template])
-                    self.collectionView.reloadItems(at: [IndexPath(item: index, section: 0)])
-                }else {
-                    self.templates.append(template)
-                    self.collectionView.insertItems(at: [IndexPath(item: self.templates.count - 1, section: 0)])
-                    self.updateEmptyUI()
-                }
             }
+            
             self.templatesSetCallback?(self.templates)
         }
         navigationController?.pushViewController(vc, animated: true)

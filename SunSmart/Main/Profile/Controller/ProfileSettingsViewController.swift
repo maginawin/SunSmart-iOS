@@ -539,11 +539,20 @@ class ProfileSettingsViewController: UIViewController, KeyboardScrollable {
         if selectProfile.type == .proximityLighting {
             dayPhasesView?.isHidden = true
             nightPhasesView?.isHidden = true
+            nightDayIlluminanceView?.isHidden = true
             if proximityLightingStepView == nil || proximityLightingNumberView == nil {
                 setupProximityLightingUI()
             }
+
             proximityLightingNumberView?.number = self.selectProfile.proximityLightingNumber
             proximityLightingStepView?.isHidden = false
+            proximityLightingStepView?.message = "profile_predictive_lighting_message".localizedString
+            proximityLightingStepView?.stepView.lineWidth = SCRXFrom(40)
+            proximityLightingStepView?.stepView.steps = [
+                .init(imageName: "proximity_lighting_step1", title: "save_profile".localizedString, textColor: TextBlack_Color),
+                .init(imageName: "proximity_lighting_step2", title: "add_devices_to_the_group".localizedString, textColor: TextBlack_Color),
+                .init(imageName: "proximity_lighting_step3", title: "set_the_path_sequence".localizedString, textColor: TextBlack_Color)
+            ]
             proximityLightingNumberView?.isHidden = false
             sphasesView.snp.remakeConstraints { make in
                 make.left.equalTo(contentMargin)
@@ -560,8 +569,15 @@ class ProfileSettingsViewController: UIViewController, KeyboardScrollable {
                 nightPhasesView?.isHidden = false
                 nightDayIlluminanceView?.isHidden = false
             }
-            
             proximityLightingNumberView?.number = self.selectProfile.proximityLightingNumber
+            proximityLightingStepView?.message = "profile_predictive_lighting_with_photocell_message".localizedString
+            proximityLightingStepView?.stepView.lineWidth = SCRXFrom(20)
+            proximityLightingStepView?.stepView.steps = [
+                .init(imageName: "proximity_lighting_step1", title: "save_profile".localizedString, textColor: TextBlack_Color),
+                .init(imageName: "proximity_lighting_step2", title: "add_devices_to_the_group".localizedString, textColor: TextBlack_Color),
+                .init(imageName: "proximity_lighting_step3", title: "set_the_path_sequence".localizedString, textColor: TextBlack_Color),
+                .init(imageName: "proximity_lighting_step4", title: "set_night_day_lux_threshold".localizedString, textColor: TextBlack_Color)
+            ]
             proximityLightingStepView?.isHidden = false
             proximityLightingNumberView?.isHidden = false
             sphasesView.isHidden = true
@@ -806,39 +822,47 @@ class ProfileSettingsViewController: UIViewController, KeyboardScrollable {
     
     private func setupProximityLightingUI() {
         
-        proximityLightingStepView = ProfileProximityLightingStepView()
-        contentView.addSubview(proximityLightingStepView!)
-        proximityLightingStepView!.snp.makeConstraints { make in
-            make.left.right.equalTo(sphasesView)
-            make.top.equalTo(headerView.snp.bottom).offset(SCRYFrom(13))
+        if proximityLightingStepView == nil {
+            proximityLightingStepView = ProfileProximityLightingStepView()
+            contentView.addSubview(proximityLightingStepView!)
+            proximityLightingStepView!.snp.makeConstraints { make in
+                make.left.right.equalTo(sphasesView)
+                make.top.equalTo(headerView.snp.bottom).offset(SCRYFrom(13))
+            }
         }
-        
-        proximityLightingNumberView = ProfileProximityLightingNumberView()
-        proximityLightingNumberView?.delegate = self
-        contentView.addSubview(proximityLightingNumberView!)
-        proximityLightingNumberView!.snp.makeConstraints { make in
-            make.left.right.equalTo(proximityLightingStepView!)
-            make.top.equalTo(proximityLightingStepView!.snp.bottom).offset(contentMargin)
-            make.height.equalTo(SCRYFrom(240))
+            
+        if proximityLightingNumberView == nil {
+            proximityLightingNumberView = ProfileProximityLightingNumberView()
+            proximityLightingNumberView?.delegate = self
+            contentView.addSubview(proximityLightingNumberView!)
+            proximityLightingNumberView!.snp.makeConstraints { make in
+                make.left.right.equalTo(proximityLightingStepView!)
+                make.top.equalTo(proximityLightingStepView!.snp.bottom).offset(contentMargin)
+                make.height.equalTo(SCRYFrom(240))
+            }
         }
     }
     
     private func setupProximityLightingWithPhotocellUI() {
         
-        proximityLightingStepView = ProfileProximityLightingStepView()
-        contentView.addSubview(proximityLightingStepView!)
-        proximityLightingStepView!.snp.makeConstraints { make in
-            make.left.right.equalTo(sphasesView)
-            make.top.equalTo(headerView.snp.bottom).offset(SCRYFrom(13))
+        if proximityLightingStepView == nil {
+            proximityLightingStepView = ProfileProximityLightingStepView()
+            contentView.addSubview(proximityLightingStepView!)
+            proximityLightingStepView!.snp.makeConstraints { make in
+                make.left.right.equalTo(sphasesView)
+                make.top.equalTo(headerView.snp.bottom).offset(SCRYFrom(13))
+            }
         }
         
-        proximityLightingNumberView = ProfileProximityLightingNumberView()
-        proximityLightingNumberView?.delegate = self
-        contentView.addSubview(proximityLightingNumberView!)
-        proximityLightingNumberView!.snp.makeConstraints { make in
-            make.left.right.equalTo(proximityLightingStepView!)
-            make.top.equalTo(proximityLightingStepView!.snp.bottom).offset(contentMargin)
-            make.height.equalTo(SCRYFrom(240))
+        if proximityLightingNumberView == nil {
+            proximityLightingNumberView = ProfileProximityLightingNumberView()
+            proximityLightingNumberView?.delegate = self
+            contentView.addSubview(proximityLightingNumberView!)
+            proximityLightingNumberView!.snp.makeConstraints { make in
+                make.left.right.equalTo(proximityLightingStepView!)
+                make.top.equalTo(proximityLightingStepView!.snp.bottom).offset(contentMargin)
+                make.height.equalTo(SCRYFrom(240))
+            }
         }
         
         nightPhasesView = ProfileTriggerConditionPhasesView()
@@ -1397,10 +1421,10 @@ extension ProfileSettingsViewController: ProfileNightDayIlluminanceThresholdView
         let instructions = [
             ProfileTextInstructionInfo(title: "night_starts_below_lux".localizedString, content: "night_starts_below_lux_note".localizedString),
             ProfileTextInstructionInfo(title: "day_starts_above_lux".localizedString, content: "day_starts_above_lux_note".localizedString),
-            ProfileTextInstructionInfo(title: "night_day_illuminance_threshold".localizedString, content: "night_day_illuminance_threshold_note".localizedString)
+            ProfileTextInstructionInfo(title: "important_notes".localizedString, content: "important_notes_note".localizedString)
         ]
         
-        let vc = ProfileTextInstructionsViewController(vcTitle: "important_notes".localizedString, instructions: instructions)
+        let vc = ProfileTextInstructionsViewController(vcTitle: "night_day_illuminance_threshold".localizedString, instructions: instructions)
         navigationController?.pushViewController(vc, animated: true)
     }
     

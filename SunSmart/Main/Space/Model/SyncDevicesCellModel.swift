@@ -469,7 +469,7 @@ extension ProfileType {
             return "sensitivity".localizedString
         case .lightControlSnapshoot:
             return "profile_snapshoot".localizedString
-        case .lightControlSwitch:
+        case .lightControlSwitch, .daylightSensorConditionRecall:
             return "profile_switch".localizedString
         case .lightControlStore:
             return "profile_store".localizedString
@@ -552,7 +552,7 @@ extension ProfileType {
             return true
         case .lightControlSnapshoot(let sceneNumber):
             return node.lightControlSnapshotSceneExecuteData != nil && node.lightControlSnapshotSceneExecuteData?.sceneNumber == sceneNumber
-        case .lightControlSwitch:
+        case .lightControlSwitch, .daylightSensorConditionRecall:
             return true
         case .lightControlStore(let sceneNumber):
             return node.lightControlSceneExecuteDatas.contains(where: { $0.sceneNumber == sceneNumber })

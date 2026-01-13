@@ -71,13 +71,13 @@ class GroupPathSequenceDeviceAddView: UIView {
         didSet {
             if canAddDevice {
                 quickAddView.updateQuickAddState(.stop)
-                triggerAddView.guideView.isHidden = true
-                manuallyAddView.guideView.isHidden = true
+                triggerAddView.guideContentView.isHidden = true
+                manuallyAddView.guideContentView.isHidden = true
             }else {
                 quickAddView.updateQuickAddState(.stop)
                 quickAddView.showStepGuideUI()
-                triggerAddView.guideView.isHidden = false
-                manuallyAddView.guideView.isHidden = false
+                triggerAddView.guideContentView.isHidden = false
+                manuallyAddView.guideContentView.isHidden = false
             }
             updateUnfoldState()
         }
@@ -203,7 +203,7 @@ class GroupPathSequenceDeviceAddView: UIView {
     func updateUnfoldState() {
         
         let rowNum = min(Int(max(ceilf(Float(manuallyAddView.devices.count) / Float(manuallyAddView.colNum * manuallyAddView.rowNum)), 1)), 3)
-        unfoldBtn.isHidden = rowNum <= 1 || !manuallyAddView.guideView.isHidden
+        unfoldBtn.isHidden = rowNum <= 1 || !manuallyAddView.guideContentView.isHidden
     }
     
 }
