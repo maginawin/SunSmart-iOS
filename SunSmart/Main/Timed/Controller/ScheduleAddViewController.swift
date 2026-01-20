@@ -587,8 +587,8 @@ extension ScheduleAddViewController: ScheduleAddTargetViewDelegate {
     func view(_ view: ScheduleAddTargetView, didClickTargetAction target: ScheduleTarget) {
         switch target {
         case .devices(let nodes):
-
-            ScheduleDevicesView(nodes: MeshNetworkManager.instance.lightNodes, selectNodes: nodes, schedule: self.schedule, selectBack: {[weak self] selectNodes in
+            let nodes = MeshNetworkManager.instance.realNodes.filter({ $0.schedulerModel != nil })
+            ScheduleDevicesView(nodes: nodes, selectNodes: nodes, schedule: self.schedule, selectBack: {[weak self] selectNodes in
                 self?.updateScheduleTarget(.devices(selectNodes))
             }).show()
             

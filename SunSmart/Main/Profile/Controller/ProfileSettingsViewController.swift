@@ -237,11 +237,13 @@ class ProfileSettingsViewController: UIViewController, KeyboardScrollable {
             }
             
             // 清空校准设备的校准数据
-            let calibrationNodes = group?.nodes.filter({ $0.sensorCalibrationData?.isCalibration ?? false }) ?? []
-            calibrationNodes.forEach { node in
-                node.preConfiguration.resetDaylightCalibration = true
-                if let meshUUID = meshUUID {
-                    node.preConfiguration.save(meshUUID: meshUUID, nodeAddress: node.primaryUnicastAddress)
+            if !selectProfile.type.daylightType {
+                let calibrationNodes = group?.nodes.filter({ $0.sensorCalibrationData?.isCalibration ?? false }) ?? []
+                calibrationNodes.forEach { node in
+                    node.preConfiguration.resetDaylightCalibration = true
+                    if let meshUUID = meshUUID {
+                        node.preConfiguration.save(meshUUID: meshUUID, nodeAddress: node.primaryUnicastAddress)
+                    }
                 }
             }
         }

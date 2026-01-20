@@ -22,6 +22,8 @@ protocol DeviceRatedPowerCalibrationSetSeparatelyViewCellDelegate: AnyObject {
     
     func calibrationCellReSyncAction(_ cell: DeviceRatedPowerCalibrationSetSeparatelyViewCell)
     
+    func cell(_ cell: DeviceRatedPowerCalibrationSetSeparatelyViewCell, onoffSelected isOn: Bool)
+    
     func cell(_ cell: DeviceRatedPowerCalibrationSetSeparatelyViewCell, identifyDevice device: Node)
 }
 
@@ -49,6 +51,8 @@ class DeviceRatedPowerCalibrationSetSeparatelyViewCell: UITableViewCell {
     private var lightnessMinusBtn: UIButton!
     private var lightnessAddBtn: UIButton!
     private var lightnessSlider: CustomDeviceSlider!
+    private var offBtn: UIButton!
+    private var onBtn: UIButton!
     
     private let maxIntegerDigits = 7
     
@@ -100,6 +104,7 @@ class DeviceRatedPowerCalibrationSetSeparatelyViewCell: UITableViewCell {
                 testView.isUserInteractionEnabled = false
                 getRatedPowerBtn.setImage(UIImage(named: "loading_small_white"), for: .normal)
                 getRatedPowerBtn.imageView?.layer.addRotationAnimation(duration: 1, repeatCount: 999, animationKey: "loading")
+                dimSaveBtn.setTitle("Dim&Save".localizedString, for: .normal)
                 getRatedPowerBtn.setTitle(nil, for: .normal)
             }
             
@@ -125,6 +130,45 @@ class DeviceRatedPowerCalibrationSetSeparatelyViewCell: UITableViewCell {
                 arrowImageView.image = UIImage(named: "arrow_up_black")
             }else {
                 arrowImageView.image = UIImage(named: "arrow_down_black")
+            }
+            
+            if device.supportDimming { // 有调光功能设备
+                lightnessSlider.isHidden = false
+                lightnessMinusBtn.isHidden = false
+                lightnessAddBtn.isHidden = false
+                offBtn.isHidden = true
+                onBtn.isHidden = true
+            }else {
+                lightnessLabel.text = "--"
+                lightnessSlider.isHidden = true
+                lightnessMinusBtn.isHidden = true
+                lightnessAddBtn.isHidden = true
+                offBtn.isHidden = false
+                onBtn.isHidden = false
+                dimSaveBtn.setTitle("On&Save".localizedString, for: .normal)
+                
+                onBtn.backgroundColor = .white
+                onBtn.isSelected = false
+                onBtn.layer.borderWidth = 0.6
+                
+                offBtn.backgroundColor = .white
+                offBtn.isSelected = false
+                offBtn.layer.borderWidth = 0.6
+                
+                if let isOn = device.calibrationTestOn {
+                    if isOn {
+                        onBtn.backgroundColor = Bar_Color
+                        onBtn.isSelected = true
+                        onBtn.layer.borderWidth = 0
+                    }else {
+                        offBtn.backgroundColor = Bar_Color
+                        offBtn.isSelected = true
+                        offBtn.layer.borderWidth = 0
+                    }
+                }else {
+                    getRatedPowerBtn.isEnabled = false
+                    getRatedPowerBtn.backgroundColor = Bar_Color.withAlphaComponent(0.5)
+                }
             }
             
             updateTestViewUI()
@@ -209,6 +253,14 @@ class DeviceRatedPowerCalibrationSetSeparatelyViewCell: UITableViewCell {
     
     @objc private func deviceImageViewTapAction() {
         delegate?.cell(self, identifyDevice: device)
+    }
+    
+    @objc private func offBtnAction(sender: UIButton) {
+        delegate?.cell(self, onoffSelected: false)
+    }
+    
+    @objc private func onBtnAction() {
+        delegate?.cell(self, onoffSelected: true)
     }
     
     // MARK: - UI
@@ -405,7 +457,8 @@ class DeviceRatedPowerCalibrationSetSeparatelyViewCell: UITableViewCell {
         getRatedPowerBtn.backgroundColor = Bar_Color
         testView.addSubview(getRatedPowerBtn)
         getRatedPowerBtn.snp.makeConstraints { make in
-            make.right.equalTo(testView.snp.centerX).offset(SCRXFrom(-38))
+//            make.right.equalTo(testView.snp.centerX).offset(SCRXFrom(-38))
+            make.left.equalTo(SCRXFrom(16))
             make.top.equalTo(testLabel.snp.bottom).offset(SCRYFrom(12))
             make.width.equalTo(SCRXFrom(72))
             make.height.equalTo(SCRYFrom(28))
@@ -419,7 +472,7 @@ class DeviceRatedPowerCalibrationSetSeparatelyViewCell: UITableViewCell {
         testValueBtn.isUserInteractionEnabled = false
         testView.addSubview(testValueBtn)
         testValueBtn.snp.makeConstraints { make in
-            make.left.equalTo(testView.snp.centerX).offset(SCRXFrom(22))
+            make.left.equalTo(getRatedPowerBtn.snp.right).offset(SCRXFrom(36))
             make.centerY.width.height.equalTo(getRatedPowerBtn)
         }
         
@@ -468,6 +521,30 @@ class DeviceRatedPowerCalibrationSetSeparatelyViewCell: UITableViewCell {
             make.right.equalTo(lightnessAddBtn.snp.left).offset(SCRXFrom(-16))
             make.centerY.equalTo(lightnessMinusBtn)
             make.height.equalTo(SCRYFrom(40))
+        }
+        
+        offBtn = UIButton(title: "Off".localizedString, titleSize: 12, titleColor: TextBlack_Color, target: self, action: #selector(offBtnAction))
+        offBtn.setTitleColor(.white, for: .selected)
+        offBtn.layer.cornerRadius = SCRYFrom(5)
+        offBtn.layer.borderColor = TextField_Border_Color.cgColor
+        offBtn.layer.borderWidth = 0.6
+        offBtn.backgroundColor = .white
+        testView.addSubview(offBtn)
+        offBtn.snp.makeConstraints { make in
+            make.left.width.height.equalTo(getRatedPowerBtn)
+            make.top.equalTo(getRatedPowerBtn.snp.bottom).offset(SCRYFrom(16))
+        }
+        
+        onBtn = UIButton(title: "On".localizedString, titleSize: 12, titleColor: TextBlack_Color, target: self, action: #selector(onBtnAction))
+        onBtn.setTitleColor(.white, for: .selected)
+        onBtn.layer.cornerRadius = SCRYFrom(5)
+        onBtn.layer.borderColor = TextField_Border_Color.cgColor
+        onBtn.layer.borderWidth = 0.6
+        onBtn.backgroundColor = .white
+        testView.addSubview(onBtn)
+        onBtn.snp.makeConstraints { make in
+            make.width.height.centerY.equalTo(offBtn)
+            make.centerX.equalTo(testValueBtn)
         }
         
         

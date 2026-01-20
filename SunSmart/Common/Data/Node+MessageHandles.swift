@@ -18,17 +18,21 @@ extension Scene {
     func getSyncMessageHandles(node: Node, data: SceneExecuteData) -> [MeshMessageHandle] {
         var messageHandles: [MeshMessageHandle] = []
         // 设备是否支持场景model及亮度model
-        if let sceneSetupModel = node.sceneSetupModel, let lightnessModel = node.lightnessModel {
+        if let sceneSetupModel = node.sceneSetupModel {
             // 设备是否支持色温model
             let lightness = data.lightness
             //Node.getLightness(lightness100: data.lightness, range: node.lightnessRange)
             if let ctlModel = node.ctlModel, node.temperatureModel != nil {
                 messageHandles.append(MeshMessageHandle(message: LightCTLSet(lightness: lightness, temperature: UInt16(data.cct), deltaUV: 0, transitionTime: .immediate, delay: 0), model: ctlModel))
-            }else { // 不支持则设置亮度
+            }else if let lightnessModel = node.lightnessModel { // 不支持则设置色温
                 messageHandles.append(MeshMessageHandle(message: LightLightnessSet(lightness: lightness, transitionTime: .immediate, delay: 0), model: lightnessModel))
+            }else if let onoffModel = node.onoffModel { // 不支持亮度
+                messageHandles.append(MeshMessageHandle(message: GenericOnOffSet(lightness > 0), model: onoffModel))
             }
             // 保存场景
-            messageHandles.append(MeshMessageHandle(message: SceneStore(self.number), model: sceneSetupModel))
+            if messageHandles.count > 0 {
+                messageHandles.append(MeshMessageHandle(message: SceneStore(self.number), model: sceneSetupModel))
+            }
 //            if let vendorModel = node.sunricherVendorModel, node.lightLCModel != nil {
 //                // 保存场景前开启灯光控制
 //                messageHandles.insert(MeshMessageHandle(message: SunricherVendorSet(function: .lightControlEnabled(enabled: true)), model: vendorModel), at: 0)

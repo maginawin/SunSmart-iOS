@@ -167,7 +167,7 @@ class DeviceParameterDevicesViewController: UIViewController {
                 absoluteSensitivitys.append(range)
             }
             // 过渡时间
-            if let transitionTime = node.tempTransitionTime, !transitionTimes.contains(where: { $0.interval == transitionTime.interval }) {
+            if node.supportDefaultTransitionTime, let transitionTime = node.tempTransitionTime, !transitionTimes.contains(where: { $0.interval == transitionTime.interval }) {
                 transitionTimes.append(transitionTime)
             }
            
@@ -229,7 +229,9 @@ class DeviceParameterDevicesViewController: UIViewController {
             if node.supportMotionSensitivity {
                 parameters.append(.motionSensitivityRange)
             }
-            parameters.append(.defaultTransitionTime)
+            if node.supportDefaultTransitionTime {
+                parameters.append(.defaultTransitionTime)
+            }
         }else {
             parameters = [.pwmFrequency, .ratedPower, .motionSensitivityRange, .defaultTransitionTime]
         }
@@ -471,24 +473,29 @@ class DeviceParameterDevicesViewController: UIViewController {
                     cell.sensitivityLabel.isHidden = true
                 }
                 
-                var transitionTime = device.tempTransitionTime
-                
-                if let failedData = settingFailedDatas[device.primaryUnicastAddress]?.first(where: { $0.rawValue == DeviceParameterData.ParameterType.defalutTransitionTime.rawValue }) {
-                    cell.transitionTimeImageView.isHidden = false
-                    if case .defaultTransitionTime(let time) = failedData {
-                        transitionTime = time
+                if device.supportDefaultTransitionTime {
+                    var transitionTime = device.tempTransitionTime
+                    
+                    if let failedData = settingFailedDatas[device.primaryUnicastAddress]?.first(where: { $0.rawValue == DeviceParameterData.ParameterType.defalutTransitionTime.rawValue }) {
+                        cell.transitionTimeImageView.isHidden = false
+                        if case .defaultTransitionTime(let time) = failedData {
+                            transitionTime = time
+                        }
+                    }else {
+                        cell.transitionTimeImageView.isHidden = true
                     }
+                    
+                    if let transitionTime = transitionTime {
+                        let timeStr = DeviceParameterData.transitionTimeDatas.first(where: { $0.timeInterval == transitionTime.interval })?.timeStr ?? "\(transitionTime.interval ?? 0)s"
+                        cell.transitionTimeLabel.text = "\("transition_time".localizedString): \(timeStr)"
+                    }else {
+                        cell.transitionTimeLabel.text = "\("transition_time".localizedString): --"
+                    }
+                    cell.transitionTimeLabel.isHidden = false
                 }else {
+                    cell.transitionTimeLabel.isHidden = true
                     cell.transitionTimeImageView.isHidden = true
                 }
-                
-                if let transitionTime = transitionTime {
-                    let timeStr = DeviceParameterData.transitionTimeDatas.first(where: { $0.timeInterval == transitionTime.interval })?.timeStr ?? "\(transitionTime.interval ?? 0)s"
-                    cell.transitionTimeLabel.text = "\("transition_time".localizedString): \(timeStr)"
-                }else {
-                    cell.transitionTimeLabel.text = "\("transition_time".localizedString): --"
-                }
-                cell.transitionTimeLabel.isHidden = false
                 
                 
                 if MeshLibManager.manager.isMeshNetworkConnected {
@@ -634,24 +641,29 @@ extension DeviceParameterDevicesViewController: UITableViewDataSource, UITableVi
             cell.sensitivityLabel.isHidden = true
         }
         
-        var transitionTime = device.tempTransitionTime
-        
-        if let failedData = settingFailedDatas[device.primaryUnicastAddress]?.first(where: { $0.rawValue == DeviceParameterData.ParameterType.defalutTransitionTime.rawValue }) {
-            cell.transitionTimeImageView.isHidden = false
-            if case .defaultTransitionTime(let time) = failedData {
-                transitionTime = time
+        if device.supportDefaultTransitionTime {
+            var transitionTime = device.tempTransitionTime
+            
+            if let failedData = settingFailedDatas[device.primaryUnicastAddress]?.first(where: { $0.rawValue == DeviceParameterData.ParameterType.defalutTransitionTime.rawValue }) {
+                cell.transitionTimeImageView.isHidden = false
+                if case .defaultTransitionTime(let time) = failedData {
+                    transitionTime = time
+                }
+            }else {
+                cell.transitionTimeImageView.isHidden = true
             }
+            
+            if let transitionTime = transitionTime {
+                let timeStr = DeviceParameterData.transitionTimeDatas.first(where: { $0.timeInterval == transitionTime.interval })?.timeStr ?? "\(transitionTime.interval ?? 0)s"
+                cell.transitionTimeLabel.text = "\("transition_time".localizedString): \(timeStr)"
+            }else {
+                cell.transitionTimeLabel.text = "\("transition_time".localizedString): --"
+            }
+            cell.transitionTimeLabel.isHidden = false
         }else {
+            cell.transitionTimeLabel.isHidden = true
             cell.transitionTimeImageView.isHidden = true
         }
-        
-        if let transitionTime = transitionTime {
-            let timeStr = DeviceParameterData.transitionTimeDatas.first(where: { $0.timeInterval == transitionTime.interval })?.timeStr ?? "\(transitionTime.interval ?? 0)s"
-            cell.transitionTimeLabel.text = "\("transition_time".localizedString): \(timeStr)"
-        }else {
-            cell.transitionTimeLabel.text = "\("transition_time".localizedString): --"
-        }
-        cell.transitionTimeLabel.isHidden = false
         
         if MeshLibManager.manager.isMeshNetworkConnected && device.state {
             cell.selectState = selectDevices.contains(device) ? .selected : .none

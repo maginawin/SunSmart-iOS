@@ -57,7 +57,7 @@ class SchedulesViewCell: UICollectionViewCell {
             var action = ""
             switch schedule.action {
             case .turnOn:
-               action = "action_ON".localizedString
+               action = "AUTO/ON".localizedString
             case .turnOff:
                 action = "action_OFF".localizedString
             case .sceneRecall:

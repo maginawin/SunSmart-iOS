@@ -512,7 +512,7 @@ class GroupViewController: UIViewController {
         }
         
         // 临近照明提示路径设置
-        if profileType == .proximityLighting, profileType == .proximityLightingWithPhotocell, group.info.proximityLightingPath?.isEmpty() ?? true, space.groupOperates.contains(.edit) {
+        if profileType == .proximityLighting || profileType == .proximityLightingWithPhotocell, group.info.proximityLightingPath?.isEmpty() ?? true, space.groupOperates.contains(.edit) {
             setPathBtn.isHidden = false
             setPathLabel.isHidden = false
         }else {

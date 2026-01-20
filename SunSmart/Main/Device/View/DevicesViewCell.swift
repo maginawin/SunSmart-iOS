@@ -75,7 +75,7 @@ class DevicesViewCell: UICollectionViewCell {
                         backgroundColor = RGB(226, 226, 226)
                         progress = 0
                     }
-                   
+                    progressView.isHidden = !device.supportDimming
                     progressView.setProgress(Int(progress), animated: progressAnimation)
 
                     if device.temperatureModel != nil {

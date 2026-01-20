@@ -432,6 +432,8 @@
 "light_mode" = "Light mode";
 "occupancy_mode" = "Occupancy Mode";
 "AUTO" = "AUTO";
+"Auto/On" = "Auto/On";
+"AUTO/ON" = "AUTO/ON";
 "keep_calibrating" = "KEEP CALIBRATING";
 "EXIT" = "EXIT";
 "switch" = "Switch";
@@ -1441,6 +1443,7 @@
 "energy_reporting" = "Energy Reporting";
 "parameter_selection" = "Parameter selection";
 "Dim&Save" = "Dim&Save";
+"On&Save" = "On&Save";
 "input_value" = "Input value";
 "calibration_value" = "Calibration value";
 "calibration_test_note" = "Measure power deviation at different brightness levels.";
@@ -1449,6 +1452,8 @@
 "calibration_step_1_note" = "After completion, you can directly input the power in the second step";
 "calibration_step_2_title" = "2.Input the value read by the power meter";
 "calibration_dim_save_note" = "Dim&Save can be made separately if needed.";
+"calibration_step_1_on_title" = "1.Turn on and Save the rated power of all devices";
+"calibration_on_save_note" = "On&Save can be made separately if needed.";
 "set_separately" = "Set separately";
 "set_all" = "Set all";
 "set_all_note" = "1. The prerequisite for calibrating all devices is that the types of the devices to be calibrated, the types of loads they are connected to, and the load power are all the same.\n2. Otherwise, please calibrate the device separately.\n3. Calibration requires a power meter to read the power connected to the device.\n4. Read the power of one of the devices, and subsequently use this power to calibrate all the devices.";

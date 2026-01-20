@@ -374,7 +374,7 @@ class ScheduleAddView: UIView {
             make.top.equalTo(targetView.snp.bottom).offset(SCRYFrom(16))
         }
         
-        actionOnBtn = UIButton(title: "action_on".localizedString, titleSize: 16, titleWeight: .light, titleColor: RGB(39, 37, 54), target: self, action: #selector(actionBtnAction))
+        actionOnBtn = UIButton(title: "Auto/On".localizedString, titleSize: 16, titleWeight: .light, titleColor: RGB(39, 37, 54), target: self, action: #selector(actionBtnAction))
         actionOnBtn.tag = 100
         actionOnBtn.setTitleColor(.white, for: .selected)
         actionOnBtn.setTitleColor(Message_Color, for: .disabled)
@@ -385,7 +385,7 @@ class ScheduleAddView: UIView {
         actionOnBtn.snp.makeConstraints { make in
             make.left.equalTo(SCRXFrom(20))
             make.top.equalTo(actionLabel.snp.bottom).offset(SCRYFrom(8))
-            make.width.equalTo(SCRXFrom(64))
+            make.width.equalTo(SCRXFrom(80))
             make.height.equalTo(SCRYFrom(40))
         }
         
@@ -399,7 +399,8 @@ class ScheduleAddView: UIView {
         contentView.addSubview(actionOffBtn)
         actionOffBtn.snp.makeConstraints { make in
             make.left.equalTo(actionOnBtn.snp.right).offset(SCRXFrom(10))
-            make.centerY.width.height.equalTo(actionOnBtn)
+            make.centerY.height.equalTo(actionOnBtn)
+            make.width.equalTo(SCRXFrom(64))
         }
         
         actionRecallBtn = UIButton(title: "recall".localizedString, titleSize: 16, titleWeight: .light, titleColor: RGB(39, 37, 54), target: self, action: #selector(actionBtnAction))
@@ -412,7 +413,8 @@ class ScheduleAddView: UIView {
         contentView.addSubview(actionRecallBtn)
         actionRecallBtn.snp.makeConstraints { make in
             make.left.equalTo(SCRXFrom(168))
-            make.centerY.width.height.equalTo(actionOnBtn)
+            make.centerY.height.equalTo(actionOnBtn)
+            make.width.equalTo(SCRXFrom(64))
         }
         
         fadeInLabel = UILabel(text: "fade_in".localizedString, textColor: SubText_Color, fontSize: 14, fontWeight: .light)

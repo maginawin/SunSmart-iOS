@@ -337,7 +337,7 @@
 "profile_vacancy_level_desc" = "空置时应维持的亮度";
 "profile_standby_level" = "待机亮度";
 "profile_standby_lux" = "待机照度";
-"profile_standby_level_desc" = "设备根据环境光传感器切换到白天或夜晚模式后，默认的亮度水平。\n此亮度水平将一直保持，直到检测到运动事件并触发新的照明行为。";
+"profile_standby_level_desc" = "设备根据环境光传感器切换到白天或晚上模式后，默认的亮度水平。\n此亮度水平将一直保持，直到检测到运动事件并触发新的照明行为。";
 "profile_auto_min_value" = "光感限值";
 "profile_auto_min_value_desc" = "即使光线充足，也需维持的最小亮度，不得低于低功率限制的值";
 "profile_task_level_desc" = "工作时应维持的理想亮度";
@@ -439,6 +439,8 @@
 "light_mode" = "灯光模式";
 "occupancy_mode" = "占用模式";
 "AUTO" = "自动";
+"Auto/On" = "自动/开";
+"AUTO/ON" = "自动/开";
 "keep_calibrating" = "持续校准";
 "EXIT" = "退出";
 "switch" = "开关";
@@ -1170,7 +1172,7 @@
 "set_the_path_sequence" = " 设置路径\n序列";
 "number_of_neighbour_node" = "邻居节点数量";
 "number" = "数量";
-"set_night_day_lux_threshold" = "Set Night&Day\nlux threshold";
+"set_night_day_lux_threshold" = "设置白天/晚上照度阈值";
 "SET" = " 设置";
 "path" = "路径";
 "path_sequence" = "路径序列";
@@ -1446,6 +1448,7 @@
 "energy_reporting" = "能耗上报";
 "parameter_selection" = "参数选择";
 "Dim&Save" = "调光并保存";
+"On&Save" = "On&Save";
 "input_value" = "输入值";
 "calibration_value" = "校准值";
 "calibration_test_note" = "测量不同亮度级别的功率偏差。";
@@ -1454,6 +1457,8 @@
 "calibration_step_1_note" = "完成后，您可以直接在第二步输入功率值";
 "calibration_step_2_title" = "2. 输入功率计读取的数值";
 "calibration_dim_save_note" = "如需单独调光保存，可分开进行。";
+"calibration_step_1_on_title" = "1. 开灯并保存所有设备的额定功率";
+"calibration_on_save_note" = "如有需要，“开灯”和“保存”可分别执行";
 "set_separately" = "单独设置";
 "set_all" = "全部设置";
 "set_all_note" = "1. 校准全部设备的前提是：待校准设备类型、所接负载类型、负载功率均相同。\n2. 否则，请单独校准设备。\n3. 校准需要功率计读取设备所接负载的功率。\n4. 读取其中一个设备的功率，后续将使用此功率校准所有设备。";
@@ -1479,21 +1484,21 @@
 "standby_level" = "待机亮度";
 "threshold_is_required" = "需要设置阈值";
 "profile_predictive_lighting_with_photocell" = "邻近/预测照明（带光照）";
-"profile_predictive_lighting_with_photocell_message" = "This function will only work after adding devices to the group and completing the path sequence(and calibrate light sensor).";
-"profile_predictive_lighting_with_photocell_desc_1" = "Proximity / Predictive Lighting with Photocell combines occupancy detection and ambient light sensing to deliver intelligent and energy-efficient lighting control.";
-"profile_predictive_lighting_with_photocell_desc_2" = "Proximity Lighting turns on luminaires in advance along a defined walking path by listening to neighboring nodes.";
-"profile_predictive_lighting_with_photocell_desc_3" = "Predictive Lighting activates lights within a trigger zone when motion is detected in open or multi-directional areas.";
-"profile_predictive_lighting_with_photocell_desc_4" = "Each device uses its own ambient light sensor to determine whether it is in Day or Night mode and automatically switches between the two lighting behaviors.";
-"profile_predictive_lighting_with_photocell_desc_5" = "Below the night threshold → Night mode\nAbove the day threshold → Day mode\nThis process is handled locally by each device, ensuring fast response and reliable operation without dependency on other nodes.";
-"proximity_lighting" = "Proximity Lighting";
-"predictive_lighting" = "Predictive Lighting";
-"proximity/predictive_lighting_with_photocell" = "Proximity / Predictive Lighting with Photocell";
-"own_ambient_light_sensor" = "own ambient light sensor";
-"profile_night_startsbelow_less_day" = "必须小于日间阈值";
-"profile_night_startsbelow_greater_day" = "必须大于夜间阈值";
+"profile_predictive_lighting_with_photocell_message" = "该功能仅在设备加入分组并完成路径顺序设置后生效";
+"profile_predictive_lighting_with_photocell_desc_1" = "带光感的邻近 / 预测照明结合了人员存在检测与环境光感，实现智能且高效的照明控制";
+"profile_predictive_lighting_with_photocell_desc_2" = "邻近照明通过监听相邻节点，在预设行走路径上提前点亮灯具";
+"profile_predictive_lighting_with_photocell_desc_3" = "预测照明在开放或多方向区域检测到运动时，激活触发区域内的灯具";
+"profile_predictive_lighting_with_photocell_desc_4" = "每个设备使用自身的环境光传感器判断当前处于白天或晚上模式，并在两种照明行为之间自动切换";
+"profile_predictive_lighting_with_photocell_desc_5" = "低于晚上阈值 → 晚上模式\n高于白天阈值 → 白天模式\n该过程由设备本地独立完成，无需依赖其他节点，确保快速响应与可靠运行";
+"proximity_lighting" = "邻近照明";
+"predictive_lighting" = "预测照明";
+"proximity/predictive_lighting_with_photocell" = "带光感的邻近 / 预测照明";
+"own_ambient_light_sensor" = "自身环境光传感器";
+"profile_night_startsbelow_less_day" = "必须小于白天阈值";
+"profile_night_startsbelow_greater_day" = "必须大于晚上阈值";
 "profile_night_startsbelow_less_day_threshold" = "至少比白天阈值低5lux";
 "profile_night_startsbelow_greater_day_threshold" = "至少比晚上阈值高5lux";
-"profile_night_day_threshold_limit" = "The two values differ by at least 5 lux";
+"profile_night_day_threshold_limit" = "这两个值至少相差5lux。";
 "profile_snapshoot" = "配置文件快照";
 "profile_store" = "配置文件存储";
 "profile_switch" = "配置文件切换";
@@ -1505,39 +1510,48 @@
 "profile_scene_delete" = "删除场景配置";
 "profile_lux_trigger_lock" = "锁定lux阈值触发";
 "profile_lux_trigger_unlock" = "解锁lux阈值触发";
-"light_sensor_template" = "Light Sensor Template";
-"no_light_sensor_template" = "No Light Sensor Template!";
-"create_new_template" = "Create New Template";
-"device_detail" = "Device detail";
-"night_starts_below" = "Night starts below";
-"night_starts_below_lux" = "Night starts below lux";
-"day_starts_above" = "Day starts above";
-"day_starts_above_lux" = "Day starts above lux";
-"profile_some_start_lux_different_group" = "Some start lux is different from group";
-"profile_all_start_lux_same_group" = "All start lux is the same as group";
-"profile_group_no_devices" = "There is no device in the group";
-"profile_start_lux_note" = "Saving the profile will not affect the values ​​of devices with modified start lux，please change them manually.";
-"create_new_template" = "Create New Template";
-"nightday_illuminance_threshold" = "Night&Day Illuminance threshold";
-"applied_to_device" = "Applied to device";
-"applied_to" = "Applied to";
-"template_detail" = "Template Detail";
-"create_light_sensor_template" = "Create Light Sensor Template";
-"no_device_selected" = "No device selected";
-"modify" = "Modify";
-"threshold" = "Threshold";
-"restore_to_group_start_lux" = "Restore to group start lux";
-"light_sensor_nonsupport_note" = "The device has no light sensor and behaves according to the last modified profile.";
-"device_settings_failed_retry_note" = "Some settings failed，tap to retry.";
-"device_resync_note" = "Some devices are not sync";
-"night_day_mode_description" = "Night & Day Mode Description";
-"night_mode_description_note" = "Night mode is applied under low ambient light conditions. When the ambient illuminance falls below the configured Night starts below lux threshold, the system automatically switches to Night mode.\nIn this mode, lighting behavior follows the defined Device Trigger Curve, including standby level, occupancy level, and fade-out timing.\nThis mode is typically used during nighttime or low-light environments to ensure safety while optimizing energy efficiency.";
-"day_mode_description_note" = "Day mode is activated when the ambient light level exceeds the Day starts above lux threshold.\nIn this mode, luminaires typically remain off or at a low output level and only increase brightness when occupancy is detected, providing supplemental lighting when necessary.\nThis mode is ideal for areas with sufficient natural daylight, such as spaces near windows or daytime working environments.";
-"important_notes" = "Important Notes";
-"night_day_illuminance_threshold" = "Night & Day Illuminance Threshold";
-"important_notes_note" = "1. A hysteresis range exists between Night and Day thresholds to prevent frequent switching.\n2. It is recommended that the Night threshold is lower than the Day threshold for stable operation.\n3. Threshold values should be adjusted according to installation height, sensor position, and ambient daylight conditions.";
-"light_sensor_template_note" = "Used to assign different illuminance thresholds to devices within the same group.\nTemplates allow customized Night / Day thresholds for more accurate light sensing behavior.";
-"design_intent" = "Design Intent";
-"light_sensor_template_design_intent_note" = "Template-based configuration simplifies commissioning, reduces repetitive setup work, and ensures consistent yet flexible system behavior.";
-"typical_use_cases" = "Typical Use Cases";
-"light_sensor_template_typical_use_cases_note" = "1. Luminaires near windows versus interior areas.\n2. Sensors installed at different mounting heights.\n3. Areas affected by shading or additional daylight.";
+"light_sensor_template" = "光感模板";
+"no_light_sensor_template" = "无光感模板";
+"create_new_template" = "创建新模板";
+"device_detail" = "设备详情";
+
+"night_starts_below" = "晚上开始于";
+"night_starts_below_lux" = "晚上开始照度（lux）";
+"day_starts_above" = "白天开始于";
+"day_starts_above_lux" = "白天开始照度（lux）";
+
+"profile_some_start_lux_different_group" = "部分设备的起始照度与分组不一致";
+"profile_all_start_lux_same_group" = "所有设备的起始照度与分组一致";
+"profile_group_no_devices" = "分组中暂无设备";
+"profile_start_lux_note" = "保存该 Profile 不会影响已单独修改起始照度的设备，请手动调整";
+
+"nightday_illuminance_threshold" = "白天 / 晚上照度阈值";
+"applied_to_device" = "应用于设备";
+"applied_to" = "应用于";
+"template_detail" = "模板详情";
+"create_light_sensor_template" = "创建光感模板";
+"no_device_selected" = "未选择设备";
+"modify" = "修改";
+"threshold" = "阈值";
+"restore_to_group_start_lux" = "恢复为分组起始照度";
+
+"light_sensor_nonsupport_note" = "该设备不支持光感，将按照最后一次修改的 Profile 行为执行";
+"device_settings_failed_retry_note" = "部分设置失败，点击重试";
+"device_resync_note" = "部分设备未同步";
+
+"night_day_mode_description" = "白天 / 晚上模式说明";
+
+"night_mode_description_note" = "晚上模式适用于环境光较低的情况。当环境照度低于配置的“晚上开始照度（lux）”阈值时，系统会自动切换至晚上模式。\n在该模式下，照明行为遵循已定义的设备触发曲线，包括待机亮度、有人亮度及渐灭时间。\n该模式通常用于晚上或低照度环境，在保障安全的同时优化能效";
+
+"day_mode_description_note" = "当环境照度高于“白天开始照度（lux）”阈值时，系统将激活白天模式。\n在该模式下，灯具通常保持关闭或低亮度，仅在检测到人员存在时提升亮度，作为补充照明。\n该模式适用于自然采光充足的区域，如靠窗空间或白天工作环境";
+
+"important_notes" = "重要说明";
+"important_notes_note" = "1. 晚上与白天阈值之间存在回滞区间，用于避免频繁切换。\n2. 建议晚上阈值低于白天阈值，以确保系统稳定运行。\n3. 阈值应根据安装高度、传感器位置及环境日光条件进行调整";
+
+"light_sensor_template_note" = "用于为同一分组内的不同设备分配不同的照度阈值。\n通过模板可定制白天 / 晚上阈值，实现更精确的光感行为";
+
+"design_intent" = "设计意图";
+"light_sensor_template_design_intent_note" = "基于模板的配置方式可简化调试流程，减少重复设置，同时兼顾系统一致性与灵活性";
+
+"typical_use_cases" = "典型应用场景";
+"light_sensor_template_typical_use_cases_note" = "1. 靠窗灯具与室内灯具。\n2. 不同安装高度的传感器。\n3. 受遮挡或额外自然采光影响的区域";

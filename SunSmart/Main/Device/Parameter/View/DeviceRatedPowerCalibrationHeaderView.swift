@@ -9,7 +9,7 @@ import UIKit
 
 class DeviceRatedPowerCalibrationHeaderView: UIView {
 
-    private var step1TitleLabel: UILabel!
+    var step1TitleLabel: UILabel!
     private var step1NoteLabel: UILabel!
     var dimSaveBtn: UIButton!
     

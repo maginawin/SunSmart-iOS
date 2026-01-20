@@ -471,7 +471,7 @@ class DeviceLightViewController: UIViewController {
                 XWHUDManager.hide()
                 XWHUDManager.showSuccessTipHUD("done!".localizedString)
                 self?.space.deviceCount = MeshNetworkManager.instance.realNodes.count
-                self?.space.luminairesCount = MeshNetworkManager.instance.lightNodes.count
+                self?.space.luminairesCount = MeshNetworkManager.instance.realNodes.filter({ $0.deviceType == .light }).count
                 self?.space.save()
                 self?.node.deleteExtension()
                 DispatchQueue.main.asyncAfter(wallDeadline: .now() + 1) {
@@ -489,7 +489,7 @@ class DeviceLightViewController: UIViewController {
                     MeshNetworkManager.instance.meshNetwork?.remove(node: self.node)
 //                    _ = self.space.meshManager?.save()
                     self.space.deviceCount = MeshNetworkManager.instance.realNodes.count
-                    self.space.luminairesCount = MeshNetworkManager.instance.lightNodes.count
+                    self.space.luminairesCount = MeshNetworkManager.instance.realNodes.filter({ $0.deviceType == .light }).count
                     self.space.save()
                     XWHUDManager.showSuccessTipHUD("done!".localizedString)
                     DispatchQueue.main.asyncAfter(wallDeadline: .now() + 1) {[weak self] in
@@ -663,7 +663,7 @@ class DeviceLightViewController: UIViewController {
             cctView.isHidden = true
         }
         
-        if node.lightnessModel != nil {
+        if node.supportDimming {
             lightnessSlider.isHidden = false
             brightnessView.isHidden = false
             if node.temperatureModel != nil {
@@ -675,7 +675,7 @@ class DeviceLightViewController: UIViewController {
             }
         }else {
             lightnessSlider.isHidden = true
-            brightnessView.isHidden = false
+            brightnessView.isHidden = true
         }
         
     }

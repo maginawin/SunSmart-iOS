@@ -52,6 +52,7 @@ class DeviceRatedPowerCalibrationController: UIViewController {
             $0.powerCalibrateError = nil
             $0.testCurrentPower = nil
             $0.powerCalibrateState = .none
+            $0.calibrationTestOn = nil
         })
         
         setupUI()
@@ -183,6 +184,12 @@ class DeviceRatedPowerCalibrationController: UIViewController {
         }
         
         headerView = DeviceRatedPowerCalibrationHeaderView(frame: CGRect(x: 0, y: 0, width: view.width, height: SCRYFrom(174)))
+        if let device = devices.first, !device.supportDimming {
+            headerView.step1TitleLabel.text = "calibration_step_1_on_title".localizedString
+            headerView.dimSaveBtn.setTitle("On&Save".localizedString, for: .normal)
+            headerView.dimSaveNoteLabel.text = "calibration_on_save_note".localizedString
+        }
+        
         headerView.dimSaveBtn.addTarget(self, action: #selector(setAllDimSaveAction), for: .touchUpInside)
         headerView.segmentControl.delegate = self
         tableView.tableHeaderView = headerView
@@ -286,7 +293,14 @@ extension DeviceRatedPowerCalibrationController: DeviceRatedPowerCalibrationSetS
         let device = devices[indexPath.row]
         if let model = device.sunricherVendorModel {
             
-            MeshAPI.setNodeLightnessState(address: device.primaryUnicastAddress, lightness: Node.getLightness(lightness100: device.powerTestLightness))
+            if device.supportDimming {
+                MeshAPI.setNodeLightnessState(address: device.primaryUnicastAddress, lightness: Node.getLightness(lightness100: device.powerTestLightness))
+            }else {
+                guard let isOn = device.calibrationTestOn else {
+                    return
+                }
+                MeshAPI.setNodeOnOffState(address: device.primaryUnicastAddress, isOn: isOn)
+            }
             device.powerCalibrateState = .powerGet
             reloadDeviceCell(device: device)
             
@@ -338,6 +352,15 @@ extension DeviceRatedPowerCalibrationController: DeviceRatedPowerCalibrationSetS
         MeshAPI.identify(address: device.primaryUnicastAddress)
     }
     
+    func cell(_ cell: DeviceRatedPowerCalibrationSetSeparatelyViewCell, onoffSelected isOn: Bool) {
+        guard let indexPath = tableView.indexPath(for: cell) else {
+            return
+        }
+        let device = devices[indexPath.row]
+        device.calibrationTestOn = isOn
+        reloadDeviceCell(device: device)
+    }
+    
 }
 
 extension DeviceRatedPowerCalibrationController: CustomSegmentedControlDelegate {
@@ -385,6 +408,7 @@ extension Node {
     static var testCurrentPowerKey: UInt8 = 0
     static var powerCalibrateStateKey: UInt8 = 0
     static var powerTestLightness: UInt8 = 0
+    static var calibrationTestOn: UInt8 = 0
     
     /// 是否展开
     var unfold: Bool {
@@ -437,6 +461,15 @@ extension Node {
             objc_getAssociatedObject(self, &Node.powerTestLightness) as? Int ?? 50
         }set {
             objc_setAssociatedObject(self, &Node.powerTestLightness, newValue, .OBJC_ASSOCIATION_RETAIN)
+        }
+    }
+    
+    /// 校准测试ON/OFF
+    var calibrationTestOn: Bool? {
+        get {
+            objc_getAssociatedObject(self, &Node.calibrationTestOn) as? Bool
+        }set {
+            objc_setAssociatedObject(self, &Node.calibrationTestOn, newValue, .OBJC_ASSOCIATION_RETAIN)
         }
     }
     

@@ -516,6 +516,26 @@ class Profile: Copyable {
             }
         }
         
+        /// 是否是占用类型profile
+        var occupancyType: Bool {
+            switch self {
+            case .occupancy_daylight, .vacancy_daylight, .occupancy, .vacancy, .proximityLighting, .proximityLightingWithPhotocell:
+              return true
+            default:
+                return false
+            }
+        }
+        
+        /// 是否是光照类型profile
+        var daylightType: Bool {
+            switch self {
+            case .occupancy_daylight, .vacancy_daylight, .daylight:
+              return true
+            default:
+                return false
+            }
+        }
+        
         
         init?(rawValue: Int) {
             switch rawValue {

@@ -1699,7 +1699,7 @@ extension Node {
             return false
         }
         switch pid {
-        case 0x0031, 0x0041, 0x0302, 0x0303, 0x1031, 0x1041, 0x1302, 0x1303, 0x2302, 0x2303, 0x2801: // 单独传感器等设备不支持pwm调节
+        case 0x0031, 0x0041, 0x0302, 0x0303, 0x1031, 0x1041, 0x1302, 0x1303, 0x2302, 0x2303, 0x2801, 0x2802: // 单独传感器等设备不支持pwm调节
             return false
         default:
             return true
@@ -1733,6 +1733,28 @@ extension Node {
         default:
             return false
         }
+    }
+    
+    /// 是否支持调光
+    var supportDimming: Bool {
+        guard let pid = self.productIdentifier, lightnessModel != nil else {
+            return false
+        }
+        if pid == 0x2802 { // 只支持ON/OFF为兼容自动化调光逻辑增加的lightness model
+            return false
+        }
+        return true
+    }
+    
+    /// 是否支持设置默认过渡时间
+    var supportDefaultTransitionTime: Bool {
+        guard let pid = self.productIdentifier, defaultTransitionTimeModel != nil else {
+            return false
+        }
+        if pid == 0x2802 {
+            return false
+        }
+        return true
     }
     
     /// 传感器校准最低支持版本

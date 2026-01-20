@@ -23,7 +23,7 @@ class DeviceParameterSettingsController: UIViewController {
     private var tableView: UITableView!
     private var bottomView: DeviceParameterBottomView!
     
-    private var sections: [SectionType] = [.parameter]
+    private var sections: [SectionType] = []
     private var parameterDatas: [DeviceParameterData] = []
     
     /// 额定功率阶段数据list
@@ -72,9 +72,9 @@ class DeviceParameterSettingsController: UIViewController {
             if node.supportMotionSensitivity {
                 parameterDatas.append(.init(type: .motionSensitivityRange, data: defaultMotionSensitivityRange, enable: false))
             }
-            
-            parameterDatas.append(.init(type: .defalutTransitionTime, data: defaultTransitionTime, enable: false))
-            
+            if node.supportDefaultTransitionTime {
+                parameterDatas.append(.init(type: .defalutTransitionTime, data: defaultTransitionTime, enable: false))
+            }
         }else {
             parameterDatas = [
                 .init(type: .pwmFrequency, data: 2940, enable: false),
@@ -83,6 +83,10 @@ class DeviceParameterSettingsController: UIViewController {
                 .init(type: .defalutTransitionTime, data: defaultTransitionTime, enable: false)
             ]
         }
+        if parameterDatas.count > 0 {
+            sections.append(.parameter)
+        }
+        
         setupUI()
         
         updateSetupBtnState()
