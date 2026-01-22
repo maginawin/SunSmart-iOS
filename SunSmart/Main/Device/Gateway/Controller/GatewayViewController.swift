@@ -27,7 +27,7 @@ class GatewayViewController: UIViewController, DeviceProtocol {
     /// 其它网关数据
     private var otherGateways: [GatewayModel] = []
     
-    private var sections: [SectionType] = [.name, .info, .apn, .serverInformation]
+    private var sections: [SectionType] = [.name, .info, .associatedSpaces, .apn, .serverInformation]
     private let infoTypes: [InfoCellType] = [.mac, .address, .model, .deviceType, .firmwareVersion, .activate]
     
     let node: Node
@@ -452,6 +452,14 @@ class GatewayViewController: UIViewController, DeviceProtocol {
         
     }
     
+    private func associatedSpaces() {
+        
+        let vc = GatewayAssociatedSpacesController(spaces: site.spaces)
+        
+        navigationController?.pushViewController(vc, animated: true)
+        
+    }
+    
     private func setupUI() {
         
         bottomView = DeviceBottomBtnView()
@@ -479,7 +487,9 @@ class GatewayViewController: UIViewController, DeviceProtocol {
         
         tableView = UITableView(frame: .zero, style: .grouped)
         tableView.separatorStyle = .none
-        tableView.register(CustomTableViewCell.classForCoder(), forCellReuseIdentifier: "cell")
+        tableView.register(CustomTableViewCell.classForCoder(), forCellReuseIdentifier: "infoCell")
+        tableView.register(CustomTableViewCell.classForCoder(), forCellReuseIdentifier: "associatedSpacesCell")
+        tableView.register(CustomTableViewCell.classForCoder(), forCellReuseIdentifier: "apnCell")
         tableView.register(GatewayNameViewCell.classForCoder(), forCellReuseIdentifier: "name")
         tableView.register(GatewayServerInformationViewCell.classForCoder(), forCellReuseIdentifier: "serverInformation")
         tableView.register(GatewaySectionHeaderView.classForCoder(), forHeaderFooterViewReuseIdentifier: "header")
@@ -524,14 +534,8 @@ class GatewayViewController: UIViewController, DeviceProtocol {
     /// 选择sim卡 APN
     private func selectSIMAPN(point: CGPoint) {
         
-        let items = [
-             GatewayAPNMenuView.APNMenuItem(title: "not_set".localizedString, children: nil),
-             GatewayAPNMenuView.APNMenuItem(title: "singapore".localizedString, children: ["internet", "shwap", "sunsurf", "tpg"]),
-             GatewayAPNMenuView.APNMenuItem(title: "china".localizedString, children: ["cmnet", "3gnet", "ctnet"]),
-             GatewayAPNMenuView.APNMenuItem(title: "usa".localizedString, children: ["phone", "internet", "fast.t-mobile.com"]),
-             GatewayAPNMenuView.APNMenuItem(title: "canada".localizedString, children: ["ltemobile.apn", "pda.bell.ca", "sp.telus.com"]),
-             GatewayAPNMenuView.APNMenuItem(title: "germany".localizedString, children: ["telekom.de", "web.vodafone.de", "internet"])
-         ]
+        var items = GatewaySIMApnInfo.all.map({ GatewayAPNMenuView.APNMenuItem(title: $0.country, children: $0.apns) })
+        items.insert(GatewayAPNMenuView.APNMenuItem(title: "not_set".localizedString, children: nil), at: 0)
         
         GatewayAPNMenuView(menuItems: items, selectApnName: setGatewayModel?.apn, showPoint: point) {[weak self] apn in
             guard let self = self else { return }
@@ -560,7 +564,7 @@ extension GatewayViewController: UITableViewDataSource, UITableViewDelegate {
         let sectionType = sections[section]
         switch sectionType {
         case .associatedSpaces:
-            return 1
+            return max(gateway.associatedSpaces.count, 1)
         case .info:
             return infoTypes.count
         default:
@@ -591,7 +595,7 @@ extension GatewayViewController: UITableViewDataSource, UITableViewDelegate {
             }
             tableviewCell = nameCell
         case .info:
-            let cell = tableView.dequeueReusableCell(withIdentifier: "cell", for: indexPath) as! CustomTableViewCell
+            let cell = tableView.dequeueReusableCell(withIdentifier: "infoCell", for: indexPath) as! CustomTableViewCell
             cell.titleLabel.font = UIFont.systemFont(ofSize: 14)
             cell.contentLabel.font = UIFont.systemFont(ofSize: 14, weight: .light)
             cell.contentLabel.textColor = SubText_Color
@@ -635,21 +639,30 @@ extension GatewayViewController: UITableViewDataSource, UITableViewDelegate {
             
             tableviewCell = cell
         case .associatedSpaces:
-            let cell = tableView.dequeueReusableCell(withIdentifier: "cell", for: indexPath) as! CustomTableViewCell
-            cell.titleLabel.font = UIFont.systemFont(ofSize: 14)
-            cell.contentLabel.font = UIFont.systemFont(ofSize: 14, weight: .light)
-            cell.contentLabel.text = "Nodes: 70"
-            cell.contentLabel.textColor = SubText_Color
-            cell.cellStyle = .icon
-            cell.arrowImageView.isHidden = true
-            cell.iconX = tableView.width - SCRXFrom(8) - 30
-            cell.iconImageView.image = UIImage(named: "share_delete")
-            cell.iconImageClickCallback = {
-                
+            let cell = tableView.dequeueReusableCell(withIdentifier: "associatedSpacesCell", for: indexPath) as! CustomTableViewCell
+            cell.titleLabel.font = UIFont.systemFont(ofSize: 14, weight: .light)
+            if gateway.associatedSpaces.count > 0 {
+                cell.titleLabel.textColor = TextBlack_Color
+                cell.contentLabel.font = UIFont.systemFont(ofSize: 14, weight: .light)
+                cell.contentLabel.text = "Nodes: 70"
+                cell.contentLabel.textColor = SubText_Color
+                cell.cellStyle = .icon
+                cell.arrowImageView.isHidden = true
+                cell.iconX = tableView.width - SCRXFrom(8) - 30
+                cell.iconImageView.image = UIImage(named: "share_delete")
+                cell.iconImageClickCallback = {
+                    // 删除
+                }
+            }else {
+                cell.titleLabel.text = "no_associated_spaces".localizedString
+                cell.titleLabel.textColor = Message_Color
+                cell.cellStyle = .none
+                cell.contentLabel.text = nil
             }
+            cell.lineView.isHidden = tableView.numberOfRows(inSection: indexPath.section) - 1 == indexPath.row
             tableviewCell = cell
         case .apn:
-            let cell = tableView.dequeueReusableCell(withIdentifier: "cell", for: indexPath) as! CustomTableViewCell
+            let cell = tableView.dequeueReusableCell(withIdentifier: "apnCell", for: indexPath) as! CustomTableViewCell
             cell.titleLabel.font = UIFont.systemFont(ofSize: 14)
             cell.contentLabel.font = UIFont.systemFont(ofSize: 14, weight: .light)
             cell.cellStyle = .arrow
@@ -811,8 +824,11 @@ extension GatewayViewController: UITableViewDataSource, UITableViewDelegate {
                 return
             }
             if let cell = tableView.cellForRow(at: indexPath) {
-                let viewPoint = view.convert(CGPoint(x: cell.frame.maxX - GatewayAPNMenuView.defalutWidth, y: cell.frame.maxY), from: tableView)
-                let windowPoint = view.convert(viewPoint, to: UIApplication.shared.keyWindow())
+                let viewPoint = view.convert(CGPoint(x: cell.frame.maxX - GatewayAPNMenuView.defaultWidth, y: cell.frame.maxY), from: tableView)
+                var windowPoint = view.convert(viewPoint, to: UIApplication.shared.keyWindow())
+                if windowPoint.y + GatewayAPNMenuView.defaultHeight > SCREEN_HEIGHT {
+                    windowPoint = CGPoint(x: windowPoint.x, y: windowPoint.y - GatewayAPNMenuView.defaultHeight - SCRYFrom(44))
+                }
                 selectSIMAPN(point: windowPoint)
             }
             

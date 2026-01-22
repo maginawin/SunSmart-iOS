@@ -12,7 +12,8 @@ class GatewayAPNMenuView: UIView {
     typealias APNSelectCallback = ((String) -> Void)
     
     /// 默认内容宽度
-    static let defalutWidth = SCRXFrom(164)
+    static let defaultWidth = SCRXFrom(164)
+    static let defaultHeight = SCRYFrom(221)
 
     private var onItemSelected: APNSelectCallback?
     
@@ -87,8 +88,8 @@ class GatewayAPNMenuView: UIView {
         contentView.snp.makeConstraints { make in
             make.top.equalTo(showPoint.y)
             make.left.equalTo(showPoint.x)
-            make.width.equalTo(Self.defalutWidth)
-            make.height.equalTo(SCRYFrom(221))
+            make.width.equalTo(Self.defaultWidth)
+            make.height.equalTo(Self.defaultHeight)
         }
         
         tableView = UITableView(frame: .zero, style: .grouped)

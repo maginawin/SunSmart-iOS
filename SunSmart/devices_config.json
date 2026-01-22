@@ -895,7 +895,7 @@
         "elementCount" : 2,
         "iconCategory" : "Lighting",
         "deviceCategory" : "Lighting",
-        "modelName" : "SR-BL9033A-V"
+        "modelName" : "SR-BL9033Z-V"
     },
     {
         "companyId" : "0A78",
@@ -904,7 +904,7 @@
         "elementCount" : 2,
         "iconCategory" : "Lighting",
         "deviceCategory" : "Lighting",
-        "modelName" : "SR-BL9033A-V"
+        "modelName" : "SR-BL9033P-V"
     },
     {
         "companyId" : "0A78",
@@ -913,7 +913,7 @@
         "elementCount" : 2,
         "iconCategory" : "Lighting",
         "deviceCategory" : "Lighting",
-        "modelName" : "SR-BL9033A-V"
+        "modelName" : "SR-BL9033J-V"
     },
     {
         "companyId" : "0A78",
@@ -932,6 +932,15 @@
         "iconCategory" : "BidirectionalController",
         "deviceCategory" : "Lighting",
         "modelName" : "SR-BL2421_SSV_2CH"
+    },
+    {
+        "companyId" : "0A78",
+        "productId" : "24A1",
+        "categoryName" : "Controller Lighting",
+        "elementCount" : 2,
+        "iconCategory" : "Lighting",
+        "deviceCategory" : "Lighting",
+        "modelName" : "SR-BL9035J-V"
     },
     {
         "companyId" : "0A78",
@@ -995,6 +1004,42 @@
         "iconCategory" : "Lighting",
         "deviceCategory" : "Lighting",
         "modelName" : "SR-nRF54L15-Moudle"
+    },
+    {
+        "companyId" : "0A78",
+        "productId" : "3021",
+        "categoryName" : "PIR Sensor Lighting",
+        "elementCount" : 3,
+        "iconCategory" : "Lighting",
+        "deviceCategory" : "Lighting",
+        "modelName" : "SR-BL9033A-PIR-V"
+    },
+    {
+        "companyId" : "0A78",
+        "productId" : "3022",
+        "categoryName" : "PIR Sensor Lighting",
+        "elementCount" : 3,
+        "iconCategory" : "Lighting",
+        "deviceCategory" : "Lighting",
+        "modelName" : "SR-BL9033Z-PIR-V"
+    },
+    {
+        "companyId" : "0A78",
+        "productId" : "3023",
+        "categoryName" : "PIR Sensor Lighting",
+        "elementCount" : 3,
+        "iconCategory" : "Lighting",
+        "deviceCategory" : "Lighting",
+        "modelName" : "SR-BL9033P-PIR-V"
+    },
+    {
+        "companyId" : "0A78",
+        "productId" : "3024",
+        "categoryName" : "PIR Sensor Lighting",
+        "elementCount" : 3,
+        "iconCategory" : "Lighting",
+        "deviceCategory" : "Lighting",
+        "modelName" : "SR-BL9033J-PIR-V"
     }
     
 ]

@@ -1435,3 +1435,4 @@
 "nodes" = "Nodes";
 "associated_selected" = "Associated selected";
 "gateway_no_permission_message" = "The editor's space is all gateway bound";
+"no_associated_spaces" = "No associated spaces";

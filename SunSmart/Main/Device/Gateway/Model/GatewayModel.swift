@@ -133,3 +133,19 @@ struct GatewaySpaceData: Codable {
     /// space appkey index
     let appKeyIndex: UInt16
 }
+
+/// 网关sim卡信息
+struct GatewaySIMApnInfo {
+    /// 国家
+    let country: String
+    /// sim/apn list
+    let apns: [String]
+    
+    static let all: [GatewaySIMApnInfo] = [
+        .init(country: "singapore".localizedString, apns: ["internet", "shwap", "sunsurf", "tpg"]),
+        .init(country: "china".localizedString, apns: ["cmnet", "3gnet", "ctnet"]),
+        .init(country: "usa".localizedString, apns: ["phone", "internet", "fast.t-mobile.com"]),
+        .init(country: "canada".localizedString, apns: ["ltemobile.apn", "pda.bell.ca", "sp.telus.com"]),
+        .init(country: "usa".localizedString, apns: ["telekom.de", "web.vodafone.de", "internet"])
+    ]
+}
