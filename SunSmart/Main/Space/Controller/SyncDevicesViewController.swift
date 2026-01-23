@@ -1303,7 +1303,11 @@ class SyncDevicesViewController: UIViewController {
                         if vendorStatusMessage.status.code == .dimmerPowerCalibrate {
                             if vendorStatusMessage.status.errorCode == 2 { // 功率校准异常
                                 if let address = handle.address ?? handle.model?.parentElement?.unicastAddress, let node = MeshNetworkManager.instance.meshNetwork?.node(withAddress: address) {
-                                    node.powerCalibrateError = .powerExceed
+                                    if case .dimmerPowerCalibrateError(let maxPower) = vendorStatusMessage.status.paramters {
+                                        node.powerCalibrateError = .powerExceed(maxPower: Int(maxPower / 10))
+                                    }else {
+                                        node.powerCalibrateError = .powerExceed(maxPower: 300)
+                                    }
                                 }
                             }
                         }else if vendorStatusMessage.status.code == .daylightLuxTriggerLock { // lux触发场景锁定/解锁

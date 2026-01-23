@@ -339,8 +339,8 @@ extension DeviceRatedPowerCalibrationController: DeviceRatedPowerCalibrationSetS
             switch error {
             case .noPowerValue:
                 XWHUDManager.showTipHUD("power_calibrate_no_set_power_error".localizedString, isLineFeed: true)
-            case .powerExceed:
-                XWHUDManager.showTipHUD("power_calibrate_power_exceed".localizedString, isLineFeed: true)
+            case .powerExceed(let maxPower):
+                XWHUDManager.showTipHUD(String(format: "power_calibrate_power_exceed".localizedString, maxPower), isLineFeed: true)
             case .timeout:
                 XWHUDManager.showTipHUD("power_calibrate_timeout".localizedString, isLineFeed: true)
             }
@@ -386,8 +386,8 @@ extension Node {
     enum PowerCalibrateError {
         /// 没有设置功率
         case noPowerValue
-        /// 功率设置超过限制
-        case powerExceed
+        /// 功率设置超过限制 最大功率(W)
+        case powerExceed(maxPower: Int)
         /// 超时
         case timeout
     }

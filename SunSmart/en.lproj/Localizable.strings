@@ -1460,7 +1460,7 @@
 "power_calibrate" = "Power calibrate";
 "Power Calibrate" = "Power Calibrate";
 "power_calibrate_no_set_power_error" = "There is no power value in the firmware.";
-"power_calibrate_power_exceed" = "Exceeding the 300W power limit.";
+"power_calibrate_power_exceed" = "Exceeding the %dW power limit.";
 "power_calibrate_timeout" = "Calibration timed out, device offline.";
 "calibration_instructions" = "Calibration Instructions";
 "calibration_instructions_note_1" = " ⦁ The purpose of power calibration is to minimize the difference between the power value measured by the device and the actual value through calibration.\n ⦁ The device has a default calibration value, but if a significant power deviation is found during actual use, you will need to perform a one-to-one calibration.";

@@ -51,7 +51,7 @@ class DeviceInformationViewController: UIViewController {
     private func getData() {
         
         if let model = node.firmwareUpdateServerModel {
-            var cacheVersion = node.firmwareVersion
+            let cacheVersion = node.firmwareVersion
             MeshAPI.sendMessage(message: FirmwareUpdateInformationGet(firstIndex: 0, entriesLimit: 1), model: model) {[weak self] response in
                 guard let self = self else { return }
                 if self.node.firmwareVersion != cacheVersion {

@@ -1465,7 +1465,7 @@
 "power_calibrate" = "功率校准";
 "Power Calibrate" = "功率校准";
 "power_calibrate_no_set_power_error" = "固件中没有功率值。";
-"power_calibrate_power_exceed" = "超过300W功率限制。";
+"power_calibrate_power_exceed" = "超过%dW功率限制。";
 "power_calibrate_timeout" = "校准超时，设备离线。";
 "calibration_instructions" = "校准说明";
 "calibration_instructions_note_1" = " ⦁ 功率校准的目的是通过校准，使设备测量的功率值与实际值的差异降到最低。\n ⦁ 设备出厂时有默认的校准值，但实际使用中发现功率偏差较大时，就需要进行一对一校准。";
