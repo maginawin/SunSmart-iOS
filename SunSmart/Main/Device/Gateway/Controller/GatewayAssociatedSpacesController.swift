@@ -9,21 +9,26 @@ import UIKit
 
 class GatewayAssociatedSpacesController: UIViewController {
 
-    private var tableView: UITableView!
+    private var flowLayout: UICollectionViewFlowLayout!
+    private var collectionView: UICollectionView!
     private var bottomView: DeviceAddBottomView!
     private var headerView: UIView!
     private var messageLabel: UILabel!
     private var countLabel: UILabel!
     private let maxNodesCount = 300
     
-    private var selectSpaces: [SpaceData] = []
+    private var selectSpaces: [GatewaySpaceData]
     
-    let spaces: [SpaceData]
+    /// 关联space选择回调
+    var associatedSpacesSelectCallback: (([GatewaySpaceData])->())?
     
-    init(spaces: [SpaceData]) {
+    let spaces: [GatewaySpaceData]
+    
+    init(spaces: [GatewaySpaceData], selectSpaces: [GatewaySpaceData]) {
         self.spaces = spaces
-        
+        self.selectSpaces = selectSpaces
         super.init(nibName: nil, bundle: nil)
+        
     }
     
     required init?(coder: NSCoder) {
@@ -38,14 +43,9 @@ class GatewayAssociatedSpacesController: UIViewController {
         
         view.backgroundColor = Background_Color
         navigationItem.rightBarButtonItem = UIBarButtonItem(image: UIImage(named: "help")?.withRenderingMode(.alwaysOriginal), style: .done, target: self, action: #selector(help))
-    }
-    
-    override func viewDidAppear(_ animated: Bool) {
-        super.viewDidAppear(animated)
         
-        if self.tableView.firstShowFlashScrollIndicators {
-            self.tableView.flashScrollIndicatorsIfNeeded()
-        }
+        setupUI()
+        updateUI()
     }
     
     @objc private func help() {
@@ -55,30 +55,37 @@ class GatewayAssociatedSpacesController: UIViewController {
     
     @objc private func selectAllBtnAction(sender: UIButton) {
         sender.isSelected = !sender.isSelected
+        
         if sender.isSelected {
+            let total = spaces.reduce(0, { (result, space) -> Int in result + space.deviceCount })
+            guard total <= maxNodesCount else {
+                XWHUDManager.showTipHUD(String(format: "gateway_associated_nodes_limit_message".localizedString, maxNodesCount), isLineFeed: true)
+                sender.isSelected = false
+                return
+            }
             selectSpaces = spaces
         }else {
             selectSpaces = []
         }
-        tableView.reloadData()
+        collectionView.reloadData()
         updateUI()
     }
     
     @objc private func addSelectedBtnAction() {
-      
-        
-        
+        associatedSpacesSelectCallback?(selectSpaces)
+        navigationController?.popViewController(animated: true)
     }
     
     private func updateUI() {
         
         let totalCount = selectSpaces.reduce(0, { (result, space) -> Int in result + space.deviceCount })
-        countLabel.text = "\(totalCount)/\(maxNodesCount)"
         
-        bottomView.addSelectedBtn.isSelected = spaces.count > 0 && selectSpaces.count == spaces.count
+        let countAttStr = NSMutableAttributedString(string: "\(totalCount)/\(maxNodesCount)")
+        countAttStr.addAttribute(.foregroundColor, value: TextBlack_Color, range: (countAttStr.string as NSString).range(of: "\(totalCount)"))
+        countLabel.attributedText = countAttStr
+        
+        bottomView.selectAllBtn.isSelected = spaces.count > 0 && selectSpaces.count == spaces.count
         bottomView.selectCountLabel.text = "\(selectSpaces.count)/\(spaces.count)"
-        
-        
         
     }
     
@@ -87,6 +94,7 @@ class GatewayAssociatedSpacesController: UIViewController {
         bottomView = DeviceAddBottomView()
         bottomView.selectAllBtn.setTitle("associated_selected".localizedString, for: .normal)
         bottomView.selectCountLabel.text = "\(selectSpaces.count)/\(spaces.count)"
+        bottomView.addSelectedBtn.setTitle("associated_selected".localizedString, for: .normal)
         bottomView.selectAllBtn.addTarget(self, action: #selector(selectAllBtnAction), for: .touchUpInside)
         bottomView.addSelectedBtn.addTarget(self, action: #selector(addSelectedBtnAction), for: .touchUpInside)
         view.addSubview(bottomView)
@@ -94,39 +102,47 @@ class GatewayAssociatedSpacesController: UIViewController {
             make.left.right.bottom.equalToSuperview()
             make.height.equalTo(SCRYFrom(60) + kSafeAreaBottomHeight)
         }
+        bottomView.addSelectedBtn.snp.updateConstraints { make in
+            make.width.equalTo(SCRXFrom(156))
+        }
         
-        headerView = UIView(frame: CGRect(x: 0, y: 0, width: view.width - SCRXFrom(32), height: SCRYFrom(43)))
+        headerView = UIView()
+        view.addSubview(headerView)
+        headerView.snp.makeConstraints { make in
+            make.left.right.equalToSuperview()
+            make.top.equalTo(view.safeAreaLayoutGuide).offset(SCRYFrom(7))
+            make.height.equalTo(SCRYFrom(33))
+        }
         
-        messageLabel = UILabel(text: String(format: "associated_spaces_message", spaces.count, maxNodesCount), textColor: SubText_Color, fontSize: 14, fontWeight: .light)
+        messageLabel = UILabel(text: String(format: "associated_spaces_message".localizedString, spaces.count, maxNodesCount), textColor: SubText_Color, fontSize: 14, fontWeight: .light)
         headerView.addSubview(messageLabel)
         messageLabel.snp.makeConstraints { make in
-            make.left.equalTo(SCRXFrom(4))
-            make.right.equalTo(SCRXFrom(-80))
+            make.left.equalTo(SCRXFrom(20))
+            make.right.equalTo(SCRXFrom(-88))
             make.centerY.equalToSuperview()
         }
         
         countLabel = UILabel(text: nil, textColor: SubText_Color, fontSize: 14, fontWeight: .light)
-        let countAttStr = NSMutableAttributedString(string: "154/\(maxNodesCount)")
-        countAttStr.addAttribute(.foregroundColor, value: TextBlack_Color, range: (countAttStr.string as NSString).range(of: "154"))
-        countLabel.attributedText = countAttStr
         headerView.addSubview(countLabel)
         countLabel.snp.makeConstraints { make in
-            make.right.equalTo(SCRXFrom(-4))
+            make.right.equalTo(SCRXFrom(-20))
             make.centerY.equalTo(messageLabel)
         }
         
-        tableView = UITableView()
-        tableView.separatorStyle = .none
-        tableView.register(CustomTableViewCell.classForCoder(), forCellReuseIdentifier: "cell")
-        tableView.rowHeight = SCRYFrom(44)
-        tableView.dataSource = self
-        tableView.delegate = self
-        tableView.tableHeaderView = headerView
-        view.addSubview(tableView)
-        tableView.snp.makeConstraints { make in
-            make.left.equalTo(SCRXFrom(16))
-            make.right.equalTo(SCRXFrom(-16))
-            make.top.equalTo(view.safeAreaLayoutGuide)
+        flowLayout = UICollectionViewFlowLayout()
+        flowLayout.minimumLineSpacing = SCRYFrom(8)
+        flowLayout.minimumInteritemSpacing = 0
+        
+        collectionView = UICollectionView(frame: .zero, collectionViewLayout: flowLayout)
+        collectionView.backgroundColor = Background_Color
+        collectionView.contentInset = UIEdgeInsets(top: 0, left: SCRXFrom(16), bottom: 0, right: SCRXFrom(16))
+        collectionView.register(GatewayAssociatedSpacesViewCell.classForCoder(), forCellWithReuseIdentifier: "cell")
+        collectionView.dataSource = self
+        collectionView.delegate = self
+        view.addSubview(collectionView)
+        collectionView.snp.makeConstraints { make in
+            make.left.right.equalToSuperview()
+            make.top.equalTo(headerView.snp.bottom)
             make.bottom.equalTo(bottomView.snp.top)
         }
     }
@@ -134,33 +150,41 @@ class GatewayAssociatedSpacesController: UIViewController {
 
 }
 
-extension GatewayAssociatedSpacesController: UITableViewDataSource, UITableViewDelegate {
+extension GatewayAssociatedSpacesController: UICollectionViewDataSource, UICollectionViewDelegateFlowLayout {
     
-    func numberOfSections(in tableView: UITableView) -> Int {
+    func collectionView(_ collectionView: UICollectionView, numberOfItemsInSection section: Int) -> Int {
         return spaces.count
     }
     
-    func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
-        return 1
+    func collectionView(_ collectionView: UICollectionView, cellForItemAt indexPath: IndexPath) -> UICollectionViewCell {
+        let cell = collectionView.dequeueReusableCell(withReuseIdentifier: "cell", for: indexPath) as! GatewayAssociatedSpacesViewCell
+        let space = spaces[indexPath.item]
+        cell.nameLabel.text = space.spaceName
+        cell.nodesLabel.text = "\("nodes".localizedString): \(space.deviceCount)"
+        cell.selectImageView.image = selectSpaces.contains(where: { $0.spaceId == space.spaceId }) ? UIImage(named: "schedule_target_select") : UIImage(named: "schedule_target_select_un")
+        return cell
+    }
+  
+    func collectionView(_ collectionView: UICollectionView, layout collectionViewLayout: UICollectionViewLayout, sizeForItemAt indexPath: IndexPath) -> CGSize {
+        let itemW = collectionView.width - collectionView.contentInset.left - collectionView.contentInset.right
+        return CGSize(width: itemW, height: SCRYFrom(44))
     }
     
-    func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
-        let cell = tableView.dequeueReusableCell(withIdentifier: "cell", for: indexPath) as! CustomTableViewCell
+    func collectionView(_ collectionView: UICollectionView, didSelectItemAt indexPath: IndexPath) {
         
-        let space = spaces[indexPath.section]
-        
-        cell.cellStyle = .icon
-        cell.titleLabel.text = space.name
-        cell.titleLabel.font = UIFont.systemFont(ofSize: SCRYFrom(14), weight: .light)
-        cell.iconX = SCRXFrom(10)
-        cell.titleX = SCRXFrom(48)
-        cell.titleMaxWidth = SCRXFrom(200)
-        cell.contentLabel.text = "\("nodes".localizedString): \(space.deviceCount)"
-        cell.contentLabel.snp.updateConstraints { make in
-            make.right.equalTo(SCRXFrom(-16))
+        let space = spaces[indexPath.item]
+        if let index = selectSpaces.firstIndex(where: { $0.spaceId == space.spaceId }) {
+            selectSpaces.remove(at: index)
+        }else {
+            let total = selectSpaces.reduce(0, { (result, space) -> Int in result + space.deviceCount }) + space.deviceCount
+            guard total <= maxNodesCount else {
+                XWHUDManager.showTipHUD(String(format: "gateway_associated_nodes_limit_message".localizedString, maxNodesCount), isLineFeed: true)
+                return
+            }
+            selectSpaces.append(space)
         }
-        cell.configureCell(isFirst: true, isLast: true)
-        return cell
+        collectionView.reloadItems(at: [indexPath])
+        updateUI()
     }
     
 }

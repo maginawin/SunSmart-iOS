@@ -23,7 +23,7 @@ class GatewayViewController: UIViewController, DeviceProtocol {
     
     private var name: String?
     
-    private var setGatewayModel: GatewayModel?
+    private let setGatewayModel: GatewayModel
     /// 其它网关数据
     private var otherGateways: [GatewayModel] = []
     
@@ -42,9 +42,8 @@ class GatewayViewController: UIViewController, DeviceProtocol {
         self.gateway = gateway
         self.node = node
         node.gatewayModel = gateway
+        self.setGatewayModel = gateway.copy()
         super.init(nibName: nil, bundle: nil)
-        
-        setGatewayModel = gateway.copy()
         
         let gateways = GatewayModel.load(siteId: gateway.siteId).filter({ $0.mac != gateway.mac })
         // 确保是space内的网关
@@ -272,16 +271,13 @@ class GatewayViewController: UIViewController, DeviceProtocol {
         }
         
         if gateway.name != name {
-            self.setGatewayModel?.name = name
+            self.setGatewayModel.name = name
             self.gateway.name = name
             self.node.name = name
             self.title = name
             self.node.save()
         }
-        guard let setGatewayModel = self.setGatewayModel else {
-            self.gateway.save()
-            return
-        }
+  
         gateway.update(gatewayModel: setGatewayModel)
         gateway.save()
 //        node.gatewayModel?.update(gatewayModel: setGatewayModel)
@@ -402,7 +398,7 @@ class GatewayViewController: UIViewController, DeviceProtocol {
                        let clientId = data["mqttClientId"] as? String,
                        let host = data["host"] as? String, let port = data["port"] as? Int {
                         let mqttServerInfo = GatewayInformation.MQTTConnectInformation(customId: customId, serverAddress: "tcp://\(host):\(port)", userName: username, password: password, clientId: clientId, keepalive: 60, clearSession: true, authMode: .none, sslVersion: .all)
-                        self.setGatewayModel?.mqttServerInfo = mqttServerInfo
+                        self.setGatewayModel.mqttServerInfo = mqttServerInfo
                         self.gateway.mqttServerInfo = mqttServerInfo
                         self.gateway.save()
                         
@@ -453,11 +449,62 @@ class GatewayViewController: UIViewController, DeviceProtocol {
     }
     
     private func associatedSpaces() {
+        guard let meshNetwork = MeshNetworkManager.instance.meshNetwork else {
+            return
+        }
+        let gatewaySpaceData: [GatewaySpaceData] = site.spaces.filter({ $0.permission == .owner || $0.permission == .editor }).compactMap({ space in
+            if let appkey = meshNetwork.applicationKeys.first(where: { $0.boundNetworkKey.networkId.hex == space.meshNetworkId }) {
+                return GatewaySpaceData(spaceId: space.id, spaceName: space.name, deviceCount: space.deviceCount, appKeyIndex: appkey.index)
+            }
+            return nil
+        })
         
-        let vc = GatewayAssociatedSpacesController(spaces: site.spaces)
-        
+        let selectSpaces = setGatewayModel.associatedSpaces.filter({ space in gatewaySpaceData.contains(where: { space.spaceId == $0.spaceId }) })
+                
+        let vc = GatewayAssociatedSpacesController(spaces: gatewaySpaceData, selectSpaces: selectSpaces)
+        vc.associatedSpacesSelectCallback = {[weak self] spaces in
+            guard let self = self else { return }
+            self.setGatewayModel.associatedSpaces = spaces
+            self.reloadSection(.associatedSpaces)
+        }
         navigationController?.pushViewController(vc, animated: true)
         
+    }
+    
+    /// 解除空间关联
+    private func unbindAssociatedSpace(_ space: GatewaySpaceData) {
+        if let index = setGatewayModel.associatedSpaces.firstIndex(where: { $0.spaceId == space.spaceId }) {
+            setGatewayModel.associatedSpaces.remove(at: index)
+            reloadSection(.associatedSpaces)
+        }
+    }
+    
+    /// 选择sim卡 APN
+    private func selectSIMAPN(point: CGPoint) {
+        
+        var items = GatewaySIMApnInfo.all.map({ GatewayAPNMenuView.APNMenuItem(title: $0.country, children: $0.apns) })
+        items.insert(GatewayAPNMenuView.APNMenuItem(title: "not_set".localizedString, children: nil), at: 0)
+        
+        GatewayAPNMenuView(menuItems: items, selectApnName: setGatewayModel.apn, showPoint: point) {[weak self] apn in
+            guard let self = self else { return }
+            if apn == "not_set".localizedString { // 未选择
+                self.setGatewayModel.apn = nil
+            }else {
+                self.setGatewayModel.apn = apn
+            }
+            if let section = self.sections.firstIndex(of: .apn) {
+                self.tableView.reloadSections(IndexSet(integer: section), with: .none)
+            }
+            self.updateSaveBtnState()
+        }.show()
+         
+    }
+    
+    /// 刷新section
+    private func reloadSection(_ section: SectionType) {
+        if let section = self.sections.firstIndex(of: section) {
+            tableView.reloadSections(IndexSet(integer: section), with: .none)
+        }
     }
     
     private func setupUI() {
@@ -524,33 +571,10 @@ class GatewayViewController: UIViewController, DeviceProtocol {
     
     /// 更新保存按钮状态
     private func updateSaveBtnState() {
-        guard let setGatewayModel = self.setGatewayModel else {
-            return
-        }
-        
+     
         bottomView.saveBtn.isEnabled = self.site.deviceOperates.contains(.edit) && (!(setGatewayModel == gateway) || (!(name?.isAllInputTextEmpty() ?? true) && node.name != name))
     }
     
-    /// 选择sim卡 APN
-    private func selectSIMAPN(point: CGPoint) {
-        
-        var items = GatewaySIMApnInfo.all.map({ GatewayAPNMenuView.APNMenuItem(title: $0.country, children: $0.apns) })
-        items.insert(GatewayAPNMenuView.APNMenuItem(title: "not_set".localizedString, children: nil), at: 0)
-        
-        GatewayAPNMenuView(menuItems: items, selectApnName: setGatewayModel?.apn, showPoint: point) {[weak self] apn in
-            guard let self = self else { return }
-            if apn == "not_set".localizedString { // 未选择
-                self.setGatewayModel?.apn = nil
-            }else {
-                self.setGatewayModel?.apn = apn
-            }
-            if let section = self.sections.firstIndex(of: .apn) {
-                self.tableView.reloadSections(IndexSet(integer: section), with: .none)
-            }
-            self.updateSaveBtnState()
-        }.show()
-         
-    }
 
 }
 
@@ -564,7 +588,7 @@ extension GatewayViewController: UITableViewDataSource, UITableViewDelegate {
         let sectionType = sections[section]
         switch sectionType {
         case .associatedSpaces:
-            return max(gateway.associatedSpaces.count, 1)
+            return max(setGatewayModel.associatedSpaces.count, 1)
         case .info:
             return infoTypes.count
         default:
@@ -616,7 +640,7 @@ extension GatewayViewController: UITableViewDataSource, UITableViewDelegate {
                 cell.contentLabel.text = node.firmwareVersion ?? "--"
             case .activate:
                 cell.cellStyle = .switch
-                cell.enabledSwitch.isOn = setGatewayModel?.activate ?? false
+                cell.enabledSwitch.isOn = setGatewayModel.activate
                 cell.switchActionCallback = {[weak self] enable in
                     guard let self = self else { return }
                     guard self.site.deviceOperates.contains(.edit) else {
@@ -632,7 +656,7 @@ extension GatewayViewController: UITableViewDataSource, UITableViewDelegate {
                         return
                     }
                     cell.enabledSwitch.isOn = enable
-                    self.setGatewayModel?.activate = enable
+                    self.setGatewayModel.activate = enable
                     self.updateSaveBtnState()
                 }
             }
@@ -641,17 +665,20 @@ extension GatewayViewController: UITableViewDataSource, UITableViewDelegate {
         case .associatedSpaces:
             let cell = tableView.dequeueReusableCell(withIdentifier: "associatedSpacesCell", for: indexPath) as! CustomTableViewCell
             cell.titleLabel.font = UIFont.systemFont(ofSize: 14, weight: .light)
-            if gateway.associatedSpaces.count > 0 {
+            if setGatewayModel.associatedSpaces.count > 0 {
+                let space = setGatewayModel.associatedSpaces[indexPath.row]
                 cell.titleLabel.textColor = TextBlack_Color
+                cell.titleLabel.text = space.spaceName
                 cell.contentLabel.font = UIFont.systemFont(ofSize: 14, weight: .light)
-                cell.contentLabel.text = "Nodes: 70"
+                cell.contentLabel.text = "\("nodes".localizedString) \(space.deviceCount)"
                 cell.contentLabel.textColor = SubText_Color
                 cell.cellStyle = .icon
                 cell.arrowImageView.isHidden = true
                 cell.iconX = tableView.width - SCRXFrom(8) - 30
                 cell.iconImageView.image = UIImage(named: "share_delete")
-                cell.iconImageClickCallback = {
+                cell.iconImageClickCallback = {[weak self] in
                     // 删除
+                    self?.unbindAssociatedSpace(space)
                 }
             }else {
                 cell.titleLabel.text = "no_associated_spaces".localizedString
@@ -668,12 +695,12 @@ extension GatewayViewController: UITableViewDataSource, UITableViewDelegate {
             cell.cellStyle = .arrow
             cell.titleLabel.text = nil
             cell.arrowImageView.image = UIImage(named: "arrow_down_black")
-            cell.contentLabel.text = setGatewayModel?.apn
+            cell.contentLabel.text = setGatewayModel.apn
             cell.contentLabel.textColor = ImportantText_Color
             tableviewCell = cell
         case .serverInformation:
             let cell = tableView.dequeueReusableCell(withIdentifier: "serverInformation", for: indexPath) as! GatewayServerInformationViewCell
-            if let serverInfo = setGatewayModel?.mqttServerInfo {
+            if let serverInfo = setGatewayModel.mqttServerInfo {
                 let serverStr = serverInfo.serverAddress.replacingOccurrences(of: "tcp://", with: "")
                 let serverAddressArray = serverStr.components(separatedBy: ":")
                 cell.serverAddressField.text = serverAddressArray.first ?? "N/A"
@@ -753,7 +780,7 @@ extension GatewayViewController: UITableViewDataSource, UITableViewDelegate {
             headerView.titleLabel.text = "apn".localizedString
         case .serverInformation:
             headerView.titleLabel.text = "server_information".localizedString
-            if setGatewayModel?.mqttServerInfo == nil {
+            if setGatewayModel.mqttServerInfo == nil {
                 headerView.messageLabel.isHidden = false
                 headerView.messageLabel.text = "gateway_server_not_authorize".localizedString
                 headerView.operationBtn.isHidden = false
@@ -792,7 +819,7 @@ extension GatewayViewController: UITableViewDataSource, UITableViewDelegate {
                 }
                 resync()
             case .associatedSpaces: // 添加space
-                print("添加space")
+                associatedSpaces()
             case .serverInformation: // 服务器授权
                 guard self.site.deviceOperates.contains(.edit) else {
                     XWHUDManager.showTipHUD("no_permission".localizedString + "！")

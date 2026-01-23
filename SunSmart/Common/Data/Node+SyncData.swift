@@ -82,6 +82,10 @@ enum NodeSyncData {
     case syncGatewayProjectId(projectId: String)
     /// 同步网关关联的子网appkey index list
     case syncGatewaySubnetAppkeyIndexs(appkeyIndexs: [KeyIndex])
+    /// 网关关联spaces
+    case gatewayAssociatedSpaces([(networkKey: NetworkKey, applicationKey: ApplicationKey)])
+    /// 网关解除关联spaces
+    case gatewayUnbindAssociatedSpaces([(networkKey: NetworkKey, applicationKey: ApplicationKey)])
 }
 
 /// 配置类型
@@ -1145,40 +1149,51 @@ extension Node {
         if gateway.siteId != gatewayInfo?.projectId {
             syncDatas.append(.syncGatewayProjectId(projectId: gateway.siteId))
         }
+        
+        // 需要关联的spaces同步数据
+        var associatedSpaceDatas: [(networkKey: NetworkKey, applicationKey: ApplicationKey)] = []
+        // 需要解除关联的spaces同步数据
+        var unbindAssociatedSpaceDatas: [(networkKey: NetworkKey, applicationKey: ApplicationKey)] = []
 
-//        if let meshNetwork = MeshNetworkManager.instance.meshNetwork {
-//            var configNetKeys: [NetworkKey] = []
-//            var configAppKeys: [ApplicationKey] = []
-//            
-//            var deleteNetKeys: [NetworkKey] = []
-//            gateway.associatedSpaces.forEach { space in
-//                let networkKey = networkKeys.first(where: { $0.networkId.hex == space.meshNetworkId })
-//                if networkKey == nil {
-//                    if let bindNetworkKey = meshNetwork.networkKeys.first(where: { $0.networkId.hex == space.meshNetworkId }) {
-//                        configNetKeys.append(bindNetworkKey)
-//                        if let bindAppkey = meshNetwork.applicationKeys.first(where: { $0.isBound(to: bindNetworkKey) }) {
-//                            configAppKeys.append(bindAppkey)
-//                        }
-//                    }
-//                }else if !applicationKeys.contains(keyBoundTo: networkKey!) {
-//                    if let bindAppkey = meshNetwork.applicationKeys.first(where: { $0.isBound(to: networkKey!) }) {
-//                        configAppKeys.append(bindAppkey)
-//                    }
-//                }
-//            }
-//            
-//            deleteNetKeys = networkKeys.filter({ netKey in !gateway.associatedSpaces.contains(where: { $0.meshNetworkId == netKey.networkId.hex }) })
-//            
-////            syncDatas.append(.)
-//        }
+        if let meshNetwork = MeshNetworkManager.instance.meshNetwork {
+            gateway.associatedSpaces.forEach { space in
+                // 是否绑定对应子网space
+                if let networkKey = networkKeys.first(where: { $0.index == space.appKeyIndex }) {
+                    // 是否绑定app key
+                    if let appKey = applicationKeys.boundTo(networkKey).first {
+                        if supportModels.contains(where: { !$0.isBoundTo(appKey) }) { // 检查是否有model没绑定对应appkey
+                            associatedSpaceDatas.append((networkKey: networkKey, applicationKey: appKey))
+                        }
+                    }else {
+                        if let bindAppkey = meshNetwork.applicationKeys.first(where: { $0.isBound(to: networkKey) }) {
+                            associatedSpaceDatas.append((networkKey: networkKey, applicationKey: bindAppkey))
+                        }
+                    }
+                }else {
+                    if let networkKey = meshNetwork.networkKeys.first(where: { $0.index == space.appKeyIndex }), let appKey = meshNetwork.applicationKeys.first(where: { $0.index == space.appKeyIndex }) {
+                        associatedSpaceDatas.append((networkKey: networkKey, applicationKey: appKey))
+                    }
+                }
+            }
+            
+            /// 需要解绑的子网key
+            let unbindNetworkKeys = networkKeys.filter({ netKey in netKey.isSecondary && !gateway.associatedSpaces.contains(where: { $0.appKeyIndex == netKey.index }) })
+            unbindNetworkKeys.forEach { networkKey in
+                if let appKey = meshNetwork.applicationKeys.first(where: { $0.index == networkKey.index }) {
+                    unbindAssociatedSpaceDatas.append((networkKey: networkKey, applicationKey: appKey))
+                }
+            }
+            syncDatas.append(.gatewayAssociatedSpaces(associatedSpaceDatas))
+            syncDatas.append(.gatewayUnbindAssociatedSpaces(unbindAssociatedSpaceDatas))
+        }
       
-        
-        
         // 同步绑定哪些子网appkey index
         // 网格激活状态同步关联子网数据
-        let currentAppkeyIndexs = gateway.activate ? self.applicationKeys.filter({ $0.boundNetworkKey.isSecondary }).map({ $0.index }).sorted() : []
-        if currentAppkeyIndexs != gatewayInfo?.subnetAppkeyIndexs.sorted() {
-            syncDatas.append(.syncGatewaySubnetAppkeyIndexs(appkeyIndexs: currentAppkeyIndexs))
+        if associatedSpaceDatas.isEmpty && unbindAssociatedSpaceDatas.isEmpty {
+            let currentAppkeyIndexs = gateway.activate ? self.applicationKeys.filter({ $0.boundNetworkKey.isSecondary }).map({ $0.index }).sorted() : []
+            if currentAppkeyIndexs != gatewayInfo?.subnetAppkeyIndexs.sorted() {
+                syncDatas.append(.syncGatewaySubnetAppkeyIndexs(appkeyIndexs: currentAppkeyIndexs))
+            }
         }
         
         // 判断SIM卡apn是否需要同步

@@ -1275,7 +1275,7 @@
 "port" = "Port";
 "client_id" = "Client ID";
 "copy_gateway_information" = "Copy gateway information";
-"associated_spaces" = "Associated Spaces";
+"unbind_associated_spaces" = "Unbind Associated Spaces";
 "associated_spaces_message" = "Up to %d spaces, %d devices in total";
 "associated_spaces_instructions" = "Associated Spaces instructions";
 "associated_spaces_instructions_message" = "Note that when the gateway is associated with  spaces, the associated space list must have at least one node in each space within the Bluetooth communication range of the gateway.";
@@ -1432,3 +1432,4 @@
 "associated_selected" = "Associated selected";
 "gateway_no_permission_message" = "The editor's space is all gateway bound";
 "no_associated_spaces" = "No associated spaces";
+"gateway_associated_nodes_limit_message" = "A maximum of %d nodes can be associated.";
