@@ -124,6 +124,19 @@ class GatewayModel: Copyable {
 
 /// 网关space数据
 struct GatewaySpaceData: Codable {
+    
+    /// 网关关联的space权限
+    enum GatewaySpacePermission: Int {
+        /// 无权限
+        case none = 0
+        /// 所有者
+        case owner = 1
+        /// 管理员
+        case editor = 2
+        /// 访客
+        case visitor = 3
+    }
+    
     /// space id
     let spaceId: String
     /// space名称
@@ -132,6 +145,42 @@ struct GatewaySpaceData: Codable {
     let deviceCount: Int
     /// space appkey index
     let appKeyIndex: UInt16
+    /// 权限（自身在space的权限）
+    var permission: GatewaySpacePermission = .none
+    
+    
+    init(spaceId: String, spaceName: String, deviceCount: Int, appKeyIndex: UInt16, permission: GatewaySpacePermission = .none) {
+        self.spaceId = spaceId
+        self.spaceName = spaceId
+        self.deviceCount = deviceCount
+        self.appKeyIndex = appKeyIndex
+        self.permission = permission
+    }
+    
+    // MARK: - Codable
+    
+    private enum CodingKeys: String, CodingKey {
+        case spaceId
+        case spaceName
+        case deviceCount
+        case appKeyIndex
+    }
+    
+    init(from decoder: any Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        self.spaceId = try container.decode(String.self, forKey: .spaceId)
+        self.spaceName = try container.decode(String.self, forKey: .spaceName)
+        self.deviceCount = try container.decode(Int.self, forKey: .deviceCount)
+        self.appKeyIndex = try container.decode(UInt16.self, forKey: .appKeyIndex)
+    }
+    
+    func encode(to encoder: any Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(self.spaceId, forKey: .spaceId)
+        try container.encode(self.spaceName, forKey: .spaceName)
+        try container.encode(self.deviceCount, forKey: .deviceCount)
+        try container.encode(self.appKeyIndex, forKey: .appKeyIndex)
+    }
 }
 
 /// 网关sim卡信息

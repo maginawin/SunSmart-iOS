@@ -2783,8 +2783,18 @@ extension GatewayModel {
                     continue
                 }
                 
-                if let gatewaySpaceDatas = try? jsonDecoder.decode([GatewaySpaceData].self, from: row[ExpressionKey.associatedSpaces]) {
-                    spaceDatas = gatewaySpaceDatas
+                if var gatewaySpaceDatas = try? jsonDecoder.decode([GatewaySpaceData].self, from: row[ExpressionKey.associatedSpaces]) {
+                    gatewaySpaceDatas.forEach { gatewaySpace in
+                        var gatewaySpace = gatewaySpace
+                        if let space = SpaceData.load(siteId: siteId, spaceId: gatewaySpace.spaceId).first {
+                            if space.state == .normal {
+                                gatewaySpace.permission = .init(rawValue: space.permission.rawValue) ?? .none
+                            }else {
+                                gatewaySpace.permission = .none
+                            }
+                        }
+                        spaceDatas.append(gatewaySpace)
+                    }
                 }
                 
                 let gateway = GatewayModel(siteId: siteId, name: row[ExpressionKey.name], address: Address(row[ExpressionKey.address]), mac: row[ExpressionKey.macAddress], lastUpdate: row[ExpressionKey.lastUpdateTimestamp], activate: row[ExpressionKey.activate], associatedSpaces: spaceDatas, apn: row[ExpressionKey.apn], mqttServerInfo: nil)

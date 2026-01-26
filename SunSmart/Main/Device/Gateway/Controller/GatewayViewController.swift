@@ -277,39 +277,62 @@ class GatewayViewController: UIViewController, DeviceProtocol {
             self.title = name
             self.node.save()
         }
-  
-        gateway.update(gatewayModel: setGatewayModel)
-        gateway.save()
-//        node.gatewayModel?.update(gatewayModel: setGatewayModel)
-//        node.gatewayModel?.save()
-        updateSaveBtnState()
-        // 判断是否需要同步设备数据
-        guard node.getNodeSyncGatewayData(gateway: setGatewayModel).count > 0 else {
-            XWHUDManager.showSuccessTipHUD("done!".localizedString)
-            // 通知space数据修改
-            NotificationCenter.default.post(name: .init(siteGatewayDataChangedNotificaitonName), object: self.gateway)
-            return
-        }
-        let vc = SyncDevicesViewController(type: .devices([node]))
-        vc.syncSuccessCallback = {[weak self] _ in
-            XWHUDManager.showSuccessTipHUD("done!".localizedString)
-            guard let self = self else { return }
-            NotificationCenter.default.post(name: .init(siteGatewayDataChangedNotificaitonName), object: self.gateway)
-            DispatchQueue.main.asyncAfter(deadline: .now() + 1) {[weak self] in
-                self?.navigationController?.popViewController(animated: true)
-                self?.updateSaveBtnState()
-                self?.tableView.reloadData()
-            }
-        }
-        vc.backActionCallback = {[weak self] _ in
-            guard let self = self else { return }
-            self.navigationController?.popViewController(animated: true)
-            self.updateSaveBtnState()
-            self.tableView.reloadData()
+        
+        Task {
             
-            NotificationCenter.default.post(name: .init(siteGatewayDataChangedNotificaitonName), object: self.gateway)
+            
+            let newSpaces = self.setGatewayModel.associatedSpaces
+            let oldSpaces = self.gateway.associatedSpaces
+            // 新关联的spaces
+            var addSpaces = newSpaces.filter({ space in !oldSpaces.contains(where: { $0.spaceId == $0.spaceId }) && (space.permission == .owner || space.permission == .editor) })
+            // 解除关联的spaces
+            var unbindSpaces = oldSpaces.filter({ space in !newSpaces.contains(where: { $0.spaceId == $0.spaceId }) && (space.permission == .owner || space.permission == .editor) })
+            
+            if addSpaces.count > 0 {
+                XWHUDManager.showCustomHUD(withMessage: nil, isWindow: true)
+                let associatedResult = await self.associatedSpacesRequest(addSpaces)
+                self.gateway.associatedSpaces.append(contentsOf: associatedResult.successSpaces)
+                self.gateway.save()
+                guard associatedResult.failedSpaces.isEmpty else {
+                    XWHUDManager.hide()
+                    XWHUDManager.showTipHUD("\("associated_spaces".localizedString) \("failed".localizedString)", isLineFeed: <#T##Bool#>)
+                    return
+                }
+            }
+            
+            gateway.update(gatewayModel: setGatewayModel)
+            gateway.save()
+            //        node.gatewayModel?.update(gatewayModel: setGatewayModel)
+            //        node.gatewayModel?.save()
+            updateSaveBtnState()
+            // 判断是否需要同步设备数据
+            guard node.getNodeSyncGatewayData(gateway: setGatewayModel).count > 0 else {
+                XWHUDManager.showSuccessTipHUD("done!".localizedString)
+                // 通知space数据修改
+                NotificationCenter.default.post(name: .init(siteGatewayDataChangedNotificaitonName), object: self.gateway)
+                return
+            }
+            let vc = SyncDevicesViewController(type: .devices([node]))
+            vc.syncSuccessCallback = {[weak self] _ in
+                XWHUDManager.showSuccessTipHUD("done!".localizedString)
+                guard let self = self else { return }
+                NotificationCenter.default.post(name: .init(siteGatewayDataChangedNotificaitonName), object: self.gateway)
+                DispatchQueue.main.asyncAfter(deadline: .now() + 1) {[weak self] in
+                    self?.navigationController?.popViewController(animated: true)
+                    self?.updateSaveBtnState()
+                    self?.tableView.reloadData()
+                }
+            }
+            vc.backActionCallback = {[weak self] _ in
+                guard let self = self else { return }
+                self.navigationController?.popViewController(animated: true)
+                self.updateSaveBtnState()
+                self.tableView.reloadData()
+                
+                NotificationCenter.default.post(name: .init(siteGatewayDataChangedNotificaitonName), object: self.gateway)
+            }
+            navigationController?.pushViewController(vc, animated: true)
         }
-        navigationController?.pushViewController(vc, animated: true)
     }
     
     /// 删除
@@ -374,6 +397,39 @@ class GatewayViewController: UIViewController, DeviceProtocol {
         }
 
     }
+    
+    /// 关联spaces请求
+    private func associatedSpacesRequest(_ spaces: [GatewaySpaceData]) async -> (successSpaces: [GatewaySpaceData], failedSpaces: [GatewaySpaceData]) {
+        var successSpaces: [GatewaySpaceData] = []
+        var failedSpaces: [GatewaySpaceData] = []
+        for space in spaces {
+            let result = await NetworkRequest.shared.request(.gatewayBindSpace(spaceId: space.spaceId, gatewayId: gateway.mac))
+            switch result {
+            case .success(_):
+                successSpaces.append(space)
+            case .failure(let error):
+                failedSpaces.append(space)
+            }
+        }
+        return (successSpaces, failedSpaces)
+    }
+    
+    /// 解除关联spaces请求
+    private func unbindAssociatedSpacesRequest(_ spaces: [GatewaySpaceData]) async -> (successSpaces: [GatewaySpaceData], failedSpaces: [GatewaySpaceData]) {
+        var successSpaces: [GatewaySpaceData] = []
+        var failedSpaces: [GatewaySpaceData] = []
+        for space in spaces {
+            let result = await NetworkRequest.shared.request(.gatewayUnbindSpace(spaceId: space.spaceId, gatewayId: gateway.mac))
+            switch result {
+            case .success(_):
+                successSpaces.append(space)
+            case .failure(let error):
+                failedSpaces.append(space)
+            }
+        }
+        return (successSpaces, failedSpaces)
+    }
+    
     
     /// 服务器授权绑定网关
     private func authorizeRequest() {
@@ -466,6 +522,7 @@ class GatewayViewController: UIViewController, DeviceProtocol {
             guard let self = self else { return }
             self.setGatewayModel.associatedSpaces = spaces
             self.reloadSection(.associatedSpaces)
+            self.updateSaveBtnState()
         }
         navigationController?.pushViewController(vc, animated: true)
         
@@ -476,6 +533,7 @@ class GatewayViewController: UIViewController, DeviceProtocol {
         if let index = setGatewayModel.associatedSpaces.firstIndex(where: { $0.spaceId == space.spaceId }) {
             setGatewayModel.associatedSpaces.remove(at: index)
             reloadSection(.associatedSpaces)
+            updateSaveBtnState()
         }
     }
     

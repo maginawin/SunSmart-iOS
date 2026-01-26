@@ -82,10 +82,10 @@ enum NodeSyncData {
     case syncGatewayProjectId(projectId: String)
     /// 同步网关关联的子网appkey index list
     case syncGatewaySubnetAppkeyIndexs(appkeyIndexs: [KeyIndex])
-    /// 网关关联spaces
-    case gatewayAssociatedSpaces([(networkKey: NetworkKey, applicationKey: ApplicationKey)])
-    /// 网关解除关联spaces
-    case gatewayUnbindAssociatedSpaces([(networkKey: NetworkKey, applicationKey: ApplicationKey)])
+    /// 网关关联spaces activate: 是否激活
+    case gatewayAssociatedSpaces(datas: [(networkKey: NetworkKey, applicationKey: ApplicationKey)], activate: Bool)
+    /// 网关解除关联spaces  activate: 是否激活
+    case gatewayUnbindAssociatedSpaces(datas: [(networkKey: NetworkKey, applicationKey: ApplicationKey)], activate: Bool)
 }
 
 /// 配置类型
@@ -1183,8 +1183,12 @@ extension Node {
                     unbindAssociatedSpaceDatas.append((networkKey: networkKey, applicationKey: appKey))
                 }
             }
-            syncDatas.append(.gatewayAssociatedSpaces(associatedSpaceDatas))
-            syncDatas.append(.gatewayUnbindAssociatedSpaces(unbindAssociatedSpaceDatas))
+            if associatedSpaceDatas.count > 0 {
+                syncDatas.append(.gatewayAssociatedSpaces(datas: associatedSpaceDatas, activate: gateway.activate))
+            }
+            if unbindAssociatedSpaceDatas.count > 0 {
+                syncDatas.append(.gatewayUnbindAssociatedSpaces(datas: unbindAssociatedSpaceDatas, activate: gateway.activate))
+            }
         }
       
         // 同步绑定哪些子网appkey index

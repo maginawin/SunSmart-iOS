@@ -1433,3 +1433,5 @@
 "gateway_no_permission_message" = "The editor's space is all gateway bound";
 "no_associated_spaces" = "No associated spaces";
 "gateway_associated_nodes_limit_message" = "A maximum of %d nodes can be associated.";
+"associated_spaces_failed" = "Failed to bind spaces";
+"unbind_associated_spaces_failed" = "Unbind Associated spaces failed";

@@ -6,6 +6,7 @@
 //
 
 import UIKit
+import SwiftyJSON
 
 class GatewayAssociatedSpacesController: UIViewController {
 
@@ -17,18 +18,18 @@ class GatewayAssociatedSpacesController: UIViewController {
     private var countLabel: UILabel!
     private let maxNodesCount = 300
     
-    private var selectSpaces: [GatewaySpaceData]
+    private var selectSpaces: [GatewaySpaceData] = []
     
     /// 关联space选择回调
     var associatedSpacesSelectCallback: (([GatewaySpaceData])->())?
     
-    let spaces: [GatewaySpaceData]
+    let gateway: GatewayModel
+    var spaces: [GatewaySpaceData]
     
-    init(spaces: [GatewaySpaceData], selectSpaces: [GatewaySpaceData]) {
+    init(gateway: GatewayModel, spaces: [GatewaySpaceData]) {
+        self.gateway = gateway
         self.spaces = spaces
-        self.selectSpaces = selectSpaces
         super.init(nibName: nil, bundle: nil)
-        
     }
     
     required init?(coder: NSCoder) {
@@ -44,9 +45,50 @@ class GatewayAssociatedSpacesController: UIViewController {
         view.backgroundColor = Background_Color
         navigationItem.rightBarButtonItem = UIBarButtonItem(image: UIImage(named: "help")?.withRenderingMode(.alwaysOriginal), style: .done, target: self, action: #selector(help))
         
-        setupUI()
-        updateUI()
+        loadAssociatedSpaces()
     }
+    
+    private func loadAssociatedSpaces() {
+        
+        XWHUDManager.showCustomHUD(withMessage: nil, isWindow: true)
+        NetworkRequest.shared.request(.gatewayAssociationSpaceList(siteId: gateway.siteId, gatewayId: gateway.mac)) {[weak self] result in
+            XWHUDManager.hide()
+            guard let self = self else {
+                return
+            }
+            switch result {
+            case .success(let response):
+                let list = JSON(response)["data"]["refSpaces"].arrayValue
+                // 网关已绑定的space
+                let bindSpaces: [GatewaySpaceData] = list.compactMap { spaceJson in
+                    guard let spaceId = spaceJson["spaceId"].string, let spaceName = spaceJson["spaceName"].string, let deviceCount = spaceJson["deviceCount"].int, let appKeyIndex = spaceJson["appKey"]["index"].uInt16 else {
+                        return nil
+                    }
+                    var gatewaySpace = GatewaySpaceData(spaceId: spaceId, spaceName: spaceName, deviceCount: deviceCount, appKeyIndex: appKeyIndex)
+                    if let space = SpaceData.load(siteId: self.gateway.siteId, spaceId: spaceId).first, space.state == .normal, let permission = GatewaySpaceData.GatewaySpacePermission(rawValue: space.permission.rawValue) {
+                        gatewaySpace.permission = permission
+                    }
+                    return gatewaySpace
+                }
+                bindSpaces.forEach { space in
+                    if !self.spaces.contains(where: { $0.spaceId == space.spaceId }) {
+                        self.spaces.append(space)
+                    }
+                }
+                self.spaces.sort(by: { $0.appKeyIndex < $1.appKeyIndex })
+                self.selectSpaces = bindSpaces
+                
+                self.setupUI()
+                self.updateUI()
+            case .failure(let error):
+                XWHUDManager.showErrorTipHUD(error.localizedDescription)
+                
+//                view.showEmptyDataView(title: "")
+            }
+   
+        }
+    }
+    
     
     @objc private func help() {
         
@@ -72,6 +114,27 @@ class GatewayAssociatedSpacesController: UIViewController {
     }
     
     @objc private func addSelectedBtnAction() {
+        
+        let newSpaces = self.setGatewayModel.associatedSpaces
+        let oldSpaces = self.gateway.associatedSpaces
+        // 新关联的spaces
+        var addSpaces = newSpaces.filter({ space in !oldSpaces.contains(where: { $0.spaceId == $0.spaceId }) && (space.permission == .owner || space.permission == .editor) })
+        // 解除关联的spaces
+        var unbindSpaces = oldSpaces.filter({ space in !newSpaces.contains(where: { $0.spaceId == $0.spaceId }) && (space.permission == .owner || space.permission == .editor) })
+        
+        if addSpaces.count > 0 {
+            XWHUDManager.showCustomHUD(withMessage: nil, isWindow: true)
+            let associatedResult = await self.associatedSpacesRequest(addSpaces)
+            self.gateway.associatedSpaces.append(contentsOf: associatedResult.successSpaces)
+            self.gateway.save()
+            guard associatedResult.failedSpaces.isEmpty else {
+                XWHUDManager.hide()
+                XWHUDManager.showTipHUD("\("associated_spaces".localizedString) \("failed".localizedString)", isLineFeed: <#T##Bool#>)
+                return
+            }
+        }
+        
+        
         associatedSpacesSelectCallback?(selectSpaces)
         navigationController?.popViewController(animated: true)
     }
