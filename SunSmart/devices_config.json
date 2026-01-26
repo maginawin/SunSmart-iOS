@@ -636,7 +636,8 @@
         "categoryName" : "Gateway",
         "elementCount" : 2,
         "iconCategory" : "Gateway",
-        "deviceCategory" : "Gateway"
+        "deviceCategory" : "Gateway",
+        "modelName" : "SR-BL9036T-GW-WP4G"
     },
     {
         "companyId" : "0A78",
@@ -894,7 +895,7 @@
         "elementCount" : 2,
         "iconCategory" : "Lighting",
         "deviceCategory" : "Lighting",
-        "modelName" : "SR-BL9033A-V"
+        "modelName" : "SR-BL9033Z-V"
     },
     {
         "companyId" : "0A78",
@@ -903,7 +904,7 @@
         "elementCount" : 2,
         "iconCategory" : "Lighting",
         "deviceCategory" : "Lighting",
-        "modelName" : "SR-BL9033A-V"
+        "modelName" : "SR-BL9033P-V"
     },
     {
         "companyId" : "0A78",
@@ -912,7 +913,7 @@
         "elementCount" : 2,
         "iconCategory" : "Lighting",
         "deviceCategory" : "Lighting",
-        "modelName" : "SR-BL9033A-V"
+        "modelName" : "SR-BL9033J-V"
     },
     {
         "companyId" : "0A78",
@@ -932,6 +933,15 @@
         "deviceCategory" : "Lighting",
         "modelName" : "SR-BL2421_SSV_2CH"
     },
+    {
+         "companyId" : "0A78",
+         "productId" : "24A1",
+         "categoryName" : "Controller Lighting",
+         "elementCount" : 2,
+         "iconCategory" : "Lighting",
+         "deviceCategory" : "Lighting",
+         "modelName" : "SR-BL9035J-V"
+     },
     {
         "companyId" : "0A78",
         "productId" : "2502",
