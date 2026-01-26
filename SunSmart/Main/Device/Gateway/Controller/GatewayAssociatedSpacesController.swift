@@ -19,6 +19,8 @@ class GatewayAssociatedSpacesController: UIViewController {
     private let maxNodesCount = 300
     
     private var selectSpaces: [GatewaySpaceData] = []
+    /// 初始关联的spaces
+    private var initAssociateSpaces: [GatewaySpaceData] = []
     
     /// 关联space选择回调
     var associatedSpacesSelectCallback: (([GatewaySpaceData])->())?
@@ -56,6 +58,8 @@ class GatewayAssociatedSpacesController: UIViewController {
             guard let self = self else {
                 return
             }
+            self.view.hideEmptyDataView()
+            
             switch result {
             case .success(let response):
                 let list = JSON(response)["data"]["refSpaces"].arrayValue
@@ -77,16 +81,56 @@ class GatewayAssociatedSpacesController: UIViewController {
                 }
                 self.spaces.sort(by: { $0.appKeyIndex < $1.appKeyIndex })
                 self.selectSpaces = bindSpaces
+                self.initAssociateSpaces = bindSpaces
                 
                 self.setupUI()
                 self.updateUI()
-            case .failure(let error):
-                XWHUDManager.showErrorTipHUD(error.localizedDescription)
+
                 
-//                view.showEmptyDataView(title: "")
+            case .failure(let error):
+                if error == .noNetwork {
+                    view.showEmptyDataView(imageName: "internet_error", title: "requires_internet_message".localizedString)
+                }else {
+                    view.showEmptyDataView(imageName: "internet_error", title: "failed_to_retrieve_data".localizedString, tipText: "network_problem_note".localizedString, buttonText: "RETRY".localizedString, position: .center, bottomMargin: SCRXFrom(60)) {[weak self] in
+                        self?.loadAssociatedSpaces()
+                    }
+                }
+                XWHUDManager.showErrorTipHUD(error.localizedDescription)
             }
    
         }
+    }
+    
+    /// 关联spaces请求
+    private func associatedSpacesRequest(_ spaces: [GatewaySpaceData]) async -> (successSpaces: [GatewaySpaceData], failedSpaces: [GatewaySpaceData]) {
+        var successSpaces: [GatewaySpaceData] = []
+        var failedSpaces: [GatewaySpaceData] = []
+        for space in spaces {
+            let result = await NetworkRequest.shared.request(.gatewayBindSpace(spaceId: space.spaceId, gatewayId: gateway.mac))
+            switch result {
+            case .success:
+                successSpaces.append(space)
+            case .failure:
+                failedSpaces.append(space)
+            }
+        }
+        return (successSpaces, failedSpaces)
+    }
+    
+    /// 解除关联spaces请求
+    private func unbindAssociatedSpacesRequest(_ spaces: [GatewaySpaceData]) async -> (successSpaces: [GatewaySpaceData], failedSpaces: [GatewaySpaceData]) {
+        var successSpaces: [GatewaySpaceData] = []
+        var failedSpaces: [GatewaySpaceData] = []
+        for space in spaces {
+            let result = await NetworkRequest.shared.request(.gatewayUnbindSpace(spaceId: space.spaceId, gatewayId: gateway.mac))
+            switch result {
+            case .success(_):
+                successSpaces.append(space)
+            case .failure(_):
+                failedSpaces.append(space)
+            }
+        }
+        return (successSpaces, failedSpaces)
     }
     
     
@@ -115,28 +159,131 @@ class GatewayAssociatedSpacesController: UIViewController {
     
     @objc private func addSelectedBtnAction() {
         
-        let newSpaces = self.setGatewayModel.associatedSpaces
-        let oldSpaces = self.gateway.associatedSpaces
-        // 新关联的spaces
-        var addSpaces = newSpaces.filter({ space in !oldSpaces.contains(where: { $0.spaceId == $0.spaceId }) && (space.permission == .owner || space.permission == .editor) })
-        // 解除关联的spaces
-        var unbindSpaces = oldSpaces.filter({ space in !newSpaces.contains(where: { $0.spaceId == $0.spaceId }) && (space.permission == .owner || space.permission == .editor) })
         
-        if addSpaces.count > 0 {
+        let newSpaces = selectSpaces
+        let oldSpaces = initAssociateSpaces
+        // 新关联的spaces
+        let addSpaces = newSpaces.filter({ space in !oldSpaces.contains(where: { $0.spaceId == $0.spaceId }) && (space.permission == .owner || space.permission == .editor) })
+        // 解除关联的spaces
+        let unbindSpaces = oldSpaces.filter({ space in !newSpaces.contains(where: { $0.spaceId == $0.spaceId }) && (space.permission == .owner || space.permission == .editor) })
+        
+        if addSpaces.count > 0 || unbindSpaces.count > 0 {
+            spacesAssociatedHandle(associatedSpaces: addSpaces, disassociatedSpaces: unbindSpaces)
+        }else {
+            associatedSpacesSelectCallback?(selectSpaces)
+            navigationController?.popViewController(animated: true)
+        }
+    }
+    
+    
+    /// 关联/解除space关联操作
+    /// - Parameters:
+    ///   - associatedSpaces: 关联的spaces
+    ///   - disassociatedSpaces: 解除关联的spaces
+    private func spacesAssociatedHandle(associatedSpaces: [GatewaySpaceData], disassociatedSpaces: [GatewaySpaceData]) {
+        guard associatedSpaces.count > 0 || disassociatedSpaces.count > 0 else {
+            return
+        }
+        Task {
+            var associatedResult: (successSpaces: [GatewaySpaceData], failedSpaces: [GatewaySpaceData])?
+            var disassociatedResult: (successSpaces: [GatewaySpaceData], failedSpaces: [GatewaySpaceData])?
+            
             XWHUDManager.showCustomHUD(withMessage: nil, isWindow: true)
-            let associatedResult = await self.associatedSpacesRequest(addSpaces)
-            self.gateway.associatedSpaces.append(contentsOf: associatedResult.successSpaces)
+            if associatedSpaces.count > 0 {
+                associatedResult = await self.associatedSpacesRequest(associatedSpaces)
+            }
+            if disassociatedSpaces.count > 0 {
+                disassociatedResult = await self.unbindAssociatedSpacesRequest(disassociatedSpaces)
+            }
+            XWHUDManager.hide()
+            // 绑定成功的spaces
+            if let addAssociatedSpaces = associatedResult?.successSpaces {
+                addAssociatedSpaces.forEach {
+                    if !self.gateway.associatedSpaces.contains(where: { $0.spaceId == $0.spaceId }) {
+                        self.gateway.associatedSpaces.append($0)
+                    }
+                }
+            }
+            
+            // 解除绑定成功的spaces
+            if let disassociatedSpaces = disassociatedResult?.successSpaces {
+                self.gateway.associatedSpaces.removeAll(where: { space in disassociatedSpaces.contains(where: { space.spaceId == $0.spaceId }) })
+            }
             self.gateway.save()
-            guard associatedResult.failedSpaces.isEmpty else {
-                XWHUDManager.hide()
-                XWHUDManager.showTipHUD("\("associated_spaces".localizedString) \("failed".localizedString)", isLineFeed: <#T##Bool#>)
+            self.initAssociateSpaces = self.gateway.associatedSpaces
+            
+            // 绑定失败的spaces
+            let associatedFailSpaces = associatedResult?.failedSpaces ?? []
+            // 解除绑定失败的spaces
+            let disassociatedFailSpaces = disassociatedResult?.failedSpaces ?? []
+            
+            guard associatedFailSpaces.isEmpty, disassociatedFailSpaces.isEmpty else {
+                // 存在失败的space
+                self.showAssociateFailedAlert(associatedFailSpaces: associatedFailSpaces, disassociatedFailSpaces: disassociatedFailSpaces)
                 return
             }
+            
+            self.associatedSpacesSelectCallback?(self.selectSpaces)
+            self.navigationController?.popViewController(animated: true)
         }
         
+    }
+    
+    
+    /// 提示关联/解除关联失败结果
+    /// - Parameters:
+    ///   - associatedFailSpaces: 关联失败的spaces
+    ///   - disassociatedFailSpaces: 解除关联失败的spaces
+    private func showAssociateFailedAlert(associatedFailSpaces: [GatewaySpaceData], disassociatedFailSpaces: [GatewaySpaceData]) {
         
-        associatedSpacesSelectCallback?(selectSpaces)
-        navigationController?.popViewController(animated: true)
+        guard associatedFailSpaces.count > 0 || disassociatedFailSpaces.count > 0 else {
+            return
+        }
+        
+        var messageStr: String = ""
+        
+        if associatedFailSpaces.count > 0 {
+            let associateFailStr = String(format: "associate_spaces_failed_message".localizedString, associatedFailSpaces.map({ $0.spaceName }).joined(separator: ", "))
+            messageStr.append(associateFailStr)
+        }
+        if disassociatedFailSpaces.count > 0 {
+            let disassociateFailStr = String(format: "disassociate_spaces_failed_message".localizedString, disassociatedFailSpaces.map({ $0.spaceName }).joined(separator: ", "))
+            messageStr.append("\n" + disassociateFailStr)
+        }
+        
+        let noteStr = "network_problem_note".localizedString
+        
+        let style = NSMutableParagraphStyle()
+        style.alignment = .left
+        style.lineSpacing = 4
+        style.lineBreakMode = .byCharWrapping
+        
+        let messageAttStr = NSMutableAttributedString(string: messageStr, attributes: [.paragraphStyle: style])
+        messageAttStr.addAttributes([.foregroundColor: Message_Color], range: (messageAttStr.string as NSString).range(of: noteStr))
+        
+        SRAlertView(title: "notification".localizedString, messageAttStr: messageAttStr, messageFont: UIFont.systemFont(ofSize: SCRYFrom(13), weight: .light), actions: [SRAlertAction(title: "alert_item_cancel".localizedString, style: .cancel, actionHandler: {[weak self] _ in
+            guard let self = self else {
+                return
+            }
+            // 失败的space恢复之前未选择状态
+            associatedFailSpaces.forEach { space in
+                self.selectSpaces.removeAll(where: { $0.spaceId == space.spaceId })
+            }
+            // 失败的space恢复之前选中状态
+            disassociatedFailSpaces.forEach { space in
+                if !self.selectSpaces.contains(where: { $0.spaceId == space.spaceId }) {
+                    self.selectSpaces.append(space)
+                }
+            }
+            self.collectionView.reloadData()
+            self.updateUI()
+            
+        }), SRAlertAction(title: "RETRY".localizedString, actionHandler: {[weak self] _ in
+            guard let self = self else {
+                return
+            }
+            self.spacesAssociatedHandle(associatedSpaces: associatedFailSpaces, disassociatedSpaces: disassociatedFailSpaces)
+        })]).show()
     }
     
     private func updateUI() {
@@ -177,7 +324,7 @@ class GatewayAssociatedSpacesController: UIViewController {
             make.height.equalTo(SCRYFrom(33))
         }
         
-        messageLabel = UILabel(text: String(format: "associated_spaces_message".localizedString, spaces.count, maxNodesCount), textColor: SubText_Color, fontSize: 14, fontWeight: .light)
+        messageLabel = UILabel(text: String(format: "associated_spaces_message".localizedString, gateway.maxAssociatedSpaces, maxNodesCount), textColor: SubText_Color, fontSize: 14, fontWeight: .light)
         headerView.addSubview(messageLabel)
         messageLabel.snp.makeConstraints { make in
             make.left.equalTo(SCRXFrom(20))
@@ -223,8 +370,18 @@ extension GatewayAssociatedSpacesController: UICollectionViewDataSource, UIColle
         let cell = collectionView.dequeueReusableCell(withReuseIdentifier: "cell", for: indexPath) as! GatewayAssociatedSpacesViewCell
         let space = spaces[indexPath.item]
         cell.nameLabel.text = space.spaceName
+        cell.nameLabel.textColor = TextBlack_Color
         cell.nodesLabel.text = "\("nodes".localizedString): \(space.deviceCount)"
-        cell.selectImageView.image = selectSpaces.contains(where: { $0.spaceId == space.spaceId }) ? UIImage(named: "schedule_target_select") : UIImage(named: "schedule_target_select_un")
+        if selectSpaces.contains(where: { $0.spaceId == space.spaceId }) {
+            if space.permission == .none || space.permission == .visitor {
+                cell.nameLabel.textColor = Message_Color
+                cell.selectImageView.image = UIImage(named: "schedule_target_select")?.withTintColor(Message_Color)
+            }else {
+                cell.selectImageView.image = UIImage(named: "schedule_target_select")
+            }
+        }else {
+            cell.selectImageView.image = UIImage(named: "schedule_target_select_un")
+        }
         return cell
     }
   
@@ -236,6 +393,9 @@ extension GatewayAssociatedSpacesController: UICollectionViewDataSource, UIColle
     func collectionView(_ collectionView: UICollectionView, didSelectItemAt indexPath: IndexPath) {
         
         let space = spaces[indexPath.item]
+        if space.permission == .none || space.permission == .visitor { // 其他人的space/无编辑权限space
+            return
+        }
         if let index = selectSpaces.firstIndex(where: { $0.spaceId == space.spaceId }) {
             selectSpaces.remove(at: index)
         }else {

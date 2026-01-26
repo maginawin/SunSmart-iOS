@@ -543,7 +543,20 @@ class SitesViewController: UIViewController {
 //            vc.preferredContentSize = iPadStandardSize
 //        }
 //        self.present(NavigationViewController(rootViewController: vc), animated: true)
-
+        guard let site = favouriteSites.first, let gateway = GatewayModel.load(siteId: site.id).last else {
+            return
+        }
+        let gatewaySpaceDatas: [GatewaySpaceData] = site.spaces.filter({ ($0.permission == .owner || $0.permission == .editor) && $0.state == .normal }).compactMap({ space in
+//            if let appkey = meshNetwork.applicationKeys.first(where: { $0.boundNetworkKey.networkId.hex == space.meshNetworkId }) {
+                return GatewaySpaceData(spaceId: space.id, spaceName: space.name, deviceCount: space.deviceCount, appKeyIndex: 1)
+//            }
+//            return nil
+        })
+        let vc = GatewayAssociatedSpacesController(gateway: gateway, spaces: gatewaySpaceDatas)
+        if isIPad {
+            vc.preferredContentSize = iPadStandardSize
+        }
+        self.present(NavigationViewController(rootViewController: vc), animated: true)
         
         ImportProjectView {[weak self] mode in
             if mode == .scanQRCode {

@@ -50,7 +50,7 @@ class GatewaySectionHeaderView: UITableViewHeaderFooterView {
         operationBtn = UIButton(titleSize: 14, titleWeight: .light, titleColor: Bar_Color, target: self, action: #selector(operationBtnAction))
         addSubview(operationBtn)
         operationBtn.snp.makeConstraints { make in
-            make.bottom.equalTo(SCRYFrom(-8))
+            make.centerY.equalTo(titleLabel)
             make.right.equalTo(SCRXFrom(-12))
         }
         

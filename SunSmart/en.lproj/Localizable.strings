@@ -1433,5 +1433,8 @@
 "gateway_no_permission_message" = "The editor's space is all gateway bound";
 "no_associated_spaces" = "No associated spaces";
 "gateway_associated_nodes_limit_message" = "A maximum of %d nodes can be associated.";
-"associated_spaces_failed" = "Failed to bind spaces";
-"unbind_associated_spaces_failed" = "Unbind Associated spaces failed";
+"requires_internet_message" = "This operation requires an internet connection.";
+"failed_to_retrieve_data" = "Failed to retrieve data.";
+"network_problem_note" = "Note:It might be a network or server problem.";
+"associate_spaces_failed_message" = "Failed to associate spaces: [%@]";
+"disassociate_spaces_failed_message" = "Failed to disassociate spaces: [%@]";

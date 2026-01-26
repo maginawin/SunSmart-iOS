@@ -60,7 +60,8 @@ class GatewayModel: Copyable {
     var lastUploadCloudTimestamp: Int64?
     /// 同步服务器错误信息
     var syncCloudError: NetworkApiError?
-    
+    /// 网关最大关联space数量
+    var maxAssociatedSpaces: Int = 10
     /// 网关绑定的所有space数据
 //    var allBindSpaceDatas: [GatewaySpaceData]
     
@@ -151,7 +152,7 @@ struct GatewaySpaceData: Codable {
     
     init(spaceId: String, spaceName: String, deviceCount: Int, appKeyIndex: UInt16, permission: GatewaySpacePermission = .none) {
         self.spaceId = spaceId
-        self.spaceName = spaceId
+        self.spaceName = spaceName
         self.deviceCount = deviceCount
         self.appKeyIndex = appKeyIndex
         self.permission = permission
