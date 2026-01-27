@@ -854,10 +854,12 @@ class SRAlertView: UIView {
         
         messageLabel = UILabel()
         messageLabel.numberOfLines = 0
-//        messageLabel.lineBreakMode = .byCharWrapping
+        messageLabel.lineBreakMode = .byCharWrapping
         messageLabel.textAlignment = .center
-        messageLabel.setContentHuggingPriority(.defaultHigh, for: .vertical)
-        messageLabel.setContentCompressionResistancePriority(.defaultHigh, for: .vertical)
+        messageLabel.setContentHuggingPriority(.required, for: .vertical)
+        messageLabel.setContentCompressionResistancePriority(.required, for: .vertical)
+        messageLabel.setContentHuggingPriority(.required, for: .horizontal)
+        messageLabel.setContentCompressionResistancePriority(.required, for: .horizontal)
         contentView.addSubview(messageLabel)
         messageLabel.snp.makeConstraints { make in
             make.left.right.equalTo(titleLabel)

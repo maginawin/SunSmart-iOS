@@ -843,7 +843,7 @@
 "none" = "无";
 "minutes" = "分";
 "sec" = "秒";
-"signal_below_message" = "信号低于 -90dB 的设备无法选择。";
+"signal_below_message" = "信号低于 -85dB 的设备无法选择。";
 "no_data" = "无数据！";
 
 "device_version_state" = "设备版本状态";

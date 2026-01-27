@@ -846,10 +846,11 @@ extension ReadDevicesDataViewController: UITableViewDataSource, UITableViewDeleg
     }
     
     func tableView(_ tableView: UITableView, viewForHeaderInSection section: Int) -> UIView? {
-        
-        let titleView = tableView.dequeueReusableHeaderFooterView(withIdentifier: "titleHeader") as! SyncDevicesTitleHeaderView
-        titleView.titleLabel.text = sections[section].title
-        return titleView
+       
+        return UIView()
+//        let titleView = tableView.dequeueReusableHeaderFooterView(withIdentifier: "titleHeader") as! SyncDevicesTitleHeaderView
+//        titleView.titleLabel.text = sections[section].title
+//        return titleView
     }
     
     func tableView(_ tableView: UITableView, heightForHeaderInSection section: Int) -> CGFloat {

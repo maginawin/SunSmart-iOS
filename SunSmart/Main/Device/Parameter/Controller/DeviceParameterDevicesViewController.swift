@@ -89,10 +89,16 @@ class DeviceParameterDevicesViewController: UIViewController {
         devices.forEach { node in
             node.selectOn = false
             node.selectOff = false
-            node.tempPwm = node.pwmFrequency
+            if node.supportPwmFrequency {
+                node.tempPwm = node.pwmFrequency
+            }
             node.tempRatedPowerPhases = node.phaseEnergyConsumptions
-            node.tempSensitivityRange = node.motionSensitivityRange
-            node.tempTransitionTime = node.defaultTransitionTime
+            if node.supportMotionSensitivity {
+                node.tempSensitivityRange = node.motionSensitivityRange
+            }
+            if node.supportDefaultTransitionTime {
+                node.tempTransitionTime = node.defaultTransitionTime
+            }
             if let group = node.group {
                 if let data = groupDatas.first(where: { $0.groupAddress == group.address.address }) {
                     data.addresss.append(node.primaryUnicastAddress)

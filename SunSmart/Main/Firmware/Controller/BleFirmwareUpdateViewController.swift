@@ -17,7 +17,7 @@ internal extension Node {
     static var targetFirmwareDataKey: UInt8 = 0
     static var peripheral: UInt8 = 0
     
-    // 是否可以升级 设备版本小于当前升级版本 & 信号量 >= -90dB
+    // 是否可以升级 设备版本小于当前升级版本 & 信号量 >= -85dB
     // 是否可以选择 可以升级 & 升级状态为待升级
     // 状态展示 可升级、等待升级、升级中、升级成功、升级失败
     
@@ -368,11 +368,13 @@ class BleFirmwareUpdateViewController: UIViewController {
         
         MeshLibManager.manager.refreshNodesRSSI(withWaitFor: 99999, nodeScan: {[weak self] data in
             
-            guard let self = self, let node = MeshNetworkManager.instance.realNodes.first(where: { $0.primaryUnicastAddress == data.node.primaryUnicastAddress }), node.peripheral == nil else { return }
+            guard let self = self, let node = MeshNetworkManager.instance.realNodes.first(where: { $0.primaryUnicastAddress == data.node.primaryUnicastAddress }) else { return }
             
-            DispatchQueue.main.async {
-                NSObject.cancelPreviousPerformRequests(withTarget: self, selector: #selector(self.refreshNodesRSSIFinish), object: nil)
-                self.perform(#selector(self.refreshNodesRSSIFinish), with: nil, afterDelay: 10)
+            if node.peripheral == nil {
+                DispatchQueue.main.async {
+                    NSObject.cancelPreviousPerformRequests(withTarget: self, selector: #selector(self.refreshNodesRSSIFinish), object: nil)
+                    self.perform(#selector(self.refreshNodesRSSIFinish), with: nil, afterDelay: 10)
+                }
             }
             
             node.peripheral = data.peripheral
@@ -381,7 +383,7 @@ class BleFirmwareUpdateViewController: UIViewController {
                 enableUpgrade = cacheVersion.compare(nodeVersion, options: .numeric) == .orderedDescending
             }
             if enableUpgrade, let rssi = node.rssi {
-                node.enableUpgrade = rssi >= -90
+                node.enableUpgrade = rssi >= -85
                 if node.selectedState == .disabled {
                     node.selectedState = .unselected
                 }
@@ -521,7 +523,7 @@ class BleFirmwareUpdateViewController: UIViewController {
                 node.selectedState = .disabled
                 
                 if enableUpgrade, let rssi = node.rssi {
-                    node.enableUpgrade = rssi >= -90
+                    node.enableUpgrade = rssi >= -85
                     if node.selectedState == .disabled {
                         node.selectedState = .unselected
                     }

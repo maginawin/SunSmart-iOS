@@ -823,7 +823,7 @@
 "none" = "None";
 "minutes" = "minutes";
 "sec" = "sec";
-"signal_below_message" = "Signals below -90dB cannot be selected.";
+"signal_below_message" = "Signals below -85dB cannot be selected.";
 "no_data" = "No Data !";
 
 "device_version_state" = "Device version state";

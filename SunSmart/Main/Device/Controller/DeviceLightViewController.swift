@@ -141,7 +141,7 @@ class DeviceLightViewController: UIViewController {
         
         MeshAPI.getNodeState(address: node.primaryUnicastAddress)
         
-        MeshLibManager.manager.refreshNodesRSSI(withWaitFor: 5, nodeScan: {[weak self] data in
+        MeshLibManager.manager.refreshNodesRSSI(withWaitFor: 10, nodeScan: {[weak self] data in
             guard let self = self else { return }
             if data.node.primaryUnicastAddress == self.node.primaryUnicastAddress {
                 self.node.rssi = data.rssi.intValue

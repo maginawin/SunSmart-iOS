@@ -220,7 +220,7 @@ class DeviceLightsViewController: UIViewController {
         
 //        MeshAPI.sendMessage(message: LightCTLTemperatureRangeGet(), address: .allNodes)
         
-//        MeshLibManager.manager.refreshNodesRSSI(withWaitFor: 5, finished: nil)
+        MeshLibManager.manager.refreshNodesRSSI(withWaitFor: 10, finished: nil)
      
 //        }
     }
@@ -593,7 +593,7 @@ class DeviceLightsViewController: UIViewController {
     private func sort() {
         
         XWHUDManager.showCustomHUD(withMessage: nil, isWindow: false)
-        MeshLibManager.manager.refreshNodesRSSI(withWaitFor: 5) {[weak self] nodes in
+        MeshLibManager.manager.refreshNodesRSSI(withWaitFor: 10) {[weak self] nodes in
             XWHUDManager.hide()
             guard let self = self else { return }
 //            print("\() \()")
@@ -1171,7 +1171,7 @@ extension DeviceLightsViewController: MeshLibManagerDelegate, MeshLibManagerMess
     func meshNetworkManager(bluetoothDidUpdateState state: CBManagerState) {
         if state == .poweredOn && devices.count > 0 {
             // 获取设备信号
-            MeshLibManager.manager.refreshNodesRSSI(withWaitFor: 5, finished: nil)
+            MeshLibManager.manager.refreshNodesRSSI(withWaitFor: 10, finished: nil)
         }
     }
     
