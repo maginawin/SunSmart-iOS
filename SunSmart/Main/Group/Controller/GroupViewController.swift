@@ -1466,6 +1466,12 @@ extension GroupViewController: GroupSensorViewDelegate {
     
     /// 传感器设备占用功能点击
     func sensorView(_ view: GroupSensorView, occupancySensorTapAction sensor: Node) {
+        
+        guard space.groupOperates.contains(.edit) else {
+            XWHUDManager.showTipHUD("no_permission".localizedString, isLineFeed: true)
+            return
+        }
+        
         guard MeshLibManager.manager.isMeshNetworkConnected else {
             XWHUDManager.showTipHUD("device_notconnect_message".localizedString, isLineFeed: true)
             return
