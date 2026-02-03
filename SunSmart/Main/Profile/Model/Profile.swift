@@ -536,6 +536,16 @@ class Profile: Copyable {
             }
         }
         
+        /// 是否是临近照明类型profile
+        var proximityLightingType: Bool {
+            switch self {
+            case .proximityLighting, .proximityLightingWithPhotocell:
+              return true
+            default:
+                return false
+            }
+        }
+        
         
         init?(rawValue: Int) {
             switch rawValue {

@@ -64,7 +64,7 @@ class ProfileProximityLightingStepView: UIView {
             make.left.right.equalToSuperview()
             make.top.equalTo(messageLabel.snp.bottom).offset(SCRYFrom(12))
             make.bottom.equalTo(SCRYFrom(-16))
-            make.height.equalTo(SCRYFrom(56))
+            make.height.greaterThanOrEqualTo(SCRYFrom(56))
         }
     }
     

@@ -121,9 +121,11 @@ class GroupViewController: UIViewController {
         //        for i in 1...30 {
         //            devices.append("ID \(i)")
         //        }
-        
+//        ToastStatusView.show(in: view, message: "Configuration Successful", type: .success, position: .bottom)
         
         addNotificationObserver()
+        
+        group.sensorNodes.forEach({ $0.occupancySettings = false })
         
         // 刷新设备状态
 //        refresh()
@@ -434,6 +436,10 @@ class GroupViewController: UIViewController {
     
     @objc private func close() {
 
+        if group.sensorNodes.contains(where: { $0.occupancySettings }) {
+            return
+        }
+        
         self.dismissLikeSystem()
         
     }
@@ -477,6 +483,69 @@ class GroupViewController: UIViewController {
             MeshProxyMessageCommand.shared.stopSendMessage(finishedBack: nil)
             MeshProxyMessageCommand.shared.addMessage(messageHandles: messageHandles, finishedBack: nil)
         }
+        
+    }
+    
+    /// 启用/禁用占用感应功能
+    private func sensorOccupancySettings(sensor: Node, enable: Bool, result: (@escaping (Result<Void, SensorOccupancySettingsError>)->Void)) {
+        guard let occupancyModel = sensor.presenceDetectedSensorModel else {
+            result(.failure(.nonsupport))
+            return
+        }
+        // 临近照明类型
+        if group.info.profile.type.proximityLightingType {
+            guard let vendorModel = sensor.sunricherVendorModel else {
+                result(.failure(.nonsupport))
+                return
+            }
+            let relayCount = enable ? group.info.profile.proximityLightingNumber : 0
+            MeshAPI.sendMessage(message: SunricherVendorSet(function: .proximityLightingRelaySet(relay: relayCount)), address: sensor.primaryUnicastAddress, timeout: 7) { response in
+                guard let statusMessage = response as? SunricherVendorStatus else {
+                    result(.failure(.timeout))
+                    return
+                }
+                guard statusMessage.status.isSuccessful else {
+                    result(.failure(.configurationFailed))
+                    return
+                }
+                result(.success(()))
+            }
+            
+        }else { // 占用类型
+            
+            var publishMessage: ConfigModelPublicationSet?
+            if enable {
+                guard occupancyModel.publish?.publicationAddress != group.address else {
+                    result(.success(()))
+                    return
+                }
+                publishMessage = ConfigModelPublicationSet(Publish(to: group.address, using: MeshNetworkManager.instance.currentApplicationKey, usingFriendshipMaterial: false, ttl: MeshNetworkManager.instance.networkParameters.defaultTtl, period: .disabled, retransmit: .disabled), to: occupancyModel)
+            }else {
+                guard occupancyModel.publish?.publicationAddress == group.address else {
+                    result(.success(()))
+                    return
+                }
+                publishMessage = ConfigModelPublicationSet(disablePublicationFor: occupancyModel)
+            }
+            guard let publishMessage = publishMessage else {
+                result(.failure(.unknown))
+                return
+            }
+            MeshAPI.sendMessage(message: publishMessage, address: sensor.primaryUnicastAddress, timeout: 7) { response in
+                guard let statusMessage = response as? ConfigModelPublicationStatus else {
+                    result(.failure(.timeout))
+                    return
+                }
+                guard statusMessage.isSuccess else {
+                    result(.failure(.configurationFailed))
+                    return
+                }
+                result(.success(()))
+            }
+            
+        }
+        
+   
         
     }
     
@@ -603,6 +672,12 @@ class GroupViewController: UIViewController {
     }
     
     @objc private func moreClick() {
+        
+        if sensorView?.isShow ?? false {
+            if group.sensorNodes.contains(where: { $0.occupancySettings }) {
+                return
+            }
+        }
         
         var items: [MenuPopView.MenuItem] = []
         if space.deviceOperates.contains(.add) {
@@ -1376,10 +1451,62 @@ extension GroupViewController: GroupSensorViewDelegate {
   
         self.isModalInPresentation = false
     }
+    
+    func sensorViewShouldHide(_ view: GroupSensorView) -> Bool {
+        if group.sensorNodes.contains(where: { $0.occupancySettings }) {
+            return false
+        }
+        return true
+    }
+    
+    /// 设备识别
+    func sensorView(_ view: GroupSensorView, identifyAction sensor: Node) {
+        MeshAPI.identify(address: sensor.primaryUnicastAddress)
+    }
+    
+    /// 传感器设备占用功能点击
+    func sensorView(_ view: GroupSensorView, occupancySensorTapAction sensor: Node) {
+        guard MeshLibManager.manager.isMeshNetworkConnected else {
+            XWHUDManager.showTipHUD("device_notconnect_message".localizedString, isLineFeed: true)
+            return
+        }
+        if sensor.occupancySettings {
+            return
+        }
+        // 是否启用
+        let enable = !sensor.preConfiguration.occupancyEnable
+        sensor.occupancySettings = true
+        view.reloadSensor(sensor: sensor)
+        sensorOccupancySettings(sensor: sensor, enable: enable) {[weak self] result in
+            guard let self = self else { return }
+            sensor.occupancySettings = false
+            switch result {
+            case .success:
+                sensor.preConfiguration.occupancyEnable = enable
+                if let meshUUID = sensor.network?.uuid.uuidString {
+                    sensor.preConfiguration.save(meshUUID: meshUUID, nodeAddress: sensor.primaryUnicastAddress)
+                }
+                ToastStatusView.show(in: self.view, message: "configuration_successful".localizedString, type: .success)
+                // 同步数据到服务器
+                NotificationCenter.default.post(name: .init(spaceDataChangedNotificaitonName), object: SpaceChangeDataType.device)
+                sensor.reloadSyncStateCache()
+                
+            case .failure(let error):
+                var errorMessage = "configuration_failed".localizedString
+                if error == .timeout {
+                    errorMessage = "device_offline".localizedString
+                }
+                ToastStatusView.show(in: self.view, message: errorMessage, type: .failure)
+            }
+            view.reloadSensor(sensor: sensor)
+        }
+        
+    }
 }
 
 extension Node {
     static var lightControlOnKey: UInt8 = 0
+    static var occupancySettingsKey: UInt8 = 0
     
     /// 是否在control on状态
     var lightControlOn: Bool {
@@ -1389,4 +1516,26 @@ extension Node {
             objc_setAssociatedObject(self, &Node.lightControlOnKey, newValue, .OBJC_ASSOCIATION_RETAIN)
         }
     }
+    
+    /// 占用功能设置中
+    var occupancySettings: Bool {
+        get {
+            objc_getAssociatedObject(self, &Node.occupancySettingsKey) as? Bool ?? false
+        }set {
+            objc_setAssociatedObject(self, &Node.occupancySettingsKey, newValue, .OBJC_ASSOCIATION_RETAIN)
+        }
+    }
+    
+}
+
+/// 传感器占用功能设置错误
+enum SensorOccupancySettingsError: Error {
+    /// 功能不支持
+    case nonsupport
+    /// 未知错误
+    case unknown
+    /// 配置失败
+    case configurationFailed
+    /// 超时
+    case timeout
 }

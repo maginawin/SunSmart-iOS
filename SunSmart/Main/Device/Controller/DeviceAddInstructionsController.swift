@@ -126,6 +126,7 @@ class DeviceAddInstructionsController: UIViewController {
         stepView.snp.makeConstraints { make in
             make.left.right.equalToSuperview()
             make.centerY.equalToSuperview()
+            make.height.greaterThanOrEqualTo(SCRYFrom(56))
         }
         
         noteLabel = UILabel(text: "", textColor: ImportantText_Color, fontSize: 14, fontWeight: .light, fit: false)

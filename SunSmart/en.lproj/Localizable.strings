@@ -823,7 +823,7 @@
 "none" = "None";
 "minutes" = "minutes";
 "sec" = "sec";
-"signal_below_message" = "Signals below -85dB cannot be selected.";
+"signal_below_message" = "Signals below -80dB cannot be selected.";
 "no_data" = "No Data !";
 
 "device_version_state" = "Device version state";
@@ -1543,3 +1543,11 @@
 "light_sensor_template_design_intent_note" = "Template-based configuration simplifies commissioning, reduces repetitive setup work, and ensures consistent yet flexible system behavior.";
 "typical_use_cases" = "Typical Use Cases";
 "light_sensor_template_typical_use_cases_note" = "1. Luminaires near windows versus interior areas.\n2. Sensors installed at different mounting heights.\n3. Areas affected by shading or additional daylight.";
+
+"configuration_successful" = "Configuration Successful";
+"configuration_failed" = "Configuration Failed";
+"device_offline" = "Device Offline";
+"triggered" = "Triggered";
+"inactive" = "Inactive";
+"disabled(tap to toggle)" = "Disabled (tap to toggle)";
+"space_unsynchronized_cloud_message" = "Data could not be retrieved from the server. Please check your network connection.";

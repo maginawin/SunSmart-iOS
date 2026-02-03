@@ -62,7 +62,7 @@ class SpaceData: Copyable {
     
     /// 是否提交到云端
 //    var uploadCloud: Bool = false
-    /// 最近上传到云端的时间
+    /// 最近上传到云端/同步云端数据的时间
     var lastUploadCloudTimestamp: Int64?
     
     /// 是否提交到云端

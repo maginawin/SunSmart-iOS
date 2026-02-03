@@ -72,6 +72,8 @@ enum NodeSyncData {
     case deleteCollectionSchedules(scheduleIds: [Int])
     /// 设置邻近照明启用禁用
     case proximityLightingEnabled(_ enabled: Bool)
+    /// 设置临近照明转发次数
+    case proximityLightingRelayNumber(_ relayNumber: UInt8)
     /// 设置邻近照明邻居数量+邻居list
     case proximityLightingNeighbor(relayNumber: UInt8, neighborAddresses: [Address])
     /// 同步网关SIM卡APN
@@ -283,12 +285,14 @@ extension Node {
         var dayProfileStartsAboveLux: UInt16?
         /// 晚上profile lux阈值
         var nightProfileStartsBelowLux: UInt16?
-        /// 白天profile灯光数据
+        /// 白天profile灯光数据（暂未使用）
         var dayProfileLightData: Profile.LightControlData?
-        /// 晚上profile灯光数据
+        /// 晚上profile灯光数据（暂未使用）
         var nightProfileLightData: Profile.LightControlData?
         /// 是否重置光感校准数据
         var resetDaylightCalibration: Bool?
+        /// 占用功能是否启用
+        var occupancyEnable: Bool = true
     }
     
     /// 设备预配置数据
@@ -723,7 +727,7 @@ extension Node {
             }
             
             if occupancyType {
-                if let model = presenceDetectedSensorModel, model.publish?.publicationAddress.address != publishAddress {
+                if let model = presenceDetectedSensorModel, model.publish?.publicationAddress.address != publishAddress, self.preConfiguration.occupancyEnable {
                     enableSensorModels.append(model)
                 }
             }else {
@@ -864,7 +868,7 @@ extension Node {
                             if self.sunricherVendorModel != nil,
                                self.ambientLightSensorModel != nil,
                                self.capabilities.contains(.lightSensorConditionRecall),
-                                let id = nightDayCooditionId { // 使用光感模块激活对应场景
+                               let id = nightDayCooditionId, self.lightControlLuxTriggerConditions.contains(where: { $0.index == id }) { // 使用光感模块激活对应场景
                                 syncProfile.append(.daylightSensorConditionRecall(id: id))
                             }else {
                                 syncProfile.append(.lightControlSwitch(sceneNumber: profileScene.sceneNumber))
@@ -1389,7 +1393,7 @@ extension Node {
         }
         
         // 邻居数量
-        let neighborNumber = group.info.profile.proximityLightingNumber
+        let neighborNumber = self.preConfiguration.occupancyEnable ? group.info.profile.proximityLightingNumber : 0
         let proximityLightingPath = group.info.proximityLightingPath
 //        guard let proximityLightingPath = group.info.proximityLightingPath else {
 //            return nil
@@ -1446,12 +1450,19 @@ extension Node {
 //        let proximityLightingNeighborNodes = self.proximityLightingNeighborAddresses.compactMap({ self.network?.node(withAddress: $0) })
 //        print("node: \((self.name ?? "", self.primaryUnicastAddress)) neighbors: \(proximityLightingNeighborNodes.compactMap({ ($0.name, $0.primaryUnicastAddress) }))")
         
+        // 邻居是否一致
+        let neighborsEqual = self.proximityLightingNeighborAddresses.sorted() == neighborAddresses.sorted()
+        
         // 需配置的邻居列表与设备是否相符
-        if self.proximityLightingNeighborAddresses.sorted() == neighborAddresses.sorted(), self.proximityLightingRelayCount == neighborNumber {
+        if neighborsEqual, self.proximityLightingRelayCount == neighborNumber {
             if !self.proximityLightingEnabled {
                 return .proximityLightingEnabled(true)
             }
         }else {
+            // 同步转发次数
+            if self.proximityLightingEnabled, neighborsEqual, self.proximityLightingRelayCount != neighborNumber {
+                return .proximityLightingRelayNumber(neighborNumber)
+            }
             // 同步邻居数据
             return .proximityLightingNeighbor(relayNumber: neighborNumber, neighborAddresses: neighborAddresses)
         }

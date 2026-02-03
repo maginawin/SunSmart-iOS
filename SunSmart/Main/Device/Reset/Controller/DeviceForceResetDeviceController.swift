@@ -493,8 +493,14 @@ class DeviceForceResetDeviceController: UIViewController {
         ])
         headerView.addSubview(stepView)
         stepView.snp.makeConstraints { make in
-            make.left.equalTo(SCRXFrom(14))
-            make.right.equalTo(SCRXFrom(-14))
+//            if isIPad {
+//                make.left.equalTo(SCRXFrom(100))
+//                make.right.equalTo(SCRXFrom(-100))
+//            }else {
+                make.left.equalTo(SCRXFrom(14))
+                make.right.equalTo(SCRXFrom(-14))
+//            }
+         
             make.top.equalTo(imageView.snp.bottom).offset(SCRYFrom(26))
             make.height.greaterThanOrEqualTo(SCRYFrom(56))
             make.bottom.equalTo(SCRYFrom(-22))

@@ -109,7 +109,7 @@ class DeviceRatedPowerCalibrationSetSeparatelyViewCell: UITableViewCell {
             }
             
             syncFailBtn.isHidden = device.powerCalibrateError == nil
-            
+            lightnessSlider.limitRange = Node.getLightness100(lightness: device.lightnessRange.lowerBound)...Node.getLightness100(lightness: device.lightnessRange.upperBound)
             lightnessSlider.value = Float(device.powerTestLightness)
             lightnessLabel.text = "\(device.powerTestLightness)%"
             

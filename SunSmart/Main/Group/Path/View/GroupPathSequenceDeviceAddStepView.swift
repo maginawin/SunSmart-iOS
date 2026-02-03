@@ -30,6 +30,7 @@ class GroupPathSequenceDeviceAddStepView: UIView {
 
     init(frame: CGRect = .zero, steps: [StepItem]) {
         super.init(frame: frame)
+        
         self.steps = steps
         setupUI()
     }
@@ -42,16 +43,24 @@ class GroupPathSequenceDeviceAddStepView: UIView {
         backgroundColor = .white
         layer.cornerRadius = SCRYFrom(10)
 
-        stackView.axis = .horizontal
         stackView.alignment = .top
         stackView.distribution = .fillEqually
-        stackView.spacing = SCRXFrom(5)
-        
+        if isIPad {
+            stackView.spacing = SCRXFrom(30)
+        }else {
+            stackView.spacing = SCRXFrom(4)
+        }
         addSubview(stackView)
         stackView.snp.makeConstraints { make in
-            make.left.equalTo(SCRXFrom(14))
-            make.right.equalTo(SCRXFrom(-14))
-//            make.trailing.equalToSuperview().offset(-20)
+            if isIPad {
+                make.centerX.equalToSuperview()
+                make.left.greaterThanOrEqualTo(SCRXFrom(10))
+                make.right.lessThanOrEqualTo(SCRXFrom(-10))
+                make.width.lessThanOrEqualTo(SCRXFrom(600))
+            } else {
+                make.left.equalTo(SCRXFrom(10))
+                make.right.equalTo(SCRXFrom(-10))
+            }
             make.top.bottom.equalToSuperview()
         }
 
@@ -110,12 +119,15 @@ class StepFunctionView: UIView {
 
     let imageView = UIImageView()
     private let titleLabel = UILabel()
+    private let minWidth: CGFloat = SCRXFrom(60)
+    private let maxWidth: CGFloat = isIPad ? SCRXFrom(150) : SCRXFrom(107)
 
     init(imageName: String, title: String, titleColor: UIColor) {
         super.init(frame: .zero)
 
         snp.makeConstraints { make in
-            make.width.lessThanOrEqualTo(SCRXFrom(107))
+            make.width.greaterThanOrEqualTo(minWidth)
+            make.width.lessThanOrEqualTo(maxWidth).priority(.required)
         }
         
         imageView.image = UIImage(named: imageName)
@@ -137,6 +149,11 @@ class StepFunctionView: UIView {
             make.leading.trailing.bottom.equalToSuperview()
         }
     }
+
+//    override func layoutSubviews() {
+//        super.layoutSubviews()
+//        titleLabel.preferredMaxLayoutWidth = bounds.width
+//    }
 
     required init?(coder: NSCoder) {
         fatalError("init(coder:) has not been implemented")

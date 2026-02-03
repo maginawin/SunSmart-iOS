@@ -1721,6 +1721,10 @@
 		C8BFC6912F04AEC5007F83F2 /* DeviceResyncHeaderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8BFC68F2F04AEC5007F83F2 /* DeviceResyncHeaderView.swift */; };
 		C8BFC6922F04AEC5007F83F2 /* DeviceResyncHeaderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8BFC68F2F04AEC5007F83F2 /* DeviceResyncHeaderView.swift */; };
 		C8BFC6932F04AEC5007F83F2 /* DeviceResyncHeaderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8BFC68F2F04AEC5007F83F2 /* DeviceResyncHeaderView.swift */; };
+		C8C026332F303B3400C7C2AA /* ToastStatusView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8C026322F303B3400C7C2AA /* ToastStatusView.swift */; };
+		C8C026342F303B3400C7C2AA /* ToastStatusView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8C026322F303B3400C7C2AA /* ToastStatusView.swift */; };
+		C8C026352F303B3400C7C2AA /* ToastStatusView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8C026322F303B3400C7C2AA /* ToastStatusView.swift */; };
+		C8C026362F303B3400C7C2AA /* ToastStatusView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8C026322F303B3400C7C2AA /* ToastStatusView.swift */; };
 		C8C0E4452E2633B80024E77E /* DeviceSettingsViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8C0E4442E2633B80024E77E /* DeviceSettingsViewController.swift */; };
 		C8C0E4462E2633B80024E77E /* DeviceSettingsViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8C0E4442E2633B80024E77E /* DeviceSettingsViewController.swift */; };
 		C8C0E4482E2774C60024E77E /* DeviceSettingsCollectionViewCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8C0E4472E2774C60024E77E /* DeviceSettingsCollectionViewCell.swift */; };
@@ -2270,6 +2274,7 @@
 		C8BF088D2B299DD700144BAC /* LinePageControl.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LinePageControl.swift; sourceTree = "<group>"; };
 		C8BF08902B2A8DCD00144BAC /* GroupServer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GroupServer.swift; sourceTree = "<group>"; };
 		C8BFC68F2F04AEC5007F83F2 /* DeviceResyncHeaderView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceResyncHeaderView.swift; sourceTree = "<group>"; };
+		C8C026322F303B3400C7C2AA /* ToastStatusView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ToastStatusView.swift; sourceTree = "<group>"; };
 		C8C0E4442E2633B80024E77E /* DeviceSettingsViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceSettingsViewController.swift; sourceTree = "<group>"; };
 		C8C0E4472E2774C60024E77E /* DeviceSettingsCollectionViewCell.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceSettingsCollectionViewCell.swift; sourceTree = "<group>"; };
 		C8C0E44A2E28869F0024E77E /* DeviceParameterAbsoluteSensitivityViewCell.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceParameterAbsoluteSensitivityViewCell.swift; sourceTree = "<group>"; };
@@ -2941,6 +2946,7 @@
 				C89C15722D9A9D8000789F0B /* ContinuousTapGestureRecognizer.swift */,
 				C8BC95E12E04FC830058D41E /* RangeSlider.swift */,
 				C8B6D7CB2E6E768B004FB923 /* AdaptiveTextView.swift */,
+				C8C026322F303B3400C7C2AA /* ToastStatusView.swift */,
 			);
 			path = View;
 			sourceTree = "<group>";
@@ -4427,6 +4433,7 @@
 				C8A8D7452EF5599B0025FFF7 /* ProfileDayNightLuxViewController.swift in Sources */,
 				C833B8582ECACF110005F84F /* SiteGatewayStatusView.swift in Sources */,
 				C88554242DE6B44C00C8B688 /* FSCalendarSeparatorDecorationView.m in Sources */,
+				C8C026342F303B3400C7C2AA /* ToastStatusView.swift in Sources */,
 				C88554252DE6B44C00C8B688 /* FSCalendarExtensions.m in Sources */,
 				C88554262DE6B44C00C8B688 /* FSCalendarWeekdayView.m in Sources */,
 				C88554272DE6B44C00C8B688 /* FSCalendarCollectionView.m in Sources */,
@@ -4872,6 +4879,7 @@
 				C8A8D7442EF5599B0025FFF7 /* ProfileDayNightLuxViewController.swift in Sources */,
 				C833B8572ECACF110005F84F /* SiteGatewayStatusView.swift in Sources */,
 				C886E0762E30DE4900D0C3A6 /* FSCalendarSeparatorDecorationView.m in Sources */,
+				C8C026362F303B3400C7C2AA /* ToastStatusView.swift in Sources */,
 				C886E0772E30DE4900D0C3A6 /* FSCalendarExtensions.m in Sources */,
 				C886E0782E30DE4900D0C3A6 /* FSCalendarWeekdayView.m in Sources */,
 				C886E0792E30DE4900D0C3A6 /* FSCalendarCollectionView.m in Sources */,
@@ -5317,6 +5325,7 @@
 				C8A8D7462EF5599B0025FFF7 /* ProfileDayNightLuxViewController.swift in Sources */,
 				C833B8562ECACF110005F84F /* SiteGatewayStatusView.swift in Sources */,
 				C8DA6A142DB8800B00E32092 /* FSCalendarSeparatorDecorationView.m in Sources */,
+				C8C026352F303B3400C7C2AA /* ToastStatusView.swift in Sources */,
 				C8DA6A152DB8800B00E32092 /* FSCalendarExtensions.m in Sources */,
 				C8DA6A162DB8800B00E32092 /* FSCalendarWeekdayView.m in Sources */,
 				C8DA6A172DB8800B00E32092 /* FSCalendarCollectionView.m in Sources */,
@@ -5762,6 +5771,7 @@
 				C8A8D7472EF5599B0025FFF7 /* ProfileDayNightLuxViewController.swift in Sources */,
 				C8BB66302ED3F056000C63EE /* SiteGatewayStatusView.swift in Sources */,
 				C8BB66312ED3F056000C63EE /* FSCalendarSeparatorDecorationView.m in Sources */,
+				C8C026332F303B3400C7C2AA /* ToastStatusView.swift in Sources */,
 				C8BB66322ED3F056000C63EE /* FSCalendarExtensions.m in Sources */,
 				C8BB66332ED3F056000C63EE /* FSCalendarWeekdayView.m in Sources */,
 				C8BB66342ED3F056000C63EE /* FSCalendarCollectionView.m in Sources */,

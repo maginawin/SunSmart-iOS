@@ -548,7 +548,6 @@ class SitesViewController: UIViewController {
 //            vc.preferredContentSize = iPadStandardSize
 //        }
 //        self.present(NavigationViewController(rootViewController: vc), animated: true)
-
         
         ImportProjectView {[weak self] mode in
             if mode == .scanQRCode {

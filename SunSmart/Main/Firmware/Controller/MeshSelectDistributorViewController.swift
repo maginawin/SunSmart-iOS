@@ -186,7 +186,7 @@ class MeshSelectDistributorViewController: UIViewController {
             node.peripheral = data.peripheral
            
             if let rssi = node.rssi {
-                if rssi >= -85 {
+                if rssi >= -80 {
                     node.rssiState = .normal
                 }else {
                     node.rssiState = .low

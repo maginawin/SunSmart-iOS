@@ -628,15 +628,16 @@ extension SiteData {
         let localProvisioner = meshNetwork.localProvisioner
         
         let provisioner = Provisioner(name: localProvisioner?.name ?? UserData.currentUserName, uuid: localProvisioner?.uuid ?? UUID(), allocatedUnicastRange: allocatedUnicastRange, allocatedGroupRange: allocatedGroupRange, allocatedSceneRange: allocatedSceneRange)
-        // 修改供应者地址
+        
         if localProvisioner?.uuid.uuidString == provisioner.uuid.uuidString && localProvisioner?.primaryUnicastAddress != nil {
             try? meshNetwork.changeProvisioner(provisioner)
-        }else {
+        }else { // 修改供应者地址
             let address = localProvisioner?.primaryUnicastAddress ?? meshNetwork.nextAvailableUnicastAddress(elementsCount: 1, elementsUsing: provisioner, lockInAddress: false)
             try? meshNetwork.changeProvisioner(provisioner, localAddress: address)
             self.localAddress = address
             self.save()
         }
+        
         meshNetwork.save()
     }
     
@@ -1080,6 +1081,12 @@ extension SpaceData {
                         node.requiredFunctionTypes = requiredFunctionTypeValues.compactMap({ Node.RequiredFunctionType(rawValue: $0) })
                     }
                     
+                    // 设备预配置数据
+                    if let preConfigurationDict = nodeJson["preConfiguration"].dictionaryObject,
+                       let data = try? JSONSerialization.data(withJSONObject: preConfigurationDict),
+                       let preConfiguration = try? jsonDecoder.decode(Node.PreConfiguration.self, from: data) {
+                        node.preConfiguration = preConfiguration
+                    }
                     
                     if node.deviceType == .gateway {
                         // 网关

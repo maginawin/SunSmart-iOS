@@ -30,6 +30,7 @@ class DeviceParameterEnergyReportViewCell: UITableViewCell {
     
     private var containerView: UIView!
     private var functionView: UIView!
+    private var stackView: UIStackView!
     private var calibrateBtn: UIButton!
     private var inhibitAllBtn: UIButton!
     private var activateAllBtn: UIButton!
@@ -43,6 +44,14 @@ class DeviceParameterEnergyReportViewCell: UITableViewCell {
         didSet {
             
             inhibitAllBtn.isEnabled = devices.contains(where: { $0.phaseEnergyConsumptions.count > 0 })
+            
+            if let device = devices.first {
+                if device.supportRealPowerCalibration {
+                    stackView.addArrangedSubview(calibrateBtn)
+                }
+            }
+            stackView.addArrangedSubview(inhibitAllBtn)
+            stackView.addArrangedSubview(activateAllBtn)
             
             let maxShowDevicesCount = min(devices.count, 5)
             tableView.isScrollEnabled = devices.count > 5
@@ -103,38 +112,52 @@ class DeviceParameterEnergyReportViewCell: UITableViewCell {
         functionView = UIView()
         containerView.addSubview(functionView)
         functionView.snp.makeConstraints { make in
-            make.left.right.top.equalToSuperview()
+            make.top.equalToSuperview()
+            make.left.equalTo(SCRXFrom(16))
+            make.right.equalTo(SCRXFrom(-16))
             make.height.equalTo(SCRYFrom(64))
+        }
+        
+        stackView = UIStackView()
+        stackView.axis = .horizontal
+        stackView.spacing = SCRXFrom(12)
+        stackView.distribution = .fillEqually
+//        functionView.alignment = .leading
+        functionView.addSubview(stackView)
+        stackView.snp.makeConstraints { make in
+            make.centerY.equalToSuperview()
+            make.height.equalTo(SCRYFrom(32))
+            make.left.right.equalToSuperview()
         }
         
         calibrateBtn = UIButton(title: "calibrate".localizedString, titleSize: 13, titleColor: Title_Color, target: self, action: #selector(calibrateBtnAction))
         calibrateBtn.layer.cornerRadius = SCRYFrom(10)
         calibrateBtn.backgroundColor = Background_Color
-        functionView.addSubview(calibrateBtn)
-        calibrateBtn.snp.makeConstraints { make in
-            make.left.equalTo(SCRXFrom(16))
-            make.centerY.equalToSuperview()
-            make.height.equalTo(SCRYFrom(32))
-        }
+//        functionView.addSubview(calibrateBtn)
+//        calibrateBtn.snp.makeConstraints { make in
+//            make.left.equalTo(SCRXFrom(16))
+//            make.centerY.equalToSuperview()
+//            make.height.equalTo(SCRYFrom(32))
+//        }
         
         inhibitAllBtn = UIButton(title: "inhibit_all".localizedString, titleSize: 13, titleColor: Title_Color, target: self, action: #selector(inhibitAllBtnAction))
         inhibitAllBtn.layer.cornerRadius = SCRYFrom(10)
         inhibitAllBtn.backgroundColor = Background_Color
-        functionView.addSubview(inhibitAllBtn)
-        inhibitAllBtn.snp.makeConstraints { make in
-            make.left.equalTo(calibrateBtn.snp.right).offset(SCRXFrom(12))
-            make.centerY.width.height.equalTo(calibrateBtn)
-        }
+//        functionView.addSubview(inhibitAllBtn)
+//        inhibitAllBtn.snp.makeConstraints { make in
+//            make.left.equalTo(calibrateBtn.snp.right).offset(SCRXFrom(12))
+//            make.centerY.width.height.equalTo(calibrateBtn)
+//        }
         
         activateAllBtn = UIButton(title: "activate_all".localizedString, titleSize: 13, titleColor: Title_Color, target: self, action: #selector(activateAllBtnAction))
         activateAllBtn.layer.cornerRadius = SCRYFrom(10)
         activateAllBtn.backgroundColor = Background_Color
-        functionView.addSubview(activateAllBtn)
-        activateAllBtn.snp.makeConstraints { make in
-            make.left.equalTo(inhibitAllBtn.snp.right).offset(SCRXFrom(12))
-            make.centerY.width.height.equalTo(inhibitAllBtn)
-            make.right.equalTo(SCRXFrom(-15))
-        }
+//        functionView.addSubview(activateAllBtn)
+//        activateAllBtn.snp.makeConstraints { make in
+//            make.left.equalTo(inhibitAllBtn.snp.right).offset(SCRXFrom(12))
+//            make.centerY.width.height.equalTo(inhibitAllBtn)
+//            make.right.equalTo(SCRXFrom(-15))
+//        }
         
         lineView = UIView()
         lineView.backgroundColor = Line_Color

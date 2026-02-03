@@ -17,7 +17,7 @@ internal extension Node {
     static var targetFirmwareDataKey: UInt8 = 0
     static var peripheral: UInt8 = 0
     
-    // 是否可以升级 设备版本小于当前升级版本 & 信号量 >= -85dB
+    // 是否可以升级 设备版本小于当前升级版本 & 信号量 >= -80dB
     // 是否可以选择 可以升级 & 升级状态为待升级
     // 状态展示 可升级、等待升级、升级中、升级成功、升级失败
     
@@ -383,7 +383,7 @@ class BleFirmwareUpdateViewController: UIViewController {
                 enableUpgrade = cacheVersion.compare(nodeVersion, options: .numeric) == .orderedDescending
             }
             if enableUpgrade, let rssi = node.rssi {
-                node.enableUpgrade = rssi >= -85
+                node.enableUpgrade = rssi >= -80
                 if node.selectedState == .disabled {
                     node.selectedState = .unselected
                 }
@@ -523,7 +523,7 @@ class BleFirmwareUpdateViewController: UIViewController {
                 node.selectedState = .disabled
                 
                 if enableUpgrade, let rssi = node.rssi {
-                    node.enableUpgrade = rssi >= -85
+                    node.enableUpgrade = rssi >= -80
                     if node.selectedState == .disabled {
                         node.selectedState = .unselected
                     }
@@ -1047,8 +1047,10 @@ class BleFirmwareUpdateViewController: UIViewController {
             firmwareStr = "[\(firmwareStr)]"
             let message = String(format: "firmware_update_reset_message".localizedString, firmwareStr)
             
+            let paragraphStyle = NSMutableParagraphStyle()
+            paragraphStyle.lineBreakMode = .byCharWrapping
             let messageAttStr = NSMutableAttributedString(string: message)
-            messageAttStr.addAttributes([.font: FONTS(SCRYFrom(15)), .foregroundColor: TextBlack_Color], range: (message as NSString).range(of: firmwareStr))
+            messageAttStr.addAttributes([.font: FONTS(SCRYFrom(15)), .foregroundColor: TextBlack_Color, .paragraphStyle: paragraphStyle], range: (message as NSString).range(of: firmwareStr))
             
             SRAlertView(title: "notification".localizedString, messageAttStr: messageAttStr, actions: [.cancelAction, SRAlertAction(title: "UPGRADE".localizedString, actionHandler: {[weak self] _ in
                 guard let self = self else { return }

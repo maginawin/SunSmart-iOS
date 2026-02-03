@@ -2965,6 +2965,7 @@ extension Node.PreConfiguration {
         static let nightProfileStartsBelowLux = Expression<Int?>("nightProfileStartsBelowLux")
         static let nightProfileLightData = Expression<Data?>("nightProfileLightData")
         static let resetDaylightCalibration = Expression<Bool?>("resetDaylightCalibration")
+        static let occupancyEnable = Expression<Bool>("occupancyEnable")
     }
     
     /// 初始化Node业务数据扩展表
@@ -2979,6 +2980,7 @@ extension Node.PreConfiguration {
             builder.column(ExpressionKey.nightProfileStartsBelowLux)
             builder.column(ExpressionKey.nightProfileLightData)
             builder.column(ExpressionKey.resetDaylightCalibration)
+            builder.column(ExpressionKey.occupancyEnable)
             builder.unique(ExpressionKey.meshUUID, ExpressionKey.nodeAddress)
         }))
         
@@ -2997,6 +2999,11 @@ extension Node.PreConfiguration {
             if !columns.contains(where: { $0.name == "resetDaylightCalibration" }) {
                 _ = try? SunSmartDataManager.shared.db?.run(Node.PreConfiguration.nodePreConfigurationTable.addColumn(ExpressionKey.resetDaylightCalibration))
             }
+            // 是否存在”occupancyEnable“属性
+            if !columns.contains(where: { $0.name == "occupancyEnable" }) {
+                _ = try? SunSmartDataManager.shared.db?.run(Node.PreConfiguration.nodePreConfigurationTable.addColumn(ExpressionKey.occupancyEnable, defaultValue: true))
+            }
+            
         }
         
     }
@@ -3029,6 +3036,7 @@ extension Node.PreConfiguration {
             preConfiguration.dayProfileLightData = dayLightData
         }
         preConfiguration.resetDaylightCalibration = row[ExpressionKey.resetDaylightCalibration]
+        preConfiguration.occupancyEnable = row[ExpressionKey.occupancyEnable]
         return preConfiguration
     }
     
@@ -3052,7 +3060,8 @@ extension Node.PreConfiguration {
             ExpressionKey.dayProfileLightData <- dayLightData,
             ExpressionKey.nightProfileStartsBelowLux <- self.nightProfileStartsBelowLux != nil ? Int(self.nightProfileStartsBelowLux!) : nil,
             ExpressionKey.nightProfileLightData <- nightLightData,
-            ExpressionKey.resetDaylightCalibration <- self.resetDaylightCalibration
+            ExpressionKey.resetDaylightCalibration <- self.resetDaylightCalibration,
+            ExpressionKey.occupancyEnable <- self.occupancyEnable
         ])
         do {
             try SunSmartDataManager.shared.db?.run(insertOrUpdate)

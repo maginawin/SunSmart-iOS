@@ -377,6 +377,12 @@ extension SpaceData {
                     // 设备需要支持的功能
                     nodeDict.updateValue(node.requiredFunctionTypes.map({ $0.rawValue }), forKey: "requiredFunctionTypes")
                     
+                    // 设备预配置数据
+                    if let data = try? jsonEncoder.encode(node.preConfiguration),
+                        let preConfigurationDict = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
+                        nodeDict.updateValue(preConfigurationDict, forKey: "preConfiguration")
+                    }
+                    
                     // 网关
                     if node.deviceType == .gateway {
                         // 设备真实网关数据

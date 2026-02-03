@@ -12,7 +12,14 @@ protocol GroupSensorViewDelegate: AnyObject {
     
     func sensorViewDidShow(view: GroupSensorView)
     
+    func sensorViewShouldHide(_ view: GroupSensorView) -> Bool
+    
     func sensorViewDidHide(view: GroupSensorView)
+ 
+    /// 传感器设备占用功能点击
+    func sensorView(_ view: GroupSensorView, occupancySensorTapAction sensor: Node)
+    /// 传感器识别
+    func sensorView(_ view: GroupSensorView, identifyAction sensor: Node)
 }
 
 class GroupSensorView: UIView {
@@ -47,6 +54,12 @@ class GroupSensorView: UIView {
     private var moveImageView: UIImageView!
     private var occupyStateImageView: UIImageView!
     var controlStateImageView: UIImageView!
+    
+    /// 移动感应介绍
+    private var introduceHeaderContainer: UIView?
+    private var introduceView: UIView?
+    private var introduceStackView: UIStackView?
+    
     /// list
     var tableView: UITableView!
     
@@ -70,11 +83,16 @@ class GroupSensorView: UIView {
                 occupyStateImageView.isHidden = true
                 lightImageView.isHidden = true
                 lightLuxLabel.isHidden = true
+                tableView.tableHeaderView = nil
             case .presenceDetected:
                 moveImageView.isHidden = false
                 occupyStateImageView.isHidden = false
                 lightImageView.isHidden = true
                 lightLuxLabel.isHidden = true
+                if introduceHeaderContainer == nil {
+                    setupOccpancyIntroduceUI()
+                }
+                tableView.tableHeaderView = introduceHeaderContainer
             case .ambientLight:
                 moveImageView.isHidden = true
                 occupyStateImageView.isHidden = true
@@ -83,6 +101,7 @@ class GroupSensorView: UIView {
                 lightLuxLabel.snp.updateConstraints { make in
                     make.right.equalTo(SCRXFrom(-24))
                 }
+                tableView.tableHeaderView = nil
             case .all:
                 moveImageView.isHidden = false
                 occupyStateImageView.isHidden = false
@@ -91,6 +110,10 @@ class GroupSensorView: UIView {
                 lightLuxLabel.snp.updateConstraints { make in
                     make.right.equalTo(SCRXFrom(-88))
                 }
+                if introduceHeaderContainer == nil {
+                    setupOccpancyIntroduceUI()
+                }
+                tableView.tableHeaderView = introduceHeaderContainer
             }
         }
     }
@@ -158,6 +181,11 @@ class GroupSensorView: UIView {
     
     required init?(coder: NSCoder) {
         fatalError("init(coder:) has not been implemented")
+    }
+    
+    override func layoutSubviews() {
+        super.layoutSubviews()
+        updateIntroduceHeaderLayout()
     }
     
     func show() {
@@ -250,6 +278,15 @@ class GroupSensorView: UIView {
         
     }
     
+    /// 刷新传感器UI
+    func reloadSensor(sensor: Node) {
+        if let index = sensors.firstIndex(where: { $0.primaryUnicastAddress == sensor.primaryUnicastAddress }) {
+            if let cell = tableView.cellForRow(at: IndexPath(row: index, section: 0)) as? GroupSensorViewCell {
+                cell.sensor = sensor
+            }
+        }
+    }
+    
     /// 开始感应更新倒计时，5s内没有触发则显示无人状态
     private func startUpdateOccupyTimer() {
         
@@ -289,12 +326,16 @@ class GroupSensorView: UIView {
     }
     
     @objc private func shadeViewAction() {
-        hide()
+        if delegate?.sensorViewShouldHide(self) ?? true {
+            hide()
+        }
     }
     
     @objc private func topViewAction() {
         if isShow {
-            hide()
+            if delegate?.sensorViewShouldHide(self) ?? true {
+                hide()
+            }
         }else {
             show()
         }
@@ -447,9 +488,81 @@ class GroupSensorView: UIView {
         }
         
         
+    }
+    
+    private func setupOccpancyIntroduceUI() {
+        
+        introduceHeaderContainer = UIView(frame: CGRect(x: 0, y: 0, width: SCREEN_WIDTH, height: SCRYFrom(32)))
+        introduceHeaderContainer!.backgroundColor = .clear
+        
+        introduceView = UIView(frame: CGRect(x: SCRXFrom(20), y: 0, width: SCREEN_WIDTH - SCRXFrom(40), height: SCRYFrom(32)))
+        introduceView!.backgroundColor = Background_Color
+        introduceView!.layer.cornerRadius = SCRYFrom(10)
+        introduceView!.isUserInteractionEnabled = false
+        introduceHeaderContainer!.addSubview(introduceView!)
+        
+        introduceStackView = UIStackView()
+        introduceStackView!.spacing = SCRXFrom(16)
+        if isIPad {
+            introduceStackView!.distribution = .fillEqually
+        }else {
+            introduceStackView!.distribution = .equalSpacing
+        }
+        introduceView!.addSubview(introduceStackView!)
+        introduceStackView!.snp.makeConstraints { make in
+            
+            if isIPad {
+                make.centerX.equalToSuperview()
+                make.left.greaterThanOrEqualTo(SCRXFrom(10))
+                make.right.lessThanOrEqualTo(SCRXFrom(-10))
+                make.width.lessThanOrEqualTo(SCRXFrom(600))
+            }else {
+                make.leading.equalTo(SCRXFrom(16))
+                make.trailing.equalTo(SCRXFrom(-16))
+            }
+            make.top.bottom.equalToSuperview()
+        }
+      
+        
+        let triggeredBtn = UIButton(title: "triggered".localizedString, titleSize: 12, titleWeight: .light, titleColor: Title_Color, fit: false, normalImageName: "sensor_occupy")
+        triggeredBtn.setImagePosition(position: .left, spacing: SCRXFrom(4))
+        introduceStackView!.addArrangedSubview(triggeredBtn)
+     
+        let inactiveBtn = UIButton(title: "inactive".localizedString, titleSize: 12, titleWeight: .light, titleColor: Title_Color, fit: false, normalImageName: "sensor_unoccupy")
+        inactiveBtn.setImagePosition(position: .left, spacing: SCRXFrom(4))
+        introduceStackView!.addArrangedSubview(inactiveBtn)
+        
+        let disabledBtn = UIButton(title: "disabled(tap to toggle)".localizedString, titleSize: 12, titleWeight: .light, titleColor: Title_Color, fit: false, normalImageName: "sensor_occupy_disable")
+        disabledBtn.setImagePosition(position: .left, spacing: SCRXFrom(4))
+        introduceStackView!.addArrangedSubview(disabledBtn)
         
     }
     
+}
+
+private extension GroupSensorView {
+    
+    func updateIntroduceHeaderLayout() {
+        guard let tableView = tableView,
+              let introduceHeaderContainer = self.introduceHeaderContainer,
+        let introduceView = self.introduceView else { return }
+        let headerWidth = tableView.bounds.width
+        let headerHeight = SCRYFrom(32)
+        guard headerWidth > 0 else { return }
+        
+        if introduceHeaderContainer.frame.size != CGSize(width: headerWidth, height: headerHeight) {
+            introduceHeaderContainer.frame = CGRect(x: 0, y: 0, width: headerWidth, height: headerHeight)
+            tableView.tableHeaderView = introduceHeaderContainer
+        }
+        
+        let horizontalInset = SCRXFrom(20)
+        introduceView.frame = CGRect(
+            x: horizontalInset,
+            y: 0,
+            width: headerWidth - horizontalInset * 2,
+            height: headerHeight
+        )
+    }
 }
 
 extension GroupSensorView: UITableViewDataSource, UITableViewDelegate {
@@ -463,6 +576,14 @@ extension GroupSensorView: UITableViewDataSource, UITableViewDelegate {
         let sensor = sensors[indexPath.row]
         cell.supportSensorType = supportSensorType
         cell.sensor = sensor
+        cell.deviceImageTapCallback = {[weak self] node in
+            guard let self = self else { return }
+            self.delegate?.sensorView(self, identifyAction: node)
+        }
+        cell.occupancySensorTapCallback = {[weak self] node in
+            guard let self = self else { return }
+            self.delegate?.sensorView(self, occupancySensorTapAction: node)
+        }
         return cell
     }
     
@@ -535,6 +656,11 @@ class GroupSensorViewCell: UITableViewCell {
     private var updateOccupyTimer: Timer?
     private var updateLuxTimer: Timer?
     
+    /// 设备图标点击回调
+    var deviceImageTapCallback: ((Node)->Void)?
+    /// 占用功能点击回调
+    var occupancySensorTapCallback: ((Node)->Void)?
+    
     /// 支持的传感器类型
     var supportSensorType: GroupSensorView.SupportSensorType = .all {
         didSet {
@@ -578,13 +704,22 @@ class GroupSensorViewCell: UITableViewCell {
 //                lightLuxLabel.snp.updateConstraints { make in
 //                    make.right.equalTo(SCRXFrom(-88))
 //                }
-                if sensor.occupancyState { // 存在感应状态
-                    occupyStateImageView.image = UIImage(named: "sensor_occupy")
-                    startUpdateOccupyTimer()
+                occupyStateImageView.layer.removeAnimation(forKey: "loading")
+                if sensor.preConfiguration.occupancyEnable {
+                    if sensor.occupancyState { // 存在感应状态
+                        occupyStateImageView.image = UIImage(named: "sensor_occupy")
+                        startUpdateOccupyTimer()
+                    }else {
+                        occupyStateImageView.image = UIImage(named: "sensor_unoccupy")
+                    }
                 }else {
-                    occupyStateImageView.image = UIImage(named: "sensor_unoccupy")
+                    stopUpdateOccupyTimer()
+                    occupyStateImageView.image = UIImage(named: "sensor_occupy_disable")
                 }
-                
+                if sensor.occupancySettings {
+                    occupyStateImageView.image = UIImage(named: "loading_20")
+                    occupyStateImageView.layer.addRotationAnimation(duration: 1.2, repeatCount: 999, animationKey: "loading")
+                }
             }else {
                 occupyStateImageView.isHidden = true
 //                lightLuxLabel.snp.updateConstraints { make in
@@ -616,12 +751,23 @@ class GroupSensorViewCell: UITableViewCell {
         fatalError("init(coder:) has not been implemented")
     }
     
+    @objc private func iconImageViewAction() {
+        deviceImageTapCallback?(sensor)
+    }
     
+    
+    @objc private func occupyStateImageViewAction() {
+        occupancySensorTapCallback?(sensor)
+    }
+    
+
     private func setupUI() {
         
         
         iconImageView = UIImageView()
         iconImageView.image = UIImage(named: "device_light")
+        iconImageView.isUserInteractionEnabled = true
+        iconImageView.addGestureRecognizer(UITapGestureRecognizer(target: self, action: #selector(iconImageViewAction)))
         contentView.addSubview(iconImageView)
         iconImageView.snp.makeConstraints { make in
             make.left.equalTo(SCRXFrom(20))
@@ -650,6 +796,8 @@ class GroupSensorViewCell: UITableViewCell {
         }
         
         occupyStateImageView = UIImageView(image: UIImage(named: "sensor_unoccupy"))
+        occupyStateImageView.isUserInteractionEnabled = true
+        occupyStateImageView.addGestureRecognizer(UITapGestureRecognizer(target: self, action: #selector(occupyStateImageViewAction)))
         contentView.addSubview(occupyStateImageView)
         occupyStateImageView.snp.makeConstraints { make in
             make.right.equalTo(SCRXFrom(-24))

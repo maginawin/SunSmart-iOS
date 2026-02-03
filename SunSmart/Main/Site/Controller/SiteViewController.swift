@@ -1514,6 +1514,11 @@ self.updateAddressData()
         guard self.view.window != nil else {
             return
         }
+        // 判断如果有编辑权限的成员进入space前是否拉过space数据，未拉取服务器space数据不让进入space防止数据覆盖
+        if space.permission == .owner || space.permission == .editor, space.uploadCloud, space.lastUploadCloudTimestamp == nil {
+            XWHUDManager.showTipHUD("space_unsynchronized_cloud_message".localizedString, isLineFeed: true, afterDelay: 2)
+            return
+        }
         
         MenuPopView.hide()
         

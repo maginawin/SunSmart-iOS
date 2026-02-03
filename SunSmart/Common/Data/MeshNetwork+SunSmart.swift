@@ -287,12 +287,13 @@ extension SiteData {
             
             let meshNetwork = MeshNetwork.load(meshUUID: self.meshUUID, allData: false)
             
-            if self.spaces.count - spaces.count == 0 { // 没有space了
+            if self.spaces.count - spaces.count <= 0 { // 没有space了
                 /// 废弃的设备地址
                 exclusionAddresses = MeshAPI.getExclusionAddresses(meshUUID: self.meshUUID).map({ (Int($0.ivIndex), $0.addresses.map({ Int($0) })) })
                 // 将手机地址回收
                 if let meshNetwork = meshNetwork,
-                   let localAddress = meshNetwork.localProvisioner?.primaryUnicastAddress {
+                   let localProvisioner = meshNetwork.localProvisioner,
+                   let localAddress = localProvisioner.primaryUnicastAddress {
                     let seq = meshNetwork.getCurrentSequenceNumber(localAddress: localAddress)
                     // 判断seq大于0说明手机地址已和设备交互，需要回收
                     if seq ?? 0 > 0 {
@@ -307,6 +308,11 @@ extension SiteData {
                         // 回收设备地址
                         availableDeviceAddresses.append(Int(localAddress))
                     }
+                    // 删除本地手机节点
+                    if let localNode = localProvisioner.node {
+                        meshNetwork.remove(node: localNode)
+                    }
+                    self.localAddress = nil
                 }
                 
                 // 全部回收剩余地址和剩余废弃地址
@@ -1728,7 +1734,20 @@ extension Node {
             return false
         }
         switch pid {
-        case 0x2801, 0x2802:
+        case 0x2302, 0x2303, 0x2801, 0x2802:
+            return true
+        default:
+            return false
+        }
+    }
+    
+    /// 是否支持真实功率校准
+    var supportRealPowerCalibration: Bool {
+        guard self.sunricherVendorModel != nil, let pid = self.productIdentifier else {
+            return false
+        }
+        switch pid {
+        case 0x2302, 0x2303:
             return true
         default:
             return false
@@ -2168,6 +2187,11 @@ extension Node {
                                 group.info.save()
                                 group.updateGroupSyncState()
                             }
+                            // 退出组时默认启用占用功能
+                            if !self.preConfiguration.occupancyEnable, let meshUUID = self.network?.uuid.uuidString {
+                                self.preConfiguration.occupancyEnable = true
+                                self.preConfiguration.save(meshUUID: meshUUID, nodeAddress: self.primaryUnicastAddress)
+                            }
                             self.save()
                         }
                     }else { // 删除失败
@@ -2214,11 +2238,7 @@ extension Node {
                 //            if let uuid = meshUUID {
                 //                SceneExecuteData.save(meshUUID: uuid, networkKey: networkKey, address: primaryUnicastAddress, sceneId: Int(sceneId), sceneData: executeData)
                 //            }
-            }else {
-                let property = self.lightLCProperty
-                print("scene store:\(sceneId) on:\(property.lightnessOn) onTime:\(property.timeRunOn) prolong:\(property.lightnessProlong) prolongTime:\(property.timeProlong) standy:\(property.lightnessStandby) standyTime:\(property.timeFadeStandbyAuto)")
             }
-    
             break
         case is SceneDelete:
             let sceneId = (message as! SceneDelete).scene

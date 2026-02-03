@@ -131,6 +131,8 @@ enum DeviceOperationType {
                 return node.collectionSchedulerEntrys[index] != nil && node.collectionSchedulerEntrys[index]! == entry
             case .proximityLightingEnabled(let enabled):
                 return node.proximityLightingEnabled == enabled
+            case .proximityLightingRelayNumber(let relayNumber):
+                return node.proximityLightingRelayCount == relayNumber
             case .proximityLightingNeighbor(let relayNumber, let neighborAddresses):
                 return node.proximityLightingRelayCount == relayNumber && node.proximityLightingNeighborAddresses.sorted() == neighborAddresses.sorted()
             case .gatewaySIMAPN(let apn):
@@ -218,7 +220,7 @@ enum DeviceOperationType {
                 if let model = node.collectionSchedulerSetupModel {
                     messageHandles.append(MeshMessageHandle(message: SchedulerActionSet(index: UInt8(index), entry: entry), model: model))
                 }
-            case .proximityLightingEnabled:
+            case .proximityLightingEnabled, .proximityLightingRelayNumber:
                 break
             case .proximityLightingNeighbor:
                 break
@@ -282,6 +284,10 @@ enum DeviceOperationType {
             case .proximityLightingEnabled(let enabled):
                 if let vendorModel = node.sunricherVendorModel {
                     messageHandles.append(MeshMessageHandle(message: SunricherVendorSet(function: .proximityLightingEnabled(enabled)), model: vendorModel))
+                }
+            case .proximityLightingRelayNumber(let relayNumber):
+                if let vendorModel = node.sunricherVendorModel {
+                    messageHandles.append(MeshMessageHandle(message: SunricherVendorSet(function: .proximityLightingRelaySet(relay: relayNumber)), model: vendorModel))
                 }
             case .gatewaySIMAPN(let apn):
                 messageHandles.append(contentsOf: NodeSyncData.syncGatewaySIMAPN(apn: apn).getMessageHandles(node: node))
@@ -349,6 +355,8 @@ enum ActionType {
     case proximityLightingNeighbor(relayNumber: UInt8, neighborAddresses: [Address])
     /// 启用/禁用邻近照明
     case proximityLightingEnabled(enabled: Bool)
+    /// 设置邻近照明邻居数量
+    case proximityLightingRelayNumber(relayNumber: UInt8)
     /// 网关关联项目id
     case gatewayAssociationProjectId(projectId: String)
     /// 同步网关子网appkey indexs
@@ -398,7 +406,7 @@ extension NodeSyncData {
             return 4
         case .deleteCollectionSchedules:
             return 4
-        case .proximityLightingEnabled, .proximityLightingNeighbor:
+        case .proximityLightingEnabled, .proximityLightingNeighbor, .proximityLightingRelayNumber:
             return 2
         case .addNetworkKey, .addApplicationkey, .removeNetworkKey, .removeApplicationkey:
             return 1

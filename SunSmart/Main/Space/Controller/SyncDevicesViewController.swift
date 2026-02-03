@@ -557,6 +557,14 @@ class SyncDevicesViewController: UIViewController {
                             
                             step.parentDeviceModel = syncDeviceModel
                             syncDeviceModel.steps.append(step)
+                        case .proximityLightingRelayNumber(let relayNumber):
+                            let taskModel = SyncDeviceStepTaskModel(name: "path_sequence".localizedString, operationType: .configuration(node: node, type: .proximityLightingRelayNumber(relayNumber: relayNumber)))
+                            
+                            let step = SyncDeviceStepModel(type: "path_sequence".localizedString, state: .none, tasks: [taskModel])
+                            taskModel.parentStepModel = step
+                            
+                            step.parentDeviceModel = syncDeviceModel
+                            syncDeviceModel.steps.append(step)
                             
                         case .proximityLightingEnabled(let enabled):
                             let name = enabled ? "proximity_lighting_enabled".localizedString : "proximity_lighting_disable".localizedString

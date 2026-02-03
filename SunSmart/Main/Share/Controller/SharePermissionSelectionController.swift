@@ -134,10 +134,11 @@ class SharePermissionSelectionController: UIViewController {
             switch result {
             case .success(_):
                 Task {
-                    let cacheSpace = SpaceData.load(siteId: space.siteId, spaceId: space.id).first
-                    if cacheSpace != nil, let site = SiteData.load(siteId: space.siteId) {
+                    var importSpace: SpaceData = space
+                    if let cacheSpace = SpaceData.load(siteId: space.siteId, spaceId: space.id).first, let site = SiteData.load(siteId: space.siteId) {
+                        importSpace = cacheSpace
                         // 回收之前清空权限时的地址
-                        var recycleAddressData = await site.getRecycleAddressData(unbindSpaces: [cacheSpace!])
+                        var recycleAddressData = await site.getRecycleAddressData(unbindSpaces: [cacheSpace])
                         recycleAddressData.provisionerData = nil
                         recycleAddressData.exclusionAddresses = nil
                         if !recycleAddressData.isEmpty {
@@ -155,15 +156,15 @@ class SharePermissionSelectionController: UIViewController {
                         site.save()
                     }
                     
-                    let localSpace = cacheSpace ?? space
-                    localSpace.authorizationPassword = password
-                    localSpace.permission = permission
-                    localSpace.requiresPasswordVerification = false
-                    localSpace.applyDeviceAddressCount = nil
-                    localSpace.applyGroupAddressCount = nil
-                    localSpace.releaseAddress = false
-                    localSpace.state = .normal
-                    localSpace.save()
+//                    let localSpace = importSpace
+                    importSpace.authorizationPassword = password
+                    importSpace.permission = permission
+                    importSpace.requiresPasswordVerification = false
+                    importSpace.applyDeviceAddressCount = nil
+                    importSpace.applyGroupAddressCount = nil
+                    importSpace.releaseAddress = false
+                    importSpace.state = .normal
+                    importSpace.save()
                     
                     XWHUDManager.showSuccessTipHUD("successfully".localizedString + "!")
                     DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {[weak self] in

@@ -427,6 +427,7 @@ typedef NS_ENUM(NSUInteger, XWHUDManagerType) {
  */
 + (void)showGifImagesHUDInView:(NSString *)gifFileName message:(NSString *)message timer:(NSTimeInterval)aTimer;
 
++ (void)showGifImagesHUDInView:(UIView *)view gifFileName:(NSString *)gifFileName message:(NSString *)message timer:(NSTimeInterval)aTimer margin:(CGFloat)margin;
 /**
  在 View 展示自定义GIF图片 - 传入Gif 文件名
  

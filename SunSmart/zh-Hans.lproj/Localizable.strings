@@ -843,7 +843,7 @@
 "none" = "无";
 "minutes" = "分";
 "sec" = "秒";
-"signal_below_message" = "信号低于 -85dB 的设备无法选择。";
+"signal_below_message" = "信号低于 -80dB 的设备无法选择。";
 "no_data" = "无数据！";
 
 "device_version_state" = "设备版本状态";
@@ -1534,24 +1534,24 @@
 "modify" = "修改";
 "threshold" = "阈值";
 "restore_to_group_start_lux" = "恢复为分组起始照度";
-
 "light_sensor_nonsupport_note" = "该设备不支持光感，将按照最后一次修改的 Profile 行为执行";
 "device_settings_failed_retry_note" = "部分设置失败，点击重试";
 "device_resync_note" = "部分设备未同步";
-
 "night_day_mode_description" = "白天 / 晚上模式说明";
-
 "night_mode_description_note" = "晚上模式适用于环境光较低的情况。当环境照度低于配置的“晚上开始照度（lux）”阈值时，系统会自动切换至晚上模式。\n在该模式下，照明行为遵循已定义的设备触发曲线，包括待机亮度、有人亮度及渐灭时间。\n该模式通常用于晚上或低照度环境，在保障安全的同时优化能效";
-
 "day_mode_description_note" = "当环境照度高于“白天开始照度（lux）”阈值时，系统将激活白天模式。\n在该模式下，灯具通常保持关闭或低亮度，仅在检测到人员存在时提升亮度，作为补充照明。\n该模式适用于自然采光充足的区域，如靠窗空间或白天工作环境";
-
 "important_notes" = "重要说明";
 "important_notes_note" = "1. 晚上与白天阈值之间存在回滞区间，用于避免频繁切换。\n2. 建议晚上阈值低于白天阈值，以确保系统稳定运行。\n3. 阈值应根据安装高度、传感器位置及环境日光条件进行调整";
-
 "light_sensor_template_note" = "用于为同一分组内的不同设备分配不同的照度阈值。\n通过模板可定制白天 / 晚上阈值，实现更精确的光感行为";
-
 "design_intent" = "设计意图";
 "light_sensor_template_design_intent_note" = "基于模板的配置方式可简化调试流程，减少重复设置，同时兼顾系统一致性与灵活性";
-
 "typical_use_cases" = "典型应用场景";
 "light_sensor_template_typical_use_cases_note" = "1. 靠窗灯具与室内灯具。\n2. 不同安装高度的传感器。\n3. 受遮挡或额外自然采光影响的区域";
+
+"configuration_successful" = "Configuration Successful";
+"configuration_failed" = "配置失败";
+"device_offline" = "设备离线";
+"triggered" = "触发";
+"inactive" = "未触发";
+"disabled(tap to toggle)" = "禁用（点击切换）";
+"space_unsynchronized_cloud_message" = "数据无法从服务器中获取，请检查网络。";

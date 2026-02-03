@@ -130,10 +130,12 @@ class DevicesViewController: WMPageController {
         
         // 未连接上mesh网络
         if !MeshNetworkManager.instance.realNodes.isEmpty && !MeshLibManager.manager.isMeshNetworkConnected && (MeshLibManager.manager.bluetoothState == .poweredOn || MeshLibManager.manager.bluetoothState == .unknown) {
+            
+//            guard self.view.window != nil else { return }
             //            XWHUDManager.showCustomHUD(withMessage: nil, isWindow: false, afterDelay: 10)
             // loading
             let margin: CGFloat = isIPad ? 100 : 36
-            XWHUDManager.showGifImagesHUD(inView: "XWHUDManager_loading", message: getNextGuidanceMessage() ?? "", timer: 10, margin: margin)
+            XWHUDManager.showGifImagesHUD(in: self.wm_pageController?.view ?? self.view, gifFileName: "XWHUDManager_loading", message: getNextGuidanceMessage() ?? "", timer: 10, margin: margin)
             self.perform(#selector(self.guidanceTimeout), with: nil, afterDelay: 10)
             if let hud = XWHUDManager.currentHUD() {
                 hud.bezelView.layer.cornerRadius = 20
@@ -187,6 +189,7 @@ class DevicesViewController: WMPageController {
     override func viewDidDisappear(_ animated: Bool) {
         super.viewDidDisappear(animated)
         
+//        XWHUDManager.currentHUD()?.hide(animated: false)
         stopGuidanceTimer()
     }
     
