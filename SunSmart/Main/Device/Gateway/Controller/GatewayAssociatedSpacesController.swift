@@ -163,9 +163,9 @@ class GatewayAssociatedSpacesController: UIViewController {
         let newSpaces = selectSpaces
         let oldSpaces = initAssociateSpaces
         // 新关联的spaces
-        let addSpaces = newSpaces.filter({ space in !oldSpaces.contains(where: { $0.spaceId == $0.spaceId }) && (space.permission == .owner || space.permission == .editor) })
+        let addSpaces = newSpaces.filter({ space in !oldSpaces.contains(where: { $0.spaceId == space.spaceId }) && (space.permission == .owner || space.permission == .editor) })
         // 解除关联的spaces
-        let unbindSpaces = oldSpaces.filter({ space in !newSpaces.contains(where: { $0.spaceId == $0.spaceId }) && (space.permission == .owner || space.permission == .editor) })
+        let unbindSpaces = oldSpaces.filter({ space in !newSpaces.contains(where: { $0.spaceId == space.spaceId }) && (space.permission == .owner || space.permission == .editor) })
         
         if addSpaces.count > 0 || unbindSpaces.count > 0 {
             spacesAssociatedHandle(associatedSpaces: addSpaces, disassociatedSpaces: unbindSpaces)
@@ -198,9 +198,9 @@ class GatewayAssociatedSpacesController: UIViewController {
             XWHUDManager.hide()
             // 绑定成功的spaces
             if let addAssociatedSpaces = associatedResult?.successSpaces {
-                addAssociatedSpaces.forEach {
-                    if !self.gateway.associatedSpaces.contains(where: { $0.spaceId == $0.spaceId }) {
-                        self.gateway.associatedSpaces.append($0)
+                addAssociatedSpaces.forEach { space in
+                    if !self.gateway.associatedSpaces.contains(where: { $0.spaceId == space.spaceId }) {
+                        self.gateway.associatedSpaces.append(space)
                     }
                 }
             }

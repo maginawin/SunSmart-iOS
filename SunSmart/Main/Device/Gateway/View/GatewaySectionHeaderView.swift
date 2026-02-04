@@ -31,7 +31,7 @@ class GatewaySectionHeaderView: UITableViewHeaderFooterView {
     private func setupUI() {
         
         titleLabel = UILabel(text: "", textColor: ImportantText_Color, fontSize: 14)
-        addSubview(titleLabel)
+        contentView.addSubview(titleLabel)
         titleLabel.snp.makeConstraints { make in
             make.left.equalTo(SCRXFrom(16))
             make.top.equalTo(SCRYFrom(16))
@@ -40,7 +40,7 @@ class GatewaySectionHeaderView: UITableViewHeaderFooterView {
         
         messageLabel = UILabel(text: "", textColor: Red_Color, fontSize: 12, fontWeight: .light)
         messageLabel.numberOfLines = 0
-        addSubview(messageLabel)
+        contentView.addSubview(messageLabel)
         messageLabel.snp.makeConstraints { make in
             make.top.equalTo(titleLabel.snp.bottom).offset(SCRYFrom(8))
             make.left.equalTo(titleLabel)
@@ -48,7 +48,7 @@ class GatewaySectionHeaderView: UITableViewHeaderFooterView {
         }
         
         operationBtn = UIButton(titleSize: 14, titleWeight: .light, titleColor: Bar_Color, target: self, action: #selector(operationBtnAction))
-        addSubview(operationBtn)
+        contentView.addSubview(operationBtn)
         operationBtn.snp.makeConstraints { make in
             make.centerY.equalTo(titleLabel)
             make.right.equalTo(SCRXFrom(-12))

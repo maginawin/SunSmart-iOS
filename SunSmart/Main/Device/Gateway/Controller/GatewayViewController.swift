@@ -905,6 +905,23 @@ extension GatewayViewController: UITableViewDataSource, UITableViewDelegate {
         }
         return headerView
     }
+
+    func tableView(_ tableView: UITableView, heightForHeaderInSection section: Int) -> CGFloat {
+        return UITableView.automaticDimension
+    }
+    
+    func tableView(_ tableView: UITableView, estimatedHeightForHeaderInSection section: Int) -> CGFloat {
+        let sectionType = sections[section]
+        switch sectionType {
+        case .serverInformation:
+            if setGatewayModel.mqttServerInfo == nil {
+                return SCRYFrom(80)
+            }
+            return SCRYFrom(44)
+        default:
+            return SCRYFrom(44)
+        }
+    }
     
     func tableView(_ tableView: UITableView, viewForFooterInSection section: Int) -> UIView? {
         return UIView()

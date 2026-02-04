@@ -141,6 +141,8 @@ class SpaceData: Copyable {
     
     /// 是否显示设备前缀（默认true）  true：【group name - device name】 false：device name
     var displayDeviceNamePrefix: Bool = true
+    /// 网关是否在线（space绑定网关时）
+    var gatewayOnline: Bool = false
     
     /// space操作权限list
     var spaceOperates: [SpaceOperate] {
