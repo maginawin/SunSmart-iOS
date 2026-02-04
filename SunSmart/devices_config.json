@@ -711,7 +711,7 @@
         "productId" : "2031",
         "categoryName" : "PIR Sensor Lighting",
         "elementCount" : 3,
-        "iconCategory" : "Lighting",
+        "iconCategory" : "Standalone Sensor",
         "deviceCategory" : "Lighting",
         "modelName" : "SR-BL9030A_PIR_V_54L15",
         "sensitivityRangeMin" : 26214,

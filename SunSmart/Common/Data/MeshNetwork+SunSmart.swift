@@ -1747,7 +1747,7 @@ extension Node {
             return false
         }
         switch pid {
-        case 0x2302, 0x2303:
+        case 0x2801, 0x2802:
             return true
         default:
             return false
