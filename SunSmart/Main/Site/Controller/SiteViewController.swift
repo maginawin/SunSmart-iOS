@@ -2006,7 +2006,7 @@ extension SiteViewController: SiteGatewayStatusViewDelegate {
         guard let gateway = selectGateway else {
             return
         }
-        if site.permission != .owner, allSpaces
+//        if site.permission != .owner, allSpaces
         
         guard let gatewayVc = GatewayViewController(site: site, gateway: gateway) else {
             XWHUDManager.showErrorTipHUD("failed".localizedString + " !")
