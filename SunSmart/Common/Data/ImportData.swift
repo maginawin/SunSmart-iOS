@@ -834,6 +834,23 @@ extension SpaceData {
                 }
             }
             
+            // 网关数据
+            if let gatewayId = json["gatewayId"].string, !gatewayId.isEmpty {
+                self.relevanceGatewayId = gatewayId
+                if json["gatewayOnline"].bool ?? false {
+                    self.gatewayStatus = .online
+                    self.gatewayLastOnline = nil
+                }else {
+                    self.gatewayStatus = .offline
+                    self.gatewayLastOnline = json["gatewayLastupdate"].int64
+                }
+            }else {
+                self.relevanceGatewayId = nil
+                self.gatewayStatus = .notBound
+            }
+            
+            
+            
             // 子网key丢失
             if let network = MeshNetwork.load(meshUUID: meshUUID, subnetworkId: self.meshNetworkId, allData: false), !network.networkKeys.contains(where: { $0.networkId.hex == self.meshNetworkId }) {
                 // 修复子网key数据

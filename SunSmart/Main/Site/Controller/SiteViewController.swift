@@ -635,13 +635,32 @@ self.updateAddressData()
     /// 加载网关list及网络请求
     private func loadGatewaysData() async -> [GatewayModel] {
         
-        let result = await NetworkRequest.shared.request(.gatewayList(siteId: site.id))
+//        let result = await NetworkRequest.shared.request(.gatewayList(siteId: site.id))
         
         let gatewayModels = GatewayModel.load(siteId: site.id)
-        // 合并服务器数据
-        if let response = try? result.get() {
-            
+        gatewayModels.forEach { gateway in
+            if let space = self.allSpaces.first(where: { $0.relevanceGatewayId == gateway.mac }), space.gatewayStatus != .notBound {
+                if space.gatewayStatus == .online {
+                    gateway.connectStatus = .online
+                }else {
+                    if gateway.activate {
+                        gateway.connectStatus = .offline
+                    }else {
+                        gateway.connectStatus = .inactive
+                    }
+                    if let lastOnline = space.gatewayLastOnline {
+                        gateway.lastOnlineTime = String.dateConvert(timestamp: "\(lastOnline)", dateFormat: "yyyy-MM-dd HH:mm")
+                    }
+                }
+            }else {
+                if gateway.activate {
+                    gateway.connectStatus = .offline
+                }else {
+                    gateway.connectStatus = .inactive
+                }
+            }
         }
+        
         return gatewayModels
     }
     
@@ -2367,31 +2386,6 @@ extension SiteViewController: UIDocumentPickerDelegate {
             
         } catch { // 失败提示
             XWHUDManager.showErrorTipHUD("failed".localizedString)
-        }
-    }
-    
-}
-
-extension SpaceData {
-    
-    /// space网关状态
-    enum GatewayStatus {
-        /// 网关在线
-    case online
-        /// 网关离线
-    case offline
-        /// 未绑定
-    case notBound
-    }
-    
-    static private var gatewayStatusKey = 10
-    
-    /// 网关状态
-    var gatewayStatus: GatewayStatus {
-        get {
-            objc_getAssociatedObject(self, &SpaceData.gatewayStatusKey) as? GatewayStatus ?? .notBound
-        }set {
-            objc_setAssociatedObject(self, &SpaceData.gatewayStatusKey, newValue, .OBJC_ASSOCIATION_RETAIN)
         }
     }
     

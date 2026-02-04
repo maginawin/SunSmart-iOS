@@ -141,8 +141,14 @@ class SpaceData: Copyable {
     
     /// 是否显示设备前缀（默认true）  true：【group name - device name】 false：device name
     var displayDeviceNamePrefix: Bool = true
-    /// 网关是否在线（space绑定网关时）
-    var gatewayOnline: Bool = false
+    
+    /// 关联的网关id
+    var relevanceGatewayId: String?
+    /// 网关状态
+    var gatewayStatus: GatewayStatus = .notBound
+    /// 网关最后在线时间戳
+    var gatewayLastOnline: Int64?
+
     
     /// space操作权限list
     var spaceOperates: [SpaceOperate] {
@@ -278,5 +284,15 @@ extension SpaceData {
         case normal = 1
         /// 待删除
         case waitDeleted = 2
+    }
+    
+    /// space网关状态
+    enum GatewayStatus {
+        /// 网关在线
+        case online
+        /// 网关离线
+        case offline
+        /// 未绑定
+        case notBound
     }
 }

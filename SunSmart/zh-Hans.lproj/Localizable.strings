@@ -1442,3 +1442,4 @@
 "network_problem_note" = "Note:It might be a network or server problem.";
 "associate_spaces_failed_message" = "Failed to associate spaces: [%@]";
 "disassociate_spaces_failed_message" = "Failed to disassociate spaces: [%@]";
+"associate_space_unauthorized_message" = "Authorization is required before you can associate the space.";

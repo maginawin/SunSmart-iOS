@@ -368,28 +368,21 @@ class GatewayViewController: UIViewController, DeviceProtocol {
         
         SRAlertView(title: "notification".localizedString, message: "gateway_delete_message".localizedString, actions: [.cancelAction, SRAlertAction(title: "alert_item_continue".localizedString, style: .destructive, actionHandler: {[weak self] _ in
             guard let self = self else { return }
-            
-            if gateway.associatedSpaces.count > 0 {
-//                XWHUDManager.showCustomHUD(withMessage: "deleting".localizedString, isWindow: true)
-//                NetworkRequest.shared.request(.gatewayUnbindSpace(spaceId: space.id, gatewayId: gateway.mac)) {[weak self] result in
-//                    XWHUDManager.hide()
-//                    guard let self = self else { return }
-//                    switch result {
-//                    case .success(_):
-//                        if let index = gatewayModel.associatedSpaces.firstIndex(where: { $0.id == self.space.id }) {
-//                            gatewayModel.associatedSpaces.remove(at: index)
-//                            gatewayModel.save()
-//                        }
-//                        if let index = self.setGatewayModel?.associatedSpaces.firstIndex(where: { $0.id == self.space.id }) {
-//                            self.setGatewayModel?.associatedSpaces.remove(at: index)
-//                        }
-//                        self.tableView.reloadData()
-//                        
-//                        self.resetNode(authorize: true)
-//                    case .failure:
-//                        XWHUDManager.showErrorTipHUD("delete_no_connect_server_message".localizedString)
-//                    }
-//                }
+            // 是否已注册网关
+            if gateway.mqttServerInfo != nil {
+                XWHUDManager.showCustomHUD(withMessage: "deleting".localizedString, isWindow: true)
+                NetworkRequest.shared.request(.gatewayDelete(gatewayId: gateway.mac)) {[weak self] result in
+                    XWHUDManager.hide()
+                    guard let self = self else { return }
+                    switch result {
+                    case .success(_):
+                        self.gateway.mqttServerInfo = nil
+                        self.setGatewayModel.mqttServerInfo = nil
+                        self.resetNode(authorize: true)
+                    case .failure(let error):
+                        XWHUDManager.showErrorTipHUD(error.localizedDescription)
+                    }
+                }
             }else {
                 self.resetNode()
             }
@@ -410,12 +403,16 @@ class GatewayViewController: UIViewController, DeviceProtocol {
 //                self.space.luminairesCount = MeshNetworkManager.instance.lightNodes.count
 //                self.space.save()
                 DispatchQueue.main.asyncAfter(wallDeadline: .now() + 1) {
-                    NotificationCenter.default.post(name: .init(devicesUpdateNotificationName), object: nil)
+//                    NotificationCenter.default.post(name: .init(devicesUpdateNotificationName), object: nil)
                     // 通知space数据修改
-                    NotificationCenter.default.post(name: .init(spaceDataChangedNotificaitonName), object: SpaceChangeDataType.network(type: .address))
+//                    NotificationCenter.default.post(name: .init(spaceDataChangedNotificaitonName), object: SpaceChangeDataType.network(type: .address))
+                    
+                    NotificationCenter.default.post(name: .init(SiteStateChangeNotificationName), object: nil)
                     self.close()
                     self.gateway.delete()
                 }
+            }else {
+                self.tableView.reloadData()
             }
         }
 
@@ -496,10 +493,16 @@ class GatewayViewController: UIViewController, DeviceProtocol {
     }
     
     private func associatedSpaces() {
+        
+        guard gateway.mqttServerInfo != nil else {
+            XWHUDManager.showTipHUD("associate_space_unauthorized_message".localizedString, isLineFeed: true, afterDelay: 1.5)
+            return
+        }
+        
         guard let meshNetwork = MeshNetworkManager.instance.meshNetwork else {
             return
         }
-        let gatewaySpaceData: [GatewaySpaceData] = site.spaces.filter({ ($0.permission == .owner || $0.permission == .editor) && $0.state == .normal }).compactMap({ space in
+        let gatewaySpaceData: [GatewaySpaceData] = site.spaces.filter({ ($0.permission == .owner || $0.permission == .editor) && $0.state == .normal && ($0.relevanceGatewayId == nil || $0.relevanceGatewayId == gateway.mac) }).compactMap({ space in
             if let appkey = meshNetwork.applicationKeys.first(where: { $0.boundNetworkKey.networkId.hex == space.meshNetworkId }) {
                 return GatewaySpaceData(spaceId: space.id, spaceName: space.name, deviceCount: space.deviceCount, appKeyIndex: appkey.index, permission: GatewaySpaceData.GatewaySpacePermission(rawValue: space.permission.rawValue) ?? .editor)
             }
@@ -513,6 +516,7 @@ class GatewayViewController: UIViewController, DeviceProtocol {
             self.reloadSection(.associatedSpaces)
             self.reloadSection(.name)
             self.updateSaveBtnState()
+            NotificationCenter.default.post(name: .init(SiteStateChangeNotificationName), object: nil)
         }
         navigationController?.pushViewController(vc, animated: true)
         

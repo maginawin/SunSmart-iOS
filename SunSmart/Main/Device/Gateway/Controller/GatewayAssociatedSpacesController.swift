@@ -79,13 +79,17 @@ class GatewayAssociatedSpacesController: UIViewController {
                         self.spaces.append(space)
                     }
                 }
-                self.spaces.sort(by: { $0.appKeyIndex < $1.appKeyIndex })
-                self.selectSpaces = bindSpaces
-                self.initAssociateSpaces = bindSpaces
                 
-                self.setupUI()
-                self.updateUI()
-
+                if self.spaces.count > 0 {
+                    self.spaces.sort(by: { $0.appKeyIndex < $1.appKeyIndex })
+                    self.selectSpaces = bindSpaces
+                    self.initAssociateSpaces = bindSpaces
+                    
+                    self.setupUI()
+                    self.updateUI()
+                }else {
+                    self.view.showEmptyDataView(title: "no_data".localizedString)
+                }
                 
             case .failure(let error):
                 if error == .noNetwork {
@@ -170,7 +174,7 @@ class GatewayAssociatedSpacesController: UIViewController {
         if addSpaces.count > 0 || unbindSpaces.count > 0 {
             spacesAssociatedHandle(associatedSpaces: addSpaces, disassociatedSpaces: unbindSpaces)
         }else {
-            associatedSpacesSelectCallback?(selectSpaces)
+//            associatedSpacesSelectCallback?(selectSpaces)
             navigationController?.popViewController(animated: true)
         }
     }
