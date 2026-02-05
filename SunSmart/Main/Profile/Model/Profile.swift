@@ -728,7 +728,7 @@ class Profile: Copyable {
     /// 调节速率 0~100
 //    var adjustSpeed: Int = 50
     /// 灵敏度（移动检测）
-    var sensitivity: UInt8 = 85
+    var sensitivity: UInt8 = 95
     /// 邻近照明数量
     var proximityLightingNumber: UInt8 = 2
     /// 晚上时配置数据
@@ -745,7 +745,7 @@ class Profile: Copyable {
         return LightData(profileType: type, highEndTrim: lightControlData.highEndTrim, lowEndTrim: lightControlData.lowEndTrim, occupancyLevel: lightControlData.occupancyLevel, vacantLevel: lightControlData.vacantLevel, standbyLevel: lightControlData.standbyLevel, taskLevel: lightControlData.taskLevel, autoMinLevel: lightControlData.autoMinLevel, t1: lightControlData.t1, t2: lightControlData.t2, t3: lightControlData.t3, t4: lightControlData.t4, t5: lightControlData.t5)
     }
     
-    init(name: String = "", id: String = UUID().uuidString, type: ProfileType = .occupancy_daylight, lightControlData: LightControlData, powerUpState: PowerUpState, powerUpCct: UInt16 = 4500, manualOverrideTimeout: UInt32, adjustSpeed: Int = 50, sensitivity: UInt8 = 85, proximityLightingNumber: UInt8 = 2, nightData: TriggerConditionData? = nil, dayData: TriggerConditionData? = nil, scenes: [LightControlScene] = []) {
+    init(name: String = "", id: String = UUID().uuidString, type: ProfileType = .occupancy_daylight, lightControlData: LightControlData, powerUpState: PowerUpState, powerUpCct: UInt16 = 4500, manualOverrideTimeout: UInt32, adjustSpeed: Int = 50, sensitivity: UInt8 = 95, proximityLightingNumber: UInt8 = 2, nightData: TriggerConditionData? = nil, dayData: TriggerConditionData? = nil, scenes: [LightControlScene] = []) {
         self.name = name
         self.id = id
         self.type = type

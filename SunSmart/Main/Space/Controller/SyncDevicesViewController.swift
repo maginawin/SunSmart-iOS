@@ -848,6 +848,16 @@ class SyncDevicesViewController: UIViewController {
                 }else {
                     configturationSteps.append(step)
                 }
+            case .proximityLightingRelayNumber(let relayNumber):
+                let taskModel = SyncDeviceStepTaskModel(name: "path_sequence".localizedString, operationType: .configuration(node: node, type: .proximityLightingRelayNumber(relayNumber: relayNumber)))
+                
+                let step = SyncDeviceStepModel(type: "path_sequence".localizedString, state: .none, tasks: [taskModel])
+                taskModel.parentStepModel = step
+                if node.groupState == .exitFailure || removeGroupStep != nil {
+                    deleteSteps.append(step)
+                }else {
+                    configturationSteps.append(step)
+                }
                 
             case .proximityLightingNeighbor(let relayNumber, let neighborAddresses):
                 
