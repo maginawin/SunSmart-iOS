@@ -713,7 +713,7 @@
         "elementCount" : 3,
         "iconCategory" : "Standalone Sensor",
         "deviceCategory" : "Lighting",
-        "modelName" : "SR-BL9030A_PIR_V_54L15",
+        "modelName" : "SR-BL9030A-PIR-V",
         "sensitivityRangeMin" : 26214,
         "sensitivityRangeMax" : 58981
     },
