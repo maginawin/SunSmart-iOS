@@ -83,9 +83,9 @@ enum NodeSyncData {
     /// 同步网关关联的子网appkey index list
     case syncGatewaySubnetAppkeyIndexs(appkeyIndexs: [KeyIndex])
     /// 网关关联spaces activate: 是否激活
-    case gatewayAssociatedSpaces(datas: [(networkKey: NetworkKey, applicationKey: ApplicationKey)], activate: Bool)
+    case gatewayAssociatedSpaces(datas: [(networkKey: NetworkKey, applicationKey: ApplicationKey)])
     /// 网关解除关联spaces  activate: 是否激活
-    case gatewayUnbindAssociatedSpaces(datas: [(networkKey: NetworkKey, applicationKey: ApplicationKey)], activate: Bool)
+    case gatewayUnbindAssociatedSpaces(datas: [(networkKey: NetworkKey, applicationKey: ApplicationKey)])
 }
 
 /// 配置类型
@@ -1156,12 +1156,13 @@ extension Node {
         var unbindAssociatedSpaceDatas: [(networkKey: NetworkKey, applicationKey: ApplicationKey)] = []
 
         if let meshNetwork = MeshNetworkManager.instance.meshNetwork {
+            
             gateway.associatedSpaces.forEach { space in
                 // 是否绑定对应子网space
                 if let networkKey = networkKeys.first(where: { $0.index == space.appKeyIndex }) {
                     // 是否绑定app key
                     if let appKey = applicationKeys.boundTo(networkKey).first {
-                        if supportModels.contains(where: { !$0.isBoundTo(appKey) }) { // 检查是否有model没绑定对应appkey
+                        if subnetAppkeyBindModels.contains(where: { !$0.isBoundTo(appKey) }) { // 检查是否有model没绑定对应appkey
                             associatedSpaceDatas.append((networkKey: networkKey, applicationKey: appKey))
                         }
                     }else {
@@ -1184,21 +1185,21 @@ extension Node {
                 }
             }
             if associatedSpaceDatas.count > 0 {
-                syncDatas.append(.gatewayAssociatedSpaces(datas: associatedSpaceDatas, activate: gateway.activate))
+                syncDatas.append(.gatewayAssociatedSpaces(datas: associatedSpaceDatas))
             }
             if unbindAssociatedSpaceDatas.count > 0 {
-                syncDatas.append(.gatewayUnbindAssociatedSpaces(datas: unbindAssociatedSpaceDatas, activate: gateway.activate))
+                syncDatas.append(.gatewayUnbindAssociatedSpaces(datas: unbindAssociatedSpaceDatas))
             }
         }
       
         // 同步绑定哪些子网appkey index
         // 网格激活状态同步关联子网数据
-        if associatedSpaceDatas.isEmpty && unbindAssociatedSpaceDatas.isEmpty {
+//        if associatedSpaceDatas.isEmpty && unbindAssociatedSpaceDatas.isEmpty {
             let currentAppkeyIndexs = gateway.activate ? self.applicationKeys.filter({ $0.boundNetworkKey.isSecondary }).map({ $0.index }).sorted() : []
             if currentAppkeyIndexs != gatewayInfo?.subnetAppkeyIndexs.sorted() {
                 syncDatas.append(.syncGatewaySubnetAppkeyIndexs(appkeyIndexs: currentAppkeyIndexs))
             }
-        }
+//        }
         
         // 判断SIM卡apn是否需要同步
         if let apn = gateway.apn, gatewayInfo?.simInfo?.apn != apn {

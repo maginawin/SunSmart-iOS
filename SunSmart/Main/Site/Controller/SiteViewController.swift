@@ -1983,6 +1983,14 @@ extension SiteViewController: GatewayListViewDelegate {
             self.setupData()
         } addCallback: {[weak self] in
             guard let self = self else { return }
+            guard self.allSpaces.contains(where: { $0.permission == .owner || $0.permission == .editor }) else {
+                // 无权限
+//                XWHUDManager.show
+                return
+            }
+            if self.site.permission != .owner, self.allSpaces.contains(where: { $0.permission == .editor && $0.gatewayStatus == .notBound }) {
+                
+            }
             let vc = SiteDeviceAddViewController(site: self.site)
             vc.deviceAddCallback = {[weak self] _ in
                 self?.loadSiteRequest()

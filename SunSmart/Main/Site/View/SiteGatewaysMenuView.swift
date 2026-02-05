@@ -181,7 +181,7 @@ extension SiteGatewaysMenuView: UITableViewDataSource, UITableViewDelegate {
         cell.titleLabel.font = titleFont
         cell.backgroundColor = selectIndex == indexPath.row ? self.selectBackgroundColor : .clear
         cell.titleMaxWidth = tableView.width - SCRXFrom(26)
-        cell.lineView.isHidden = indexPath.row == datas.count
+        cell.lineView.isHidden = !(indexPath.row == datas.count - 1)
         cell.lineX = 0
         cell.lineView.backgroundColor = Line_Color.withAlphaComponent(0.5)
         cell.arrowImageView.isHidden = true

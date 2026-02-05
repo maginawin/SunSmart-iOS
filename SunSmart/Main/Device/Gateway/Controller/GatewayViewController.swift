@@ -87,9 +87,25 @@ class GatewayViewController: UIViewController, DeviceProtocol {
 //                self?.setNetworkConnected()
 //            }
 //        }
-        loadAssociatedSpaces()
-        
         setNetworkConnected()
+        
+        // 获取网关关联space数据
+        Task { [weak self] in
+            guard let self else { return }
+            XWHUDManager.showCustomHUD(withMessage: nil, isWindow: false)
+            let result = await self.loadAssociatedSpaces()
+            guard !Task.isCancelled else { return }
+            XWHUDManager.hide()
+            switch result {
+            case .success(let bindSpaces):
+                self.gateway.associatedSpaces = bindSpaces
+                self.setGatewayModel.associatedSpaces = bindSpaces
+                self.reloadSection(.associatedSpaces)
+            case .failure(let error):
+                XWHUDManager.showErrorTipHUD(error.localizedDescription)
+            }
+        }
+        
     }
     
     override func viewWillAppear(_ animated: Bool) {
@@ -149,35 +165,27 @@ class GatewayViewController: UIViewController, DeviceProtocol {
     }
     
     /// 获取已关联的spaces
-    private func loadAssociatedSpaces() {
+    private func loadAssociatedSpaces() async -> Result<[GatewaySpaceData], Error> {
         
-        XWHUDManager.showCustomHUD(withMessage: nil, isWindow: true)
-        NetworkRequest.shared.request(.gatewayAssociationSpaceList(siteId: gateway.siteId, gatewayId: gateway.mac)) {[weak self] result in
-            XWHUDManager.hide()
-            guard let self = self else {
-                return
-            }
-            switch result {
-            case .success(let response):
-                let list = JSON(response)["data"]["refSpaces"].arrayValue
-                // 网关已绑定的space
-                let bindSpaces: [GatewaySpaceData] = list.compactMap { spaceJson in
-                    guard let spaceId = spaceJson["spaceId"].string, let spaceName = spaceJson["spaceName"].string, let deviceCount = spaceJson["deviceCount"].int, let appKeyIndex = spaceJson["appKey"]["index"].uInt16 else {
-                        return nil
-                    }
-                    var gatewaySpace = GatewaySpaceData(spaceId: spaceId, spaceName: spaceName, deviceCount: deviceCount, appKeyIndex: appKeyIndex)
-                    if let space = SpaceData.load(siteId: self.gateway.siteId, spaceId: spaceId).first, space.state == .normal, let permission = GatewaySpaceData.GatewaySpacePermission(rawValue: space.permission.rawValue) {
-                        gatewaySpace.permission = permission
-                    }
-                    return gatewaySpace
+        let result = await NetworkRequest.shared.request(.gatewayAssociationSpaceList(siteId: gateway.siteId, gatewayId: gateway.mac))
+        switch result {
+        case .success(let response):
+            let list = JSON(response)["data"]["refSpaces"].arrayValue
+            // 网关已绑定的space
+            let bindSpaces: [GatewaySpaceData] = list.compactMap { spaceJson in
+                guard let spaceId = spaceJson["spaceId"].string, let spaceName = spaceJson["spaceName"].string, let deviceCount = spaceJson["deviceCount"].int, let appKeyIndex = spaceJson["appKey"]["index"].uInt16 else {
+                    return nil
                 }
-                self.gateway.associatedSpaces = bindSpaces
-                self.reloadSection(.associatedSpaces)
-                
-            case .failure(let error):
-                XWHUDManager.showErrorTipHUD(error.localizedDescription)
+                var gatewaySpace = GatewaySpaceData(spaceId: spaceId, spaceName: spaceName, deviceCount: deviceCount, appKeyIndex: appKeyIndex)
+                if let space = SpaceData.load(siteId: self.gateway.siteId, spaceId: spaceId).first, space.state == .normal, !space.requiresPasswordVerification, let permission = GatewaySpaceData.GatewaySpacePermission(rawValue: space.permission.rawValue) {
+                    gatewaySpace.permission = permission
+                }
+                return gatewaySpace
             }
-   
+            return .success(bindSpaces)
+            
+        case .failure(let error):
+            return .failure(error)
         }
     }
     
@@ -268,6 +276,12 @@ class GatewayViewController: UIViewController, DeviceProtocol {
             }else {
                 headerView.gatewayStateImageView.image = UIImage(named: "gateway_offline")
                 headerView.gatewayStateLabel.text = "Offline".localizedString
+            }
+            // 无权限
+            if gateway.associatedSpaces.contains(where: { $0.permission == .none || $0.permission == .visitor }) {
+                bottomView.deleteBtn.isEnabled = false
+            }else {
+                bottomView.deleteBtn.isEnabled = true
             }
             bottomView.showEditUI()
         } else {
@@ -371,6 +385,23 @@ class GatewayViewController: UIViewController, DeviceProtocol {
             // 是否已注册网关
             if gateway.mqttServerInfo != nil {
                 XWHUDManager.showCustomHUD(withMessage: "deleting".localizedString, isWindow: true)
+                Task {
+                    if self.site.permission != .owner {
+                        let result = await self.loadAssociatedSpaces()
+                        switch result {
+                        case .success(let bindSpaces):
+                            // 检查是否关联了无权限的space
+                            if bindSpaces.contains(where: { $0.permission == .none || $0.permission == .visitor }) {
+                                XWHUDManager.showErrorTipHUD("")
+                                return
+                            }
+                        case .failure(let error):
+                            return
+                        }
+                    }
+                    
+                    
+                }
                 NetworkRequest.shared.request(.gatewayDelete(gatewayId: gateway.mac)) {[weak self] result in
                     XWHUDManager.hide()
                     guard let self = self else { return }

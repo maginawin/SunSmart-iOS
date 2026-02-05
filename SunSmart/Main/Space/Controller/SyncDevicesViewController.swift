@@ -739,24 +739,24 @@ class SyncDevicesViewController: UIViewController {
                 let step = SyncDeviceStepModel(type: "association_project".localizedString, state: .none, tasks: [taskModel])
                 taskModel.parentStepModel = step
                 configturationSteps.append(step)
-            case .gatewayAssociatedSpaces(let networkDatas, let activate):
+            case .gatewayAssociatedSpaces(let networkDatas):
                 var taskModels: [SyncDeviceStepTaskModel] = []
                 networkDatas.forEach { (networkKey: NetworkKey, applicationKey: ApplicationKey) in
                     let space = SpaceData.load(subNetworkId: networkKey.networkId.hex)
                     let name = space?.name ?? "space".localizedString
-                    let taskModel = SyncDeviceStepTaskModel(name: name, operationType: .configuration(node: node, type: .gatewayAssociatedSpace(networkKey: networkKey, applicationKey: applicationKey, activate: activate)))
+                    let taskModel = SyncDeviceStepTaskModel(name: name, operationType: .configuration(node: node, type: .gatewayAssociatedSpace(networkKey: networkKey, applicationKey: applicationKey)))
                     taskModels.append(taskModel)
                 }
                 
                 let step = SyncDeviceStepModel(type: "associated_spaces".localizedString, state: .none, tasks: taskModels)
                 taskModels.forEach({ $0.parentStepModel = step })
                 configturationSteps.append(step)
-            case .gatewayUnbindAssociatedSpaces(let networkDatas, let activate):
+            case .gatewayUnbindAssociatedSpaces(let networkDatas):
                 var taskModels: [SyncDeviceStepTaskModel] = []
                 networkDatas.forEach { (networkKey: NetworkKey, applicationKey: ApplicationKey) in
                     let space = SpaceData.load(subNetworkId: networkKey.networkId.hex)
                     let name = space?.name ?? "space".localizedString
-                    let taskModel = SyncDeviceStepTaskModel(name: name, operationType: .delete(node: node, type: .gatewayUnbindAssociatedSpace(networkKey: networkKey, applicationKey: applicationKey, activate: activate)))
+                    let taskModel = SyncDeviceStepTaskModel(name: name, operationType: .delete(node: node, type: .gatewayUnbindAssociatedSpace(networkKey: networkKey, applicationKey: applicationKey)))
                     taskModels.append(taskModel)
                 }
                 

@@ -1277,7 +1277,7 @@
 "client_id" = "客户端 ID";
 "copy_gateway_information" = "复制网关信息";
 "unbind_associated_spaces" = "解除关联空间";
-"associated_spaces_message" = "最多关联 %d 个空间，总计 %d 台设备";
+"associated_spaces_message" = "最多关联 %d 个空间";
 "associated_spaces_instructions" = "空间关联说明";
 "associated_spaces_instructions_message" = "注意当网关与空间关联时，关联空间列表中每个空间必须至少有一个节点位于网关的蓝牙通信范围内。";
 "gateway_connecting_message" = "正在通过蓝牙连接网关";
@@ -1437,6 +1437,7 @@
 "gateway_no_permission_message" = "The editor's space is all gateway bound";
 "no_associated_spaces" = "No associated spaces";
 "gateway_associated_nodes_limit_message" = "A maximum of %d nodes can be associated.";
+"gateway_associated_spaces_limit_message" = "Up to %d can be associated";
 "requires_internet_message" = "This operation requires an internet connection.";
 "failed_to_retrieve_data" = "Failed to retrieve data.";
 "network_problem_note" = "Note:It might be a network or server problem.";

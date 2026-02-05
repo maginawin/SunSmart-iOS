@@ -16,7 +16,7 @@ class GatewayAssociatedSpacesController: UIViewController {
     private var headerView: UIView!
     private var messageLabel: UILabel!
     private var countLabel: UILabel!
-    private let maxNodesCount = 300
+//    private let maxNodesCount = 300
     
     private var selectSpaces: [GatewaySpaceData] = []
     /// 初始关联的spaces
@@ -69,7 +69,7 @@ class GatewayAssociatedSpacesController: UIViewController {
                         return nil
                     }
                     var gatewaySpace = GatewaySpaceData(spaceId: spaceId, spaceName: spaceName, deviceCount: deviceCount, appKeyIndex: appKeyIndex)
-                    if let space = SpaceData.load(siteId: self.gateway.siteId, spaceId: spaceId).first, space.state == .normal, let permission = GatewaySpaceData.GatewaySpacePermission(rawValue: space.permission.rawValue) {
+                    if let space = SpaceData.load(siteId: self.gateway.siteId, spaceId: spaceId).first, space.state == .normal, !space.requiresPasswordVerification, let permission = GatewaySpaceData.GatewaySpacePermission(rawValue: space.permission.rawValue) {
                         gatewaySpace.permission = permission
                     }
                     return gatewaySpace
@@ -147,15 +147,22 @@ class GatewayAssociatedSpacesController: UIViewController {
         sender.isSelected = !sender.isSelected
         
         if sender.isSelected {
-            let total = spaces.reduce(0, { (result, space) -> Int in result + space.deviceCount })
-            guard total <= maxNodesCount else {
-                XWHUDManager.showTipHUD(String(format: "gateway_associated_nodes_limit_message".localizedString, maxNodesCount), isLineFeed: true)
+//            let total = spaces.reduce(0, { (result, space) -> Int in result + space.deviceCount })
+//            guard total <= maxNodesCount else {
+//                XWHUDManager.showTipHUD(String(format: "gateway_associated_nodes_limit_message".localizedString, maxNodesCount), isLineFeed: true)
+//                sender.isSelected = false
+//                return
+//            }
+            if spaces.count > gateway.maxAssociatedSpaces {
                 sender.isSelected = false
+                XWHUDManager.showTipHUD(String(format: "gateway_associated_spaces_limit_message".localizedString, gateway.maxAssociatedSpaces), isLineFeed: true, afterDelay: 1.5)
                 return
             }
             selectSpaces = spaces
         }else {
-            selectSpaces = []
+            // 可编辑的space
+            let editableSpaces = spaces.filter({ $0.permission == .owner || $0.permission == .editor })
+            selectSpaces.removeAll(where: { space in editableSpaces.contains(where: { $0.spaceId == space.spaceId }) })
         }
         collectionView.reloadData()
         updateUI()
@@ -292,11 +299,13 @@ class GatewayAssociatedSpacesController: UIViewController {
     
     private func updateUI() {
         
-        let totalCount = selectSpaces.reduce(0, { (result, space) -> Int in result + space.deviceCount })
+//        let totalCount = selectSpaces.reduce(0, { (result, space) -> Int in result + space.deviceCount })
+//        
+//        let countAttStr = NSMutableAttributedString(string: "\(totalCount)/\(maxNodesCount)")
+//        countAttStr.addAttribute(.foregroundColor, value: TextBlack_Color, range: (countAttStr.string as NSString).range(of: "\(totalCount)"))
+//        countLabel.attributedText = countAttStr
         
-        let countAttStr = NSMutableAttributedString(string: "\(totalCount)/\(maxNodesCount)")
-        countAttStr.addAttribute(.foregroundColor, value: TextBlack_Color, range: (countAttStr.string as NSString).range(of: "\(totalCount)"))
-        countLabel.attributedText = countAttStr
+        
         
         bottomView.selectAllBtn.isSelected = spaces.count > 0 && selectSpaces.count == spaces.count
         bottomView.selectCountLabel.text = "\(selectSpaces.count)/\(spaces.count)"
@@ -328,7 +337,7 @@ class GatewayAssociatedSpacesController: UIViewController {
             make.height.equalTo(SCRYFrom(33))
         }
         
-        messageLabel = UILabel(text: String(format: "associated_spaces_message".localizedString, gateway.maxAssociatedSpaces, maxNodesCount), textColor: SubText_Color, fontSize: 14, fontWeight: .light)
+        messageLabel = UILabel(text: String(format: "associated_spaces_message".localizedString, gateway.maxAssociatedSpaces), textColor: SubText_Color, fontSize: 14, fontWeight: .light)
         headerView.addSubview(messageLabel)
         messageLabel.snp.makeConstraints { make in
             make.left.equalTo(SCRXFrom(20))
@@ -349,7 +358,7 @@ class GatewayAssociatedSpacesController: UIViewController {
         
         collectionView = UICollectionView(frame: .zero, collectionViewLayout: flowLayout)
         collectionView.backgroundColor = Background_Color
-        collectionView.contentInset = UIEdgeInsets(top: 0, left: SCRXFrom(16), bottom: 0, right: SCRXFrom(16))
+        collectionView.contentInset = UIEdgeInsets(top: 0, left: SCRXFrom(16), bottom: SCRYFrom(16), right: SCRXFrom(16))
         collectionView.register(GatewayAssociatedSpacesViewCell.classForCoder(), forCellWithReuseIdentifier: "cell")
         collectionView.dataSource = self
         collectionView.delegate = self
@@ -403,11 +412,15 @@ extension GatewayAssociatedSpacesController: UICollectionViewDataSource, UIColle
         if let index = selectSpaces.firstIndex(where: { $0.spaceId == space.spaceId }) {
             selectSpaces.remove(at: index)
         }else {
-            let total = selectSpaces.reduce(0, { (result, space) -> Int in result + space.deviceCount }) + space.deviceCount
-            guard total <= maxNodesCount else {
-                XWHUDManager.showTipHUD(String(format: "gateway_associated_nodes_limit_message".localizedString, maxNodesCount), isLineFeed: true)
+            if selectSpaces.count >= gateway.maxAssociatedSpaces {
+                XWHUDManager.showTipHUD(String(format: "gateway_associated_spaces_limit_message".localizedString, gateway.maxAssociatedSpaces), isLineFeed: true)
                 return
             }
+//            let total = selectSpaces.reduce(0, { (result, space) -> Int in result + space.deviceCount }) + space.deviceCount
+//            guard total <= maxNodesCount else {
+//                XWHUDManager.showTipHUD(String(format: "gateway_associated_nodes_limit_message".localizedString, maxNodesCount), isLineFeed: true)
+//                return
+//            }
             selectSpaces.append(space)
         }
         collectionView.reloadItems(at: [indexPath])

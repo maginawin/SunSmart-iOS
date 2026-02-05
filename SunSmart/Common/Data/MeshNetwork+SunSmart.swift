@@ -61,8 +61,7 @@ extension SiteData {
         
         let time = Int64(Date().timeIntervalSince1970)
         
-        let manager = MeshNetworkManager.loadMeshNetwork(meshUUID: meshUUID)
-        guard let subnetworkData = manager?.addSubnetwork(networkKeyName: name, applicationKeyName: name) else {
+        guard let subnetworkData = MeshNetworkManager.addSubnetwork(meshUUID: meshUUID, networkKeyName: name, applicationKeyName: name) else {
             return nil
         }
 //        self.meshManager = manager
@@ -449,8 +448,9 @@ extension SpaceData {
 //        MeshLibManager.manager.removeMeshNetwork(meshUUID: self.meshUUID)
         // 删除子网并断开连接
 //        _ = MeshNetworkManager.instance.removeSubnetwork(networkKey: self.meshNetworkKey)
-        let meshManager = MeshNetworkManager.loadMeshNetwork(meshUUID: meshUUID)
-        _ = meshManager?.removeSubnetwork(networkId: self.meshNetworkId)
+//        let meshManager = MeshNetworkManager.loadMeshNetwork(meshUUID: meshUUID)
+//        _ = meshManager?.removeSubnetwork(networkId: self.meshNetworkId)
+        _ = MeshNetworkManager.removeSubnetwork(meshUUID: self.meshUUID, networkId: self.meshNetworkId)
 //        _ = meshManager?.removeSubnetwork(networkKey: self.meshNetworkKey)
         if MeshNetworkManager.instance.meshNetwork?.uuid.uuidString == self.meshUUID && MeshNetworkManager.instance.currentNetworkKey.networkId.hex == self.meshNetworkId && MeshLibManager.manager.meshNetworkManager?.meshNetwork?.uuid == MeshNetworkManager.instance.meshNetwork?.uuid {
             MeshLibManager.manager.meshNetworkDisconnect()
@@ -1995,6 +1995,23 @@ extension Node {
         }set {
             objc_setAssociatedObject(self, &Node.gateway, newValue, .OBJC_ASSOCIATION_RETAIN)
         }
+    }
+    
+    /// 附加子网所需绑定appkey的model list（网关、跨子网数据传输）
+    var subnetAppkeyBindModels: [Model] {
+        var models: [Model] = []
+        if deviceType == .gateway {
+            if let vendorModel = sunricherVendorModel {
+                models.append(vendorModel)
+            }
+            if let timeModel = timeModel {
+                models.append(timeModel)
+            }
+            if let timeSetupModel = timeSetupModel {
+                models.append(timeSetupModel)
+            }
+        }
+        return models
     }
     
     /// 更新新设备的恢复数据

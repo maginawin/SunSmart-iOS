@@ -167,7 +167,7 @@ extension NodeSyncData {
             if let vendorModel = node.sunricherVendorModel {
                 messageHandles.append(MeshMessageHandle(message: SunricherVendorSet(function: .gatewayMQTTConnectInfoSet(connectInfo: mqttInformation)), model: vendorModel))
             }
-        case .gatewayAssociatedSpaces(let networkDatas, let activate):
+        case .gatewayAssociatedSpaces(let networkDatas):
             let address = node.primaryUnicastAddress
             
             networkDatas.forEach { (networkKey: NetworkKey, applicationKey: ApplicationKey) in
@@ -183,7 +183,7 @@ extension NodeSyncData {
                     messageHandles.append(addAppKeyHandle)
                 }
                 // 需要绑定app key的model
-                let bindAppKeyModels = node.supportModels.filter({ !$0.isBoundTo(applicationKey) })
+                let bindAppKeyModels = node.subnetAppkeyBindModels.filter({ !$0.isBoundTo(applicationKey) })
                 if bindAppKeyModels.count > 0 {
                     let bindAppKeyModelHandles = bindAppKeyModels.compactMap({ model in
                         if let message = ConfigModelAppBind(applicationKey: applicationKey, to: model) {
@@ -195,18 +195,18 @@ extension NodeSyncData {
                 }
             }
             
-            if activate, let vendorModel = node.sunricherVendorModel, messageHandles.count > 0 {
-                let appkeyIndexs = networkDatas.map({ $0.applicationKey.index }).sorted()
-                if appkeyIndexs != node.gatewayInfo?.subnetAppkeyIndexs {
-                    messageHandles.append(MeshMessageHandle(message: SunricherVendorSet(function: .gatewaySubnetsRelevanceSet(subnetAppkeyIndexs: appkeyIndexs)), model: vendorModel))
-                }
-            }
+//            if activate, let vendorModel = node.sunricherVendorModel, messageHandles.count > 0 {
+//                let appkeyIndexs = networkDatas.map({ $0.applicationKey.index }).sorted()
+//                if appkeyIndexs != node.gatewayInfo?.subnetAppkeyIndexs {
+//                    messageHandles.append(MeshMessageHandle(message: SunricherVendorSet(function: .gatewaySubnetsRelevanceSet(subnetAppkeyIndexs: appkeyIndexs)), model: vendorModel))
+//                }
+//            }
             
-        case .gatewayUnbindAssociatedSpaces(let networkDatas , let activate):
+        case .gatewayUnbindAssociatedSpaces(let networkDatas):
             let address = node.primaryUnicastAddress
             networkDatas.forEach { (networkKey: NetworkKey, applicationKey: ApplicationKey) in
                 // 需要解除绑定app key的model
-                let unbindAppKeyModels = node.supportModels.filter({ $0.isBoundTo(applicationKey) })
+                let unbindAppKeyModels = node.subnetAppkeyBindModels.filter({ $0.isBoundTo(applicationKey) })
                 if unbindAppKeyModels.count > 0 {
                     let bindAppKeyModelHandles = unbindAppKeyModels.compactMap({ model in
                         if let message = ConfigModelAppUnbind(applicationKey: applicationKey, to: model) {
@@ -229,12 +229,12 @@ extension NodeSyncData {
                     messageHandles.append(deleteNetKeyHandle)
                 }
             }
-            if activate, let vendorModel = node.sunricherVendorModel, messageHandles.count > 0 {
-                let appkeyIndexs = networkDatas.map({ $0.applicationKey.index }).sorted()
-                if appkeyIndexs != node.gatewayInfo?.subnetAppkeyIndexs {
-                    messageHandles.append(MeshMessageHandle(message: SunricherVendorSet(function: .gatewaySubnetsRelevanceSet(subnetAppkeyIndexs: appkeyIndexs)), model: vendorModel))
-                }
-            }
+//            if activate, let vendorModel = node.sunricherVendorModel, messageHandles.count > 0 {
+//                let appkeyIndexs = networkDatas.map({ $0.applicationKey.index }).sorted()
+//                if appkeyIndexs != node.gatewayInfo?.subnetAppkeyIndexs {
+//                    messageHandles.append(MeshMessageHandle(message: SunricherVendorSet(function: .gatewaySubnetsRelevanceSet(subnetAppkeyIndexs: appkeyIndexs)), model: vendorModel))
+//                }
+//            }
         }
         return messageHandles
     }
