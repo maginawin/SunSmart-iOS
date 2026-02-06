@@ -206,7 +206,7 @@ class DeviceParameterSettingsController: UIViewController {
             guard let self = self else { return }
             XWHUDManager.showSuccessTipHUD("done!".localizedString)
             DispatchQueue.main.asyncAfter(wallDeadline: .now() + 1) {[weak self] in
-                self?.navigationController?.popViewController(animated: true)
+                self?.navigationController?.popToViewController(vcClass: DeviceParameterDevicesViewController.classForCoder())
             }
             
             var result: [DeviceParameterData.ParameterType: (Any, [Node], [Node])] = [:]

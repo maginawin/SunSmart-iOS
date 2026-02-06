@@ -502,11 +502,13 @@ class GroupSensorView: UIView {
         introduceHeaderContainer!.addSubview(introduceView!)
         
         introduceStackView = UIStackView()
-        introduceStackView!.spacing = SCRXFrom(16)
+        
         if isIPad {
             introduceStackView!.distribution = .fillEqually
+            introduceStackView!.spacing = SCRXFrom(16)
         }else {
             introduceStackView!.distribution = .equalSpacing
+            introduceStackView!.spacing = SCRXFrom(10)
         }
         introduceView!.addSubview(introduceStackView!)
         introduceStackView!.snp.makeConstraints { make in
@@ -533,6 +535,7 @@ class GroupSensorView: UIView {
         introduceStackView!.addArrangedSubview(inactiveBtn)
         
         let disabledBtn = UIButton(title: "disabled(tap to toggle)".localizedString, titleSize: 12, titleWeight: .light, titleColor: Title_Color, fit: false, normalImageName: "sensor_occupy_disable")
+        disabledBtn.titleLabel?.adjustsFontSizeToFitWidth = true
         disabledBtn.setImagePosition(position: .left, spacing: SCRXFrom(4))
         introduceStackView!.addArrangedSubview(disabledBtn)
         

@@ -208,8 +208,8 @@ class GroupPathSequenceManuallyAddView: UIView {
         
         guideView = GroupPathSequenceDeviceAddStepView(frame: .zero, steps: [
             .init(imageName: "proximity_lighting_step1", title: "quick_add_step1".localizedString, textColor: SubText_Color),
-            .init(imageName: "proximity_lighting_step2", title: "quick_add_step2".localizedString, textColor: SubText_Color),
-            .init(imageName: "proximity_lighting_step3", title: "path_trigger_add_step3".localizedString, textColor: SubText_Color)
+            .init(imageName: "proximity_lighting_step2", title: "path_manual_add_step2".localizedString, textColor: SubText_Color),
+            .init(imageName: "proximity_lighting_step3", title: "zone_manual_add_step3".localizedString, textColor: SubText_Color)
         ])
         guideContentView.addSubview(guideView)
         guideView.snp.makeConstraints { make in

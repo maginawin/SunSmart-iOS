@@ -1220,6 +1220,7 @@
 "path_trigger_add_step3" = "识别并选中\n正确的设备";
 "zone_quick_add_step3" = "点击开始并\n触发所需\n设备";
 "zone_manual_add_step3" = "添加后，\n测试是否\n正确";
+"path_manual_add_step2" = "识别，选择\n正确的设备";
 "not_zones_remaining" = "无剩余区域";
 "No_Data" = "无数据";
 "zone" = "区域";
@@ -1266,7 +1267,7 @@
 
 "relative_sensitivity" = "相对灵敏度";
 "absolute_sensitivity" = "绝对灵敏度";
-"absolute_sensitivity_messsage" = "注意：绝对灵敏度是设备所能支持的最大范围。其作用是针对设备进行个别调整，以避免由于元件误差引起的误触发。不同于相对灵敏度，相对灵敏度的最大值 100% 对应于此处的调整值。";
+"absolute_sensitivity_messsage" = "注意：1. 绝对灵敏度是设备所能支持的最大范围。其作用是针对设备进行个别调整，以避免由于元件误差引起的误触发。不同于相对灵敏度，相对灵敏度的最大值 100% 对应于此处的调整值。\n2.默认范围为调整后无误触发的范围。如果调整的话，有很大的可能会误触发，所以请注意这一点。";
 "absolute_sensitivity_instructions_1" = "绝对灵敏度是设备所能支持的最大范围。其作用是针对设备进行个别调整，以避免由于元件误差引起的误触发。";
 "absolute_sensitivity_instructions_2" = "相对灵敏度中，100% 对应于绝对灵敏度的调整值，例如 80%。";
 "absolute_sensitivity_instructions_3" = "如果发现设备的相对灵敏度已经是 100%，但仍然不够灵敏，可以适当提高绝对灵敏度的限制值，而不会造成误触发。";

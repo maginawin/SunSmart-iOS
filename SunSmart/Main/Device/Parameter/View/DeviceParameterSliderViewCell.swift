@@ -47,6 +47,7 @@ class DeviceParameterSliderViewCell: UITableViewCell {
 //        selectionStyle = .none
 //        layer.cornerRadius = SCRYFrom(10)
         backgroundColor = .clear
+        selectionStyle = .none
         
         setupUI()
     }
