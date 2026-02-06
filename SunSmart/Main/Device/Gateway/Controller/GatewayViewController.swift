@@ -177,8 +177,16 @@ class GatewayViewController: UIViewController, DeviceProtocol {
                     return nil
                 }
                 var gatewaySpace = GatewaySpaceData(spaceId: spaceId, spaceName: spaceName, deviceCount: deviceCount, appKeyIndex: appKeyIndex)
-                if let space = SpaceData.load(siteId: self.gateway.siteId, spaceId: spaceId).first, space.state == .normal, !space.requiresPasswordVerification, let permission = GatewaySpaceData.GatewaySpacePermission(rawValue: space.permission.rawValue) {
-                    gatewaySpace.permission = permission
+                if let space = SpaceData.load(siteId: self.gateway.siteId, spaceId: spaceId).first {
+                    if space.canEditing {
+                        gatewaySpace.permission = .editor
+                    }else {
+                        if space.requiresPasswordVerification {
+                            gatewaySpace.permission = .permissionException
+                        }else {
+                            gatewaySpace.permission = .none
+                        }
+                    }
                 }
                 return gatewaySpace
             }
@@ -278,7 +286,7 @@ class GatewayViewController: UIViewController, DeviceProtocol {
                 headerView.gatewayStateLabel.text = "Offline".localizedString
             }
             // 无权限
-            if gateway.associatedSpaces.contains(where: { $0.permission == .none || $0.permission == .visitor }) {
+            if gateway.associatedSpaces.contains(where: { $0.permission == .none || $0.permission == .permissionException }) {
                 bottomView.deleteBtn.isEnabled = false
             }else {
                 bottomView.deleteBtn.isEnabled = true
@@ -313,8 +321,8 @@ class GatewayViewController: UIViewController, DeviceProtocol {
             if self.node.isKeybindComplete {
                 self.updateData()
 //                self.getNodeState()
-                // 通知space数据修改
-                NotificationCenter.default.post(name: .init(spaceDataChangedNotificaitonName), object: SpaceChangeDataType.device)
+                // 通知网关数据修改
+                NotificationCenter.default.post(name: .init(siteGatewayDataChangedNotificaitonName), object: self.gateway)
             }
         })
     }
@@ -346,7 +354,7 @@ class GatewayViewController: UIViewController, DeviceProtocol {
         // 判断是否需要同步设备数据
         guard node.getNodeSyncGatewayData(gateway: setGatewayModel).count > 0 else {
             XWHUDManager.showSuccessTipHUD("done!".localizedString)
-            // 通知space数据修改
+            // 通知网关数据修改
             NotificationCenter.default.post(name: .init(siteGatewayDataChangedNotificaitonName), object: self.gateway)
             return
         }
@@ -384,35 +392,36 @@ class GatewayViewController: UIViewController, DeviceProtocol {
             guard let self = self else { return }
             // 是否已注册网关
             if gateway.mqttServerInfo != nil {
-                XWHUDManager.showCustomHUD(withMessage: "deleting".localizedString, isWindow: true)
                 Task {
+                    XWHUDManager.showCustomHUD(withMessage: "deleting".localizedString, isWindow: true)
                     if self.site.permission != .owner {
                         let result = await self.loadAssociatedSpaces()
                         switch result {
                         case .success(let bindSpaces):
                             // 检查是否关联了无权限的space
-                            if bindSpaces.contains(where: { $0.permission == .none || $0.permission == .visitor }) {
-                                XWHUDManager.showErrorTipHUD("")
+                            if bindSpaces.contains(where: { $0.permission == .none || $0.permission == .permissionException }) {
+                                XWHUDManager.hide()
+                                XWHUDManager.showErrorTipHUD("no_permission".localizedString)
                                 return
                             }
                         case .failure(let error):
+                            XWHUDManager.hide()
+                            XWHUDManager.showErrorTipHUD(error.localizedDescription)
                             return
                         }
                     }
                     
-                    
-                }
-                NetworkRequest.shared.request(.gatewayDelete(gatewayId: gateway.mac)) {[weak self] result in
-                    XWHUDManager.hide()
-                    guard let self = self else { return }
-                    switch result {
+                    let deleteResult = await NetworkRequest.shared.request(.gatewayDelete(gatewayId: self.gateway.mac))
+                    switch deleteResult {
                     case .success(_):
                         self.gateway.mqttServerInfo = nil
                         self.setGatewayModel.mqttServerInfo = nil
                         self.resetNode(authorize: true)
                     case .failure(let error):
+                        XWHUDManager.hide()
                         XWHUDManager.showErrorTipHUD(error.localizedDescription)
                     }
+                    
                 }
             }else {
                 self.resetNode()
@@ -443,6 +452,10 @@ class GatewayViewController: UIViewController, DeviceProtocol {
                     self.gateway.delete()
                 }
             }else {
+                if authorize {
+                    // 通知网关数据修改
+                    NotificationCenter.default.post(name: .init(siteGatewayDataChangedNotificaitonName), object: self.gateway)
+                }
                 self.tableView.reloadData()
             }
         }
@@ -481,6 +494,9 @@ class GatewayViewController: UIViewController, DeviceProtocol {
                         if let vendorModel = self.node.sunricherVendorModel {
                             _ = await MeshAPI.sendMessage(message: SunricherVendorSet(function: .gatewayMQTTConnectInfoSet(connectInfo: mqttServerInfo)), model: vendorModel)
                         }
+                        
+                        // 通知网关数据修改
+                        NotificationCenter.default.post(name: .init(siteGatewayDataChangedNotificaitonName), object: self.gateway)
                     }
                 case .failure:
                     XWHUDManager.hide()
@@ -516,8 +532,11 @@ class GatewayViewController: UIViewController, DeviceProtocol {
        
         let vc = SyncDevicesViewController(type: .devices([node]), reSync: true)
         vc.syncSuccessCallback = {[weak self] _ in
-            self?.updateSaveBtnState()
-            self?.tableView.reloadData()
+            guard let self = self else { return }
+            self.updateSaveBtnState()
+            self.tableView.reloadData()
+            // 通知网关数据修改
+            NotificationCenter.default.post(name: .init(siteGatewayDataChangedNotificaitonName), object: self.gateway)
         }
         navigationController?.pushViewController(vc, animated: true)
         
@@ -533,9 +552,15 @@ class GatewayViewController: UIViewController, DeviceProtocol {
         guard let meshNetwork = MeshNetworkManager.instance.meshNetwork else {
             return
         }
-        let gatewaySpaceData: [GatewaySpaceData] = site.spaces.filter({ ($0.permission == .owner || $0.permission == .editor) && $0.state == .normal && ($0.relevanceGatewayId == nil || $0.relevanceGatewayId == gateway.mac) }).compactMap({ space in
+        let gatewaySpaceData: [GatewaySpaceData] = site.spaces.filter({ ($0.permission == .owner || $0.permission == .editor) && $0.state == .normal && !$0.requiresPasswordVerification && ($0.relevanceGatewayId == nil || $0.relevanceGatewayId == gateway.mac) }).compactMap({ space in
             if let appkey = meshNetwork.applicationKeys.first(where: { $0.boundNetworkKey.networkId.hex == space.meshNetworkId }) {
-                return GatewaySpaceData(spaceId: space.id, spaceName: space.name, deviceCount: space.deviceCount, appKeyIndex: appkey.index, permission: GatewaySpaceData.GatewaySpacePermission(rawValue: space.permission.rawValue) ?? .editor)
+                let permission: GatewaySpaceData.GatewaySpacePermission
+                if space.canEditing {
+                    permission = .editor
+                }else {
+                    permission = space.requiresPasswordVerification ? .permissionException : .none
+                }
+                return GatewaySpaceData(spaceId: space.id, spaceName: space.name, deviceCount: space.deviceCount, appKeyIndex: appkey.index, permission: permission)
             }
             return nil
         })
@@ -547,6 +572,9 @@ class GatewayViewController: UIViewController, DeviceProtocol {
             self.reloadSection(.associatedSpaces)
             self.reloadSection(.name)
             self.updateSaveBtnState()
+            // 通知网关数据修改
+            NotificationCenter.default.post(name: .init(siteGatewayDataChangedNotificaitonName), object: self.gateway)
+            // 通知site数据更新
             NotificationCenter.default.post(name: .init(SiteStateChangeNotificationName), object: nil)
         }
         navigationController?.pushViewController(vc, animated: true)
@@ -571,6 +599,11 @@ class GatewayViewController: UIViewController, DeviceProtocol {
                     self.reloadSection(.associatedSpaces)
                     self.updateSaveBtnState()
                 }
+                // 通知网关数据修改
+                NotificationCenter.default.post(name: .init(siteGatewayDataChangedNotificaitonName), object: self.gateway)
+                // 通知site数据更新
+                NotificationCenter.default.post(name: .init(SiteStateChangeNotificationName), object: nil)
+                
             case .failure(let error):
                 XWHUDManager.showErrorTipHUD(error.localizedDescription)
             }
@@ -776,13 +809,13 @@ extension GatewayViewController: UITableViewDataSource, UITableViewDelegate {
                 cell.arrowImageView.isHidden = true
                 cell.iconX = tableView.width - SCRXFrom(8) - 30
                 cell.iconImageView.image = UIImage(named: "share_delete")
-                if space.permission == .visitor || space.permission == .none {
+                if space.permission == .permissionException || space.permission == .none {
                     cell.titleLabel.textColor = Message_Color
                     cell.iconImageView.image = UIImage(named: "share_delete")?.withTintColor(Message_Color)
                 }
                 
                 cell.iconImageClickCallback = {[weak self] in
-                    guard space.permission == .owner || space.permission == .editor else {
+                    guard space.permission == .editor else {
                         return
                     }
                     // 删除

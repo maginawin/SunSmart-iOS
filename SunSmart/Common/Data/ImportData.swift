@@ -353,42 +353,92 @@ extension SiteData {
         
         // 更新Site网关数据
         if let gatewayDicts = json["gateways"].arrayObject as? [[String: Any]] {
-            var gatewayNodes: [Node] = []
-            // 获取网关的最近更新时间与服务器上网关更新时间判断是否更新
+            // 服务器上的网关节点数据
+            var serverGatewayNodes: [Node] = []
+            // 本地的网关节点数据
+            let cacheGatewayNodes = Node.load(meshUUID: self.id, subnetworkId: self.meshNetworkId).filter({ $0.deviceType == .gateway })
+            
+            cacheGatewayNodes.forEach { node in
+                if let gateway = GatewayModel.load(siteId: self.id, macAddress: node.macAddress).first {
+                    node.gatewayModel = gateway
+                }
+            }
             
             await withTaskGroup(of: Node?.self) { group in
                 for data in gatewayDicts {
-                    // 判断服务器上更新时间与本地更新时间
-                    if let updateTimestamp = data["updateTimestamp"] as? Int, let addressHex = data["unicastAddress"] as? String, let address = Address(hex: addressHex), let gateway = GatewayModel.load(siteId: self.id, address: address).first, gateway.lastUpdate >= updateTimestamp {
-                        break
-                    }
                     group.addTask {
                         // 异步处理每个数据
-                        return await Node.import(siteId: uuid, nodeJsonData: data)
+                        let node = await Node.import(siteId: uuid, nodeJsonData: data)
+                        node?.gatewayModel?.lastUpdate = Int64(data["updateTimestamp"] as? Int ?? 0)
+                        return node
                     }
                 }
                 // 收集结果
                 for await node in group {
                     if let node = node {
-                        gatewayNodes.append(node)
+                        serverGatewayNodes.append(node)
                     }
                 }
             }
             
+            
             if let network = meshNetwork {
-                gatewayNodes.forEach({
-                    // 判断设备是否存在废弃地址内，如果存在则清空废弃地址内缓存（如多用户编辑数据并未及时提交，使用了旧数据则可能出现导入的设备地址在废弃地址内）
-                    if network.isAddressInExclusion(node: $0) {
-                        let range = AddressRange(from: $0.primaryUnicastAddress, elementsCount: $0.elementsCount)
-                        for address in range.range {
-                            network.deleteExclusionAddress(ivIndex: network.currentIVIndex, address: address)
-                            if network.currentIVIndex > 0 {
-                                network.deleteExclusionAddress(ivIndex: network.currentIVIndex - 1, address: address)
+                var cacheByMac: [String: Node] = [:]
+                cacheGatewayNodes.forEach { node in
+                    if let mac = node.macAddress?.lowercased(), !mac.isEmpty {
+                        cacheByMac[mac] = node
+                    }
+                }
+                
+                var serverByMac: [String: Node] = [:]
+                serverGatewayNodes.forEach { node in
+                    if let mac = node.macAddress?.lowercased(), !mac.isEmpty {
+                        serverByMac[mac] = node
+                    }
+                }
+                
+                // 服务器不存在的网关，删除本地缓存
+                cacheByMac.forEach { mac, cacheNode in
+                    if cacheNode.gatewayModel?.lastUploadCloudTimestamp != nil && serverByMac[mac] == nil {
+                        network.forceRemove(node: cacheNode)
+                        if let mac = cacheNode.macAddress {
+                            GatewayModel.delete(siteId: self.id, macAddress: mac)
+                        }
+                        updateNetwork = true
+                    }
+                }
+                
+                // 服务器新数据覆盖本地；新网关直接导入
+                serverByMac.forEach { mac, serverNode in
+                    let serverUpdate = serverNode.gatewayModel?.lastUpdate ?? 0
+                    let cacheUpdate = cacheByMac[mac]?.gatewayModel?.lastUpdate ?? 0
+                    let shouldReplace = cacheByMac[mac] == nil || serverUpdate > cacheUpdate
+                    if shouldReplace {
+                        if let cacheNode = cacheByMac[mac] {
+                            network.forceRemove(node: cacheNode)
+                            if let mac = cacheNode.macAddress {
+                                GatewayModel.delete(siteId: self.id, macAddress: mac)
                             }
                         }
+                        
+                        // 判断设备是否存在废弃地址内，如果存在则清空废弃地址内缓存（如多用户编辑数据并未及时提交，使用了旧数据则可能出现导入的设备地址在废弃地址内）
+                        if network.isAddressInExclusion(node: serverNode) {
+                            let range = AddressRange(from: serverNode.primaryUnicastAddress, elementsCount: serverNode.elementsCount)
+                            for address in range.range {
+                                network.deleteExclusionAddress(ivIndex: network.currentIVIndex, address: address)
+                                if network.currentIVIndex > 0 {
+                                    network.deleteExclusionAddress(ivIndex: network.currentIVIndex - 1, address: address)
+                                }
+                            }
+                        }
+                        
+                        try? network.add(node: serverNode)
+                        if let gatewayModel = serverNode.gatewayModel {
+                            gatewayModel.save()
+                        }
+                        updateNetwork = true
                     }
-                    try? network.add(node: $0)
-                })
+                }
             }
         }
         
@@ -439,7 +489,7 @@ extension SiteData {
                     self.spaces.append(space)
                 }
             }
-            self.spaces.sort(by: { $0.create < $1.create })
+            self.spaces.sort(by: { $0.create > 0 && $0.create < $1.create })
             
 //            self.spaces = spaces
             self.spaceCount = nil
@@ -1618,7 +1668,7 @@ extension Node {
                         gatewayModel.lastUploadCloudTimestamp = updateTimestamp
                     }
                     
-                    gatewayModel.save()
+//                    gatewayModel.save()
                     node.gatewayModel = gatewayModel
                 }
             }

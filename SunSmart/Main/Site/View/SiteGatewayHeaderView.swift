@@ -12,6 +12,25 @@ class SiteGatewayHeaderView: UICollectionReusableView {
     var gatewayListView: GatewayListView!
     var gatewayStatusView: SiteGatewayStatusView!
     
+    var showGatewayListView: Bool = true {
+        didSet {
+            if showGatewayListView {
+                gatewayListView.isHidden = false
+                gatewayStatusView.snp.remakeConstraints { make in
+                    make.left.right.equalTo(gatewayListView)
+                    make.top.equalTo(gatewayListView.snp.bottom).offset(SCRYFrom(8))
+                    make.height.equalTo(SCRYFrom(40))
+                }
+            }else {
+                gatewayListView.isHidden = true
+                gatewayStatusView.snp.remakeConstraints { make in
+                    make.top.left.right.equalToSuperview()
+                    make.height.equalTo(SCRYFrom(40))
+                }
+            }
+        }
+    }
+    
 //    var gateways: [GatewayModel] = [] {
 //        didSet {
 //            updateData()

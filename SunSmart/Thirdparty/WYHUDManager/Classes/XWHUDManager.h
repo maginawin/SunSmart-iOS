@@ -150,14 +150,14 @@ typedef NS_ENUM(NSUInteger, XWHUDManagerType) {
 #pragma mark - 文本提示框
 
 /**
- 在KeyWindow上显示文本提示框 - 1秒后消失
+ 在KeyWindow上显示文本提示框 - 1.5秒后消失
  
  @param message 提示语
  */
 + (void)showTipHUD:(NSString *)message;
 
 /**
- 在当前视图上显示文本提示框 - 1秒后消失
+ 在当前视图上显示文本提示框 - 1.5秒后消失
  
  @param message 提示语
  */
@@ -165,7 +165,7 @@ typedef NS_ENUM(NSUInteger, XWHUDManagerType) {
 
 
 /**
- 在KeyWindow上显示文本提示框 - 1秒后消失
+ 在KeyWindow上显示文本提示框 - 1.5秒后消失
  
  @param message 提示语
  @param isLineFeed 是否自动换行
@@ -173,7 +173,7 @@ typedef NS_ENUM(NSUInteger, XWHUDManagerType) {
 + (void)showTipHUD:(NSString *)message isLineFeed:(BOOL)isLineFeed;
 
 /**
- 在当前视图上显示文本提示框 - 1秒后消失
+ 在当前视图上显示文本提示框 - 1.5秒后消失
  
  @param message 提示语
  @param isLineFeed 是否自动换行
@@ -208,7 +208,7 @@ typedef NS_ENUM(NSUInteger, XWHUDManagerType) {
 + (void)showTipHUDInView:(NSString *)message isLineFeed:(BOOL)isLineFeed afterDelay:(NSTimeInterval)afterSecond;
 
 /**
- 在 KeyWindow 上展示自定义提示语 - 1秒后移除
+ 在 KeyWindow 上展示自定义提示语 - 1.5秒后移除
  
  @param message 提示语
  @param isLineFeed 是否自动换行
@@ -223,12 +223,12 @@ typedef NS_ENUM(NSUInteger, XWHUDManagerType) {
 
 #pragma mark - 提示图片
 /**
- 在 KeyWindow 展示 成功提示,默认成功图片在 XWHUDImages.bundle 中, - 1秒消失
+ 在 KeyWindow 展示 成功提示,默认成功图片在 XWHUDImages.bundle 中, - 1.5秒消失
  */
 + (void)showSuccessHUD;
 
 /**
- 在 KeyWindow 展示 有文本的成功提示,默认成功图片在 XWHUDImages.bundle 中, - 1秒消失
+ 在 KeyWindow 展示 有文本的成功提示,默认成功图片在 XWHUDImages.bundle 中, - 1.5秒消失
  
  @param message 提示语
  */
@@ -242,12 +242,12 @@ typedef NS_ENUM(NSUInteger, XWHUDManagerType) {
 + (void)showSuccessTipHUD:(NSString *)message timer:(NSTimeInterval)aTimer;
 
 /**
- 在 View 展示 成功提示,默认成功图片在 XWHUDImages.bundle 中, - 1秒消失
+ 在 View 展示 成功提示,默认成功图片在 XWHUDImages.bundle 中, - 1.5秒消失
  */
 + (void)showSuccessTipHUDInView:(NSString *)message;
 
 /**
- 在 KeyWindow 展示 失败提示,默认失败图片在 XWHUDImages.bundle 中, - 1秒消失
+ 在 KeyWindow 展示 失败提示,默认失败图片在 XWHUDImages.bundle 中, - 1.5秒消失
  */
 + (void)showErrorHUD;
 
@@ -255,49 +255,49 @@ typedef NS_ENUM(NSUInteger, XWHUDManagerType) {
 + (BOOL)isVisible;
 
 /**
- 在 KeyWindow 展示 有文本的失败提示,默认失败图片在 XWHUDImages.bundle 中, - 1秒消失
+ 在 KeyWindow 展示 有文本的失败提示,默认失败图片在 XWHUDImages.bundle 中, - 1.5秒消失
  
  @param message 提示语
  */
 + (void)showErrorTipHUD:(NSString *)message;
 
 /**
- 在 KeyWindow 展示 有文本的失败提示,默认失败图片在 XWHUDImages.bundle 中, - 1秒消失
+ 在 KeyWindow 展示 有文本的失败提示,默认失败图片在 XWHUDImages.bundle 中, - 1.5秒消失
  
  @param message 提示语
  */
 + (void)showErrorTipHUD:(NSString *)message timer:(NSTimeInterval)aTimer;
 
 /**
- 在view有文本失败提示 - 1秒消失
+ 在view有文本失败提示 - 1.5秒消失
  
  @param message 提示语
  */
 + (void)showErrorTipHUDInView:(NSString *)message;
 
 /**
- 在 KeyWindow 展示 信息提示,默认信息图片在 XWHUDImages.bundle 中, - 1秒消失
+ 在 KeyWindow 展示 信息提示,默认信息图片在 XWHUDImages.bundle 中, - 1.5秒消失
  
  @param message 提示语
  */
 + (void)showInfoTipHUD:(NSString *)message;
 
 /**
- 在 view 展示 信息提示,默认信息图片在 XWHUDImages.bundle 中, - 1秒消失
+ 在 view 展示 信息提示,默认信息图片在 XWHUDImages.bundle 中, - 1.5秒消失
  
  @param message 提示语
  */
 + (void)showInfoTipHUDInView:(NSString *)message;
 
 /**
- 在 KeyWindow 展示 警告提示,默认警告图片在 XWHUDImages.bundle 中, - 1秒消失
+ 在 KeyWindow 展示 警告提示,默认警告图片在 XWHUDImages.bundle 中, - 1.5秒消失
  
  @param message 提示语
  */
 + (void)showWarningTipHUD:(NSString *)message;
 
 /**
- 在 View 展示 警告提示,默认警告图片在 XWHUDImages.bundle 中, - 1秒消失
+ 在 View 展示 警告提示,默认警告图片在 XWHUDImages.bundle 中, - 1.5秒消失
  
  @param message 提示语
  */

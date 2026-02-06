@@ -167,7 +167,7 @@ extension NodeSyncData {
             if let vendorModel = node.sunricherVendorModel {
                 messageHandles.append(MeshMessageHandle(message: SunricherVendorSet(function: .gatewayMQTTConnectInfoSet(connectInfo: mqttInformation)), model: vendorModel))
             }
-        case .gatewayAssociatedSpaces(let networkDatas):
+        case .gatewayAssociatedSpaces(let networkDatas, let activate):
             let address = node.primaryUnicastAddress
             
             networkDatas.forEach { (networkKey: NetworkKey, applicationKey: ApplicationKey) in
@@ -187,22 +187,20 @@ extension NodeSyncData {
                 if bindAppKeyModels.count > 0 {
                     let bindAppKeyModelHandles = bindAppKeyModels.compactMap({ model in
                         if let message = ConfigModelAppBind(applicationKey: applicationKey, to: model) {
-                            return MeshMessageHandle(message: message, address: address)
+                            let messageHandle = MeshMessageHandle(message: message, address: address)
+                            messageHandle.continuous = false
+                            return messageHandle
                         }
                         return nil
                     })
                     messageHandles.append(contentsOf: bindAppKeyModelHandles)
                 }
+                if activate, let vendorModel = node.sunricherVendorModel, messageHandles.count > 0 {
+                    messageHandles.append(MeshMessageHandle(message: SunricherVendorSet(function: .gatewaySubnetAppkeyAdd(subnetAppkeyIndex: applicationKey.index)), model: vendorModel))
+                }
             }
             
-//            if activate, let vendorModel = node.sunricherVendorModel, messageHandles.count > 0 {
-//                let appkeyIndexs = networkDatas.map({ $0.applicationKey.index }).sorted()
-//                if appkeyIndexs != node.gatewayInfo?.subnetAppkeyIndexs {
-//                    messageHandles.append(MeshMessageHandle(message: SunricherVendorSet(function: .gatewaySubnetsRelevanceSet(subnetAppkeyIndexs: appkeyIndexs)), model: vendorModel))
-//                }
-//            }
-            
-        case .gatewayUnbindAssociatedSpaces(let networkDatas):
+        case .gatewayUnbindAssociatedSpaces(let networkDatas, let activate):
             let address = node.primaryUnicastAddress
             networkDatas.forEach { (networkKey: NetworkKey, applicationKey: ApplicationKey) in
                 // 需要解除绑定app key的model
@@ -228,13 +226,11 @@ extension NodeSyncData {
                     deleteNetKeyHandle.continuous = false
                     messageHandles.append(deleteNetKeyHandle)
                 }
+                
+                if activate, let vendorModel = node.sunricherVendorModel, messageHandles.count > 0 {
+                    messageHandles.append(MeshMessageHandle(message: SunricherVendorSet(function: .gatewaySubnetAppkeyDelete(subnetAppkeyIndex: applicationKey.index)), model: vendorModel))
+                }
             }
-//            if activate, let vendorModel = node.sunricherVendorModel, messageHandles.count > 0 {
-//                let appkeyIndexs = networkDatas.map({ $0.applicationKey.index }).sorted()
-//                if appkeyIndexs != node.gatewayInfo?.subnetAppkeyIndexs {
-//                    messageHandles.append(MeshMessageHandle(message: SunricherVendorSet(function: .gatewaySubnetsRelevanceSet(subnetAppkeyIndexs: appkeyIndexs)), model: vendorModel))
-//                }
-//            }
         }
         return messageHandles
     }

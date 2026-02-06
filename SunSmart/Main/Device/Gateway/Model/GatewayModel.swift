@@ -124,18 +124,16 @@ class GatewayModel: Copyable {
 }
 
 /// 网关space数据
-struct GatewaySpaceData: Codable {
+class GatewaySpaceData: Codable {
     
     /// 网关关联的space权限
     enum GatewaySpacePermission: Int {
         /// 无权限
         case none = 0
-        /// 所有者
-        case owner = 1
-        /// 管理员
-        case editor = 2
-        /// 访客
-        case visitor = 3
+        /// 有编辑权限
+        case editor = 1
+        /// 权限异常（需要输入密码）
+        case permissionException = 2
     }
     
     /// space id
@@ -167,7 +165,7 @@ struct GatewaySpaceData: Codable {
         case appKeyIndex
     }
     
-    init(from decoder: any Decoder) throws {
+    required init(from decoder: any Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         self.spaceId = try container.decode(String.self, forKey: .spaceId)
         self.spaceName = try container.decode(String.self, forKey: .spaceName)

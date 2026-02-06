@@ -69,8 +69,12 @@ class GatewayAssociatedSpacesController: UIViewController {
                         return nil
                     }
                     var gatewaySpace = GatewaySpaceData(spaceId: spaceId, spaceName: spaceName, deviceCount: deviceCount, appKeyIndex: appKeyIndex)
-                    if let space = SpaceData.load(siteId: self.gateway.siteId, spaceId: spaceId).first, space.state == .normal, !space.requiresPasswordVerification, let permission = GatewaySpaceData.GatewaySpacePermission(rawValue: space.permission.rawValue) {
-                        gatewaySpace.permission = permission
+                    if let space = SpaceData.load(siteId: self.gateway.siteId, spaceId: spaceId).first {
+                        if space.canEditing {
+                            gatewaySpace.permission = .editor
+                        }else {
+                            gatewaySpace.permission = space.requiresPasswordVerification ? .permissionException : .none
+                        }
                     }
                     return gatewaySpace
                 }
@@ -161,7 +165,7 @@ class GatewayAssociatedSpacesController: UIViewController {
             selectSpaces = spaces
         }else {
             // 可编辑的space
-            let editableSpaces = spaces.filter({ $0.permission == .owner || $0.permission == .editor })
+            let editableSpaces = spaces.filter({ $0.permission == .editor })
             selectSpaces.removeAll(where: { space in editableSpaces.contains(where: { $0.spaceId == space.spaceId }) })
         }
         collectionView.reloadData()
@@ -174,9 +178,9 @@ class GatewayAssociatedSpacesController: UIViewController {
         let newSpaces = selectSpaces
         let oldSpaces = initAssociateSpaces
         // 新关联的spaces
-        let addSpaces = newSpaces.filter({ space in !oldSpaces.contains(where: { $0.spaceId == space.spaceId }) && (space.permission == .owner || space.permission == .editor) })
+        let addSpaces = newSpaces.filter({ space in !oldSpaces.contains(where: { $0.spaceId == space.spaceId }) && space.permission == .editor })
         // 解除关联的spaces
-        let unbindSpaces = oldSpaces.filter({ space in !newSpaces.contains(where: { $0.spaceId == space.spaceId }) && (space.permission == .owner || space.permission == .editor) })
+        let unbindSpaces = oldSpaces.filter({ space in !newSpaces.contains(where: { $0.spaceId == space.spaceId }) && space.permission == .editor })
         
         if addSpaces.count > 0 || unbindSpaces.count > 0 {
             spacesAssociatedHandle(associatedSpaces: addSpaces, disassociatedSpaces: unbindSpaces)
@@ -386,7 +390,7 @@ extension GatewayAssociatedSpacesController: UICollectionViewDataSource, UIColle
         cell.nameLabel.textColor = TextBlack_Color
         cell.nodesLabel.text = "\("nodes".localizedString): \(space.deviceCount)"
         if selectSpaces.contains(where: { $0.spaceId == space.spaceId }) {
-            if space.permission == .none || space.permission == .visitor {
+            if space.permission == .none || space.permission == .permissionException {
                 cell.nameLabel.textColor = Message_Color
                 cell.selectImageView.image = UIImage(named: "schedule_target_select")?.withTintColor(Message_Color)
             }else {
@@ -406,7 +410,7 @@ extension GatewayAssociatedSpacesController: UICollectionViewDataSource, UIColle
     func collectionView(_ collectionView: UICollectionView, didSelectItemAt indexPath: IndexPath) {
         
         let space = spaces[indexPath.item]
-        if space.permission == .none || space.permission == .visitor { // 其他人的space/无编辑权限space
+        if space.permission == .none || space.permission == .permissionException { // 其他人的space/无编辑权限space
             return
         }
         if let index = selectSpaces.firstIndex(where: { $0.spaceId == space.spaceId }) {

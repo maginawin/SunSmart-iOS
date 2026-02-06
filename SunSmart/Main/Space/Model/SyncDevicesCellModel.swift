@@ -88,9 +88,14 @@ enum DeviceOperationType {
                 return true
             case .gatewayAssociatedSpace:
                 return true
-            case .gatewayUnbindAssociatedSpace(let networkKey, let applicationKey):
+            case .gatewayUnbindAssociatedSpace(let networkKey, let applicationKey, let activate):
                 guard !node.knows(networkKey: networkKey) && !node.knows(applicationKey: applicationKey) && !node.subnetAppkeyBindModels.contains(where: { $0.isBoundTo(applicationKey) }) else {
                     return false
+                }
+                if activate {
+                    if node.gatewayInfo?.subnetAppkeyIndexs.contains(applicationKey.index) ?? false {
+                        return false
+                    }
                 }
                 return true
             }
@@ -148,14 +153,24 @@ enum DeviceOperationType {
                 return node.gatewayInfo?.projectId == projectId
             case .gatewaySubnetAppkeyIndexs(let appkeyIndexs):
                 return node.gatewayInfo?.subnetAppkeyIndexs.sorted() == appkeyIndexs.sorted()
-            case .gatewayAssociatedSpace(let networkKey, let applicationKey):
+            case .gatewayAssociatedSpace(let networkKey, let applicationKey, let activate):
                 guard node.knows(networkKey: networkKey) && node.knows(applicationKey: applicationKey) && !node.subnetAppkeyBindModels.contains(where: { !$0.isBoundTo(applicationKey) }) else {
                     return false
                 }
+                if activate {
+                    if !(node.gatewayInfo?.subnetAppkeyIndexs.contains(applicationKey.index) ?? false) {
+                        return false
+                    }
+                }
                 return true
-            case .gatewayUnbindAssociatedSpace(let networkKey, let applicationKey):
+            case .gatewayUnbindAssociatedSpace(let networkKey, let applicationKey, let activate):
                 guard !node.knows(networkKey: networkKey) && !node.knows(applicationKey: applicationKey) && !node.subnetAppkeyBindModels.contains(where: { $0.isBoundTo(applicationKey) }) else {
                     return false
+                }
+                if activate {
+                    if node.gatewayInfo?.subnetAppkeyIndexs.contains(applicationKey.index) ?? false {
+                        return false
+                    }
                 }
                 return true
             case .deviceRouteList:
@@ -242,8 +257,8 @@ enum DeviceOperationType {
                 break
             case .gatewayAssociatedSpace:
                 break
-            case .gatewayUnbindAssociatedSpace(let networkKey, let applicationKey):
-                let associatedMessageHandles = NodeSyncData.gatewayUnbindAssociatedSpaces(datas: [(networkKey, applicationKey)]).getMessageHandles(node: node)
+            case .gatewayUnbindAssociatedSpace(let networkKey, let applicationKey, let activate):
+                let associatedMessageHandles = NodeSyncData.gatewayUnbindAssociatedSpaces(datas: [(networkKey, applicationKey)], activate: activate).getMessageHandles(node: node)
                 messageHandles.append(contentsOf: associatedMessageHandles)
             }
         case .configuration(let node, let type): // 添加/配置操作
@@ -308,11 +323,11 @@ enum DeviceOperationType {
                 messageHandles.append(contentsOf: NodeSyncData.syncGatewayProjectId(projectId: projectId).getMessageHandles(node: node))
             case .gatewaySubnetAppkeyIndexs(let appkeyIndexs):
                 messageHandles.append(contentsOf: NodeSyncData.syncGatewaySubnetAppkeyIndexs(appkeyIndexs: appkeyIndexs).getMessageHandles(node: node))
-            case .gatewayAssociatedSpace(let networkKey, let applicationKey):
-                let associatedMessageHandles = NodeSyncData.gatewayAssociatedSpaces(datas: [(networkKey, applicationKey)]).getMessageHandles(node: node)
+            case .gatewayAssociatedSpace(let networkKey, let applicationKey, let activate):
+                let associatedMessageHandles = NodeSyncData.gatewayAssociatedSpaces(datas: [(networkKey, applicationKey)], activate: activate).getMessageHandles(node: node)
                 messageHandles.append(contentsOf: associatedMessageHandles)
-            case .gatewayUnbindAssociatedSpace(let networkKey, let applicationKey):
-                let associatedMessageHandles = NodeSyncData.gatewayUnbindAssociatedSpaces(datas: [(networkKey, applicationKey)]).getMessageHandles(node: node)
+            case .gatewayUnbindAssociatedSpace(let networkKey, let applicationKey, let activate):
+                let associatedMessageHandles = NodeSyncData.gatewayUnbindAssociatedSpaces(datas: [(networkKey, applicationKey)], activate: activate).getMessageHandles(node: node)
                 messageHandles.append(contentsOf: associatedMessageHandles)
             case .deviceRouteList:
                 break
@@ -377,9 +392,9 @@ enum ActionType {
     /// 同步网关MQTT参数
     case gatewayMQTTInformation(mqttInformation: GatewayInformation.MQTTConnectInformation)
     /// 网关关联space
-    case gatewayAssociatedSpace(networkKey: NetworkKey, applicationKey: ApplicationKey)
+    case gatewayAssociatedSpace(networkKey: NetworkKey, applicationKey: ApplicationKey, activate: Bool)
     /// 网关解除关联space
-    case gatewayUnbindAssociatedSpace(networkKey: NetworkKey, applicationKey: ApplicationKey)
+    case gatewayUnbindAssociatedSpace(networkKey: NetworkKey, applicationKey: ApplicationKey, activate: Bool)
     
     /// 设备路由list
     case deviceRouteList(proxyAddress: Address)

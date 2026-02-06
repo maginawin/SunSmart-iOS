@@ -213,6 +213,7 @@ extension SiteData {
         spaces.forEach({
             $0.delete()
         })
+        GatewayModel.delete(siteId: self.id)
         return true
     }
     
@@ -2783,14 +2784,18 @@ extension GatewayModel {
                     continue
                 }
                 
-                if var gatewaySpaceDatas = try? jsonDecoder.decode([GatewaySpaceData].self, from: row[ExpressionKey.associatedSpaces]) {
+                if let gatewaySpaceDatas = try? jsonDecoder.decode([GatewaySpaceData].self, from: row[ExpressionKey.associatedSpaces]) {
                     gatewaySpaceDatas.forEach { gatewaySpace in
                         var gatewaySpace = gatewaySpace
                         if let space = SpaceData.load(siteId: siteId, spaceId: gatewaySpace.spaceId).first {
-                            if space.state == .normal {
-                                gatewaySpace.permission = .init(rawValue: space.permission.rawValue) ?? .none
+                            if space.canEditing {
+                                gatewaySpace.permission = .editor
                             }else {
-                                gatewaySpace.permission = .none
+                                if space.requiresPasswordVerification {
+                                    gatewaySpace.permission = .permissionException
+                                }else {
+                                    gatewaySpace.permission = .none
+                                }
                             }
                         }
                         spaceDatas.append(gatewaySpace)

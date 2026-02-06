@@ -88,7 +88,12 @@ enum SyncOperation {
             return .siteUpload(siteData: siteData)
 //                .spacesAdd(siteId: site.id, spaceDatas: spaceDicts)
         case .syncGateway(let gateway, let node):
-            return .gatewayRegister(siteId: gateway.siteId, gatewayId: gateway.mac, nodeId: node.uuid.uuidString, node: await node.export() ?? [:], updateTimestamp: gateway.lastUpdate)
+            var nodeDict = await node.export()
+            if nodeDict != nil {
+                let gatewayPreconfigured: [String: Any] = gateway.export()
+                nodeDict?.updateValue(gatewayPreconfigured, forKey: "gatewayPreconfigured")
+            }
+            return .gatewayRegister(siteId: gateway.siteId, gatewayId: gateway.mac, nodeId: node.uuid.uuidString, node: nodeDict ?? [:], updateTimestamp: gateway.lastUpdate)
         }
     }
     
@@ -366,8 +371,8 @@ class CloudSynchronizationManager {
                 return space.siteId == site.id
             case .addSpaces(let site, _):
                 return site.id == site.id
-            default:
-                return false
+            case .syncGateway(let gateway, _):
+                return site.id == gateway.siteId
             }
         })
         return handle
@@ -387,8 +392,8 @@ class CloudSynchronizationManager {
                 return space.siteId == site.id
             case .addSpaces(let syncSite, _):
                 return site.id == syncSite.id
-            default:
-                return false
+            case .syncGateway(let gateway, _):
+                return site.id == gateway.siteId
             }
         })
         

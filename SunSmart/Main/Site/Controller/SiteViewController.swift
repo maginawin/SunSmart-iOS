@@ -66,11 +66,18 @@ class SiteViewController: UIViewController {
     private var reloadData: Bool = false
     
     private var networkableObservation: NSKeyValueObservation?
+//    private var siteStateObserver: NSObjectProtocol?
+//    private var spacesRefreshObserver: NSObjectProtocol?
+//    private var siteAddGatewaysObserver: NSObjectProtocol?
+//    private var siteGatewayDataChangedObserver: NSObjectProtocol?
     
+    /// site内网关list
     private var gatewayModels: [GatewayModel] = []
+    /// site内显示的网关list
+    private var showGatewayModels: [GatewayModel] = []
     
-    private var allSpaceSelectGateway: GatewayModel?
-    private var favouriteSpaceSelectGateway: GatewayModel?
+    private var allSpaceSelectGatewayId: String?
+    private var favouriteSpaceSelectGatewayId: String?
     
     private weak var allSpaceGatewayHeaderView: SiteGatewayHeaderView?
     private weak var favouriteSpaceGatewayHeaderView: SiteGatewayHeaderView?
@@ -171,6 +178,22 @@ self.updateAddressData()
     deinit {
 //        NetworkRequest.shared.removeObserver(self, forKeyPath: "networkable")
         networkableObservation = nil
+//        if let siteStateObserver = siteStateObserver {
+//            NotificationCenter.default.removeObserver(siteStateObserver)
+//            self.siteStateObserver = nil
+//        }
+//        if let spacesRefreshObserver = spacesRefreshObserver {
+//            NotificationCenter.default.removeObserver(spacesRefreshObserver)
+//            self.spacesRefreshObserver = nil
+//        }
+//        if let siteAddGatewaysObserver = siteAddGatewaysObserver {
+//            NotificationCenter.default.removeObserver(siteAddGatewaysObserver)
+//            self.siteAddGatewaysObserver = nil
+//        }
+//        if let siteGatewayDataChangedObserver = siteGatewayDataChangedObserver {
+//            NotificationCenter.default.removeObserver(siteGatewayDataChangedObserver)
+//            self.siteGatewayDataChangedObserver = nil
+//        }
         
         if MeshNetworkManager.instance.meshNetwork?.uuid.uuidString == site.meshUUID && MeshNetworkManager.instance.currentNetworkKey.networkId.hex == site.meshNetworkId {
             MeshLibManager.manager.meshNetworkDisconnect()
@@ -221,14 +244,35 @@ self.updateAddressData()
     private func setupData() {
         
         allSpaces = site.spaces
-        if let gateway = allSpaceSelectGateway {
-            allSpaces = allSpaces.filter({ space in gateway.associatedSpaces.contains(where: { $0.spaceId == space.id }) })
+        favouriteSpaces = allSpaces.filter({ $0.isFavourite })
+        
+        self.gatewayModels = self.loadGatewaysData()
+        // site内是否有可编辑的space
+        if allSpaces.contains(where: { $0.permission != .visitor }) {
+            self.showGatewayModels = self.gatewayModels.filter({ gateway in gateway.associatedSpaces.isEmpty || gateway.associatedSpaces.contains(where: { $0.permission != .none }) })
+        }else {
+            self.showGatewayModels.removeAll()
         }
         
-        favouriteSpaces = allSpaces.filter({ $0.isFavourite })
-        if let gateway = favouriteSpaceSelectGateway {
-            favouriteSpaces = favouriteSpaces.filter({ space in gateway.associatedSpaces.contains(where: { $0.spaceId == space.id }) })
+        if let gatewayId = allSpaceSelectGatewayId, let gateway = gatewayModels.first(where: { $0.mac == gatewayId }) {
+            allSpaces = allSpaces.filter({ space in gateway.associatedSpaces.contains(where: { $0.spaceId == space.id }) })
+        }else {
+            allSpaceSelectGatewayId = nil
         }
+        
+        if let gatewayId = favouriteSpaceSelectGatewayId, let gateway = gatewayModels.first(where: { $0.mac == gatewayId }) {
+            favouriteSpaces = favouriteSpaces.filter({ space in gateway.associatedSpaces.contains(where: { $0.spaceId == space.id }) })
+        }else {
+            favouriteSpaceSelectGatewayId = nil
+        }
+        
+        allSpaces.forEach({ space in
+            if let gateway = self.gatewayModels.first(where: { gateway in gateway.associatedSpaces.contains(where: { $0.spaceId == space.id }) }) {
+                space.gatewayStatus = gateway.connectStatus == .online ? .online : .offline
+            }else {
+                space.gatewayStatus = .notBound
+            }
+        })
         
         self.allSpacesCollectionView.reloadData()
         self.favouritesCollectionView.reloadData()
@@ -267,7 +311,8 @@ self.updateAddressData()
         }
         
         /// 网关添加回调
-        NotificationCenter.default.addObserver(forName: .init(siteAddGatewaysDataNotificaitonName), object: nil, queue: nil) { notification in
+        NotificationCenter.default.addObserver(forName: .init(siteAddGatewaysDataNotificaitonName), object: nil, queue: nil) {[weak self] notification in
+            guard let self = self else { return }
             guard let gateways = notification.object as? [GatewayModel] else { return }
             gateways.forEach({
                 if let node = $0.node {
@@ -285,7 +330,8 @@ self.updateAddressData()
         }
         
         /// 网关数据更新回调
-        NotificationCenter.default.addObserver(forName: .init(siteGatewayDataChangedNotificaitonName), object: nil, queue: nil) { notification in
+        NotificationCenter.default.addObserver(forName: .init(siteGatewayDataChangedNotificaitonName), object: nil, queue: nil) {[weak self] notification in
+            guard let self = self else { return }
             guard let gateway = notification.object as? GatewayModel else { return }
             if let node = gateway.node {
                 gateway.lastUpdate = Int64(Date().timeIntervalSince1970)
@@ -338,10 +384,12 @@ self.updateAddressData()
             case .success(let response):
                 if let siteData = JSON(response)["data"].dictionaryObject {
 //                    let site = SiteData.import(siteJsonData: siteData)
-                    Task {
+                    Task {[weak self] in
+                        guard let self = self else { return }
                         print("导入数据: \(Date().timeIntervalSince1970)")
                         await self.site.update(siteJsonData: siteData)
                         print("导入数据完成: \(Date().timeIntervalSince1970)")
+                        guard !Task.isCancelled else { return }
                         // space已提交到服务器，但是本地有但是服务器没有
 //                        let deleteSpaces = self.allSpaces.filter({ localSpace in !self.site.spaces.contains(where: { $0.id == localSpace.id }) && localSpace.uploadCloud })
 //                        deleteSpaces.forEach({ space in
@@ -374,7 +422,7 @@ self.updateAddressData()
                         
                         self.title = self.site.name
                         
-                        self.gatewayModels = await self.loadGatewaysData()
+//                        self.gatewayModels = self.loadGatewaysData()
                         
 //                        self.site.save(allData: true)
 //                        // 未提交到服务器的本地数据
@@ -382,13 +430,6 @@ self.updateAddressData()
 //                        self.site.spaces.append(contentsOf: localSpaces)
 //                        self.site.spaces.append(contentsOf: deleteSpaces)
 //                        self.site.spaces.sort(by: { $0.create < $1.create })
-                        self.site.spaces.forEach({ space in
-                            if let gateway = self.gatewayModels.first(where: { gateway in gateway.associatedSpaces.contains(where: { $0.spaceId == space.id }) }) {
-                                space.gatewayStatus = gateway.connectStatus == .online ? .online : .offline
-                            }else {
-                                space.gatewayStatus = .notBound
-                            }
-                        })
                         
                         self.setupData()
                     #if DEBUG
@@ -444,9 +485,16 @@ self.updateAddressData()
                                         $0.state = .waitDeleted
                                         $0.releaseAddress = true
                                         $0.save()
-                                        self.reloadSpaceData($0)
+//                                        self.reloadSpaceData($0)
                                     }
                                 })
+                                self.gatewayModels.forEach { gateway in
+                                    gateway.associatedSpaces.forEach {
+                                        $0.permission = .none
+                                    }
+                                }
+                                self.allSpacesCollectionView.reloadData()
+                                self.favouritesCollectionView.reloadData()
                                 self.site.recycleAddressData = await self.site.getRecycleAddressData(unbindSpaces: self.site.spaces)
                                 self.site.save()
                             }
@@ -517,6 +565,16 @@ self.updateAddressData()
             case .success(_):
                 // 删除本地数据
                 self?.deleteSpace(space: space)
+                // 删除网关内关联的space并同步到服务器
+                if let gateway = self?.gatewayModels.first(where: { $0.mac == space.relevanceGatewayId }) {
+                    gateway.associatedSpaces.removeAll(where: { $0.spaceId == space.id })
+                    gateway.lastUpdate = Int64(Date().timeIntervalSince1970)
+                    gateway.save()
+                    if let node = gateway.node {
+                        CloudSynchronizationManager.shared.addSynchronizationHandle(operation: .syncGateway(gateway: gateway, node: node), level: .promptly)
+                    }
+                }
+                
             case .failure(let error): // 删除失败，无网络/space存在编辑者
                 if error == .editorBeingUsedSpace {
                     XWHUDManager.showErrorTipHUD("space_delete_have_editor_message".localizedString)
@@ -542,6 +600,7 @@ self.updateAddressData()
                             // 缓存密码
                             space.authorizationPassword = verificationPassword
                             space.requiresPasswordVerification = false
+                            self.reloadGatewaySpacePermissionState(space: space)
                         }
                         space.save()
                         self.reloadSpaceData(space)
@@ -574,6 +633,7 @@ self.updateAddressData()
                             space.save()
                             self.reloadSpaceData(space)
                         }
+                        self.reloadGatewaySpacePermissionState(space: space)
                     }
                 case .noSpacePermission, .userUnauthorized: // 无权限
                     if space.permission == .editor || space.permission == .visitor {
@@ -581,6 +641,7 @@ self.updateAddressData()
                         space.state = .waitDeleted
                         space.save()
                         self.reloadSpaceData(space)
+                        self.reloadGatewaySpacePermissionState(space: space)
                     }
                     XWHUDManager.showErrorTipHUD(error.localizedDescription)
                 default:
@@ -632,12 +693,23 @@ self.updateAddressData()
         
     }
     
-    /// 加载网关list及网络请求
-    private func loadGatewaysData() async -> [GatewayModel] {
+    /// 加载网关list
+    private func loadGatewaysData() -> [GatewayModel] {
         
-//        let result = await NetworkRequest.shared.request(.gatewayList(siteId: site.id))
-        
+        // space列表内没有编辑权限
+//        guard allSpaces.contains(where: { $0.canEditing }) else {
+//            return []
+//        }
         let gatewayModels = GatewayModel.load(siteId: site.id)
+//        var showGatewayModels = gatewayModels
+//        if site.permission == .visitor { // 如果不是site的创建者，则判断网关是否有关联space，如果有则判断是否有操作权限
+//            showGatewayModels = gatewayModels.filter { gateway in
+//                gateway.associatedSpaces.isEmpty || gateway.associatedSpaces.contains(where: { $0.permission == .editor || $0.permission == .permissionException })
+//            }
+//        }
+//        allSpaceSelectGatewayId = nil
+//        favouriteSpaceSelectGatewayId = nil
+        
         gatewayModels.forEach { gateway in
             if let space = self.allSpaces.first(where: { $0.relevanceGatewayId == gateway.mac }), space.gatewayStatus != .notBound {
                 if space.gatewayStatus == .online {
@@ -809,12 +881,13 @@ self.updateAddressData()
                 // 未上传服务器，site、space一起上传
                 CloudSynchronizationManager.shared.addSynchronizationHandle(operation: .syncSite(site: site, syncSpaces: site.spaces), level: .normal)
             }
-            
-            self.allSpaces.append(space)
-            let insertPath = IndexPath(row: self.allSpaces.count - 1, section: 0)
-            self.allSpacesCollectionView.insertItems(at: [insertPath])
-            self.allSpacesCollectionView.scrollToItem(at: insertPath, at: .bottom, animated: true)
-            self.updateEmptyView()
+            if self.allSpaceSelectGatewayId == nil {
+                self.allSpaces.append(space)
+                let insertPath = IndexPath(row: self.allSpaces.count - 1, section: 0)
+                self.allSpacesCollectionView.insertItems(at: [insertPath])
+                self.allSpacesCollectionView.scrollToItem(at: insertPath, at: .bottom, animated: true)
+                self.updateEmptyView()
+            }
             
             return true
         }
@@ -890,6 +963,12 @@ self.updateAddressData()
         
         //            self.site.lastUpdate = Int64(Date().timeIntervalSince1970)
         space.delete()
+        
+        if space.permission == .owner, let gateway = self.gatewayModels.first(where: { $0.associatedSpaces.contains(where: { $0.spaceId == space.id }) }) {
+            gateway.associatedSpaces.removeAll(where: { $0.spaceId == space.id })
+            gateway.save()
+        }
+        
         self.site.spaces.removeAll(where: { $0.id == space.id })
         // 删除数据
         var index: Int?
@@ -1500,12 +1579,12 @@ self.updateAddressData()
         
         let permissionState: GatewayPermissionState = (site.permission == .owner || gateway.associatedSpaces.compactMap({ data in allSpaces.first(where: { $0.id == data.spaceId }) }).contains(where: { $0.state == .normal })) ? .normal : .noPermission
         
-        if gateway.mac == allSpaceSelectGateway?.mac {
+        if gateway.mac == allSpaceSelectGatewayId {
             allSpaceGatewayHeaderView?.gatewayStatusView.updateGatewayStatus(gatewayStatus, syncState: state, permissionState: permissionState)
             if case .successful = state { // 同步成功后清除状态
                 if gateway.syncCloudError != nil {
                     gateway.syncCloudError = nil
-                    var items = gatewayModels.map({ GatewayListItem(id: $0.mac, title: $0.name, status: $0.connectStatus, gatewayModel: $0)})
+                    var items = showGatewayModels.map({ GatewayListItem(id: $0.mac, title: $0.name, status: $0.connectStatus, gatewayModel: $0)})
                     if items.count > 0 {
                         items.insert(.init(id: "", title: "overview".localizedString), at: 0)
                     }
@@ -1513,12 +1592,12 @@ self.updateAddressData()
                 }
                 DispatchQueue.main.asyncAfter(deadline: .now() + 1) {[weak self] in
                     guard let self = self else { return }
-                    if gateway.mac == self.allSpaceSelectGateway?.mac, self.allSpaceGatewayHeaderView?.gatewayStatusView.gatewaySyncState?.rawValue == CloudSynchronizationState.successful.rawValue {
+                    if gateway.mac == self.allSpaceSelectGatewayId, self.allSpaceGatewayHeaderView?.gatewayStatusView.gatewaySyncState?.rawValue == CloudSynchronizationState.successful.rawValue {
                         self.allSpaceGatewayHeaderView?.gatewayStatusView.updateGatewayStatus(gatewayStatus, syncState: nil, permissionState: permissionState)
                     }
                 }
             }
-        }else if gateway.mac == favouriteSpaceSelectGateway?.mac {
+        }else if gateway.mac == favouriteSpaceSelectGatewayId {
             favouriteSpaceGatewayHeaderView?.gatewayStatusView.updateGatewayStatus(gatewayStatus, syncState: state, permissionState: permissionState)
             
             if gateway.syncCloudError != nil {
@@ -1533,7 +1612,7 @@ self.updateAddressData()
             if case .successful = state { // 同步成功后清除状态
                 DispatchQueue.main.asyncAfter(deadline: .now() + 1) {[weak self] in
                     guard let self = self else { return }
-                    if gateway.mac == self.favouriteSpaceSelectGateway?.mac, self.favouriteSpaceGatewayHeaderView?.gatewayStatusView.gatewaySyncState?.rawValue == CloudSynchronizationState.successful.rawValue {
+                    if gateway.mac == self.favouriteSpaceSelectGatewayId, self.favouriteSpaceGatewayHeaderView?.gatewayStatusView.gatewaySyncState?.rawValue == CloudSynchronizationState.successful.rawValue {
                         self.favouriteSpaceGatewayHeaderView?.gatewayStatusView.updateGatewayStatus(gatewayStatus, syncState: nil, permissionState: permissionState)
                     }
                 }
@@ -1714,6 +1793,45 @@ self.updateAddressData()
         }
         CATransaction.commit()
     }
+    
+    /// 添加网关
+    private func addGateway() {
+        
+        guard self.allSpaces.contains(where: { ($0.permission == .owner || $0.permission == .editor) && $0.state == .normal && !$0.requiresPasswordVerification }) else {
+            // 无权限
+            XWHUDManager.showTipHUD(inView: "no_permission".localizedString, isLineFeed: true)
+            return
+        }
+        // 查询editor是否还有space没有被网关绑定
+        if self.site.permission != .owner, !self.allSpaces.contains(where: { $0.permission == .editor && $0.gatewayStatus == .notBound }) {
+            XWHUDManager.showTipHUD("gateway_add_no_editor_spaces_message".localizedString, isLineFeed: true)
+            return
+        }
+        let vc = SiteDeviceAddViewController(site: self.site)
+        vc.deviceAddCallback = {[weak self] _ in
+            self?.loadSiteRequest()
+        }
+        self.navigationController?.pushViewController(vc, animated: true)
+        
+    }
+    
+    /// 刷新网关内关联space的权限状态
+    private func reloadGatewaySpacePermissionState(space: SpaceData) {
+        
+        guard let gateway = gatewayModels.first(where: { $0.mac == space.relevanceGatewayId }) else {
+            return
+        }
+        
+        let gatewaySpace = gateway.associatedSpaces.first(where: { $0.spaceId == space.id })
+        if space.canEditing {
+            gatewaySpace?.permission = .editor
+        }else {
+            gatewaySpace?.permission = space.requiresPasswordVerification ? .permissionException : .none
+        }
+        
+    }
+    
+    // MARK: - UI
     
     /// 更新无网络UI
     private func updateNoInternetUI() {
@@ -1944,16 +2062,16 @@ extension SiteViewController: GatewayListViewDelegate {
     /// 点击网关项回调
     func gatewayListView(_ view: GatewayListView, didSelectItem item: GatewayListItem, at index: Int) {
         if segmentedControl.selectedIndex == 0 {
-            if index == 0 || index > gatewayModels.count {
-                allSpaceSelectGateway = nil
+            if index == 0 || index > showGatewayModels.count {
+                allSpaceSelectGatewayId = nil
             }else {
-                allSpaceSelectGateway = gatewayModels[index - 1]
+                allSpaceSelectGatewayId = showGatewayModels[index - 1].mac
             }
         }else {
-            if index == 0 || index > gatewayModels.count {
-                favouriteSpaceSelectGateway = nil
+            if index == 0 || index > showGatewayModels.count {
+                favouriteSpaceSelectGatewayId = nil
             }else {
-                favouriteSpaceSelectGateway = gatewayModels[index - 1]
+                favouriteSpaceSelectGatewayId = showGatewayModels[index - 1].mac
             }
         }
         setupData()
@@ -1961,51 +2079,35 @@ extension SiteViewController: GatewayListViewDelegate {
     
     /// 点击菜单按钮回调
     func gatewayListViewDidClickMenu(_ view: GatewayListView) {
-        let datas = gatewayModels.map({ SiteGatewaysMenuView.GatewayMenuData(name: $0.name, status: $0.connectStatus) })
+        let datas = showGatewayModels.map({ SiteGatewaysMenuView.GatewayMenuData(name: $0.name, status: $0.connectStatus) })
         
         let menuPoint = CGPoint(x: view.width - SiteGatewaysMenuView.defalutWidth, y: view.frame.maxY + SCRYFrom(4))
         let windowPoint = view.convert(menuPoint, to: UIApplication.shared.keyWindow())
         
         var selectIndex: Int?
         if segmentedControl.selectedIndex == 0 {
-            selectIndex = gatewayModels.firstIndex(where: { $0.mac == allSpaceSelectGateway?.mac })
+            selectIndex = showGatewayModels.firstIndex(where: { $0.mac == allSpaceSelectGatewayId })
         }else {
-            selectIndex = gatewayModels.firstIndex(where: { $0.mac == favouriteSpaceSelectGateway?.mac })
+            selectIndex = showGatewayModels.firstIndex(where: { $0.mac == favouriteSpaceSelectGatewayId })
         }
         
         SiteGatewaysMenuView.show(datas: datas, anchorPoint: windowPoint, selectIndex: selectIndex) {[weak self] index in
             guard let self = self else { return }
             if self.segmentedControl.selectedIndex == 0 {
-                self.allSpaceSelectGateway = self.gatewayModels[safe: index]
+                self.allSpaceSelectGatewayId = self.showGatewayModels[safe: index]?.mac
             }else {
-                self.favouriteSpaceSelectGateway = self.gatewayModels[safe: index]
+                self.favouriteSpaceSelectGatewayId = self.showGatewayModels[safe: index]?.mac
             }
             self.setupData()
         } addCallback: {[weak self] in
             guard let self = self else { return }
-            guard self.allSpaces.contains(where: { $0.permission == .owner || $0.permission == .editor }) else {
-                // 无权限
-//                XWHUDManager.show
-                return
-            }
-            if self.site.permission != .owner, self.allSpaces.contains(where: { $0.permission == .editor && $0.gatewayStatus == .notBound }) {
-                
-            }
-            let vc = SiteDeviceAddViewController(site: self.site)
-            vc.deviceAddCallback = {[weak self] _ in
-                self?.loadSiteRequest()
-            }
-            self.navigationController?.pushViewController(vc, animated: true)
+            self.addGateway()
         }
     }
     
     /// 点击添加网关
     func gatewayListViewDidClickAdd(_ view: GatewayListView) {
-        let vc = SiteDeviceAddViewController(site: site)
-        vc.deviceAddCallback = {[weak self] _ in
-            self?.loadSiteRequest()
-        }
-        navigationController?.pushViewController(vc, animated: true)
+        addGateway()
     }
     
 }
@@ -2015,13 +2117,13 @@ extension SiteViewController: SiteGatewayStatusViewDelegate {
     /// 网关状态view点击回调
     func gatewayStatusViewClickAction(_ view: SiteGatewayStatusView) {
         if case .failure = view.gatewaySyncState {
-            var selectGateway: GatewayModel?
+            var selectGatewayId: String?
             if segmentedControl.selectedIndex == 0 {
-                selectGateway = allSpaceSelectGateway
+                selectGatewayId = allSpaceSelectGatewayId
             }else {
-                selectGateway = favouriteSpaceSelectGateway
+                selectGatewayId = favouriteSpaceSelectGatewayId
             }
-            if let gateway = selectGateway, let node = gateway.node {
+            if let gateway = showGatewayModels.first(where: { $0.mac == selectGatewayId }), let node = gateway.node {
                 CloudSynchronizationManager.shared.addSynchronizationHandle(operation: .syncGateway(gateway: gateway, node: node), level: .promptly)
             }
         }
@@ -2029,11 +2131,16 @@ extension SiteViewController: SiteGatewayStatusViewDelegate {
     
     func gatewayOperationClickAction(_ view: SiteGatewayStatusView) {
         
-        let selectGateway = segmentedControl.selectedIndex == 0 ? allSpaceSelectGateway : favouriteSpaceSelectGateway
-        guard let gateway = selectGateway else {
+        let selectGatewayId = segmentedControl.selectedIndex == 0 ? allSpaceSelectGatewayId : favouriteSpaceSelectGatewayId
+        guard let gateway = showGatewayModels.first(where: { $0.mac == selectGatewayId }) else {
             return
         }
-//        if site.permission != .owner, allSpaces
+        
+        // 网关内绑定的space无权限
+        if site.permission != .owner, gateway.associatedSpaces.count > 0, !gateway.associatedSpaces.contains(where: { $0.permission == .editor }) {
+            XWHUDManager.showTipHUD(inView: "gateway_no_authority".localizedString, isLineFeed: true)
+            return
+        }
         
         guard let gatewayVc = GatewayViewController(site: site, gateway: gateway) else {
             XWHUDManager.showErrorTipHUD("failed".localizedString + " !")
@@ -2097,25 +2204,32 @@ extension SiteViewController: UICollectionViewDataSource, UICollectionViewDelega
     func collectionView(_ collectionView: UICollectionView, viewForSupplementaryElementOfKind kind: String, at indexPath: IndexPath) -> UICollectionReusableView {
         let headerView = collectionView.dequeueReusableSupplementaryView(ofKind: kind, withReuseIdentifier: "header", for: indexPath) as! SiteGatewayHeaderView
         
-        var items = gatewayModels.map({ GatewayListItem(id: $0.mac, title: $0.name, status: $0.connectStatus, gatewayModel: $0)})
-        if items.count > 0 {
-            items.insert(.init(id: "", title: "overview".localizedString), at: 0)
-        }
-        headerView.gatewayListView.updateItems(items)
         var selectIndex: Int = 0
         var spaces: [SpaceData] = []
         if collectionView == allSpacesCollectionView {
-            if let index = gatewayModels.firstIndex(where: { $0.mac == allSpaceSelectGateway?.mac }) {
+            if let index = showGatewayModels.firstIndex(where: { $0.mac == allSpaceSelectGatewayId }) {
                 selectIndex = index + 1
             }
             spaces = allSpaces
         }else {
-            if let index = gatewayModels.firstIndex(where: { $0.mac == favouriteSpaceSelectGateway?.mac }) {
+            if let index = showGatewayModels.firstIndex(where: { $0.mac == favouriteSpaceSelectGatewayId }) {
                 selectIndex = index + 1
             }
             spaces = favouriteSpaces
         }
-        headerView.gatewayListView.selectedIndex = selectIndex
+        
+        if showGatewayModels.count > 0 {
+            headerView.showGatewayListView = true
+            var items = showGatewayModels.map({ GatewayListItem(id: $0.mac, title: $0.name, status: $0.connectStatus, gatewayModel: $0)})
+            if items.count > 0 {
+                items.insert(.init(id: "", title: "overview".localizedString), at: 0)
+            }
+            headerView.gatewayListView.updateItems(items)
+            headerView.gatewayListView.selectedIndex = selectIndex
+        }else {
+            headerView.showGatewayListView = false
+        }
+       
         headerView.gatewayStatusView.isHidden = gatewayModels.isEmpty
         if selectIndex == 0 {
             headerView.gatewayStatusView.setDisplayMode(.overview)
@@ -2127,8 +2241,8 @@ extension SiteViewController: UICollectionViewDataSource, UICollectionViewDelega
             headerView.gatewayStatusView.updateOverviewStats(.init(internetOnlineCount: onlineSpaces.count, internetOfflineCount: offlineSpaces.count, noGatewayCount: notBoundSpaces.count))
         }else {
             headerView.gatewayStatusView.setDisplayMode(.gateway)
-            if selectIndex <= gatewayModels.count {
-                let gateway = gatewayModels[selectIndex - 1]
+            if selectIndex <= showGatewayModels.count {
+                let gateway = showGatewayModels[selectIndex - 1]
                 let syncState = CloudSynchronizationManager.shared.getGatewayCurrentSyncState(gateway)?.state
                 let permissionState: GatewayPermissionState = (site.permission == .owner || gateway.associatedSpaces.compactMap({ data in allSpaces.first(where: { $0.id == data.spaceId }) }).contains(where: { $0.state == .normal })) ? .normal : .noPermission
                 switch gateway.connectStatus {
@@ -2155,13 +2269,13 @@ extension SiteViewController: UICollectionViewDataSource, UICollectionViewDelega
     
     func collectionView(_ collectionView: UICollectionView, layout collectionViewLayout: UICollectionViewLayout, referenceSizeForHeaderInSection section: Int) -> CGSize {
 
-        guard site.spaces.count > 0 else {
+        guard site.spaces.count > 0, gatewayModels.count > 0 else {
             return .zero
         }
         
         let headerW = collectionView.width - collectionView.contentInset.left - collectionView.contentInset.right
         var headerH = SCRYFrom(48)
-        if gatewayModels.count > 0 {
+        if showGatewayModels.count > 0 {
             headerH += SCRYFrom(48)
         }
         return CGSize(width: headerW, height: headerH)

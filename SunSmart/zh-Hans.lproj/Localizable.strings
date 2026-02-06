@@ -1434,7 +1434,7 @@
 "Offline" = "Offline";
 "nodes" = "Nodes";
 "associated_selected" = "Associated selected";
-"gateway_no_permission_message" = "The editor's space is all gateway bound";
+"gateway_add_no_editor_spaces_message" = "The editor's space is all gateway bound";
 "no_associated_spaces" = "No associated spaces";
 "gateway_associated_nodes_limit_message" = "A maximum of %d nodes can be associated.";
 "gateway_associated_spaces_limit_message" = "Up to %d can be associated";
@@ -1444,3 +1444,5 @@
 "associate_spaces_failed_message" = "Failed to associate spaces: [%@]";
 "disassociate_spaces_failed_message" = "Failed to disassociate spaces: [%@]";
 "associate_space_unauthorized_message" = "Authorization is required before you can associate the space.";
+"gateway_sync_spaces" = "Sync Spaces";
+"gateway_no_authority" = "You no longer have the authority";

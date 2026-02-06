@@ -119,6 +119,19 @@ class SpaceData: Copyable {
     /// 分享邀请码
     var shareCode: String?
     
+    /// 检查space是否可以编辑
+    var canEditing: Bool {
+        // 是否有编辑权限
+        guard permission == .owner || permission == .editor else {
+            return false
+        }
+        // space是否被清空权限或者修改密码
+        if state == .waitDeleted || requiresPasswordVerification {
+            return false
+        }
+        return true
+    }
+    
     /// 是否数据空的空间
     var isEmpty: Bool {
         return deviceCount == 0 && luminairesCount == 0 && groupCount == 0 && sceneCount == 0 && scheheduleCount == 0 && switchesCount == 0
