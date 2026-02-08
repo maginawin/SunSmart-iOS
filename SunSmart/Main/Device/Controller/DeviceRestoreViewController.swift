@@ -80,7 +80,8 @@ class DeviceRestoreViewController: UIViewController {
     
     private var rssiSortTimer: Timer?
     
-    let space: SpaceData
+    let site: SiteData
+    let space: SpaceData?
     
     /// 恢复数据模式
     let restoreMode: RestoreMode
@@ -92,7 +93,8 @@ class DeviceRestoreViewController: UIViewController {
     private var applyDeviceAddress: Bool = false
     
     
-    init(space: SpaceData, restoreMode: RestoreMode) {
+    init(site: SiteData, space: SpaceData?, restoreMode: RestoreMode) {
+        self.site = site
         self.space = space
         self.restoreMode = restoreMode
         super.init(nibName: nil, bundle: nil)
@@ -121,6 +123,13 @@ class DeviceRestoreViewController: UIViewController {
         setupUI()
         scanBtn.isSelected = true
         startScan()
+        
+        if space == nil, MeshNetworkManager.instance.meshNetwork?.uuid.uuidString != self.site.meshUUID || !MeshNetworkManager.instance.currentNetworkKey.isPrimary {
+            DispatchQueue.global().async {[weak self] in
+                guard let self = self else { return }
+                MeshLibManager.manager.setMeshNetworkConnected(meshUUID: self.site.meshUUID, subNetworkId: self.site.meshNetworkId, connected: false)
+            }
+        }
         
         if automationRestore {
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.35, execute: {[weak self] in
@@ -248,6 +257,10 @@ class DeviceRestoreViewController: UIViewController {
         
         MeshAPI.startScanRecoverDevices(duration: .max, scanDevice: {[weak self] unprovisionedDevice, node in
             guard let self = self, unprovisionedDevice.rssi.intValue >= self.filterRSSIRange.lowerBound else { return }
+            
+            if space != nil, node.deviceType == .gateway { // 禁止在space中恢复网关
+                return
+            }
             
             if self.automationRestore {
                 DispatchQueue.main.async {
@@ -529,19 +542,12 @@ class DeviceRestoreViewController: UIViewController {
                     addToGroup = section.group
                 }
             }
-            if addDevice.deviceType == .gateway, let mac = node.macAddress, NetworkRequest.shared.networkable {
-                Task {
-                    // 网关绑定到space
-                    let bindSpaceResult = await NetworkRequest.shared.request(.gatewayBindSpace(spaceId: self.space.id, gatewayId: mac))
-                    switch bindSpaceResult {
-                    case .success:
-                        let gatewaySpaceData = GatewaySpaceData(spaceId: self.space.id, spaceName: self.space.name, deviceCount: self.space.deviceCount, appKeyIndex: MeshNetworkManager.instance.currentApplicationKey.index)
-                        node.gatewayModel?.associatedSpaces.append(gatewaySpaceData)
-                        node.gatewayModel?.save()
-                    case .failure:
-                        break
-                    }
-                }
+            
+            if addDevice.deviceType == .gateway, let mac = node.macAddress { // 网关设备，创建一个网关model数据映射
+                
+                let gatewayModel = GatewayModel.load(node: oldNode) ?? GatewayModel(siteId: site.id, name: node.name ?? "", address: node.primaryUnicastAddress, mac: mac, activate: true)
+                gatewayModel.address = node.primaryUnicastAddress
+                gatewayModel.save()
             }
             
             // 恢复数据
@@ -650,14 +656,14 @@ class DeviceRestoreViewController: UIViewController {
                     if SRAlertView.getCurrentAlertView() == nil {
                         SRAlertView(title: "notification".localizedString, message: "device_address_insufficient".localizedString, actions: [SRAlertAction(title: "ok".localizedString, actionHandler: {[weak self] _ in
                             if NetworkRequest.shared.networkable {
-                                self?.space.applyDeviceAddressCount = nil
-                                self?.space.save()
+                                self?.space?.applyDeviceAddressCount = nil
+                                self?.space?.save()
                                 self?.applyDeviceAddressesRequest(applyAddressCount: applyAddressCount)
                             }
                         })]).show()
                     }
-                    self.space.applyDeviceAddressCount = applyAddressCount
-                    self.space.save()
+                    self.space?.applyDeviceAddressCount = applyAddressCount
+                    self.space?.save()
                     return
                 }
                 self.applyDeviceAddressesRequest(applyAddressCount: applyAddressCount)
@@ -727,13 +733,13 @@ class DeviceRestoreViewController: UIViewController {
             // 添加设备需要地址-剩余地址 +（site中所有space已经添加的设备地址+正在添加的设备地址）*20%
             let estimatedAddressCount = devices.reduce(0, { (result, device) in result + (device.unprovisionedDevice?.elementCount ?? 0) })
             // 可用地址数量
-            let availableUnicastCount = MeshAPI.getNumberOfAvailableUnicastAddresses(meshUUID: self.space.meshUUID)
+            let availableUnicastCount = MeshAPI.getNumberOfAvailableUnicastAddresses(meshUUID: self.site.meshUUID)
             
             // 检查剩余地址是否足够添加设备
             guard availableUnicastCount >= estimatedAddressCount else {
                 
                 // 获取网络内已存在的设备地址数量
-                let existingAddressCount = Node.loadAddresses(meshUUID: self.space.meshUUID).count
+                let existingAddressCount = Node.loadAddresses(meshUUID: self.site.meshUUID).count
                 // 申请的地址数量
                 let applyAddressCount = estimatedAddressCount - availableUnicastCount + Int(Float(existingAddressCount) * 0.2)
                 
@@ -741,8 +747,8 @@ class DeviceRestoreViewController: UIViewController {
                 // 手机是否联网
                 guard NetworkRequest.shared.networkable else {
                     // 未联网提示联网以获取地址
-                    self.space.applyDeviceAddressCount = applyAddressCount
-                    self.space.save()
+                    self.space?.applyDeviceAddressCount = applyAddressCount
+                    self.space?.save()
                     
                     DispatchQueue.main.async {
 //                        XWHUDManager.hide()
@@ -756,8 +762,8 @@ class DeviceRestoreViewController: UIViewController {
                         self.updateUIState()
                         SRAlertView(title: "notification".localizedString, message: "device_address_insufficient".localizedString, actions: [SRAlertAction(title: "ok".localizedString, actionHandler: {[weak self] _ in
                             if NetworkRequest.shared.networkable {
-                                self?.space.applyDeviceAddressCount = nil
-                                self?.space.save()
+                                self?.space?.applyDeviceAddressCount = nil
+                                self?.space?.save()
                                 self?.applyDeviceAddressesRequest(applyAddressCount: applyAddressCount)
                             }
                         })]).show()
@@ -788,15 +794,15 @@ class DeviceRestoreViewController: UIViewController {
 
         self.applyDeviceAddress = true
         XWHUDManager.showCustomHUD(withMessage: nil, isWindow: true)
-        NetworkRequest.shared.request(.applyAddress(siteId: self.space.siteId, type: .device, number: applyAddressCount)) {[weak self] result in
+        NetworkRequest.shared.request(.applyAddress(siteId: self.site.id, type: .device, number: applyAddressCount)) {[weak self] result in
             XWHUDManager.hide()
             guard let self = self else { return }
             self.applyDeviceAddress = false
             switch result {
             case .success(let repsonsed):
                 // 新增地址
-                if let site = SiteData.load(siteId: self.space.siteId), let provisionerData = JSON(repsonsed)["data"]["provisioner"].dictionaryObject {
-                    site.setProvisioner(provisionerData: provisionerData)
+                if let provisionerData = JSON(repsonsed)["data"]["provisioner"].dictionaryObject {
+                    self.site.setProvisioner(provisionerData: provisionerData)
                     // 继续添加设备
                     devices.forEach({
                         self.addDevice($0)

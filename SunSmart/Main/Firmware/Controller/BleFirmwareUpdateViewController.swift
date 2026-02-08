@@ -224,11 +224,18 @@ class BleFirmwareUpdateViewController: UIViewController {
     private var countdownTimer: Timer?
     private weak var countdownLabel: UILabel?
     private var currentCountDown: Int = 30
+    /// 升级完成回调
+    var deviceUpdateCompleteCallback: (([Node])->Void)?
+    /// 升级的设备list
+    let nodes: [Node]
     
-    let space: SpaceData
+    let site: SiteData
+    let space: SpaceData?
     
-    init(space: SpaceData) {
+    init(site: SiteData, space: SpaceData?, nodes: [Node]? = nil) {
+        self.site = site
         self.space = space
+        self.nodes = nodes ?? MeshNetworkManager.instance.realNodes
         super.init(nibName: nil, bundle: nil)
     }
     
@@ -258,7 +265,7 @@ class BleFirmwareUpdateViewController: UIViewController {
         self.isModalInPresentation = true
 //        setupData()
         
-        MeshNetworkManager.instance.realNodes.forEach({
+        self.nodes.forEach({
             $0.updateState = .none
             $0.selectedState = .unselected
         })
@@ -288,7 +295,7 @@ class BleFirmwareUpdateViewController: UIViewController {
         guard sender.state == .began else {
             return
         }
-        let vc = ReadDevicesDataViewController(type: .parameters(nodes: MeshNetworkManager.instance.realNodes, parameters: [.firmwareVension]))
+        let vc = ReadDevicesDataViewController(type: .parameters(nodes: nodes, parameters: [.firmwareVension]))
         vc.readSuccessCallback = {[weak self] _ in
             self?.setupData(loadServerData: true)
             self?.navigationController?.popViewController(animated: true)
@@ -338,7 +345,7 @@ class BleFirmwareUpdateViewController: UIViewController {
     
     /// 刷新信号值
     @objc private func refreshRSSI() {
-        guard MeshNetworkManager.instance.realNodes.count > 0 else {
+        guard nodes.count > 0 else {
             showEmptyUI()
             return
         }
@@ -347,7 +354,7 @@ class BleFirmwareUpdateViewController: UIViewController {
             return
         }
         
-        MeshNetworkManager.instance.realNodes.forEach({
+        nodes.forEach({
             $0.rssi = nil
             $0.peripheral = nil
         })
@@ -368,7 +375,7 @@ class BleFirmwareUpdateViewController: UIViewController {
         
         MeshLibManager.manager.refreshNodesRSSI(withWaitFor: 99999, nodeScan: {[weak self] data in
             
-            guard let self = self, let node = MeshNetworkManager.instance.realNodes.first(where: { $0.primaryUnicastAddress == data.node.primaryUnicastAddress }), node.peripheral == nil else { return }
+            guard let self = self, let node = nodes.first(where: { $0.primaryUnicastAddress == data.node.primaryUnicastAddress }), node.peripheral == nil else { return }
             
             DispatchQueue.main.async {
                 NSObject.cancelPreviousPerformRequests(withTarget: self, selector: #selector(self.refreshNodesRSSIFinish), object: nil)
@@ -391,7 +398,7 @@ class BleFirmwareUpdateViewController: UIViewController {
             }
                 
             // 查找完所有设备后停止搜索
-            if !MeshNetworkManager.instance.realNodes.contains(where: { $0.rssi == nil || $0.peripheral == nil }) {
+            if !nodes.contains(where: { $0.rssi == nil || $0.peripheral == nil }) {
                 DispatchQueue.main.async {
                     NSObject.cancelPreviousPerformRequests(withTarget: self, selector: #selector(self.refreshNodesRSSIFinish), object: nil)
                     self.refreshNodesRSSIFinish()
@@ -491,7 +498,6 @@ class BleFirmwareUpdateViewController: UIViewController {
         
         var deviceTypes: [FirmwareUpdateTypeData] = []
         
-        let nodes = MeshNetworkManager.instance.realNodes
         nodes.forEach { node in
             if let pid = node.productIdentifier {
 //                let deviceType = DeviceType(pid: pid)
@@ -674,6 +680,7 @@ class BleFirmwareUpdateViewController: UIViewController {
 //            }
             if successfulList.count > 0 {
                 NotificationCenter.default.post(name: .init(spaceDataChangedNotificaitonName), object: SpaceChangeDataType.device)
+                self.deviceUpdateCompleteCallback?(successfulList)
             }
 //            self.failedNodes = failureList
 //            self.setupData()
@@ -1061,7 +1068,9 @@ class BleFirmwareUpdateViewController: UIViewController {
         })])
         
         let countdownLabel = UILabel(text: nil, textColor: ImportantText_Color, fontSize: 24, fit: false)
-        let attStr = NSMutableAttributedString(string: "\(currentCountDown)s")
+        let paragraphStyle = NSMutableParagraphStyle()
+        paragraphStyle.lineBreakMode = .byCharWrapping
+        let attStr = NSMutableAttributedString(string: "\(currentCountDown)s", attributes: [.paragraphStyle: paragraphStyle])
         attStr.addAttribute(.font, value: UIFont.systemFont(ofSize: 20), range: (attStr.string as NSString).range(of: "s"))
         countdownLabel.attributedText = attStr
         alertView.contentView.addSubview(countdownLabel)
@@ -1113,7 +1122,7 @@ class BleFirmwareUpdateViewController: UIViewController {
             return
         }
         
-        let vc = DeviceRestoreViewController(space: space, restoreMode: .specified(nodes: self.restoreNodes))
+        let vc = DeviceRestoreViewController(site: site, space: space, restoreMode: .specified(nodes: self.restoreNodes))
         vc.automationRestore = automatically
         vc.deviceRestoreCallback = {[weak self] nodes, automationRestore in
             guard let self = self else { return }
@@ -1179,7 +1188,7 @@ extension BleFirmwareUpdateViewController: UICollectionViewDataSource, UICollect
     
     func collectionView(_ collectionView: UICollectionView, cellForItemAt indexPath: IndexPath) -> UICollectionViewCell {
         let cell = collectionView.dequeueReusableCell(withReuseIdentifier: "cell", for: indexPath) as! BleFirmwareTypeUpdateViewCell
-        cell.displayDeviceNamePrefix = space.displayDeviceNamePrefix
+        cell.displayDeviceNamePrefix = space?.displayDeviceNamePrefix ?? false
         cell.firmwareTypeData = firmwareTypeDatas[indexPath.row]
         cell.delegate = self
 //        cell.isShow = showData[indexPath.item] ?? false
@@ -1314,7 +1323,7 @@ extension BleFirmwareUpdateViewController: BleFirmwareTypeUpdateViewCellDelegate
             guard let self = self else { return }
 //            firmwareTypeData.targetVersion = updateFirmwareData?.version
 //            cell.firmwareTypeData = firmwareTypeData
-            MeshNetworkManager.instance.realNodes.forEach({
+            self.nodes.forEach({
                 $0.updateState = .none
                 $0.selectedState = .unselected
             })

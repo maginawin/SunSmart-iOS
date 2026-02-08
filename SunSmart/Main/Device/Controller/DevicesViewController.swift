@@ -406,7 +406,7 @@ class DevicesViewController: WMPageController {
     
     /// 恢复设备数据
     private func devicesRestore() {
-        let vc = DeviceRestoreViewController(space: space, restoreMode: .default)
+        let vc = DeviceRestoreViewController(site: self.site, space: space, restoreMode: .default)
 //        vc.automationRestore = true
         vc.deviceRestoreCallback = { nodes, _ in
             if nodes.count > 0 {

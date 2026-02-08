@@ -28,7 +28,8 @@ class SiteDeviceAddViewController: UIViewController {
     private var footerView: DeviceAddBottomView!
     /// 添加成功的设备list
     private var addSuccessNodes: [Node] = []
-    
+    /// 添加网关设备初始化的网关model list
+    private var addGatewayModels: [GatewayModel] = []
     /// 搜索设备定时器
     private var scanTimer: Timer?
     /// 找到的设备list
@@ -76,6 +77,13 @@ class SiteDeviceAddViewController: UIViewController {
         scanAnimationView = UIImageView(image: UIImage(named: "loading"))
         scanAnimationView.isHidden = true
         navigationItem.rightBarButtonItem = UIBarButtonItem(customView: scanAnimationView)
+        
+        if MeshNetworkManager.instance.meshNetwork?.uuid.uuidString != self.site.meshUUID || !MeshNetworkManager.instance.currentNetworkKey.isPrimary {
+            DispatchQueue.global().async {[weak self] in
+                guard let self = self else { return }
+                MeshLibManager.manager.setMeshNetworkConnected(meshUUID: self.site.meshUUID, subNetworkId: self.site.meshNetworkId, connected: false)
+            }
+        }
         
         setupUI()
     }
@@ -479,55 +487,50 @@ class SiteDeviceAddViewController: UIViewController {
                 return
             }
             let gatewayModel = GatewayModel(siteId: self.site.id, name: node.name ?? "", address: node.primaryUnicastAddress, mac: mac, lastUpdate: Int64(Date().timeIntervalSince1970))
-            
-            node.gatewayModel = gatewayModel
             gatewayModel.save()
+            self.addGatewayModels.append(gatewayModel)
+//            GatewayModel.bind(to: node, model: gatewayModel, persist: true)
             
             
         } appendMessagesBack: {[weak self] addDevice, appendCompletion in
-            guard let self = self, let node = MeshNetworkManager.instance.meshNetwork?.node(withAddress: addDevice.address) else {
+            guard let self = self, let node = MeshNetworkManager.instance.meshNetwork?.node(withAddress: addDevice.address), let mac = node.macAddress else {
                 appendCompletion([])
                 return
             }
             var appendMessages: [MeshMessageHandle] = []
 
-            if device.deviceType == .gateway, let mac = node.macAddress, NetworkRequest.shared.networkable {
+            if device.deviceType == .gateway {
                 Task {
-                    let nodeDict = await node.export() ?? [:]
                     // 注册网关
-                    let gatewayRegisterResult = await NetworkRequest.shared.request(.gatewayRegister(siteId: self.site.id, gatewayId: mac, nodeId: node.uuid.uuidString, node: nodeDict, updateTimestamp: node.gatewayModel!.lastUpdate))
-                    switch gatewayRegisterResult {
-                    case .success(let response):
-                        // MQTT参数
-                        if let data = response["data"] as? [String: Any],
-                           let username = data["mqttUsername"] as? String,
-                           let password = data["mqttPassword"] as? String,
-                           let clientId = data["mqttClientId"] as? String,
-                           let host = data["host"] as? String, let port = data["port"] as? Int {
-                            
-                            node.gatewayModel?.mqttServerInfo = GatewayInformation.MQTTConnectInformation(customId: customId, serverAddress: "tcp://\(host):\(port)", userName: username, password: password, clientId: clientId, keepalive: 60, clearSession: true, authMode: .none, sslVersion: .all)
-                            node.gatewayModel?.save()
+                    guard let gatewayModel = self.addGatewayModels.first(where: { $0.mac == mac }) else {
+                        appendCompletion(appendMessages)
+                        return
+                    }
+                    if NetworkRequest.shared.networkable {
+                        let nodeDict = await node.export() ?? [:]
+                    
+                        let gatewayRegisterResult = await NetworkRequest.shared.request(.gatewayRegister(siteId: self.site.id, gatewayId: mac, nodeId: node.uuid.uuidString, node: nodeDict, updateTimestamp: gatewayModel.lastUpdate))
+                        switch gatewayRegisterResult {
+                        case .success(let response):
+                            // MQTT参数
+                            if let data = response["data"] as? [String: Any],
+                               let username = data["mqttUsername"] as? String,
+                               let password = data["mqttPassword"] as? String,
+                               let clientId = data["mqttClientId"] as? String,
+                               let host = data["host"] as? String, let port = data["port"] as? Int {
+                                
+                                gatewayModel.mqttServerInfo = GatewayInformation.MQTTConnectInformation(customId: customId, serverAddress: "tcp://\(host):\(port)", userName: username, password: password, clientId: clientId, keepalive: 60, clearSession: true, authMode: .none, sslVersion: .all)
+                                gatewayModel.save()
+                            }
+                        case .failure:
+                            break
                         }
-                    case .failure:
-                        break
                     }
-                    
-                    // 网关绑定到space
-//                    let bindSpaceResult = await NetworkRequest.shared.request(.gatewayBindSpace(spaceId: self.space.id, gatewayId: mac))
-//                    switch bindSpaceResult {
-//                    case .success:
-//                        node.gatewayModel?.associatedSpaces.append(self.space)
-//                        node.gatewayModel?.save()
-//                    case .failure:
-//                        break
-//                    }
-                    
-                    if let gateway = node.gatewayModel {
-                        let syncDatas = node.getNodeSyncGatewayData(gateway: gateway)
-                        syncDatas.forEach({
-                            appendMessages.append(contentsOf: $0.getMessageHandles(node: node))
-                        })
-                    }
+
+                    let syncDatas = node.getNodeSyncGatewayData(gateway: gatewayModel)
+                    syncDatas.forEach({
+                        appendMessages.append(contentsOf: $0.getMessageHandles(node: node))
+                    })
                     
                     // 添加成功后闪烁
                     if let healthModel = node.healthModel {
@@ -537,12 +540,6 @@ class SiteDeviceAddViewController: UIViewController {
                 }
             }else {
                 
-                if let gateway = node.gatewayModel {
-                    let syncDatas = node.getNodeSyncGatewayData(gateway: gateway)
-                    syncDatas.forEach({
-                        appendMessages.append(contentsOf: $0.getMessageHandles(node: node))
-                    })
-                }
                 // 添加成功后闪烁
                 if let healthModel = node.healthModel {
                     appendMessages.append(MeshMessageHandle(message: AttentionSet(attentionTimer: 6), model: healthModel))
@@ -592,9 +589,14 @@ class SiteDeviceAddViewController: UIViewController {
         } addFinish: {[weak self] successList, failList in
             guard let self = self else { return }
             
-            
+            let results: [(Node, GatewayModel)] = self.addSuccessNodes.compactMap { node in
+                guard let gateway = self.addGatewayModels.first(where: { $0.mac == node.macAddress }) else {
+                    return nil
+                }
+                return (node, gateway)
+            }
             // 通知site网关数据修改
-            NotificationCenter.default.post(name: .init(siteAddGatewaysDataNotificaitonName), object: self.addSuccessNodes.compactMap({ $0.gatewayModel }))
+            NotificationCenter.default.post(name: .init(siteAddGatewaysDataNotificaitonName), object: results)
 //            NotificationCenter.default.post(name: .init(spaceDataChangedNotificaitonName), object: SpaceChangeDataType.network(type: .address))
 //            self.addSuccessNodes.append(contentsOf: successNodes)
         }

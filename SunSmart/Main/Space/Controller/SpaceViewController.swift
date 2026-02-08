@@ -1228,7 +1228,7 @@ extension SpaceViewController {
             let vc = TimedViewController(space: space)
             return vc
         case 4:
-            let vc = SpaceMoreViewController(space: space)
+            let vc = SpaceMoreViewController(site: site, space: space)
             return vc
         default:
             return UIViewController()

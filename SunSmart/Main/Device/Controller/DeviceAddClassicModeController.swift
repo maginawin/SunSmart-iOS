@@ -68,8 +68,6 @@ class DeviceAddClassicModeController: UIViewController {
     /// 展示的设备类型
     private var showDeviceTypes: [Node.DeviceType] = [.light]
     
-    /// 其它网关数据
-    private var otherGateways: [GatewayModel] = []
     
     /// 添加状态回调 是否添加中
     var deviceStateCallback: ((Bool)->Void)?
@@ -104,9 +102,6 @@ class DeviceAddClassicModeController: UIViewController {
         
         setupUI()
 
-        let gateways = GatewayModel.load(siteId: space.siteId)
-        // 确保是space内的网关
-        otherGateways = gateways.filter({ MeshNetworkManager.instance.meshNetwork?.node(withAddress: $0.address) != nil })
         
         if forceBindToDongle != nil {
             showDeviceTypes = [.dongle, .unknown]
@@ -192,16 +187,6 @@ class DeviceAddClassicModeController: UIViewController {
             // 新发现设备
             if device.macAddress != nil && device.rssi.intValue >= self.filterRSSIRange.lowerBound {
                 
-                if device.rssi.intValue > self.filterRSSIRange.upperBound {
-                    device.rssi = NSNumber(value: self.filterRSSIRange.upperBound)
-                }
-                
-                if device.triggerActionTypes.count > 0 {
-                    device.activityDate = Date()
-                }
-                
-                self.stopScanTimer()
-                
                 device.selectedState = .selected
                 device.addState = .scaning
                 
@@ -218,6 +203,21 @@ class DeviceAddClassicModeController: UIViewController {
                     device.icon = "device_unknown"
                     device.selectedState = .disabled
                 }
+                if device.deviceType == .gateway { // 禁止在space中添加网关
+                    return
+                }
+                
+                if device.rssi.intValue > self.filterRSSIRange.upperBound {
+                    device.rssi = NSNumber(value: self.filterRSSIRange.upperBound)
+                }
+                
+                if device.triggerActionTypes.count > 0 {
+                    device.activityDate = Date()
+                }
+                
+                self.stopScanTimer()
+                
+             
                 
                 if let index = self.scanDevices.firstIndex(where: { $0.peripheral.identifier.uuidString == device.peripheral.identifier.uuidString }) {
                     let cacheDevice = self.scanDevices[index]
@@ -646,17 +646,6 @@ class DeviceAddClassicModeController: UIViewController {
                     MeshNetworkManager.instance.dongles.append(newDongle)
                     newDongle.save()
                 }
-            }else if addDevice.deviceType == .gateway { // 网关设备，创建一个网关model数据映射
-                guard let mac = node.macAddress else {
-                    return
-                }
-                let gatewayModel = GatewayModel(siteId: space.siteId, name: node.name ?? "", address: node.primaryUnicastAddress, mac: mac)
-                // 检查是否有其他网关已激活
-                if !(otherGateways.filter({ $0.mac != mac }).contains(where: { $0.activate })) {
-                    gatewayModel.activate = true
-                }
-                node.gatewayModel = gatewayModel
-                gatewayModel.save()
             }
             
         } appendMessagesBack: {[weak self] addDevice, appendCompletion in
@@ -711,6 +700,11 @@ class DeviceAddClassicModeController: UIViewController {
             if let ctlModel = node.ctlModel, node.temperatureModel != nil {
                 appendMessages.insert(MeshMessageHandle(message: LightCTLTemperatureRangeGet(), model: ctlModel), at: 0)
             }
+            
+            // 添加成功后闪烁
+            if let healthModel = node.healthModel {
+                appendMessages.append(MeshMessageHandle(message: AttentionSet(attentionTimer: 6), model: healthModel))
+            }
             // 设置默认过渡时间
 //            if let defaultTransitionTimeModel = node.defaultTransitionTimeModel {
 //                appendMessages.append(MeshMessageHandle(message: GenericDefaultTransitionTimeSet(transitionTime: .default), model: defaultTransitionTimeModel))
@@ -719,65 +713,7 @@ class DeviceAddClassicModeController: UIViewController {
 //            if let vendorModel = node.sunricherVendorModel {
 //                appendMessages.append(MeshMessageHandle(message: SunricherVendorGet(function: .compositionHash), model: vendorModel))
 //            }
-            
-            if device.deviceType == .gateway, let mac = node.macAddress, NetworkRequest.shared.networkable {
-                Task {
-                    // 注册网关
-//                    let gatewayRegisterResult = await NetworkRequest.shared.request(.gatewayRegister(gatewayId: mac))
-//                    switch gatewayRegisterResult {
-//                    case .success(let response):
-//                        // MQTT参数
-//                        if let data = response["data"] as? [String: Any],
-//                           let username = data["mqttUsername"] as? String,
-//                           let password = data["mqttPassword"] as? String,
-//                           let clientId = data["mqttClientId"] as? String,
-//                           let host = data["host"] as? String, let port = data["port"] as? Int {
-//                            
-//                            node.gatewayModel?.mqttServerInfo = GatewayInformation.MQTTConnectInformation(customId: customId, serverAddress: "tcp://\(host):\(port)", userName: username, password: password, clientId: clientId, keepalive: 60, clearSession: true, authMode: .none, sslVersion: .all)
-//                            node.gatewayModel?.save()
-//                        }
-//                    case .failure:
-//                        break
-//                    }
-                    
-                    // 网关绑定到space
-                    let bindSpaceResult = await NetworkRequest.shared.request(.gatewayBindSpace(spaceId: self.space.id, gatewayId: mac))
-                    switch bindSpaceResult {
-                    case .success:
-                        let gatewaySpaceData = GatewaySpaceData(spaceId: self.space.id, spaceName: self.space.name, deviceCount: self.space.deviceCount, appKeyIndex: MeshNetworkManager.instance.currentApplicationKey.index)
-                        node.gatewayModel?.associatedSpaces.append(gatewaySpaceData)
-                        node.gatewayModel?.save()
-                    case .failure:
-                        break
-                    }
-                    
-                    if let gateway = node.gatewayModel {
-                        let syncDatas = node.getNodeSyncGatewayData(gateway: gateway)
-                        syncDatas.forEach({
-                            appendMessages.append(contentsOf: $0.getMessageHandles(node: node))
-                        })
-                    }
-                    
-                    // 添加成功后闪烁
-                    if let healthModel = node.healthModel {
-                        appendMessages.append(MeshMessageHandle(message: AttentionSet(attentionTimer: 6), model: healthModel))
-                    }
-                    appendCompletion(appendMessages)
-                }
-            }else {
-                
-                if let gateway = node.gatewayModel {
-                    let syncDatas = node.getNodeSyncGatewayData(gateway: gateway)
-                    syncDatas.forEach({
-                        appendMessages.append(contentsOf: $0.getMessageHandles(node: node))
-                    })
-                }
-                // 添加成功后闪烁
-                if let healthModel = node.healthModel {
-                    appendMessages.append(MeshMessageHandle(message: AttentionSet(attentionTimer: 6), model: healthModel))
-                }
-                appendCompletion(appendMessages)
-            }
+            appendCompletion(appendMessages)
 //            return appendMessages
         } appendMessageSuccessBack: { messageHandle in
             // 发送扩展消息成功更新缓存数据

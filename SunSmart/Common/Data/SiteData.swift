@@ -152,7 +152,11 @@ class SiteData: Copyable {
     /// 权限操作list
     var permissionOperates: [SiteOperate] {
         if permission == .owner {
-            return [.edit, .delete, .transfer]
+            return [.edit, .delete, .transfer, .restoreDevice, .firmwareUpdate]
+        }else {
+            if spaces.contains(where: { $0.permission == .editor }) {
+                return [.restoreDevice, .firmwareUpdate]
+            }
         }
         return []
     }
@@ -230,6 +234,10 @@ extension SiteData {
         case delete
         /// 移交
         case transfer
+        /// 恢复设备
+        case restoreDevice
+        /// 固件升级
+        case firmwareUpdate
     }
     
     /// Site状态

@@ -38,6 +38,7 @@ class SpaceMoreViewController: UIViewController {
         case contentDisplay
     }
     
+    let site: SiteData
     let space: SpaceData
     
     private var collectionView: UICollectionView!
@@ -45,7 +46,8 @@ class SpaceMoreViewController: UIViewController {
     
     private var options: [Options] = [.ble, .mesh, .deviceParameters, .energyData, .contentDisplay]
     
-    init(space: SpaceData) {
+    init(site: SiteData, space: SpaceData) {
+        self.site = site
         self.space = space
         super.init(nibName: nil, bundle: nil)
     }
@@ -109,7 +111,7 @@ extension SpaceMoreViewController: UICollectionViewDataSource, UICollectionViewD
                 return
             }
             
-            let vc = BleFirmwareUpdateViewController(space: space)
+            let vc = BleFirmwareUpdateViewController(site: site, space: space)
             if isIPad {
                 vc.preferredContentSize = iPadPreferredContentSize
             }

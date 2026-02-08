@@ -433,7 +433,7 @@ extension Node {
             }
             
             // Gateway
-            if self.deviceType == .gateway, let gatewayModel = self.gatewayModel ?? GatewayModel.load(siteId: self.network?.uuid.uuidString ?? "", address: primaryUnicastAddress).first {
+            if self.deviceType == .gateway, let gatewayModel = GatewayModel.load(node: self) {
                 syncDatas.append(contentsOf: getNodeSyncGatewayData(gateway: gatewayModel))
             }
             
@@ -553,7 +553,7 @@ extension Node {
         }
 
         // Gateway
-        if self.deviceType == .gateway, let gatewayModel = self.gatewayModel {
+        if self.deviceType == .gateway, let gatewayModel = GatewayModel.load(node: self) {
             if getNodeSyncGatewayData(gateway: gatewayModel).count > 0 {
                 return true
             }

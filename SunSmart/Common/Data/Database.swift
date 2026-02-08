@@ -1755,7 +1755,8 @@ extension GroupSwitch {
 
 extension FirmwareData {
     
-    private static let firmwaresTable = Table("firmwares")
+    private static let firmwaresTableName = "firmwares"
+    private static let firmwaresTable = Table(firmwaresTableName)
     
     struct ExpressionKey {
         static let id = Expression<Int64>("id")
@@ -1768,6 +1769,7 @@ extension FirmwareData {
         static let deviceType = Expression<Int>("deviceType")
         static let vendorId = Expression<Int>("vendorId")
         static let customId = Expression<Int?>("customId")
+        static let regionType = Expression<Int>("regionType")
         static let releaseDateTimestamp = Expression<Int64>("releaseDate")
         static let content = Expression<String>("content")
         static let compositionHash = Expression<String>("compositionHash")
@@ -1787,11 +1789,63 @@ extension FirmwareData {
             builder.column(ExpressionKey.deviceType)
             builder.column(ExpressionKey.vendorId)
             builder.column(ExpressionKey.customId)
+            builder.column(ExpressionKey.regionType, defaultValue: UserData.currentServerRegion.rawValue)
             builder.column(ExpressionKey.releaseDateTimestamp)
             builder.column(ExpressionKey.content)
             builder.column(ExpressionKey.compositionHash)
-            builder.unique(ExpressionKey.deviceType, ExpressionKey.vendorId, ExpressionKey.customId)
+            builder.unique(ExpressionKey.deviceType, ExpressionKey.vendorId, ExpressionKey.customId, ExpressionKey.regionType)
         }))
+        
+        // 旧版本表结构缺少 regionType，且唯一约束未包含地区，需要重建表
+        if let columns = try? SunSmartDataManager.shared.db?.schema.columnDefinitions(table: firmwaresTableName),
+           !columns.contains(where: { $0.name == "regionType" }) {
+            migrateFirmwaresTableForRegionType()
+        }
+    }
+    
+    private static func migrateFirmwaresTableForRegionType() {
+        guard let db = SunSmartDataManager.shared.db else { return }
+        
+        let backupTableName = "\(firmwaresTableName)_backup"
+        do {
+            try db.transaction {
+                _ = try? db.run("DROP TABLE IF EXISTS \(backupTableName)")
+                try db.run("ALTER TABLE \(firmwaresTableName) RENAME TO \(backupTableName)")
+                
+                try db.run(FirmwareData.firmwaresTable.create(temporary: false, ifNotExists: true, withoutRowid: false, block: { builder in
+                    builder.column(ExpressionKey.id, primaryKey: true)
+                    builder.column(ExpressionKey.name)
+                    builder.column(ExpressionKey.version)
+                    builder.column(ExpressionKey.firmwareData)
+                    builder.column(ExpressionKey.firmwareId)
+                    builder.column(ExpressionKey.updateFirmwareImageIndex)
+                    builder.column(ExpressionKey.incomingFirmwareMetadata)
+                    builder.column(ExpressionKey.deviceType)
+                    builder.column(ExpressionKey.vendorId)
+                    builder.column(ExpressionKey.customId)
+                    builder.column(ExpressionKey.regionType, defaultValue: UserData.currentServerRegion.rawValue)
+                    builder.column(ExpressionKey.releaseDateTimestamp)
+                    builder.column(ExpressionKey.content)
+                    builder.column(ExpressionKey.compositionHash)
+                    builder.unique(ExpressionKey.deviceType, ExpressionKey.vendorId, ExpressionKey.customId, ExpressionKey.regionType)
+                }))
+                
+                let insertSQL = """
+                INSERT INTO \(firmwaresTableName) (
+                    name, version, data, firmwareId, updateFirmwareImageIndex, incomingFirmwareMetadata,
+                    deviceType, vendorId, customId, regionType, releaseDate, content, compositionHash
+                )
+                SELECT
+                    name, version, data, firmwareId, updateFirmwareImageIndex, incomingFirmwareMetadata,
+                    deviceType, vendorId, customId, \(UserData.currentServerRegion.rawValue), releaseDate, content, compositionHash
+                FROM \(backupTableName)
+                """
+                try db.run(insertSQL)
+                _ = try? db.run("DROP TABLE IF EXISTS \(backupTableName)")
+            }
+        } catch {
+            print(error)
+        }
     }
     
     
@@ -1803,7 +1857,7 @@ extension FirmwareData {
     /// - Returns: 固件包list
     static func load(productId: UInt16, vendorId: UInt16? = nil, customId: UInt16? = nil) -> [FirmwareData] {
         
-        var query = FirmwareData.firmwaresTable.filter(ExpressionKey.deviceType == Int(productId))
+        var query = FirmwareData.firmwaresTable.filter(ExpressionKey.deviceType == Int(productId) && ExpressionKey.regionType == UserData.currentServerRegion.rawValue)
         
         if let vendorId = vendorId {
             query = query.filter(ExpressionKey.vendorId == Int(vendorId))
@@ -1836,6 +1890,7 @@ extension FirmwareData {
             ExpressionKey.deviceType <- Int(self.productId),
             ExpressionKey.vendorId <- Int(self.vendorId),
             ExpressionKey.customId <- self.customId != nil ? Int(self.customId!) : nil,
+            ExpressionKey.regionType <- UserData.currentServerRegion.rawValue,
             ExpressionKey.releaseDateTimestamp <- self.releaseDate,
             ExpressionKey.content <- self.content,
             ExpressionKey.compositionHash <- self.compositionHash
@@ -1852,7 +1907,7 @@ extension FirmwareData {
     
     @discardableResult func delete() -> Bool {
         
-        var filter = FirmwareData.firmwaresTable.filter(ExpressionKey.deviceType == Int(self.productId) && ExpressionKey.vendorId == Int(self.vendorId))
+        var filter = FirmwareData.firmwaresTable.filter(ExpressionKey.deviceType == Int(self.productId) && ExpressionKey.vendorId == Int(self.vendorId) && ExpressionKey.regionType == UserData.currentServerRegion.rawValue)
         if self.customId != nil {
 //            let customIdQuery = FirmwareData.firmwaresTable.filter(ExpressionKey.customId == Int(self.customId!))
             filter = filter.filter(ExpressionKey.customId == Int(self.customId!))
@@ -2786,7 +2841,7 @@ extension GatewayModel {
                 
                 if let gatewaySpaceDatas = try? jsonDecoder.decode([GatewaySpaceData].self, from: row[ExpressionKey.associatedSpaces]) {
                     gatewaySpaceDatas.forEach { gatewaySpace in
-                        var gatewaySpace = gatewaySpace
+//                        var gatewaySpace = gatewaySpace
                         if let space = SpaceData.load(siteId: siteId, spaceId: gatewaySpace.spaceId).first {
                             if space.canEditing {
                                 gatewaySpace.permission = .editor
@@ -2802,7 +2857,7 @@ extension GatewayModel {
                     }
                 }
                 
-                let gateway = GatewayModel(siteId: siteId, name: row[ExpressionKey.name], address: Address(row[ExpressionKey.address]), mac: row[ExpressionKey.macAddress], lastUpdate: row[ExpressionKey.lastUpdateTimestamp], activate: row[ExpressionKey.activate], associatedSpaces: spaceDatas, apn: row[ExpressionKey.apn], mqttServerInfo: nil)
+                let gateway = GatewayModel(siteId: siteId, name: row[ExpressionKey.name], address: address, mac: row[ExpressionKey.macAddress], lastUpdate: row[ExpressionKey.lastUpdateTimestamp], activate: row[ExpressionKey.activate], associatedSpaces: spaceDatas, apn: row[ExpressionKey.apn], mqttServerInfo: nil)
                 
                 gateway.lastUploadCloudTimestamp = row[ExpressionKey.lastUploadCloudTimestamp]
                 if let errorCode = row[ExpressionKey.syncCloudError] {

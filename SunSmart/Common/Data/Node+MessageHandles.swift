@@ -152,7 +152,7 @@ extension NodeSyncData {
                 messageHandles.append(MeshMessageHandle(message: SunricherVendorSet(function: .proximityLightingNeighborSet(enabled: true, relay: relayNumber, ttl: 0, relayAppKeyIndex: MeshNetworkManager.instance.currentApplicationKey.index, neighborAddresses: neighborAddresses)), model: vendorModel))
             }
         case .syncGatewayProjectId(let projectId):
-            if let mac = node.gatewayModel?.mac, let vendorModel = node.sunricherVendorModel {
+            if let mac = node.macAddress, let vendorModel = node.sunricherVendorModel {
                 messageHandles.append(MeshMessageHandle(message: SunricherVendorSet(function: .gatewayProjectRelevance(gatewayId: mac, projectId: projectId)), model: vendorModel))
             }
         case .syncGatewaySubnetAppkeyIndexs(let appkeyIndexs):

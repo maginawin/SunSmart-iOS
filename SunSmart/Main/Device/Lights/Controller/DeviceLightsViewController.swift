@@ -523,23 +523,26 @@ class DeviceLightsViewController: UIViewController {
                 if isEdit { // 不在编辑状态可以进入设备控制页
                     return
                 }
-                var deviceVc: UIViewController!
+                var deviceVc: UIViewController?
                 switch node.deviceType {
                 case .gateway:
-                    guard let gateway = node.gatewayModel else {
-                        return
-                    }
-                    deviceVc = GatewayViewController(site: site, gateway: gateway)
+//                    guard let gateway = GatewayModel.load(node: node) else {
+//                        return
+//                    }
+//                    deviceVc = GatewayViewController(site: site, gateway: gateway)
+                    break
 //                    deviceVc = GatewayViewController(space: space, node: node)
                 default:
                     deviceVc = DeviceLightViewController(space: space, node: node)
                 }
 
 //                let deviceVc = DaliMasterViewController(space: space, node: node)
-                if isIPad {
-                    deviceVc.preferredContentSize = iPadPreferredContentSize
+                if let vc = deviceVc {
+                    if isIPad {
+                        vc.preferredContentSize = iPadPreferredContentSize
+                    }
+                    present(NavigationViewController(rootViewController: vc), animated: true)
                 }
-                present(NavigationViewController(rootViewController: deviceVc), animated: true)
 //                navigationController?.pushViewController(deviceVc, animated: true)
             }
         }

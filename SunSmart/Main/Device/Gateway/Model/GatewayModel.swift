@@ -33,9 +33,9 @@ class GatewayModel: Copyable {
     var name: String
     /// 设备地址
     var address: Address
-    /// 网关节点
+    /// 网关节点（运行期按address解析）
     var node: Node? {
-        return MeshNetworkManager.instance.meshNetwork?.node(withAddress: address)
+        return resolveNode()
     }
     
     /// mac地址
@@ -115,12 +115,112 @@ class GatewayModel: Copyable {
     
     func update(gatewayModel: GatewayModel) {
         self.name = gatewayModel.name
+        self.address = gatewayModel.address
         self.associatedSpaces = gatewayModel.associatedSpaces
         self.apn = gatewayModel.apn
         self.activate = gatewayModel.activate
         self.mqttServerInfo = gatewayModel.mqttServerInfo
     }
     
+    func resolveNode(in meshNetwork: MeshNetwork? = MeshNetworkManager.instance.meshNetwork) -> Node? {
+        return meshNetwork?.node(withAddress: address)
+    }
+    
+}
+
+/// 运行期网关聚合对象（Node + GatewayModel）
+final class Gateway {
+    let model: GatewayModel
+    let node: Node
+    
+    init(model: GatewayModel, node: Node) {
+        self.model = model
+        self.node = node
+    }
+    
+    static func resolve(model: GatewayModel) -> Gateway? {
+        guard let node = model.resolveNode() else {
+            return nil
+        }
+        return Gateway(model: model, node: node)
+    }
+}
+
+extension Gateway {
+    var siteId: String { model.siteId }
+    var name: String {
+        get { model.name }
+        set { model.name = newValue }
+    }
+    var mac: String { model.mac }
+    var address: Address {
+        get { model.address }
+        set { model.address = newValue }
+    }
+    var activate: Bool {
+        get { model.activate }
+        set { model.activate = newValue }
+    }
+    var associatedSpaces: [GatewaySpaceData] {
+        get { model.associatedSpaces }
+        set { model.associatedSpaces = newValue }
+    }
+    var connectStatus: GatewayConnectStatus {
+        get { model.connectStatus }
+        set { model.connectStatus = newValue }
+    }
+    var lastOnlineTime: String? {
+        get { model.lastOnlineTime }
+        set { model.lastOnlineTime = newValue }
+    }
+    var resetTime: String? {
+        get { model.resetTime }
+        set { model.resetTime = newValue }
+    }
+    var lastUpdate: Int64 {
+        get { model.lastUpdate }
+        set { model.lastUpdate = newValue }
+    }
+    var syncCloudError: NetworkApiError? {
+        get { model.syncCloudError }
+        set { model.syncCloudError = newValue }
+    }
+    func save() {
+        model.save()
+    }
+}
+
+extension GatewayModel {
+    static func load(node: Node) -> GatewayModel? {
+        guard node.deviceType == .gateway else {
+            return nil
+        }
+        guard let meshUUID = node.network?.uuid.uuidString ?? MeshNetworkManager.instance.meshNetwork?.uuid.uuidString else {
+            return nil
+        }
+        if let mac = node.macAddress, let model = GatewayModel.load(siteId: meshUUID, macAddress: mac).first {
+            return model
+        }
+        return GatewayModel.load(siteId: meshUUID, address: node.primaryUnicastAddress).first
+    }
+    
+    @discardableResult static func bind(to node: Node, model: GatewayModel, persist: Bool = true) -> Gateway {
+        model.address = node.primaryUnicastAddress
+        if model.name.isEmpty {
+            model.name = node.name ?? model.name
+        }
+        if persist {
+            model.save()
+        }
+        return Gateway(model: model, node: node)
+    }
+    
+    static func resolve(node: Node) -> Gateway? {
+        guard let model = GatewayModel.load(node: node) else {
+            return nil
+        }
+        return Gateway(model: model, node: node)
+    }
 }
 
 /// 网关space数据

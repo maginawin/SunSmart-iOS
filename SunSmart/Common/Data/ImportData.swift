@@ -351,102 +351,6 @@ extension SiteData {
             }
         }
         
-        // 更新Site网关数据
-        if let gatewayDicts = json["gateways"].arrayObject as? [[String: Any]] {
-            // 服务器上的网关节点数据
-            var serverGatewayNodes: [Node] = []
-            // 本地的网关节点数据
-            let cacheGatewayNodes = Node.load(meshUUID: self.id, subnetworkId: self.meshNetworkId).filter({ $0.deviceType == .gateway })
-            
-            cacheGatewayNodes.forEach { node in
-                if let gateway = GatewayModel.load(siteId: self.id, macAddress: node.macAddress).first {
-                    node.gatewayModel = gateway
-                }
-            }
-            
-            await withTaskGroup(of: Node?.self) { group in
-                for data in gatewayDicts {
-                    group.addTask {
-                        // 异步处理每个数据
-                        let node = await Node.import(siteId: uuid, nodeJsonData: data)
-                        node?.gatewayModel?.lastUpdate = Int64(data["updateTimestamp"] as? Int ?? 0)
-                        return node
-                    }
-                }
-                // 收集结果
-                for await node in group {
-                    if let node = node {
-                        serverGatewayNodes.append(node)
-                    }
-                }
-            }
-            
-            
-            if let network = meshNetwork {
-                var cacheByMac: [String: Node] = [:]
-                cacheGatewayNodes.forEach { node in
-                    if let mac = node.macAddress?.lowercased(), !mac.isEmpty {
-                        cacheByMac[mac] = node
-                    }
-                }
-                
-                var serverByMac: [String: Node] = [:]
-                serverGatewayNodes.forEach { node in
-                    if let mac = node.macAddress?.lowercased(), !mac.isEmpty {
-                        serverByMac[mac] = node
-                    }
-                }
-                
-                // 服务器不存在的网关，删除本地缓存
-                cacheByMac.forEach { mac, cacheNode in
-                    if cacheNode.gatewayModel?.lastUploadCloudTimestamp != nil && serverByMac[mac] == nil {
-                        network.forceRemove(node: cacheNode)
-                        if let mac = cacheNode.macAddress {
-                            GatewayModel.delete(siteId: self.id, macAddress: mac)
-                        }
-                        updateNetwork = true
-                    }
-                }
-                
-                // 服务器新数据覆盖本地；新网关直接导入
-                serverByMac.forEach { mac, serverNode in
-                    let serverUpdate = serverNode.gatewayModel?.lastUpdate ?? 0
-                    let cacheUpdate = cacheByMac[mac]?.gatewayModel?.lastUpdate ?? 0
-                    let shouldReplace = cacheByMac[mac] == nil || serverUpdate > cacheUpdate
-                    if shouldReplace {
-                        if let cacheNode = cacheByMac[mac] {
-                            network.forceRemove(node: cacheNode)
-                            if let mac = cacheNode.macAddress {
-                                GatewayModel.delete(siteId: self.id, macAddress: mac)
-                            }
-                        }
-                        
-                        // 判断设备是否存在废弃地址内，如果存在则清空废弃地址内缓存（如多用户编辑数据并未及时提交，使用了旧数据则可能出现导入的设备地址在废弃地址内）
-                        if network.isAddressInExclusion(node: serverNode) {
-                            let range = AddressRange(from: serverNode.primaryUnicastAddress, elementsCount: serverNode.elementsCount)
-                            for address in range.range {
-                                network.deleteExclusionAddress(ivIndex: network.currentIVIndex, address: address)
-                                if network.currentIVIndex > 0 {
-                                    network.deleteExclusionAddress(ivIndex: network.currentIVIndex - 1, address: address)
-                                }
-                            }
-                        }
-                        
-                        try? network.add(node: serverNode)
-                        if let gatewayModel = serverNode.gatewayModel {
-                            gatewayModel.save()
-                        }
-                        updateNetwork = true
-                    }
-                }
-            }
-        }
-        
-        
-      
-        if updateNetwork {
-            meshNetwork?.save()
-        }
         
         // 修改供应者地址资源
         if let provisionerData = json["provisioner"].dictionaryObject {
@@ -496,6 +400,90 @@ extension SiteData {
         }else {
             self.spaceCount = json["spaceCount"].int
         }
+        
+        // 更新Site网关数据
+        if let gatewayDicts = json["gateways"].arrayObject as? [[String: Any]] {
+            if let network = meshNetwork {
+                // 本地缓存网关（以GatewayModel为准）
+                let cacheGateways = GatewayModel.load(siteId: self.id)
+                var cacheByMac: [String: GatewayModel] = [:]
+                cacheGateways.forEach { gateway in
+                    let mac = gateway.mac.lowercased()
+                    if !mac.isEmpty {
+                        cacheByMac[mac] = gateway
+                    }
+                }
+                
+                // 服务器网关数据（按mac去重）
+                var serverByMac: [String: [String: Any]] = [:]
+                var serverUpdateByMac: [String: Int64] = [:]
+                gatewayDicts.forEach { data in
+                    guard let mac = data["macAddress"] as? String, !mac.isEmpty else {
+                        return
+                    }
+                    // 访客仅处理关联到自己可见space的网关
+                    if self.permission == .visitor, !self.spaces.contains(where: { $0.relevanceGatewayId == mac }) {
+                        return
+                    }
+                    let key = mac.lowercased()
+                    serverByMac[key] = data
+                    serverUpdateByMac[key] = Int64(data["updateTimestamp"] as? Int ?? 0)
+                }
+                
+                // 服务器不存在的网关，删除本地缓存
+                cacheByMac.forEach { mac, cacheGateway in
+                    if cacheGateway.lastUploadCloudTimestamp != nil && serverByMac[mac] == nil {
+                        Node.delete(meshUUID: self.meshUUID, address: cacheGateway.address)
+                        GatewayModel.delete(siteId: self.id, macAddress: cacheGateway.mac)
+                    }
+                }
+                
+                // 服务器新数据覆盖本地；新增网关直接导入（判断依据：GatewayModel.lastUpdate）
+                for (mac, gatewayData) in serverByMac {
+                    let serverUpdate = serverUpdateByMac[mac] ?? 0
+                    let cacheUpdate = cacheByMac[mac]?.lastUpdate ?? 0
+                    let shouldReplace = cacheByMac[mac] == nil || serverUpdate > cacheUpdate
+                    guard shouldReplace else {
+                        continue
+                    }
+                    
+                    guard let serverNode = await Node.import(siteId: uuid, nodeJsonData: gatewayData),
+                          let gateway = GatewayModel.import(siteId: self.id, node: serverNode, gatewayPreconfigured: gatewayData["gatewayPreconfigured"] as? [String: Any]) else {
+                        continue
+                    }
+                    
+                    if let cacheGateway = cacheByMac[mac] {
+                        Node.delete(meshUUID: self.meshUUID, address: cacheGateway.address)
+                        GatewayModel.delete(siteId: self.id, macAddress: cacheGateway.mac)
+                    }
+                    
+                    // 判断设备是否存在废弃地址内，如果存在则清空废弃地址内缓存（如多用户编辑数据并未及时提交，使用了旧数据则可能出现导入的设备地址在废弃地址内）
+                    if network.isAddressInExclusion(node: serverNode) {
+                        let range = AddressRange(from: serverNode.primaryUnicastAddress, elementsCount: serverNode.elementsCount)
+                        for address in range.range {
+                            network.deleteExclusionAddress(ivIndex: network.currentIVIndex, address: address)
+                            if network.currentIVIndex > 0 {
+                                network.deleteExclusionAddress(ivIndex: network.currentIVIndex - 1, address: address)
+                            }
+                        }
+                    }
+                    
+                    // Node和Gateway一起更新数据库
+                    try? network.add(node: serverNode)
+                    gateway.lastUpdate = serverUpdate
+                    gateway.lastUploadCloudTimestamp = serverUpdate
+                    gateway.save()
+                    
+                    updateNetwork = true
+                }
+            }
+        }
+        
+        if updateNetwork {
+            meshNetwork?.save()
+        }
+        
+        
 //        print("导入数据：site update spaces success \(Date().timeIntervalSince1970)")
         self.save()
     }
@@ -1158,52 +1146,6 @@ extension SpaceData {
                         if let gatewayInfo = nodeJson["gatewayInfo"].dictionaryObject, let gatewayInfoData = try? JSONSerialization.data(withJSONObject: gatewayInfo) {
                             node.gatewayInfo = try? jsonDecoder.decode(GatewayInformation.self, from: gatewayInfoData)
                         }
-                        // 预配置网关数据
-                        if let mac = node.macAddress, let gatewayPreconfigured = nodeJson["gatewayPreconfigured"].dictionaryObject {
-                            let json = JSON(gatewayPreconfigured)
-//                            var associatedSpaces: [SpaceData] = []
-//                            if let spaceIds = json["associatedSpaces"].arrayObject as? [String] {
-//                                associatedSpaces = spaceIds.compactMap({
-//                                    if self.id == $0 {
-//                                        return self
-//                                    }
-//                                    return SpaceData.load(siteId: siteId, spaceId: $0).first
-//                                })
-//                            }
-                            var associatedSpaces: [GatewaySpaceData] = []
-                            if let spaceDatas = json["associatedSpaces"].arrayObject as? [[String: Any]] {
-                                associatedSpaces = spaceDatas.compactMap({ spaceData in
-                                    if let id = spaceData["spaceId"] as? String, let name = spaceData["spaceName"] as? String, let deviceCount = spaceData["deviceCount"] as? Int, let appKeyIndex = spaceData["appKeyIndex"] as? UInt16 {
-                                        return GatewaySpaceData(spaceId: id, spaceName: name, deviceCount: deviceCount, appKeyIndex: appKeyIndex)
-                                    }
-                                    return nil
-                                })
-                            }
-                            
-                            var mqttConnectInfo: GatewayInformation.MQTTConnectInformation?
-                            if let mqttConnectInfoDict = json["mqttConnectInfo"].dictionaryObject,
-                               let serverAddress = mqttConnectInfoDict["serverAddress"] as? String,
-                               let userName = mqttConnectInfoDict["userName"] as? String,
-                               let password = mqttConnectInfoDict["password"] as? String,
-                               let clientId = mqttConnectInfoDict["clientId"] as? String {
-                                
-                                var authMode: GatewayInformation.MQTTAuthMode = .none
-                                var sslVersion: GatewayInformation.MQTTSSLVersion = .all
-                                if let authModeValue = mqttConnectInfoDict["authMode"] as? UInt8, let resultAuthMode = GatewayInformation.MQTTAuthMode.init(rawValue: authModeValue) {
-                                    authMode = resultAuthMode
-                                }
-                                if let sslVersionValue = mqttConnectInfoDict["sslVersion"] as? UInt8, let resultSslVersion = GatewayInformation.MQTTSSLVersion(rawValue: sslVersionValue) {
-                                    sslVersion = resultSslVersion
-                                }
-                                
-                                mqttConnectInfo = .init(customId: customId, serverAddress: serverAddress, userName: userName, password: password, clientId: clientId, keepalive: mqttConnectInfoDict["keepalive"] as? UInt16 ?? 60, clearSession: mqttConnectInfoDict["clearSession"] as? Bool ?? true, authMode: authMode, sslVersion: sslVersion)
-                            }
-                            
-                            let gatewayModel = GatewayModel(siteId: siteId, name: node.name ?? "", address: node.primaryUnicastAddress, mac: mac, activate: json["activate"].boolValue, associatedSpaces: associatedSpaces, apn: json["apn"].string, mqttServerInfo: mqttConnectInfo)
-                            gatewayModel.lastUploadCloudTimestamp = Int64(Date().timeIntervalSince1970)
-                            gatewayModel.save()
-                            node.gatewayModel = gatewayModel
-                        }
                     }
                     
                     return node
@@ -1630,50 +1572,59 @@ extension Node {
                 if let gatewayInfo = nodeJson["gatewayInfo"].dictionaryObject, let gatewayInfoData = try? JSONSerialization.data(withJSONObject: gatewayInfo) {
                     node.gatewayInfo = try? jsonDecoder.decode(GatewayInformation.self, from: gatewayInfoData)
                 }
-                // 预配置网关数据
-                if let mac = node.macAddress, let gatewayPreconfigured = nodeJson["gatewayPreconfigured"].dictionaryObject {
-                    let json = JSON(gatewayPreconfigured)
-                    var associatedSpaces: [GatewaySpaceData] = []
-                    if let spaceDatas = json["associatedSpaces"].arrayObject as? [[String: Any]] {
-                        associatedSpaces = spaceDatas.compactMap({ spaceData in
-                            if let id = spaceData["spaceId"] as? String, let name = spaceData["spaceName"] as? String, let deviceCount = spaceData["deviceCount"] as? Int, let appKeyIndex = spaceData["appKeyIndex"] as? UInt16 {
-                                return GatewaySpaceData(spaceId: id, spaceName: name, deviceCount: deviceCount, appKeyIndex: appKeyIndex)
-                            }
-                            return nil
-                        })
-                    }
-                    var mqttConnectInfo: GatewayInformation.MQTTConnectInformation?
-                    if let mqttConnectInfoDict = json["mqttConnectInfo"].dictionaryObject,
-                       let serverAddress = mqttConnectInfoDict["serverAddress"] as? String,
-                       let userName = mqttConnectInfoDict["userName"] as? String,
-                       let password = mqttConnectInfoDict["password"] as? String,
-                       let clientId = mqttConnectInfoDict["clientId"] as? String {
-                        
-                        var authMode: GatewayInformation.MQTTAuthMode = .none
-                        var sslVersion: GatewayInformation.MQTTSSLVersion = .all
-                        if let authModeValue = mqttConnectInfoDict["authMode"] as? UInt8, let resultAuthMode = GatewayInformation.MQTTAuthMode.init(rawValue: authModeValue) {
-                            authMode = resultAuthMode
-                        }
-                        if let sslVersionValue = mqttConnectInfoDict["sslVersion"] as? UInt8, let resultSslVersion = GatewayInformation.MQTTSSLVersion(rawValue: sslVersionValue) {
-                            sslVersion = resultSslVersion
-                        }
-                        
-                        mqttConnectInfo = .init(customId: customId, serverAddress: serverAddress, userName: userName, password: password, clientId: clientId, keepalive: mqttConnectInfoDict["keepalive"] as? UInt16 ?? 60, clearSession: mqttConnectInfoDict["clearSession"] as? Bool ?? true, authMode: authMode, sslVersion: sslVersion)
-                    }
-                    
-                    let gatewayModel = GatewayModel(siteId: siteId, name: node.name ?? "", address: node.primaryUnicastAddress, mac: mac, activate: json["activate"].boolValue, associatedSpaces: associatedSpaces, apn: json["apn"].string, mqttServerInfo: mqttConnectInfo)
-                    
-                    if let updateTimestamp = nodeJson["updateTimestamp"].int64 {
-                        gatewayModel.lastUpdate = updateTimestamp
-                        gatewayModel.lastUploadCloudTimestamp = updateTimestamp
-                    }
-                    
-//                    gatewayModel.save()
-                    node.gatewayModel = gatewayModel
-                }
             }
             
             continuation.resume(returning: node)
         }
     }
+}
+
+extension GatewayModel {
+    
+    /// 生成网关业务数据
+    static func `import`(siteId: String, node: Node, gatewayPreconfigured: [String: Any]?) -> GatewayModel? {
+        
+        guard let mac = node.macAddress else { return nil }
+
+        let gatewayModel = GatewayModel(siteId: siteId, name: node.name ?? "", address: node.primaryUnicastAddress, mac: mac, activate: true, associatedSpaces: [], apn: nil, mqttServerInfo: nil)
+        guard let gatewayPreconfigured = gatewayPreconfigured else { return gatewayModel }
+        
+        let json = JSON(gatewayPreconfigured)
+
+        gatewayModel.activate = json["activate"].boolValue
+        
+        var associatedSpaces: [GatewaySpaceData] = []
+        if let spaceDatas = json["associatedSpaces"].arrayObject as? [[String: Any]] {
+            associatedSpaces = spaceDatas.compactMap({ spaceData in
+                if let id = spaceData["spaceId"] as? String, let name = spaceData["spaceName"] as? String, let deviceCount = spaceData["deviceCount"] as? Int, let appKeyIndex = spaceData["appKeyIndex"] as? UInt16 {
+                    return GatewaySpaceData(spaceId: id, spaceName: name, deviceCount: deviceCount, appKeyIndex: appKeyIndex)
+                }
+                return nil
+            })
+        }
+        gatewayModel.associatedSpaces = associatedSpaces
+        
+        var mqttConnectInfo: GatewayInformation.MQTTConnectInformation?
+        if let mqttConnectInfoDict = json["mqttConnectInfo"].dictionaryObject,
+           let serverAddress = mqttConnectInfoDict["serverAddress"] as? String,
+           let userName = mqttConnectInfoDict["userName"] as? String,
+           let password = mqttConnectInfoDict["password"] as? String,
+           let clientId = mqttConnectInfoDict["clientId"] as? String {
+            
+            var authMode: GatewayInformation.MQTTAuthMode = .none
+            var sslVersion: GatewayInformation.MQTTSSLVersion = .all
+            if let authModeValue = mqttConnectInfoDict["authMode"] as? UInt8, let resultAuthMode = GatewayInformation.MQTTAuthMode.init(rawValue: authModeValue) {
+                authMode = resultAuthMode
+            }
+            if let sslVersionValue = mqttConnectInfoDict["sslVersion"] as? UInt8, let resultSslVersion = GatewayInformation.MQTTSSLVersion(rawValue: sslVersionValue) {
+                sslVersion = resultSslVersion
+            }
+            
+            mqttConnectInfo = .init(customId: customId, serverAddress: serverAddress, userName: userName, password: password, clientId: clientId, keepalive: mqttConnectInfoDict["keepalive"] as? UInt16 ?? 60, clearSession: mqttConnectInfoDict["clearSession"] as? Bool ?? true, authMode: authMode, sslVersion: sslVersion)
+        }
+        gatewayModel.mqttServerInfo = mqttConnectInfo
+        
+        return gatewayModel
+    }
+    
 }

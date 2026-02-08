@@ -614,10 +614,6 @@ extension MeshNetworkManager {
             
             let subNetworkId = self.currentNetworkKey.networkId.hex
             
-            self.realNodes.filter({ $0.macAddress != nil && $0.deviceType == .gateway }).forEach { node in
-                node.gatewayModel = GatewayModel.load(siteId: uuid, macAddress: node.macAddress).first ?? GatewayModel(siteId: uuid, name: node.name ?? "", address: node.primaryUnicastAddress, mac: node.macAddress!)
-            }
-            
             self.schedules = Schedule.load(meshUUID: uuid, meshNetworkId: subNetworkId)
             
             self.groups.forEach({ group in
@@ -1777,7 +1773,6 @@ extension Node {
 
     static private var localVersionSEQ = 1
     static private var deviceConfigInfo = 202
-    static private var gateway = 203
     
     /// 设备类型
     enum DeviceType {
@@ -1988,15 +1983,6 @@ extension Node {
         }
     }
     
-    /// 业务层网关model（网关节点）
-    var gatewayModel: GatewayModel? {
-        get {
-            objc_getAssociatedObject(self, &Node.gateway) as? GatewayModel
-        }set {
-            objc_setAssociatedObject(self, &Node.gateway, newValue, .OBJC_ASSOCIATION_RETAIN)
-        }
-    }
-    
     /// 附加子网所需绑定appkey的model list（网关、跨子网数据传输）
     var subnetAppkeyBindModels: [Model] {
         var models: [Model] = []
@@ -2097,12 +2083,6 @@ extension Node {
         if self.deviceType == .dongle, let dongle = MeshNetworkManager.instance.dongles.first(where: { $0.bindNodeAddress == oldNode.primaryUnicastAddress }) {
             dongle.bindNodeAddress = self.primaryUnicastAddress
             dongle.save()
-        }
-        // Gateway
-        if self.deviceType == .gateway, let gatewayModel = oldNode.gatewayModel {
-            gatewayModel.address = self.primaryUnicastAddress
-            self.gatewayModel = gatewayModel
-            self.gatewayModel?.save()
         }
         
         self.restoreData = restoreData
@@ -2249,8 +2229,9 @@ extension Node {
                 distributionData.delete(productId: productId)
             }
         }
-        if let gatewayModel = self.gatewayModel {
-            gatewayModel.delete()
+        // 删除关联网关
+        if let mac = macAddress {
+            GatewayModel.delete(siteId: meshNetwork.uuid.uuidString, macAddress: mac)
         }
     }
     

@@ -353,35 +353,6 @@ extension SpaceData {
                            let data = try? jsonEncoder.encode(gatewaInfo), let gatewayInfoDict = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
                             nodeDict.updateValue(gatewayInfoDict, forKey: "gatewayInfo")
                         }
-                        // 预配置网关数据
-                        if let mac = node.macAddress, let gatewayModel = node.gatewayModel ?? GatewayModel.load(siteId: siteId, macAddress: mac).first {
-                            var gatewayPreconfigured: [String: Any] = [:]
-                            gatewayPreconfigured.updateValue(gatewayModel.activate, forKey: "activate")
-//                            gatewayPreconfigured.updateValue(gatewayModel.associatedSpaces.map({ $0.id }), forKey: "associatedSpaces")
-                            if let data = try? jsonEncoder.encode(gatewayModel.associatedSpaces), let gatewaySpaceDicts = try? JSONSerialization.jsonObject(with: data) as? [[String: Any]] {
-                                gatewayPreconfigured.updateValue(gatewaySpaceDicts, forKey: "associatedSpaces")
-                            }
-                            if let apn = gatewayModel.apn {
-                                gatewayPreconfigured.updateValue(apn, forKey: "apn")
-                            }
-                            if let mqttServerInfo = gatewayModel.mqttServerInfo {
-                                var mqttConnectInfo: [String: Any] = [:]
-                                mqttConnectInfo.updateValue(mqttServerInfo.serverAddress, forKey: "serverAddress")
-                                if let userName = mqttServerInfo.userName {
-                                    mqttConnectInfo.updateValue(userName, forKey: "userName")
-                                }
-                                if let password = mqttServerInfo.password {
-                                    mqttConnectInfo.updateValue(password, forKey: "password")
-                                }
-                                mqttConnectInfo.updateValue(mqttServerInfo.clientId, forKey: "clientId")
-                                mqttConnectInfo.updateValue(mqttServerInfo.keepalive, forKey: "keepalive")
-                                mqttConnectInfo.updateValue(mqttServerInfo.clearSession, forKey: "clearSession")
-                                mqttConnectInfo.updateValue(mqttServerInfo.authMode.rawValue, forKey: "authMode")
-                                mqttConnectInfo.updateValue(mqttServerInfo.sslVersion.rawValue, forKey: "sslVersion")
-                                gatewayPreconfigured.updateValue(mqttConnectInfo, forKey: "mqttConnectInfo")
-                            }
-                            nodeDict.updateValue(gatewayPreconfigured, forKey: "gatewayPreconfigured")
-                        }
                     }
                     nodeDicts.append(nodeDict)
                 }
@@ -677,12 +648,6 @@ extension Node {
                 if let gatewaInfo = self.gatewayInfo,
                    let data = try? jsonEncoder.encode(gatewaInfo), let gatewayInfoDict = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
                     nodeDict.updateValue(gatewayInfoDict, forKey: "gatewayInfo")
-                }
-                
-                // 预配置网关数据
-                if let mac = self.macAddress, let meshUuid = self.network?.uuid.uuidString, let gatewayModel = self.gatewayModel ?? GatewayModel.load(siteId: meshUuid, macAddress: mac).first {
-                    let gatewayPreconfigured: [String: Any] = gatewayModel.export()
-                    nodeDict.updateValue(gatewayPreconfigured, forKey: "gatewayPreconfigured")
                 }
             }
             continuation.resume(returning: nodeDict)
