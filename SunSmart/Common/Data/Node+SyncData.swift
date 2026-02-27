@@ -84,6 +84,8 @@ enum NodeSyncData {
     case syncGatewayProjectId(projectId: String)
     /// 同步网关关联的子网appkey index list
     case syncGatewaySubnetAppkeyIndexs(appkeyIndexs: [KeyIndex])
+    /// pir传感器启用/禁用
+    case pirEnabled(_ enabled: Bool)
 }
 
 /// 配置类型
@@ -291,8 +293,6 @@ extension Node {
         var nightProfileLightData: Profile.LightControlData?
         /// 是否重置光感校准数据
         var resetDaylightCalibration: Bool?
-        /// 占用功能是否启用
-        var occupancyEnable: Bool = true
     }
     
     /// 设备预配置数据
@@ -331,6 +331,10 @@ extension Node {
             }
             // 设备退出组失败
             if self.group != nil && groupState == GroupState.exitFailure {
+                // 退出组时pir默认启用
+                if self.capabilities.contains(.pirEnabled), !self.pirEnabled {
+                    syncDatas.append(.pirEnabled(true))
+                }
                 syncDatas.append(.unsubscribeGroup(group: self.group!))
             }else if getSubscribeToGroupMessages(group).count > 0 { // 设备订阅组数据不完整
                 syncDatas.append(.subscribeGroup(group: group))
@@ -727,7 +731,7 @@ extension Node {
             }
             
             if occupancyType {
-                if let model = presenceDetectedSensorModel, model.publish?.publicationAddress.address != publishAddress, self.preConfiguration.occupancyEnable {
+                if let model = presenceDetectedSensorModel, model.publish?.publicationAddress.address != publishAddress {
                     enableSensorModels.append(model)
                 }
             }else {
@@ -1393,7 +1397,7 @@ extension Node {
         }
         
         // 邻居数量
-        let neighborNumber = self.preConfiguration.occupancyEnable ? group.info.profile.proximityLightingNumber : 0
+        let neighborNumber = group.info.profile.proximityLightingNumber
         let proximityLightingPath = group.info.proximityLightingPath
 //        guard let proximityLightingPath = group.info.proximityLightingPath else {
 //            return nil

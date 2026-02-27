@@ -34,6 +34,9 @@ class LightSensorCalibrationViewController: UIViewController {
     /// 最小设置的lux值
     var minimunLux: Int = 100
     
+    /// 设备闪烁方式
+    private var deviceBlinkMode: DeviceBlinkMode = .none
+    
     let group: Group
     
     init(group: Group) {
@@ -67,6 +70,8 @@ class LightSensorCalibrationViewController: UIViewController {
 //        navigationItem.rightBarButtonItem = UIBarButtonItem(image: UIImage(named: "more_vertical")?.withRenderingMode(.alwaysOriginal), style: .done, target: nil, action: #selector(moreAction))
         
         self.isModalInPresentation = true
+        
+        deviceBlinkMode = SpaceViewController.currentDeviceBlinkMode
         
         setupUI()
         
@@ -557,7 +562,7 @@ class LightSensorCalibrationViewController: UIViewController {
         MeshProxyMessageCommand.shared.addMessage(messageHandles: [MeshMessageHandle(message: publishMessage, address: sensor.primaryUnicastAddress)]) {[weak self] resultHandles in
             guard let self = self else { return }
             if let handle = resultHandles.first, handle.isSuccessful {
-                
+                sensor.sendHandleCompleteIdentify(deviceBlinkMode: self.deviceBlinkMode)
                 // 启用传感器，更新缓存
                 self.group.info.ambientLightSensorNodeAddress = sensor.primaryUnicastAddress
                 result?(true)

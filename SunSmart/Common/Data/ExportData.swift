@@ -167,6 +167,7 @@ extension SpaceData {
 //            spaceJsonData.updateValue(self.isFavourite, forKey: "favourite")
             spaceJsonData.updateValue(Int64(self.create) , forKey: "createTimestamp")
             spaceJsonData.updateValue(Int64(self.lastUpdate) , forKey: "updateTimestamp")
+            spaceJsonData.updateValue(self.deviceBlinkMode.rawValue, forKey: "deviceBlinkMode")
             
             
             let networkKey = meshNetwork.networkKeys.first(where: { $0.networkId.hex == self.meshNetworkId })

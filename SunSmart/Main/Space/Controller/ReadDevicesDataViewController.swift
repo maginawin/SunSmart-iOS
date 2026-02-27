@@ -49,7 +49,8 @@ class ReadDevicesDataViewController: UIViewController {
     var backActionCallback: (([ReadFailedData])->Void)?
     /// 获取能耗数据使用缺失数据回调
     var harvestEnergyUseIncompleteDataCallback: (([ReadFailedData])->Void)?
-    
+    /// 设备闪烁方式
+    private var deviceBlinkMode: DeviceBlinkMode = .none
     
     init(type: ReadType) {
         
@@ -70,6 +71,7 @@ class ReadDevicesDataViewController: UIViewController {
         navigationItem.leftBarButtonItem = UIBarButtonItem(customView: backBtn)
         navigationItem.rightBarButtonItem = UIBarButtonItem(title: "re_read".localizedString, color: Title_Color, font: UIFont.systemFont(ofSize: 16, weight: .light), target: self, sel: #selector(rightItemAction))
         
+        deviceBlinkMode = SpaceViewController.currentDeviceBlinkMode
         
         setupUI()
         
@@ -569,7 +571,7 @@ class ReadDevicesDataViewController: UIViewController {
                         }
                     }
                 }, failedBack: nil) {[weak self] resultMessageHandles in
-                    
+                    guard let self = self else { return }
                     resultMessageHandles.forEach { handle in
                         if let address = handle.address ?? handle.model?.parentElement?.unicastAddress, let node = MeshNetworkManager.instance.meshNetwork?.node(withAddress: address) {
                             node.updateData(message: handle.message, isSuccess: handle.isSuccessful)
@@ -582,7 +584,7 @@ class ReadDevicesDataViewController: UIViewController {
                         }
                     }
 
-                    if case .readRatedPower(let nodes) = self?.type, self?.getNextHandleModel() == nil, nodes.contains(where: { $0.retedPowerState ?? false && !$0.getRatedPower }) {
+                    if case .readRatedPower(let nodes) = self.type, self.getNextHandleModel() == nil, nodes.contains(where: { $0.retedPowerState ?? false && !$0.getRatedPower }) {
                         DispatchQueue.main.asyncAfter(deadline: .now() + 10) {[weak self] in
                             guard let self = self else {
                                 return
@@ -615,13 +617,27 @@ class ReadDevicesDataViewController: UIViewController {
                         let operationSuccessful = ((model as? SyncDevicesModel)?.operationType?.isSuccessful ?? (model as? SyncDeviceStepTaskModel)?.operationType.isSuccessful) ?? false
                         if resultSuccessful && operationSuccessful {
                             model.state = .successful
+                            
+                            if case .harvestData = self.type, self.deviceBlinkMode != .none {
+                                let deviceModel: SyncDevicesModel? =
+                                (model as? SyncDevicesModel)
+                                ?? (model as? SyncDeviceStepTaskModel)?.parentStepModel?.parentDeviceModel
+                                // 设备全部成功判断
+                                if let deviceModel = deviceModel,
+                                   let node = MeshNetworkManager.instance.meshNetwork?.node(withAddress: deviceModel.address),
+                                    deviceModel.state == .successful {
+                                    // 发送设备闪烁命令
+                                    node.sendHandleCompleteIdentify(deviceBlinkMode: self.deviceBlinkMode)
+                                }
+                            }
+                
                         }else {
                             model.state = .failed
                             (model as? SyncDevicesModel)?.failedCount += 1
                             (model as? SyncDeviceStepTaskModel)?.failedCount += 1
                         }
                         
-                        self?.updateCell(model: model)
+                        self.updateCell(model: model)
                         semaphore.signal()
                     }
                 }

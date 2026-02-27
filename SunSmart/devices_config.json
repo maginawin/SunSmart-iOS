@@ -670,6 +670,15 @@
     },
     {
         "companyId" : "0A78",
+        "productId" : "2013",
+        "categoryName" : "PIR Sensor Lighting",
+        "elementCount" : 3,
+        "iconCategory" : "Lighting",
+        "deviceCategory" : "Lighting",
+        "modelName" : "SR-BL9035B-PIR-V"
+    },
+    {
+        "companyId" : "0A78",
         "productId" : "2021",
         "categoryName" : "PIR Sensor Lighting",
         "elementCount" : 3,
@@ -941,6 +950,15 @@
          "iconCategory" : "Lighting",
          "deviceCategory" : "Lighting",
          "modelName" : "SR-BL9035J-V"
+     },
+    {
+         "companyId" : "0A78",
+         "productId" : "24B1",
+         "categoryName" : "Controller Lighting",
+         "elementCount" : 2,
+         "iconCategory" : "Lighting",
+         "deviceCategory" : "Lighting",
+         "modelName" : "SR-BL9035B-V"
      },
     {
         "companyId" : "0A78",

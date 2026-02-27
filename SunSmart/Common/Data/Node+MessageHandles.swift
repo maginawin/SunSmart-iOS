@@ -182,6 +182,10 @@ extension NodeSyncData {
             if let vendorModel = node.sunricherVendorModel {
                 messageHandles.append(MeshMessageHandle(message: SunricherVendorSet(function: .gatewayMQTTConnectInfoSet(connectInfo: mqttInformation)), model: vendorModel))
             }
+        case .pirEnabled(let enabled):
+            if node.capabilities.contains(.pirEnabled), let vendorModel = node.sunricherVendorModel {
+                messageHandles.append(MeshMessageHandle(message: SunricherVendorSet(function: .pirEnabled(enabled: enabled)), model: vendorModel))
+            }
         }
         return messageHandles
     }

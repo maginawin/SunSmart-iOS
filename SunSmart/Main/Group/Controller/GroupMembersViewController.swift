@@ -94,8 +94,19 @@ class GroupMembersViewController: UIViewController {
         
 //        if space.nodes.filter({ $0.group == nil || $0.group?.address.address == group.address.address }).count != nodes.count || group.nodes.count != selectNodes.count {
         nodes = MeshNetworkManager.instance.realNodes.filter({ $0.deviceType != .gateway && ($0.group == nil || $0.group?.address.address == group.address.address) })
-        
-        selectNodes.append(contentsOf: nodes.filter({ $0.group?.address.address == group.address.address }).filter({ !selectNodes.contains($0) && $0.group?.address.address == group.address.address }))
+        selectNodes.removeAll()
+        nodes.forEach { node in
+            if node.group != nil {
+                if !selectNodes.contains(node) {
+                    selectNodes.append(node)
+                }
+            }else {
+                if let index = selectNodes.firstIndex(of: node) {
+                    selectNodes.remove(at: index)
+                }
+            }
+        }
+//        selectNodes.append(contentsOf: nodes.filter({ $0.group?.address.address == group.address.address }).filter({ !selectNodes.contains($0) && $0.group?.address.address == group.address.address }))
 //        }
 //        DispatchQueue.global().async {
 //            let isSync = self.group.needSync
@@ -215,7 +226,8 @@ class GroupMembersViewController: UIViewController {
                 vc.syncSuccessCallback = {[weak self] _ in
                     XWHUDManager.showSuccessTipHUD("done!".localizedString)
                     guard let self = self else { return }
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {[weak self] in
+                        guard let self = self else { return }
                         NotificationCenter.default.post(name: .init(groupDataUpdateNotificationName), object: self.group)
                         if self.isAddDevices {
                             self.backAction()
@@ -624,7 +636,8 @@ extension GroupMembersViewController: GroupDevicesFunctionViewDelegate {
         vc.syncSuccessCallback = {[weak self] _ in
             XWHUDManager.showSuccessTipHUD("done!".localizedString)
             guard let self = self else { return }
-            DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {[weak self] in
+                guard let self = self else { return }
                 NotificationCenter.default.post(name: .init(groupDataUpdateNotificationName), object: self.group)
                 self.navigationController?.popViewController(animated: true)
             }

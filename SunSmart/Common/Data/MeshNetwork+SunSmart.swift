@@ -2187,11 +2187,6 @@ extension Node {
                                 group.info.save()
                                 group.updateGroupSyncState()
                             }
-                            // 退出组时默认启用占用功能
-                            if !self.preConfiguration.occupancyEnable, let meshUUID = self.network?.uuid.uuidString {
-                                self.preConfiguration.occupancyEnable = true
-                                self.preConfiguration.save(meshUUID: meshUUID, nodeAddress: self.primaryUnicastAddress)
-                            }
                             self.save()
                         }
                     }else { // 删除失败

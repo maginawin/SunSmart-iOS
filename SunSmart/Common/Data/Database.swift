@@ -408,6 +408,7 @@ extension SpaceData {
         static let editor = Expression<Data?>("editor")
         static let vistors = Expression<Data?>("vistors")
         static let displayDeviceNamePrefix = Expression<Bool>("displayDeviceNamePrefix")
+        static let deviceBlinkMode = Expression<Int>("deviceBlinkMode")
     }
     
     /// 初始化空间表
@@ -447,6 +448,7 @@ extension SpaceData {
             builder.column(ExpressionKey.editor)
             builder.column(ExpressionKey.vistors)
             builder.column(ExpressionKey.displayDeviceNamePrefix, defaultValue: true)
+            builder.column(ExpressionKey.deviceBlinkMode, defaultValue: DeviceBlinkMode.breathing.rawValue)
         }))
         
         // 获取表内存在的属性
@@ -468,6 +470,10 @@ extension SpaceData {
             // 是否存在”displayDeviceNamePrefix“属性
             if !columns.contains(where: { $0.name == "displayDeviceNamePrefix" }) {
                 _ = try? SunSmartDataManager.shared.db?.run(SpaceData.spacesTable.addColumn(ExpressionKey.displayDeviceNamePrefix, defaultValue: true))
+            }
+            // 是否存在”deviceBlinkMode“属性
+            if !columns.contains(where: { $0.name == "deviceBlinkMode" }) {
+                _ = try? SunSmartDataManager.shared.db?.run(SpaceData.spacesTable.addColumn(ExpressionKey.deviceBlinkMode, defaultValue: DeviceBlinkMode.breathing.rawValue))
             }
         }
         
@@ -524,6 +530,7 @@ extension SpaceData {
                 space.applyGroupAddressCount = row[ExpressionKey.applyGroupAddressCount]
                 space.releaseAddress = row[ExpressionKey.isReleaseAddress] ?? false
                 space.displayDeviceNamePrefix = row[ExpressionKey.displayDeviceNamePrefix]
+                space.deviceBlinkMode = DeviceBlinkMode(rawValue: row[ExpressionKey.deviceBlinkMode]) ?? .breathing
                 
                 if let editorData = row[ExpressionKey.editor] {
                     space.editor = try? jsonDecoder.decode(UserData.self, from: editorData)
@@ -574,6 +581,7 @@ extension SpaceData {
                 newSpace.applyGroupAddressCount = row[ExpressionKey.applyGroupAddressCount]
                 newSpace.releaseAddress = row[ExpressionKey.isReleaseAddress] ?? false
                 newSpace.displayDeviceNamePrefix = row[ExpressionKey.displayDeviceNamePrefix]
+                newSpace.deviceBlinkMode = DeviceBlinkMode(rawValue: row[ExpressionKey.deviceBlinkMode]) ?? .breathing
                 
                 if let editorData = row[ExpressionKey.editor] {
                     newSpace.editor = try? jsonDecoder.decode(UserData.self, from: editorData)
@@ -660,7 +668,8 @@ extension SpaceData {
             ExpressionKey.isReleaseAddress <- self.releaseAddress,
             ExpressionKey.editor <- editorData,
             ExpressionKey.vistors <- vistorsData,
-            ExpressionKey.displayDeviceNamePrefix <- self.displayDeviceNamePrefix
+            ExpressionKey.displayDeviceNamePrefix <- self.displayDeviceNamePrefix,
+            ExpressionKey.deviceBlinkMode <- self.deviceBlinkMode.rawValue
         ])
         do {
             try SunSmartDataManager.shared.db?.run(interOrUpdate)
@@ -3036,7 +3045,6 @@ extension Node.PreConfiguration {
             preConfiguration.dayProfileLightData = dayLightData
         }
         preConfiguration.resetDaylightCalibration = row[ExpressionKey.resetDaylightCalibration]
-        preConfiguration.occupancyEnable = row[ExpressionKey.occupancyEnable]
         return preConfiguration
     }
     
@@ -3060,8 +3068,7 @@ extension Node.PreConfiguration {
             ExpressionKey.dayProfileLightData <- dayLightData,
             ExpressionKey.nightProfileStartsBelowLux <- self.nightProfileStartsBelowLux != nil ? Int(self.nightProfileStartsBelowLux!) : nil,
             ExpressionKey.nightProfileLightData <- nightLightData,
-            ExpressionKey.resetDaylightCalibration <- self.resetDaylightCalibration,
-            ExpressionKey.occupancyEnable <- self.occupancyEnable
+            ExpressionKey.resetDaylightCalibration <- self.resetDaylightCalibration
         ])
         do {
             try SunSmartDataManager.shared.db?.run(insertOrUpdate)

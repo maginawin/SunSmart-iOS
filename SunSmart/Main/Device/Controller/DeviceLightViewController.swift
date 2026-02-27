@@ -280,6 +280,17 @@ class DeviceLightViewController: UIViewController {
                 
             }
         }))
+        items.append(.init(icon: UIImage(named: "menu_information"), title: "identify".localizedString, tapItemBack: {[weak self] _ in
+            guard let self = self, let vendorModel = self.node.sunricherVendorModel else { return }
+            MeshAPI.sendMessage(message: SunricherVendorSet(function: .identify(mode: .breathe(count: 1, period: 1500))), model: vendorModel)
+//            let appkey = MeshNetworkManager.instance.meshNetwork?.applicationKeys.first
+//            try? MeshNetworkManager.instance.send(AttentionSet(attentionTimer: 5), to: MeshAddress(self.node.primaryUnicastAddress), using:  MeshNetworkManager.instance.currentApplicationKey)
+            
+//            DispatchQueue.main.asyncAfter(wallDeadline: .now() + 0.5) {
+//                try? MeshNetworkManager.instance.send(AttentionSet(attentionTimer: 5), to: MeshAddress(87), using: appkey!)
+//            }
+//            87
+        }))
         #endif
 //        #if DEBUG
 //        items.append(.init(icon: UIImage(named: "menu_edit"), title: "pwm_period".localizedString, hideAnimation: false, tapItemBack: {[weak self] _ in

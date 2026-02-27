@@ -708,7 +708,7 @@ class GroupSensorViewCell: UITableViewCell {
 //                    make.right.equalTo(SCRXFrom(-88))
 //                }
                 occupyStateImageView.layer.removeAnimation(forKey: "loading")
-                if sensor.preConfiguration.occupancyEnable {
+                if sensor.pirEnabled {
                     if sensor.occupancyState { // 存在感应状态
                         occupyStateImageView.image = UIImage(named: "sensor_occupy")
                         startUpdateOccupyTimer()

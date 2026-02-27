@@ -1068,7 +1068,7 @@ class BleFirmwareUpdateViewController: UIViewController {
         
         currentCountDown = 60
         
-        let alertView = SRAlertView(title: "notification".localizedString, message: "After the upgrade, the device has automatically reset. The system will automatically restore the data in …", actions: [SRAlertAction(title: "cancel".localizedString, style: .cancel, actionHandler: {[weak self] _ in
+        let alertView = SRAlertView(title: "notification".localizedString, message: "restore_automatically_message".localizedString, actions: [SRAlertAction(title: "cancel".localizedString, style: .cancel, actionHandler: {[weak self] _ in
             self?.stopCountdownTimer()
         }), SRAlertAction(title: "restore_now".localizedString, actionHandler: {[weak self] _ in
             self?.stopCountdownTimer()

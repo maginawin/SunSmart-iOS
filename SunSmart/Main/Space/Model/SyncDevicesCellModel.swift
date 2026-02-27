@@ -55,6 +55,8 @@ enum DeviceOperationType {
                 return node.group != group
             case .profile(let type):
                 return type.isSuccessful(node: node)
+            case .pirEnabled(let enabled):
+                return node.pirEnabled == enabled
             case .enOceanSwitch(let switchData):
                 if switchData.linkGroup != nil {
                     return node.getEnOceanUnSubscriptionMessageHandles(switchKeys: switchData.switchKeys).isEmpty
@@ -107,6 +109,8 @@ enum DeviceOperationType {
                 return node.group == group && node.getSubscribeToGroupMessages(group).count == 0
             case .profile(let type):
                 return type.isSuccessful(node: node)
+            case .pirEnabled(let enabled):
+                return node.pirEnabled == enabled
             case .enOceanSwitch(let switchData):
                 if switchData.linkGroup != nil {
                     return node.getEnOceanSubscriptionMessageHandles(switchKeys: switchData.switchKeys).isEmpty
@@ -201,6 +205,8 @@ enum DeviceOperationType {
 //                    messageHandles.append(MeshMessageHandle(message: LightLCModeSet(false), model: lightLCSetupModel))
 //                    messageHandles.append(MeshMessageHandle(message: LightLCOccupancyModeSet(false), model: lightLCSetupModel))
 //                }
+            case .pirEnabled(let enabled):
+                messageHandles.append(contentsOf: NodeSyncData.pirEnabled(enabled).getMessageHandles(node: node))
             case .enOceanSwitch(let switchData):
                 if switchData.linkGroup != nil {
                     messageHandles.append(contentsOf: node.getEnOceanUnSubscriptionMessageHandles(switchKeys: switchData.switchKeys))
@@ -250,6 +256,8 @@ enum DeviceOperationType {
                 messageHandles.append(contentsOf: schedule.getMessageHandles(node: node))
             case .profile(let type):
                 messageHandles.append(contentsOf: type.getMessageHandles(node: node))
+            case .pirEnabled(let enabled):
+                messageHandles.append(contentsOf: NodeSyncData.pirEnabled(enabled).getMessageHandles(node: node))
             case .enOceanSwitch(let switchData):
                 if switchData.linkGroup != nil {
                     // 判断是否已订阅动能开关按键事件
@@ -337,6 +345,8 @@ enum ActionType {
     case group(group: Group)
     /// 配置
     case profile(type: ProfileType)
+    /// 设备pir启用/禁用
+    case pirEnabled(_ enabled: Bool)
     /// 动能开关（关联）
     case enOceanSwitch(switchData: DeviceSwitchData)
     /// 动能开关代理
@@ -380,7 +390,7 @@ extension NodeSyncData {
             return 1
         case .unsubscribeGroup:
             return 1
-        case .profile:
+        case .profile, .pirEnabled:
             return 2
         case .syncScenes:
             return 3

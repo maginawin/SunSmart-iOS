@@ -488,65 +488,23 @@ class GroupViewController: UIViewController {
     
     /// 启用/禁用占用感应功能
     private func sensorOccupancySettings(sensor: Node, enable: Bool, result: (@escaping (Result<Void, SensorOccupancySettingsError>)->Void)) {
-        guard let occupancyModel = sensor.presenceDetectedSensorModel else {
+        guard sensor.presenceDetectedSensorModel != nil, let vendorModel = sensor.sunricherVendorModel, sensor.capabilities.contains(.pirEnabled) else {
             result(.failure(.nonsupport))
             return
         }
-        // 临近照明类型
-        if group.info.profile.type.proximityLightingType {
-            guard let vendorModel = sensor.sunricherVendorModel else {
-                result(.failure(.nonsupport))
+        
+        MeshAPI.sendMessage(message: SunricherVendorSet(function: .pirEnabled(enabled: enable)), model: vendorModel, timeout: 7) { response in
+            guard let statusMessage = response as? SunricherVendorStatus else {
+                result(.failure(.timeout))
                 return
             }
-            let relayCount = enable ? group.info.profile.proximityLightingNumber : 0
-            MeshAPI.sendMessage(message: SunricherVendorSet(function: .proximityLightingRelaySet(relay: relayCount)), address: sensor.primaryUnicastAddress, timeout: 7) { response in
-                guard let statusMessage = response as? SunricherVendorStatus else {
-                    result(.failure(.timeout))
-                    return
-                }
-                guard statusMessage.status.isSuccessful else {
-                    result(.failure(.configurationFailed))
-                    return
-                }
-                result(.success(()))
-            }
-            
-        }else { // 占用类型
-            
-            var publishMessage: ConfigModelPublicationSet?
-            if enable {
-                guard occupancyModel.publish?.publicationAddress != group.address else {
-                    result(.success(()))
-                    return
-                }
-                publishMessage = ConfigModelPublicationSet(Publish(to: group.address, using: MeshNetworkManager.instance.currentApplicationKey, usingFriendshipMaterial: false, ttl: MeshNetworkManager.instance.networkParameters.defaultTtl, period: .disabled, retransmit: .disabled), to: occupancyModel)
-            }else {
-                guard occupancyModel.publish?.publicationAddress == group.address else {
-                    result(.success(()))
-                    return
-                }
-                publishMessage = ConfigModelPublicationSet(disablePublicationFor: occupancyModel)
-            }
-            guard let publishMessage = publishMessage else {
-                result(.failure(.unknown))
+            guard statusMessage.status.isSuccessful else {
+                result(.failure(.configurationFailed))
                 return
             }
-            MeshAPI.sendMessage(message: publishMessage, address: sensor.primaryUnicastAddress, timeout: 7) { response in
-                guard let statusMessage = response as? ConfigModelPublicationStatus else {
-                    result(.failure(.timeout))
-                    return
-                }
-                guard statusMessage.isSuccess else {
-                    result(.failure(.configurationFailed))
-                    return
-                }
-                result(.success(()))
-            }
-            
+            result(.success(()))
         }
-        
-   
-        
+
     }
     
     private func updateUI() {
@@ -758,26 +716,24 @@ class GroupViewController: UIViewController {
             }))
         }
         
-        #if DEBUG
-        if space.groupOperates.contains(.edit), group.info.profile.type == .proximityLightingWithPhotocell {
-            items.append(.init(icon: UIImage(named: "menu_profile_test"), title: "night".localizedString, hideAnimation: false, tapItemBack: {[weak self] _ in
-                guard let self = self else { return }
-                if let night = self.group.info.profile.nightData {
-                    MeshAPI.sendMessage(message: SunricherVendorSet(function: .daylightConditionRecall(index: night.id)), address: self.group.address.address)
-//                    MeshAPI.sendMessage(message: SceneRecall(night.sceneData.sceneNumber), address: self.group.address.address)
-                }
-            }))
-            
-            items.append(.init(icon: UIImage(named: "menu_profile_test"), title: "day".localizedString, hideAnimation: false, tapItemBack: {[weak self] _ in
-                guard let self = self else { return }
-                if let day = self.group.info.profile.dayData {
-//                    MeshAPI.sendMessage(message: SceneRecall(day.sceneData.sceneNumber), address: self.group.address.address)
-                    MeshAPI.sendMessage(message: SunricherVendorSet(function: .daylightConditionRecall(index: day.id)), address: self.group.address.address)
-                }
-            }))
-        }
-        
-        #endif
+//        #if DEBUG
+//        if space.groupOperates.contains(.edit), group.info.profile.type == .proximityLightingWithPhotocell {
+//            items.append(.init(icon: UIImage(named: "menu_profile_test"), title: "night".localizedString, hideAnimation: false, tapItemBack: {[weak self] _ in
+//                guard let self = self else { return }
+//                if let night = self.group.info.profile.nightData {
+//                    MeshAPI.sendMessage(message: SunricherVendorSet(function: .daylightConditionRecall(index: night.id)), address: self.group.address.address)
+//                }
+//            }))
+//            
+//            items.append(.init(icon: UIImage(named: "menu_profile_test"), title: "day".localizedString, hideAnimation: false, tapItemBack: {[weak self] _ in
+//                guard let self = self else { return }
+//                if let day = self.group.info.profile.dayData {
+//                    MeshAPI.sendMessage(message: SunricherVendorSet(function: .daylightConditionRecall(index: day.id)), address: self.group.address.address)
+//                }
+//            }))
+//        }
+//        
+//        #endif
         let touchCenterX = view.width - navigationRightItemMargin - 15
         let touchCenterY = view.safeAreaInsets.top - 10
 //        SCREEN_HEIGHT - view.height + view.safeAreaInsets.top - 15
@@ -1367,11 +1323,11 @@ extension GroupViewController: UICollectionViewDataSource, UICollectionViewDeleg
 
 extension GroupViewController: MeshLibManagerMessageDelegate {
     
-//    func meshNetworkManager(_ manager: MeshNetworkManager, deviceDataUpdate node: Node) {
-//        if view.window != nil, group.nodes.contains(node) {
-//            reloadCollectionItem(node: node)
-//        }
-//    }
+    func meshNetworkManager(_ manager: MeshNetworkManager, deviceDataUpdate node: Node) {
+        if view.window != nil, group.nodes.contains(node) {
+            reloadCollectionItem(node: node)
+        }
+    }
     
     /// 设备数据修改时间戳更新
     func meshNetworkManager(_ manager: MeshNetworkManager, deviceDataUpdateTimeChange node: Node, lastUpdate: Int64) {
@@ -1461,7 +1417,16 @@ extension GroupViewController: GroupSensorViewDelegate {
     
     /// 设备识别
     func sensorView(_ view: GroupSensorView, identifyAction sensor: Node) {
-        MeshAPI.identify(address: sensor.primaryUnicastAddress)
+//        MeshAPI.identify(address: sensor.primaryUnicastAddress)
+//        var period: UInt16 = 5000
+        if let vendorModel = sensor.sunricherVendorModel {
+            MeshAPI.sendMessage(message: SunricherVendorSet(function: .identify(mode: .breathe(count: 1, period: 1500))), model: vendorModel)
+//            if Bool.random() {
+//                MeshAPI.sendMessage(message: SunricherVendorSet(function: .identify(mode: .default, frequency: .default)), model: vendorModel)
+//            }else {
+//                MeshAPI.sendMessage(message: SunricherVendorSet(function: .identify(mode: .breathe, frequency: .breathe)), model: vendorModel)
+//            }
+        }
     }
     
     /// 传感器设备占用功能点击
@@ -1480,7 +1445,7 @@ extension GroupViewController: GroupSensorViewDelegate {
             return
         }
         // 是否启用
-        let enable = !sensor.preConfiguration.occupancyEnable
+        let enable = !sensor.pirEnabled
         sensor.occupancySettings = true
         view.reloadSensor(sensor: sensor)
         sensorOccupancySettings(sensor: sensor, enable: enable) {[weak self] result in
@@ -1488,7 +1453,7 @@ extension GroupViewController: GroupSensorViewDelegate {
             sensor.occupancySettings = false
             switch result {
             case .success:
-                sensor.preConfiguration.occupancyEnable = enable
+                sensor.pirEnabled = enable
                 if let meshUUID = sensor.network?.uuid.uuidString {
                     sensor.preConfiguration.save(meshUUID: meshUUID, nodeAddress: sensor.primaryUnicastAddress)
                 }
@@ -1499,8 +1464,13 @@ extension GroupViewController: GroupSensorViewDelegate {
                 
             case .failure(let error):
                 var errorMessage = "configuration_failed".localizedString
-                if error == .timeout {
+                switch error {
+                case .timeout:
                     errorMessage = "device_offline".localizedString
+                case .nonsupport:
+                    errorMessage = "configuration_not_support".localizedString
+                default:
+                    break
                 }
                 ToastStatusView.show(in: self.view, message: errorMessage, type: .failure)
             }

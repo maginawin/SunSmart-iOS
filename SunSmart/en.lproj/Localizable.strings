@@ -1033,6 +1033,7 @@
 "import_from_local" = "Import from local";
 "version" = "Version";
 "device_parameter_settings" = "Device Parameter Settings";
+"all_devices" = "All Devices";
 "READ" = "READ";
 "not_in_group" = "Not in group";
 "rated_power" = "Reted power";
@@ -1331,6 +1332,7 @@
 "upgrade_results" = "Upgrade Results";
 "stop_upgrading" = "Stop Upgrading";
 "restore_now" = "RESTORE NOW";
+"restore_automatically_message" = "After the upgrade, the device has automatically reset. The system will automatically restore the data in …";
 "firmware_update_return_message" = "The device is being upgraded. Do you want to cancel the upgrade and return?";
 "firmware_update_disable_operated" = "The device is being upgraded and cannot be operated.";
 "setup_instructions" = "Setup Instructions";
@@ -1547,8 +1549,19 @@
 
 "configuration_successful" = "Configuration Successful";
 "configuration_failed" = "Configuration Failed";
+"configuration_not_support" = "Device not supported";
 "device_offline" = "Device Offline";
 "triggered" = "Triggered";
 "inactive" = "Inactive";
 "disabled(tap to toggle)" = "Disabled (tap to toggle)";
 "space_unsynchronized_cloud_message" = "Data could not be retrieved from the server. Please check your network connection.";
+
+"behavior_after_setup_success" = "Behavior after setup success";
+"fast_blink" = "Fast Blink";
+"no_blink" = "No Blink";
+"breathing_blink" = "Breathing Blink";
+"hide_details" = "Hide details";
+"show_details" = "Show details";
+"behavior_after_setup_success_note" = "Note: This setting controls the blink behavior of the load and indicator light after successful device setup to adapt to different application scenarios. \"No Blink\" is for unobtrusive operation during normal use without visual disturbance. \"Fast Blink\" provides obvious visual feedback for high-altitude installations or when managing multiple devices. \"Breathing Blink\" offers a softer, more subtle indication method.";
+"pir_enabled" = "PIR Enabled";
+"pir_disable" = "PIR Disable";

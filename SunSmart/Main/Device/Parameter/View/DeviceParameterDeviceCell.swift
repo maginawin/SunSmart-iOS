@@ -8,6 +8,38 @@
 import UIKit
 import NordicSigMeshSDK
 
+private final class DeviceParameterStatusRowView: UIView {
+    let textLabel: UILabel
+    let failedImageView: UIImageView
+    
+    private let stackView: UIStackView
+    
+    init(numberOfLines: Int = 1) {
+        textLabel = UILabel(text: "", textColor: Message_Color, fontSize: 12, fontWeight: .light)
+        textLabel.numberOfLines = numberOfLines
+        failedImageView = UIImageView(image: UIImage(named: "setting_failed"))
+        failedImageView.isHidden = true
+        
+        stackView = UIStackView()
+        super.init(frame: .zero)
+        
+        stackView.axis = .horizontal
+        stackView.alignment = .center
+        stackView.spacing = SCRXFrom(4)
+        stackView.addArrangedSubview(textLabel)
+        stackView.addArrangedSubview(failedImageView)
+        
+        addSubview(stackView)
+        stackView.snp.makeConstraints { make in
+            make.edges.equalToSuperview()
+        }
+    }
+    
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
+}
+
 protocol DeviceParameterDeviceCellDelegate: AnyObject {
     
     /// 设备identity事件
@@ -48,6 +80,11 @@ class DeviceParameterDeviceCell: UITableViewCell {
     var offBtn: UIButton!
     var groupNameLabel: UILabel!
     private var lineView: UIView!
+    private var parameterStackView: UIStackView!
+    private var pwmRowView: DeviceParameterStatusRowView!
+    private var ratedPowerRowView: DeviceParameterStatusRowView!
+    private var sensitivityRowView: DeviceParameterStatusRowView!
+    private var transitionTimeRowView: DeviceParameterStatusRowView!
     
     weak var delegate: DeviceParameterDeviceCellDelegate?
     
@@ -59,16 +96,6 @@ class DeviceParameterDeviceCell: UITableViewCell {
             offBtn.isSelected = device.selectOff
             
 //            onBtn.backgroundColor = onBtn.isSelected ? Bar_Color : Background_Color
-            
-            if device.supportPwmFrequency {
-                ratedPowerLabel.snp.updateConstraints { make in
-                    make.top.equalTo(nameLabel.snp.bottom).offset(SCRYFrom(18))
-                }
-            }else {
-                ratedPowerLabel.snp.updateConstraints { make in
-                    make.top.equalTo(nameLabel.snp.bottom).offset(SCRYFrom(2))
-                }
-            }
             
             if let group = device.group {
                 groupNameLabel.text = group.name
@@ -120,6 +147,93 @@ class DeviceParameterDeviceCell: UITableViewCell {
     @objc private func identifyBtnAction() {
         
         delegate?.cell(self, deviceIdentifyAction: device)
+    }
+    
+    private struct ParameterDisplayItem {
+        let type: DeviceParameterData.ParameterType
+        let isSupported: Bool
+        let rowView: DeviceParameterStatusRowView
+        let normalText: String
+    }
+    
+    func configureParameterViews(
+        visibleTypes: Set<DeviceParameterData.ParameterType>? = nil,
+        failedParameters: [DeviceParameterType]?,
+        ratedPowerFormatter: ([NodePhaseEnergyConsumption]) -> String
+    ) {
+        let failedParameterMap = (failedParameters ?? []).reduce(into: [Int: DeviceParameterType]()) { result, item in
+            result[item.rawValue] = item
+        }
+        
+        let normalPwmText = device.tempPwm.map({ "PWM: \($0) Hz" }) ?? "PWM: --"
+        
+        let normalRatedPowerText = "\("rated_power".localizedString): \(ratedPowerFormatter(device.tempRatedPowerPhases))"
+        
+        let normalSensitivityText: String
+        if let range = device.tempSensitivityRange {
+            normalSensitivityText = "\("absolute_sensitivity".localizedString): \(range.lowerBound.percentageFloat.toSimplifyStr(maxDigits: 1))%~\(range.upperBound.percentageFloat.toSimplifyStr(maxDigits: 1))%"
+        } else {
+            normalSensitivityText = "\("absolute_sensitivity".localizedString) : --"
+        }
+        
+        let normalTransitionTimeText: String
+        if let transitionTime = device.tempTransitionTime {
+            let timeStr = DeviceParameterData.transitionTimeDatas.first(where: { $0.timeInterval == transitionTime.interval })?.timeStr ?? "\(transitionTime.interval ?? 0)s"
+            normalTransitionTimeText = "\("transition_time".localizedString): \(timeStr)"
+        } else {
+            normalTransitionTimeText = "\("transition_time".localizedString): --"
+        }
+        
+        let items: [ParameterDisplayItem] = [
+            ParameterDisplayItem(
+                type: .pwmFrequency,
+                isSupported: device.supportPwmFrequency,
+                rowView: pwmRowView,
+                normalText: normalPwmText
+            ),
+            ParameterDisplayItem(
+                type: .ratedPower,
+                isSupported: true,
+                rowView: ratedPowerRowView,
+                normalText: normalRatedPowerText
+            ),
+            ParameterDisplayItem(
+                type: .motionSensitivityRange,
+                isSupported: device.supportMotionSensitivity,
+                rowView: sensitivityRowView,
+                normalText: normalSensitivityText
+            ),
+            ParameterDisplayItem(
+                type: .defalutTransitionTime,
+                isSupported: device.supportDefaultTransitionTime,
+                rowView: transitionTimeRowView,
+                normalText: normalTransitionTimeText
+            )
+        ]
+        
+        items.forEach { item in
+            render(item: item, failedParameterMap: failedParameterMap, visibleTypes: visibleTypes)
+        }
+    }
+    
+    private func render(
+        item: ParameterDisplayItem,
+        failedParameterMap: [Int: DeviceParameterType],
+        visibleTypes: Set<DeviceParameterData.ParameterType>?
+    ) {
+        let isVisibleByBusiness = item.isSupported && (visibleTypes?.contains(item.type) ?? true)
+        guard isVisibleByBusiness else {
+            item.rowView.isHidden = true
+            return
+        }
+        
+        if failedParameterMap[item.type.rawValue] != nil {
+            item.rowView.failedImageView.isHidden = false
+        } else {
+            item.rowView.failedImageView.isHidden = true
+        }
+        item.rowView.textLabel.text = item.normalText
+        item.rowView.isHidden = false
     }
     
     
@@ -192,20 +306,34 @@ class DeviceParameterDeviceCell: UITableViewCell {
 //            make.right.equalTo(identifyBtn.snp.left).offset(SCRXFrom(-30)).priority(.medium)
         }
         
-        pwmLabel = UILabel(text: "", textColor: Message_Color, fontSize: 12, fontWeight: .light)
-        contentView.addSubview(pwmLabel)
-        pwmLabel.snp.makeConstraints { make in
+        parameterStackView = UIStackView()
+        parameterStackView.axis = .vertical
+        parameterStackView.alignment = .leading
+        parameterStackView.spacing = SCRYFrom(2)
+        contentView.addSubview(parameterStackView)
+        parameterStackView.snp.makeConstraints { make in
             make.left.equalTo(nameLabel)
             make.top.equalTo(nameLabel.snp.bottom).offset(SCRYFrom(2))
+            make.width.lessThanOrEqualTo(SCRXFrom(220))
         }
+
+        pwmRowView = DeviceParameterStatusRowView()
+        ratedPowerRowView = DeviceParameterStatusRowView(numberOfLines: 2)
+        sensitivityRowView = DeviceParameterStatusRowView()
+        transitionTimeRowView = DeviceParameterStatusRowView()
+        parameterStackView.addArrangedSubview(pwmRowView)
+        parameterStackView.addArrangedSubview(ratedPowerRowView)
+        parameterStackView.addArrangedSubview(sensitivityRowView)
+        parameterStackView.addArrangedSubview(transitionTimeRowView)
         
-        pwmFailedImageView = UIImageView(image: UIImage(named: "setting_failed"))
-        pwmFailedImageView.isHidden = true
-        contentView.addSubview(pwmFailedImageView)
-        pwmFailedImageView.snp.makeConstraints { make in
-            make.centerY.equalTo(pwmLabel)
-            make.left.equalTo(pwmLabel.snp.right).offset(SCRXFrom(4))
-        }
+        pwmLabel = pwmRowView.textLabel
+        pwmFailedImageView = pwmRowView.failedImageView
+        ratedPowerLabel = ratedPowerRowView.textLabel
+        ratedPowerFailedImageView = ratedPowerRowView.failedImageView
+        sensitivityLabel = sensitivityRowView.textLabel
+        sensitivityImageView = sensitivityRowView.failedImageView
+        transitionTimeLabel = transitionTimeRowView.textLabel
+        transitionTimeImageView = transitionTimeRowView.failedImageView
         
         groupNameLabel = UILabel(text: "not_in_group".localizedString, textColor: Message_Color, fontSize: 12, fontWeight: .light)
         groupNameLabel.lineBreakMode = .byTruncatingHead
@@ -216,58 +344,13 @@ class DeviceParameterDeviceCell: UITableViewCell {
             make.width.lessThanOrEqualTo(SCRXFrom(100))
         }
         
-        ratedPowerLabel = UILabel(text: "", textColor: Message_Color, fontSize: 12, fontWeight: .light)
-        ratedPowerLabel.numberOfLines = 2
-        contentView.addSubview(ratedPowerLabel)
-        ratedPowerLabel.snp.makeConstraints { make in
-            make.top.equalTo(nameLabel.snp.bottom).offset(SCRYFrom(18))
-            make.left.equalTo(pwmLabel)
-            make.width.lessThanOrEqualTo(SCRXFrom(220))
-        }
-        
-        ratedPowerFailedImageView = UIImageView(image: UIImage(named: "setting_failed"))
-        ratedPowerFailedImageView.isHidden = true
-        contentView.addSubview(ratedPowerFailedImageView)
-        ratedPowerFailedImageView.snp.makeConstraints { make in
-            make.centerY.equalTo(ratedPowerLabel)
-            make.left.equalTo(ratedPowerLabel.snp.right).offset(SCRXFrom(6))
-        }
-        
-        sensitivityLabel = UILabel(text: "", textColor: Message_Color, fontSize: 12, fontWeight: .light)
-        contentView.addSubview(sensitivityLabel)
-        sensitivityLabel.snp.makeConstraints { make in
-            make.left.equalTo(ratedPowerLabel)
-            make.top.equalTo(ratedPowerLabel.snp.bottom).offset(SCRYFrom(2))
-        }
-        
-        sensitivityImageView = UIImageView(image: UIImage(named: "setting_failed"))
-        sensitivityImageView.isHidden = true
-        contentView.addSubview(sensitivityImageView)
-        sensitivityImageView.snp.makeConstraints { make in
-            make.centerY.equalTo(sensitivityLabel)
-            make.left.equalTo(sensitivityLabel.snp.right).offset(SCRXFrom(4))
-        }
-        
-        transitionTimeLabel = UILabel(text: "", textColor: Message_Color, fontSize: 12, fontWeight: .light)
-        contentView.addSubview(transitionTimeLabel)
-        transitionTimeLabel.snp.makeConstraints { make in
-            make.left.equalTo(sensitivityLabel)
-            make.top.equalTo(sensitivityLabel.snp.bottom).offset(SCRYFrom(2))
-        }
-        
-        transitionTimeImageView = UIImageView(image: UIImage(named: "setting_failed"))
-        transitionTimeImageView.isHidden = true
-        contentView.addSubview(transitionTimeImageView)
-        transitionTimeImageView.snp.makeConstraints { make in
-            make.centerY.equalTo(transitionTimeLabel)
-            make.left.equalTo(transitionTimeLabel.snp.right).offset(SCRXFrom(4))
-        }
-        
         lineView = UIView()
         lineView.backgroundColor = Line_Color
         contentView.addSubview(lineView)
         lineView.snp.makeConstraints { make in
             make.left.equalTo(selectImageView)
+            make.top.greaterThanOrEqualTo(groupNameLabel.snp.bottom).offset(SCRYFrom(8))
+            make.top.greaterThanOrEqualTo(parameterStackView.snp.bottom).offset(SCRYFrom(8))
             make.bottom.right.equalToSuperview()
             make.height.equalTo(0.5)
         }

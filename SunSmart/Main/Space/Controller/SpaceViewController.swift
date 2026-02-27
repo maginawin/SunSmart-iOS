@@ -71,10 +71,14 @@ extension SpaceViewController {
     static func currentSpace() -> SpaceData? {
         return currentSpaceVc()?.space
     }
+    
+    /// 当前space的设备闪烁模式
+    static var currentDeviceBlinkMode: DeviceBlinkMode {
+        return currentSpace()?.deviceBlinkMode ?? .none
+    }
+    
 }
 
-/// 是否显示设备名称前缀
-//var displayDeviceNamePrefix: Bool = SpaceViewController.currentSpace()?.displayDeviceNamePrefix ?? false
 
 let routeTest: Bool = false
 
@@ -194,7 +198,7 @@ class SpaceViewController: WMPageController {
         checkBluetoothState()
         #if DEBUG
         
-        MeshLibManager.manager.showLogs = [.network, .access, .lowerTransport, .upperTransport, .proxy, .bearer]
+        MeshLibManager.manager.showLogs = [.network, .model, .access, .lowerTransport, .upperTransport, .proxy, .bearer]
 //        [.network, .access, .lowerTransport, .upperTransport, .proxy, .bearer]
         if routeTest {
             MeshNodeHeartbeatManager.shared.autoHeartbeatLoop = false

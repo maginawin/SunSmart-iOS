@@ -147,7 +147,7 @@ class DeviceResetBroadcasterCentral {
                     break
                 }
             }
-            broadcasterDatas.removeAll(where: { $0.broadcasterType.code == BroadcasterType.identifySensorNode(key: 0, macAddress: "").code || $0.broadcasterType.code == BroadcasterType.identifyNode(address: 0, macAddress: "", mode: .default, frequency: .default).code })
+            broadcasterDatas.removeAll(where: { $0.broadcasterType.code == BroadcasterType.identifySensorNode(key: 0, macAddress: "").code || $0.broadcasterType.code == BroadcasterType.identifyNode(address: 0, macAddress: "", mode: .flash(count: 5)).code })
         })
         
         if identifyBroadcastering {

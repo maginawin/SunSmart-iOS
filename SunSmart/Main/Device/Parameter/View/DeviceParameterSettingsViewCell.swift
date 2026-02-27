@@ -198,3 +198,206 @@ extension DeviceParameterSettingsViewCell: UITextFieldDelegate {
     }
     
 }
+
+protocol DeviceParameterBehaviorAfterSetupViewCellDelegate: AnyObject {
+    func cell(_ cell: DeviceParameterBehaviorAfterSetupViewCell, didSelect mode: DeviceBlinkMode)
+    func cell(_ cell: DeviceParameterBehaviorAfterSetupViewCell, detailsExpandedChanged expanded: Bool)
+}
+
+class DeviceParameterBehaviorAfterSetupViewCell: UITableViewCell {
+   
+    
+    private var containerView: UIView!
+    private var titleLabel: UILabel!
+    private var optionButtons: [UIButton] = []
+    private var detailsRow: UIControl!
+    private var detailsTitleLabel: UILabel!
+    private var detailsArrowImageView: UIImageView!
+    private var noteLabel: UILabel!
+    
+    weak var delegate: DeviceParameterBehaviorAfterSetupViewCellDelegate?
+    
+    var selectedMode: DeviceBlinkMode = .breathing {
+        didSet {
+            updateOptionUI()
+        }
+    }
+    
+    var detailsExpanded: Bool = true {
+        didSet {
+            updateDetailsUI()
+        }
+    }
+    
+    func configure(mode: DeviceBlinkMode, detailsExpanded: Bool, noteText: String? = nil) {
+        selectedMode = mode
+        self.detailsExpanded = detailsExpanded
+        if let noteText = noteText {
+            noteLabel.text = noteText
+        }
+    }
+    
+    override init(style: UITableViewCell.CellStyle, reuseIdentifier: String?) {
+        super.init(style: style, reuseIdentifier: reuseIdentifier)
+        selectionStyle = .none
+        backgroundColor = .clear
+        setupUI()
+        updateOptionUI()
+        updateDetailsUI()
+    }
+    
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
+    
+    @objc private func optionTapped(_ sender: UIButton) {
+        guard sender.tag < DeviceBlinkMode.modes.count else { return }
+        let mode = DeviceBlinkMode.modes[sender.tag]
+//        guard selectedMode != mode else { return }
+        selectedMode = mode
+        delegate?.cell(self, didSelect: mode)
+    }
+    
+    @objc private func detailsRowTapped() {
+        detailsExpanded.toggle()
+        delegate?.cell(self, detailsExpandedChanged: detailsExpanded)
+    }
+    
+    private func updateOptionUI() {
+        optionButtons.enumerated().forEach { index, button in
+            let isSelected = DeviceBlinkMode.modes[index] == selectedMode
+            button.backgroundColor = isSelected ? Bar_Color : Background_Color
+            button.setTitleColor(isSelected ? .white : AssistText_Color, for: .normal)
+        }
+    }
+    
+    private func updateDetailsUI() {
+        noteLabel.isHidden = !detailsExpanded
+        detailsTitleLabel.text = detailsExpanded ? "hide_details".localizedString : "show_details".localizedString
+        detailsArrowImageView.image = UIImage(named: detailsExpanded ? "arrow_up_black" : "arrow_down_black")
+        
+        detailsRow.snp.remakeConstraints { make in
+            make.left.equalTo(SCRXFrom(16))
+            make.right.equalTo(SCRXFrom(-16))
+            make.top.equalTo(titleLabel.snp.bottom).offset(SCRYFrom(56))
+            make.height.equalTo(SCRYFrom(30))
+            if !detailsExpanded {
+                make.bottom.equalTo(SCRYFrom(-16))
+            }
+        }
+        detailsArrowImageView.snp.remakeConstraints { make in
+            make.centerY.equalToSuperview()
+            make.right.equalToSuperview()
+            make.width.height.equalTo(SCRYFrom(30))
+        }
+        detailsTitleLabel.snp.remakeConstraints { make in
+            make.left.equalToSuperview()
+            make.centerY.equalToSuperview()
+            make.right.lessThanOrEqualTo(detailsArrowImageView.snp.left).offset(SCRXFrom(-8))
+        }
+        
+        if detailsExpanded {
+            noteLabel.snp.remakeConstraints { make in
+                make.left.equalTo(SCRXFrom(16))
+                make.right.equalTo(SCRXFrom(-16))
+                make.top.equalTo(detailsRow.snp.bottom).offset(SCRYFrom(8))
+                make.bottom.equalTo(SCRYFrom(-16))
+            }
+        } else {
+            noteLabel.snp.remakeConstraints { make in
+                make.left.equalTo(SCRXFrom(16))
+                make.right.equalTo(SCRXFrom(-16))
+                make.top.equalTo(detailsRow.snp.bottom).offset(SCRYFrom(8))
+            }
+        }
+    }
+    
+    private func setupUI() {
+        containerView = UIView()
+        containerView.backgroundColor = .white
+        containerView.layer.cornerRadius = SCRYFrom(10)
+        contentView.addSubview(containerView)
+        containerView.snp.makeConstraints { make in
+            make.left.equalTo(SCRXFrom(16))
+            make.right.equalTo(SCRXFrom(-16))
+            make.top.equalToSuperview()
+            make.bottom.equalTo(SCRYFrom(-16))
+        }
+        
+        titleLabel = UILabel(
+            text: "\("behavior_after_setup_success".localizedString):",
+            textColor: TextBlack_Color,
+            fontSize: 14,
+            fontWeight: .light
+        )
+        containerView.addSubview(titleLabel)
+        titleLabel.snp.makeConstraints { make in
+            make.left.equalTo(SCRXFrom(16))
+            make.top.equalTo(SCRYFrom(16))
+            make.right.equalTo(SCRXFrom(-16))
+        }
+        
+        var previousBtn: UIButton?
+        for (index, mode) in DeviceBlinkMode.modes.enumerated() {
+            let button = UIButton(type: .custom)
+            button.tag = index
+            button.layer.cornerRadius = SCRYFrom(10)
+            button.clipsToBounds = true
+            button.titleLabel?.font = UIFont.systemFont(ofSize: SCRYFrom(13))
+            button.contentEdgeInsets = UIEdgeInsets(top: 0, left: SCRXFrom(7), bottom: 0, right: SCRXFrom(7))
+            button.titleLabel?.adjustsFontSizeToFitWidth = true
+            button.titleLabel?.minimumScaleFactor = 0.75
+            button.titleLabel?.numberOfLines = 1
+            button.titleLabel?.lineBreakMode = .byClipping
+            button.setTitle(mode.title, for: .normal)
+            button.addTarget(self, action: #selector(optionTapped(_:)), for: .touchUpInside)
+            containerView.addSubview(button)
+            button.snp.makeConstraints { make in
+                make.top.equalTo(titleLabel.snp.bottom).offset(SCRYFrom(12))
+                make.height.equalTo(SCRYFrom(32))
+                if let prev = previousBtn {
+                    make.left.equalTo(prev.snp.right).offset(SCRXFrom(12))
+                    make.width.equalTo(prev)
+                } else {
+                    make.left.equalTo(SCRXFrom(16))
+                }
+                if index == DeviceBlinkMode.modes.count - 1 {
+                    make.right.equalTo(SCRXFrom(-16))
+                }
+            }
+            optionButtons.append(button)
+            previousBtn = button
+        }
+        
+        detailsRow = UIControl()
+        detailsRow.addTarget(self, action: #selector(detailsRowTapped), for: .touchUpInside)
+        containerView.addSubview(detailsRow)
+        
+        detailsTitleLabel = UILabel(
+            text: "hide_details".localizedString,
+            textColor: Bar_Color,
+            fontSize: 12,
+            fontWeight: .regular
+        )
+        detailsRow.addSubview(detailsTitleLabel)
+        
+        detailsArrowImageView = UIImageView()
+        detailsArrowImageView.contentMode = .scaleAspectFit
+        detailsArrowImageView.tintColor = Bar_Color
+        detailsRow.addSubview(detailsArrowImageView)
+        
+        noteLabel = UILabel(
+            text: nil,
+            textColor: AssistText_Color,
+            fontSize: 12,
+            fontWeight: .light,
+            fit: false
+        )
+        noteLabel.numberOfLines = 0
+        let paragraphStyle = NSMutableParagraphStyle()
+        paragraphStyle.lineSpacing = 4
+        paragraphStyle.lineBreakMode = .byWordWrapping
+        noteLabel.attributedText = NSAttributedString(string: "behavior_after_setup_success_note".localizedString, attributes: [.paragraphStyle: paragraphStyle])
+        containerView.addSubview(noteLabel)
+    }
+}

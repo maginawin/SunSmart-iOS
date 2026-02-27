@@ -37,11 +37,11 @@ internal extension FirmwareDistributionError {
     }
 }
 
-#if DEBUG
+//#if DEBUG
+//let meshUpdateTest = true
+//#else
 let meshUpdateTest = true
-#else
-let meshUpdateTest = false
-#endif
+//#endif
 class MeshSelectUpgradeDevicesViewController: UIViewController {
 
     /// 状态

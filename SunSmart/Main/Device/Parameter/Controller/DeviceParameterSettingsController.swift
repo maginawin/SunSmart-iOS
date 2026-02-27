@@ -11,13 +11,25 @@ import NordicSigMeshSDK
 
 class DeviceParameterSettingsController: UIViewController {
 
+    enum DisplayMode {
+        case full
+        case behaviorOnly
+    }
+    
     enum SectionType {
         case energyReporting
         case parameter
     }
     
-    /// 设置完成回调  参数：失败的类型及设备
-    typealias ParameterSettingsCompletionCallback = (([DeviceParameterData.ParameterType: (value: Any, successNodes: [Node], failedNodes: [Node])])->Void)
+    struct ParameterSettingsResultItem {
+        let parameterType: DeviceParameterData.ParameterType
+        let parameter: DeviceParameterType
+        let successNodes: [Node]
+        let failedNodes: [Node]
+    }
+    
+    /// 设置完成回调
+    typealias ParameterSettingsCompletionCallback = (([ParameterSettingsResultItem])->Void)
    
 //    private var headerView: DeviceParameterPromptView!
     private var tableView: UITableView!
@@ -28,8 +40,11 @@ class DeviceParameterSettingsController: UIViewController {
     
     /// 额定功率阶段数据list
     private var ratedPowerPhaseDatas: [DeviceParameterRatedPowerPhaseData] = DeviceParameterRatedPowerPhaseData.default()
+    private var behaviorMode: DeviceBlinkMode = .breathing
+    private var behaviorDetailsExpanded = true
     
     let devices: [Node]
+    let displayMode: DisplayMode
     
     var settingsCompletionCallback: ParameterSettingsCompletionCallback?
     /// 默认的传感器灵敏度
@@ -37,8 +52,9 @@ class DeviceParameterSettingsController: UIViewController {
     /// 默认过渡时间
     private var defaultTransitionTime: TransitionTime = .init(1)
     
-    init(devices: [Node]) {
+    init(devices: [Node], displayMode: DisplayMode = .full) {
         self.devices = devices
+        self.displayMode = displayMode
         super.init(nibName: nil, bundle: nil)
     }
     
@@ -51,6 +67,21 @@ class DeviceParameterSettingsController: UIViewController {
 
         title = "device_parameter_settings".localizedString
         view.backgroundColor = Background_Color
+        navigationController?.setNavigationBarBackgroundColor(color: Background_Color)
+        
+        if displayMode == .behaviorOnly {
+            if let spaceBlinkMode = SpaceViewController.currentSpace()?.deviceBlinkMode,
+               let mode = DeviceBlinkMode(rawValue: spaceBlinkMode.rawValue) {
+                behaviorMode = mode
+            }
+            parameterDatas = [
+                .init(type: .behaviorAfterSetupSuccess, data: behaviorMode.rawValue, enable: true)
+            ]
+            sections = [.parameter]
+            setupUI()
+            updateSetupBtnState()
+            return
+        }
         
 //        var motionSensitivityRange: ClosedRange<Double>?
         // 获取设备配置的灵敏度
@@ -106,6 +137,17 @@ class DeviceParameterSettingsController: UIViewController {
     
     @objc private func setupAction() {
         
+        if displayMode == .behaviorOnly {
+            if let space = SpaceViewController.currentSpace(),
+               let mode = DeviceBlinkMode(rawValue: behaviorMode.rawValue) {
+                space.deviceBlinkMode = mode
+                _ = space.save()
+                NotificationCenter.default.post(name: .init(spaceDataChangedNotificaitonName), object: SpaceChangeDataType.common)
+            }
+            navigationController?.popViewController(animated: true)
+            return
+        }
+        
         // 未输入数据
         if let emptyParameterData = parameterDatas.first(where: { $0.enable && $0.data == nil }) {
             let title = emptyParameterData.type.data.title
@@ -150,6 +192,9 @@ class DeviceParameterSettingsController: UIViewController {
                 if let value = parameterData.data as? TransitionTime {
                     return .defaultTransitionTime(transitionTime: value)
                 }
+            case .behaviorAfterSetupSuccess:
+//                if let value = parameterData.data as?
+                break
             }
             return nil
         })
@@ -209,23 +254,9 @@ class DeviceParameterSettingsController: UIViewController {
                 self?.navigationController?.popToViewController(vcClass: DeviceParameterDevicesViewController.classForCoder())
             }
             
-            var result: [DeviceParameterData.ParameterType: (Any, [Node], [Node])] = [:]
-            
-            setParameters.forEach { type in
-                switch type {
-                case .pwmFrequency(let frequency):
-                    result.updateValue((frequency, self.devices, []), forKey: .pwmFrequency)
-                case .ratedPower:
-                    if let parameterData = self.parameterDatas.first(where: { $0.type == .ratedPower }), let data = parameterData.data {
-                        result.updateValue((data, self.devices, []), forKey: .ratedPower)
-                    }
-                case .motionSensitivityRange(let range):
-                    result.updateValue((range, self.devices, []), forKey: .motionSensitivityRange)
-                case .defaultTransitionTime(let transitionTime):
-                    result.updateValue((transitionTime, self.devices, []), forKey: .defalutTransitionTime)
-                default:
-                    break
-                }
+            let result = setParameters.compactMap { parameter -> ParameterSettingsResultItem? in
+                guard let type = self.parameterDataType(from: parameter) else { return nil }
+                return ParameterSettingsResultItem(parameterType: type, parameter: parameter, successNodes: self.devices, failedNodes: [])
             }
             self.settingsCompletionCallback?(result)
         }
@@ -236,86 +267,31 @@ class DeviceParameterSettingsController: UIViewController {
 
             // 返回成功、失败的设备数据
             DispatchQueue.global().async {
-                var pwmSuccessNodes: [Node] = []
-                var pwmFailedNodes: [Node] = []
+                var successNodesMap: [DeviceParameterData.ParameterType: [Node]] = [:]
+                var failedNodesMap: [DeviceParameterData.ParameterType: [Node]] = [:]
                 
-                var ratedPowerSuccessNodes: [Node] = []
-                var ratedPowerFailedNodes: [Node] = []
-                
-                var sensitivityRangeSuccessNodes: [Node] = []
-                var sensitivityRangeFailedNodes: [Node] = []
-                
-                var transitionTimeSuccessNodes: [Node] = []
-                var transitionTimeFailedNodes: [Node] = []
-
                 resultDatas.forEach { data in
                     data.successOperationTypes.forEach { operationType in
-                        switch operationType {
-                        case .configuration(_, let type):
-                            switch type {
-                            case .deviceParameters(let parameterType):
-                                switch parameterType {
-                                case .pwmFrequency:
-                                    pwmSuccessNodes.append(data.node)
-                                case .ratedPower:
-                                    ratedPowerSuccessNodes.append(data.node)
-                                case .motionSensitivityRange:
-                                    sensitivityRangeSuccessNodes.append(data.node)
-                                case .defaultTransitionTime:
-                                    transitionTimeSuccessNodes.append(data.node)
-                                default:
-                                    break
-                                }
-                            default:
-                                break
-                            }
-                        default:
-                            break
+                        if let parameterType = self.parameterDataType(fromOperationType: operationType) {
+                            successNodesMap[parameterType, default: []].append(data.node)
                         }
                     }
                     
                     data.failedOperationTypes.forEach { operationType in
-                        switch operationType {
-                        case .configuration(_, let type):
-                            switch type {
-                            case .deviceParameters(let parameterType):
-                                switch parameterType {
-                                case .pwmFrequency:
-                                    pwmFailedNodes.append(data.node)
-                                case .ratedPower:
-                                    ratedPowerFailedNodes.append(data.node)
-                                case .motionSensitivityRange:
-                                    sensitivityRangeFailedNodes.append(data.node)
-                                case .defaultTransitionTime:
-                                    transitionTimeFailedNodes.append(data.node)
-                                default:
-                                    break
-                                }
-                            default:
-                                break
-                            }
-                        default:
-                            break
+                        if let parameterType = self.parameterDataType(fromOperationType: operationType) {
+                            failedNodesMap[parameterType, default: []].append(data.node)
                         }
                     }
                 }
                 
-                var result: [DeviceParameterData.ParameterType: (Any, [Node], [Node])] = [:]
-                if pwmSuccessNodes.count > 0 || pwmFailedNodes.count > 0 {
-                    if let pwmData = self.parameterDatas.first(where: { $0.type == .pwmFrequency }) {
-                        result.updateValue((pwmData.data!, pwmSuccessNodes, pwmFailedNodes), forKey: pwmData.type)
-                    }
+                let result = setParameters.compactMap { parameter -> ParameterSettingsResultItem? in
+                    guard let parameterType = self.parameterDataType(from: parameter) else { return nil }
+                    let successNodes = successNodesMap[parameterType, default: []]
+                    let failedNodes = failedNodesMap[parameterType, default: []]
+                    guard !successNodes.isEmpty || !failedNodes.isEmpty else { return nil }
+                    return ParameterSettingsResultItem(parameterType: parameterType, parameter: parameter, successNodes: successNodes, failedNodes: failedNodes)
                 }
-                if ratedPowerSuccessNodes.count > 0 || ratedPowerFailedNodes.count > 0 {
-                    if let ratedPowerData = self.parameterDatas.first(where: { $0.type == .ratedPower }) {
-                        result.updateValue((ratedPowerData.data!, ratedPowerSuccessNodes, ratedPowerFailedNodes), forKey: ratedPowerData.type)
-                    }
-                }
-                if sensitivityRangeSuccessNodes.count > 0 || sensitivityRangeFailedNodes.count > 0 {
-                    if let sensitivityRangeData = self.parameterDatas.first(where: { $0.type == .motionSensitivityRange }) {
-                        result.updateValue((sensitivityRangeData.data!, sensitivityRangeSuccessNodes, sensitivityRangeFailedNodes), forKey: sensitivityRangeData.type)
-                    }
-                }
+                
                 DispatchQueue.main.async {
                     self.settingsCompletionCallback?(result)
                 }
@@ -327,7 +303,51 @@ class DeviceParameterSettingsController: UIViewController {
     }
     
     private func updateSetupBtnState() {
+        if displayMode == .behaviorOnly {
+            bottomView.rightBtn.isEnabled = true
+            return
+        }
         bottomView.rightBtn.isEnabled = self.parameterDatas.contains(where: ({ $0.enable && $0.data != nil }) )
+    }
+    
+    private func parameterDataType(from parameter: DeviceParameterType) -> DeviceParameterData.ParameterType? {
+        switch parameter {
+        case .pwmFrequency:
+            return .pwmFrequency
+        case .ratedPower:
+            return .ratedPower
+        case .motionSensitivityRange:
+            return .motionSensitivityRange
+        case .defaultTransitionTime:
+            return .defalutTransitionTime
+        case .powerCalibration:
+            return nil
+        }
+    }
+    
+    private func parameterDataType(fromOperationType operationType: DeviceOperationType) -> DeviceParameterData.ParameterType? {
+        switch operationType {
+        case .configuration(_, let type):
+            switch type {
+            case .deviceParameters(let parameterType):
+                switch parameterType {
+                case .pwmFrequency:
+                    return .pwmFrequency
+                case .ratedPower:
+                    return .ratedPower
+                case .motionSensitivityRange:
+                    return .motionSensitivityRange
+                case .defaultTransitionTime:
+                    return .defalutTransitionTime
+                case .powerCalibration:
+                    return nil
+                }
+            default:
+                return nil
+            }
+        default:
+            return nil
+        }
     }
     
     private func reloadEnergyDevice(_ device: Node) {
@@ -350,7 +370,9 @@ class DeviceParameterSettingsController: UIViewController {
                 self.reloadEnergyDevice($0)
             })
             
-            self.settingsCompletionCallback?([.ratedPower: ([], devices, [])])
+            self.settingsCompletionCallback?([
+                .init(parameterType: .ratedPower, parameter: .ratedPower(datas: []), successNodes: devices, failedNodes: [])
+            ])
         }
         vc.backActionCallback = {[weak self] result in
             guard let self = self else { return }
@@ -361,7 +383,9 @@ class DeviceParameterSettingsController: UIViewController {
             let nodes = result.map({ $0.node })
 //                .compactMap({ $0.successOperationTypes.count > 0 ? $0.node : nil })
 //            let failNodes = result.compactMap({ $0.failedOperationTypes.count > 0 ? $0.node : nil })
-            self.settingsCompletionCallback?([.ratedPower: ([], nodes, [])])
+            self.settingsCompletionCallback?([
+                .init(parameterType: .ratedPower, parameter: .ratedPower(datas: []), successNodes: nodes, failedNodes: [])
+            ])
         }
         navigationController?.pushViewController(vc, animated: true)
     }
@@ -378,7 +402,9 @@ class DeviceParameterSettingsController: UIViewController {
             devices.forEach({
                 self.reloadEnergyDevice($0)
             })
-            self.settingsCompletionCallback?([.ratedPower: ([], devices, [])])
+            self.settingsCompletionCallback?([
+                .init(parameterType: .ratedPower, parameter: .ratedPower(datas: []), successNodes: devices, failedNodes: [])
+            ])
         }
         vc.backActionCallback = {[weak self] result in
             guard let self = self else { return }
@@ -388,7 +414,9 @@ class DeviceParameterSettingsController: UIViewController {
             })
 //            let successNodes = result.compactMap({ $0.successOperationTypes.count > 0 ? $0.node : nil })
 //            let nodes = result.map({ $0.node })
-            self.settingsCompletionCallback?([.ratedPower: ([], devices, [])])
+            self.settingsCompletionCallback?([
+                .init(parameterType: .ratedPower, parameter: .ratedPower(datas: []), successNodes: devices, failedNodes: [])
+            ])
         }
         navigationController?.pushViewController(vc, animated: true)
         
@@ -421,10 +449,16 @@ class DeviceParameterSettingsController: UIViewController {
         tableView = UITableView()
         tableView.separatorStyle = .none
         tableView.backgroundColor = Background_Color
+        if #available(iOS 15.0, *) {
+            tableView.sectionHeaderTopPadding = 0
+        }
+        tableView.estimatedSectionHeaderHeight = 0
+        tableView.estimatedSectionFooterHeight = 0
         tableView.register(DeviceParameterSettingsViewCell.classForCoder(), forCellReuseIdentifier: "cell")
         tableView.register(DeviceParameterRetedPowerViewCell.classForCoder(), forCellReuseIdentifier: "retedPowerCell")
         tableView.register(DeviceParameterAbsoluteSensitivityViewCell.classForCoder(), forCellReuseIdentifier: "sensitivityCell")
         tableView.register(DeviceParameterSliderViewCell.classForCoder(), forCellReuseIdentifier: "sliderCell")
+        tableView.register(DeviceParameterBehaviorAfterSetupViewCell.classForCoder(), forCellReuseIdentifier: "behaviorCell")
         tableView.register(DeviceParameterEnergyReportViewCell.classForCoder(), forCellReuseIdentifier: "energyReportCell")
         tableView.register(DeviceParameterTitleHeaderView.classForCoder(), forHeaderFooterViewReuseIdentifier: "header")
         tableView.estimatedRowHeight = SCRYFrom(148)
@@ -470,6 +504,11 @@ extension DeviceParameterSettingsController: UITableViewDataSource, UITableViewD
         case .parameter:
             let parameterData = parameterDatas[indexPath.row]
             switch parameterData.type {
+            case .behaviorAfterSetupSuccess:
+                let behaviorCell = tableView.dequeueReusableCell(withIdentifier: "behaviorCell", for: indexPath) as! DeviceParameterBehaviorAfterSetupViewCell
+                behaviorCell.delegate = self
+                behaviorCell.configure(mode: behaviorMode, detailsExpanded: behaviorDetailsExpanded, noteText: parameterData.type.data.message)
+                return behaviorCell
             case .ratedPower:
                 let ratedPowerCell = tableView.dequeueReusableCell(withIdentifier: "retedPowerCell", for: indexPath) as! DeviceParameterRetedPowerViewCell
                 ratedPowerCell.phases = ratedPowerPhaseDatas
@@ -510,6 +549,11 @@ extension DeviceParameterSettingsController: UITableViewDataSource, UITableViewD
     }
     
     func tableView(_ tableView: UITableView, viewForHeaderInSection section: Int) -> UIView? {
+        if displayMode == .behaviorOnly {
+            let clearView = UIView()
+            clearView.backgroundColor = .clear
+            return clearView
+        }
         let header = tableView.dequeueReusableHeaderFooterView(withIdentifier: "header") as! DeviceParameterTitleHeaderView
         switch sections[section] {
         case .energyReporting:
@@ -523,6 +567,9 @@ extension DeviceParameterSettingsController: UITableViewDataSource, UITableViewD
     }
  
     func tableView(_ tableView: UITableView, heightForHeaderInSection section: Int) -> CGFloat {
+        if displayMode == .behaviorOnly {
+            return .leastNormalMagnitude
+        }
         return SCRYFrom(32)
     }
     
@@ -724,4 +771,30 @@ extension DeviceParameterSettingsController: DeviceParameterEnergyReportViewCell
         MeshAPI.identify(address: device.primaryUnicastAddress)
     }
     
+}
+
+extension DeviceParameterSettingsController: DeviceParameterBehaviorAfterSetupViewCellDelegate {
+    
+    func cell(_ cell: DeviceParameterBehaviorAfterSetupViewCell, didSelect mode: DeviceBlinkMode) {
+        behaviorMode = mode
+        if let indexPath = tableView.indexPath(for: cell), indexPath.row < parameterDatas.count {
+            parameterDatas[indexPath.row].data = mode.rawValue
+        }
+        updateSetupBtnState()
+        
+        switch mode {
+        case .fast:
+            MeshAPI.sendMessage(message: SunricherVendorSet(function: .identify(mode: .flash(count: 2))), address: .allNodes)
+        case .none:
+            break
+        case .breathing:
+            MeshAPI.sendMessage(message: SunricherVendorSet(function: .identify(mode: .breathe(count: 1, period: 1500))), address: .allNodes)
+        }
+        
+    }
+    
+    func cell(_ cell: DeviceParameterBehaviorAfterSetupViewCell, detailsExpandedChanged expanded: Bool) {
+        behaviorDetailsExpanded = expanded
+        tableView.performBatchUpdates(nil)
+    }
 }

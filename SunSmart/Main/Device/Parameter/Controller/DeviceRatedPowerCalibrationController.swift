@@ -308,7 +308,7 @@ extension DeviceRatedPowerCalibrationController: DeviceRatedPowerCalibrationSetS
                 guard let self = self, device.powerCalibrateState == .powerGet else { return }
                 MeshAPI.sendMessage(message: SunricherVendorGet(function: .dimmerRealPower), model: model) {[weak self] response in
                     if device.powerCalibrateState == .powerGet {
-                        if let statusMessage = response as? SunricherVendorStatus, statusMessage.status.isSuccessful, case .dimmerRealPower(let power) = statusMessage.status.paramters {
+                        if let statusMessage = response as? SunricherVendorStatus, statusMessage.status.isSuccessful, case .dimmerRealPower(let power) = statusMessage.status.parameters {
                             device.testCurrentPower = power
                         }
                         device.powerCalibrateState = .none

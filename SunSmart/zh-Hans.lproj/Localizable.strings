@@ -1029,6 +1029,7 @@
 "import_from_local" = "从本地导入";
 "version" = "版本";
 "device_parameter_settings" = "设备参数设置";
+"all_devices" = "所有设备";
 "READ" = "读取";
 "not_in_group" = "未分组";
 "rated_power" = "额定功率";
@@ -1336,6 +1337,7 @@
 "upgrade_results" = "升级结果";
 "stop_upgrading" = "停止升级";
 "restore_now" = "立即恢复";
+"restore_automatically_message" = "升级完成后，设备自动复位。系统会自动恢复…";
 "firmware_update_return_message" = "设备正在升级，是否取消升级并返回？";
 "firmware_update_disable_operated" = "设备正在升级，无法操作。";
 "setup_instructions" = "设置说明";
@@ -1549,10 +1551,21 @@
 "typical_use_cases" = "典型应用场景";
 "light_sensor_template_typical_use_cases_note" = "1. 靠窗灯具与室内灯具。\n2. 不同安装高度的传感器。\n3. 受遮挡或额外自然采光影响的区域";
 
-"configuration_successful" = "Configuration Successful";
+"configuration_successful" = "配置成功";
 "configuration_failed" = "配置失败";
+"configuration_not_support" = "设备不支持";
 "device_offline" = "设备离线";
 "triggered" = "触发";
 "inactive" = "未触发";
 "disabled(tap to toggle)" = "禁用（点击切换）";
 "space_unsynchronized_cloud_message" = "数据无法从服务器中获取，请检查网络。";
+
+"behavior_after_setup_success" = "设备设置成功后的行为";
+"fast_blink" = "快速闪烁";
+"no_blink" = "不闪烁";
+"breathing_blink" = "呼吸闪烁";
+"hide_details" = "隐藏详情";
+"show_details" = "显示详情";
+"behavior_after_setup_success_note" = "注意：此设置用于控制设备设置成功后负载及指示灯的闪烁行为，以适配不同的应用场景。\"不闪烁\"适用于正常使用过程中不希望视觉干扰的场景；\"快速闪烁\"适用于高空安装或需要管理多个设备时提供明显的视觉反馈；\"呼吸闪烁\"则提供一种更加柔和、细腻的提示方式。";
+"pir_enabled" = "启用PIR";
+"pir_disable" = "禁用PIR";

@@ -19,8 +19,6 @@ struct SyncResultData {
 
 class SyncDevicesViewController: UIViewController {
     
-
-    
     private var tableView: UITableView!
     private var bottomView: UIView!
     private var selectAllBtn: UIButton!
@@ -57,6 +55,8 @@ class SyncDevicesViewController: UIViewController {
     /// 同步的设备list
     private var syncNodes: [Node] = []
     
+    private var deviceBlinkMode: DeviceBlinkMode = .none
+    
     var vcTitle: String?
     
     init(type: SyncType, reSync: Bool = false) {
@@ -86,6 +86,8 @@ class SyncDevicesViewController: UIViewController {
         }
         
         setupUI()
+        
+        deviceBlinkMode = SpaceViewController.currentDeviceBlinkMode
         
         XWHUDManager.showCustomHUD(withMessage: nil, view: view)
         DispatchQueue.global().async {
@@ -723,6 +725,17 @@ class SyncDevicesViewController: UIViewController {
                         configturationSteps.append(step)
                     }
                 }
+            case .pirEnabled(let enabled):
+                let name = enabled ? "pir_enabled".localizedString : "pir_disable".localizedString
+                let task = SyncDeviceStepTaskModel(name: name, operationType: .configuration(node: node, type: .pirEnabled(enabled)))
+                
+                let step = SyncDeviceStepModel(type: name, state: .none, tasks: [task])
+                task.parentStepModel = step
+                if node.groupState == .exitFailure || removeGroupStep != nil {
+                    deleteSteps.append(step)
+                }else {
+                    configturationSteps.append(step)
+                }
                 
             case .syncScenes(let datas):
                 
@@ -1321,7 +1334,7 @@ class SyncDevicesViewController: UIViewController {
                         if vendorStatusMessage.status.code == .dimmerPowerCalibrate {
                             if vendorStatusMessage.status.errorCode == 2 { // 功率校准异常
                                 if let address = handle.address ?? handle.model?.parentElement?.unicastAddress, let node = MeshNetworkManager.instance.meshNetwork?.node(withAddress: address) {
-                                    if case .dimmerPowerCalibrateError(let maxPower) = vendorStatusMessage.status.paramters {
+                                    if case .dimmerPowerCalibrateError(let maxPower) = vendorStatusMessage.status.parameters {
                                         node.powerCalibrateError = .powerExceed(maxPower: Int(maxPower / 10))
                                     }else {
                                         node.powerCalibrateError = .powerExceed(maxPower: 300)
@@ -1342,7 +1355,7 @@ class SyncDevicesViewController: UIViewController {
                                     }
                                 }
                             }
-                        }else if handle.message is SunricherVendorGet, case .daylightConditionRecall(let index) = vendorStatusMessage.status.paramters, index >= 0 { // 记录当前运行的白天/黑夜条件配置
+                        }else if handle.message is SunricherVendorGet, case .daylightConditionRecall(let index) = vendorStatusMessage.status.parameters, index >= 0 { // 记录当前运行的白天/黑夜条件配置
                             if let address = handle.address ?? handle.model?.parentElement?.unicastAddress, let node = MeshNetworkManager.instance.meshNetwork?.node(withAddress: address) {
                                 node.daylightRecallConditionId = UInt8(index)
                             }
@@ -1371,6 +1384,20 @@ class SyncDevicesViewController: UIViewController {
                     let operationSuccessful = ((model as? SyncDevicesModel)?.operationType?.isSuccessful ?? (model as? SyncDeviceStepTaskModel)?.operationType.isSuccessful) ?? false
                     if resultSuccessful && operationSuccessful {
                         model.state = .successful
+                        
+                        if self.deviceBlinkMode != .none {
+                            let deviceModel: SyncDevicesModel? =
+                            (model as? SyncDevicesModel)
+                            ?? (model as? SyncDeviceStepTaskModel)?.parentStepModel?.parentDeviceModel
+                            // 设备全部成功判断
+                            if let deviceModel = deviceModel,
+                               let node = MeshNetworkManager.instance.meshNetwork?.node(withAddress: deviceModel.address),
+                                deviceModel.state == .successful {
+                                // 发送设备闪烁命令
+                                node.sendHandleCompleteIdentify(deviceBlinkMode: self.deviceBlinkMode)
+                            }
+                        }
+                        
                     }else {
                         model.state = .failed
                         (model as? SyncDevicesModel)?.failedCount += 1
@@ -1879,6 +1906,24 @@ private extension Node {
             objc_getAssociatedObject(self, &Node.daylightRecallConditionIdKey) as? UInt8
         }set {
             objc_setAssociatedObject(self, &Node.daylightRecallConditionIdKey, newValue, .OBJC_ASSOCIATION_RETAIN)
+        }
+    }
+}
+
+extension Node {
+    
+    /// 发送配置完成闪烁消息
+    func sendHandleCompleteIdentify(deviceBlinkMode: DeviceBlinkMode) {
+         
+        guard let vendorModel = sunricherVendorModel, capabilities.contains(.setupBehavior) else { return }
+        
+        switch deviceBlinkMode {
+        case .none:
+            break
+        case .breathing:
+            MeshAPI.sendMessage(message: SunricherVendorSet(function: .identify(mode: .breathe(count: 1, period: 1500))), model: vendorModel)
+        case .fast:
+            MeshAPI.sendMessage(message: SunricherVendorSet(function: .identify(mode: .flash(count: 2))), model: vendorModel)
         }
     }
 }

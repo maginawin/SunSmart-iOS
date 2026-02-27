@@ -857,6 +857,10 @@ extension SpaceData {
             self.lastUpdate = json["updateTimestamp"].int64Value
             //            if self.lastUploadCloudTimestamp == nil {
             self.lastUploadCloudTimestamp = self.lastUpdate
+            // 配置设备完成后行为
+            if let value = json["deviceBlinkMode"].int, let mode = DeviceBlinkMode(rawValue: value) {
+                self.deviceBlinkMode = mode
+            }
             //            }
 //            let localNodes = Node.load(meshUUID: self.meshUUID, subnetworkId: self.meshNetworkId)
             
