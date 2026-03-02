@@ -1091,21 +1091,23 @@ class SyncDevicesViewController: UIViewController {
             })
             if selectModels.count > 0 {
                 selectModels.forEach({ device in
-                    device.state = .wait
-                    device.steps.forEach({
-                        $0.tasks.forEach({ task in
-                            if task.state == .failed {
-                                task.state = .wait
-                                // 检查是否有profile数据需要加锁、切换场景前置要求，需要则重试必须连带前置条件一起设置
-                                if task.relevanceTaskModels.count > 0 {
-                                    task.resyncRelevanceCheck().forEach({
-                                        $0.state = .wait
-                                    })
-                                }
-                            }
-                        })
-                    })
+//                    device.state = .none
+//                    device.steps.forEach({
+//                        $0.tasks.forEach({ task in
+//                            if task.state != .successful {
+//                                task.state = .none
+//                                // 检查是否有profile数据需要加锁、切换场景前置要求，需要则重试必须连带前置条件一起设置
+//                                if task.relevanceTaskModels.count > 0 {
+//                                    task.resyncRelevanceCheck().forEach({
+//                                        $0.state = .none
+//                                    })
+//                                }
+//                            }
+//                        })
+//                    })
+                    prepareDeviceForResync(device)
                 })
+                
 //                tableView.reloadData()
                 syncState = .inSync
                 startSync()
@@ -1485,6 +1487,31 @@ class SyncDevicesViewController: UIViewController {
 //            MeshProxyMessageCommand.shared.addMessage(messageHandles: versionUpdateMessageHandles, finishedBack: nil)
         }
       
+    }
+    
+    /// 设备重同步前，清理当前轮次残留状态（仅保留成功任务）
+    private func prepareDeviceForResync(_ device: SyncDevicesModel) {
+        device.isFineshed = false
+        device.isSelected = false
+        
+        // 直接操作设备（无步骤）
+        if device.steps.isEmpty {
+            if device.state != .successful {
+                device.state = .none
+            }
+            return
+        }
+        
+        // 按步骤操作设备：将非成功任务统一重置为 none，避免 wait/failed 混用导致错误聚合
+        device.steps.forEach { step in
+            step.isFineshed = false
+            step.tasks.forEach { task in
+                task.isFineshed = false
+                if task.state != .successful {
+                    task.state = .none
+                }
+            }
+        }
     }
     
     /// 获取下一个需要处理的model
@@ -1923,7 +1950,7 @@ extension Node {
         case .breathing:
             MeshAPI.sendMessage(message: SunricherVendorSet(function: .identify(mode: .breathe(count: 1, period: 1500))), model: vendorModel)
         case .fast:
-            MeshAPI.sendMessage(message: SunricherVendorSet(function: .identify(mode: .flash(count: 2))), model: vendorModel)
+            MeshAPI.sendMessage(message: SunricherVendorSet(function: .identify(mode: .flash(count: 1))), model: vendorModel)
         }
     }
 }

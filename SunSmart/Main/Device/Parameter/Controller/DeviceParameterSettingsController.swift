@@ -784,7 +784,7 @@ extension DeviceParameterSettingsController: DeviceParameterBehaviorAfterSetupVi
         
         switch mode {
         case .fast:
-            MeshAPI.sendMessage(message: SunricherVendorSet(function: .identify(mode: .flash(count: 2))), address: .allNodes)
+            MeshAPI.sendMessage(message: SunricherVendorSet(function: .identify(mode: .flash(count: 1))), address: .allNodes)
         case .none:
             break
         case .breathing:

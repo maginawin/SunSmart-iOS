@@ -87,7 +87,9 @@ class DeviceInformationViewController: UIViewController {
         
         let addressModel = CustomCellModel(title: "Address", content: "\(node.primaryUnicastAddress)", style: .none)
         
-        deviceInfoModels = [nameModel, macModel, addressModel, devModel, deviceTypeModel, firmwareModel, singleStrengthModel]
+        let vidModel = CustomCellModel(title: "Version Identifier", content: node.versionIdentifier != nil ? "\(node.versionIdentifier!)" : "--", style: .none)
+        
+        deviceInfoModels = [nameModel, macModel, addressModel, vidModel, devModel, deviceTypeModel, firmwareModel, singleStrengthModel]
         #else
         deviceInfoModels = [nameModel, macModel, devModel, deviceTypeModel, firmwareModel, singleStrengthModel]
         #endif
