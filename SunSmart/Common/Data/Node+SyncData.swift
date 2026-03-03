@@ -892,7 +892,7 @@ extension Node {
                 }
                 
                 // 判断是否需要切换profile
-                if syncProfile.contains(where: { type in
+                if groupProfile.type == .proximityLightingWithPhotocell && syncProfile.contains(where: { type in
                     switch type {
                     case .lightControlSwitch, .daylightSensorConditionRecall:
                         return true

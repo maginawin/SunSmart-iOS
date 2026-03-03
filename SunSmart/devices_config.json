@@ -261,6 +261,17 @@
     },
     {
         "companyId" : "0A78",
+        "productId" : "1014",
+        "categoryName" : "PIR Sensor Lighting",
+        "elementCount" : 3,
+        "iconCategory" : "Lighting",
+        "deviceCategory" : "Lighting",
+        "modelName" : "SR-BL9035B-PIR-V",
+        "sensitivityRangeMin" : 22937,
+        "sensitivityRangeMax" : 58981
+    },
+    {
+        "companyId" : "0A78",
         "productId" : "1021",
         "categoryName" : "PIR Sensor Lighting",
         "elementCount" : 3,
@@ -609,6 +620,15 @@
         "iconCategory" : "Lighting",
         "deviceCategory" : "Lighting",
         "modelName" : "SR-BL9035A-AMB-V"
+    },
+    {
+        "companyId" : "0A78",
+        "productId" : "14B1",
+        "categoryName" : "Controller Lighting",
+        "elementCount" : 2,
+        "iconCategory" : "Lighting",
+        "deviceCategory" : "Lighting",
+        "modelName" : "SR-BL9035B-V"
     },
     {
         "companyId" : "0A78",
