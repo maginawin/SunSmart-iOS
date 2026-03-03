@@ -1640,9 +1640,7 @@
 		C8BB67512ED3F056000C63EE /* DeviceSliderFunctionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C898EA752AC409230023B480 /* DeviceSliderFunctionView.swift */; };
 		C8BB67532ED3F056000C63EE /* Pods_Common_SunSmart.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = C8FFD7D42E7D03B20074CC6A /* Pods_Common_SunSmart.framework */; };
 		C8BB67542ED3F056000C63EE /* NordicSigMeshSDK in Frameworks */ = {isa = PBXBuildFile; productRef = C8BB65AC2ED3F056000C63EE /* NordicSigMeshSDK */; };
-		C8BB67562ED3F056000C63EE /* Privacy Policy.html in Resources */ = {isa = PBXBuildFile; fileRef = C89B34222C93E3B700A77DB6 /* Privacy Policy.html */; };
 		C8BB67572ED3F056000C63EE /* XWHUDManager_right@3x.png in Resources */ = {isa = PBXBuildFile; fileRef = C896BB8E2A930C3800217512 /* XWHUDManager_right@3x.png */; };
-		C8BB67582ED3F056000C63EE /* User Agreement.html in Resources */ = {isa = PBXBuildFile; fileRef = C89B34202C93E2B600A77DB6 /* User Agreement.html */; };
 		C8BB67592ED3F056000C63EE /* Localizable.strings in Resources */ = {isa = PBXBuildFile; fileRef = C898E2D72AB7E46300C71315 /* Localizable.strings */; };
 		C8BB675A2ED3F056000C63EE /* device_add.mp3 in Resources */ = {isa = PBXBuildFile; fileRef = C8B483D12E4B361F006D85BC /* device_add.mp3 */; };
 		C8BB675B2ED3F056000C63EE /* device_reset.mp3 in Resources */ = {isa = PBXBuildFile; fileRef = C8B483D22E4B361F006D85BC /* device_reset.mp3 */; };
@@ -1806,6 +1804,8 @@
 		C8D6636F2BFEDDC900BFF81A /* ImportData.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8D6636E2BFEDDC900BFF81A /* ImportData.swift */; };
 		C8D663712BFEDDE000BFF81A /* ExportData.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8D663702BFEDDE000BFF81A /* ExportData.swift */; };
 		C8D663732BFF14A000BFF81A /* Int+Hex.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8D663722BFF14A000BFF81A /* Int+Hex.swift */; };
+		C8D7F1FB2F5676E3007D86E0 /* Privacy Policy.html in Resources */ = {isa = PBXBuildFile; fileRef = C8D7F1FA2F5676E3007D86E0 /* Privacy Policy.html */; };
+		C8D7F1FD2F5676E7007D86E0 /* User Agreement.html in Resources */ = {isa = PBXBuildFile; fileRef = C8D7F1FC2F5676E7007D86E0 /* User Agreement.html */; };
 		C8DA57D72ED14B7A00C4FCFD /* GatewayInformationViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8DA57D62ED14B7A00C4FCFD /* GatewayInformationViewController.swift */; };
 		C8DA57D82ED14B7A00C4FCFD /* GatewayInformationViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8DA57D62ED14B7A00C4FCFD /* GatewayInformationViewController.swift */; };
 		C8DA57D92ED14B7A00C4FCFD /* GatewayInformationViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8DA57D62ED14B7A00C4FCFD /* GatewayInformationViewController.swift */; };
@@ -2318,6 +2318,8 @@
 		C8D6636E2BFEDDC900BFF81A /* ImportData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImportData.swift; sourceTree = "<group>"; };
 		C8D663702BFEDDE000BFF81A /* ExportData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExportData.swift; sourceTree = "<group>"; };
 		C8D663722BFF14A000BFF81A /* Int+Hex.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Int+Hex.swift"; sourceTree = "<group>"; };
+		C8D7F1FA2F5676E3007D86E0 /* Privacy Policy.html */ = {isa = PBXFileReference; lastKnownFileType = text.html; path = "Privacy Policy.html"; sourceTree = "<group>"; };
+		C8D7F1FC2F5676E7007D86E0 /* User Agreement.html */ = {isa = PBXFileReference; lastKnownFileType = text.html; path = "User Agreement.html"; sourceTree = "<group>"; };
 		C8DA57D62ED14B7A00C4FCFD /* GatewayInformationViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GatewayInformationViewController.swift; sourceTree = "<group>"; };
 		C8DA57DA2ED18AA300C4FCFD /* SiteGatewayHeaderView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SiteGatewayHeaderView.swift; sourceTree = "<group>"; };
 		C8DA69DA2DB87C9B00E32092 /* DeviceBottomBtnView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceBottomBtnView.swift; sourceTree = "<group>"; };
@@ -3673,6 +3675,8 @@
 				C8BB67702ED3F056000C63EE /* SLGSync-Info.plist */,
 				C8BB67722ED3F13A000C63EE /* Assets-SLGSync.xcassets */,
 				C8BB67742ED3F164000C63EE /* SLGSync-LaunchScreen.storyboard */,
+				C8D7F1FA2F5676E3007D86E0 /* Privacy Policy.html */,
+				C8D7F1FC2F5676E7007D86E0 /* User Agreement.html */,
 			);
 			path = SLGSync;
 			sourceTree = "<group>";
@@ -4087,10 +4091,9 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				C8BB67562ED3F056000C63EE /* Privacy Policy.html in Resources */,
 				C8BB67572ED3F056000C63EE /* XWHUDManager_right@3x.png in Resources */,
-				C8BB67582ED3F056000C63EE /* User Agreement.html in Resources */,
 				C8BB67592ED3F056000C63EE /* Localizable.strings in Resources */,
+				C8D7F1FB2F5676E3007D86E0 /* Privacy Policy.html in Resources */,
 				C8BB675A2ED3F056000C63EE /* device_add.mp3 in Resources */,
 				C8BB675B2ED3F056000C63EE /* device_reset.mp3 in Resources */,
 				C8BB675C2ED3F056000C63EE /* XWHUDManager_successful@2x.png in Resources */,
@@ -4105,6 +4108,7 @@
 				C8BB67642ED3F056000C63EE /* XWHUDManager_error@3x.png in Resources */,
 				C8BB67652ED3F056000C63EE /* Assets.xcassets in Resources */,
 				C8BB67662ED3F056000C63EE /* XWHUDManager_info@2x.png in Resources */,
+				C8D7F1FD2F5676E7007D86E0 /* User Agreement.html in Resources */,
 				C8BB67672ED3F056000C63EE /* XWHUDManager_info@3x.png in Resources */,
 				C8BB67682ED3F056000C63EE /* XWHUDManager_right@2x.png in Resources */,
 				C8BB67692ED3F056000C63EE /* XWHUDManager_tip@2x.png in Resources */,
@@ -6478,7 +6482,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = JTD3WYUC58;
+				DEVELOPMENT_TEAM = 97QC5USUD2;
 				GCC_PREFIX_HEADER = "";
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = "SLGSync/SLGSync-Info.plist";
@@ -6497,7 +6501,7 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.azoula.slgsync;
+				PRODUCT_BUNDLE_IDENTIFIER = com.slg.slgsyncplus;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
 				SUPPORTS_MACCATALYST = NO;
@@ -6519,7 +6523,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = JTD3WYUC58;
+				DEVELOPMENT_TEAM = 97QC5USUD2;
 				GCC_PREFIX_HEADER = "";
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = "SLGSync/SLGSync-Info.plist";
@@ -6538,7 +6542,7 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.azoula.slgsync;
+				PRODUCT_BUNDLE_IDENTIFIER = com.slg.slgsyncplus;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
 				SUPPORTS_MACCATALYST = NO;

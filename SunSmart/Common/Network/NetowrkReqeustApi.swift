@@ -440,6 +440,11 @@ extension NetowrkReqeustApi: TargetType {
     }
     
     var headers: [String : String]? {
+        var headers: [String: String] = [:]
+        #if Archipelago || SLGSync
+        headers.updateValue(appKey, forKey: "appKey")
+        headers.updateValue(appSecret, forKey: "appSecret")
+        #endif
         switch self {
         case .siteInfo:
             fallthrough
@@ -448,13 +453,12 @@ extension NetowrkReqeustApi: TargetType {
         case .siteUpload:
             fallthrough
         case .spaceUpload:
-            return [
-                "Content-Encoding": "gzip",
-                "Accept-Encoding": "gzip"
-            ]
+            headers.updateValue("gzip", forKey: "Content-Encoding")
+            headers.updateValue("gzip", forKey: "Accept-Encoding")
         default:
-            return nil
+            break
         }
+        return headers
     }
     
 }

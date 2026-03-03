@@ -153,6 +153,8 @@ let Bottom_Done_Color = RGB(27, 20, 37)
 let Title_Done_Color = RGB(64, 79, 102)
 let Slider_Color = RGB(213, 32, 39)
 let customId: UInt8 = 0x02
+let appKey = "PQS4OFF6"
+let appSecret = "q7nh24oRJyC7P2W9"
 
 #elseif SylSmart
 
@@ -171,6 +173,8 @@ let Bottom_Done_Color = RGB(111, 180, 70)
 let Title_Done_Color = RGB(111, 180, 70)
 let Slider_Color = RGB(255, 167, 44)
 let customId: UInt8 = 0x03
+let appKey = "zqh4SXYM"
+let appSecret = "Qsv6XbvqweGuB1Kg"
 
 #else
 
