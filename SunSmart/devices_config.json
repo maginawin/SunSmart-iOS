@@ -757,6 +757,28 @@
     },
     {
         "companyId" : "0A78",
+        "productId" : "2051",
+        "categoryName" : "PIR Sensor Lighting",
+        "elementCount" : 3,
+        "iconCategory" : "Lighting",
+        "deviceCategory" : "Lighting",
+        "modelName" : "SR-BL9036T-PIR-WPV",
+        "sensitivityRangeMin" : 0,
+        "sensitivityRangeMax" : 65535
+    },
+    {
+        "companyId" : "0A78",
+        "productId" : "2052",
+        "categoryName" : "PIR EL Lighting",
+        "elementCount" : 3,
+        "iconCategory" : "Emergency",
+        "deviceCategory" : "Lighting",
+        "modelName" : "SR-BL9036T-PIR-WPV-EL",
+        "sensitivityRangeMin" : 0,
+        "sensitivityRangeMax" : 65535
+    },
+    {
+        "companyId" : "0A78",
         "productId" : "2111",
         "categoryName" : "0-10V Converter",
         "elementCount" : 2,
@@ -1001,6 +1023,15 @@
     {
         "companyId" : "0A78",
         "productId" : "2701",
+        "categoryName" : "Gateway",
+        "elementCount" : 2,
+        "iconCategory" : "Gateway",
+        "deviceCategory" : "Gateway",
+        "modelName" : "SR-BL9036T-GW-WP4G"
+    },
+    {
+        "companyId" : "0A78",
+        "productId" : "2702",
         "categoryName" : "Gateway",
         "elementCount" : 2,
         "iconCategory" : "Gateway",

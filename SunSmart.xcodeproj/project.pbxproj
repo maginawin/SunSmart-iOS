@@ -1207,7 +1207,6 @@
 		C8BA43672DC0A7B300018392 /* EnergyTimeSeriesDataExportView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8BA43662DC0A7B300018392 /* EnergyTimeSeriesDataExportView.swift */; };
 		C8BA43692DC0AE9900018392 /* TimeSeriesDataGuideView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8BA43682DC0AE9900018392 /* TimeSeriesDataGuideView.swift */; };
 		C8BA436B2DC0D75A00018392 /* EnergySelectExportDevicesController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8BA436A2DC0D75A00018392 /* EnergySelectExportDevicesController.swift */; };
-		C8BB3E3F2EF7C72200207225 /* NordicSigMeshSDK in Frameworks */ = {isa = PBXBuildFile; productRef = C8BB3E3E2EF7C72200207225 /* NordicSigMeshSDK */; };
 		C8BB3E442EF92CDC00207225 /* ProfileLightSensorTemplateController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8BB3E432EF92CDC00207225 /* ProfileLightSensorTemplateController.swift */; };
 		C8BB3E452EF92CDC00207225 /* ProfileLightSensorTemplateController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8BB3E432EF92CDC00207225 /* ProfileLightSensorTemplateController.swift */; };
 		C8BB3E462EF92CDC00207225 /* ProfileLightSensorTemplateController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8BB3E432EF92CDC00207225 /* ProfileLightSensorTemplateController.swift */; };
@@ -1806,6 +1805,7 @@
 		C8D663732BFF14A000BFF81A /* Int+Hex.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8D663722BFF14A000BFF81A /* Int+Hex.swift */; };
 		C8D7F1FB2F5676E3007D86E0 /* Privacy Policy.html in Resources */ = {isa = PBXBuildFile; fileRef = C8D7F1FA2F5676E3007D86E0 /* Privacy Policy.html */; };
 		C8D7F1FD2F5676E7007D86E0 /* User Agreement.html in Resources */ = {isa = PBXBuildFile; fileRef = C8D7F1FC2F5676E7007D86E0 /* User Agreement.html */; };
+		C8D7F2012F568EFD007D86E0 /* NordicSigMeshSDK in Frameworks */ = {isa = PBXBuildFile; productRef = C8D7F2002F568EFD007D86E0 /* NordicSigMeshSDK */; };
 		C8DA57D72ED14B7A00C4FCFD /* GatewayInformationViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8DA57D62ED14B7A00C4FCFD /* GatewayInformationViewController.swift */; };
 		C8DA57D82ED14B7A00C4FCFD /* GatewayInformationViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8DA57D62ED14B7A00C4FCFD /* GatewayInformationViewController.swift */; };
 		C8DA57D92ED14B7A00C4FCFD /* GatewayInformationViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8DA57D62ED14B7A00C4FCFD /* GatewayInformationViewController.swift */; };
@@ -2405,7 +2405,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				C8FFD7D52E7D03B20074CC6A /* Pods_Common_SunSmart.framework in Frameworks */,
-				C8BB3E3F2EF7C72200207225 /* NordicSigMeshSDK in Frameworks */,
+				C8D7F2012F568EFD007D86E0 /* NordicSigMeshSDK in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -3930,7 +3930,7 @@
 			);
 			name = SunSmart;
 			packageProductDependencies = (
-				C8BB3E3E2EF7C72200207225 /* NordicSigMeshSDK */,
+				C8D7F2002F568EFD007D86E0 /* NordicSigMeshSDK */,
 			);
 			productName = SunSmart;
 			productReference = C896B9A42A930BA800217512 /* SunSmart.app */;
@@ -3984,7 +3984,7 @@
 			);
 			mainGroup = C896B99B2A930BA800217512;
 			packageReferences = (
-				C8BB3E3D2EF7C72200207225 /* XCRemoteSwiftPackageReference "nordic-sig-mesh-sdk" */,
+				C8D7F1FF2F568EFD007D86E0 /* XCRemoteSwiftPackageReference "nordic-sig-mesh-sdk" */,
 			);
 			productRefGroup = C896B9A52A930BA800217512 /* Products */;
 			projectDirPath = "";
@@ -6500,7 +6500,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.0;
+				MARKETING_VERSION = 1.0.1;
 				PRODUCT_BUNDLE_IDENTIFIER = com.slg.slgsyncplus;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
@@ -6541,7 +6541,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.0;
+				MARKETING_VERSION = 1.0.1;
 				PRODUCT_BUNDLE_IDENTIFIER = com.slg.slgsyncplus;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
@@ -6623,7 +6623,7 @@
 				kind = branch;
 			};
 		};
-		C8BB3E3D2EF7C72200207225 /* XCRemoteSwiftPackageReference "nordic-sig-mesh-sdk" */ = {
+		C8BB65AD2ED3F056000C63EE /* XCRemoteSwiftPackageReference "nordic-sig-mesh-sdk" */ = {
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://gitee.com/sunricher-i-os/nordic-sig-mesh-sdk.git";
 			requirement = {
@@ -6631,7 +6631,7 @@
 				kind = branch;
 			};
 		};
-		C8BB65AD2ED3F056000C63EE /* XCRemoteSwiftPackageReference "nordic-sig-mesh-sdk" */ = {
+		C8D7F1FF2F568EFD007D86E0 /* XCRemoteSwiftPackageReference "nordic-sig-mesh-sdk" */ = {
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://gitee.com/sunricher-i-os/nordic-sig-mesh-sdk.git";
 			requirement = {
@@ -6652,14 +6652,14 @@
 			package = C886DFFF2E30DE4900D0C3A6 /* XCRemoteSwiftPackageReference "nordic-sig-mesh-sdk" */;
 			productName = NordicSigMeshSDK;
 		};
-		C8BB3E3E2EF7C72200207225 /* NordicSigMeshSDK */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = C8BB3E3D2EF7C72200207225 /* XCRemoteSwiftPackageReference "nordic-sig-mesh-sdk" */;
-			productName = NordicSigMeshSDK;
-		};
 		C8BB65AC2ED3F056000C63EE /* NordicSigMeshSDK */ = {
 			isa = XCSwiftPackageProductDependency;
 			package = C8BB65AD2ED3F056000C63EE /* XCRemoteSwiftPackageReference "nordic-sig-mesh-sdk" */;
+			productName = NordicSigMeshSDK;
+		};
+		C8D7F2002F568EFD007D86E0 /* NordicSigMeshSDK */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = C8D7F1FF2F568EFD007D86E0 /* XCRemoteSwiftPackageReference "nordic-sig-mesh-sdk" */;
 			productName = NordicSigMeshSDK;
 		};
 /* End XCSwiftPackageProductDependency section */

@@ -720,6 +720,7 @@ class GroupSensorViewCell: UITableViewCell {
                     occupyStateImageView.image = UIImage(named: "sensor_occupy_disable")
                 }
                 if sensor.occupancySettings {
+                    stopUpdateOccupyTimer()
                     occupyStateImageView.image = UIImage(named: "loading_20")
                     occupyStateImageView.layer.addRotationAnimation(duration: 1.2, repeatCount: 999, animationKey: "loading")
                 }
@@ -817,11 +818,13 @@ class GroupSensorViewCell: UITableViewCell {
     func reloadSensorData(sensor: Node, sensorType: GroupSensorView.SensorType) {
 
         if sensorType == .presenceDetected {
-            if sensor.occupancyState {
-                occupyStateImageView.image = UIImage(named: "sensor_occupy")
-                startUpdateOccupyTimer()
-            }else {
-                occupyStateImageView.image = UIImage(named: "sensor_unoccupy")
+            if !sensor.occupancySettings {
+                if sensor.occupancyState {
+                    occupyStateImageView.image = UIImage(named: "sensor_occupy")
+                    startUpdateOccupyTimer()
+                }else {
+                    occupyStateImageView.image = UIImage(named: "sensor_unoccupy")
+                }
             }
         }else {
             if sensor.sensorCalibrated, let lux = sensor.steadyDaylightLux {
@@ -851,7 +854,9 @@ class GroupSensorViewCell: UITableViewCell {
     
     @objc private func updateOccupyState() {
         stopUpdateOccupyTimer()
-        occupyStateImageView.image = UIImage(named: "sensor_unoccupy")
+        if !sensor.occupancySettings {
+            occupyStateImageView.image = UIImage(named: "sensor_unoccupy")
+        }
     }
     
     /// 开始lux更新倒计时，3s内没有新的数据则变为灰色背景
