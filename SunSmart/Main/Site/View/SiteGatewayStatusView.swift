@@ -270,14 +270,16 @@ class SiteGatewayStatusView: UIView {
         
         // 描述
         if let attStr = messageAttStr {
-            let timeLabel = UILabel(
+            let messageLabel = UILabel(
                 text: nil,
                 textColor: SubText_Color,
                 fontSize: 12,
                 fontWeight: .light
             )
-            timeLabel.attributedText = attStr
-            rightStackView.addArrangedSubview(timeLabel)
+            messageLabel.attributedText = attStr
+            messageLabel.isUserInteractionEnabled = true
+            messageLabel.addGestureRecognizer(UITapGestureRecognizer(target: self, action: #selector(operationBtnAction)))
+            rightStackView.addArrangedSubview(messageLabel)
         }
         
         // 操作按钮

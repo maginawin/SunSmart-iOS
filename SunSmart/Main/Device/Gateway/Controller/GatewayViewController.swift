@@ -149,8 +149,16 @@ class GatewayViewController: UIViewController, DeviceProtocol {
         self.headerView.showConnectingUI()
    
         MeshLibManager.manager.connectProxy(node: self.node) {[weak self] result in
-            self?.headerView.hideConnectingUI()
-            self?.updateData()
+            guard let self = self else { return }
+            self.headerView.hideConnectingUI()
+            self.updateData()
+            if let vendorModel = self.node.sunricherVendorModel {
+                MeshAPI.sendMessage(message: SunricherVendorGet(function: .gatewaySimCpin), model: vendorModel) { response in
+                    if let statusMessage = response as? SunricherVendorStatus {
+                        
+                    }
+                }
+            }
         }
                 
                

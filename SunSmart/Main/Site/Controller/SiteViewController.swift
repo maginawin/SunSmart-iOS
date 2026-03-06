@@ -1820,7 +1820,7 @@ self.updateAddressData()
     /// 添加网关
     private func addGateway() {
         
-        guard self.allSpaces.contains(where: { ($0.permission == .owner || $0.permission == .editor) && $0.state == .normal && !$0.requiresPasswordVerification }) else {
+        guard self.allSpaces.contains(where: { $0.canEditing }) else {
             // 无权限
             XWHUDManager.showTipHUD(inView: "no_permission".localizedString, isLineFeed: true)
             return
@@ -2257,7 +2257,12 @@ extension SiteViewController: UICollectionViewDataSource, UICollectionViewDelega
             headerView.gatewayListView.updateItems(items)
             headerView.gatewayListView.selectedIndex = selectIndex
         }else {
-            headerView.showGatewayListView = false
+            if self.site.permission == .owner || self.allSpaces.contains(where: { $0.canEditing && $0.gatewayStatus == .notBound }) { // 显示添加网关UI
+                headerView.showGatewayListView = true
+                headerView.gatewayListView.updateItems([])
+            }else {
+                headerView.showGatewayListView = false
+            }
         }
        
         headerView.gatewayStatusView.isHidden = gatewayModels.isEmpty
@@ -2279,11 +2284,11 @@ extension SiteViewController: UICollectionViewDataSource, UICollectionViewDelega
                 case .online:
                     headerView.gatewayStatusView.updateGatewayStatus(.online, syncState: syncState, permissionState: permissionState)
                 case .offline:
-                    headerView.gatewayStatusView.updateGatewayStatus(.offline(lastOnlineTime: gateway.lastOnlineTime ?? ""), syncState: syncState, permissionState: permissionState)
+                    headerView.gatewayStatusView.updateGatewayStatus(.offline(lastOnlineTime: gateway.lastOnlineTime ?? "--"), syncState: syncState, permissionState: permissionState)
                 case .inactive:
                     headerView.gatewayStatusView.updateGatewayStatus(.noActivated, syncState: syncState, permissionState: permissionState)
                 case .reset:
-                    headerView.gatewayStatusView.updateGatewayStatus(.reset(resetTime: gateway.resetTime ?? ""), syncState: syncState, permissionState: permissionState)
+                    headerView.gatewayStatusView.updateGatewayStatus(.reset(resetTime: gateway.resetTime ?? "--"), syncState: syncState, permissionState: permissionState)
                 }
             }
         }
@@ -2299,7 +2304,7 @@ extension SiteViewController: UICollectionViewDataSource, UICollectionViewDelega
     
     func collectionView(_ collectionView: UICollectionView, layout collectionViewLayout: UICollectionViewLayout, referenceSizeForHeaderInSection section: Int) -> CGSize {
 
-        guard site.spaces.count > 0, gatewayModels.count > 0 else {
+        guard site.spaces.count > 0 else {
             return .zero
         }
         

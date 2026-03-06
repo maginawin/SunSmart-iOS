@@ -109,7 +109,7 @@ class DeviceMeshNetworkResetHandle {
         reset()
         self.operationType = .identify
         self.completionCallback = completion
-        startBroadcasting(broadcastType: .identifyNode(address: device.address, macAddress: device.macAddress!, mode: .default, frequency: .default))
+        startBroadcasting(broadcastType: .identifyNode(address: device.address, macAddress: device.macAddress!, mode: .flash(count: 5)))
     }
     
     /// 扫描网络内代理设备
@@ -126,7 +126,7 @@ class DeviceMeshNetworkResetHandle {
                 // 发送广播包让代理设备接收
                 if self.operationType == .networkIdentify {
                     self.scanProxyCallback?(proxyDevice)
-                    self.startBroadcasting(broadcastType: .meshNetworkIdentify(proxyAddress: proxyDevice.address, macAddress: proxyDevice.macAddress!, mode: .default, frequency: .default))
+                    self.startBroadcasting(broadcastType: .meshNetworkIdentify(proxyAddress: proxyDevice.address, macAddress: proxyDevice.macAddress!, mode: .flash(count: 5)))
                 }else if self.operationType == .networkReset {
                     self.scanProxyCallback?(proxyDevice)
                     self.startBroadcasting(broadcastType: .meshNetworkReset(proxyAddress: proxyDevice.address, macAddress: proxyDevice.macAddress!))
