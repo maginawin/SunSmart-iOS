@@ -86,6 +86,13 @@ class GatewayViewController: UIViewController, DeviceProtocol {
             self.tableView.flashScrollIndicatorsIfNeeded()
         }
     }
+    
+    override func viewDidLayoutSubviews() {
+        super.viewDidLayoutSubviews()
+        
+        // EmptyDataView uses frame layout, update it after container frame is finalized.
+        view.emptyView?.frame = view.bounds
+    }
 
     @objc private func close() {
         if self.presentingViewController != nil && navigationController?.viewControllers.count ?? 0 == 1  {
@@ -219,7 +226,10 @@ class GatewayViewController: UIViewController, DeviceProtocol {
             return
         }
         node.gatewayModel?.update(gatewayModel: setGatewayModel)
-        node.gatewayModel?.save()
+        guard node.gatewayModel?.save() ?? false else {
+            XWHUDManager.showErrorTipHUD("failed".localizedString + " !")
+            return
+        }
         updateSaveBtnState()
         // 判断是否需要同步设备数据
         guard node.getNodeSyncGatewayData(gateway: setGatewayModel).count > 0 else {
@@ -414,6 +424,7 @@ class GatewayViewController: UIViewController, DeviceProtocol {
         tableView.register(GatewayServerInformationViewCell.classForCoder(), forCellReuseIdentifier: "serverInformation")
         tableView.register(GatewaySectionHeaderView.classForCoder(), forHeaderFooterViewReuseIdentifier: "header")
         tableView.estimatedSectionHeaderHeight = UITableView.automaticDimension
+        tableView.sectionHeaderHeight = UITableView.automaticDimension
 //        tableView.showsVerticalScrollIndicator = false
         tableView.backgroundColor = .clear
         tableView.dataSource = self
@@ -687,6 +698,7 @@ extension GatewayViewController: UITableViewDataSource, UITableViewDelegate {
                     make.top.equalTo(headerView.messageLabel)
                     make.width.equalTo(SCRXFrom(66))
                     make.height.equalTo(SCRYFrom(32))
+                    make.bottom.lessThanOrEqualTo(SCRYFrom(-8))
                 }
             }
         }
@@ -716,6 +728,14 @@ extension GatewayViewController: UITableViewDataSource, UITableViewDelegate {
     
     func tableView(_ tableView: UITableView, viewForFooterInSection section: Int) -> UIView? {
         return UIView()
+    }
+    
+    func tableView(_ tableView: UITableView, heightForHeaderInSection section: Int) -> CGFloat {
+        return UITableView.automaticDimension
+    }
+    
+    func tableView(_ tableView: UITableView, estimatedHeightForHeaderInSection section: Int) -> CGFloat {
+        return SCRYFrom(44)
     }
     
     func tableView(_ tableView: UITableView, heightForFooterInSection section: Int) -> CGFloat {

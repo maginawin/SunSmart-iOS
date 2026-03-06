@@ -2814,6 +2814,7 @@ extension GatewayModel {
     
     private static let gatewaysTableName = "gateways"
     private static let gatewaysTable = Table(gatewaysTableName)
+    private static let gatewaysUniqueMacIndex = "idx_gateways_site_mac_unique"
     
     struct ExpressionKey {
         static let id = Expression<Int64>("id")
@@ -2851,6 +2852,35 @@ extension GatewayModel {
                 _ = try? SunSmartDataManager.shared.db?.run(GatewayModel.gatewaysTable.addColumn(ExpressionKey.name, defaultValue: "Gateway"))
             }
         }
+        
+        // Keep old databases healthy: normalize MAC, deduplicate historical rows and enforce uniqueness.
+        normalizeAndDeduplicateMacRows()
+        createUniqueMacIndexIfNeeded()
+    }
+    
+    private static func normalizedMac(_ mac: String) -> String {
+        mac.trimmingCharacters(in: .whitespacesAndNewlines).uppercased()
+    }
+    
+    private static func normalizeAndDeduplicateMacRows() {
+        // 1) Normalize existing data to avoid "same MAC with different case/space".
+        _ = try? SunSmartDataManager.shared.db?.run("UPDATE \(gatewaysTableName) SET macAddress = UPPER(TRIM(macAddress))")
+        // 2) Keep only earliest row for each (siteUUID, macAddress).
+        _ = try? SunSmartDataManager.shared.db?.run("""
+            DELETE FROM \(gatewaysTableName)
+            WHERE rowid NOT IN (
+                SELECT MIN(rowid)
+                FROM \(gatewaysTableName)
+                GROUP BY siteUUID, macAddress
+            )
+        """)
+    }
+    
+    private static func createUniqueMacIndexIfNeeded() {
+        _ = try? SunSmartDataManager.shared.db?.run("""
+            CREATE UNIQUE INDEX IF NOT EXISTS \(gatewaysUniqueMacIndex)
+            ON \(gatewaysTableName)(siteUUID, macAddress)
+        """)
     }
     
     /// 加载site内所有网关list
@@ -2861,7 +2891,7 @@ extension GatewayModel {
         
         var query = GatewayModel.gatewaysTable.filter(ExpressionKey.siteUUID == siteId)
         if let macAddress = macAddress {
-            query = query.filter(ExpressionKey.macAddress == macAddress)
+            query = query.filter(ExpressionKey.macAddress == normalizedMac(macAddress))
 //            query = GatewayModel.gatewaysTable.filter(ExpressionKey.siteUUID == siteId && ExpressionKey.macAddress == macAddress)
         }else if let address = address {
             query = query.filter(ExpressionKey.address == Int(address))
@@ -2877,7 +2907,7 @@ extension GatewayModel {
                     })
                 }
                 
-                let gateway = GatewayModel(siteId: siteId, name: row[ExpressionKey.name], address: Address(row[ExpressionKey.address]), mac: row[ExpressionKey.macAddress], activate: row[ExpressionKey.activate], associatedSpaces: spaceDatas, apn: row[ExpressionKey.apn], mqttServerInfo: nil)
+                let gateway = GatewayModel(siteId: siteId, name: row[ExpressionKey.name], address: Address(row[ExpressionKey.address]), mac: normalizedMac(row[ExpressionKey.macAddress]), activate: row[ExpressionKey.activate], associatedSpaces: spaceDatas, apn: row[ExpressionKey.apn], mqttServerInfo: nil)
                 
                 if let data = row[ExpressionKey.mqttServerInfo],
                    let serverInformation = try? jsonDecoder.decode(GatewayInformation.MQTTConnectInformation.self, from: data) {
@@ -2893,6 +2923,7 @@ extension GatewayModel {
     @discardableResult func save() -> Bool {
         
         let spacesData = (try? jsonEncoder.encode(associatedSpaces.map({ $0.id }))) ?? Data()
+        let normalizedMac = GatewayModel.normalizedMac(self.mac)
         
         var mqttServerInfoData: Data?
         if let mqttServerInfo = self.mqttServerInfo {
@@ -2901,7 +2932,8 @@ extension GatewayModel {
         
         let insertOrUpdate = GatewayModel.gatewaysTable.insert(or: .replace, [
             ExpressionKey.siteUUID <- self.siteId,
-            ExpressionKey.macAddress <- self.mac,
+            ExpressionKey.name <- self.name,
+            ExpressionKey.macAddress <- normalizedMac,
             ExpressionKey.address <- Int(self.address),
             ExpressionKey.activate <- self.activate,
             ExpressionKey.apn <- self.apn,
@@ -2928,7 +2960,7 @@ extension GatewayModel {
         
         var predicate = GatewayModel.gatewaysTable.filter(ExpressionKey.siteUUID == siteId)
         if let macAddress = macAddress {
-            predicate = predicate.filter(ExpressionKey.macAddress == macAddress)
+            predicate = predicate.filter(ExpressionKey.macAddress == normalizedMac(macAddress))
         }
         do {
             try SunSmartDataManager.shared.db?.run(predicate.delete())
@@ -2946,7 +2978,7 @@ extension GatewayModel {
     /// - Returns: 是否成功
     @discardableResult func delete() -> Bool {
         
-        let predicate = GatewayModel.gatewaysTable.filter(ExpressionKey.siteUUID == self.siteId && ExpressionKey.macAddress == mac)
+        let predicate = GatewayModel.gatewaysTable.filter(ExpressionKey.siteUUID == self.siteId && ExpressionKey.macAddress == GatewayModel.normalizedMac(mac))
         do {
             try SunSmartDataManager.shared.db?.run(predicate.delete())
         } catch {

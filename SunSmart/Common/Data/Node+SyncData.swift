@@ -887,6 +887,19 @@ extension Node {
                     }else {
                         // 设置profile数据
                         syncProfile.append(contentsOf: syncSceneProfiles)
+                        if syncProfile.contains(where: { type in
+                            switch type {
+                            case .lightControlDelete:
+                                return true
+                            default:
+                                return false
+                            }
+                        }) {
+                           // 存在删除场景最后也切换到当前的场景，防止灯光控制数据还是跑的上一份删除的场景配置数据
+                            if self.supportLightLCScene {
+                                syncProfile.append(.lightControlSwitch(sceneNumber: profileScene.sceneNumber))
+                            }
+                        }
                     }
                     
                 }
