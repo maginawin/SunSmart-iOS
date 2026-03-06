@@ -106,6 +106,10 @@ class GatewayViewController: UIViewController, DeviceProtocol {
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
         
+        if node.state {
+            getGatewaySignal()
+        }
+        
         MeshLibManager.manager.messageDelegate = self
     }
     
@@ -151,20 +155,25 @@ class GatewayViewController: UIViewController, DeviceProtocol {
         MeshLibManager.manager.connectProxy(node: self.node) {[weak self] result in
             guard let self = self else { return }
             self.headerView.hideConnectingUI()
+            self.getGatewaySignal()
             self.updateData()
-            if let vendorModel = self.node.sunricherVendorModel {
-                MeshAPI.sendMessage(message: SunricherVendorGet(function: .gatewaySimCpin), model: vendorModel) { response in
-                    if let statusMessage = response as? SunricherVendorStatus {
-                        
-                    }
-                }
-            }
         }
-                
-               
-//            }
-           
-//        }
+
+    }
+    
+    /// 获取网关信号
+    private func getGatewaySignal() {
+        guard let vendorModel = self.node.sunricherVendorModel else { return }
+        MeshAPI.sendMessage(message: SunricherVendorGet(function: .gatewaySimCpin), model: vendorModel) {[weak self] response in
+            guard let self = self else { return }
+            if let statusMessage = response as? SunricherVendorStatus, case .gatewaySimCpinState(let cpin, let csqRssi, _) = statusMessage.status.parameters {
+                self.gatewayModel.csqRssi = Int(csqRssi)
+                self.gatewayModel.isSimInserted = cpin >= 0
+            }else {
+                self.gatewayModel.csqRssi = nil
+            }
+            self.updateData()
+        }
     }
     
     /// 获取已关联的spaces
@@ -279,15 +288,7 @@ class GatewayViewController: UIViewController, DeviceProtocol {
 //                return
 //            }
 //            view.hideEmptyDataView()
-            let totalDeviceCount = gatewayModel.associatedSpaces.reduce(0, { (result, space) -> Int in result + space.deviceCount })
-            headerView.nodeCountLabel.text = "(\(totalDeviceCount))"
-            if node.state {
-                headerView.gatewayStateImageView.image = UIImage(named: "gateway_online")
-                headerView.gatewayStateLabel.text = "online".localizedString
-            }else {
-                headerView.gatewayStateImageView.image = UIImage(named: "gateway_offline")
-                headerView.gatewayStateLabel.text = "Offline".localizedString
-            }
+            headerView.updateData(gateway: gateway)
             // 无权限
             if gatewayModel.associatedSpaces.contains(where: { $0.permission == .none || $0.permission == .permissionException }) {
                 bottomView.deleteBtn.isEnabled = false

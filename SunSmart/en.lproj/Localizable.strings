@@ -1444,3 +1444,9 @@
 "gateway_no_authority" = "You no longer have the authority";
 "restore_device" = "Restore Device";
 "Firmware_update" = "Firmware update";
+"gateway_signal_good" = "Good Signal";
+"gateway_signal_poor" = "Poor Signal";
+"gateway_signal_none" = "No Signal";
+"gateway_signal_error" = "Please check the settings";
+"gateway_signal_unknown" = "Unknown";
+"gateway_sim_not_inserted" = "4G card not detected";

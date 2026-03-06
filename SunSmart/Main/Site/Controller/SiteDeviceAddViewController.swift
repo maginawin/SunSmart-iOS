@@ -486,7 +486,7 @@ class SiteDeviceAddViewController: UIViewController {
             guard let mac = node.macAddress else {
                 return
             }
-            let gatewayModel = GatewayModel(siteId: self.site.id, name: node.name ?? "", address: node.primaryUnicastAddress, mac: mac, lastUpdate: Int64(Date().timeIntervalSince1970))
+            let gatewayModel = GatewayModel(siteId: self.site.id, name: node.name ?? "", address: node.primaryUnicastAddress, mac: mac, lastUpdate: Int64(Date().timeIntervalSince1970), activate: true)
             gatewayModel.save()
             self.addGatewayModels.append(gatewayModel)
 //            GatewayModel.bind(to: node, model: gatewayModel, persist: true)

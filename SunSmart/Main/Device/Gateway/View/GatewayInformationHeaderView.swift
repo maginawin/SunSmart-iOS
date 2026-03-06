@@ -61,6 +61,47 @@ class GatewayInformationHeaderView: UIView {
         informationView.isHidden = false
     }
     
+    func updateData(gateway: Gateway) {
+        let gatewayModel = gateway.model
+        let node = gateway.node
+        let totalDeviceCount = gatewayModel.associatedSpaces.reduce(0, { (result, space) -> Int in result + space.deviceCount })
+        nodeCountLabel.text = "(\(totalDeviceCount))"
+        
+        if node.state {
+            gatewayStateImageView.image = UIImage(named: "gateway_online")
+            gatewayStateLabel.text = "Online".localizedString
+        }else {
+            gatewayStateImageView.image = UIImage(named: "gateway_offline")
+            gatewayStateLabel.text = "Offline".localizedString
+        }
+        
+        // 是否插入sim卡
+        if gatewayModel.isSimInserted {
+            // 信号级别
+            switch gatewayModel.signalLevel {
+            case .goodSignal:
+                signalLabel.text = "gateway_signal_good".localizedString
+                signalImageView.image = UIImage(named: "gateway_signal_good")
+            case .poorSignal:
+                signalLabel.text = "gateway_signal_poor".localizedString
+                signalImageView.image = UIImage(named: "gateway_signal_poor")
+            case .noSignal:
+                signalLabel.text = "gateway_signal_none".localizedString
+                signalImageView.image = UIImage(named: "gateway_signal_none")
+            case .unknownSignal:
+                signalLabel.text = "gateway_signal_unknown".localizedString
+                signalImageView.image = UIImage(named: "gateway_signal_unknown")
+            case .signalError:
+                signalLabel.text = "gateway_signal_error".localizedString
+                signalImageView.image = UIImage(named: "gateway_signal_exception")
+            }
+        }else { // 无sim卡
+            signalLabel.text = "gateway_sim_not_inserted".localizedString
+            signalImageView.image = UIImage(named: "gateway_simcard_notdetecte")
+        }
+    
+    }
+    
     private func setupUI() {
         
         connectImageView = UIImageView()
@@ -108,7 +149,7 @@ class GatewayInformationHeaderView: UIView {
             make.centerY.equalTo(gatewayStateLabel)
         }
         
-        nodeCountLabel = UILabel(text: "(70)", textColor: SubText_Color, fontSize: 14, fontWeight: .light, fit: false)
+        nodeCountLabel = UILabel(text: "(0)", textColor: SubText_Color, fontSize: 14, fontWeight: .light, fit: false)
         informationView.addSubview(nodeCountLabel)
         nodeCountLabel.snp.makeConstraints { make in
             make.centerX.equalTo(nodeLabel)

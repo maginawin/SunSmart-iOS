@@ -17,6 +17,19 @@ enum GatewayConnectStatus {
     case reset       // 已重置
 }
 
+enum GatewaySignalLevel: Int {
+    /// 信号好
+    case goodSignal = 0
+    /// 信号差
+    case poorSignal = 1
+    /// 无信号
+    case noSignal = 2
+    /// 信号异常
+    case signalError = 3
+    /// 未知信号质量（拿不到数据）
+    case unknownSignal = 4
+}
+
 /// 网关权限状态
 enum GatewayPermissionState: Int {
     /// 正常
@@ -64,10 +77,33 @@ class GatewayModel: Copyable {
     var maxAssociatedSpaces: Int = 10
     /// 网关绑定的所有space数据
 //    var allBindSpaceDatas: [GatewaySpaceData]
+    /// 是否插入SIM卡
+    var isSimInserted: Bool = true
+    /// 蜂窝信号强度（CSQ RSSI）
+    var csqRssi: Int?
     
     /// 是否需要上传到云端
     var needUploadCloud: Bool {
         return lastUpdate > lastUploadCloudTimestamp ?? 0
+    }
+    
+    /// 网关信号等级
+    var signalLevel: GatewaySignalLevel {
+        guard let csqRssi else {
+            return .unknownSignal
+        }
+        
+        if csqRssi == 99 {
+            return .signalError
+        } else if csqRssi >= 15 {
+            return .goodSignal
+        } else if csqRssi >= 5 {
+            return .poorSignal
+        } else if csqRssi >= 0 {
+            return .noSignal
+        } else {
+            return .unknownSignal
+        }
     }
     
     
