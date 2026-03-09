@@ -472,7 +472,17 @@ class GatewayViewController: UIViewController, DeviceProtocol {
              GatewayAPNMenuView.APNMenuItem(title: "china".localizedString, children: ["cmnet", "3gnet", "ctnet"]),
              GatewayAPNMenuView.APNMenuItem(title: "usa".localizedString, children: ["phone", "internet", "fast.t-mobile.com"]),
              GatewayAPNMenuView.APNMenuItem(title: "canada".localizedString, children: ["ltemobile.apn", "pda.bell.ca", "sp.telus.com"]),
-             GatewayAPNMenuView.APNMenuItem(title: "germany".localizedString, children: ["telekom.de", "web.vodafone.de", "internet"])
+             GatewayAPNMenuView.APNMenuItem(title: "germany".localizedString, children: ["internet.t-d1.de", "web.vodafone.de", "internet"]),
+             GatewayAPNMenuView.APNMenuItem(title: "spain".localizedString, children: ["movistar.es", "airtelwap.es", "internet"]),
+             GatewayAPNMenuView.APNMenuItem(title: "france".localizedString, children: ["orange.fr", "sl2sfr", "free", "ebouygtel.com"]),
+             GatewayAPNMenuView.APNMenuItem(title: "italy".localizedString, children: ["ibox.tim.it", "internet.wind.biz", "web.omnitel.it", "iliad"]),
+             GatewayAPNMenuView.APNMenuItem(title: "netherlands".localizedString, children: ["internet", "web.vodafone.nl"]),
+             GatewayAPNMenuView.APNMenuItem(title: "belgium".localizedString, children: ["internet.proximus.be", "telenet.be", "internet"]),
+             GatewayAPNMenuView.APNMenuItem(title: "poland".localizedString, children: ["internet", "plus"]),
+             GatewayAPNMenuView.APNMenuItem(title: "sweden".localizedString, children: ["internet.telia.se", "internet.tele2.se"]),
+             GatewayAPNMenuView.APNMenuItem(title: "finland".localizedString, children: ["internet"]),
+             GatewayAPNMenuView.APNMenuItem(title: "denmark".localizedString, children: ["internet"]),
+             GatewayAPNMenuView.APNMenuItem(title: "norway".localizedString, children: ["internet"])
          ]
         
         GatewayAPNMenuView(menuItems: items, selectApnName: setGatewayModel?.apn, showPoint: point) {[weak self] apn in

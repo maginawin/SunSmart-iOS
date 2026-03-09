@@ -1295,6 +1295,16 @@
 "usa" = "USA";
 "canada" = "Canada";
 "germany" = "Germany";
+"spain" = "Spain";
+"france" = "France";
+"italy" = "Italy";
+"netherlands" = "Netherlands";
+"belgium" = "Belgium";
+"poland" = "Poland";
+"sweden" = "Sweden";
+"finland" = "Finland";
+"denmark" = "Denmark";
+"norway" = "Norway";
 "gateway_server_not_authorize" = "The server authentication is not completed. Click to complete the authentication after connecting to the Internet.";
 "authorize" = "Authorize";
 "gateway_not_authorize_message" = "APN or Server authorization is required";

@@ -1296,6 +1296,16 @@
 "usa" = "美国";
 "canada" = "加拿大";
 "germany" = "德国";
+"spain" = "西班牙";
+"france" = "法国";
+"italy" = "意大利";
+"netherlands" = "荷兰";
+"belgium" = "比利时";
+"poland" = "波兰";
+"sweden" = "瑞典";
+"finland" = "芬兰";
+"denmark" = "丹麦";
+"norway" = "挪威";
 "gateway_server_not_authorize" = "服务器认证未完成，连接网络后点击完成认证";
 "authorize" = "授权";
 "gateway_not_authorize_message" = "需完成APN或服务器授权";
