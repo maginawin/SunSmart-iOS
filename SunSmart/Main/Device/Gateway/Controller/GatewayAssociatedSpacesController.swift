@@ -68,7 +68,7 @@ class GatewayAssociatedSpacesController: UIViewController {
                     guard let spaceId = spaceJson["spaceId"].string, let spaceName = spaceJson["spaceName"].string, let deviceCount = spaceJson["deviceCount"].int, let appKeyIndex = spaceJson["appKey"]["index"].uInt16 else {
                         return nil
                     }
-                    var gatewaySpace = GatewaySpaceData(spaceId: spaceId, spaceName: spaceName, deviceCount: deviceCount, appKeyIndex: appKeyIndex)
+                    let gatewaySpace = GatewaySpaceData(spaceId: spaceId, spaceName: spaceName, deviceCount: deviceCount, appKeyIndex: appKeyIndex)
                     if let space = SpaceData.load(siteId: self.gateway.siteId, spaceId: spaceId).first {
                         if space.canEditing {
                             gatewaySpace.permission = .editor
@@ -97,7 +97,7 @@ class GatewayAssociatedSpacesController: UIViewController {
                 
             case .failure(let error):
                 if error == .noNetwork {
-                    view.showEmptyDataView(imageName: "internet_error", title: "requires_internet_message".localizedString)
+                    view.showEmptyDataView(imageName: "internet_error", title: "gateway_associated_no_network_message".localizedString)
                 }else {
                     view.showEmptyDataView(imageName: "internet_error", title: "failed_to_retrieve_data".localizedString, tipText: "network_problem_note".localizedString, buttonText: "RETRY".localizedString, position: .center, bottomMargin: SCRXFrom(60)) {[weak self] in
                         self?.loadAssociatedSpaces()
@@ -199,6 +199,11 @@ class GatewayAssociatedSpacesController: UIViewController {
         guard associatedSpaces.count > 0 || disassociatedSpaces.count > 0 else {
             return
         }
+        guard NetworkRequest.shared.networkable else {
+            SRAlertView(title: "notification".localizedString, message: "gateway_associated_no_network_message".localizedString, actions: [.cancelAction, SRAlertAction(title: "confirm".localizedString)]).show()
+            return
+        }
+        
         Task {
             var associatedResult: (successSpaces: [GatewaySpaceData], failedSpaces: [GatewaySpaceData])?
             var disassociatedResult: (successSpaces: [GatewaySpaceData], failedSpaces: [GatewaySpaceData])?
@@ -255,28 +260,35 @@ class GatewayAssociatedSpacesController: UIViewController {
             return
         }
         
-        var messageStr: String = ""
-        
-        if associatedFailSpaces.count > 0 {
-            let associateFailStr = String(format: "associate_spaces_failed_message".localizedString, associatedFailSpaces.map({ $0.spaceName }).joined(separator: ", "))
-            messageStr.append(associateFailStr)
-        }
-        if disassociatedFailSpaces.count > 0 {
-            let disassociateFailStr = String(format: "disassociate_spaces_failed_message".localizedString, disassociatedFailSpaces.map({ $0.spaceName }).joined(separator: ", "))
-            messageStr.append("\n" + disassociateFailStr)
-        }
-        
-        let noteStr = "network_problem_note".localizedString
+        let messageAttStr = NSMutableAttributedString()
         
         let style = NSMutableParagraphStyle()
         style.alignment = .left
         style.lineSpacing = 4
         style.lineBreakMode = .byCharWrapping
         
-        let messageAttStr = NSMutableAttributedString(string: messageStr, attributes: [.paragraphStyle: style])
-        messageAttStr.addAttributes([.foregroundColor: Message_Color], range: (messageAttStr.string as NSString).range(of: noteStr))
+        if associatedFailSpaces.count > 0 {
+            let failSpacesStr = "[\(associatedFailSpaces.map({ $0.spaceName }).joined(separator: ", "))]"
+            let associateFailStr = String(format: "associate_spaces_failed_message".localizedString, failSpacesStr)
+            let attStr = NSMutableAttributedString(string: associateFailStr, attributes: [.foregroundColor: Title_Color, .font: UIFont.systemFont(ofSize: 15, weight: .light), .paragraphStyle: style])
+            attStr.addAttribute(.foregroundColor, value: TextBlack_Color, range: (associateFailStr as NSString).range(of: failSpacesStr))
+            messageAttStr.append(attStr)
+        }
+        if disassociatedFailSpaces.count > 0 {
+            
+            let failSpacesStr = "[\(disassociatedFailSpaces.map({ $0.spaceName }).joined(separator: ", "))]"
+            let disassociateFailStr = "\n" + String(format: "disassociate_spaces_failed_message".localizedString, failSpacesStr)
+            let attStr = NSMutableAttributedString(string: disassociateFailStr, attributes: [.foregroundColor: Title_Color, .font: UIFont.systemFont(ofSize: 15, weight: .light), .paragraphStyle: style])
+            attStr.addAttribute(.foregroundColor, value: TextBlack_Color, range: (disassociateFailStr as NSString).range(of: failSpacesStr))
+            messageAttStr.append(attStr)
+        }
         
-        SRAlertView(title: "notification".localizedString, messageAttStr: messageAttStr, messageFont: UIFont.systemFont(ofSize: SCRYFrom(13), weight: .light), actions: [SRAlertAction(title: "alert_item_cancel".localizedString, style: .cancel, actionHandler: {[weak self] _ in
+        let noteStr = "\n\n" + "network_problem_note".localizedString
+        
+        let noteAttStr = NSMutableAttributedString(string: noteStr, attributes: [.foregroundColor: Message_Color, .font: UIFont.systemFont(ofSize: 15, weight: .light), .paragraphStyle: style])
+        messageAttStr.append(noteAttStr)
+        
+        SRAlertView(title: "notification".localizedString, messageAttStr: messageAttStr, actions: [SRAlertAction(title: "alert_item_cancel".localizedString, style: .cancel, actionHandler: {[weak self] _ in
             guard let self = self else {
                 return
             }

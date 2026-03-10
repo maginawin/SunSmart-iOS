@@ -1437,8 +1437,9 @@
 "requires_internet_message" = "This operation requires an internet connection.";
 "failed_to_retrieve_data" = "Failed to retrieve data.";
 "network_problem_note" = "Note:It might be a network or server problem.";
-"associate_spaces_failed_message" = "Failed to associate spaces: [%@]";
-"disassociate_spaces_failed_message" = "Failed to disassociate spaces: [%@]";
+"gateway_associated_no_network_message" = "To add space to the gateway, you need the data associated in the server. Please connect to the network and try again";
+"associate_spaces_failed_message" = "Failed to associate spaces: %@";
+"disassociate_spaces_failed_message" = "Failed to disassociate spaces: %@";
 "associate_space_unauthorized_message" = "Authorization is required before you can associate the space.";
 "gateway_sync_spaces" = "Sync Spaces";
 "gateway_no_authority" = "You no longer have the authority";

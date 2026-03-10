@@ -110,6 +110,7 @@ class GatewayInformationHeaderView: UIView {
         connectImageView.snp.makeConstraints { make in
             make.centerX.equalToSuperview()
             make.top.equalToSuperview()
+            make.width.height.equalTo(SCRYFrom(56))
         }
         
         contentLabel = UILabel(text: "gateway_connecting_message".localizedString, textColor: TextBlack_Color, fontSize: 12, fontWeight: .light, fit: false)

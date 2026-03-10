@@ -86,6 +86,11 @@ class SiteDeviceAddViewController: UIViewController {
         }
         
         setupUI()
+        
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {[weak self] in
+            self?.startScan()
+            self?.scanBtn.isSelected = true
+        }
     }
     
     override func viewDidDisappear(_ animated: Bool) {
@@ -288,6 +293,9 @@ class SiteDeviceAddViewController: UIViewController {
         
         scanDevices.sort(by: { $0.rssi.intValue >= $1.rssi.intValue })
         showDevices = scanDevices.filter({ selectRSSIRange.contains($0.rssi.intValue) })
+        if state == .scanning {
+            footerView.selectCountLabel.text = "\(self.showDevices.count)"
+        }
 //        if showDevices.count > 0 {
 //            showDevices.sort(by: { $0.rssi.intValue >= $1.rssi.intValue })
             tableView.reloadData()
@@ -758,6 +766,10 @@ class SiteDeviceAddViewController: UIViewController {
         rssiSlider.isEnabled = state == .none || state == .addFineshed
         scanBtn.isEnabled = state == .none || state == .scanning || state == .addFineshed
         
+        footerView.selectAllLabel.text = "select_all".localizedString
+        footerView.addSelectedBtn.isHidden = false
+        footerView.selectAllBtn.isHidden = false
+        
         UIApplication.shared.isIdleTimerDisabled = false
         navigationBackBtn.isHidden = false
         navigationController?.interactivePopGestureRecognizer?.isEnabled = true
@@ -769,7 +781,11 @@ class SiteDeviceAddViewController: UIViewController {
             updateFooterViewState()
             tableView.contentInset = UIEdgeInsets(top: 0, left: 0, bottom: footerView.height + SCRYFrom(8), right: 0)
         case .scanning:
-            footerView.isHidden = true
+            footerView.isHidden = false
+            footerView.selectAllLabel.text = "devices_found".localizedString
+            footerView.addSelectedBtn.isHidden = true
+            footerView.selectAllBtn.isHidden = true
+            footerView.selectCountLabel.text = "\(showDevices.count)"
             tableView.contentInset = .zero
             addResultView.isHidden = true
         case .identifying:

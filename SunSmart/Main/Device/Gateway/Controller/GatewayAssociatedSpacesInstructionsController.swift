@@ -19,7 +19,11 @@ class GatewayAssociatedSpacesInstructionsController: UIViewController {
         title = "associated_spaces_instructions".localizedString
         
         view.backgroundColor = Background_Color
+        
+        navigationItem.leftBarButtonItem = UIBarButtonItem()
         navigationItem.rightBarButtonItem = UIBarButtonItem(image: UIImage(named: "close")?.withRenderingMode(.alwaysOriginal), style: .done, target: self, action: #selector(close))
+        
+        setupUI()
     }
     
     @objc private func close() {
@@ -51,6 +55,7 @@ class GatewayAssociatedSpacesInstructionsController: UIViewController {
         noteLabel = UILabel(text: "", textColor: SubText_Color, fontSize: 14, fontWeight: .light, fit: false)
         let style = NSMutableParagraphStyle()
         style.lineSpacing = SCRYFrom(6)
+        noteLabel.numberOfLines = 0
         noteLabel.attributedText = NSAttributedString(string: "associated_spaces_instructions_message".localizedString, attributes: [.paragraphStyle: style])
         contentView.addSubview(noteLabel)
         noteLabel.snp.makeConstraints { make in

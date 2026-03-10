@@ -1820,7 +1820,7 @@ self.updateAddressData()
     /// 添加网关
     private func addGateway() {
         
-        guard self.allSpaces.contains(where: { $0.canEditing }) else {
+        guard self.site.permission == .owner || self.allSpaces.contains(where: { $0.canEditing }) else {
             // 无权限
             XWHUDManager.showTipHUD(inView: "no_permission".localizedString, isLineFeed: true)
             return
@@ -1920,6 +1920,9 @@ self.updateAddressData()
             if site.spaces.isEmpty {
                 var frame = allSpacesCollectionView.bounds
                 frame.origin.y = 0
+                if showGatewayModels.count > 0 {
+                    frame.origin.y += SCRYFrom(48)
+                }
                 allSpacesCollectionView.showEmptyDataView(frame: frame,imageName: "space_empty", title: "no_spaces_title".localizedString, tipText: nil)
                 if let emptyView = allSpacesCollectionView.emptyView {
     //                let margin = NetworkRequest.shared.networkable ? 0 : (allSpacesNoInternetView?.height ?? 0)
@@ -2265,7 +2268,7 @@ extension SiteViewController: UICollectionViewDataSource, UICollectionViewDelega
             }
         }
        
-        headerView.gatewayStatusView.isHidden = gatewayModels.isEmpty
+        headerView.gatewayStatusView.isHidden = site.spaces.isEmpty || gatewayModels.isEmpty
         if selectIndex == 0 {
             headerView.gatewayStatusView.setDisplayMode(.overview)
             
@@ -2278,8 +2281,11 @@ extension SiteViewController: UICollectionViewDataSource, UICollectionViewDelega
             headerView.gatewayStatusView.setDisplayMode(.gateway)
             if selectIndex <= showGatewayModels.count {
                 let gateway = showGatewayModels[selectIndex - 1]
-                let syncState = CloudSynchronizationManager.shared.getGatewayCurrentSyncState(gateway.model)?.state
-                let permissionState: GatewayPermissionState = (site.permission == .owner || gateway.associatedSpaces.compactMap({ data in allSpaces.first(where: { $0.id == data.spaceId }) }).contains(where: { $0.state == .normal })) ? .normal : .noPermission
+                var syncState = CloudSynchronizationManager.shared.getGatewayCurrentSyncState(gateway.model)?.state
+                if gateway.model.syncCloudError != nil && syncState == nil {
+                    syncState = .failure(error: gateway.model.syncCloudError!)
+                }
+                let permissionState: GatewayPermissionState = (site.permission == .owner || gateway.associatedSpaces.compactMap({ data in allSpaces.first(where: { $0.id == data.spaceId }) }).contains(where: { $0.canEditing })) ? .normal : .noPermission
                 switch gateway.connectStatus {
                 case .online:
                     headerView.gatewayStatusView.updateGatewayStatus(.online, syncState: syncState, permissionState: permissionState)
@@ -2304,13 +2310,13 @@ extension SiteViewController: UICollectionViewDataSource, UICollectionViewDelega
     
     func collectionView(_ collectionView: UICollectionView, layout collectionViewLayout: UICollectionViewLayout, referenceSizeForHeaderInSection section: Int) -> CGSize {
 
-        guard site.spaces.count > 0 else {
+        guard site.spaces.count > 0 || showGatewayModels.count > 0 else {
             return .zero
         }
         
         let headerW = collectionView.width - collectionView.contentInset.left - collectionView.contentInset.right
         var headerH = SCRYFrom(48)
-        if showGatewayModels.count > 0 {
+        if site.spaces.count > 0 && showGatewayModels.count > 0 {
             headerH += SCRYFrom(48)
         }
         return CGSize(width: headerW, height: headerH)

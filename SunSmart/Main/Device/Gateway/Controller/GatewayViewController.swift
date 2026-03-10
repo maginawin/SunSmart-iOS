@@ -26,6 +26,8 @@ class GatewayViewController: UIViewController, DeviceProtocol {
     
     private var sections: [SectionType] = [.name, .info, .associatedSpaces, .apn, .serverInformation]
     private let infoTypes: [InfoCellType] = [.mac, .address, .model, .deviceType, .firmwareVersion, .activate]
+    /// 是否连接中
+    private var isConnecting: Bool = false
     
     let site: SiteData
     let gateway: Gateway
@@ -151,12 +153,15 @@ class GatewayViewController: UIViewController, DeviceProtocol {
 //            DispatchQueue.main.async {
 //                XWHUDManager.hide()
         self.headerView.showConnectingUI()
-   
+        isConnecting = true
+        self.updateData()
         MeshLibManager.manager.connectProxy(node: self.node) {[weak self] result in
             guard let self = self else { return }
+            self.isConnecting = false
             self.headerView.hideConnectingUI()
             self.getGatewaySignal()
             self.updateData()
+            self.updateSaveBtnState()
         }
 
     }
@@ -220,7 +225,7 @@ class GatewayViewController: UIViewController, DeviceProtocol {
 //        }
         
 //        if let mac = node.gatewayModel?.mac {
-        copyContent.append("\n\("MAC".localizedString): \(gatewayModel.mac)")
+        copyContent.append("\n\("MAC".localizedString): \(node.macAddressResult ?? gatewayModel.mac)")
 //        }else {
 //            copyContent.append("\n\("MAC".localizedString): N/A")
 //        }
@@ -228,14 +233,14 @@ class GatewayViewController: UIViewController, DeviceProtocol {
         
         if let modelName = node.modelName {
             copyContent.append("\n\("model".localizedString): \(modelName)")
-        }else {
-            copyContent.append("\n\("model".localizedString): N/A")
         }
         
         if let categoryName = node.categoryName {
             copyContent.append("\n\("device_type".localizedString): \(categoryName)")
-        }else {
-            copyContent.append("\n\("device_type".localizedString): N/A")
+        }
+        
+        if let version = node.firmwareVersion {
+            copyContent.append("\n\("firmware".localizedString): \(version)")
         }
   
 //        if let activate = gateway.activate {
@@ -244,10 +249,17 @@ class GatewayViewController: UIViewController, DeviceProtocol {
 //            copyContent.append("\n\("activate".localizedString): N/A")
 //        }
         
+        if gatewayModel.associatedSpaces.count > 0 {
+            let spacesName = gatewayModel.associatedSpaces.map({ $0.spaceName }).joined(separator: ",")
+            copyContent.append("\n\("associated_spaces".localizedString): \(spacesName)")
+        }else {
+            copyContent.append("\n\("associated_spaces".localizedString): \("no_associated_spaces".localizedString)")
+        }
+        
         if let apn = gatewayModel.apn {
             copyContent.append("\n\("apn".localizedString): \(apn)")
         }else {
-            copyContent.append("\n\("apn".localizedString): N/A")
+            copyContent.append("\n\("apn".localizedString): \("not_set".localizedString)")
         }
         if let mqttServerInfo = gatewayModel.mqttServerInfo {
             let serverStr = mqttServerInfo.serverAddress.replacingOccurrences(of: "tcp://", with: "")
@@ -289,12 +301,17 @@ class GatewayViewController: UIViewController, DeviceProtocol {
 //            }
 //            view.hideEmptyDataView()
             headerView.updateData(gateway: gateway)
-            // 无权限
-            if gatewayModel.associatedSpaces.contains(where: { $0.permission == .none || $0.permission == .permissionException }) {
+            if isConnecting {
                 bottomView.deleteBtn.isEnabled = false
             }else {
-                bottomView.deleteBtn.isEnabled = true
+                // 无权限
+                if gatewayModel.associatedSpaces.contains(where: { $0.permission == .none || $0.permission == .permissionException }) {
+                    bottomView.deleteBtn.isEnabled = false
+                }else {
+                    bottomView.deleteBtn.isEnabled = true
+                }
             }
+          
             bottomView.showEditUI()
         } else {
             if view.emptyView == nil {
@@ -450,10 +467,9 @@ class GatewayViewController: UIViewController, DeviceProtocol {
 //                    NotificationCenter.default.post(name: .init(devicesUpdateNotificationName), object: nil)
                     // 通知space数据修改
 //                    NotificationCenter.default.post(name: .init(spaceDataChangedNotificaitonName), object: SpaceChangeDataType.network(type: .address))
-                    
-                    NotificationCenter.default.post(name: .init(SiteStateChangeNotificationName), object: nil)
-                    self.close()
                     self.gatewayModel.delete()
+                    self.close()
+                    NotificationCenter.default.post(name: .init(SiteStateChangeNotificationName), object: nil)
                 }
             }else {
                 if authorize {
@@ -708,8 +724,11 @@ class GatewayViewController: UIViewController, DeviceProtocol {
     
     /// 更新保存按钮状态
     private func updateSaveBtnState() {
-     
-        bottomView.saveBtn.isEnabled = self.site.deviceOperates.contains(.edit) && (!(setGatewayModel == gatewayModel) || (!(name?.isAllInputTextEmpty() ?? true) && node.name != name))
+        if self.isConnecting {
+            bottomView.saveBtn.isEnabled = false
+        }else {
+            bottomView.saveBtn.isEnabled = self.site.deviceOperates.contains(.edit) && (!(setGatewayModel == gatewayModel) || (!(name?.isAllInputTextEmpty() ?? true) && node.name != name))
+        }
     }
     
 
@@ -780,6 +799,9 @@ extension GatewayViewController: UITableViewDataSource, UITableViewDelegate {
                 cell.enabledSwitch.isOn = setGatewayModel.activate
                 cell.switchActionCallback = {[weak self] enable in
                     guard let self = self else { return }
+                    guard !self.isConnecting else {
+                        return
+                    }
                     guard self.site.deviceOperates.contains(.edit) else {
                         XWHUDManager.showTipHUD("no_permission".localizedString + "！")
                         return
@@ -819,11 +841,15 @@ extension GatewayViewController: UITableViewDataSource, UITableViewDelegate {
                 }
                 
                 cell.iconImageClickCallback = {[weak self] in
+                    guard let self = self else { return }
+                    guard !self.isConnecting else {
+                        return
+                    }
                     guard space.permission == .editor else {
                         return
                     }
                     // 删除
-                    self?.unbindAssociatedSpace(space)
+                    self.unbindAssociatedSpace(space)
                 }
             }else {
                 cell.titleLabel.text = "no_associated_spaces".localizedString
@@ -956,6 +982,9 @@ extension GatewayViewController: UITableViewDataSource, UITableViewDelegate {
         }
         headerView.operationActionCallback = {[weak self] in
             guard let self = self else { return }
+            guard !self.isConnecting else {
+                return
+            }
             switch sectionType {
             case .name: // 同步
                 guard self.site.deviceOperates.contains(.edit) else {
