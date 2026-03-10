@@ -1453,10 +1453,10 @@ extension GroupViewController: GroupSensorViewDelegate {
             sensor.occupancySettings = false
             switch result {
             case .success:
-                sensor.pirEnabled = enable
-                if let meshUUID = sensor.network?.uuid.uuidString {
-                    sensor.preConfiguration.save(meshUUID: meshUUID, nodeAddress: sensor.primaryUnicastAddress)
-                }
+//                sensor.pirEnabled = enable
+//                if let meshUUID = sensor.network?.uuid.uuidString {
+//                    sensor.preConfiguration.save(meshUUID: meshUUID, nodeAddress: sensor.primaryUnicastAddress)
+//                }
                 ToastStatusView.show(in: self.view, message: "configuration_successful".localizedString, type: .success)
                 // 同步数据到服务器
                 NotificationCenter.default.post(name: .init(spaceDataChangedNotificaitonName), object: SpaceChangeDataType.device)
