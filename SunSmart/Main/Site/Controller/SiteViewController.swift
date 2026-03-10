@@ -236,7 +236,7 @@ self.updateAddressData()
         
         self.gatewayModels = self.loadGatewaysData()
         // site内是否有可编辑的space
-        if allSpaces.contains(where: { $0.permission != .visitor }) {
+        if site.permission == .owner || allSpaces.contains(where: { $0.permission == .editor }) {
             self.showGatewayModels = self.gatewayModels.filter({ gateway in gateway.associatedSpaces.isEmpty || gateway.associatedSpaces.contains(where: { $0.permission != .none }) })
         }else {
             self.showGatewayModels.removeAll()
@@ -876,12 +876,15 @@ self.updateAddressData()
             }
             if self.allSpaceSelectGatewayId == nil {
                 self.allSpaces.append(space)
-                let insertPath = IndexPath(row: self.allSpaces.count - 1, section: 0)
-                self.allSpacesCollectionView.insertItems(at: [insertPath])
-                self.allSpacesCollectionView.scrollToItem(at: insertPath, at: .bottom, animated: true)
+                if self.allSpaces.count == 1 {
+                    self.allSpacesCollectionView.reloadData()
+                }else {
+                    let insertPath = IndexPath(row: self.allSpaces.count - 1, section: 0)
+                    self.allSpacesCollectionView.insertItems(at: [insertPath])
+                    self.allSpacesCollectionView.scrollToItem(at: insertPath, at: .bottom, animated: true)
+                }
                 self.updateEmptyView()
             }
-            
             return true
         }
         if isIPad {
@@ -2259,6 +2262,7 @@ extension SiteViewController: UICollectionViewDataSource, UICollectionViewDelega
             }
             headerView.gatewayListView.updateItems(items)
             headerView.gatewayListView.selectedIndex = selectIndex
+            headerView.gatewayStatusView.isHidden = site.spaces.isEmpty || showGatewayModels.isEmpty
         }else {
             if self.site.permission == .owner || self.allSpaces.contains(where: { $0.canEditing && $0.gatewayStatus == .notBound }) { // 显示添加网关UI
                 headerView.showGatewayListView = true
@@ -2266,9 +2270,9 @@ extension SiteViewController: UICollectionViewDataSource, UICollectionViewDelega
             }else {
                 headerView.showGatewayListView = false
             }
+            headerView.gatewayStatusView.isHidden = self.site.permission == .owner
         }
        
-        headerView.gatewayStatusView.isHidden = site.spaces.isEmpty || gatewayModels.isEmpty
         if selectIndex == 0 {
             headerView.gatewayStatusView.setDisplayMode(.overview)
             

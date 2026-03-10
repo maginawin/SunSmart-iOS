@@ -45,19 +45,26 @@ class GatewayListView: UIView {
     private var scrollView: UIScrollView!
     private var contentView: UIView!
     private var items: [GatewayListItem] = []
+    private var visibleItemIndexes: [Int] = []
     private var itemViews: [GatewayItemView] = []
     private var separatorViews: [UIView] = []
     private var menuButton: UIButton!
     
     private var addGatewyaBtn: UIButton!
+    private let menuAreaWidth = SCRXFrom(40)
+    private let maxVisibleItemCount = 4
     
     /// 当前选中的索引
     var selectedIndex: Int = 0 {
         didSet {
-            updateSelectedState()
-            // 当 selectedIndex 改变时，自动滚动到选中位置
-            if selectedIndex != oldValue {
-                scrollToItem(at: selectedIndex, animated: true)
+            guard !items.isEmpty else {
+                return
+            }
+            if calculateVisibleItemIndexes() != visibleItemIndexes {
+                rebuildItemViews()
+            } else {
+                updateSelectedState()
+                setNeedsLayout()
             }
         }
     }
@@ -99,14 +106,12 @@ class GatewayListView: UIView {
         scrollView.showsHorizontalScrollIndicator = false
         scrollView.showsVerticalScrollIndicator = false
         scrollView.bounces = false
-//        scrollView.alwaysBounceHorizontal = true
-//        scrollView.alwaysBounceVertical = false
+        scrollView.isScrollEnabled = false
         addSubview(scrollView)
         scrollView.snp.makeConstraints { make in
             make.left.equalToSuperview()
             make.top.bottom.equalToSuperview()
-            make.right.equalTo(0)
-//            make.right.equalTo(menuButton.snp.left)
+            make.right.equalTo(-menuAreaWidth)
         }
         
         contentView = UIView()
@@ -140,106 +145,35 @@ class GatewayListView: UIView {
     /// 更新网关列表数据
     func updateItems(_ items: [GatewayListItem]) {
         self.items = items
-        
-        // 清除旧的视图
-        itemViews.forEach { $0.removeFromSuperview() }
-        separatorViews.forEach { $0.removeFromSuperview() }
-        itemViews.removeAll()
-        separatorViews.removeAll()
-        
+        if !items.indices.contains(selectedIndex) {
+            selectedIndex = 0
+        }
         menuButton.isHidden = items.isEmpty
         addGatewyaBtn.isHidden = items.count > 0
-        
-        // 创建新的视图
-        for (index, item) in items.enumerated() {
-            let itemView = GatewayItemView()
-            var itemWithSelection = item
-            itemWithSelection.isSelected = (index == selectedIndex)
-            itemView.update(with: itemWithSelection)
-            itemView.isUserInteractionEnabled = true
-            let tapGesture = UITapGestureRecognizer(target: self, action: #selector(itemViewTapped(_:)))
-            itemView.addGestureRecognizer(tapGesture)
-            contentView.addSubview(itemView)
-            itemViews.append(itemView)
-            
-            // 添加分隔线（项与项之间需要分隔线）
-            if index < items.count {
-                let separator = UIView()
-                separator.backgroundColor = Line_Color1
-                contentView.addSubview(separator)
-                separatorViews.append(separator)
-            }
-        }
-        
-        // 强制布局更新
-        setNeedsLayout()
-        layoutIfNeeded()
+        rebuildItemViews()
     }
     
     @objc private func itemViewTapped(_ gesture: UITapGestureRecognizer) {
         guard let itemView = gesture.view as? GatewayItemView,
               let index = itemViews.firstIndex(of: itemView),
-              index < items.count else {
+              index < visibleItemIndexes.count else {
+            return
+        }
+        let itemIndex = visibleItemIndexes[index]
+        
+        guard itemIndex != selectedIndex else {
             return
         }
         
-        guard index != selectedIndex else {
-            return
-        }
-        
-        selectedIndex = index
-        delegate?.gatewayListView(self, didSelectItem: items[index], at: index)
-        // 注意：滚动逻辑在 selectedIndex 的 didSet 中处理
-    }
-    
-    /// 滚动到指定索引的 item
-    /// - Parameters:
-    ///   - index: item 索引
-    ///   - animated: 是否使用动画
-    private func scrollToItem(at index: Int, animated: Bool) {
-        guard index >= 0 && index < itemViews.count else {
-            return
-        }
-        
-        // 确保布局已更新
-        layoutIfNeeded()
-        
-        let itemView = itemViews[index]
-        let itemFrame = itemView.frame
-        
-        // 计算 item 的中心位置
-        let itemCenterX = itemFrame.midX
-        
-        // 计算 scrollView 的可视区域宽度
-        let visibleWidth = scrollView.bounds.width
-        
-        // 计算目标偏移量（让 item 居中显示）
-        var targetOffsetX = itemCenterX - visibleWidth / 2
-        
-        // 限制在有效范围内
-        let maxOffsetX = max(0, scrollView.contentSize.width - visibleWidth)
-        targetOffsetX = max(0, min(targetOffsetX, maxOffsetX))
-        
-        // 如果 item 已经在可见区域内，且不需要居中，可以只滚动到可见区域
-//        let currentOffsetX = scrollView.contentOffset.x
-//        let currentVisibleRight = currentOffsetX + visibleWidth
-        
-        // 如果 item 完全在可见区域内，仍然居中显示（提供更好的用户体验）
-        // 如果需要只在 item 不在可见区域时才滚动，可以取消下面的注释
-        /*
-        if itemFrame.minX >= currentOffsetX && itemFrame.maxX <= currentVisibleRight {
-            return
-        }
-        */
-        
-        // 执行滚动
-        scrollView.setContentOffset(CGPoint(x: targetOffsetX, y: 0), animated: animated)
+        selectedIndex = itemIndex
+        delegate?.gatewayListView(self, didSelectItem: items[itemIndex], at: itemIndex)
     }
     
     private func updateSelectedState() {
         for (index, itemView) in itemViews.enumerated() {
-            var item = items[index]
-            item.isSelected = (index == selectedIndex)
+            let itemIndex = visibleItemIndexes[index]
+            var item = items[itemIndex]
+            item.isSelected = (itemIndex == selectedIndex)
             itemView.update(with: item)
         }
     }
@@ -247,52 +181,69 @@ class GatewayListView: UIView {
     private func updateLayout() {
         guard !itemViews.isEmpty, !frame.isEmpty else { return }
         
-        var currentX: CGFloat = 0// SCRXFrom(16)
         let itemHeight = SCRYFrom(40)
+        let contentWidth = scrollView.bounds.width
+        guard contentWidth > 0 else { return }
+        let itemWidth = contentWidth / CGFloat(itemViews.count)
         
         for (index, itemView) in itemViews.enumerated() {
-            let item = items[index]
-            
-            // 计算文字宽度
-            let titleWidth = item.title.boundingRect(
-                with: CGSize(width: CGFloat.greatestFiniteMagnitude, height: itemHeight),
-                options: .usesLineFragmentOrigin,
-                attributes: [.font: UIFont.systemFont(ofSize: FontFit(12), weight: .light)],
-                context: nil
-            ).width
-            
-            
-            // 如果有状态指示器，增加宽度
-            let statusDotWidth: CGFloat = item.status != nil ? SCRXFrom(8) + SCRXFrom(6) : 0
-            let failImageWidth = item.gatewayModel?.syncCloudError != nil ? 12 + SCRXFrom(6) : 0
-            let itemPadding: CGFloat = SCRXFrom(10) //SCRXFrom(16)
-            let itemWidth = max(SCRXFrom(76), titleWidth + statusDotWidth + failImageWidth + itemPadding * 2)
-            
-            itemView.frame = CGRect(x: currentX, y: 0, width: itemWidth, height: itemHeight)
-            currentX += itemWidth
-            
-            // 添加分隔线
-            if index < separatorViews.count {
-                let separator = separatorViews[index]
-                let separatorHeight = itemHeight - SCRYFrom(16)
-                separator.frame = CGRect(x: currentX, y: SCRYFrom(8), width: 0.5, height: separatorHeight)
-                currentX += SCRXFrom(4)
-            }
+            itemView.frame = CGRect(x: itemWidth * CGFloat(index), y: 0, width: itemWidth, height: itemHeight)
         }
         
-        
-        scrollView.snp.updateConstraints { make in
-            make.right.equalTo(-40)
+        let separatorHeight = itemHeight - SCRYFrom(16)
+        for (index, separator) in separatorViews.enumerated() {
+            let separatorX = index == separatorViews.count - 1 ? (contentWidth - 0.5) : (itemWidth * CGFloat(index + 1) - 0.5)
+            separator.frame = CGRect(x: separatorX, y: SCRYFrom(8), width: 0.5, height: separatorHeight)
         }
         
-        let totalWidth = currentX// + SCRXFrom(16)
-        
-        // 更新 contentView 的宽度
         contentView.snp.updateConstraints { make in
-            make.width.equalTo(totalWidth)
+            make.width.equalTo(contentWidth)
         }
         
-        scrollView.contentSize = CGSize(width: totalWidth, height: itemHeight)
+        scrollView.contentSize = CGSize(width: contentWidth, height: itemHeight)
+    }
+    
+    private func rebuildItemViews() {
+        itemViews.forEach { $0.removeFromSuperview() }
+        separatorViews.forEach { $0.removeFromSuperview() }
+        itemViews.removeAll()
+        separatorViews.removeAll()
+        visibleItemIndexes = calculateVisibleItemIndexes()
+        
+        for itemIndex in visibleItemIndexes {
+            let itemView = GatewayItemView()
+            var itemWithSelection = items[itemIndex]
+            itemWithSelection.isSelected = (itemIndex == selectedIndex)
+            itemView.update(with: itemWithSelection)
+            itemView.isUserInteractionEnabled = true
+            let tapGesture = UITapGestureRecognizer(target: self, action: #selector(itemViewTapped(_:)))
+            itemView.addGestureRecognizer(tapGesture)
+            contentView.addSubview(itemView)
+            itemViews.append(itemView)
+        }
+        
+        for _ in 0..<visibleItemIndexes.count {
+            let separator = UIView()
+            separator.backgroundColor = Line_Color1
+            contentView.addSubview(separator)
+            separatorViews.append(separator)
+        }
+        
+        setNeedsLayout()
+        layoutIfNeeded()
+    }
+    
+    private func calculateVisibleItemIndexes() -> [Int] {
+        guard !items.isEmpty else {
+            return []
+        }
+        if items.count <= maxVisibleItemCount {
+            return Array(items.indices)
+        }
+        if selectedIndex < maxVisibleItemCount {
+            return Array(0..<maxVisibleItemCount)
+        }
+        return [0, 1, 2, selectedIndex]
     }
 }
 
@@ -342,6 +293,8 @@ class GatewayItemView: UIView {
         titleLabel = UILabel()
         titleLabel.font = UIFont.systemFont(ofSize: SCRYFrom(12), weight: .light)
         titleLabel.textColor = ImportantText_Color
+        titleLabel.lineBreakMode = .byTruncatingTail
+        titleLabel.numberOfLines = 1
 //        titleLabel.textAlignment = .center
 //        addSubview(titleLabel)
 //        contentView.addArrangedSubview(titleLabel)
@@ -370,7 +323,11 @@ class GatewayItemView: UIView {
     func update(with item: GatewayListItem) {
         titleLabel.text = item.title
         titleLabel.textColor = item.isSelected ? Bar_Color : ImportantText_Color
-        contentView.subviews.forEach({ $0.removeFromSuperview() })
+        contentView.arrangedSubviews.forEach({ arrangedSubview in
+            contentView.removeArrangedSubview(arrangedSubview)
+            arrangedSubview.removeFromSuperview()
+        })
+        syncFailImageView.isHidden = true
         
         // 更新状态指示器
         if let status = item.status {
@@ -407,4 +364,3 @@ class GatewayItemView: UIView {
         underlineView.isHidden = !item.isSelected
     }
 }
-
