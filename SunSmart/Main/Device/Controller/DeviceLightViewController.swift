@@ -291,6 +291,10 @@ class DeviceLightViewController: UIViewController {
 //            }
 //            87
         }))
+        items.append(.init(icon: UIImage(named: "menu_information"), title: "Reboot", tapItemBack: {[weak self] _ in
+            guard let self = self, let vendorModel = self.node.sunricherVendorModel else { return }
+            MeshAPI.sendMessage(message: SunricherVendorSet(function: .deviceRestart), model: vendorModel)
+        }))
         #endif
 //        #if DEBUG
 //        items.append(.init(icon: UIImage(named: "menu_edit"), title: "pwm_period".localizedString, hideAnimation: false, tapItemBack: {[weak self] _ in
