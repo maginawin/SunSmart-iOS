@@ -54,6 +54,7 @@ class DeviceBottomBtnView: UIView {
         }
         
         deleteBtn = UIButton(title: "alert_item_delete".localizedString, titleSize: 16, titleWeight: .light, titleColor: Red_Color)
+        deleteBtn.setTitleColor(Red_Color.withAlphaComponent(0.5), for: .disabled)
         addSubview(deleteBtn)
         deleteBtn.snp.makeConstraints { make in
             make.left.top.equalToSuperview()

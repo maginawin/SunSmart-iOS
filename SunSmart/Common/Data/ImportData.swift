@@ -469,6 +469,7 @@ extension SiteData {
                     }
                     
                     // Node和Gateway一起更新数据库
+                    serverNode.subNetworkId = self.meshNetworkId
                     try? network.add(node: serverNode)
                     gateway.lastUpdate = serverUpdate
                     gateway.lastUploadCloudTimestamp = serverUpdate

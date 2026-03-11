@@ -193,7 +193,7 @@ class GatewayListView: UIView {
         let separatorHeight = itemHeight - SCRYFrom(16)
         for (index, separator) in separatorViews.enumerated() {
             let separatorX = index == separatorViews.count - 1 ? (contentWidth - 0.5) : (itemWidth * CGFloat(index + 1) - 0.5)
-            separator.frame = CGRect(x: separatorX, y: SCRYFrom(8), width: 0.5, height: separatorHeight)
+            separator.frame = CGRect(x: separatorX, y: SCRYFrom(8), width: 1, height: separatorHeight)
         }
         
         contentView.snp.updateConstraints { make in
@@ -224,7 +224,7 @@ class GatewayListView: UIView {
         
         for _ in 0..<visibleItemIndexes.count {
             let separator = UIView()
-            separator.backgroundColor = Line_Color1
+            separator.backgroundColor = RGB(220, 220, 220)
             contentView.addSubview(separator)
             separatorViews.append(separator)
         }

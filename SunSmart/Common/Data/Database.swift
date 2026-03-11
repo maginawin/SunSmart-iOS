@@ -2846,7 +2846,9 @@ extension GatewayModel {
                             if space.canEditing {
                                 gatewaySpace.permission = .editor
                             }else {
-                                if space.requiresPasswordVerification {
+                                if space.state == .waitDeleted {
+                                    gatewaySpace.permission = .permissionLoss
+                                }else if space.requiresPasswordVerification {
                                     gatewaySpace.permission = .permissionException
                                 }else {
                                     gatewaySpace.permission = .none

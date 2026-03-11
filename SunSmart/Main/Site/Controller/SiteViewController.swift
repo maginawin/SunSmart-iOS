@@ -242,13 +242,13 @@ self.updateAddressData()
             self.showGatewayModels.removeAll()
         }
         
-        if let gatewayId = allSpaceSelectGatewayId, let gateway = gatewayModels.first(where: { $0.mac == gatewayId }) {
+        if let gatewayId = allSpaceSelectGatewayId, let gateway = showGatewayModels.first(where: { $0.mac == gatewayId }) {
             allSpaces = allSpaces.filter({ space in gateway.associatedSpaces.contains(where: { $0.spaceId == space.id }) })
         }else {
             allSpaceSelectGatewayId = nil
         }
         
-        if let gatewayId = favouriteSpaceSelectGatewayId, let gateway = gatewayModels.first(where: { $0.mac == gatewayId }) {
+        if let gatewayId = favouriteSpaceSelectGatewayId, let gateway = showGatewayModels.first(where: { $0.mac == gatewayId }) {
             favouriteSpaces = favouriteSpaces.filter({ space in gateway.associatedSpaces.contains(where: { $0.spaceId == space.id }) })
         }else {
             favouriteSpaceSelectGatewayId = nil
@@ -414,7 +414,10 @@ self.updateAddressData()
 //                        self.site.spaces.append(contentsOf: localSpaces)
 //                        self.site.spaces.append(contentsOf: deleteSpaces)
 //                        self.site.spaces.sort(by: { $0.create < $1.create })
-                        
+                        // 网关数据有更新，重新读取mesh设备数据
+                        if self.gatewayModels.map({ $0.address }).sorted() != GatewayModel.load(siteId: self.site.id).map({ $0.address }).sorted() {
+                            MeshLibManager.manager.setMeshNetworkConnected(meshUUID: self.site.meshUUID, subNetworkId: self.site.meshNetworkId, connected: false)
+                        }
                         self.setupData()
                     #if DEBUG
                         self.updateAddressData()
@@ -474,7 +477,11 @@ self.updateAddressData()
                                 })
                                 self.gatewayModels.forEach { gateway in
                                     gateway.associatedSpaces.forEach {
-                                        $0.permission = .none
+                                        if $0.permission == .editor {
+                                            $0.permission = .permissionLoss
+                                        }else {
+                                            $0.permission = .none
+                                        }
                                     }
                                 }
                                 self.allSpacesCollectionView.reloadData()
@@ -981,15 +988,18 @@ self.updateAddressData()
         }
         self.allSpaces.removeAll(where: { $0.id == space.id })
         self.favouriteSpaces.removeAll(where: { $0.id == space.id })
-        if let index = index, let collectionView = currentCollectionView {
-            collectionView.deleteItems(at: [IndexPath(row: index, section: 0)])
-            otherCollectionView?.reloadData()
+        if space.gatewayStatus == .notBound {
+            if let index = index, let collectionView = currentCollectionView {
+                collectionView.deleteItems(at: [IndexPath(row: index, section: 0)])
+                otherCollectionView?.reloadData()
+            }else {
+                self.allSpacesCollectionView.reloadData()
+                self.favouritesCollectionView.reloadData()
+            }
+            self.updateEmptyView()
         }else {
-            self.allSpacesCollectionView.reloadData()
-            self.favouritesCollectionView.reloadData()
+            self.setupData()
         }
-        self.updateEmptyView()
-        
     }
     
     
@@ -1707,7 +1717,7 @@ self.updateAddressData()
                 
                 self.deleteSpace(space: space)
                 // 删除site数据
-                if self.site.permission == .visitor && self.site.spaces.isEmpty {
+                if self.site.permission != .owner && self.site.spaces.isEmpty {
                     self.site.delete()
                     NotificationCenter.default.post(name: .init(SitesDataRefreshNotifiacationName), object: false)
                     self.navigationController?.popViewController(animated: true)
@@ -1860,7 +1870,11 @@ self.updateAddressData()
         if space.canEditing {
             gatewaySpace?.permission = .editor
         }else {
-            gatewaySpace?.permission = space.requiresPasswordVerification ? .permissionException : .none
+            if space.state == .normal {
+                gatewaySpace?.permission = space.requiresPasswordVerification ? .permissionException : .none
+            }else {
+                gatewaySpace?.permission = .permissionLoss
+            }
         }
     }
     
@@ -2313,14 +2327,15 @@ extension SiteViewController: UICollectionViewDataSource, UICollectionViewDelega
     }
     
     func collectionView(_ collectionView: UICollectionView, layout collectionViewLayout: UICollectionViewLayout, referenceSizeForHeaderInSection section: Int) -> CGSize {
-
-        guard site.spaces.count > 0 || showGatewayModels.count > 0 else {
-            return .zero
-        }
+          
+//        guard site.spaces.count > 0 || showGatewayModels.count > 0 else {
+//            return .zero
+//        }
         
         let headerW = collectionView.width - collectionView.contentInset.left - collectionView.contentInset.right
         var headerH = SCRYFrom(48)
-        if site.spaces.count > 0 && showGatewayModels.count > 0 {
+
+        if site.spaces.count > 0 && (showGatewayModels.count > 0 || self.site.permission != .owner && self.allSpaces.contains(where: { $0.canEditing && $0.gatewayStatus == .notBound })) {
             headerH += SCRYFrom(48)
         }
         return CGSize(width: headerW, height: headerH)

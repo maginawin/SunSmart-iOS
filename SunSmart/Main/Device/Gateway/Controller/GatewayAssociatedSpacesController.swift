@@ -73,7 +73,11 @@ class GatewayAssociatedSpacesController: UIViewController {
                         if space.canEditing {
                             gatewaySpace.permission = .editor
                         }else {
-                            gatewaySpace.permission = space.requiresPasswordVerification ? .permissionException : .none
+                            if space.state == .waitDeleted {
+                                gatewaySpace.permission = .permissionLoss
+                            }else {
+                                gatewaySpace.permission = space.requiresPasswordVerification ? .permissionException : .none
+                            }
                         }
                     }
                     return gatewaySpace
@@ -300,6 +304,7 @@ class GatewayAssociatedSpacesController: UIViewController {
             disassociatedFailSpaces.forEach { space in
                 if !self.selectSpaces.contains(where: { $0.spaceId == space.spaceId }) {
                     self.selectSpaces.append(space)
+                    self.selectSpaces.sort(by: { $0.appKeyIndex < $1.appKeyIndex })
                 }
             }
             self.collectionView.reloadData()
@@ -402,7 +407,7 @@ extension GatewayAssociatedSpacesController: UICollectionViewDataSource, UIColle
         cell.nameLabel.textColor = TextBlack_Color
         cell.nodesLabel.text = "\("nodes".localizedString): \(space.deviceCount)"
         if selectSpaces.contains(where: { $0.spaceId == space.spaceId }) {
-            if space.permission == .none || space.permission == .permissionException {
+            if space.permission == .none || space.permission == .permissionLoss || space.permission == .permissionException {
                 cell.nameLabel.textColor = Message_Color
                 cell.selectImageView.image = UIImage(named: "schedule_target_select")?.withTintColor(Message_Color)
             }else {
@@ -422,7 +427,7 @@ extension GatewayAssociatedSpacesController: UICollectionViewDataSource, UIColle
     func collectionView(_ collectionView: UICollectionView, didSelectItemAt indexPath: IndexPath) {
         
         let space = spaces[indexPath.item]
-        if space.permission == .none || space.permission == .permissionException { // 其他人的space/无编辑权限space
+        if space.permission == .none || space.permission == .permissionLoss || space.permission == .permissionException { // 其他人的space/无编辑权限space
             return
         }
         if let index = selectSpaces.firstIndex(where: { $0.spaceId == space.spaceId }) {
@@ -438,6 +443,7 @@ extension GatewayAssociatedSpacesController: UICollectionViewDataSource, UIColle
 //                return
 //            }
             selectSpaces.append(space)
+            selectSpaces.sort(by: { $0.appKeyIndex < $1.appKeyIndex })
         }
         collectionView.reloadItems(at: [indexPath])
         updateUI()

@@ -159,6 +159,7 @@ class GatewayModel: Copyable {
     }
     
     func resolveNode(in meshNetwork: MeshNetwork? = MeshNetworkManager.instance.meshNetwork) -> Node? {
+        
         return meshNetwork?.node(withAddress: address)
     }
     
@@ -270,6 +271,8 @@ class GatewaySpaceData: Codable {
         case editor = 1
         /// 权限异常（需要输入密码）
         case permissionException = 2
+        /// 失去权限（被owner删除权限）
+        case permissionLoss = 3
     }
     
     /// space id

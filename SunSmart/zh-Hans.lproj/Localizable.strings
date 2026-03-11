@@ -1455,3 +1455,4 @@
 "gateway_signal_error" = "Please check the settings";
 "gateway_signal_unknown" = "Unknown";
 "gateway_sim_not_inserted" = "4G card not detected";
+"gateway_no_permission_message" = "You no longer have the authority";

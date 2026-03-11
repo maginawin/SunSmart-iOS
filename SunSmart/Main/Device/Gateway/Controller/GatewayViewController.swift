@@ -122,7 +122,9 @@ class GatewayViewController: UIViewController, DeviceProtocol {
             close()
         }else {
             SRAlertView(title: "notification".localizedString, message: "profile_exiting_message".localizedString, actions: [SRAlertAction(title: "keep_edit".localizedString, style: .cancel), SRAlertAction(title: "EXIT".localizedString, actionHandler: {[weak self] _ in
-                self?.close()
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {[weak self] in
+                    self?.close()
+                }
             })]).show()
         }
     }
@@ -198,7 +200,9 @@ class GatewayViewController: UIViewController, DeviceProtocol {
                     if space.canEditing {
                         gatewaySpace.permission = .editor
                     }else {
-                        if space.requiresPasswordVerification {
+                        if space.state == .waitDeleted {
+                            gatewaySpace.permission = .permissionLoss
+                        }else if space.requiresPasswordVerification {
                             gatewaySpace.permission = .permissionException
                         }else {
                             gatewaySpace.permission = .none
@@ -305,7 +309,7 @@ class GatewayViewController: UIViewController, DeviceProtocol {
                 bottomView.deleteBtn.isEnabled = false
             }else {
                 // 无权限
-                if gatewayModel.associatedSpaces.contains(where: { $0.permission == .none || $0.permission == .permissionException }) {
+                if gatewayModel.associatedSpaces.contains(where: { $0.permission == .none || $0.permission == .permissionLoss || $0.permission == .permissionException }) {
                     bottomView.deleteBtn.isEnabled = false
                 }else {
                     bottomView.deleteBtn.isEnabled = true
@@ -420,7 +424,7 @@ class GatewayViewController: UIViewController, DeviceProtocol {
                         switch result {
                         case .success(let bindSpaces):
                             // 检查是否关联了无权限的space
-                            if bindSpaces.contains(where: { $0.permission == .none || $0.permission == .permissionException }) {
+                            if bindSpaces.contains(where: { $0.permission == .none || $0.permission == .permissionLoss || $0.permission == .permissionException }) {
                                 XWHUDManager.hide()
                                 XWHUDManager.showErrorTipHUD("no_permission".localizedString)
                                 return
@@ -578,7 +582,11 @@ class GatewayViewController: UIViewController, DeviceProtocol {
                 if space.canEditing {
                     permission = .editor
                 }else {
-                    permission = space.requiresPasswordVerification ? .permissionException : .none
+                    if space.state == .waitDeleted {
+                        permission = .permissionLoss
+                    }else {
+                        permission = space.requiresPasswordVerification ? .permissionException : .none
+                    }
                 }
                 return GatewaySpaceData(spaceId: space.id, spaceName: space.name, deviceCount: space.deviceCount, appKeyIndex: appkey.index, permission: permission)
             }
@@ -835,7 +843,7 @@ extension GatewayViewController: UITableViewDataSource, UITableViewDelegate {
                 cell.arrowImageView.isHidden = true
                 cell.iconX = tableView.width - SCRXFrom(8) - 30
                 cell.iconImageView.image = UIImage(named: "share_delete")
-                if space.permission == .permissionException || space.permission == .none {
+                if space.permission == .permissionException || space.permission == .permissionLoss || space.permission == .none {
                     cell.titleLabel.textColor = Message_Color
                     cell.iconImageView.image = UIImage(named: "share_delete")?.withTintColor(Message_Color)
                 }
