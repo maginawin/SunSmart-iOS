@@ -433,7 +433,11 @@ extension SiteData {
                 // 服务器不存在的网关，删除本地缓存
                 cacheByMac.forEach { mac, cacheGateway in
                     if cacheGateway.lastUploadCloudTimestamp != nil && serverByMac[mac] == nil {
-                        Node.delete(meshUUID: self.meshUUID, address: cacheGateway.address)
+                        if let node = network.nodes.first(where: { $0.primaryUnicastAddress == cacheGateway.address }) {
+                            network.forceRemove(node: node)
+                        }else {
+                            Node.delete(meshUUID: self.meshUUID, address: cacheGateway.address)
+                        }
                         GatewayModel.delete(siteId: self.id, macAddress: cacheGateway.mac)
                     }
                 }
@@ -453,8 +457,13 @@ extension SiteData {
                     }
                     
                     if let cacheGateway = cacheByMac[mac] {
-                        Node.delete(meshUUID: self.meshUUID, address: cacheGateway.address)
-                        GatewayModel.delete(siteId: self.id, macAddress: cacheGateway.mac)
+                        if let node = network.nodes.first(where: { $0.primaryUnicastAddress == cacheGateway.address }) {
+                            network.forceRemove(node: node)
+                        }else {
+                            Node.delete(meshUUID: self.meshUUID, address: cacheGateway.address)
+                        }
+//                        Node.delete(meshUUID: self.meshUUID, address: cacheGateway.address)
+//                        GatewayModel.delete(siteId: self.id, macAddress: cacheGateway.mac)
                     }
                     
                     // 判断设备是否存在废弃地址内，如果存在则清空废弃地址内缓存（如多用户编辑数据并未及时提交，使用了旧数据则可能出现导入的设备地址在废弃地址内）

@@ -2835,9 +2835,9 @@ extension GatewayModel {
                 var spaceDatas: [GatewaySpaceData] = []
                 let address = Address(row[ExpressionKey.address])
                 // 需要有对应网关节点设备
-                guard Node.load(meshUUID: siteId, address: address).count > 0 else {
-                    continue
-                }
+//                guard Node.load(meshUUID: siteId, address: address).count > 0 else {
+//                    continue
+//                }
                 
                 if let gatewaySpaceDatas = try? jsonDecoder.decode([GatewaySpaceData].self, from: row[ExpressionKey.associatedSpaces]) {
                     gatewaySpaceDatas.forEach { gatewaySpace in

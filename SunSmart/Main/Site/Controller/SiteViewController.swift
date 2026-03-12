@@ -415,9 +415,9 @@ self.updateAddressData()
 //                        self.site.spaces.append(contentsOf: deleteSpaces)
 //                        self.site.spaces.sort(by: { $0.create < $1.create })
                         // 网关数据有更新，重新读取mesh设备数据
-                        if self.gatewayModels.map({ $0.address }).sorted() != GatewayModel.load(siteId: self.site.id).map({ $0.address }).sorted() {
+//                        if self.gatewayModels.map({ $0.address }).sorted() != GatewayModel.load(siteId: self.site.id).map({ $0.address }).sorted() {
                             MeshLibManager.manager.setMeshNetworkConnected(meshUUID: self.site.meshUUID, subNetworkId: self.site.meshNetworkId, connected: false)
-                        }
+//                        }
                         self.setupData()
                     #if DEBUG
                         self.updateAddressData()
@@ -762,13 +762,17 @@ self.updateAddressData()
             }))
         }
         
-        if site.permissionOperates.contains(.restoreDevice) {
-            items.append(.init(icon: UIImage(named: "menu_restore_device"), title: "restore_device".localizedString, tapItemBack: {[weak self] _ in
-                self?.restoreDevice()
-            }))
-            items.append(.init(icon: UIImage(named: "menu_firmware_update"), title: "Firmware_update".localizedString, tapItemBack: {[weak self] _ in
-                self?.firmwareUpdate()
-            }))
+        if self.showGatewayModels.count > 0 {
+            if site.permissionOperates.contains(.restoreDevice) {
+                items.append(.init(icon: UIImage(named: "menu_restore_device"), title: "restore_device".localizedString, tapItemBack: {[weak self] _ in
+                    self?.restoreDevice()
+                }))
+            }
+            if site.permissionOperates.contains(.firmwareUpdate) {
+                items.append(.init(icon: UIImage(named: "menu_firmware_update"), title: "Firmware_update".localizedString, tapItemBack: {[weak self] _ in
+                    self?.firmwareUpdate()
+                }))
+            }
         }
         
 //        items.append(.init(icon: UIImage(named: "energy_export")?.withTintColor(.white), title: "Import Space", tapItemBack: {[weak self] _ in
@@ -1833,13 +1837,13 @@ self.updateAddressData()
     /// 添加网关
     private func addGateway() {
         
-        guard self.site.permission == .owner || self.allSpaces.contains(where: { $0.canEditing }) else {
+        guard self.site.permission == .owner || self.site.spaces.contains(where: { $0.canEditing }) else {
             // 无权限
             XWHUDManager.showTipHUD(inView: "no_permission".localizedString, isLineFeed: true)
             return
         }
         // 查询editor是否还有space没有被网关绑定
-        if self.site.permission != .owner, !self.allSpaces.contains(where: { $0.permission == .editor && $0.gatewayStatus == .notBound }) {
+        if self.site.permission != .owner, !self.site.spaces.contains(where: { $0.permission == .editor && $0.gatewayStatus == .notBound }) {
             XWHUDManager.showTipHUD("gateway_add_no_editor_spaces_message".localizedString, isLineFeed: true)
             return
         }
