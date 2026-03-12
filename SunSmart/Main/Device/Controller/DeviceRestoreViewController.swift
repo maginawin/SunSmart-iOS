@@ -1378,7 +1378,10 @@ extension DeviceRestoreViewController: UITableViewDataSource, UITableViewDelegat
     }
     
     func tableView(_ tableView: UITableView, heightForHeaderInSection section: Int) -> CGFloat {
-        return SCRYFrom(44)
+        if space != nil {
+            return SCRYFrom(44)
+        }
+        return 0.01
     }
     
     func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {

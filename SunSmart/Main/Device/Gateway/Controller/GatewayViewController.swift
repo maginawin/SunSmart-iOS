@@ -357,10 +357,14 @@ class GatewayViewController: UIViewController, DeviceProtocol {
         guard let name = self.name, !name.isAllInputTextEmpty() else {
             return
         }
-        guard self.site.permissionOperates.contains(.edit) else {
+        guard gateway.associatedSpaces.isEmpty || gateway.associatedSpaces.contains(where: { $0.permission == .editor }) else {
             XWHUDManager.showTipHUD("no_permission".localizedString + "！")
             return
         }
+//        guard self.site.permissionOperates.contains(.edit) else {
+//            XWHUDManager.showTipHUD("no_permission".localizedString + "！")
+//            return
+//        }
         
         if gateway.name != name {
             self.setGatewayModel.name = name
