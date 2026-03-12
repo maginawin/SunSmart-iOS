@@ -1575,3 +1575,7 @@
 "behavior_after_setup_success_note" = "Note: This setting controls the blink behavior of the load and indicator light after successful device setup to adapt to different application scenarios. \"No Blink\" is for unobtrusive operation during normal use without visual disturbance. \"Fast Blink\" provides obvious visual feedback for high-altitude installations or when managing multiple devices. \"Breathing Blink\" offers a softer, more subtle indication method.";
 "pir_enabled" = "PIR Enabled";
 "pir_disable" = "PIR Disable";
+"display_lux" = "Display Lux";
+"display_lux_message" = "Displays the illuminance value detected by the device's light sensor.";
+"show" = "Show";
+"hide" = "Hide";

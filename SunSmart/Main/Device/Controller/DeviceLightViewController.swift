@@ -86,14 +86,17 @@ class DeviceLightViewController: UIViewController {
 //        #if DEBUG
         if node.ambientLightSensorModel != nil {
             luxLabel = UILabel(text: "", textColor: TextBlack_Color, fontSize: 14)
+            luxLabel?.isHidden = !node.preConfiguration.displayLux
             view.addSubview(luxLabel!)
             luxLabel!.snp.makeConstraints { make in
-                if cctView.isHidden {
-                    make.left.equalTo(brightnessView.snp.right).offset(SCRXFrom(30))
-                }else {
-                    make.left.equalTo(cctView.snp.right).offset(SCRXFrom(30))
-                }
-                make.centerY.equalTo(brightnessLabel)
+//                if cctView.isHidden {
+//                    make.left.equalTo(brightnessView.snp.right).offset(SCRXFrom(30))
+//                }else {
+//                    make.left.equalTo(cctView.snp.right).offset(SCRXFrom(30))
+//                }
+                make.centerX.equalToSuperview()
+                make.top.equalTo(brightnessView.snp.bottom).offset(SCRYFit(25))
+//                make.centerY.equalTo(brightnessLabel)
             }
         }
 //        #endif
@@ -116,10 +119,8 @@ class DeviceLightViewController: UIViewController {
         updateData()
         updateSliderValue()
         
-        if self.luxLabel != nil {
-            MeshAPI.getAmbientSensorValue(node: node) {[weak self] value in
-                self?.luxLabel?.text = "\(value ?? self?.node.daylightLux ?? 0)lx"
-            }
+        if node.ambientLightSensorModel != nil {
+            getNodeAmbientSensorLux()
         }
     }
     
@@ -140,6 +141,9 @@ class DeviceLightViewController: UIViewController {
     @objc private func getNodeState() {
         
         MeshAPI.getNodeState(address: node.primaryUnicastAddress)
+        if node.ambientLightSensorModel != nil {
+            getNodeAmbientSensorLux()
+        }
         
         MeshLibManager.manager.refreshNodesRSSI(withWaitFor: 10, nodeScan: {[weak self] data in
             guard let self = self else { return }
@@ -148,6 +152,19 @@ class DeviceLightViewController: UIViewController {
                 MeshLibManager.manager.stopRefreshNodesRSSI()
             }
         }, finished: nil)
+    }
+    
+    /// 获取设备lux
+    private func getNodeAmbientSensorLux() {
+        guard node.ambientLightSensorModel != nil else {
+            return
+        }
+        if self.luxLabel != nil {
+            MeshAPI.getAmbientSensorValue(node: node) {[weak self] value in
+                self?.luxLabel?.text = "\(value ?? self?.node.daylightLux ?? 0)lx"
+            }
+        }
+        
     }
     
     /// 更新UI数据
@@ -244,7 +261,7 @@ class DeviceLightViewController: UIViewController {
 //        if self.presentingViewController != nil {
 //            y = StatusBarManager.statusBarFrame.height + (navigationController?.navigationBar.height ?? kNavigationHeight)
 //        }
-        var menuWidth = SCRXFrom(114)
+        let menuWidth = SCRXFrom(114)
         var items: [MenuPopView.MenuItem] = []
         if space.deviceOperates.contains(.edit) {
             items.append(.init(icon: UIImage(named: "edit"), title: "edit".localizedString, tapItemBack: {[weak self] _ in
@@ -261,11 +278,11 @@ class DeviceLightViewController: UIViewController {
             self?.information()
         }))
         #if DEBUG
-        if routeTest {
-            items.append(.init(icon: UIImage(named: "menu_information"), title: "Route", hideAnimation: false, tapItemBack: {[weak self] _ in
-                self?.readRoute()
-            }))
-        }
+//        if routeTest {
+//            items.append(.init(icon: UIImage(named: "menu_information"), title: "Route", hideAnimation: false, tapItemBack: {[weak self] _ in
+//                self?.readRoute()
+//            }))
+//        }
         items.append(.init(icon: UIImage(named: "menu_information"), title: "Set Proxy", tapItemBack: {[weak self] _ in
             guard let self = self else { return }
             XWHUDManager.showCustomHUD(withMessage: nil, view: self.view)
@@ -305,39 +322,12 @@ class DeviceLightViewController: UIViewController {
 //            self?.test()
 //        }))
 //        #endif
-//        if let group = self.node.group {
-//            let profile = group.info.profile
-//            if profile.type == .proximityLightingWithPhotocell {
-//                // 系统失效profile
-//                if let nightData = profile.nightData {
-//                    if node.preConfiguration.nightProfileLightData != nil {
-//                        items.append(.init(icon: UIImage(named: "settings"), title: "Disable system failure", tapItemBack: {[weak self] _ in
-//                            guard let self = self else { return }
-//                            self.node.preConfiguration.nightProfileLightData = nil
-//                            self.node.preConfiguration.save(meshUUID: self.space.meshUUID, nodeAddress: self.node.primaryUnicastAddress)
-//                            self.syncDevice()
-//                        }))
-//                    }else {
-//                        items.append(.init(icon: UIImage(named: "settings"), title: "Enable system failure", tapItemBack: {[weak self] _ in
-//                            guard let self = self else { return }
-//                            let nightProfileLightData = nightData.sceneData.lightControlData.copy()
-//                            nightProfileLightData.occupancyLevel = min(100, nightProfileLightData.highEndTrim)
-//                            nightProfileLightData.vacantLevel = min(50, nightProfileLightData.highEndTrim)
-//                            nightProfileLightData.t4 = 0xFFFFFE
-//                            nightProfileLightData.standbyLevel = min(100, nightProfileLightData.highEndTrim)
-//                            self.node.preConfiguration.nightProfileLightData = nightProfileLightData
-//                            self.node.preConfiguration.save(meshUUID: self.space.meshUUID, nodeAddress: self.node.primaryUnicastAddress)
-//                            self.syncDevice()
-//                        }))
-//                    }
-//                    menuWidth = SCRXFrom(180)
-//                }
-//               
-//            }
-//        }
-        
-        
-        
+        if self.node.ambientLightSensorModel != nil {
+            items.append(.init(icon: UIImage(named: "menu_information"), title: "display_lux".localizedString, tapItemBack: {[weak self] _ in
+                self?.displayLux()
+            }))
+        }
+     
         items.append(.init(icon: UIImage(named: "menu_refresh"), title: "refresh".localizedString, tapItemBack: {[weak self] _ in
             self?.refresh()
         }))
@@ -587,6 +577,23 @@ class DeviceLightViewController: UIViewController {
     private func settings() {
         
         
+        
+    }
+    
+    /// 显示/隐藏lux
+    private func displayLux() {
+        
+        let displayLux = !node.preConfiguration.displayLux
+        SRAlertView(title: "display_lux".localizedString, message: "display_lux_message".localizedString, tapBackgroundHide: true, actions: [.cancelAction,SRAlertAction(title: displayLux ? "show".localizedString : "hide".localizedString, actionHandler: {[weak self] _ in
+            guard let self = self, let meshUUID = self.node.network?.uuid.uuidString else { return }
+            
+            self.luxLabel?.isHidden = !displayLux
+            if displayLux {
+                self.getNodeAmbientSensorLux()
+            }
+            self.node.preConfiguration.displayLux = displayLux
+            self.node.preConfiguration.save(meshUUID: meshUUID, nodeAddress: self.node.primaryUnicastAddress)
+        })]).show()
         
     }
     

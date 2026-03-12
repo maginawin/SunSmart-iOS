@@ -3007,6 +3007,7 @@ extension Node.PreConfiguration {
         static let nightProfileLightData = Expression<Data?>("nightProfileLightData")
         static let resetDaylightCalibration = Expression<Bool?>("resetDaylightCalibration")
         static let occupancyEnable = Expression<Bool>("occupancyEnable")
+        static let displayLux = Expression<Bool>("displayLux")
     }
     
     /// 初始化Node业务数据扩展表
@@ -3021,7 +3022,8 @@ extension Node.PreConfiguration {
             builder.column(ExpressionKey.nightProfileStartsBelowLux)
             builder.column(ExpressionKey.nightProfileLightData)
             builder.column(ExpressionKey.resetDaylightCalibration)
-            builder.column(ExpressionKey.occupancyEnable)
+//            builder.column(ExpressionKey.occupancyEnable)
+            builder.column(ExpressionKey.displayLux)
             builder.unique(ExpressionKey.meshUUID, ExpressionKey.nodeAddress)
         }))
         
@@ -3041,8 +3043,12 @@ extension Node.PreConfiguration {
                 _ = try? SunSmartDataManager.shared.db?.run(Node.PreConfiguration.nodePreConfigurationTable.addColumn(ExpressionKey.resetDaylightCalibration))
             }
             // 是否存在”occupancyEnable“属性
-            if !columns.contains(where: { $0.name == "occupancyEnable" }) {
-                _ = try? SunSmartDataManager.shared.db?.run(Node.PreConfiguration.nodePreConfigurationTable.addColumn(ExpressionKey.occupancyEnable, defaultValue: true))
+//            if !columns.contains(where: { $0.name == "occupancyEnable" }) {
+//                _ = try? SunSmartDataManager.shared.db?.run(Node.PreConfiguration.nodePreConfigurationTable.addColumn(ExpressionKey.occupancyEnable, defaultValue: true))
+//            }
+            // 是否存在”displayLux“属性
+            if !columns.contains(where: { $0.name == "displayLux" }) {
+                _ = try? SunSmartDataManager.shared.db?.run(Node.PreConfiguration.nodePreConfigurationTable.addColumn(ExpressionKey.displayLux, defaultValue: false))
             }
             
         }
@@ -3077,6 +3083,7 @@ extension Node.PreConfiguration {
             preConfiguration.dayProfileLightData = dayLightData
         }
         preConfiguration.resetDaylightCalibration = row[ExpressionKey.resetDaylightCalibration]
+        preConfiguration.displayLux = row[ExpressionKey.displayLux]
         return preConfiguration
     }
     
@@ -3100,7 +3107,8 @@ extension Node.PreConfiguration {
             ExpressionKey.dayProfileLightData <- dayLightData,
             ExpressionKey.nightProfileStartsBelowLux <- self.nightProfileStartsBelowLux != nil ? Int(self.nightProfileStartsBelowLux!) : nil,
             ExpressionKey.nightProfileLightData <- nightLightData,
-            ExpressionKey.resetDaylightCalibration <- self.resetDaylightCalibration
+            ExpressionKey.resetDaylightCalibration <- self.resetDaylightCalibration,
+            ExpressionKey.displayLux <- self.displayLux
         ])
         do {
             try SunSmartDataManager.shared.db?.run(insertOrUpdate)

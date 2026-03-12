@@ -293,6 +293,8 @@ extension Node {
         var nightProfileLightData: Profile.LightControlData?
         /// 是否重置光感校准数据
         var resetDaylightCalibration: Bool?
+        /// 是否显示lux（光感设备在设备页面）
+        var displayLux: Bool = false
     }
     
     /// 设备预配置数据

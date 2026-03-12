@@ -590,9 +590,23 @@ static XWHUDManagerType kXWHUDManagerType = XWHUDManagerTypeDark;
 }
 
 + (void)p_showGifImagesHUD:(NSString *)gifFileName message:(NSString *)message view:(UIView *)view timer:(NSTimeInterval)aTimer backgroundColor:(UIColor *)backgroundColor textColor:(UIColor *)textColor textFont:(UIFont *)textFont alpha:(CGFloat)alpha margin:(CGFloat)margin {
-    
-    WYProgressHUD *hud  =  [self p_createWYProgressHUDviewWithMessage:message view:view animated:YES];
+
+    WYProgressHUD *hud = [[WYProgressHUD alloc] initWithView:view];
+    hud.removeFromSuperViewOnHide = YES;
+    [view addSubview:hud];
+    hud.defaultMotionEffectsEnabled = NO;
+    hud.minSize = CGSizeMake(96, 96);
+    hud.detailsLabel.text = message;
+    hud.detailsLabel.font = hud.label.font = [UIFont systemFontOfSize:kXWHUDDefaultFontSize];
+    hud.backgroundView.color = [UIColor clearColor];
+    hud.backgroundView.style = WYProgressHUDBackgroundStyleSolidColor;
     hud.mode = WYProgressHUDModeCustomView;
+    if ([view isKindOfClass:[UIWindow class]]) {
+        hud.backgroundView.color = [[UIColor blackColor] colorWithAlphaComponent:0.3];
+    }else if (![self p_getCurrentUIVC].navigationController.navigationBar.isTranslucent) {
+        hud.offset = CGPointMake(0, -(UIApplication.sharedApplication.statusBarFrame.size.height + 44) * 0.5);
+    }
+
     NSString *filePath = [[NSBundle mainBundle] pathForResource:gifFileName ofType:@"gif"];
     UIImage *gifImage = [self imageGIFWithData:[NSData dataWithContentsOfFile:filePath]];
     UIImageView *gifImageView = [[UIImageView alloc] initWithImage:gifImage];
@@ -630,9 +644,10 @@ static XWHUDManagerType kXWHUDManagerType = XWHUDManagerTypeDark;
     hud.bezelView.layer.shadowOffset = CGSizeMake(0,0);
     hud.bezelView.layer.shadowOpacity = 1;
     hud.bezelView.layer.shadowRadius = 8;
-    
+
+    [hud showAnimated:NO];
     [hud hideAnimated:NO afterDelay:aTimer];
-    
+
 }
 
 /// GIF
