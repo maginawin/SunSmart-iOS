@@ -449,7 +449,11 @@ class GatewayViewController: UIViewController, DeviceProtocol {
                     switch deleteResult {
                     case .success(_):
                         self.gatewayModel.mqttServerInfo = nil
+                        self.gatewayModel.associatedSpaces.removeAll()
                         self.setGatewayModel.mqttServerInfo = nil
+                        self.setGatewayModel.associatedSpaces.removeAll()
+                        self.gatewayModel.lastUploadCloudTimestamp = nil
+                        self.gatewayModel.save()
                         self.resetNode(authorize: true)
                     case .failure(let error):
                         XWHUDManager.hide()
@@ -1004,7 +1008,7 @@ extension GatewayViewController: UITableViewDataSource, UITableViewDelegate {
             }
             switch sectionType {
             case .name: // 同步
-                guard self.site.deviceOperates.contains(.edit) else {
+                guard self.site.deviceOperates.contains(.edit), self.gateway.associatedSpaces.contains(where: { $0.permission == .editor }) else {
                     XWHUDManager.showTipHUD("no_permission".localizedString + "！")
                     return
                 }

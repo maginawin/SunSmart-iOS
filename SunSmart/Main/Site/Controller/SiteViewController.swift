@@ -977,28 +977,28 @@ self.updateAddressData()
         
         self.site.spaces.removeAll(where: { $0.id == space.id })
         // 删除数据
-        var index: Int?
-        var currentCollectionView: UICollectionView?
-        var otherCollectionView: UICollectionView?
-        if self.segmentedControl.selectedIndex == 0 {
-            index = allSpaces.firstIndex(where: { $0.id == space.id })
-            currentCollectionView = allSpacesCollectionView
-            otherCollectionView = favouritesCollectionView
-        }else {
-            index = favouriteSpaces.firstIndex(where: { $0.id == space.id })
-            currentCollectionView = favouritesCollectionView
-            otherCollectionView = allSpacesCollectionView
-        }
+//        var index: Int?
+//        var currentCollectionView: UICollectionView?
+//        var otherCollectionView: UICollectionView?
+//        if self.segmentedControl.selectedIndex == 0 {
+//            index = allSpaces.firstIndex(where: { $0.id == space.id })
+//            currentCollectionView = allSpacesCollectionView
+//            otherCollectionView = favouritesCollectionView
+//        }else {
+//            index = favouriteSpaces.firstIndex(where: { $0.id == space.id })
+//            currentCollectionView = favouritesCollectionView
+//            otherCollectionView = allSpacesCollectionView
+//        }
         self.allSpaces.removeAll(where: { $0.id == space.id })
         self.favouriteSpaces.removeAll(where: { $0.id == space.id })
         if space.gatewayStatus == .notBound {
-            if let index = index, let collectionView = currentCollectionView {
-                collectionView.deleteItems(at: [IndexPath(row: index, section: 0)])
-                otherCollectionView?.reloadData()
-            }else {
+//            if let index = index, let collectionView = currentCollectionView {
+//                collectionView.deleteItems(at: [IndexPath(row: index, section: 0)])
+//                otherCollectionView?.reloadData()
+//            }else {
                 self.allSpacesCollectionView.reloadData()
                 self.favouritesCollectionView.reloadData()
-            }
+//            }
             self.updateEmptyView()
         }else {
             self.setupData()
@@ -1621,14 +1621,14 @@ self.updateAddressData()
         if gateway.mac == allSpaceSelectGatewayId {
             allSpaceGatewayHeaderView?.gatewayStatusView.updateGatewayStatus(gatewayStatus, syncState: state, permissionState: permissionState)
             if case .successful = state { // 同步成功后清除状态
-                if gateway.syncCloudError != nil {
-                    gateway.syncCloudError = nil
-                    var items = showGatewayModels.map({ GatewayListItem(id: $0.mac, title: $0.name, status: $0.connectStatus, gatewayModel: $0.model)})
-                    if items.count > 0 {
-                        items.insert(.init(id: "", title: "overview".localizedString), at: 0)
-                    }
-                    allSpaceGatewayHeaderView?.gatewayListView.updateItems(items)
+//                if gateway.syncCloudError != nil {
+//                    gateway.syncCloudError = nil
+                var items = showGatewayModels.map({ GatewayListItem(id: $0.mac, title: $0.name, status: $0.connectStatus, gatewayModel: $0.model)})
+                if items.count > 0 {
+                    items.insert(.init(id: "", title: "overview".localizedString), at: 0)
                 }
+                allSpaceGatewayHeaderView?.gatewayListView.updateItems(items)
+//                }
                 DispatchQueue.main.asyncAfter(deadline: .now() + 1) {[weak self] in
                     guard let self = self else { return }
                     if gateway.mac == self.allSpaceSelectGatewayId, self.allSpaceGatewayHeaderView?.gatewayStatusView.gatewaySyncState?.rawValue == CloudSynchronizationState.successful.rawValue {
