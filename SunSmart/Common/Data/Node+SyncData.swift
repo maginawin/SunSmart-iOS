@@ -1150,6 +1150,7 @@ extension Node {
             syncDatas.append(.syncGatewayProjectId(projectId: gateway.siteId))
         }
         
+        
         // 需要关联的spaces同步数据
         var associatedSpaceDatas: [(networkKey: NetworkKey, applicationKey: ApplicationKey)] = []
         // 需要解除关联的spaces同步数据

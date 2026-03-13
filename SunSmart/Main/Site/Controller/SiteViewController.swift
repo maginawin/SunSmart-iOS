@@ -414,10 +414,9 @@ self.updateAddressData()
 //                        self.site.spaces.append(contentsOf: localSpaces)
 //                        self.site.spaces.append(contentsOf: deleteSpaces)
 //                        self.site.spaces.sort(by: { $0.create < $1.create })
-                        // 网关数据有更新，重新读取mesh设备数据
-//                        if self.gatewayModels.map({ $0.address }).sorted() != GatewayModel.load(siteId: self.site.id).map({ $0.address }).sorted() {
+                        if MeshNetworkManager.instance.meshNetwork?.uuid.uuidString != self.site.meshUUID || !MeshNetworkManager.instance.currentNetworkKey.isPrimary {
                             MeshLibManager.manager.setMeshNetworkConnected(meshUUID: self.site.meshUUID, subNetworkId: self.site.meshNetworkId, connected: false)
-//                        }
+                        }
                         self.setupData()
                     #if DEBUG
                         self.updateAddressData()
@@ -2307,7 +2306,7 @@ extension SiteViewController: UICollectionViewDataSource, UICollectionViewDelega
                 if gateway.model.syncCloudError != nil && syncState == nil {
                     syncState = .failure(error: gateway.model.syncCloudError!)
                 }
-                let permissionState: GatewayPermissionState = (site.permission == .owner || gateway.associatedSpaces.compactMap({ data in allSpaces.first(where: { $0.id == data.spaceId }) }).contains(where: { $0.canEditing })) ? .normal : .noPermission
+                let permissionState: GatewayPermissionState = (site.permission == .owner || gateway.associatedSpaces.isEmpty || gateway.associatedSpaces.compactMap({ data in allSpaces.first(where: { $0.id == data.spaceId }) }).contains(where: { $0.canEditing })) ? .normal : .noPermission
                 switch gateway.connectStatus {
                 case .online:
                     headerView.gatewayStatusView.updateGatewayStatus(.online, syncState: syncState, permissionState: permissionState)

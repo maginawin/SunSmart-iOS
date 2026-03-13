@@ -95,9 +95,14 @@ class GatewayViewController: UIViewController, DeviceProtocol {
             XWHUDManager.hide()
             switch result {
             case .success(let bindSpaces):
+                let currentAssociatedSpaceIds = self.gatewayModel.associatedSpaces.map({ $0.spaceId })
                 self.gatewayModel.associatedSpaces = bindSpaces
                 self.setGatewayModel.associatedSpaces = bindSpaces
                 self.reloadSection(.associatedSpaces)
+                if bindSpaces.map({ $0.spaceId }) != currentAssociatedSpaceIds {
+                    self.gatewayModel.save()
+                }
+                
             case .failure(let error):
                 XWHUDManager.showErrorTipHUD(error.localizedDescription)
             }
@@ -557,7 +562,7 @@ class GatewayViewController: UIViewController, DeviceProtocol {
     }
     
     private func resync() {
-       
+        
         let vc = SyncDevicesViewController(type: .devices([node]), reSync: true)
         vc.syncSuccessCallback = {[weak self] _ in
             guard let self = self else { return }

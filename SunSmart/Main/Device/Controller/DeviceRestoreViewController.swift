@@ -1361,6 +1361,9 @@ extension DeviceRestoreViewController: UITableViewDataSource, UITableViewDelegat
     }
     
     func tableView(_ tableView: UITableView, viewForHeaderInSection section: Int) -> UIView? {
+        guard space != nil else {
+            return UIView()
+        }
         let headerView = tableView.dequeueReusableHeaderFooterView(withIdentifier: "header") as! DeviceLightInfoSectionView
         let sectionData = showSections[section]
         if let group = sectionData.group {
