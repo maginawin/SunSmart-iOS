@@ -2276,7 +2276,7 @@ extension DeviceSwitchData {
                 }
                 
                 let switchData = DeviceSwitchData(id: row[ExpressionKey.switchId], enabled: row[ExpressionKey.enabled], name: row[ExpressionKey.name], linkGroupAddress: linkGroupAddress != nil ? Address(linkGroupAddress!) : nil, subLinkGroupAddress: subLinkGroupAddress != nil ? Address(subLinkGroupAddress!) : nil, bindGroupAddresses: bindAddresses)
-                let panelType: PanelType = .init(rawValue: UInt8(row[ExpressionKey.panelType])) ?? .default
+                let panelType: PanelType = .init(rawValue: UInt8(row[ExpressionKey.panelType])) ?? .default_4key
                 switchData.panelType = panelType
                 if let number = row[ExpressionKey.sceneA] { //  let sceneA = MeshNetworkManager.instance.scenes.first(where: { $0.number == number })
                     switchData.sceneANumber = SceneNumber(number)

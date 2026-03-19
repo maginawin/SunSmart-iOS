@@ -92,7 +92,7 @@ class SiteViewController: UIViewController {
         allSpaces = site.spaces
         favouriteSpaces = allSpaces.filter({ $0.isFavourite })
 
-        NotificationCenter.default.addObserver(forName: .init(SiteStateChangeNotificationName), object: nil, queue: nil) {[weak self] _ in
+        NotificationCenter.default.addObserver(forName: .init(SiteStateChangeNotificationName), object: nil, queue: .main) {[weak self] _ in
             guard let self = self else { return }
             if self.site.state == .waitDeleted {
                 NotificationCenter.default.post(name: .init(SitesDataRefreshNotifiacationName), object: true)
@@ -110,7 +110,7 @@ class SiteViewController: UIViewController {
         }
         
         /// 刷新spaces列表通知回调
-        NotificationCenter.default.addObserver(forName: .init(SpacesRefreshChangeNotificationName), object: nil, queue: nil) {[weak self] notification in
+        NotificationCenter.default.addObserver(forName: .init(SpacesRefreshChangeNotificationName), object: nil, queue: .main) {[weak self] notification in
             guard let self = self else { return }
             if notification.object as? Bool ?? false {
                 // 更新缓存数据
@@ -262,7 +262,8 @@ self.updateAddressData()
             case .success(let response):
                 if let siteData = JSON(response)["data"].dictionaryObject {
 //                    let site = SiteData.import(siteJsonData: siteData)
-                    Task {
+                    Task { [weak self] in
+                        guard let self = self else { return }
                         print("导入数据: \(Date().timeIntervalSince1970)")
                         await self.site.update(siteJsonData: siteData)
                         print("导入数据完成: \(Date().timeIntervalSince1970)")

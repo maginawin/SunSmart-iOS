@@ -15,35 +15,42 @@ class DeviceSwitchData: Copyable {
         /// 按键数量
         var keyCount: Int {
             switch self {
-            case .default:
+            case .default_4key, .scenes_4key:
                 return 4
-            case .scenes:
-                return 4
+            case .default_2key, .scenes_2key:
+                return 2
             }
         }
         
         /// 占用地址数量
         var usedAddressesNumber: Int {
             switch self {
-            case .default:
+            case .default_4key, .scenes_4key:
                 return 2
-            case .scenes:
+            case .default_2key, .scenes_2key:
                 return 2
             }
         }
         
         var describe: String {
+            var name: String = ""
             switch self {
-            case .default:
-                return "default".localizedString
-            case .scenes:
-                return "scene_panel".localizedString
+            case .default_4key, .default_2key:
+                name = "default".localizedString
+                return "\("default".localizedString)(\(keyCount) \("key".localizedString))"
+            case .scenes_4key, .scenes_2key:
+                name = "scene_panel".localizedString
             }
+            return name + "(\(keyCount) \("key".localizedString))"
         }
-        /// 默认
-        case `default` = 0
-        /// 场景面板
-        case scenes = 1
+        /// 默认(4键)
+        case default_4key = 0
+        /// 场景面板(4键)
+        case scenes_4key = 1
+        /// 默认(2键)
+        case default_2key = 2
+        /// 场景面板(2键)
+        case scenes_2key = 3
     }
     
     /// id
@@ -53,7 +60,7 @@ class DeviceSwitchData: Copyable {
     /// 名称
     var name: String
     /// 面板类型
-    var panelType: PanelType = .default
+    var panelType: PanelType = .default_4key
     
     /// 关联的组地址Main（publish）
     var linkGroupAddress: Address?
@@ -125,6 +132,9 @@ class DeviceSwitchData: Copyable {
         return MeshNetworkManager.instance.meshNetwork?.node(withAddress: address)
     }
     
+    /// 动能开关最大按键数量（因可切换开关类型，分配固件开关数量按最大支持数量分配）
+    var maxKeyCount: UInt8 = 4
+    
     /// 默认动能开关
     static func `default`(id: String = UUID().uuidString) -> DeviceSwitchData {
         return DeviceSwitchData(id: id, enabled: true, name: MeshNetworkManager.instance.getNextSwitchName(), linkGroupAddress: nil, bindGroupAddresses: [], sceneANumber: nil, sceneBNumber: nil, proxyNodeAddress: nil)
@@ -186,7 +196,7 @@ class DeviceSwitchData: Copyable {
             return switchKeys
         }
         switch panelType {
-        case .default:
+        case .default_4key:
             let subAddress = self.subLinkGroupAddress
             switchKeys = [
                 SwitchKey(key: 4, shortPressAction: .auto(address: mainAddress), longPressAction: .dimUp(address: mainAddress), direction: .up),
@@ -194,13 +204,23 @@ class DeviceSwitchData: Copyable {
                 SwitchKey(key: 2, shortPressAction: .sceneRecall(sceneA?.number), longPressAction: .cctUp(address: subAddress ?? mainAddress), direction: .up),
                 SwitchKey(key: 1, shortPressAction: .sceneRecall(sceneB?.number), longPressAction: .cctDown(address: subAddress ?? mainAddress), direction: .down)
             ]
-        case .scenes:
+        case .default_2key:
+            switchKeys = [
+                SwitchKey(key: 4, shortPressAction: .auto(address: mainAddress), longPressAction: .dimUp(address: mainAddress), direction: .up),
+                SwitchKey(key: 3, shortPressAction: .off(address: mainAddress), longPressAction: .dimDown(address: mainAddress), direction: .down)
+            ]
+        case .scenes_4key:
             let subAddress = self.subLinkGroupAddress
             switchKeys = [
                 SwitchKey(key: 4, shortPressAction: .sceneRecall(sceneA?.number), longPressAction: .dimUp(address: mainAddress), direction: .up),
                 SwitchKey(key: 3, shortPressAction: .sceneRecall(sceneB?.number), longPressAction: .dimDown(address: mainAddress), direction: .down),
                 SwitchKey(key: 2, shortPressAction: .sceneRecall(sceneC?.number), longPressAction: .cctUp(address: subAddress ?? mainAddress), direction: .up),
                 SwitchKey(key: 1, shortPressAction: .sceneRecall(sceneD?.number), longPressAction: .cctDown(address: subAddress ?? mainAddress), direction: .down)
+            ]
+        case .scenes_2key:
+            switchKeys = [
+                SwitchKey(key: 4, shortPressAction: .sceneRecall(sceneA?.number), longPressAction: .dimUp(address: mainAddress), direction: .up),
+                SwitchKey(key: 3, shortPressAction: .sceneRecall(sceneB?.number), longPressAction: .dimDown(address: mainAddress), direction: .down)
             ]
         }
         return switchKeys

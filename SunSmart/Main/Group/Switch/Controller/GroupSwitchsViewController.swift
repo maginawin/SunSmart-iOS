@@ -523,17 +523,21 @@ extension GroupSwitchsViewController: UITableViewDataSource, UITableViewDelegate
         let option = options[indexPath.row]
         if option == .keyInfo {
             let panelCell = tableView.dequeueReusableCell(withIdentifier: "panel", for: indexPath) as! GroupSwitchPanelViewCell
+            panelCell.panelType = groupSwitch.panelType
             switch groupSwitch.panelType {
-            case .default:
-                panelCell.key1ShortPressBtn.setTitle("switch_key_on".localizedString, for: .normal)
-                panelCell.key2ShortPressBtn.setTitle("switch_key_off".localizedString, for: .normal)
+            case .default_4key:
                 panelCell.key3ShortPressBtn.setTitle(groupSwitch.sceneA?.name ?? "switch_key_sceneA".localizedString, for: .normal)
                 panelCell.key4ShortPressBtn.setTitle(groupSwitch.sceneB?.name ?? "switch_key_sceneB".localizedString, for: .normal)
-            case .scenes:
+            case .scenes_4key:
                 panelCell.key1ShortPressBtn.setTitle(groupSwitch.sceneA?.name ?? "switch_key_sceneA".localizedString, for: .normal)
                 panelCell.key2ShortPressBtn.setTitle(groupSwitch.sceneB?.name ?? "switch_key_sceneB".localizedString, for: .normal)
                 panelCell.key3ShortPressBtn.setTitle(groupSwitch.sceneC?.name ?? "switch_key_sceneC".localizedString, for: .normal)
                 panelCell.key4ShortPressBtn.setTitle(groupSwitch.sceneD?.name ?? "switch_key_sceneD".localizedString, for: .normal)
+            case .default_2key:
+                break
+            case .scenes_2key:
+                panelCell.key1LongPressBtn.setTitle(groupSwitch.sceneA?.name ?? "switch_key_sceneA".localizedString, for: .normal)
+                panelCell.key2ShortPressBtn.setTitle(groupSwitch.sceneB?.name ?? "switch_key_sceneB".localizedString, for: .normal)
             }
             if let realSwitch = group.info.switchs.first(where: { $0.id == groupSwitch.id }) {
                 panelCell.saveBtn.isEnabled = !(realSwitch == groupSwitch) || realSwitch.needSyncData
@@ -677,7 +681,7 @@ extension GroupSwitchsViewController: UITableViewDataSource, UITableViewDelegate
                 return
             }
             var datas: [SwitchSceneData] = [.init(type: .sceneA, scene: groupSwitch.sceneA), .init(type: .sceneB, scene: groupSwitch.sceneB)]
-            if groupSwitch.panelType == .scenes {
+            if groupSwitch.panelType == .scenes_4key {
                 datas.append(contentsOf: [
                     .init(type: .sceneC, scene: groupSwitch.sceneC),
                     .init(type: .sceneD, scene: groupSwitch.sceneD),

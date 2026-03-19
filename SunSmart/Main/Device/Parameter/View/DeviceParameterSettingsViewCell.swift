@@ -6,6 +6,7 @@
 //
 
 import UIKit
+import SnapKit
 
 protocol DeviceParameterSettingsViewCellDelegate: AnyObject {
     
@@ -214,6 +215,8 @@ class DeviceParameterBehaviorAfterSetupViewCell: UITableViewCell {
     private var detailsTitleLabel: UILabel!
     private var detailsArrowImageView: UIImageView!
     private var noteLabel: UILabel!
+    private var noteLabelHeightConstraint: Constraint?
+    private var noteLabelTopConstraint: Constraint?
     
     weak var delegate: DeviceParameterBehaviorAfterSetupViewCellDelegate?
     
@@ -233,7 +236,7 @@ class DeviceParameterBehaviorAfterSetupViewCell: UITableViewCell {
         selectedMode = mode
         self.detailsExpanded = detailsExpanded
         if let noteText = noteText {
-            noteLabel.text = noteText
+            applyNoteText(noteText)
         }
     }
     
@@ -275,43 +278,33 @@ class DeviceParameterBehaviorAfterSetupViewCell: UITableViewCell {
         noteLabel.isHidden = !detailsExpanded
         detailsTitleLabel.text = detailsExpanded ? "hide_details".localizedString : "show_details".localizedString
         detailsArrowImageView.image = UIImage(named: detailsExpanded ? "arrow_up_black" : "arrow_down_black")
-        
-        detailsRow.snp.remakeConstraints { make in
-            make.left.equalTo(SCRXFrom(16))
-            make.right.equalTo(SCRXFrom(-16))
-            make.top.equalTo(titleLabel.snp.bottom).offset(SCRYFrom(56))
-            make.height.equalTo(SCRYFrom(30))
-            if !detailsExpanded {
-                make.bottom.equalTo(SCRYFrom(-16))
-            }
-        }
-        detailsArrowImageView.snp.remakeConstraints { make in
-            make.centerY.equalToSuperview()
-            make.right.equalToSuperview()
-            make.width.height.equalTo(SCRYFrom(30))
-        }
-        detailsTitleLabel.snp.remakeConstraints { make in
-            make.left.equalToSuperview()
-            make.centerY.equalToSuperview()
-            make.right.lessThanOrEqualTo(detailsArrowImageView.snp.left).offset(SCRXFrom(-8))
-        }
-        
+
         if detailsExpanded {
-            noteLabel.snp.remakeConstraints { make in
-                make.left.equalTo(SCRXFrom(16))
-                make.right.equalTo(SCRXFrom(-16))
-                make.top.equalTo(detailsRow.snp.bottom).offset(SCRYFrom(8))
-                make.bottom.equalTo(SCRYFrom(-16))
-            }
+            noteLabelTopConstraint?.update(offset: SCRYFrom(8))
+            noteLabelHeightConstraint?.deactivate()
         } else {
-            noteLabel.snp.remakeConstraints { make in
-                make.left.equalTo(SCRXFrom(16))
-                make.right.equalTo(SCRXFrom(-16))
-                make.top.equalTo(detailsRow.snp.bottom).offset(SCRYFrom(8))
-            }
+            noteLabelTopConstraint?.update(offset: 0)
+            noteLabelHeightConstraint?.activate()
         }
     }
-    
+
+    private func applyNoteText(_ noteText: String) {
+        let paragraphStyle = NSMutableParagraphStyle()
+        paragraphStyle.lineSpacing = 4
+        paragraphStyle.lineBreakMode = .byWordWrapping
+        noteLabel.attributedText = NSAttributedString(
+            string: noteText,
+            attributes: [.paragraphStyle: paragraphStyle]
+        )
+    }
+
+    override func prepareForReuse() {
+        super.prepareForReuse()
+        applyNoteText("behavior_after_setup_success_note".localizedString)
+        detailsExpanded = true
+        selectedMode = .breathing
+    }
+
     private func setupUI() {
         containerView = UIView()
         containerView.backgroundColor = .white
@@ -323,7 +316,7 @@ class DeviceParameterBehaviorAfterSetupViewCell: UITableViewCell {
             make.top.equalToSuperview()
             make.bottom.equalTo(SCRYFrom(-16))
         }
-        
+
         titleLabel = UILabel(
             text: "\("behavior_after_setup_success".localizedString):",
             textColor: TextBlack_Color,
@@ -336,7 +329,7 @@ class DeviceParameterBehaviorAfterSetupViewCell: UITableViewCell {
             make.top.equalTo(SCRYFrom(16))
             make.right.equalTo(SCRXFrom(-16))
         }
-        
+
         var previousBtn: UIButton?
         for (index, mode) in DeviceBlinkMode.modes.enumerated() {
             let button = UIButton(type: .custom)
@@ -368,11 +361,17 @@ class DeviceParameterBehaviorAfterSetupViewCell: UITableViewCell {
             optionButtons.append(button)
             previousBtn = button
         }
-        
+
         detailsRow = UIControl()
         detailsRow.addTarget(self, action: #selector(detailsRowTapped), for: .touchUpInside)
         containerView.addSubview(detailsRow)
-        
+        detailsRow.snp.makeConstraints { make in
+            make.left.equalTo(SCRXFrom(16))
+            make.right.equalTo(SCRXFrom(-16))
+            make.top.equalTo(titleLabel.snp.bottom).offset(SCRYFrom(56))
+            make.height.equalTo(SCRYFrom(30))
+        }
+
         detailsTitleLabel = UILabel(
             text: "hide_details".localizedString,
             textColor: Bar_Color,
@@ -380,12 +379,22 @@ class DeviceParameterBehaviorAfterSetupViewCell: UITableViewCell {
             fontWeight: .regular
         )
         detailsRow.addSubview(detailsTitleLabel)
-        
+
         detailsArrowImageView = UIImageView()
         detailsArrowImageView.contentMode = .scaleAspectFit
         detailsArrowImageView.tintColor = Bar_Color
         detailsRow.addSubview(detailsArrowImageView)
-        
+        detailsArrowImageView.snp.makeConstraints { make in
+            make.centerY.equalToSuperview()
+            make.right.equalToSuperview()
+            make.width.height.equalTo(SCRYFrom(30))
+        }
+        detailsTitleLabel.snp.makeConstraints { make in
+            make.left.equalToSuperview()
+            make.centerY.equalToSuperview()
+            make.right.lessThanOrEqualTo(detailsArrowImageView.snp.left).offset(SCRXFrom(-8))
+        }
+
         noteLabel = UILabel(
             text: nil,
             textColor: AssistText_Color,
@@ -394,10 +403,18 @@ class DeviceParameterBehaviorAfterSetupViewCell: UITableViewCell {
             fit: false
         )
         noteLabel.numberOfLines = 0
-        let paragraphStyle = NSMutableParagraphStyle()
-        paragraphStyle.lineSpacing = 4
-        paragraphStyle.lineBreakMode = .byWordWrapping
-        noteLabel.attributedText = NSAttributedString(string: "behavior_after_setup_success_note".localizedString, attributes: [.paragraphStyle: paragraphStyle])
+        noteLabel.setContentCompressionResistancePriority(.required, for: .vertical)
+        noteLabel.setContentHuggingPriority(.required, for: .vertical)
+        applyNoteText("behavior_after_setup_success_note".localizedString)
         containerView.addSubview(noteLabel)
+        noteLabel.snp.makeConstraints { make in
+            make.left.equalTo(SCRXFrom(16))
+            make.right.equalTo(SCRXFrom(-16))
+            noteLabelTopConstraint = make.top.equalTo(detailsRow.snp.bottom).offset(SCRYFrom(8)).constraint
+            make.bottom.equalTo(SCRYFrom(-16))
+            noteLabelHeightConstraint = make.height.equalTo(0).constraint
+        }
+
+        noteLabelHeightConstraint?.deactivate()
     }
 }

@@ -440,6 +440,14 @@ class DeviceParameterSettingsController: UIViewController {
         bottomView.rightBtn.setTitle("SET_UP".localizedString, for: .normal)
         bottomView.rightBtn.addTarget(self, action: #selector(setupAction), for: .touchUpInside)
         bottomView.rightBtn.isEnabled = false
+        if displayMode == .behaviorOnly {
+            bottomView.leftBtn.isHidden = true
+            bottomView.hlineView.isHidden = true
+            bottomView.rightBtn.snp.remakeConstraints { make in
+                make.left.right.top.equalToSuperview()
+                make.height.equalTo(SCRYFrom(56))
+            }
+        }
         view.addSubview(bottomView)
         bottomView.snp.makeConstraints { make in
             make.left.right.bottom.equalToSuperview()

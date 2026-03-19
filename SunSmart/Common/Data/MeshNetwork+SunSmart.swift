@@ -1427,7 +1427,7 @@ extension DeviceSwitchData {
                 
                 // 判断是否需要同步动能开关代理
                 if let mac = self.enOceanMacAddress, let key = self.enOceanSecurityKey, let proxyNode = self.proxyNode {
-                    if proxyNode.getEnOceanSwitchBindMessageHandles(enOceanMacAddress: mac, securityKey: key, enabled: self.enabled, switchKeys: self.switchKeys).count > 0 {
+                    if proxyNode.getEnOceanSwitchBindMessageHandles(enOceanMacAddress: mac, securityKey: key, keyCount: self.maxKeyCount, enabled: self.enabled, switchKeys: self.switchKeys).count > 0 {
                         syncProxy = proxyNode
                     }
                 }
@@ -1942,7 +1942,7 @@ extension Node {
             // 如果恢复的设备之前作为动能开关代理
             if let enOceanMacAddress = oldNode.enOceanMacAddress, let switchData = group.info.switchs.first(where: { $0.enOceanMacAddress == enOceanMacAddress && $0.proxyNodeAddress == oldNode.primaryUnicastAddress }), switchData.linkGroup != nil, let enOceanSecurityKey = switchData.enOceanSecurityKey {
                 
-                let handles = self.getEnOceanSwitchBindMessageHandles(enOceanMacAddress: enOceanMacAddress, securityKey: enOceanSecurityKey, enabled: switchData.enabled, switchKeys: switchData.switchKeys)
+                let handles = self.getEnOceanSwitchBindMessageHandles(enOceanMacAddress: enOceanMacAddress, securityKey: enOceanSecurityKey, keyCount: switchData.maxKeyCount, enabled: switchData.enabled, switchKeys: switchData.switchKeys)
                 messageHandles.append(contentsOf: handles)
             }
             

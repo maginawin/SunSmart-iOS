@@ -49,6 +49,66 @@ class GroupSwitchPanelViewCell: UITableViewCell {
         }
     }
     
+    var panelType: DeviceSwitchData.PanelType = .default_4key {
+        didSet {
+            key1ShortPressBtn.isHidden = false
+            key1LongPressBtn.setImage(UIImage(named: "switch_press_long"), for: .normal)
+            key2LongPressBtn.isHidden = false
+            key3ShortPressBtn.isHidden = false
+            key3LongPressBtn.setImage(UIImage(named: "switch_press_long"), for: .normal)
+            key4LongPressBtn.isHidden = false
+            key4ShortPressBtn.setImage(UIImage(named: "switch_press"), for: .normal)
+            
+            switch panelType {
+            case .default_4key:
+                panelImageView.image = UIImage(named: "switch_key")
+                key1ShortPressBtn.setTitle("switch_key_on".localizedString, for: .normal)
+                key1LongPressBtn.setTitle("switch_key_dim_up".localizedString, for: .normal)
+                key2ShortPressBtn.setTitle("switch_key_off".localizedString, for: .normal)
+                key2LongPressBtn.setTitle("switch_key_dim_down".localizedString, for: .normal)
+                key3ShortPressBtn.setTitle("switch_key_sceneA".localizedString, for: .normal)
+                key3LongPressBtn.setTitle("switch_key_cooler".localizedString, for: .normal)
+                key4ShortPressBtn.setTitle("switch_key_sceneB".localizedString, for: .normal)
+                key4LongPressBtn.setTitle("switch_key_warmer".localizedString, for: .normal)
+            case .scenes_4key:
+                panelImageView.image = UIImage(named: "switch_key")
+                key1ShortPressBtn.setTitle("switch_key_sceneA".localizedString, for: .normal)
+                key1LongPressBtn.setTitle("switch_key_dim_up".localizedString, for: .normal)
+                key2ShortPressBtn.setTitle("switch_key_sceneB".localizedString, for: .normal)
+                key2LongPressBtn.setTitle("switch_key_dim_down".localizedString, for: .normal)
+                key3ShortPressBtn.setTitle("switch_key_sceneC".localizedString, for: .normal)
+                key3LongPressBtn.setTitle("switch_key_cooler".localizedString, for: .normal)
+                key4ShortPressBtn.setTitle("switch_key_sceneD".localizedString, for: .normal)
+                key4LongPressBtn.setTitle("switch_key_warmer".localizedString, for: .normal)
+            case .default_2key:
+                panelImageView.image = UIImage(named: "switch_key_2")
+                key1ShortPressBtn.isHidden = true
+                key1LongPressBtn.setImage(UIImage(named: "switch_press"), for: .normal)
+                key1LongPressBtn.setTitle("switch_key_on".localizedString, for: .normal)
+                key2LongPressBtn.isHidden = true
+                key2ShortPressBtn.setTitle("switch_key_off".localizedString, for: .normal)
+                key3ShortPressBtn.isHidden = true
+                key3LongPressBtn.setTitle("switch_key_dim_up".localizedString, for: .normal)
+                key4LongPressBtn.isHidden = true
+                key4ShortPressBtn.setTitle("switch_key_dim_down".localizedString, for: .normal)
+                key4ShortPressBtn.setImage(UIImage(named: "switch_press_long"), for: .normal)
+            case .scenes_2key:
+                panelImageView.image = UIImage(named: "switch_key_2")
+                key1ShortPressBtn.isHidden = true
+                key1LongPressBtn.setImage(UIImage(named: "switch_press"), for: .normal)
+                key1LongPressBtn.setTitle("switch_key_sceneA".localizedString, for: .normal)
+                key2LongPressBtn.isHidden = true
+                key2ShortPressBtn.setTitle("switch_key_sceneB".localizedString, for: .normal)
+                key3ShortPressBtn.isHidden = true
+                key3LongPressBtn.setTitle("switch_key_dim_up".localizedString, for: .normal)
+                key4LongPressBtn.isHidden = true
+                key4ShortPressBtn.setTitle("switch_key_dim_down".localizedString, for: .normal)
+                key4ShortPressBtn.setImage(UIImage(named: "switch_press_long"), for: .normal)
+            }
+            
+        }
+    }
+    
 //    var sceneNameA: String? {
 //        didSet {
 //            sceneAKeyBtn.setTitle(sceneNameA ?? "switch_key_sceneA".localizedString, for: .normal)
@@ -99,6 +159,7 @@ class GroupSwitchPanelViewCell: UITableViewCell {
         }
         
         panelImageView = UIImageView(image: UIImage(named: "switch_key"))
+        panelImageView.contentMode = .center
         switchContentView.addSubview(panelImageView)
         panelImageView.snp.makeConstraints { make in
 //            make.left.equalTo(SCRXFrom(16))
@@ -106,7 +167,7 @@ class GroupSwitchPanelViewCell: UITableViewCell {
 //            make.top.equalTo(SCRYFrom(8))
             make.center.equalToSuperview()
             make.width.equalTo(SCRXFrom(160))
-            make.height.equalTo(panelImageView.snp.width).multipliedBy(108.0 / 160)
+//            make.height.equalTo(panelImageView.snp.width).multipliedBy(108.0 / 160)
 //            make.bottom.equalTo(SCRYFrom(-68))
         }
         

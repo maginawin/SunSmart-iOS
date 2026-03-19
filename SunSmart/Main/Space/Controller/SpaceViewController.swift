@@ -583,10 +583,13 @@ class SpaceViewController: WMPageController {
             switch result {
             case .success(let response):
                 if let spaceData = JSON(response)["data"].dictionaryObject {
-                    Task {
+                    Task { [weak self] in
+                        guard let self = self else { return }
                         await self.space.update(spaceJsonData: spaceData)
-                        self.title = self.space.name
                         self.space.save()
+                        await MainActor.run {
+                            self.title = self.space.name
+                        }
                     }
                 }
             case .failure(_):

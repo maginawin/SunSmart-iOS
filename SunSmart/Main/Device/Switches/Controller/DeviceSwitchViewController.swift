@@ -491,17 +491,21 @@ extension DeviceSwitchViewController: UITableViewDataSource, UITableViewDelegate
             let panelCell = tableView.dequeueReusableCell(withIdentifier: "panel", for: indexPath) as! GroupSwitchPanelViewCell
 //            panelCell.sceneNameA = setSwitchData.sceneA?.name
 //            panelCell.sceneNameB = setSwitchData.sceneB?.name
+            panelCell.panelType = setSwitchData.panelType
             switch setSwitchData.panelType {
-            case .default:
-                panelCell.key1ShortPressBtn.setTitle("switch_key_on".localizedString, for: .normal)
-                panelCell.key2ShortPressBtn.setTitle("switch_key_off".localizedString, for: .normal)
+            case .default_4key:
                 panelCell.key3ShortPressBtn.setTitle(setSwitchData.sceneA?.name ?? "switch_key_sceneA".localizedString, for: .normal)
                 panelCell.key4ShortPressBtn.setTitle(setSwitchData.sceneB?.name ?? "switch_key_sceneB".localizedString, for: .normal)
-            case .scenes:
+            case .scenes_4key:
                 panelCell.key1ShortPressBtn.setTitle(setSwitchData.sceneA?.name ?? "switch_key_sceneA".localizedString, for: .normal)
                 panelCell.key2ShortPressBtn.setTitle(setSwitchData.sceneB?.name ?? "switch_key_sceneB".localizedString, for: .normal)
                 panelCell.key3ShortPressBtn.setTitle(setSwitchData.sceneC?.name ?? "switch_key_sceneC".localizedString, for: .normal)
                 panelCell.key4ShortPressBtn.setTitle(setSwitchData.sceneD?.name ?? "switch_key_sceneD".localizedString, for: .normal)
+            case .default_2key:
+                break
+            case .scenes_2key:
+                panelCell.key1LongPressBtn.setTitle(setSwitchData.sceneA?.name ?? "switch_key_sceneA".localizedString, for: .normal)
+                panelCell.key2ShortPressBtn.setTitle(setSwitchData.sceneB?.name ?? "switch_key_sceneB".localizedString, for: .normal)
             }
             panelCell.saveBtn.isHidden = true
             panelCell.deleteBtn.isHidden = true
@@ -707,7 +711,7 @@ extension DeviceSwitchViewController: UITableViewDataSource, UITableViewDelegate
             }
             
             var datas: [SwitchSceneData] = [.init(type: .sceneA, scene: setSwitchData.sceneA), .init(type: .sceneB, scene: setSwitchData.sceneB)]
-            if setSwitchData.panelType == .scenes {
+            if setSwitchData.panelType == .scenes_4key {
                 datas.append(contentsOf: [
                     .init(type: .sceneC, scene: setSwitchData.sceneC),
                     .init(type: .sceneD, scene: setSwitchData.sceneD),

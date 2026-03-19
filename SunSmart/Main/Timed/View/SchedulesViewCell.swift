@@ -33,11 +33,13 @@ class SchedulesViewCell: UICollectionViewCell {
 //            }
             weeksDayLabel.text = schedule.weekStr
             
-            if schedule.hour >= 12 {
-                timeLabel.text = String(format: "%d:%02d %@", schedule.hour - 12, schedule.minute, "pm".localizedString)
-            }else {
-                timeLabel.text = String(format: "%d:%02d %@", schedule.hour == 0 ? 12 : schedule.hour, schedule.minute, "am".localizedString)
-            }
+            let hour24 = schedule.hour
+            let minute = schedule.minute
+
+            let isAM = hour24 < 12
+            let hour12 = hour24 % 12 == 0 ? 12 : hour24 % 12
+            let period = isAM ? "am".localizedString : "pm".localizedString
+            timeLabel.text = String(format: "%d:%02d %@", hour12, minute, period)
             
             nameLabel.snp.remakeConstraints { make in
                 make.left.equalTo(SCRXFrom(16))

@@ -63,6 +63,13 @@ class ProfileProximityLightingNumberView: UIView {
         }
     }
     
+    /// 是否可编辑
+    var editable: Bool = true {
+        didSet {
+            numberSlider.editable = editable
+        }
+    }
+    
     override init(frame: CGRect) {
         super.init(frame: frame)
         

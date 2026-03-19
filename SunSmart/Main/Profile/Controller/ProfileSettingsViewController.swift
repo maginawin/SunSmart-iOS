@@ -835,6 +835,7 @@ class ProfileSettingsViewController: UIViewController, KeyboardScrollable {
             
         if proximityLightingNumberView == nil {
             proximityLightingNumberView = ProfileProximityLightingNumberView()
+            proximityLightingNumberView?.editable = self.editable
             proximityLightingNumberView?.delegate = self
             contentView.addSubview(proximityLightingNumberView!)
             proximityLightingNumberView!.snp.makeConstraints { make in
@@ -858,6 +859,7 @@ class ProfileSettingsViewController: UIViewController, KeyboardScrollable {
         
         if proximityLightingNumberView == nil {
             proximityLightingNumberView = ProfileProximityLightingNumberView()
+            proximityLightingNumberView?.editable = self.editable
             proximityLightingNumberView?.delegate = self
             contentView.addSubview(proximityLightingNumberView!)
             proximityLightingNumberView!.snp.makeConstraints { make in

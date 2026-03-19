@@ -10,8 +10,8 @@ import UIKit
 class SwitchSelectPanelTypeController: UIViewController {
 
     private var tableView: UITableView!
-    private var switchPanelTypes: [DeviceSwitchData.PanelType] = [.default, .scenes]
-    var selectPanelType: DeviceSwitchData.PanelType = .default
+    private var switchPanelTypes: [DeviceSwitchData.PanelType] = [.default_4key, .scenes_4key, .default_2key, .scenes_2key]
+    var selectPanelType: DeviceSwitchData.PanelType = .default_4key
     
     /// 是否已选择场景
     var scenesSelected: Bool = false
@@ -72,18 +72,19 @@ extension SwitchSelectPanelTypeController: UITableViewDataSource, UITableViewDel
     func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
         let panelCell = tableView.dequeueReusableCell(withIdentifier: "panel", for: indexPath) as! GroupSwitchPanelViewCell
         let type = switchPanelTypes[indexPath.section]
-        switch type {
-        case .default:
-            panelCell.key1ShortPressBtn.setTitle("switch_key_on".localizedString, for: .normal)
-            panelCell.key2ShortPressBtn.setTitle("switch_key_off".localizedString, for: .normal)
-            panelCell.key3ShortPressBtn.setTitle("switch_key_sceneA".localizedString, for: .normal)
-            panelCell.key4ShortPressBtn.setTitle("switch_key_sceneB".localizedString, for: .normal)
-        case .scenes:
-            panelCell.key1ShortPressBtn.setTitle("switch_key_sceneA".localizedString, for: .normal)
-            panelCell.key2ShortPressBtn.setTitle("switch_key_sceneB".localizedString, for: .normal)
-            panelCell.key3ShortPressBtn.setTitle("switch_key_sceneC".localizedString, for: .normal)
-            panelCell.key4ShortPressBtn.setTitle("switch_key_sceneD".localizedString, for: .normal)
-        }
+//        switch type {
+//        case .default:
+//            panelCell.key1ShortPressBtn.setTitle("switch_key_on".localizedString, for: .normal)
+//            panelCell.key2ShortPressBtn.setTitle("switch_key_off".localizedString, for: .normal)
+//            panelCell.key3ShortPressBtn.setTitle("switch_key_sceneA".localizedString, for: .normal)
+//            panelCell.key4ShortPressBtn.setTitle("switch_key_sceneB".localizedString, for: .normal)
+//        case .scenes:
+//            panelCell.key1ShortPressBtn.setTitle("switch_key_sceneA".localizedString, for: .normal)
+//            panelCell.key2ShortPressBtn.setTitle("switch_key_sceneB".localizedString, for: .normal)
+//            panelCell.key3ShortPressBtn.setTitle("switch_key_sceneC".localizedString, for: .normal)
+//            panelCell.key4ShortPressBtn.setTitle("switch_key_sceneD".localizedString, for: .normal)
+//        }
+        panelCell.panelType = type
         panelCell.saveBtn.isHidden = true
         panelCell.deleteBtn.isHidden = true
 //        panelCell.margin = SCRXFrom(16)
@@ -97,14 +98,15 @@ extension SwitchSelectPanelTypeController: UITableViewDataSource, UITableViewDel
         headerView.titleLabel.text = switchPanelTypes[section].describe
         headerView.titleLabel.font = FONTS(14)
         headerView.titleLabel.textColor = TextBlack_Color
-        headerView.titleLeftMargin = SCRXFrom(20)
-        headerView.bottomMargin = 0
+        headerView.titleLeftMargin = SCRXFrom(28)
+        headerView.bottomMargin = SCRYFrom(6)
         return headerView
     }
     
     func tableView(_ tableView: UITableView, heightForHeaderInSection section: Int) -> CGFloat {
-        let type = switchPanelTypes[section]
-        return type == .default ? SCRYFrom(25) : SCRYFrom(33)
+//        let type = switchPanelTypes[section]
+        return section == 0 ? SCRYFrom(33) : SCRYFrom(41)
+//        return type == .default ? SCRYFrom(25) : SCRYFrom(33)
     }
     
     func tableView(_ tableView: UITableView, viewForFooterInSection section: Int) -> UIView? {

@@ -1579,3 +1579,4 @@
 "display_lux_message" = "Displays the illuminance value detected by the device's light sensor.";
 "show" = "Show";
 "hide" = "Hide";
+"key" = "key";

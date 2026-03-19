@@ -1092,6 +1092,11 @@ extension SpaceData {
                         node.preConfiguration = preConfiguration
                     }
                     
+                    // 设备pir启用/禁用
+                    if let pirEnabled = nodeJson["pirEnabled"].bool {
+                        node.pirEnabled = pirEnabled
+                    }
+                    
                     if node.deviceType == .gateway {
                         // 网关
                         if let gatewayInfo = nodeJson["gatewayInfo"].dictionaryObject, let gatewayInfoData = try? JSONSerialization.data(withJSONObject: gatewayInfo) {

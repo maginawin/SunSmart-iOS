@@ -687,11 +687,13 @@ class ScheduleTimeView: UIView {
                 return 0
             }
             // 取值范围1~12
-            // AM 1~11对应1点到11点，12点是中午12点
-            // PM 1~11对应13点到23点，12就是午夜0点
+            // AM 1~11 对应 1 点到 11 点，12 点是午夜 0 点
+            // PM 1~11 对应 13 点到 23 点，12 点是中午 12 点
             let isAM = selectRows[0] == 0
+            
+            let hour12 = selectRows[1] + 1
             // 转换24小时制
-            let hour = selectRows[1] + 1 + (isAM ? 0 : 12) % 24
+            let hour = (hour12 % 12) + (isAM ? 0 : 12)
             return hour
         }set {
             var selectRows = timePickerView.selectRows
@@ -699,8 +701,8 @@ class ScheduleTimeView: UIView {
                 return
             }
             // 0~23 % 12
-            let isAM = newValue > 0 && newValue <= 12
-            //0~23    0 12
+            let isAM = newValue < 12
+            // 转换12小时制
             var hour = newValue % 12
             if hour == 0 {
                 hour = 12

@@ -384,6 +384,11 @@ extension SpaceData {
                         nodeDict.updateValue(preConfigurationDict, forKey: "preConfiguration")
                     }
                     
+                    // 设备pir启用/禁用
+                    if node.presenceDetectedSensorModel != nil {
+                        nodeDict.updateValue(node.pirEnabled, forKey: "pirEnabled")
+                    }
+                    
                     // 网关
                     if node.deviceType == .gateway {
                         // 设备真实网关数据
