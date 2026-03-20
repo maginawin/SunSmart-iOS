@@ -18,18 +18,8 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         // Override point for customization after application launch.
         
         window = UIWindow(frame: UIScreen.main.bounds)
-        
-//        let mainNavVc = NavigationViewController(rootViewController: GroupViewController(space: space!, group: space!.groups.first!)) //SitesViewController
         if UserData.isTermsOfService { // 是否同意使用协议
-//            let site = SiteData.loadAll()[3]
-//            let space = site.spaces[1]
-//            let spaceVc = SpaceViewController(space: space)
-//            spaceVc.site = site
-//            let mainNavVc = NavigationViewController(rootViewController: spaceVc)
-            
             let mainNavVc = NavigationViewController(rootViewController: SitesViewController())
-//            let mainNavVc = NavigationViewController(rootViewController: MeshFirmwareUpdateViewController(distributorData: MeshDistributionData(distributionAddress: 0x01, targetAddresses: [0x01, 0x02], distributionState: .complete)))
-            
             window?.rootViewController = mainNavVc
         }else {
             let welcomeNavVc = NavigationViewController(rootViewController: WelcomeViewController())

@@ -523,6 +523,10 @@ extension SpaceData {
                 space.editorPassword = row[ExpressionKey.editorPassword]
                 space.vistorPassword = row[ExpressionKey.vistorPassword]
                 space.authorizationPassword = row[ExpressionKey.authorizationPassword]
+                // 保证旧space数据保存密码到钥匙串
+                if Keychain.getSpacePassword(siteId: siteId, spaceId: space.id) != space.authorizationPassword {
+                    _ = Keychain.saveSpacePassword(space.authorizationPassword, siteId: siteId, spaceId: space.id)
+                }
                 space.requiresPasswordVerification = row[ExpressionKey.requiresPasswordVerification]
                 space.vistorPasswordEnable = row[ExpressionKey.vistorPasswordEnable]
                 space.shareCode = row[ExpressionKey.shareCode]
@@ -600,6 +604,10 @@ extension SpaceData {
     /// - Returns: 是否成功
     static func deleteAll(siteId: String) -> Bool {
         
+        SpaceData.load(siteId: siteId).forEach({
+            $0.clearStoredPassword()
+        })
+        
         let filter = SpaceData.spacesTable.filter(ExpressionKey.siteUUID == siteId)
         do {
             try SunSmartDataManager.shared.db?.run(filter.delete())
@@ -613,6 +621,7 @@ extension SpaceData {
     /// 删除当前空间数据
     @discardableResult func deleteData() -> Bool {
         
+        self.clearStoredPassword()
         let filter = SpaceData.spacesTable.filter(ExpressionKey.uuid == self.id)
         do {
             try SunSmartDataManager.shared.db?.run(filter.delete())
@@ -626,6 +635,8 @@ extension SpaceData {
     /// 缓存当前空间数据
     @discardableResult func save() -> Bool {
 
+        _ = Keychain.saveSpacePassword(self.authorizationPassword, siteId: self.siteId, spaceId: self.id)
+        
         var editorData: Data?
         if self.editor != nil {
             editorData = try? jsonEncoder.encode(self.editor!)

@@ -695,6 +695,10 @@ extension SpaceData {
                 break
             }
             let newSpace = SpaceData(name: name, id: uuid, siteId: siteId, imageId: 0, create: json["createTimestamp"].int64Value, lastUpdate: json["updateTimestamp"].int64Value, isFavourite: false, permission: permission, sourceType: .share, meshUUID: meshUUID, meshNetworkId: netKey.networkId.hex)
+            // 从钥匙串取出密码，为了卸载不影响持久化缓存
+            if let keychainAuthorizationPassword = Keychain.getSpacePassword(siteId: siteId, spaceId: uuid) {
+                newSpace.authorizationPassword = keychainAuthorizationPassword
+            }
             space = newSpace
             initialize = true
         }

@@ -24,6 +24,13 @@ class SwitchSelectPanelTypeController: UIViewController {
         view.backgroundColor = Background_Color
         
         setupTableView()
+        
+        if let selectIndex = switchPanelTypes.firstIndex(of: selectPanelType) {
+            DispatchQueue.main.async {[weak self] in
+                guard let self = self else { return }
+                self.tableView.scrollToRow(at: IndexPath(row: 0, section: selectIndex), at: .middle, animated: false)
+            }
+        }
     }
     
     override func viewDidAppear(_ animated: Bool) {

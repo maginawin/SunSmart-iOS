@@ -253,6 +253,11 @@ class SpaceData: Copyable {
         self.meshNetworkId = meshNetworkId
     }
     
+    func clearStoredPassword() {
+        authorizationPassword = nil
+        _ = Keychain.removeSpacePassword(siteId: siteId, spaceId: id)
+    }
+    
     func copy() -> Self {
         let space = SpaceData(name: self.name, id: self.id, siteId: self.siteId, imageId: self.imageId, create: self.create, lastUpdate: self.lastUpdate, isFavourite: self.isFavourite, permission: self.permission, sourceType: self.sourceType, meshUUID: self.meshUUID, meshNetworkId: self.meshNetworkId)
         space.deviceCount = self.deviceCount

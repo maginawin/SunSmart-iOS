@@ -50,6 +50,7 @@ class DeviceSwitchViewController: UIViewController {
         
         navigationItem.rightBarButtonItem = UIBarButtonItem(image: UIImage(named: "close")?.withRenderingMode(.alwaysOriginal), style: .done, target: self, action: #selector(back))
         
+        setupDataSource()
         setupUI()
         updateUI()
         updateSaveEnabledState()
@@ -66,6 +67,14 @@ class DeviceSwitchViewController: UIViewController {
     deinit {
         if space.isConfiguring {
             space.isConfiguring = false
+        }
+    }
+    
+    private func setupDataSource() {
+        if setSwitchData.panelType == .default_2key {
+            sections = [[.id, .enable, .panel, .group, .proxy], [.keyInfo]]
+        }else {
+            sections = [[.id, .enable, .panel, .group, .scene, .proxy], [.keyInfo]]
         }
     }
     
@@ -676,10 +685,13 @@ extension DeviceSwitchViewController: UITableViewDataSource, UITableViewDelegate
             vc.selectPanelTypeCallback = {[weak self] type in
                 guard let self = self else { return }
                 self.setSwitchData.panelType = type
-//                self.setSwitchData.sceneANumber = nil
-//                self.setSwitchData.sceneBNumber = nil
+                if type == .default_2key {
+                    self.setSwitchData.sceneANumber = nil
+                    self.setSwitchData.sceneBNumber = nil
+                }
                 self.setSwitchData.sceneCNumber = nil
                 self.setSwitchData.sceneDNumber = nil
+                self.setupDataSource()
                 self.tableView.reloadData()
                 self.updateSaveEnabledState()
             }

@@ -377,6 +377,9 @@ extension ProfileType {
             }
         case .lightControlSnapshoot(let sceneNumber), .lightControlStore(let sceneNumber):
             if let controlSceneSetupModel = node.lightLCSceneSetupModel {
+                if let lightLCModel = node.lightLCModel {
+                    messageHandles.append(MeshMessageHandle(message: LightLCLightOnOffSet(false), model: lightLCModel))
+                }
                 messageHandles.append(MeshMessageHandle(message: SceneStore(sceneNumber), model: controlSceneSetupModel))
             }
         case .daylightSensorConditionRecall(let id):
