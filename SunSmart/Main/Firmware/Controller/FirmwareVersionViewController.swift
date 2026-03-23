@@ -185,7 +185,7 @@ class FirmwareVersionViewController: UIViewController {
             case .success(let zipData):
                 
                 let imageSize = UInt32(zipData.firmwareData.count)
-                var incomingFirmwareMetadata = Data(bytes: zipData.firmwareId.bytes, count: zipData.firmwareId.count + 3 + 1 + 4 + 2 + 1)
+                var incomingFirmwareMetadata = Data(bytes: zipData.firmwareId.byteArray, count: zipData.firmwareId.count + 3 + 1 + 4 + 2 + 1)
                 incomingFirmwareMetadata.writeBits(value: imageSize, numBits: 24, atOffset: 64)
                 incomingFirmwareMetadata.writeBits(value: UInt8(zipData.coreType), numBits: 8, atOffset: 88)
                 incomingFirmwareMetadata.writeBits(value: UInt32(data: zipData.compositionHash), numBits: 32, atOffset: 96)
@@ -435,7 +435,7 @@ extension FirmwareVersionViewController: UIDocumentPickerDelegate {
             let data = try Data(contentsOf: url)
             let zipData = try ZipHandler.handleZipData(data)
             let imageSize = UInt32(zipData.firmwareData.count)
-            var incomingFirmwareMetadata = Data(bytes: zipData.firmwareId.bytes, count: zipData.firmwareId.count + 3 + 1 + 4 + 2 + 1)
+            var incomingFirmwareMetadata = Data(bytes: zipData.firmwareId.byteArray, count: zipData.firmwareId.count + 3 + 1 + 4 + 2 + 1)
             incomingFirmwareMetadata.writeBits(value: imageSize, numBits: 24, atOffset: 64)
             incomingFirmwareMetadata.writeBits(value: UInt8(zipData.coreType), numBits: 8, atOffset: 88)
             incomingFirmwareMetadata.writeBits(value: UInt32(data: zipData.compositionHash), numBits: 32, atOffset: 96)
