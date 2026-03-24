@@ -235,8 +235,10 @@ self.updateAddressData()
         favouriteSpaces = allSpaces.filter({ $0.isFavourite })
         
         self.gatewayModels = self.loadGatewaysData()
-        // site内是否有可编辑的space
-        if site.permission == .owner || allSpaces.contains(where: { $0.permission == .editor }) {
+        
+        if site.permission == .owner {
+            self.showGatewayModels = self.gatewayModels
+        }else if allSpaces.contains(where: { $0.permission == .editor }) { // site内是否有可编辑的space
             self.showGatewayModels = self.gatewayModels.filter({ gateway in gateway.associatedSpaces.isEmpty || gateway.associatedSpaces.contains(where: { $0.permission != .none }) })
         }else {
             self.showGatewayModels.removeAll()
