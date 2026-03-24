@@ -166,7 +166,7 @@ class SiteGatewayStatusView: UIView {
         // Internet Online
         let onlineView = createStatusItemView(
             iconName: "gateway_internet_online",
-            title: "\("internet_online".localizedString): \(overviewStats.internetOnlineCount)",
+            title: "\("internet_online".localizedString): \(overviewStats.internetOnlineCount)"
         )
         stackView.addArrangedSubview(onlineView)
         
@@ -182,7 +182,7 @@ class SiteGatewayStatusView: UIView {
         // No Gateway
         let noGatewayView = createStatusItemView(
             iconName: nil, // 使用圆形图标
-            title: "\("no_gateway".localizedString): \(overviewStats.noGatewayCount)",
+            title: "\("no_gateway".localizedString): \(overviewStats.noGatewayCount)"
         )
         stackView.addArrangedSubview(noGatewayView)
         
