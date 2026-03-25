@@ -375,7 +375,11 @@ extension ProfileType {
             if let vendorModel = node.sunricherVendorModel {
                 messageHandles.append(MeshMessageHandle(message: SunricherVendorSet(function: .daylightCalibrateIlluminanceInflectionPoint(minLightness: minLightPoint.lightness, minLux: minLightPoint.lux, maxLightness: maxLightPoint.lightness, maxLux: maxLightPoint.lux)), model: vendorModel))
             }
-        case .lightControlSnapshoot(let sceneNumber), .lightControlStore(let sceneNumber):
+        case .lightControlSnapshoot(let sceneNumber):
+            if let controlSceneSetupModel = node.lightLCSceneSetupModel {
+                messageHandles.append(MeshMessageHandle(message: SceneStore(sceneNumber), model: controlSceneSetupModel))
+            }
+        case .lightControlStore(let sceneNumber):
             if let controlSceneSetupModel = node.lightLCSceneSetupModel {
                 if let lightLCModel = node.lightLCModel {
                     messageHandles.append(MeshMessageHandle(message: LightLCLightOnOffSet(false), model: lightLCModel))
