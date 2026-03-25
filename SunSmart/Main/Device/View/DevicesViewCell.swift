@@ -75,7 +75,7 @@ class DevicesViewCell: UICollectionViewCell {
                         backgroundColor = RGB(226, 226, 226)
                         progress = 0
                     }
-                   
+                    progressView.isHidden = !device.supportDimming
                     progressView.setProgress(Int(progress), animated: progressAnimation)
 
                     if device.temperatureModel != nil {
@@ -236,7 +236,7 @@ class DevicesViewCell: UICollectionViewCell {
  
 private extension Node {
     
-    static var lastLightnessKey = 100
+    static var lastLightnessKey: UInt8 = 0
     /// 最后保存的亮度值
     var lastLightness: UInt16 {
         get {

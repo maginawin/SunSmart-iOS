@@ -10,7 +10,7 @@ import Foundation
 // UIScrollView 扩展
 extension UIScrollView {
     
-    static var firstShowFlashScrollIndicators = 100
+    static var firstShowFlashScrollIndicators: UInt8 = 0
     
     /// 是否首次显示滑动指示器
     var firstShowFlashScrollIndicators: Bool {

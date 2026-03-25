@@ -11,13 +11,13 @@ import SwiftyJSON
 import CoreBluetooth
 
 internal extension Node {
-    static var selectedStateKey = 1
-    static var updateStateKey = 2
-    static var enableUpgradeKey = 3
-    static var targetFirmwareDataKey = 4
-    static var peripheral = 5
+    static var selectedStateKey: UInt8 = 0
+    static var updateStateKey: UInt8 = 0
+    static var enableUpgradeKey: UInt8 = 0
+    static var targetFirmwareDataKey: UInt8 = 0
+    static var peripheral: UInt8 = 0
     
-    // 是否可以升级 设备版本小于当前升级版本 & 信号量 >= -90dB
+    // 是否可以升级 设备版本小于当前升级版本 & 信号量 >= -80dB
     // 是否可以选择 可以升级 & 升级状态为待升级
     // 状态展示 可升级、等待升级、升级中、升级成功、升级失败
     
@@ -375,11 +375,13 @@ class BleFirmwareUpdateViewController: UIViewController {
         
         MeshLibManager.manager.refreshNodesRSSI(withWaitFor: 99999, nodeScan: {[weak self] data in
             
-            guard let self = self, let node = nodes.first(where: { $0.primaryUnicastAddress == data.node.primaryUnicastAddress }), node.peripheral == nil else { return }
+            guard let self = self, let node = nodes.first(where: { $0.primaryUnicastAddress == data.node.primaryUnicastAddress }) else { return }
             
-            DispatchQueue.main.async {
-                NSObject.cancelPreviousPerformRequests(withTarget: self, selector: #selector(self.refreshNodesRSSIFinish), object: nil)
-                self.perform(#selector(self.refreshNodesRSSIFinish), with: nil, afterDelay: 10)
+            if node.peripheral == nil {
+                DispatchQueue.main.async {
+                    NSObject.cancelPreviousPerformRequests(withTarget: self, selector: #selector(self.refreshNodesRSSIFinish), object: nil)
+                    self.perform(#selector(self.refreshNodesRSSIFinish), with: nil, afterDelay: 10)
+                }
             }
             
             node.peripheral = data.peripheral
@@ -388,7 +390,7 @@ class BleFirmwareUpdateViewController: UIViewController {
                 enableUpgrade = cacheVersion.compare(nodeVersion, options: .numeric) == .orderedDescending
             }
             if enableUpgrade, let rssi = node.rssi {
-                node.enableUpgrade = rssi >= -90
+                node.enableUpgrade = rssi >= -80
                 if node.selectedState == .disabled {
                     node.selectedState = .unselected
                 }
@@ -527,7 +529,7 @@ class BleFirmwareUpdateViewController: UIViewController {
                 node.selectedState = .disabled
                 
                 if enableUpgrade, let rssi = node.rssi {
-                    node.enableUpgrade = rssi >= -90
+                    node.enableUpgrade = rssi >= -80
                     if node.selectedState == .disabled {
                         node.selectedState = .unselected
                     }
@@ -575,7 +577,7 @@ class BleFirmwareUpdateViewController: UIViewController {
         
         let targets: [MeshFirmwareUpdateManager.FirmwareUpdateTarget] = nodes.compactMap({
             if let targetFirmwareData = $0.targetFirmwareData {
-                return MeshFirmwareUpdateManager.FirmwareUpdateTarget(node: $0, peripheral: $0.peripheral, firmwareData: targetFirmwareData.data, firmwareID: targetFirmwareData.firmwareID, updateFirmwareImageIndex: UInt8(targetFirmwareData.updateFirmwareImageIndex), incomingFirmwareMetadata: targetFirmwareData.incomingFirmwareMetadata, versionIdentifier: nil)
+                return MeshFirmwareUpdateManager.FirmwareUpdateTarget(node: $0, peripheral: $0.peripheral, firmwareData: targetFirmwareData.data, firmwareID: targetFirmwareData.firmwareID, updateFirmwareImageIndex: UInt8(targetFirmwareData.updateFirmwareImageIndex), incomingFirmwareMetadata: targetFirmwareData.incomingFirmwareMetadata, versionIdentifier: targetFirmwareData.versionIdentifier)
             }
             return nil
         })
@@ -850,7 +852,7 @@ class BleFirmwareUpdateViewController: UIViewController {
         updateResultView.isHidden = true
         view.addSubview(updateResultView)
         updateResultView.snp.makeConstraints { make in
-            make.bottom.equalTo(bottomView.snp.top).offset(SCRYFrom(-1))
+            make.bottom.equalTo(bottomView.snp.top).offset(SCRYFrom(-0.5))
             make.left.right.equalToSuperview()
             make.height.equalTo(SCRYFrom(72))
         }
@@ -1000,7 +1002,18 @@ class BleFirmwareUpdateViewController: UIViewController {
         }else {
             var canSelectNodes: [Node] = []
             firmwareTypeDatas.forEach { data in
-                let nodes = data.nodes.filter({ $0.updateState.rawValue == Node.UpdateState.none.rawValue && $0.enableUpgrade })
+                let nodes = data.nodes.filter({
+                    guard $0.enableUpgrade else {
+                        return false
+                    }
+                    switch $0.updateState {
+                    case .none, .failure:
+                        return true
+                    default:
+                        return false
+                    }
+                })
+                
                 nodes.forEach({ $0.selectedState = .selected })
                 canSelectNodes.append(contentsOf: nodes)
             }
@@ -1041,8 +1054,10 @@ class BleFirmwareUpdateViewController: UIViewController {
             firmwareStr = "[\(firmwareStr)]"
             let message = String(format: "firmware_update_reset_message".localizedString, firmwareStr)
             
+            let paragraphStyle = NSMutableParagraphStyle()
+            paragraphStyle.lineBreakMode = .byCharWrapping
             let messageAttStr = NSMutableAttributedString(string: message)
-            messageAttStr.addAttributes([.font: FONTS(SCRYFrom(15)), .foregroundColor: TextBlack_Color], range: (message as NSString).range(of: firmwareStr))
+            messageAttStr.addAttributes([.font: FONTS(SCRYFrom(15)), .foregroundColor: TextBlack_Color, .paragraphStyle: paragraphStyle], range: (message as NSString).range(of: firmwareStr))
             
             SRAlertView(title: "notification".localizedString, messageAttStr: messageAttStr, actions: [.cancelAction, SRAlertAction(title: "UPGRADE".localizedString, actionHandler: {[weak self] _ in
                 guard let self = self else { return }
@@ -1060,7 +1075,7 @@ class BleFirmwareUpdateViewController: UIViewController {
         
         currentCountDown = 60
         
-        let alertView = SRAlertView(title: "notification".localizedString, message: "After the upgrade, the device has automatically reset. The system will automatically restore the data in …", actions: [SRAlertAction(title: "cancel".localizedString, style: .cancel, actionHandler: {[weak self] _ in
+        let alertView = SRAlertView(title: "notification".localizedString, message: "restore_automatically_message".localizedString, actions: [SRAlertAction(title: "cancel".localizedString, style: .cancel, actionHandler: {[weak self] _ in
             self?.stopCountdownTimer()
         }), SRAlertAction(title: "restore_now".localizedString, actionHandler: {[weak self] _ in
             self?.stopCountdownTimer()

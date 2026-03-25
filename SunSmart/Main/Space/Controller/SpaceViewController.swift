@@ -71,10 +71,14 @@ extension SpaceViewController {
     static func currentSpace() -> SpaceData? {
         return currentSpaceVc()?.space
     }
+    
+    /// 当前space的设备闪烁模式
+    static var currentDeviceBlinkMode: DeviceBlinkMode {
+        return currentSpace()?.deviceBlinkMode ?? .none
+    }
+    
 }
 
-/// 是否显示设备名称前缀
-//var displayDeviceNamePrefix: Bool = SpaceViewController.currentSpace()?.displayDeviceNamePrefix ?? false
 
 let routeTest: Bool = false
 
@@ -194,11 +198,8 @@ class SpaceViewController: WMPageController {
         checkBluetoothState()
         #if DEBUG
         
-        MeshLibManager.manager.showLogs =
-//        [.model, .access]
-        [.network, .access, .lowerTransport, .upperTransport, .proxy, .bearer]
-        
-       
+        MeshLibManager.manager.showLogs = [.network, .model, .access, .lowerTransport, .upperTransport, .proxy, .bearer]
+
         if routeTest {
             MeshNodeHeartbeatManager.shared.autoHeartbeatLoop = false
             MeshNodeHeartbeatManager.shared.heartbeatMode = .publish
@@ -529,10 +530,12 @@ class SpaceViewController: WMPageController {
         XWHUDManager.showCustomHUD(withMessage: nil, isWindow: false, afterDelay: 10)
         DispatchQueue.global().async {[weak self] in
             guard let self = self else { return }
+            print("加载网络数据 \(Date().timeIntervalSince1970)")
             MeshLibManager.manager.setMeshNetworkConnected(meshUUID: self.space.meshUUID, subNetworkId: self.space.meshNetworkId)
             if let manager = MeshLibManager.manager.meshNetworkManager, let meshNetwork = manager.meshNetwork {
 //                self.space.meshManager = manager
                 
+                print("加载网络数据完成 \(Date().timeIntervalSince1970)")
                 if meshNetwork.localProvisioner == nil || meshNetwork.localProvisioner?.primaryUnicastAddress == nil { // 缺少手机供应者或手机地址
                     // 如果用户有地址则自己分配一个作为手机地址
                     if let localProvisioner = manager.meshNetwork?.localProvisioner, let address = meshNetwork.nextAvailableUnicastAddress(elementsCount: 1, elementsUsing: localProvisioner, lockInAddress: false) {
@@ -544,6 +547,7 @@ class SpaceViewController: WMPageController {
                 
                 manager.loadExtensionData {[weak self] result in
                     guard let self = self else { return }
+                    print("加载网络扩展数据完成 \(Date().timeIntervalSince1970)")
                     guard result else {
                         XWHUDManager.showErrorTipHUD("unknown_error".localizedString)
                         return
@@ -552,6 +556,14 @@ class SpaceViewController: WMPageController {
                     XWHUDManager.hide()
                     self.loadNetworkData = true
                     self.reloadData()
+                    DispatchQueue.global().async {
+//                        print("设备同步状态:\(Date().timeIntervalSince1970)")
+                        manager.realNodes.forEach { node in
+                            node.reloadSyncStateCache()
+                        }
+//                        print("设备同步状态完成:\(Date().timeIntervalSince1970)")
+                    }
+                    
 //                    if self.cloudPermissionValidation {
 //                        self.configurationFlowGuidance()
 //                    }
@@ -571,10 +583,13 @@ class SpaceViewController: WMPageController {
             switch result {
             case .success(let response):
                 if let spaceData = JSON(response)["data"].dictionaryObject {
-                    Task {
+                    Task { [weak self] in
+                        guard let self = self else { return }
                         await self.space.update(spaceJsonData: spaceData)
-                        self.title = self.space.name
                         self.space.save()
+                        await MainActor.run {
+                            self.title = self.space.name
+                        }
                     }
                 }
             case .failure(_):

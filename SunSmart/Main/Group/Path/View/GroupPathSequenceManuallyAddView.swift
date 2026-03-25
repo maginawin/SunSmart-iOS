@@ -49,6 +49,7 @@ class GroupPathSequenceManuallyAddView: UIView {
         }
     }
     
+    var guideContentView: UIView!
     var guideView: GroupPathSequenceDeviceAddStepView!
     
     
@@ -196,12 +197,23 @@ class GroupPathSequenceManuallyAddView: UIView {
             make.height.equalTo(SCRYFrom(6))
         }
         
-        guideView = GroupPathSequenceDeviceAddStepView()
-        guideView.step3View.titleLabel.text = "path_trigger_add_step3".localizedString
-        guideView.isHidden = true
-        addSubview(guideView)
-        guideView.snp.makeConstraints { make in
+        guideContentView = UIView()
+        guideContentView.backgroundColor = .white
+        guideContentView.layer.cornerRadius = SCRYFrom(10)
+        guideContentView.isHidden = true
+        addSubview(guideContentView)
+        guideContentView.snp.makeConstraints { make in
             make.edges.equalToSuperview()
+        }
+        
+        guideView = GroupPathSequenceDeviceAddStepView(frame: .zero, steps: [
+            .init(imageName: "proximity_lighting_step1", title: "quick_add_step1".localizedString, textColor: SubText_Color),
+            .init(imageName: "proximity_lighting_step2", title: "path_manual_add_step2".localizedString, textColor: SubText_Color),
+            .init(imageName: "proximity_lighting_step3", title: "zone_manual_add_step3".localizedString, textColor: SubText_Color)
+        ])
+        guideContentView.addSubview(guideView)
+        guideView.snp.makeConstraints { make in
+            make.left.right.centerY.equalToSuperview()
         }
     }
 }

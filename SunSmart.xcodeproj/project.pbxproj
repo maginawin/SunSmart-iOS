@@ -35,6 +35,10 @@
 		C80A7F502DB7709100A6E36C /* DevicePromptHudView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C80A7F4F2DB7709100A6E36C /* DevicePromptHudView.swift */; };
 		C80A7F522DB790B700A6E36C /* DeviceOfflinePromptView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C80A7F512DB790B700A6E36C /* DeviceOfflinePromptView.swift */; };
 		C80A7F542DB793E200A6E36C /* DongleAddCollectionScheduleController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C80A7F532DB793E200A6E36C /* DongleAddCollectionScheduleController.swift */; };
+		C81DB7832EFAC3D000D65664 /* ProfileDeviceDayNightLuxViewCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = C81DB7822EFAC3D000D65664 /* ProfileDeviceDayNightLuxViewCell.swift */; };
+		C81DB7842EFAC3D000D65664 /* ProfileDeviceDayNightLuxViewCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = C81DB7822EFAC3D000D65664 /* ProfileDeviceDayNightLuxViewCell.swift */; };
+		C81DB7852EFAC3D000D65664 /* ProfileDeviceDayNightLuxViewCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = C81DB7822EFAC3D000D65664 /* ProfileDeviceDayNightLuxViewCell.swift */; };
+		C81DB7862EFAC3D000D65664 /* ProfileDeviceDayNightLuxViewCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = C81DB7822EFAC3D000D65664 /* ProfileDeviceDayNightLuxViewCell.swift */; };
 		C8219F6A2E585F3500253A9A /* RoundProgressView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8219F692E585F3500253A9A /* RoundProgressView.swift */; };
 		C8219F6B2E585F3500253A9A /* RoundProgressView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8219F692E585F3500253A9A /* RoundProgressView.swift */; };
 		C8219F6C2E585F3500253A9A /* RoundProgressView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8219F692E585F3500253A9A /* RoundProgressView.swift */; };
@@ -85,6 +89,7 @@
 		C84FBCC12DBF72070030E136 /* UIColor+Extension.swift in Sources */ = {isa = PBXBuildFile; fileRef = C84FBCC02DBF72070030E136 /* UIColor+Extension.swift */; };
 		C84FBCC32DBF79D00030E136 /* EnergyTestData.swift in Sources */ = {isa = PBXBuildFile; fileRef = C84FBCC22DBF79D00030E136 /* EnergyTestData.swift */; };
 		C85120F52DB0A11200714111 /* DeviceParameterFilterView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C85120F42DB0A11200714111 /* DeviceParameterFilterView.swift */; };
+		C857CF682F73B22900FF7A52 /* NordicSigMeshSDK in Frameworks */ = {isa = PBXBuildFile; productRef = C857CF672F73B22900FF7A52 /* NordicSigMeshSDK */; };
 		C85829F22B397F2B002A4367 /* SceneViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C85829F12B397F2B002A4367 /* SceneViewController.swift */; };
 		C85829F42B398354002A4367 /* SceneGroupsViewCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = C85829F32B398354002A4367 /* SceneGroupsViewCell.swift */; };
 		C85829F62B398443002A4367 /* CustomProgressView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C85829F52B398443002A4367 /* CustomProgressView.swift */; };
@@ -1051,6 +1056,14 @@
 		C8A85CDF2E09014B007F9B81 /* DeviceAddSelectAllViewCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A85CDD2E09014B007F9B81 /* DeviceAddSelectAllViewCell.swift */; };
 		C8A85CE12E0A4886007F9B81 /* DeviceAddCandidateDeviceListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A85CE02E0A4886007F9B81 /* DeviceAddCandidateDeviceListView.swift */; };
 		C8A85CE22E0A4886007F9B81 /* DeviceAddCandidateDeviceListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A85CE02E0A4886007F9B81 /* DeviceAddCandidateDeviceListView.swift */; };
+		C8A8D7392EF3AEE80025FFF7 /* Scheduler.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A8D7382EF3AEE80025FFF7 /* Scheduler.swift */; };
+		C8A8D73A2EF3AEE80025FFF7 /* Scheduler.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A8D7382EF3AEE80025FFF7 /* Scheduler.swift */; };
+		C8A8D73B2EF3AEE80025FFF7 /* Scheduler.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A8D7382EF3AEE80025FFF7 /* Scheduler.swift */; };
+		C8A8D73C2EF3AEE80025FFF7 /* Scheduler.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A8D7382EF3AEE80025FFF7 /* Scheduler.swift */; };
+		C8A8D7442EF5599B0025FFF7 /* ProfileDayNightLuxViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A8D7432EF5599B0025FFF7 /* ProfileDayNightLuxViewController.swift */; };
+		C8A8D7452EF5599B0025FFF7 /* ProfileDayNightLuxViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A8D7432EF5599B0025FFF7 /* ProfileDayNightLuxViewController.swift */; };
+		C8A8D7462EF5599B0025FFF7 /* ProfileDayNightLuxViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A8D7432EF5599B0025FFF7 /* ProfileDayNightLuxViewController.swift */; };
+		C8A8D7472EF5599B0025FFF7 /* ProfileDayNightLuxViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A8D7432EF5599B0025FFF7 /* ProfileDayNightLuxViewController.swift */; };
 		C8AADEFF2A97350400238C1C /* SiteData.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8AADEFE2A97350400238C1C /* SiteData.swift */; };
 		C8AADF012A973DA600238C1C /* SpaceData.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8AADF002A973DA600238C1C /* SpaceData.swift */; };
 		C8AAE2772A97435A00238C1C /* Database.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8AAE2762A97435A00238C1C /* Database.swift */; };
@@ -1124,6 +1137,14 @@
 		C8B5A1DE2B2BE9B300728E36 /* GroupMembersViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8B5A1DD2B2BE9B300728E36 /* GroupMembersViewController.swift */; };
 		C8B5A1E02B2C2AFD00728E36 /* GroupDevicesFunctionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8B5A1DF2B2C2AFD00728E36 /* GroupDevicesFunctionView.swift */; };
 		C8B5A1E22B2C48DE00728E36 /* GroupCheckViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8B5A1E12B2C48DE00728E36 /* GroupCheckViewController.swift */; };
+		C8B6CE6C2EE6620200C8AE32 /* DeviceRatedPowerCalibrationSetAllViewCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8B6CE6B2EE6620200C8AE32 /* DeviceRatedPowerCalibrationSetAllViewCell.swift */; };
+		C8B6CE6D2EE6620200C8AE32 /* DeviceRatedPowerCalibrationSetAllViewCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8B6CE6B2EE6620200C8AE32 /* DeviceRatedPowerCalibrationSetAllViewCell.swift */; };
+		C8B6CE6E2EE6620200C8AE32 /* DeviceRatedPowerCalibrationSetAllViewCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8B6CE6B2EE6620200C8AE32 /* DeviceRatedPowerCalibrationSetAllViewCell.swift */; };
+		C8B6CE6F2EE6620200C8AE32 /* DeviceRatedPowerCalibrationSetAllViewCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8B6CE6B2EE6620200C8AE32 /* DeviceRatedPowerCalibrationSetAllViewCell.swift */; };
+		C8B6CE712EE7EFE600C8AE32 /* DevicePowerCalibrationInstructionsController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8B6CE702EE7EFE600C8AE32 /* DevicePowerCalibrationInstructionsController.swift */; };
+		C8B6CE722EE7EFE600C8AE32 /* DevicePowerCalibrationInstructionsController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8B6CE702EE7EFE600C8AE32 /* DevicePowerCalibrationInstructionsController.swift */; };
+		C8B6CE732EE7EFE600C8AE32 /* DevicePowerCalibrationInstructionsController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8B6CE702EE7EFE600C8AE32 /* DevicePowerCalibrationInstructionsController.swift */; };
+		C8B6CE742EE7EFE600C8AE32 /* DevicePowerCalibrationInstructionsController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8B6CE702EE7EFE600C8AE32 /* DevicePowerCalibrationInstructionsController.swift */; };
 		C8B6D7CC2E6E768B004FB923 /* AdaptiveTextView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8B6D7CB2E6E768B004FB923 /* AdaptiveTextView.swift */; };
 		C8B6D7CD2E6E768B004FB923 /* AdaptiveTextView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8B6D7CB2E6E768B004FB923 /* AdaptiveTextView.swift */; };
 		C8B6D7CE2E6E768B004FB923 /* AdaptiveTextView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8B6D7CB2E6E768B004FB923 /* AdaptiveTextView.swift */; };
@@ -1145,6 +1166,10 @@
 		C8B7B3BD2EBB32C1006CA3EE /* ScrollView+Indicator.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8B7B3BC2EBB32C1006CA3EE /* ScrollView+Indicator.swift */; };
 		C8B7B3BE2EBB32C1006CA3EE /* ScrollView+Indicator.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8B7B3BC2EBB32C1006CA3EE /* ScrollView+Indicator.swift */; };
 		C8B7B3BF2EBB32C1006CA3EE /* ScrollView+Indicator.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8B7B3BC2EBB32C1006CA3EE /* ScrollView+Indicator.swift */; };
+		C8B8362E2EE987DD00D85077 /* ProfileTriggerConditionPhasesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8B8362D2EE987DD00D85077 /* ProfileTriggerConditionPhasesView.swift */; };
+		C8B8362F2EE987DD00D85077 /* ProfileTriggerConditionPhasesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8B8362D2EE987DD00D85077 /* ProfileTriggerConditionPhasesView.swift */; };
+		C8B836302EE987DD00D85077 /* ProfileTriggerConditionPhasesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8B8362D2EE987DD00D85077 /* ProfileTriggerConditionPhasesView.swift */; };
+		C8B836312EE987DD00D85077 /* ProfileTriggerConditionPhasesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8B8362D2EE987DD00D85077 /* ProfileTriggerConditionPhasesView.swift */; };
 		C8B95F982E4DDE5A000576F5 /* DeviceForceResetDeviceController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8B95F972E4DDE5A000576F5 /* DeviceForceResetDeviceController.swift */; };
 		C8B95F992E4DDE5A000576F5 /* DeviceForceResetDeviceController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8B95F972E4DDE5A000576F5 /* DeviceForceResetDeviceController.swift */; };
 		C8B95F9A2E4DDE5A000576F5 /* DeviceForceResetDeviceController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8B95F972E4DDE5A000576F5 /* DeviceForceResetDeviceController.swift */; };
@@ -1157,12 +1182,44 @@
 		C8B95FA42E502F25000576F5 /* DeviceForceResetDeviceInstructionsController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8B95FA32E502F25000576F5 /* DeviceForceResetDeviceInstructionsController.swift */; };
 		C8B95FA52E502F25000576F5 /* DeviceForceResetDeviceInstructionsController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8B95FA32E502F25000576F5 /* DeviceForceResetDeviceInstructionsController.swift */; };
 		C8B95FA62E502F25000576F5 /* DeviceForceResetDeviceInstructionsController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8B95FA32E502F25000576F5 /* DeviceForceResetDeviceInstructionsController.swift */; };
+		C8BA400D2EE28B3900C12FCB /* DeviceParameterEnergyReportViewCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8BA400C2EE28B3900C12FCB /* DeviceParameterEnergyReportViewCell.swift */; };
+		C8BA400E2EE28B3900C12FCB /* DeviceParameterEnergyReportViewCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8BA400C2EE28B3900C12FCB /* DeviceParameterEnergyReportViewCell.swift */; };
+		C8BA400F2EE28B3900C12FCB /* DeviceParameterEnergyReportViewCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8BA400C2EE28B3900C12FCB /* DeviceParameterEnergyReportViewCell.swift */; };
+		C8BA40102EE28B3900C12FCB /* DeviceParameterEnergyReportViewCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8BA400C2EE28B3900C12FCB /* DeviceParameterEnergyReportViewCell.swift */; };
+		C8BA40122EE2F40400C12FCB /* DeviceParameterTitleHeaderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8BA40112EE2F40400C12FCB /* DeviceParameterTitleHeaderView.swift */; };
+		C8BA40132EE2F40400C12FCB /* DeviceParameterTitleHeaderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8BA40112EE2F40400C12FCB /* DeviceParameterTitleHeaderView.swift */; };
+		C8BA40142EE2F40400C12FCB /* DeviceParameterTitleHeaderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8BA40112EE2F40400C12FCB /* DeviceParameterTitleHeaderView.swift */; };
+		C8BA40152EE2F40400C12FCB /* DeviceParameterTitleHeaderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8BA40112EE2F40400C12FCB /* DeviceParameterTitleHeaderView.swift */; };
+		C8BA40172EE3BBA900C12FCB /* DeviceRatedPowerCalibrationController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8BA40162EE3BBA900C12FCB /* DeviceRatedPowerCalibrationController.swift */; };
+		C8BA40182EE3BBA900C12FCB /* DeviceRatedPowerCalibrationController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8BA40162EE3BBA900C12FCB /* DeviceRatedPowerCalibrationController.swift */; };
+		C8BA40192EE3BBA900C12FCB /* DeviceRatedPowerCalibrationController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8BA40162EE3BBA900C12FCB /* DeviceRatedPowerCalibrationController.swift */; };
+		C8BA401A2EE3BBA900C12FCB /* DeviceRatedPowerCalibrationController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8BA40162EE3BBA900C12FCB /* DeviceRatedPowerCalibrationController.swift */; };
+		C8BA401C2EE3C22D00C12FCB /* DeviceRatedPowerCalibrationSetSeparatelyViewCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8BA401B2EE3C22D00C12FCB /* DeviceRatedPowerCalibrationSetSeparatelyViewCell.swift */; };
+		C8BA401D2EE3C22D00C12FCB /* DeviceRatedPowerCalibrationSetSeparatelyViewCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8BA401B2EE3C22D00C12FCB /* DeviceRatedPowerCalibrationSetSeparatelyViewCell.swift */; };
+		C8BA401E2EE3C22D00C12FCB /* DeviceRatedPowerCalibrationSetSeparatelyViewCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8BA401B2EE3C22D00C12FCB /* DeviceRatedPowerCalibrationSetSeparatelyViewCell.swift */; };
+		C8BA401F2EE3C22D00C12FCB /* DeviceRatedPowerCalibrationSetSeparatelyViewCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8BA401B2EE3C22D00C12FCB /* DeviceRatedPowerCalibrationSetSeparatelyViewCell.swift */; };
+		C8BA40212EE42F5C00C12FCB /* DeviceRatedPowerCalibrationHeaderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8BA40202EE42F5C00C12FCB /* DeviceRatedPowerCalibrationHeaderView.swift */; };
+		C8BA40222EE42F5C00C12FCB /* DeviceRatedPowerCalibrationHeaderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8BA40202EE42F5C00C12FCB /* DeviceRatedPowerCalibrationHeaderView.swift */; };
+		C8BA40232EE42F5C00C12FCB /* DeviceRatedPowerCalibrationHeaderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8BA40202EE42F5C00C12FCB /* DeviceRatedPowerCalibrationHeaderView.swift */; };
+		C8BA40242EE42F5C00C12FCB /* DeviceRatedPowerCalibrationHeaderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8BA40202EE42F5C00C12FCB /* DeviceRatedPowerCalibrationHeaderView.swift */; };
 		C8BA43612DC0724C00018392 /* GroupFilterSelectView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8BA43602DC0724C00018392 /* GroupFilterSelectView.swift */; };
 		C8BA43632DC0A6FD00018392 /* EnergyTimeSeriesDataViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8BA43622DC0A6FD00018392 /* EnergyTimeSeriesDataViewController.swift */; };
 		C8BA43652DC0A7A700018392 /* EnergyTimeSeriesDataImportView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8BA43642DC0A7A700018392 /* EnergyTimeSeriesDataImportView.swift */; };
 		C8BA43672DC0A7B300018392 /* EnergyTimeSeriesDataExportView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8BA43662DC0A7B300018392 /* EnergyTimeSeriesDataExportView.swift */; };
 		C8BA43692DC0AE9900018392 /* TimeSeriesDataGuideView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8BA43682DC0AE9900018392 /* TimeSeriesDataGuideView.swift */; };
 		C8BA436B2DC0D75A00018392 /* EnergySelectExportDevicesController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8BA436A2DC0D75A00018392 /* EnergySelectExportDevicesController.swift */; };
+		C8BB3E442EF92CDC00207225 /* ProfileLightSensorTemplateController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8BB3E432EF92CDC00207225 /* ProfileLightSensorTemplateController.swift */; };
+		C8BB3E452EF92CDC00207225 /* ProfileLightSensorTemplateController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8BB3E432EF92CDC00207225 /* ProfileLightSensorTemplateController.swift */; };
+		C8BB3E462EF92CDC00207225 /* ProfileLightSensorTemplateController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8BB3E432EF92CDC00207225 /* ProfileLightSensorTemplateController.swift */; };
+		C8BB3E472EF92CDC00207225 /* ProfileLightSensorTemplateController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8BB3E432EF92CDC00207225 /* ProfileLightSensorTemplateController.swift */; };
+		C8BB3E492EF945C500207225 /* ProfileLightSensorTemplateViewCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8BB3E482EF945C500207225 /* ProfileLightSensorTemplateViewCell.swift */; };
+		C8BB3E4A2EF945C500207225 /* ProfileLightSensorTemplateViewCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8BB3E482EF945C500207225 /* ProfileLightSensorTemplateViewCell.swift */; };
+		C8BB3E4B2EF945C500207225 /* ProfileLightSensorTemplateViewCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8BB3E482EF945C500207225 /* ProfileLightSensorTemplateViewCell.swift */; };
+		C8BB3E4C2EF945C500207225 /* ProfileLightSensorTemplateViewCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8BB3E482EF945C500207225 /* ProfileLightSensorTemplateViewCell.swift */; };
+		C8BB3E4E2EF9482500207225 /* ProfileLightSensorTemplateListController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8BB3E4D2EF9482500207225 /* ProfileLightSensorTemplateListController.swift */; };
+		C8BB3E4F2EF9482500207225 /* ProfileLightSensorTemplateListController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8BB3E4D2EF9482500207225 /* ProfileLightSensorTemplateListController.swift */; };
+		C8BB3E502EF9482500207225 /* ProfileLightSensorTemplateListController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8BB3E4D2EF9482500207225 /* ProfileLightSensorTemplateListController.swift */; };
+		C8BB3E512EF9482500207225 /* ProfileLightSensorTemplateListController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8BB3E4D2EF9482500207225 /* ProfileLightSensorTemplateListController.swift */; };
 		C8BB65B02ED3F056000C63EE /* FirmwareUpdateStateView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C89B53282C7DB5DC00D2959F /* FirmwareUpdateStateView.swift */; };
 		C8BB65B12ED3F056000C63EE /* GroupAddViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8BF08582B2705B400144BAC /* GroupAddViewController.swift */; };
 		C8BB65B22ED3F056000C63EE /* ScheduleAddView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A29C2D2B4800E400104634 /* ScheduleAddView.swift */; };
@@ -1583,9 +1640,7 @@
 		C8BB67512ED3F056000C63EE /* DeviceSliderFunctionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C898EA752AC409230023B480 /* DeviceSliderFunctionView.swift */; };
 		C8BB67532ED3F056000C63EE /* Pods_Common_SunSmart.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = C8FFD7D42E7D03B20074CC6A /* Pods_Common_SunSmart.framework */; };
 		C8BB67542ED3F056000C63EE /* NordicSigMeshSDK in Frameworks */ = {isa = PBXBuildFile; productRef = C8BB65AC2ED3F056000C63EE /* NordicSigMeshSDK */; };
-		C8BB67562ED3F056000C63EE /* Privacy Policy.html in Resources */ = {isa = PBXBuildFile; fileRef = C89B34222C93E3B700A77DB6 /* Privacy Policy.html */; };
 		C8BB67572ED3F056000C63EE /* XWHUDManager_right@3x.png in Resources */ = {isa = PBXBuildFile; fileRef = C896BB8E2A930C3800217512 /* XWHUDManager_right@3x.png */; };
-		C8BB67582ED3F056000C63EE /* User Agreement.html in Resources */ = {isa = PBXBuildFile; fileRef = C89B34202C93E2B600A77DB6 /* User Agreement.html */; };
 		C8BB67592ED3F056000C63EE /* Localizable.strings in Resources */ = {isa = PBXBuildFile; fileRef = C898E2D72AB7E46300C71315 /* Localizable.strings */; };
 		C8BB675A2ED3F056000C63EE /* device_add.mp3 in Resources */ = {isa = PBXBuildFile; fileRef = C8B483D12E4B361F006D85BC /* device_add.mp3 */; };
 		C8BB675B2ED3F056000C63EE /* device_reset.mp3 in Resources */ = {isa = PBXBuildFile; fileRef = C8B483D22E4B361F006D85BC /* device_reset.mp3 */; };
@@ -1636,6 +1691,10 @@
 		C8BC95E32E04FC830058D41E /* RangeSlider.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8BC95E12E04FC830058D41E /* RangeSlider.swift */; };
 		C8BC95E82E055C540058D41E /* DeviceSignalStrengthView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8BC95E72E055C540058D41E /* DeviceSignalStrengthView.swift */; };
 		C8BC95E92E055C540058D41E /* DeviceSignalStrengthView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8BC95E72E055C540058D41E /* DeviceSignalStrengthView.swift */; };
+		C8BCDB3B2EFA748600D35DA5 /* ProfileLightSensorTemplateDevicesController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8BCDB3A2EFA748600D35DA5 /* ProfileLightSensorTemplateDevicesController.swift */; };
+		C8BCDB3C2EFA748600D35DA5 /* ProfileLightSensorTemplateDevicesController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8BCDB3A2EFA748600D35DA5 /* ProfileLightSensorTemplateDevicesController.swift */; };
+		C8BCDB3D2EFA748600D35DA5 /* ProfileLightSensorTemplateDevicesController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8BCDB3A2EFA748600D35DA5 /* ProfileLightSensorTemplateDevicesController.swift */; };
+		C8BCDB3E2EFA748600D35DA5 /* ProfileLightSensorTemplateDevicesController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8BCDB3A2EFA748600D35DA5 /* ProfileLightSensorTemplateDevicesController.swift */; };
 		C8BE621E2EC4624C0075ED42 /* LightSensorCalibrationPointLuxView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8BE621D2EC4624C0075ED42 /* LightSensorCalibrationPointLuxView.swift */; };
 		C8BE621F2EC4624C0075ED42 /* LightSensorCalibrationPointLuxView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8BE621D2EC4624C0075ED42 /* LightSensorCalibrationPointLuxView.swift */; };
 		C8BE62202EC4624C0075ED42 /* LightSensorCalibrationPointLuxView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8BE621D2EC4624C0075ED42 /* LightSensorCalibrationPointLuxView.swift */; };
@@ -1660,6 +1719,14 @@
 		C8BF088C2B29903E00144BAC /* GroupDeviceViewCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8BF088B2B29903E00144BAC /* GroupDeviceViewCell.swift */; };
 		C8BF088E2B299DD700144BAC /* LinePageControl.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8BF088D2B299DD700144BAC /* LinePageControl.swift */; };
 		C8BF08912B2A8DCD00144BAC /* GroupServer.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8BF08902B2A8DCD00144BAC /* GroupServer.swift */; };
+		C8BFC6902F04AEC5007F83F2 /* DeviceResyncHeaderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8BFC68F2F04AEC5007F83F2 /* DeviceResyncHeaderView.swift */; };
+		C8BFC6912F04AEC5007F83F2 /* DeviceResyncHeaderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8BFC68F2F04AEC5007F83F2 /* DeviceResyncHeaderView.swift */; };
+		C8BFC6922F04AEC5007F83F2 /* DeviceResyncHeaderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8BFC68F2F04AEC5007F83F2 /* DeviceResyncHeaderView.swift */; };
+		C8BFC6932F04AEC5007F83F2 /* DeviceResyncHeaderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8BFC68F2F04AEC5007F83F2 /* DeviceResyncHeaderView.swift */; };
+		C8C026332F303B3400C7C2AA /* ToastStatusView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8C026322F303B3400C7C2AA /* ToastStatusView.swift */; };
+		C8C026342F303B3400C7C2AA /* ToastStatusView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8C026322F303B3400C7C2AA /* ToastStatusView.swift */; };
+		C8C026352F303B3400C7C2AA /* ToastStatusView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8C026322F303B3400C7C2AA /* ToastStatusView.swift */; };
+		C8C026362F303B3400C7C2AA /* ToastStatusView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8C026322F303B3400C7C2AA /* ToastStatusView.swift */; };
 		C8C0E4452E2633B80024E77E /* DeviceSettingsViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8C0E4442E2633B80024E77E /* DeviceSettingsViewController.swift */; };
 		C8C0E4462E2633B80024E77E /* DeviceSettingsViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8C0E4442E2633B80024E77E /* DeviceSettingsViewController.swift */; };
 		C8C0E4482E2774C60024E77E /* DeviceSettingsCollectionViewCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8C0E4472E2774C60024E77E /* DeviceSettingsCollectionViewCell.swift */; };
@@ -1700,6 +1767,18 @@
 		C8C958B92EBC876900F0E6E2 /* GroupMenuView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8C958B82EBC876900F0E6E2 /* GroupMenuView.swift */; };
 		C8C958BA2EBC876900F0E6E2 /* GroupMenuView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8C958B82EBC876900F0E6E2 /* GroupMenuView.swift */; };
 		C8C958BB2EBC876900F0E6E2 /* GroupMenuView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8C958B82EBC876900F0E6E2 /* GroupMenuView.swift */; };
+		C8CAD3152F0A36E200BE3F20 /* ProfileNightDayIlluminanceThresholdView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8CAD3142F0A36E200BE3F20 /* ProfileNightDayIlluminanceThresholdView.swift */; };
+		C8CAD3162F0A36E200BE3F20 /* ProfileNightDayIlluminanceThresholdView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8CAD3142F0A36E200BE3F20 /* ProfileNightDayIlluminanceThresholdView.swift */; };
+		C8CAD3172F0A36E200BE3F20 /* ProfileNightDayIlluminanceThresholdView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8CAD3142F0A36E200BE3F20 /* ProfileNightDayIlluminanceThresholdView.swift */; };
+		C8CAD3182F0A36E200BE3F20 /* ProfileNightDayIlluminanceThresholdView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8CAD3142F0A36E200BE3F20 /* ProfileNightDayIlluminanceThresholdView.swift */; };
+		C8CAD89B2F0B9D5100BE3F20 /* ProfileTextInstructionsViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8CAD89A2F0B9D5100BE3F20 /* ProfileTextInstructionsViewController.swift */; };
+		C8CAD89C2F0B9D5100BE3F20 /* ProfileTextInstructionsViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8CAD89A2F0B9D5100BE3F20 /* ProfileTextInstructionsViewController.swift */; };
+		C8CAD89D2F0B9D5100BE3F20 /* ProfileTextInstructionsViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8CAD89A2F0B9D5100BE3F20 /* ProfileTextInstructionsViewController.swift */; };
+		C8CAD89E2F0B9D5100BE3F20 /* ProfileTextInstructionsViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8CAD89A2F0B9D5100BE3F20 /* ProfileTextInstructionsViewController.swift */; };
+		C8CAD8A62F0E32AA00BE3F20 /* Node+Capability.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8CAD8A52F0E32AA00BE3F20 /* Node+Capability.swift */; };
+		C8CAD8A72F0E32AA00BE3F20 /* Node+Capability.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8CAD8A52F0E32AA00BE3F20 /* Node+Capability.swift */; };
+		C8CAD8A82F0E32AA00BE3F20 /* Node+Capability.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8CAD8A52F0E32AA00BE3F20 /* Node+Capability.swift */; };
+		C8CAD8A92F0E32AA00BE3F20 /* Node+Capability.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8CAD8A52F0E32AA00BE3F20 /* Node+Capability.swift */; };
 		C8CAE8E32D75D76A00FCCA5A /* DevicesReplySetViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8CAE8E22D75D76A00FCCA5A /* DevicesReplySetViewController.swift */; };
 		C8CAE8E52D76EF9500FCCA5A /* SwitchSelectPanelTypeController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8CAE8E42D76EF9500FCCA5A /* SwitchSelectPanelTypeController.swift */; };
 		C8CAE8E72D76FE1500FCCA5A /* SwitchSelectScenePageController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8CAE8E62D76FE1500FCCA5A /* SwitchSelectScenePageController.swift */; };
@@ -1719,12 +1798,18 @@
 		C8D22E1E2E04100D001A2BDA /* DeviceAddProfessionalModeController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8D22E1C2E04100D001A2BDA /* DeviceAddProfessionalModeController.swift */; };
 		C8D22E202E041020001A2BDA /* DeviceAddClassicModeController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8D22E1F2E041020001A2BDA /* DeviceAddClassicModeController.swift */; };
 		C8D22E212E041020001A2BDA /* DeviceAddClassicModeController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8D22E1F2E041020001A2BDA /* DeviceAddClassicModeController.swift */; };
+		C8D3ADB02EFD3599003D15CB /* ProfileDayNightLuxDevicesViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8D3ADAF2EFD3599003D15CB /* ProfileDayNightLuxDevicesViewController.swift */; };
+		C8D3ADB12EFD3599003D15CB /* ProfileDayNightLuxDevicesViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8D3ADAF2EFD3599003D15CB /* ProfileDayNightLuxDevicesViewController.swift */; };
+		C8D3ADB22EFD3599003D15CB /* ProfileDayNightLuxDevicesViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8D3ADAF2EFD3599003D15CB /* ProfileDayNightLuxDevicesViewController.swift */; };
+		C8D3ADB32EFD3599003D15CB /* ProfileDayNightLuxDevicesViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8D3ADAF2EFD3599003D15CB /* ProfileDayNightLuxDevicesViewController.swift */; };
 		C8D3BC5211D39346ECD5E3AF /* Pods_Common_Archipelago.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 8F7ED1D6D6BFC3B3813C473D /* Pods_Common_Archipelago.framework */; };
 		C8D58F662C1D34090066B770 /* CloudSynchronizationManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8D58F652C1D34090066B770 /* CloudSynchronizationManager.swift */; };
 		C8D6636D2BFED12B00BFF81A /* Keychain.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8D6636C2BFED12B00BFF81A /* Keychain.swift */; };
 		C8D6636F2BFEDDC900BFF81A /* ImportData.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8D6636E2BFEDDC900BFF81A /* ImportData.swift */; };
 		C8D663712BFEDDE000BFF81A /* ExportData.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8D663702BFEDDE000BFF81A /* ExportData.swift */; };
 		C8D663732BFF14A000BFF81A /* Int+Hex.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8D663722BFF14A000BFF81A /* Int+Hex.swift */; };
+		C8D7F1FB2F5676E3007D86E0 /* Privacy Policy.html in Resources */ = {isa = PBXBuildFile; fileRef = C8D7F1FA2F5676E3007D86E0 /* Privacy Policy.html */; };
+		C8D7F1FD2F5676E7007D86E0 /* User Agreement.html in Resources */ = {isa = PBXBuildFile; fileRef = C8D7F1FC2F5676E7007D86E0 /* User Agreement.html */; };
 		C8DA57D72ED14B7A00C4FCFD /* GatewayInformationViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8DA57D62ED14B7A00C4FCFD /* GatewayInformationViewController.swift */; };
 		C8DA57D82ED14B7A00C4FCFD /* GatewayInformationViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8DA57D62ED14B7A00C4FCFD /* GatewayInformationViewController.swift */; };
 		C8DA57D92ED14B7A00C4FCFD /* GatewayInformationViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8DA57D62ED14B7A00C4FCFD /* GatewayInformationViewController.swift */; };
@@ -1779,7 +1864,6 @@
 		C8FC6B9F2E7502F6004EE2BA /* DaliDeviceInformationController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8FC6B9D2E7502F6004EE2BA /* DaliDeviceInformationController.swift */; };
 		C8FC6BA02E7502F6004EE2BA /* DaliDeviceInformationController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8FC6B9D2E7502F6004EE2BA /* DaliDeviceInformationController.swift */; };
 		C8FDE9A72DD595A30002394B /* GroupProximityLightingData.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8FDE9A62DD595A30002394B /* GroupProximityLightingData.swift */; };
-		C8FFD7D32E7D03810074CC6A /* NordicSigMeshSDK in Frameworks */ = {isa = PBXBuildFile; productRef = C8FFD7D22E7D03810074CC6A /* NordicSigMeshSDK */; };
 		C8FFD7D52E7D03B20074CC6A /* Pods_Common_SunSmart.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = C8FFD7D42E7D03B20074CC6A /* Pods_Common_SunSmart.framework */; };
 		EAB7CC4E471C03663E94EFE1 /* Pods_Common_SylSmart.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = D1025845F30FDFC9F8C9ACCB /* Pods_Common_SylSmart.framework */; };
 /* End PBXBuildFile section */
@@ -1816,6 +1900,7 @@
 		C80A7F4F2DB7709100A6E36C /* DevicePromptHudView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DevicePromptHudView.swift; sourceTree = "<group>"; };
 		C80A7F512DB790B700A6E36C /* DeviceOfflinePromptView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceOfflinePromptView.swift; sourceTree = "<group>"; };
 		C80A7F532DB793E200A6E36C /* DongleAddCollectionScheduleController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DongleAddCollectionScheduleController.swift; sourceTree = "<group>"; };
+		C81DB7822EFAC3D000D65664 /* ProfileDeviceDayNightLuxViewCell.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileDeviceDayNightLuxViewCell.swift; sourceTree = "<group>"; };
 		C8219F692E585F3500253A9A /* RoundProgressView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RoundProgressView.swift; sourceTree = "<group>"; };
 		C822A84A2EA75A0E00A7073B /* DeviceMeshNetworkResetNotConfiguredController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceMeshNetworkResetNotConfiguredController.swift; sourceTree = "<group>"; };
 		C822A84E2EA75A9400A7073B /* DeviceMeshNetworkResetHeaderView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceMeshNetworkResetHeaderView.swift; sourceTree = "<group>"; };
@@ -2073,6 +2158,8 @@
 		C8A7A6B72DC216FA00191E9C /* EnergyHarvestSelectView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EnergyHarvestSelectView.swift; sourceTree = "<group>"; };
 		C8A85CDD2E09014B007F9B81 /* DeviceAddSelectAllViewCell.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceAddSelectAllViewCell.swift; sourceTree = "<group>"; };
 		C8A85CE02E0A4886007F9B81 /* DeviceAddCandidateDeviceListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceAddCandidateDeviceListView.swift; sourceTree = "<group>"; };
+		C8A8D7382EF3AEE80025FFF7 /* Scheduler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Scheduler.swift; sourceTree = "<group>"; };
+		C8A8D7432EF5599B0025FFF7 /* ProfileDayNightLuxViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileDayNightLuxViewController.swift; sourceTree = "<group>"; };
 		C8AADEFE2A97350400238C1C /* SiteData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SiteData.swift; sourceTree = "<group>"; };
 		C8AADF002A973DA600238C1C /* SpaceData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpaceData.swift; sourceTree = "<group>"; };
 		C8AAE2762A97435A00238C1C /* Database.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Database.swift; sourceTree = "<group>"; };
@@ -2129,6 +2216,8 @@
 		C8B5A1DD2B2BE9B300728E36 /* GroupMembersViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GroupMembersViewController.swift; sourceTree = "<group>"; };
 		C8B5A1DF2B2C2AFD00728E36 /* GroupDevicesFunctionView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GroupDevicesFunctionView.swift; sourceTree = "<group>"; };
 		C8B5A1E12B2C48DE00728E36 /* GroupCheckViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GroupCheckViewController.swift; sourceTree = "<group>"; };
+		C8B6CE6B2EE6620200C8AE32 /* DeviceRatedPowerCalibrationSetAllViewCell.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceRatedPowerCalibrationSetAllViewCell.swift; sourceTree = "<group>"; };
+		C8B6CE702EE7EFE600C8AE32 /* DevicePowerCalibrationInstructionsController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DevicePowerCalibrationInstructionsController.swift; sourceTree = "<group>"; };
 		C8B6D7CB2E6E768B004FB923 /* AdaptiveTextView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AdaptiveTextView.swift; sourceTree = "<group>"; };
 		C8B6D7D72E6EB6D9004FB923 /* ContentDisplayViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentDisplayViewController.swift; sourceTree = "<group>"; };
 		C8B6D7DB2E6EB8E8004FB923 /* ContentDisplayViewCell.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentDisplayViewCell.swift; sourceTree = "<group>"; };
@@ -2138,16 +2227,25 @@
 		C8B707072DCF349D0002133E /* ProfileSensitivityView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileSensitivityView.swift; sourceTree = "<group>"; };
 		C8B7AE372EB99CBF006CA3EE /* ProgressHUD+Extension.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ProgressHUD+Extension.swift"; sourceTree = "<group>"; };
 		C8B7B3BC2EBB32C1006CA3EE /* ScrollView+Indicator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ScrollView+Indicator.swift"; sourceTree = "<group>"; };
+		C8B8362D2EE987DD00D85077 /* ProfileTriggerConditionPhasesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileTriggerConditionPhasesView.swift; sourceTree = "<group>"; };
 		C8B95F972E4DDE5A000576F5 /* DeviceForceResetDeviceController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceForceResetDeviceController.swift; sourceTree = "<group>"; };
 		C8B95F9B2E4DDEF2000576F5 /* DeviceForceResetDevicePageController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceForceResetDevicePageController.swift; sourceTree = "<group>"; };
 		C8B95F9F2E4EE25D000576F5 /* DeviceForceResetDeviceView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceForceResetDeviceView.swift; sourceTree = "<group>"; };
 		C8B95FA32E502F25000576F5 /* DeviceForceResetDeviceInstructionsController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceForceResetDeviceInstructionsController.swift; sourceTree = "<group>"; };
+		C8BA400C2EE28B3900C12FCB /* DeviceParameterEnergyReportViewCell.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceParameterEnergyReportViewCell.swift; sourceTree = "<group>"; };
+		C8BA40112EE2F40400C12FCB /* DeviceParameterTitleHeaderView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceParameterTitleHeaderView.swift; sourceTree = "<group>"; };
+		C8BA40162EE3BBA900C12FCB /* DeviceRatedPowerCalibrationController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceRatedPowerCalibrationController.swift; sourceTree = "<group>"; };
+		C8BA401B2EE3C22D00C12FCB /* DeviceRatedPowerCalibrationSetSeparatelyViewCell.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceRatedPowerCalibrationSetSeparatelyViewCell.swift; sourceTree = "<group>"; };
+		C8BA40202EE42F5C00C12FCB /* DeviceRatedPowerCalibrationHeaderView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceRatedPowerCalibrationHeaderView.swift; sourceTree = "<group>"; };
 		C8BA43602DC0724C00018392 /* GroupFilterSelectView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GroupFilterSelectView.swift; sourceTree = "<group>"; };
 		C8BA43622DC0A6FD00018392 /* EnergyTimeSeriesDataViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EnergyTimeSeriesDataViewController.swift; sourceTree = "<group>"; };
 		C8BA43642DC0A7A700018392 /* EnergyTimeSeriesDataImportView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EnergyTimeSeriesDataImportView.swift; sourceTree = "<group>"; };
 		C8BA43662DC0A7B300018392 /* EnergyTimeSeriesDataExportView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EnergyTimeSeriesDataExportView.swift; sourceTree = "<group>"; };
 		C8BA43682DC0AE9900018392 /* TimeSeriesDataGuideView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TimeSeriesDataGuideView.swift; sourceTree = "<group>"; };
 		C8BA436A2DC0D75A00018392 /* EnergySelectExportDevicesController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EnergySelectExportDevicesController.swift; sourceTree = "<group>"; };
+		C8BB3E432EF92CDC00207225 /* ProfileLightSensorTemplateController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileLightSensorTemplateController.swift; sourceTree = "<group>"; };
+		C8BB3E482EF945C500207225 /* ProfileLightSensorTemplateViewCell.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileLightSensorTemplateViewCell.swift; sourceTree = "<group>"; };
+		C8BB3E4D2EF9482500207225 /* ProfileLightSensorTemplateListController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileLightSensorTemplateListController.swift; sourceTree = "<group>"; };
 		C8BB676F2ED3F056000C63EE /* SLG Sync Plus.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "SLG Sync Plus.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		C8BB67702ED3F056000C63EE /* SLGSync-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; name = "SLGSync-Info.plist"; path = "/Users/yuankehong/Desktop/SunSmart/SLGSync/SLGSync-Info.plist"; sourceTree = "<absolute>"; };
 		C8BB67722ED3F13A000C63EE /* Assets-SLGSync.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = "Assets-SLGSync.xcassets"; sourceTree = "<group>"; };
@@ -2163,6 +2261,7 @@
 		C8BC6D5C2EA249F9009E79A3 /* DeviceFlashlightBeastModeController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceFlashlightBeastModeController.swift; sourceTree = "<group>"; };
 		C8BC95E12E04FC830058D41E /* RangeSlider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RangeSlider.swift; sourceTree = "<group>"; };
 		C8BC95E72E055C540058D41E /* DeviceSignalStrengthView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceSignalStrengthView.swift; sourceTree = "<group>"; };
+		C8BCDB3A2EFA748600D35DA5 /* ProfileLightSensorTemplateDevicesController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileLightSensorTemplateDevicesController.swift; sourceTree = "<group>"; };
 		C8BE621D2EC4624C0075ED42 /* LightSensorCalibrationPointLuxView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LightSensorCalibrationPointLuxView.swift; sourceTree = "<group>"; };
 		C8BE62222EC467510075ED42 /* LightSensorCalibrationAdjustSpeedView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LightSensorCalibrationAdjustSpeedView.swift; sourceTree = "<group>"; };
 		C8BE62262EC488E90075ED42 /* LightSensorManualCorrectionView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LightSensorManualCorrectionView.swift; sourceTree = "<group>"; };
@@ -2179,6 +2278,8 @@
 		C8BF088B2B29903E00144BAC /* GroupDeviceViewCell.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GroupDeviceViewCell.swift; sourceTree = "<group>"; };
 		C8BF088D2B299DD700144BAC /* LinePageControl.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LinePageControl.swift; sourceTree = "<group>"; };
 		C8BF08902B2A8DCD00144BAC /* GroupServer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GroupServer.swift; sourceTree = "<group>"; };
+		C8BFC68F2F04AEC5007F83F2 /* DeviceResyncHeaderView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceResyncHeaderView.swift; sourceTree = "<group>"; };
+		C8C026322F303B3400C7C2AA /* ToastStatusView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ToastStatusView.swift; sourceTree = "<group>"; };
 		C8C0E4442E2633B80024E77E /* DeviceSettingsViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceSettingsViewController.swift; sourceTree = "<group>"; };
 		C8C0E4472E2774C60024E77E /* DeviceSettingsCollectionViewCell.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceSettingsCollectionViewCell.swift; sourceTree = "<group>"; };
 		C8C0E44A2E28869F0024E77E /* DeviceParameterAbsoluteSensitivityViewCell.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceParameterAbsoluteSensitivityViewCell.swift; sourceTree = "<group>"; };
@@ -2197,6 +2298,9 @@
 		C8C8137B2EA60E8C008B3515 /* FlashlightSwingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FlashlightSwingView.swift; sourceTree = "<group>"; };
 		C8C8137F2EA615C5008B3515 /* DeviceMeshNetworkResetController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceMeshNetworkResetController.swift; sourceTree = "<group>"; };
 		C8C958B82EBC876900F0E6E2 /* GroupMenuView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GroupMenuView.swift; sourceTree = "<group>"; };
+		C8CAD3142F0A36E200BE3F20 /* ProfileNightDayIlluminanceThresholdView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileNightDayIlluminanceThresholdView.swift; sourceTree = "<group>"; };
+		C8CAD89A2F0B9D5100BE3F20 /* ProfileTextInstructionsViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileTextInstructionsViewController.swift; sourceTree = "<group>"; };
+		C8CAD8A52F0E32AA00BE3F20 /* Node+Capability.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Node+Capability.swift"; sourceTree = "<group>"; };
 		C8CAE8E22D75D76A00FCCA5A /* DevicesReplySetViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DevicesReplySetViewController.swift; sourceTree = "<group>"; };
 		C8CAE8E42D76EF9500FCCA5A /* SwitchSelectPanelTypeController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SwitchSelectPanelTypeController.swift; sourceTree = "<group>"; };
 		C8CAE8E62D76FE1500FCCA5A /* SwitchSelectScenePageController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SwitchSelectScenePageController.swift; sourceTree = "<group>"; };
@@ -2213,11 +2317,14 @@
 		C8D22DFF2E010A47001A2BDA /* GatewayViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GatewayViewController.swift; sourceTree = "<group>"; };
 		C8D22E1C2E04100D001A2BDA /* DeviceAddProfessionalModeController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceAddProfessionalModeController.swift; sourceTree = "<group>"; };
 		C8D22E1F2E041020001A2BDA /* DeviceAddClassicModeController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceAddClassicModeController.swift; sourceTree = "<group>"; };
+		C8D3ADAF2EFD3599003D15CB /* ProfileDayNightLuxDevicesViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileDayNightLuxDevicesViewController.swift; sourceTree = "<group>"; };
 		C8D58F652C1D34090066B770 /* CloudSynchronizationManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CloudSynchronizationManager.swift; sourceTree = "<group>"; };
 		C8D6636C2BFED12B00BFF81A /* Keychain.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Keychain.swift; sourceTree = "<group>"; };
 		C8D6636E2BFEDDC900BFF81A /* ImportData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImportData.swift; sourceTree = "<group>"; };
 		C8D663702BFEDDE000BFF81A /* ExportData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExportData.swift; sourceTree = "<group>"; };
 		C8D663722BFF14A000BFF81A /* Int+Hex.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Int+Hex.swift"; sourceTree = "<group>"; };
+		C8D7F1FA2F5676E3007D86E0 /* Privacy Policy.html */ = {isa = PBXFileReference; lastKnownFileType = text.html; path = "Privacy Policy.html"; sourceTree = "<group>"; };
+		C8D7F1FC2F5676E7007D86E0 /* User Agreement.html */ = {isa = PBXFileReference; lastKnownFileType = text.html; path = "User Agreement.html"; sourceTree = "<group>"; };
 		C8DA57D62ED14B7A00C4FCFD /* GatewayInformationViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GatewayInformationViewController.swift; sourceTree = "<group>"; };
 		C8DA57DA2ED18AA300C4FCFD /* SiteGatewayHeaderView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SiteGatewayHeaderView.swift; sourceTree = "<group>"; };
 		C8DA69DA2DB87C9B00E32092 /* DeviceBottomBtnView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceBottomBtnView.swift; sourceTree = "<group>"; };
@@ -2303,7 +2410,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				C8FFD7D52E7D03B20074CC6A /* Pods_Common_SunSmart.framework in Frameworks */,
-				C8FFD7D32E7D03810074CC6A /* NordicSigMeshSDK in Frameworks */,
+				C857CF682F73B22900FF7A52 /* NordicSigMeshSDK in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -2353,6 +2460,11 @@
 				C8607BE92B91D56B00A94F0B /* ProfilePhasesTimePickerView.swift */,
 				C88CCD962DD4A552003D5754 /* ProfileProximityLightingStepView.swift */,
 				C88CCD982DD4A8AD003D5754 /* ProfileProximityLightingNumberView.swift */,
+				C8B8362D2EE987DD00D85077 /* ProfileTriggerConditionPhasesView.swift */,
+				C8CAD3142F0A36E200BE3F20 /* ProfileNightDayIlluminanceThresholdView.swift */,
+				C8BB3E482EF945C500207225 /* ProfileLightSensorTemplateViewCell.swift */,
+				C81DB7822EFAC3D000D65664 /* ProfileDeviceDayNightLuxViewCell.swift */,
+				C8BFC68F2F04AEC5007F83F2 /* DeviceResyncHeaderView.swift */,
 			);
 			path = View;
 			sourceTree = "<group>";
@@ -2369,6 +2481,11 @@
 			isa = PBXGroup;
 			children = (
 				C8047F142B8ED37800A09FFA /* ProfileSettingsViewController.swift */,
+				C8A8D7432EF5599B0025FFF7 /* ProfileDayNightLuxViewController.swift */,
+				C8BB3E4D2EF9482500207225 /* ProfileLightSensorTemplateListController.swift */,
+				C8D3ADAF2EFD3599003D15CB /* ProfileDayNightLuxDevicesViewController.swift */,
+				C8BB3E432EF92CDC00207225 /* ProfileLightSensorTemplateController.swift */,
+				C8BCDB3A2EFA748600D35DA5 /* ProfileLightSensorTemplateDevicesController.swift */,
 			);
 			path = Controller;
 			sourceTree = "<group>";
@@ -2406,6 +2523,7 @@
 				C8047F322B8F692A00A09FFA /* CalibrationInstructionController.swift */,
 				C8A18D902DE45CE0009AC6A2 /* NumberOfNeghbourNodeInstructionsController.swift */,
 				C8C0E5E02E2A3D190024E77E /* RelativeSensitivityInstructionsController.swift */,
+				C8CAD89A2F0B9D5100BE3F20 /* ProfileTextInstructionsViewController.swift */,
 			);
 			path = Controller;
 			sourceTree = "<group>";
@@ -2835,6 +2953,7 @@
 				C89C15722D9A9D8000789F0B /* ContinuousTapGestureRecognizer.swift */,
 				C8BC95E12E04FC830058D41E /* RangeSlider.swift */,
 				C8B6D7CB2E6E768B004FB923 /* AdaptiveTextView.swift */,
+				C8C026322F303B3400C7C2AA /* ToastStatusView.swift */,
 			);
 			path = View;
 			sourceTree = "<group>";
@@ -3230,6 +3349,8 @@
 				C8A011642DA8C1DA0058E7E7 /* DeviceCategorysViewController.swift */,
 				C8A011662DA8EAFF0058E7E7 /* DeviceParameterDevicesViewController.swift */,
 				C8AE17512DACA8E80071A9B1 /* DeviceParameterSettingsController.swift */,
+				C8BA40162EE3BBA900C12FCB /* DeviceRatedPowerCalibrationController.swift */,
+				C8B6CE702EE7EFE600C8AE32 /* DevicePowerCalibrationInstructionsController.swift */,
 			);
 			path = Controller;
 			sourceTree = "<group>";
@@ -3246,6 +3367,11 @@
 				C8B444A62E67D00D002F4CD6 /* DeviceParameterSliderViewCell.swift */,
 				C85120F42DB0A11200714111 /* DeviceParameterFilterView.swift */,
 				C87141B52DB24C86007A64B4 /* DevicePwmFrequencySelectView.swift */,
+				C8BA400C2EE28B3900C12FCB /* DeviceParameterEnergyReportViewCell.swift */,
+				C8BA40112EE2F40400C12FCB /* DeviceParameterTitleHeaderView.swift */,
+				C8BA401B2EE3C22D00C12FCB /* DeviceRatedPowerCalibrationSetSeparatelyViewCell.swift */,
+				C8B6CE6B2EE6620200C8AE32 /* DeviceRatedPowerCalibrationSetAllViewCell.swift */,
+				C8BA40202EE42F5C00C12FCB /* DeviceRatedPowerCalibrationHeaderView.swift */,
 			);
 			path = View;
 			sourceTree = "<group>";
@@ -3327,6 +3453,7 @@
 			isa = PBXGroup;
 			children = (
 				C898D1CF2B59134A00B2033B /* ScheduleServer.swift */,
+				C8A8D7382EF3AEE80025FFF7 /* Scheduler.swift */,
 			);
 			path = Model;
 			sourceTree = "<group>";
@@ -3459,6 +3586,7 @@
 				C898E2E02AB840FE00C71315 /* MeshNetwork+SunSmart.swift */,
 				C8A3516F2D8EB1FF00325FC6 /* Node+SyncData.swift */,
 				C8B0779D2D9D36750078404C /* Node+MessageHandles.swift */,
+				C8CAD8A52F0E32AA00BE3F20 /* Node+Capability.swift */,
 				C8D6636C2BFED12B00BFF81A /* Keychain.swift */,
 				C8D6636E2BFEDDC900BFF81A /* ImportData.swift */,
 				C8D663702BFEDDE000BFF81A /* ExportData.swift */,
@@ -3553,6 +3681,8 @@
 				C8BB67702ED3F056000C63EE /* SLGSync-Info.plist */,
 				C8BB67722ED3F13A000C63EE /* Assets-SLGSync.xcassets */,
 				C8BB67742ED3F164000C63EE /* SLGSync-LaunchScreen.storyboard */,
+				C8D7F1FA2F5676E3007D86E0 /* Privacy Policy.html */,
+				C8D7F1FC2F5676E7007D86E0 /* User Agreement.html */,
 			);
 			path = SLGSync;
 			sourceTree = "<group>";
@@ -3806,7 +3936,7 @@
 			);
 			name = SunSmart;
 			packageProductDependencies = (
-				C8FFD7D22E7D03810074CC6A /* NordicSigMeshSDK */,
+				C857CF672F73B22900FF7A52 /* NordicSigMeshSDK */,
 			);
 			productName = SunSmart;
 			productReference = C896B9A42A930BA800217512 /* SunSmart.app */;
@@ -3860,7 +3990,7 @@
 			);
 			mainGroup = C896B99B2A930BA800217512;
 			packageReferences = (
-				C8FFD7CF2E7D02D00074CC6A /* XCRemoteSwiftPackageReference "nordic-sig-mesh-sdk" */,
+				C857CF662F73B22900FF7A52 /* XCRemoteSwiftPackageReference "nordic-sig-mesh-sdk" */,
 			);
 			productRefGroup = C896B9A52A930BA800217512 /* Products */;
 			projectDirPath = "";
@@ -3967,10 +4097,9 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				C8BB67562ED3F056000C63EE /* Privacy Policy.html in Resources */,
 				C8BB67572ED3F056000C63EE /* XWHUDManager_right@3x.png in Resources */,
-				C8BB67582ED3F056000C63EE /* User Agreement.html in Resources */,
 				C8BB67592ED3F056000C63EE /* Localizable.strings in Resources */,
+				C8D7F1FB2F5676E3007D86E0 /* Privacy Policy.html in Resources */,
 				C8BB675A2ED3F056000C63EE /* device_add.mp3 in Resources */,
 				C8BB675B2ED3F056000C63EE /* device_reset.mp3 in Resources */,
 				C8BB675C2ED3F056000C63EE /* XWHUDManager_successful@2x.png in Resources */,
@@ -3985,6 +4114,7 @@
 				C8BB67642ED3F056000C63EE /* XWHUDManager_error@3x.png in Resources */,
 				C8BB67652ED3F056000C63EE /* Assets.xcassets in Resources */,
 				C8BB67662ED3F056000C63EE /* XWHUDManager_info@2x.png in Resources */,
+				C8D7F1FD2F5676E7007D86E0 /* User Agreement.html in Resources */,
 				C8BB67672ED3F056000C63EE /* XWHUDManager_info@3x.png in Resources */,
 				C8BB67682ED3F056000C63EE /* XWHUDManager_right@2x.png in Resources */,
 				C8BB67692ED3F056000C63EE /* XWHUDManager_tip@2x.png in Resources */,
@@ -4200,8 +4330,10 @@
 				C88553C82DE6B44C00C8B688 /* DeviceRestoreEmptyViewCell.swift in Sources */,
 				C88553C92DE6B44C00C8B688 /* MeshSelectDistributorViewController.swift in Sources */,
 				C88553CA2DE6B44C00C8B688 /* EnergyTimeSeriesDataImportView.swift in Sources */,
+				C81DB7852EFAC3D000D65664 /* ProfileDeviceDayNightLuxViewCell.swift in Sources */,
 				C88553CB2DE6B44C00C8B688 /* NoInternetHeaderView.swift in Sources */,
 				C8BE62282EC488E90075ED42 /* LightSensorManualCorrectionView.swift in Sources */,
+				C8BB3E462EF92CDC00207225 /* ProfileLightSensorTemplateController.swift in Sources */,
 				C88553CC2DE6B44C00C8B688 /* DeviceParameterData.swift in Sources */,
 				C88553CD2DE6B44C00C8B688 /* UIViewController+Extension.swift in Sources */,
 				C88553CE2DE6B44C00C8B688 /* MeshDeviceConfigInfo.swift in Sources */,
@@ -4213,6 +4345,7 @@
 				C88553D32DE6B44C00C8B688 /* PopGestureScrollView.swift in Sources */,
 				C88553D42DE6B44C00C8B688 /* ServerSelectionView.swift in Sources */,
 				C88553D52DE6B44C00C8B688 /* DeviceParameterRatedPowerPhaseData.swift in Sources */,
+				C8D3ADB22EFD3599003D15CB /* ProfileDayNightLuxDevicesViewController.swift in Sources */,
 				C88553D62DE6B44C00C8B688 /* DeviceParameterDeviceCell.swift in Sources */,
 				C88553D72DE6B44C00C8B688 /* EnergyFileData.swift in Sources */,
 				C88553D82DE6B44C00C8B688 /* DeviceLightControlViewCell.swift in Sources */,
@@ -4234,6 +4367,7 @@
 				C88553E62DE6B44C00C8B688 /* DeviceSwitchData.swift in Sources */,
 				C8C0E4482E2774C60024E77E /* DeviceSettingsCollectionViewCell.swift in Sources */,
 				C88553E72DE6B44C00C8B688 /* SwitchSelectGroupsViewController.swift in Sources */,
+				C8CAD3182F0A36E200BE3F20 /* ProfileNightDayIlluminanceThresholdView.swift in Sources */,
 				C88553E82DE6B44C00C8B688 /* SiteViewController.swift in Sources */,
 				C88553E92DE6B44C00C8B688 /* ScheduleDevicesView.swift in Sources */,
 				C88553EA2DE6B44C00C8B688 /* GroupPathSequenceTriggerZoneController.swift in Sources */,
@@ -4252,6 +4386,7 @@
 				C8B444A32E669DD8002F4CD6 /* DeviceAddSectionBackgroundView.swift in Sources */,
 				C88553F62DE6B44C00C8B688 /* Node+SyncData.swift in Sources */,
 				C88553F72DE6B44C00C8B688 /* MeshFirmwareUpgradeResultsView.swift in Sources */,
+				C8B836312EE987DD00D85077 /* ProfileTriggerConditionPhasesView.swift in Sources */,
 				C8C958B92EBC876900F0E6E2 /* GroupMenuView.swift in Sources */,
 				C8BE62252EC467510075ED42 /* LightSensorCalibrationAdjustSpeedView.swift in Sources */,
 				C88553F82DE6B44C00C8B688 /* ScheduleAddViewController.swift in Sources */,
@@ -4284,6 +4419,7 @@
 				C88554112DE6B44C00C8B688 /* BleFirmwareTypeUpdateViewCell.swift in Sources */,
 				C88554122DE6B44C00C8B688 /* SpaceNewCreationProcessController.swift in Sources */,
 				C88554132DE6B44C00C8B688 /* DevicesReplySetViewController.swift in Sources */,
+				C8BA401F2EE3C22D00C12FCB /* DeviceRatedPowerCalibrationSetSeparatelyViewCell.swift in Sources */,
 				C88554142DE6B44C00C8B688 /* CALayer+Animations.swift in Sources */,
 				C88554152DE6B44C00C8B688 /* WMPageController.m in Sources */,
 				C88554162DE6B44C00C8B688 /* FirmwareVersionData.swift in Sources */,
@@ -4297,14 +4433,17 @@
 				C885541C2DE6B44C00C8B688 /* FSCalendarStickyHeader.m in Sources */,
 				C885541D2DE6B44C00C8B688 /* EnergyHarvestHistoryViewCell.swift in Sources */,
 				C885541E2DE6B44C00C8B688 /* FSCalendarAppearance.m in Sources */,
+				C8BB3E4E2EF9482500207225 /* ProfileLightSensorTemplateListController.swift in Sources */,
 				C885541F2DE6B44C00C8B688 /* FSCalendarCalculator.m in Sources */,
 				C88554202DE6B44C00C8B688 /* FSCalendarCell.m in Sources */,
 				C8A85CE22E0A4886007F9B81 /* DeviceAddCandidateDeviceListView.swift in Sources */,
 				C88554212DE6B44C00C8B688 /* GroupPathSequenceDeviceAddView.swift in Sources */,
 				C88554222DE6B44C00C8B688 /* FSCalendarHeaderView.m in Sources */,
 				C88554232DE6B44C00C8B688 /* EnergyConsumptionInstructionView.swift in Sources */,
+				C8A8D7452EF5599B0025FFF7 /* ProfileDayNightLuxViewController.swift in Sources */,
 				C833B8582ECACF110005F84F /* SiteGatewayStatusView.swift in Sources */,
 				C88554242DE6B44C00C8B688 /* FSCalendarSeparatorDecorationView.m in Sources */,
+				C8C026342F303B3400C7C2AA /* ToastStatusView.swift in Sources */,
 				C88554252DE6B44C00C8B688 /* FSCalendarExtensions.m in Sources */,
 				C88554262DE6B44C00C8B688 /* FSCalendarWeekdayView.m in Sources */,
 				C88554272DE6B44C00C8B688 /* FSCalendarCollectionView.m in Sources */,
@@ -4353,8 +4492,11 @@
 				C885544A2DE6B44C00C8B688 /* SwitchSelectScenePageController.swift in Sources */,
 				C885544B2DE6B44C00C8B688 /* GroupSwitchEnOceanProxyHeaderView.swift in Sources */,
 				C885544C2DE6B44C00C8B688 /* DeviceParameterDevicesViewController.swift in Sources */,
+				C8BA40172EE3BBA900C12FCB /* DeviceRatedPowerCalibrationController.swift in Sources */,
 				C885544D2DE6B44C00C8B688 /* SharePermissionSelectionController.swift in Sources */,
 				C885544E2DE6B44C00C8B688 /* EnergyTestData.swift in Sources */,
+				C8BA40212EE42F5C00C12FCB /* DeviceRatedPowerCalibrationHeaderView.swift in Sources */,
+				C8B6CE6D2EE6620200C8AE32 /* DeviceRatedPowerCalibrationSetAllViewCell.swift in Sources */,
 				C885544F2DE6B44C00C8B688 /* EnergyStaticDataGroupView.swift in Sources */,
 				C88554502DE6B44C00C8B688 /* DeviceParameterRetedPowerViewCell.swift in Sources */,
 				C8C813802EA615C5008B3515 /* DeviceMeshNetworkResetController.swift in Sources */,
@@ -4388,6 +4530,7 @@
 				C88554642DE6B44C00C8B688 /* SpaceViewController.swift in Sources */,
 				C88554652DE6B44C00C8B688 /* SpaceMoreViewCell.swift in Sources */,
 				C88554662DE6B44C00C8B688 /* GroupFilterSelectView.swift in Sources */,
+				C8A8D7392EF3AEE80025FFF7 /* Scheduler.swift in Sources */,
 				C88554672DE6B44C00C8B688 /* SceneMembersViewCell.swift in Sources */,
 				C88554682DE6B44C00C8B688 /* ScheduleServer.swift in Sources */,
 				C88554692DE6B44C00C8B688 /* SpaceMoreViewController.swift in Sources */,
@@ -4396,6 +4539,7 @@
 				C885546C2DE6B44C00C8B688 /* LinePageControl.swift in Sources */,
 				C822A85E2EA7682E00A7073B /* DeviceMeshNetworkResetSecitonHeaderView.swift in Sources */,
 				C8B444A92E67D00D002F4CD6 /* DeviceParameterSliderViewCell.swift in Sources */,
+				C8BB3E4B2EF945C500207225 /* ProfileLightSensorTemplateViewCell.swift in Sources */,
 				C885546D2DE6B44C00C8B688 /* InfoEditViewController.swift in Sources */,
 				C885546E2DE6B44C00C8B688 /* BatchSpaceData.swift in Sources */,
 				C885546F2DE6B44C00C8B688 /* ShareChangePasswordController.swift in Sources */,
@@ -4435,6 +4579,7 @@
 				C885548D2DE6B44C00C8B688 /* MeshFirmwareUpdateStepHeaderView.swift in Sources */,
 				C885548E2DE6B44C00C8B688 /* ManualOverrideTimeoutInstructionController.swift in Sources */,
 				C885548F2DE6B44C00C8B688 /* DevicesViewCell.swift in Sources */,
+				C8BFC6932F04AEC5007F83F2 /* DeviceResyncHeaderView.swift in Sources */,
 				C8BE621E2EC4624C0075ED42 /* LightSensorCalibrationPointLuxView.swift in Sources */,
 				C88554902DE6B44C00C8B688 /* LightSensorCalibrationView.swift in Sources */,
 				C833B8532EC7257C0005F84F /* GatewayListView.swift in Sources */,
@@ -4477,6 +4622,7 @@
 				C88554AD2DE6B44C00C8B688 /* CustomDeviceSlider.swift in Sources */,
 				C8FC6B9E2E7502F6004EE2BA /* DaliDeviceInformationController.swift in Sources */,
 				C88554AE2DE6B44C00C8B688 /* SceneAddCustomView.swift in Sources */,
+				C8CAD8A82F0E32AA00BE3F20 /* Node+Capability.swift in Sources */,
 				C88554AF2DE6B44C00C8B688 /* MeshFirmwareSelectDeviceViewCell.swift in Sources */,
 				C8BC95E82E055C540058D41E /* DeviceSignalStrengthView.swift in Sources */,
 				C88554B02DE6B44C00C8B688 /* MeshFirmwareUpgradeSectionView.swift in Sources */,
@@ -4497,7 +4643,9 @@
 				C88554BC2DE6B44C00C8B688 /* DeviceLightsViewController.swift in Sources */,
 				C88554BD2DE6B44C00C8B688 /* WelcomeViewController.swift in Sources */,
 				C88554BE2DE6B44C00C8B688 /* FirmwareDistributeUpdateStateView.swift in Sources */,
+				C8BA400F2EE28B3900C12FCB /* DeviceParameterEnergyReportViewCell.swift in Sources */,
 				C88554BF2DE6B44C00C8B688 /* SyncDeviceViewCell.swift in Sources */,
+				C8BA40152EE2F40400C12FCB /* DeviceParameterTitleHeaderView.swift in Sources */,
 				C88554C02DE6B44C00C8B688 /* DeviceSensorsViewController.swift in Sources */,
 				C88554C12DE6B44C00C8B688 /* SRAlertView.swift in Sources */,
 				C88554C22DE6B44C00C8B688 /* SyncDevicesGroupViewCell.swift in Sources */,
@@ -4511,6 +4659,7 @@
 				C88554C82DE6B44C00C8B688 /* DaliSettingViewController.swift in Sources */,
 				C88554C92DE6B44C00C8B688 /* String+Date.swift in Sources */,
 				C88554CA2DE6B44C00C8B688 /* ImportEnergyDeviceSelectView.swift in Sources */,
+				C8CAD89C2F0B9D5100BE3F20 /* ProfileTextInstructionsViewController.swift in Sources */,
 				C88554CB2DE6B44C00C8B688 /* DeviceLightControlView.swift in Sources */,
 				C88554CC2DE6B44C00C8B688 /* DeviceParameterPromptView.swift in Sources */,
 				C88554CD2DE6B44C00C8B688 /* EnergyTimeSeriesDataViewController.swift in Sources */,
@@ -4534,6 +4683,7 @@
 				C88554DD2DE6B44C00C8B688 /* String+Localized.swift in Sources */,
 				C88554DE2DE6B44C00C8B688 /* TimedViewController.swift in Sources */,
 				C8B95FA02E4EE25D000576F5 /* DeviceForceResetDeviceView.swift in Sources */,
+				C8BCDB3D2EFA748600D35DA5 /* ProfileLightSensorTemplateDevicesController.swift in Sources */,
 				C88554DF2DE6B44C00C8B688 /* ShareSpaceListViewController.swift in Sources */,
 				C8B6D7DC2E6EB8E8004FB923 /* ContentDisplayViewCell.swift in Sources */,
 				C88554E02DE6B44C00C8B688 /* SceneServer.swift in Sources */,
@@ -4552,6 +4702,7 @@
 				C8C3A15A2E37509800876028 /* GatewayAssociatedSpacesViewCell.swift in Sources */,
 				C88554EB2DE6B44C00C8B688 /* ImportData.swift in Sources */,
 				C88554EC2DE6B44C00C8B688 /* DeviceLightViewController.swift in Sources */,
+				C8B6CE732EE7EFE600C8AE32 /* DevicePowerCalibrationInstructionsController.swift in Sources */,
 				C88554ED2DE6B44C00C8B688 /* FirmwareData.swift in Sources */,
 				C88554EE2DE6B44C00C8B688 /* DeviceLightHeaderView.swift in Sources */,
 				C88554EF2DE6B44C00C8B688 /* SwitchSelectSceneViewController.swift in Sources */,
@@ -4626,8 +4777,10 @@
 				C886E0182E30DE4900D0C3A6 /* DeviceRestoreEmptyViewCell.swift in Sources */,
 				C886E0192E30DE4900D0C3A6 /* MeshSelectDistributorViewController.swift in Sources */,
 				C886E01A2E30DE4900D0C3A6 /* EnergyTimeSeriesDataImportView.swift in Sources */,
+				C81DB7832EFAC3D000D65664 /* ProfileDeviceDayNightLuxViewCell.swift in Sources */,
 				C886E01B2E30DE4900D0C3A6 /* NoInternetHeaderView.swift in Sources */,
 				C8BE62272EC488E90075ED42 /* LightSensorManualCorrectionView.swift in Sources */,
+				C8BB3E472EF92CDC00207225 /* ProfileLightSensorTemplateController.swift in Sources */,
 				C886E01C2E30DE4900D0C3A6 /* DeviceParameterData.swift in Sources */,
 				C886E01D2E30DE4900D0C3A6 /* UIViewController+Extension.swift in Sources */,
 				C886E01E2E30DE4900D0C3A6 /* MeshDeviceConfigInfo.swift in Sources */,
@@ -4639,6 +4792,7 @@
 				C886E0232E30DE4900D0C3A6 /* PopGestureScrollView.swift in Sources */,
 				C886E0242E30DE4900D0C3A6 /* ServerSelectionView.swift in Sources */,
 				C886E0252E30DE4900D0C3A6 /* DeviceParameterRatedPowerPhaseData.swift in Sources */,
+				C8D3ADB02EFD3599003D15CB /* ProfileDayNightLuxDevicesViewController.swift in Sources */,
 				C886E0262E30DE4900D0C3A6 /* DeviceParameterDeviceCell.swift in Sources */,
 				C886E0272E30DE4900D0C3A6 /* EnergyFileData.swift in Sources */,
 				C886E0282E30DE4900D0C3A6 /* DeviceLightControlViewCell.swift in Sources */,
@@ -4660,6 +4814,7 @@
 				C886E0362E30DE4900D0C3A6 /* DeviceSwitchData.swift in Sources */,
 				C886E0372E30DE4900D0C3A6 /* DeviceSettingsCollectionViewCell.swift in Sources */,
 				C886E0382E30DE4900D0C3A6 /* SwitchSelectGroupsViewController.swift in Sources */,
+				C8CAD3162F0A36E200BE3F20 /* ProfileNightDayIlluminanceThresholdView.swift in Sources */,
 				C886E0392E30DE4900D0C3A6 /* SiteViewController.swift in Sources */,
 				C886E03A2E30DE4900D0C3A6 /* ScheduleDevicesView.swift in Sources */,
 				C886E03B2E30DE4900D0C3A6 /* GroupPathSequenceTriggerZoneController.swift in Sources */,
@@ -4678,6 +4833,7 @@
 				C8B444A52E669DD8002F4CD6 /* DeviceAddSectionBackgroundView.swift in Sources */,
 				C886E0472E30DE4900D0C3A6 /* Node+SyncData.swift in Sources */,
 				C886E0482E30DE4900D0C3A6 /* MeshFirmwareUpgradeResultsView.swift in Sources */,
+				C8B8362E2EE987DD00D85077 /* ProfileTriggerConditionPhasesView.swift in Sources */,
 				C8C958BA2EBC876900F0E6E2 /* GroupMenuView.swift in Sources */,
 				C8BE62232EC467510075ED42 /* LightSensorCalibrationAdjustSpeedView.swift in Sources */,
 				C886E0492E30DE4900D0C3A6 /* ScheduleAddViewController.swift in Sources */,
@@ -4710,6 +4866,7 @@
 				C886E0622E30DE4900D0C3A6 /* BleFirmwareTypeUpdateViewCell.swift in Sources */,
 				C886E0632E30DE4900D0C3A6 /* SpaceNewCreationProcessController.swift in Sources */,
 				C886E0642E30DE4900D0C3A6 /* DevicesReplySetViewController.swift in Sources */,
+				C8BA401E2EE3C22D00C12FCB /* DeviceRatedPowerCalibrationSetSeparatelyViewCell.swift in Sources */,
 				C886E0652E30DE4900D0C3A6 /* CALayer+Animations.swift in Sources */,
 				C886E0662E30DE4900D0C3A6 /* WMPageController.m in Sources */,
 				C886E0672E30DE4900D0C3A6 /* FirmwareVersionData.swift in Sources */,
@@ -4723,14 +4880,17 @@
 				C886E06D2E30DE4900D0C3A6 /* FSCalendarStickyHeader.m in Sources */,
 				C886E06E2E30DE4900D0C3A6 /* EnergyHarvestHistoryViewCell.swift in Sources */,
 				C886E06F2E30DE4900D0C3A6 /* FSCalendarAppearance.m in Sources */,
+				C8BB3E502EF9482500207225 /* ProfileLightSensorTemplateListController.swift in Sources */,
 				C886E0702E30DE4900D0C3A6 /* FSCalendarCalculator.m in Sources */,
 				C886E0712E30DE4900D0C3A6 /* FSCalendarCell.m in Sources */,
 				C886E0722E30DE4900D0C3A6 /* DeviceAddCandidateDeviceListView.swift in Sources */,
 				C886E0732E30DE4900D0C3A6 /* GroupPathSequenceDeviceAddView.swift in Sources */,
 				C886E0742E30DE4900D0C3A6 /* FSCalendarHeaderView.m in Sources */,
 				C886E0752E30DE4900D0C3A6 /* EnergyConsumptionInstructionView.swift in Sources */,
+				C8A8D7442EF5599B0025FFF7 /* ProfileDayNightLuxViewController.swift in Sources */,
 				C833B8572ECACF110005F84F /* SiteGatewayStatusView.swift in Sources */,
 				C886E0762E30DE4900D0C3A6 /* FSCalendarSeparatorDecorationView.m in Sources */,
+				C8C026362F303B3400C7C2AA /* ToastStatusView.swift in Sources */,
 				C886E0772E30DE4900D0C3A6 /* FSCalendarExtensions.m in Sources */,
 				C886E0782E30DE4900D0C3A6 /* FSCalendarWeekdayView.m in Sources */,
 				C886E0792E30DE4900D0C3A6 /* FSCalendarCollectionView.m in Sources */,
@@ -4779,8 +4939,11 @@
 				C886E09E2E30DE4900D0C3A6 /* SwitchSelectScenePageController.swift in Sources */,
 				C886E09F2E30DE4900D0C3A6 /* GroupSwitchEnOceanProxyHeaderView.swift in Sources */,
 				C886E0A02E30DE4900D0C3A6 /* DeviceParameterDevicesViewController.swift in Sources */,
+				C8BA401A2EE3BBA900C12FCB /* DeviceRatedPowerCalibrationController.swift in Sources */,
 				C886E0A12E30DE4900D0C3A6 /* SharePermissionSelectionController.swift in Sources */,
 				C886E0A22E30DE4900D0C3A6 /* EnergyTestData.swift in Sources */,
+				C8BA40232EE42F5C00C12FCB /* DeviceRatedPowerCalibrationHeaderView.swift in Sources */,
+				C8B6CE6E2EE6620200C8AE32 /* DeviceRatedPowerCalibrationSetAllViewCell.swift in Sources */,
 				C886E0A32E30DE4900D0C3A6 /* EnergyStaticDataGroupView.swift in Sources */,
 				C886E0A42E30DE4900D0C3A6 /* DeviceParameterRetedPowerViewCell.swift in Sources */,
 				C8C813812EA615C5008B3515 /* DeviceMeshNetworkResetController.swift in Sources */,
@@ -4814,6 +4977,7 @@
 				C886E0BA2E30DE4900D0C3A6 /* SpaceViewController.swift in Sources */,
 				C886E0BB2E30DE4900D0C3A6 /* SpaceMoreViewCell.swift in Sources */,
 				C886E0BC2E30DE4900D0C3A6 /* GroupFilterSelectView.swift in Sources */,
+				C8A8D73B2EF3AEE80025FFF7 /* Scheduler.swift in Sources */,
 				C886E0BD2E30DE4900D0C3A6 /* SceneMembersViewCell.swift in Sources */,
 				C886E0BE2E30DE4900D0C3A6 /* ScheduleServer.swift in Sources */,
 				C886E0BF2E30DE4900D0C3A6 /* SpaceMoreViewController.swift in Sources */,
@@ -4822,6 +4986,7 @@
 				C886E0C22E30DE4900D0C3A6 /* LinePageControl.swift in Sources */,
 				C822A85D2EA7682E00A7073B /* DeviceMeshNetworkResetSecitonHeaderView.swift in Sources */,
 				C8B444A72E67D00D002F4CD6 /* DeviceParameterSliderViewCell.swift in Sources */,
+				C8BB3E4C2EF945C500207225 /* ProfileLightSensorTemplateViewCell.swift in Sources */,
 				C886E0C32E30DE4900D0C3A6 /* InfoEditViewController.swift in Sources */,
 				C886E0C42E30DE4900D0C3A6 /* BatchSpaceData.swift in Sources */,
 				C886E0C52E30DE4900D0C3A6 /* ShareChangePasswordController.swift in Sources */,
@@ -4861,6 +5026,7 @@
 				C886E0E42E30DE4900D0C3A6 /* MeshFirmwareUpdateStepHeaderView.swift in Sources */,
 				C886E0E52E30DE4900D0C3A6 /* ManualOverrideTimeoutInstructionController.swift in Sources */,
 				C886E0E62E30DE4900D0C3A6 /* DevicesViewCell.swift in Sources */,
+				C8BFC6922F04AEC5007F83F2 /* DeviceResyncHeaderView.swift in Sources */,
 				C8BE62202EC4624C0075ED42 /* LightSensorCalibrationPointLuxView.swift in Sources */,
 				C886E0E72E30DE4900D0C3A6 /* LightSensorCalibrationView.swift in Sources */,
 				C833B8522EC7257C0005F84F /* GatewayListView.swift in Sources */,
@@ -4903,6 +5069,7 @@
 				C886E1052E30DE4900D0C3A6 /* CustomDeviceSlider.swift in Sources */,
 				C8FC6B9F2E7502F6004EE2BA /* DaliDeviceInformationController.swift in Sources */,
 				C886E1062E30DE4900D0C3A6 /* SceneAddCustomView.swift in Sources */,
+				C8CAD8A62F0E32AA00BE3F20 /* Node+Capability.swift in Sources */,
 				C886E1072E30DE4900D0C3A6 /* MeshFirmwareSelectDeviceViewCell.swift in Sources */,
 				C886E1082E30DE4900D0C3A6 /* DeviceSignalStrengthView.swift in Sources */,
 				C886E1092E30DE4900D0C3A6 /* MeshFirmwareUpgradeSectionView.swift in Sources */,
@@ -4923,7 +5090,9 @@
 				C886E1162E30DE4900D0C3A6 /* DeviceLightsViewController.swift in Sources */,
 				C886E1172E30DE4900D0C3A6 /* WelcomeViewController.swift in Sources */,
 				C886E1182E30DE4900D0C3A6 /* FirmwareDistributeUpdateStateView.swift in Sources */,
+				C8BA400E2EE28B3900C12FCB /* DeviceParameterEnergyReportViewCell.swift in Sources */,
 				C886E1192E30DE4900D0C3A6 /* SyncDeviceViewCell.swift in Sources */,
+				C8BA40142EE2F40400C12FCB /* DeviceParameterTitleHeaderView.swift in Sources */,
 				C886E11A2E30DE4900D0C3A6 /* DeviceSensorsViewController.swift in Sources */,
 				C886E11B2E30DE4900D0C3A6 /* SRAlertView.swift in Sources */,
 				C886E11C2E30DE4900D0C3A6 /* SyncDevicesGroupViewCell.swift in Sources */,
@@ -4937,6 +5106,7 @@
 				C886E1232E30DE4900D0C3A6 /* DaliSettingViewController.swift in Sources */,
 				C886E1242E30DE4900D0C3A6 /* String+Date.swift in Sources */,
 				C886E1252E30DE4900D0C3A6 /* ImportEnergyDeviceSelectView.swift in Sources */,
+				C8CAD89B2F0B9D5100BE3F20 /* ProfileTextInstructionsViewController.swift in Sources */,
 				C886E1262E30DE4900D0C3A6 /* DeviceLightControlView.swift in Sources */,
 				C886E1272E30DE4900D0C3A6 /* DeviceParameterPromptView.swift in Sources */,
 				C886E1282E30DE4900D0C3A6 /* EnergyTimeSeriesDataViewController.swift in Sources */,
@@ -4960,6 +5130,7 @@
 				C886E1382E30DE4900D0C3A6 /* String+Localized.swift in Sources */,
 				C886E1392E30DE4900D0C3A6 /* TimedViewController.swift in Sources */,
 				C8B95FA12E4EE25D000576F5 /* DeviceForceResetDeviceView.swift in Sources */,
+				C8BCDB3C2EFA748600D35DA5 /* ProfileLightSensorTemplateDevicesController.swift in Sources */,
 				C886E13A2E30DE4900D0C3A6 /* ShareSpaceListViewController.swift in Sources */,
 				C8B6D7DD2E6EB8E8004FB923 /* ContentDisplayViewCell.swift in Sources */,
 				C886E13B2E30DE4900D0C3A6 /* SceneServer.swift in Sources */,
@@ -4978,6 +5149,7 @@
 				C8C3A1582E37509800876028 /* GatewayAssociatedSpacesViewCell.swift in Sources */,
 				C886E1472E30DE4900D0C3A6 /* ImportData.swift in Sources */,
 				C886E1482E30DE4900D0C3A6 /* DeviceLightViewController.swift in Sources */,
+				C8B6CE742EE7EFE600C8AE32 /* DevicePowerCalibrationInstructionsController.swift in Sources */,
 				C886E1492E30DE4900D0C3A6 /* FirmwareData.swift in Sources */,
 				C886E14A2E30DE4900D0C3A6 /* DeviceLightHeaderView.swift in Sources */,
 				C886E14B2E30DE4900D0C3A6 /* SwitchSelectSceneViewController.swift in Sources */,
@@ -5052,8 +5224,10 @@
 				C8A3516E2D8D73B800325FC6 /* DeviceRestoreEmptyViewCell.swift in Sources */,
 				C89C70B32CD3731C00B9A76A /* MeshSelectDistributorViewController.swift in Sources */,
 				C8BA43652DC0A7A700018392 /* EnergyTimeSeriesDataImportView.swift in Sources */,
+				C81DB7842EFAC3D000D65664 /* ProfileDeviceDayNightLuxViewCell.swift in Sources */,
 				C884EF702C05788900B5F869 /* NoInternetHeaderView.swift in Sources */,
 				C8BE62292EC488E90075ED42 /* LightSensorManualCorrectionView.swift in Sources */,
+				C8BB3E452EF92CDC00207225 /* ProfileLightSensorTemplateController.swift in Sources */,
 				C8AEB9B02DCC98F80053102B /* DeviceParameterData.swift in Sources */,
 				C8ACF13B2AA1B2BA00E24B4A /* UIViewController+Extension.swift in Sources */,
 				C8A3EF762CA69758000A1226 /* MeshDeviceConfigInfo.swift in Sources */,
@@ -5065,6 +5239,7 @@
 				C87415DD2ADFD1510020E3C2 /* PopGestureScrollView.swift in Sources */,
 				C86B0ABA2C11434C0038F669 /* ServerSelectionView.swift in Sources */,
 				C8AEB9AE2DCC98CF0053102B /* DeviceParameterRatedPowerPhaseData.swift in Sources */,
+				C8D3ADB32EFD3599003D15CB /* ProfileDayNightLuxDevicesViewController.swift in Sources */,
 				C8A0116B2DA8F8010058E7E7 /* DeviceParameterDeviceCell.swift in Sources */,
 				C83D8C502DD1A0C300A59AFA /* EnergyFileData.swift in Sources */,
 				C88B257E2ADE594600CF1AE4 /* DeviceLightControlViewCell.swift in Sources */,
@@ -5086,6 +5261,7 @@
 				C89FD66F2C89A2FF00DE431D /* DeviceSwitchData.swift in Sources */,
 				C8C0E4492E2774C60024E77E /* DeviceSettingsCollectionViewCell.swift in Sources */,
 				C89A9A9A2C8AF9430032287D /* SwitchSelectGroupsViewController.swift in Sources */,
+				C8CAD3172F0A36E200BE3F20 /* ProfileNightDayIlluminanceThresholdView.swift in Sources */,
 				C8A099FF2AC138E30068C814 /* SiteViewController.swift in Sources */,
 				C89A1C392B5535A8004912B9 /* ScheduleDevicesView.swift in Sources */,
 				C8AC021A2DDD61DF0098E165 /* GroupPathSequenceTriggerZoneController.swift in Sources */,
@@ -5104,6 +5280,7 @@
 				C8B444A42E669DD8002F4CD6 /* DeviceAddSectionBackgroundView.swift in Sources */,
 				C8A351702D8EB1FF00325FC6 /* Node+SyncData.swift in Sources */,
 				C89D560F2D0A87F100FC7890 /* MeshFirmwareUpgradeResultsView.swift in Sources */,
+				C8B8362F2EE987DD00D85077 /* ProfileTriggerConditionPhasesView.swift in Sources */,
 				C8C958BB2EBC876900F0E6E2 /* GroupMenuView.swift in Sources */,
 				C8BE62242EC467510075ED42 /* LightSensorCalibrationAdjustSpeedView.swift in Sources */,
 				C8A29C2C2B47FE2300104634 /* ScheduleAddViewController.swift in Sources */,
@@ -5136,6 +5313,7 @@
 				C89F08A02C7712F2005C0711 /* BleFirmwareTypeUpdateViewCell.swift in Sources */,
 				C87B2D2F2BCFC6CD0034E9C2 /* SpaceNewCreationProcessController.swift in Sources */,
 				C8CAE8E32D75D76A00FCCA5A /* DevicesReplySetViewController.swift in Sources */,
+				C8BA401D2EE3C22D00C12FCB /* DeviceRatedPowerCalibrationSetSeparatelyViewCell.swift in Sources */,
 				C8ACF13D2AA1B2BA00E24B4A /* CALayer+Animations.swift in Sources */,
 				C898EA5E2AC2BD8B0023B480 /* WMPageController.m in Sources */,
 				C8A16F7C2C86EEFA00FB50BD /* FirmwareVersionData.swift in Sources */,
@@ -5149,14 +5327,17 @@
 				C8DA6A0F2DB8800B00E32092 /* FSCalendarStickyHeader.m in Sources */,
 				C8AEB9972DCA11F30053102B /* EnergyHarvestHistoryViewCell.swift in Sources */,
 				C8DA6A102DB8800B00E32092 /* FSCalendarAppearance.m in Sources */,
+				C8BB3E512EF9482500207225 /* ProfileLightSensorTemplateListController.swift in Sources */,
 				C8DA6A112DB8800B00E32092 /* FSCalendarCalculator.m in Sources */,
 				C8DA6A122DB8800B00E32092 /* FSCalendarCell.m in Sources */,
 				C8A85CE12E0A4886007F9B81 /* DeviceAddCandidateDeviceListView.swift in Sources */,
 				C8CD5BE82DDABF5C00F09467 /* GroupPathSequenceDeviceAddView.swift in Sources */,
 				C8DA6A132DB8800B00E32092 /* FSCalendarHeaderView.m in Sources */,
 				C8AEB9A52DCB45FD0053102B /* EnergyConsumptionInstructionView.swift in Sources */,
+				C8A8D7462EF5599B0025FFF7 /* ProfileDayNightLuxViewController.swift in Sources */,
 				C833B8562ECACF110005F84F /* SiteGatewayStatusView.swift in Sources */,
 				C8DA6A142DB8800B00E32092 /* FSCalendarSeparatorDecorationView.m in Sources */,
+				C8C026352F303B3400C7C2AA /* ToastStatusView.swift in Sources */,
 				C8DA6A152DB8800B00E32092 /* FSCalendarExtensions.m in Sources */,
 				C8DA6A162DB8800B00E32092 /* FSCalendarWeekdayView.m in Sources */,
 				C8DA6A172DB8800B00E32092 /* FSCalendarCollectionView.m in Sources */,
@@ -5205,8 +5386,11 @@
 				C8CAE8E72D76FE1500FCCA5A /* SwitchSelectScenePageController.swift in Sources */,
 				C87D8B272BA818AA00F930F9 /* GroupSwitchEnOceanProxyHeaderView.swift in Sources */,
 				C8A011672DA8EAFF0058E7E7 /* DeviceParameterDevicesViewController.swift in Sources */,
+				C8BA40182EE3BBA900C12FCB /* DeviceRatedPowerCalibrationController.swift in Sources */,
 				C88DE4432C072C8C005A38C1 /* SharePermissionSelectionController.swift in Sources */,
 				C84FBCC32DBF79D00030E136 /* EnergyTestData.swift in Sources */,
+				C8BA40242EE42F5C00C12FCB /* DeviceRatedPowerCalibrationHeaderView.swift in Sources */,
+				C8B6CE6F2EE6620200C8AE32 /* DeviceRatedPowerCalibrationSetAllViewCell.swift in Sources */,
 				C84FBCAD2DBF28D80030E136 /* EnergyStaticDataGroupView.swift in Sources */,
 				C8AEB9A92DCC5A660053102B /* DeviceParameterRetedPowerViewCell.swift in Sources */,
 				C8C813822EA615C5008B3515 /* DeviceMeshNetworkResetController.swift in Sources */,
@@ -5240,6 +5424,7 @@
 				C898EA652AC2BDC50023B480 /* SpaceViewController.swift in Sources */,
 				C8AC509A2C4E3234003CE437 /* SpaceMoreViewCell.swift in Sources */,
 				C8BA43612DC0724C00018392 /* GroupFilterSelectView.swift in Sources */,
+				C8A8D73C2EF3AEE80025FFF7 /* Scheduler.swift in Sources */,
 				C898F7042B3AB698008B4124 /* SceneMembersViewCell.swift in Sources */,
 				C898D1D02B59134A00B2033B /* ScheduleServer.swift in Sources */,
 				C8AC50982C4E2FF1003CE437 /* SpaceMoreViewController.swift in Sources */,
@@ -5248,6 +5433,7 @@
 				C8BF088E2B299DD700144BAC /* LinePageControl.swift in Sources */,
 				C822A85C2EA7682E00A7073B /* DeviceMeshNetworkResetSecitonHeaderView.swift in Sources */,
 				C8B444A82E67D00D002F4CD6 /* DeviceParameterSliderViewCell.swift in Sources */,
+				C8BB3E492EF945C500207225 /* ProfileLightSensorTemplateViewCell.swift in Sources */,
 				C8A09A072AC1790B0068C814 /* InfoEditViewController.swift in Sources */,
 				C84A2C572C2D571D0064D3F1 /* BatchSpaceData.swift in Sources */,
 				C88DE4412C070D3F005A38C1 /* ShareChangePasswordController.swift in Sources */,
@@ -5287,6 +5473,7 @@
 				C8AC83C72D068A670033513E /* MeshFirmwareUpdateStepHeaderView.swift in Sources */,
 				C8047F2D2B8F5C9200A09FFA /* ManualOverrideTimeoutInstructionController.swift in Sources */,
 				C898EA722AC3D17C0023B480 /* DevicesViewCell.swift in Sources */,
+				C8BFC6902F04AEC5007F83F2 /* DeviceResyncHeaderView.swift in Sources */,
 				C8BE621F2EC4624C0075ED42 /* LightSensorCalibrationPointLuxView.swift in Sources */,
 				C8607BE62B905F5100A94F0B /* LightSensorCalibrationView.swift in Sources */,
 				C833B8542EC7257C0005F84F /* GatewayListView.swift in Sources */,
@@ -5329,6 +5516,7 @@
 				C898EA792AC41AFB0023B480 /* CustomDeviceSlider.swift in Sources */,
 				C8FC6BA02E7502F6004EE2BA /* DaliDeviceInformationController.swift in Sources */,
 				C8A130C02B327FF40008C353 /* SceneAddCustomView.swift in Sources */,
+				C8CAD8A72F0E32AA00BE3F20 /* Node+Capability.swift in Sources */,
 				C8A0301A2CD85FC40063FEC4 /* MeshFirmwareSelectDeviceViewCell.swift in Sources */,
 				C8BC95E92E055C540058D41E /* DeviceSignalStrengthView.swift in Sources */,
 				C8A030202CD89EC00063FEC4 /* MeshFirmwareUpgradeSectionView.swift in Sources */,
@@ -5349,7 +5537,9 @@
 				C89FD66B2C89845D00DE431D /* DeviceLightsViewController.swift in Sources */,
 				C8A16F6D2C854AF300FB50BD /* WelcomeViewController.swift in Sources */,
 				C8A4E8952CDB1C3600A22C77 /* FirmwareDistributeUpdateStateView.swift in Sources */,
+				C8BA40102EE28B3900C12FCB /* DeviceParameterEnergyReportViewCell.swift in Sources */,
 				C89C9FEA2B3C24C700074031 /* SyncDeviceViewCell.swift in Sources */,
+				C8BA40122EE2F40400C12FCB /* DeviceParameterTitleHeaderView.swift in Sources */,
 				C8A4C5082C95624E003EE5E5 /* DeviceSensorsViewController.swift in Sources */,
 				C898E2FD2ABBD61200C71315 /* SRAlertView.swift in Sources */,
 				C89C9FF02B3D4E6200074031 /* SyncDevicesGroupViewCell.swift in Sources */,
@@ -5363,6 +5553,7 @@
 				C8AFDBFF2D70326E00839A38 /* DaliSettingViewController.swift in Sources */,
 				C8A09A032AC162660068C814 /* String+Date.swift in Sources */,
 				C8AEB9A72DCB664E0053102B /* ImportEnergyDeviceSelectView.swift in Sources */,
+				C8CAD89E2F0B9D5100BE3F20 /* ProfileTextInstructionsViewController.swift in Sources */,
 				C898EA742AC400100023B480 /* DeviceLightControlView.swift in Sources */,
 				C8A0116F2DA90A480058E7E7 /* DeviceParameterPromptView.swift in Sources */,
 				C8BA43632DC0A6FD00018392 /* EnergyTimeSeriesDataViewController.swift in Sources */,
@@ -5386,6 +5577,7 @@
 				C898E2DC2AB7E62100C71315 /* String+Localized.swift in Sources */,
 				C8A29C262B47D47500104634 /* TimedViewController.swift in Sources */,
 				C8B95FA22E4EE25D000576F5 /* DeviceForceResetDeviceView.swift in Sources */,
+				C8BCDB3E2EFA748600D35DA5 /* ProfileLightSensorTemplateDevicesController.swift in Sources */,
 				C830CFD92C0DBE520035CD5B /* ShareSpaceListViewController.swift in Sources */,
 				C8B6D7DE2E6EB8E8004FB923 /* ContentDisplayViewCell.swift in Sources */,
 				C89C9FE22B3BC1B900074031 /* SceneServer.swift in Sources */,
@@ -5404,6 +5596,7 @@
 				C8C3A1592E37509800876028 /* GatewayAssociatedSpacesViewCell.swift in Sources */,
 				C8D6636F2BFEDDC900BFF81A /* ImportData.swift in Sources */,
 				C88B25742ADD180900CF1AE4 /* DeviceLightViewController.swift in Sources */,
+				C8B6CE712EE7EFE600C8AE32 /* DevicePowerCalibrationInstructionsController.swift in Sources */,
 				C8A16F7E2C8725EF00FB50BD /* FirmwareData.swift in Sources */,
 				C88B257A2ADE1D2100CF1AE4 /* DeviceLightHeaderView.swift in Sources */,
 				C87EB4572BA1500500F9285B /* SwitchSelectSceneViewController.swift in Sources */,
@@ -5478,8 +5671,10 @@
 				C8BB65C62ED3F056000C63EE /* DeviceRestoreEmptyViewCell.swift in Sources */,
 				C8BB65C72ED3F056000C63EE /* MeshSelectDistributorViewController.swift in Sources */,
 				C8BB65C82ED3F056000C63EE /* EnergyTimeSeriesDataImportView.swift in Sources */,
+				C81DB7862EFAC3D000D65664 /* ProfileDeviceDayNightLuxViewCell.swift in Sources */,
 				C8BB65C92ED3F056000C63EE /* NoInternetHeaderView.swift in Sources */,
 				C8BB65CA2ED3F056000C63EE /* LightSensorManualCorrectionView.swift in Sources */,
+				C8BB3E442EF92CDC00207225 /* ProfileLightSensorTemplateController.swift in Sources */,
 				C8BB65CB2ED3F056000C63EE /* DeviceParameterData.swift in Sources */,
 				C8BB65CC2ED3F056000C63EE /* UIViewController+Extension.swift in Sources */,
 				C8BB65CD2ED3F056000C63EE /* MeshDeviceConfigInfo.swift in Sources */,
@@ -5491,6 +5686,7 @@
 				C8BB65D32ED3F056000C63EE /* PopGestureScrollView.swift in Sources */,
 				C8BB65D42ED3F056000C63EE /* ServerSelectionView.swift in Sources */,
 				C8BB65D52ED3F056000C63EE /* DeviceParameterRatedPowerPhaseData.swift in Sources */,
+				C8D3ADB12EFD3599003D15CB /* ProfileDayNightLuxDevicesViewController.swift in Sources */,
 				C8BB65D62ED3F056000C63EE /* DeviceParameterDeviceCell.swift in Sources */,
 				C8BB65D72ED3F056000C63EE /* EnergyFileData.swift in Sources */,
 				C8BB65D82ED3F056000C63EE /* DeviceLightControlViewCell.swift in Sources */,
@@ -5512,6 +5708,7 @@
 				C8BB65E82ED3F056000C63EE /* DeviceSwitchData.swift in Sources */,
 				C8BB65E92ED3F056000C63EE /* DeviceSettingsCollectionViewCell.swift in Sources */,
 				C8BB65EA2ED3F056000C63EE /* SwitchSelectGroupsViewController.swift in Sources */,
+				C8CAD3152F0A36E200BE3F20 /* ProfileNightDayIlluminanceThresholdView.swift in Sources */,
 				C8BB65EB2ED3F056000C63EE /* SiteViewController.swift in Sources */,
 				C8BB65EC2ED3F056000C63EE /* ScheduleDevicesView.swift in Sources */,
 				C8BB65ED2ED3F056000C63EE /* GroupPathSequenceTriggerZoneController.swift in Sources */,
@@ -5530,6 +5727,7 @@
 				C8BB65FA2ED3F056000C63EE /* DeviceAddSectionBackgroundView.swift in Sources */,
 				C8BB65FB2ED3F056000C63EE /* Node+SyncData.swift in Sources */,
 				C8BB65FC2ED3F056000C63EE /* MeshFirmwareUpgradeResultsView.swift in Sources */,
+				C8B836302EE987DD00D85077 /* ProfileTriggerConditionPhasesView.swift in Sources */,
 				C8BB65FD2ED3F056000C63EE /* GroupMenuView.swift in Sources */,
 				C8BB65FE2ED3F056000C63EE /* LightSensorCalibrationAdjustSpeedView.swift in Sources */,
 				C8BB65FF2ED3F056000C63EE /* ScheduleAddViewController.swift in Sources */,
@@ -5562,6 +5760,7 @@
 				C8BB661A2ED3F056000C63EE /* BleFirmwareTypeUpdateViewCell.swift in Sources */,
 				C8BB661B2ED3F056000C63EE /* SpaceNewCreationProcessController.swift in Sources */,
 				C8BB661C2ED3F056000C63EE /* DevicesReplySetViewController.swift in Sources */,
+				C8BA401C2EE3C22D00C12FCB /* DeviceRatedPowerCalibrationSetSeparatelyViewCell.swift in Sources */,
 				C8BB661D2ED3F056000C63EE /* CALayer+Animations.swift in Sources */,
 				C8BB661E2ED3F056000C63EE /* WMPageController.m in Sources */,
 				C8BB661F2ED3F056000C63EE /* FirmwareVersionData.swift in Sources */,
@@ -5575,14 +5774,17 @@
 				C8BB66272ED3F056000C63EE /* FSCalendarStickyHeader.m in Sources */,
 				C8BB66282ED3F056000C63EE /* EnergyHarvestHistoryViewCell.swift in Sources */,
 				C8BB66292ED3F056000C63EE /* FSCalendarAppearance.m in Sources */,
+				C8BB3E4F2EF9482500207225 /* ProfileLightSensorTemplateListController.swift in Sources */,
 				C8BB662A2ED3F056000C63EE /* FSCalendarCalculator.m in Sources */,
 				C8BB662B2ED3F056000C63EE /* FSCalendarCell.m in Sources */,
 				C8BB662C2ED3F056000C63EE /* DeviceAddCandidateDeviceListView.swift in Sources */,
 				C8BB662D2ED3F056000C63EE /* GroupPathSequenceDeviceAddView.swift in Sources */,
 				C8BB662E2ED3F056000C63EE /* FSCalendarHeaderView.m in Sources */,
 				C8BB662F2ED3F056000C63EE /* EnergyConsumptionInstructionView.swift in Sources */,
+				C8A8D7472EF5599B0025FFF7 /* ProfileDayNightLuxViewController.swift in Sources */,
 				C8BB66302ED3F056000C63EE /* SiteGatewayStatusView.swift in Sources */,
 				C8BB66312ED3F056000C63EE /* FSCalendarSeparatorDecorationView.m in Sources */,
+				C8C026332F303B3400C7C2AA /* ToastStatusView.swift in Sources */,
 				C8BB66322ED3F056000C63EE /* FSCalendarExtensions.m in Sources */,
 				C8BB66332ED3F056000C63EE /* FSCalendarWeekdayView.m in Sources */,
 				C8BB66342ED3F056000C63EE /* FSCalendarCollectionView.m in Sources */,
@@ -5631,8 +5833,11 @@
 				C8BB665F2ED3F056000C63EE /* SwitchSelectScenePageController.swift in Sources */,
 				C8BB66602ED3F056000C63EE /* GroupSwitchEnOceanProxyHeaderView.swift in Sources */,
 				C8BB66612ED3F056000C63EE /* DeviceParameterDevicesViewController.swift in Sources */,
+				C8BA40192EE3BBA900C12FCB /* DeviceRatedPowerCalibrationController.swift in Sources */,
 				C8BB66622ED3F056000C63EE /* SharePermissionSelectionController.swift in Sources */,
 				C8BB66632ED3F056000C63EE /* EnergyTestData.swift in Sources */,
+				C8BA40222EE42F5C00C12FCB /* DeviceRatedPowerCalibrationHeaderView.swift in Sources */,
+				C8B6CE6C2EE6620200C8AE32 /* DeviceRatedPowerCalibrationSetAllViewCell.swift in Sources */,
 				C8BB66642ED3F056000C63EE /* EnergyStaticDataGroupView.swift in Sources */,
 				C8BB66652ED3F056000C63EE /* DeviceParameterRetedPowerViewCell.swift in Sources */,
 				C8BB66662ED3F056000C63EE /* DeviceMeshNetworkResetController.swift in Sources */,
@@ -5666,6 +5871,7 @@
 				C8BB66822ED3F056000C63EE /* SpaceViewController.swift in Sources */,
 				C8BB66832ED3F056000C63EE /* SpaceMoreViewCell.swift in Sources */,
 				C8BB66842ED3F056000C63EE /* GroupFilterSelectView.swift in Sources */,
+				C8A8D73A2EF3AEE80025FFF7 /* Scheduler.swift in Sources */,
 				C8BB66852ED3F056000C63EE /* SceneMembersViewCell.swift in Sources */,
 				C8BB66862ED3F056000C63EE /* ScheduleServer.swift in Sources */,
 				C8BB66872ED3F056000C63EE /* SpaceMoreViewController.swift in Sources */,
@@ -5674,6 +5880,7 @@
 				C8BB668A2ED3F056000C63EE /* LinePageControl.swift in Sources */,
 				C8BB668B2ED3F056000C63EE /* DeviceMeshNetworkResetSecitonHeaderView.swift in Sources */,
 				C8BB668C2ED3F056000C63EE /* DeviceParameterSliderViewCell.swift in Sources */,
+				C8BB3E4A2EF945C500207225 /* ProfileLightSensorTemplateViewCell.swift in Sources */,
 				C8BB668D2ED3F056000C63EE /* InfoEditViewController.swift in Sources */,
 				C8BB668E2ED3F056000C63EE /* BatchSpaceData.swift in Sources */,
 				C8BB668F2ED3F056000C63EE /* ShareChangePasswordController.swift in Sources */,
@@ -5713,6 +5920,7 @@
 				C8BB66B12ED3F056000C63EE /* MeshFirmwareUpdateStepHeaderView.swift in Sources */,
 				C8BB66B22ED3F056000C63EE /* ManualOverrideTimeoutInstructionController.swift in Sources */,
 				C8BB66B32ED3F056000C63EE /* DevicesViewCell.swift in Sources */,
+				C8BFC6912F04AEC5007F83F2 /* DeviceResyncHeaderView.swift in Sources */,
 				C8BB66B42ED3F056000C63EE /* LightSensorCalibrationPointLuxView.swift in Sources */,
 				C8BB66B52ED3F056000C63EE /* LightSensorCalibrationView.swift in Sources */,
 				C8BB66B62ED3F056000C63EE /* GatewayListView.swift in Sources */,
@@ -5755,6 +5963,7 @@
 				C8BB66DB2ED3F056000C63EE /* CustomDeviceSlider.swift in Sources */,
 				C8BB66DC2ED3F056000C63EE /* DaliDeviceInformationController.swift in Sources */,
 				C8BB66DD2ED3F056000C63EE /* SceneAddCustomView.swift in Sources */,
+				C8CAD8A92F0E32AA00BE3F20 /* Node+Capability.swift in Sources */,
 				C8BB66DE2ED3F056000C63EE /* MeshFirmwareSelectDeviceViewCell.swift in Sources */,
 				C8BB66DF2ED3F056000C63EE /* DeviceSignalStrengthView.swift in Sources */,
 				C8BB66E02ED3F056000C63EE /* MeshFirmwareUpgradeSectionView.swift in Sources */,
@@ -5775,7 +5984,9 @@
 				C8BB66EE2ED3F056000C63EE /* DeviceLightsViewController.swift in Sources */,
 				C8BB66EF2ED3F056000C63EE /* WelcomeViewController.swift in Sources */,
 				C8BB66F02ED3F056000C63EE /* FirmwareDistributeUpdateStateView.swift in Sources */,
+				C8BA400D2EE28B3900C12FCB /* DeviceParameterEnergyReportViewCell.swift in Sources */,
 				C8BB66F12ED3F056000C63EE /* SyncDeviceViewCell.swift in Sources */,
+				C8BA40132EE2F40400C12FCB /* DeviceParameterTitleHeaderView.swift in Sources */,
 				C8BB66F22ED3F056000C63EE /* DeviceSensorsViewController.swift in Sources */,
 				C8BB66F32ED3F056000C63EE /* SRAlertView.swift in Sources */,
 				C8BB66F42ED3F056000C63EE /* SyncDevicesGroupViewCell.swift in Sources */,
@@ -5789,6 +6000,7 @@
 				C8BB66FC2ED3F056000C63EE /* DaliSettingViewController.swift in Sources */,
 				C8BB66FD2ED3F056000C63EE /* String+Date.swift in Sources */,
 				C8BB66FE2ED3F056000C63EE /* ImportEnergyDeviceSelectView.swift in Sources */,
+				C8CAD89D2F0B9D5100BE3F20 /* ProfileTextInstructionsViewController.swift in Sources */,
 				C8BB66FF2ED3F056000C63EE /* DeviceLightControlView.swift in Sources */,
 				C8BB67002ED3F056000C63EE /* DeviceParameterPromptView.swift in Sources */,
 				C8BB67012ED3F056000C63EE /* EnergyTimeSeriesDataViewController.swift in Sources */,
@@ -5812,6 +6024,7 @@
 				C8BB67132ED3F056000C63EE /* String+Localized.swift in Sources */,
 				C8BB67142ED3F056000C63EE /* TimedViewController.swift in Sources */,
 				C8BB67152ED3F056000C63EE /* DeviceForceResetDeviceView.swift in Sources */,
+				C8BCDB3B2EFA748600D35DA5 /* ProfileLightSensorTemplateDevicesController.swift in Sources */,
 				C8BB67162ED3F056000C63EE /* ShareSpaceListViewController.swift in Sources */,
 				C8BB67172ED3F056000C63EE /* ContentDisplayViewCell.swift in Sources */,
 				C8BB67182ED3F056000C63EE /* SceneServer.swift in Sources */,
@@ -5830,6 +6043,7 @@
 				C8BB67252ED3F056000C63EE /* GatewayAssociatedSpacesViewCell.swift in Sources */,
 				C8BB67262ED3F056000C63EE /* ImportData.swift in Sources */,
 				C8BB67272ED3F056000C63EE /* DeviceLightViewController.swift in Sources */,
+				C8B6CE722EE7EFE600C8AE32 /* DevicePowerCalibrationInstructionsController.swift in Sources */,
 				C8BB67282ED3F056000C63EE /* FirmwareData.swift in Sources */,
 				C8BB67292ED3F056000C63EE /* DeviceLightHeaderView.swift in Sources */,
 				C8BB672A2ED3F056000C63EE /* SwitchSelectSceneViewController.swift in Sources */,
@@ -5913,8 +6127,8 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 6;
-				DEVELOPMENT_TEAM = JTD3WYUC58;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = RJTP8XBT2V;
 				GCC_PREFIX_HEADER = "";
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = "Archipelago/Archipelago-Info.plist";
@@ -5933,8 +6147,8 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.azoula.archipelago;
+				MARKETING_VERSION = 1.0.1;
+				PRODUCT_BUNDLE_IDENTIFIER = com.acslighting.acslighting;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
 				SUPPORTS_MACCATALYST = NO;
@@ -5955,8 +6169,8 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 6;
-				DEVELOPMENT_TEAM = JTD3WYUC58;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = RJTP8XBT2V;
 				GCC_PREFIX_HEADER = "";
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = "Archipelago/Archipelago-Info.plist";
@@ -5975,8 +6189,8 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.azoula.archipelago;
+				MARKETING_VERSION = 1.0.1;
+				PRODUCT_BUNDLE_IDENTIFIER = com.acslighting.acslighting;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
 				SUPPORTS_MACCATALYST = NO;
@@ -6197,7 +6411,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 20;
+				CURRENT_PROJECT_VERSION = 18;
 				DEVELOPMENT_TEAM = JTD3WYUC58;
 				GCC_PREFIX_HEADER = "";
 				GENERATE_INFOPLIST_FILE = YES;
@@ -6216,7 +6430,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.0.12;
+				MARKETING_VERSION = 1.0.13;
 				PRODUCT_BUNDLE_IDENTIFIER = com.azoula.sunsmart;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
@@ -6237,7 +6451,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 20;
+				CURRENT_PROJECT_VERSION = 18;
 				DEVELOPMENT_TEAM = JTD3WYUC58;
 				GCC_PREFIX_HEADER = "";
 				GENERATE_INFOPLIST_FILE = YES;
@@ -6256,7 +6470,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.0.12;
+				MARKETING_VERSION = 1.0.13;
 				PRODUCT_BUNDLE_IDENTIFIER = com.azoula.sunsmart;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
@@ -6277,8 +6491,8 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = JTD3WYUC58;
+				CURRENT_PROJECT_VERSION = 2;
+				DEVELOPMENT_TEAM = 97QC5USUD2;
 				GCC_PREFIX_HEADER = "";
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = "SLGSync/SLGSync-Info.plist";
@@ -6296,8 +6510,8 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.azoula.slgsync;
+				MARKETING_VERSION = 1.0.1;
+				PRODUCT_BUNDLE_IDENTIFIER = com.slg.slgsyncplus;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
 				SUPPORTS_MACCATALYST = NO;
@@ -6318,8 +6532,8 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = JTD3WYUC58;
+				CURRENT_PROJECT_VERSION = 2;
+				DEVELOPMENT_TEAM = 97QC5USUD2;
 				GCC_PREFIX_HEADER = "";
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = "SLGSync/SLGSync-Info.plist";
@@ -6337,8 +6551,8 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.azoula.slgsync;
+				MARKETING_VERSION = 1.0.1;
+				PRODUCT_BUNDLE_IDENTIFIER = com.slg.slgsyncplus;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
 				SUPPORTS_MACCATALYST = NO;
@@ -6403,6 +6617,14 @@
 /* End XCConfigurationList section */
 
 /* Begin XCRemoteSwiftPackageReference section */
+		C857CF662F73B22900FF7A52 /* XCRemoteSwiftPackageReference "nordic-sig-mesh-sdk" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://gitee.com/sunricher-i-os/nordic-sig-mesh-sdk.git";
+			requirement = {
+				branch = master;
+				kind = branch;
+			};
+		};
 		C88553AF2DE6B44C00C8B688 /* XCRemoteSwiftPackageReference "nordic-sig-mesh-sdk" */ = {
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://gitee.com/sunricher-i-os/nordic-sig-mesh-sdk.git";
@@ -6427,17 +6649,14 @@
 				kind = branch;
 			};
 		};
-		C8FFD7CF2E7D02D00074CC6A /* XCRemoteSwiftPackageReference "nordic-sig-mesh-sdk" */ = {
-			isa = XCRemoteSwiftPackageReference;
-			repositoryURL = "https://gitee.com/sunricher-i-os/nordic-sig-mesh-sdk.git";
-			requirement = {
-				branch = master;
-				kind = branch;
-			};
-		};
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
+		C857CF672F73B22900FF7A52 /* NordicSigMeshSDK */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = C857CF662F73B22900FF7A52 /* XCRemoteSwiftPackageReference "nordic-sig-mesh-sdk" */;
+			productName = NordicSigMeshSDK;
+		};
 		C88553AE2DE6B44C00C8B688 /* NordicSigMeshSDK */ = {
 			isa = XCSwiftPackageProductDependency;
 			package = C88553AF2DE6B44C00C8B688 /* XCRemoteSwiftPackageReference "nordic-sig-mesh-sdk" */;
@@ -6451,11 +6670,6 @@
 		C8BB65AC2ED3F056000C63EE /* NordicSigMeshSDK */ = {
 			isa = XCSwiftPackageProductDependency;
 			package = C8BB65AD2ED3F056000C63EE /* XCRemoteSwiftPackageReference "nordic-sig-mesh-sdk" */;
-			productName = NordicSigMeshSDK;
-		};
-		C8FFD7D22E7D03810074CC6A /* NordicSigMeshSDK */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = C8FFD7CF2E7D02D00074CC6A /* XCRemoteSwiftPackageReference "nordic-sig-mesh-sdk" */;
 			productName = NordicSigMeshSDK;
 		};
 /* End XCSwiftPackageProductDependency section */

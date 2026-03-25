@@ -55,6 +55,8 @@ enum DeviceOperationType {
                 return node.group != group
             case .profile(let type):
                 return type.isSuccessful(node: node)
+            case .pirEnabled(let enabled):
+                return node.pirEnabled == enabled
             case .enOceanSwitch(let switchData):
                 if switchData.linkGroup != nil {
                     return node.getEnOceanUnSubscriptionMessageHandles(switchKeys: switchData.switchKeys).isEmpty
@@ -68,7 +70,7 @@ enum DeviceOperationType {
                         return false
                     }
                 }
-//                return switchData.proxyNode?.enOceanMacAddress == nil
+                //                return switchData.proxyNode?.enOceanMacAddress == nil
                 return switchData.deleteProxyNode == nil || switchData.deleteProxyNode?.enOceanMacAddress == nil
             case .deviceInitialize:
                 return true
@@ -98,6 +100,8 @@ enum DeviceOperationType {
                     }
                 }
                 return true
+            default:
+                return true
             }
         case .configuration(let node, let type):
             switch type {
@@ -117,6 +121,8 @@ enum DeviceOperationType {
                 return node.group == group && node.getSubscribeToGroupMessages(group).count == 0
             case .profile(let type):
                 return type.isSuccessful(node: node)
+            case .pirEnabled(let enabled):
+                return node.pirEnabled == enabled
             case .enOceanSwitch(let switchData):
                 if switchData.linkGroup != nil {
                     return node.getEnOceanSubscriptionMessageHandles(switchKeys: switchData.switchKeys).isEmpty
@@ -125,7 +131,7 @@ enum DeviceOperationType {
             case .enOceanProxy(let switchData):
                 // 如果是动能开关代理并且已启用状态，则判断代理是否绑定按键成功
                 if switchData.linkGroup != nil, node.primaryUnicastAddress == switchData.proxyNodeAddress, let macAddress = switchData.enOceanMacAddress, let key = switchData.enOceanSecurityKey {
-                    let syncMessageHandles = node.getEnOceanSwitchBindMessageHandles(enOceanMacAddress: macAddress, securityKey: key, enabled: switchData.enabled, switchKeys: switchData.switchKeys)
+                    let syncMessageHandles = node.getEnOceanSwitchBindMessageHandles(enOceanMacAddress: macAddress, securityKey: key, keyCount: switchData.maxKeyCount, enabled: switchData.enabled, switchKeys: switchData.switchKeys)
                     guard syncMessageHandles.isEmpty else {
                         return false
                     }
@@ -141,6 +147,8 @@ enum DeviceOperationType {
                 return node.collectionSchedulerEntrys[index] != nil && node.collectionSchedulerEntrys[index]! == entry
             case .proximityLightingEnabled(let enabled):
                 return node.proximityLightingEnabled == enabled
+            case .proximityLightingRelayNumber(let relayNumber):
+                return node.proximityLightingRelayCount == relayNumber
             case .proximityLightingNeighbor(let relayNumber, let neighborAddresses):
                 return node.proximityLightingRelayCount == relayNumber && node.proximityLightingNeighborAddresses.sorted() == neighborAddresses.sorted()
             case .gatewaySIMAPN(let apn):
@@ -175,25 +183,21 @@ enum DeviceOperationType {
                 return true
             case .deviceRouteList:
                 return true
+            case .autoSetRatedPower:
+                return true
             }
-        case .read:
-            switch self {
-            case .read(let node, let type):
-                switch type {
-                case .deviceParameters(let parameterType):
-                    switch parameterType {
-                    case .motionSensitivityRange:
-                        return node.motionSensitivityRange != nil
-                    default:
-                        break
-                    }
+        case .read(let node, let type):
+            switch type {
+            case .deviceParameters(let parameterType):
+                switch parameterType {
+                case .motionSensitivityRange:
+                    return node.motionSensitivityRange != nil
                 default:
                     return true
                 }
             default:
-                break
+                return true
             }
-            return true
         }
         
     }
@@ -228,6 +232,8 @@ enum DeviceOperationType {
 //                    messageHandles.append(MeshMessageHandle(message: LightLCModeSet(false), model: lightLCSetupModel))
 //                    messageHandles.append(MeshMessageHandle(message: LightLCOccupancyModeSet(false), model: lightLCSetupModel))
 //                }
+            case .pirEnabled(let enabled):
+                messageHandles.append(contentsOf: NodeSyncData.pirEnabled(enabled).getMessageHandles(node: node))
             case .enOceanSwitch(let switchData):
                 if switchData.linkGroup != nil {
                     messageHandles.append(contentsOf: node.getEnOceanUnSubscriptionMessageHandles(switchKeys: switchData.switchKeys))
@@ -247,7 +253,7 @@ enum DeviceOperationType {
                 if let model = node.collectionSchedulerSetupModel {
                     messageHandles.append(MeshMessageHandle(message: SchedulerActionSet(index: UInt8(index), entry: entry), model: model))
                 }
-            case .proximityLightingEnabled:
+            case .proximityLightingEnabled, .proximityLightingRelayNumber:
                 break
             case .proximityLightingNeighbor:
                 break
@@ -260,6 +266,8 @@ enum DeviceOperationType {
             case .gatewayUnbindAssociatedSpace(let networkKey, let applicationKey, let activate):
                 let associatedMessageHandles = NodeSyncData.gatewayUnbindAssociatedSpaces(datas: [(networkKey, applicationKey)], activate: activate).getMessageHandles(node: node)
                 messageHandles.append(contentsOf: associatedMessageHandles)
+            case .autoSetRatedPower:
+                break
             }
         case .configuration(let node, let type): // 添加/配置操作
             
@@ -280,6 +288,8 @@ enum DeviceOperationType {
                 messageHandles.append(contentsOf: schedule.getMessageHandles(node: node))
             case .profile(let type):
                 messageHandles.append(contentsOf: type.getMessageHandles(node: node))
+            case .pirEnabled(let enabled):
+                messageHandles.append(contentsOf: NodeSyncData.pirEnabled(enabled).getMessageHandles(node: node))
             case .enOceanSwitch(let switchData):
                 if switchData.linkGroup != nil {
                     // 判断是否已订阅动能开关按键事件
@@ -287,7 +297,7 @@ enum DeviceOperationType {
                 }
             case .enOceanProxy(let switchData):
                 if switchData.linkGroup != nil, node.primaryUnicastAddress == switchData.proxyNodeAddress, let macAddress = switchData.enOceanMacAddress, let key = switchData.enOceanSecurityKey {
-                    let handles = node.getEnOceanSwitchBindMessageHandles(enOceanMacAddress: macAddress, securityKey: key, enabled: switchData.enabled, switchKeys: switchData.switchKeys)
+                    let handles = node.getEnOceanSwitchBindMessageHandles(enOceanMacAddress: macAddress, securityKey: key, keyCount: switchData.maxKeyCount, enabled: switchData.enabled, switchKeys: switchData.switchKeys)
                     messageHandles.append(contentsOf: handles)
                 }
             case .deviceInitialize:
@@ -315,6 +325,10 @@ enum DeviceOperationType {
                 if let vendorModel = node.sunricherVendorModel {
                     messageHandles.append(MeshMessageHandle(message: SunricherVendorSet(function: .proximityLightingEnabled(enabled)), model: vendorModel))
                 }
+            case .proximityLightingRelayNumber(let relayNumber):
+                if let vendorModel = node.sunricherVendorModel {
+                    messageHandles.append(MeshMessageHandle(message: SunricherVendorSet(function: .proximityLightingRelaySet(relay: relayNumber)), model: vendorModel))
+                }
             case .gatewaySIMAPN(let apn):
                 messageHandles.append(contentsOf: NodeSyncData.syncGatewaySIMAPN(apn: apn).getMessageHandles(node: node))
             case .gatewayMQTTInformation(let mqttInformation):
@@ -331,6 +345,10 @@ enum DeviceOperationType {
                 messageHandles.append(contentsOf: associatedMessageHandles)
             case .deviceRouteList:
                 break
+            case .autoSetRatedPower:
+                if let vendorModel = node.sunricherVendorModel, let pid = node.productIdentifier {
+                    messageHandles.append(MeshMessageHandle(message: SunricherVendorSet(function: .ratedPower(pid: pid)), model: vendorModel))
+                }
             }
         case .read(let node, let type):
             switch type {
@@ -365,6 +383,8 @@ enum ActionType {
     case group(group: Group)
     /// 配置
     case profile(type: ProfileType)
+    /// 设备pir启用/禁用
+    case pirEnabled(_ enabled: Bool)
     /// 动能开关（关联）
     case enOceanSwitch(switchData: DeviceSwitchData)
     /// 动能开关代理
@@ -383,6 +403,8 @@ enum ActionType {
     case proximityLightingNeighbor(relayNumber: UInt8, neighborAddresses: [Address])
     /// 启用/禁用邻近照明
     case proximityLightingEnabled(enabled: Bool)
+    /// 设置邻近照明邻居数量
+    case proximityLightingRelayNumber(relayNumber: UInt8)
     /// 网关关联项目id
     case gatewayAssociationProjectId(projectId: String)
     /// 同步网关子网appkey indexs
@@ -398,6 +420,8 @@ enum ActionType {
     
     /// 设备路由list
     case deviceRouteList(proxyAddress: Address)
+    /// 自动设置额定功率
+    case autoSetRatedPower
 }
 
 extension NodeSyncData {
@@ -409,7 +433,7 @@ extension NodeSyncData {
             return 1
         case .unsubscribeGroup:
             return 1
-        case .profile:
+        case .profile, .pirEnabled:
             return 2
         case .syncScenes:
             return 3
@@ -435,7 +459,7 @@ extension NodeSyncData {
             return 4
         case .deleteCollectionSchedules:
             return 4
-        case .proximityLightingEnabled, .proximityLightingNeighbor:
+        case .proximityLightingEnabled, .proximityLightingNeighbor, .proximityLightingRelayNumber:
             return 2
         case .addNetworkKey, .addApplicationkey, .removeNetworkKey, .removeApplicationkey:
             return 1
@@ -468,6 +492,10 @@ extension ProfileType {
             return "profile_vacancy_level".localizedString
         case .vacantLux:
             return "profile_vacancy_lux".localizedString
+        case .standbyLevel:
+            return "profile_standby_level".localizedString
+        case .standbyLux:
+            return "profile_standby_lux".localizedString
 //        case .autoMinValue:
 //            return "profile_auto_min_value".localizedString
         case .adjustSpeed:
@@ -502,7 +530,26 @@ extension ProfileType {
             return "calibration_light_point".localizedString
         case .sensitivity:
             return "sensitivity".localizedString
-        
+        case .lightControlSnapshoot:
+            return "profile_snapshoot".localizedString
+        case .lightControlSwitch, .daylightSensorConditionRecall:
+            return "profile_switch".localizedString
+        case .lightControlStore:
+            return "profile_store".localizedString
+        case .lightControlRestore:
+            return "profile_restore".localizedString
+        case .lightControlDelete:
+            return "profile_scene_delete".localizedString
+        case .profileDayToggleTriggerConditionLux:
+            return "profile_day_threshold".localizedString
+        case .profileNightToggleTriggerConditionLux:
+            return "profile_night_threshold".localizedString
+        case .profileToggleTriggerConditionLuxDelete(let id):
+            return id == 0 ? "profile_night_threshol_delete".localizedString : "profile_day_threshold_delete".localizedString
+        case .profileToggleTriggerConditionLuxLock:
+            return "profile_lux_trigger_lock".localizedString
+        case .profileToggleTriggerConditionLuxUnLock:
+            return "profile_lux_trigger_unlock".localizedString
         }
     }
     
@@ -528,6 +575,10 @@ extension ProfileType {
             return node.lightLCProperty.lightnessProlong == Node.getLightness(lightness100: value)
         case .vacantLux(let lux):
             return node.lightLCProperty.luxLevelProlong == UInt16(lux)
+        case .standbyLevel(let value):
+            return node.lightLCProperty.lightnessStandby == Node.getLightness(lightness100: value)
+        case .standbyLux(let lux):
+            return node.lightLCProperty.luxLevelStandby == UInt16(lux)
         case .lightAutoAdujustEnabled(let enabled):
             return node.lightLCProperty.lightAutoAdjustEnabled == enabled
         case .adjustSpeed(let speed):
@@ -562,6 +613,24 @@ extension ProfileType {
             return node.motionSensitivity == value
         case .daylightCalibrateRate, .daylightCalibrateInflectionPoint:
             return true
+        case .lightControlSnapshoot(let sceneNumber):
+            return node.lightControlSnapshotSceneExecuteData != nil && node.lightControlSnapshotSceneExecuteData?.sceneNumber == sceneNumber
+        case .lightControlSwitch, .daylightSensorConditionRecall:
+            return true
+        case .lightControlStore(let sceneNumber):
+            return node.lightControlSceneExecuteDatas.contains(where: { $0.sceneNumber == sceneNumber })
+        case .lightControlRestore:
+            return true
+        case .lightControlDelete(let sceneNumber):
+            return !node.lightControlSceneExecuteDatas.contains(where: { $0.sceneNumber == sceneNumber })
+        case .profileDayToggleTriggerConditionLux(let id, _, _, _, _, _):
+            return node.lightControlLuxTriggerConditions.contains(where: { $0.index == id })
+        case .profileNightToggleTriggerConditionLux(let id, _, _, _, _, _):
+            return node.lightControlLuxTriggerConditions.contains(where: { $0.index == id })
+        case .profileToggleTriggerConditionLuxDelete(let id):
+            return !node.lightControlLuxTriggerConditions.contains(where: { $0.index == id })
+        case .profileToggleTriggerConditionLuxLock, .profileToggleTriggerConditionLuxUnLock:
+            return true
         }
     }
 }
@@ -579,6 +648,8 @@ extension DeviceParameterType {
             return node.motionSensitivityRange == range
         case .defaultTransitionTime(let transitionTime):
             return node.defaultTransitionTime?.rawValue == transitionTime.rawValue
+        case .powerCalibration(let calibrationValue):
+            return node.calibrationRatedPower == calibrationValue
         }
     }
     
@@ -840,7 +911,10 @@ class SyncDeviceStepModel: SyncCellModel {
         get {
             let notSetTasks = tasks.filter({ $0.state == .none || $0.state == .wait })
             let inSetDevices = tasks.filter({ $0.state == .inSettings })
-            if notSetTasks.count == 0 && inSetDevices.count == 0 { // 设置完成
+            
+            let existRelevance = notSetTasks.contains(where: { $0.relevanceTaskModels.count > 0 && $0.relevanceTaskModels.contains(where: { $0.state == .failed }) && !$0.relevanceTaskModels.contains(where: { $0.state == .inSettings }) })
+            
+            if (notSetTasks.count == 0 && inSetDevices.count == 0) || existRelevance { // 设置完成
                 return tasks.contains(where: { $0.state == .failed }) ? .failed : .successful
             }else if notSetTasks.count == tasks.count || inSetDevices.count == 0 { // 未开始
                 return .wait
@@ -853,7 +927,7 @@ class SyncDeviceStepModel: SyncCellModel {
         }
     }
     /// 任务list
-    let tasks: [SyncDeviceStepTaskModel]
+    var tasks: [SyncDeviceStepTaskModel] = []
     /// 上级model
     var parentDeviceModel: SyncDevicesModel?
     /// 关联的进度model(如果关联model未成功则当前任务进入等待状态)
@@ -866,8 +940,8 @@ class SyncDeviceStepModel: SyncCellModel {
     
     init(type: String, state: SyncDevicesState, tasks: [SyncDeviceStepTaskModel]) {
         self.type = type
-        self.tasks = tasks
         super.init()
+        self.tasks = tasks
         self.state = state
     }
     
@@ -883,6 +957,9 @@ class SyncDeviceStepTaskModel: SyncCellModel {
     let operationType: DeviceOperationType
     /// 上级model
     var parentStepModel: SyncDeviceStepModel?
+    
+    /// 关联的任务model(如果关联model未成功则当前任务进入等待状态)
+    var relevanceTaskModels: [SyncDeviceStepTaskModel] = []
     
     /// 失败次数
     var failedCount: Int = 0

@@ -22,6 +22,7 @@ protocol DeviceParameterAbsoluteSensitivityViewCellDelegate: AnyObject {
 
 class DeviceParameterAbsoluteSensitivityViewCell: UITableViewCell {
     
+    private var containerView: UIView!
     private var titleLabel: UILabel!
     private var enableSwitch: UISwitch!
     private var sliderView: UIView!
@@ -55,8 +56,9 @@ class DeviceParameterAbsoluteSensitivityViewCell: UITableViewCell {
         super.init(style: style, reuseIdentifier: reuseIdentifier)
         
         selectionStyle = .none
-        layer.cornerRadius = SCRYFrom(10)
-        backgroundColor = .white
+//        layer.cornerRadius = SCRYFrom(10)
+//        backgroundColor = .white
+        backgroundColor = .clear
         
         setupUI()
     }
@@ -118,13 +120,13 @@ class DeviceParameterAbsoluteSensitivityViewCell: UITableViewCell {
             
             titleLabel.snp.remakeConstraints { make in
                 make.left.equalTo(SCRXFrom(16))
-                make.top.equalTo(SCRYFrom(24))
+                make.top.equalTo(SCRYFrom(24)).priority(.high)
             }
             
             noteLabel.snp.remakeConstraints { make in
                 make.left.right.equalTo(sliderView)
-                make.top.equalTo(sliderView.snp.bottom).offset(SCRYFrom(16))
-                make.bottom.equalTo(SCRYFrom(-20))
+                make.top.equalTo(sliderView.snp.bottom).offset(SCRYFrom(16)).priority(.high)
+                make.bottom.equalTo(SCRYFrom(-20)).priority(.high)
             }
         }else {
             
@@ -133,13 +135,13 @@ class DeviceParameterAbsoluteSensitivityViewCell: UITableViewCell {
             
             titleLabel.snp.remakeConstraints { make in
                 make.left.equalTo(SCRXFrom(16))
-                make.top.equalTo(SCRYFrom(24))
-                make.bottom.equalTo(SCRYFrom(-23))                      
+                make.top.equalTo(SCRYFrom(24)).priority(.high)
+                make.bottom.equalTo(SCRYFrom(-23)).priority(.high)
             }
             
             noteLabel.snp.remakeConstraints { make in
                 make.left.right.equalTo(sliderView)
-                make.top.equalTo(sliderView.snp.bottom).offset(SCRYFrom(16))
+                make.top.equalTo(sliderView.snp.bottom).offset(SCRYFrom(16)).priority(.high)
             }
         }
     }
@@ -166,17 +168,28 @@ class DeviceParameterAbsoluteSensitivityViewCell: UITableViewCell {
     
     private func setupUI() {
         
+        containerView = UIView()
+        containerView.backgroundColor = .white
+        containerView.layer.cornerRadius = SCRYFrom(10)
+        contentView.addSubview(containerView)
+        containerView.snp.makeConstraints { make in
+            make.left.equalTo(SCRXFrom(16))
+            make.right.equalTo(SCRXFrom(-16))
+            make.top.equalToSuperview()
+            make.bottom.equalTo(SCRYFrom(-16))
+        }
+        
         titleLabel = UILabel(text: "absolute_sensitivity".localizedString + ":", textColor: ImportantText_Color, fontSize: 14)
-        contentView.addSubview(titleLabel)
+        containerView.addSubview(titleLabel)
         titleLabel.snp.makeConstraints { make in
             make.left.equalTo(SCRXFrom(16))
-            make.top.equalTo(SCRYFrom(24))
+            make.top.equalTo(SCRYFrom(24)).priority(.high)
         }
         
         enableSwitch = UISwitch()
         enableSwitch.onTintColor = Bar_Color
         enableSwitch.addTarget(self, action: #selector(enableSwitchValueChanged), for: .valueChanged)
-        contentView.addSubview(enableSwitch)
+        containerView.addSubview(enableSwitch)
         enableSwitch.snp.makeConstraints { make in
             make.right.equalTo(SCRXFrom(-16))
             make.centerY.equalTo(titleLabel)
@@ -188,7 +201,7 @@ class DeviceParameterAbsoluteSensitivityViewCell: UITableViewCell {
         resetBtn.layer.borderWidth = 0.5
         resetBtn.layer.borderColor = RGB(220, 220, 220).cgColor
         resetBtn.isHidden = true
-        contentView.addSubview(resetBtn)
+        containerView.addSubview(resetBtn)
         resetBtn.snp.makeConstraints { make in
             make.right.equalTo(enableSwitch.snp.left).offset(SCRXFrom(-24))
             make.centerY.equalTo(enableSwitch)
@@ -196,7 +209,7 @@ class DeviceParameterAbsoluteSensitivityViewCell: UITableViewCell {
         }
         
         sliderView = UIView()
-        contentView.addSubview(sliderView)
+        containerView.addSubview(sliderView)
         sliderView.snp.makeConstraints { make in
             make.left.equalTo(SCRXFrom(16))
             make.right.equalTo(SCRXFrom(-16))
@@ -258,10 +271,10 @@ class DeviceParameterAbsoluteSensitivityViewCell: UITableViewCell {
         noteLabel = UILabel(text: "absolute_sensitivity_messsage".localizedString, textColor: SubText_Color, fontSize: 13, fontWeight: .light, fit: false)
         noteLabel.textAlignment = .center
         noteLabel.numberOfLines = 0
-        contentView.addSubview(noteLabel)
+        containerView.addSubview(noteLabel)
         noteLabel.snp.makeConstraints { make in
             make.left.right.equalTo(sliderView)
-            make.top.equalTo(sliderView.snp.bottom).offset(SCRYFrom(16))
+            make.top.equalTo(sliderView.snp.bottom).offset(SCRYFrom(16)).priority(.high)
             make.bottom.equalTo(SCRYFrom(-20))
         }
         

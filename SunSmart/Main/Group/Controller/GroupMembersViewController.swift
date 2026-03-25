@@ -94,15 +94,26 @@ class GroupMembersViewController: UIViewController {
         
 //        if space.nodes.filter({ $0.group == nil || $0.group?.address.address == group.address.address }).count != nodes.count || group.nodes.count != selectNodes.count {
         nodes = MeshNetworkManager.instance.realNodes.filter({ $0.deviceType != .gateway && ($0.group == nil || $0.group?.address.address == group.address.address) })
-        
-        selectNodes.append(contentsOf: nodes.filter({ $0.group?.address.address == group.address.address }).filter({ !selectNodes.contains($0) && $0.group?.address.address == group.address.address }))
-//        }
-        DispatchQueue.global().async {
-            let isSync = self.group.needSync
-            DispatchQueue.main.async {
-                self.functionView.syncBtn.isHidden = !isSync
+        selectNodes.removeAll()
+        nodes.forEach { node in
+            if node.group != nil {
+                if !selectNodes.contains(node) {
+                    selectNodes.append(node)
+                }
+            }else {
+                if let index = selectNodes.firstIndex(of: node) {
+                    selectNodes.remove(at: index)
+                }
             }
         }
+//        selectNodes.append(contentsOf: nodes.filter({ $0.group?.address.address == group.address.address }).filter({ !selectNodes.contains($0) && $0.group?.address.address == group.address.address }))
+//        }
+//        DispatchQueue.global().async {
+//            let isSync = self.group.needSync
+//            DispatchQueue.main.async {
+                self.functionView.syncBtn.isHidden = !self.group.needSync
+//            }
+//        }
         MeshLibManager.manager.messageDelegate = self
         
 //        if collectionView.frame != .zero {
@@ -163,20 +174,40 @@ class GroupMembersViewController: UIViewController {
         XWHUDManager.showCustomHUD(withMessage: nil, isWindow: false)
         DispatchQueue.global().async {
             let exitNodes = self.group.nodes.filter({ !self.selectNodes.contains($0) })
-            exitNodes.forEach({
-                $0.groupState = .exitFailure
+            exitNodes.forEach({ node in
+                node.groupState = .exitFailure
+                node.preConfiguration.dayProfileStartsAboveLux = nil
+                node.preConfiguration.nightProfileStartsBelowLux = nil
+                node.preConfiguration.dayProfileLightData = nil
+                node.preConfiguration.nightProfileLightData = nil
+                if node.sensorCalibrationData?.isCalibration ?? false { // 退出组清空校准数据
+                    node.preConfiguration.resetDaylightCalibration = true
+                }
+                if let meshUUD = node.network?.uuid.uuidString {
+                    node.preConfiguration.save(meshUUID: meshUUD, nodeAddress: node.primaryUnicastAddress)
+                }
+                node.clearSyncStateCache()
             })
             // 退出组的设备，整理邻近照明路径关系
-            if exitNodes.count > 0, self.group.info.profile.type == .proximityLighting, let path = self.group.info.proximityLightingPath {
+            if exitNodes.count > 0, self.group.info.profile.type == .proximityLighting || self.group.info.profile.type == .proximityLightingWithPhotocell, let path = self.group.info.proximityLightingPath {
     //            let proximityNodes = path.nodes
                 exitNodes.forEach { node in
                     path.removeNode(node)
                 }
                 self.group.info.save()
+                self.group.updateGroupSyncState()
             }
             
             let addNodes = self.selectNodes.filter({ !self.group.nodes.contains($0) })
-            addNodes.forEach({ $0.groupState = .inGroup })
+            addNodes.forEach({
+                $0.groupState = .inGroup
+                if self.group.info.profile.type == .proximityLightingWithPhotocell {
+                    // 使用最新的profile功能需要绑定对应model
+                    if !$0.requiredFunctionTypes.contains(.lightLCScene) {
+                        $0.requiredFunctionTypes.append(.lightLCScene)
+                    }
+                }
+            })
             guard exitNodes.count > 0 || addNodes.count > 0 else {
                 DispatchQueue.main.async {
                     XWHUDManager.hide()
@@ -195,7 +226,8 @@ class GroupMembersViewController: UIViewController {
                 vc.syncSuccessCallback = {[weak self] _ in
                     XWHUDManager.showSuccessTipHUD("done!".localizedString)
                     guard let self = self else { return }
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {[weak self] in
+                        guard let self = self else { return }
                         NotificationCenter.default.post(name: .init(groupDataUpdateNotificationName), object: self.group)
                         if self.isAddDevices {
                             self.backAction()
@@ -416,7 +448,7 @@ class GroupMembersViewController: UIViewController {
                     item.selectImageView.image = UIImage(named: "device_select_un")
                 }
 //                item.selectImageView.image = selectNodes.contains(node) ? UIImage(named: "device_select") : UIImage(named: "device_select_un")
-                if node.state && node.isKeybindComplete && node.getNeedSyncGroup() {
+                if node.state && node.isKeybindComplete && node.needSyncGroupData {
                     item.iconImageView.image = UIImage(named: node.unsyncIconName)
                 }
             }
@@ -506,6 +538,13 @@ extension GroupMembersViewController: MeshLibManagerMessageDelegate {
         }
     }
     
+    /// 设备数据修改时间戳更新
+    func meshNetworkManager(_ manager: MeshNetworkManager, deviceDataUpdateTimeChange node: Node, lastUpdate: Int64) {
+//        if node.lastUpdateSyncTime != lastUpdate {
+            node.clearSyncStateCache()
+//        }
+    }
+    
 }
 
 extension GroupMembersViewController: UICollectionViewDataSource, UICollectionViewDelegateFlowLayout {
@@ -539,7 +578,7 @@ extension GroupMembersViewController: UICollectionViewDataSource, UICollectionVi
         
 //        cell.selectImageView.image = selectNodes.contains(node) ? UIImage(named: "device_select") : UIImage(named: "device_select_un")
         
-        if node.state && node.isKeybindComplete && node.getNeedSyncGroup() {
+        if node.state && node.isKeybindComplete && node.needSyncGroupData {
             cell.iconImageView.image = UIImage(named: node.unsyncIconName)
         }
         cell.editClickCallback = {[weak self] node in
@@ -597,7 +636,8 @@ extension GroupMembersViewController: GroupDevicesFunctionViewDelegate {
         vc.syncSuccessCallback = {[weak self] _ in
             XWHUDManager.showSuccessTipHUD("done!".localizedString)
             guard let self = self else { return }
-            DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {[weak self] in
+                guard let self = self else { return }
                 NotificationCenter.default.post(name: .init(groupDataUpdateNotificationName), object: self.group)
                 self.navigationController?.popViewController(animated: true)
             }

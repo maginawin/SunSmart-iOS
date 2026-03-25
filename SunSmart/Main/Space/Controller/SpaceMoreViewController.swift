@@ -44,7 +44,7 @@ class SpaceMoreViewController: UIViewController {
     private var collectionView: UICollectionView!
     private var flowLayout: UICollectionViewFlowLayout!
     
-    private var options: [Options] = [.ble, .mesh, .deviceParameters, .energyData, .contentDisplay]
+    private var options: [Options] = [.ble, .deviceParameters, .energyData, .contentDisplay]
     
     init(site: SiteData, space: SpaceData) {
         self.site = site
@@ -75,6 +75,9 @@ class SpaceMoreViewController: UIViewController {
         collectionView.dataSource = self
         collectionView.delegate = self
         collectionView.backgroundColor = .clear
+        let longPress = UILongPressGestureRecognizer(target: self, action: #selector(collectionViewLongPressAction))
+        longPress.minimumPressDuration = 2
+        collectionView.addGestureRecognizer(longPress)
         collectionView.alwaysBounceVertical = true
         view.addSubview(collectionView)
         collectionView.snp.makeConstraints { make in
@@ -85,6 +88,22 @@ class SpaceMoreViewController: UIViewController {
         itemW = CGFloat(floorf(Float(itemW) * 100) / 100.0)
         
         flowLayout.itemSize = CGSize(width: itemW, height: SCRYFrom(isIPad ? 84 : 64))
+    }
+    
+    /// collectionview长按事件，开启mesh升级测试功能
+    @objc private func collectionViewLongPressAction(sender: UIGestureRecognizer) {
+        guard sender.state == .began else {
+            return
+        }
+        let point = sender.location(in: collectionView)
+        guard let indexPath = collectionView.indexPathForItem(at: point), options[indexPath.item] == .ble else {
+            return
+        }
+        guard !options.contains(.mesh) else {
+            return
+        }
+        options.insert(.mesh, at: 1)
+        collectionView.insertItems(at: [IndexPath(item: 1, section: 0)])
     }
 
 }
@@ -137,7 +156,11 @@ extension SpaceMoreViewController: UICollectionViewDataSource, UICollectionViewD
             }
             present(NavigationViewController(rootViewController: vc), animated: true)
         case .energyData:
+            #if SylSmart
+            let vc = EnergyStaticDataViewController(space: space)
+            #else
             let vc = EnergyDataViewController(space: space)
+            #endif
             if isIPad {
                 vc.preferredContentSize = iPadPreferredContentSize
             }

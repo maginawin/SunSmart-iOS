@@ -34,6 +34,9 @@ class LightSensorCalibrationViewController: UIViewController {
     /// 最小设置的lux值
     var minimunLux: Int = 100
     
+    /// 设备闪烁方式
+    private var deviceBlinkMode: DeviceBlinkMode = .none
+    
     let group: Group
     
     init(group: Group) {
@@ -43,7 +46,7 @@ class LightSensorCalibrationViewController: UIViewController {
         let profile = group.info.profile
         if profile.type == .occupancy_daylight || profile.type == .vacancy_daylight || profile.type == .daylight {
             // 75% * occupancyLux, 不小于100lx
-            let data = profile.lightData.data
+            let data = profile.lightControlData
             var value = max(data.occupancyLevel, data.vacantLevel)
             if profile.type == .daylight {
                 value = data.taskLevel
@@ -67,6 +70,8 @@ class LightSensorCalibrationViewController: UIViewController {
 //        navigationItem.rightBarButtonItem = UIBarButtonItem(image: UIImage(named: "more_vertical")?.withRenderingMode(.alwaysOriginal), style: .done, target: nil, action: #selector(moreAction))
         
         self.isModalInPresentation = true
+        
+        deviceBlinkMode = SpaceViewController.currentDeviceBlinkMode
         
         setupUI()
         
@@ -147,6 +152,7 @@ class LightSensorCalibrationViewController: UIViewController {
     private func updateGroupLightSensor() {
         
         self.group.info.save()
+        self.group.updateGroupSyncState()
         
         NotificationCenter.default.post(name: .init(groupDataUpdateNotificationName), object: self.group)
     }
@@ -245,6 +251,16 @@ class LightSensorCalibrationViewController: UIViewController {
             SRAlertView.hide()
             sensor.selectState = .loading
             self.sensorSelectView.reloadSensorCell(sensor: sensor)
+            if sensor.restoreData != nil {
+                sensor.restoreData?.daylightCalibrationData = nil
+                sensor.save()
+            }
+            if sensor.preConfiguration.resetDaylightCalibration ?? false {
+                sensor.preConfiguration.resetDaylightCalibration = nil
+                if let meshUUID = sensor.network?.uuid.uuidString {
+                    sensor.preConfiguration.save(meshUUID: meshUUID, nodeAddress: sensor.primaryUnicastAddress)
+                }
+            }
             // 切换选中的光照传感器
 //            self.group.info.ambientLightSensorNode = sensor
 //            if let uuid = MeshNetworkManager.instance.meshNetwork?.uuid.uuidString {
@@ -406,6 +422,7 @@ class LightSensorCalibrationViewController: UIViewController {
             DispatchQueue.main.async {
                 // 通知space数据修改
                 NotificationCenter.default.post(name: .init(spaceDataChangedNotificaitonName), object: SpaceChangeDataType.device)
+                self.group.updateGroupSyncState()
                 if failedNodes.count > 0 {
                     self.showCheckingCorrectFailure(total: successNodes.count + failedNodes.count, successCount: successNodes.count, failedNodes: failedNodes)
                 }else {
@@ -545,7 +562,7 @@ class LightSensorCalibrationViewController: UIViewController {
         MeshProxyMessageCommand.shared.addMessage(messageHandles: [MeshMessageHandle(message: publishMessage, address: sensor.primaryUnicastAddress)]) {[weak self] resultHandles in
             guard let self = self else { return }
             if let handle = resultHandles.first, handle.isSuccessful {
-                
+                sensor.sendHandleCompleteIdentify(deviceBlinkMode: self.deviceBlinkMode)
                 // 启用传感器，更新缓存
                 self.group.info.ambientLightSensorNodeAddress = sensor.primaryUnicastAddress
                 result?(true)
@@ -684,7 +701,7 @@ class LightSensorCalibrationViewController: UIViewController {
         offPointLuxView.snp.makeConstraints { make in
             make.left.right.equalTo(onPointLuxView)
             make.top.equalTo(onPointLuxView.snp.bottom).offset(SCRYFrom(16))
-            make.bottom.equalTo(SCRYFrom(-77))
+            make.bottom.equalTo(SCRYFrom(-240))
         }
 
         manualCorrectionBtn = UIButton(titleSize: 15, titleWeight: .light, titleColor: Title_Color, target: self, action: #selector(manualCorrectionBtnAction))
@@ -725,7 +742,7 @@ extension Node {
         /// 切换中
         case loading
     }
-    static var selectStateKey = 1
+    static var selectStateKey: UInt8 = 0
     
     var selectState: DaylightSelectState {
         get {

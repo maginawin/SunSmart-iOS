@@ -10,7 +10,6 @@ import Security
 
 struct Keychain {
     
-    
     private static let service = Bundle.main.bundleIdentifier ?? "com.azoula.sunsmart"
     private static let account = "uuid"
     private static let username = "username"
@@ -83,6 +82,28 @@ struct Keychain {
         return saveData(key: username, data: data)
     }
     
+    /// 读取space访问密码
+    static func getSpacePassword(siteId: String, spaceId: String, region: ServerRegion = UserData.currentServerRegion, userId: String = UserData.currentUserId) -> String? {
+        guard let data = getData(key: getSpacePasswordKey(siteId: siteId, spaceId: spaceId, region: region, userId: userId)) else {
+            return nil
+        }
+        return String(data: data, encoding: .utf8)
+    }
+    
+    /// 保存space访问密码
+    @discardableResult static func saveSpacePassword(_ password: String?, siteId: String, spaceId: String, region: ServerRegion = UserData.currentServerRegion, userId: String = UserData.currentUserId) -> Bool {
+        let key = getSpacePasswordKey(siteId: siteId, spaceId: spaceId, region: region, userId: userId)
+        guard let password, let data = password.data(using: .utf8) else {
+            return deleteData(key: key)
+        }
+        return saveData(key: key, data: data)
+    }
+    
+    /// 删除space访问密码
+    @discardableResult static func removeSpacePassword(siteId: String, spaceId: String, region: ServerRegion = UserData.currentServerRegion, userId: String = UserData.currentUserId) -> Bool {
+        deleteData(key: getSpacePasswordKey(siteId: siteId, spaceId: spaceId, region: region, userId: userId))
+    }
+    
     /// 根据key读取钥匙串数据
     /// - Parameter key: 键名
     /// - Returns: data
@@ -98,6 +119,11 @@ struct Keychain {
         var dataTypeRef: AnyObject?
         SecItemCopyMatching(query as CFDictionary, &dataTypeRef)
         return dataTypeRef as? Data
+    }
+    
+    /// 钥匙串内space密码key
+    private static func getSpacePasswordKey(siteId: String, spaceId: String, region: ServerRegion, userId: String) -> String {
+        "space.password.\(region.rawValue).\(userId).\(siteId).\(spaceId)"
     }
     
     
@@ -118,10 +144,21 @@ struct Keychain {
             kSecAttrAccessible as String: kSecAttrAccessibleAfterFirstUnlock
         ]
         
-        SecItemDelete(query as CFDictionary)
+        _ = deleteData(key: key)
         
         let status = SecItemAdd(query as CFDictionary, nil)
         return status == errSecSuccess
+    }
+    
+    @discardableResult private static func deleteData(key: String) -> Bool {
+        let query: [String: Any] = [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrService as String: service,
+            kSecAttrAccount as String: key
+        ]
+        
+        let status = SecItemDelete(query as CFDictionary)
+        return status == errSecSuccess || status == errSecItemNotFound
     }
     
     

@@ -21,6 +21,7 @@ class DeviceAddInstructionsController: UIViewController {
     private var professionmlModeLabel: UILabel!
     private var professionmlModeImageView: UIImageView!
     
+    private var stepContentView: UIView!
     private var stepView: GroupPathSequenceDeviceAddStepView!
     private var noteLabel: UILabel!
     
@@ -105,16 +106,27 @@ class DeviceAddInstructionsController: UIViewController {
             make.height.equalTo(professionmlModeImageView.snp.width).multipliedBy(226 / 351.0)
         }
         
-        stepView = GroupPathSequenceDeviceAddStepView()
-        stepView.step1View.titleLabel.text = "professional_mode_step_1".localizedString
-        stepView.step2View.titleLabel.text = "professional_mode_step_2".localizedString
-        stepView.step3View.titleLabel.text = "professional_mode_step_3".localizedString
-        contentView.addSubview(stepView)
-        stepView.snp.makeConstraints { make in
+        stepContentView = UIView()
+        stepContentView.backgroundColor = .white
+        stepContentView.layer.cornerRadius = SCRYFrom(10)
+        contentView.addSubview(stepContentView)
+        stepContentView.snp.makeConstraints { make in
             make.left.equalTo(contentMargin)
             make.right.equalTo(-contentMargin)
             make.top.equalTo(professionmlModeImageView.snp.bottom).offset(SCRYFrom(30))
             make.height.equalTo(SCRYFrom(110))
+        }
+        
+        stepView = GroupPathSequenceDeviceAddStepView(frame: .zero, steps: [
+            .init(imageName: "proximity_lighting_step1", title: "professional_mode_step_1".localizedString, textColor: SubText_Color),
+            .init(imageName: "proximity_lighting_step2", title: "professional_mode_step_2".localizedString, textColor: SubText_Color),
+            .init(imageName: "proximity_lighting_step3", title: "professional_mode_step_3".localizedString, textColor: SubText_Color)
+        ])
+        stepContentView.addSubview(stepView)
+        stepView.snp.makeConstraints { make in
+            make.left.right.equalToSuperview()
+            make.centerY.equalToSuperview()
+            make.height.greaterThanOrEqualTo(SCRYFrom(56))
         }
         
         noteLabel = UILabel(text: "", textColor: ImportantText_Color, fontSize: 14, fontWeight: .light, fit: false)
@@ -124,7 +136,7 @@ class DeviceAddInstructionsController: UIViewController {
         contentView.addSubview(noteLabel)
         noteLabel.snp.makeConstraints { make in
             make.left.right.equalTo(classModeMessageLabel)
-            make.top.equalTo(stepView.snp.bottom).offset(SCRYFrom(16))
+            make.top.equalTo(stepContentView.snp.bottom).offset(SCRYFrom(16))
             make.bottom.equalTo(SCRYFrom(-28))
         }
         

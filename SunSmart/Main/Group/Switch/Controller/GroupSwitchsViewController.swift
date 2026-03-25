@@ -16,8 +16,8 @@ class GroupSwitchsViewController: UIViewController {
     
     /// 加载动画
     private var loadingView: UIImageView!
-    
-    private var options: [CellType] = [.panel, .group, .scene, .proxy, .keyInfo]
+    /// 默认参数
+//    private var options: [CellType] = [.panel, .group, .scene, .proxy, .keyInfo]
     
     var group: Group
     /// 展开的开关
@@ -509,9 +509,9 @@ extension GroupSwitchsViewController: UITableViewDataSource, UITableViewDelegate
     }
     
     func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
-        let groupSwitch = group.info.switchs[section]
+        let groupSwitch = copySwitchs[section]
         if showSwitchs.contains(where: { $0.id == groupSwitch.id }) {
-            return options.count
+            return groupSwitch.options.count
         }
         return 0
     }
@@ -519,21 +519,24 @@ extension GroupSwitchsViewController: UITableViewDataSource, UITableViewDelegate
     func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
         
         let groupSwitch = copySwitchs[indexPath.section]
-        
-        let option = options[indexPath.row]
+        let option: CellType = groupSwitch.options[indexPath.row]
         if option == .keyInfo {
             let panelCell = tableView.dequeueReusableCell(withIdentifier: "panel", for: indexPath) as! GroupSwitchPanelViewCell
+            panelCell.panelType = groupSwitch.panelType
             switch groupSwitch.panelType {
-            case .default:
-                panelCell.key1ShortPressBtn.setTitle("switch_key_on".localizedString, for: .normal)
-                panelCell.key2ShortPressBtn.setTitle("switch_key_off".localizedString, for: .normal)
+            case .default_4key:
                 panelCell.key3ShortPressBtn.setTitle(groupSwitch.sceneA?.name ?? "switch_key_sceneA".localizedString, for: .normal)
                 panelCell.key4ShortPressBtn.setTitle(groupSwitch.sceneB?.name ?? "switch_key_sceneB".localizedString, for: .normal)
-            case .scenes:
+            case .scenes_4key:
                 panelCell.key1ShortPressBtn.setTitle(groupSwitch.sceneA?.name ?? "switch_key_sceneA".localizedString, for: .normal)
                 panelCell.key2ShortPressBtn.setTitle(groupSwitch.sceneB?.name ?? "switch_key_sceneB".localizedString, for: .normal)
                 panelCell.key3ShortPressBtn.setTitle(groupSwitch.sceneC?.name ?? "switch_key_sceneC".localizedString, for: .normal)
                 panelCell.key4ShortPressBtn.setTitle(groupSwitch.sceneD?.name ?? "switch_key_sceneD".localizedString, for: .normal)
+            case .default_2key:
+                break
+            case .scenes_2key:
+                panelCell.key1LongPressBtn.setTitle(groupSwitch.sceneA?.name ?? "switch_key_sceneA".localizedString, for: .normal)
+                panelCell.key2ShortPressBtn.setTitle(groupSwitch.sceneB?.name ?? "switch_key_sceneB".localizedString, for: .normal)
             }
             if let realSwitch = group.info.switchs.first(where: { $0.id == groupSwitch.id }) {
                 panelCell.saveBtn.isEnabled = !(realSwitch == groupSwitch) || realSwitch.needSyncData
@@ -617,7 +620,8 @@ extension GroupSwitchsViewController: UITableViewDataSource, UITableViewDelegate
     }
     
     func tableView(_ tableView: UITableView, heightForRowAt indexPath: IndexPath) -> CGFloat {
-        let option = options[indexPath.row]
+        let groupSwitch = copySwitchs[indexPath.section]
+        let option: CellType = groupSwitch.options[indexPath.row]
         if option == .keyInfo {
             return SCRYFrom(84) + SCRXFrom(288)
         }
@@ -642,14 +646,14 @@ extension GroupSwitchsViewController: UITableViewDataSource, UITableViewDelegate
     
     func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
         
-        let option = options[indexPath.row]
+        let groupSwitch = copySwitchs[indexPath.section]
+        let option: CellType = groupSwitch.options[indexPath.row]
         
         guard editable || option == .keyInfo else {
             XWHUDManager.showTipHUD("no_permission".localizedString + "！")
             return
         }
         
-        let groupSwitch = copySwitchs[indexPath.section]
         switch option {
         case .panel:
             
@@ -658,10 +662,15 @@ extension GroupSwitchsViewController: UITableViewDataSource, UITableViewDelegate
             vc.selectPanelTypeCallback = {[weak self] type in
                 guard let self = self else { return }
                 groupSwitch.panelType = type
-                groupSwitch.sceneANumber = nil
-                groupSwitch.sceneBNumber = nil
+//                groupSwitch.sceneANumber = nil
+//                groupSwitch.sceneBNumber = nil
+                if type == .default_2key {
+                    groupSwitch.sceneANumber = nil
+                    groupSwitch.sceneBNumber = nil
+                }
                 groupSwitch.sceneCNumber = nil
                 groupSwitch.sceneDNumber = nil
+                
                 self.reloadSwitchItem(switchData: groupSwitch)
             }
             navigationController?.pushViewController(vc, animated: true)
@@ -677,7 +686,7 @@ extension GroupSwitchsViewController: UITableViewDataSource, UITableViewDelegate
                 return
             }
             var datas: [SwitchSceneData] = [.init(type: .sceneA, scene: groupSwitch.sceneA), .init(type: .sceneB, scene: groupSwitch.sceneB)]
-            if groupSwitch.panelType == .scenes {
+            if groupSwitch.panelType == .scenes_4key {
                 datas.append(contentsOf: [
                     .init(type: .sceneC, scene: groupSwitch.sceneC),
                     .init(type: .sceneD, scene: groupSwitch.sceneD),
@@ -930,5 +939,16 @@ extension GroupSwitchsViewController {
         case proxy
         /// 面板按键信息
         case keyInfo
+    }
+}
+
+private extension DeviceSwitchData {
+    static var optionsKey: UInt8 = 0
+    /// 组内开关功能list
+    var options: [GroupSwitchsViewController.CellType] {
+        if panelType == .default_2key {
+            return [.panel, .group, .proxy, .keyInfo]
+        }
+        return [.panel, .group, .scene, .proxy, .keyInfo]
     }
 }

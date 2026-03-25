@@ -45,7 +45,8 @@ class GroupAddViewController: UIViewController {
         .init(type: .vacancy),
         .init(type: .daylight),
         .init(type: .manualControl),
-        .init(type: .proximityLighting)
+        .init(type: .proximityLighting),
+        .init(type: .proximityLightingWithPhotocell)
     ]
     private var selectProfile: Profile!
     /// 创建完成回调
@@ -243,6 +244,7 @@ class GroupAddViewController: UIViewController {
         group.info.profile.updateData(profile: self.selectProfile)
         group.info.save()
         group.info.profile.save()
+        group.updateGroupSyncState()
         
 //        let groupInfo = GroupInfo(address: group.address.address, imageId: self.selectImageIndex + 1, imageText: source.type == .text ? source.name : nil)
 //        groupInfo.profile = self.selectProfile

@@ -443,7 +443,20 @@ extension BleFirmwareTypeUpdateViewCell: UITableViewDataSource, UITableViewDeleg
     
     func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
         let node = firmwareTypeData.nodes[indexPath.row]
-        if node.updateState.rawValue == Node.UpdateState.none.rawValue && node.enableUpgrade {
+        
+        let canUpgrade: Bool
+        if node.enableUpgrade {
+            switch node.updateState {
+            case .none, .failure:
+                canUpgrade = true
+            default:
+                canUpgrade = false
+            }
+        } else {
+            canUpgrade = false
+        }
+        
+        if canUpgrade {
             if node.selectedState == .selected {
                 node.selectedState = .unselected
             }else {
@@ -458,7 +471,7 @@ extension BleFirmwareTypeUpdateViewCell: UITableViewDataSource, UITableViewDeleg
             }
             tableView.reloadRows(at: [indexPath], with: .none)
             delegate?.cell(self, selectDevicesDidChange: canSelectNodes.filter({ $0.selectedState == .selected }))
-        }else if !node.enableUpgrade, let rssi = node.rssi, rssi < -90 { // 信号太差不能选择
+        }else if !node.enableUpgrade, let rssi = node.rssi, rssi < -80 { // 信号太差不能选择
             XWHUDManager.showTipHUD("signal_below_message".localizedString, isLineFeed: true)
         }
     }
@@ -616,13 +629,20 @@ class BleFirmwareUpdateDeviceCell: UITableViewCell {
                 updateStateBtn.isHidden = false
                 updateStateBtn.setImage(UIImage(named: "device_add_success"), for: .normal)
             case .failure:
-                selectedImageView.image = UIImage(named: "device_select")
+                switch device.selectedState {
+                case .selected:
+                    selectedImageView.image = UIImage(named: "device_select")
+                case .unselected:
+                    selectedImageView.image = UIImage(named: "device_select_un")
+                case .disabled:
+                    selectedImageView.image = UIImage(named: "device_select_disable")
+                }
                 updateStateBtn.setImage(UIImage(named: "device_add_fail"), for: .normal)
             }
             if let rssi = device.rssi {
                 nameLabel.textColor = TextBlack_Color
                 rssiLabel.text = "\(rssi)dB"
-                rssiLabel.textColor = rssi >= -90 ? SubText_Color : Red_Color
+                rssiLabel.textColor = rssi >= -80 ? SubText_Color : Red_Color
                 deviceImageView.image = UIImage(named: device.iconName)
             }else {
                 nameLabel.textColor = SubText_Color

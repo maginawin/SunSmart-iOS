@@ -110,7 +110,7 @@ struct EnOceanQRCodeData {
         let macLocation = qrcodeStr.range(of: macIdentify).location + macIdentify.count
         // 密钥起始位置
         let securityKeyLocation = qrcodeStr.range(of: securityKeyIdentify).location + securityKeyIdentify.count
-        // mac起始位置
+        // model起始位置
         let modelLocation = qrcodeStr.range(of: modelIdentify).location + modelIdentify.count
         
         self.macAddress = qrcodeStr.substring(with: NSRange(location: macLocation, length: 12))

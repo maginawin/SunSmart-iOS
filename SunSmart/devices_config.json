@@ -261,6 +261,17 @@
     },
     {
         "companyId" : "0A78",
+        "productId" : "1014",
+        "categoryName" : "PIR Sensor Lighting",
+        "elementCount" : 3,
+        "iconCategory" : "Lighting",
+        "deviceCategory" : "Lighting",
+        "modelName" : "SR-BL9035B-PIR-V",
+        "sensitivityRangeMin" : 22937,
+        "sensitivityRangeMax" : 58981
+    },
+    {
+        "companyId" : "0A78",
         "productId" : "1021",
         "categoryName" : "PIR Sensor Lighting",
         "elementCount" : 3,
@@ -612,6 +623,15 @@
     },
     {
         "companyId" : "0A78",
+        "productId" : "14B1",
+        "categoryName" : "Controller Lighting",
+        "elementCount" : 2,
+        "iconCategory" : "Lighting",
+        "deviceCategory" : "Lighting",
+        "modelName" : "SR-BL9035B-V"
+    },
+    {
+        "companyId" : "0A78",
         "productId" : "1502",
         "categoryName" : "PIR Sensor Lighting",
         "elementCount" : 3,
@@ -670,6 +690,15 @@
     },
     {
         "companyId" : "0A78",
+        "productId" : "2013",
+        "categoryName" : "PIR Sensor Lighting",
+        "elementCount" : 3,
+        "iconCategory" : "Lighting",
+        "deviceCategory" : "Lighting",
+        "modelName" : "SR-BL9035B-PIR-V"
+    },
+    {
+        "companyId" : "0A78",
         "productId" : "2021",
         "categoryName" : "PIR Sensor Lighting",
         "elementCount" : 3,
@@ -711,9 +740,9 @@
         "productId" : "2031",
         "categoryName" : "PIR Sensor Lighting",
         "elementCount" : 3,
-        "iconCategory" : "Lighting",
+        "iconCategory" : "Standalone Sensor",
         "deviceCategory" : "Lighting",
-        "modelName" : "SR-BL9030A_PIR_V_54L15",
+        "modelName" : "SR-BL9030A-PIR-V",
         "sensitivityRangeMin" : 26214,
         "sensitivityRangeMax" : 58981
     },
@@ -725,6 +754,28 @@
         "iconCategory" : "Standalone Sensor",
         "deviceCategory" : "Lighting",
         "modelName" : "SR-SS9030B-PIR-V"
+    },
+    {
+        "companyId" : "0A78",
+        "productId" : "2051",
+        "categoryName" : "PIR Sensor Lighting",
+        "elementCount" : 3,
+        "iconCategory" : "Lighting",
+        "deviceCategory" : "Lighting",
+        "modelName" : "SR-BL9036T-PIR-WPV",
+        "sensitivityRangeMin" : 0,
+        "sensitivityRangeMax" : 65535
+    },
+    {
+        "companyId" : "0A78",
+        "productId" : "2052",
+        "categoryName" : "PIR EL Lighting",
+        "elementCount" : 3,
+        "iconCategory" : "Emergency",
+        "deviceCategory" : "Lighting",
+        "modelName" : "SR-BL9036T-PIR-WPV-EL",
+        "sensitivityRangeMin" : 0,
+        "sensitivityRangeMax" : 65535
     },
     {
         "companyId" : "0A78",
@@ -934,6 +985,24 @@
         "modelName" : "SR-BL2421_SSV_2CH"
     },
     {
+         "companyId" : "0A78",
+         "productId" : "24A1",
+         "categoryName" : "Controller Lighting",
+         "elementCount" : 2,
+         "iconCategory" : "Lighting",
+         "deviceCategory" : "Lighting",
+         "modelName" : "SR-BL9035J-V"
+     },
+    {
+         "companyId" : "0A78",
+         "productId" : "24B1",
+         "categoryName" : "Controller Lighting",
+         "elementCount" : 2,
+         "iconCategory" : "Lighting",
+         "deviceCategory" : "Lighting",
+         "modelName" : "SR-BL9035B-V"
+     },
+    {
         "companyId" : "0A78",
         "productId" : "24A1",
         "categoryName" : "Controller Lighting",
@@ -971,10 +1040,19 @@
     },
     {
         "companyId" : "0A78",
+        "productId" : "2702",
+        "categoryName" : "Gateway",
+        "elementCount" : 2,
+        "iconCategory" : "Gateway",
+        "deviceCategory" : "Gateway",
+        "modelName" : "SR-BL9036T-GW-WP4G"
+    },
+    {
+        "companyId" : "0A78",
         "productId" : "2801",
         "categoryName" : "Dimmer",
         "elementCount" : 2,
-        "iconCategory" : "Lighting",
+        "iconCategory" : "Dimmer",
         "deviceCategory" : "Lighting",
         "modelName" : "SR-BL9041A-D"
     },
@@ -983,7 +1061,7 @@
         "productId" : "2802",
         "categoryName" : "Dimmer",
         "elementCount" : 2,
-        "iconCategory" : "Lighting",
+        "iconCategory" : "Dimmer",
         "deviceCategory" : "Lighting",
         "modelName" : "SR-BL9041A-R"
     },
@@ -1012,7 +1090,9 @@
         "elementCount" : 3,
         "iconCategory" : "Lighting",
         "deviceCategory" : "Lighting",
-        "modelName" : "SR-BL9033A-PIR-V"
+        "modelName" : "SR-BL9033A-PIR-V",
+        "sensitivityRangeMin" : 0,
+        "sensitivityRangeMax" : 55049
     },
     {
         "companyId" : "0A78",
@@ -1021,7 +1101,9 @@
         "elementCount" : 3,
         "iconCategory" : "Lighting",
         "deviceCategory" : "Lighting",
-        "modelName" : "SR-BL9033Z-PIR-V"
+        "modelName" : "SR-BL9033Z-PIR-V",
+        "sensitivityRangeMin" : 0,
+        "sensitivityRangeMax" : 55049
     },
     {
         "companyId" : "0A78",
@@ -1030,7 +1112,10 @@
         "elementCount" : 3,
         "iconCategory" : "Lighting",
         "deviceCategory" : "Lighting",
-        "modelName" : "SR-BL9033P-PIR-V"
+        "modelName" : "SR-BL9033P-PIR-V",
+        "sensitivityRangeMin" : 0,
+        "sensitivityRangeMax" : 55049
+
     },
     {
         "companyId" : "0A78",
@@ -1039,7 +1124,9 @@
         "elementCount" : 3,
         "iconCategory" : "Lighting",
         "deviceCategory" : "Lighting",
-        "modelName" : "SR-BL9033J-PIR-V"
+        "modelName" : "SR-BL9033J-PIR-V",
+        "sensitivityRangeMin" : 0,
+        "sensitivityRangeMax" : 55049
     }
     
 ]

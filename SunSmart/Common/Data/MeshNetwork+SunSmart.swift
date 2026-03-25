@@ -286,12 +286,13 @@ extension SiteData {
             
             let meshNetwork = MeshNetwork.load(meshUUID: self.meshUUID, allData: false)
             
-            if self.spaces.count - spaces.count == 0 { // 没有space了
+            if self.spaces.count - spaces.count <= 0 { // 没有space了
                 /// 废弃的设备地址
                 exclusionAddresses = MeshAPI.getExclusionAddresses(meshUUID: self.meshUUID).map({ (Int($0.ivIndex), $0.addresses.map({ Int($0) })) })
                 // 将手机地址回收
                 if let meshNetwork = meshNetwork,
-                   let localAddress = meshNetwork.localProvisioner?.primaryUnicastAddress {
+                   let localProvisioner = meshNetwork.localProvisioner,
+                   let localAddress = localProvisioner.primaryUnicastAddress {
                     let seq = meshNetwork.getCurrentSequenceNumber(localAddress: localAddress)
                     // 判断seq大于0说明手机地址已和设备交互，需要回收
                     if seq ?? 0 > 0 {
@@ -306,6 +307,11 @@ extension SiteData {
                         // 回收设备地址
                         availableDeviceAddresses.append(Int(localAddress))
                     }
+                    // 删除本地手机节点
+                    if let localNode = localProvisioner.node {
+                        meshNetwork.remove(node: localNode)
+                    }
+                    self.localAddress = nil
                 }
                 
                 // 全部回收剩余地址和剩余废弃地址
@@ -473,7 +479,7 @@ extension SpaceData {
 
 extension MeshLibManager {
     
-    static var supportDeviceInfosKey = 5
+    static var supportDeviceInfosKey: UInt8 = 0
     
     /// 支持的设备信息list（未配置设备则不可添加）
     var supportDeviceInfos: [MeshDeviceConfigInfo] {
@@ -532,49 +538,11 @@ extension Provisioner {
 extension MeshNetworkManager {
     
     private struct AssociatedKey {
-        static var groupsKey = 1
-        static var scenesKey = 2
-        static var schedulesKey = 3
-        static var switchsKey = 4
-        static var donglesKey = 5
+        static var schedulesKey: UInt8 = 0
+        static var switchsKey: UInt8 = 0
+        static var donglesKey: UInt8 = 0
     }
-    
-    /// 日程list
-//    var schedules: [Schedule] {
-//        get {
-//            objc_getAssociatedObject(self, &MeshNetworkManager.schedulesKey) as? [Schedule] ?? []
-//        }set {
-//            objc_setAssociatedObject(self, &MeshNetworkManager.schedulesKey, newValue, .OBJC_ASSOCIATION_RETAIN)
-//        }
-//    }
-    
-    /// 当前子网内设备list
-//    var subnetworkNodes: [Node] {
-//        return realNodes.filter({ $0.networkKeys.contains(where: { $0.index == currentNetworkKey.index && !$0.isPrimary }) })
-//    }
-    
-//    var subnetworkLightNodes: [Node] {
-//        return subnetworkNodes.filter({ $0.lightnessModel != nil })
-//    }
-    
-    /// 当前子网内组list
-//    var subnetworkGroups: [Group] {
-//        get {
-//            objc_getAssociatedObject(self, &AssociatedKey.groupsKey) as? [Group] ?? []
-//        }set {
-//            objc_setAssociatedObject(self, &AssociatedKey.groupsKey, newValue, .OBJC_ASSOCIATION_RETAIN)
-//        }
-//    }
-//    
-//    /// 当前子网内场景list
-//    var subnetworkScenes: [Scene] {
-//        get {
-//            objc_getAssociatedObject(self, &AssociatedKey.scenesKey) as? [Scene] ?? []
-//        }set {
-//            objc_setAssociatedObject(self, &AssociatedKey.scenesKey, newValue, .OBJC_ASSOCIATION_RETAIN)
-//        }
-//    }
-    
+
     /// 当前子网内日程list
     var schedules: [Schedule] {
         get {
@@ -618,7 +586,14 @@ extension MeshNetworkManager {
             
             self.groups.forEach({ group in
                 group.info = GroupInfo.load(meshUUID: uuid, address: group.address.address) ?? GroupInfo(address: group.address.address)
-             
+                
+                // 兼容旧版本profile未保存到场景的设备
+//                let noGeneralLightControlSceneNodes = group.nodes.filter({ node in node.requiredFunctionTypes.contains(.lightLCScene) && node.lightLCSceneSetupModel != nil && !node.lightControlSceneExecuteDatas.contains(where: { $0.sceneNumber == .generalLightControlScene }) })
+//                noGeneralLightControlSceneNodes.forEach({ node in
+//                    let sceneExecuteData = SceneExecuteData(sceneNumber: .generalLightControlScene, isOn: node.isOn, lightness: node.lightness, cct: node.temperature, lightControlData: node.lightLCProperty.copy())
+//                    node.lightControlSceneExecuteDatas.insert(sceneExecuteData, at: 0)
+//                })
+                
                let bindSchedules = self.schedules.filter({ schedule in
                    schedule.groups.contains(where: { $0.address == group.address }) ||
                    schedule.needDeleteGroups.contains(where: { $0.address == group.address }) ||
@@ -867,10 +842,10 @@ extension MeshNetworkManager {
 
 extension Group {
     
-    private static var infoKey = 0
-    private static var lightnessKey = 1
-    private static var cctKey = 2
-    private static var isOnKey = 3
+    private static var infoKey: UInt8 = 0
+    private static var lightnessKey: UInt8 = 0
+    private static var cctKey: UInt8 = 0
+    private static var isOnKey: UInt8 = 0
     
     static let defaultLightness: UInt16 = .max
     static let defaultCct: Int = 4500
@@ -979,7 +954,8 @@ extension Group {
     
     /// 是否需要同步
     var needSync: Bool {
-        return nodes.contains(where: { $0.getNeedSyncGroup(group: self) })
+//        return nodes.contains(where: { $0.getNeedSyncGroup(group: self) })
+        return nodes.contains(where: { $0.needSyncGroupData })
     }
     
     /// 删除本地化缓存数据（只处理业务扩展数据）
@@ -1021,6 +997,7 @@ extension Group {
         if let index = self.info.sceneExecuteDatas.firstIndex(where: { $0.sceneNumber == sceneId }) {
             self.info.sceneExecuteDatas.remove(at: index)
             self.info.save(meshUUID: self.network?.uuid.uuidString, subnetworkId: self.subNetworkId)
+            self.updateGroupSyncState()
         }
     }
     
@@ -1034,7 +1011,17 @@ extension Group {
 //                return
 //            }
             self.info.save(meshUUID: self.network?.uuid.uuidString, subnetworkId: self.subNetworkId)
+            self.updateGroupSyncState()
         }
+    }
+    
+    /// 更新组设备同步状态
+    func updateGroupSyncState() {
+//        DispatchQueue.global().async {
+            self.nodes.forEach { node in
+                node.clearSyncStateCache()
+            }
+//        }
     }
     
     /// 本地化缓存组数据（只处理业务扩展数据）
@@ -1051,6 +1038,8 @@ extension Group {
 //            SceneExecuteData.save(meshUUID: uuid, networkKey: networkKey, address: address.address, sceneId: Int($0.key), sceneData: $0.value)
 //        })
         self.info.profile.save(meshUUID: uuid, meshNetworkId: self.subNetworkId)
+        
+        updateGroupSyncState()
         // 保存虚拟按键数据
 //        self.info.switchs.forEach({
 //            $0.save(meshUUID: uuid, networkId: subnetworkId)
@@ -1111,7 +1100,7 @@ extension Group {
 
 extension Scene {
     
-    private static var infoKey = 0
+    private static var infoKey: UInt8 = 0
     /// 扩展信息
     var info: SceneInfo {
         get {
@@ -1297,288 +1286,7 @@ extension SceneExecuteData {
     }
 }
 
-class Schedule: Codable, Copyable {
-    
-    /// 重复周期字符串list
-    static let weeklyStrs = ["week_mo".localizedString, "week_tu".localizedString, "week_we".localizedString, "week_th".localizedString, "week_fr".localizedString, "week_sa".localizedString, "week_su".localizedString]
-    /// 所有月份
-    static let allMonths: [Month] = [.January,.February,.March,.April,.May,.June,.July,.August,.September,.October,.November,.December]
-    
-    /// 日程执行目标类型
-    enum TargetType: Int {
-        /// 组
-        case groups = 0
-        /// 设备
-        case devices = 1
-        /// 设备
-        case scene = 2
-    }
-    
-    /// 计划id  0~15
-    var id: Int = 0
-    /// 是否启用
-    var enabled: Bool = false
-    /// 名称
-    var name: String = ""
-    /// 设置的节点list nodes、groups、scenes三选一
-    var nodeAddresses: [Address] = []
-    var nodes: [Node] {
-        return MeshNetworkManager.instance.realNodes.filter({ nodeAddresses.contains($0.primaryUnicastAddress) })
-    }
-    /// 设置的组list nodes、groups、scenes三选一
-    var groupAddresses: [Address] = []
-    var groups: [Group] {
-        return MeshNetworkManager.instance.groups.filter({ groupAddresses.contains($0.address.address) })
-    }
-    /// 设置执行的场景，目前只能设置一个，并且nodes、groups、scenes三选一
-    var sceneNumber: SceneNumber?
-    var scene: Scene? {
-        guard let number = sceneNumber else { return nil }
-        return MeshNetworkManager.instance.scenes.first(where: { $0.number == number })
-    }
-    /// 选择的执行目标类型
-    var selectTargetType: TargetType = .groups
-    /// 执行的场景id
-//    var actionSceneId: SceneNumber = 0
-    /// 执行动作 off、on、recall scene、no action
-    var action: SchedulerAction = .noAction
-    /// 渐变时间（s）
-    var fadeTime: Int = 0
-    /// 周重复
-    var weekDays: [WeekDay] = []
-    /// 时
-    var hour: Int = 0
-    /// 分
-    var minute: Int = 0
-
-    /// 需要移出日程的设备
-    var needDeleteNodeAddresses: [Address] = []
-    var needDeleteNodes: [Node] {
-        return MeshNetworkManager.instance.realNodes.filter({ needDeleteNodeAddresses.contains($0.primaryUnicastAddress) })
-    }
-    /// 需要移出日程的组
-    var needDeleteGroupAddresses: [Address] = []
-    var needDeleteGroups: [Group] {
-        return MeshNetworkManager.instance.groups.filter({ needDeleteGroupAddresses.contains($0.address.address) })
-    }
-    /// 需要移出的日程的场景
-    var needDeleteSceneNumbers: [SceneNumber] = []
-    var needDeleteScenes: [Scene] {
-        return MeshNetworkManager.instance.scenes.filter({ needDeleteSceneNumbers.contains($0.number) })
-    }
-    /// 存在的设备
-    var exitNodes: [Node] {
-        var nodes: [Node] = []
-        nodes.append(contentsOf: self.nodes)
-        nodes.append(contentsOf: self.needDeleteNodes.filter({ !nodes.contains($0) }))
-        
-        groups.forEach({
-            nodes.append(contentsOf: $0.nodes.filter({ !nodes.contains($0) }))
-        })
-        needDeleteGroups.forEach({
-            nodes.append(contentsOf: $0.nodes.filter({ !nodes.contains($0) }))
-        })
-        
-        scene?.info.groups.forEach({
-            nodes.append(contentsOf: $0.nodes.filter({ !nodes.contains($0) }))
-        })
-        needDeleteScenes.forEach { scene in
-            scene.info.groups.forEach({
-                nodes.append(contentsOf: $0.nodes.filter({ !nodes.contains($0) }))
-            })
-        }
-        return nodes
-    }
-    
-    
-    /// 重复周期描述
-    var weekStr: String {
-        
-        let allWeekDays: [WeekDay] = [.Monday, .Tuesday, .Wednesday, .Thursday, .Friday, .Saturday, .Sunday]
-        
-        var weekStr = ""
-        if weekDays == allWeekDays { // 每天
-            weekStr = "everyday".localizedString
-        }else if weekDays == allWeekDays.dropLast(2) { // 工作日
-            weekStr = "workday".localizedString
-        }else if weekDays == allWeekDays.suffix(2) { // 周末
-            weekStr = "weekend".localizedString
-        }else { // 无规律 Mo, Tu, We, Fr, Sa, Su
-            let weekStrs = weekDays.compactMap({
-                if let index = allWeekDays.firstIndex(of: $0) {
-                    return Schedule.weeklyStrs[min(Schedule.weeklyStrs.count, index)]
-                }
-                return nil
-            })
-            
-            weekStrs.forEach({
-                weekStr.append(weekStr.isEmpty ? $0 : ",\($0)")
-            })
-        }
-        
-        return weekStr
-    }
-    
-    
-    /// 设置的数据
-    var data: Data {
-        return SchedulerRegistryEntry.marshal(index: UInt8(id), entry: schedulerEntry)
-    }
-    /// 设备的日程数据
-    var schedulerEntry: SchedulerRegistryEntry {
-//        日程删除 => (action==noAction && month==0 && dayOfWeek==0)
-//        日程关闭 => (year == 0)
-        
-        var year: SchedulerYear = .any()
-        // 未启用
-        if !enabled {
-            year = .specific(year: 0)
-        }
-        
-        let entry = SchedulerRegistryEntry(year: year, month: .any(of: Schedule.allMonths), day: .any(), hour: .specific(hour: hour), minute: .specific(minute: minute), second: .specific(second: 0), dayOfWeek: .any(of: weekDays), action: action, transitionTime: .init(steps: UInt8(fadeTime), stepResolution: .seconds), sceneNumber: scene?.number ?? 0)
-        
-        return entry
-    }
-    
-    init(id: Int, name: String, enabled: Bool, nodeAddresses: [Address] = [], groupAddresses: [Address] = [], sceneNumber: SceneNumber?, selectTargetType: TargetType = .groups, action: SchedulerAction, fadeTime: Int, weekDays: [WeekDay], hour: Int, minute: Int) {
-        self.id = id
-        self.enabled = enabled
-        self.name = name
-        self.nodeAddresses = nodeAddresses
-        self.groupAddresses = groupAddresses
-        self.sceneNumber = sceneNumber
-        self.selectTargetType = selectTargetType
-        self.action = action
-        self.fadeTime = fadeTime
-        self.weekDays = weekDays
-        self.hour = hour
-        self.minute = minute
-    }
-    
-    init(id: Int, name: String, scheduleEntry: SchedulerRegistryEntry, nodeAddresses: [Address] = [], groupAddresses: [Address] = [], sceneNumber: SceneNumber?, selectTargetType: TargetType = .groups) {
-        
-        self.id = id
-        self.name = name
-        self.selectTargetType = selectTargetType
-        self.nodeAddresses = nodeAddresses
-        self.groupAddresses = groupAddresses
-        self.sceneNumber = sceneNumber
-        
-        updata(entry: scheduleEntry)
-    }
-    
-    // MARK: - Codable
-    
-    private enum CodingKeys: String, CodingKey {
-        case id
-        case name
-        case enabled
-        case nodeAddresses = "deviceAddresses"
-        case groupAddresses
-        case sceneNumber = "sceneAddress"
-        case target = "selectTarget"
-        case action
-        case fadeTime
-        case dayOfWeek
-        case hour
-        case minute
-        case second
-    }
-    
-    public required init(from decoder: Decoder) throws {
-        let container = try decoder.container(keyedBy: CodingKeys.self)
-        self.id = try container.decode(Int.self, forKey: .id)
-        self.name = try container.decode(String.self, forKey: .name)
-        self.enabled = try container.decode(Bool.self, forKey: .enabled)
-        self.selectTargetType = .init(rawValue: try container.decode(Int.self, forKey: .target)) ?? .groups
-        self.action = .init(rawValue: try container.decode(UInt8.self, forKey: .action)) ?? .noAction
-        self.fadeTime = try container.decode(Int.self, forKey: .fadeTime)
-        self.hour = try container.decode(Int.self, forKey: .hour)
-        self.minute = try container.decode(Int.self, forKey: .minute)
-        self.weekDays = Schedule.getWeekDays(weekValue: try container.decode(Int.self, forKey: .dayOfWeek))
-        
-        let nodeAddressStrings = try container.decode([String].self, forKey: .nodeAddresses)
-        nodeAddressStrings.forEach({
-            if let address = Address($0) {
-                self.nodeAddresses.append(address)
-            }
-        })
-        
-        let groupAddressStrings = try container.decode([String].self, forKey: .groupAddresses)
-        groupAddressStrings.forEach({
-            if let address = Address($0) {
-                self.groupAddresses.append(address)
-            }
-        })
-        
-        let sceneNumber = try container.decode(SceneNumber?.self, forKey: .sceneNumber)
-        self.sceneNumber = sceneNumber
-    }
-    
-    public func encode(to encoder: Encoder) throws {
-        var container = encoder.container(keyedBy: CodingKeys.self)
-        try container.encode(self.id, forKey: .id)
-        try container.encode(self.name, forKey: .name)
-        try container.encode(self.enabled, forKey: .enabled)
-        try container.encode(self.selectTargetType.rawValue, forKey: .target)
-        try container.encode(self.action.rawValue, forKey: .action)
-        try container.encode(self.fadeTime, forKey: .fadeTime)
-        try container.encode(self.hour, forKey: .hour)
-        try container.encode(self.minute, forKey: .minute)
-        try container.encode(Schedule.getWeekValue(weekDays: self.weekDays), forKey: .dayOfWeek)
-        try container.encode(self.nodeAddresses.map { $0.hex }, forKey: .nodeAddresses)
-        try container.encode(self.groupAddresses.map { $0.hex }, forKey: .groupAddresses)
-        try container.encode(self.scene?.number, forKey: .sceneNumber)
-    }
-    
-    /// 复制日程
-    func copy() -> Self {
-        let schedule = Schedule(id: id, name: name, enabled: enabled, nodeAddresses: nodeAddresses, groupAddresses: groupAddresses, sceneNumber: sceneNumber, selectTargetType: selectTargetType, action: action, fadeTime: fadeTime, weekDays: weekDays, hour: hour, minute: minute)
-        return schedule as! Self
-    }
-    
-    
-    /// 更新日程数据
-    /// - Parameter entry: 设备日程数据
-    func updata(entry: SchedulerRegistryEntry) {
-        
-        self.enabled = entry.isEnabled
-//        entry.month.value > 0 && entry.action != .noAction
-        self.action = entry.action
-        self.sceneNumber = entry.sceneNumber
-        self.fadeTime = Int(entry.transitionTime.steps)
-        
-        // 计算选中的重复周期
-        if entry.isEnabled {
-            self.weekDays = Schedule.getWeekDays(weekValue: Int(entry.dayOfWeek.value))
-        }else {
-            self.weekDays = []
-        }
-        self.hour = Int(entry.hour.value)
-        self.minute = Int(entry.minute.value)
-    }
-    
-    /// 根据周重复值获取重复周期
-    static func getWeekDays(weekValue: Int) -> [WeekDay] {
-        let allWeekDays :[WeekDay] = [.Monday, .Tuesday, .Wednesday, .Thursday, .Friday, .Saturday, .Sunday]
-        var selectWeekDays: [WeekDay] = []
-        for (weekInt, weekDay) in allWeekDays.enumerated() {
-            if weekValue >> weekInt & 1 == 1 {
-                selectWeekDays.append(weekDay)
-            }
-        }
-        return selectWeekDays
-    }
-    
-    /// 根据重复周期获取周重复值
-    static func getWeekValue(weekDays: [WeekDay]) -> Int {
-        return Int(weekDays.reduce(0, { (result, day) -> UInt8 in result + day.rawValue}))
-    }
-    
-    static func == (lhs: Schedule, rhs: Schedule) -> Bool {
-        
-        return lhs.id == rhs.id && lhs.name == rhs.name && lhs.enabled == rhs.enabled && lhs.selectTargetType == rhs.selectTargetType && lhs.scene?.number == rhs.scene?.number && lhs.action == rhs.action && lhs.fadeTime == rhs.fadeTime && lhs.weekDays == rhs.weekDays && lhs.hour == rhs.hour && lhs.minute == rhs.minute
-    }
+extension Schedule {
     
     /// 获取日程需要同步/删除的数据
     /// nodes：add/remove  【Node】
@@ -1616,6 +1324,8 @@ class Schedule: Codable, Copyable {
                 }
                 allSyncNodes.append(contentsOf: $0.nodes)
             })
+        case .profile:
+            break
         }
         
         let deleteNodes = needDeleteNodes.filter({ !allSyncNodes.contains($0) })
@@ -1662,7 +1372,7 @@ class Schedule: Codable, Copyable {
             return syncNodes.isEmpty && deleteNodes.isEmpty && syncGroups.isEmpty && deleteGroups.isEmpty
         }
     }
-
+    
 }
 
 extension DeviceSwitchData {
@@ -1713,7 +1423,7 @@ extension DeviceSwitchData {
                 
                 // 判断是否需要同步动能开关代理
                 if let mac = self.enOceanMacAddress, let key = self.enOceanSecurityKey, let proxyNode = self.proxyNode {
-                    if proxyNode.getEnOceanSwitchBindMessageHandles(enOceanMacAddress: mac, securityKey: key, enabled: self.enabled, switchKeys: self.switchKeys).count > 0 {
+                    if proxyNode.getEnOceanSwitchBindMessageHandles(enOceanMacAddress: mac, securityKey: key, keyCount: self.maxKeyCount, enabled: self.enabled, switchKeys: self.switchKeys).count > 0 {
                         syncProxy = proxyNode
                     }
                 }
@@ -1771,8 +1481,12 @@ extension DeviceDongleData {
 
 extension Node {
 
-    static private var localVersionSEQ = 1
-    static private var deviceConfigInfo = 202
+    static private var localVersionSEQ: UInt8 = 0
+    static private var deviceConfigInfo: UInt8 = 0
+    static private var gateway: UInt8 = 0
+    static private var cacheNeedSync: UInt8 = 0
+    static private var cacheGroupNeedSync: UInt8 = 0
+//    static private var lastUpdateSyncTime = 206
     
     /// 设备类型
     enum DeviceType {
@@ -1914,9 +1628,53 @@ extension Node {
     
     /// 是否需要同步数据
     var needSync: Bool {
-        return self.getNeedSync()
+        
+        guard let needSync = cacheNeedSync else {
+            let syncState = self.getNeedSync()
+            self.cacheNeedSync = syncState
+            return syncState
+        }
+        return needSync || needSyncGroupData
 //        return self.getSyncData(type: .all).count > 0
     }
+    
+    /// 是否需要同步组数据
+    var needSyncGroupData: Bool {
+        
+        guard let needSync = cacheGroupNeedSync else {
+            let syncState = self.getNeedSyncGroup()
+            self.cacheGroupNeedSync = syncState
+            return syncState
+        }
+        return needSync
+    }
+    
+    /// 缓存是否需要同步数据
+    var cacheNeedSync: Bool? {
+        get {
+            objc_getAssociatedObject(self, &Node.cacheNeedSync) as? Bool
+        } set {
+            objc_setAssociatedObject(self, &Node.cacheNeedSync, newValue, .OBJC_ASSOCIATION_RETAIN)
+        }
+    }
+    
+    /// 缓存是否需要同步组数据
+    var cacheGroupNeedSync: Bool? {
+        get {
+            objc_getAssociatedObject(self, &Node.cacheGroupNeedSync) as? Bool
+        } set {
+            objc_setAssociatedObject(self, &Node.cacheGroupNeedSync, newValue, .OBJC_ASSOCIATION_RETAIN)
+        }
+    }
+    
+    /// 缓存的最后更新同步数据时间戳
+//    var cacheLastUpdateSyncTime: Int64? {
+//        get {
+//            objc_getAssociatedObject(self, &Node.lastUpdateSyncTime) as? Int64
+//        } set {
+//            objc_setAssociatedObject(self, &Node.lastUpdateSyncTime, newValue, .OBJC_ASSOCIATION_RETAIN)
+//        }
+//    }
     
     /// lightLC第一阶段 lightness
     var lightLCOnLightness: UInt16? {
@@ -1943,7 +1701,7 @@ extension Node {
             return false
         }
         switch pid {
-        case 0x0031, 0x0041, 0x1031, 0x1041, 0x1302: // 单独传感器设备不支持pwm调节
+        case 0x0031, 0x0041, 0x0302, 0x0303, 0x1031, 0x1041, 0x1302, 0x1303, 0x2302, 0x2303, 0x2801, 0x2802: // 单独传感器等设备不支持pwm调节
             return false
         default:
             return true
@@ -1964,6 +1722,54 @@ extension Node {
             return false
         }
         return version.compare(sensorCalibrationMinimumVersion, options: .numeric) != .orderedAscending
+    }
+    
+    /// 是否支持真实功率计量
+    var supportRealPowerMetering: Bool {
+        guard self.sunricherVendorModel != nil, let pid = self.productIdentifier else {
+            return false
+        }
+        switch pid {
+        case 0x2302, 0x2303, 0x2801, 0x2802:
+            return true
+        default:
+            return false
+        }
+    }
+    
+    /// 是否支持真实功率校准
+    var supportRealPowerCalibration: Bool {
+        guard self.sunricherVendorModel != nil, let pid = self.productIdentifier else {
+            return false
+        }
+        switch pid {
+        case 0x2801, 0x2802:
+            return true
+        default:
+            return false
+        }
+    }
+    
+    /// 是否支持调光
+    var supportDimming: Bool {
+        guard let pid = self.productIdentifier, lightnessModel != nil else {
+            return false
+        }
+        if pid == 0x2802 { // 只支持ON/OFF为兼容自动化调光逻辑增加的lightness model
+            return false
+        }
+        return true
+    }
+    
+    /// 是否支持设置默认过渡时间
+    var supportDefaultTransitionTime: Bool {
+        guard let pid = self.productIdentifier, defaultTransitionTimeModel != nil else {
+            return false
+        }
+        if pid == 0x2802 {
+            return false
+        }
+        return true
     }
     
     /// 传感器校准最低支持版本
@@ -1999,6 +1805,28 @@ extension Node {
         }
         return models
     }
+    /// 是否支持lightControl Scene功能（新版profile）
+    var supportLightLCScene: Bool {
+        return self.requiredFunctionTypes.contains(.lightLCScene) && self.lightLCSceneModel != nil
+//        self.lightLCSceneSetupModel != nil && self.lightLCSceneSetupModel!.boundApplicationKeys.count > 0
+    }
+    
+    /// 刷新同步状态缓存
+    func reloadSyncStateCache() {
+        self.cacheGroupNeedSync = self.getNeedSyncGroup()
+        if self.cacheGroupNeedSync ?? false {
+            self.cacheNeedSync = false
+        }else {
+            self.cacheNeedSync = self.getNeedSync()
+        }
+//        self.cacheLastUpdateSyncTime = Int64(Date().timeIntervalSince1970)
+    }
+    
+    /// 清除同步状态缓存
+    func clearSyncStateCache() {
+        self.cacheGroupNeedSync = nil
+        self.cacheNeedSync = nil
+    }
     
     /// 更新新设备的恢复数据
     func updateResoreData(oldNode: Node, resoreGroup: Group? = nil) {
@@ -2029,6 +1857,7 @@ extension Node {
                 }
                 group.info.ambientLightSensorNodeAddress = self.primaryUnicastAddress
                 group.info.save()
+                group.updateGroupSyncState()
             }
             
             // 动能开关
@@ -2064,6 +1893,7 @@ extension Node {
                 }
                 if update {
                     group.info.save()
+                    group.updateGroupSyncState()
                 }
             }
         }
@@ -2084,9 +1914,16 @@ extension Node {
             dongle.bindNodeAddress = self.primaryUnicastAddress
             dongle.save()
         }
-        
+        // Gateway
+//        if self.deviceType == .gateway, let gatewayModel = oldNode.gatewayModel {
+//            gatewayModel.address = self.primaryUnicastAddress
+//            self.gatewayModel = gatewayModel
+//            self.gatewayModel?.save()
+//        }
         self.restoreData = restoreData
         self.save()
+        
+        self.clearSyncStateCache()
     }
     
     /// 获取恢复节点需要数据
@@ -2106,7 +1943,7 @@ extension Node {
             // 如果恢复的设备之前作为动能开关代理
             if let enOceanMacAddress = oldNode.enOceanMacAddress, let switchData = group.info.switchs.first(where: { $0.enOceanMacAddress == enOceanMacAddress && $0.proxyNodeAddress == oldNode.primaryUnicastAddress }), switchData.linkGroup != nil, let enOceanSecurityKey = switchData.enOceanSecurityKey {
                 
-                let handles = self.getEnOceanSwitchBindMessageHandles(enOceanMacAddress: enOceanMacAddress, securityKey: enOceanSecurityKey, enabled: switchData.enabled, switchKeys: switchData.switchKeys)
+                let handles = self.getEnOceanSwitchBindMessageHandles(enOceanMacAddress: enOceanMacAddress, securityKey: enOceanSecurityKey, keyCount: switchData.maxKeyCount, enabled: switchData.enabled, switchKeys: switchData.switchKeys)
                 messageHandles.append(contentsOf: handles)
             }
             
@@ -2222,6 +2059,7 @@ extension Node {
         if let group = meshNetwork.groups.first(where: { $0.info.ambientLightSensorNodeAddress == primaryUnicastAddress }) {
             group.info.ambientLightSensorNodeAddress = nil
             group.info.save(meshUUID: meshNetwork.uuid.uuidString, subnetworkId: group.subNetworkId)
+            group.updateGroupSyncState()
         }
         // 检查是否有删除分发者设备，删除分发者需把OTA分发缓存清空
         if let productId = self.productIdentifier {
@@ -2241,6 +2079,7 @@ extension Node {
         if let index = self.sceneExecuteDatas.firstIndex(where: { $0.sceneNumber == sceneId }) {
             self.sceneExecuteDatas.remove(at: index)
             self.savePropertys()
+            self.clearSyncStateCache()
         }
     }
     
@@ -2264,6 +2103,8 @@ extension Node {
                 switchData.deleteProxyNodeAddress = nil
             }
             switchData.save(meshUUID: uuid, networkId: subNetworkId)
+            
+            clearSyncStateCache()
             // 更新开关对应组缓存
 //            if let groupCacheSwitch = groupSwitch.group?.info.switchs.first(where: { $0.id == groupSwitch.id }) {
 //                groupCacheSwitch.proxyNodeAddress = nil
@@ -2346,6 +2187,7 @@ extension Node {
                                 group.info.ambientLightSensorNodeAddress = nil
                                 // 保存缓存
                                 group.info.save()
+                                group.updateGroupSyncState()
                             }
                             self.save()
                         }
@@ -2360,44 +2202,48 @@ extension Node {
             
         case is SceneStore:
             let sceneId = (message as! SceneStore).scene
-            var cct = temperature
-            var lightness = self.lightness
-            // 不支持cct，使用group预配置的cct值
-            let groupSceneData = self.group?.info.sceneExecuteDatas.first(where: { $0.sceneNumber == sceneId })
-            if self.temperatureModel == nil, let groupCct = groupSceneData?.cct {
-                cct = groupCct
-            }
-            if let groupSceneExecuteData = groupSceneData {
-                // 判断是否设置了亮度范围，如已设置亮度范围导致达不到目标亮度则判定正确
-                if self.lightnessRange.lowerBound > groupSceneExecuteData.lightness || self.lightnessRange.upperBound < groupSceneExecuteData.lightness {
-                    lightness = groupSceneExecuteData.lightness
+            if !sceneId.isSpecialScene {
+                var cct = temperature
+                var lightness = self.lightness
+                // 不支持cct，使用group预配置的cct值
+                let groupSceneData = self.group?.info.sceneExecuteDatas.first(where: { $0.sceneNumber == sceneId })
+                if self.temperatureModel == nil, let groupCct = groupSceneData?.cct {
+                    cct = groupCct
                 }
+                if let groupSceneExecuteData = groupSceneData {
+                    // 判断是否设置了亮度范围，如已设置亮度范围导致达不到目标亮度则判定正确
+                    if self.lightnessRange.lowerBound > groupSceneExecuteData.lightness || self.lightnessRange.upperBound < groupSceneExecuteData.lightness {
+                        lightness = groupSceneExecuteData.lightness
+                    }
+                }
+                
+                let sceneData = SceneExecuteData(sceneNumber: sceneId, isOn: lightness > 0, lightness: lightness, cct: cct)
+    //            let sceneData = self.sceneExecuteDatas.first(where: { $0.sceneNumber == sceneId })
+                if let sceneIndex = self.sceneExecuteDatas.firstIndex(where: { $0.sceneNumber == sceneId }) {
+                    self.sceneExecuteDatas.replaceSubrange(sceneIndex...sceneIndex, with: [sceneData])
+                }else {
+                    self.sceneExecuteDatas.append(sceneData)
+    //                self.sceneExecuteDatas.append(SceneExecuteData(sceneNumber: sceneId, isOn: lightness > 0, lightness: lightness, cct: cct))
+                }
+                self.savePropertys()
+                
+                //            let executeData = SceneExecuteData(scenenumber: sceneId, lightness: self.lightness, cct: cct)
+                //            print("address: \(primaryUnicastAddress) scene:\(sceneId) lightness: \(self.lightness100) cct: \(cct)")
+                //            let groupScene = self.group?.info.sceneExecuteDatas[sceneId]
+                //            print("target scene:\(sceneId) lightness: \(groupScene!.lightness) cct: \(groupScene!.cct)")
+                //            self.sceneDatas.updateValue(executeData, forKey: sceneId)
+                //            if let uuid = meshUUID {
+                //                SceneExecuteData.save(meshUUID: uuid, networkKey: networkKey, address: primaryUnicastAddress, sceneId: Int(sceneId), sceneData: executeData)
+                //            }
             }
-            
-            let sceneData = SceneExecuteData(sceneNumber: sceneId, isOn: lightness > 0, lightness: lightness, cct: cct)
-//            let sceneData = self.sceneExecuteDatas.first(where: { $0.sceneNumber == sceneId })
-            if let sceneIndex = self.sceneExecuteDatas.firstIndex(where: { $0.sceneNumber == sceneId }) {
-                self.sceneExecuteDatas.replaceSubrange(sceneIndex...sceneIndex, with: [sceneData])
-            }else {
-                self.sceneExecuteDatas.append(sceneData)
-//                self.sceneExecuteDatas.append(SceneExecuteData(sceneNumber: sceneId, isOn: lightness > 0, lightness: lightness, cct: cct))
-            }
-            self.savePropertys()
-//            let executeData = SceneExecuteData(scenenumber: sceneId, lightness: self.lightness, cct: cct)
-//            print("address: \(primaryUnicastAddress) scene:\(sceneId) lightness: \(self.lightness100) cct: \(cct)")
-//            let groupScene = self.group?.info.sceneExecuteDatas[sceneId]
-//            print("target scene:\(sceneId) lightness: \(groupScene!.lightness) cct: \(groupScene!.cct)")
-//            self.sceneDatas.updateValue(executeData, forKey: sceneId)
-//            if let uuid = meshUUID {
-//                SceneExecuteData.save(meshUUID: uuid, networkKey: networkKey, address: primaryUnicastAddress, sceneId: Int(sceneId), sceneData: executeData)
-//            }
             break
         case is SceneDelete:
             let sceneId = (message as! SceneDelete).scene
-//            self.sceneDatas.removeValue(forKey: sceneId)
-            delete(sceneId: sceneId)
-//            if let uuid = meshUUID {
-//                SceneExecuteData.deleteData(meshUUID: uuid, address: primaryUnicastAddress, sceneId: Int(sceneId))
+            if !sceneId.isSpecialScene {
+                //            self.sceneDatas.removeValue(forKey: sceneId)
+                delete(sceneId: sceneId)
+                //            if let uuid = meshUUID {
+                //                SceneExecuteData.deleteData(meshUUID: uuid, address: primaryUnicastAddress, sceneId: Int(sceneId))
                 
                 // 组对应场景数据是否待删除
                 if let scene = MeshNetworkManager.instance.scenes.first(where: {$0.number == sceneId}), let group = self.group, let groupSceneData = group.info.sceneExecuteDatas.first(where: { $0.sceneNumber == sceneId }), groupSceneData.state == .waitDelete {
@@ -2408,8 +2254,10 @@ extension Node {
                         // 场景加入日程后关联场景的组也加入日程，场景移出组后吧组间接关联的日程删除
                         group.info.bindSchedules.removeAll(where: { groupSchedule in scene.info.bindSchedules.contains(where: { $0.id == groupSchedule.id }) })
                         group.info.save()
+                        group.updateGroupSyncState()
                     }
                 }
+            }
 //            }
            
         case is SchedulerActionSet:
@@ -2458,7 +2306,7 @@ extension Node {
                 if let isOn = (message as? LightLCLightOnOffSet)?.isOn ?? (message as? LightLCLightOnOffSetUnacknowledged)?.isOn, isOn {
                     switchData.bindGroups.forEach { group in
                         let profile = group.info.profile
-                        let lightData = profile.lightData.data
+                        let lightData = profile.lightControlData
                         // daylight并且已校准则不更新本地数据，更新设备状态到第一阶段
                         if !((profile.type == .occupancy_daylight || profile.type == .vacancy_daylight || profile.type == .daylight) && group.info.ambientLightSensorNode != nil) {
                             let lightness = Node.getLightness(lightness100: lightData.occupancyLevel)
@@ -2527,12 +2375,25 @@ extension Node {
                         self.restoreData?.daylightCalibrationValue = nil
                         save()
                     }
-                case .daylightCalibrateRate:
+                case .daylightCalibrateRate(let sensorRate, let ambientLightRate):
                     self.restoreData?.daylightCalibrationData?.sensorRatio = nil
                     self.restoreData?.daylightCalibrationData?.ambientlightRatio = nil
+                    if self.preConfiguration.resetDaylightCalibration ?? false {
+                        self.preConfiguration.resetDaylightCalibration = nil
+                        if sensorRate == 100 && ambientLightRate == 100 { // 重置
+                            self.sensorCalibrationData = nil
+                            self.savePropertys()
+                        }
+                        if let meshUUID = self.network?.uuid.uuidString {
+                            self.preConfiguration.save(meshUUID: meshUUID, nodeAddress: self.primaryUnicastAddress)
+                        }
+                    }
                 case .daylightCalibrateIlluminanceInflectionPoint:
-                    self.restoreData?.daylightCalibrationData?.minLightInflectionPointData = nil
-                    self.restoreData?.daylightCalibrationData?.maxLightInflectionPointData = nil
+                    if self.restoreData?.daylightCalibrationData != nil {
+                        self.restoreData?.daylightCalibrationData?.minLightInflectionPointData = nil
+                        self.restoreData?.daylightCalibrationData?.maxLightInflectionPointData = nil
+                        self.save()
+                    }
                 case .pwmFrequency:
                     if self.restoreData?.pwmFrequency != nil {
                         self.restoreData?.pwmFrequency = nil

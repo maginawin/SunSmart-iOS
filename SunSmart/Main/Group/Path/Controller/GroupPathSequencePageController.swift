@@ -126,6 +126,7 @@ class GroupPathSequencePageController: WMPageController {
         }
         group.info.proximityLightingPath = groupPath
         group.info.save()
+        group.updateGroupSyncState()
 
         guard group.nodes.contains(where: { $0.getNodeSyncProximityLighting() != nil }) else {
             navigationController?.popViewController(animated: true)

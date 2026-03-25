@@ -486,14 +486,21 @@ class DeviceForceResetDeviceController: UIViewController {
             make.height.equalTo(imageView.snp.width).multipliedBy(170 / 311.0)
         }
         
-        stepView = GroupPathSequenceDeviceAddStepView()
-        stepView.step1View.titleLabel.text = info.steps[0]
-        stepView.step2View.titleLabel.text = info.steps[1]
-        stepView.step3View.titleLabel.text = info.steps[2]
+        stepView = GroupPathSequenceDeviceAddStepView(frame: .zero, steps: [
+            .init(imageName: "proximity_lighting_step1", title: info.steps[0], textColor: SubText_Color),
+            .init(imageName: "proximity_lighting_step2", title: info.steps[1], textColor: SubText_Color),
+            .init(imageName: "proximity_lighting_step3", title: info.steps[2], textColor: SubText_Color)
+        ])
         headerView.addSubview(stepView)
         stepView.snp.makeConstraints { make in
-            make.left.equalTo(SCRXFrom(14))
-            make.right.equalTo(SCRXFrom(-14))
+//            if isIPad {
+//                make.left.equalTo(SCRXFrom(100))
+//                make.right.equalTo(SCRXFrom(-100))
+//            }else {
+                make.left.equalTo(SCRXFrom(14))
+                make.right.equalTo(SCRXFrom(-14))
+//            }
+         
             make.top.equalTo(imageView.snp.bottom).offset(SCRYFrom(26))
             make.height.greaterThanOrEqualTo(SCRYFrom(56))
             make.bottom.equalTo(SCRYFrom(-22))

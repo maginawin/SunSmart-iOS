@@ -99,6 +99,8 @@ class ProfileLevelSettingsView: UIView {
             result = .taskLevel(level: items.first!.value)
         case .taskLux:
             result = .taskLux(lux: items.first!.value)
+        case .standbyLevel:
+            result = .standbyLevel(level: items.first!.value)
         }
         settingsCallback?(result)
         dismiss()
@@ -284,6 +286,8 @@ class ProfileLevelSettingsItem: UIView {
     private var maxValueLabel: UILabel!
     /// 加载图标
     private var loadingImageView: UIImageView!
+    /// 关灯
+    private var offBtn: UIButton!
     /// 类型
     var itemType: ProfileLevelSettingsView.LevelType.ItemType
     /// 数值修改回调 value：数值  是否停止修改
@@ -298,6 +302,11 @@ class ProfileLevelSettingsItem: UIView {
                 let data = itemType.data
                 return data.value
             }else {
+                if case .standbyLevel = itemType {
+                    if offBtn.isSelected {
+                        return 0
+                    }
+                }
                 return Int(slider.value)
             }
         }set {
@@ -313,10 +322,19 @@ class ProfileLevelSettingsItem: UIView {
                 default:
                     break
                 }
+                updateValue()
             }else {
-                slider.value = Float(newValue)
+                
+                if value > 0 {
+                    offBtn.isSelected = false
+                    slider.value = Float(newValue)
+                    updateValue()
+                }else {
+                    offBtn.isSelected = true
+                    updateValue()
+                }
             }
-            updateValue()
+            
         }
     }
     
@@ -336,6 +354,17 @@ class ProfileLevelSettingsItem: UIView {
         }else {
             slider.value = Float(data.value)
         }
+        
+        if case .standbyLevel = itemType {
+            offBtn.isHidden = false
+            offBtn.isSelected = !data.range.contains(data.value)
+            slider.minimumValue = 1
+            valueLabel.snp.remakeConstraints({ make in
+                make.centerX.equalToSuperview()
+                make.centerY.equalTo(titleLabel)
+            })
+        }
+        
         updateValue()
     }
     
@@ -383,12 +412,50 @@ class ProfileLevelSettingsItem: UIView {
         valueChangedCallback?(Int(slider.value), true)
     }
     
-    private func updateValue() {
-        let data = itemType.data
-        if data.calibrated {
-            valueLabel.text = "\(value)\(data.unit)"
+    @objc private func offBtnAction(sender: UIButton) {
+        if loading {
+            return
+        }
+        sender.isSelected = !sender.isSelected
+        updateValue()
+        
+        if sender.isSelected {
+            valueChangedCallback?(0, true)
         }else {
-            valueLabel.text = "\(Int(slider.value))\(data.unit)"
+            valueChangedCallback?(Int(slider.value), true)
+        }
+    }
+    
+    
+    private func updateValue() {
+     
+        switch itemType {
+        case .standbyLevel:
+            let data = itemType.data
+            if data.calibrated {
+                valueLabel.text = "\(value)\(data.unit)"
+            }else {
+                if offBtn.isSelected {
+                    offBtn.backgroundColor = Bar_Color
+                    addBtn.isEnabled = false
+                    minusBtn.isEnabled = false
+                    slider.isEnabled = false
+                    valueLabel.text = "off_state".localizedString
+                }else {
+                    offBtn.backgroundColor = .clear
+                    addBtn.isEnabled = true
+                    minusBtn.isEnabled = true
+                    slider.isEnabled = true
+                    valueLabel.text = "\(Int(slider.value))\(data.unit)"
+                }
+            }
+        default:
+            let data = itemType.data
+            if data.calibrated {
+                valueLabel.text = "\(value)\(data.unit)"
+            }else {
+                valueLabel.text = "\(Int(slider.value))\(data.unit)"
+            }
         }
     }
     
@@ -446,6 +513,20 @@ class ProfileLevelSettingsItem: UIView {
             make.height.equalTo(SCRYFrom(40))
         }
         
+        offBtn = UIButton(title: "off".localizedString, titleSize: 13, titleColor: Bar_Color, target: self, action: #selector(offBtnAction))
+        offBtn.isHidden = true
+        offBtn.setTitleColor(.white, for: .selected)
+        offBtn.layer.cornerRadius = SCRYFrom(15)
+        offBtn.layer.borderColor = Bar_Color.cgColor
+        offBtn.layer.borderWidth = 0.6
+        addSubview(offBtn)
+        offBtn.snp.makeConstraints { make in
+            make.right.equalTo(SCRXFrom(-14))
+            make.centerY.equalTo(titleLabel)
+            make.width.equalTo(SCRXFrom(64))
+            make.height.equalTo(SCRYFrom(32))
+        }
+        
 //        minValueLabel = UILabel(text: "", textColor: <#T##UIColor#>, fontSize: <#T##CGFloat#>, fontWeight: <#T##UIFont.Weight?#>)
         
     }
@@ -490,6 +571,8 @@ extension ProfileLevelSettingsView {
                     return 8
                 case .taskLux:
                     return 9
+                case .standbyLevel:
+                    return 10
                 }
             }
             
@@ -518,6 +601,8 @@ extension ProfileLevelSettingsView {
                     return ("profile_task_level".localizedString, value, levelRange, inputRange.lowerBound, inputRange.upperBound, "%", false)
                 case .taskLux(let value, let inputRange, let calibrated):
                     return ("profile_task_level".localizedString, value, calibrated ? levelRange : inputRange, inputRange.lowerBound, inputRange.upperBound, "lx", calibrated)
+                case .standbyLevel(let value, let inputRange):
+                    return ("standby_level".localizedString, value, inputRange, inputRange.lowerBound, inputRange.upperBound, "%", false)
                 }
                 
             }
@@ -531,6 +616,7 @@ extension ProfileLevelSettingsView {
             case autoMinValue(value: Int, inputRange: ClosedRange<Int> = 0...30)
             case taskLevel(value: Int, inputRange: ClosedRange<Int> = 0...100)
             case taskLux(value: Int, inputRange: ClosedRange<Int> = 0...1500, calibrated: Bool = false)
+            case standbyLevel(value: Int, inputRange: ClosedRange<Int> = 1...100)
         }
         
         var items: [ItemType] {
@@ -547,6 +633,8 @@ extension ProfileLevelSettingsView {
                 return [.taskLevel(value: level, inputRange: inputRange)]
             case .taskLux(let lux, let inputRange, let calibrated):
                 return [.taskLux(value: lux, inputRange: inputRange, calibrated: calibrated)]
+            case .standbyLevel(let value, let inputRange):
+                return [.standbyLevel(value: value, inputRange: inputRange)]
             }
         }
         
@@ -558,11 +646,13 @@ extension ProfileLevelSettingsView {
         /// 第一阶段（占用）+ 第二阶段（闲置）照度值 calibrated：是否已校准
         case occupancyAndVacantLux(occupanyLux: Int = 500, vacantLux: Int = 100, inputRange: ClosedRange<Int> = 0...1500, calibrated: Bool = false)
         /// 光照补偿亮度最低值
-        case autoMinValue(level: Int = 0, inputRange: ClosedRange<Int> = 0...30, enabled: Bool = false)
+        case autoMinValue(level: Int = 0, inputRange: ClosedRange<Int> = 1...30, enabled: Bool = false)
         /// ON后亮度值
         case taskLevel(level: Int = 100, inputRange: ClosedRange<Int> = 0...100)
         /// 光照维持环境照度值  calibrated：是否已校准
         case taskLux(lux: Int = 500, inputRange: ClosedRange<Int> = 0...1500, calibrated: Bool = false)
+        /// 第三阶段（待机）亮度
+        case standbyLevel(value: Int, inputRange: ClosedRange<Int> = 1...100)
     }
     
     /// level结果
@@ -579,6 +669,8 @@ extension ProfileLevelSettingsView {
         case taskLevel(level: Int)
         /// 光照维持环境照度值
         case taskLux(lux: Int)
+        /// 第三阶段亮度
+        case standbyLevel(level: Int)
     }
     
 }

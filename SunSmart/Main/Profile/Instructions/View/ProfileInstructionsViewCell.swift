@@ -39,10 +39,10 @@ class ProfileInstructionsViewCell: UITableViewCell {
             })
             
             
-            let paragraphStyle = NSMutableParagraphStyle()
-            paragraphStyle.lineSpacing = 2
-            let attStr = NSAttributedString(string: data.description, attributes: [.paragraphStyle: paragraphStyle])
-            descLabel.attributedText = attStr
+//            let paragraphStyle = NSMutableParagraphStyle()
+//            paragraphStyle.lineSpacing = 2
+//            let attStr = NSAttributedString(string: data.description, attributes: [.paragraphStyle: paragraphStyle])
+            descLabel.attributedText = data.descriptionAttStr
             
             setupRequiredItems()
         }

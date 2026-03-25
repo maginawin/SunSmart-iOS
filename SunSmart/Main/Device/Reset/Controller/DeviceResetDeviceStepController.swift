@@ -122,9 +122,11 @@ class DeviceResetDeviceStepController: UIViewController {
             let resetStepView = DeviceForceResetStepView()
             resetStepView.titleLabel.text = info.title
             resetStepView.noteLabel.attributedText = NSAttributedString(string: info.message, attributes: [.paragraphStyle: paragraphStyle])
-            resetStepView.stepView.step1View.titleLabel.text = info.steps[0]
-            resetStepView.stepView.step2View.titleLabel.text = info.steps[1]
-            resetStepView.stepView.step3View.titleLabel.text = info.steps[2]
+            resetStepView.stepView.steps = [
+                .init(imageName: "proximity_lighting_step1", title: info.steps[0], textColor: SubText_Color),
+                .init(imageName: "proximity_lighting_step2", title: info.steps[1], textColor: SubText_Color),
+                .init(imageName: "proximity_lighting_step3", title: info.steps[2], textColor: SubText_Color)
+            ]
             resetStepView.parameterBtn.isHidden = !info.setParameters
             resetStepView.delegate = self
             contentView.addSubview(resetStepView)

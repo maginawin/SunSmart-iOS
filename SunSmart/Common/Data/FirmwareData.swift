@@ -81,4 +81,6 @@ struct FirmwareData {
     let content: String
     /// 固件hash
     let compositionHash: String
+    /// 设备版本vid
+    let versionIdentifier: UInt16?
 }

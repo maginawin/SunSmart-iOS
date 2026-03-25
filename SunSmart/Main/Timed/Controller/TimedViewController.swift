@@ -127,7 +127,7 @@ class TimedViewController: UIViewController {
     /// 设置日程启用/禁用
     private func setScheduleEnabled(schedule: Schedule, enabled: Bool) {
         
-        guard schedule.exitNodes.count > 0 else {
+        guard schedule.existNodes.count > 0 else {
             schedule.enabled = enabled
             schedule.save()
             self.reloadCollectionItem(schedule: schedule)

@@ -72,6 +72,8 @@ enum NodeSyncData {
     case deleteCollectionSchedules(scheduleIds: [Int])
     /// 设置邻近照明启用禁用
     case proximityLightingEnabled(_ enabled: Bool)
+    /// 设置临近照明转发次数
+    case proximityLightingRelayNumber(_ relayNumber: UInt8)
     /// 设置邻近照明邻居数量+邻居list
     case proximityLightingNeighbor(relayNumber: UInt8, neighborAddresses: [Address])
     /// 同步网关SIM卡APN
@@ -86,6 +88,8 @@ enum NodeSyncData {
     case gatewayAssociatedSpaces(datas: [(networkKey: NetworkKey, applicationKey: ApplicationKey)], activate: Bool)
     /// 网关解除关联spaces  activate: 是否激活
     case gatewayUnbindAssociatedSpaces(datas: [(networkKey: NetworkKey, applicationKey: ApplicationKey)], activate: Bool)
+    /// pir传感器启用/禁用
+    case pirEnabled(_ enabled: Bool)
 }
 
 /// 配置类型
@@ -108,6 +112,10 @@ enum ProfileType {
     case vacantLevel(value: Int)
     /// 第二阶段照度值 lux
     case vacantLux(lux: Int)
+    /// 第三阶段待机亮度值 0~100%
+    case standbyLevel(value: Int)
+//    /// 第三阶段待机照度值 lux
+    case standbyLux(lux: Int)
     /// 光照补偿是否开启
     case lightAutoAdujustEnabled(enabled: Bool)
     /// 光照补偿调节速率 0~100
@@ -132,10 +140,36 @@ enum ProfileType {
     case daylightCalibration(value: UInt16)
     /// 光感校准倍率
     case daylightCalibrateRate(sensorRatio: UInt16, ambientlightRatio: UInt16)
+    /// 光感校准清除
+//    case daylightCalibrateReset
     /// 光感校准灯光拐点
     case daylightCalibrateInflectionPoint(minLightPoint: DaylightSensorCalibrationData.LightnessLuxData, maxLightPoint: DaylightSensorCalibrationData.LightnessLuxData)
     /// 灵敏度 0~100%
     case sensitivity(value: UInt16, range: ClosedRange<UInt16>? = nil)
+    /// 当前灯光控制数据保存快照
+    case lightControlSnapshoot(sceneNumber: SceneNumber = .snapshotScene)
+    /// 切换光照传感器配置的灯光控制数据场景（白天/晚上）
+    case daylightSensorConditionRecall(id: UInt8)
+    /// 切换灯光控制数据场景（profile SceneA => SceneB）
+    case lightControlSwitch(sceneNumber: SceneNumber)
+    /// 灯光数据缓存到场景
+    case lightControlStore(sceneNumber: SceneNumber)
+    /// 当前灯光控制数据恢复
+    case lightControlRestore(sceneNumber: SceneNumber = .snapshotScene)
+    /// 删除灯光控制场景
+    case lightControlDelete(sceneNumber: SceneNumber)
+    /// 根据lux切换白天profile条件配置
+    case profileDayToggleTriggerConditionLux(id: UInt8, minLux: UInt16, maxLux: UInt16, useCalibrationValues: Bool, destination: Address, sceneNumber: SceneNumber)
+    /// 根据lux切换晚上profile条件配置
+    case profileNightToggleTriggerConditionLux(id: UInt8, minLux: UInt16, maxLux: UInt16, useCalibrationValues: Bool, destination: Address, sceneNumber: SceneNumber)
+    /// 删除lux切换profile条件配置
+    case profileToggleTriggerConditionLuxDelete(id: UInt8)
+    /// 光照传感器lux条件触发锁定 delay: 锁定时间
+    case profileToggleTriggerConditionLuxLock(delay: UInt16)
+    /// 光照传感器lux条件触发解锁
+    case profileToggleTriggerConditionLuxUnLock
+    /// 配置文件lux触发条件切换配置
+//    case profileToggleTriggerConditionLux(id: UInt8, minLux: UInt16, maxLux: UInt16, destination: Address, sceneNumber: SceneNumber)
 }
 
 enum DeviceParameterType {
@@ -150,6 +184,8 @@ enum DeviceParameterType {
             return 3
         case .defaultTransitionTime:
             return 4
+        case .powerCalibration:
+            return 5
         }
     }
     
@@ -175,6 +211,10 @@ enum DeviceParameterType {
             if let defaultTransitionTimeModel = node.defaultTransitionTimeModel {
                 messageHandles.append(MeshMessageHandle(message: GenericDefaultTransitionTimeSet(transitionTime: transitionTime), model: defaultTransitionTimeModel))
             }
+        case .powerCalibration(let calibrationValue):
+            if let vendorModel = node.sunricherVendorModel {
+                messageHandles.append(MeshMessageHandle(message: SunricherVendorSet(function: .dimmerPowerCalibrate(calibrationValue: calibrationValue)), model: vendorModel))
+            }
         }
         return messageHandles
     }
@@ -187,6 +227,8 @@ enum DeviceParameterType {
     case motionSensitivityRange(range: ClosedRange<UInt16>)
     /// 默认过渡时间
     case defaultTransitionTime(transitionTime: TransitionTime)
+    /// 功率校准
+    case powerCalibration(calibrationValue: UInt32)
 }
 
 enum DeviceReadParameterType {
@@ -241,6 +283,43 @@ enum DeviceReadParameterType {
 
 extension Node {
     
+    static var preConfigurationKey: UInt8 = 0
+    
+    /// 设备预配置数据
+    class PreConfiguration: Codable {
+        /// 白天profile lux阈值
+        var dayProfileStartsAboveLux: UInt16?
+        /// 晚上profile lux阈值
+        var nightProfileStartsBelowLux: UInt16?
+        /// 白天profile灯光数据（暂未使用）
+        var dayProfileLightData: Profile.LightControlData?
+        /// 晚上profile灯光数据（暂未使用）
+        var nightProfileLightData: Profile.LightControlData?
+        /// 是否重置光感校准数据
+        var resetDaylightCalibration: Bool?
+        /// 是否显示lux（光感设备在设备页面）
+        var displayLux: Bool = false
+    }
+    
+    /// 设备预配置数据
+    var preConfiguration: PreConfiguration {
+        get {
+            var preConfiguration = objc_getAssociatedObject(self, &Node.preConfigurationKey) as? PreConfiguration
+            if preConfiguration == nil {
+                if let uuid = self.network?.uuid.uuidString {
+                    
+                    preConfiguration = Node.PreConfiguration.load(meshUUID: uuid, nodeAddress: self.primaryUnicastAddress) ?? PreConfiguration()
+                }else {
+                    preConfiguration = PreConfiguration()
+                }
+                self.preConfiguration = preConfiguration!
+            }
+            return preConfiguration!
+        }set  {
+            objc_setAssociatedObject(self, &Node.preConfigurationKey, newValue, .OBJC_ASSOCIATION_RETAIN)
+        }
+    }
+    
     
     /// 获取设备需要同步的数据
     /// - Parameter type: 同步数据类型
@@ -253,8 +332,16 @@ extension Node {
             guard let group = group ?? self.group else {
                 return syncDatas
             }
+            // 未配置完成
+            if !self.isKeybindComplete {
+                syncDatas.append(.deviceInitialize)
+            }
             // 设备退出组失败
             if self.group != nil && groupState == GroupState.exitFailure {
+                // 退出组时pir默认启用
+                if self.capabilities.contains(.pirEnabled), !self.pirEnabled {
+                    syncDatas.append(.pirEnabled(true))
+                }
                 syncDatas.append(.unsubscribeGroup(group: self.group!))
             }else if getSubscribeToGroupMessages(group).count > 0 { // 设备订阅组数据不完整
                 syncDatas.append(.subscribeGroup(group: group))
@@ -407,24 +494,26 @@ extension Node {
                 syncDatas.append(contentsOf: getSyncData(type: .schedules()))
             }
             
-            // 设备参数
-            var deviceParameterTypes: [DeviceParameterType] = []
-            // PWM
-            if let pwmFrequency = self.restoreData?.pwmFrequency, self.pwmFrequency != pwmFrequency {
-                deviceParameterTypes.append(.pwmFrequency(frequency: pwmFrequency))
-            }
-            // Rated power
-            if let phaseEnergyConsumptions = self.restoreData?.phaseEnergyConsumptions, self.phaseEnergyConsumptions != phaseEnergyConsumptions {
-                deviceParameterTypes.append(.ratedPower(datas: phaseEnergyConsumptions))
-            }
-            // Absolute Sensitivity
-            if let motionSensitivityRange = self.restoreData?.motionSensitivityRange,
-               self.motionSensitivityRange != motionSensitivityRange {
-                deviceParameterTypes.append(.motionSensitivityRange(range: motionSensitivityRange))
-            }
-            
-            if deviceParameterTypes.count > 0 {
-                syncDatas.append(.deviceParameterTypes(types: deviceParameterTypes))
+            if self.sunricherVendorModel != nil {
+                // 设备参数
+                var deviceParameterTypes: [DeviceParameterType] = []
+                // PWM
+                if let pwmFrequency = self.restoreData?.pwmFrequency, self.pwmFrequency != pwmFrequency {
+                    deviceParameterTypes.append(.pwmFrequency(frequency: pwmFrequency))
+                }
+                // Rated power
+                if let phaseEnergyConsumptions = self.restoreData?.phaseEnergyConsumptions, self.phaseEnergyConsumptions != phaseEnergyConsumptions {
+                    deviceParameterTypes.append(.ratedPower(datas: phaseEnergyConsumptions))
+                }
+                // Absolute Sensitivity
+                if let motionSensitivityRange = self.restoreData?.motionSensitivityRange,
+                   self.motionSensitivityRange != motionSensitivityRange {
+                    deviceParameterTypes.append(.motionSensitivityRange(range: motionSensitivityRange))
+                }
+                
+                if deviceParameterTypes.count > 0 {
+                    syncDatas.append(.deviceParameterTypes(types: deviceParameterTypes))
+                }
             }
             
             // Dongle
@@ -562,6 +651,38 @@ extension Node {
         return false
     }
     
+    /// 获取需要同步的白天晚上lux条件profile
+    func getSyncDayNightLuxProfiles() -> [ProfileType] {
+        guard let group = self.group else { return [] }
+        let profile = group.info.profile
+        var profileTypes: [ProfileType] = []
+        guard self.ambientLightSensorModel != nil, self.sunricherVendorModel != nil else {
+            return profileTypes
+        }
+        
+        if profile.type == .proximityLightingWithPhotocell, let nightData = profile.nightData, let dayData = profile.dayData {
+            
+            // 场景执行的目标地址
+            let sceneDestination = self.lightLCSceneModel?.parentElement?.unicastAddress ?? self.lightLCModel?.parentElement?.unicastAddress ?? self.primaryUnicastAddress
+            
+            let nightTargetLux = preConfiguration.nightProfileStartsBelowLux ?? nightData.startsBelowLux
+            let dayTargetLux = preConfiguration.dayProfileStartsAboveLux ?? dayData.startsBelowLux
+            
+            let nightCondition = self.lightControlLuxTriggerConditions.first(where: { $0.index == nightData.id })
+            let dayCondition = self.lightControlLuxTriggerConditions.first(where: { $0.index == dayData.id })
+            
+            if nightCondition == nil || nightCondition!.maxLux != nightTargetLux || nightCondition!.useCalibrationValues != nightData.useCalibrationValues || nightCondition!.destination != sceneDestination || nightCondition!.sceneNumber != nightData.sceneData.sceneNumber {
+                profileTypes.append(.profileNightToggleTriggerConditionLux(id: nightData.id, minLux: 0, maxLux: nightTargetLux, useCalibrationValues: nightData.useCalibrationValues, destination: sceneDestination, sceneNumber: nightData.sceneData.sceneNumber))
+            }
+            
+            if dayCondition == nil || dayCondition!.minLux != dayTargetLux || dayCondition!.useCalibrationValues != dayData.useCalibrationValues || dayCondition!.destination != sceneDestination || dayCondition!.sceneNumber != dayData.sceneData.sceneNumber {
+                profileTypes.append(.profileDayToggleTriggerConditionLux(id: dayData.id, minLux: dayTargetLux, maxLux: .max, useCalibrationValues: dayData.useCalibrationValues, destination: sceneDestination, sceneNumber: dayData.sceneData.sceneNumber))
+            }
+            
+        }
+        return profileTypes
+    }
+    
     /// 获取需要同步的profile
     func getNodeSyncProfiles(group: Group? = nil) -> [ProfileType] {
         
@@ -572,7 +693,7 @@ extension Node {
                 if powerUpState != .restore {
                     syncProfile.append(.powerOnState(state: .restore))
                 }
-                if sunricherVendorModel != nil, lightLCProperty.manualOverrideEnabled == nil || !lightLCProperty.manualOverrideEnabled! || lightLCProperty.manualOverrideTimeout != .max {
+                if sunricherVendorModel != nil, lightLCModel != nil, lightLCProperty.manualOverrideEnabled == nil || !lightLCProperty.manualOverrideEnabled! || lightLCProperty.manualOverrideTimeout != .max {
                     syncProfile.append(.manualOverrideTimeout(enabled: true, second: .max))
                 }
             }
@@ -637,185 +758,186 @@ extension Node {
             if daylightEnabled, let value = self.restoreData?.daylightCalibrationValue, value > 0, value < 0xFFFF, self.sunricherVendorModel != nil {
                 syncProfile.append(.daylightCalibration(value: value))
             }
-            // 恢复光照校准数据
-            if daylightEnabled, self.sunricherVendorModel != nil {
-                if let calibrationData = self.restoreData?.daylightCalibrationData {
-                    if let sensorRatio = calibrationData.sensorRatio, let ambientlightRatio = calibrationData.ambientlightRatio {
-                        syncProfile.append(.daylightCalibrateRate(sensorRatio: sensorRatio, ambientlightRatio: ambientlightRatio))
-                    }
-                    if let minLightInflectionPointData = calibrationData.minLightInflectionPointData, let maxLightInflectionPointData = calibrationData.maxLightInflectionPointData {
-                        syncProfile.append(.daylightCalibrateInflectionPoint(minLightPoint: minLightInflectionPointData, maxLightPoint: maxLightInflectionPointData))
+            
+            if self.sunricherVendorModel != nil {
+                if daylightEnabled { // 恢复光照校准数据
+                    if let calibrationData = self.restoreData?.daylightCalibrationData {
+                        if let sensorRatio = calibrationData.sensorRatio, let ambientlightRatio = calibrationData.ambientlightRatio {
+                            syncProfile.append(.daylightCalibrateRate(sensorRatio: sensorRatio, ambientlightRatio: ambientlightRatio))
+                        }
+                        if let minLightInflectionPointData = calibrationData.minLightInflectionPointData, let maxLightInflectionPointData = calibrationData.maxLightInflectionPointData {
+                            syncProfile.append(.daylightCalibrateInflectionPoint(minLightPoint: minLightInflectionPointData, maxLightPoint: maxLightInflectionPointData))
+                        }
                     }
                 }
             }
             
-           if self.lightLCSetupModel != nil { // 灯设备
-               if lightLCProperty.mode == nil || !lightLCProperty.mode! {
-                   syncProfile.append(.mode(enabled: true))
-               }
-             
-               if groupProfile.type == .occupancy_daylight || groupProfile.type == .occupancy || groupProfile.type == .proximityLighting {
-                   if lightLCProperty.occupancyMode == nil || !lightLCProperty.occupancyMode! {
-                       syncProfile.append(.occupancyMode(enabled: true))
-                   }
-               }else {
-                   if lightLCProperty.occupancyMode == nil || lightLCProperty.occupancyMode! {
-                       syncProfile.append(.occupancyMode(enabled: false))
-                   }
-               }
-               // 手动控制延时（s）
-               
-               var manualOverrideTimeout = groupProfile.manualOverrideTimeout
-               if manualOverrideTimeout < UInt32.max {
-                   manualOverrideTimeout = min(manualOverrideTimeout * 1000, UInt32.max)
-               }
-//               if groupProfile.type == .daylight || groupProfile.type == .manualControl {
-//                   manualOverrideTimeout = .max
-//               }
-               // daylight配置手动控制后恢复on，其它恢复到off
-               var manualOverrideState: ManualOverrideState = .standby
-               if groupProfile.type == .daylight {
-                   manualOverrideState = .on
-               }
-               
-               // 手动控制后延时开启灯光控制
-               if lightLCProperty.manualOverrideEnabled == nil || !lightLCProperty.manualOverrideEnabled! || lightLCProperty.manualOverrideTimeout != manualOverrideTimeout ||  lightLCProperty.manualControlState != manualOverrideState {
-                   syncProfile.append(.manualOverrideTimeout(enabled: true, manualOverrideState: manualOverrideState, second: groupProfile.manualOverrideTimeout))
-               }
-               
-               // 手动控制后进入第一阶段
-//               let vacancyType = groupProfile.type == .vacancy_daylight || groupProfile.type == .vacancy || groupProfile.type == .manualControl
-               if groupProfile.type == .manualControl {
-                   if lightLCProperty.manualControlMode == nil || !lightLCProperty.manualControlMode! {
-                       syncProfile.append(.manualControl(enabled: true))
-                   }
-               }else {
-                   if lightLCProperty.manualControlMode ?? false {
-                       syncProfile.append(.manualControl(enabled: false))
-                   }
-               }
-               
-               if self.sunricherVendorModel != nil {
-                   if daylightType && daylightEnabled {
-                       if lightLCProperty.lightAutoAdjustEnabled == nil || !lightLCProperty.lightAutoAdjustEnabled! {
-                           syncProfile.append(.lightAutoAdujustEnabled(enabled: true))
-                       }
-                   }else {
-                       if lightLCProperty.lightAutoAdjustEnabled == nil || lightLCProperty.lightAutoAdjustEnabled! {
-                           syncProfile.append(.lightAutoAdujustEnabled(enabled: false))
-                       }
-                   }
-               }
-               
-                groupProfile.lightData.levels.forEach { levelType in
-                    switch levelType {
-                    case .lightnessRange(let range):
-                        let minLightness = Node.getLightness100(lightness: lightnessRange.lowerBound)
-                        let maxLightness = Node.getLightness100(lightness: lightnessRange.upperBound)
-                        if lightnessSetupModel != nil && (range.lowerBound != minLightness || range.upperBound != maxLightness) {
-                            syncProfile.append(.highLowEndTrim(range: range))
-                        }
-                    case .occupancyLevel(let level):
-                        if daylightType {
-                            if lightLCProperty.luxLevelOn == nil || lightLCProperty.luxLevelOn! != level {
-                                syncProfile.append(.occupancyLux(lux: level))
-                            }
+            if self.lightLCSetupModel != nil { // 灯设备
+                //               var lightLCProperty: LightLCProperty
+                //               if groupProfile.scenes.contains(where: { $0.sceneNumber == .generalLightControlScene }) {
+                //
+                //               }
+                
+                var scenes = groupProfile.scenes
+                if groupProfile.type == .proximityLightingWithPhotocell { // 白天/黑夜临近照明时不需要通用profile
+                    scenes = scenes.filter({ $0.sceneNumber != .generalLightControlScene })
+                }
+                // 组profile亮度范围
+                let groupLightnessRange = groupProfile.lightControlData.lowEndTrim...groupProfile.lightControlData.highEndTrim
+                
+                // 设备亮度范围
+                let minLightness = Node.getLightness100(lightness: lightnessRange.lowerBound)
+                let maxLightness = Node.getLightness100(lightness: lightnessRange.upperBound)
+                
+                if lightnessSetupModel != nil && (groupLightnessRange.lowerBound != minLightness || groupLightnessRange.upperBound != maxLightness) {
+                    syncProfile.append(.highLowEndTrim(range: groupLightnessRange))
+                }
+                
+                // 设备在profile内删除不需要的场景
+                if self.supportLightLCScene {
+                    let deleteScenes = self.lightControlSceneExecuteDatas.filter({ data in data.sceneNumber != .generalLightControlScene && !scenes.contains(where: { $0.sceneNumber == data.sceneNumber }) })
+                    deleteScenes.forEach { sceneExecuteData in
+                        syncProfile.append(.lightControlDelete(sceneNumber: sceneExecuteData.sceneNumber))
+                    }
+                }
+                if groupProfile.type != .proximityLightingWithPhotocell {
+                    self.lightControlLuxTriggerConditions.forEach({ condition in
+                        syncProfile.append(.profileToggleTriggerConditionLuxDelete(id: condition.index))
+                    })
+                }
+                
+                scenes.forEach { profileScene in
+                    /// 白天/晚上场景条件id
+                    var nightDayCooditionId: UInt8?
+                    
+                    var syncSceneProfiles: [ProfileType] = []
+                    // 固定的待机亮度
+                    var fixedStandbyLevel: Int?
+                    
+                    // 场景执行的目标地址
+                    let sceneDestination = self.lightLCSceneModel?.parentElement?.unicastAddress ?? self.lightLCModel?.parentElement?.unicastAddress ?? self.primaryUnicastAddress
+                    // 需要执行的灯光数据
+                    var lightControlData = profileScene.lightControlData
+                    
+                    // 晚上
+                    if let nightData = groupProfile.nightData, nightData.sceneData.sceneNumber == profileScene.sceneNumber {
+                        if nightData.executeType == .fixedLevel {
+                            fixedStandbyLevel = nightData.fixedStandbyLevel
                         }else {
-                            if lightLCProperty.lightnessOn == nil || lightLCProperty.lightnessOn! != Node.getLightness(lightness100: level) {
-                                syncProfile.append(.occupancyLevel(value: level))
+                            if let preConfigurationNightData = self.preConfiguration.nightProfileLightData {
+                                lightControlData = preConfigurationNightData
                             }
                         }
-                    case .vacantLevel(let level):
-                        if daylightType {
-                            if lightLCProperty.luxLevelProlong == nil || lightLCProperty.luxLevelProlong! != level {
-                                syncProfile.append(.vacantLux(lux: level))
+                        nightDayCooditionId = nightData.id
+                        if self.ambientLightSensorModel != nil && self.sunricherVendorModel != nil {
+                            let coodition = self.lightControlLuxTriggerConditions.first(where: { $0.index == nightData.id })
+                            let targetLux = preConfiguration.nightProfileStartsBelowLux ?? nightData.startsBelowLux
+                            if coodition == nil || coodition!.maxLux != targetLux || coodition!.useCalibrationValues != nightData.useCalibrationValues || coodition!.destination != sceneDestination || coodition!.sceneNumber != nightData.sceneData.sceneNumber {
+                                syncSceneProfiles.insert(.profileNightToggleTriggerConditionLux(id: nightData.id, minLux: 0, maxLux: targetLux, useCalibrationValues: nightData.useCalibrationValues, destination: sceneDestination, sceneNumber: nightData.sceneData.sceneNumber), at: 0)
                             }
+                        }
+                    }
+                    // 白天
+                    if let dayData = groupProfile.dayData, dayData.sceneData.sceneNumber == profileScene.sceneNumber {
+                        if dayData.executeType == .fixedLevel {
+                            fixedStandbyLevel = dayData.fixedStandbyLevel
                         }else {
-                            if lightLCProperty.lightnessProlong == nil || lightLCProperty.lightnessProlong! != Node.getLightness(lightness100: level) {
-                                syncProfile.append(.vacantLevel(value: level))
+                            if let preConfigurationDayData = self.preConfiguration.dayProfileLightData {
+                                lightControlData = preConfigurationDayData
                             }
                         }
-                    case .autoMinValue(let value, let enabled):
-
-//                        if Node.getLightness100(lightness: lightLCProperty.lightAutoMinLevel) != level {
-//                            syncProfile.append(.autoMinValue(value: level))
-//                        }
-                        // 校准后启用日光感应，关闭百分比调光
-                        if daylightType {
-                            let level = enabled ? value : 0
-                            
-                            if daylightEnabled {
-                                if lightLCProperty.lightnessOn == nil || lightLCProperty.lightnessOn! != Node.getLightness(lightness100: level) {
-                                    syncProfile.append(.occupancyLevel(value: level))
-                                }
-                                if lightLCProperty.lightnessProlong == nil || lightLCProperty.lightnessProlong! != Node.getLightness(lightness100: level) {
-                                    syncProfile.append(.vacantLevel(value: level))
-                                }
-                            }else if occupancyType { // 日光感应并且存在占用感应profile，未校准时阶段启用默认百分比调光
-                                let occupancyLevel = 100
-                                let vacantLevel = 50
-                                if lightLCProperty.lightnessOn == nil || lightLCProperty.lightnessOn! != Node.getLightness(lightness100: occupancyLevel) {
-                                    syncProfile.append(.occupancyLevel(value: occupancyLevel))
-                                }
-                                if lightLCProperty.lightnessProlong == nil || lightLCProperty.lightnessProlong! != Node.getLightness(lightness100: vacantLevel) {
-                                    syncProfile.append(.vacantLevel(value: vacantLevel))
-                                }
+                        nightDayCooditionId = dayData.id
+                        if self.ambientLightSensorModel != nil && self.sunricherVendorModel != nil {
+                            let coodition = self.lightControlLuxTriggerConditions.first(where: { $0.index == dayData.id })
+                            let targetLux = preConfiguration.dayProfileStartsAboveLux ?? dayData.startsBelowLux
+                            if coodition == nil || coodition!.minLux != targetLux || coodition!.useCalibrationValues != dayData.useCalibrationValues || coodition!.destination != sceneDestination || coodition!.sceneNumber != dayData.sceneData.sceneNumber {
+                                syncSceneProfiles.insert(.profileDayToggleTriggerConditionLux(id: dayData.id, minLux: targetLux, maxLux: .max, useCalibrationValues: dayData.useCalibrationValues, destination: sceneDestination, sceneNumber: dayData.sceneData.sceneNumber), at: 0)
                             }
                         }
-                        
-                    case .taskLevel(let level):
-                        if daylightType {
-                            if lightLCProperty.luxLevelOn == nil || lightLCProperty.luxLevelOn! != level { // 设置占用阶段无限长，维持该照度
-                                syncProfile.append(.occupancyLux(lux: level))
-                            }
-                        }else {
-                            if lightLCProperty.lightnessOn == nil || lightLCProperty.lightnessOn! != Node.getLightness(lightness100: level) { // 设置占用阶段无限长，维持该亮度
-                                syncProfile.append(.occupancyLevel(value: level))
+                    }
+                    
+                    if let level = fixedStandbyLevel {
+                        lightControlData = lightControlData.copy()
+                        lightControlData.occupancyLevel = level
+                        lightControlData.vacantLevel = level
+                        lightControlData.standbyLevel = level
+                    }
+                    
+                    var lightLCProperty: LightLCProperty!
+                    if self.supportLightLCScene {
+                        lightLCProperty = self.lightControlSceneExecuteDatas.first(where: { $0.sceneNumber == profileScene.sceneNumber })?.lightControlData ?? LightLCProperty()
+                    }else {
+                        lightLCProperty = self.lightLCProperty
+                    }
+                    
+                    let lightSyncProfiles = getNodeLightDataSyncProfiles(group: group, groupLightData: lightControlData, lightLCProperty: lightLCProperty)
+                    if lightSyncProfiles.count > 0 {
+                        syncSceneProfiles.append(contentsOf: lightSyncProfiles)
+                        // 是否修改control数据
+                        if self.supportLightLCScene {
+                            // 切换到对应场景
+                            if self.sunricherVendorModel != nil,
+                               self.ambientLightSensorModel != nil,
+                               self.capabilities.contains(.lightSensorConditionRecall),
+                               let id = nightDayCooditionId, self.lightControlLuxTriggerConditions.contains(where: { $0.index == id }) { // 使用光感模块激活对应场景
+                                syncProfile.append(.daylightSensorConditionRecall(id: id))
+                            }else {
+                                syncProfile.append(.lightControlSwitch(sceneNumber: profileScene.sceneNumber))
                             }
                         }
-                        if lightLCProperty.timeRunOn != 0xFFFFFE {
-                            syncProfile.append(.t2(second: 0xFFFFFE))
+                        // 设置profile数据
+                        syncProfile.append(contentsOf: syncSceneProfiles)
+                        // 保存场景
+                        if self.supportLightLCScene {
+                            syncProfile.append(.lightControlStore(sceneNumber: profileScene.sceneNumber))
                         }
+                    }else {
+                        // 设置profile数据
+                        syncProfile.append(contentsOf: syncSceneProfiles)
+                        if syncProfile.contains(where: { type in
+                            switch type {
+                            case .lightControlDelete:
+                                return true
+                            default:
+                                return false
+                            }
+                        }) {
+                           // 存在删除场景最后也切换到当前的场景，防止灯光控制数据还是跑的上一份删除的场景配置数据
+                            if self.supportLightLCScene {
+                                syncProfile.append(.lightControlSwitch(sceneNumber: profileScene.sceneNumber))
+                            }
+                        }
+                    }
+                    
+                }
+                
+                // 判断是否需要切换profile
+                if groupProfile.type == .proximityLightingWithPhotocell && syncProfile.contains(where: { type in
+                    switch type {
+                    case .lightControlSwitch, .daylightSensorConditionRecall:
+                        return true
+                    default:
+                        return false
+                    }
+                }) {
+                    
+                    //                   .profileNightToggleTriggerConditionLux, .profileDayToggleTriggerConditionLux
+                    // 配置条件后锁定触发，避免设置过程切换profile
+                    if syncProfile.contains(where: { type in
+                        switch type {
+                        case .profileNightToggleTriggerConditionLux, .profileDayToggleTriggerConditionLux:
+                            return true
+                        default:
+                            return false
+                        }
+                    }) || self.lightControlLuxTriggerConditions.count > 0 {
+                        // 锁定
+                        syncProfile.insert(.profileToggleTriggerConditionLuxLock(delay: 600), at: 0)
+                        // 解锁
+                        syncProfile.append(.profileToggleTriggerConditionLuxUnLock)
                     }
                 }
                 
-                groupProfile.lightData.times.forEach { time in
-                    switch time {
-                    case .t1(let second):
-                        if lightLCProperty.timeFadeOn == nil || lightLCProperty.timeFadeOn! != min(second * 1000, 0xFFFFFE) {
-                            syncProfile.append(.t1(second: second))
-                        }
-                    case .t2(let second):
-                        if lightLCProperty.timeRunOn == nil || lightLCProperty.timeRunOn! != min(second * 1000, 0xFFFFFE) {
-                            syncProfile.append(.t2(second: second))
-                        }
-                    case .t3(let second):
-                        if lightLCProperty.timeFade == nil || lightLCProperty.timeFade! != min(second * 1000, 0xFFFFFE) {
-                            syncProfile.append(.t3(second: second))
-                        }
-                    case .t4(let second):
-                        if lightLCProperty.timeProlong == nil || lightLCProperty.timeProlong! != min(second * 1000, 0xFFFFFE) {
-                            syncProfile.append(.t4(second: second))
-                        }
-                    case .t5(let second):
-                        if lightLCProperty.timeFadeStandbyAuto == nil || lightLCProperty.timeFadeStandbyAuto! != min(second * 1000, 0xFFFFFE) {
-                            syncProfile.append(.t5(second: second))
-                        }
-                    }
-                }
-               
-               if daylightType { // 光照配置下生效
-                   // 调节速率
-                   let speedValue = groupProfile.adjustSpeed
-                   let regulatorData = Node.getLightRegulator(speed: speedValue)
-                   if lightLCProperty.regulatorKid == nil || lightLCProperty.regulatorKid!.roundf2 != regulatorData.regulatorKid.roundf2 ||
-                        lightLCProperty.regulatorKiu == nil || lightLCProperty.regulatorKiu!.roundf2 != regulatorData.regulatorKiu.roundf2 ||
-                        lightLCProperty.regulatorKpd == nil || lightLCProperty.regulatorKpd!.roundf2 != regulatorData.regulatorKpd.roundf2 ||
-                        lightLCProperty.regulatorKpu == nil || lightLCProperty.regulatorKpu!.roundf2 != regulatorData.regulatorKpu.roundf2 ||
-                        lightLCProperty.regulatorAccuracy == nil || lightLCProperty.regulatorAccuracy! != regulatorData.regulatorAccuracy {
-                       syncProfile.append(.adjustSpeed(speed: groupProfile.adjustSpeed))
-                   }
-               }
             }
             
             switch groupProfile.powerUpState {
@@ -839,7 +961,7 @@ extension Node {
             }
             
             // 移动感应配置
-            if occupancyType || groupProfile.type == .proximityLighting, self.presenceDetectedSensorModel != nil {
+            if occupancyType || groupProfile.type == .proximityLighting || groupProfile.type == .proximityLightingWithPhotocell, self.presenceDetectedSensorModel != nil {
                 // profile 0~100% => 0~255
                 let resultValue = groupProfile.sensitivity.value16
                 if self.motionSensitivity != resultValue {
@@ -858,7 +980,7 @@ extension Node {
                 syncProfile.append(.highLowEndTrim(range: 0...100))
             }
             
-            if powerUpState != .restore {
+            if powerOnOffSetupModel != nil, powerUpState != .restore {
                 syncProfile.append(.powerOnState(state: .restore))
             }
             
@@ -870,11 +992,23 @@ extension Node {
             }
             
             if lightLCSetupModel != nil {
-                if lightLCProperty.mode ?? false {
-                    syncProfile.append(.mode(enabled: false))
+                // 删除设置的灯光控制数据
+                if self.supportLightLCScene {
+                    self.lightControlSceneExecuteDatas.forEach { executeData in
+                        syncProfile.append(.lightControlDelete(sceneNumber: executeData.sceneNumber))
+                    }
+                    self.lightControlLuxTriggerConditions.forEach({ condition in
+                        syncProfile.append(.profileToggleTriggerConditionLuxDelete(id: condition.index))
+                    })
                 }
+                
+                
+                
+//                if lightLCProperty.mode ?? false {
+                syncProfile.append(.mode(enabled: false))
+//                }
                 // 占用类型
-                let occupancyType = groupProfile.type == .occupancy_daylight || groupProfile.type == .vacancy_daylight || groupProfile.type == .occupancy || groupProfile.type == .vacancy
+                let occupancyType = groupProfile.type == .occupancy_daylight || groupProfile.type == .vacancy_daylight || groupProfile.type == .occupancy || groupProfile.type == .vacancy || groupProfile.type == .proximityLighting || groupProfile.type == .proximityLightingWithPhotocell
                 if occupancyType {
                     //                if lightLCProperty.occupancyMode {
                     syncProfile.append(.occupancyMode(enabled: false))
@@ -893,6 +1027,219 @@ extension Node {
                 }
             }
         }
+        // 是否清除校准数据
+        if self.preConfiguration.resetDaylightCalibration ?? false {
+            if let calibrationData = self.sensorCalibrationData, calibrationData.isCalibration {
+                syncProfile.append(.daylightCalibrateRate(sensorRatio: 100, ambientlightRatio: 100))
+            }
+        }
+        
+        return syncProfile
+    }
+    
+    func getNodeLightDataSyncProfiles(group: Group, groupLightData: Profile.LightControlData, lightLCProperty: LightLCProperty) -> [ProfileType] {
+        
+        let groupProfile = group.info.profile
+        // 光照类型
+        let daylightType = groupProfile.type == .occupancy_daylight || groupProfile.type == .vacancy_daylight || groupProfile.type == .daylight
+    
+        // 占用类型
+        let occupancyType = groupProfile.type == .occupancy_daylight || groupProfile.type == .vacancy_daylight || groupProfile.type == .occupancy || groupProfile.type == .vacancy //|| groupProfile.type == .proximityLighting
+        
+        // 组内是否启用了光照传感器
+        var daylightEnabled = false
+        if let daylightNode = group.info.ambientLightSensorNode, daylightNode.sensorCalibrated || daylightNode.restoreData?.daylightCalibrationValue != nil || daylightNode.restoreData?.daylightCalibrationData != nil {
+            daylightEnabled = true
+        }
+        
+        
+        var syncProfile: [ProfileType] = []
+        if lightLCProperty.mode == nil || !lightLCProperty.mode! {
+            syncProfile.append(.mode(enabled: true))
+        }
+        
+        if groupProfile.type == .occupancy_daylight || groupProfile.type == .occupancy || groupProfile.type == .proximityLighting || groupProfile.type == .proximityLightingWithPhotocell {
+            if lightLCProperty.occupancyMode == nil || !lightLCProperty.occupancyMode! {
+                syncProfile.append(.occupancyMode(enabled: true))
+            }
+        }else {
+            if lightLCProperty.occupancyMode == nil || lightLCProperty.occupancyMode! {
+                syncProfile.append(.occupancyMode(enabled: false))
+            }
+        }
+        
+        // 手动控制延时（s）
+        var manualOverrideTimeout = groupProfile.manualOverrideTimeout
+        if manualOverrideTimeout < UInt32.max {
+            manualOverrideTimeout = min(manualOverrideTimeout * 1000, UInt32.max)
+        }
+//               if groupProfile.type == .daylight || groupProfile.type == .manualControl {
+//                   manualOverrideTimeout = .max
+//               }
+        // daylight配置手动控制后恢复on，其它恢复到off
+        var manualOverrideState: ManualOverrideState = .standby
+        if groupProfile.type == .daylight {
+            manualOverrideState = .on
+        }
+        // 手动控制后延时开启灯光控制
+        if lightLCProperty.manualOverrideEnabled == nil || !lightLCProperty.manualOverrideEnabled! || lightLCProperty.manualOverrideTimeout != manualOverrideTimeout ||  lightLCProperty.manualControlState != manualOverrideState {
+            syncProfile.append(.manualOverrideTimeout(enabled: true, manualOverrideState: manualOverrideState, second: groupProfile.manualOverrideTimeout))
+        }
+        
+        // 手动控制后进入第一阶段
+        //               let vacancyType = groupProfile.type == .vacancy_daylight || groupProfile.type == .vacancy || groupProfile.type == .manualControl
+        if groupProfile.type == .manualControl {
+            if lightLCProperty.manualControlMode == nil || !lightLCProperty.manualControlMode! {
+                syncProfile.append(.manualControl(enabled: true))
+            }
+        }else {
+            if lightLCProperty.manualControlMode ?? true {
+                syncProfile.append(.manualControl(enabled: false))
+            }
+        }
+        
+        if self.sunricherVendorModel != nil {
+            if daylightType && daylightEnabled {
+                if lightLCProperty.lightAutoAdjustEnabled == nil || !lightLCProperty.lightAutoAdjustEnabled! {
+                    syncProfile.append(.lightAutoAdujustEnabled(enabled: true))
+                }
+            }else {
+                if lightLCProperty.lightAutoAdjustEnabled == nil || lightLCProperty.lightAutoAdjustEnabled! {
+                    syncProfile.append(.lightAutoAdujustEnabled(enabled: false))
+                }
+            }
+        }
+        
+        let lightData = groupLightData.convertLightData(profileType: groupProfile.type)
+                
+        lightData.levels.forEach { levelType in
+            switch levelType {
+            case .lightnessRange:
+//                let minLightness = Node.getLightness100(lightness: lightnessRange.lowerBound)
+//                let maxLightness = Node.getLightness100(lightness: lightnessRange.upperBound)
+//                if lightnessSetupModel != nil && (range.lowerBound != minLightness || range.upperBound != maxLightness) {
+//                    syncProfile.append(.highLowEndTrim(range: range))
+//                }
+                break
+            case .occupancyLevel(let level):
+                if daylightType {
+                    if lightLCProperty.luxLevelOn == nil || lightLCProperty.luxLevelOn! != level {
+                        syncProfile.append(.occupancyLux(lux: level))
+                    }
+                }else {
+                    if lightLCProperty.lightnessOn == nil || lightLCProperty.lightnessOn! != Node.getLightness(lightness100: level) {
+                        syncProfile.append(.occupancyLevel(value: level))
+                    }
+                }
+            case .vacantLevel(let level):
+                if daylightType {
+                    if lightLCProperty.luxLevelProlong == nil || lightLCProperty.luxLevelProlong! != level {
+                        syncProfile.append(.vacantLux(lux: level))
+                    }
+                }else {
+                    if lightLCProperty.lightnessProlong == nil || lightLCProperty.lightnessProlong! != Node.getLightness(lightness100: level) {
+                        syncProfile.append(.vacantLevel(value: level))
+                    }
+                }
+            case .standbyLevel(let level):
+                if daylightType {
+                    if lightLCProperty.luxLevelStandby == nil || lightLCProperty.luxLevelStandby! != level {
+                        syncProfile.append(.standbyLux(lux: level))
+                    }
+                }else {
+                    if lightLCProperty.lightnessStandby == nil || lightLCProperty.lightnessStandby! != Node.getLightness(lightness100: level) {
+                        syncProfile.append(.standbyLevel(value: level))
+                    }
+                }
+            case .autoMinValue(let value, let enabled):
+                
+                //                        if Node.getLightness100(lightness: lightLCProperty.lightAutoMinLevel) != level {
+                //                            syncProfile.append(.autoMinValue(value: level))
+                //                        }
+                // 校准后启用日光感应，关闭百分比调光
+                if daylightType {
+                    let level = enabled ? value : 0
+                    
+                    if daylightEnabled {
+                        if lightLCProperty.lightnessOn == nil || lightLCProperty.lightnessOn! != Node.getLightness(lightness100: level) {
+                            syncProfile.append(.occupancyLevel(value: level))
+                        }
+                        if lightLCProperty.lightnessProlong == nil || lightLCProperty.lightnessProlong! != Node.getLightness(lightness100: level) {
+                            syncProfile.append(.vacantLevel(value: level))
+                        }
+                        if lightLCProperty.lightnessStandby == nil || lightLCProperty.lightnessStandby! != Node.getLightness(lightness100: level) {
+                            syncProfile.append(.standbyLevel(value: level))
+                        }
+                    }else if occupancyType { // 日光感应并且存在占用感应profile，未校准时阶段启用默认百分比调光
+                        let occupancyLevel = 100
+                        let vacantLevel = 50
+                        let standbyLevel = 0
+                        if lightLCProperty.lightnessOn == nil || lightLCProperty.lightnessOn! != Node.getLightness(lightness100: occupancyLevel) {
+                            syncProfile.append(.occupancyLevel(value: occupancyLevel))
+                        }
+                        if lightLCProperty.lightnessProlong == nil || lightLCProperty.lightnessProlong! != Node.getLightness(lightness100: vacantLevel) {
+                            syncProfile.append(.vacantLevel(value: vacantLevel))
+                        }
+                        if lightLCProperty.lightnessStandby == nil || lightLCProperty.lightnessStandby! != Node.getLightness(lightness100: standbyLevel) {
+                            syncProfile.append(.standbyLevel(value: standbyLevel))
+                        }
+                    }
+                }
+                
+            case .taskLevel(let level):
+                if daylightType {
+                    if lightLCProperty.luxLevelOn == nil || lightLCProperty.luxLevelOn! != level { // 设置占用阶段无限长，维持该照度
+                        syncProfile.append(.occupancyLux(lux: level))
+                    }
+                }else {
+                    if lightLCProperty.lightnessOn == nil || lightLCProperty.lightnessOn! != Node.getLightness(lightness100: level) { // 设置占用阶段无限长，维持该亮度
+                        syncProfile.append(.occupancyLevel(value: level))
+                    }
+                }
+                if lightLCProperty.timeRunOn != 0xFFFFFE {
+                    syncProfile.append(.t2(second: 0xFFFFFE))
+                }
+            }
+        }
+        
+        lightData.times.forEach { time in
+            switch time {
+            case .t1(let second):
+                if lightLCProperty.timeFadeOn == nil || lightLCProperty.timeFadeOn! != min(second * 1000, 0xFFFFFE) {
+                    syncProfile.append(.t1(second: second))
+                }
+            case .t2(let second):
+                if lightLCProperty.timeRunOn == nil || lightLCProperty.timeRunOn! != min(second * 1000, 0xFFFFFE) {
+                    syncProfile.append(.t2(second: second))
+                }
+            case .t3(let second):
+                if lightLCProperty.timeFade == nil || lightLCProperty.timeFade! != min(second * 1000, 0xFFFFFE) {
+                    syncProfile.append(.t3(second: second))
+                }
+            case .t4(let second):
+                if lightLCProperty.timeProlong == nil || lightLCProperty.timeProlong! != min(second * 1000, 0xFFFFFE) {
+                    syncProfile.append(.t4(second: second))
+                }
+            case .t5(let second):
+                if lightLCProperty.timeFadeStandbyAuto == nil || lightLCProperty.timeFadeStandbyAuto! != min(second * 1000, 0xFFFFFE) {
+                    syncProfile.append(.t5(second: second))
+                }
+            }
+        }
+        
+        if daylightType { // 光照配置下生效
+            // 调节速率
+            let speedValue = groupProfile.adjustSpeed
+            let regulatorData = Node.getLightRegulator(speed: speedValue)
+            if lightLCProperty.regulatorKid == nil || lightLCProperty.regulatorKid!.roundf2 != regulatorData.regulatorKid.roundf2 ||
+                lightLCProperty.regulatorKiu == nil || lightLCProperty.regulatorKiu!.roundf2 != regulatorData.regulatorKiu.roundf2 ||
+                lightLCProperty.regulatorKpd == nil || lightLCProperty.regulatorKpd!.roundf2 != regulatorData.regulatorKpd.roundf2 ||
+                lightLCProperty.regulatorKpu == nil || lightLCProperty.regulatorKpu!.roundf2 != regulatorData.regulatorKpu.roundf2 ||
+                lightLCProperty.regulatorAccuracy == nil || lightLCProperty.regulatorAccuracy! != regulatorData.regulatorAccuracy {
+                syncProfile.append(.adjustSpeed(speed: groupProfile.adjustSpeed))
+            }
+        }
+        
         return syncProfile
     }
     
@@ -1062,7 +1409,7 @@ extension Node {
             return nil
         }
         // 检查所在组的profile类型是否是临近照明
-        guard let group = group ?? self.group, group.info.profile.type == .proximityLighting, groupState != .exitFailure else {
+        guard let group = group ?? self.group, group.info.profile.type == .proximityLighting || group.info.profile.type == .proximityLightingWithPhotocell, groupState != .exitFailure else {
             if self.proximityLightingEnabled { // 禁用邻近照明功能
                 return .proximityLightingEnabled(false)
             }
@@ -1127,12 +1474,19 @@ extension Node {
 //        let proximityLightingNeighborNodes = self.proximityLightingNeighborAddresses.compactMap({ self.network?.node(withAddress: $0) })
 //        print("node: \((self.name ?? "", self.primaryUnicastAddress)) neighbors: \(proximityLightingNeighborNodes.compactMap({ ($0.name, $0.primaryUnicastAddress) }))")
         
+        // 邻居是否一致
+        let neighborsEqual = self.proximityLightingNeighborAddresses.sorted() == neighborAddresses.sorted()
+        
         // 需配置的邻居列表与设备是否相符
-        if self.proximityLightingNeighborAddresses.sorted() == neighborAddresses.sorted(), self.proximityLightingRelayCount == neighborNumber {
+        if neighborsEqual, self.proximityLightingRelayCount == neighborNumber {
             if !self.proximityLightingEnabled {
                 return .proximityLightingEnabled(true)
             }
         }else {
+            // 同步转发次数
+            if self.proximityLightingEnabled, neighborsEqual, self.proximityLightingRelayCount != neighborNumber {
+                return .proximityLightingRelayNumber(neighborNumber)
+            }
             // 同步邻居数据
             return .proximityLightingNeighbor(relayNumber: neighborNumber, neighborAddresses: neighborAddresses)
         }

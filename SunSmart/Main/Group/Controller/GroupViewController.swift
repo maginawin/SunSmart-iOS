@@ -121,9 +121,11 @@ class GroupViewController: UIViewController {
         //        for i in 1...30 {
         //            devices.append("ID \(i)")
         //        }
-        
+//        ToastStatusView.show(in: view, message: "Configuration Successful", type: .success, position: .bottom)
         
         addNotificationObserver()
+        
+        group.sensorNodes.forEach({ $0.occupancySettings = false })
         
         // 刷新设备状态
 //        refresh()
@@ -336,7 +338,8 @@ class GroupViewController: UIViewController {
 //        if pageControl.numberOfPages > 0 {
 //            collectionView.flashScrollIndicators()
 //        }
-  
+        
+//        MeshAPI.sendMessage(message: SceneRecallUnacknowledged(group.info.profile.nightData!.sceneData.sceneNumber), address: group.address.address)
         var messageHandles: [MeshMessageHandle] = []
         // 检查校准后的光照传感器是否有上报
         if let publishAmbientLightSensor = self.group.info.ambientLightSensorNode, let sensorModel = publishAmbientLightSensor.ambientLightSensorModel, sensorModel.publish?.publicationAddress != group.address {
@@ -433,6 +436,10 @@ class GroupViewController: UIViewController {
     
     @objc private func close() {
 
+        if group.sensorNodes.contains(where: { $0.occupancySettings }) {
+            return
+        }
+        
         self.dismissLikeSystem()
         
     }
@@ -445,7 +452,7 @@ class GroupViewController: UIViewController {
         
         var messageHandles: [MeshMessageHandle] = []
         
-//        group.sensorNodes.forEach({
+//        group.sensorNodes.forEach({ 
 //            let  $0.getNeedSyncGroupData(group: self).syncProfile
 //            
 //        })
@@ -479,6 +486,27 @@ class GroupViewController: UIViewController {
         
     }
     
+    /// 启用/禁用占用感应功能
+    private func sensorOccupancySettings(sensor: Node, enable: Bool, result: (@escaping (Result<Void, SensorOccupancySettingsError>)->Void)) {
+        guard sensor.presenceDetectedSensorModel != nil, let vendorModel = sensor.sunricherVendorModel, sensor.capabilities.contains(.pirEnabled) else {
+            result(.failure(.nonsupport))
+            return
+        }
+        
+        MeshAPI.sendMessage(message: SunricherVendorSet(function: .pirEnabled(enabled: enable)), model: vendorModel, timeout: 7) { response in
+            guard let statusMessage = response as? SunricherVendorStatus else {
+                result(.failure(.timeout))
+                return
+            }
+            guard statusMessage.status.isSuccessful else {
+                result(.failure(.configurationFailed))
+                return
+            }
+            result(.success(()))
+        }
+
+    }
+    
     private func updateUI() {
         
         title = group.name
@@ -490,7 +518,7 @@ class GroupViewController: UIViewController {
         onoffBtn.isEnabled = MeshLibManager.manager.isMeshNetworkConnected && group.nodes.contains(where: { $0.state })
         onoffBtn.isSelected = group.isOn
         
-        let data = group.info.profile.lightData.data
+        let data = group.info.profile.lightControlData
         lightnessSlider.slider.limitRange = data.lowEndTrim...data.highEndTrim
         lightnessSlider.value = Node.getLightness100(lightness: group.lightness)
         if group.nodes.contains(where: {$0.temperatureModel != nil }) {
@@ -511,7 +539,7 @@ class GroupViewController: UIViewController {
         }
         
         // 临近照明提示路径设置
-        if profileType == .proximityLighting, group.info.proximityLightingPath?.isEmpty() ?? true, space.groupOperates.contains(.edit) {
+        if profileType == .proximityLighting || profileType == .proximityLightingWithPhotocell, group.info.proximityLightingPath?.isEmpty() ?? true, space.groupOperates.contains(.edit) {
             setPathBtn.isHidden = false
             setPathLabel.isHidden = false
         }else {
@@ -535,7 +563,7 @@ class GroupViewController: UIViewController {
             switch profileType {
             case .occupancy_daylight, .vacancy_daylight:
                 sensorView?.supportSensorType = .all
-            case .occupancy, .vacancy, .proximityLighting:
+            case .occupancy, .vacancy, .proximityLighting, .proximityLightingWithPhotocell:
                 sensorView?.supportSensorType = .presenceDetected
             case .daylight:
                 sensorView?.supportSensorType = .ambientLight
@@ -603,6 +631,12 @@ class GroupViewController: UIViewController {
     
     @objc private func moreClick() {
         
+        if sensorView?.isShow ?? false {
+            if group.sensorNodes.contains(where: { $0.occupancySettings }) {
+                return
+            }
+        }
+        
         var items: [MenuPopView.MenuItem] = []
         if space.deviceOperates.contains(.add) {
             items.append(.init(icon: UIImage(named: "group_device_add")?.withTintColor(.white), title: "group_add_device".localizedString, hideAnimation: false, tapItemBack: {[weak self] _ in
@@ -646,7 +680,7 @@ class GroupViewController: UIViewController {
                 }))
             }
             
-            if profileType == .proximityLighting {
+            if profileType == .proximityLighting || profileType == .proximityLightingWithPhotocell {
                 items.append( .init(icon: UIImage(named: "menu_path"), title: "path".localizedString, hideAnimation: false, tapItemBack: {[weak self] item in
                     self?.setPath()
                 }))
@@ -682,7 +716,24 @@ class GroupViewController: UIViewController {
             }))
         }
         
-        
+//        #if DEBUG
+//        if space.groupOperates.contains(.edit), group.info.profile.type == .proximityLightingWithPhotocell {
+//            items.append(.init(icon: UIImage(named: "menu_profile_test"), title: "night".localizedString, hideAnimation: false, tapItemBack: {[weak self] _ in
+//                guard let self = self else { return }
+//                if let night = self.group.info.profile.nightData {
+//                    MeshAPI.sendMessage(message: SunricherVendorSet(function: .daylightConditionRecall(index: night.id)), address: self.group.address.address)
+//                }
+//            }))
+//            
+//            items.append(.init(icon: UIImage(named: "menu_profile_test"), title: "day".localizedString, hideAnimation: false, tapItemBack: {[weak self] _ in
+//                guard let self = self else { return }
+//                if let day = self.group.info.profile.dayData {
+//                    MeshAPI.sendMessage(message: SunricherVendorSet(function: .daylightConditionRecall(index: day.id)), address: self.group.address.address)
+//                }
+//            }))
+//        }
+//        
+//        #endif
         let touchCenterX = view.width - navigationRightItemMargin - 15
         let touchCenterY = view.safeAreaInsets.top - 10
 //        SCREEN_HEIGHT - view.height + view.safeAreaInsets.top - 15
@@ -860,8 +911,15 @@ class GroupViewController: UIViewController {
             }
             
             XWHUDManager.showCustomHUD(withMessage: "deleting".localizedString, isWindow: true)
-
-            GroupServer.deleteGroup(group: self.group, progress: nil) {[weak self] _ in
+            let hud = XWHUDManager.currentHUD()
+            if let loadingHud = hud, group.nodes.count > 0 {
+                loadingHud.minSize = CGSizeMake(128, 128)
+            }
+            GroupServer.deleteGroup(group: self.group, progress: { current, total in
+                if let loadingHud = hud {
+                    loadingHud.detailsLabel.text = "\(current)/\(total)"
+                }
+            }) {[weak self] _ in
                 XWHUDManager.hide()
                 guard let self = self else { return }
                 XWHUDManager.showSuccessTipHUD("done!".localizedString)
@@ -925,6 +983,7 @@ class GroupViewController: UIViewController {
             self.group.info.save()
             self.group.info.profile.save(meshUUID: self.space.meshUUID, meshNetworkId: self.space.meshNetworkId)
             self.updateUI()
+            self.group.updateGroupSyncState()
         }
         navigationController?.pushViewController(vc, animated: true)
     }
@@ -990,7 +1049,7 @@ class GroupViewController: UIViewController {
             if let item = collectionView.cellForItem(at: IndexPath(item: index, section: 0)) as? DevicesViewCell {
                 item.device = node
                 item.displayDeviceNamePrefix = space.displayDeviceNamePrefix
-                if node.state && node.getNeedSyncGroup() {
+                if node.state && node.needSyncGroupData {
                     item.iconImageView.image = UIImage(named: node.unsyncIconName)
                 }
             }
@@ -1219,7 +1278,7 @@ extension GroupViewController: UICollectionViewDataSource, UICollectionViewDeleg
         let node = group.nodes[indexPath.item]
         cell.device = node
         cell.displayDeviceNamePrefix = space.displayDeviceNamePrefix
-        if node.state && node.getNeedSyncGroup() {
+        if node.state && node.needSyncGroupData {
             cell.iconImageView.image = UIImage(named: node.unsyncIconName)
         }
 //        let node = MeshNetworkManager.instance.localNode!
@@ -1268,6 +1327,13 @@ extension GroupViewController: MeshLibManagerMessageDelegate {
         if view.window != nil, group.nodes.contains(node) {
             reloadCollectionItem(node: node)
         }
+    }
+    
+    /// 设备数据修改时间戳更新
+    func meshNetworkManager(_ manager: MeshNetworkManager, deviceDataUpdateTimeChange node: Node, lastUpdate: Int64) {
+//        if node.lastUpdateSyncTime != lastUpdate {
+            node.clearSyncStateCache()
+//        }
     }
     
     func meshNetworkManager(_ manager: MeshNetworkManager, didReceiveMessage message: MeshMessage, sentFrom source: Address, to destination: Address) {
@@ -1341,10 +1407,82 @@ extension GroupViewController: GroupSensorViewDelegate {
   
         self.isModalInPresentation = false
     }
+    
+    func sensorViewShouldHide(_ view: GroupSensorView) -> Bool {
+        if group.sensorNodes.contains(where: { $0.occupancySettings }) {
+            return false
+        }
+        return true
+    }
+    
+    /// 设备识别
+    func sensorView(_ view: GroupSensorView, identifyAction sensor: Node) {
+//        MeshAPI.identify(address: sensor.primaryUnicastAddress)
+//        var period: UInt16 = 5000
+        if let vendorModel = sensor.sunricherVendorModel {
+            MeshAPI.sendMessage(message: SunricherVendorSet(function: .identify(mode: .breathe(count: 1, period: 1500))), model: vendorModel)
+//            if Bool.random() {
+//                MeshAPI.sendMessage(message: SunricherVendorSet(function: .identify(mode: .default, frequency: .default)), model: vendorModel)
+//            }else {
+//                MeshAPI.sendMessage(message: SunricherVendorSet(function: .identify(mode: .breathe, frequency: .breathe)), model: vendorModel)
+//            }
+        }
+    }
+    
+    /// 传感器设备占用功能点击
+    func sensorView(_ view: GroupSensorView, occupancySensorTapAction sensor: Node) {
+        
+        guard space.groupOperates.contains(.edit) else {
+            XWHUDManager.showTipHUD("no_permission".localizedString, isLineFeed: true)
+            return
+        }
+        
+        guard MeshLibManager.manager.isMeshNetworkConnected else {
+            XWHUDManager.showTipHUD("device_notconnect_message".localizedString, isLineFeed: true)
+            return
+        }
+        if sensor.occupancySettings {
+            return
+        }
+        // 是否启用
+        let enable = !sensor.pirEnabled
+        sensor.occupancySettings = true
+        view.reloadSensor(sensor: sensor)
+        sensorOccupancySettings(sensor: sensor, enable: enable) {[weak self] result in
+            guard let self = self else { return }
+            sensor.occupancySettings = false
+            switch result {
+            case .success:
+//                sensor.pirEnabled = enable
+//                if let meshUUID = sensor.network?.uuid.uuidString {
+//                    sensor.preConfiguration.save(meshUUID: meshUUID, nodeAddress: sensor.primaryUnicastAddress)
+//                }
+                ToastStatusView.show(in: self.view, message: "configuration_successful".localizedString, type: .success)
+                // 同步数据到服务器
+                NotificationCenter.default.post(name: .init(spaceDataChangedNotificaitonName), object: SpaceChangeDataType.device)
+                sensor.reloadSyncStateCache()
+                
+            case .failure(let error):
+                var errorMessage = "configuration_failed".localizedString
+                switch error {
+                case .timeout:
+                    errorMessage = "device_offline".localizedString
+                case .nonsupport:
+                    errorMessage = "configuration_not_support".localizedString
+                default:
+                    break
+                }
+                ToastStatusView.show(in: self.view, message: errorMessage, type: .failure)
+            }
+            view.reloadSensor(sensor: sensor)
+        }
+        
+    }
 }
 
 extension Node {
-    static var lightControlOnKey = 210
+    static var lightControlOnKey: UInt8 = 0
+    static var occupancySettingsKey: UInt8 = 0
     
     /// 是否在control on状态
     var lightControlOn: Bool {
@@ -1354,4 +1492,26 @@ extension Node {
             objc_setAssociatedObject(self, &Node.lightControlOnKey, newValue, .OBJC_ASSOCIATION_RETAIN)
         }
     }
+    
+    /// 占用功能设置中
+    var occupancySettings: Bool {
+        get {
+            objc_getAssociatedObject(self, &Node.occupancySettingsKey) as? Bool ?? false
+        }set {
+            objc_setAssociatedObject(self, &Node.occupancySettingsKey, newValue, .OBJC_ASSOCIATION_RETAIN)
+        }
+    }
+    
+}
+
+/// 传感器占用功能设置错误
+enum SensorOccupancySettingsError: Error {
+    /// 功能不支持
+    case nonsupport
+    /// 未知错误
+    case unknown
+    /// 配置失败
+    case configurationFailed
+    /// 超时
+    case timeout
 }

@@ -275,7 +275,15 @@ class GroupsViewController: UIViewController {
 //            })
 //            DispatchQueue.main.asyncAfter(wallDeadline: .now() + 1.5, execute: {
             let exitsNode: Bool = group.nodes.count > 0
-                GroupServer.deleteGroup(group: group, progress: nil) {[weak self] _ in
+            let hud = XWHUDManager.currentHUD()
+            if let loadingHud = hud, exitsNode {
+                loadingHud.minSize = CGSizeMake(128, 128)
+            }
+            GroupServer.deleteGroup(group: group, progress: { current, total in
+                if let loadingHud = hud {
+                    loadingHud.detailsLabel.text = "\(current)/\(total)"
+                }
+            }) {[weak self] _ in
                     XWHUDManager.hide()
                     XWHUDManager.showSuccessTipHUD("done!".localizedString)
                     self?.updateUI()

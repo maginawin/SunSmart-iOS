@@ -11,15 +11,15 @@ import NordicSigMeshSDK
 extension ProvisioningDevice {
     
     private struct AssociatedKey {
-        static var addStateKey = 1
-        static var selectedStateKey = 2
-        static var startAddDateKey = 3
-        static var addProgressKey = 4
-        static var elementCountKey = 5
+        static var addStateKey: UInt8 = 0
+        static var selectedStateKey: UInt8 = 0
+        static var startAddDateKey: UInt8 = 0
+        static var addProgressKey: UInt8 = 0
+        static var elementCountKey: UInt8 = 0
 //        static var isSupportKey = 6
-        static var iconKey = 7
-        static var deviceType = 8
-        static var activityDate = 9
+        static var iconKey: UInt8 = 0
+        static var deviceType: UInt8 = 0
+        static var activityDate: UInt8 = 0
     }
     
     /// 设备选中状态

@@ -154,13 +154,12 @@ class ShareChangePasswordController: UIViewController {
             return
         }
         
-        var api: NetowrkReqeustApi!
-        if password != nil {
-            api = .spacePasswordSet(siteId: space.siteId, spacePassword: .init(spaceId: space.id, password: password, permission: .visitor))
-        }else {
-            api = .spacePasswordSet(siteId: space.siteId, spacePassword: .init(spaceId: space.id, password: nil, permission: .visitor))
-//                .spacePasswordClear(siteId: space.siteId, spaceId: space.id, permission: .visitor)
-        }
+        let api: NetowrkReqeustApi = .spacePasswordSet(siteId: space.siteId, spacePassword: .init(spaceId: space.id, password: password, permission: .visitor))
+//        if password != nil {
+//            api = .spacePasswordSet(siteId: space.siteId, spacePassword: .init(spaceId: space.id, password: password, permission: .visitor))
+//        }else {
+//            api = .spacePasswordClear(siteId: space.siteId, spaceId: space.id, permission: .visitor)
+//        }
         
         XWHUDManager.showCustomHUD(withMessage: nil, isWindow: true)
         NetworkRequest.shared.request(api) {[weak self] result in

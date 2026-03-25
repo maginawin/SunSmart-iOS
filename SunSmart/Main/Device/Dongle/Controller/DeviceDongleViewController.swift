@@ -814,7 +814,7 @@ extension DeviceDongleData.CollectionSchedule {
     case selected
     }
     
-    static var selectStateKey = 1
+    static var selectStateKey: UInt8 = 0
     
     /// 日程选择状态
     var selectState: SelectState {

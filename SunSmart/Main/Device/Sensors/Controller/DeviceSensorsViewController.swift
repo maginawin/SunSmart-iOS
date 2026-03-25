@@ -62,7 +62,7 @@ class DeviceSensorsViewController: UIViewController {
     
     private func updateUI() {
         
-        footerView.countBtn.setTitle("0/\(space.maxDevicesCount)", for: .normal)
+        footerView.countBtn.setTitle("\(MeshNetworkManager.instance.realNodes.count)/\(space.maxDevicesCount)", for: .normal)
 //        if !space.deviceOperates.contains(.add) {
 //            footerView.addBtn.isEnabled = false
 //        }

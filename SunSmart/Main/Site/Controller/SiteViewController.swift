@@ -371,6 +371,7 @@ self.updateAddressData()
                 if let siteData = JSON(response)["data"].dictionaryObject {
 //                    let site = SiteData.import(siteJsonData: siteData)
                     Task {[weak self] in
+
                         guard let self = self else { return }
                         print("导入数据: \(Date().timeIntervalSince1970)")
                         await self.site.update(siteJsonData: siteData)
@@ -1783,6 +1784,11 @@ self.updateAddressData()
     private func intoSpace(space: SpaceData) {
         
         guard self.view.window != nil else {
+            return
+        }
+        // 判断如果有编辑权限的成员进入space前是否拉过space数据，未拉取服务器space数据不让进入space防止数据覆盖
+        if space.permission == .owner || space.permission == .editor, space.uploadCloud, space.lastUploadCloudTimestamp == nil {
+            XWHUDManager.showTipHUD("space_unsynchronized_cloud_message".localizedString, isLineFeed: true, afterDelay: 2)
             return
         }
         

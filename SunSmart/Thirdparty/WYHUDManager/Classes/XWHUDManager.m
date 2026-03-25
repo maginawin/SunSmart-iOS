@@ -394,6 +394,11 @@ static XWHUDManagerType kXWHUDManagerType = XWHUDManagerTypeDark;
     [self p_showGifImagesHUD:gifFileName message:message isWindow:NO timer:aTimer backgroundColor:nil textColor:[UIColor colorWithRed:64 / 255.0 green:79 / 255.0 blue:102 / 255.0 alpha:1] textFont: [UIFont systemFontOfSize:15 weight:UIFontWeightLight] alpha:1.0 margin:margin];
 }
 
++ (void)showGifImagesHUDInView:(UIView *)view gifFileName:(NSString *)gifFileName message:(NSString *)message timer:(NSTimeInterval)aTimer margin:(CGFloat)margin {
+    
+    [self p_showGifImagesHUD:gifFileName message:message view:view timer:aTimer backgroundColor:nil textColor:[UIColor colorWithRed:64 / 255.0 green:79 / 255.0 blue:102 / 255.0 alpha:1] textFont:[UIFont systemFontOfSize:15 weight:UIFontWeightLight] alpha:1.0 margin:margin];
+}
+
 /// 展示自定义GIF图片 - 不自动移除
 + (void)showGifImagesHUD:(NSString *)gifFileName message:(NSString *)message {
     [self p_showGifImagesHUD:gifFileName message:message isWindow:YES timer:HUGE_VALF backgroundColor:nil textColor:nil textFont:nil alpha:1.0];
@@ -580,8 +585,28 @@ static XWHUDManagerType kXWHUDManagerType = XWHUDManagerTypeDark;
 }
 
 + (void)p_showGifImagesHUD:(NSString *)gifFileName message:(NSString *)message isWindow:(BOOL)isWindow timer:(NSTimeInterval)aTimer backgroundColor:(UIColor *)backgroundColor textColor:(UIColor *)textColor textFont:(UIFont *)textFont alpha:(CGFloat)alpha margin:(CGFloat)margin {
-    WYProgressHUD *hud  =  [self p_createWYProgressHUDviewWithMessage:message isWindiw:isWindow animated:NO];
+    UIView *view = isWindow ? [self p_getKeyWindow] : [self p_getCurrentUIVC].view;
+    [self p_showGifImagesHUD:gifFileName message:message view:view timer:aTimer backgroundColor:backgroundColor textColor:textColor textFont:textFont alpha:alpha margin:margin];
+}
+
++ (void)p_showGifImagesHUD:(NSString *)gifFileName message:(NSString *)message view:(UIView *)view timer:(NSTimeInterval)aTimer backgroundColor:(UIColor *)backgroundColor textColor:(UIColor *)textColor textFont:(UIFont *)textFont alpha:(CGFloat)alpha margin:(CGFloat)margin {
+
+    WYProgressHUD *hud = [[WYProgressHUD alloc] initWithView:view];
+    hud.removeFromSuperViewOnHide = YES;
+    [view addSubview:hud];
+    hud.defaultMotionEffectsEnabled = NO;
+    hud.minSize = CGSizeMake(96, 96);
+    hud.detailsLabel.text = message;
+    hud.detailsLabel.font = hud.label.font = [UIFont systemFontOfSize:kXWHUDDefaultFontSize];
+    hud.backgroundView.color = [UIColor clearColor];
+    hud.backgroundView.style = WYProgressHUDBackgroundStyleSolidColor;
     hud.mode = WYProgressHUDModeCustomView;
+    if ([view isKindOfClass:[UIWindow class]]) {
+        hud.backgroundView.color = [[UIColor blackColor] colorWithAlphaComponent:0.3];
+    }else if (![self p_getCurrentUIVC].navigationController.navigationBar.isTranslucent) {
+        hud.offset = CGPointMake(0, -(UIApplication.sharedApplication.statusBarFrame.size.height + 44) * 0.5);
+    }
+
     NSString *filePath = [[NSBundle mainBundle] pathForResource:gifFileName ofType:@"gif"];
     UIImage *gifImage = [self imageGIFWithData:[NSData dataWithContentsOfFile:filePath]];
     UIImageView *gifImageView = [[UIImageView alloc] initWithImage:gifImage];
@@ -619,8 +644,10 @@ static XWHUDManagerType kXWHUDManagerType = XWHUDManagerTypeDark;
     hud.bezelView.layer.shadowOffset = CGSizeMake(0,0);
     hud.bezelView.layer.shadowOpacity = 1;
     hud.bezelView.layer.shadowRadius = 8;
-    
+
+    [hud showAnimated:NO];
     [hud hideAnimated:NO afterDelay:aTimer];
+
 }
 
 /// GIF
@@ -678,8 +705,24 @@ static XWHUDManagerType kXWHUDManagerType = XWHUDManagerTypeDark;
 /// 全局统一生成提示框对象
 + (WYProgressHUD *) p_createWYProgressHUDviewWithMessage:(NSString*)message isWindiw:(BOOL)isWindow animated:(BOOL)animated {
     UIView *view = isWindow ? [self p_getKeyWindow] : [self p_getCurrentUIVC].view;
+    return [self p_createWYProgressHUDviewWithMessage:message view:view animated:animated];
+//    WYProgressHUD *hud = [self p_createWYProgressHUDviewWithView:view message:message animated:animated];
+//    if (isWindow) {
+//        hud.backgroundView.color = [[UIColor blackColor] colorWithAlphaComponent:0.3];
+//    }else {
+////        hud.backgroundView.color = [[UIColor blackColor] colorWithAlphaComponent:0.3];
+//        // 设置偏移量（屏幕居中显示） 导航条isTranslucent=NO时controller view高度 = 屏幕高度 - 导航条高度
+//        if (![self p_getCurrentUIVC].navigationController.navigationBar.isTranslucent) {
+//            hud.offset = CGPointMake(0, -(UIApplication.sharedApplication.statusBarFrame.size.height + 44) * 0.5);
+//        }
+//    }
+//    
+//    return hud;
+}
+
++ (WYProgressHUD *) p_createWYProgressHUDviewWithMessage:(NSString*)message view:(UIView *)view animated:(BOOL)animated {
     WYProgressHUD *hud = [self p_createWYProgressHUDviewWithView:view message:message animated:animated];
-    if (isWindow) {
+    if ([view isKindOfClass:[UIWindow class]]) {
         hud.backgroundView.color = [[UIColor blackColor] colorWithAlphaComponent:0.3];
     }else {
 //        hud.backgroundView.color = [[UIColor blackColor] colorWithAlphaComponent:0.3];

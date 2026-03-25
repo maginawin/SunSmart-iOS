@@ -6,6 +6,7 @@
 //
 
 import UIKit
+import SnapKit
 
 protocol DeviceParameterSettingsViewCellDelegate: AnyObject {
     
@@ -19,7 +20,7 @@ protocol DeviceParameterSettingsViewCellDelegate: AnyObject {
 
 class DeviceParameterSettingsViewCell: UITableViewCell {
 
-//    private var bgView: UIView!
+    private var containerView: UIView!
     var titleLabel: UILabel!
     var textField: UITextField!
     var unitLabel: UILabel!
@@ -60,9 +61,10 @@ class DeviceParameterSettingsViewCell: UITableViewCell {
     override init(style: UITableViewCell.CellStyle, reuseIdentifier: String?) {
         super.init(style: style, reuseIdentifier: reuseIdentifier)
         
+        backgroundColor = .clear
         selectionStyle = .none
-        layer.cornerRadius = SCRYFrom(10)
-        backgroundColor = .white
+//        layer.cornerRadius = SCRYFrom(10)
+//        backgroundColor = .white
         setupUI()
     }
     
@@ -81,14 +83,14 @@ class DeviceParameterSettingsViewCell: UITableViewCell {
             
             titleLabel.snp.remakeConstraints { make in
                 make.left.equalTo(SCRXFrom(16))
-                make.top.equalTo(SCRYFrom(24))
+                make.top.equalTo(SCRYFrom(24)).priority(.high)
             }
             
             messageLabel.snp.remakeConstraints { make in
-                make.top.equalTo(textField.snp.bottom).offset(SCRYFrom(10))
+                make.top.equalTo(textField.snp.bottom).offset(SCRYFrom(10)).priority(.high)
                 make.left.equalTo(SCRXFrom(16))
                 make.right.equalTo(SCRXFrom(-16))
-                make.bottom.equalTo(SCRYFrom(-22))
+                make.bottom.equalTo(SCRYFrom(-22)).priority(.high)
             }
         }else {
             
@@ -99,12 +101,12 @@ class DeviceParameterSettingsViewCell: UITableViewCell {
             
             titleLabel.snp.remakeConstraints { make in
                 make.left.equalTo(SCRXFrom(16))
-                make.top.equalTo(SCRYFrom(24))
+                make.top.equalTo(SCRYFrom(24)).priority(.high)
                 make.bottom.equalTo(SCRYFrom(-23))
             }
             
             messageLabel.snp.remakeConstraints { make in
-                make.top.equalTo(textField.snp.bottom).offset(SCRYFrom(10))
+                make.top.equalTo(textField.snp.bottom).offset(SCRYFrom(10)).priority(.high)
                 make.left.equalTo(SCRXFrom(16))
                 make.right.equalTo(SCRXFrom(-16))
             }
@@ -120,28 +122,28 @@ class DeviceParameterSettingsViewCell: UITableViewCell {
     
     private func setupUI() {
         
-//        bgView = UIView()
-//        bgView.backgroundColor = .white
-//        bgView.layer.cornerRadius = SCRYFrom(10)
-//        contentView.addSubview(bgView)
-//        bgView.snp.makeConstraints { make in
-//            make.top.equalToSuperview()
-//            make.left.equalTo(SCRXFrom(16))
-//            make.right.equalTo(SCRXFrom(-16))
-//            make.bottom.equalTo(SCRXFrom(-16))
-//        }
+        containerView = UIView()
+        containerView.backgroundColor = .white
+        containerView.layer.cornerRadius = SCRYFrom(10)
+        contentView.addSubview(containerView)
+        containerView.snp.makeConstraints { make in
+            make.left.equalTo(SCRXFrom(16))
+            make.right.equalTo(SCRXFrom(-16))
+            make.top.equalToSuperview()
+            make.bottom.equalTo(SCRYFrom(-16))
+        }
         
         titleLabel = UILabel(text: "", textColor: TextBlack_Color, fontSize: 14)
-        contentView.addSubview(titleLabel)
+        containerView.addSubview(titleLabel)
         titleLabel.snp.makeConstraints { make in
             make.left.equalTo(SCRXFrom(16))
-            make.top.equalTo(SCRYFrom(24))
+            make.top.equalTo(SCRYFrom(24)).priority(.high)
         }
         
         enableSwitch = UISwitch()
         enableSwitch.onTintColor = Bar_Color
         enableSwitch.addTarget(self, action: #selector(enableSwitchValueChanged), for: .valueChanged)
-        contentView.addSubview(enableSwitch)
+        containerView.addSubview(enableSwitch)
         enableSwitch.snp.makeConstraints { make in
             make.right.equalTo(SCRXFrom(-16))
             make.centerY.equalTo(titleLabel)
@@ -159,16 +161,16 @@ class DeviceParameterSettingsViewCell: UITableViewCell {
         textField.textAlignment = .center
         textField.backgroundColor = Background_Color
         textField.delegate = self
-        contentView.addSubview(textField)
+        containerView.addSubview(textField)
         textField.snp.makeConstraints { make in
-            make.top.equalTo(titleLabel.snp.bottom).offset(SCRYFrom(16))
+            make.top.equalTo(titleLabel.snp.bottom).offset(SCRYFrom(16)).priority(.high)
             make.centerX.equalToSuperview()
             make.width.equalTo(SCRXFrom(96))
             make.height.equalTo(SCRYFrom(32))
         }
         
         unitLabel = UILabel(text: "", textColor: TextBlack_Color, fontSize: 13, fontWeight: .light)
-        contentView.addSubview(unitLabel)
+        containerView.addSubview(unitLabel)
         unitLabel.snp.makeConstraints { make in
             make.left.equalTo(textField.snp.right).offset(SCRXFrom(8))
             make.centerY.equalTo(textField).offset(SCRYFrom(1))
@@ -177,9 +179,9 @@ class DeviceParameterSettingsViewCell: UITableViewCell {
         messageLabel = UILabel(text: "", textColor: SubText_Color, fontSize: 13, fontWeight: .light)
         messageLabel.textAlignment = .center
         messageLabel.numberOfLines = 0
-        contentView.addSubview(messageLabel)
+        containerView.addSubview(messageLabel)
         messageLabel.snp.makeConstraints { make in
-            make.top.equalTo(textField.snp.bottom).offset(SCRYFrom(10))
+            make.top.equalTo(textField.snp.bottom).offset(SCRYFrom(10)).priority(.high)
             make.left.equalTo(SCRXFrom(16))
             make.right.equalTo(SCRXFrom(-16))
             make.bottom.equalTo(SCRYFrom(-22))
@@ -196,4 +198,223 @@ extension DeviceParameterSettingsViewCell: UITextFieldDelegate {
         return false
     }
     
+}
+
+protocol DeviceParameterBehaviorAfterSetupViewCellDelegate: AnyObject {
+    func cell(_ cell: DeviceParameterBehaviorAfterSetupViewCell, didSelect mode: DeviceBlinkMode)
+    func cell(_ cell: DeviceParameterBehaviorAfterSetupViewCell, detailsExpandedChanged expanded: Bool)
+}
+
+class DeviceParameterBehaviorAfterSetupViewCell: UITableViewCell {
+   
+    
+    private var containerView: UIView!
+    private var titleLabel: UILabel!
+    private var optionButtons: [UIButton] = []
+    private var detailsRow: UIControl!
+    private var detailsTitleLabel: UILabel!
+    private var detailsArrowImageView: UIImageView!
+    private var noteLabel: UILabel!
+    private var noteLabelHeightConstraint: Constraint?
+    private var noteLabelTopConstraint: Constraint?
+    
+    weak var delegate: DeviceParameterBehaviorAfterSetupViewCellDelegate?
+    
+    var selectedMode: DeviceBlinkMode = .breathing {
+        didSet {
+            updateOptionUI()
+        }
+    }
+    
+    var detailsExpanded: Bool = true {
+        didSet {
+            updateDetailsUI()
+        }
+    }
+    
+    func configure(mode: DeviceBlinkMode, detailsExpanded: Bool, noteText: String? = nil) {
+        selectedMode = mode
+        self.detailsExpanded = detailsExpanded
+        if let noteText = noteText {
+            applyNoteText(noteText)
+        }
+    }
+    
+    override init(style: UITableViewCell.CellStyle, reuseIdentifier: String?) {
+        super.init(style: style, reuseIdentifier: reuseIdentifier)
+        selectionStyle = .none
+        backgroundColor = .clear
+        setupUI()
+        updateOptionUI()
+        updateDetailsUI()
+    }
+    
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
+    
+    @objc private func optionTapped(_ sender: UIButton) {
+        guard sender.tag < DeviceBlinkMode.modes.count else { return }
+        let mode = DeviceBlinkMode.modes[sender.tag]
+//        guard selectedMode != mode else { return }
+        selectedMode = mode
+        delegate?.cell(self, didSelect: mode)
+    }
+    
+    @objc private func detailsRowTapped() {
+        detailsExpanded.toggle()
+        delegate?.cell(self, detailsExpandedChanged: detailsExpanded)
+    }
+    
+    private func updateOptionUI() {
+        optionButtons.enumerated().forEach { index, button in
+            let isSelected = DeviceBlinkMode.modes[index] == selectedMode
+            button.backgroundColor = isSelected ? Bar_Color : Background_Color
+            button.setTitleColor(isSelected ? .white : AssistText_Color, for: .normal)
+        }
+    }
+    
+    private func updateDetailsUI() {
+        noteLabel.isHidden = !detailsExpanded
+        detailsTitleLabel.text = detailsExpanded ? "hide_details".localizedString : "show_details".localizedString
+        detailsArrowImageView.image = UIImage(named: detailsExpanded ? "arrow_up_black" : "arrow_down_black")
+
+        if detailsExpanded {
+            noteLabelTopConstraint?.update(offset: SCRYFrom(8))
+            noteLabelHeightConstraint?.deactivate()
+        } else {
+            noteLabelTopConstraint?.update(offset: 0)
+            noteLabelHeightConstraint?.activate()
+        }
+    }
+
+    private func applyNoteText(_ noteText: String) {
+        let paragraphStyle = NSMutableParagraphStyle()
+        paragraphStyle.lineSpacing = 4
+        paragraphStyle.lineBreakMode = .byWordWrapping
+        noteLabel.attributedText = NSAttributedString(
+            string: noteText,
+            attributes: [.paragraphStyle: paragraphStyle]
+        )
+    }
+
+    override func prepareForReuse() {
+        super.prepareForReuse()
+        applyNoteText("behavior_after_setup_success_note".localizedString)
+        detailsExpanded = true
+        selectedMode = .breathing
+    }
+
+    private func setupUI() {
+        containerView = UIView()
+        containerView.backgroundColor = .white
+        containerView.layer.cornerRadius = SCRYFrom(10)
+        contentView.addSubview(containerView)
+        containerView.snp.makeConstraints { make in
+            make.left.equalTo(SCRXFrom(16))
+            make.right.equalTo(SCRXFrom(-16))
+            make.top.equalToSuperview()
+            make.bottom.equalTo(SCRYFrom(-16))
+        }
+
+        titleLabel = UILabel(
+            text: "\("behavior_after_setup_success".localizedString):",
+            textColor: TextBlack_Color,
+            fontSize: 14,
+            fontWeight: .light
+        )
+        containerView.addSubview(titleLabel)
+        titleLabel.snp.makeConstraints { make in
+            make.left.equalTo(SCRXFrom(16))
+            make.top.equalTo(SCRYFrom(16))
+            make.right.equalTo(SCRXFrom(-16))
+        }
+
+        var previousBtn: UIButton?
+        for (index, mode) in DeviceBlinkMode.modes.enumerated() {
+            let button = UIButton(type: .custom)
+            button.tag = index
+            button.layer.cornerRadius = SCRYFrom(10)
+            button.clipsToBounds = true
+            button.titleLabel?.font = UIFont.systemFont(ofSize: SCRYFrom(13))
+            button.contentEdgeInsets = UIEdgeInsets(top: 0, left: SCRXFrom(7), bottom: 0, right: SCRXFrom(7))
+            button.titleLabel?.adjustsFontSizeToFitWidth = true
+            button.titleLabel?.minimumScaleFactor = 0.75
+            button.titleLabel?.numberOfLines = 1
+            button.titleLabel?.lineBreakMode = .byClipping
+            button.setTitle(mode.title, for: .normal)
+            button.addTarget(self, action: #selector(optionTapped(_:)), for: .touchUpInside)
+            containerView.addSubview(button)
+            button.snp.makeConstraints { make in
+                make.top.equalTo(titleLabel.snp.bottom).offset(SCRYFrom(12))
+                make.height.equalTo(SCRYFrom(32))
+                if let prev = previousBtn {
+                    make.left.equalTo(prev.snp.right).offset(SCRXFrom(12))
+                    make.width.equalTo(prev)
+                } else {
+                    make.left.equalTo(SCRXFrom(16))
+                }
+                if index == DeviceBlinkMode.modes.count - 1 {
+                    make.right.equalTo(SCRXFrom(-16))
+                }
+            }
+            optionButtons.append(button)
+            previousBtn = button
+        }
+
+        detailsRow = UIControl()
+        detailsRow.addTarget(self, action: #selector(detailsRowTapped), for: .touchUpInside)
+        containerView.addSubview(detailsRow)
+        detailsRow.snp.makeConstraints { make in
+            make.left.equalTo(SCRXFrom(16))
+            make.right.equalTo(SCRXFrom(-16))
+            make.top.equalTo(titleLabel.snp.bottom).offset(SCRYFrom(56))
+            make.height.equalTo(SCRYFrom(30))
+        }
+
+        detailsTitleLabel = UILabel(
+            text: "hide_details".localizedString,
+            textColor: Bar_Color,
+            fontSize: 12,
+            fontWeight: .regular
+        )
+        detailsRow.addSubview(detailsTitleLabel)
+
+        detailsArrowImageView = UIImageView()
+        detailsArrowImageView.contentMode = .scaleAspectFit
+        detailsArrowImageView.tintColor = Bar_Color
+        detailsRow.addSubview(detailsArrowImageView)
+        detailsArrowImageView.snp.makeConstraints { make in
+            make.centerY.equalToSuperview()
+            make.right.equalToSuperview()
+            make.width.height.equalTo(SCRYFrom(30))
+        }
+        detailsTitleLabel.snp.makeConstraints { make in
+            make.left.equalToSuperview()
+            make.centerY.equalToSuperview()
+            make.right.lessThanOrEqualTo(detailsArrowImageView.snp.left).offset(SCRXFrom(-8))
+        }
+
+        noteLabel = UILabel(
+            text: nil,
+            textColor: AssistText_Color,
+            fontSize: 12,
+            fontWeight: .light,
+            fit: false
+        )
+        noteLabel.numberOfLines = 0
+        noteLabel.setContentCompressionResistancePriority(.required, for: .vertical)
+        noteLabel.setContentHuggingPriority(.required, for: .vertical)
+        applyNoteText("behavior_after_setup_success_note".localizedString)
+        containerView.addSubview(noteLabel)
+        noteLabel.snp.makeConstraints { make in
+            make.left.equalTo(SCRXFrom(16))
+            make.right.equalTo(SCRXFrom(-16))
+            noteLabelTopConstraint = make.top.equalTo(detailsRow.snp.bottom).offset(SCRYFrom(8)).constraint
+            make.bottom.equalTo(SCRYFrom(-16))
+            noteLabelHeightConstraint = make.height.equalTo(0).constraint
+        }
+
+        noteLabelHeightConstraint?.deactivate()
+    }
 }

@@ -182,6 +182,7 @@ class SceneSettingsViewController: UIViewController {
                 $0.info.sceneExecuteDatas.append(SceneExecuteData(sceneNumber: scene.number, isOn: lightness > 0, lightness: lightness, cct: cct))
             }
             $0.info.save()
+            $0.updateGroupSyncState()
 //            scene.info.groups.sort(by: { $0.address.address < $1.address.address })
         })
         
@@ -254,6 +255,7 @@ class SceneSettingsViewController: UIViewController {
             $0.info.sceneExecuteDatas.append(SceneExecuteData(sceneNumber: scene.number, isOn: $0.executeSceneData!.lightness > 0, lightness: lightness, cct: cct))
             $0.info.save()
             syncNodes.append(contentsOf: $0.getNeedSyncDataNodes(scene: scene).syncNodes)
+            $0.updateGroupSyncState()
         })
         
         updateGroups.forEach({
@@ -261,6 +263,7 @@ class SceneSettingsViewController: UIViewController {
                 data.lightness = Node.getLightness(lightness100: $0.executeSceneData!.lightness)
                 data.cct = UInt16($0.executeSceneData!.cct)
                 $0.info.save()
+                $0.updateGroupSyncState()
             }
             syncNodes.append(contentsOf: $0.getNeedSyncDataNodes(scene: scene).syncNodes)
         })
@@ -276,6 +279,7 @@ class SceneSettingsViewController: UIViewController {
                     $0.info.sceneExecuteDatas.removeAll(where: { $0.sceneNumber == sceneData.sceneNumber })
                 }
                 $0.info.save()
+                $0.updateGroupSyncState()
             }
             // 未同步则直接删除组场景
 //            if deleteNodes.isEmpty {
@@ -416,7 +420,7 @@ class SceneSettingsViewController: UIViewController {
         
         let data = group.executeSceneData
 //        group.info.bindSceneDatas.first(where: { $0.sceneId == scene.number })?.data
-        let groupLightData = group.info.profile.lightData.data
+        let groupLightData = group.info.profile.lightControlData
         SceneExecuteDataPickerView.show(lightness: data?.lightness ?? 100, cct: data?.cct ?? 4500, lightnessLimitRange: groupLightData.lowEndTrim...groupLightData.highEndTrim, showDelete: false) {[weak self] lightness, cct in
             guard let self = self else { return }
             if let sceneData = data { // 修改
@@ -605,9 +609,9 @@ extension SceneSettingsViewController: UICollectionViewDataSource, UICollectionV
 
 private extension Group {
     
-    static var executeSceneDataKey = 1
+    static var executeSceneDataKey: UInt8 = 0
     
-    static var isSelectedKey = 2
+    static var isSelectedKey: UInt8 = 0
     
     /// 赋值的场景数据
     var executeSceneData: ExecuteSceneData? {

@@ -18,8 +18,8 @@ enum MeshFirmwareUpgradeStep {
 
 internal extension Node {
     
-    static var distributorSelectedStateKey = 1
-    static var rssiStateKey = 2
+    static var distributorSelectedStateKey: UInt8 = 0
+    static var rssiStateKey: UInt8 = 0
     
     /// 设备选择状态
     enum DistributorSelectedState {
@@ -175,17 +175,18 @@ class MeshSelectDistributorViewController: UIViewController {
         
         MeshLibManager.manager.refreshNodesRSSI(withWaitFor: 99999, nodeScan: {[weak self] data in
             
-            guard let self = self, let node = MeshNetworkManager.instance.realNodes.first(where: { $0.primaryUnicastAddress == data.node.primaryUnicastAddress }), node.peripheral == nil else { return }
+            guard let self = self, let node = MeshNetworkManager.instance.realNodes.first(where: { $0.primaryUnicastAddress == data.node.primaryUnicastAddress }) else { return }
             
-            DispatchQueue.main.async {
-                NSObject.cancelPreviousPerformRequests(withTarget: self, selector: #selector(self.refreshNodesRSSIFinish), object: nil)
-                self.perform(#selector(self.refreshNodesRSSIFinish), with: nil, afterDelay: 10)
+            if node.peripheral == nil {
+                DispatchQueue.main.async {
+                    NSObject.cancelPreviousPerformRequests(withTarget: self, selector: #selector(self.refreshNodesRSSIFinish), object: nil)
+                    self.perform(#selector(self.refreshNodesRSSIFinish), with: nil, afterDelay: 10)
+                }
             }
-            
             node.peripheral = data.peripheral
            
             if let rssi = node.rssi {
-                if rssi >= -90 {
+                if rssi >= -80 {
                     node.rssiState = .normal
                 }else {
                     node.rssiState = .low

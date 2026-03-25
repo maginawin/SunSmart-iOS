@@ -333,6 +333,17 @@ struct GatewaySIMApnInfo {
         .init(country: "china".localizedString, apns: ["cmnet", "3gnet", "ctnet"]),
         .init(country: "usa".localizedString, apns: ["phone", "internet", "fast.t-mobile.com"]),
         .init(country: "canada".localizedString, apns: ["ltemobile.apn", "pda.bell.ca", "sp.telus.com"]),
-        .init(country: "usa".localizedString, apns: ["telekom.de", "web.vodafone.de", "internet"])
+        .init(country: "usa".localizedString, apns: ["phone", "internet", "fast.t-mobile.com"]),
+        .init(country: "germany".localizedString, apns: ["internet.t-d1.de", "web.vodafone.de", "internet"]),
+        .init(country: "spain".localizedString, apns: ["movistar.es", "airtelwap.es", "internet"]),
+        .init(country: "france".localizedString, apns: ["orange.fr", "sl2sfr", "free", "ebouygtel.com"]),
+        .init(country: "italy".localizedString, apns: ["ibox.tim.it", "internet.wind.biz", "web.omnitel.it", "iliad"]),
+        .init(country: "netherlands".localizedString, apns: ["internet", "web.vodafone.nl"]),
+        .init(country: "belgium".localizedString, apns: ["internet.proximus.be", "telenet.be", "internet"]),
+        .init(country: "poland".localizedString, apns: ["internet", "plus"]),
+        .init(country: "sweden".localizedString, apns: ["internet.telia.se", "internet.tele2.se"]),
+        .init(country: "finland".localizedString, apns: ["internet"]),
+        .init(country: "denmark".localizedString, apns: ["internet"]),
+        .init(country: "norway".localizedString, apns: ["internet"])
     ]
 }

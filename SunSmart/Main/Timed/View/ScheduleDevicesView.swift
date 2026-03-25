@@ -244,7 +244,7 @@ class ScheduleDevicesView: UIView {
             make.height.equalTo(SCRYFrom(53))
         }
         
-        titleLabel = UILabel(text: "devices".localizedString, textColor: RGB(72, 72, 74), fontSize: 18)
+        titleLabel = UILabel(text: "Devices".localizedString, textColor: RGB(72, 72, 74), fontSize: 18)
         topBarView.addSubview(titleLabel)
         titleLabel.snp.makeConstraints { make in
             make.center.equalToSuperview()

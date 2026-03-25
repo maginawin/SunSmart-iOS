@@ -77,7 +77,7 @@ class Profile: Copyable {
         }
         
         /// 灯光数据
-        var data: (highEndTrim: Int, lowEndTrim: Int, occupancyLevel: Int, vacantLevel: Int, taskLevel: Int, autoMinLevel: Int, autoMinLevelEnabled: Bool, t1: Int, t2: Int, t3: Int, t4: Int, t5: Int) {
+        var data: (highEndTrim: Int, lowEndTrim: Int, occupancyLevel: Int, vacantLevel: Int, taskLevel: Int, standbyLevel: Int, autoMinLevel: Int, autoMinLevelEnabled: Bool, t1: Int, t2: Int, t3: Int, t4: Int, t5: Int) {
             
             var highEndTrim = 100
             var lowEndTrim = 0
@@ -85,6 +85,7 @@ class Profile: Copyable {
             var vacantLevel = 50
             var taskLevel = 100
             var autoMinLevel = 0
+            var standbyLevel = 0
             var autoMinLevelEnabled = false
             var t1 = 2
             var t2 = 1200
@@ -109,6 +110,8 @@ class Profile: Copyable {
                     autoMinLevelEnabled = enabled
                 case .taskLevel(let value):
                     taskLevel = value
+                case .standbyLevel(let value):
+                    standbyLevel = value
                 }
             }
             
@@ -126,7 +129,7 @@ class Profile: Copyable {
                     t5 = value
                 }
             }
-            return (highEndTrim, lowEndTrim, occupancyLevel, vacantLevel, taskLevel, autoMinLevel, autoMinLevelEnabled, t1, t2, t3, t4, t5)
+            return (highEndTrim, lowEndTrim, occupancyLevel, vacantLevel, taskLevel, standbyLevel, autoMinLevel, autoMinLevelEnabled, t1, t2, t3, t4, t5)
         }
         
         /// 更新level数据
@@ -156,6 +159,8 @@ class Profile: Copyable {
                     return 4
                 case .taskLevel:
                     return 5
+                case .standbyLevel:
+                    return 6
                 }
             }
             /// 亮度范围 High-end trim/Low-end trim
@@ -164,6 +169,8 @@ class Profile: Copyable {
             case occupancyLevel(_ value: Int)
             /// 空置阶段亮度（第二阶段）Lux/%
             case vacantLevel(_ value: Int)
+            /// 待机阶段亮度（第三阶段）Lux/%
+            case standbyLevel(_ value: Int)
             /// 设备根据环境光自动调节的最低亮度
             case autoMinValue(_ value: Int, enabled: Bool = false)
             /// 使区域内环境光维持的lux值 / 手动控制On亮度值
@@ -200,6 +207,41 @@ class Profile: Copyable {
         init() {
             
         }
+        
+        init(profileType: ProfileType, standbyLevel: Int = 0) {
+            
+            let highEndTrim = 100
+            let lowEndTrim = 0
+            let occupancyLevel = 100
+            let vacantLevel = 50
+//            let occupancyLux = 500
+//            let vacantLux = 100
+            let taskLevel = 100
+//            let taskLux = 500
+            let autoMinLevel = 255
+            let t1 = 2
+            let t2 = 1200
+            let t3 = 2
+            let t4 = 600
+            let t5 = 2
+            
+            switch profileType {
+            case .occupancy_daylight, .vacancy_daylight:
+                
+                levels = [.lightnessRange(lowEndTrim...highEndTrim), .occupancyLevel(occupancyLevel), .vacantLevel(vacantLevel), .standbyLevel(standbyLevel), .autoMinValue(autoMinLevel, enabled: autoMinLevel <= 30)]
+                times = [.t1(t1), .t2(t2), .t3(t3), .t4(t4), .t5(t5)]
+            case .occupancy, .vacancy, .proximityLighting, .proximityLightingWithPhotocell:
+                levels = [.lightnessRange(lowEndTrim...highEndTrim), .occupancyLevel(occupancyLevel), .vacantLevel(vacantLevel), .standbyLevel(standbyLevel)]
+                times = [.t1(t1), .t2(t2), .t3(t3), .t4(t4), .t5(t5)]
+            case .daylight:
+                levels = [.lightnessRange(lowEndTrim...highEndTrim), .taskLevel(taskLevel), .autoMinValue(autoMinLevel, enabled: autoMinLevel <= 30)]
+                times = [.t1(t1)]
+            case .manualControl:
+                levels = [.lightnessRange(lowEndTrim...highEndTrim), .taskLevel(taskLevel)]
+                times = [.t1(t1)]
+            }
+        }
+        
         /// 初始化灯光数据
         /// - Parameters:
         ///   - profileType: 配置类型
@@ -208,21 +250,22 @@ class Profile: Copyable {
         ///   - occupancyLevel: 第一阶段亮度/照度
         ///   - vacantLevel: 第二阶段亮度/照度
         ///   - taskLevel: 环境光维持照度
+        ///   - standbyLevel: 第三（待机）阶段亮度/照度
         ///   - autoMinLevel: 环境光补偿最低亮度 0~30%  255: unenabled
         ///   - t1: 进入第一阶段过渡时间
         ///   - t2: 第一阶段维持时间
         ///   - t3: 进入第二阶段过渡时间
         ///   - t4: 第二阶段维持时间
         ///   - t5: 进入待机过渡时间
-        init(profileType: ProfileType, highEndTrim: Int, lowEndTrim: Int, occupancyLevel: Int, vacantLevel: Int, taskLevel: Int, autoMinLevel: Int, t1: Int, t2: Int, t3: Int, t4: Int, t5: Int) {
+        init(profileType: ProfileType, highEndTrim: Int, lowEndTrim: Int, occupancyLevel: Int, vacantLevel: Int, standbyLevel: Int = 0, taskLevel: Int, autoMinLevel: Int, t1: Int, t2: Int, t3: Int, t4: Int, t5: Int) {
             
             switch profileType {
             case .occupancy_daylight, .vacancy_daylight:
                 
-                levels = [.lightnessRange(lowEndTrim...highEndTrim), .occupancyLevel(occupancyLevel), .vacantLevel(vacantLevel), .autoMinValue(autoMinLevel, enabled: autoMinLevel <= 30)]
+                levels = [.lightnessRange(lowEndTrim...highEndTrim), .occupancyLevel(occupancyLevel), .vacantLevel(vacantLevel), .standbyLevel(standbyLevel), .autoMinValue(autoMinLevel, enabled: autoMinLevel <= 30)]
                 times = [.t1(t1), .t2(t2), .t3(t3), .t4(t4), .t5(t5)]
-            case .occupancy, .vacancy, .proximityLighting:
-                levels = [.lightnessRange(lowEndTrim...highEndTrim), .occupancyLevel(occupancyLevel), .vacantLevel(vacantLevel)]
+            case .occupancy, .vacancy, .proximityLighting, .proximityLightingWithPhotocell:
+                levels = [.lightnessRange(lowEndTrim...highEndTrim), .occupancyLevel(occupancyLevel), .vacantLevel(vacantLevel), .standbyLevel(standbyLevel)]
                 times = [.t1(t1), .t2(t2), .t3(t3), .t4(t4), .t5(t5)]
             case .daylight:
                 levels = [.lightnessRange(lowEndTrim...highEndTrim), .taskLevel(taskLevel), .autoMinValue(autoMinLevel, enabled: autoMinLevel <= 30)]
@@ -249,6 +292,206 @@ class Profile: Copyable {
         
     }
     
+    /// 触发条件数据
+    class TriggerConditionData: Copyable, Codable {
+        /// 执行类型
+        enum ExecuteType: Int {
+            /// 自动三段式调光
+            case adjustWhenOccupied = 0
+            /// 固定亮度
+            case fixedLevel
+        }
+        /// 条件id
+        let id: UInt8
+        /// 触发lux
+        var startsBelowLux: UInt16
+        /// 是否使用校准数据
+        var useCalibrationValues: Bool = false
+        /// 执行类型
+        var executeType: ExecuteType = .adjustWhenOccupied
+        /// 场景数据
+        var sceneData: LightControlScene
+        
+        /// 固定待机亮度
+        var fixedStandbyLevel: Int
+        
+        init(id: UInt8, startsBelowLux: UInt16, useCalibrationValues: Bool = false, executeType: ExecuteType = .adjustWhenOccupied, sceneData: LightControlScene, fixedStandbyLevel: Int) {
+            self.id = id
+            self.startsBelowLux = startsBelowLux
+            self.useCalibrationValues = useCalibrationValues
+            self.executeType = executeType
+            self.sceneData = sceneData
+            self.fixedStandbyLevel = fixedStandbyLevel
+        }
+        
+        func update(data: TriggerConditionData) {
+            self.startsBelowLux = data.startsBelowLux
+            self.useCalibrationValues = data.useCalibrationValues
+            self.executeType = data.executeType
+            self.sceneData.update(scene: data.sceneData)
+        }
+        
+        func copy() -> Self {
+            let data = TriggerConditionData(id: id, startsBelowLux: startsBelowLux, useCalibrationValues: useCalibrationValues, executeType: executeType, sceneData: sceneData.copy(), fixedStandbyLevel: fixedStandbyLevel)
+            return data as! Self
+        }
+        
+        static func == (lhs: TriggerConditionData, rhs: TriggerConditionData) -> Bool {
+            return lhs.id == rhs.id && lhs.startsBelowLux == rhs.startsBelowLux && lhs.useCalibrationValues == rhs.useCalibrationValues && lhs.executeType.rawValue == rhs.executeType.rawValue && lhs.sceneData == rhs.sceneData && lhs.fixedStandbyLevel == rhs.fixedStandbyLevel
+        }
+        
+        // MARK: - Codable
+        
+        private enum CodingKeys: String, CodingKey {
+            case id
+            case startsBelowLux
+            case useCalibrationValues
+            case executeType
+            case sceneData
+            case fixedStandbyLevel
+        }
+        
+        required init(from decoder: any Decoder) throws {
+            let container = try decoder.container(keyedBy: CodingKeys.self)
+            self.id = try container.decode(UInt8.self, forKey: .id)
+            self.startsBelowLux = try container.decode(UInt16.self, forKey: .startsBelowLux)
+            self.useCalibrationValues = try container.decode(Bool.self, forKey: .useCalibrationValues)
+            let executeTypeValue = try container.decode(Int.self, forKey: .executeType)
+            self.executeType = ExecuteType(rawValue: executeTypeValue) ?? .adjustWhenOccupied
+            
+            self.sceneData = try container.decode(LightControlScene.self, forKey: .sceneData)
+            self.fixedStandbyLevel = try container.decode(Int.self, forKey: .fixedStandbyLevel)
+        }
+        
+        func encode(to encoder: any Encoder) throws {
+            
+            var container = encoder.container(keyedBy: CodingKeys.self)
+            try container.encode(self.id, forKey: .id)
+            try container.encode(self.startsBelowLux, forKey: .startsBelowLux)
+            try container.encode(self.useCalibrationValues, forKey: .useCalibrationValues)
+            try container.encode(self.executeType.rawValue, forKey: .executeType)
+            try container.encode(self.sceneData, forKey: .sceneData)
+            try container.encode(self.fixedStandbyLevel, forKey: .fixedStandbyLevel)
+        }
+        
+    }
+    
+    /// 灯光控制场景
+    class LightControlScene: Copyable, Codable, Equatable {
+        /// 场景id
+        let sceneNumber: SceneNumber
+        /// 名称
+        var name: String
+        /// 灯光阶段调节数据
+        var lightControlData: LightControlData
+        
+        init(sceneNumber: SceneNumber, name: String, lightControlData: LightControlData) {
+            self.sceneNumber = sceneNumber
+            self.name = name
+            self.lightControlData = lightControlData
+        }
+        
+        /// 默认的场景
+        static func generalScene(profileType: ProfileType) -> LightControlScene {
+            var occupancyLevel = 100
+            var vacantLevel = 50
+            if profileType == .occupancy_daylight || profileType == .vacancy_daylight || profileType == .daylight {
+                occupancyLevel = 500
+                vacantLevel = 100
+            }
+            return LightControlScene(sceneNumber: .generalLightControlScene, name: "General Scene", lightControlData: .init(occupancyLevel: occupancyLevel, vacantLevel: vacantLevel, standbyLevel: 0))
+        }
+        
+        func copy() -> Self {
+            let data = LightControlScene(sceneNumber: sceneNumber, name: name, lightControlData: lightControlData.copy())
+            return data as! Self
+        }
+        
+        func update(scene: LightControlScene) {
+            self.name = scene.name
+            let newLightControlData = scene.lightControlData
+            self.lightControlData.highEndTrim = newLightControlData.highEndTrim
+            self.lightControlData.lowEndTrim = newLightControlData.lowEndTrim
+            self.lightControlData.occupancyLevel = newLightControlData.occupancyLevel
+            self.lightControlData.vacantLevel = newLightControlData.vacantLevel
+            self.lightControlData.standbyLevel = newLightControlData.standbyLevel
+            self.lightControlData.taskLevel = newLightControlData.taskLevel
+            self.lightControlData.autoMinLevel = newLightControlData.autoMinLevel
+            self.lightControlData.t1 = newLightControlData.t1
+            self.lightControlData.t2 = newLightControlData.t2
+            self.lightControlData.t3 = newLightControlData.t3
+            self.lightControlData.t4 = newLightControlData.t4
+            self.lightControlData.t5 = newLightControlData.t5
+        }
+        
+        static func == (lhs: LightControlScene, rhs: LightControlScene) -> Bool {
+            return lhs.sceneNumber == rhs.sceneNumber && lhs.name == rhs.name && lhs.lightControlData == rhs.lightControlData
+        }
+        
+    }
+    
+    /// 灯光控制数据
+    class LightControlData: Codable, Copyable {
+        
+        /// 亮度上限
+        var highEndTrim: Int = 100
+        /// 亮度下限
+        var lowEndTrim: Int = 0
+        /// 第一阶段level/lux
+        var occupancyLevel: Int = 100
+        /// 第二阶段level/lux
+        var vacantLevel: Int = 50
+        /// 第三（待机）阶段亮度/照度
+        var standbyLevel: Int = 0
+        /// 环境光维持照度
+        var taskLevel: Int = 100
+        /// 环境光补偿最低亮度 0~30%  255: unenabled
+        var autoMinLevel: Int = 255
+        /// 进入第一阶段过渡时间
+        var t1 = 2
+        /// 第一阶段维持时间
+        var t2 = 1200
+        /// 进入第二阶段过渡时间
+        var t3 = 2
+        /// 第二阶段维持时间
+        var t4 = 600
+        /// 进入待机过渡时间
+        var t5 = 2
+        /// 是否启用自动调光最小亮度
+        var autoMinLevelEnabled: Bool {
+            return autoMinLevel != 255
+        }
+    
+        init(highEndTrim: Int = 100, lowEndTrim: Int = 0, occupancyLevel: Int = 100, vacantLevel: Int = 50, standbyLevel: Int = 0, taskLevel: Int = 100, autoMinLevel: Int = 255, t1: Int = 2, t2: Int = 1200, t3: Int = 2, t4: Int = 600, t5: Int = 2) {
+            self.highEndTrim = highEndTrim
+            self.lowEndTrim = lowEndTrim
+            self.occupancyLevel = occupancyLevel
+            self.vacantLevel = vacantLevel
+            self.standbyLevel = standbyLevel
+            self.taskLevel = taskLevel
+            self.autoMinLevel = autoMinLevel
+            self.t1 = t1
+            self.t2 = t2
+            self.t3 = t3
+            self.t4 = t4
+            self.t5 = t5
+        }
+        
+        /// 转换成灯光显示图形数据
+        func convertLightData(profileType: ProfileType) -> LightData {
+            return LightData(profileType: profileType, highEndTrim: highEndTrim, lowEndTrim: lowEndTrim, occupancyLevel: occupancyLevel, vacantLevel: vacantLevel, standbyLevel: standbyLevel, taskLevel: taskLevel, autoMinLevel: autoMinLevel, t1: t1, t2: t2, t3: t3, t4: t4, t5: t5)
+        }
+        
+        func copy() -> Self {
+            return LightControlData(highEndTrim: highEndTrim, lowEndTrim: lowEndTrim, occupancyLevel: occupancyLevel, vacantLevel: vacantLevel, standbyLevel: standbyLevel, taskLevel: taskLevel, autoMinLevel: autoMinLevel, t1: t1, t2: t2, t3: t3, t4: t4, t5: t5) as! Self
+        }
+        
+        static func == (lhs: LightControlData, rhs: LightControlData) -> Bool {
+            return lhs.highEndTrim == rhs.highEndTrim && lhs.lowEndTrim == rhs.lowEndTrim && lhs.occupancyLevel == rhs.occupancyLevel && lhs.vacantLevel == rhs.vacantLevel && lhs.standbyLevel == rhs.standbyLevel && lhs.taskLevel == rhs.taskLevel && lhs.autoMinLevel == rhs.autoMinLevel && lhs.t1 == rhs.t1 && lhs.t2 == rhs.t2 && lhs.t3 == rhs.t3 && lhs.t4 == rhs.t4 && lhs.t5 == rhs.t5
+        }
+    }
+    
+    
     /// 类型
     enum ProfileType {
         
@@ -268,6 +511,38 @@ class Profile: Copyable {
                 return 6
             case .proximityLighting:
                 return 7
+            case .proximityLightingWithPhotocell:
+                return 8
+            }
+        }
+        
+        /// 是否是占用类型profile
+        var occupancyType: Bool {
+            switch self {
+            case .occupancy_daylight, .vacancy_daylight, .occupancy, .vacancy, .proximityLighting, .proximityLightingWithPhotocell:
+              return true
+            default:
+                return false
+            }
+        }
+        
+        /// 是否是光照类型profile
+        var daylightType: Bool {
+            switch self {
+            case .occupancy_daylight, .vacancy_daylight, .daylight:
+              return true
+            default:
+                return false
+            }
+        }
+        
+        /// 是否是临近照明类型profile
+        var proximityLightingType: Bool {
+            switch self {
+            case .proximityLighting, .proximityLightingWithPhotocell:
+              return true
+            default:
+                return false
             }
         }
         
@@ -288,6 +563,8 @@ class Profile: Copyable {
                 self = .manualControl
             case 7:
                 self = .proximityLighting
+            case 8:
+                self = .proximityLightingWithPhotocell
             default:
                 return nil
             }
@@ -322,22 +599,55 @@ class Profile: Copyable {
         }
         
         /// 简介
-        var instruction: (name: String, imageName: String, description: String, requireds: [RequiredDeviceType]) {
+        var instruction: (name: String, imageName: String, descriptionAttStr: NSAttributedString, requireds: [RequiredDeviceType]) {
+            
+            let paragraphStyle = NSMutableParagraphStyle()
+            paragraphStyle.lineSpacing = 2
+            
             switch self {
             case .occupancy_daylight:
-                return ("profile_occupancy_daylight".localizedString, "profile_occupancy_daylight", "profile_occupancy_daylight_desc".localizedString, [.luminaire, .lightSensor, .occupancySensor])
+                return ("profile_occupancy_daylight".localizedString, "profile_occupancy_daylight", NSAttributedString(string: "profile_occupancy_daylight_desc".localizedString), [.luminaire, .lightSensor, .occupancySensor])
             case .vacancy_daylight:
-                return ("profile_vacancy_daylight".localizedString, "profile_vacancy_daylight", "profile_vacancy_daylight_desc".localizedString, [.luminaire, .lightSensor, .manualControl, .occupancySensor])
+                return ("profile_vacancy_daylight".localizedString, "profile_vacancy_daylight", NSAttributedString(string: "profile_vacancy_daylight_desc".localizedString), [.luminaire, .lightSensor, .manualControl, .occupancySensor])
             case .occupancy:
-                return ("profile_occupancy".localizedString, "profile_occupancy", "profile_occupancy_desc".localizedString, [.luminaire, .occupancySensor])
+                return ("profile_occupancy".localizedString, "profile_occupancy", NSAttributedString(string: "profile_occupancy_desc".localizedString, attributes: [.paragraphStyle: paragraphStyle]), [.luminaire, .occupancySensor])
             case .vacancy:
-                return ("profile_vacancy".localizedString, "profile_vacancy", "profile_vacancy_desc".localizedString, [.luminaire, .occupancySensor, .manualControl])
+                return ("profile_vacancy".localizedString, "profile_vacancy", NSAttributedString(string: "profile_vacancy_desc".localizedString, attributes: [.paragraphStyle: paragraphStyle]), [.luminaire, .occupancySensor, .manualControl])
             case .daylight:
-                return ("profile_daylight".localizedString, "profile_daylight", "profile_daylight_desc".localizedString, [.luminaire, .lightSensor])
+                return ("profile_daylight".localizedString, "profile_daylight", NSAttributedString(string: "profile_daylight_desc".localizedString, attributes: [.paragraphStyle: paragraphStyle]), [.luminaire, .lightSensor])
             case .manualControl:
-                return ("profile_manual_control".localizedString, "profile_manual_control", "profile_manual_control_desc".localizedString, [.luminaire, .manualControl])
+                return ("profile_manual_control".localizedString, "profile_manual_control", NSAttributedString(string: "profile_manual_control_desc".localizedString, attributes: [.paragraphStyle: paragraphStyle]), [.luminaire, .manualControl])
             case .proximityLighting:
-                return ("profile_predictive_lighting".localizedString, "profile_proximity_lighting", "profile_predictive_lighting_desc".localizedString, [.luminaire, .occupancySensor, .pathSequenceSetting])
+                return ("profile_predictive_lighting".localizedString, "profile_proximity_lighting", NSAttributedString(string: "profile_predictive_lighting_desc".localizedString, attributes: [.paragraphStyle: paragraphStyle]), [.luminaire, .occupancySensor, .pathSequenceSetting])
+            case .proximityLightingWithPhotocell:
+                
+                let attStr1 = NSMutableAttributedString(string: "profile_predictive_lighting_with_photocell_desc_1".localizedString + "\n")
+                attStr1.addAttributes([.font: UIFont.systemFont(ofSize: 14), .foregroundColor: TextBlack_Color], range: (attStr1.string as NSString).range(of: "proximity/predictive_lighting_with_photocell".localizedString))
+                
+                let attStr2 = NSMutableAttributedString(string: "profile_predictive_lighting_with_photocell_desc_2".localizedString + "\n")
+                attStr2.addAttributes([.font: UIFont.systemFont(ofSize: 14), .foregroundColor: TextBlack_Color], range: (attStr2.string as NSString).range(of: "proximity_lighting".localizedString))
+                
+                let attStr3 = NSMutableAttributedString(string: "profile_predictive_lighting_with_photocell_desc_3".localizedString + "\n")
+                attStr3.addAttributes([.font: UIFont.systemFont(ofSize: 14), .foregroundColor: TextBlack_Color], range: (attStr3.string as NSString).range(of: "predictive_lighting".localizedString))
+                
+                let attStr4 = NSMutableAttributedString(string: "profile_predictive_lighting_with_photocell_desc_4".localizedString + "\n")
+                attStr4.addAttributes([.font: UIFont.systemFont(ofSize: 14), .foregroundColor: TextBlack_Color], range: (attStr4.string as NSString).range(of: "own_ambient_light_sensor".localizedString))
+                
+                let attStr5 = NSMutableAttributedString(string: "profile_predictive_lighting_with_photocell_desc_5".localizedString)
+                
+                let paragraphStyle = NSMutableParagraphStyle()
+                paragraphStyle.lineSpacing = 2
+                paragraphStyle.paragraphSpacing = 6
+                
+                let descriptionAttStr = NSMutableAttributedString()
+                descriptionAttStr.append(attStr1)
+                descriptionAttStr.append(attStr2)
+                descriptionAttStr.append(attStr3)
+                descriptionAttStr.append(attStr4)
+                descriptionAttStr.append(attStr5)
+                descriptionAttStr.addAttribute(.paragraphStyle, value: paragraphStyle, range: NSRange(location: 0, length: descriptionAttStr.string.count))
+                
+                return ("profile_predictive_lighting_with_photocell".localizedString, "profile_proximity_lighting_with_photocell", descriptionAttStr, [.luminaire, .lightSensor, .occupancySensor, .pathSequenceSetting])
             }
         }
         
@@ -355,6 +665,8 @@ class Profile: Copyable {
         case manualControl
         /// 邻近照明
         case proximityLighting
+        /// 邻近照明+光感条件
+        case proximityLightingWithPhotocell
     }
     
     /// 上电状态
@@ -388,6 +700,8 @@ class Profile: Copyable {
         case definedLightLevel(_ level: UInt8)
     }
     
+ 
+    
     /// 名称
     var name: String = ""
     /// 配置id
@@ -395,7 +709,14 @@ class Profile: Copyable {
     /// profile类型
     var type: ProfileType = .occupancy_daylight
     /// 灯光阶段调节数据
-    var lightData: LightData
+    var lightControlData: LightControlData {
+        guard let generalScene = scenes.first(where: { $0.sceneNumber == .generalLightControlScene }) else {
+            let scene = LightControlScene.generalScene(profileType: self.type)
+            scenes.insert(scene, at: 0)
+            return scene.lightControlData
+        }
+        return generalScene.lightControlData
+    }
     /// 上电状态
     var powerUpState: PowerUpState = .restore
     /// 手动控制后进入Standby时间（s）max：无限长
@@ -407,21 +728,61 @@ class Profile: Copyable {
     /// 调节速率 0~100
 //    var adjustSpeed: Int = 50
     /// 灵敏度（移动检测）
-    var sensitivity: UInt8 = 85
+    var sensitivity: UInt8 = 95
     /// 邻近照明数量
     var proximityLightingNumber: UInt8 = 2
+    /// 晚上时配置数据
+    var nightData: TriggerConditionData?
+    /// 白天时配置数据
+    var dayData: TriggerConditionData?
+    /// profile下场景list
+    var scenes: [LightControlScene] = []
+    /// 光照传感器模板
+    var lightSensorTemplates: [ProfileLightSensorTemplate] = []
     
-    init(name: String = "", id: String = UUID().uuidString, type: ProfileType = .occupancy_daylight, lightData: LightData, powerUpState: PowerUpState, powerUpCct: UInt16 = 4500, manualOverrideTimeout: UInt32, adjustSpeed: Int = 50, sensitivity: UInt8 = 85, proximityLightingNumber: UInt8 = 2) {
+    /// 灯光阶段调节数据（图表）
+    var lightData: LightData {
+        return LightData(profileType: type, highEndTrim: lightControlData.highEndTrim, lowEndTrim: lightControlData.lowEndTrim, occupancyLevel: lightControlData.occupancyLevel, vacantLevel: lightControlData.vacantLevel, standbyLevel: lightControlData.standbyLevel, taskLevel: lightControlData.taskLevel, autoMinLevel: lightControlData.autoMinLevel, t1: lightControlData.t1, t2: lightControlData.t2, t3: lightControlData.t3, t4: lightControlData.t4, t5: lightControlData.t5)
+    }
+    
+    init(name: String = "", id: String = UUID().uuidString, type: ProfileType = .occupancy_daylight, lightControlData: LightControlData, powerUpState: PowerUpState, powerUpCct: UInt16 = 4500, manualOverrideTimeout: UInt32, adjustSpeed: Int = 50, sensitivity: UInt8 = 95, proximityLightingNumber: UInt8 = 2, nightData: TriggerConditionData? = nil, dayData: TriggerConditionData? = nil, scenes: [LightControlScene] = []) {
         self.name = name
         self.id = id
         self.type = type
-        self.lightData = lightData
+//        self.lightControlData = lightControlData
         self.powerUpState = powerUpState
         self.powerUpCct = powerUpCct
         self.manualOverrideTimeout = manualOverrideTimeout
         self.adjustSpeed = adjustSpeed
         self.sensitivity = sensitivity
         self.proximityLightingNumber = proximityLightingNumber
+        self.scenes = scenes
+        self.dayData = dayData
+        self.nightData = nightData
+        
+        // 不存在通用profile场景时自动创建
+        if !scenes.contains(where: { $0.sceneNumber == .generalLightControlScene }) {
+            let scene = LightControlScene(sceneNumber: .generalLightControlScene, name: "General Scene", lightControlData: .init(highEndTrim: lightControlData.highEndTrim, lowEndTrim: lightControlData.lowEndTrim, occupancyLevel: lightControlData.occupancyLevel, vacantLevel: lightControlData.vacantLevel, standbyLevel: lightControlData.standbyLevel, taskLevel: lightControlData.taskLevel, autoMinLevel: lightControlData.autoMinLevel, t1: lightControlData.t1, t2: lightControlData.t2, t3: lightControlData.t3, t4: lightControlData.t4, t5: lightControlData.t5))
+            self.scenes.insert(scene, at: 0)
+        }
+        
+        if type == .proximityLightingWithPhotocell {
+            if self.nightData == nil {
+                let scene = LightControlScene(sceneNumber: .generalLightControlScene + 1, name: "Night Scene", lightControlData: .init(standbyLevel: 30))
+                self.nightData = TriggerConditionData(id: 0, startsBelowLux: 30, useCalibrationValues: false, executeType: .adjustWhenOccupied, sceneData: scene, fixedStandbyLevel: 30)
+                if !scenes.contains(where: { $0.sceneNumber == scene.sceneNumber }) {
+                    self.scenes.append(scene)
+                }
+            }
+            
+            if self.dayData == nil {
+                let scene = LightControlScene(sceneNumber: .generalLightControlScene + 2, name: "Day Scene", lightControlData: .init())
+                self.dayData = TriggerConditionData(id: 1, startsBelowLux: 70, useCalibrationValues: false, executeType: .adjustWhenOccupied, sceneData: scene, fixedStandbyLevel: 0)
+                if !scenes.contains(where: { $0.sceneNumber == scene.sceneNumber }) {
+                    self.scenes.append(scene)
+                }
+            }
+        }
     }
     
     init(type: ProfileType) {
@@ -429,53 +790,123 @@ class Profile: Copyable {
         self.id = UUID().uuidString
         self.type = type
         
-        let highEndTrim = 100
-        let lowEndTrim = 0
-        let occupancyLevel = 100
-        let vacantLevel = 50
-        let occupancyLux = 500
-        let vacantLux = 100
-        let taskLevel = 100
-        let taskLux = 500
-        let autoMinLevel = 255
-        let t1 = 2
-        let t2 = 1200
-        let t3 = 2
-        let t4 = 600
-        let t5 = 2
-        
         if type == .daylight || type == .manualControl {
             self.manualOverrideTimeout = .max
         }
+
         
-        switch type {
-        case .occupancy_daylight, .vacancy_daylight, .daylight:
-            self.lightData = LightData(profileType: type, highEndTrim: highEndTrim, lowEndTrim: lowEndTrim, occupancyLevel: occupancyLux, vacantLevel: vacantLux, taskLevel: taskLux, autoMinLevel: autoMinLevel, t1: t1, t2: t2, t3: t3, t4: t4, t5: t5)
-        default:
-            self.lightData = LightData(profileType: type, highEndTrim: highEndTrim, lowEndTrim: lowEndTrim, occupancyLevel: occupancyLevel, vacantLevel: vacantLevel, taskLevel: taskLevel, autoMinLevel: autoMinLevel, t1: t1, t2: t2, t3: t3, t4: t4, t5: t5)
+        // 创建默认场景
+        let generalScene =  LightControlScene.generalScene(profileType: type)
+        self.scenes.append(generalScene)
+        
+        if type == .proximityLightingWithPhotocell {
+            
+            let nightScene = LightControlScene(sceneNumber: .generalLightControlScene + 1, name: "Night Scene", lightControlData: .init(standbyLevel: 30))
+            let dayScene = LightControlScene(sceneNumber: .generalLightControlScene + 2, name: "Day Scene", lightControlData: .init(occupancyLevel: 0, vacantLevel: 0, standbyLevel: 0))
+            
+            self.nightData = TriggerConditionData(id: 0, startsBelowLux: 30, useCalibrationValues: false, executeType: .adjustWhenOccupied, sceneData: nightScene, fixedStandbyLevel: 30)
+
+            self.dayData = TriggerConditionData(id: 1, startsBelowLux: 70, useCalibrationValues: false, executeType: .adjustWhenOccupied, sceneData: dayScene, fixedStandbyLevel: 0)
+            
+            self.scenes.append(nightScene)
+            self.scenes.append(dayScene)
         }
     }
     
     /// 更新数据
     func updateData(profile: Profile) {
-        
         self.name = profile.name
         self.type = profile.type
-        self.lightData = profile.lightData
+//        self.lightControlData = profile.lightControlData
         self.powerUpState = profile.powerUpState
         self.powerUpCct = profile.powerUpCct
         self.manualOverrideTimeout = profile.manualOverrideTimeout
         self.adjustSpeed = profile.adjustSpeed
         self.sensitivity = profile.sensitivity
         self.proximityLightingNumber = profile.proximityLightingNumber
+        self.dayData = profile.dayData?.copy()
+        self.nightData = profile.nightData?.copy()
+        self.scenes = profile.scenes.map({ $0.copy() })
+        if let dayScene = self.scenes.first(where: { $0.sceneNumber == self.dayData?.sceneData.sceneNumber }) {
+            self.dayData?.sceneData = dayScene
+        }
+        if let nightScene = self.scenes.first(where: { $0.sceneNumber == self.nightData?.sceneData.sceneNumber }) {
+            self.nightData?.sceneData = nightScene
+        }
+        self.lightSensorTemplates = profile.lightSensorTemplates
     }
     
     func copy() -> Self {
-        return Profile(name: name, id: id, type: type, lightData: lightData.copy(), powerUpState: powerUpState, powerUpCct: powerUpCct, manualOverrideTimeout: manualOverrideTimeout, adjustSpeed: adjustSpeed, sensitivity: sensitivity, proximityLightingNumber: proximityLightingNumber) as! Self
+        let profile = Profile(name: name, id: id, type: type, lightControlData: lightControlData.copy(), powerUpState: powerUpState, powerUpCct: powerUpCct, manualOverrideTimeout: manualOverrideTimeout, adjustSpeed: adjustSpeed, sensitivity: sensitivity, proximityLightingNumber: proximityLightingNumber)
+        let scenes = self.scenes.map({ $0.copy() })
+        let dayData = self.dayData?.copy()
+        if let dayScene = scenes.first(where: { $0.sceneNumber == dayData?.sceneData.sceneNumber }) {
+            dayData?.sceneData = dayScene
+        }
+        let nightData = self.nightData?.copy()
+        if let nightScene = scenes.first(where: { $0.sceneNumber == nightData?.sceneData.sceneNumber }) {
+            nightData?.sceneData = nightScene
+        }
+        profile.dayData = dayData
+        profile.nightData = nightData
+        profile.scenes = scenes
+        profile.lightSensorTemplates = self.lightSensorTemplates
+        return profile as! Self
     }
     
     static func == (lhs: Profile, rhs: Profile) -> Bool {
-        return lhs.id == rhs.id && lhs.type == rhs.type && lhs.lightData == rhs.lightData && lhs.powerUpState.rawValue == rhs.powerUpState.rawValue && lhs.powerUpCct == rhs.powerUpCct && lhs.manualOverrideTimeout == rhs.manualOverrideTimeout && lhs.adjustSpeed == rhs.adjustSpeed && lhs.sensitivity == rhs.sensitivity && lhs.proximityLightingNumber == rhs.proximityLightingNumber
+        
+        guard lhs.id == rhs.id && lhs.type == rhs.type && lhs.scenes == rhs.scenes && lhs.powerUpState.rawValue == rhs.powerUpState.rawValue && lhs.powerUpCct == rhs.powerUpCct && lhs.manualOverrideTimeout == rhs.manualOverrideTimeout && lhs.adjustSpeed == rhs.adjustSpeed && lhs.sensitivity == rhs.sensitivity && lhs.proximityLightingNumber == rhs.proximityLightingNumber else {
+            return false
+        }
+        
+        if let lhsData = lhs.dayData, let rhsData = rhs.dayData {
+            // 两者都不为空，进行比较
+            return lhsData == rhsData
+        } else {
+            // 至少一个为空，比较是否都为空
+            return lhs.dayData == nil && rhs.dayData == nil
+        }
+    }
+   
+    /// 获取下一个场景号
+    func nextAvailableSceneNumber() -> SceneNumber? {
+        let existSceneNumbers = scenes.map({ $0.sceneNumber })
+        for sceneNumber in SceneNumber.minLightControlScene...SceneNumber.maxLightControlScene {
+            if sceneNumber != .generalLightControlScene && !existSceneNumbers.contains(sceneNumber) {
+                return sceneNumber
+            }
+        }
+        return nil
+    }
+    
+}
+
+/// profile 光感模板
+class ProfileLightSensorTemplate {
+    
+    let id: String
+    /// 名称
+    var name: String
+    /// 晚上lux
+    var nightStartsBelowLux: UInt16
+    /// 白天lux
+    var dayStartsAboveLux: UInt16
+    /// 模板设备地址list
+    var deviceAddresses: [Address] = []
+    /// 模板设备list
+    var devices: [Node] {
+        return deviceAddresses.compactMap({ address in
+            MeshNetworkManager.instance.realNodes.first(where: { $0.primaryUnicastAddress == address })
+        })
+    }
+    
+    init(id: String = UUID().uuidString, name: String, nightStartsBelowLux: UInt16, dayStartsAboveLux: UInt16, deviceAddresses: [Address]) {
+        self.id = id
+        self.name = name
+        self.nightStartsBelowLux = nightStartsBelowLux
+        self.dayStartsAboveLux = dayStartsAboveLux
+        self.deviceAddresses = deviceAddresses
     }
     
 }

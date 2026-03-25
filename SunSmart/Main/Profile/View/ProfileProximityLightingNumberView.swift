@@ -12,7 +12,7 @@ protocol ProfileProximityLightingNumberViewDelegate: AnyObject {
     /// 邻近照明数量修改
     /// - Parameters:
     ///   - view: view
-    ///   - number: 数量 0-5 | 255
+    ///   - number: 数量 0-20 | 255
     func view(_ view: ProfileProximityLightingNumberView, lightingNumberChanged number: UInt8)
     
     /// 禁止交互下编辑事件
@@ -26,7 +26,7 @@ class ProfileProximityLightingNumberView: UIView {
 
     /// 数量类型
     enum ItemNumberType {
-        /// 数量0-5 | 6：max
+        /// 数量0-20 | 6：max
         case number(_ number: UInt8)
         /// 更多...
         case more
@@ -45,10 +45,10 @@ class ProfileProximityLightingNumberView: UIView {
     weak var delegate: ProfileProximityLightingNumberViewDelegate?
     
     private var numberTypes: [ItemNumberType] = [
-        .number(6), .more, .number(5), .number(4), .number(3), .number(2), .number(1), .number(0), .number(1), .number(2), .number(3), .number(4), .number(5), .more, .number(6)
+        .number(21), .more, .number(5), .number(4), .number(3), .number(2), .number(1), .number(0), .number(1), .number(2), .number(3), .number(4), .number(5), .more, .number(21)
     ]
     
-    private let numberRanage: ClosedRange<UInt8> = 0...5
+    private let numberRange: ClosedRange<UInt8> = 0...20
     
     var number: UInt8 = 2 {
         didSet {
@@ -60,6 +60,13 @@ class ProfileProximityLightingNumberView: UIView {
                 numberSlider.valueLabel.text = "\(number)"
             }
             collectionView.reloadData()
+        }
+    }
+    
+    /// 是否可编辑
+    var editable: Bool = true {
+        didSet {
+            numberSlider.editable = editable
         }
     }
     
@@ -153,8 +160,8 @@ class ProfileProximityLightingNumberView: UIView {
         numberSlider = PowerUpLightSliderView()
 //        numberSlider.slider.valueRound = true
         numberSlider.slider.step = 1
-        numberSlider.slider.minimumValue = 0
-        numberSlider.slider.maximumValue = 6
+        numberSlider.slider.minimumValue = Float(numberRange.lowerBound)
+        numberSlider.slider.maximumValue = Float(numberRange.upperBound + 1)
         numberSlider.slider.value = min(Float(number), numberSlider.slider.maximumValue)
         numberSlider.valueChangedCallback = {[weak self] value in
             guard let self = self else { return }
@@ -200,7 +207,7 @@ extension ProfileProximityLightingNumberView: UICollectionViewDataSource {
             cell.moreLabel.isHidden = false
         case .number(let number):
             cell.numberLabel.isHidden = false
-            if !numberRanage.contains(number) {
+            if !numberRange.contains(number) {
                 cell.numberLabel.text = "N"
             }else {
                 cell.numberLabel.text = "\(number)"

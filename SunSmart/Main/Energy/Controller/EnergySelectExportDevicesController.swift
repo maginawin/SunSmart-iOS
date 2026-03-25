@@ -108,7 +108,8 @@ class EnergySelectExportDevicesController: UIViewController {
         tableView = UITableView()
         tableView.separatorStyle = .none
         tableView.register(DeviceParameterDeviceCell.classForCoder(), forCellReuseIdentifier: "cell")
-        tableView.rowHeight = SCRYFrom(60)
+        tableView.rowHeight = UITableView.automaticDimension
+        tableView.estimatedRowHeight = SCRYFrom(88)
         tableView.contentInset = UIEdgeInsets(top: SCRYFrom(8), left: 0, bottom: 0, right: 0)
         tableView.dataSource = self
         tableView.delegate = self
@@ -175,10 +176,13 @@ extension EnergySelectExportDevicesController: UITableViewDataSource, UITableVie
         let cell = tableView.dequeueReusableCell(withIdentifier: "cell", for: indexPath) as! DeviceParameterDeviceCell
         let device = devices[indexPath.row]
         cell.device = device
+        cell.configureParameterViews(
+            visibleTypes: [],
+            failedParameters: nil,
+            ratedPowerFormatter: { _ in "--" }
+        )
         cell.selectState = selectDevices.contains(device) ? .selected : .none
         cell.updateDeviceCellLayout()
-        cell.ratedPowerLabel.isHidden = true
-        cell.pwmLabel.isHidden = true
         cell.delegate = self
         return cell
     }

@@ -19,11 +19,10 @@ struct SyncResultData {
 
 class SyncDevicesViewController: UIViewController {
     
-
-    
     private var tableView: UITableView!
     private var bottomView: UIView!
     private var selectAllBtn: UIButton!
+    private var progressLabel: UILabel!
     /// 返回按钮
     private lazy var backBtn: UIButton = {
         let btn = UIButton(normalImageName: "navigation_back", target: self, action: #selector(backAction))
@@ -47,11 +46,18 @@ class SyncDevicesViewController: UIViewController {
     var backActionCallback: ((_ result: [SyncResultData])->Void)?
     /// 更新版本的设备地址
     private var updateVersionAddresses: [Address] = []
-    
+    /// lux触发锁定的设备list
+    var luxTriggerLockDevices: [Node] = []
     /// 自动化恢复
     var automationRestore: Bool = false
     /// 重试次数
     private var retryCount: Int = 0
+    /// 同步的设备list
+    private var syncNodes: [Node] = []
+    
+    private var deviceBlinkMode: DeviceBlinkMode = .none
+    
+    var vcTitle: String?
     
     init(type: SyncType, reSync: Bool = false) {
         
@@ -69,7 +75,7 @@ class SyncDevicesViewController: UIViewController {
         super.viewDidLoad()
         self.isModalInPresentation = true
         
-        title = "sync_device(s)".localizedString
+        title = vcTitle ?? "sync_device(s)".localizedString
         view.backgroundColor = Background_Color
         
         navigationItem.leftBarButtonItem = UIBarButtonItem(customView: backBtn)
@@ -80,6 +86,8 @@ class SyncDevicesViewController: UIViewController {
         }
         
         setupUI()
+        
+        deviceBlinkMode = SpaceViewController.currentDeviceBlinkMode
         
         XWHUDManager.showCustomHUD(withMessage: nil, view: view)
         DispatchQueue.global().async {
@@ -146,6 +154,67 @@ class SyncDevicesViewController: UIViewController {
                     if let configurationDevice = result.configturationDevice {
                         configurationSection.devices.append(configurationDevice)
                     }
+                }
+            case .profile(let datas):
+                datas.forEach { (node: Node, profiles: [ProfileType]) in
+                    // 锁定配置切换操作
+                    var luxTriggerLockStep: SyncDeviceStepModel?
+                    // 设置白天/晚上lux阈值操作
+                    var luxThresholdStep: SyncDeviceStepModel?
+                    // 切换到对应profile操作
+                    var switchProfileStep: SyncDeviceStepModel?
+                    // 保存到profile 场景
+                    var lastProfileStoreStep: SyncDeviceStepModel?
+                    /// 同步profile场景的操作list
+                    var syncProfileSceneSteps: [SyncDeviceStepModel] = []
+                    let syncProfileSteps = profiles.map({
+                        
+                        let task = SyncDeviceStepTaskModel(name: $0.title, operationType: .configuration(node: node, type: .profile(type: $0)))
+                        
+                        let step = SyncDeviceStepModel(type: $0.title, state: .none, tasks: [task])
+                        task.parentStepModel = step
+                        
+                        // 设置前置条件关联
+                        switch $0 {
+                        case .profileToggleTriggerConditionLuxLock:
+                            luxTriggerLockStep = step
+                        case .profileDayToggleTriggerConditionLux, .profileNightToggleTriggerConditionLux:
+                            luxThresholdStep = step
+                        case .lightControlSwitch, .daylightSensorConditionRecall:
+                            switchProfileStep = step
+                            if luxTriggerLockStep != nil {
+                                step.relevanceStepModels.append(luxTriggerLockStep!)
+                            }
+                            if luxThresholdStep != nil {
+                                step.relevanceStepModels.append(luxThresholdStep!)
+                            }
+                            if lastProfileStoreStep != nil {
+                                step.relevanceStepModels.append(lastProfileStoreStep!)
+                            }
+                        case .lightControlStore:
+                            step.relevanceStepModels = syncProfileSceneSteps
+                            syncProfileSceneSteps.removeAll()
+                            lastProfileStoreStep = step
+                        case .powerOnState, .daylightCalibration, .daylightCalibrateRate, .daylightCalibrateInflectionPoint, .sensitivity, .lightControlDelete, .profileToggleTriggerConditionLuxDelete:
+                            break
+                        default:
+                            if luxTriggerLockStep != nil {
+                                step.relevanceStepModels.append(luxTriggerLockStep!)
+                            }
+                            if switchProfileStep != nil {
+                                step.relevanceStepModels.append(switchProfileStep!)
+                            }
+                            syncProfileSceneSteps.append(step)
+                        }
+                        return step
+                    })
+                    
+                    let deviceModel = SyncDevicesModel(name: node.name ?? "", address: node.primaryUnicastAddress)
+                    deviceModel.steps = syncProfileSteps
+                    syncProfileSteps.forEach { step in
+                        step.parentDeviceModel = deviceModel
+                    }
+                    configurationSection.devices.append(deviceModel)
                 }
                 
             case .scene(let scene):
@@ -394,6 +463,12 @@ class SyncDevicesViewController: UIViewController {
                                 let step = SyncDeviceStepModel(type: "transition_time".localizedString, state: .none, tasks: [taskModel])
                                 taskModel.parentStepModel = step
                                 steps.append(step)
+                            case .powerCalibration(let calibrationValue):
+                                let taskModel = SyncDeviceStepTaskModel(name: "power_calibrate".localizedString, operationType: .configuration(node: node, type: .deviceParameters(parameterType: .powerCalibration(calibrationValue: calibrationValue))))
+                                
+                                let step = SyncDeviceStepModel(type: "power_calibrate".localizedString, state: .none, tasks: [taskModel])
+                                taskModel.parentStepModel = step
+                                steps.append(step)
                             }
                         }
                         
@@ -478,6 +553,14 @@ class SyncDevicesViewController: UIViewController {
                         case .proximityLightingNeighbor(let relayNumber, let neighborAddresses):
                             
                             let taskModel = SyncDeviceStepTaskModel(name: "path_sequence".localizedString, operationType: .configuration(node: node, type: .proximityLightingNeighbor(relayNumber: relayNumber, neighborAddresses: neighborAddresses)))
+                            
+                            let step = SyncDeviceStepModel(type: "path_sequence".localizedString, state: .none, tasks: [taskModel])
+                            taskModel.parentStepModel = step
+                            
+                            step.parentDeviceModel = syncDeviceModel
+                            syncDeviceModel.steps.append(step)
+                        case .proximityLightingRelayNumber(let relayNumber):
+                            let taskModel = SyncDeviceStepTaskModel(name: "path_sequence".localizedString, operationType: .configuration(node: node, type: .proximityLightingRelayNumber(relayNumber: relayNumber)))
                             
                             let step = SyncDeviceStepModel(type: "path_sequence".localizedString, state: .none, tasks: [taskModel])
                             taskModel.parentStepModel = step
@@ -586,11 +669,54 @@ class SyncDevicesViewController: UIViewController {
                 removeGroupStep = step
                 
             case .profile(let types):
-                
+                // 锁定配置切换操作
+                var luxTriggerLockTask: SyncDeviceStepTaskModel?
+                /// 白天/晚上lux阈值操作
+                var luxThresholdTask: SyncDeviceStepTaskModel?
+                // 切换到对应profile操作
+                var switchProfileTask: SyncDeviceStepTaskModel?
+                // 保存到profile 场景
+                var lastProfileStoreTask: SyncDeviceStepTaskModel?
+                /// 同步profile场景的操作任务list
+                var syncProfileSceneTasks: [SyncDeviceStepTaskModel] = []
                 let syncProfileTasks = types.map({
-                    return SyncDeviceStepTaskModel(name: $0.title, operationType: .configuration(node: node, type: .profile(type: $0)))
+                    let task = SyncDeviceStepTaskModel(name: $0.title, operationType: .configuration(node: node, type: .profile(type: $0)))
+                    // 设置前置条件关联
+                    switch $0 {
+                    case .profileToggleTriggerConditionLuxLock:
+                        luxTriggerLockTask = task
+                    case .profileDayToggleTriggerConditionLux, .profileNightToggleTriggerConditionLux:
+                        luxThresholdTask = task
+                    case .lightControlSwitch, .daylightSensorConditionRecall:
+                        switchProfileTask = task
+                        if luxTriggerLockTask != nil {
+                            task.relevanceTaskModels.append(luxTriggerLockTask!)
+                        }
+                        if luxThresholdTask != nil {
+                            task.relevanceTaskModels.append(luxThresholdTask!)
+                        }
+                        if lastProfileStoreTask != nil {
+                            task.relevanceTaskModels.append(lastProfileStoreTask!)
+                        }
+                    case .lightControlStore:
+                        task.relevanceTaskModels = syncProfileSceneTasks
+                        syncProfileSceneTasks.removeAll()
+                        lastProfileStoreTask = task
+                    case .powerOnState, .daylightCalibration, .daylightCalibrateRate, .daylightCalibrateInflectionPoint, .sensitivity, .lightControlDelete, .profileToggleTriggerConditionLuxDelete:
+                        break
+                    default:
+                        if luxTriggerLockTask != nil {
+                            task.relevanceTaskModels.append(luxTriggerLockTask!)
+                        }
+                        if switchProfileTask != nil {
+                            task.relevanceTaskModels.append(switchProfileTask!)
+                        }
+                        syncProfileSceneTasks.append(task)
+                    }
+                    return task
                 })
                 if syncProfileTasks.count > 0 {
+                    
                     let step = SyncDeviceStepModel(type: "profile".localizedString, state: .none, tasks: syncProfileTasks)
                     syncProfileTasks.forEach({ $0.parentStepModel = step })
                     if node.groupState == .exitFailure || removeGroupStep != nil {
@@ -598,6 +724,17 @@ class SyncDevicesViewController: UIViewController {
                     }else {
                         configturationSteps.append(step)
                     }
+                }
+            case .pirEnabled(let enabled):
+                let name = enabled ? "pir_enabled".localizedString : "pir_disable".localizedString
+                let task = SyncDeviceStepTaskModel(name: name, operationType: .configuration(node: node, type: .pirEnabled(enabled)))
+                
+                let step = SyncDeviceStepModel(type: name, state: .none, tasks: [task])
+                task.parentStepModel = step
+                if node.groupState == .exitFailure || removeGroupStep != nil {
+                    deleteSteps.append(step)
+                }else {
+                    configturationSteps.append(step)
                 }
                 
             case .syncScenes(let datas):
@@ -701,6 +838,9 @@ class SyncDevicesViewController: UIViewController {
                     case .defaultTransitionTime(let transitionTime):
                         let taskModel = SyncDeviceStepTaskModel(name: "transition_time".localizedString, operationType: .configuration(node: node, type: .deviceParameters(parameterType: .defaultTransitionTime(transitionTime: transitionTime))))
                         tasks.append(taskModel)
+                    case .powerCalibration(let calibrationValue):
+                        let taskModel = SyncDeviceStepTaskModel(name: "power_calibrate".localizedString, operationType: .configuration(node: node, type: .deviceParameters(parameterType: .powerCalibration(calibrationValue: calibrationValue))))
+                        tasks.append(taskModel)
                     }
                 }
                 let deviceParametersStepModel = SyncDeviceStepModel(type: "device_parameters".localizedString, state: .none, tasks: tasks)
@@ -716,6 +856,16 @@ class SyncDevicesViewController: UIViewController {
                 let step = SyncDeviceStepModel(type: name, state: .none, tasks: [taskModel])
                 taskModel.parentStepModel = step
                 
+                if node.groupState == .exitFailure || removeGroupStep != nil {
+                    deleteSteps.append(step)
+                }else {
+                    configturationSteps.append(step)
+                }
+            case .proximityLightingRelayNumber(let relayNumber):
+                let taskModel = SyncDeviceStepTaskModel(name: "path_sequence".localizedString, operationType: .configuration(node: node, type: .proximityLightingRelayNumber(relayNumber: relayNumber)))
+                
+                let step = SyncDeviceStepModel(type: "path_sequence".localizedString, state: .none, tasks: [taskModel])
+                taskModel.parentStepModel = step
                 if node.groupState == .exitFailure || removeGroupStep != nil {
                     deleteSteps.append(step)
                 }else {
@@ -836,6 +986,21 @@ class SyncDevicesViewController: UIViewController {
     
     /// 返回
     @objc private func backAction() {
+        
+        // 判断是否有lux触发设备需要解锁
+        if self.luxTriggerLockDevices.count > 0 {
+            let unlockMessage = SunricherVendorSet(function: .daylightLuxTriggerLock(delay: 0))
+            if self.luxTriggerLockDevices.count > 3 { // 超过3个广播解锁
+                MeshAPI.sendMessage(message: unlockMessage, address: .allNodes)
+            }else { // 3个以内单播解锁
+                self.luxTriggerLockDevices.forEach({
+                    if let vendorModel = $0.sunricherVendorModel {
+                        MeshAPI.sendMessage(message: unlockMessage, model: vendorModel)
+                    }
+                })
+            }
+        }
+        
         if backActionCallback != nil {
             
             // 设备数据list
@@ -895,6 +1060,39 @@ class SyncDevicesViewController: UIViewController {
         if syncState == .inSync { // stop
             
             MeshProxyMessageCommand.shared.stopSendMessage(finishedBack: nil)
+            
+            // 当前设置的设备存在profile快照恢复未设置时
+            if let deviceModel = lastDeviceModel, let settingsStep = deviceModel.steps.first(where: { $0.state == .inSettings }) {
+                if let task = settingsStep.tasks.first(where: { task in
+                    switch task.operationType {
+                    case .configuration(_, let type):
+                        if case .profile(let profileType) = type {
+                            if case .lightControlRestore = profileType, task.state == .wait {
+                                return true
+                            }
+                        }
+                        return false
+                    default:
+                        return false
+                    }
+                }) {
+                   // 恢复快照，避免profile运行异常
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                        MeshProxyMessageCommand.shared.addMessage(messageHandles: task.operationType.messageHandles, finishedBack: nil)
+                    }
+               }
+            }
+//            if let stepModel = $0 as? SyncDeviceStepModel {
+//                stepModel.tasks.contains { task in
+//                    switch task.operationType {
+//                    case .configuration(let node, let type):
+//                        if case .profile(let profileType) = type {
+//                            if profileType == .lightControlRestore(sceneNumber)
+//                        }
+//                    }
+//                }
+//            }
+            
             sections.forEach({
                 $0.allModels.forEach({
                     if $0.state == .wait  {//|| $0.state == .none
@@ -918,15 +1116,23 @@ class SyncDevicesViewController: UIViewController {
             })
             if selectModels.count > 0 {
                 selectModels.forEach({ device in
-                    device.state = .wait
-                    device.steps.forEach({
-                        $0.tasks.forEach({ task in
-//                            if task.state == .failed {
-                                task.state = .wait
+//                    device.state = .none
+//                    device.steps.forEach({
+//                        $0.tasks.forEach({ task in
+//                            if task.state != .successful {
+//                                task.state = .none
+//                                // 检查是否有profile数据需要加锁、切换场景前置要求，需要则重试必须连带前置条件一起设置
+//                                if task.relevanceTaskModels.count > 0 {
+//                                    task.resyncRelevanceCheck().forEach({
+//                                        $0.state = .none
+//                                    })
+//                                }
 //                            }
-                        })
-                    })
+//                        })
+//                    })
+                    prepareDeviceForResync(device)
                 })
+                
 //                tableView.reloadData()
                 syncState = .inSync
                 startSync()
@@ -956,12 +1162,17 @@ class SyncDevicesViewController: UIViewController {
     
     /// 更新状态UI
     private func updateSyncStateUI() {
+        
+        let devices = self.sections.flatMap({ $0.groups.flatMap({ $0.deviceModels }) + $0.devices })
+        progressLabel.text = "\(devices.filter({ $0.state == .successful }).count)/\(devices.count)"
+        
         if syncState == .inSync {
             navigationItem.rightBarButtonItem?.title = "stop".localizedString
             navigationItem.rightBarButtonItem?.isEnabled = true
-            bottomView.isHidden = true
+            bottomView.isHidden = false
             tableView.contentInset = UIEdgeInsets(top: 0, left: 0, bottom: bottomView.height, right: 0)
             backBtn.isHidden = true
+            selectAllBtn.isHidden = true
         }else if syncState == .syncSuccess {
             bottomView.isHidden = true
             navigationItem.rightBarButtonItem = UIBarButtonItem()
@@ -969,6 +1180,7 @@ class SyncDevicesViewController: UIViewController {
         }else if syncState == .syncFailure{
             navigationItem.rightBarButtonItem?.title = "re_sync".localizedString
             bottomView.isHidden = false
+            selectAllBtn.isHidden = false
             backBtn.isHidden = false
             var failedModels: [SyncDevicesModel] = []
             
@@ -1075,6 +1287,24 @@ class SyncDevicesViewController: UIViewController {
                     
                 }else if let taskModel = model as? SyncDeviceStepTaskModel {
                     messageHandles = taskModel.operationType.messageHandles
+                    // 设置白天、晚上数据时记录下当前运行的配置，设置完成后恢复对应配置
+                    if case .configuration(let node, let type) = taskModel.operationType, node.capabilities.contains(.lightSensorConditionRecall), case .profile(let profiletType) = type {
+                        if let vendorModel = node.sunricherVendorModel {
+                            switch profiletType {
+                            case .profileToggleTriggerConditionLuxLock: // 加锁
+                                node.daylightRecallConditionId = nil
+                                messageHandles.insert(MeshMessageHandle(message: SunricherVendorGet(function: .daylightConditionRecallGet), model: vendorModel), at: 0)
+                            case .profileToggleTriggerConditionLuxUnLock: // 解锁
+                                if let index = node.daylightRecallConditionId {
+                                    messageHandles.insert(MeshMessageHandle(message: SunricherVendorSet(function: .daylightConditionRecall(index: index)), model: vendorModel), at: 0)
+                                }
+                            default:
+                                break
+                            }
+                        }
+                    }
+                    
+                    
                     taskModel.state = .inSettings
                     
                     if self.showProressStepModel == taskModel.parentStepModel {
@@ -1117,7 +1347,7 @@ class SyncDevicesViewController: UIViewController {
                     self.tableView.reloadData()
                 }
                 
-                MeshProxyMessageCommand.shared.addMessage(messageHandles: messageHandles, ackMessageTimeout: 10, progressBack: nil, successfulBack: { handle, statusMessage in
+                MeshProxyMessageCommand.shared.addMessage(messageHandles: messageHandles, ackMessageTimeout: 15, progressBack: nil, successfulBack: { handle, statusMessage in
                     // 判断如果是设备初始化消息，则需要再初始化完成后完成基本配置
                     if statusMessage is ConfigCompositionDataStatus || statusMessage is ConfigAppKeyStatus {
                         if let address = handle.address ?? handle.model?.parentElement?.unicastAddress, let node = MeshNetworkManager.instance.meshNetwork?.node(withAddress: address), node.isInitialize {
@@ -1127,25 +1357,80 @@ class SyncDevicesViewController: UIViewController {
                         if let address = handle.address ?? handle.model?.parentElement?.unicastAddress, let node = MeshNetworkManager.instance.meshNetwork?.node(withAddress: address) {
                             node.updateNodeStatus(message: statusMessage, source: address)
                         }
+                    }else if let vendorStatusMessage = statusMessage as? SunricherVendorStatus {
+                        if vendorStatusMessage.status.code == .dimmerPowerCalibrate {
+                            if vendorStatusMessage.status.errorCode == 2 { // 功率校准异常
+                                if let address = handle.address ?? handle.model?.parentElement?.unicastAddress, let node = MeshNetworkManager.instance.meshNetwork?.node(withAddress: address) {
+                                    if case .dimmerPowerCalibrateError(let maxPower) = vendorStatusMessage.status.parameters {
+                                        node.powerCalibrateError = .powerExceed(maxPower: Int(maxPower / 10))
+                                    }else {
+                                        node.powerCalibrateError = .powerExceed(maxPower: 300)
+                                    }
+                                }
+                            }
+                        }else if vendorStatusMessage.status.code == .daylightLuxTriggerLock { // lux触发场景锁定/解锁
+                            if let address = handle.address ?? handle.model?.parentElement?.unicastAddress, let node = MeshNetworkManager.instance.meshNetwork?.node(withAddress: address) {
+                                if let vendorSet = handle.message as? SunricherVendorSet, case .daylightLuxTriggerLock(let delay) = vendorSet.function {
+                                    if delay > 0 {
+                                        if !self.luxTriggerLockDevices.contains(node) {
+                                            self.luxTriggerLockDevices.append(node)
+                                        }
+                                    }else {
+                                        if let index = self.luxTriggerLockDevices.firstIndex(of: node) {
+                                            self.luxTriggerLockDevices.remove(at: index)
+                                        }
+                                    }
+                                }
+                            }
+                        }else if handle.message is SunricherVendorGet, case .daylightConditionRecall(let index) = vendorStatusMessage.status.parameters, index >= 0 { // 记录当前运行的白天/黑夜条件配置
+                            if let address = handle.address ?? handle.model?.parentElement?.unicastAddress, let node = MeshNetworkManager.instance.meshNetwork?.node(withAddress: address) {
+                                node.daylightRecallConditionId = UInt8(index)
+                            }
+                        }
                     }
-                }, failedBack: nil) {[weak self] resultMessageHandles in
-
+                }, failedBack: { handle in
+                    if let vendorSetMessage = handle.message as? SunricherVendorSet, case .dimmerPowerCalibrate = vendorSetMessage.function { // 功率校准超时
+                        if let address = handle.address ?? handle.model?.parentElement?.unicastAddress, let node = MeshNetworkManager.instance.meshNetwork?.node(withAddress: address) {
+                            node.powerCalibrateError = .timeout
+                        }
+                    }
+                }) {[weak self] resultMessageHandles in
+                    guard let self = self else { return }
                     resultMessageHandles.forEach { handle in
                         if let address = handle.address ?? handle.model?.parentElement?.unicastAddress, let node = MeshNetworkManager.instance.meshNetwork?.node(withAddress: address) {
                             node.updateData(message: handle.message, isSuccess: handle.isSuccessful)
+                            // 清空同步缓存状态
+                            node.clearSyncStateCache()
+//                            if !self.syncNodes.contains(node) {
+//                                self.syncNodes.append(node)
+//                            }
                         }
                     }
                     
-//                    let resultSuccessful = !resultMessageHandles.contains(where: { !$0.isSuccessful })
+                    let resultSuccessful = !resultMessageHandles.contains(where: { !$0.isSuccessful })
                     let operationSuccessful = ((model as? SyncDevicesModel)?.operationType?.isSuccessful ?? (model as? SyncDeviceStepTaskModel)?.operationType.isSuccessful) ?? false
-                    if operationSuccessful {
+                    if resultSuccessful && operationSuccessful {
                         model.state = .successful
+                        
+                        if self.deviceBlinkMode != .none {
+                            let deviceModel: SyncDevicesModel? =
+                            (model as? SyncDevicesModel)
+                            ?? (model as? SyncDeviceStepTaskModel)?.parentStepModel?.parentDeviceModel
+                            // 设备全部成功判断
+                            if let deviceModel = deviceModel,
+                               let node = MeshNetworkManager.instance.meshNetwork?.node(withAddress: deviceModel.address),
+                                deviceModel.state == .successful {
+                                // 发送设备闪烁命令
+                                node.sendHandleCompleteIdentify(deviceBlinkMode: self.deviceBlinkMode)
+                            }
+                        }
+                        
                     }else {
                         model.state = .failed
                         (model as? SyncDevicesModel)?.failedCount += 1
                         (model as? SyncDeviceStepTaskModel)?.failedCount += 1
                     }
-                    self?.updateCell(model: model)
+                    self.updateCell(model: model)
                     semaphore.signal()
                 }
                 semaphore.wait()
@@ -1156,6 +1441,8 @@ class SyncDevicesViewController: UIViewController {
                             progressView.stepModel = model
                         }
                     }
+                    let allDevices = self.sections.flatMap({ $0.groups.flatMap({ $0.deviceModels }) + $0.devices })
+                    self.progressLabel.text = "\(allDevices.filter({ $0.state == .successful }).count)/\(allDevices.count)"
                 }
             }
 //            _ = MeshNetworkManager.instance.save()
@@ -1227,6 +1514,31 @@ class SyncDevicesViewController: UIViewController {
       
     }
     
+    /// 设备重同步前，清理当前轮次残留状态（仅保留成功任务）
+    private func prepareDeviceForResync(_ device: SyncDevicesModel) {
+        device.isFineshed = false
+        device.isSelected = false
+        
+        // 直接操作设备（无步骤）
+        if device.steps.isEmpty {
+            if device.state != .successful {
+                device.state = .none
+            }
+            return
+        }
+        
+        // 按步骤操作设备：将非成功任务统一重置为 none，避免 wait/failed 混用导致错误聚合
+        device.steps.forEach { step in
+            step.isFineshed = false
+            step.tasks.forEach { task in
+                task.isFineshed = false
+                if task.state != .successful {
+                    task.state = .none
+                }
+            }
+        }
+    }
+    
     /// 获取下一个需要处理的model
     private func getNextHandleModel() -> SyncCellModel? {
         
@@ -1247,6 +1559,9 @@ class SyncDevicesViewController: UIViewController {
                         continue
                     }
                     if let model = step.tasks.first(where: { $0.state == .none || $0.state == .wait }) {
+                        if model.relevanceTaskModels.contains(where: { $0.state == .failed }) {
+                            continue
+                        }
                         return model
                     }
                 }
@@ -1254,7 +1569,7 @@ class SyncDevicesViewController: UIViewController {
         }
         return nil
     }
-    
+        
     private func updateCell(model: SyncCellModel) {
         
         
@@ -1332,6 +1647,13 @@ class SyncDevicesViewController: UIViewController {
         bottomView.snp.makeConstraints { make in
             make.left.right.bottom.equalToSuperview()
             make.height.equalTo(SCRYFrom(56) + (isIPad ? 0 : kSafeAreaBottomHeight))
+        }
+        
+        progressLabel = UILabel(text: "", textColor: TextBlack_Color, fontSize: 12)
+        bottomView.addSubview(progressLabel)
+        progressLabel.snp.makeConstraints { make in
+            make.left.equalTo(SCRXFrom(18))
+            make.top.equalTo(SCRYFrom(25))
         }
         
         selectAllBtn = UIButton(title: "select_all".localizedString, titleSize: 12, titleWeight: .light, titleColor: TextBlack_Color, normalImageName: "device_select_un", selectedImageName: "device_select", target: self, action: #selector(selectAllBtnAction))
@@ -1461,6 +1783,12 @@ extension SyncDevicesViewController: UITableViewDataSource, UITableViewDelegate 
             }
             SyncDevicesProgressView.show(stepModel: stepModel) { [weak self] task in
                 task.state = .none
+                // 检查是否有profile数据需要加锁、切换场景前置要求，需要则重试必须连带前置条件一起设置
+                if task.relevanceTaskModels.count > 0 {
+                    task.resyncRelevanceCheck().forEach({
+                        $0.state = .wait
+                    })
+                }
                 self?.showProressStepModel = stepModel
                 self?.syncState = .inSync
                 self?.updateSyncStateUI()
@@ -1565,9 +1893,15 @@ extension SyncDevicesViewController: SyncDeviceStepViewCellDelegate {
     /// 重新同步事件回调
     func cell(_ cell: SyncDeviceStepViewCell, resyncAction model: SyncDeviceStepModel) {
         
-        model.tasks.forEach({
-            if $0.state == .failed {
-                $0.state = .none
+        model.tasks.forEach({ task in
+            if task.state == .failed {
+                task.state = .none
+                // 检查是否有profile数据需要加锁、切换场景前置要求，需要则重试必须连带前置条件一起设置
+                if task.relevanceTaskModels.count > 0 {
+                    task.resyncRelevanceCheck().forEach({
+                        $0.state = .wait
+                    })
+                }
             }
         })
         syncState = .inSync
@@ -1583,6 +1917,8 @@ extension SyncDevicesViewController {
     enum SyncType {
         /// 组（设备同步组数据） inNodes：需要进入组的设备list   outNodes：需要组退出的设备list
         case group(_ group: Group, inNodes: [Node]? = nil, outNodes: [Node]? = nil)
+        /// profile数据
+        case profile(_ datas: [(node: Node, profiles: [ProfileType])])
         /// 场景
         case scene(_ scene: Scene)
         /// 日程
@@ -1611,6 +1947,62 @@ extension SyncDevicesViewController {
         case syncSuccess
     }
     
+}
+
+private extension Node {
     
+    static var daylightRecallConditionIdKey: UInt8 = 0
+    /// 光照传感器当前激活的条件id
+    var daylightRecallConditionId: UInt8? {
+        get {
+            objc_getAssociatedObject(self, &Node.daylightRecallConditionIdKey) as? UInt8
+        }set {
+            objc_setAssociatedObject(self, &Node.daylightRecallConditionIdKey, newValue, .OBJC_ASSOCIATION_RETAIN)
+        }
+    }
+}
+
+extension Node {
+    
+    /// 发送配置完成闪烁消息
+    func sendHandleCompleteIdentify(deviceBlinkMode: DeviceBlinkMode) {
+         
+        guard let vendorModel = sunricherVendorModel, capabilities.contains(.setupBehavior) else { return }
+        
+        switch deviceBlinkMode {
+        case .none:
+            break
+        case .breathing:
+            MeshAPI.sendMessage(message: SunricherVendorSet(function: .identify(mode: .breathe(count: 1, period: 1500))), model: vendorModel)
+        case .fast:
+            MeshAPI.sendMessage(message: SunricherVendorSet(function: .identify(mode: .flash(count: 1))), model: vendorModel)
+        }
+    }
+}
+
+extension SyncDeviceStepTaskModel {
+    
+    /// 检查对应task相关联的条件task，如需重试同步时需要把前置关联的task也一起同步
+    /// - Parameter task: 重新同步的task数据
+    /// - Returns: 返回需要一起同步的关联task数据
+    func resyncRelevanceCheck() -> [SyncDeviceStepTaskModel] {
+        
+        var relevanceTaskModels: [SyncDeviceStepTaskModel] = []
+        // 检查是否有profile数据需要加锁、切换场景前置要求，需要则重试必须连带前置条件一起设置
+        if self.relevanceTaskModels.count > 0 {
+            relevanceTaskModels = self.relevanceTaskModels.filter { task in
+                if case .configuration(_, let actionType) = task.operationType, case .profile(let profileType) = actionType {
+                    switch profileType {
+                    case .profileToggleTriggerConditionLuxLock, .lightControlSwitch, .daylightSensorConditionRecall:
+                        return true
+                    default:
+                        return false
+                    }
+                }
+                return false
+            }
+        }
+        return relevanceTaskModels
+    }
     
 }

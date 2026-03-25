@@ -190,7 +190,7 @@ class DeviceBaseViewController: UIViewController, DeviceProtocol {
                 guard let self = self else { return }
                 if successNodes.contains(where: { $0.primaryUnicastAddress == self.node.primaryUnicastAddress }) {
                     self.space.deviceCount = MeshNetworkManager.instance.realNodes.count
-                    self.space.luminairesCount = MeshNetworkManager.instance.lightNodes.count
+                    self.space.luminairesCount = MeshNetworkManager.instance.realNodes.filter({ $0.deviceType == .light }).count
                     self.space.save()
                     DispatchQueue.main.asyncAfter(wallDeadline: .now() + 1) {
                         NotificationCenter.default.post(name: .init(devicesUpdateNotificationName), object: nil)

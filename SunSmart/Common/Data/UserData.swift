@@ -27,9 +27,9 @@ class UserData: Codable {
 
 extension UserData {
 
-    private static var regionKey = 1
-    private static var userNameKey = 2
-    private static var siteChangeAddressRegionsKey = 3
+    private static var regionKey: UInt8 = 0
+    private static var userNameKey: UInt8 = 0
+    private static var siteChangeAddressRegionsKey: UInt8 = 0
     
     private static let isTermsOfServiceKey = "isTermsOfService"
     private static let lastVendorIdentifier = "lastVendorIdentifier"

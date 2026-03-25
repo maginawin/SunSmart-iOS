@@ -27,6 +27,8 @@ struct FirmwareZipData {
     let test: Bool
     /// 是否需要检查版本
     let versionCheck: Bool
+    /// 设备版本vid
+    let versionIdentifier: UInt16?
 }
 
 class ZipHandler {
@@ -168,8 +170,10 @@ class ZipHandler {
         let isTest = config["test"] as? Bool ?? false
         // 是否检查固件版本
         let versionCheck = config["version_check"] as? Bool ?? true
+        // 版本vid
+        let versionIdentifier = config["feature_version"] as? UInt16
         
-        let data = FirmwareZipData(firmwareId: firmwareId, firmwareVersion: firmwareIdArray.first ?? "", coreType: coreType, imageIndex: imageIndex, compositionHash: Data(hex: hash).turnOver(), elementCount: elementCount, firmwareData: firmwareData, test: isTest, versionCheck: versionCheck)
+        let data = FirmwareZipData(firmwareId: firmwareId, firmwareVersion: firmwareIdArray.first ?? "", coreType: coreType, imageIndex: imageIndex, compositionHash: Data(hex: hash).turnOver(), elementCount: elementCount, firmwareData: firmwareData, test: isTest, versionCheck: versionCheck, versionIdentifier: versionIdentifier)
         return data
     }
 }

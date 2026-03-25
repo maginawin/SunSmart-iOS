@@ -517,47 +517,6 @@ class SitesViewController: UIViewController {
     /// 导入
     @objc private func importClick() {
         
-        
-//        guard let space = favouriteSites.first?.spaces.last else {
-//            return
-//        }
-//        guard let space = allSites.last?.spaces.first else { return }
-        
-//        DispatchQueue.global().async {
-//            MeshLibManager.manager.setMeshNetworkConnected(meshUUID: space.meshUUID, subNetworkId: space.meshNetworkId)
-//            MeshLibManager.manager.publishModelIDs = []
-//            MeshNetworkManager.instance.loadExtensionData { _ in
-//                DispatchQueue.main.async {
-//    //                let group = MeshNetworkManager.instance.groups.first!
-//    //                let vc = GroupViewController(space: space, group: group)
-//    //                let vc = GroupPathSequencePageController(group: group)
-//                    let vc = DaliMasterViewController(space: space, node: MeshNetworkManager.instance.realNodes[0])
-//                    self.present(NavigationViewController(rootViewController: vc), animated: true)
-//                }
-//            }
-//        }
-        
-//        let vc = DeviceForceResetDevicePageController()
-////        let vc = DeviceMeshNetworkResetController()
-//        if isIPad {
-//            vc.preferredContentSize = iPadStandardSize
-//        }
-//        self.present(NavigationViewController(rootViewController: vc), animated: true)
-//        guard let site = favouriteSites.first, let gateway = GatewayModel.load(siteId: site.id).last else {
-//            return
-//        }
-//        let gatewaySpaceDatas: [GatewaySpaceData] = site.spaces.filter({ ($0.permission == .owner || $0.permission == .editor) && $0.state == .normal }).compactMap({ space in
-////            if let appkey = meshNetwork.applicationKeys.first(where: { $0.boundNetworkKey.networkId.hex == space.meshNetworkId }) {
-//                return GatewaySpaceData(spaceId: space.id, spaceName: space.name, deviceCount: space.deviceCount, appKeyIndex: 1)
-////            }
-////            return nil
-//        })
-//        let vc = GatewayAssociatedSpacesController(gateway: gateway, spaces: gatewaySpaceDatas)
-//        if isIPad {
-//            vc.preferredContentSize = iPadStandardSize
-//        }
-//        self.present(NavigationViewController(rootViewController: vc), animated: true)
-        
         ImportProjectView {[weak self] mode in
             if mode == .scanQRCode {
                 self?.scanQRCode()

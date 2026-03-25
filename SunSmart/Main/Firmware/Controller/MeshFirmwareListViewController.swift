@@ -32,9 +32,9 @@ internal extension FirmwareUpdateTypeData {
         /// 失败
         case failure
     }
-    static var versionStateKey = 1
-    static var updateStateKey = 2
-    static var distributorDataKey = 3
+    static var versionStateKey: UInt8 = 0
+    static var updateStateKey: UInt8 = 0
+    static var distributorDataKey: UInt8 = 0
     
     var versionState: DeviceVersionState {
         get {

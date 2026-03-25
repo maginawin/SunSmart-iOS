@@ -374,7 +374,7 @@ class ScheduleAddView: UIView {
             make.top.equalTo(targetView.snp.bottom).offset(SCRYFrom(16))
         }
         
-        actionOnBtn = UIButton(title: "action_on".localizedString, titleSize: 16, titleWeight: .light, titleColor: RGB(39, 37, 54), target: self, action: #selector(actionBtnAction))
+        actionOnBtn = UIButton(title: "Auto/On".localizedString, titleSize: 16, titleWeight: .light, titleColor: RGB(39, 37, 54), target: self, action: #selector(actionBtnAction))
         actionOnBtn.tag = 100
         actionOnBtn.setTitleColor(.white, for: .selected)
         actionOnBtn.setTitleColor(Message_Color, for: .disabled)
@@ -385,7 +385,7 @@ class ScheduleAddView: UIView {
         actionOnBtn.snp.makeConstraints { make in
             make.left.equalTo(SCRXFrom(20))
             make.top.equalTo(actionLabel.snp.bottom).offset(SCRYFrom(8))
-            make.width.equalTo(SCRXFrom(64))
+            make.width.equalTo(SCRXFrom(80))
             make.height.equalTo(SCRYFrom(40))
         }
         
@@ -399,7 +399,8 @@ class ScheduleAddView: UIView {
         contentView.addSubview(actionOffBtn)
         actionOffBtn.snp.makeConstraints { make in
             make.left.equalTo(actionOnBtn.snp.right).offset(SCRXFrom(10))
-            make.centerY.width.height.equalTo(actionOnBtn)
+            make.centerY.height.equalTo(actionOnBtn)
+            make.width.equalTo(SCRXFrom(64))
         }
         
         actionRecallBtn = UIButton(title: "recall".localizedString, titleSize: 16, titleWeight: .light, titleColor: RGB(39, 37, 54), target: self, action: #selector(actionBtnAction))
@@ -412,7 +413,8 @@ class ScheduleAddView: UIView {
         contentView.addSubview(actionRecallBtn)
         actionRecallBtn.snp.makeConstraints { make in
             make.left.equalTo(SCRXFrom(168))
-            make.centerY.width.height.equalTo(actionOnBtn)
+            make.centerY.height.equalTo(actionOnBtn)
+            make.width.equalTo(SCRXFrom(64))
         }
         
         fadeInLabel = UILabel(text: "fade_in".localizedString, textColor: SubText_Color, fontSize: 14, fontWeight: .light)
@@ -599,7 +601,7 @@ extension ScheduleAddTargetView: UITableViewDataSource, UITableViewDelegate {
         var isSelected = false
         switch target {
         case .devices(let devices):
-            cell.titleLabel.text = "devices".localizedString
+            cell.titleLabel.text = "Devices".localizedString
             names = devices.map({ $0.name ?? "" })
             emptyStr = "select_devices".localizedString
             if case .devices = self.selectTarget {
@@ -685,11 +687,13 @@ class ScheduleTimeView: UIView {
                 return 0
             }
             // 取值范围1~12
-            // AM 1~11对应1点到11点，12点是中午12点
-            // PM 1~11对应13点到23点，12就是午夜0点
+            // AM 1~11 对应 1 点到 11 点，12 点是午夜 0 点
+            // PM 1~11 对应 13 点到 23 点，12 点是中午 12 点
             let isAM = selectRows[0] == 0
+            
+            let hour12 = selectRows[1] + 1
             // 转换24小时制
-            let hour = selectRows[1] + 1 + (isAM ? 0 : 12) % 24
+            let hour = (hour12 % 12) + (isAM ? 0 : 12)
             return hour
         }set {
             var selectRows = timePickerView.selectRows
@@ -697,8 +701,8 @@ class ScheduleTimeView: UIView {
                 return
             }
             // 0~23 % 12
-            let isAM = newValue > 0 && newValue <= 12
-            //0~23    0 12
+            let isAM = newValue < 12
+            // 转换12小时制
             var hour = newValue % 12
             if hour == 0 {
                 hour = 12

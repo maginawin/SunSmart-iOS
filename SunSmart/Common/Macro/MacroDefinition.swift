@@ -123,7 +123,8 @@ let Line_Color = RGB(243, 243, 243)    //RGB(126, 126, 126, 0.1)
 let Line_Color1 = RGB(236, 236, 236)
 /// 边框颜色
 let Border_Color = RGB(236, 236, 236)
-
+/// 输入框边框颜色
+let TextField_Border_Color = RGB(151, 151, 151, 0.3)
 /// 按钮蓝色
 let Blue_Color = RGB(0, 122, 255)
 /// 按钮红色
@@ -140,6 +141,10 @@ let AssistText_Color = RGB(148, 163, 184)
 let Yellow_Color = RGB(255, 193, 71)
 /// 紫色
 let Purple_Color = RGB(102, 103, 171)
+/// 错误红色
+let Error_Red_Color = RGB(255, 72, 49)
+/// 警告橘色
+let Orange_Color = RGB(255, 167, 44)
 
 #if Archipelago
 /// 主色
@@ -148,6 +153,8 @@ let Bottom_Done_Color = RGB(27, 20, 37)
 let Title_Done_Color = RGB(64, 79, 102)
 let Slider_Color = RGB(213, 32, 39)
 let customId: UInt8 = 0x02
+let appKey = "PQS4OFF6"
+let appSecret = "q7nh24oRJyC7P2W9"
 
 #elseif SylSmart
 
@@ -166,6 +173,8 @@ let Bottom_Done_Color = RGB(111, 180, 70)
 let Title_Done_Color = RGB(111, 180, 70)
 let Slider_Color = RGB(255, 167, 44)
 let customId: UInt8 = 0x03
+let appKey = "zqh4SXYM"
+let appSecret = "Qsv6XbvqweGuB1Kg"
 
 #else
 

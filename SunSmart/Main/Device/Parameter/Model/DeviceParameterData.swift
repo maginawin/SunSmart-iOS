@@ -57,6 +57,8 @@ class DeviceParameterData {
                 return ("absolute_sensitivity".localizedString, "absolute_sensitivity_messsage".localizedString, 0...100, "%")
             case .defalutTransitionTime:
                 return ("transition_time".localizedString, "transition_time_message".localizedString, nil, "s")
+            case .behaviorAfterSetupSuccess:
+                return ("behavior_after_setup_success".localizedString, "behavior_after_setup_success_note".localizedString, nil, "")
             }
         }
         
@@ -70,6 +72,8 @@ class DeviceParameterData {
                 return 3
             case .defalutTransitionTime:
                 return 4
+            case .behaviorAfterSetupSuccess:
+                return 5
             }
         }
         
@@ -81,6 +85,8 @@ class DeviceParameterData {
         case motionSensitivityRange
         /// 默认过渡时间
         case defalutTransitionTime
+        /// 设置参数完成状态
+        case behaviorAfterSetupSuccess
     }
 
     

@@ -1103,9 +1103,9 @@ extension DeviceResetDeviceSafeModeController {
 
 extension ProvisioningDevice {
     
-    static var resetStateKey = 20
+    static var resetStateKey: UInt8 = 0
     
-    static var versionKey = 21
+    static var versionKey: UInt8 = 0
     
     /// 设备重置状态
     enum DeviceResetState {

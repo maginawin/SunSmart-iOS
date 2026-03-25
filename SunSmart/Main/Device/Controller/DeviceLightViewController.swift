@@ -30,6 +30,8 @@ class DeviceLightViewController: UIViewController {
     private var relaySwitch: UISwitch!
     private var pwmPeriodLabel: UILabel!
     
+    private var luxLabel: UILabel?
+    
     private weak var lastMessageDelegate: MeshLibManagerMessageDelegate?
     
     let space: SpaceData
@@ -81,7 +83,23 @@ class DeviceLightViewController: UIViewController {
         relayLabel.isHidden = false
         // 获取节点转发功能是否启用
         MeshAPI.getReplyState(address: node.primaryUnicastAddress, result: nil)
-        
+//        #if DEBUG
+        if node.ambientLightSensorModel != nil {
+            luxLabel = UILabel(text: "", textColor: TextBlack_Color, fontSize: 14)
+            luxLabel?.isHidden = !node.preConfiguration.displayLux
+            view.addSubview(luxLabel!)
+            luxLabel!.snp.makeConstraints { make in
+//                if cctView.isHidden {
+//                    make.left.equalTo(brightnessView.snp.right).offset(SCRXFrom(30))
+//                }else {
+//                    make.left.equalTo(cctView.snp.right).offset(SCRXFrom(30))
+//                }
+                make.centerX.equalToSuperview()
+                make.top.equalTo(brightnessView.snp.bottom).offset(SCRYFit(25))
+//                make.centerY.equalTo(brightnessLabel)
+            }
+        }
+//        #endif
         // 读取pwm周期
 //        if let model = node.sunricherVendorModel {
 //            MeshAPI.sendMessage(message: SunricherVendorGet(function: .pwmPeriod), model: model)
@@ -100,6 +118,10 @@ class DeviceLightViewController: UIViewController {
         // 更新数据
         updateData()
         updateSliderValue()
+        
+        if node.ambientLightSensorModel != nil {
+            getNodeAmbientSensorLux()
+        }
     }
     
 //    override func viewDidDisappear(_ animated: Bool) {
@@ -119,14 +141,30 @@ class DeviceLightViewController: UIViewController {
     @objc private func getNodeState() {
         
         MeshAPI.getNodeState(address: node.primaryUnicastAddress)
+        if node.ambientLightSensorModel != nil {
+            getNodeAmbientSensorLux()
+        }
         
-        MeshLibManager.manager.refreshNodesRSSI(withWaitFor: 5, nodeScan: {[weak self] data in
+        MeshLibManager.manager.refreshNodesRSSI(withWaitFor: 10, nodeScan: {[weak self] data in
             guard let self = self else { return }
             if data.node.primaryUnicastAddress == self.node.primaryUnicastAddress {
                 self.node.rssi = data.rssi.intValue
                 MeshLibManager.manager.stopRefreshNodesRSSI()
             }
         }, finished: nil)
+    }
+    
+    /// 获取设备lux
+    private func getNodeAmbientSensorLux() {
+        guard node.ambientLightSensorModel != nil else {
+            return
+        }
+        if self.luxLabel != nil {
+            MeshAPI.getAmbientSensorValue(node: node) {[weak self] value in
+                self?.luxLabel?.text = "\(value ?? self?.node.daylightLux ?? 0)lx"
+            }
+        }
+        
     }
     
     /// 更新UI数据
@@ -223,6 +261,7 @@ class DeviceLightViewController: UIViewController {
 //        if self.presentingViewController != nil {
 //            y = StatusBarManager.statusBarFrame.height + (navigationController?.navigationBar.height ?? kNavigationHeight)
 //        }
+        let menuWidth = SCRXFrom(114)
         var items: [MenuPopView.MenuItem] = []
         if space.deviceOperates.contains(.edit) {
             items.append(.init(icon: UIImage(named: "edit"), title: "edit".localizedString, tapItemBack: {[weak self] _ in
@@ -239,11 +278,11 @@ class DeviceLightViewController: UIViewController {
             self?.information()
         }))
         #if DEBUG
-        if routeTest {
-            items.append(.init(icon: UIImage(named: "menu_information"), title: "Route", hideAnimation: false, tapItemBack: {[weak self] _ in
-                self?.readRoute()
-            }))
-        }
+//        if routeTest {
+//            items.append(.init(icon: UIImage(named: "menu_information"), title: "Route", hideAnimation: false, tapItemBack: {[weak self] _ in
+//                self?.readRoute()
+//            }))
+//        }
         items.append(.init(icon: UIImage(named: "menu_information"), title: "Set Proxy", tapItemBack: {[weak self] _ in
             guard let self = self else { return }
             XWHUDManager.showCustomHUD(withMessage: nil, view: self.view)
@@ -258,6 +297,21 @@ class DeviceLightViewController: UIViewController {
                 
             }
         }))
+        items.append(.init(icon: UIImage(named: "menu_information"), title: "identify".localizedString, tapItemBack: {[weak self] _ in
+            guard let self = self, let vendorModel = self.node.sunricherVendorModel else { return }
+            MeshAPI.sendMessage(message: SunricherVendorSet(function: .identify(mode: .breathe(count: 1, period: 1500))), model: vendorModel)
+//            let appkey = MeshNetworkManager.instance.meshNetwork?.applicationKeys.first
+//            try? MeshNetworkManager.instance.send(AttentionSet(attentionTimer: 5), to: MeshAddress(self.node.primaryUnicastAddress), using:  MeshNetworkManager.instance.currentApplicationKey)
+            
+//            DispatchQueue.main.asyncAfter(wallDeadline: .now() + 0.5) {
+//                try? MeshNetworkManager.instance.send(AttentionSet(attentionTimer: 5), to: MeshAddress(87), using: appkey!)
+//            }
+//            87
+        }))
+        items.append(.init(icon: UIImage(named: "menu_information"), title: "Reboot", tapItemBack: {[weak self] _ in
+            guard let self = self, let vendorModel = self.node.sunricherVendorModel else { return }
+            MeshAPI.sendMessage(message: SunricherVendorSet(function: .deviceRestart), model: vendorModel)
+        }))
         #endif
 //        #if DEBUG
 //        items.append(.init(icon: UIImage(named: "menu_edit"), title: "pwm_period".localizedString, hideAnimation: false, tapItemBack: {[weak self] _ in
@@ -268,15 +322,12 @@ class DeviceLightViewController: UIViewController {
 //            self?.test()
 //        }))
 //        #endif
-//        if let group = self.node.group {
-//            let profileType = group.info.profile.type
-//            if profileType == .occupancy_daylight || profileType == .occupancy || profileType == .vacancy_daylight || profileType == .vacancy || profileType == .proximityLighting {
-//                items.append(.init(icon: UIImage(named: "settings"), title: "settings".localizedString, tapItemBack: {[weak self] _ in
-//                    
-//                }))
-//            }
-//        }
-        
+        if self.node.ambientLightSensorModel != nil {
+            items.append(.init(icon: UIImage(named: "menu_information"), title: "display_lux".localizedString, tapItemBack: {[weak self] _ in
+                self?.displayLux()
+            }))
+        }
+     
         items.append(.init(icon: UIImage(named: "menu_refresh"), title: "refresh".localizedString, tapItemBack: {[weak self] _ in
             self?.refresh()
         }))
@@ -287,7 +338,7 @@ class DeviceLightViewController: UIViewController {
         let touchCenterY = view.safeAreaInsets.top - 10
 //        SCREEN_HEIGHT - view.height + view.safeAreaInsets.top - 15
         let windowPoint = view.convert(CGPoint(x: touchCenterX, y: touchCenterY), to: UIApplication.shared.keyWindow())
-        MenuPopView.show(items: items, anchorPoint: windowPoint, menuWidth: SCRXFrom(114))
+        MenuPopView.show(items: items, anchorPoint: windowPoint, menuWidth: menuWidth) // SCRXFrom(114)
         
 //        MenuPopView.show(items: items, anchorPoint: CGPoint(x: view.width - SCRXFrom(17) - 15, y: y), menuWidth: MenuPopView.defalutMenuWidth + SCRXFrom(10))
     }
@@ -375,29 +426,17 @@ class DeviceLightViewController: UIViewController {
         }
     }
     
-    /// 设置pwm频率
-    private func setPwmFrequency() {
-        let pwmPeriod = node.pwmFrequency
-        SRAlertView(title: "set_pwm_period".localizedString, inputText: pwmPeriod != nil ? "\(pwmPeriod!)" : nil, inputFieldStyle: .init(placeholder: "0-65535", keyboardType: .numberPad), actions: [.cancelAction, SRAlertAction(title: "confirm".localizedString, style: .default)], textValueChangedBack: nil) {[weak self] text in
+    
+    private func syncDevice() {
+        let vc = SyncDevicesViewController(type: .devices([node]))
+        vc.syncSuccessCallback = {[weak self] _ in
             guard let self = self else { return }
-            guard let value = UInt16(text) else {
-                XWHUDManager.showTipHUD("invalid".localizedString + "!", isLineFeed: true)
-                return
+            XWHUDManager.showSuccessTipHUD("done!".localizedString)
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1) {[weak self] in
+                self?.navigationController?.popViewController(animated: true)
             }
-            if let model = self.node.sunricherVendorModel {
-                XWHUDManager.showCustomHUD(withMessage: nil, view: self.view)
-                MeshAPI.sendMessage(message: SunricherVendorSet(function: .pwmFrequency(value)), model: model) {[weak self] response in
-                    guard let self = self else { return }
-                    XWHUDManager.hideInView(with: self.view)
-                    guard let statusMessage = response as? SunricherVendorStatus, statusMessage.status.isSuccessful else {
-                        XWHUDManager.showErrorTipHUD("failed!".localizedString)
-                        return
-                    }
-                    XWHUDManager.showSuccessTipHUD("done!".localizedString)
-                    self.updateData()
-                }
-            }
-        }.show()
+        }
+        navigationController?.pushViewController(vc, animated: true)
     }
     
     /// 编辑设备
@@ -437,7 +476,7 @@ class DeviceLightViewController: UIViewController {
                 XWHUDManager.hide()
                 XWHUDManager.showSuccessTipHUD("done!".localizedString)
                 self?.space.deviceCount = MeshNetworkManager.instance.realNodes.count
-                self?.space.luminairesCount = MeshNetworkManager.instance.lightNodes.count
+                self?.space.luminairesCount = MeshNetworkManager.instance.realNodes.filter({ $0.deviceType == .light }).count
                 self?.space.save()
                 self?.node.deleteExtension()
                 DispatchQueue.main.asyncAfter(wallDeadline: .now() + 1) {
@@ -455,7 +494,7 @@ class DeviceLightViewController: UIViewController {
                     MeshNetworkManager.instance.meshNetwork?.remove(node: self.node)
 //                    _ = self.space.meshManager?.save()
                     self.space.deviceCount = MeshNetworkManager.instance.realNodes.count
-                    self.space.luminairesCount = MeshNetworkManager.instance.lightNodes.count
+                    self.space.luminairesCount = MeshNetworkManager.instance.realNodes.filter({ $0.deviceType == .light }).count
                     self.space.save()
                     XWHUDManager.showSuccessTipHUD("done!".localizedString)
                     DispatchQueue.main.asyncAfter(wallDeadline: .now() + 1) {[weak self] in
@@ -538,6 +577,23 @@ class DeviceLightViewController: UIViewController {
     private func settings() {
         
         
+        
+    }
+    
+    /// 显示/隐藏lux
+    private func displayLux() {
+        
+        let displayLux = !node.preConfiguration.displayLux
+        SRAlertView(title: "display_lux".localizedString, message: "display_lux_message".localizedString, tapBackgroundHide: true, actions: [.cancelAction,SRAlertAction(title: displayLux ? "show".localizedString : "hide".localizedString, actionHandler: {[weak self] _ in
+            guard let self = self, let meshUUID = self.node.network?.uuid.uuidString else { return }
+            
+            self.luxLabel?.isHidden = !displayLux
+            if displayLux {
+                self.getNodeAmbientSensorLux()
+            }
+            self.node.preConfiguration.displayLux = displayLux
+            self.node.preConfiguration.save(meshUUID: meshUUID, nodeAddress: self.node.primaryUnicastAddress)
+        })]).show()
         
     }
     
@@ -629,7 +685,7 @@ class DeviceLightViewController: UIViewController {
             cctView.isHidden = true
         }
         
-        if node.lightnessModel != nil {
+        if node.supportDimming {
             lightnessSlider.isHidden = false
             brightnessView.isHidden = false
             if node.temperatureModel != nil {
@@ -641,7 +697,7 @@ class DeviceLightViewController: UIViewController {
             }
         }else {
             lightnessSlider.isHidden = true
-            brightnessView.isHidden = false
+            brightnessView.isHidden = true
         }
         
     }
@@ -836,6 +892,13 @@ extension DeviceLightViewController: MeshLibManagerMessageDelegate {
             updateData()
             updateSliderValue()
         }
+    }
+    
+    /// 设备数据修改时间戳更新
+    func meshNetworkManager(_ manager: MeshNetworkManager, deviceDataUpdateTimeChange node: Node, lastUpdate: Int64) {
+//        if node.lastUpdateSyncTime != lastUpdate {
+            node.clearSyncStateCache()
+//        }
     }
     
     /// 收到消息回调

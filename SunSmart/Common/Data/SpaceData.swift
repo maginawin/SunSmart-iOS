@@ -8,6 +8,31 @@
 import Foundation
 import NordicSigMeshSDK
 
+/// 设备配置成功行为
+enum DeviceBlinkMode: Int {
+    /// 无
+    case none
+    /// 呼吸
+    case breathing
+    /// 快闪
+    case fast
+    
+    static var modes: [DeviceBlinkMode] {
+        return [.breathing, .fast, .none]
+    }
+    
+    var title: String {
+        switch self {
+        case .none:
+            return "no_blink".localizedString
+        case .breathing:
+            return "breathing_blink".localizedString
+        case .fast:
+            return "fast_blink".localizedString
+        }
+    }
+}
+
 class SpaceData: Copyable {
     
     /// 空间名称
@@ -62,7 +87,7 @@ class SpaceData: Copyable {
     
     /// 是否提交到云端
 //    var uploadCloud: Bool = false
-    /// 最近上传到云端的时间
+    /// 最近上传到云端/同步云端数据的时间
     var lastUploadCloudTimestamp: Int64?
     
     /// 是否提交到云端
@@ -154,6 +179,8 @@ class SpaceData: Copyable {
     
     /// 是否显示设备前缀（默认true）  true：【group name - device name】 false：device name
     var displayDeviceNamePrefix: Bool = true
+    /// 设备配置成功行为
+    var deviceBlinkMode: DeviceBlinkMode = .none
     
     /// 关联的网关id
     var relevanceGatewayId: String?
@@ -247,6 +274,11 @@ class SpaceData: Copyable {
         self.meshNetworkId = meshNetworkId
     }
     
+    func clearStoredPassword() {
+        authorizationPassword = nil
+        _ = Keychain.removeSpacePassword(siteId: siteId, spaceId: id)
+    }
+    
     func copy() -> Self {
         let space = SpaceData(name: self.name, id: self.id, siteId: self.siteId, imageId: self.imageId, create: self.create, lastUpdate: self.lastUpdate, isFavourite: self.isFavourite, permission: self.permission, sourceType: self.sourceType, meshUUID: self.meshUUID, meshNetworkId: self.meshNetworkId)
         space.deviceCount = self.deviceCount
@@ -255,6 +287,8 @@ class SpaceData: Copyable {
         space.groupCount = self.groupCount
         space.sceneCount = self.sceneCount
         space.scheheduleCount = self.scheheduleCount
+        space.displayDeviceNamePrefix = self.displayDeviceNamePrefix
+        space.deviceBlinkMode = self.deviceBlinkMode
         return space as! Self
     }
     

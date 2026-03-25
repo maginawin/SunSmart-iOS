@@ -8,8 +8,18 @@
 import UIKit
 import NordicSigMeshSDK
 
-class ProfileSettingsViewController: UIViewController {
+class ProfileSettingsViewController: UIViewController, KeyboardScrollable {
 
+    /// 自动化调光类型
+    enum AutomationPhasesType {
+        /// 默认
+        case `default`
+        /// 白天
+        case day
+        /// 晚上
+        case night
+    }
+    
     struct TimeData {
         // 每个时间单元
         struct TimeItem {
@@ -38,6 +48,12 @@ class ProfileSettingsViewController: UIViewController {
     /// 邻近照明
     private var proximityLightingStepView: ProfileProximityLightingStepView?
     private var proximityLightingNumberView: ProfileProximityLightingNumberView?
+    /// 晚上
+    private var nightPhasesView: ProfileTriggerConditionPhasesView?
+    /// 白天
+    private var dayPhasesView: ProfileTriggerConditionPhasesView?
+    /// 晚上/白天照度阈值
+    private var nightDayIlluminanceView: ProfileNightDayIlluminanceThresholdView?
     
     private let contentMargin: CGFloat = isIPad ? SCRXFrom(20) : SCRXFrom(16)
     
@@ -49,18 +65,28 @@ class ProfileSettingsViewController: UIViewController {
         .init(type: .vacancy),
         .init(type: .daylight),
         .init(type: .manualControl),
-        .init(type: .proximityLighting)
+        .init(type: .proximityLighting),
+        .init(type: .proximityLightingWithPhotocell)
     ]
     /// 选择的配置数据
     private var selectProfile: Profile!
     /// 初始的配置数据（判断是否编辑）
-    private var initProfile: Profile?
+    private var initProfile: Profile!
+    /// 白天的lux条件
+//    private var dayStartsBelowLux: Int?
+    /// 晚上的lux条件
+//    private var nightStartsBelowLux: Int?
+    
     /// 使用配置的group
     let group: Group?
     /// 是否可编辑
     var editable: Bool = true
     /// 保存事件回调
     var saveActionCallback: ((Profile)->Void)?
+
+    var keyboardScrollView: UIScrollView {
+        return self.scrollView
+    }
     
     
     init(group: Group? = nil, profile: Profile) {
@@ -71,6 +97,10 @@ class ProfileSettingsViewController: UIViewController {
         if let index = profiles.firstIndex(where: { $0.type == selectProfile.type }) {
             self.profiles.replaceSubrange(index...index, with: [selectProfile])
         }
+//        if profile.type == .proximityLightingWithPhotocell {
+//            self.nightStartsBelowLux = profile.nightData?.startsBelowLux
+//            self.dayStartsBelowLux = profile.dayData?.startsBelowLux
+//        }
     }
     
     required init?(coder: NSCoder) {
@@ -96,6 +126,11 @@ class ProfileSettingsViewController: UIViewController {
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
         (navigationController as? NavigationViewController)?.navigationDelegate = self
+        
+        if selectProfile.type == .proximityLightingWithPhotocell {
+            updateNightDayIlluminanceThresholdDeviceDetail()
+        }
+        registerForKeyboardNotifications()
     }
     
     override func viewDidAppear(_ animated: Bool) {
@@ -110,6 +145,8 @@ class ProfileSettingsViewController: UIViewController {
         super.viewWillDisappear(animated)
         
         (navigationController as? NavigationViewController)?.navigationDelegate = nil
+        
+        unregisterFromKeyboardNotifications()
     }
 
     private func exitAction() {
@@ -124,6 +161,93 @@ class ProfileSettingsViewController: UIViewController {
     }
     
     @objc private func saveAction() {
+        if selectProfile.type == .proximityLightingWithPhotocell {
+            guard let nightStartsBelowLux = nightDayIlluminanceView?.nightStartsBelowLux else {
+                nightDayIlluminanceView?.updateNightStartsBelowLuxTip(tipMessage: "\("night".localizedString)  \("threshold_is_required".localizedString)")
+                scrollView.setContentOffset(CGPoint(x: 0, y: nightPhasesView?.y ?? 0), animated: true)
+                return
+            }
+            guard let dayStartsAboveLux = nightDayIlluminanceView?.dayStartsAboveLux else {
+                nightDayIlluminanceView?.updateDayStartsAboveLuxTip(tipMessage: "\("day".localizedString)  \("threshold_is_required".localizedString)")
+                scrollView.setContentOffset(CGPoint(x: 0, y: dayPhasesView?.y ?? 0), animated: true)
+                return
+            }
+            
+            // lux必须小于5000
+            let luxRange: ClosedRange<Int> = 0...5000
+            
+            guard luxRange.contains(nightStartsBelowLux) else {
+                nightDayIlluminanceView?.updateNightStartsBelowLuxTip(tipMessage: "\("limit_range".localizedString) \(luxRange.lowerBound)~\(luxRange.upperBound)lux")
+                scrollView.setContentOffset(CGPoint(x: 0, y: nightDayIlluminanceView?.y ?? 0), animated: true)
+                return
+            }
+            guard luxRange.contains(dayStartsAboveLux) else {
+                nightDayIlluminanceView?.updateDayStartsAboveLuxTip(tipMessage: "\("limit_range".localizedString) \(luxRange.lowerBound)~\(luxRange.upperBound)lux")
+                scrollView.setContentOffset(CGPoint(x: 0, y: nightDayIlluminanceView?.y ?? 0), animated: true)
+                return
+            }
+            
+            // 晚上必须小于白天lux
+            guard nightStartsBelowLux < dayStartsAboveLux else {
+                nightDayIlluminanceView?.updateNightStartsBelowLuxTip(tipMessage: "profile_night_startsbelow_less_day".localizedString)
+                nightDayIlluminanceView?.updateDayStartsAboveLuxTip(tipMessage: "profile_night_startsbelow_greater_day".localizedString)
+                scrollView.setContentOffset(CGPoint(x: 0, y: nightDayIlluminanceView?.y ?? 0), animated: true)
+                return
+            }
+            // 白天lux-晚上lux必须大于等于5
+            guard dayStartsAboveLux - nightStartsBelowLux >= 5 else {
+                nightDayIlluminanceView?.updateNightStartsBelowLuxTip(tipMessage: "profile_night_startsbelow_less_day_threshold".localizedString)
+                nightDayIlluminanceView?.updateDayStartsAboveLuxTip(tipMessage: "profile_night_startsbelow_greater_day_threshold".localizedString)
+                scrollView.setContentOffset(CGPoint(x: 0, y: nightDayIlluminanceView?.y ?? 0), animated: true)
+                return
+            }
+            
+            selectProfile.dayData?.startsBelowLux = UInt16(dayStartsAboveLux)
+            selectProfile.nightData?.startsBelowLux = UInt16(nightStartsBelowLux)
+            
+            // 使用最新的profile功能需要绑定对应model
+            group?.nodes.forEach { node in
+                if !node.requiredFunctionTypes.contains(.lightLCScene) {
+                    node.requiredFunctionTypes.append(.lightLCScene)
+                    node.save()
+                }
+                if let meshUUID = node.network?.uuid.uuidString {
+                    node.preConfiguration.save(meshUUID: meshUUID, nodeAddress: node.primaryUnicastAddress)
+                }
+            }
+            
+            ProfileLightSensorTemplate.delete(profileId: selectProfile.id)
+            selectProfile.lightSensorTemplates.forEach {
+                $0.save(profileId: selectProfile.id)
+            }
+        }
+        
+        if selectProfile.type != group?.info.profile.type { // 切换profile
+            let meshUUID = MeshNetworkManager.instance.meshNetwork?.uuid.uuidString
+            if selectProfile.type != .proximityLightingWithPhotocell { // 清空白天黑夜设置的设备预配置数据
+                group?.nodes.forEach({ node in
+                    node.preConfiguration.dayProfileStartsAboveLux = nil
+                    node.preConfiguration.nightProfileStartsBelowLux = nil
+                    node.preConfiguration.dayProfileLightData = nil
+                    node.preConfiguration.nightProfileLightData = nil
+                    if let meshUUID = meshUUID {
+                        node.preConfiguration.save(meshUUID: meshUUID, nodeAddress: node.primaryUnicastAddress)
+                    }
+                })
+            }
+            
+            // 清空校准设备的校准数据
+            if !selectProfile.type.daylightType {
+                let calibrationNodes = group?.nodes.filter({ $0.sensorCalibrationData?.isCalibration ?? false }) ?? []
+                calibrationNodes.forEach { node in
+                    node.preConfiguration.resetDaylightCalibration = true
+                    if let meshUUID = meshUUID {
+                        node.preConfiguration.save(meshUUID: meshUUID, nodeAddress: node.primaryUnicastAddress)
+                    }
+                }
+            }
+        }
+        
         saveActionCallback?(selectProfile)
      
         if let group = group, group.nodes.contains(where: { $0.needSync }) {
@@ -151,7 +275,7 @@ class ProfileSettingsViewController: UIViewController {
     }
     
     /// 展示level设置UI  type：level类型
-    private func showLevelSettings(type: ProfileLevelSettingsView.LevelType) {
+    private func showLevelSettings(type: ProfileLevelSettingsView.LevelType, phasesType: AutomationPhasesType = .default) {
         
         ProfileLevelSettingsView(levelType: type) {[weak self] item, value in
             if item.itemType.data.calibrated, let group = self?.group, let sensorNode = group.info.ambientLightSensorNode, sensorNode.ambientLightSensorModel != nil {
@@ -185,34 +309,81 @@ class ProfileSettingsViewController: UIViewController {
             
         } settingsCallback: {[weak self] result in
             guard let self = self else { return }
+            
+            var lightControlData = self.selectProfile.lightControlData
+            switch phasesType {
+            case .default:
+                lightControlData = self.selectProfile.lightControlData
+            case .day:
+                if let dayLightControlData = self.selectProfile.dayData?.sceneData.lightControlData {
+                    lightControlData = dayLightControlData
+                }
+            case .night:
+                if let nightLightControlData = self.selectProfile.nightData?.sceneData.lightControlData {
+                    lightControlData = nightLightControlData
+                }
+            }
+            
             switch result {
             case .highLowEndTrim(let high, let low):
-                let range: ClosedRange<Int> = low...high
-                self.selectProfile.lightData.updateLevel(lightType: .lightnessRange(low...high))
+
                 // 更新最高/最低亮度输出，判断其它数据是否超出范围
-                let data = self.selectProfile.lightData.data
-                // 判断是否是亮度配置
-                let levelConfig = self.selectProfile.type == .occupancy || self.selectProfile.type == .vacancy || self.selectProfile.type == .manualControl
-                // level 百分比数据时修改最高最低亮度输出需判断其它阶段参数是否超出输出范围
-                if levelConfig {
-                    if !range.contains(data.occupancyLevel) {
-                        self.selectProfile.lightData.updateLevel(lightType: .occupancyLevel(max(min(data.occupancyLevel, high), low)))
-                    }
-                    if !range.contains(data.vacantLevel) {
-                        self.selectProfile.lightData.updateLevel(lightType: .vacantLevel(max(min(data.vacantLevel, high), low)))
-                    }
-                    
-                    if !range.contains(data.taskLevel) {
-                        self.selectProfile.lightData.updateLevel(lightType: .taskLevel(max(min(data.taskLevel, high), low)))
-                    }
+                
+                let range: ClosedRange<Int> = low...high
+//                self.selectProfile.lightControlData.highEndTrim = high
+//                self.selectProfile.lightControlData.lowEndTrim = low
+//                lightData.updateLevel(lightType: .lightnessRange(low...high))
+                
+                // 亮度上下限共享数据，更新后更新各配置缓存
+                var lightControlDatas: [Profile.LightControlData] = [selectProfile.lightControlData]
+                if let day = selectProfile.dayData {
+                    lightControlDatas.append(day.sceneData.lightControlData)
+                }
+                if let night = selectProfile.nightData {
+                    lightControlDatas.append(night.sceneData.lightControlData)
                 }
                 
-                if data.autoMinLevelEnabled, !range.contains(data.autoMinLevel) {
-                    self.selectProfile.lightData.updateLevel(lightType: .autoMinValue(max(min(data.autoMinLevel, high), low), enabled: data.autoMinLevelEnabled))
-                }
+                lightControlDatas.forEach({
+                    $0.highEndTrim = high
+                    $0.lowEndTrim = low
+                })
+                
+                // 判断是否是亮度配置
+                let levelConfig = !(self.selectProfile.type == .occupancy_daylight || self.selectProfile.type == .vacancy_daylight || self.selectProfile.type == .daylight)
+        
+                    lightControlDatas.forEach({ data in
+                        // level 百分比数据时修改最高最低亮度输出需判断其它阶段参数是否超出输出范围
+                        if levelConfig {
+                            if !range.contains(data.occupancyLevel) {
+                                data.occupancyLevel = max(min(data.occupancyLevel, high), low)
+                            }
+                            if !range.contains(data.vacantLevel) {
+                                data.vacantLevel = max(min(data.vacantLevel, high), low)
+                            }
+                            if !range.contains(data.taskLevel) {
+                                data.taskLevel = max(min(data.taskLevel, high), low)
+                            }
+                            // 允许待机时0% off的情况
+                            if data.standbyLevel > 0 && !range.contains(data.standbyLevel) {
+                                data.standbyLevel = max(min(data.standbyLevel, high), low)
+                            }
+                        }else {
+                            if !range.contains(data.autoMinLevel) {
+                                data.autoMinLevel = max(min(data.autoMinLevel, high), low)
+                            }
+                        }
+                    })
+                
+                
+//                if data.autoMinLevelEnabled, !range.contains(data.autoMinLevel) {
+//                    lightData.updateLevel(lightType: .autoMinValue(max(min(data.autoMinLevel, high), low), enabled: data.autoMinLevelEnabled))
+//                }
+                
+               
                 switch self.selectProfile.powerUpState {
                 case .definedLightLevel(let level):
-                    if !range.contains(data.occupancyLevel) { // 上电亮度不在亮度范围内
+//                    if !range.contains(lightControlData.occupancyLevel) {
+                    if !range.contains(Int(level)) { // 上电亮度不在亮度范围内
                         let value = max(min(Int(level), high), low)
                         self.selectProfile.powerUpState = .definedLightLevel(UInt8(value))
                         self.powerUpBehaviorView.powerState = self.selectProfile.powerUpState
@@ -221,32 +392,72 @@ class ProfileSettingsViewController: UIViewController {
                 default:
                     self.powerUpBehaviorView.lightnessSliderView.slider.limitRange = range
                 }
-                    
+                
+                self.sphasesView.profile = self.selectProfile
+                if let dayData = self.selectProfile.dayData {
+                    self.dayPhasesView?.updateData(profile: self.selectProfile, conditionData: dayData)
+                }
+                if let nightData = self.selectProfile.nightData {
+                    self.nightPhasesView?.updateData(profile: self.selectProfile, conditionData: nightData)
+                }
+                
+                return
             case .occupancyAndVacantLevel(let occupanyLevel, let vacantLevel):
-                self.selectProfile.lightData.updateLevel(lightType: .occupancyLevel(occupanyLevel))
-                self.selectProfile.lightData.updateLevel(lightType: .vacantLevel(vacantLevel))
+                lightControlData.occupancyLevel = occupanyLevel
+                lightControlData.vacantLevel = vacantLevel
             case .occupancyAndVacantLux(let occupanyLux, let vacantLux):
-                self.selectProfile.lightData.updateLevel(lightType: .occupancyLevel(occupanyLux))
-                self.selectProfile.lightData.updateLevel(lightType: .vacantLevel(vacantLux))
+                lightControlData.occupancyLevel = occupanyLux
+                lightControlData.vacantLevel = vacantLux
             case .taskLevel(let level):
-                self.selectProfile.lightData.updateLevel(lightType: .taskLevel(level))
+                lightControlData.taskLevel = level
             case .taskLux(let lux):
-                self.selectProfile.lightData.updateLevel(lightType: .taskLevel(lux))
+                lightControlData.taskLevel = lux
             case .autoMinValue(let level, let enabled):
-                self.selectProfile.lightData.updateLevel(lightType: .autoMinValue(enabled ? level : 0, enabled: enabled))
+                lightControlData.autoMinLevel = enabled ? level : 255
+//                lightData.updateLevel(lightType: .autoMinValue(enabled ? level : 0, enabled: enabled))
+            case .standbyLevel(let level):
+                lightControlData.standbyLevel = level
+//                lightData.updateLevel(lightType: .standbyLevel(level))
             }
             
-            self.sphasesView.profile = self.selectProfile
+            
+            
+            switch phasesType {
+            case .default:
+                self.sphasesView.profile = self.selectProfile
+            case .day:
+                if let dayData = self.selectProfile.dayData {
+                    self.dayPhasesView?.updateData(profile: self.selectProfile, conditionData: dayData)
+                }
+            case .night:
+                if let nightData = self.selectProfile.nightData {
+                    self.nightPhasesView?.updateData(profile: self.selectProfile, conditionData: nightData)
+                }
+            }
+            
             
         }.show()
         
     }
     
-    private func showTimeSettings(type: Profile.LightData.TimePickerData.TimeType) {
+    private func showTimeSettings(type: Profile.LightData.TimePickerData.TimeType, phasesType: AutomationPhasesType = .default) {
         
         guard let timeData = Profile.LightData.TimePickerData.pickerTimes[type] else { return }
         
-        let data = selectProfile.lightData.data
+        var data = selectProfile.lightControlData
+        switch phasesType {
+        case .default:
+            data = selectProfile.lightControlData
+        case .day:
+            if let day = selectProfile.dayData {
+                data = day.sceneData.lightControlData
+            }
+        case .night:
+            if let night = selectProfile.nightData {
+                data = night.sceneData.lightControlData
+            }
+        }
+//        let data = selectProfile.lightData.data
         var selectValue = 0
         switch type {
         case .t1:
@@ -266,20 +477,44 @@ class ProfileSettingsViewController: UIViewController {
         ProfilePhasesTimePickerView(title: timeData.title, name: timeData.type, times: timeData.items.map({ $0.name }), defalutSelectRow: defalutSelectRow) { [weak self] index in
             guard let self = self else { return }
             let second = timeData.items[index].second
-            let lightData = self.selectProfile.lightData
+            var lightControlData = self.selectProfile.lightControlData
+            switch phasesType {
+            case .default:
+                lightControlData = self.selectProfile.lightControlData
+            case .day:
+                if let dayLightControlData = self.selectProfile.dayData?.sceneData.lightControlData {
+                    lightControlData = dayLightControlData
+                }
+            case .night:
+                if let nightLightControlData = self.selectProfile.nightData?.sceneData.lightControlData {
+                    lightControlData = nightLightControlData
+                }
+            }
             switch type {
             case .t1:
-                lightData.updateTime(time: .t1(second))
+                lightControlData.t1 = second
             case .t2:
-                lightData.updateTime(time: .t2(second))
+                lightControlData.t2 = second
             case .t3:
-                lightData.updateTime(time: .t3(second))
+                lightControlData.t3 = second
             case .t4:
-                lightData.updateTime(time: .t4(second))
+                lightControlData.t4 = second
             case .t5:
-                lightData.updateTime(time: .t5(second))
+                lightControlData.t5 = second
             }
-            self.sphasesView.profile = self.selectProfile
+            switch phasesType {
+            case .default:
+                self.sphasesView.profile = self.selectProfile
+            case .day:
+                if let dayData = self.selectProfile.dayData {
+                    self.dayPhasesView?.updateData(profile: self.selectProfile, conditionData: dayData)
+                }
+            case .night:
+                if let nightData = self.selectProfile.nightData {
+                    self.nightPhasesView?.updateData(profile: self.selectProfile, conditionData: nightData)
+                }
+            }
+            
         }.show()
         
     }
@@ -288,13 +523,14 @@ class ProfileSettingsViewController: UIViewController {
         
         self.headerView.profileBtn.setTitle(selectProfile.type.instruction.name, for: .normal)
         
+        self.sphasesView.isHidden = false
         self.sphasesView.snp.updateConstraints { make in
             make.height.greaterThanOrEqualTo(SCRYFrom(self.selectProfile.lightData.times.count > 0 ? 344 : 264))
         }
         self.sphasesView.profile = self.selectProfile
         self.timeoutView.second = self.selectProfile.manualOverrideTimeout
         
-        let data = self.selectProfile.lightData.data
+        let data = self.selectProfile.lightControlData
         self.powerUpBehaviorView.lightnessSliderView.slider.limitRange = data.lowEndTrim...data.highEndTrim
         self.powerUpBehaviorView.powerState = self.selectProfile.powerUpState
         self.powerUpBehaviorView.powerOnCct = self.selectProfile.powerUpCct
@@ -303,11 +539,22 @@ class ProfileSettingsViewController: UIViewController {
         self.adjustSpeedView.adjustSpeed = self.selectProfile.adjustSpeed
         
         if selectProfile.type == .proximityLighting {
+            dayPhasesView?.isHidden = true
+            nightPhasesView?.isHidden = true
+            nightDayIlluminanceView?.isHidden = true
             if proximityLightingStepView == nil || proximityLightingNumberView == nil {
                 setupProximityLightingUI()
             }
+
             proximityLightingNumberView?.number = self.selectProfile.proximityLightingNumber
             proximityLightingStepView?.isHidden = false
+            proximityLightingStepView?.message = "profile_predictive_lighting_message".localizedString
+            proximityLightingStepView?.stepView.lineWidth = SCRXFrom(40)
+            proximityLightingStepView?.stepView.steps = [
+                .init(imageName: "proximity_lighting_step1", title: "save_profile".localizedString, textColor: TextBlack_Color),
+                .init(imageName: "proximity_lighting_step2", title: "add_devices_to_the_group".localizedString, textColor: TextBlack_Color),
+                .init(imageName: "proximity_lighting_step3", title: "set_the_path_sequence".localizedString, textColor: TextBlack_Color)
+            ]
             proximityLightingNumberView?.isHidden = false
             sphasesView.snp.remakeConstraints { make in
                 make.left.equalTo(contentMargin)
@@ -315,9 +562,51 @@ class ProfileSettingsViewController: UIViewController {
                 make.top.equalTo(proximityLightingNumberView!.snp.bottom).offset(contentMargin)
                 make.height.greaterThanOrEqualTo(SCRYFrom(selectProfile.lightData.times.count > 0 ? 344 : 264))
             }
-        }else {
+            
+        }else if selectProfile.type == .proximityLightingWithPhotocell {
+            if dayPhasesView == nil || nightPhasesView == nil || nightDayIlluminanceView == nil {
+                setupProximityLightingWithPhotocellUI()
+            }else {
+                dayPhasesView?.isHidden = false
+                nightPhasesView?.isHidden = false
+                nightDayIlluminanceView?.isHidden = false
+            }
+            proximityLightingNumberView?.number = self.selectProfile.proximityLightingNumber
+            proximityLightingStepView?.message = "profile_predictive_lighting_with_photocell_message".localizedString
+            proximityLightingStepView?.stepView.lineWidth = SCRXFrom(20)
+            proximityLightingStepView?.stepView.steps = [
+                .init(imageName: "proximity_lighting_step1", title: "save_profile".localizedString, textColor: TextBlack_Color),
+                .init(imageName: "proximity_lighting_step2", title: "add_devices_to_the_group".localizedString, textColor: TextBlack_Color),
+                .init(imageName: "proximity_lighting_step3", title: "set_the_path_sequence".localizedString, textColor: TextBlack_Color),
+                .init(imageName: "proximity_lighting_step4", title: "set_night_day_lux_threshold".localizedString, textColor: TextBlack_Color)
+            ]
+            proximityLightingStepView?.isHidden = false
+            proximityLightingNumberView?.isHidden = false
+            sphasesView.isHidden = true
+//            sphasesView.snp.remakeConstraints { make in
+//                make.left.equalTo(contentMargin)
+//                make.right.equalTo(-contentMargin)
+//                make.top.equalTo(proximityLightingNumberView!.snp.bottom).offset(contentMargin)
+//                make.height.greaterThanOrEqualTo(SCRYFrom(selectProfile.lightData.times.count > 0 ? 344 : 264))
+//            }
+        
+            if let dayData = self.selectProfile.dayData {
+                nightDayIlluminanceView?.dayStartsAboveLux = Int(dayData.startsBelowLux)
+                dayPhasesView?.updateData(profile: self.selectProfile, conditionData: dayData)
+            }
+            if let nightData = self.selectProfile.nightData {
+                nightDayIlluminanceView?.nightStartsBelowLux = Int(nightData.startsBelowLux)
+                nightPhasesView?.updateData(profile: self.selectProfile, conditionData: nightData)
+            }
+            updateNightDayIlluminanceThresholdDeviceDetail()
+            
+        } else {
             proximityLightingStepView?.isHidden = true
             proximityLightingNumberView?.isHidden = true
+            dayPhasesView?.isHidden = true
+            nightPhasesView?.isHidden = true
+            nightDayIlluminanceView?.isHidden = true
+            
             sphasesView.snp.remakeConstraints { make in
                 make.left.equalTo(contentMargin)
                 make.right.equalTo(-contentMargin)
@@ -331,6 +620,7 @@ class ProfileSettingsViewController: UIViewController {
         var showTimeout = true
         // 是否显示灵敏度
         var showSensitivity = true
+        
         if selectProfile.type == .daylight || selectProfile.type == .manualControl {
             if selectProfile.type == .manualControl {
                 showTimeout = false
@@ -341,6 +631,20 @@ class ProfileSettingsViewController: UIViewController {
         if selectProfile.type == .occupancy_daylight || selectProfile.type == .vacancy_daylight || selectProfile.type == .daylight {
             showLightAdjustSpeed = true
         }
+        
+        if showTimeout {
+            timeoutView.snp.remakeConstraints { make in
+                make.left.right.equalTo(sphasesView)
+                if let nightDayIlluminanceView = self.nightDayIlluminanceView, !nightDayIlluminanceView.isHidden {
+                    make.top.equalTo(nightDayIlluminanceView.snp.bottom).offset(contentMargin)
+                }else {
+                    make.top.equalTo(sphasesView.snp.bottom).offset(contentMargin)
+                }
+                
+                make.height.equalTo(SCRYFrom(140))
+            }
+        }
+        
        
         adjustSpeedView.isHidden = !showLightAdjustSpeed
         timeoutView.isHidden = !showTimeout
@@ -354,7 +658,11 @@ class ProfileSettingsViewController: UIViewController {
             if showTimeout {
                 make.top.equalTo(timeoutView.snp.bottom).offset(contentMargin)
             }else {
-                make.top.equalTo(sphasesView.snp.bottom).offset(contentMargin)
+                if let nightDayIlluminanceView = self.nightDayIlluminanceView, !nightDayIlluminanceView.isHidden {
+                    make.top.equalTo(nightDayIlluminanceView.snp.bottom).offset(contentMargin)
+                }else {
+                    make.top.equalTo(sphasesView.snp.bottom).offset(contentMargin)
+                }
             }
             make.height.greaterThanOrEqualTo(SCRYFrom(172))
             if !showSensitivity && !showLightAdjustSpeed {
@@ -388,16 +696,51 @@ class ProfileSettingsViewController: UIViewController {
         
     }
     
+    /// 更新设备lux与组的提示信息
+    private func updateNightDayIlluminanceThresholdDeviceDetail() {
+        guard let nightDayIlluminanceView = self.nightDayIlluminanceView else {
+            return
+        }
+        
+        guard let groupNightLux = nightDayIlluminanceView.nightStartsBelowLux, let groupDayLux = nightDayIlluminanceView.dayStartsAboveLux else {
+            nightDayIlluminanceView.updateDeviceDetailMessage(state: .none)
+            return
+        }
+        
+        if let group = self.group, group.nodes.count > 0 {
+            // 检查是否有设备与组设置的lux条件不一样
+            if group.nodes.contains(where: { node in
+                if let nightLux = node.preConfiguration.nightProfileStartsBelowLux, nightLux != groupNightLux {
+                    return true
+                }
+                if let dayLux = node.preConfiguration.dayProfileStartsAboveLux, dayLux != groupDayLux {
+                    return true
+                }
+                return false
+            }) {
+                nightDayIlluminanceView.updateDeviceDetailMessage(state: .someDifferentGroup)
+            }else {
+                nightDayIlluminanceView.updateDeviceDetailMessage(state: .allSameGroup)
+            }
+      
+        }else {
+            nightDayIlluminanceView.updateDeviceDetailMessage(state: .noDevices)
+        }
+        
+    }
+        
     private func setupUI() {
         
         scrollView = UIScrollView()
 //        scrollView.showsVerticalScrollIndicator = false
+        scrollView.enableKeyboardDismissal()
         view.addSubview(scrollView)
         scrollView.snp.makeConstraints { make in
             make.left.right.bottom.equalToSuperview()
 //            make.top.equalTo(navigationController?.navigationBar.height ?? kNavigationHeight)
             make.top.equalTo(view.safeAreaLayoutGuide)
         }
+        
         
         contentView = UIView()
         scrollView.addSubview(contentView)
@@ -481,22 +824,84 @@ class ProfileSettingsViewController: UIViewController {
     
     private func setupProximityLightingUI() {
         
-        proximityLightingStepView = ProfileProximityLightingStepView()
-        contentView.addSubview(proximityLightingStepView!)
-        proximityLightingStepView!.snp.makeConstraints { make in
-            make.left.right.equalTo(sphasesView)
-            make.top.equalTo(headerView.snp.bottom).offset(SCRYFrom(13))
+        if proximityLightingStepView == nil {
+            proximityLightingStepView = ProfileProximityLightingStepView()
+            contentView.addSubview(proximityLightingStepView!)
+            proximityLightingStepView!.snp.makeConstraints { make in
+                make.left.right.equalTo(sphasesView)
+                make.top.equalTo(headerView.snp.bottom).offset(SCRYFrom(13))
+            }
+        }
+            
+        if proximityLightingNumberView == nil {
+            proximityLightingNumberView = ProfileProximityLightingNumberView()
+            proximityLightingNumberView?.editable = self.editable
+            proximityLightingNumberView?.delegate = self
+            contentView.addSubview(proximityLightingNumberView!)
+            proximityLightingNumberView!.snp.makeConstraints { make in
+                make.left.right.equalTo(proximityLightingStepView!)
+                make.top.equalTo(proximityLightingStepView!.snp.bottom).offset(contentMargin)
+                make.height.equalTo(SCRYFrom(240))
+            }
+        }
+    }
+    
+    private func setupProximityLightingWithPhotocellUI() {
+        
+        if proximityLightingStepView == nil {
+            proximityLightingStepView = ProfileProximityLightingStepView()
+            contentView.addSubview(proximityLightingStepView!)
+            proximityLightingStepView!.snp.makeConstraints { make in
+                make.left.right.equalTo(sphasesView)
+                make.top.equalTo(headerView.snp.bottom).offset(SCRYFrom(13))
+            }
         }
         
-        proximityLightingNumberView = ProfileProximityLightingNumberView()
-        proximityLightingNumberView?.delegate = self
-        contentView.addSubview(proximityLightingNumberView!)
-        proximityLightingNumberView!.snp.makeConstraints { make in
-            make.left.right.equalTo(proximityLightingStepView!)
-            make.top.equalTo(proximityLightingStepView!.snp.bottom).offset(contentMargin)
-            make.height.equalTo(SCRYFrom(240))
+        if proximityLightingNumberView == nil {
+            proximityLightingNumberView = ProfileProximityLightingNumberView()
+            proximityLightingNumberView?.editable = self.editable
+            proximityLightingNumberView?.delegate = self
+            contentView.addSubview(proximityLightingNumberView!)
+            proximityLightingNumberView!.snp.makeConstraints { make in
+                make.left.right.equalTo(proximityLightingStepView!)
+                make.top.equalTo(proximityLightingStepView!.snp.bottom).offset(contentMargin)
+                make.height.equalTo(SCRYFrom(240))
+            }
         }
         
+        nightPhasesView = ProfileTriggerConditionPhasesView()
+        nightPhasesView!.titleLabel.text = "night".localizedString
+//        nightPhasesView!.startsBelowLabel.text = "starts_below".localizedString
+        nightPhasesView!.editable = self.editable
+        nightPhasesView!.delegate = self
+        contentView.addSubview(nightPhasesView!)
+        nightPhasesView!.snp.makeConstraints { make in
+            make.left.right.equalTo(proximityLightingNumberView!)
+            make.top.equalTo(proximityLightingNumberView!.snp.bottom).offset(contentMargin)
+            make.height.greaterThanOrEqualTo(SCRYFrom(170))
+        }
+        
+        dayPhasesView = ProfileTriggerConditionPhasesView()
+        dayPhasesView!.titleLabel.text = "day".localizedString
+//        dayPhasesView!.startsBelowLabel.text = "starts_above".localizedString
+        dayPhasesView!.editable = self.editable
+        dayPhasesView!.delegate = self
+        contentView.addSubview(dayPhasesView!)
+        dayPhasesView!.snp.makeConstraints { make in
+            make.left.right.equalTo(nightPhasesView!)
+            make.top.equalTo(nightPhasesView!.snp.bottom).offset(contentMargin)
+            make.height.greaterThanOrEqualTo(SCRYFrom(170))
+        }
+        
+        nightDayIlluminanceView = ProfileNightDayIlluminanceThresholdView()
+        nightDayIlluminanceView!.editable = self.editable
+        nightDayIlluminanceView!.delegate = self
+        contentView.addSubview(nightDayIlluminanceView!)
+        nightDayIlluminanceView!.snp.makeConstraints { make in
+            make.left.right.equalTo(dayPhasesView!)
+            make.top.equalTo(dayPhasesView!.snp.bottom).offset(contentMargin)
+            make.height.greaterThanOrEqualTo(SCRYFrom(200))
+        }
     }
 
 }
@@ -576,7 +981,7 @@ extension ProfileSettingsViewController: ProfileSettingsSphasesViewDelegate {
         guard editable else {
             return
         }
-        let data = selectProfile.lightData.data
+        let data = selectProfile.lightControlData
         showLevelSettings(type: .highLowEndTrim(high: data.highEndTrim, low: data.lowEndTrim))
     }
     
@@ -586,7 +991,7 @@ extension ProfileSettingsViewController: ProfileSettingsSphasesViewDelegate {
             return
         }
         // 判断配置类型
-        let data = selectProfile.lightData.data
+        let data = selectProfile.lightControlData
         switch selectProfile.type {
         case .occupancy_daylight, .vacancy_daylight, .daylight:
             // Occupancy sensing with daylight harvesting / Vacancy sensing with daylight harvesting / Daylight harvesting
@@ -622,7 +1027,7 @@ extension ProfileSettingsViewController: ProfileSettingsSphasesViewDelegate {
         guard editable else {
             return
         }
-        let data = selectProfile.lightData.data
+        let data = selectProfile.lightControlData
         showLevelSettings(type: .autoMinValue(level: data.autoMinLevel, inputRange: data.lowEndTrim...data.highEndTrim, enabled: data.autoMinLevelEnabled))
     }
     
@@ -632,7 +1037,7 @@ extension ProfileSettingsViewController: ProfileSettingsSphasesViewDelegate {
             return
         }
         // 判断配置类型
-        let data = selectProfile.lightData.data
+        let data = selectProfile.lightControlData
         switch selectProfile.type {
         case .occupancy_daylight, .vacancy_daylight, .daylight:
             // Occupancy sensing with daylight harvesting / Vacancy sensing with daylight harvesting / Daylight harvesting
@@ -782,6 +1187,285 @@ extension ProfileSettingsViewController: ProfileProximityLightingNumberViewDeleg
     }
     
 }
+
+extension ProfileSettingsViewController: ProfileTriggerConditionPhasesViewDelegate {
+    
+    /// 帮助
+    func phasesViewHelpAction(_ view: ProfileTriggerConditionPhasesView) {
+        
+        let vc = ProfileTextInstructionsViewController(vcTitle: "night_day_mode_description".localizedString, instructions: [ProfileTextInstructionInfo(title: "night".localizedString, content: "night_mode_description_note".localizedString), ProfileTextInstructionInfo(title: "day".localizedString, content: "day_mode_description_note".localizedString)])
+        navigationController?.pushViewController(vc, animated: true)
+    }
+    
+    /// Phases帮助
+    func phasesViewPhasesHelpAction(_ view: ProfileTriggerConditionPhasesView) {
+        let vc = MotionSensorInstructionsController(profile: selectProfile)
+        navigationController?.pushViewController(vc, animated: true)
+    }
+    
+    /// High-end/Low-end trim
+    func phasesViewHighAndLowEndTrimAction(_ view: ProfileTriggerConditionPhasesView) {
+        guard editable else {
+            return
+        }
+        let data = selectProfile.lightControlData
+        var phasesType: AutomationPhasesType = .default
+        if view == dayPhasesView {
+//            if let dayData = selectProfile.dayData {
+//                data = dayData.sceneData.lightControlData
+//            }
+            phasesType = .day
+        }else {
+//            if let nightData = selectProfile.nightData {
+//                data = nightData.sceneData.lightControlData
+//            }
+            phasesType = .night
+        }
+        
+        showLevelSettings(type: .highLowEndTrim(high: data.highEndTrim, low: data.lowEndTrim), phasesType: phasesType)
+    }
+    
+    /// Occupancy/Vacant level
+    func phasesViewOccupancyAndVacantLevelAction(_ view: ProfileTriggerConditionPhasesView) {
+     
+        guard editable else {
+            return
+        }
+        // 判断配置类型
+        var data = selectProfile.lightControlData
+        var phasesType: AutomationPhasesType = .default
+        if view == dayPhasesView {
+            if let dayData = selectProfile.dayData {
+                data = dayData.sceneData.lightControlData
+            }
+            phasesType = .day
+        }else {
+            if let nightData = selectProfile.nightData {
+                data = nightData.sceneData.lightControlData
+            }
+            phasesType = .night
+        }
+        
+        switch selectProfile.type {
+        case .occupancy_daylight, .vacancy_daylight, .daylight:
+            // Occupancy sensing with daylight harvesting / Vacancy sensing with daylight harvesting / Daylight harvesting
+            // TODO: 判断是否已校准
+            if let sensorNode = group?.info.ambientLightSensorNode, sensorNode.ambientLightSensorModel != nil {
+                    let levelAction = SRAlertAction(title: "Level", style: .default, actionHandler: {[weak self] _ in
+                        self?.showLevelSettings(type: .occupancyAndVacantLux(occupanyLux: data.occupancyLevel, vacantLux: data.vacantLevel, inputRange: data.lowEndTrim...data.highEndTrim, calibrated: true), phasesType: phasesType)
+                    })
+                    let luxAction = SRAlertAction(title: "Lux", style: .default) {[weak self] _ in
+                        self?.showLevelSettings(type: .occupancyAndVacantLux(occupanyLux: data.occupancyLevel, vacantLux: data.vacantLevel, calibrated: false), phasesType: phasesType)
+                    }
+                    SRSheetView(actions: [levelAction, luxAction]).show()
+            }else {
+                // 未校准
+                showLevelSettings(type: .occupancyAndVacantLux(occupanyLux: data.occupancyLevel, vacantLux: data.vacantLevel, calibrated: false), phasesType: phasesType)
+            }
+        default:
+            // Occupancy sensing / Vacancy sensing / Manual control
+            showLevelSettings(type: .occupancyAndVacantLevel(occupanyLevel: data.occupancyLevel, vacantLevel: data.vacantLevel, inputRange: data.lowEndTrim...data.highEndTrim), phasesType: phasesType)
+        }
+        
+    }
+    
+    /// Standby level
+    func phasesViewStandbyLevelAction(_ view: ProfileTriggerConditionPhasesView) {
+        guard editable else {
+            return
+        }
+        // 判断配置类型
+        var data = selectProfile.lightControlData
+        var phasesType: AutomationPhasesType = .default
+        if view == dayPhasesView {
+            if let dayData = selectProfile.dayData {
+                data = dayData.sceneData.lightControlData
+            }
+            phasesType = .day
+        }else {
+            if let nightData = selectProfile.nightData {
+                data = nightData.sceneData.lightControlData
+            }
+            phasesType = .night
+        }
+        showLevelSettings(type: .standbyLevel(value: data.standbyLevel, inputRange: max(1, data.lowEndTrim)...data.highEndTrim), phasesType: phasesType)
+    }
+    
+    /// Auto min level
+    func phasesViewAutoMinValueAction(_ view: ProfileTriggerConditionPhasesView) {
+        guard editable else {
+            return
+        }
+        // 判断配置类型
+        var data = selectProfile.lightControlData
+        var phasesType: AutomationPhasesType = .default
+        if view == dayPhasesView {
+            if let dayData = selectProfile.dayData {
+                data = dayData.sceneData.lightControlData
+            }
+            phasesType = .day
+        }else {
+            if let nightData = selectProfile.nightData {
+                data = nightData.sceneData.lightControlData
+            }
+            phasesType = .night
+        }
+        
+        showLevelSettings(type: .autoMinValue(level: data.autoMinLevel, inputRange: data.lowEndTrim...data.highEndTrim, enabled: data.autoMinLevel != 255), phasesType: phasesType)
+    }
+    
+    /// Task level (%/lx)
+    func phasesViewTaskLevelAction(_ view: ProfileTriggerConditionPhasesView) {
+        guard editable else {
+            return
+        }
+        // 判断配置类型
+        
+        var data = selectProfile.lightControlData
+        var phasesType: AutomationPhasesType = .default
+        if view == dayPhasesView {
+            if let dayData = selectProfile.dayData {
+                data = dayData.sceneData.lightControlData
+            }
+            phasesType = .day
+        }else {
+            if let nightData = selectProfile.nightData {
+                data = nightData.sceneData.lightControlData
+            }
+            phasesType = .night
+        }
+        
+        switch selectProfile.type {
+        case .occupancy_daylight, .vacancy_daylight, .daylight:
+            // Occupancy sensing with daylight harvesting / Vacancy sensing with daylight harvesting / Daylight harvesting
+            // TODO: 判断是否已校准
+            if let sensorNode = group?.info.ambientLightSensorNode, sensorNode.ambientLightSensorModel != nil {
+                let levelAction = SRAlertAction(title: "Level", style: .default, actionHandler: {[weak self] _ in
+                    self?.showLevelSettings(type: .taskLux(lux: data.taskLevel, inputRange: data.lowEndTrim...data.highEndTrim, calibrated: true), phasesType: phasesType)
+                })
+                let luxAction = SRAlertAction(title: "Lux", style: .default) {[weak self] _ in
+                    self?.showLevelSettings(type: .taskLux(lux: data.taskLevel, calibrated: false), phasesType: phasesType)
+                }
+                SRSheetView(actions: [levelAction, luxAction]).show()
+            }else { // 未校准
+                showLevelSettings(type: .taskLux(lux: data.taskLevel, calibrated: false), phasesType: phasesType)
+            }
+        default:
+            // Occupancy sensing / Vacancy sensing / Manual control
+            showLevelSettings(type: .taskLevel(level: data.taskLevel, inputRange: data.lowEndTrim...data.highEndTrim), phasesType: phasesType)
+        }
+    }
+    
+    /// Time  T1/T2/T3/T4/T5
+    func view(_ view: ProfileTriggerConditionPhasesView, timeAction timeType: Profile.LightData.TimePickerData.TimeType) {
+        guard editable else {
+            return
+        }
+        var phasesType: AutomationPhasesType = .default
+        if view == dayPhasesView {
+            phasesType = .day
+        }else {
+            phasesType = .night
+        }
+        
+        showTimeSettings(type: timeType, phasesType: phasesType)
+    }
+    
+    /// 编辑输入条件lux回调
+    func view(_ view: ProfileTriggerConditionPhasesView, startsBelowLuxEditChanged lux: Int?) {
+        
+    }
+    
+    /// 使用校准值帮助
+    func phasesViewUseCalibrationValuesHelpAction(_ view: ProfileTriggerConditionPhasesView) {
+        
+    }
+    
+    /// 启用/禁用使用校准值回调
+    func view(_ view: ProfileTriggerConditionPhasesView, useCalibrationValues enabled: Bool) {
+        if view == dayPhasesView {
+            selectProfile.dayData?.useCalibrationValues = enabled
+        }else {
+            selectProfile.nightData?.useCalibrationValues = enabled
+        }
+    }
+    
+    /// 选择执行数据类型回调
+    func view(_ view: ProfileTriggerConditionPhasesView, selectExecuteType executeType: Profile.TriggerConditionData.ExecuteType) {
+        if view == dayPhasesView {
+            if let dayData = selectProfile.dayData {
+                dayData.executeType = executeType
+                view.updateData(profile: selectProfile, conditionData: dayData)
+            }
+        }else {
+            if let nightData = selectProfile.nightData {
+                nightData.executeType = executeType
+                view.updateData(profile: selectProfile, conditionData: nightData)
+            }
+        }
+    }
+    
+    /// 固定亮度-Standby level编辑回调
+    func view(_ view: ProfileTriggerConditionPhasesView, fixedLevelValueChnaged standbyLevel: Int) {
+        
+        if view == dayPhasesView {
+            selectProfile.dayData?.fixedStandbyLevel = standbyLevel
+        }else {
+            selectProfile.nightData?.fixedStandbyLevel = standbyLevel
+        }
+    }
+    
+}
+
+extension ProfileSettingsViewController: ProfileNightDayIlluminanceThresholdViewDelegate {
+    
+    /// 帮助
+    func nightDayIlluminanceThresholdViewHelpAction(_ view: ProfileNightDayIlluminanceThresholdView) {
+        
+        let instructions = [
+            ProfileTextInstructionInfo(title: "night_starts_below_lux".localizedString, content: "night_starts_below_lux_note".localizedString),
+            ProfileTextInstructionInfo(title: "day_starts_above_lux".localizedString, content: "day_starts_above_lux_note".localizedString),
+            ProfileTextInstructionInfo(title: "important_notes".localizedString, content: "important_notes_note".localizedString)
+        ]
+        
+        let vc = ProfileTextInstructionsViewController(vcTitle: "night_day_illuminance_threshold".localizedString, instructions: instructions)
+        navigationController?.pushViewController(vc, animated: true)
+    }
+    
+    /// 编辑晚上输入条件lux回调
+    func view(_ view: ProfileNightDayIlluminanceThresholdView, nightStartsBelowLuxEditChanged lux: Int?) {
+        updateNightDayIlluminanceThresholdDeviceDetail()
+    }
+    
+    /// 编辑白天输入条件lux回调
+    func view(_ view: ProfileNightDayIlluminanceThresholdView, dayStartsAboveLuxEditChanged lux: Int?) {
+        updateNightDayIlluminanceThresholdDeviceDetail()
+    }
+    
+    /// 设备详情
+    func nightDayIlluminanceThresholdViewDeviceDetailAction(_ view: ProfileNightDayIlluminanceThresholdView) {
+        
+        var setMode: ProfileDayNightLuxSetMode = .saveAndSync
+        if group == nil || group!.info.profile.type != selectProfile.type {
+            setMode = .onlySet
+        }
+        let vc = ProfileDayNightLuxViewController(profile: self.selectProfile, groupNodes: group?.nodes ?? [], setMode: setMode)
+        vc.templates = selectProfile.lightSensorTemplates
+        vc.templatesSetCallback = {[weak self] templates in
+            guard let self = self else { return }
+            self.selectProfile.lightSensorTemplates = templates
+            if self.selectProfile.type == .proximityLightingWithPhotocell, setMode == .saveAndSync {
+                ProfileLightSensorTemplate.delete(profileId: self.selectProfile.id)
+                templates.forEach {
+                    $0.save(profileId: self.selectProfile.id)
+                }
+            }
+        }
+        navigationController?.pushViewController(vc, animated: true)
+    }
+}
+
+
 
 extension ProfileSettingsViewController: LightSensorCalibrationAdjustSpeedViewDelegate {
     

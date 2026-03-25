@@ -134,7 +134,14 @@ class GatewayViewController: UIViewController, DeviceProtocol {
         }
     }
     
-    private func close() {
+    override func viewDidLayoutSubviews() {
+        super.viewDidLayoutSubviews()
+        
+        // EmptyDataView uses frame layout, update it after container frame is finalized.
+        view.emptyView?.frame = view.bounds
+    }
+
+    @objc private func close() {
         if self.presentingViewController != nil && navigationController?.viewControllers.count ?? 0 == 1  {
             dismiss(animated: true)
         }else {
@@ -384,6 +391,7 @@ class GatewayViewController: UIViewController, DeviceProtocol {
         gateway.model.save()
         //        node.gatewayModel?.update(gatewayModel: setGatewayModel)
         //        node.gatewayModel?.save()
+
         updateSaveBtnState()
         // 判断是否需要同步设备数据
         guard node.getNodeSyncGatewayData(gateway: setGatewayModel).count > 0 else {
@@ -654,7 +662,6 @@ class GatewayViewController: UIViewController, DeviceProtocol {
     
     /// 选择sim卡 APN
     private func selectSIMAPN(point: CGPoint) {
-        
         var items = GatewaySIMApnInfo.all.map({ GatewayAPNMenuView.APNMenuItem(title: $0.country, children: $0.apns) })
         items.insert(GatewayAPNMenuView.APNMenuItem(title: "not_set".localizedString, children: nil), at: 0)
         
@@ -998,6 +1005,7 @@ extension GatewayViewController: UITableViewDataSource, UITableViewDelegate {
                     make.top.equalTo(headerView.messageLabel)
                     make.width.equalTo(SCRXFrom(66))
                     make.height.equalTo(SCRYFrom(32))
+                    make.bottom.lessThanOrEqualTo(SCRYFrom(-8))
                 }
             }
         }
@@ -1084,6 +1092,13 @@ extension GatewayViewController: MeshLibManagerMessageDelegate {
         if node.primaryUnicastAddress == self.node.primaryUnicastAddress {
             updateData()
         }
+    }
+    
+    /// 设备数据修改时间戳更新
+    func meshNetworkManager(_ manager: MeshNetworkManager, deviceDataUpdateTimeChange node: Node, lastUpdate: Int64) {
+//        if node.lastUpdateSyncTime != lastUpdate {
+            node.clearSyncStateCache()
+//        }
     }
 }
 
