@@ -19,8 +19,14 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         
         window = UIWindow(frame: UIScreen.main.bounds)
         if UserData.isTermsOfService { // 是否同意使用协议
-            let mainNavVc = NavigationViewController(rootViewController: SitesViewController())
-            window?.rootViewController = mainNavVc
+            if let site = SiteData.load(siteId: "D01FCBA3-B5CF-4B1E-9CF8-0A6E96E89922"), let space = site.spaces.first(where: { $0.id == "F2769094-8319-47DB-8874-E82057052B33" }) {
+                let vc = SpacePathTriggerZoneController(site: site, space: space)
+                let mainNavVc = NavigationViewController(rootViewController: vc)
+                window?.rootViewController = mainNavVc
+            }else {
+                let mainNavVc = NavigationViewController(rootViewController: SitesViewController())
+                window?.rootViewController = mainNavVc
+            }
         }else {
             let welcomeNavVc = NavigationViewController(rootViewController: WelcomeViewController())
             window?.rootViewController = welcomeNavVc

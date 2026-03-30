@@ -583,6 +583,39 @@ class SyncDevicesViewController: UIViewController {
                         configurationSection.devices.append(syncDeviceModel)
                     }
                 }
+            case .spaceTriggerZones(let datas):
+                datas.forEach { (node: Node, syncData: NodeSyncData) in
+                    let syncDeviceModel = SyncDevicesModel(name: node.name ?? "", address: node.primaryUnicastAddress)
+                    syncDeviceModel.imageName = node.iconName
+                    
+                    switch syncData {
+                    case .proximityLightingNeighbor(let relayNumber, let neighborAddresses):
+                        let taskModel = SyncDeviceStepTaskModel(name: "trigger_zone".localizedString, operationType: .configuration(node: node, type: .proximityLightingNeighbor(relayNumber: relayNumber, neighborAddresses: neighborAddresses)))
+                        let step = SyncDeviceStepModel(type: "trigger_zone".localizedString, state: .none, tasks: [taskModel])
+                        taskModel.parentStepModel = step
+                        step.parentDeviceModel = syncDeviceModel
+                        syncDeviceModel.steps.append(step)
+                    case .proximityLightingRelayNumber(let relayNumber):
+                        let taskModel = SyncDeviceStepTaskModel(name: "trigger_zone".localizedString, operationType: .configuration(node: node, type: .proximityLightingRelayNumber(relayNumber: relayNumber)))
+                        let step = SyncDeviceStepModel(type: "trigger_zone".localizedString, state: .none, tasks: [taskModel])
+                        taskModel.parentStepModel = step
+                        step.parentDeviceModel = syncDeviceModel
+                        syncDeviceModel.steps.append(step)
+                    case .proximityLightingEnabled(let enabled):
+                        let name = enabled ? "proximity_lighting_enabled".localizedString : "proximity_lighting_disable".localizedString
+                        let taskModel = SyncDeviceStepTaskModel(name: name, operationType: .configuration(node: node, type: .proximityLightingEnabled(enabled: enabled)))
+                        let step = SyncDeviceStepModel(type: name, state: .none, tasks: [taskModel])
+                        taskModel.parentStepModel = step
+                        step.parentDeviceModel = syncDeviceModel
+                        syncDeviceModel.steps.append(step)
+                    default:
+                        break
+                    }
+                    
+                    if syncDeviceModel.steps.count > 0 {
+                        configurationSection.devices.append(syncDeviceModel)
+                    }
+                }
             }
         
             if removeSection.groups.count > 0 || removeSection.devices.count > 0 || removeSection.switchProxy != nil {
@@ -1935,6 +1968,8 @@ extension SyncDevicesViewController {
         case dongle(_ dongleData: DeviceDongleData)
         /// 邻近照明路径
         case proximityLightingPath(group: Group, path: GroupProximityLightingPathData)
+        /// space级触发区域
+        case spaceTriggerZones(datas: [(node: Node, syncData: NodeSyncData)])
     }
     
     /// 同步状态

@@ -21,6 +21,8 @@ class SpaceMoreViewController: UIViewController {
                 return ("device_parameter", "device_parameter_settings".localizedString)
             case .energyData:
                 return ("space_energy_data", "energy_data".localizedString)
+            case .triggerZone:
+                return ("trigger_zone", "trigger_zone".localizedString)
             case .contentDisplay:
                 return ("content_display", "content_display".localizedString)
             }
@@ -34,6 +36,8 @@ class SpaceMoreViewController: UIViewController {
         case deviceParameters
         /// 能耗统计
         case energyData
+        /// 触发区域
+        case triggerZone
         /// 内容显示
         case contentDisplay
     }
@@ -44,7 +48,7 @@ class SpaceMoreViewController: UIViewController {
     private var collectionView: UICollectionView!
     private var flowLayout: UICollectionViewFlowLayout!
     
-    private var options: [Options] = [.ble, .deviceParameters, .energyData, .contentDisplay]
+    private var options: [Options] = [.ble, .deviceParameters, .energyData, .triggerZone, .contentDisplay]
     
     init(site: SiteData, space: SpaceData) {
         self.site = site
@@ -161,6 +165,16 @@ extension SpaceMoreViewController: UICollectionViewDataSource, UICollectionViewD
             #else
             let vc = EnergyDataViewController(space: space)
             #endif
+            if isIPad {
+                vc.preferredContentSize = iPadPreferredContentSize
+            }
+            present(NavigationViewController(rootViewController: vc), animated: true)
+        case .triggerZone:
+            guard self.space.groupOperates.contains(.edit) else {
+                XWHUDManager.showTipHUD("no_permission".localizedString + "！")
+                return
+            }
+            let vc = SpacePathTriggerZoneController(site: site, space: space)
             if isIPad {
                 vc.preferredContentSize = iPadPreferredContentSize
             }

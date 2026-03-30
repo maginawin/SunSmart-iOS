@@ -36,13 +36,23 @@ class TitleSelectView: UIView {
     private var hideCallback: HideCallback?
     private var selectBackgroundColor: UIColor = RGB(216, 216, 216, 0.1)
     private var titleColor: UIColor = .white
+    private var selectedTitleColor: UIColor?
+    private var disabledTitleColor: UIColor = RGB(193, 198, 210)
     private var titleFont: UIFont = FONTS(13)
+    private var enabledStates: [Bool]?
+    private var highlightSelectedWithoutIcon: Bool = false
+    private var titleAlignment: NSTextAlignment = .center
+    private var contentBorderColor: UIColor?
+    private var contentBorderWidth: CGFloat = 0
+    private var contentCornerRadius: CGFloat = 8
+    private var rowHighlightInsets: UIEdgeInsets = .zero
+    private var rowHighlightCornerRadius: CGFloat = 5
     private var style: Style = .select
 //    required init?(coder: NSCoder) {
 //        fatalError("init(coder:) has not been implemented")
 //    }
     
-    static func show(titles: [String], style: Style = .select, anchorPoint: CGPoint, selectIndex: Int = 0, menuWidth: CGFloat = TitleSelectView.defalutWidth, itemHeight: CGFloat = TitleSelectView.defalutItemHeight, titleColor: UIColor = .white, titleFont: UIFont = FONTS(13), backgroundColor: UIColor = RGB(102, 102, 102), selectBackgroundColor: UIColor = RGB(216, 216, 216, 0.1), shadowColor: UIColor? = nil, selectBack: TitleSelectCallback?, hideCallback: HideCallback? = nil) {
+    static func show(titles: [String], style: Style = .select, anchorPoint: CGPoint, selectIndex: Int = 0, menuWidth: CGFloat = TitleSelectView.defalutWidth, itemHeight: CGFloat = TitleSelectView.defalutItemHeight, titleColor: UIColor = .white, titleFont: UIFont = FONTS(13), backgroundColor: UIColor = RGB(102, 102, 102), selectBackgroundColor: UIColor = RGB(216, 216, 216, 0.1), shadowColor: UIColor? = nil, enabledStates: [Bool]? = nil, disabledTitleColor: UIColor = RGB(193, 198, 210), selectedTitleColor: UIColor? = nil, highlightSelectedWithoutIcon: Bool = false, titleAlignment: NSTextAlignment = .center, contentBorderColor: UIColor? = nil, contentBorderWidth: CGFloat = 0, contentCornerRadius: CGFloat = 8, rowHighlightInsets: UIEdgeInsets = .zero, rowHighlightCornerRadius: CGFloat = 5, selectBack: TitleSelectCallback?, hideCallback: HideCallback? = nil) {
         
         let view = TitleSelectView(frame: UIScreen.main.bounds)
         view.menuWidth = menuWidth
@@ -53,6 +63,16 @@ class TitleSelectView: UIView {
         view.titleFont = titleFont
         view.titleColor = titleColor
         view.selectBackgroundColor = selectBackgroundColor
+        view.enabledStates = enabledStates
+        view.disabledTitleColor = disabledTitleColor
+        view.selectedTitleColor = selectedTitleColor
+        view.highlightSelectedWithoutIcon = highlightSelectedWithoutIcon
+        view.titleAlignment = titleAlignment
+        view.contentBorderColor = contentBorderColor
+        view.contentBorderWidth = contentBorderWidth
+        view.contentCornerRadius = contentCornerRadius
+        view.rowHighlightInsets = rowHighlightInsets
+        view.rowHighlightCornerRadius = rowHighlightCornerRadius
         view.style = style
         view.selectCallback = selectBack
         view.hideCallback = hideCallback
@@ -112,7 +132,9 @@ class TitleSelectView: UIView {
         
         contentView = UIView()
         contentView.backgroundColor = RGB(102, 102, 102)
-        contentView.layer.cornerRadius = 8
+        contentView.layer.cornerRadius = contentCornerRadius
+        contentView.layer.borderColor = contentBorderColor?.cgColor
+        contentView.layer.borderWidth = contentBorderWidth
         addSubview(contentView)
         contentView.snp.makeConstraints { make in
 //            make.top.centerX.equalToSuperview()
@@ -132,10 +154,7 @@ class TitleSelectView: UIView {
         tableView.isScrollEnabled = titles.count > 8
         contentView.addSubview(tableView)
         tableView.snp.makeConstraints { make in
-            make.left.equalTo(4)
-            make.right.equalTo(-4)
-            make.top.equalTo(4)
-            make.bottom.equalTo(-6)
+            make.left.right.top.bottom.equalToSuperview()
             make.height.equalTo(CGFloat(min(titles.count, 8)) * tableView.rowHeight)
         }
         
@@ -151,23 +170,49 @@ extension TitleSelectView: UITableViewDataSource, UITableViewDelegate {
     
     func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
         let cell = tableView.dequeueReusableCell(withIdentifier: "cell", for: indexPath) as! CustomTableViewCell
+        let isEnabled = enabledStates.map { indexPath.row < $0.count ? $0[indexPath.row] : true } ?? true
+        let isSelectedRow = selectIndex == indexPath.row
+        let showsHighlight = isSelectedRow && (style == .select || highlightSelectedWithoutIcon)
+        let highlightTag = 82743
+        let highlightView: UIView
+        if let view = cell.contentView.viewWithTag(highlightTag) {
+            highlightView = view
+        } else {
+            let view = UIView()
+            view.tag = highlightTag
+            cell.contentView.insertSubview(view, at: 0)
+            highlightView = view
+        }
+        highlightView.frame = cell.contentView.bounds.inset(by: rowHighlightInsets)
+        highlightView.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+        highlightView.layer.cornerRadius = rowHighlightCornerRadius
+        highlightView.backgroundColor = showsHighlight ? self.selectBackgroundColor : .clear
         if style == .select {
             cell.cellStyle = .icon
             cell.iconImageView.image = UIImage(named: "menu_select")
-            cell.iconImageView.isHidden = selectIndex != indexPath.row
+            cell.iconImageView.isHidden = !isSelectedRow
             cell.iconX = 0
             cell.titleX = SCRXFrom(35)
-            cell.backgroundColor = selectIndex == indexPath.row ? self.selectBackgroundColor : .clear
+            cell.titleLabel.textAlignment = .left
+            cell.backgroundColor = .clear
             cell.titleMaxWidth = tableView.width - SCRXFrom(4) - 30
         }else {
-            cell.titleX =  SCRXFrom(4)
-            cell.titleLabel.textAlignment = .center
+            cell.cellStyle = .none
+            cell.iconImageView.isHidden = true
+            cell.titleX = titleAlignment == .left ? SCRXFrom(12) : SCRXFrom(4)
+            cell.titleLabel.textAlignment = titleAlignment
             cell.backgroundColor = .clear
-            cell.titleMaxWidth = tableView.width - SCRXFrom(4)
+            cell.titleMaxWidth = titleAlignment == .left ? tableView.width - SCRXFrom(28) : tableView.width - SCRXFrom(4)
         }
         
         cell.titleLabel.text = titles[indexPath.row]
-        cell.titleLabel.textColor = titleColor
+        if !isEnabled {
+            cell.titleLabel.textColor = disabledTitleColor
+        } else if showsHighlight, let selectedTitleColor = selectedTitleColor {
+            cell.titleLabel.textColor = selectedTitleColor
+        } else {
+            cell.titleLabel.textColor = titleColor
+        }
         cell.titleLabel.font = titleFont
         
         cell.lineView.isHidden = true
@@ -175,6 +220,7 @@ extension TitleSelectView: UITableViewDataSource, UITableViewDelegate {
         cell.layer.cornerRadius = 5
         cell.clipsToBounds = true
         cell.selectionStyle = .none
+        cell.isUserInteractionEnabled = isEnabled
 //        let bgView = UIView()
 //        bgView.backgroundColor = RGB(216, 216, 216, 0.1)
 //        cell.selectedBackgroundView = bgView
@@ -183,6 +229,10 @@ extension TitleSelectView: UITableViewDataSource, UITableViewDelegate {
     }
     
     func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
+        let isEnabled = enabledStates.map { indexPath.row < $0.count ? $0[indexPath.row] : true } ?? true
+        guard isEnabled else {
+            return
+        }
 //        tableView.deselectRow(at: indexPath, animated: true)
         selectCallback?(indexPath.row)
         dismiss()

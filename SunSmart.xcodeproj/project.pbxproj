@@ -80,6 +80,10 @@
 		C83A559C2DBA2B5900E04252 /* DeviceOthersViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C83A559B2DBA2B5900E04252 /* DeviceOthersViewController.swift */; };
 		C83A559F2DBA2C9D00E04252 /* DeviceOthersCollectionViewCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = C83A559E2DBA2C9D00E04252 /* DeviceOthersCollectionViewCell.swift */; };
 		C83D8C502DD1A0C300A59AFA /* EnergyFileData.swift in Sources */ = {isa = PBXBuildFile; fileRef = C83D8C4F2DD1A0C300A59AFA /* EnergyFileData.swift */; };
+		C84284A42F7A1C9000BECD6D /* SpaceTriggerZone.swift in Sources */ = {isa = PBXBuildFile; fileRef = C84284A32F7A1C9000BECD6D /* SpaceTriggerZone.swift */; };
+		C84284A52F7A1C9000BECD6D /* SpaceTriggerZone.swift in Sources */ = {isa = PBXBuildFile; fileRef = C84284A32F7A1C9000BECD6D /* SpaceTriggerZone.swift */; };
+		C84284A62F7A1C9000BECD6D /* SpaceTriggerZone.swift in Sources */ = {isa = PBXBuildFile; fileRef = C84284A32F7A1C9000BECD6D /* SpaceTriggerZone.swift */; };
+		C84284A72F7A1C9000BECD6D /* SpaceTriggerZone.swift in Sources */ = {isa = PBXBuildFile; fileRef = C84284A32F7A1C9000BECD6D /* SpaceTriggerZone.swift */; };
 		C84A2C552C2D465A0064D3F1 /* ExternalVendorMessage+Extension.swift in Sources */ = {isa = PBXBuildFile; fileRef = C84A2C542C2D465A0064D3F1 /* ExternalVendorMessage+Extension.swift */; };
 		C84A2C572C2D571D0064D3F1 /* BatchSpaceData.swift in Sources */ = {isa = PBXBuildFile; fileRef = C84A2C562C2D571D0064D3F1 /* BatchSpaceData.swift */; };
 		C84FBCAD2DBF28D80030E136 /* EnergyStaticDataGroupView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C84FBCAC2DBF28D80030E136 /* EnergyStaticDataGroupView.swift */; };
@@ -89,7 +93,6 @@
 		C84FBCC12DBF72070030E136 /* UIColor+Extension.swift in Sources */ = {isa = PBXBuildFile; fileRef = C84FBCC02DBF72070030E136 /* UIColor+Extension.swift */; };
 		C84FBCC32DBF79D00030E136 /* EnergyTestData.swift in Sources */ = {isa = PBXBuildFile; fileRef = C84FBCC22DBF79D00030E136 /* EnergyTestData.swift */; };
 		C85120F52DB0A11200714111 /* DeviceParameterFilterView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C85120F42DB0A11200714111 /* DeviceParameterFilterView.swift */; };
-		C857CF682F73B22900FF7A52 /* NordicSigMeshSDK in Frameworks */ = {isa = PBXBuildFile; productRef = C857CF672F73B22900FF7A52 /* NordicSigMeshSDK */; };
 		C85829F22B397F2B002A4367 /* SceneViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C85829F12B397F2B002A4367 /* SceneViewController.swift */; };
 		C85829F42B398354002A4367 /* SceneGroupsViewCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = C85829F32B398354002A4367 /* SceneGroupsViewCell.swift */; };
 		C85829F62B398443002A4367 /* CustomProgressView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C85829F52B398443002A4367 /* CustomProgressView.swift */; };
@@ -1803,6 +1806,11 @@
 		C8D3ADB22EFD3599003D15CB /* ProfileDayNightLuxDevicesViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8D3ADAF2EFD3599003D15CB /* ProfileDayNightLuxDevicesViewController.swift */; };
 		C8D3ADB32EFD3599003D15CB /* ProfileDayNightLuxDevicesViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8D3ADAF2EFD3599003D15CB /* ProfileDayNightLuxDevicesViewController.swift */; };
 		C8D3BC5211D39346ECD5E3AF /* Pods_Common_Archipelago.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 8F7ED1D6D6BFC3B3813C473D /* Pods_Common_Archipelago.framework */; };
+		C8D5314C2F76294A0069C71B /* NordicSigMeshSDK in Frameworks */ = {isa = PBXBuildFile; productRef = C8D5314B2F76294A0069C71B /* NordicSigMeshSDK */; };
+		C8D5314E2F7630B90069C71B /* SpacePathTriggerZoneController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8D5314D2F7630B90069C71B /* SpacePathTriggerZoneController.swift */; };
+		C8D5314F2F7630B90069C71B /* SpacePathTriggerZoneController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8D5314D2F7630B90069C71B /* SpacePathTriggerZoneController.swift */; };
+		C8D531502F7630B90069C71B /* SpacePathTriggerZoneController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8D5314D2F7630B90069C71B /* SpacePathTriggerZoneController.swift */; };
+		C8D531512F7630B90069C71B /* SpacePathTriggerZoneController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8D5314D2F7630B90069C71B /* SpacePathTriggerZoneController.swift */; };
 		C8D58F662C1D34090066B770 /* CloudSynchronizationManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8D58F652C1D34090066B770 /* CloudSynchronizationManager.swift */; };
 		C8D6636D2BFED12B00BFF81A /* Keychain.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8D6636C2BFED12B00BFF81A /* Keychain.swift */; };
 		C8D6636F2BFEDDC900BFF81A /* ImportData.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8D6636E2BFEDDC900BFF81A /* ImportData.swift */; };
@@ -1924,6 +1932,7 @@
 		C83A559B2DBA2B5900E04252 /* DeviceOthersViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceOthersViewController.swift; sourceTree = "<group>"; };
 		C83A559E2DBA2C9D00E04252 /* DeviceOthersCollectionViewCell.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceOthersCollectionViewCell.swift; sourceTree = "<group>"; };
 		C83D8C4F2DD1A0C300A59AFA /* EnergyFileData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EnergyFileData.swift; sourceTree = "<group>"; };
+		C84284A32F7A1C9000BECD6D /* SpaceTriggerZone.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpaceTriggerZone.swift; sourceTree = "<group>"; };
 		C84A2C542C2D465A0064D3F1 /* ExternalVendorMessage+Extension.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ExternalVendorMessage+Extension.swift"; sourceTree = "<group>"; };
 		C84A2C562C2D571D0064D3F1 /* BatchSpaceData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BatchSpaceData.swift; sourceTree = "<group>"; };
 		C84FBCAC2DBF28D80030E136 /* EnergyStaticDataGroupView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EnergyStaticDataGroupView.swift; sourceTree = "<group>"; };
@@ -2318,6 +2327,7 @@
 		C8D22E1C2E04100D001A2BDA /* DeviceAddProfessionalModeController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceAddProfessionalModeController.swift; sourceTree = "<group>"; };
 		C8D22E1F2E041020001A2BDA /* DeviceAddClassicModeController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceAddClassicModeController.swift; sourceTree = "<group>"; };
 		C8D3ADAF2EFD3599003D15CB /* ProfileDayNightLuxDevicesViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileDayNightLuxDevicesViewController.swift; sourceTree = "<group>"; };
+		C8D5314D2F7630B90069C71B /* SpacePathTriggerZoneController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpacePathTriggerZoneController.swift; sourceTree = "<group>"; };
 		C8D58F652C1D34090066B770 /* CloudSynchronizationManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CloudSynchronizationManager.swift; sourceTree = "<group>"; };
 		C8D6636C2BFED12B00BFF81A /* Keychain.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Keychain.swift; sourceTree = "<group>"; };
 		C8D6636E2BFEDDC900BFF81A /* ImportData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImportData.swift; sourceTree = "<group>"; };
@@ -2410,7 +2420,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				C8FFD7D52E7D03B20074CC6A /* Pods_Common_SunSmart.framework in Frameworks */,
-				C857CF682F73B22900FF7A52 /* NordicSigMeshSDK in Frameworks */,
+				C8D5314C2F76294A0069C71B /* NordicSigMeshSDK in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -2971,6 +2981,7 @@
 		C898E3032ABBF3BF00C71315 /* Space */ = {
 			isa = PBXGroup;
 			children = (
+				C8D531522F76312E0069C71B /* TriggerZone */,
 				C898E30A2ABBF40C00C71315 /* Controller */,
 				C898E3092ABBF40800C71315 /* Model */,
 				C898E3082ABBF40300C71315 /* View */,
@@ -3763,6 +3774,39 @@
 			path = Model;
 			sourceTree = "<group>";
 		};
+		C8D531522F76312E0069C71B /* TriggerZone */ = {
+			isa = PBXGroup;
+			children = (
+				C8D531542F76313A0069C71B /* Controller */,
+				C8D531552F76313F0069C71B /* Model */,
+				C8D531532F7631330069C71B /* View */,
+			);
+			path = TriggerZone;
+			sourceTree = "<group>";
+		};
+		C8D531532F7631330069C71B /* View */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			path = View;
+			sourceTree = "<group>";
+		};
+		C8D531542F76313A0069C71B /* Controller */ = {
+			isa = PBXGroup;
+			children = (
+				C8D5314D2F7630B90069C71B /* SpacePathTriggerZoneController.swift */,
+			);
+			path = Controller;
+			sourceTree = "<group>";
+		};
+		C8D531552F76313F0069C71B /* Model */ = {
+			isa = PBXGroup;
+			children = (
+				C84284A32F7A1C9000BECD6D /* SpaceTriggerZone.swift */,
+			);
+			path = Model;
+			sourceTree = "<group>";
+		};
 		C8D58F642C1D33B10066B770 /* Cloud */ = {
 			isa = PBXGroup;
 			children = (
@@ -3936,7 +3980,7 @@
 			);
 			name = SunSmart;
 			packageProductDependencies = (
-				C857CF672F73B22900FF7A52 /* NordicSigMeshSDK */,
+				C8D5314B2F76294A0069C71B /* NordicSigMeshSDK */,
 			);
 			productName = SunSmart;
 			productReference = C896B9A42A930BA800217512 /* SunSmart.app */;
@@ -3990,7 +4034,7 @@
 			);
 			mainGroup = C896B99B2A930BA800217512;
 			packageReferences = (
-				C857CF662F73B22900FF7A52 /* XCRemoteSwiftPackageReference "nordic-sig-mesh-sdk" */,
+				C8D5314A2F76294A0069C71B /* XCRemoteSwiftPackageReference "nordic-sig-mesh-sdk" */,
 			);
 			productRefGroup = C896B9A52A930BA800217512 /* Products */;
 			projectDirPath = "";
@@ -4446,6 +4490,7 @@
 				C8C026342F303B3400C7C2AA /* ToastStatusView.swift in Sources */,
 				C88554252DE6B44C00C8B688 /* FSCalendarExtensions.m in Sources */,
 				C88554262DE6B44C00C8B688 /* FSCalendarWeekdayView.m in Sources */,
+				C8D5314E2F7630B90069C71B /* SpacePathTriggerZoneController.swift in Sources */,
 				C88554272DE6B44C00C8B688 /* FSCalendarCollectionView.m in Sources */,
 				C88554282DE6B44C00C8B688 /* FSCalendar.m in Sources */,
 				C833B85C2ECB0F990005F84F /* SiteDeviceAddViewController.swift in Sources */,
@@ -4559,6 +4604,7 @@
 				C885547C2DE6B44C00C8B688 /* DeviceOthersCollectionViewCell.swift in Sources */,
 				C885547D2DE6B44C00C8B688 /* FirmwareVersionHistoryController.swift in Sources */,
 				C885547E2DE6B44C00C8B688 /* ProfileInstructionsController.swift in Sources */,
+				C84284A42F7A1C9000BECD6D /* SpaceTriggerZone.swift in Sources */,
 				C885547F2DE6B44C00C8B688 /* TableSelectView.swift in Sources */,
 				C88554802DE6B44C00C8B688 /* SceneGroupsViewCell.swift in Sources */,
 				C88554812DE6B44C00C8B688 /* LBXScanWrapper.swift in Sources */,
@@ -4893,6 +4939,7 @@
 				C8C026362F303B3400C7C2AA /* ToastStatusView.swift in Sources */,
 				C886E0772E30DE4900D0C3A6 /* FSCalendarExtensions.m in Sources */,
 				C886E0782E30DE4900D0C3A6 /* FSCalendarWeekdayView.m in Sources */,
+				C8D5314F2F7630B90069C71B /* SpacePathTriggerZoneController.swift in Sources */,
 				C886E0792E30DE4900D0C3A6 /* FSCalendarCollectionView.m in Sources */,
 				C886E07A2E30DE4900D0C3A6 /* FSCalendar.m in Sources */,
 				C833B85B2ECB0F990005F84F /* SiteDeviceAddViewController.swift in Sources */,
@@ -5006,6 +5053,7 @@
 				C886E0D32E30DE4900D0C3A6 /* DeviceOthersCollectionViewCell.swift in Sources */,
 				C886E0D42E30DE4900D0C3A6 /* FirmwareVersionHistoryController.swift in Sources */,
 				C886E0D52E30DE4900D0C3A6 /* ProfileInstructionsController.swift in Sources */,
+				C84284A72F7A1C9000BECD6D /* SpaceTriggerZone.swift in Sources */,
 				C886E0D62E30DE4900D0C3A6 /* TableSelectView.swift in Sources */,
 				C886E0D72E30DE4900D0C3A6 /* SceneGroupsViewCell.swift in Sources */,
 				C886E0D82E30DE4900D0C3A6 /* LBXScanWrapper.swift in Sources */,
@@ -5340,6 +5388,7 @@
 				C8C026352F303B3400C7C2AA /* ToastStatusView.swift in Sources */,
 				C8DA6A152DB8800B00E32092 /* FSCalendarExtensions.m in Sources */,
 				C8DA6A162DB8800B00E32092 /* FSCalendarWeekdayView.m in Sources */,
+				C8D531502F7630B90069C71B /* SpacePathTriggerZoneController.swift in Sources */,
 				C8DA6A172DB8800B00E32092 /* FSCalendarCollectionView.m in Sources */,
 				C8DA6A182DB8800B00E32092 /* FSCalendar.m in Sources */,
 				C833B85A2ECB0F990005F84F /* SiteDeviceAddViewController.swift in Sources */,
@@ -5453,6 +5502,7 @@
 				C83A559F2DBA2C9D00E04252 /* DeviceOthersCollectionViewCell.swift in Sources */,
 				C8A16F782C86E8C100FB50BD /* FirmwareVersionHistoryController.swift in Sources */,
 				C8047F092B8DFA5900A09FFA /* ProfileInstructionsController.swift in Sources */,
+				C84284A52F7A1C9000BECD6D /* SpaceTriggerZone.swift in Sources */,
 				C830CFE32C0F1C6B0035CD5B /* TableSelectView.swift in Sources */,
 				C85829F42B398354002A4367 /* SceneGroupsViewCell.swift in Sources */,
 				C87EB4692BA17D3F00F9285B /* LBXScanWrapper.swift in Sources */,
@@ -5787,6 +5837,7 @@
 				C8C026332F303B3400C7C2AA /* ToastStatusView.swift in Sources */,
 				C8BB66322ED3F056000C63EE /* FSCalendarExtensions.m in Sources */,
 				C8BB66332ED3F056000C63EE /* FSCalendarWeekdayView.m in Sources */,
+				C8D531512F7630B90069C71B /* SpacePathTriggerZoneController.swift in Sources */,
 				C8BB66342ED3F056000C63EE /* FSCalendarCollectionView.m in Sources */,
 				C8BB66352ED3F056000C63EE /* FSCalendar.m in Sources */,
 				C8BB66362ED3F056000C63EE /* SiteDeviceAddViewController.swift in Sources */,
@@ -5900,6 +5951,7 @@
 				C8BB669D2ED3F056000C63EE /* DeviceOthersCollectionViewCell.swift in Sources */,
 				C8BB669E2ED3F056000C63EE /* FirmwareVersionHistoryController.swift in Sources */,
 				C8BB669F2ED3F056000C63EE /* ProfileInstructionsController.swift in Sources */,
+				C84284A62F7A1C9000BECD6D /* SpaceTriggerZone.swift in Sources */,
 				C8BB66A02ED3F056000C63EE /* TableSelectView.swift in Sources */,
 				C8BB66A12ED3F056000C63EE /* SceneGroupsViewCell.swift in Sources */,
 				C8BB66A22ED3F056000C63EE /* LBXScanWrapper.swift in Sources */,
@@ -6617,14 +6669,6 @@
 /* End XCConfigurationList section */
 
 /* Begin XCRemoteSwiftPackageReference section */
-		C857CF662F73B22900FF7A52 /* XCRemoteSwiftPackageReference "nordic-sig-mesh-sdk" */ = {
-			isa = XCRemoteSwiftPackageReference;
-			repositoryURL = "https://gitee.com/sunricher-i-os/nordic-sig-mesh-sdk.git";
-			requirement = {
-				branch = master;
-				kind = branch;
-			};
-		};
 		C88553AF2DE6B44C00C8B688 /* XCRemoteSwiftPackageReference "nordic-sig-mesh-sdk" */ = {
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://gitee.com/sunricher-i-os/nordic-sig-mesh-sdk.git";
@@ -6649,14 +6693,17 @@
 				kind = branch;
 			};
 		};
+		C8D5314A2F76294A0069C71B /* XCRemoteSwiftPackageReference "nordic-sig-mesh-sdk" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://gitee.com/sunricher-i-os/nordic-sig-mesh-sdk.git";
+			requirement = {
+				branch = master;
+				kind = branch;
+			};
+		};
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
-		C857CF672F73B22900FF7A52 /* NordicSigMeshSDK */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = C857CF662F73B22900FF7A52 /* XCRemoteSwiftPackageReference "nordic-sig-mesh-sdk" */;
-			productName = NordicSigMeshSDK;
-		};
 		C88553AE2DE6B44C00C8B688 /* NordicSigMeshSDK */ = {
 			isa = XCSwiftPackageProductDependency;
 			package = C88553AF2DE6B44C00C8B688 /* XCRemoteSwiftPackageReference "nordic-sig-mesh-sdk" */;
@@ -6670,6 +6717,11 @@
 		C8BB65AC2ED3F056000C63EE /* NordicSigMeshSDK */ = {
 			isa = XCSwiftPackageProductDependency;
 			package = C8BB65AD2ED3F056000C63EE /* XCRemoteSwiftPackageReference "nordic-sig-mesh-sdk" */;
+			productName = NordicSigMeshSDK;
+		};
+		C8D5314B2F76294A0069C71B /* NordicSigMeshSDK */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = C8D5314A2F76294A0069C71B /* XCRemoteSwiftPackageReference "nordic-sig-mesh-sdk" */;
 			productName = NordicSigMeshSDK;
 		};
 /* End XCSwiftPackageProductDependency section */

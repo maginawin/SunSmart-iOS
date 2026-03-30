@@ -973,6 +973,13 @@ extension SpaceData {
             if let value = json["deviceBlinkMode"].int, let mode = DeviceBlinkMode(rawValue: value) {
                 self.deviceBlinkMode = mode
             }
+            if let triggerZonesArray = json["triggerZones"].arrayObject as? [[String: Any]],
+               let data = try? JSONSerialization.data(withJSONObject: triggerZonesArray),
+               let triggerZones = try? jsonDecoder.decode([SpaceTriggerZone].self, from: data) {
+                self.triggerZones = triggerZones
+            } else {
+                self.triggerZones = []
+            }
             //            }
 //            let localNodes = Node.load(meshUUID: self.meshUUID, subnetworkId: self.meshNetworkId)
             
@@ -1002,7 +1009,7 @@ extension SpaceData {
 //                        }
 //                        node = localNode
 //                    }
-                    
+                    node.subNetworkId = self.meshNetworkId
                     node.macAddress = nodeJson["macAddress"].string
                     if let sensorTypes = nodeJson["sensorTypes"].arrayObject as? [String] {
                         let propertys = sensorTypes.map({ DeviceProperty(UInt16(hex: $0) ?? 0) })

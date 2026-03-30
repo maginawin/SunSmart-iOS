@@ -181,6 +181,8 @@ class SpaceData: Copyable {
     var displayDeviceNamePrefix: Bool = true
     /// 设备配置成功行为
     var deviceBlinkMode: DeviceBlinkMode = .none
+    /// space级触发区域数据
+    var triggerZones: [SpaceTriggerZone] = []
     
     /// 关联的网关id
     var relevanceGatewayId: String?
@@ -289,6 +291,7 @@ class SpaceData: Copyable {
         space.scheheduleCount = self.scheheduleCount
         space.displayDeviceNamePrefix = self.displayDeviceNamePrefix
         space.deviceBlinkMode = self.deviceBlinkMode
+        space.triggerZones = self.triggerZones.map({ $0.copy() })
         return space as! Self
     }
     

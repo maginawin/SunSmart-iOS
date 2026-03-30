@@ -44,24 +44,21 @@ class GroupPathSequenceDeviceAddStepView: UIView {
         layer.cornerRadius = SCRYFrom(10)
 
         stackView.alignment = .top
-        stackView.distribution = .fillEqually
+        stackView.distribution = .fill
         if isIPad {
             stackView.spacing = SCRXFrom(30)
         }else {
-            stackView.spacing = SCRXFrom(4)
+            stackView.spacing = SCRXFrom(20)
         }
         addSubview(stackView)
         stackView.snp.makeConstraints { make in
-            if isIPad {
-                make.centerX.equalToSuperview()
-                make.left.greaterThanOrEqualTo(SCRXFrom(10))
-                make.right.lessThanOrEqualTo(SCRXFrom(-10))
-                make.width.lessThanOrEqualTo(SCRXFrom(600))
-            } else {
-                make.left.equalTo(SCRXFrom(10))
-                make.right.equalTo(SCRXFrom(-10))
-            }
-            make.top.bottom.equalToSuperview()
+            make.centerX.equalToSuperview()
+            make.centerY.equalToSuperview()
+            make.left.greaterThanOrEqualTo(SCRXFrom(10))
+            make.right.lessThanOrEqualTo(SCRXFrom(-10))
+            make.width.lessThanOrEqualTo(isIPad ? SCRXFrom(600) : SCRXFrom(320))
+            make.top.greaterThanOrEqualToSuperview()
+            make.bottom.lessThanOrEqualToSuperview()
         }
 
         buildSteps()
@@ -119,7 +116,7 @@ class StepFunctionView: UIView {
 
     let imageView = UIImageView()
     private let titleLabel = UILabel()
-    private let minWidth: CGFloat = SCRXFrom(60)
+    private let minWidth: CGFloat = SCRXFrom(68)
     private let maxWidth: CGFloat = isIPad ? SCRXFrom(150) : SCRXFrom(107)
 
     init(imageName: String, title: String, titleColor: UIColor) {

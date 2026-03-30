@@ -1183,6 +1183,10 @@
 "path_sequence" = "Path sequence";
 "sequence" = "Sequence";
 "trigger_zone" = "Trigger zone";
+"device_add_title_path" = "Add to Path";
+"device_add_title_zone" = "Add to Zone";
+"device_add_title_path_index" = "Add to Path %d";
+"device_add_title_zone_index" = "Add to Zone %d";
 "add_sequence" = "Add sequence";
 "quick_add" = "Quick add";
 "trigger_add" = "Trigger add";
@@ -1192,6 +1196,12 @@
 "quick_add_step3" = "Click to start and\nthen move in\nsequence to trigger";
 "quick_add_ignore_added_devices" = "Ignore added devices";
 "quick_add_show_added_devices" = "Contains the devices added in other paths";
+"space_trigger_zone_all_eligible_groups" = "All eligible groups";
+"space_trigger_zone_new_only" = "New only";
+"space_trigger_zone_show_added" = "Show added";
+"space_trigger_zone_used" = "Used";
+"space_trigger_zone_quick_add_hint" = "Only devices from proximity lighting groups will be detected";
+"space_trigger_zone_quick_add_message" = "The intersection point is suitable for adding using the Trigger add mode";
 "pause_add" = "Pause add";
 "Adding…" = "Adding…";
 "path_quick_add_message" = "The intersection point is suitable for adding using the Tigger added mode";

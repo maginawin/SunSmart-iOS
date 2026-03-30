@@ -17,6 +17,9 @@ class GroupPathSequenceViewController: UIViewController {
 //    let paths: [GroupProximityLightingSequencePath]
     private var tableView: UITableView!
     private var deviceAddView: GroupPathSequenceDeviceAddView!
+    private var deviceAddViewHeightConstraint: NSLayoutConstraint?
+    private var allowDeviceAddAnimations = false
+    private var didApplyInitialEmptyState = false
     
     var setPaths: [GroupProximityLightingSequencePath] = []
     private var selectPathData: GroupPathSequenceSelectData!
@@ -55,9 +58,8 @@ class GroupPathSequenceViewController: UIViewController {
 //        }
         
         setupUI()
-        DispatchQueue.main.async {
-            self.updateEmptyUI()
-        }
+        view.layoutIfNeeded()
+        updateEmptyUI()
         updateDeviceAddViewUI()
     }
     
@@ -68,12 +70,22 @@ class GroupPathSequenceViewController: UIViewController {
     
     override func viewDidAppear(_ animated: Bool) {
         super.viewDidAppear(animated)
+        allowDeviceAddAnimations = true
         
         if self.tableView.firstShowFlashScrollIndicators {
             self.tableView.flashScrollIndicatorsIfNeeded()
         }
     }
-    
+
+    override func viewDidLayoutSubviews() {
+        super.viewDidLayoutSubviews()
+        guard !didApplyInitialEmptyState else {
+            return
+        }
+        didApplyInitialEmptyState = true
+        updateEmptyUI()
+    }
+
     override func viewDidDisappear(_ animated: Bool) {
         super.viewDidDisappear(animated)
         
@@ -87,24 +99,55 @@ class GroupPathSequenceViewController: UIViewController {
     
     private func updateEmptyUI() {
         if setPaths.isEmpty {
-//            view.layoutIfNeeded()
-            tableView.showEmptyDataView(title: "no_sequences".localizedString, backgroundColor: Background_Color, buttonText: "add_sequence".localizedString, buttomWidth: SCRXFrom(216), position: .center, bottomMargin: SCRYFrom(20)) {[weak self] in
-                self?.addPath()
+            tableView.layoutIfNeeded()
+            UIView.performWithoutAnimation {
+                view.showEmptyDataView(frame: tableView.frame, title: "no_sequences".localizedString, backgroundColor: Background_Color, buttonText: "add_sequence".localizedString, buttomWidth: SCRXFrom(216), position: .center, bottomMargin: SCRYFrom(100)) {[weak self] in
+                    self?.addPath()
+                }
             }
             tableView.isScrollEnabled = false
         }else {
-            tableView.hideEmptyDataView()
+            view.hideEmptyDataView()
             tableView.isScrollEnabled = true
         }
-        
+        updateDeviceAddViewUI()
     }
     
     private func updateDeviceAddViewUI() {
-        if selectPathData.isSelect {
-            deviceAddView.canAddDevice = true
-        }else {
+        let hasPaths = !setPaths.isEmpty
+        let hasSelectedPath = selectPathData.path != nil
+        let shouldAnimate = allowDeviceAddAnimations && view.window != nil
+        updateDeviceAddViewHeader()
+        if hasPaths {
+            deviceAddView.isHidden = false
+            deviceAddView.alpha = 1
+            if hasSelectedPath {
+                deviceAddView.setCollapsed(false, animated: shouldAnimate)
+            }
+            deviceAddView.canAddDevice = hasSelectedPath
+            deviceAddView.refreshPreferredHeight()
+        } else {
             deviceAddView.canAddDevice = false
             quickAddState = .stop
+            updateDeviceAddViewHeight(0, animated: shouldAnimate)
+            deviceAddView.alpha = 0
+            deviceAddView.isHidden = true
+        }
+    }
+
+    private func updateDeviceAddViewHeader() {
+        let index = selectPathData.path.flatMap { setPaths.firstIndex(of: $0) }.map { $0 + 1 }
+        deviceAddView.updateHeaderIndex(index)
+    }
+
+    private func updateDeviceAddViewHeight(_ height: CGFloat, animated: Bool) {
+        let safeHeight = height <= 0 ? 0 : max(height, SCRYFrom(44))
+        deviceAddViewHeightConstraint?.constant = safeHeight
+        guard animated else {
+            return
+        }
+        UIView.animate(withDuration: 0.25) {
+            self.view.layoutIfNeeded()
         }
     }
     
@@ -233,13 +276,20 @@ class GroupPathSequenceViewController: UIViewController {
     private func setupUI() {
         
         deviceAddView = GroupPathSequenceDeviceAddView()
+        deviceAddView.isHidden = true
         deviceAddView.delegate = self
+        deviceAddView.heightChanged = { [weak self] height in
+            guard let self = self else { return }
+            let shouldAnimate = self.allowDeviceAddAnimations && self.view.window != nil
+            self.updateDeviceAddViewHeight(height, animated: shouldAnimate)
+        }
         view.addSubview(deviceAddView)
+        deviceAddViewHeightConstraint = deviceAddView.heightAnchor.constraint(equalToConstant: 0)
+        deviceAddViewHeightConstraint?.isActive = true
         deviceAddView.snp.makeConstraints { make in
 //            make.left.right.equalTo(tableView)
             make.left.right.equalToSuperview()
             make.bottom.equalTo(-max(kSafeAreaBottomHeight, SCRYFrom(16)))
-            make.height.greaterThanOrEqualTo(isIPad ? SCRXFrom(183) : SCRYFrom(163))
         }
         
         tableView = UITableView(frame: .zero, style: .grouped)

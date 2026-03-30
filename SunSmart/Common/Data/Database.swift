@@ -410,6 +410,7 @@ extension SpaceData {
         static let vistors = Expression<Data?>("vistors")
         static let displayDeviceNamePrefix = Expression<Bool>("displayDeviceNamePrefix")
         static let deviceBlinkMode = Expression<Int>("deviceBlinkMode")
+        static let triggerZones = Expression<Data?>("triggerZones")
     }
     
     /// 初始化空间表
@@ -450,6 +451,7 @@ extension SpaceData {
             builder.column(ExpressionKey.vistors)
             builder.column(ExpressionKey.displayDeviceNamePrefix, defaultValue: true)
             builder.column(ExpressionKey.deviceBlinkMode, defaultValue: DeviceBlinkMode.breathing.rawValue)
+            builder.column(ExpressionKey.triggerZones)
         }))
         
         // 获取表内存在的属性
@@ -475,6 +477,10 @@ extension SpaceData {
             // 是否存在”deviceBlinkMode“属性
             if !columns.contains(where: { $0.name == "deviceBlinkMode" }) {
                 _ = try? SunSmartDataManager.shared.db?.run(SpaceData.spacesTable.addColumn(ExpressionKey.deviceBlinkMode, defaultValue: DeviceBlinkMode.breathing.rawValue))
+            }
+            // 是否存在”triggerZones“属性
+            if !columns.contains(where: { $0.name == "triggerZones" }) {
+                _ = try? SunSmartDataManager.shared.db?.run(SpaceData.spacesTable.addColumn(ExpressionKey.triggerZones))
             }
         }
         
@@ -536,6 +542,9 @@ extension SpaceData {
                 space.releaseAddress = row[ExpressionKey.isReleaseAddress] ?? false
                 space.displayDeviceNamePrefix = row[ExpressionKey.displayDeviceNamePrefix]
                 space.deviceBlinkMode = DeviceBlinkMode(rawValue: row[ExpressionKey.deviceBlinkMode]) ?? .breathing
+                if let triggerZonesData = row[ExpressionKey.triggerZones] {
+                    space.triggerZones = (try? jsonDecoder.decode([SpaceTriggerZone].self, from: triggerZonesData)) ?? []
+                }
                 
                 if let editorData = row[ExpressionKey.editor] {
                     space.editor = try? jsonDecoder.decode(UserData.self, from: editorData)
@@ -587,6 +596,9 @@ extension SpaceData {
                 newSpace.releaseAddress = row[ExpressionKey.isReleaseAddress] ?? false
                 newSpace.displayDeviceNamePrefix = row[ExpressionKey.displayDeviceNamePrefix]
                 newSpace.deviceBlinkMode = DeviceBlinkMode(rawValue: row[ExpressionKey.deviceBlinkMode]) ?? .breathing
+                if let triggerZonesData = row[ExpressionKey.triggerZones] {
+                    newSpace.triggerZones = (try? jsonDecoder.decode([SpaceTriggerZone].self, from: triggerZonesData)) ?? []
+                }
                 
                 if let editorData = row[ExpressionKey.editor] {
                     newSpace.editor = try? jsonDecoder.decode(UserData.self, from: editorData)
@@ -648,6 +660,8 @@ extension SpaceData {
             vistorsData = try? jsonEncoder.encode(self.visitors)
         }
         
+        let triggerZonesData = self.triggerZones.isEmpty ? nil : (try? jsonEncoder.encode(self.triggerZones))
+        
         let interOrUpdate = SpaceData.spacesTable.insert(or: .replace, [
             ExpressionKey.uuid <- self.id,
             ExpressionKey.siteUUID <- self.siteId,
@@ -681,7 +695,8 @@ extension SpaceData {
             ExpressionKey.editor <- editorData,
             ExpressionKey.vistors <- vistorsData,
             ExpressionKey.displayDeviceNamePrefix <- self.displayDeviceNamePrefix,
-            ExpressionKey.deviceBlinkMode <- self.deviceBlinkMode.rawValue
+            ExpressionKey.deviceBlinkMode <- self.deviceBlinkMode.rawValue,
+            ExpressionKey.triggerZones <- triggerZonesData
         ])
         do {
             try SunSmartDataManager.shared.db?.run(interOrUpdate)

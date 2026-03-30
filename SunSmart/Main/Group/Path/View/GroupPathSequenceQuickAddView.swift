@@ -28,7 +28,12 @@ protocol GroupPathSequenceQuickAddViewDelegate: AnyObject {
 
 
 class GroupPathSequenceQuickAddView: UIView {
+    private let topContentInset = SCRYFrom(8)
     
+    private var helpImageView: UIImageView!
+    private var groupFilterView: UIView!
+    private var groupTitleLabel: UILabel!
+    private var groupArrowImageView: UIImageView!
     private var titleLabel: UILabel!
     var addView: UIView!
     private var addTypeView: UIView!
@@ -37,6 +42,7 @@ class GroupPathSequenceQuickAddView: UIView {
     private var stopBtn: UIButton!
 //    private var pauseBtn: UIButton!
     private var addStateLabel: UILabel!
+    private var hintLabel: UILabel!
     private var messageLabel: UILabel!
     
     var guideContentView: UIView!
@@ -44,13 +50,24 @@ class GroupPathSequenceQuickAddView: UIView {
     
     var showAdded: Bool = false
     var isSequence: Bool = true
+    var groupFilterChanged: ((Int) -> Void)?
     weak var delegate: GroupPathSequenceQuickAddViewDelegate?
+    private var groupFilterTitles: [String] = []
+    private var groupFilterEnabledStates: [Bool] = []
+    private var groupFilterSelectedIndex: Int = 0
+    private var usesDualFilterLayout: Bool = false
+
+    var preferredContentHeight: CGFloat {
+        if !guideContentView.isHidden {
+            return SCRYFrom(68)
+        }
+        return usesDualFilterLayout ? SCRYFrom(136) : SCRYFrom(130)
+    }
     
     override init(frame: CGRect) {
         super.init(frame: frame)
         
-        backgroundColor = .white
-        layer.cornerRadius = SCRYFrom(10)
+        backgroundColor = .clear
         
         setupUI()
     }
@@ -93,7 +110,7 @@ class GroupPathSequenceQuickAddView: UIView {
             
         case .stop:
             addStateLabel.text = "click_to_start".localizedString
-            addStateLabel.textColor = TextBlack_Color
+            addStateLabel.textColor = ImportantText_Color
             stopBtn.isHidden = true
             startBtn.isSelected = false
             startBtn.snp.updateConstraints { make in
@@ -129,80 +146,231 @@ class GroupPathSequenceQuickAddView: UIView {
             make.centerX.equalToSuperview()
         }
         addStateLabel.text = "click_to_start".localizedString
-        addStateLabel.textColor = TextBlack_Color
+        addStateLabel.textColor = ImportantText_Color
         delegate?.quickAddView(self, addStateChanged: .stop)
     }
     
     @objc private func addTypeSelectAction() {
         var menuWidth = isIPad ? SCRXFrom(300) : SCRXFrom(256)
-        let btnPoint = CGPoint(x: self.width - menuWidth, y: arrowImageView.frame.maxY)
-        let windowPoint = self.convert(btnPoint, to: UIApplication.shared.keyWindow())
-        
-        var titles = ["quick_add_ignore_added_devices".localizedString, "quick_add_show_added_devices".localizedString]
-        if !isSequence {
-            titles = ["quick_add_ignore_added_devices".localizedString, "zone_quick_add_show_added_devices".localizedString]
+        var menuTitles = ["quick_add_ignore_added_devices".localizedString, "quick_add_show_added_devices".localizedString]
+        var selectedTitles = menuTitles
+        if usesDualFilterLayout {
+            menuTitles = ["quick_add_ignore_added_devices".localizedString, "trigger_add_show_added_devices".localizedString]
+            selectedTitles = ["space_trigger_zone_new_only".localizedString, "space_trigger_zone_used".localizedString]
+            menuWidth = isIPad ? SCRXFrom(320) : SCRXFrom(256)
+        } else if !isSequence {
+            menuTitles = ["quick_add_ignore_added_devices".localizedString, "zone_quick_add_show_added_devices".localizedString]
+            selectedTitles = menuTitles
             menuWidth += SCRXFrom(14)
         }
-      
-        TitleSelectView.show(titles: titles, style: .default, anchorPoint: windowPoint, menuWidth: menuWidth, itemHeight: SCRYFrom(44), titleFont: UIFont.systemFont(ofSize: 14, weight: .light)) {[weak self] index in
-            guard let self = self else { return }
-            self.titleLabel.text = titles[index]
-            
-            self.showAdded = index == 1
-            self.delegate?.quickAddView(self, showAddedDevicesChanged: self.showAdded)
-        }
+        let btnPoint = CGPoint(x: addTypeView.frame.maxX - menuWidth, y: addTypeView.frame.maxY + SCRYFrom(4))
+        let windowPoint = self.convert(btnPoint, to: UIApplication.shared.keyWindow())
+
+//        if usesDualFilterLayout {
+            TitleSelectView.show(titles: menuTitles,
+                                 style: .default,
+                                 anchorPoint: windowPoint,
+                                 selectIndex: showAdded ? 1 : 0,
+                                 menuWidth: menuWidth,
+                                 itemHeight: SCRYFrom(30),
+                                 titleColor: RGB(100, 116, 139),
+                                 titleFont: UIFont.systemFont(ofSize: 12, weight: .regular),
+                                 backgroundColor: .white,
+                                 selectBackgroundColor: Bar_Color.withAlphaComponent(0.12),
+                                 selectedTitleColor: Bar_Color,
+                                 highlightSelectedWithoutIcon: true,
+                                 titleAlignment: .left,
+                                 contentBorderColor: RGB(236, 236, 236),
+                                 contentBorderWidth: 1,
+                                 contentCornerRadius: SCRYFrom(10),
+                                 rowHighlightInsets: UIEdgeInsets(top: SCRYFrom(4), left: SCRXFrom(4), bottom: SCRYFrom(4), right: SCRXFrom(4)),
+                                 rowHighlightCornerRadius: SCRYFrom(5)) {[weak self] index in
+                guard let self = self else { return }
+                self.titleLabel.text = selectedTitles[index]
+                self.showAdded = index == 1
+                self.delegate?.quickAddView(self, showAddedDevicesChanged: self.showAdded)
+            }
+//            return
+//        }
+//
+//        TitleSelectView.show(titles: menuTitles, style: .default, anchorPoint: windowPoint, menuWidth: menuWidth, itemHeight: SCRYFrom(44), titleFont: UIFont.systemFont(ofSize: 14, weight: .light)) {[weak self] index in
+//            guard let self = self else { return }
+//            self.titleLabel.text = selectedTitles[index]
+//            
+//            self.showAdded = index == 1
+//            self.delegate?.quickAddView(self, showAddedDevicesChanged: self.showAdded)
+//        }
         
+    }
+
+    @objc private func groupFilterSelectAction() {
+        guard usesDualFilterLayout, !groupFilterTitles.isEmpty else {
+            return
+        }
+        let menuWidth = groupFilterView.bounds.width > 0 ? groupFilterView.bounds.width : SCRXFrom(186)
+        let btnPoint = CGPoint(x: groupFilterView.frame.maxX - menuWidth, y: groupFilterView.frame.maxY + SCRYFrom(4))
+        let windowPoint = self.convert(btnPoint, to: UIApplication.shared.keyWindow())
+        
+        TitleSelectView.show(titles: groupFilterTitles,
+                             style: .default,
+                             anchorPoint: windowPoint,
+                             selectIndex: groupFilterSelectedIndex,
+                             menuWidth: menuWidth,
+                             itemHeight: SCRYFrom(30),
+                             titleColor: RGB(100, 116, 139),
+                             titleFont: UIFont.systemFont(ofSize: 12, weight: .regular),
+                             backgroundColor: .white,
+                             selectBackgroundColor: Bar_Color.withAlphaComponent(0.12),
+                             enabledStates: groupFilterEnabledStates,
+                             disabledTitleColor: RGB(100, 116, 139, 0.5),
+                             selectedTitleColor: Bar_Color,
+                             highlightSelectedWithoutIcon: true,
+                             titleAlignment: .left,
+                             contentBorderColor: RGB(236, 236, 236),
+                             contentBorderWidth: 1,
+                             contentCornerRadius: SCRYFrom(10),
+                             rowHighlightInsets: UIEdgeInsets(top: SCRYFrom(4), left: SCRXFrom(4), bottom: SCRYFrom(4), right: SCRXFrom(4)),
+                             rowHighlightCornerRadius: SCRYFrom(5)) { [weak self] index in
+            guard let self else { return }
+            self.groupFilterSelectedIndex = index
+            self.groupTitleLabel.text = self.groupFilterTitles[index]
+            self.groupFilterChanged?(index)
+        }
+    }
+
+    func configureDefaultQuickAdd() {
+        usesDualFilterLayout = false
+        groupFilterTitles.removeAll()
+        groupFilterEnabledStates.removeAll()
+        groupFilterSelectedIndex = 0
+        showAdded = false
+        titleLabel.text = "quick_add_ignore_added_devices".localizedString
+        hintLabel.text = nil
+        hintLabel.isHidden = true
+        groupFilterView.isHidden = true
+        messageLabel.text = "path_quick_add_message".localizedString
+        addTypeView.snp.remakeConstraints { make in
+            make.left.equalTo(helpImageView.snp.right).offset(SCRXFrom(6))
+            make.top.equalTo(topContentInset)
+            make.height.equalTo(SCRYFrom(30))
+            make.right.equalTo(SCRXFrom(-16))
+        }
+    }
+
+    func configureSpaceTriggerZoneQuickAdd(groupTitles: [String], enabledStates: [Bool], selectedGroupIndex: Int, showAddedOnly: Bool) {
+        usesDualFilterLayout = true
+        groupFilterTitles = groupTitles
+        groupFilterEnabledStates = enabledStates
+        groupFilterSelectedIndex = max(0, min(selectedGroupIndex, max(groupTitles.count - 1, 0)))
+        groupTitleLabel.text = groupFilterTitles.isEmpty ? nil : groupFilterTitles[groupFilterSelectedIndex]
+        showAdded = showAddedOnly
+        titleLabel.text = showAddedOnly ? "space_trigger_zone_used".localizedString : "space_trigger_zone_new_only".localizedString
+        hintLabel.text = "space_trigger_zone_quick_add_hint".localizedString
+        hintLabel.isHidden = false
+        groupFilterView.isHidden = false
+        messageLabel.text = "space_trigger_zone_quick_add_message".localizedString
+        addTypeView.snp.remakeConstraints { make in
+            make.left.equalTo(groupFilterView.snp.right).offset(SCRXFrom(8))
+            make.top.equalTo(topContentInset)
+            make.height.equalTo(SCRYFrom(30))
+            make.width.equalTo(SCRXFrom(90))
+            make.right.lessThanOrEqualTo(SCRXFrom(-16))
+        }
     }
     
     private func setupUI() {
         
         addView = UIView()
-//        addView.isHidden = true
         addSubview(addView)
         addView.snp.makeConstraints { make in
             make.edges.equalToSuperview()
         }
         
+        helpImageView = UIImageView(image: UIImage(named: "help"))
+        addView.addSubview(helpImageView)
+        helpImageView.snp.makeConstraints { make in
+            make.left.equalTo(SCRXFrom(8))
+            make.top.equalTo(topContentInset)
+            make.width.height.equalTo(30)
+        }
+
+        groupFilterView = UIView()
+        groupFilterView.isHidden = true
+        groupFilterView.addGestureRecognizer(UITapGestureRecognizer(target: self, action: #selector(groupFilterSelectAction)))
+        groupFilterView.layer.cornerRadius = SCRYFrom(10)
+        groupFilterView.layer.borderWidth = 1
+        groupFilterView.layer.borderColor = Border_Color.cgColor
+        groupFilterView.backgroundColor = .white
+        addView.addSubview(groupFilterView)
+        groupFilterView.snp.makeConstraints { make in
+            make.left.equalTo(helpImageView.snp.right).offset(SCRXFrom(6))
+            make.top.equalTo(topContentInset)
+            make.height.equalTo(SCRYFrom(30))
+            make.width.equalTo(SCRXFrom(186))
+        }
+
+        groupArrowImageView = UIImageView(image: UIImage(named: "arrow_down_black"))
+        groupFilterView.addSubview(groupArrowImageView)
+        groupArrowImageView.snp.makeConstraints { make in
+            make.right.equalTo(SCRXFrom(-8))
+            make.centerY.equalToSuperview()
+            make.width.height.equalTo(16)
+        }
+
+        groupTitleLabel = UILabel(text: nil, textColor: TextBlack_Color, fontSize: 13, fontWeight: .light, fit: false)
+        groupFilterView.addSubview(groupTitleLabel)
+        groupTitleLabel.snp.makeConstraints { make in
+            make.left.equalTo(SCRXFrom(12))
+            make.centerY.equalToSuperview()
+            make.right.equalTo(groupArrowImageView.snp.left).offset(SCRXFrom(-8))
+        }
+
         addTypeView = UIView()
         addTypeView.addGestureRecognizer(UITapGestureRecognizer(target: self, action: #selector(addTypeSelectAction)))
+        addTypeView.layer.cornerRadius = SCRYFrom(10)
+        addTypeView.layer.borderWidth = 1
+        addTypeView.layer.borderColor = Border_Color.cgColor
+        addTypeView.backgroundColor = .white
         addView.addSubview(addTypeView)
         addTypeView.snp.makeConstraints { make in
-            make.left.equalTo(SCRXFrom(8))
-            make.top.equalTo(SCRYFrom(4))
+            make.left.equalTo(helpImageView.snp.right).offset(SCRXFrom(6))
+            make.top.equalTo(topContentInset)
             make.height.equalTo(SCRYFrom(30))
-            make.right.equalTo(SCRXFrom(-8))
+            make.right.equalTo(SCRXFrom(-16))
         }
         
         arrowImageView = UIImageView(image: UIImage(named: "arrow_down_black"))
         addTypeView.addSubview(arrowImageView)
         arrowImageView.snp.makeConstraints { make in
-            make.right.equalToSuperview()
+            make.right.equalTo(SCRXFrom(-12))
             make.centerY.equalToSuperview()
-            make.width.height.equalTo(30)
+            make.width.height.equalTo(16)
         }
         
-        titleLabel = UILabel(text: "quick_add_ignore_added_devices".localizedString, textColor: TextBlack_Color, fontSize: 14, fontWeight: .light, fit: false)
+        titleLabel = UILabel(text: "quick_add_ignore_added_devices".localizedString, textColor: TextBlack_Color, fontSize: 13, fontWeight: .light, fit: false)
         addTypeView.addSubview(titleLabel)
         titleLabel.snp.makeConstraints { make in
-            make.left.centerY.equalToSuperview()
-            make.right.equalTo(arrowImageView.snp.left).offset(SCRXFrom(-20))
+            make.left.equalTo(SCRXFrom(12))
+            make.centerY.equalToSuperview()
+            make.right.equalTo(arrowImageView.snp.left).offset(SCRXFrom(-12))
         }
 
-        
-//        showAddedSwitch = UISwitch()
-//        showAddedSwitch.onTintColor = Bar_Color
-//        showAddedSwitch.addTarget(self, action: #selector(showAddedSwitchValueChanged), for: .valueChanged)
-//        addView.addSubview(showAddedSwitch)
-//        showAddedSwitch.snp.makeConstraints { make in
-//            make.right.equalTo(SCRXFrom(-4))
-//            make.centerY.equalTo(titleLabel)
-//        }
+        hintLabel = UILabel(text: nil, textColor: AssistText_Color, fontSize: 12, fontWeight: .light, fit: false)
+        hintLabel.isHidden = true
+        hintLabel.numberOfLines = 2
+        hintLabel.textAlignment = .center
+        addView.addSubview(hintLabel)
+        hintLabel.snp.makeConstraints { make in
+            make.left.equalTo(SCRXFrom(14))
+            make.right.equalTo(SCRXFrom(-14))
+            make.top.equalTo(addTypeView.snp.bottom).offset(SCRYFrom(8))
+        }
         
         startBtn = UIButton(normalImageName: "quick_add_start", selectedImageName: "quick_add_pause", target: self, action: #selector(startBtnAction))
         addView.addSubview(startBtn)
         startBtn.snp.makeConstraints { make in
             make.centerX.equalToSuperview()
-            make.top.equalTo(addTypeView.snp.bottom).offset(SCRYFrom(6))
+            make.top.equalTo(hintLabel.snp.bottom).offset(SCRYFrom(10))
         }
         
 //        pauseBtn = UIButton(normalImageName: "quick_add_pause", target: self, action: #selector(startBtnAction))
@@ -222,6 +390,7 @@ class GroupPathSequenceQuickAddView: UIView {
         }
         
         addStateLabel = UILabel(text: "click_to_start".localizedString, textColor: TextBlack_Color, fontSize: 14, fontWeight: .light, fit: false)
+        addStateLabel.textColor = ImportantText_Color
         addView.addSubview(addStateLabel)
         addStateLabel.snp.makeConstraints { make in
             make.right.equalTo(SCRXFrom(-16))
@@ -239,8 +408,7 @@ class GroupPathSequenceQuickAddView: UIView {
         }
         
         guideContentView = UIView()
-        guideContentView.backgroundColor = .white
-        guideContentView.layer.cornerRadius = SCRYFrom(10)
+        guideContentView.backgroundColor = .clear
         guideContentView.isHidden = true
         addSubview(guideContentView)
         guideContentView.snp.makeConstraints { make in
@@ -254,9 +422,13 @@ class GroupPathSequenceQuickAddView: UIView {
         ])
         guideContentView.addSubview(guideView)
         guideView.snp.makeConstraints { make in
-            make.left.right.centerY.equalToSuperview()
+            make.left.equalTo(SCRXFrom(8))
+            make.right.equalTo(SCRXFrom(-8))
+            make.top.equalTo(SCRYFrom(12))
+            make.bottom.equalTo(SCRYFrom(-12))
         }
-        
+
+        configureDefaultQuickAdd()
     }
     
 }

@@ -1189,6 +1189,7 @@ class SceneInfo {
     /// 添加的组list
     var groups: [Group] {
         return MeshNetworkManager.instance.groups.filter({ $0.info.sceneExecuteDatas.contains(where: { $0.sceneNumber == self.sceneId }) })
+//        || $0.nodes.contains(where: { $0.scenes.contains(where: { $0.number == self.sceneId }) })
     }
     
     /// 场景内绑定的日程list

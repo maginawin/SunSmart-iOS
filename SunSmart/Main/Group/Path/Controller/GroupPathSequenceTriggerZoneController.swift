@@ -17,6 +17,9 @@ class GroupPathSequenceTriggerZoneController: UIViewController {
     var setZones: [GroupProximityLightingPathZone] = []
     private var tableView: UITableView!
     private var deviceAddView: GroupPathSequenceDeviceAddView!
+    private var deviceAddViewHeightConstraint: NSLayoutConstraint?
+    private var allowDeviceAddAnimations = false
+    private var didApplyInitialEmptyState = false
     
     private var selectZone: GroupProximityLightingPathZone?
     
@@ -54,9 +57,8 @@ class GroupPathSequenceTriggerZoneController: UIViewController {
         view.backgroundColor = Background_Color
      
         setupUI()
-        DispatchQueue.main.async {
-            self.updateEmptyUI()
-        }
+        view.layoutIfNeeded()
+        updateEmptyUI()
         updateDeviceAddViewUI()
         
     }
@@ -69,12 +71,22 @@ class GroupPathSequenceTriggerZoneController: UIViewController {
     
     override func viewDidAppear(_ animated: Bool) {
         super.viewDidAppear(animated)
+        allowDeviceAddAnimations = true
         
         if self.tableView.firstShowFlashScrollIndicators {
             self.tableView.flashScrollIndicatorsIfNeeded()
         }
     }
-    
+
+    override func viewDidLayoutSubviews() {
+        super.viewDidLayoutSubviews()
+        guard !didApplyInitialEmptyState else {
+            return
+        }
+        didApplyInitialEmptyState = true
+        updateEmptyUI()
+    }
+
     override func viewDidDisappear(_ animated: Bool) {
         super.viewDidDisappear(animated)
         
@@ -87,24 +99,55 @@ class GroupPathSequenceTriggerZoneController: UIViewController {
     
     private func updateEmptyUI() {
         if setZones.isEmpty {
-//            view.layoutIfNeeded()
-            tableView.showEmptyDataView(title: "no_trigger_zones".localizedString, backgroundColor: Background_Color, buttonText: "add_trigger_zone".localizedString, buttomWidth: SCRXFrom(216), position: .center, bottomMargin: SCRYFrom(20)) {[weak self] in
-                self?.addZone()
+            tableView.layoutIfNeeded()
+            UIView.performWithoutAnimation {
+                view.showEmptyDataView(frame: tableView.frame, title: "no_trigger_zones".localizedString, backgroundColor: Background_Color, buttonText: "add_trigger_zone".localizedString, buttomWidth: SCRXFrom(216), position: .center, bottomMargin: SCRYFrom(100)) {[weak self] in
+                    self?.addZone()
+                }
             }
             tableView.isScrollEnabled = false
         }else {
-            tableView.hideEmptyDataView()
+            view.hideEmptyDataView()
             tableView.isScrollEnabled = true
         }
-        
+        updateDeviceAddViewUI()
     }
     
     private func updateDeviceAddViewUI() {
+        let hasZones = !setZones.isEmpty
+        let hasSelectedZone = selectZone != nil
+        let shouldAnimate = allowDeviceAddAnimations && view.window != nil
         quickAddState = .stop
-        if selectZone != nil {
-            deviceAddView.canAddDevice = true
-        }else {
+        updateDeviceAddViewHeader()
+        if hasZones {
+            deviceAddView.isHidden = false
+            deviceAddView.alpha = 1
+            if hasSelectedZone {
+                deviceAddView.setCollapsed(false, animated: shouldAnimate)
+            }
+            deviceAddView.canAddDevice = hasSelectedZone
+            deviceAddView.refreshPreferredHeight()
+        } else {
             deviceAddView.canAddDevice = false
+            updateDeviceAddViewHeight(0, animated: shouldAnimate)
+            deviceAddView.alpha = 0
+            deviceAddView.isHidden = true
+        }
+    }
+
+    private func updateDeviceAddViewHeader() {
+        let index = selectZone.flatMap { setZones.firstIndex(of: $0) }.map { $0 + 1 }
+        deviceAddView.updateHeaderIndex(index)
+    }
+
+    private func updateDeviceAddViewHeight(_ height: CGFloat, animated: Bool) {
+        let safeHeight = height <= 0 ? 0 : max(height, SCRYFrom(44))
+        deviceAddViewHeightConstraint?.constant = safeHeight
+        guard animated else {
+            return
+        }
+        UIView.animate(withDuration: 0.25) {
+            self.view.layoutIfNeeded()
         }
     }
     
@@ -204,7 +247,13 @@ class GroupPathSequenceTriggerZoneController: UIViewController {
     private func setupUI() {
         
         deviceAddView = GroupPathSequenceDeviceAddView()
+        deviceAddView.isHidden = true
         deviceAddView.isSequence = false
+        deviceAddView.heightChanged = { [weak self] height in
+            guard let self = self else { return }
+            let shouldAnimate = self.allowDeviceAddAnimations && self.view.window != nil
+            self.updateDeviceAddViewHeight(height, animated: shouldAnimate)
+        }
         deviceAddView.quickAddView.guideView.steps = [
             .init(imageName: "proximity_lighting_step1", title: "zone_add_step1".localizedString, textColor: SubText_Color),
             .init(imageName: "proximity_lighting_step2", title: "zone_add_step2".localizedString, textColor: SubText_Color),
@@ -225,10 +274,11 @@ class GroupPathSequenceTriggerZoneController: UIViewController {
         
         deviceAddView.delegate = self
         view.addSubview(deviceAddView)
+        deviceAddViewHeightConstraint = deviceAddView.heightAnchor.constraint(equalToConstant: 0)
+        deviceAddViewHeightConstraint?.isActive = true
         deviceAddView.snp.makeConstraints { make in
             make.left.right.equalToSuperview()
             make.bottom.equalTo(-max(kSafeAreaBottomHeight, SCRYFrom(16)))
-            make.height.greaterThanOrEqualTo(SCRYFrom(163))
         }
         
         tableView = UITableView(frame: .zero, style: .grouped)

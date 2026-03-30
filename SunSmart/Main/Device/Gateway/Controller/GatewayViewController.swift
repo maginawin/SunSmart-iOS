@@ -433,7 +433,7 @@ class GatewayViewController: UIViewController, DeviceProtocol {
         SRAlertView(title: "notification".localizedString, message: "gateway_delete_message".localizedString, actions: [.cancelAction, SRAlertAction(title: "alert_item_continue".localizedString, style: .destructive, actionHandler: {[weak self] _ in
             guard let self = self else { return }
             // 是否已注册网关
-            if gatewayModel.mqttServerInfo != nil {
+            if self.gatewayModel.mqttServerInfo != nil || self.gatewayModel.lastUploadCloudTimestamp != nil {
                 Task {
                     XWHUDManager.showCustomHUD(withMessage: "deleting".localizedString, isWindow: true)
                     if self.site.permission != .owner {

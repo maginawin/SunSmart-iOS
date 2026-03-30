@@ -54,40 +54,55 @@ protocol GroupPathSequenceDeviceAddViewDelegate: AnyObject {
 
 class GroupPathSequenceDeviceAddView: UIView {
 
+    private var containerStackView: UIStackView!
+    private var headerView: UIView!
+    private var headerTitleLabel: UILabel!
+    private var collapseBtn: UIButton!
+    private var bodyContainerView: UIView!
     private var addTypeBar: WMMenuView!
-    private var barRightBtn: UIButton!
-    
+    private var contentCardView: UIView!
+
     var quickAddView: GroupPathSequenceQuickAddView!
     var triggerAddView: GroupPathSequenceTriggerAddView!
     var manuallyAddView: GroupPathSequenceManuallyAddView!
     var refreshBtn: UIButton!
     var unfoldBtn: UIButton!
-//    private let titles: [String] = ["quick_add".localizedString, "trigger_add".localizedString]
     private let types: [PathSequenceDeviceAddMode] = [.quickAdd, .triggerAdd, .manuallyAdd]
-    
+
     weak var delegate: GroupPathSequenceDeviceAddViewDelegate?
+    var heightChanged: ((CGFloat) -> Void)?
+
+    private var currentMode: PathSequenceDeviceAddMode = .quickAdd
+    private var collapsed: Bool = false
+    private var headerIndex: Int?
+    private var lastPreferredHeight: CGFloat = 0
+    private var lastMenuWidth: CGFloat = 0
+
     /// 是否可添加设备
     var canAddDevice: Bool = false {
         didSet {
             if canAddDevice {
                 quickAddView.updateQuickAddState(.stop)
-                triggerAddView.guideContentView.isHidden = true
-                manuallyAddView.guideContentView.isHidden = true
+                triggerAddView.setGuideVisible(false)
+                manuallyAddView.setGuideVisible(false)
             }else {
                 quickAddView.updateQuickAddState(.stop)
                 quickAddView.showStepGuideUI()
-                triggerAddView.guideContentView.isHidden = false
-                manuallyAddView.guideContentView.isHidden = false
+                triggerAddView.setGuideVisible(true)
+                manuallyAddView.setGuideVisible(true)
             }
             updateUnfoldState()
+            updateAccessoryButtons()
+            refreshPreferredHeight()
         }
     }
     
-    var isSequence: Bool = false {
+    var isSequence: Bool = true {
         didSet {
             quickAddView.isSequence = isSequence
             triggerAddView.isSequence = isSequence
             manuallyAddView.isSequence = isSequence
+            updateHeaderTitle()
         }
     }
     
@@ -97,9 +112,9 @@ class GroupPathSequenceDeviceAddView: UIView {
         backgroundColor = Background_Color
         layer.shadowColor = UIColor.black.withAlphaComponent(0.05).cgColor
         layer.shadowOffset = CGSize(width: 0, height: -4)
-        layer.shadowRadius = 10
-        layer.shadowOpacity = 0
-        layer.cornerRadius = SCRYFrom(20)
+        layer.shadowRadius = 4
+        layer.shadowOpacity = 1
+        layer.cornerRadius = SCRYFrom(15)
         
         setupUI()
     }
@@ -110,10 +125,14 @@ class GroupPathSequenceDeviceAddView: UIView {
     
     override func layoutSubviews() {
         super.layoutSubviews()
-        
-//        layer.shadowPath = UIBezierPath(rect: CGRect(x: 0, y: -4, width: width, height: SCRYFrom(10))).cgPath
-        
-//        self.addRoundedCorners(corners: [.topLeft, .topRight], cornerRadii: CGSize(width: SCRYFrom(20), height: SCRYFrom(20)), rect: CGRect(x: 0, y: 0, width: width, height: height))
+        if addTypeBar.bounds.width > 0, abs(addTypeBar.bounds.width - lastMenuWidth) > 0.5 {
+            lastMenuWidth = addTypeBar.bounds.width
+            addTypeBar.reload()
+            if let index = types.firstIndex(of: currentMode) {
+                addTypeBar.selectItem(at: index)
+            }
+        }
+        emitPreferredHeightIfNeeded()
     }
     
     @objc private func refreshBtnAction() {
@@ -121,52 +140,104 @@ class GroupPathSequenceDeviceAddView: UIView {
     }
     
     @objc private func unfoldBtnAction(sender: UIButton) {
-        let rowNum = min(Int(max(ceilf(Float(manuallyAddView.devices.count) / Float(manuallyAddView.colNum * manuallyAddView.rowNum)), 1)), 3)
+        let rowNum = max(1, min(Int(ceilf(Float(manuallyAddView.devices.count) / Float(manuallyAddView.colNum))), 3))
         if !sender.isSelected, rowNum == 1 {
             return
         }
         sender.isSelected = !sender.isSelected
         
         manuallyAddView.rowNum = sender.isSelected ? rowNum : 1
-        
-        layer.shadowOpacity = sender.isSelected ? 1 : 0
+        updateAccessoryButtons()
+        refreshPreferredHeight()
+    }
+
+    @objc private func collapseBtnAction() {
+        collapsed.toggle()
+        updateCollapseUI(animated: true)
     }
     
     private func setupUI() {
-        
+        containerStackView = UIStackView()
+        containerStackView.axis = .vertical
+        containerStackView.spacing = 0
+        addSubview(containerStackView)
+        containerStackView.snp.makeConstraints { make in
+            make.left.right.equalToSuperview()
+            make.top.equalTo(SCRYFrom(4))
+            make.bottom.equalTo(SCRYFrom(-14))
+        }
+
+        headerView = UIView()
+        containerStackView.addArrangedSubview(headerView)
+        headerView.snp.makeConstraints { make in
+            make.height.equalTo(SCRYFrom(40))
+        }
+        headerView.addGestureRecognizer(UITapGestureRecognizer(target: self, action: #selector(collapseBtnAction)))
+
+        headerTitleLabel = UILabel(text: nil, textColor: TextBlack_Color, fontSize: 14, fit: false)
+        headerView.addSubview(headerTitleLabel)
+        headerTitleLabel.snp.makeConstraints { make in
+            make.left.equalTo(SCRXFrom(16))
+            make.centerY.equalToSuperview()
+        }
+
+        collapseBtn = UIButton(type: .custom)
+        collapseBtn.isUserInteractionEnabled = false
+        collapseBtn.setImage(UIImage(named: "arrow_down_black"), for: .normal)
+        headerView.addSubview(collapseBtn)
+        collapseBtn.snp.makeConstraints { make in
+            make.centerY.equalToSuperview()
+            make.right.equalTo(SCRXFrom(-16))
+            make.width.height.equalTo(30)
+        }
+
+        bodyContainerView = UIView()
+        containerStackView.addArrangedSubview(bodyContainerView)
+
         addTypeBar = WMMenuView(frame: CGRect(x: 0, y: 0, width: SCREEN_WIDTH, height: SCRYFrom(41)))
         addTypeBar.layoutMode = .left
         addTypeBar.style = .line
         addTypeBar.lineColor = Bar_Color
-        addTypeBar.progressWidths = [SCRXFrom(92)]
+        addTypeBar.progressWidths = [SCRXFrom(92), SCRXFrom(92), SCRXFrom(92)]
         addTypeBar.fontWeight = .light
         addTypeBar.progressHeight = 2
         addTypeBar.itemRateAnimation = false
-        addTypeBar.progressViewBottomSpace = SCRYFrom(8)
+        addTypeBar.progressViewBottomSpace = SCRYFrom(6)
         addTypeBar.dataSource = self
         addTypeBar.delegate = self
-        addSubview(addTypeBar)
-//        addTypeBar.snp.makeConstraints { make in
-//            make.left.equalTo(SCRXFrom(9))
-//            make.right.equalTo(SCRXFrom(-9))
-//            make.top.equalTo(SCRYFrom(15))
-//            make.height.equalTo(SCRYFrom(41))
-//        }
-        
-        quickAddView = GroupPathSequenceQuickAddView()
-        quickAddView.delegate = self
-        addSubview(quickAddView)
-        quickAddView.snp.makeConstraints { make in
-            make.top.equalTo(addTypeBar.snp.bottom)
+        bodyContainerView.addSubview(addTypeBar)
+        addTypeBar.snp.makeConstraints { make in
+            make.left.right.equalToSuperview()
+            make.top.equalToSuperview()
+            make.height.equalTo(SCRYFrom(41))
+        }
+
+        contentCardView = UIView()
+        contentCardView.backgroundColor = .white
+        contentCardView.layer.cornerRadius = SCRYFrom(10)
+        bodyContainerView.addSubview(contentCardView)
+        contentCardView.snp.makeConstraints { make in
+            make.top.equalTo(addTypeBar.snp.bottom).offset(SCRYFrom(8))
             make.left.equalTo(SCRXFrom(16))
             make.right.equalTo(SCRXFrom(-16))
             make.bottom.equalToSuperview()
         }
         
+        quickAddView = GroupPathSequenceQuickAddView()
+        quickAddView.delegate = self
+        quickAddView.backgroundColor = .clear
+        quickAddView.layer.cornerRadius = 0
+        contentCardView.addSubview(quickAddView)
+        quickAddView.snp.makeConstraints { make in
+            make.edges.equalToSuperview()
+        }
+        
         triggerAddView = GroupPathSequenceTriggerAddView()
         triggerAddView.isHidden = true
         triggerAddView.delegate = self
-        addSubview(triggerAddView)
+        triggerAddView.backgroundColor = .clear
+        triggerAddView.layer.cornerRadius = 0
+        contentCardView.addSubview(triggerAddView)
         triggerAddView.snp.makeConstraints { make in
             make.edges.equalTo(quickAddView)
         }
@@ -174,19 +245,16 @@ class GroupPathSequenceDeviceAddView: UIView {
         manuallyAddView = GroupPathSequenceManuallyAddView()
         manuallyAddView.isHidden = true
         manuallyAddView.delegate = self
-        addSubview(manuallyAddView)
+        manuallyAddView.backgroundColor = .clear
+        manuallyAddView.layer.cornerRadius = 0
+        contentCardView.addSubview(manuallyAddView)
         manuallyAddView.snp.makeConstraints { make in
-//            make.edges.equalToSuperview()
-            make.top.equalTo(addTypeBar.snp.bottom)
-            make.bottom.equalToSuperview()
-            make.left.equalTo(SCRXFrom(16))
-            make.right.equalTo(SCRXFrom(-16))
-//            make.height.greaterThanOrEqualTo(SCRYFrom(122))
+            make.edges.equalToSuperview()
         }
         
         refreshBtn = UIButton(normalImageName: "trigger_device_refresh", target: self, action: #selector(refreshBtnAction))
         refreshBtn.isHidden = true
-        addSubview(refreshBtn)
+        bodyContainerView.addSubview(refreshBtn)
         refreshBtn.snp.makeConstraints { make in
             make.centerY.equalTo(addTypeBar)
             make.right.equalTo(SCRXFrom(-24))
@@ -194,18 +262,138 @@ class GroupPathSequenceDeviceAddView: UIView {
         
         unfoldBtn = UIButton(normalImageName: "devices_unfold", selectedImageName: "devices_fold", target: self, action: #selector(unfoldBtnAction))
         unfoldBtn.isHidden = true
-        addSubview(unfoldBtn)
+        bodyContainerView.addSubview(unfoldBtn)
         unfoldBtn.snp.makeConstraints { make in
             make.center.equalTo(refreshBtn)
         }
+
+        updateHeaderTitle()
+        updateCollapseUI(animated: false)
     }
     
     func updateUnfoldState() {
-        
-        let rowNum = min(Int(max(ceilf(Float(manuallyAddView.devices.count) / Float(manuallyAddView.colNum * manuallyAddView.rowNum)), 1)), 3)
-        unfoldBtn.isHidden = rowNum <= 1 || !manuallyAddView.guideContentView.isHidden
+        updateAccessoryButtons()
+        refreshPreferredHeight()
     }
-    
+
+    func updateHeaderIndex(_ index: Int?) {
+        headerIndex = index
+        updateHeaderTitle()
+    }
+
+    func setCollapsed(_ collapsed: Bool, animated: Bool = false) {
+        guard self.collapsed != collapsed else {
+            return
+        }
+        self.collapsed = collapsed
+        updateCollapseUI(animated: animated)
+    }
+
+    func refreshPreferredHeight() {
+        setNeedsLayout()
+        layoutIfNeeded()
+        emitPreferredHeightIfNeeded()
+    }
+
+    private func updateHeaderTitle() {
+        if let index = headerIndex {
+            let key = isSequence ? "device_add_title_path_index" : "device_add_title_zone_index"
+            headerTitleLabel.text = String(format: key.localizedString, index)
+        } else {
+            headerTitleLabel.text = (isSequence ? "device_add_title_path" : "device_add_title_zone").localizedString
+        }
+    }
+
+    private func updateCollapseUI(animated: Bool) {
+        let applyState = {
+            let imageName = self.collapsed ? "arrow_down_black" : "arrow_up_black"
+            self.collapseBtn.setImage(UIImage(named: imageName), for: .normal)
+            self.bodyContainerView.isHidden = self.collapsed
+        }
+        if animated {
+            if collapsed {
+                applyState()
+            } else {
+                bodyContainerView.isHidden = false
+                applyState()
+            }
+        } else {
+            applyState()
+        }
+        updateAccessoryButtons()
+        refreshPreferredHeight()
+    }
+
+    private func updateAccessoryButtons() {
+        guard !collapsed else {
+            refreshBtn.isHidden = true
+            unfoldBtn.isHidden = true
+            return
+        }
+
+        let maxManualRows = max(1, min(Int(ceilf(Float(manuallyAddView.devices.count) / Float(manuallyAddView.colNum))), 3))
+        refreshBtn.isHidden = currentMode != .triggerAdd || triggerAddView.devices.isEmpty
+        unfoldBtn.isHidden = currentMode != .manuallyAdd || maxManualRows <= 1 || !manuallyAddView.guideContentView.isHidden
+    }
+
+    private func emitPreferredHeightIfNeeded() {
+        let height: CGFloat
+        if isHidden {
+            height = 0
+        } else if collapsed {
+            height = SCRYFrom(58)
+        } else {
+            height = preferredExpandedHeight()
+        }
+        guard abs(height - lastPreferredHeight) > 0.5 else {
+            return
+        }
+        lastPreferredHeight = height
+        heightChanged?(height)
+    }
+
+    private func preferredExpandedHeight() -> CGFloat {
+        let baseContentHeight = max(
+            quickAddView.preferredContentHeight,
+            triggerAddView.preferredContentHeight,
+            manuallyAddView.preferredMinimumContentHeight
+        )
+        let contentHeight: CGFloat
+        if currentMode == .manuallyAdd {
+            contentHeight = max(baseContentHeight, manuallyAddView.preferredContentHeight)
+        } else {
+            contentHeight = baseContentHeight
+        }
+        return SCRYFrom(58 + 41 + 8) + contentHeight
+    }
+
+    private func switchMode(to type: PathSequenceDeviceAddMode) {
+        currentMode = type
+
+        quickAddView.isHidden = true
+        triggerAddView.isHidden = true
+        manuallyAddView.isHidden = true
+
+        if type != .manuallyAdd, manuallyAddView.rowNum != 1 {
+            manuallyAddView.rowNum = 1
+            unfoldBtn.isSelected = false
+        }
+
+        switch type {
+        case .quickAdd:
+            quickAddView.isHidden = false
+            delegate?.deviceAddView(self, showAddedDevices: quickAddView.showAdded)
+        case .triggerAdd:
+            triggerAddView.isHidden = false
+            delegate?.deviceAddView(self, showAddedDevices: triggerAddView.showAdded)
+        case .manuallyAdd:
+            manuallyAddView.isHidden = false
+            delegate?.deviceAddView(self, showAddedDevices: manuallyAddView.showAdded)
+        }
+
+        updateAccessoryButtons()
+        refreshPreferredHeight()
+    }
 }
 
 extension GroupPathSequenceDeviceAddView: WMMenuViewDataSource, WMMenuViewDelegate {
@@ -241,31 +429,7 @@ extension GroupPathSequenceDeviceAddView: WMMenuViewDataSource, WMMenuViewDelega
         }
         
         let type = types[index]
-        
-        quickAddView.isHidden = true
-        triggerAddView.isHidden = true
-        manuallyAddView.isHidden = true
-        refreshBtn.isHidden = true
-        unfoldBtn.isHidden = true
-        if types[currentIndex] == .manuallyAdd, manuallyAddView.rowNum != 1 {
-            manuallyAddView.rowNum = 1
-            unfoldBtn.isSelected = false
-            layer.shadowOpacity = 0
-        }
-        
-        switch type {
-        case .quickAdd:
-            quickAddView.isHidden = false
-            delegate?.deviceAddView(self, showAddedDevices: quickAddView.showAdded)
-        case .triggerAdd:
-            triggerAddView.isHidden = false
-            refreshBtn.isHidden = triggerAddView.devices.isEmpty
-            delegate?.deviceAddView(self, showAddedDevices: triggerAddView.showAdded)
-        case .manuallyAdd:
-            manuallyAddView.isHidden = false
-            updateUnfoldState()
-            delegate?.deviceAddView(self, showAddedDevices: manuallyAddView.showAdded)
-        }
+        switchMode(to: type)
         delegate?.deviceAddView(self, deviceAddModeChanged: type)
     }
     

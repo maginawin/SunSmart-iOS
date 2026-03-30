@@ -168,6 +168,11 @@ extension SpaceData {
             spaceJsonData.updateValue(Int64(self.create) , forKey: "createTimestamp")
             spaceJsonData.updateValue(Int64(self.lastUpdate) , forKey: "updateTimestamp")
             spaceJsonData.updateValue(self.deviceBlinkMode.rawValue, forKey: "deviceBlinkMode")
+            if !self.triggerZones.isEmpty,
+               let data = try? jsonEncoder.encode(self.triggerZones),
+               let triggerZonesArray = try? JSONSerialization.jsonObject(with: data) as? [[String: Any]] {
+                spaceJsonData.updateValue(triggerZonesArray, forKey: "triggerZones")
+            }
             
             
             let networkKey = meshNetwork.networkKeys.first(where: { $0.networkId.hex == self.meshNetworkId })
