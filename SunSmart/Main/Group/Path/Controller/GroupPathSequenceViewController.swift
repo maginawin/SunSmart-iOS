@@ -89,12 +89,6 @@ class GroupPathSequenceViewController: UIViewController {
     override func viewDidDisappear(_ animated: Bool) {
         super.viewDidDisappear(animated)
         
-        if selectPathData.isSelect, let section = setPaths.firstIndex(of: selectPathData.path!) {
-            selectPathData.path = nil
-            selectPathData.item = nil
-            tableView.reloadSections(IndexSet(integer: section), with: .none)
-            updateDeviceAddViewUI()
-        }
     }
     
     private func updateEmptyUI() {
@@ -148,6 +142,15 @@ class GroupPathSequenceViewController: UIViewController {
         }
         UIView.animate(withDuration: 0.25) {
             self.view.layoutIfNeeded()
+        }
+    }
+    
+    func deselectPath() {
+        if selectPathData.isSelect, let section = setPaths.firstIndex(of: selectPathData.path!) {
+            selectPathData.path = nil
+            selectPathData.item = nil
+            tableView.reloadSections(IndexSet(integer: section), with: .none)
+            updateDeviceAddViewUI()
         }
     }
     
@@ -287,9 +290,8 @@ class GroupPathSequenceViewController: UIViewController {
         deviceAddViewHeightConstraint = deviceAddView.heightAnchor.constraint(equalToConstant: 0)
         deviceAddViewHeightConstraint?.isActive = true
         deviceAddView.snp.makeConstraints { make in
-//            make.left.right.equalTo(tableView)
             make.left.right.equalToSuperview()
-            make.bottom.equalTo(-max(kSafeAreaBottomHeight, SCRYFrom(16)))
+            make.bottom.equalTo(view.safeAreaLayoutGuide.snp.bottom)
         }
         
         tableView = UITableView(frame: .zero, style: .grouped)
@@ -308,6 +310,7 @@ class GroupPathSequenceViewController: UIViewController {
             make.top.equalTo(SCRYFrom(16))
             make.bottom.equalTo(deviceAddView.snp.top)
         }
+        view.bringSubviewToFront(deviceAddView)
         
       
         

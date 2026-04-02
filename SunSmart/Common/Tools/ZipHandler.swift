@@ -138,7 +138,7 @@ class ZipHandler {
                 firmwareData = fileData
             }
         }
-        guard let config = configJson, var firmwareIdStr = config["firmware_id"] as? String, let hash = config["comp_hash"] as? String, let elementCount = config["element_count"] as? Int, let imageIndex = config["image_id"] as? Int, let firmwareData = firmwareData else {
+        guard let config = configJson, var firmwareIdStr = config["firmware_id"] as? String, var hash = config["comp_hash"] as? String, let elementCount = config["element_count"] as? Int, let imageIndex = config["image_id"] as? Int, let firmwareData = firmwareData else {
             throw NSError(domain: "Data exception", code: -1)
         }
         // 固件id 1.2.1+0  => 0x01 02 0001 00000000
@@ -172,6 +172,10 @@ class ZipHandler {
         let versionCheck = config["version_check"] as? Bool ?? true
         // 版本vid
         let versionIdentifier = config["feature_version"] as? UInt16
+        // 处理hash字符串位数缺失补齐
+        if hash.count % 2 != 0 {
+            hash = "0" + hash
+        }
         
         let data = FirmwareZipData(firmwareId: firmwareId, firmwareVersion: firmwareIdArray.first ?? "", coreType: coreType, imageIndex: imageIndex, compositionHash: Data(hex: hash).turnOver(), elementCount: elementCount, firmwareData: firmwareData, test: isTest, versionCheck: versionCheck, versionIdentifier: versionIdentifier)
         return data

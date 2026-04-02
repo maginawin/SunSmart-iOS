@@ -70,6 +70,12 @@ class GroupPathSequenceManuallyAddView: UIView {
     private var groupFilterEnabledStates: [Bool] = []
     private var groupFilterSelectedIndex: Int = 0
     private var usesGroupFilterLayout: Bool = false
+
+    private var guidePreferredContentHeight: CGFloat {
+        let fallbackWidth = SCREEN_WIDTH - SCRXFrom(48)
+        let fittingWidth = max((bounds.width > 0 ? bounds.width : fallbackWidth) - SCRXFrom(16), SCRXFrom(200))
+        return max(SCRYFrom(68), guideView.preferredHeight(fittingWidth: fittingWidth) + SCRYFrom(24))
+    }
     
     /// 选中的设备
     private(set) var selectDevice: Node?
@@ -79,7 +85,7 @@ class GroupPathSequenceManuallyAddView: UIView {
 
     var preferredContentHeight: CGFloat {
         if !guideContentView.isHidden {
-            return SCRYFrom(68)
+            return guidePreferredContentHeight
         }
         let collectionHeight = max(currentCollectionHeight(), preferredMinimumCollectionHeight)
         return topContentInset + SCRYFrom(30 + 16 + 38) + collectionHeight
@@ -262,6 +268,10 @@ class GroupPathSequenceManuallyAddView: UIView {
         collectionView.setContentOffset(CGPoint(x: CGFloat(pageControl.currentPage) * collectionView.width, y: 0), animated: true)
     }
 
+    @objc private func helpImageAction() {
+        GroupPathSequenceAddDescriptionController.push(mode: .manuallyAdd, isSequence: isSequence)
+    }
+
     private func currentCollectionHeight() -> CGFloat {
         guard collectionView.frame != .zero else {
             return preferredMinimumCollectionHeight
@@ -278,6 +288,8 @@ class GroupPathSequenceManuallyAddView: UIView {
     
     private func setupUI() {
         helpImageView = UIImageView(image: UIImage(named: "help"))
+        helpImageView.isUserInteractionEnabled = true
+        helpImageView.addGestureRecognizer(UITapGestureRecognizer(target: self, action: #selector(helpImageAction)))
         addSubview(helpImageView)
         helpImageView.snp.makeConstraints { make in
             make.left.equalTo(SCRXFrom(8))

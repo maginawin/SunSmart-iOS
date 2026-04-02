@@ -410,6 +410,20 @@ class MeshFirmwareListViewController: UIViewController {
             guard let self = self else { return }
 //            firmwareTypeData.targetVersion = updateFirmwareData?.version
 //            cell.firmwareTypeData = firmwareTypeData
+#if DEBUG
+            // 下载/导入重复固件版本包时清空同一个pid下分发者缓存数据（测试马甲包外部版本2.0.0重复升级需要清空缓存重新上传固件到分发者）
+            if let firmwareData = updateFirmwareData {
+                MeshNetworkManager.instance.realNodes.filter({ $0.productIdentifier == firmwareData.productId && $0.distributionVersion == firmwareData.version }).forEach { node in
+                    node.distributionFirmwareID = nil
+                    node.distributionFirmwareSize = nil
+                    node.distributionIncomingFirmwareMetadata = nil
+                    node.savePropertys()
+                    if let firmwareDistributionModel = node.firmwareDistributionServerModel {
+                        MeshAPI.sendMessage(message: FirmwareDistributionFirmwareDelete(firmwareID: firmwareData.firmwareID), model: firmwareDistributionModel)
+                    }
+                }
+            } 
+#endif
             self.setupData()
         }
         navigationController?.pushViewController(vc, animated: true)

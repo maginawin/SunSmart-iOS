@@ -1067,7 +1067,7 @@ class ProfileTriggerConditionPhasesView: UIView {
 //            make.bottom.equalTo(SCRYFrom(-24))
         }
         
-        standbyLevelTitleLabel = UILabel(text: "standby_level".localizedString, textColor: TextBlack_Color, fontSize: 14, fontWeight: .light)
+        standbyLevelTitleLabel = UILabel(text: "fixed_level".localizedString, textColor: TextBlack_Color, fontSize: 14, fontWeight: .light)
         standbyLevelView.addSubview(standbyLevelTitleLabel)
         standbyLevelTitleLabel.snp.makeConstraints { make in
             make.left.equalTo(SCRXFrom(16))

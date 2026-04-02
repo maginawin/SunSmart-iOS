@@ -110,6 +110,17 @@ class GroupPathSequenceDeviceAddStepView: UIView {
             }
         }
     }
+
+    func preferredHeight(fittingWidth width: CGFloat) -> CGFloat {
+        layoutIfNeeded()
+        let targetWidth = max(width, 0)
+        let size = systemLayoutSizeFitting(
+            CGSize(width: targetWidth, height: UIView.layoutFittingCompressedSize.height),
+            withHorizontalFittingPriority: .required,
+            verticalFittingPriority: .fittingSizeLevel
+        )
+        return ceil(size.height)
+    }
 }
 
 class StepFunctionView: UIView {

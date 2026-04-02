@@ -57,9 +57,15 @@ class GroupPathSequenceQuickAddView: UIView {
     private var groupFilterSelectedIndex: Int = 0
     private var usesDualFilterLayout: Bool = false
 
+    private var guidePreferredContentHeight: CGFloat {
+        let fallbackWidth = SCREEN_WIDTH - SCRXFrom(48)
+        let fittingWidth = max((bounds.width > 0 ? bounds.width : fallbackWidth) - SCRXFrom(16), SCRXFrom(200))
+        return max(SCRYFrom(68), guideView.preferredHeight(fittingWidth: fittingWidth) + SCRYFrom(24))
+    }
+
     var preferredContentHeight: CGFloat {
         if !guideContentView.isHidden {
-            return SCRYFrom(68)
+            return guidePreferredContentHeight
         }
         return usesDualFilterLayout ? SCRYFrom(136) : SCRYFrom(130)
     }
@@ -148,6 +154,10 @@ class GroupPathSequenceQuickAddView: UIView {
         addStateLabel.text = "click_to_start".localizedString
         addStateLabel.textColor = ImportantText_Color
         delegate?.quickAddView(self, addStateChanged: .stop)
+    }
+
+    @objc private func helpImageAction() {
+        GroupPathSequenceAddDescriptionController.push(mode: .quickAdd, isSequence: isSequence)
     }
     
     @objc private func addTypeSelectAction() {
@@ -287,6 +297,8 @@ class GroupPathSequenceQuickAddView: UIView {
         }
         
         helpImageView = UIImageView(image: UIImage(named: "help"))
+        helpImageView.isUserInteractionEnabled = true
+        helpImageView.addGestureRecognizer(UITapGestureRecognizer(target: self, action: #selector(helpImageAction)))
         addView.addSubview(helpImageView)
         helpImageView.snp.makeConstraints { make in
             make.left.equalTo(SCRXFrom(8))

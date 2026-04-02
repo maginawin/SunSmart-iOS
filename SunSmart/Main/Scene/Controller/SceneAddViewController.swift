@@ -8,6 +8,27 @@
 import UIKit
 import NordicSigMeshSDK
 
+private final class SceneAddPagingScrollView: UIScrollView, UIGestureRecognizerDelegate {
+    override init(frame: CGRect) {
+        super.init(frame: frame)
+        isDirectionalLockEnabled = true
+        panGestureRecognizer.delegate = self
+    }
+
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
+
+    override func gestureRecognizerShouldBegin(_ gestureRecognizer: UIGestureRecognizer) -> Bool {
+        guard gestureRecognizer == panGestureRecognizer,
+              let panGestureRecognizer = gestureRecognizer as? UIPanGestureRecognizer else {
+            return true
+        }
+        let velocity = panGestureRecognizer.velocity(in: self)
+        return abs(velocity.x) > abs(velocity.y)
+    }
+}
+
 class SceneAddViewController: UIViewController {
 
     /// 创建方式
@@ -437,10 +458,10 @@ class SceneAddViewController: UIViewController {
 //            make.height.equalTo(SCRYFrom(38))
 //        }
         
-        scrollView = UIScrollView()
+        scrollView = SceneAddPagingScrollView()
         scrollView.delegate = self
         scrollView.isPagingEnabled = true
-//        scrollView.showsHorizontalScrollIndicator = false
+        scrollView.showsHorizontalScrollIndicator = false
         view.addSubview(scrollView)
         scrollView.snp.makeConstraints { make in
             make.left.right.bottom.equalToSuperview()
@@ -448,7 +469,6 @@ class SceneAddViewController: UIViewController {
         }
         
         customView = SceneAddCustomView(frame: .zero, name: name, imageNames: sceneImageNames)
-//        customView.createBtn.addTarget(self, action: #selector(createAction), for: .touchUpInside)
         customView.delegate = self
         scrollView.addSubview(customView)
         customView.snp.makeConstraints { make in
@@ -468,7 +488,6 @@ class SceneAddViewController: UIViewController {
             make.left.equalTo(customView.snp.right)
             make.right.bottom.width.height.equalToSuperview()
         }
-        
         
     }
     
@@ -1044,19 +1063,6 @@ extension SceneAddViewController: SceneAddGroupViewCellDelegate {
         MeshAPI.setGroupOnOffState(address: group.address.address, isOn: isOn)
         cell.onoffBtn.isSelected = isOn
     }
-    
-    /// group长按事件回调
-//    func cellDidLongPressAction(_ cell: SceneAddGroupViewCell) {
-        
-        
-        
-//        SceneExecuteDataPickerView.show(lightness: <#T##Int#>, cct: <#T##Int#>, showDelete: <#T##Bool#>, picker: <#T##SceneExecuteDataPickerView.DataPickerCallback?##SceneExecuteDataPickerView.DataPickerCallback?##(Int, Int) -> Void#>)
-//        
-//        SceneExecuteDataPickerView.show(lightness: data.lightness, cct: data.cct) {[weak self] lightness, cct in
-//            
-//        },
-        
-//    }
     
 }
 

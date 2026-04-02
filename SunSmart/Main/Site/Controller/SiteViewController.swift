@@ -125,20 +125,8 @@ class SiteViewController: UIViewController {
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
         
-//        // 读取当前site网络数据
-        if MeshNetworkManager.instance.meshNetwork?.uuid.uuidString != self.site.meshUUID || !MeshNetworkManager.instance.currentNetworkKey.isPrimary {
-            DispatchQueue.global().async {[weak self] in
-                guard let self = self else { return }
-                MeshLibManager.manager.setMeshNetworkConnected(meshUUID: self.site.meshUUID, subNetworkId: self.site.meshNetworkId, connected: false)
-                DispatchQueue.main.async {[weak self] in
-                    guard let self = self else { return }
-                    self.setupData()
-                }
-            }
-        }else {
-            setupData()
-        }
-//
+        setupData()
+
         if reloadData {
             reloadData = false
 //            allSpaces = site.spaces
@@ -158,6 +146,18 @@ class SiteViewController: UIViewController {
         if addSite {
             addSite = false
             addSpace()
+        }
+        
+        // 读取当前site网络数据
+        if MeshNetworkManager.instance.meshNetwork?.uuid.uuidString != self.site.meshUUID || !MeshNetworkManager.instance.currentNetworkKey.isPrimary {
+            DispatchQueue.global().async {[weak self] in
+                guard let self = self else { return }
+                MeshLibManager.manager.setMeshNetworkConnected(meshUUID: self.site.meshUUID, subNetworkId: self.site.meshNetworkId, connected: false)
+                DispatchQueue.main.async {[weak self] in
+                    guard let self = self else { return }
+                    self.setupData()
+                }
+            }
         }
         
         if allSpacesCollectionView.firstShowFlashScrollIndicators {

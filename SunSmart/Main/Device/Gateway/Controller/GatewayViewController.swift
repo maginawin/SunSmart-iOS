@@ -28,6 +28,12 @@ class GatewayViewController: UIViewController, DeviceProtocol {
     private let infoTypes: [InfoCellType] = [.mac, .address, .model, .deviceType, .firmwareVersion, .activate]
     /// 是否连接中
     private var isConnecting: Bool = false
+    /// 网关在线状态缓存
+    private var onlineState: Bool = false
+    /// 页面当前是否可见
+    private var isViewVisible: Bool = false
+    /// 网关 4G 信号刷新定时器
+    private var signalRefreshTimer: Timer?
     
     let site: SiteData
     let gateway: Gateway
@@ -58,6 +64,7 @@ class GatewayViewController: UIViewController, DeviceProtocol {
         title = gatewayModel.name
         view.backgroundColor = Background_Color
         navigationController?.setNavigationBarBackgroundColor(color: Background_Color)
+        onlineState = node.state
         
         navigationItem.rightBarButtonItem = UIBarButtonItem(image: UIImage(named: "close")?.withRenderingMode(.alwaysOriginal), style: .done, target: self, action: #selector(closeAction))
         
@@ -113,11 +120,16 @@ class GatewayViewController: UIViewController, DeviceProtocol {
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
         
-        if node.state {
-            getGatewaySignal()
-        }
-        
+        isViewVisible = true
         MeshLibManager.manager.messageDelegate = self
+        syncSignalRefreshState(forceRefresh: node.state)
+    }
+    
+    override func viewWillDisappear(_ animated: Bool) {
+        super.viewWillDisappear(animated)
+        
+        isViewVisible = false
+        stopSignalRefreshTimer()
     }
     
 
@@ -150,6 +162,7 @@ class GatewayViewController: UIViewController, DeviceProtocol {
     }
     
     deinit {
+        stopSignalRefreshTimer()
         MeshLibManager.manager.messageDelegate = self.lastMessageDelegate
         
         MeshLibManager.manager.close()
@@ -173,7 +186,8 @@ class GatewayViewController: UIViewController, DeviceProtocol {
             guard let self = self else { return }
             self.isConnecting = false
             self.headerView.hideConnectingUI()
-            self.getGatewaySignal()
+            self.onlineState = self.node.state
+            self.syncSignalRefreshState(forceRefresh: self.node.state)
             self.updateData()
             self.updateSaveBtnState()
         }
@@ -182,9 +196,17 @@ class GatewayViewController: UIViewController, DeviceProtocol {
     
     /// 获取网关信号
     private func getGatewaySignal() {
+        guard node.state else {
+            clearGatewaySignal()
+            return
+        }
         guard let vendorModel = self.node.sunricherVendorModel else { return }
         MeshAPI.sendMessage(message: SunricherVendorGet(function: .gatewaySimCpin), model: vendorModel) {[weak self] response in
             guard let self = self else { return }
+            guard self.node.state else {
+                self.clearGatewaySignal()
+                return
+            }
             if let statusMessage = response as? SunricherVendorStatus, case .gatewaySimCpinState(let cpin, let csqRssi, _) = statusMessage.status.parameters {
                 self.gatewayModel.csqRssi = Int(csqRssi)
                 self.gatewayModel.isSimInserted = cpin >= 0
@@ -193,6 +215,51 @@ class GatewayViewController: UIViewController, DeviceProtocol {
             }
             self.updateData()
         }
+    }
+    
+    @objc private func refreshGatewaySignal() {
+        guard node.state else {
+            stopSignalRefreshTimer()
+            clearGatewaySignal()
+            return
+        }
+        getGatewaySignal()
+    }
+    
+    private func syncSignalRefreshState(forceRefresh: Bool = false) {
+        guard isViewLoaded, isViewVisible else {
+            stopSignalRefreshTimer()
+            return
+        }
+        
+        if node.state {
+            startSignalRefreshTimer()
+            if forceRefresh {
+                getGatewaySignal()
+            }
+        } else {
+            stopSignalRefreshTimer()
+            clearGatewaySignal()
+        }
+    }
+    
+    private func startSignalRefreshTimer() {
+        guard signalRefreshTimer == nil else { return }
+        signalRefreshTimer = LCWeakTimer.scheduledTimer(timeInterval: 10, aTarget: self, selector: #selector(refreshGatewaySignal), userInfo: nil, repeats: true)
+        if let signalRefreshTimer {
+            RunLoop.main.add(signalRefreshTimer, forMode: .common)
+        }
+    }
+    
+    private func stopSignalRefreshTimer() {
+        signalRefreshTimer?.invalidate()
+        signalRefreshTimer = nil
+    }
+    
+    private func clearGatewaySignal() {
+        guard gatewayModel.csqRssi != nil else { return }
+        gatewayModel.csqRssi = nil
+        updateData()
     }
     
     /// 获取已关联的spaces
@@ -1090,6 +1157,12 @@ extension GatewayViewController: MeshLibManagerMessageDelegate {
     
     func meshNetworkManager(_ manager: MeshNetworkManager, deviceDataUpdate node: Node) {
         if node.primaryUnicastAddress == self.node.primaryUnicastAddress {
+            if node.state != onlineState {
+                onlineState = node.state
+                syncSignalRefreshState(forceRefresh: node.state)
+            } else if !node.state {
+                syncSignalRefreshState()
+            }
             updateData()
         }
     }

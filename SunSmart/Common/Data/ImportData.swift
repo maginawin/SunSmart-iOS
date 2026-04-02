@@ -721,6 +721,10 @@ extension SiteData {
         let provisioner = Provisioner(name: localProvisioner?.name ?? UserData.currentUserName, uuid: localProvisioner?.uuid ?? UUID(), allocatedUnicastRange: allocatedUnicastRange, allocatedGroupRange: allocatedGroupRange, allocatedSceneRange: allocatedSceneRange)
         
         if localProvisioner?.uuid.uuidString == provisioner.uuid.uuidString && localProvisioner?.primaryUnicastAddress != nil {
+            if self.localAddress == nil {
+                self.localAddress = localProvisioner?.primaryUnicastAddress
+                self.save()
+            }
             try? meshNetwork.changeProvisioner(provisioner)
         }else { // 修改供应者地址
             let address = localProvisioner?.primaryUnicastAddress ?? meshNetwork.nextAvailableUnicastAddress(elementsCount: 1, elementsUsing: provisioner, lockInAddress: false)

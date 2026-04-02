@@ -53,6 +53,12 @@ protocol GroupPathSequenceDeviceAddViewDelegate: AnyObject {
 }
 
 class GroupPathSequenceDeviceAddView: UIView {
+    private let containerTopInset = SCRYFrom(6)
+    private let containerBottomInset = SCRYFrom(14)
+    private let headerHeight = SCRYFrom(40)
+    private let headerBodySpacing = SCRYFrom(4)
+    private let addTypeBarHeight = SCRYFrom(41)
+    private let contentCardTopSpacing = SCRYFrom(8)
 
     private var containerStackView: UIStackView!
     private var headerView: UIView!
@@ -61,6 +67,7 @@ class GroupPathSequenceDeviceAddView: UIView {
     private var bodyContainerView: UIView!
     private var addTypeBar: WMMenuView!
     private var contentCardView: UIView!
+    private var contentCardMinHeightConstraint: NSLayoutConstraint?
 
     var quickAddView: GroupPathSequenceQuickAddView!
     var triggerAddView: GroupPathSequenceTriggerAddView!
@@ -136,6 +143,7 @@ class GroupPathSequenceDeviceAddView: UIView {
     }
     
     @objc private func refreshBtnAction() {
+        refreshBtn.isHidden = true
         delegate?.deviceAddView(self, triggerDevicesRefresh: self.triggerAddView)
     }
     
@@ -159,27 +167,20 @@ class GroupPathSequenceDeviceAddView: UIView {
     private func setupUI() {
         containerStackView = UIStackView()
         containerStackView.axis = .vertical
-        containerStackView.spacing = 0
+        containerStackView.spacing = headerBodySpacing
         addSubview(containerStackView)
         containerStackView.snp.makeConstraints { make in
             make.left.right.equalToSuperview()
-            make.top.equalTo(SCRYFrom(4))
-            make.bottom.equalTo(SCRYFrom(-14))
+            make.top.equalTo(containerTopInset)
+            make.bottom.equalTo(-containerBottomInset)
         }
 
         headerView = UIView()
         containerStackView.addArrangedSubview(headerView)
         headerView.snp.makeConstraints { make in
-            make.height.equalTo(SCRYFrom(40))
+            make.height.equalTo(headerHeight)
         }
         headerView.addGestureRecognizer(UITapGestureRecognizer(target: self, action: #selector(collapseBtnAction)))
-
-        headerTitleLabel = UILabel(text: nil, textColor: TextBlack_Color, fontSize: 14, fit: false)
-        headerView.addSubview(headerTitleLabel)
-        headerTitleLabel.snp.makeConstraints { make in
-            make.left.equalTo(SCRXFrom(16))
-            make.centerY.equalToSuperview()
-        }
 
         collapseBtn = UIButton(type: .custom)
         collapseBtn.isUserInteractionEnabled = false
@@ -189,6 +190,19 @@ class GroupPathSequenceDeviceAddView: UIView {
             make.centerY.equalToSuperview()
             make.right.equalTo(SCRXFrom(-16))
             make.width.height.equalTo(30)
+        }
+
+        headerTitleLabel = UILabel(text: nil, textColor: TextBlack_Color, fontSize: 14, fit: false)
+        headerTitleLabel.numberOfLines = 1
+        headerTitleLabel.lineBreakMode = .byTruncatingTail
+        headerTitleLabel.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
+        headerView.addSubview(headerTitleLabel)
+        headerTitleLabel.snp.makeConstraints { make in
+            make.left.equalTo(SCRXFrom(16))
+            make.right.lessThanOrEqualTo(collapseBtn.snp.left).offset(SCRXFrom(-8))
+            make.top.greaterThanOrEqualTo(SCRYFrom(6))
+            make.bottom.lessThanOrEqualTo(SCRYFrom(-6))
+            make.centerY.equalToSuperview()
         }
 
         bodyContainerView = UIView()
@@ -209,7 +223,7 @@ class GroupPathSequenceDeviceAddView: UIView {
         addTypeBar.snp.makeConstraints { make in
             make.left.right.equalToSuperview()
             make.top.equalToSuperview()
-            make.height.equalTo(SCRYFrom(41))
+            make.height.equalTo(addTypeBarHeight)
         }
 
         contentCardView = UIView()
@@ -217,7 +231,7 @@ class GroupPathSequenceDeviceAddView: UIView {
         contentCardView.layer.cornerRadius = SCRYFrom(10)
         bodyContainerView.addSubview(contentCardView)
         contentCardView.snp.makeConstraints { make in
-            make.top.equalTo(addTypeBar.snp.bottom).offset(SCRYFrom(8))
+            make.top.equalTo(addTypeBar.snp.bottom).offset(contentCardTopSpacing)
             make.left.equalTo(SCRXFrom(16))
             make.right.equalTo(SCRXFrom(-16))
             make.bottom.equalToSuperview()
@@ -266,6 +280,9 @@ class GroupPathSequenceDeviceAddView: UIView {
         unfoldBtn.snp.makeConstraints { make in
             make.center.equalTo(refreshBtn)
         }
+        
+        contentCardMinHeightConstraint = contentCardView.heightAnchor.constraint(greaterThanOrEqualToConstant: minimumContentHeight)
+        contentCardMinHeightConstraint?.isActive = true
 
         updateHeaderTitle()
         updateCollapseUI(animated: false)
@@ -337,34 +354,47 @@ class GroupPathSequenceDeviceAddView: UIView {
     }
 
     private func emitPreferredHeightIfNeeded() {
+        updateContentMinimumHeight()
         let height: CGFloat
         if isHidden {
             height = 0
         } else if collapsed {
-            height = SCRYFrom(58)
+            height = containerTopInset + headerHeight + containerBottomInset
         } else {
             height = preferredExpandedHeight()
+        }
+        guard let heightChanged else {
+            return
         }
         guard abs(height - lastPreferredHeight) > 0.5 else {
             return
         }
         lastPreferredHeight = height
-        heightChanged?(height)
+        heightChanged(height)
+    }
+
+    private var minimumContentHeight: CGFloat {
+        max(SCRYFrom(136), manuallyAddView.preferredMinimumContentHeight)
+    }
+
+    private func updateContentMinimumHeight() {
+        contentCardMinHeightConstraint?.constant = minimumContentHeight
+    }
+
+    private func visibleContentHeight() -> CGFloat {
+        switch currentMode {
+        case .quickAdd:
+            return quickAddView.preferredContentHeight
+        case .triggerAdd:
+            return triggerAddView.preferredContentHeight
+        case .manuallyAdd:
+            return manuallyAddView.preferredContentHeight
+        }
     }
 
     private func preferredExpandedHeight() -> CGFloat {
-        let baseContentHeight = max(
-            quickAddView.preferredContentHeight,
-            triggerAddView.preferredContentHeight,
-            manuallyAddView.preferredMinimumContentHeight
-        )
-        let contentHeight: CGFloat
-        if currentMode == .manuallyAdd {
-            contentHeight = max(baseContentHeight, manuallyAddView.preferredContentHeight)
-        } else {
-            contentHeight = baseContentHeight
-        }
-        return SCRYFrom(58 + 41 + 8) + contentHeight
+        let contentHeight = max(minimumContentHeight, visibleContentHeight())
+        return containerTopInset + headerHeight + headerBodySpacing + addTypeBarHeight + contentCardTopSpacing + contentHeight + containerBottomInset
     }
 
     private func switchMode(to type: PathSequenceDeviceAddMode) {

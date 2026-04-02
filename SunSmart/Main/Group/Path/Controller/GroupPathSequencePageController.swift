@@ -192,15 +192,18 @@ extension GroupPathSequencePageController {
         return CGRect(x: 0, y: view.safeAreaInsets.top + SCRYFrom(8), width: view.width, height: SCRYFrom(36))
     }
     
-    
-    
     override func menuView(_ menu: WMMenuView!, titleAt index: Int) -> String! {
         return ""
     }
     
-//    override func pageController(_ pageController: WMPageController, didEnter viewController: UIViewController, withInfo info: [AnyHashable : Any]) {
-//        segmentedControl?.selectedIndex = Int(self.selectIndex)
-//    }
+    override func pageController(_ pageController: WMPageController, didEnter viewController: UIViewController, withInfo info: [AnyHashable : Any]) {
+        segmentedControl?.selectedIndex = Int(self.selectIndex)
+        if self.selectIndex == 0 {
+            self.triggerZoneVc?.deselectZone()
+        }else {
+            self.sequenceVc?.deselectPath()
+        }
+    }
     
 }
 

@@ -54,6 +54,12 @@ class GroupPathSequenceTriggerAddView: UIView {
     private var groupFilterEnabledStates: [Bool] = []
     private var groupFilterSelectedIndex: Int = 0
     private var usesGroupFilterLayout: Bool = false
+
+    private var guidePreferredContentHeight: CGFloat {
+        let fallbackWidth = SCREEN_WIDTH - SCRXFrom(48)
+        let fittingWidth = max((bounds.width > 0 ? bounds.width : fallbackWidth) - SCRXFrom(16), SCRXFrom(200))
+        return max(SCRYFrom(68), guideView.preferredHeight(fittingWidth: fittingWidth) + SCRYFrom(24))
+    }
     
     /// 选中的设备
     private(set) var selectDevice: Node?
@@ -63,7 +69,7 @@ class GroupPathSequenceTriggerAddView: UIView {
 
     var preferredContentHeight: CGFloat {
         if !guideContentView.isHidden {
-            return SCRYFrom(68)
+            return guidePreferredContentHeight
         }
         let collectionHeight = isIPad ? SCRYFrom(64) : SCRYFrom(44)
         let extraHintHeight = usesGroupFilterLayout ? SCRYFrom(26) : 0
@@ -249,9 +255,15 @@ class GroupPathSequenceTriggerAddView: UIView {
     @objc private func pageControlValueChanged() {
         collectionView.setContentOffset(CGPoint(x: CGFloat(pageControl.currentPage) * collectionView.width, y: 0), animated: true)
     }
+
+    @objc private func helpImageAction() {
+        GroupPathSequenceAddDescriptionController.push(mode: .triggerAdd, isSequence: isSequence)
+    }
     
     private func setupUI() {
         helpImageView = UIImageView(image: UIImage(named: "help"))
+        helpImageView.isUserInteractionEnabled = true
+        helpImageView.addGestureRecognizer(UITapGestureRecognizer(target: self, action: #selector(helpImageAction)))
         addSubview(helpImageView)
         helpImageView.snp.makeConstraints { make in
             make.left.equalTo(SCRXFrom(8))

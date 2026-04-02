@@ -1859,6 +1859,11 @@
 		C8EC4BAF2EAA1FF00082892D /* DeviceMeshNetworkResetHandle.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8EC4BAC2EAA1FF00082892D /* DeviceMeshNetworkResetHandle.swift */; };
 		C8ED59F92DD743960074A5BB /* GroupPathSequencePageController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8ED59F82DD743960074A5BB /* GroupPathSequencePageController.swift */; };
 		C8EF54742C1AFA53008389CE /* NetworkLoggerPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8EF54732C1AFA53008389CE /* NetworkLoggerPlugin.swift */; };
+		C8F1A0012F0A000100123456 /* GroupPathSequenceAddDescriptionController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8F1A0052F0A000100123456 /* GroupPathSequenceAddDescriptionController.swift */; };
+		C8F1A0022F0A000100123456 /* GroupPathSequenceAddDescriptionController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8F1A0052F0A000100123456 /* GroupPathSequenceAddDescriptionController.swift */; };
+		C8F1A0032F0A000100123456 /* GroupPathSequenceAddDescriptionController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8F1A0052F0A000100123456 /* GroupPathSequenceAddDescriptionController.swift */; };
+		C8F1A0042F0A000100123456 /* GroupPathSequenceAddDescriptionController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8F1A0052F0A000100123456 /* GroupPathSequenceAddDescriptionController.swift */; };
+		C8F1A0062F0A000100123456 /* GroupPathSequenceAddDescriptionController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8F1A0052F0A000100123456 /* GroupPathSequenceAddDescriptionController.swift */; };
 		C8F837402E3B52560003B292 /* GatewaySectionHeaderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8F8373F2E3B52560003B292 /* GatewaySectionHeaderView.swift */; };
 		C8F837412E3B52560003B292 /* GatewaySectionHeaderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8F8373F2E3B52560003B292 /* GatewaySectionHeaderView.swift */; };
 		C8F837422E3B52560003B292 /* GatewaySectionHeaderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8F8373F2E3B52560003B292 /* GatewaySectionHeaderView.swift */; };
@@ -2383,6 +2388,7 @@
 		C8EC4BAC2EAA1FF00082892D /* DeviceMeshNetworkResetHandle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceMeshNetworkResetHandle.swift; sourceTree = "<group>"; };
 		C8ED59F82DD743960074A5BB /* GroupPathSequencePageController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GroupPathSequencePageController.swift; sourceTree = "<group>"; };
 		C8EF54732C1AFA53008389CE /* NetworkLoggerPlugin.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NetworkLoggerPlugin.swift; sourceTree = "<group>"; };
+		C8F1A0052F0A000100123456 /* GroupPathSequenceAddDescriptionController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GroupPathSequenceAddDescriptionController.swift; sourceTree = "<group>"; };
 		C8F8373F2E3B52560003B292 /* GatewaySectionHeaderView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GatewaySectionHeaderView.swift; sourceTree = "<group>"; };
 		C8F89D372E3B6F8500FA1544 /* GatewayAPNMenuView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GatewayAPNMenuView.swift; sourceTree = "<group>"; };
 		C8F89D3C2E3CBD1F00FA1544 /* GatewayModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GatewayModel.swift; sourceTree = "<group>"; };
@@ -2833,6 +2839,7 @@
 				C8ED59F82DD743960074A5BB /* GroupPathSequencePageController.swift */,
 				C88CCD922DD480B9003D5754 /* GroupPathSequenceViewController.swift */,
 				C8AC02192DDD61DF0098E165 /* GroupPathSequenceTriggerZoneController.swift */,
+				C8F1A0052F0A000100123456 /* GroupPathSequenceAddDescriptionController.swift */,
 			);
 			path = Controller;
 			sourceTree = "<group>";
@@ -4415,6 +4422,7 @@
 				C88553E82DE6B44C00C8B688 /* SiteViewController.swift in Sources */,
 				C88553E92DE6B44C00C8B688 /* ScheduleDevicesView.swift in Sources */,
 				C88553EA2DE6B44C00C8B688 /* GroupPathSequenceTriggerZoneController.swift in Sources */,
+				C8F1A0012F0A000100123456 /* GroupPathSequenceAddDescriptionController.swift in Sources */,
 				C88553EB2DE6B44C00C8B688 /* CustomTableViewCell.swift in Sources */,
 				C88553EC2DE6B44C00C8B688 /* BatchImportResultView.swift in Sources */,
 				C88553ED2DE6B44C00C8B688 /* SyncDevicesTitleHeaderView.swift in Sources */,
@@ -4864,6 +4872,7 @@
 				C886E0392E30DE4900D0C3A6 /* SiteViewController.swift in Sources */,
 				C886E03A2E30DE4900D0C3A6 /* ScheduleDevicesView.swift in Sources */,
 				C886E03B2E30DE4900D0C3A6 /* GroupPathSequenceTriggerZoneController.swift in Sources */,
+				C8F1A0022F0A000100123456 /* GroupPathSequenceAddDescriptionController.swift in Sources */,
 				C886E03C2E30DE4900D0C3A6 /* CustomTableViewCell.swift in Sources */,
 				C886E03D2E30DE4900D0C3A6 /* BatchImportResultView.swift in Sources */,
 				C886E03E2E30DE4900D0C3A6 /* SyncDevicesTitleHeaderView.swift in Sources */,
@@ -5313,6 +5322,7 @@
 				C8A099FF2AC138E30068C814 /* SiteViewController.swift in Sources */,
 				C89A1C392B5535A8004912B9 /* ScheduleDevicesView.swift in Sources */,
 				C8AC021A2DDD61DF0098E165 /* GroupPathSequenceTriggerZoneController.swift in Sources */,
+				C8F1A0042F0A000100123456 /* GroupPathSequenceAddDescriptionController.swift in Sources */,
 				C898E2EF2ABA8BEE00C71315 /* CustomTableViewCell.swift in Sources */,
 				C88DE4452C0828B5005A38C1 /* BatchImportResultView.swift in Sources */,
 				C89C9FEE2B3C271200074031 /* SyncDevicesTitleHeaderView.swift in Sources */,
@@ -5462,6 +5472,7 @@
 				C8D6636D2BFED12B00BFF81A /* Keychain.swift in Sources */,
 				C8CD5C302DDC6E9700F09467 /* GroupPathSequenceSelectData.swift in Sources */,
 				C88CCD932DD480B9003D5754 /* GroupPathSequenceViewController.swift in Sources */,
+				C8F1A0032F0A000100123456 /* GroupPathSequenceAddDescriptionController.swift in Sources */,
 				C8BC573D2E9FC79E009E79A3 /* DeviceResetDeviceSafeModeController.swift in Sources */,
 				C8AFDBFB2D6FF6D600839A38 /* DaliMasterMultipleControlsView.swift in Sources */,
 				C8C3A1562E374C7500876028 /* GatewayAssociatedSpacesController.swift in Sources */,
@@ -5762,6 +5773,7 @@
 				C8BB65EB2ED3F056000C63EE /* SiteViewController.swift in Sources */,
 				C8BB65EC2ED3F056000C63EE /* ScheduleDevicesView.swift in Sources */,
 				C8BB65ED2ED3F056000C63EE /* GroupPathSequenceTriggerZoneController.swift in Sources */,
+				C8F1A0062F0A000100123456 /* GroupPathSequenceAddDescriptionController.swift in Sources */,
 				C8BB65EE2ED3F056000C63EE /* CustomTableViewCell.swift in Sources */,
 				C8BB65EF2ED3F056000C63EE /* BatchImportResultView.swift in Sources */,
 				C8BB65F02ED3F056000C63EE /* SyncDevicesTitleHeaderView.swift in Sources */,
@@ -6263,7 +6275,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 9;
+				CURRENT_PROJECT_VERSION = 11;
 				DEVELOPMENT_TEAM = FNFEMS8D6J;
 				GCC_PREFIX_HEADER = "";
 				GENERATE_INFOPLIST_FILE = YES;
@@ -6305,7 +6317,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 9;
+				CURRENT_PROJECT_VERSION = 11;
 				DEVELOPMENT_TEAM = FNFEMS8D6J;
 				GCC_PREFIX_HEADER = "";
 				GENERATE_INFOPLIST_FILE = YES;
@@ -6463,7 +6475,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 18;
+				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = JTD3WYUC58;
 				GCC_PREFIX_HEADER = "";
 				GENERATE_INFOPLIST_FILE = YES;
@@ -6482,7 +6494,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.0.13;
+				MARKETING_VERSION = 1.0.14;
 				PRODUCT_BUNDLE_IDENTIFIER = com.azoula.sunsmart;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
@@ -6503,7 +6515,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 18;
+				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = JTD3WYUC58;
 				GCC_PREFIX_HEADER = "";
 				GENERATE_INFOPLIST_FILE = YES;
@@ -6522,7 +6534,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.0.13;
+				MARKETING_VERSION = 1.0.14;
 				PRODUCT_BUNDLE_IDENTIFIER = com.azoula.sunsmart;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";

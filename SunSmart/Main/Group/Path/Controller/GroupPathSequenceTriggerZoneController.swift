@@ -86,16 +86,6 @@ class GroupPathSequenceTriggerZoneController: UIViewController {
         didApplyInitialEmptyState = true
         updateEmptyUI()
     }
-
-    override func viewDidDisappear(_ animated: Bool) {
-        super.viewDidDisappear(animated)
-        
-        if let zone = selectZone, let section = setZones.firstIndex(of: zone) {
-            selectZone = nil
-            tableView.reloadSections(IndexSet(integer: section), with: .none)
-            updateDeviceAddViewUI()
-        }
-    }
     
     private func updateEmptyUI() {
         if setZones.isEmpty {
@@ -148,6 +138,14 @@ class GroupPathSequenceTriggerZoneController: UIViewController {
         }
         UIView.animate(withDuration: 0.25) {
             self.view.layoutIfNeeded()
+        }
+    }
+    
+    func deselectZone() {
+        if let zone = selectZone, let section = setZones.firstIndex(of: zone) {
+            selectZone = nil
+            tableView.reloadSections(IndexSet(integer: section), with: .none)
+            updateDeviceAddViewUI()
         }
     }
     
@@ -278,7 +276,7 @@ class GroupPathSequenceTriggerZoneController: UIViewController {
         deviceAddViewHeightConstraint?.isActive = true
         deviceAddView.snp.makeConstraints { make in
             make.left.right.equalToSuperview()
-            make.bottom.equalTo(-max(kSafeAreaBottomHeight, SCRYFrom(16)))
+            make.bottom.equalTo(view.safeAreaLayoutGuide.snp.bottom)
         }
         
         tableView = UITableView(frame: .zero, style: .grouped)
@@ -298,6 +296,7 @@ class GroupPathSequenceTriggerZoneController: UIViewController {
             make.top.equalTo(SCRYFrom(16))
             make.bottom.equalTo(deviceAddView.snp.top)
         }
+        view.bringSubviewToFront(deviceAddView)
         
         
         

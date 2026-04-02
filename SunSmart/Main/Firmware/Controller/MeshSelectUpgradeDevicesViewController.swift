@@ -131,11 +131,28 @@ class MeshSelectUpgradeDevicesViewController: UIViewController {
             }
             let randomSession = UInt8.random(in: 1...255)
             
+            // 升级成功复位设备list
+            var resetNodes: [Node] = []
+            // 无响应设备list
+            var noReponseNodes: [Node] = []
+            // 开始失败设备list（固件返回失败）
+            var startErrorNodes: [(node: Node, error: VendorOTATargetStartError)] = []
+            
             MeshVendorOTAManager.shared.startMeshOTA(distributionNode: self.distributorNode, targetNodes: self.selectNodes, session: randomSession, updateFirmwareImageIndex: 0, firmwareHash: UInt32(data: compositionHash), firmwareSize: distributionFirmwareSize, chunkSize: 100, progress: { current, total in
                 DispatchQueue.main.async {
                     if let loadingHud = hud {
                         loadingHud.detailsLabel.text = "\(current)/\(total)"
                     }
+                }
+            }, targetStartSuccess: { node, isReset in
+                if isReset {
+                    resetNodes.append(node)
+                }
+            }, targetStartFailure: { node, error in
+                if case .timeout = error {
+                    noReponseNodes.append(node)
+                }else {
+                    startErrorNodes.append((node, error))
                 }
             }) {[weak self] result in
                 guard let self = self else { return }
@@ -143,12 +160,30 @@ class MeshSelectUpgradeDevicesViewController: UIViewController {
                     XWHUDManager.hide()
                     switch result {
                     case .success((_, let failNodes)):
+                        var successContent: String = "已开始升级 \n"
+                        
                         if failNodes.count > 0 {
-                            let content = failNodes.map({ $0.name ?? "" }).joined(separator: ",")
-                            XWHUDManager.showSuccessTipHUD("已开始升级\n失败设备: \(content)", timer: 10)
+                            if noReponseNodes.count > 0 {
+                                let noReponseContent = noReponseNodes.map({ $0.name ?? "" }).joined(separator: ",")
+                                successContent += "无响应设备:\(noReponseContent)"
+                            }
+                            if startErrorNodes.count > 0 {
+                                let failContent = startErrorNodes.map({ "\($0.node.name ?? "") code:\($0.error.code)" }).joined(separator: ",")
+                                successContent += " 开始失败设备: \(failContent)"
+                            }
+                            
+                            if resetNodes.count > 0 {
+                                let content = resetNodes.map({ $0.name ?? "" })
+                                successContent += " 升级成功后会复位设备: \(content)"
+                            }
+                        
                         }else {
-                            XWHUDManager.showSuccessTipHUD("已开始升级", timer: 5)
+                            if resetNodes.count > 0 {
+                                let content = resetNodes.map({ $0.name ?? "" })
+                                successContent += "以下设备升级成功后会复位设备: \(content)"
+                            }
                         }
+                        XWHUDManager.showSuccessTipHUD(successContent, timer: 10)
                         
                     case .failure(let error):
                         XWHUDManager.showErrorTipHUD(error.localizedDescription, timer: 5)
