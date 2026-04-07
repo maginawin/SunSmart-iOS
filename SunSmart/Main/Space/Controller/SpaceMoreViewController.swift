@@ -48,7 +48,9 @@ class SpaceMoreViewController: UIViewController {
     private var collectionView: UICollectionView!
     private var flowLayout: UICollectionViewFlowLayout!
     
-    private var options: [Options] = [.ble, .deviceParameters, .energyData, .triggerZone, .contentDisplay]
+    private var options: [Options] = [.ble, .deviceParameters, .energyData,
+        //.triggerZone,
+        .contentDisplay]
     
     init(site: SiteData, space: SpaceData) {
         self.site = site
