@@ -84,6 +84,7 @@ class GroupPathSequenceDeviceAddView: UIView {
     private var headerIndex: Int?
     private var lastPreferredHeight: CGFloat = 0
     private var lastMenuWidth: CGFloat = 0
+    private var lastSafeAreaBottomInset: CGFloat = 0
 
     /// 是否可添加设备
     var canAddDevice: Bool = false {
@@ -141,6 +142,17 @@ class GroupPathSequenceDeviceAddView: UIView {
         }
         emitPreferredHeightIfNeeded()
     }
+
+    override func safeAreaInsetsDidChange() {
+        super.safeAreaInsetsDidChange()
+        let safeAreaBottomInset = safeAreaInsets.bottom
+        guard abs(safeAreaBottomInset - lastSafeAreaBottomInset) > 0.5 else {
+            return
+        }
+        lastSafeAreaBottomInset = safeAreaBottomInset
+        updateContainerBottomInset()
+        refreshPreferredHeight()
+    }
     
     @objc private func refreshBtnAction() {
         refreshBtn.isHidden = true
@@ -172,7 +184,7 @@ class GroupPathSequenceDeviceAddView: UIView {
         containerStackView.snp.makeConstraints { make in
             make.left.right.equalToSuperview()
             make.top.equalTo(containerTopInset)
-            make.bottom.equalTo(-containerBottomInset)
+            make.bottom.equalToSuperview().inset(containerBottomInset)
         }
 
         headerView = UIView()
@@ -285,6 +297,7 @@ class GroupPathSequenceDeviceAddView: UIView {
         contentCardMinHeightConstraint?.isActive = true
 
         updateHeaderTitle()
+        updateContainerBottomInset()
         updateCollapseUI(animated: false)
     }
     
@@ -359,7 +372,7 @@ class GroupPathSequenceDeviceAddView: UIView {
         if isHidden {
             height = 0
         } else if collapsed {
-            height = containerTopInset + headerHeight + containerBottomInset
+            height = containerTopInset + headerHeight + containerBottomInset + safeAreaInsets.bottom
         } else {
             height = preferredExpandedHeight()
         }
@@ -394,7 +407,13 @@ class GroupPathSequenceDeviceAddView: UIView {
 
     private func preferredExpandedHeight() -> CGFloat {
         let contentHeight = max(minimumContentHeight, visibleContentHeight())
-        return containerTopInset + headerHeight + headerBodySpacing + addTypeBarHeight + contentCardTopSpacing + contentHeight + containerBottomInset
+        return containerTopInset + headerHeight + headerBodySpacing + addTypeBarHeight + contentCardTopSpacing + contentHeight + containerBottomInset + safeAreaInsets.bottom
+    }
+
+    private func updateContainerBottomInset() {
+        containerStackView.snp.updateConstraints { make in
+            make.bottom.equalToSuperview().inset(containerBottomInset + safeAreaInsets.bottom)
+        }
     }
 
     private func switchMode(to type: PathSequenceDeviceAddMode) {

@@ -291,7 +291,7 @@ class GroupPathSequenceViewController: UIViewController {
         deviceAddViewHeightConstraint?.isActive = true
         deviceAddView.snp.makeConstraints { make in
             make.left.right.equalToSuperview()
-            make.bottom.equalTo(view.safeAreaLayoutGuide.snp.bottom)
+            make.bottom.equalToSuperview()
         }
         
         tableView = UITableView(frame: .zero, style: .grouped)
