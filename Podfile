@@ -1,5 +1,5 @@
 # Uncomment the next line to define a global platform for your project
- platform :ios, '13.0'
+ platform :ios, '15.0'
 
 abstract_target 'Common' do
   use_frameworks!
@@ -24,6 +24,19 @@ abstract_target 'Common' do
   end
   
   target 'SylSmart' do
+  end
+end
+
+post_install do |installer|
+  installer.pods_project.targets.each do |target|
+    target.build_configurations.each do |config|
+      deployment_target = config.build_settings['IPHONEOS_DEPLOYMENT_TARGET']
+      next if deployment_target.nil?
+
+      if Gem::Version.new(deployment_target) < Gem::Version.new('15.0')
+        config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '15.0'
+      end
+    end
   end
 end
 
