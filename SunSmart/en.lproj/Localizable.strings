@@ -330,7 +330,7 @@
 
 "profile_occupancy_level" = "Occupancy level";
 "profile_occupancy_lux" = "Occupancy lux";
-"profile_occupancy_level_desc" = "Desired light level to be maintained when group is cccupied";
+"profile_occupancy_level_desc" = "Desired light level to be maintained when group is occupied";
 "profile_vacancy_level" = "Vacancy level";
 "profile_vacancy_lux" = "Vacancy lux";
 "profile_vacancy_level_desc" = "Light level to be maintained befor the zone is vacant.";
