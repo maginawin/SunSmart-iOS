@@ -1149,6 +1149,42 @@
         "modelName" : "SR-BL9033J-PIR-V",
         "sensitivityRangeMin" : 0,
         "sensitivityRangeMax" : 55049
+    },
+    {
+        "companyId": "0A78",
+        "productId": "1702",
+        "categoryName": "Gateway",
+        "elementCount": 2,
+        "iconCategory": "Gateway",
+        "deviceCategory": "Gateway",
+        "modelName": "SR-BL9036T-GW-WP4G"
+    },
+    {
+        "companyId" : "0A78",
+        "productId" : "2131",
+        "categoryName" : "Emergency Fire Alarm Controller",
+        "elementCount" : 3,
+        "iconCategory" : "Lighting",
+        "deviceCategory" : "Lighting",
+        "modelName" : "SR-BL2421-DryCon924"
+    },
+    {
+        "companyId" : "0A78",
+        "productId" : "2132",
+        "categoryName" : "ZLLC Controller",
+        "elementCount" : 2,
+        "iconCategory" : "Lighting",
+        "deviceCategory" : "Lighting",
+        "modelName" : "SR-BL2421-SSVT—AUXRJ45"
+    },
+    {
+        "companyId": "0A78",
+        "productId": "2711",
+        "categoryName": "Gateway",
+        "elementCount": 2,
+        "iconCategory": "Gateway",
+        "deviceCategory": "Gateway",
+        "modelName": "SR-BL9036T-GW-WP4G"
     }
     
 ]
