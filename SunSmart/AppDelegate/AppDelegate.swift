@@ -86,6 +86,12 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
 
 extension UIApplication {
     func keyWindow() -> UIWindow {
-        return UIApplication.shared.windows.first(where: {$0.isKeyWindow})!
+        let windowScene = connectedScenes
+            .compactMap { $0 as? UIWindowScene }
+            .first { $0.activationState == .foregroundActive }
+        return windowScene?.windows.first(where: { $0.isKeyWindow })
+            ?? windowScene?.windows.first
+            ?? (delegate as? AppDelegate)?.window
+            ?? UIWindow()
     }
 }
