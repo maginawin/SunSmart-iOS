@@ -23,6 +23,9 @@ abstract_target 'Common' do
   target 'Archipelago' do
   end
   
+  target 'SLG Sync Plus' do
+  end
+  
   target 'SylSmart' do
   end
 end
