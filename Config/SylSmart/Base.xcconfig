@@ -1,0 +1,10 @@
+#include "../Common/AppBase.xcconfig"
+
+CURRENT_PROJECT_VERSION = 11
+DEVELOPMENT_TEAM = FNFEMS8D6J
+INFOPLIST_FILE = SylSmart/SylSmart-Info.plist
+INFOPLIST_KEY_CFBundleDisplayName = SylSmart
+INFOPLIST_KEY_UILaunchStoryboardName = SylSmart-LaunchScreen
+INFOPLIST_KEY_UIUserInterfaceStyle = Light
+MARKETING_VERSION = 1.0
+PRODUCT_BUNDLE_IDENTIFIER = com.sylvania.sylsmartconnect

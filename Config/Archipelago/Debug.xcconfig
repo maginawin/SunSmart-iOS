@@ -1,0 +1,4 @@
+#include "../../Pods/Target Support Files/Pods-Common-Archipelago/Pods-Common-Archipelago.debug.xcconfig"
+#include "Base.xcconfig"
+
+SWIFT_ACTIVE_COMPILATION_CONDITIONS = Archipelago DEBUG

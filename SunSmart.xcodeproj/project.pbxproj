@@ -9,6 +9,7 @@
 /* Begin PBXBuildFile section */
 		24F67C240565CE5F6A28CBD1 /* Pods_Common_SunSmart.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = C8FFD7D42E7D03B20074CC6A /* Pods_Common_SunSmart.framework */; };
 		6116D0D0F05DFA292964E9B9 /* BuildFile in Frameworks */ = {isa = PBXBuildFile; };
+		BCB01FD24C3B52D4E436283A /* Pods_Common_SLG_Sync_Plus.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 7CF816C3063D0EF30B936BA4 /* Pods_Common_SLG_Sync_Plus.framework */; };
 		C8002CD22DD33D60002A8629 /* EnergyStaticDataDeviceViewCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8002CD12DD33D60002A8629 /* EnergyStaticDataDeviceViewCell.swift */; };
 		C803EC4C2BCCC9F0003C48B1 /* ConfigurationFlowGuidanceView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C803EC4B2BCCC9F0003C48B1 /* ConfigurationFlowGuidanceView.swift */; };
 		C8047F092B8DFA5900A09FFA /* ProfileInstructionsController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8047F082B8DFA5900A09FFA /* ProfileInstructionsController.swift */; };
@@ -1663,7 +1664,6 @@
 		C8BB676A2ED3F056000C63EE /* XWHUDManager_successful@3x.png in Resources */ = {isa = PBXBuildFile; fileRef = C8C1E5A62B6A1FA500F60E62 /* XWHUDManager_successful@3x.png */; };
 		C8BB67732ED3F13A000C63EE /* Assets-SLGSync.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = C8BB67722ED3F13A000C63EE /* Assets-SLGSync.xcassets */; };
 		C8BB67752ED3F164000C63EE /* SLGSync-LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = C8BB67742ED3F164000C63EE /* SLGSync-LaunchScreen.storyboard */; };
-		C8BB67762ED42EAB000C63EE /* SLGSync-Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = C8BB67702ED3F056000C63EE /* SLGSync-Info.plist */; };
 		C8BB67782ED46298000C63EE /* SiteGatewaysMenuView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8BB67772ED46298000C63EE /* SiteGatewaysMenuView.swift */; };
 		C8BB67792ED46298000C63EE /* SiteGatewaysMenuView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8BB67772ED46298000C63EE /* SiteGatewaysMenuView.swift */; };
 		C8BB677A2ED46298000C63EE /* SiteGatewaysMenuView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8BB67772ED46298000C63EE /* SiteGatewaysMenuView.swift */; };
@@ -1884,6 +1884,20 @@
 /* Begin PBXFileReference section */
 		29E6735F1867DC54FBDDBAA9 /* Pods-Common-SylSmart.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Common-SylSmart.debug.xcconfig"; path = "Target Support Files/Pods-Common-SylSmart/Pods-Common-SylSmart.debug.xcconfig"; sourceTree = "<group>"; };
 		45931D652AFCE854D4A27862 /* Pods-Common-SunSmart.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Common-SunSmart.debug.xcconfig"; path = "Target Support Files/Pods-Common-SunSmart/Pods-Common-SunSmart.debug.xcconfig"; sourceTree = "<group>"; };
+		F10000000000000000000001 /* AppBase.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = AppBase.xcconfig; sourceTree = "<group>"; };
+		F10000000000000000000002 /* Base.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Base.xcconfig; sourceTree = "<group>"; };
+		F10000000000000000000003 /* Debug.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Debug.xcconfig; sourceTree = "<group>"; };
+		F10000000000000000000004 /* Release.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Release.xcconfig; sourceTree = "<group>"; };
+		F10000000000000000000005 /* Base.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Base.xcconfig; sourceTree = "<group>"; };
+		F10000000000000000000006 /* Debug.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Debug.xcconfig; sourceTree = "<group>"; };
+		F10000000000000000000007 /* Release.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Release.xcconfig; sourceTree = "<group>"; };
+		F10000000000000000000008 /* Base.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Base.xcconfig; sourceTree = "<group>"; };
+		F10000000000000000000009 /* Debug.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Debug.xcconfig; sourceTree = "<group>"; };
+		F1000000000000000000000A /* Release.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Release.xcconfig; sourceTree = "<group>"; };
+		F1000000000000000000000B /* Base.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Base.xcconfig; sourceTree = "<group>"; };
+		F1000000000000000000000C /* Debug.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Debug.xcconfig; sourceTree = "<group>"; };
+		F1000000000000000000000D /* Release.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Release.xcconfig; sourceTree = "<group>"; };
+		7CF816C3063D0EF30B936BA4 /* Pods_Common_SLG_Sync_Plus.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_Common_SLG_Sync_Plus.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		8F7ED1D6D6BFC3B3813C473D /* Pods_Common_Archipelago.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_Common_Archipelago.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		BAC59D3E13FBA419B630C430 /* Pods-Common-Archipelago.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Common-Archipelago.release.xcconfig"; path = "Target Support Files/Pods-Common-Archipelago/Pods-Common-Archipelago.release.xcconfig"; sourceTree = "<group>"; };
 		C8002CD12DD33D60002A8629 /* EnergyStaticDataDeviceViewCell.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EnergyStaticDataDeviceViewCell.swift; sourceTree = "<group>"; };
@@ -2261,7 +2275,7 @@
 		C8BB3E482EF945C500207225 /* ProfileLightSensorTemplateViewCell.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileLightSensorTemplateViewCell.swift; sourceTree = "<group>"; };
 		C8BB3E4D2EF9482500207225 /* ProfileLightSensorTemplateListController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileLightSensorTemplateListController.swift; sourceTree = "<group>"; };
 		C8BB676F2ED3F056000C63EE /* SLG Sync Plus.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "SLG Sync Plus.app"; sourceTree = BUILT_PRODUCTS_DIR; };
-		C8BB67702ED3F056000C63EE /* SLGSync-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; name = "SLGSync-Info.plist"; path = "/Users/yuankehong/Desktop/SunSmart/SLGSync/SLGSync-Info.plist"; sourceTree = "<absolute>"; };
+		C8BB67702ED3F056000C63EE /* SLGSync-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "SLGSync-Info.plist"; sourceTree = "<group>"; };
 		C8BB67722ED3F13A000C63EE /* Assets-SLGSync.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = "Assets-SLGSync.xcassets"; sourceTree = "<group>"; };
 		C8BB67742ED3F164000C63EE /* SLGSync-LaunchScreen.storyboard */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; path = "SLGSync-LaunchScreen.storyboard"; sourceTree = "<group>"; };
 		C8BB67772ED46298000C63EE /* SiteGatewaysMenuView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SiteGatewaysMenuView.swift; sourceTree = "<group>"; };
@@ -2397,8 +2411,10 @@
 		C8FFD7D42E7D03B20074CC6A /* Pods_Common_SunSmart.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; path = Pods_Common_SunSmart.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		CA14D3D265B3B74E304A61D7 /* Pods-Common-Archipelago.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Common-Archipelago.debug.xcconfig"; path = "Target Support Files/Pods-Common-Archipelago/Pods-Common-Archipelago.debug.xcconfig"; sourceTree = "<group>"; };
 		D1025845F30FDFC9F8C9ACCB /* Pods_Common_SylSmart.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_Common_SylSmart.framework; sourceTree = BUILT_PRODUCTS_DIR; };
+		DB94D08D018A81456AF735FC /* Pods-Common-SLG Sync Plus.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Common-SLG Sync Plus.release.xcconfig"; path = "Target Support Files/Pods-Common-SLG Sync Plus/Pods-Common-SLG Sync Plus.release.xcconfig"; sourceTree = "<group>"; };
 		DEFCD502EAD0464D20FC18F3 /* Pods-Common-SylSmart.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Common-SylSmart.release.xcconfig"; path = "Target Support Files/Pods-Common-SylSmart/Pods-Common-SylSmart.release.xcconfig"; sourceTree = "<group>"; };
 		E08E6FB7E3FFE82A5A620CAF /* Pods-Common-SunSmart.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Common-SunSmart.release.xcconfig"; path = "Target Support Files/Pods-Common-SunSmart/Pods-Common-SunSmart.release.xcconfig"; sourceTree = "<group>"; };
+		E51C037D44D1F333E8E14E98 /* Pods-Common-SLG Sync Plus.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Common-SLG Sync Plus.debug.xcconfig"; path = "Target Support Files/Pods-Common-SLG Sync Plus/Pods-Common-SLG Sync Plus.debug.xcconfig"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -2436,6 +2452,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				C8BB67542ED3F056000C63EE /* NordicSigMeshSDK in Frameworks */,
+				BCB01FD24C3B52D4E436283A /* Pods_Common_SLG_Sync_Plus.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -2448,6 +2465,7 @@
 				C8FFD7D42E7D03B20074CC6A /* Pods_Common_SunSmart.framework */,
 				D1025845F30FDFC9F8C9ACCB /* Pods_Common_SylSmart.framework */,
 				8F7ED1D6D6BFC3B3813C473D /* Pods_Common_Archipelago.framework */,
+				7CF816C3063D0EF30B936BA4 /* Pods_Common_SLG_Sync_Plus.framework */,
 			);
 			name = Frameworks;
 			sourceTree = "<group>";
@@ -2847,6 +2865,7 @@
 		C896B99B2A930BA800217512 = {
 			isa = PBXGroup;
 			children = (
+				F1000000000000000000000E /* Config */,
 				C8BB67712ED3F0F6000C63EE /* SLGSync */,
 				C886E18A2E30DEFB00D0C3A6 /* SylSmart */,
 				C88555302DE6B56200C8B688 /* Archipelago */,
@@ -3911,6 +3930,66 @@
 			path = Model;
 			sourceTree = "<group>";
 		};
+		F1000000000000000000000E /* Config */ = {
+			isa = PBXGroup;
+			children = (
+				F1000000000000000000000F /* Common */,
+				F10000000000000000000010 /* SunSmart */,
+				F10000000000000000000011 /* Archipelago */,
+				F10000000000000000000012 /* SylSmart */,
+				F10000000000000000000013 /* SLGSync */,
+			);
+			path = Config;
+			sourceTree = "<group>";
+		};
+		F1000000000000000000000F /* Common */ = {
+			isa = PBXGroup;
+			children = (
+				F10000000000000000000001 /* AppBase.xcconfig */,
+			);
+			path = Common;
+			sourceTree = "<group>";
+		};
+		F10000000000000000000010 /* SunSmart */ = {
+			isa = PBXGroup;
+			children = (
+				F10000000000000000000002 /* Base.xcconfig */,
+				F10000000000000000000003 /* Debug.xcconfig */,
+				F10000000000000000000004 /* Release.xcconfig */,
+			);
+			path = SunSmart;
+			sourceTree = "<group>";
+		};
+		F10000000000000000000011 /* Archipelago */ = {
+			isa = PBXGroup;
+			children = (
+				F10000000000000000000005 /* Base.xcconfig */,
+				F10000000000000000000006 /* Debug.xcconfig */,
+				F10000000000000000000007 /* Release.xcconfig */,
+			);
+			path = Archipelago;
+			sourceTree = "<group>";
+		};
+		F10000000000000000000012 /* SylSmart */ = {
+			isa = PBXGroup;
+			children = (
+				F10000000000000000000008 /* Base.xcconfig */,
+				F10000000000000000000009 /* Debug.xcconfig */,
+				F1000000000000000000000A /* Release.xcconfig */,
+			);
+			path = SylSmart;
+			sourceTree = "<group>";
+		};
+		F10000000000000000000013 /* SLGSync */ = {
+			isa = PBXGroup;
+			children = (
+				F1000000000000000000000B /* Base.xcconfig */,
+				F1000000000000000000000C /* Debug.xcconfig */,
+				F1000000000000000000000D /* Release.xcconfig */,
+			);
+			path = SLGSync;
+			sourceTree = "<group>";
+		};
 		D768458DC30C9D1E66429902 /* Pods */ = {
 			isa = PBXGroup;
 			children = (
@@ -3920,6 +3999,8 @@
 				DEFCD502EAD0464D20FC18F3 /* Pods-Common-SylSmart.release.xcconfig */,
 				45931D652AFCE854D4A27862 /* Pods-Common-SunSmart.debug.xcconfig */,
 				E08E6FB7E3FFE82A5A620CAF /* Pods-Common-SunSmart.release.xcconfig */,
+				E51C037D44D1F333E8E14E98 /* Pods-Common-SLG Sync Plus.debug.xcconfig */,
+				DB94D08D018A81456AF735FC /* Pods-Common-SLG Sync Plus.release.xcconfig */,
 			);
 			path = Pods;
 			sourceTree = "<group>";
@@ -3997,9 +4078,11 @@
 			isa = PBXNativeTarget;
 			buildConfigurationList = C8BB676C2ED3F056000C63EE /* Build configuration list for PBXNativeTarget "SLG Sync Plus" */;
 			buildPhases = (
+				0728664D324602E16688C0AF /* [CP] Check Pods Manifest.lock */,
 				C8BB65AF2ED3F056000C63EE /* Sources */,
 				C8BB67522ED3F056000C63EE /* Frameworks */,
 				C8BB67552ED3F056000C63EE /* Resources */,
+				F561989BE79F03301FFBA709 /* [CP] Embed Pods Frameworks */,
 			);
 			buildRules = (
 			);
@@ -4153,7 +4236,6 @@
 				C8BB675B2ED3F056000C63EE /* device_reset.mp3 in Resources */,
 				C8BB675C2ED3F056000C63EE /* XWHUDManager_successful@2x.png in Resources */,
 				C8BB675D2ED3F056000C63EE /* XWHUDManager_tip@3x.png in Resources */,
-				C8BB67762ED42EAB000C63EE /* SLGSync-Info.plist in Resources */,
 				C8BB675E2ED3F056000C63EE /* XWHUDManager_loading.gif in Resources */,
 				C8BB67602ED3F056000C63EE /* XWHUDManager_error@2x.png in Resources */,
 				C8BB67612ED3F056000C63EE /* CodeScan.bundle in Resources */,
@@ -4175,6 +4257,28 @@
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXShellScriptBuildPhase section */
+		0728664D324602E16688C0AF /* [CP] Check Pods Manifest.lock */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+				"${PODS_PODFILE_DIR_PATH}/Podfile.lock",
+				"${PODS_ROOT}/Manifest.lock",
+			);
+			name = "[CP] Check Pods Manifest.lock";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+				"$(DERIVED_FILE_DIR)/Pods-Common-SLG Sync Plus-checkManifestLockResult.txt",
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "diff \"${PODS_PODFILE_DIR_PATH}/Podfile.lock\" \"${PODS_ROOT}/Manifest.lock\" > /dev/null\nif [ $? != 0 ] ; then\n    # print error to STDERR\n    echo \"error: The sandbox is not in sync with the Podfile.lock. Run 'pod install' or update your CocoaPods installation.\" >&2\n    exit 1\nfi\n# This output is used by Xcode 'outputs' to avoid re-running this script phase.\necho \"SUCCESS\" > \"${SCRIPT_OUTPUT_FILE_0}\"\n";
+			showEnvVarsInLog = 0;
+		};
 		4189671A43483BFE748246A1 /* [CP] Check Pods Manifest.lock */ = {
 			isa = PBXShellScriptBuildPhase;
 			buildActionMask = 2147483647;
@@ -4290,6 +4394,23 @@
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
 			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-Common-Archipelago/Pods-Common-Archipelago-frameworks.sh\"\n";
+			showEnvVarsInLog = 0;
+		};
+		F561989BE79F03301FFBA709 /* [CP] Embed Pods Frameworks */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+				"${PODS_ROOT}/Target Support Files/Pods-Common-SLG Sync Plus/Pods-Common-SLG Sync Plus-frameworks-${CONFIGURATION}-input-files.xcfilelist",
+			);
+			name = "[CP] Embed Pods Frameworks";
+			outputFileListPaths = (
+				"${PODS_ROOT}/Target Support Files/Pods-Common-SLG Sync Plus/Pods-Common-SLG Sync Plus-frameworks-${CONFIGURATION}-output-files.xcfilelist",
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-Common-SLG Sync Plus/Pods-Common-SLG Sync Plus-frameworks.sh\"\n";
 			showEnvVarsInLog = 0;
 		};
 /* End PBXShellScriptBuildPhase section */
@@ -6129,169 +6250,29 @@
 /* Begin XCBuildConfiguration section */
 		C885552C2DE6B44C00C8B688 /* Debug */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = CA14D3D265B3B74E304A61D7 /* Pods-Common-Archipelago.debug.xcconfig */;
+			baseConfigurationReference = F10000000000000000000006 /* Debug.xcconfig */;
 			buildSettings = {
-				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
-				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
-				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = RJTP8XBT2V;
-				GCC_PREFIX_HEADER = "";
-				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_FILE = "Archipelago/Archipelago-Info.plist";
-				INFOPLIST_KEY_CFBundleDisplayName = "ACS by ALG";
-				INFOPLIST_KEY_NSBluetoothAlwaysUsageDescription = "Connect devices via Bluetooth";
-				INFOPLIST_KEY_NSCameraUsageDescription = "We need to access your camera for scanning the QR code of device";
-				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "We need to use your photo album to get the device's QR code";
-				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
-				INFOPLIST_KEY_UILaunchStoryboardName = "Archipelago-LaunchScreen";
-				INFOPLIST_KEY_UIMainStoryboardFile = "";
-				INFOPLIST_KEY_UIRequiresFullScreen = YES;
-				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
-				INFOPLIST_KEY_UIUserInterfaceStyle = Light;
-				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
-				LD_RUNPATH_SEARCH_PATHS = (
-					"$(inherited)",
-					"@executable_path/Frameworks",
-				);
-				MARKETING_VERSION = 1.0.1;
-				PRODUCT_BUNDLE_IDENTIFIER = com.acslighting.acslighting;
-				PRODUCT_NAME = "$(TARGET_NAME)";
-				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
-				SUPPORTS_MACCATALYST = NO;
-				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
-				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
-				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "Archipelago DEBUG";
-				SWIFT_EMIT_LOC_STRINGS = YES;
-				SWIFT_OBJC_BRIDGING_HEADER = "SunSmart/SunSmart-Bridging-Header.h";
-				SWIFT_VERSION = 5.0;
-				TARGETED_DEVICE_FAMILY = "1,2";
 			};
 			name = Debug;
 		};
 		C885552D2DE6B44C00C8B688 /* Release */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = BAC59D3E13FBA419B630C430 /* Pods-Common-Archipelago.release.xcconfig */;
+			baseConfigurationReference = F10000000000000000000007 /* Release.xcconfig */;
 			buildSettings = {
-				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
-				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
-				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = RJTP8XBT2V;
-				GCC_PREFIX_HEADER = "";
-				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_FILE = "Archipelago/Archipelago-Info.plist";
-				INFOPLIST_KEY_CFBundleDisplayName = "ACS by ALG";
-				INFOPLIST_KEY_NSBluetoothAlwaysUsageDescription = "Connect devices via Bluetooth";
-				INFOPLIST_KEY_NSCameraUsageDescription = "We need to access your camera for scanning the QR code of device";
-				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "We need to use your photo album to get the device's QR code";
-				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
-				INFOPLIST_KEY_UILaunchStoryboardName = "Archipelago-LaunchScreen";
-				INFOPLIST_KEY_UIMainStoryboardFile = "";
-				INFOPLIST_KEY_UIRequiresFullScreen = YES;
-				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
-				INFOPLIST_KEY_UIUserInterfaceStyle = Light;
-				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
-				LD_RUNPATH_SEARCH_PATHS = (
-					"$(inherited)",
-					"@executable_path/Frameworks",
-				);
-				MARKETING_VERSION = 1.0.1;
-				PRODUCT_BUNDLE_IDENTIFIER = com.acslighting.acslighting;
-				PRODUCT_NAME = "$(TARGET_NAME)";
-				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
-				SUPPORTS_MACCATALYST = NO;
-				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
-				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
-				SWIFT_ACTIVE_COMPILATION_CONDITIONS = Archipelago;
-				SWIFT_EMIT_LOC_STRINGS = YES;
-				SWIFT_OBJC_BRIDGING_HEADER = "SunSmart/SunSmart-Bridging-Header.h";
-				SWIFT_VERSION = 5.0;
-				TARGETED_DEVICE_FAMILY = "1,2";
 			};
 			name = Release;
 		};
 		C886E1862E30DE4900D0C3A6 /* Debug */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = 29E6735F1867DC54FBDDBAA9 /* Pods-Common-SylSmart.debug.xcconfig */;
+			baseConfigurationReference = F10000000000000000000009 /* Debug.xcconfig */;
 			buildSettings = {
-				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
-				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
-				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 11;
-				DEVELOPMENT_TEAM = FNFEMS8D6J;
-				GCC_PREFIX_HEADER = "";
-				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_FILE = "SylSmart/SylSmart-Info.plist";
-				INFOPLIST_KEY_CFBundleDisplayName = SylSmart;
-				INFOPLIST_KEY_NSBluetoothAlwaysUsageDescription = "Connect devices via Bluetooth";
-				INFOPLIST_KEY_NSCameraUsageDescription = "We need to access your camera for scanning the QR code of device";
-				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "We need to use your photo album to get the device's QR code";
-				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
-				INFOPLIST_KEY_UILaunchStoryboardName = "SylSmart-LaunchScreen";
-				INFOPLIST_KEY_UIMainStoryboardFile = "";
-				INFOPLIST_KEY_UIRequiresFullScreen = YES;
-				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
-				INFOPLIST_KEY_UIUserInterfaceStyle = Light;
-				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
-				LD_RUNPATH_SEARCH_PATHS = (
-					"$(inherited)",
-					"@executable_path/Frameworks",
-				);
-				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.sylvania.sylsmartconnect;
-				PRODUCT_NAME = "$(TARGET_NAME)";
-				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
-				SUPPORTS_MACCATALYST = NO;
-				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
-				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
-				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG SylSmart";
-				SWIFT_EMIT_LOC_STRINGS = YES;
-				SWIFT_OBJC_BRIDGING_HEADER = "SunSmart/SunSmart-Bridging-Header.h";
-				SWIFT_VERSION = 5.0;
-				TARGETED_DEVICE_FAMILY = "1,2";
 			};
 			name = Debug;
 		};
 		C886E1872E30DE4900D0C3A6 /* Release */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = DEFCD502EAD0464D20FC18F3 /* Pods-Common-SylSmart.release.xcconfig */;
+			baseConfigurationReference = F1000000000000000000000A /* Release.xcconfig */;
 			buildSettings = {
-				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
-				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
-				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 11;
-				DEVELOPMENT_TEAM = FNFEMS8D6J;
-				GCC_PREFIX_HEADER = "";
-				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_FILE = "SylSmart/SylSmart-Info.plist";
-				INFOPLIST_KEY_CFBundleDisplayName = SylSmart;
-				INFOPLIST_KEY_NSBluetoothAlwaysUsageDescription = "Connect devices via Bluetooth";
-				INFOPLIST_KEY_NSCameraUsageDescription = "We need to access your camera for scanning the QR code of device";
-				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "We need to use your photo album to get the device's QR code";
-				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
-				INFOPLIST_KEY_UILaunchStoryboardName = "SylSmart-LaunchScreen";
-				INFOPLIST_KEY_UIMainStoryboardFile = "";
-				INFOPLIST_KEY_UIRequiresFullScreen = YES;
-				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
-				INFOPLIST_KEY_UIUserInterfaceStyle = Light;
-				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
-				LD_RUNPATH_SEARCH_PATHS = (
-					"$(inherited)",
-					"@executable_path/Frameworks",
-				);
-				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.sylvania.sylsmartconnect;
-				PRODUCT_NAME = "$(TARGET_NAME)";
-				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
-				SUPPORTS_MACCATALYST = NO;
-				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
-				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
-				SWIFT_ACTIVE_COMPILATION_CONDITIONS = SylSmart;
-				SWIFT_EMIT_LOC_STRINGS = YES;
-				SWIFT_OBJC_BRIDGING_HEADER = "SunSmart/SunSmart-Bridging-Header.h";
-				SWIFT_VERSION = 5.0;
-				TARGETED_DEVICE_FAMILY = "1,2";
 			};
 			name = Release;
 		};
@@ -6413,165 +6394,29 @@
 		};
 		C896B9B92A930BAA00217512 /* Debug */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = 45931D652AFCE854D4A27862 /* Pods-Common-SunSmart.debug.xcconfig */;
+			baseConfigurationReference = F10000000000000000000003 /* Debug.xcconfig */;
 			buildSettings = {
-				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
-				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
-				CODE_SIGN_IDENTITY = "Apple Development";
-				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = JTD3WYUC58;
-				GCC_PREFIX_HEADER = "";
-				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_FILE = SunSmart/Info.plist;
-				INFOPLIST_KEY_CFBundleDisplayName = SunSmart;
-				INFOPLIST_KEY_NSBluetoothAlwaysUsageDescription = "Connect devices via Bluetooth";
-				INFOPLIST_KEY_NSCameraUsageDescription = "We need to access your camera for scanning the QR code of device";
-				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "We need to use your photo album to get the device's QR code";
-				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
-				INFOPLIST_KEY_UILaunchStoryboardName = LaunchScreen;
-				INFOPLIST_KEY_UIMainStoryboardFile = "";
-				INFOPLIST_KEY_UIRequiresFullScreen = YES;
-				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
-				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
-				LD_RUNPATH_SEARCH_PATHS = (
-					"$(inherited)",
-					"@executable_path/Frameworks",
-				);
-				MARKETING_VERSION = 1.0.14;
-				PRODUCT_BUNDLE_IDENTIFIER = com.azoula.sunsmart;
-				PRODUCT_NAME = "$(TARGET_NAME)";
-				PROVISIONING_PROFILE_SPECIFIER = "";
-				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
-				SUPPORTS_MACCATALYST = NO;
-				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
-				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
-				SWIFT_EMIT_LOC_STRINGS = YES;
-				SWIFT_OBJC_BRIDGING_HEADER = "SunSmart/SunSmart-Bridging-Header.h";
-				SWIFT_VERSION = 5.0;
-				TARGETED_DEVICE_FAMILY = "1,2";
 			};
 			name = Debug;
 		};
 		C896B9BA2A930BAA00217512 /* Release */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = E08E6FB7E3FFE82A5A620CAF /* Pods-Common-SunSmart.release.xcconfig */;
+			baseConfigurationReference = F10000000000000000000004 /* Release.xcconfig */;
 			buildSettings = {
-				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
-				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
-				CODE_SIGN_IDENTITY = "Apple Development";
-				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = JTD3WYUC58;
-				GCC_PREFIX_HEADER = "";
-				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_FILE = SunSmart/Info.plist;
-				INFOPLIST_KEY_CFBundleDisplayName = SunSmart;
-				INFOPLIST_KEY_NSBluetoothAlwaysUsageDescription = "Connect devices via Bluetooth";
-				INFOPLIST_KEY_NSCameraUsageDescription = "We need to access your camera for scanning the QR code of device";
-				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "We need to use your photo album to get the device's QR code";
-				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
-				INFOPLIST_KEY_UILaunchStoryboardName = LaunchScreen;
-				INFOPLIST_KEY_UIMainStoryboardFile = "";
-				INFOPLIST_KEY_UIRequiresFullScreen = YES;
-				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
-				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
-				LD_RUNPATH_SEARCH_PATHS = (
-					"$(inherited)",
-					"@executable_path/Frameworks",
-				);
-				MARKETING_VERSION = 1.0.14;
-				PRODUCT_BUNDLE_IDENTIFIER = com.azoula.sunsmart;
-				PRODUCT_NAME = "$(TARGET_NAME)";
-				PROVISIONING_PROFILE_SPECIFIER = "";
-				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
-				SUPPORTS_MACCATALYST = NO;
-				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
-				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
-				SWIFT_EMIT_LOC_STRINGS = YES;
-				SWIFT_OBJC_BRIDGING_HEADER = "SunSmart/SunSmart-Bridging-Header.h";
-				SWIFT_VERSION = 5.0;
-				TARGETED_DEVICE_FAMILY = "1,2";
 			};
 			name = Release;
 		};
 		C8BB676D2ED3F056000C63EE /* Debug */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = F1000000000000000000000C /* Debug.xcconfig */;
 			buildSettings = {
-				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
-				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
-				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 2;
-				DEVELOPMENT_TEAM = 97QC5USUD2;
-				GCC_PREFIX_HEADER = "";
-				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_FILE = "SLGSync/SLGSync-Info.plist";
-				INFOPLIST_KEY_CFBundleDisplayName = "SLG Sync Plus";
-				INFOPLIST_KEY_NSBluetoothAlwaysUsageDescription = "Connect devices via Bluetooth";
-				INFOPLIST_KEY_NSCameraUsageDescription = "We need to access your camera for scanning the QR code of device";
-				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "We need to use your photo album to get the device's QR code";
-				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
-				INFOPLIST_KEY_UILaunchStoryboardName = "SLGSync-LaunchScreen";
-				INFOPLIST_KEY_UIMainStoryboardFile = "";
-				INFOPLIST_KEY_UIRequiresFullScreen = YES;
-				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
-				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
-				LD_RUNPATH_SEARCH_PATHS = (
-					"$(inherited)",
-					"@executable_path/Frameworks",
-				);
-				MARKETING_VERSION = 1.0.1;
-				PRODUCT_BUNDLE_IDENTIFIER = com.slg.slgsyncplus;
-				PRODUCT_NAME = "$(TARGET_NAME)";
-				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
-				SUPPORTS_MACCATALYST = NO;
-				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
-				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
-				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG SLGSync";
-				SWIFT_EMIT_LOC_STRINGS = YES;
-				SWIFT_OBJC_BRIDGING_HEADER = "SunSmart/SunSmart-Bridging-Header.h";
-				SWIFT_VERSION = 5.0;
-				TARGETED_DEVICE_FAMILY = "1,2";
 			};
 			name = Debug;
 		};
 		C8BB676E2ED3F056000C63EE /* Release */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = F1000000000000000000000D /* Release.xcconfig */;
 			buildSettings = {
-				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
-				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
-				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 2;
-				DEVELOPMENT_TEAM = 97QC5USUD2;
-				GCC_PREFIX_HEADER = "";
-				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_FILE = "SLGSync/SLGSync-Info.plist";
-				INFOPLIST_KEY_CFBundleDisplayName = "SLG Sync Plus";
-				INFOPLIST_KEY_NSBluetoothAlwaysUsageDescription = "Connect devices via Bluetooth";
-				INFOPLIST_KEY_NSCameraUsageDescription = "We need to access your camera for scanning the QR code of device";
-				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "We need to use your photo album to get the device's QR code";
-				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
-				INFOPLIST_KEY_UILaunchStoryboardName = "SLGSync-LaunchScreen";
-				INFOPLIST_KEY_UIMainStoryboardFile = "";
-				INFOPLIST_KEY_UIRequiresFullScreen = YES;
-				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
-				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
-				LD_RUNPATH_SEARCH_PATHS = (
-					"$(inherited)",
-					"@executable_path/Frameworks",
-				);
-				MARKETING_VERSION = 1.0.1;
-				PRODUCT_BUNDLE_IDENTIFIER = com.slg.slgsyncplus;
-				PRODUCT_NAME = "$(TARGET_NAME)";
-				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
-				SUPPORTS_MACCATALYST = NO;
-				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
-				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
-				SWIFT_ACTIVE_COMPILATION_CONDITIONS = SLGSync;
-				SWIFT_EMIT_LOC_STRINGS = YES;
-				SWIFT_OBJC_BRIDGING_HEADER = "SunSmart/SunSmart-Bridging-Header.h";
-				SWIFT_VERSION = 5.0;
-				TARGETED_DEVICE_FAMILY = "1,2";
 			};
 			name = Release;
 		};

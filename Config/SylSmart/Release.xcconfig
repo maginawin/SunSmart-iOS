@@ -1,0 +1,4 @@
+#include "../../Pods/Target Support Files/Pods-Common-SylSmart/Pods-Common-SylSmart.release.xcconfig"
+#include "Base.xcconfig"
+
+SWIFT_ACTIVE_COMPILATION_CONDITIONS = SylSmart
