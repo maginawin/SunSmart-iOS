@@ -36,13 +36,9 @@ class EmerFireAlarmMonitorVC: UIViewController {
         view.title = "Status Set".localizedString
         return view
     }()
-    lazy var statusLab : UILabel = {
-        var view = UILabel()
-        view.frame = CGRect(x: 0, y: 0, width: 150, height: 17)
-        view.textColor = UIColor(red: 0.93, green: 0.605, blue: 0, alpha: 1)
-        view.font = FONTS(14)
-        view.textAlignment = .center
-        view.text = "Power Outage Emergency"
+    lazy var statusLab : EmerFireAlarmMoniHead = {
+        var view = EmerFireAlarmMoniHead()
+        view.frame = CGRect(x: 0, y: 0, width: SCREEN_WIDTH, height: SCRYFit(45))
         return view
     }()
     
@@ -95,22 +91,29 @@ class EmerFireAlarmMonitorVC: UIViewController {
     }
     
     func setTestData(){
-        moniView.actionHandler = { position in
-            let message: String
-            switch position {
-            case .top:
-                message = "Identify"
-            case .bottomLeft:
-                message = "Manual emergency"
-            case .bottomCenterLeft:
-                message = "Previous action"
-            case .bottomCenterRight:
-                message = "Alarm action"
-            case .bottomRight:
-                message = "Next action"
-            }
-            XWHUDManager.showTipHUD(message, isLineFeed: false)
-        }
+        moniView.configure(actions: [
+            .init(
+                image: UIImage(named: "icon"),
+                borderColor: nil,
+                action: {
+                    XWHUDManager.showTipHUD("Manual emergency", isLineFeed: false)
+                }
+            ),
+            .init(
+                image: UIImage(named: "Logout-2 Streamline Sharp1"),
+                borderColor: nil,
+                action: {
+                    XWHUDManager.showTipHUD("Previous action", isLineFeed: false)
+                }
+            ),
+            .init(
+                image: UIImage(named: "Logout-2 Streamline Sharp"),
+                borderColor: nil,
+                action: {
+                    XWHUDManager.showTipHUD("Next action", isLineFeed: false)
+                }
+            )
+        ])
         statusSetView.headerActionHandler = { action in
             let message: String
             switch action {
@@ -189,7 +192,7 @@ class EmerFireAlarmMonitorVC: UIViewController {
         }
         view.addSubview(moniView)
         moniView.snp.makeConstraints { make in
-            make.top.equalTo(collectionView.snp.bottom).offset(SCRYFrom(37))
+            make.top.equalTo(collectionView.snp.bottom).offset(SCRYFrom(100))
             make.left.equalToSuperview().offset(SCRYFrom(56))
             make.right.equalToSuperview().offset(-SCRYFrom(56))
         }

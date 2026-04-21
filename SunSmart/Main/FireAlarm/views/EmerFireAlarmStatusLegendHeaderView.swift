@@ -13,9 +13,11 @@ final class EmerFireAlarmStatusLegendHeaderView: UIView {
     private enum Layout {
         static let height = SCRYFrom(56)
         static let horizontalInset = SCRXFrom(16)
+        static let containerHorizontalInset = SCRXFrom(12)
         static let itemSpacing = SCRXFrom(14)
         static let indicatorSize = SCRXFrom(14)
         static let cornerRadius = SCRYFrom(2)
+        static let containerCornerRadius = SCRYFrom(16)
     }
 
     private final class LegendItemView: UIView {
@@ -80,10 +82,10 @@ final class EmerFireAlarmStatusLegendHeaderView: UIView {
         CGSize(width: UIView.noIntrinsicMetric, height: Layout.height)
     }
 
-    private lazy var triggeredItem = LegendItemView(title: "Triggered", color: UIColor(red: 0.765, green: 0.2, blue: 0.165, alpha: 1))
-    private lazy var resumeItem = LegendItemView(title: "Resume", color: UIColor(red: 0.639, green: 0.882, blue: 0.2, alpha: 1))
-    private lazy var inactiveItem = LegendItemView(title: "Inactive", color: UIColor(red: 0.741, green: 0.741, blue: 0.741, alpha: 1))
-    private lazy var disabledItem = LegendItemView(title: "Disabled", image: UIImage(systemName: "nosign"))
+    private lazy var triggeredItem = LegendItemView(title: "Triggered", image: UIImage(named: "sts2"))
+    private lazy var resumeItem = LegendItemView(title: "Resume", image: UIImage(named: "sts5"))
+    private lazy var inactiveItem = LegendItemView(title: "Inactive", image: UIImage(named: "sts6"))
+    private lazy var disabledItem = LegendItemView(title: "Disabled", image: UIImage(named: "sts4"))
 
     private lazy var stackView: UIStackView = {
         let stackView = UIStackView(arrangedSubviews: [triggeredItem, resumeItem, inactiveItem, disabledItem])
@@ -91,6 +93,14 @@ final class EmerFireAlarmStatusLegendHeaderView: UIView {
         stackView.alignment = .center
         stackView.spacing = Layout.itemSpacing
         return stackView
+    }()
+
+    private lazy var containerView: UIView = {
+        let view = UIView()
+        view.backgroundColor = RGB(247, 247, 249)
+        view.layer.cornerRadius = Layout.containerCornerRadius
+        view.layer.masksToBounds = true
+        return view
     }()
 
     override init(frame: CGRect) {
@@ -105,9 +115,15 @@ final class EmerFireAlarmStatusLegendHeaderView: UIView {
     private func setupUI() {
         backgroundColor = .clear
 
-        addSubview(stackView)
+        addSubview(containerView)
+        containerView.snp.makeConstraints { make in
+            make.left.right.equalToSuperview().inset(Layout.containerHorizontalInset)
+            make.top.bottom.equalToSuperview().inset(SCRYFrom(6))
+        }
+
+        containerView.addSubview(stackView)
         stackView.snp.makeConstraints { make in
-            make.left.right.equalToSuperview().inset(Layout.horizontalInset*2)
+            make.left.right.equalToSuperview().inset(Layout.horizontalInset)
             make.top.bottom.equalToSuperview()
         }
     }

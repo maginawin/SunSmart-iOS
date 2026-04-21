@@ -78,10 +78,10 @@ final class EmerFireAlarmStatusSetView: UIView {
         return imageView
     }()
 
-    private lazy var alertButton = makeHeaderButton(image: UIImage(systemName: "bell.badge"), tintColor: UIColor(red: 0.219, green: 0.239, blue: 0.387, alpha: 1), action: #selector(alertAction))
-    private lazy var grayStatusButton = makeHeaderButton(image: nil, tintColor: UIColor(red: 0.741, green: 0.741, blue: 0.741, alpha: 1), action: #selector(grayStatusAction), filled: true)
-    private lazy var fireButton = makeHeaderButton(image: UIImage(systemName: "flame.fill"), tintColor: .black, action: #selector(fireAction))
-    private lazy var greenStatusButton = makeHeaderButton(image: nil, tintColor: UIColor(red: 0.639, green: 0.882, blue: 0.2, alpha: 1), action: #selector(greenStatusAction), filled: true)
+    private lazy var alertButton = makeHeaderButton(image: UIImage(named: "sts1"),tintColor: nil, action: #selector(alertAction))
+    private lazy var grayStatusButton = makeHeaderButton(image: UIImage(named: "sts2"),tintColor: nil, action: #selector(grayStatusAction), filled: true)
+    private lazy var fireButton = makeHeaderButton(image: UIImage(named: "sts3"),tintColor: nil, action: #selector(fireAction))
+    private lazy var greenStatusButton = makeHeaderButton(image: UIImage(named: "sts5"), tintColor: nil, action: #selector(greenStatusAction), filled: true)
 
     private lazy var headerActionsStackView: UIStackView = {
         let stackView = UIStackView(arrangedSubviews: [alertButton, grayStatusButton, fireButton, greenStatusButton])
@@ -93,7 +93,7 @@ final class EmerFireAlarmStatusSetView: UIView {
 
     private lazy var tableView: UITableView = {
         let tableView = UITableView(frame: .zero, style: .plain)
-        tableView.backgroundColor = .clear
+        tableView.backgroundColor = .white
         tableView.separatorStyle = .none
         tableView.showsVerticalScrollIndicator = false
         tableView.rowHeight = UITableView.automaticDimension
@@ -150,7 +150,7 @@ final class EmerFireAlarmStatusSetView: UIView {
 
     private func setupUI() {
         backgroundColor = .clear
-
+        
         addSubview(contentView)
         contentView.snp.makeConstraints { make in
             make.edges.equalToSuperview()
@@ -219,34 +219,29 @@ final class EmerFireAlarmStatusSetView: UIView {
     private func updateTableHeaderFrame() {
         let width = tableView.bounds.width
         guard width > 0 else { return }
-        let targetSize = legendHeaderView.systemLayoutSizeFitting(
-            CGSize(width: width, height: UIView.layoutFittingCompressedSize.height),
-            withHorizontalFittingPriority: UILayoutPriority.required,
-            verticalFittingPriority: UILayoutPriority.fittingSizeLevel
-        )
-        if legendHeaderView.frame.width != width || legendHeaderView.frame.height != targetSize.height {
-            legendHeaderView.frame = CGRect(x: 0, y: 0, width: width, height: targetSize.height)
+        let targetHeight = legendHeaderView.intrinsicContentSize.height
+        if legendHeaderView.frame.width != width || legendHeaderView.frame.height != targetHeight {
+            legendHeaderView.frame = CGRect(x: 0, y: 0, width: width, height: targetHeight)
             tableView.tableHeaderView = legendHeaderView
         }
     }
 
     private func makeHeaderButton(
         image: UIImage?,
-        tintColor: UIColor,
+        tintColor: UIColor?,
         action: Selector,
         filled: Bool = false
     ) -> UIButton {
         let button = UIButton(type: .custom)
         button.snp.makeConstraints { make in
-            make.width.height.equalTo(SCRXFrom(18))
+            make.width.height.equalTo(SCRXFrom(16))
         }
         if let image {
-            button.setImage(image.withRenderingMode(.alwaysTemplate), for: .normal)
-            button.tintColor = tintColor
+            button.setImage(image, for: .normal)
             button.imageView?.contentMode = .scaleAspectFit
         } else {
             button.backgroundColor = tintColor
-            button.layer.cornerRadius = SCRXFrom(9)
+            button.layer.cornerRadius = SCRXFrom(8)
         }
         if filled {
             button.layer.borderWidth = 0
@@ -264,6 +259,7 @@ extension EmerFireAlarmStatusSetView: UITableViewDataSource, UITableViewDelegate
 
     func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
         let cell: EmerFireAlarmStatusItemCell = tableView.dequeueReusableCell(for: indexPath)
+        
         let item = items[indexPath.row]
         cell.configure(with: .init(title: item.title, subtitle: item.subtitle, value: item.value))
         return cell

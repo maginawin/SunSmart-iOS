@@ -29,8 +29,8 @@ extension LinkedEmerFireEditVC: UITableViewDataSource, UITableViewDelegate {
             return cell
         case .reportToGateway:
             let cell: EmerFireStatusTextCell = tableView.dequeueReusableCell(for: indexPath)
-            let statusText = state.isSynced ? "Ready" : "Devices not synced."
-            let statusColor = state.isSynced ? AssistText_Color : RGB(247, 99, 95)
+            let statusText = "Waiting for setup"
+            let statusColor = RGB(247, 99, 95)
             cell.configure(
                 leftText: "Report To Gateway".localizedString,
                 rightText: statusText,
