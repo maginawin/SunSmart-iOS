@@ -33,7 +33,7 @@ final class PreCreateEmerFireVC: UIViewController {
     ]
 
     private lazy var tableView: UITableView = {
-        let tableView = UITableView(frame: .zero, style: .grouped)
+        let tableView = UITableView(frame: .zero, style: .plain)
         tableView.backgroundColor = Background_Color
         tableView.separatorStyle = .none
         tableView.showsVerticalScrollIndicator = false

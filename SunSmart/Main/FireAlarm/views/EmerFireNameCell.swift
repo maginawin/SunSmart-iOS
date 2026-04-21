@@ -22,16 +22,14 @@ final class EmerFireNameCell: UITableViewCell {
     }()
 
     private lazy var syncIconView: UIImageView = {
-        let imageView = UIImageView(image: UIImage(systemName: "exclamationmark.circle"))
-        imageView.tintColor = Error_Red_Color
-        imageView.contentMode = .scaleAspectFit
+        let imageView = UIImageView(image: UIImage(named: "group_11"))
         return imageView
     }()
 
     private lazy var syncButton: UIButton = {
-        let button = UIButton(title: "Devices not synced.", titleSize: 13, titleWeight: .light, titleColor: Error_Red_Color, fit: false, target: self, action: #selector(handleSyncAction))
+        let button = UIButton(title: "Devices not synced.", titleSize: 14, titleColor: Error_Red_Color, fit: false, target: self, action: #selector(handleSyncAction))
         button.contentHorizontalAlignment = .left
-        button.titleLabel?.font = FONTS(11)
+        button.titleLabel?.font = FONTS(14)
         return button
     }()
 
@@ -106,7 +104,7 @@ final class EmerFireNameCell: UITableViewCell {
         syncContainerView.addSubview(syncIconView)
         syncIconView.snp.makeConstraints { make in
             make.left.top.bottom.equalToSuperview()
-            make.width.height.equalTo(SCRXFrom(12))
+            make.width.height.equalTo(SCRXFrom(16))
         }
 
         syncContainerView.addSubview(syncButton)
