@@ -1663,3 +1663,33 @@
 "show" = "显示";
 "hide" = "隐藏";
 "key" = "键";
+
+//V1.5
+"Setting" = "设置";
+"Not associate with Group(s) !" = "没有关联的组";
+"Status & Settings" = "状态&设置";
+"power_supply_fails" = "电源故障";
+"power_is_restored" = "电源恢复";
+"fire_alarm_occurs" = "发生火警";
+"fire_alarm_stops" = "火警解除";
+"set_brightness_to" = "设置亮度为：";
+"resuming_in" = "恢复倒计时：";
+"linked_power_loss_instruction_1" = "1. 此模式将覆盖原始组配置，火警应急配置除外。";
+"linked_power_loss_instruction_2" = "2. 在此模式下，自动控制将被禁用。";
+"linked_power_restore_instruction_1" = "1. 如果恢复供电时组仍处于火警状态，将继续保持火警配置；否则将恢复为原始配置。";
+"linked_power_restore_instruction_2" = "2. 恢复原始配置后，所有手动和自动控制都会重新启用。";
+"linked_power_restore_instruction_3" = "3. 延迟恢复有助于避免电源切换初期电压不稳定。";
+"linked_fire_alarm_instruction_1" = "1. 此模式将覆盖原始组配置，并包含断电应急配置。";
+"linked_fire_alarm_instruction_2" = "2. 在此模式下，所有手动和自动控制都将被禁用。";
+"linked_fire_alarm_stop_instruction_1" = "1. 如果火警解除时组仍处于断电应急状态，将切换到断电应急配置；否则将恢复为原始配置。";
+"linked_fire_alarm_stop_instruction_2" = "2. 恢复原始配置后，所有手动和自动控制都会重新启用。";
+"linked_fire_alarm_stop_instruction_3" = "3. 恢复延迟是基于安全方面的考虑。";
+"linked_emer_fire_controller_name" = "应急与火警控制器1";
+"linked_set_brightness_to" = "设置亮度为";
+"linked_resuming" = "恢复时间：";
+"linked_send_count_per_5_seconds" = "发送次数（每5秒）：";
+"Associate With Group(s)" = "关联到组";
+"Report To Gateway" = "上报到网关";
+"Enable Power Loss Emergency" = "启用断电应急";
+"Enable Fire Alarm Emergency" = "启用火警应急";
+"Status Set" = "状态设置";

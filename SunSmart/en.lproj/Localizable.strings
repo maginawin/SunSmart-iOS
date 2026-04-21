@@ -1649,3 +1649,33 @@
 "show" = "Show";
 "hide" = "Hide";
 "key" = "key";
+
+//v1.5
+"Setting" = "Setting";
+"Not associate with Group(s) !" ="Not associate with Group(s) !";
+"Status & Settings" = "Status & Settings";
+"power_supply_fails" = "Power supply fails";
+"power_is_restored" = "Power is restored";
+"fire_alarm_occurs" = "Fire alarm occurs";
+"fire_alarm_stops" = "Fire alarm stops";
+"set_brightness_to" = "Set Brightness To:";
+"resuming_in" = "Resuming in:";
+"linked_power_loss_instruction_1" = "1. This mode will override the original group's profile, with the exception of the Fire Alarm Emergency Profile.";
+"linked_power_loss_instruction_2" = "2. In this mode, Automated controls will be disabled.";
+"linked_power_restore_instruction_1" = "1. If the groups remains in fire alarm state when power is restored, it will remain under the fire alarm profile.Otherwise, it will revert to its original profile.";
+"linked_power_restore_instruction_2" = "2. After restoring to the original profile, all manual and automatic controls will be enabled.";
+"linked_power_restore_instruction_3" = "3. Delayed recovery helps avoid unstable voltage during the initial phase of power switching.";
+"linked_fire_alarm_instruction_1" = "1. This mode will override the original group's profile, includes power-loss emergency profile.";
+"linked_fire_alarm_instruction_2" = "2. In this mode, all manual and automated controls will be disabled.";
+"linked_fire_alarm_stop_instruction_1" = "1. If the groups remains in power-loss emergency state when fire alarm stops, it will switch to the power-loss emergency profile.Otherwise, it will revert to the original profile.";
+"linked_fire_alarm_stop_instruction_2" = "2. After restoring to the original profile, all manual and automatic controls will be enabled.";
+"linked_fire_alarm_stop_instruction_3" = "3. The delay in restoration is due to security considerations.";
+"linked_emer_fire_controller_name" = "Emer&Fire Controller 1";
+"linked_set_brightness_to" = "Set Brightness To";
+"linked_resuming" = "Resuming:";
+"linked_send_count_per_5_seconds" = "Send Count (per 5 seconds):";
+"Associate With Group(s)" = "Associate With Group(s)";
+"Report To Gateway" = "Report To Gateway";
+"Enable Power Loss Emergency" = "Enable Power Loss Emergency";
+"Enable Fire Alarm Emergency" = "Enable Fire Alarm Emergency";
+"Status Set" = "Status Set";

@@ -243,7 +243,7 @@ class DeviceAddMenuView: UIView {
             make.top.equalTo(sensorsLabel)
         }
         
-        donglesBtn = UIButton(normalImageName: "device_menu_dongle", target: self, action: #selector(othersAction))
+        donglesBtn = UIButton(normalImageName: "Frame 249", target: self, action: #selector(othersAction))
         donglesBtn.layer.cornerRadius = switchesBtn.layer.cornerRadius
         donglesBtn.backgroundColor = Bar_Color
         contentView.addSubview(donglesBtn)
@@ -253,7 +253,7 @@ class DeviceAddMenuView: UIView {
             make.centerY.width.height.equalTo(switchesBtn)
         }
         
-        donglesLabel = UILabel(text: "dongles".localizedString, textColor: Title_Color, fontSize: 14, fontWeight: .light)
+        donglesLabel = UILabel(text: "others".localizedString, textColor: Title_Color, fontSize: 14, fontWeight: .light)
         contentView.addSubview(donglesLabel)
         donglesLabel.snp.makeConstraints { make in
             make.centerX.equalTo(donglesBtn)

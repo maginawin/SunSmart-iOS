@@ -321,7 +321,7 @@ class DevicesViewController: WMPageController {
         })]).show()
     }
     
-    /// 添加按键点击事件
+    /// 添加按键点击事件 1.5
     func addAction(point: CGPoint) {
         
         DeviceAddMenuView(selectCallback: {[weak self] options in
@@ -336,7 +336,18 @@ class DevicesViewController: WMPageController {
             case .preCreatedSensors:
                 XWHUDManager.showTipHUD("under_development".localizedString, isLineFeed: true)
             case .preCreatedDongles:
-                self.preCreatedDongle()
+                let controller = OthersViewController.makePopupViewController(
+                    onBack: { [weak self] in
+                        self?.addAction(point: point)
+                    },
+                    onDongles: { [weak self] in
+                        self?.preCreatedDongle()
+                    },
+                    onFireAlarm: { [weak self] in
+                        self?.preCreatedEmerFire()
+                    }
+                )
+                self.present(controller, animated: false)
             }
         }).show()
         
@@ -350,6 +361,15 @@ class DevicesViewController: WMPageController {
         //            })
         //        ]
         //        MenuPopView.show(items: items, anchorPoint: point, direction: .up)
+    }
+    
+    //预创建页面
+    private func preCreatedEmerFire() {
+        let vc = PreCreateEmerFireVC()
+        let nav = NavigationViewController(rootViewController: vc)
+        DispatchQueue.main.async { [weak self] in
+            self?.present(nav, animated: true)
+        }
     }
     
     /// 节点同步时间
@@ -413,7 +433,7 @@ class DevicesViewController: WMPageController {
         }
         present(NavigationViewController(rootViewController: vc), animated: true)
     }
-    
+
     /// 恢复设备数据
     private func devicesRestore() {
         let vc = DeviceRestoreViewController(site: self.site, space: space, restoreMode: .default)
