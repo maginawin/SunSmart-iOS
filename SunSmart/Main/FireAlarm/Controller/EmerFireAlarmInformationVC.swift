@@ -4,7 +4,7 @@
 //
 //  Created by Plato Jobs on 2026/4/21.
 //
-
+//应急火警设备信息页
 import UIKit
 
 final class EmerFireAlarmInformationVC: UIViewController {
@@ -137,6 +137,11 @@ extension EmerFireAlarmInformationVC: UITableViewDataSource, UITableViewDelegate
             showsSeparator: showsSeparator
         ) { [weak self] text in
             self?.copy(text: text)
+        }
+        if indexPath.section==0{
+            cell.updateTitlConstant(update: true)
+        }else{
+            cell.updateTitlConstant(update: false)
         }
         return cell
     }

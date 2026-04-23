@@ -1679,3 +1679,6 @@
 "Enable Power Loss Emergency" = "Enable Power Loss Emergency";
 "Enable Fire Alarm Emergency" = "Enable Fire Alarm Emergency";
 "Status Set" = "Status Set";
+"Emergency information was not reported to the gateway. If a gateway is in use, it must be properly configured to prevent security risks arising from devices being controlled through the gateway in an emergency." = "Emergency information was not reported to the gateway. If a gateway is in use, it must be properly configured to prevent security risks arising from devices being controlled through the gateway in an emergency." ;
+"Warning" = "Warning";
+"Go Setting" = "Go Setting";

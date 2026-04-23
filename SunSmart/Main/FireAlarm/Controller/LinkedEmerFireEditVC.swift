@@ -5,6 +5,7 @@
 //  Created by Plato Jobs on 2026/4/20.
 //
 
+//应急火警设备编辑页
 import UIKit
 
 final class LinkedEmerFireEditVC: UIViewController {

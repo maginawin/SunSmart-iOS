@@ -5,6 +5,7 @@
 //  Created by Plato Jobs on 2026/4/21.
 //
 
+//应急火警设备监控页
 import UIKit
 
 class EmerFireAlarmMonitorVC: UIViewController {
@@ -36,7 +37,7 @@ class EmerFireAlarmMonitorVC: UIViewController {
         view.title = "Status Set".localizedString
         return view
     }()
-    lazy var statusLab : EmerFireAlarmMoniHead = {
+    lazy var statusWarningView : EmerFireAlarmMoniHead = {
         var view = EmerFireAlarmMoniHead()
         view.frame = CGRect(x: 0, y: 0, width: SCREEN_WIDTH, height: SCRYFit(45))
         return view
@@ -70,6 +71,19 @@ class EmerFireAlarmMonitorVC: UIViewController {
         setTestData()
         applySavedConfig()
         NotificationCenter.default.addObserver(self, selector: #selector(handleConfigDidChange(_:)), name: .linkedEmerFireConfigDidChange, object: nil)
+        
+        statusWarningView.warningAction = {
+            //Owner和Editor权限
+            SRAlertView(title: "Warning".localizedString,message: "Emergency information was not reported to the gateway. If a gateway is in use, it must be properly configured to prevent security risks arising from devices being controlled through the gateway in an emergency.".localizedString, actions: [.cancelAction, SRAlertAction(title: "Go Setting".localizedString,actionHandler: { _ in
+                XWHUDManager.showTipHUD("setting", isLineFeed: true)
+            })
+            ]).show()
+            //visitor
+//            SRAlertView(title: "Warning",message: "Emergency information was not reported to the gateway. If a gateway is in use, it must be properly configured to prevent security risks arising from devices being controlled through the gateway in an emergency.", actions: [.cancelAction,]).show()
+            
+            
+        }
+        
     }
 
     deinit {
@@ -133,10 +147,11 @@ class EmerFireAlarmMonitorVC: UIViewController {
     
     func setupUI(){
         
-        view.addSubview(statusLab)
-        statusLab.snp.makeConstraints { make in
+        view.addSubview(statusWarningView)
+        statusWarningView.snp.makeConstraints { make in
             make.top.equalTo(view.safeAreaLayoutGuide).offset(SCRYFit(10))
             make.left.right.equalToSuperview()
+            make.height.equalTo(SCRYFit(45))
         }
         
         flowLayout = AlignCenterFlowLayout()
@@ -165,10 +180,10 @@ class EmerFireAlarmMonitorVC: UIViewController {
             make.left.equalTo(SCRXFrom(30))
             make.right.equalTo(SCRXFrom(-29))
             if isIPad {
-                make.top.equalTo(view.safeAreaLayoutGuide).offset(SCRYFit(60))
+                make.top.equalTo(statusWarningView.snp.bottom).offset(SCRYFit(15))
                 make.height.equalTo(SCRYFrom(498))
             }else {
-                make.top.equalTo(view.safeAreaLayoutGuide).offset(SCRYFit(40))
+                make.top.equalTo(statusWarningView.snp.bottom).offset(SCRYFit(12))
                 make.height.equalTo(SCRYFrom(340))
             }
         }

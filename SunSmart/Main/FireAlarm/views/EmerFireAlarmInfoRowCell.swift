@@ -23,7 +23,7 @@ final class EmerFireAlarmInfoRowCell: UITableViewCell {
     }()
 
     private let valueLabel: UILabel = {
-        let label = UILabel(text: nil, textColor: RGB(151, 164, 189), fontSize: 15, fontWeight: .light)
+        let label = UILabel(text: nil, textColor: AssistText_Color, fontSize: 14, fontWeight: .light)
         label.numberOfLines = 0
         label.textAlignment = .right
         return label
@@ -108,6 +108,16 @@ final class EmerFireAlarmInfoRowCell: UITableViewCell {
             make.height.equalTo(0.5)
         }
     }
+    
+    //更新约束
+    func updateTitlConstant(update: Bool){
+        if update {
+            titleLabel.snp.updateConstraints { make in
+                make.left.equalToSuperview().offset(Layout.horizontalInset*2)
+            }
+        }
+    }
+    
 
     @objc private func copyAction() {
         guard let copyText else {

@@ -1693,3 +1693,6 @@
 "Enable Power Loss Emergency" = "启用断电应急";
 "Enable Fire Alarm Emergency" = "启用火警应急";
 "Status Set" = "状态设置";
+"Emergency information was not reported to the gateway. If a gateway is in use, it must be properly configured to prevent security risks arising from devices being controlled through the gateway in an emergency." = "紧急信息未向网关进行报告。若网关正在使用中，则必须进行正确配置，以避免在紧急情况下通过网关控制设备而引发的安全风险。" ;
+"Warning" = "温馨提醒";
+"Go Setting" = "前往设置";

@@ -5,6 +5,7 @@
 //  Created by Plato Jobs on 2026/4/22.
 //
 
+//主页-应急火警设备各个状态页
 import UIKit
 import NordicSigMeshSDK
 

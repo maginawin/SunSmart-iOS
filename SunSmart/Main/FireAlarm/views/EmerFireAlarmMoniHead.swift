@@ -8,9 +8,12 @@
 import UIKit
 
 class EmerFireAlarmMoniHead: UIView {
-    lazy var icon : UIImageView = {
-        let icon = UIImageView()
-        icon.image = UIImage(named: "Frame")
+    
+    
+    var warningAction: (() -> Void)?
+    
+    lazy var icon : UIButton = {
+        let icon = UIButton(title: "", titleSize: nil, titleWeight: nil, titleColor: nil, fit: true, normalImageName:"Frame", selectedImageName: "", target: self, action: #selector(warning))
         return icon
     }()
     var lab : UILabel = {
@@ -34,6 +37,8 @@ class EmerFireAlarmMoniHead: UIView {
     func setupUI(){
         addSubview(icon)
         addSubview(lab)
+        let tapGesture = UITapGestureRecognizer(target: self, action: #selector(warning))
+        addGestureRecognizer(tapGesture)
         icon.snp.makeConstraints { make in
             make.left.equalToSuperview().offset(SCRYFit(30))
             make.centerY.equalToSuperview()
@@ -44,6 +49,11 @@ class EmerFireAlarmMoniHead: UIView {
             make.centerY.equalToSuperview()
         }
     }
+    
+    @objc func warning(){
+        warningAction?()
+    }
+    
     func config(statusLab: String){
         lab.text = statusLab
       //view.attributedText = NSMutableAttributedString(string: "Unlinked", attributes: [NSAttributedString.Key.underlineStyle: NSUnderlineStyle.single.rawValue])
