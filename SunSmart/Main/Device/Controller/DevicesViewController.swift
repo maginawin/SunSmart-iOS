@@ -701,7 +701,8 @@ extension DevicesViewController {
             let vc = DeviceSensorsViewController(space: space)
             return vc
         case 3:
-            let vc = DeviceOthersViewController(space: space)
+           // let vc = DeviceOthersViewController(space: space)
+            let vc = EmerFireAlarmDevicesController(space: space)
             return vc
         default:
             return UIViewController()

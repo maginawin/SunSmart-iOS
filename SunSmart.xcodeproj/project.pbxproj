@@ -61,6 +61,22 @@
 		8C7789092F977694000887FE /* EmerFireAlarmMoniHead.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C7789072F977694000887FE /* EmerFireAlarmMoniHead.swift */; };
 		8C77890A2F977694000887FE /* EmerFireAlarmMoniHead.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C7789072F977694000887FE /* EmerFireAlarmMoniHead.swift */; };
 		8C77890B2F977694000887FE /* EmerFireAlarmMoniHead.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C7789072F977694000887FE /* EmerFireAlarmMoniHead.swift */; };
+		8C77890D2F987931000887FE /* EmerFireAlarmDeviceCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C77890C2F987931000887FE /* EmerFireAlarmDeviceCell.swift */; };
+		8C77890E2F987931000887FE /* EmerFireAlarmDeviceCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C77890C2F987931000887FE /* EmerFireAlarmDeviceCell.swift */; };
+		8C77890F2F987931000887FE /* EmerFireAlarmDeviceCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C77890C2F987931000887FE /* EmerFireAlarmDeviceCell.swift */; };
+		8C7789102F987931000887FE /* EmerFireAlarmDeviceCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C77890C2F987931000887FE /* EmerFireAlarmDeviceCell.swift */; };
+		8C7789122F987B48000887FE /* EmerFireAlarmDevicesController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C7789112F987B48000887FE /* EmerFireAlarmDevicesController.swift */; };
+		8C7789132F987B48000887FE /* EmerFireAlarmDevicesController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C7789112F987B48000887FE /* EmerFireAlarmDevicesController.swift */; };
+		8C7789142F987B48000887FE /* EmerFireAlarmDevicesController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C7789112F987B48000887FE /* EmerFireAlarmDevicesController.swift */; };
+		8C7789152F987B48000887FE /* EmerFireAlarmDevicesController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C7789112F987B48000887FE /* EmerFireAlarmDevicesController.swift */; };
+		8C7789172F98B48A000887FE /* EmerFireAlarmDevicesRepairView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C7789162F98B48A000887FE /* EmerFireAlarmDevicesRepairView.swift */; };
+		8C7789182F98B48A000887FE /* EmerFireAlarmDevicesRepairView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C7789162F98B48A000887FE /* EmerFireAlarmDevicesRepairView.swift */; };
+		8C7789192F98B48A000887FE /* EmerFireAlarmDevicesRepairView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C7789162F98B48A000887FE /* EmerFireAlarmDevicesRepairView.swift */; };
+		8C77891A2F98B48A000887FE /* EmerFireAlarmDevicesRepairView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C7789162F98B48A000887FE /* EmerFireAlarmDevicesRepairView.swift */; };
+		8C77891C2F99A678000887FE /* EmerFireAlarmAddProfessionalVC.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C77891B2F99A678000887FE /* EmerFireAlarmAddProfessionalVC.swift */; };
+		8C77891D2F99A678000887FE /* EmerFireAlarmAddProfessionalVC.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C77891B2F99A678000887FE /* EmerFireAlarmAddProfessionalVC.swift */; };
+		8C77891E2F99A678000887FE /* EmerFireAlarmAddProfessionalVC.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C77891B2F99A678000887FE /* EmerFireAlarmAddProfessionalVC.swift */; };
+		8C77891F2F99A678000887FE /* EmerFireAlarmAddProfessionalVC.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C77891B2F99A678000887FE /* EmerFireAlarmAddProfessionalVC.swift */; };
 		8CBEC62D2F960EF8003859AB /* PreCreateEmerFireVC.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8CBEC62C2F960EF8003859AB /* PreCreateEmerFireVC.swift */; };
 		8CBEC62E2F960EF8003859AB /* PreCreateEmerFireVC.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8CBEC62C2F960EF8003859AB /* PreCreateEmerFireVC.swift */; };
 		8CBEC62F2F960EF8003859AB /* PreCreateEmerFireVC.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8CBEC62C2F960EF8003859AB /* PreCreateEmerFireVC.swift */; };
@@ -2022,6 +2038,10 @@
 		8C7788FD2F9758FF000887FE /* LinkedEmerFireGroupSelectionVC.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LinkedEmerFireGroupSelectionVC.swift; sourceTree = "<group>"; };
 		8C7789022F975954000887FE /* EmerFireStatus.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EmerFireStatus.swift; sourceTree = "<group>"; };
 		8C7789072F977694000887FE /* EmerFireAlarmMoniHead.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EmerFireAlarmMoniHead.swift; sourceTree = "<group>"; };
+		8C77890C2F987931000887FE /* EmerFireAlarmDeviceCell.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EmerFireAlarmDeviceCell.swift; sourceTree = "<group>"; };
+		8C7789112F987B48000887FE /* EmerFireAlarmDevicesController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EmerFireAlarmDevicesController.swift; sourceTree = "<group>"; };
+		8C7789162F98B48A000887FE /* EmerFireAlarmDevicesRepairView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EmerFireAlarmDevicesRepairView.swift; sourceTree = "<group>"; };
+		8C77891B2F99A678000887FE /* EmerFireAlarmAddProfessionalVC.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EmerFireAlarmAddProfessionalVC.swift; sourceTree = "<group>"; };
 		8CBEC62C2F960EF8003859AB /* PreCreateEmerFireVC.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PreCreateEmerFireVC.swift; sourceTree = "<group>"; };
 		8CBEC6322F961030003859AB /* DeviceBottomActionView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceBottomActionView.swift; sourceTree = "<group>"; };
 		8CBEC6382F961B6C003859AB /* FireAlarmTableReusable.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FireAlarmTableReusable.swift; sourceTree = "<group>"; };
@@ -2673,6 +2693,8 @@
 				8C7788EE2F974BC2000887FE /* EmerFireAlarmInfoRowCell.swift */,
 				8C7788F32F974BC2000887FE /* EmerFireAlarmInfoSectionHeaderView.swift */,
 				8C7789072F977694000887FE /* EmerFireAlarmMoniHead.swift */,
+				8C77890C2F987931000887FE /* EmerFireAlarmDeviceCell.swift */,
+				8C7789162F98B48A000887FE /* EmerFireAlarmDevicesRepairView.swift */,
 			);
 			path = views;
 			sourceTree = "<group>";
@@ -2687,6 +2709,8 @@
 				8C7788E92F97485E000887FE /* EmerFireAlarmInformationVC.swift */,
 				8C7788CB2F97099D000887FE /* EmerFireAlarmMonitorVC.swift */,
 				8C7788FD2F9758FF000887FE /* LinkedEmerFireGroupSelectionVC.swift */,
+				8C7789112F987B48000887FE /* EmerFireAlarmDevicesController.swift */,
+				8C77891B2F99A678000887FE /* EmerFireAlarmAddProfessionalVC.swift */,
 			);
 			path = Controller;
 			sourceTree = "<group>";
@@ -4772,6 +4796,7 @@
 				C88553FE2DE6B44C00C8B688 /* SyncDevicesViewController.swift in Sources */,
 				C88553FF2DE6B44C00C8B688 /* DevicePwmFrequencySelectView.swift in Sources */,
 				C8F89D392E3B6F8500FA1544 /* GatewayAPNMenuView.swift in Sources */,
+				8C7789192F98B48A000887FE /* EmerFireAlarmDevicesRepairView.swift in Sources */,
 				8CC4A6B12F95D0CF00839EC4 /* PJTopbtBoLabView.swift in Sources */,
 				C88554002DE6B44C00C8B688 /* SiteEditViewController.swift in Sources */,
 				C88554012DE6B44C00C8B688 /* AttributedTextViewController.swift in Sources */,
@@ -4811,6 +4836,7 @@
 				C8BB3E4E2EF9482500207225 /* ProfileLightSensorTemplateListController.swift in Sources */,
 				C885541F2DE6B44C00C8B688 /* FSCalendarCalculator.m in Sources */,
 				C88554202DE6B44C00C8B688 /* FSCalendarCell.m in Sources */,
+				8C77890F2F987931000887FE /* EmerFireAlarmDeviceCell.swift in Sources */,
 				C8A85CE22E0A4886007F9B81 /* DeviceAddCandidateDeviceListView.swift in Sources */,
 				C88554212DE6B44C00C8B688 /* GroupPathSequenceDeviceAddView.swift in Sources */,
 				C88554222DE6B44C00C8B688 /* FSCalendarHeaderView.m in Sources */,
@@ -5075,6 +5101,7 @@
 				C88554DA2DE6B44C00C8B688 /* CalibrationInstructionController.swift in Sources */,
 				C88554DB2DE6B44C00C8B688 /* ProfileSettingsViewController.swift in Sources */,
 				C88554DC2DE6B44C00C8B688 /* DeviceDongleScheduleHeaderView.swift in Sources */,
+				8C7789142F987B48000887FE /* EmerFireAlarmDevicesController.swift in Sources */,
 				C88554DD2DE6B44C00C8B688 /* String+Localized.swift in Sources */,
 				C88554DE2DE6B44C00C8B688 /* TimedViewController.swift in Sources */,
 				C8B95FA02E4EE25D000576F5 /* DeviceForceResetDeviceView.swift in Sources */,
@@ -5119,6 +5146,7 @@
 				C88554FB2DE6B44C00C8B688 /* SyncDevicesCellModel.swift in Sources */,
 				C88554FC2DE6B44C00C8B688 /* DeviceOfflinePromptView.swift in Sources */,
 				C8B6D7E22E702BF7004FB923 /* SystemVoiumeManager.swift in Sources */,
+				8C77891F2F99A678000887FE /* EmerFireAlarmAddProfessionalVC.swift in Sources */,
 				C88554FD2DE6B44C00C8B688 /* BLEUpgradeInstructionsController.swift in Sources */,
 				C88554FE2DE6B44C00C8B688 /* MeshFirmwareUpdateViewController.swift in Sources */,
 				C88554FF2DE6B44C00C8B688 /* CustomSegmentedControl.swift in Sources */,
@@ -5253,6 +5281,7 @@
 				C886E04F2E30DE4900D0C3A6 /* SyncDevicesViewController.swift in Sources */,
 				C886E0502E30DE4900D0C3A6 /* DevicePwmFrequencySelectView.swift in Sources */,
 				C8F89D382E3B6F8500FA1544 /* GatewayAPNMenuView.swift in Sources */,
+				8C77891A2F98B48A000887FE /* EmerFireAlarmDevicesRepairView.swift in Sources */,
 				8CC4A6AF2F95D0CF00839EC4 /* PJTopbtBoLabView.swift in Sources */,
 				C886E0512E30DE4900D0C3A6 /* SiteEditViewController.swift in Sources */,
 				C886E0522E30DE4900D0C3A6 /* AttributedTextViewController.swift in Sources */,
@@ -5292,6 +5321,7 @@
 				C8BB3E502EF9482500207225 /* ProfileLightSensorTemplateListController.swift in Sources */,
 				C886E0702E30DE4900D0C3A6 /* FSCalendarCalculator.m in Sources */,
 				C886E0712E30DE4900D0C3A6 /* FSCalendarCell.m in Sources */,
+				8C77890E2F987931000887FE /* EmerFireAlarmDeviceCell.swift in Sources */,
 				C886E0722E30DE4900D0C3A6 /* DeviceAddCandidateDeviceListView.swift in Sources */,
 				C886E0732E30DE4900D0C3A6 /* GroupPathSequenceDeviceAddView.swift in Sources */,
 				C886E0742E30DE4900D0C3A6 /* FSCalendarHeaderView.m in Sources */,
@@ -5556,6 +5586,7 @@
 				C886E1352E30DE4900D0C3A6 /* CalibrationInstructionController.swift in Sources */,
 				C886E1362E30DE4900D0C3A6 /* ProfileSettingsViewController.swift in Sources */,
 				C886E1372E30DE4900D0C3A6 /* DeviceDongleScheduleHeaderView.swift in Sources */,
+				8C7789132F987B48000887FE /* EmerFireAlarmDevicesController.swift in Sources */,
 				C886E1382E30DE4900D0C3A6 /* String+Localized.swift in Sources */,
 				C886E1392E30DE4900D0C3A6 /* TimedViewController.swift in Sources */,
 				C8B95FA12E4EE25D000576F5 /* DeviceForceResetDeviceView.swift in Sources */,
@@ -5600,6 +5631,7 @@
 				C886E1572E30DE4900D0C3A6 /* SyncDevicesCellModel.swift in Sources */,
 				C886E1582E30DE4900D0C3A6 /* DeviceOfflinePromptView.swift in Sources */,
 				C8B6D7E12E702BF7004FB923 /* SystemVoiumeManager.swift in Sources */,
+				8C77891E2F99A678000887FE /* EmerFireAlarmAddProfessionalVC.swift in Sources */,
 				C886E1592E30DE4900D0C3A6 /* BLEUpgradeInstructionsController.swift in Sources */,
 				C886E15A2E30DE4900D0C3A6 /* MeshFirmwareUpdateViewController.swift in Sources */,
 				C886E15B2E30DE4900D0C3A6 /* CustomSegmentedControl.swift in Sources */,
@@ -5636,6 +5668,7 @@
 				C8BF08592B2705B400144BAC /* GroupAddViewController.swift in Sources */,
 				C8A29C2E2B4800E400104634 /* ScheduleAddView.swift in Sources */,
 				8CF15F7A2F9628F90044FCF3 /* EmerFireSelectionCell.swift in Sources */,
+				8C7789172F98B48A000887FE /* EmerFireAlarmDevicesRepairView.swift in Sources */,
 				C8A3290B2AC568A300BC7389 /* DevicesViewController.swift in Sources */,
 				C898E2E12AB840FE00C71315 /* MeshNetwork+SunSmart.swift in Sources */,
 				C8DCD0FC2CC8E0DE00B8671E /* SiteAddressDataHeaderView.swift in Sources */,
@@ -5764,6 +5797,7 @@
 				C8B0589C2B500D21006FC36F /* DeviceAllOnOffViewCell.swift in Sources */,
 				C8047F202B8F28B400A09FFA /* ProfilePowerUpBehaviorView.swift in Sources */,
 				C89A1C3F2B566B96004912B9 /* ScheduleScenesView.swift in Sources */,
+				8C7789102F987931000887FE /* EmerFireAlarmDeviceCell.swift in Sources */,
 				C89B3CB52C08807200820277 /* ShareAuthoritySpaceViewCell.swift in Sources */,
 				C8F89D3F2E3CBD1F00FA1544 /* GatewayModel.swift in Sources */,
 				C8047F292B8F4C0E00A09FFA /* DaylightSensorInstructionsViewCell.swift in Sources */,
@@ -5955,6 +5989,7 @@
 				8C7788D72F9719AF000887FE /* EmerFireAlarmMoniView.swift in Sources */,
 				C8C3A15E2E37551C00876028 /* GatewayAssociatedSpacesInstructionsController.swift in Sources */,
 				C8BF084C2B26F78100144BAC /* GroupsViewController.swift in Sources */,
+				8C7789152F987B48000887FE /* EmerFireAlarmDevicesController.swift in Sources */,
 				C8AC845C2DE15F6000213DE2 /* GroupPathSequenceManuallyAddView.swift in Sources */,
 				C89FEF432ABD657F00DCCFB6 /* AboutViewController.swift in Sources */,
 				8CF15F902F962C7C0044FCF3 /* LinkedEmerFireEditState.swift in Sources */,
@@ -6079,6 +6114,7 @@
 				C896BD3A2A930C3A00217512 /* WYProgressHUD.m in Sources */,
 				C89C9FF22B3D60CC00074031 /* SyncDevicesCellModel.swift in Sources */,
 				C80A7F522DB790B700A6E36C /* DeviceOfflinePromptView.swift in Sources */,
+				8C77891D2F99A678000887FE /* EmerFireAlarmAddProfessionalVC.swift in Sources */,
 				C8B6D7E02E702BF7004FB923 /* SystemVoiumeManager.swift in Sources */,
 				C89C82CC2C81C8BA009D43F6 /* BLEUpgradeInstructionsController.swift in Sources */,
 				C8A4E8932CDB0F5D00A22C77 /* MeshFirmwareUpdateViewController.swift in Sources */,
@@ -6216,6 +6252,7 @@
 				C8BB66062ED3F056000C63EE /* SyncDevicesViewController.swift in Sources */,
 				C8BB66072ED3F056000C63EE /* DevicePwmFrequencySelectView.swift in Sources */,
 				C8BB66082ED3F056000C63EE /* GatewayAPNMenuView.swift in Sources */,
+				8C7789182F98B48A000887FE /* EmerFireAlarmDevicesRepairView.swift in Sources */,
 				8CC4A6B02F95D0CF00839EC4 /* PJTopbtBoLabView.swift in Sources */,
 				C8BB66092ED3F056000C63EE /* SiteEditViewController.swift in Sources */,
 				C8BB660A2ED3F056000C63EE /* AttributedTextViewController.swift in Sources */,
@@ -6255,6 +6292,7 @@
 				C8BB3E4F2EF9482500207225 /* ProfileLightSensorTemplateListController.swift in Sources */,
 				C8BB662A2ED3F056000C63EE /* FSCalendarCalculator.m in Sources */,
 				C8BB662B2ED3F056000C63EE /* FSCalendarCell.m in Sources */,
+				8C77890D2F987931000887FE /* EmerFireAlarmDeviceCell.swift in Sources */,
 				C8BB662C2ED3F056000C63EE /* DeviceAddCandidateDeviceListView.swift in Sources */,
 				C8BB662D2ED3F056000C63EE /* GroupPathSequenceDeviceAddView.swift in Sources */,
 				C8BB662E2ED3F056000C63EE /* FSCalendarHeaderView.m in Sources */,
@@ -6519,6 +6557,7 @@
 				C8BB67102ED3F056000C63EE /* CalibrationInstructionController.swift in Sources */,
 				C8BB67112ED3F056000C63EE /* ProfileSettingsViewController.swift in Sources */,
 				C8BB67122ED3F056000C63EE /* DeviceDongleScheduleHeaderView.swift in Sources */,
+				8C7789122F987B48000887FE /* EmerFireAlarmDevicesController.swift in Sources */,
 				C8BB67132ED3F056000C63EE /* String+Localized.swift in Sources */,
 				C8BB67142ED3F056000C63EE /* TimedViewController.swift in Sources */,
 				C8BB67152ED3F056000C63EE /* DeviceForceResetDeviceView.swift in Sources */,
@@ -6563,6 +6602,7 @@
 				C8BB67372ED3F056000C63EE /* SyncDevicesCellModel.swift in Sources */,
 				C8BB67382ED3F056000C63EE /* DeviceOfflinePromptView.swift in Sources */,
 				C8BB67392ED3F056000C63EE /* SystemVoiumeManager.swift in Sources */,
+				8C77891C2F99A678000887FE /* EmerFireAlarmAddProfessionalVC.swift in Sources */,
 				C8BB673A2ED3F056000C63EE /* BLEUpgradeInstructionsController.swift in Sources */,
 				C8BB673B2ED3F056000C63EE /* MeshFirmwareUpdateViewController.swift in Sources */,
 				C8BB673C2ED3F056000C63EE /* CustomSegmentedControl.swift in Sources */,

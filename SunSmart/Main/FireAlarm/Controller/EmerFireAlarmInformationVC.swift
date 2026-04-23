@@ -22,8 +22,8 @@ final class EmerFireAlarmInformationVC: UIViewController {
 
     private let deviceRows: [InfoRow] = [
         .init(title: "Name", value: "EFC 1", showsCopyButton: false),
-        .init(title: "Pid", value: "--", showsCopyButton: false),
         .init(title: "MAC", value: "DF:EF:32:DG:HJ56:67:DF", showsCopyButton: true),
+        .init(title: "Pid", value: "--", showsCopyButton: false),
         .init(title: "Address", value: "52", showsCopyButton: false),
         .init(title: "Version Identifier", value: "0", showsCopyButton: false),
         .init(title: "Model", value: "SR-BL2421-DryCon924", showsCopyButton: false),

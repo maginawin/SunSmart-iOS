@@ -13,6 +13,7 @@ import SwiftyJSON
 /// 添加设备到目标
 enum AddDeviceToTarget {
     
+
     var name: String {
         switch self {
         case .space(let space):
@@ -47,6 +48,9 @@ enum DeviceAddState {
 }
 
 class DeviceAddViewController: WMPageController {
+    
+    //从火警那边进来添加设备v1.5
+    var isEmerFireAlarm: Bool = false
     
     private var navigationBackBtn: UIButton!
     
@@ -264,7 +268,7 @@ extension DeviceAddViewController {
     
 }
 
-extension DeviceAddViewController: CustomSegmentedControlDelegate {
+extension DeviceAddViewController: CustomSegmentedControlDelegate,UIAdaptivePresentationControllerDelegate {
     
     /// 分段控制器切换item回调
     /// - Parameters:
@@ -273,6 +277,30 @@ extension DeviceAddViewController: CustomSegmentedControlDelegate {
     func segmentedControl(_ segmentedControl: CustomSegmentedControl, didSelectedItem index: Int) {
         self.selectIndex = Int32(index)
         stopScan()
+        //从火警那边进来添加设备v1.5
+        if(isEmerFireAlarm){
+            cct(index: index)
+        }
+    }
+    //共用条件
+    func cct(index: Int){
+        if index == 1 {
+            segmentedControl.selectedIndex = 0
+            self.selectIndex = 0
+            
+            let vc = EmerFireAlarmAddProfessionalVC(space: space)
+            vc.presentationController?.delegate = self
+            present(vc, animated: true)
+            return
+        }
+
+        segmentedControl.selectedIndex = 0
+        self.selectIndex = 0
+    }
+    
+    func presentationControllerDidDismiss(_ presentationController: UIPresentationController) {
+        segmentedControl.selectedIndex = 0
+        selectIndex = 0
     }
     
 }
