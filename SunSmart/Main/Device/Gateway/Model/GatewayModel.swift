@@ -333,7 +333,6 @@ struct GatewaySIMApnInfo {
         .init(country: "china".localizedString, apns: ["cmnet", "3gnet", "ctnet"]),
         .init(country: "usa".localizedString, apns: ["phone", "internet", "fast.t-mobile.com"]),
         .init(country: "canada".localizedString, apns: ["ltemobile.apn", "pda.bell.ca", "sp.telus.com"]),
-        .init(country: "usa".localizedString, apns: ["phone", "internet", "fast.t-mobile.com"]),
         .init(country: "germany".localizedString, apns: ["internet.t-d1.de", "web.vodafone.de", "internet"]),
         .init(country: "spain".localizedString, apns: ["movistar.es", "airtelwap.es", "internet"]),
         .init(country: "france".localizedString, apns: ["orange.fr", "sl2sfr", "free", "ebouygtel.com"]),

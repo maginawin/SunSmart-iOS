@@ -611,6 +611,7 @@ class SpaceViewController: WMPageController {
             case .success(_):
                 
                 // 删除本地数据
+                self.site.spaces.removeAll(where: { $0.id == self.space.id })
                 self.space.delete()
                 self.navigationController?.popViewController(animated: true)
                 self.deleteSpaceCallback?()
@@ -1036,6 +1037,7 @@ class SpaceViewController: WMPageController {
                     if self.space.uploadCloud {
                         self.deleteSpaceRequest()
                     }else { // 只存在于本地，删除数据
+                        self.site.spaces.removeAll(where: { $0.id == self.space.id })
                         self.space.delete()
                         self.navigationController?.popViewController(animated: true)
                         self.deleteSpaceCallback?()

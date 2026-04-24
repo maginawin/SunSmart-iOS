@@ -1798,6 +1798,7 @@ self.updateAddressData()
         spaceVc.site = site
         spaceVc.deleteSpaceCallback = {[weak self] in
             guard let self = self else { return  }
+            self.site.spaces.removeAll(where: { $0.id == space.id })
             self.allSpaces.removeAll(where: { $0.id == space.id })
             self.favouriteSpaces.removeAll(where: { $0.id == space.id })
             if self.view.window != nil {
