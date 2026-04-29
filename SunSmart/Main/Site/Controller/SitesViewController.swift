@@ -473,10 +473,9 @@ class SitesViewController: UIViewController {
                     if let min = json["sensitivityRangeMin"].uInt16, let max = json["sensitivityRangeMax"].uInt16 {
                         sensitivityRange = min...max
                     }
-                    
                     let modelName = json["modelName"].string
                     return MeshDeviceConfigInfo(companyId: companyId, productId: productId, categoryName: categoryName, elementCount: elementCount, iconCategory: iconCategory, deviceCategory: deviceCategory, modelName: modelName, sensitivityRange: sensitivityRange)
-                })
+                }) 
                 MeshLibManager.manager.supportDeviceInfos = list
                 MeshDeviceConfigInfo.saveAll(list: list)
             case .failure(_):

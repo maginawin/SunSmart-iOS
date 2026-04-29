@@ -75,6 +75,10 @@ class DeviceInformationViewController: UIViewController {
         
         let macModel = CustomCellModel(icon: UIImage(named: "copy"), title: "MAC", content: node.macAddressResult, style: .icon)
         
+        //PID新增V1.5
+        let pidContent = node.productIdentifier.map { "0x\($0.hex)" } ?? "--"
+        let pidModel = CustomCellModel(title: "PID".localizedString, content: pidContent, style: .none)
+        
         let devModel = CustomCellModel(title: "model".localizedString, content: node.modelName ?? "--", style: .none)
         let typeName = node.categoryName
         let deviceTypeModel = CustomCellModel(title: "device_type".localizedString, content: typeName ?? "--", style: .none)
@@ -89,7 +93,7 @@ class DeviceInformationViewController: UIViewController {
         
         let vidModel = CustomCellModel(title: "Version Identifier", content: node.versionIdentifier != nil ? "\(node.versionIdentifier!)" : "--", style: .none)
         
-        deviceInfoModels = [nameModel, macModel, addressModel, vidModel, devModel, deviceTypeModel, firmwareModel, singleStrengthModel]
+        deviceInfoModels = [nameModel, macModel,pidModel, addressModel, vidModel, devModel, deviceTypeModel, firmwareModel, singleStrengthModel]
         #else
         deviceInfoModels = [nameModel, macModel, devModel, deviceTypeModel, firmwareModel, singleStrengthModel]
         #endif

@@ -129,6 +129,7 @@
 "device_force_delete_message" = "No response, the device may be offline or faulty, do you want to force delete?\n\n";
 "device_force_delete_note" = "Note: The hardware device needs to be reset manually after force delete.";
 "model" = "Model";
+"PID" = "PID";
 "device_type" = "Device Type";
 "firmware" = "Firmware";
 "signal_strength" = "Signal strength";
@@ -1650,7 +1651,7 @@
 "hide" = "Hide";
 "key" = "key";
 
-//v1.5
+//v1.5-- FireAlarm
 "Setting" = "Setting";
 "Not associate with Group(s) !" ="Not associate with Group(s) !";
 "Status & Settings" = "Status & Settings";
@@ -1678,7 +1679,50 @@
 "Report To Gateway" = "Report To Gateway";
 "Enable Power Loss Emergency" = "Enable Power Loss Emergency";
 "Enable Fire Alarm Emergency" = "Enable Fire Alarm Emergency";
-"Status Set" = "Status Set";
+"Status Set" = "Status & Settings";
 "Emergency information was not reported to the gateway. If a gateway is in use, it must be properly configured to prevent security risks arising from devices being controlled through the gateway in an emergency." = "Emergency information was not reported to the gateway. If a gateway is in use, it must be properly configured to prevent security risks arising from devices being controlled through the gateway in an emergency." ;
 "Warning" = "Warning";
 "Go Setting" = "Go Setting";
+
+"triggered" = "triggered";
+"resume" = "resume";
+"inactive" = "inactive";
+"disabaled" = "disabaled";
+"Power Outage Emergency" = "Power Outage Emergency";
+"Insufficient permissions" = "Insufficient permissions";
+"Uncontrollable in emergency situations" = "Uncontrollable in emergency situations";
+
+//v1.5-- NGateWay
+"ngateway_sig_mesh" = "SIG Mesh";
+"ngateway_wifi" = "WiFi";
+"ngateway_only_supports_2_4ghz_networks" = "Only supports 2.4GHz networks.";
+"ngateway_connect_to_wifi" = "Connect to Wi-Fi";
+"ngateway_disconnect" = "Disconnect";
+"ngateway_nodes_count_format" = "Nodes: %d";
+"ngateway_server_authentication_message" = "The server authentication is not completed. Click to complete the authentication after connecting to the Internet.";
+"ngateway_na" = "N/A";
+"ngateway_online" = "Online";
+"ngateway_offline" = "Offline";
+"ngateway_excellent" = "Excellent";
+"ngateway_good" = "Good";
+"ngateway_poor" = "Poor";
+"ngateway_bad" = "Bad";
+"ngateway_no_signal" = "No Signal";
+"ngateway_no_internet" = "No Internet";
+"ngateway_authorize" = "Authorize";
+"ngateway_switch_2_4g_title" = "Connect to 2.4 GHz Wi-Fi Network";
+"ngateway_go_to_system_settings" = "Go to System Settings";
+"ngateway_advance_network_settings" = "Advance Network Settings";
+"ngateway_dhcp" = "DHCP";
+"ngateway_static_ip" = "Static IP";
+"ngateway_network_connectivity" = "Network Connectivity";
+"ngateway_ssid" = "SSID";
+"ngateway_refresh" = "Refresh";
+"ngateway_password" = "Password";
+"ngateway_ip_address" = "IP Address";
+"ngateway_subnet_mask" = "Subnet Mask";
+"ngateway_gateway_address" = "Gateway Address";
+"ngateway_primary_dns" = "Primary DNS";
+"ngateway_secondary_dns" = "Secondary DNS";
+"ngateway_add_action" = "Add +";
+"ngateway_no_associated_spaces" = "No associated spaces";

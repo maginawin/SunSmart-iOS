@@ -154,6 +154,9 @@ let Error_Red_Color = RGB(255, 72, 49)
 /// 警告橘色
 let Orange_Color = RGB(255, 167, 44)
 
+//绿色 v1.5
+let linkGReen_Color = RGB(98, 173, 0)
+
 #if Archipelago
 /// 主色
 let Bar_Color = RGB(213, 32, 39)

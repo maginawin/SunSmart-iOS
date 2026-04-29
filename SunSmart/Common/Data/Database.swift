@@ -492,6 +492,7 @@ extension SpaceData {
         DeviceSwitchData.initDatabase()
         MeshDistributionData.initDatabase()
         DeviceDongleData.initDatabase()
+        DeviceEmerFireData.initDatabase()
         EnergyStatisticsStaticData.initDatabase()
         GatewayModel.initDatabase()
         Node.PreConfiguration.initDatabase()

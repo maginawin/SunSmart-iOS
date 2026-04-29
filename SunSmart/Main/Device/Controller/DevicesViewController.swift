@@ -365,7 +365,7 @@ class DevicesViewController: WMPageController {
     
     //预创建页面
     private func preCreatedEmerFire() {
-        let vc = PreCreateEmerFireVC()
+        let vc = PreCreateEmerFireVC(space: space)
         let nav = NavigationViewController(rootViewController: vc)
         DispatchQueue.main.async { [weak self] in
             self?.present(nav, animated: true)
@@ -701,8 +701,7 @@ extension DevicesViewController {
             let vc = DeviceSensorsViewController(space: space)
             return vc
         case 3:
-           // let vc = DeviceOthersViewController(space: space)
-            let vc = EmerFireAlarmDevicesController(space: space)
+            let vc = DeviceOthersViewController(space: space)
             return vc
         default:
             return UIViewController()

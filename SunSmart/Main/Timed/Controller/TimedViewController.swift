@@ -80,6 +80,9 @@ class TimedViewController: UIViewController {
         if scheduleCollectionView.firstShowFlashScrollIndicators {
             scheduleCollectionView.flashScrollIndicatorsIfNeeded()
         }
+        #if DEBUG
+        debugPrintScheduleDiagnostics()
+        #endif
     }
     
     override func viewDidLayoutSubviews() {
@@ -205,6 +208,43 @@ class TimedViewController: UIViewController {
             CATransaction.commit()
         }
     }
+
+#if DEBUG
+    /// 调试用：打印当前定时页面的 schedule 定义，以及节点侧保存的 schedulerActions 原始值。
+    /// 目的：
+    /// 1. 对照本地 schedule.id 与设备侧 scheduler slot/index
+    /// 2. 快速检查 year/month/day/hour/minute/second 的原始编码
+    /// 3. 定位是哪一个 node / 哪一条 schedule 可能触发固件 schedule_action 报错
+    private func debugPrintScheduleDiagnostics() {
+        let schedules = MeshNetworkManager.instance.schedules.sorted(by: { $0.id < $1.id })
+        print("========== Timed Debug Begin ==========")
+        print("space id: \(space.id), mesh: \(space.meshUUID), subnetwork: \(space.meshNetworkId)")
+        print("schedule count: \(schedules.count)")
+        
+        schedules.forEach { schedule in
+            let entry = schedule.schedulerEntry
+            let nodeAddresses = schedule.existNodes.map { $0.primaryUnicastAddress.hex }.joined(separator: ",")
+            print("[schedule-local] id=\(schedule.id) name=\(schedule.name) enabled=\(schedule.enabled) target=\(schedule.selectTargetType) nodes=[\(nodeAddresses)] year=\(entry.year.value) month=\(entry.month.value) day=\(entry.day.value) dow=\(entry.dayOfWeek.value) hour=\(entry.hour.value) minute=\(entry.minute.value) second=\(entry.second.value) action=\(entry.action.rawValue) scene=\(entry.sceneNumber)")
+            
+            schedule.existNodes.sorted(by: { $0.primaryUnicastAddress < $1.primaryUnicastAddress }).forEach { node in
+                if let nodeEntry = node.schedulerActions[schedule.id] {
+                    print("[schedule-node] id=\(schedule.id) node=\(node.name ?? "-")@\(node.primaryUnicastAddress.hex) year=\(nodeEntry.year.value) month=\(nodeEntry.month.value) day=\(nodeEntry.day.value) dow=\(nodeEntry.dayOfWeek.value) hour=\(nodeEntry.hour.value) minute=\(nodeEntry.minute.value) second=\(nodeEntry.second.value) action=\(nodeEntry.action.rawValue) scene=\(nodeEntry.sceneNumber) valid=\(nodeEntry.isValid)")
+                } else {
+                    print("[schedule-node] id=\(schedule.id) node=\(node.name ?? "-")@\(node.primaryUnicastAddress.hex) missing")
+                }
+            }
+        }
+        
+        let nodesWithSchedules = MeshNetworkManager.instance.realNodes
+            .filter { !$0.schedulerActions.isEmpty }
+            .sorted(by: { $0.primaryUnicastAddress < $1.primaryUnicastAddress })
+        nodesWithSchedules.forEach { node in
+            let ids = node.schedulerActions.keys.sorted().map(String.init).joined(separator: ",")
+            print("[node-all-schedules] node=\(node.name ?? "-")@\(node.primaryUnicastAddress.hex) ids=[\(ids)]")
+        }
+        print("========== Timed Debug End ==========")
+    }
+#endif
     
     
     private func setupUI() {

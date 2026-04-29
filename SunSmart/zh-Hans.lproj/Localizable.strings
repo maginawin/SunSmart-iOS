@@ -126,6 +126,7 @@
 "device_force_delete_message" = "无响应，设备可能离线或故障，是否强制删除？\n\n";
 "device_force_delete_note" = "注意：强制删除后，硬件设备需要手动重置。";
 "model" = "型号";
+"PID" = "产品id";
 "device_type" = "设备类型";
 "firmware" = "固件";
 "signal_strength" = "信号强度";
@@ -1664,7 +1665,8 @@
 "hide" = "隐藏";
 "key" = "键";
 
-//V1.5
+//v1.5-- FireAlarm
+
 "Setting" = "设置";
 "Not associate with Group(s) !" = "没有关联的组";
 "Status & Settings" = "状态&设置";
@@ -1692,7 +1694,50 @@
 "Report To Gateway" = "上报到网关";
 "Enable Power Loss Emergency" = "启用断电应急";
 "Enable Fire Alarm Emergency" = "启用火警应急";
-"Status Set" = "状态设置";
+"Status Set" = "状态以及设置";
 "Emergency information was not reported to the gateway. If a gateway is in use, it must be properly configured to prevent security risks arising from devices being controlled through the gateway in an emergency." = "紧急信息未向网关进行报告。若网关正在使用中，则必须进行正确配置，以避免在紧急情况下通过网关控制设备而引发的安全风险。" ;
 "Warning" = "温馨提醒";
 "Go Setting" = "前往设置";
+
+"triggered" = "触发";
+"resume" = "恢复";
+"inactive" = "未激活";
+"disabaled" = "禁用";
+"Power Outage Emergency" = "停电紧急情况";
+"Insufficient permissions" = "权限不足";
+"Uncontrollable in emergency situations" = "在紧急情况下无法控制";
+
+//v1.5-- NGateWay
+"ngateway_sig_mesh" = "SIG Mesh";
+"ngateway_wifi" = "WiFi";
+"ngateway_only_supports_2_4ghz_networks" = "仅支持 2.4GHz 网络。";
+"ngateway_connect_to_wifi" = "连接到 Wi-Fi";
+"ngateway_disconnect" = "断开连接";
+"ngateway_nodes_count_format" = "节点数: %d";
+"ngateway_server_authentication_message" = "服务器认证尚未完成。连接网络后点击完成认证。";
+"ngateway_na" = "N/A";
+"ngateway_online" = "在线";
+"ngateway_offline" = "离线";
+"ngateway_excellent" = "优秀";
+"ngateway_good" = "良好";
+"ngateway_poor" = "较差";
+"ngateway_bad" = "差";
+"ngateway_no_signal" = "无信号";
+"ngateway_no_internet" = "无网络";
+"ngateway_authorize" = "授权";
+"ngateway_switch_2_4g_title" = "连接到 2.4 GHz Wi-Fi 网络";
+"ngateway_go_to_system_settings" = "前往系统设置";
+"ngateway_advance_network_settings" = "高级网络设置";
+"ngateway_dhcp" = "DHCP";
+"ngateway_static_ip" = "静态 IP";
+"ngateway_network_connectivity" = "网络连接";
+"ngateway_ssid" = "SSID";
+"ngateway_refresh" = "刷新";
+"ngateway_password" = "密码";
+"ngateway_ip_address" = "IP 地址";
+"ngateway_subnet_mask" = "子网掩码";
+"ngateway_gateway_address" = "网关地址";
+"ngateway_primary_dns" = "首选 DNS";
+"ngateway_secondary_dns" = "备用 DNS";
+"ngateway_add_action" = "添加 +";
+"ngateway_no_associated_spaces" = "暂无关联空间";
