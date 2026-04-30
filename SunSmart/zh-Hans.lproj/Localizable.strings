@@ -1741,3 +1741,25 @@
 "ngateway_secondary_dns" = "备用 DNS";
 "ngateway_add_action" = "添加 +";
 "ngateway_no_associated_spaces" = "暂无关联空间";
+
+//v1.5-- NEightKeySwitches
+"neightkeyswitches_battery_power_switch" = "电池供电\n开关";
+"neightkeyswitches_scene_panel_8_key" = "场景面板（8键）";
+"neightkeyswitches_more_settings" = "更多设置";
+"neightkeyswitches_scene_1" = "场景 1";
+"neightkeyswitches_scene_2" = "场景 2";
+"neightkeyswitches_scene_3" = "场景 3";
+"neightkeyswitches_scene_4" = "场景 4";
+"neightkeyswitches_dim_up" = "调亮";
+"neightkeyswitches_dim_down" = "调暗";
+"neightkeyswitches_continuous_dim_up" = "持续\n调亮";
+"neightkeyswitches_continuous_dim_down" = "持续\n调暗";
+"neightkeyswitches_periodic_reporting" = "周期上报";
+"neightkeyswitches_periodic_reporting_tip" = "上报越频繁，功耗越高。";
+"neightkeyswitches_led_indicator" = "LED 指示灯";
+"neightkeyswitches_led_indicator_tip" = "关闭指示灯可延长电池寿命。";
+"neightkeyswitches_reporting_15min" = "15分钟";
+"neightkeyswitches_reporting_30min" = "30分钟";
+"neightkeyswitches_reporting_1hr" = "1小时";
+"neightkeyswitches_reporting_5hr" = "5小时";
+"neightkeyswitches_reporting_10hr" = "10小时";

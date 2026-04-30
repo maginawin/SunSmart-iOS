@@ -801,6 +801,7 @@ extension MeshNetworkManager {
             proxyNode.enOceanMacAddress = nil
             proxyNode.savePropertys()
         }
+        PJEightKeySwitchRepository.shared.delete(for: switchData, meshUUID: meshUUID, networkId: self.currentNetworkKey.networkId.hex)
         switchData.delete(meshUUID: meshUUID, networkId: self.currentNetworkKey.networkId.hex)
         self.switchs.removeAll(where: { $0.id == switchData.id })
         
@@ -2444,4 +2445,3 @@ struct SyncData {
         return !(subscribeGroup || unsubscribeGroup || syncScenes.count > 0 || syncSchedules.count > 0 || deleteScenes.count > 0 || deleteSchedules.count > 0 || syncProfile.count > 0 || syncSwitchs.count > 0 || deleteSwitchs.count > 0 || syncSwitchProxy != nil || deleteSwitchProxy != nil || pwmPeriod != nil)
     }
 }
-

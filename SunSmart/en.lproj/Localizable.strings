@@ -1726,3 +1726,25 @@
 "ngateway_secondary_dns" = "Secondary DNS";
 "ngateway_add_action" = "Add +";
 "ngateway_no_associated_spaces" = "No associated spaces";
+
+//v1.5-- NEightKeySwitches
+"neightkeyswitches_battery_power_switch" = "Battery Power\nSwitch";
+"neightkeyswitches_scene_panel_8_key" = "Scene Panel (8 key)";
+"neightkeyswitches_more_settings" = "More Settings";
+"neightkeyswitches_scene_1" = "Scene 1";
+"neightkeyswitches_scene_2" = "Scene 2";
+"neightkeyswitches_scene_3" = "Scene 3";
+"neightkeyswitches_scene_4" = "Scene 4";
+"neightkeyswitches_dim_up" = "Dim Up";
+"neightkeyswitches_dim_down" = "Dim Down";
+"neightkeyswitches_continuous_dim_up" = "Continuous\nDim Up";
+"neightkeyswitches_continuous_dim_down" = "Continuous\nDim Down";
+"neightkeyswitches_periodic_reporting" = "Periodic Reporting";
+"neightkeyswitches_periodic_reporting_tip" = "The more frequent the reporting, the higher the power consumption.";
+"neightkeyswitches_led_indicator" = "LED Indicator";
+"neightkeyswitches_led_indicator_tip" = "Turning off the indicator light can extend battery life.";
+"neightkeyswitches_reporting_15min" = "15min";
+"neightkeyswitches_reporting_30min" = "30min";
+"neightkeyswitches_reporting_1hr" = "1hr";
+"neightkeyswitches_reporting_5hr" = "5hr";
+"neightkeyswitches_reporting_10hr" = "10hr";

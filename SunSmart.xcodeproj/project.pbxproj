@@ -169,6 +169,82 @@
 		8C778B9A2FA1E0D0000887FE /* PJNGatewayBottomSaveView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C778B982FA1E0D0000887FE /* PJNGatewayBottomSaveView.swift */; };
 		8C778B9B2FA1E0D0000887FE /* PJNGatewayBottomSaveView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C778B982FA1E0D0000887FE /* PJNGatewayBottomSaveView.swift */; };
 		8C778B9C2FA1E0D0000887FE /* PJNGatewayBottomSaveView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C778B982FA1E0D0000887FE /* PJNGatewayBottomSaveView.swift */; };
+		8C778B9F2FA1F334000887FE /* eightKeySwitches.md in Resources */ = {isa = PBXBuildFile; fileRef = 8C778B9E2FA1F324000887FE /* eightKeySwitches.md */; };
+		8C778BA02FA1F334000887FE /* eightKeySwitches.md in Resources */ = {isa = PBXBuildFile; fileRef = 8C778B9E2FA1F324000887FE /* eightKeySwitches.md */; };
+		8C778BA12FA1F334000887FE /* eightKeySwitches.md in Resources */ = {isa = PBXBuildFile; fileRef = 8C778B9E2FA1F324000887FE /* eightKeySwitches.md */; };
+		8C778BA22FA1F334000887FE /* eightKeySwitches.md in Resources */ = {isa = PBXBuildFile; fileRef = 8C778B9E2FA1F324000887FE /* eightKeySwitches.md */; };
+		8C778BA82FA1FA2D000887FE /* PJSwitchesTypesVC.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C778BA72FA1FA2D000887FE /* PJSwitchesTypesVC.swift */; };
+		8C778BA92FA1FA2D000887FE /* PJSwitchesTypesVC.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C778BA72FA1FA2D000887FE /* PJSwitchesTypesVC.swift */; };
+		8C778BAA2FA1FA2D000887FE /* PJSwitchesTypesVC.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C778BA72FA1FA2D000887FE /* PJSwitchesTypesVC.swift */; };
+		8C778BAB2FA1FA2D000887FE /* PJSwitchesTypesVC.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C778BA72FA1FA2D000887FE /* PJSwitchesTypesVC.swift */; };
+		8C778BAD2FA1FB42000887FE /* PJSwitchesTypesViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C778BAC2FA1FB42000887FE /* PJSwitchesTypesViewModel.swift */; };
+		8C778BAE2FA1FB42000887FE /* PJSwitchesTypesViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C778BAC2FA1FB42000887FE /* PJSwitchesTypesViewModel.swift */; };
+		8C778BAF2FA1FB42000887FE /* PJSwitchesTypesViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C778BAC2FA1FB42000887FE /* PJSwitchesTypesViewModel.swift */; };
+		8C778BB02FA1FB42000887FE /* PJSwitchesTypesViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C778BAC2FA1FB42000887FE /* PJSwitchesTypesViewModel.swift */; };
+		8C778BB22FA1FD42000887FE /* PJPreAddEightKeySwitchesVC.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C778BB12FA1FD42000887FE /* PJPreAddEightKeySwitchesVC.swift */; };
+		8C778BB32FA1FD42000887FE /* PJPreAddEightKeySwitchesVC.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C778BB12FA1FD42000887FE /* PJPreAddEightKeySwitchesVC.swift */; };
+		8C778BB42FA1FD42000887FE /* PJPreAddEightKeySwitchesVC.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C778BB12FA1FD42000887FE /* PJPreAddEightKeySwitchesVC.swift */; };
+		8C778BB52FA1FD42000887FE /* PJPreAddEightKeySwitchesVC.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C778BB12FA1FD42000887FE /* PJPreAddEightKeySwitchesVC.swift */; };
+		8C778BB72FA200C2000887FE /* PJPreAddEightKeySwitchesViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C778BB62FA200C2000887FE /* PJPreAddEightKeySwitchesViewModel.swift */; };
+		8C778BB82FA200C2000887FE /* PJPreAddEightKeySwitchesViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C778BB62FA200C2000887FE /* PJPreAddEightKeySwitchesViewModel.swift */; };
+		8C778BB92FA200C2000887FE /* PJPreAddEightKeySwitchesViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C778BB62FA200C2000887FE /* PJPreAddEightKeySwitchesViewModel.swift */; };
+		8C778BBA2FA200C2000887FE /* PJPreAddEightKeySwitchesViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C778BB62FA200C2000887FE /* PJPreAddEightKeySwitchesViewModel.swift */; };
+		8C778BBC2FA200C2000887FE /* PJEightKeySwitchPanelView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C778BBB2FA200C2000887FE /* PJEightKeySwitchPanelView.swift */; };
+		8C778BBD2FA200C2000887FE /* PJEightKeySwitchPanelView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C778BBB2FA200C2000887FE /* PJEightKeySwitchPanelView.swift */; };
+		8C778BBE2FA200C2000887FE /* PJEightKeySwitchPanelView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C778BBB2FA200C2000887FE /* PJEightKeySwitchPanelView.swift */; };
+		8C778BBF2FA200C2000887FE /* PJEightKeySwitchPanelView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C778BBB2FA200C2000887FE /* PJEightKeySwitchPanelView.swift */; };
+		8C778BC12FA200C2000887FE /* PJEightKeySwitchInfoRowView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C778BC02FA200C2000887FE /* PJEightKeySwitchInfoRowView.swift */; };
+		8C778BC22FA200C2000887FE /* PJEightKeySwitchInfoRowView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C778BC02FA200C2000887FE /* PJEightKeySwitchInfoRowView.swift */; };
+		8C778BC32FA200C2000887FE /* PJEightKeySwitchInfoRowView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C778BC02FA200C2000887FE /* PJEightKeySwitchInfoRowView.swift */; };
+		8C778BC42FA200C2000887FE /* PJEightKeySwitchInfoRowView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C778BC02FA200C2000887FE /* PJEightKeySwitchInfoRowView.swift */; };
+		8C778BC62FA20589000887FE /* PJEightKeySwitchPanelDefinition.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C778BC52FA20589000887FE /* PJEightKeySwitchPanelDefinition.swift */; };
+		8C778BC72FA20589000887FE /* PJEightKeySwitchPanelDefinition.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C778BC52FA20589000887FE /* PJEightKeySwitchPanelDefinition.swift */; };
+		8C778BC82FA20589000887FE /* PJEightKeySwitchPanelDefinition.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C778BC52FA20589000887FE /* PJEightKeySwitchPanelDefinition.swift */; };
+		8C778BC92FA20589000887FE /* PJEightKeySwitchPanelDefinition.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C778BC52FA20589000887FE /* PJEightKeySwitchPanelDefinition.swift */; };
+		8C778BCB2FA20871000887FE /* PJEightKeySwitchSelectPanelViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C778BCA2FA20871000887FE /* PJEightKeySwitchSelectPanelViewModel.swift */; };
+		8C778BCC2FA20871000887FE /* PJEightKeySwitchSelectPanelViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C778BCA2FA20871000887FE /* PJEightKeySwitchSelectPanelViewModel.swift */; };
+		8C778BCD2FA20871000887FE /* PJEightKeySwitchSelectPanelViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C778BCA2FA20871000887FE /* PJEightKeySwitchSelectPanelViewModel.swift */; };
+		8C778BCE2FA20871000887FE /* PJEightKeySwitchSelectPanelViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C778BCA2FA20871000887FE /* PJEightKeySwitchSelectPanelViewModel.swift */; };
+		8C778BD02FA20871000887FE /* PJEightKeySwitchSelectPanelCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C778BCF2FA20871000887FE /* PJEightKeySwitchSelectPanelCell.swift */; };
+		8C778BD12FA20871000887FE /* PJEightKeySwitchSelectPanelCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C778BCF2FA20871000887FE /* PJEightKeySwitchSelectPanelCell.swift */; };
+		8C778BD22FA20871000887FE /* PJEightKeySwitchSelectPanelCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C778BCF2FA20871000887FE /* PJEightKeySwitchSelectPanelCell.swift */; };
+		8C778BD32FA20871000887FE /* PJEightKeySwitchSelectPanelCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C778BCF2FA20871000887FE /* PJEightKeySwitchSelectPanelCell.swift */; };
+		8C778BD52FA20872000887FE /* PJEightKeySwitchSelectPanelController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C778BD42FA20872000887FE /* PJEightKeySwitchSelectPanelController.swift */; };
+		8C778BD62FA20872000887FE /* PJEightKeySwitchSelectPanelController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C778BD42FA20872000887FE /* PJEightKeySwitchSelectPanelController.swift */; };
+		8C778BD72FA20872000887FE /* PJEightKeySwitchSelectPanelController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C778BD42FA20872000887FE /* PJEightKeySwitchSelectPanelController.swift */; };
+		8C778BD82FA20872000887FE /* PJEightKeySwitchSelectPanelController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C778BD42FA20872000887FE /* PJEightKeySwitchSelectPanelController.swift */; };
+		8C778BDA2FA20E1D000887FE /* PJEightKeySwitchMoreSettingsViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C778BD92FA20E1D000887FE /* PJEightKeySwitchMoreSettingsViewModel.swift */; };
+		8C778BDB2FA20E1D000887FE /* PJEightKeySwitchMoreSettingsViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C778BD92FA20E1D000887FE /* PJEightKeySwitchMoreSettingsViewModel.swift */; };
+		8C778BDC2FA20E1D000887FE /* PJEightKeySwitchMoreSettingsViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C778BD92FA20E1D000887FE /* PJEightKeySwitchMoreSettingsViewModel.swift */; };
+		8C778BDD2FA20E1D000887FE /* PJEightKeySwitchMoreSettingsViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C778BD92FA20E1D000887FE /* PJEightKeySwitchMoreSettingsViewModel.swift */; };
+		8C778BDF2FA20E1D000887FE /* PJEightKeySwitchPeriodicReportingSliderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C778BDE2FA20E1D000887FE /* PJEightKeySwitchPeriodicReportingSliderView.swift */; };
+		8C778BE02FA20E1D000887FE /* PJEightKeySwitchPeriodicReportingSliderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C778BDE2FA20E1D000887FE /* PJEightKeySwitchPeriodicReportingSliderView.swift */; };
+		8C778BE12FA20E1D000887FE /* PJEightKeySwitchPeriodicReportingSliderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C778BDE2FA20E1D000887FE /* PJEightKeySwitchPeriodicReportingSliderView.swift */; };
+		8C778BE22FA20E1D000887FE /* PJEightKeySwitchPeriodicReportingSliderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C778BDE2FA20E1D000887FE /* PJEightKeySwitchPeriodicReportingSliderView.swift */; };
+		8C778BE42FA20E1D000887FE /* PJEightKeySwitchMoreSettingsController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C778BE32FA20E1D000887FE /* PJEightKeySwitchMoreSettingsController.swift */; };
+		8C778BE52FA20E1D000887FE /* PJEightKeySwitchMoreSettingsController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C778BE32FA20E1D000887FE /* PJEightKeySwitchMoreSettingsController.swift */; };
+		8C778BE62FA20E1D000887FE /* PJEightKeySwitchMoreSettingsController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C778BE32FA20E1D000887FE /* PJEightKeySwitchMoreSettingsController.swift */; };
+		8C778BE72FA20E1D000887FE /* PJEightKeySwitchMoreSettingsController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C778BE32FA20E1D000887FE /* PJEightKeySwitchMoreSettingsController.swift */; };
+		8C778BE92FA2102D000887FE /* PJEightKeySwitchStatus.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C778BE82FA2102D000887FE /* PJEightKeySwitchStatus.swift */; };
+		8C778BEA2FA2102D000887FE /* PJEightKeySwitchStatus.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C778BE82FA2102D000887FE /* PJEightKeySwitchStatus.swift */; };
+		8C778BEB2FA2102D000887FE /* PJEightKeySwitchStatus.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C778BE82FA2102D000887FE /* PJEightKeySwitchStatus.swift */; };
+		8C778BEC2FA2102D000887FE /* PJEightKeySwitchStatus.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C778BE82FA2102D000887FE /* PJEightKeySwitchStatus.swift */; };
+		8C778BEF2FA2153E000887FE /* PJEightKeySwitchData.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C778BEE2FA2153E000887FE /* PJEightKeySwitchData.swift */; };
+		8C778BF02FA2153E000887FE /* PJEightKeySwitchData.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C778BEE2FA2153E000887FE /* PJEightKeySwitchData.swift */; };
+		8C778BF12FA2153E000887FE /* PJEightKeySwitchData.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C778BEE2FA2153E000887FE /* PJEightKeySwitchData.swift */; };
+		8C778BF22FA2153E000887FE /* PJEightKeySwitchData.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C778BEE2FA2153E000887FE /* PJEightKeySwitchData.swift */; };
+		8C778BF42FA2153E000887FE /* PJEightKeySwitchesViewCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C778BF32FA2153E000887FE /* PJEightKeySwitchesViewCell.swift */; };
+		8C778BF52FA2153E000887FE /* PJEightKeySwitchesViewCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C778BF32FA2153E000887FE /* PJEightKeySwitchesViewCell.swift */; };
+		8C778BF62FA2153E000887FE /* PJEightKeySwitchesViewCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C778BF32FA2153E000887FE /* PJEightKeySwitchesViewCell.swift */; };
+		8C778BF72FA2153E000887FE /* PJEightKeySwitchesViewCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C778BF32FA2153E000887FE /* PJEightKeySwitchesViewCell.swift */; };
+		8C778BF92FA21546000887FE /* firealarm.md in Resources */ = {isa = PBXBuildFile; fileRef = 8C778BED2FA21534000887FE /* firealarm.md */; };
+		8C778BFA2FA21546000887FE /* firealarm.md in Resources */ = {isa = PBXBuildFile; fileRef = 8C778BED2FA21534000887FE /* firealarm.md */; };
+		8C778BFB2FA21546000887FE /* firealarm.md in Resources */ = {isa = PBXBuildFile; fileRef = 8C778BED2FA21534000887FE /* firealarm.md */; };
+		8C778BFC2FA21546000887FE /* firealarm.md in Resources */ = {isa = PBXBuildFile; fileRef = 8C778BED2FA21534000887FE /* firealarm.md */; };
+		8C778BFE2FA2155D000887FE /* PJEightKeySwitchRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C778BFD2FA2155D000887FE /* PJEightKeySwitchRepository.swift */; };
+		8C778BFF2FA2155D000887FE /* PJEightKeySwitchRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C778BFD2FA2155D000887FE /* PJEightKeySwitchRepository.swift */; };
+		8C778C002FA2155D000887FE /* PJEightKeySwitchRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C778BFD2FA2155D000887FE /* PJEightKeySwitchRepository.swift */; };
+		8C778C012FA2155D000887FE /* PJEightKeySwitchRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C778BFD2FA2155D000887FE /* PJEightKeySwitchRepository.swift */; };
 		8CBEC62D2F960EF8003859AB /* PreCreateEmerFireVC.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8CBEC62C2F960EF8003859AB /* PreCreateEmerFireVC.swift */; };
 		8CBEC62E2F960EF8003859AB /* PreCreateEmerFireVC.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8CBEC62C2F960EF8003859AB /* PreCreateEmerFireVC.swift */; };
 		8CBEC62F2F960EF8003859AB /* PreCreateEmerFireVC.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8CBEC62C2F960EF8003859AB /* PreCreateEmerFireVC.swift */; };
@@ -2153,6 +2229,25 @@
 		8C778B8E2FA1DCE3000887FE /* PJNGatewaySwitch2_4GHzAlertView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PJNGatewaySwitch2_4GHzAlertView.swift; sourceTree = "<group>"; };
 		8C778B932FA1E0D0000887FE /* PJNGatewayCopyInformationView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PJNGatewayCopyInformationView.swift; sourceTree = "<group>"; };
 		8C778B982FA1E0D0000887FE /* PJNGatewayBottomSaveView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PJNGatewayBottomSaveView.swift; sourceTree = "<group>"; };
+		8C778B9E2FA1F324000887FE /* eightKeySwitches.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = eightKeySwitches.md; sourceTree = "<group>"; };
+		8C778BA72FA1FA2D000887FE /* PJSwitchesTypesVC.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PJSwitchesTypesVC.swift; sourceTree = "<group>"; };
+		8C778BAC2FA1FB42000887FE /* PJSwitchesTypesViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PJSwitchesTypesViewModel.swift; sourceTree = "<group>"; };
+		8C778BB12FA1FD42000887FE /* PJPreAddEightKeySwitchesVC.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PJPreAddEightKeySwitchesVC.swift; sourceTree = "<group>"; };
+		8C778BB62FA200C2000887FE /* PJPreAddEightKeySwitchesViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PJPreAddEightKeySwitchesViewModel.swift; sourceTree = "<group>"; };
+		8C778BBB2FA200C2000887FE /* PJEightKeySwitchPanelView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PJEightKeySwitchPanelView.swift; sourceTree = "<group>"; };
+		8C778BC02FA200C2000887FE /* PJEightKeySwitchInfoRowView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PJEightKeySwitchInfoRowView.swift; sourceTree = "<group>"; };
+		8C778BC52FA20589000887FE /* PJEightKeySwitchPanelDefinition.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PJEightKeySwitchPanelDefinition.swift; sourceTree = "<group>"; };
+		8C778BCA2FA20871000887FE /* PJEightKeySwitchSelectPanelViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PJEightKeySwitchSelectPanelViewModel.swift; sourceTree = "<group>"; };
+		8C778BCF2FA20871000887FE /* PJEightKeySwitchSelectPanelCell.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PJEightKeySwitchSelectPanelCell.swift; sourceTree = "<group>"; };
+		8C778BD42FA20872000887FE /* PJEightKeySwitchSelectPanelController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PJEightKeySwitchSelectPanelController.swift; sourceTree = "<group>"; };
+		8C778BD92FA20E1D000887FE /* PJEightKeySwitchMoreSettingsViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PJEightKeySwitchMoreSettingsViewModel.swift; sourceTree = "<group>"; };
+		8C778BDE2FA20E1D000887FE /* PJEightKeySwitchPeriodicReportingSliderView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PJEightKeySwitchPeriodicReportingSliderView.swift; sourceTree = "<group>"; };
+		8C778BE32FA20E1D000887FE /* PJEightKeySwitchMoreSettingsController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PJEightKeySwitchMoreSettingsController.swift; sourceTree = "<group>"; };
+		8C778BE82FA2102D000887FE /* PJEightKeySwitchStatus.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PJEightKeySwitchStatus.swift; sourceTree = "<group>"; };
+		8C778BED2FA21534000887FE /* firealarm.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = firealarm.md; sourceTree = "<group>"; };
+		8C778BEE2FA2153E000887FE /* PJEightKeySwitchData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PJEightKeySwitchData.swift; sourceTree = "<group>"; };
+		8C778BF32FA2153E000887FE /* PJEightKeySwitchesViewCell.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PJEightKeySwitchesViewCell.swift; sourceTree = "<group>"; };
+		8C778BFD2FA2155D000887FE /* PJEightKeySwitchRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PJEightKeySwitchRepository.swift; sourceTree = "<group>"; };
 		8CBEC62C2F960EF8003859AB /* PreCreateEmerFireVC.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PreCreateEmerFireVC.swift; sourceTree = "<group>"; };
 		8CBEC6322F961030003859AB /* DeviceBottomActionView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceBottomActionView.swift; sourceTree = "<group>"; };
 		8CBEC6382F961B6C003859AB /* FireAlarmTableReusable.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FireAlarmTableReusable.swift; sourceTree = "<group>"; };
@@ -2795,6 +2890,7 @@
 		8C778B332FA19FB9000887FE /* Device1.5 */ = {
 			isa = PBXGroup;
 			children = (
+				8C778B9D2FA1F1BC000887FE /* NEightKeySwitches */,
 				8C778B322FA19F9E000887FE /* NGateWay */,
 				8CC4A6A42F95CF9500839EC4 /* FireAlarm */,
 			);
@@ -2844,9 +2940,75 @@
 			path = Controller;
 			sourceTree = "<group>";
 		};
+		8C778B9D2FA1F1BC000887FE /* NEightKeySwitches */ = {
+			isa = PBXGroup;
+			children = (
+				8C778BA62FA1F9BE000887FE /* Controller */,
+				8C778BA52FA1F9B5000887FE /* ViewModel */,
+				8C778BA42FA1F9B0000887FE /* View */,
+				8C778BA32FA1F9A9000887FE /* Model */,
+				8C778B9E2FA1F324000887FE /* eightKeySwitches.md */,
+				8C778BF82FA21543000887FE /* Repositories */,
+			);
+			path = NEightKeySwitches;
+			sourceTree = "<group>";
+		};
+		8C778BA32FA1F9A9000887FE /* Model */ = {
+			isa = PBXGroup;
+			children = (
+				8C778BC52FA20589000887FE /* PJEightKeySwitchPanelDefinition.swift */,
+				8C778BE82FA2102D000887FE /* PJEightKeySwitchStatus.swift */,
+				8C778BEE2FA2153E000887FE /* PJEightKeySwitchData.swift */,
+			);
+			path = Model;
+			sourceTree = "<group>";
+		};
+		8C778BA42FA1F9B0000887FE /* View */ = {
+			isa = PBXGroup;
+			children = (
+				8C778BBB2FA200C2000887FE /* PJEightKeySwitchPanelView.swift */,
+				8C778BC02FA200C2000887FE /* PJEightKeySwitchInfoRowView.swift */,
+				8C778BCF2FA20871000887FE /* PJEightKeySwitchSelectPanelCell.swift */,
+				8C778BDE2FA20E1D000887FE /* PJEightKeySwitchPeriodicReportingSliderView.swift */,
+				8C778BF32FA2153E000887FE /* PJEightKeySwitchesViewCell.swift */,
+			);
+			path = View;
+			sourceTree = "<group>";
+		};
+		8C778BA52FA1F9B5000887FE /* ViewModel */ = {
+			isa = PBXGroup;
+			children = (
+				8C778BAC2FA1FB42000887FE /* PJSwitchesTypesViewModel.swift */,
+				8C778BB62FA200C2000887FE /* PJPreAddEightKeySwitchesViewModel.swift */,
+				8C778BCA2FA20871000887FE /* PJEightKeySwitchSelectPanelViewModel.swift */,
+				8C778BD92FA20E1D000887FE /* PJEightKeySwitchMoreSettingsViewModel.swift */,
+			);
+			path = ViewModel;
+			sourceTree = "<group>";
+		};
+		8C778BA62FA1F9BE000887FE /* Controller */ = {
+			isa = PBXGroup;
+			children = (
+				8C778BA72FA1FA2D000887FE /* PJSwitchesTypesVC.swift */,
+				8C778BB12FA1FD42000887FE /* PJPreAddEightKeySwitchesVC.swift */,
+				8C778BD42FA20872000887FE /* PJEightKeySwitchSelectPanelController.swift */,
+				8C778BE32FA20E1D000887FE /* PJEightKeySwitchMoreSettingsController.swift */,
+			);
+			path = Controller;
+			sourceTree = "<group>";
+		};
+		8C778BF82FA21543000887FE /* Repositories */ = {
+			isa = PBXGroup;
+			children = (
+				8C778BFD2FA2155D000887FE /* PJEightKeySwitchRepository.swift */,
+			);
+			path = Repositories;
+			sourceTree = "<group>";
+		};
 		8CC4A6A42F95CF9500839EC4 /* FireAlarm */ = {
 			isa = PBXGroup;
 			children = (
+				8C778BED2FA21534000887FE /* firealarm.md */,
 				8C778B152F9CBD3A000887FE /* utils */,
 				8CC4A6A72F95CFB500839EC4 /* Model */,
 				8CC4A6A62F95CFA200839EC4 /* Controller */,
@@ -4589,11 +4751,13 @@
 			files = (
 				C886E1942E30E24100D0C3A6 /* Assets.xcassets in Resources */,
 				C886E1932E30E20500D0C3A6 /* Archipelago-Assets.xcassets in Resources */,
+				8C778BFB2FA21546000887FE /* firealarm.md in Resources */,
 				8C778B5F2FA1A9D7000887FE /* ngateWay.md in Resources */,
 				C88555162DE6B44C00C8B688 /* Privacy Policy.html in Resources */,
 				C88555172DE6B44C00C8B688 /* XWHUDManager_right@3x.png in Resources */,
 				C88555182DE6B44C00C8B688 /* User Agreement.html in Resources */,
 				C8B483D72E4B361F006D85BC /* device_add.mp3 in Resources */,
+				8C778BA12FA1F334000887FE /* eightKeySwitches.md in Resources */,
 				C8B483D82E4B361F006D85BC /* device_reset.mp3 in Resources */,
 				C85D55112E6182DC00BFEEDA /* broadcast_loading.gif in Resources */,
 				C88555192DE6B44C00C8B688 /* Localizable.strings in Resources */,
@@ -4620,11 +4784,13 @@
 			files = (
 				C886E1732E30DE4900D0C3A6 /* XWHUDManager_right@3x.png in Resources */,
 				C886E1752E30DE4900D0C3A6 /* Localizable.strings in Resources */,
+				8C778BFC2FA21546000887FE /* firealarm.md in Resources */,
 				8C778B5D2FA1A9D7000887FE /* ngateWay.md in Resources */,
 				C886E1762E30DE4900D0C3A6 /* XWHUDManager_successful@2x.png in Resources */,
 				C886E1772E30DE4900D0C3A6 /* XWHUDManager_tip@3x.png in Resources */,
 				C886E1782E30DE4900D0C3A6 /* XWHUDManager_loading.gif in Resources */,
 				C8B483D32E4B361F006D85BC /* device_add.mp3 in Resources */,
+				8C778BA02FA1F334000887FE /* eightKeySwitches.md in Resources */,
 				C8B483D42E4B361F006D85BC /* device_reset.mp3 in Resources */,
 				C85D550F2E6182DC00BFEEDA /* broadcast_loading.gif in Resources */,
 				C886E17A2E30DE4900D0C3A6 /* XWHUDManager_error@2x.png in Resources */,
@@ -4655,8 +4821,10 @@
 				C898E2D52AB7E46300C71315 /* Localizable.strings in Resources */,
 				C8B483D52E4B361F006D85BC /* device_add.mp3 in Resources */,
 				C8B483D62E4B361F006D85BC /* device_reset.mp3 in Resources */,
+				8C778BF92FA21546000887FE /* firealarm.md in Resources */,
 				C8C1E5A72B6A1FA500F60E62 /* XWHUDManager_successful@2x.png in Resources */,
 				C896BD402A930C3A00217512 /* XWHUDManager_tip@3x.png in Resources */,
+				8C778B9F2FA1F334000887FE /* eightKeySwitches.md in Resources */,
 				C8BC494C2C1C1CD5006BAF89 /* XWHUDManager_loading.gif in Resources */,
 				C896B9B42A930BAA00217512 /* LaunchScreen.storyboard in Resources */,
 				C8C1E5AB2B6A1FDC00F60E62 /* XWHUDManager_error@2x.png in Resources */,
@@ -4690,6 +4858,8 @@
 				C8BB67612ED3F056000C63EE /* CodeScan.bundle in Resources */,
 				C8BB67732ED3F13A000C63EE /* Assets-SLGSync.xcassets in Resources */,
 				C8BB67622ED3F056000C63EE /* broadcast_loading.gif in Resources */,
+				8C778BFA2FA21546000887FE /* firealarm.md in Resources */,
+				8C778BA22FA1F334000887FE /* eightKeySwitches.md in Resources */,
 				C8BB67632ED3F056000C63EE /* devices_config.json in Resources */,
 				C8BB67642ED3F056000C63EE /* XWHUDManager_error@3x.png in Resources */,
 				C8BB67652ED3F056000C63EE /* Assets.xcassets in Resources */,
@@ -4889,6 +5059,7 @@
 				8C7788EC2F97485E000887FE /* EmerFireAlarmInformationVC.swift in Sources */,
 				C88553B22DE6B44C00C8B688 /* FirmwareUpdateStateView.swift in Sources */,
 				C88553B32DE6B44C00C8B688 /* GroupAddViewController.swift in Sources */,
+				8C778BC82FA20589000887FE /* PJEightKeySwitchPanelDefinition.swift in Sources */,
 				C88553B42DE6B44C00C8B688 /* ScheduleAddView.swift in Sources */,
 				C88553B52DE6B44C00C8B688 /* DevicesViewController.swift in Sources */,
 				C88553B62DE6B44C00C8B688 /* MeshNetwork+SunSmart.swift in Sources */,
@@ -4920,6 +5091,8 @@
 				C88553CC2DE6B44C00C8B688 /* DeviceParameterData.swift in Sources */,
 				C88553CD2DE6B44C00C8B688 /* UIViewController+Extension.swift in Sources */,
 				C88553CE2DE6B44C00C8B688 /* MeshDeviceConfigInfo.swift in Sources */,
+				8C778BB72FA200C2000887FE /* PJPreAddEightKeySwitchesViewModel.swift in Sources */,
+				8C778BC12FA200C2000887FE /* PJEightKeySwitchInfoRowView.swift in Sources */,
 				C88553CF2DE6B44C00C8B688 /* LBXScanView.swift in Sources */,
 				C88553D02DE6B44C00C8B688 /* GroupPathSequencePathViewCell.swift in Sources */,
 				8CF15F822F9628FA0044FCF3 /* EmerFireStepperCell.swift in Sources */,
@@ -4958,6 +5131,7 @@
 				C88553E92DE6B44C00C8B688 /* ScheduleDevicesView.swift in Sources */,
 				C88553EA2DE6B44C00C8B688 /* GroupPathSequenceTriggerZoneController.swift in Sources */,
 				C8F1A0012F0A000100123456 /* GroupPathSequenceAddDescriptionController.swift in Sources */,
+				8C778BCE2FA20871000887FE /* PJEightKeySwitchSelectPanelViewModel.swift in Sources */,
 				C88553EB2DE6B44C00C8B688 /* CustomTableViewCell.swift in Sources */,
 				C88553EC2DE6B44C00C8B688 /* BatchImportResultView.swift in Sources */,
 				C88553ED2DE6B44C00C8B688 /* SyncDevicesTitleHeaderView.swift in Sources */,
@@ -5004,6 +5178,7 @@
 				C885540A2DE6B44C00C8B688 /* LYCirclePieModel.swift in Sources */,
 				C885540B2DE6B44C00C8B688 /* LYCirclePieView.swift in Sources */,
 				C885540C2DE6B44C00C8B688 /* ScheduleGroupsView.swift in Sources */,
+				8C778BFF2FA2155D000887FE /* PJEightKeySwitchRepository.swift in Sources */,
 				C885540D2DE6B44C00C8B688 /* GroupPathSequencePathTestView.swift in Sources */,
 				C885540E2DE6B44C00C8B688 /* DaliSettingDeviceWarnHeaderView.swift in Sources */,
 				C885540F2DE6B44C00C8B688 /* WMMenuItem.m in Sources */,
@@ -5063,6 +5238,7 @@
 				C88554302DE6B44C00C8B688 /* SceneViewController.swift in Sources */,
 				C88554312DE6B44C00C8B688 /* MainMenuView.swift in Sources */,
 				C88554322DE6B44C00C8B688 /* ShareBacthListViewCell.swift in Sources */,
+				8C778BE52FA20E1D000887FE /* PJEightKeySwitchMoreSettingsController.swift in Sources */,
 				C88554332DE6B44C00C8B688 /* String+Extension.swift in Sources */,
 				C8D22E002E010A47001A2BDA /* GatewayViewController.swift in Sources */,
 				C88554342DE6B44C00C8B688 /* UIView+Extension.swift in Sources */,
@@ -5070,10 +5246,12 @@
 				C88554362DE6B44C00C8B688 /* DeviceLightInfoSectionView.swift in Sources */,
 				C88554372DE6B44C00C8B688 /* NavigationViewController.swift in Sources */,
 				C88554382DE6B44C00C8B688 /* DeviceAddMenuView.swift in Sources */,
+				8C778BAF2FA1FB42000887FE /* PJSwitchesTypesViewModel.swift in Sources */,
 				C88554392DE6B44C00C8B688 /* GroupDeviceViewCell.swift in Sources */,
 				8C7788E22F972591000887FE /* EmerFireAlarmStatusItemCell.swift in Sources */,
 				8C778B822FA1DCE1000887FE /* PJNGatewaySectionHeaderView.swift in Sources */,
 				C885543A2DE6B44C00C8B688 /* SceneAddGroupViewCell.swift in Sources */,
+				8C778BEA2FA2102D000887FE /* PJEightKeySwitchStatus.swift in Sources */,
 				C8B483D02E4AEEBB006D85BC /* DeviceAddParameterSettingsView.swift in Sources */,
 				8C778B762FA1AB86000887FE /* PJNGatewayRowViews.swift in Sources */,
 				C885543B2DE6B44C00C8B688 /* DeviceDongleData.swift in Sources */,
@@ -5091,12 +5269,14 @@
 				C88554442DE6B44C00C8B688 /* ZipHandler.swift in Sources */,
 				C88554452DE6B44C00C8B688 /* CustomActivityItemSource.swift in Sources */,
 				C88554462DE6B44C00C8B688 /* ProfileSettingsHeaderView.swift in Sources */,
+				8C778BB32FA1FD42000887FE /* PJPreAddEightKeySwitchesVC.swift in Sources */,
 				C88554472DE6B44C00C8B688 /* GroupViewController.swift in Sources */,
 				C88554482DE6B44C00C8B688 /* DaliMasterViewController.swift in Sources */,
 				8C778B502FA1A857000887FE /* PJNGatewayDetailViewModel.swift in Sources */,
 				C88554492DE6B44C00C8B688 /* MultiseriatePickerView.swift in Sources */,
 				C885544A2DE6B44C00C8B688 /* SwitchSelectScenePageController.swift in Sources */,
 				8C778B1A2F9CBD47000887FE /* PJUIDebugConsoleTracer.swift in Sources */,
+				8C778BF22FA2153E000887FE /* PJEightKeySwitchData.swift in Sources */,
 				C885544B2DE6B44C00C8B688 /* GroupSwitchEnOceanProxyHeaderView.swift in Sources */,
 				C885544C2DE6B44C00C8B688 /* DeviceParameterDevicesViewController.swift in Sources */,
 				8C778B632FA1AB19000887FE /* PJNGatewayPageViewModel.swift in Sources */,
@@ -5170,6 +5350,7 @@
 				C88554782DE6B44C00C8B688 /* CalendarChooseView.swift in Sources */,
 				C88554792DE6B44C00C8B688 /* GroupMembersViewController.swift in Sources */,
 				C885547A2DE6B44C00C8B688 /* SpaceVisitorListViewController.swift in Sources */,
+				8C778BAB2FA1FA2D000887FE /* PJSwitchesTypesVC.swift in Sources */,
 				C885547B2DE6B44C00C8B688 /* ContinuousTapGestureRecognizer.swift in Sources */,
 				C885547C2DE6B44C00C8B688 /* DeviceOthersCollectionViewCell.swift in Sources */,
 				C885547D2DE6B44C00C8B688 /* FirmwareVersionHistoryController.swift in Sources */,
@@ -5189,6 +5370,7 @@
 				C8C3A1662E37705500876028 /* GatewayInformationHeaderView.swift in Sources */,
 				8CF15F972F962C7C0044FCF3 /* LinkedEmerFireEditVC+Table.swift in Sources */,
 				C88554882DE6B44C00C8B688 /* MenuPopView.swift in Sources */,
+				8C778BBD2FA200C2000887FE /* PJEightKeySwitchPanelView.swift in Sources */,
 				C88554892DE6B44C00C8B688 /* SyncDevicesProgressView.swift in Sources */,
 				C885548A2DE6B44C00C8B688 /* MeshFirmwareListViewController.swift in Sources */,
 				C885548B2DE6B44C00C8B688 /* WMMenuView.m in Sources */,
@@ -5288,6 +5470,7 @@
 				8C778B742FA1AB85000887FE /* PJNGatewayStatusViews.swift in Sources */,
 				C88554CB2DE6B44C00C8B688 /* DeviceLightControlView.swift in Sources */,
 				C88554CC2DE6B44C00C8B688 /* DeviceParameterPromptView.swift in Sources */,
+				8C778BD12FA20871000887FE /* PJEightKeySwitchSelectPanelCell.swift in Sources */,
 				C88554CD2DE6B44C00C8B688 /* EnergyTimeSeriesDataViewController.swift in Sources */,
 				C88554CE2DE6B44C00C8B688 /* LBXPermissions.swift in Sources */,
 				8CF15F9A2F96311F0044FCF3 /* EmerFireCardPosition.swift in Sources */,
@@ -5339,6 +5522,7 @@
 				C88554EE2DE6B44C00C8B688 /* DeviceLightHeaderView.swift in Sources */,
 				8C778B5B2FA1A9C2000887FE /* PJNGatewayViewController.swift in Sources */,
 				C88554EF2DE6B44C00C8B688 /* SwitchSelectSceneViewController.swift in Sources */,
+				8C778BF62FA2153E000887FE /* PJEightKeySwitchesViewCell.swift in Sources */,
 				C88554F02DE6B44C00C8B688 /* GroupProximityLightingData.swift in Sources */,
 				C88554F12DE6B44C00C8B688 /* GroupPathSequenceQuickAddView.swift in Sources */,
 				8C7788FF2F9758FF000887FE /* LinkedEmerFireGroupSelectionVC.swift in Sources */,
@@ -5375,8 +5559,10 @@
 				C88555062DE6B44C00C8B688 /* SceneAddViewController.swift in Sources */,
 				C88555072DE6B44C00C8B688 /* ExportData.swift in Sources */,
 				C88555082DE6B44C00C8B688 /* CirclePieMarkerView.swift in Sources */,
+				8C778BDC2FA20E1D000887FE /* PJEightKeySwitchMoreSettingsViewModel.swift in Sources */,
 				C88555092DE6B44C00C8B688 /* WMScrollView.m in Sources */,
 				C885550A2DE6B44C00C8B688 /* DaylightSensorInstructionsHeaderView.swift in Sources */,
+				8C778BD72FA20872000887FE /* PJEightKeySwitchSelectPanelController.swift in Sources */,
 				C885550B2DE6B44C00C8B688 /* GroupPathSequenceAddDeviceCell.swift in Sources */,
 				C885550C2DE6B44C00C8B688 /* EnergyHarvestHistoryViewController.swift in Sources */,
 				C885550D2DE6B44C00C8B688 /* LBXScanNetAnimation.swift in Sources */,
@@ -5385,6 +5571,7 @@
 				C885550F2DE6B44C00C8B688 /* GroupPathSequenceTriggerAddView.swift in Sources */,
 				C88555102DE6B44C00C8B688 /* DeviceSwitchesViewController.swift in Sources */,
 				C88555112DE6B44C00C8B688 /* DeviceSliderFunctionView.swift in Sources */,
+				8C778BE02FA20E1D000887FE /* PJEightKeySwitchPeriodicReportingSliderView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -5395,6 +5582,7 @@
 				8C7788EB2F97485E000887FE /* EmerFireAlarmInformationVC.swift in Sources */,
 				C886E0022E30DE4900D0C3A6 /* FirmwareUpdateStateView.swift in Sources */,
 				C886E0032E30DE4900D0C3A6 /* GroupAddViewController.swift in Sources */,
+				8C778BC72FA20589000887FE /* PJEightKeySwitchPanelDefinition.swift in Sources */,
 				C886E0042E30DE4900D0C3A6 /* ScheduleAddView.swift in Sources */,
 				C886E0052E30DE4900D0C3A6 /* DevicesViewController.swift in Sources */,
 				C886E0062E30DE4900D0C3A6 /* MeshNetwork+SunSmart.swift in Sources */,
@@ -5426,6 +5614,8 @@
 				C886E01C2E30DE4900D0C3A6 /* DeviceParameterData.swift in Sources */,
 				C886E01D2E30DE4900D0C3A6 /* UIViewController+Extension.swift in Sources */,
 				C886E01E2E30DE4900D0C3A6 /* MeshDeviceConfigInfo.swift in Sources */,
+				8C778BB92FA200C2000887FE /* PJPreAddEightKeySwitchesViewModel.swift in Sources */,
+				8C778BC32FA200C2000887FE /* PJEightKeySwitchInfoRowView.swift in Sources */,
 				C886E01F2E30DE4900D0C3A6 /* LBXScanView.swift in Sources */,
 				C886E0202E30DE4900D0C3A6 /* GroupPathSequencePathViewCell.swift in Sources */,
 				8CF15F842F9628FA0044FCF3 /* EmerFireStepperCell.swift in Sources */,
@@ -5464,6 +5654,7 @@
 				C886E03A2E30DE4900D0C3A6 /* ScheduleDevicesView.swift in Sources */,
 				C886E03B2E30DE4900D0C3A6 /* GroupPathSequenceTriggerZoneController.swift in Sources */,
 				C8F1A0022F0A000100123456 /* GroupPathSequenceAddDescriptionController.swift in Sources */,
+				8C778BCC2FA20871000887FE /* PJEightKeySwitchSelectPanelViewModel.swift in Sources */,
 				C886E03C2E30DE4900D0C3A6 /* CustomTableViewCell.swift in Sources */,
 				C886E03D2E30DE4900D0C3A6 /* BatchImportResultView.swift in Sources */,
 				C886E03E2E30DE4900D0C3A6 /* SyncDevicesTitleHeaderView.swift in Sources */,
@@ -5510,6 +5701,7 @@
 				C886E05B2E30DE4900D0C3A6 /* LYCirclePieModel.swift in Sources */,
 				C886E05C2E30DE4900D0C3A6 /* LYCirclePieView.swift in Sources */,
 				C886E05D2E30DE4900D0C3A6 /* ScheduleGroupsView.swift in Sources */,
+				8C778BFE2FA2155D000887FE /* PJEightKeySwitchRepository.swift in Sources */,
 				C886E05E2E30DE4900D0C3A6 /* GroupPathSequencePathTestView.swift in Sources */,
 				C886E05F2E30DE4900D0C3A6 /* DaliSettingDeviceWarnHeaderView.swift in Sources */,
 				C886E0602E30DE4900D0C3A6 /* WMMenuItem.m in Sources */,
@@ -5569,6 +5761,7 @@
 				C886E0822E30DE4900D0C3A6 /* SceneViewController.swift in Sources */,
 				C886E0832E30DE4900D0C3A6 /* MainMenuView.swift in Sources */,
 				C886E0842E30DE4900D0C3A6 /* ShareBacthListViewCell.swift in Sources */,
+				8C778BE72FA20E1D000887FE /* PJEightKeySwitchMoreSettingsController.swift in Sources */,
 				C886E0852E30DE4900D0C3A6 /* String+Extension.swift in Sources */,
 				C886E0862E30DE4900D0C3A6 /* GatewayViewController.swift in Sources */,
 				C886E0872E30DE4900D0C3A6 /* UIView+Extension.swift in Sources */,
@@ -5576,10 +5769,12 @@
 				C886E0892E30DE4900D0C3A6 /* DeviceLightInfoSectionView.swift in Sources */,
 				C886E08A2E30DE4900D0C3A6 /* NavigationViewController.swift in Sources */,
 				C886E08B2E30DE4900D0C3A6 /* DeviceAddMenuView.swift in Sources */,
+				8C778BB02FA1FB42000887FE /* PJSwitchesTypesViewModel.swift in Sources */,
 				C886E08C2E30DE4900D0C3A6 /* GroupDeviceViewCell.swift in Sources */,
 				8C7788E02F972591000887FE /* EmerFireAlarmStatusItemCell.swift in Sources */,
 				8C778B832FA1DCE1000887FE /* PJNGatewaySectionHeaderView.swift in Sources */,
 				C886E08D2E30DE4900D0C3A6 /* SceneAddGroupViewCell.swift in Sources */,
+				8C778BEB2FA2102D000887FE /* PJEightKeySwitchStatus.swift in Sources */,
 				C8B483CE2E4AEEBB006D85BC /* DeviceAddParameterSettingsView.swift in Sources */,
 				8C778B772FA1AB86000887FE /* PJNGatewayRowViews.swift in Sources */,
 				C886E08E2E30DE4900D0C3A6 /* DeviceDongleData.swift in Sources */,
@@ -5597,12 +5792,14 @@
 				C886E0982E30DE4900D0C3A6 /* ZipHandler.swift in Sources */,
 				C886E0992E30DE4900D0C3A6 /* CustomActivityItemSource.swift in Sources */,
 				C886E09A2E30DE4900D0C3A6 /* ProfileSettingsHeaderView.swift in Sources */,
+				8C778BB22FA1FD42000887FE /* PJPreAddEightKeySwitchesVC.swift in Sources */,
 				C886E09B2E30DE4900D0C3A6 /* GroupViewController.swift in Sources */,
 				C886E09C2E30DE4900D0C3A6 /* DaliMasterViewController.swift in Sources */,
 				8C778B4F2FA1A857000887FE /* PJNGatewayDetailViewModel.swift in Sources */,
 				C886E09D2E30DE4900D0C3A6 /* MultiseriatePickerView.swift in Sources */,
 				C886E09E2E30DE4900D0C3A6 /* SwitchSelectScenePageController.swift in Sources */,
 				8C778B192F9CBD47000887FE /* PJUIDebugConsoleTracer.swift in Sources */,
+				8C778BF02FA2153E000887FE /* PJEightKeySwitchData.swift in Sources */,
 				C886E09F2E30DE4900D0C3A6 /* GroupSwitchEnOceanProxyHeaderView.swift in Sources */,
 				C886E0A02E30DE4900D0C3A6 /* DeviceParameterDevicesViewController.swift in Sources */,
 				8C778B652FA1AB19000887FE /* PJNGatewayPageViewModel.swift in Sources */,
@@ -5676,6 +5873,7 @@
 				C886E0CF2E30DE4900D0C3A6 /* CalendarChooseView.swift in Sources */,
 				C886E0D02E30DE4900D0C3A6 /* GroupMembersViewController.swift in Sources */,
 				C886E0D12E30DE4900D0C3A6 /* SpaceVisitorListViewController.swift in Sources */,
+				8C778BAA2FA1FA2D000887FE /* PJSwitchesTypesVC.swift in Sources */,
 				C886E0D22E30DE4900D0C3A6 /* ContinuousTapGestureRecognizer.swift in Sources */,
 				C886E0D32E30DE4900D0C3A6 /* DeviceOthersCollectionViewCell.swift in Sources */,
 				C886E0D42E30DE4900D0C3A6 /* FirmwareVersionHistoryController.swift in Sources */,
@@ -5695,6 +5893,7 @@
 				C8C3A1642E37705500876028 /* GatewayInformationHeaderView.swift in Sources */,
 				8CF15F952F962C7C0044FCF3 /* LinkedEmerFireEditVC+Table.swift in Sources */,
 				C886E0DF2E30DE4900D0C3A6 /* MenuPopView.swift in Sources */,
+				8C778BBE2FA200C2000887FE /* PJEightKeySwitchPanelView.swift in Sources */,
 				C886E0E02E30DE4900D0C3A6 /* SyncDevicesProgressView.swift in Sources */,
 				C886E0E12E30DE4900D0C3A6 /* MeshFirmwareListViewController.swift in Sources */,
 				C886E0E22E30DE4900D0C3A6 /* WMMenuView.m in Sources */,
@@ -5794,6 +5993,7 @@
 				8C778B712FA1AB85000887FE /* PJNGatewayStatusViews.swift in Sources */,
 				C886E1262E30DE4900D0C3A6 /* DeviceLightControlView.swift in Sources */,
 				C886E1272E30DE4900D0C3A6 /* DeviceParameterPromptView.swift in Sources */,
+				8C778BD02FA20871000887FE /* PJEightKeySwitchSelectPanelCell.swift in Sources */,
 				C886E1282E30DE4900D0C3A6 /* EnergyTimeSeriesDataViewController.swift in Sources */,
 				C886E1292E30DE4900D0C3A6 /* LBXPermissions.swift in Sources */,
 				8CF15F9D2F96311F0044FCF3 /* EmerFireCardPosition.swift in Sources */,
@@ -5845,6 +6045,7 @@
 				C886E14A2E30DE4900D0C3A6 /* DeviceLightHeaderView.swift in Sources */,
 				8C778B582FA1A9C2000887FE /* PJNGatewayViewController.swift in Sources */,
 				C886E14B2E30DE4900D0C3A6 /* SwitchSelectSceneViewController.swift in Sources */,
+				8C778BF52FA2153E000887FE /* PJEightKeySwitchesViewCell.swift in Sources */,
 				C886E14C2E30DE4900D0C3A6 /* GroupProximityLightingData.swift in Sources */,
 				C886E14D2E30DE4900D0C3A6 /* GroupPathSequenceQuickAddView.swift in Sources */,
 				8C7788FE2F9758FF000887FE /* LinkedEmerFireGroupSelectionVC.swift in Sources */,
@@ -5881,8 +6082,10 @@
 				C886E1622E30DE4900D0C3A6 /* SceneAddViewController.swift in Sources */,
 				C886E1632E30DE4900D0C3A6 /* ExportData.swift in Sources */,
 				C886E1642E30DE4900D0C3A6 /* CirclePieMarkerView.swift in Sources */,
+				8C778BDB2FA20E1D000887FE /* PJEightKeySwitchMoreSettingsViewModel.swift in Sources */,
 				C886E1652E30DE4900D0C3A6 /* WMScrollView.m in Sources */,
 				C886E1662E30DE4900D0C3A6 /* DaylightSensorInstructionsHeaderView.swift in Sources */,
+				8C778BD82FA20872000887FE /* PJEightKeySwitchSelectPanelController.swift in Sources */,
 				C886E1672E30DE4900D0C3A6 /* GroupPathSequenceAddDeviceCell.swift in Sources */,
 				C886E1682E30DE4900D0C3A6 /* EnergyHarvestHistoryViewController.swift in Sources */,
 				C886E1692E30DE4900D0C3A6 /* LBXScanNetAnimation.swift in Sources */,
@@ -5891,6 +6094,7 @@
 				C886E16B2E30DE4900D0C3A6 /* GroupPathSequenceTriggerAddView.swift in Sources */,
 				C886E16C2E30DE4900D0C3A6 /* DeviceSwitchesViewController.swift in Sources */,
 				C886E16D2E30DE4900D0C3A6 /* DeviceSliderFunctionView.swift in Sources */,
+				8C778BE12FA20E1D000887FE /* PJEightKeySwitchPeriodicReportingSliderView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -6000,6 +6204,7 @@
 				C8AFDBFD2D700A1800839A38 /* DaliDevicesViewCell.swift in Sources */,
 				C89C9FE42B3C197B00074031 /* SyncDevicesViewController.swift in Sources */,
 				C87141B62DB24C86007A64B4 /* DevicePwmFrequencySelectView.swift in Sources */,
+				8C778BC62FA20589000887FE /* PJEightKeySwitchPanelDefinition.swift in Sources */,
 				C8F89D3A2E3B6F8500FA1544 /* GatewayAPNMenuView.swift in Sources */,
 				C8A099FD2AC134C30068C814 /* SiteEditViewController.swift in Sources */,
 				C8A16F6F2C8568F700FB50BD /* AttributedTextViewController.swift in Sources */,
@@ -6008,6 +6213,7 @@
 				8CF15F832F9628FA0044FCF3 /* EmerFireStepperCell.swift in Sources */,
 				C8DF845C2DB65ADF0070CBD9 /* DeviceDongleScheduleViewCell.swift in Sources */,
 				C8AADF012A973DA600238C1C /* SpaceData.swift in Sources */,
+				8C778BB52FA1FD42000887FE /* PJPreAddEightKeySwitchesVC.swift in Sources */,
 				C8BF085B2B27146B00144BAC /* GroupAddHeaderView.swift in Sources */,
 				C89941932AD4E382008DCD76 /* LCWeakTimer.swift in Sources */,
 				C8BA43692DC0AE9900018392 /* TimeSeriesDataGuideView.swift in Sources */,
@@ -6044,10 +6250,13 @@
 				C8DA6A0F2DB8800B00E32092 /* FSCalendarStickyHeader.m in Sources */,
 				8CBEC63E2F961B84003859AB /* EmerFireNameCell.swift in Sources */,
 				C8AEB9972DCA11F30053102B /* EnergyHarvestHistoryViewCell.swift in Sources */,
+				8C778C002FA2155D000887FE /* PJEightKeySwitchRepository.swift in Sources */,
 				C8DA6A102DB8800B00E32092 /* FSCalendarAppearance.m in Sources */,
 				C8BB3E512EF9482500207225 /* ProfileLightSensorTemplateListController.swift in Sources */,
+				8C778BC22FA200C2000887FE /* PJEightKeySwitchInfoRowView.swift in Sources */,
 				C8DA6A112DB8800B00E32092 /* FSCalendarCalculator.m in Sources */,
 				C8DA6A122DB8800B00E32092 /* FSCalendarCell.m in Sources */,
+				8C778BDF2FA20E1D000887FE /* PJEightKeySwitchPeriodicReportingSliderView.swift in Sources */,
 				C8A85CE12E0A4886007F9B81 /* DeviceAddCandidateDeviceListView.swift in Sources */,
 				C8CD5BE82DDABF5C00F09467 /* GroupPathSequenceDeviceAddView.swift in Sources */,
 				C8DA6A132DB8800B00E32092 /* FSCalendarHeaderView.m in Sources */,
@@ -6109,6 +6318,7 @@
 				C8047F172B8EDAD500A09FFA /* ProfileSettingsHeaderView.swift in Sources */,
 				C8BF08622B2840D800144BAC /* GroupViewController.swift in Sources */,
 				C8A347CA2D62D0740092D3E4 /* DaliMasterViewController.swift in Sources */,
+				8C778BD52FA20872000887FE /* PJEightKeySwitchSelectPanelController.swift in Sources */,
 				C89A1C362B54C64B004912B9 /* MultiseriatePickerView.swift in Sources */,
 				8C778B532FA1A9C2000887FE /* PJNGatewayDetailView.swift in Sources */,
 				C8CAE8E72D76FE1500FCCA5A /* SwitchSelectScenePageController.swift in Sources */,
@@ -6133,6 +6343,7 @@
 				8CC4A6AC2F95D01500839EC4 /* OthersViewController.swift in Sources */,
 				C8BC57352E9F88A0009E79A3 /* DeviceResetBroadcasterCentral.swift in Sources */,
 				8CF15F8C2F962C7C0044FCF3 /* LinkedEmerFireEditRow.swift in Sources */,
+				8C778BBA2FA200C2000887FE /* PJPreAddEightKeySwitchesViewModel.swift in Sources */,
 				C8A437B22D35F11A00F3424C /* CollectionTitleHeaderView.swift in Sources */,
 				C8B4DE222E540A1E00AF6CE0 /* GlobalData.swift in Sources */,
 				C8A18FEB2AE105F300260707 /* BluetoothRequiredViewController.swift in Sources */,
@@ -6173,11 +6384,13 @@
 				C88DE4412C070D3F005A38C1 /* ShareChangePasswordController.swift in Sources */,
 				C8B5A1E22B2C48DE00728E36 /* GroupCheckViewController.swift in Sources */,
 				C8D58F662C1D34090066B770 /* CloudSynchronizationManager.swift in Sources */,
+				8C778BE92FA2102D000887FE /* PJEightKeySwitchStatus.swift in Sources */,
 				C89C82CA2C81B7FE009D43F6 /* FirmwareUpdateTypeData.swift in Sources */,
 				C8EF54742C1AFA53008389CE /* NetworkLoggerPlugin.swift in Sources */,
 				C8A18D912DE45CE0009AC6A2 /* NumberOfNeghbourNodeInstructionsController.swift in Sources */,
 				C8A0AC4B2C3E21B200DFE803 /* Array+Split.swift in Sources */,
 				C8DF84572DB639960070CBD9 /* DeviceDongleViewController.swift in Sources */,
+				8C778BE62FA20E1D000887FE /* PJEightKeySwitchMoreSettingsController.swift in Sources */,
 				C8D22E1D2E04100D001A2BDA /* DeviceAddProfessionalModeController.swift in Sources */,
 				C8A7A6B82DC216FA00191E9C /* EnergyHarvestSelectView.swift in Sources */,
 				C8DA6A202DB885C500E32092 /* CalendarChooseView.swift in Sources */,
@@ -6193,6 +6406,7 @@
 				C87EB4692BA17D3F00F9285B /* LBXScanWrapper.swift in Sources */,
 				C8A011652DA8C1DA0058E7E7 /* DeviceCategorysViewController.swift in Sources */,
 				C8BC6D5A2EA24498009E79A3 /* GradientLoadingBar.swift in Sources */,
+				8C778BA92FA1FA2D000887FE /* PJSwitchesTypesVC.swift in Sources */,
 				C8A030222CD8C2AD0063FEC4 /* MeshFirmwareUpgradeGuideView.swift in Sources */,
 				C8ACF13E2AA1B2BA00E24B4A /* UIBarButtonItem+Extension.swift in Sources */,
 				C8AE17522DACA8E80071A9B1 /* DeviceParameterSettingsController.swift in Sources */,
@@ -6208,6 +6422,7 @@
 				C8AC83C72D068A670033513E /* MeshFirmwareUpdateStepHeaderView.swift in Sources */,
 				C8047F2D2B8F5C9200A09FFA /* ManualOverrideTimeoutInstructionController.swift in Sources */,
 				C898EA722AC3D17C0023B480 /* DevicesViewCell.swift in Sources */,
+				8C778BCD2FA20871000887FE /* PJEightKeySwitchSelectPanelViewModel.swift in Sources */,
 				C8BFC6902F04AEC5007F83F2 /* DeviceResyncHeaderView.swift in Sources */,
 				C8BE621F2EC4624C0075ED42 /* LightSensorCalibrationPointLuxView.swift in Sources */,
 				8CF15F962F962C7C0044FCF3 /* LinkedEmerFireEditVC+Table.swift in Sources */,
@@ -6219,6 +6434,7 @@
 				C89C15712D9A873500789F0B /* BetaTestingAlertView.swift in Sources */,
 				C8A29C282B47D5CF00104634 /* TimedSelectTypeView.swift in Sources */,
 				C8047F312B8F670200A09FFA /* AdjustSpeedInstructionController.swift in Sources */,
+				8C778BAD2FA1FB42000887FE /* PJSwitchesTypesViewModel.swift in Sources */,
 				C8C3A1622E375D9400876028 /* GatewayServerInformationViewCell.swift in Sources */,
 				C87EB4672BA17D3F00F9285B /* LBXScanViewStyle.swift in Sources */,
 				8C778B2B2F9F584F000887FE /* PreCreateEmerFireViewModel.swift in Sources */,
@@ -6241,6 +6457,7 @@
 				8C7789152F987B48000887FE /* EmerFireAlarmDevicesController.swift in Sources */,
 				C8AC845C2DE15F6000213DE2 /* GroupPathSequenceManuallyAddView.swift in Sources */,
 				C89FEF432ABD657F00DCCFB6 /* AboutViewController.swift in Sources */,
+				8C778BEF2FA2153E000887FE /* PJEightKeySwitchData.swift in Sources */,
 				8CF15F902F962C7C0044FCF3 /* LinkedEmerFireEditState.swift in Sources */,
 				C822A84F2EA75A9400A7073B /* DeviceMeshNetworkResetHeaderView.swift in Sources */,
 				C8EC4BAD2EAA1FF00082892D /* DeviceMeshNetworkResetHandle.swift in Sources */,
@@ -6269,10 +6486,12 @@
 				C898E2F12ABA9BB900C71315 /* SitesViewController.swift in Sources */,
 				C8A0301E2CD878C10063FEC4 /* MeshFirmwareUpgradeHeaderView.swift in Sources */,
 				C8ED59F92DD743960074A5BB /* GroupPathSequencePageController.swift in Sources */,
+				8C778BD32FA20871000887FE /* PJEightKeySwitchSelectPanelCell.swift in Sources */,
 				8CC4A6AE2F95D0CF00839EC4 /* PJTopbtBoLabView.swift in Sources */,
 				C8047F132B8E14F800A09FFA /* MotionSensorInstructionsViewCell.swift in Sources */,
 				8C7789002F9758FF000887FE /* LinkedEmerFireGroupSelectionVC.swift in Sources */,
 				C8BB677A2ED46298000C63EE /* SiteGatewaysMenuView.swift in Sources */,
+				8C778BF72FA2153E000887FE /* PJEightKeySwitchesViewCell.swift in Sources */,
 				C89F98412B5E5A56007EABF5 /* SceneExecuteAnimationView.swift in Sources */,
 				C896B9A82A930BA800217512 /* AppDelegate.swift in Sources */,
 				C85BC5F22C3BEEF8002D4CB6 /* UserSettingsViewController.swift in Sources */,
@@ -6308,6 +6527,7 @@
 				C822A8532EA765F100A7073B /* DeviceMeshNetworkResetBottomView.swift in Sources */,
 				C80A7F542DB793E200A6E36C /* DongleAddCollectionScheduleController.swift in Sources */,
 				C88CCD992DD4A8AD003D5754 /* ProfileProximityLightingNumberView.swift in Sources */,
+				8C778BBF2FA200C2000887FE /* PJEightKeySwitchPanelView.swift in Sources */,
 				C80A7F482DB72C1F00A6E36C /* DeviceDongleCollectionStrategyCell.swift in Sources */,
 				C8F837412E3B52560003B292 /* GatewaySectionHeaderView.swift in Sources */,
 				8C7788F42F974BC2000887FE /* EmerFireAlarmInfoSectionHeaderView.swift in Sources */,
@@ -6345,6 +6565,7 @@
 				C884EF772C05B96600B5F869 /* NetowrkReqeustApi.swift in Sources */,
 				C8047F2F2B8F5E1B00A09FFA /* PowerUpBehaviorInstructionController.swift in Sources */,
 				C82AE2ED2B96EC6600FA4BDB /* Profile.swift in Sources */,
+				8C778BDA2FA20E1D000887FE /* PJEightKeySwitchMoreSettingsViewModel.swift in Sources */,
 				C8C3A1592E37509800876028 /* GatewayAssociatedSpacesViewCell.swift in Sources */,
 				8C778B272F9F584E000887FE /* DeviceEmerFireRepository.swift in Sources */,
 				C8D6636F2BFEDDC900BFF81A /* ImportData.swift in Sources */,
@@ -6408,6 +6629,7 @@
 				8C7788ED2F97485E000887FE /* EmerFireAlarmInformationVC.swift in Sources */,
 				C8BB65B02ED3F056000C63EE /* FirmwareUpdateStateView.swift in Sources */,
 				C8BB65B12ED3F056000C63EE /* GroupAddViewController.swift in Sources */,
+				8C778BC92FA20589000887FE /* PJEightKeySwitchPanelDefinition.swift in Sources */,
 				C8BB65B22ED3F056000C63EE /* ScheduleAddView.swift in Sources */,
 				C8BB65B32ED3F056000C63EE /* DevicesViewController.swift in Sources */,
 				C8BB65B42ED3F056000C63EE /* MeshNetwork+SunSmart.swift in Sources */,
@@ -6439,6 +6661,8 @@
 				C8BB65CB2ED3F056000C63EE /* DeviceParameterData.swift in Sources */,
 				C8BB65CC2ED3F056000C63EE /* UIViewController+Extension.swift in Sources */,
 				C8BB65CD2ED3F056000C63EE /* MeshDeviceConfigInfo.swift in Sources */,
+				8C778BB82FA200C2000887FE /* PJPreAddEightKeySwitchesViewModel.swift in Sources */,
+				8C778BC42FA200C2000887FE /* PJEightKeySwitchInfoRowView.swift in Sources */,
 				C8BB65CE2ED3F056000C63EE /* LBXScanView.swift in Sources */,
 				C8BB65CF2ED3F056000C63EE /* GroupPathSequencePathViewCell.swift in Sources */,
 				8CF15F812F9628FA0044FCF3 /* EmerFireStepperCell.swift in Sources */,
@@ -6477,6 +6701,7 @@
 				C8BB65EC2ED3F056000C63EE /* ScheduleDevicesView.swift in Sources */,
 				C8BB65ED2ED3F056000C63EE /* GroupPathSequenceTriggerZoneController.swift in Sources */,
 				C8F1A0062F0A000100123456 /* GroupPathSequenceAddDescriptionController.swift in Sources */,
+				8C778BCB2FA20871000887FE /* PJEightKeySwitchSelectPanelViewModel.swift in Sources */,
 				C8BB65EE2ED3F056000C63EE /* CustomTableViewCell.swift in Sources */,
 				C8BB65EF2ED3F056000C63EE /* BatchImportResultView.swift in Sources */,
 				C8BB65F02ED3F056000C63EE /* SyncDevicesTitleHeaderView.swift in Sources */,
@@ -6523,6 +6748,7 @@
 				C8BB66132ED3F056000C63EE /* LYCirclePieModel.swift in Sources */,
 				C8BB66142ED3F056000C63EE /* LYCirclePieView.swift in Sources */,
 				C8BB66152ED3F056000C63EE /* ScheduleGroupsView.swift in Sources */,
+				8C778C012FA2155D000887FE /* PJEightKeySwitchRepository.swift in Sources */,
 				C8BB66162ED3F056000C63EE /* GroupPathSequencePathTestView.swift in Sources */,
 				C8BB66172ED3F056000C63EE /* DaliSettingDeviceWarnHeaderView.swift in Sources */,
 				C8BB66182ED3F056000C63EE /* WMMenuItem.m in Sources */,
@@ -6582,6 +6808,7 @@
 				C8BB66412ED3F056000C63EE /* SceneViewController.swift in Sources */,
 				C8BB66422ED3F056000C63EE /* MainMenuView.swift in Sources */,
 				C8BB66432ED3F056000C63EE /* ShareBacthListViewCell.swift in Sources */,
+				8C778BE42FA20E1D000887FE /* PJEightKeySwitchMoreSettingsController.swift in Sources */,
 				C8BB66442ED3F056000C63EE /* String+Extension.swift in Sources */,
 				C8BB66452ED3F056000C63EE /* GatewayViewController.swift in Sources */,
 				C8BB66462ED3F056000C63EE /* UIView+Extension.swift in Sources */,
@@ -6589,10 +6816,12 @@
 				C8BB66482ED3F056000C63EE /* DeviceLightInfoSectionView.swift in Sources */,
 				C8BB66492ED3F056000C63EE /* NavigationViewController.swift in Sources */,
 				C8BB664A2ED3F056000C63EE /* DeviceAddMenuView.swift in Sources */,
+				8C778BAE2FA1FB42000887FE /* PJSwitchesTypesViewModel.swift in Sources */,
 				C8BB664B2ED3F056000C63EE /* GroupDeviceViewCell.swift in Sources */,
 				8C7788E32F972591000887FE /* EmerFireAlarmStatusItemCell.swift in Sources */,
 				8C778B812FA1DCE1000887FE /* PJNGatewaySectionHeaderView.swift in Sources */,
 				C8BB664C2ED3F056000C63EE /* SceneAddGroupViewCell.swift in Sources */,
+				8C778BEC2FA2102D000887FE /* PJEightKeySwitchStatus.swift in Sources */,
 				C8BB664D2ED3F056000C63EE /* DeviceAddParameterSettingsView.swift in Sources */,
 				8C778B792FA1AB86000887FE /* PJNGatewayRowViews.swift in Sources */,
 				C8BB664E2ED3F056000C63EE /* DeviceDongleData.swift in Sources */,
@@ -6610,12 +6839,14 @@
 				C8BB66592ED3F056000C63EE /* ZipHandler.swift in Sources */,
 				C8BB665A2ED3F056000C63EE /* CustomActivityItemSource.swift in Sources */,
 				C8BB665B2ED3F056000C63EE /* ProfileSettingsHeaderView.swift in Sources */,
+				8C778BB42FA1FD42000887FE /* PJPreAddEightKeySwitchesVC.swift in Sources */,
 				C8BB665C2ED3F056000C63EE /* GroupViewController.swift in Sources */,
 				C8BB665D2ED3F056000C63EE /* DaliMasterViewController.swift in Sources */,
 				8C778B4E2FA1A857000887FE /* PJNGatewayDetailViewModel.swift in Sources */,
 				C8BB665E2ED3F056000C63EE /* MultiseriatePickerView.swift in Sources */,
 				C8BB665F2ED3F056000C63EE /* SwitchSelectScenePageController.swift in Sources */,
 				8C778B182F9CBD47000887FE /* PJUIDebugConsoleTracer.swift in Sources */,
+				8C778BF12FA2153E000887FE /* PJEightKeySwitchData.swift in Sources */,
 				C8BB66602ED3F056000C63EE /* GroupSwitchEnOceanProxyHeaderView.swift in Sources */,
 				C8BB66612ED3F056000C63EE /* DeviceParameterDevicesViewController.swift in Sources */,
 				8C778B622FA1AB19000887FE /* PJNGatewayPageViewModel.swift in Sources */,
@@ -6689,6 +6920,7 @@
 				C8BB66992ED3F056000C63EE /* CalendarChooseView.swift in Sources */,
 				C8BB669A2ED3F056000C63EE /* GroupMembersViewController.swift in Sources */,
 				C8BB669B2ED3F056000C63EE /* SpaceVisitorListViewController.swift in Sources */,
+				8C778BA82FA1FA2D000887FE /* PJSwitchesTypesVC.swift in Sources */,
 				C8BB669C2ED3F056000C63EE /* ContinuousTapGestureRecognizer.swift in Sources */,
 				C8BB669D2ED3F056000C63EE /* DeviceOthersCollectionViewCell.swift in Sources */,
 				C8BB669E2ED3F056000C63EE /* FirmwareVersionHistoryController.swift in Sources */,
@@ -6708,6 +6940,7 @@
 				C8BB66AB2ED3F056000C63EE /* GatewayInformationHeaderView.swift in Sources */,
 				8CF15F982F962C7C0044FCF3 /* LinkedEmerFireEditVC+Table.swift in Sources */,
 				C8BB66AC2ED3F056000C63EE /* MenuPopView.swift in Sources */,
+				8C778BBC2FA200C2000887FE /* PJEightKeySwitchPanelView.swift in Sources */,
 				C8BB66AD2ED3F056000C63EE /* SyncDevicesProgressView.swift in Sources */,
 				C8BB66AE2ED3F056000C63EE /* MeshFirmwareListViewController.swift in Sources */,
 				C8BB66AF2ED3F056000C63EE /* WMMenuView.m in Sources */,
@@ -6807,6 +7040,7 @@
 				8C778B722FA1AB85000887FE /* PJNGatewayStatusViews.swift in Sources */,
 				C8BB66FF2ED3F056000C63EE /* DeviceLightControlView.swift in Sources */,
 				C8BB67002ED3F056000C63EE /* DeviceParameterPromptView.swift in Sources */,
+				8C778BD22FA20871000887FE /* PJEightKeySwitchSelectPanelCell.swift in Sources */,
 				C8BB67012ED3F056000C63EE /* EnergyTimeSeriesDataViewController.swift in Sources */,
 				C8BB67022ED3F056000C63EE /* LBXPermissions.swift in Sources */,
 				8CF15F9C2F96311F0044FCF3 /* EmerFireCardPosition.swift in Sources */,
@@ -6858,6 +7092,7 @@
 				C8BB67292ED3F056000C63EE /* DeviceLightHeaderView.swift in Sources */,
 				8C778B5A2FA1A9C2000887FE /* PJNGatewayViewController.swift in Sources */,
 				C8BB672A2ED3F056000C63EE /* SwitchSelectSceneViewController.swift in Sources */,
+				8C778BF42FA2153E000887FE /* PJEightKeySwitchesViewCell.swift in Sources */,
 				C8BB672B2ED3F056000C63EE /* GroupProximityLightingData.swift in Sources */,
 				C8BB672C2ED3F056000C63EE /* GroupPathSequenceQuickAddView.swift in Sources */,
 				8C7789012F9758FF000887FE /* LinkedEmerFireGroupSelectionVC.swift in Sources */,
@@ -6894,8 +7129,10 @@
 				C8BB67452ED3F056000C63EE /* SceneAddViewController.swift in Sources */,
 				C8BB67462ED3F056000C63EE /* ExportData.swift in Sources */,
 				C8BB67472ED3F056000C63EE /* CirclePieMarkerView.swift in Sources */,
+				8C778BDD2FA20E1D000887FE /* PJEightKeySwitchMoreSettingsViewModel.swift in Sources */,
 				C8BB67482ED3F056000C63EE /* WMScrollView.m in Sources */,
 				C8BB67492ED3F056000C63EE /* DaylightSensorInstructionsHeaderView.swift in Sources */,
+				8C778BD62FA20872000887FE /* PJEightKeySwitchSelectPanelController.swift in Sources */,
 				C8BB674A2ED3F056000C63EE /* GroupPathSequenceAddDeviceCell.swift in Sources */,
 				C8BB674B2ED3F056000C63EE /* EnergyHarvestHistoryViewController.swift in Sources */,
 				C8BB674C2ED3F056000C63EE /* LBXScanNetAnimation.swift in Sources */,
@@ -6904,6 +7141,7 @@
 				C8BB674F2ED3F056000C63EE /* GroupPathSequenceTriggerAddView.swift in Sources */,
 				C8BB67502ED3F056000C63EE /* DeviceSwitchesViewController.swift in Sources */,
 				C8BB67512ED3F056000C63EE /* DeviceSliderFunctionView.swift in Sources */,
+				8C778BE22FA20E1D000887FE /* PJEightKeySwitchPeriodicReportingSliderView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

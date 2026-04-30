@@ -330,7 +330,23 @@ class DevicesViewController: WMPageController {
             case .searchDevices:
                 self.deviceAdd()
             case .preCreatedSwitches:
-                self.switchAdd()
+                let controller = PJSwitchesTypesVC.makePopupViewController(
+                    onBack: { [weak self] in
+                        self?.addAction(point: point)
+                    },
+                    onKineticSwitch: { [weak self] in
+                        self?.switchAdd()
+                    },
+                    onBatterySwitch: { [weak self] in
+                        guard let self = self else { return }
+                        let vc = PJPreAddEightKeySwitchesVC(space: self.space)
+                        if isIPad {
+                            vc.preferredContentSize = iPadPreferredContentSize
+                        }
+                        self.present(NavigationViewController(rootViewController: vc), animated: true)
+                    }
+                )
+                self.present(controller, animated: false)
             case .restoreDevice:
                 self.devicesRestore()
             case .preCreatedSensors:

@@ -2211,9 +2211,9 @@ extension SiteViewController: SiteGatewayStatusViewDelegate {
         if isIPad {
             gatewayVc.preferredContentSize = iPadStandardSize
         }
-        //测试
-        let ggatewayVc = PJNGatewayViewController(site: site, gateway: gateway)
-        present(NavigationViewController(rootViewController: ggatewayVc), animated: true)
+        //测试v1.5网桥
+        //let ggatewayVc = PJNGatewayViewController(site: site, gateway: gateway)
+        present(NavigationViewController(rootViewController: gatewayVc), animated: true)
         
     }
     

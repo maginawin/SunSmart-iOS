@@ -112,6 +112,7 @@ class DeviceSwitchesViewController: UIViewController {
         collectionView.contentInset = UIEdgeInsets(top: SCRYFrom(40 + (isIPad ? 22 : 10)), left: collectionViewMargin, bottom: collectionViewMargin, right: collectionViewMargin)
         collectionView.backgroundColor = Background_Color
         collectionView.register(DeviceSwitchesViewCell.classForCoder(), forCellWithReuseIdentifier: "cell")
+        collectionView.register(PJEightKeySwitchesViewCell.self, forCellWithReuseIdentifier: "eightKeyCell")
         collectionView.alwaysBounceVertical = true
         collectionView.dataSource = self
         collectionView.delegate = self
@@ -141,6 +142,13 @@ class DeviceSwitchesViewController: UIViewController {
             make.height.equalTo(SCRYFrom(56))
         }
         
+    }
+
+    private func eightKeySwitchData(for switchData: DeviceSwitchData) -> PJEightKeySwitchData? {
+        if let eightKeySwitch = switchData as? PJEightKeySwitchData {
+            return eightKeySwitch
+        }
+        return PJEightKeySwitchRepository.shared.makeEightKeySwitch(from: switchData)
     }
     
     private func updateDevicesEmptyUI() {
@@ -287,12 +295,8 @@ extension DeviceSwitchesViewController: UICollectionViewDataSource, UICollection
     
     func collectionView(_ collectionView: UICollectionView, cellForItemAt indexPath: IndexPath) -> UICollectionViewCell {
    
-        let cell = collectionView.dequeueReusableCell(withReuseIdentifier: "cell", for: indexPath) as! DeviceSwitchesViewCell
         let switche = MeshNetworkManager.instance.switchs[indexPath.item]
-        cell.switche = switche
-        cell.deleteBtn.isHidden = !isEdit
-        // 删除
-        cell.deleteActionCallback = {[weak self] switche in
+        let deleteAction: (DeviceSwitchData) -> Void = { [weak self] switche in
             guard let self = self else { return }
             
             SRAlertView(title: "notification".localizedString, message: "switchs_delete_message".localizedString, actions: [.cancelAction, SRAlertAction(title: "confirm".localizedString, style: .destructive, actionHandler: {[weak self] _ in
@@ -305,8 +309,19 @@ extension DeviceSwitchesViewController: UICollectionViewDataSource, UICollection
                 }
                 self?.deleteSwitchData(switche)
             })]).show()
-//            self.updateEditUI()
         }
+
+        if let eightKeySwitch = eightKeySwitchData(for: switche) {
+            let cell = collectionView.dequeueReusableCell(withReuseIdentifier: "eightKeyCell", for: indexPath) as! PJEightKeySwitchesViewCell
+            cell.configure(with: switche, eightKeySwitch: eightKeySwitch, editing: isEdit)
+            cell.deleteActionCallback = deleteAction
+            return cell
+        }
+
+        let cell = collectionView.dequeueReusableCell(withReuseIdentifier: "cell", for: indexPath) as! DeviceSwitchesViewCell
+        cell.switche = switche
+        cell.deleteBtn.isHidden = !isEdit
+        cell.deleteActionCallback = deleteAction
         return cell
     }
     

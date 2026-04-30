@@ -490,6 +490,7 @@ extension SpaceData {
         Schedule.initDatabase()
 //        GroupSwitch.initDatabase()
         DeviceSwitchData.initDatabase()
+        PJEightKeySwitchRepository.initDatabase()
         MeshDistributionData.initDatabase()
         DeviceDongleData.initDatabase()
         DeviceEmerFireData.initDatabase()
