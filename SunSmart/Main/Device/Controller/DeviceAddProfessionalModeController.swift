@@ -316,12 +316,12 @@ class DeviceAddProfessionalModeController: UIViewController {
                     if !self.candidateDevices.contains(where: { $0.peripheral.identifier.uuidString == newDevice.peripheral.identifier.uuidString }), self.selectRSSIRange.contains(newDevice.rssi.intValue) {
                         switch addMode {
                         case .motionSensing:
-                            if device.triggerActionTypes.contains(.motionSensing) {
+                            if newDevice.triggerActionTypes.contains(.motionSensing) {
                                 self.candidateDevices.append(newDevice)
                                 self.playerNotificationAudio()
                             }
                         case .lightSening:
-                            if device.triggerActionTypes.contains(.lightSensing) {
+                            if newDevice.triggerActionTypes.contains(.lightSensing) {
                                 self.candidateDevices.append(newDevice)
                                 self.playerNotificationAudio()
                             }

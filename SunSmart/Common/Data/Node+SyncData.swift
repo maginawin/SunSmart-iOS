@@ -368,7 +368,7 @@ extension Node {
             if syncSchedules.count > 0 {
                 syncDatas.append(.syncSchedules(schedules: syncSchedules))
             }
-            let deleteSchedules = getNodeNeedDeleteSchedules()
+            let deleteSchedules = getNodeNeedDeleteSchedules(group: group)
             if deleteSchedules.count > 0 {
                 syncDatas.append(.deleteSchedules(schedules: deleteSchedules))
             }
@@ -561,7 +561,7 @@ extension Node {
         if syncSchedules.count > 0 {
             return true
         }
-        let deleteSchedules = getNodeNeedDeleteSchedules()
+        let deleteSchedules = getNodeNeedDeleteSchedules(group: group)
         if deleteSchedules.count > 0 {
             return true
         }
@@ -1317,11 +1317,12 @@ extension Node {
     /// - Parameters:
     ///   - schedule: 日程（传入则只获取该日程是否需要删除，不传入则获取所有日程是否有删除）
     /// - Returns: 日程list
-    func getNodeNeedDeleteSchedules(schedule: Schedule? = nil) -> [Schedule] {
+    func getNodeNeedDeleteSchedules(group: Group? = nil, schedule: Schedule? = nil) -> [Schedule] {
         
         guard self.schedulerSetupModel != nil else {
             return []
         }
+        let group = group ?? self.group
 
         var schedules = MeshNetworkManager.instance.schedules
         if schedule != nil {
@@ -1332,7 +1333,7 @@ extension Node {
             // 日程是否关联设备
             let isBindNode = schedule.nodeAddresses.contains(self.primaryUnicastAddress) || schedule.groups.contains(where: { $0.nodes.contains(self) }) || schedule.scene?.info.groups.contains(where: { $0.nodes.contains(self) }) ?? false
             // 判断日程待删除设备中是否存在该设备
-            if !isBindNode, schedule.needDeleteNodes.contains(self) || (self.group != nil && ((groupState == .exitFailure) || (schedule.needDeleteGroups.contains(self.group!) || schedule.needDeleteScenes.contains(where: { scene in scene.info.groups.contains(self.group!) })))) {
+            if !isBindNode, schedule.needDeleteNodes.contains(self) || (group != nil && ((groupState == .exitFailure) || (schedule.needDeleteGroups.contains(group!) || schedule.needDeleteScenes.contains(where: { scene in scene.info.groups.contains(group!) })))) {
                 // 判断日程数据是否存在
                 if self.schedulerActions[schedule.id] != nil {
                     return true
