@@ -32,4 +32,22 @@ enum PJEightKeySwitchStatus: Int, CaseIterable {
             return "eight_key_switch_bound_enabled"
         }
     }
+
+    var needsDashedBorder: Bool {
+        switch self {
+        case .unboundEnabled, .unboundDisabled:
+            return true
+        default:
+            return false
+        }
+    }
+
+    var needsDimmedBackground: Bool {
+        switch self {
+        case .boundDisabled, .unboundDisabled:
+            return true
+        default:
+            return false
+        }
+    }
 }

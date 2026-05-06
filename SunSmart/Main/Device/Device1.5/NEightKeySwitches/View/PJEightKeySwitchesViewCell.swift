@@ -12,9 +12,10 @@ final class PJEightKeySwitchesViewCell: UICollectionViewCell {
     var deleteActionCallback: ((DeviceSwitchData) -> Void)?
 
     private(set) var switchData: DeviceSwitchData?
+    private var currentStatus: PJEightKeySwitchStatus?
 
     private lazy var iconImageView: UIImageView = {
-        let imageView = UIImageView(image: UIImage(named: "BatteryPowersw_device"))
+        let imageView = UIImageView(image: UIImage(named: "eight_key_switch_bound_enabled"))
         imageView.contentMode = .scaleAspectFit
         return imageView
     }()
@@ -35,7 +36,7 @@ final class PJEightKeySwitchesViewCell: UICollectionViewCell {
     func configure(with switchData: DeviceSwitchData, eightKeySwitch: PJEightKeySwitchData, editing: Bool) {
         self.switchData = switchData
         nameLabel.text = switchData.name
-        iconImageView.image = UIImage(named: eightKeySwitch.displayIconAssetName) ?? UIImage(named: "BatteryPowersw_device")
+        iconImageView.image = UIImage(named: eightKeySwitch.displayIconAssetName) ?? UIImage(named: "eight_key_switch_bound_enabled")
         deleteBtn.isHidden = !editing
         applyStatus(eightKeySwitch.displayStatus)
     }
@@ -75,21 +76,31 @@ final class PJEightKeySwitchesViewCell: UICollectionViewCell {
 
     override func layoutSubviews() {
         super.layoutSubviews()
-        layer.cornerRadius = frame.height * 0.5
+        layer.cornerRadius = bounds.height * 0.5
+        updateStatusAppearance()
     }
 
     private func applyStatus(_ status: PJEightKeySwitchStatus) {
-        switch status {
-        case .unboundEnabled, .unboundDisabled:
+        currentStatus = status
+        updateStatusAppearance()
+    }
+
+    private func updateStatusAppearance() {
+        guard let currentStatus else { return }
+
+        if bounds.height > 0 {
+            layer.cornerRadius = bounds.height * 0.5
+        }
+
+        if currentStatus.needsDashedBorder {
             addDashedBorder()
-        default:
+        } else {
             deleteDashedBorder()
         }
 
-        switch status {
-        case .boundDisabled, .unboundDisabled:
+        if currentStatus.needsDimmedBackground {
             backgroundColor = RGB(226, 226, 226)
-        default:
+        } else {
             backgroundColor = .white
         }
     }

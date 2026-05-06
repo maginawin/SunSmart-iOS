@@ -89,9 +89,10 @@ final class PJEightKeySwitchMoreSettingsController: UIViewController {
         title = "neightkeyswitches_more_settings".localizedString
         navigationItem.rightBarButtonItem = UIBarButtonItem(
             title: "done".localizedString.uppercased(),
-            style: .done,
+            color: RGB(0, 0, 0, 0.85),
+            font: UIFont.systemFont(ofSize: 16, weight: .light),
             target: self,
-            action: #selector(doneAction)
+            sel: #selector(doneAction)
         )
     }
 
@@ -132,8 +133,8 @@ final class PJEightKeySwitchMoreSettingsController: UIViewController {
         periodicCardView.addSubview(periodicSliderView)
         periodicSliderView.snp.makeConstraints { make in
             make.top.equalTo(periodicDescriptionLabel.snp.bottom).offset(SCRYFrom(20))
-            make.left.equalTo(SCRXFrom(6))
-            make.right.equalTo(SCRXFrom(-6))
+            make.left.equalTo(SCRXFrom(16))
+            make.right.equalTo(SCRXFrom(-16))
             make.height.equalTo(SCRYFrom(72))
             make.bottom.equalTo(SCRYFrom(-18))
         }

@@ -276,6 +276,22 @@ class DeviceSwitchesViewController: UIViewController {
         let point = sender.location(in: collectionView)
         if let indexPath = collectionView.indexPathForItem(at: point), indexPath.item < MeshNetworkManager.instance.switchs.count {
             let switche = MeshNetworkManager.instance.switchs[indexPath.item]
+            if let eightKeySwitch = eightKeySwitchData(for: switche) {
+                let vc = PJPreAddEightKeySwitchesVC(space: space, switchData: eightKeySwitch)
+                vc.deleteSwitchAction = { [weak self] switchData in
+                    guard let self else { return }
+                    guard !switchData.getNeedSyncDatas(deleteSwitch: true).isEmpty() else {
+                        self.deleteCache(switchData: switchData)
+                        return
+                    }
+                    self.deleteSwitchData(switchData)
+                }
+                if isIPad {
+                    vc.preferredContentSize = iPadPreferredContentSize
+                }
+                present(NavigationViewController(rootViewController: vc), animated: true)
+                return
+            }
             let vc = DeviceSwitchViewController(space: self.space,switchData: switche)
             vc.editable = space.deviceOperates.contains(.edit)
             if isIPad {
@@ -336,6 +352,22 @@ extension DeviceSwitchesViewController: UICollectionViewDataSource, UICollection
             return
         }
         let switche = MeshNetworkManager.instance.switchs[indexPath.item]
+        if let eightKeySwitch = eightKeySwitchData(for: switche) {
+            let vc = PJEightKeySwitchMonitorVC(space: space, switchData: eightKeySwitch)
+            vc.deleteSwitchAction = { [weak self] switchData in
+                guard let self else { return }
+                guard !switchData.getNeedSyncDatas(deleteSwitch: true).isEmpty() else {
+                    self.deleteCache(switchData: switchData)
+                    return
+                }
+                self.deleteSwitchData(switchData)
+            }
+            if isIPad {
+                vc.preferredContentSize = iPadPreferredContentSize
+            }
+            present(NavigationViewController(rootViewController: vc), animated: true)
+            return
+        }
         let vc = DeviceSwitchViewController(space: self.space,switchData: switche)
         vc.editable = space.deviceOperates.contains(.edit)
         if isIPad {

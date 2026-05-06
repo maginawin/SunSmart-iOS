@@ -30,6 +30,15 @@ struct PJEightKeySwitchPanelDefinition: Equatable {
                 return "Brightness Panel (8 key)"
             }
         }
+
+        var activationInstruction: String {
+            switch self {
+            case .scene8Key:
+                return "neightkeyswitches_activation_instruction_scene".localizedString
+            case .brightness8Key:
+                return "neightkeyswitches_activation_instruction_brightness".localizedString
+            }
+        }
     }
 
     enum ActionKind: Equatable {

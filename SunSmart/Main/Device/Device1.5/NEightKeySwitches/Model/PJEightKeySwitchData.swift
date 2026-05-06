@@ -78,6 +78,6 @@ final class PJEightKeySwitchData: DeviceSwitchData {
     }
 
     var displayIconAssetName: String {
-        UIImage(named: displayStatus.iconAssetName) != nil ? displayStatus.iconAssetName : "BatteryPowersw_device"
+        UIImage(named: displayStatus.iconAssetName) != nil ? displayStatus.iconAssetName : "eight_key_switch_bound_enabled"
     }
 }
