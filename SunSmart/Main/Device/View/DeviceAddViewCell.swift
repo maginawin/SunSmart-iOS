@@ -238,8 +238,6 @@ class DeviceAddViewCell: UITableViewCell {
     }
     
     @objc private func deviceActivityFinish() {
-        device.triggerActionTypes.removeAll()
-        
         activityImageView.isHidden = true
     }
     
