@@ -268,8 +268,13 @@ extension Schedule {
         }
         var messageHandles: [MeshMessageHandle] = []
         if delete {
+            let deleteEntry = SchedulerRegistryEntry()
+            #if DEBUG
+            let payloadHex = SchedulerRegistryEntry.marshal(index: UInt8(self.id), entry: deleteEntry).map { String(format: "%02X", $0) }.joined()
+            print("ScheduleSend delete node:\(node.primaryUnicastAddress.hex) id:\(self.id) payload:\(payloadHex)")
+            #endif
             
-            let message = SchedulerActionSet(index: UInt8(self.id), entry: SchedulerRegistryEntry())
+            let message = SchedulerActionSet(index: UInt8(self.id), entry: deleteEntry)
             // Auto
             if self.action == .turnOn, node.group != nil, let lightLCSchedulerSetupModel = node.lightLCSchedulerSetupModel {
                 messageHandles.append(MeshMessageHandle(message: message, model: lightLCSchedulerSetupModel))
@@ -283,7 +288,12 @@ extension Schedule {
                 messageHandles.append(MeshMessageHandle(message: Node.setLocalTimeMessage(), model: timeModel))
             }
             // 设置日程
-            let message = SchedulerActionSet(index: UInt8(self.id), entry: self.schedulerEntry)
+            let entry = self.schedulerEntry
+            #if DEBUG
+            let payloadHex = SchedulerRegistryEntry.marshal(index: UInt8(self.id), entry: entry).map { String(format: "%02X", $0) }.joined()
+            print("ScheduleSend set node:\(node.primaryUnicastAddress.hex) id:\(self.id) enabled:\(self.enabled) hour:\(self.hour) minute:\(self.minute) weekDays:\(self.weekDays.count) action:\(self.action.rawValue) payload:\(payloadHex)")
+            #endif
+            let message = SchedulerActionSet(index: UInt8(self.id), entry: entry)
             
             // Auto
             if self.action == .turnOn, node.group != nil, let lightLCSchedulerSetupModel = node.lightLCSchedulerSetupModel {
