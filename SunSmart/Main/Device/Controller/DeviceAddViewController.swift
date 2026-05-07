@@ -74,6 +74,8 @@ class DeviceAddViewController: WMPageController {
     var appointGroup: Group?
     /// 外部传入指定dognle设备绑定该到dognle数据
     var forceBindToDongle: DeviceDongleData?
+    /// Device1.5 注入的通用添加限制策略，不承载具体业务分支。
+    var addBehavior: PJDevicesAddBehavior?
     /// 是否添加设备中
     var addingDevice: Bool = false
     
@@ -213,6 +215,8 @@ extension DeviceAddViewController {
             let vc = DeviceAddClassicModeController(space: space)
             vc.appointGroup = appointGroup
             vc.forceBindToDongle = forceBindToDongle
+            // 仅透传通用限制规则，默认老业务行为保持不变。
+            vc.addBehavior = addBehavior
             vc.deviceAddCallback = {[weak self] nodes in
                 guard let self = self else { return }
                 self.addSuccessNodes.append(contentsOf: nodes)
@@ -227,6 +231,8 @@ extension DeviceAddViewController {
             let vc = DeviceAddProfessionalModeController(space: space)
             vc.appointGroup = appointGroup
             vc.forceBindToDongle = forceBindToDongle
+            // 仅透传通用限制规则，默认老业务行为保持不变。
+            vc.addBehavior = addBehavior
             vc.deviceAddCallback = {[weak self] nodes in
                 guard let self = self else { return }
                 self.addSuccessNodes.append(contentsOf: nodes)
@@ -277,10 +283,10 @@ extension DeviceAddViewController: CustomSegmentedControlDelegate,UIAdaptivePres
     func segmentedControl(_ segmentedControl: CustomSegmentedControl, didSelectedItem index: Int) {
         self.selectIndex = Int32(index)
         stopScan()
-        //从火警那边进来添加设备v1.5
-        if(isEmerFireAlarm){
-            cct(index: index)
-        }
+//        //从火警那边进来添加设备v1.5
+//        if(isEmerFireAlarm){
+//            cct(index: index)
+//        }
     }
     //共用条件
     func cct(index: Int){

@@ -59,6 +59,8 @@ class DeviceAddClassicModeController: UIViewController {
     private var bindToDongle: DeviceDongleData?
     /// 外部传入指定dognle设备绑定该到dognle数据
     var forceBindToDongle: DeviceDongleData?
+    /// Device1.5 注入的通用添加限制策略，不改变默认老业务流程。
+    var addBehavior: PJDevicesAddBehavior?
     /// 已存在的dognle数据list
     private var dongles: [DeviceDongleData] = []
     
@@ -106,8 +108,104 @@ class DeviceAddClassicModeController: UIViewController {
         if forceBindToDongle != nil {
             showDeviceTypes = [.dongle, .unknown]
             categoryView.selectItem(at: 3)
+        } else if let initialIndex = initialCategoryIndex {
+            showDeviceTypes = deviceTypes(forCategoryIndex: initialIndex)
+            categoryView.selectItem(at: initialIndex)
         }
         
+    }
+
+    private var initialCategoryIndex: Int? {
+        guard let allowedType = addBehavior?.allowedTypes.first else {
+            return nil
+        }
+        switch allowedType {
+        case .lights:
+            return 0
+        case .switches:
+            return 1
+        case .sensors:
+            return 2
+        case .others:
+            return 3
+        }
+    }
+
+    private func deviceTypes(forCategoryIndex index: Int) -> [Node.DeviceType] {
+        switch index {
+        case 0:
+            return [.light]
+        case 1:
+            return [.switches]
+        case 2:
+            return [.sensor]
+        case 3:
+            return [.dongle, .gateway, .unknown]
+        default:
+            return [.light]
+        }
+    }
+
+    private func showAddBehaviorTip() {
+        guard let tip = addBehavior?.forbiddenSelectionTip, !tip.isEmpty else {
+            return
+        }
+        XWHUDManager.showTipHUD(tip, isLineFeed: true)
+    }
+
+    private func showInvalidDeviceTypeTip() {
+        guard let tip = addBehavior?.forbiddenDeviceTypeTip, !tip.isEmpty else {
+            return
+        }
+        XWHUDManager.showTipHUD(tip, isLineFeed: true)
+    }
+
+    private func isBlockedDeviceType(_ deviceType: Node.DeviceType) -> Bool {
+        addBehavior?.blockedDeviceTypes.contains(deviceType) == true
+    }
+
+    private func applySelectableState(to device: ProvisioningDevice) {
+        guard addBehavior != nil else {
+            return
+        }
+        if device.selectedState == .selected || device.addState == .wait || device.addState == .adding || device.addState == .addConnecting || device.addState == .success {
+            return
+        }
+        // 这里仅收敛外部注入的禁选设备类型，不改变默认展示与 identify 行为。
+        device.selectedState = isBlockedDeviceType(device.deviceType) ? .disabled : .unselected
+    }
+
+    private func shouldAllowTargetSelection() -> Bool {
+        guard addBehavior?.allowsTargetSelection == false else {
+            return true
+        }
+        return false
+    }
+
+    private func shouldAllowCategorySelection(at index: Int) -> Bool {
+        guard let addBehavior else {
+            return true
+        }
+        if addBehavior.allowsCategorySelection {
+            return true
+        }
+        guard let initialCategoryIndex else {
+            return false
+        }
+        return index == initialCategoryIndex
+    }
+
+    private func applySingleSelectionIfNeeded(for device: ProvisioningDevice) {
+        guard addBehavior?.selectionMode == .single, device.selectedState == .selected else {
+            return
+        }
+        // 单选模式下仅保留当前设备的选中态，避免修改默认多选流程。
+        scanDevices.forEach {
+            guard $0.peripheral.identifier != device.peripheral.identifier else { return }
+            if $0.selectedState == .selected {
+                $0.selectedState = .unselected
+            }
+        }
     }
     
     override func viewDidDisappear(_ animated: Bool) {
@@ -222,7 +320,9 @@ class DeviceAddClassicModeController: UIViewController {
                 if let index = self.scanDevices.firstIndex(where: { $0.peripheral.identifier.uuidString == device.peripheral.identifier.uuidString }) {
                     let cacheDevice = self.scanDevices[index]
                     cacheDevice.updateData(device: device)
+                    self.applySelectableState(to: cacheDevice)
                 }else {
+                    self.applySelectableState(to: device)
                     self.scanDevices.append(device)
                     
                     DispatchQueue.main.async {
@@ -381,6 +481,15 @@ class DeviceAddClassicModeController: UIViewController {
     
     /// 全选/取消全选
     @objc private func selectAllBtnClick(sender: UIButton) {
+        // 单选模式下不进入全选逻辑，保持关联页一次只选一个设备。
+        guard addBehavior?.selectionMode != .single else {
+            let canAddDevice = showDevices.first(where: { $0.selectedState != .disabled && !($0.addState == .wait || $0.addState == .adding || $0.addState == .addConnecting) })
+            showDevices.forEach { $0.selectedState = .unselected }
+            canAddDevice?.selectedState = .selected
+            updateFooterViewState()
+            tableView.reloadData()
+            return
+        }
         
         // space只能添加200个设备
         let existNodeCount = MeshNetworkManager.instance.realNodes.count + showDevices.filter({ $0.addState == .wait || $0.addState == .adding || $0.addState == .addConnecting }).count
@@ -460,6 +569,11 @@ class DeviceAddClassicModeController: UIViewController {
     @objc private func addDeviceTargetBtnClick(sender: UIButton) {
         
         if state == .adding {
+            return
+        }
+        // 这里仅执行外部注入的通用限制，不引入具体设备业务判断。
+        guard shouldAllowTargetSelection() else {
+            showAddBehaviorTip()
             return
         }
         
@@ -1273,6 +1387,11 @@ extension DeviceAddClassicModeController: WMMenuViewDataSource, WMMenuViewDelega
     }
     
     func menuView(_ menu: WMMenuView!, shouldSelesctedIndex index: Int) -> Bool {
+        // 分类点击统一走限制策略，默认仍按老业务逻辑执行。
+        guard shouldAllowCategorySelection(at: index) else {
+            showAddBehaviorTip()
+            return false
+        }
         if forceBindToDongle != nil && index != 3 {
             XWHUDManager.showTipHUD("dongle_cannot_select_message".localizedString, isLineFeed: true)
             return false
@@ -1295,18 +1414,7 @@ extension DeviceAddClassicModeController: WMMenuViewDataSource, WMMenuViewDelega
         
         
         
-        switch index {
-        case 0:
-            showDeviceTypes = [.light]
-        case 1:
-            showDeviceTypes = [.switches]
-        case 2:
-            showDeviceTypes = [.sensor]
-        case 3:
-            showDeviceTypes = [.dongle, .gateway, .unknown]
-        default:
-            showDeviceTypes = [.light]
-        }
+        showDeviceTypes = deviceTypes(forCategoryIndex: index)
         
 //        let filterRSSI = Int(-rssiSlider.value)
 //        var showDevices: [ProvisioningDevice] = []
@@ -1314,6 +1422,7 @@ extension DeviceAddClassicModeController: WMMenuViewDataSource, WMMenuViewDelega
 //        if filterRSSI == filterRSSIRange.lowerBound {
 //            showDevices = scanDevices
 //        }else {
+           scanDevices.forEach { applySelectableState(to: $0) }
            let showDevices = scanDevices.filter({ selectRSSIRange.contains($0.rssi.intValue) })
 //        }
         self.showDevices = showDevices.filter({ showDeviceTypes.contains($0.deviceType) })
@@ -1364,6 +1473,10 @@ extension DeviceAddClassicModeController: UITableViewDataSource, UITableViewDele
     func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
         
         let device = showDevices[indexPath.row]
+        if device.selectedState == .disabled {
+            showInvalidDeviceTypeTip()
+            return
+        }
         guard device.selectedState == .unselected || device.selectedState == .selected else {
             return
         }
@@ -1378,9 +1491,12 @@ extension DeviceAddClassicModeController: UITableViewDataSource, UITableViewDele
         }else {
             device.selectedState = .unselected
         }
+        // 单选模式下清理其它设备选中态，保持默认点击行为不变。
+        applySingleSelectionIfNeeded(for: device)
         if device.addState == .failed {
             device.addState = .none
             device.selectedState = .selected
+            applySingleSelectionIfNeeded(for: device)
             tableView.reloadRows(at: [indexPath], with: .none)
             updateUIState()
 //            let successCount = scanDevices.filter({ $0.addState == .success }).count
@@ -1425,6 +1541,10 @@ extension DeviceAddClassicModeController: DeviceAddViewCellDelegate {
     
     /// 设备添加点击事件回调
     func cell(_ cell: DeviceAddViewCell, deviceAdd device: ProvisioningDevice) {
+        if device.selectedState == .disabled {
+            showInvalidDeviceTypeTip()
+            return
+        }
         if state == .scanning {
             XWHUDManager.showTipHUD(inView: "device_scaning_disable_add".localizedString)
             return

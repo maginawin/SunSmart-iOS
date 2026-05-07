@@ -120,7 +120,24 @@ final class PJPreAddEightKeySwitchesVC: UIViewController {
     }
     
     @objc private func linkAction() {
-        XWHUDManager.showTipHUD("link", isLineFeed: false)
+        let context = PJDevicesAddEntryContext(
+            source: .eightKeySwitch,
+            space: viewModel.space,
+            title: "add_device".localizedString,
+            appointGroup: nil,
+            forceBindToDongle: nil,
+            addBehavior: .init(
+                allowsTargetSelection: false,
+                allowsCategorySelection: false,
+                allowedTypes: [.switches],
+                blockedDeviceTypes: [],
+                selectionMode: .single,
+                forbiddenSelectionTip: "You can't choose other devices.",
+                forbiddenDeviceTypeTip: "Cannot add, type mismatch"
+            )
+        )
+        let controller = PJDevicesAddFlowFactory.make(context: context)
+        navigationController?.pushViewController(controller, animated: true)
     }
     
     @objc private func moreSettingsAction() {

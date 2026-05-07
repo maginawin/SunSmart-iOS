@@ -91,11 +91,42 @@ final class LinkedEmerFireEditVC: UIViewController {
             make.bottom.equalTo(linkeBt.snp.top).offset(-SCRYFrom(8))
         }
         linkeBt.createAction = { [weak self] in
-            guard let self else { return }
-            let controller = EmerFireAlarmMonitorVC(space: self.space, config: self.state.makeConfig())
-            let navigationController = NavigationViewController(rootViewController: controller)
-            self.present(navigationController, animated: true)
+            self?.handleBottomAction()
         }
+    }
+
+    private func handleBottomAction() {
+        if isLinkedToRealDevice {
+            let controller = EmerFireAlarmMonitorVC(space: space, config: state.makeConfig())
+            let navigationController = NavigationViewController(rootViewController: controller)
+            present(navigationController, animated: true)
+            return
+        }
+
+        guard let space else {
+            XWHUDManager.showTipHUD("failed".localizedString, isLineFeed: false)
+            return
+        }
+
+        let context = PJDevicesAddEntryContext(
+            source: .fireAlarm,
+            space: space,
+            title: "add_device".localizedString,
+            appointGroup: nil,
+            forceBindToDongle: nil,
+            addBehavior: .init(
+                allowsTargetSelection: false,
+                allowsCategorySelection: false,
+                allowedTypes: [.others],
+                blockedDeviceTypes: [.dongle],
+                selectionMode: .single,
+                forbiddenSelectionTip: "You can't choose other devices.",
+                forbiddenDeviceTypeTip: "You can't choose this type of device."
+            )
+        )
+        let controller = PJDevicesAddFlowFactory.make(context: context)
+        let navigationController = NavigationViewController(rootViewController: controller)
+        present(navigationController, animated: true)
     }
 
     private func setupNavigation() {

@@ -312,7 +312,7 @@ final class PJNGatewayViewController: UIViewController, DeviceProtocol {
     }
 
     private func showWiFiDFU() {
-        let controller = BleFirmwareUpdateViewController(site: pageViewModel.site, space: nil, nodes: [pageViewModel.node])
+        let controller = PJNGatewayWiFiDFUViewController(node: pageViewModel.node)
         if isIPad {
             controller.preferredContentSize = iPadPreferredContentSize
         }
