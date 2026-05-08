@@ -60,8 +60,8 @@ final class LinkedEmerFireEditState {
     var powerLossSendCount = 2
 
     var fireAlarmBrightness = 100
-    var fireAlarmResuming = 0
-    var fireAlarmSendCount = 0
+    var fireAlarmResuming = 2
+    var fireAlarmSendCount = 2
 
     convenience init(config: LinkedEmerFireConfig) {
         self.init()
@@ -85,6 +85,7 @@ final class LinkedEmerFireEditState {
         fireAlarmBrightness = config.fireAlarmBrightness
         fireAlarmResuming = config.fireAlarmResuming
         fireAlarmSendCount = config.fireAlarmSendCount
+        normalizeStepperValues()
     }
 
     func updateEmergencySelection(for row: LinkedEmerFireEditRow, value: Bool) {
@@ -106,6 +107,11 @@ final class LinkedEmerFireEditState {
             enablePowerLossEmergency = true
             enableFireAlarmEmergency = false
         }
+    }
+
+    private func normalizeStepperValues() {
+        powerLossSendCount = min(max(powerLossSendCount, 1), 5)
+        fireAlarmSendCount = min(max(fireAlarmSendCount, 1), 5)
     }
 
     func groupText(for row: LinkedEmerFireEditRow) -> String {
@@ -198,13 +204,13 @@ final class LinkedEmerFireEditState {
         case .powerLossResuming:
             powerLossResuming = min(max(powerLossResuming + delta, 0), 10)
         case .powerLossSendCount:
-            powerLossSendCount = min(max(powerLossSendCount + delta, 0), 5)
+            powerLossSendCount = min(max(powerLossSendCount + delta, 1), 5)
         case .fireAlarmBrightness:
             fireAlarmBrightness = min(max(fireAlarmBrightness + delta, 0), 100)
         case .fireAlarmResuming:
-            fireAlarmResuming = min(max(fireAlarmResuming + delta, 0), 10)
+            fireAlarmResuming = min(max(fireAlarmResuming + delta, 0), 120)
         case .fireAlarmSendCount:
-            fireAlarmSendCount = min(max(fireAlarmSendCount + delta, 0), 5)
+            fireAlarmSendCount = min(max(fireAlarmSendCount + delta, 1), 5)
         default:
             break
         }
@@ -217,13 +223,13 @@ final class LinkedEmerFireEditState {
         case .powerLossResuming:
             powerLossResuming = min(max(value, 0), 10)
         case .powerLossSendCount:
-            powerLossSendCount = min(max(value, 0), 5)
+            powerLossSendCount = min(max(value, 1), 5)
         case .fireAlarmBrightness:
             fireAlarmBrightness = min(max(value, 0), 100)
         case .fireAlarmResuming:
-            fireAlarmResuming = min(max(value, 0), 10)
+            fireAlarmResuming = min(max(value, 0), 120)
         case .fireAlarmSendCount:
-            fireAlarmSendCount = min(max(value, 0), 5)
+            fireAlarmSendCount = min(max(value, 1), 5)
         default:
             break
         }
@@ -236,13 +242,13 @@ final class LinkedEmerFireEditState {
         case .powerLossResuming:
             return .init(title: "linked_resuming".localizedString, value: powerLossResuming, range: 0...10, suffix: "s")
         case .powerLossSendCount:
-            return .init(title: "linked_send_count_per_5_seconds".localizedString, value: powerLossSendCount, range: 0...5, suffix: "")
+            return .init(title: "linked_send_count_per_5_seconds".localizedString, value: powerLossSendCount, range: 1...5, suffix: "")
         case .fireAlarmBrightness:
             return .init(title: "linked_set_brightness_to".localizedString, value: fireAlarmBrightness, range: 0...100, suffix: "%")
         case .fireAlarmResuming:
-            return .init(title: "linked_resuming".localizedString, value: fireAlarmResuming, range: 0...10, suffix: "s")
+            return .init(title: "linked_resuming".localizedString, value: fireAlarmResuming, range: 0...120, suffix: "s")
         case .fireAlarmSendCount:
-            return .init(title: "linked_send_count_per_5_seconds".localizedString, value: fireAlarmSendCount, range: 0...5, suffix: "")
+            return .init(title: "linked_send_count_per_5_seconds".localizedString, value: fireAlarmSendCount, range: 1...5, suffix: "")
         default:
             return .init(title: "", value: 0, range: 0...0, suffix: "")
         }

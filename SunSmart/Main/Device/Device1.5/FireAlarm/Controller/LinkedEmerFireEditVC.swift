@@ -13,6 +13,7 @@ final class LinkedEmerFireEditVC: UIViewController {
     private let viewModel: LinkedEmerFireEditViewModel
     private let isLinkedToRealDevice: Bool
     private let space: SpaceData?
+    private var hasRefreshedInitialTableLayout = false
     var state: LinkedEmerFireEditState { viewModel.state }
     var editable: Bool {
         get { state.editable }
@@ -58,6 +59,13 @@ final class LinkedEmerFireEditVC: UIViewController {
         super.viewDidLoad()
         setupUI()
         setupNavigation()
+    }
+
+    override func viewDidLayoutSubviews() {
+        super.viewDidLayoutSubviews()
+        guard !hasRefreshedInitialTableLayout else { return }
+        hasRefreshedInitialTableLayout = true
+        tableView.performBatchUpdates(nil)
     }
 
     @objc private func backAction() {
@@ -113,7 +121,6 @@ final class LinkedEmerFireEditVC: UIViewController {
             space: space,
             title: "add_device".localizedString,
             appointGroup: nil,
-            forceBindToDongle: nil,
             addBehavior: .init(
                 allowsTargetSelection: false,
                 allowsCategorySelection: false,

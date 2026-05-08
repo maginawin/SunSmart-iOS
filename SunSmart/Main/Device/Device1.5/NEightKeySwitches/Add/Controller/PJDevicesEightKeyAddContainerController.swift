@@ -26,8 +26,8 @@ final class PJDevicesEightKeyAddContainerController: PJDevicesLegacyContainerCon
         let vc = DeviceAddViewController(space: context.space)
         vc.title = context.title
         vc.appointGroup = context.appointGroup
-        vc.forceBindToDongle = context.forceBindToDongle
         vc.addBehavior = context.addBehavior
+        configureLegacyAddController(vc)
         embedLegacyController(vc)
     }
 }

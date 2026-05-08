@@ -125,7 +125,6 @@ final class PJPreAddEightKeySwitchesVC: UIViewController {
             space: viewModel.space,
             title: "add_device".localizedString,
             appointGroup: nil,
-            forceBindToDongle: nil,
             addBehavior: .init(
                 allowsTargetSelection: false,
                 allowsCategorySelection: false,
@@ -168,13 +167,17 @@ final class PJPreAddEightKeySwitchesVC: UIViewController {
     }
     
     private func selectGroupsAction() {
-        let vc = SwitchSelectGroupsViewController(
-            groups: MeshNetworkManager.instance.groups,
-            selectGroups: viewModel.selectedGroups
-        )
-        vc.selectGroupsCallback = { [weak self] groups in
+        let vc = PJDeviceGroupSelectionViewController(
+            context: .init(
+                title: "select_group(s)".localizedString,
+                groups: MeshNetworkManager.instance.groups,
+                selectedGroupAddresses: viewModel.selectedGroups.map(\.address.address),
+                disabledGroupAddresses: [],
+                disabledSelectionTip: ""
+            )
+        ) { [weak self] addresses in
             guard let self else { return }
-            self.viewModel.selectedGroups = groups
+            self.viewModel.selectedGroups = MeshNetworkManager.instance.groups.filter { addresses.contains($0.address.address) }
             self.editorView.groupRowView.setValue(self.viewModel.groupTitle)
             self.updateSaveBarButtonState()
         }

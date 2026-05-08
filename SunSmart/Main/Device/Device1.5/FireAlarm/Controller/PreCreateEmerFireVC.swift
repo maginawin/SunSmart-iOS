@@ -138,11 +138,26 @@ extension PreCreateEmerFireVC: UITableViewDataSource, UITableViewDelegate {
         case .reportStatus:
             if viewModel.gateWayData == nil {
                 let cell: EmerFireStatusTextCell = tableView.dequeueReusableCell(for: indexPath)
+                let statusText = "Waiting for setup"
+                let statusColor = RGB(247, 99, 95)
+                let paragraphStyle = NSMutableParagraphStyle()
+                let attributedStatusText = NSMutableAttributedString(
+                    string: statusText,
+                    attributes: [
+                        .foregroundColor: statusColor,
+                        .underlineStyle: NSUnderlineStyle.single.rawValue,
+                        .paragraphStyle: paragraphStyle
+                    ]
+                )
                 cell.configure(
                     leftText: "Report To Gateway".localizedString,
-                    rightText: "Waiting for setup",
-                    rightTextColor: RGB(247, 99, 95)
+                    rightText: statusText,
+                    rightAttributedText: attributedStatusText,
+                    rightTextColor: statusColor
                 )
+                cell.rightTapAction = {
+                    XWHUDManager.showTipHUD(statusText, isLineFeed: false)
+                }
                 return cell
             }
 

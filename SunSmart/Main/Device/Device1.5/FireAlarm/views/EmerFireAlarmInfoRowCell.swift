@@ -19,13 +19,20 @@ final class EmerFireAlarmInfoRowCell: UITableViewCell {
 
     private let titleLabel: UILabel = {
         let label = UILabel(text: nil, textColor: Title_Color, fontSize: 15, fontWeight: .light)
+        label.numberOfLines = 0
+        label.lineBreakMode = .byWordWrapping
+        label.setContentCompressionResistancePriority(.required, for: .vertical)
+        label.setContentHuggingPriority(.required, for: .vertical)
         return label
     }()
 
     private let valueLabel: UILabel = {
         let label = UILabel(text: nil, textColor: AssistText_Color, fontSize: 14, fontWeight: .light)
         label.numberOfLines = 0
+        label.lineBreakMode = .byCharWrapping
         label.textAlignment = .right
+        label.setContentCompressionResistancePriority(.required, for: .vertical)
+        label.setContentHuggingPriority(.required, for: .vertical)
         return label
     }()
 
@@ -55,6 +62,14 @@ final class EmerFireAlarmInfoRowCell: UITableViewCell {
 
     required init?(coder: NSCoder) {
         fatalError("init(coder:) has not been implemented")
+    }
+
+    override func layoutSubviews() {
+        super.layoutSubviews()
+        let contentWidth = max(contentView.bounds.width - (Layout.horizontalInset * 2), 0)
+        let halfWidth = max((contentWidth - SCRXFrom(12)) / 2, 0)
+        titleLabel.preferredMaxLayoutWidth = halfWidth
+        valueLabel.preferredMaxLayoutWidth = halfWidth
     }
 
     func configure(
@@ -89,7 +104,7 @@ final class EmerFireAlarmInfoRowCell: UITableViewCell {
         contentView.addSubview(titleLabel)
         titleLabel.snp.makeConstraints { make in
             make.left.equalToSuperview().offset(Layout.horizontalInset)
-            make.centerY.equalToSuperview()
+            make.top.bottom.equalToSuperview().inset(Layout.verticalInset)
         }
 
         contentView.addSubview(valueLabel)

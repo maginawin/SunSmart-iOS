@@ -175,8 +175,8 @@ class DeviceEmerFireData: Copyable {
         powerLossResuming: Int = 2,
         powerLossSendCount: Int = 2,
         fireAlarmBrightness: Int = 100,
-        fireAlarmResuming: Int = 0,
-        fireAlarmSendCount: Int = 0,
+        fireAlarmResuming: Int = 2,
+        fireAlarmSendCount: Int = 2,
         createTime: Int64 = Int64(Date().timeIntervalSince1970),
         lastUpdate: Int64? = nil
     ) {
@@ -197,10 +197,10 @@ class DeviceEmerFireData: Copyable {
         self.fireAlarmGroupAddresses = fireAlarmGroupAddresses
         self.powerLossBrightness = powerLossBrightness
         self.powerLossResuming = powerLossResuming
-        self.powerLossSendCount = powerLossSendCount
+        self.powerLossSendCount = min(max(powerLossSendCount, 1), 5)
         self.fireAlarmBrightness = fireAlarmBrightness
         self.fireAlarmResuming = fireAlarmResuming
-        self.fireAlarmSendCount = fireAlarmSendCount
+        self.fireAlarmSendCount = min(max(fireAlarmSendCount, 1), 5)
         self.createTime = createTime
         self.lastUpdate = lastUpdate ?? createTime
     }

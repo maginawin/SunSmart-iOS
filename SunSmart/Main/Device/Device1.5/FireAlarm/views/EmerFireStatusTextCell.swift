@@ -21,6 +21,7 @@ final class EmerFireStatusTextCell: UITableViewCell {
     private var topConstraint: Constraint?
     private var bottomConstraint: Constraint?
     private var cardPosition: EmerFireCardPosition = .single
+    var rightTapAction: (() -> Void)?
 
     private lazy var cardView: UIView = {
         let view = UIView()
@@ -33,13 +34,20 @@ final class EmerFireStatusTextCell: UITableViewCell {
     private lazy var leftLabel: UILabel = {
         let label = UILabel(text: nil, textColor: Title_Color, fontSize: 14, fontWeight: .light)
         label.numberOfLines = 0
+        label.lineBreakMode = .byWordWrapping
+        label.setContentCompressionResistancePriority(.required, for: .vertical)
+        label.setContentHuggingPriority(.required, for: .vertical)
         return label
     }()
 
     private lazy var rightLabel: UILabel = {
         let label = UILabel(text: nil, textColor: RGB(247, 99, 95), fontSize: 11, fontWeight: .light)
         label.numberOfLines = 0
+        label.lineBreakMode = .byCharWrapping
         label.textAlignment = .right
+        label.isUserInteractionEnabled = true
+        label.setContentCompressionResistancePriority(.required, for: .vertical)
+        label.setContentHuggingPriority(.required, for: .vertical)
         return label
     }()
 
@@ -52,14 +60,34 @@ final class EmerFireStatusTextCell: UITableViewCell {
         fatalError("init(coder:) has not been implemented")
     }
 
+    override func layoutSubviews() {
+        super.layoutSubviews()
+        let contentWidth = max(cardView.bounds.width - (Layout.contentInset * 2), 0)
+        let halfWidth = max((contentWidth - SCRXFrom(12)) / 2, 0)
+        leftLabel.preferredMaxLayoutWidth = halfWidth
+        rightLabel.preferredMaxLayoutWidth = halfWidth
+    }
+
+    override func prepareForReuse() {
+        super.prepareForReuse()
+        rightTapAction = nil
+        rightLabel.text = nil
+        rightLabel.attributedText = nil
+    }
+
     func configure(
         leftText: String,
         rightText: String,
+        rightAttributedText: NSAttributedString? = nil,
         rightTextColor: UIColor = RGB(247, 99, 95),
         cardPosition: EmerFireCardPosition = .single
     ) {
         leftLabel.text = leftText
-        rightLabel.text = rightText
+        if let rightAttributedText {
+            rightLabel.attributedText = rightAttributedText
+        } else {
+            rightLabel.text = rightText
+        }
         rightLabel.textColor = rightTextColor
         self.cardPosition = cardPosition
         topConstraint?.update(offset: cardPosition.topInset)
@@ -82,6 +110,7 @@ final class EmerFireStatusTextCell: UITableViewCell {
 
         cardView.addSubview(leftLabel)
         cardView.addSubview(rightLabel)
+        rightLabel.addGestureRecognizer(UITapGestureRecognizer(target: self, action: #selector(handleRightTap)))
 
         leftLabel.snp.makeConstraints { make in
             make.left.equalToSuperview().offset(Layout.contentInset)
@@ -100,5 +129,9 @@ final class EmerFireStatusTextCell: UITableViewCell {
     private func applyCardStyle() {
         cardView.layer.cornerRadius = Layout.cardRadius
         cardView.layer.maskedCorners = cardPosition.maskedCorners
+    }
+
+    @objc private func handleRightTap() {
+        rightTapAction?()
     }
 }

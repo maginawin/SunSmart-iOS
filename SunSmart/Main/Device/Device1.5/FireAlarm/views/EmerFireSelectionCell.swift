@@ -48,13 +48,19 @@ final class EmerFireSelectionCell: UITableViewCell {
     private lazy var titleLabel: UILabel = {
         let label = UILabel(text: nil, textColor: Title_Color, fontSize: 14, fontWeight: .light)
         label.numberOfLines = 0
+        label.lineBreakMode = .byWordWrapping
+        label.setContentCompressionResistancePriority(.required, for: .vertical)
+        label.setContentHuggingPriority(.required, for: .vertical)
         return label
     }()
 
     private lazy var valueLabel: UILabel = {
         let label = UILabel(text: nil, textColor: AssistText_Color, fontSize: 11, fontWeight: .light)
         label.numberOfLines = 0
+        label.lineBreakMode = .byCharWrapping
         label.textAlignment = .left
+        label.setContentCompressionResistancePriority(.required, for: .vertical)
+        label.setContentHuggingPriority(.required, for: .vertical)
         return label
     }()
 
@@ -76,6 +82,8 @@ final class EmerFireSelectionCell: UITableViewCell {
 
     override func layoutSubviews() {
         super.layoutSubviews()
+        titleLabel.preferredMaxLayoutWidth = max(cardView.bounds.width - SCRXFrom(32), 0)
+        valueLabel.preferredMaxLayoutWidth = max(valueContainerView.bounds.width - SCRXFrom(39), 0)
         applyCardStyle()
     }
 

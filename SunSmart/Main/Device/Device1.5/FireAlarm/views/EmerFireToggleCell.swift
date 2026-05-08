@@ -39,6 +39,9 @@ final class EmerFireToggleCell: UITableViewCell {
     private lazy var titleLabel: UILabel = {
         let label = UILabel(text: nil, textColor: Title_Color, fontSize: 14, fontWeight: .light)
         label.numberOfLines = 0
+        label.lineBreakMode = .byWordWrapping
+        label.setContentCompressionResistancePriority(.required, for: .vertical)
+        label.setContentHuggingPriority(.required, for: .vertical)
         return label
     }()
 
@@ -65,6 +68,7 @@ final class EmerFireToggleCell: UITableViewCell {
 
     override func layoutSubviews() {
         super.layoutSubviews()
+        titleLabel.preferredMaxLayoutWidth = max(cardView.bounds.width - SCRXFrom(93), 0)
         applyCardStyle()
     }
 

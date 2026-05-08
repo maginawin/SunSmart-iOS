@@ -13,6 +13,5 @@ struct PJDevicesAddEntryContext {
     let space: SpaceData
     let title: String?
     let appointGroup: Group?
-    let forceBindToDongle: DeviceDongleData?
     let addBehavior: PJDevicesAddBehavior?
 }

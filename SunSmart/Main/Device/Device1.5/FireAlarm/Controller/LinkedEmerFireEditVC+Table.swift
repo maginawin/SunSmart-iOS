@@ -67,12 +67,25 @@ extension LinkedEmerFireEditVC: UITableViewDataSource, UITableViewDelegate {
             let cell: EmerFireStatusTextCell = tableView.dequeueReusableCell(for: indexPath)
             let statusText = "Waiting for setup"
             let statusColor = RGB(247, 99, 95)
+            let paragraphStyle = NSMutableParagraphStyle()
+            let attributedStatusText = NSMutableAttributedString(
+                string: statusText,
+                attributes: [
+                    .foregroundColor: statusColor,
+                    .underlineStyle: NSUnderlineStyle.single.rawValue,
+                    .paragraphStyle: paragraphStyle
+                ]
+            )
             cell.configure(
                 leftText: "Report To Gateway".localizedString,
                 rightText: statusText,
+                rightAttributedText: attributedStatusText,
                 rightTextColor: statusColor,
                 cardPosition: cardPosition(for: row)
             )
+            cell.rightTapAction = {
+                XWHUDManager.showTipHUD(statusText, isLineFeed: false)
+            }
             return cell
         case .powerLossEmergency, .fireAlarmEmergency:
             let cell: EmerFireToggleCell = tableView.dequeueReusableCell(for: indexPath)
@@ -131,20 +144,28 @@ extension LinkedEmerFireEditVC: UITableViewDataSource, UITableViewDelegate {
         let row = visibleRows[indexPath.row]
         switch row {
         case .powerLossGroups:
-            let controller = LinkedEmerFireGroupSelectionVC(
-                groups: MeshNetworkManager.instance.groups,
-                selectedGroupAddresses: state.selectedGroupAddresses(for: row),
-                disabledGroupAddresses: state.disabledGroupAddresses(for: row)
+            let controller = PJDeviceGroupSelectionViewController(
+                context: .init(
+                    title: "select_group(s)".localizedString,
+                    groups: MeshNetworkManager.instance.groups,
+                    selectedGroupAddresses: state.selectedGroupAddresses(for: row),
+                    disabledGroupAddresses: state.disabledGroupAddresses(for: row),
+                    disabledSelectionTip: "Not selectable. This group is already associated with a device of the same type."
+                )
             ) { [weak self] addresses in
                 self?.state.updateSelectedGroupAddresses(for: row, addresses: addresses)
                 self?.tableView.reloadRows(at: [indexPath], with: .none)
             }
             navigationController?.pushViewController(controller, animated: true)
         case .fireAlarmGroups:
-            let controller = LinkedEmerFireGroupSelectionVC(
-                groups: MeshNetworkManager.instance.groups,
-                selectedGroupAddresses: state.selectedGroupAddresses(for: row),
-                disabledGroupAddresses: state.disabledGroupAddresses(for: row)
+            let controller = PJDeviceGroupSelectionViewController(
+                context: .init(
+                    title: "select_group(s)".localizedString,
+                    groups: MeshNetworkManager.instance.groups,
+                    selectedGroupAddresses: state.selectedGroupAddresses(for: row),
+                    disabledGroupAddresses: state.disabledGroupAddresses(for: row),
+                    disabledSelectionTip: "Not selectable. This group is already associated with a device of the same type."
+                )
             ) { [weak self] addresses in
                 self?.state.updateSelectedGroupAddresses(for: row, addresses: addresses)
                 self?.tableView.reloadRows(at: [indexPath], with: .none)

@@ -13,6 +13,7 @@ final class EmerFireInfoCell: UITableViewCell {
     private var cardPosition: EmerFireCardPosition = .single
     private var topConstraint: Constraint?
     private var bottomConstraint: Constraint?
+    private var detailHeightConstraint: Constraint?
 
     private enum Layout {
         static let horizontalInset = SCRXFrom(12)
@@ -38,16 +39,24 @@ final class EmerFireInfoCell: UITableViewCell {
     private lazy var titleLabel: UILabel = {
         let label = UILabel(text: nil, textColor: Title_Color, fontSize: 12, fontWeight: .regular)
         label.numberOfLines = 0
+        label.lineBreakMode = .byWordWrapping
+        label.setContentCompressionResistancePriority(.required, for: .vertical)
+        label.setContentHuggingPriority(.required, for: .vertical)
         return label
     }()
 
-    private lazy var detailStackView: UIStackView = {
-        let stackView = UIStackView()
-        stackView.axis = .vertical
-        stackView.spacing = SCRYFrom(6)
-        stackView.alignment = .fill
-        stackView.distribution = .fill
-        return stackView
+    private lazy var detailTextView: UITextView = {
+        let textView = UITextView()
+        textView.backgroundColor = .clear
+        textView.isEditable = false
+        textView.isSelectable = false
+        textView.isScrollEnabled = false
+        textView.textContainerInset = .zero
+        textView.textContainer.lineFragmentPadding = 0
+        textView.textContainer.lineBreakMode = .byCharWrapping
+        textView.setContentCompressionResistancePriority(.required, for: .vertical)
+        textView.setContentHuggingPriority(.required, for: .vertical)
+        return textView
     }()
 
     override init(style: UITableViewCell.CellStyle, reuseIdentifier: String?) {
@@ -61,15 +70,24 @@ final class EmerFireInfoCell: UITableViewCell {
 
     override func layoutSubviews() {
         super.layoutSubviews()
+        let preferredWidth = max(cardView.bounds.width - SCRXFrom(32), 0)
+        if titleLabel.preferredMaxLayoutWidth != preferredWidth {
+            titleLabel.preferredMaxLayoutWidth = preferredWidth
+        }
+        updateDetailTextViewHeightIfNeeded()
         applyCardStyle()
     }
 
     func configure(title: String, lines: [String], cardPosition: EmerFireCardPosition = .single) {
         titleLabel.text = title
-        rebuildDetailStack(lines: lines)
+        detailTextView.attributedText = detailAttributedText(lines: lines)
+        detailTextView.invalidateIntrinsicContentSize()
         self.cardPosition = cardPosition
         topConstraint?.update(offset: cardPosition.topInset)
         bottomConstraint?.update(offset: -cardPosition.bottomInset)
+        setNeedsLayout()
+        layoutIfNeeded()
+        updateDetailTextViewHeightIfNeeded()
         applyCardStyle()
     }
 
@@ -91,11 +109,12 @@ final class EmerFireInfoCell: UITableViewCell {
             make.top.equalToSuperview().offset(SCRYFrom(14))
         }
 
-        cardView.addSubview(detailStackView)
-        detailStackView.snp.makeConstraints { make in
+        cardView.addSubview(detailTextView)
+        detailTextView.snp.makeConstraints { make in
             make.left.right.equalToSuperview().inset(SCRXFrom(16))
             make.top.equalTo(titleLabel.snp.bottom).offset(SCRYFrom(8))
             make.bottom.equalToSuperview().offset(-SCRYFrom(14))
+            detailHeightConstraint = make.height.greaterThanOrEqualTo(0).constraint
         }
 
         cardView.addSubview(separatorView)
@@ -112,16 +131,26 @@ final class EmerFireInfoCell: UITableViewCell {
         separatorView.isHidden = true
     }
 
-    private func rebuildDetailStack(lines: [String]) {
-        detailStackView.arrangedSubviews.forEach { view in
-            detailStackView.removeArrangedSubview(view)
-            view.removeFromSuperview()
-        }
+    private func detailAttributedText(lines: [String]) -> NSAttributedString {
+        let paragraphStyle = NSMutableParagraphStyle()
+        paragraphStyle.lineSpacing = SCRYFrom(4)
+        paragraphStyle.paragraphSpacing = SCRYFrom(6)
+        paragraphStyle.lineBreakMode = .byCharWrapping
 
-        lines.forEach { line in
-            let label = UILabel(text: line, textColor: Message_Color, fontSize: 10, fontWeight: .light)
-            label.numberOfLines = 0
-            detailStackView.addArrangedSubview(label)
-        }
+        return NSAttributedString(
+            string: lines.joined(separator: "\n"),
+            attributes: [
+                .font: UIFont.systemFont(ofSize: FontFit(10), weight: .light),
+                .foregroundColor: Message_Color,
+                .paragraphStyle: paragraphStyle
+            ]
+        )
+    }
+
+    private func updateDetailTextViewHeightIfNeeded() {
+        let targetWidth = max(detailTextView.bounds.width, cardView.bounds.width - SCRXFrom(32))
+        guard targetWidth > 0 else { return }
+        let fittingSize = detailTextView.sizeThatFits(CGSize(width: targetWidth, height: CGFloat.greatestFiniteMagnitude))
+        detailHeightConstraint?.update(offset: ceil(fittingSize.height))
     }
 }

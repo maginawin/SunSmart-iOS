@@ -122,7 +122,7 @@ final class EmerFireStepperCell: UITableViewCell {
     }()
 
     private var progressWidthConstraint: Constraint?
-    private var thumbLeadingConstraint: Constraint?
+    private var thumbCenterXConstraint: Constraint?
 
     override init(style: UITableViewCell.CellStyle, reuseIdentifier: String?) {
         super.init(style: style, reuseIdentifier: reuseIdentifier)
@@ -155,7 +155,12 @@ final class EmerFireStepperCell: UITableViewCell {
         topConstraint?.update(offset: cardPosition.topInset)
         bottomConstraint?.update(offset: -cardPosition.bottomInset)
         applyCardStyle()
+        setNeedsLayout()
+        layoutIfNeeded()
         updateTrackProgress()
+        DispatchQueue.main.async { [weak self] in
+            self?.updateTrackProgress()
+        }
     }
 
     @objc private func handleMinus() {
@@ -179,13 +184,12 @@ final class EmerFireStepperCell: UITableViewCell {
     private func updateTrackProgress() {
         let total = max(currentRange.upperBound - currentRange.lowerBound, 1)
         let progress = CGFloat(currentValue - currentRange.lowerBound) / CGFloat(total)
-        let width = max(sliderContainerView.bounds.width * progress, 0)
+        let trackWidth = trackView.bounds.width
+        guard trackWidth > 0 else { return }
+        let width = max(trackWidth * progress, 0)
         progressWidthConstraint?.update(offset: width)
-        let thumbOffset = min(
-            max(sliderContainerView.bounds.width * progress - Layout.thumbSize / 2, 0),
-            max(sliderContainerView.bounds.width - Layout.thumbSize, 0)
-        )
-        thumbLeadingConstraint?.update(offset: thumbOffset)
+        let thumbCenterOffset = trackWidth * progress
+        thumbCenterXConstraint?.update(offset: thumbCenterOffset)
         layoutIfNeeded()
     }
 
@@ -254,7 +258,7 @@ final class EmerFireStepperCell: UITableViewCell {
 
         sliderContainerView.addSubview(trackView)
         trackView.snp.makeConstraints { make in
-            make.left.right.equalToSuperview()
+            make.left.right.equalToSuperview().inset(Layout.thumbSize / 2)
             make.centerY.equalToSuperview()
             make.height.equalTo(Layout.trackHeight)
         }
@@ -268,7 +272,7 @@ final class EmerFireStepperCell: UITableViewCell {
         sliderContainerView.addSubview(thumbView)
         thumbView.snp.makeConstraints { make in
             make.centerY.equalToSuperview()
-            thumbLeadingConstraint = make.left.equalToSuperview().constraint
+            thumbCenterXConstraint = make.centerX.equalTo(trackView.snp.left).constraint
             make.width.height.equalTo(Layout.thumbSize)
         }
         sliderContainerView.addGestureRecognizer(UIPanGestureRecognizer(target: self, action: #selector(handleThumbPan(_:))))
@@ -289,8 +293,10 @@ final class EmerFireStepperCell: UITableViewCell {
     }
 
     private func updateValue(with locationX: CGFloat) {
-        let clampedX = min(max(locationX, 0), sliderContainerView.bounds.width)
-        let ratio = sliderContainerView.bounds.width > 0 ? clampedX / sliderContainerView.bounds.width : 0
+        let minX = trackView.frame.minX
+        let maxX = trackView.frame.maxX
+        let clampedX = min(max(locationX, minX), maxX)
+        let ratio = trackView.bounds.width > 0 ? (clampedX - minX) / trackView.bounds.width : 0
         let total = max(currentRange.upperBound - currentRange.lowerBound, 1)
         let newValue = currentRange.lowerBound + Int(round(ratio * CGFloat(total)))
         let clampedValue = min(max(newValue, currentRange.lowerBound), currentRange.upperBound)

@@ -1696,7 +1696,7 @@
 "linked_fire_alarm_stop_instruction_3" = "3. The delay in restoration is due to security considerations.";
 "linked_emer_fire_controller_name" = "Emer&Fire Controller 1";
 "linked_set_brightness_to" = "Set Brightness To";
-"linked_resuming" = "Resuming:";
+"linked_resuming" = "Resuming in:";
 "linked_send_count_per_5_seconds" = "Send Count (per 5 seconds):";
 "Associate With Group(s)" = "Associate With Group(s)";
 "Report To Gateway" = "Report To Gateway";

@@ -26,7 +26,7 @@ final class PJDevicesGatewayAddContainerController: PJDevicesLegacyContainerCont
         let vc = DeviceAddViewController(space: context.space)
         vc.title = context.title
         vc.appointGroup = context.appointGroup
-        vc.forceBindToDongle = context.forceBindToDongle
+        configureLegacyAddController(vc)
         embedLegacyController(vc)
     }
 }
