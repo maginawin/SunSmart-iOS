@@ -10,17 +10,17 @@ import NordicSigMeshSDK
 
 let deviceOthersRefreshNotificationName = "switchsRefreshNotification"
 
-class DeviceOthersViewController: UIViewController {
+private enum DeviceOthersListItem {
+    case dongle(DeviceDongleData)
+    case emergencyFireController(DeviceEmerFireData)
+}
 
-    private enum DeviceOtherItem {
-        case dongle(DeviceDongleData)
-        case emerFire(DeviceEmerFireData)
-    }
+class DeviceOthersViewController: UIViewController {
 
     // 设备列表
     private var flowLayout: AlignCenterFlowLayout!
     private var collectionView: UICollectionView!
-    
+
     private var footerView: SpaceFunctionFooterView!
     /// 是否正在编辑
     private var isEdit: Bool = false
@@ -33,7 +33,7 @@ class DeviceOthersViewController: UIViewController {
     private var itemMargin: CGFloat = isIPad ? SCRXFrom(30) : SCRXFrom(16)
     
     let space: SpaceData
-    private var items: [DeviceOtherItem] = []
+    private var showItems: [DeviceOthersListItem] = []
     
     init(space: SpaceData) {
         self.space = space
@@ -81,11 +81,23 @@ class DeviceOthersViewController: UIViewController {
                 self.updateUI()
             }
         }
+        NotificationCenter.default.addObserver(forName: .linkedEmerFireConfigDidChange, object: nil, queue: nil) { [weak self] _ in
+            guard let self = self else { return }
+            if self.view.window != nil {
+                self.updateUI()
+            }
+        }
     }
-    
-    private func updateUI() {
+
+    private func reloadShowItems() {
+        let dongleItems = MeshNetworkManager.instance.dongles.map { DeviceOthersListItem.dongle($0) }
         let emerFireDevices = DeviceEmerFireStore.shared.devices(in: space)
-        items = MeshNetworkManager.instance.dongles.map { .dongle($0) } + emerFireDevices.map { .emerFire($0) }
+        let emergencyItems = emerFireDevices.map { DeviceOthersListItem.emergencyFireController($0) }
+        showItems = dongleItems + emergencyItems
+    }
+
+    private func updateUI() {
+        reloadShowItems()
         footerView.countBtn.setTitle("\(MeshNetworkManager.instance.realNodes.count)/\(space.maxDevicesCount)", for: .normal)
 //        if !space.deviceOperates.contains(.add) {
 //            footerView.addBtn.isEnabled = false
@@ -102,7 +114,7 @@ class DeviceOthersViewController: UIViewController {
     }
     
     private func updateDevicesEmptyUI() {
-        if items.isEmpty {
+        if showItems.isEmpty {
             if collectionView.frame.isEmpty {
                 view.layoutIfNeeded()
             }
@@ -126,18 +138,8 @@ class DeviceOthersViewController: UIViewController {
             deviceName: device.name,
             isSynced: device.isSynced,
             reportToGateway: device.reportToGateway,
-            enablePowerLossEmergency: device.enablePowerLossEmergency,
-            enableFireAlarmEmergency: device.enableFireAlarmEmergency,
-            powerLossGroupIndex: device.powerLossGroupIndex,
-            fireAlarmGroupIndex: device.fireAlarmGroupIndex,
-            powerLossGroupAddresses: device.powerLossGroupAddresses,
-            fireAlarmGroupAddresses: device.fireAlarmGroupAddresses,
-            powerLossBrightness: device.powerLossBrightness,
-            powerLossResuming: device.powerLossResuming,
-            powerLossSendCount: device.powerLossSendCount,
-            fireAlarmBrightness: device.fireAlarmBrightness,
-            fireAlarmResuming: device.fireAlarmResuming,
-            fireAlarmSendCount: device.fireAlarmSendCount
+            publishGroupAddress: device.publishGroupAddress,
+            configuration: device.configuration
         )
     }
     
@@ -186,24 +188,17 @@ class DeviceOthersViewController: UIViewController {
             return
         }
         let point = sender.location(in: collectionView)
-        guard let indexPath = collectionView.indexPathForItem(at: point), indexPath.item < items.count else {
+        guard let indexPath = collectionView.indexPathForItem(at: point), indexPath.item < showItems.count else {
             return
         }
-        switch items[indexPath.item] {
-        case .dongle(let dongle):
-            let vc = DeviceDongleViewController(space: self.space, dongleData: dongle)
-            if isIPad {
-                vc.preferredContentSize = iPadPreferredContentSize
-            }
-            present(NavigationViewController(rootViewController: vc), animated: true)
-        case .emerFire(let device):
-            let config = makeLinkedEmerFireConfig(from: device)
-            let vc = EmerFireAlarmMonitorVC(space: space, device: device, config: config)
-            if isIPad {
-                vc.preferredContentSize = iPadPreferredContentSize
-            }
-            present(NavigationViewController(rootViewController: vc), animated: true)
+        guard case .dongle(let dongle) = showItems[indexPath.item] else {
+            return
         }
+        let vc = DeviceDongleViewController(space: self.space, dongleData: dongle)
+        if isIPad {
+            vc.preferredContentSize = iPadPreferredContentSize
+        }
+        present(NavigationViewController(rootViewController: vc), animated: true)
     }
     
 
@@ -212,16 +207,16 @@ class DeviceOthersViewController: UIViewController {
 extension DeviceOthersViewController: UICollectionViewDataSource, UICollectionViewDelegateFlowLayout {
     
     func collectionView(_ collectionView: UICollectionView, numberOfItemsInSection section: Int) -> Int {
-        return items.count
+        return showItems.count
     }
     
     func collectionView(_ collectionView: UICollectionView, cellForItemAt indexPath: IndexPath) -> UICollectionViewCell {
-        switch items[indexPath.row] {
+        switch showItems[indexPath.row] {
         case .dongle(let dongle):
             let cell = collectionView.dequeueReusableCell(withReuseIdentifier: "cell", for: indexPath) as! DeviceOthersCollectionViewCell
             cell.dongle = dongle
             return cell
-        case .emerFire(let device):
+        case .emergencyFireController(let device):
             let cell = collectionView.dequeueReusableCell(withReuseIdentifier: "emerFireCell", for: indexPath) as! EmerFireAlarmDeviceCell
             cell.configCell(name: device.name, status: device.displayStatus)
             return cell
@@ -238,33 +233,24 @@ extension DeviceOthersViewController: UICollectionViewDataSource, UICollectionVi
         guard !isEdit else {
             return
         }
-        switch items[indexPath.item] {
+        switch showItems[indexPath.item] {
         case .dongle(let dongle):
             let vc = DeviceDongleViewController(space: self.space, dongleData: dongle)
             if isIPad {
                 vc.preferredContentSize = iPadPreferredContentSize
             }
             present(NavigationViewController(rootViewController: vc), animated: true)
-        case .emerFire(let device):
-            if [.offlineBoundDevice, .repairRequiredDevice].contains(device.displayStatus) {
-                let config = makeLinkedEmerFireConfig(from: device)
-                let vc = EmerFireAlarmMonitorVC(space: space, device: device, config: config)
+        case .emergencyFireController(let device):
+            if device.displayStatus == .syncIssueDevice {
+                let vc = EmerFireAlarmControllerSyncVC(space: space, data: device)
                 if isIPad {
                     vc.preferredContentSize = iPadPreferredContentSize
                 }
                 present(NavigationViewController(rootViewController: vc), animated: true)
                 return
             }
-            if device.bindNode == nil {
-                let config = makeLinkedEmerFireConfig(from: device)
-                let vc = LinkedEmerFireEditVC(config: config, isLinkedToRealDevice: false, space: space)
-                if isIPad {
-                    vc.preferredContentSize = iPadPreferredContentSize
-                }
-                present(NavigationViewController(rootViewController: vc), animated: true)
-                return
-            }
-            let vc = PreCreateEmerFireVC(space: space, deviceData: device)
+            let config = makeLinkedEmerFireConfig(from: device)
+            let vc = EmerFireAlarmMonitorVC(space: space, device: device, config: config)
             if isIPad {
                 vc.preferredContentSize = iPadPreferredContentSize
             }

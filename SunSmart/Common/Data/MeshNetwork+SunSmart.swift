@@ -1503,6 +1503,8 @@ extension Node {
         case dongle
         /// 网关
         case gateway
+        /// 应急火警控制器
+        case emergencyController
         /// 未知
         case unknown
         
@@ -1518,6 +1520,8 @@ extension Node {
                 self = .switches
             case "Gateway":
                 self = .gateway
+            case "EmergencyController":
+                self = .emergencyController
             default:
                 self = .unknown
             }
@@ -1580,7 +1584,7 @@ extension Node {
         guard let configInfo = deviceConfigInfo else {
             return "device_unknown"
         }
-        return "device_\(configInfo.iconCategory)"
+        return configInfo.iconName
     }
    
     /// 离线图标名称
@@ -1588,7 +1592,7 @@ extension Node {
         guard let configInfo = deviceConfigInfo else {
             return "device_offline_unknown"
         }
-        return "device_offline_\(configInfo.iconCategory)"
+        return configInfo.offlineIconName
     }
     
     /// 待同步图标名称
@@ -1597,7 +1601,7 @@ extension Node {
         guard let configInfo = deviceConfigInfo else {
             return "device_unknown"
         }
-        return "device_unsync_\(configInfo.iconCategory)"
+        return configInfo.unsyncIconName
     }
     
     /// 类别名称
@@ -1623,6 +1627,8 @@ extension Node {
             return "gateway".localizedString
         case .dongle:
             return "dongle".localizedString
+        case .emergencyController:
+            return "EFC"
         case .unknown:
             return nil
         }
@@ -1691,7 +1697,7 @@ extension Node {
         guard self.sunricherVendorModel != nil, self.productIdentifier != nil else {
             return false
         }
-        if self.deviceType == .dongle || self.deviceType == .gateway {
+        if self.deviceType == .dongle || self.deviceType == .gateway || self.deviceType == .emergencyController {
             return false
         }
         return true

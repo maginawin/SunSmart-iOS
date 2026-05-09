@@ -100,6 +100,8 @@ enum DeviceOperationType {
                     }
                 }
                 return true
+            case .emergencyFireController(let task, _):
+                return !task.isUnsupported
             default:
                 return true
             }
@@ -185,6 +187,8 @@ enum DeviceOperationType {
                 return true
             case .autoSetRatedPower:
                 return true
+            case .emergencyFireController(let task, _):
+                return !task.isUnsupported
             }
         case .read(let node, let type):
             switch type {
@@ -268,6 +272,8 @@ enum DeviceOperationType {
                 messageHandles.append(contentsOf: associatedMessageHandles)
             case .autoSetRatedPower:
                 break
+            case .emergencyFireController:
+                break
             }
         case .configuration(let node, let type): // 添加/配置操作
             
@@ -349,6 +355,8 @@ enum DeviceOperationType {
                 if let vendorModel = node.sunricherVendorModel, let pid = node.productIdentifier {
                     messageHandles.append(MeshMessageHandle(message: SunricherVendorSet(function: .ratedPower(pid: pid)), model: vendorModel))
                 }
+            case .emergencyFireController(let task, _):
+                messageHandles.append(contentsOf: task.messageHandles)
             }
         case .read(let node, let type):
             switch type {
@@ -422,6 +430,8 @@ enum ActionType {
     case deviceRouteList(proxyAddress: Address)
     /// 自动设置额定功率
     case autoSetRatedPower
+    /// EFC 同步任务
+    case emergencyFireController(task: EmergencyFireControllerSyncTask, data: DeviceEmerFireData)
 }
 
 extension NodeSyncData {

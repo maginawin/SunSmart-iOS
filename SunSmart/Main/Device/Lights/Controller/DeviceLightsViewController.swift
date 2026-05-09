@@ -143,11 +143,12 @@ class DeviceLightsViewController: UIViewController {
      
         var reloadDevicesView = false
 //        MeshNetworkManager.instance.realNodes.filter({ $0. })
-        if devices.count != MeshNetworkManager.instance.realNodes.count {
+        let lightNodes = MeshNetworkManager.instance.realNodes.filter { $0.deviceType == .light }
+        if devices.count != lightNodes.count {
             reloadDevicesView = true
         }
         
-        devices = MeshNetworkManager.instance.realNodes
+        devices = lightNodes
         
         // 读取缓存的设备信号值
 //        if let rssiMap = LCPlistCacheTool.readDict(fileName: rssiFileName) {
@@ -170,8 +171,9 @@ class DeviceLightsViewController: UIViewController {
             break
         }
         
-        if space.deviceCount != devices.count {
-            space.deviceCount = devices.count
+        let realNodeCount = MeshNetworkManager.instance.realNodes.count
+        if space.deviceCount != realNodeCount || space.luminairesCount != devices.count {
+            space.deviceCount = realNodeCount
             space.luminairesCount = devices.count
             space.save()
         }
@@ -716,7 +718,7 @@ class DeviceLightsViewController: UIViewController {
                 
 //                self.devices.removeAll(where: { successAddressList.contains($0.primaryUnicastAddress) })
                 self.selectedAddresss.removeAll(where: { successAddressList.contains($0) })
-                self.space.deviceCount = self.devices.count
+                self.space.deviceCount = MeshNetworkManager.instance.realNodes.count
                 self.space.luminairesCount = self.devices.count
                 self.space.save()
                 
@@ -763,7 +765,7 @@ class DeviceLightsViewController: UIViewController {
                         self.updateUI()
                         self.collectionView.reloadData()
                         
-                        self.space.deviceCount = self.devices.count
+                        self.space.deviceCount = MeshNetworkManager.instance.realNodes.count
                         self.space.luminairesCount = self.devices.count
                         self.space.save()
                         
@@ -1249,6 +1251,8 @@ extension DeviceLightsViewController: MeshLibManagerDelegate, MeshLibManagerMess
     ///   - source: 来源设备地址
     ///   - destination: 接收设备地址
     func meshNetworkManager(_ manager: MeshNetworkManager, didReceiveMessage message: MeshMessage, sentFrom source: Address, to destination: Address) {
+        EmergencyFireControllerSceneEventManager.dispatch(message: message, source: source, destination: destination)
+
         if let node = manager.meshNetwork?.node(withAddress: source), !node.isProvisioner {
             node.updateData(message: message)
             // 动能开关事件

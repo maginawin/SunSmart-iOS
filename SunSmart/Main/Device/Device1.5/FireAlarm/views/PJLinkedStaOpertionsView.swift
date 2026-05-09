@@ -41,7 +41,6 @@ class PJLinkedStaOpertionsView: UIView {
             make.left.right.top.equalToSuperview()
             make.height.equalTo(SCRYFrom(56))
         }
-        
     }
 
     required init?(coder: NSCoder) {

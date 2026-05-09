@@ -719,6 +719,8 @@ extension SpacePathTriggerZoneController: GroupPathSequenceDeviceAddViewDelegate
 extension SpacePathTriggerZoneController: MeshLibManagerMessageDelegate {
     
     func meshNetworkManager(_ manager: MeshNetworkManager, didReceiveMessage message: MeshMessage, sentFrom source: Address, to destination: Address) {
+        EmergencyFireControllerSceneEventManager.dispatch(message: message, source: source, destination: destination)
+
         guard let zone = selectZone else {
             return
         }

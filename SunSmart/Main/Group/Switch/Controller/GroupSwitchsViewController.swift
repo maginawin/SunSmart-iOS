@@ -692,7 +692,8 @@ extension GroupSwitchsViewController: UITableViewDataSource, UITableViewDelegate
                     .init(type: .sceneD, scene: groupSwitch.sceneD),
                 ])
             }
-            let vc = SwitchSelectScenePageController(scenes: MeshNetworkManager.instance.scenes, sceneDatas: datas)
+            let scenes = MeshNetworkManager.instance.scenes.filter { !DeviceEmerFireData.reservedSceneNumbers.contains($0.number) }
+            let vc = SwitchSelectScenePageController(scenes: scenes, sceneDatas: datas)
             vc.scenesSelectCallback = { sceneDatas in
                 sceneDatas.forEach { data in
                     switch data.type {

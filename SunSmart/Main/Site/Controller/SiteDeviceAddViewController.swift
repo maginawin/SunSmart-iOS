@@ -163,8 +163,8 @@ class SiteDeviceAddViewController: UIViewController {
                     device.deviceName = info.categoryName
                     device.elementCount = info.elementCount
 //                    device.isSupport = true
-                    device.icon = "device_\(info.iconCategory)"
                     device.deviceType = Node.DeviceType(deviceCategory: info.deviceCategory)
+                    device.icon = EmergencyFireControllerIconName.addListIconName(for: device.deviceType, fallback: info.iconName)
                     
                 }else {
 //                    device.isSupport = false

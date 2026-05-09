@@ -574,7 +574,7 @@ extension SpaceData {
             }
 
             // 场景
-            meshNetwork.scenes.forEach { scene in
+            meshNetwork.scenes.filter { !DeviceEmerFireData.reservedSceneNumbers.contains($0.number) }.forEach { scene in
                 sceneDicts.append(["number": scene.number.hex, "name": scene.name, "imageId": scene.info.imageId])
             }
             

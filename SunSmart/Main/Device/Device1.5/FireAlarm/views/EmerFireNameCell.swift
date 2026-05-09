@@ -27,7 +27,7 @@ final class EmerFireNameCell: UITableViewCell {
     }()
 
     private lazy var syncButton: UIButton = {
-        let button = UIButton(title: "Devices not synced.", titleSize: 14, titleColor: Error_Red_Color, fit: false, target: self, action: #selector(handleSyncAction))
+        let button = UIButton(title: "devices_not_synced".localizedString, titleSize: 14, titleColor: Error_Red_Color, fit: false, target: self, action: #selector(handleSyncAction))
         button.contentHorizontalAlignment = .left
         button.titleLabel?.font = FONTS(14)
         return button

@@ -155,6 +155,7 @@ class SyncDevicesViewController: UIViewController {
                         configurationSection.devices.append(configurationDevice)
                     }
                 }
+                appendEmergencyFireControllerGroupMutationItems(to: configurationSection, group: group, addNodes: inNodes ?? [], exitNodes: outNodes ?? [])
             case .profile(let datas):
                 datas.forEach { (node: Node, profiles: [ProfileType]) in
                     // 锁定配置切换操作
@@ -641,6 +642,46 @@ class SyncDevicesViewController: UIViewController {
                     })
                 }
             }
+    }
+
+    private func appendEmergencyFireControllerGroupMutationItems(to section: SyncDevicesSectionModel, group: Group, addNodes: [Node], exitNodes: [Node]) {
+        guard let space = SpaceViewController.currentSpace()
+                ?? SpaceData.load(subNetworkId: group.subNetworkId ?? MeshNetworkManager.instance.currentNetworkKey.networkId.hex) else {
+            return
+        }
+
+        let items = EmergencyFireControllerSyncPlanner.makeGroupMutationItems(
+            group: group,
+            addNodes: addNodes,
+            exitNodes: exitNodes,
+            space: space
+        )
+
+        items.forEach { item in
+            guard let controller = item.controller else { return }
+            let deviceModels = item.tasks.compactMap { task -> SyncDevicesModel? in
+                guard let node = MeshNetworkManager.instance.meshNetwork?.node(withAddress: task.address) else {
+                    return nil
+                }
+                let model = SyncDevicesModel(name: task.title, address: task.address)
+                model.imageName = item.iconName
+                model.operationType = .configuration(node: node, type: .emergencyFireController(task: task, data: controller))
+                return model
+            }
+            guard !deviceModels.isEmpty else { return }
+            let groupModel = SyncDevicesGroupModel(groupName: item.name, groupAddress: item.address, deviceModels: deviceModels)
+            deviceModels.forEach { $0.parentGroupModel = groupModel }
+            section.groups.append(groupModel)
+        }
+    }
+
+    private func clearEmergencyFireControllerPendingIfNeeded(for model: SyncCellModel) {
+        let operationType = (model as? SyncDevicesModel)?.operationType ?? (model as? SyncDeviceStepTaskModel)?.operationType
+        guard case .configuration(_, let type) = operationType,
+              case .emergencyFireController(let task, let data) = type else {
+            return
+        }
+        data.clearPending(for: task, meshUUID: data.meshUUID, subnetworkId: data.meshNetworkId)
     }
     
     /// 获取组对应设备同步数据model
@@ -1444,6 +1485,7 @@ class SyncDevicesViewController: UIViewController {
                     let operationSuccessful = ((model as? SyncDevicesModel)?.operationType?.isSuccessful ?? (model as? SyncDeviceStepTaskModel)?.operationType.isSuccessful) ?? false
                     if resultSuccessful && operationSuccessful {
                         model.state = .successful
+                        self.clearEmergencyFireControllerPendingIfNeeded(for: model)
                         
                         if self.deviceBlinkMode != .none {
                             let deviceModel: SyncDevicesModel? =

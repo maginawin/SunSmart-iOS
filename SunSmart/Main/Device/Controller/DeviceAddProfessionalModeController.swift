@@ -193,14 +193,17 @@ class DeviceAddProfessionalModeController: UIViewController {
     }
 
     private func isAllowedDeviceType(_ deviceType: Node.DeviceType) -> Bool {
-        guard let addBehavior, !addBehavior.allowedTypes.isEmpty else {
+        guard let addBehavior else {
+            return true
+        }
+        guard !addBehavior.allowedTypes.isEmpty else {
             return true
         }
         return addBehavior.allowedTypes.contains {
             switch ($0, deviceType) {
             case (.lights, .light), (.switches, .switches), (.sensors, .sensor):
                 return true
-            case (.others, .dongle), (.others, .gateway), (.others, .unknown):
+            case (.others, .dongle), (.others, .gateway), (.others, .emergencyController), (.others, .unknown):
                 return true
             default:
                 return false
@@ -348,8 +351,8 @@ class DeviceAddProfessionalModeController: UIViewController {
                 if let info = MeshLibManager.manager.supportDeviceInfos.first(where: { $0.companyId == device.cid && $0.productId == device.pid }) {
                     device.deviceName = info.categoryName
                     device.elementCount = info.elementCount
-                    device.icon = "device_\(info.iconCategory)"
                     device.deviceType = Node.DeviceType(deviceCategory: info.deviceCategory)
+                    device.icon = EmergencyFireControllerIconName.addListIconName(for: device.deviceType, fallback: info.iconName)
                     device.selectedState = .selected
                 }else {
                     device.deviceType = .unknown
@@ -667,7 +670,9 @@ class DeviceAddProfessionalModeController: UIViewController {
 //            }
             node.name = MeshNetworkManager.instance.getNextNodeName(node.defaultNameCategory)
             // 新添加的设备支持最新功能绑定要求
-            node.requiredFunctionTypes = [.lightLCScene, .lightLCScheduler]
+            if addDevice.deviceType != .emergencyController {
+                node.requiredFunctionTypes = [.lightLCScene, .lightLCScheduler]
+            }
             node.save()
             
             if addDevice.deviceType == .dongle { // dongle设备，需要一个dongle虚拟数据与之绑定
@@ -687,6 +692,8 @@ class DeviceAddProfessionalModeController: UIViewController {
                     MeshNetworkManager.instance.dongles.append(newDongle)
                     newDongle.save()
                 }
+            } else if addDevice.deviceType == .emergencyController {
+                DeviceEmerFireStore.shared.ensureDevice(for: node, in: self.space)
             }
             
         } appendMessagesBack: {[weak self] addDevice, appendCompletion in
@@ -695,11 +702,20 @@ class DeviceAddProfessionalModeController: UIViewController {
                 return
             }
             var appendMessages: [MeshMessageHandle] = []
+            if addDevice.deviceType == .emergencyController {
+                let controller = DeviceEmerFireStore.shared.ensureDevice(for: node, in: self.space)
+                do {
+                    appendMessages.append(contentsOf: try controller.getSceneClientPublicationMessageHandles(meshUUID: self.space.meshUUID, subnetworkId: self.space.meshNetworkId))
+                } catch {
+                    print(error.localizedDescription)
+                }
+            }
             // 入网后默认调为最大亮度
-            if let model = node.lightnessModel {
+            let shouldApplyLightingDefaults = addDevice.deviceType != .dongle && addDevice.deviceType != .gateway && addDevice.deviceType != .emergencyController
+            if shouldApplyLightingDefaults, let model = node.lightnessModel {
                 appendMessages.append(MeshMessageHandle(message: LightLightnessSetUnacknowledged(lightness: .max), model: model))
             }
-            if device.deviceType != .dongle, case .group(let group) = self.addTarget {
+            if shouldApplyLightingDefaults, case .group(let group) = self.addTarget {
                 // 判断组是否有关联动能开关，如果动能开关还未分配地址则提前分配地址以订阅设备
                 let emptySwitchs = group.info.switchs.filter({ $0.linkGroup == nil })
                 emptySwitchs.forEach { switchData in
@@ -722,7 +738,7 @@ class DeviceAddProfessionalModeController: UIViewController {
                 })
                 //                appendMessages.append(contentsOf: group.getNodeAddMessageHandles(node: node))
             }else {
-                if device.deviceType != .dongle && device.deviceType != .gateway {
+                if shouldApplyLightingDefaults {
                     if let vendorModel = node.sunricherVendorModel, node.lightLCModel != nil { // 未加入组的设备默认设置一个手动控制延迟时间，避免默认30s后状态被LC修改
                         appendMessages.append(MeshMessageHandle(message: SunricherVendorSet(function: .manualOverrideTimeout(enabled: true, state: .standby, interval: .max)), model: vendorModel))
                     }
@@ -841,6 +857,13 @@ class DeviceAddProfessionalModeController: UIViewController {
             // 通知space数据修改
 //            NotificationCenter.default.post(name: .init(spaceDataChangedNotificaitonName), object: SpaceChangeDataType.device)
             NotificationCenter.default.post(name: .init(spaceDataChangedNotificaitonName), object: SpaceChangeDataType.network(type: .address))
+            NotificationCenter.default.post(name: .init(devicesAddNotificationName), object: nil)
+            if self.addSuccessNodes.contains(where: { [.dongle, .gateway, .emergencyController, .unknown].contains($0.deviceType) }) {
+                NotificationCenter.default.post(name: .init(deviceOthersRefreshNotificationName), object: nil)
+            }
+            if self.addSuccessNodes.contains(where: { $0.deviceType == .emergencyController }) {
+                NotificationCenter.default.post(name: .deviceEmerFireDataDidChange, object: nil)
+            }
         }
         
     }

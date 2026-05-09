@@ -9,34 +9,52 @@
 import UIKit
 import NordicSigMeshSDK
 
-class EmerFireAlarmMonitorVC: UIViewController {
-    private let space: SpaceData?
-    private var currentConfig: LinkedEmerFireConfig?
-    private var currentDevice: DeviceEmerFireData?
+class EmerFireAlarmMonitorVC: UIViewController, DeviceProtocol {
+
+    let viewModel: EmerFireAlarmMonitorViewModel
+    var lastMessageDelegate: MeshLibManagerMessageDelegate?
+    var sceneEventObserver: NSObjectProtocol?
+    var space: SpaceData? { viewModel.space }
+    var currentConfig: LinkedEmerFireConfig? {
+        get { viewModel.currentConfig }
+        set { viewModel.currentConfig = newValue }
+    }
+    var currentDevice: DeviceEmerFireData? {
+        get { viewModel.currentDevice }
+        set { viewModel.currentDevice = newValue }
+    }
+    var requestGeneration: Int {
+        get { viewModel.requestGeneration }
+        set { viewModel.requestGeneration = newValue }
+    }
+    var currentState: EmerFireAlarmMonitorDisplayState {
+        get { viewModel.currentState }
+        set { viewModel.currentState = newValue }
+    }
     
-    private var collectionView: UICollectionView!
-    private var flowLayout: AlignCenterFlowLayout!
-    private var deviceCountLabel: UILabel!
-    private var pageControl: UIPageControl!
+    var collectionView: UICollectionView!
+    var flowLayout: AlignCenterFlowLayout!
+    var deviceCountLabel: UILabel!
+    var pageControl: UIPageControl!
     /// 列数
-    private var columnNum: Int = isIPad ? 4 : 3
-    private var rowNum: Int = isIPad ? 6 : 3
+    var columnNum: Int = isIPad ? 4 : 3
+    var rowNum: Int = isIPad ? 6 : 3
     
     /// collectionview边距
-    private var collectionViewInsets: UIEdgeInsets = isIPad ? UIEdgeInsets(top: SCRYFrom(44), left: SCRXFrom(40), bottom: SCRYFrom(44), right: SCRXFrom(40)) : UIEdgeInsets(top: SCRYFrom(36), left: SCRXFrom(24), bottom: SCRYFrom(36), right: SCRXFrom(24))
+    var collectionViewInsets: UIEdgeInsets = isIPad ? UIEdgeInsets(top: SCRYFrom(44), left: SCRXFrom(40), bottom: SCRYFrom(44), right: SCRXFrom(40)) : UIEdgeInsets(top: SCRYFrom(36), left: SCRXFrom(24), bottom: SCRYFrom(36), right: SCRXFrom(24))
     
     /// item间距
-    private var itemMargin: CGFloat = isIPad ? SCRXFrom(20) : SCRXFrom(14)
+    var itemMargin: CGFloat = isIPad ? SCRXFrom(20) : SCRXFrom(14)
     //操作按钮
     
-    private var groups: [String] = []
+    var groups: [EmerFireAlarmAssociatedGroupItem] = []
     
-    private lazy var moniView: EmerFireAlarmMoniView = {
+    lazy var moniView: EmerFireAlarmMoniView = {
         let view = EmerFireAlarmMoniView()
         return view
     }()
 
-    private lazy var statusSetView: EmerFireAlarmStatusSetView = {
+    lazy var statusSetView: EmerFireAlarmStatusSetView = {
         let view = EmerFireAlarmStatusSetView()
         view.title = "Status Set".localizedString
         return view
@@ -48,9 +66,7 @@ class EmerFireAlarmMonitorVC: UIViewController {
     }()
 
     init(space: SpaceData? = nil, device: DeviceEmerFireData? = nil, config: LinkedEmerFireConfig? = nil) {
-        self.space = space
-        self.currentDevice = device
-        currentConfig = config
+        viewModel = EmerFireAlarmMonitorViewModel(space: space, device: device, config: config)
         super.init(nibName: nil, bundle: nil)
     }
 
@@ -83,11 +99,16 @@ class EmerFireAlarmMonitorVC: UIViewController {
         navigationItem.rightBarButtonItem = UIBarButtonItem(image: UIImage(named: "more_vertical")?.withRenderingMode(.alwaysOriginal), style: .done, target: self, action: #selector(moreClick))
         
         setupUI()
-        setTestData()
+        configureActions()
         applySavedConfig()
+        observeSceneEvents()
+        refreshRealState()
         NotificationCenter.default.addObserver(self, selector: #selector(handleConfigDidChange(_:)), name: .linkedEmerFireConfigDidChange, object: nil)
         
-        statusWarningView.warningAction = {
+        statusWarningView.warningAction = { [weak self] in
+            guard self?.currentConfig?.reportToGateway == false || self?.currentDevice?.reportToGateway == false else {
+                return
+            }
             //Owner和Editor权限
             SRAlertView(title: "Warning".localizedString,message: "Emergency information was not reported to the gateway. If a gateway is in use, it must be properly configured to prevent security risks arising from devices being controlled through the gateway in an emergency.".localizedString, actions: [.cancelAction, SRAlertAction(title: "Go Setting".localizedString,actionHandler: { _ in
                 XWHUDManager.showTipHUD("setting", isLineFeed: true)
@@ -102,7 +123,26 @@ class EmerFireAlarmMonitorVC: UIViewController {
     }
 
     deinit {
+        if let sceneEventObserver {
+            NotificationCenter.default.removeObserver(sceneEventObserver)
+        }
         NotificationCenter.default.removeObserver(self)
+    }
+
+    override func viewWillAppear(_ animated: Bool) {
+        super.viewWillAppear(animated)
+        lastMessageDelegate = MeshLibManager.manager.messageDelegate
+        MeshLibManager.manager.messageDelegate = self
+        refreshRealState()
+    }
+
+    override func viewDidDisappear(_ animated: Bool) {
+        super.viewDidDisappear(animated)
+        requestGeneration += 1
+        MeshLibManager.manager.messageDelegate = lastMessageDelegate
+        if let node = currentDevice?.bindNode {
+            NotificationCenter.default.post(name: .init(deviceStateUpdateNotificationName), object: node)
+        }
     }
     
     @objc private func groupPreviousSwipeAction() {
@@ -119,47 +159,62 @@ class EmerFireAlarmMonitorVC: UIViewController {
         
     }
     
-    func setTestData(){
-        moniView.configure(actions: [
+    func configureActions() {
+        let actionIcons = viewModel.actionIconNames()
+        var actions: [EmerFireAlarmMoniView.ActionItem] = [
             .init(
-                image: UIImage(named: "Identify"),
+                image: UIImage(named: EmergencyFireControllerIconName.Monitor.Action.identify),
                 borderColor: nil,
-                action: {
-                    XWHUDManager.showTipHUD("Manual emergency", isLineFeed: false)
-                }
-            ),
-            .init(
-                image: UIImage(named: "Logout-2 Streamline Sharp1"),
-                borderColor: nil,
-                action: {
-                    XWHUDManager.showTipHUD("Previous action", isLineFeed: false)
-                }
-            ),
-            .init(
-                image: UIImage(named: "Logout-2 Streamline Sharp"),
-                borderColor: nil,
-                action: {
-                    XWHUDManager.showTipHUD("Next action", isLineFeed: false)
+                action: { [weak self] in
+                    self?.identifyAction()
                 }
             )
-        ])
-        statusSetView.headerActionHandler = { action in
-            let message: String
+        ]
+        if canOperateEmergencyActions {
+            actions.append(.init(
+                image: UIImage(named: actionIcons.trigger),
+                borderColor: nil,
+                action: { [weak self] in
+                    self?.triggerAction()
+                }
+            ))
+            actions.append(.init(
+                image: UIImage(named: actionIcons.stop),
+                borderColor: nil,
+                action: { [weak self] in
+                    self?.stopAction()
+                }
+            ))
+        }
+        moniView.configure(actions: actions)
+        statusSetView.headerActionHandler = { [weak self] action in
+            guard let self else { return }
             switch action {
-            case .alert:
-                message = "Alert action"
-            case .statusGray:
-                message = "Gray status action"
-            case .fire:
-                message = "Fire action"
-            case .statusGreen:
-                message = "Green status action"
+            case .powerLossTrigger:
+                self.recallEmergencyScene(DeviceEmerFireData.powerLossTriggerSceneNumber)
+            case .powerLossStatus:
+                self.recallEmergencyScene(DeviceEmerFireData.powerLossStopSceneNumber)
+            case .fireTrigger:
+                self.recallEmergencyScene(DeviceEmerFireData.fireAlarmTriggerSceneNumber)
+            case .fireStatus:
+                self.recallEmergencyScene(DeviceEmerFireData.fireAlarmStopSceneNumber)
             }
-            XWHUDManager.showTipHUD(message, isLineFeed: false)
         }
         updateEmptyUI()
     }
-    
+
+    var canOperateEmergencyActions: Bool {
+        viewModel.canOperateEmergencyActions
+    }
+
+    var canConfigureDevice: Bool {
+        viewModel.canConfigureDevice
+    }
+
+    var isAllEmergencyFunctionsDisabled: Bool {
+        viewModel.isAllEmergencyFunctionsDisabled
+    }
+
     func setupUI(){
         
         view.addSubview(statusWarningView)
@@ -232,270 +287,124 @@ class EmerFireAlarmMonitorVC: UIViewController {
         }
         
     }
-    
-    /// 分页页码编辑回调
-    @objc private func pageControlValueChanged() {
-        collectionView.setContentOffset(CGPoint(x: CGFloat(pageControl.currentPage) * collectionView.width, y: self.collectionView.contentOffset.y), animated: true)
-    }
-    
-    @objc private func moreClick() {
-        let config = currentConfig ?? currentDevice.map(makeConfig(from:))
-        var items: [MenuPopView.MenuItem] = []
-        if space?.deviceOperates.contains(.edit) ?? false {
-            items.append(.init(icon: UIImage(named: "menu_edit"), title: "edit".localizedString, tapItemBack: {[weak self] _ in
-                guard let self else { return }
-                let controller = LinkedEmerFireEditVC(config: config, isLinkedToRealDevice: self.currentDevice?.bindNode != nil, space: self.space)
-                controller.editable = true
-                let navigationController = NavigationViewController(rootViewController: controller)
-                self.present(navigationController, animated: true)
-            }))
+
+    func identifyAction() {
+        guard let healthModel = currentDevice?.bindNode?.healthModel else {
+            XWHUDManager.showTipHUD("failed".localizedString + " !", isLineFeed: true)
+            return
         }
-        if space?.deviceOperates.contains(.delete) ?? false {
-            items.append(.init(icon: UIImage(named: "menu_delete"), title: "delete".localizedString, tapItemBack: {[weak self] _ in
-                self?.deleteDevice()
-            }))
-        }
-
-        items.append(.init(icon: UIImage(named: "menu_information"), title: "information".localizedString, tapItemBack: {[weak self] _ in
-            let controller = EmerFireAlarmInformationVC(device: self?.currentDevice, config: config)
-            let navigationController = NavigationViewController(rootViewController: controller)
-            self?.present(navigationController, animated: true)
-        }))
-
-        items.append(.init(icon: UIImage(named: "menu_refresh"), title: "refresh".localizedString, tapItemBack: {[weak self] _ in
-            self?.refresh()
-        }))
-        
-        let touchCenterX = view.width - navigationRightItemMargin - 15
-        let touchCenterY = view.safeAreaInsets.top - 10
-
-        let windowPoint = view.convert(CGPoint(x: touchCenterX, y: touchCenterY), to: UIApplication.shared.keyWindow())
-        MenuPopView.show(items: items, anchorPoint: windowPoint, menuWidth: SCRXFrom(114))
-       
-    }
-
-    private func deleteDevice() {
-        guard let currentDevice else { return }
-        SRAlertView(title: "notification".localizedString, message: "device_delete_message".localizedString, actions: [.cancelAction, SRAlertAction(title: "alert_item_continue".localizedString, actionHandler: { [weak self] _ in
-            DeviceEmerFireStore.shared.delete(currentDevice)
-            self?.closeOrBack()
-        })]).show()
-    }
-
-    private func refresh() {
-        XWHUDManager.showCustomHUD(withMessage: nil, isWindow: false, afterDelay: 1.0)
-        reloadCurrentDevice()
-        if currentConfig == nil, let currentDevice {
-            currentConfig = makeConfig(from: currentDevice)
-        }
-        applySavedConfig()
-    }
-
-    private func updateEmptyUI() {
-        if groups.isEmpty {
-            deviceCountLabel.isHidden = true
-            if collectionView.frame == .zero {
-                view.layoutIfNeeded()
-            }
-            if collectionView.emptyView == nil {
-                collectionView.showEmptyDataView(title: "Not associate with Group(s) !".localizedString, buttonText: "Setting".localizedString, position: .center) {
-                    //
-                    XWHUDManager.showTipHUD("Setting", isLineFeed: false)
-                }
-                if let emptyView = collectionView.emptyView {
-                    
-                        emptyView.button.backgroundColor = .clear
-                        emptyView.button.titleLabel?.font = FONTS(16)
-                        emptyView.button.setTitleColor(Bar_Color, for: .normal)
-                        emptyView.button.snp.updateConstraints { make in
-                            make.top.equalTo(emptyView.titleLabel.snp.bottom).offset(SCRYFrom(24))
-                        }
-                    
-                      //  emptyView.button.isHidden = true
-                    
+        MeshAPI.sendMessage(message: AttentionSet(attentionTimer: 6), model: healthModel, timeout: 5) { response in
+            if response == nil {
+                DispatchQueue.main.async {
+                    XWHUDManager.showTipHUD("failed".localizedString + " !", isLineFeed: true)
                 }
             }
-        }else {
-            deviceCountLabel.isHidden = false
-            collectionView.hideEmptyDataView()
         }
     }
 
-    @objc private func handleConfigDidChange(_ notification: Notification) {
-        if let config = notification.object as? LinkedEmerFireConfig {
-            currentConfig = config
-        }
-        reloadCurrentDevice()
-        applySavedConfig()
-    }
-
-    private func applySavedConfig() {
-        if currentConfig == nil, let currentDevice {
-            currentConfig = makeConfig(from: currentDevice)
-        }
-        guard let config = currentConfig else {
-            title = "EFC 1"
-            groups = []
-            deviceCountLabel.text = "(0)"
-            collectionView?.reloadData()
-            updateEmptyUI()
+    func triggerAction() {
+        guard canOperateEmergencyActions else {
             return
         }
-
-        title = config.deviceName
-        groups = makeDisplayGroups(from: config)
-        deviceCountLabel.text = "(\(groups.count))"
-        collectionView?.reloadData()
-        updateMonitorState()
-    }
-
-    private func reloadCurrentDevice() {
-        guard let config = currentConfig,
-              let deviceId = config.deviceId,
-              let meshUUID = config.meshUUID,
-              let meshNetworkId = config.meshNetworkId else {
+        guard currentDevice?.bindNode != nil else {
+            XWHUDManager.showTipHUD("Not executed. Please link a device first.".localizedString, isLineFeed: true)
             return
         }
-        currentDevice = DeviceEmerFireStore.shared.device(id: deviceId, meshUUID: meshUUID, meshNetworkId: meshNetworkId)
-    }
-
-    private func updateMonitorState() {
-        guard let currentDevice else {
-            updateEmptyUI()
+        guard activeAssociatedGroupsContainDevices else {
+            XWHUDManager.showTipHUD("Not executed. No devices in associated groups.".localizedString, isLineFeed: true)
             return
         }
-
-        switch currentDevice.displayStatus {
-        case .offlineBoundDevice:
-            setContentHidden(true)
-            view.showEmptyDataView(imageName: "device_state_offline", title: "device_offline_message".localizedString, backgroundColor: Background_Color)
-        case .repairRequiredDevice:
-            setContentHidden(true)
-            view.showEmptyDataView(imageName: "device_state_offline", title: "device_repair_message".localizedString, backgroundColor: Background_Color, buttonText: "repair".localizedString, buttomWidth: SCRXFrom(216), bottomMargin: SCRYFit(-78)) { [weak self] in
-                self?.repairBtnClick()
-            }
-            if let emptyView = view.emptyView {
-                if space?.deviceOperates.contains(.edit) ?? false {
-                    emptyView.button.snp.updateConstraints { make in
-                        make.top.equalTo(emptyView.titleLabel.snp.bottom).offset(SCRYFrom(78))
-                    }
-                } else {
-                    emptyView.button.isHidden = true
-                }
-            }
-        default:
-            view.hideEmptyDataView()
-            setContentHidden(false)
-            updateEmptyUI()
-        }
-    }
-
-    private func setContentHidden(_ hidden: Bool) {
-        collectionView?.isHidden = hidden
-        pageControl?.isHidden = hidden
-        deviceCountLabel?.isHidden = hidden || groups.isEmpty
-        moniView.isHidden = hidden
-        statusSetView.isHidden = hidden
-        statusWarningView.isHidden = hidden
-    }
-
-    private func repairBtnClick() {
-        guard !(XWHUDManager.currentHUD()?.isHidden == false) else {
+        guard let sceneNumber = activeSceneNumbers()?.trigger else {
+            XWHUDManager.showTipHUD("failed".localizedString + " !", isLineFeed: true)
             return
         }
-        XWHUDManager.showCustomHUD(withMessage: "repairing".localizedString, view: view)
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) { [weak self] in
-            guard let self else { return }
-            XWHUDManager.hideInView(with: self.view)
-            XWHUDManager.showSuccessTipHUD("complete!".localizedString)
+        recallEmergencyScene(sceneNumber)
+    }
+
+    func stopAction() {
+        guard canOperateEmergencyActions else {
+            return
+        }
+        guard currentDevice?.bindNode != nil else {
+            XWHUDManager.showTipHUD("Not executed. Please link a device first.".localizedString, isLineFeed: true)
+            return
+        }
+        guard activeAssociatedGroupsContainDevices else {
+            XWHUDManager.showTipHUD("Not executed. No devices in associated groups.".localizedString, isLineFeed: true)
+            return
+        }
+        guard let sceneNumber = activeSceneNumbers()?.stop else {
+            XWHUDManager.showTipHUD("failed".localizedString + " !", isLineFeed: true)
+            return
+        }
+        recallEmergencyScene(sceneNumber)
+    }
+
+    func recallEmergencyScene(_ sceneNumber: SceneNumber) {
+        guard canOperateEmergencyActions else {
+            XWHUDManager.showTipHUD("no_permission".localizedString, isLineFeed: true)
+            return
+        }
+        guard let publishGroupAddress = currentDevice?.publishGroupAddress else {
+            XWHUDManager.showTipHUD(EmergencyFireControllerPublishGroupError.missingSceneClientModel.errorDescription ?? "failed".localizedString, isLineFeed: true)
+            return
+        }
+        let message = SceneRecallUnacknowledged(sceneNumber)
+        print("[EFC] recall scene=\(String(format: "0x%04X", sceneNumber)), publishGroup=\(String(format: "0x%04X", publishGroupAddress)), mode=\(currentWorkMode)")
+        MeshAPI.sendMessage(message: message, address: publishGroupAddress)
+        if let sourceAddress = currentDevice?.bindNodeAddress {
+            EmergencyFireControllerSceneEventManager.dispatch(message: message, source: sourceAddress, destination: publishGroupAddress)
         }
     }
 
-    private func closeOrBack() {
-        if presentingViewController != nil && navigationController?.viewControllers.count ?? 0 == 1 {
-            dismiss(animated: true)
-        } else {
-            navigationController?.popViewController(animated: true)
-        }
+    var isEmergencySituation: Bool {
+        viewModel.isEmergencySituation
     }
 
-    private func makeDisplayGroups(from config: LinkedEmerFireConfig) -> [String] {
-        var displayGroups: [String] = []
-        let addresses = (config.powerLossGroupAddresses + config.fireAlarmGroupAddresses).sorted()
-
-        addresses.forEach { address in
-            guard let name = MeshNetworkManager.instance.groups.first(where: { $0.address.address == address })?.name else {
-                return
+    func toggleAssociatedGroup(_ group: Group) {
+        guard canOperateEmergencyActions else {
+            return
+        }
+        guard !isEmergencySituation else {
+            XWHUDManager.showTipHUD("Uncontrollable in emergency situations".localizedString, isLineFeed: true)
+            return
+        }
+        guard group.nodes.contains(where: { $0.state }) else {
+            XWHUDManager.showTipHUD("failed".localizedString + " !", isLineFeed: true)
+            return
+        }
+        group.isOn.toggle()
+        group.nodes.forEach { node in
+            node.isOn = group.isOn
+            if !node.isOn, node.lightness > 0 {
+                node.trunOffLightness = node.lightness
+                node.lightness = 0
+            } else if node.isOn {
+                node.lightness = node.trunOffLightness ?? node.lightnessRange.upperBound
             }
-            if !displayGroups.contains(name) {
-                displayGroups.append(name)
-            }
         }
-
-        return displayGroups
+        MeshAPI.setGroupOnOffState(address: group.address.address, isOn: group.isOn)
+        collectionView.reloadData()
     }
 
-    private func makeConfig(from device: DeviceEmerFireData) -> LinkedEmerFireConfig {
-        LinkedEmerFireConfig(
-            deviceId: device.id,
-            spaceId: device.spaceId,
-            meshUUID: device.meshUUID,
-            meshNetworkId: device.meshNetworkId,
-            deviceName: device.name,
-            isSynced: device.isSynced,
-            reportToGateway: device.reportToGateway,
-            enablePowerLossEmergency: device.enablePowerLossEmergency,
-            enableFireAlarmEmergency: device.enableFireAlarmEmergency,
-            powerLossGroupIndex: device.powerLossGroupIndex,
-            fireAlarmGroupIndex: device.fireAlarmGroupIndex,
-            powerLossGroupAddresses: device.powerLossGroupAddresses,
-            fireAlarmGroupAddresses: device.fireAlarmGroupAddresses,
-            powerLossBrightness: device.powerLossBrightness,
-            powerLossResuming: device.powerLossResuming,
-            powerLossSendCount: device.powerLossSendCount,
-            fireAlarmBrightness: device.fireAlarmBrightness,
-            fireAlarmResuming: device.fireAlarmResuming,
-            fireAlarmSendCount: device.fireAlarmSendCount
-        )
-    }
-    
-    /// 长按事件，跳转到组详情
-    @objc private func collectionLongPressAction(sender: UIGestureRecognizer) {
-        
+    @objc func collectionLongPressAction(sender: UIGestureRecognizer) {
         guard sender.state == .began else {
             return
         }
-        let point = sender.location(in: collectionView)
-        if let indexPath = collectionView.indexPathForItem(at: point) {
-            XWHUDManager.showTipHUD("\(indexPath.row)", isLineFeed: true)
+        guard canOperateEmergencyActions else {
+            return
         }
+        guard !isEmergencySituation else {
+            XWHUDManager.showTipHUD("Uncontrollable in emergency situations".localizedString, isLineFeed: true)
+            return
+        }
+        let point = sender.location(in: collectionView)
+        guard let indexPath = collectionView.indexPathForItem(at: point), indexPath.item < groups.count else {
+            return
+        }
+        guard let space else { return }
+        let controller = GroupViewController(space: space, group: groups[indexPath.item].group)
+        navigationController?.pushViewController(controller, animated: true)
     }
     
-}
-
-
-extension EmerFireAlarmMonitorVC: UICollectionViewDataSource, UICollectionViewDelegateFlowLayout {
-    
-    func collectionView(_ collectionView: UICollectionView, numberOfItemsInSection section: Int) -> Int {
-        return groups.count
-    }
-    
-    func collectionView(_ collectionView: UICollectionView, cellForItemAt indexPath: IndexPath) -> UICollectionViewCell {
-        let cell = collectionView.dequeueReusableCell(withReuseIdentifier: "cell", for: indexPath) as! EmerFireAlarmMoniCell
-        cell.configure(title: groups[indexPath.row])
-        return cell
-    }
-    
-    func collectionView(_ collectionView: UICollectionView, didSelectItemAt indexPath: IndexPath) {
-        
-    }
-    
-    func scrollViewDidEndDecelerating(_ scrollView: UIScrollView) {
-        let page = Int(scrollView.contentOffset.x / scrollView.frame.size.width + 0.5)
-        
-        pageControl.currentPage = page
-        
-    }
-    
-
 }

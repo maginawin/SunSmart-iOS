@@ -2,7 +2,7 @@
 //  DeviceEmerFireRepository.swift
 //  SunSmart
 //
-//  Created by Plato Jobs on 2026/4/27.
+//  Created by Plato Jobs on 2026/5/7.
 //
 
 import Foundation
@@ -56,31 +56,22 @@ private var emerFireJSONDecoder: JSONDecoder {
 
 extension DeviceEmerFireData {
 
-    private static let tableName = "deviceEmerFireDatas"
+    private static let tableName = "emergencyFireControllers"
+    private static let legacyMockTableName = "deviceEmerFireDatas"
     private static let table = Table(tableName)
 
     struct ExpressionKey {
         static let id = Expression<Int64>("id")
         static let meshUUID = Expression<String>("meshUUID")
         static let subNetworkKey = Expression<String>("subNetworkKey")
-        static let deviceId = Expression<String>("deviceId")
+        static let controllerId = Expression<String>("controllerId")
         static let spaceId = Expression<String>("spaceId")
         static let name = Expression<String>("name")
         static let bindNodeAddress = Expression<Int?>("bindNodeAddress")
+        static let publishGroupAddress = Expression<Int?>("publishGroupAddress")
         static let isSynced = Expression<Bool>("isSynced")
         static let reportToGateway = Expression<Bool>("reportToGateway")
-        static let enablePowerLossEmergency = Expression<Bool>("enablePowerLossEmergency")
-        static let enableFireAlarmEmergency = Expression<Bool>("enableFireAlarmEmergency")
-        static let powerLossGroupIndex = Expression<Int>("powerLossGroupIndex")
-        static let fireAlarmGroupIndex = Expression<Int>("fireAlarmGroupIndex")
-        static let powerLossGroupAddresses = Expression<Data?>("powerLossGroupAddresses")
-        static let fireAlarmGroupAddresses = Expression<Data?>("fireAlarmGroupAddresses")
-        static let powerLossBrightness = Expression<Int>("powerLossBrightness")
-        static let powerLossResuming = Expression<Int>("powerLossResuming")
-        static let powerLossSendCount = Expression<Int>("powerLossSendCount")
-        static let fireAlarmBrightness = Expression<Int>("fireAlarmBrightness")
-        static let fireAlarmResuming = Expression<Int>("fireAlarmResuming")
-        static let fireAlarmSendCount = Expression<Int>("fireAlarmSendCount")
+        static let configurationData = Expression<Data?>("configurationData")
         static let createTime = Expression<Int64>("createTime")
         static let lastUpdate = Expression<Int64>("lastUpdate")
     }
@@ -91,29 +82,98 @@ extension DeviceEmerFireData {
                 builder.column(ExpressionKey.id, primaryKey: true)
                 builder.column(ExpressionKey.meshUUID)
                 builder.column(ExpressionKey.subNetworkKey)
-                builder.column(ExpressionKey.deviceId)
+                builder.column(ExpressionKey.controllerId)
                 builder.column(ExpressionKey.spaceId)
                 builder.column(ExpressionKey.name)
                 builder.column(ExpressionKey.bindNodeAddress)
+                builder.column(ExpressionKey.publishGroupAddress)
                 builder.column(ExpressionKey.isSynced)
                 builder.column(ExpressionKey.reportToGateway)
-                builder.column(ExpressionKey.enablePowerLossEmergency)
-                builder.column(ExpressionKey.enableFireAlarmEmergency)
-                builder.column(ExpressionKey.powerLossGroupIndex)
-                builder.column(ExpressionKey.fireAlarmGroupIndex)
-                builder.column(ExpressionKey.powerLossGroupAddresses)
-                builder.column(ExpressionKey.fireAlarmGroupAddresses)
-                builder.column(ExpressionKey.powerLossBrightness)
-                builder.column(ExpressionKey.powerLossResuming)
-                builder.column(ExpressionKey.powerLossSendCount)
-                builder.column(ExpressionKey.fireAlarmBrightness)
-                builder.column(ExpressionKey.fireAlarmResuming)
-                builder.column(ExpressionKey.fireAlarmSendCount)
+                builder.column(ExpressionKey.configurationData)
                 builder.column(ExpressionKey.createTime)
                 builder.column(ExpressionKey.lastUpdate)
-                builder.unique(ExpressionKey.meshUUID, ExpressionKey.subNetworkKey, ExpressionKey.deviceId)
+                builder.unique(ExpressionKey.meshUUID, ExpressionKey.subNetworkKey, ExpressionKey.controllerId)
             }
         )
+
+        if let columns = try? SunSmartDataManager.shared.db?.schema.columnDefinitions(table: tableName) {
+            let columnNames = Set(columns.map { $0.name })
+            if !columnNames.contains("spaceId") {
+                _ = try? SunSmartDataManager.shared.db?.run(DeviceEmerFireData.table.addColumn(ExpressionKey.spaceId, defaultValue: ""))
+            }
+            if !columnNames.contains("publishGroupAddress") {
+                _ = try? SunSmartDataManager.shared.db?.run(DeviceEmerFireData.table.addColumn(ExpressionKey.publishGroupAddress))
+            }
+            if !columnNames.contains("configurationData") {
+                _ = try? SunSmartDataManager.shared.db?.run(DeviceEmerFireData.table.addColumn(ExpressionKey.configurationData))
+            }
+            migrateMissingColumns(columnNames)
+            if columnNames.contains("powerLossEmergencyEnabled") || columnNames.contains("fireAlarmEmergencyEnabled") {
+                rebuildCleanTable()
+                return
+            }
+        }
+
+        _ = try? SunSmartDataManager.shared.db?.run("DROP TABLE IF EXISTS \(legacyMockTableName)")
+    }
+
+    private static func rebuildCleanTable() {
+        let cleanTableName = "\(tableName)_clean"
+        let db = SunSmartDataManager.shared.db
+        _ = try? db?.run("DROP TABLE IF EXISTS \(cleanTableName)")
+        _ = try? db?.run("""
+        CREATE TABLE IF NOT EXISTS \(cleanTableName) (
+            id INTEGER PRIMARY KEY NOT NULL,
+            meshUUID TEXT NOT NULL,
+            subNetworkKey TEXT NOT NULL,
+            controllerId TEXT NOT NULL,
+            spaceId TEXT NOT NULL DEFAULT '',
+            name TEXT NOT NULL,
+            bindNodeAddress INTEGER,
+            publishGroupAddress INTEGER,
+            isSynced INTEGER NOT NULL DEFAULT 0,
+            reportToGateway INTEGER NOT NULL DEFAULT 1,
+            configurationData BLOB,
+            createTime INTEGER NOT NULL,
+            lastUpdate INTEGER NOT NULL,
+            UNIQUE(meshUUID, subNetworkKey, controllerId)
+        )
+        """)
+        _ = try? db?.run("""
+        INSERT OR REPLACE INTO \(cleanTableName) (
+            id,
+            meshUUID,
+            subNetworkKey,
+            controllerId,
+            spaceId,
+            name,
+            bindNodeAddress,
+            publishGroupAddress,
+            isSynced,
+            reportToGateway,
+            configurationData,
+            createTime,
+            lastUpdate
+        )
+        SELECT
+            id,
+            meshUUID,
+            subNetworkKey,
+            controllerId,
+            COALESCE(spaceId, ''),
+            name,
+            bindNodeAddress,
+            publishGroupAddress,
+            COALESCE(isSynced, 0),
+            COALESCE(reportToGateway, 1),
+            configurationData,
+            COALESCE(createTime, CAST(strftime('%s', 'now') AS INTEGER)),
+            COALESCE(lastUpdate, CAST(strftime('%s', 'now') AS INTEGER))
+        FROM \(tableName)
+        """)
+        _ = try? db?.run("DROP TABLE IF EXISTS \(tableName)")
+        _ = try? db?.run("ALTER TABLE \(cleanTableName) RENAME TO \(tableName)")
+        _ = try? db?.run("DROP TABLE IF EXISTS \(legacyMockTableName)")
     }
 
     static func load(
@@ -127,40 +187,32 @@ extension DeviceEmerFireData {
             ExpressionKey.subNetworkKey == meshNetworkId
         )
         if let spaceId {
-            predicate = predicate.filter(ExpressionKey.spaceId == spaceId)
+            predicate = predicate.filter(ExpressionKey.spaceId == spaceId || ExpressionKey.spaceId == "")
         }
         if let id {
-            predicate = predicate.filter(ExpressionKey.deviceId == id)
+            predicate = predicate.filter(ExpressionKey.controllerId == id)
         }
 
         let filter = predicate.order(ExpressionKey.createTime.asc)
         var devices: [DeviceEmerFireData] = []
         if let rows = try? SunSmartDataManager.shared.db?.prepare(filter) {
             for row in rows {
-                let powerLossGroupAddresses = decodeAddresses(from: row[ExpressionKey.powerLossGroupAddresses])
-                let fireAlarmGroupAddresses = decodeAddresses(from: row[ExpressionKey.fireAlarmGroupAddresses])
                 let bindNodeAddress = row[ExpressionKey.bindNodeAddress].flatMap { Address($0) }
+                let publishGroupAddress = row[ExpressionKey.publishGroupAddress].flatMap { Address($0) }
+                let configuration = row[ExpressionKey.configurationData].flatMap {
+                    try? emerFireJSONDecoder.decode(EmergencyFireControllerConfiguration.self, from: $0)
+                } ?? .defaultValue
                 let device = DeviceEmerFireData(
-                    id: row[ExpressionKey.deviceId],
+                    id: row[ExpressionKey.controllerId],
                     spaceId: row[ExpressionKey.spaceId],
                     meshUUID: row[ExpressionKey.meshUUID],
                     meshNetworkId: row[ExpressionKey.subNetworkKey],
                     name: row[ExpressionKey.name],
                     bindNodeAddress: bindNodeAddress,
+                    publishGroupAddress: publishGroupAddress,
                     isSynced: row[ExpressionKey.isSynced],
                     reportToGateway: row[ExpressionKey.reportToGateway],
-                    enablePowerLossEmergency: row[ExpressionKey.enablePowerLossEmergency],
-                    enableFireAlarmEmergency: row[ExpressionKey.enableFireAlarmEmergency],
-                    powerLossGroupIndex: row[ExpressionKey.powerLossGroupIndex],
-                    fireAlarmGroupIndex: row[ExpressionKey.fireAlarmGroupIndex],
-                    powerLossGroupAddresses: powerLossGroupAddresses,
-                    fireAlarmGroupAddresses: fireAlarmGroupAddresses,
-                    powerLossBrightness: row[ExpressionKey.powerLossBrightness],
-                    powerLossResuming: row[ExpressionKey.powerLossResuming],
-                    powerLossSendCount: row[ExpressionKey.powerLossSendCount],
-                    fireAlarmBrightness: row[ExpressionKey.fireAlarmBrightness],
-                    fireAlarmResuming: row[ExpressionKey.fireAlarmResuming],
-                    fireAlarmSendCount: row[ExpressionKey.fireAlarmSendCount],
+                    configuration: configuration,
                     createTime: row[ExpressionKey.createTime],
                     lastUpdate: row[ExpressionKey.lastUpdate]
                 )
@@ -177,24 +229,14 @@ extension DeviceEmerFireData {
         let insert = DeviceEmerFireData.table.insert(or: .replace, [
             ExpressionKey.meshUUID <- meshUUID,
             ExpressionKey.subNetworkKey <- networkId,
-            ExpressionKey.deviceId <- id,
+            ExpressionKey.controllerId <- id,
             ExpressionKey.spaceId <- spaceId,
             ExpressionKey.name <- name,
             ExpressionKey.bindNodeAddress <- bindNodeAddress.map { Int($0) },
+            ExpressionKey.publishGroupAddress <- publishGroupAddress.map { Int($0) },
             ExpressionKey.isSynced <- isSynced,
             ExpressionKey.reportToGateway <- reportToGateway,
-            ExpressionKey.enablePowerLossEmergency <- enablePowerLossEmergency,
-            ExpressionKey.enableFireAlarmEmergency <- enableFireAlarmEmergency,
-            ExpressionKey.powerLossGroupIndex <- powerLossGroupIndex,
-            ExpressionKey.fireAlarmGroupIndex <- fireAlarmGroupIndex,
-            ExpressionKey.powerLossGroupAddresses <- Self.encodeAddresses(powerLossGroupAddresses),
-            ExpressionKey.fireAlarmGroupAddresses <- Self.encodeAddresses(fireAlarmGroupAddresses),
-            ExpressionKey.powerLossBrightness <- powerLossBrightness,
-            ExpressionKey.powerLossResuming <- powerLossResuming,
-            ExpressionKey.powerLossSendCount <- powerLossSendCount,
-            ExpressionKey.fireAlarmBrightness <- fireAlarmBrightness,
-            ExpressionKey.fireAlarmResuming <- fireAlarmResuming,
-            ExpressionKey.fireAlarmSendCount <- fireAlarmSendCount,
+            ExpressionKey.configurationData <- try? emerFireJSONEncoder.encode(configuration),
             ExpressionKey.createTime <- createTime,
             ExpressionKey.lastUpdate <- Int64(Date().timeIntervalSince1970)
         ])
@@ -212,7 +254,7 @@ extension DeviceEmerFireData {
     func delete(meshUUID: String, networkId: String) -> Bool {
         let predicate = ExpressionKey.meshUUID == meshUUID &&
             ExpressionKey.subNetworkKey == networkId &&
-            ExpressionKey.deviceId == id
+            ExpressionKey.controllerId == id
         let filter = DeviceEmerFireData.table.filter(predicate)
         do {
             try SunSmartDataManager.shared.db?.run(filter.delete())
@@ -223,16 +265,19 @@ extension DeviceEmerFireData {
         }
     }
 
-    private static func encodeAddresses(_ addresses: [UInt16]) -> Data? {
-        guard !addresses.isEmpty else { return nil }
-        return try? emerFireJSONEncoder.encode(addresses)
-    }
-
-    private static func decodeAddresses(from data: Data?) -> [UInt16] {
-        guard let data,
-              let addresses = try? emerFireJSONDecoder.decode([UInt16].self, from: data) else {
-            return []
+    private static func migrateMissingColumns(_ columnNames: Set<String>) {
+        let db = SunSmartDataManager.shared.db
+        if !columnNames.contains("isSynced") {
+            _ = try? db?.run(table.addColumn(ExpressionKey.isSynced, defaultValue: false))
         }
-        return addresses
+        if !columnNames.contains("reportToGateway") {
+            _ = try? db?.run(table.addColumn(ExpressionKey.reportToGateway, defaultValue: true))
+        }
+        if !columnNames.contains("createTime") {
+            _ = try? db?.run(table.addColumn(ExpressionKey.createTime, defaultValue: Int64(Date().timeIntervalSince1970)))
+        }
+        if !columnNames.contains("lastUpdate") {
+            _ = try? db?.run(table.addColumn(ExpressionKey.lastUpdate, defaultValue: Int64(Date().timeIntervalSince1970)))
+        }
     }
 }

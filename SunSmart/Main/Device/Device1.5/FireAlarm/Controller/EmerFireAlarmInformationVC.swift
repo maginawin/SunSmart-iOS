@@ -121,8 +121,8 @@ final class EmerFireAlarmInformationVC: UIViewController {
 
     private func makeGroupRows() -> [InfoRow] {
         let resolvedConfig = config ?? device.map(makeConfig(from:))
-        let powerLossNames = groupNames(for: resolvedConfig?.powerLossGroupAddresses ?? [])
-        let fireAlarmNames = groupNames(for: resolvedConfig?.fireAlarmGroupAddresses ?? [])
+        let powerLossNames = groupNames(for: resolvedConfig?.configuration.powerLossSettings.associateGroupAddresses ?? [])
+        let fireAlarmNames = groupNames(for: resolvedConfig?.configuration.fireAlarmSettings.associateGroupAddresses ?? [])
         return [
             .init(title: "Power Loss Group", value: powerLossNames.isEmpty ? "Not yet linked to a group" : powerLossNames.joined(separator: ", "), showsCopyButton: false),
             .init(title: "Fire Alarm Group", value: fireAlarmNames.isEmpty ? "Not yet linked to a group" : fireAlarmNames.joined(separator: ", "), showsCopyButton: false)
@@ -144,18 +144,8 @@ final class EmerFireAlarmInformationVC: UIViewController {
             deviceName: device.name,
             isSynced: device.isSynced,
             reportToGateway: device.reportToGateway,
-            enablePowerLossEmergency: device.enablePowerLossEmergency,
-            enableFireAlarmEmergency: device.enableFireAlarmEmergency,
-            powerLossGroupIndex: device.powerLossGroupIndex,
-            fireAlarmGroupIndex: device.fireAlarmGroupIndex,
-            powerLossGroupAddresses: device.powerLossGroupAddresses,
-            fireAlarmGroupAddresses: device.fireAlarmGroupAddresses,
-            powerLossBrightness: device.powerLossBrightness,
-            powerLossResuming: device.powerLossResuming,
-            powerLossSendCount: device.powerLossSendCount,
-            fireAlarmBrightness: device.fireAlarmBrightness,
-            fireAlarmResuming: device.fireAlarmResuming,
-            fireAlarmSendCount: device.fireAlarmSendCount
+            publishGroupAddress: device.publishGroupAddress,
+            configuration: device.configuration
         )
     }
 }

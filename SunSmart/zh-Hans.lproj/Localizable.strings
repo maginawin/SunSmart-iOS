@@ -1712,7 +1712,7 @@
 "linked_emer_fire_controller_name" = "应急与火警控制器1";
 "linked_set_brightness_to" = "设置亮度为";
 "linked_resuming" = "恢复时间：";
-"linked_send_count_per_5_seconds" = "发送次数（每5秒）：";
+"linked_send_count_per_5_seconds" = "发送次数（每5秒发送1次）：";
 "Associate With Group(s)" = "关联到组";
 "Report To Gateway" = "上报到网关";
 "Enable Power Loss Emergency" = "启用断电应急";
@@ -1727,8 +1727,15 @@
 "inactive" = "未激活";
 "disabaled" = "禁用";
 "Power Outage Emergency" = "停电紧急情况";
+"Fire Alarm Emergency" = "火警紧急情况";
+"Normal State" = "正常状态";
+"Unlinked" = "未关联";
+"Loading..." = "加载中...";
+"Resuming" = "恢复中";
 "Insufficient permissions" = "权限不足";
 "Uncontrollable in emergency situations" = "在紧急情况下无法控制";
+"emer_fire_same_function_group_occupied" = "组 %@ 已被其它应急火警设备关联到相同应急功能。";
+"Emergency & Fire Alarm are all disabled" = "应急与火警均已禁用";
 
 //v1.5-- NGateWay
 "ngateway_sig_mesh" = "SIG Mesh";
@@ -1809,3 +1816,5 @@
 "neightkeyswitches_activation_detected" = "已检测到设备激活";
 "neightkeyswitches_activation_timeout" = "未检测到响应";
 "The device has been disabled; please configure it in the settings." = "该设备已被禁用；请在设置中进行配置。";
+"Not executed. Please link a device first." = "未执行。请先关联设备。";
+"Not executed. No devices in associated groups." = "未执行。关联的组中没有设备。";

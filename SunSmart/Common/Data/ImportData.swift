@@ -1251,9 +1251,12 @@ extension SpaceData {
             }
             SceneInfo.delete(meshUUID: meshUUID, networkId: self.meshNetworkId)
             // 场景
-            let scenes = sceneDicts.compactMap { sceneDict in
+            let scenes: [Scene] = sceneDicts.compactMap { sceneDict in
                 let sceneJson = JSON(sceneDict)
                 if let sceneNumberHex = sceneJson["number"].string, let sceneNumber = SceneNumber(hex: sceneNumberHex), let name = sceneJson["name"].string {
+                    guard !DeviceEmerFireData.reservedSceneNumbers.contains(sceneNumber) else {
+                        return nil
+                    }
                     let scene = Scene(sceneNumber, name: name)
                     scene.subNetworkId = self.meshNetworkId
                     let existNodes = nodes.filter({ $0.sceneExecuteDatas.contains(where: { $0.sceneNumber == sceneNumber }) })

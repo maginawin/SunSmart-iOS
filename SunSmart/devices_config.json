@@ -1162,10 +1162,10 @@
     {
         "companyId" : "0A78",
         "productId" : "2131",
-        "categoryName" : "Emergency Fire Alarm Controller",
+        "categoryName" : "Emergency Controller",
         "elementCount" : 3,
-        "iconCategory" : "Lighting",
-        "deviceCategory" : "Lighting",
+        "iconCategory" : "EmergencyController",
+        "deviceCategory" : "EmergencyController",
         "modelName" : "SR-BL2421-DryCon924"
     },
     {
@@ -1188,4 +1188,3 @@
     }
     
 ]
-

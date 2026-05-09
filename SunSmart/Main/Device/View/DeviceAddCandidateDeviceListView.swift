@@ -402,7 +402,7 @@ class DeviceAddCandidateDeviceListView: UIView {
         categoryView.updateTitle("\("lights".localizedString)-\(candidateDevices.filter({ $0.deviceType == .light && $0.addState != .success }).count)", at: 0, andWidth: false)
         categoryView.updateTitle("\("switches".localizedString)-\(candidateDevices.filter({ $0.deviceType == .switches && $0.addState != .success }).count)", at: 1, andWidth: false)
         categoryView.updateTitle("\("sensors".localizedString)-\(candidateDevices.filter({ $0.deviceType == .sensor && $0.addState != .success }).count)", at: 2, andWidth: false)
-        categoryView.updateTitle("\("others".localizedString)-\(candidateDevices.filter({ ($0.deviceType == .dongle || $0.deviceType == .gateway || $0.deviceType == .unknown) && $0.addState != .success }).count)", at: 3, andWidth: false)
+        categoryView.updateTitle("\("others".localizedString)-\(candidateDevices.filter({ ($0.deviceType == .dongle || $0.deviceType == .gateway || $0.deviceType == .emergencyController || $0.deviceType == .unknown) && $0.addState != .success }).count)", at: 3, andWidth: false)
     }
     
     /// 更新底部view数量状态
@@ -670,7 +670,7 @@ extension DeviceAddCandidateDeviceListView: WMMenuViewDataSource, WMMenuViewDele
         case 2:
             return "\("sensors".localizedString)-\(candidateDevices.filter({ $0.deviceType == .sensor && $0.addState == .success }).count)"
         case 3:
-            return "\("others".localizedString)-\(candidateDevices.filter({ ($0.deviceType == .dongle || $0.deviceType == .unknown) && $0.addState == .success }).count)"
+            return "\("others".localizedString)-\(candidateDevices.filter({ ($0.deviceType == .dongle || $0.deviceType == .emergencyController || $0.deviceType == .unknown) && $0.addState == .success }).count)"
         default:
             return ""
         }
@@ -726,7 +726,7 @@ extension DeviceAddCandidateDeviceListView: WMMenuViewDataSource, WMMenuViewDele
         case 2:
             showDeviceTypes = [.sensor]
         case 3:
-            showDeviceTypes = [.dongle, .gateway, .unknown]
+            showDeviceTypes = [.dongle, .gateway, .emergencyController, .unknown]
         default:
             showDeviceTypes = [.light]
         }

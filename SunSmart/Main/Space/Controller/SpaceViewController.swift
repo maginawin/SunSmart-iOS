@@ -107,6 +107,7 @@ class SpaceViewController: WMPageController {
     /// 自动测试定时器
     private var autoTestTimer: Timer?
     private var isAllOn: Bool = true
+    private var emergencyFireControllerSceneEventManager: EmergencyFireControllerSceneEventManager?
     
     private var networkableObservation: NSKeyValueObservation?
     private var meshNetworkConnectedObservation: NSKeyValueObservation?
@@ -271,6 +272,8 @@ class SpaceViewController: WMPageController {
         stopHeartbeatTimer()
         stopUserAskTimer()
         stopAutoTestTimer()
+        emergencyFireControllerSceneEventManager?.deactivate()
+        emergencyFireControllerSceneEventManager = nil
     }
     
     /// 删除当前窗口的自定义view（防止权限清空强制退出页面时未关闭自定义view）
@@ -555,6 +558,10 @@ class SpaceViewController: WMPageController {
 //                    XWHUDManager.hideInView(with: self.view)
                     XWHUDManager.hide()
                     self.loadNetworkData = true
+                    self.emergencyFireControllerSceneEventManager = EmergencyFireControllerSceneEventManager {
+                        DeviceEmerFireStore.shared.devices(in: self.space)
+                    }
+                    self.emergencyFireControllerSceneEventManager?.activate()
                     self.reloadData()
                     DispatchQueue.global().async {
 //                        print("设备同步状态:\(Date().timeIntervalSince1970)")

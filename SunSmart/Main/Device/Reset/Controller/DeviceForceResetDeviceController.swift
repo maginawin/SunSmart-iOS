@@ -208,7 +208,8 @@ class DeviceForceResetDeviceController: UIViewController {
                             
                         }else if let info = MeshLibManager.manager.supportDeviceInfos.first(where: { $0.companyId == provisionedDevice.cid && $0.productId == provisionedDevice.pid }) {
                             provisionedDevice.deviceName = info.categoryName
-                            provisionedDevice.icon = "device_\(info.iconCategory)"
+                            let deviceType = Node.DeviceType(deviceCategory: info.deviceCategory)
+                            provisionedDevice.icon = EmergencyFireControllerIconName.addListIconName(for: deviceType, fallback: info.iconName)
                             self.deviceGroup = nil
                         }
                         

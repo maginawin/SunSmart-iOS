@@ -59,8 +59,8 @@ extension LinkedEmerFireEditVC: UITableViewDataSource, UITableViewDelegate {
             let cell: EmerFireNameCell = tableView.dequeueReusableCell(for: indexPath)
             cell.configure(name: state.deviceName, synced: state.isSynced)
             cell.nameDidChange = { [weak self] name in self?.state.deviceName = name }
-            cell.syncAction = {
-                XWHUDManager.showTipHUD("Devices not synced.", isLineFeed: false)
+            cell.syncAction = { [weak self] in
+                self?.openSyncForCurrentDevice()
             }
             return cell
         case .reportToGateway:
@@ -147,7 +147,7 @@ extension LinkedEmerFireEditVC: UITableViewDataSource, UITableViewDelegate {
             let controller = PJDeviceGroupSelectionViewController(
                 context: .init(
                     title: "select_group(s)".localizedString,
-                    groups: MeshNetworkManager.instance.groups,
+                    groups: DeviceEmerFireStore.shared.selectableGroups(),
                     selectedGroupAddresses: state.selectedGroupAddresses(for: row),
                     disabledGroupAddresses: state.disabledGroupAddresses(for: row),
                     disabledSelectionTip: "Not selectable. This group is already associated with a device of the same type."
@@ -161,7 +161,7 @@ extension LinkedEmerFireEditVC: UITableViewDataSource, UITableViewDelegate {
             let controller = PJDeviceGroupSelectionViewController(
                 context: .init(
                     title: "select_group(s)".localizedString,
-                    groups: MeshNetworkManager.instance.groups,
+                    groups: DeviceEmerFireStore.shared.selectableGroups(),
                     selectedGroupAddresses: state.selectedGroupAddresses(for: row),
                     disabledGroupAddresses: state.disabledGroupAddresses(for: row),
                     disabledSelectionTip: "Not selectable. This group is already associated with a device of the same type."

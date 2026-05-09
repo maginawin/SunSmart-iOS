@@ -26,6 +26,18 @@ struct MeshDeviceConfigInfo {
     let modelName: String?
     /// 灵敏度范围（传感器）
     let sensitivityRange: ClosedRange<UInt16>?
+
+    var iconName: String {
+        return "device_\(iconCategory)"
+    }
+
+    var offlineIconName: String {
+        return "device_offline_\(iconCategory)"
+    }
+
+    var unsyncIconName: String {
+        return "device_unsync_\(iconCategory)"
+    }
     
     /// 默认设备配置信息
     static var defaultConfigInfos: [MeshDeviceConfigInfo] {

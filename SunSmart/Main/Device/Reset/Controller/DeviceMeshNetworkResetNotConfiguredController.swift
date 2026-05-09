@@ -107,8 +107,8 @@ class DeviceMeshNetworkResetNotConfiguredController: UIViewController {
                 
             }else if let info = MeshLibManager.manager.supportDeviceInfos.first(where: { $0.companyId == scanDevice.cid && $0.productId == scanDevice.pid }) {
                 scanDevice.deviceName = info.categoryName
-                scanDevice.icon = "device_\(info.iconCategory)"
                 scanDevice.deviceType = Node.DeviceType(deviceCategory: info.deviceCategory)
+                scanDevice.icon = EmergencyFireControllerIconName.addListIconName(for: scanDevice.deviceType, fallback: info.iconName)
                 scanDevice.selectedState = .selected
             }
             scanDevice.addState = .scaning
@@ -408,4 +408,3 @@ extension DeviceMeshNetworkResetNotConfiguredController: DeviceAddViewCellDelega
     }
     
 }
-

@@ -83,15 +83,16 @@ final class EmerFireAlarmStatusLegendHeaderView: UIView {
         CGSize(width: UIView.noIntrinsicMetric, height: Layout.height)
     }
 
-    private lazy var triggeredItem = LegendItemView(title: "Triggered", image: UIImage(named: "sts2"))
-    private lazy var resumeItem = LegendItemView(title: "Resume", image: UIImage(named: "sts5"))
-    private lazy var inactiveItem = LegendItemView(title: "Inactive", image: UIImage(named: "sts6"))
-    private lazy var disabledItem = LegendItemView(title: "Disabled", image: UIImage(named: "sts4"))
+    private lazy var triggeredItem = LegendItemView(title: "Triggered", image: UIImage(named: EmergencyFireControllerIconName.Monitor.StatusSet.powerLossActive))
+    private lazy var resumeItem = LegendItemView(title: "Resume", image: UIImage(named: EmergencyFireControllerIconName.Monitor.StatusSet.fireActive))
+    private lazy var inactiveItem = LegendItemView(title: "Inactive", image: UIImage(named: EmergencyFireControllerIconName.Monitor.StatusSet.inactive))
+    private lazy var disabledItem = LegendItemView(title: "Disabled", image: UIImage(named: EmergencyFireControllerIconName.Monitor.StatusSet.disabled))
 
     private lazy var stackView: UIStackView = {
         let stackView = UIStackView(arrangedSubviews: [triggeredItem, resumeItem, inactiveItem, disabledItem])
         stackView.axis = .horizontal
         stackView.alignment = .center
+        stackView.distribution = .fillEqually
         stackView.spacing = Layout.itemSpacing
         return stackView
     }()

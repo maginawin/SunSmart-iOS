@@ -11,19 +11,18 @@ import UIKit
 final class LinkedEmerFireEditVC: UIViewController {
 
     private let viewModel: LinkedEmerFireEditViewModel
-    private let isLinkedToRealDevice: Bool
     private let space: SpaceData?
     private var hasRefreshedInitialTableLayout = false
+    private var isCreateMode: Bool { state.deviceId == nil }
     var state: LinkedEmerFireEditState { viewModel.state }
     var editable: Bool {
         get { state.editable }
         set { state.editable = newValue }
     }
 
-    init(config: LinkedEmerFireConfig? = nil, isLinkedToRealDevice: Bool = false, space: SpaceData? = nil) {
-        self.isLinkedToRealDevice = isLinkedToRealDevice
+    init(config: LinkedEmerFireConfig? = nil, space: SpaceData? = nil) {
         self.space = space
-        viewModel = LinkedEmerFireEditViewModel(config: config)
+        viewModel = LinkedEmerFireEditViewModel(config: config, space: space)
         super.init(nibName: nil, bundle: nil)
     }
 
@@ -51,8 +50,8 @@ final class LinkedEmerFireEditVC: UIViewController {
         return tableView
     }()
 
-    private lazy var linkeBt: PJLinkedStaOpertionsView = {
-        PJLinkedStaOpertionsView(frame: .zero)
+    private lazy var bottomView: DeviceBottomBtnView = {
+        DeviceBottomBtnView(frame: .zero)
     }()
 
     override func viewDidLoad() {
@@ -68,6 +67,13 @@ final class LinkedEmerFireEditVC: UIViewController {
         tableView.performBatchUpdates(nil)
     }
 
+    override func viewWillAppear(_ animated: Bool) {
+        super.viewWillAppear(animated)
+        if viewModel.refreshSyncStatusFromStore() {
+            tableView.reloadData()
+        }
+    }
+
     @objc private func backAction() {
         if let navigationController, navigationController.viewControllers.first != self {
             navigationController.popViewController(animated: true)
@@ -78,84 +84,159 @@ final class LinkedEmerFireEditVC: UIViewController {
 
     @objc private func saveAction() {
         view.endEditing(true)
-        viewModel.save()
-        XWHUDManager.showTipHUD("save".localizedString)
+        guard validateBeforeSaving() else { return }
+        guard viewModel.save() != nil else {
+            XWHUDManager.showTipHUD("failed".localizedString, isLineFeed: false)
+            return
+        }
+        NotificationCenter.default.post(name: .init(deviceOthersRefreshNotificationName), object: nil)
+        if let savedDevice = viewModel.currentDevice(), let space, savedDevice.bindNode != nil {
+            let controller = EmerFireAlarmControllerSyncVC(space: space, data: savedDevice) { [weak self] in
+                self?.finishAfterSuccessfulSaveSync()
+            }
+            navigationController?.pushViewController(controller, animated: true)
+            return
+        }
+        finishAfterSuccessfulSaveSync()
+    }
+
+    @objc private func createAction() {
+        view.endEditing(true)
+        guard validateBeforeSaving() else { return }
+        guard let space else {
+            XWHUDManager.showTipHUD("failed".localizedString, isLineFeed: false)
+            return
+        }
+        guard viewModel.create(in: space) != nil else {
+            XWHUDManager.showTipHUD("failed".localizedString, isLineFeed: false)
+            return
+        }
+        NotificationCenter.default.post(name: .init(deviceOthersRefreshNotificationName), object: nil)
+        XWHUDManager.showSuccessTipHUD("done!".localizedString)
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) { [weak self] in
+            self?.dismiss(animated: true)
+        }
+    }
+
+    @objc private func deleteAction() {
+        view.endEditing(true)
+        guard state.editable else {
+            XWHUDManager.showTipHUD("no_permission".localizedString, isLineFeed: true)
+            return
+        }
+        SRAlertView(title: "notification".localizedString, message: "device_delete_message".localizedString, actions: [
+            .cancelAction,
+            SRAlertAction(title: "alert_item_delete".localizedString, style: .destructive, actionHandler: { [weak self] _ in
+                guard let self = self, self.viewModel.delete() else {
+                    XWHUDManager.showTipHUD("failed".localizedString, isLineFeed: false)
+                    return
+                }
+                NotificationCenter.default.post(name: .init(deviceOthersRefreshNotificationName), object: nil)
+                XWHUDManager.showSuccessTipHUD("done!".localizedString)
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) {
+                    self.dismiss(animated: true)
+                }
+            })
+        ]).show()
+    }
+
+    func openSyncForCurrentDevice() {
+        guard let space, let device = viewModel.currentDevice() else {
+            XWHUDManager.showTipHUD("failed".localizedString, isLineFeed: false)
+            return
+        }
+        let controller = EmerFireAlarmControllerSyncVC(space: space, data: device)
+        navigationController?.pushViewController(controller, animated: true)
+    }
+
+    private func finishAfterSuccessfulSaveSync() {
+        XWHUDManager.showSuccessTipHUD("done!".localizedString)
+        let presentedNavigationController = navigationController
+        if presentedNavigationController?.presentingViewController != nil {
+            presentedNavigationController?.dismiss(animated: true)
+        } else if let navigationController = navigationController ?? presentedNavigationController {
+            navigationController.popToDeviceOthersIfPossible()
+        } else {
+            dismiss(animated: true)
+        }
     }
 
     private func setupUI() {
         view.backgroundColor = Background_Color
 
-        view.addSubview(linkeBt)
-        linkeBt.snp.makeConstraints { make in
-            make.left.right.bottom.equalToSuperview()
-            make.height.equalTo(SCRYFrom(56) + kSafeAreaBottomHeight)
+        let actionView: UIView
+        if isCreateMode {
+            bottomView.showCreateUI()
+            bottomView.createBtn.addTarget(self, action: #selector(createAction), for: .touchUpInside)
+            actionView = bottomView
+        } else {
+            bottomView.showEditUI()
+            bottomView.deleteBtn.addTarget(self, action: #selector(deleteAction), for: .touchUpInside)
+            bottomView.saveBtn.addTarget(self, action: #selector(saveAction), for: .touchUpInside)
+            actionView = bottomView
         }
-        linkeBt.configure(isLinked: isLinkedToRealDevice)
+        actionView.isHidden = !state.editable
+        view.addSubview(actionView)
+        actionView.snp.makeConstraints { make in
+            make.left.right.bottom.equalToSuperview()
+            make.height.equalTo(SCRYFrom(56) + (isIPad ? 0 : kSafeAreaBottomHeight))
+        }
 
         view.addSubview(tableView)
         tableView.snp.makeConstraints { make in
             make.top.equalTo(view.safeAreaLayoutGuide.snp.top)
             make.left.right.equalToSuperview()
-            make.bottom.equalTo(linkeBt.snp.top).offset(-SCRYFrom(8))
-        }
-        linkeBt.createAction = { [weak self] in
-            self?.handleBottomAction()
+            if state.editable {
+                make.bottom.equalTo(actionView.snp.top).offset(-SCRYFrom(8))
+            } else {
+                make.bottom.equalToSuperview()
+            }
         }
     }
 
-    private func handleBottomAction() {
-        if isLinkedToRealDevice {
-            let controller = EmerFireAlarmMonitorVC(space: space, config: state.makeConfig())
-            let navigationController = NavigationViewController(rootViewController: controller)
-            present(navigationController, animated: true)
-            return
+    private func validateBeforeSaving() -> Bool {
+        guard state.editable else {
+            XWHUDManager.showTipHUD("no_permission".localizedString, isLineFeed: true)
+            return false
         }
-
-        guard let space else {
-            XWHUDManager.showTipHUD("failed".localizedString, isLineFeed: false)
-            return
+        guard !state.deviceName.isAllInputTextEmpty() else {
+            XWHUDManager.showTipHUD("name_empty".localizedString, isLineFeed: true)
+            return false
         }
-
-        let context = PJDevicesAddEntryContext(
-            source: .fireAlarm,
-            space: space,
-            title: "add_device".localizedString,
-            appointGroup: nil,
-            addBehavior: .init(
-                allowsTargetSelection: false,
-                allowsCategorySelection: false,
-                allowedTypes: [.others],
-                blockedDeviceTypes: [.dongle],
-                selectionMode: .single,
-                forbiddenSelectionTip: "You can't choose other devices.",
-                forbiddenDeviceTypeTip: "You can't choose this type of device."
+        if let space,
+           DeviceEmerFireStore.shared.isNameDuplicated(state.deviceName, space: space, excluding: state.deviceId) {
+            XWHUDManager.showTipHUD("name_already_exists".localizedString, isLineFeed: true)
+            return false
+        }
+        let conflictingGroupNames = state.conflictingAssociatedGroupNames()
+        if !conflictingGroupNames.isEmpty {
+            let message = String(
+                format: "emer_fire_same_function_group_occupied".localizedString,
+                conflictingGroupNames.joined(separator: ",")
             )
-        )
-        let controller = PJDevicesAddFlowFactory.make(context: context)
-        let navigationController = NavigationViewController(rootViewController: controller)
-        present(navigationController, animated: true)
+            XWHUDManager.showTipHUD(message, isLineFeed: true)
+            return false
+        }
+        return true
     }
 
     private func setupNavigation() {
-        title = state.editable ? "Edit" : "Create"
+        title = isCreateMode ? "Create" : "Edit"
         navigationItem.leftBarButtonItem = UIBarButtonItem(
             image: UIImage(named: "navigation_back")?.withRenderingMode(.alwaysOriginal),
             style: .plain,
             target: self,
             action: #selector(backAction)
         )
-        navigationItem.rightBarButtonItem = UIBarButtonItem(
-            title: "save".localizedString,
-            style: .plain,
-            target: self,
-            action: #selector(saveAction)
-        )
-        navigationItem.rightBarButtonItem?.setTitleTextAttributes(
-            [
-                .font: FONTS(16),
-                .foregroundColor: Title_Done_Color
-            ],
-            for: .normal
-        )
+    }
+}
+
+private extension UINavigationController {
+    func popToDeviceOthersIfPossible() {
+        if let deviceOthersViewController = viewControllers.last(where: { $0 is DeviceOthersViewController }) {
+            popToViewController(deviceOthersViewController, animated: true)
+        } else {
+            popViewController(animated: true)
+        }
     }
 }

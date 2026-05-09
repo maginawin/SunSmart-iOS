@@ -1697,7 +1697,7 @@
 "linked_emer_fire_controller_name" = "Emer&Fire Controller 1";
 "linked_set_brightness_to" = "Set Brightness To";
 "linked_resuming" = "Resuming in:";
-"linked_send_count_per_5_seconds" = "Send Count (per 5 seconds):";
+"linked_send_count_per_5_seconds" = "Send Count (1 send every 5s):";
 "Associate With Group(s)" = "Associate With Group(s)";
 "Report To Gateway" = "Report To Gateway";
 "Enable Power Loss Emergency" = "Enable Power Loss Emergency";
@@ -1712,8 +1712,15 @@
 "inactive" = "inactive";
 "disabaled" = "disabaled";
 "Power Outage Emergency" = "Power Outage Emergency";
+"Fire Alarm Emergency" = "Fire Alarm Emergency";
+"Normal State" = "Normal State";
+"Unlinked" = "Unlinked";
+"Loading..." = "Loading...";
+"Resuming" = "Resuming";
 "Insufficient permissions" = "Insufficient permissions";
 "Uncontrollable in emergency situations" = "Uncontrollable in emergency situations";
+"emer_fire_same_function_group_occupied" = "The group(s) %@ are already associated with another emergency fire controller for the same emergency function.";
+"Emergency & Fire Alarm are all disabled" = "Emergency & Fire Alarm are all disabled";
 
 //v1.5-- NGateWay
 "ngateway_sig_mesh" = "SIG Mesh";
@@ -1794,3 +1801,5 @@
 "neightkeyswitches_activation_detected" = "Device Activation Detected";
 "neightkeyswitches_activation_timeout" = "No response detected";
 "The device has been disabled; please configure it in the settings." = "The device has been disabled; please configure it in the settings.";
+"Not executed. Please link a device first." = "Not executed. Please link a device first.";
+"Not executed. No devices in associated groups." = "Not executed. No devices in associated groups.";

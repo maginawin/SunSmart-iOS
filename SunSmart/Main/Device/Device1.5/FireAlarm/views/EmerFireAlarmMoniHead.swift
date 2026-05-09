@@ -55,9 +55,8 @@ class EmerFireAlarmMoniHead: UIView {
         warningAction?()
     }
     
-    func config(statusLab: String){
-        lab.text = statusLab
-      //view.attributedText = NSMutableAttributedString(string: "Unlinked", attributes: [NSAttributedString.Key.underlineStyle: NSUnderlineStyle.single.rawValue])
-      
+    func config(statusLab: String, textColor: UIColor? = nil){
+        lab.textColor = textColor ?? UIColor(red: 1, green: 0.281, blue: 0.194, alpha: 1)
+        lab.attributedText = NSMutableAttributedString(string: statusLab, attributes: [NSAttributedString.Key.underlineStyle: NSUnderlineStyle.single.rawValue])
     }
 }

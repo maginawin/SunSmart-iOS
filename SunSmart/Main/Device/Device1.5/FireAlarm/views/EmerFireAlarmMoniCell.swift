@@ -11,11 +11,11 @@ import SnapKit
 final class EmerFireAlarmMoniCell: UICollectionViewCell {
 
     private enum Layout {
-        static let circleInset = SCRXFrom(6)
+        static let circleInset: CGFloat = 0
         static let badgeSize = SCRXFrom(18)
-        static let iconSize = SCRXFrom(28)
-        static let titleTopSpacing = SCRYFrom(8)
-        static let contentHorizontalInset = SCRXFrom(8)
+        static let iconSize = SCRXFrom(32)
+        static let titleTopSpacing = SCRYFrom(6)
+        static let contentHorizontalInset = SCRXFrom(6)
     }
 
     private lazy var circleView: UIView = {
@@ -84,6 +84,7 @@ final class EmerFireAlarmMoniCell: UICollectionViewCell {
 
     func configure(
         title: String,
+        isOn: Bool,
         icon: UIImage? = UIImage(named: "group_1"),
         badgeImage: UIImage? = nil
     ) {
@@ -91,6 +92,7 @@ final class EmerFireAlarmMoniCell: UICollectionViewCell {
         iconImageView.image = icon
         badgeImageView.image = badgeImage
         badgeImageView.isHidden = badgeImage == nil
+        circleView.backgroundColor = isOn ? .white : RGB(226, 226, 226)
         setNeedsLayout()
         layoutIfNeeded()
         updateCircleAppearance()

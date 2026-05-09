@@ -11,16 +11,51 @@ import SnapKit
 final class EmerFireAlarmStatusSetView: UIView {
 
     enum HeaderAction {
-        case alert
-        case statusGray
-        case fire
-        case statusGreen
+        case powerLossTrigger
+        case powerLossStatus
+        case fireTrigger
+        case fireStatus
     }
 
     private struct StatusItem {
+        let kind: RowKind
         let title: String
         let subtitle: String
         let value: String
+    }
+
+    struct ItemViewModel {
+        let kind: RowKind
+        let title: String
+        let subtitle: String
+        let value: String
+    }
+
+    enum RowKind {
+        case powerLossTrigger
+        case powerLossStop
+        case fireTrigger
+        case fireStop
+    }
+
+    enum RowStatus {
+        case triggered
+        case resume
+        case inactive
+        case disabled
+
+        var imageName: String {
+            switch self {
+            case .triggered:
+                return EmergencyFireControllerIconName.Monitor.StatusSet.powerLossActive
+            case .resume:
+                return EmergencyFireControllerIconName.Monitor.StatusSet.fireActive
+            case .inactive:
+                return EmergencyFireControllerIconName.Monitor.StatusSet.inactive
+            case .disabled:
+                return EmergencyFireControllerIconName.Monitor.StatusSet.disabled
+            }
+        }
     }
 
     private enum Layout {
@@ -44,12 +79,7 @@ final class EmerFireAlarmStatusSetView: UIView {
     var headerActionHandler: ((HeaderAction) -> Void)?
 
     private var heightConstraint: Constraint?
-    private var items: [StatusItem] = [
-        .init(title: "power_supply_fails".localizedString, subtitle: "set_brightness_to".localizedString, value: "100%"),
-        .init(title: "power_is_restored".localizedString, subtitle: "resuming_in".localizedString, value: "2s"),
-        .init(title: "fire_alarm_occurs".localizedString, subtitle: "set_brightness_to".localizedString, value: "100%"),
-        .init(title: "fire_alarm_stops".localizedString, subtitle: "resuming_in".localizedString, value: "2s")
-    ]
+    private var items: [StatusItem] = []
 
     private lazy var contentView: UIView = {
         let view = UIView()
@@ -78,13 +108,13 @@ final class EmerFireAlarmStatusSetView: UIView {
         return imageView
     }()
 
-    private lazy var alertButton = makeHeaderButton(image: UIImage(named: "sts1"),tintColor: nil, action: #selector(alertAction))
-    private lazy var grayStatusButton = makeHeaderButton(image: UIImage(named: "sts2"),tintColor: nil, action: #selector(grayStatusAction), filled: true)
-    private lazy var fireButton = makeHeaderButton(image: UIImage(named: "sts3"),tintColor: nil, action: #selector(fireAction))
-    private lazy var greenStatusButton = makeHeaderButton(image: UIImage(named: "sts5"), tintColor: nil, action: #selector(greenStatusAction), filled: true)
+    private lazy var powerLossTriggerButton = makeHeaderButton(image: UIImage(named: EmergencyFireControllerIconName.Monitor.StatusSet.powerLossEnabled),tintColor: nil, action: #selector(powerLossTriggerAction))
+    private lazy var powerLossStatusButton = makeHeaderButton(image: UIImage(named: EmergencyFireControllerIconName.Monitor.StatusSet.powerLossActive),tintColor: nil, action: #selector(powerLossStatusAction), filled: true)
+    private lazy var fireTriggerButton = makeHeaderButton(image: UIImage(named: EmergencyFireControllerIconName.Monitor.StatusSet.fireEnabled),tintColor: nil, action: #selector(fireTriggerAction))
+    private lazy var fireStatusButton = makeHeaderButton(image: UIImage(named: EmergencyFireControllerIconName.Monitor.StatusSet.fireActive), tintColor: nil, action: #selector(fireStatusAction), filled: true)
 
     private lazy var headerActionsStackView: UIStackView = {
-        let stackView = UIStackView(arrangedSubviews: [alertButton, grayStatusButton, fireButton, greenStatusButton])
+        let stackView = UIStackView(arrangedSubviews: [powerLossTriggerButton, powerLossStatusButton, fireTriggerButton, fireStatusButton])
         stackView.axis = .horizontal
         stackView.alignment = .center
         stackView.spacing = SCRXFrom(12)
@@ -110,7 +140,6 @@ final class EmerFireAlarmStatusSetView: UIView {
     override init(frame: CGRect) {
         super.init(frame: frame)
         setupUI()
-        updateTableHeaderFrame()
         updateExpandedState(animated: false)
     }
 
@@ -118,9 +147,29 @@ final class EmerFireAlarmStatusSetView: UIView {
         fatalError("init(coder:) has not been implemented")
     }
 
-    func updateItems(_ items: [EmerFireAlarmStatusItemCell.ViewModel]) {
-        self.items = items.map { StatusItem(title: $0.title, subtitle: $0.subtitle, value: $0.value) }
+    func updateItems(_ items: [ItemViewModel]) {
+        self.items = items.map { StatusItem(kind: $0.kind, title: $0.title, subtitle: $0.subtitle, value: $0.value) }
         tableView.reloadData()
+    }
+
+    func updateRowStatuses(powerLossTrigger: RowStatus, powerLossStop: RowStatus, fireTrigger: RowStatus, fireStop: RowStatus) {
+        updateHeaderButtonImages(
+            powerLossTrigger: powerLossTrigger,
+            powerLossStop: powerLossStop,
+            fireTrigger: fireTrigger,
+            fireStop: fireStop
+        )
+    }
+
+    private func updateHeaderButtonImages(powerLossTrigger: RowStatus, powerLossStop: RowStatus, fireTrigger: RowStatus, fireStop: RowStatus) {
+        powerLossTriggerButton.setImage(UIImage(named: triggerHeaderImageName(enabledImageName: EmergencyFireControllerIconName.Monitor.StatusSet.powerLossEnabled, disabledImageName: EmergencyFireControllerIconName.Monitor.StatusSet.powerLossDisabled, status: powerLossTrigger)), for: .normal)
+        powerLossStatusButton.setImage(UIImage(named: powerLossStop.imageName), for: .normal)
+        fireTriggerButton.setImage(UIImage(named: triggerHeaderImageName(enabledImageName: EmergencyFireControllerIconName.Monitor.StatusSet.fireEnabled, disabledImageName: EmergencyFireControllerIconName.Monitor.StatusSet.fireDisabled, status: fireTrigger)), for: .normal)
+        fireStatusButton.setImage(UIImage(named: fireStop.imageName), for: .normal)
+    }
+
+    private func triggerHeaderImageName(enabledImageName: String, disabledImageName: String, status: RowStatus) -> String {
+        status == .disabled ? disabledImageName : enabledImageName
     }
 
     func setExpanded(_ expanded: Bool, animated: Bool) {
@@ -132,20 +181,20 @@ final class EmerFireAlarmStatusSetView: UIView {
         setExpanded(!isExpanded, animated: true)
     }
 
-    @objc private func alertAction() {
-        headerActionHandler?(.alert)
+    @objc private func powerLossTriggerAction() {
+        headerActionHandler?(.powerLossTrigger)
     }
 
-    @objc private func grayStatusAction() {
-        headerActionHandler?(.statusGray)
+    @objc private func powerLossStatusAction() {
+        headerActionHandler?(.powerLossStatus)
     }
 
-    @objc private func fireAction() {
-        headerActionHandler?(.fire)
+    @objc private func fireTriggerAction() {
+        headerActionHandler?(.fireTrigger)
     }
 
-    @objc private func greenStatusAction() {
-        headerActionHandler?(.statusGreen)
+    @objc private func fireStatusAction() {
+        headerActionHandler?(.fireStatus)
     }
 
     private func setupUI() {
@@ -183,18 +232,25 @@ final class EmerFireAlarmStatusSetView: UIView {
             make.right.lessThanOrEqualTo(headerActionsStackView.snp.left).offset(-SCRXFrom(12))
         }
 
+        contentView.addSubview(legendHeaderView)
+        legendHeaderView.snp.makeConstraints { make in
+            make.top.equalTo(headerButton.snp.bottom)
+            make.left.right.equalToSuperview()
+            make.height.equalTo(legendHeaderView.intrinsicContentSize.height)
+        }
+
         contentView.addSubview(tableView)
         tableView.snp.makeConstraints { make in
-            make.top.equalTo(headerButton.snp.bottom)
+            make.top.equalTo(legendHeaderView.snp.bottom)
             make.left.right.equalToSuperview()
             make.bottom.equalToSuperview().offset(-kSafeAreaBottomHeight)
         }
-        tableView.tableHeaderView = legendHeaderView
     }
 
     private func updateExpandedState(animated: Bool) {
         let targetHeight = isExpanded ? Layout.expandedHeight : Layout.collapsedHeight
         heightConstraint?.update(offset: targetHeight)
+        legendHeaderView.isHidden = !isExpanded
         tableView.isHidden = !isExpanded
         arrowImageView.image = UIImage(named: isExpanded ? "arrow_down" : "arrow_up")
 
@@ -208,21 +264,6 @@ final class EmerFireAlarmStatusSetView: UIView {
             UIView.animate(withDuration: 0.25, animations: animations)
         } else {
             animations()
-        }
-    }
-
-    override func layoutSubviews() {
-        super.layoutSubviews()
-        updateTableHeaderFrame()
-    }
-
-    private func updateTableHeaderFrame() {
-        let width = tableView.bounds.width
-        guard width > 0 else { return }
-        let targetHeight = legendHeaderView.intrinsicContentSize.height
-        if legendHeaderView.frame.width != width || legendHeaderView.frame.height != targetHeight {
-            legendHeaderView.frame = CGRect(x: 0, y: 0, width: width, height: targetHeight)
-            tableView.tableHeaderView = legendHeaderView
         }
     }
 

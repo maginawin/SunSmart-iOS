@@ -43,6 +43,9 @@ class ScenesViewController: UIViewController {
     private var collectionViewMargin: CGFloat = isIPad ? SCRXFrom(24) : SCRXFrom(12)
     /// item间距
     private var itemMargin: CGFloat = isIPad ? SCRXFrom(30) : SCRXFrom(16)
+    private var visibleScenes: [Scene] {
+        MeshNetworkManager.instance.scenes.filter { !DeviceEmerFireData.reservedSceneNumbers.contains($0.number) }
+    }
 
     init(space: SpaceData) {
         self.space = space
@@ -96,7 +99,7 @@ class ScenesViewController: UIViewController {
             }else {
                 self.refreshData = true
             }
-            self.space.sceneCount = MeshNetworkManager.instance.scenes.count
+            self.space.sceneCount = self.visibleScenes.count
             self.space.save()
         }
         
@@ -122,8 +125,9 @@ class ScenesViewController: UIViewController {
             return
         }
         let point = sender.location(in: collectionView)
-        if let indexPath = collectionView.indexPathForItem(at: point), indexPath.item < MeshNetworkManager.instance.scenes.count {
-            let scene = MeshNetworkManager.instance.scenes[indexPath.item]
+        let scenes = visibleScenes
+        if let indexPath = collectionView.indexPathForItem(at: point), indexPath.item < scenes.count {
+            let scene = scenes[indexPath.item]
             let sceneVc = SceneViewController(space: space, scene: scene)
             if isIPad {
                 sceneVc.preferredContentSize = iPadPreferredContentSize
@@ -218,7 +222,7 @@ class ScenesViewController: UIViewController {
     /// 刷新UI
     private func updateUI() {
         
-        let scenes = MeshNetworkManager.instance.scenes
+        let scenes = visibleScenes
         if isEdit && scenes.isEmpty {
             isEdit = false
         }
@@ -249,7 +253,7 @@ class ScenesViewController: UIViewController {
     /// 更新空页面UI
     private func updateScenesEmptyUI() {
         
-        if MeshNetworkManager.instance.scenes.isEmpty {
+        if visibleScenes.isEmpty {
             if collectionView.frame.isEmpty {
                 view.layoutIfNeeded()
             }
@@ -308,14 +312,17 @@ class ScenesViewController: UIViewController {
     }
     
     private func reloadCollectionItem(scene: Scene) {
-        if let index = MeshNetworkManager.instance.scenes.firstIndex(where: {$0.number == scene.number}) {
-            CATransaction.setDisableActions(true)
-            collectionView.reloadItems(at: [IndexPath(row: index, section: 0)])
-            CATransaction.commit()
+        guard !DeviceEmerFireData.reservedSceneNumbers.contains(scene.number),
+              let index = visibleScenes.firstIndex(where: {$0.number == scene.number}),
+              index < collectionView.numberOfItems(inSection: 0) else {
+            return
+        }
+        CATransaction.setDisableActions(true)
+        collectionView.reloadItems(at: [IndexPath(row: index, section: 0)])
+        CATransaction.commit()
 //            if let item = collectionView.cellForItem(at: IndexPath(item: index, section: 0)) as? GroupsViewCell {
 //                item. = group
 //            }
-        }
     }
     
     private func setupUI() {
@@ -375,12 +382,12 @@ class ScenesViewController: UIViewController {
 extension ScenesViewController: UICollectionViewDataSource, UICollectionViewDelegateFlowLayout {
     
     public func collectionView(_ collectionView: UICollectionView, numberOfItemsInSection section: Int) -> Int {
-        return MeshNetworkManager.instance.scenes.count
+        return visibleScenes.count
     }
     
     public func collectionView(_ collectionView: UICollectionView, cellForItemAt indexPath: IndexPath) -> UICollectionViewCell {
         let cell = collectionView.dequeueReusableCell(withReuseIdentifier: "cell", for: indexPath) as! ScenesViewCell
-        let scene = MeshNetworkManager.instance.scenes[indexPath.item]
+        let scene = visibleScenes[indexPath.item]
         cell.scene = scene
         cell.deleteBtn.isHidden = !isEdit
         cell.deleteActionCallback = {[weak self] in
@@ -398,7 +405,7 @@ extension ScenesViewController: UICollectionViewDataSource, UICollectionViewDele
     
     func collectionView(_ collectionView: UICollectionView, didSelectItemAt indexPath: IndexPath) {
         
-        let scene = MeshNetworkManager.instance.scenes[indexPath.item]
+        let scene = visibleScenes[indexPath.item]
         if scene.nodes.count > 0 && !MeshLibManager.manager.isMeshNetworkConnected {
             XWHUDManager.showTipHUD("device_notconnect_message".localizedString, isLineFeed: true)
             return
@@ -436,7 +443,7 @@ extension ScenesViewController: SpaceFunctionFooterViewDelegate {
     /// 点击添加回调
     func functionDidClickAdd(view: SpaceFunctionFooterView) {
         
-        guard MeshNetworkManager.instance.scenes.count < 16 else {
+        guard visibleScenes.count < 16 else {
             SRAlertView(title: "notification".localizedString, message: "scenes_overrun_message".localizedString, actions: [SRAlertAction(title: "GOT_IT".localizedString)]).show()
             return
         }
@@ -445,7 +452,7 @@ extension ScenesViewController: SpaceFunctionFooterViewDelegate {
         vc.createSceneCallback = {[weak self] _ in
             guard let self = self else { return }
             self.collectionView.reloadData()
-            self.space.sceneCount = MeshNetworkManager.instance.scenes.count
+            self.space.sceneCount = self.visibleScenes.count
             self.space.save()
         }
         if isIPad {
@@ -462,4 +469,3 @@ extension ScenesViewController: SpaceFunctionFooterViewDelegate {
         updateUI()
     }
 }
-

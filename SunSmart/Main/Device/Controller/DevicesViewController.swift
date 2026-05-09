@@ -360,7 +360,7 @@ class DevicesViewController: WMPageController {
                         self?.preCreatedDongle()
                     },
                     onFireAlarm: { [weak self] in
-                        self?.preCreatedEmerFire()
+                        self?.showEmerFireCreatePage()
                     }
                 )
                 self.present(controller, animated: false)
@@ -379,9 +379,23 @@ class DevicesViewController: WMPageController {
         //        MenuPopView.show(items: items, anchorPoint: point, direction: .up)
     }
     
-    //预创建页面
-    private func preCreatedEmerFire() {
-        let vc = PreCreateEmerFireVC(space: space)
+    private func showEmerFireCreatePage() {
+        let context = PJDevicesAddEntryContext(
+            source: .fireAlarm,
+            space: space,
+            title: "add_device".localizedString,
+            appointGroup: nil,
+            addBehavior: .init(
+                allowsTargetSelection: false,
+                allowsCategorySelection: false,
+                allowedTypes: [.others],
+                blockedDeviceTypes: [.dongle, .gateway, .unknown],
+                selectionMode: .single,
+                forbiddenSelectionTip: "You can't choose other devices.",
+                forbiddenDeviceTypeTip: "Cannot add, type mismatch"
+            )
+        )
+        let vc = PJDevicesAddFlowFactory.make(context: context)
         let nav = NavigationViewController(rootViewController: vc)
         DispatchQueue.main.async { [weak self] in
             self?.present(nav, animated: true)
