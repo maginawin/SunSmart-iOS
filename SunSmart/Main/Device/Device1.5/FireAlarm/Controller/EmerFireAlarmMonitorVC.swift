@@ -193,11 +193,11 @@ class EmerFireAlarmMonitorVC: UIViewController, DeviceProtocol {
             case .powerLossTrigger:
                 self.recallEmergencyScene(DeviceEmerFireData.powerLossTriggerSceneNumber)
             case .powerLossStatus:
-                self.recallEmergencyScene(DeviceEmerFireData.powerLossStopSceneNumber)
+                self.lightLCOnAction()
             case .fireTrigger:
                 self.recallEmergencyScene(DeviceEmerFireData.fireAlarmTriggerSceneNumber)
             case .fireStatus:
-                self.recallEmergencyScene(DeviceEmerFireData.fireAlarmStopSceneNumber)
+                self.lightLCOnAction()
             }
         }
         updateEmptyUI()
@@ -304,6 +304,7 @@ class EmerFireAlarmMonitorVC: UIViewController, DeviceProtocol {
 
     func triggerAction() {
         guard canOperateEmergencyActions else {
+            XWHUDManager.showTipHUD("no_permission".localizedString, isLineFeed: true)
             return
         }
         guard currentDevice?.bindNode != nil else {
@@ -314,7 +315,7 @@ class EmerFireAlarmMonitorVC: UIViewController, DeviceProtocol {
             XWHUDManager.showTipHUD("Not executed. No devices in associated groups.".localizedString, isLineFeed: true)
             return
         }
-        guard let sceneNumber = activeSceneNumbers()?.trigger else {
+        guard let sceneNumber = viewModel.activeTriggerSceneNumber() else {
             XWHUDManager.showTipHUD("failed".localizedString + " !", isLineFeed: true)
             return
         }
@@ -323,6 +324,7 @@ class EmerFireAlarmMonitorVC: UIViewController, DeviceProtocol {
 
     func stopAction() {
         guard canOperateEmergencyActions else {
+            XWHUDManager.showTipHUD("no_permission".localizedString, isLineFeed: true)
             return
         }
         guard currentDevice?.bindNode != nil else {
@@ -333,11 +335,7 @@ class EmerFireAlarmMonitorVC: UIViewController, DeviceProtocol {
             XWHUDManager.showTipHUD("Not executed. No devices in associated groups.".localizedString, isLineFeed: true)
             return
         }
-        guard let sceneNumber = activeSceneNumbers()?.stop else {
-            XWHUDManager.showTipHUD("failed".localizedString + " !", isLineFeed: true)
-            return
-        }
-        recallEmergencyScene(sceneNumber)
+        lightLCOnAction()
     }
 
     func recallEmergencyScene(_ sceneNumber: SceneNumber) {
@@ -345,16 +343,32 @@ class EmerFireAlarmMonitorVC: UIViewController, DeviceProtocol {
             XWHUDManager.showTipHUD("no_permission".localizedString, isLineFeed: true)
             return
         }
-        guard let publishGroupAddress = currentDevice?.publishGroupAddress else {
-            XWHUDManager.showTipHUD(EmergencyFireControllerPublishGroupError.missingSceneClientModel.errorDescription ?? "failed".localizedString, isLineFeed: true)
+        guard let publishGroupAddress = publishGroupAddressForAction() else {
             return
         }
         let message = SceneRecallUnacknowledged(sceneNumber)
         print("[EFC] recall scene=\(String(format: "0x%04X", sceneNumber)), publishGroup=\(String(format: "0x%04X", publishGroupAddress)), mode=\(currentWorkMode)")
         MeshAPI.sendMessage(message: message, address: publishGroupAddress)
-        if let sourceAddress = currentDevice?.bindNodeAddress {
-            EmergencyFireControllerSceneEventManager.dispatch(message: message, source: sourceAddress, destination: publishGroupAddress)
+    }
+
+    func lightLCOnAction() {
+        guard canOperateEmergencyActions else {
+            XWHUDManager.showTipHUD("no_permission".localizedString, isLineFeed: true)
+            return
         }
+        guard let publishGroupAddress = publishGroupAddressForAction() else {
+            return
+        }
+        print("[EFC] light LC ON publishGroup=\(String(format: "0x%04X", publishGroupAddress)), mode=\(currentWorkMode)")
+        MeshAPI.sendMessage(message: LightLCLightOnOffSetUnacknowledged(true), address: publishGroupAddress)
+    }
+
+    private func publishGroupAddressForAction() -> Address? {
+        guard let publishGroupAddress = currentDevice?.publishGroupAddress ?? currentConfig?.publishGroupAddress else {
+            XWHUDManager.showTipHUD(EmergencyFireControllerPublishGroupError.missingSceneClientModel.errorDescription ?? "failed".localizedString, isLineFeed: true)
+            return nil
+        }
+        return publishGroupAddress
     }
 
     var isEmergencySituation: Bool {

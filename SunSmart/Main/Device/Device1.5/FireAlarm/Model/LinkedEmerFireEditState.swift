@@ -321,11 +321,9 @@ final class LinkedEmerFireEditState {
         case .powerLossEmergency:
             powerLossGroupAddresses = []
             configuration.powerLossSettings.associateGroupAddresses = []
-            configuration.powerLossSettings.pendingStopSceneRewriteGroupAddresses = []
         case .fireAlarmEmergency:
             fireAlarmGroupAddresses = []
             configuration.fireAlarmSettings.associateGroupAddresses = []
-            configuration.fireAlarmSettings.pendingStopSceneRewriteGroupAddresses = []
         case .allDisabled:
             break
         }

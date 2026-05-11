@@ -79,17 +79,6 @@ final class DeviceEmerFireStore {
             .sorted { $0.address.address < $1.address.address }
     }
 
-    func markStopSceneRewriteNeeded(group: Group, in space: SpaceData) {
-        let groupAddress = group.address.address
-        devices(in: space).forEach { device in
-            let oldConfiguration = device.configuration
-            device.markStopSceneRewriteNeeded(groupAddress: groupAddress)
-            if device.configuration != oldConfiguration {
-                save(device)
-            }
-        }
-    }
-
     @discardableResult
     func ensureDevice(for node: Node, in space: SpaceData) -> DeviceEmerFireData {
         if let device = devices(in: space).first(where: { $0.bindNodeAddress == node.primaryUnicastAddress }) {

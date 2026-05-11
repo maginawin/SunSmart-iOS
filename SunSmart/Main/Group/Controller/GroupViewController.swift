@@ -984,7 +984,6 @@ class GroupViewController: UIViewController {
             self.group.info.profile.save(meshUUID: self.space.meshUUID, meshNetworkId: self.space.meshNetworkId)
             self.updateUI()
             self.group.updateGroupSyncState()
-            DeviceEmerFireStore.shared.markStopSceneRewriteNeeded(group: self.group, in: self.space)
             NotificationCenter.default.post(name: .init(deviceOthersRefreshNotificationName), object: nil)
         }
         navigationController?.pushViewController(vc, animated: true)

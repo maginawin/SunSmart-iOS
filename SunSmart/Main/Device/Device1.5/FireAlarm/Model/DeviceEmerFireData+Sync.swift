@@ -49,47 +49,43 @@ extension DeviceEmerFireData {
 
     func mergePendingChanges(from oldConfiguration: EmergencyFireControllerConfiguration, to newConfiguration: EmergencyFireControllerConfiguration) {
         configuration = newConfiguration
+
+        let oldDesiredGroups = oldConfiguration.activeLightLCGroupAddresses
+        let newDesiredGroups = newConfiguration.activeLightLCGroupAddresses
+        let noLongerDesiredGroups = oldDesiredGroups.subtracting(newDesiredGroups)
+
         mergePendingChanges(
             for: .powerLossEmergency,
             oldSettings: oldConfiguration.powerLossSettings,
             newSettings: newConfiguration.powerLossSettings,
-            tracksRemovedGroups: oldConfiguration.workMode == .powerLossEmergency && newConfiguration.workMode == .powerLossEmergency
+            newDesiredGroups: newDesiredGroups,
+            noLongerDesiredGroups: noLongerDesiredGroups
         )
         mergePendingChanges(
             for: .fireAlarmEmergency,
             oldSettings: oldConfiguration.fireAlarmSettings,
             newSettings: newConfiguration.fireAlarmSettings,
-            tracksRemovedGroups: oldConfiguration.workMode == .fireAlarmEmergency && newConfiguration.workMode == .fireAlarmEmergency
+            newDesiredGroups: newDesiredGroups,
+            noLongerDesiredGroups: noLongerDesiredGroups
         )
     }
 
-    func markStopSceneRewriteNeeded(groupAddress: Address) {
-        [EmergencyFireControllerWorkMode.powerLossEmergency, .fireAlarmEmergency].forEach { mode in
-            guard var settings = settings(for: mode),
-                  settings.associateGroupAddresses.contains(groupAddress) else {
-                return
-            }
-            if !settings.pendingStopSceneRewriteGroupAddresses.contains(groupAddress) {
-                settings.pendingStopSceneRewriteGroupAddresses.append(groupAddress)
-                updateSettings(settings, for: mode)
-            }
-        }
-    }
-
     func clearPending(for task: EmergencyFireControllerSyncTask, meshUUID: String, subnetworkId: String) {
-        guard let mode = task.pendingMode,
-              let groupAddress = task.pendingGroupAddress,
-              var settings = settings(for: mode) else {
+        guard !task.pendingModes.isEmpty else {
             return
         }
 
-        if task.clearsUnassociatePending {
-            settings.pendingUnassociateGroupAddresses.removeAll { $0 == groupAddress }
+        task.pendingModes.forEach { mode in
+            guard let groupAddress = task.pendingGroupAddress,
+                  var settings = settings(for: mode) else {
+                return
+            }
+
+            if task.clearsUnassociatePending {
+                settings.pendingUnassociateGroupAddresses.removeAll { $0 == groupAddress }
+            }
+            updateSettings(settings, for: mode)
         }
-        if task.clearsStopRewritePending {
-            settings.pendingStopSceneRewriteGroupAddresses.removeAll { $0 == groupAddress }
-        }
-        updateSettings(settings, for: mode)
         save(meshUUID: meshUUID, networkId: subnetworkId)
     }
 
@@ -115,7 +111,7 @@ extension DeviceEmerFireData {
         return group.address.address
     }
 
-    func getSceneClientPublicationMessageHandles(meshUUID: String, subnetworkId: String) throws -> [MeshMessageHandle] {
+    private func getPublicationMessageHandles(model: Model?, missingModelError: EmergencyFireControllerPublishGroupError, meshUUID: String, subnetworkId: String) throws -> [MeshMessageHandle] {
         let publishGroupAddress = try ensurePublishGroup(meshUUID: meshUUID, subnetworkId: subnetworkId)
 
         guard let node = bindNode else {
@@ -124,11 +120,11 @@ extension DeviceEmerFireData {
         guard node.isKeybindComplete, node.state else {
             throw EmergencyFireControllerPublishGroupError.nodeNotReady
         }
-        guard let sceneClientModel = node.sceneClientModel else {
-            throw EmergencyFireControllerPublishGroupError.missingSceneClientModel
+        guard let model else {
+            throw missingModelError
         }
-        guard sceneClientModel.publish?.publicationAddress.address != publishGroupAddress else {
-            print("[EFC] scene client publication already set device=\(name), node=\(node.primaryUnicastAddress), address=\(String(format: "0x%04X", publishGroupAddress))")
+        guard model.publish?.publicationAddress.address != publishGroupAddress else {
+            print("[EFC] publication already set device=\(name), node=\(node.primaryUnicastAddress), address=\(String(format: "0x%04X", publishGroupAddress))")
             return []
         }
         guard let message = ConfigModelPublicationSet(
@@ -140,12 +136,36 @@ extension DeviceEmerFireData {
                 period: .disabled,
                 retransmit: .disabled
             ),
-            to: sceneClientModel
+            to: model
         ) else {
-            throw EmergencyFireControllerPublishGroupError.missingSceneClientModel
+            throw missingModelError
         }
-        print("[EFC] set scene client publication device=\(name), node=\(node.primaryUnicastAddress), address=\(String(format: "0x%04X", publishGroupAddress))")
+        print("[EFC] set publication device=\(name), node=\(node.primaryUnicastAddress), address=\(String(format: "0x%04X", publishGroupAddress))")
         return [MeshMessageHandle(message: message, address: node.primaryUnicastAddress)]
+    }
+
+    func getSceneClientPublicationMessageHandles(meshUUID: String, subnetworkId: String) throws -> [MeshMessageHandle] {
+        guard let node = bindNode else {
+            throw EmergencyFireControllerPublishGroupError.missingBoundNode
+        }
+        return try getPublicationMessageHandles(
+            model: node.sceneClientModel,
+            missingModelError: .missingSceneClientModel,
+            meshUUID: meshUUID,
+            subnetworkId: subnetworkId
+        )
+    }
+
+    func getLightLCClientPublicationMessageHandles(meshUUID: String, subnetworkId: String) throws -> [MeshMessageHandle] {
+        guard let node = bindNode else {
+            throw EmergencyFireControllerPublishGroupError.missingBoundNode
+        }
+        return try getPublicationMessageHandles(
+            model: node.lightLCClientModel,
+            missingModelError: .missingLightLCClientModel,
+            meshUUID: meshUUID,
+            subnetworkId: subnetworkId
+        )
     }
 
     func makeControllerSyncTasks(meshUUID: String, subnetworkId: String) throws -> [EmergencyFireControllerSyncTask] {
@@ -154,9 +174,14 @@ extension DeviceEmerFireData {
         }
 
         var tasks: [EmergencyFireControllerSyncTask] = []
-        let publicationHandles = try getSceneClientPublicationMessageHandles(meshUUID: meshUUID, subnetworkId: subnetworkId)
-        if !publicationHandles.isEmpty {
-            tasks.append(EmergencyFireControllerSyncTask(title: "Publication", kind: .publication, address: node.primaryUnicastAddress, messageHandles: publicationHandles))
+        let scenePublicationHandles = try getSceneClientPublicationMessageHandles(meshUUID: meshUUID, subnetworkId: subnetworkId)
+        if !scenePublicationHandles.isEmpty {
+            tasks.append(EmergencyFireControllerSyncTask(title: "Scene Publication", kind: .publication, address: node.primaryUnicastAddress, messageHandles: scenePublicationHandles))
+        }
+
+        let lightLCPublicationHandles = try getLightLCClientPublicationMessageHandles(meshUUID: meshUUID, subnetworkId: subnetworkId)
+        if !lightLCPublicationHandles.isEmpty {
+            tasks.append(EmergencyFireControllerSyncTask(title: "LC Publication", kind: .lightLCClientPublication, address: node.primaryUnicastAddress, messageHandles: lightLCPublicationHandles))
         }
 
         tasks.append(EmergencyFireControllerSyncTask(
@@ -189,17 +214,26 @@ extension DeviceEmerFireData {
         return tasks
     }
 
-    private func mergePendingChanges(for mode: EmergencyFireControllerWorkMode, oldSettings: EmergencyFireControllerModeSettings, newSettings: EmergencyFireControllerModeSettings, tracksRemovedGroups: Bool) {
+    private func mergePendingChanges(
+        for mode: EmergencyFireControllerWorkMode,
+        oldSettings: EmergencyFireControllerModeSettings,
+        newSettings: EmergencyFireControllerModeSettings,
+        newDesiredGroups: Set<Address>,
+        noLongerDesiredGroups: Set<Address>
+    ) {
         var settings = newSettings
-        if tracksRemovedGroups {
-            let removedAddresses = oldSettings.associateGroupAddresses.filter { !newSettings.associateGroupAddresses.contains($0) }
-            removedAddresses.forEach { address in
-                if !settings.pendingUnassociateGroupAddresses.contains(address) {
-                    settings.pendingUnassociateGroupAddresses.append(address)
-                }
+        let oldGroups = Set(oldSettings.associateGroupAddresses)
+        let newGroups = Set(newSettings.associateGroupAddresses)
+        let removedFromThisMode = oldGroups.subtracting(newGroups)
+        let removedByModeSwitch = oldGroups.intersection(noLongerDesiredGroups)
+        let cleanupGroups = removedFromThisMode.union(removedByModeSwitch)
+
+        cleanupGroups.forEach { address in
+            if !settings.pendingUnassociateGroupAddresses.contains(address) {
+                settings.pendingUnassociateGroupAddresses.append(address)
             }
         }
-        settings.pendingUnassociateGroupAddresses.removeAll { newSettings.associateGroupAddresses.contains($0) }
+        settings.pendingUnassociateGroupAddresses.removeAll { newDesiredGroups.contains($0) }
         updateSettings(settings, for: mode)
     }
 }

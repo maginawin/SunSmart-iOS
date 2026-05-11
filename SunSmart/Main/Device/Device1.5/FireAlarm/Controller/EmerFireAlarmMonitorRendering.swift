@@ -326,10 +326,6 @@ extension EmerFireAlarmMonitorVC {
         updateStatusSetRows(for: currentState)
     }
 
-    func activeSceneNumbers() -> (trigger: SceneNumber, stop: SceneNumber)? {
-        viewModel.activeSceneNumbers()
-    }
-
     func activeAssociatedGroupAddresses() -> [UInt16] {
         viewModel.activeAssociatedGroupAddresses()
     }

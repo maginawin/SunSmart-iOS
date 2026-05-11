@@ -34,7 +34,6 @@ struct EmergencyFireControllerModeSettings: Codable, Equatable {
     var stopCount: UInt16
     var restoreDelaySeconds: UInt8
     var pendingUnassociateGroupAddresses: [UInt16]
-    var pendingStopSceneRewriteGroupAddresses: [UInt16]
 
     private enum CodingKeys: String, CodingKey {
         case associateGroupAddresses
@@ -45,7 +44,6 @@ struct EmergencyFireControllerModeSettings: Codable, Equatable {
         case stopCount
         case restoreDelaySeconds
         case pendingUnassociateGroupAddresses
-        case pendingStopSceneRewriteGroupAddresses
     }
 
     static let defaultValue = EmergencyFireControllerModeSettings(
@@ -56,8 +54,7 @@ struct EmergencyFireControllerModeSettings: Codable, Equatable {
         stopIntervalSeconds: 5,
         stopCount: 2,
         restoreDelaySeconds: 2,
-        pendingUnassociateGroupAddresses: [],
-        pendingStopSceneRewriteGroupAddresses: []
+        pendingUnassociateGroupAddresses: []
     )
 
     init(
@@ -68,8 +65,7 @@ struct EmergencyFireControllerModeSettings: Codable, Equatable {
         stopIntervalSeconds: UInt16,
         stopCount: UInt16,
         restoreDelaySeconds: UInt8,
-        pendingUnassociateGroupAddresses: [UInt16],
-        pendingStopSceneRewriteGroupAddresses: [UInt16]
+        pendingUnassociateGroupAddresses: [UInt16]
     ) {
         self.associateGroupAddresses = associateGroupAddresses
         self.triggerBrightness = triggerBrightness
@@ -79,7 +75,6 @@ struct EmergencyFireControllerModeSettings: Codable, Equatable {
         self.stopCount = stopCount
         self.restoreDelaySeconds = restoreDelaySeconds
         self.pendingUnassociateGroupAddresses = pendingUnassociateGroupAddresses
-        self.pendingStopSceneRewriteGroupAddresses = pendingStopSceneRewriteGroupAddresses
     }
 
     init(from decoder: Decoder) throws {
@@ -93,7 +88,6 @@ struct EmergencyFireControllerModeSettings: Codable, Equatable {
         stopCount = try container.decodeIfPresent(UInt16.self, forKey: .stopCount) ?? defaults.stopCount
         restoreDelaySeconds = try container.decodeIfPresent(UInt8.self, forKey: .restoreDelaySeconds) ?? defaults.restoreDelaySeconds
         pendingUnassociateGroupAddresses = try container.decodeIfPresent([UInt16].self, forKey: .pendingUnassociateGroupAddresses) ?? []
-        pendingStopSceneRewriteGroupAddresses = try container.decodeIfPresent([UInt16].self, forKey: .pendingStopSceneRewriteGroupAddresses) ?? []
     }
 }
 
@@ -107,6 +101,20 @@ struct EmergencyFireControllerConfiguration: Codable, Equatable {
         powerLossSettings: .defaultValue,
         fireAlarmSettings: .defaultValue
     )
+}
+
+extension EmergencyFireControllerConfiguration {
+
+    var activeLightLCGroupAddresses: Set<Address> {
+        switch workMode {
+        case .powerLossEmergency:
+            return Set(powerLossSettings.associateGroupAddresses)
+        case .fireAlarmEmergency:
+            return Set(fireAlarmSettings.associateGroupAddresses)
+        case .allDisabled:
+            return []
+        }
+    }
 }
 
 struct LinkedEmerFireConfig {

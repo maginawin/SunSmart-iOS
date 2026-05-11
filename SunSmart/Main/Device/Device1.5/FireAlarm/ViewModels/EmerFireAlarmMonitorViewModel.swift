@@ -85,8 +85,8 @@ final class EmerFireAlarmMonitorViewModel {
         EmerFireAlarmMonitorStateMapper.actionIconNames(for: currentWorkMode)
     }
 
-    func activeSceneNumbers() -> (trigger: SceneNumber, stop: SceneNumber)? {
-        EmerFireAlarmMonitorStateMapper.sceneNumbers(for: currentWorkMode)
+    func activeTriggerSceneNumber() -> SceneNumber? {
+        EmerFireAlarmMonitorStateMapper.triggerSceneNumber(for: currentWorkMode)
     }
 
     func activeAssociatedGroupAddresses() -> [UInt16] {

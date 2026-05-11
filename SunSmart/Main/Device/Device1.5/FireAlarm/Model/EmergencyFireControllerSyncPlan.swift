@@ -10,14 +10,14 @@ import NordicSigMeshSDK
 
 enum EmergencyFireControllerSyncTaskKind: String {
     case publication = "Publication"
+    case lightLCClientPublication = "LC Publication"
     case workMode = "Mode"
     case resend = "Resend"
     case restoreDelay = "Restore Delay"
-    case groupSubscription = "Group"
-    case cleanupSubscription = "Cleanup Group"
+    case sceneSubscription = "Scene Group"
+    case lightLCSubscription = "LC Group"
+    case lightLCCleanup = "LC Cleanup"
     case triggerScene = "Trigger Scene"
-    case stopScene = "Stop Scene"
-    case profileRewrite = "Profile Rewrite"
     case deleteCleanup = "Delete Cleanup"
 }
 
@@ -27,10 +27,9 @@ final class EmergencyFireControllerSyncTask {
     let address: Address
     let messageHandles: [MeshMessageHandle]
     let isUnsupported: Bool
-    let pendingMode: EmergencyFireControllerWorkMode?
+    let pendingModes: [EmergencyFireControllerWorkMode]
     let pendingGroupAddress: Address?
     let clearsUnassociatePending: Bool
-    let clearsStopRewritePending: Bool
     var state: SyncDevicesState = .none
     var isSelected = false
 
@@ -40,20 +39,18 @@ final class EmergencyFireControllerSyncTask {
         address: Address,
         messageHandles: [MeshMessageHandle],
         isUnsupported: Bool = false,
-        pendingMode: EmergencyFireControllerWorkMode? = nil,
+        pendingModes: [EmergencyFireControllerWorkMode] = [],
         pendingGroupAddress: Address? = nil,
-        clearsUnassociatePending: Bool = false,
-        clearsStopRewritePending: Bool = false
+        clearsUnassociatePending: Bool = false
     ) {
         self.title = title
         self.kind = kind
         self.address = address
         self.messageHandles = messageHandles
         self.isUnsupported = isUnsupported
-        self.pendingMode = pendingMode
+        self.pendingModes = pendingModes
         self.pendingGroupAddress = pendingGroupAddress
         self.clearsUnassociatePending = clearsUnassociatePending
-        self.clearsStopRewritePending = clearsStopRewritePending
         if isUnsupported {
             state = .failed
         }
@@ -83,6 +80,7 @@ enum EmergencyFireControllerPublishGroupError: LocalizedError {
     case missingBoundNode
     case nodeNotReady
     case missingSceneClientModel
+    case missingLightLCClientModel
 
     var errorDescription: String? {
         switch self {
@@ -90,7 +88,7 @@ enum EmergencyFireControllerPublishGroupError: LocalizedError {
             return "group_address_insufficient_message".localizedString
         case .createGroupFailed:
             return "failed".localizedString + " !"
-        case .missingBoundNode, .nodeNotReady, .missingSceneClientModel:
+        case .missingBoundNode, .nodeNotReady, .missingSceneClientModel, .missingLightLCClientModel:
             return "The device needs to be repaired."
         }
     }

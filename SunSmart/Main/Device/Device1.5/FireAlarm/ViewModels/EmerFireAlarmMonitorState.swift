@@ -50,12 +50,12 @@ enum EmerFireAlarmMonitorStateMapper {
         }
     }
 
-    static func sceneNumbers(for workMode: EmergencyFireControllerWorkMode) -> (trigger: SceneNumber, stop: SceneNumber)? {
+    static func triggerSceneNumber(for workMode: EmergencyFireControllerWorkMode) -> SceneNumber? {
         switch workMode {
         case .powerLossEmergency:
-            return (DeviceEmerFireData.powerLossTriggerSceneNumber, DeviceEmerFireData.powerLossStopSceneNumber)
+            return DeviceEmerFireData.powerLossTriggerSceneNumber
         case .fireAlarmEmergency:
-            return (DeviceEmerFireData.fireAlarmTriggerSceneNumber, DeviceEmerFireData.fireAlarmStopSceneNumber)
+            return DeviceEmerFireData.fireAlarmTriggerSceneNumber
         case .allDisabled:
             return nil
         }
