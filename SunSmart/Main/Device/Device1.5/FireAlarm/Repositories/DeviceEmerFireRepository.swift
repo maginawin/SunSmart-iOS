@@ -39,6 +39,11 @@ final class DeviceEmerFireRepository {
     func delete(_ device: DeviceEmerFireData) -> Bool {
         device.delete(meshUUID: device.meshUUID, networkId: device.meshNetworkId)
     }
+
+    @discardableResult
+    func deleteAll(meshUUID: String, meshNetworkId: String) -> Bool {
+        DeviceEmerFireData.deleteAll(meshUUID: meshUUID, networkId: meshNetworkId)
+    }
 }
 
 private var emerFireJSONEncoder: JSONEncoder {
@@ -255,6 +260,20 @@ extension DeviceEmerFireData {
         let predicate = ExpressionKey.meshUUID == meshUUID &&
             ExpressionKey.subNetworkKey == networkId &&
             ExpressionKey.controllerId == id
+        let filter = DeviceEmerFireData.table.filter(predicate)
+        do {
+            try SunSmartDataManager.shared.db?.run(filter.delete())
+            return true
+        } catch {
+            print(error)
+            return false
+        }
+    }
+
+    @discardableResult
+    static func deleteAll(meshUUID: String, networkId: String) -> Bool {
+        let predicate = ExpressionKey.meshUUID == meshUUID &&
+            ExpressionKey.subNetworkKey == networkId
         let filter = DeviceEmerFireData.table.filter(predicate)
         do {
             try SunSmartDataManager.shared.db?.run(filter.delete())

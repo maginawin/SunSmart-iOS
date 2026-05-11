@@ -1529,6 +1529,43 @@ extension SpaceData {
             switches.forEach { switchData in
                 switchData.save(meshUUID: meshUUID, networkId: self.meshNetworkId)
             }
+
+            DeviceEmerFireData.deleteAll(meshUUID: meshUUID, networkId: self.meshNetworkId)
+            var emergencyFireControllers: [DeviceEmerFireData] = []
+            if let controllerDicts = json["emergencyFireControllers"].arrayObject as? [[String: Any]] {
+                controllerDicts.forEach { dict in
+                    let controllerJson = JSON(dict)
+                    guard let id = controllerJson["id"].string,
+                          let name = controllerJson["name"].string else {
+                        return
+                    }
+                    var configuration: EmergencyFireControllerConfiguration?
+                    if let configurationDict = controllerJson["configuration"].dictionaryObject,
+                       let data = try? JSONSerialization.data(withJSONObject: configurationDict) {
+                        configuration = try? jsonDecoder.decode(EmergencyFireControllerConfiguration.self, from: data)
+                    }
+                    let controller = DeviceEmerFireData(
+                        id: id,
+                        spaceId: self.id,
+                        meshUUID: meshUUID,
+                        meshNetworkId: self.meshNetworkId,
+                        name: name,
+                        bindNodeAddress: controllerJson["bindNodeAddress"].string.flatMap { Address(hex: $0) },
+                        publishGroupAddress: controllerJson["publishGroupAddress"].string.flatMap { Address(hex: $0) },
+                        isSynced: controllerJson["isSynced"].bool ?? false,
+                        reportToGateway: controllerJson["reportToGateway"].bool ?? true,
+                        configuration: configuration,
+                        createTime: controllerJson["createTime"].int64Value,
+                        lastUpdate: controllerJson["lastUpdate"].int64
+                    )
+                    emergencyFireControllers.append(controller)
+                }
+            }
+            emergencyFireControllers.forEach { controller in
+                controller.save(meshUUID: meshUUID, networkId: self.meshNetworkId)
+            }
+            DeviceEmerFireStore.shared.loadDevices(meshUUID: meshUUID, meshNetworkId: self.meshNetworkId)
+            EmergencyFireControllerSceneEventManager.refreshProxyFilterAddresses()
             
             self.deviceCount = (meshNetwork?.nodes.filter({ !$0.isLocalProvisioner && !$0.isProvisioner && !$0.isConfigComplete }) ?? nodes).count
             self.luminairesCount = nodes.filter({ $0.lightnessModel != nil }).count

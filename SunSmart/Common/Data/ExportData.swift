@@ -577,6 +577,31 @@ extension SpaceData {
             meshNetwork.scenes.filter { !DeviceEmerFireData.reservedSceneNumbers.contains($0.number) }.forEach { scene in
                 sceneDicts.append(["number": scene.number.hex, "name": scene.name, "imageId": scene.info.imageId])
             }
+
+            let emergencyFireControllerDicts = DeviceEmerFireData
+                .load(meshUUID: meshUUID, meshNetworkId: self.meshNetworkId, spaceId: self.id)
+                .map { controller -> [String: Any] in
+                    var dict: [String: Any] = [
+                        "id": controller.id,
+                        "spaceId": controller.spaceId,
+                        "name": controller.name,
+                        "isSynced": controller.isSynced,
+                        "reportToGateway": controller.reportToGateway,
+                        "createTime": controller.createTime,
+                        "lastUpdate": controller.lastUpdate
+                    ]
+                    if let bindNodeAddress = controller.bindNodeAddress {
+                        dict.updateValue(bindNodeAddress.hex, forKey: "bindNodeAddress")
+                    }
+                    if let publishGroupAddress = controller.publishGroupAddress {
+                        dict.updateValue(publishGroupAddress.hex, forKey: "publishGroupAddress")
+                    }
+                    if let data = try? jsonEncoder.encode(controller.configuration),
+                       let configuration = try? JSONSerialization.jsonObject(with: data) {
+                        dict.updateValue(configuration, forKey: "configuration")
+                    }
+                    return dict
+                }
             
             // 日程
             if let data = try? jsonEncoder.encode(schedules), let schedules = try? JSONSerialization.jsonObject(with: data) as? [[String : Any]] {
@@ -589,6 +614,7 @@ extension SpaceData {
             spaceJsonData.updateValue(nodeDicts, forKey: "nodes")
             spaceJsonData.updateValue(groupDicts, forKey: "groups")
             spaceJsonData.updateValue(switcheDicts, forKey: "switches")
+            spaceJsonData.updateValue(emergencyFireControllerDicts, forKey: "emergencyFireControllers")
             spaceJsonData.updateValue(sceneDicts, forKey: "scenes")
             spaceJsonData.updateValue(scheheduleDicts, forKey: "schedules")
             continuation.resume(returning: spaceJsonData)
