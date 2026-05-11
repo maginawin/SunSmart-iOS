@@ -17,9 +17,12 @@ class DeviceInformationViewController: UIViewController {
     private var deviceInfoModels: [CustomCellModel] = []
     
     let node: Node
+    private let emptyGroupText: String
     
-    init(node: Node) {
+    init(node: Node, emptyGroupText: String? = nil, showsSceneSection: Bool = true) {
         self.node = node
+        self.emptyGroupText = emptyGroupText ?? "device_not_added_group".localizedString
+        self.sections = showsSceneSection ? [.deviceInfo, .group, .scene] : [.deviceInfo, .group]
         super.init(nibName: nil, bundle: nil)
     }
     
@@ -155,7 +158,7 @@ extension DeviceInformationViewController: UITableViewDataSource, UITableViewDel
         case .group:
             headerView.titleLabel.text = "group".localizedString
             headerView.contentLabel.isHidden = false
-            headerView.contentLabel.text = node.group?.name ?? "device_not_added_group".localizedString
+            headerView.contentLabel.text = node.group?.name ?? emptyGroupText
         case .scene:
             headerView.titleLabel.text = "scene".localizedString
             if node.scenes.count > 0 {
