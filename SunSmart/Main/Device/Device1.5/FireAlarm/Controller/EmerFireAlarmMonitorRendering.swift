@@ -12,7 +12,7 @@ extension EmerFireAlarmMonitorVC {
     func updateEmptyUI() {
         if isAllEmergencyFunctionsDisabled, groups.isEmpty {
             deviceCountLabel.isHidden = true
-            collectionView.showEmptyDataView(title: "Emergency & Fire Alarm are all disabled".localizedString, buttonText: "Setting".localizedString, position: .center) { [weak self] in
+            collectionView.showEmptyDataView(imageName: "device_state_offline", title: "Emergency & Fire Alarm are all disabled".localizedString, buttonText: "Setting".localizedString, position: .center) { [weak self] in
                 self?.openEditSettings()
             }
             if let emptyView = collectionView.emptyView {
