@@ -14,7 +14,11 @@ final class LinkedEmerFireEditVC: UIViewController {
     private let space: SpaceData?
     private var hasRefreshedInitialTableLayout = false
     private var isCreateMode: Bool { state.deviceId == nil }
+    private var isUnlinkedVirtualMode: Bool {
+        !isCreateMode && viewModel.currentDevice()?.bindNode == nil
+    }
     var state: LinkedEmerFireEditState { viewModel.state }
+    var shouldShowSyncStatus: Bool { viewModel.shouldShowSyncStatus }
     var editable: Bool {
         get { state.editable }
         set { state.editable = newValue }
@@ -54,6 +58,14 @@ final class LinkedEmerFireEditVC: UIViewController {
         DeviceBottomBtnView(frame: .zero)
     }()
 
+    private lazy var linkView: PJLinkedStaOpertionsView = {
+        let view = PJLinkedStaOpertionsView()
+        view.createAction = { [weak self] in
+            self?.linkRealDeviceAction()
+        }
+        return view
+    }()
+
     override func viewDidLoad() {
         super.viewDidLoad()
         setupUI()
@@ -72,6 +84,9 @@ final class LinkedEmerFireEditVC: UIViewController {
         if viewModel.refreshSyncStatusFromStore() {
             tableView.reloadData()
         }
+        if !isCreateMode {
+            linkView.configure(isLinked: viewModel.currentDevice()?.bindNode != nil)
+        }
     }
 
     @objc private func backAction() {
@@ -85,12 +100,17 @@ final class LinkedEmerFireEditVC: UIViewController {
     @objc private func saveAction() {
         view.endEditing(true)
         guard validateBeforeSaving() else { return }
+        if isCreateMode {
+            createVirtualDevice()
+            return
+        }
         guard viewModel.save() != nil else {
             XWHUDManager.showTipHUD("failed".localizedString, isLineFeed: false)
             return
         }
         NotificationCenter.default.post(name: .init(deviceOthersRefreshNotificationName), object: nil)
-        if let savedDevice = viewModel.currentDevice(), let space, savedDevice.bindNode != nil {
+        notifySpaceDataChanged(type: .common)
+        if let savedDevice = viewModel.currentDevice(), let space, savedDevice.bindNode != nil, !savedDevice.isSynced {
             let controller = EmerFireAlarmControllerSyncVC(space: space, data: savedDevice) { [weak self] in
                 self?.finishAfterSuccessfulSaveSync()
             }
@@ -103,6 +123,10 @@ final class LinkedEmerFireEditVC: UIViewController {
     @objc private func createAction() {
         view.endEditing(true)
         guard validateBeforeSaving() else { return }
+        createVirtualDevice()
+    }
+
+    private func createVirtualDevice() {
         guard let space else {
             XWHUDManager.showTipHUD("failed".localizedString, isLineFeed: false)
             return
@@ -112,6 +136,7 @@ final class LinkedEmerFireEditVC: UIViewController {
             return
         }
         NotificationCenter.default.post(name: .init(deviceOthersRefreshNotificationName), object: nil)
+        notifySpaceDataChanged(type: .common)
         XWHUDManager.showSuccessTipHUD("done!".localizedString)
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) { [weak self] in
             self?.dismiss(animated: true)
@@ -132,6 +157,7 @@ final class LinkedEmerFireEditVC: UIViewController {
                     return
                 }
                 NotificationCenter.default.post(name: .init(deviceOthersRefreshNotificationName), object: nil)
+                self.notifySpaceDataChanged(type: .common)
                 XWHUDManager.showSuccessTipHUD("done!".localizedString)
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) {
                     self.dismiss(animated: true)
@@ -149,6 +175,49 @@ final class LinkedEmerFireEditVC: UIViewController {
         navigationController?.pushViewController(controller, animated: true)
     }
 
+    private func linkRealDeviceAction() {
+        view.endEditing(true)
+        guard state.editable else {
+            XWHUDManager.showTipHUD("no_permission".localizedString, isLineFeed: true)
+            return
+        }
+        guard validateBeforeSaving() else { return }
+        guard let space, let device = viewModel.save() else {
+            XWHUDManager.showTipHUD("failed".localizedString, isLineFeed: false)
+            return
+        }
+        guard device.bindNode == nil else {
+            XWHUDManager.showTipHUD("LINKED", isLineFeed: false)
+            return
+        }
+
+        let controller = DeviceAddViewController(space: space)
+        controller.title = "add_device".localizedString
+        controller.bindTarget = .emergencyFire(device)
+        controller.addBehavior = .init(
+            allowsTargetSelection: false,
+            allowsCategorySelection: false,
+            allowedTypes: [.others],
+            blockedDeviceTypes: [.dongle, .gateway, .unknown],
+            selectionMode: .single,
+            forbiddenSelectionTip: "You can't choose other devices.",
+            forbiddenDeviceTypeTip: "Cannot add, type mismatch"
+        )
+        controller.deviceAddCallback = { [weak self] _ in
+            DispatchQueue.main.async {
+                guard let self else { return }
+                _ = self.viewModel.refreshLinkedDeviceFromStore()
+                self.linkView.configure(isLinked: true)
+                self.tableView.reloadData()
+                NotificationCenter.default.post(name: .init(deviceOthersRefreshNotificationName), object: nil)
+                NotificationCenter.default.post(name: .deviceEmerFireDataDidChange, object: nil)
+                self.dismiss(animated: true)
+            }
+        }
+
+        present(NavigationViewController(rootViewController: controller), animated: true)
+    }
+
     private func finishAfterSuccessfulSaveSync() {
         XWHUDManager.showSuccessTipHUD("done!".localizedString)
         let presentedNavigationController = navigationController
@@ -161,25 +230,34 @@ final class LinkedEmerFireEditVC: UIViewController {
         }
     }
 
+    private func notifySpaceDataChanged(type: SpaceChangeDataType) {
+        NotificationCenter.default.post(name: .init(spaceDataChangedNotificaitonName), object: type)
+    }
+
     private func setupUI() {
         view.backgroundColor = Background_Color
 
-        let actionView: UIView
         if isCreateMode {
             bottomView.showCreateUI()
             bottomView.createBtn.addTarget(self, action: #selector(createAction), for: .touchUpInside)
-            actionView = bottomView
-        } else {
-            bottomView.showEditUI()
-            bottomView.deleteBtn.addTarget(self, action: #selector(deleteAction), for: .touchUpInside)
-            bottomView.saveBtn.addTarget(self, action: #selector(saveAction), for: .touchUpInside)
-            actionView = bottomView
+            bottomView.isHidden = !state.editable
+            view.addSubview(bottomView)
+            bottomView.snp.makeConstraints { make in
+                make.left.right.bottom.equalToSuperview()
+                make.height.equalTo(SCRYFrom(56) + (isIPad ? 0 : kSafeAreaBottomHeight))
+            }
         }
-        actionView.isHidden = !state.editable
-        view.addSubview(actionView)
-        actionView.snp.makeConstraints { make in
-            make.left.right.bottom.equalToSuperview()
-            make.height.equalTo(SCRYFrom(56) + (isIPad ? 0 : kSafeAreaBottomHeight))
+
+        let showsLinkView = !isCreateMode && state.editable
+        linkView.configure(isLinked: viewModel.currentDevice()?.bindNode != nil)
+        linkView.isHidden = !showsLinkView
+        if showsLinkView {
+            view.addSubview(linkView)
+            linkView.snp.makeConstraints { make in
+                make.left.right.equalToSuperview()
+                make.bottom.equalToSuperview().offset(isIPad ? 0 : -kSafeAreaBottomHeight)
+                make.height.equalTo(SCRYFrom(56))
+            }
         }
 
         view.addSubview(tableView)
@@ -187,7 +265,11 @@ final class LinkedEmerFireEditVC: UIViewController {
             make.top.equalTo(view.safeAreaLayoutGuide.snp.top)
             make.left.right.equalToSuperview()
             if state.editable {
-                make.bottom.equalTo(actionView.snp.top).offset(-SCRYFrom(8))
+                if showsLinkView {
+                    make.bottom.equalTo(linkView.snp.top).offset(-SCRYFrom(8))
+                } else if isCreateMode {
+                    make.bottom.equalTo(bottomView.snp.top).offset(-SCRYFrom(8))
+                }
             } else {
                 make.bottom.equalToSuperview()
             }
@@ -228,6 +310,14 @@ final class LinkedEmerFireEditVC: UIViewController {
             target: self,
             action: #selector(backAction)
         )
+        if state.editable, !isCreateMode {
+            navigationItem.rightBarButtonItem = UIBarButtonItem(
+                title: "save".localizedString,
+                color: Bar_Color,
+                target: self,
+                sel: #selector(saveAction)
+            )
+        }
     }
 }
 

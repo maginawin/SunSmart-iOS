@@ -10,7 +10,7 @@ import NordicSigMeshSDK
 
 extension EmerFireAlarmMonitorVC {
     func updateEmptyUI() {
-        if isAllEmergencyFunctionsDisabled, groups.isEmpty {
+        if isAllEmergencyFunctionsDisabled {
             deviceCountLabel.isHidden = true
             collectionView.showEmptyDataView(imageName: "device_state_offline", title: "Emergency & Fire Alarm are all disabled".localizedString, buttonText: "Setting".localizedString, position: .center) { [weak self] in
                 self?.openEditSettings()
@@ -94,6 +94,14 @@ extension EmerFireAlarmMonitorVC {
     }
 
     func updateMonitorState() {
+        if isAllEmergencyFunctionsDisabled {
+            view.hideEmptyDataView()
+            setContentHidden(false)
+            renderRealState(.disabled)
+            updateEmptyUI()
+            return
+        }
+
         guard let currentDevice else {
             updateEmptyUI()
             return
@@ -137,6 +145,9 @@ extension EmerFireAlarmMonitorVC {
     }
 
     func handleSceneEvent(_ event: EmergencyFireControllerSceneEvent) {
+        guard !isAllEmergencyFunctionsDisabled else {
+            return
+        }
         let matchesNode = currentDevice?.bindNodeAddress.map { $0 == event.nodeAddress } ?? false
         guard event.controllerId == currentDevice?.id || matchesNode else {
             return
@@ -159,6 +170,11 @@ extension EmerFireAlarmMonitorVC {
     func refreshRealState() {
         requestGeneration += 1
         let generation = requestGeneration
+
+        guard currentWorkMode != .allDisabled else {
+            renderRealState(.disabled)
+            return
+        }
 
         guard let currentDevice else {
             renderRealState(.offline)
@@ -228,17 +244,18 @@ extension EmerFireAlarmMonitorVC {
         case .offline:
             statusWarningView.config(statusLab: "device_offline".localizedString, textColor: Title_Color)
         case .disabled:
-            statusWarningView.config(statusLab: "Unlinked".localizedString, textColor: Title_Color)
+            let statusText = isAllEmergencyFunctionsDisabled ? "Normal State".localizedString : "Unlinked".localizedString
+            statusWarningView.config(statusLab: statusText, textColor: Title_Color, underlined: false)
         case .emergencyTriggered:
             statusWarningView.config(statusLab: "Power Outage Emergency".localizedString, textColor: RGB(237, 154, 0))
         case .emergencyNormal:
-            statusWarningView.config(statusLab: "Normal State".localizedString, textColor: Title_Color)
+            statusWarningView.config(statusLab: "Normal State".localizedString, textColor: Title_Color, underlined: false)
         case .emergencyResuming:
             statusWarningView.config(statusLab: "Resuming".localizedString, textColor: RGB(164, 224, 89))
         case .fireTriggered:
             statusWarningView.config(statusLab: "Fire Alarm Emergency".localizedString, textColor: RGB(255, 72, 49))
         case .fireNormal:
-            statusWarningView.config(statusLab: "Normal State".localizedString, textColor: Title_Color)
+            statusWarningView.config(statusLab: "Normal State".localizedString, textColor: Title_Color, underlined: false)
         case .fireResuming:
             statusWarningView.config(statusLab: "Resuming".localizedString, textColor: RGB(164, 224, 89))
         }
@@ -289,6 +306,7 @@ extension EmerFireAlarmMonitorVC {
 
     func renderNodeAvailabilityChange(_ node: Node) {
         guard node.primaryUnicastAddress == currentDevice?.bindNodeAddress else { return }
+        guard !isAllEmergencyFunctionsDisabled else { return }
 
         if !node.isKeybindComplete {
             requestGeneration += 1

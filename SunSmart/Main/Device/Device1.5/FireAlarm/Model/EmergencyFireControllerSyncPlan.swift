@@ -19,6 +19,7 @@ enum EmergencyFireControllerSyncTaskKind: String {
     case lightLCCleanup = "LC Cleanup"
     case triggerScene = "Trigger Scene"
     case deleteCleanup = "Delete Cleanup"
+    case deleteConfiguration = "Delete Configuration"
 }
 
 final class EmergencyFireControllerSyncTask {

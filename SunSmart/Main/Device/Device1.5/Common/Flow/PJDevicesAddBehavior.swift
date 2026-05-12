@@ -28,4 +28,25 @@ struct PJDevicesAddBehavior {
     let selectionMode: PJDevicesAddSelectionMode
     let forbiddenSelectionTip: String
     let forbiddenDeviceTypeTip: String
+    let allowsEmergencyFireVirtualTargetSelection: Bool
+
+    init(
+        allowsTargetSelection: Bool,
+        allowsCategorySelection: Bool,
+        allowedTypes: [PJDevicesAddSelectableType],
+        blockedDeviceTypes: [Node.DeviceType],
+        selectionMode: PJDevicesAddSelectionMode,
+        forbiddenSelectionTip: String,
+        forbiddenDeviceTypeTip: String,
+        allowsEmergencyFireVirtualTargetSelection: Bool = false
+    ) {
+        self.allowsTargetSelection = allowsTargetSelection
+        self.allowsCategorySelection = allowsCategorySelection
+        self.allowedTypes = allowedTypes
+        self.blockedDeviceTypes = blockedDeviceTypes
+        self.selectionMode = selectionMode
+        self.forbiddenSelectionTip = forbiddenSelectionTip
+        self.forbiddenDeviceTypeTip = forbiddenDeviceTypeTip
+        self.allowsEmergencyFireVirtualTargetSelection = allowsEmergencyFireVirtualTargetSelection
+    }
 }

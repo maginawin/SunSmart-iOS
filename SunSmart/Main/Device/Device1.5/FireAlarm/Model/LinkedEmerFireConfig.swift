@@ -117,7 +117,7 @@ extension EmergencyFireControllerConfiguration {
     }
 }
 
-struct LinkedEmerFireConfig {
+struct LinkedEmerFireConfig: Equatable {
     var deviceId: String?
     var spaceId: String?
     var meshUUID: String?

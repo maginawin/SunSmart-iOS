@@ -71,12 +71,24 @@ final class LinkedEmerFireEditViewModel {
         return DeviceEmerFireStore.shared.device(id: deviceId, meshUUID: meshUUID, meshNetworkId: meshNetworkId)
     }
 
+    var shouldShowSyncStatus: Bool {
+        currentDevice()?.bindNode != nil
+    }
+
     @discardableResult
     func refreshSyncStatusFromStore() -> Bool {
         guard let device = currentDevice() else { return false }
         let oldValue = state.isSynced
         state.isSynced = device.isSynced
         return oldValue != state.isSynced
+    }
+
+    @discardableResult
+    func refreshLinkedDeviceFromStore() -> Bool {
+        guard let device = currentDevice() else { return false }
+        let oldConfig = state.makeConfig()
+        state.apply(config: device.toConfig())
+        return oldConfig != state.makeConfig()
     }
 
     private func apply(_ config: LinkedEmerFireConfig, to device: DeviceEmerFireData) {

@@ -27,7 +27,6 @@ final class PJDevicesFireAlarmAddContainerController: PJDevicesLegacyContainerCo
         vc.title = context.title
         vc.appointGroup = context.appointGroup
         vc.addBehavior = context.addBehavior
-        vc.isEmerFireAlarm = true
         configureLegacyAddController(vc)
         embedLegacyController(vc)
     }

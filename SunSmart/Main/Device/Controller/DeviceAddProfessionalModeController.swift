@@ -131,6 +131,8 @@ class DeviceAddProfessionalModeController: UIViewController {
     
     /// 外部传入指定dognle设备绑定该到dognle数据
     var forceBindToDongle: DeviceDongleData?
+    /// 添加完成后绑定到外部业务对象。默认 nil，不改变老设备添加流程。
+    var bindTarget: AddDeviceBindTarget?
     /// Device1.5 注入的通用添加限制策略，不改变默认老业务流程。
     var addBehavior: PJDevicesAddBehavior?
     
@@ -142,6 +144,54 @@ class DeviceAddProfessionalModeController: UIViewController {
     
     /// 是否在分配设备地址
     private var applyDeviceAddress: Bool = false
+
+    private var bindToEmerFire: DeviceEmerFireData? {
+        if case .emergencyFire(let device) = bindTarget {
+            return device
+        }
+        return nil
+    }
+
+    private var addTargetNameOverride: String? {
+        bindTarget?.name
+    }
+
+    private var currentTargetSelection: DeviceAddTargetSelection {
+        if let bindToEmerFire {
+            return .emergencyFire(bindToEmerFire)
+        }
+        switch addTarget {
+        case .group(let group):
+            return .group(group)
+        case .dongle(let dongle):
+            return .dongle(dongle)
+        default:
+            return .space
+        }
+    }
+
+    private var isSingleSelectionMode: Bool {
+        bindTarget != nil || addBehavior?.selectionMode == .single
+    }
+
+    private func canSelectEmergencyFireVirtualTarget(for deviceTypes: [Node.DeviceType]) -> Bool {
+        addBehavior?.allowsEmergencyFireVirtualTargetSelection == true && deviceTypes.contains(.emergencyController)
+    }
+
+    private var shouldBlockEmergencyControllerForCurrentTarget: Bool {
+        guard addBehavior?.allowsEmergencyFireVirtualTargetSelection == true else {
+            return false
+        }
+        if bindTarget != nil {
+            return false
+        }
+        switch addTarget {
+        case .group, .dongle:
+            return true
+        default:
+            return false
+        }
+    }
     
     init(space: SpaceData) {
         self.space = space
@@ -193,6 +243,9 @@ class DeviceAddProfessionalModeController: UIViewController {
     }
 
     private func isAllowedDeviceType(_ deviceType: Node.DeviceType) -> Bool {
+        if let bindTarget {
+            return bindTarget.allowedDeviceTypes.contains(deviceType)
+        }
         guard let addBehavior else {
             return true
         }
@@ -212,18 +265,37 @@ class DeviceAddProfessionalModeController: UIViewController {
     }
 
     private func isBlockedDeviceType(_ deviceType: Node.DeviceType) -> Bool {
-        addBehavior?.blockedDeviceTypes.contains(deviceType) == true
+        if let bindTarget {
+            return !bindTarget.allowedDeviceTypes.contains(deviceType)
+        }
+        if shouldBlockEmergencyControllerForCurrentTarget, deviceType == .emergencyController {
+            return true
+        }
+        return addBehavior?.blockedDeviceTypes.contains(deviceType) == true
+    }
+
+    private func isSelectableDeviceType(_ deviceType: Node.DeviceType) -> Bool {
+        isAllowedDeviceType(deviceType) && !isBlockedDeviceType(deviceType)
     }
 
     private func applySelectableState(to device: ProvisioningDevice) {
-        guard addBehavior != nil else {
+        guard addBehavior != nil || bindTarget != nil else {
             return
         }
-        if device.selectedState == .selected || device.addState == .wait || device.addState == .adding || device.addState == .addConnecting || device.addState == .success {
+        if device.addState == .wait || device.addState == .adding || device.addState == .addConnecting || device.addState == .success {
             return
         }
         // 这里仅收敛外部注入的禁选设备类型，不改变默认展示与 identify 行为。
-        device.selectedState = isAllowedDeviceType(device.deviceType) && !isBlockedDeviceType(device.deviceType) ? .unselected : .disabled
+        if isSelectableDeviceType(device.deviceType) {
+            if device.selectedState == .disabled {
+                device.selectedState = .unselected
+            }
+        } else {
+            device.selectedState = .disabled
+        }
+        if isSingleSelectionMode, device.selectedState == .selected {
+            applySingleSelectionIfNeeded(for: device)
+        }
     }
 
     private func shouldAllowTargetSelection() -> Bool {
@@ -234,7 +306,7 @@ class DeviceAddProfessionalModeController: UIViewController {
     }
 
     private func applySingleSelectionIfNeeded(for selectedDevice: ProvisioningDevice) {
-        guard addBehavior?.selectionMode == .single else {
+        guard isSingleSelectionMode else {
             return
         }
         // 单选模式下仅保留当前设备，避免修改默认多选业务流程。
@@ -260,6 +332,22 @@ class DeviceAddProfessionalModeController: UIViewController {
             }
         }
         candidateDevices = candidateDevices.filter { $0.peripheral.identifier == selectedDevice.peripheral.identifier }
+    }
+
+    private func normalizeSelectionForCurrentTarget() {
+        scanDevices.forEach { applySelectableState(to: $0) }
+        inRSSIDevices.forEach { applySelectableState(to: $0) }
+        remainingRSSIDevices.forEach { applySelectableState(to: $0) }
+        candidateDevices.forEach { applySelectableState(to: $0) }
+        guard isSingleSelectionMode else {
+            candidateDevices.removeAll { $0.selectedState == .disabled }
+            return
+        }
+        let selectedDevices = (scanDevices + candidateDevices).filter { $0.selectedState == .selected }
+        guard let firstSelectedDevice = selectedDevices.first else {
+            return
+        }
+        applySingleSelectionIfNeeded(for: firstSelectedDevice)
     }
     
     override func viewWillAppear(_ animated: Bool) {
@@ -401,7 +489,7 @@ class DeviceAddProfessionalModeController: UIViewController {
                 }
                 
                 if self.isRefresh {
-                    if self.isAllowedDeviceType(newDevice.deviceType),
+                    if self.isSelectableDeviceType(newDevice.deviceType),
                        !self.candidateDevices.contains(where: { $0.peripheral.identifier.uuidString == newDevice.peripheral.identifier.uuidString }),
                        self.selectRSSIRange.contains(newDevice.rssi.intValue) {
                         switch addMode {
@@ -693,7 +781,11 @@ class DeviceAddProfessionalModeController: UIViewController {
                     newDongle.save()
                 }
             } else if addDevice.deviceType == .emergencyController {
-                DeviceEmerFireStore.shared.ensureDevice(for: node, in: self.space)
+                if let bindToEmerFire = self.bindToEmerFire {
+                    DeviceEmerFireStore.shared.bind(bindToEmerFire, to: node, in: self.space)
+                } else {
+                    DeviceEmerFireStore.shared.ensureDevice(for: node, in: self.space)
+                }
             }
             
         } appendMessagesBack: {[weak self] addDevice, appendCompletion in
@@ -703,11 +795,16 @@ class DeviceAddProfessionalModeController: UIViewController {
             }
             var appendMessages: [MeshMessageHandle] = []
             if addDevice.deviceType == .emergencyController {
-                let controller = DeviceEmerFireStore.shared.ensureDevice(for: node, in: self.space)
-                do {
-                    appendMessages.append(contentsOf: try controller.getSceneClientPublicationMessageHandles(meshUUID: self.space.meshUUID, subnetworkId: self.space.meshNetworkId))
-                } catch {
-                    print(error.localizedDescription)
+                if let bindToEmerFire = self.bindToEmerFire {
+                    DeviceEmerFireStore.shared.bind(bindToEmerFire, to: node, in: self.space)
+                } else {
+                    let controller = DeviceEmerFireStore.shared.ensureDevice(for: node, in: self.space)
+                    do {
+                        appendMessages.append(contentsOf: try controller.getSceneClientPublicationMessageHandles(meshUUID: self.space.meshUUID, subnetworkId: self.space.meshNetworkId))
+                        appendMessages.append(contentsOf: try controller.getLightLCClientPublicationMessageHandles(meshUUID: self.space.meshUUID, subnetworkId: self.space.meshNetworkId))
+                    } catch {
+                        print(error.localizedDescription)
+                    }
                 }
             }
             // 入网后默认调为最大亮度
@@ -1178,7 +1275,7 @@ class DeviceAddProfessionalModeController: UIViewController {
 //            self.candidateView?.lightSeningMode = self.addMode == .lightSening
             if self.isRefresh, self.addMode == .rssiRange {
                 // 筛选出满足预选条件的设备
-                let devices = self.scanDevices.filter({ device in !self.candidateDevices.contains(where: { $0.peripheral.identifier.uuidString == device.peripheral.identifier.uuidString }) && self.selectRSSIRange.contains(device.rssi.intValue) })
+                let devices = self.scanDevices.filter({ device in self.isSelectableDeviceType(device.deviceType) && !self.candidateDevices.contains(where: { $0.peripheral.identifier.uuidString == device.peripheral.identifier.uuidString }) && self.selectRSSIRange.contains(device.rssi.intValue) })
                 self.candidateDevices.append(contentsOf: devices)
                 self.candidateCountLabel?.text = "\(self.candidateDevices.count)"
             }
@@ -1214,7 +1311,7 @@ class DeviceAddProfessionalModeController: UIViewController {
         if self.isRefresh {
             // 筛选出满足预选条件的设备
             if addMode == .rssiRange {
-                let devices = self.scanDevices.filter({ device in !self.candidateDevices.contains(where: { $0.peripheral.identifier.uuidString == device.peripheral.identifier.uuidString }) && self.selectRSSIRange.contains(device.rssi.intValue) })
+                let devices = self.scanDevices.filter({ device in self.isSelectableDeviceType(device.deviceType) && !self.candidateDevices.contains(where: { $0.peripheral.identifier.uuidString == device.peripheral.identifier.uuidString }) && self.selectRSSIRange.contains(device.rssi.intValue) })
                 if devices.count > 0 {
                     self.candidateDevices.append(contentsOf: devices)
                     self.playerNotificationAudio()
@@ -1295,6 +1392,7 @@ class DeviceAddProfessionalModeController: UIViewController {
         
         candidateView.candidateDevices = candidateDevices
         candidateView.addTarget = addTarget
+        candidateView.addTargetNameOverride = addTargetNameOverride
         candidateView.isRefresh = isRefresh
 //        candidateView?.lightSeningMode = addMode == .lightSening
         candidateView.state = state
@@ -1658,6 +1756,7 @@ class DeviceAddProfessionalModeController: UIViewController {
         candidateView = DeviceAddCandidateDeviceListView(frame: .zero, space: space)
         candidateView.candidateDevices = candidateDevices
         candidateView.addTarget = addTarget
+        candidateView.addTargetNameOverride = addTargetNameOverride
         candidateView.isRefresh = isRefresh
 //        candidateView?.lightSeningMode = addMode == .lightSening
         candidateView.state = state
@@ -1863,7 +1962,7 @@ extension DeviceAddProfessionalModeController: DeviceAddViewCellDelegate {
             return
         }
         // 单选模式下候选列表只保留一个设备，默认业务仍复用原有候选流程。
-        if addBehavior?.selectionMode == .single {
+        if isSingleSelectionMode {
             applySingleSelectionIfNeeded(for: device)
             candidateDevices = [device]
             setupDevicesData()
@@ -1886,7 +1985,7 @@ extension DeviceAddProfessionalModeController: DeviceAddSelectAllViewCellDelegat
     /// 设备点击选择/取消所有 事件回调
     func cell(_ cell: DeviceAddSelectAllViewCell, selectAllAction selectAll: Bool) {
         // 单选模式下不进入批量勾选逻辑，保持关联页一次只选一个设备。
-        if addBehavior?.selectionMode == .single {
+        if isSingleSelectionMode {
             if let section = tableView.indexPath(for: cell)?.section {
                 let devices = sectionTypes[section] == .inRSSI ? inRSSIDevices : remainingRSSIDevices
                 inRSSIDevices.forEach { $0.selectedState = .unselected }
@@ -1906,6 +2005,7 @@ extension DeviceAddProfessionalModeController: DeviceAddSelectAllViewCellDelegat
             switch sectionTypes[section] {
             case .inRSSI:
                 inRSSIDevices.forEach({ device in
+                    guard device.selectedState != .disabled else { return }
                     device.selectedState = selectAll ? .selected : .unselected
                     
                     let cacheDevice = scanDevices.first(where: {$0.peripheral.identifier == device.peripheral.identifier })
@@ -1913,6 +2013,7 @@ extension DeviceAddProfessionalModeController: DeviceAddSelectAllViewCellDelegat
                 })
             case .remainingRSSI:
                 remainingRSSIDevices.forEach({ device in
+                    guard device.selectedState != .disabled else { return }
                     device.selectedState = selectAll ? .selected : .unselected
                     
                     let cacheDevice = scanDevices.first(where: {$0.peripheral.identifier == device.peripheral.identifier })
@@ -1932,7 +2033,7 @@ extension DeviceAddProfessionalModeController: DeviceAddSelectAllViewCellDelegat
         
         if let section = tableView.indexPath(for: cell)?.section {
             reloadDataing = true
-            if addBehavior?.selectionMode == .single {
+            if isSingleSelectionMode {
                 let devices = sectionTypes[section] == .inRSSI ? inRSSIDevices : remainingRSSIDevices
                 if let selectedDevice = devices.first(where: { $0.selectedState == .selected }) {
                     applySingleSelectionIfNeeded(for: selectedDevice)
@@ -2034,7 +2135,7 @@ extension DeviceAddProfessionalModeController: DeviceAddCandidateDeviceListViewD
     
     /// 设备开始添加
     func candidateView(_ view: DeviceAddCandidateDeviceListView, startAdd devices: [ProvisioningDevice]) {
-        checkDeviceAddressesAreSufficient(devices: devices)
+        checkDeviceAddressesAreSufficient(devices: isSingleSelectionMode ? Array(devices.prefix(1)) : devices)
     }
     
     /// 选择设备添加目地的
@@ -2053,8 +2154,42 @@ extension DeviceAddProfessionalModeController: DeviceAddCandidateDeviceListViewD
         var selectIndex = 0
         
 //        let menuPoint = view.convert(touchPoint, to: UIApplication.shared.keyWindow())
+
+        if canSelectEmergencyFireVirtualTarget(for: currentDeviceTypes) {
+            let groups = MeshNetworkManager.instance.groups
+            let virtualEmerFireDevices = DeviceEmerFireStore.shared.devices(in: space).filter { $0.bindNodeAddress == nil }
+            DeviceAddTargetSelectView.show(
+                anchorPoint: touchPoint,
+                groups: groups,
+                emergencyFireDevices: virtualEmerFireDevices,
+                dongles: dongles,
+                selectedTarget: currentTargetSelection
+            ) { [weak self] selection in
+                guard let self else { return }
+                switch selection {
+                case .space:
+                    self.addTarget = .space(space)
+                    self.bindTarget = nil
+                case .group(let group):
+                    self.addTarget = .group(group)
+                    self.bindTarget = nil
+                case .emergencyFire(let device):
+                    self.addTarget = .space(space)
+                    self.bindTarget = .emergencyFire(device)
+                case .dongle(let dongle):
+                    self.addTarget = .dongle(dongle)
+                    self.bindTarget = nil
+                }
+                self.normalizeSelectionForCurrentTarget()
+                view.addTarget = self.addTarget
+                view.addTargetNameOverride = self.addTargetNameOverride
+                view.candidateDevices = self.candidateDevices
+                self.tableView.reloadData()
+            }
+            return
+        }
         
-        if currentDeviceTypes.contains(.dongle) { // 选择dongle
+        if currentDeviceTypes.contains(.dongle), !canSelectEmergencyFireVirtualTarget(for: currentDeviceTypes) { // 选择dongle
             if forceBindToDongle != nil { // 固定智能绑定该dongle数据
                 XWHUDManager.showTipHUD("dongle_cannot_select_message".localizedString, isLineFeed: true)
                 return
@@ -2088,19 +2223,32 @@ extension DeviceAddProfessionalModeController: DeviceAddCandidateDeviceListViewD
             for group in groups {
                 titles.append(group.name)
             }
+            let virtualEmerFireDevices = canSelectEmergencyFireVirtualTarget(for: currentDeviceTypes) ? DeviceEmerFireStore.shared.devices(in: space).filter { $0.bindNodeAddress == nil } : []
+            virtualEmerFireDevices.forEach { titles.append($0.name) }
             var selectIndex = 0
             if case .group(let selectGroup) = self.addTarget, let index = groups.firstIndex(where: { $0.address == selectGroup.address }) {
                 selectIndex = index + 1
+            } else if let bindToEmerFire, let index = virtualEmerFireDevices.firstIndex(where: { $0.id == bindToEmerFire.id }) {
+                selectIndex = groups.count + index + 1
             }
             
             TitleSelectView.show(titles: titles, anchorPoint: touchPoint, selectIndex: selectIndex) {[weak self] index in
                 guard let self = self else { return }
                 if index == 0 {
                     self.addTarget = .space(space)
-                }else {
+                    self.bindTarget = nil
+                } else if index <= groups.count {
                     self.addTarget = .group(groups[index - 1])
+                    self.bindTarget = nil
+                } else {
+                    self.addTarget = .space(space)
+                    self.bindTarget = .emergencyFire(virtualEmerFireDevices[index - groups.count - 1])
                 }
+                self.normalizeSelectionForCurrentTarget()
                 view.addTarget = self.addTarget
+                view.addTargetNameOverride = self.addTargetNameOverride
+                view.candidateDevices = self.candidateDevices
+                self.tableView.reloadData()
             }
         }
         

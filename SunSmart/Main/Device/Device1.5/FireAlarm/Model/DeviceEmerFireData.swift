@@ -91,6 +91,18 @@ final class DeviceEmerFireStore {
         return device
     }
 
+    @discardableResult
+    func bind(_ device: DeviceEmerFireData, to node: Node, in space: SpaceData) -> DeviceEmerFireData {
+        let target = self.device(id: device.id, meshUUID: space.meshUUID, meshNetworkId: space.meshNetworkId) ?? device
+        target.bindNodeAddress = node.primaryUnicastAddress
+        target.isSynced = false
+        save(target)
+        if target !== device {
+            device.update(deviceData: target)
+        }
+        return target
+    }
+
     func save(_ device: DeviceEmerFireData) {
         _ = repository.save(device)
         mergeCache(with: [device])
@@ -103,6 +115,17 @@ final class DeviceEmerFireStore {
         devices.removeAll(where: { $0.id == device.id })
         EmergencyFireControllerSceneEventManager.refreshProxyFilterAddresses()
         notifyDidChange()
+    }
+
+    func deleteCachedDevice(_ device: DeviceEmerFireData) {
+        removePublishGroupIfNeeded(for: device)
+        delete(device)
+    }
+
+    func clearMonitoringConfiguration(for device: DeviceEmerFireData) {
+        removePublishGroupIfNeeded(for: device)
+        device.clearMonitoringConfiguration()
+        save(device)
     }
 
     private func mergeRealEmergencyControllers(_ storedDevices: [DeviceEmerFireData], space: SpaceData?, meshUUID: String, meshNetworkId: String) -> [DeviceEmerFireData] {
@@ -143,6 +166,19 @@ final class DeviceEmerFireStore {
             } else {
                 devices.append(device)
             }
+        }
+    }
+
+    private func removePublishGroupIfNeeded(for device: DeviceEmerFireData) {
+        guard let publishGroupAddress = device.publishGroupAddress,
+              let publishGroup = MeshNetworkManager.instance.meshNetwork?.group(withAddress: MeshAddress(publishGroupAddress)) else {
+            return
+        }
+        do {
+            try MeshNetworkManager.instance.meshNetwork?.remove(group: publishGroup)
+            print("[EFC] removed cached publish group device=\(device.name), address=\(String(format: "0x%04X", publishGroupAddress))")
+        } catch {
+            print("[EFC] failed to remove cached publish group device=\(device.name), address=\(String(format: "0x%04X", publishGroupAddress)), error=\(error)")
         }
     }
 
@@ -292,5 +328,17 @@ class DeviceEmerFireData: Copyable {
             publishGroupAddress: publishGroupAddress,
             configuration: configuration
         )
+    }
+
+    func clearMonitoringConfiguration() {
+        publishGroupAddress = nil
+        isSynced = true
+        reportToGateway = true
+        configuration = EmergencyFireControllerConfiguration(
+            workMode: .allDisabled,
+            powerLossSettings: .defaultValue,
+            fireAlarmSettings: .defaultValue
+        )
+        lastUpdate = Int64(Date().timeIntervalSince1970)
     }
 }

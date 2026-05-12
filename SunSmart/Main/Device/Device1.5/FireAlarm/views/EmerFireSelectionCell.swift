@@ -55,7 +55,7 @@ final class EmerFireSelectionCell: UITableViewCell {
     }()
 
     private lazy var valueLabel: UILabel = {
-        let label = UILabel(text: nil, textColor: AssistText_Color, fontSize: 11, fontWeight: .light)
+        let label = UILabel(text: nil, textColor: Title_Color, fontSize: 11, fontWeight: .light)
         label.numberOfLines = 0
         label.lineBreakMode = .byCharWrapping
         label.textAlignment = .left

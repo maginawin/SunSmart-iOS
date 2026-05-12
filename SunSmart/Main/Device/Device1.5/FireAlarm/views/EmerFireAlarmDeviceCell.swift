@@ -18,7 +18,8 @@ class EmerFireAlarmDeviceCell: UICollectionViewCell {
     var warningIcon : UIImageView!
     private var status: EmerFireStatus = .unboundDevice
     
-    var deleteActionCallback: ((DeviceSwitchData)->Void)?
+    var deleteActionCallback: ((DeviceEmerFireData)->Void)?
+    private var device: DeviceEmerFireData?
     
     override init(frame: CGRect) {
         super.init(frame: frame)
@@ -83,8 +84,11 @@ class EmerFireAlarmDeviceCell: UICollectionViewCell {
 
     override func prepareForReuse() {
         super.prepareForReuse()
+        device = nil
         status = .unboundDevice
         warningIcon.isHidden = true
+        deleteBtn.isHidden = true
+        deleteActionCallback = nil
         deleteDashedBorder()
     }
     
@@ -101,6 +105,12 @@ class EmerFireAlarmDeviceCell: UICollectionViewCell {
         nameLabel.text = name
         self.status = status
         configCellSatus(status: status)
+    }
+
+    func configCell(device: DeviceEmerFireData, editing: Bool) {
+        self.device = device
+        deleteBtn.isHidden = !editing
+        configCell(name: device.name, status: device.displayStatus)
     }
     
     func configCellSatus(status: EmerFireStatus){
@@ -133,7 +143,8 @@ class EmerFireAlarmDeviceCell: UICollectionViewCell {
     }
     
     @objc private func deleteBtnClick() {
-        XWHUDManager.showTipHUD("delete")
+        guard let device else { return }
+        deleteActionCallback?(device)
     }
     
 }

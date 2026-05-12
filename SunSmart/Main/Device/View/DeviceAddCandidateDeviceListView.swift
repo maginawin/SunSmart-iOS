@@ -88,17 +88,12 @@ class DeviceAddCandidateDeviceListView: UIView {
     /// 添加设备的目的地
     var addTarget: AddDeviceToTarget? {
         didSet {
-            var name = addTarget?.name ?? ""
-            if showDeviceTypes.contains(.dongle) {
-                if case .dongle(let dongle) = addTarget {
-                    name = dongle.name
-                }
-            }else {
-                if case .group(let group) = addTarget {
-                    name = group.name
-                }
-            }
-            addDeviceTargetBtn.setTitle(name, for: .normal)
+            updateAddTargetTitle()
+        }
+    }
+    var addTargetNameOverride: String? {
+        didSet {
+            updateAddTargetTitle()
         }
     }
     /// 外部传入指定添加该到group
@@ -109,6 +104,22 @@ class DeviceAddCandidateDeviceListView: UIView {
     
     /// 已存在的dognle数据list
 //    private var dongles: [DeviceDongleData] = []
+
+    private func updateAddTargetTitle() {
+        var name = addTargetNameOverride ?? addTarget?.name ?? ""
+        if addTargetNameOverride == nil {
+            if showDeviceTypes.contains(.dongle) {
+                if case .dongle(let dongle) = addTarget {
+                    name = dongle.name
+                }
+            } else {
+                if case .group(let group) = addTarget {
+                    name = group.name
+                }
+            }
+        }
+        addDeviceTargetBtn.setTitle(name, for: .normal)
+    }
     
     weak var delegate: DeviceAddCandidateDeviceListViewDelegate?
     
@@ -234,7 +245,7 @@ class DeviceAddCandidateDeviceListView: UIView {
         if candidateDevices.contains(where: { $0.addState == .addConnecting || $0.addState == .adding }) {
             return
         }
-        let x = isIPad ? sender.frame.minX : sender.frame.maxX - TitleSelectView.defalutWidth
+        let x = sender.frame.minX
         let touchPoint = CGPoint(x: x, y: sender.frame.maxY + SCRYFrom(2))
         delegate?.candidateView(self, selectAddDevicesTarget: contentView.convert(touchPoint, to: UIApplication.shared.keyWindow()), currentDeviceTypes: showDeviceTypes)
     }

@@ -77,9 +77,11 @@ struct EmergencyFireControllerSyncPlanner {
 
     func makeDeleteCleanupItems() -> [EmergencyFireControllerSyncItem] {
         guard let publishGroup = data.publishGroup else {
-            return []
+            let items = makeDisableControllerItems()
+            return items.isEmpty ? [makeLocalDeleteConfigurationItem()] : items
         }
 
+        var items = makeDisableControllerItems()
         let addresses = Set(
             data.configuration.powerLossSettings.associateGroupAddresses +
             data.configuration.powerLossSettings.pendingUnassociateGroupAddresses +
@@ -87,7 +89,7 @@ struct EmergencyFireControllerSyncPlanner {
             data.configuration.fireAlarmSettings.pendingUnassociateGroupAddresses
         )
 
-        return addresses.sorted().compactMap { address in
+        items.append(contentsOf: addresses.sorted().compactMap { address in
             guard let group = MeshNetworkManager.instance.meshNetwork?.group(withAddress: MeshAddress(address)) else {
                 return nil
             }
@@ -105,7 +107,11 @@ struct EmergencyFireControllerSyncPlanner {
 
             guard !tasks.isEmpty else { return nil }
             return EmergencyFireControllerSyncItem(name: group.name, iconName: "device_light", address: group.address.address, tasks: tasks, controller: data)
+        })
+        if items.isEmpty {
+            items.append(makeLocalDeleteConfigurationItem())
         }
+        return items
     }
 
     func makeActiveModeAssociateItems() throws -> [EmergencyFireControllerSyncItem] {
@@ -256,5 +262,32 @@ struct EmergencyFireControllerSyncPlanner {
             return []
         }
         return [MeshMessageHandle(message: message, address: node.primaryUnicastAddress)]
+    }
+
+    private func makeDisableControllerItems() -> [EmergencyFireControllerSyncItem] {
+        guard data.configuration.workMode != .allDisabled,
+              let node = data.bindNode,
+              node.isKeybindComplete,
+              node.state,
+              let vendorModel = node.sunricherVendorModel else {
+            return []
+        }
+        let task = EmergencyFireControllerSyncTask(
+            title: "Mode",
+            kind: .workMode,
+            address: node.primaryUnicastAddress,
+            messageHandles: [MeshMessageHandle(message: SunricherVendorSet(function: .emergencyMode(.disabled)), model: vendorModel)]
+        )
+        return [EmergencyFireControllerSyncItem(name: data.name, iconName: EmergencyFireControllerIconName.main, address: node.primaryUnicastAddress, tasks: [task], controller: data)]
+    }
+
+    private func makeLocalDeleteConfigurationItem() -> EmergencyFireControllerSyncItem {
+        let task = EmergencyFireControllerSyncTask(
+            title: data.name,
+            kind: .deleteConfiguration,
+            address: data.bindNodeAddress ?? data.publishGroupAddress ?? 0,
+            messageHandles: []
+        )
+        return EmergencyFireControllerSyncItem(name: data.name, iconName: EmergencyFireControllerIconName.main, address: task.address, tasks: [task], controller: data)
     }
 }

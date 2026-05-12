@@ -15,13 +15,15 @@ private enum DeviceOthersListItem {
     case emergencyFireController(DeviceEmerFireData)
 }
 
-class DeviceOthersViewController: UIViewController {
+class DeviceOthersViewController: UIViewController, DeviceProtocol {
 
     // 设备列表
     private var flowLayout: AlignCenterFlowLayout!
     private var collectionView: UICollectionView!
 
     private var footerView: SpaceFunctionFooterView!
+    private var editView: UIView!
+    private var doneBtn: UIButton!
     /// 是否正在编辑
     private var isEdit: Bool = false
     
@@ -108,6 +110,8 @@ class DeviceOthersViewController: UIViewController {
         footerView.addBtn.isEnabled = space.deviceOperates.contains(.add)
         footerView.editBtn.isEnabled = space.deviceOperates.contains(.edit)
         footerView.sortBtn.isHidden = true
+        editView.isHidden = !isEdit
+        footerView.isHidden = isEdit
         
         updateDevicesEmptyUI()
         self.collectionView.reloadData()
@@ -142,13 +146,102 @@ class DeviceOthersViewController: UIViewController {
             configuration: device.configuration
         )
     }
+
+    private func confirmDeleteDongle(_ dongle: DeviceDongleData) {
+        SRAlertView(title: "notification".localizedString, message: "device_delete_message".localizedString, actions: [
+            .cancelAction,
+            SRAlertAction(title: "alert_item_delete".localizedString, style: .destructive, actionHandler: { [weak self] _ in
+                self?.deleteDongle(dongle)
+            })
+        ]).show()
+    }
+
+    private func deleteDongle(_ dongle: DeviceDongleData) {
+        guard let node = dongle.bindNode else {
+            MeshNetworkManager.instance.deleteDongle(dongleData: dongle)
+            finishDeleteOthersItem()
+            return
+        }
+        deleteNodes(nodes: [node]) { [weak self] successNodes, _ in
+            guard successNodes.contains(where: { $0.primaryUnicastAddress == node.primaryUnicastAddress }) else {
+                return
+            }
+            MeshNetworkManager.instance.deleteDongle(dongleData: dongle)
+            self?.finishDeleteOthersItem()
+        }
+    }
+
+    private func confirmDeleteEmergencyFireController(_ device: DeviceEmerFireData) {
+        SRAlertView(title: "notification".localizedString, message: "device_delete_message".localizedString, actions: [
+            .cancelAction,
+            SRAlertAction(title: "alert_item_delete".localizedString, style: .destructive, actionHandler: { [weak self] _ in
+                self?.deleteEmergencyFireController(device)
+            })
+        ]).show()
+    }
+
+    private func deleteEmergencyFireController(_ device: DeviceEmerFireData) {
+        let planner = EmergencyFireControllerSyncPlanner(data: device, meshUUID: device.meshUUID, subnetworkId: device.meshNetworkId)
+        let cleanupItems = planner.makeDeleteCleanupItems()
+        if !cleanupItems.isEmpty {
+            guard MeshLibManager.manager.isMeshNetworkConnected else {
+                XWHUDManager.showTipHUD("device_notconnect_message".localizedString, isLineFeed: true)
+                return
+            }
+            let controller = EmerFireAlarmControllerSyncVC(
+                space: space,
+                data: device,
+                items: cleanupItems,
+                persistsSyncResult: false
+            ) { [weak self, weak device] in
+                guard let self, let device else { return }
+                self.dismiss(animated: true) {
+                    self.deleteEmergencyFireControllerNodeAndCache(device)
+                }
+            }
+            if isIPad {
+                controller.preferredContentSize = iPadPreferredContentSize
+            }
+            present(NavigationViewController(rootViewController: controller), animated: true)
+            return
+        }
+        deleteEmergencyFireControllerNodeAndCache(device)
+    }
+
+    private func deleteEmergencyFireControllerNodeAndCache(_ device: DeviceEmerFireData) {
+        guard let node = device.bindNode else {
+            DeviceEmerFireStore.shared.deleteCachedDevice(device)
+            finishDeleteOthersItem()
+            return
+        }
+        deleteNodes(nodes: [node]) { [weak self] successNodes, _ in
+            guard successNodes.contains(where: { $0.primaryUnicastAddress == node.primaryUnicastAddress }) else {
+                return
+            }
+            DeviceEmerFireStore.shared.deleteCachedDevice(device)
+            self?.finishDeleteOthersItem()
+        }
+    }
+
+    private func finishDeleteOthersItem() {
+        space.deviceCount = MeshNetworkManager.instance.realNodes.count
+        space.luminairesCount = MeshNetworkManager.instance.realNodes.filter { $0.deviceType == .light }.count
+        space.save()
+        reloadShowItems()
+        if showItems.isEmpty {
+            isEdit = false
+        }
+        updateUI()
+        NotificationCenter.default.post(name: .init(deviceOthersRefreshNotificationName), object: nil)
+        NotificationCenter.default.post(name: .init(devicesUpdateNotificationName), object: nil)
+        NotificationCenter.default.post(name: .init(spaceDataChangedNotificaitonName), object: SpaceChangeDataType.network(type: .address))
+    }
     
     private func setupUI() {
         
         footerView = SpaceFunctionFooterView()
         footerView.sortBtn.isHidden = true
         footerView.editBtn.isEnabled = false
-        footerView.enableTestDelete = true
         footerView.delegate = self
         view.addSubview(footerView)
         footerView.snp.makeConstraints { make in
@@ -179,6 +272,27 @@ class DeviceOthersViewController: UIViewController {
             make.bottom.equalTo(footerView.snp.top)
             //            make.bottom.equalToSuperview()
         }
+
+        editView = UIView()
+        editView.backgroundColor = .white
+        editView.isHidden = true
+        view.addSubview(editView)
+        editView.snp.makeConstraints { make in
+            make.left.right.bottom.equalToSuperview()
+            make.height.equalTo(kSafeAreaBottomHeight + SCRYFrom(56))
+        }
+
+        doneBtn = UIButton(title: "done".localizedString, titleSize: 16, titleWeight: .light, titleColor: Title_Color, target: self, action: #selector(doneBtnAction))
+        editView.addSubview(doneBtn)
+        doneBtn.snp.makeConstraints { make in
+            make.left.right.top.equalToSuperview()
+            make.height.equalTo(SCRYFrom(56))
+        }
+    }
+
+    @objc private func doneBtnAction() {
+        isEdit = false
+        updateUI()
     }
     
     /// 长按事件，跳转到开关详情
@@ -215,10 +329,17 @@ extension DeviceOthersViewController: UICollectionViewDataSource, UICollectionVi
         case .dongle(let dongle):
             let cell = collectionView.dequeueReusableCell(withReuseIdentifier: "cell", for: indexPath) as! DeviceOthersCollectionViewCell
             cell.dongle = dongle
+            cell.deleteBtn.isHidden = !isEdit
+            cell.deleteActionCallback = { [weak self] dongle in
+                self?.confirmDeleteDongle(dongle)
+            }
             return cell
         case .emergencyFireController(let device):
             let cell = collectionView.dequeueReusableCell(withReuseIdentifier: "emerFireCell", for: indexPath) as! EmerFireAlarmDeviceCell
-            cell.configCell(name: device.name, status: device.displayStatus)
+            cell.configCell(device: device, editing: isEdit)
+            cell.deleteActionCallback = { [weak self] device in
+                self?.confirmDeleteEmergencyFireController(device)
+            }
             return cell
         }
     }
@@ -241,6 +362,15 @@ extension DeviceOthersViewController: UICollectionViewDataSource, UICollectionVi
             }
             present(NavigationViewController(rootViewController: vc), animated: true)
         case .emergencyFireController(let device):
+            if device.displayStatus == .unboundDevice {
+                let config = makeLinkedEmerFireConfig(from: device)
+                let vc = LinkedEmerFireEditVC(config: config, space: space)
+                if isIPad {
+                    vc.preferredContentSize = iPadPreferredContentSize
+                }
+                present(NavigationViewController(rootViewController: vc), animated: true)
+                return
+            }
             if device.displayStatus == .syncIssueDevice {
                 let vc = EmerFireAlarmControllerSyncVC(space: space, data: device)
                 if isIPad {

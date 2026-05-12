@@ -93,6 +93,12 @@ class SiteViewController: UIViewController {
         title = site.name
         view.backgroundColor = Background_Color
         navigationController?.navigationBar.barTintColor = .clear
+        navigationItem.leftBarButtonItem = UIBarButtonItem(
+            image: UIImage(named: "navigation_back")?.withRenderingMode(.alwaysOriginal),
+            style: .done,
+            target: self,
+            action: #selector(backAction)
+        )
         navigationItem.rightBarButtonItem = UIBarButtonItem(image: UIImage(named: "more_vertical")?.withRenderingMode(.alwaysOriginal), style: .done, target: self, action: #selector(moreClick))
 
         setupUI()
@@ -124,6 +130,7 @@ class SiteViewController: UIViewController {
     
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
+        (navigationController as? NavigationViewController)?.navigationDelegate = nil
         
         setupData()
 
@@ -138,6 +145,14 @@ class SiteViewController: UIViewController {
 //        self.updateEmptyView()
         
         CloudSynchronizationManager.shared.delegate = self
+    }
+
+    @objc private func backAction() {
+        if let navigationController, navigationController.viewControllers.first != self {
+            navigationController.popViewController(animated: true)
+        } else {
+            dismiss(animated: true)
+        }
     }
     
     override func viewDidAppear(_ animated: Bool) {

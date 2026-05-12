@@ -33,6 +33,25 @@ enum AddDeviceToTarget {
     case dongle(_ dongle: DeviceDongleData)
 }
 
+/// 添加后需要绑定到的外部业务对象。
+enum AddDeviceBindTarget {
+    case emergencyFire(DeviceEmerFireData)
+
+    var name: String {
+        switch self {
+        case .emergencyFire(let device):
+            return device.name
+        }
+    }
+
+    var allowedDeviceTypes: [Node.DeviceType] {
+        switch self {
+        case .emergencyFire:
+            return [.emergencyController]
+        }
+    }
+}
+
 /// 设备添加页面状态
 enum DeviceAddState {
     /// 无状态
@@ -47,10 +66,7 @@ enum DeviceAddState {
     case addFineshed
 }
 
-class DeviceAddViewController: WMPageController {
-    
-    //从火警那边进来添加设备v1.5
-    var isEmerFireAlarm: Bool = false
+class DeviceAddViewController: WMPageController, DeviceProtocol {
     
     private var navigationBackBtn: UIButton!
     
@@ -69,15 +85,25 @@ class DeviceAddViewController: WMPageController {
     var deviceAddCallback: (([Node])->Void)?
     /// 添加成功的节点
     private var addSuccessNodes: [Node] = []
+    private var didNotifyDeviceAddCallback = false
     
     /// 外部传入指定添加该到group
     var appointGroup: Group?
     /// 外部传入指定dognle设备绑定该到dognle数据
     var forceBindToDongle: DeviceDongleData?
+    /// 添加完成后绑定到外部业务对象。默认 nil，不改变老设备添加流程。
+    var bindTarget: AddDeviceBindTarget?
     /// Device1.5 注入的通用添加限制策略，不承载具体业务分支。
     var addBehavior: PJDevicesAddBehavior?
     /// 是否添加设备中
     var addingDevice: Bool = false
+
+    private var shouldCloseAfterBinding: Bool {
+        if case .emergencyFire = bindTarget {
+            return true
+        }
+        return false
+    }
     
     init(space: SpaceData) {
         self.space = space
@@ -132,18 +158,58 @@ class DeviceAddViewController: WMPageController {
     }
     
     deinit {
-        if self.addSuccessNodes.count > 0 {
-            // 找出未命名的设备
-//            let unnamedNodes = addSuccessNodes.filter({ $0.deviceType != .gateway && !($0.name?.contains("ID") ?? true) })
-//            if unnamedNodes.count > 0 {
-//                unnamedNodes.forEach({
-//                    $0.name = MeshNetworkManager.instance.getNextNodeName()
-//                    $0.save()
-//                })
-//                //                    _ = MeshNetworkManager.instance.save()
-//            }
-            self.deviceAddCallback?(self.addSuccessNodes)
+        notifyDeviceAddCallbackIfNeeded()
+    }
+
+    private func handleDeviceAddCallback(nodes: [Node]) {
+        addSuccessNodes.append(contentsOf: nodes)
+        guard !didNotifyDeviceAddCallback,
+              shouldCloseAfterBinding,
+              let bindTarget,
+              nodes.contains(where: { bindTarget.allowedDeviceTypes.contains($0.deviceType) }) else {
+            return
         }
+        finishBindingFlowIfNeeded()
+    }
+
+    private func finishBindingFlowIfNeeded() {
+        guard let bindTarget else {
+            return
+        }
+        let boundNodes = addSuccessNodes.filter { bindTarget.allowedDeviceTypes.contains($0.deviceType) }
+        let repairNodes = boundNodes.filter { !$0.isKeybindComplete }
+        guard repairNodes.isEmpty else {
+            repairDevices(nodes: repairNodes) { [weak self] _, failedNodes in
+                guard let self else { return }
+                if failedNodes.isEmpty {
+                    self.finishBindingFlowIfNeeded()
+                }
+            }
+            return
+        }
+
+        if case .emergencyFire(let device) = bindTarget, !device.isSynced {
+            let syncController = EmerFireAlarmControllerSyncVC(space: space, data: device) { [weak self] in
+                self?.finishBindingFlowIfNeeded()
+            }
+            navigationController?.pushViewController(syncController, animated: true)
+            return
+        }
+
+        let addedNodes = addSuccessNodes
+        let callback = deviceAddCallback
+        didNotifyDeviceAddCallback = true
+        dismiss(animated: true) {
+            callback?(addedNodes)
+        }
+    }
+
+    private func notifyDeviceAddCallbackIfNeeded() {
+        guard !didNotifyDeviceAddCallback, !addSuccessNodes.isEmpty else {
+            return
+        }
+        didNotifyDeviceAddCallback = true
+        deviceAddCallback?(addSuccessNodes)
     }
     
     // MARK: - Scan
@@ -215,11 +281,12 @@ extension DeviceAddViewController {
             let vc = DeviceAddClassicModeController(space: space)
             vc.appointGroup = appointGroup
             vc.forceBindToDongle = forceBindToDongle
+            vc.bindTarget = bindTarget
             // 仅透传通用限制规则，默认老业务行为保持不变。
             vc.addBehavior = addBehavior
             vc.deviceAddCallback = {[weak self] nodes in
                 guard let self = self else { return }
-                self.addSuccessNodes.append(contentsOf: nodes)
+                self.handleDeviceAddCallback(nodes: nodes)
             }
             vc.deviceStateCallback = {[weak self] adding in
                 guard let self = self else { return }
@@ -231,11 +298,12 @@ extension DeviceAddViewController {
             let vc = DeviceAddProfessionalModeController(space: space)
             vc.appointGroup = appointGroup
             vc.forceBindToDongle = forceBindToDongle
+            vc.bindTarget = bindTarget
             // 仅透传通用限制规则，默认老业务行为保持不变。
             vc.addBehavior = addBehavior
             vc.deviceAddCallback = {[weak self] nodes in
                 guard let self = self else { return }
-                self.addSuccessNodes.append(contentsOf: nodes)
+                self.handleDeviceAddCallback(nodes: nodes)
             }
             vc.deviceStateCallback = {[weak self] adding in
                 guard let self = self else { return }
@@ -283,10 +351,6 @@ extension DeviceAddViewController: CustomSegmentedControlDelegate,UIAdaptivePres
     func segmentedControl(_ segmentedControl: CustomSegmentedControl, didSelectedItem index: Int) {
         self.selectIndex = Int32(index)
         stopScan()
-//        //从火警那边进来添加设备v1.5
-//        if(isEmerFireAlarm){
-//            cct(index: index)
-//        }
     }
     //共用条件
     func cct(index: Int){

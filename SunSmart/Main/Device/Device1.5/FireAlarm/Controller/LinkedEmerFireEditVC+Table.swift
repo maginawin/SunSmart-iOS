@@ -57,7 +57,7 @@ extension LinkedEmerFireEditVC: UITableViewDataSource, UITableViewDelegate {
         switch row {
         case .name:
             let cell: EmerFireNameCell = tableView.dequeueReusableCell(for: indexPath)
-            cell.configure(name: state.deviceName, synced: state.isSynced)
+            cell.configure(name: state.deviceName, synced: state.isSynced || !shouldShowSyncStatus)
             cell.nameDidChange = { [weak self] name in self?.state.deviceName = name }
             cell.syncAction = { [weak self] in
                 self?.openSyncForCurrentDevice()

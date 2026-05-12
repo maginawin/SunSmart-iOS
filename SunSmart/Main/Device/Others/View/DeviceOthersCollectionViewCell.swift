@@ -95,6 +95,12 @@ class DeviceOthersCollectionViewCell: UICollectionViewCell {
         
         updateUI()
     }
+
+    override func prepareForReuse() {
+        super.prepareForReuse()
+        deleteBtn.isHidden = true
+        deleteActionCallback = nil
+    }
     
     private func updateUI() {
         

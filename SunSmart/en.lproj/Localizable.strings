@@ -79,6 +79,7 @@
 
 "devices_delete_message" = "Deleting the device(s) will restore the factory settings, whether to continue?";
 "device_delete_message" = "Deleting the device will restore the factory settings, whether to continue?";
+"emergency_fire_controller_delete_config_message" = "Deleting this monitoring configuration will not delete or reset the device. Continue?";
 "devices_force_delete_message" = "Some devices are not responding, the device(s) may be off-line or faulty, do you want to force delete? \n\n";
 "devices_force_delete_note" = "Note: The hardware device needs to be reset manually after force delete.";
 

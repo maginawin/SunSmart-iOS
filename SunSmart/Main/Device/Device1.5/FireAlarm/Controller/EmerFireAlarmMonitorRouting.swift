@@ -102,7 +102,7 @@ extension EmerFireAlarmMonitorVC {
 
     func deleteDevice() {
         guard let currentDevice else { return }
-        SRAlertView(title: "notification".localizedString, message: "device_delete_message".localizedString, actions: [.cancelAction, SRAlertAction(title: "alert_item_continue".localizedString, actionHandler: { [weak self] _ in
+        SRAlertView(title: "notification".localizedString, message: "emergency_fire_controller_delete_config_message".localizedString, actions: [.cancelAction, SRAlertAction(title: "alert_item_continue".localizedString, actionHandler: { [weak self] _ in
             self?.startDeleteCleanupIfNeeded(for: currentDevice)
         })]).show()
     }
@@ -110,15 +110,12 @@ extension EmerFireAlarmMonitorVC {
     func startDeleteCleanupIfNeeded(for device: DeviceEmerFireData) {
         let planner = EmergencyFireControllerSyncPlanner(data: device, meshUUID: device.meshUUID, subnetworkId: device.meshNetworkId)
         let cleanupItems = planner.makeDeleteCleanupItems()
-        guard !cleanupItems.isEmpty else {
-            performDeleteDevice(device)
-            return
-        }
         guard let space else {
-            performDeleteDevice(device)
+            finishDeleteConfiguration(device)
             return
         }
-        guard MeshLibManager.manager.isMeshNetworkConnected else {
+        let needsMeshSync = cleanupItems.flatMap { $0.tasks }.contains { !$0.messageHandles.isEmpty }
+        guard !needsMeshSync || MeshLibManager.manager.isMeshNetworkConnected else {
             XWHUDManager.showTipHUD("device_notconnect_message".localizedString, isLineFeed: true)
             return
         }
@@ -130,49 +127,22 @@ extension EmerFireAlarmMonitorVC {
             persistsSyncResult: false
         ) { [weak self, weak device] in
             guard let device else { return }
-            self?.performDeleteDevice(device)
+            self?.finishDeleteConfiguration(device)
         }
         navigationController?.pushViewController(controller, animated: true)
     }
 
-    func performDeleteDevice(_ device: DeviceEmerFireData) {
-        if let node = device.bindNode {
-            deleteNodes(nodes: [node]) { [weak self] successNodes, _ in
-                guard let self else { return }
-                guard successNodes.contains(where: { $0.primaryUnicastAddress == node.primaryUnicastAddress }) else {
-                    return
-                }
-                self.finishDeleteDevice(device)
-            }
-        } else {
-            finishDeleteDevice(device)
-        }
-    }
-
-    func finishDeleteDevice(_ device: DeviceEmerFireData) {
-        removePublishGroupIfNeeded(for: device)
-        DeviceEmerFireStore.shared.delete(device)
-        space?.deviceCount = MeshNetworkManager.instance.realNodes.count
-        space?.luminairesCount = MeshNetworkManager.instance.realNodes.filter { $0.deviceType == .light }.count
-        space?.save()
+    func finishDeleteConfiguration(_ device: DeviceEmerFireData) {
+        DeviceEmerFireStore.shared.clearMonitoringConfiguration(for: device)
+        currentDevice = device
+        currentConfig = device.toConfig()
+        NotificationCenter.default.post(name: .linkedEmerFireConfigDidChange, object: currentConfig)
+        applySavedConfig()
+        refreshRealState()
         DispatchQueue.main.asyncAfter(wallDeadline: .now() + 1) { [weak self] in
             NotificationCenter.default.post(name: .init(devicesUpdateNotificationName), object: nil)
             NotificationCenter.default.post(name: .init(deviceOthersRefreshNotificationName), object: nil)
-            NotificationCenter.default.post(name: .init(spaceDataChangedNotificaitonName), object: SpaceChangeDataType.network(type: .address))
             self?.closeOrBack()
-        }
-    }
-
-    func removePublishGroupIfNeeded(for device: DeviceEmerFireData) {
-        guard let publishGroupAddress = device.publishGroupAddress,
-              let publishGroup = MeshNetworkManager.instance.meshNetwork?.group(withAddress: MeshAddress(publishGroupAddress)) else {
-            return
-        }
-        do {
-            try MeshNetworkManager.instance.meshNetwork?.remove(group: publishGroup)
-            print("[EFC] removed publish group device=\(device.name), address=\(String(format: "0x%04X", publishGroupAddress))")
-        } catch {
-            print("[EFC] failed to remove publish group device=\(device.name), address=\(String(format: "0x%04X", publishGroupAddress)), error=\(error)")
         }
     }
 }
