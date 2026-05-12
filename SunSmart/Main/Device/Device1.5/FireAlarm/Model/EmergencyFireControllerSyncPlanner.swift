@@ -170,12 +170,11 @@ struct EmergencyFireControllerSyncPlanner {
     }
 
     func makeLightLCCleanupTasks(node: Node, group: Group, publishGroup: Group, pendingModes: [EmergencyFireControllerWorkMode]) -> [EmergencyFireControllerSyncTask] {
-        guard let model = node.lightLCModel,
-              model.isSubscribed(to: publishGroup),
-              let message = ConfigModelSubscriptionDelete(group: publishGroup, from: model) else {
+        let handles = makeCleanupMessageHandles(node: node, publishGroup: publishGroup)
+        guard !handles.isEmpty else {
             return []
         }
-        return [EmergencyFireControllerSyncTask(title: node.name ?? group.name, kind: .lightLCCleanup, address: node.primaryUnicastAddress, messageHandles: [MeshMessageHandle(message: message, address: node.primaryUnicastAddress)], pendingModes: pendingModes, pendingGroupAddress: group.address.address, clearsUnassociatePending: !pendingModes.isEmpty)]
+        return [EmergencyFireControllerSyncTask(title: node.name ?? group.name, kind: .lightLCCleanup, address: node.primaryUnicastAddress, messageHandles: handles, pendingModes: pendingModes, pendingGroupAddress: group.address.address, clearsUnassociatePending: !pendingModes.isEmpty)]
     }
 
     var activeMode: EmergencyFireControllerWorkMode? {
@@ -256,12 +255,24 @@ struct EmergencyFireControllerSyncPlanner {
     }
 
     private func makeDeleteCleanupMessageHandles(node: Node, publishGroup: Group) -> [MeshMessageHandle] {
-        guard let model = node.lightLCModel,
-              model.isSubscribed(to: publishGroup),
-              let message = ConfigModelSubscriptionDelete(group: publishGroup, from: model) else {
-            return []
+        makeCleanupMessageHandles(node: node, publishGroup: publishGroup)
+    }
+
+    private func makeCleanupMessageHandles(node: Node, publishGroup: Group) -> [MeshMessageHandle] {
+        var handles: [MeshMessageHandle] = []
+        if let model = node.sceneModel,
+           model.isSubscribed(to: publishGroup),
+           let elementAddress = model.parentElement?.unicastAddress,
+           model.companyIdentifier == nil,
+           let message = ConfigModelSubscriptionDelete(parameters: Data() + elementAddress + publishGroup.address.address + UInt16(model.modelIdentifier)) {
+            handles.append(MeshMessageHandle(message: message, address: node.primaryUnicastAddress))
         }
-        return [MeshMessageHandle(message: message, address: node.primaryUnicastAddress)]
+        if let model = node.lightLCModel,
+           model.isSubscribed(to: publishGroup),
+           let message = ConfigModelSubscriptionDelete(group: publishGroup, from: model) {
+            handles.append(MeshMessageHandle(message: message, address: node.primaryUnicastAddress))
+        }
+        return handles
     }
 
     private func makeDisableControllerItems() -> [EmergencyFireControllerSyncItem] {

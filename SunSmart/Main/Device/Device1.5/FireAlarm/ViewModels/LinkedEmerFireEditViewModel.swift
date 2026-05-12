@@ -42,7 +42,7 @@ final class LinkedEmerFireEditViewModel {
            let device = DeviceEmerFireStore.shared.device(id: deviceId, meshUUID: meshUUID, meshNetworkId: meshNetworkId)?.copy() {
             apply(config, to: device)
             DeviceEmerFireStore.shared.save(device)
-            NotificationCenter.default.post(name: .linkedEmerFireConfigDidChange, object: config)
+            NotificationCenter.default.post(name: .linkedEmerFireConfigDidChange, object: device.toConfig())
             return device
         }
         return nil

@@ -58,9 +58,16 @@ extension EmerFireAlarmMonitorVC {
 
     @objc func handleConfigDidChange(_ notification: Notification) {
         if let config = notification.object as? LinkedEmerFireConfig {
+            if let currentId = viewModel.currentConfig?.deviceId ?? currentDevice?.id,
+               config.deviceId != currentId {
+                return
+            }
             viewModel.currentConfig = config
         }
         reloadCurrentDevice()
+        if let currentDevice {
+            viewModel.currentConfig = viewModel.makeConfig(from: currentDevice)
+        }
         applySavedConfig()
         refreshRealState()
     }
