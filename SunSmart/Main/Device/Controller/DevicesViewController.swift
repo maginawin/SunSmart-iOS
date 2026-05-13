@@ -231,6 +231,11 @@ class DevicesViewController: WMPageController {
                         DispatchQueue.main.asyncAfter(deadline: .now() + 3) {[weak self] in
                             self?.syncTimeNodes()
                         }
+                        #if DEBUG
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 5) { [weak self] in
+                            self?.debugSyncFirstScheduledNodeTime()
+                        }
+                        #endif
                     }
                     
                 }
@@ -403,6 +408,42 @@ class DevicesViewController: WMPageController {
         space.save()
         
     }
+
+    #if DEBUG
+    /// 调试 OTA 后设备丢时间：单播标准 TimeSet，观察固件是否返回 TimeStatus 并恢复日程。
+    private func debugSyncFirstScheduledNodeTime() {
+        guard MeshLibManager.manager.isMeshNetworkConnected else {
+            print("[TimeSetDebug] mesh is not connected")
+            return
+        }
+        guard let node = firstScheduledNodeForTimeDebug() else {
+            print("[TimeSetDebug] no enabled schedule target node")
+            return
+        }
+
+        print("[TimeSetDebug] send TimeSet to node=\(node.name ?? "") address=\(String(format: "0x%04X", node.primaryUnicastAddress)) timeSetupModel=\(node.timeSetupModel != nil)")
+        MeshAPI.syncNodeTime(address: node.primaryUnicastAddress) { success in
+            DispatchQueue.main.async {
+                let address = String(format: "0x%04X", node.primaryUnicastAddress)
+                print("[TimeSetDebug] TimeSet result node=\(node.name ?? "") address=\(address) success=\(success)")
+                XWHUDManager.showTipHUD("TimeSet \(address): \(success ? "success" : "failed")")
+            }
+        }
+    }
+
+    private func firstScheduledNodeForTimeDebug() -> Node? {
+        let enabledSchedules = MeshNetworkManager.instance.schedules.filter { $0.enabled }
+        let scheduleTargetNodes = enabledSchedules.flatMap { schedule -> [Node] in
+            schedule.nodes + schedule.groups.flatMap { $0.nodes } + (schedule.scene?.info.groups.flatMap { $0.nodes } ?? [])
+        }
+        if let node = scheduleTargetNodes.first(where: { $0.state }) {
+            return node
+        }
+        return MeshNetworkManager.instance.realNodes.first { $0.scheduleIds.count > 0 && $0.state }
+            ?? MeshNetworkManager.instance.realNodes.first { $0.scheduleIds.count > 0 }
+            ?? scheduleTargetNodes.first
+    }
+    #endif
     
     /// 添加设备
     private func deviceAdd() {

@@ -99,23 +99,18 @@ extension EmerFireAlarmMonitorVC {
 
         if groups.isEmpty {
             deviceCountLabel.isHidden = true
-            if collectionView.emptyView == nil {
-                collectionView.showEmptyDataView(frame: collectionView.bounds, title: "Not associate with Group(s) !".localizedString, buttonText: "Setting".localizedString, position: .center) { [weak self] in
-                    self?.openEditSettings()
+            collectionView.hideEmptyDataView()
+            collectionView.showEmptyDataView(frame: collectionView.bounds, title: "Not associate with Group(s) !".localizedString, buttonText: "Setting".localizedString, position: .center) { [weak self] in
+                self?.openEditSettings()
+            }
+            if let emptyView = collectionView.emptyView {
+                emptyView.button.backgroundColor = .clear
+                emptyView.button.titleLabel?.font = FONTS(16)
+                emptyView.button.setTitleColor(Bar_Color, for: .normal)
+                emptyView.button.snp.updateConstraints { make in
+                    make.top.equalTo(emptyView.titleLabel.snp.bottom).offset(SCRYFrom(24))
                 }
-                if let emptyView = collectionView.emptyView {
-                    
-                        emptyView.button.backgroundColor = .clear
-                        emptyView.button.titleLabel?.font = FONTS(16)
-                        emptyView.button.setTitleColor(Bar_Color, for: .normal)
-                        emptyView.button.snp.updateConstraints { make in
-                            make.top.equalTo(emptyView.titleLabel.snp.bottom).offset(SCRYFrom(24))
-                        }
-                        emptyView.button.isHidden = !(space?.deviceOperates.contains(.edit) ?? false)
-                    
-                      //  emptyView.button.isHidden = true
-                    
-                }
+                emptyView.button.isHidden = !(space?.deviceOperates.contains(.edit) ?? false)
             }
         }else {
             deviceCountLabel.isHidden = false
@@ -124,15 +119,17 @@ extension EmerFireAlarmMonitorVC {
     }
 
     @objc func handleConfigDidChange(_ notification: Notification) {
+        var shouldKeepNotifiedConfig = false
         if let config = notification.object as? LinkedEmerFireConfig {
             if let currentId = viewModel.currentConfig?.deviceId ?? currentDevice?.id,
                config.deviceId != currentId {
                 return
             }
             viewModel.currentConfig = config
+            shouldKeepNotifiedConfig = true
         }
         reloadCurrentDevice()
-        if let currentDevice {
+        if !shouldKeepNotifiedConfig, let currentDevice {
             viewModel.currentConfig = viewModel.makeConfig(from: currentDevice)
         }
         applySavedConfig()
