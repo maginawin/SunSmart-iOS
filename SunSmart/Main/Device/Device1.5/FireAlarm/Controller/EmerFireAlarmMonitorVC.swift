@@ -66,7 +66,7 @@ class EmerFireAlarmMonitorVC: UIViewController, DeviceProtocol {
         return view
     }()
 
-    init(space: SpaceData? = nil, device: DeviceEmerFireData? = nil, config: LinkedEmerFireConfig? = nil) {
+    init(space: SpaceData? = nil, device: DeviceEmerFireData, config: LinkedEmerFireConfig? = nil) {
         viewModel = EmerFireAlarmMonitorViewModel(space: space, device: device, config: config)
         super.init(nibName: nil, bundle: nil)
     }
@@ -107,7 +107,7 @@ class EmerFireAlarmMonitorVC: UIViewController, DeviceProtocol {
         NotificationCenter.default.addObserver(self, selector: #selector(handleConfigDidChange(_:)), name: .linkedEmerFireConfigDidChange, object: nil)
         
         statusWarningView.warningAction = { [weak self] in
-            guard self?.currentConfig?.reportToGateway == false || self?.currentDevice?.reportToGateway == false else {
+            guard self?.shouldShowGatewayWarning == true else {
                 return
             }
             //Owner和Editor权限

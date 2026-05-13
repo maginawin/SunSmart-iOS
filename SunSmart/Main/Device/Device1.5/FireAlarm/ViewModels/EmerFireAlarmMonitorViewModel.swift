@@ -15,7 +15,7 @@ final class EmerFireAlarmMonitorViewModel {
     var requestGeneration = 0
     var currentState: EmerFireAlarmMonitorDisplayState = .loading
 
-    init(space: SpaceData?, device: DeviceEmerFireData?, config: LinkedEmerFireConfig?) {
+    init(space: SpaceData?, device: DeviceEmerFireData, config: LinkedEmerFireConfig?) {
         self.space = space
         self.currentDevice = device
         self.currentConfig = config
@@ -68,7 +68,10 @@ final class EmerFireAlarmMonitorViewModel {
               let meshNetworkId = config.meshNetworkId else {
             return
         }
-        currentDevice = DeviceEmerFireStore.shared.device(id: deviceId, meshUUID: meshUUID, meshNetworkId: meshNetworkId)
+        guard let reloadedDevice = DeviceEmerFireStore.shared.device(id: deviceId, meshUUID: meshUUID, meshNetworkId: meshNetworkId) else {
+            return
+        }
+        currentDevice = reloadedDevice
     }
 
     func displayGroups() -> [EmerFireAlarmAssociatedGroupItem] {

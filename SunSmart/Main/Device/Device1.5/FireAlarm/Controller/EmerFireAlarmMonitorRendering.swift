@@ -159,7 +159,7 @@ extension EmerFireAlarmMonitorVC {
         updateMonitorState()
         if viewModel.currentDevice?.displayStatus == .onlineBoundDevice || viewModel.currentDevice == nil {
             statusWarningView.isHidden = false
-            statusWarningView.icon.isHidden = config.reportToGateway
+            updateStatusWarningIconVisibility()
         }
     }
 
@@ -337,6 +337,7 @@ extension EmerFireAlarmMonitorVC {
         currentState = state
         statusSetView.title = "Status Set".localizedString
         updateStatusSetRows(for: state)
+        updateStatusWarningIconVisibility()
         switch state {
         case .loading:
             statusWarningView.config(statusLab: "Loading...".localizedString, textColor: Title_Color)
@@ -443,6 +444,14 @@ extension EmerFireAlarmMonitorVC {
     func updateStatusSetView() {
         statusSetView.updateItems(viewModel.statusItems())
         updateStatusSetRows(for: currentState)
+    }
+
+    func updateStatusWarningIconVisibility() {
+        statusWarningView.icon.isHidden = !shouldShowGatewayWarning
+    }
+
+    var shouldShowGatewayWarning: Bool {
+        currentConfig?.reportToGateway == false || currentDevice?.reportToGateway == false
     }
 
     func activeAssociatedGroupAddresses() -> [UInt16] {
