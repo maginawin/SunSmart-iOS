@@ -188,6 +188,25 @@ class DeviceSwitchData: Copyable {
         return lhs.id == rhs.id && lhs.name == rhs.name && lhs.linkGroupAddress == rhs.linkGroupAddress && lhs.subLinkGroupAddress == rhs.subLinkGroupAddress && lhs.bindGroupAddresses == rhs.bindGroupAddresses && lhs.unbindGroupAddresses == rhs.unbindGroupAddresses && lhs.enabled == rhs.enabled && lhs.panelType == rhs.panelType && lhs.sceneANumber == rhs.sceneANumber && lhs.sceneBNumber == rhs.sceneBNumber && lhs.sceneCNumber == rhs.sceneCNumber && lhs.sceneDNumber == rhs.sceneDNumber && lhs.proxyNodeAddress == rhs.proxyNodeAddress && lhs.enOceanMacAddress == rhs.enOceanMacAddress && lhs.enOceanSecurityKey == rhs.enOceanSecurityKey
     }
     
+    /// 判断开关配置是否已保存（用于替换面板前的检查）
+    /// 故意不比较 enOceanMacAddress 和 enOceanSecurityKey，因为替换面板时这些字段会变化
+    func isSavedForReplacingEnOceanPanel(comparedWith saved: DeviceSwitchData) -> Bool {
+        return id == saved.id &&
+               name == saved.name &&
+               enabled == saved.enabled &&
+               panelType == saved.panelType &&
+               linkGroupAddress == saved.linkGroupAddress &&
+               subLinkGroupAddress == saved.subLinkGroupAddress &&
+               bindGroupAddresses == saved.bindGroupAddresses &&
+               unbindGroupAddresses == saved.unbindGroupAddresses &&
+               sceneANumber == saved.sceneANumber &&
+               sceneBNumber == saved.sceneBNumber &&
+               sceneCNumber == saved.sceneCNumber &&
+               sceneDNumber == saved.sceneDNumber &&
+               proxyNodeAddress == saved.proxyNodeAddress &&
+               deleteProxyNodeAddress == saved.deleteProxyNodeAddress
+    }
+    
     
     /// 动能开关按键信息list
     var switchKeys: [SwitchKey] {
