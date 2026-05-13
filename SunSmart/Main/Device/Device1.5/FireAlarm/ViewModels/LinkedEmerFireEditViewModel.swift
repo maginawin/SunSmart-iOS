@@ -10,6 +10,8 @@ import Foundation
 final class LinkedEmerFireEditViewModel {
 
     let state: LinkedEmerFireEditState
+    private(set) var lastSavedConfigurationChange: (old: EmergencyFireControllerConfiguration, new: EmergencyFireControllerConfiguration)?
+    private(set) var lastSavedRequiresSync = false
 
     init(config: LinkedEmerFireConfig? = nil, space: SpaceData? = nil) {
         if let config {
@@ -40,11 +42,21 @@ final class LinkedEmerFireEditViewModel {
            let meshUUID = config.meshUUID,
            let meshNetworkId = config.meshNetworkId,
            let device = DeviceEmerFireStore.shared.device(id: deviceId, meshUUID: meshUUID, meshNetworkId: meshNetworkId)?.copy() {
+            let oldConfiguration = device.configuration
+            let oldPublishGroupAddress = device.publishGroupAddress
             apply(config, to: device)
+            lastSavedRequiresSync = oldConfiguration != config.configuration || oldPublishGroupAddress != config.publishGroupAddress
+            if oldConfiguration != config.configuration {
+                lastSavedConfigurationChange = (old: oldConfiguration, new: config.configuration)
+            } else {
+                lastSavedConfigurationChange = nil
+            }
             DeviceEmerFireStore.shared.save(device)
             NotificationCenter.default.post(name: .linkedEmerFireConfigDidChange, object: device.toConfig())
             return device
         }
+        lastSavedConfigurationChange = nil
+        lastSavedRequiresSync = false
         return nil
     }
 
@@ -72,7 +84,10 @@ final class LinkedEmerFireEditViewModel {
     }
 
     var shouldShowSyncStatus: Bool {
-        currentDevice()?.bindNode != nil
+        guard let device = currentDevice(), device.bindNode != nil else {
+            return false
+        }
+        return device.hasSyncableConfiguration
     }
 
     @discardableResult

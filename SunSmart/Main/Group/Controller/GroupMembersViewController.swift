@@ -93,7 +93,7 @@ class GroupMembersViewController: UIViewController {
         super.viewWillAppear(animated)
         
 //        if space.nodes.filter({ $0.group == nil || $0.group?.address.address == group.address.address }).count != nodes.count || group.nodes.count != selectNodes.count {
-        nodes = MeshNetworkManager.instance.realNodes.filter({ $0.deviceType != .gateway && ($0.group == nil || $0.group?.address.address == group.address.address) })
+        nodes = MeshNetworkManager.instance.realNodes.filter({ isVisibleGroupMemberNode($0) && ($0.group == nil || $0.group?.address.address == group.address.address) })
         selectNodes.removeAll()
         nodes.forEach { node in
             if node.group != nil {
@@ -122,6 +122,15 @@ class GroupMembersViewController: UIViewController {
         
         collectionView.reloadData()
         updateFunctionView()
+    }
+
+    private func isVisibleGroupMemberNode(_ node: Node) -> Bool {
+        switch node.deviceType {
+        case .gateway, .emergencyController:
+            return false
+        default:
+            return true
+        }
     }
     
     override func viewDidAppear(_ animated: Bool) {

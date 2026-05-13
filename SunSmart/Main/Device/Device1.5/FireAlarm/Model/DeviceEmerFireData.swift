@@ -183,7 +183,16 @@ final class DeviceEmerFireStore {
     }
 
     private func notifyDidChange() {
-        NotificationCenter.default.post(name: .deviceEmerFireDataDidChange, object: nil)
+        let postNotification = {
+            NotificationCenter.default.post(name: .deviceEmerFireDataDidChange, object: nil)
+        }
+        if Thread.isMainThread {
+            postNotification()
+        } else {
+            DispatchQueue.main.async {
+                postNotification()
+            }
+        }
     }
 }
 
@@ -240,7 +249,7 @@ class DeviceEmerFireData: Copyable {
         if !reportToGateway {
             return .gatewayUnassignedWarning
         }
-        if !isSynced {
+        if hasSyncableConfiguration, !isSynced {
             return .syncIssueDevice
         }
         return .onlineBoundDevice

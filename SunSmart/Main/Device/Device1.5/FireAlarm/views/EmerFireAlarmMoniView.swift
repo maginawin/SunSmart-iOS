@@ -34,7 +34,7 @@ final class EmerFireAlarmMoniView: UIView {
         let button = ActionButton(type: .custom)
         button.backgroundColor = .white
         button.layer.cornerRadius = Layout.buttonSize / 2
-        button.layer.borderWidth = 1
+        button.layer.borderWidth = 0
         button.layer.borderColor = RGB(216, 227, 255).cgColor
         button.imageView?.contentMode = .scaleAspectFit
         button.tag = index

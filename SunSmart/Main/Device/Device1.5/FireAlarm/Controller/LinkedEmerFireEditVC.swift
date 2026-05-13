@@ -110,8 +110,9 @@ final class LinkedEmerFireEditVC: UIViewController {
         }
         NotificationCenter.default.post(name: .init(deviceOthersRefreshNotificationName), object: nil)
         notifySpaceDataChanged(type: .common)
-        if let savedDevice = viewModel.currentDevice(), let space, savedDevice.bindNode != nil, !savedDevice.isSynced {
-            let controller = EmerFireAlarmControllerSyncVC(space: space, data: savedDevice) { [weak self] in
+        if let savedDevice = viewModel.currentDevice(), let space, savedDevice.bindNode != nil, viewModel.lastSavedRequiresSync {
+            let controller = SyncDevicesViewController(type: .emergencyFire(data: savedDevice, items: nil, persistsSyncResult: true, changedFromConfiguration: viewModel.lastSavedConfigurationChange?.old))
+            controller.syncSuccessCallback = { [weak self] _ in
                 self?.finishAfterSuccessfulSaveSync()
             }
             navigationController?.pushViewController(controller, animated: true)
@@ -171,7 +172,7 @@ final class LinkedEmerFireEditVC: UIViewController {
             XWHUDManager.showTipHUD("failed".localizedString, isLineFeed: false)
             return
         }
-        let controller = EmerFireAlarmControllerSyncVC(space: space, data: device)
+        let controller = SyncDevicesViewController(type: .emergencyFire(data: device, items: nil, persistsSyncResult: true, changedFromConfiguration: nil))
         navigationController?.pushViewController(controller, animated: true)
     }
 

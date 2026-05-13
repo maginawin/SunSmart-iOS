@@ -156,6 +156,14 @@ class SyncDevicesViewController: UIViewController {
                     }
                 }
                 appendEmergencyFireControllerGroupMutationItems(to: configurationSection, group: group, addNodes: inNodes ?? [], exitNodes: outNodes ?? [])
+            case .emergencyFire(let data, let suppliedItems, let persistsSyncResult, let changedFromConfiguration):
+                let targetSection = persistsSyncResult ? configurationSection : removeSection
+                targetSection.prefersDevicesBeforeGroups = true
+                appendEmergencyFireControllerItems(
+                    to: targetSection,
+                    data: data,
+                    items: suppliedItems ?? makeEmergencyFireControllerItems(data: data, changedFromConfiguration: changedFromConfiguration)
+                )
             case .profile(let datas):
                 datas.forEach { (node: Node, profiles: [ProfileType]) in
                     // 锁定配置切换操作
@@ -675,13 +683,226 @@ class SyncDevicesViewController: UIViewController {
         }
     }
 
-    private func clearEmergencyFireControllerPendingIfNeeded(for model: SyncCellModel) {
+    private func makeEmergencyFireControllerItems(
+        data: DeviceEmerFireData,
+        changedFromConfiguration: EmergencyFireControllerConfiguration?
+    ) -> [EmergencyFireControllerSyncItem] {
+        do {
+            let planner = EmergencyFireControllerSyncPlanner(
+                data: data,
+                meshUUID: data.meshUUID,
+                subnetworkId: data.meshNetworkId,
+                changedFromConfiguration: changedFromConfiguration
+            )
+            return try planner.makeItems()
+        } catch {
+            syncState = .syncFailure
+            DispatchQueue.main.async {
+                XWHUDManager.showErrorTipHUD(error.localizedDescription)
+            }
+            return []
+        }
+    }
+
+    private func appendEmergencyFireControllerItems(
+        to section: SyncDevicesSectionModel,
+        data: DeviceEmerFireData,
+        items: [EmergencyFireControllerSyncItem]
+    ) {
+        items.forEach { item in
+            let isControllerItem = item.iconName == EmergencyFireControllerIconName.main && item.name == data.name
+            if isControllerItem {
+                if let deviceModel = makeEmergencyFireControllerDeviceModel(item: item, data: data) {
+                    section.devices.append(deviceModel)
+                }
+                return
+            }
+
+            let deviceModels = groupedEmergencyFireControllerTasksByNode(item.tasks).compactMap { group in
+                makeEmergencyFireControllerLeafDeviceModel(item: item, tasks: group.tasks, data: data)
+            }
+            guard !deviceModels.isEmpty else { return }
+            let groupModel = SyncDevicesGroupModel(groupName: item.name, groupAddress: item.address, deviceModels: deviceModels)
+            deviceModels.forEach { $0.parentGroupModel = groupModel }
+            section.groups.append(groupModel)
+        }
+    }
+
+    private func makeEmergencyFireControllerDeviceModel(
+        item: EmergencyFireControllerSyncItem,
+        data: DeviceEmerFireData
+    ) -> SyncDevicesModel? {
+        let address = data.bindNodeAddress ?? item.tasks.first?.address ?? item.address
+        guard MeshNetworkManager.instance.meshNetwork?.node(withAddress: address) != nil else {
+            return nil
+        }
+
+        let model = SyncDevicesModel(name: item.name, address: address)
+        model.imageName = item.iconName
+        let taskModels = item.tasks.compactMap { task in
+            makeEmergencyFireControllerTaskModel(task: task, data: data)
+        }
+        guard !taskModels.isEmpty else {
+            return nil
+        }
+        let step = SyncDeviceStepModel(type: "others".localizedString, state: .none, tasks: taskModels)
+        taskModels.forEach { $0.parentStepModel = step }
+        step.parentDeviceModel = model
+        model.steps = [step]
+        return model
+    }
+
+    private func makeEmergencyFireControllerLeafDeviceModel(
+        item: EmergencyFireControllerSyncItem,
+        tasks: [EmergencyFireControllerSyncTask],
+        data: DeviceEmerFireData
+    ) -> SyncDevicesModel? {
+        guard let firstTask = tasks.first,
+              let node = nodeForEmergencyFireControllerTask(firstTask, data: data) else {
+            return nil
+        }
+        let model = SyncDevicesModel(name: node.name ?? item.name, address: node.primaryUnicastAddress)
+        model.imageName = item.iconName
+        model.steps = tasks.compactMap { task in
+            makeEmergencyFireControllerLeafStep(task: task, data: data)
+        }
+        model.steps.forEach { step in
+            step.parentDeviceModel = model
+        }
+        guard !model.steps.isEmpty else { return nil }
+        return model
+    }
+
+    private func groupedEmergencyFireControllerTasksByNode(_ tasks: [EmergencyFireControllerSyncTask]) -> [(address: Address, tasks: [EmergencyFireControllerSyncTask])] {
+        var groupedTasks: [(address: Address, tasks: [EmergencyFireControllerSyncTask])] = []
+        tasks.forEach { task in
+            if let index = groupedTasks.firstIndex(where: { $0.address == task.address }) {
+                groupedTasks[index].tasks.append(task)
+            } else {
+                groupedTasks.append((address: task.address, tasks: [task]))
+            }
+        }
+        return groupedTasks
+    }
+
+    private func makeEmergencyFireControllerLeafStep(
+        task: EmergencyFireControllerSyncTask,
+        data: DeviceEmerFireData
+    ) -> SyncDeviceStepModel? {
+        guard let taskModel = makeEmergencyFireControllerTaskModel(task: task, data: data) else {
+            return nil
+        }
+        let step = SyncDeviceStepModel(type: emergencyFireControllerTaskDisplayName(task, data: data), state: .none, tasks: [taskModel])
+        taskModel.parentStepModel = step
+        return step
+    }
+
+    private func makeEmergencyFireControllerTaskModel(
+        task: EmergencyFireControllerSyncTask,
+        data: DeviceEmerFireData
+    ) -> SyncDeviceStepTaskModel? {
+        guard let node = nodeForEmergencyFireControllerTask(task, data: data) else {
+            return nil
+        }
+        return SyncDeviceStepTaskModel(
+            name: emergencyFireControllerTaskDisplayName(task, data: data),
+            operationType: .configuration(node: node, type: .emergencyFireController(task: task, data: data))
+        )
+    }
+
+    private func emergencyFireControllerTaskDisplayName(
+        _ task: EmergencyFireControllerSyncTask,
+        data: DeviceEmerFireData
+    ) -> String {
+        switch task.kind {
+        case .resend:
+            if let settings = data.activeModeSettings {
+                return "Send Count \(settings.stopCount)"
+            }
+            return "Send Count"
+        case .restoreDelay:
+            if let settings = data.activeModeSettings {
+                return "Resuming in \(settings.restoreDelaySeconds)s"
+            }
+            return "Resuming in"
+        case .triggerScene:
+            if let brightness = data.activeModeSettings?.triggerBrightness {
+                return "\("linked_set_brightness_to".localizedString) \(brightness)%"
+            }
+            return "linked_set_brightness_to".localizedString
+        default:
+            return task.kind.rawValue
+        }
+    }
+
+    private func nodeForEmergencyFireControllerTask(_ task: EmergencyFireControllerSyncTask, data: DeviceEmerFireData) -> Node? {
+        MeshNetworkManager.instance.meshNetwork?.node(withAddress: task.address) ?? data.bindNode
+    }
+
+    private func emergencyFireControllerTask(for model: SyncCellModel) -> (task: EmergencyFireControllerSyncTask, data: DeviceEmerFireData)? {
         let operationType = (model as? SyncDevicesModel)?.operationType ?? (model as? SyncDeviceStepTaskModel)?.operationType
         guard case .configuration(_, let type) = operationType,
               case .emergencyFireController(let task, let data) = type else {
+            return nil
+        }
+        return (task, data)
+    }
+
+    private func clearEmergencyFireControllerPendingIfNeeded(for model: SyncCellModel) {
+        guard let taskContext = emergencyFireControllerTask(for: model) else { return }
+        taskContext.data.clearPending(for: taskContext.task, meshUUID: taskContext.data.meshUUID, subnetworkId: taskContext.data.meshNetworkId)
+    }
+
+    private func completeEmptyEmergencyFireControllerTaskIfNeeded(for model: SyncCellModel, messageHandles: [MeshMessageHandle]) -> Bool {
+        guard messageHandles.isEmpty, let taskContext = emergencyFireControllerTask(for: model) else {
+            return false
+        }
+        guard !taskContext.task.isUnsupported else {
+            model.state = .failed
+            (model as? SyncDevicesModel)?.failedCount += 1
+            (model as? SyncDeviceStepTaskModel)?.failedCount += 1
+            updateCell(model: model)
+            return true
+        }
+        model.state = .successful
+        clearEmergencyFireControllerPendingIfNeeded(for: model)
+        updateCell(model: model)
+        return true
+    }
+
+    private func isEmergencyFireControllerDeleteCleanup(_ model: SyncCellModel) -> Bool {
+        guard case .emergencyFire(_, _, let persistsSyncResult, _) = type,
+              !persistsSyncResult,
+              let taskContext = emergencyFireControllerTask(for: model) else {
+            return false
+        }
+        return taskContext.task.kind == .deleteCleanup
+    }
+
+    private func ackTimeout(for model: SyncCellModel) -> TimeInterval {
+        isEmergencyFireControllerDeleteCleanup(model) ? 5 : 15
+    }
+
+    private func finishEmergencyFireControllerSyncIfNeeded(success: Bool) {
+        guard case .emergencyFire(let data, _, let persistsSyncResult, _) = type else {
             return
         }
-        data.clearPending(for: task, meshUUID: data.meshUUID, subnetworkId: data.meshNetworkId)
+
+        if persistsSyncResult {
+            data.isSynced = success
+            DeviceEmerFireStore.shared.save(data)
+        }
+        let postSyncNotifications = {
+            NotificationCenter.default.post(name: .init(deviceOthersRefreshNotificationName), object: nil)
+            NotificationCenter.default.post(name: .linkedEmerFireConfigDidChange, object: data.toConfig())
+        }
+        if Thread.isMainThread {
+            postSyncNotifications()
+        } else {
+            DispatchQueue.main.async {
+                postSyncNotifications()
+            }
+        }
     }
     
     /// 获取组对应设备同步数据model
@@ -1126,6 +1347,17 @@ class SyncDevicesViewController: UIViewController {
             
             backActionCallback?(resultDatas)
         }else {
+            closeAfterSync()
+        }
+    }
+
+    private func closeAfterSync() {
+        let isNavigationRoot = navigationController?.viewControllers.first === self
+        if isNavigationRoot, presentingViewController != nil || navigationController?.presentingViewController != nil {
+            dismiss(animated: true)
+        } else if navigationController == nil, presentingViewController != nil {
+            dismiss(animated: true)
+        } else {
             navigationController?.popViewController(animated: true)
         }
     }
@@ -1420,8 +1652,21 @@ class SyncDevicesViewController: UIViewController {
                 DispatchQueue.main.async {
                     self.tableView.reloadData()
                 }
+
+                if self.completeEmptyEmergencyFireControllerTaskIfNeeded(for: model, messageHandles: messageHandles) {
+                    DispatchQueue.main.async {
+                        if let model = self.showProressStepModel {
+                            if let progressView = SyncDevicesProgressView.current() {
+                                progressView.stepModel = model
+                            }
+                        }
+                        let allDevices = self.sections.flatMap({ $0.groups.flatMap({ $0.deviceModels }) + $0.devices })
+                        self.progressLabel.text = "\(allDevices.filter({ $0.state == .successful }).count)/\(allDevices.count)"
+                    }
+                    continue
+                }
                 
-                MeshProxyMessageCommand.shared.addMessage(messageHandles: messageHandles, ackMessageTimeout: 15, progressBack: nil, successfulBack: { handle, statusMessage in
+                MeshProxyMessageCommand.shared.addMessage(messageHandles: messageHandles, ackMessageTimeout: self.ackTimeout(for: model), progressBack: nil, successfulBack: { handle, statusMessage in
                     // 判断如果是设备初始化消息，则需要再初始化完成后完成基本配置
                     if statusMessage is ConfigCompositionDataStatus || statusMessage is ConfigAppKeyStatus {
                         if let address = handle.address ?? handle.model?.parentElement?.unicastAddress, let node = MeshNetworkManager.instance.meshNetwork?.node(withAddress: address), node.isInitialize {
@@ -1483,7 +1728,7 @@ class SyncDevicesViewController: UIViewController {
                     
                     let resultSuccessful = !resultMessageHandles.contains(where: { !$0.isSuccessful })
                     let operationSuccessful = ((model as? SyncDevicesModel)?.operationType?.isSuccessful ?? (model as? SyncDeviceStepTaskModel)?.operationType.isSuccessful) ?? false
-                    if resultSuccessful && operationSuccessful {
+                    if resultSuccessful && operationSuccessful || self.isEmergencyFireControllerDeleteCleanup(model) {
                         model.state = .successful
                         self.clearEmergencyFireControllerPendingIfNeeded(for: model)
                         
@@ -1530,6 +1775,7 @@ class SyncDevicesViewController: UIViewController {
                 })
             }
             self.syncState = self.sections.contains(where: { $0.allModels.contains(where: { $0.state == .failed }) }) ? .syncFailure : .syncSuccess
+            self.finishEmergencyFireControllerSyncIfNeeded(success: self.syncState == .syncSuccess)
             
             DispatchQueue.main.async {
                 self.tableView.reloadData()
@@ -1609,6 +1855,23 @@ class SyncDevicesViewController: UIViewController {
                 task.isFineshed = false
                 if task.state != .successful {
                     task.state = .none
+                }
+            }
+        }
+    }
+
+    private func prepareStepForResync(_ step: SyncDeviceStepModel) {
+        step.isFineshed = false
+        step.parentDeviceModel?.isFineshed = false
+        step.parentDeviceModel?.isSelected = false
+        step.tasks.forEach { task in
+            task.isFineshed = false
+            if task.state != .successful {
+                task.state = .none
+                if task.relevanceTaskModels.count > 0 {
+                    task.resyncRelevanceCheck().forEach({
+                        $0.state = .wait
+                    })
                 }
             }
         }
@@ -1955,7 +2218,7 @@ extension SyncDevicesViewController: SyncDeviceViewCellDelegate {
     
     /// 失败重试回调
     func cell(_ cell: SyncDeviceViewCell, resyncAction model: SyncDevicesModel) {
-        model.state = .none
+        prepareDeviceForResync(model)
         syncState = .inSync
         updateSyncStateUI()
         startSync()
@@ -1967,18 +2230,7 @@ extension SyncDevicesViewController: SyncDeviceStepViewCellDelegate {
     
     /// 重新同步事件回调
     func cell(_ cell: SyncDeviceStepViewCell, resyncAction model: SyncDeviceStepModel) {
-        
-        model.tasks.forEach({ task in
-            if task.state == .failed {
-                task.state = .none
-                // 检查是否有profile数据需要加锁、切换场景前置要求，需要则重试必须连带前置条件一起设置
-                if task.relevanceTaskModels.count > 0 {
-                    task.resyncRelevanceCheck().forEach({
-                        $0.state = .wait
-                    })
-                }
-            }
-        })
+        prepareStepForResync(model)
         syncState = .inSync
         updateSyncStateUI()
         startSync()
@@ -2008,6 +2260,8 @@ extension SyncDevicesViewController {
         case devicesParameter(_ datas: [(node: Node, parameters: [DeviceParameterType])])
         /// Dongle设备
         case dongle(_ dongleData: DeviceDongleData)
+        /// 应急火警控制器
+        case emergencyFire(data: DeviceEmerFireData, items: [EmergencyFireControllerSyncItem]?, persistsSyncResult: Bool, changedFromConfiguration: EmergencyFireControllerConfiguration?)
         /// 邻近照明路径
         case proximityLightingPath(group: Group, path: GroupProximityLightingPathData)
         /// space级触发区域

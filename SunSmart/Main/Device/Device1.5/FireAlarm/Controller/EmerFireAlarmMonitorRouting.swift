@@ -81,7 +81,7 @@ extension EmerFireAlarmMonitorVC {
         guard let space, let currentDevice else {
             return
         }
-        let controller = EmerFireAlarmControllerSyncVC(space: space, data: currentDevice)
+        let controller = SyncDevicesViewController(type: .emergencyFire(data: currentDevice, items: nil, persistsSyncResult: true, changedFromConfiguration: nil))
         navigationController?.pushViewController(controller, animated: true)
     }
 
@@ -103,24 +103,23 @@ extension EmerFireAlarmMonitorVC {
     func startDeleteCleanupIfNeeded(for device: DeviceEmerFireData) {
         let planner = EmergencyFireControllerSyncPlanner(data: device, meshUUID: device.meshUUID, subnetworkId: device.meshNetworkId)
         let cleanupItems = planner.makeDeleteCleanupItems()
-        guard let space else {
+        guard space != nil else {
             finishDeleteConfiguration(device)
             return
         }
         let needsMeshSync = cleanupItems.flatMap { $0.tasks }.contains { !$0.messageHandles.isEmpty }
-        guard !needsMeshSync || MeshLibManager.manager.isMeshNetworkConnected else {
-            XWHUDManager.showTipHUD("device_notconnect_message".localizedString, isLineFeed: true)
+        guard needsMeshSync, MeshLibManager.manager.isMeshNetworkConnected else {
+            finishDeleteConfiguration(device)
             return
         }
 
-        let controller = EmerFireAlarmControllerSyncVC(
-            space: space,
-            data: device,
-            items: cleanupItems,
-            persistsSyncResult: false
-        ) { [weak self, weak device] in
-            guard let device else { return }
-            self?.finishDeleteConfiguration(device)
+        let controller = SyncDevicesViewController(type: .emergencyFire(data: device, items: cleanupItems, persistsSyncResult: false, changedFromConfiguration: nil))
+        controller.syncSuccessCallback = { [weak self, weak controller, weak device] _ in
+            guard let self, let device else { return }
+            if let controller, self.navigationController?.topViewController === controller {
+                self.navigationController?.popViewController(animated: false)
+            }
+            self.finishDeleteConfiguration(device)
         }
         navigationController?.pushViewController(controller, animated: true)
     }

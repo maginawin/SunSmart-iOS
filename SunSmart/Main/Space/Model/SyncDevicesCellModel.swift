@@ -156,7 +156,7 @@ enum DeviceOperationType {
             case .gatewaySIMAPN(let apn):
                 return node.gatewayInfo?.simInfo?.apn == apn
             case .gatewayMQTTInformation(let mqttInformation):
-                
+
                 guard let mqttConnectInfo = node.gatewayInfo?.mqttConnectInfo else { return false }
                 return mqttConnectInfo == mqttInformation
             case .gatewayAssociationProjectId(let projectId):
@@ -675,6 +675,8 @@ class SyncDevicesSectionModel {
     var devices: [SyncDevicesModel] = []
     /// 动能开关代理
     var switchProxy: SyncDevicesSwitchProxyModel?
+    /// 默认沿用老同步的组优先顺序；部分复用业务需要本体设备优先展示。
+    var prefersDevicesBeforeGroups = false
     
     init(title: String) {
         self.title = title
@@ -688,27 +690,36 @@ class SyncDevicesSectionModel {
             models.append(model.deviceModel)
         }
         
-        groups.forEach({
-            models.append($0)
-//            models.append(contentsOf: $0.deviceModels)
-            
-            $0.deviceModels.forEach({
+        let appendDevices = {
+            self.devices.forEach({
                 models.append($0)
                 $0.steps.forEach({
                     models.append($0)
                     models.append(contentsOf: $0.tasks)
                 })
-//                models.append(contentsOf: $0.steps)
             })
-        })
-        
-        devices.forEach({
-            models.append($0)
-            $0.steps.forEach({
+        }
+        let appendGroups = {
+            self.groups.forEach({
                 models.append($0)
-                models.append(contentsOf: $0.tasks)
+    //            models.append(contentsOf: $0.deviceModels)
+                $0.deviceModels.forEach({
+                    models.append($0)
+                    $0.steps.forEach({
+                        models.append($0)
+                        models.append(contentsOf: $0.tasks)
+                    })
+    //                models.append(contentsOf: $0.steps)
+                })
             })
-        })
+        }
+        if prefersDevicesBeforeGroups {
+            appendDevices()
+            appendGroups()
+        } else {
+            appendGroups()
+            appendDevices()
+        }
         return models
     }
     
@@ -721,23 +732,34 @@ class SyncDevicesSectionModel {
             models.append(model.deviceModel)
         }
         
-        groups.forEach({
-            models.append($0)
-            if $0.isShow {
-                $0.deviceModels.forEach({ device in
-                    models.append(device)
-                    if device.isShow {
-                        models.append(contentsOf: device.steps)
-                    }
-                })
-            }
-        })
-        devices.forEach({
-            models.append($0)
-            if $0.isShow {
-                models.append(contentsOf: $0.steps)
-            }
-        })
+        let appendDevices = {
+            self.devices.forEach({
+                models.append($0)
+                if $0.isShow {
+                    models.append(contentsOf: $0.steps)
+                }
+            })
+        }
+        let appendGroups = {
+            self.groups.forEach({
+                models.append($0)
+                if $0.isShow {
+                    $0.deviceModels.forEach({ device in
+                        models.append(device)
+                        if device.isShow {
+                            models.append(contentsOf: device.steps)
+                        }
+                    })
+                }
+            })
+        }
+        if prefersDevicesBeforeGroups {
+            appendDevices()
+            appendGroups()
+        } else {
+            appendGroups()
+            appendDevices()
+        }
         return models
     }
     

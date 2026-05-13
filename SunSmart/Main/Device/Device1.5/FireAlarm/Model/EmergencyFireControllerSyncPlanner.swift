@@ -12,6 +12,19 @@ struct EmergencyFireControllerSyncPlanner {
     let data: DeviceEmerFireData
     let meshUUID: String
     let subnetworkId: String
+    let changedFromConfiguration: EmergencyFireControllerConfiguration?
+
+    init(
+        data: DeviceEmerFireData,
+        meshUUID: String,
+        subnetworkId: String,
+        changedFromConfiguration: EmergencyFireControllerConfiguration? = nil
+    ) {
+        self.data = data
+        self.meshUUID = meshUUID
+        self.subnetworkId = subnetworkId
+        self.changedFromConfiguration = changedFromConfiguration
+    }
 
     static func controllersAffecting(group: Group, in space: SpaceData) -> [DeviceEmerFireData] {
         DeviceEmerFireStore.shared.devices(in: space).filter { controller in
@@ -65,7 +78,7 @@ struct EmergencyFireControllerSyncPlanner {
         _ = try data.ensurePublishGroup(meshUUID: meshUUID, subnetworkId: subnetworkId)
         var items: [EmergencyFireControllerSyncItem] = []
 
-        let controllerTasks = try data.makeControllerSyncTasks(meshUUID: meshUUID, subnetworkId: subnetworkId)
+        let controllerTasks = try data.makeControllerSyncTasks(meshUUID: meshUUID, subnetworkId: subnetworkId, changedFrom: changedFromConfiguration)
         if let node = data.bindNode {
             items.append(EmergencyFireControllerSyncItem(name: data.name, iconName: EmergencyFireControllerIconName.main, address: node.primaryUnicastAddress, tasks: controllerTasks, controller: data))
         }
@@ -95,6 +108,9 @@ struct EmergencyFireControllerSyncPlanner {
             }
 
             let tasks = group.nodes.compactMap { node -> EmergencyFireControllerSyncTask? in
+                guard node.state, node.isKeybindComplete else {
+                    return nil
+                }
                 let handles = makeDeleteCleanupMessageHandles(node: node, publishGroup: publishGroup)
                 guard !handles.isEmpty else { return nil }
                 return EmergencyFireControllerSyncTask(
@@ -265,12 +281,16 @@ struct EmergencyFireControllerSyncPlanner {
            let elementAddress = model.parentElement?.unicastAddress,
            model.companyIdentifier == nil,
            let message = ConfigModelSubscriptionDelete(parameters: Data() + elementAddress + publishGroup.address.address + UInt16(model.modelIdentifier)) {
-            handles.append(MeshMessageHandle(message: message, address: node.primaryUnicastAddress))
+            let handle = MeshMessageHandle(message: message, address: node.primaryUnicastAddress)
+            handle.continuous = false
+            handles.append(handle)
         }
         if let model = node.lightLCModel,
            model.isSubscribed(to: publishGroup),
            let message = ConfigModelSubscriptionDelete(group: publishGroup, from: model) {
-            handles.append(MeshMessageHandle(message: message, address: node.primaryUnicastAddress))
+            let handle = MeshMessageHandle(message: message, address: node.primaryUnicastAddress)
+            handle.continuous = false
+            handles.append(handle)
         }
         return handles
     }

@@ -25,6 +25,12 @@ extension DeviceEmerFireData {
         settings(for: configuration.workMode)
     }
 
+    var hasSyncableConfiguration: Bool {
+        !configuration.activeLightLCGroupAddresses.isEmpty ||
+        !configuration.powerLossSettings.pendingUnassociateGroupAddresses.isEmpty ||
+        !configuration.fireAlarmSettings.pendingUnassociateGroupAddresses.isEmpty
+    }
+
     func settings(for mode: EmergencyFireControllerWorkMode) -> EmergencyFireControllerModeSettings? {
         switch mode {
         case .powerLossEmergency:
@@ -168,12 +174,17 @@ extension DeviceEmerFireData {
         )
     }
 
-    func makeControllerSyncTasks(meshUUID: String, subnetworkId: String) throws -> [EmergencyFireControllerSyncTask] {
+    func makeControllerSyncTasks(
+        meshUUID: String,
+        subnetworkId: String,
+        changedFrom oldConfiguration: EmergencyFireControllerConfiguration? = nil
+    ) throws -> [EmergencyFireControllerSyncTask] {
         guard let node = bindNode, let vendorModel = node.sunricherVendorModel else {
             throw EmergencyFireControllerPublishGroupError.missingBoundNode
         }
 
         var tasks: [EmergencyFireControllerSyncTask] = []
+        let onlyChangedKeyParameters = oldConfiguration != nil
         let scenePublicationHandles = try getSceneClientPublicationMessageHandles(meshUUID: meshUUID, subnetworkId: subnetworkId)
         if !scenePublicationHandles.isEmpty {
             tasks.append(EmergencyFireControllerSyncTask(title: "Scene Publication", kind: .publication, address: node.primaryUnicastAddress, messageHandles: scenePublicationHandles))
@@ -184,34 +195,64 @@ extension DeviceEmerFireData {
             tasks.append(EmergencyFireControllerSyncTask(title: "LC Publication", kind: .lightLCClientPublication, address: node.primaryUnicastAddress, messageHandles: lightLCPublicationHandles))
         }
 
-        tasks.append(EmergencyFireControllerSyncTask(
-            title: "Mode",
-            kind: .workMode,
-            address: node.primaryUnicastAddress,
-            messageHandles: [MeshMessageHandle(message: SunricherVendorSet(function: .emergencyMode(configuration.workMode.vendorMode)), model: vendorModel)]
-        ))
+        if oldConfiguration == nil || oldConfiguration?.workMode != configuration.workMode {
+            tasks.append(EmergencyFireControllerSyncTask(
+                title: "Mode",
+                kind: .workMode,
+                address: node.primaryUnicastAddress,
+                messageHandles: [MeshMessageHandle(message: SunricherVendorSet(function: .emergencyMode(configuration.workMode.vendorMode)), model: vendorModel)],
+                changedOnly: onlyChangedKeyParameters
+            ))
+        }
 
         if let settings = activeModeSettings {
+            let oldSettings = oldConfiguration.flatMap { oldConfiguration in
+                oldConfiguration.workMode == configuration.workMode ? modeSettings(for: oldConfiguration.workMode, in: oldConfiguration) : nil
+            }
             let resend = EmergencyControllerResendParameters(
                 triggerIntervalSeconds: settings.triggerIntervalSeconds,
                 triggerCount: settings.triggerCount,
                 stopIntervalSeconds: settings.stopIntervalSeconds,
                 stopCount: settings.stopCount
             )
-            tasks.append(EmergencyFireControllerSyncTask(
-                title: "Resend",
-                kind: .resend,
-                address: node.primaryUnicastAddress,
-                messageHandles: [MeshMessageHandle(message: SunricherVendorSet(function: .emergencyResendParameters(resend)), model: vendorModel)]
-            ))
-            tasks.append(EmergencyFireControllerSyncTask(
-                title: "Restore Delay",
-                kind: .restoreDelay,
-                address: node.primaryUnicastAddress,
-                messageHandles: [MeshMessageHandle(message: SunricherVendorSet(function: .emergencyRestoreDelay(seconds: settings.restoreDelaySeconds)), model: vendorModel)]
-            ))
+            if oldConfiguration == nil ||
+                oldSettings?.triggerIntervalSeconds != settings.triggerIntervalSeconds ||
+                oldSettings?.triggerCount != settings.triggerCount ||
+                oldSettings?.stopIntervalSeconds != settings.stopIntervalSeconds ||
+                oldSettings?.stopCount != settings.stopCount {
+                tasks.append(EmergencyFireControllerSyncTask(
+                    title: "Resend",
+                    kind: .resend,
+                    address: node.primaryUnicastAddress,
+                    messageHandles: [MeshMessageHandle(message: SunricherVendorSet(function: .emergencyResendParameters(resend)), model: vendorModel)],
+                    changedOnly: onlyChangedKeyParameters
+                ))
+            }
+            if oldConfiguration == nil || oldSettings?.restoreDelaySeconds != settings.restoreDelaySeconds {
+                tasks.append(EmergencyFireControllerSyncTask(
+                    title: "Restore Delay",
+                    kind: .restoreDelay,
+                    address: node.primaryUnicastAddress,
+                    messageHandles: [MeshMessageHandle(message: SunricherVendorSet(function: .emergencyRestoreDelay(seconds: settings.restoreDelaySeconds)), model: vendorModel)],
+                    changedOnly: onlyChangedKeyParameters
+                ))
+            }
         }
         return tasks
+    }
+
+    private func modeSettings(
+        for mode: EmergencyFireControllerWorkMode,
+        in configuration: EmergencyFireControllerConfiguration
+    ) -> EmergencyFireControllerModeSettings? {
+        switch mode {
+        case .powerLossEmergency:
+            return configuration.powerLossSettings
+        case .fireAlarmEmergency:
+            return configuration.fireAlarmSettings
+        case .allDisabled:
+            return nil
+        }
     }
 
     private func mergePendingChanges(

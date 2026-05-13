@@ -31,6 +31,7 @@ final class EmergencyFireControllerSyncTask {
     let pendingModes: [EmergencyFireControllerWorkMode]
     let pendingGroupAddress: Address?
     let clearsUnassociatePending: Bool
+    let changedOnly: Bool
     var state: SyncDevicesState = .none
     var isSelected = false
 
@@ -42,7 +43,8 @@ final class EmergencyFireControllerSyncTask {
         isUnsupported: Bool = false,
         pendingModes: [EmergencyFireControllerWorkMode] = [],
         pendingGroupAddress: Address? = nil,
-        clearsUnassociatePending: Bool = false
+        clearsUnassociatePending: Bool = false,
+        changedOnly: Bool = false
     ) {
         self.title = title
         self.kind = kind
@@ -52,6 +54,7 @@ final class EmergencyFireControllerSyncTask {
         self.pendingModes = pendingModes
         self.pendingGroupAddress = pendingGroupAddress
         self.clearsUnassociatePending = clearsUnassociatePending
+        self.changedOnly = changedOnly
         if isUnsupported {
             state = .failed
         }

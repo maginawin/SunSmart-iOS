@@ -188,14 +188,6 @@ class DeviceAddViewController: WMPageController, DeviceProtocol {
             return
         }
 
-        if case .emergencyFire(let device) = bindTarget, !device.isSynced {
-            let syncController = EmerFireAlarmControllerSyncVC(space: space, data: device) { [weak self] in
-                self?.finishBindingFlowIfNeeded()
-            }
-            navigationController?.pushViewController(syncController, animated: true)
-            return
-        }
-
         let addedNodes = addSuccessNodes
         let callback = deviceAddCallback
         didNotifyDeviceAddCallback = true

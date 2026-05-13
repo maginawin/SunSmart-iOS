@@ -188,15 +188,16 @@ class DeviceOthersViewController: UIViewController, DeviceProtocol {
                 XWHUDManager.showTipHUD("device_notconnect_message".localizedString, isLineFeed: true)
                 return
             }
-            let controller = EmerFireAlarmControllerSyncVC(
-                space: space,
-                data: device,
-                items: cleanupItems,
-                persistsSyncResult: false
-            ) { [weak self, weak device] in
+            let controller = SyncDevicesViewController(type: .emergencyFire(data: device, items: cleanupItems, persistsSyncResult: false, changedFromConfiguration: nil))
+            controller.syncSuccessCallback = { [weak self, weak device] _ in
                 guard let self, let device else { return }
-                self.dismiss(animated: true) {
+                let finishDeletion = {
                     self.deleteEmergencyFireControllerNodeAndCache(device)
+                }
+                if let presentedViewController = self.presentedViewController {
+                    presentedViewController.dismiss(animated: true, completion: finishDeletion)
+                } else {
+                    finishDeletion()
                 }
             }
             if isIPad {
@@ -362,17 +363,9 @@ extension DeviceOthersViewController: UICollectionViewDataSource, UICollectionVi
             }
             present(NavigationViewController(rootViewController: vc), animated: true)
         case .emergencyFireController(let device):
-            if device.displayStatus == .unboundDevice {
+            if device.displayStatus == .unboundDevice || device.displayStatus == .syncIssueDevice {
                 let config = makeLinkedEmerFireConfig(from: device)
                 let vc = LinkedEmerFireEditVC(config: config, space: space)
-                if isIPad {
-                    vc.preferredContentSize = iPadPreferredContentSize
-                }
-                present(NavigationViewController(rootViewController: vc), animated: true)
-                return
-            }
-            if device.displayStatus == .syncIssueDevice {
-                let vc = EmerFireAlarmControllerSyncVC(space: space, data: device)
                 if isIPad {
                     vc.preferredContentSize = iPadPreferredContentSize
                 }
