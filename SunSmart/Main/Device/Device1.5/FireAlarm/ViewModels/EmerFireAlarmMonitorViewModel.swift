@@ -102,6 +102,15 @@ final class EmerFireAlarmMonitorViewModel {
         EmerFireAlarmMonitorStateMapper.normalState(for: currentWorkMode)
     }
 
+    func normalState(afterResuming state: EmerFireAlarmMonitorDisplayState) -> EmerFireAlarmMonitorDisplayState? {
+        EmerFireAlarmMonitorStateMapper.normalState(afterResuming: state)
+    }
+
+    func restoreDelaySeconds(for state: EmerFireAlarmMonitorDisplayState) -> TimeInterval? {
+        let configuration = currentConfig?.configuration ?? currentDevice?.configuration
+        return EmerFireAlarmMonitorStateMapper.restoreDelaySeconds(configuration: configuration, for: state)
+    }
+
     func makeConfig(from device: DeviceEmerFireData) -> LinkedEmerFireConfig {
         LinkedEmerFireConfig(
             deviceId: device.id,

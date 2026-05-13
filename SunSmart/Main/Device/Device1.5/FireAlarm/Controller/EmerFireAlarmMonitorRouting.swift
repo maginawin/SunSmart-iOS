@@ -28,16 +28,9 @@ extension EmerFireAlarmMonitorVC {
         }
 
         items.append(.init(icon: UIImage(named: "menu_information"), title: "information".localizedString, tapItemBack: {[weak self] _ in
-            guard let node = self?.currentDevice?.bindNode else {
-                XWHUDManager.showTipHUD("failed".localizedString, isLineFeed: false)
-                return
-            }
-            let controller = DeviceInformationViewController(
-                node: node,
-                emptyGroupText: "Not yet linked to a group".localizedString,
-                showsSceneSection: false
-            )
-            self?.navigationController?.pushViewController(controller, animated: true)
+            guard let self else { return }
+            let controller = EmerFireAlarmInformationVC(device: self.currentDevice, config: config)
+            self.navigationController?.pushViewController(controller, animated: true)
         }))
 
         if !isAllEmergencyFunctionsDisabled, canConfigureDevice {

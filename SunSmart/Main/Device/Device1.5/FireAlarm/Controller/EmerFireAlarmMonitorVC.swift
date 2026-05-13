@@ -31,6 +31,7 @@ class EmerFireAlarmMonitorVC: UIViewController, DeviceProtocol {
         get { viewModel.currentState }
         set { viewModel.currentState = newValue }
     }
+    let resumeTransitionCoordinator = EmerFireAlarmResumeTransitionCoordinator()
     
     var collectionView: UICollectionView!
     var flowLayout: AlignCenterFlowLayout!
@@ -122,7 +123,13 @@ class EmerFireAlarmMonitorVC: UIViewController, DeviceProtocol {
         
     }
 
+    override func viewDidLayoutSubviews() {
+        super.viewDidLayoutSubviews()
+        updateEmptyViewLayout()
+    }
+
     deinit {
+        resumeTransitionCoordinator.cancel()
         if let sceneEventObserver {
             NotificationCenter.default.removeObserver(sceneEventObserver)
         }
@@ -138,6 +145,7 @@ class EmerFireAlarmMonitorVC: UIViewController, DeviceProtocol {
 
     override func viewDidDisappear(_ animated: Bool) {
         super.viewDidDisappear(animated)
+        resumeTransitionCoordinator.cancel()
         requestGeneration += 1
         MeshLibManager.manager.messageDelegate = lastMessageDelegate
         if let node = currentDevice?.bindNode {

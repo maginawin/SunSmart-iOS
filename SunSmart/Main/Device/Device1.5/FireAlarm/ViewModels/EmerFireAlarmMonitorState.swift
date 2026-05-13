@@ -12,7 +12,7 @@ struct EmerFireAlarmAssociatedGroupItem {
     let group: Group
 }
 
-enum EmerFireAlarmMonitorDisplayState {
+enum EmerFireAlarmMonitorDisplayState: Equatable {
     case loading
     case repair
     case offline
@@ -47,6 +47,28 @@ enum EmerFireAlarmMonitorStateMapper {
             return .fireNormal
         case .allDisabled:
             return .disabled
+        }
+    }
+
+    static func normalState(afterResuming state: EmerFireAlarmMonitorDisplayState) -> EmerFireAlarmMonitorDisplayState? {
+        switch state {
+        case .emergencyResuming:
+            return .emergencyNormal
+        case .fireResuming:
+            return .fireNormal
+        case .loading, .repair, .offline, .disabled, .emergencyTriggered, .emergencyNormal, .fireTriggered, .fireNormal:
+            return nil
+        }
+    }
+
+    static func restoreDelaySeconds(configuration: EmergencyFireControllerConfiguration?, for state: EmerFireAlarmMonitorDisplayState) -> TimeInterval? {
+        switch state {
+        case .emergencyResuming:
+            return TimeInterval(configuration?.powerLossSettings.restoreDelaySeconds ?? EmergencyFireControllerModeSettings.defaultValue.restoreDelaySeconds)
+        case .fireResuming:
+            return TimeInterval(configuration?.fireAlarmSettings.restoreDelaySeconds ?? EmergencyFireControllerModeSettings.defaultValue.restoreDelaySeconds)
+        case .loading, .repair, .offline, .disabled, .emergencyTriggered, .emergencyNormal, .fireTriggered, .fireNormal:
+            return nil
         }
     }
 

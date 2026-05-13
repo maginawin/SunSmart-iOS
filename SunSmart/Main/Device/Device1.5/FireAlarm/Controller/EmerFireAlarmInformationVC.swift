@@ -121,17 +121,25 @@ final class EmerFireAlarmInformationVC: UIViewController {
 
     private func makeGroupRows() -> [InfoRow] {
         let resolvedConfig = config ?? device.map(makeConfig(from:))
-        let powerLossNames = groupNames(for: resolvedConfig?.configuration.powerLossSettings.associateGroupAddresses ?? [])
-        let fireAlarmNames = groupNames(for: resolvedConfig?.configuration.fireAlarmSettings.associateGroupAddresses ?? [])
+        let powerLossAddresses = resolvedConfig?.configuration.powerLossSettings.associateGroupAddresses ?? []
+        let fireAlarmAddresses = resolvedConfig?.configuration.fireAlarmSettings.associateGroupAddresses ?? []
+        let powerLossNames = groupNames(for: powerLossAddresses)
+        let fireAlarmNames = groupNames(for: fireAlarmAddresses)
         return [
-            .init(title: "Power Loss Group", value: powerLossNames.isEmpty ? "Not yet linked to a group" : powerLossNames.joined(separator: ", "), showsCopyButton: false),
-            .init(title: "Fire Alarm Group", value: fireAlarmNames.isEmpty ? "Not yet linked to a group" : fireAlarmNames.joined(separator: ", "), showsCopyButton: false)
+            .init(title: "Power Loss Group", value: powerLossAddresses.isEmpty ? "Not yet linked to a group" : powerLossNames.joined(separator: ", "), showsCopyButton: false),
+            .init(title: "Fire Alarm Group", value: fireAlarmAddresses.isEmpty ? "Not yet linked to a group" : fireAlarmNames.joined(separator: ", "), showsCopyButton: false)
         ]
     }
 
     private func groupNames(for addresses: [UInt16]) -> [String] {
-        addresses.compactMap { address in
-            MeshNetworkManager.instance.groups.first(where: { $0.address.address == address })?.name
+        addresses.map { address in
+            if let group = MeshNetworkManager.instance.groups.first(where: { $0.address.address == address }) {
+                return group.name
+            }
+            if let group = MeshNetworkManager.instance.meshNetwork?.group(withAddress: MeshAddress(address)) {
+                return group.name
+            }
+            return address.hex
         }
     }
 

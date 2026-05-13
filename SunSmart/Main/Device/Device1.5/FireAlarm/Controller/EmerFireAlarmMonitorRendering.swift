@@ -8,11 +8,81 @@
 import UIKit
 import NordicSigMeshSDK
 
+final class EmerFireAlarmResumeTransitionCoordinator {
+    private struct ActiveTransition {
+        let resumingState: EmerFireAlarmMonitorDisplayState
+        let normalState: EmerFireAlarmMonitorDisplayState
+        let startedAt: Date
+        let finishAt: Date
+        var workItem: DispatchWorkItem?
+    }
+
+    private var activeTransition: ActiveTransition?
+
+    func schedule(
+        resumingState: EmerFireAlarmMonitorDisplayState,
+        normalState: EmerFireAlarmMonitorDisplayState,
+        delay: TimeInterval,
+        onFinish: @escaping () -> Void
+    ) {
+        let now = Date()
+        if let transition = activeTransition, transition.resumingState == resumingState {
+            scheduleActiveTransitionIfNeeded(now: now, onFinish: onFinish)
+            return
+        }
+
+        cancel()
+        activeTransition = ActiveTransition(
+            resumingState: resumingState,
+            normalState: normalState,
+            startedAt: now,
+            finishAt: now.addingTimeInterval(max(0, delay)),
+            workItem: nil
+        )
+        scheduleActiveTransitionIfNeeded(now: now, onFinish: onFinish)
+    }
+
+    func cancel() {
+        activeTransition?.workItem?.cancel()
+        activeTransition = nil
+    }
+
+    private func scheduleActiveTransitionIfNeeded(now: Date, onFinish: @escaping () -> Void) {
+        guard var transition = activeTransition else { return }
+        transition.workItem?.cancel()
+        let remainingDelay = max(0, transition.finishAt.timeIntervalSince(now))
+        let workItem = DispatchWorkItem { [weak self] in
+            guard let self,
+                  self.activeTransition?.resumingState == transition.resumingState else {
+                return
+            }
+            self.activeTransition = nil
+            onFinish()
+        }
+        transition.workItem = workItem
+        activeTransition = transition
+        DispatchQueue.main.asyncAfter(deadline: .now() + remainingDelay, execute: workItem)
+    }
+}
+
 extension EmerFireAlarmMonitorVC {
+    func updateEmptyViewLayout() {
+        guard let emptyView = collectionView?.emptyView else {
+            return
+        }
+        emptyView.frame = collectionView.bounds
+        emptyView.setNeedsLayout()
+        emptyView.layoutIfNeeded()
+    }
+
     func updateEmptyUI() {
+        if collectionView.frame == .zero {
+            view.layoutIfNeeded()
+        }
+
         if isAllEmergencyFunctionsDisabled {
             deviceCountLabel.isHidden = true
-            collectionView.showEmptyDataView(imageName: "device_state_offline", title: "Emergency & Fire Alarm are all disabled".localizedString, buttonText: "Setting".localizedString, position: .center) { [weak self] in
+            collectionView.showEmptyDataView(frame: collectionView.bounds, imageName: "device_state_offline", title: "Emergency & Fire Alarm are all disabled".localizedString, buttonText: "Setting".localizedString, position: .center) { [weak self] in
                 self?.openEditSettings()
             }
             if let emptyView = collectionView.emptyView {
@@ -29,11 +99,8 @@ extension EmerFireAlarmMonitorVC {
 
         if groups.isEmpty {
             deviceCountLabel.isHidden = true
-            if collectionView.frame == .zero {
-                view.layoutIfNeeded()
-            }
             if collectionView.emptyView == nil {
-                collectionView.showEmptyDataView(title: "Not associate with Group(s) !".localizedString, buttonText: "Setting".localizedString, position: .center) { [weak self] in
+                collectionView.showEmptyDataView(frame: collectionView.bounds, title: "Not associate with Group(s) !".localizedString, buttonText: "Setting".localizedString, position: .center) { [weak self] in
                     self?.openEditSettings()
                 }
                 if let emptyView = collectionView.emptyView {
@@ -162,15 +229,42 @@ extension EmerFireAlarmMonitorVC {
 
         switch event.state {
         case .powerLossTriggered:
+            resumeTransitionCoordinator.cancel()
             renderRealState(.emergencyTriggered)
         case .powerLossStopped:
-            renderRealState(.emergencyResuming)
+            renderResumingState(.emergencyResuming)
         case .fireAlarmTriggered:
+            resumeTransitionCoordinator.cancel()
             renderRealState(.fireTriggered)
         case .fireAlarmStopped:
-            renderRealState(.fireResuming)
+            renderResumingState(.fireResuming)
         case .clear:
+            resumeTransitionCoordinator.cancel()
             renderConfiguredNormalState()
+        }
+    }
+
+    func renderResumingState(_ state: EmerFireAlarmMonitorDisplayState) {
+        guard let normalState = viewModel.normalState(afterResuming: state),
+              let delay = viewModel.restoreDelaySeconds(for: state) else {
+            renderRealState(state)
+            return
+        }
+
+        guard currentState != normalState else {
+            return
+        }
+
+        renderRealState(state)
+        resumeTransitionCoordinator.schedule(
+            resumingState: state,
+            normalState: normalState,
+            delay: delay
+        ) { [weak self] in
+            guard let self, self.currentState == state else {
+                return
+            }
+            self.renderRealState(normalState)
         }
     }
 
