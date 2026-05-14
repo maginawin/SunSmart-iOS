@@ -7,8 +7,24 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		0103BEF5A3F84EEB84317B31 /* EmerFireAlarmMonitorViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0FB5C2C5870049F0AC8546FD /* EmerFireAlarmMonitorViewModel.swift */; };
+		0C36C97F8A95474C9D655F09 /* EmerFireAlarmMonitorDelegates.swift in Sources */ = {isa = PBXBuildFile; fileRef = E4B67A9E7E2941BBBD518363 /* EmerFireAlarmMonitorDelegates.swift */; };
+		15F6AEDF416B45D6BC28749E /* EmerFireAlarmMonitorRouting.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5CAC8D9C0CD4494B961439D5 /* EmerFireAlarmMonitorRouting.swift */; };
+		1FAE4DDDBDF446118B26374D /* EmergencyFireControllerIconName.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3AB43138D1CA4C21AFA5232A /* EmergencyFireControllerIconName.swift */; };
+		21188D8724074062B2F0D8FF /* EmerFireAlarmMonitorState.swift in Sources */ = {isa = PBXBuildFile; fileRef = FDFE09FFC9994D668569EAC2 /* EmerFireAlarmMonitorState.swift */; };
+		215FA569CEC942FAB1753704 /* EmerFireAlarmMonitorDelegates.swift in Sources */ = {isa = PBXBuildFile; fileRef = E4B67A9E7E2941BBBD518363 /* EmerFireAlarmMonitorDelegates.swift */; };
 		24F67C240565CE5F6A28CBD1 /* Pods_Common_SunSmart.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = C8FFD7D42E7D03B20074CC6A /* Pods_Common_SunSmart.framework */; };
+		2540F05968274821811E42BF /* EmerFireAlarmMonitorState.swift in Sources */ = {isa = PBXBuildFile; fileRef = FDFE09FFC9994D668569EAC2 /* EmerFireAlarmMonitorState.swift */; };
+		307B3B9B8A75463FB014C992 /* EmerFireAlarmMonitorRendering.swift in Sources */ = {isa = PBXBuildFile; fileRef = D8AA0EDFE6C84FD4BF944A23 /* EmerFireAlarmMonitorRendering.swift */; };
+		39FE1B9D3CB748E99E153094 /* EmerFireAlarmMonitorViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0FB5C2C5870049F0AC8546FD /* EmerFireAlarmMonitorViewModel.swift */; };
+		4D4A0F032EE24DA7965F1B78 /* EmergencyFireControllerIconName.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3AB43138D1CA4C21AFA5232A /* EmergencyFireControllerIconName.swift */; };
+		59406AF3301C4F9EA72AE09D /* EmerFireAlarmMonitorRouting.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5CAC8D9C0CD4494B961439D5 /* EmerFireAlarmMonitorRouting.swift */; };
 		6116D0D0F05DFA292964E9B9 /* (null) in Frameworks */ = {isa = PBXBuildFile; };
+		641FEC57DE5645609932974D /* EmerFireAlarmMonitorDelegates.swift in Sources */ = {isa = PBXBuildFile; fileRef = E4B67A9E7E2941BBBD518363 /* EmerFireAlarmMonitorDelegates.swift */; };
+		7119A2FC8208465ABF6EF1D3 /* EmergencyFireControllerIconName.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3AB43138D1CA4C21AFA5232A /* EmergencyFireControllerIconName.swift */; };
+		7A97BDEC9C6E47B78123C040 /* EmerFireAlarmMonitorViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0FB5C2C5870049F0AC8546FD /* EmerFireAlarmMonitorViewModel.swift */; };
+		830718D9737D4876899F9F16 /* EmerFireAlarmMonitorRendering.swift in Sources */ = {isa = PBXBuildFile; fileRef = D8AA0EDFE6C84FD4BF944A23 /* EmerFireAlarmMonitorRendering.swift */; };
+		8828861F08BB437BB42EF3A6 /* EmergencyFireControllerIconName.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3AB43138D1CA4C21AFA5232A /* EmergencyFireControllerIconName.swift */; };
 		8C1DA73A2FAADAF20073F100 /* PJEightKeySwitchForcedAutoPopupController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C1DA7392FAADAF20073F100 /* PJEightKeySwitchForcedAutoPopupController.swift */; };
 		8C1DA73B2FAADAF20073F100 /* PJEightKeySwitchForcedAutoPopupController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C1DA7392FAADAF20073F100 /* PJEightKeySwitchForcedAutoPopupController.swift */; };
 		8C1DA73C2FAADAF20073F100 /* PJEightKeySwitchForcedAutoPopupController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C1DA7392FAADAF20073F100 /* PJEightKeySwitchForcedAutoPopupController.swift */; };
@@ -121,26 +137,6 @@
 		8C7788CD2F97099D000887FE /* EmerFireAlarmMonitorVC.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C7788CB2F97099D000887FE /* EmerFireAlarmMonitorVC.swift */; };
 		8C7788CE2F97099D000887FE /* EmerFireAlarmMonitorVC.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C7788CB2F97099D000887FE /* EmerFireAlarmMonitorVC.swift */; };
 		8C7788CF2F97099D000887FE /* EmerFireAlarmMonitorVC.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C7788CB2F97099D000887FE /* EmerFireAlarmMonitorVC.swift */; };
-		641FEC57DE5645609932974D /* EmerFireAlarmMonitorDelegates.swift in Sources */ = {isa = PBXBuildFile; fileRef = E4B67A9E7E2941BBBD518363 /* EmerFireAlarmMonitorDelegates.swift */; };
-		215FA569CEC942FAB1753704 /* EmerFireAlarmMonitorDelegates.swift in Sources */ = {isa = PBXBuildFile; fileRef = E4B67A9E7E2941BBBD518363 /* EmerFireAlarmMonitorDelegates.swift */; };
-		0C36C97F8A95474C9D655F09 /* EmerFireAlarmMonitorDelegates.swift in Sources */ = {isa = PBXBuildFile; fileRef = E4B67A9E7E2941BBBD518363 /* EmerFireAlarmMonitorDelegates.swift */; };
-		B27B8A12C92448E5A6D20353 /* EmerFireAlarmMonitorDelegates.swift in Sources */ = {isa = PBXBuildFile; fileRef = E4B67A9E7E2941BBBD518363 /* EmerFireAlarmMonitorDelegates.swift */; };
-		15F6AEDF416B45D6BC28749E /* EmerFireAlarmMonitorRouting.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5CAC8D9C0CD4494B961439D5 /* EmerFireAlarmMonitorRouting.swift */; };
-		59406AF3301C4F9EA72AE09D /* EmerFireAlarmMonitorRouting.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5CAC8D9C0CD4494B961439D5 /* EmerFireAlarmMonitorRouting.swift */; };
-		9A6E3E6B324843968130F4AF /* EmerFireAlarmMonitorRouting.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5CAC8D9C0CD4494B961439D5 /* EmerFireAlarmMonitorRouting.swift */; };
-		9003D9FEB15B43869345C310 /* EmerFireAlarmMonitorRouting.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5CAC8D9C0CD4494B961439D5 /* EmerFireAlarmMonitorRouting.swift */; };
-		EE66645EF8E84E9191B47415 /* EmerFireAlarmMonitorRendering.swift in Sources */ = {isa = PBXBuildFile; fileRef = D8AA0EDFE6C84FD4BF944A23 /* EmerFireAlarmMonitorRendering.swift */; };
-		DC176B45FDD04BF2B211C2D1 /* EmerFireAlarmMonitorRendering.swift in Sources */ = {isa = PBXBuildFile; fileRef = D8AA0EDFE6C84FD4BF944A23 /* EmerFireAlarmMonitorRendering.swift */; };
-		830718D9737D4876899F9F16 /* EmerFireAlarmMonitorRendering.swift in Sources */ = {isa = PBXBuildFile; fileRef = D8AA0EDFE6C84FD4BF944A23 /* EmerFireAlarmMonitorRendering.swift */; };
-		307B3B9B8A75463FB014C992 /* EmerFireAlarmMonitorRendering.swift in Sources */ = {isa = PBXBuildFile; fileRef = D8AA0EDFE6C84FD4BF944A23 /* EmerFireAlarmMonitorRendering.swift */; };
-		7A97BDEC9C6E47B78123C040 /* EmerFireAlarmMonitorViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0FB5C2C5870049F0AC8546FD /* EmerFireAlarmMonitorViewModel.swift */; };
-		39FE1B9D3CB748E99E153094 /* EmerFireAlarmMonitorViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0FB5C2C5870049F0AC8546FD /* EmerFireAlarmMonitorViewModel.swift */; };
-		0103BEF5A3F84EEB84317B31 /* EmerFireAlarmMonitorViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0FB5C2C5870049F0AC8546FD /* EmerFireAlarmMonitorViewModel.swift */; };
-		98B74FAE2E2C42E5AF404B98 /* EmerFireAlarmMonitorViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0FB5C2C5870049F0AC8546FD /* EmerFireAlarmMonitorViewModel.swift */; };
-		21188D8724074062B2F0D8FF /* EmerFireAlarmMonitorState.swift in Sources */ = {isa = PBXBuildFile; fileRef = FDFE09FFC9994D668569EAC2 /* EmerFireAlarmMonitorState.swift */; };
-		F3C661B473314BCA9FC4EADC /* EmerFireAlarmMonitorState.swift in Sources */ = {isa = PBXBuildFile; fileRef = FDFE09FFC9994D668569EAC2 /* EmerFireAlarmMonitorState.swift */; };
-		2540F05968274821811E42BF /* EmerFireAlarmMonitorState.swift in Sources */ = {isa = PBXBuildFile; fileRef = FDFE09FFC9994D668569EAC2 /* EmerFireAlarmMonitorState.swift */; };
-		E4EABB296C324CDB9BF69468 /* EmerFireAlarmMonitorState.swift in Sources */ = {isa = PBXBuildFile; fileRef = FDFE09FFC9994D668569EAC2 /* EmerFireAlarmMonitorState.swift */; };
 		8C7788D12F970F99000887FE /* EmerFireAlarmMoniCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C7788D02F970F99000887FE /* EmerFireAlarmMoniCell.swift */; };
 		8C7788D22F970F99000887FE /* EmerFireAlarmMoniCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C7788D02F970F99000887FE /* EmerFireAlarmMoniCell.swift */; };
 		8C7788D32F970F99000887FE /* EmerFireAlarmMoniCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C7788D02F970F99000887FE /* EmerFireAlarmMoniCell.swift */; };
@@ -217,34 +213,6 @@
 		8C778B1D2F9EF6FD000887FE /* DeviceEmerFireData.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C778B1B2F9EF6FD000887FE /* DeviceEmerFireData.swift */; };
 		8C778B1E2F9EF6FD000887FE /* DeviceEmerFireData.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C778B1B2F9EF6FD000887FE /* DeviceEmerFireData.swift */; };
 		8C778B1F2F9EF6FD000887FE /* DeviceEmerFireData.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C778B1B2F9EF6FD000887FE /* DeviceEmerFireData.swift */; };
-		8CFE26012FB0000000000005 /* EmerFireAlarmControllerSyncVC.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8CFE26002FB0000000000005 /* EmerFireAlarmControllerSyncVC.swift */; };
-		8CFE26022FB0000000000005 /* EmerFireAlarmControllerSyncVC.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8CFE26002FB0000000000005 /* EmerFireAlarmControllerSyncVC.swift */; };
-		8CFE26032FB0000000000005 /* EmerFireAlarmControllerSyncVC.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8CFE26002FB0000000000005 /* EmerFireAlarmControllerSyncVC.swift */; };
-		8CFE26042FB0000000000005 /* EmerFireAlarmControllerSyncVC.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8CFE26002FB0000000000005 /* EmerFireAlarmControllerSyncVC.swift */; };
-		8CFE26012FB0000000000001 /* EmergencyFireControllerSyncPlan.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8CFE26002FB0000000000001 /* EmergencyFireControllerSyncPlan.swift */; };
-		4D4A0F032EE24DA7965F1B78 /* EmergencyFireControllerIconName.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3AB43138D1CA4C21AFA5232A /* EmergencyFireControllerIconName.swift */; };
-		8828861F08BB437BB42EF3A6 /* EmergencyFireControllerIconName.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3AB43138D1CA4C21AFA5232A /* EmergencyFireControllerIconName.swift */; };
-		7119A2FC8208465ABF6EF1D3 /* EmergencyFireControllerIconName.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3AB43138D1CA4C21AFA5232A /* EmergencyFireControllerIconName.swift */; };
-		1FAE4DDDBDF446118B26374D /* EmergencyFireControllerIconName.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3AB43138D1CA4C21AFA5232A /* EmergencyFireControllerIconName.swift */; };
-		8CFE26022FB0000000000001 /* EmergencyFireControllerSyncPlan.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8CFE26002FB0000000000001 /* EmergencyFireControllerSyncPlan.swift */; };
-		8CFE26032FB0000000000001 /* EmergencyFireControllerSyncPlan.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8CFE26002FB0000000000001 /* EmergencyFireControllerSyncPlan.swift */; };
-		8CFE26042FB0000000000001 /* EmergencyFireControllerSyncPlan.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8CFE26002FB0000000000001 /* EmergencyFireControllerSyncPlan.swift */; };
-		8CFE26012FB0000000000002 /* EmergencyFireControllerSyncPlanner.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8CFE26002FB0000000000002 /* EmergencyFireControllerSyncPlanner.swift */; };
-		8CFE26022FB0000000000002 /* EmergencyFireControllerSyncPlanner.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8CFE26002FB0000000000002 /* EmergencyFireControllerSyncPlanner.swift */; };
-		8CFE26032FB0000000000002 /* EmergencyFireControllerSyncPlanner.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8CFE26002FB0000000000002 /* EmergencyFireControllerSyncPlanner.swift */; };
-		8CFE26042FB0000000000002 /* EmergencyFireControllerSyncPlanner.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8CFE26002FB0000000000002 /* EmergencyFireControllerSyncPlanner.swift */; };
-		8CFE26012FB0000000000003 /* EmergencyFireControllerSceneEventManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8CFE26002FB0000000000003 /* EmergencyFireControllerSceneEventManager.swift */; };
-		8CFE26022FB0000000000003 /* EmergencyFireControllerSceneEventManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8CFE26002FB0000000000003 /* EmergencyFireControllerSceneEventManager.swift */; };
-		8CFE26032FB0000000000003 /* EmergencyFireControllerSceneEventManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8CFE26002FB0000000000003 /* EmergencyFireControllerSceneEventManager.swift */; };
-		8CFE26042FB0000000000003 /* EmergencyFireControllerSceneEventManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8CFE26002FB0000000000003 /* EmergencyFireControllerSceneEventManager.swift */; };
-		8CFE26012FB0000000000004 /* DeviceEmerFireData+Sync.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8CFE26002FB0000000000004 /* DeviceEmerFireData+Sync.swift */; };
-		8CFE26022FB0000000000004 /* DeviceEmerFireData+Sync.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8CFE26002FB0000000000004 /* DeviceEmerFireData+Sync.swift */; };
-		8CFE26032FB0000000000004 /* DeviceEmerFireData+Sync.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8CFE26002FB0000000000004 /* DeviceEmerFireData+Sync.swift */; };
-		8CFE26042FB0000000000004 /* DeviceEmerFireData+Sync.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8CFE26002FB0000000000004 /* DeviceEmerFireData+Sync.swift */; };
-		8CFE26012FB0000000000006 /* PJLinkedStaOpertionsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8CFE26002FB0000000000006 /* PJLinkedStaOpertionsView.swift */; };
-		8CFE26022FB0000000000006 /* PJLinkedStaOpertionsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8CFE26002FB0000000000006 /* PJLinkedStaOpertionsView.swift */; };
-		8CFE26032FB0000000000006 /* PJLinkedStaOpertionsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8CFE26002FB0000000000006 /* PJLinkedStaOpertionsView.swift */; };
-		8CFE26042FB0000000000006 /* PJLinkedStaOpertionsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8CFE26002FB0000000000006 /* PJLinkedStaOpertionsView.swift */; };
 		8C778B242F9F584E000887FE /* DeviceEmerFireRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C778B232F9F584E000887FE /* DeviceEmerFireRepository.swift */; };
 		8C778B252F9F584E000887FE /* DeviceEmerFireRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C778B232F9F584E000887FE /* DeviceEmerFireRepository.swift */; };
 		8C778B262F9F584E000887FE /* DeviceEmerFireRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C778B232F9F584E000887FE /* DeviceEmerFireRepository.swift */; };
@@ -497,6 +465,34 @@
 		8CF15FA02F964E240044FCF3 /* EmerFireStatusTextCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8CF15F9E2F964E240044FCF3 /* EmerFireStatusTextCell.swift */; };
 		8CF15FA12F964E240044FCF3 /* EmerFireStatusTextCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8CF15F9E2F964E240044FCF3 /* EmerFireStatusTextCell.swift */; };
 		8CF15FA22F964E240044FCF3 /* EmerFireStatusTextCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8CF15F9E2F964E240044FCF3 /* EmerFireStatusTextCell.swift */; };
+		8CFE26012FB0000000000001 /* EmergencyFireControllerSyncPlan.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8CFE26002FB0000000000001 /* EmergencyFireControllerSyncPlan.swift */; };
+		8CFE26012FB0000000000002 /* EmergencyFireControllerSyncPlanner.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8CFE26002FB0000000000002 /* EmergencyFireControllerSyncPlanner.swift */; };
+		8CFE26012FB0000000000003 /* EmergencyFireControllerSceneEventManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8CFE26002FB0000000000003 /* EmergencyFireControllerSceneEventManager.swift */; };
+		8CFE26012FB0000000000004 /* DeviceEmerFireData+Sync.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8CFE26002FB0000000000004 /* DeviceEmerFireData+Sync.swift */; };
+		8CFE26012FB0000000000005 /* EmerFireAlarmControllerSyncVC.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8CFE26002FB0000000000005 /* EmerFireAlarmControllerSyncVC.swift */; };
+		8CFE26012FB0000000000006 /* PJLinkedStaOpertionsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8CFE26002FB0000000000006 /* PJLinkedStaOpertionsView.swift */; };
+		8CFE26022FB0000000000001 /* EmergencyFireControllerSyncPlan.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8CFE26002FB0000000000001 /* EmergencyFireControllerSyncPlan.swift */; };
+		8CFE26022FB0000000000002 /* EmergencyFireControllerSyncPlanner.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8CFE26002FB0000000000002 /* EmergencyFireControllerSyncPlanner.swift */; };
+		8CFE26022FB0000000000003 /* EmergencyFireControllerSceneEventManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8CFE26002FB0000000000003 /* EmergencyFireControllerSceneEventManager.swift */; };
+		8CFE26022FB0000000000004 /* DeviceEmerFireData+Sync.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8CFE26002FB0000000000004 /* DeviceEmerFireData+Sync.swift */; };
+		8CFE26022FB0000000000005 /* EmerFireAlarmControllerSyncVC.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8CFE26002FB0000000000005 /* EmerFireAlarmControllerSyncVC.swift */; };
+		8CFE26022FB0000000000006 /* PJLinkedStaOpertionsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8CFE26002FB0000000000006 /* PJLinkedStaOpertionsView.swift */; };
+		8CFE26032FB0000000000001 /* EmergencyFireControllerSyncPlan.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8CFE26002FB0000000000001 /* EmergencyFireControllerSyncPlan.swift */; };
+		8CFE26032FB0000000000002 /* EmergencyFireControllerSyncPlanner.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8CFE26002FB0000000000002 /* EmergencyFireControllerSyncPlanner.swift */; };
+		8CFE26032FB0000000000003 /* EmergencyFireControllerSceneEventManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8CFE26002FB0000000000003 /* EmergencyFireControllerSceneEventManager.swift */; };
+		8CFE26032FB0000000000004 /* DeviceEmerFireData+Sync.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8CFE26002FB0000000000004 /* DeviceEmerFireData+Sync.swift */; };
+		8CFE26032FB0000000000005 /* EmerFireAlarmControllerSyncVC.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8CFE26002FB0000000000005 /* EmerFireAlarmControllerSyncVC.swift */; };
+		8CFE26032FB0000000000006 /* PJLinkedStaOpertionsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8CFE26002FB0000000000006 /* PJLinkedStaOpertionsView.swift */; };
+		8CFE26042FB0000000000001 /* EmergencyFireControllerSyncPlan.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8CFE26002FB0000000000001 /* EmergencyFireControllerSyncPlan.swift */; };
+		8CFE26042FB0000000000002 /* EmergencyFireControllerSyncPlanner.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8CFE26002FB0000000000002 /* EmergencyFireControllerSyncPlanner.swift */; };
+		8CFE26042FB0000000000003 /* EmergencyFireControllerSceneEventManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8CFE26002FB0000000000003 /* EmergencyFireControllerSceneEventManager.swift */; };
+		8CFE26042FB0000000000004 /* DeviceEmerFireData+Sync.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8CFE26002FB0000000000004 /* DeviceEmerFireData+Sync.swift */; };
+		8CFE26042FB0000000000005 /* EmerFireAlarmControllerSyncVC.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8CFE26002FB0000000000005 /* EmerFireAlarmControllerSyncVC.swift */; };
+		8CFE26042FB0000000000006 /* PJLinkedStaOpertionsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8CFE26002FB0000000000006 /* PJLinkedStaOpertionsView.swift */; };
+		9003D9FEB15B43869345C310 /* EmerFireAlarmMonitorRouting.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5CAC8D9C0CD4494B961439D5 /* EmerFireAlarmMonitorRouting.swift */; };
+		98B74FAE2E2C42E5AF404B98 /* EmerFireAlarmMonitorViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0FB5C2C5870049F0AC8546FD /* EmerFireAlarmMonitorViewModel.swift */; };
+		9A6E3E6B324843968130F4AF /* EmerFireAlarmMonitorRouting.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5CAC8D9C0CD4494B961439D5 /* EmerFireAlarmMonitorRouting.swift */; };
+		B27B8A12C92448E5A6D20353 /* EmerFireAlarmMonitorDelegates.swift in Sources */ = {isa = PBXBuildFile; fileRef = E4B67A9E7E2941BBBD518363 /* EmerFireAlarmMonitorDelegates.swift */; };
 		BCB01FD24C3B52D4E436283A /* Pods_Common_SLG_Sync_Plus.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 7CF816C3063D0EF30B936BA4 /* Pods_Common_SLG_Sync_Plus.framework */; };
 		C8002CD22DD33D60002A8629 /* EnergyStaticDataDeviceViewCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8002CD12DD33D60002A8629 /* EnergyStaticDataDeviceViewCell.swift */; };
 		C803EC4C2BCCC9F0003C48B1 /* ConfigurationFlowGuidanceView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C803EC4B2BCCC9F0003C48B1 /* ConfigurationFlowGuidanceView.swift */; };
@@ -1111,7 +1107,6 @@
 		C886E0702E30DE4900D0C3A6 /* FSCalendarCalculator.m in Sources */ = {isa = PBXBuildFile; fileRef = C8DA69F32DB8800B00E32092 /* FSCalendarCalculator.m */; };
 		C886E0712E30DE4900D0C3A6 /* FSCalendarCell.m in Sources */ = {isa = PBXBuildFile; fileRef = C8DA69F52DB8800B00E32092 /* FSCalendarCell.m */; };
 		C886E0722E30DE4900D0C3A6 /* DeviceAddCandidateDeviceListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A85CE02E0A4886007F9B81 /* DeviceAddCandidateDeviceListView.swift */; };
-		C886E07A2E30DE4900D0C3A6 /* DeviceAddTargetSelectView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A85CE42E0A4886007F9B81 /* DeviceAddTargetSelectView.swift */; };
 		C886E0732E30DE4900D0C3A6 /* GroupPathSequenceDeviceAddView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8CD5BE72DDABF5C00F09467 /* GroupPathSequenceDeviceAddView.swift */; };
 		C886E0742E30DE4900D0C3A6 /* FSCalendarHeaderView.m in Sources */ = {isa = PBXBuildFile; fileRef = C8DA6A042DB8800B00E32092 /* FSCalendarHeaderView.m */; };
 		C886E0752E30DE4900D0C3A6 /* EnergyConsumptionInstructionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8AEB9A42DCB45FD0053102B /* EnergyConsumptionInstructionView.swift */; };
@@ -1552,6 +1547,8 @@
 		C8A85CE22E0A4886007F9B81 /* DeviceAddCandidateDeviceListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A85CE02E0A4886007F9B81 /* DeviceAddCandidateDeviceListView.swift */; };
 		C8A85CE32E0A4886007F9B81 /* DeviceAddTargetSelectView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A85CE42E0A4886007F9B81 /* DeviceAddTargetSelectView.swift */; };
 		C8A85CE52E0A4886007F9B81 /* DeviceAddTargetSelectView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A85CE42E0A4886007F9B81 /* DeviceAddTargetSelectView.swift */; };
+		C8A85CE62E0A4886007F9B81 /* DeviceAddTargetSelectView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A85CE42E0A4886007F9B81 /* DeviceAddTargetSelectView.swift */; };
+		C8A85CE72E0A4886007F9B81 /* DeviceAddTargetSelectView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A85CE42E0A4886007F9B81 /* DeviceAddTargetSelectView.swift */; };
 		C8A8D7392EF3AEE80025FFF7 /* Scheduler.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A8D7382EF3AEE80025FFF7 /* Scheduler.swift */; };
 		C8A8D73A2EF3AEE80025FFF7 /* Scheduler.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A8D7382EF3AEE80025FFF7 /* Scheduler.swift */; };
 		C8A8D73B2EF3AEE80025FFF7 /* Scheduler.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A8D7382EF3AEE80025FFF7 /* Scheduler.swift */; };
@@ -1841,7 +1838,6 @@
 		C8BB662A2ED3F056000C63EE /* FSCalendarCalculator.m in Sources */ = {isa = PBXBuildFile; fileRef = C8DA69F32DB8800B00E32092 /* FSCalendarCalculator.m */; };
 		C8BB662B2ED3F056000C63EE /* FSCalendarCell.m in Sources */ = {isa = PBXBuildFile; fileRef = C8DA69F52DB8800B00E32092 /* FSCalendarCell.m */; };
 		C8BB662C2ED3F056000C63EE /* DeviceAddCandidateDeviceListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A85CE02E0A4886007F9B81 /* DeviceAddCandidateDeviceListView.swift */; };
-		C8BB66372ED3F056000C63EE /* DeviceAddTargetSelectView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A85CE42E0A4886007F9B81 /* DeviceAddTargetSelectView.swift */; };
 		C8BB662D2ED3F056000C63EE /* GroupPathSequenceDeviceAddView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8CD5BE72DDABF5C00F09467 /* GroupPathSequenceDeviceAddView.swift */; };
 		C8BB662E2ED3F056000C63EE /* FSCalendarHeaderView.m in Sources */ = {isa = PBXBuildFile; fileRef = C8DA6A042DB8800B00E32092 /* FSCalendarHeaderView.m */; };
 		C8BB662F2ED3F056000C63EE /* EnergyConsumptionInstructionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8AEB9A42DCB45FD0053102B /* EnergyConsumptionInstructionView.swift */; };
@@ -2370,12 +2366,19 @@
 		C8FC6BA02E7502F6004EE2BA /* DaliDeviceInformationController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8FC6B9D2E7502F6004EE2BA /* DaliDeviceInformationController.swift */; };
 		C8FDE9A72DD595A30002394B /* GroupProximityLightingData.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8FDE9A62DD595A30002394B /* GroupProximityLightingData.swift */; };
 		C8FFD7D52E7D03B20074CC6A /* Pods_Common_SunSmart.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = C8FFD7D42E7D03B20074CC6A /* Pods_Common_SunSmart.framework */; };
+		DC176B45FDD04BF2B211C2D1 /* EmerFireAlarmMonitorRendering.swift in Sources */ = {isa = PBXBuildFile; fileRef = D8AA0EDFE6C84FD4BF944A23 /* EmerFireAlarmMonitorRendering.swift */; };
+		E4EABB296C324CDB9BF69468 /* EmerFireAlarmMonitorState.swift in Sources */ = {isa = PBXBuildFile; fileRef = FDFE09FFC9994D668569EAC2 /* EmerFireAlarmMonitorState.swift */; };
 		EAB7CC4E471C03663E94EFE1 /* Pods_Common_SylSmart.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = D1025845F30FDFC9F8C9ACCB /* Pods_Common_SylSmart.framework */; };
+		EE66645EF8E84E9191B47415 /* EmerFireAlarmMonitorRendering.swift in Sources */ = {isa = PBXBuildFile; fileRef = D8AA0EDFE6C84FD4BF944A23 /* EmerFireAlarmMonitorRendering.swift */; };
+		F3C661B473314BCA9FC4EADC /* EmerFireAlarmMonitorState.swift in Sources */ = {isa = PBXBuildFile; fileRef = FDFE09FFC9994D668569EAC2 /* EmerFireAlarmMonitorState.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		0FB5C2C5870049F0AC8546FD /* EmerFireAlarmMonitorViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EmerFireAlarmMonitorViewModel.swift; sourceTree = "<group>"; };
 		29E6735F1867DC54FBDDBAA9 /* Pods-Common-SylSmart.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Common-SylSmart.debug.xcconfig"; path = "Target Support Files/Pods-Common-SylSmart/Pods-Common-SylSmart.debug.xcconfig"; sourceTree = "<group>"; };
+		3AB43138D1CA4C21AFA5232A /* EmergencyFireControllerIconName.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EmergencyFireControllerIconName.swift; sourceTree = "<group>"; };
 		45931D652AFCE854D4A27862 /* Pods-Common-SunSmart.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Common-SunSmart.debug.xcconfig"; path = "Target Support Files/Pods-Common-SunSmart/Pods-Common-SunSmart.debug.xcconfig"; sourceTree = "<group>"; };
+		5CAC8D9C0CD4494B961439D5 /* EmerFireAlarmMonitorRouting.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EmerFireAlarmMonitorRouting.swift; sourceTree = "<group>"; };
 		7CF816C3063D0EF30B936BA4 /* Pods_Common_SLG_Sync_Plus.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_Common_SLG_Sync_Plus.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		8C1DA7392FAADAF20073F100 /* PJEightKeySwitchForcedAutoPopupController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PJEightKeySwitchForcedAutoPopupController.swift; sourceTree = "<group>"; };
 		8C1DA74C2FAAF2A60073F100 /* PJDevicesEntrySource.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PJDevicesEntrySource.swift; sourceTree = "<group>"; };
@@ -2405,11 +2408,6 @@
 		8C1DA7C72FAC8A890073F100 /* PJDeviceGroupSelectionContext.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PJDeviceGroupSelectionContext.swift; sourceTree = "<group>"; };
 		8C1DA7CC2FAC8A890073F100 /* PJDeviceGroupSelectionViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PJDeviceGroupSelectionViewController.swift; sourceTree = "<group>"; };
 		8C7788CB2F97099D000887FE /* EmerFireAlarmMonitorVC.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EmerFireAlarmMonitorVC.swift; sourceTree = "<group>"; };
-		E4B67A9E7E2941BBBD518363 /* EmerFireAlarmMonitorDelegates.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "EmerFireAlarmMonitorDelegates.swift"; sourceTree = "<group>"; };
-		5CAC8D9C0CD4494B961439D5 /* EmerFireAlarmMonitorRouting.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "EmerFireAlarmMonitorRouting.swift"; sourceTree = "<group>"; };
-		D8AA0EDFE6C84FD4BF944A23 /* EmerFireAlarmMonitorRendering.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "EmerFireAlarmMonitorRendering.swift"; sourceTree = "<group>"; };
-		0FB5C2C5870049F0AC8546FD /* EmerFireAlarmMonitorViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EmerFireAlarmMonitorViewModel.swift; sourceTree = "<group>"; };
-		FDFE09FFC9994D668569EAC2 /* EmerFireAlarmMonitorState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EmerFireAlarmMonitorState.swift; sourceTree = "<group>"; };
 		8C7788D02F970F99000887FE /* EmerFireAlarmMoniCell.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EmerFireAlarmMoniCell.swift; sourceTree = "<group>"; };
 		8C7788D52F9719AF000887FE /* EmerFireAlarmMoniView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EmerFireAlarmMoniView.swift; sourceTree = "<group>"; };
 		8C7788DA2F972177000887FE /* EmerFireAlarmStatusSetView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EmerFireAlarmStatusSetView.swift; sourceTree = "<group>"; };
@@ -2429,13 +2427,6 @@
 		8C7789252F99FE29000887FE /* EmerFireAlarmSyncAliases.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EmerFireAlarmSyncAliases.swift; sourceTree = "<group>"; };
 		8C778B162F9CBD47000887FE /* PJUIDebugConsoleTracer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PJUIDebugConsoleTracer.swift; sourceTree = "<group>"; };
 		8C778B1B2F9EF6FD000887FE /* DeviceEmerFireData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceEmerFireData.swift; sourceTree = "<group>"; };
-		8CFE26002FB0000000000005 /* EmerFireAlarmControllerSyncVC.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EmerFireAlarmControllerSyncVC.swift; sourceTree = "<group>"; };
-		8CFE26002FB0000000000001 /* EmergencyFireControllerSyncPlan.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EmergencyFireControllerSyncPlan.swift; sourceTree = "<group>"; };
-		3AB43138D1CA4C21AFA5232A /* EmergencyFireControllerIconName.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EmergencyFireControllerIconName.swift; sourceTree = "<group>"; };
-		8CFE26002FB0000000000002 /* EmergencyFireControllerSyncPlanner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EmergencyFireControllerSyncPlanner.swift; sourceTree = "<group>"; };
-		8CFE26002FB0000000000003 /* EmergencyFireControllerSceneEventManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EmergencyFireControllerSceneEventManager.swift; sourceTree = "<group>"; };
-		8CFE26002FB0000000000004 /* DeviceEmerFireData+Sync.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "DeviceEmerFireData+Sync.swift"; sourceTree = "<group>"; };
-		8CFE26002FB0000000000006 /* PJLinkedStaOpertionsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PJLinkedStaOpertionsView.swift; sourceTree = "<group>"; };
 		8C778B232F9F584E000887FE /* DeviceEmerFireRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceEmerFireRepository.swift; sourceTree = "<group>"; };
 		8C778B2D2F9F584F000887FE /* LinkedEmerFireEditViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LinkedEmerFireEditViewModel.swift; sourceTree = "<group>"; };
 		8C778B482FA1A857000887FE /* PJNGatewayModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PJNGatewayModel.swift; sourceTree = "<group>"; };
@@ -2499,6 +2490,12 @@
 		8CF15F942F962C7C0044FCF3 /* LinkedEmerFireEditVC+Table.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "LinkedEmerFireEditVC+Table.swift"; sourceTree = "<group>"; };
 		8CF15F992F96311F0044FCF3 /* EmerFireCardPosition.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EmerFireCardPosition.swift; sourceTree = "<group>"; };
 		8CF15F9E2F964E240044FCF3 /* EmerFireStatusTextCell.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EmerFireStatusTextCell.swift; sourceTree = "<group>"; };
+		8CFE26002FB0000000000001 /* EmergencyFireControllerSyncPlan.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EmergencyFireControllerSyncPlan.swift; sourceTree = "<group>"; };
+		8CFE26002FB0000000000002 /* EmergencyFireControllerSyncPlanner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EmergencyFireControllerSyncPlanner.swift; sourceTree = "<group>"; };
+		8CFE26002FB0000000000003 /* EmergencyFireControllerSceneEventManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EmergencyFireControllerSceneEventManager.swift; sourceTree = "<group>"; };
+		8CFE26002FB0000000000004 /* DeviceEmerFireData+Sync.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "DeviceEmerFireData+Sync.swift"; sourceTree = "<group>"; };
+		8CFE26002FB0000000000005 /* EmerFireAlarmControllerSyncVC.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EmerFireAlarmControllerSyncVC.swift; sourceTree = "<group>"; };
+		8CFE26002FB0000000000006 /* PJLinkedStaOpertionsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PJLinkedStaOpertionsView.swift; sourceTree = "<group>"; };
 		8F7ED1D6D6BFC3B3813C473D /* Pods_Common_Archipelago.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_Common_Archipelago.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		BAC59D3E13FBA419B630C430 /* Pods-Common-Archipelago.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Common-Archipelago.release.xcconfig"; path = "Target Support Files/Pods-Common-Archipelago/Pods-Common-Archipelago.release.xcconfig"; sourceTree = "<group>"; };
 		C8002CD12DD33D60002A8629 /* EnergyStaticDataDeviceViewCell.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EnergyStaticDataDeviceViewCell.swift; sourceTree = "<group>"; };
@@ -3013,9 +3010,11 @@
 		C8FFD7D42E7D03B20074CC6A /* Pods_Common_SunSmart.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; path = Pods_Common_SunSmart.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		CA14D3D265B3B74E304A61D7 /* Pods-Common-Archipelago.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Common-Archipelago.debug.xcconfig"; path = "Target Support Files/Pods-Common-Archipelago/Pods-Common-Archipelago.debug.xcconfig"; sourceTree = "<group>"; };
 		D1025845F30FDFC9F8C9ACCB /* Pods_Common_SylSmart.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_Common_SylSmart.framework; sourceTree = BUILT_PRODUCTS_DIR; };
+		D8AA0EDFE6C84FD4BF944A23 /* EmerFireAlarmMonitorRendering.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EmerFireAlarmMonitorRendering.swift; sourceTree = "<group>"; };
 		DB94D08D018A81456AF735FC /* Pods-Common-SLG Sync Plus.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Common-SLG Sync Plus.release.xcconfig"; path = "Target Support Files/Pods-Common-SLG Sync Plus/Pods-Common-SLG Sync Plus.release.xcconfig"; sourceTree = "<group>"; };
 		DEFCD502EAD0464D20FC18F3 /* Pods-Common-SylSmart.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Common-SylSmart.release.xcconfig"; path = "Target Support Files/Pods-Common-SylSmart/Pods-Common-SylSmart.release.xcconfig"; sourceTree = "<group>"; };
 		E08E6FB7E3FFE82A5A620CAF /* Pods-Common-SunSmart.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Common-SunSmart.release.xcconfig"; path = "Target Support Files/Pods-Common-SunSmart/Pods-Common-SunSmart.release.xcconfig"; sourceTree = "<group>"; };
+		E4B67A9E7E2941BBBD518363 /* EmerFireAlarmMonitorDelegates.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EmerFireAlarmMonitorDelegates.swift; sourceTree = "<group>"; };
 		E51C037D44D1F333E8E14E98 /* Pods-Common-SLG Sync Plus.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Common-SLG Sync Plus.debug.xcconfig"; path = "Target Support Files/Pods-Common-SLG Sync Plus/Pods-Common-SLG Sync Plus.debug.xcconfig"; sourceTree = "<group>"; };
 		F10000000000000000000001 /* AppBase.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = AppBase.xcconfig; sourceTree = "<group>"; };
 		F10000000000000000000002 /* Base.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Base.xcconfig; sourceTree = "<group>"; };
@@ -3030,6 +3029,7 @@
 		F1000000000000000000000B /* Base.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Base.xcconfig; sourceTree = "<group>"; };
 		F1000000000000000000000C /* Debug.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Debug.xcconfig; sourceTree = "<group>"; };
 		F1000000000000000000000D /* Release.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Release.xcconfig; sourceTree = "<group>"; };
+		FDFE09FFC9994D668569EAC2 /* EmerFireAlarmMonitorState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EmerFireAlarmMonitorState.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -6213,7 +6213,8 @@
 				8C778B882FA1DCE2000887FE /* PJNGatewayWarningView.swift in Sources */,
 				8C77890E2F987931000887FE /* EmerFireAlarmDeviceCell.swift in Sources */,
 				C886E0722E30DE4900D0C3A6 /* DeviceAddCandidateDeviceListView.swift in Sources */,
-				C886E07A2E30DE4900D0C3A6 /* DeviceAddTargetSelectView.swift in Sources */,
+				C8A85CE62E0A4886007F9B81 /* DeviceAddTargetSelectView.swift in Sources */,
+				C886E07A2E30DE4900D0C3A6 /* FSCalendar.m in Sources */,
 				C886E0732E30DE4900D0C3A6 /* GroupPathSequenceDeviceAddView.swift in Sources */,
 				C886E0742E30DE4900D0C3A6 /* FSCalendarHeaderView.m in Sources */,
 				C886E0752E30DE4900D0C3A6 /* EnergyConsumptionInstructionView.swift in Sources */,
@@ -7354,7 +7355,8 @@
 				8C778B872FA1DCE2000887FE /* PJNGatewayWarningView.swift in Sources */,
 				8C77890D2F987931000887FE /* EmerFireAlarmDeviceCell.swift in Sources */,
 				C8BB662C2ED3F056000C63EE /* DeviceAddCandidateDeviceListView.swift in Sources */,
-				C8BB66372ED3F056000C63EE /* DeviceAddTargetSelectView.swift in Sources */,
+				C8A85CE72E0A4886007F9B81 /* DeviceAddTargetSelectView.swift in Sources */,
+				C8BB66372ED3F056000C63EE /* FSCalendarDelegationProxy.m in Sources */,
 				C8BB662D2ED3F056000C63EE /* GroupPathSequenceDeviceAddView.swift in Sources */,
 				C8BB662E2ED3F056000C63EE /* FSCalendarHeaderView.m in Sources */,
 				C8BB662F2ED3F056000C63EE /* EnergyConsumptionInstructionView.swift in Sources */,
@@ -7944,6 +7946,10 @@
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = F1000000000000000000000C /* Debug.xcconfig */;
 			buildSettings = {
+				CODE_SIGN_IDENTITY = "Apple Development";
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = 97QC5USUD2;
+				PROVISIONING_PROFILE_SPECIFIER = "";
 			};
 			name = Debug;
 		};
@@ -7951,6 +7957,10 @@
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = F1000000000000000000000D /* Release.xcconfig */;
 			buildSettings = {
+				CODE_SIGN_IDENTITY = "Apple Development";
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = 97QC5USUD2;
+				PROVISIONING_PROFILE_SPECIFIER = "";
 			};
 			name = Release;
 		};
