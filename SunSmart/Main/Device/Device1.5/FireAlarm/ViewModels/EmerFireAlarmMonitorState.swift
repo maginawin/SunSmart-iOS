@@ -106,7 +106,10 @@ enum EmerFireAlarmMonitorStateMapper {
     static func displayGroups(from config: LinkedEmerFireConfig) -> [EmerFireAlarmAssociatedGroupItem] {
         var displayGroups: [EmerFireAlarmAssociatedGroupItem] = []
         var addedAddresses: Set<Address> = []
-        let addresses = (config.configuration.powerLossSettings.associateGroupAddresses + config.configuration.fireAlarmSettings.associateGroupAddresses).sorted()
+        let addresses = associatedGroupAddresses(
+            configuration: config.configuration,
+            workMode: config.configuration.workMode
+        ).sorted()
 
         addresses.forEach { address in
             guard !addedAddresses.contains(address),

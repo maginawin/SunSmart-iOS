@@ -30,7 +30,10 @@ class PJLinkedStaOpertionsView: UIView {
         let title = isLinked ? "LINKED" : "LINK"
         let titleColor = isLinked ? Green_Color : Red_Color
         linkedButton.setTitle(title, for: .normal)
+        linkedButton.setTitle(title, for: .disabled)
         linkedButton.setTitleColor(titleColor, for: .normal)
+        linkedButton.setTitleColor(titleColor, for: .disabled)
+        linkedButton.isEnabled = !isLinked
     }
     
     private func setupUI() {

@@ -279,7 +279,7 @@ extension EmerFireAlarmMonitorVC {
             return
         }
         guard let node = currentDevice.bindNode else {
-            renderRealState(.offline)
+            renderUnlinkedState()
             return
         }
         guard node.isKeybindComplete else {
@@ -341,6 +341,7 @@ extension EmerFireAlarmMonitorVC {
         statusSetView.title = "Status Set".localizedString
         updateStatusSetRows(for: state)
         updateStatusWarningIconVisibility()
+        configureActions()
         switch state {
         case .loading:
             statusWarningView.config(statusLab: "Loading...".localizedString, textColor: Title_Color)
@@ -349,8 +350,7 @@ extension EmerFireAlarmMonitorVC {
         case .offline:
             statusWarningView.config(statusLab: "device_offline".localizedString, textColor: Title_Color)
         case .disabled:
-            let statusText = isAllEmergencyFunctionsDisabled ? "Normal State".localizedString : "Unlinked".localizedString
-            statusWarningView.config(statusLab: statusText, textColor: Title_Color, underlined: false)
+            statusWarningView.config(statusLab: "Normal State".localizedString, textColor: Title_Color, underlined: false)
         case .emergencyTriggered:
             statusWarningView.config(statusLab: "Power Outage Emergency".localizedString, textColor: RGB(237, 154, 0))
         case .emergencyNormal:
@@ -364,6 +364,21 @@ extension EmerFireAlarmMonitorVC {
         case .fireResuming:
             statusWarningView.config(statusLab: "Resuming".localizedString, textColor: RGB(164, 224, 89))
         }
+    }
+
+    func renderUnlinkedState() {
+        guard Thread.isMainThread else {
+            DispatchQueue.main.async { [weak self] in
+                self?.renderUnlinkedState()
+            }
+            return
+        }
+        currentState = .disabled
+        statusSetView.title = "Status Set".localizedString
+        updateStatusSetRows(for: .disabled)
+        updateStatusWarningIconVisibility()
+        configureActions()
+        statusWarningView.config(statusLab: "Unlinked".localizedString, textColor: Title_Color, underlined: false)
     }
 
     func updateStatusSetRows(for state: EmerFireAlarmMonitorDisplayState) {
