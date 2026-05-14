@@ -155,7 +155,7 @@ class DeviceAddViewCell: UITableViewCell {
                 identifyBtn.isHidden = false
             }
         
-            nameLabel.text = device.deviceName ?? "device".localizedString
+            nameLabel.text = (device.deviceName ?? "device").localizedString
             
             if let macAddress = device.macAddress, !macAddress.isEmpty {
                 macAddressLabel.text = macAddress.getMacAddressSegmentString()

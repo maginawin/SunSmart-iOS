@@ -206,7 +206,7 @@ extension LinkedEmerFireGroupSelectionVC: UITableViewDataSource, UITableViewDele
         let address = group.address.address
 
         if disabledGroupAddresses.contains(address) && !selectedGroupAddresses.contains(address) {
-            XWHUDManager.showTipHUD("Not selectable. This group is already associated with a device of the same type.", isLineFeed: true)
+            XWHUDManager.showTipHUD("Not selectable. This group is already associated with a device of the same type.".localizedString, isLineFeed: true)
             return
         }
 

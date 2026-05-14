@@ -202,7 +202,7 @@ class DeviceForceResetDeviceController: UIViewController {
                         if let node = MeshNetworkManager.instance.meshNetwork?.nodes.first(where: { $0.macAddress == provisionedDevice.macAddress }) {
                             
                             provisionedDevice.deviceName = node.name
-                            provisionedDevice.icon = node.iconName
+                            provisionedDevice.icon = EmergencyFireControllerIconName.addListIconName(for: node.deviceType, fallback: node.iconName)
                             provisionedDevice.address = node.primaryUnicastAddress
                             self.deviceGroup = node.group
                             

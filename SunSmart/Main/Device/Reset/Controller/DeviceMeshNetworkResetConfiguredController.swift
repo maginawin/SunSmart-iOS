@@ -111,7 +111,7 @@ class DeviceMeshNetworkResetConfiguredController: UIViewController {
             if let node = MeshNetworkManager.instance.meshNetwork?.nodes.first(where: { $0.macAddress == scanDevice.macAddress }) {
                 
                 scanDevice.deviceName = node.name
-                scanDevice.icon = node.iconName
+                scanDevice.icon = EmergencyFireControllerIconName.addListIconName(for: node.deviceType, fallback: node.iconName)
                 scanDevice.address = node.primaryUnicastAddress
                 scanDevice.deviceType = node.deviceType
                 scanDevice.selectedState = .selected

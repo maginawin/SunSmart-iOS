@@ -1696,6 +1696,8 @@
 "linked_fire_alarm_stop_instruction_2" = "2. After restoring to the original profile, all manual and automatic controls will be enabled.";
 "linked_fire_alarm_stop_instruction_3" = "3. The delay in restoration is due to security considerations.";
 "linked_emer_fire_controller_name" = "Emer&Fire Controller 1";
+"Emergency Controller" = "Emergency Controller";
+"Not selectable. This group is already associated with a device of the same type." = "Not selectable. This group is already associated with a device of the same type.";
 "linked_set_brightness_to" = "Set Brightness To";
 "linked_resuming" = "Resuming in:";
 "linked_send_count_per_5_seconds" = "Send Count (1 send every 5s):";

@@ -34,11 +34,11 @@ final class DeviceAddTargetSelectView: UIView {
         var title: String {
             switch self {
             case .group:
-                return "Group:"
+                return "\("group".localizedString):"
             case .emergencyFire:
-                return "Emergency Controller:"
+                return "\("Emergency Controller".localizedString):"
             case .dongle:
-                return "Dongle:"
+                return "\("dongle".localizedString):"
             }
         }
     }

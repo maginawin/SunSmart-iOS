@@ -150,7 +150,7 @@ extension LinkedEmerFireEditVC: UITableViewDataSource, UITableViewDelegate {
                     groups: DeviceEmerFireStore.shared.selectableGroups(),
                     selectedGroupAddresses: state.selectedGroupAddresses(for: row),
                     disabledGroupAddresses: state.disabledGroupAddresses(for: row),
-                    disabledSelectionTip: "Not selectable. This group is already associated with a device of the same type."
+                    disabledSelectionTip: "Not selectable. This group is already associated with a device of the same type.".localizedString
                 )
             ) { [weak self] addresses in
                 self?.state.updateSelectedGroupAddresses(for: row, addresses: addresses)
@@ -164,7 +164,7 @@ extension LinkedEmerFireEditVC: UITableViewDataSource, UITableViewDelegate {
                     groups: DeviceEmerFireStore.shared.selectableGroups(),
                     selectedGroupAddresses: state.selectedGroupAddresses(for: row),
                     disabledGroupAddresses: state.disabledGroupAddresses(for: row),
-                    disabledSelectionTip: "Not selectable. This group is already associated with a device of the same type."
+                    disabledSelectionTip: "Not selectable. This group is already associated with a device of the same type.".localizedString
                 )
             ) { [weak self] addresses in
                 self?.state.updateSelectedGroupAddresses(for: row, addresses: addresses)

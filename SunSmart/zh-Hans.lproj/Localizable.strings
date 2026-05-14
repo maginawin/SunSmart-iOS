@@ -1711,6 +1711,8 @@
 "linked_fire_alarm_stop_instruction_2" = "2. 恢复原始配置后，所有手动和自动控制都会重新启用。";
 "linked_fire_alarm_stop_instruction_3" = "3. 恢复延迟是基于安全方面的考虑。";
 "linked_emer_fire_controller_name" = "应急与火警控制器1";
+"Emergency Controller" = "应急火警控制器";
+"Not selectable. This group is already associated with a device of the same type." = "不可选择。该组已关联到相同类型的设备。";
 "linked_set_brightness_to" = "设置亮度为";
 "linked_resuming" = "恢复时间：";
 "linked_send_count_per_5_seconds" = "发送次数（每5秒发送1次）：";
