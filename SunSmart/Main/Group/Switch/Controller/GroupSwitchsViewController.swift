@@ -733,7 +733,7 @@ extension GroupSwitchsViewController: UITableViewDataSource, UITableViewDelegate
                 guard let self = self, let switchData = self.group.info.switchs.first(where: { $0.id == groupSwitch.id }) else {
                     return true
                 }
-                return switchData == groupSwitch
+                return groupSwitch.isSavedForReplacingEnOceanPanel(comparedWith: switchData)
             }
             vc.switchDataUpdateCallback = { _ in
 //                guard let self = self else { return }

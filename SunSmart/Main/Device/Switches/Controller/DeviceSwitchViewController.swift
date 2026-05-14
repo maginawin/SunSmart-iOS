@@ -760,7 +760,7 @@ extension DeviceSwitchViewController: UITableViewDataSource, UITableViewDelegate
                 guard let self = self, let switchData = self.switchData else {
                     return true
                 }
-                return switchData == self.setSwitchData
+                return self.setSwitchData.isSavedForReplacingEnOceanPanel(comparedWith: switchData)
             }
             vc.switchDataUpdateCallback = {[weak self] switchData in
                 guard let self = self else { return }

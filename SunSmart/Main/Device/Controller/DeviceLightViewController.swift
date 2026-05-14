@@ -89,14 +89,8 @@ class DeviceLightViewController: UIViewController {
             luxLabel?.isHidden = !node.preConfiguration.displayLux
             view.addSubview(luxLabel!)
             luxLabel!.snp.makeConstraints { make in
-//                if cctView.isHidden {
-//                    make.left.equalTo(brightnessView.snp.right).offset(SCRXFrom(30))
-//                }else {
-//                    make.left.equalTo(cctView.snp.right).offset(SCRXFrom(30))
-//                }
-                make.centerX.equalToSuperview()
-                make.top.equalTo(brightnessView.snp.bottom).offset(SCRYFit(25))
-//                make.centerY.equalTo(brightnessLabel)
+                make.left.equalTo(cctView.snp.right).offset(SCRXFrom(30))
+                make.centerY.equalTo(brightnessLabel)
             }
         }
 //        #endif
@@ -323,7 +317,7 @@ class DeviceLightViewController: UIViewController {
 //        }))
 //        #endif
         if self.node.ambientLightSensorModel != nil {
-            items.append(.init(icon: UIImage(named: "menu_information"), title: "display_lux".localizedString, tapItemBack: {[weak self] _ in
+            items.append(.init(icon: UIImage(named: "display_lux"), title: "display_lux".localizedString, tapItemBack: {[weak self] _ in
                 self?.displayLux()
             }))
         }
