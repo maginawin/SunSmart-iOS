@@ -331,6 +331,12 @@ extension EmerFireAlarmMonitorVC {
     }
 
     func renderRealState(_ state: EmerFireAlarmMonitorDisplayState) {
+        guard Thread.isMainThread else {
+            DispatchQueue.main.async { [weak self] in
+                self?.renderRealState(state)
+            }
+            return
+        }
         currentState = state
         statusSetView.title = "Status Set".localizedString
         updateStatusSetRows(for: state)

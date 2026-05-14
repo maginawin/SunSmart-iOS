@@ -174,7 +174,7 @@ class EmerFireAlarmMonitorVC: UIViewController, DeviceProtocol {
                 image: UIImage(named: EmergencyFireControllerIconName.Monitor.Action.identify),
                 borderColor: nil,
                 action: { [weak self] in
-                    self?.identifyAction()
+                    self?.identifyAction() ?? false
                 }
             )
         ]
@@ -183,14 +183,14 @@ class EmerFireAlarmMonitorVC: UIViewController, DeviceProtocol {
                 image: UIImage(named: actionIcons.trigger),
                 borderColor: nil,
                 action: { [weak self] in
-                    self?.triggerAction()
+                    self?.triggerAction() ?? false
                 }
             ))
             actions.append(.init(
                 image: UIImage(named: actionIcons.stop),
                 borderColor: nil,
                 action: { [weak self] in
-                    self?.stopAction()
+                    self?.stopAction() ?? false
                 }
             ))
         }
@@ -296,10 +296,11 @@ class EmerFireAlarmMonitorVC: UIViewController, DeviceProtocol {
         
     }
 
-    func identifyAction() {
+    @discardableResult
+    func identifyAction() -> Bool {
         guard let healthModel = currentDevice?.bindNode?.healthModel else {
             XWHUDManager.showTipHUD("failed".localizedString + " !", isLineFeed: true)
-            return
+            return false
         }
         MeshAPI.sendMessage(message: AttentionSet(attentionTimer: 6), model: healthModel, timeout: 5) { response in
             if response == nil {
@@ -308,51 +309,55 @@ class EmerFireAlarmMonitorVC: UIViewController, DeviceProtocol {
                 }
             }
         }
+        return true
     }
 
-    func triggerAction() {
+    @discardableResult
+    func triggerAction() -> Bool {
         guard canOperateEmergencyActions else {
             XWHUDManager.showTipHUD("no_permission".localizedString, isLineFeed: true)
-            return
+            return false
         }
         guard currentDevice?.bindNode != nil else {
             XWHUDManager.showTipHUD("Not executed. Please link a device first.".localizedString, isLineFeed: true)
-            return
+            return false
         }
         guard activeAssociatedGroupsContainDevices else {
             XWHUDManager.showTipHUD("Not executed. No devices in associated groups.".localizedString, isLineFeed: true)
-            return
+            return false
         }
         guard let sceneNumber = viewModel.activeTriggerSceneNumber() else {
             XWHUDManager.showTipHUD("failed".localizedString + " !", isLineFeed: true)
-            return
+            return false
         }
-        recallEmergencyScene(sceneNumber)
+        return recallEmergencyScene(sceneNumber)
     }
 
-    func stopAction() {
+    @discardableResult
+    func stopAction() -> Bool {
         guard canOperateEmergencyActions else {
             XWHUDManager.showTipHUD("no_permission".localizedString, isLineFeed: true)
-            return
+            return false
         }
         guard currentDevice?.bindNode != nil else {
             XWHUDManager.showTipHUD("Not executed. Please link a device first.".localizedString, isLineFeed: true)
-            return
+            return false
         }
         guard activeAssociatedGroupsContainDevices else {
             XWHUDManager.showTipHUD("Not executed. No devices in associated groups.".localizedString, isLineFeed: true)
-            return
+            return false
         }
-        lightLCOnAction()
+        return lightLCOnAction()
     }
 
-    func recallEmergencyScene(_ sceneNumber: SceneNumber) {
+    @discardableResult
+    func recallEmergencyScene(_ sceneNumber: SceneNumber) -> Bool {
         guard canOperateEmergencyActions else {
             XWHUDManager.showTipHUD("no_permission".localizedString, isLineFeed: true)
-            return
+            return false
         }
         guard let publishGroupAddress = publishGroupAddressForAction() else {
-            return
+            return false
         }
         let message = SceneRecallUnacknowledged(sceneNumber)
         print("[EFC] recall scene=\(String(format: "0x%04X", sceneNumber)), publishGroup=\(String(format: "0x%04X", publishGroupAddress)), mode=\(currentWorkMode)")
@@ -360,19 +365,22 @@ class EmerFireAlarmMonitorVC: UIViewController, DeviceProtocol {
         if sceneNumber == DeviceEmerFireData.powerLossTriggerSceneNumber || sceneNumber == DeviceEmerFireData.fireAlarmTriggerSceneNumber {
             EmergencyFireControllerSceneEventManager.updateManualControlBlocked(controllerId: currentDevice?.id ?? currentConfig?.deviceId, blocked: true)
         }
+        return true
     }
 
-    func lightLCOnAction() {
+    @discardableResult
+    func lightLCOnAction() -> Bool {
         guard canOperateEmergencyActions else {
             XWHUDManager.showTipHUD("no_permission".localizedString, isLineFeed: true)
-            return
+            return false
         }
         guard let publishGroupAddress = publishGroupAddressForAction() else {
-            return
+            return false
         }
         print("[EFC] light LC ON publishGroup=\(String(format: "0x%04X", publishGroupAddress)), mode=\(currentWorkMode)")
         MeshAPI.sendMessage(message: LightLCLightOnOffSetUnacknowledged(true), address: publishGroupAddress)
         EmergencyFireControllerSceneEventManager.updateManualControlBlocked(controllerId: currentDevice?.id ?? currentConfig?.deviceId, blocked: false)
+        return true
     }
 
     private func publishGroupAddressForAction() -> Address? {

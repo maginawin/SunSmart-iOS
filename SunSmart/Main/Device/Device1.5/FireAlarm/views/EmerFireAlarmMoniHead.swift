@@ -56,6 +56,12 @@ class EmerFireAlarmMoniHead: UIView {
     }
     
     func config(statusLab: String, textColor: UIColor? = nil, underlined: Bool = true){
+        guard Thread.isMainThread else {
+            DispatchQueue.main.async { [weak self] in
+                self?.config(statusLab: statusLab, textColor: textColor, underlined: underlined)
+            }
+            return
+        }
         lab.textColor = textColor ?? UIColor(red: 1, green: 0.281, blue: 0.194, alpha: 1)
         if underlined {
             lab.attributedText = NSMutableAttributedString(string: statusLab, attributes: [NSAttributedString.Key.underlineStyle: NSUnderlineStyle.single.rawValue])
@@ -63,5 +69,7 @@ class EmerFireAlarmMoniHead: UIView {
             lab.attributedText = nil
             lab.text = statusLab
         }
+        lab.setNeedsLayout()
+        lab.layoutIfNeeded()
     }
 }

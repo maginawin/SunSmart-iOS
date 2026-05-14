@@ -653,8 +653,7 @@ class SyncDevicesViewController: UIViewController {
     }
 
     private func appendEmergencyFireControllerGroupMutationItems(to section: SyncDevicesSectionModel, group: Group, addNodes: [Node], exitNodes: [Node]) {
-        guard let space = SpaceViewController.currentSpace()
-                ?? SpaceData.load(subNetworkId: group.subNetworkId ?? MeshNetworkManager.instance.currentNetworkKey.networkId.hex) else {
+        guard let space = SpaceData.load(subNetworkId: group.subNetworkId ?? MeshNetworkManager.instance.currentNetworkKey.networkId.hex) else {
             return
         }
 

@@ -88,6 +88,9 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
 
 extension UIApplication {
     func keyWindow() -> UIWindow {
+        guard Thread.isMainThread else {
+            return (delegate as? AppDelegate)?.window ?? UIWindow()
+        }
         let windowScene = connectedScenes
             .compactMap { $0 as? UIWindowScene }
             .first { $0.activationState == .foregroundActive }

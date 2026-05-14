@@ -118,6 +118,7 @@ final class EmerFireAlarmStatusSetView: UIView {
         stackView.axis = .horizontal
         stackView.alignment = .center
         stackView.spacing = SCRXFrom(12)
+        stackView.isUserInteractionEnabled = false
         return stackView
     }()
 

@@ -643,10 +643,10 @@ class BleFirmwareUpdateDeviceCell: UITableViewCell {
                 nameLabel.textColor = TextBlack_Color
                 rssiLabel.text = "\(rssi)dB"
                 rssiLabel.textColor = rssi >= -80 ? SubText_Color : Red_Color
-                deviceImageView.image = UIImage(named: device.iconName)
+                deviceImageView.image = UIImage(named: device.bleFirmwareIconName)
             }else {
                 nameLabel.textColor = SubText_Color
-                deviceImageView.image = UIImage(named: device.iconName)?.withTintColor(SubText_Color)
+                deviceImageView.image = UIImage(named: device.bleFirmwareIconName)?.withTintColor(SubText_Color)
                 rssiLabel.text = "--"
                 rssiLabel.textColor = SubText_Color
                 selectedImageView.isHidden = true
@@ -762,5 +762,11 @@ class BleFirmwareUpdateDeviceCell: UITableViewCell {
             make.center.equalTo(progressView)
         }
         
+    }
+}
+
+private extension Node {
+    var bleFirmwareIconName: String {
+        deviceType == .emergencyController ? EmergencyFireControllerIconName.main : iconName
     }
 }

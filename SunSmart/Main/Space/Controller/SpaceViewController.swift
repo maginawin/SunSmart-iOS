@@ -61,6 +61,9 @@ extension SpaceViewController {
     
     /// 当前显示的space控制器
     static func currentSpaceVc() -> SpaceViewController? {
+        guard Thread.isMainThread else {
+            return nil
+        }
         guard let rootVc = UIApplication.shared.keyWindow().rootViewController as? UINavigationController else {
             return nil
         }
@@ -69,6 +72,9 @@ extension SpaceViewController {
     
     /// 当前space
     static func currentSpace() -> SpaceData? {
+        guard Thread.isMainThread else {
+            return SpaceData.load(subNetworkId: MeshNetworkManager.instance.currentNetworkKey.networkId.hex)
+        }
         return currentSpaceVc()?.space
     }
     
