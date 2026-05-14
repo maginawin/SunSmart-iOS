@@ -52,7 +52,7 @@ final class LinkedEmerFireEditViewModel {
                 lastSavedConfigurationChange = nil
             }
             DeviceEmerFireStore.shared.save(device)
-            NotificationCenter.default.post(name: .linkedEmerFireConfigDidChange, object: device.toConfig())
+            NotificationCenter.default.postLinkedEmerFireConfigDidChange(device.toConfig())
             return device
         }
         lastSavedConfigurationChange = nil

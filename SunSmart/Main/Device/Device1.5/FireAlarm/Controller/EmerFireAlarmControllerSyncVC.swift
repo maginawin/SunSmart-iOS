@@ -264,7 +264,7 @@ final class EmerFireAlarmControllerSyncVC: UIViewController {
             startSync()
         case .syncSuccess:
             NotificationCenter.default.post(name: .init(deviceOthersRefreshNotificationName), object: nil)
-            NotificationCenter.default.post(name: .linkedEmerFireConfigDidChange, object: data.toConfig())
+            NotificationCenter.default.postLinkedEmerFireConfigDidChange(data.toConfig())
             if syncSuccessCallback != nil {
                 performSyncSuccessCallback()
                 return
@@ -309,7 +309,7 @@ final class EmerFireAlarmControllerSyncVC: UIViewController {
             DeviceEmerFireStore.shared.save(data)
         }
         NotificationCenter.default.post(name: .init(deviceOthersRefreshNotificationName), object: nil)
-        NotificationCenter.default.post(name: .linkedEmerFireConfigDidChange, object: data.toConfig())
+        NotificationCenter.default.postLinkedEmerFireConfigDidChange(data.toConfig())
         if success {
             performSyncSuccessCallback()
         }

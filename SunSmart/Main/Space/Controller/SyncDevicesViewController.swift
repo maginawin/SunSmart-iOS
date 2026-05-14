@@ -894,7 +894,7 @@ class SyncDevicesViewController: UIViewController {
         }
         let postSyncNotifications = {
             NotificationCenter.default.post(name: .init(deviceOthersRefreshNotificationName), object: nil)
-            NotificationCenter.default.post(name: .linkedEmerFireConfigDidChange, object: data.toConfig())
+            NotificationCenter.default.postLinkedEmerFireConfigDidChange(data.toConfig())
         }
         if Thread.isMainThread {
             postSyncNotifications()

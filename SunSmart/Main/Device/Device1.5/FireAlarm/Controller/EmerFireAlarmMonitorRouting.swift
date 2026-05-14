@@ -127,8 +127,9 @@ extension EmerFireAlarmMonitorVC {
     func finishDeleteConfiguration(_ device: DeviceEmerFireData) {
         DeviceEmerFireStore.shared.clearMonitoringConfiguration(for: device)
         currentDevice = device
-        currentConfig = device.toConfig()
-        NotificationCenter.default.post(name: .linkedEmerFireConfigDidChange, object: currentConfig)
+        let config = device.toConfig()
+        currentConfig = config
+        NotificationCenter.default.postLinkedEmerFireConfigDidChange(config)
         applySavedConfig()
         refreshRealState()
         DispatchQueue.main.asyncAfter(wallDeadline: .now() + 1) { [weak self] in

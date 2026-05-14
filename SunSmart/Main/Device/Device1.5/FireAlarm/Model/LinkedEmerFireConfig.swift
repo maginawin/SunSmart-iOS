@@ -132,3 +132,15 @@ struct LinkedEmerFireConfig: Equatable {
 extension Notification.Name {
     static let linkedEmerFireConfigDidChange = Notification.Name("linkedEmerFireConfigDidChange")
 }
+
+extension NotificationCenter {
+    func postLinkedEmerFireConfigDidChange(_ config: LinkedEmerFireConfig) {
+        if Thread.isMainThread {
+            post(name: .linkedEmerFireConfigDidChange, object: config)
+        } else {
+            DispatchQueue.main.async { [weak self] in
+                self?.post(name: .linkedEmerFireConfigDidChange, object: config)
+            }
+        }
+    }
+}
