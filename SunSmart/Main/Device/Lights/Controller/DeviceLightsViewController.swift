@@ -137,6 +137,18 @@ class DeviceLightsViewController: UIViewController {
             guard let self = self else { return }
             self.updateUI(reloadTableView: false)
         }
+
+        NotificationCenter.default.addObserver(forName: .init(emergencyFireControllerManualControlStateDidChangeNotificationName), object: nil, queue: .main) {[weak self] _ in
+            guard let self else { return }
+            self.collectionView.reloadData()
+            self.updateAllOnOffItemUI()
+        }
+
+        NotificationCenter.default.addObserver(forName: .linkedEmerFireConfigDidChange, object: nil, queue: .main) {[weak self] _ in
+            guard let self else { return }
+            self.collectionView.reloadData()
+            self.updateAllOnOffItemUI()
+        }
     }
     
     private func loadDevices() {
@@ -466,6 +478,9 @@ class DeviceLightsViewController: UIViewController {
     
     /// 全关
      private func allOffAction() {
+         guard !showEmergencyControlBlockedIfNeeded() else {
+             return
+         }
          if !routeTest {
              devices.forEach({
                  $0.isOn = false
@@ -481,6 +496,9 @@ class DeviceLightsViewController: UIViewController {
     
     /// 全开
     private func allOnAction() {
+        guard !showEmergencyControlBlockedIfNeeded() else {
+            return
+        }
         if !routeTest {
             devices.forEach({ $0.isOn = true })
             collectionView.reloadData()
@@ -937,6 +955,9 @@ extension DeviceLightsViewController: UICollectionViewDataSource, UICollectionVi
     func collectionView(_ collectionView: UICollectionView, didSelectItemAt indexPath: IndexPath) {
         
         if indexPath.item == 0 { // 全开/全关
+            guard !showEmergencyControlBlockedIfNeeded() else {
+                return
+            }
             if let isOn = controlAllOn {
                 controlAllOn = isOn
             }else {
@@ -950,6 +971,9 @@ extension DeviceLightsViewController: UICollectionViewDataSource, UICollectionVi
             }
         }else { // 设备点击
             let node = devices[indexPath.row - 1]
+            guard !showEmergencyControlBlockedIfNeeded(node: node) else {
+                return
+            }
             // 未绑定完成功能则修复设备
             guard node.isKeybindComplete else {
                 // 判断是否有设备编辑/配置权限，没有则无响应
@@ -1077,6 +1101,9 @@ extension DeviceLightsViewController: DeviceLightControlViewDelegate {
     
     func lightControl(_ view: DeviceLightControlView, levelValueChanged level: Int, ended: Bool) {
         print("level: \(level)")
+        guard !showEmergencyControlBlockedIfNeeded() else {
+            return
+        }
         
 //        let lightness = UInt16(round(Double(level) / 100.0) * Double(UInt16.max))
         let ligheness = Node.getLightness(lightness100: level)
@@ -1099,6 +1126,9 @@ extension DeviceLightsViewController: DeviceLightControlViewDelegate {
     
     func lightControl(_ view: DeviceLightControlView, cctValueChanged cct: Int, ended: Bool) {
         print("cct: \(cct)")
+        guard !showEmergencyControlBlockedIfNeeded() else {
+            return
+        }
         
         MeshAPI.sendMessage(message: LightCTLTemperatureSetUnacknowledged(temperature: UInt16(cct), deltaUV: 0), address: .subElementBroadcastGroupAddress)
 //        MeshAPI.setAllNodesCTLState(lightness: ligheness, temperature: UInt16(cct))
@@ -1122,6 +1152,9 @@ extension DeviceLightsViewController: DeviceLightControlViewDelegate {
         guard view.autoState == .normal else {
             return
         }
+        guard !showEmergencyControlBlockedIfNeeded() else {
+            return
+        }
         view.updateAutoStateUI(autoState: .progress)
         DispatchQueue.main.asyncAfter(deadline: .now() + 1) {[weak self] in
             self?.lightControlView.updateAutoStateUI(autoState: .normal)
@@ -1137,6 +1170,19 @@ extension DeviceLightsViewController: DeviceLightControlViewDelegate {
         collectionView.reloadData()
         // 所有灯Auto
         MeshAPI.sendMessage(message: LightLCLightOnOffSetUnacknowledged(true), address: .subElementBroadcastGroupAddress)
+    }
+}
+
+private extension DeviceLightsViewController {
+    func showEmergencyControlBlockedIfNeeded(node: Node? = nil) -> Bool {
+        let blocked = node.map {
+            EmergencyFireControllerSceneEventManager.isManualControlBlocked(for: $0)
+        } ?? EmergencyFireControllerSceneEventManager.hasManualControlBlockedGroups
+        guard blocked else {
+            return false
+        }
+        XWHUDManager.showTipHUD("Uncontrollable in emergency situations".localizedString, isLineFeed: true)
+        return true
     }
 }
 

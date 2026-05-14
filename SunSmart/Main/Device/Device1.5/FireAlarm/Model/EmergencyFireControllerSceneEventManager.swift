@@ -9,6 +9,7 @@ import Foundation
 import NordicSigMeshSDK
 
 let emergencyFireControllerSceneEventNotificationName = "emergencyFireControllerSceneEventNotification"
+let emergencyFireControllerManualControlStateDidChangeNotificationName = "emergencyFireControllerManualControlStateDidChangeNotification"
 
 enum EmergencyFireControllerSceneEventState: Equatable {
     case powerLossTriggered
@@ -31,6 +32,7 @@ struct EmergencyFireControllerSceneEvent {
 final class EmergencyFireControllerSceneEventManager {
 
     private static weak var current: EmergencyFireControllerSceneEventManager?
+    private static var activeEmergencyControllerIds: Set<String> = []
 
     private let controllersProvider: () -> [DeviceEmerFireData]
     private var desiredProxyFilterAddresses: Set<Address> = []
@@ -48,6 +50,9 @@ final class EmergencyFireControllerSceneEventManager {
 
     func deactivate() {
         removeProxyFilterAddresses()
+        controllersProvider().forEach {
+            Self.activeEmergencyControllerIds.remove($0.id)
+        }
         if Self.current === self {
             Self.current = nil
         }
@@ -60,6 +65,48 @@ final class EmergencyFireControllerSceneEventManager {
 
     static func refreshProxyFilterAddresses() {
         current?.refreshProxyFilterAddresses()
+    }
+
+    static func isManualControlBlocked(for group: Group) -> Bool {
+        guard let current else { return false }
+        let publishGroups = activeEmergencyPublishGroups(in: current)
+        return group.nodes.contains {
+            isSubscribedToEmergencyPublishGroup($0, publishGroups: publishGroups)
+        }
+    }
+
+    static func isManualControlBlocked(for groups: [Group]) -> Bool {
+        guard let current else { return false }
+        let publishGroups = activeEmergencyPublishGroups(in: current)
+        return groups.contains { group in
+            group.nodes.contains {
+                isSubscribedToEmergencyPublishGroup($0, publishGroups: publishGroups)
+            }
+        }
+    }
+
+    static func isManualControlBlocked(for node: Node) -> Bool {
+        guard let current else { return false }
+        return isSubscribedToEmergencyPublishGroup(node, publishGroups: activeEmergencyPublishGroups(in: current))
+    }
+
+    static var hasManualControlBlockedGroups: Bool {
+        guard let current else { return false }
+        let publishGroups = activeEmergencyPublishGroups(in: current)
+        return MeshNetworkManager.instance.realNodes.contains {
+            isSubscribedToEmergencyPublishGroup($0, publishGroups: publishGroups)
+        }
+    }
+
+    static func updateManualControlBlocked(controllerId: String?, blocked: Bool) {
+        guard let controllerId else { return }
+        let oldIds = activeEmergencyControllerIds
+        if blocked {
+            activeEmergencyControllerIds.insert(controllerId)
+        } else {
+            activeEmergencyControllerIds.remove(controllerId)
+        }
+        notifyManualControlStateDidChangeIfNeeded(oldIds: oldIds)
     }
 
     @discardableResult
@@ -84,6 +131,7 @@ final class EmergencyFireControllerSceneEventManager {
             sceneNumber: sceneNumber,
             state: Self.eventState(sceneNumber: sceneNumber, workMode: controller.configuration.workMode)
         )
+        Self.updateActiveEmergencyControllers(with: event)
         NotificationCenter.default.post(name: .init(emergencyFireControllerSceneEventNotificationName), object: event)
         log("matched scene recall controller: \(controller.name), scene: \(sceneNumber), state: \(event.state), source: \(source.hex), destination: \(destination.hex)")
         return event
@@ -177,6 +225,46 @@ final class EmergencyFireControllerSceneEventManager {
                 guard let self, Self.current === self else { return }
                 refreshProxyFilterAddresses()
             }
+        }
+    }
+
+    private static func updateActiveEmergencyControllers(with event: EmergencyFireControllerSceneEvent) {
+        let oldIds = activeEmergencyControllerIds
+        switch event.state {
+        case .powerLossTriggered, .fireAlarmTriggered:
+            activeEmergencyControllerIds.insert(event.controllerId)
+        case .powerLossStopped, .fireAlarmStopped, .clear:
+            activeEmergencyControllerIds.remove(event.controllerId)
+        }
+        notifyManualControlStateDidChangeIfNeeded(oldIds: oldIds)
+    }
+
+    private static func activeEmergencyControllers(in manager: EmergencyFireControllerSceneEventManager) -> [DeviceEmerFireData] {
+        manager.controllersProvider().filter {
+            activeEmergencyControllerIds.contains($0.id) && $0.configuration.workMode != .allDisabled
+        }
+    }
+
+    private static func activeEmergencyPublishGroups(in manager: EmergencyFireControllerSceneEventManager) -> [Group] {
+        activeEmergencyControllers(in: manager).compactMap { controller in
+            guard let publishGroupAddress = controller.publishGroupAddress else {
+                return nil
+            }
+            return MeshNetworkManager.instance.meshNetwork?.group(withAddress: MeshAddress(publishGroupAddress))
+        }
+    }
+
+    private static func isSubscribedToEmergencyPublishGroup(_ node: Node, publishGroups: [Group]) -> Bool {
+        publishGroups.contains { publishGroup in
+            node.lightLCModel?.isSubscribed(to: publishGroup) == true ||
+            node.sceneModel?.isSubscribed(to: publishGroup) == true
+        }
+    }
+
+    private static func notifyManualControlStateDidChangeIfNeeded(oldIds: Set<String>) {
+        guard oldIds != activeEmergencyControllerIds else { return }
+        DispatchQueue.main.async {
+            NotificationCenter.default.post(name: .init(emergencyFireControllerManualControlStateDidChangeNotificationName), object: nil)
         }
     }
 

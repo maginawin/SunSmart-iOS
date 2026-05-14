@@ -402,6 +402,9 @@ extension SceneViewController: UICollectionViewDataSource, UICollectionViewDeleg
             XWHUDManager.showTipHUD("group_all_devices_offline".localizedString, isLineFeed: true)
             return
         }
+        guard !showEmergencyControlBlockedIfNeeded(group: group) else {
+            return
+        }
         
         group.isOn = !group.isOn
         MeshAPI.setGroupOnOffState(address: group.address.address, isOn: group.isOn)
@@ -417,5 +420,15 @@ extension SceneViewController: UICollectionViewDataSource, UICollectionViewDeleg
         
         pageControl.currentPage = page
         //            pageControl.setCurrentPage(page, animated: true)
+    }
+}
+
+private extension SceneViewController {
+    func showEmergencyControlBlockedIfNeeded(group: Group) -> Bool {
+        guard EmergencyFireControllerSceneEventManager.isManualControlBlocked(for: group) else {
+            return false
+        }
+        XWHUDManager.showTipHUD("Uncontrollable in emergency situations".localizedString, isLineFeed: true)
+        return true
     }
 }

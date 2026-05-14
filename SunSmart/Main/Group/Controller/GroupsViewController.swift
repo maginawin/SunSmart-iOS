@@ -117,6 +117,14 @@ class GroupsViewController: UIViewController {
             guard let self = self else { return }
             self.updateUI()
         }
+
+        NotificationCenter.default.addObserver(forName: .init(emergencyFireControllerManualControlStateDidChangeNotificationName), object: nil, queue: .main) {[weak self] _ in
+            self?.updateUI()
+        }
+
+        NotificationCenter.default.addObserver(forName: .linkedEmerFireConfigDidChange, object: nil, queue: .main) {[weak self] _ in
+            self?.updateUI()
+        }
         
         NetworkRequest.shared.addObserver(self, forKeyPath: "networkable", context: nil)
     }
@@ -196,6 +204,9 @@ class GroupsViewController: UIViewController {
     private func groupHandleSingleTap(_ indexPath: IndexPath) {
         
         let group = MeshNetworkManager.instance.groups[indexPath.item]
+        guard !showEmergencyControlBlockedIfNeeded(group) else {
+            return
+        }
         
         group.isOn = !group.isOn
         // 修改缓存数据
@@ -215,11 +226,14 @@ class GroupsViewController: UIViewController {
         guard let item = collectionView.cellForItem(at: indexPath), indexPath.row < MeshNetworkManager.instance.groups.count else { return }
         
         var menuItems: [MenuPopView.MenuItem] = [
-            .init(icon: UIImage(named: "group_auto"), title: "AUTO", tapItemBack: { _ in
+            .init(icon: UIImage(named: "group_auto"), title: "AUTO", tapItemBack: { [weak self] _ in
                 guard indexPath.row < MeshNetworkManager.instance.groups.count else {
                     return
                 }
                 let group = MeshNetworkManager.instance.groups[indexPath.item]
+                guard self?.showEmergencyControlBlockedIfNeeded(group) != true else {
+                    return
+                }
                 MeshAPI.sendMessage(message: LightLCLightOnOffSetUnacknowledged(true), address: group.address.address)
             })
         ]
@@ -227,11 +241,14 @@ class GroupsViewController: UIViewController {
         let group = MeshNetworkManager.instance.groups[indexPath.item]
         if space.groupOperates.contains(.edit), group.info.profile.type != .daylight && group.info.profile.type != .manualControl {
             menuItems.append(
-                .init(icon: UIImage(named: "menu_profile_test"), title: "TEST".localizedString, tapItemBack: { _ in
+                .init(icon: UIImage(named: "menu_profile_test"), title: "TEST".localizedString, tapItemBack: { [weak self] _ in
                     guard indexPath.row < MeshNetworkManager.instance.groups.count else {
                         return
                     }
                     let group = MeshNetworkManager.instance.groups[indexPath.item]
+                    guard self?.showEmergencyControlBlockedIfNeeded(group) != true else {
+                        return
+                    }
                     MeshAPI.sendMessage(message: LightLCLightOnOffSetUnacknowledged(false), address: group.address.address)
                 })
             )
@@ -245,6 +262,14 @@ class GroupsViewController: UIViewController {
         menuView.show(to: view)
         
         groupMenuView = menuView
+    }
+
+    private func showEmergencyControlBlockedIfNeeded(_ group: Group) -> Bool {
+        guard EmergencyFireControllerSceneEventManager.isManualControlBlocked(for: group) else {
+            return false
+        }
+        XWHUDManager.showTipHUD("Uncontrollable in emergency situations".localizedString, isLineFeed: true)
+        return true
     }
     
     private func deleteGroup(group: Group) {
@@ -604,4 +629,3 @@ extension GroupsViewController: SpaceFunctionFooterViewDelegate {
         updateUI()
     }
 }
-

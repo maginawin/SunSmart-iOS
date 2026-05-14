@@ -393,6 +393,9 @@ class SceneSettingsViewController: UIViewController {
         
         // 有设备的组
         let controlGroups = MeshNetworkManager.instance.groups.filter({ $0.isSelected && $0.nodes.count > 0 })
+        guard !showEmergencyControlBlockedIfNeeded(groups: controlGroups) else {
+            return
+        }
         controlGroups.forEach({
             if let data = $0.executeSceneData, $0.nodes.count > 0 {
                 // 判断组内是否有色温灯
@@ -594,6 +597,9 @@ extension SceneSettingsViewController: UICollectionViewDataSource, UICollectionV
             XWHUDManager.showTipHUD("group_all_devices_offline".localizedString, isLineFeed: true)
             return
         }
+        guard !showEmergencyControlBlockedIfNeeded(group: group) else {
+            return
+        }
         
         group.isOn = !group.isOn
         CATransaction.setDisableActions(true)
@@ -605,6 +611,20 @@ extension SceneSettingsViewController: UICollectionViewDataSource, UICollectionV
         
     }
     
+}
+
+private extension SceneSettingsViewController {
+    func showEmergencyControlBlockedIfNeeded(group: Group) -> Bool {
+        showEmergencyControlBlockedIfNeeded(groups: [group])
+    }
+
+    func showEmergencyControlBlockedIfNeeded(groups: [Group]) -> Bool {
+        guard EmergencyFireControllerSceneEventManager.isManualControlBlocked(for: groups) else {
+            return false
+        }
+        XWHUDManager.showTipHUD("Uncontrollable in emergency situations".localizedString, isLineFeed: true)
+        return true
+    }
 }
 
 private extension Group {

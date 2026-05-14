@@ -413,6 +413,14 @@ class GroupViewController: UIViewController {
             }
             self.proxyFilterAddGroup()
         }
+
+        NotificationCenter.default.addObserver(forName: .init(emergencyFireControllerManualControlStateDidChangeNotificationName), object: nil, queue: .main) {[weak self] _ in
+            self?.updateUI()
+        }
+
+        NotificationCenter.default.addObserver(forName: .linkedEmerFireConfigDidChange, object: nil, queue: .main) {[weak self] _ in
+            self?.updateUI()
+        }
         
     }
     
@@ -745,6 +753,9 @@ class GroupViewController: UIViewController {
     }
     
     @objc private func onoffBtnClick(sender: UIButton) {
+        guard !showEmergencyControlBlockedIfNeeded() else {
+            return
+        }
         sender.isSelected = !sender.isSelected
         
         MeshAPI.setGroupOnOffState(address: group.address.address, isOn: sender.isSelected)
@@ -761,6 +772,9 @@ class GroupViewController: UIViewController {
     
     @objc private func autoBtnAction(sender: UIButton) {
         guard autoButtonState == .normal else {
+            return
+        }
+        guard !showEmergencyControlBlockedIfNeeded() else {
             return
         }
         autoButtonState = .progress
@@ -833,6 +847,9 @@ class GroupViewController: UIViewController {
         lightnessSlider.valueThrottleChangedCallback = {[weak self] (value, ended) in
             print("lightness: \(value)")
             guard let self = self else { return }
+            guard !self.showEmergencyControlBlockedIfNeeded() else {
+                return
+            }
             let lightness = Node.getLightness(lightness100: value)
             self.group.lightness = lightness
             self.group.isOn = lightness > 0
@@ -856,6 +873,9 @@ class GroupViewController: UIViewController {
         cctSlider.valueThrottleChangedCallback = {[weak self] (value, ended) in
             print("cct: \(value)")
             guard let self = self else { return }
+            guard !self.showEmergencyControlBlockedIfNeeded() else {
+                return
+            }
             self.group.cct = value
             MeshAPI.setGroupColorTemperatureState(address: self.group.address.address, temperature: UInt16(value))
             group.nodes.forEach({
@@ -1004,6 +1024,9 @@ class GroupViewController: UIViewController {
     
     /// 组测试
     @objc private func groupTest() {
+        guard !showEmergencyControlBlockedIfNeeded() else {
+            return
+        }
         MeshAPI.sendMessage(message: LightLCLightOnOffSetUnacknowledged(false), address: group.address.address)
     }
     
@@ -1289,6 +1312,9 @@ extension GroupViewController: UICollectionViewDataSource, UICollectionViewDeleg
     
     func collectionView(_ collectionView: UICollectionView, didSelectItemAt indexPath: IndexPath) {
         let node = group.nodes[indexPath.item]
+        guard !showEmergencyControlBlockedIfNeeded() else {
+            return
+        }
         guard node.state else {
             MeshAPI.getNodeOnOffState(address: node.primaryUnicastAddress)
             return
@@ -1396,6 +1422,16 @@ extension GroupViewController: MeshLibManagerMessageDelegate {
         }
     }
     
+}
+
+private extension GroupViewController {
+    func showEmergencyControlBlockedIfNeeded() -> Bool {
+        guard EmergencyFireControllerSceneEventManager.isManualControlBlocked(for: group) else {
+            return false
+        }
+        XWHUDManager.showTipHUD("Uncontrollable in emergency situations".localizedString, isLineFeed: true)
+        return true
+    }
 }
 
 extension GroupViewController: GroupSensorViewDelegate {

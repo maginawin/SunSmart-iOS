@@ -410,6 +410,9 @@ extension ScenesViewController: UICollectionViewDataSource, UICollectionViewDele
             XWHUDManager.showTipHUD("device_notconnect_message".localizedString, isLineFeed: true)
             return
         }
+        guard !showEmergencyControlBlockedIfNeeded(groups: scene.info.groups) else {
+            return
+        }
         
         if let cell = collectionView.cellForItem(at: indexPath) as? ScenesViewCell, !cell.isExecuting {
             // 执行场景
@@ -436,6 +439,16 @@ extension ScenesViewController: UICollectionViewDataSource, UICollectionViewDele
         }
     }
     
+}
+
+private extension ScenesViewController {
+    func showEmergencyControlBlockedIfNeeded(groups: [Group]) -> Bool {
+        guard EmergencyFireControllerSceneEventManager.isManualControlBlocked(for: groups) else {
+            return false
+        }
+        XWHUDManager.showTipHUD("Uncontrollable in emergency situations".localizedString, isLineFeed: true)
+        return true
+    }
 }
 
 extension ScenesViewController: SpaceFunctionFooterViewDelegate {
