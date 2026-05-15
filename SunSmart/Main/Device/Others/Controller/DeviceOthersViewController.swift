@@ -183,7 +183,8 @@ class DeviceOthersViewController: UIViewController, DeviceProtocol {
     private func deleteEmergencyFireController(_ device: DeviceEmerFireData) {
         let planner = EmergencyFireControllerSyncPlanner(data: device, meshUUID: device.meshUUID, subnetworkId: device.meshNetworkId)
         let cleanupItems = planner.makeDeleteCleanupItems()
-        if !cleanupItems.isEmpty {
+        let needsMeshSync = cleanupItems.flatMap { $0.tasks }.contains { !$0.messageHandles.isEmpty }
+        if needsMeshSync {
             guard MeshLibManager.manager.isMeshNetworkConnected else {
                 XWHUDManager.showTipHUD("device_notconnect_message".localizedString, isLineFeed: true)
                 return

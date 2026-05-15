@@ -148,7 +148,7 @@ struct EmergencyFireControllerSyncPlanner {
     }
 
     func makeActiveModeCleanupItems() throws -> [EmergencyFireControllerSyncItem] {
-        guard activeMode != nil, let publishGroup = data.publishGroup else {
+        guard let publishGroup = data.publishGroup else {
             return []
         }
 
