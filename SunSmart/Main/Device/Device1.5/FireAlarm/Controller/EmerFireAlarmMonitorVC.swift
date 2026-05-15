@@ -169,6 +169,9 @@ class EmerFireAlarmMonitorVC: UIViewController, DeviceProtocol {
     
     func configureActions() {
         let actionIcons = viewModel.actionIconNames()
+        let emergencyActionBorderColor = currentWorkMode == .fireAlarmEmergency
+        ? UIColor(red: 1, green: 0.635, blue: 0.602, alpha: 0.2)
+            : nil
         var actions: [EmerFireAlarmMoniView.ActionItem] = [
             .init(
                 image: UIImage(named: EmergencyFireControllerIconName.Monitor.Action.identify),
@@ -181,14 +184,14 @@ class EmerFireAlarmMonitorVC: UIViewController, DeviceProtocol {
         if canOperateEmergencyActions {
             actions.append(.init(
                 image: UIImage(named: actionIcons.trigger),
-                borderColor: nil,
+                borderColor: emergencyActionBorderColor,
                 action: { [weak self] in
                     self?.triggerAction() ?? false
                 }
             ))
             actions.append(.init(
                 image: UIImage(named: actionIcons.stop),
-                borderColor: nil,
+                borderColor: emergencyActionBorderColor,
                 action: { [weak self] in
                     self?.stopAction() ?? false
                 }
