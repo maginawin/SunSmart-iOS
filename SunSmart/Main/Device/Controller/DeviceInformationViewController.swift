@@ -44,6 +44,7 @@ class DeviceInformationViewController: UIViewController {
         
         setupTableView()
         getData()
+        refreshRSSI()
     }
     
     override func viewDidAppear(_ animated: Bool) {
@@ -64,6 +65,21 @@ class DeviceInformationViewController: UIViewController {
                 }
                 self.setupDeviceInfoDataSource()
                 self.tableView.reloadSections(IndexSet(integer: 0), with: .none)
+            }
+        }
+    }
+    
+    private func refreshRSSI() {
+        MeshLibManager.manager.refreshNodesRSSI(withWaitFor: 5) {[weak self] nodes in
+            guard let self = self else { return }
+            if !nodes.contains(where: { $0.node.primaryUnicastAddress == self.node.primaryUnicastAddress }) {
+                self.node.rssi = nil
+            }
+            self.setupDeviceInfoDataSource()
+            if let section = self.sections.firstIndex(of: .deviceInfo) {
+                CATransaction.setDisableActions(true)
+                self.tableView.reloadSections(IndexSet(integer: section), with: .none)
+                CATransaction.commit()
             }
         }
     }
