@@ -1544,17 +1544,23 @@ extension SpaceData {
                        let data = try? JSONSerialization.data(withJSONObject: configurationDict) {
                         configuration = try? jsonDecoder.decode(EmergencyFireControllerConfiguration.self, from: data)
                     }
+                    let bindNodeAddress = controllerJson["bindNodeAddress"].string.flatMap { Address(hex: $0) }
+                    let publishGroupAddress = controllerJson["publishGroupAddress"].string.flatMap { Address(hex: $0) }
+                    let resolvedConfiguration = configuration ?? .defaultValue
+                    let importedIsSynced = !resolvedConfiguration.hasSyncIntent &&
+                        bindNodeAddress == nil &&
+                        publishGroupAddress == nil
                     let controller = DeviceEmerFireData(
                         id: id,
                         spaceId: self.id,
                         meshUUID: meshUUID,
                         meshNetworkId: self.meshNetworkId,
                         name: name,
-                        bindNodeAddress: controllerJson["bindNodeAddress"].string.flatMap { Address(hex: $0) },
-                        publishGroupAddress: controllerJson["publishGroupAddress"].string.flatMap { Address(hex: $0) },
-                        isSynced: controllerJson["isSynced"].bool ?? false,
+                        bindNodeAddress: bindNodeAddress,
+                        publishGroupAddress: publishGroupAddress,
+                        isSynced: importedIsSynced,
                         reportToGateway: controllerJson["reportToGateway"].bool ?? true,
-                        configuration: configuration,
+                        configuration: resolvedConfiguration,
                         createTime: controllerJson["createTime"].int64Value,
                         lastUpdate: controllerJson["lastUpdate"].int64
                     )

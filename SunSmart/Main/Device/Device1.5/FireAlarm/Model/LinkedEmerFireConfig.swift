@@ -115,6 +115,17 @@ extension EmergencyFireControllerConfiguration {
             return []
         }
     }
+
+    var hasPendingCleanup: Bool {
+        !powerLossSettings.pendingUnassociateGroupAddresses.isEmpty ||
+        !fireAlarmSettings.pendingUnassociateGroupAddresses.isEmpty
+    }
+
+    var hasSyncIntent: Bool {
+        workMode != .allDisabled ||
+        !activeLightLCGroupAddresses.isEmpty ||
+        hasPendingCleanup
+    }
 }
 
 struct LinkedEmerFireConfig: Equatable {
