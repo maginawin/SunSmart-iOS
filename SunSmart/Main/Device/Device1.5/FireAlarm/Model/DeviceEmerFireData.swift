@@ -123,7 +123,6 @@ final class DeviceEmerFireStore {
     }
 
     func clearMonitoringConfiguration(for device: DeviceEmerFireData) {
-        removePublishGroupIfNeeded(for: device)
         device.clearMonitoringConfiguration()
         save(device)
     }
@@ -340,7 +339,6 @@ class DeviceEmerFireData: Copyable {
     }
 
     func clearMonitoringConfiguration() {
-        publishGroupAddress = nil
         isSynced = true
         reportToGateway = true
         configuration = EmergencyFireControllerConfiguration(

@@ -36,7 +36,8 @@ extension EmerFireAlarmMonitorVC {
             let controller = DeviceInformationViewController(
                 node: node,
                 emptyGroupText: "Not yet linked to a group".localizedString,
-                showsSceneSection: false
+                showsSceneSection: false,
+                groupTextOverride: self.informationGroupText()
             )
             self.navigationController?.pushViewController(controller, animated: true)
         }))
@@ -53,6 +54,12 @@ extension EmerFireAlarmMonitorVC {
         let windowPoint = view.convert(CGPoint(x: touchCenterX, y: touchCenterY), to: UIApplication.shared.keyWindow())
         MenuPopView.show(items: items, anchorPoint: windowPoint, menuWidth: SCRXFrom(114))
        
+    }
+
+    private func informationGroupText() -> String? {
+        let groupNames = viewModel.displayGroups().map { $0.group.name }
+        guard !groupNames.isEmpty else { return nil }
+        return groupNames.joined(separator: ", ")
     }
 
     func openEditSettings(config: LinkedEmerFireConfig? = nil) {

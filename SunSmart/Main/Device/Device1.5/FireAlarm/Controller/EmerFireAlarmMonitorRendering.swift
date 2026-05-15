@@ -154,6 +154,7 @@ extension EmerFireAlarmMonitorVC {
         updateStatusSetView()
         collectionView?.reloadData()
         updateMonitorState()
+        updateEmptyUI()
         if viewModel.currentDevice?.displayStatus == .onlineBoundDevice || viewModel.currentDevice == nil {
             statusWarningView.isHidden = false
             updateStatusWarningIconVisibility()

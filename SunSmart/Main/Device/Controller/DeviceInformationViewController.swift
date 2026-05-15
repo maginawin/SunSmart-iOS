@@ -18,10 +18,12 @@ class DeviceInformationViewController: UIViewController {
     
     let node: Node
     private let emptyGroupText: String
+    private let groupTextOverride: String?
     
-    init(node: Node, emptyGroupText: String? = nil, showsSceneSection: Bool = true) {
+    init(node: Node, emptyGroupText: String? = nil, showsSceneSection: Bool = true, groupTextOverride: String? = nil) {
         self.node = node
         self.emptyGroupText = emptyGroupText ?? "device_not_added_group".localizedString
+        self.groupTextOverride = groupTextOverride
         self.sections = showsSceneSection ? [.deviceInfo, .group, .scene] : [.deviceInfo, .group]
         super.init(nibName: nil, bundle: nil)
     }
@@ -158,7 +160,7 @@ extension DeviceInformationViewController: UITableViewDataSource, UITableViewDel
         case .group:
             headerView.titleLabel.text = "group".localizedString
             headerView.contentLabel.isHidden = false
-            headerView.contentLabel.text = node.group?.name ?? emptyGroupText
+            headerView.contentLabel.text = groupTextOverride ?? node.group?.name ?? emptyGroupText
         case .scene:
             headerView.titleLabel.text = "scene".localizedString
             if node.scenes.count > 0 {

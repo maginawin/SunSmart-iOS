@@ -1409,6 +1409,7 @@ class SyncDevicesViewController: UIViewController {
             })
             tableView.reloadData()
             syncState = .syncFailure
+            finishEmergencyFireControllerSyncIfNeeded(success: false)
         }else if syncState == .syncFailure {
             
 //            let failedModels = sections.filter({ $0.allModels.contains(where: { $0 is SyncDevicesModel && ($0.state == .failed || $0.state == .repeatedFailure) }) })
