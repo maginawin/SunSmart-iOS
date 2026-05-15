@@ -129,7 +129,7 @@ class GroupSensorView: UIView {
                 moveImageView.isHidden = false
                 occupyStateImageView.isHidden = false
           
-                if sensors.contains(where: { $0.occupancyState && $0.state }) { // 存在感应状态
+                if sensors.contains(where: { $0.pirEnabled && $0.occupancyState && $0.state }) { // 存在感应状态
                     occupyStateImageView.image = UIImage(named: "sensor_occupy")
                     startUpdateOccupyTimer()
                 }else {
@@ -250,7 +250,7 @@ class GroupSensorView: UIView {
     func reloadSensorData(sensor: Node, sensorType: SensorType) {
 
         if sensorType == .presenceDetected {
-            if sensor.state && sensor.occupancyState {
+            if sensors.contains(where: { $0.pirEnabled && $0.state && $0.occupancyState }) {
                 occupyStateImageView.image = UIImage(named: "sensor_occupy")
                 startUpdateOccupyTimer()
             }else {
@@ -818,6 +818,11 @@ class GroupSensorViewCell: UITableViewCell {
     func reloadSensorData(sensor: Node, sensorType: GroupSensorView.SensorType) {
 
         if sensorType == .presenceDetected {
+            guard sensor.pirEnabled else {
+                stopUpdateOccupyTimer()
+                occupyStateImageView.image = UIImage(named: "sensor_occupy_disable")
+                return
+            }
             if !sensor.occupancySettings {
                 if sensor.occupancyState {
                     occupyStateImageView.image = UIImage(named: "sensor_occupy")

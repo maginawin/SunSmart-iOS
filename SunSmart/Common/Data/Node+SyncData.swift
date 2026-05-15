@@ -11,7 +11,7 @@ import NordicSigMeshSDK
 /// 节点同步类型
 enum NodeSyncType {
     /// 组
-    case group(_ group: Group?)
+    case group(_ group: Group?, effectiveMemberCount: Int? = nil)
     /// 场景
     case scenes(scene: Scene? = nil)
     /// 日程
@@ -92,10 +92,33 @@ enum NodeSyncData {
     case pirEnabled(_ enabled: Bool)
 }
 
+extension Group {
+    
+    func sensorServerPublicationRetransmit(effectiveMemberCount: Int? = nil) -> Publish.Retransmit {
+        let memberCount = effectiveMemberCount ?? nodes.count
+        guard memberCount <= 3 else {
+            return Publish.Retransmit(1, timesWithInterval: 0.1)
+        }
+        return Publish.Retransmit(2, timesWithInterval: 0.1)
+    }
+    
+}
+
+extension Model {
+    
+    func isSensorServerPublicationConfigured(publishAddress: Address, retransmit: Publish.Retransmit) -> Bool {
+        guard modelIdentifier == .sensorServerModelId, let publication = self.publish else {
+            return false
+        }
+        return publication.publicationAddress.address == publishAddress && publication.retransmit == retransmit
+    }
+    
+}
+
 /// 配置类型
 enum ProfileType {
     /// 传感器启用（启用后才能与接收传感器状态）
-    case sensorEnabled(sensorModels: [Model], publishAddress: Address, delay: TimeInterval = 0)
+    case sensorEnabled(sensorModels: [Model], publishAddress: Address, delay: TimeInterval = 0, retransmit: Publish.Retransmit = .disabled)
     /// 禁用传感器状态发布（禁用发布传感器状态）
     case sensorDisable(sensorModels: [Model])
     /// 灯光控制模式是否打开
@@ -328,7 +351,7 @@ extension Node {
         
         var syncDatas: [NodeSyncData] = []
         switch type {
-        case .group(let group):
+        case .group(let group, let effectiveMemberCount):
             guard let group = group ?? self.group else {
                 return syncDatas
             }
@@ -348,7 +371,7 @@ extension Node {
             }
             
             // profile
-            let syncProfiles = getNodeSyncProfiles(group: group)
+            let syncProfiles = getNodeSyncProfiles(group: group, effectiveMemberCount: effectiveMemberCount)
             if syncProfiles.count > 0 {
                 syncDatas.append(.profile(types: syncProfiles))
             }
@@ -684,7 +707,7 @@ extension Node {
     }
     
     /// 获取需要同步的profile
-    func getNodeSyncProfiles(group: Group? = nil) -> [ProfileType] {
+    func getNodeSyncProfiles(group: Group? = nil, effectiveMemberCount: Int? = nil) -> [ProfileType] {
         
         var syncProfile: [ProfileType] = []
         
@@ -708,6 +731,7 @@ extension Node {
         var disableSensorModels: [Model] = []
         /// 传感器model上报地址
         let publishAddress = group.address.address
+        let publishRetransmit = group.sensorServerPublicationRetransmit(effectiveMemberCount: effectiveMemberCount)
         // 邻近照明profile不能将publish发送到组里，否则会让全部设备进入第一阶段，但客户端需要收到传感器状态，所以设置上报到客户端组
 //        if groupProfile.type == .proximityLighting {
 //            publishAddress = .localClientGroupAddress
@@ -728,7 +752,9 @@ extension Node {
                 daylightEnabled = true
             }
             if daylightType {
-                if group.info.ambientLightSensorNode?.primaryUnicastAddress == primaryUnicastAddress, let model = ambientLightSensorModel, model.publish?.publicationAddress != group.address { //光照传感器并且已校准
+                if group.info.ambientLightSensorNode?.primaryUnicastAddress == primaryUnicastAddress,
+                   let model = ambientLightSensorModel,
+                   !model.isSensorServerPublicationConfigured(publishAddress: publishAddress, retransmit: publishRetransmit) { //光照传感器并且已校准
                     enableSensorModels.append(model)
                 }
             }else {
@@ -738,7 +764,8 @@ extension Node {
             }
             
             if occupancyType {
-                if let model = presenceDetectedSensorModel, model.publish?.publicationAddress.address != publishAddress {
+                if let model = presenceDetectedSensorModel,
+                   !model.isSensorServerPublicationConfigured(publishAddress: publishAddress, retransmit: publishRetransmit) {
                     enableSensorModels.append(model)
                 }
             }else {
@@ -748,7 +775,7 @@ extension Node {
             }
             
             if enableSensorModels.count > 0 {
-                syncProfile.append(.sensorEnabled(sensorModels: enableSensorModels, publishAddress: publishAddress, delay: 0))
+                syncProfile.append(.sensorEnabled(sensorModels: enableSensorModels, publishAddress: publishAddress, delay: 0, retransmit: publishRetransmit))
             }
             if disableSensorModels.count > 0 {
                 syncProfile.append(.sensorDisable(sensorModels: disableSensorModels))

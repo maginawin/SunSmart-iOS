@@ -556,8 +556,10 @@ extension ProfileType {
     /// 判断是否设置成功
     func isSuccessful(node: Node) -> Bool {
         switch self {
-        case .sensorEnabled(let sensorModels, let publishAddress, _):
-            return !sensorModels.contains(where: { $0.publish?.publicationAddress.address != publishAddress })
+        case .sensorEnabled(let sensorModels, let publishAddress, _, let retransmit):
+            return !sensorModels.contains(where: {
+                !$0.isSensorServerPublicationConfigured(publishAddress: publishAddress, retransmit: retransmit)
+            })
         case .sensorDisable(let sensorModels):
             return !sensorModels.contains(where: { $0.publish?.publicationAddress != nil })
         case .mode(let enabled):

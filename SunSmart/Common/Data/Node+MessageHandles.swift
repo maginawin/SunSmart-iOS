@@ -415,7 +415,7 @@ extension ProfileType {
             if let vendorModel = node.sunricherVendorModel {
                 messageHandles.append(MeshMessageHandle(message: SunricherVendorSet(function: .lightAutoAdjustEnabled(enabled: enabled)), model: vendorModel))
             }
-        case .sensorEnabled(let sensorModels, let publishAddress, let delay):
+        case .sensorEnabled(let sensorModels, let publishAddress, let delay, let retransmit):
             let models = sensorModels.filter({ $0.modelIdentifier == .sensorServerModelId })
             
             var period: Publish.Period = .disabled
@@ -423,7 +423,7 @@ extension ProfileType {
                 period = .init(delay)
             }
             models.forEach({
-                let message = ConfigModelPublicationSet(Publish(to: MeshAddress(publishAddress), using: MeshNetworkManager.instance.currentApplicationKey, usingFriendshipMaterial: false, ttl: MeshNetworkManager.instance.networkParameters.defaultTtl, period: period, retransmit: .disabled), to: $0)!
+                let message = ConfigModelPublicationSet(Publish(to: MeshAddress(publishAddress), using: MeshNetworkManager.instance.currentApplicationKey, usingFriendshipMaterial: false, ttl: MeshNetworkManager.instance.networkParameters.defaultTtl, period: period, retransmit: retransmit), to: $0)!
                 messageHandles.append(MeshMessageHandle(message: message, address: node.primaryUnicastAddress))
             })
       

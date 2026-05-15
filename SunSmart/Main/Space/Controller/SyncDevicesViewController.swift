@@ -54,6 +54,8 @@ class SyncDevicesViewController: UIViewController {
     private var retryCount: Int = 0
     /// 同步的设备list
     private var syncNodes: [Node] = []
+    /// SAVE Profile 期间临时禁用/恢复组内 PIR 传感器
+    var profileSensorProtectionContext: ProfileSensorProtectionContext?
     
     private var deviceBlinkMode: DeviceBlinkMode = .none
     
@@ -128,16 +130,24 @@ class SyncDevicesViewController: UIViewController {
             
             switch self.type {
             case .group(let group, let inNodes, let outNodes):
+                let currentNodes = group.nodes
+                let remainingNodes = currentNodes.filter { node in
+                    !(outNodes?.contains(node) ?? false)
+                }
+                let addedNodes = (inNodes ?? []).filter { node in
+                    !remainingNodes.contains(node)
+                }
+                let effectiveMemberCount = remainingNodes.count + addedNodes.count
                 
                 outNodes?.forEach({ node in
-                    let result = self.getSyncDeviceModel(group: group, node: node)
+                    let result = self.getSyncDeviceModel(group: group, node: node, effectiveMemberCount: effectiveMemberCount)
                     if let removceDevice = result.removeDevice {
                         removeSection.devices.append(removceDevice)
                     }
                 })
                 
                 inNodes?.forEach({ node in
-                    let result = self.getSyncDeviceModel(group: group, node: node)
+                    let result = self.getSyncDeviceModel(group: group, node: node, effectiveMemberCount: effectiveMemberCount)
                     if let removceDevice = result.removeDevice {
                         removeSection.devices.append(removceDevice)
                     }
@@ -147,12 +157,20 @@ class SyncDevicesViewController: UIViewController {
                 })
                 
                 group.nodes.filter({ node in !(outNodes?.contains(node) ?? false) }).forEach { node in
-                    let result = self.getSyncDeviceModel(group: group, node: node)
+                    let result = self.getSyncDeviceModel(group: group, node: node, effectiveMemberCount: effectiveMemberCount)
                     if let removceDevice = result.removeDevice {
                         removeSection.devices.append(removceDevice)
                     }
                     if let configurationDevice = result.configturationDevice {
                         configurationSection.devices.append(configurationDevice)
+                    }
+                }
+                if inNodes == nil, outNodes == nil, let context = profileSensorProtectionContext {
+                    if let preDisableDevice = context.preDisableDeviceModel() {
+                        configurationSection.devices.insert(preDisableDevice, at: 0)
+                    }
+                    if let postTargetStateDevice = context.postTargetStateDeviceModel() {
+                        configurationSection.devices.append(postTargetStateDevice)
                     }
                 }
                 appendEmergencyFireControllerGroupMutationItems(to: configurationSection, group: group, addNodes: inNodes ?? [], exitNodes: outNodes ?? [])
@@ -910,7 +928,7 @@ class SyncDevicesViewController: UIViewController {
     ///   - node: 设备
     ///   - exitGroup: 是否退组
     /// - Returns: 需要配置的model，需要删除的model
-    private func getSyncDeviceModel(group: Group?, node: Node) -> (configturationDevice: SyncDevicesModel?, removeDevice: SyncDevicesModel?) {
+    private func getSyncDeviceModel(group: Group?, node: Node, effectiveMemberCount: Int? = nil) -> (configturationDevice: SyncDevicesModel?, removeDevice: SyncDevicesModel?) {
         
         /// 删除操作
         var deleteSteps: [SyncDeviceStepModel] = []
@@ -926,7 +944,7 @@ class SyncDevicesViewController: UIViewController {
         
         var syncDataTypes: [NodeSyncData] = []
         if group != nil {
-            syncDataTypes = node.getSyncData(type: .group(group))
+            syncDataTypes = node.getSyncData(type: .group(group, effectiveMemberCount: effectiveMemberCount))
             // 排序，如同步组按照优先级高到低排序同步数据
             if syncDataTypes.contains(where: { data in
                 if case .subscribeGroup = data { return true }
@@ -1020,6 +1038,9 @@ class SyncDevicesViewController: UIViewController {
                     }
                 }
             case .pirEnabled(let enabled):
+                if profileSensorProtectionContext != nil {
+                    break
+                }
                 let name = enabled ? "pir_enabled".localizedString : "pir_disable".localizedString
                 let task = SyncDeviceStepTaskModel(name: name, operationType: .configuration(node: node, type: .pirEnabled(enabled)))
                 
@@ -1281,6 +1302,8 @@ class SyncDevicesViewController: UIViewController {
     /// 返回
     @objc private func backAction() {
         
+        applyProfileSensorTargetStateInBackgroundIfNeeded()
+        
         // 判断是否有lux触发设备需要解锁
         if self.luxTriggerLockDevices.count > 0 {
             let unlockMessage = SunricherVendorSet(function: .daylightLuxTriggerLock(delay: 0))
@@ -1364,7 +1387,9 @@ class SyncDevicesViewController: UIViewController {
     @objc private func rightItemAction() {
         if syncState == .inSync { // stop
             
-            MeshProxyMessageCommand.shared.stopSendMessage(finishedBack: nil)
+            MeshProxyMessageCommand.shared.stopSendMessage { [weak self] _ in
+                self?.applyProfileSensorTargetStateInBackgroundIfNeeded()
+            }
             
             // 当前设置的设备存在profile快照恢复未设置时
             if let deviceModel = lastDeviceModel, let settingsStep = deviceModel.steps.first(where: { $0.state == .inSettings }) {
@@ -1512,6 +1537,58 @@ class SyncDevicesViewController: UIViewController {
         
     }
     
+    private func applyProfileSensorTargetStateIfNeeded() {
+        guard let context = profileSensorProtectionContext else {
+            return
+        }
+
+        let messageHandles = context.remainingTargetStateMessageHandles()
+        guard !messageHandles.isEmpty else {
+            return
+        }
+        
+        let semaphore = DispatchSemaphore(value: 0)
+        MeshProxyMessageCommand.shared.addMessage(messageHandles: messageHandles, ackMessageTimeout: 7, progressBack: nil, successfulBack: nil, failedBack: nil) { resultMessageHandles in
+            resultMessageHandles.forEach { handle in
+                if let address = handle.address ?? handle.model?.parentElement?.unicastAddress,
+                   let node = MeshNetworkManager.instance.meshNetwork?.node(withAddress: address) {
+                    node.updateData(message: handle.message, isSuccess: handle.isSuccessful)
+                    node.clearSyncStateCache()
+                }
+            }
+            semaphore.signal()
+        }
+        semaphore.wait()
+    }
+    
+    private func applyProfileSensorTargetStateInBackgroundIfNeeded() {
+        DispatchQueue.global().async {
+            self.applyProfileSensorTargetStateIfNeeded()
+        }
+    }
+
+    private func completeProfileSensorProtectionTaskIfNeeded(for model: SyncCellModel) -> Bool {
+        guard let taskModel = model as? SyncDeviceStepTaskModel else {
+            return false
+        }
+
+        switch taskModel.operationType {
+        case .configuration(let node, let type):
+            switch type {
+            case .profileSensorProtectionDisable:
+                profileSensorProtectionContext?.markPreDisableStarted()
+                return false
+            case .profileSensorTargetEnable:
+                profileSensorProtectionContext?.markTargetStateTaskStarted(for: node)
+                return false
+            default:
+                return false
+            }
+        default:
+            return false
+        }
+    }
+
     private func startSync() {
         
 //        guard let section = sections.first, let model = section.allModels.first else { return }
@@ -1555,6 +1632,7 @@ class SyncDevicesViewController: UIViewController {
                         })
                     }
                     self.syncState = .syncFailure
+                    self.applyProfileSensorTargetStateIfNeeded()
                     
                     DispatchQueue.main.async {
                         self.updateSyncStateUI()
@@ -1651,6 +1729,19 @@ class SyncDevicesViewController: UIViewController {
                 
                 DispatchQueue.main.async {
                     self.tableView.reloadData()
+                }
+
+                if self.completeProfileSensorProtectionTaskIfNeeded(for: model) {
+                    DispatchQueue.main.async {
+                        if let model = self.showProressStepModel {
+                            if let progressView = SyncDevicesProgressView.current() {
+                                progressView.stepModel = model
+                            }
+                        }
+                        let allDevices = self.sections.flatMap({ $0.groups.flatMap({ $0.deviceModels }) + $0.devices })
+                        self.progressLabel.text = "\(allDevices.filter({ $0.state == .successful }).count)/\(allDevices.count)"
+                    }
+                    continue
                 }
 
                 if self.completeEmptyEmergencyFireControllerTaskIfNeeded(for: model, messageHandles: messageHandles) {
@@ -1767,6 +1858,8 @@ class SyncDevicesViewController: UIViewController {
             }
 //            _ = MeshNetworkManager.instance.save()
             print("完成")
+            
+            self.applyProfileSensorTargetStateIfNeeded()
             
             self.sections.forEach { section in
                 section.allModels.forEach({

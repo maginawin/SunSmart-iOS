@@ -38,6 +38,145 @@ class SyncCellModel: NSObject {
     var state: SyncDevicesState = .none
 }
 
+struct SunricherVendorSetUnacknowledged: StaticUnacknowledgedVendorMessage {
+    
+    static let opCode: UInt32 = SunricherVendorSet.opCode
+    
+    let function: VendorFunctionSet
+    
+    var parameters: Data? {
+        return SunricherVendorSet(function: function).parameters
+    }
+    
+    init(function: VendorFunctionSet) {
+        self.function = function
+    }
+    
+    init?(parameters: Data) {
+        return nil
+    }
+}
+
+final class ProfileSensorProtectionContext {
+    
+    private weak var group: Group?
+    let previousProfileType: Profile.ProfileType
+    let savedProfileType: Profile.ProfileType
+    private let sensorNodeAddresses: Set<Address>
+    private let initiallyEnabledSensorAddresses: Set<Address>
+    private var preDisableStarted = false
+    private var fallbackTargetStateStarted = false
+    private var targetStateTaskAddresses: Set<Address> = []
+    
+    init?(group: Group, previousProfile: Profile, savedProfile: Profile) {
+        let sensorNodes = group.sensorNodes.filter { $0.supportsProfileSensorProtection }
+        guard !sensorNodes.isEmpty else {
+            return nil
+        }
+        
+        self.group = group
+        self.previousProfileType = previousProfile.type
+        self.savedProfileType = savedProfile.type
+        self.sensorNodeAddresses = Set(sensorNodes.map { $0.primaryUnicastAddress })
+        self.initiallyEnabledSensorAddresses = Set(sensorNodes.filter { $0.pirEnabled }.map { $0.primaryUnicastAddress })
+    }
+    
+    var usesPIRTargetState: Bool {
+        return savedProfileType.occupancyType
+    }
+    
+    var sensorNodes: [Node] {
+        return group?.sensorNodes.filter {
+            sensorNodeAddresses.contains($0.primaryUnicastAddress) && $0.supportsProfileSensorProtection
+        } ?? []
+    }
+    
+    func markPreDisableStarted() {
+        preDisableStarted = true
+    }
+    
+    func markTargetStateTaskStarted(for node: Node) {
+        targetStateTaskAddresses.insert(node.primaryUnicastAddress)
+    }
+    
+    private var targetEnableAddresses: Set<Address> {
+        guard savedProfileType.occupancyType else {
+            return []
+        }
+        
+        if previousProfileType.occupancyType {
+            return initiallyEnabledSensorAddresses
+        }
+        
+        return sensorNodeAddresses
+    }
+    
+    func remainingTargetStateMessageHandles() -> [MeshMessageHandle] {
+        guard preDisableStarted,
+              usesPIRTargetState,
+              !fallbackTargetStateStarted else {
+            return []
+        }
+        fallbackTargetStateStarted = true
+        return targetEnableNodes(excluding: targetStateTaskAddresses).compactMap { node in
+            guard let vendorModel = node.sunricherVendorModel else { return nil }
+            return MeshMessageHandle(message: SunricherVendorSet(function: .pirEnabled(enabled: true)), model: vendorModel)
+        }
+    }
+    
+    func preDisableDeviceModel() -> SyncDevicesModel? {
+        let tasks = sensorNodes.map { node in
+            SyncDeviceStepTaskModel(
+                name: "pir_disable".localizedString,
+                operationType: .configuration(node: node, type: .profileSensorProtectionDisable)
+            )
+        }
+        guard !tasks.isEmpty else { return nil }
+        
+        let step = SyncDeviceStepModel(type: "pir_disable".localizedString, state: .none, tasks: tasks)
+        tasks.forEach { $0.parentStepModel = step }
+        
+        let model = SyncDevicesModel(name: "pir_disable".localizedString, address: 0)
+        model.steps = [step]
+        step.parentDeviceModel = model
+        return model
+    }
+    
+    func postTargetStateDeviceModel() -> SyncDevicesModel? {
+        guard usesPIRTargetState else { return nil }
+        
+        let tasks = targetEnableNodes(excluding: []).map { node in
+            SyncDeviceStepTaskModel(
+                name: "pir_enabled".localizedString,
+                operationType: .configuration(node: node, type: .profileSensorTargetEnable)
+            )
+        }
+        guard !tasks.isEmpty else { return nil }
+        
+        let step = SyncDeviceStepModel(type: "pir_enabled".localizedString, state: .none, tasks: tasks)
+        tasks.forEach { $0.parentStepModel = step }
+        
+        let model = SyncDevicesModel(name: "pir_enabled".localizedString, address: 0)
+        model.steps = [step]
+        step.parentDeviceModel = model
+        return model
+    }
+    
+    private func targetEnableNodes(excluding excludedAddresses: Set<Address>) -> [Node] {
+        return sensorNodes.filter {
+            targetEnableAddresses.contains($0.primaryUnicastAddress)
+            && !excludedAddresses.contains($0.primaryUnicastAddress)
+        }
+    }
+}
+
+private extension Node {
+    
+    var supportsProfileSensorProtection: Bool {
+        return presenceDetectedSensorModel != nil && capabilities.contains(.pirEnabled)
+    }
+}
+
 /// 操作类型
 enum DeviceOperationType {
     
@@ -57,6 +196,10 @@ enum DeviceOperationType {
                 return type.isSuccessful(node: node)
             case .pirEnabled(let enabled):
                 return node.pirEnabled == enabled
+            case .profileSensorProtectionDisable:
+                return node.pirEnabled == false
+            case .profileSensorTargetEnable:
+                return node.pirEnabled == true
             case .enOceanSwitch(let switchData):
                 if switchData.linkGroup != nil {
                     return node.getEnOceanUnSubscriptionMessageHandles(switchKeys: switchData.switchKeys).isEmpty
@@ -125,6 +268,10 @@ enum DeviceOperationType {
                 return type.isSuccessful(node: node)
             case .pirEnabled(let enabled):
                 return node.pirEnabled == enabled
+            case .profileSensorProtectionDisable:
+                return node.pirEnabled == false
+            case .profileSensorTargetEnable:
+                return node.pirEnabled == true
             case .enOceanSwitch(let switchData):
                 if switchData.linkGroup != nil {
                     return node.getEnOceanSubscriptionMessageHandles(switchKeys: switchData.switchKeys).isEmpty
@@ -238,6 +385,10 @@ enum DeviceOperationType {
 //                }
             case .pirEnabled(let enabled):
                 messageHandles.append(contentsOf: NodeSyncData.pirEnabled(enabled).getMessageHandles(node: node))
+            case .profileSensorProtectionDisable:
+                messageHandles.append(contentsOf: NodeSyncData.pirEnabled(false).getMessageHandles(node: node))
+            case .profileSensorTargetEnable:
+                messageHandles.append(contentsOf: NodeSyncData.pirEnabled(true).getMessageHandles(node: node))
             case .enOceanSwitch(let switchData):
                 if switchData.linkGroup != nil {
                     messageHandles.append(contentsOf: node.getEnOceanUnSubscriptionMessageHandles(switchKeys: switchData.switchKeys))
@@ -296,6 +447,10 @@ enum DeviceOperationType {
                 messageHandles.append(contentsOf: type.getMessageHandles(node: node))
             case .pirEnabled(let enabled):
                 messageHandles.append(contentsOf: NodeSyncData.pirEnabled(enabled).getMessageHandles(node: node))
+            case .profileSensorProtectionDisable:
+                messageHandles.append(contentsOf: NodeSyncData.pirEnabled(false).getMessageHandles(node: node))
+            case .profileSensorTargetEnable:
+                messageHandles.append(contentsOf: NodeSyncData.pirEnabled(true).getMessageHandles(node: node))
             case .enOceanSwitch(let switchData):
                 if switchData.linkGroup != nil {
                     // 判断是否已订阅动能开关按键事件
@@ -393,6 +548,10 @@ enum ActionType {
     case profile(type: ProfileType)
     /// 设备pir启用/禁用
     case pirEnabled(_ enabled: Bool)
+    /// SAVE Profile PIR 前置禁用，使用 no-wait 单播
+    case profileSensorProtectionDisable
+    /// SAVE Profile PIR 后置目标状态启用，使用 ACK 单播
+    case profileSensorTargetEnable
     /// 动能开关（关联）
     case enOceanSwitch(switchData: DeviceSwitchData)
     /// 动能开关代理
@@ -566,8 +725,10 @@ extension ProfileType {
     /// 判断是否设置成功
     func isSuccessful(node: Node) -> Bool {
         switch self {
-        case .sensorEnabled(let sensorModels, let publishAddress, _):
-            return !sensorModels.contains(where: { $0.publish?.publicationAddress.address != publishAddress })
+        case .sensorEnabled(let sensorModels, let publishAddress, _, let retransmit):
+            return !sensorModels.contains(where: {
+                !$0.isSensorServerPublicationConfigured(publishAddress: publishAddress, retransmit: retransmit)
+            })
         case .sensorDisable(let sensorModels):
             return !sensorModels.contains(where: { $0.publish?.publicationAddress != nil })
         case .mode(let enabled):
