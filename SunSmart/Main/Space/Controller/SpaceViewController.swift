@@ -980,6 +980,11 @@ class SpaceViewController: WMPageController {
                 self?.shareSpace()
             }))
         }
+        if space.canEditing {
+            items.append(.init(icon: UIImage(named: "menu_profile_test"), title: "debug".localizedString, tapItemBack: {[weak self] _ in
+                self?.openSpaceDebug()
+            }))
+        }
         if space.spaceOperates.contains(.exit) {
             items.append(.init(icon: UIImage(named: "menu_unbind"), title: "unbind".localizedString, tapItemBack: {[weak self] _ in
                 SRAlertView(title: "notification".localizedString, message: "space_unbind_message".localizedString, actions: [.cancelAction, SRAlertAction(title: "ok".localizedString, actionHandler: {[weak self] _ in
@@ -999,6 +1004,13 @@ class SpaceViewController: WMPageController {
         MenuPopView.show(items: items, anchorPoint: CGPoint(x: touchCenterX, y: view.safeAreaInsets.top), menuWidth: SCRXFrom(108))
     }
     
+    private func openSpaceDebug() {
+        let vc = SpaceDebugViewController(space: space) { [weak self] in
+            self?.setNetworkConnected()
+        }
+        navigationController?.pushViewController(vc, animated: true)
+    }
+
     /// 编辑空间
     private func editSpace() {
         

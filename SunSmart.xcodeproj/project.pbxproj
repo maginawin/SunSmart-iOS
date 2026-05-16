@@ -842,6 +842,46 @@
 		C885548D2DE6B44C00C8B688 /* MeshFirmwareUpdateStepHeaderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8AC83C62D068A670033513E /* MeshFirmwareUpdateStepHeaderView.swift */; };
 		C885548E2DE6B44C00C8B688 /* ManualOverrideTimeoutInstructionController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8047F2C2B8F5C9200A09FFA /* ManualOverrideTimeoutInstructionController.swift */; };
 		C885548F2DE6B44C00C8B688 /* DevicesViewCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = C898EA712AC3D17C0023B480 /* DevicesViewCell.swift */; };
+		C82605160000010100000001 /* SpaceDebugModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = C82605160000000100000001 /* SpaceDebugModels.swift */; };
+		C82605160000010100000002 /* SpaceDebugViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = C82605160000000100000002 /* SpaceDebugViewModel.swift */; };
+		C82605160000010100000003 /* DebugBluetoothSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = C82605160000000100000003 /* DebugBluetoothSession.swift */; };
+		C82605160000010100000004 /* SpaceDebugSummaryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C82605160000000100000004 /* SpaceDebugSummaryView.swift */; };
+		C82605160000010100000005 /* SpaceDebugDeviceCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = C82605160000000100000005 /* SpaceDebugDeviceCell.swift */; };
+		C82605160000010100000006 /* SpaceDebugViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C82605160000000100000006 /* SpaceDebugViewController.swift */; };
+		C82605160000010100000007 /* SpaceDebugDeviceViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C82605160000000100000007 /* SpaceDebugDeviceViewController.swift */; };
+		C82605160000010100000008 /* SpaceDebugUARTViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C82605160000000100000009 /* SpaceDebugUARTViewController.swift */; };
+		C82605160000010100000009 /* SpaceDebugUARTMessageCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8260516000000010000000A /* SpaceDebugUARTMessageCell.swift */; };
+		C8260516000001010000000A /* SpaceDebugUARTLogExporter.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8260516000000010000000B /* SpaceDebugUARTLogExporter.swift */; };
+		C82605160000010200000001 /* SpaceDebugModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = C82605160000000100000001 /* SpaceDebugModels.swift */; };
+		C82605160000010200000002 /* SpaceDebugViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = C82605160000000100000002 /* SpaceDebugViewModel.swift */; };
+		C82605160000010200000003 /* DebugBluetoothSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = C82605160000000100000003 /* DebugBluetoothSession.swift */; };
+		C82605160000010200000004 /* SpaceDebugSummaryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C82605160000000100000004 /* SpaceDebugSummaryView.swift */; };
+		C82605160000010200000005 /* SpaceDebugDeviceCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = C82605160000000100000005 /* SpaceDebugDeviceCell.swift */; };
+		C82605160000010200000006 /* SpaceDebugViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C82605160000000100000006 /* SpaceDebugViewController.swift */; };
+		C82605160000010200000007 /* SpaceDebugDeviceViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C82605160000000100000007 /* SpaceDebugDeviceViewController.swift */; };
+		C82605160000010200000008 /* SpaceDebugUARTViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C82605160000000100000009 /* SpaceDebugUARTViewController.swift */; };
+		C82605160000010200000009 /* SpaceDebugUARTMessageCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8260516000000010000000A /* SpaceDebugUARTMessageCell.swift */; };
+		C8260516000001020000000A /* SpaceDebugUARTLogExporter.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8260516000000010000000B /* SpaceDebugUARTLogExporter.swift */; };
+		C82605160000010300000001 /* SpaceDebugModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = C82605160000000100000001 /* SpaceDebugModels.swift */; };
+		C82605160000010300000002 /* SpaceDebugViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = C82605160000000100000002 /* SpaceDebugViewModel.swift */; };
+		C82605160000010300000003 /* DebugBluetoothSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = C82605160000000100000003 /* DebugBluetoothSession.swift */; };
+		C82605160000010300000004 /* SpaceDebugSummaryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C82605160000000100000004 /* SpaceDebugSummaryView.swift */; };
+		C82605160000010300000005 /* SpaceDebugDeviceCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = C82605160000000100000005 /* SpaceDebugDeviceCell.swift */; };
+		C82605160000010300000006 /* SpaceDebugViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C82605160000000100000006 /* SpaceDebugViewController.swift */; };
+		C82605160000010300000007 /* SpaceDebugDeviceViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C82605160000000100000007 /* SpaceDebugDeviceViewController.swift */; };
+		C82605160000010300000008 /* SpaceDebugUARTViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C82605160000000100000009 /* SpaceDebugUARTViewController.swift */; };
+		C82605160000010300000009 /* SpaceDebugUARTMessageCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8260516000000010000000A /* SpaceDebugUARTMessageCell.swift */; };
+		C8260516000001030000000A /* SpaceDebugUARTLogExporter.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8260516000000010000000B /* SpaceDebugUARTLogExporter.swift */; };
+		C82605160000010400000001 /* SpaceDebugModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = C82605160000000100000001 /* SpaceDebugModels.swift */; };
+		C82605160000010400000002 /* SpaceDebugViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = C82605160000000100000002 /* SpaceDebugViewModel.swift */; };
+		C82605160000010400000003 /* DebugBluetoothSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = C82605160000000100000003 /* DebugBluetoothSession.swift */; };
+		C82605160000010400000004 /* SpaceDebugSummaryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C82605160000000100000004 /* SpaceDebugSummaryView.swift */; };
+		C82605160000010400000005 /* SpaceDebugDeviceCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = C82605160000000100000005 /* SpaceDebugDeviceCell.swift */; };
+		C82605160000010400000006 /* SpaceDebugViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C82605160000000100000006 /* SpaceDebugViewController.swift */; };
+		C82605160000010400000007 /* SpaceDebugDeviceViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C82605160000000100000007 /* SpaceDebugDeviceViewController.swift */; };
+		C82605160000010400000008 /* SpaceDebugUARTViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C82605160000000100000009 /* SpaceDebugUARTViewController.swift */; };
+		C82605160000010400000009 /* SpaceDebugUARTMessageCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8260516000000010000000A /* SpaceDebugUARTMessageCell.swift */; };
+		C8260516000001040000000A /* SpaceDebugUARTLogExporter.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8260516000000010000000B /* SpaceDebugUARTLogExporter.swift */; };
 		C88554902DE6B44C00C8B688 /* LightSensorCalibrationView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8607BE52B905F5100A94F0B /* LightSensorCalibrationView.swift */; };
 		C88554912DE6B44C00C8B688 /* EnergyHarvestStateView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8AEB9922DC9A0300053102B /* EnergyHarvestStateView.swift */; };
 		C88554922DE6B44C00C8B688 /* BetaTestingAlertView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C89C15702D9A873500789F0B /* BetaTestingAlertView.swift */; };
@@ -2654,6 +2694,16 @@
 		C898EA5C2AC2BD8B0023B480 /* WMPageController.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = WMPageController.h; sourceTree = "<group>"; };
 		C898EA5D2AC2BD8B0023B480 /* UIViewController+WMPageController.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = "UIViewController+WMPageController.h"; sourceTree = "<group>"; };
 		C898EA642AC2BDC50023B480 /* SpaceViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpaceViewController.swift; sourceTree = "<group>"; };
+		C82605160000000100000001 /* SpaceDebugModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpaceDebugModels.swift; sourceTree = "<group>"; };
+		C82605160000000100000002 /* SpaceDebugViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpaceDebugViewModel.swift; sourceTree = "<group>"; };
+		C82605160000000100000003 /* DebugBluetoothSession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DebugBluetoothSession.swift; sourceTree = "<group>"; };
+		C82605160000000100000004 /* SpaceDebugSummaryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpaceDebugSummaryView.swift; sourceTree = "<group>"; };
+		C82605160000000100000005 /* SpaceDebugDeviceCell.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpaceDebugDeviceCell.swift; sourceTree = "<group>"; };
+		C82605160000000100000006 /* SpaceDebugViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpaceDebugViewController.swift; sourceTree = "<group>"; };
+		C82605160000000100000007 /* SpaceDebugDeviceViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpaceDebugDeviceViewController.swift; sourceTree = "<group>"; };
+		C82605160000000100000009 /* SpaceDebugUARTViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpaceDebugUARTViewController.swift; sourceTree = "<group>"; };
+		C8260516000000010000000A /* SpaceDebugUARTMessageCell.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpaceDebugUARTMessageCell.swift; sourceTree = "<group>"; };
+		C8260516000000010000000B /* SpaceDebugUARTLogExporter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpaceDebugUARTLogExporter.swift; sourceTree = "<group>"; };
 		C898EA6A2AC2C3270023B480 /* SpaceMenuView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpaceMenuView.swift; sourceTree = "<group>"; };
 		C898EA6F2AC3C64C0023B480 /* SpaceFunctionFooterView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpaceFunctionFooterView.swift; sourceTree = "<group>"; };
 		C898EA712AC3D17C0023B480 /* DevicesViewCell.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DevicesViewCell.swift; sourceTree = "<group>"; };
@@ -4026,11 +4076,29 @@
 			isa = PBXGroup;
 			children = (
 				C8D531522F76312E0069C71B /* TriggerZone */,
+				C82605160000000100000008 /* Debug */,
 				C898E30A2ABBF40C00C71315 /* Controller */,
 				C898E3092ABBF40800C71315 /* Model */,
 				C898E3082ABBF40300C71315 /* View */,
 			);
 			path = Space;
+			sourceTree = "<group>";
+		};
+		C82605160000000100000008 /* Debug */ = {
+			isa = PBXGroup;
+			children = (
+				C82605160000000100000001 /* SpaceDebugModels.swift */,
+				C82605160000000100000002 /* SpaceDebugViewModel.swift */,
+				C82605160000000100000003 /* DebugBluetoothSession.swift */,
+				C82605160000000100000004 /* SpaceDebugSummaryView.swift */,
+				C82605160000000100000005 /* SpaceDebugDeviceCell.swift */,
+				C82605160000000100000006 /* SpaceDebugViewController.swift */,
+				C82605160000000100000007 /* SpaceDebugDeviceViewController.swift */,
+				C82605160000000100000009 /* SpaceDebugUARTViewController.swift */,
+				C8260516000000010000000A /* SpaceDebugUARTMessageCell.swift */,
+				C8260516000000010000000B /* SpaceDebugUARTLogExporter.swift */,
+			);
+			path = Debug;
 			sourceTree = "<group>";
 		};
 		C898E3052ABBF3F100C71315 /* View */ = {
@@ -5753,6 +5821,16 @@
 				8C1DA7702FAAF2A70073F100 /* PJDevicesRestoreFlowFactory.swift in Sources */,
 				C88554632DE6B44C00C8B688 /* SceneAddTemplateInfoSectionView.swift in Sources */,
 				C88554642DE6B44C00C8B688 /* SpaceViewController.swift in Sources */,
+				C82605160000010100000001 /* SpaceDebugModels.swift in Sources */,
+				C82605160000010100000002 /* SpaceDebugViewModel.swift in Sources */,
+				C82605160000010100000003 /* DebugBluetoothSession.swift in Sources */,
+				C82605160000010100000004 /* SpaceDebugSummaryView.swift in Sources */,
+				C82605160000010100000005 /* SpaceDebugDeviceCell.swift in Sources */,
+				C82605160000010100000006 /* SpaceDebugViewController.swift in Sources */,
+				C82605160000010100000007 /* SpaceDebugDeviceViewController.swift in Sources */,
+				C82605160000010100000008 /* SpaceDebugUARTViewController.swift in Sources */,
+				C82605160000010100000009 /* SpaceDebugUARTMessageCell.swift in Sources */,
+				C8260516000001010000000A /* SpaceDebugUARTLogExporter.swift in Sources */,
 				C88554652DE6B44C00C8B688 /* SpaceMoreViewCell.swift in Sources */,
 				C88554662DE6B44C00C8B688 /* GroupFilterSelectView.swift in Sources */,
 				C8A8D7392EF3AEE80025FFF7 /* Scheduler.swift in Sources */,
@@ -6323,6 +6401,16 @@
 				8C1DA7722FAAF2A70073F100 /* PJDevicesRestoreFlowFactory.swift in Sources */,
 				C886E0B92E30DE4900D0C3A6 /* SceneAddTemplateInfoSectionView.swift in Sources */,
 				C886E0BA2E30DE4900D0C3A6 /* SpaceViewController.swift in Sources */,
+				C82605160000010200000001 /* SpaceDebugModels.swift in Sources */,
+				C82605160000010200000002 /* SpaceDebugViewModel.swift in Sources */,
+				C82605160000010200000003 /* DebugBluetoothSession.swift in Sources */,
+				C82605160000010200000004 /* SpaceDebugSummaryView.swift in Sources */,
+				C82605160000010200000005 /* SpaceDebugDeviceCell.swift in Sources */,
+				C82605160000010200000006 /* SpaceDebugViewController.swift in Sources */,
+				C82605160000010200000007 /* SpaceDebugDeviceViewController.swift in Sources */,
+				C82605160000010200000008 /* SpaceDebugUARTViewController.swift in Sources */,
+				C82605160000010200000009 /* SpaceDebugUARTMessageCell.swift in Sources */,
+				C8260516000001020000000A /* SpaceDebugUARTLogExporter.swift in Sources */,
 				C886E0BB2E30DE4900D0C3A6 /* SpaceMoreViewCell.swift in Sources */,
 				C886E0BC2E30DE4900D0C3A6 /* GroupFilterSelectView.swift in Sources */,
 				C8A8D73B2EF3AEE80025FFF7 /* Scheduler.swift in Sources */,
@@ -6899,6 +6987,16 @@
 				C8A130C42B32C2B90008C353 /* SceneAddTemplateTitleCell.swift in Sources */,
 				C8A3EE7E2B33D62F0082A772 /* SceneAddTemplateInfoSectionView.swift in Sources */,
 				C898EA652AC2BDC50023B480 /* SpaceViewController.swift in Sources */,
+				C82605160000010300000001 /* SpaceDebugModels.swift in Sources */,
+				C82605160000010300000002 /* SpaceDebugViewModel.swift in Sources */,
+				C82605160000010300000003 /* DebugBluetoothSession.swift in Sources */,
+				C82605160000010300000004 /* SpaceDebugSummaryView.swift in Sources */,
+				C82605160000010300000005 /* SpaceDebugDeviceCell.swift in Sources */,
+				C82605160000010300000006 /* SpaceDebugViewController.swift in Sources */,
+				C82605160000010300000007 /* SpaceDebugDeviceViewController.swift in Sources */,
+				C82605160000010300000008 /* SpaceDebugUARTViewController.swift in Sources */,
+				C82605160000010300000009 /* SpaceDebugUARTMessageCell.swift in Sources */,
+				C8260516000001030000000A /* SpaceDebugUARTLogExporter.swift in Sources */,
 				8C1DA7C82FAC8A890073F100 /* PJDeviceGroupSelectionContext.swift in Sources */,
 				C8AC509A2C4E3234003CE437 /* SpaceMoreViewCell.swift in Sources */,
 				C8BA43612DC0724C00018392 /* GroupFilterSelectView.swift in Sources */,
@@ -7463,6 +7561,16 @@
 				8C1DA7712FAAF2A70073F100 /* PJDevicesRestoreFlowFactory.swift in Sources */,
 				C8BB66812ED3F056000C63EE /* SceneAddTemplateInfoSectionView.swift in Sources */,
 				C8BB66822ED3F056000C63EE /* SpaceViewController.swift in Sources */,
+				C82605160000010400000001 /* SpaceDebugModels.swift in Sources */,
+				C82605160000010400000002 /* SpaceDebugViewModel.swift in Sources */,
+				C82605160000010400000003 /* DebugBluetoothSession.swift in Sources */,
+				C82605160000010400000004 /* SpaceDebugSummaryView.swift in Sources */,
+				C82605160000010400000005 /* SpaceDebugDeviceCell.swift in Sources */,
+				C82605160000010400000006 /* SpaceDebugViewController.swift in Sources */,
+				C82605160000010400000007 /* SpaceDebugDeviceViewController.swift in Sources */,
+				C82605160000010400000008 /* SpaceDebugUARTViewController.swift in Sources */,
+				C82605160000010400000009 /* SpaceDebugUARTMessageCell.swift in Sources */,
+				C8260516000001040000000A /* SpaceDebugUARTLogExporter.swift in Sources */,
 				C8BB66832ED3F056000C63EE /* SpaceMoreViewCell.swift in Sources */,
 				C8BB66842ED3F056000C63EE /* GroupFilterSelectView.swift in Sources */,
 				C8A8D73A2EF3AEE80025FFF7 /* Scheduler.swift in Sources */,
@@ -8006,36 +8114,20 @@
 
 /* Begin XCRemoteSwiftPackageReference section */
 		C88553AF2DE6B44C00C8B688 /* XCRemoteSwiftPackageReference "nordic-sig-mesh-sdk" */ = {
-			isa = XCRemoteSwiftPackageReference;
-			repositoryURL = "https://gitee.com/sunricher-i-os/nordic-sig-mesh-sdk.git";
-			requirement = {
-				branch = master;
-				kind = branch;
-			};
+			isa = XCLocalSwiftPackageReference;
+			relativePath = "../../../nordic-sig-mesh-sdk";
 		};
 		C886DFFF2E30DE4900D0C3A6 /* XCRemoteSwiftPackageReference "nordic-sig-mesh-sdk" */ = {
-			isa = XCRemoteSwiftPackageReference;
-			repositoryURL = "https://gitee.com/sunricher-i-os/nordic-sig-mesh-sdk.git";
-			requirement = {
-				branch = master;
-				kind = branch;
-			};
+			isa = XCLocalSwiftPackageReference;
+			relativePath = "../../../nordic-sig-mesh-sdk";
 		};
 		C8BB65AD2ED3F056000C63EE /* XCRemoteSwiftPackageReference "nordic-sig-mesh-sdk" */ = {
-			isa = XCRemoteSwiftPackageReference;
-			repositoryURL = "https://gitee.com/sunricher-i-os/nordic-sig-mesh-sdk.git";
-			requirement = {
-				branch = master;
-				kind = branch;
-			};
+			isa = XCLocalSwiftPackageReference;
+			relativePath = "../../../nordic-sig-mesh-sdk";
 		};
 		C8D5314A2F76294A0069C71B /* XCRemoteSwiftPackageReference "nordic-sig-mesh-sdk" */ = {
-			isa = XCRemoteSwiftPackageReference;
-			repositoryURL = "https://gitee.com/sunricher-i-os/nordic-sig-mesh-sdk.git";
-			requirement = {
-				branch = master;
-				kind = branch;
-			};
+			isa = XCLocalSwiftPackageReference;
+			relativePath = "../../../nordic-sig-mesh-sdk";
 		};
 /* End XCRemoteSwiftPackageReference section */
 
