@@ -155,9 +155,10 @@ struct EmergencyFireControllerSyncPlanner {
                 return nil
             }
             // 当前模式关联的每个灯组都展开为组内每个灯的同步任务。
-            let tasks = group.nodes.flatMap {
+            var tasks = group.nodes.flatMap {
                 makeAssociateTasks(node: $0, group: group, publishGroup: publishGroup, triggerScene: triggerScene, brightness: settings.triggerBrightness)
             }
+            tasks.append(makeAutoRestoreTask(group: group))
             return EmergencyFireControllerSyncItem(name: group.name, iconName: "device_light", address: group.address.address, tasks: tasks)
         }
     }
@@ -202,6 +203,18 @@ struct EmergencyFireControllerSyncPlanner {
             tasks.append(lightLCTask)
         }
         return tasks
+    }
+
+    private func makeAutoRestoreTask(group: Group) -> EmergencyFireControllerSyncTask {
+        let message = LightLCLightOnOffSetUnacknowledged(true, transitionTime: .default, delay: 0)
+        return EmergencyFireControllerSyncTask(
+            title: "AUTO",
+            kind: .autoRestore,
+            address: group.address.address,
+            messageHandles: [
+                MeshMessageHandle(message: message, address: group.address.address)
+            ]
+        )
     }
 
     func makeLightLCCleanupTasks(node: Node, group: Group, publishGroup: Group, pendingModes: [EmergencyFireControllerWorkMode]) -> [EmergencyFireControllerSyncTask] {

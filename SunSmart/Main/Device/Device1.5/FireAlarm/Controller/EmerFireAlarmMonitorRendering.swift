@@ -182,10 +182,12 @@ extension EmerFireAlarmMonitorVC {
         switch currentDevice.displayStatus {
         case .offlineBoundDevice:
             currentState = .offline
+            syncManualControlBlock(for: .offline)
             setContentHidden(true)
             view.showEmptyDataView(imageName: "device_state_offline", title: "device_offline_message".localizedString, backgroundColor: Background_Color)
         case .repairRequiredDevice:
             currentState = .repair
+            syncManualControlBlock(for: .repair)
             setContentHidden(true)
             view.showEmptyDataView(imageName: "device_state_offline", title: "device_repair_message".localizedString, backgroundColor: Background_Color, buttonText: "repair".localizedString, buttomWidth: SCRXFrom(216), bottomMargin: SCRYFit(-78)) { [weak self] in
                 self?.repairBtnClick()
@@ -338,6 +340,7 @@ extension EmerFireAlarmMonitorVC {
             }
             return
         }
+        syncManualControlBlock(for: state)
         currentState = state
         statusSetView.title = "Status Set".localizedString
         updateStatusSetRows(for: state)
@@ -375,6 +378,7 @@ extension EmerFireAlarmMonitorVC {
             return
         }
         currentState = .disabled
+        syncManualControlBlock(for: .disabled)
         statusSetView.title = "Status Set".localizedString
         updateStatusSetRows(for: .disabled)
         updateStatusWarningIconVisibility()
@@ -471,6 +475,18 @@ extension EmerFireAlarmMonitorVC {
 
     var shouldShowGatewayWarning: Bool {
         currentConfig?.reportToGateway == false || currentDevice?.reportToGateway == false
+    }
+
+    private func syncManualControlBlock(for state: EmerFireAlarmMonitorDisplayState) {
+        let controllerId = currentDevice?.id ?? currentConfig?.deviceId
+        switch state {
+        case .emergencyTriggered, .fireTriggered:
+            EmergencyFireControllerSceneEventManager.updateManualControlBlocked(controllerId: controllerId, blocked: true)
+        case .loading:
+            break
+        case .repair, .offline, .disabled, .emergencyNormal, .emergencyResuming, .fireNormal, .fireResuming:
+            EmergencyFireControllerSceneEventManager.updateManualControlBlocked(controllerId: controllerId, blocked: false)
+        }
     }
 
     func activeAssociatedGroupAddresses() -> [UInt16] {
