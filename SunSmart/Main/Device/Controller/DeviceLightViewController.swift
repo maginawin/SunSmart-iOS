@@ -177,8 +177,9 @@ class DeviceLightViewController: UIViewController {
             view.hideEmptyDataView()
 
             let lightness100 = node.isOn ? Node.getLightness100(lightness: node.lightness) : 0
+            let isLightOn = node.isOn && lightness100 > 0
             
-            if node.isOn {
+            if isLightOn {
                 lightImageBtn.isSelected = true
                 onoffBtn.isSelected = true
                 
@@ -208,6 +209,11 @@ class DeviceLightViewController: UIViewController {
                 onoffBtn.isSelected = false
                 lightBgView.image = UIImage(named: "device_light_off_bg")
                 lightBgView.alpha = 1
+                if lightGrayBgView.alpha != 0 {
+                    UIView.animate(withDuration: 0.25) {
+                        self.lightGrayBgView.alpha = 0
+                    }
+                }
             }
             
             brightnessLabel.text = "\(lightness100)%"
