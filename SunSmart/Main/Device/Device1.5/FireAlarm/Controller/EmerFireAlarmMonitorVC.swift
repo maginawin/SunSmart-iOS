@@ -365,9 +365,6 @@ class EmerFireAlarmMonitorVC: UIViewController, DeviceProtocol {
         let message = SceneRecallUnacknowledged(sceneNumber)
         print("[EFC] recall scene=\(String(format: "0x%04X", sceneNumber)), publishGroup=\(String(format: "0x%04X", publishGroupAddress)), mode=\(currentWorkMode)")
         MeshAPI.sendMessage(message: message, address: publishGroupAddress)
-        if sceneNumber == DeviceEmerFireData.powerLossTriggerSceneNumber || sceneNumber == DeviceEmerFireData.fireAlarmTriggerSceneNumber {
-            EmergencyFireControllerSceneEventManager.updateManualControlBlocked(controllerId: currentDevice?.id ?? currentConfig?.deviceId, blocked: true)
-        }
         return true
     }
 
@@ -382,7 +379,6 @@ class EmerFireAlarmMonitorVC: UIViewController, DeviceProtocol {
         }
         print("[EFC] light LC ON publishGroup=\(String(format: "0x%04X", publishGroupAddress)), mode=\(currentWorkMode)")
         MeshAPI.sendMessage(message: LightLCLightOnOffSetUnacknowledged(true), address: publishGroupAddress)
-        EmergencyFireControllerSceneEventManager.updateManualControlBlocked(controllerId: currentDevice?.id ?? currentConfig?.deviceId, blocked: false)
         return true
     }
 
