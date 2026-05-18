@@ -12,6 +12,9 @@ extension Notification.Name {
     static let deviceEmerFireDataDidChange = Notification.Name("deviceEmerFireDataDidChange")
 }
 
+/// 应急火警控制器的本地聚合入口。
+/// 这里负责把数据库中的 EFC 配置和当前 Mesh 网络里真实的 emergencyController 节点合并，
+/// 页面层尽量通过 Store 读写，避免直接操作 Repository 后漏掉缓存、通知和 proxy filter 刷新。
 final class DeviceEmerFireStore {
 
     static let shared = DeviceEmerFireStore()
@@ -73,12 +76,15 @@ final class DeviceEmerFireStore {
             .filter { group in
                 group.address.address.isGroup &&
                 !group.address.address.isSpecialGroup &&
+                // EFC 自己创建的 virtual group 只作为内部 publish group 使用，不能暴露给用户重复选择。
                 !group.isVirtual &&
                 group.address.address != internalPublishAddress
             }
             .sorted { $0.address.address < $1.address.address }
     }
 
+    /// 确保真实 EFC 节点有一条本地配置记录。
+    /// 设备可能是从 Mesh 网络恢复/导入进来的，未必经历过 App 的添加配置流程。
     @discardableResult
     func ensureDevice(for node: Node, in space: SpaceData) -> DeviceEmerFireData {
         if let device = devices(in: space).first(where: { $0.bindNodeAddress == node.primaryUnicastAddress }) {
@@ -95,6 +101,7 @@ final class DeviceEmerFireStore {
     func bind(_ device: DeviceEmerFireData, to node: Node, in space: SpaceData) -> DeviceEmerFireData {
         let target = self.device(id: device.id, meshUUID: space.meshUUID, meshNetworkId: space.meshNetworkId) ?? device
         target.bindNodeAddress = node.primaryUnicastAddress
+        // 绑定节点变更后，真实控制器的 publication/mode/resend 等都需要重新同步。
         target.isSynced = false
         save(target)
         if target !== device {
@@ -106,6 +113,7 @@ final class DeviceEmerFireStore {
     func save(_ device: DeviceEmerFireData) {
         _ = repository.save(device)
         mergeCache(with: [device])
+        // EFC 的内部 publish group 会影响手动控制拦截和 proxy filter，需要在保存后刷新。
         EmergencyFireControllerSceneEventManager.refreshProxyFilterAddresses()
         notifyDidChange()
     }
@@ -132,6 +140,8 @@ final class DeviceEmerFireStore {
         let realNodes = MeshNetworkManager.instance.realNodes.filter { $0.deviceType == .emergencyController }
         realNodes.forEach { node in
             if !devices.contains(where: { $0.bindNodeAddress == node.primaryUnicastAddress }) {
+                // 真实 Mesh 节点已经存在但本地还没有配置时，补一条未同步记录。
+                // 这样列表能显示出来，并引导用户进入编辑/同步，而不是静默丢失这个控制器。
                 let device = DeviceEmerFireData(
                     id: UUID().uuidString,
                     spaceId: space?.id ?? "",
@@ -174,6 +184,8 @@ final class DeviceEmerFireStore {
             return
         }
         do {
+            // 这里只删除本地 MeshNetwork 缓存里的内部 virtual group。
+            // 灯节点订阅清理由 SyncPlanner 生成 Mesh message 处理，不能混在这里做。
             try MeshNetworkManager.instance.meshNetwork?.remove(group: publishGroup)
             print("[EFC] removed cached publish group device=\(device.name), address=\(String(format: "0x%04X", publishGroupAddress))")
         } catch {
@@ -195,6 +207,8 @@ final class DeviceEmerFireStore {
     }
 }
 
+/// 一条应急火警控制器配置。
+/// 它不是普通 Node 的子类，而是“本地配置 + 绑定真实 EFC 节点 + 内部 publish group”的组合业务对象。
 class DeviceEmerFireData: Copyable {
 
     /// id
@@ -248,6 +262,7 @@ class DeviceEmerFireData: Copyable {
         if !reportToGateway {
             return .gatewayUnassignedWarning
         }
+        // 只有有可同步配置时才展示同步异常；纯本地空配置不应误报。
         if hasSyncableConfiguration, !isSynced {
             return .syncIssueDevice
         }

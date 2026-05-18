@@ -8,6 +8,9 @@
 import Foundation
 import NordicSigMeshSDK
 
+/// 应急火警监控页的业务状态桥。
+/// 页面可能从本地持久化设备进入，也可能从编辑页带一份未完全刷新过的 config 进入，
+/// 因此这里同时保留 currentDevice 和 currentConfig，并在渲染时优先使用最新 config。
 final class EmerFireAlarmMonitorViewModel {
     let space: SpaceData?
     var currentConfig: LinkedEmerFireConfig?
@@ -47,6 +50,8 @@ final class EmerFireAlarmMonitorViewModel {
     }
 
     var activeAssociatedGroupsContainDevices: Bool {
+        // 用于判断触发/停止类操作是否有实际可控对象。
+        // 这里只检查当前激活模式下的目标组，pending cleanup 组不参与监控页操作。
         activeAssociatedGroupAddresses().contains { address in
             MeshNetworkManager.instance.groups
                 .first(where: { $0.address.address == address })?
@@ -98,6 +103,7 @@ final class EmerFireAlarmMonitorViewModel {
     }
 
     func monitorDisplayState(mode: EmergencyControllerMode, active: Bool) -> EmerFireAlarmMonitorDisplayState {
+        // 真实设备上报的是 vendor mode + active，页面显示态统一交给 mapper 转换。
         EmerFireAlarmMonitorStateMapper.displayState(mode: mode, active: active)
     }
 
@@ -115,6 +121,7 @@ final class EmerFireAlarmMonitorViewModel {
     }
 
     func makeConfig(from device: DeviceEmerFireData) -> LinkedEmerFireConfig {
+        // 监控页和编辑页都使用 LinkedEmerFireConfig 作为轻量快照，避免 UI 层直接改数据库实体。
         LinkedEmerFireConfig(
             deviceId: device.id,
             spaceId: device.spaceId,

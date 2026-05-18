@@ -233,10 +233,6 @@
 		8C778B592FA1A9C2000887FE /* PJNGatewayViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C778B572FA1A9C2000887FE /* PJNGatewayViewController.swift */; };
 		8C778B5A2FA1A9C2000887FE /* PJNGatewayViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C778B572FA1A9C2000887FE /* PJNGatewayViewController.swift */; };
 		8C778B5B2FA1A9C2000887FE /* PJNGatewayViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C778B572FA1A9C2000887FE /* PJNGatewayViewController.swift */; };
-		8C778B5D2FA1A9D7000887FE /* ngateWay.md in Resources */ = {isa = PBXBuildFile; fileRef = 8C778B5C2FA1A9D7000887FE /* ngateWay.md */; };
-		8C778B5E2FA1A9D7000887FE /* ngateWay.md in Resources */ = {isa = PBXBuildFile; fileRef = 8C778B5C2FA1A9D7000887FE /* ngateWay.md */; };
-		8C778B5F2FA1A9D7000887FE /* ngateWay.md in Resources */ = {isa = PBXBuildFile; fileRef = 8C778B5C2FA1A9D7000887FE /* ngateWay.md */; };
-		8C778B602FA1A9D7000887FE /* ngateWay.md in Resources */ = {isa = PBXBuildFile; fileRef = 8C778B5C2FA1A9D7000887FE /* ngateWay.md */; };
 		8C778B622FA1AB19000887FE /* PJNGatewayPageViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C778B612FA1AB19000887FE /* PJNGatewayPageViewModel.swift */; };
 		8C778B632FA1AB19000887FE /* PJNGatewayPageViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C778B612FA1AB19000887FE /* PJNGatewayPageViewModel.swift */; };
 		8C778B642FA1AB19000887FE /* PJNGatewayPageViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C778B612FA1AB19000887FE /* PJNGatewayPageViewModel.swift */; };
@@ -281,10 +277,6 @@
 		8C778B9A2FA1E0D0000887FE /* PJNGatewayBottomSaveView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C778B982FA1E0D0000887FE /* PJNGatewayBottomSaveView.swift */; };
 		8C778B9B2FA1E0D0000887FE /* PJNGatewayBottomSaveView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C778B982FA1E0D0000887FE /* PJNGatewayBottomSaveView.swift */; };
 		8C778B9C2FA1E0D0000887FE /* PJNGatewayBottomSaveView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C778B982FA1E0D0000887FE /* PJNGatewayBottomSaveView.swift */; };
-		8C778B9F2FA1F334000887FE /* eightKeySwitches.md in Resources */ = {isa = PBXBuildFile; fileRef = 8C778B9E2FA1F324000887FE /* eightKeySwitches.md */; };
-		8C778BA02FA1F334000887FE /* eightKeySwitches.md in Resources */ = {isa = PBXBuildFile; fileRef = 8C778B9E2FA1F324000887FE /* eightKeySwitches.md */; };
-		8C778BA12FA1F334000887FE /* eightKeySwitches.md in Resources */ = {isa = PBXBuildFile; fileRef = 8C778B9E2FA1F324000887FE /* eightKeySwitches.md */; };
-		8C778BA22FA1F334000887FE /* eightKeySwitches.md in Resources */ = {isa = PBXBuildFile; fileRef = 8C778B9E2FA1F324000887FE /* eightKeySwitches.md */; };
 		8C778BA82FA1FA2D000887FE /* PJSwitchesTypesVC.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C778BA72FA1FA2D000887FE /* PJSwitchesTypesVC.swift */; };
 		8C778BA92FA1FA2D000887FE /* PJSwitchesTypesVC.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C778BA72FA1FA2D000887FE /* PJSwitchesTypesVC.swift */; };
 		8C778BAA2FA1FA2D000887FE /* PJSwitchesTypesVC.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C778BA72FA1FA2D000887FE /* PJSwitchesTypesVC.swift */; };
@@ -349,10 +341,6 @@
 		8C778BF52FA2153E000887FE /* PJEightKeySwitchesViewCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C778BF32FA2153E000887FE /* PJEightKeySwitchesViewCell.swift */; };
 		8C778BF62FA2153E000887FE /* PJEightKeySwitchesViewCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C778BF32FA2153E000887FE /* PJEightKeySwitchesViewCell.swift */; };
 		8C778BF72FA2153E000887FE /* PJEightKeySwitchesViewCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C778BF32FA2153E000887FE /* PJEightKeySwitchesViewCell.swift */; };
-		8C778BF92FA21546000887FE /* firealarm.md in Resources */ = {isa = PBXBuildFile; fileRef = 8C778BED2FA21534000887FE /* firealarm.md */; };
-		8C778BFA2FA21546000887FE /* firealarm.md in Resources */ = {isa = PBXBuildFile; fileRef = 8C778BED2FA21534000887FE /* firealarm.md */; };
-		8C778BFB2FA21546000887FE /* firealarm.md in Resources */ = {isa = PBXBuildFile; fileRef = 8C778BED2FA21534000887FE /* firealarm.md */; };
-		8C778BFC2FA21546000887FE /* firealarm.md in Resources */ = {isa = PBXBuildFile; fileRef = 8C778BED2FA21534000887FE /* firealarm.md */; };
 		8C778BFE2FA2155D000887FE /* PJEightKeySwitchRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C778BFD2FA2155D000887FE /* PJEightKeySwitchRepository.swift */; };
 		8C778BFF2FA2155D000887FE /* PJEightKeySwitchRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C778BFD2FA2155D000887FE /* PJEightKeySwitchRepository.swift */; };
 		8C778C002FA2155D000887FE /* PJEightKeySwitchRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C778BFD2FA2155D000887FE /* PJEightKeySwitchRepository.swift */; };
@@ -417,6 +405,10 @@
 		8CBEC6442F961B93003859AB /* EmerFireToggleCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8CBEC6422F961B93003859AB /* EmerFireToggleCell.swift */; };
 		8CBEC6452F961B93003859AB /* EmerFireToggleCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8CBEC6422F961B93003859AB /* EmerFireToggleCell.swift */; };
 		8CBEC6462F961B93003859AB /* EmerFireToggleCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8CBEC6422F961B93003859AB /* EmerFireToggleCell.swift */; };
+		8CC3F7AC2FBAB35700CD3373 /* devices1.5.md in Resources */ = {isa = PBXBuildFile; fileRef = 8CC3F7AB2FBAB35700CD3373 /* devices1.5.md */; };
+		8CC3F7AD2FBAB35700CD3373 /* devices1.5.md in Resources */ = {isa = PBXBuildFile; fileRef = 8CC3F7AB2FBAB35700CD3373 /* devices1.5.md */; };
+		8CC3F7AE2FBAB35700CD3373 /* devices1.5.md in Resources */ = {isa = PBXBuildFile; fileRef = 8CC3F7AB2FBAB35700CD3373 /* devices1.5.md */; };
+		8CC3F7AF2FBAB35700CD3373 /* devices1.5.md in Resources */ = {isa = PBXBuildFile; fileRef = 8CC3F7AB2FBAB35700CD3373 /* devices1.5.md */; };
 		8CC4A6A92F95D01500839EC4 /* OthersViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8CC4A6A82F95D01500839EC4 /* OthersViewController.swift */; };
 		8CC4A6AA2F95D01500839EC4 /* OthersViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8CC4A6A82F95D01500839EC4 /* OthersViewController.swift */; };
 		8CC4A6AB2F95D01500839EC4 /* OthersViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8CC4A6A82F95D01500839EC4 /* OthersViewController.swift */; };
@@ -2428,7 +2420,6 @@
 		8C778B4D2FA1A857000887FE /* PJNGatewayDetailViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PJNGatewayDetailViewModel.swift; sourceTree = "<group>"; };
 		8C778B522FA1A9C2000887FE /* PJNGatewayDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PJNGatewayDetailView.swift; sourceTree = "<group>"; };
 		8C778B572FA1A9C2000887FE /* PJNGatewayViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PJNGatewayViewController.swift; sourceTree = "<group>"; };
-		8C778B5C2FA1A9D7000887FE /* ngateWay.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = ngateWay.md; sourceTree = "<group>"; };
 		8C778B612FA1AB19000887FE /* PJNGatewayPageViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PJNGatewayPageViewModel.swift; sourceTree = "<group>"; };
 		8C778B662FA1AB19000887FE /* PJNGatewayStyle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PJNGatewayStyle.swift; sourceTree = "<group>"; };
 		8C778B6B2FA1AB85000887FE /* PJNGatewayCardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PJNGatewayCardView.swift; sourceTree = "<group>"; };
@@ -2440,7 +2431,6 @@
 		8C778B8E2FA1DCE3000887FE /* PJNGatewaySwitch2_4GHzAlertView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PJNGatewaySwitch2_4GHzAlertView.swift; sourceTree = "<group>"; };
 		8C778B932FA1E0D0000887FE /* PJNGatewayCopyInformationView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PJNGatewayCopyInformationView.swift; sourceTree = "<group>"; };
 		8C778B982FA1E0D0000887FE /* PJNGatewayBottomSaveView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PJNGatewayBottomSaveView.swift; sourceTree = "<group>"; };
-		8C778B9E2FA1F324000887FE /* eightKeySwitches.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = eightKeySwitches.md; sourceTree = "<group>"; };
 		8C778BA72FA1FA2D000887FE /* PJSwitchesTypesVC.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PJSwitchesTypesVC.swift; sourceTree = "<group>"; };
 		8C778BAC2FA1FB42000887FE /* PJSwitchesTypesViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PJSwitchesTypesViewModel.swift; sourceTree = "<group>"; };
 		8C778BB12FA1FD42000887FE /* PJPreAddEightKeySwitchesVC.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PJPreAddEightKeySwitchesVC.swift; sourceTree = "<group>"; };
@@ -2455,7 +2445,6 @@
 		8C778BDE2FA20E1D000887FE /* PJEightKeySwitchPeriodicReportingSliderView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PJEightKeySwitchPeriodicReportingSliderView.swift; sourceTree = "<group>"; };
 		8C778BE32FA20E1D000887FE /* PJEightKeySwitchMoreSettingsController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PJEightKeySwitchMoreSettingsController.swift; sourceTree = "<group>"; };
 		8C778BE82FA2102D000887FE /* PJEightKeySwitchStatus.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PJEightKeySwitchStatus.swift; sourceTree = "<group>"; };
-		8C778BED2FA21534000887FE /* firealarm.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = firealarm.md; sourceTree = "<group>"; };
 		8C778BEE2FA2153E000887FE /* PJEightKeySwitchData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PJEightKeySwitchData.swift; sourceTree = "<group>"; };
 		8C778BF32FA2153E000887FE /* PJEightKeySwitchesViewCell.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PJEightKeySwitchesViewCell.swift; sourceTree = "<group>"; };
 		8C778BFD2FA2155D000887FE /* PJEightKeySwitchRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PJEightKeySwitchRepository.swift; sourceTree = "<group>"; };
@@ -2474,6 +2463,7 @@
 		8CBEC6382F961B6C003859AB /* FireAlarmTableReusable.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FireAlarmTableReusable.swift; sourceTree = "<group>"; };
 		8CBEC63D2F961B84003859AB /* EmerFireNameCell.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EmerFireNameCell.swift; sourceTree = "<group>"; };
 		8CBEC6422F961B93003859AB /* EmerFireToggleCell.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EmerFireToggleCell.swift; sourceTree = "<group>"; };
+		8CC3F7AB2FBAB35700CD3373 /* devices1.5.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = devices1.5.md; sourceTree = "<group>"; };
 		8CC4A6A82F95D01500839EC4 /* OthersViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OthersViewController.swift; sourceTree = "<group>"; };
 		8CC4A6AD2F95D0CF00839EC4 /* PJTopbtBoLabView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PJTopbtBoLabView.swift; sourceTree = "<group>"; };
 		8CF15F762F9628F90044FCF3 /* EmerFireSelectionCell.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EmerFireSelectionCell.swift; sourceTree = "<group>"; };
@@ -3255,7 +3245,6 @@
 		8C778B322FA19F9E000887FE /* NGateWay */ = {
 			isa = PBXGroup;
 			children = (
-				8C778B5C2FA1A9D7000887FE /* ngateWay.md */,
 				8C778B442FA1A802000887FE /* Model */,
 				8C778B452FA1A802000887FE /* ViewModel */,
 				8C778B462FA1A802000887FE /* View */,
@@ -3273,6 +3262,7 @@
 				8C778B322FA19F9E000887FE /* NGateWay */,
 				8CC4A6A42F95CF9500839EC4 /* FireAlarm */,
 				8C1DA73E2FAAF2140073F100 /* Common */,
+				8CC3F7AB2FBAB35700CD3373 /* devices1.5.md */,
 			);
 			path = Device1.5;
 			sourceTree = "<group>";
@@ -3336,7 +3326,6 @@
 				8C778BA52FA1F9B5000887FE /* ViewModel */,
 				8C778BA42FA1F9B0000887FE /* View */,
 				8C778BA32FA1F9A9000887FE /* Model */,
-				8C778B9E2FA1F324000887FE /* eightKeySwitches.md */,
 				8C778BF82FA21543000887FE /* Repositories */,
 				8C1DA7412FAAF2140073F100 /* Add */,
 				8C1DA7422FAAF2150073F100 /* Restore */,
@@ -3411,7 +3400,6 @@
 		8CC4A6A42F95CF9500839EC4 /* FireAlarm */ = {
 			isa = PBXGroup;
 			children = (
-				8C778BED2FA21534000887FE /* firealarm.md */,
 				8C778B152F9CBD3A000887FE /* utils */,
 				8CC4A6A72F95CFB500839EC4 /* Model */,
 				8CC4A6A62F95CFA200839EC4 /* Controller */,
@@ -5163,13 +5151,11 @@
 			files = (
 				C886E1942E30E24100D0C3A6 /* Assets.xcassets in Resources */,
 				C886E1932E30E20500D0C3A6 /* Archipelago-Assets.xcassets in Resources */,
-				8C778BFB2FA21546000887FE /* firealarm.md in Resources */,
-				8C778B5F2FA1A9D7000887FE /* ngateWay.md in Resources */,
 				C88555162DE6B44C00C8B688 /* Privacy Policy.html in Resources */,
+				8CC3F7AF2FBAB35700CD3373 /* devices1.5.md in Resources */,
 				C88555172DE6B44C00C8B688 /* XWHUDManager_right@3x.png in Resources */,
 				C88555182DE6B44C00C8B688 /* User Agreement.html in Resources */,
 				C8B483D72E4B361F006D85BC /* device_add.mp3 in Resources */,
-				8C778BA12FA1F334000887FE /* eightKeySwitches.md in Resources */,
 				C8B483D82E4B361F006D85BC /* device_reset.mp3 in Resources */,
 				C85D55112E6182DC00BFEEDA /* broadcast_loading.gif in Resources */,
 				C88555192DE6B44C00C8B688 /* Localizable.strings in Resources */,
@@ -5196,13 +5182,11 @@
 			files = (
 				C886E1732E30DE4900D0C3A6 /* XWHUDManager_right@3x.png in Resources */,
 				C886E1752E30DE4900D0C3A6 /* Localizable.strings in Resources */,
-				8C778BFC2FA21546000887FE /* firealarm.md in Resources */,
-				8C778B5D2FA1A9D7000887FE /* ngateWay.md in Resources */,
 				C886E1762E30DE4900D0C3A6 /* XWHUDManager_successful@2x.png in Resources */,
+				8CC3F7AC2FBAB35700CD3373 /* devices1.5.md in Resources */,
 				C886E1772E30DE4900D0C3A6 /* XWHUDManager_tip@3x.png in Resources */,
 				C886E1782E30DE4900D0C3A6 /* XWHUDManager_loading.gif in Resources */,
 				C8B483D32E4B361F006D85BC /* device_add.mp3 in Resources */,
-				8C778BA02FA1F334000887FE /* eightKeySwitches.md in Resources */,
 				C8B483D42E4B361F006D85BC /* device_reset.mp3 in Resources */,
 				C85D550F2E6182DC00BFEEDA /* broadcast_loading.gif in Resources */,
 				C886E17A2E30DE4900D0C3A6 /* XWHUDManager_error@2x.png in Resources */,
@@ -5233,18 +5217,16 @@
 				C898E2D52AB7E46300C71315 /* Localizable.strings in Resources */,
 				C8B483D52E4B361F006D85BC /* device_add.mp3 in Resources */,
 				C8B483D62E4B361F006D85BC /* device_reset.mp3 in Resources */,
-				8C778BF92FA21546000887FE /* firealarm.md in Resources */,
 				C8C1E5A72B6A1FA500F60E62 /* XWHUDManager_successful@2x.png in Resources */,
 				C896BD402A930C3A00217512 /* XWHUDManager_tip@3x.png in Resources */,
-				8C778B9F2FA1F334000887FE /* eightKeySwitches.md in Resources */,
 				C8BC494C2C1C1CD5006BAF89 /* XWHUDManager_loading.gif in Resources */,
 				C896B9B42A930BAA00217512 /* LaunchScreen.storyboard in Resources */,
 				C8C1E5AB2B6A1FDC00F60E62 /* XWHUDManager_error@2x.png in Resources */,
 				C87EB4622BA17D3F00F9285B /* CodeScan.bundle in Resources */,
-				8C778B602FA1A9D7000887FE /* ngateWay.md in Resources */,
 				C85D55102E6182DC00BFEEDA /* broadcast_loading.gif in Resources */,
 				C89B78812CC1EFEB0048B746 /* devices_config.json in Resources */,
 				C8C1E5AC2B6A1FDC00F60E62 /* XWHUDManager_error@3x.png in Resources */,
+				8CC3F7AE2FBAB35700CD3373 /* devices1.5.md in Resources */,
 				C896B9B12A930BAA00217512 /* Assets.xcassets in Resources */,
 				C896BD3F2A930C3A00217512 /* XWHUDManager_info@2x.png in Resources */,
 				C896BD3C2A930C3A00217512 /* XWHUDManager_info@3x.png in Resources */,
@@ -5262,6 +5244,7 @@
 				C8BB67592ED3F056000C63EE /* Localizable.strings in Resources */,
 				C8D7F1FB2F5676E3007D86E0 /* Privacy Policy.html in Resources */,
 				C8BB675A2ED3F056000C63EE /* device_add.mp3 in Resources */,
+				8CC3F7AD2FBAB35700CD3373 /* devices1.5.md in Resources */,
 				C8BB675B2ED3F056000C63EE /* device_reset.mp3 in Resources */,
 				C8BB675C2ED3F056000C63EE /* XWHUDManager_successful@2x.png in Resources */,
 				C8BB675D2ED3F056000C63EE /* XWHUDManager_tip@3x.png in Resources */,
@@ -5270,12 +5253,9 @@
 				C8BB67612ED3F056000C63EE /* CodeScan.bundle in Resources */,
 				C8BB67732ED3F13A000C63EE /* Assets-SLGSync.xcassets in Resources */,
 				C8BB67622ED3F056000C63EE /* broadcast_loading.gif in Resources */,
-				8C778BFA2FA21546000887FE /* firealarm.md in Resources */,
-				8C778BA22FA1F334000887FE /* eightKeySwitches.md in Resources */,
 				C8BB67632ED3F056000C63EE /* devices_config.json in Resources */,
 				C8BB67642ED3F056000C63EE /* XWHUDManager_error@3x.png in Resources */,
 				C8BB67652ED3F056000C63EE /* Assets.xcassets in Resources */,
-				8C778B5E2FA1A9D7000887FE /* ngateWay.md in Resources */,
 				C8BB67662ED3F056000C63EE /* XWHUDManager_info@2x.png in Resources */,
 				C8D7F1FD2F5676E7007D86E0 /* User Agreement.html in Resources */,
 				C8BB67672ED3F056000C63EE /* XWHUDManager_info@3x.png in Resources */,
