@@ -177,8 +177,10 @@ class DeviceLightViewController: UIViewController {
             view.hideEmptyDataView()
 
             let lightness100 = node.isOn ? Node.getLightness100(lightness: node.lightness) : 0
+            let isLightOn = node.isOn && node.lightness > 0
+            let lightnessText = isLightOn && lightness100 == 0 ? "<1%" : "\(lightness100)%"
             
-            if node.isOn {
+            if isLightOn {
                 lightImageBtn.isSelected = true
                 onoffBtn.isSelected = true
                 
@@ -208,9 +210,14 @@ class DeviceLightViewController: UIViewController {
                 onoffBtn.isSelected = false
                 lightBgView.image = UIImage(named: "device_light_off_bg")
                 lightBgView.alpha = 1
+                if lightGrayBgView.alpha != 0 {
+                    UIView.animate(withDuration: 0.25) {
+                        self.lightGrayBgView.alpha = 0
+                    }
+                }
             }
             
-            brightnessLabel.text = "\(lightness100)%"
+            brightnessLabel.text = lightnessText
             cctLabel.text = "\(node.temperature)K"
             
             lightnessSlider.slider.limitRange = Node.getLightness100(lightness: node.lightnessRange.lowerBound)...Node.getLightness100(lightness: node.lightnessRange.upperBound)
