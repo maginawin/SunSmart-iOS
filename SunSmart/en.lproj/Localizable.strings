@@ -151,6 +151,10 @@
 "debug_uart_filter_placeholder" = "Filter messages";
 "debug_uart_clear_message" = "Clear cached UART messages?";
 "debug_uart_share" = "Share";
+"debug_uart_receive_messages" = "Receive UART Messages";
+"debug_connect_proxy_title" = "Connect Proxy Node";
+"debug_connect_proxy_message" = "Connect to this Proxy Node for debugging?";
+"debug_switch_proxy_message" = "This will disconnect the current Proxy Node and connect to the selected device.";
 "debug_reconnect_failed_message" = "Re-connect failed.";
 "debug_uart_export_failed_message" = "Failed to export UART log.";
 "scan_disable_adding" = "Disabling the scan when a device is being added";

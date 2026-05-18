@@ -269,6 +269,9 @@ final class SpaceDebugDeviceViewController: UIViewController {
             }
             self.uartState = state
             self.render()
+            if case .supported = state {
+                SpaceDebugUARTManager.shared.evaluateCurrentProxy(space: self.space)
+            }
         }
     }
 }

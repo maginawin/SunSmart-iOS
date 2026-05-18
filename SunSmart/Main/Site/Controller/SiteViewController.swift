@@ -131,8 +131,9 @@ class SiteViewController: UIViewController {
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
         (navigationController as? NavigationViewController)?.navigationDelegate = nil
-        
+
         setupData()
+        SpaceDebugUARTManager.shared.activateSite(site.id)
 
         if reloadData {
             reloadData = false
@@ -148,6 +149,7 @@ class SiteViewController: UIViewController {
     }
 
     @objc private func backAction() {
+        SpaceDebugUARTManager.shared.endSite(site.id)
         if let navigationController, navigationController.viewControllers.first != self {
             navigationController.popViewController(animated: true)
         } else {
@@ -197,6 +199,7 @@ self.updateAddressData()
     deinit {
 //        NetworkRequest.shared.removeObserver(self, forKeyPath: "networkable")
         networkableObservation = nil
+        SpaceDebugUARTManager.shared.endSite(site.id)
 
         if MeshNetworkManager.instance.meshNetwork?.uuid.uuidString == site.meshUUID && MeshNetworkManager.instance.currentNetworkKey.networkId.hex == site.meshNetworkId {
             MeshLibManager.manager.meshNetworkDisconnect()

@@ -14,6 +14,8 @@ final class SpaceDebugViewModel {
     private var itemsByAddress: [Address: SpaceDebugNodeItem]
     private var scanState: SpaceDebugScanState = .idle
     private var pendingRefresh: DispatchWorkItem?
+    private var connectedAddress: Address?
+    private var uartCachedAddresses: Set<Address> = []
 
     init(nodes: [Node]) {
         self.itemsByAddress = SpaceDebugViewModel.makeItems(nodes: nodes)
@@ -33,6 +35,7 @@ final class SpaceDebugViewModel {
 
     func replaceNodes(_ nodes: [Node]) {
         itemsByAddress = SpaceDebugViewModel.makeItems(nodes: nodes)
+        refreshConnectedState()
         onSnapshotChanged?()
     }
 
@@ -49,6 +52,7 @@ final class SpaceDebugViewModel {
                 next.rssi = nil
                 next.lastSeen = nil
                 next.isConnecting = false
+                next.isConnected = item.address == connectedAddress
                 return (next.address, next)
             }
         )
@@ -63,8 +67,28 @@ final class SpaceDebugViewModel {
         item.peripheral = data.peripheral
         item.rssi = data.rssi.intValue
         item.lastSeen = Date()
+        item.isConnected = address == connectedAddress
         itemsByAddress[address] = item
         scheduleSnapshotRefresh()
+    }
+
+    func setConnectedNode(_ node: Node?) {
+        setConnectedAddress(node?.primaryUnicastAddress)
+    }
+
+    func setConnectedAddress(_ address: Address?) {
+        connectedAddress = address
+        refreshConnectedState()
+        onSnapshotChanged?()
+    }
+
+    func clearConnectedNode() {
+        setConnectedAddress(nil)
+    }
+
+    func setUARTCachedAddresses(_ addresses: Set<Address>) {
+        uartCachedAddresses = addresses
+        onSnapshotChanged?()
     }
 
     func setConnecting(address: Address?) {
@@ -72,6 +96,7 @@ final class SpaceDebugViewModel {
             uniqueKeysWithValues: itemsByAddress.values.map { item in
                 var next = item
                 next.isConnecting = address == item.address
+                next.isConnected = item.address == connectedAddress
                 return (next.address, next)
             }
         )
@@ -87,6 +112,10 @@ final class SpaceDebugViewModel {
         sections()[indexPath.section].items[indexPath.row]
     }
 
+    func item(address: Address) -> SpaceDebugNodeItem? {
+        itemsByAddress[address].map(decorate(_:))
+    }
+
     func sections() -> [SpaceDebugSection] {
         SpaceDebugDeviceCategory.allCases.map { category in
             let items = itemsByAddress.values
@@ -94,6 +123,7 @@ final class SpaceDebugViewModel {
                 .sorted { lhs, rhs in
                     lhs.displayOrder < rhs.displayOrder
                 }
+                .map { decorate($0) }
             return SpaceDebugSection(category: category, items: items)
         }.filter { !$0.items.isEmpty }
     }
@@ -110,11 +140,27 @@ final class SpaceDebugViewModel {
         DispatchQueue.main.asyncAfter(deadline: .now() + 1.0, execute: workItem)
     }
 
+    private func refreshConnectedState() {
+        itemsByAddress = Dictionary(
+            uniqueKeysWithValues: itemsByAddress.values.map { item in
+                var next = item
+                next.isConnected = item.address == connectedAddress
+                return (next.address, next)
+            }
+        )
+    }
+
     private static func makeItems(nodes: [Node]) -> [Address: SpaceDebugNodeItem] {
         Dictionary(
             uniqueKeysWithValues: nodes.enumerated().map { index, node in
                 (node.primaryUnicastAddress, SpaceDebugNodeItem(node: node, displayOrder: index))
             }
         )
+    }
+
+    private func decorate(_ item: SpaceDebugNodeItem) -> SpaceDebugNodeItem {
+        var item = item
+        item.hasUARTCache = uartCachedAddresses.contains(item.address)
+        return item
     }
 }

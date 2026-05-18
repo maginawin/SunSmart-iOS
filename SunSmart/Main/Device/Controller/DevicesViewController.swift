@@ -210,6 +210,8 @@ class DevicesViewController: WMPageController {
                 if MeshLibManager.manager.isMeshNetworkConnected, self.firstConnectionNetwork {
                     // 首次连接上mesh网络
                     self.firstConnectionNetwork = false
+                    SpaceDebugUARTManager.shared.setActiveSpace(self.space)
+                    SpaceDebugUARTManager.shared.evaluateCurrentProxy(space: self.space)
                     
                     if let view = self.wm_pageController?.view {
                         XWHUDManager.hideInView(with: view)

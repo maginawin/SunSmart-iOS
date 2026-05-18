@@ -7,14 +7,21 @@
 
 import UIKit
 
+protocol SpaceDebugDeviceCellDelegate: AnyObject {
+    func spaceDebugDeviceCellDidTapShare(_ cell: SpaceDebugDeviceCell)
+}
+
 final class SpaceDebugDeviceCell: UITableViewCell {
     static let reuseIdentifier = "SpaceDebugDeviceCell"
+
+    weak var delegate: SpaceDebugDeviceCellDelegate?
 
     private let iconImageView = UIImageView()
     private let nameLabel = UILabel()
     private let statusLabel = UILabel()
     private let signalStrengthView = DeviceSignalStrengthView()
     private let rssiLabel = UILabel()
+    private let shareButton = UIButton(type: .system)
 
     override init(style: UITableViewCell.CellStyle, reuseIdentifier: String?) {
         super.init(style: style, reuseIdentifier: reuseIdentifier)
@@ -31,11 +38,14 @@ final class SpaceDebugDeviceCell: UITableViewCell {
     }
 
     func update(item: SpaceDebugNodeItem) {
-        iconImageView.image = UIImage(named: item.isFound ? item.node.iconName : item.node.offlineIconName)
+        let active = item.isConnected || item.isFound
+        iconImageView.image = UIImage(named: active ? item.node.iconName : item.node.offlineIconName)
         nameLabel.text = item.displayTitle
 
         if item.isConnecting {
             statusLabel.text = "connecting".localizedString
+        } else if item.isConnected {
+            statusLabel.text = "debug_connected".localizedString
         } else {
             statusLabel.text = item.isFound ? "debug_found".localizedString : "debug_not_found".localizedString
         }
@@ -47,11 +57,12 @@ final class SpaceDebugDeviceCell: UITableViewCell {
             signalStrengthView.setSignalStrength(rssi: -120)
             rssiLabel.text = "--"
         }
+        shareButton.isHidden = !item.hasUARTCache
 
-        let enabled = item.isFound && !item.isConnecting
+        let enabled = item.isAvailable && !item.isConnecting
         contentView.alpha = enabled ? 1.0 : 0.45
         selectionStyle = enabled ? .gray : .none
-        isUserInteractionEnabled = enabled
+        isUserInteractionEnabled = enabled || item.hasUARTCache
     }
 
     private func setupUI() {
@@ -67,10 +78,20 @@ final class SpaceDebugDeviceCell: UITableViewCell {
             make.size.equalTo(CGSize(width: SCRXFrom(36), height: SCRXFrom(36)))
         }
 
+        shareButton.setImage(UIImage(systemName: "square.and.arrow.up"), for: .normal)
+        shareButton.tintColor = Bar_Color
+        shareButton.addTarget(self, action: #selector(shareButtonTapped), for: .touchUpInside)
+        contentView.addSubview(shareButton)
+        shareButton.snp.makeConstraints { make in
+            make.right.equalTo(SCRXFrom(-16))
+            make.centerY.equalToSuperview()
+            make.size.equalTo(CGSize(width: SCRXFrom(36), height: SCRYFrom(36)))
+        }
+
         signalStrengthView.setSignalStrength(rssi: -120)
         contentView.addSubview(signalStrengthView)
         signalStrengthView.snp.makeConstraints { make in
-            make.right.equalTo(SCRXFrom(-16))
+            make.right.equalTo(shareButton.snp.left).offset(SCRXFrom(-8))
             make.centerY.equalToSuperview().offset(SCRYFrom(-8))
             make.size.equalTo(CGSize(width: SCRXFrom(56), height: SCRYFrom(14)))
         }
@@ -102,5 +123,9 @@ final class SpaceDebugDeviceCell: UITableViewCell {
             make.right.equalTo(signalStrengthView)
             make.top.equalTo(signalStrengthView.snp.bottom).offset(SCRYFrom(4))
         }
+    }
+
+    @objc private func shareButtonTapped() {
+        delegate?.spaceDebugDeviceCellDidTapShare(self)
     }
 }

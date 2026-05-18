@@ -103,6 +103,8 @@ struct SpaceDebugNodeItem {
     var rssi: Int?
     var lastSeen: Date?
     var isConnecting: Bool = false
+    var isConnected: Bool = false
+    var hasUARTCache: Bool = false
 
     var address: Address {
         node.primaryUnicastAddress
@@ -114,6 +116,10 @@ struct SpaceDebugNodeItem {
 
     var isFound: Bool {
         peripheral != nil && rssi != nil
+    }
+
+    var isAvailable: Bool {
+        isConnected || isFound
     }
 
     var groupName: String? {

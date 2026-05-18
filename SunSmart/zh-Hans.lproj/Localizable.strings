@@ -149,6 +149,10 @@
 "debug_uart_filter_placeholder" = "Filter messages";
 "debug_uart_clear_message" = "是否清除已缓存的 UART 消息？";
 "debug_uart_share" = "Share";
+"debug_uart_receive_messages" = "接收 UART 消息";
+"debug_connect_proxy_title" = "连接 Proxy Node";
+"debug_connect_proxy_message" = "是否连接此 Proxy Node 进行调试？";
+"debug_switch_proxy_message" = "这会断开当前 Proxy Node，并连接所选设备。";
 "debug_reconnect_failed_message" = "重新连接失败。";
 "debug_uart_export_failed_message" = "导出 UART 日志失败。";
 "scan_disable_adding" = "当设备正在添加时，禁用扫描";

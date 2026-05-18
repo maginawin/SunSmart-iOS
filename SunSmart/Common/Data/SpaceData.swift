@@ -157,6 +157,11 @@ class SpaceData: Copyable {
         return true
     }
     
+    /// 检查space是否可以进入调试
+    var canDebug: Bool {
+        state == .normal && !requiresPasswordVerification
+    }
+    
     /// 是否数据空的空间
     var isEmpty: Bool {
         return deviceCount == 0 && luminairesCount == 0 && groupCount == 0 && sceneCount == 0 && scheheduleCount == 0 && switchesCount == 0

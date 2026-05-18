@@ -224,6 +224,7 @@ class SpaceViewController: WMPageController {
         
         // 添加通知监听
         addNotificaiton()
+        SpaceDebugUARTManager.shared.setActiveSpace(space)
         // 获取space数据
         setNetworkConnected()
 //        loadSpaceReqeust()
@@ -569,6 +570,7 @@ class SpaceViewController: WMPageController {
                     }
                     self.emergencyFireControllerSceneEventManager?.activate()
                     self.reloadData()
+                    SpaceDebugUARTManager.shared.evaluateCurrentProxy(space: self.space)
                     DispatchQueue.global().async {
 //                        print("设备同步状态:\(Date().timeIntervalSince1970)")
                         manager.realNodes.forEach { node in
@@ -980,7 +982,7 @@ class SpaceViewController: WMPageController {
                 self?.shareSpace()
             }))
         }
-        if space.canEditing {
+        if space.canDebug {
             items.append(.init(icon: UIImage(named: "menu_profile_test"), title: "debug".localizedString, tapItemBack: {[weak self] _ in
                 self?.openSpaceDebug()
             }))
@@ -1006,9 +1008,17 @@ class SpaceViewController: WMPageController {
     
     private func openSpaceDebug() {
         let vc = SpaceDebugViewController(space: space) { [weak self] in
-            self?.setNetworkConnected()
+            self?.restoreMeshConnectionAfterDebug()
         }
         navigationController?.pushViewController(vc, animated: true)
+    }
+    
+    private func restoreMeshConnectionAfterDebug() {
+        guard !MeshLibManager.manager.isMeshNetworkConnected else {
+            SpaceDebugUARTManager.shared.evaluateCurrentProxy(space: space)
+            return
+        }
+        setNetworkConnected()
     }
 
     /// 编辑空间

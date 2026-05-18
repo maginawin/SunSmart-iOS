@@ -16,6 +16,7 @@ final class SpaceDebugUARTViewController: UIViewController {
     private let session: DebugBluetoothSession
     private let space: SpaceData
     private let item: SpaceDebugNodeItem
+    private let uartKey: SpaceDebugUARTDeviceKey
     private let controlsContainerView = UIView()
     private let modeControl = UISegmentedControl(items: [
         "debug_uart_auto".localizedString,
@@ -35,17 +36,17 @@ final class SpaceDebugUARTViewController: UIViewController {
     private var scrollMode: UARTScrollMode = .auto
     private var userDragStartContentOffsetY: CGFloat?
     private var hasSwitchedToManualForCurrentDrag = false
-    private var isReceivingUARTMessages = false
     private var containFilterText = ""
     private var ignoreFilterText = ""
     private let previousIdleTimerDisabled: Bool
     private var isShowingDisconnectAlert = false
-    private var shouldResumeReceivingAfterReconnect = false
+    private var uartObserverToken: UUID?
 
     init(session: DebugBluetoothSession, space: SpaceData, item: SpaceDebugNodeItem) {
         self.session = session
         self.space = space
         self.item = item
+        self.uartKey = SpaceDebugUARTManager.shared.key(space: space, node: item.node)
         self.previousIdleTimerDisabled = UIApplication.shared.isIdleTimerDisabled
         super.init(nibName: nil, bundle: nil)
     }
@@ -59,17 +60,19 @@ final class SpaceDebugUARTViewController: UIViewController {
 
         title = "debug_uart_messages".localizedString
         navigationItem.rightBarButtonItem = UIBarButtonItem(
-            title: "debug_uart_share".localizedString,
+            image: UIImage(systemName: "square.and.arrow.up"),
             style: .plain,
             target: self,
             action: #selector(shareButtonTapped)
         )
         view.backgroundColor = Background_Color
         setupUI()
-        messages = session.cachedUARTMessages()
+        SpaceDebugUARTManager.shared.setActiveSpace(space)
+        messages = SpaceDebugUARTManager.shared.cachedMessages(for: uartKey)
         rebuildDisplayMessages()
         tableView.reloadData()
-        startMessages()
+        bindUARTManager()
+        updateReceiveButton()
     }
 
     override func viewWillAppear(_ animated: Bool) {
@@ -83,14 +86,11 @@ final class SpaceDebugUARTViewController: UIViewController {
         guard isMovingFromParent || navigationController?.isBeingDismissed == true else {
             return
         }
-        isReceivingUARTMessages = false
-        session.stopUARTMessages()
         UIApplication.shared.isIdleTimerDisabled = previousIdleTimerDisabled
     }
 
     deinit {
-        isReceivingUARTMessages = false
-        session.stopUARTMessages()
+        SpaceDebugUARTManager.shared.removeObserver(uartObserverToken)
         UIApplication.shared.isIdleTimerDisabled = previousIdleTimerDisabled
     }
 
@@ -181,65 +181,61 @@ final class SpaceDebugUARTViewController: UIViewController {
         textField.addTarget(self, action: #selector(filterTextFieldChanged(_:)), for: .editingChanged)
     }
 
-    private func startMessages() {
-        guard !isReceivingUARTMessages else {
-            return
-        }
-        isReceivingUARTMessages = true
-        updateReceiveButton()
-        session.startUARTMessages(onMessage: { [weak self] message in
-            guard let self = self, self.isReceivingUARTMessages else {
-                return
-            }
-            let shouldScroll = self.scrollMode == .auto && self.messageMatchesFilter(message)
-            let previousMessageCount = self.messages.count
-            self.messages = self.session.cachedUARTMessages()
-
-            if self.messages.count < previousMessageCount {
-                self.rebuildDisplayMessages()
-                self.tableView.reloadData()
-                if shouldScroll {
-                    self.scrollToLatestVisibleMessage(animated: true)
-                }
-                return
-            }
-
-            guard self.appendDisplayMessageIfNeeded(message) else {
-                return
-            }
-
-            self.tableView.reloadData()
-            if shouldScroll {
-                self.scrollToLatestVisibleMessage(animated: true)
-            }
-        }, completion: { [weak self] state in
+    private func bindUARTManager() {
+        uartObserverToken = SpaceDebugUARTManager.shared.observe { [weak self] event in
             guard let self = self else {
                 return
             }
-            if case .supported = state {
-                return
-            }
-            self.isReceivingUARTMessages = false
             self.updateReceiveButton()
-            if case .disconnected = state {
-                self.handleUnexpectedDisconnect()
-            } else {
-                self.showUARTUnavailableAlert(state: state)
+            switch event {
+            case .messageAppended(let key, let message) where key == self.uartKey:
+                self.handleAppendedMessage(message)
+            case .bufferChanged(let key) where key == self.uartKey:
+                self.reloadMessagesFromManager(scrollIfNeeded: self.scrollMode == .auto)
+            case .allCleared:
+                self.reloadMessagesFromManager(scrollIfNeeded: false)
+            case .stateChanged, .messageAppended, .bufferChanged:
+                break
             }
-        })
+        }
+    }
+
+    private func handleAppendedMessage(_ message: SpaceDebugUARTMessage) {
+        let shouldScroll = scrollMode == .auto && messageMatchesFilter(message)
+        let previousMessageCount = messages.count
+        messages = SpaceDebugUARTManager.shared.cachedMessages(for: uartKey)
+        if messages.count < previousMessageCount {
+            rebuildDisplayMessages()
+            tableView.reloadData()
+        } else if appendDisplayMessageIfNeeded(message) {
+            tableView.reloadData()
+        }
+        if shouldScroll {
+            scrollToLatestVisibleMessage(animated: true)
+        }
+    }
+
+    private func reloadMessagesFromManager(scrollIfNeeded: Bool) {
+        messages = SpaceDebugUARTManager.shared.cachedMessages(for: uartKey)
+        rebuildDisplayMessages()
+        tableView.reloadData()
+        if scrollIfNeeded {
+            scrollToLatestVisibleMessage(animated: false)
+        }
+    }
+
+    private func startMessages() {
+        SpaceDebugUARTManager.shared.setReceiveEnabled(true, space: space)
+        updateReceiveButton()
     }
 
     private func stopMessages() {
-        guard isReceivingUARTMessages else {
-            return
-        }
-        isReceivingUARTMessages = false
-        session.stopUARTMessages()
+        SpaceDebugUARTManager.shared.setReceiveEnabled(false, space: space)
         updateReceiveButton()
     }
 
     private func updateReceiveButton() {
-        let title = isReceivingUARTMessages ? "debug_uart_stop".localizedString : "debug_uart_start".localizedString
+        let title = SpaceDebugUARTManager.shared.isReceiveEnabled ? "debug_uart_stop".localizedString : "debug_uart_start".localizedString
         receiveButton.setTitle(title, for: .normal)
     }
 
@@ -322,7 +318,7 @@ final class SpaceDebugUARTViewController: UIViewController {
     }
 
     private func clearMessages() {
-        session.clearUARTMessages()
+        SpaceDebugUARTManager.shared.clearMessages(for: uartKey)
         messages.removeAll()
         displayMessages.removeAll()
         tableView.reloadData()
@@ -338,9 +334,6 @@ final class SpaceDebugUARTViewController: UIViewController {
     }
 
     private func handleUnexpectedDisconnect() {
-        shouldResumeReceivingAfterReconnect = isReceivingUARTMessages
-        isReceivingUARTMessages = false
-        session.stopUARTMessages()
         updateReceiveButton()
         showDisconnectedAlert()
     }
@@ -367,9 +360,7 @@ final class SpaceDebugUARTViewController: UIViewController {
                 return
             }
             if success {
-                if self.shouldResumeReceivingAfterReconnect {
-                    self.startMessages()
-                }
+                SpaceDebugUARTManager.shared.evaluateCurrentProxy(space: self.space)
             } else {
                 self.showReconnectFailedAlert()
             }
@@ -402,7 +393,7 @@ final class SpaceDebugUARTViewController: UIViewController {
 
     @objc private func receiveButtonTapped() {
         view.endEditing(true)
-        if isReceivingUARTMessages {
+        if SpaceDebugUARTManager.shared.isReceiveEnabled {
             stopMessages()
         } else {
             startMessages()
@@ -443,11 +434,8 @@ final class SpaceDebugUARTViewController: UIViewController {
 
     @objc private func shareButtonTapped() {
         view.endEditing(true)
-        if isReceivingUARTMessages {
-            stopMessages()
-        }
         let context = makeExportContext()
-        let cachedMessages = session.cachedUARTMessages()
+        let cachedMessages = SpaceDebugUARTManager.shared.cachedMessages(for: uartKey)
 
         do {
             let fileURL = try SpaceDebugUARTLogExporter.makeFileURL(context: context, messages: cachedMessages)
@@ -479,7 +467,7 @@ final class SpaceDebugUARTViewController: UIViewController {
             model: node.modelName ?? "--",
             deviceType: item.category.title,
             firmwareVersion: node.firmwareVersion ?? node.distributionVersion ?? "--",
-            droppedMessageCount: session.droppedUARTMessageCount,
+            droppedMessageCount: SpaceDebugUARTManager.shared.droppedMessageCount(for: uartKey),
             generatedAt: Date()
         )
     }
