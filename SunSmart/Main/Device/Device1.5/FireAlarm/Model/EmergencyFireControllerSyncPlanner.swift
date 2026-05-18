@@ -8,6 +8,12 @@
 import Foundation
 import NordicSigMeshSDK
 
+/// 应急火警同步任务规划器。
+/// 只负责把 desired configuration 转成同步页面可执行的任务，不直接发送 Mesh message。
+/// 任务分为三类：
+/// 1. EFC 控制器自身 publication/vendor 参数；
+/// 2. 当前激活模式的灯组关联；
+/// 3. 旧配置遗留灯组的订阅清理。
 struct EmergencyFireControllerSyncPlanner {
     let data: DeviceEmerFireData
     let meshUUID: String
@@ -33,6 +39,8 @@ struct EmergencyFireControllerSyncPlanner {
                 controller.configuration.powerLossSettings,
                 controller.configuration.fireAlarmSettings
             ]
+            // 组成员变化时，不只看当前关联组，也要看 pending 清理组。
+            // 退出组的灯如果曾经被 EFC 订阅过，需要继续走 cleanup。
             return settings.contains { setting in
                 setting.associateGroupAddresses.contains(group.address.address) ||
                 setting.pendingUnassociateGroupAddresses.contains(group.address.address)
@@ -59,12 +67,14 @@ struct EmergencyFireControllerSyncPlanner {
                let settings = controller.activeModeSettings,
                let mode = planner.activeMode {
                 let triggerScene = planner.triggerSceneNumber(for: mode)
+                // 新进组的灯需要补齐 EFC 内部组订阅和触发场景。
                 tasks.append(contentsOf: addNodes.flatMap {
                     planner.makeAssociateTasks(node: $0, group: group, publishGroup: publishGroup, triggerScene: triggerScene, brightness: settings.triggerBrightness)
                 })
             }
 
             if groupIsActiveDesired || !pendingModes.isEmpty {
+                // 退出组或等待清理的灯，需要取消对 EFC 内部 publish group 的订阅。
                 tasks.append(contentsOf: exitNodes.flatMap {
                     planner.makeLightLCCleanupTasks(node: $0, group: group, publishGroup: publishGroup, pendingModes: pendingModes)
                 })
@@ -75,6 +85,8 @@ struct EmergencyFireControllerSyncPlanner {
     }
 
     func makeItems() throws -> [EmergencyFireControllerSyncItem] {
+        // 同步前先确保内部 publish group 存在。
+        // 这个 group 是 EFC 控制器发布和灯组订阅之间的桥，不是用户可见灯组。
         _ = try data.ensurePublishGroup(meshUUID: meshUUID, subnetworkId: subnetworkId)
         var items: [EmergencyFireControllerSyncItem] = []
 
@@ -111,6 +123,8 @@ struct EmergencyFireControllerSyncPlanner {
                 guard node.state, node.isKeybindComplete else {
                     return nil
                 }
+                // 删除时只对真实仍在线、且确实订阅了内部 publish group 的灯下发清理。
+                // 离线灯无法立即清理，所以删除流程最后仍要清本地 EFC 配置。
                 let handles = makeDeleteCleanupMessageHandles(node: node, publishGroup: publishGroup)
                 guard !handles.isEmpty else { return nil }
                 return EmergencyFireControllerSyncTask(
@@ -140,6 +154,7 @@ struct EmergencyFireControllerSyncPlanner {
             guard let group = MeshNetworkManager.instance.meshNetwork?.group(withAddress: MeshAddress(address)) else {
                 return nil
             }
+            // 当前模式关联的每个灯组都展开为组内每个灯的同步任务。
             let tasks = group.nodes.flatMap {
                 makeAssociateTasks(node: $0, group: group, publishGroup: publishGroup, triggerScene: triggerScene, brightness: settings.triggerBrightness)
             }
@@ -153,6 +168,7 @@ struct EmergencyFireControllerSyncPlanner {
         }
 
         let activeDesiredGroups = data.configuration.activeLightLCGroupAddresses
+        // 如果 pending 组又重新成为当前模式的目标组，就不能清理，否则会把刚需要的订阅删掉。
         let pendingGroups = pendingCleanupGroups().filter { !activeDesiredGroups.contains($0.address) }
 
         return pendingGroups.map { pending in
@@ -173,12 +189,15 @@ struct EmergencyFireControllerSyncPlanner {
 
     func makeAssociateTasks(node: Node, group: Group, publishGroup: Group, triggerScene: SceneNumber, brightness: Int) -> [EmergencyFireControllerSyncTask] {
         var tasks: [EmergencyFireControllerSyncTask] = []
+        // Scene Server 订阅用于接收 EFC 触发/停止场景。
         if let sceneTask = makeSceneServerSubscriptionTask(node: node, group: group, publishGroup: publishGroup) {
             tasks.append(sceneTask)
         }
+        // 这里会写入 EFC 保留场景。注意：该步骤会改变灯的当前亮度，后续如果补 profile 逻辑要考虑恢复现场。
         if let triggerTask = makeTriggerSceneStoreTask(node: node, triggerScene: triggerScene, brightness: brightness) {
             tasks.append(triggerTask)
         }
+        // Light LC 订阅用于 EFC 直接让关联灯进入 Light LC On/恢复链路。
         if let lightLCTask = makeLightLCSubscriptionTask(node: node, group: group, publishGroup: publishGroup) {
             tasks.append(lightLCTask)
         }
@@ -267,6 +286,8 @@ struct EmergencyFireControllerSyncPlanner {
     }
 
     private func makeLocalCleanupPendingTask(groupAddress: Address, pendingModes: [EmergencyFireControllerWorkMode]) -> EmergencyFireControllerSyncTask {
+        // 找不到组或组内没有可下发节点时，也需要一个 local-only task 来清 pending 标记。
+        // 这种任务没有 messageHandles，删除/清理流程不能要求 Mesh 在线。
         EmergencyFireControllerSyncTask(title: "LC Cleanup", kind: .lightLCCleanup, address: groupAddress, messageHandles: [], pendingModes: pendingModes, pendingGroupAddress: groupAddress, clearsUnassociatePending: true)
     }
 
@@ -313,6 +334,7 @@ struct EmergencyFireControllerSyncPlanner {
     }
 
     private func makeLocalDeleteConfigurationItem() -> EmergencyFireControllerSyncItem {
+        // 没有可执行 Mesh 消息时仍返回一个本地删除任务，保证同步页面/删除流程能统一收口。
         let task = EmergencyFireControllerSyncTask(
             title: data.name,
             kind: .deleteConfiguration,

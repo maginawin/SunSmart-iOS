@@ -10,6 +10,8 @@ import NordicSigMeshSDK
 
 extension DeviceEmerFireData {
 
+    /// EFC 联动灯时使用的保留场景号。
+    /// 这些场景号只给应急火警内部使用，后续如果接手人调整场景逻辑，要避开普通用户场景。
     static let powerLossTriggerSceneNumber: SceneNumber = 0xFF20
     static let powerLossStopSceneNumber: SceneNumber = 0xFF21
     static let fireAlarmTriggerSceneNumber: SceneNumber = 0xFF22
@@ -102,6 +104,9 @@ extension DeviceEmerFireData {
             return publishGroupAddress
         }
 
+        // 每个 EFC 只创建一个内部 virtual group，并持久化地址。
+        // Scene Client / Light LC Client publication 都发布到这个组，灯节点也订阅这个组。
+        // 不要在每次同步时重复创建，否则旧订阅无法可靠清理。
         let availableGroupAddresses = MeshAPI.getAvailableGroupAddresses(meshUUID: meshUUID, subnetworkId: subnetworkId)
         guard !availableGroupAddresses.isEmpty else {
             throw EmergencyFireControllerPublishGroupError.groupAddressInsufficient
@@ -133,6 +138,8 @@ extension DeviceEmerFireData {
             print("[EFC] publication already set device=\(name), node=\(node.primaryUnicastAddress), address=\(String(format: "0x%04X", publishGroupAddress))")
             return []
         }
+        // EFC 控制器侧 publication 是整条链路的源头：
+        // 控制器发布到内部 virtual group，关联灯再通过订阅该组接收应急场景/LC 命令。
         guard let message = ConfigModelPublicationSet(
             Publish(
                 to: MeshAddress(publishGroupAddress),
@@ -184,6 +191,8 @@ extension DeviceEmerFireData {
         }
 
         var tasks: [EmergencyFireControllerSyncTask] = []
+        // oldConfiguration 不为空表示从编辑页保存而来，只展示/执行关键变更项；
+        // 首次同步或修复同步时 oldConfiguration 为空，需要完整补齐 publication 和 vendor 参数。
         let onlyChangedKeyParameters = oldConfiguration != nil
         let scenePublicationHandles = try getSceneClientPublicationMessageHandles(meshUUID: meshUUID, subnetworkId: subnetworkId)
         if !scenePublicationHandles.isEmpty {
@@ -209,6 +218,8 @@ extension DeviceEmerFireData {
             let oldSettings = oldConfiguration.flatMap { oldConfiguration in
                 oldConfiguration.workMode == configuration.workMode ? modeSettings(for: oldConfiguration.workMode, in: oldConfiguration) : nil
             }
+            // resend/restoreDelay 属于 EFC 控制器自身参数，不是灯组参数。
+            // 灯组关联和订阅清理由 EmergencyFireControllerSyncPlanner 负责。
             let resend = EmergencyControllerResendParameters(
                 triggerIntervalSeconds: settings.triggerIntervalSeconds,
                 triggerCount: settings.triggerCount,
@@ -269,11 +280,14 @@ extension DeviceEmerFireData {
         let removedByModeSwitch = oldGroups.intersection(noLongerDesiredGroups)
         let cleanupGroups = removedFromThisMode.union(removedByModeSwitch)
 
+        // 用户取消关联或切换模式时，不能直接丢掉旧组地址。
+        // 旧灯组已经订阅了 EFC 内部 publish group，需要进入 pending，等同步成功后再清。
         cleanupGroups.forEach { address in
             if !settings.pendingUnassociateGroupAddresses.contains(address) {
                 settings.pendingUnassociateGroupAddresses.append(address)
             }
         }
+        // 如果这个组又被当前配置重新选中，就不再需要清理。
         settings.pendingUnassociateGroupAddresses.removeAll { newDesiredGroups.contains($0) }
         updateSettings(settings, for: mode)
     }
