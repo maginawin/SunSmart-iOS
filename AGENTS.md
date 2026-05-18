@@ -15,7 +15,7 @@
 
 ## Code Notes
 
-- 所有回复和 Markdown 文件应使用**简体中文**，但 UI 原型、流程图和计划等文字使用**英文**。
+- 所有回复和 Markdown 文件、计划文档应使用**简体中文**，但文档中的 UI 原型、流程图中的内容使用**英文**。
 - 重要分析和计划需要保存到 `docs/`，使用 Markdown 文件，命名格式为 `yyMMdd_HHmm_[description].md`。
   - 注意当前年份是 2026 年。
 - 不处理 `user-temp/` 文件夹。
@@ -25,8 +25,17 @@
 - 保持改动聚焦，不要顺手重构无关模块或格式化大量无关文件。
 - 修改本地化、资源、target 配置或 Pod 依赖时，同步检查相关 target 是否受影响。
 
-## Shell command style
+## iOS build command policy
 
-- 使用 `;` 替换 `&&` 来连接命令。
-- 切换目录时使用相对路径，不要使用绝对路径，例如使用 `cd example` 而不是 `cd /Users/.../example`。
-- 需要在子项目中运行命令时，优先使用 `(cd subdir && cmd)` 的子 shell 写法。
+When verifying SunSmart iOS builds, run xcodebuild directly without wrapping it in `/bin/zsh -lc` and without shell redirection.
+
+Preferred command:
+
+xcodebuild -workspace SunSmart.xcworkspace -scheme SunSmart -configuration Debug -sdk iphoneos -destination 'generic/platform=iOS' CODE_SIGNING_ALLOWED=NO build
+
+Do not use:
+- /bin/zsh -lc "xcodebuild ..."
+- bash -lc "xcodebuild ..."
+- output redirection such as `> /tmp/*.log 2>&1`
+
+If logs are needed, rely on Codex command output first.
