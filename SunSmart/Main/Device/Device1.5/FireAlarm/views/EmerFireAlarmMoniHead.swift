@@ -22,7 +22,7 @@ class EmerFireAlarmMoniHead: UIView {
         view.font = UIFont.systemFont(ofSize: FontFit(14))
         view.textAlignment = .center
         view.textColor = UIColor(red: 1, green: 0.281, blue: 0.194, alpha: 1)
-        view.attributedText = NSMutableAttributedString(string: "Fire Alarm Emergency", attributes: [NSAttributedString.Key.underlineStyle: NSUnderlineStyle.single.rawValue])
+        view.text = "Fire Alarm Emergency"
         return view
     }()
 
@@ -55,20 +55,16 @@ class EmerFireAlarmMoniHead: UIView {
         warningAction?()
     }
     
-    func config(statusLab: String, textColor: UIColor? = nil, underlined: Bool = true){
+    func config(statusLab: String, textColor: UIColor? = nil){
         guard Thread.isMainThread else {
             DispatchQueue.main.async { [weak self] in
-                self?.config(statusLab: statusLab, textColor: textColor, underlined: underlined)
+                self?.config(statusLab: statusLab, textColor: textColor)
             }
             return
         }
         lab.textColor = textColor ?? UIColor(red: 1, green: 0.281, blue: 0.194, alpha: 1)
-        if underlined {
-            lab.attributedText = NSMutableAttributedString(string: statusLab, attributes: [NSAttributedString.Key.underlineStyle: NSUnderlineStyle.single.rawValue])
-        } else {
-            lab.attributedText = nil
-            lab.text = statusLab
-        }
+        lab.attributedText = nil
+        lab.text = statusLab
         lab.setNeedsLayout()
         lab.layoutIfNeeded()
     }
