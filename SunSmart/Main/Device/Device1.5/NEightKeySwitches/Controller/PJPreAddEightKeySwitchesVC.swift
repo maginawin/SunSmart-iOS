@@ -27,9 +27,11 @@ final class PJPreAddEightKeySwitchesVC: UIViewController {
     }
     
     var deleteSwitchAction: ((DeviceSwitchData) -> Void)?
+    var switchSavedAction: ((PJEightKeySwitchData) -> Void)?
     
     private var viewModel: PJPreAddEightKeySwitchesViewModel
     private var initialSnapshot: Snapshot?
+    private weak var previousPopGestureDelegate: UIGestureRecognizerDelegate?
     private weak var activationAlertController: PJEightKeySwitchActivationAlertController?
     private var nextActivationDemoOutcome: ActivationDemoOutcome = .detected
     private lazy var saveBarButtonItem = UIBarButtonItem(
@@ -67,6 +69,23 @@ final class PJPreAddEightKeySwitchesVC: UIViewController {
         super.viewWillAppear(animated)
         navigationController?.isModalInPresentation = true
     }
+
+    override func viewDidAppear(_ animated: Bool) {
+        super.viewDidAppear(animated)
+        guard isEditMode, let popGesture = navigationController?.interactivePopGestureRecognizer else { return }
+        previousPopGestureDelegate = popGesture.delegate
+        popGesture.delegate = self
+        popGesture.isEnabled = true
+    }
+
+    override func viewWillDisappear(_ animated: Bool) {
+        super.viewWillDisappear(animated)
+        guard let popGesture = navigationController?.interactivePopGestureRecognizer,
+              popGesture.delegate === self else {
+            return
+        }
+        popGesture.delegate = previousPopGestureDelegate
+    }
     
     override func viewDidLayoutSubviews() {
         super.viewDidLayoutSubviews()
@@ -76,7 +95,7 @@ final class PJPreAddEightKeySwitchesVC: UIViewController {
     @objc private func closeAction() {
         view.endEditing(true)
         guard hasUnsavedChanges else {
-            dismiss(animated: true)
+            closeEditor(animated: true)
             return
         }
         SRAlertView(
@@ -86,7 +105,7 @@ final class PJPreAddEightKeySwitchesVC: UIViewController {
                 SRAlertAction(title: "keep_edit".localizedString, style: .cancel),
                 SRAlertAction(title: "EXIT".localizedString, actionHandler: { [weak self] _ in
                     DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-                        self?.dismiss(animated: true)
+                        self?.closeEditor(animated: true)
                     }
                 })
             ]
@@ -225,10 +244,15 @@ final class PJPreAddEightKeySwitchesVC: UIViewController {
         }
         
         let switchData = viewModel.buildSwitchData()
+        if isBatteryPowerSwitchLinked(switchData) {
+            submitBatteryPowerSwitch(switchData)
+            return
+        }
+
         persistSwitchData(switchData)
+        switchSavedAction?(switchData)
         
-        NotificationCenter.default.post(name: .init(switchsRefreshNotificationName), object: nil)
-        NotificationCenter.default.post(name: .init(spaceDataChangedNotificaitonName), object: SpaceChangeDataType.common)
+        postSwitchDataChangedNotifications()
         
         initialSnapshot = makeSnapshot()
         
@@ -239,7 +263,7 @@ final class PJPreAddEightKeySwitchesVC: UIViewController {
         
         XWHUDManager.showSuccessTipHUD("done!".localizedString)
         DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) { [weak self] in
-            self?.dismiss(animated: true)
+            self?.closeEditor(animated: true)
         }
     }
     
@@ -357,6 +381,23 @@ final class PJPreAddEightKeySwitchesVC: UIViewController {
         guard let initialSnapshot else { return false }
         return initialSnapshot != makeSnapshot()
     }
+
+    private var isEditMode: Bool {
+        viewModel.sourceSwitchData != nil
+    }
+
+    private var isPushedInNavigationStack: Bool {
+        guard let navigationController else { return false }
+        return navigationController.viewControllers.first !== self
+    }
+
+    private func closeEditor(animated: Bool) {
+        if isEditMode, isPushedInNavigationStack {
+            navigationController?.popViewController(animated: animated)
+        } else {
+            dismiss(animated: animated)
+        }
+    }
     
     private func makeSnapshot() -> Snapshot {
         Snapshot(
@@ -406,7 +447,101 @@ final class PJPreAddEightKeySwitchesVC: UIViewController {
     }
     
     private func hasRealDeviceLink(_ switchData: DeviceSwitchData) -> Bool {
-        switchData.proxyNodeAddress != nil && !(switchData.enOceanMacAddress?.isEmpty ?? true)
+        if isBatteryPowerSwitchLinked(switchData) {
+            return true
+        }
+        return switchData.proxyNodeAddress != nil && !(switchData.enOceanMacAddress?.isEmpty ?? true)
+    }
+
+    private func isBatteryPowerSwitchLinked(_ switchData: DeviceSwitchData) -> Bool {
+        switchData.proxyNode?.isBatteryPowerSwitch == true
+    }
+
+    private func submitBatteryPowerSwitch(_ switchData: PJEightKeySwitchData) {
+        updateBatteryPowerSwitchRemovedGroups(switchData)
+        guard MeshNetworkManager.instance.ensureBatteryPowerSwitchLinkGroup(switchData) else {
+            XWHUDManager.showErrorTipHUD("group_address_insufficient_message".localizedString, timer: 2)
+            return
+        }
+
+        let appKeyIndex = MeshNetworkManager.instance.currentApplicationKey.index
+        let desiredHash = switchData.batteryPowerSwitchDesiredConfigHash(appKeyIndex: appKeyIndex)
+        let needsSync = switchData.syncState != .synced || switchData.appliedConfigHash != desiredHash
+        if needsSync {
+            switchData.prepareBatteryPowerSwitchDesiredConfig(appKeyIndex: appKeyIndex)
+        } else {
+            switchData.desiredConfigHash = desiredHash
+            if switchData.desiredConfigVersion == 0 {
+                switchData.desiredConfigVersion = 1
+            }
+        }
+
+        persistSwitchData(switchData)
+        switchSavedAction?(switchData)
+        postSwitchDataChangedNotifications()
+        initialSnapshot = makeSnapshot()
+
+        guard needsSync else {
+            XWHUDManager.showSuccessTipHUD("done!".localizedString)
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) { [weak self] in
+                self?.closeEditor(animated: true)
+            }
+            return
+        }
+
+        pushBatteryPowerSwitchSync(switchData)
+    }
+
+    private func updateBatteryPowerSwitchRemovedGroups(_ switchData: PJEightKeySwitchData) {
+        let previousAddresses = Set(viewModel.sourceSwitchData?.bindGroupAddresses ?? [])
+        let currentAddresses = Set(switchData.bindGroupAddresses)
+        let removedAddresses = previousAddresses.subtracting(currentAddresses)
+        let pendingRemovedAddresses = Set(switchData.unbindGroupAddresses).union(removedAddresses)
+        switchData.unbindGroupAddresses = pendingRemovedAddresses
+            .filter { !currentAddresses.contains($0) }
+            .sorted()
+    }
+
+    private func pushBatteryPowerSwitchSync(_ switchData: PJEightKeySwitchData) {
+        let vc = SyncDevicesViewController(type: .batteryPowerSwitch(switchData))
+        vc.syncSuccessCallback = { [weak self] _ in
+            guard let self else { return }
+            switchData.markBatteryPowerSwitchSyncSucceeded()
+            self.persistSwitchData(switchData)
+            self.switchSavedAction?(switchData)
+            self.postSwitchDataChangedNotifications()
+            XWHUDManager.showSuccessTipHUD("done!".localizedString)
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) { [weak self] in
+                self?.popBackAfterBatteryPowerSwitchSync(animated: true)
+            }
+        }
+        vc.backActionCallback = { [weak self] result in
+            guard let self else { return }
+            let hasFailedOperations = result.contains { !$0.failedOperationTypes.isEmpty }
+            switchData.markBatteryPowerSwitchSyncFailed(reason: hasFailedOperations ? "sync_failed".localizedString : nil)
+            self.persistSwitchData(switchData)
+            self.switchSavedAction?(switchData)
+            self.postSwitchDataChangedNotifications()
+            self.popBackAfterBatteryPowerSwitchSync(animated: true)
+        }
+        navigationController?.pushViewController(vc, animated: true)
+    }
+
+    private func popBackAfterBatteryPowerSwitchSync(animated: Bool) {
+        guard let navigationController else {
+            closeEditor(animated: animated)
+            return
+        }
+        if let editorIndex = navigationController.viewControllers.firstIndex(of: self), editorIndex > 0 {
+            navigationController.popToViewController(navigationController.viewControllers[editorIndex - 1], animated: animated)
+        } else {
+            closeEditor(animated: animated)
+        }
+    }
+
+    private func postSwitchDataChangedNotifications() {
+        NotificationCenter.default.post(name: .init(switchsRefreshNotificationName), object: nil)
+        NotificationCenter.default.post(name: .init(spaceDataChangedNotificaitonName), object: SpaceChangeDataType.common)
     }
     
     private func presentActivationAlert(for switchData: PJEightKeySwitchData) {
@@ -462,5 +597,22 @@ extension PJPreAddEightKeySwitchesVC: UITextFieldDelegate {
     func textFieldShouldReturn(_ textField: UITextField) -> Bool {
         textField.resignFirstResponder()
         return true
+    }
+}
+
+extension PJPreAddEightKeySwitchesVC: UIGestureRecognizerDelegate {
+
+    func gestureRecognizerShouldBegin(_ gestureRecognizer: UIGestureRecognizer) -> Bool {
+        guard gestureRecognizer === navigationController?.interactivePopGestureRecognizer else {
+            return true
+        }
+        guard hasUnsavedChanges else {
+            return true
+        }
+        guard !SRAlertView.isVisible() else {
+            return false
+        }
+        closeAction()
+        return false
     }
 }

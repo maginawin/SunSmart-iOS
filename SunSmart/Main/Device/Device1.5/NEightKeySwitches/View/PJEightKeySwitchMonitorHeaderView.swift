@@ -25,6 +25,7 @@ final class PJEightKeySwitchMonitorHeaderView: UIView {
     private let batteryLabel = UILabel(text: nil, textColor: RGB(79, 93, 132), fontSize: 14, fontWeight: .light, fit: false)
     private let statusPrefixLabel = UILabel(text: nil, textColor: RGB(79, 93, 132), fontSize: 14, fontWeight: .light, fit: false)
     private let statusValueLabel = UILabel(text: nil, textColor: RGB(69, 197, 122), fontSize: 14, fontWeight: .light, fit: false)
+    private let statusStackView = UIStackView()
     private let updatedLabel = UILabel(text: nil, textColor: RGB(120, 126, 148), fontSize: 14, fontWeight: .light, fit: false)
     private let refreshButton = UIButton(type: .custom)
 
@@ -64,10 +65,26 @@ final class PJEightKeySwitchMonitorHeaderView: UIView {
 
     private func setupUI() {
         batteryIconView.contentMode = .scaleAspectFit
+        statusStackView.axis = .horizontal
+        statusStackView.alignment = .center
+        statusStackView.spacing = SCRXFrom(4)
+        updatedLabel.numberOfLines = 1
+        updatedLabel.lineBreakMode = .byTruncatingTail
         refreshButton.setImage(UIImage(named: "refresh_ek")?.withTintColor(RGB(79, 93, 132), renderingMode: .alwaysOriginal), for: .normal)
         refreshButton.addTarget(self, action: #selector(refreshButtonAction), for: .touchUpInside)
 
-        [batteryIconView, batteryLabel, statusPrefixLabel, statusValueLabel, updatedLabel, refreshButton].forEach {
+        [statusPrefixLabel, statusValueLabel].forEach {
+            statusStackView.addArrangedSubview($0)
+        }
+
+        [batteryLabel, statusPrefixLabel, statusValueLabel].forEach {
+            $0.setContentCompressionResistancePriority(.required, for: .horizontal)
+            $0.setContentHuggingPriority(.required, for: .horizontal)
+        }
+        updatedLabel.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
+        updatedLabel.setContentHuggingPriority(.defaultLow, for: .horizontal)
+
+        [batteryIconView, batteryLabel, statusStackView, updatedLabel, refreshButton].forEach {
             addSubview($0)
         }
 
@@ -79,17 +96,12 @@ final class PJEightKeySwitchMonitorHeaderView: UIView {
 
         batteryLabel.snp.makeConstraints { make in
             make.centerY.equalToSuperview()
-            make.left.equalTo(batteryIconView.snp.right).offset(SCRXFrom(6))
+            make.left.equalTo(batteryIconView.snp.right).offset(SCRXFrom(4))
         }
 
-        statusPrefixLabel.snp.makeConstraints { make in
+        statusStackView.snp.makeConstraints { make in
             make.centerY.equalToSuperview()
             make.left.equalTo(batteryLabel.snp.right).offset(SCRXFrom(24))
-        }
-
-        statusValueLabel.snp.makeConstraints { make in
-            make.centerY.equalToSuperview()
-            make.left.equalTo(statusPrefixLabel.snp.right).offset(SCRXFrom(4))
         }
 
         refreshButton.snp.makeConstraints { make in
@@ -100,7 +112,8 @@ final class PJEightKeySwitchMonitorHeaderView: UIView {
 
         updatedLabel.snp.makeConstraints { make in
             make.centerY.equalToSuperview()
-            make.right.equalTo(refreshButton.snp.left).offset(-SCRXFrom(23))
+            make.left.equalTo(statusStackView.snp.right).offset(SCRXFrom(24))
+            make.right.equalTo(refreshButton.snp.left).offset(-SCRXFrom(4))
         }
     }
 

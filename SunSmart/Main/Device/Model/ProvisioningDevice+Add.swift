@@ -143,6 +143,10 @@ extension ProvisioningDevice {
             objc_setAssociatedObject(self, &AssociatedKey.deviceType, newValue, .OBJC_ASSOCIATION_RETAIN)
         }
     }
+
+    var isBatteryPowerSwitch: Bool {
+        return Node.isBatteryPowerSwitch(companyIdentifier: cid, productIdentifier: pid)
+    }
     
     /// 设备触发时间（触感器感应等）
     var activityDate: Date? {

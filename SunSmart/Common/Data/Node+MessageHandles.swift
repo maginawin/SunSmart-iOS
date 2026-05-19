@@ -119,6 +119,10 @@ extension NodeSyncData {
         case .syncSwitchs(let switchDatas):
             switchDatas.forEach { switchData in
                 if switchData.linkGroup != nil {
+                    if switchData.batteryPowerSwitchData != nil {
+                        messageHandles.append(contentsOf: node.getBatteryPowerSwitchTargetSubscriptionMessageHandles(switchData: switchData, unsubscribe: false))
+                        return
+                    }
                     // 判断是否已订阅动能开关按键事件
                     messageHandles.append(contentsOf: node.getEnOceanSubscriptionMessageHandles(switchKeys: switchData.switchKeys))
                 }
@@ -126,6 +130,10 @@ extension NodeSyncData {
         case .deleteSwitchs(let switchDatas):
             switchDatas.forEach { switchData in
                 if switchData.linkGroup != nil {
+                    if switchData.batteryPowerSwitchData != nil {
+                        messageHandles.append(contentsOf: node.getBatteryPowerSwitchTargetSubscriptionMessageHandles(switchData: switchData, unsubscribe: true))
+                        return
+                    }
                     messageHandles.append(contentsOf: node.getEnOceanUnSubscriptionMessageHandles(switchKeys: switchData.switchKeys))
                 }
             }

@@ -6,6 +6,7 @@
 //
 
 import Foundation
+import NordicSigMeshSDK
 import UIKit
 
 final class PJEightKeySwitchMonitorViewModel {
@@ -69,6 +70,39 @@ final class PJEightKeySwitchMonitorViewModel {
         switchData.name
     }
 
+    var isRealBatteryPowerSwitch: Bool {
+        informationNode != nil
+    }
+
+    var informationNode: Node? {
+        guard let node = switchData.proxyNode, node.isBatteryPowerSwitch else {
+            return nil
+        }
+        return node
+    }
+
+    var informationGroupText: String? {
+        let names = switchData.bindGroups.map(\.name)
+        return names.isEmpty ? nil : names.joined(separator: ", ")
+    }
+
+    var showsInformationSceneSection: Bool {
+        switchData.eightKeyPanelType == .scene8Key
+    }
+
+    var informationSceneText: String? {
+        guard showsInformationSceneSection else {
+            return nil
+        }
+        let names = [switchData.sceneA, switchData.sceneB, switchData.sceneC, switchData.sceneD]
+            .compactMap { $0?.name }
+        return names.isEmpty ? nil : names.joined(separator: ", ")
+    }
+
+    var needsBatteryPowerSwitchSync: Bool {
+        switchData.proxyNode?.isBatteryPowerSwitch == true && switchData.needsBatteryPowerSwitchSync
+    }
+
     var panelDefinition: PJEightKeySwitchPanelDefinition {
         .make(type: switchData.eightKeyPanelType)
     }
@@ -87,7 +121,7 @@ final class PJEightKeySwitchMonitorViewModel {
             )
         case .boundDisabled:
             return HeaderState(
-                batteryText: "10%(Low)",
+                batteryText: "10%",
                 batteryIconSystemName: "battery.25",
                 statusPrefixText: "neightkeyswitches_status_prefix".localizedString,
                 statusText: "neightkeyswitches_status_low_battery".localizedString,
@@ -155,6 +189,25 @@ final class PJEightKeySwitchMonitorViewModel {
 
     func updateEnabled(_ isEnabled: Bool) {
         switchData.enabled = isEnabled
+    }
+
+    func prepareBatteryPowerSwitchDesiredConfigIfNeeded() -> Bool {
+        guard switchData.proxyNode?.isBatteryPowerSwitch == true else {
+            return true
+        }
+        guard MeshNetworkManager.instance.ensureBatteryPowerSwitchLinkGroup(switchData) else {
+            return false
+        }
+        let appKeyIndex = MeshNetworkManager.instance.currentApplicationKey.index
+        let desiredHash = switchData.batteryPowerSwitchDesiredConfigHash(appKeyIndex: appKeyIndex)
+        if switchData.syncState != .synced || switchData.desiredConfigHash != desiredHash || switchData.appliedConfigHash != desiredHash {
+            switchData.prepareBatteryPowerSwitchDesiredConfig(appKeyIndex: appKeyIndex)
+        }
+        return true
+    }
+
+    func updateSwitchData(_ switchData: PJEightKeySwitchData) {
+        self.switchData = switchData
     }
 
     func persist() {

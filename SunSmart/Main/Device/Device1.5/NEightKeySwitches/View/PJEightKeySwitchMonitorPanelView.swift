@@ -14,6 +14,10 @@ final class PJEightKeySwitchMonitorPanelView: UIView {
     var autoLongPressAction: (() -> Void)?
     var disabledTapAction: (() -> Void)?
 
+    static var preferredWidth: CGFloat {
+        Layout.sideInset * 2 + Layout.cellWidth * 2 + Layout.columnSpacing * 2
+    }
+
     private enum Layout {
         static let panelCornerRadius = SCRYFrom(18)
         static let topInset = SCRYFrom(14)

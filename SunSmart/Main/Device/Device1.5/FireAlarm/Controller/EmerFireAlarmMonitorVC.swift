@@ -154,7 +154,6 @@ class EmerFireAlarmMonitorVC: UIViewController, DeviceProtocol {
     }
     
     @objc private func groupPreviousSwipeAction() {
-        XWHUDManager.showTipHUD("dev1", isLineFeed: true)
     }
     
     @objc private func groupNextSwipeAction() {

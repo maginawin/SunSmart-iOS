@@ -792,6 +792,57 @@ extension MeshNetworkManager {
         newSwtich.save()
         return newSwtich
     }
+
+    @discardableResult
+    func ensureBatteryPowerSwitchLinkGroup(_ switchData: DeviceSwitchData) -> Bool {
+        if switchData.linkGroupAddress != nil {
+            return true
+        }
+        guard let meshUUID = self.meshNetwork?.uuid.uuidString,
+              MeshAPI.getAvailableGroupAddresses(meshUUID: meshUUID).count >= 1 else {
+            return false
+        }
+        guard let group = try? MeshAPI.createGroup(name: switchData.name + "-Group", isVirtual: true) else {
+            return false
+        }
+        switchData.linkGroupAddress = group.address.address
+        switchData.subLinkGroupAddress = nil
+        return true
+    }
+
+    /// 为 Battery Power Switch 创建对应的 8 键开关数据
+    @discardableResult
+    func createDefaultSwitch(forBatteryPowerSwitch node: Node) -> DeviceSwitchData? {
+        guard node.isBatteryPowerSwitch else {
+            return nil
+        }
+        if let existingSwitch = self.switchs.first(where: { $0.proxyNodeAddress == node.primaryUnicastAddress }) {
+            return existingSwitch
+        }
+        guard self.switchs.count < 16 else {
+            return nil
+        }
+
+        let baseSwitch = DeviceSwitchData.default()
+        baseSwitch.proxyNodeAddress = node.primaryUnicastAddress
+        baseSwitch.maxKeyCount = 8
+        let panelType = node.batteryPowerSwitchPanelType ?? .scene8Key
+        baseSwitch.panelType = panelType == .scene8Key ? .scenes_4key : .default_4key
+        let metadata = PJEightKeySwitchRepository.Metadata(
+            panelType: panelType,
+            moreSettingsState: .default
+        )
+        let newSwitch = PJEightKeySwitchData(baseSwitchData: baseSwitch, metadata: metadata)
+        ensureBatteryPowerSwitchLinkGroup(newSwitch)
+        newSwitch.syncState = .pending
+        newSwitch.desiredConfigVersion = 1
+        newSwitch.desiredConfigHash = newSwitch.batteryPowerSwitchDesiredConfigHash(appKeyIndex: currentApplicationKey.index)
+        newSwitch.appliedConfigHash = ""
+        self.switchs.append(newSwitch)
+        newSwitch.save()
+        PJEightKeySwitchRepository.shared.save(newSwitch)
+        return newSwitch
+    }
     
     /// 删除动能开关
     func deleteSwitch(switchData: DeviceSwitchData) {
@@ -1393,7 +1444,12 @@ extension DeviceSwitchData {
                 
                 bindGroups.forEach { group in
                     allNodes.append(contentsOf: group.nodes)
-                    let nodes = group.nodes.filter({ $0.getEnOceanUnSubscriptionMessageHandles(switchKeys: self.switchKeys).count > 0 })
+                    let nodes = group.nodes.filter({
+                        if self.batteryPowerSwitchData != nil {
+                            return $0.getBatteryPowerSwitchTargetSubscriptionMessageHandles(switchData: self, unsubscribe: true).count > 0
+                        }
+                        return $0.getEnOceanUnSubscriptionMessageHandles(switchKeys: self.switchKeys).count > 0
+                    })
                     if nodes.count > 0 {
                         deleteGroupData.updateValue(nodes, forKey: group)
                     }
@@ -1408,7 +1464,10 @@ extension DeviceSwitchData {
                     allNodes.append(contentsOf: group.nodes)
                     if !unbindGroups.contains(group) {
                         let nodes = group.nodes.filter({
-                            $0.getEnOceanSubscriptionMessageHandles(switchKeys: self.switchKeys).count > 0
+                            if self.batteryPowerSwitchData != nil {
+                                return $0.getBatteryPowerSwitchTargetSubscriptionMessageHandles(switchData: self, unsubscribe: false).count > 0
+                            }
+                            return $0.getEnOceanSubscriptionMessageHandles(switchKeys: self.switchKeys).count > 0
                         })
                         if nodes.count > 0 {
                             syncGroupData.updateValue(nodes, forKey: group)
@@ -1417,7 +1476,12 @@ extension DeviceSwitchData {
                 }
                 
                 unbindGroups.forEach({ group in
-                    let nodes = group.nodes.filter({ $0.getEnOceanUnSubscriptionMessageHandles(switchKeys: self.switchKeys).count > 0 })
+                    let nodes = group.nodes.filter({
+                        if self.batteryPowerSwitchData != nil {
+                            return $0.getBatteryPowerSwitchTargetSubscriptionMessageHandles(switchData: self, unsubscribe: true).count > 0
+                        }
+                        return $0.getEnOceanUnSubscriptionMessageHandles(switchKeys: self.switchKeys).count > 0
+                    })
                     if nodes.count > 0 {
                         deleteGroupData.updateValue(nodes, forKey: group)
                     }
@@ -1489,6 +1553,17 @@ extension Node {
     static private var cacheNeedSync: UInt8 = 0
     static private var cacheGroupNeedSync: UInt8 = 0
 //    static private var lastUpdateSyncTime = 206
+
+    static let batteryPowerSwitchCompanyIdentifier: UInt16 = 0x0A78
+    static let batteryPowerSwitchProductIdentifiers: Set<UInt16> = [0x2A01, 0x2A02]
+
+    static func isBatteryPowerSwitch(companyIdentifier: UInt16?, productIdentifier: UInt16?) -> Bool {
+        guard companyIdentifier == batteryPowerSwitchCompanyIdentifier,
+              let productIdentifier = productIdentifier else {
+            return false
+        }
+        return batteryPowerSwitchProductIdentifiers.contains(productIdentifier)
+    }
     
     /// 设备类型
     enum DeviceType {
@@ -1516,7 +1591,7 @@ extension Node {
                 self = .sensor
             case "Dongle":
                 self = .dongle
-            case "Switches":
+            case "Switches", "BatteryPowerSwitch":
                 self = .switches
             case "Gateway":
                 self = .gateway
@@ -1577,6 +1652,133 @@ extension Node {
             return .light
         }
         return DeviceType(deviceCategory: configInfo.deviceCategory)
+    }
+
+    var isBatteryPowerSwitch: Bool {
+        return Node.isBatteryPowerSwitch(companyIdentifier: companyIdentifier, productIdentifier: productIdentifier)
+    }
+
+    var batteryPowerSwitchPanelType: PJEightKeySwitchPanelDefinition.PanelType? {
+        guard isBatteryPowerSwitch else {
+            return nil
+        }
+        switch productIdentifier {
+        case 0x2A01:
+            return .scene8Key
+        case 0x2A02:
+            return .brightness8Key
+        default:
+            return nil
+        }
+    }
+
+    private var batteryPowerSwitchBrightnessLevelModel: Model? {
+        guard let element = lightnessModel?.parentElement else {
+            return nil
+        }
+        return element.model(withSigModelId: .genericLevelServerModelId)
+    }
+
+    var batteryPowerSwitchTargetCapabilityModels: [Model] {
+        uniqueBatteryPowerSwitchModels([
+            onoffModel,
+            batteryPowerSwitchBrightnessLevelModel,
+            sceneModel,
+            lightnessModel,
+            lightLCModel
+        ].compactMap { $0 })
+    }
+
+    private var batteryPowerSwitchPublicationRetransmit: Publish.Retransmit {
+        Publish.Retransmit(publishRetransmitCount: 1, intervalSteps: 3)
+    }
+
+    func getBatteryPowerSwitchPublicationMessageHandles(switchGroup: Group, includeExisting: Bool = false) -> [MeshMessageHandle] {
+        guard isBatteryPowerSwitch else {
+            return []
+        }
+
+        let applicationKey = MeshNetworkManager.instance.currentApplicationKey
+        let publish = Publish(
+            to: switchGroup.address,
+            using: applicationKey,
+            usingFriendshipMaterial: false,
+            ttl: MeshNetworkManager.instance.networkParameters.defaultTtl,
+            period: .disabled,
+            retransmit: batteryPowerSwitchPublicationRetransmit
+        )
+
+        return batteryPowerSwitchProfileClientModels
+            .filter { includeExisting || $0.publish != publish }
+            .compactMap { model in
+                guard let message: ConfigMessage = ConfigModelPublicationSet(publish, to: model) ?? ConfigModelPublicationVirtualAddressSet(publish, to: model) else {
+                    return nil
+                }
+                return MeshMessageHandle(message: message, address: primaryUnicastAddress)
+            }
+    }
+
+    private var batteryPowerSwitchObsoleteTargetModels: [Model] {
+        let brightnessLevelModel = batteryPowerSwitchBrightnessLevelModel
+        return levelModels.filter { model in
+            guard let brightnessLevelModel else {
+                return true
+            }
+            return model !== brightnessLevelModel
+        }
+    }
+
+    func getBatteryPowerSwitchSubscriptionMessageHandles(switchGroup: Group, includeExisting: Bool = false) -> [MeshMessageHandle] {
+        let cleanupHandles = batteryPowerSwitchObsoleteTargetModels
+            .filter { $0.isSubscribed(to: switchGroup) }
+            .compactMap { batteryPowerSwitchUnsubscriptionMessageHandle(model: $0, switchGroup: switchGroup) }
+
+        let addHandles = batteryPowerSwitchTargetCapabilityModels
+            .filter { includeExisting || !$0.isSubscribed(to: switchGroup) }
+            .compactMap { batteryPowerSwitchSubscriptionMessageHandle(model: $0, switchGroup: switchGroup) }
+
+        return cleanupHandles + addHandles
+    }
+
+    func getBatteryPowerSwitchUnsubscriptionMessageHandles(switchGroup: Group, includeMissing: Bool = false) -> [MeshMessageHandle] {
+        uniqueBatteryPowerSwitchModels(batteryPowerSwitchTargetCapabilityModels + batteryPowerSwitchObsoleteTargetModels)
+            .filter { includeMissing || $0.isSubscribed(to: switchGroup) }
+            .compactMap { batteryPowerSwitchUnsubscriptionMessageHandle(model: $0, switchGroup: switchGroup) }
+    }
+
+    func getBatteryPowerSwitchTargetSubscriptionMessageHandles(
+        switchData: DeviceSwitchData,
+        unsubscribe: Bool,
+        includeExisting: Bool = false,
+        includeMissing: Bool = false
+    ) -> [MeshMessageHandle] {
+        guard switchData.batteryPowerSwitchData != nil,
+              let switchGroup = switchData.linkGroup else {
+            return []
+        }
+        if unsubscribe {
+            return getBatteryPowerSwitchUnsubscriptionMessageHandles(switchGroup: switchGroup, includeMissing: includeMissing)
+        }
+        return getBatteryPowerSwitchSubscriptionMessageHandles(switchGroup: switchGroup, includeExisting: includeExisting)
+    }
+
+    private func uniqueBatteryPowerSwitchModels(_ models: [Model]) -> [Model] {
+        var identifiers = Set<ObjectIdentifier>()
+        return models.filter { identifiers.insert(ObjectIdentifier($0)).inserted }
+    }
+
+    private func batteryPowerSwitchSubscriptionMessageHandle(model: Model, switchGroup: Group) -> MeshMessageHandle? {
+        guard let message: ConfigMessage = ConfigModelSubscriptionAdd(group: switchGroup, to: model) ?? ConfigModelSubscriptionVirtualAddressAdd(group: switchGroup, to: model) else {
+            return nil
+        }
+        return MeshMessageHandle(message: message, address: primaryUnicastAddress)
+    }
+
+    private func batteryPowerSwitchUnsubscriptionMessageHandle(model: Model, switchGroup: Group) -> MeshMessageHandle? {
+        guard let message: ConfigMessage = ConfigModelSubscriptionDelete(group: switchGroup, from: model) ?? ConfigModelSubscriptionVirtualAddressDelete(group: switchGroup, from: model) else {
+            return nil
+        }
+        return MeshMessageHandle(message: message, address: primaryUnicastAddress)
     }
     
     /// 图标名称
@@ -2174,7 +2376,12 @@ extension Node {
                     if let switchData = MeshNetworkManager.instance.switchs.first(where: { $0.linkGroupAddress == group.address.address || $0.subLinkGroupAddress == group.address.address }), let nodeGroup = self.group {
                         if isSuccess { // 删除成功
                             // 判断是否之前动能开关删除组失败，再次删除后成功，接着判断组里面是否设备都清空动能开关数据
-                            if switchData.unbindGroupAddresses.contains(nodeGroup.address.address), !nodeGroup.nodes.contains(where: { $0.getEnOceanUnSubscriptionMessageHandles(switchKeys: switchData.switchKeys).count > 0 }) {
+                            if switchData.unbindGroupAddresses.contains(nodeGroup.address.address), !nodeGroup.nodes.contains(where: { node in
+                                if switchData.batteryPowerSwitchData != nil {
+                                    return node.getBatteryPowerSwitchTargetSubscriptionMessageHandles(switchData: switchData, unsubscribe: true).count > 0
+                                }
+                                return node.getEnOceanUnSubscriptionMessageHandles(switchKeys: switchData.switchKeys).count > 0
+                            }) {
                                 switchData.unbindGroupAddresses.removeAll(where: { $0 == nodeGroup.address.address })
                                 switchData.save()
                             }

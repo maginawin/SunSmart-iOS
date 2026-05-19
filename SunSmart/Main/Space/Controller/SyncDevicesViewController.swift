@@ -435,6 +435,9 @@ class SyncDevicesViewController: UIViewController {
                 }
                 syncSwitchGroupModels = syncSwitchGroupModels.sorted(by: { $0.address < $1.address })
                 configurationSection.groups.append(contentsOf: syncSwitchGroupModels)
+            case .batteryPowerSwitch(let switchData):
+                configurationSection.prefersDevicesBeforeGroups = true
+                appendBatteryPowerSwitchItems(to: configurationSection, removeSection: removeSection, switchData: switchData)
                 
 //            case .pwmPeriod(let period, let group):
 //                
@@ -668,6 +671,97 @@ class SyncDevicesViewController: UIViewController {
                     })
                 }
             }
+    }
+
+    private func appendBatteryPowerSwitchItems(
+        to section: SyncDevicesSectionModel,
+        removeSection: SyncDevicesSectionModel,
+        switchData: PJEightKeySwitchData
+    ) {
+        guard let switchNode = switchData.proxyNode, switchData.linkGroup != nil else {
+            syncState = .syncFailure
+            return
+        }
+
+        let switchDeviceModel = SyncDevicesModel(name: switchData.name, address: switchNode.primaryUnicastAddress)
+        let switchIconName = UIImage(named: switchNode.iconName) != nil ? switchNode.iconName : "device_BatteryPowerSwitch"
+        switchDeviceModel.imageName = switchIconName
+
+        let resetTask = SyncDeviceStepTaskModel(name: "Reset", operationType: .configuration(node: switchNode, type: .batteryPowerSwitchReset(switchData: switchData)))
+        let resetStep = SyncDeviceStepModel(type: "Reset", state: .none, tasks: [resetTask])
+        resetTask.parentStepModel = resetStep
+        resetStep.parentDeviceModel = switchDeviceModel
+
+        let keyConfigTask = SyncDeviceStepTaskModel(name: "Key Config", operationType: .configuration(node: switchNode, type: .batteryPowerSwitchKeyConfig(switchData: switchData)))
+        let keyConfigStep = SyncDeviceStepModel(type: "Key Config", state: .none, tasks: [keyConfigTask])
+        keyConfigTask.parentStepModel = keyConfigStep
+        keyConfigStep.parentDeviceModel = switchDeviceModel
+        keyConfigStep.relevanceStepModels = [resetStep]
+
+        let publicationTask = SyncDeviceStepTaskModel(name: "Model Publication", operationType: .configuration(node: switchNode, type: .batteryPowerSwitchModelPublication(switchData: switchData)))
+        let publicationStep = SyncDeviceStepModel(type: "Model Publication", state: .none, tasks: [publicationTask])
+        publicationTask.parentStepModel = publicationStep
+        publicationStep.parentDeviceModel = switchDeviceModel
+        publicationStep.relevanceStepModels = [resetStep, keyConfigStep]
+
+        switchDeviceModel.steps = [resetStep, keyConfigStep, publicationStep]
+        section.devices.append(switchDeviceModel)
+
+        let targetGroups = switchData.bindGroups.sorted { $0.address.address < $1.address.address }
+        targetGroups.compactMap {
+            makeBatteryPowerSwitchTargetGroupModel(group: $0, switchData: switchData, unsubscribe: false, dependencies: [resetStep, keyConfigStep, publicationStep])
+        }.forEach { section.groups.append($0) }
+
+        let removedGroups = switchData.unbindGroupAddresses
+            .compactMap { MeshNetworkManager.instance.meshNetwork?.group(withAddress: MeshAddress($0)) }
+            .sorted { $0.address.address < $1.address.address }
+        removedGroups.compactMap {
+            makeBatteryPowerSwitchTargetGroupModel(group: $0, switchData: switchData, unsubscribe: true, dependencies: [resetStep, keyConfigStep, publicationStep])
+        }.forEach { removeSection.groups.append($0) }
+    }
+
+    private func makeBatteryPowerSwitchTargetGroupModel(
+        group: Group,
+        switchData: PJEightKeySwitchData,
+        unsubscribe: Bool,
+        dependencies: [SyncDeviceStepModel]
+    ) -> SyncDevicesGroupModel? {
+        guard let switchGroup = switchData.linkGroup else { return nil }
+
+        let title = unsubscribe ? "Group Unsubscription" : "Group Subscription"
+        let deviceModels = group.nodes.compactMap { node -> SyncDevicesModel? in
+            let handles = unsubscribe
+                ? node.getBatteryPowerSwitchUnsubscriptionMessageHandles(switchGroup: switchGroup)
+                : node.getBatteryPowerSwitchSubscriptionMessageHandles(switchGroup: switchGroup, includeExisting: true)
+            guard !handles.isEmpty else {
+                return nil
+            }
+
+            let task = SyncDeviceStepTaskModel(
+                name: title,
+                operationType: .configuration(
+                    node: node,
+                    type: .batteryPowerSwitchTargetSubscription(switchData: switchData, group: group, unsubscribe: unsubscribe)
+                )
+            )
+            let step = SyncDeviceStepModel(type: title, state: .none, tasks: [task])
+            step.relevanceStepModels = dependencies
+            task.parentStepModel = step
+
+            let model = SyncDevicesModel(name: node.name ?? "", address: node.primaryUnicastAddress)
+            model.imageName = node.iconName
+            model.steps = [step]
+            step.parentDeviceModel = model
+            return model
+        }
+
+        guard !deviceModels.isEmpty else {
+            return nil
+        }
+
+        let groupModel = SyncDevicesGroupModel(groupName: group.name, groupAddress: group.address.address, deviceModels: deviceModels)
+        deviceModels.forEach { $0.parentGroupModel = groupModel }
+        return groupModel
     }
 
     private func appendEmergencyFireControllerGroupMutationItems(to section: SyncDevicesSectionModel, group: Group, addNodes: [Node], exitNodes: [Node]) {
@@ -1161,6 +1255,10 @@ class SyncDevicesViewController: UIViewController {
             case .syncSwitchs(let switchDatas):
                 
                 let syncSwitchTasks = switchDatas.map({
+                    if let batteryPowerSwitchData = $0.batteryPowerSwitchData,
+                       let targetGroup = group ?? node.group {
+                        return SyncDeviceStepTaskModel(name: batteryPowerSwitchData.name, operationType: .configuration(node: node, type: .batteryPowerSwitchTargetSubscription(switchData: batteryPowerSwitchData, group: targetGroup, unsubscribe: false)))
+                    }
                     return SyncDeviceStepTaskModel(name: $0.name, operationType: .configuration(node: node, type: .enOceanSwitch(switchData: $0)))
                 })
                 if syncSwitchTasks.count > 0 {
@@ -1172,6 +1270,10 @@ class SyncDevicesViewController: UIViewController {
             case .deleteSwitchs(let switchDatas):
                 
                 let deleteSwitchTasks = switchDatas.map({
+                    if let batteryPowerSwitchData = $0.batteryPowerSwitchData,
+                       let targetGroup = group ?? node.group {
+                        return SyncDeviceStepTaskModel(name: batteryPowerSwitchData.name, operationType: .delete(node: node, type: .batteryPowerSwitchTargetSubscription(switchData: batteryPowerSwitchData, group: targetGroup, unsubscribe: true)))
+                    }
                     return SyncDeviceStepTaskModel(name: $0.name, operationType: .delete(node: node, type: .enOceanSwitch(switchData: $0)))
                 })
                 if deleteSwitchTasks.count > 0 {
@@ -2410,6 +2512,8 @@ extension SyncDevicesViewController {
         case schedule(_ schdule: Schedule)
         /// 动能开关 deleteSwitch: 是否删除动能开关
         case enOceanSwitch(_ switchData: DeviceSwitchData, deleteSwitch: Bool = false)
+        /// Battery Power Switch Profile 同步
+        case batteryPowerSwitch(_ switchData: PJEightKeySwitchData)
         /// 按组设置pwm频率
 //        case pwmPeriod(_ period: UInt16, group: Group)
         /// 同步设备list

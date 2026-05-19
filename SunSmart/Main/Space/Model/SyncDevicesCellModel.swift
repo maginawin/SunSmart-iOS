@@ -202,6 +202,9 @@ enum DeviceOperationType {
                 return node.pirEnabled == true
             case .enOceanSwitch(let switchData):
                 if switchData.linkGroup != nil {
+                    if switchData.batteryPowerSwitchData != nil {
+                        return node.getBatteryPowerSwitchTargetSubscriptionMessageHandles(switchData: switchData, unsubscribe: true).isEmpty
+                    }
                     return node.getEnOceanUnSubscriptionMessageHandles(switchKeys: switchData.switchKeys).isEmpty
                 }
                 return true
@@ -245,6 +248,10 @@ enum DeviceOperationType {
                 return true
             case .emergencyFireController(let task, _):
                 return !task.isUnsupported
+            case .batteryPowerSwitchTargetSubscription(let switchData, _, let unsubscribe):
+                return node.getBatteryPowerSwitchTargetSubscriptionMessageHandles(switchData: switchData, unsubscribe: unsubscribe).isEmpty
+            case .batteryPowerSwitchReset, .batteryPowerSwitchKeyConfig, .batteryPowerSwitchModelPublication:
+                return true
             default:
                 return true
             }
@@ -274,6 +281,9 @@ enum DeviceOperationType {
                 return node.pirEnabled == true
             case .enOceanSwitch(let switchData):
                 if switchData.linkGroup != nil {
+                    if switchData.batteryPowerSwitchData != nil {
+                        return node.getBatteryPowerSwitchTargetSubscriptionMessageHandles(switchData: switchData, unsubscribe: false).isEmpty
+                    }
                     return node.getEnOceanSubscriptionMessageHandles(switchKeys: switchData.switchKeys).isEmpty
                 }
                 return true
@@ -336,6 +346,10 @@ enum DeviceOperationType {
                 return true
             case .emergencyFireController(let task, _):
                 return !task.isUnsupported
+            case .batteryPowerSwitchTargetSubscription(let switchData, _, let unsubscribe):
+                return node.getBatteryPowerSwitchTargetSubscriptionMessageHandles(switchData: switchData, unsubscribe: unsubscribe).isEmpty
+            case .batteryPowerSwitchReset, .batteryPowerSwitchKeyConfig, .batteryPowerSwitchModelPublication:
+                return true
             }
         case .read(let node, let type):
             switch type {
@@ -391,6 +405,10 @@ enum DeviceOperationType {
                 messageHandles.append(contentsOf: NodeSyncData.pirEnabled(true).getMessageHandles(node: node))
             case .enOceanSwitch(let switchData):
                 if switchData.linkGroup != nil {
+                    if switchData.batteryPowerSwitchData != nil {
+                        messageHandles.append(contentsOf: node.getBatteryPowerSwitchTargetSubscriptionMessageHandles(switchData: switchData, unsubscribe: true))
+                        break
+                    }
                     messageHandles.append(contentsOf: node.getEnOceanUnSubscriptionMessageHandles(switchKeys: switchData.switchKeys))
                 }
             case .enOceanProxy(let switchData):
@@ -425,6 +443,8 @@ enum DeviceOperationType {
                 break
             case .emergencyFireController:
                 break
+            case .batteryPowerSwitchReset, .batteryPowerSwitchKeyConfig, .batteryPowerSwitchModelPublication, .batteryPowerSwitchTargetSubscription:
+                break
             }
         case .configuration(let node, let type): // 添加/配置操作
             
@@ -453,6 +473,10 @@ enum DeviceOperationType {
                 messageHandles.append(contentsOf: NodeSyncData.pirEnabled(true).getMessageHandles(node: node))
             case .enOceanSwitch(let switchData):
                 if switchData.linkGroup != nil {
+                    if switchData.batteryPowerSwitchData != nil {
+                        messageHandles.append(contentsOf: node.getBatteryPowerSwitchTargetSubscriptionMessageHandles(switchData: switchData, unsubscribe: false, includeExisting: true))
+                        break
+                    }
                     // 判断是否已订阅动能开关按键事件
                     messageHandles.append(contentsOf: node.getEnOceanSubscriptionMessageHandles(switchKeys: switchData.switchKeys))
                 }
@@ -512,6 +536,23 @@ enum DeviceOperationType {
                 }
             case .emergencyFireController(let task, _):
                 messageHandles.append(contentsOf: task.messageHandles)
+            case .batteryPowerSwitchReset(let switchData):
+                if node.primaryUnicastAddress == switchData.proxyNodeAddress, let vendorModel = node.sunricherVendorModel {
+                    messageHandles.append(MeshMessageHandle(message: SunricherVendorSet(function: .batteryPowerSwitchResetDefaults), model: vendorModel))
+                }
+            case .batteryPowerSwitchKeyConfig(let switchData):
+                if node.primaryUnicastAddress == switchData.proxyNodeAddress, let vendorModel = node.sunricherVendorModel {
+                    let appKeyIndex = MeshNetworkManager.instance.currentApplicationKey.index
+                    messageHandles.append(contentsOf: switchData.batteryPowerSwitchKeyConfigurations(appKeyIndex: appKeyIndex).map { configuration in
+                        MeshMessageHandle(message: SunricherVendorSet(function: .batteryPowerSwitchKeyConfig(configuration)), model: vendorModel)
+                    })
+                }
+            case .batteryPowerSwitchModelPublication(let switchData):
+                if node.primaryUnicastAddress == switchData.proxyNodeAddress, let switchGroup = switchData.linkGroup {
+                    messageHandles.append(contentsOf: node.getBatteryPowerSwitchPublicationMessageHandles(switchGroup: switchGroup, includeExisting: true))
+                }
+            case .batteryPowerSwitchTargetSubscription(let switchData, _, let unsubscribe):
+                messageHandles.append(contentsOf: node.getBatteryPowerSwitchTargetSubscriptionMessageHandles(switchData: switchData, unsubscribe: unsubscribe, includeExisting: true))
             }
         case .read(let node, let type):
             switch type {
@@ -591,6 +632,14 @@ enum ActionType {
     case autoSetRatedPower
     /// EFC 同步任务
     case emergencyFireController(task: EmergencyFireControllerSyncTask, data: DeviceEmerFireData)
+    /// Battery Power Switch 恢复默认配置
+    case batteryPowerSwitchReset(switchData: PJEightKeySwitchData)
+    /// Battery Power Switch 按键配置
+    case batteryPowerSwitchKeyConfig(switchData: PJEightKeySwitchData)
+    /// Battery Power Switch Profile Client Models publication
+    case batteryPowerSwitchModelPublication(switchData: PJEightKeySwitchData)
+    /// Battery Power Switch target group model 订阅/退订
+    case batteryPowerSwitchTargetSubscription(switchData: PJEightKeySwitchData, group: Group, unsubscribe: Bool)
 }
 
 extension NodeSyncData {

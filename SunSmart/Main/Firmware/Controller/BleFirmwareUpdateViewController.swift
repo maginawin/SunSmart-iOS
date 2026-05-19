@@ -683,11 +683,18 @@ class BleFirmwareUpdateViewController: UIViewController {
             if successfulList.count > 0 {
                 NotificationCenter.default.post(name: .init(spaceDataChangedNotificaitonName), object: SpaceChangeDataType.device)
                 self.deviceUpdateCompleteCallback?(successfulList)
+                self.disconnectBatteryPowerSwitchNodes(successfulList)
             }
 //            self.failedNodes = failureList
 //            self.setupData()
         }
 
+    }
+
+    private func disconnectBatteryPowerSwitchNodes(_ nodes: [Node]) {
+        nodes.filter { $0.isBatteryPowerSwitch }.forEach {
+            MeshLibManager.manager.disconnectProxy(node: $0)
+        }
     }
     
     /// 隐藏添加结果view

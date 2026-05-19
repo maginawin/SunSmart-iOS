@@ -14,6 +14,7 @@ final class PJEightKeySwitchMonitorVC: UIViewController {
     private let viewModel: PJEightKeySwitchMonitorViewModel
 
     private let headerView = PJEightKeySwitchMonitorHeaderView()
+    private let panelScrollView = UIScrollView()
     private let panelView = PJEightKeySwitchMonitorPanelView()
     private let bottomView = PJEightKeySwitchMonitorStatusSetView()
     private var isRefreshing = false
@@ -54,9 +55,11 @@ final class PJEightKeySwitchMonitorVC: UIViewController {
                 self?.deleteCurrentSwitch()
             }))
         }
-        items.append(.init(icon: UIImage(named: "menu_information"), title: "information".localizedString, tapItemBack: { _ in
-           //information
-        }))
+        if viewModel.isRealBatteryPowerSwitch {
+            items.append(.init(icon: UIImage(named: "menu_information"), title: "information".localizedString, tapItemBack: { [weak self] _ in
+                self?.pushInformation()
+            }))
+        }
         items.append(.init(icon: UIImage(named: "Identify_gateway"), title: "Identify", tapItemBack: {  _ in
            //Identify
         }))
@@ -74,9 +77,17 @@ final class PJEightKeySwitchMonitorVC: UIViewController {
     }
 
     private func setupUI() {
-        [headerView, panelView, bottomView].forEach {
-            view.addSubview($0)
+        view.addSubview(headerView)
+        if isIPad {
+            view.addSubview(panelView)
+        } else {
+            panelScrollView.showsVerticalScrollIndicator = false
+            panelScrollView.alwaysBounceVertical = false
+            panelScrollView.contentInsetAdjustmentBehavior = .never
+            view.addSubview(panelScrollView)
+            panelScrollView.addSubview(panelView)
         }
+        view.addSubview(bottomView)
 
         headerView.snp.makeConstraints { make in
             make.top.equalTo(view.safeAreaLayoutGuide).offset(SCRYFrom(14))
@@ -84,15 +95,55 @@ final class PJEightKeySwitchMonitorVC: UIViewController {
             make.height.equalTo(SCRYFrom(24))
         }
 
-        panelView.snp.makeConstraints { make in
-            make.top.equalTo(headerView.snp.bottom).offset(SCRYFrom(18))
-            make.left.equalToSuperview().offset(SCRXFrom(60))
-            make.right.equalToSuperview().offset(-SCRXFrom(60))
-            make.height.equalTo(SCRYFrom(502))
-        }
-
         bottomView.snp.makeConstraints { make in
             make.left.right.bottom.equalToSuperview()
+        }
+
+        if isIPad {
+            setupCenteredPanelConstraints()
+        } else {
+            setupScrollablePanelConstraints()
+        }
+    }
+
+    private func setupCenteredPanelConstraints() {
+        let panelAreaGuide = UILayoutGuide()
+        view.addLayoutGuide(panelAreaGuide)
+        panelAreaGuide.snp.makeConstraints { make in
+            make.top.equalTo(headerView.snp.bottom)
+            make.bottom.equalTo(bottomView.snp.top)
+        }
+
+        panelView.snp.makeConstraints { make in
+            make.centerX.equalToSuperview()
+            make.centerY.equalTo(panelAreaGuide.snp.centerY)
+            make.top.greaterThanOrEqualTo(headerView.snp.bottom).offset(SCRYFrom(18))
+            make.bottom.lessThanOrEqualTo(bottomView.snp.top).offset(-SCRYFrom(12))
+            make.left.greaterThanOrEqualToSuperview().offset(SCRXFrom(24))
+            make.right.lessThanOrEqualToSuperview().offset(-SCRXFrom(24))
+            make.width.equalTo(PJEightKeySwitchMonitorPanelView.preferredWidth)
+            make.height.equalTo(SCRYFrom(502))
+        }
+    }
+
+    private func setupScrollablePanelConstraints() {
+        panelScrollView.snp.makeConstraints { make in
+            make.top.equalTo(headerView.snp.bottom)
+            make.left.right.equalToSuperview()
+            make.bottom.equalTo(bottomView.snp.top)
+        }
+        panelScrollView.contentLayoutGuide.snp.makeConstraints { make in
+            make.width.equalTo(panelScrollView.frameLayoutGuide.snp.width)
+        }
+
+        panelView.snp.makeConstraints { make in
+            make.top.equalTo(panelScrollView.contentLayoutGuide.snp.top).offset(SCRYFrom(18))
+            make.bottom.equalTo(panelScrollView.contentLayoutGuide.snp.bottom).offset(-SCRYFrom(12))
+            make.centerX.equalTo(panelScrollView.frameLayoutGuide.snp.centerX)
+            make.left.greaterThanOrEqualTo(panelScrollView.frameLayoutGuide.snp.left).offset(SCRXFrom(24))
+            make.right.lessThanOrEqualTo(panelScrollView.frameLayoutGuide.snp.right).offset(-SCRXFrom(24))
+            make.width.equalTo(PJEightKeySwitchMonitorPanelView.preferredWidth)
+            make.height.equalTo(SCRYFrom(502))
         }
     }
 
@@ -114,6 +165,12 @@ final class PJEightKeySwitchMonitorVC: UIViewController {
         bottomView.enableChanged = { [weak self] isOn in
             guard let self else { return }
             self.viewModel.updateEnabled(isOn)
+            guard self.viewModel.prepareBatteryPowerSwitchDesiredConfigIfNeeded() else {
+                self.viewModel.updateEnabled(!isOn)
+                self.updateUI()
+                XWHUDManager.showErrorTipHUD("group_address_insufficient_message".localizedString, timer: 2)
+                return
+            }
             self.viewModel.persist()
             NotificationCenter.default.post(name: .init(switchsRefreshNotificationName), object: nil)
             self.updateUI()
@@ -145,6 +202,10 @@ final class PJEightKeySwitchMonitorVC: UIViewController {
 
     private func refreshMonitor() {
         guard !isRefreshing else { return }
+        guard !viewModel.needsBatteryPowerSwitchSync else {
+            pushBatteryPowerSwitchSync()
+            return
+        }
         isRefreshing = true
 
         let willSucceed = nextRefreshSimulationWillSucceed
@@ -186,10 +247,67 @@ final class PJEightKeySwitchMonitorVC: UIViewController {
         present(vc, animated: true)
     }
 
+    private func pushInformation() {
+        guard let node = viewModel.informationNode else {
+            XWHUDManager.showTipHUD("failed".localizedString, isLineFeed: false)
+            return
+        }
+
+        let groupText = viewModel.informationGroupText ?? "Not yet linked to a group".localizedString
+        let sceneText = viewModel.informationSceneText ?? "Not yet linked to a scene".localizedString
+        let vc = DeviceInformationViewController(
+            node: node,
+            emptyGroupText: "Not yet linked to a group".localizedString,
+            showsSceneSection: viewModel.showsInformationSceneSection,
+            groupTextOverride: groupText,
+            sceneTextOverride: sceneText,
+            showsFullDeviceInfo: true
+        )
+        navigationController?.pushViewController(vc, animated: true)
+    }
+
+    private func pushBatteryPowerSwitchSync() {
+        guard viewModel.prepareBatteryPowerSwitchDesiredConfigIfNeeded() else {
+            XWHUDManager.showErrorTipHUD("group_address_insufficient_message".localizedString, timer: 2)
+            return
+        }
+        viewModel.persist()
+        NotificationCenter.default.post(name: .init(switchsRefreshNotificationName), object: nil)
+
+        let vc = SyncDevicesViewController(type: .batteryPowerSwitch(viewModel.switchData))
+        vc.syncSuccessCallback = { [weak self] _ in
+            guard let self else { return }
+            self.viewModel.switchData.markBatteryPowerSwitchSyncSucceeded()
+            self.viewModel.persist()
+            NotificationCenter.default.post(name: .init(switchsRefreshNotificationName), object: nil)
+            self.updateUI()
+            XWHUDManager.showSuccessTipHUD("done!".localizedString)
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) { [weak self] in
+                self?.navigationController?.popViewController(animated: true)
+            }
+        }
+        vc.backActionCallback = { [weak self] result in
+            guard let self else { return }
+            let hasFailedOperations = result.contains { !$0.failedOperationTypes.isEmpty }
+            self.viewModel.switchData.markBatteryPowerSwitchSyncFailed(reason: hasFailedOperations ? "sync_failed".localizedString : nil)
+            self.viewModel.persist()
+            NotificationCenter.default.post(name: .init(switchsRefreshNotificationName), object: nil)
+            self.updateUI()
+            self.navigationController?.popViewController(animated: true)
+        }
+        navigationController?.pushViewController(vc, animated: true)
+    }
+
     private func pushEditor() {
         let vc = PJPreAddEightKeySwitchesVC(space: viewModel.space, switchData: viewModel.switchData)
         vc.deleteSwitchAction = deleteSwitchAction
-        present(NavigationViewController(rootViewController: vc), animated: true)
+        vc.switchSavedAction = { [weak self] switchData in
+            guard let self else { return }
+            self.viewModel.updateSwitchData(switchData)
+            self.title = self.viewModel.title
+            self.updateUI()
+        }
+        navigationController?.pushViewController(vc, animated: true)
     }
 
     private func deleteCurrentSwitch() {

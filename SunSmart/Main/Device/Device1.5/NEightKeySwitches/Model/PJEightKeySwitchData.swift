@@ -13,6 +13,12 @@ final class PJEightKeySwitchData: DeviceSwitchData {
 
     var eightKeyPanelType: PJEightKeySwitchPanelDefinition.PanelType = .scene8Key
     var moreSettingsState: PJEightKeySwitchMoreSettingsViewModel.State = .default
+    var syncState: PJEightKeySwitchSyncState = .pending
+    var desiredConfigVersion: Int = 0
+    var desiredConfigHash: String = ""
+    var appliedConfigHash: String = ""
+    var lastSyncFailedReason: String?
+    var lastSyncedAt: Int64?
 
     convenience init(baseSwitchData: DeviceSwitchData, metadata: PJEightKeySwitchRepository.Metadata) {
         self.init(
@@ -36,6 +42,12 @@ final class PJEightKeySwitchData: DeviceSwitchData {
         maxKeyCount = 8
         eightKeyPanelType = metadata.panelType
         moreSettingsState = metadata.moreSettingsState
+        syncState = metadata.syncState
+        desiredConfigVersion = metadata.desiredConfigVersion
+        desiredConfigHash = metadata.desiredConfigHash
+        appliedConfigHash = metadata.appliedConfigHash
+        lastSyncFailedReason = metadata.lastSyncFailedReason
+        lastSyncedAt = metadata.lastSyncedAt
     }
 
     override func copy() -> Self {
@@ -60,7 +72,84 @@ final class PJEightKeySwitchData: DeviceSwitchData {
         copy.maxKeyCount = maxKeyCount
         copy.eightKeyPanelType = eightKeyPanelType
         copy.moreSettingsState = moreSettingsState
+        copy.syncState = syncState
+        copy.desiredConfigVersion = desiredConfigVersion
+        copy.desiredConfigHash = desiredConfigHash
+        copy.appliedConfigHash = appliedConfigHash
+        copy.lastSyncFailedReason = lastSyncFailedReason
+        copy.lastSyncedAt = lastSyncedAt
         return copy as! Self
+    }
+
+    var needsBatteryPowerSwitchSync: Bool {
+        guard proxyNode?.isBatteryPowerSwitch == true else {
+            return false
+        }
+        let currentHash = batteryPowerSwitchDesiredConfigHash(appKeyIndex: MeshNetworkManager.instance.currentApplicationKey.index)
+        return syncState != .synced || desiredConfigHash != currentHash || appliedConfigHash != currentHash
+    }
+
+    func batteryPowerSwitchDesiredConfigHash(appKeyIndex: KeyIndex) -> String {
+        [
+            "panel=\(eightKeyPanelType.storageIdentifier)",
+            "enabled=\(enabled)",
+            "link=\(linkGroupAddress?.hex ?? "nil")",
+            "publication=profileClients@link,retransmit=1/200",
+            "groups=\(bindGroupAddresses.sorted().map(\.hex).joined(separator: ","))",
+            "unbind=\(unbindGroupAddresses.sorted().map(\.hex).joined(separator: ","))",
+            "sceneA=\(sceneANumber.map(String.init) ?? "nil")",
+            "sceneB=\(sceneBNumber.map(String.init) ?? "nil")",
+            "sceneC=\(sceneCNumber.map(String.init) ?? "nil")",
+            "sceneD=\(sceneDNumber.map(String.init) ?? "nil")",
+            "reporting=\(moreSettingsState.periodicReporting.rawValue)",
+            "led=\(moreSettingsState.ledIndicatorEnabled)",
+            "appKey=\(appKeyIndex)"
+        ].joined(separator: "|")
+    }
+
+    func prepareBatteryPowerSwitchDesiredConfig(appKeyIndex: KeyIndex) {
+        let hash = batteryPowerSwitchDesiredConfigHash(appKeyIndex: appKeyIndex)
+        if desiredConfigHash != hash {
+            desiredConfigVersion = max(desiredConfigVersion + 1, 1)
+        } else if desiredConfigVersion == 0 {
+            desiredConfigVersion = 1
+        }
+        desiredConfigHash = hash
+        syncState = .pending
+        lastSyncFailedReason = nil
+    }
+
+    func markBatteryPowerSwitchSyncSucceeded() {
+        syncState = .synced
+        appliedConfigHash = desiredConfigHash
+        lastSyncFailedReason = nil
+        lastSyncedAt = Int64(Date().timeIntervalSince1970)
+        unbindGroupAddresses.removeAll()
+    }
+
+    func markBatteryPowerSwitchSyncFailed(reason: String?) {
+        syncState = .failed
+        lastSyncFailedReason = reason
+    }
+
+    func batteryPowerSwitchKeyConfigurations(appKeyIndex: KeyIndex) -> [BatteryPowerSwitchKeyConfiguration] {
+        guard enabled, let linkGroupAddress else {
+            return []
+        }
+
+        let appKeyIndex = UInt16(appKeyIndex)
+        var configurations: [BatteryPowerSwitchKeyConfiguration] = []
+
+        switch eightKeyPanelType {
+        case .scene8Key:
+            configurations.append(contentsOf: sceneRecallConfigurations(address: linkGroupAddress, appKeyIndex: appKeyIndex))
+        case .brightness8Key:
+            configurations.append(contentsOf: brightnessConfigurations(address: linkGroupAddress, appKeyIndex: appKeyIndex))
+        }
+
+        configurations.append(contentsOf: dimmingConfigurations(address: linkGroupAddress, appKeyIndex: appKeyIndex))
+        configurations.append(contentsOf: onOffAndAutoConfigurations(address: linkGroupAddress, appKeyIndex: appKeyIndex))
+        return configurations
     }
 
     var displayStatus: PJEightKeySwitchStatus {
@@ -68,7 +157,8 @@ final class PJEightKeySwitchData: DeviceSwitchData {
             return .repairRequiredMode
         }
         let isBound = proxyNodeAddress != nil || !(enOceanMacAddress?.isEmpty ?? true)
-        if isBound && needSyncData {
+        let needsSync = proxyNode?.isBatteryPowerSwitch == true ? needsBatteryPowerSwitchSync : needSyncData
+        if isBound && needsSync {
             return .syncIssueBoundSwitch
         }
         if isBound {
@@ -79,5 +169,102 @@ final class PJEightKeySwitchData: DeviceSwitchData {
 
     var displayIconAssetName: String {
         UIImage(named: displayStatus.iconAssetName) != nil ? displayStatus.iconAssetName : "eight_key_switch_bound_enabled"
+    }
+}
+
+private extension PJEightKeySwitchPanelDefinition.PanelType {
+    var storageIdentifier: String {
+        switch self {
+        case .scene8Key:
+            return "scene8Key"
+        case .brightness8Key:
+            return "brightness8Key"
+        }
+    }
+}
+
+private extension PJEightKeySwitchData {
+
+    static let dimmingStepLevel: Int16 = 13107
+
+    func sceneRecallConfigurations(address: Address, appKeyIndex: UInt16) -> [BatteryPowerSwitchKeyConfiguration] {
+        let sceneNumbers = [sceneANumber, sceneBNumber, sceneCNumber, sceneDNumber]
+        return sceneNumbers.enumerated().compactMap { index, sceneNumber in
+            guard let sceneNumber else {
+                return nil
+            }
+            return BatteryPowerSwitchKeyConfiguration(
+                button: UInt8(index),
+                trigger: .click,
+                type: .sceneRecall,
+                sceneId: sceneNumber,
+                address: address,
+                appKeyIndex: appKeyIndex
+            )
+        }
+    }
+
+    func brightnessConfigurations(address: Address, appKeyIndex: UInt16) -> [BatteryPowerSwitchKeyConfiguration] {
+        [100, 75, 50, 25].enumerated().map { index, lightness in
+            BatteryPowerSwitchKeyConfiguration(
+                button: UInt8(index),
+                trigger: .click,
+                type: .lightnessSet,
+                level: Int16(bitPattern: Node.getLightness(lightness100: lightness)),
+                address: address,
+                appKeyIndex: appKeyIndex
+            )
+        }
+    }
+
+    func dimmingConfigurations(address: Address, appKeyIndex: UInt16) -> [BatteryPowerSwitchKeyConfiguration] {
+        [
+            dimmingConfiguration(button: 4, trigger: .click, level: Self.dimmingStepLevel, address: address, appKeyIndex: appKeyIndex),
+            dimmingConfiguration(button: 4, trigger: .press, level: Self.dimmingStepLevel, address: address, appKeyIndex: appKeyIndex),
+            dimmingConfiguration(button: 4, trigger: .pressRelease, level: 0, address: address, appKeyIndex: appKeyIndex),
+            dimmingConfiguration(button: 5, trigger: .click, level: -Self.dimmingStepLevel, address: address, appKeyIndex: appKeyIndex),
+            dimmingConfiguration(button: 5, trigger: .press, level: -Self.dimmingStepLevel, address: address, appKeyIndex: appKeyIndex),
+            dimmingConfiguration(button: 5, trigger: .pressRelease, level: 0, address: address, appKeyIndex: appKeyIndex)
+        ]
+    }
+
+    func dimmingConfiguration(button: UInt8, trigger: BatteryPowerSwitchTrigger, level: Int16, address: Address, appKeyIndex: UInt16) -> BatteryPowerSwitchKeyConfiguration {
+        BatteryPowerSwitchKeyConfiguration(
+            button: button,
+            trigger: trigger,
+            type: trigger == .click ? .levelDelta : .levelMove,
+            level: level,
+            address: address,
+            appKeyIndex: appKeyIndex
+        )
+    }
+
+    func onOffAndAutoConfigurations(address: Address, appKeyIndex: UInt16) -> [BatteryPowerSwitchKeyConfiguration] {
+        [
+            BatteryPowerSwitchKeyConfiguration(
+                button: 6,
+                trigger: .click,
+                type: .onOffSet,
+                value: 1,
+                address: address,
+                appKeyIndex: appKeyIndex
+            ),
+            BatteryPowerSwitchKeyConfiguration(
+                button: 6,
+                trigger: .press,
+                type: .lightCtrlOnOff,
+                value: 1,
+                address: address,
+                appKeyIndex: appKeyIndex
+            ),
+            BatteryPowerSwitchKeyConfiguration(
+                button: 7,
+                trigger: .click,
+                type: .onOffSet,
+                value: 0,
+                address: address,
+                appKeyIndex: appKeyIndex
+            )
+        ]
     }
 }

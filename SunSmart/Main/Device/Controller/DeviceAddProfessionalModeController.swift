@@ -279,6 +279,10 @@ class DeviceAddProfessionalModeController: UIViewController {
     }
 
     private func applySelectableState(to device: ProvisioningDevice) {
+        if device.isBatteryPowerSwitch && MeshNetworkManager.instance.switchs.count >= 16 {
+            device.selectedState = .disabled
+            return
+        }
         guard addBehavior != nil || bindTarget != nil else {
             return
         }
@@ -295,6 +299,50 @@ class DeviceAddProfessionalModeController: UIViewController {
         }
         if isSingleSelectionMode, device.selectedState == .selected {
             applySingleSelectionIfNeeded(for: device)
+        }
+    }
+
+    private func showDisabledDeviceTip(_ device: ProvisioningDevice) {
+        if device.isBatteryPowerSwitch && MeshNetworkManager.instance.switchs.count >= 16 {
+            showBatteryPowerSwitchLimitTip()
+        } else {
+            showInvalidDeviceTypeTip()
+        }
+    }
+
+    private func showBatteryPowerSwitchLimitTip() {
+        SRAlertView(
+            title: "notification".localizedString,
+            message: "switchs_overrun_message".localizedString,
+            actions: [SRAlertAction(title: "GOT_IT".localizedString)]
+        ).show()
+    }
+
+    private func isBatteryPowerSwitchLimitExceeded(for devices: [ProvisioningDevice]) -> Bool {
+        let batteryPowerSwitchCount = devices.filter { $0.isBatteryPowerSwitch }.count
+        return batteryPowerSwitchCount > 0 && MeshNetworkManager.instance.switchs.count + batteryPowerSwitchCount > 16
+    }
+
+    private func validateBatteryPowerSwitchLimit(for devices: [ProvisioningDevice]) -> Bool {
+        guard !isBatteryPowerSwitchLimitExceeded(for: devices) else {
+            showBatteryPowerSwitchLimitTip()
+            return false
+        }
+        return true
+    }
+
+    private func restoreDevicesForAddRetry(_ devices: [ProvisioningDevice]) {
+        devices.forEach {
+            $0.addState = .none
+            $0.selectedState = .selected
+            reloadDeviceState($0)
+        }
+        updateUIState()
+    }
+
+    private func disconnectBatteryPowerSwitchNodes(_ nodes: [Node]) {
+        nodes.filter { $0.isBatteryPowerSwitch }.forEach {
+            MeshLibManager.manager.disconnectProxy(node: $0)
         }
     }
 
@@ -489,7 +537,8 @@ class DeviceAddProfessionalModeController: UIViewController {
                 }
                 
                 if self.isRefresh {
-                    if self.isSelectableDeviceType(newDevice.deviceType),
+                    if newDevice.selectedState != .disabled,
+                       self.isSelectableDeviceType(newDevice.deviceType),
                        !self.candidateDevices.contains(where: { $0.peripheral.identifier.uuidString == newDevice.peripheral.identifier.uuidString }),
                        self.selectRSSIRange.contains(newDevice.rssi.intValue) {
                         switch addMode {
@@ -808,7 +857,7 @@ class DeviceAddProfessionalModeController: UIViewController {
                 }
             }
             // 入网后默认调为最大亮度
-            let shouldApplyLightingDefaults = addDevice.deviceType != .dongle && addDevice.deviceType != .gateway && addDevice.deviceType != .emergencyController
+            let shouldApplyLightingDefaults = addDevice.deviceType == .light
             if shouldApplyLightingDefaults, let model = node.lightnessModel {
                 appendMessages.append(MeshMessageHandle(message: LightLightnessSetUnacknowledged(lightness: .max), model: model))
             }
@@ -904,6 +953,9 @@ class DeviceAddProfessionalModeController: UIViewController {
                         node.save()
                     }
                 }
+                if node.isBatteryPowerSwitch {
+                    MeshNetworkManager.instance.createDefaultSwitch(forBatteryPowerSwitch: node)
+                }
 //                node.state = true
                 
 //                node.saveNodeInfo(meshUUID: self.space.meshUUID, networkKey: self.space.meshNetworkKey)
@@ -950,6 +1002,7 @@ class DeviceAddProfessionalModeController: UIViewController {
             
             self.space.deviceCount = MeshNetworkManager.instance.realNodes.count
             self.space.luminairesCount = MeshNetworkManager.instance.realNodes.filter({ $0.deviceType == .light }).count //MeshNetworkManager.instance.lightNodes.count
+            self.space.switchesCount = MeshNetworkManager.instance.switchs.count
             self.space.save()
             // 通知space数据修改
 //            NotificationCenter.default.post(name: .init(spaceDataChangedNotificaitonName), object: SpaceChangeDataType.device)
@@ -961,12 +1014,20 @@ class DeviceAddProfessionalModeController: UIViewController {
             if self.addSuccessNodes.contains(where: { $0.deviceType == .emergencyController }) {
                 NotificationCenter.default.post(name: .deviceEmerFireDataDidChange, object: nil)
             }
+            if self.addSuccessNodes.contains(where: { $0.isBatteryPowerSwitch }) {
+                NotificationCenter.default.post(name: .init(switchsRefreshNotificationName), object: nil)
+            }
+            self.disconnectBatteryPowerSwitchNodes(self.addSuccessNodes)
         }
         
     }
     
     /// 检查设备地址是否足够
     private func checkDeviceAddressesAreSufficient(devices: [ProvisioningDevice]) {
+
+        guard validateBatteryPowerSwitchLimit(for: devices) else {
+            return
+        }
         
         let bleConnectCount = max(candidateDevices.filter({ $0.addState == .adding || $0.addState == .addConnecting }).count, MeshLibManager.manager.getConnectedPeripherals().count)
         for (index, device) in devices.enumerated() {
@@ -1056,6 +1117,10 @@ class DeviceAddProfessionalModeController: UIViewController {
             case .success(let repsonsed):
                 // 新增地址
                 if let site = SiteData.load(siteId: self.space.siteId), let provisionerData = JSON(repsonsed)["data"]["provisioner"].dictionaryObject {
+                    guard self.validateBatteryPowerSwitchLimit(for: devices) else {
+                        self.restoreDevicesForAddRetry(devices)
+                        return
+                    }
                     site.setProvisioner(provisionerData: provisionerData)
                     // 继续添加设备
                     devices.forEach({
@@ -1275,7 +1340,7 @@ class DeviceAddProfessionalModeController: UIViewController {
 //            self.candidateView?.lightSeningMode = self.addMode == .lightSening
             if self.isRefresh, self.addMode == .rssiRange {
                 // 筛选出满足预选条件的设备
-                let devices = self.scanDevices.filter({ device in self.isSelectableDeviceType(device.deviceType) && !self.candidateDevices.contains(where: { $0.peripheral.identifier.uuidString == device.peripheral.identifier.uuidString }) && self.selectRSSIRange.contains(device.rssi.intValue) })
+                let devices = self.scanDevices.filter({ device in device.selectedState != .disabled && self.isSelectableDeviceType(device.deviceType) && !self.candidateDevices.contains(where: { $0.peripheral.identifier.uuidString == device.peripheral.identifier.uuidString }) && self.selectRSSIRange.contains(device.rssi.intValue) })
                 self.candidateDevices.append(contentsOf: devices)
                 self.candidateCountLabel?.text = "\(self.candidateDevices.count)"
             }
@@ -1311,7 +1376,7 @@ class DeviceAddProfessionalModeController: UIViewController {
         if self.isRefresh {
             // 筛选出满足预选条件的设备
             if addMode == .rssiRange {
-                let devices = self.scanDevices.filter({ device in self.isSelectableDeviceType(device.deviceType) && !self.candidateDevices.contains(where: { $0.peripheral.identifier.uuidString == device.peripheral.identifier.uuidString }) && self.selectRSSIRange.contains(device.rssi.intValue) })
+                let devices = self.scanDevices.filter({ device in device.selectedState != .disabled && self.isSelectableDeviceType(device.deviceType) && !self.candidateDevices.contains(where: { $0.peripheral.identifier.uuidString == device.peripheral.identifier.uuidString }) && self.selectRSSIRange.contains(device.rssi.intValue) })
                 if devices.count > 0 {
                     self.candidateDevices.append(contentsOf: devices)
                     self.playerNotificationAudio()
@@ -1913,7 +1978,7 @@ extension DeviceAddProfessionalModeController: UITableViewDataSource, UITableVie
             device = remainingRSSIDevices[safe: indexPath.row - 1]
         }
         if let device, device.selectedState == .disabled {
-            showInvalidDeviceTypeTip()
+            showDisabledDeviceTip(device)
             return
         }
         guard let device = device, device.selectedState == .unselected || device.selectedState == .selected else {
@@ -1958,7 +2023,7 @@ extension DeviceAddProfessionalModeController: DeviceAddViewCellDelegate {
     /// 设备添加预选点击事件回调
     func cell(_ cell: DeviceAddViewCell, deviceAdd device: ProvisioningDevice) {
         if device.selectedState == .disabled {
-            showInvalidDeviceTypeTip()
+            showDisabledDeviceTip(device)
             return
         }
         // 单选模式下候选列表只保留一个设备，默认业务仍复用原有候选流程。

@@ -222,7 +222,12 @@ final class LinkedEmerFireEditVC: UIViewController {
     private func finishAfterSuccessfulSaveSync() {
         XWHUDManager.showSuccessTipHUD("done!".localizedString)
         let presentedNavigationController = navigationController
-        if presentedNavigationController?.presentingViewController != nil {
+        if let navigationController,
+           let currentIndex = navigationController.viewControllers.firstIndex(of: self),
+           currentIndex > 0 {
+            let previousController = navigationController.viewControllers[currentIndex - 1]
+            navigationController.popToViewController(previousController, animated: true)
+        } else if presentedNavigationController?.presentingViewController != nil {
             presentedNavigationController?.dismiss(animated: true)
         } else if let navigationController = navigationController ?? presentedNavigationController {
             navigationController.popToDeviceOthersIfPossible()
