@@ -8103,38 +8103,26 @@
 /* End XCConfigurationList section */
 
 /* Begin XCRemoteSwiftPackageReference section */
-		C88553AF2DE6B44C00C8B688 /* XCRemoteSwiftPackageReference "nordic-sig-mesh-sdk" */ = {
-			isa = XCLocalSwiftPackageReference;
-			relativePath = "../../../nordic-sig-mesh-sdk";
-		};
-		C886DFFF2E30DE4900D0C3A6 /* XCRemoteSwiftPackageReference "nordic-sig-mesh-sdk" */ = {
-			isa = XCLocalSwiftPackageReference;
-			relativePath = "../../../nordic-sig-mesh-sdk";
-		};
-		C8BB65AD2ED3F056000C63EE /* XCRemoteSwiftPackageReference "nordic-sig-mesh-sdk" */ = {
-			isa = XCLocalSwiftPackageReference;
-			relativePath = "../../../nordic-sig-mesh-sdk";
-		};
 		C8D5314A2F76294A0069C71B /* XCRemoteSwiftPackageReference "nordic-sig-mesh-sdk" */ = {
 			isa = XCLocalSwiftPackageReference;
-			relativePath = "../../../nordic-sig-mesh-sdk";
+			relativePath = "/Users/maginawin/Developer/iOS/YKH/nordic-sig-mesh-sdk";
 		};
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
 		C88553AE2DE6B44C00C8B688 /* NordicSigMeshSDK */ = {
 			isa = XCSwiftPackageProductDependency;
-			package = C88553AF2DE6B44C00C8B688 /* XCRemoteSwiftPackageReference "nordic-sig-mesh-sdk" */;
+			package = C8D5314A2F76294A0069C71B /* XCRemoteSwiftPackageReference "nordic-sig-mesh-sdk" */;
 			productName = NordicSigMeshSDK;
 		};
 		C886DFFE2E30DE4900D0C3A6 /* NordicSigMeshSDK */ = {
 			isa = XCSwiftPackageProductDependency;
-			package = C886DFFF2E30DE4900D0C3A6 /* XCRemoteSwiftPackageReference "nordic-sig-mesh-sdk" */;
+			package = C8D5314A2F76294A0069C71B /* XCRemoteSwiftPackageReference "nordic-sig-mesh-sdk" */;
 			productName = NordicSigMeshSDK;
 		};
 		C8BB65AC2ED3F056000C63EE /* NordicSigMeshSDK */ = {
 			isa = XCSwiftPackageProductDependency;
-			package = C8BB65AD2ED3F056000C63EE /* XCRemoteSwiftPackageReference "nordic-sig-mesh-sdk" */;
+			package = C8D5314A2F76294A0069C71B /* XCRemoteSwiftPackageReference "nordic-sig-mesh-sdk" */;
 			productName = NordicSigMeshSDK;
 		};
 		C8D5314B2F76294A0069C71B /* NordicSigMeshSDK */ = {
