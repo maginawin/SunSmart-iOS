@@ -11,11 +11,6 @@ import SwiftyJSON
 
 final class PJPreAddEightKeySwitchesVC: UIViewController {
 
-    private enum ActivationDemoOutcome {
-        case detected
-        case timeout
-    }
-
     private struct Snapshot: Equatable {
         let deviceName: String
         let isEnabled: Bool
@@ -32,8 +27,7 @@ final class PJPreAddEightKeySwitchesVC: UIViewController {
     private var viewModel: PJPreAddEightKeySwitchesViewModel
     private var initialSnapshot: Snapshot?
     private weak var previousPopGestureDelegate: UIGestureRecognizerDelegate?
-    private weak var activationAlertController: PJEightKeySwitchActivationAlertController?
-    private var nextActivationDemoOutcome: ActivationDemoOutcome = .detected
+    private var activationFlow: PJEightKeySwitchActivationFlow?
     private lazy var saveBarButtonItem = UIBarButtonItem(
         title: "save".localizedString,
         color: RGB(0, 0, 0, 0.85),
@@ -255,12 +249,7 @@ final class PJPreAddEightKeySwitchesVC: UIViewController {
         postSwitchDataChangedNotifications()
         
         initialSnapshot = makeSnapshot()
-        
-        guard !hasRealDeviceLink(switchData) else {
-            presentActivationAlert(for: switchData)
-            return
-        }
-        
+
         XWHUDManager.showSuccessTipHUD("done!".localizedString)
         DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) { [weak self] in
             self?.closeEditor(animated: true)
@@ -466,8 +455,9 @@ final class PJPreAddEightKeySwitchesVC: UIViewController {
 
         let appKeyIndex = MeshNetworkManager.instance.currentApplicationKey.index
         let desiredHash = switchData.batteryPowerSwitchDesiredConfigHash(appKeyIndex: appKeyIndex)
-        let needsSync = switchData.syncState != .synced || switchData.appliedConfigHash != desiredHash
-        if needsSync {
+        let needsConfigurationSync = needsBatteryPowerSwitchConfigurationSync(switchData, desiredHash: desiredHash)
+        let needsTargetSync = switchData.needSyncData
+        if needsConfigurationSync {
             switchData.prepareBatteryPowerSwitchDesiredConfig(appKeyIndex: appKeyIndex)
         } else {
             switchData.desiredConfigHash = desiredHash
@@ -481,7 +471,7 @@ final class PJPreAddEightKeySwitchesVC: UIViewController {
         postSwitchDataChangedNotifications()
         initialSnapshot = makeSnapshot()
 
-        guard needsSync else {
+        guard needsConfigurationSync || needsTargetSync else {
             XWHUDManager.showSuccessTipHUD("done!".localizedString)
             DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) { [weak self] in
                 self?.closeEditor(animated: true)
@@ -489,7 +479,11 @@ final class PJPreAddEightKeySwitchesVC: UIViewController {
             return
         }
 
-        pushBatteryPowerSwitchSync(switchData)
+        if needsConfigurationSync {
+            presentBatteryPowerSwitchActivation(for: switchData)
+        } else {
+            pushBatteryPowerSwitchSync(switchData)
+        }
     }
 
     private func updateBatteryPowerSwitchRemovedGroups(_ switchData: PJEightKeySwitchData) {
@@ -517,14 +511,68 @@ final class PJPreAddEightKeySwitchesVC: UIViewController {
         }
         vc.backActionCallback = { [weak self] result in
             guard let self else { return }
-            let hasFailedOperations = result.contains { !$0.failedOperationTypes.isEmpty }
-            switchData.markBatteryPowerSwitchSyncFailed(reason: hasFailedOperations ? "sync_failed".localizedString : nil)
+            let failedOperationTypes = result.flatMap(\.failedOperationTypes)
+            let successOperationTypes = result.flatMap(\.successOperationTypes)
+            if self.containsBatteryPowerSwitchOwnConfiguration(failedOperationTypes) {
+                switchData.markBatteryPowerSwitchSyncFailed(reason: "sync_failed".localizedString)
+            } else if self.containsBatteryPowerSwitchOwnConfiguration(successOperationTypes) {
+                switchData.markBatteryPowerSwitchSyncSucceeded(clearRemovedGroups: false)
+            }
             self.persistSwitchData(switchData)
             self.switchSavedAction?(switchData)
             self.postSwitchDataChangedNotifications()
             self.popBackAfterBatteryPowerSwitchSync(animated: true)
         }
         navigationController?.pushViewController(vc, animated: true)
+    }
+
+    private func containsBatteryPowerSwitchOwnConfiguration(_ operationTypes: [DeviceOperationType]) -> Bool {
+        operationTypes.contains { operationType in
+            guard case .configuration(_, let syncData) = operationType else {
+                return false
+            }
+            switch syncData {
+            case .batteryPowerSwitchReset, .batteryPowerSwitchKeyConfig, .batteryPowerSwitchModelPublication:
+                return true
+            default:
+                return false
+            }
+        }
+    }
+
+    private func needsBatteryPowerSwitchConfigurationSync(_ switchData: PJEightKeySwitchData, desiredHash: String) -> Bool {
+        guard let sourceSwitchData = viewModel.sourceSwitchData else {
+            return switchData.needsBatteryPowerSwitchConfigurationSync
+        }
+
+        if sourceSwitchData.enabled != switchData.enabled ||
+            sourceSwitchData.linkGroupAddress != switchData.linkGroupAddress ||
+            sourceSwitchData.eightKeyPanelType != switchData.eightKeyPanelType {
+            return true
+        }
+
+        if switchData.eightKeyPanelType == .scene8Key,
+           sourceSwitchData.sceneANumber != switchData.sceneANumber ||
+            sourceSwitchData.sceneBNumber != switchData.sceneBNumber ||
+            sourceSwitchData.sceneCNumber != switchData.sceneCNumber ||
+            sourceSwitchData.sceneDNumber != switchData.sceneDNumber {
+            return true
+        }
+
+        return switchData.syncState != .synced && switchData.appliedConfigHash != desiredHash
+    }
+
+    private func presentBatteryPowerSwitchActivation(for switchData: PJEightKeySwitchData) {
+        let flow = PJEightKeySwitchActivationFlow(
+            presenter: self,
+            switchData: switchData
+        ) { [weak self, weak switchData] in
+            guard let self, let switchData else { return }
+            self.activationFlow = nil
+            self.pushBatteryPowerSwitchSync(switchData)
+        }
+        activationFlow = flow
+        flow.start()
     }
 
     private func popBackAfterBatteryPowerSwitchSync(animated: Bool) {
@@ -542,36 +590,6 @@ final class PJPreAddEightKeySwitchesVC: UIViewController {
     private func postSwitchDataChangedNotifications() {
         NotificationCenter.default.post(name: .init(switchsRefreshNotificationName), object: nil)
         NotificationCenter.default.post(name: .init(spaceDataChangedNotificaitonName), object: SpaceChangeDataType.common)
-    }
-    
-    private func presentActivationAlert(for switchData: PJEightKeySwitchData) {
-        let demoOutcome = nextActivationDemoOutcome
-        nextActivationDemoOutcome = demoOutcome == .detected ? .timeout : .detected
-        let controller = PJEightKeySwitchActivationAlertController(panelType: switchData.eightKeyPanelType)
-        controller.cancelAction = { [weak self] in
-            self?.refreshEditingStateFromCurrentSwitchData()
-        }
-        controller.retryAction = { [weak self, weak controller] in
-            self?.refreshEditingStateFromCurrentSwitchData()
-            self?.scheduleActivationDemoResult(on: controller, outcome: .detected)
-        }
-        activationAlertController = controller
-        present(controller, animated: true) { [weak controller] in
-            controller?.startWaiting()
-            self.scheduleActivationDemoResult(on: controller, outcome: demoOutcome)
-        }
-    }
-
-    private func scheduleActivationDemoResult(on controller: PJEightKeySwitchActivationAlertController?, outcome: ActivationDemoOutcome) {
-        DispatchQueue.main.asyncAfter(deadline: .now() + 2.2) { [weak controller] in
-            guard let controller, controller.presentingViewController != nil else { return }
-            switch outcome {
-            case .detected:
-                controller.showDetected()
-            case .timeout:
-                controller.showTimeout()
-            }
-        }
     }
     
     private func persistSwitchData(_ switchData: PJEightKeySwitchData) {

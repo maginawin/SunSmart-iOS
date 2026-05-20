@@ -19,6 +19,7 @@ final class PJEightKeySwitchMonitorVC: UIViewController {
     private let bottomView = PJEightKeySwitchMonitorStatusSetView()
     private var isRefreshing = false
     private var nextRefreshSimulationWillSucceed = true
+    private var activationFlow: PJEightKeySwitchActivationFlow?
 
     init(space: SpaceData, switchData: PJEightKeySwitchData) {
         viewModel = PJEightKeySwitchMonitorViewModel(space: space, switchData: switchData)
@@ -271,9 +272,30 @@ final class PJEightKeySwitchMonitorVC: UIViewController {
             XWHUDManager.showErrorTipHUD("group_address_insufficient_message".localizedString, timer: 2)
             return
         }
+        let needsConfigurationSync = viewModel.switchData.needsBatteryPowerSwitchConfigurationSync
         viewModel.persist()
         NotificationCenter.default.post(name: .init(switchsRefreshNotificationName), object: nil)
+        if needsConfigurationSync {
+            presentBatteryPowerSwitchActivation()
+        } else {
+            pushBatteryPowerSwitchSyncController()
+        }
+    }
 
+    private func presentBatteryPowerSwitchActivation() {
+        let flow = PJEightKeySwitchActivationFlow(
+            presenter: self,
+            switchData: viewModel.switchData
+        ) { [weak self] in
+            guard let self else { return }
+            self.activationFlow = nil
+            self.pushBatteryPowerSwitchSyncController()
+        }
+        activationFlow = flow
+        flow.start()
+    }
+
+    private func pushBatteryPowerSwitchSyncController() {
         let vc = SyncDevicesViewController(type: .batteryPowerSwitch(viewModel.switchData))
         vc.syncSuccessCallback = { [weak self] _ in
             guard let self else { return }
@@ -288,14 +310,33 @@ final class PJEightKeySwitchMonitorVC: UIViewController {
         }
         vc.backActionCallback = { [weak self] result in
             guard let self else { return }
-            let hasFailedOperations = result.contains { !$0.failedOperationTypes.isEmpty }
-            self.viewModel.switchData.markBatteryPowerSwitchSyncFailed(reason: hasFailedOperations ? "sync_failed".localizedString : nil)
+            let failedOperationTypes = result.flatMap(\.failedOperationTypes)
+            let successOperationTypes = result.flatMap(\.successOperationTypes)
+            if self.containsBatteryPowerSwitchOwnConfiguration(failedOperationTypes) {
+                self.viewModel.switchData.markBatteryPowerSwitchSyncFailed(reason: "sync_failed".localizedString)
+            } else if self.containsBatteryPowerSwitchOwnConfiguration(successOperationTypes) {
+                self.viewModel.switchData.markBatteryPowerSwitchSyncSucceeded(clearRemovedGroups: false)
+            }
             self.viewModel.persist()
             NotificationCenter.default.post(name: .init(switchsRefreshNotificationName), object: nil)
             self.updateUI()
             self.navigationController?.popViewController(animated: true)
         }
         navigationController?.pushViewController(vc, animated: true)
+    }
+
+    private func containsBatteryPowerSwitchOwnConfiguration(_ operationTypes: [DeviceOperationType]) -> Bool {
+        operationTypes.contains { operationType in
+            guard case .configuration(_, let syncData) = operationType else {
+                return false
+            }
+            switch syncData {
+            case .batteryPowerSwitchReset, .batteryPowerSwitchKeyConfig, .batteryPowerSwitchModelPublication:
+                return true
+            default:
+                return false
+            }
+        }
     }
 
     private func pushEditor() {

@@ -81,28 +81,43 @@ final class PJEightKeySwitchData: DeviceSwitchData {
         return copy as! Self
     }
 
-    var needsBatteryPowerSwitchSync: Bool {
+    var needsBatteryPowerSwitchConfigurationSync: Bool {
         guard proxyNode?.isBatteryPowerSwitch == true else {
             return false
         }
         let currentHash = batteryPowerSwitchDesiredConfigHash(appKeyIndex: MeshNetworkManager.instance.currentApplicationKey.index)
-        return syncState != .synced || desiredConfigHash != currentHash || appliedConfigHash != currentHash
+        return desiredConfigHash != currentHash || appliedConfigHash != currentHash
+    }
+
+    var needsBatteryPowerSwitchSync: Bool {
+        guard proxyNode?.isBatteryPowerSwitch == true else {
+            return false
+        }
+        return needsBatteryPowerSwitchConfigurationSync || needSyncData
     }
 
     func batteryPowerSwitchDesiredConfigHash(appKeyIndex: KeyIndex) -> String {
-        [
+        let sceneTargets: String
+        switch eightKeyPanelType {
+        case .scene8Key:
+            let sceneNumbers = [sceneANumber, sceneBNumber, sceneCNumber, sceneDNumber]
+            let sceneTexts = sceneNumbers.map { sceneNumber -> String in
+                guard let sceneNumber else {
+                    return "nil"
+                }
+                return String(sceneNumber)
+            }
+            sceneTargets = sceneTexts.joined(separator: ",")
+        case .brightness8Key:
+            sceneTargets = "unused"
+        }
+
+        return [
             "panel=\(eightKeyPanelType.storageIdentifier)",
             "enabled=\(enabled)",
             "link=\(linkGroupAddress?.hex ?? "nil")",
             "publication=profileClients@link,retransmit=1/200",
-            "groups=\(bindGroupAddresses.sorted().map(\.hex).joined(separator: ","))",
-            "unbind=\(unbindGroupAddresses.sorted().map(\.hex).joined(separator: ","))",
-            "sceneA=\(sceneANumber.map(String.init) ?? "nil")",
-            "sceneB=\(sceneBNumber.map(String.init) ?? "nil")",
-            "sceneC=\(sceneCNumber.map(String.init) ?? "nil")",
-            "sceneD=\(sceneDNumber.map(String.init) ?? "nil")",
-            "reporting=\(moreSettingsState.periodicReporting.rawValue)",
-            "led=\(moreSettingsState.ledIndicatorEnabled)",
+            "scenes=\(sceneTargets)",
             "appKey=\(appKeyIndex)"
         ].joined(separator: "|")
     }
@@ -119,12 +134,14 @@ final class PJEightKeySwitchData: DeviceSwitchData {
         lastSyncFailedReason = nil
     }
 
-    func markBatteryPowerSwitchSyncSucceeded() {
+    func markBatteryPowerSwitchSyncSucceeded(clearRemovedGroups: Bool = true) {
         syncState = .synced
         appliedConfigHash = desiredConfigHash
         lastSyncFailedReason = nil
         lastSyncedAt = Int64(Date().timeIntervalSince1970)
-        unbindGroupAddresses.removeAll()
+        if clearRemovedGroups {
+            unbindGroupAddresses.removeAll()
+        }
     }
 
     func markBatteryPowerSwitchSyncFailed(reason: String?) {

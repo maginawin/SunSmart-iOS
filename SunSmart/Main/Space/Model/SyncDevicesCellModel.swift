@@ -177,6 +177,17 @@ private extension Node {
     }
 }
 
+private func isBatteryPowerSwitchPublicationSuccessful(node: Node, switchData: PJEightKeySwitchData) -> Bool {
+    guard node.primaryUnicastAddress == switchData.proxyNodeAddress,
+          let switchGroup = switchData.linkGroup else {
+        return false
+    }
+    return node.getBatteryPowerSwitchPublicationMessageHandles(
+        switchGroup: switchGroup,
+        includeExisting: false
+    ).isEmpty
+}
+
 /// 操作类型
 enum DeviceOperationType {
     
@@ -250,7 +261,9 @@ enum DeviceOperationType {
                 return !task.isUnsupported
             case .batteryPowerSwitchTargetSubscription(let switchData, _, let unsubscribe):
                 return node.getBatteryPowerSwitchTargetSubscriptionMessageHandles(switchData: switchData, unsubscribe: unsubscribe).isEmpty
-            case .batteryPowerSwitchReset, .batteryPowerSwitchKeyConfig, .batteryPowerSwitchModelPublication:
+            case .batteryPowerSwitchModelPublication(let switchData):
+                return isBatteryPowerSwitchPublicationSuccessful(node: node, switchData: switchData)
+            case .batteryPowerSwitchReset, .batteryPowerSwitchKeyConfig:
                 return true
             default:
                 return true
@@ -348,7 +361,9 @@ enum DeviceOperationType {
                 return !task.isUnsupported
             case .batteryPowerSwitchTargetSubscription(let switchData, _, let unsubscribe):
                 return node.getBatteryPowerSwitchTargetSubscriptionMessageHandles(switchData: switchData, unsubscribe: unsubscribe).isEmpty
-            case .batteryPowerSwitchReset, .batteryPowerSwitchKeyConfig, .batteryPowerSwitchModelPublication:
+            case .batteryPowerSwitchModelPublication(let switchData):
+                return isBatteryPowerSwitchPublicationSuccessful(node: node, switchData: switchData)
+            case .batteryPowerSwitchReset, .batteryPowerSwitchKeyConfig:
                 return true
             }
         case .read(let node, let type):
@@ -474,7 +489,7 @@ enum DeviceOperationType {
             case .enOceanSwitch(let switchData):
                 if switchData.linkGroup != nil {
                     if switchData.batteryPowerSwitchData != nil {
-                        messageHandles.append(contentsOf: node.getBatteryPowerSwitchTargetSubscriptionMessageHandles(switchData: switchData, unsubscribe: false, includeExisting: true))
+                        messageHandles.append(contentsOf: node.getBatteryPowerSwitchTargetSubscriptionMessageHandles(switchData: switchData, unsubscribe: false))
                         break
                     }
                     // 判断是否已订阅动能开关按键事件
@@ -538,21 +553,27 @@ enum DeviceOperationType {
                 messageHandles.append(contentsOf: task.messageHandles)
             case .batteryPowerSwitchReset(let switchData):
                 if node.primaryUnicastAddress == switchData.proxyNodeAddress, let vendorModel = node.sunricherVendorModel {
-                    messageHandles.append(MeshMessageHandle(message: SunricherVendorSet(function: .batteryPowerSwitchResetDefaults), model: vendorModel))
+                    let handle = MeshMessageHandle(message: SunricherVendorSet(function: .batteryPowerSwitchResetDefaults), model: vendorModel)
+                    handle.continuous = false
+                    messageHandles.append(handle)
                 }
             case .batteryPowerSwitchKeyConfig(let switchData):
                 if node.primaryUnicastAddress == switchData.proxyNodeAddress, let vendorModel = node.sunricherVendorModel {
                     let appKeyIndex = MeshNetworkManager.instance.currentApplicationKey.index
                     messageHandles.append(contentsOf: switchData.batteryPowerSwitchKeyConfigurations(appKeyIndex: appKeyIndex).map { configuration in
-                        MeshMessageHandle(message: SunricherVendorSet(function: .batteryPowerSwitchKeyConfig(configuration)), model: vendorModel)
+                        let handle = MeshMessageHandle(message: SunricherVendorSet(function: .batteryPowerSwitchKeyConfig(configuration)), model: vendorModel)
+                        handle.continuous = false
+                        return handle
                     })
                 }
             case .batteryPowerSwitchModelPublication(let switchData):
                 if node.primaryUnicastAddress == switchData.proxyNodeAddress, let switchGroup = switchData.linkGroup {
-                    messageHandles.append(contentsOf: node.getBatteryPowerSwitchPublicationMessageHandles(switchGroup: switchGroup, includeExisting: true))
+                    let handles = node.getBatteryPowerSwitchPublicationMessageHandles(switchGroup: switchGroup, includeExisting: false)
+                    handles.forEach { $0.continuous = false }
+                    messageHandles.append(contentsOf: handles)
                 }
             case .batteryPowerSwitchTargetSubscription(let switchData, _, let unsubscribe):
-                messageHandles.append(contentsOf: node.getBatteryPowerSwitchTargetSubscriptionMessageHandles(switchData: switchData, unsubscribe: unsubscribe, includeExisting: true))
+                messageHandles.append(contentsOf: node.getBatteryPowerSwitchTargetSubscriptionMessageHandles(switchData: switchData, unsubscribe: unsubscribe))
             }
         case .read(let node, let type):
             switch type {

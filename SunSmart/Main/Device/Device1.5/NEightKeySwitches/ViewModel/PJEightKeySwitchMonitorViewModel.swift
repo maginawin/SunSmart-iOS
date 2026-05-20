@@ -199,8 +199,7 @@ final class PJEightKeySwitchMonitorViewModel {
             return false
         }
         let appKeyIndex = MeshNetworkManager.instance.currentApplicationKey.index
-        let desiredHash = switchData.batteryPowerSwitchDesiredConfigHash(appKeyIndex: appKeyIndex)
-        if switchData.syncState != .synced || switchData.desiredConfigHash != desiredHash || switchData.appliedConfigHash != desiredHash {
+        if switchData.needsBatteryPowerSwitchConfigurationSync {
             switchData.prepareBatteryPowerSwitchDesiredConfig(appKeyIndex: appKeyIndex)
         }
         return true

@@ -56,6 +56,14 @@ class SyncDevicesViewController: UIViewController {
     private var syncNodes: [Node] = []
     /// SAVE Profile 期间临时禁用/恢复组内 PIR 传感器
     var profileSensorProtectionContext: ProfileSensorProtectionContext?
+    private var batteryPowerSwitchActivationFlow: PJEightKeySwitchActivationFlow?
+    private var batteryPowerSwitchOwnConfigurationFailed = false
+    private var batteryPowerSwitchKeyConfigurationCompleted = false
+    private var batteryPowerSwitchKeyConfigEarliestDate: Date?
+    private var syncRunIdentifier = UUID()
+
+    private static let batteryPowerSwitchKeyConfigInitialDelay: TimeInterval = 3
+    private static let batteryPowerSwitchPostKeyConfigProcessingDelay: TimeInterval = 0.5
     
     private var deviceBlinkMode: DeviceBlinkMode = .none
     
@@ -648,11 +656,18 @@ class SyncDevicesViewController: UIViewController {
                 }
             }
         
-            if removeSection.groups.count > 0 || removeSection.devices.count > 0 || removeSection.switchProxy != nil {
-                self.sections.append(removeSection)
+            let appendSectionIfNeeded: (SyncDevicesSectionModel) -> Void = { section in
+                if section.groups.count > 0 || section.devices.count > 0 || section.switchProxy != nil {
+                    self.sections.append(section)
+                }
             }
-            if configurationSection.groups.count > 0 || configurationSection.devices.count > 0 || configurationSection.switchProxy != nil {
-                self.sections.append(configurationSection)
+
+            if case .batteryPowerSwitch = self.type {
+                appendSectionIfNeeded(configurationSection)
+                appendSectionIfNeeded(removeSection)
+            } else {
+                appendSectionIfNeeded(removeSection)
+                appendSectionIfNeeded(configurationSection)
             }
             for (index, section) in self.sections.enumerated() {
                 section.groups.forEach({
@@ -687,36 +702,34 @@ class SyncDevicesViewController: UIViewController {
         let switchIconName = UIImage(named: switchNode.iconName) != nil ? switchNode.iconName : "device_BatteryPowerSwitch"
         switchDeviceModel.imageName = switchIconName
 
-        let resetTask = SyncDeviceStepTaskModel(name: "Reset", operationType: .configuration(node: switchNode, type: .batteryPowerSwitchReset(switchData: switchData)))
-        let resetStep = SyncDeviceStepModel(type: "Reset", state: .none, tasks: [resetTask])
-        resetTask.parentStepModel = resetStep
-        resetStep.parentDeviceModel = switchDeviceModel
+        var configurationDependencies: [SyncDeviceStepModel] = []
+        if switchData.needsBatteryPowerSwitchConfigurationSync {
+            let keyConfigTask = SyncDeviceStepTaskModel(name: "Key Config", operationType: .configuration(node: switchNode, type: .batteryPowerSwitchKeyConfig(switchData: switchData)))
+            let keyConfigStep = SyncDeviceStepModel(type: "Key Config", state: .none, tasks: [keyConfigTask])
+            keyConfigTask.parentStepModel = keyConfigStep
+            keyConfigStep.parentDeviceModel = switchDeviceModel
 
-        let keyConfigTask = SyncDeviceStepTaskModel(name: "Key Config", operationType: .configuration(node: switchNode, type: .batteryPowerSwitchKeyConfig(switchData: switchData)))
-        let keyConfigStep = SyncDeviceStepModel(type: "Key Config", state: .none, tasks: [keyConfigTask])
-        keyConfigTask.parentStepModel = keyConfigStep
-        keyConfigStep.parentDeviceModel = switchDeviceModel
-        keyConfigStep.relevanceStepModels = [resetStep]
+            let publicationTask = SyncDeviceStepTaskModel(name: "Model Publication", operationType: .configuration(node: switchNode, type: .batteryPowerSwitchModelPublication(switchData: switchData)))
+            let publicationStep = SyncDeviceStepModel(type: "Model Publication", state: .none, tasks: [publicationTask])
+            publicationTask.parentStepModel = publicationStep
+            publicationStep.parentDeviceModel = switchDeviceModel
+            publicationStep.relevanceStepModels = [keyConfigStep]
 
-        let publicationTask = SyncDeviceStepTaskModel(name: "Model Publication", operationType: .configuration(node: switchNode, type: .batteryPowerSwitchModelPublication(switchData: switchData)))
-        let publicationStep = SyncDeviceStepModel(type: "Model Publication", state: .none, tasks: [publicationTask])
-        publicationTask.parentStepModel = publicationStep
-        publicationStep.parentDeviceModel = switchDeviceModel
-        publicationStep.relevanceStepModels = [resetStep, keyConfigStep]
-
-        switchDeviceModel.steps = [resetStep, keyConfigStep, publicationStep]
-        section.devices.append(switchDeviceModel)
+            switchDeviceModel.steps = [keyConfigStep, publicationStep]
+            section.devices.append(switchDeviceModel)
+            configurationDependencies = [keyConfigStep, publicationStep]
+        }
 
         let targetGroups = switchData.bindGroups.sorted { $0.address.address < $1.address.address }
         targetGroups.compactMap {
-            makeBatteryPowerSwitchTargetGroupModel(group: $0, switchData: switchData, unsubscribe: false, dependencies: [resetStep, keyConfigStep, publicationStep])
+            makeBatteryPowerSwitchTargetGroupModel(group: $0, switchData: switchData, unsubscribe: false, dependencies: configurationDependencies)
         }.forEach { section.groups.append($0) }
 
         let removedGroups = switchData.unbindGroupAddresses
             .compactMap { MeshNetworkManager.instance.meshNetwork?.group(withAddress: MeshAddress($0)) }
             .sorted { $0.address.address < $1.address.address }
         removedGroups.compactMap {
-            makeBatteryPowerSwitchTargetGroupModel(group: $0, switchData: switchData, unsubscribe: true, dependencies: [resetStep, keyConfigStep, publicationStep])
+            makeBatteryPowerSwitchTargetGroupModel(group: $0, switchData: switchData, unsubscribe: true, dependencies: configurationDependencies)
         }.forEach { removeSection.groups.append($0) }
     }
 
@@ -732,7 +745,7 @@ class SyncDevicesViewController: UIViewController {
         let deviceModels = group.nodes.compactMap { node -> SyncDevicesModel? in
             let handles = unsubscribe
                 ? node.getBatteryPowerSwitchUnsubscriptionMessageHandles(switchGroup: switchGroup)
-                : node.getBatteryPowerSwitchSubscriptionMessageHandles(switchGroup: switchGroup, includeExisting: true)
+                : node.getBatteryPowerSwitchSubscriptionMessageHandles(switchGroup: switchGroup)
             guard !handles.isEmpty else {
                 return nil
             }
@@ -1452,6 +1465,7 @@ class SyncDevicesViewController: UIViewController {
     
     /// 返回
     @objc private func backAction() {
+        invalidateCurrentSyncRun()
         
         applyProfileSensorTargetStateInBackgroundIfNeeded()
         
@@ -1537,6 +1551,7 @@ class SyncDevicesViewController: UIViewController {
     
     @objc private func rightItemAction() {
         if syncState == .inSync { // stop
+            invalidateCurrentSyncRun()
             
             MeshProxyMessageCommand.shared.stopSendMessage { [weak self] _ in
                 self?.applyProfileSensorTargetStateInBackgroundIfNeeded()
@@ -1590,14 +1605,12 @@ class SyncDevicesViewController: UIViewController {
             
 //            let failedModels = sections.filter({ $0.allModels.contains(where: { $0 is SyncDevicesModel && ($0.state == .failed || $0.state == .repeatedFailure) }) })
             
-            var selectModels: [SyncDevicesModel] = []
-            
-            sections.forEach({
-                let models = $0.allModels.filter({ (($0 as? SyncDevicesModel)?.isSelected ?? false) && $0.state == .failed }) as! [SyncDevicesModel]
-                 selectModels.append(contentsOf: models)
-            })
+            let selectModels = selectedFailedDevicesForResync()
             if selectModels.count > 0 {
-                selectModels.forEach({ device in
+                if selectModels.contains(where: { containsBatteryPowerSwitchConfiguration($0) }) {
+                    startBatteryPowerSwitchConfigurationResyncAfterActivation()
+                } else {
+                    selectModels.forEach({ device in
 //                    device.state = .none
 //                    device.steps.forEach({
 //                        $0.tasks.forEach({ task in
@@ -1612,12 +1625,13 @@ class SyncDevicesViewController: UIViewController {
 //                            }
 //                        })
 //                    })
-                    prepareDeviceForResync(device)
-                })
-                
+                        prepareDeviceForResync(device)
+                    })
+                    
 //                tableView.reloadData()
-                syncState = .inSync
-                startSync()
+                    syncState = .inSync
+                    startSync()
+                }
             }
 //            navigationItem.rightBarButtonItem = "stop".localizedString
         }
@@ -1745,6 +1759,9 @@ class SyncDevicesViewController: UIViewController {
 //        guard let section = sections.first, let model = section.allModels.first else { return }
         // 需要配置的设备list
         var configNodes: [Node] = []
+        batteryPowerSwitchOwnConfigurationFailed = false
+        batteryPowerSwitchKeyConfigurationCompleted = false
+        let syncRunIdentifier = beginSyncRun()
         
         sections.forEach { section in
             section.allModels.forEach({
@@ -1774,6 +1791,9 @@ class SyncDevicesViewController: UIViewController {
 //            semaphore.wait()
             
             while let model = self.getNextHandleModel() {
+                guard self.isActiveSyncRun(syncRunIdentifier) else {
+                    return
+                }
                 
                 guard MeshLibManager.manager.isOpenBluetooth else {
                     self.sections.forEach { section in
@@ -1877,6 +1897,7 @@ class SyncDevicesViewController: UIViewController {
 //                if let node = configNodes.first(where: { $0.primaryUnicastAddress == nodeAddress }), node.versionVerifyCode == nil {
 //                   messageHandles = []
 //                }
+                messageHandles = self.batteryPowerSwitchMessageHandles(for: model, defaultHandles: messageHandles)
                 
                 DispatchQueue.main.async {
                     self.tableView.reloadData()
@@ -1924,6 +1945,36 @@ class SyncDevicesViewController: UIViewController {
                     continue
                 }
                 
+                if self.batteryPowerSwitchOwnConfigurationFailed,
+                   self.isBatteryPowerSwitchOwnConfiguration(model) {
+                    model.state = .failed
+                    (model as? SyncDevicesModel)?.failedCount += 1
+                    (model as? SyncDeviceStepTaskModel)?.failedCount += 1
+                    self.updateCell(model: model)
+                    DispatchQueue.main.async {
+                        if let model = self.showProressStepModel,
+                           let progressView = SyncDevicesProgressView.current() {
+                            progressView.stepModel = model
+                        }
+                    }
+                    continue
+                }
+
+                if self.isMissingRequiredBatteryPowerSwitchConfigurationHandles(model, messageHandles: messageHandles) {
+                    model.state = .failed
+                    (model as? SyncDevicesModel)?.failedCount += 1
+                    (model as? SyncDeviceStepTaskModel)?.failedCount += 1
+                    self.batteryPowerSwitchOwnConfigurationFailed = true
+                    self.markPendingBatteryPowerSwitchOwnConfigurationTasksFailed()
+                    self.updateCell(model: model)
+                    continue
+                }
+
+                guard self.waitBeforeBatteryPowerSwitchKeyConfigIfNeeded(for: model, syncRunIdentifier: syncRunIdentifier) else {
+                    return
+                }
+                
+                let isBatteryPowerSwitchKeyConfigModel = self.isBatteryPowerSwitchKeyConfigConfiguration(model)
                 MeshProxyMessageCommand.shared.addMessage(messageHandles: messageHandles, ackMessageTimeout: self.ackTimeout(for: model), progressBack: nil, successfulBack: { handle, statusMessage in
                     // 判断如果是设备初始化消息，则需要再初始化完成后完成基本配置
                     if statusMessage is ConfigCompositionDataStatus || statusMessage is ConfigAppKeyStatus {
@@ -1986,9 +2037,17 @@ class SyncDevicesViewController: UIViewController {
                     
                     let resultSuccessful = !resultMessageHandles.contains(where: { !$0.isSuccessful })
                     let operationSuccessful = ((model as? SyncDevicesModel)?.operationType?.isSuccessful ?? (model as? SyncDeviceStepTaskModel)?.operationType.isSuccessful) ?? false
-                    if resultSuccessful && operationSuccessful || self.isEmergencyFireControllerDeleteCleanup(model) {
+                    if self.isBatteryPowerSwitchOperationSuccessful(
+                        model: model,
+                        resultSuccessful: resultSuccessful,
+                        operationSuccessful: operationSuccessful,
+                        messageHandles: messageHandles
+                    ) || self.isEmergencyFireControllerDeleteCleanup(model) {
                         model.state = .successful
                         self.clearEmergencyFireControllerPendingIfNeeded(for: model)
+                        if isBatteryPowerSwitchKeyConfigModel {
+                            self.batteryPowerSwitchKeyConfigurationCompleted = true
+                        }
                         
                         if self.deviceBlinkMode != .none {
                             let deviceModel: SyncDevicesModel? =
@@ -2007,11 +2066,18 @@ class SyncDevicesViewController: UIViewController {
                         model.state = .failed
                         (model as? SyncDevicesModel)?.failedCount += 1
                         (model as? SyncDeviceStepTaskModel)?.failedCount += 1
+                        if self.isBatteryPowerSwitchOwnConfiguration(model) {
+                            self.batteryPowerSwitchOwnConfigurationFailed = true
+                            self.markPendingBatteryPowerSwitchOwnConfigurationTasksFailed()
+                        }
                     }
                     self.updateCell(model: model)
                     semaphore.signal()
                 }
                 semaphore.wait()
+                if isBatteryPowerSwitchKeyConfigModel, model.state == .successful {
+                    self.waitAfterBatteryPowerSwitchKeyConfigSuccessIfNeeded(for: model)
+                }
                 
                 DispatchQueue.main.async {
                     if let model = self.showProressStepModel {
@@ -2095,6 +2161,341 @@ class SyncDevicesViewController: UIViewController {
       
     }
     
+    private func beginSyncRun() -> UUID {
+        let identifier = UUID()
+        syncRunIdentifier = identifier
+        if batteryPowerSwitchDataForSync != nil {
+            batteryPowerSwitchKeyConfigEarliestDate = Date().addingTimeInterval(Self.batteryPowerSwitchKeyConfigInitialDelay)
+        } else {
+            batteryPowerSwitchKeyConfigEarliestDate = nil
+        }
+        return identifier
+    }
+
+    private func invalidateCurrentSyncRun() {
+        syncRunIdentifier = UUID()
+        batteryPowerSwitchKeyConfigEarliestDate = nil
+    }
+
+    private func isActiveSyncRun(_ identifier: UUID) -> Bool {
+        syncRunIdentifier == identifier && syncState == .inSync
+    }
+
+    @discardableResult
+    private func waitBeforeBatteryPowerSwitchKeyConfigIfNeeded(for model: SyncCellModel, syncRunIdentifier identifier: UUID) -> Bool {
+        guard isBatteryPowerSwitchKeyConfigConfiguration(model),
+              let earliestDate = batteryPowerSwitchKeyConfigEarliestDate else {
+            return isActiveSyncRun(identifier)
+        }
+        let waitTime = earliestDate.timeIntervalSinceNow
+        if waitTime > 0 {
+            Thread.sleep(forTimeInterval: waitTime)
+        }
+        batteryPowerSwitchKeyConfigEarliestDate = nil
+        return isActiveSyncRun(identifier)
+    }
+
+    private func waitAfterBatteryPowerSwitchKeyConfigSuccessIfNeeded(for model: SyncCellModel) {
+        guard isBatteryPowerSwitchKeyConfigConfiguration(model) else {
+            return
+        }
+        Thread.sleep(forTimeInterval: Self.batteryPowerSwitchPostKeyConfigProcessingDelay)
+    }
+
+    private var batteryPowerSwitchDataForSync: PJEightKeySwitchData? {
+        guard case .batteryPowerSwitch(let switchData) = type else {
+            return nil
+        }
+        return switchData
+    }
+    
+    private func isBatteryPowerSwitchConfigurationOperation(_ operationType: DeviceOperationType) -> Bool {
+        guard batteryPowerSwitchDataForSync != nil else {
+            return false
+        }
+        switch operationType {
+        case .configuration(_, let actionType):
+            switch actionType {
+            case .batteryPowerSwitchKeyConfig,
+                 .batteryPowerSwitchModelPublication:
+                return true
+            case .batteryPowerSwitchTargetSubscription:
+                return false
+            default:
+                return false
+            }
+        default:
+            return false
+        }
+    }
+    
+    private func isBatteryPowerSwitchOwnConfigurationOperation(_ operationType: DeviceOperationType) -> Bool {
+        guard batteryPowerSwitchDataForSync != nil else {
+            return false
+        }
+        switch operationType {
+        case .configuration(_, let actionType):
+            switch actionType {
+            case .batteryPowerSwitchKeyConfig,
+                 .batteryPowerSwitchModelPublication:
+                return true
+            default:
+                return false
+            }
+        default:
+            return false
+        }
+    }
+
+    private func isBatteryPowerSwitchSyncOperation(_ operationType: DeviceOperationType) -> Bool {
+        guard batteryPowerSwitchDataForSync != nil else {
+            return false
+        }
+        switch operationType {
+        case .configuration(_, let actionType), .delete(_, let actionType):
+            switch actionType {
+            case .batteryPowerSwitchKeyConfig,
+                 .batteryPowerSwitchModelPublication,
+                 .batteryPowerSwitchTargetSubscription:
+                return true
+            default:
+                return false
+            }
+        default:
+            return false
+        }
+    }
+    
+    private func operationType(for model: SyncCellModel) -> DeviceOperationType? {
+        if let deviceModel = model as? SyncDevicesModel {
+            return deviceModel.operationType
+        }
+        if let taskModel = model as? SyncDeviceStepTaskModel {
+            return taskModel.operationType
+        }
+        return nil
+    }
+    
+    private func containsBatteryPowerSwitchConfiguration(_ device: SyncDevicesModel) -> Bool {
+        if let operationType = device.operationType {
+            return isBatteryPowerSwitchConfigurationOperation(operationType)
+        }
+        return device.steps.contains { step in
+            containsBatteryPowerSwitchConfiguration(step)
+        }
+    }
+    
+    private func containsBatteryPowerSwitchConfiguration(_ step: SyncDeviceStepModel) -> Bool {
+        step.tasks.contains { task in
+            isBatteryPowerSwitchConfigurationOperation(task.operationType)
+        }
+    }
+    
+    private func isBatteryPowerSwitchOwnConfiguration(_ model: SyncCellModel) -> Bool {
+        guard let operationType = operationType(for: model) else {
+            return false
+        }
+        return isBatteryPowerSwitchOwnConfigurationOperation(operationType)
+    }
+
+    private func isBatteryPowerSwitchKeyConfigConfiguration(_ model: SyncCellModel) -> Bool {
+        guard let operationType = operationType(for: model) else {
+            return false
+        }
+        switch operationType {
+        case .configuration(_, let actionType):
+            if case .batteryPowerSwitchKeyConfig = actionType {
+                return true
+            }
+            return false
+        default:
+            return false
+        }
+    }
+
+    private func batteryPowerSwitchMessageHandles(for model: SyncCellModel, defaultHandles: [MeshMessageHandle]) -> [MeshMessageHandle] {
+        guard let operationType = operationType(for: model) else {
+            return defaultHandles
+        }
+        switch operationType {
+        case .configuration(let node, let actionType):
+            switch actionType {
+            case .batteryPowerSwitchKeyConfig(let switchData):
+                guard node.primaryUnicastAddress == switchData.proxyNodeAddress,
+                      let vendorModel = node.sunricherVendorModel else {
+                    return defaultHandles
+                }
+                let appKeyIndex = MeshNetworkManager.instance.currentApplicationKey.index
+                return switchData.batteryPowerSwitchKeyConfigurations(appKeyIndex: appKeyIndex).map { configuration in
+                    let handle = MeshMessageHandle(message: SunricherVendorSet(function: .batteryPowerSwitchKeyConfig(configuration)), model: vendorModel)
+                    handle.continuous = false
+                    return handle
+                }
+            case .batteryPowerSwitchModelPublication(let switchData):
+                guard batteryPowerSwitchKeyConfigurationCompleted,
+                      node.primaryUnicastAddress == switchData.proxyNodeAddress,
+                      let switchGroup = switchData.linkGroup else {
+                    return defaultHandles
+                }
+                let handles = node.getBatteryPowerSwitchPublicationMessageHandles(switchGroup: switchGroup, includeExisting: true)
+                handles.forEach { $0.continuous = false }
+                return handles
+            default:
+                return defaultHandles
+            }
+        default:
+            return defaultHandles
+        }
+    }
+
+    private func isMissingRequiredBatteryPowerSwitchConfigurationHandles(_ model: SyncCellModel, messageHandles: [MeshMessageHandle]) -> Bool {
+        guard messageHandles.isEmpty,
+              let operationType = operationType(for: model) else {
+            return false
+        }
+        switch operationType {
+        case .configuration(_, let actionType):
+            switch actionType {
+            case .batteryPowerSwitchKeyConfig:
+                return true
+            case .batteryPowerSwitchModelPublication:
+                return batteryPowerSwitchKeyConfigurationCompleted
+            default:
+                return false
+            }
+        default:
+            return false
+        }
+    }
+
+    private func isBatteryPowerSwitchOperationSuccessful(
+        model: SyncCellModel,
+        resultSuccessful: Bool,
+        operationSuccessful: Bool,
+        messageHandles: [MeshMessageHandle]
+    ) -> Bool {
+        guard isBatteryPowerSwitchOwnConfiguration(model) else {
+            return resultSuccessful && operationSuccessful
+        }
+        return !messageHandles.isEmpty && resultSuccessful
+    }
+    
+    private func resetBatteryPowerSwitchConfigurationForResync() {
+        batteryPowerSwitchOwnConfigurationFailed = false
+        sections.forEach { section in
+            section.devices.forEach { resetBatteryPowerSwitchConfigurationIfNeeded($0) }
+            section.groups.forEach { group in
+                group.deviceModels.forEach { resetBatteryPowerSwitchConfigurationIfNeeded($0) }
+            }
+        }
+        tableView.reloadData()
+    }
+    
+    private func resetBatteryPowerSwitchConfigurationIfNeeded(_ device: SyncDevicesModel) {
+        guard containsBatteryPowerSwitchSync(device) else {
+            return
+        }
+        device.isFineshed = false
+        device.isSelected = false
+        device.failedCount = 0
+        if let operationType = device.operationType,
+           isBatteryPowerSwitchSyncOperation(operationType) {
+            device.state = .none
+            return
+        }
+        device.steps.forEach { step in
+            guard containsBatteryPowerSwitchSync(step) else {
+                return
+            }
+            step.isFineshed = false
+            step.tasks.forEach { task in
+                guard isBatteryPowerSwitchSyncOperation(task.operationType) else {
+                    return
+                }
+                task.isFineshed = false
+                task.failedCount = 0
+                task.state = .none
+            }
+        }
+    }
+    
+    private func startBatteryPowerSwitchConfigurationResyncAfterActivation() {
+        guard let switchData = batteryPowerSwitchDataForSync else {
+            return
+        }
+        let flow = PJEightKeySwitchActivationFlow(
+            presenter: self,
+            switchData: switchData
+        ) { [weak self] in
+            guard let self else { return }
+            self.batteryPowerSwitchActivationFlow = nil
+            self.resetBatteryPowerSwitchConfigurationForResync()
+            self.syncState = .inSync
+            self.updateSyncStateUI()
+            self.startSync()
+        }
+        batteryPowerSwitchActivationFlow = flow
+        flow.start()
+    }
+    
+    private func selectedFailedDevicesForResync() -> [SyncDevicesModel] {
+        var selectedDevices: [SyncDevicesModel] = []
+        sections.forEach { section in
+            let models = section.allModels.filter {
+                (($0 as? SyncDevicesModel)?.isSelected ?? false) && $0.state == .failed
+            } as! [SyncDevicesModel]
+            selectedDevices.append(contentsOf: models)
+        }
+        return selectedDevices
+    }
+
+    private func containsBatteryPowerSwitchSync(_ device: SyncDevicesModel) -> Bool {
+        if let operationType = device.operationType {
+            return isBatteryPowerSwitchSyncOperation(operationType)
+        }
+        return device.steps.contains { step in
+            containsBatteryPowerSwitchSync(step)
+        }
+    }
+
+    private func containsBatteryPowerSwitchSync(_ step: SyncDeviceStepModel) -> Bool {
+        step.tasks.contains { task in
+            isBatteryPowerSwitchSyncOperation(task.operationType)
+        }
+    }
+    
+    private func markPendingBatteryPowerSwitchOwnConfigurationTasksFailed() {
+        sections.forEach { section in
+            section.devices.forEach { markPendingBatteryPowerSwitchOwnConfigurationTasksFailed(in: $0) }
+            section.groups.forEach { group in
+                group.deviceModels.forEach { markPendingBatteryPowerSwitchOwnConfigurationTasksFailed(in: $0) }
+            }
+        }
+    }
+    
+    private func markPendingBatteryPowerSwitchOwnConfigurationTasksFailed(in device: SyncDevicesModel) {
+        guard containsBatteryPowerSwitchConfiguration(device) else {
+            return
+        }
+        if let operationType = device.operationType,
+           isBatteryPowerSwitchOwnConfigurationOperation(operationType),
+           device.state == .none || device.state == .wait {
+            device.state = .failed
+            device.failedCount += 1
+            return
+        }
+        device.steps.forEach { step in
+            step.tasks.forEach { task in
+                guard isBatteryPowerSwitchOwnConfigurationOperation(task.operationType),
+                      task.state == .none || task.state == .wait else {
+                    return
+                }
+                task.state = .failed
+                task.failedCount += 1
+            }
+        }
+    }
+    
     /// 设备重同步前，清理当前轮次残留状态（仅保留成功任务）
     private func prepareDeviceForResync(_ device: SyncDevicesModel) {
         device.isFineshed = false
@@ -2154,6 +2555,9 @@ class SyncDevicesViewController: UIViewController {
                 }
                 for step in device.steps {
                     if step.relevanceStepModels.contains(where: { $0.state == .failed }) {
+                        continue
+                    }
+                    if step.relevanceStepModels.contains(where: { $0.state != .successful }) {
                         continue
                     }
                     if let model = step.tasks.first(where: { $0.state == .none || $0.state == .wait }) {
@@ -2478,6 +2882,10 @@ extension SyncDevicesViewController: SyncDeviceViewCellDelegate {
     
     /// 失败重试回调
     func cell(_ cell: SyncDeviceViewCell, resyncAction model: SyncDevicesModel) {
+        if containsBatteryPowerSwitchConfiguration(model) {
+            startBatteryPowerSwitchConfigurationResyncAfterActivation()
+            return
+        }
         prepareDeviceForResync(model)
         syncState = .inSync
         updateSyncStateUI()
@@ -2490,6 +2898,10 @@ extension SyncDevicesViewController: SyncDeviceStepViewCellDelegate {
     
     /// 重新同步事件回调
     func cell(_ cell: SyncDeviceStepViewCell, resyncAction model: SyncDeviceStepModel) {
+        if containsBatteryPowerSwitchConfiguration(model) {
+            startBatteryPowerSwitchConfigurationResyncAfterActivation()
+            return
+        }
         prepareStepForResync(model)
         syncState = .inSync
         updateSyncStateUI()

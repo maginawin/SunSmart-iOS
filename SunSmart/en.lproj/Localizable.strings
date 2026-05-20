@@ -1522,6 +1522,7 @@
 "total_numbers" = "Total numbers";
 "mesh_network_reset_confirm_message" = "You will reset all devices in the entire mesh network. Please enter \"RESET\" to confirm.";
 "retry" = "Retry";
+"try_again" = "Try Again";
 "mesh_network_reset_range_message" = "Only devices within range will be displayed.";
 "based_on_mesh_network" = "Based On Mesh Network";
 "illumination_fluctuation_range_reset_tip" = "(Greater than this range takes effect)";

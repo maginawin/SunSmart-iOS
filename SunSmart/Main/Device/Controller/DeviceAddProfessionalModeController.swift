@@ -118,6 +118,8 @@ class DeviceAddProfessionalModeController: UIViewController {
     private var addTarget: AddDeviceToTarget!
     /// 添加成功的节点
     private var addSuccessNodes: [Node] = []
+    private var batteryPowerSwitchAddConfigurations: [Address: PJEightKeySwitchData] = [:]
+    private var failedBatteryPowerSwitchAddConfigurationAddresses: Set<Address> = []
     /// 系统音量监听者
     private var systemVolumeObservation: NSKeyValueObservation?
     
@@ -344,6 +346,36 @@ class DeviceAddProfessionalModeController: UIViewController {
         nodes.filter { $0.isBatteryPowerSwitch }.forEach {
             MeshLibManager.manager.disconnectProxy(node: $0)
         }
+    }
+
+    private func finalizeBatteryPowerSwitchAddConfiguration(for node: Node) {
+        guard BatteryPowerSwitchAddConfiguration.isSupportedAddNode(node) else {
+            return
+        }
+
+        guard let switchData = batteryPowerSwitchAddConfigurations[node.primaryUnicastAddress] else {
+            if let fallbackSwitchData = MeshNetworkManager.instance
+                .createDefaultSwitch(forBatteryPowerSwitch: node)?
+                .batteryPowerSwitchData {
+                BatteryPowerSwitchAddConfiguration.markFailed(
+                    fallbackSwitchData,
+                    reason: "sync_failed".localizedString
+                )
+            }
+            return
+        }
+
+        if failedBatteryPowerSwitchAddConfigurationAddresses.contains(node.primaryUnicastAddress) {
+            BatteryPowerSwitchAddConfiguration.markFailed(
+                switchData,
+                reason: switchData.lastSyncFailedReason ?? "sync_failed".localizedString
+            )
+        } else {
+            BatteryPowerSwitchAddConfiguration.markSucceeded(switchData)
+        }
+
+        batteryPowerSwitchAddConfigurations.removeValue(forKey: node.primaryUnicastAddress)
+        failedBatteryPowerSwitchAddConfigurationAddresses.remove(node.primaryUnicastAddress)
     }
 
     private func shouldAllowTargetSelection() -> Bool {
@@ -902,6 +934,21 @@ class DeviceAddProfessionalModeController: UIViewController {
             if let ctlModel = node.ctlModel, node.temperatureModel != nil {
                 appendMessages.insert(MeshMessageHandle(message: LightCTLTemperatureRangeGet(), model: ctlModel), at: 0)
             }
+
+            if BatteryPowerSwitchAddConfiguration.isSupportedAddNode(node),
+               let switchData = BatteryPowerSwitchAddConfiguration.prepareSwitchData(for: node) {
+                batteryPowerSwitchAddConfigurations[node.primaryUnicastAddress] = switchData
+                let handles = BatteryPowerSwitchAddConfiguration.defaultConfigurationMessageHandles(
+                    for: switchData,
+                    node: node
+                )
+                if handles.isEmpty {
+                    failedBatteryPowerSwitchAddConfigurationAddresses.insert(node.primaryUnicastAddress)
+                } else {
+                    appendMessages.append(contentsOf: handles)
+                }
+            }
+
             // 设置默认过渡时间
             //            if let defaultTransitionTimeModel = node.defaultTransitionTimeModel {
             //                appendMessages.append(MeshMessageHandle(message: GenericDefaultTransitionTimeSet(transitionTime: .default), model: defaultTransitionTimeModel))
@@ -932,6 +979,14 @@ class DeviceAddProfessionalModeController: UIViewController {
                     node.updateData(message: messageHandle.message)
                 }
             }
+        } appendMessageFailedBack: { [weak self] messageHandle in
+            guard let self = self else { return }
+            guard let address = messageHandle.model?.parentElement?.unicastAddress ?? messageHandle.address else {
+                return
+            }
+            if self.batteryPowerSwitchAddConfigurations[address] != nil {
+                self.failedBatteryPowerSwitchAddConfigurationAddresses.insert(address)
+            }
         } addSuccess: {[weak self] addDevice in
             guard let self = self else { return }
             addDevice.addState = .success
@@ -954,7 +1009,7 @@ class DeviceAddProfessionalModeController: UIViewController {
                     }
                 }
                 if node.isBatteryPowerSwitch {
-                    MeshNetworkManager.instance.createDefaultSwitch(forBatteryPowerSwitch: node)
+                    finalizeBatteryPowerSwitchAddConfiguration(for: node)
                 }
 //                node.state = true
                 

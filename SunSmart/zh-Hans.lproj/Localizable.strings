@@ -1527,6 +1527,7 @@
 "total_numbers" = "总数量";
 "mesh_network_reset_confirm_message" = "您将重置整个mesh网络中的所有设备。请输入\"RESET\"确认。";
 "retry" = "重试";
+"try_again" = "重试";
 "mesh_network_reset_range_message" = "仅显示范围内的设备。";
 "based_on_mesh_network" = "基于Mesh网络";
 "illumination_fluctuation_range_reset_tip" = "(大于此范围生效)";
