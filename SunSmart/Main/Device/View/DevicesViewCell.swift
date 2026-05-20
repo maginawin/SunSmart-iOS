@@ -78,8 +78,8 @@ class DevicesViewCell: UICollectionViewCell {
                     progressView.isHidden = !device.supportDimming
                     progressView.setProgress(Int(progress), animated: progressAnimation)
 
-                    if device.temperatureModel != nil {
-                        progressView.progressColor = Node.getCctMixColor(temperature100: device.temperature100)
+                    if device.effectiveSupportCct {
+                        progressView.progressColor = Node.getCctMixColor(temperature100: device.getEffectiveTemperature100(temperature: device.temperature))
                     }else {
                         progressView.progressColor = RGB(156, 163, 175)
                     }

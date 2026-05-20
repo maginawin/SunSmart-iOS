@@ -1866,3 +1866,11 @@
 "The device has been disabled; please configure it in the settings." = "该设备已被禁用；请在设置中进行配置。";
 "Not executed. Please link a device first." = "未执行。请先关联设备。";
 "Not executed. No devices in associated groups." = "未执行。关联的组中没有设备。";
+"change_control_page" = "控制页面类型";
+"change_control_page_message" = "注意：此设备可按单白光或可调白光灯具控制。请选择与实际连接灯具匹配的控制页面。选择单白光后，App 会将设备按仅亮度控制处理并隐藏色温控制；对应组控能力也会同步变化。";
+"single_white" = "单白光";
+"tunable_white" = "可调白光";
+"absolute_cct_range" = "绝对色温范围";
+"absolute_cct_range_message" = "注意：设备支持较宽的色温范围，以适配不同灯具。若连接的灯具无法反馈或自动匹配实际色温范围，需要手动设置。App 会将色温控制限制在该范围内。";
+"minimum_cct" = "最低色温";
+"maximum_cct" = "最高色温";

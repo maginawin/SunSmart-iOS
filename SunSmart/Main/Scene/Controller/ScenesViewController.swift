@@ -422,7 +422,7 @@ extension ScenesViewController: UICollectionViewDataSource, UICollectionViewDele
             scene.info.groups.forEach { group in
                 if let data = group.info.sceneExecuteDatas.first(where: { scene.number == $0.sceneNumber }) {
                     group.lightness = data.lightness
-                    group.cct = Int(data.cct)
+                    group.cct = Int(group.clampEffectiveCct(data.cct))
                     group.isOn = data.lightness > 0
                 }
                 
@@ -430,7 +430,9 @@ extension ScenesViewController: UICollectionViewDataSource, UICollectionViewDele
                     if let sceneData = $0.sceneExecuteDatas.first(where: { scene.number == $0.sceneNumber }) {
                         $0.lightness = sceneData.lightness
                         $0.isOn = $0.lightness > 0
-                        $0.temperature = UInt16(sceneData.cct)
+                        if $0.effectiveSupportCct {
+                            $0.temperature = $0.clampEffectiveCct(UInt16(sceneData.cct))
+                        }
                     }
                 })
             }

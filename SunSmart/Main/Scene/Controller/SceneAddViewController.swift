@@ -91,6 +91,16 @@ class SceneAddViewController: UIViewController {
     private var scene: Scene?
     
     private var meshNetworkConnectedObservation: NSKeyValueObservation?
+
+    private var sceneDataCctRange: ClosedRange<UInt16> {
+        let ranges = groups.filter({ $0.effectiveSupportCct }).map({ $0.effectiveCctRange })
+        guard let first = ranges.first else {
+            return NodeAbsoluteCctRange.defaultRange
+        }
+        return ranges.reduce(first) { result, range in
+            min(result.lowerBound, range.lowerBound)...max(result.upperBound, range.upperBound)
+        }
+    }
     
     init(space: SpaceData) {
         self.space = space
@@ -252,14 +262,14 @@ class SceneAddViewController: UIViewController {
         groups.forEach({
             if let data = $0.executeSceneData, $0.nodes.count > 0 {
                 // 判断组内是否有色温灯
-                if $0.colorTemperatureNodes.count > 0 {
-                    MeshAPI.setGroupCTLState(address: $0.address.address, lightness: Node.getLightness(lightness100: data.lightness), temperature: UInt16(data.cct))
+                let effectiveCctCount = $0.nodes.filter({ $0.effectiveSupportCct }).count
+                if effectiveCctCount > 0 {
+                    MeshAPI.setGroupCTLState(address: $0.address.address, lightness: Node.getLightness(lightness100: data.lightness), temperature: $0.clampEffectiveCct(UInt16(data.cct)))
                 }
                 // 判断组内是否有仅支持调光灯
-                if $0.colorTemperatureNodes.count < $0.lightnessNodes.count {
+                if effectiveCctCount < $0.lightnessNodes.count {
                     MeshAPI.setGroupLightnessState(address: $0.address.address, lightness: Node.getLightness(lightness100: data.lightness))
                 }
-//                MeshAPI.setGroupCTLState(address: $0.address.address, lightness: Node.getLightness(lightness100: data.lightness), temperature: UInt16(data.cct))
             }
         })
         
@@ -299,7 +309,7 @@ class SceneAddViewController: UIViewController {
             let selectGroups = groups.filter({ $0.isSelected })
             selectGroups.forEach({
                 if let data = $0.executeSceneData {
-                    let executeData = SceneExecuteData(sceneNumber: scene.number, isOn: data.lightness > 0, lightness: Node.getLightness(lightness100: data.lightness), cct: UInt16(data.cct))
+                    let executeData = SceneExecuteData(sceneNumber: scene.number, isOn: data.lightness > 0, lightness: Node.getLightness(lightness100: data.lightness), cct: $0.clampEffectiveCct(UInt16(data.cct)))
                     $0.info.sceneExecuteDatas.append(executeData)
                     $0.info.save()
                     $0.updateGroupSyncState()
@@ -705,6 +715,7 @@ extension SceneAddViewController: UICollectionViewDataSource, UICollectionViewDe
         
         if indexPath.section == 0 {
             let dataCell = collectionView.dequeueReusableCell(withReuseIdentifier: "dataCell", for: indexPath) as! SceneAddDataListViewCell
+            dataCell.cctRange = sceneDataCctRange
             dataCell.sceneDatas = sceneDatas
             dataCell.selectIndex = sceneDataSelectIndex
             dataCell.delegate = self
@@ -832,7 +843,7 @@ extension SceneAddViewController: UICollectionViewDataSource, UICollectionViewDe
                 return
             }
             let data = sceneDatas[index]
-            group.executeSceneData = .init(lightness: data.lightness, cct: data.cct)
+            group.executeSceneData = .init(lightness: data.lightness, cct: Int(group.clampEffectiveCct(UInt16(data.cct))))
             group.sceneDataIndex = index
             group.isSelected = true
         }
@@ -848,7 +859,6 @@ extension SceneAddViewController: UICollectionViewDataSource, UICollectionViewDe
 //            group.isSelected = true
 ////            if group.nodes.count > 0 {
 ////                if MeshLibManager.manager.isMeshNetworkConnected {
-////                    MeshAPI.setGroupCTLState(address: group.address.address, lightness: Node.getLightness(lightness100: data.lightness), temperature: UInt16(data.cct))
 ////                }else {
 ////                    XWHUDManager.showTipHUD("device_notconnect_message".localizedString, isLineFeed: true)
 ////                }
@@ -990,7 +1000,7 @@ extension SceneAddViewController: SceneAddDataListViewCellDelegate {
             return
         }
         let data = sceneDatas[index]
-        SceneExecuteDataPickerView.show(lightness: data.lightness, cct: data.cct) {[weak self] lightness, cct in
+        SceneExecuteDataPickerView.show(lightness: data.lightness, cct: data.cct, cctRange: sceneDataCctRange) {[weak self] lightness, cct in
             guard let self = self else { return }
             data.lightness = lightness
             data.cct = cct
@@ -1011,7 +1021,7 @@ extension SceneAddViewController: SceneAddDataListViewCellDelegate {
     /// 新增数据回调
     func cellDidAddAction(_ cell: SceneAddDataListViewCell) {
         
-        SceneExecuteDataPickerView.show(showDelete: false) {[weak self] lightness, cct in
+        SceneExecuteDataPickerView.show(cctRange: sceneDataCctRange, showDelete: false) {[weak self] lightness, cct in
             let data = ExecuteSceneData(lightness: lightness, cct: cct)
             self?.sceneDatas.append(data)
             self?.collectionView.reloadItems(at: [IndexPath(item: 0, section: 0)])
@@ -1036,10 +1046,6 @@ extension SceneAddViewController: SceneAddGroupViewCellDelegate {
 //            }
 //            let data = sceneDatas[index]
 //            group.executeSceneData = .init(lightness: data.lightness, cct: data.cct)
-//            
-//            if group.nodes.count > 0 {
-//                MeshAPI.setGroupCTLState(address: group.address.address, lightness: Node.getLightness(lightness100: data.lightness), temperature: UInt16(data.cct))
-//            }
 //            
 //        }else {
 //            group.executeSceneData = nil

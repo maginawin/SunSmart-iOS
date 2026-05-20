@@ -6,6 +6,7 @@
 //
 
 import UIKit
+import NordicSigMeshSDK
 
 class SceneExecuteDataPickerView: UIView {
     
@@ -27,15 +28,17 @@ class SceneExecuteDataPickerView: UIView {
     private var showDelete: Bool = true
     private var lightness: Int = 30
     private var cct: Int = 5500
+    private var cctRange: ClosedRange<UInt16> = NodeAbsoluteCctRange.defaultRange
     private var lightnessLimitRange: ClosedRange<Int>?
     private var pickerCallback: DataPickerCallback?
     private var deleteCallback: DeleteCallback?
     
-    static func show(lightness: Int = 100, cct: Int = 4500, lightnessLimitRange: ClosedRange<Int>? = nil, showDelete: Bool = true, picker: DataPickerCallback?, delete: DeleteCallback? = nil) {
+    static func show(lightness: Int = 100, cct: Int = 4500, lightnessLimitRange: ClosedRange<Int>? = nil, cctRange: ClosedRange<UInt16> = NodeAbsoluteCctRange.defaultRange, showDelete: Bool = true, picker: DataPickerCallback?, delete: DeleteCallback? = nil) {
         
         let pickerView = SceneExecuteDataPickerView(frame: UIScreen.main.bounds)
         pickerView.showDelete = showDelete
         pickerView.lightness = lightness
+        pickerView.cctRange = cctRange
         pickerView.lightnessLimitRange = lightnessLimitRange
         pickerView.pickerCallback = picker
         pickerView.deleteCallback = delete
@@ -219,14 +222,15 @@ class SceneExecuteDataPickerView: UIView {
         }
         
         
-        cctLabel = UILabel(text: "\(cct)K", textColor: TextBlack_Color, fontSize: 14, fontWeight: .light)
+        let cctValue = min(Int(cctRange.upperBound), max(Int(cctRange.lowerBound), cct))
+        cctLabel = UILabel(text: "\(cctValue)K", textColor: TextBlack_Color, fontSize: 14, fontWeight: .light)
         contentView.addSubview(cctLabel)
         cctLabel.snp.makeConstraints { make in
             make.right.equalTo(lightnessLabel)
             make.top.equalTo(lightnessSliderView.snp.bottom).offset(SCRYFrom(28))
         }
         
-        cctSliderView = DeviceSliderFunctionView(frame: .zero, title: "", value: cct, functionType: .cct())
+        cctSliderView = DeviceSliderFunctionView(frame: .zero, title: "", value: cctValue, functionType: .cct(min: Int(cctRange.lowerBound), max: Int(cctRange.upperBound)))
         cctSliderView.minLabel.isHidden = true
         cctSliderView.maxLabel.isHidden = true
         cctSliderView.lineView.isHidden = true

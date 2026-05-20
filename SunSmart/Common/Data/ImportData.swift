@@ -1032,6 +1032,12 @@ extension SpaceData {
                     if let min = nodeJson["lightCTLTemperatureRangeMin"].uInt16, let max = nodeJson["lightCTLTemperatureRangeMax"].uInt16 {
                         node.lightCTLTemperatureRange = min...max
                     }
+                    if let rawValue = nodeJson["changeControlPage"].string {
+                        node.changeControlPage = NodeChangeControlPage(rawValue: rawValue)
+                    }
+                    if let min = nodeJson["absoluteCctRangeMin"].uInt16, let max = nodeJson["absoluteCctRangeMax"].uInt16, min < max {
+                        node.absoluteCctRange = min...max
+                    }
                     if let powerUpState = nodeJson["powerUpState"].uInt8 {
                         node.powerUpState = OnPowerUp(rawValue: powerUpState)
                     }
@@ -1624,6 +1630,12 @@ extension Node {
             }
             if let min = nodeJson["lightCTLTemperatureRangeMin"].uInt16, let max = nodeJson["lightCTLTemperatureRangeMax"].uInt16 {
                 node.lightCTLTemperatureRange = min...max
+            }
+            if let rawValue = nodeJson["changeControlPage"].string {
+                node.changeControlPage = NodeChangeControlPage(rawValue: rawValue)
+            }
+            if let min = nodeJson["absoluteCctRangeMin"].uInt16, let max = nodeJson["absoluteCctRangeMax"].uInt16, min < max {
+                node.absoluteCctRange = min...max
             }
             if let powerUpState = nodeJson["powerUpState"].uInt8 {
                 node.powerUpState = OnPowerUp(rawValue: powerUpState)

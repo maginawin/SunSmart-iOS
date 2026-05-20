@@ -186,11 +186,12 @@ class DeviceLightViewController: UIViewController {
                 
                 let progress = CGFloat(Float(lightness100) / 100.0) * 0.5
                 var alpha = 0.5 + progress
-                if self.node.temperatureModel != nil {
-                    lightBgView.image = UIImage(named: "device_light_bg")?.withTintColor(Node.getCctMixColor(temperature100: self.node.temperature100))
+                if self.node.effectiveSupportCct {
+                    let temperature100 = self.node.getEffectiveTemperature100(temperature: self.node.temperature)
+                    lightBgView.image = UIImage(named: "device_light_bg")?.withTintColor(Node.getCctMixColor(temperature100: temperature100))
                     
                     var garyBgAlpha: CGFloat = 0
-                    if node.temperature100 >= 45 && node.temperature100 <= 55 {
+                    if temperature100 >= 45 && temperature100 <= 55 {
                         garyBgAlpha = 0.5
                         alpha = 1
                     }
@@ -245,7 +246,7 @@ class DeviceLightViewController: UIViewController {
     
     private func updateSliderValue() {
         lightnessSlider.value = Node.getLightness100(lightness: node.lightness)
-        cctSlider.value = Int(node.temperature)
+        cctSlider.value = Int(node.clampEffectiveCct(node.temperature))
     }
     
     @objc private func backAction() {
@@ -651,12 +652,13 @@ class DeviceLightViewController: UIViewController {
         
         cctSlider.valueChangedCallback = {[weak self] value in
             guard let self = self else { return }
-            self.node.temperature = UInt16(value)
+            self.node.temperature = self.node.clampEffectiveCct(UInt16(value))
             self.updateData()
         }
         cctSlider.valueThrottleChangedCallback = {[weak self] (value, ended) in
             guard let self = self else { return }
-            MeshAPI.setNodeColorTemperatureState(address: self.node.primaryUnicastAddress, temperature: UInt16(value), ack: ended)
+            let temperature = self.node.clampEffectiveCct(UInt16(value))
+            MeshAPI.setNodeColorTemperatureState(address: self.node.primaryUnicastAddress, temperature: temperature, ack: ended)
         }
     }
     
@@ -678,7 +680,7 @@ class DeviceLightViewController: UIViewController {
     
     private func updateUI() {
         
-        if node.temperatureModel != nil {
+        if node.effectiveSupportCct {
             cctSlider.isHidden = false
             cctView.isHidden = false
         }else {
@@ -689,7 +691,7 @@ class DeviceLightViewController: UIViewController {
         if node.supportDimming {
             lightnessSlider.isHidden = false
             brightnessView.isHidden = false
-            if node.temperatureModel != nil {
+            if node.effectiveSupportCct {
                 brightnessView.snp.remakeConstraints { make in
                     make.right.equalTo(view.snp.centerX).offset(SCRXFrom(-42))
                     make.top.equalTo(lightBgView.snp.bottom).offset(SCRYFit(28))
@@ -806,7 +808,7 @@ class DeviceLightViewController: UIViewController {
             make.width.greaterThanOrEqualTo(cctLabel.width)
         }
         
-        let cctRange = self.node.lightCTLTemperatureRange ?? self.node.defalutLightCTLTemperatureRange
+        let cctRange = self.node.effectiveCctRange
         cctSlider = BuoySliderView(frame: .zero, functionType: .cct(min: Int(cctRange.lowerBound), max: Int(cctRange.upperBound)))
         cctSlider.slider.interval = 0.3
         cctSlider.slider.step = 10

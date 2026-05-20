@@ -168,7 +168,6 @@ class DaliMasterSingleControlView: UIView {
             make.centerY.height.equalTo(brightnessView)
         }
         
-//        let cctRange = self.node.lightCTLTemperatureRange ?? self.node.defalutLightCTLTemperatureRange
         var cctType: DeviceSliderFunctionView.FunctionType = .cct()
         var showCct = false
         if case .cct(let range) = lightType {

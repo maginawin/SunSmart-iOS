@@ -230,10 +230,6 @@ class DeviceLightsViewController: UIViewController {
         MeshNodeHeartbeatManager.shared.refresh()
 //        MeshAPI.sendMessage(message: LightLightnessGet(), address: .allNodes)
 //        
-//        if devices.contains(where: { $0.ctlModel != nil && $0.temperatureModel != nil }) {
-//            MeshAPI.sendMessage(message: LightCTLGet(), address: .allNodes)
-//        }
-        
 //        MeshAPI.sendMessage(message: LightCTLTemperatureRangeGet(), address: .allNodes)
         
         MeshLibManager.manager.refreshNodesRSSI(withWaitFor: 10, finished: nil)
@@ -515,8 +511,12 @@ class DeviceLightsViewController: UIViewController {
 //        self.wm_pageController?.scrollEnable = false
         NotificationCenter.default.post(name: .init(spacePageDisableScrollNotificaitonName), object: 0)
         // 是否有设备支持cct控制
-        let supportCct = devices.contains(where: { $0.temperatureModel != nil })
+        let cctNodes = devices.filter({ $0.effectiveSupportCct })
+        let supportCct = !cctNodes.isEmpty
         lightControlView.supportOptions = supportCct ? [.level, .cct] : [.level]
+        if supportCct {
+            lightControlView.updateCctRange(effectiveCctRange(for: cctNodes))
+        }
         lightControlView.show()
         // 禁用侧滑返回手势
         navigationController?.interactivePopGestureRecognizer?.isEnabled = false
@@ -1130,13 +1130,15 @@ extension DeviceLightsViewController: DeviceLightControlViewDelegate {
             return
         }
         
-        MeshAPI.sendMessage(message: LightCTLTemperatureSetUnacknowledged(temperature: UInt16(cct), deltaUV: 0), address: .subElementBroadcastGroupAddress)
+        let temperature = UInt16(cct)
+        let cctNodes = devices.filter({ $0.effectiveSupportCct })
+        cctNodes.forEach({
+            let nodeTemperature = $0.clampEffectiveCct(temperature)
+            MeshAPI.setNodeColorTemperatureState(address: $0.primaryUnicastAddress, temperature: nodeTemperature)
+            $0.temperature = nodeTemperature
+        })
 //        MeshAPI.setAllNodesCTLState(lightness: ligheness, temperature: UInt16(cct))
 //        MeshAPI.setAllColorTemperatureState(temperature: UInt16(cct), ack: ended)
-        devices.forEach({
-            $0.temperature = UInt16(cct)
-//            reloadCollectionItem(node: $0)
-        })
         updateAllOnOffItemUI()
         self.collectionView.reloadData()
     }
@@ -1174,6 +1176,16 @@ extension DeviceLightsViewController: DeviceLightControlViewDelegate {
 }
 
 private extension DeviceLightsViewController {
+    func effectiveCctRange(for nodes: [Node]) -> ClosedRange<UInt16> {
+        let ranges = nodes.filter({ $0.effectiveSupportCct }).map({ $0.effectiveCctRange })
+        guard let first = ranges.first else {
+            return NodeAbsoluteCctRange.defaultRange
+        }
+        return ranges.reduce(first) { result, range in
+            min(result.lowerBound, range.lowerBound)...max(result.upperBound, range.upperBound)
+        }
+    }
+
     func showEmergencyControlBlockedIfNeeded(node: Node? = nil) -> Bool {
         let blocked = node.map {
             EmergencyFireControllerSceneEventManager.isManualControlBlocked(for: $0)

@@ -652,6 +652,8 @@ extension DeviceParameterType {
             return node.defaultTransitionTime?.rawValue == transitionTime.rawValue
         case .powerCalibration(let calibrationValue):
             return node.calibrationRatedPower == calibrationValue
+        case .absoluteCctRange(let range):
+            return node.absoluteCctRange == range
         }
     }
     

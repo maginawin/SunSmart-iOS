@@ -308,7 +308,7 @@ class DeviceLightBasicController: UIViewController {
                         levelCell.value = node.lightness100
                     }
                     if let cctCell = tableView.cellForRow(at: IndexPath(row: 1, section: index)) as? DeviceLightControlViewCell {
-                        cctCell.value = node.temperature100
+                        cctCell.value = node.getEffectiveTemperature100(temperature: node.temperature)
                     }
     //                tableView.reloadSections(IndexSet(integer: index), with: .none)
                 }
@@ -344,7 +344,7 @@ extension DeviceLightBasicController: UITableViewDataSource, UITableViewDelegate
         let sectionType = sections[section]
         switch sectionType {
         case .control:
-            return node.temperatureModel != nil ? 2 : 1
+            return node.effectiveSupportCct ? 2 : 1
         case .deviceInfo:
             let isShow = sectionShowMap[sectionType] ?? false
             return isShow ? deviceInfoModels.count : 0
@@ -438,13 +438,13 @@ extension DeviceLightBasicController: UITableViewDataSource, UITableViewDelegate
                 cell.limitRange = Node.getLightness100(lightness: node.lightnessRange.lowerBound)...Node.getLightness100(lightness: node.lightnessRange.upperBound)
                 cell.type = .level()
             }else if indexPath.row == 1 {
-                cell.valueTags = [("3000K", node.getTemperature100(temperature: 3000)),
-                                  ("4000K", node.getTemperature100(temperature: 4000)),
-                                  ("4500K", node.getTemperature100(temperature: 4500)),
-                                  ("5000K", node.getTemperature100(temperature: 5000)),
-                                  ("6000K", node.getTemperature100(temperature: 6000))]
+                cell.valueTags = [("3000K", node.getEffectiveTemperature100(temperature: 3000)),
+                                  ("4000K", node.getEffectiveTemperature100(temperature: 4000)),
+                                  ("4500K", node.getEffectiveTemperature100(temperature: 4500)),
+                                  ("5000K", node.getEffectiveTemperature100(temperature: 5000)),
+                                  ("6000K", node.getEffectiveTemperature100(temperature: 6000))]
                 cell.type = .cct(min: 0, max: 100, step: 1, unit: "%")
-                cell.value = node.temperature100
+                cell.value = node.getEffectiveTemperature100(temperature: node.temperature)
             }
             
             cell.delegate = self
@@ -480,8 +480,8 @@ extension DeviceLightBasicController: UITableViewDataSource, UITableViewDelegate
                     if sceneData.lightness == 0 {
                         cell.contentLabel.text = "off".localizedString
                     }else {
-                        if node.temperatureModel != nil {
-                            let cct100 = Node.getTemperature100(temperature: UInt16(sceneData.cct), range: node.lightCTLTemperatureRange ?? node.defalutLightCTLTemperatureRange)
+                        if node.effectiveSupportCct {
+                            let cct100 = node.getEffectiveTemperature100(temperature: UInt16(sceneData.cct))
                             cell.contentLabel.text = "\("brightness".localizedString)-\(sceneData.lightness)%.\("cct".localizedString)-\(cct100)%"
                         }else {
                             cell.contentLabel.text = "\("brightness".localizedString)-\(sceneData.lightness)%."
@@ -525,7 +525,7 @@ extension DeviceLightBasicController: DeviceLightControlViewCellDelegate {
             }
             lastSendLightness = lightness
         case .cct:
-            let cct = node.getTemperature(temperature100: value)
+            let cct = node.getEffectiveTemperature(temperature100: value)
             MeshAPI.setNodeColorTemperatureState(address: node.primaryUnicastAddress, temperature: cct)
         }
     }
@@ -538,7 +538,7 @@ extension DeviceLightBasicController: DeviceLightControlViewCellDelegate {
             node.lightness = lightness
             node.isOn = lightness > 0
         case .cct:
-            let cct = node.getTemperature(temperature100: value)
+            let cct = node.getEffectiveTemperature(temperature100: value)
             node.temperature = cct
         }
         headerView.node = node

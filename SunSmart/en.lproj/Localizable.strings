@@ -700,7 +700,7 @@
 "space_editor_password_change_message" = "Space editor password changed, please re-enter the correct password to access";
 "space_visitor_password_change_message" = "Space visitor password changed, please re-enter the correct password to access";
 "space_permission_cleared_message" = "Your permission has been cleared, please re-apply for access";
-"no_upload" = "No upload"; 
+"no_upload" = "No upload";
 
 "guidance_message_1" = "Click the \"+\" button in the lower right corner of the Main interface to add a device.";
 "guidance_message_2" = "Add a member from an empty group interface to add it directly to the group.";
@@ -1851,3 +1851,11 @@
 "The device has been disabled; please configure it in the settings." = "The device has been disabled; please configure it in the settings.";
 "Not executed. Please link a device first." = "Not executed. Please link a device first.";
 "Not executed. No devices in associated groups." = "Not executed. No devices in associated groups.";
+"change_control_page" = "Change Control Page";
+"change_control_page_message" = "Note: This device can be controlled as either a single-white or tunable-white light. Select the page that matches the connected luminaire. When Single White is selected, the app treats the device as brightness-only and hides CCT controls; group control capabilities are updated accordingly.";
+"single_white" = "Single White";
+"tunable_white" = "Tunable White";
+"absolute_cct_range" = "Absolute CCT Range";
+"absolute_cct_range_message" = "Note: The device supports a wide color temperature range for different luminaires. If the connected luminaire cannot report or match its actual CCT range automatically, set the range manually. The app will limit CCT control to this range.";
+"minimum_cct" = "Minimum CCT";
+"maximum_cct" = "Maximum CCT";

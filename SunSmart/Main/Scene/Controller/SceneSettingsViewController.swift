@@ -174,7 +174,7 @@ class SceneSettingsViewController: UIViewController {
         selectGroups.forEach({
             let executeSceneData = $0.executeSceneData!
             let lightness = Node.getLightness(lightness100: executeSceneData.lightness)
-            let cct = UInt16(executeSceneData.cct)
+            let cct = $0.clampEffectiveCct(UInt16(executeSceneData.cct))
             if let data = $0.info.sceneExecuteDatas.first(where: { $0.sceneNumber == scene.number }) {
                 data.lightness = lightness
                 data.cct = cct
@@ -251,7 +251,7 @@ class SceneSettingsViewController: UIViewController {
 //            scene.info.groups.append($0)
 //            scene.info.groups.sort(by: { $0.address.address < $1.address.address })
             let lightness = Node.getLightness(lightness100: $0.executeSceneData!.lightness)
-            let cct = UInt16($0.executeSceneData!.cct)
+            let cct = $0.clampEffectiveCct(UInt16($0.executeSceneData!.cct))
             $0.info.sceneExecuteDatas.append(SceneExecuteData(sceneNumber: scene.number, isOn: $0.executeSceneData!.lightness > 0, lightness: lightness, cct: cct))
             $0.info.save()
             syncNodes.append(contentsOf: $0.getNeedSyncDataNodes(scene: scene).syncNodes)
@@ -261,7 +261,7 @@ class SceneSettingsViewController: UIViewController {
         updateGroups.forEach({
             if let data = $0.info.sceneExecuteDatas.first(where: { $0.sceneNumber == scene.number }) {
                 data.lightness = Node.getLightness(lightness100: $0.executeSceneData!.lightness)
-                data.cct = UInt16($0.executeSceneData!.cct)
+                data.cct = $0.clampEffectiveCct(UInt16($0.executeSceneData!.cct))
                 $0.info.save()
                 $0.updateGroupSyncState()
             }
@@ -399,11 +399,12 @@ class SceneSettingsViewController: UIViewController {
         controlGroups.forEach({
             if let data = $0.executeSceneData, $0.nodes.count > 0 {
                 // 判断组内是否有色温灯
-                if $0.colorTemperatureNodes.count > 0 {
-                    MeshAPI.setGroupCTLState(address: $0.address.address, lightness: Node.getLightness(lightness100: data.lightness), temperature: UInt16(data.cct))
+                let effectiveCctCount = $0.nodes.filter({ $0.effectiveSupportCct }).count
+                if effectiveCctCount > 0 {
+                    MeshAPI.setGroupCTLState(address: $0.address.address, lightness: Node.getLightness(lightness100: data.lightness), temperature: $0.clampEffectiveCct(UInt16(data.cct)))
                 }
                 // 判断组内是否有仅支持调光灯
-                if $0.colorTemperatureNodes.count < $0.lightnessNodes.count {
+                if effectiveCctCount < $0.lightnessNodes.count {
                     MeshAPI.setGroupLightnessState(address: $0.address.address, lightness: Node.getLightness(lightness100: data.lightness))
                 }
             }
@@ -424,8 +425,9 @@ class SceneSettingsViewController: UIViewController {
         let data = group.executeSceneData
 //        group.info.bindSceneDatas.first(where: { $0.sceneId == scene.number })?.data
         let groupLightData = group.info.profile.lightControlData
-        SceneExecuteDataPickerView.show(lightness: data?.lightness ?? 100, cct: data?.cct ?? 4500, lightnessLimitRange: groupLightData.lowEndTrim...groupLightData.highEndTrim, showDelete: false) {[weak self] lightness, cct in
+        SceneExecuteDataPickerView.show(lightness: data?.lightness ?? 100, cct: data?.cct ?? 4500, lightnessLimitRange: groupLightData.lowEndTrim...groupLightData.highEndTrim, cctRange: group.effectiveCctRange, showDelete: false) {[weak self] lightness, cct in
             guard let self = self else { return }
+            let cct = Int(group.clampEffectiveCct(UInt16(cct)))
             if let sceneData = data { // 修改
                 sceneData.lightness = lightness
                 sceneData.cct = cct

@@ -64,8 +64,8 @@ class DaliMasterViewController: DeviceBaseViewController {
     private func setupUI() {
         
         var lightType: DaliMasterSingleControlView.LightType!
-        if node.temperatureModel != nil {
-            lightType = .cct(range: node.lightCTLTemperatureRange ?? node.defalutLightCTLTemperatureRange)
+        if node.effectiveSupportCct {
+            lightType = .cct(range: node.effectiveCctRange)
         }else if node.lightnessModel != nil {
             lightType = .lightness
         }else {
@@ -109,11 +109,12 @@ class DaliMasterViewController: DeviceBaseViewController {
                 
                 let progress = CGFloat(Float(lightness100) / 100.0) * 0.5
                 var alpha = 0.5 + progress
-                if self.node.temperatureModel != nil {
-                    singleControlView.lightBgView.image = UIImage(named: "device_light_bg")?.withTintColor(Node.getCctMixColor(temperature100: self.node.temperature100))
+                if self.node.effectiveSupportCct {
+                    let temperature100 = self.node.getEffectiveTemperature100(temperature: self.node.temperature)
+                    singleControlView.lightBgView.image = UIImage(named: "device_light_bg")?.withTintColor(Node.getCctMixColor(temperature100: temperature100))
                     
                     var garyBgAlpha: CGFloat = 0
-                    if node.temperature100 >= 45 && node.temperature100 <= 55 {
+                    if temperature100 >= 45 && temperature100 <= 55 {
                         garyBgAlpha = 0.5
                         alpha = 1
                     }
@@ -164,7 +165,7 @@ class DaliMasterViewController: DeviceBaseViewController {
 
     /// 设备亮度控制
     private func meshCctSet(cct: UInt16, ack: Bool = false) {
-        MeshAPI.setNodeColorTemperatureState(address: self.node.primaryUnicastAddress, temperature: cct, ack: ack)
+        MeshAPI.setNodeColorTemperatureState(address: self.node.primaryUnicastAddress, temperature: node.clampEffectiveCct(cct), ack: ack)
     }
     
 }

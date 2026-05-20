@@ -22,8 +22,9 @@ extension Scene {
             // 设备是否支持色温model
             let lightness = data.lightness
             //Node.getLightness(lightness100: data.lightness, range: node.lightnessRange)
-            if let ctlModel = node.ctlModel, node.temperatureModel != nil {
-                messageHandles.append(MeshMessageHandle(message: LightCTLSet(lightness: lightness, temperature: UInt16(data.cct), deltaUV: 0, transitionTime: .immediate, delay: 0), model: ctlModel))
+            let cct = node.clampEffectiveCct(UInt16(data.cct))
+            if let ctlModel = node.ctlModel, node.effectiveSupportCct {
+                messageHandles.append(MeshMessageHandle(message: LightCTLSet(lightness: lightness, temperature: cct, deltaUV: 0, transitionTime: .immediate, delay: 0), model: ctlModel))
             }else if let lightnessModel = node.lightnessModel { // 不支持则设置色温
                 messageHandles.append(MeshMessageHandle(message: LightLightnessSet(lightness: lightness, transitionTime: .immediate, delay: 0), model: lightnessModel))
             }else if let onoffModel = node.onoffModel { // 不支持亮度
@@ -325,8 +326,8 @@ extension ProfileType {
                 case .definedLightLevel(let level):
                     onPowerUp = .default
                     let lightness = Node.getLightness(lightness100: Int(level))
-                    if let defaultCct = cct, let ctlSetupModel = node.ctlSetupModel {
-                        messageHandles.append(MeshMessageHandle(message: LightCTLDefaultSet(lightness: lightness, temperature: defaultCct, deltaUV: 0), model: ctlSetupModel))
+                    if let defaultCct = cct, let ctlSetupModel = node.ctlSetupModel, node.effectiveSupportCct {
+                        messageHandles.append(MeshMessageHandle(message: LightCTLDefaultSet(lightness: lightness, temperature: node.clampEffectiveCct(defaultCct), deltaUV: 0), model: ctlSetupModel))
                     }else {
                         messageHandles.append(MeshMessageHandle(message: LightLightnessDefaultSet(lightness: lightness), model: lightnessSetupModel))
                     }

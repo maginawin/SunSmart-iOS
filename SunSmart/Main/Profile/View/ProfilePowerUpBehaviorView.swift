@@ -42,6 +42,17 @@ class ProfilePowerUpBehaviorView: UIView {
     private var lastSelectBtn: UIButton?
     
     weak var delegate: ProfilePowerUpBehaviorViewDelegate?
+    var cctRange: ClosedRange<UInt16> = NodeAbsoluteCctRange.defaultRange {
+        didSet {
+            guard let cctSliderView = cctSliderView else {
+                return
+            }
+            cctSliderView.slider.minimumValue = Float(cctRange.lowerBound)
+            cctSliderView.slider.maximumValue = Float(cctRange.upperBound)
+            cctSliderView.slider.value = Float(clampedCct(UInt16(cctSliderView.slider.value)))
+            updateValue()
+        }
+    }
     /// 上电状态
     var powerState: Profile.PowerUpState = .restore {
         didSet {
@@ -71,7 +82,7 @@ class ProfilePowerUpBehaviorView: UIView {
                 return
             }
 
-            cctSliderView.slider.value = Float(cct)
+            cctSliderView.slider.value = Float(clampedCct(cct))
             updateUI()
             updateValue()
         }
@@ -159,7 +170,7 @@ class ProfilePowerUpBehaviorView: UIView {
             }
             lastSelectBtn = sender
             lightnessSliderView.slider.value = 50
-            cctSliderView.slider.value = 4500
+            cctSliderView.slider.value = Float(clampedCct(4500))
             
             updateValue()
             delegate?.view(self, powerStateChanged: .definedLightLevel(UInt8(Int(lightnessSliderView.slider.value))), powerOnCct: UInt16(cctSliderView.slider.value))
@@ -171,6 +182,10 @@ class ProfilePowerUpBehaviorView: UIView {
         
         lightnessSliderView.valueLabel.text = "\(Int(lightnessSliderView.slider.value))%"
         cctSliderView.valueLabel.text = "\(Int(cctSliderView.slider.value))K"
+    }
+
+    private func clampedCct(_ value: UInt16) -> UInt16 {
+        min(cctRange.upperBound, max(cctRange.lowerBound, value))
     }
     
     private func updateUI() {
@@ -250,8 +265,8 @@ class ProfilePowerUpBehaviorView: UIView {
         }
         
         cctSliderView = PowerUpLightSliderView()
-        cctSliderView.slider.minimumValue = Float(LightCTL_TemperatureRange.min)
-        cctSliderView.slider.maximumValue = Float(LightCTL_TemperatureRange.max)
+        cctSliderView.slider.minimumValue = Float(cctRange.lowerBound)
+        cctSliderView.slider.maximumValue = Float(cctRange.upperBound)
         cctSliderView.isHidden = true
         cctSliderView.slider.gradientColors = [RGB(255, 108, 0), .white, RGB(114, 179, 255)]
         addSubview(cctSliderView)
