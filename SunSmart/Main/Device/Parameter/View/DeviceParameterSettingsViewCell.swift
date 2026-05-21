@@ -212,9 +212,11 @@ final class DeviceParameterChangeControlPageViewCell: UITableViewCell {
     private var titleLabel: UILabel!
     private var enableSwitch: UISwitch!
     private var optionsContainerView: UIView!
+    private var singleWhiteContentView: UIView!
     private var singleWhiteButton: UIControl!
     private var singleWhiteIconView: UIImageView!
     private var singleWhiteLabel: UILabel!
+    private var tunableWhiteContentView: UIView!
     private var tunableWhiteButton: UIControl!
     private var tunableWhiteIconView: UIImageView!
     private var tunableWhiteLabel: UILabel!
@@ -337,26 +339,27 @@ final class DeviceParameterChangeControlPageViewCell: UITableViewCell {
             make.height.equalTo(SCRYFrom(40))
         }
 
-        singleWhiteButton = UIControl()
-        singleWhiteButton.addTarget(self, action: #selector(optionTapped(_:)), for: .touchUpInside)
-        optionsContainerView.addSubview(singleWhiteButton)
-        singleWhiteButton.snp.makeConstraints { make in
-            make.left.top.bottom.equalToSuperview()
-            make.width.equalToSuperview().multipliedBy(0.5)
+        singleWhiteContentView = UIView()
+        optionsContainerView.addSubview(singleWhiteContentView)
+        singleWhiteContentView.snp.makeConstraints { make in
+            make.left.equalTo(SCRXFrom(8))
+            make.centerY.equalToSuperview()
+            make.height.equalTo(SCRYFrom(30))
         }
 
-        tunableWhiteButton = UIControl()
-        tunableWhiteButton.addTarget(self, action: #selector(optionTapped(_:)), for: .touchUpInside)
-        optionsContainerView.addSubview(tunableWhiteButton)
-        tunableWhiteButton.snp.makeConstraints { make in
-            make.right.top.bottom.equalToSuperview()
-            make.width.equalToSuperview().multipliedBy(0.5)
+        tunableWhiteContentView = UIView()
+        optionsContainerView.addSubview(tunableWhiteContentView)
+        tunableWhiteContentView.snp.makeConstraints { make in
+            make.left.equalTo(singleWhiteContentView.snp.right).offset(SCRXFrom(8))
+            make.centerY.equalToSuperview()
+            make.height.equalTo(SCRYFrom(30))
+            make.right.lessThanOrEqualTo(SCRXFrom(-8))
         }
 
         singleWhiteIconView = UIImageView(image: UIImage(named: "select_un"))
-        singleWhiteButton.addSubview(singleWhiteIconView)
+        singleWhiteContentView.addSubview(singleWhiteIconView)
         singleWhiteIconView.snp.makeConstraints { make in
-            make.left.equalTo(SCRXFrom(8))
+            make.left.equalToSuperview()
             make.centerY.equalToSuperview()
             make.width.height.equalTo(SCRYFrom(30))
         }
@@ -364,17 +367,18 @@ final class DeviceParameterChangeControlPageViewCell: UITableViewCell {
         singleWhiteLabel = UILabel(text: "single_white".localizedString, textColor: TextBlack_Color, fontSize: 12, fontWeight: .light)
         singleWhiteLabel.adjustsFontSizeToFitWidth = true
         singleWhiteLabel.minimumScaleFactor = 0.75
-        singleWhiteButton.addSubview(singleWhiteLabel)
+        singleWhiteLabel.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
+        singleWhiteContentView.addSubview(singleWhiteLabel)
         singleWhiteLabel.snp.makeConstraints { make in
             make.left.equalTo(singleWhiteIconView.snp.right).offset(SCRXFrom(4))
-            make.right.equalTo(SCRXFrom(-8))
+            make.right.equalToSuperview()
             make.centerY.equalToSuperview()
         }
 
         tunableWhiteIconView = UIImageView(image: UIImage(named: "select_un"))
-        tunableWhiteButton.addSubview(tunableWhiteIconView)
+        tunableWhiteContentView.addSubview(tunableWhiteIconView)
         tunableWhiteIconView.snp.makeConstraints { make in
-            make.left.equalTo(SCRXFrom(8))
+            make.left.equalToSuperview()
             make.centerY.equalToSuperview()
             make.width.height.equalTo(SCRYFrom(30))
         }
@@ -382,15 +386,33 @@ final class DeviceParameterChangeControlPageViewCell: UITableViewCell {
         tunableWhiteLabel = UILabel(text: "tunable_white".localizedString, textColor: TextBlack_Color, fontSize: 12, fontWeight: .light)
         tunableWhiteLabel.adjustsFontSizeToFitWidth = true
         tunableWhiteLabel.minimumScaleFactor = 0.75
-        tunableWhiteButton.addSubview(tunableWhiteLabel)
+        tunableWhiteLabel.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
+        tunableWhiteContentView.addSubview(tunableWhiteLabel)
         tunableWhiteLabel.snp.makeConstraints { make in
             make.left.equalTo(tunableWhiteIconView.snp.right).offset(SCRXFrom(4))
-            make.right.equalTo(SCRXFrom(-8))
+            make.right.equalToSuperview()
             make.centerY.equalToSuperview()
         }
 
-        noteLabel = UILabel(text: "change_control_page_message".localizedString, textColor: SubText_Color, fontSize: 12, fontWeight: .regular, fit: false)
-        noteLabel.textAlignment = .left
+        singleWhiteButton = UIControl()
+        singleWhiteButton.addTarget(self, action: #selector(optionTapped(_:)), for: .touchUpInside)
+        optionsContainerView.addSubview(singleWhiteButton)
+        singleWhiteButton.snp.makeConstraints { make in
+            make.left.top.bottom.equalToSuperview()
+            make.right.equalTo(singleWhiteContentView.snp.right).offset(SCRXFrom(4))
+        }
+
+        tunableWhiteButton = UIControl()
+        tunableWhiteButton.addTarget(self, action: #selector(optionTapped(_:)), for: .touchUpInside)
+        optionsContainerView.addSubview(tunableWhiteButton)
+        tunableWhiteButton.snp.makeConstraints { make in
+            make.left.equalTo(tunableWhiteContentView.snp.left).offset(SCRXFrom(-4))
+            make.top.bottom.equalToSuperview()
+            make.right.equalTo(tunableWhiteContentView.snp.right).offset(SCRXFrom(8))
+        }
+
+        noteLabel = UILabel(text: "change_control_page_message".localizedString, textColor: SubText_Color, fontSize: 13, fontWeight: .light, fit: false)
+        noteLabel.textAlignment = .center
         noteLabel.numberOfLines = 0
         containerView.addSubview(noteLabel)
         noteLabel.snp.makeConstraints { make in
@@ -432,6 +454,9 @@ final class DeviceParameterCctRangeSlider: UIControl {
 
     private var thumbSize: CGFloat { SCRYFrom(30) }
     private var usableWidth: CGFloat { max(1, bounds.width - thumbSize) }
+    private var absoluteMinBound: UInt16 { NodeAbsoluteCctRange.minLowerBound }
+    private var absoluteMaxBound: UInt16 { NodeAbsoluteCctRange.maxUpperBound }
+    private var absoluteRange: CGFloat { max(1, CGFloat(absoluteMaxBound - absoluteMinBound)) }
 
     override init(frame: CGRect) {
         super.init(frame: frame)
@@ -505,33 +530,25 @@ final class DeviceParameterCctRangeSlider: UIControl {
         return UInt16(max(0, min(value, Int(UInt16.max))))
     }
 
-    private func xPosition(for value: UInt16, thumb: Thumb) -> CGFloat {
-        switch thumb {
-        case .lower:
-            let range = CGFloat(NodeAbsoluteCctRange.maxLowerBound - NodeAbsoluteCctRange.minLowerBound)
-            let progress = CGFloat(value - NodeAbsoluteCctRange.minLowerBound) / range
-            return usableWidth * 0.45 * progress
-        case .upper:
-            let range = CGFloat(NodeAbsoluteCctRange.maxUpperBound - NodeAbsoluteCctRange.minUpperBound)
-            let progress = CGFloat(value - NodeAbsoluteCctRange.minUpperBound) / range
-            return usableWidth * (0.55 + 0.45 * progress)
-        }
+    private func xPosition(for value: UInt16) -> CGFloat {
+        let clampedValue = min(max(value, absoluteMinBound), absoluteMaxBound)
+        let progress = CGFloat(clampedValue - absoluteMinBound) / absoluteRange
+        return usableWidth * progress
     }
 
     private func lowerValue(for x: CGFloat) -> UInt16 {
-        let position = max(0, min(x - thumbSize / 2, usableWidth * 0.45))
-        let progress = position / (usableWidth * 0.45)
-        let range = CGFloat(NodeAbsoluteCctRange.maxLowerBound - NodeAbsoluteCctRange.minLowerBound)
-        let value = CGFloat(NodeAbsoluteCctRange.minLowerBound) + range * progress
+        let lowerMaxX = xPosition(for: NodeAbsoluteCctRange.maxLowerBound)
+        let position = max(0, min(x - thumbSize / 2, lowerMaxX))
+        let progress = position / usableWidth
+        let value = CGFloat(absoluteMinBound) + absoluteRange * progress
         return normalizedLower(UInt16(value.rounded()))
     }
 
     private func upperValue(for x: CGFloat) -> UInt16 {
-        let startX = usableWidth * 0.55
-        let position = max(startX, min(x - thumbSize / 2, usableWidth))
-        let progress = (position - startX) / (usableWidth * 0.45)
-        let range = CGFloat(NodeAbsoluteCctRange.maxUpperBound - NodeAbsoluteCctRange.minUpperBound)
-        let value = CGFloat(NodeAbsoluteCctRange.minUpperBound) + range * progress
+        let upperMinX = xPosition(for: NodeAbsoluteCctRange.minUpperBound)
+        let position = max(upperMinX, min(x - thumbSize / 2, usableWidth))
+        let progress = position / usableWidth
+        let value = CGFloat(absoluteMinBound) + absoluteRange * progress
         return normalizedUpper(UInt16(value.rounded()))
     }
 
@@ -541,8 +558,8 @@ final class DeviceParameterCctRangeSlider: UIControl {
         let trackHeight = SCRYFrom(4)
         let trackY = (bounds.height - trackHeight) / 2
         let trackX = thumbSize / 2
-        let lowerX = xPosition(for: lowerBound, thumb: .lower)
-        let upperX = xPosition(for: upperBound, thumb: .upper)
+        let lowerX = xPosition(for: lowerBound)
+        let upperX = xPosition(for: upperBound)
         let lowerCenterX = lowerX + thumbSize / 2
         let upperCenterX = upperX + thumbSize / 2
 
@@ -805,8 +822,8 @@ final class DeviceParameterAbsoluteCctRangeViewCell: UITableViewCell {
             make.height.equalTo(SCRYFrom(40))
         }
 
-        noteLabel = UILabel(text: "absolute_cct_range_message".localizedString, textColor: SubText_Color, fontSize: 12, fontWeight: .regular, fit: false)
-        noteLabel.textAlignment = .left
+        noteLabel = UILabel(text: "absolute_cct_range_message".localizedString, textColor: SubText_Color, fontSize: 13, fontWeight: .light, fit: false)
+        noteLabel.textAlignment = .center
         noteLabel.numberOfLines = 0
         containerView.addSubview(noteLabel)
         noteLabel.snp.makeConstraints { make in
