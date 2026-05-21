@@ -425,7 +425,7 @@ class SceneSettingsViewController: UIViewController {
         let data = group.executeSceneData
 //        group.info.bindSceneDatas.first(where: { $0.sceneId == scene.number })?.data
         let groupLightData = group.info.profile.lightControlData
-        SceneExecuteDataPickerView.show(lightness: data?.lightness ?? 100, cct: data?.cct ?? 4500, lightnessLimitRange: groupLightData.lowEndTrim...groupLightData.highEndTrim, cctRange: group.effectiveCctRange, showDelete: false) {[weak self] lightness, cct in
+        SceneExecuteDataPickerView.show(lightness: data?.lightness ?? 100, cct: data?.cct ?? 4500, lightnessLimitRange: groupLightData.lowEndTrim...groupLightData.highEndTrim, cctRange: group.effectiveCctRange, showCct: group.effectiveSupportCct, showDelete: false) {[weak self] lightness, cct in
             guard let self = self else { return }
             let cct = Int(group.clampEffectiveCct(UInt16(cct)))
             if let sceneData = data { // 修改

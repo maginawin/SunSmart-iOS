@@ -1852,10 +1852,11 @@
 "Not executed. Please link a device first." = "Not executed. Please link a device first.";
 "Not executed. No devices in associated groups." = "Not executed. No devices in associated groups.";
 "change_control_page" = "Change Control Page";
-"change_control_page_message" = "Note: This device can be controlled as either a single-white or tunable-white light. Select the page that matches the connected luminaire. When Single White is selected, the app treats the device as brightness-only and hides CCT controls; group control capabilities are updated accordingly.";
+"change_control_page_message" = "Note: These devices integrate single-white and tunable-white functionality. By default, the firmware supports tunable white.";
+"change_control_page_single_white_default_message" = "Note: These devices integrate single-white and tunable-white functionality. By default, the firmware supports tunable white; however, in most cases they are used with fixed-white luminaires. Therefore, the app interface defaults to single-white control. When the device is applied to a tunable-white luminaire, the app interface needs to be manually adjusted.";
 "single_white" = "Single White";
 "tunable_white" = "Tunable White";
 "absolute_cct_range" = "Absolute CCT Range";
-"absolute_cct_range_message" = "Note: The device supports a wide color temperature range for different luminaires. If the connected luminaire cannot report or match its actual CCT range automatically, set the range manually. The app will limit CCT control to this range.";
+"absolute_cct_range_message" = "Note: The device supports a wide color temperature range to cover the color temperature range of connected light fixtures. However, some lights do not provide color temperature feedback to the device for automatic range adjustment; in such cases, the range must be adjusted manually to the corresponding setting.";
 "minimum_cct" = "Minimum CCT";
 "maximum_cct" = "Maximum CCT";

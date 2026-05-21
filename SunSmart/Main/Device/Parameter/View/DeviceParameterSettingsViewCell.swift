@@ -238,9 +238,10 @@ final class DeviceParameterChangeControlPageViewCell: UITableViewCell {
         fatalError("init(coder:) has not been implemented")
     }
 
-    func configure(value: NodeChangeControlPage, enabled: Bool, defaultValue: NodeChangeControlPage) {
+    func configure(value: NodeChangeControlPage, enabled: Bool, defaultValue: NodeChangeControlPage, noteText: String) {
         self.selectedValue = value
         self.defaultValue = defaultValue
+        noteLabel.text = noteText
         configureOptionTitles()
         updateOptionUI()
         updateParameterEnable(enable: enabled)
@@ -316,7 +317,7 @@ final class DeviceParameterChangeControlPageViewCell: UITableViewCell {
         containerView.addSubview(titleLabel)
         titleLabel.snp.makeConstraints { make in
             make.left.equalTo(SCRXFrom(16))
-            make.top.equalTo(SCRYFrom(24)).priority(.high)
+            make.top.equalTo(SCRYFrom(16)).priority(.high)
         }
 
         enableSwitch = UISwitch()
@@ -747,7 +748,7 @@ final class DeviceParameterAbsoluteCctRangeViewCell: UITableViewCell {
         containerView.addSubview(titleLabel)
         titleLabel.snp.makeConstraints { make in
             make.left.equalTo(SCRXFrom(16))
-            make.top.equalTo(SCRYFrom(24)).priority(.high)
+            make.top.equalTo(SCRYFrom(16)).priority(.high)
         }
 
         enableSwitch = UISwitch()
@@ -759,17 +760,17 @@ final class DeviceParameterAbsoluteCctRangeViewCell: UITableViewCell {
             make.centerY.equalTo(titleLabel)
         }
 
-        resetBtn = UIButton(title: "reset".localizedString, titleSize: 12, titleWeight: .regular, titleColor: Bar_Color, target: self, action: #selector(resetBtnAction))
-        resetBtn.layer.cornerRadius = SCRYFrom(12)
+        resetBtn = UIButton(title: "reset".localizedString, titleSize: 14, titleWeight: .light, titleColor: Bar_Color, target: self, action: #selector(resetBtnAction))
+        resetBtn.contentEdgeInsets = UIEdgeInsets(top: 0, left: SCRXFrom(11.5), bottom: 0, right: SCRXFrom(11.5))
+        resetBtn.layer.cornerRadius = SCRYFrom(14)
         resetBtn.layer.borderWidth = 0.5
-        resetBtn.layer.borderColor = Bar_Color.withAlphaComponent(0.5).cgColor
+        resetBtn.layer.borderColor = RGB(220, 220, 220).cgColor
         resetBtn.isHidden = true
         containerView.addSubview(resetBtn)
         resetBtn.snp.makeConstraints { make in
             make.right.equalTo(enableSwitch.snp.left).offset(SCRXFrom(-24))
-            make.centerY.equalTo(titleLabel)
-            make.height.equalTo(SCRYFrom(24))
-            make.width.greaterThanOrEqualTo(SCRXFrom(56))
+            make.centerY.equalTo(enableSwitch)
+            make.height.equalTo(SCRYFrom(28))
         }
 
         sliderContentView = UIView()

@@ -61,6 +61,13 @@ class DeviceParameterSettingsController: UIViewController {
     private var defaultCctRangeDataForSelection: DeviceParameterCctRangeData {
         DeviceParameterCctRangeData(range: devices.first?.defaultAbsoluteCctRange ?? NodeAbsoluteCctRange.defaultRange)
     }
+    
+    private var changeControlPageMessageForSelection: String {
+        if devices.first?.isSingleWhiteDefaultCctProduct == true {
+            return "change_control_page_single_white_default_message".localizedString
+        }
+        return "change_control_page_message".localizedString
+    }
 
     init(devices: [Node], displayMode: DisplayMode = .full) {
         self.devices = devices
@@ -608,7 +615,7 @@ extension DeviceParameterSettingsController: UITableViewDataSource, UITableViewD
             case .changeControlPage:
                 let cell = tableView.dequeueReusableCell(withIdentifier: "changeControlPageCell", for: indexPath) as! DeviceParameterChangeControlPageViewCell
                 let value = parameterData.data as? NodeChangeControlPage ?? defaultChangeControlPageForSelection
-                cell.configure(value: value, enabled: parameterData.enable, defaultValue: defaultChangeControlPageForSelection)
+                cell.configure(value: value, enabled: parameterData.enable, defaultValue: defaultChangeControlPageForSelection, noteText: changeControlPageMessageForSelection)
                 cell.delegate = self
                 return cell
             case .absoluteCctRange:
@@ -818,7 +825,7 @@ extension DeviceParameterSettingsController: DeviceParameterChangeControlPageVie
             let value = uniformValue(devices.map({ $0.effectiveChangeControlPage }), defaultValue: defaultChangeControlPageForSelection)
             changeControlPage = value
             data.data = value
-            cell.configure(value: value, enabled: true, defaultValue: defaultChangeControlPageForSelection)
+            cell.configure(value: value, enabled: true, defaultValue: defaultChangeControlPageForSelection, noteText: changeControlPageMessageForSelection)
         }
         updateSetupBtnState()
         tableView.performBatchUpdates(nil)

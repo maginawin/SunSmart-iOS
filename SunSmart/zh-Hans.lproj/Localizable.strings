@@ -1867,10 +1867,11 @@
 "Not executed. Please link a device first." = "未执行。请先关联设备。";
 "Not executed. No devices in associated groups." = "未执行。关联的组中没有设备。";
 "change_control_page" = "控制页面类型";
-"change_control_page_message" = "注意：此设备可按单白光或可调白光灯具控制。请选择与实际连接灯具匹配的控制页面。选择单白光后，App 会将设备按仅亮度控制处理并隐藏色温控制；对应组控能力也会同步变化。";
+"change_control_page_message" = "注意：这些设备集成了单白光和可调白光功能。默认情况下，固件支持可调白光。";
+"change_control_page_single_white_default_message" = "注意：这些设备集成了单白光和可调白光功能。默认情况下，固件支持可调白光；但在大多数情况下，它们会用于固定白光灯具。因此，App 界面默认使用单白光控制。当设备应用于可调白光灯具时，需要手动调整 App 界面。";
 "single_white" = "单白光";
 "tunable_white" = "可调白光";
 "absolute_cct_range" = "绝对色温范围";
-"absolute_cct_range_message" = "注意：设备支持较宽的色温范围，以适配不同灯具。若连接的灯具无法反馈或自动匹配实际色温范围，需要手动设置。App 会将色温控制限制在该范围内。";
+"absolute_cct_range_message" = "注意：设备支持较宽的色温范围，以覆盖所连接灯具的色温范围。但部分灯具不会向设备提供色温反馈用于自动调整范围；在这种情况下，必须手动调整到对应设置。";
 "minimum_cct" = "最低色温";
 "maximum_cct" = "最高色温";

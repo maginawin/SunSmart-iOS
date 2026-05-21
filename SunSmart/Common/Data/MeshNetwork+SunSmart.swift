@@ -1728,7 +1728,7 @@ extension Node {
         guard self.sunricherVendorModel != nil, let pid = self.productIdentifier, self.lightnessModel != nil else {
             return false
         }
-        if companyIdentifier == 0x0A78 && pid == 0x2013 {
+        if companyIdentifier == 0x0A78 && (pid == 0x2013 || pid == 0x24B1) {
             return false
         }
         switch pid {
