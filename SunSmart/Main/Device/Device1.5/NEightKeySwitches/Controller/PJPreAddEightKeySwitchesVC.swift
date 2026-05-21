@@ -532,7 +532,7 @@ final class PJPreAddEightKeySwitchesVC: UIViewController {
                 return false
             }
             switch syncData {
-            case .batteryPowerSwitchReset, .batteryPowerSwitchKeyConfig, .batteryPowerSwitchModelPublication:
+            case .batteryPowerSwitchReset, .batteryPowerSwitchKeyConfig:
                 return true
             default:
                 return false

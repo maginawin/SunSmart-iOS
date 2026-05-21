@@ -4,9 +4,11 @@
 >
 > ⚠ **2026-04-25 同步**：产品已正式改名，**Product ID 由旧值 `0x2601` 调整为 `0x2602`**、**GATT/广播设备名由旧值 `2422K8N_US_4DIM` 调整为 `2422K8NUSD`**。APP 端扫描匹配、白名单、产品识别表均需同步更新；旧 `0x2601` / `2422K8N_US_4DIM` 已弃用，不再使用。
 >
-> ⚠ **2026-05-09 v1.2.12 同步**：**Product ID 再次调整 `0x2602` → `0x2A02`**（小端字节序 `02 2A`）。同时新增同构兄弟产品 **`PRODUCT_2422K8N_US_4SC`（PID `0x2A01`）**——硬件/软件完全一致，仅 PID 不同，APP 需在产品识别表里同时登记 4DIM/4SC 两个 PID。新增公共特性宏 `PRODUCT_HAS_LOW_POWER`（4DIM/4SC 共用 LPN 行为）；预留 `PRODUCT_HAS_NFC_TAG`（FM11NT083C NFC 双界面 tag，当前调试期注释关闭）。`MAX_BUTTON_HANDLERS` 由 5 上调到 6（留 1 buffer 给 NFC selftest combo handler）。`products` hash 已回填 `5372592f`，分类 `Battery`。
+> ⚠ **2026-05-09 v1.2.12 同步**：**Product ID 再次调整 `0x2602` → `0x2A02`**（小端字节序 `02 2A`）。同时新增同构兄弟产品 **`PRODUCT_2422K8N_US_4SC`（PID `0x2A01`）**——硬件/软件完全一致，仅 PID 不同，APP 需在产品识别表里同时登记 4DIM/4SC 两个 PID。新增公共特性宏 `PRODUCT_HAS_LOW_POWER`（4DIM/4SC 共用 LPN 行为）；预留 `PRODUCT_HAS_NFC_TAG`（FM11NT083C NFC 双界面 tag，当前调试期注释关闭）。`MAX_BUTTON_HANDLERS` 由 5 上调到 6（留 1 buffer 给 NFC selftest combo handler）。`products` hash 已回填：4DIM = `460a9a8a`、4SC = `0a833eac`，分类 `Battery`。
 >
 > ⚠ **2026-04-28 同步**：元素结构从 9 → 8（按键 0 上移到主元素，DFU SRV 加入 Element 2 与按键 1 共用），与 9035AJ_PIR_V_54 的 DFU SRV 位置（Element 2）对齐。**按键源地址全部前移 1**：Key1 现在 = `primary + 0`（主元素），Key2~Key8 = `primary + 1`~`primary + 7`。详见 §3 / §3.1。
+>
+> ⚠ **2026-05-19 v1.0.18 富指令扩展（向后兼容）**：每按键 SIG Client Model **由 5 增至 10**——新增 `Light CTL Cli`（色温）、`Light HSL Cli`（色彩/RGB）、`Generic Power Level Cli`（窗帘/马达）、`Generic Power OnOff Cli`（上电默认状态）、`Generic Default Transition Time Cli`（全局过渡时长）。`0x4C 0x00` 配置 wire 格式保持 13 字节不变，`action_type` 枚举末尾追加 **0x09..0x10** 共 8 类新动作（CTL_SET / CTL_TEMP_SET / HSL_SET / HSL_HUE_SET / HSL_SAT_SET / PLVL_SET / PONOFF_SET / DTT_SET），老 APP 已下发的 0x00~0x08 配置继续工作。⚠ **Composition data 变化**——本产品 `composition hash` 已由旧值 → 新值，OTA metadata 与 APP 端模型能力描述需同步更新。详见 §3、§4、§8.2.3、Sunricher 协议主文档 §5.1.2。
 
 ## 1. 产品一句话说明
 
@@ -30,10 +32,10 @@
 | Company ID | `0x0A78` | 厂商分配 |
 | 产品分类 | `Battery` | `products` 文件 |
 | Element 数量 | `8` | `main_lpn.c` |
-| `products` 中登记 hash | `5372592f` | `products` 第 68 行 |
-| 同构兄弟产品 | `PRODUCT_2422K8N_US_4SC`（PID `0x2A01`） | 硬件/软件一致，仅 PID 不同 |
+| `products` 中登记 hash | `460a9a8a` | `products` 第 68 行 |
+| 同构兄弟产品 | `PRODUCT_2422K8N_US_4SC`（PID `0x2A01`，hash `0a833eac`） | 硬件/软件一致，仅 PID 不同 |
 
-说明：`products` 里的 composition hash 仍是占位值，表示发布元数据还没有最终收口。
+说明：`products` 里的 composition hash 已经回填，发布元数据可用于 OTA 校验。
 
 > ⚠ APP 不要把启动 banner（`2422K8N_US_4DIM`）当成 GATT 设备名匹配；GATT 与广播里实际广播的是 **`2422K8NUSD`**。
 
@@ -60,21 +62,36 @@
 
 `main_lpn.c` 当前采用 8-element 结构（按键 0 上移到主元素 + DFU SRV 加在 Element 2）：
 
+每按键挂 **10 个 SIG Client Model**（v1.0.18 起，原 5 + 富指令扩展 5）：基础 5 个 `OnOff Cli / Level Cli / Light Ctrl Cli / Scene Cli / Lightness Cli` + 扩展 5 个 `Light CTL Cli / Light HSL Cli / Power Level Cli / Power OnOff Cli / Default Transition Time Cli`。下表"Key*X* 全 CLI"为该 10 个 client 的简写。
+
 | Element | 模型 | 用途 |
 |---------|------|------|
 | 1 | Config Server | Mesh 基础配置 |
 | 1 | Health Server | 健康状态 |
 | 1 | **Generic Battery Server (SIG 0x100C)** | 对外暴露设备电量 / 电池状态 |
-| 1 | OnOff Client / Level Client / Light Ctrl Client / Scene Client / **Lightness Client** | **Key1（协议 index 0）对应端点** |
+| 1 | **Key1 全 CLI**（10 个，详见上文）| **Key1（协议 index 0）对应端点** |
 | 1 | Sunricher Vendor Setup Server | 私有配置、Vendor OTA、设备管理 |
-| 2 | OnOff Client / Level Client / Light Ctrl Client / Scene Client / **Lightness Client** | Key2（协议 index 1）对应端点 |
+| 2 | **Key2 全 CLI**（10 个） | Key2（协议 index 1）对应端点 |
 | 2 | **BT_MESH_MODEL_DFU_SRV (含 BLOB Server)** | **SIG 标准 Mesh DFU 升级入口（与 9035AJ_PIR_V_54 同位置）** |
-| 3 | OnOff Client / Level Client / Light Ctrl Client / Scene Client / **Lightness Client** | Key3（协议 index 2）对应端点 |
-| 4 | OnOff Client / Level Client / Light Ctrl Client / Scene Client / **Lightness Client** | Key4（协议 index 3）对应端点 |
-| 5 | OnOff Client / Level Client / Light Ctrl Client / Scene Client / **Lightness Client** | Key5（协议 index 4）对应端点 |
-| 6 | OnOff Client / Level Client / Light Ctrl Client / Scene Client / **Lightness Client** | Key6（协议 index 5）对应端点 |
-| 7 | OnOff Client / Level Client / Light Ctrl Client / Scene Client / **Lightness Client** | Key7（协议 index 6）对应端点 |
-| 8 | OnOff Client / Level Client / Light Ctrl Client / Scene Client / **Lightness Client** | Key8（协议 index 7）对应端点 |
+| 3 | **Key3 全 CLI**（10 个） | Key3（协议 index 2）对应端点 |
+| 4 | **Key4 全 CLI**（10 个） | Key4（协议 index 3）对应端点 |
+| 5 | **Key5 全 CLI**（10 个） | Key5（协议 index 4）对应端点 |
+| 6 | **Key6 全 CLI**（10 个） | Key6（协议 index 5）对应端点 |
+| 7 | **Key7 全 CLI**（10 个） | Key7（协议 index 6）对应端点 |
+| 8 | **Key8 全 CLI**（10 个） | Key8（协议 index 7）对应端点 |
+
+> 全 CLI 完整列表（按 [include/mod_rc_cli.h:102-112](../../e:/work/nrfConnect/SunSmrat-relase-54L15/include/mod_rc_cli.h) `SR_MODEL_RC_BUTTON` 宏顺序）：
+>
+> 1. Generic OnOff Client（0x1001）
+> 2. Generic Level Client（0x1003）
+> 3. Light LC Client（0x1311）
+> 4. Scene Client（0x1205）
+> 5. Light Lightness Client（0x1302）
+> 6. **Light CTL Client（0x1305）** — v1.0.18 新增（色温）
+> 7. **Light HSL Client（0x1309）** — v1.0.18 新增（色彩 / RGB）
+> 8. **Generic Power Level Client（0x100D）** — v1.0.18 新增（窗帘 / 马达 / 风扇）
+> 9. **Generic Power OnOff Client（0x1008）** — v1.0.18 新增（上电默认状态）
+> 10. **Generic Default Transition Time Client（0x1005）** — v1.0.18 新增（全局过渡时长）
 
 ### 3.1 按键与 Element 映射
 
@@ -94,6 +111,7 @@
 - 按键级标准模型消息现在具备独立源地址
 - **Key1 与主元素共享 element idx 0，源地址等于 primary**——APP 端不能再假设"按键 i 在 primary + i + 1"
 - APP 应通过 Composition Data Get 动态发现按键 element 位置，避免硬编码偏移
+- **每个按键 element 现挂 10 个 SIG Client Model**（v1.0.18 起：原 5 + CTL / HSL / PLVL / PONOFF / DTT）；APP 按需绑定即可，不用就不必 bind，但建议一次性把 10 个全 bind 以保证所有 `0x4C` action_type 都能即装即用
 - Vendor 私有协议仍然挂在主元素 `Element 1`
 - SIG 标准 Mesh DFU 入口在 **`Element 2 (idx 1)`**，与 Key2 共享 element，APP 端 SIG DFU 客户端流程与 `PRODUCT_9035AJ_PIR_V_54` 完全一致
 
@@ -114,11 +132,17 @@
 - `Element 1 / Vendor Model`：用于 `0x4C`、`0x48`、`0x36` 等私有协议
 - `Element 1 / Generic Battery Server`：用于电量查询
 - `Element 1 / Health Server`：用于接收设备主动上报的故障（详见 §10）；**额外需要下发 `Config Model Publication Set`**，否则故障在空中不可见
-- `Element 2~8 / OnOff Client`：用于开关动作
-- `Element 2~8 / Level Client`：用于亮度 step / move
-- `Element 2~8 / Scene Client`：用于场景召回
-- `Element 2~8 / Light Ctrl Client`：仅当要使用 `light_ctrl_onoff` 时绑定
-- `Element 2~8 / Lightness Client`：仅当要使用 `lightness_set` 绝对亮度时绑定
+- **`Element 1~8 / Key*X* 全 CLI`**：每按键 element 上的 10 个 Client Model 都建议 bind 同一把 AppKey。按需绑定的细分清单：
+  - `OnOff Client`：用于 `0x4C` type `0x01/0x02`（ONOFF_TOGGLE / ONOFF_SET）
+  - `Level Client`：用于 type `0x03/0x04`（LEVEL_DELTA / LEVEL_MOVE）
+  - `Scene Client`：用于 type `0x05`（SCENE_RECALL）
+  - `Light Ctrl Client`：用于 type `0x06`（LIGHT_CTRL_ONOFF）
+  - `Lightness Client`：用于 type `0x08`（LIGHTNESS_SET）
+  - **`Light CTL Client`**：用于 type `0x09/0x0A`（CTL_SET / CTL_TEMP_SET，色温调节） — v1.0.18 新增
+  - **`Light HSL Client`**：用于 type `0x0B/0x0C/0x0D`（HSL_SET / HSL_HUE_SET / HSL_SAT_SET，彩色/RGB 调节） — v1.0.18 新增
+  - **`Generic Power Level Client`**：用于 type `0x0E`（PLVL_SET，窗帘/马达/风扇） — v1.0.18 新增
+  - **`Generic Power OnOff Client`**：用于 type `0x0F`（PONOFF_SET，灯端上电默认状态） — v1.0.18 新增
+  - **`Generic Default Transition Time Client`**：用于 type `0x10`（DTT_SET，全局过渡时长） — v1.0.18 新增
 
 ## 5. 低功耗与通信约束
 
@@ -325,7 +349,7 @@ provisioning 协议结束的瞬间，设备**自动进入 60 秒通信窗口**�
 - 保留如下本地动作（硬编码，**不经 `0x4C` 协议，APP 不能改**）：
   - `Key1 + Key8 长按 3s`（组合） → 本地恢复出厂
   - `Key2 + Key7 长按 3s`（组合） → 打开 60s 通信窗口（已入网/未入网均生效）
-  - 任一按键卡住 ≥ 60 秒 → `Health Current Status` 上报（详见 §10）
+  - 任一按键卡住 ≥ 60 秒 → `Health Current Status` 上报；按键物理释放时再上报一次空 array 通知故障恢复（详见 §10.1）
 
 这意味着：
 
@@ -386,10 +410,10 @@ Vendor RET 0x4C 0x01 0x00 <button_count> <trigger_count> <config_version>
 Vendor GET 0x4C 0x00 <button> <trigger>
 ```
 
-成功返回：
+成功返回（v1.0.22 起 wire 16B，紧跟原 ttl 后追加 retransmit_count / retransmit_interval / transition）：
 
 ```text
-Vendor RET 0x4C 0x00 0x00 <button> <trigger> <type> <value> <level_le16> <scene_id_le16> <addr_le16> <app_idx_le16> <ttl>
+Vendor RET 0x4C 0x00 0x00 <button> <trigger> <type> <value> <level_le16> <scene_id_le16> <addr_le16> <app_idx_le16> <ttl> <retransmit_count> <retransmit_interval> <transition>
 ```
 
 说明：
@@ -397,13 +421,14 @@ Vendor RET 0x4C 0x00 0x00 <button> <trigger> <type> <value> <level_le16> <scene_
 - `type=0` 表示 `disabled`，按下后设备静默不发任何 Mesh 报文
 - 当前 GET 返回的是动作值，不返回"是否曾被 APP 配置"的内部标志
 - "默认未配置"与"APP 显式 disabled"在网络行为上完全等价
+- **wire 长度演进**：v1.0.18 及以前 = 13B；v1.0.21 起 = 15B（+retransmit×2）；v1.0.22 起 = 16B（+transition）。`RC_CONFIG_VERSION` 与 wire 严格对齐，旧固件下发不识别新字段会返回 `err=1`（长度错）
 
 #### 8.2.3 SET 单项配置
 
-请求：
+请求（v1.0.22 起 16B）：
 
 ```text
-Vendor SET 0x4C 0x00 <button> <trigger> <type> <value> <level_le16> <scene_id_le16> <addr_le16> <app_idx_le16> <ttl>
+Vendor SET 0x4C 0x00 <button> <trigger> <type> <value> <level_le16> <scene_id_le16> <addr_le16> <app_idx_le16> <ttl> <retransmit_count> <retransmit_interval> <transition>
 ```
 
 成功返回：
@@ -420,13 +445,16 @@ Vendor RET 0x4C 0x00 0x00
 |---|---|---|
 | `button` | u8 | 按键索引 0..7（对应 Key1..Key8） |
 | `trigger` | u8 | 触发方式 0..4（CLICK / LONG_PRESS / LONG_RELEASE / PRESS / PRESS_RELEASE）；⚠ trigger=2 仅协议保留，运行时不触发，统一走 trigger=4 |
-| `type` | u8 | 动作类型 0x00..0x08（详见 8.2.3 type 表） |
-| `value` | u8 | OnOff / LightCtrl OnOff 时的目标 0/1；其它 type 忽略 |
-| `level` | i16 LE | LEVEL_DELTA / LEVEL_MOVE 的 delta；LIGHTNESS_SET 时按 u16 解读为绝对亮度 |
-| `scene_id` | u16 LE | SCENE_RECALL 场景号；其它 type 忽略 |
+| `type` | u8 | 动作类型 0x00..0x10（详见下方 type 表，v1.0.18 起扩到 0x10） |
+| `value` | u8 | 按 type 含义不同（OnOff 0/1 / CTL delta_uv S8 / DTT SIG byte / PONOFF 0/1/2 等） |
+| `level` | i16 LE | 按 type 含义不同；CTL/HSL/PLVL/LIGHTNESS 等 SET 时按 u16 重解读 |
+| `scene_id` | u16 LE | 按 type 含义不同；SCENE_RECALL 场景号 / CTL_SET lightness / HSL_SET saturation |
 | `addr` | u16 LE | 目标 Mesh 地址（单播 / 组播 / 虚拟），`0x0000` 表示未配置 |
 | `app_idx` | u16 LE | **AppKey Index**（**不是** NetKey Index）；`0xFFFF` 表示未配置 |
 | `ttl` | u8 | Mesh 消息 TTL（0..127）；`0xFF` = 用默认 TTL |
+| **`retransmit_count`** | **u8** | **v1.0.21 新增**：应用层重发次数 0..7。实际发送总次数 = `count+1`（count=0 即发 1 次不重发，向后兼容 v1.0.18 之前行为）。仅对 15 类 SIG client 消息生效；DISABLED / FACTORY_RESET / TIME_PUBLISH 不参与。越界自动 clamp 到 7。**编码与 SIG Publication Retransmit count 字段一致** |
+| **`retransmit_interval`** | **u8** | **v1.0.21 新增**：重发间隔步长 0..31。实际间隔 ms = `(interval+1)×50`，覆盖 50~1600ms。`count=0` 时本字段被忽略。越界自动 clamp 到 31。**编码与 SIG Publication Retransmit interval_step 字段一致** |
+| **`transition`** | **u8** | **v1.0.22 新增**：灯渐变时长 1B SIG 编码。**APP 默认填 `0xFF`** = 用 builtin default（详见 type 表各 action 的 builtin transition 列）；`0x3F` = unknown，让灯端按自己 DTT 过渡；其它 = SIG 编码（bit7:6 resolution 0=100ms/1=1s/2=10s/3=10min，bit5:0 steps 0..62）。所有 256 个值都是合法 SIG 编码，固件不做范围 clamp |
 
 ⚠ **`app_idx` 关键说明**：
 
@@ -435,7 +463,7 @@ Vendor RET 0x4C 0x00 0x00
 - 必须填**已经给"对应按键 element + 对应 Client Model"Bind 过**的 AppKey 的 index，否则设备发包时 Mesh 协议栈拒绝（按键按下无任何报文上行）
 - 推荐：联调初期统一用主元素 Vendor Model 那把 AppKey 的 index，按键 element 全部 bind 同一把
 
-`type` 全量枚举（详见 Vendor 协议主文档 [0x4C](d:\claude_code\sunricher_protocol_vendor\team-docs\sunricher_protocol_vendor.md)）：
+`type` 全量枚举（详见 Vendor 协议主文档 [0x4C §5.1.2](d:\claude_code\sunricher_protocol_vendor\team-docs\sunricher_protocol_vendor.md)；wire 长度：v1.0.18 = 13B / v1.0.21 = 15B / v1.0.22 = 16B；字段语义按 `type` 解释。表中 "builtin transition" 列表示 APP 不显式配置 `transition=0xFF` 时固件走的默认值）：
 
 | type | 名称 | addr/app_idx | 使用字段 | 行为 |
 |---|---|---|---|---|
@@ -447,9 +475,63 @@ Vendor RET 0x4C 0x00 0x00
 | 0x05 | SCENE_RECALL | 是 | `scene_id` | Scene Recall（transition 500 ms） |
 | 0x06 | LIGHT_CTRL_ONOFF | 是 | `value`（0/1） | Light LC Client OnOff |
 | 0x07 | FACTORY_RESET | 否 | — | 本地工厂复位（LED 提示 + 3.5 s 后重启），不发 Mesh |
-| **0x08** | **LIGHTNESS_SET** | **是** | **`level` 按 u16 解读（0x0000..0xFFFF 绝对亮度）** | **Lightness Client Light Set，transition 500 ms** |
+| 0x08 | LIGHTNESS_SET | 是 | `level` 按 u16 解读（0x0000..0xFFFF 绝对亮度） | Lightness Client Light Set（transition 500 ms） |
+| **0x09** | **CTL_SET** | **是** | `value`=delta_uv（**S8**，发送时 × 256 得 S16，常用 0）<br>`level`=CTL temperature（**U16**，0x0320~0x4E20 对应 800~20000K）<br>`scene_id`=CTL lightness（**U16**，0x0000..0xFFFF） | **Light CTL Client Set**（色温+亮度+白光偏移一次设到位，transition 500 ms） |
+| **0x0A** | **CTL_TEMP_SET** | **是** | `level`=CTL temperature（**U16**）；`value`/`scene_id` 忽略 | **Light CTL Temperature Set**：仅改色温，灯端保持当前亮度（transition 300 ms） |
+| **0x0B** | **HSL_SET** | **是** | `level`=hue（**U16**，0~65535 对应 0~360°）<br>`scene_id`=saturation（**U16**，0~65535 对应 0~100%）<br>lightness 固定 `0x8000`（wire 无字段容量，需精细控亮度请另配 0x08 LIGHTNESS_SET） | **Light HSL Client Set**：彩光"一键设到指定色彩"（transition 500 ms） |
+| **0x0C** | **HSL_HUE_SET** | **是** | `level`=hue（**U16**）；其它字段忽略 | **Light HSL Hue Set**：仅转色相（transition 500 ms） |
+| **0x0D** | **HSL_SAT_SET** | **是** | `level`=saturation（**U16**）；其它字段忽略 | **Light HSL Saturation Set**：仅调饱和度（transition 500 ms） |
+| **0x0E** | **PLVL_SET** | **是** | `level`=power_lvl（**U16**，0x0000..0xFFFF 对应 0~100%）；其它字段忽略 | **Generic Power Level Set**：窗帘开度 / 马达 / 风扇档位（transition 500 ms） |
+| **0x0F** | **PONOFF_SET** | **是** | `value`=on_power_up（**0=OFF / 1=DEFAULT / 2=RESTORE**，越界返回 `err=2`）；其它字段忽略 | **Generic Power OnOff Set**：配置灯端"断电再上电要不要亮"（无 transition） |
+| **0x10** | **DTT_SET** | **是** | `value`=SIG encoded transition time byte：<br>• `bit5:0` = steps 0..62（0x3F 视为 0/瞬时）<br>• `bit7:6` = resolution（**0**=100ms, **1**=1s, **2**=10s, **3**=10min）<br>其它字段忽略 | **Generic Default Transition Time Set**：场景"快/中/慢"三键调全局淡入淡出速度（无 transition） |
 
 ⚠ `type` 需要 addr/app_idx 的动作（除 DISABLED、FACTORY_RESET）必须同时提供 `addr≠0x0000` 且 `app_idx≠0xFFFF`，否则返回 `err=2`（字段不合法）。
+
+⚠ **0x4C 0x01 GET 能力返回的 `trigger_count` 仍是 5（CLICK/LONG_PRESS/LONG_RELEASE/PRESS/PRESS_RELEASE）；新增的是 `action_type` 维度（共 0x00..0x10 = 17 类），不是 `trigger` 维度。** APP 不需要根据 GET 能力推断 type 上限，直接按本表 0x00..0x10 写入即可；超过 0x10 设备返回 `err=2`。
+
+⚠ **0x09..0x10 富指令依赖 v1.0.18+ 固件**。若 APP 写入富指令到旧固件，旧固件 `action_type_valid` 校验拒绝（返回 `err=2`），不会误触发。可用 `0x36 0x01` OTA capability 或 `0x39 0x01` DFU comp hash get 区分新旧固件。
+
+##### 8.2.3a retransmit + transition 字段使用指南（v1.0.21 / v1.0.22）
+
+**APP 默认推荐值**：所有按键的所有 trigger 都填 `retransmit_count=0`、`retransmit_interval=0`、`transition=0xFF` —— 行为完全等价于 v1.0.18 的旧 13B wire（单次发送 + builtin transition default）。
+
+**重发参数（retransmit_count + retransmit_interval）使用建议**：
+
+| 场景 | 推荐配置 | 理由 |
+|---|---|---|
+| 普通按键 → 控灯（mesh 网络稳定） | `count=0`（不重发） | 网络稳定时单次发送已足够；不重发避免 ADV 信道争用 |
+| 控灯但偶发丢包 | `count=2 / interval=1`（共发 3 次 / 间隔 100ms） | 总耗时 200ms，串行延迟可接受 |
+| 重要操作（紧急停车 / 应急关闭） | `count=4 / interval=3`（共发 5 次 / 间隔 200ms） | 总耗时 800ms，强可靠；不建议更大 |
+| 控 group / 一对多场景 | `count=2 / interval=2`（共发 3 次 / 间隔 150ms） | group 没有 ACK，多发几次确保覆盖 |
+
+⚠ **避免大值组合**：固件重发循环同步阻塞 system work queue，**后续按键事件最长延迟 ≈ `count × (interval+1) × 50 ms`**。`count=7 / interval=31` 单次重发耗时 11.2 秒，期间所有按键事件排队等待，用户体验极差。**强烈建议 APP UI 限制 `count × (interval+1) × 50 ≤ 800ms`**。
+
+⚠ **`FACTORY_RESET / DISABLED / TIME_PUBLISH` 不参与重发**：DISABLED 不发，FACTORY_RESET 是本地动作，TIME_PUBLISH 走 SDK Publication 路径自带 `model.pub.retransmit`（通过 Config Model Publication Set 配置）。这三类填 `count` / `interval` 任意值都被忽略。
+
+✅ **幂等性保证**：固件按 SIG Mesh 标准对每类消息选 TID 续传，保证灯端无论收到几个重发都得到同一最终状态——
+
+- **`LEVEL_DELTA` 重发不会累加 delta**（首次新 TID，重发同 TID 续传；灯端按 "initial + delta" 解释）；
+- **`LEVEL_MOVE` 重发不会重启 move**（同上）；
+- **`ONOFF_*` / `LIGHT_CTRL_ONOFF` 重发被灯端 dedup**（首次 reuse_transaction=false，重发 reuse_transaction=true）；
+- **绝对值 SET 类**（LIGHTNESS / SCENE_RECALL / CTL / HSL / PLVL / PONOFF / DTT）幂等性由目标值本身保证（设到同值多次结果一致）。
+
+**渐变参数（transition）使用建议**：
+
+| 场景 | 推荐填值 | 实际效果 |
+|---|---|---|
+| 用户无渐变偏好（默认）| `0xFF` | 按 type 走 builtin default（CTL_TEMP 300ms / 其它 500ms / ONOFF / LIGHT_CTRL_ONOFF / PONOFF / DTT 无渐变） |
+| 用户要"立即跳变" | `0x00` | resolution=100ms × steps=0 = 0ms，无渐变 |
+| 用户要"按灯端默认" | `0x3F` | SIG 标准 "unknown"，让灯端按自己 DTT 配置过渡 |
+| 用户要"快"（开关灯柔和） | `0x05` | 100ms × 5 = 500ms |
+| 用户要"中"（场景切换） | `0x14` | 100ms × 20 = 2000ms (2s) |
+| 用户要"慢"（卧室柔光） | `0x4A` | 1s × 10 = 10s |
+| 用户要"长"（影院氛围） | `0x82` 或更大 | 10s × 2 = 20s（再大极少有业务必要）|
+
+⚠ **PONOFF_SET / DTT_SET / TIME_PUBLISH / FACTORY_RESET / DISABLED 不读 transition 字段**：前两者 SDK 接口本身不带 transition 参数；后三者非 SIG 渐变类。APP 填任意值都被忽略，但仍建议填 `0xFF` 保持语义清晰。
+
+⚠ **OTA 升级到 v1.0.22 后，所有 RC 配置自动回到 DISABLED**：因 `RC_CONFIG_VERSION` 3→4 让旧 NVS 失效。APP **必须主动重发一遍完整 RC 配置**（建议 OTA 完成后立刻读 `0x4C 0x01 GET` 看 `config_version`，发现 v4 而本地缓存是 v3/v2 则触发重发流程）。
+
+⚠ **`retransmit / transition` 字段对 v1.0.18 及更早固件不存在**：APP 若给老固件发 15B/16B wire，老固件 `RC_ACTION_CFG_WIRE_LEN` 校验是 13B 会**返回 `err=1`（长度错）**。APP 必须先用 `0x39 0x01` DFU comp hash get 探测固件能力，或在 `0x36 0x01` OTA capability 查询里得知支持版本，按需选择 wire 长度。
 
 #### 8.2.4 RESET DEFAULTS
 
@@ -541,31 +623,120 @@ Vendor RET 0x4C 0x02 0x00 <enable>
 
 详细 pattern 字节序与 250ms/bit 时间基准定义在 [`bsp_led.c`](../../e:/work/nrfConnect/SunSmrat-relase-54L15/src/bsp_led.c) 与需求规格 §R-2.2.10。
 
+### 8.4 按键全局 TX 开关（`0x4C` 子码 `0x03`，v1.0.19 新增）
+
+#### 8.4.1 设置开关
+
+请求：
+
+```text
+Vendor SET 0x4C 0x03 <enable>
+```
+
+| 字段 | 类型 | 取值 | 含义 |
+|---|---|---|---|
+| `enable` | u8 | `0`=禁用 / `1`=启用，其它返回 `err=2` | 按键触发的 SIG client 消息发送总开关 |
+
+成功返回：
+
+```text
+Vendor RET 0x4C 0x03 0x00
+```
+
+错误码：`err=1` 长度错（payload < 1 字节）；`err=2` `enable` 不在 {0,1}；`err=3` 未知子码。
+
+#### 8.4.2 查询开关
+
+请求：
+
+```text
+Vendor GET 0x4C 0x03
+```
+
+成功返回：
+
+```text
+Vendor RET 0x4C 0x03 0x00 <enable>
+```
+
+#### 8.4.3 行为约束
+
+- **持久化**：写入即落 NVS（`rc/tx_enable`），断电不丢；恢复出厂会重置为 `1`（启用）
+- **默认值**：首次烧录、恢复出厂后 = `1`（启用）
+- **`enable=0` 的屏蔽范围**：仅静默以下"按键触发的 SIG client 消息发送"：
+  - `0x4C 0x00` 配置的 action_type 0x01~0x06、0x08~0x10（OnOff/Level/Scene/LightCtrl/Lightness/CTL/HSL/PLVL/PONOFF/DTT 等）
+- **`enable=0` **不影响**以下行为**：
+  - 按键去抖 / DOWN / UP / STUCK 边沿事件全部正常产生
+  - LED 反馈（按下亮 / 松手灭 / 长按转闪 / 未入网慢闪等）— 由 `0x4C 0x02` 独立控制
+  - **Health Server 卡键上报**（SIG 标准故障通道，3 款产品一致）
+  - `action_type=0x07 FACTORY_RESET`（本地动作，不发 Mesh）
+  - **Key1+Key8 长按 3s 本地恢复出厂**（硬编码组合键，不经 0x4C）
+  - **Key2+Key7 长按 3s 60s 通信窗口**（硬编码组合键，不经 0x4C）
+  - APP 通过 0x4C 自身、SIG 标准模型（OnOff Server / Health / Battery 等）的访问
+- **与 LED 开关（0x02）相互独立**：可同时启用 LED 反馈 + 禁止 TX，实现"看得到本地反馈但不影响网络"的现场施工 / 用户暂离场景
+
+#### 8.4.4 典型场景
+
+| 场景 | enable | 行为 |
+|---|---|---|
+| 默认出厂 | 1 | 按键正常控网 |
+| 现场施工（不希望按键意外控网络但保留本地操作反馈） | 0 | LED 亮，但不发 Mesh |
+| Key1+Key8 长按 3s 恢复出厂后 | 自动回 1 | 重新启用 |
+
 ## 9. Generic Battery Server（Element 1）
 
 设备在主元素挂载了 **Generic Battery Server（SIG Model ID 0x100C）**，用于向 APP/网关暴露电量信息。
 
 ### 9.1 数据来源
 
-- 固件通过 SAADC 采样 VDD（overlay alias `battery-adc`，通道 VDD）
-- 使用内置查表 + 线性插值把 mV 映射为 SoC：当前曲线为 CR2032/CR2016 近似（`3000mV→100%`、`2500mV→0%`）
-- 采样在 Battery Server 收到 Get 时按需触发（`battery_get` → `bsp_battery_sample`）
-- 固件**不主动周期性发布** Battery Status，APP 需要时主动 `Battery Get`
+- 固件通过 SAADC 采样 VDD（overlay alias `battery-adc`，通道 VDD，GAIN_1_4，12-bit）
+- 每次采样内部 **4 次 ADC 读取取平均**（降低噪声，总耗时 ~160μs）
+- 使用内置 21 档查表 + 线性插值把 mV 映射为 SoC 百分比：**3000mV = 100%、2700mV = 0%**，每 15mV = 5%，线性等间距
+- ≤ 2700mV 一律报 0%
 
-### 9.2 返回字段固定策略
+### 9.2 采样时机
 
-当前实现（`bsp_battery_fill_status`）返回：
+| 时机 | 说明 |
+|---|---|
+| **开机** | `bsp_battery_init` 后立即采样一次，缓存即为真实值 |
+| **每次按键** | 按键动作事件（CLICK / PRESS / LONG_PRESS / PRESS_RELEASE）触发一次采样，在 BLE TX 之前完成（VDD 稳定） |
+| **APP 主动 GET** | APP 发 SIG `Generic Battery Get` → 固件实时采样并返回最新数据 |
+
+### 9.3 低电量主动上报（v1.0.23 新增）
+
+- 按键采样后若 **`battery_lvl < 10%`**（对应 <2730mV），固件自动向 Battery Server 的 **publish 地址**发送一条 `Battery Status`
+- **每次满足条件的按键都会重复 publish**（LPN 消息易丢，重复发送保证 APP 收到）
+- 电量 ≥ 10% 时不主动 publish，APP 需要电量信息时主动 `Battery Get`
+
+⚠ **APP 必须提前配置 Battery Server 的 publish 地址**：通过 SIG `Config Model Publication Set` 给 Element 1 的 Battery Server（Model ID `0x100C`）配 `publish_address`（通常为 group address）+ `app_key_index`。**未配置则低电量 publish 静默忽略**（返回 `-EADDRNOTAVAIL`，不影响其它功能）。
+
+### 9.4 indicator 三级指示
+
+| 电压范围 | SoC 范围 | `indicator` 字段 | APP 语义 |
+|---|---|---|---|
+| ≥ 2730 mV | ≥ 10% | `GOOD` (2) | 正常使用 |
+| 2700~2729 mV | 0%~10% | `LOW` (1) | 低电量，建议更换电池 |
+| < 2700 mV | 0% | `CRITICALLY_LOW` (0) | 极低，需立即更换 |
+
+### 9.5 返回字段
 
 | 字段 | 取值 |
 |---|---|
-| `battery_lvl` | 0~100（实时 SoC；曲线未实测，仅参考） |
+| `battery_lvl` | 0~100（实时 SoC 百分比） |
 | `discharge_minutes` / `charge_minutes` | `BT_MESH_BATTERY_TIME_UNKNOWN` |
-| `presence` | `PRESENT_REMOVABLE`（可拆卸电池） |
-| `indicator` | `GOOD` / `LOW` / `CRITICALLY_LOW`（按 `BATTERY_MV_LOW/CRITICAL` 阈值） |
+| `presence` | `PRESENT_REMOVABLE`（可拆卸纽扣电池） |
+| `indicator` | `GOOD` / `LOW` / `CRITICALLY_LOW`（见上表） |
 | `charging` | `NOT_CHARGEABLE`（本产品不可充电） |
 | `service` | `NOT_REQUIRED` |
 
-⚠ 产品最终形态若非 CR2032/CR2016，固件里 `_curve[]`（`bsp_battery.c:30-43`）与 `BATTERY_MV_LOW` / `BATTERY_MV_CRITICAL` 阈值需要调整。
+### 9.6 APP 集成建议
+
+1. 配网完成后给 Battery Server 配 publish 地址（用于低电量主动上报）
+2. 定期（如每次连接 / 每天一次）发 `Battery Get` 获取最新电量
+3. 收到 `Battery Status` 时按 `indicator` 字段提示用户：`LOW` → 黄色提醒，`CRITICALLY_LOW` → 红色告警
+4. 收到主动 publish 的低电量消息（`battery_lvl < 10%`）时弹窗提示用户更换电池
+
+⚠ 产品最终形态若非 CR2032/CR2016，固件里 `_curve[]` 与 `BATTERY_MV_LOW` / `BATTERY_MV_CRITICAL` 阈值需要调整。
 
 ## 10. Health Server 故障上报
 
@@ -574,10 +745,11 @@ Vendor RET 0x4C 0x02 0x00 <enable>
 ### 10.1 按键卡住（Button Stuck）
 
 - **触发条件**：任意按键按下后持续 ≥ 60 秒未释放
-- **重复上报**：每次新的卡住事件都会上报一次；按键物理释放后固件自动清除 stuck 标记
+- **触发上报**：每次新的卡住事件上报一次 Current Status，fault array 包含该按键 fault 码
+- **恢复上报**：按键物理释放时**额外上报一次 Current Status 空 fault array** 通知 APP 故障已解除（详见 §10.1.1）
 - **无本地动作**：故障不触发设备复位、不关 LED，仅上报
 
-Health Current Status 报文内容：
+Health Current Status 报文内容（**触发**）：
 
 | 字段 | 值 |
 |---|---|
@@ -586,6 +758,31 @@ Health Current Status 报文内容：
 | Fault Code | `0x21 + button_idx`，即 `0x21..0x28` 对应 Key1..Key8 |
 
 示例（Key3 卡住）：`04 | 04 | 78 0A | 23`（opcode | test_id | cid_le | fault）
+
+#### 10.1.1 故障恢复（Stuck Recovered）
+
+按键从 stuck 状态**物理释放（debounce 检测到 release 边沿）**时，固件会主动再发一次 **Current Status，fault array 为空**，APP 收到后即可视为该故障已恢复。
+
+恢复上报报文内容：
+
+| 字段 | 值 |
+|---|---|
+| Test ID | `0x00`（SDK 默认 HEALTH_TEST_STANDARD，固件未指定故障源） |
+| Company ID | `0x0A78` |
+| Fault Array | **空（0 字节）** |
+
+示例（任意按键释放）：`04 | 00 | 78 0A`（opcode | test_id | cid_le，**无 fault array**）
+
+⚠ **APP 端解读规则**：
+
+1. 收到 Current Status 时，看 `fault array 长度`：
+   - **长度 > 0**：解析每个 fault 码，对应按键卡住事件
+   - **长度 == 0**：所有先前上报的 fault 视为已恢复
+2. 多颗按键同时卡时（罕见），固件按 STUCK 事件逐个 publish；恢复时按各自 release 时机分别 publish 空 array
+3. **空 array publish 也走同一个 Publication Set**——只配置 §10.2 一次即可同时覆盖触发和恢复
+4. 由于 publish 是 unack ADV，丢包仍然存在；APP 可定期主动发 **Health Fault Get** 拉取已注册 fault 列表作为兜底（详见 §10.4）
+
+⚠ **重启行为**：stuck 状态用 RAM bitmask 追踪，重启自然清零。重启后若按键仍物理卡着，下一轮 60 秒计时会重新触发 STUCK + 重新上报；若已释放，则不会有任何上报。
 
 ### 10.2 APP 必须完成的配置
 
@@ -634,27 +831,29 @@ Health Server 上报走 **发布（Publication）机制**。APP 在配网完成�
 2. 给 `Element 1 / Vendor Model` 绑定 AppKey（用于配置/查询通道）
 3. 给 `Element 1 / Generic Battery Server` 绑定 AppKey（电量查询）
 4. 给 `Element 1 / Health Server` 绑定 AppKey + 下 `Config Model Publication Set`（详见 §10.2）
-5. 读取 `0x4C 0x01` 能力信息（trigger_count = 5）
-6. 根据业务，逐键给 `Element 2~8` 绑定对应 Client Model 的 AppKey（用到哪个绑哪个）
-7. 用 `0x4C SET` 明确写入需要的 `button + trigger` 动作（trigger 只能 0~4）
+5. 读取 `0x4C 0x01` 能力信息（trigger_count = 5；action_type 支持 0x00..0x10 共 17 类）
+6. 根据业务，逐键给 `Element 1~8` 绑定对应 Client Model 的 AppKey（详见 §4 清单：基础 5 个 + 富指令 5 个，**建议一次性 bind 全部 10 个**，避免 APP 后续切换 type 时漏 bind）
+7. 用 `0x4C SET` 明确写入需要的 `button + trigger` 动作（trigger 只能 0~4，type 取值 0x00..0x10）
 8. 不需要的触发可以不写（默认即静默），也可显式写 `disabled`，二者等价
 9. 需要 OTA 或高频配置时，引导用户长按 `Key2+Key7` 3 秒打开 60s 通信窗口
 10. 如需关闭 LED 业务指示（省电场景），用 `0x4C SET 0x02 0x00`；查询当前状态用 `0x4C GET 0x02`（详见 §8.3）
+11. 如需暂时禁用按键控网（现场施工 / 用户暂离），用 `0x4C SET 0x03 0x00`；查询当前状态用 `0x4C GET 0x03`（详见 §8.4，**v1.0.19 新增**）
 
 ## 12. 当前已知限制
 
 - **v0.2.6 新增**：休眠电流降至 **~8μA**，CR2032 寿命预估 ≥ 2 年；按键 wake 短窗口缩到 1s；combo 窗口期 Vendor SET 自动续期 30s
 - **v1.0.17 新增**：`0x4C` 子码 `0x02` LED 指示开关（详见 §8.3）；持久化、默认启用、禁用时不影响上电与出厂复位指示
+- **v1.0.19 新增**：`0x4C` 子码 `0x03` 按键全局 TX 开关（详见 §8.4）；持久化（NVS `rc/tx_enable`）、默认启用、工厂复位回 1；禁用时仅静默按键触发的 SIG client 发送，LED / 按键事件 / Health 上报 / 本地组合键动作全部不受影响；与 0x02 LED 开关相互独立
+- **v1.0.18 新增（富指令扩展，向后兼容）**：每按键 SIG Client Model 由 5 增至 10（新增 CTL / HSL / PLVL / PONOFF / DTT），`0x4C action_type` 末尾追加 0x09..0x10 共 8 类（详见 §8.2.3）。13 字节 wire 不变，老 APP 已下发 0x00..0x08 配置继续工作。**但 composition data 已变化** → comp_hash 改变，OTA metadata 与 APP 端能力描述需同步更新，节点重新读取 composition data 时会看到每 element 多 5 个 model ID
 - **多击已全部取消**：`double_click / triple_click / five_click` 事件固件不再产生；`0x4C SET` 写 trigger ≥ 5 返回 `err=2`；老 NVS 里 trigger=5/6/7 的配置**永远触发不到**，但不影响新配置写入
 - 组合键 `Key2+Key7 长按 3s` 保留给 60s 通信窗口、`Key1+Key8 长按 3s` 保留给本地恢复出厂，**两组不在 `0x4C` 协议范围内**，APP 不能配置也不会因按下向网络发任何消息
 - 其他两键组合（非上述两对 + `COMBO_CLICK` / 其余 `COMBO_LONG_PRESS`）固件能识别但未绑定动作
-- `STUCK`（按键卡住 ≥ 60 s）走 **Health Server Current Status** 上报，不通过 `0x4C` 协议配置（详见 §10）
+- `STUCK`（按键卡住 ≥ 60 s）走 **Health Server Current Status** 上报；按键释放时再发一次空 array 通知故障恢复（详见 §10.1.1），均不通过 `0x4C` 协议配置
 - 未入网设备**上电进 60s 激活模式**，期间无配网动作 → 立即永久休眠（v0.2.6 由"10s 窗口 → 70s 总时长"改为"60s 一次性"，详见工程文档 §10.1.11）。后续唯一唤醒方式 = `Key2+Key7 长按 3s`
 - 设备**不主动发送任何 Vendor EVENT**；除 Health Server 故障上报外，APP 不需要订阅任何固件主动上报地址
 - 设备**不主动周期性发布 Battery Status**；APP 需要电量时主动 `Battery Get`
 - 工厂复位（长按 Key1+Key8 3s）会自动发 Friend Clear 释放 Friend 槽位（v0.2.6 加 200ms 延迟保证消息送达）
 - ⚠ **APP 重新配网避免重用旧 unicast 地址**：LPN 工厂复位后 SEQ 归零，若 APP 重用旧地址则灯端 RPL 仍记着旧 SEQ → Replay 全拒。建议手动改 unicast 或使用新地址。详见 §13
-- `products` 里的 composition hash 仍未回填最终值
 
 ## 13. APP 重新配网注意事项（v0.2.6 新增）
 

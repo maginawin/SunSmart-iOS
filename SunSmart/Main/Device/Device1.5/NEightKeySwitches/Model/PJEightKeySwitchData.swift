@@ -19,6 +19,8 @@ final class PJEightKeySwitchData: DeviceSwitchData {
     var appliedConfigHash: String = ""
     var lastSyncFailedReason: String?
     var lastSyncedAt: Int64?
+    var batteryLevel: UInt8?
+    var batteryLastUpdateTime: Int64?
 
     convenience init(baseSwitchData: DeviceSwitchData, metadata: PJEightKeySwitchRepository.Metadata) {
         self.init(
@@ -48,6 +50,8 @@ final class PJEightKeySwitchData: DeviceSwitchData {
         appliedConfigHash = metadata.appliedConfigHash
         lastSyncFailedReason = metadata.lastSyncFailedReason
         lastSyncedAt = metadata.lastSyncedAt
+        batteryLevel = metadata.batteryLevel
+        batteryLastUpdateTime = metadata.batteryLastUpdateTime
     }
 
     override func copy() -> Self {
@@ -78,6 +82,8 @@ final class PJEightKeySwitchData: DeviceSwitchData {
         copy.appliedConfigHash = appliedConfigHash
         copy.lastSyncFailedReason = lastSyncFailedReason
         copy.lastSyncedAt = lastSyncedAt
+        copy.batteryLevel = batteryLevel
+        copy.batteryLastUpdateTime = batteryLastUpdateTime
         return copy as! Self
     }
 
@@ -116,7 +122,7 @@ final class PJEightKeySwitchData: DeviceSwitchData {
             "panel=\(eightKeyPanelType.storageIdentifier)",
             "enabled=\(enabled)",
             "link=\(linkGroupAddress?.hex ?? "nil")",
-            "publication=profileClients@link,retransmit=1/200",
+            "keyConfigWire=16,retransmit=1/200,transition=FF",
             "scenes=\(sceneTargets)",
             "appKey=\(appKeyIndex)"
         ].joined(separator: "|")

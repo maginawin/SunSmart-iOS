@@ -10,6 +10,7 @@ import SnapKit
 
 final class PJEightKeySwitchMonitorPanelView: UIView {
 
+    var keyTapAction: ((Int) -> Void)?
     var dimmingLongPressAction: ((PJEightKeySwitchMonitorViewModel.KeyItem.Direction) -> Void)?
     var autoLongPressAction: (() -> Void)?
     var disabledTapAction: (() -> Void)?
@@ -50,10 +51,17 @@ final class PJEightKeySwitchMonitorPanelView: UIView {
 
     func configure(items: [PJEightKeySwitchMonitorViewModel.KeyItem], enabled: Bool) {
         guard items.count == keyViews.count else { return }
-        zip(keyViews, items).forEach { keyView, item in
+        zip(keyViews, items).enumerated().forEach { index, pair in
+            let (keyView, item) = pair
             keyView.configure(item: item, enabled: enabled)
+            keyView.tapAction = nil
             keyView.longPressAction = nil
             keyView.disabledTapAction = nil
+            if enabled {
+                keyView.tapAction = { [weak self] in
+                    self?.keyTapAction?(index)
+                }
+            }
             if case let .dimming(direction) = item.style {
                 keyView.longPressAction = { [weak self] in
                     self?.dimmingLongPressAction?(direction)

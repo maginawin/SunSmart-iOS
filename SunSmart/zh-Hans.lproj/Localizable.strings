@@ -1854,6 +1854,11 @@
 "neightkeyswitches_status_low_battery" = "低电量";
 "neightkeyswitches_status_fault" = "故障";
 "neightkeyswitches_status_unknown" = "未知";
+"neightkeyswitches_battery_low" = "低";
+"neightkeyswitches_updated_just_now" = "刚刚";
+"neightkeyswitches_updated_min_ago_format" = "%d分钟前";
+"neightkeyswitches_updated_hr_ago_format" = "%d小时前";
+"neightkeyswitches_updated_day_ago_format" = "%d天前";
 "neightkeyswitches_updated_2min" = "2分钟前";
 "neightkeyswitches_updated_7day" = "7天前";
 "neightkeyswitches_long_press_dimming" = "长按\n调光";

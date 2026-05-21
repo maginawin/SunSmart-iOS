@@ -177,17 +177,6 @@ private extension Node {
     }
 }
 
-private func isBatteryPowerSwitchPublicationSuccessful(node: Node, switchData: PJEightKeySwitchData) -> Bool {
-    guard node.primaryUnicastAddress == switchData.proxyNodeAddress,
-          let switchGroup = switchData.linkGroup else {
-        return false
-    }
-    return node.getBatteryPowerSwitchPublicationMessageHandles(
-        switchGroup: switchGroup,
-        includeExisting: false
-    ).isEmpty
-}
-
 /// 操作类型
 enum DeviceOperationType {
     
@@ -261,8 +250,6 @@ enum DeviceOperationType {
                 return !task.isUnsupported
             case .batteryPowerSwitchTargetSubscription(let switchData, _, let unsubscribe):
                 return node.getBatteryPowerSwitchTargetSubscriptionMessageHandles(switchData: switchData, unsubscribe: unsubscribe).isEmpty
-            case .batteryPowerSwitchModelPublication(let switchData):
-                return isBatteryPowerSwitchPublicationSuccessful(node: node, switchData: switchData)
             case .batteryPowerSwitchReset, .batteryPowerSwitchKeyConfig:
                 return true
             default:
@@ -361,8 +348,6 @@ enum DeviceOperationType {
                 return !task.isUnsupported
             case .batteryPowerSwitchTargetSubscription(let switchData, _, let unsubscribe):
                 return node.getBatteryPowerSwitchTargetSubscriptionMessageHandles(switchData: switchData, unsubscribe: unsubscribe).isEmpty
-            case .batteryPowerSwitchModelPublication(let switchData):
-                return isBatteryPowerSwitchPublicationSuccessful(node: node, switchData: switchData)
             case .batteryPowerSwitchReset, .batteryPowerSwitchKeyConfig:
                 return true
             }
@@ -458,7 +443,7 @@ enum DeviceOperationType {
                 break
             case .emergencyFireController:
                 break
-            case .batteryPowerSwitchReset, .batteryPowerSwitchKeyConfig, .batteryPowerSwitchModelPublication, .batteryPowerSwitchTargetSubscription:
+            case .batteryPowerSwitchReset, .batteryPowerSwitchKeyConfig, .batteryPowerSwitchTargetSubscription:
                 break
             }
         case .configuration(let node, let type): // 添加/配置操作
@@ -566,12 +551,6 @@ enum DeviceOperationType {
                         return handle
                     })
                 }
-            case .batteryPowerSwitchModelPublication(let switchData):
-                if node.primaryUnicastAddress == switchData.proxyNodeAddress, let switchGroup = switchData.linkGroup {
-                    let handles = node.getBatteryPowerSwitchPublicationMessageHandles(switchGroup: switchGroup, includeExisting: false)
-                    handles.forEach { $0.continuous = false }
-                    messageHandles.append(contentsOf: handles)
-                }
             case .batteryPowerSwitchTargetSubscription(let switchData, _, let unsubscribe):
                 messageHandles.append(contentsOf: node.getBatteryPowerSwitchTargetSubscriptionMessageHandles(switchData: switchData, unsubscribe: unsubscribe))
             }
@@ -657,8 +636,6 @@ enum ActionType {
     case batteryPowerSwitchReset(switchData: PJEightKeySwitchData)
     /// Battery Power Switch 按键配置
     case batteryPowerSwitchKeyConfig(switchData: PJEightKeySwitchData)
-    /// Battery Power Switch Profile Client Models publication
-    case batteryPowerSwitchModelPublication(switchData: PJEightKeySwitchData)
     /// Battery Power Switch target group model 订阅/退订
     case batteryPowerSwitchTargetSubscription(switchData: PJEightKeySwitchData, group: Group, unsubscribe: Bool)
 }

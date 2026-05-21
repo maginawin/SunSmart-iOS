@@ -17,6 +17,7 @@ final class PJEightKeySwitchMonitorHeaderView: UIView {
         let statusText: String
         let statusColor: UIColor
         let updatedText: String
+        let showsRefreshButton: Bool
     }
 
     var refreshAction: (() -> Void)?
@@ -45,6 +46,7 @@ final class PJEightKeySwitchMonitorHeaderView: UIView {
         statusValueLabel.text = state.statusText
         statusValueLabel.textColor = state.statusColor
         updatedLabel.text = state.updatedText
+        refreshButton.isHidden = !state.showsRefreshButton
     }
 
     func setRefreshing(_ refreshing: Bool) {

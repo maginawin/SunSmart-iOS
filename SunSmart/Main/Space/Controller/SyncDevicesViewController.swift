@@ -709,15 +709,9 @@ class SyncDevicesViewController: UIViewController {
             keyConfigTask.parentStepModel = keyConfigStep
             keyConfigStep.parentDeviceModel = switchDeviceModel
 
-            let publicationTask = SyncDeviceStepTaskModel(name: "Model Publication", operationType: .configuration(node: switchNode, type: .batteryPowerSwitchModelPublication(switchData: switchData)))
-            let publicationStep = SyncDeviceStepModel(type: "Model Publication", state: .none, tasks: [publicationTask])
-            publicationTask.parentStepModel = publicationStep
-            publicationStep.parentDeviceModel = switchDeviceModel
-            publicationStep.relevanceStepModels = [keyConfigStep]
-
-            switchDeviceModel.steps = [keyConfigStep, publicationStep]
+            switchDeviceModel.steps = [keyConfigStep]
             section.devices.append(switchDeviceModel)
-            configurationDependencies = [keyConfigStep, publicationStep]
+            configurationDependencies = [keyConfigStep]
         }
 
         let targetGroups = switchData.bindGroups.sorted { $0.address.address < $1.address.address }
@@ -2216,8 +2210,7 @@ class SyncDevicesViewController: UIViewController {
         switch operationType {
         case .configuration(_, let actionType):
             switch actionType {
-            case .batteryPowerSwitchKeyConfig,
-                 .batteryPowerSwitchModelPublication:
+            case .batteryPowerSwitchKeyConfig:
                 return true
             case .batteryPowerSwitchTargetSubscription:
                 return false
@@ -2236,8 +2229,7 @@ class SyncDevicesViewController: UIViewController {
         switch operationType {
         case .configuration(_, let actionType):
             switch actionType {
-            case .batteryPowerSwitchKeyConfig,
-                 .batteryPowerSwitchModelPublication:
+            case .batteryPowerSwitchKeyConfig:
                 return true
             default:
                 return false
@@ -2255,7 +2247,6 @@ class SyncDevicesViewController: UIViewController {
         case .configuration(_, let actionType), .delete(_, let actionType):
             switch actionType {
             case .batteryPowerSwitchKeyConfig,
-                 .batteryPowerSwitchModelPublication,
                  .batteryPowerSwitchTargetSubscription:
                 return true
             default:
@@ -2331,15 +2322,6 @@ class SyncDevicesViewController: UIViewController {
                     handle.continuous = false
                     return handle
                 }
-            case .batteryPowerSwitchModelPublication(let switchData):
-                guard batteryPowerSwitchKeyConfigurationCompleted,
-                      node.primaryUnicastAddress == switchData.proxyNodeAddress,
-                      let switchGroup = switchData.linkGroup else {
-                    return defaultHandles
-                }
-                let handles = node.getBatteryPowerSwitchPublicationMessageHandles(switchGroup: switchGroup, includeExisting: true)
-                handles.forEach { $0.continuous = false }
-                return handles
             default:
                 return defaultHandles
             }
@@ -2358,8 +2340,6 @@ class SyncDevicesViewController: UIViewController {
             switch actionType {
             case .batteryPowerSwitchKeyConfig:
                 return true
-            case .batteryPowerSwitchModelPublication:
-                return batteryPowerSwitchKeyConfigurationCompleted
             default:
                 return false
             }

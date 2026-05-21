@@ -2471,6 +2471,7 @@ extension DeviceSwitchData {
         let filter = DeviceSwitchData.switchsTable.filter(predicate)
         do {
             try SunSmartDataManager.shared.db?.run(filter.delete())
+            PJEightKeySwitchRepository.shared.deleteAll(meshUUID: meshUUID, networkId: networkId)
         } catch {
             print(error)
             return false

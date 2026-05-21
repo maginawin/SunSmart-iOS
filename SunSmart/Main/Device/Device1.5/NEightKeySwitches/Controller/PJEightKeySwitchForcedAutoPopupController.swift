@@ -10,6 +10,8 @@ import SnapKit
 
 final class PJEightKeySwitchForcedAutoPopupController: UIViewController {
 
+    var autoAction: (() -> Void)?
+
     private enum Layout {
         static let cardHorizontalInset = SCRXFrom(8)
         static let cardBottomInset = SCRYFrom(32)
@@ -105,6 +107,7 @@ final class PJEightKeySwitchForcedAutoPopupController: UIViewController {
 
     @objc private func autoButtonAction() {
         guard autoButtonState == .normal else { return }
+        autoAction?()
         autoButtonState = .loading
         updateAutoButtonUI()
 

@@ -6,6 +6,7 @@
 //
 
 import UIKit
+import NordicSigMeshSDK
 
 final class PJEightKeySwitchRefreshAlertController: UIViewController {
 
@@ -17,6 +18,7 @@ final class PJEightKeySwitchRefreshAlertController: UIViewController {
 
     var cancelAction: (() -> Void)?
     var retryAction: (() -> Void)?
+    var timeoutAction: (() -> Void)?
 
     private var countdownTimer: Timer?
     private var remainingSeconds = 60
@@ -65,17 +67,16 @@ final class PJEightKeySwitchRefreshAlertController: UIViewController {
     func showTimeout() {
         invalidateTimer()
         apply(state: .timeout)
+        timeoutAction?()
     }
 
     @objc private func cancelButtonAction() {
-        dismiss(animated: true) { [weak self] in
-            self?.cancelAction?()
-        }
+        cancelAction?()
+        dismiss(animated: true)
     }
 
     @objc private func retryButtonAction() {
         retryAction?()
-        startWaiting()
     }
 
     private func setupUI() {
@@ -127,5 +128,172 @@ final class PJEightKeySwitchRefreshAlertController: UIViewController {
     private func invalidateTimer() {
         countdownTimer?.invalidate()
         countdownTimer = nil
+    }
+}
+
+protocol PJEightKeySwitchBatteryReading: AnyObject {
+    func readBatteryLevel(from node: Node, completion: @escaping (UInt8?) -> Void)
+}
+
+final class MeshBatteryPowerSwitchBatteryReader: PJEightKeySwitchBatteryReading {
+
+    func readBatteryLevel(from node: Node, completion: @escaping (UInt8?) -> Void) {
+        guard let batteryModel = node.batteryModel else {
+            completion(nil)
+            return
+        }
+
+        MeshAPI.sendMessage(
+            message: GenericBatteryGet(),
+            model: batteryModel,
+            timeout: 2.5
+        ) { response in
+            guard let status = response as? GenericBatteryStatus,
+                  status.isBatteryLevelKnown,
+                  status.batteryLevel <= 100 else {
+                completion(nil)
+                return
+            }
+            completion(status.batteryLevel)
+        }
+    }
+}
+
+final class PJEightKeySwitchBatteryRefreshFlow {
+
+    private enum State {
+        case idle
+        case waiting
+        case updated
+        case timeout
+        case cancelled
+    }
+
+    private weak var presenter: UIViewController?
+    private let node: Node
+    private let reader: PJEightKeySwitchBatteryReading
+    private let onBatteryLevel: (UInt8) -> Bool
+    private let onFinished: () -> Void
+    private var alertController: PJEightKeySwitchRefreshAlertController?
+    private var probeTimer: Timer?
+    private var autoDismissWorkItem: DispatchWorkItem?
+    private var generation = UUID()
+    private var state: State = .idle
+
+    init(
+        presenter: UIViewController,
+        node: Node,
+        reader: PJEightKeySwitchBatteryReading = MeshBatteryPowerSwitchBatteryReader(),
+        onBatteryLevel: @escaping (UInt8) -> Bool,
+        onFinished: @escaping () -> Void
+    ) {
+        self.presenter = presenter
+        self.node = node
+        self.reader = reader
+        self.onBatteryLevel = onBatteryLevel
+        self.onFinished = onFinished
+    }
+
+    deinit {
+        stopProbeTimer()
+        autoDismissWorkItem?.cancel()
+    }
+
+    func start() {
+        let controller = PJEightKeySwitchRefreshAlertController()
+        controller.cancelAction = { [weak self] in
+            self?.cancel()
+        }
+        controller.retryAction = { [weak self] in
+            self?.startWaiting()
+        }
+        controller.timeoutAction = { [weak self] in
+            self?.handleAlertTimeout()
+        }
+        alertController = controller
+        presenter?.present(controller, animated: true) { [weak self] in
+            self?.startWaiting()
+        }
+    }
+
+    private func startWaiting() {
+        generation = UUID()
+        state = .waiting
+        autoDismissWorkItem?.cancel()
+        stopProbeTimer()
+        alertController?.startWaiting()
+        sendProbe(for: generation)
+        probeTimer = Timer.scheduledTimer(withTimeInterval: 3, repeats: true) { [weak self] _ in
+            guard let self else { return }
+            self.sendProbe(for: self.generation)
+        }
+    }
+
+    private func sendProbe(for probeGeneration: UUID) {
+        guard case .waiting = state else { return }
+        reader.readBatteryLevel(from: node) { [weak self] level in
+            DispatchQueue.main.async {
+                guard let self,
+                      let level,
+                      self.generation == probeGeneration,
+                      case .waiting = self.state else {
+                    return
+                }
+                self.showUpdated(level: level)
+            }
+        }
+    }
+
+    private func showUpdated(level: UInt8) {
+        guard case .waiting = state else { return }
+        guard onBatteryLevel(level) else {
+            showTimeout(updateAlert: true)
+            return
+        }
+        state = .updated
+        generation = UUID()
+        stopProbeTimer()
+        alertController?.showUpdated()
+        let workItem = DispatchWorkItem { [weak self] in
+            self?.finishAndDismiss()
+        }
+        autoDismissWorkItem = workItem
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0, execute: workItem)
+    }
+
+    private func handleAlertTimeout() {
+        showTimeout(updateAlert: false)
+    }
+
+    private func showTimeout(updateAlert: Bool) {
+        guard case .waiting = state else { return }
+        state = .timeout
+        generation = UUID()
+        stopProbeTimer()
+        if updateAlert {
+            alertController?.showTimeout()
+        }
+    }
+
+    func cancel() {
+        state = .cancelled
+        generation = UUID()
+        stopProbeTimer()
+        autoDismissWorkItem?.cancel()
+        onFinished()
+    }
+
+    private func finishAndDismiss() {
+        generation = UUID()
+        stopProbeTimer()
+        autoDismissWorkItem?.cancel()
+        alertController?.dismiss(animated: true) { [weak self] in
+            self?.onFinished()
+        }
+    }
+
+    private func stopProbeTimer() {
+        probeTimer?.invalidate()
+        probeTimer = nil
     }
 }

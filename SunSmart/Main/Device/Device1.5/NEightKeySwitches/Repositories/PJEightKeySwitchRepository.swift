@@ -29,6 +29,8 @@ final class PJEightKeySwitchRepository {
         let appliedConfigHash: String
         let lastSyncFailedReason: String?
         let lastSyncedAt: Int64?
+        let batteryLevel: UInt8?
+        let batteryLastUpdateTime: Int64?
 
         init(
             panelType: PJEightKeySwitchPanelDefinition.PanelType,
@@ -38,7 +40,9 @@ final class PJEightKeySwitchRepository {
             desiredConfigHash: String = "",
             appliedConfigHash: String = "",
             lastSyncFailedReason: String? = nil,
-            lastSyncedAt: Int64? = nil
+            lastSyncedAt: Int64? = nil,
+            batteryLevel: UInt8? = nil,
+            batteryLastUpdateTime: Int64? = nil
         ) {
             self.panelType = panelType
             self.moreSettingsState = moreSettingsState
@@ -48,6 +52,8 @@ final class PJEightKeySwitchRepository {
             self.appliedConfigHash = appliedConfigHash
             self.lastSyncFailedReason = lastSyncFailedReason
             self.lastSyncedAt = lastSyncedAt
+            self.batteryLevel = batteryLevel
+            self.batteryLastUpdateTime = batteryLastUpdateTime
         }
     }
 
@@ -91,6 +97,8 @@ final class PJEightKeySwitchRepository {
         static let appliedConfigHash = Expression<String>("appliedConfigHash")
         static let lastSyncFailedReason = Expression<String?>("lastSyncFailedReason")
         static let lastSyncedAt = Expression<Int64?>("lastSyncedAt")
+        static let batteryLevel = Expression<Int?>("batteryLevel")
+        static let batteryLastUpdateTime = Expression<Int64?>("batteryLastUpdateTime")
     }
 
     private init() {}
@@ -111,6 +119,8 @@ final class PJEightKeySwitchRepository {
                 builder.column(ExpressionKey.appliedConfigHash)
                 builder.column(ExpressionKey.lastSyncFailedReason)
                 builder.column(ExpressionKey.lastSyncedAt)
+                builder.column(ExpressionKey.batteryLevel)
+                builder.column(ExpressionKey.batteryLastUpdateTime)
                 builder.unique(ExpressionKey.meshUUID, ExpressionKey.subNetworkKey, ExpressionKey.switchId)
             }
         )
@@ -133,11 +143,18 @@ final class PJEightKeySwitchRepository {
             if !columns.contains(where: { $0.name == "lastSyncedAt" }) {
                 _ = try? SunSmartDataManager.shared.db?.run(table.addColumn(ExpressionKey.lastSyncedAt))
             }
+            if !columns.contains(where: { $0.name == "batteryLevel" }) {
+                _ = try? SunSmartDataManager.shared.db?.run(table.addColumn(ExpressionKey.batteryLevel))
+            }
+            if !columns.contains(where: { $0.name == "batteryLastUpdateTime" }) {
+                _ = try? SunSmartDataManager.shared.db?.run(table.addColumn(ExpressionKey.batteryLastUpdateTime))
+            }
         }
     }
 
-    func save(_ switchData: PJEightKeySwitchData, meshUUID: String? = nil, networkId: String? = nil) {
-        guard let uuid = meshUUID ?? MeshNetworkManager.instance.meshNetwork?.uuid.uuidString else { return }
+    @discardableResult
+    func save(_ switchData: PJEightKeySwitchData, meshUUID: String? = nil, networkId: String? = nil) -> Bool {
+        guard let uuid = meshUUID ?? MeshNetworkManager.instance.meshNetwork?.uuid.uuidString else { return false }
         let subNetworkKey = networkId ?? MeshNetworkManager.instance.currentNetworkKey.networkId.hex
         let insert = Self.table.insert(or: .replace, [
             ExpressionKey.meshUUID <- uuid,
@@ -151,9 +168,62 @@ final class PJEightKeySwitchRepository {
             ExpressionKey.desiredConfigHash <- switchData.desiredConfigHash,
             ExpressionKey.appliedConfigHash <- switchData.appliedConfigHash,
             ExpressionKey.lastSyncFailedReason <- switchData.lastSyncFailedReason,
-            ExpressionKey.lastSyncedAt <- switchData.lastSyncedAt
+            ExpressionKey.lastSyncedAt <- switchData.lastSyncedAt,
+            ExpressionKey.batteryLevel <- switchData.batteryLevel.map { Int($0) },
+            ExpressionKey.batteryLastUpdateTime <- switchData.batteryLastUpdateTime
         ])
-        _ = try? SunSmartDataManager.shared.db?.run(insert)
+        do {
+            try SunSmartDataManager.shared.db?.run(insert)
+            return true
+        } catch {
+            print(error)
+            return false
+        }
+    }
+
+    @discardableResult
+    func saveBattery(
+        level: UInt8,
+        lastUpdateTime: Int64,
+        for switchData: PJEightKeySwitchData,
+        meshUUID: String? = nil,
+        networkId: String? = nil
+    ) -> Bool {
+        guard level <= 100,
+              let uuid = meshUUID ?? MeshNetworkManager.instance.meshNetwork?.uuid.uuidString else {
+            return false
+        }
+        let subNetworkKey = networkId ?? MeshNetworkManager.instance.currentNetworkKey.networkId.hex
+        let filter = Self.table.filter(
+            ExpressionKey.meshUUID == uuid &&
+            ExpressionKey.subNetworkKey == subNetworkKey &&
+            ExpressionKey.switchId == switchData.id
+        )
+        let update = filter.update(
+            ExpressionKey.batteryLevel <- Int(level),
+            ExpressionKey.batteryLastUpdateTime <- lastUpdateTime
+        )
+        do {
+            let affectedRows = try SunSmartDataManager.shared.db?.run(update) ?? 0
+            if affectedRows == 0 {
+                let previousLevel = switchData.batteryLevel
+                let previousLastUpdateTime = switchData.batteryLastUpdateTime
+                switchData.batteryLevel = level
+                switchData.batteryLastUpdateTime = lastUpdateTime
+                guard save(switchData, meshUUID: uuid, networkId: subNetworkKey) else {
+                    switchData.batteryLevel = previousLevel
+                    switchData.batteryLastUpdateTime = previousLastUpdateTime
+                    return false
+                }
+                return true
+            }
+            switchData.batteryLevel = level
+            switchData.batteryLastUpdateTime = lastUpdateTime
+            return true
+        } catch {
+            print(error)
+            return false
+        }
     }
 
     func metadata(for switchData: DeviceSwitchData, meshUUID: String? = nil, networkId: String? = nil) -> Metadata? {
@@ -178,6 +248,13 @@ final class PJEightKeySwitchRepository {
             ledIndicatorEnabled: row[ExpressionKey.ledIndicatorEnabled]
         )
         let syncState = PJEightKeySwitchSyncState(rawValue: row[ExpressionKey.syncState]) ?? .synced
+        let batteryLevel: UInt8? = {
+            guard let value = row[ExpressionKey.batteryLevel],
+                  (0...100).contains(value) else {
+                return nil
+            }
+            return UInt8(value)
+        }()
         return Metadata(
             panelType: panelTypeStorage.panelType,
             moreSettingsState: state,
@@ -186,7 +263,9 @@ final class PJEightKeySwitchRepository {
             desiredConfigHash: row[ExpressionKey.desiredConfigHash],
             appliedConfigHash: row[ExpressionKey.appliedConfigHash],
             lastSyncFailedReason: row[ExpressionKey.lastSyncFailedReason],
-            lastSyncedAt: row[ExpressionKey.lastSyncedAt]
+            lastSyncedAt: row[ExpressionKey.lastSyncedAt],
+            batteryLevel: batteryLevel,
+            batteryLastUpdateTime: row[ExpressionKey.batteryLastUpdateTime]
         )
     }
 
@@ -206,6 +285,14 @@ final class PJEightKeySwitchRepository {
             ExpressionKey.meshUUID == uuid &&
             ExpressionKey.subNetworkKey == subNetworkKey &&
             ExpressionKey.switchId == switchData.id
+        )
+        _ = try? SunSmartDataManager.shared.db?.run(filter.delete())
+    }
+
+    func deleteAll(meshUUID: String, networkId: String) {
+        let filter = Self.table.filter(
+            ExpressionKey.meshUUID == meshUUID &&
+            ExpressionKey.subNetworkKey == networkId
         )
         _ = try? SunSmartDataManager.shared.db?.run(filter.delete())
     }

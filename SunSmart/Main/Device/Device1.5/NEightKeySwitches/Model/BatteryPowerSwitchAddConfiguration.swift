@@ -48,8 +48,7 @@ enum BatteryPowerSwitchAddConfiguration {
     ) -> [MeshMessageHandle] {
         guard isSupportedAddNode(node),
               node.primaryUnicastAddress == switchData.proxyNodeAddress,
-              let vendorModel = node.sunricherVendorModel,
-              let switchGroup = switchData.linkGroup else {
+              let vendorModel = node.sunricherVendorModel else {
             return []
         }
 
@@ -63,13 +62,7 @@ enum BatteryPowerSwitchAddConfiguration {
             return handle
         }
 
-        let publicationHandles = node.getBatteryPowerSwitchPublicationMessageHandles(
-            switchGroup: switchGroup,
-            includeExisting: true
-        )
-        publicationHandles.forEach { $0.continuous = false }
-
-        return keyConfigHandles + publicationHandles
+        return keyConfigHandles
     }
 
     static func markSucceeded(_ switchData: PJEightKeySwitchData) {

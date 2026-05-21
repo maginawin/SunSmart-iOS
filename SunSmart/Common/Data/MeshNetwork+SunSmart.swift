@@ -1689,35 +1689,6 @@ extension Node {
         ].compactMap { $0 })
     }
 
-    private var batteryPowerSwitchPublicationRetransmit: Publish.Retransmit {
-        Publish.Retransmit(publishRetransmitCount: 1, intervalSteps: 3)
-    }
-
-    func getBatteryPowerSwitchPublicationMessageHandles(switchGroup: Group, includeExisting: Bool = false) -> [MeshMessageHandle] {
-        guard isBatteryPowerSwitch else {
-            return []
-        }
-
-        let applicationKey = MeshNetworkManager.instance.currentApplicationKey
-        let publish = Publish(
-            to: switchGroup.address,
-            using: applicationKey,
-            usingFriendshipMaterial: false,
-            ttl: MeshNetworkManager.instance.networkParameters.defaultTtl,
-            period: .disabled,
-            retransmit: batteryPowerSwitchPublicationRetransmit
-        )
-
-        return batteryPowerSwitchProfileClientModels
-            .filter { includeExisting || $0.publish != publish }
-            .compactMap { model in
-                guard let message: ConfigMessage = ConfigModelPublicationSet(publish, to: model) ?? ConfigModelPublicationVirtualAddressSet(publish, to: model) else {
-                    return nil
-                }
-                return MeshMessageHandle(message: message, address: primaryUnicastAddress)
-            }
-    }
-
     private var batteryPowerSwitchObsoleteTargetModels: [Model] {
         let brightnessLevelModel = batteryPowerSwitchBrightnessLevelModel
         return levelModels.filter { model in

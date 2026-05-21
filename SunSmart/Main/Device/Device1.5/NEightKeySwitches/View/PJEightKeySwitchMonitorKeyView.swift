@@ -99,7 +99,7 @@ final class PJEightKeySwitchMonitorKeyView: UIView {
             isDimmingKey = false
             isAutoKey = kind == .on
         }
-        isPressable = enabled && isScenePressKey && item.detailText != nil
+        isPressable = enabled
         isLongPressable = enabled && (isDimmingKey || isAutoKey)
         containerView.isUserInteractionEnabled = true
 

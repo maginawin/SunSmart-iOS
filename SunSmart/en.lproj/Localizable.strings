@@ -1839,6 +1839,11 @@
 "neightkeyswitches_status_low_battery" = "Low battery";
 "neightkeyswitches_status_fault" = "Fault";
 "neightkeyswitches_status_unknown" = "Unknown";
+"neightkeyswitches_battery_low" = "Low";
+"neightkeyswitches_updated_just_now" = "Just now";
+"neightkeyswitches_updated_min_ago_format" = "%d min ago";
+"neightkeyswitches_updated_hr_ago_format" = "%d hr ago";
+"neightkeyswitches_updated_day_ago_format" = "%d day ago";
 "neightkeyswitches_updated_2min" = "2min ago";
 "neightkeyswitches_updated_7day" = "7day ago";
 "neightkeyswitches_long_press_dimming" = "Long press\nDimming";

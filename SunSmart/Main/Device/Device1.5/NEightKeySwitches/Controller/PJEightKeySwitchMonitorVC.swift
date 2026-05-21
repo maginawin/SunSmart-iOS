@@ -6,6 +6,7 @@
 //
 
 import UIKit
+import NordicSigMeshSDK
 
 final class PJEightKeySwitchMonitorVC: UIViewController {
 
@@ -18,8 +19,11 @@ final class PJEightKeySwitchMonitorVC: UIViewController {
     private let panelView = PJEightKeySwitchMonitorPanelView()
     private let bottomView = PJEightKeySwitchMonitorStatusSetView()
     private var isRefreshing = false
-    private var nextRefreshSimulationWillSucceed = true
     private var activationFlow: PJEightKeySwitchActivationFlow?
+    private var batteryRefreshFlow: PJEightKeySwitchBatteryRefreshFlow?
+    private let virtualGroupControlSender = PJEightKeySwitchVirtualGroupControlSender()
+    private var lastKeyTapTimes: [Int: Date] = [:]
+    private let keyTapThrottleInterval: TimeInterval = 0.2
 
     init(space: SpaceData, switchData: PJEightKeySwitchData) {
         viewModel = PJEightKeySwitchMonitorViewModel(space: space, switchData: switchData)
@@ -153,6 +157,9 @@ final class PJEightKeySwitchMonitorVC: UIViewController {
             self?.refreshMonitor()
         }
 
+        panelView.keyTapAction = { [weak self] index in
+            self?.handlePanelKeyTap(index: index)
+        }
         panelView.dimmingLongPressAction = { [weak self] _ in
             self?.presentDimmingPopup()
         }
@@ -190,7 +197,8 @@ final class PJEightKeySwitchMonitorVC: UIViewController {
             statusPrefixText: header.statusPrefixText,
             statusText: header.statusText,
             statusColor: header.statusColor,
-            updatedText: header.updatedText
+            updatedText: header.updatedText,
+            showsRefreshButton: header.showsRefreshButton
         ))
 
         panelView.configure(items: viewModel.keyItems, enabled: viewModel.settingsState.isEnabled)
@@ -207,44 +215,74 @@ final class PJEightKeySwitchMonitorVC: UIViewController {
             pushBatteryPowerSwitchSync()
             return
         }
+        guard let node = viewModel.informationNode else {
+            XWHUDManager.showTipHUD("failed".localizedString, isLineFeed: false)
+            return
+        }
         isRefreshing = true
+        headerView.setRefreshing(true)
 
-        let willSucceed = nextRefreshSimulationWillSucceed
-        nextRefreshSimulationWillSucceed.toggle()
-
-        let vc = PJEightKeySwitchRefreshAlertController()
-        vc.cancelAction = { [weak self] in
-            self?.isRefreshing = false
-        }
-        vc.retryAction = { [weak self, weak vc] in
-            self?.scheduleRefreshSimulation(for: vc, willSucceed: true)
-        }
-        present(vc, animated: true) { [weak self, weak vc] in
-            vc?.startWaiting()
-            self?.scheduleRefreshSimulation(for: vc, willSucceed: willSucceed)
-        }
+        let flow = PJEightKeySwitchBatteryRefreshFlow(
+            presenter: self,
+            node: node,
+            onBatteryLevel: { [weak self] level in
+                guard let self else { return false }
+                guard self.viewModel.saveBatteryLevel(level) else {
+                    return false
+                }
+                self.updateUI()
+                return true
+            },
+            onFinished: { [weak self] in
+                self?.finishBatteryRefresh()
+            }
+        )
+        batteryRefreshFlow = flow
+        flow.start()
     }
 
-    private func scheduleRefreshSimulation(for controller: PJEightKeySwitchRefreshAlertController?, willSucceed: Bool) {
-        DispatchQueue.main.asyncAfter(deadline: .now() + 2.2) { [weak self, weak controller] in
-            guard let self, let controller, controller.presentingViewController != nil else { return }
-            self.updateUI()
-            self.isRefreshing = false
-            if willSucceed {
-                controller.showUpdated()
-            } else {
-                controller.showTimeout()
-            }
+    private func finishBatteryRefresh() {
+        isRefreshing = false
+        headerView.setRefreshing(false)
+        batteryRefreshFlow = nil
+    }
+
+    private func handlePanelKeyTap(index: Int) {
+        guard shouldAcceptKeyTap(index: index) else {
+            return
         }
+        virtualGroupControlSender.sendKeyTap(index: index, switchData: viewModel.switchData)
+    }
+
+    private func shouldAcceptKeyTap(index: Int, now: Date = Date()) -> Bool {
+        if let lastTapTime = lastKeyTapTimes[index],
+           now.timeIntervalSince(lastTapTime) < keyTapThrottleInterval {
+            return false
+        }
+        lastKeyTapTimes[index] = now
+        return true
+    }
+
+    deinit {
+        batteryRefreshFlow?.cancel()
+        activationFlow = nil
     }
 
     private func presentDimmingPopup() {
         let vc = PJEightKeySwitchDimmingPopupController()
+        vc.brightnessEndedAction = { [weak self] value in
+            guard let self else { return }
+            self.virtualGroupControlSender.sendBrightness(value, switchData: self.viewModel.switchData)
+        }
         present(vc, animated: true)
     }
 
     private func presentForcedAutoPopup() {
         let vc = PJEightKeySwitchForcedAutoPopupController()
+        vc.autoAction = { [weak self] in
+            guard let self else { return }
+            self.virtualGroupControlSender.sendAuto(switchData: self.viewModel.switchData)
+        }
         present(vc, animated: true)
     }
 
@@ -331,7 +369,7 @@ final class PJEightKeySwitchMonitorVC: UIViewController {
                 return false
             }
             switch syncData {
-            case .batteryPowerSwitchReset, .batteryPowerSwitchKeyConfig, .batteryPowerSwitchModelPublication:
+            case .batteryPowerSwitchReset, .batteryPowerSwitchKeyConfig:
                 return true
             default:
                 return false
@@ -365,5 +403,81 @@ final class PJEightKeySwitchMonitorVC: UIViewController {
                 })
             ]
         ).show()
+    }
+}
+
+private final class PJEightKeySwitchVirtualGroupControlSender {
+
+    private static let dimmingStepLevel: Int32 = 13107
+
+    func sendKeyTap(index: Int, switchData: PJEightKeySwitchData) {
+        guard let address = switchData.linkGroupAddress,
+              let message = keyTapMessage(index: index, switchData: switchData) else {
+            return
+        }
+        MeshAPI.sendMessage(message: message, address: address)
+    }
+
+    func sendBrightness(_ value: Int, switchData: PJEightKeySwitchData) {
+        guard let address = switchData.linkGroupAddress else {
+            return
+        }
+        let lightness = Node.getLightness(lightness100: value)
+        MeshAPI.sendMessage(message: LightLightnessSetUnacknowledged(lightness: lightness), address: address)
+    }
+
+    func sendAuto(switchData: PJEightKeySwitchData) {
+        guard let address = switchData.linkGroupAddress else {
+            return
+        }
+        let message = LightLCLightOnOffSetUnacknowledged(true, transitionTime: .default, delay: 0)
+        MeshAPI.sendMessage(message: message, address: address)
+    }
+
+    private func keyTapMessage(index: Int, switchData: PJEightKeySwitchData) -> MeshMessage? {
+        switch index {
+        case 0...3:
+            return topKeyMessage(index: index, switchData: switchData)
+        case 4:
+            return dimmingDeltaMessage(delta: Self.dimmingStepLevel)
+        case 5:
+            return dimmingDeltaMessage(delta: -Self.dimmingStepLevel)
+        case 6:
+            return GenericOnOffSetUnacknowledged(true)
+        case 7:
+            return GenericOnOffSetUnacknowledged(false)
+        default:
+            return nil
+        }
+    }
+
+    private func dimmingDeltaMessage(delta: Int32) -> GenericDeltaSetUnacknowledged {
+        var message = GenericDeltaSetUnacknowledged(delta: delta)
+        message.continueTransaction = false
+        return message
+    }
+
+    private func topKeyMessage(index: Int, switchData: PJEightKeySwitchData) -> MeshMessage? {
+        switch switchData.eightKeyPanelType {
+        case .scene8Key:
+            let sceneNumbers = [
+                switchData.sceneANumber,
+                switchData.sceneBNumber,
+                switchData.sceneCNumber,
+                switchData.sceneDNumber
+            ]
+            guard sceneNumbers.indices.contains(index),
+                  let sceneNumber = sceneNumbers[index] else {
+                return nil
+            }
+            return SceneRecallUnacknowledged(sceneNumber)
+        case .brightness8Key:
+            let brightnessValues = [100, 75, 50, 25]
+            guard brightnessValues.indices.contains(index) else {
+                return nil
+            }
+            let lightness = Node.getLightness(lightness100: brightnessValues[index])
+            return LightLightnessSetUnacknowledged(lightness: lightness)
+        }
     }
 }
