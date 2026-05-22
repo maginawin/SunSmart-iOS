@@ -1087,7 +1087,7 @@ extension Group {
                     return false
                 }
                 if let nodeSceneData = $0.sceneExecuteDatas.first(where: { $0.sceneNumber == scene.number }) {
-                    return !(nodeSceneData == sceneData)
+                    return !nodeSceneData.isSynced(with: sceneData, for: $0)
                 }
                 return true
             })
@@ -1295,6 +1295,38 @@ extension SceneExecuteData {
     
     /// 场景执行数据色温范围
     static let cctRange: ClosedRange<UInt16> = 2700...6500
+
+    /// 当前场景数据应用到指定设备时的目标值。
+    /// 支持 CCT 的设备按自身有效色温范围夹紧；不支持 CCT 的设备跳过色温项。
+    func deviceTarget(for node: Node) -> SceneExecuteData {
+        let data = SceneExecuteData(
+            sceneNumber: sceneNumber,
+            isOn: isOn,
+            lightness: lightness,
+            cct: node.effectiveSupportCct ? node.clampEffectiveCct(cct) : cct,
+            lightControlData: lightControlData
+        )
+        data.hue = hue
+        data.saturation = saturation
+        data.state = state
+        return data
+    }
+
+    /// 判断设备缓存的场景数据是否已达到组场景在该设备上的实际目标。
+    /// 不支持 CCT 的设备只比较场景、开关、亮度和状态，不让 CCT 字段影响同步结果。
+    func isSynced(with groupSceneData: SceneExecuteData, for node: Node) -> Bool {
+        let target = groupSceneData.deviceTarget(for: node)
+        guard sceneNumber == target.sceneNumber,
+              isOn == target.isOn,
+              lightness == target.lightness,
+              state == target.state else {
+            return false
+        }
+        guard node.effectiveSupportCct else {
+            return true
+        }
+        return cct == target.cct
+    }
     
 //    convenience init(lightness: UInt16, cct: UInt16, state: SceneExecuteData.State = .normal) {
 //        

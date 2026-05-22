@@ -20,12 +20,11 @@ extension Scene {
         // 设备是否支持场景model及亮度model
         if let sceneSetupModel = node.sceneSetupModel {
             // 设备是否支持色温model
-            let lightness = data.lightness
-            //Node.getLightness(lightness100: data.lightness, range: node.lightnessRange)
-            let cct = node.clampEffectiveCct(UInt16(data.cct))
+            let targetData = data.deviceTarget(for: node)
+            let lightness = targetData.lightness
             if let ctlModel = node.ctlModel, node.effectiveSupportCct {
-                messageHandles.append(MeshMessageHandle(message: LightCTLSet(lightness: lightness, temperature: cct, deltaUV: 0, transitionTime: .immediate, delay: 0), model: ctlModel))
-            }else if let lightnessModel = node.lightnessModel { // 不支持则设置色温
+                messageHandles.append(MeshMessageHandle(message: LightCTLSet(lightness: lightness, temperature: targetData.cct, deltaUV: 0, transitionTime: .immediate, delay: 0), model: ctlModel))
+            }else if let lightnessModel = node.lightnessModel { // 不支持色温则只设置亮度
                 messageHandles.append(MeshMessageHandle(message: LightLightnessSet(lightness: lightness, transitionTime: .immediate, delay: 0), model: lightnessModel))
             }else if let onoffModel = node.onoffModel { // 不支持亮度
                 messageHandles.append(MeshMessageHandle(message: GenericOnOffSet(lightness > 0), model: onoffModel))

@@ -1296,8 +1296,14 @@ extension Node {
         scenes.forEach { data in
             if let scene = MeshNetworkManager.instance.scenes.first(where: { $0.number == data.sceneNumber }) {
                 let sceneData = self.sceneExecuteDatas.first(where: { $0.sceneNumber == data.sceneNumber })
-                if data.state == .normal, sceneData == nil || !(sceneData! == data) {
-                    syncSceneData.append((scene, data))
+                if data.state == .normal {
+                    guard let sceneData = sceneData else {
+                        syncSceneData.append((scene, data))
+                        return
+                    }
+                    if !sceneData.isSynced(with: data, for: self) {
+                        syncSceneData.append((scene, data))
+                    }
                 }
             }
         }
