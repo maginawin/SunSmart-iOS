@@ -100,6 +100,8 @@ class SpaceViewController: WMPageController {
     private var exitSyncSpace: Bool = false
     /// 心跳定时器
     private var heartbeatTimer: Timer?
+    /// 是否已处理空间权限失效，避免失效心跳重复弹窗
+    private var hasHandledPermissionLoss: Bool = false
     /// mesh网络内用户查询定时器
     private var userAskTimer: Timer?
     /// 是否进行云端权限校验
@@ -777,6 +779,9 @@ class SpaceViewController: WMPageController {
     
     /// 开始发送心跳
     private func startHeartbeatTimer() {
+        guard space.state == .normal, !hasHandledPermissionLoss else {
+            return
+        }
         
         if heartbeatTimer != nil {
             heartbeatTimer?.invalidate()
@@ -797,6 +802,10 @@ class SpaceViewController: WMPageController {
     
     /// 心跳请求
     @objc private func heartbeatRequest() {
+        guard space.state == .normal, !hasHandledPermissionLoss else {
+            stopHeartbeatTimer()
+            return
+        }
         
         NetworkRequest.shared.request(.heartbeat(siteId: self.space.siteId, spaceId: self.space.id, permission: self.space.permission)) {[weak self] result in
             guard let self else { return }
@@ -810,6 +819,7 @@ class SpaceViewController: WMPageController {
 //                }
                 switch error {
                 case .noSitePermission: // 被回收权限/转让site
+                    self.stopHeartbeatTimer()
                     XWHUDManager.showErrorTipHUD(error.localizedDescription)
                     if self.site.permission == .owner {
                         NotificationCenter.default.post(name: .init(SiteStateChangeNotificationName), object: nil)
@@ -823,19 +833,7 @@ class SpaceViewController: WMPageController {
                     // 返回到site列表 通知刷新site
                     NotificationCenter.default.post(name: .init(rawValue: SitesDataRefreshNotifiacationName), object: true)
                 case .noSpacePermission, .userUnauthorized: // 没有空间权限
-                    self.space.state = .waitDeleted
-                    self.space.save()
-                    SRAlertView(title: "notification".localizedString, message: "the_space_cleared_visitor_message".localizedString, actions: [SRAlertAction(title: "confirm".localizedString, actionHandler: {[weak self] _ in
-                        if self?.space.permission == .owner {
-                            NotificationCenter.default.post(name: .init(SiteStateChangeNotificationName), object: nil)
-                        }
-                        if let currentVc = UIViewController.getVisibleVc(), currentVc.presentingViewController != nil { // 退出modal页面
-                            currentVc.dismiss(animated: false)
-                        }
-                        self?.removeFromWindowSubviews()
-                        self?.navigationController?.popToViewController(vcClass: SiteViewController.classForCoder())
-//                        self?.navigationController?.popViewController(animated: true)
-                    })]).show()
+                    self.handleSpacePermissionLoss()
                 case .incorrectPassword, .spacePasswordOverdue: // 密码修改
                     // 正在提示
                     if self.space.requiresPasswordVerification && SRAlertView.getCurrentAlertView() != nil {
@@ -855,6 +853,33 @@ class SpaceViewController: WMPageController {
                 }
             }
         }
+    }
+    
+    /// 处理空间权限失效
+    private func handleSpacePermissionLoss() {
+        guard !hasHandledPermissionLoss else {
+            return
+        }
+        hasHandledPermissionLoss = true
+        stopHeartbeatTimer()
+        space.state = .waitDeleted
+        space.save()
+        NotificationCenter.default.post(name: .init(spacesRefreshChangeNotificationName), object: true)
+        
+        guard view.window != nil else {
+            return
+        }
+        
+        SRAlertView(title: "notification".localizedString, message: "the_space_cleared_visitor_message".localizedString, actions: [SRAlertAction(title: "confirm".localizedString, actionHandler: {[weak self] _ in
+            if self?.space.permission == .owner {
+                NotificationCenter.default.post(name: .init(SiteStateChangeNotificationName), object: nil)
+            }
+            if let currentVc = UIViewController.getVisibleVc(), currentVc.presentingViewController != nil { // 退出modal页面
+                currentVc.dismiss(animated: false)
+            }
+            self?.removeFromWindowSubviews()
+            self?.navigationController?.popToViewController(vcClass: SiteViewController.classForCoder())
+        })]).show()
     }
     
     /// 切换权限提示

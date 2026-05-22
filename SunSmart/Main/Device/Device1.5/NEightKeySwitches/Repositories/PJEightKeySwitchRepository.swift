@@ -31,6 +31,8 @@ final class PJEightKeySwitchRepository {
         let lastSyncedAt: Int64?
         let batteryLevel: UInt8?
         let batteryLastUpdateTime: Int64?
+        let appliedTxEnabled: Bool?
+        let appliedLEDIndicatorEnabled: Bool?
 
         init(
             panelType: PJEightKeySwitchPanelDefinition.PanelType,
@@ -42,7 +44,9 @@ final class PJEightKeySwitchRepository {
             lastSyncFailedReason: String? = nil,
             lastSyncedAt: Int64? = nil,
             batteryLevel: UInt8? = nil,
-            batteryLastUpdateTime: Int64? = nil
+            batteryLastUpdateTime: Int64? = nil,
+            appliedTxEnabled: Bool? = nil,
+            appliedLEDIndicatorEnabled: Bool? = nil
         ) {
             self.panelType = panelType
             self.moreSettingsState = moreSettingsState
@@ -54,6 +58,8 @@ final class PJEightKeySwitchRepository {
             self.lastSyncedAt = lastSyncedAt
             self.batteryLevel = batteryLevel
             self.batteryLastUpdateTime = batteryLastUpdateTime
+            self.appliedTxEnabled = appliedTxEnabled
+            self.appliedLEDIndicatorEnabled = appliedLEDIndicatorEnabled
         }
     }
 
@@ -99,6 +105,8 @@ final class PJEightKeySwitchRepository {
         static let lastSyncedAt = Expression<Int64?>("lastSyncedAt")
         static let batteryLevel = Expression<Int?>("batteryLevel")
         static let batteryLastUpdateTime = Expression<Int64?>("batteryLastUpdateTime")
+        static let appliedTxEnabled = Expression<Bool?>("appliedTxEnabled")
+        static let appliedLEDIndicatorEnabled = Expression<Bool?>("appliedLEDIndicatorEnabled")
     }
 
     private init() {}
@@ -121,6 +129,8 @@ final class PJEightKeySwitchRepository {
                 builder.column(ExpressionKey.lastSyncedAt)
                 builder.column(ExpressionKey.batteryLevel)
                 builder.column(ExpressionKey.batteryLastUpdateTime)
+                builder.column(ExpressionKey.appliedTxEnabled)
+                builder.column(ExpressionKey.appliedLEDIndicatorEnabled)
                 builder.unique(ExpressionKey.meshUUID, ExpressionKey.subNetworkKey, ExpressionKey.switchId)
             }
         )
@@ -149,6 +159,12 @@ final class PJEightKeySwitchRepository {
             if !columns.contains(where: { $0.name == "batteryLastUpdateTime" }) {
                 _ = try? SunSmartDataManager.shared.db?.run(table.addColumn(ExpressionKey.batteryLastUpdateTime))
             }
+            if !columns.contains(where: { $0.name == "appliedTxEnabled" }) {
+                _ = try? SunSmartDataManager.shared.db?.run(table.addColumn(ExpressionKey.appliedTxEnabled))
+            }
+            if !columns.contains(where: { $0.name == "appliedLEDIndicatorEnabled" }) {
+                _ = try? SunSmartDataManager.shared.db?.run(table.addColumn(ExpressionKey.appliedLEDIndicatorEnabled))
+            }
         }
     }
 
@@ -170,7 +186,9 @@ final class PJEightKeySwitchRepository {
             ExpressionKey.lastSyncFailedReason <- switchData.lastSyncFailedReason,
             ExpressionKey.lastSyncedAt <- switchData.lastSyncedAt,
             ExpressionKey.batteryLevel <- switchData.batteryLevel.map { Int($0) },
-            ExpressionKey.batteryLastUpdateTime <- switchData.batteryLastUpdateTime
+            ExpressionKey.batteryLastUpdateTime <- switchData.batteryLastUpdateTime,
+            ExpressionKey.appliedTxEnabled <- switchData.appliedTxEnabled,
+            ExpressionKey.appliedLEDIndicatorEnabled <- switchData.appliedLEDIndicatorEnabled
         ])
         do {
             try SunSmartDataManager.shared.db?.run(insert)
@@ -265,7 +283,9 @@ final class PJEightKeySwitchRepository {
             lastSyncFailedReason: row[ExpressionKey.lastSyncFailedReason],
             lastSyncedAt: row[ExpressionKey.lastSyncedAt],
             batteryLevel: batteryLevel,
-            batteryLastUpdateTime: row[ExpressionKey.batteryLastUpdateTime]
+            batteryLastUpdateTime: row[ExpressionKey.batteryLastUpdateTime],
+            appliedTxEnabled: row[ExpressionKey.appliedTxEnabled],
+            appliedLEDIndicatorEnabled: row[ExpressionKey.appliedLEDIndicatorEnabled]
         )
     }
 

@@ -825,7 +825,7 @@
 "current_target_version" = "当前目标版本";
 "neightkeyswitches_dimming" = "调光";
 "neightkeyswitches_refresh_device" = "刷新设备";
-"neightkeyswitches_refresh_message" = "请按一下设备上的任意按键";
+"neightkeyswitches_refresh_message" = "请多次按下设备上的任意按键";
 "neightkeyswitches_refresh_waiting_format" = "等待信号（%d秒）...";
 "neightkeyswitches_refresh_updated" = "刚刚已更新";
 "neightkeyswitches_forced_auto_mode" = "强制自动模式";

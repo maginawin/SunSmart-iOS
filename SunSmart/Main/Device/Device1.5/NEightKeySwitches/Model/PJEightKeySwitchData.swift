@@ -21,6 +21,8 @@ final class PJEightKeySwitchData: DeviceSwitchData {
     var lastSyncedAt: Int64?
     var batteryLevel: UInt8?
     var batteryLastUpdateTime: Int64?
+    var appliedTxEnabled: Bool?
+    var appliedLEDIndicatorEnabled: Bool?
 
     convenience init(baseSwitchData: DeviceSwitchData, metadata: PJEightKeySwitchRepository.Metadata) {
         self.init(
@@ -52,6 +54,8 @@ final class PJEightKeySwitchData: DeviceSwitchData {
         lastSyncedAt = metadata.lastSyncedAt
         batteryLevel = metadata.batteryLevel
         batteryLastUpdateTime = metadata.batteryLastUpdateTime
+        appliedTxEnabled = metadata.appliedTxEnabled
+        appliedLEDIndicatorEnabled = metadata.appliedLEDIndicatorEnabled
     }
 
     override func copy() -> Self {
@@ -84,6 +88,8 @@ final class PJEightKeySwitchData: DeviceSwitchData {
         copy.lastSyncedAt = lastSyncedAt
         copy.batteryLevel = batteryLevel
         copy.batteryLastUpdateTime = batteryLastUpdateTime
+        copy.appliedTxEnabled = appliedTxEnabled
+        copy.appliedLEDIndicatorEnabled = appliedLEDIndicatorEnabled
         return copy as! Self
     }
 
@@ -99,7 +105,21 @@ final class PJEightKeySwitchData: DeviceSwitchData {
         guard proxyNode?.isBatteryPowerSwitch == true else {
             return false
         }
-        return needsBatteryPowerSwitchConfigurationSync || needSyncData
+        return needsBatteryPowerSwitchConfigurationSync || needsBatteryPowerSwitchTxEnableSync || needsBatteryPowerSwitchLEDIndicatorSync || needSyncData
+    }
+
+    var needsBatteryPowerSwitchTxEnableSync: Bool {
+        guard proxyNode?.isBatteryPowerSwitch == true else {
+            return false
+        }
+        return appliedTxEnabled != enabled
+    }
+
+    var needsBatteryPowerSwitchLEDIndicatorSync: Bool {
+        guard proxyNode?.isBatteryPowerSwitch == true else {
+            return false
+        }
+        return appliedLEDIndicatorEnabled != moreSettingsState.ledIndicatorEnabled
     }
 
     func batteryPowerSwitchDesiredConfigHash(appKeyIndex: KeyIndex) -> String {
@@ -120,9 +140,8 @@ final class PJEightKeySwitchData: DeviceSwitchData {
 
         return [
             "panel=\(eightKeyPanelType.storageIdentifier)",
-            "enabled=\(enabled)",
             "link=\(linkGroupAddress?.hex ?? "nil")",
-            "keyConfigWire=16,retransmit=1/200,transition=FF",
+            "keyConfigWire=16,retransmit=0/0,transition=FF",
             "scenes=\(sceneTargets)",
             "appKey=\(appKeyIndex)"
         ].joined(separator: "|")
@@ -143,6 +162,8 @@ final class PJEightKeySwitchData: DeviceSwitchData {
     func markBatteryPowerSwitchSyncSucceeded(clearRemovedGroups: Bool = true) {
         syncState = .synced
         appliedConfigHash = desiredConfigHash
+        appliedTxEnabled = enabled
+        appliedLEDIndicatorEnabled = moreSettingsState.ledIndicatorEnabled
         lastSyncFailedReason = nil
         lastSyncedAt = Int64(Date().timeIntervalSince1970)
         if clearRemovedGroups {
@@ -155,8 +176,18 @@ final class PJEightKeySwitchData: DeviceSwitchData {
         lastSyncFailedReason = reason
     }
 
+    func markBatteryPowerSwitchTxEnableSucceeded() {
+        appliedTxEnabled = enabled
+        lastSyncFailedReason = nil
+    }
+
+    func markBatteryPowerSwitchLEDIndicatorSucceeded() {
+        appliedLEDIndicatorEnabled = moreSettingsState.ledIndicatorEnabled
+        lastSyncFailedReason = nil
+    }
+
     func batteryPowerSwitchKeyConfigurations(appKeyIndex: KeyIndex) -> [BatteryPowerSwitchKeyConfiguration] {
-        guard enabled, let linkGroupAddress else {
+        guard let linkGroupAddress else {
             return []
         }
 

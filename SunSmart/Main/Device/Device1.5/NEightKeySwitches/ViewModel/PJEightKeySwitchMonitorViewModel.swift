@@ -129,7 +129,7 @@ final class PJEightKeySwitchMonitorViewModel {
     var settingsState: SettingsState {
         SettingsState(
             groupNames: switchData.bindGroups.map(\.name),
-            isGroupLinked: switchData.linkGroupAddress != nil,
+            isGroupLinked: !switchData.bindGroups.isEmpty,
             isEnabled: switchData.enabled
         )
     }
@@ -163,6 +163,11 @@ final class PJEightKeySwitchMonitorViewModel {
 
     func updateEnabled(_ isEnabled: Bool) {
         switchData.enabled = isEnabled
+    }
+
+    func applyTxEnableSucceeded(_ isEnabled: Bool) {
+        switchData.enabled = isEnabled
+        switchData.markBatteryPowerSwitchTxEnableSucceeded()
     }
 
     func prepareBatteryPowerSwitchDesiredConfigIfNeeded() -> Bool {
@@ -262,8 +267,10 @@ private extension PJEightKeySwitchMonitorViewModel {
 
     func statusColor(for style: HeaderState.StatusStyle) -> UIColor {
         switch style {
-        case .normal, .unknown:
+        case .normal:
             return RGB(69, 197, 122)
+        case .unknown:
+            return RGB(148, 163, 184)
         case .lowBattery:
             return RGB(240, 162, 55)
         }

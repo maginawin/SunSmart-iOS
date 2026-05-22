@@ -825,7 +825,7 @@
 "PIR Sensor Lighting" = "PIR Sensor Lighting";
 "neightkeyswitches_dimming" = "Dimming";
 "neightkeyswitches_refresh_device" = "Refresh Device";
-"neightkeyswitches_refresh_message" = "Press any button on the device";
+"neightkeyswitches_refresh_message" = "Press any button on the device multiple times";
 "neightkeyswitches_refresh_waiting_format" = "Waiting for signal (%ds)...";
 "neightkeyswitches_refresh_updated" = "Updated just now";
 "neightkeyswitches_forced_auto_mode" = "Forced Auto Mode";

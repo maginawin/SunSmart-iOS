@@ -25,6 +25,14 @@
 - 保持改动聚焦，不要顺手重构无关模块或格式化大量无关文件。
 - 修改本地化、资源、target 配置或 Pod 依赖时，同步检查相关 target 是否受影响。
 
+## Figma Notes
+
+- 当用户提供 `figma.com` 链接时，优先使用 Figma plugin / Figma connector 读取该链接对应的结构化 design context，包括 frame/layer 层级、组件、文本、颜色、字体、尺寸、间距、圆角、Auto Layout、变量等信息。
+- 不要把 Figma 链接当作普通网页或截图来分析；不要通过截图、OCR 或视觉猜测来还原 UI。
+- 只有在用户明确提供截图、图片，或 Figma plugin 无法读取设计内容时，才使用图片分析作为辅助方案。
+- 根据 Figma 结构化信息实现 UI 时，优先复用当前项目已有的组件、主题、颜色、字体、尺寸、资源和代码风格。
+- 如果 Figma 设计与现有项目组件存在差异，先说明差异，再选择最小改动方案实现。
+
 ## iOS build command policy
 
 When verifying SunSmart iOS builds, run xcodebuild directly without wrapping it in `/bin/zsh -lc` and without shell redirection.

@@ -21,6 +21,8 @@ final class PJEightKeySwitchMonitorVC: UIViewController {
     private var isRefreshing = false
     private var activationFlow: PJEightKeySwitchActivationFlow?
     private var batteryRefreshFlow: PJEightKeySwitchBatteryRefreshFlow?
+    private var txEnableFlow: PJEightKeySwitchTxEnableFlow?
+    private var pendingEnabledValue: Bool?
     private let virtualGroupControlSender = PJEightKeySwitchVirtualGroupControlSender()
     private var lastKeyTapTimes: [Int: Date] = [:]
     private let keyTapThrottleInterval: TimeInterval = 0.2
@@ -171,17 +173,7 @@ final class PJEightKeySwitchMonitorVC: UIViewController {
         }
 
         bottomView.enableChanged = { [weak self] isOn in
-            guard let self else { return }
-            self.viewModel.updateEnabled(isOn)
-            guard self.viewModel.prepareBatteryPowerSwitchDesiredConfigIfNeeded() else {
-                self.viewModel.updateEnabled(!isOn)
-                self.updateUI()
-                XWHUDManager.showErrorTipHUD("group_address_insufficient_message".localizedString, timer: 2)
-                return
-            }
-            self.viewModel.persist()
-            NotificationCenter.default.post(name: .init(switchsRefreshNotificationName), object: nil)
-            self.updateUI()
+            self?.startTxEnableUpdate(isOn)
         }
 
         bottomView.groupLinkAction = {
@@ -201,20 +193,18 @@ final class PJEightKeySwitchMonitorVC: UIViewController {
             showsRefreshButton: header.showsRefreshButton
         ))
 
-        panelView.configure(items: viewModel.keyItems, enabled: viewModel.settingsState.isEnabled)
+        let isTxEnablePending = pendingEnabledValue != nil
+        panelView.configure(items: viewModel.keyItems, enabled: viewModel.settingsState.isEnabled && !isTxEnablePending)
         bottomView.configure(state: .init(
             groupNames: viewModel.settingsState.groupNames,
             isGroupLinked: viewModel.settingsState.isGroupLinked,
-            isEnabled: viewModel.settingsState.isEnabled
+            isEnabled: viewModel.settingsState.isEnabled,
+            isPending: isTxEnablePending
         ))
     }
 
     private func refreshMonitor() {
         guard !isRefreshing else { return }
-        guard !viewModel.needsBatteryPowerSwitchSync else {
-            pushBatteryPowerSwitchSync()
-            return
-        }
         guard let node = viewModel.informationNode else {
             XWHUDManager.showTipHUD("failed".localizedString, isLineFeed: false)
             return
@@ -265,7 +255,44 @@ final class PJEightKeySwitchMonitorVC: UIViewController {
 
     deinit {
         batteryRefreshFlow?.cancel()
+        txEnableFlow?.cancel()
         activationFlow = nil
+    }
+
+    private func startTxEnableUpdate(_ isEnabled: Bool) {
+        guard pendingEnabledValue == nil else {
+            updateUI()
+            return
+        }
+        guard viewModel.informationNode != nil else {
+            XWHUDManager.showTipHUD("failed".localizedString, isLineFeed: false)
+            updateUI()
+            return
+        }
+
+        pendingEnabledValue = isEnabled
+        updateUI()
+
+        let flow = PJEightKeySwitchTxEnableFlow(
+            presenter: self,
+            switchData: viewModel.switchData,
+            enabled: isEnabled,
+            onSucceeded: { [weak self] enabled in
+                guard let self else { return }
+                self.viewModel.applyTxEnableSucceeded(enabled)
+                self.viewModel.persist()
+                NotificationCenter.default.post(name: .init(switchsRefreshNotificationName), object: nil)
+                self.updateUI()
+            },
+            onFinished: { [weak self] in
+                guard let self else { return }
+                self.pendingEnabledValue = nil
+                self.txEnableFlow = nil
+                self.updateUI()
+            }
+        )
+        txEnableFlow = flow
+        flow.start()
     }
 
     private func presentDimmingPopup() {
@@ -369,7 +396,7 @@ final class PJEightKeySwitchMonitorVC: UIViewController {
                 return false
             }
             switch syncData {
-            case .batteryPowerSwitchReset, .batteryPowerSwitchKeyConfig:
+            case .batteryPowerSwitchReset, .batteryPowerSwitchKeyConfig, .batteryPowerSwitchTxEnable, .batteryPowerSwitchLEDIndicator:
                 return true
             default:
                 return false

@@ -174,6 +174,7 @@ final class PJEightKeySwitchBatteryRefreshFlow {
     private let reader: PJEightKeySwitchBatteryReading
     private let onBatteryLevel: (UInt8) -> Bool
     private let onFinished: () -> Void
+    private let batteryRefreshProbeInterval: TimeInterval = 1
     private var alertController: PJEightKeySwitchRefreshAlertController?
     private var probeTimer: Timer?
     private var autoDismissWorkItem: DispatchWorkItem?
@@ -223,7 +224,7 @@ final class PJEightKeySwitchBatteryRefreshFlow {
         stopProbeTimer()
         alertController?.startWaiting()
         sendProbe(for: generation)
-        probeTimer = Timer.scheduledTimer(withTimeInterval: 3, repeats: true) { [weak self] _ in
+        probeTimer = Timer.scheduledTimer(withTimeInterval: batteryRefreshProbeInterval, repeats: true) { [weak self] _ in
             guard let self else { return }
             self.sendProbe(for: self.generation)
         }

@@ -703,15 +703,35 @@ class SyncDevicesViewController: UIViewController {
         switchDeviceModel.imageName = switchIconName
 
         var configurationDependencies: [SyncDeviceStepModel] = []
-        if switchData.needsBatteryPowerSwitchConfigurationSync {
-            let keyConfigTask = SyncDeviceStepTaskModel(name: "Key Config", operationType: .configuration(node: switchNode, type: .batteryPowerSwitchKeyConfig(switchData: switchData)))
-            let keyConfigStep = SyncDeviceStepModel(type: "Key Config", state: .none, tasks: [keyConfigTask])
-            keyConfigTask.parentStepModel = keyConfigStep
-            keyConfigStep.parentDeviceModel = switchDeviceModel
-
-            switchDeviceModel.steps = [keyConfigStep]
+        let needsKeyConfigSync = switchData.needsBatteryPowerSwitchConfigurationSync
+        let needsTxEnableSync = switchData.needsBatteryPowerSwitchTxEnableSync
+        let needsLEDIndicatorSync = switchData.needsBatteryPowerSwitchLEDIndicatorSync
+        var ownConfigurationTasks: [SyncDeviceStepTaskModel] = []
+        if needsKeyConfigSync {
+            ownConfigurationTasks.append(SyncDeviceStepTaskModel(
+                name: "Key Config",
+                operationType: .configuration(node: switchNode, type: .batteryPowerSwitchKeyConfig(switchData: switchData))
+            ))
+        }
+        if needsTxEnableSync {
+            ownConfigurationTasks.append(SyncDeviceStepTaskModel(
+                name: "TX Enable",
+                operationType: .configuration(node: switchNode, type: .batteryPowerSwitchTxEnable(switchData: switchData))
+            ))
+        }
+        if needsLEDIndicatorSync {
+            ownConfigurationTasks.append(SyncDeviceStepTaskModel(
+                name: "LED Indicator",
+                operationType: .configuration(node: switchNode, type: .batteryPowerSwitchLEDIndicator(switchData: switchData))
+            ))
+        }
+        if !ownConfigurationTasks.isEmpty {
+            let ownConfigurationStep = SyncDeviceStepModel(type: "Switch Configuration", state: .none, tasks: ownConfigurationTasks)
+            ownConfigurationTasks.forEach { $0.parentStepModel = ownConfigurationStep }
+            ownConfigurationStep.parentDeviceModel = switchDeviceModel
+            switchDeviceModel.steps = [ownConfigurationStep]
             section.devices.append(switchDeviceModel)
-            configurationDependencies = [keyConfigStep]
+            configurationDependencies = [ownConfigurationStep]
         }
 
         let targetGroups = switchData.bindGroups.sorted { $0.address.address < $1.address.address }
@@ -2038,6 +2058,7 @@ class SyncDevicesViewController: UIViewController {
                         messageHandles: messageHandles
                     ) || self.isEmergencyFireControllerDeleteCleanup(model) {
                         model.state = .successful
+                        self.markBatteryPowerSwitchOwnSettingSucceededIfNeeded(for: model)
                         self.clearEmergencyFireControllerPendingIfNeeded(for: model)
                         if isBatteryPowerSwitchKeyConfigModel {
                             self.batteryPowerSwitchKeyConfigurationCompleted = true
@@ -2210,7 +2231,7 @@ class SyncDevicesViewController: UIViewController {
         switch operationType {
         case .configuration(_, let actionType):
             switch actionType {
-            case .batteryPowerSwitchKeyConfig:
+            case .batteryPowerSwitchKeyConfig, .batteryPowerSwitchTxEnable, .batteryPowerSwitchLEDIndicator:
                 return true
             case .batteryPowerSwitchTargetSubscription:
                 return false
@@ -2229,7 +2250,7 @@ class SyncDevicesViewController: UIViewController {
         switch operationType {
         case .configuration(_, let actionType):
             switch actionType {
-            case .batteryPowerSwitchKeyConfig:
+            case .batteryPowerSwitchKeyConfig, .batteryPowerSwitchTxEnable, .batteryPowerSwitchLEDIndicator:
                 return true
             default:
                 return false
@@ -2247,6 +2268,8 @@ class SyncDevicesViewController: UIViewController {
         case .configuration(_, let actionType), .delete(_, let actionType):
             switch actionType {
             case .batteryPowerSwitchKeyConfig,
+                 .batteryPowerSwitchTxEnable,
+                 .batteryPowerSwitchLEDIndicator,
                  .batteryPowerSwitchTargetSubscription:
                 return true
             default:
@@ -2322,6 +2345,22 @@ class SyncDevicesViewController: UIViewController {
                     handle.continuous = false
                     return handle
                 }
+            case .batteryPowerSwitchTxEnable(let switchData):
+                guard node.primaryUnicastAddress == switchData.proxyNodeAddress,
+                      let vendorModel = node.sunricherVendorModel else {
+                    return defaultHandles
+                }
+                let handle = MeshMessageHandle(message: SunricherVendorSet(function: .batteryPowerSwitchTxEnabled(switchData.enabled)), model: vendorModel)
+                handle.continuous = false
+                return [handle]
+            case .batteryPowerSwitchLEDIndicator(let switchData):
+                guard node.primaryUnicastAddress == switchData.proxyNodeAddress,
+                      let vendorModel = node.sunricherVendorModel else {
+                    return defaultHandles
+                }
+                let handle = MeshMessageHandle(message: SunricherVendorSet(function: .batteryPowerSwitchLEDEnabled(switchData.moreSettingsState.ledIndicatorEnabled)), model: vendorModel)
+                handle.continuous = false
+                return [handle]
             default:
                 return defaultHandles
             }
@@ -2338,7 +2377,7 @@ class SyncDevicesViewController: UIViewController {
         switch operationType {
         case .configuration(_, let actionType):
             switch actionType {
-            case .batteryPowerSwitchKeyConfig:
+            case .batteryPowerSwitchKeyConfig, .batteryPowerSwitchTxEnable, .batteryPowerSwitchLEDIndicator:
                 return true
             default:
                 return false
@@ -2358,6 +2397,19 @@ class SyncDevicesViewController: UIViewController {
             return resultSuccessful && operationSuccessful
         }
         return !messageHandles.isEmpty && resultSuccessful
+    }
+
+    private func markBatteryPowerSwitchOwnSettingSucceededIfNeeded(for model: SyncCellModel) {
+        guard let operationType = operationType(for: model) else { return }
+        guard case .configuration(_, let actionType) = operationType else { return }
+        switch actionType {
+        case .batteryPowerSwitchTxEnable(let switchData):
+            switchData.markBatteryPowerSwitchTxEnableSucceeded()
+        case .batteryPowerSwitchLEDIndicator(let switchData):
+            switchData.markBatteryPowerSwitchLEDIndicatorSucceeded()
+        default:
+            break
+        }
     }
     
     private func resetBatteryPowerSwitchConfigurationForResync() {

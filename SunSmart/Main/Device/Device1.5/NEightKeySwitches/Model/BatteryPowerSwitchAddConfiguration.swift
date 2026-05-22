@@ -30,6 +30,10 @@ enum BatteryPowerSwitchAddConfiguration {
             return nil
         }
 
+        switchData.enabled = true
+        switchData.appliedTxEnabled = true
+        switchData.moreSettingsState.ledIndicatorEnabled = true
+        switchData.appliedLEDIndicatorEnabled = true
         let appKeyIndex = MeshNetworkManager.instance.currentApplicationKey.index
         guard MeshNetworkManager.instance.ensureBatteryPowerSwitchLinkGroup(switchData) else {
             switchData.prepareBatteryPowerSwitchDesiredConfig(appKeyIndex: appKeyIndex)

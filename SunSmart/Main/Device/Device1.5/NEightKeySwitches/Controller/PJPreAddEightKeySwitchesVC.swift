@@ -20,6 +20,11 @@ final class PJPreAddEightKeySwitchesVC: UIViewController {
         let periodicReporting: PJEightKeySwitchMoreSettingsViewModel.PeriodicReportingOption
         let ledIndicatorEnabled: Bool
     }
+
+    private struct BatteryPowerSwitchOwnStateSnapshot {
+        let enabled: Bool
+        let moreSettings: PJEightKeySwitchMoreSettingsViewModel.State
+    }
     
     var deleteSwitchAction: ((DeviceSwitchData) -> Void)?
     var switchSavedAction: ((PJEightKeySwitchData) -> Void)?
@@ -28,6 +33,7 @@ final class PJPreAddEightKeySwitchesVC: UIViewController {
     private var initialSnapshot: Snapshot?
     private weak var previousPopGestureDelegate: UIGestureRecognizerDelegate?
     private var activationFlow: PJEightKeySwitchActivationFlow?
+    private var pendingBatteryPowerSwitchOwnStateSnapshot: BatteryPowerSwitchOwnStateSnapshot?
     private lazy var saveBarButtonItem = UIBarButtonItem(
         title: "save".localizedString,
         color: RGB(0, 0, 0, 0.85),
@@ -456,7 +462,10 @@ final class PJPreAddEightKeySwitchesVC: UIViewController {
         let appKeyIndex = MeshNetworkManager.instance.currentApplicationKey.index
         let desiredHash = switchData.batteryPowerSwitchDesiredConfigHash(appKeyIndex: appKeyIndex)
         let needsConfigurationSync = needsBatteryPowerSwitchConfigurationSync(switchData, desiredHash: desiredHash)
+        let needsTxEnableSync = needsBatteryPowerSwitchTxEnableSync(switchData)
+        let needsLEDIndicatorSync = needsBatteryPowerSwitchLEDIndicatorSync(switchData)
         let needsTargetSync = switchData.needSyncData
+        let needsOwnConfigurationSync = needsConfigurationSync || needsTxEnableSync || needsLEDIndicatorSync
         if needsConfigurationSync {
             switchData.prepareBatteryPowerSwitchDesiredConfig(appKeyIndex: appKeyIndex)
         } else {
@@ -466,12 +475,14 @@ final class PJPreAddEightKeySwitchesVC: UIViewController {
             }
         }
 
-        persistSwitchData(switchData)
-        switchSavedAction?(switchData)
-        postSwitchDataChangedNotifications()
-        initialSnapshot = makeSnapshot()
+        if !needsOwnConfigurationSync {
+            persistSwitchData(switchData)
+            switchSavedAction?(switchData)
+            postSwitchDataChangedNotifications()
+            initialSnapshot = makeSnapshot()
+        }
 
-        guard needsConfigurationSync || needsTargetSync else {
+        guard needsOwnConfigurationSync || needsTargetSync else {
             XWHUDManager.showSuccessTipHUD("done!".localizedString)
             DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) { [weak self] in
                 self?.closeEditor(animated: true)
@@ -479,7 +490,13 @@ final class PJPreAddEightKeySwitchesVC: UIViewController {
             return
         }
 
-        if needsConfigurationSync {
+        if needsOwnConfigurationSync {
+            if let sourceSwitchData = viewModel.sourceSwitchData {
+                pendingBatteryPowerSwitchOwnStateSnapshot = BatteryPowerSwitchOwnStateSnapshot(
+                    enabled: sourceSwitchData.enabled,
+                    moreSettings: sourceSwitchData.moreSettingsState
+                )
+            }
             presentBatteryPowerSwitchActivation(for: switchData)
         } else {
             pushBatteryPowerSwitchSync(switchData)
@@ -501,6 +518,7 @@ final class PJPreAddEightKeySwitchesVC: UIViewController {
         vc.syncSuccessCallback = { [weak self] _ in
             guard let self else { return }
             switchData.markBatteryPowerSwitchSyncSucceeded()
+            self.pendingBatteryPowerSwitchOwnStateSnapshot = nil
             self.persistSwitchData(switchData)
             self.switchSavedAction?(switchData)
             self.postSwitchDataChangedNotifications()
@@ -515,9 +533,14 @@ final class PJPreAddEightKeySwitchesVC: UIViewController {
             let successOperationTypes = result.flatMap(\.successOperationTypes)
             if self.containsBatteryPowerSwitchOwnConfiguration(failedOperationTypes) {
                 switchData.markBatteryPowerSwitchSyncFailed(reason: "sync_failed".localizedString)
+                if let snapshot = self.pendingBatteryPowerSwitchOwnStateSnapshot {
+                    switchData.enabled = snapshot.enabled
+                    switchData.moreSettingsState = snapshot.moreSettings
+                }
             } else if self.containsBatteryPowerSwitchOwnConfiguration(successOperationTypes) {
                 switchData.markBatteryPowerSwitchSyncSucceeded(clearRemovedGroups: false)
             }
+            self.pendingBatteryPowerSwitchOwnStateSnapshot = nil
             self.persistSwitchData(switchData)
             self.switchSavedAction?(switchData)
             self.postSwitchDataChangedNotifications()
@@ -532,7 +555,7 @@ final class PJPreAddEightKeySwitchesVC: UIViewController {
                 return false
             }
             switch syncData {
-            case .batteryPowerSwitchReset, .batteryPowerSwitchKeyConfig:
+            case .batteryPowerSwitchReset, .batteryPowerSwitchKeyConfig, .batteryPowerSwitchTxEnable, .batteryPowerSwitchLEDIndicator:
                 return true
             default:
                 return false
@@ -545,8 +568,7 @@ final class PJPreAddEightKeySwitchesVC: UIViewController {
             return switchData.needsBatteryPowerSwitchConfigurationSync
         }
 
-        if sourceSwitchData.enabled != switchData.enabled ||
-            sourceSwitchData.linkGroupAddress != switchData.linkGroupAddress ||
+        if sourceSwitchData.linkGroupAddress != switchData.linkGroupAddress ||
             sourceSwitchData.eightKeyPanelType != switchData.eightKeyPanelType {
             return true
         }
@@ -560,6 +582,27 @@ final class PJPreAddEightKeySwitchesVC: UIViewController {
         }
 
         return switchData.syncState != .synced && switchData.appliedConfigHash != desiredHash
+    }
+
+    private func needsBatteryPowerSwitchTxEnableSync(_ switchData: PJEightKeySwitchData) -> Bool {
+        guard isBatteryPowerSwitchLinked(switchData) else {
+            return false
+        }
+        guard let sourceSwitchData = viewModel.sourceSwitchData else {
+            return switchData.needsBatteryPowerSwitchTxEnableSync
+        }
+        return sourceSwitchData.enabled != switchData.enabled || switchData.needsBatteryPowerSwitchTxEnableSync
+    }
+
+    private func needsBatteryPowerSwitchLEDIndicatorSync(_ switchData: PJEightKeySwitchData) -> Bool {
+        guard isBatteryPowerSwitchLinked(switchData) else {
+            return false
+        }
+        guard let sourceSwitchData = viewModel.sourceSwitchData else {
+            return switchData.needsBatteryPowerSwitchLEDIndicatorSync
+        }
+        return sourceSwitchData.moreSettingsState.ledIndicatorEnabled != switchData.moreSettingsState.ledIndicatorEnabled
+            || switchData.needsBatteryPowerSwitchLEDIndicatorSync
     }
 
     private func presentBatteryPowerSwitchActivation(for switchData: PJEightKeySwitchData) {

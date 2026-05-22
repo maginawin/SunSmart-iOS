@@ -51,11 +51,6 @@ final class PJEightKeySwitchDimmingPopupController: UIViewController {
         setupUI()
     }
 
-    override func viewDidAppear(_ animated: Bool) {
-        super.viewDidAppear(animated)
-        sliderView.value = 50
-    }
-
     private func setupUI() {
         view.backgroundColor = .clear
 
@@ -95,6 +90,7 @@ final class PJEightKeySwitchDimmingPopupController: UIViewController {
             make.height.equalTo(Layout.sliderHeight)
             make.bottom.lessThanOrEqualToSuperview().offset(-Layout.sliderBottomInset)
         }
+        sliderView.value = 50
         sliderView.valueThrottleChangedCallback = { [weak self] value, ended in
             guard ended else {
                 return
