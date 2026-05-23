@@ -444,7 +444,9 @@ enum DeviceOperationType {
                 break
             case .emergencyFireController:
                 break
-            case .batteryPowerSwitchReset, .batteryPowerSwitchKeyConfig, .batteryPowerSwitchTxEnable, .batteryPowerSwitchLEDIndicator, .batteryPowerSwitchTargetSubscription:
+            case .batteryPowerSwitchTargetSubscription(let switchData, _, let unsubscribe):
+                messageHandles.append(contentsOf: node.getBatteryPowerSwitchTargetSubscriptionMessageHandles(switchData: switchData, unsubscribe: unsubscribe))
+            case .batteryPowerSwitchReset, .batteryPowerSwitchKeyConfig, .batteryPowerSwitchTxEnable, .batteryPowerSwitchLEDIndicator:
                 break
             }
         case .configuration(let node, let type): // 添加/配置操作

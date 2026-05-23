@@ -1295,7 +1295,10 @@ class SyncDevicesViewController: UIViewController {
                     return SyncDeviceStepTaskModel(name: $0.name, operationType: .configuration(node: node, type: .enOceanSwitch(switchData: $0)))
                 })
                 if syncSwitchTasks.count > 0 {
-                    let step = SyncDeviceStepModel(type: "switch".localizedString, state: .none, tasks: syncSwitchTasks)
+                    let stepTitle = switchDatas.allSatisfy { $0.batteryPowerSwitchData != nil }
+                        ? "Group Subscription"
+                        : "switch".localizedString
+                    let step = SyncDeviceStepModel(type: stepTitle, state: .none, tasks: syncSwitchTasks)
                     syncSwitchTasks.forEach({ $0.parentStepModel = step })
                     configturationSteps.append(step)
                 }
@@ -1310,7 +1313,10 @@ class SyncDevicesViewController: UIViewController {
                     return SyncDeviceStepTaskModel(name: $0.name, operationType: .delete(node: node, type: .enOceanSwitch(switchData: $0)))
                 })
                 if deleteSwitchTasks.count > 0 {
-                    let step = SyncDeviceStepModel(type: "remove_switch".localizedString, state: .none, tasks: deleteSwitchTasks)
+                    let stepTitle = switchDatas.allSatisfy { $0.batteryPowerSwitchData != nil }
+                        ? "Group Unsubscription"
+                        : "remove_switch".localizedString
+                    let step = SyncDeviceStepModel(type: stepTitle, state: .none, tasks: deleteSwitchTasks)
                     deleteSwitchTasks.forEach({ $0.parentStepModel = step })
                     deleteSteps.append(step)
                 }
