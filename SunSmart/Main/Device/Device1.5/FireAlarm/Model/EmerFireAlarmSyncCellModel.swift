@@ -620,7 +620,7 @@ extension ProfileType {
             return node.lightControlSnapshotSceneExecuteData != nil && node.lightControlSnapshotSceneExecuteData?.sceneNumber == sceneNumber
         case .lightControlSwitch, .daylightSensorConditionRecall:
             return true
-        case .lightControlStore(let sceneNumber):
+        case .lightControlStore(let sceneNumber, _):
             return node.lightControlSceneExecuteDatas.contains(where: { $0.sceneNumber == sceneNumber })
         case .lightControlRestore:
             return true

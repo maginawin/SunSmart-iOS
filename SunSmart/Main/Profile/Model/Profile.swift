@@ -376,6 +376,24 @@ class Profile: Copyable {
         
     }
     
+    static let defaultGroupProfileLowEndTrim = 1
+    
+    static func defaultGroupProfiles() -> [Profile] {
+        return ProfileType.defaultGroupProfileTypes.map { Profile.defaultGroupProfile(type: $0) }
+    }
+    
+    static func defaultGroupProfile(type: ProfileType) -> Profile {
+        let profile = Profile(type: type)
+        profile.applyDefaultGroupProfileLowEndTrim()
+        return profile
+    }
+    
+    private func applyDefaultGroupProfileLowEndTrim() {
+        scenes.forEach { scene in
+            scene.lightControlData.lowEndTrim = Profile.defaultGroupProfileLowEndTrim
+        }
+    }
+    
     /// 灯光控制场景
     class LightControlScene: Copyable, Codable, Equatable {
         /// 场景id
@@ -494,6 +512,16 @@ class Profile: Copyable {
     
     /// 类型
     enum ProfileType {
+        static let defaultGroupProfileTypes: [ProfileType] = [
+            .occupancy_daylight,
+            .vacancy_daylight,
+            .occupancy,
+            .vacancy,
+            .daylight,
+            .manualControl,
+            .proximityLighting,
+            .proximityLightingWithPhotocell
+        ]
         
         var rawValue: Int {
             switch self {

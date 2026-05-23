@@ -453,9 +453,9 @@ extension ProfileType {
             if let controlSceneSetupModel = node.lightLCSceneSetupModel {
                 messageHandles.append(MeshMessageHandle(message: SceneStore(sceneNumber), model: controlSceneSetupModel))
             }
-        case .lightControlStore(let sceneNumber):
+        case .lightControlStore(let sceneNumber, let turnOffBeforeStore):
             if let controlSceneSetupModel = node.lightLCSceneSetupModel {
-                if let lightLCModel = node.lightLCModel {
+                if turnOffBeforeStore, let lightLCModel = node.lightLCModel {
                     messageHandles.append(MeshMessageHandle(message: LightLCLightOnOffSet(false), model: lightLCModel))
                 }
                 messageHandles.append(MeshMessageHandle(message: SceneStore(sceneNumber), model: controlSceneSetupModel))

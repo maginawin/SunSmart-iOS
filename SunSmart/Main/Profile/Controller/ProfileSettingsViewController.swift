@@ -58,16 +58,7 @@ class ProfileSettingsViewController: UIViewController, KeyboardScrollable {
     private let contentMargin: CGFloat = isIPad ? SCRXFrom(20) : SCRXFrom(16)
     
     /// 配置数据
-    private var profiles: [Profile] = [
-        .init(type: .occupancy_daylight),
-        .init(type: .vacancy_daylight),
-        .init(type: .occupancy),
-        .init(type: .vacancy),
-        .init(type: .daylight),
-        .init(type: .manualControl),
-        .init(type: .proximityLighting),
-        .init(type: .proximityLightingWithPhotocell)
-    ]
+    private var profiles: [Profile] = Profile.defaultGroupProfiles()
     /// 选择的配置数据
     private var selectProfile: Profile!
     /// 初始的配置数据（判断是否编辑）

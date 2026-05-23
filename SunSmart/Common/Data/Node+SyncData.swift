@@ -176,7 +176,7 @@ enum ProfileType {
     /// 切换灯光控制数据场景（profile SceneA => SceneB）
     case lightControlSwitch(sceneNumber: SceneNumber)
     /// 灯光数据缓存到场景
-    case lightControlStore(sceneNumber: SceneNumber)
+    case lightControlStore(sceneNumber: SceneNumber, turnOffBeforeStore: Bool = false)
     /// 当前灯光控制数据恢复
     case lightControlRestore(sceneNumber: SceneNumber = .snapshotScene)
     /// 删除灯光控制场景

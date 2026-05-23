@@ -38,16 +38,7 @@ class GroupAddViewController: UIViewController {
     /// 传入组则编辑
     var group: Group?
     /// 配置数据
-    private var profiles: [Profile] = [
-        .init(type: .occupancy_daylight),
-        .init(type: .vacancy_daylight),
-        .init(type: .occupancy),
-        .init(type: .vacancy),
-        .init(type: .daylight),
-        .init(type: .manualControl),
-        .init(type: .proximityLighting),
-        .init(type: .proximityLightingWithPhotocell)
-    ]
+    private var profiles: [Profile] = Profile.defaultGroupProfiles()
     private var selectProfile: Profile!
     /// 创建完成回调
     var addFinishedCallback: ((Group)->Void)?
