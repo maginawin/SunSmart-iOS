@@ -604,6 +604,8 @@ class DeviceRestoreViewController: UIViewController {
             if let ctlModel = newNode.ctlModel, newNode.temperatureModel != nil {
                 appendMessages.insert(MeshMessageHandle(message: LightCTLTemperatureRangeGet(), model: ctlModel), at: 0)
                 newNode.lightCTLTemperatureRange = oldNode.lightCTLTemperatureRange
+                newNode.changeControlPage = oldNode.changeControlPage
+                newNode.absoluteCctRange = oldNode.absoluteCctRange
             }
             // 节点数据hash
 //            if let vendorModel = newNode.sunricherVendorModel {

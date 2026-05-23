@@ -529,8 +529,9 @@ class GroupViewController: UIViewController {
         let data = group.info.profile.lightControlData
         lightnessSlider.slider.limitRange = data.lowEndTrim...data.highEndTrim
         lightnessSlider.value = Node.getLightness100(lightness: group.lightness)
-        if group.nodes.contains(where: {$0.temperatureModel != nil }) {
-            cctSlider.value = group.cct
+        if group.effectiveSupportCct {
+            cctSlider.updateCctRange(group.effectiveCctRange)
+            cctSlider.value = Int(group.clampEffectiveCct(UInt16(group.cct)))
             cctSlider.isHidden = false
         }else {
             cctSlider.isHidden = true
@@ -876,10 +877,11 @@ class GroupViewController: UIViewController {
             guard !self.showEmergencyControlBlockedIfNeeded() else {
                 return
             }
-            self.group.cct = value
-            MeshAPI.setGroupColorTemperatureState(address: self.group.address.address, temperature: UInt16(value))
-            group.nodes.forEach({
-                $0.temperature = UInt16(value)
+            let temperature = self.group.clampEffectiveCct(UInt16(value))
+            self.group.cct = Int(temperature)
+            MeshAPI.setGroupColorTemperatureState(address: self.group.address.address, temperature: temperature)
+            group.nodes.filter({ $0.effectiveSupportCct }).forEach({
+                $0.temperature = $0.clampEffectiveCct(temperature)
 //                self.reloadCollectionItem(node: $0)
             })
             if ended {
@@ -1045,11 +1047,6 @@ class GroupViewController: UIViewController {
         refreshAutoState()
         
         MeshNodeHeartbeatManager.shared.refresh(nodes: group.nodes)
-//        MeshAPI.sendMessage(message: LightLightnessGet(), address: group.address.address)
-//        
-//        if group.nodes.contains(where: { $0.temperatureModel != nil }) {
-//            MeshAPI.sendMessage(message: LightCTLGet(), address: group.address.address)
-//        }
         
     }
     
@@ -1218,7 +1215,8 @@ class GroupViewController: UIViewController {
             make.height.equalTo(SCRYFrom(76))
         }
         
-        cctSlider = BuoySliderView(frame: .zero, functionType: .cct())
+        let cctRange = group.effectiveCctRange
+        cctSlider = BuoySliderView(frame: .zero, functionType: .cct(min: Int(cctRange.lowerBound), max: Int(cctRange.upperBound)))
         cctSlider.slider.interval = 0.5
         cctSlider.slider.step = 10
 //        Node.getTemperature100(temperature: UInt16(group.cct))

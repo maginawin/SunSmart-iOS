@@ -507,6 +507,12 @@ class SyncDevicesViewController: UIViewController {
                                 let step = SyncDeviceStepModel(type: "power_calibrate".localizedString, state: .none, tasks: [taskModel])
                                 taskModel.parentStepModel = step
                                 steps.append(step)
+                            case .absoluteCctRange(let range):
+                                let taskModel = SyncDeviceStepTaskModel(name: "absolute_cct_range".localizedString, operationType: .configuration(node: node, type: .deviceParameters(parameterType: .absoluteCctRange(range: range))))
+
+                                let step = SyncDeviceStepModel(type: "absolute_cct_range".localizedString, state: .none, tasks: [taskModel])
+                                taskModel.parentStepModel = step
+                                steps.append(step)
                             }
                         }
                         
@@ -1333,6 +1339,9 @@ class SyncDevicesViewController: UIViewController {
                         tasks.append(taskModel)
                     case .powerCalibration(let calibrationValue):
                         let taskModel = SyncDeviceStepTaskModel(name: "power_calibrate".localizedString, operationType: .configuration(node: node, type: .deviceParameters(parameterType: .powerCalibration(calibrationValue: calibrationValue))))
+                        tasks.append(taskModel)
+                    case .absoluteCctRange(let range):
+                        let taskModel = SyncDeviceStepTaskModel(name: "absolute_cct_range".localizedString, operationType: .configuration(node: node, type: .deviceParameters(parameterType: .absoluteCctRange(range: range))))
                         tasks.append(taskModel)
                     }
                 }

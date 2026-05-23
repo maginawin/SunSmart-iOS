@@ -109,8 +109,9 @@ enum DeviceOperationType {
                 guard let sceneData = sceneData, let nodeScene = node.sceneExecuteDatas.first(where: { $0.sceneNumber == sceneId }) else {
                     return false
                 }
-                guard nodeScene == sceneData else {
-                    print("scene\(sceneData.sceneNumber) target: lightness \(sceneData.lightness) cct \(sceneData.cct)")
+                guard nodeScene.isSynced(with: sceneData, for: node) else {
+                    let target = sceneData.deviceTarget(for: node)
+                    print("scene\(sceneData.sceneNumber) target: lightness \(target.lightness) cct \(target.cct)")
                     print("scene\(nodeScene.sceneNumber) real: lightness \(nodeScene.lightness) cct \(nodeScene.cct)")
                     return false
                 }
@@ -652,6 +653,8 @@ extension DeviceParameterType {
             return node.defaultTransitionTime?.rawValue == transitionTime.rawValue
         case .powerCalibration(let calibrationValue):
             return node.calibrationRatedPower == calibrationValue
+        case .absoluteCctRange(let range):
+            return node.absoluteCctRange == range
         }
     }
     

@@ -87,6 +87,10 @@ class ProfileSettingsViewController: UIViewController, KeyboardScrollable {
     var keyboardScrollView: UIScrollView {
         return self.scrollView
     }
+
+    private var effectiveCctRange: ClosedRange<UInt16> {
+        group?.effectiveCctRange ?? NodeAbsoluteCctRange.defaultRange
+    }
     
     
     init(group: Group? = nil, profile: Profile) {
@@ -255,6 +259,7 @@ class ProfileSettingsViewController: UIViewController, KeyboardScrollable {
             }
             return ProfileSensorProtectionContext(group: group, previousProfile: previousProfile, savedProfile: selectProfile)
         }
+        selectProfile.powerUpCct = min(effectiveCctRange.upperBound, max(effectiveCctRange.lowerBound, selectProfile.powerUpCct))
         
         saveActionCallback?(selectProfile)
      
@@ -541,6 +546,7 @@ class ProfileSettingsViewController: UIViewController, KeyboardScrollable {
         
         let data = self.selectProfile.lightControlData
         self.powerUpBehaviorView.lightnessSliderView.slider.limitRange = data.lowEndTrim...data.highEndTrim
+        self.powerUpBehaviorView.cctRange = effectiveCctRange
         self.powerUpBehaviorView.powerState = self.selectProfile.powerUpState
         self.powerUpBehaviorView.powerOnCct = self.selectProfile.powerUpCct
         
@@ -1145,7 +1151,7 @@ extension ProfileSettingsViewController: ProfilePowerUpBehaviorViewDelegate {
     func view(_ view: ProfilePowerUpBehaviorView, powerStateChanged state: Profile.PowerUpState, powerOnCct: UInt16?) {
         selectProfile.powerUpState = state
         if let cct = powerOnCct {
-            selectProfile.powerUpCct = cct
+            selectProfile.powerUpCct = min(effectiveCctRange.upperBound, max(effectiveCctRange.lowerBound, cct))
         }
     }
     

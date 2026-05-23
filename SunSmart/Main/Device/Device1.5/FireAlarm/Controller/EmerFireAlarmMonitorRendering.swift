@@ -354,17 +354,17 @@ extension EmerFireAlarmMonitorVC {
         case .offline:
             statusWarningView.config(statusLab: "device_offline".localizedString, textColor: Title_Color)
         case .disabled:
-            statusWarningView.config(statusLab: "Normal State".localizedString, textColor: Title_Color, underlined: false)
+            statusWarningView.config(statusLab: "Normal State".localizedString, textColor: Title_Color)
         case .emergencyTriggered:
             statusWarningView.config(statusLab: "Power Outage Emergency".localizedString, textColor: RGB(237, 154, 0))
         case .emergencyNormal:
-            statusWarningView.config(statusLab: "Normal State".localizedString, textColor: Title_Color, underlined: false)
+            statusWarningView.config(statusLab: "Normal State".localizedString, textColor: Title_Color)
         case .emergencyResuming:
             statusWarningView.config(statusLab: "Resuming".localizedString, textColor: RGB(164, 224, 89))
         case .fireTriggered:
             statusWarningView.config(statusLab: "Fire Alarm Emergency".localizedString, textColor: RGB(255, 72, 49))
         case .fireNormal:
-            statusWarningView.config(statusLab: "Normal State".localizedString, textColor: Title_Color, underlined: false)
+            statusWarningView.config(statusLab: "Normal State".localizedString, textColor: Title_Color)
         case .fireResuming:
             statusWarningView.config(statusLab: "Resuming".localizedString, textColor: RGB(164, 224, 89))
         }
@@ -383,7 +383,7 @@ extension EmerFireAlarmMonitorVC {
         updateStatusSetRows(for: .disabled)
         updateStatusWarningIconVisibility()
         configureActions()
-        statusWarningView.config(statusLab: "Unlinked".localizedString, textColor: Title_Color, underlined: false)
+        statusWarningView.config(statusLab: "Unlinked".localizedString, textColor: Title_Color)
     }
 
     func updateStatusSetRows(for state: EmerFireAlarmMonitorDisplayState) {

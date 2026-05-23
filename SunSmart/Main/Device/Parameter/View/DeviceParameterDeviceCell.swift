@@ -85,6 +85,8 @@ class DeviceParameterDeviceCell: UITableViewCell {
     private var ratedPowerRowView: DeviceParameterStatusRowView!
     private var sensitivityRowView: DeviceParameterStatusRowView!
     private var transitionTimeRowView: DeviceParameterStatusRowView!
+    private var changeControlPageRowView: DeviceParameterStatusRowView!
+    private var absoluteCctRangeRowView: DeviceParameterStatusRowView!
     
     weak var delegate: DeviceParameterDeviceCellDelegate?
     
@@ -183,6 +185,9 @@ class DeviceParameterDeviceCell: UITableViewCell {
         } else {
             normalTransitionTimeText = "\("transition_time".localizedString): --"
         }
+
+        let changeControlPageText = "\("change_control_page".localizedString): \(device.tempChangeControlPage == .singleWhite ? "single_white".localizedString : "tunable_white".localizedString)"
+        let absoluteCctRangeText = "\("absolute_cct_range".localizedString): \(device.tempAbsoluteCctRange.lowerBound)K~\(device.tempAbsoluteCctRange.upperBound)K"
         
         let items: [ParameterDisplayItem] = [
             ParameterDisplayItem(
@@ -208,6 +213,18 @@ class DeviceParameterDeviceCell: UITableViewCell {
                 isSupported: device.supportDefaultTransitionTime,
                 rowView: transitionTimeRowView,
                 normalText: normalTransitionTimeText
+            ),
+            ParameterDisplayItem(
+                type: .changeControlPage,
+                isSupported: device.rawSupportCct,
+                rowView: changeControlPageRowView,
+                normalText: changeControlPageText
+            ),
+            ParameterDisplayItem(
+                type: .absoluteCctRange,
+                isSupported: device.rawSupportCct,
+                rowView: absoluteCctRangeRowView,
+                normalText: absoluteCctRangeText
             )
         ]
         
@@ -321,10 +338,14 @@ class DeviceParameterDeviceCell: UITableViewCell {
         ratedPowerRowView = DeviceParameterStatusRowView(numberOfLines: 2)
         sensitivityRowView = DeviceParameterStatusRowView()
         transitionTimeRowView = DeviceParameterStatusRowView()
+        changeControlPageRowView = DeviceParameterStatusRowView()
+        absoluteCctRangeRowView = DeviceParameterStatusRowView()
         parameterStackView.addArrangedSubview(pwmRowView)
         parameterStackView.addArrangedSubview(ratedPowerRowView)
         parameterStackView.addArrangedSubview(sensitivityRowView)
         parameterStackView.addArrangedSubview(transitionTimeRowView)
+        parameterStackView.addArrangedSubview(changeControlPageRowView)
+        parameterStackView.addArrangedSubview(absoluteCctRangeRowView)
         
         pwmLabel = pwmRowView.textLabel
         pwmFailedImageView = pwmRowView.failedImageView

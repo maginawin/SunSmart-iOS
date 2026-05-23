@@ -125,12 +125,7 @@ class GroupMembersViewController: UIViewController {
     }
 
     private func isVisibleGroupMemberNode(_ node: Node) -> Bool {
-        switch node.deviceType {
-        case .gateway, .emergencyController:
-            return false
-        default:
-            return true
-        }
+        return node.deviceType == .light
     }
     
     override func viewDidAppear(_ animated: Bool) {

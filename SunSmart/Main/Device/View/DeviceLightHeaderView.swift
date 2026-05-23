@@ -38,9 +38,10 @@ class DeviceLightHeaderView: UIView {
                 let alpha = CGFloat(lightness100) / 100.0
                 lightBgView.alpha = max(alpha, 0.1)
                 brightnessBtn.setTitle("| \(lightness100)%", for: .normal)
-                if node.temperatureModel != nil {
-                    bgImage = bgImage?.withTintColor(Node.getCctMixColor(temperature100: node.temperature100))
-                    if node.temperature100 >= 45 && node.temperature100 <= 58 {
+                if node.effectiveSupportCct {
+                    let temperature100 = node.getEffectiveTemperature100(temperature: node.temperature)
+                    bgImage = bgImage?.withTintColor(Node.getCctMixColor(temperature100: temperature100))
+                    if temperature100 >= 45 && temperature100 <= 58 {
                         garyBgAlpha = 1
                     }
                 }
@@ -52,9 +53,9 @@ class DeviceLightHeaderView: UIView {
             
             lightBgView.image = bgImage
             rssiBtn.setTitle(node.rssi != nil ? "| \(node.rssi!)dB" : "--", for: .normal)
-            if node.temperatureModel != nil {
+            if node.effectiveSupportCct {
                 cctBtn.isHidden = false
-                cctBtn.setTitle("| \(node.temperature100)%", for: .normal)
+                cctBtn.setTitle("| \(node.getEffectiveTemperature100(temperature: node.temperature))%", for: .normal)
             }else {
                 cctBtn.isHidden = true
             }

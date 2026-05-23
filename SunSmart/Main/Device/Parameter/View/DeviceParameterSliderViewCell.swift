@@ -127,11 +127,11 @@ class DeviceParameterSliderViewCell: UITableViewCell {
             make.bottom.equalTo(SCRYFrom(-16))
         }
         
-        titleLabel = UILabel(text: "absolute_sensitivity".localizedString + ":", textColor: ImportantText_Color, fontSize: 14)
+        titleLabel = UILabel(text: "absolute_sensitivity".localizedString + ":", textColor: TextBlack_Color, fontSize: 14)
         containerView.addSubview(titleLabel)
         titleLabel.snp.makeConstraints { make in
             make.left.equalTo(SCRXFrom(16))
-            make.top.equalTo(SCRYFrom(24)).priority(.high)
+            make.top.equalTo(SCRYFrom(16)).priority(.high)
         }
         
         enableSwitch = UISwitch()

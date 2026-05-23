@@ -237,6 +237,13 @@ extension SpaceData {
                         nodeDict.updateValue(range.lowerBound, forKey: "lightCTLTemperatureRangeMin")
                         nodeDict.updateValue(range.upperBound, forKey: "lightCTLTemperatureRangeMax")
                     }
+                    if let changeControlPage = node.changeControlPage {
+                        nodeDict.updateValue(changeControlPage.rawValue, forKey: "changeControlPage")
+                    }
+                    if let range = node.absoluteCctRange {
+                        nodeDict.updateValue(range.lowerBound, forKey: "absoluteCctRangeMin")
+                        nodeDict.updateValue(range.upperBound, forKey: "absoluteCctRangeMax")
+                    }
                     if let state = node.powerUpState {
                         nodeDict.updateValue(state.rawValue, forKey: "powerUpState")
                     }
@@ -653,6 +660,13 @@ extension Node {
             if self.ctlModel != nil, let range = self.lightCTLTemperatureRange {
                 nodeDict.updateValue(range.lowerBound, forKey: "lightCTLTemperatureRangeMin")
                 nodeDict.updateValue(range.upperBound, forKey: "lightCTLTemperatureRangeMax")
+            }
+            if let changeControlPage = self.changeControlPage {
+                nodeDict.updateValue(changeControlPage.rawValue, forKey: "changeControlPage")
+            }
+            if let range = self.absoluteCctRange {
+                nodeDict.updateValue(range.lowerBound, forKey: "absoluteCctRangeMin")
+                nodeDict.updateValue(range.upperBound, forKey: "absoluteCctRangeMax")
             }
             if let state = self.powerUpState {
                 nodeDict.updateValue(state.rawValue, forKey: "powerUpState")

@@ -958,7 +958,7 @@ extension Group {
                     return 4500
                 }
                 // 计算频率最高值 出现次数>1
-                let ccts = self.nodes.filter({ $0.temperatureModel != nil && $0.state }).map({ $0.temperature })
+                let ccts = self.nodes.filter({ $0.effectiveSupportCct && $0.state }).map({ $0.temperature })
                 var cctDatas: [UInt16: Int] = [:]
                 ccts.forEach { cct in
                     if cctDatas.keys.contains(cct) {
@@ -1001,7 +1001,27 @@ extension Group {
     
     /// 是否支持色温
     var supportCct: Bool {
-        return nodes.contains(where: { $0.temperatureModel != nil })
+        return effectiveSupportCct
+    }
+
+    /// 是否有效支持色温
+    var effectiveSupportCct: Bool {
+        return nodes.contains(where: { $0.effectiveSupportCct })
+    }
+
+    /// 有效色温范围，组内 CCT 设备取并集
+    var effectiveCctRange: ClosedRange<UInt16> {
+        let ranges = nodes.filter({ $0.effectiveSupportCct }).map({ $0.effectiveCctRange })
+        guard let first = ranges.first else {
+            return NodeAbsoluteCctRange.defaultRange
+        }
+        return ranges.reduce(first) { result, range in
+            min(result.lowerBound, range.lowerBound)...max(result.upperBound, range.upperBound)
+        }
+    }
+
+    func clampEffectiveCct(_ value: UInt16) -> UInt16 {
+        min(effectiveCctRange.upperBound, max(effectiveCctRange.lowerBound, value))
     }
     
     /// 是否需要同步
@@ -1118,7 +1138,7 @@ extension Group {
                     return false
                 }
                 if let nodeSceneData = $0.sceneExecuteDatas.first(where: { $0.sceneNumber == scene.number }) {
-                    return !(nodeSceneData == sceneData)
+                    return !nodeSceneData.isSynced(with: sceneData, for: $0)
                 }
                 return true
             })
@@ -1326,6 +1346,38 @@ extension SceneExecuteData {
     
     /// 场景执行数据色温范围
     static let cctRange: ClosedRange<UInt16> = 2700...6500
+
+    /// 当前场景数据应用到指定设备时的目标值。
+    /// 支持 CCT 的设备按自身有效色温范围夹紧；不支持 CCT 的设备跳过色温项。
+    func deviceTarget(for node: Node) -> SceneExecuteData {
+        let data = SceneExecuteData(
+            sceneNumber: sceneNumber,
+            isOn: isOn,
+            lightness: lightness,
+            cct: node.effectiveSupportCct ? node.clampEffectiveCct(cct) : cct,
+            lightControlData: lightControlData
+        )
+        data.hue = hue
+        data.saturation = saturation
+        data.state = state
+        return data
+    }
+
+    /// 判断设备缓存的场景数据是否已达到组场景在该设备上的实际目标。
+    /// 不支持 CCT 的设备只比较场景、开关、亮度和状态，不让 CCT 字段影响同步结果。
+    func isSynced(with groupSceneData: SceneExecuteData, for node: Node) -> Bool {
+        let target = groupSceneData.deviceTarget(for: node)
+        guard sceneNumber == target.sceneNumber,
+              isOn == target.isOn,
+              lightness == target.lightness,
+              state == target.state else {
+            return false
+        }
+        guard node.effectiveSupportCct else {
+            return true
+        }
+        return cct == target.cct
+    }
     
 //    convenience init(lightness: UInt16, cct: UInt16, state: SceneExecuteData.State = .normal) {
 //        
@@ -1881,6 +1933,9 @@ extension Node {
         guard self.sunricherVendorModel != nil, let pid = self.productIdentifier, self.lightnessModel != nil else {
             return false
         }
+        if companyIdentifier == 0x0A78 && (pid == 0x2013 || pid == 0x24B1) {
+            return false
+        }
         switch pid {
         case 0x0031, 0x0041, 0x0302, 0x0303, 0x1031, 0x1041, 0x1302, 0x1303, 0x2302, 0x2303, 0x2801, 0x2802: // 单独传感器等设备不支持pwm调节
             return false
@@ -2252,6 +2307,9 @@ extension Node {
         if let mac = macAddress {
             GatewayModel.delete(siteId: meshNetwork.uuid.uuidString, macAddress: mac)
         }
+        changeControlPage = nil
+        absoluteCctRange = nil
+        savePropertys()
     }
     
     /// 删除组内的场景缓存
@@ -2393,7 +2451,7 @@ extension Node {
                 var lightness = self.lightness
                 // 不支持cct，使用group预配置的cct值
                 let groupSceneData = self.group?.info.sceneExecuteDatas.first(where: { $0.sceneNumber == sceneId })
-                if self.temperatureModel == nil, let groupCct = groupSceneData?.cct {
+                if !self.effectiveSupportCct, let groupCct = groupSceneData?.cct {
                     cct = groupCct
                 }
                 if let groupSceneExecuteData = groupSceneData {
@@ -2403,7 +2461,7 @@ extension Node {
                     }
                 }
                 
-                let sceneData = SceneExecuteData(sceneNumber: sceneId, isOn: lightness > 0, lightness: lightness, cct: cct)
+                let sceneData = SceneExecuteData(sceneNumber: sceneId, isOn: lightness > 0, lightness: lightness, cct: clampEffectiveCct(cct))
     //            let sceneData = self.sceneExecuteDatas.first(where: { $0.sceneNumber == sceneId })
                 if let sceneIndex = self.sceneExecuteDatas.firstIndex(where: { $0.sceneNumber == sceneId }) {
                     self.sceneExecuteDatas.replaceSubrange(sceneIndex...sceneIndex, with: [sceneData])
@@ -2546,11 +2604,22 @@ extension Node {
                         $0.nodes.forEach({ node in
                             node.isOn = lightness > 0
                             node.lightness = lightness
-                            node.temperature = UInt16(sceneData.cct)
+                            if node.effectiveSupportCct {
+                                node.temperature = node.clampEffectiveCct(UInt16(sceneData.cct))
+                            }
                         })
                     }
                 })
             }
+        case is LightCTLTemperatureRangeSet:
+            guard isSuccess else {
+                return
+            }
+            let message = message as! LightCTLTemperatureRangeSet
+            absoluteCctRange = message.range
+            lightCTLTemperatureRange = message.range
+            temperature = clampEffectiveCct(temperature)
+            savePropertys()
         case is SunricherVendorSet: // 设置自定义消息
             if let vendorMessage = message as? SunricherVendorSet {
                 switch vendorMessage.function {

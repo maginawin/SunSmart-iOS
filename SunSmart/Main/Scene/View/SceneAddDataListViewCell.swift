@@ -28,6 +28,7 @@ class SceneAddDataListViewCell: UICollectionViewCell {
     var selectIndex: Int?
     /// 最大数量
     var maxCount = 16
+    var cctRange: ClosedRange<UInt16> = NodeAbsoluteCctRange.defaultRange
     
     private var itemRowCount: Int = isIPad ? 7 : 4
     
@@ -105,6 +106,7 @@ extension SceneAddDataListViewCell: UICollectionViewDataSource, UICollectionView
             return addCell
         }else { // data
             let cell = collectionView.dequeueReusableCell(withReuseIdentifier: "cell", for: indexPath) as! SceneAddDataViewCell
+            cell.cctRange = cctRange
             cell.sceneData = sceneDatas[indexPath.item]
             if selectIndex == indexPath.item {
                 cell.layer.borderColor = Bar_Color.cgColor
@@ -141,6 +143,7 @@ class SceneAddDataViewCell: UICollectionViewCell {
     var lightnessLabel: UILabel!
     var cctLabel: UILabel!
     var innerRaceView: UIView!
+    var cctRange: ClosedRange<UInt16> = NodeAbsoluteCctRange.defaultRange
     
     
     var sceneData: ExecuteSceneData! {
@@ -153,7 +156,7 @@ class SceneAddDataViewCell: UICollectionViewCell {
                 cctLabel.isHidden = false
                 cctLabel.text = "\(sceneData.cct)K"
 //                1900 + 2700
-                let temperature100 = Node.getTemperature100(temperature: UInt16(sceneData.cct), range: SceneExecuteData.cctRange)
+                let temperature100 = Node.getTemperature100(temperature: UInt16(sceneData.cct), range: cctRange)
                 let color = Node.getCctMixColor(temperature100: Int(temperature100))
                 backgroundColor = color
                 

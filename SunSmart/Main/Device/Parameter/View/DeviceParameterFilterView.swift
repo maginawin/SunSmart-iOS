@@ -20,6 +20,10 @@ class ParameterFilterData {
                 return ("absolute_sensitivity", "absolute_sensitivity".localizedString)
             case .transitionTime:
                 return ("transition_time", "transition_time".localizedString)
+            case .changeControlPage:
+                return ("absolute_sensitivity", "change_control_page".localizedString)
+            case .absoluteCctRange:
+                return ("absolute_sensitivity", "absolute_cct_range".localizedString)
             }
         }
         
@@ -27,6 +31,8 @@ class ParameterFilterData {
         case ratedPower
         case absoluteSensitivity
         case transitionTime
+        case changeControlPage
+        case absoluteCctRange
     }
     
     /// 参数类型

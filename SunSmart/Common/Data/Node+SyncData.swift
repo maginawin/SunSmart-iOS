@@ -209,6 +209,8 @@ enum DeviceParameterType {
             return 4
         case .powerCalibration:
             return 5
+        case .absoluteCctRange:
+            return 6
         }
     }
     
@@ -238,6 +240,10 @@ enum DeviceParameterType {
             if let vendorModel = node.sunricherVendorModel {
                 messageHandles.append(MeshMessageHandle(message: SunricherVendorSet(function: .dimmerPowerCalibrate(calibrationValue: calibrationValue)), model: vendorModel))
             }
+        case .absoluteCctRange(let range):
+            if let ctlModel = node.ctlModel, node.rawSupportCct {
+                messageHandles.append(MeshMessageHandle(message: LightCTLTemperatureRangeSet(range), model: ctlModel))
+            }
         }
         return messageHandles
     }
@@ -252,6 +258,8 @@ enum DeviceParameterType {
     case defaultTransitionTime(transitionTime: TransitionTime)
     /// 功率校准
     case powerCalibration(calibrationValue: UInt32)
+    /// 绝对色温范围
+    case absoluteCctRange(range: ClosedRange<UInt16>)
 }
 
 enum DeviceReadParameterType {
@@ -1288,8 +1296,14 @@ extension Node {
         scenes.forEach { data in
             if let scene = MeshNetworkManager.instance.scenes.first(where: { $0.number == data.sceneNumber }) {
                 let sceneData = self.sceneExecuteDatas.first(where: { $0.sceneNumber == data.sceneNumber })
-                if data.state == .normal, sceneData == nil || !(sceneData! == data) {
-                    syncSceneData.append((scene, data))
+                if data.state == .normal {
+                    guard let sceneData = sceneData else {
+                        syncSceneData.append((scene, data))
+                        return
+                    }
+                    if !sceneData.isSynced(with: data, for: self) {
+                        syncSceneData.append((scene, data))
+                    }
                 }
             }
         }

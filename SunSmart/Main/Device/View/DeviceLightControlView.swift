@@ -143,6 +143,10 @@ class DeviceLightControlView: UIView {
             self.delegate?.lightControlDidHide(self)
         }
     }
+
+    func updateCctRange(_ range: ClosedRange<UInt16>) {
+        cctSliderView.updateCctRange(range)
+    }
     
     /// 更新Auto状态
     func updateAutoStateUI(autoState: AutoButtonState) {
