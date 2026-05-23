@@ -71,10 +71,12 @@ extension PJEightKeySwitchSelectPanelController: UITableViewDataSource, UITableV
 
     func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
         let type = viewModel.panelTypes[indexPath.section]
-        guard type != viewModel.selectedPanelType else { return }
-        viewModel.selectedPanelType = type
-        tableView.reloadData()
-        selectPanelTypeCallback?(type)
+        if type != viewModel.selectedPanelType {
+            viewModel.selectedPanelType = type
+            tableView.reloadData()
+            selectPanelTypeCallback?(type)
+        }
+        navigationController?.popViewController(animated: true)
     }
 
     func tableView(_ tableView: UITableView, viewForHeaderInSection section: Int) -> UIView? {

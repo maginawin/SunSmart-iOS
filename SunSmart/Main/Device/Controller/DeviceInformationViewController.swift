@@ -10,6 +10,11 @@ import NordicSigMeshSDK
 
 class DeviceInformationViewController: UIViewController {
 
+    private enum DeviceInfoDisplayMode {
+        case standard
+        case full
+    }
+
     private var tableView: UITableView!
     
     private var sections: [SectionType] = [.deviceInfo, .group, .scene]
@@ -19,11 +24,22 @@ class DeviceInformationViewController: UIViewController {
     let node: Node
     private let emptyGroupText: String
     private let groupTextOverride: String?
+    private let sceneTextOverride: String?
+    private let deviceInfoDisplayMode: DeviceInfoDisplayMode
     
-    init(node: Node, emptyGroupText: String? = nil, showsSceneSection: Bool = true, groupTextOverride: String? = nil) {
+    init(
+        node: Node,
+        emptyGroupText: String? = nil,
+        showsSceneSection: Bool = true,
+        groupTextOverride: String? = nil,
+        sceneTextOverride: String? = nil,
+        showsFullDeviceInfo: Bool = false
+    ) {
         self.node = node
         self.emptyGroupText = emptyGroupText ?? "device_not_added_group".localizedString
         self.groupTextOverride = groupTextOverride
+        self.sceneTextOverride = sceneTextOverride
+        self.deviceInfoDisplayMode = showsFullDeviceInfo ? .full : .standard
         self.sections = showsSceneSection ? [.deviceInfo, .group, .scene] : [.deviceInfo, .group]
         super.init(nibName: nil, bundle: nil)
     }
@@ -103,8 +119,6 @@ class DeviceInformationViewController: UIViewController {
     
     /// 设备数据
     private func setupDeviceInfoDataSource() {
-        
-//        let messageColor = RGB(13, 14, 28, 0.5)
         var name = node.name ?? ""
         if let group = node.group, SpaceViewController.currentSpace()?.displayDeviceNamePrefix ?? false {
             name = "\(group.name)-\(name)"
@@ -113,11 +127,15 @@ class DeviceInformationViewController: UIViewController {
         
         let macModel = CustomCellModel(icon: UIImage(named: "copy"), title: "MAC", content: node.macAddressResult, style: .icon)
         
-        //PID新增V1.5
         let pidContent = node.productIdentifier.map { "0x\($0.hex)" } ?? "--"
         let pidModel = CustomCellModel(title: "PID".localizedString, content: pidContent, style: .none)
         
+        let addressModel = CustomCellModel(title: "address".localizedString, content: "\(node.primaryUnicastAddress)", style: .none)
+        
+        let vidModel = CustomCellModel(title: "Version Identifier", content: node.versionIdentifier != nil ? "\(node.versionIdentifier!)" : "--", style: .none)
+        
         let devModel = CustomCellModel(title: "model".localizedString, content: node.modelName ?? "--", style: .none)
+        
         let typeName = node.categoryName
         let deviceTypeModel = CustomCellModel(title: "device_type".localizedString, content: typeName ?? "--", style: .none)
         
@@ -125,16 +143,16 @@ class DeviceInformationViewController: UIViewController {
         
         let singleStrengthModel = CustomCellModel(title: "signal_strength".localizedString, content: node.rssi != nil ? "\(node.rssi!)dB" : "--", style: .none)
         
+        switch deviceInfoDisplayMode {
+        case .full:
+            deviceInfoModels = [nameModel, macModel, pidModel, addressModel, vidModel, devModel, deviceTypeModel, firmwareModel, singleStrengthModel]
+        case .standard:
         #if DEBUG
-        
-        let addressModel = CustomCellModel(title: "address".localizedString, content: "\(node.primaryUnicastAddress)", style: .none)
-        
-        let vidModel = CustomCellModel(title: "Version Identifier", content: node.versionIdentifier != nil ? "\(node.versionIdentifier!)" : "--", style: .none)
-        
-        deviceInfoModels = [nameModel, macModel,pidModel, addressModel, vidModel, devModel, deviceTypeModel, firmwareModel, singleStrengthModel]
+            deviceInfoModels = [nameModel, macModel, pidModel, addressModel, vidModel, devModel, deviceTypeModel, firmwareModel, singleStrengthModel]
         #else
-        deviceInfoModels = [nameModel, macModel, devModel, deviceTypeModel, firmwareModel, singleStrengthModel]
+            deviceInfoModels = [nameModel, macModel, devModel, deviceTypeModel, firmwareModel, singleStrengthModel]
         #endif
+        }
         
     }
     
@@ -171,6 +189,9 @@ extension DeviceInformationViewController: UITableViewDataSource, UITableViewDel
             let isShow = sectionShowMap[sectionType] ?? false
             return isShow ? deviceInfoModels.count : 0
         case .scene:
+            guard sceneTextOverride == nil else {
+                return 0
+            }
             let sceneCount = node.scenes.count
             let isShow = sectionShowMap[sectionType] ?? false
             return (isShow && sceneCount > 0) ? sceneCount : 0
@@ -196,7 +217,10 @@ extension DeviceInformationViewController: UITableViewDataSource, UITableViewDel
             headerView.contentLabel.text = groupTextOverride ?? node.group?.name ?? emptyGroupText
         case .scene:
             headerView.titleLabel.text = "scene".localizedString
-            if node.scenes.count > 0 {
+            if let sceneTextOverride {
+                headerView.contentLabel.isHidden = false
+                headerView.contentLabel.text = sceneTextOverride
+            } else if node.scenes.count > 0 {
                 headerView.showImageView.isHidden = false
                 let isShow = sectionShowMap[sectionType] ?? false
                 headerView.showImageView.image = UIImage(named: isShow ? "arrow_up": "arrow_down")
@@ -261,6 +285,9 @@ extension DeviceInformationViewController: UITableViewDataSource, UITableViewDel
 //            cell.lineView.isHidden = indexPath.row != deviceInfoModels.count - 1
             //                tableView.numberOfRows(inSection: indexPath.section) - 1 != indexPath.row
         }else {
+            guard sceneTextOverride == nil else {
+                return cell
+            }
             let scene = node.scenes[indexPath.row]
             cell.cellStyle = .none
             cell.titleLabel.text = scene.name

@@ -1179,6 +1179,24 @@
     },
     {
         "companyId": "0A78",
+        "productId": "2A01",
+        "categoryName": "Battery Power Switch",
+        "elementCount": 8,
+        "iconCategory": "BatteryPowerSwitch",
+        "deviceCategory": "BatteryPowerSwitch",
+        "modelName": "SR-BL2422K8N-4SC(US)"
+    },
+    {
+        "companyId": "0A78",
+        "productId": "2A02",
+        "categoryName": "Battery Power Switch",
+        "elementCount": 8,
+        "iconCategory": "BatteryPowerSwitch",
+        "deviceCategory": "BatteryPowerSwitch",
+        "modelName": "SR-BL2422K8N-4DIM(US)"
+    },
+    {
+        "companyId": "0A78",
         "productId": "2711",
         "categoryName": "Gateway",
         "elementCount": 2,

@@ -6,6 +6,7 @@
 //
 
 import Foundation
+import NordicSigMeshSDK
 import UIKit
 
 final class PJEightKeySwitchMonitorViewModel {
@@ -14,7 +15,6 @@ final class PJEightKeySwitchMonitorViewModel {
         enum StatusStyle {
             case normal
             case lowBattery
-            case fault
             case unknown
         }
 
@@ -25,6 +25,7 @@ final class PJEightKeySwitchMonitorViewModel {
         let statusColor: UIColor
         let updatedText: String
         let style: StatusStyle
+        let showsRefreshButton: Bool
     }
 
     struct KeyItem {
@@ -59,6 +60,7 @@ final class PJEightKeySwitchMonitorViewModel {
 
     let space: SpaceData
     private(set) var switchData: PJEightKeySwitchData
+    private let batteryStaleInterval: TimeInterval = 7 * 24 * 60 * 60
 
     init(space: SpaceData, switchData: PJEightKeySwitchData) {
         self.space = space
@@ -69,59 +71,65 @@ final class PJEightKeySwitchMonitorViewModel {
         switchData.name
     }
 
+    var isRealBatteryPowerSwitch: Bool {
+        informationNode != nil
+    }
+
+    var informationNode: Node? {
+        guard let node = switchData.proxyNode, node.isBatteryPowerSwitch else {
+            return nil
+        }
+        return node
+    }
+
+    var informationGroupText: String? {
+        let names = switchData.bindGroups.map(\.name)
+        return names.isEmpty ? nil : names.joined(separator: ", ")
+    }
+
+    var showsInformationSceneSection: Bool {
+        switchData.eightKeyPanelType == .scene8Key
+    }
+
+    var informationSceneText: String? {
+        guard showsInformationSceneSection else {
+            return nil
+        }
+        let names = [switchData.sceneA, switchData.sceneB, switchData.sceneC, switchData.sceneD]
+            .compactMap { $0?.name }
+        return names.isEmpty ? nil : names.joined(separator: ", ")
+    }
+
+    var needsBatteryPowerSwitchSync: Bool {
+        switchData.proxyNode?.isBatteryPowerSwitch == true && switchData.needsBatteryPowerSwitchSync
+    }
+
+    var canRefreshBattery: Bool {
+        switchData.proxyNode?.isBatteryPowerSwitch == true && space.permission != .visitor
+    }
+
     var panelDefinition: PJEightKeySwitchPanelDefinition {
         .make(type: switchData.eightKeyPanelType)
     }
 
     var headerState: HeaderState {
-        switch switchData.displayStatus {
-        case .boundEnabled:
-            return HeaderState(
-                batteryText: "95%",
-                batteryIconSystemName: "battery.100",
-                statusPrefixText: "neightkeyswitches_status_prefix".localizedString,
-                statusText: "neightkeyswitches_status_normal".localizedString,
-                statusColor: RGB(69, 197, 122),
-                updatedText: "neightkeyswitches_updated_2min".localizedString,
-                style: .normal
-            )
-        case .boundDisabled:
-            return HeaderState(
-                batteryText: "10%(Low)",
-                batteryIconSystemName: "battery.25",
-                statusPrefixText: "neightkeyswitches_status_prefix".localizedString,
-                statusText: "neightkeyswitches_status_low_battery".localizedString,
-                statusColor: RGB(240, 162, 55),
-                updatedText: "neightkeyswitches_updated_2min".localizedString,
-                style: .lowBattery
-            )
-        case .syncIssueBoundSwitch, .repairRequiredMode:
-            return HeaderState(
-                batteryText: "--",
-                batteryIconSystemName: "battery.25",
-                statusPrefixText: "neightkeyswitches_status_prefix".localizedString,
-                statusText: "neightkeyswitches_status_fault".localizedString,
-                statusColor: RGB(247, 94, 82),
-                updatedText: "neightkeyswitches_updated_2min".localizedString,
-                style: .fault
-            )
-        case .unboundEnabled, .unboundDisabled:
-            return HeaderState(
-                batteryText: "--",
-                batteryIconSystemName: "battery.25",
-                statusPrefixText: "neightkeyswitches_status_prefix".localizedString,
-                statusText: "neightkeyswitches_status_unknown".localizedString,
-                statusColor: RGB(164, 174, 200),
-                updatedText: "neightkeyswitches_updated_7day".localizedString,
-                style: .unknown
-            )
-        }
+        let style = batteryStatusStyle()
+        return HeaderState(
+            batteryText: batteryDisplayText(),
+            batteryIconSystemName: "battery_ek",
+            statusPrefixText: "neightkeyswitches_status_prefix".localizedString,
+            statusText: statusText(for: style),
+            statusColor: statusColor(for: style),
+            updatedText: batteryUpdatedText(),
+            style: style,
+            showsRefreshButton: canRefreshBattery
+        )
     }
 
     var settingsState: SettingsState {
         SettingsState(
             groupNames: switchData.bindGroups.map(\.name),
-            isGroupLinked: switchData.linkGroupAddress != nil,
+            isGroupLinked: !switchData.bindGroups.isEmpty,
             isEnabled: switchData.enabled
         )
     }
@@ -157,9 +165,115 @@ final class PJEightKeySwitchMonitorViewModel {
         switchData.enabled = isEnabled
     }
 
+    func applyTxEnableSucceeded(_ isEnabled: Bool) {
+        switchData.enabled = isEnabled
+        switchData.markBatteryPowerSwitchTxEnableSucceeded()
+    }
+
+    func prepareBatteryPowerSwitchDesiredConfigIfNeeded() -> Bool {
+        guard switchData.proxyNode?.isBatteryPowerSwitch == true else {
+            return true
+        }
+        guard MeshNetworkManager.instance.ensureBatteryPowerSwitchLinkGroup(switchData) else {
+            return false
+        }
+        let appKeyIndex = MeshNetworkManager.instance.currentApplicationKey.index
+        if switchData.needsBatteryPowerSwitchConfigurationSync {
+            switchData.prepareBatteryPowerSwitchDesiredConfig(appKeyIndex: appKeyIndex)
+        }
+        return true
+    }
+
+    func updateSwitchData(_ switchData: PJEightKeySwitchData) {
+        self.switchData = switchData
+    }
+
+    @discardableResult
+    func saveBatteryLevel(_ level: UInt8, updatedAt date: Date = Date()) -> Bool {
+        guard level <= 100 else {
+            return false
+        }
+        let timestamp = Int64(date.timeIntervalSince1970)
+        return PJEightKeySwitchRepository.shared.saveBattery(
+            level: level,
+            lastUpdateTime: timestamp,
+            for: switchData
+        )
+    }
+
     func persist() {
         switchData.save()
         PJEightKeySwitchRepository.shared.save(switchData)
+    }
+}
+
+private extension PJEightKeySwitchMonitorViewModel {
+
+    func batteryDisplayText() -> String {
+        guard let level = reportedBatteryLevel() else {
+            return "--"
+        }
+        return "\(level)%"
+    }
+
+    func batteryStatusStyle(now: Date = Date()) -> HeaderState.StatusStyle {
+        guard let batteryLastUpdateTime = switchData.batteryLastUpdateTime else {
+            return .unknown
+        }
+        let elapsed = max(0, now.timeIntervalSince1970 - TimeInterval(batteryLastUpdateTime))
+        if elapsed > batteryStaleInterval {
+            return .unknown
+        }
+        guard let level = reportedBatteryLevel() else {
+            return .unknown
+        }
+        return level <= 10 ? .lowBattery : .normal
+    }
+
+    func batteryUpdatedText(now: Date = Date()) -> String {
+        guard let batteryLastUpdateTime = switchData.batteryLastUpdateTime else {
+            return "--"
+        }
+        let elapsed = max(0, now.timeIntervalSince1970 - TimeInterval(batteryLastUpdateTime))
+        if elapsed < 60 {
+            return "neightkeyswitches_updated_just_now".localizedString
+        }
+        if elapsed < 60 * 60 {
+            return String(format: "neightkeyswitches_updated_min_ago_format".localizedString, Int(elapsed / 60))
+        }
+        if elapsed < 24 * 60 * 60 {
+            return String(format: "neightkeyswitches_updated_hr_ago_format".localizedString, Int(elapsed / (60 * 60)))
+        }
+        return String(format: "neightkeyswitches_updated_day_ago_format".localizedString, Int(elapsed / (24 * 60 * 60)))
+    }
+
+    func reportedBatteryLevel() -> Int? {
+        guard let level = switchData.batteryLevel, level <= 100 else {
+            return nil
+        }
+        return Int(level)
+    }
+
+    func statusText(for style: HeaderState.StatusStyle) -> String {
+        switch style {
+        case .normal:
+            return "neightkeyswitches_status_normal".localizedString
+        case .lowBattery:
+            return "neightkeyswitches_status_low_battery".localizedString
+        case .unknown:
+            return "neightkeyswitches_status_unknown".localizedString
+        }
+    }
+
+    func statusColor(for style: HeaderState.StatusStyle) -> UIColor {
+        switch style {
+        case .normal:
+            return RGB(69, 197, 122)
+        case .unknown:
+            return RGB(148, 163, 184)
+        case .lowBattery:
+            return RGB(240, 162, 55)
+        }
     }
 }
 

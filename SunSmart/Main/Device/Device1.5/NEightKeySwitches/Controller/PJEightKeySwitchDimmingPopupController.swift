@@ -10,6 +10,8 @@ import SnapKit
 
 final class PJEightKeySwitchDimmingPopupController: UIViewController {
 
+    var brightnessEndedAction: ((Int) -> Void)?
+
     private enum Layout {
         static let cardHorizontalInset = SCRXFrom(8)
         static let cardBottomInset = SCRYFrom(32)
@@ -47,11 +49,6 @@ final class PJEightKeySwitchDimmingPopupController: UIViewController {
     override func viewDidLoad() {
         super.viewDidLoad()
         setupUI()
-    }
-
-    override func viewDidAppear(_ animated: Bool) {
-        super.viewDidAppear(animated)
-        sliderView.value = 50
     }
 
     private func setupUI() {
@@ -92,6 +89,13 @@ final class PJEightKeySwitchDimmingPopupController: UIViewController {
             make.right.equalToSuperview().offset(-Layout.sliderHorizontalInset)
             make.height.equalTo(Layout.sliderHeight)
             make.bottom.lessThanOrEqualToSuperview().offset(-Layout.sliderBottomInset)
+        }
+        sliderView.value = 50
+        sliderView.valueThrottleChangedCallback = { [weak self] value, ended in
+            guard ended else {
+                return
+            }
+            self?.brightnessEndedAction?(value)
         }
     }
 

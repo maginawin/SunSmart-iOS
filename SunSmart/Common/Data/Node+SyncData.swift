@@ -1389,9 +1389,10 @@ extension Node {
     ///   - switchData: 动能开关（传入则只获取该动能开关是否有同步，不传入则获取所有动能开关是否有同步）
     func getNodeSyncSwitchs(group: Group? = nil, switchData: DeviceSwitchData? = nil) -> (switchProxy: DeviceSwitchData?, linkSwitchs: [DeviceSwitchData]) {
         
-        guard let group = group ?? self.group, self.sunricherVendorModel != nil else {
+        guard let group = group ?? self.group else {
             return (nil, [])
         }
+        let supportsEnOceanSwitchSync = self.sunricherVendorModel != nil
         
         var switchProxy: DeviceSwitchData?
         var linkSwitchs: [DeviceSwitchData] = []
@@ -1401,7 +1402,13 @@ extension Node {
             switchs = [switchData!]
         }
         switchs.forEach { switchData in
-            if switchData.switchKeys.count > 0 {
+            if switchData.batteryPowerSwitchData != nil {
+                if self.getBatteryPowerSwitchTargetSubscriptionMessageHandles(switchData: switchData, unsubscribe: false).count > 0 {
+                    linkSwitchs.append(switchData)
+                }
+                return
+            }
+            if supportsEnOceanSwitchSync, switchData.switchKeys.count > 0 {
                 // 判断是否需要绑定
                 if self.getEnOceanSubscriptionMessageHandles(switchKeys: switchData.switchKeys).count > 0 {
                     linkSwitchs.append(switchData)
@@ -1419,9 +1426,10 @@ extension Node {
     ///   - switchData: 动能开关（传入则只获取该动能开关是否需要删除，不传入则获取所有动能开关是否有需要删除）
     func getNodeNeedDeleteSwitchs(switchData: DeviceSwitchData? = nil) -> (delteSwitchProxy: DeviceSwitchData?, unlinkSwitchs: [DeviceSwitchData]) {
         
-        guard let group = self.group, self.schedulerSetupModel != nil else {
+        guard let group = self.group else {
             return (nil, [])
         }
+        let supportsEnOceanSwitchSync = self.schedulerSetupModel != nil
         var delteSwitchProxy: DeviceSwitchData?
         var switchs = group.info.allSwitchs
         if switchData != nil {
@@ -1430,7 +1438,13 @@ extension Node {
         
         var unlinkSwitchs: [DeviceSwitchData] = []
         switchs.filter({ self.groupState == .exitFailure || $0.unbindGroupAddresses.contains(group.address.address) }).forEach { switchData in
-            if switchData.switchKeys.count > 0 {
+            if switchData.batteryPowerSwitchData != nil {
+                if self.getBatteryPowerSwitchTargetSubscriptionMessageHandles(switchData: switchData, unsubscribe: true).count > 0 {
+                    unlinkSwitchs.append(switchData)
+                }
+                return
+            }
+            if supportsEnOceanSwitchSync, switchData.switchKeys.count > 0 {
                 // 判断是否需要解绑
                 if self.getEnOceanUnSubscriptionMessageHandles(switchKeys: switchData.switchKeys).count > 0 {
                     unlinkSwitchs.append(switchData)

@@ -825,7 +825,7 @@
 "current_target_version" = "当前目标版本";
 "neightkeyswitches_dimming" = "调光";
 "neightkeyswitches_refresh_device" = "刷新设备";
-"neightkeyswitches_refresh_message" = "请按一下设备上的任意按键";
+"neightkeyswitches_refresh_message" = "请多次按下设备上的任意按键";
 "neightkeyswitches_refresh_waiting_format" = "等待信号（%d秒）...";
 "neightkeyswitches_refresh_updated" = "刚刚已更新";
 "neightkeyswitches_forced_auto_mode" = "强制自动模式";
@@ -1527,6 +1527,7 @@
 "total_numbers" = "总数量";
 "mesh_network_reset_confirm_message" = "您将重置整个mesh网络中的所有设备。请输入\"RESET\"确认。";
 "retry" = "重试";
+"try_again" = "重试";
 "mesh_network_reset_range_message" = "仅显示范围内的设备。";
 "based_on_mesh_network" = "基于Mesh网络";
 "illumination_fluctuation_range_reset_tip" = "(大于此范围生效)";
@@ -1853,6 +1854,11 @@
 "neightkeyswitches_status_low_battery" = "低电量";
 "neightkeyswitches_status_fault" = "故障";
 "neightkeyswitches_status_unknown" = "未知";
+"neightkeyswitches_battery_low" = "低";
+"neightkeyswitches_updated_just_now" = "刚刚";
+"neightkeyswitches_updated_min_ago_format" = "%d分钟前";
+"neightkeyswitches_updated_hr_ago_format" = "%d小时前";
+"neightkeyswitches_updated_day_ago_format" = "%d天前";
 "neightkeyswitches_updated_2min" = "2分钟前";
 "neightkeyswitches_updated_7day" = "7天前";
 "neightkeyswitches_long_press_dimming" = "长按\n调光";

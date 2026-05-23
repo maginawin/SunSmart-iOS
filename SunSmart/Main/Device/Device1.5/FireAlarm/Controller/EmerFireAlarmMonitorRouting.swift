@@ -73,8 +73,7 @@ extension EmerFireAlarmMonitorVC {
         }
         let controller = LinkedEmerFireEditVC(config: config, space: space)
         controller.editable = true
-        let navigationController = NavigationViewController(rootViewController: controller)
-        present(navigationController, animated: true)
+        navigationController?.pushViewController(controller, animated: true)
     }
 
 

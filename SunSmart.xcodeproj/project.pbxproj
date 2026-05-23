@@ -337,6 +337,10 @@
 		8C778BF02FA2153E000887FE /* PJEightKeySwitchData.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C778BEE2FA2153E000887FE /* PJEightKeySwitchData.swift */; };
 		8C778BF12FA2153E000887FE /* PJEightKeySwitchData.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C778BEE2FA2153E000887FE /* PJEightKeySwitchData.swift */; };
 		8C778BF22FA2153E000887FE /* PJEightKeySwitchData.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C778BEE2FA2153E000887FE /* PJEightKeySwitchData.swift */; };
+		8C2605202A010002000887FE /* BatteryPowerSwitchAddConfiguration.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C2605202A010001000887FE /* BatteryPowerSwitchAddConfiguration.swift */; };
+		8C2605202A010003000887FE /* BatteryPowerSwitchAddConfiguration.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C2605202A010001000887FE /* BatteryPowerSwitchAddConfiguration.swift */; };
+		8C2605202A010004000887FE /* BatteryPowerSwitchAddConfiguration.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C2605202A010001000887FE /* BatteryPowerSwitchAddConfiguration.swift */; };
+		8C2605202A010005000887FE /* BatteryPowerSwitchAddConfiguration.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C2605202A010001000887FE /* BatteryPowerSwitchAddConfiguration.swift */; };
 		8C778BF42FA2153E000887FE /* PJEightKeySwitchesViewCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C778BF32FA2153E000887FE /* PJEightKeySwitchesViewCell.swift */; };
 		8C778BF52FA2153E000887FE /* PJEightKeySwitchesViewCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C778BF32FA2153E000887FE /* PJEightKeySwitchesViewCell.swift */; };
 		8C778BF62FA2153E000887FE /* PJEightKeySwitchesViewCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C778BF32FA2153E000887FE /* PJEightKeySwitchesViewCell.swift */; };
@@ -2490,6 +2494,7 @@
 		8C778BE32FA20E1D000887FE /* PJEightKeySwitchMoreSettingsController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PJEightKeySwitchMoreSettingsController.swift; sourceTree = "<group>"; };
 		8C778BE82FA2102D000887FE /* PJEightKeySwitchStatus.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PJEightKeySwitchStatus.swift; sourceTree = "<group>"; };
 		8C778BEE2FA2153E000887FE /* PJEightKeySwitchData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PJEightKeySwitchData.swift; sourceTree = "<group>"; };
+		8C2605202A010001000887FE /* BatteryPowerSwitchAddConfiguration.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BatteryPowerSwitchAddConfiguration.swift; sourceTree = "<group>"; };
 		8C778BF32FA2153E000887FE /* PJEightKeySwitchesViewCell.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PJEightKeySwitchesViewCell.swift; sourceTree = "<group>"; };
 		8C778BFD2FA2155D000887FE /* PJEightKeySwitchRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PJEightKeySwitchRepository.swift; sourceTree = "<group>"; };
 		8C778C022FA2FFA6000887FE /* PJEightKeySwitchActivationAlertController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PJEightKeySwitchActivationAlertController.swift; sourceTree = "<group>"; };
@@ -3394,6 +3399,7 @@
 				8C778BC52FA20589000887FE /* PJEightKeySwitchPanelDefinition.swift */,
 				8C778BE82FA2102D000887FE /* PJEightKeySwitchStatus.swift */,
 				8C778BEE2FA2153E000887FE /* PJEightKeySwitchData.swift */,
+				8C2605202A010001000887FE /* BatteryPowerSwitchAddConfiguration.swift */,
 			);
 			path = Model;
 			sourceTree = "<group>";
@@ -5741,6 +5747,7 @@
 				C885544A2DE6B44C00C8B688 /* SwitchSelectScenePageController.swift in Sources */,
 				8C778B1A2F9CBD47000887FE /* PJUIDebugConsoleTracer.swift in Sources */,
 				8C778BF22FA2153E000887FE /* PJEightKeySwitchData.swift in Sources */,
+				8C2605202A010005000887FE /* BatteryPowerSwitchAddConfiguration.swift in Sources */,
 				C885544B2DE6B44C00C8B688 /* GroupSwitchEnOceanProxyHeaderView.swift in Sources */,
 				C885544C2DE6B44C00C8B688 /* DeviceParameterDevicesViewController.swift in Sources */,
 				8C778B632FA1AB19000887FE /* PJNGatewayPageViewModel.swift in Sources */,
@@ -6322,6 +6329,7 @@
 				C886E09E2E30DE4900D0C3A6 /* SwitchSelectScenePageController.swift in Sources */,
 				8C778B192F9CBD47000887FE /* PJUIDebugConsoleTracer.swift in Sources */,
 				8C778BF02FA2153E000887FE /* PJEightKeySwitchData.swift in Sources */,
+				8C2605202A010003000887FE /* BatteryPowerSwitchAddConfiguration.swift in Sources */,
 				C886E09F2E30DE4900D0C3A6 /* GroupSwitchEnOceanProxyHeaderView.swift in Sources */,
 				C886E0A02E30DE4900D0C3A6 /* DeviceParameterDevicesViewController.swift in Sources */,
 				8C778B652FA1AB19000887FE /* PJNGatewayPageViewModel.swift in Sources */,
@@ -7067,6 +7075,7 @@
 				C89FEF432ABD657F00DCCFB6 /* AboutViewController.swift in Sources */,
 				8C1DA77F2FAAF2C90073F100 /* PJDevicesEightKeyAddContainerController.swift in Sources */,
 				8C778BEF2FA2153E000887FE /* PJEightKeySwitchData.swift in Sources */,
+				8C2605202A010002000887FE /* BatteryPowerSwitchAddConfiguration.swift in Sources */,
 				8CF15F902F962C7C0044FCF3 /* LinkedEmerFireEditState.swift in Sources */,
 				C822A84F2EA75A9400A7073B /* DeviceMeshNetworkResetHeaderView.swift in Sources */,
 				C8EC4BAD2EAA1FF00082892D /* DeviceMeshNetworkResetHandle.swift in Sources */,
@@ -7484,6 +7493,7 @@
 				C8BB665F2ED3F056000C63EE /* SwitchSelectScenePageController.swift in Sources */,
 				8C778B182F9CBD47000887FE /* PJUIDebugConsoleTracer.swift in Sources */,
 				8C778BF12FA2153E000887FE /* PJEightKeySwitchData.swift in Sources */,
+				8C2605202A010004000887FE /* BatteryPowerSwitchAddConfiguration.swift in Sources */,
 				C8BB66602ED3F056000C63EE /* GroupSwitchEnOceanProxyHeaderView.swift in Sources */,
 				C8BB66612ED3F056000C63EE /* DeviceParameterDevicesViewController.swift in Sources */,
 				8C778B622FA1AB19000887FE /* PJNGatewayPageViewModel.swift in Sources */,

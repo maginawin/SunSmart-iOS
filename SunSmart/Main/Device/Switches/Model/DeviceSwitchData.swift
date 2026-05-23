@@ -206,6 +206,16 @@ class DeviceSwitchData: Copyable {
                proxyNodeAddress == saved.proxyNodeAddress &&
                deleteProxyNodeAddress == saved.deleteProxyNodeAddress
     }
+
+    var batteryPowerSwitchData: PJEightKeySwitchData? {
+        guard proxyNode?.isBatteryPowerSwitch == true else {
+            return nil
+        }
+        if let switchData = self as? PJEightKeySwitchData {
+            return switchData
+        }
+        return PJEightKeySwitchRepository.shared.makeEightKeySwitch(from: self)
+    }
     
     
     /// 动能开关按键信息list

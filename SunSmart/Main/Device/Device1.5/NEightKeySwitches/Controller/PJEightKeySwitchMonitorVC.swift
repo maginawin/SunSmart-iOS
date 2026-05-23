@@ -6,6 +6,7 @@
 //
 
 import UIKit
+import NordicSigMeshSDK
 
 final class PJEightKeySwitchMonitorVC: UIViewController {
 
@@ -14,10 +15,17 @@ final class PJEightKeySwitchMonitorVC: UIViewController {
     private let viewModel: PJEightKeySwitchMonitorViewModel
 
     private let headerView = PJEightKeySwitchMonitorHeaderView()
+    private let panelScrollView = UIScrollView()
     private let panelView = PJEightKeySwitchMonitorPanelView()
     private let bottomView = PJEightKeySwitchMonitorStatusSetView()
     private var isRefreshing = false
-    private var nextRefreshSimulationWillSucceed = true
+    private var activationFlow: PJEightKeySwitchActivationFlow?
+    private var batteryRefreshFlow: PJEightKeySwitchBatteryRefreshFlow?
+    private var txEnableFlow: PJEightKeySwitchTxEnableFlow?
+    private var pendingEnabledValue: Bool?
+    private let virtualGroupControlSender = PJEightKeySwitchVirtualGroupControlSender()
+    private var lastKeyTapTimes: [Int: Date] = [:]
+    private let keyTapThrottleInterval: TimeInterval = 0.2
 
     init(space: SpaceData, switchData: PJEightKeySwitchData) {
         viewModel = PJEightKeySwitchMonitorViewModel(space: space, switchData: switchData)
@@ -54,9 +62,11 @@ final class PJEightKeySwitchMonitorVC: UIViewController {
                 self?.deleteCurrentSwitch()
             }))
         }
-        items.append(.init(icon: UIImage(named: "menu_information"), title: "information".localizedString, tapItemBack: { _ in
-           //information
-        }))
+        if viewModel.isRealBatteryPowerSwitch {
+            items.append(.init(icon: UIImage(named: "menu_information"), title: "information".localizedString, tapItemBack: { [weak self] _ in
+                self?.pushInformation()
+            }))
+        }
         items.append(.init(icon: UIImage(named: "Identify_gateway"), title: "Identify", tapItemBack: {  _ in
            //Identify
         }))
@@ -74,9 +84,17 @@ final class PJEightKeySwitchMonitorVC: UIViewController {
     }
 
     private func setupUI() {
-        [headerView, panelView, bottomView].forEach {
-            view.addSubview($0)
+        view.addSubview(headerView)
+        if isIPad {
+            view.addSubview(panelView)
+        } else {
+            panelScrollView.showsVerticalScrollIndicator = false
+            panelScrollView.alwaysBounceVertical = false
+            panelScrollView.contentInsetAdjustmentBehavior = .never
+            view.addSubview(panelScrollView)
+            panelScrollView.addSubview(panelView)
         }
+        view.addSubview(bottomView)
 
         headerView.snp.makeConstraints { make in
             make.top.equalTo(view.safeAreaLayoutGuide).offset(SCRYFrom(14))
@@ -84,15 +102,55 @@ final class PJEightKeySwitchMonitorVC: UIViewController {
             make.height.equalTo(SCRYFrom(24))
         }
 
-        panelView.snp.makeConstraints { make in
-            make.top.equalTo(headerView.snp.bottom).offset(SCRYFrom(18))
-            make.left.equalToSuperview().offset(SCRXFrom(60))
-            make.right.equalToSuperview().offset(-SCRXFrom(60))
-            make.height.equalTo(SCRYFrom(502))
-        }
-
         bottomView.snp.makeConstraints { make in
             make.left.right.bottom.equalToSuperview()
+        }
+
+        if isIPad {
+            setupCenteredPanelConstraints()
+        } else {
+            setupScrollablePanelConstraints()
+        }
+    }
+
+    private func setupCenteredPanelConstraints() {
+        let panelAreaGuide = UILayoutGuide()
+        view.addLayoutGuide(panelAreaGuide)
+        panelAreaGuide.snp.makeConstraints { make in
+            make.top.equalTo(headerView.snp.bottom)
+            make.bottom.equalTo(bottomView.snp.top)
+        }
+
+        panelView.snp.makeConstraints { make in
+            make.centerX.equalToSuperview()
+            make.centerY.equalTo(panelAreaGuide.snp.centerY)
+            make.top.greaterThanOrEqualTo(headerView.snp.bottom).offset(SCRYFrom(18))
+            make.bottom.lessThanOrEqualTo(bottomView.snp.top).offset(-SCRYFrom(12))
+            make.left.greaterThanOrEqualToSuperview().offset(SCRXFrom(24))
+            make.right.lessThanOrEqualToSuperview().offset(-SCRXFrom(24))
+            make.width.equalTo(PJEightKeySwitchMonitorPanelView.preferredWidth)
+            make.height.equalTo(SCRYFrom(502))
+        }
+    }
+
+    private func setupScrollablePanelConstraints() {
+        panelScrollView.snp.makeConstraints { make in
+            make.top.equalTo(headerView.snp.bottom)
+            make.left.right.equalToSuperview()
+            make.bottom.equalTo(bottomView.snp.top)
+        }
+        panelScrollView.contentLayoutGuide.snp.makeConstraints { make in
+            make.width.equalTo(panelScrollView.frameLayoutGuide.snp.width)
+        }
+
+        panelView.snp.makeConstraints { make in
+            make.top.equalTo(panelScrollView.contentLayoutGuide.snp.top).offset(SCRYFrom(18))
+            make.bottom.equalTo(panelScrollView.contentLayoutGuide.snp.bottom).offset(-SCRYFrom(12))
+            make.centerX.equalTo(panelScrollView.frameLayoutGuide.snp.centerX)
+            make.left.greaterThanOrEqualTo(panelScrollView.frameLayoutGuide.snp.left).offset(SCRXFrom(24))
+            make.right.lessThanOrEqualTo(panelScrollView.frameLayoutGuide.snp.right).offset(-SCRXFrom(24))
+            make.width.equalTo(PJEightKeySwitchMonitorPanelView.preferredWidth)
+            make.height.equalTo(SCRYFrom(502))
         }
     }
 
@@ -101,6 +159,9 @@ final class PJEightKeySwitchMonitorVC: UIViewController {
             self?.refreshMonitor()
         }
 
+        panelView.keyTapAction = { [weak self] index in
+            self?.handlePanelKeyTap(index: index)
+        }
         panelView.dimmingLongPressAction = { [weak self] _ in
             self?.presentDimmingPopup()
         }
@@ -112,11 +173,7 @@ final class PJEightKeySwitchMonitorVC: UIViewController {
         }
 
         bottomView.enableChanged = { [weak self] isOn in
-            guard let self else { return }
-            self.viewModel.updateEnabled(isOn)
-            self.viewModel.persist()
-            NotificationCenter.default.post(name: .init(switchsRefreshNotificationName), object: nil)
-            self.updateUI()
+            self?.startTxEnableUpdate(isOn)
         }
 
         bottomView.groupLinkAction = {
@@ -132,64 +189,231 @@ final class PJEightKeySwitchMonitorVC: UIViewController {
             statusPrefixText: header.statusPrefixText,
             statusText: header.statusText,
             statusColor: header.statusColor,
-            updatedText: header.updatedText
+            updatedText: header.updatedText,
+            showsRefreshButton: header.showsRefreshButton
         ))
 
-        panelView.configure(items: viewModel.keyItems, enabled: viewModel.settingsState.isEnabled)
+        let isTxEnablePending = pendingEnabledValue != nil
+        panelView.configure(items: viewModel.keyItems, enabled: viewModel.settingsState.isEnabled && !isTxEnablePending)
         bottomView.configure(state: .init(
             groupNames: viewModel.settingsState.groupNames,
             isGroupLinked: viewModel.settingsState.isGroupLinked,
-            isEnabled: viewModel.settingsState.isEnabled
+            isEnabled: viewModel.settingsState.isEnabled,
+            isPending: isTxEnablePending
         ))
     }
 
     private func refreshMonitor() {
         guard !isRefreshing else { return }
+        guard let node = viewModel.informationNode else {
+            XWHUDManager.showTipHUD("failed".localizedString, isLineFeed: false)
+            return
+        }
         isRefreshing = true
+        headerView.setRefreshing(true)
 
-        let willSucceed = nextRefreshSimulationWillSucceed
-        nextRefreshSimulationWillSucceed.toggle()
-
-        let vc = PJEightKeySwitchRefreshAlertController()
-        vc.cancelAction = { [weak self] in
-            self?.isRefreshing = false
-        }
-        vc.retryAction = { [weak self, weak vc] in
-            self?.scheduleRefreshSimulation(for: vc, willSucceed: true)
-        }
-        present(vc, animated: true) { [weak self, weak vc] in
-            vc?.startWaiting()
-            self?.scheduleRefreshSimulation(for: vc, willSucceed: willSucceed)
-        }
+        let flow = PJEightKeySwitchBatteryRefreshFlow(
+            presenter: self,
+            node: node,
+            onBatteryLevel: { [weak self] level in
+                guard let self else { return false }
+                guard self.viewModel.saveBatteryLevel(level) else {
+                    return false
+                }
+                self.updateUI()
+                return true
+            },
+            onFinished: { [weak self] in
+                self?.finishBatteryRefresh()
+            }
+        )
+        batteryRefreshFlow = flow
+        flow.start()
     }
 
-    private func scheduleRefreshSimulation(for controller: PJEightKeySwitchRefreshAlertController?, willSucceed: Bool) {
-        DispatchQueue.main.asyncAfter(deadline: .now() + 2.2) { [weak self, weak controller] in
-            guard let self, let controller, controller.presentingViewController != nil else { return }
-            self.updateUI()
-            self.isRefreshing = false
-            if willSucceed {
-                controller.showUpdated()
-            } else {
-                controller.showTimeout()
-            }
+    private func finishBatteryRefresh() {
+        isRefreshing = false
+        headerView.setRefreshing(false)
+        batteryRefreshFlow = nil
+    }
+
+    private func handlePanelKeyTap(index: Int) {
+        guard shouldAcceptKeyTap(index: index) else {
+            return
         }
+        virtualGroupControlSender.sendKeyTap(index: index, switchData: viewModel.switchData)
+    }
+
+    private func shouldAcceptKeyTap(index: Int, now: Date = Date()) -> Bool {
+        if let lastTapTime = lastKeyTapTimes[index],
+           now.timeIntervalSince(lastTapTime) < keyTapThrottleInterval {
+            return false
+        }
+        lastKeyTapTimes[index] = now
+        return true
+    }
+
+    deinit {
+        batteryRefreshFlow?.cancel()
+        txEnableFlow?.cancel()
+        activationFlow = nil
+    }
+
+    private func startTxEnableUpdate(_ isEnabled: Bool) {
+        guard pendingEnabledValue == nil else {
+            updateUI()
+            return
+        }
+        guard viewModel.informationNode != nil else {
+            XWHUDManager.showTipHUD("failed".localizedString, isLineFeed: false)
+            updateUI()
+            return
+        }
+
+        pendingEnabledValue = isEnabled
+        updateUI()
+
+        let flow = PJEightKeySwitchTxEnableFlow(
+            presenter: self,
+            switchData: viewModel.switchData,
+            enabled: isEnabled,
+            onSucceeded: { [weak self] enabled in
+                guard let self else { return }
+                self.viewModel.applyTxEnableSucceeded(enabled)
+                self.viewModel.persist()
+                NotificationCenter.default.post(name: .init(switchsRefreshNotificationName), object: nil)
+                self.updateUI()
+            },
+            onFinished: { [weak self] in
+                guard let self else { return }
+                self.pendingEnabledValue = nil
+                self.txEnableFlow = nil
+                self.updateUI()
+            }
+        )
+        txEnableFlow = flow
+        flow.start()
     }
 
     private func presentDimmingPopup() {
         let vc = PJEightKeySwitchDimmingPopupController()
+        vc.brightnessEndedAction = { [weak self] value in
+            guard let self else { return }
+            self.virtualGroupControlSender.sendBrightness(value, switchData: self.viewModel.switchData)
+        }
         present(vc, animated: true)
     }
 
     private func presentForcedAutoPopup() {
         let vc = PJEightKeySwitchForcedAutoPopupController()
+        vc.autoAction = { [weak self] in
+            guard let self else { return }
+            self.virtualGroupControlSender.sendAuto(switchData: self.viewModel.switchData)
+        }
         present(vc, animated: true)
+    }
+
+    private func pushInformation() {
+        guard let node = viewModel.informationNode else {
+            XWHUDManager.showTipHUD("failed".localizedString, isLineFeed: false)
+            return
+        }
+
+        let groupText = viewModel.informationGroupText ?? "Not yet linked to a group".localizedString
+        let sceneText = viewModel.informationSceneText ?? "Not yet linked to a scene".localizedString
+        let vc = DeviceInformationViewController(
+            node: node,
+            emptyGroupText: "Not yet linked to a group".localizedString,
+            showsSceneSection: viewModel.showsInformationSceneSection,
+            groupTextOverride: groupText,
+            sceneTextOverride: sceneText,
+            showsFullDeviceInfo: true
+        )
+        navigationController?.pushViewController(vc, animated: true)
+    }
+
+    private func pushBatteryPowerSwitchSync() {
+        guard viewModel.prepareBatteryPowerSwitchDesiredConfigIfNeeded() else {
+            XWHUDManager.showErrorTipHUD("group_address_insufficient_message".localizedString, timer: 2)
+            return
+        }
+        let needsConfigurationSync = viewModel.switchData.needsBatteryPowerSwitchConfigurationSync
+        viewModel.persist()
+        NotificationCenter.default.post(name: .init(switchsRefreshNotificationName), object: nil)
+        if needsConfigurationSync {
+            presentBatteryPowerSwitchActivation()
+        } else {
+            pushBatteryPowerSwitchSyncController()
+        }
+    }
+
+    private func presentBatteryPowerSwitchActivation() {
+        let flow = PJEightKeySwitchActivationFlow(
+            presenter: self,
+            switchData: viewModel.switchData
+        ) { [weak self] in
+            guard let self else { return }
+            self.activationFlow = nil
+            self.pushBatteryPowerSwitchSyncController()
+        }
+        activationFlow = flow
+        flow.start()
+    }
+
+    private func pushBatteryPowerSwitchSyncController() {
+        let vc = SyncDevicesViewController(type: .batteryPowerSwitch(viewModel.switchData))
+        vc.syncSuccessCallback = { [weak self] _ in
+            guard let self else { return }
+            self.viewModel.switchData.markBatteryPowerSwitchSyncSucceeded()
+            self.viewModel.persist()
+            NotificationCenter.default.post(name: .init(switchsRefreshNotificationName), object: nil)
+            self.updateUI()
+            XWHUDManager.showSuccessTipHUD("done!".localizedString)
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) { [weak self] in
+                self?.navigationController?.popViewController(animated: true)
+            }
+        }
+        vc.backActionCallback = { [weak self] result in
+            guard let self else { return }
+            let failedOperationTypes = result.flatMap(\.failedOperationTypes)
+            let successOperationTypes = result.flatMap(\.successOperationTypes)
+            if self.containsBatteryPowerSwitchOwnConfiguration(failedOperationTypes) {
+                self.viewModel.switchData.markBatteryPowerSwitchSyncFailed(reason: "sync_failed".localizedString)
+            } else if self.containsBatteryPowerSwitchOwnConfiguration(successOperationTypes) {
+                self.viewModel.switchData.markBatteryPowerSwitchSyncSucceeded(clearRemovedGroups: false)
+            }
+            self.viewModel.persist()
+            NotificationCenter.default.post(name: .init(switchsRefreshNotificationName), object: nil)
+            self.updateUI()
+            self.navigationController?.popViewController(animated: true)
+        }
+        navigationController?.pushViewController(vc, animated: true)
+    }
+
+    private func containsBatteryPowerSwitchOwnConfiguration(_ operationTypes: [DeviceOperationType]) -> Bool {
+        operationTypes.contains { operationType in
+            guard case .configuration(_, let syncData) = operationType else {
+                return false
+            }
+            switch syncData {
+            case .batteryPowerSwitchReset, .batteryPowerSwitchKeyConfig, .batteryPowerSwitchTxEnable, .batteryPowerSwitchLEDIndicator:
+                return true
+            default:
+                return false
+            }
+        }
     }
 
     private func pushEditor() {
         let vc = PJPreAddEightKeySwitchesVC(space: viewModel.space, switchData: viewModel.switchData)
         vc.deleteSwitchAction = deleteSwitchAction
-        present(NavigationViewController(rootViewController: vc), animated: true)
+        vc.switchSavedAction = { [weak self] switchData in
+            guard let self else { return }
+            self.viewModel.updateSwitchData(switchData)
+            self.title = self.viewModel.title
+            self.updateUI()
+        }
+        navigationController?.pushViewController(vc, animated: true)
     }
 
     private func deleteCurrentSwitch() {
@@ -206,5 +430,81 @@ final class PJEightKeySwitchMonitorVC: UIViewController {
                 })
             ]
         ).show()
+    }
+}
+
+private final class PJEightKeySwitchVirtualGroupControlSender {
+
+    private static let dimmingStepLevel: Int32 = 13107
+
+    func sendKeyTap(index: Int, switchData: PJEightKeySwitchData) {
+        guard let address = switchData.linkGroupAddress,
+              let message = keyTapMessage(index: index, switchData: switchData) else {
+            return
+        }
+        MeshAPI.sendMessage(message: message, address: address)
+    }
+
+    func sendBrightness(_ value: Int, switchData: PJEightKeySwitchData) {
+        guard let address = switchData.linkGroupAddress else {
+            return
+        }
+        let lightness = Node.getLightness(lightness100: value)
+        MeshAPI.sendMessage(message: LightLightnessSetUnacknowledged(lightness: lightness), address: address)
+    }
+
+    func sendAuto(switchData: PJEightKeySwitchData) {
+        guard let address = switchData.linkGroupAddress else {
+            return
+        }
+        let message = LightLCLightOnOffSetUnacknowledged(true, transitionTime: .default, delay: 0)
+        MeshAPI.sendMessage(message: message, address: address)
+    }
+
+    private func keyTapMessage(index: Int, switchData: PJEightKeySwitchData) -> MeshMessage? {
+        switch index {
+        case 0...3:
+            return topKeyMessage(index: index, switchData: switchData)
+        case 4:
+            return dimmingDeltaMessage(delta: Self.dimmingStepLevel)
+        case 5:
+            return dimmingDeltaMessage(delta: -Self.dimmingStepLevel)
+        case 6:
+            return GenericOnOffSetUnacknowledged(true)
+        case 7:
+            return GenericOnOffSetUnacknowledged(false)
+        default:
+            return nil
+        }
+    }
+
+    private func dimmingDeltaMessage(delta: Int32) -> GenericDeltaSetUnacknowledged {
+        var message = GenericDeltaSetUnacknowledged(delta: delta)
+        message.continueTransaction = false
+        return message
+    }
+
+    private func topKeyMessage(index: Int, switchData: PJEightKeySwitchData) -> MeshMessage? {
+        switch switchData.eightKeyPanelType {
+        case .scene8Key:
+            let sceneNumbers = [
+                switchData.sceneANumber,
+                switchData.sceneBNumber,
+                switchData.sceneCNumber,
+                switchData.sceneDNumber
+            ]
+            guard sceneNumbers.indices.contains(index),
+                  let sceneNumber = sceneNumbers[index] else {
+                return nil
+            }
+            return SceneRecallUnacknowledged(sceneNumber)
+        case .brightness8Key:
+            let brightnessValues = [100, 75, 50, 25]
+            guard brightnessValues.indices.contains(index) else {
+                return nil
+            }
+            let lightness = Node.getLightness(lightness100: brightnessValues[index])
+            return LightLightnessSetUnacknowledged(lightness: lightness)
+        }
     }
 }

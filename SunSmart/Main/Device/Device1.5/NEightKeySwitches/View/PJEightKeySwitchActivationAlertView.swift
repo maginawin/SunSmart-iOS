@@ -62,6 +62,30 @@ final class PJEightKeySwitchWaitingSpinnerView: UIView {
 
 final class PJEightKeySwitchActivationAlertView: UIView {
 
+    enum StatusStyle {
+        case loading
+        case success
+        case failure
+    }
+
+    enum ActionStyle {
+        case normal
+        case primary
+    }
+
+    struct Action {
+        let title: String
+        let style: ActionStyle
+    }
+
+    struct Content {
+        let title: String
+        let message: String
+        let statusText: String
+        let statusStyle: StatusStyle
+        let actions: [Action]
+    }
+
     private enum Constants {
         static let fullContainerHeight = SCRYFrom(356)
         static let bottomSafeAreaCompensation = SCRYFrom(34)
@@ -80,14 +104,14 @@ final class PJEightKeySwitchActivationAlertView: UIView {
 
     let backgroundView: UIView = {
         let view = UIView()
-        view.backgroundColor = UIColor.black.withAlphaComponent(0.52)
+        view.backgroundColor = UIColor.black.withAlphaComponent(0.30)
         return view
     }()
 
     let containerView: UIView = {
         let view = UIView()
         view.backgroundColor = .white
-        view.layer.cornerRadius = 16
+        view.layer.cornerRadius = 15
         view.layer.maskedCorners = [.layerMinXMinYCorner, .layerMaxXMinYCorner]
         view.clipsToBounds = true
         return view
@@ -95,14 +119,14 @@ final class PJEightKeySwitchActivationAlertView: UIView {
 
     private let contentSectionView: UIView = {
         let view = UIView()
-        view.backgroundColor = RGB(251, 251, 254)
+        view.backgroundColor = RGB(248, 250, 252)
         return view
     }()
 
     private let buttonSectionView = UIView()
 
     let titleLabel: UILabel = {
-        let label = UILabel(text: "neightkeyswitches_save_after_activation".localizedString, textColor: RGB(80, 87, 126), fontSize: 17, fontWeight: .medium, fit: false)
+        let label = UILabel(text: "neightkeyswitches_save_after_activation".localizedString, textColor: RGB(46, 49, 93), fontSize: 17, fontWeight: .regular, fit: false)
         label.textAlignment = .center
         return label
     }()
@@ -130,7 +154,7 @@ final class PJEightKeySwitchActivationAlertView: UIView {
     }()
 
     let statusLabel: UILabel = {
-        let label = UILabel(text: nil, textColor: RGB(124, 133, 164), fontSize: 14, fontWeight: .light, fit: false)
+        let label = UILabel(text: nil, textColor: RGB(100, 116, 139), fontSize: 14, fontWeight: .regular, fit: false)
         label.textAlignment = .left
         return label
     }()
@@ -148,8 +172,8 @@ final class PJEightKeySwitchActivationAlertView: UIView {
         return view
     }()
 
-    let cancelButton = UIButton(title: "cancel".localizedString.uppercased(), titleSize: 16, titleWeight: .light, titleColor: Title_Done_Color, target: nil, action: nil)
-    let retryButton = UIButton(title: "retry".localizedString.uppercased(), titleSize: 16, titleWeight: .light, titleColor: Title_Done_Color, target: nil, action: nil)
+    let cancelButton = UIButton(title: "cancel".localizedString.uppercased(), titleSize: 16, titleWeight: .light, titleColor: RGB(64, 79, 102), target: nil, action: nil)
+    let retryButton = UIButton(title: "retry".localizedString.uppercased(), titleSize: 16, titleWeight: .light, titleColor: RGB(102, 103, 171), target: nil, action: nil)
 
     override init(frame: CGRect) {
         super.init(frame: frame)
@@ -174,11 +198,74 @@ final class PJEightKeySwitchActivationAlertView: UIView {
         messageLabel.attributedText = NSAttributedString(
             string: message,
             attributes: [
-                .foregroundColor: RGB(189, 194, 213),
-                .font: UIFont.systemFont(ofSize: 14, weight: .light),
+                .foregroundColor: RGB(148, 163, 184),
+                .font: UIFont.systemFont(ofSize: 14, weight: .regular),
                 .paragraphStyle: paragraphStyle
             ]
         )
+    }
+
+    func apply(content: Content) {
+        titleLabel.text = content.title
+        updateMessage(content.message)
+        statusLabel.text = content.statusText
+        apply(statusStyle: content.statusStyle)
+        apply(actions: content.actions)
+        viewLayoutIfNeeded()
+    }
+
+    private func apply(statusStyle: StatusStyle) {
+        statusLabel.textColor = RGB(100, 116, 139)
+        switch statusStyle {
+        case .loading:
+            waitingSpinnerView.isHidden = false
+            waitingSpinnerView.startAnimating()
+            statusIconView.isHidden = true
+            statusIconView.image = nil
+        case .success:
+            waitingSpinnerView.stopAnimating()
+            waitingSpinnerView.isHidden = true
+            statusIconView.isHidden = false
+            statusIconView.image = UIImage(systemName: "checkmark.circle")
+            statusIconView.tintColor = RGB(16, 185, 129)
+        case .failure:
+            waitingSpinnerView.stopAnimating()
+            waitingSpinnerView.isHidden = true
+            statusIconView.isHidden = false
+            statusIconView.image = UIImage(systemName: "exclamationmark.circle")
+            statusIconView.tintColor = RGB(239, 68, 68)
+        }
+    }
+
+    private func apply(actions: [Action]) {
+        let normalizedActions = Array(actions.prefix(2))
+        let firstAction = normalizedActions.first
+        let secondAction = normalizedActions.dropFirst().first
+
+        cancelButton.setTitle(firstAction?.title, for: .normal)
+        cancelButton.setTitleColor(color(for: firstAction?.style ?? .normal), for: .normal)
+        retryButton.setTitle(secondAction?.title, for: .normal)
+        retryButton.setTitleColor(color(for: secondAction?.style ?? .primary), for: .normal)
+
+        if secondAction == nil {
+            applyWaitingLayout()
+        } else {
+            applyDualButtonLayout()
+        }
+    }
+
+    private func color(for style: ActionStyle) -> UIColor {
+        switch style {
+        case .normal:
+            return RGB(64, 79, 102)
+        case .primary:
+            return RGB(102, 103, 171)
+        }
+    }
+
+    private func viewLayoutIfNeeded() {
+        setNeedsLayout()
+        layoutIfNeeded()
     }
 
     func applyWaitingLayout() {

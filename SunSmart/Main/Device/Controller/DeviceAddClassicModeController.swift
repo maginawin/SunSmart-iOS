@@ -50,6 +50,8 @@ class DeviceAddClassicModeController: UIViewController {
     var deviceAddCallback: (([Node])->Void)?
     /// 添加成功的节点
     private var addSuccessNodes: [Node] = []
+    private var batteryPowerSwitchAddConfigurations: [Address: PJEightKeySwitchData] = [:]
+    private var failedBatteryPowerSwitchAddConfigurationAddresses: Set<Address> = []
     /// 设备添加到的对应组
     private var addToGroup: Group?
     /// 外部传入指定添加该到group
@@ -246,6 +248,10 @@ class DeviceAddClassicModeController: UIViewController {
     }
 
     private func applySelectableState(to device: ProvisioningDevice) {
+        if device.isBatteryPowerSwitch && MeshNetworkManager.instance.switchs.count >= 16 {
+            device.selectedState = .disabled
+            return
+        }
         guard addBehavior != nil || bindTarget != nil else {
             return
         }
@@ -263,6 +269,80 @@ class DeviceAddClassicModeController: UIViewController {
         if isSingleSelectionMode, device.selectedState == .selected {
             applySingleSelectionIfNeeded(for: device)
         }
+    }
+
+    private func showDisabledDeviceTip(_ device: ProvisioningDevice) {
+        if device.isBatteryPowerSwitch && MeshNetworkManager.instance.switchs.count >= 16 {
+            showBatteryPowerSwitchLimitTip()
+        } else {
+            showInvalidDeviceTypeTip()
+        }
+    }
+
+    private func showBatteryPowerSwitchLimitTip() {
+        SRAlertView(
+            title: "notification".localizedString,
+            message: "switchs_overrun_message".localizedString,
+            actions: [SRAlertAction(title: "GOT_IT".localizedString)]
+        ).show()
+    }
+
+    private func isBatteryPowerSwitchLimitExceeded(for devices: [ProvisioningDevice]) -> Bool {
+        let batteryPowerSwitchCount = devices.filter { $0.isBatteryPowerSwitch }.count
+        return batteryPowerSwitchCount > 0 && MeshNetworkManager.instance.switchs.count + batteryPowerSwitchCount > 16
+    }
+
+    private func validateBatteryPowerSwitchLimit(for devices: [ProvisioningDevice]) -> Bool {
+        guard !isBatteryPowerSwitchLimitExceeded(for: devices) else {
+            showBatteryPowerSwitchLimitTip()
+            return false
+        }
+        return true
+    }
+
+    private func restoreDevicesForAddRetry(_ devices: [ProvisioningDevice]) {
+        devices.forEach {
+            $0.addState = .none
+            $0.selectedState = .selected
+            reloadDeviceState($0)
+        }
+        updateUIState()
+    }
+
+    private func disconnectBatteryPowerSwitchNodes(_ nodes: [Node]) {
+        nodes.filter { $0.isBatteryPowerSwitch }.forEach {
+            MeshLibManager.manager.disconnectProxy(node: $0)
+        }
+    }
+
+    private func finalizeBatteryPowerSwitchAddConfiguration(for node: Node) {
+        guard BatteryPowerSwitchAddConfiguration.isSupportedAddNode(node) else {
+            return
+        }
+
+        guard let switchData = batteryPowerSwitchAddConfigurations[node.primaryUnicastAddress] else {
+            if let fallbackSwitchData = MeshNetworkManager.instance
+                .createDefaultSwitch(forBatteryPowerSwitch: node)?
+                .batteryPowerSwitchData {
+                BatteryPowerSwitchAddConfiguration.markFailed(
+                    fallbackSwitchData,
+                    reason: "sync_failed".localizedString
+                )
+            }
+            return
+        }
+
+        if failedBatteryPowerSwitchAddConfigurationAddresses.contains(node.primaryUnicastAddress) {
+            BatteryPowerSwitchAddConfiguration.markFailed(
+                switchData,
+                reason: switchData.lastSyncFailedReason ?? "sync_failed".localizedString
+            )
+        } else {
+            BatteryPowerSwitchAddConfiguration.markSucceeded(switchData)
+        }
+
+        batteryPowerSwitchAddConfigurations.removeValue(forKey: node.primaryUnicastAddress)
+        failedBatteryPowerSwitchAddConfigurationAddresses.remove(node.primaryUnicastAddress)
     }
 
     private func shouldAllowTargetSelection() -> Bool {
@@ -949,7 +1029,7 @@ class DeviceAddClassicModeController: UIViewController {
                 }
             }
             // 入网后默认调为最大亮度
-            let shouldApplyLightingDefaults = addDevice.deviceType != .dongle && addDevice.deviceType != .gateway && addDevice.deviceType != .emergencyController
+            let shouldApplyLightingDefaults = addDevice.deviceType == .light
             if shouldApplyLightingDefaults, let model = node.lightnessModel {
                 appendMessages.append(MeshMessageHandle(message: LightLightnessSetUnacknowledged(lightness: .max), model: model))
             }
@@ -995,6 +1075,20 @@ class DeviceAddClassicModeController: UIViewController {
             if let ctlModel = node.ctlModel, node.temperatureModel != nil {
                 appendMessages.insert(MeshMessageHandle(message: LightCTLTemperatureRangeGet(), model: ctlModel), at: 0)
             }
+
+            if BatteryPowerSwitchAddConfiguration.isSupportedAddNode(node),
+               let switchData = BatteryPowerSwitchAddConfiguration.prepareSwitchData(for: node) {
+                batteryPowerSwitchAddConfigurations[node.primaryUnicastAddress] = switchData
+                let handles = BatteryPowerSwitchAddConfiguration.defaultConfigurationMessageHandles(
+                    for: switchData,
+                    node: node
+                )
+                if handles.isEmpty {
+                    failedBatteryPowerSwitchAddConfigurationAddresses.insert(node.primaryUnicastAddress)
+                } else {
+                    appendMessages.append(contentsOf: handles)
+                }
+            }
             
             // 添加成功后闪烁
             if let healthModel = node.healthModel {
@@ -1017,6 +1111,14 @@ class DeviceAddClassicModeController: UIViewController {
                     node.updateData(message: messageHandle.message)
                 }
             }
+        } appendMessageFailedBack: { [weak self] messageHandle in
+            guard let self = self else { return }
+            guard let address = messageHandle.model?.parentElement?.unicastAddress ?? messageHandle.address else {
+                return
+            }
+            if self.batteryPowerSwitchAddConfigurations[address] != nil {
+                self.failedBatteryPowerSwitchAddConfigurationAddresses.insert(address)
+            }
         } addSuccess: {[weak self] addDevice in
             guard let self = self else { return }
             addDevice.addState = .success
@@ -1032,6 +1134,9 @@ class DeviceAddClassicModeController: UIViewController {
                         node.restoreData = NodeRestoreData(addGroupAddress: group.address.address)
                         node.save()
                     }
+                }
+                if node.isBatteryPowerSwitch {
+                    finalizeBatteryPowerSwitchAddConfiguration(for: node)
                 }
                 self.addSuccessNodes.append(node)
             }
@@ -1079,6 +1184,7 @@ class DeviceAddClassicModeController: UIViewController {
             
             self.space.deviceCount = MeshNetworkManager.instance.realNodes.count
             self.space.luminairesCount = MeshNetworkManager.instance.realNodes.filter({ $0.deviceType == .light }).count //MeshNetworkManager.instance.lightNodes.count
+            self.space.switchesCount = MeshNetworkManager.instance.switchs.count
             self.space.save()
             // 通知space数据修改
 //            NotificationCenter.default.post(name: .init(spaceDataChangedNotificaitonName), object: SpaceChangeDataType.device)
@@ -1090,6 +1196,10 @@ class DeviceAddClassicModeController: UIViewController {
             if self.addSuccessNodes.contains(where: { $0.deviceType == .emergencyController }) {
                 NotificationCenter.default.post(name: .deviceEmerFireDataDidChange, object: nil)
             }
+            if self.addSuccessNodes.contains(where: { $0.isBatteryPowerSwitch }) {
+                NotificationCenter.default.post(name: .init(switchsRefreshNotificationName), object: nil)
+            }
+            self.disconnectBatteryPowerSwitchNodes(self.addSuccessNodes)
             
 //            self.addSuccessNodes.append(contentsOf: successNodes)
         }
@@ -1098,6 +1208,10 @@ class DeviceAddClassicModeController: UIViewController {
     
     /// 检查设备地址是否足够
     private func checkDeviceAddressesAreSufficient(devices: [ProvisioningDevice]) {
+
+        guard validateBatteryPowerSwitchLimit(for: devices) else {
+            return
+        }
 
         let bleConnectCount = max(showDevices.filter({ $0.addState == .adding || $0.addState == .addConnecting }).count, MeshLibManager.manager.getConnectedPeripherals().count)
         for (index, device) in devices.enumerated() {
@@ -1190,6 +1304,10 @@ class DeviceAddClassicModeController: UIViewController {
             case .success(let repsonsed):
                 // 新增地址
                 if let site = SiteData.load(siteId: self.space.siteId), let provisionerData = JSON(repsonsed)["data"]["provisioner"].dictionaryObject {
+                    guard self.validateBatteryPowerSwitchLimit(for: devices) else {
+                        self.restoreDevicesForAddRetry(devices)
+                        return
+                    }
                     site.setProvisioner(provisionerData: provisionerData)
                     // 继续添加设备
                     devices.forEach({
@@ -1641,7 +1759,7 @@ extension DeviceAddClassicModeController: UITableViewDataSource, UITableViewDele
         
         let device = showDevices[indexPath.row]
         if device.selectedState == .disabled {
-            showInvalidDeviceTypeTip()
+            showDisabledDeviceTip(device)
             return
         }
         guard device.selectedState == .unselected || device.selectedState == .selected else {
@@ -1709,7 +1827,7 @@ extension DeviceAddClassicModeController: DeviceAddViewCellDelegate {
     /// 设备添加点击事件回调
     func cell(_ cell: DeviceAddViewCell, deviceAdd device: ProvisioningDevice) {
         if device.selectedState == .disabled {
-            showInvalidDeviceTypeTip()
+            showDisabledDeviceTip(device)
             return
         }
         if state == .scanning {

@@ -110,39 +110,11 @@ final class PJEightKeySwitchMoreSettingsController: UIViewController {
             make.width.equalTo(scrollView)
         }
 
-        contentView.addSubview(periodicCardView)
-        periodicCardView.snp.makeConstraints { make in
+        contentView.addSubview(ledCardView)
+        ledCardView.snp.makeConstraints { make in
             make.top.equalTo(view.safeAreaLayoutGuide.snp.top).offset(SCRYFrom(16))
             make.left.equalTo(SCRXFrom(16))
             make.right.equalTo(SCRXFrom(-16))
-        }
-
-        periodicCardView.addSubview(periodicTitleLabel)
-        periodicTitleLabel.snp.makeConstraints { make in
-            make.top.equalTo(SCRYFrom(16))
-            make.left.equalTo(SCRXFrom(16))
-            make.right.lessThanOrEqualTo(SCRXFrom(-16))
-        }
-
-        periodicCardView.addSubview(periodicDescriptionLabel)
-        periodicDescriptionLabel.snp.makeConstraints { make in
-            make.top.equalTo(periodicTitleLabel.snp.bottom).offset(SCRYFrom(10))
-            make.left.right.equalTo(periodicTitleLabel)
-        }
-
-        periodicCardView.addSubview(periodicSliderView)
-        periodicSliderView.snp.makeConstraints { make in
-            make.top.equalTo(periodicDescriptionLabel.snp.bottom).offset(SCRYFrom(20))
-            make.left.equalTo(SCRXFrom(16))
-            make.right.equalTo(SCRXFrom(-16))
-            make.height.equalTo(SCRYFrom(72))
-            make.bottom.equalTo(SCRYFrom(-18))
-        }
-
-        contentView.addSubview(ledCardView)
-        ledCardView.snp.makeConstraints { make in
-            make.top.equalTo(periodicCardView.snp.bottom).offset(SCRYFrom(16))
-            make.left.right.equalTo(periodicCardView)
             make.bottom.equalTo(SCRYFrom(-24))
         }
 
@@ -167,11 +139,7 @@ final class PJEightKeySwitchMoreSettingsController: UIViewController {
         }
     }
 
-    private func bindActions() {
-        periodicSliderView.valueChanged = { [weak self] option in
-            self?.viewModel.state.periodicReporting = option
-        }
-    }
+    private func bindActions() {}
 
     @objc private func doneAction() {
         settingsChanged?(viewModel.state)

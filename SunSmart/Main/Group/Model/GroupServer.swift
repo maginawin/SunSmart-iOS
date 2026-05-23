@@ -269,6 +269,10 @@ extension Group {
         // 添加动能开关订阅
         self.info.switchs.forEach { switchData in
             if switchData.linkGroup != nil {
+                if switchData.batteryPowerSwitchData != nil {
+                    messages.append(contentsOf: node.getBatteryPowerSwitchTargetSubscriptionMessageHandles(switchData: switchData, unsubscribe: false))
+                    return
+                }
                 let subscriptionMessageHandles = node.getEnOceanSubscriptionMessageHandles(switchKeys: switchData.switchKeys)
                 messages.append(contentsOf: subscriptionMessageHandles)
             }

@@ -825,7 +825,7 @@
 "PIR Sensor Lighting" = "PIR Sensor Lighting";
 "neightkeyswitches_dimming" = "Dimming";
 "neightkeyswitches_refresh_device" = "Refresh Device";
-"neightkeyswitches_refresh_message" = "Press any button on the device";
+"neightkeyswitches_refresh_message" = "Press any button on the device multiple times";
 "neightkeyswitches_refresh_waiting_format" = "Waiting for signal (%ds)...";
 "neightkeyswitches_refresh_updated" = "Updated just now";
 "neightkeyswitches_forced_auto_mode" = "Forced Auto Mode";
@@ -1522,6 +1522,7 @@
 "total_numbers" = "Total numbers";
 "mesh_network_reset_confirm_message" = "You will reset all devices in the entire mesh network. Please enter \"RESET\" to confirm.";
 "retry" = "Retry";
+"try_again" = "Try Again";
 "mesh_network_reset_range_message" = "Only devices within range will be displayed.";
 "based_on_mesh_network" = "Based On Mesh Network";
 "illumination_fluctuation_range_reset_tip" = "(Greater than this range takes effect)";
@@ -1838,6 +1839,11 @@
 "neightkeyswitches_status_low_battery" = "Low battery";
 "neightkeyswitches_status_fault" = "Fault";
 "neightkeyswitches_status_unknown" = "Unknown";
+"neightkeyswitches_battery_low" = "Low";
+"neightkeyswitches_updated_just_now" = "Just now";
+"neightkeyswitches_updated_min_ago_format" = "%d min ago";
+"neightkeyswitches_updated_hr_ago_format" = "%d hr ago";
+"neightkeyswitches_updated_day_ago_format" = "%d day ago";
 "neightkeyswitches_updated_2min" = "2min ago";
 "neightkeyswitches_updated_7day" = "7day ago";
 "neightkeyswitches_long_press_dimming" = "Long press\nDimming";
