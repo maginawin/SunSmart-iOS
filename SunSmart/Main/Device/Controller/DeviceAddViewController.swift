@@ -36,11 +36,14 @@ enum AddDeviceToTarget {
 /// 添加后需要绑定到的外部业务对象。
 enum AddDeviceBindTarget {
     case emergencyFire(DeviceEmerFireData)
+    case batteryPowerSwitch(PJEightKeySwitchData)
 
     var name: String {
         switch self {
         case .emergencyFire(let device):
             return device.name
+        case .batteryPowerSwitch(let switchData):
+            return switchData.name
         }
     }
 
@@ -48,6 +51,33 @@ enum AddDeviceBindTarget {
         switch self {
         case .emergencyFire:
             return [.emergencyController]
+        case .batteryPowerSwitch:
+            return [.switches]
+        }
+    }
+
+    var shouldCloseAfterBinding: Bool {
+        switch self {
+        case .emergencyFire, .batteryPowerSwitch:
+            return true
+        }
+    }
+
+    func allows(_ device: ProvisioningDevice) -> Bool {
+        switch self {
+        case .emergencyFire:
+            return device.deviceType == .emergencyController
+        case .batteryPowerSwitch:
+            return device.isBatteryPowerSwitch
+        }
+    }
+
+    func allows(_ node: Node) -> Bool {
+        switch self {
+        case .emergencyFire:
+            return node.deviceType == .emergencyController
+        case .batteryPowerSwitch:
+            return node.isBatteryPowerSwitch
         }
     }
 }
@@ -99,10 +129,7 @@ class DeviceAddViewController: WMPageController, DeviceProtocol {
     var addingDevice: Bool = false
 
     private var shouldCloseAfterBinding: Bool {
-        if case .emergencyFire = bindTarget {
-            return true
-        }
-        return false
+        bindTarget?.shouldCloseAfterBinding == true
     }
     
     init(space: SpaceData) {
@@ -166,7 +193,7 @@ class DeviceAddViewController: WMPageController, DeviceProtocol {
         guard !didNotifyDeviceAddCallback,
               shouldCloseAfterBinding,
               let bindTarget,
-              nodes.contains(where: { bindTarget.allowedDeviceTypes.contains($0.deviceType) }) else {
+              nodes.contains(where: { bindTarget.allows($0) }) else {
             return
         }
         finishBindingFlowIfNeeded()
@@ -176,7 +203,7 @@ class DeviceAddViewController: WMPageController, DeviceProtocol {
         guard let bindTarget else {
             return
         }
-        let boundNodes = addSuccessNodes.filter { bindTarget.allowedDeviceTypes.contains($0.deviceType) }
+        let boundNodes = addSuccessNodes.filter { bindTarget.allows($0) }
         let repairNodes = boundNodes.filter { !$0.isKeybindComplete }
         guard repairNodes.isEmpty else {
             repairDevices(nodes: repairNodes) { [weak self] _, failedNodes in
@@ -191,8 +218,26 @@ class DeviceAddViewController: WMPageController, DeviceProtocol {
         let addedNodes = addSuccessNodes
         let callback = deviceAddCallback
         didNotifyDeviceAddCallback = true
-        dismiss(animated: true) {
+        closeBindingFlow(animated: true) {
             callback?(addedNodes)
+        }
+    }
+
+    private func closeBindingFlow(animated: Bool, completion: @escaping () -> Void) {
+        let hostController = parent ?? self
+        if let navigationController = hostController.navigationController,
+           navigationController.viewControllers.last === hostController,
+           navigationController.viewControllers.first !== hostController {
+            navigationController.popViewController(animated: animated)
+            if let coordinator = hostController.transitionCoordinator ?? navigationController.transitionCoordinator {
+                coordinator.animate(alongsideTransition: nil) { _ in
+                    completion()
+                }
+            } else {
+                DispatchQueue.main.async(execute: completion)
+            }
+        } else {
+            hostController.dismiss(animated: animated, completion: completion)
         }
     }
 

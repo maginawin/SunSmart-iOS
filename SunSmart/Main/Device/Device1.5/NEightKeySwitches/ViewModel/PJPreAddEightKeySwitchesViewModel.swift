@@ -10,8 +10,14 @@ import NordicSigMeshSDK
 
 struct PJPreAddEightKeySwitchesViewModel {
 
+    enum CreationKind {
+        case kineticSwitch
+        case batteryPowerSwitch
+    }
+
     let space: SpaceData
     let sourceSwitchData: PJEightKeySwitchData?
+    let creationKind: CreationKind
     var deviceName: String
     var isEnabled = true
     var selectedPanelType: PJEightKeySwitchPanelDefinition.PanelType = .scene8Key
@@ -24,15 +30,17 @@ struct PJPreAddEightKeySwitchesViewModel {
         .init(type: .sceneD)
     ]
 
-    init(space: SpaceData) {
+    init(space: SpaceData, creationKind: CreationKind = .kineticSwitch) {
         self.space = space
         self.sourceSwitchData = nil
+        self.creationKind = creationKind
         self.deviceName = MeshNetworkManager.instance.getNextSwitchName()
     }
 
     init(space: SpaceData, switchData: PJEightKeySwitchData) {
         self.space = space
         self.sourceSwitchData = switchData
+        self.creationKind = .batteryPowerSwitch
         self.deviceName = switchData.name
         self.isEnabled = switchData.enabled
         self.selectedPanelType = switchData.eightKeyPanelType
@@ -66,6 +74,10 @@ struct PJPreAddEightKeySwitchesViewModel {
 
     var showsSceneRow: Bool {
         selectedPanelType == .scene8Key
+    }
+
+    var isBatteryPowerSwitchPreCreate: Bool {
+        sourceSwitchData == nil && creationKind == .batteryPowerSwitch
     }
 
     mutating func clearSceneDatas() {
@@ -102,6 +114,16 @@ struct PJPreAddEightKeySwitchesViewModel {
         switchData.panelType = selectedPanelType == .scene8Key ? .scenes_4key : .default_4key
         switchData.eightKeyPanelType = selectedPanelType
         switchData.moreSettingsState = moreSettings
+        if isBatteryPowerSwitchPreCreate {
+            switchData.syncState = .synced
+            switchData.desiredConfigVersion = 0
+            switchData.desiredConfigHash = ""
+            switchData.appliedConfigHash = ""
+            switchData.lastSyncFailedReason = nil
+            switchData.lastSyncedAt = nil
+            switchData.appliedTxEnabled = nil
+            switchData.appliedLEDIndicatorEnabled = nil
+        }
         return switchData
     }
 }

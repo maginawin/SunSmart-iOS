@@ -16,6 +16,7 @@ final class PJEightKeySwitchMonitorViewModel {
             case normal
             case lowBattery
             case unknown
+            case unlinked
         }
 
         let batteryText: String
@@ -73,6 +74,10 @@ final class PJEightKeySwitchMonitorViewModel {
 
     var isRealBatteryPowerSwitch: Bool {
         informationNode != nil
+    }
+
+    var isUnlinkedVirtualBatteryPowerSwitch: Bool {
+        !isRealBatteryPowerSwitch
     }
 
     var informationNode: Node? {
@@ -201,9 +206,14 @@ final class PJEightKeySwitchMonitorViewModel {
         )
     }
 
-    func persist() {
-        switchData.save()
-        PJEightKeySwitchRepository.shared.save(switchData)
+    @discardableResult
+    func persist() -> Bool {
+        let baseSaved = switchData.save()
+        let metadataSaved = PJEightKeySwitchRepository.shared.save(switchData)
+        if let index = MeshNetworkManager.instance.switchs.firstIndex(where: { $0.id == switchData.id }) {
+            MeshNetworkManager.instance.switchs[index].update(switchData: switchData)
+        }
+        return baseSaved && metadataSaved
     }
 }
 
@@ -217,6 +227,9 @@ private extension PJEightKeySwitchMonitorViewModel {
     }
 
     func batteryStatusStyle(now: Date = Date()) -> HeaderState.StatusStyle {
+        if isUnlinkedVirtualBatteryPowerSwitch {
+            return .unlinked
+        }
         guard let batteryLastUpdateTime = switchData.batteryLastUpdateTime else {
             return .unknown
         }
@@ -262,6 +275,8 @@ private extension PJEightKeySwitchMonitorViewModel {
             return "neightkeyswitches_status_low_battery".localizedString
         case .unknown:
             return "neightkeyswitches_status_unknown".localizedString
+        case .unlinked:
+            return "neightkeyswitches_unlinked".localizedString
         }
     }
 
@@ -269,7 +284,7 @@ private extension PJEightKeySwitchMonitorViewModel {
         switch style {
         case .normal:
             return RGB(69, 197, 122)
-        case .unknown:
+        case .unknown, .unlinked:
             return RGB(148, 163, 184)
         case .lowBattery:
             return RGB(240, 162, 55)

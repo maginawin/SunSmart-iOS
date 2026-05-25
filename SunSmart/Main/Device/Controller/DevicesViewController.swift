@@ -346,12 +346,11 @@ class DevicesViewController: WMPageController {
                     },
                     onBatterySwitch: { [weak self] in
                         guard let self = self else { return }
-//                        let vc = PJPreAddEightKeySwitchesVC(space: self.space)
-//                        if isIPad {
-//                            vc.preferredContentSize = iPadPreferredContentSize
-//                        }
-//                        self.present(NavigationViewController(rootViewController: vc), animated: true)
-                        XWHUDManager.showTipHUD("under_development".localizedString, isLineFeed: true)
+                        let vc = PJPreAddEightKeySwitchesVC(space: self.space, creationKind: .batteryPowerSwitch)
+                        if isIPad {
+                            vc.preferredContentSize = iPadPreferredContentSize
+                        }
+                        self.present(NavigationViewController(rootViewController: vc), animated: true)
                     }
                 )
                 self.present(controller, animated: false)

@@ -239,7 +239,8 @@ private extension PJEightKeySwitchPanelDefinition.PanelType {
 
 private extension PJEightKeySwitchData {
 
-    static let dimmingStepLevel: Int16 = 13107
+    static let dimmingDeltaStepLevel: Int16 = 13107
+    static let dimmingMoveStepLevel: Int16 = 6553
 
     func sceneRecallConfigurations(address: Address, appKeyIndex: UInt16) -> [BatteryPowerSwitchKeyConfiguration] {
         let sceneNumbers = [sceneANumber, sceneBNumber, sceneCNumber, sceneDNumber]
@@ -273,11 +274,11 @@ private extension PJEightKeySwitchData {
 
     func dimmingConfigurations(address: Address, appKeyIndex: UInt16) -> [BatteryPowerSwitchKeyConfiguration] {
         [
-            dimmingConfiguration(button: 4, trigger: .click, level: Self.dimmingStepLevel, address: address, appKeyIndex: appKeyIndex),
-            dimmingConfiguration(button: 4, trigger: .press, level: Self.dimmingStepLevel, address: address, appKeyIndex: appKeyIndex),
+            dimmingConfiguration(button: 4, trigger: .click, level: Self.dimmingDeltaStepLevel, address: address, appKeyIndex: appKeyIndex),
+            dimmingConfiguration(button: 4, trigger: .press, level: Self.dimmingMoveStepLevel, address: address, appKeyIndex: appKeyIndex),
             dimmingConfiguration(button: 4, trigger: .pressRelease, level: 0, address: address, appKeyIndex: appKeyIndex),
-            dimmingConfiguration(button: 5, trigger: .click, level: -Self.dimmingStepLevel, address: address, appKeyIndex: appKeyIndex),
-            dimmingConfiguration(button: 5, trigger: .press, level: -Self.dimmingStepLevel, address: address, appKeyIndex: appKeyIndex),
+            dimmingConfiguration(button: 5, trigger: .click, level: -Self.dimmingDeltaStepLevel, address: address, appKeyIndex: appKeyIndex),
+            dimmingConfiguration(button: 5, trigger: .press, level: -Self.dimmingMoveStepLevel, address: address, appKeyIndex: appKeyIndex),
             dimmingConfiguration(button: 5, trigger: .pressRelease, level: 0, address: address, appKeyIndex: appKeyIndex)
         ]
     }

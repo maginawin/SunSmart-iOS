@@ -10,7 +10,7 @@ import NordicSigMeshSDK
 
 final class PJEightKeySwitchMonitorVC: UIViewController {
 
-    var deleteSwitchAction: ((DeviceSwitchData) -> Void)?
+    var deleteSwitchAction: ((DeviceSwitchData, UIViewController) -> Void)?
 
     private let viewModel: PJEightKeySwitchMonitorViewModel
 
@@ -62,15 +62,20 @@ final class PJEightKeySwitchMonitorVC: UIViewController {
                 self?.deleteCurrentSwitch()
             }))
         }
-        if viewModel.isRealBatteryPowerSwitch {
-            items.append(.init(icon: UIImage(named: "menu_information"), title: "information".localizedString, tapItemBack: { [weak self] _ in
-                self?.pushInformation()
+        if !viewModel.isUnlinkedVirtualBatteryPowerSwitch {
+            if viewModel.isRealBatteryPowerSwitch {
+                items.append(.init(icon: UIImage(named: "menu_information"), title: "information".localizedString, tapItemBack: { [weak self] _ in
+                    self?.pushInformation()
+                }))
+            }
+            items.append(.init(icon: UIImage(named: "Identify_gateway"), title: "Identify", tapItemBack: { _ in
+                // Identify
             }))
         }
-        items.append(.init(icon: UIImage(named: "Identify_gateway"), title: "Identify", tapItemBack: {  _ in
-           //Identify
-        }))
-        
+
+        guard !items.isEmpty else {
+            return
+        }
 
         let touchCenterX = view.width - navigationRightItemMargin - 15
         let touchCenterY = view.safeAreaInsets.top - 10
@@ -168,7 +173,10 @@ final class PJEightKeySwitchMonitorVC: UIViewController {
         panelView.autoLongPressAction = { [weak self] in
             self?.presentForcedAutoPopup()
         }
-        panelView.disabledTapAction = {
+        panelView.disabledTapAction = { [weak self] in
+            guard self?.viewModel.isUnlinkedVirtualBatteryPowerSwitch != true else {
+                return
+            }
             XWHUDManager.showTipHUD("neightkeyswitches_disabled_tip".localizedString, isLineFeed: true)
         }
 
@@ -238,6 +246,9 @@ final class PJEightKeySwitchMonitorVC: UIViewController {
     }
 
     private func handlePanelKeyTap(index: Int) {
+        guard !viewModel.isUnlinkedVirtualBatteryPowerSwitch else {
+            return
+        }
         guard shouldAcceptKeyTap(index: index) else {
             return
         }
@@ -259,9 +270,21 @@ final class PJEightKeySwitchMonitorVC: UIViewController {
         activationFlow = nil
     }
 
+    private func updateUnlinkedVirtualEnable(_ isEnabled: Bool) {
+        viewModel.updateEnabled(isEnabled)
+        _ = viewModel.persist()
+        NotificationCenter.default.post(name: .init(switchsRefreshNotificationName), object: nil)
+        NotificationCenter.default.post(name: .init(spaceDataChangedNotificaitonName), object: SpaceChangeDataType.common)
+        updateUI()
+    }
+
     private func startTxEnableUpdate(_ isEnabled: Bool) {
         guard pendingEnabledValue == nil else {
             updateUI()
+            return
+        }
+        guard !viewModel.isUnlinkedVirtualBatteryPowerSwitch else {
+            updateUnlinkedVirtualEnable(isEnabled)
             return
         }
         guard viewModel.informationNode != nil else {
@@ -296,6 +319,9 @@ final class PJEightKeySwitchMonitorVC: UIViewController {
     }
 
     private func presentDimmingPopup() {
+        guard !viewModel.isUnlinkedVirtualBatteryPowerSwitch else {
+            return
+        }
         let vc = PJEightKeySwitchDimmingPopupController()
         vc.brightnessEndedAction = { [weak self] value in
             guard let self else { return }
@@ -305,6 +331,9 @@ final class PJEightKeySwitchMonitorVC: UIViewController {
     }
 
     private func presentForcedAutoPopup() {
+        guard !viewModel.isUnlinkedVirtualBatteryPowerSwitch else {
+            return
+        }
         let vc = PJEightKeySwitchForcedAutoPopupController()
         vc.autoAction = { [weak self] in
             guard let self else { return }
@@ -416,7 +445,22 @@ final class PJEightKeySwitchMonitorVC: UIViewController {
         navigationController?.pushViewController(vc, animated: true)
     }
 
+    private func deleteUnlinkedVirtualSwitch() {
+        MeshNetworkManager.instance.deleteSwitch(switchData: viewModel.switchData)
+        NotificationCenter.default.post(name: .init(switchsRefreshNotificationName), object: nil)
+        NotificationCenter.default.post(name: .init(spaceDataChangedNotificaitonName), object: SpaceChangeDataType.common)
+        XWHUDManager.showSuccessTipHUD("done!".localizedString)
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) { [weak self] in
+            self?.dismissLikeSystem()
+        }
+    }
+
     private func deleteCurrentSwitch() {
+        guard !viewModel.isUnlinkedVirtualBatteryPowerSwitch else {
+            deleteUnlinkedVirtualSwitch()
+            return
+        }
+
         SRAlertView(
             title: "notification".localizedString,
             message: "switchs_delete_message".localizedString,
@@ -424,9 +468,7 @@ final class PJEightKeySwitchMonitorVC: UIViewController {
                 .cancelAction,
                 SRAlertAction(title: "confirm".localizedString, style: .destructive, actionHandler: { [weak self] _ in
                     guard let self else { return }
-                    self.dismiss(animated: true) {
-                        self.deleteSwitchAction?(self.viewModel.switchData)
-                    }
+                    self.deleteSwitchAction?(self.viewModel.switchData, self)
                 })
             ]
         ).show()

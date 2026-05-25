@@ -150,6 +150,13 @@ class DeviceSwitchesViewController: UIViewController {
         }
         return PJEightKeySwitchRepository.shared.makeEightKeySwitch(from: switchData)
     }
+
+    private func isUnlinkedVirtualBatteryPowerSwitch(_ switchData: DeviceSwitchData) -> Bool {
+        guard let eightKeySwitch = eightKeySwitchData(for: switchData) else {
+            return false
+        }
+        return eightKeySwitch.proxyNode?.isBatteryPowerSwitch != true
+    }
     
     private func updateDevicesEmptyUI() {
         
@@ -215,7 +222,7 @@ class DeviceSwitchesViewController: UIViewController {
     }
     
     /// 删除动能开关
-    private func deleteSwitchData(_ switchData: DeviceSwitchData) {
+    private func deleteSwitchData(_ switchData: DeviceSwitchData, source: UIViewController?) {
 
         guard MeshLibManager.manager.isMeshNetworkConnected else {
             XWHUDManager.showTipHUD("device_notconnect_message".localizedString, isLineFeed: true)
@@ -231,40 +238,87 @@ class DeviceSwitchesViewController: UIViewController {
 //        switchData.save()
         
         let vc = SyncDevicesViewController(type: .enOceanSwitch(switchData, deleteSwitch: true))
-        vc.syncSuccessCallback = {[weak self] _ in
-            guard let self = self else { return }
-            self.dismiss(animated: true)
-            self.deleteCache(switchData: switchData)
-        }
-        vc.backActionCallback = {[weak self] _ in
-            guard let self = self else { return }
-            self.dismiss(animated: true)
-            if let index = MeshNetworkManager.instance.switchs.firstIndex(where: { $0.id == switchData.id }) {
-                self.collectionView.reloadItems(at: [IndexPath(item: index, section: 0)])
+        vc.syncSuccessCallback = { [weak self, weak source] _ in
+            guard let self else { return }
+            if let navigationController = source?.navigationController {
+                navigationController.popViewController(animated: true)
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) { [weak self, weak source] in
+                    self?.completeConfirmedSwitchDelete(switchData, source: source)
+                }
+            } else {
+                self.dismiss(animated: true) { [weak self] in
+                    self?.completeConfirmedSwitchDelete(switchData, source: nil)
+                }
             }
         }
-        if isIPad {
-            vc.preferredContentSize = iPadPreferredContentSize
+        vc.backActionCallback = { _ in }
+
+        if let source, let navigationController = source.navigationController {
+            navigationController.pushViewController(vc, animated: true)
+        } else {
+            if isIPad {
+                vc.preferredContentSize = iPadPreferredContentSize
+            }
+            present(NavigationViewController(rootViewController: vc), animated: true)
         }
-        present(NavigationViewController(rootViewController: vc), animated: true)
     }
     
     private func deleteCache(switchData: DeviceSwitchData) {
-        let index = MeshNetworkManager.instance.switchs.firstIndex(where: { $0.id == switchData.id })
         MeshNetworkManager.instance.deleteSwitch(switchData: switchData)
-        if index != nil {
-            collectionView.deleteItems(at: [IndexPath(item: index!, section: 0)])
-        }else {
-            collectionView.reloadData()
-        }
         NotificationCenter.default.post(name: .init(spaceDataChangedNotificaitonName), object: SpaceChangeDataType.device)
         NotificationCenter.default.post(name: .init(switchsRefreshNotificationName), object: nil)
         
         if MeshNetworkManager.instance.switchs.isEmpty {
             isEdit = false
-            updateUI()
         }
+        updateUI()
         
+    }
+
+    private func completeConfirmedSwitchDelete(_ switchData: DeviceSwitchData, source: UIViewController?) {
+        deleteCache(switchData: switchData)
+
+        guard let source else {
+            return
+        }
+
+        XWHUDManager.showSuccessTipHUD("done!".localizedString)
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) { [weak self, weak source] in
+            self?.closeDeletedSwitchSource(source)
+        }
+    }
+
+    private func closeDeletedSwitchSource(_ source: UIViewController?) {
+        guard let source else {
+            return
+        }
+
+        if let navigationController = source.navigationController,
+           navigationController.presentingViewController != nil {
+            navigationController.dismiss(animated: true)
+        } else {
+            source.dismiss(animated: true)
+        }
+    }
+
+    private func requestDeleteSwitch(_ switchData: DeviceSwitchData) {
+        if isUnlinkedVirtualBatteryPowerSwitch(switchData) {
+            deleteCache(switchData: switchData)
+            XWHUDManager.showSuccessTipHUD("done!".localizedString)
+            return
+        }
+
+        SRAlertView(title: "notification".localizedString, message: "switchs_delete_message".localizedString, actions: [.cancelAction, SRAlertAction(title: "confirm".localizedString, style: .destructive, actionHandler: { [weak self] _ in
+            self?.deleteConfirmedSwitch(switchData)
+        })]).show()
+    }
+
+    private func deleteConfirmedSwitch(_ switchData: DeviceSwitchData, source: UIViewController? = nil) {
+        guard !switchData.getNeedSyncDatas(deleteSwitch: true).isEmpty() else {
+            completeConfirmedSwitchDelete(switchData, source: source)
+            return
+        }
+        deleteSwitchData(switchData, source: source)
     }
     
     /// 长按事件，跳转到开关详情
@@ -278,13 +332,9 @@ class DeviceSwitchesViewController: UIViewController {
             let switche = MeshNetworkManager.instance.switchs[indexPath.item]
             if let eightKeySwitch = eightKeySwitchData(for: switche) {
                 let vc = PJPreAddEightKeySwitchesVC(space: space, switchData: eightKeySwitch)
-                vc.deleteSwitchAction = { [weak self] switchData in
+                vc.deleteSwitchAction = { [weak self] switchData, source in
                     guard let self else { return }
-                    guard !switchData.getNeedSyncDatas(deleteSwitch: true).isEmpty() else {
-                        self.deleteCache(switchData: switchData)
-                        return
-                    }
-                    self.deleteSwitchData(switchData)
+                    self.deleteConfirmedSwitch(switchData, source: source)
                 }
                 if isIPad {
                     vc.preferredContentSize = iPadPreferredContentSize
@@ -314,17 +364,7 @@ extension DeviceSwitchesViewController: UICollectionViewDataSource, UICollection
         let switche = MeshNetworkManager.instance.switchs[indexPath.item]
         let deleteAction: (DeviceSwitchData) -> Void = { [weak self] switche in
             guard let self = self else { return }
-            
-            SRAlertView(title: "notification".localizedString, message: "switchs_delete_message".localizedString, actions: [.cancelAction, SRAlertAction(title: "confirm".localizedString, style: .destructive, actionHandler: {[weak self] _ in
-                
-                // 是否已绑定开关
-                guard !switche.getNeedSyncDatas(deleteSwitch: true).isEmpty() else {
-                    // 空数据直接删除
-                    self?.deleteCache(switchData: switche)
-                    return
-                }
-                self?.deleteSwitchData(switche)
-            })]).show()
+            self.requestDeleteSwitch(switche)
         }
 
         if let eightKeySwitch = eightKeySwitchData(for: switche) {
@@ -354,13 +394,9 @@ extension DeviceSwitchesViewController: UICollectionViewDataSource, UICollection
         let switche = MeshNetworkManager.instance.switchs[indexPath.item]
         if let eightKeySwitch = eightKeySwitchData(for: switche) {
             let vc = PJEightKeySwitchMonitorVC(space: space, switchData: eightKeySwitch)
-            vc.deleteSwitchAction = { [weak self] switchData in
+            vc.deleteSwitchAction = { [weak self] switchData, source in
                 guard let self else { return }
-                guard !switchData.getNeedSyncDatas(deleteSwitch: true).isEmpty() else {
-                    self.deleteCache(switchData: switchData)
-                    return
-                }
-                self.deleteSwitchData(switchData)
+                self.deleteConfirmedSwitch(switchData, source: source)
             }
             if isIPad {
                 vc.preferredContentSize = iPadPreferredContentSize

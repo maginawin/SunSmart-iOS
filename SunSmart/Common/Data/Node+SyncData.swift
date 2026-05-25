@@ -195,6 +195,17 @@ enum ProfileType {
 //    case profileToggleTriggerConditionLux(id: UInt8, minLux: UInt16, maxLux: UInt16, destination: Address, sceneNumber: SceneNumber)
 }
 
+extension ProfileType {
+    func targetPowerUpCct(for node: Node) -> UInt16? {
+        guard case .powerOnState(.definedLightLevel(_), let cct) = self,
+              let cct = cct,
+              node.effectiveSupportCct else {
+            return nil
+        }
+        return node.clampEffectiveCct(cct)
+    }
+}
+
 enum DeviceParameterType {
     
     var rawValue: Int {
@@ -985,10 +996,12 @@ extension Node {
                     syncProfile.append(.powerOnState(state: .restore))
                 }
             case .definedLightLevel(let level):
-                let setCct = (ctlModel != nil && groupProfile.powerUpCct != self.defaultCct)
+                let profileType = ProfileType.powerOnState(state: .definedLightLevel(level), cct: groupProfile.powerUpCct)
+                let targetCct = profileType.targetPowerUpCct(for: self)
+                let setCct = targetCct.map { $0 != self.defaultCct } ?? false
                 if powerUpState != .default || Node.getLightness(lightness100: Int(level)) != defalutLightness || setCct {
-                    if setCct {
-                        syncProfile.append(.powerOnState(state: .definedLightLevel(level), cct: groupProfile.powerUpCct))
+                    if let targetCct = targetCct {
+                        syncProfile.append(.powerOnState(state: .definedLightLevel(level), cct: targetCct))
                     }else {
                         syncProfile.append(.powerOnState(state: .definedLightLevel(level)))
                     }

@@ -138,14 +138,14 @@ protocol PJEightKeySwitchBatteryReading: AnyObject {
 final class MeshBatteryPowerSwitchBatteryReader: PJEightKeySwitchBatteryReading {
 
     func readBatteryLevel(from node: Node, completion: @escaping (UInt8?) -> Void) {
-        guard let batteryModel = node.batteryModel else {
+        guard node.batteryModel != nil else {
             completion(nil)
             return
         }
 
         MeshAPI.sendMessage(
             message: GenericBatteryGet(),
-            model: batteryModel,
+            address: node.primaryUnicastAddress,
             timeout: 2.5
         ) { response in
             guard let status = response as? GenericBatteryStatus,

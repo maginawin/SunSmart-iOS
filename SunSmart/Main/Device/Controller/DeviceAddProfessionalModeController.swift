@@ -118,8 +118,10 @@ class DeviceAddProfessionalModeController: UIViewController {
     private var addTarget: AddDeviceToTarget!
     /// 添加成功的节点
     private var addSuccessNodes: [Node] = []
+    private var pendingBatteryPowerSwitchInitialBatteryReads: [BatteryPowerSwitchAddConfiguration.InitialBatteryReadRequest] = []
     private var batteryPowerSwitchAddConfigurations: [Address: PJEightKeySwitchData] = [:]
     private var failedBatteryPowerSwitchAddConfigurationAddresses: Set<Address> = []
+    private var failedBatteryPowerSwitchAddConfigurationReasons: [Address: String] = [:]
     /// 系统音量监听者
     private var systemVolumeObservation: NSKeyValueObservation?
     
@@ -150,6 +152,13 @@ class DeviceAddProfessionalModeController: UIViewController {
     private var bindToEmerFire: DeviceEmerFireData? {
         if case .emergencyFire(let device) = bindTarget {
             return device
+        }
+        return nil
+    }
+
+    private var bindToBatteryPowerSwitch: PJEightKeySwitchData? {
+        if case .batteryPowerSwitch(let switchData) = bindTarget {
+            return switchData
         }
         return nil
     }
@@ -280,8 +289,30 @@ class DeviceAddProfessionalModeController: UIViewController {
         isAllowedDeviceType(deviceType) && !isBlockedDeviceType(deviceType)
     }
 
+    private func isAllowedDevice(_ device: ProvisioningDevice) -> Bool {
+        if let bindTarget {
+            return bindTarget.allows(device)
+        }
+        let deviceType = device.deviceType
+        return isAllowedDeviceType(deviceType)
+    }
+
+    private func isBlockedDevice(_ device: ProvisioningDevice) -> Bool {
+        if let bindTarget {
+            return !bindTarget.allows(device)
+        }
+        let deviceType = device.deviceType
+        return isBlockedDeviceType(deviceType)
+    }
+
+    private func isSelectableDevice(_ device: ProvisioningDevice) -> Bool {
+        isAllowedDevice(device) && !isBlockedDevice(device)
+    }
+
     private func applySelectableState(to device: ProvisioningDevice) {
-        if device.isBatteryPowerSwitch && MeshNetworkManager.instance.switchs.count >= 16 {
+        if bindToBatteryPowerSwitch == nil,
+           device.isBatteryPowerSwitch,
+           MeshNetworkManager.instance.switchs.count >= 16 {
             device.selectedState = .disabled
             return
         }
@@ -292,7 +323,7 @@ class DeviceAddProfessionalModeController: UIViewController {
             return
         }
         // 这里仅收敛外部注入的禁选设备类型，不改变默认展示与 identify 行为。
-        if isSelectableDeviceType(device.deviceType) {
+        if isSelectableDevice(device) {
             if device.selectedState == .disabled {
                 device.selectedState = .unselected
             }
@@ -305,7 +336,9 @@ class DeviceAddProfessionalModeController: UIViewController {
     }
 
     private func showDisabledDeviceTip(_ device: ProvisioningDevice) {
-        if device.isBatteryPowerSwitch && MeshNetworkManager.instance.switchs.count >= 16 {
+        if bindToBatteryPowerSwitch == nil,
+           device.isBatteryPowerSwitch,
+           MeshNetworkManager.instance.switchs.count >= 16 {
             showBatteryPowerSwitchLimitTip()
         } else {
             showInvalidDeviceTypeTip()
@@ -321,6 +354,9 @@ class DeviceAddProfessionalModeController: UIViewController {
     }
 
     private func isBatteryPowerSwitchLimitExceeded(for devices: [ProvisioningDevice]) -> Bool {
+        guard bindToBatteryPowerSwitch == nil else {
+            return false
+        }
         let batteryPowerSwitchCount = devices.filter { $0.isBatteryPowerSwitch }.count
         return batteryPowerSwitchCount > 0 && MeshNetworkManager.instance.switchs.count + batteryPowerSwitchCount > 16
     }
@@ -342,18 +378,29 @@ class DeviceAddProfessionalModeController: UIViewController {
         updateUIState()
     }
 
-    private func disconnectBatteryPowerSwitchNodes(_ nodes: [Node]) {
-        nodes.filter { $0.isBatteryPowerSwitch }.forEach {
-            MeshLibManager.manager.disconnectProxy(node: $0)
-        }
+    private func finishBatteryPowerSwitchInitialBatteryReadsAndDisconnect() {
+        let requests = pendingBatteryPowerSwitchInitialBatteryReads
+        pendingBatteryPowerSwitchInitialBatteryReads.removeAll()
+        BatteryPowerSwitchAddConfiguration.readInitialBatteryLevelsAndDisconnect(
+            requests,
+            fallbackDisconnectNodes: addSuccessNodes
+        )
     }
 
-    private func finalizeBatteryPowerSwitchAddConfiguration(for node: Node) {
+    private func finalizeBatteryPowerSwitchAddConfiguration(
+        for node: Node
+    ) -> BatteryPowerSwitchAddConfiguration.InitialBatteryReadRequest? {
         guard BatteryPowerSwitchAddConfiguration.isSupportedAddNode(node) else {
-            return
+            return nil
         }
 
         guard let switchData = batteryPowerSwitchAddConfigurations[node.primaryUnicastAddress] else {
+            if bindToBatteryPowerSwitch != nil {
+                failedBatteryPowerSwitchAddConfigurationReasons.removeValue(forKey: node.primaryUnicastAddress)
+                failedBatteryPowerSwitchAddConfigurationAddresses.remove(node.primaryUnicastAddress)
+                return nil
+            }
+
             if let fallbackSwitchData = MeshNetworkManager.instance
                 .createDefaultSwitch(forBatteryPowerSwitch: node)?
                 .batteryPowerSwitchData {
@@ -361,21 +408,34 @@ class DeviceAddProfessionalModeController: UIViewController {
                     fallbackSwitchData,
                     reason: "sync_failed".localizedString
                 )
+                return BatteryPowerSwitchAddConfiguration.makeInitialBatteryReadRequest(
+                    for: fallbackSwitchData,
+                    node: node
+                )
             }
-            return
+            return nil
         }
 
         if failedBatteryPowerSwitchAddConfigurationAddresses.contains(node.primaryUnicastAddress) {
             BatteryPowerSwitchAddConfiguration.markFailed(
                 switchData,
-                reason: switchData.lastSyncFailedReason ?? "sync_failed".localizedString
+                reason: failedBatteryPowerSwitchAddConfigurationReasons[node.primaryUnicastAddress]
+                    ?? switchData.lastSyncFailedReason
+                    ?? "sync_failed".localizedString
             )
         } else {
             BatteryPowerSwitchAddConfiguration.markSucceeded(switchData)
         }
 
+        let request = BatteryPowerSwitchAddConfiguration.makeInitialBatteryReadRequest(
+            for: switchData,
+            node: node
+        )
+
         batteryPowerSwitchAddConfigurations.removeValue(forKey: node.primaryUnicastAddress)
         failedBatteryPowerSwitchAddConfigurationAddresses.remove(node.primaryUnicastAddress)
+        failedBatteryPowerSwitchAddConfigurationReasons.removeValue(forKey: node.primaryUnicastAddress)
+        return request
     }
 
     private func shouldAllowTargetSelection() -> Bool {
@@ -570,7 +630,7 @@ class DeviceAddProfessionalModeController: UIViewController {
                 
                 if self.isRefresh {
                     if newDevice.selectedState != .disabled,
-                       self.isSelectableDeviceType(newDevice.deviceType),
+                       self.isSelectableDevice(newDevice),
                        !self.candidateDevices.contains(where: { $0.peripheral.identifier.uuidString == newDevice.peripheral.identifier.uuidString }),
                        self.selectRSSIRange.contains(newDevice.rssi.intValue) {
                         switch addMode {
@@ -935,17 +995,40 @@ class DeviceAddProfessionalModeController: UIViewController {
                 appendMessages.insert(MeshMessageHandle(message: LightCTLTemperatureRangeGet(), model: ctlModel), at: 0)
             }
 
-            if BatteryPowerSwitchAddConfiguration.isSupportedAddNode(node),
-               let switchData = BatteryPowerSwitchAddConfiguration.prepareSwitchData(for: node) {
-                batteryPowerSwitchAddConfigurations[node.primaryUnicastAddress] = switchData
-                let handles = BatteryPowerSwitchAddConfiguration.defaultConfigurationMessageHandles(
-                    for: switchData,
-                    node: node
-                )
-                if handles.isEmpty {
-                    failedBatteryPowerSwitchAddConfigurationAddresses.insert(node.primaryUnicastAddress)
-                } else {
-                    appendMessages.append(contentsOf: handles)
+            if BatteryPowerSwitchAddConfiguration.isSupportedAddNode(node) {
+                if let bindToBatteryPowerSwitch {
+                    switch BatteryPowerSwitchAddConfiguration.prepareLinkedSwitchData(
+                        sourceSwitchData: bindToBatteryPowerSwitch,
+                        node: node
+                    ) {
+                    case .success(let switchData):
+                        batteryPowerSwitchAddConfigurations[node.primaryUnicastAddress] = switchData
+                        let handles = BatteryPowerSwitchAddConfiguration.linkedConfigurationMessageHandles(
+                            for: switchData,
+                            node: node
+                        )
+                        if handles.isEmpty {
+                            failedBatteryPowerSwitchAddConfigurationAddresses.insert(node.primaryUnicastAddress)
+                            failedBatteryPowerSwitchAddConfigurationReasons[node.primaryUnicastAddress] = "sync_failed".localizedString
+                        } else {
+                            appendMessages.append(contentsOf: handles)
+                        }
+                    case .failure(let error):
+                        failedBatteryPowerSwitchAddConfigurationAddresses.insert(node.primaryUnicastAddress)
+                        failedBatteryPowerSwitchAddConfigurationReasons[node.primaryUnicastAddress] = error.message
+                    }
+                } else if let switchData = BatteryPowerSwitchAddConfiguration.prepareSwitchData(for: node) {
+                    batteryPowerSwitchAddConfigurations[node.primaryUnicastAddress] = switchData
+                    let handles = BatteryPowerSwitchAddConfiguration.defaultConfigurationMessageHandles(
+                        for: switchData,
+                        node: node
+                    )
+                    if handles.isEmpty {
+                        failedBatteryPowerSwitchAddConfigurationAddresses.insert(node.primaryUnicastAddress)
+                        failedBatteryPowerSwitchAddConfigurationReasons[node.primaryUnicastAddress] = "sync_failed".localizedString
+                    } else {
+                        appendMessages.append(contentsOf: handles)
+                    }
                 }
             }
 
@@ -986,6 +1069,7 @@ class DeviceAddProfessionalModeController: UIViewController {
             }
             if self.batteryPowerSwitchAddConfigurations[address] != nil {
                 self.failedBatteryPowerSwitchAddConfigurationAddresses.insert(address)
+                self.failedBatteryPowerSwitchAddConfigurationReasons[address] = "sync_failed".localizedString
             }
         } addSuccess: {[weak self] addDevice in
             guard let self = self else { return }
@@ -1008,8 +1092,9 @@ class DeviceAddProfessionalModeController: UIViewController {
                         node.save()
                     }
                 }
-                if node.isBatteryPowerSwitch {
-                    finalizeBatteryPowerSwitchAddConfiguration(for: node)
+                if node.isBatteryPowerSwitch,
+                   let request = finalizeBatteryPowerSwitchAddConfiguration(for: node) {
+                    pendingBatteryPowerSwitchInitialBatteryReads.append(request)
                 }
 //                node.state = true
                 
@@ -1072,7 +1157,7 @@ class DeviceAddProfessionalModeController: UIViewController {
             if self.addSuccessNodes.contains(where: { $0.isBatteryPowerSwitch }) {
                 NotificationCenter.default.post(name: .init(switchsRefreshNotificationName), object: nil)
             }
-            self.disconnectBatteryPowerSwitchNodes(self.addSuccessNodes)
+            self.finishBatteryPowerSwitchInitialBatteryReadsAndDisconnect()
         }
         
     }
@@ -1395,7 +1480,7 @@ class DeviceAddProfessionalModeController: UIViewController {
 //            self.candidateView?.lightSeningMode = self.addMode == .lightSening
             if self.isRefresh, self.addMode == .rssiRange {
                 // 筛选出满足预选条件的设备
-                let devices = self.scanDevices.filter({ device in device.selectedState != .disabled && self.isSelectableDeviceType(device.deviceType) && !self.candidateDevices.contains(where: { $0.peripheral.identifier.uuidString == device.peripheral.identifier.uuidString }) && self.selectRSSIRange.contains(device.rssi.intValue) })
+                let devices = self.scanDevices.filter({ device in device.selectedState != .disabled && self.isSelectableDevice(device) && !self.candidateDevices.contains(where: { $0.peripheral.identifier.uuidString == device.peripheral.identifier.uuidString }) && self.selectRSSIRange.contains(device.rssi.intValue) })
                 self.candidateDevices.append(contentsOf: devices)
                 self.candidateCountLabel?.text = "\(self.candidateDevices.count)"
             }
@@ -1431,7 +1516,7 @@ class DeviceAddProfessionalModeController: UIViewController {
         if self.isRefresh {
             // 筛选出满足预选条件的设备
             if addMode == .rssiRange {
-                let devices = self.scanDevices.filter({ device in device.selectedState != .disabled && self.isSelectableDeviceType(device.deviceType) && !self.candidateDevices.contains(where: { $0.peripheral.identifier.uuidString == device.peripheral.identifier.uuidString }) && self.selectRSSIRange.contains(device.rssi.intValue) })
+                let devices = self.scanDevices.filter({ device in device.selectedState != .disabled && self.isSelectableDevice(device) && !self.candidateDevices.contains(where: { $0.peripheral.identifier.uuidString == device.peripheral.identifier.uuidString }) && self.selectRSSIRange.contains(device.rssi.intValue) })
                 if devices.count > 0 {
                     self.candidateDevices.append(contentsOf: devices)
                     self.playerNotificationAudio()

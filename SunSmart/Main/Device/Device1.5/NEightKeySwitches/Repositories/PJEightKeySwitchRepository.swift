@@ -233,15 +233,40 @@ final class PJEightKeySwitchRepository {
                     switchData.batteryLastUpdateTime = previousLastUpdateTime
                     return false
                 }
+                updateCachedBattery(level: level, lastUpdateTime: lastUpdateTime, for: switchData)
                 return true
             }
             switchData.batteryLevel = level
             switchData.batteryLastUpdateTime = lastUpdateTime
+            updateCachedBattery(level: level, lastUpdateTime: lastUpdateTime, for: switchData)
             return true
         } catch {
             print(error)
             return false
         }
+    }
+
+    private func updateCachedBattery(
+        level: UInt8,
+        lastUpdateTime: Int64,
+        for switchData: PJEightKeySwitchData
+    ) {
+        guard let index = MeshNetworkManager.instance.switchs.firstIndex(where: { $0.id == switchData.id }) else {
+            return
+        }
+
+        if let cachedSwitch = MeshNetworkManager.instance.switchs[index] as? PJEightKeySwitchData {
+            cachedSwitch.batteryLevel = level
+            cachedSwitch.batteryLastUpdateTime = lastUpdateTime
+            return
+        }
+
+        guard let cachedBatteryPowerSwitch = MeshNetworkManager.instance.switchs[index].batteryPowerSwitchData else {
+            return
+        }
+        cachedBatteryPowerSwitch.batteryLevel = level
+        cachedBatteryPowerSwitch.batteryLastUpdateTime = lastUpdateTime
+        MeshNetworkManager.instance.switchs[index] = cachedBatteryPowerSwitch
     }
 
     func metadata(for switchData: DeviceSwitchData, meshUUID: String? = nil, networkId: String? = nil) -> Metadata? {

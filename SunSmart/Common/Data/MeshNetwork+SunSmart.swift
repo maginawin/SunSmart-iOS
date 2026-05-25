@@ -847,6 +847,10 @@ extension MeshNetworkManager {
     /// 删除动能开关
     func deleteSwitch(switchData: DeviceSwitchData) {
         guard let meshUUID = self.meshNetwork?.uuid.uuidString else { return }
+        let realBatteryPowerSwitchNode = switchData.proxyNode?.isBatteryPowerSwitch == true
+            ? switchData.proxyNode
+            : nil
+        silentlyResetBatteryPowerSwitchIfNeeded(realBatteryPowerSwitchNode)
         // 检查代理设备的数据有没有清空
         if let proxyNode = MeshNetworkManager.instance.realNodes.first(where: { $0.enOceanMacAddress == switchData.enOceanMacAddress }) {
             proxyNode.enOceanMacAddress = nil
@@ -855,6 +859,7 @@ extension MeshNetworkManager {
         PJEightKeySwitchRepository.shared.delete(for: switchData, meshUUID: meshUUID, networkId: self.currentNetworkKey.networkId.hex)
         switchData.delete(meshUUID: meshUUID, networkId: self.currentNetworkKey.networkId.hex)
         self.switchs.removeAll(where: { $0.id == switchData.id })
+        removeRealBatteryPowerSwitchNodeIfNeeded(realBatteryPowerSwitchNode)
         
         var switchGroups: [Group] = []
         if let group = switchData.linkGroup {
@@ -880,7 +885,34 @@ extension MeshNetworkManager {
             }
             try? self.meshNetwork?.remove(group: group)
         }
+        notifyRealBatteryPowerSwitchDeletedIfNeeded(realBatteryPowerSwitchNode)
         
+    }
+
+    private func silentlyResetBatteryPowerSwitchIfNeeded(_ node: Node?) {
+        guard let node else {
+            return
+        }
+        MeshAPI.sendMessage(message: ConfigNodeReset(), address: node.primaryUnicastAddress)
+    }
+
+    private func removeRealBatteryPowerSwitchNodeIfNeeded(_ node: Node?) {
+        guard let node else {
+            return
+        }
+        node.deleteExtension()
+        self.meshNetwork?.forceRemove(node: node)
+    }
+
+    private func notifyRealBatteryPowerSwitchDeletedIfNeeded(_ node: Node?) {
+        guard node != nil else {
+            return
+        }
+        NotificationCenter.default.post(name: .init(switchsRefreshNotificationName), object: nil)
+        NotificationCenter.default.post(
+            name: .init(spaceDataChangedNotificaitonName),
+            object: SpaceChangeDataType.network(type: .address)
+        )
     }
     
     /// 删除dongle
@@ -1922,7 +1954,10 @@ extension Node {
         guard self.sunricherVendorModel != nil, self.productIdentifier != nil else {
             return false
         }
-        if self.deviceType == .dongle || self.deviceType == .gateway || self.deviceType == .emergencyController {
+        if self.deviceType == .switches ||
+            self.deviceType == .dongle ||
+            self.deviceType == .gateway ||
+            self.deviceType == .emergencyController {
             return false
         }
         return true
