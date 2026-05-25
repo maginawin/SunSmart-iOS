@@ -835,14 +835,21 @@ extension ProfileType {
             return node.lightLCProperty.manualOverrideEnabled == enabled && node.lightLCProperty.manualOverrideTimeout == min(second != .max ? second * 1000 : second, UInt32.max) && node.lightLCProperty.manualControlState == state
         case .manualControl(let enabled):
             return node.lightLCProperty.manualControlMode == enabled
-        case .powerOnState(let state, let cct):
+        case .powerOnState(let state, _):
             switch state {
             case .off:
                 return node.powerUpState == .off
             case .restore:
                 return node.powerUpState == .restore
             case .definedLightLevel(let level):
-                return node.powerUpState == .default && node.defalutLightness == Node.getLightness(lightness100: Int(level)) && (cct == nil || cct != nil && cct == node.defaultCct)
+                guard node.powerUpState == .default,
+                      node.defalutLightness == Node.getLightness(lightness100: Int(level)) else {
+                    return false
+                }
+                guard let targetCct = self.targetPowerUpCct(for: node) else {
+                    return true
+                }
+                return targetCct == node.defaultCct
             }
         case .daylightCalibration(let value):
             return node.daylightCalibrationValue == value
