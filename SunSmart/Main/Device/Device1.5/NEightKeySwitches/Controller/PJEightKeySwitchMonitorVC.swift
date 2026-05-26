@@ -68,8 +68,8 @@ final class PJEightKeySwitchMonitorVC: UIViewController {
                     self?.pushInformation()
                 }))
             }
-            items.append(.init(icon: UIImage(named: "Identify_gateway"), title: "Identify", tapItemBack: { _ in
-                // Identify
+            items.append(.init(icon: UIImage(named: "Identify_gateway"), title: "Identify", tapItemBack: { [weak self] _ in
+                self?.identifyAction()
             }))
         }
 
@@ -81,6 +81,13 @@ final class PJEightKeySwitchMonitorVC: UIViewController {
         let touchCenterY = view.safeAreaInsets.top - 10
         let windowPoint = view.convert(CGPoint(x: touchCenterX, y: touchCenterY), to: UIApplication.shared.keyWindow())
         MenuPopView.show(items: items, anchorPoint: windowPoint, menuWidth: SCRXFrom(114))
+    }
+
+    private func identifyAction() {
+        guard let node = viewModel.informationNode else {
+            return
+        }
+        MeshAPI.identify(address: node.primaryUnicastAddress, attentionTimer: 6)
     }
 
     private func setupNavigation() {

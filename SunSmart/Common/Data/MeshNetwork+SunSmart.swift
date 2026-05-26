@@ -893,7 +893,11 @@ extension MeshNetworkManager {
         guard let node else {
             return
         }
-        MeshAPI.sendMessage(message: ConfigNodeReset(), address: node.primaryUnicastAddress)
+        do {
+            try MeshAPI.resetNodeWithoutWaitingForStatus(address: node.primaryUnicastAddress)
+        } catch {
+            print("Failed to send Battery Power Switch reset node: \(error)")
+        }
     }
 
     private func removeRealBatteryPowerSwitchNodeIfNeeded(_ node: Node?) {
