@@ -759,13 +759,14 @@ class SyncDevicesViewController: UIViewController {
         unsubscribe: Bool,
         dependencies: [SyncDeviceStepModel]
     ) -> SyncDevicesGroupModel? {
-        guard let switchGroup = switchData.linkGroup else { return nil }
+        guard switchData.linkGroup != nil else { return nil }
 
         let title = unsubscribe ? "Group Unsubscription" : "Group Subscription"
         let deviceModels = group.nodes.compactMap { node -> SyncDevicesModel? in
-            let handles = unsubscribe
-                ? node.getBatteryPowerSwitchUnsubscriptionMessageHandles(switchGroup: switchGroup)
-                : node.getBatteryPowerSwitchSubscriptionMessageHandles(switchGroup: switchGroup)
+            let handles = node.getBatteryPowerSwitchTargetSubscriptionMessageHandles(
+                switchData: switchData,
+                unsubscribe: unsubscribe
+            )
             guard !handles.isEmpty else {
                 return nil
             }

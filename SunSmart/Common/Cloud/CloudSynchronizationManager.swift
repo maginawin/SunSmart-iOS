@@ -99,6 +99,31 @@ enum SyncOperation {
     
 }
 
+#if DEBUG
+extension SyncOperation {
+
+    var diagnosticDescription: String {
+        switch self {
+        case .syncSite(let site, let syncSpaces):
+            return "operation=syncSite siteId=\(site.id) syncSpaceCount=\(syncSpaces.count) spaces=\(Self.spacesDescription(syncSpaces))"
+        case .syncSpace(let space):
+            return "operation=syncSpace siteId=\(space.siteId) spaceId=\(space.id) spaceName=\(space.name)"
+        case .addSpaces(let site, let spaces):
+            return "operation=addSpaces siteId=\(site.id) spaceCount=\(spaces.count) spaces=\(Self.spacesDescription(spaces))"
+        case .syncGateway(let gateway, _):
+            return "operation=syncGateway siteId=\(gateway.siteId) gatewayId=\(gateway.mac)"
+        }
+    }
+
+    private static func spacesDescription(_ spaces: [SpaceData]) -> String {
+        guard !spaces.isEmpty else {
+            return "[]"
+        }
+        return "[" + spaces.map { "spaceId=\($0.id), spaceName=\($0.name)" }.joined(separator: "; ") + "]"
+    }
+}
+#endif
+
 /// 同步等级
 enum SyncLevel {
     /// 等待同步计时（s）
@@ -124,6 +149,24 @@ enum SyncLevel {
     /// 自定义
     case custom(interval: TimeInterval)
 }
+
+#if DEBUG
+extension SyncLevel {
+
+    var diagnosticDescription: String {
+        switch self {
+        case .promptly:
+            return "promptly"
+        case .normal:
+            return "normal"
+        case .slow:
+            return "slow"
+        case .custom(let interval):
+            return "custom(\(interval))"
+        }
+    }
+}
+#endif
 
 protocol CloudSynchronizationManagerDelegate: AnyObject {
     
@@ -618,11 +661,28 @@ class CloudSynchronizationHandle: NSObject {
         requestHandle?.cancel()
         AsyncTask {
             let api = await self.operation.getNetworkApi()
+            #if DEBUG
+            print("""
+            [CloudSync][Request]
+            \(self.operation.diagnosticDescription)
+            apiTarget=\(api.diagnosticName)
+            apiPath=\(api.path)
+            level=\(self.level.diagnosticDescription)
+            """)
+            #endif
             requestHandle = NetworkRequest.shared.request(api) {[weak self] result in
                 guard let self = self else { return }
                 self.requestHandle = nil
                 switch result {
                 case .success(let response):
+                    #if DEBUG
+                    print("""
+                    [CloudSync][Success]
+                    \(self.operation.diagnosticDescription)
+                    apiTarget=\(api.diagnosticName)
+                    apiPath=\(api.path)
+                    """)
+                    #endif
                     self.state = .successful
                     // 更新缓存
                     switch self.operation {
@@ -665,6 +725,16 @@ class CloudSynchronizationHandle: NSObject {
                     }
                     
                 case .failure(let error):
+                    #if DEBUG
+                    print("""
+                    [CloudSync][Failure]
+                    \(self.operation.diagnosticDescription)
+                    apiTarget=\(api.diagnosticName)
+                    apiPath=\(api.path)
+                    errorCode=\(error.code)
+                    error=\(error.diagnosticDescription)
+                    """)
+                    #endif
                     self.state = .failure(error: error)
                     // 更新缓存
                     switch self.operation {

@@ -50,6 +50,16 @@ class DeviceRestoreViewController: UIViewController {
     var deviceRestoreCallback: (([Node], Bool)->Void)?
     /// 已恢复的设备
     private var restoreNodes: [Node] = []
+    private var pendingBatteryPowerSwitchInitialBatteryReads: [BatteryPowerSwitchAddConfiguration.InitialBatteryReadRequest] = []
+    private var batteryPowerSwitchRestoreConfigurations: [Address: PJEightKeySwitchData] = [:]
+    private var failedBatteryPowerSwitchRestoreAddresses: Set<Address> = []
+    private var failedBatteryPowerSwitchRestoreReasons: [Address: String] = [:]
+    private var pendingBatteryPowerSwitchRestoreLinkGroupAddresses: Set<Address> = []
+    private var successfulBatteryPowerSwitchRestoreLinkGroupAddresses: Set<Address> = []
+    private var successfulBatteryPowerSwitchTargetSubscriptions: Set<BatteryPowerSwitchTargetSubscriptionKey> = []
+    private var deferredRestoreSyncDatasByAddress: [Address: [NodeSyncData]] = [:]
+    private let deferredRestoreTaskMaxRetryCount = 1
+    private let deferredRestoreTaskRetryDelay: TimeInterval = 1.5
     
     
     /// 展示的设备恢复数据list
@@ -91,8 +101,165 @@ class DeviceRestoreViewController: UIViewController {
     var automationRetryCount: Int = 1
     /// 是否在分配设备地址
     private var applyDeviceAddress: Bool = false
-    
-    
+
+    private struct BatteryPowerSwitchTargetSubscriptionKey: Hashable {
+        let nodeAddress: Address
+        let groupAddress: Address
+        let elementAddress: Address
+        let modelIdentifier: UInt16
+        let companyIdentifier: UInt16?
+    }
+
+    private enum RestoreSyncEvaluationPhase {
+        case deviceSuccess
+        case batchFinish
+    }
+
+    private struct DeferredRestoreTask {
+        let operationType: DeviceOperationType
+        let messageHandles: [MeshMessageHandle]
+        let filteredSceneRecallCount: Int
+    }
+
+    private struct DeferredRestoreResponseKey: Hashable, CustomStringConvertible {
+        let targetAddress: Address
+        let requestOpCode: UInt32
+        let responseOpCode: UInt32
+        let elementAddress: Address?
+        let modelIdentifier: UInt16?
+        let companyIdentifier: UInt16?
+        let vendorCode: [UInt8]?
+
+        var description: String {
+            var parts = [
+                "target=\(String(format: "%04X", Int(targetAddress)))",
+                "request=\(String(format: "%06X", requestOpCode))",
+                "response=\(String(format: "%06X", responseOpCode))"
+            ]
+            if let elementAddress {
+                parts.append("element=\(String(format: "%04X", Int(elementAddress)))")
+            }
+            if let modelIdentifier {
+                parts.append("model=\(String(format: "%04X", modelIdentifier))")
+            }
+            if let companyIdentifier {
+                parts.append("company=\(String(format: "%04X", companyIdentifier))")
+            }
+            if let vendorCode {
+                parts.append("vendor=\(vendorCode.map { String(format: "%02X", $0) }.joined())")
+            }
+            return parts.joined(separator: ",")
+        }
+    }
+
+    private final class DeferredRestoreResponseTracker {
+        private var successfulHandleIds: Set<ObjectIdentifier> = []
+        private var successfulResponseKeys: Set<DeferredRestoreResponseKey> = []
+
+        var hasSuccessfulResponse: Bool {
+            !successfulHandleIds.isEmpty || !successfulResponseKeys.isEmpty
+        }
+
+        func markSuccessful(handle: MeshMessageHandle, statusMessage: StaticMeshMessage) {
+            successfulHandleIds.insert(ObjectIdentifier(handle))
+            if let key = Self.responseKey(for: handle, statusMessage: statusMessage) {
+                successfulResponseKeys.insert(key)
+            }
+        }
+
+        func hasSuccessfulResponse(for handle: MeshMessageHandle) -> Bool {
+            if successfulHandleIds.contains(ObjectIdentifier(handle)) {
+                return true
+            }
+            guard let key = Self.requestKey(for: handle) else {
+                return false
+            }
+            return successfulResponseKeys.contains(key)
+        }
+
+        func responseKeysDescription() -> String {
+            successfulResponseKeys.map(\.description).sorted().joined(separator: ";")
+        }
+
+        private static func requestKey(for handle: MeshMessageHandle) -> DeferredRestoreResponseKey? {
+            guard let responseOpCode = (handle.message as? AcknowledgedMeshMessage)?.responseOpCode else {
+                return nil
+            }
+            return responseKey(
+                targetAddress: handle.targetAddress,
+                requestMessage: handle.message,
+                responseOpCode: responseOpCode,
+                statusMessage: nil
+            )
+        }
+
+        private static func responseKey(
+            for handle: MeshMessageHandle,
+            statusMessage: StaticMeshMessage
+        ) -> DeferredRestoreResponseKey? {
+            responseKey(
+                targetAddress: handle.targetAddress,
+                requestMessage: handle.message,
+                responseOpCode: statusMessage.opCode,
+                statusMessage: statusMessage
+            )
+        }
+
+        private static func responseKey(
+            targetAddress: Address,
+            requestMessage: MeshMessage,
+            responseOpCode: UInt32,
+            statusMessage: StaticMeshMessage?
+        ) -> DeferredRestoreResponseKey? {
+            var elementAddress: Address?
+            var modelIdentifier: UInt16?
+            var companyIdentifier: UInt16?
+            var vendorCode: [UInt8]?
+
+            if let publicationStatus = statusMessage as? ConfigModelPublicationStatus {
+                elementAddress = publicationStatus.elementAddress
+                modelIdentifier = publicationStatus.modelIdentifier
+                companyIdentifier = publicationStatus.companyIdentifier
+            } else if let request = requestMessage as? ConfigAnyModelMessage {
+                elementAddress = request.elementAddress
+                modelIdentifier = request.modelIdentifier
+                companyIdentifier = request.companyIdentifier
+            }
+
+            if let vendorStatus = statusMessage as? SunricherVendorStatus {
+                vendorCode = vendorStatus.status.code.code
+            } else if requestMessage is SunricherVendorSet || requestMessage is SunricherVendorGet {
+                vendorCode = vendorResponseCode(from: requestMessage.parameters)
+            }
+
+            return DeferredRestoreResponseKey(
+                targetAddress: targetAddress,
+                requestOpCode: requestMessage.opCode,
+                responseOpCode: responseOpCode,
+                elementAddress: elementAddress,
+                modelIdentifier: modelIdentifier,
+                companyIdentifier: companyIdentifier,
+                vendorCode: vendorCode
+            )
+        }
+
+        private static func vendorResponseCode(from parameters: Data?) -> [UInt8]? {
+            guard let parameters,
+                  let opCode = parameters.first else {
+                return nil
+            }
+
+            let subcodedOpCodes: Set<UInt8> = [
+                0x31, 0x36, 0x37, 0x39, 0x41, 0x42, 0x43, 0x44,
+                0x46, 0x47, 0x48, 0x49, 0x4A, 0x4C, 0x4D
+            ]
+            if subcodedOpCodes.contains(opCode), parameters.count > 1 {
+                return [opCode, parameters[1]]
+            }
+            return [opCode]
+        }
+    }
+
     init(site: SiteData, space: SpaceData?, restoreMode: RestoreMode) {
         self.site = site
         self.space = space
@@ -169,6 +336,9 @@ class DeviceRestoreViewController: UIViewController {
 //            if self.restoreNodes.count > 0 {
         self.deviceRestoreCallback?(self.restoreNodes, self.automationRestore)
 //            }
+        self.restoreNodes.forEach {
+            $0.batteryPowerSwitchRestoreTargetSubscriptionSnapshots = nil
+        }
         // 关闭设置屏幕常亮
         UIApplication.shared.isIdleTimerDisabled = false
 //        }
@@ -486,6 +656,918 @@ class DeviceRestoreViewController: UIViewController {
         }
     }
     
+    private func finishBatteryPowerSwitchInitialBatteryReadsAndDisconnect(fallbackDisconnectNodes: [Node]) {
+        let requests = pendingBatteryPowerSwitchInitialBatteryReads
+        pendingBatteryPowerSwitchInitialBatteryReads.removeAll()
+        BatteryPowerSwitchAddConfiguration.readInitialBatteryLevelsAndDisconnect(
+            requests,
+            fallbackDisconnectNodes: fallbackDisconnectNodes
+        )
+    }
+
+    private func batteryPowerSwitchData(boundTo oldNode: Node) -> PJEightKeySwitchData? {
+        guard let switchData = MeshNetworkManager.instance.switchs.first(where: {
+            $0.proxyNodeAddress == oldNode.primaryUnicastAddress
+        }) else {
+            return nil
+        }
+        if let batteryPowerSwitchData = switchData as? PJEightKeySwitchData {
+            return batteryPowerSwitchData
+        }
+        return PJEightKeySwitchRepository.shared.makeEightKeySwitch(from: switchData)
+    }
+
+    private func isBatteryPowerSwitchRestore(oldNode: Node, newNode: Node) -> Bool {
+        BatteryPowerSwitchAddConfiguration.isSupportedAddNode(newNode)
+            && batteryPowerSwitchData(boundTo: oldNode) != nil
+    }
+
+    private func prepareBatteryPowerSwitchRestoreConfiguration(
+        oldNode: Node,
+        newNode: Node,
+        appendMessages: inout [MeshMessageHandle]
+    ) {
+        guard let sourceSwitchData = batteryPowerSwitchData(boundTo: oldNode) else {
+            return
+        }
+
+        switch BatteryPowerSwitchAddConfiguration.prepareRestoreSwitchData(
+            sourceSwitchData: sourceSwitchData,
+            node: newNode
+        ) {
+        case .success(let switchData):
+            batteryPowerSwitchRestoreConfigurations[newNode.primaryUnicastAddress] = switchData
+            let handles = BatteryPowerSwitchAddConfiguration.restoreConfigurationMessageHandles(
+                for: switchData,
+                node: newNode
+            )
+            if handles.isEmpty {
+                failedBatteryPowerSwitchRestoreAddresses.insert(newNode.primaryUnicastAddress)
+                failedBatteryPowerSwitchRestoreReasons[newNode.primaryUnicastAddress] = "sync_failed".localizedString
+            } else {
+                appendMessages.append(contentsOf: handles)
+            }
+        case .failure(let error):
+            failedBatteryPowerSwitchRestoreAddresses.insert(newNode.primaryUnicastAddress)
+            failedBatteryPowerSwitchRestoreReasons[newNode.primaryUnicastAddress] = error.message
+        }
+    }
+
+    private func isBatteryPowerSwitchRestoreConfigurationMessage(_ message: MeshMessage) -> Bool {
+        guard let message = message as? SunricherVendorSet else {
+            return false
+        }
+        switch message.function {
+        case .batteryPowerSwitchKeyConfig, .batteryPowerSwitchTxEnabled, .batteryPowerSwitchLEDEnabled:
+            return true
+        default:
+            return false
+        }
+    }
+
+    private func markBatteryPowerSwitchRestoreConfigurationFailedIfNeeded(_ messageHandle: MeshMessageHandle) {
+        guard isBatteryPowerSwitchRestoreConfigurationMessage(messageHandle.message) else {
+            return
+        }
+        guard let address = messageHandle.model?.parentElement?.unicastAddress ?? messageHandle.address else {
+            return
+        }
+        guard batteryPowerSwitchRestoreConfigurations[address] != nil else {
+            return
+        }
+        failedBatteryPowerSwitchRestoreAddresses.insert(address)
+        failedBatteryPowerSwitchRestoreReasons[address] = "sync_failed".localizedString
+    }
+
+    private func finalizeBatteryPowerSwitchRestoreConfiguration(
+        for node: Node
+    ) -> BatteryPowerSwitchAddConfiguration.InitialBatteryReadRequest? {
+        guard let switchData = batteryPowerSwitchRestoreConfigurations[node.primaryUnicastAddress] else {
+            failedBatteryPowerSwitchRestoreAddresses.remove(node.primaryUnicastAddress)
+            failedBatteryPowerSwitchRestoreReasons.removeValue(forKey: node.primaryUnicastAddress)
+            return nil
+        }
+
+        let failed = failedBatteryPowerSwitchRestoreAddresses.contains(node.primaryUnicastAddress)
+        let linkGroupAddress = switchData.linkGroupAddress
+        if failed {
+            BatteryPowerSwitchAddConfiguration.markFailed(
+                switchData,
+                reason: failedBatteryPowerSwitchRestoreReasons[node.primaryUnicastAddress]
+                    ?? switchData.lastSyncFailedReason
+                    ?? "sync_failed".localizedString
+            )
+        } else {
+            BatteryPowerSwitchAddConfiguration.markSucceeded(switchData, clearRemovedGroups: false)
+            if let linkGroupAddress {
+                successfulBatteryPowerSwitchRestoreLinkGroupAddresses.insert(linkGroupAddress)
+            }
+        }
+        if let linkGroupAddress {
+            pendingBatteryPowerSwitchRestoreLinkGroupAddresses.remove(linkGroupAddress)
+        }
+
+        let request = BatteryPowerSwitchAddConfiguration.makeInitialBatteryReadRequest(
+            for: switchData,
+            node: node
+        )
+
+        batteryPowerSwitchRestoreConfigurations.removeValue(forKey: node.primaryUnicastAddress)
+        failedBatteryPowerSwitchRestoreAddresses.remove(node.primaryUnicastAddress)
+        failedBatteryPowerSwitchRestoreReasons.removeValue(forKey: node.primaryUnicastAddress)
+        return request
+    }
+
+    private func recordPendingBatteryPowerSwitchRestoreLinkGroups(for restoreDatas: [DeviceRestoreData]) {
+        restoreDatas.forEach { data in
+            guard let linkGroupAddress = batteryPowerSwitchData(boundTo: data.node)?.linkGroupAddress else {
+                return
+            }
+            pendingBatteryPowerSwitchRestoreLinkGroupAddresses.insert(linkGroupAddress)
+        }
+    }
+
+    private func recordBatteryPowerSwitchTargetSubscriptionSuccessIfNeeded(
+        _ messageHandle: MeshMessageHandle,
+        node: Node
+    ) {
+        guard let target = batteryPowerSwitchTargetSubscription(from: messageHandle.message),
+              isPendingOrSuccessfulBatteryPowerSwitchRestoreLinkGroup(target.groupAddress) else {
+            return
+        }
+        let key = BatteryPowerSwitchTargetSubscriptionKey(
+            nodeAddress: node.primaryUnicastAddress,
+            groupAddress: target.groupAddress,
+            elementAddress: target.elementAddress,
+            modelIdentifier: target.modelIdentifier,
+            companyIdentifier: target.companyIdentifier
+        )
+        successfulBatteryPowerSwitchTargetSubscriptions.insert(key)
+    }
+
+    private func batteryPowerSwitchTargetSubscription(from message: MeshMessage) -> (groupAddress: Address, elementAddress: Address, modelIdentifier: UInt16, companyIdentifier: UInt16?)? {
+        if let message = message as? ConfigModelSubscriptionAdd {
+            return (message.address, message.elementAddress, message.modelIdentifier, message.companyIdentifier)
+        }
+        if let message = message as? ConfigModelSubscriptionVirtualAddressAdd {
+            return (MeshAddress(message.virtualLabel).address, message.elementAddress, message.modelIdentifier, message.companyIdentifier)
+        }
+        return nil
+    }
+
+    private func isPendingOrSuccessfulBatteryPowerSwitchRestoreLinkGroup(_ groupAddress: Address) -> Bool {
+        pendingBatteryPowerSwitchRestoreLinkGroupAddresses.contains(groupAddress)
+            || successfulBatteryPowerSwitchRestoreLinkGroupAddresses.contains(groupAddress)
+            || batteryPowerSwitchRestoreConfigurations.values.contains(where: { $0.linkGroupAddress == groupAddress })
+    }
+
+    private func shouldMarkRestoredNodeSyncFailed(
+        _ node: Node,
+        phase: RestoreSyncEvaluationPhase
+    ) -> Bool {
+        guard !node.isBatteryPowerSwitch else {
+            return false
+        }
+        // 恢复数据不包括邻近照明邻居关系，涉及其它节点，仍保持外部同步流程。
+        guard node.getNodeSyncProximityLighting() == nil else {
+            return false
+        }
+
+        let syncDatas = node.getSyncData(type: .all)
+        guard !syncDatas.isEmpty else {
+            return false
+        }
+
+        let unresolvedSyncDescriptions = syncDatas.flatMap {
+            unresolvedRestoreSyncDescriptions(for: $0, node: node, phase: phase)
+        }
+        guard !unresolvedSyncDescriptions.isEmpty else {
+            print("[DeviceRestore] Skip sync failed for node=\(node.primaryUnicastAddress.hex), recovered BPS target subscription only")
+            return false
+        }
+
+        print("[DeviceRestore] Mark sync failed for node=\(node.primaryUnicastAddress.hex), sync=\(unresolvedSyncDescriptions.joined(separator: ","))")
+        return true
+    }
+
+    private func unresolvedRestoreSyncDescriptions(
+        for syncData: NodeSyncData,
+        node: Node,
+        phase: RestoreSyncEvaluationPhase
+    ) -> [String] {
+        switch syncData {
+        case .syncSwitchs(let switchDatas):
+            return switchDatas.compactMap { switchData in
+                if shouldIgnoreRestoredBatteryPowerSwitchTargetSync(
+                    switchData: switchData,
+                    node: node,
+                    phase: phase
+                ) {
+                    return nil
+                }
+                return restoreSyncSwitchDescription(switchData)
+            }
+        default:
+            return [restoreSyncDescription(syncData)]
+        }
+    }
+
+    private func shouldIgnoreRestoredBatteryPowerSwitchTargetSync(
+        switchData: DeviceSwitchData,
+        node: Node,
+        phase: RestoreSyncEvaluationPhase
+    ) -> Bool {
+        guard switchData.batteryPowerSwitchData != nil,
+              let linkGroupAddress = switchData.linkGroupAddress else {
+            return false
+        }
+
+        switch phase {
+        case .deviceSuccess:
+            return pendingBatteryPowerSwitchRestoreLinkGroupAddresses.contains(linkGroupAddress)
+                || successfulBatteryPowerSwitchRestoreLinkGroupAddresses.contains(linkGroupAddress)
+        case .batchFinish:
+            guard successfulBatteryPowerSwitchRestoreLinkGroupAddresses.contains(linkGroupAddress) else {
+                return false
+            }
+            let keys = batteryPowerSwitchExpectedTargetSubscriptionKeys(
+                switchData: switchData,
+                node: node
+            )
+            guard !keys.isEmpty else {
+                return false
+            }
+            return keys.allSatisfy { successfulBatteryPowerSwitchTargetSubscriptions.contains($0) }
+        }
+    }
+
+    private func batteryPowerSwitchExpectedTargetSubscriptionKeys(
+        switchData: DeviceSwitchData,
+        node: Node
+    ) -> [BatteryPowerSwitchTargetSubscriptionKey] {
+        let handles: [MeshMessageHandle]
+        if node.batteryPowerSwitchRestoreTargetSubscriptionSnapshots != nil {
+            handles = node.getBatteryPowerSwitchRestoreTargetSubscriptionMessageHandles(
+                switchData: switchData,
+                includeExisting: true
+            )
+        } else {
+            handles = node.getBatteryPowerSwitchTargetSubscriptionMessageHandles(
+                switchData: switchData,
+                unsubscribe: false,
+                includeExisting: true
+            )
+        }
+        return handles.compactMap { handle in
+            guard let target = batteryPowerSwitchTargetSubscription(from: handle.message) else {
+                return nil
+            }
+            return BatteryPowerSwitchTargetSubscriptionKey(
+                nodeAddress: node.primaryUnicastAddress,
+                groupAddress: target.groupAddress,
+                elementAddress: target.elementAddress,
+                modelIdentifier: target.modelIdentifier,
+                companyIdentifier: target.companyIdentifier
+            )
+        }
+    }
+
+    private func restoreSyncSwitchDescription(_ switchData: DeviceSwitchData) -> String {
+        if switchData.batteryPowerSwitchData != nil {
+            return "batteryPowerSwitchTarget(\(switchData.linkGroupAddress?.hex ?? "nil"))"
+        }
+        return "switch(\(switchData.id))"
+    }
+
+    private func restoreSyncDescription(_ syncData: NodeSyncData) -> String {
+        switch syncData {
+        case .subscribeGroup(let group):
+            return "subscribeGroup(\(group.address.address.hex))"
+        case .unsubscribeGroup(let group):
+            return "unsubscribeGroup(\(group.address.address.hex))"
+        case .profile(let types):
+            return "profile(\(types.count))"
+        case .syncScenes(let datas):
+            return "syncScenes(\(datas.count))"
+        case .deleteScenes(let scenes):
+            return "deleteScenes(\(scenes.count))"
+        case .syncSchedules(let schedules):
+            return "syncSchedules(\(schedules.count))"
+        case .deleteSchedules(let schedules):
+            return "deleteSchedules(\(schedules.count))"
+        case .syncSwitchProxy:
+            return "syncSwitchProxy"
+        case .deleteSwitchProxy:
+            return "deleteSwitchProxy"
+        case .syncSwitchs(let switchDatas):
+            return "syncSwitchs(\(switchDatas.count))"
+        case .deleteSwitchs(let switchDatas):
+            return "deleteSwitchs(\(switchDatas.count))"
+        case .deviceInitialize:
+            return "deviceInitialize"
+        case .deviceParameterTypes(let types):
+            return "deviceParameterTypes(\(types.count))"
+        case .syncCollectionSchedules(let schedules):
+            return "syncCollectionSchedules(\(schedules.count))"
+        case .deleteCollectionSchedules(let scheduleIds):
+            return "deleteCollectionSchedules(\(scheduleIds.count))"
+        case .syncGatewaySubnetAppkeyIndexs(let appkeyIndexs):
+            return "syncGatewaySubnetAppkeyIndexs(\(appkeyIndexs.count))"
+        case .gatewayAssociatedSpaces(let datas, let activate):
+            return "gatewayAssociatedSpaces(\(datas.count),activate:\(activate))"
+        case .gatewayUnbindAssociatedSpaces(let datas, let activate):
+            return "gatewayUnbindAssociatedSpaces(\(datas.count),activate:\(activate))"
+        case .pirEnabled(let enabled):
+            return "pirEnabled(\(enabled))"
+        default:
+            return "otherSync"
+        }
+    }
+
+    private func deferredRestoreOperationDescription(_ operationType: DeviceOperationType) -> String {
+        switch operationType {
+        case .configuration(_, let actionType):
+            return "configuration(\(deferredRestoreActionDescription(actionType)))"
+        case .delete(_, let actionType):
+            return "delete(\(deferredRestoreActionDescription(actionType)))"
+        case .read(_, let actionType):
+            return "read(\(deferredRestoreActionDescription(actionType)))"
+        }
+    }
+
+    private func deferredRestoreActionDescription(_ actionType: ActionType) -> String {
+        switch actionType {
+        case .scene(let sceneId, _):
+            return "scene(\(sceneId))"
+        case .schedule:
+            return "schedule"
+        case .profile(let type):
+            return "profile(\(type))"
+        case .enOceanSwitch:
+            return "enOceanSwitch"
+        case .enOceanProxy:
+            return "enOceanProxy"
+        case .collectionSchedule(let index, _):
+            return "collectionSchedule(\(index))"
+        default:
+            return String(describing: actionType)
+        }
+    }
+
+    private func appendRestoreSyncMessages(
+        syncDatas: [NodeSyncData],
+        node: Node,
+        appendMessages: inout [MeshMessageHandle]
+    ) {
+        var batteryPowerSwitchMessages: [MeshMessageHandle] = []
+        var deferredSyncDatas: [NodeSyncData] = []
+
+        syncDatas.forEach { syncData in
+            switch syncData {
+            case .syncSwitchs(let switchDatas):
+                var otherSwitchDatas: [DeviceSwitchData] = []
+                switchDatas.forEach { switchData in
+                    if switchData.batteryPowerSwitchData != nil {
+                        batteryPowerSwitchMessages.append(
+                            contentsOf: node.getBatteryPowerSwitchRestoreTargetSubscriptionMessageHandles(
+                                switchData: switchData
+                            )
+                        )
+                    } else {
+                        otherSwitchDatas.append(switchData)
+                    }
+                }
+                if !otherSwitchDatas.isEmpty {
+                    deferredSyncDatas.append(.syncSwitchs(switchDatas: otherSwitchDatas))
+                }
+            case .profile(_),
+                    .syncScenes(_),
+                    .deleteScenes(_),
+                    .syncSchedules(_),
+                    .deleteSchedules(_),
+                    .syncCollectionSchedules(_),
+                    .deleteCollectionSchedules(_),
+                    .syncSwitchProxy(_),
+                    .deleteSwitchProxy(_),
+                    .deleteSwitchs(_):
+                deferredSyncDatas.append(syncData)
+            default:
+                appendMessages.append(contentsOf: syncData.getMessageHandles(node: node))
+            }
+        }
+
+        appendMessages.append(contentsOf: batteryPowerSwitchMessages)
+        storeDeferredRestoreSyncDatas(syncDatas: deferredSyncDatas, node: node)
+    }
+
+    private func storeDeferredRestoreSyncDatas(
+        syncDatas: [NodeSyncData],
+        node: Node
+    ) {
+        let tasks = deferredRestoreTasks(syncDatas: syncDatas, node: node)
+        guard !tasks.isEmpty else {
+            deferredRestoreSyncDatasByAddress.removeValue(forKey: node.primaryUnicastAddress)
+            return
+        }
+        deferredRestoreSyncDatasByAddress[node.primaryUnicastAddress] = syncDatas
+
+        #if DEBUG
+        let filteredSceneRecallCount = tasks.reduce(0) { $0 + $1.filteredSceneRecallCount }
+        let descriptions = syncDatas.map { restoreSyncDescription($0) }.joined(separator: ",")
+        print("[DeviceRestore] Defer restore sync node=\(node.primaryUnicastAddress.hex), tasks=\(tasks.count), filteredSceneRecalls=\(filteredSceneRecallCount), sync=\(descriptions)")
+        #endif
+    }
+
+    private func hasDeferredRestoreSyncData(for node: Node) -> Bool {
+        !(deferredRestoreSyncDatasByAddress[node.primaryUnicastAddress]?.isEmpty ?? true)
+    }
+
+    private func deferredRestoreTasks(
+        syncDatas: [NodeSyncData],
+        node: Node
+    ) -> [DeferredRestoreTask] {
+        var tasks: [DeferredRestoreTask] = []
+
+        func appendTask(_ operationType: DeviceOperationType) {
+            let messageHandles = operationType.messageHandles
+            let filteredMessageHandles = messageHandles.filter { !($0.message is SceneRecall) }
+            let filteredSceneRecallCount = messageHandles.count - filteredMessageHandles.count
+            guard !filteredMessageHandles.isEmpty else {
+                #if DEBUG
+                if filteredSceneRecallCount > 0 {
+                    print("[DeviceRestore] Skip restore SceneRecall-only task node=\(node.primaryUnicastAddress.hex), count=\(filteredSceneRecallCount)")
+                }
+                #endif
+                return
+            }
+            #if DEBUG
+            if filteredSceneRecallCount > 0 {
+                print("[DeviceRestore] Filter restore SceneRecall node=\(node.primaryUnicastAddress.hex), count=\(filteredSceneRecallCount)")
+            }
+            #endif
+            let task = DeferredRestoreTask(
+                operationType: operationType,
+                messageHandles: filteredMessageHandles,
+                filteredSceneRecallCount: filteredSceneRecallCount
+            )
+            tasks.append(task)
+        }
+
+        syncDatas.forEach { syncData in
+            switch syncData {
+            case .profile(let types):
+                types.forEach { profileType in
+                    appendTask(.configuration(node: node, type: .profile(type: profileType)))
+                }
+            case .syncScenes(let datas):
+                datas.forEach { scene, data in
+                    appendTask(.configuration(node: node, type: .scene(sceneId: scene.number, executeData: data)))
+                }
+            case .deleteScenes(let scenes):
+                scenes.forEach { scene in
+                    appendTask(.delete(node: node, type: .scene(sceneId: scene.number, executeData: nil)))
+                }
+            case .syncSchedules(let schedules):
+                schedules.forEach { schedule in
+                    appendTask(.configuration(node: node, type: .schedule(schedule: schedule)))
+                }
+            case .deleteSchedules(let schedules):
+                schedules.forEach { schedule in
+                    appendTask(.delete(node: node, type: .schedule(schedule: schedule)))
+                }
+            case .syncCollectionSchedules(let schedules):
+                schedules.forEach { index, entry in
+                    appendTask(.configuration(node: node, type: .collectionSchedule(index: index, entry: entry)))
+                }
+            case .deleteCollectionSchedules(let scheduleIds):
+                scheduleIds.forEach { index in
+                    appendTask(.delete(node: node, type: .collectionSchedule(index: index, entry: SchedulerRegistryEntry())))
+                }
+            case .syncSwitchProxy(let switchData):
+                appendTask(.configuration(node: node, type: .enOceanProxy(switchData: switchData)))
+            case .deleteSwitchProxy(let switchData):
+                appendTask(.delete(node: node, type: .enOceanProxy(switchData: switchData)))
+            case .syncSwitchs(let switchDatas):
+                switchDatas.forEach { switchData in
+                    guard switchData.batteryPowerSwitchData == nil else {
+                        return
+                    }
+                    appendTask(.configuration(node: node, type: .enOceanSwitch(switchData: switchData)))
+                }
+            case .deleteSwitchs(let switchDatas):
+                switchDatas.forEach { switchData in
+                    guard switchData.batteryPowerSwitchData == nil else {
+                        return
+                    }
+                    appendTask(.delete(node: node, type: .enOceanSwitch(switchData: switchData)))
+                }
+            default:
+                break
+            }
+        }
+
+        return tasks
+    }
+
+    private func runDeferredRestoreIfNeeded(
+        successList: [ProvisioningDevice],
+        completion: @escaping () -> Void
+    ) {
+        let deferredDevices = successList.filter {
+            !(deferredRestoreSyncDatasByAddress[$0.address]?.isEmpty ?? true)
+        }
+        guard !deferredDevices.isEmpty else {
+            completion()
+            return
+        }
+        runDeferredRestoreDevices(
+            deferredDevices,
+            index: 0,
+            completion: completion
+        )
+    }
+
+    private func runDeferredRestoreDevices(
+        _ devices: [ProvisioningDevice],
+        index: Int,
+        completion: @escaping () -> Void
+    ) {
+        guard index < devices.count else {
+            completion()
+            return
+        }
+
+        let device = devices[index]
+        guard let node = MeshNetworkManager.instance.meshNetwork?.node(withAddress: device.address) else {
+            device.addState = .syncFailed
+            reloadDeviceState(device)
+            updateUIState()
+            runDeferredRestoreDevices(devices, index: index + 1, completion: completion)
+            return
+        }
+
+        let syncDatas = deferredRestoreSyncDatasByAddress[node.primaryUnicastAddress] ?? []
+        let tasks = deferredRestoreTasks(syncDatas: syncDatas, node: node)
+        guard !tasks.isEmpty else {
+            deferredRestoreSyncDatasByAddress.removeValue(forKey: node.primaryUnicastAddress)
+            finishDeferredRestore(for: node, device: device, hadFailedTask: false)
+            runDeferredRestoreDevices(devices, index: index + 1, completion: completion)
+            return
+        }
+
+        device.addState = .adding
+        reloadDeviceState(device)
+        updateUIState()
+
+        runDeferredRestoreTasks(tasks, index: 0, node: node, hadFailedTask: false) { [weak self] hadFailedTask in
+            guard let self = self else { return }
+            self.deferredRestoreSyncDatasByAddress.removeValue(forKey: node.primaryUnicastAddress)
+            self.finishDeferredRestore(for: node, device: device, hadFailedTask: hadFailedTask)
+            self.runDeferredRestoreDevices(devices, index: index + 1, completion: completion)
+        }
+    }
+
+    private func runDeferredRestoreTasks(
+        _ tasks: [DeferredRestoreTask],
+        index: Int,
+        node: Node,
+        hadFailedTask: Bool,
+        retryCount: Int = 0,
+        completion: @escaping (Bool) -> Void
+    ) {
+        guard index < tasks.count else {
+            completion(hadFailedTask)
+            return
+        }
+
+        let task = tasks[index]
+        let messageHandles = task.messageHandles
+        let responseTracker = DeferredRestoreResponseTracker()
+        guard !messageHandles.isEmpty else {
+            runDeferredRestoreTasks(
+                tasks,
+                index: index + 1,
+                node: node,
+                hadFailedTask: hadFailedTask,
+                retryCount: 0,
+                completion: completion
+            )
+            return
+        }
+
+        runDeferredRestoreMessageHandles(
+            messageHandles,
+            task: task,
+            node: node,
+            responseTracker: responseTracker
+        ) { [weak self] in
+            self?.handleDeferredRestoreTaskCompletion(
+                tasks: tasks,
+                index: index,
+                task: task,
+                node: node,
+                hadFailedTask: hadFailedTask,
+                retryCount: retryCount,
+                responseTracker: responseTracker,
+                completion: completion
+            )
+        }
+    }
+
+    private func runDeferredRestoreMessageHandles(
+        _ messageHandles: [MeshMessageHandle],
+        task: DeferredRestoreTask,
+        node: Node,
+        responseTracker: DeferredRestoreResponseTracker,
+        completion: @escaping () -> Void
+    ) {
+        MeshProxyMessageCommand.shared.addMessage(
+            messageHandles: messageHandles,
+            ackMessageTimeout: 7,
+            progressBack: nil,
+            successfulBack: { [weak self] handle, statusMessage in
+                if self?.isSuccessfulDeferredRestoreResponse(statusMessage) == true {
+                    responseTracker.markSuccessful(handle: handle, statusMessage: statusMessage)
+                }
+                self?.handleDeferredRestoreSuccessfulResponse(
+                    handle: handle,
+                    statusMessage: statusMessage,
+                    node: node,
+                    messageHandles: task.messageHandles
+                )
+            },
+            failedBack: nil
+        ) { _ in
+            completion()
+        }
+    }
+
+    private func handleDeferredRestoreTaskCompletion(
+        tasks: [DeferredRestoreTask],
+        index: Int,
+        task: DeferredRestoreTask,
+        node: Node,
+        hadFailedTask: Bool,
+        retryCount: Int,
+        responseTracker: DeferredRestoreResponseTracker,
+        completion: @escaping (Bool) -> Void
+    ) {
+        let messageHandles = task.messageHandles
+        let resultSuccessful = !messageHandles.contains(where: { !$0.isSuccessful })
+        let operationSuccessful = task.operationType.isSuccessful
+        let failedHandles = messageHandles.filter { !$0.isSuccessful }
+        let failedHandlesRecoveredBySuccessfulResponses = !failedHandles.isEmpty
+            && failedHandles.allSatisfy { responseTracker.hasSuccessfulResponse(for: $0) }
+        let recoveredByReliableOperationState = !failedHandles.isEmpty
+            && operationSuccessful
+            && hasReliableDeferredOperationStateCheck(task.operationType)
+        let taskSuccessful = isDeferredRestoreTaskSuccessful(
+            resultSuccessful: resultSuccessful,
+            operationSuccessful: operationSuccessful,
+            failedHandlesRecoveredBySuccessfulResponses: failedHandlesRecoveredBySuccessfulResponses,
+            recoveredByReliableOperationState: recoveredByReliableOperationState
+        )
+        let taskFailed = !taskSuccessful
+
+        let retryHandles = retryableDeferredRestoreHandles(
+            failedHandles: failedHandles,
+            responseTracker: responseTracker,
+            retryCount: retryCount
+        )
+
+        if taskFailed, !retryHandles.isEmpty {
+            #if DEBUG
+            let failedDescription = deferredRestoreFailedHandleDescription(retryHandles)
+            let operationDescription = deferredRestoreOperationDescription(task.operationType)
+            print("[DeviceRestore] Retry deferred restore task node=\(node.primaryUnicastAddress.hex), retry=\(retryCount + 1), operation=\(operationDescription), failed=\(failedDescription)")
+            #endif
+            resetDeferredRestoreMessageHandles(retryHandles)
+            DispatchQueue.main.asyncAfter(deadline: .now() + deferredRestoreTaskRetryDelay) { [weak self] in
+                guard let self = self else { return }
+                self.runDeferredRestoreMessageHandles(
+                    retryHandles,
+                    task: task,
+                    node: node,
+                    responseTracker: responseTracker
+                ) { [weak self] in
+                    self?.handleDeferredRestoreTaskCompletion(
+                        tasks: tasks,
+                        index: index,
+                        task: task,
+                        node: node,
+                        hadFailedTask: hadFailedTask,
+                        retryCount: retryCount + 1,
+                        responseTracker: responseTracker,
+                        completion: completion
+                    )
+                }
+            }
+            return
+        }
+
+        updateDeferredRestoreNodeData(
+            resultMessageHandles: messageHandles,
+            responseTracker: responseTracker,
+            recoveredByReliableOperationState: recoveredByReliableOperationState,
+            fallbackNode: node
+        )
+
+        #if DEBUG
+        if taskFailed {
+            let failedDescription = deferredRestoreFailedHandleDescription(failedHandles)
+            let responseKeys = responseTracker.responseKeysDescription()
+            print("[DeviceRestore] Deferred restore task failed node=\(node.primaryUnicastAddress.hex), result=\(resultSuccessful), operation=\(operationSuccessful), response=\(responseTracker.hasSuccessfulResponse), reliableOperation=\(recoveredByReliableOperationState), keys=\(responseKeys), failed=\(failedDescription)")
+        } else if !resultSuccessful && operationSuccessful && (failedHandlesRecoveredBySuccessfulResponses || recoveredByReliableOperationState) {
+            let failedDescription = deferredRestoreFailedHandleDescription(failedHandles)
+            let responseKeys = responseTracker.responseKeysDescription()
+            print("[DeviceRestore] Ignore deferred handle false node=\(node.primaryUnicastAddress.hex), operation=true, response=\(failedHandlesRecoveredBySuccessfulResponses), reliableOperation=\(recoveredByReliableOperationState), keys=\(responseKeys), failed=\(failedDescription)")
+        }
+        #endif
+
+        runDeferredRestoreTasks(
+            tasks,
+            index: index + 1,
+            node: node,
+            hadFailedTask: hadFailedTask || taskFailed,
+            retryCount: 0,
+            completion: completion
+        )
+    }
+
+    private func retryableDeferredRestoreHandles(
+        failedHandles: [MeshMessageHandle],
+        responseTracker: DeferredRestoreResponseTracker,
+        retryCount: Int
+    ) -> [MeshMessageHandle] {
+        guard retryCount < deferredRestoreTaskMaxRetryCount, !failedHandles.isEmpty else {
+            return []
+        }
+
+        let unrecoveredFailedHandles = failedHandles.filter {
+            !responseTracker.hasSuccessfulResponse(for: $0)
+        }
+        guard !unrecoveredFailedHandles.isEmpty,
+              unrecoveredFailedHandles.allSatisfy({ isRetryableDeferredRestoreHandle($0) }) else {
+            return []
+        }
+
+        return unrecoveredFailedHandles
+    }
+
+    private func isRetryableDeferredRestoreHandle(_ messageHandle: MeshMessageHandle) -> Bool {
+        guard messageHandle.message is AcknowledgedMeshMessage,
+              !(messageHandle.message is SceneRecall),
+              !isBatteryPowerSwitchRestoreConfigurationMessage(messageHandle.message),
+              !messageHandle.notRespondAddresss.isEmpty else {
+            return false
+        }
+        return true
+    }
+
+    private func resetDeferredRestoreMessageHandles(_ messageHandles: [MeshMessageHandle]) {
+        messageHandles.forEach {
+            $0.respondAddresss = []
+            $0.notRespondAddresss = []
+        }
+    }
+
+    private func isDeferredRestoreTaskSuccessful(
+        resultSuccessful: Bool,
+        operationSuccessful: Bool,
+        failedHandlesRecoveredBySuccessfulResponses: Bool,
+        recoveredByReliableOperationState: Bool
+    ) -> Bool {
+        if resultSuccessful && operationSuccessful {
+            return true
+        }
+        guard operationSuccessful else {
+            return false
+        }
+        return failedHandlesRecoveredBySuccessfulResponses || recoveredByReliableOperationState
+    }
+
+    private func isSuccessfulDeferredRestoreResponse(_ statusMessage: StaticMeshMessage) -> Bool {
+        if let configStatus = statusMessage as? ConfigStatusMessage {
+            return configStatus.isSuccess
+        }
+        if let vendorStatus = statusMessage as? SunricherVendorStatus {
+            return vendorStatus.status.isSuccessful
+        }
+        return true
+    }
+
+    private func hasReliableDeferredOperationStateCheck(_ operationType: DeviceOperationType) -> Bool {
+        switch operationType {
+        case .configuration(_, let actionType):
+            return hasReliableDeferredActionStateCheck(actionType)
+        case .delete(_, let actionType):
+            switch actionType {
+            case .scene, .schedule, .collectionSchedule, .enOceanSwitch, .enOceanProxy:
+                return true
+            case .profile(let type):
+                return hasReliableDeferredProfileStateCheck(type)
+            default:
+                return false
+            }
+        case .read:
+            return false
+        }
+    }
+
+    private func hasReliableDeferredActionStateCheck(_ actionType: ActionType) -> Bool {
+        switch actionType {
+        case .scene, .schedule, .collectionSchedule, .enOceanSwitch, .enOceanProxy:
+            return true
+        case .profile(let type):
+            return hasReliableDeferredProfileStateCheck(type)
+        default:
+            return false
+        }
+    }
+
+    private func hasReliableDeferredProfileStateCheck(_ type: ProfileType) -> Bool {
+        switch type {
+        case .daylightCalibrateRate,
+                .daylightCalibrateInflectionPoint,
+                .lightControlSwitch,
+                .daylightSensorConditionRecall,
+                .lightControlRestore,
+                .profileToggleTriggerConditionLuxLock,
+                .profileToggleTriggerConditionLuxUnLock:
+            return false
+        default:
+            return true
+        }
+    }
+
+    private func deferredRestoreFailedHandleDescription(_ failedHandles: [MeshMessageHandle]) -> String {
+        guard !failedHandles.isEmpty else {
+            return "none"
+        }
+        return failedHandles.map { handle in
+            let message = String(describing: type(of: handle.message))
+            let target = formatDeferredRestoreAddress(handle.targetAddress)
+            let responded = handle.respondAddresss.map { formatDeferredRestoreAddress($0) }.joined(separator: ",")
+            let missing = handle.notRespondAddresss.map { formatDeferredRestoreAddress($0) }.joined(separator: ",")
+            return "\(message)@\(target)[responded=\(responded),missing=\(missing)]"
+        }.joined(separator: ";")
+    }
+
+    private func formatDeferredRestoreAddress(_ address: Address) -> String {
+        String(format: "%04X", Int(address))
+    }
+
+    private func handleDeferredRestoreSuccessfulResponse(
+        handle: MeshMessageHandle,
+        statusMessage: StaticMeshMessage,
+        node: Node,
+        messageHandles: [MeshMessageHandle]
+    ) {
+        if statusMessage is LightLightnessStatus
+            || statusMessage is LightCTLTemperatureStatus
+            || statusMessage is LightCTLStatus
+            || statusMessage is LightHSLStatus,
+           messageHandles.contains(where: { $0.message is SceneStore }) {
+            let address = handle.address ?? handle.model?.parentElement?.unicastAddress ?? node.primaryUnicastAddress
+            let targetNode = MeshNetworkManager.instance.meshNetwork?.node(withAddress: address) ?? node
+            targetNode.updateNodeStatus(message: statusMessage, source: address)
+        }
+    }
+
+    private func updateDeferredRestoreNodeData(
+        resultMessageHandles: [MeshMessageHandle],
+        responseTracker: DeferredRestoreResponseTracker,
+        recoveredByReliableOperationState: Bool,
+        fallbackNode: Node
+    ) {
+        resultMessageHandles.forEach { handle in
+            let address = handle.address ?? handle.model?.parentElement?.unicastAddress ?? fallbackNode.primaryUnicastAddress
+            let node = MeshNetworkManager.instance.meshNetwork?.node(withAddress: address) ?? fallbackNode
+            let effectiveSuccess = handle.isSuccessful
+                || responseTracker.hasSuccessfulResponse(for: handle)
+                || recoveredByReliableOperationState
+            node.updateData(message: handle.message, isSuccess: effectiveSuccess)
+            node.clearSyncStateCache()
+        }
+    }
+
+    private func finishDeferredRestore(
+        for node: Node,
+        device: ProvisioningDevice,
+        hadFailedTask: Bool
+    ) {
+        if hadFailedTask || shouldMarkRestoredNodeSyncFailed(node, phase: .batchFinish) {
+            if hadFailedTask {
+                print("[DeviceRestore] Mark sync failed for node=\(node.primaryUnicastAddress.hex), deferred task failed")
+            }
+            device.addState = .syncFailed
+        } else {
+            device.addState = .success
+        }
+        reloadDeviceState(device)
+        updateUIState()
+    }
+
     // MARK: - Device Restore
     /// 添加设备
     private func addDevice(_ deviceData: DeviceRestoreData) {
@@ -554,6 +1636,9 @@ class DeviceRestoreViewController: UIViewController {
             
             // 恢复数据
             node.updateResoreData(oldNode: oldNode, resoreGroup: addToGroup)
+            node.batteryPowerSwitchRestoreTargetSubscriptionSnapshots = oldNode.makeBatteryPowerSwitchRestoreTargetSubscriptionSnapshots(
+                group: addToGroup
+            )
             
         } appendMessagesBack: {[weak self] addDevice, appendCompletion in
             guard let self = self, let newNode = MeshNetworkManager.instance.meshNetwork?.node(withAddress: addDevice.address) else {
@@ -578,16 +1663,36 @@ class DeviceRestoreViewController: UIViewController {
 //            
 //            // 恢复数据
 //            newNode.updateResoreData(oldNode: oldNode, resoreGroup: addToGroup)
+
+            let restoringBatteryPowerSwitch = isBatteryPowerSwitchRestore(
+                oldNode: oldNode,
+                newNode: newNode
+            )
             
             var appendMessages: [MeshMessageHandle] = []
+
+            if restoringBatteryPowerSwitch {
+                prepareBatteryPowerSwitchRestoreConfiguration(
+                    oldNode: oldNode,
+                    newNode: newNode,
+                    appendMessages: &appendMessages
+                )
+                if let healthModel = newNode.healthModel {
+                    appendMessages.append(MeshMessageHandle(message: AttentionSet(attentionTimer: 6), model: healthModel))
+                }
+                appendCompletion(appendMessages)
+                return
+            }
+            newNode.batteryPowerSwitchRestoreTargetSubscriptionSnapshots = oldNode.makeBatteryPowerSwitchRestoreTargetSubscriptionSnapshots(
+                group: addToGroup
+            )
+
             // 入网后默认调为最大亮度
             if let model = newNode.lightnessModel {
                 appendMessages.append(MeshMessageHandle(message: LightLightnessSetUnacknowledged(lightness: .max), model: model))
             }
             let syncDatas = newNode.getSyncData(type: .all)
-            syncDatas.forEach({
-                appendMessages.append(contentsOf: $0.getMessageHandles(node: newNode))
-            })
+            self.appendRestoreSyncMessages(syncDatas: syncDatas, node: newNode, appendMessages: &appendMessages)
 //            appendMessages.append(contentsOf: newNode.getResoreMessageHandles(oldNode: oldNode))
             
             if addToGroup == nil {
@@ -616,15 +1721,19 @@ class DeviceRestoreViewController: UIViewController {
             if let healthModel = newNode.healthModel {
                 appendMessages.append(MeshMessageHandle(message: AttentionSet(attentionTimer: 6), model: healthModel))
             }
+            appendMessages = newNode.filterSunSmartBatteryPowerSwitchSubscriptionMessageHandles(appendMessages)
             appendCompletion(appendMessages)
 //            return appendMessages
-        } appendMessageSuccessBack: { messageHandle in
+        } appendMessageSuccessBack: { [weak self] messageHandle in
             // 发送扩展消息成功更新缓存数据
             if let address = messageHandle.model?.parentElement?.unicastAddress ?? messageHandle.address, let node = MeshNetworkManager.instance.meshNetwork?.node(withAddress: address) {
+                self?.recordBatteryPowerSwitchTargetSubscriptionSuccessIfNeeded(messageHandle, node: node)
                 DispatchQueue.global().async {
                     node.updateData(message: messageHandle.message)
                 }
             }
+        } appendMessageFailedBack: { [weak self] messageHandle in
+            self?.markBatteryPowerSwitchRestoreConfigurationFailedIfNeeded(messageHandle)
         } addSuccess: {[weak self] addDevice in
             guard let self = self else { return }
             addDevice.addState = .success
@@ -639,8 +1748,12 @@ class DeviceRestoreViewController: UIViewController {
                     node.name = data.node.name
                 }
                 node.save()
-                // 恢复数据不包括邻近照明邻居关系，因涉及邻居节点，需要各设备恢复后再去外部同步数据
-                if node.needSync && node.getNodeSyncProximityLighting() == nil {
+                if let request = finalizeBatteryPowerSwitchRestoreConfiguration(for: node) {
+                    pendingBatteryPowerSwitchInitialBatteryReads.append(request)
+                }
+                if self.hasDeferredRestoreSyncData(for: node) {
+                    addDevice.addState = .adding
+                } else if shouldMarkRestoredNodeSyncFailed(node, phase: .deviceSuccess) {
                     addDevice.addState = .syncFailed
                 }
                 self.restoreNodes.append(node)
@@ -675,43 +1788,56 @@ class DeviceRestoreViewController: UIViewController {
             
         } addFinish: {[weak self] successList, failList in
             guard let self = self else { return }
-            
-            // 添加完成后检查是否有设备需要同步
-            let needSyncNodes = self.restoreNodes.filter({ $0.needSync })
-            if needSyncNodes.count > 0 {
-                needSyncNodes.forEach({ node in
-                    if let device = successList.first(where: { $0.address == node.primaryUnicastAddress }) {
-                        device.addState = .syncFailed
-                    }
-                })
-                self.tableView.reloadData()
-                self.updateUIState()
+            self.runDeferredRestoreIfNeeded(successList: successList) { [weak self] in
+                self?.finishDeviceRestoreAdd(successList: successList, failList: failList)
             }
-            
-            NotificationCenter.default.post(name: .init(spaceDataChangedNotificaitonName), object: SpaceChangeDataType.network(type: .address))
-            // 是否自动化恢复流程
-            if self.automationRestore {
-                if failList.count > 0 && automationRetryCount > 0 {
-                    automationRetryCount -= 1
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 1) {[weak self] in
-                        guard let self = self, self.automationRestore else { return }
-                        self.addSelectedBtnClick()
-//                        failList.compactMap({ device in self.showRestoreData.first(where: { $0.unprovisionedDevice?.peripheral.identifier == device.peripheral.identifier }) }).forEach({
-//                            self.addDevice($0)
-//                        })
-                    }
-                  
-                }else {
-                    
-                    // TODO: 等几秒钟进入同步页面，添加设备完成后代理可能还在连接中
-                    // 恢复设备后是否有同步失败的设备
-                    if self.allDevices.contains(where: { $0.addState == .syncFailed }) {
-                        syncBtnAction()
-                    }else {
-                        dismiss()
-                    }
+        }
+    }
+
+    private func finishDeviceRestoreAdd(
+        successList: [ProvisioningDevice],
+        failList: [ProvisioningDevice]
+    ) {
+        // 添加完成后检查是否有设备需要同步
+        let needSyncNodes = restoreNodes.filter({
+            shouldMarkRestoredNodeSyncFailed($0, phase: .batchFinish)
+        })
+        if needSyncNodes.count > 0 {
+            needSyncNodes.forEach({ node in
+                if let device = successList.first(where: { $0.address == node.primaryUnicastAddress }) {
+                    device.addState = .syncFailed
                 }
-               
+            })
+            tableView.reloadData()
+            updateUIState()
+        }
+
+        NotificationCenter.default.post(name: .init(spaceDataChangedNotificaitonName), object: SpaceChangeDataType.network(type: .address))
+
+        let addedBatteryPowerSwitchNodes = restoreNodes.filter { $0.isBatteryPowerSwitch }
+        finishBatteryPowerSwitchInitialBatteryReadsAndDisconnect(
+            fallbackDisconnectNodes: addedBatteryPowerSwitchNodes
+        )
+
+        // 是否自动化恢复流程
+        if automationRestore {
+            if failList.count > 0 && automationRetryCount > 0 {
+                automationRetryCount -= 1
+                DispatchQueue.main.asyncAfter(deadline: .now() + 1) { [weak self] in
+                    guard let self = self, self.automationRestore else { return }
+                    self.addSelectedBtnClick()
+//                    failList.compactMap({ device in self.showRestoreData.first(where: { $0.unprovisionedDevice?.peripheral.identifier == device.peripheral.identifier }) }).forEach({
+//                        self.addDevice($0)
+//                    })
+                }
+            } else {
+                // TODO: 等几秒钟进入同步页面，添加设备完成后代理可能还在连接中
+                // 恢复设备后是否有同步失败的设备
+                if allDevices.contains(where: { $0.addState == .syncFailed }) {
+                    syncBtnAction()
+                } else {
+                    dismiss()
+                }
             }
         }
     }
@@ -891,6 +2017,7 @@ class DeviceRestoreViewController: UIViewController {
         showSections.forEach { section in
             selectDeviceDatas.append(contentsOf: section.restoreDatas.filter({ $0.unprovisionedDevice != nil && $0.unprovisionedDevice?.selectedState == .selected }))
         }
+        recordPendingBatteryPowerSwitchRestoreLinkGroups(for: selectDeviceDatas)
         checkDeviceAddressesAreSufficient(devices: selectDeviceDatas)
 //        selectDeviceDatas.forEach { device in
 //            addDevice(device)
@@ -961,8 +2088,7 @@ class DeviceRestoreViewController: UIViewController {
         }
         navigationController?.pushViewController(vc, animated: true)
     }
-    
-    
+
     // MARK: - Scan Timer
     private func startScanTimer() {
         scanTimer = LCWeakTimer.scheduledTimer(timeInterval: 10, aTarget: self, selector: #selector(showDeviceNotFound), userInfo: nil, repeats: true)

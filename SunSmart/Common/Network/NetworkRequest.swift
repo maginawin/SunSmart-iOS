@@ -92,37 +92,67 @@ class NetworkRequest: NSObject {
 //                       httpResponse.value(forHTTPHeaderField: "Content-Encoding")?.contains("gzip") ?? false {
 //                        
 //                    }
-                    let json = try respond.mapJSON() as? [String: Any]
+                    let jsonObject = try respond.mapJSON()
+                    guard let json = jsonObject as? [String: Any] else {
+                        completion(.failure(.init(
+                            code: respond.statusCode,
+                            message: "Expected JSON object response",
+                            httpStatusCode: respond.statusCode,
+                            responseBody: Self.responseBodySummary(respond.data)
+                        )))
+                        return
+                    }
                     // 服务器返回成功
                     let code = JSON(json as Any)["code"].intValue
                     let isSuccess = JSON(json as Any)["isSuccess"].bool ?? false
-                    if code == 200 || isSuccess || (json != nil && json!.isEmpty) {
-                        completion(.success(json!))
+                    if code == 200 || isSuccess || json.isEmpty {
+                        completion(.success(json))
 //                        success?(json!)
                     }else {
-                        
-                        completion(.failure(.init(code: code)))
+                        let responseJSON = JSON(json as Any)
+                        completion(.failure(.init(
+                            code: code,
+                            message: responseJSON["message"].string ?? responseJSON["msg"].string,
+                            httpStatusCode: respond.statusCode,
+                            responseBody: Self.responseBodySummary(respond.data)
+                        )))
 //                        if code == 4001 { // token过期
 //                            userTokenExpiredDispose()
 //                        }
                     }
                 } catch let error {
-                    let errorCode = (error as? MoyaError)?.response?.statusCode ?? (error as NSError).code
-                    completion(.failure(.init(code: errorCode)))
+                    let moyaResponse = (error as? MoyaError)?.response
+                    let nsError = error as NSError
+                    let errorCode = moyaResponse?.statusCode ?? nsError.code
+                    completion(.failure(.init(
+                        code: errorCode,
+                        message: error.localizedDescription,
+                        httpStatusCode: moyaResponse?.statusCode,
+                        responseBody: moyaResponse.map { Self.responseBodySummary($0.data) },
+                        underlyingError: nsError
+                    )))
                 }
             case .failure(let error):
-                
                 var errorCode = (error as NSError).code
+                var underlyingError = error as NSError
                 switch error {
                 case .underlying(let resultError, _):
+                    underlyingError = resultError as NSError
                     if let requestError = (resultError as? AFError)?.underlyingError as? NSError {
                         errorCode = requestError.code
+                        underlyingError = requestError
                     }
                 default:
                     break
                 }
-                
-                completion(.failure(.init(code: errorCode)))
+
+                completion(.failure(.init(
+                    code: errorCode,
+                    message: error.localizedDescription,
+                    httpStatusCode: error.response?.statusCode,
+                    responseBody: error.response.map { Self.responseBodySummary($0.data) },
+                    underlyingError: underlyingError
+                )))
 //                switch error {
 //                case .underlying(let resultError, _):
 //                    let requestError = (resultError as NSError)
@@ -190,14 +220,30 @@ class NetworkRequest: NSObject {
     
 }
 
+private extension NetworkRequest {
+
+    static func responseBodySummary(_ data: Data, limit: Int = 3000) -> String {
+        guard !data.isEmpty else {
+            return "<empty>"
+        }
+        let string = String(data: data, encoding: .utf8) ?? "<non-utf8 body: \(data.count) bytes>"
+        guard string.count > limit else {
+            return string
+        }
+        return "\(string.prefix(limit))... <truncated, \(string.count) chars>"
+    }
+}
+
 
 /// 网络请求api错误
-public enum NetworkApiError: Error {
-    
+public enum NetworkApiError: Error, Equatable {
+
     var code: Int {
         switch self {
         case .unknown:
             return 9999
+        case .apiError(let code, _, _, _, _, _):
+            return code
         case .noNetwork:
             return -1009
         case .requestTimeout:
@@ -226,6 +272,16 @@ public enum NetworkApiError: Error {
     }
     
     init(code: Int) {
+        self.init(code: code, message: nil, httpStatusCode: nil, responseBody: nil, underlyingError: nil)
+    }
+
+    init(
+        code: Int,
+        message: String?,
+        httpStatusCode: Int?,
+        responseBody: String?,
+        underlyingError: NSError? = nil
+    ) {
         switch code {
         case -1009, -1020:
             self = .noNetwork
@@ -251,13 +307,31 @@ public enum NetworkApiError: Error {
             self = .spaceAlreadyExist
         case 4015:
             self = .spacePasswordOverdue
-        default:
+        case 9999 where message == nil && httpStatusCode == nil && responseBody == nil && underlyingError == nil:
             self = .unknown
+        default:
+            self = .apiError(
+                code: code,
+                message: message,
+                httpStatusCode: httpStatusCode,
+                responseBody: responseBody,
+                underlyingDomain: underlyingError?.domain,
+                underlyingCode: underlyingError?.code
+            )
         }
     }
     
     /// 未知错误
     case unknown
+    /// 未识别的服务器或底层错误，保留原始诊断信息
+    case apiError(
+        code: Int,
+        message: String?,
+        httpStatusCode: Int?,
+        responseBody: String?,
+        underlyingDomain: String?,
+        underlyingCode: Int?
+    )
     /// 没有网络
     case noNetwork
     /// 网络请求超时
@@ -308,8 +382,20 @@ extension NetworkApiError: LocalizedError {
             return "space_already_exist".localizedString
         case .spacePasswordOverdue:
             return "space_password_overdue".localizedString
-        case .unknown:
+        case .unknown, .apiError:
             return "unknown_error".localizedString
+        }
+    }
+}
+
+extension NetworkApiError {
+
+    var diagnosticDescription: String {
+        switch self {
+        case .apiError(let code, let message, let httpStatusCode, let responseBody, let underlyingDomain, let underlyingCode):
+            return "code=\(code), message=\(message ?? "<missing>"), httpStatus=\(httpStatusCode?.description ?? "<missing>"), underlyingDomain=\(underlyingDomain ?? "<missing>"), underlyingCode=\(underlyingCode?.description ?? "<missing>"), responseBody=\(responseBody ?? "<missing>")"
+        default:
+            return "code=\(code), localizedDescription=\(localizedDescription)"
         }
     }
 }

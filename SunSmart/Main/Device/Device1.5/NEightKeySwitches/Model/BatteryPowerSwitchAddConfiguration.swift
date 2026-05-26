@@ -25,6 +25,23 @@ enum BatteryPowerSwitchAddConfiguration {
         }
     }
 
+    enum RestorePreparationError: Error {
+        case unsupportedNode
+        case alreadyLinked(String)
+        case missingLinkGroup
+
+        var message: String {
+            switch self {
+            case .unsupportedNode:
+                return "Cannot add, type mismatch"
+            case .alreadyLinked(let name):
+                return String(format: "switch_proxy_exist".localizedString, name)
+            case .missingLinkGroup:
+                return "group_address_insufficient_message".localizedString
+            }
+        }
+    }
+
     static func isSupportedAddNode(_ node: Node) -> Bool {
         guard node.isBatteryPowerSwitch else {
             return false
@@ -94,6 +111,40 @@ enum BatteryPowerSwitchAddConfiguration {
         return .success(switchData)
     }
 
+    static func prepareRestoreSwitchData(
+        sourceSwitchData: PJEightKeySwitchData,
+        node: Node
+    ) -> Result<PJEightKeySwitchData, RestorePreparationError> {
+        guard isSupportedAddNode(node) else {
+            return .failure(.unsupportedNode)
+        }
+
+        if let existingSwitch = MeshNetworkManager.instance.switchs.first(where: {
+            $0.id != sourceSwitchData.id && $0.proxyNodeAddress == node.primaryUnicastAddress
+        }) {
+            return .failure(.alreadyLinked(existingSwitch.name))
+        }
+
+        guard sourceSwitchData.linkGroupAddress != nil else {
+            return .failure(.missingLinkGroup)
+        }
+
+        let switchData = sourceSwitchData.copy()
+        switchData.proxyNodeAddress = node.primaryUnicastAddress
+        switchData.maxKeyCount = 8
+        switchData.subLinkGroupAddress = nil
+        switchData.batteryLevel = nil
+        switchData.batteryLastUpdateTime = nil
+        switchData.appliedConfigHash = ""
+        switchData.appliedTxEnabled = nil
+        switchData.appliedLEDIndicatorEnabled = nil
+        switchData.lastSyncFailedReason = nil
+
+        let appKeyIndex = MeshNetworkManager.instance.currentApplicationKey.index
+        switchData.prepareBatteryPowerSwitchDesiredConfig(appKeyIndex: appKeyIndex)
+        return .success(switchData)
+    }
+
     static func defaultConfigurationMessageHandles(
         for switchData: PJEightKeySwitchData,
         node: Node
@@ -152,6 +203,13 @@ enum BatteryPowerSwitchAddConfiguration {
         handles.append(ledHandle)
 
         return handles
+    }
+
+    static func restoreConfigurationMessageHandles(
+        for switchData: PJEightKeySwitchData,
+        node: Node
+    ) -> [MeshMessageHandle] {
+        linkedConfigurationMessageHandles(for: switchData, node: node)
     }
 
     struct InitialBatteryReadRequest {
@@ -266,8 +324,8 @@ enum BatteryPowerSwitchAddConfiguration {
     }
 
     @discardableResult
-    static func markSucceeded(_ switchData: PJEightKeySwitchData) -> Bool {
-        switchData.markBatteryPowerSwitchSyncSucceeded()
+    static func markSucceeded(_ switchData: PJEightKeySwitchData, clearRemovedGroups: Bool = true) -> Bool {
+        switchData.markBatteryPowerSwitchSyncSucceeded(clearRemovedGroups: clearRemovedGroups)
         return persist(switchData)
     }
 

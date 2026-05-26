@@ -271,7 +271,7 @@ enum DeviceOperationType {
             case .schedule(let schedule):
                 return node.schedulerActions[schedule.id] != nil && node.schedulerActions[schedule.id]! == schedule.schedulerEntry
             case .group(let group):
-                return node.group == group && node.getSubscribeToGroupMessages(group).count == 0
+                return node.group == group && node.getSunSmartSubscribeToGroupMessageHandles(group).count == 0
             case .profile(let type):
                 return type.isSuccessful(node: node)
             case .pirEnabled(let enabled):
@@ -454,11 +454,7 @@ enum DeviceOperationType {
             switch type {
             case .group(let group):
                 // 设备加入组
-                node.getSubscribeToGroupMessages(group).forEach({
-                    let handle = MeshMessageHandle(message: $0, address: node.primaryUnicastAddress)
-                    handle.continuous = false
-                    messageHandles.append(handle)
-                })
+                messageHandles.append(contentsOf: node.getSunSmartSubscribeToGroupMessageHandles(group, continuous: false))
             case .scene(let sceneId, let executeData):
                 
                 if let scene = MeshNetworkManager.instance.scenes.first(where: { $0.number == sceneId }), let data = executeData {

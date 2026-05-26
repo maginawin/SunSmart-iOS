@@ -69,11 +69,7 @@ extension NodeSyncData {
         case .removeApplicationkey(let applicationKey):
             messageHandles.append(MeshMessageHandle(message: ConfigAppKeyDelete(applicationKey: applicationKey), address: node.primaryUnicastAddress))
         case .subscribeGroup(let group):
-            node.getSubscribeToGroupMessages(group).forEach({
-                let handle = MeshMessageHandle(message: $0, address: node.primaryUnicastAddress)
-                handle.continuous = false
-                messageHandles.append(handle)
-            })
+            messageHandles.append(contentsOf: node.getSunSmartSubscribeToGroupMessageHandles(group, continuous: false))
         case .unsubscribeGroup(let group):
             node.getUnsubscribeGroupMessages(group).forEach({
                 let handle = MeshMessageHandle(message: $0, address: node.primaryUnicastAddress)
@@ -120,7 +116,11 @@ extension NodeSyncData {
             switchDatas.forEach { switchData in
                 if switchData.linkGroup != nil {
                     if switchData.batteryPowerSwitchData != nil {
-                        messageHandles.append(contentsOf: node.getBatteryPowerSwitchTargetSubscriptionMessageHandles(switchData: switchData, unsubscribe: false))
+                        if node.batteryPowerSwitchRestoreTargetSubscriptionSnapshots != nil {
+                            messageHandles.append(contentsOf: node.getBatteryPowerSwitchRestoreTargetSubscriptionMessageHandles(switchData: switchData))
+                        } else {
+                            messageHandles.append(contentsOf: node.getBatteryPowerSwitchTargetSubscriptionMessageHandles(switchData: switchData, unsubscribe: false))
+                        }
                         return
                     }
                     // 判断是否已订阅动能开关按键事件

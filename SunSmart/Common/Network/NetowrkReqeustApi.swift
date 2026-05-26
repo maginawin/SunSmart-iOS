@@ -137,6 +137,105 @@ enum NetowrkReqeustApi {
     case gatewayAssociationSpaceList(siteId: String, gatewayId: String)
 }
 
+extension NetowrkReqeustApi {
+
+    var diagnosticName: String {
+        switch self {
+        case .sites: return "sites"
+        case .siteInfo: return "siteInfo"
+        case .siteAdd: return "siteAdd"
+        case .siteUpload: return "siteUpload"
+        case .siteDelete: return "siteDelete"
+        case .spaceInfo: return "spaceInfo"
+        case .spaceUpload: return "spaceUpload"
+        case .spaceDelete: return "spaceDelete"
+        case .spacesDelete: return "spacesDelete"
+        case .spaceShare: return "spaceShare"
+        case .spacesShare: return "spacesShare"
+        case .batchShareList: return "batchShareList"
+        case .revocationBatchShare: return "revocationBatchShare"
+        case .joinSpace: return "joinSpace"
+        case .shareInfo: return "shareInfo"
+        case .spaceMembers: return "spaceMembers"
+        case .clearSpaceMember: return "clearSpaceMember"
+        case .clearSpaceMembers: return "clearSpaceMembers"
+        case .clearSpacesMembers: return "clearSpacesMembers"
+        case .unbindSpaces: return "unbindSpaces"
+        case .spacePasswordSet: return "spacePasswordSet"
+        case .spacesPasswordSet: return "spacesPasswordSet"
+        case .spacesVisitorPasswordEnabled: return "spacesVisitorPasswordEnabled"
+        case .batchSpacesPasswordSet: return "batchSpacesPasswordSet"
+        case .transferSite: return "transferSite"
+        case .receiveSite: return "receiveSite"
+        case .spaceActiveMembers: return "spaceActiveMembers"
+        case .heartbeat: return "heartbeat"
+        case .userInfoSet: return "userInfoSet"
+        case .applyAddress: return "applyAddress"
+        case .recyclingAddress: return "recyclingAddress"
+        case .firmwareLatestVersion: return "firmwareLatestVersion"
+        case .firmwareVersionList: return "firmwareVersionList"
+        case .devicesConfig: return "devicesConfig"
+        case .gatewayList: return "gatewayList"
+        case .gatewayBindSpace: return "gatewayBindSpace"
+        case .gatewayUnbindSpace: return "gatewayUnbindSpace"
+        case .gatewayRegister: return "gatewayRegister"
+        case .gatewayDelete: return "gatewayDelete"
+        case .gatewayAssociationSpaceList: return "gatewayAssociationSpaceList"
+        }
+    }
+
+    var declaredContentEncodingGzip: Bool {
+        headers?["Content-Encoding"]?.localizedCaseInsensitiveContains("gzip") == true
+    }
+
+    var actualBodyGzip: Bool {
+        switch task {
+        case .requestCompositeData(let bodyData, _):
+            return bodyData.isGzipData
+        default:
+            return false
+        }
+    }
+
+    var sanitizedParameters: [String: Any]? {
+        guard let parameters else {
+            return nil
+        }
+        return Self.sanitizedValue(parameters) as? [String: Any]
+    }
+
+    static func sanitizedValue(_ value: Any) -> Any {
+        if let dict = value as? [String: Any] {
+            var result: [String: Any] = [:]
+            dict.forEach { key, value in
+                if sensitiveParameterKeys.contains(key) {
+                    result[key] = "<redacted>"
+                } else {
+                    result[key] = sanitizedValue(value)
+                }
+            }
+            return result
+        }
+        if let array = value as? [Any] {
+            return array.map { sanitizedValue($0) }
+        }
+        return value
+    }
+
+    private static let sensitiveParameterKeys: Set<String> = [
+        "passwd",
+        "editorPasswd",
+        "visitorPasswd"
+    ]
+}
+
+private extension Data {
+
+    var isGzipData: Bool {
+        count >= 2 && self[startIndex] == 0x1f && self[index(after: startIndex)] == 0x8b
+    }
+}
+
 extension NetowrkReqeustApi: TargetType {
     
     var baseURL: URL {

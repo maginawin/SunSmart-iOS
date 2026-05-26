@@ -519,11 +519,12 @@ class DevicesViewController: WMPageController {
     // 获取网络内当前固件分发者
     private func getMeshDistribution() {
         
-        Task {
+        Task { [weak self] in
+            guard let self = self else { return }
             // 获取当前分发者
             if let currentDistribution = await MeshFirmwareDistributionManager.shared.currentActiveFirmwareDistributionNodeGet() {
                 self.currentDistributionNode = currentDistribution
-                startDistributionStateTimer()
+                self.startDistributionStateTimer()
             }else if self.space.permission != .visitor { // 没有分发者
                 
                 // 获取分发记录
