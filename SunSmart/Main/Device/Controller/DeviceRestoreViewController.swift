@@ -95,6 +95,8 @@ class DeviceRestoreViewController: UIViewController {
     
     /// 恢复数据模式
     let restoreMode: RestoreMode
+    /// 恢复设备入口过滤
+    private let restoreFilter: RestoreFilter
     /// 自动化恢复（设置以后自动扫描恢复设备）
     var automationRestore: Bool = false
     /// 自动重试次数
@@ -260,10 +262,11 @@ class DeviceRestoreViewController: UIViewController {
         }
     }
 
-    init(site: SiteData, space: SpaceData?, restoreMode: RestoreMode) {
+    init(site: SiteData, space: SpaceData?, restoreMode: RestoreMode, restoreFilter: RestoreFilter = .all) {
         self.site = site
         self.space = space
         self.restoreMode = restoreMode
+        self.restoreFilter = restoreFilter
         super.init(nibName: nil, bundle: nil)
     }
     
@@ -372,6 +375,32 @@ class DeviceRestoreViewController: UIViewController {
 //        
 //        MeshAPI.stopScanRecoverDevices()
 //    }
+
+    private func shouldIncludeRestoreNode(_ node: Node) -> Bool {
+        switch restoreFilter {
+        case .all:
+            return true
+        case .gatewaysOnly:
+            return node.deviceType == .gateway
+        case .currentSpaceNonGateways:
+            guard let space else {
+                return false
+            }
+            return node.deviceType != .gateway && node.subNetworkId == space.meshNetworkId
+        }
+    }
+
+    private func isNodeRestored(_ node: Node) -> Bool {
+        restoreNodes.contains {
+            $0.macAddress == node.macAddress || $0.macAddress?.toOldMacAddress() == node.macAddress
+        }
+    }
+
+    private func pendingRestoreNodes(from nodes: [Node]) -> [Node] {
+        nodes.filter { node in
+            shouldIncludeRestoreNode(node) && !isNodeRestored(node)
+        }
+    }
     
     private func setupDataSource() {
         
@@ -382,7 +411,7 @@ class DeviceRestoreViewController: UIViewController {
         case .specified(let nodes):
             sections.removeAll()
             /// 需要继续恢复的设备，如已恢复的设备将不展示
-            let nextRestoreNodes = nodes.filter({ node in !restoreNodes.contains(where: { $0.macAddress == node.macAddress || $0.macAddress?.toOldMacAddress() == node.macAddress }) })
+            let nextRestoreNodes = pendingRestoreNodes(from: nodes)
             nextRestoreNodes.forEach { node in
                 let data = DeviceRestoreData(node: node)
                 if let section = sections.first(where: { $0.group == node.group }) {
@@ -427,8 +456,8 @@ class DeviceRestoreViewController: UIViewController {
         
         MeshAPI.startScanRecoverDevices(duration: .max, scanDevice: {[weak self] unprovisionedDevice, node in
             guard let self = self, unprovisionedDevice.rssi.intValue >= self.filterRSSIRange.lowerBound else { return }
-            
-            if space != nil, node.deviceType == .gateway { // 禁止在space中恢复网关
+
+            guard self.shouldIncludeRestoreNode(node) else {
                 return
             }
             
@@ -445,7 +474,8 @@ class DeviceRestoreViewController: UIViewController {
             self.stopScanTimer()
             // 只有指定设备才显示
             if case .specified(let nodes) = self.restoreMode {
-                if !nodes.contains(where: {$0.primaryUnicastAddress == node.primaryUnicastAddress}) {
+                let nextRestoreNodes = self.pendingRestoreNodes(from: nodes)
+                if !nextRestoreNodes.contains(where: { $0.primaryUnicastAddress == node.primaryUnicastAddress }) {
                     return
                 }
             }
@@ -501,10 +531,10 @@ class DeviceRestoreViewController: UIViewController {
             case .default:
                 self.footerView.selectCountLabel.text = "\(self.showDevices.count)"
             case .specified(let nodes):
-                
-                self.footerView.selectCountLabel.text = "\(self.showDevices.count)/\(nodes.count - self.restoreNodes.count)"
+                let restoreTargetCount = self.pendingRestoreNodes(from: nodes).count
+                self.footerView.selectCountLabel.text = "\(self.showDevices.count)/\(restoreTargetCount)"
                 // 已找到全部设备
-                if self.allDevices.count >= nodes.count {
+                if self.allDevices.count >= restoreTargetCount {
                     stopScan()
                     if self.automationRestore { // 自动恢复设备流程
                         addSelectedBtnClick()
@@ -2235,8 +2265,7 @@ class DeviceRestoreViewController: UIViewController {
             case .default:
                 footerView.selectCountLabel.text = "\(showDevices.count)"
             case .specified(let nodes):
-                
-                footerView.selectCountLabel.text = "\(showDevices.count)/\(nodes.count - restoreNodes.count)"
+                footerView.selectCountLabel.text = "\(showDevices.count)/\(pendingRestoreNodes(from: nodes).count)"
             }
             
             tableView.contentInset = UIEdgeInsets(top: 0, left: 0, bottom: footerView.height + SCRYFrom(8), right: 0)
@@ -2638,6 +2667,16 @@ extension DeviceRestoreViewController {
         case `default`
         /// 指定恢复部分设备，不在内的设备不显示
         case specified(nodes: [Node])
+    }
+
+    /// 恢复设备入口过滤
+    enum RestoreFilter {
+        /// 不限制设备类型或归属
+        case all
+        /// 仅恢复 gateway 设备
+        case gatewaysOnly
+        /// 仅恢复当前 space 内的非 gateway 设备
+        case currentSpaceNonGateways
     }
     
     /// 设备恢复数据组
