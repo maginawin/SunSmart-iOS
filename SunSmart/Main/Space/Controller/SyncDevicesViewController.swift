@@ -705,7 +705,9 @@ class SyncDevicesViewController: UIViewController {
         }
 
         let switchDeviceModel = SyncDevicesModel(name: switchData.name, address: switchNode.primaryUnicastAddress)
-        let switchIconName = UIImage(named: switchNode.iconName) != nil ? switchNode.iconName : "device_BatteryPowerSwitch"
+        let switchIconName = UIImage(named: switchData.powerSwitchKind.deviceIconAssetName) != nil
+            ? switchData.powerSwitchKind.deviceIconAssetName
+            : switchNode.iconName
         switchDeviceModel.imageName = switchIconName
 
         var configurationDependencies: [SyncDeviceStepModel] = []
@@ -2195,7 +2197,7 @@ class SyncDevicesViewController: UIViewController {
     private func beginSyncRun() -> UUID {
         let identifier = UUID()
         syncRunIdentifier = identifier
-        if batteryPowerSwitchDataForSync != nil {
+        if batteryPowerSwitchDataForSync?.requiresActivationBeforeOwnConfiguration == true {
             batteryPowerSwitchKeyConfigEarliestDate = Date().addingTimeInterval(Self.batteryPowerSwitchKeyConfigInitialDelay)
         } else {
             batteryPowerSwitchKeyConfigEarliestDate = nil
@@ -2227,7 +2229,8 @@ class SyncDevicesViewController: UIViewController {
     }
 
     private func waitAfterBatteryPowerSwitchKeyConfigSuccessIfNeeded(for model: SyncCellModel) {
-        guard isBatteryPowerSwitchKeyConfigConfiguration(model) else {
+        guard batteryPowerSwitchDataForSync?.requiresActivationBeforeOwnConfiguration == true,
+              isBatteryPowerSwitchKeyConfigConfiguration(model) else {
             return
         }
         Thread.sleep(forTimeInterval: Self.batteryPowerSwitchPostKeyConfigProcessingDelay)
@@ -2469,6 +2472,13 @@ class SyncDevicesViewController: UIViewController {
     
     private func startBatteryPowerSwitchConfigurationResyncAfterActivation() {
         guard let switchData = batteryPowerSwitchDataForSync else {
+            return
+        }
+        guard switchData.requiresActivationBeforeOwnConfiguration else {
+            resetBatteryPowerSwitchConfigurationForResync()
+            syncState = .inSync
+            updateSyncStateUI()
+            startSync()
             return
         }
         let flow = PJEightKeySwitchActivationFlow(

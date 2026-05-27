@@ -502,7 +502,7 @@ final class PJPreAddEightKeySwitchesVC: UIViewController {
     }
 
     private func isBatteryPowerSwitchLinked(_ switchData: DeviceSwitchData) -> Bool {
-        switchData.proxyNode?.isBatteryPowerSwitch == true
+        switchData.proxyNode?.isPowerSwitch == true
     }
 
     private func submitBatteryPowerSwitch(_ switchData: PJEightKeySwitchData) {
@@ -553,7 +553,11 @@ final class PJPreAddEightKeySwitchesVC: UIViewController {
                     moreSettings: sourceSwitchData.moreSettingsState
                 )
             }
-            presentBatteryPowerSwitchActivation(for: switchData)
+            if switchData.requiresActivationBeforeOwnConfiguration {
+                presentBatteryPowerSwitchActivation(for: switchData)
+            } else {
+                pushBatteryPowerSwitchSync(switchData)
+            }
         } else {
             pushBatteryPowerSwitchSync(switchData)
         }

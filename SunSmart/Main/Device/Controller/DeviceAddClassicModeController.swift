@@ -278,7 +278,7 @@ class DeviceAddClassicModeController: UIViewController {
 
     private func applySelectableState(to device: ProvisioningDevice) {
         if bindToBatteryPowerSwitch == nil,
-           device.isBatteryPowerSwitch,
+           device.isPowerSwitch,
            MeshNetworkManager.instance.switchs.count >= 16 {
             device.selectedState = .disabled
             return
@@ -304,7 +304,7 @@ class DeviceAddClassicModeController: UIViewController {
 
     private func showDisabledDeviceTip(_ device: ProvisioningDevice) {
         if bindToBatteryPowerSwitch == nil,
-           device.isBatteryPowerSwitch,
+           device.isPowerSwitch,
            MeshNetworkManager.instance.switchs.count >= 16 {
             showBatteryPowerSwitchLimitTip()
         } else {
@@ -324,8 +324,8 @@ class DeviceAddClassicModeController: UIViewController {
         guard bindToBatteryPowerSwitch == nil else {
             return false
         }
-        let batteryPowerSwitchCount = devices.filter { $0.isBatteryPowerSwitch }.count
-        return batteryPowerSwitchCount > 0 && MeshNetworkManager.instance.switchs.count + batteryPowerSwitchCount > 16
+        let powerSwitchCount = devices.filter { $0.isPowerSwitch }.count
+        return powerSwitchCount > 0 && MeshNetworkManager.instance.switchs.count + powerSwitchCount > 16
     }
 
     private func validateBatteryPowerSwitchLimit(for devices: [ProvisioningDevice]) -> Bool {
@@ -1219,7 +1219,7 @@ class DeviceAddClassicModeController: UIViewController {
                         node.save()
                     }
                 }
-                if node.isBatteryPowerSwitch,
+                if node.isPowerSwitch,
                    let request = finalizeBatteryPowerSwitchAddConfiguration(for: node) {
                     pendingBatteryPowerSwitchInitialBatteryReads.append(request)
                 }
@@ -1281,7 +1281,7 @@ class DeviceAddClassicModeController: UIViewController {
             if self.addSuccessNodes.contains(where: { $0.deviceType == .emergencyController }) {
                 NotificationCenter.default.post(name: .deviceEmerFireDataDidChange, object: nil)
             }
-            if self.addSuccessNodes.contains(where: { $0.isBatteryPowerSwitch }) {
+            if self.addSuccessNodes.contains(where: { $0.isPowerSwitch }) {
                 NotificationCenter.default.post(name: .init(switchsRefreshNotificationName), object: nil)
             }
             self.finishBatteryPowerSwitchInitialBatteryReadsAndDisconnect()

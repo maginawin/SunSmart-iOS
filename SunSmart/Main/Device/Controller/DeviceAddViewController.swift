@@ -67,8 +67,8 @@ enum AddDeviceBindTarget {
         switch self {
         case .emergencyFire:
             return device.deviceType == .emergencyController
-        case .batteryPowerSwitch:
-            return device.isBatteryPowerSwitch
+        case .batteryPowerSwitch(let switchData):
+            return device.powerSwitchKind == switchData.powerSwitchKind
         }
     }
 
@@ -76,8 +76,8 @@ enum AddDeviceBindTarget {
         switch self {
         case .emergencyFire:
             return node.deviceType == .emergencyController
-        case .batteryPowerSwitch:
-            return node.isBatteryPowerSwitch
+        case .batteryPowerSwitch(let switchData):
+            return node.powerSwitchKind == switchData.powerSwitchKind
         }
     }
 }

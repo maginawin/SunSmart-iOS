@@ -1808,6 +1808,7 @@
 
 //v1.5-- NEightKeySwitches
 "neightkeyswitches_battery_power_switch" = "Battery Power\nSwitch";
+"neightkeyswitches_ac_power_switch" = "AC Power\nSwitch";
 "neightkeyswitches_scene_panel_8_key" = "Scene Panel (8 key)";
 "neightkeyswitches_more_settings" = "More Settings";
 "neightkeyswitches_scene_1" = "Scene 1";

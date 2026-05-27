@@ -18,6 +18,7 @@ final class PJSwitchesTypesVC: UIViewController {
     private let onBack: (() -> Void)?
     private let onKineticSwitch: (() -> Void)?
     private let onBatterySwitch: (() -> Void)?
+    private let onACSwitch: (() -> Void)?
 
     private var didAnimateIn = false
     private var isDismissingSheet = false
@@ -64,14 +65,25 @@ final class PJSwitchesTypesVC: UIViewController {
         )
     }()
 
+    private lazy var acSwitchView: PJTopbtBoLabView = {
+        PJTopbtBoLabView(
+            imageName: viewModel.items[2].imageName,
+            title: viewModel.items[2].title,
+            target: self,
+            action: #selector(acSwitchAction)
+        )
+    }()
+
     init(
         onBack: (() -> Void)? = nil,
         onKineticSwitch: (() -> Void)? = nil,
-        onBatterySwitch: (() -> Void)? = nil
+        onBatterySwitch: (() -> Void)? = nil,
+        onACSwitch: (() -> Void)? = nil
     ) {
         self.onBack = onBack
         self.onKineticSwitch = onKineticSwitch
         self.onBatterySwitch = onBatterySwitch
+        self.onACSwitch = onACSwitch
         super.init(nibName: nil, bundle: nil)
     }
 
@@ -82,12 +94,14 @@ final class PJSwitchesTypesVC: UIViewController {
     static func makePopupViewController(
         onBack: (() -> Void)? = nil,
         onKineticSwitch: (() -> Void)? = nil,
-        onBatterySwitch: (() -> Void)? = nil
+        onBatterySwitch: (() -> Void)? = nil,
+        onACSwitch: (() -> Void)? = nil
     ) -> PJSwitchesTypesVC {
         let controller = PJSwitchesTypesVC(
             onBack: onBack,
             onKineticSwitch: onKineticSwitch,
-            onBatterySwitch: onBatterySwitch
+            onBatterySwitch: onBatterySwitch,
+            onACSwitch: onACSwitch
         )
         controller.modalPresentationStyle = .overFullScreen
         controller.modalTransitionStyle = .crossDissolve
@@ -128,6 +142,12 @@ final class PJSwitchesTypesVC: UIViewController {
     @objc private func batterySwitchAction() {
         dismissSheet { [onBatterySwitch] in
             onBatterySwitch?()
+        }
+    }
+
+    @objc private func acSwitchAction() {
+        dismissSheet { [onACSwitch] in
+            onACSwitch?()
         }
     }
 
@@ -190,6 +210,12 @@ final class PJSwitchesTypesVC: UIViewController {
         contentView.addSubview(batterySwitchView)
         batterySwitchView.snp.makeConstraints { make in
             make.left.equalTo(kineticSwitchView.snp.right).offset(SCRXFrom(28))
+            make.top.width.equalTo(kineticSwitchView)
+        }
+
+        contentView.addSubview(acSwitchView)
+        acSwitchView.snp.makeConstraints { make in
+            make.left.equalTo(batterySwitchView.snp.right).offset(SCRXFrom(28))
             make.top.width.equalTo(kineticSwitchView)
         }
     }

@@ -29,6 +29,8 @@ class DeviceSwitchesViewController: UIViewController {
     
     /// 底部
     private var footerView: SpaceFunctionFooterView!
+    /// 刷新
+    private var refreshControl: UIRefreshControl!
     
 //    private var switches: [DeviceSwitchData] = []
     
@@ -36,6 +38,20 @@ class DeviceSwitchesViewController: UIViewController {
     private var isEdit: Bool = false
     
     let space: SpaceData
+
+    private var acPowerSwitchNodes: [Node] {
+        var addressSet: Set<Address> = []
+        return MeshNetworkManager.instance.switchs.compactMap { switchData in
+            guard let node = switchData.proxyNode, node.isACPowerSwitch else {
+                return nil
+            }
+            guard !addressSet.contains(node.primaryUnicastAddress) else {
+                return nil
+            }
+            addressSet.insert(node.primaryUnicastAddress)
+            return node
+        }
+    }
 
     init(space: SpaceData) {
         self.space = space
@@ -59,11 +75,16 @@ class DeviceSwitchesViewController: UIViewController {
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
         
+        if refreshControl.isRefreshing {
+            refreshControl.endRefreshing()
+        }
         updateUI()
     }
     
     override func viewDidAppear(_ animated: Bool) {
         super.viewDidAppear(animated)
+
+        MeshLibManager.manager.messageDelegate = self
         
         if collectionView.firstShowFlashScrollIndicators {
             collectionView.flashScrollIndicatorsIfNeeded()
@@ -84,6 +105,12 @@ class DeviceSwitchesViewController: UIViewController {
         NotificationCenter.default.addObserver(forName: .init(spacePermissionChangedNotificaitonName), object: nil, queue: nil) {[weak self] notification in
             guard let self = self else { return }
             self.updateUI()
+        }
+
+        // 设备状态更新通知
+        NotificationCenter.default.addObserver(forName: .init(deviceStateUpdateNotificationName), object: nil, queue: nil) {[weak self] notification in
+            guard let self = self, let node = notification.object as? Node else { return }
+            self.reloadSwitchItem(node: node)
         }
     }
 
@@ -116,6 +143,9 @@ class DeviceSwitchesViewController: UIViewController {
         collectionView.alwaysBounceVertical = true
         collectionView.dataSource = self
         collectionView.delegate = self
+        refreshControl = UIRefreshControl()
+        refreshControl.tintColor = UIColor.lightGray
+        refreshControl.addTarget(self, action: #selector(refreshControlAction), for: .valueChanged)
         let longPress = UILongPressGestureRecognizer(target: self, action: #selector(collectionLongPressAction))
         longPress.minimumPressDuration = 0.5
         collectionView.addGestureRecognizer(longPress)
@@ -181,6 +211,7 @@ class DeviceSwitchesViewController: UIViewController {
     private func updateUI() {
         
         footerView.countBtn.setTitle("\(MeshNetworkManager.instance.switchs.count)/16", for: .normal)
+        updateRefreshControlAvailability()
         
         var inset = self.collectionView.contentInset
         inset.bottom = SCRYFrom(16)
@@ -206,6 +237,63 @@ class DeviceSwitchesViewController: UIViewController {
 //        }
 //        CATransaction.commit()
         self.collectionView.reloadData()
+    }
+
+    private func updateRefreshControlAvailability() {
+        if acPowerSwitchNodes.isEmpty {
+            if refreshControl.isRefreshing {
+                refreshControl.endRefreshing()
+            }
+            collectionView.refreshControl = nil
+        } else {
+            collectionView.refreshControl = refreshControl
+        }
+    }
+
+    @objc private func refreshControlAction() {
+        let nodes = acPowerSwitchNodes
+        guard MeshLibManager.manager.isMeshNetworkConnected, !nodes.isEmpty else {
+            refreshControl.endRefreshing()
+            return
+        }
+
+        if refreshControl.isRefreshing {
+            let duration = max(2, min(Double(nodes.count) * 0.3, 5))
+            DispatchQueue.main.asyncAfter(deadline: .now() + duration) { [weak self] in
+                guard let self = self else { return }
+                self.refreshControl.endRefreshing()
+                self.collectionView.reloadData()
+            }
+        }
+
+        MeshNodeHeartbeatManager.shared.refresh(nodes: nodes)
+    }
+
+    private func reloadSwitchItem(node: Node) {
+        guard node.isACPowerSwitch else {
+            return
+        }
+
+        guard let index = MeshNetworkManager.instance.switchs.firstIndex(where: { switchData in
+            guard let eightKeySwitch = eightKeySwitchData(for: switchData),
+                  eightKeySwitch.isACPowerSwitch else {
+                return false
+            }
+            return eightKeySwitch.proxyNode?.primaryUnicastAddress == node.primaryUnicastAddress
+        }) else {
+            return
+        }
+
+        let indexPath = IndexPath(item: index, section: 0)
+        if let cell = collectionView.cellForItem(at: indexPath) as? PJEightKeySwitchesViewCell {
+            let switchData = MeshNetworkManager.instance.switchs[index]
+            guard let eightKeySwitch = eightKeySwitchData(for: switchData) else {
+                return
+            }
+            cell.configure(with: switchData, eightKeySwitch: eightKeySwitch, editing: isEdit)
+        } else {
+            collectionView.reloadItems(at: [indexPath])
+        }
     }
     
     /// 点击编辑事件
@@ -429,5 +517,14 @@ extension DeviceSwitchesViewController: SpaceFunctionFooterViewDelegate {
         view.isEditing = false
         isEdit = true
         updateUI()
+    }
+}
+
+extension DeviceSwitchesViewController: MeshLibManagerMessageDelegate {
+
+    func meshNetworkManager(_ manager: MeshNetworkManager, deviceDataUpdate node: Node) {
+        if view.window != nil {
+            reloadSwitchItem(node: node)
+        }
     }
 }

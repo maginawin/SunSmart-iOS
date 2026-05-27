@@ -351,6 +351,14 @@ class DevicesViewController: WMPageController {
                             vc.preferredContentSize = iPadPreferredContentSize
                         }
                         self.present(NavigationViewController(rootViewController: vc), animated: true)
+                    },
+                    onACSwitch: { [weak self] in
+                        guard let self = self else { return }
+                        let vc = PJPreAddEightKeySwitchesVC(space: self.space, creationKind: .acPowerSwitch)
+                        if isIPad {
+                            vc.preferredContentSize = iPadPreferredContentSize
+                        }
+                        self.present(NavigationViewController(rootViewController: vc), animated: true)
                     }
                 )
                 self.present(controller, animated: false)

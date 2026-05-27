@@ -1,17 +1,17 @@
 {
   "images" : [
     {
-      "filename" : "Property 1=space_switch30.png",
+      "filename" : "adding_acpowerswitch.png",
       "idiom" : "universal",
       "scale" : "1x"
     },
     {
-      "filename" : "Property 1=space_switch30@2x.png",
+      "filename" : "adding_acpowerswitch@2x.png",
       "idiom" : "universal",
       "scale" : "2x"
     },
     {
-      "filename" : "Property 1=space_switch30@3x.png",
+      "filename" : "adding_acpowerswitch@3x.png",
       "idiom" : "universal",
       "scale" : "3x"
     }

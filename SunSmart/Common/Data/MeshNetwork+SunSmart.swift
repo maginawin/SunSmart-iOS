@@ -832,10 +832,11 @@ extension MeshNetworkManager {
         return true
     }
 
-    /// 为 Battery Power Switch 创建对应的 8 键开关数据
+    /// 为 Power Switch 创建对应的 8 键开关数据
     @discardableResult
     func createDefaultSwitch(forBatteryPowerSwitch node: Node) -> DeviceSwitchData? {
-        guard node.isBatteryPowerSwitch else {
+        guard node.isPowerSwitch,
+              let powerSwitchKind = node.powerSwitchKind else {
             return nil
         }
         if let existingSwitch = self.switchs.first(where: { $0.proxyNodeAddress == node.primaryUnicastAddress }) {
@@ -852,6 +853,7 @@ extension MeshNetworkManager {
         baseSwitch.panelType = panelType == .scene8Key ? .scenes_4key : .default_4key
         let metadata = PJEightKeySwitchRepository.Metadata(
             panelType: panelType,
+            powerSwitchKind: powerSwitchKind,
             moreSettingsState: .default
         )
         let newSwitch = PJEightKeySwitchData(baseSwitchData: baseSwitch, metadata: metadata)
@@ -1665,15 +1667,27 @@ extension Node {
     static private var batteryPowerSwitchRestoreTargetSubscriptionSnapshotsKey: UInt8 = 0
 //    static private var lastUpdateSyncTime = 206
 
-    static let batteryPowerSwitchCompanyIdentifier: UInt16 = 0x0A78
-    static let batteryPowerSwitchProductIdentifiers: Set<UInt16> = [0x2A01, 0x2A02]
+    static let batteryPowerSwitchCompanyIdentifier: UInt16 = PJEightKeyPowerSwitchKind.companyIdentifier
+    static let batteryPowerSwitchProductIdentifiers: Set<UInt16> = PJEightKeyPowerSwitchKind.batteryProductIdentifiers
+    static let acPowerSwitchProductIdentifiers: Set<UInt16> = PJEightKeyPowerSwitchKind.acProductIdentifiers
+
+    static func powerSwitchKind(companyIdentifier: UInt16?, productIdentifier: UInt16?) -> PJEightKeyPowerSwitchKind? {
+        PJEightKeyPowerSwitchKind.make(
+            companyIdentifier: companyIdentifier,
+            productIdentifier: productIdentifier
+        )
+    }
 
     static func isBatteryPowerSwitch(companyIdentifier: UInt16?, productIdentifier: UInt16?) -> Bool {
-        guard companyIdentifier == batteryPowerSwitchCompanyIdentifier,
-              let productIdentifier = productIdentifier else {
-            return false
-        }
-        return batteryPowerSwitchProductIdentifiers.contains(productIdentifier)
+        powerSwitchKind(companyIdentifier: companyIdentifier, productIdentifier: productIdentifier) == .battery
+    }
+
+    static func isACPowerSwitch(companyIdentifier: UInt16?, productIdentifier: UInt16?) -> Bool {
+        powerSwitchKind(companyIdentifier: companyIdentifier, productIdentifier: productIdentifier) == .ac
+    }
+
+    static func isPowerSwitch(companyIdentifier: UInt16?, productIdentifier: UInt16?) -> Bool {
+        powerSwitchKind(companyIdentifier: companyIdentifier, productIdentifier: productIdentifier) != nil
     }
     
     /// 设备类型
@@ -1702,7 +1716,7 @@ extension Node {
                 self = .sensor
             case "Dongle":
                 self = .dongle
-            case "Switches", "BatteryPowerSwitch":
+            case "Switches", "BatteryPowerSwitch", "ACPowerSwitch":
                 self = .switches
             case "Gateway":
                 self = .gateway
@@ -1769,18 +1783,23 @@ extension Node {
         return Node.isBatteryPowerSwitch(companyIdentifier: companyIdentifier, productIdentifier: productIdentifier)
     }
 
+    var powerSwitchKind: PJEightKeyPowerSwitchKind? {
+        return Node.powerSwitchKind(companyIdentifier: companyIdentifier, productIdentifier: productIdentifier)
+    }
+
+    var isACPowerSwitch: Bool {
+        return Node.isACPowerSwitch(companyIdentifier: companyIdentifier, productIdentifier: productIdentifier)
+    }
+
+    var isPowerSwitch: Bool {
+        return Node.isPowerSwitch(companyIdentifier: companyIdentifier, productIdentifier: productIdentifier)
+    }
+
     var batteryPowerSwitchPanelType: PJEightKeySwitchPanelDefinition.PanelType? {
-        guard isBatteryPowerSwitch else {
+        guard isPowerSwitch else {
             return nil
         }
-        switch productIdentifier {
-        case 0x2A01:
-            return .scene8Key
-        case 0x2A02:
-            return .brightness8Key
-        default:
-            return nil
-        }
+        return PJEightKeyPowerSwitchKind.panelType(productIdentifier: productIdentifier)
     }
 
     var batteryPowerSwitchRestoreTargetSubscriptionSnapshots: [Address: Set<BatteryPowerSwitchTargetSubscriptionSnapshot>]? {

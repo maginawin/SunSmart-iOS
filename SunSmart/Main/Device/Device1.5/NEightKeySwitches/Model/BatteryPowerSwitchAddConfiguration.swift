@@ -43,15 +43,7 @@ enum BatteryPowerSwitchAddConfiguration {
     }
 
     static func isSupportedAddNode(_ node: Node) -> Bool {
-        guard node.isBatteryPowerSwitch else {
-            return false
-        }
-        switch node.productIdentifier {
-        case 0x2A01, 0x2A02:
-            return true
-        default:
-            return false
-        }
+        return node.isPowerSwitch
     }
 
     static func prepareSwitchData(for node: Node) -> PJEightKeySwitchData? {
@@ -64,6 +56,9 @@ enum BatteryPowerSwitchAddConfiguration {
             return nil
         }
 
+        if let kind = node.powerSwitchKind {
+            switchData.powerSwitchKind = kind
+        }
         switchData.enabled = true
         switchData.appliedTxEnabled = true
         switchData.moreSettingsState.ledIndicatorEnabled = true
@@ -87,6 +82,9 @@ enum BatteryPowerSwitchAddConfiguration {
         guard isSupportedAddNode(node) else {
             return .failure(.unsupportedNode)
         }
+        guard node.powerSwitchKind == sourceSwitchData.powerSwitchKind else {
+            return .failure(.unsupportedNode)
+        }
 
         if let existingSwitch = MeshNetworkManager.instance.switchs.first(where: {
             $0.id != sourceSwitchData.id && $0.proxyNodeAddress == node.primaryUnicastAddress
@@ -96,6 +94,7 @@ enum BatteryPowerSwitchAddConfiguration {
 
         let switchData = sourceSwitchData.copy()
         switchData.proxyNodeAddress = node.primaryUnicastAddress
+        switchData.powerSwitchKind = sourceSwitchData.powerSwitchKind
         switchData.maxKeyCount = 8
         switchData.panelType = switchData.eightKeyPanelType == .scene8Key ? .scenes_4key : .default_4key
         switchData.subLinkGroupAddress = nil
@@ -118,6 +117,9 @@ enum BatteryPowerSwitchAddConfiguration {
         guard isSupportedAddNode(node) else {
             return .failure(.unsupportedNode)
         }
+        guard node.powerSwitchKind == sourceSwitchData.powerSwitchKind else {
+            return .failure(.unsupportedNode)
+        }
 
         if let existingSwitch = MeshNetworkManager.instance.switchs.first(where: {
             $0.id != sourceSwitchData.id && $0.proxyNodeAddress == node.primaryUnicastAddress
@@ -131,6 +133,7 @@ enum BatteryPowerSwitchAddConfiguration {
 
         let switchData = sourceSwitchData.copy()
         switchData.proxyNodeAddress = node.primaryUnicastAddress
+        switchData.powerSwitchKind = sourceSwitchData.powerSwitchKind
         switchData.maxKeyCount = 8
         switchData.subLinkGroupAddress = nil
         switchData.batteryLevel = nil
@@ -221,7 +224,8 @@ enum BatteryPowerSwitchAddConfiguration {
         for switchData: PJEightKeySwitchData,
         node: Node
     ) -> InitialBatteryReadRequest? {
-        guard isSupportedAddNode(node) else {
+        guard isSupportedAddNode(node),
+              node.isBatteryPowerSwitch else {
             return nil
         }
         return InitialBatteryReadRequest(
@@ -289,7 +293,8 @@ enum BatteryPowerSwitchAddConfiguration {
         completion: @escaping () -> Void
     ) {
         guard let node = MeshNetworkManager.instance.meshNetwork?.node(withAddress: request.nodeAddress),
-              isSupportedAddNode(node) else {
+              isSupportedAddNode(node),
+              node.isBatteryPowerSwitch else {
             DispatchQueue.main.async {
                 completion()
             }
@@ -317,7 +322,8 @@ enum BatteryPowerSwitchAddConfiguration {
 
     private static func disconnectBatteryPowerSwitchNode(address: Address) {
         guard let node = MeshNetworkManager.instance.meshNetwork?.node(withAddress: address),
-              isSupportedAddNode(node) else {
+              isSupportedAddNode(node),
+              node.isBatteryPowerSwitch else {
             return
         }
         MeshLibManager.manager.disconnectProxy(node: node)

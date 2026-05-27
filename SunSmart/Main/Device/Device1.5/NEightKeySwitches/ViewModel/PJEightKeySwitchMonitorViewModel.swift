@@ -12,6 +12,11 @@ import UIKit
 final class PJEightKeySwitchMonitorViewModel {
 
     struct HeaderState {
+        enum Layout {
+            case battery
+            case centeredStatus
+        }
+
         enum StatusStyle {
             case normal
             case lowBattery
@@ -27,6 +32,7 @@ final class PJEightKeySwitchMonitorViewModel {
         let updatedText: String
         let style: StatusStyle
         let showsRefreshButton: Bool
+        let layout: Layout
     }
 
     struct KeyItem {
@@ -81,7 +87,7 @@ final class PJEightKeySwitchMonitorViewModel {
     }
 
     var informationNode: Node? {
-        guard let node = switchData.proxyNode, node.isBatteryPowerSwitch else {
+        guard let node = switchData.proxyNode, node.isPowerSwitch else {
             return nil
         }
         return node
@@ -106,11 +112,11 @@ final class PJEightKeySwitchMonitorViewModel {
     }
 
     var needsBatteryPowerSwitchSync: Bool {
-        switchData.proxyNode?.isBatteryPowerSwitch == true && switchData.needsBatteryPowerSwitchSync
+        switchData.proxyNode?.isPowerSwitch == true && switchData.needsBatteryPowerSwitchSync
     }
 
     var canRefreshBattery: Bool {
-        switchData.proxyNode?.isBatteryPowerSwitch == true && space.permission != .visitor
+        switchData.powerSwitchKind == .battery && switchData.proxyNode?.isBatteryPowerSwitch == true && space.permission != .visitor
     }
 
     var panelDefinition: PJEightKeySwitchPanelDefinition {
@@ -118,6 +124,9 @@ final class PJEightKeySwitchMonitorViewModel {
     }
 
     var headerState: HeaderState {
+        if switchData.powerSwitchKind == .ac {
+            return acHeaderState()
+        }
         let style = batteryStatusStyle()
         return HeaderState(
             batteryText: batteryDisplayText(),
@@ -127,7 +136,8 @@ final class PJEightKeySwitchMonitorViewModel {
             statusColor: statusColor(for: style),
             updatedText: batteryUpdatedText(),
             style: style,
-            showsRefreshButton: canRefreshBattery
+            showsRefreshButton: canRefreshBattery,
+            layout: .battery
         )
     }
 
@@ -176,7 +186,7 @@ final class PJEightKeySwitchMonitorViewModel {
     }
 
     func prepareBatteryPowerSwitchDesiredConfigIfNeeded() -> Bool {
-        guard switchData.proxyNode?.isBatteryPowerSwitch == true else {
+        guard switchData.proxyNode?.isPowerSwitch == true else {
             return true
         }
         guard MeshNetworkManager.instance.ensureBatteryPowerSwitchLinkGroup(switchData) else {
@@ -218,6 +228,35 @@ final class PJEightKeySwitchMonitorViewModel {
 }
 
 private extension PJEightKeySwitchMonitorViewModel {
+
+    func acHeaderState() -> HeaderState {
+        if isUnlinkedVirtualBatteryPowerSwitch {
+            return HeaderState(
+                batteryText: "",
+                batteryIconSystemName: "",
+                statusPrefixText: "",
+                statusText: "neightkeyswitches_unlinked".localizedString,
+                statusColor: RGB(148, 163, 184),
+                updatedText: "",
+                style: .unlinked,
+                showsRefreshButton: false,
+                layout: .centeredStatus
+            )
+        }
+
+        let online = informationNode?.state == true
+        return HeaderState(
+            batteryText: "",
+            batteryIconSystemName: "",
+            statusPrefixText: "",
+            statusText: online ? "online".localizedString : "Offline".localizedString,
+            statusColor: online ? RGB(69, 197, 122) : RGB(148, 163, 184),
+            updatedText: "",
+            style: online ? .normal : .unknown,
+            showsRefreshButton: false,
+            layout: .centeredStatus
+        )
+    }
 
     func batteryDisplayText() -> String {
         guard let level = reportedBatteryLevel() else {

@@ -6,12 +6,55 @@
 //
 
 import Foundation
-import UIKit
 import NordicSigMeshSDK
+
+enum PJEightKeyPowerSwitchKind: Int {
+    case battery = 0
+    case ac = 1
+
+    static let companyIdentifier: UInt16 = 0x0A78
+    static let batteryProductIdentifiers: Set<UInt16> = [0x2A01, 0x2A02]
+    static let acProductIdentifiers: Set<UInt16> = [0x2A11, 0x2A12]
+
+    static func make(companyIdentifier: UInt16?, productIdentifier: UInt16?) -> PJEightKeyPowerSwitchKind? {
+        guard companyIdentifier == Self.companyIdentifier,
+              let productIdentifier else {
+            return nil
+        }
+        if batteryProductIdentifiers.contains(productIdentifier) {
+            return .battery
+        }
+        if acProductIdentifiers.contains(productIdentifier) {
+            return .ac
+        }
+        return nil
+    }
+
+    static func panelType(productIdentifier: UInt16?) -> PJEightKeySwitchPanelDefinition.PanelType? {
+        switch productIdentifier {
+        case 0x2A01, 0x2A11:
+            return .scene8Key
+        case 0x2A02, 0x2A12:
+            return .brightness8Key
+        default:
+            return nil
+        }
+    }
+
+    var deviceIconAssetName: String {
+        switch self {
+        case .battery:
+            return "device_BatteryPowerSwitch"
+        case .ac:
+            return "device_ACPowerSwitch"
+        }
+    }
+}
 
 final class PJEightKeySwitchData: DeviceSwitchData {
 
     var eightKeyPanelType: PJEightKeySwitchPanelDefinition.PanelType = .scene8Key
+    var powerSwitchKind: PJEightKeyPowerSwitchKind = .battery
     var moreSettingsState: PJEightKeySwitchMoreSettingsViewModel.State = .default
     var syncState: PJEightKeySwitchSyncState = .pending
     var desiredConfigVersion: Int = 0
@@ -45,6 +88,7 @@ final class PJEightKeySwitchData: DeviceSwitchData {
         enOceanSecurityKey = baseSwitchData.enOceanSecurityKey
         maxKeyCount = 8
         eightKeyPanelType = metadata.panelType
+        powerSwitchKind = metadata.powerSwitchKind
         moreSettingsState = metadata.moreSettingsState
         syncState = metadata.syncState
         desiredConfigVersion = metadata.desiredConfigVersion
@@ -79,6 +123,7 @@ final class PJEightKeySwitchData: DeviceSwitchData {
         copy.panelType = panelType
         copy.maxKeyCount = maxKeyCount
         copy.eightKeyPanelType = eightKeyPanelType
+        copy.powerSwitchKind = powerSwitchKind
         copy.moreSettingsState = moreSettingsState
         copy.syncState = syncState
         copy.desiredConfigVersion = desiredConfigVersion
@@ -93,8 +138,20 @@ final class PJEightKeySwitchData: DeviceSwitchData {
         return copy as! Self
     }
 
+    var isACPowerSwitch: Bool {
+        powerSwitchKind == .ac
+    }
+
+    var isBatteryPowerSwitchKind: Bool {
+        powerSwitchKind == .battery
+    }
+
+    var requiresActivationBeforeOwnConfiguration: Bool {
+        powerSwitchKind == .battery
+    }
+
     var needsBatteryPowerSwitchConfigurationSync: Bool {
-        guard proxyNode?.isBatteryPowerSwitch == true else {
+        guard proxyNode?.isPowerSwitch == true else {
             return false
         }
         let currentHash = batteryPowerSwitchDesiredConfigHash(appKeyIndex: MeshNetworkManager.instance.currentApplicationKey.index)
@@ -102,21 +159,21 @@ final class PJEightKeySwitchData: DeviceSwitchData {
     }
 
     var needsBatteryPowerSwitchSync: Bool {
-        guard proxyNode?.isBatteryPowerSwitch == true else {
+        guard proxyNode?.isPowerSwitch == true else {
             return false
         }
         return needsBatteryPowerSwitchConfigurationSync || needsBatteryPowerSwitchTxEnableSync || needsBatteryPowerSwitchLEDIndicatorSync || needSyncData
     }
 
     var needsBatteryPowerSwitchTxEnableSync: Bool {
-        guard proxyNode?.isBatteryPowerSwitch == true else {
+        guard proxyNode?.isPowerSwitch == true else {
             return false
         }
         return appliedTxEnabled != enabled
     }
 
     var needsBatteryPowerSwitchLEDIndicatorSync: Bool {
-        guard proxyNode?.isBatteryPowerSwitch == true else {
+        guard proxyNode?.isPowerSwitch == true else {
             return false
         }
         return appliedLEDIndicatorEnabled != moreSettingsState.ledIndicatorEnabled
@@ -211,7 +268,7 @@ final class PJEightKeySwitchData: DeviceSwitchData {
             return .repairRequiredMode
         }
         let isBound = proxyNodeAddress != nil || !(enOceanMacAddress?.isEmpty ?? true)
-        let needsSync = proxyNode?.isBatteryPowerSwitch == true ? needsBatteryPowerSwitchSync : needSyncData
+        let needsSync = proxyNode?.isPowerSwitch == true ? needsBatteryPowerSwitchSync : needSyncData
         if isBound && needsSync {
             return .syncIssueBoundSwitch
         }
@@ -222,7 +279,10 @@ final class PJEightKeySwitchData: DeviceSwitchData {
     }
 
     var displayIconAssetName: String {
-        UIImage(named: displayStatus.iconAssetName) != nil ? displayStatus.iconAssetName : "eight_key_switch_bound_enabled"
+        if powerSwitchKind == .ac, proxyNode?.state == false {
+            return "device_ACPowerSwitch_offline"
+        }
+        return powerSwitchKind.deviceIconAssetName
     }
 }
 

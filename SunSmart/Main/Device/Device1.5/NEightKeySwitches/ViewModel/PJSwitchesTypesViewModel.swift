@@ -16,6 +16,7 @@ struct PJSwitchesTypesViewModel {
     let title = "switches".localizedString
     let items: [Item] = [
         Item(imageName: "Kinetics_device", title: "kinetic_switch".localizedString),
-        Item(imageName: "BatteryPowersw_device", title: "neightkeyswitches_battery_power_switch".localizedString)
+        Item(imageName: "BatteryPowersw_device", title: "neightkeyswitches_battery_power_switch".localizedString),
+        Item(imageName: "ACPowersw_device", title: "neightkeyswitches_ac_power_switch".localizedString)
     ]
 }

@@ -13,6 +13,7 @@ struct PJPreAddEightKeySwitchesViewModel {
     enum CreationKind {
         case kineticSwitch
         case batteryPowerSwitch
+        case acPowerSwitch
     }
 
     let space: SpaceData
@@ -40,7 +41,7 @@ struct PJPreAddEightKeySwitchesViewModel {
     init(space: SpaceData, switchData: PJEightKeySwitchData) {
         self.space = space
         self.sourceSwitchData = switchData
-        self.creationKind = .batteryPowerSwitch
+        self.creationKind = switchData.powerSwitchKind == .ac ? .acPowerSwitch : .batteryPowerSwitch
         self.deviceName = switchData.name
         self.isEnabled = switchData.enabled
         self.selectedPanelType = switchData.eightKeyPanelType
@@ -76,8 +77,19 @@ struct PJPreAddEightKeySwitchesViewModel {
         selectedPanelType == .scene8Key
     }
 
-    var isBatteryPowerSwitchPreCreate: Bool {
-        sourceSwitchData == nil && creationKind == .batteryPowerSwitch
+    var powerSwitchKind: PJEightKeyPowerSwitchKind? {
+        switch creationKind {
+        case .batteryPowerSwitch:
+            return .battery
+        case .acPowerSwitch:
+            return .ac
+        case .kineticSwitch:
+            return nil
+        }
+    }
+
+    var isPowerSwitchPreCreate: Bool {
+        sourceSwitchData == nil && powerSwitchKind != nil
     }
 
     mutating func clearSceneDatas() {
@@ -114,7 +126,10 @@ struct PJPreAddEightKeySwitchesViewModel {
         switchData.panelType = selectedPanelType == .scene8Key ? .scenes_4key : .default_4key
         switchData.eightKeyPanelType = selectedPanelType
         switchData.moreSettingsState = moreSettings
-        if isBatteryPowerSwitchPreCreate {
+        if let powerSwitchKind {
+            switchData.powerSwitchKind = powerSwitchKind
+        }
+        if isPowerSwitchPreCreate {
             switchData.syncState = .synced
             switchData.desiredConfigVersion = 0
             switchData.desiredConfigHash = ""

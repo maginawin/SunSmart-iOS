@@ -708,8 +708,11 @@ class DeviceRestoreViewController: UIViewController {
     }
 
     private func isBatteryPowerSwitchRestore(oldNode: Node, newNode: Node) -> Bool {
-        BatteryPowerSwitchAddConfiguration.isSupportedAddNode(newNode)
-            && batteryPowerSwitchData(boundTo: oldNode) != nil
+        guard BatteryPowerSwitchAddConfiguration.isSupportedAddNode(newNode),
+              let switchData = batteryPowerSwitchData(boundTo: oldNode) else {
+            return false
+        }
+        return switchData.powerSwitchKind == newNode.powerSwitchKind
     }
 
     private func prepareBatteryPowerSwitchRestoreConfiguration(
@@ -855,7 +858,7 @@ class DeviceRestoreViewController: UIViewController {
         _ node: Node,
         phase: RestoreSyncEvaluationPhase
     ) -> Bool {
-        guard !node.isBatteryPowerSwitch else {
+        guard !node.isPowerSwitch else {
             return false
         }
         // 恢复数据不包括邻近照明邻居关系，涉及其它节点，仍保持外部同步流程。

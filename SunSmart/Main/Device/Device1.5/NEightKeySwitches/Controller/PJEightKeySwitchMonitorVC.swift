@@ -205,7 +205,8 @@ final class PJEightKeySwitchMonitorVC: UIViewController {
             statusText: header.statusText,
             statusColor: header.statusColor,
             updatedText: header.updatedText,
-            showsRefreshButton: header.showsRefreshButton
+            showsRefreshButton: header.showsRefreshButton,
+            layout: header.layout == .battery ? .battery : .centeredStatus
         ))
 
         let isTxEnablePending = pendingEnabledValue != nil
@@ -220,6 +221,9 @@ final class PJEightKeySwitchMonitorVC: UIViewController {
 
     private func refreshMonitor() {
         guard !isRefreshing else { return }
+        guard viewModel.switchData.powerSwitchKind == .battery else {
+            return
+        }
         guard let node = viewModel.informationNode else {
             XWHUDManager.showTipHUD("failed".localizedString, isLineFeed: false)
             return
@@ -303,6 +307,11 @@ final class PJEightKeySwitchMonitorVC: UIViewController {
         pendingEnabledValue = isEnabled
         updateUI()
 
+        if viewModel.switchData.powerSwitchKind == .ac {
+            sendACTxEnable(isEnabled)
+            return
+        }
+
         let flow = PJEightKeySwitchTxEnableFlow(
             presenter: self,
             switchData: viewModel.switchData,
@@ -323,6 +332,30 @@ final class PJEightKeySwitchMonitorVC: UIViewController {
         )
         txEnableFlow = flow
         flow.start()
+    }
+
+    private func sendACTxEnable(_ isEnabled: Bool) {
+        guard let node = viewModel.informationNode else {
+            pendingEnabledValue = nil
+            XWHUDManager.showTipHUD("failed".localizedString, isLineFeed: false)
+            updateUI()
+            return
+        }
+
+        MeshBatteryPowerSwitchTxEnableSender().sendTxEnable(isEnabled, to: node) { [weak self] succeeded in
+            DispatchQueue.main.async {
+                guard let self else { return }
+                if succeeded {
+                    self.viewModel.applyTxEnableSucceeded(isEnabled)
+                    self.viewModel.persist()
+                    NotificationCenter.default.post(name: .init(switchsRefreshNotificationName), object: nil)
+                } else {
+                    XWHUDManager.showTipHUD("failed".localizedString, isLineFeed: false)
+                }
+                self.pendingEnabledValue = nil
+                self.updateUI()
+            }
+        }
     }
 
     private func presentDimmingPopup() {
@@ -376,7 +409,7 @@ final class PJEightKeySwitchMonitorVC: UIViewController {
         let needsConfigurationSync = viewModel.switchData.needsBatteryPowerSwitchConfigurationSync
         viewModel.persist()
         NotificationCenter.default.post(name: .init(switchsRefreshNotificationName), object: nil)
-        if needsConfigurationSync {
+        if needsConfigurationSync && viewModel.switchData.requiresActivationBeforeOwnConfiguration {
             presentBatteryPowerSwitchActivation()
         } else {
             pushBatteryPowerSwitchSyncController()
