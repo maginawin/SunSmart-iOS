@@ -177,6 +177,67 @@ internal extension FirmwareUpdateError {
     
 }
 
+private struct BLEFirmwareSpaceDeviceResolver {
+    
+    let space: SpaceData?
+    
+    func isVisibleFirmwareNode(_ node: Node) -> Bool {
+        guard let space = space else {
+            return true
+        }
+        if node.isPowerSwitch {
+            return powerSwitchData(for: node) != nil
+        }
+        if node.deviceType == .switches {
+            return false
+        }
+        if node.deviceType == .dongle {
+            return dongleData(for: node) != nil
+        }
+        if node.deviceType == .emergencyController {
+            return emergencyFireData(for: node, in: space) != nil
+        }
+        return true
+    }
+    
+    func displayName(for node: Node, displayDeviceNamePrefix: Bool) -> String {
+        if let switchData = powerSwitchData(for: node) {
+            return switchData.name
+        }
+        if let dongleData = dongleData(for: node) {
+            return dongleData.name
+        }
+        if let space = space, let emergencyData = emergencyFireData(for: node, in: space) {
+            return emergencyData.name
+        }
+        var name = node.name ?? ""
+        if let group = node.group, displayDeviceNamePrefix {
+            name = "\(group.name)-\(name)"
+        }
+        return name
+    }
+    
+    private func powerSwitchData(for node: Node) -> DeviceSwitchData? {
+        MeshNetworkManager.instance.switchs.first {
+            $0.proxyNodeAddress == node.primaryUnicastAddress &&
+            $0.proxyNode?.isPowerSwitch == true
+        }
+    }
+    
+    private func dongleData(for node: Node) -> DeviceDongleData? {
+        MeshNetworkManager.instance.dongles.first {
+            $0.bindNodeAddress == node.primaryUnicastAddress
+        }
+    }
+    
+    private func emergencyFireData(for node: Node, in space: SpaceData) -> DeviceEmerFireData? {
+        DeviceEmerFireStore.shared.devices(in: space).first {
+            $0.bindNodeAddress == node.primaryUnicastAddress
+        }
+    }
+    
+}
+
 class BleFirmwareUpdateViewController: UIViewController {
     
     /// 升级状态
@@ -228,6 +289,7 @@ class BleFirmwareUpdateViewController: UIViewController {
     var deviceUpdateCompleteCallback: (([Node])->Void)?
     /// 升级的设备list
     let nodes: [Node]
+    private let displayResolver: BLEFirmwareSpaceDeviceResolver
     
     let site: SiteData
     let space: SpaceData?
@@ -235,7 +297,11 @@ class BleFirmwareUpdateViewController: UIViewController {
     init(site: SiteData, space: SpaceData?, nodes: [Node]? = nil) {
         self.site = site
         self.space = space
-        self.nodes = nodes ?? MeshNetworkManager.instance.realNodes
+        let displayResolver = BLEFirmwareSpaceDeviceResolver(space: space)
+        self.displayResolver = displayResolver
+        self.nodes = (nodes ?? MeshNetworkManager.instance.realNodes).filter {
+            displayResolver.isVisibleFirmwareNode($0)
+        }
         super.init(nibName: nil, bundle: nil)
     }
     
@@ -1211,6 +1277,12 @@ extension BleFirmwareUpdateViewController: UICollectionViewDataSource, UICollect
     func collectionView(_ collectionView: UICollectionView, cellForItemAt indexPath: IndexPath) -> UICollectionViewCell {
         let cell = collectionView.dequeueReusableCell(withReuseIdentifier: "cell", for: indexPath) as! BleFirmwareTypeUpdateViewCell
         cell.displayDeviceNamePrefix = space?.displayDeviceNamePrefix ?? false
+        cell.displayNameProvider = { [weak self] node, displayDeviceNamePrefix in
+            guard let self = self else {
+                return BLEFirmwareSpaceDeviceResolver(space: nil).displayName(for: node, displayDeviceNamePrefix: displayDeviceNamePrefix)
+            }
+            return self.displayResolver.displayName(for: node, displayDeviceNamePrefix: displayDeviceNamePrefix)
+        }
         cell.firmwareTypeData = firmwareTypeDatas[indexPath.row]
         cell.delegate = self
 //        cell.isShow = showData[indexPath.item] ?? false

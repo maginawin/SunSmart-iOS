@@ -871,10 +871,10 @@ extension MeshNetworkManager {
     /// 删除动能开关
     func deleteSwitch(switchData: DeviceSwitchData) {
         guard let meshUUID = self.meshNetwork?.uuid.uuidString else { return }
-        let realBatteryPowerSwitchNode = switchData.proxyNode?.isBatteryPowerSwitch == true
+        let realPowerSwitchNode = switchData.proxyNode?.isPowerSwitch == true
             ? switchData.proxyNode
             : nil
-        silentlyResetBatteryPowerSwitchIfNeeded(realBatteryPowerSwitchNode)
+        silentlyResetPowerSwitchIfNeeded(realPowerSwitchNode)
         // 检查代理设备的数据有没有清空
         if let proxyNode = MeshNetworkManager.instance.realNodes.first(where: { $0.enOceanMacAddress == switchData.enOceanMacAddress }) {
             proxyNode.enOceanMacAddress = nil
@@ -883,7 +883,7 @@ extension MeshNetworkManager {
         PJEightKeySwitchRepository.shared.delete(for: switchData, meshUUID: meshUUID, networkId: self.currentNetworkKey.networkId.hex)
         switchData.delete(meshUUID: meshUUID, networkId: self.currentNetworkKey.networkId.hex)
         self.switchs.removeAll(where: { $0.id == switchData.id })
-        removeRealBatteryPowerSwitchNodeIfNeeded(realBatteryPowerSwitchNode)
+        removeRealPowerSwitchNodeIfNeeded(realPowerSwitchNode)
         
         var switchGroups: [Group] = []
         if let group = switchData.linkGroup {
@@ -909,22 +909,22 @@ extension MeshNetworkManager {
             }
             try? self.meshNetwork?.remove(group: group)
         }
-        notifyRealBatteryPowerSwitchDeletedIfNeeded(realBatteryPowerSwitchNode)
+        notifyRealPowerSwitchDeletedIfNeeded(realPowerSwitchNode)
         
     }
 
-    private func silentlyResetBatteryPowerSwitchIfNeeded(_ node: Node?) {
+    private func silentlyResetPowerSwitchIfNeeded(_ node: Node?) {
         guard let node else {
             return
         }
         do {
             try MeshAPI.resetNodeWithoutWaitingForStatus(address: node.primaryUnicastAddress)
         } catch {
-            print("Failed to send Battery Power Switch reset node: \(error)")
+            print("Failed to send Power Switch reset node: \(error)")
         }
     }
 
-    private func removeRealBatteryPowerSwitchNodeIfNeeded(_ node: Node?) {
+    private func removeRealPowerSwitchNodeIfNeeded(_ node: Node?) {
         guard let node else {
             return
         }
@@ -932,7 +932,7 @@ extension MeshNetworkManager {
         self.meshNetwork?.forceRemove(node: node)
     }
 
-    private func notifyRealBatteryPowerSwitchDeletedIfNeeded(_ node: Node?) {
+    private func notifyRealPowerSwitchDeletedIfNeeded(_ node: Node?) {
         guard node != nil else {
             return
         }

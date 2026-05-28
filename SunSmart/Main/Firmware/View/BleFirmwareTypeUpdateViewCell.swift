@@ -69,6 +69,7 @@ class BleFirmwareTypeUpdateViewCell: UICollectionViewCell {
     private var arrowImageView: UIImageView!
     
     var displayDeviceNamePrefix: Bool = true
+    var displayNameProvider: ((Node, Bool) -> String)?
     
     var firmwareTypeData: FirmwareUpdateTypeData! {
         didSet {
@@ -175,8 +176,9 @@ class BleFirmwareTypeUpdateViewCell: UICollectionViewCell {
     func reload(device: Node) {
         if firmwareTypeData.isShow, let index = firmwareTypeData.nodes.firstIndex(of: device) {
             if let cell = deviceTableView.cellForRow(at: IndexPath(row: index, section: 0)) as? BleFirmwareUpdateDeviceCell {
-                cell.device = device
+                cell.displayNameProvider = displayNameProvider
                 cell.displayDeviceNamePrefix = displayDeviceNamePrefix
+                cell.device = device
             }
 //            deviceTableView.reloadRows(at: [IndexPath(row: index, section: 0)], with: .none)
         }
@@ -395,6 +397,8 @@ extension BleFirmwareTypeUpdateViewCell: UITableViewDataSource, UITableViewDeleg
     
     func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
         let cell = tableView.dequeueReusableCell(withIdentifier: "cell", for: indexPath) as! BleFirmwareUpdateDeviceCell
+        cell.displayNameProvider = displayNameProvider
+        cell.displayDeviceNamePrefix = displayDeviceNamePrefix
         cell.device = firmwareTypeData.nodes[indexPath.item]
         cell.delegate = self
         return cell
@@ -583,14 +587,15 @@ class BleFirmwareUpdateDeviceCell: UITableViewCell {
     private var progressView: RoundProgressView!
     
     weak var delegate: BleFirmwareUpdateDeviceCellDelegate?
+    var displayNameProvider: ((Node, Bool) -> String)? {
+        didSet {
+            updateName()
+        }
+    }
     
     var device: Node! {
         didSet {
-            var name = device.name ?? ""
-            if let group = device.group, displayDeviceNamePrefix {
-                name = "\(group.name)-\(name)"
-            }
-            nameLabel.text = name
+            updateName()
             versionLabel.text = device.firmwareVersion
             
             selectedImageView.isHidden = !device.enableUpgrade
@@ -657,11 +662,7 @@ class BleFirmwareUpdateDeviceCell: UITableViewCell {
     
     var displayDeviceNamePrefix: Bool = true {
         didSet {
-            var name = device.name ?? ""
-            if let group = device.group, displayDeviceNamePrefix {
-                name = "\(group.name)-\(name)"
-            }
-            nameLabel.text = name
+            updateName()
         }
     }
     
@@ -675,6 +676,21 @@ class BleFirmwareUpdateDeviceCell: UITableViewCell {
     
     required init?(coder: NSCoder) {
         fatalError("init(coder:) has not been implemented")
+    }
+    
+    private func updateName() {
+        guard let device = device else {
+            return
+        }
+        if let displayName = displayNameProvider?(device, displayDeviceNamePrefix) {
+            nameLabel.text = displayName
+            return
+        }
+        var name = device.name ?? ""
+        if let group = device.group, displayDeviceNamePrefix {
+            name = "\(group.name)-\(name)"
+        }
+        nameLabel.text = name
     }
     
     /// 识别
