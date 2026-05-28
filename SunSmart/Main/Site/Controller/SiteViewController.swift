@@ -1152,7 +1152,12 @@ self.updateAddressData()
     /// 恢复site设备
     private func restoreDevice() {
         
-        let vc = DeviceRestoreViewController(site: site, space: nil, restoreMode: .default)
+        let vc = DeviceRestoreViewController(
+            site: site,
+            space: nil,
+            restoreMode: .default,
+            restoreFilter: .gatewaysOnly
+        )
         vc.deviceRestoreCallback = {[weak self] nodes, _ in
             let gateways = nodes.compactMap({ GatewayModel.resolve(node: $0) })
             self?.gatewaysSyncToCloud(gateways)

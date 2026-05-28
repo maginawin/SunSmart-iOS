@@ -22,6 +22,7 @@ final class PJEightKeySwitchRepository {
 
     struct Metadata {
         let panelType: PJEightKeySwitchPanelDefinition.PanelType
+        let powerSwitchKind: PJEightKeyPowerSwitchKind
         let moreSettingsState: PJEightKeySwitchMoreSettingsViewModel.State
         let syncState: PJEightKeySwitchSyncState
         let desiredConfigVersion: Int
@@ -36,6 +37,7 @@ final class PJEightKeySwitchRepository {
 
         init(
             panelType: PJEightKeySwitchPanelDefinition.PanelType,
+            powerSwitchKind: PJEightKeyPowerSwitchKind = .battery,
             moreSettingsState: PJEightKeySwitchMoreSettingsViewModel.State = .default,
             syncState: PJEightKeySwitchSyncState = .pending,
             desiredConfigVersion: Int = 0,
@@ -49,6 +51,7 @@ final class PJEightKeySwitchRepository {
             appliedLEDIndicatorEnabled: Bool? = nil
         ) {
             self.panelType = panelType
+            self.powerSwitchKind = powerSwitchKind
             self.moreSettingsState = moreSettingsState
             self.syncState = syncState
             self.desiredConfigVersion = desiredConfigVersion
@@ -95,6 +98,7 @@ final class PJEightKeySwitchRepository {
         static let subNetworkKey = Expression<String>("subNetworkKey")
         static let switchId = Expression<String>("switchId")
         static let panelType = Expression<Int>("panelType")
+        static let powerSwitchKind = Expression<Int>("powerSwitchKind")
         static let periodicReporting = Expression<Int>("periodicReporting")
         static let ledIndicatorEnabled = Expression<Bool>("ledIndicatorEnabled")
         static let syncState = Expression<Int>("syncState")
@@ -119,6 +123,7 @@ final class PJEightKeySwitchRepository {
                 builder.column(ExpressionKey.subNetworkKey)
                 builder.column(ExpressionKey.switchId)
                 builder.column(ExpressionKey.panelType)
+                builder.column(ExpressionKey.powerSwitchKind)
                 builder.column(ExpressionKey.periodicReporting)
                 builder.column(ExpressionKey.ledIndicatorEnabled)
                 builder.column(ExpressionKey.syncState)
@@ -135,6 +140,14 @@ final class PJEightKeySwitchRepository {
             }
         )
         if let columns = try? SunSmartDataManager.shared.db?.schema.columnDefinitions(table: tableName) {
+            if !columns.contains(where: { $0.name == "powerSwitchKind" }) {
+                _ = try? SunSmartDataManager.shared.db?.run(
+                    table.addColumn(
+                        ExpressionKey.powerSwitchKind,
+                        defaultValue: PJEightKeyPowerSwitchKind.battery.rawValue
+                    )
+                )
+            }
             if !columns.contains(where: { $0.name == "syncState" }) {
                 _ = try? SunSmartDataManager.shared.db?.run(table.addColumn(ExpressionKey.syncState, defaultValue: PJEightKeySwitchSyncState.synced.rawValue))
             }
@@ -177,6 +190,7 @@ final class PJEightKeySwitchRepository {
             ExpressionKey.subNetworkKey <- subNetworkKey,
             ExpressionKey.switchId <- switchData.id,
             ExpressionKey.panelType <- PanelTypeStorage(panelType: switchData.eightKeyPanelType).rawValue,
+            ExpressionKey.powerSwitchKind <- switchData.powerSwitchKind.rawValue,
             ExpressionKey.periodicReporting <- switchData.moreSettingsState.periodicReporting.rawValue,
             ExpressionKey.ledIndicatorEnabled <- switchData.moreSettingsState.ledIndicatorEnabled,
             ExpressionKey.syncState <- switchData.syncState.rawValue,
@@ -233,15 +247,40 @@ final class PJEightKeySwitchRepository {
                     switchData.batteryLastUpdateTime = previousLastUpdateTime
                     return false
                 }
+                updateCachedBattery(level: level, lastUpdateTime: lastUpdateTime, for: switchData)
                 return true
             }
             switchData.batteryLevel = level
             switchData.batteryLastUpdateTime = lastUpdateTime
+            updateCachedBattery(level: level, lastUpdateTime: lastUpdateTime, for: switchData)
             return true
         } catch {
             print(error)
             return false
         }
+    }
+
+    private func updateCachedBattery(
+        level: UInt8,
+        lastUpdateTime: Int64,
+        for switchData: PJEightKeySwitchData
+    ) {
+        guard let index = MeshNetworkManager.instance.switchs.firstIndex(where: { $0.id == switchData.id }) else {
+            return
+        }
+
+        if let cachedSwitch = MeshNetworkManager.instance.switchs[index] as? PJEightKeySwitchData {
+            cachedSwitch.batteryLevel = level
+            cachedSwitch.batteryLastUpdateTime = lastUpdateTime
+            return
+        }
+
+        guard let cachedBatteryPowerSwitch = MeshNetworkManager.instance.switchs[index].batteryPowerSwitchData else {
+            return
+        }
+        cachedBatteryPowerSwitch.batteryLevel = level
+        cachedBatteryPowerSwitch.batteryLastUpdateTime = lastUpdateTime
+        MeshNetworkManager.instance.switchs[index] = cachedBatteryPowerSwitch
     }
 
     func metadata(for switchData: DeviceSwitchData, meshUUID: String? = nil, networkId: String? = nil) -> Metadata? {
@@ -266,6 +305,9 @@ final class PJEightKeySwitchRepository {
             ledIndicatorEnabled: row[ExpressionKey.ledIndicatorEnabled]
         )
         let syncState = PJEightKeySwitchSyncState(rawValue: row[ExpressionKey.syncState]) ?? .synced
+        let storedPowerSwitchKind = PJEightKeyPowerSwitchKind(rawValue: row[ExpressionKey.powerSwitchKind]) ?? .battery
+        let inferredPowerSwitchKind = switchData.proxyNode?.powerSwitchKind
+        let powerSwitchKind = inferredPowerSwitchKind ?? storedPowerSwitchKind
         let batteryLevel: UInt8? = {
             guard let value = row[ExpressionKey.batteryLevel],
                   (0...100).contains(value) else {
@@ -275,6 +317,7 @@ final class PJEightKeySwitchRepository {
         }()
         return Metadata(
             panelType: panelTypeStorage.panelType,
+            powerSwitchKind: powerSwitchKind,
             moreSettingsState: state,
             syncState: syncState,
             desiredConfigVersion: row[ExpressionKey.desiredConfigVersion],

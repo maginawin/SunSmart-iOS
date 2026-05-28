@@ -242,9 +242,7 @@ extension Group {
         
         var messages: [MeshMessageHandle] = []
         
-        node.getSubscribeToGroupMessages(self).forEach({
-            messages.append(MeshMessageHandle(message: $0, address: node.primaryUnicastAddress))
-        })
+        messages.append(contentsOf: node.getSunSmartSubscribeToGroupMessageHandles(self))
         
 //        if node.lightLCSetupModel != nil { // 同步灯光控制配置
         let syncProfile = node.getNodeSyncProfiles(group: self)

@@ -147,6 +147,18 @@ extension ProvisioningDevice {
     var isBatteryPowerSwitch: Bool {
         return Node.isBatteryPowerSwitch(companyIdentifier: cid, productIdentifier: pid)
     }
+
+    var powerSwitchKind: PJEightKeyPowerSwitchKind? {
+        return PJEightKeyPowerSwitchKind.make(companyIdentifier: cid, productIdentifier: pid)
+    }
+
+    var isACPowerSwitch: Bool {
+        return powerSwitchKind == .ac
+    }
+
+    var isPowerSwitch: Bool {
+        return powerSwitchKind != nil
+    }
     
     /// 设备触发时间（触感器感应等）
     var activityDate: Date? {

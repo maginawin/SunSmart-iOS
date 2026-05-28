@@ -26,7 +26,7 @@ final class PJPreAddEightKeySwitchesVC: UIViewController {
         let moreSettings: PJEightKeySwitchMoreSettingsViewModel.State
     }
     
-    var deleteSwitchAction: ((DeviceSwitchData) -> Void)?
+    var deleteSwitchAction: ((DeviceSwitchData, UIViewController) -> Void)?
     var switchSavedAction: ((PJEightKeySwitchData) -> Void)?
     
     private var viewModel: PJPreAddEightKeySwitchesViewModel
@@ -43,8 +43,8 @@ final class PJPreAddEightKeySwitchesVC: UIViewController {
     )
     private lazy var editorView = PJEightKeySwitchEditorView(isCreateMode: viewModel.sourceSwitchData == nil)
     
-    init(space: SpaceData) {
-        self.viewModel = PJPreAddEightKeySwitchesViewModel(space: space)
+    init(space: SpaceData, creationKind: PJPreAddEightKeySwitchesViewModel.CreationKind = .kineticSwitch) {
+        self.viewModel = PJPreAddEightKeySwitchesViewModel(space: space, creationKind: creationKind)
         super.init(nibName: nil, bundle: nil)
     }
     
@@ -139,11 +139,16 @@ final class PJPreAddEightKeySwitchesVC: UIViewController {
     }
     
     @objc private func linkAction() {
+        guard let switchData = prepareSwitchDataForLink() else {
+            return
+        }
+
         let context = PJDevicesAddEntryContext(
             source: .eightKeySwitch,
             space: viewModel.space,
             title: "add_device".localizedString,
             appointGroup: nil,
+            bindTarget: .batteryPowerSwitch(switchData),
             addBehavior: .init(
                 allowsTargetSelection: false,
                 allowsCategorySelection: false,
@@ -155,7 +160,42 @@ final class PJPreAddEightKeySwitchesVC: UIViewController {
             )
         )
         let controller = PJDevicesAddFlowFactory.make(context: context)
+        if let legacyController = controller as? PJDevicesLegacyContainerController {
+            legacyController.deviceAddCallback = { [weak self] _ in
+                self?.handleBatteryPowerSwitchLinkCompleted()
+            }
+        }
         navigationController?.pushViewController(controller, animated: true)
+    }
+
+    private func prepareSwitchDataForLink() -> PJEightKeySwitchData? {
+        view.endEditing(true)
+        guard validateEditorInput() else {
+            return nil
+        }
+
+        let switchData = viewModel.buildSwitchData()
+        guard !hasRealDeviceLink(switchData) else {
+            refreshEditingStateFromCurrentSwitchData()
+            return currentEightKeySwitchData
+        }
+
+        if switchData.linkGroupAddress == nil,
+           MeshAPI.getAvailableGroupAddresses(meshUUID: viewModel.space.meshUUID, subnetworkId: viewModel.space.meshNetworkId).isEmpty {
+            XWHUDManager.showErrorTipHUD("group_address_insufficient_message".localizedString, timer: 2)
+            return nil
+        }
+
+        guard persistSwitchData(switchData) else {
+            showSaveFailedTip()
+            return nil
+        }
+
+        switchSavedAction?(switchData)
+        postSwitchDataChangedNotifications()
+        initialSnapshot = makeSnapshot()
+        refreshEditingStateFromCurrentSwitchData()
+        return currentEightKeySwitchData ?? switchData
     }
     
     @objc private func moreSettingsAction() {
@@ -223,23 +263,7 @@ final class PJPreAddEightKeySwitchesVC: UIViewController {
     
     private func submitAction() {
         view.endEditing(true)
-        //模拟保存激活切换
-        if viewModel.sourceSwitchData == nil, MeshNetworkManager.instance.switchs.count >= 16 {
-            SRAlertView(
-                title: "notification".localizedString,
-                message: "switchs_overrun_message".localizedString,
-                actions: [SRAlertAction(title: "GOT_IT".localizedString)]
-            ).show()
-            return
-        }
-        
-        guard !viewModel.deviceName.isAllInputTextEmpty() else {
-            XWHUDManager.showTipHUD("name_empty".localizedString, isLineFeed: true)
-            return
-        }
-        
-        guard !(MeshNetworkManager.instance.isSwitchTautonym(name: viewModel.deviceName) && viewModel.deviceName != viewModel.sourceSwitchData?.name) else {
-            XWHUDManager.showTipHUD("name_already_exists".localizedString, isLineFeed: true)
+        guard validateEditorInput() else {
             return
         }
         
@@ -249,7 +273,10 @@ final class PJPreAddEightKeySwitchesVC: UIViewController {
             return
         }
 
-        persistSwitchData(switchData)
+        guard persistSwitchData(switchData) else {
+            showSaveFailedTip()
+            return
+        }
         switchSavedAction?(switchData)
         
         postSwitchDataChangedNotifications()
@@ -261,18 +288,44 @@ final class PJPreAddEightKeySwitchesVC: UIViewController {
             self?.closeEditor(animated: true)
         }
     }
+
+    private func validateEditorInput() -> Bool {
+        if viewModel.sourceSwitchData == nil, MeshNetworkManager.instance.switchs.count >= 16 {
+            SRAlertView(
+                title: "notification".localizedString,
+                message: "switchs_overrun_message".localizedString,
+                actions: [SRAlertAction(title: "GOT_IT".localizedString)]
+            ).show()
+            return false
+        }
+
+        guard !viewModel.deviceName.isAllInputTextEmpty() else {
+            XWHUDManager.showTipHUD("name_empty".localizedString, isLineFeed: true)
+            return false
+        }
+
+        guard !(MeshNetworkManager.instance.isSwitchTautonym(name: viewModel.deviceName) && viewModel.deviceName != viewModel.sourceSwitchData?.name) else {
+            XWHUDManager.showTipHUD("name_already_exists".localizedString, isLineFeed: true)
+            return false
+        }
+
+        return true
+    }
     
     private func deleteAction() {
         guard let switchData = viewModel.sourceSwitchData else { return }
+        guard switchData.proxyNode?.isBatteryPowerSwitch == true else {
+            deleteSwitchAction?(switchData, self)
+            return
+        }
         SRAlertView(
             title: "notification".localizedString,
             message: "switchs_delete_message".localizedString,
             actions: [
                 .cancelAction,
                 SRAlertAction(title: "confirm".localizedString, style: .destructive, actionHandler: { [weak self] _ in
-                    self?.dismiss(animated: true) {
-                        self?.deleteSwitchAction?(switchData)
-                    }
+                    guard let self else { return }
+                    self.deleteSwitchAction?(switchData, self)
                 })
             ]
         ).show()
@@ -449,7 +502,7 @@ final class PJPreAddEightKeySwitchesVC: UIViewController {
     }
 
     private func isBatteryPowerSwitchLinked(_ switchData: DeviceSwitchData) -> Bool {
-        switchData.proxyNode?.isBatteryPowerSwitch == true
+        switchData.proxyNode?.isPowerSwitch == true
     }
 
     private func submitBatteryPowerSwitch(_ switchData: PJEightKeySwitchData) {
@@ -476,7 +529,10 @@ final class PJPreAddEightKeySwitchesVC: UIViewController {
         }
 
         if !needsOwnConfigurationSync {
-            persistSwitchData(switchData)
+            guard persistSwitchData(switchData) else {
+                showSaveFailedTip()
+                return
+            }
             switchSavedAction?(switchData)
             postSwitchDataChangedNotifications()
             initialSnapshot = makeSnapshot()
@@ -497,7 +553,11 @@ final class PJPreAddEightKeySwitchesVC: UIViewController {
                     moreSettings: sourceSwitchData.moreSettingsState
                 )
             }
-            presentBatteryPowerSwitchActivation(for: switchData)
+            if switchData.requiresActivationBeforeOwnConfiguration {
+                presentBatteryPowerSwitchActivation(for: switchData)
+            } else {
+                pushBatteryPowerSwitchSync(switchData)
+            }
         } else {
             pushBatteryPowerSwitchSync(switchData)
         }
@@ -519,7 +579,10 @@ final class PJPreAddEightKeySwitchesVC: UIViewController {
             guard let self else { return }
             switchData.markBatteryPowerSwitchSyncSucceeded()
             self.pendingBatteryPowerSwitchOwnStateSnapshot = nil
-            self.persistSwitchData(switchData)
+            guard self.persistSwitchData(switchData) else {
+                self.showSaveFailedTip()
+                return
+            }
             self.switchSavedAction?(switchData)
             self.postSwitchDataChangedNotifications()
             XWHUDManager.showSuccessTipHUD("done!".localizedString)
@@ -541,7 +604,10 @@ final class PJPreAddEightKeySwitchesVC: UIViewController {
                 switchData.markBatteryPowerSwitchSyncSucceeded(clearRemovedGroups: false)
             }
             self.pendingBatteryPowerSwitchOwnStateSnapshot = nil
-            self.persistSwitchData(switchData)
+            guard self.persistSwitchData(switchData) else {
+                self.showSaveFailedTip()
+                return
+            }
             self.switchSavedAction?(switchData)
             self.postSwitchDataChangedNotifications()
             self.popBackAfterBatteryPowerSwitchSync(animated: true)
@@ -634,22 +700,53 @@ final class PJPreAddEightKeySwitchesVC: UIViewController {
         NotificationCenter.default.post(name: .init(switchsRefreshNotificationName), object: nil)
         NotificationCenter.default.post(name: .init(spaceDataChangedNotificaitonName), object: SpaceChangeDataType.common)
     }
+
+    private func showSaveFailedTip() {
+        XWHUDManager.showErrorTipHUD("failed".localizedString)
+    }
     
-    private func persistSwitchData(_ switchData: PJEightKeySwitchData) {
+    @discardableResult
+    private func persistSwitchData(_ switchData: PJEightKeySwitchData) -> Bool {
+        guard switchData.save(),
+              PJEightKeySwitchRepository.shared.save(switchData) else {
+            return false
+        }
+
         if let sourceSwitchData = viewModel.sourceSwitchData,
            let index = MeshNetworkManager.instance.switchs.firstIndex(where: { $0.id == sourceSwitchData.id }) {
+            MeshNetworkManager.instance.switchs[index] = switchData
+        } else if let index = MeshNetworkManager.instance.switchs.firstIndex(where: { $0.id == switchData.id }) {
             MeshNetworkManager.instance.switchs[index] = switchData
         } else {
             MeshNetworkManager.instance.switchs.append(switchData)
         }
-        switchData.save()
-        PJEightKeySwitchRepository.shared.save(switchData)
+        return true
     }
     
     private func refreshEditingStateFromCurrentSwitchData() {
         guard let switchData = currentEightKeySwitchData else { return }
         viewModel = PJPreAddEightKeySwitchesViewModel(space: viewModel.space, switchData: switchData)
         bindViewModel()
+    }
+
+    private func handleBatteryPowerSwitchLinkCompleted() {
+        refreshEditingStateFromCurrentSwitchData()
+        guard let switchData = currentEightKeySwitchData,
+              isBatteryPowerSwitchLinked(switchData) else {
+            XWHUDManager.showErrorTipHUD("failed".localizedString)
+            return
+        }
+
+        guard switchData.syncState == .synced else {
+            return
+        }
+
+        guard switchData.needSyncData else {
+            XWHUDManager.showSuccessTipHUD("done!".localizedString)
+            return
+        }
+
+        pushBatteryPowerSwitchSync(switchData)
     }
     
 }

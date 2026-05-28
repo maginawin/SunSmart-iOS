@@ -11,6 +11,11 @@ import SnapKit
 final class PJEightKeySwitchMonitorHeaderView: UIView {
 
     struct State {
+        enum Layout {
+            case battery
+            case centeredStatus
+        }
+
         let batteryText: String
         let batteryIconSystemName: String
         let statusPrefixText: String
@@ -18,6 +23,7 @@ final class PJEightKeySwitchMonitorHeaderView: UIView {
         let statusColor: UIColor
         let updatedText: String
         let showsRefreshButton: Bool
+        let layout: Layout
     }
 
     var refreshAction: (() -> Void)?
@@ -40,13 +46,15 @@ final class PJEightKeySwitchMonitorHeaderView: UIView {
     }
 
     func configure(state: State) {
-        batteryIconView.image = UIImage(named:"battery_ek")?.withTintColor(RGB(79, 93, 132), renderingMode: .alwaysOriginal)
+        batteryIconView.image = UIImage(named: state.batteryIconSystemName)?.withTintColor(RGB(79, 93, 132), renderingMode: .alwaysOriginal)
         batteryLabel.text = state.batteryText
         statusPrefixLabel.text = state.statusPrefixText
+        statusPrefixLabel.isHidden = state.statusPrefixText.isEmpty
         statusValueLabel.text = state.statusText
         statusValueLabel.textColor = state.statusColor
         updatedLabel.text = state.updatedText
-        refreshButton.isHidden = !state.showsRefreshButton
+        apply(layout: state.layout)
+        refreshButton.isHidden = !state.showsRefreshButton || state.layout == .centeredStatus
     }
 
     func setRefreshing(_ refreshing: Bool) {
@@ -116,6 +124,35 @@ final class PJEightKeySwitchMonitorHeaderView: UIView {
             make.centerY.equalToSuperview()
             make.left.equalTo(statusStackView.snp.right).offset(SCRXFrom(24))
             make.right.equalTo(refreshButton.snp.left).offset(-SCRXFrom(4))
+        }
+    }
+
+    private func apply(layout: State.Layout) {
+        switch layout {
+        case .battery:
+            batteryIconView.isHidden = false
+            batteryLabel.isHidden = false
+            updatedLabel.isHidden = false
+            statusStackView.snp.remakeConstraints { make in
+                make.centerY.equalToSuperview()
+                make.left.equalTo(batteryLabel.snp.right).offset(SCRXFrom(24))
+            }
+            updatedLabel.snp.remakeConstraints { make in
+                make.centerY.equalToSuperview()
+                make.left.equalTo(statusStackView.snp.right).offset(SCRXFrom(24))
+                make.right.equalTo(refreshButton.snp.left).offset(-SCRXFrom(4))
+            }
+        case .centeredStatus:
+            batteryIconView.isHidden = true
+            batteryLabel.isHidden = true
+            updatedLabel.isHidden = true
+            statusStackView.snp.remakeConstraints { make in
+                make.center.equalToSuperview()
+            }
+            updatedLabel.snp.remakeConstraints { make in
+                make.left.right.equalToSuperview()
+                make.centerY.equalToSuperview()
+            }
         }
     }
 

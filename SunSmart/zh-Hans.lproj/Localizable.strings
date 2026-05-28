@@ -1823,6 +1823,7 @@
 
 //v1.5-- NEightKeySwitches
 "neightkeyswitches_battery_power_switch" = "电池供电\n开关";
+"neightkeyswitches_ac_power_switch" = "AC 供电\n开关";
 "neightkeyswitches_scene_panel_8_key" = "场景面板（8键）";
 "neightkeyswitches_more_settings" = "更多设置";
 "neightkeyswitches_scene_1" = "场景 1";

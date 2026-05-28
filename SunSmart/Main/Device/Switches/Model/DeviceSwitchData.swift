@@ -208,7 +208,7 @@ class DeviceSwitchData: Copyable {
     }
 
     var batteryPowerSwitchData: PJEightKeySwitchData? {
-        guard proxyNode?.isBatteryPowerSwitch == true else {
+        guard proxyNode?.isPowerSwitch == true else {
             return nil
         }
         if let switchData = self as? PJEightKeySwitchData {

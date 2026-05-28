@@ -346,12 +346,19 @@ class DevicesViewController: WMPageController {
                     },
                     onBatterySwitch: { [weak self] in
                         guard let self = self else { return }
-//                        let vc = PJPreAddEightKeySwitchesVC(space: self.space)
-//                        if isIPad {
-//                            vc.preferredContentSize = iPadPreferredContentSize
-//                        }
-//                        self.present(NavigationViewController(rootViewController: vc), animated: true)
-                        XWHUDManager.showTipHUD("under_development".localizedString, isLineFeed: true)
+                        let vc = PJPreAddEightKeySwitchesVC(space: self.space, creationKind: .batteryPowerSwitch)
+                        if isIPad {
+                            vc.preferredContentSize = iPadPreferredContentSize
+                        }
+                        self.present(NavigationViewController(rootViewController: vc), animated: true)
+                    },
+                    onACSwitch: { [weak self] in
+                        guard let self = self else { return }
+                        let vc = PJPreAddEightKeySwitchesVC(space: self.space, creationKind: .acPowerSwitch)
+                        if isIPad {
+                            vc.preferredContentSize = iPadPreferredContentSize
+                        }
+                        self.present(NavigationViewController(rootViewController: vc), animated: true)
                     }
                 )
                 self.present(controller, animated: false)
@@ -505,7 +512,12 @@ class DevicesViewController: WMPageController {
 
     /// 恢复设备数据
     private func devicesRestore() {
-        let vc = DeviceRestoreViewController(site: self.site, space: space, restoreMode: .default)
+        let vc = DeviceRestoreViewController(
+            site: self.site,
+            space: space,
+            restoreMode: .default,
+            restoreFilter: .currentSpaceNonGateways
+        )
 //        vc.automationRestore = true
         vc.deviceRestoreCallback = { nodes, _ in
             if nodes.count > 0 {
@@ -520,11 +532,12 @@ class DevicesViewController: WMPageController {
     // 获取网络内当前固件分发者
     private func getMeshDistribution() {
         
-        Task {
+        Task { [weak self] in
+            guard let self = self else { return }
             // 获取当前分发者
             if let currentDistribution = await MeshFirmwareDistributionManager.shared.currentActiveFirmwareDistributionNodeGet() {
                 self.currentDistributionNode = currentDistribution
-                startDistributionStateTimer()
+                self.startDistributionStateTimer()
             }else if self.space.permission != .visitor { // 没有分发者
                 
                 // 获取分发记录

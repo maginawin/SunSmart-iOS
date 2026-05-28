@@ -33,8 +33,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         
         SunSmartDataManager.shared.initDatabase()
         XWHUDManager.configHUDType(.light)
-        //d6ba463638
-        Bugly.start(withAppId: "d6ba463638")
+        Bugly.start(withAppId: "e4965156c7")
         
         MeshLibManager.manager.disableRecyclingExclusions = true
         // 加载设备配置信息list（未加入配置的设备类型无法添加）

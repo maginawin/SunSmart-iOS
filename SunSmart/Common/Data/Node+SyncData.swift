@@ -385,7 +385,7 @@ extension Node {
                     syncDatas.append(.pirEnabled(true))
                 }
                 syncDatas.append(.unsubscribeGroup(group: self.group!))
-            }else if getSubscribeToGroupMessages(group).count > 0 { // 设备订阅组数据不完整
+            }else if getSunSmartSubscribeToGroupMessageHandles(group).count > 0 { // 设备订阅组数据不完整
                 syncDatas.append(.subscribeGroup(group: group))
             }
             
@@ -578,7 +578,7 @@ extension Node {
         // 设备退出组失败
         if self.group != nil && groupState == GroupState.exitFailure {
             return true
-        }else if let addToGroup = group, getSubscribeToGroupMessages(addToGroup).count > 0 { // 设备订阅组数据不完整
+        }else if let addToGroup = group, getSunSmartSubscribeToGroupMessageHandles(addToGroup).count > 0 { // 设备订阅组数据不完整
             return true
         }
         
@@ -1416,7 +1416,13 @@ extension Node {
         }
         switchs.forEach { switchData in
             if switchData.batteryPowerSwitchData != nil {
-                if self.getBatteryPowerSwitchTargetSubscriptionMessageHandles(switchData: switchData, unsubscribe: false).count > 0 {
+                let handleCount: Int
+                if batteryPowerSwitchRestoreTargetSubscriptionSnapshots != nil {
+                    handleCount = self.getBatteryPowerSwitchRestoreTargetSubscriptionMessageHandles(switchData: switchData).count
+                } else {
+                    handleCount = self.getBatteryPowerSwitchTargetSubscriptionMessageHandles(switchData: switchData, unsubscribe: false).count
+                }
+                if handleCount > 0 {
                     linkSwitchs.append(switchData)
                 }
                 return

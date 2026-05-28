@@ -15,7 +15,7 @@ final class PJEightKeySwitchesViewCell: UICollectionViewCell {
     private var currentStatus: PJEightKeySwitchStatus?
 
     private lazy var iconImageView: UIImageView = {
-        let imageView = UIImageView(image: UIImage(named: "eight_key_switch_bound_enabled"))
+        let imageView = UIImageView()
         imageView.contentMode = .scaleAspectFit
         return imageView
     }()
@@ -36,7 +36,7 @@ final class PJEightKeySwitchesViewCell: UICollectionViewCell {
     func configure(with switchData: DeviceSwitchData, eightKeySwitch: PJEightKeySwitchData, editing: Bool) {
         self.switchData = switchData
         nameLabel.text = switchData.name
-        iconImageView.image = UIImage(named: eightKeySwitch.displayIconAssetName) ?? UIImage(named: "eight_key_switch_bound_enabled")
+        iconImageView.image = UIImage(named: eightKeySwitch.displayIconAssetName)
         deleteBtn.isHidden = !editing
         applyStatus(eightKeySwitch.displayStatus)
     }

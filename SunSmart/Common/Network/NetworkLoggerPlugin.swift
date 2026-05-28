@@ -8,95 +8,138 @@
 import Foundation
 import Moya
 import SwiftyJSON
+import Alamofire
 
 final class NetworkLoggerPlugin: PluginType {
+
+    private let bodySummaryLimit = 3000
 
     // Called immediately before a request is sent over the network (or stubbed).
     func willSend(_ request: RequestType, target: TargetType) {
         #if DEBUG
-//        print("🌐 Sending request to \(request.request?.url?.absoluteString ?? "unknown URL")")
-//        print("🌐 Request headers: \(request.request?.allHTTPHeaderFields ?? [:])")
-//        print("🌐 Request body: \(String(data: request.request?.httpBody ?? Data(), encoding: .utf8) ?? "no body")")
+        guard let networkTarget = target as? NetowrkReqeustApi else {
+            print("[HTTP][Request] target=\(String(describing: target)) url=\(request.request?.url?.absoluteString ?? "<unknown>")")
+            return
+        }
+
+        let urlRequest = request.request
+        print("""
+        [HTTP][Request]
+        target=\(networkTarget.diagnosticName)
+        method=\(urlRequest?.httpMethod ?? networkTarget.method.rawValue)
+        url=\(urlRequest?.url?.absoluteString ?? networkTarget.baseURL.appendingPathComponent(networkTarget.path).absoluteString)
+        path=\(networkTarget.path)
+        headers=\(urlRequest?.allHTTPHeaderFields ?? [:])
+        bodyBytes=\(urlRequest?.httpBody?.count ?? 0)
+        declaredContentEncodingGzip=\(networkTarget.declaredContentEncodingGzip)
+        actualBodyGzip=\(networkTarget.actualBodyGzip)
+        body=\(requestBodySummary(urlRequest: urlRequest, target: networkTarget))
+        """)
         #endif
     }
 
     // Called after a response has been received, but before the completion handler is called.
     func didReceive(_ result: Result<Response, MoyaError>, target: TargetType) {
         #if DEBUG
+        let networkTarget = target as? NetowrkReqeustApi
         switch result {
         case .success(let response):
-//            guard let networkTarget = target as? NetowrkReqeustApi else { return }
-////            
-//            switch networkTarget {
-//            case .spaceShare(let space): // space分享数据
-//                // 更新
-//                // 编辑者信息
-//                if let editorInfo = JSON(response)["spaceEditor"].dictionaryObject, let userId = editorInfo["userId"] as? String, let userName = editorInfo["username"] as? String {
-//                    space.editor = .init(name: userName, uuid: userId)
-//                }
-//                // 访客信息
-//                if let visitorInfos = JSON(response)["spaceEditor"].arrayObject as? [[String: Any]] {
-//                   let visitors = visitorInfos.compactMap({ visitorInfo in
-//                        if let userId = visitorInfo["userId"] as? String, let userName = visitorInfo["username"] as? String {
-//                            return UserData(name: userName, uuid: userId)
-//                        }
-//                       return nil
-//                    })
-//                    space.visitors = visitors
-//                }
-//                space.save()
-//            default:
-//                break
-//            }
-            
-//            print("✅ Received response from \(response.request?.url?.absoluteString ?? "unknown URL")")
-//            print("✅ Response status code: \(response.statusCode)")
-//            print("✅ Response data: \(String(data: response.data, encoding: .utf8) ?? "no data")")
-            break
+            let responseJSON = try? JSON(data: response.data)
+            let businessCode = responseJSON?["code"].int
+            let businessMessage = responseJSON?["message"].string ?? responseJSON?["msg"].string
+            print("""
+            [HTTP][Response]
+            target=\(networkTarget?.diagnosticName ?? String(describing: target))
+            url=\(response.request?.url?.absoluteString ?? "<unknown>")
+            status=\(response.statusCode)
+            businessCode=\(businessCode.map(String.init) ?? "<missing>")
+            businessMessage=\(businessMessage ?? "<missing>")
+            responseBytes=\(response.data.count)
+            body=\(responseBodySummary(response.data))
+            """)
         case .failure(let error):
-            print("❌ Request failed with error: \(error.localizedDescription)")
+            let nsError = error as NSError
+            let underlying = underlyingError(from: error)
+            print("""
+            [HTTP][Failure]
+            target=\(networkTarget?.diagnosticName ?? String(describing: target))
+            url=\(error.response?.request?.url?.absoluteString ?? "<unknown>")
+            status=\(error.response?.statusCode.description ?? "<missing>")
+            moyaError=\(error.localizedDescription)
+            nsErrorDomain=\(nsError.domain)
+            nsErrorCode=\(nsError.code)
+            underlyingDomain=\(underlying?.domain ?? "<missing>")
+            underlyingCode=\(underlying?.code.description ?? "<missing>")
+            responseBody=\(error.response.map { responseBodySummary($0.data) } ?? "<missing>")
+            """)
         }
         #endif
-        
     }
-    
-//    func process(_ result: Result<Response, MoyaError>, target: TargetType) -> Result<Response, MoyaError> {
-        
-        
-        
-//        switch result {
-//        case .success(let respond):
-//            do {
-//                let json = try respond.filter(statusCode: 200).mapJSON() as? [String: Any]
-//                // 服务器返回成功
-//                let code = JSON(json as Any)["code"].intValue
-//                let isSuccess = JSON(json as Any)["isSuccess"].bool ?? false
-//                if code == 200 || isSuccess {
-//                    success?(json!)
-//                }else {
-//                    failure?(NSError(domain: json?["message"] as? String ?? "", code: code))
-//                    
-////                        if code == 4001 { // token过期
-////                            userTokenExpiredDispose()
-////                        }
-//                }
-//            } catch let error {
-//                failure?(error as NSError)
-//            }
-//        case .failure(let error):
-//            switch error {
-//            case .underlying(let resultError, _):
-//                let requestError = (resultError as NSError)
-//                failure?(requestError)
-////                    if requestError.code == noInterNetworkCode { // 无网络提示
-////                        showNoInterNetworkMessage()
-////                    }else if requestError.code == networkRequestTimeoutCode { // 请求超时
-////                        showNetworkTimeoutMessage()
-////                    }
-//            default:
-//                failure?(error as NSError)
-//            }
-//        }
-        
-//    }
 }
+
+#if DEBUG
+private extension NetworkLoggerPlugin {
+
+    func requestBodySummary(urlRequest: URLRequest?, target: NetowrkReqeustApi) -> String {
+        if let parameters = target.sanitizedParameters {
+            return summary(jsonString(from: parameters))
+        }
+        guard let body = urlRequest?.httpBody, !body.isEmpty else {
+            return "<empty>"
+        }
+        if body.isGzipData {
+            return "<gzip body: \(body.count) bytes>"
+        }
+        return summary(String(data: body, encoding: .utf8) ?? "<non-utf8 body: \(body.count) bytes>")
+    }
+
+    func responseBodySummary(_ data: Data) -> String {
+        guard !data.isEmpty else {
+            return "<empty>"
+        }
+        if let json = try? JSONSerialization.jsonObject(with: data),
+           JSONSerialization.isValidJSONObject(json),
+           let jsonData = try? JSONSerialization.data(withJSONObject: NetowrkReqeustApi.sanitizedValue(json), options: [.sortedKeys]),
+           let jsonString = String(data: jsonData, encoding: .utf8) {
+            return summary(jsonString)
+        }
+        return summary(String(data: data, encoding: .utf8) ?? "<non-utf8 body: \(data.count) bytes>")
+    }
+
+    func jsonString(from value: Any) -> String {
+        guard JSONSerialization.isValidJSONObject(value),
+              let data = try? JSONSerialization.data(withJSONObject: value, options: [.sortedKeys]),
+              let string = String(data: data, encoding: .utf8) else {
+            return String(describing: value)
+        }
+        return string
+    }
+
+    func summary(_ string: String) -> String {
+        guard string.count > bodySummaryLimit else {
+            return string
+        }
+        return "\(string.prefix(bodySummaryLimit))... <truncated, \(string.count) chars>"
+    }
+
+    func underlyingError(from error: MoyaError) -> NSError? {
+        switch error {
+        case .underlying(let underlyingError, _):
+            if let afError = underlyingError as? AFError,
+               let requestError = afError.underlyingError as NSError? {
+                return requestError
+            }
+            return underlyingError as NSError
+        default:
+            return nil
+        }
+    }
+}
+
+private extension Data {
+
+    var isGzipData: Bool {
+        count >= 2 && self[startIndex] == 0x1f && self[index(after: startIndex)] == 0x8b
+    }
+}
+#endif

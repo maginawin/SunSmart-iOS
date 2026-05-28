@@ -705,7 +705,9 @@ class SyncDevicesViewController: UIViewController {
         }
 
         let switchDeviceModel = SyncDevicesModel(name: switchData.name, address: switchNode.primaryUnicastAddress)
-        let switchIconName = UIImage(named: switchNode.iconName) != nil ? switchNode.iconName : "device_BatteryPowerSwitch"
+        let switchIconName = UIImage(named: switchData.powerSwitchKind.deviceIconAssetName) != nil
+            ? switchData.powerSwitchKind.deviceIconAssetName
+            : switchNode.iconName
         switchDeviceModel.imageName = switchIconName
 
         var configurationDependencies: [SyncDeviceStepModel] = []
@@ -759,13 +761,14 @@ class SyncDevicesViewController: UIViewController {
         unsubscribe: Bool,
         dependencies: [SyncDeviceStepModel]
     ) -> SyncDevicesGroupModel? {
-        guard let switchGroup = switchData.linkGroup else { return nil }
+        guard switchData.linkGroup != nil else { return nil }
 
         let title = unsubscribe ? "Group Unsubscription" : "Group Subscription"
         let deviceModels = group.nodes.compactMap { node -> SyncDevicesModel? in
-            let handles = unsubscribe
-                ? node.getBatteryPowerSwitchUnsubscriptionMessageHandles(switchGroup: switchGroup)
-                : node.getBatteryPowerSwitchSubscriptionMessageHandles(switchGroup: switchGroup)
+            let handles = node.getBatteryPowerSwitchTargetSubscriptionMessageHandles(
+                switchData: switchData,
+                unsubscribe: unsubscribe
+            )
             guard !handles.isEmpty else {
                 return nil
             }
@@ -2194,7 +2197,7 @@ class SyncDevicesViewController: UIViewController {
     private func beginSyncRun() -> UUID {
         let identifier = UUID()
         syncRunIdentifier = identifier
-        if batteryPowerSwitchDataForSync != nil {
+        if batteryPowerSwitchDataForSync?.requiresActivationBeforeOwnConfiguration == true {
             batteryPowerSwitchKeyConfigEarliestDate = Date().addingTimeInterval(Self.batteryPowerSwitchKeyConfigInitialDelay)
         } else {
             batteryPowerSwitchKeyConfigEarliestDate = nil
@@ -2226,7 +2229,8 @@ class SyncDevicesViewController: UIViewController {
     }
 
     private func waitAfterBatteryPowerSwitchKeyConfigSuccessIfNeeded(for model: SyncCellModel) {
-        guard isBatteryPowerSwitchKeyConfigConfiguration(model) else {
+        guard batteryPowerSwitchDataForSync?.requiresActivationBeforeOwnConfiguration == true,
+              isBatteryPowerSwitchKeyConfigConfiguration(model) else {
             return
         }
         Thread.sleep(forTimeInterval: Self.batteryPowerSwitchPostKeyConfigProcessingDelay)
@@ -2468,6 +2472,13 @@ class SyncDevicesViewController: UIViewController {
     
     private func startBatteryPowerSwitchConfigurationResyncAfterActivation() {
         guard let switchData = batteryPowerSwitchDataForSync else {
+            return
+        }
+        guard switchData.requiresActivationBeforeOwnConfiguration else {
+            resetBatteryPowerSwitchConfigurationForResync()
+            syncState = .inSync
+            updateSyncStateUI()
+            startSync()
             return
         }
         let flow = PJEightKeySwitchActivationFlow(

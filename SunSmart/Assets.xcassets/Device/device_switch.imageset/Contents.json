@@ -1,16 +1,17 @@
 {
   "images" : [
     {
+      "filename" : "Property 1=space_switch30.png",
       "idiom" : "universal",
       "scale" : "1x"
     },
     {
-      "filename" : "device_switch@2x.png",
+      "filename" : "Property 1=space_switch30@2x.png",
       "idiom" : "universal",
       "scale" : "2x"
     },
     {
-      "filename" : "device_switch@3x.png",
+      "filename" : "Property 1=space_switch30@3x.png",
       "idiom" : "universal",
       "scale" : "3x"
     }

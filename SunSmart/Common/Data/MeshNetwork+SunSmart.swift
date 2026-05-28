@@ -8,6 +8,13 @@
 import Foundation
 import NordicSigMeshSDK
 
+struct BatteryPowerSwitchTargetSubscriptionSnapshot: Hashable {
+    let linkGroupAddress: Address
+    let elementOffset: UInt16
+    let modelIdentifier: UInt16
+    let companyIdentifier: UInt16?
+}
+
 public enum DataError: Error {
     /// 空间已超出最大范围
     case exceededMaxSpaces
@@ -560,6 +567,21 @@ extension MeshNetworkManager {
             objc_setAssociatedObject(self, &AssociatedKey.switchsKey, newValue, .OBJC_ASSOCIATION_RETAIN)
         }
     }
+
+    func batteryPowerSwitchData(linkGroupAddress: Address) -> PJEightKeySwitchData? {
+        guard let switchData = switchs.first(where: { switchData in
+            guard switchData.linkGroupAddress == linkGroupAddress else {
+                return false
+            }
+            return switchData is PJEightKeySwitchData || switchData.proxyNode?.isBatteryPowerSwitch == true
+        }) else {
+            return nil
+        }
+        if let batteryPowerSwitchData = switchData as? PJEightKeySwitchData {
+            return batteryPowerSwitchData
+        }
+        return switchData.batteryPowerSwitchData
+    }
     
     /// 当前子网内dongle list
     var dongles: [DeviceDongleData] {
@@ -810,10 +832,11 @@ extension MeshNetworkManager {
         return true
     }
 
-    /// 为 Battery Power Switch 创建对应的 8 键开关数据
+    /// 为 Power Switch 创建对应的 8 键开关数据
     @discardableResult
     func createDefaultSwitch(forBatteryPowerSwitch node: Node) -> DeviceSwitchData? {
-        guard node.isBatteryPowerSwitch else {
+        guard node.isPowerSwitch,
+              let powerSwitchKind = node.powerSwitchKind else {
             return nil
         }
         if let existingSwitch = self.switchs.first(where: { $0.proxyNodeAddress == node.primaryUnicastAddress }) {
@@ -830,6 +853,7 @@ extension MeshNetworkManager {
         baseSwitch.panelType = panelType == .scene8Key ? .scenes_4key : .default_4key
         let metadata = PJEightKeySwitchRepository.Metadata(
             panelType: panelType,
+            powerSwitchKind: powerSwitchKind,
             moreSettingsState: .default
         )
         let newSwitch = PJEightKeySwitchData(baseSwitchData: baseSwitch, metadata: metadata)
@@ -847,6 +871,10 @@ extension MeshNetworkManager {
     /// 删除动能开关
     func deleteSwitch(switchData: DeviceSwitchData) {
         guard let meshUUID = self.meshNetwork?.uuid.uuidString else { return }
+        let realBatteryPowerSwitchNode = switchData.proxyNode?.isBatteryPowerSwitch == true
+            ? switchData.proxyNode
+            : nil
+        silentlyResetBatteryPowerSwitchIfNeeded(realBatteryPowerSwitchNode)
         // 检查代理设备的数据有没有清空
         if let proxyNode = MeshNetworkManager.instance.realNodes.first(where: { $0.enOceanMacAddress == switchData.enOceanMacAddress }) {
             proxyNode.enOceanMacAddress = nil
@@ -855,6 +883,7 @@ extension MeshNetworkManager {
         PJEightKeySwitchRepository.shared.delete(for: switchData, meshUUID: meshUUID, networkId: self.currentNetworkKey.networkId.hex)
         switchData.delete(meshUUID: meshUUID, networkId: self.currentNetworkKey.networkId.hex)
         self.switchs.removeAll(where: { $0.id == switchData.id })
+        removeRealBatteryPowerSwitchNodeIfNeeded(realBatteryPowerSwitchNode)
         
         var switchGroups: [Group] = []
         if let group = switchData.linkGroup {
@@ -880,7 +909,38 @@ extension MeshNetworkManager {
             }
             try? self.meshNetwork?.remove(group: group)
         }
+        notifyRealBatteryPowerSwitchDeletedIfNeeded(realBatteryPowerSwitchNode)
         
+    }
+
+    private func silentlyResetBatteryPowerSwitchIfNeeded(_ node: Node?) {
+        guard let node else {
+            return
+        }
+        do {
+            try MeshAPI.resetNodeWithoutWaitingForStatus(address: node.primaryUnicastAddress)
+        } catch {
+            print("Failed to send Battery Power Switch reset node: \(error)")
+        }
+    }
+
+    private func removeRealBatteryPowerSwitchNodeIfNeeded(_ node: Node?) {
+        guard let node else {
+            return
+        }
+        node.deleteExtension()
+        self.meshNetwork?.forceRemove(node: node)
+    }
+
+    private func notifyRealBatteryPowerSwitchDeletedIfNeeded(_ node: Node?) {
+        guard node != nil else {
+            return
+        }
+        NotificationCenter.default.post(name: .init(switchsRefreshNotificationName), object: nil)
+        NotificationCenter.default.post(
+            name: .init(spaceDataChangedNotificaitonName),
+            object: SpaceChangeDataType.network(type: .address)
+        )
     }
     
     /// 删除dongle
@@ -1477,7 +1537,7 @@ extension Schedule {
             return syncNodes.isEmpty && deleteNodes.isEmpty && syncGroups.isEmpty && deleteGroups.isEmpty
         }
     }
-    
+
 }
 
 extension DeviceSwitchData {
@@ -1604,17 +1664,30 @@ extension Node {
     static private var gateway: UInt8 = 0
     static private var cacheNeedSync: UInt8 = 0
     static private var cacheGroupNeedSync: UInt8 = 0
+    static private var batteryPowerSwitchRestoreTargetSubscriptionSnapshotsKey: UInt8 = 0
 //    static private var lastUpdateSyncTime = 206
 
-    static let batteryPowerSwitchCompanyIdentifier: UInt16 = 0x0A78
-    static let batteryPowerSwitchProductIdentifiers: Set<UInt16> = [0x2A01, 0x2A02]
+    static let batteryPowerSwitchCompanyIdentifier: UInt16 = PJEightKeyPowerSwitchKind.companyIdentifier
+    static let batteryPowerSwitchProductIdentifiers: Set<UInt16> = PJEightKeyPowerSwitchKind.batteryProductIdentifiers
+    static let acPowerSwitchProductIdentifiers: Set<UInt16> = PJEightKeyPowerSwitchKind.acProductIdentifiers
+
+    static func powerSwitchKind(companyIdentifier: UInt16?, productIdentifier: UInt16?) -> PJEightKeyPowerSwitchKind? {
+        PJEightKeyPowerSwitchKind.make(
+            companyIdentifier: companyIdentifier,
+            productIdentifier: productIdentifier
+        )
+    }
 
     static func isBatteryPowerSwitch(companyIdentifier: UInt16?, productIdentifier: UInt16?) -> Bool {
-        guard companyIdentifier == batteryPowerSwitchCompanyIdentifier,
-              let productIdentifier = productIdentifier else {
-            return false
-        }
-        return batteryPowerSwitchProductIdentifiers.contains(productIdentifier)
+        powerSwitchKind(companyIdentifier: companyIdentifier, productIdentifier: productIdentifier) == .battery
+    }
+
+    static func isACPowerSwitch(companyIdentifier: UInt16?, productIdentifier: UInt16?) -> Bool {
+        powerSwitchKind(companyIdentifier: companyIdentifier, productIdentifier: productIdentifier) == .ac
+    }
+
+    static func isPowerSwitch(companyIdentifier: UInt16?, productIdentifier: UInt16?) -> Bool {
+        powerSwitchKind(companyIdentifier: companyIdentifier, productIdentifier: productIdentifier) != nil
     }
     
     /// 设备类型
@@ -1643,7 +1716,7 @@ extension Node {
                 self = .sensor
             case "Dongle":
                 self = .dongle
-            case "Switches", "BatteryPowerSwitch":
+            case "Switches", "BatteryPowerSwitch", "ACPowerSwitch":
                 self = .switches
             case "Gateway":
                 self = .gateway
@@ -1710,18 +1783,93 @@ extension Node {
         return Node.isBatteryPowerSwitch(companyIdentifier: companyIdentifier, productIdentifier: productIdentifier)
     }
 
+    var powerSwitchKind: PJEightKeyPowerSwitchKind? {
+        return Node.powerSwitchKind(companyIdentifier: companyIdentifier, productIdentifier: productIdentifier)
+    }
+
+    var isACPowerSwitch: Bool {
+        return Node.isACPowerSwitch(companyIdentifier: companyIdentifier, productIdentifier: productIdentifier)
+    }
+
+    var isPowerSwitch: Bool {
+        return Node.isPowerSwitch(companyIdentifier: companyIdentifier, productIdentifier: productIdentifier)
+    }
+
     var batteryPowerSwitchPanelType: PJEightKeySwitchPanelDefinition.PanelType? {
-        guard isBatteryPowerSwitch else {
+        guard isPowerSwitch else {
             return nil
         }
-        switch productIdentifier {
-        case 0x2A01:
-            return .scene8Key
-        case 0x2A02:
-            return .brightness8Key
-        default:
-            return nil
+        return PJEightKeyPowerSwitchKind.panelType(productIdentifier: productIdentifier)
+    }
+
+    var batteryPowerSwitchRestoreTargetSubscriptionSnapshots: [Address: Set<BatteryPowerSwitchTargetSubscriptionSnapshot>]? {
+        get {
+            objc_getAssociatedObject(self, &Node.batteryPowerSwitchRestoreTargetSubscriptionSnapshotsKey) as? [Address: Set<BatteryPowerSwitchTargetSubscriptionSnapshot>]
+        } set {
+            objc_setAssociatedObject(self, &Node.batteryPowerSwitchRestoreTargetSubscriptionSnapshotsKey, newValue as Any?, .OBJC_ASSOCIATION_RETAIN)
         }
+    }
+
+    func makeBatteryPowerSwitchRestoreTargetSubscriptionSnapshots(
+        group: Group?
+    ) -> [Address: Set<BatteryPowerSwitchTargetSubscriptionSnapshot>] {
+        let switchDatas = (group?.info.switchs ?? []) + MeshNetworkManager.instance.switchs
+        let linkGroups = uniqueBatteryPowerSwitchLinkGroups(from: switchDatas)
+        guard !linkGroups.isEmpty else {
+            return [:]
+        }
+
+        var snapshots: [Address: Set<BatteryPowerSwitchTargetSubscriptionSnapshot>] = [:]
+        elements.forEach { element in
+            guard element.unicastAddress >= primaryUnicastAddress else {
+                return
+            }
+            let offset = element.unicastAddress - primaryUnicastAddress
+            element.models.forEach { model in
+                linkGroups.forEach { linkGroup in
+                    if model.isSubscribed(to: linkGroup.group) {
+                        snapshots[linkGroup.address, default: []].insert(
+                            BatteryPowerSwitchTargetSubscriptionSnapshot(
+                                linkGroupAddress: linkGroup.address,
+                                elementOffset: offset,
+                                modelIdentifier: model.modelIdentifier,
+                                companyIdentifier: model.companyIdentifier
+                            )
+                        )
+                    }
+                }
+            }
+        }
+
+        #if DEBUG
+        if !snapshots.isEmpty {
+            let description = snapshots.map { groupAddress, values in
+                let models = values.map {
+                    "\($0.elementOffset)/\($0.modelIdentifier.hex)"
+                }.sorted().joined(separator: ",")
+                return "\(groupAddress.hex):[\(models)]"
+            }.sorted().joined(separator: " ")
+            print("[BPS Target] restore snapshot node=\(primaryUnicastAddress.hex), \(description)")
+        }
+        #endif
+
+        return snapshots
+    }
+
+    private func uniqueBatteryPowerSwitchLinkGroups(from switchDatas: [DeviceSwitchData]) -> [(address: Address, group: Group)] {
+        var groups: [(Address, Group)] = []
+        var addresses: Set<Address> = []
+        switchDatas.forEach { switchData in
+            guard switchData.batteryPowerSwitchData != nil,
+                  let linkGroup = switchData.linkGroup else {
+                return
+            }
+            let address = linkGroup.address.address
+            if addresses.insert(address).inserted {
+                groups.append((address, linkGroup))
+            }
+        }
+        return groups
     }
 
     private var batteryPowerSwitchBrightnessLevelModel: Model? {
@@ -1731,40 +1879,106 @@ extension Node {
         return element.model(withSigModelId: .genericLevelServerModelId)
     }
 
-    var batteryPowerSwitchTargetCapabilityModels: [Model] {
-        uniqueBatteryPowerSwitchModels([
-            onoffModel,
-            batteryPowerSwitchBrightnessLevelModel,
-            sceneModel,
-            lightnessModel,
-            lightLCModel
-        ].compactMap { $0 })
-    }
+    private func batteryPowerSwitchTargetCapabilityModels(for switchData: PJEightKeySwitchData) -> [Model] {
+        let appKeyIndex = MeshNetworkManager.instance.currentApplicationKey.index
+        let actionTypes = switchData.batteryPowerSwitchKeyConfigurations(appKeyIndex: appKeyIndex).map { $0.type }
+        var models: [Model?] = []
 
-    private var batteryPowerSwitchObsoleteTargetModels: [Model] {
-        let brightnessLevelModel = batteryPowerSwitchBrightnessLevelModel
-        return levelModels.filter { model in
-            guard let brightnessLevelModel else {
-                return true
-            }
-            return model !== brightnessLevelModel
+        if actionTypes.contains(.onOffToggle) || actionTypes.contains(.onOffSet) {
+            models.append(onoffModel)
         }
+        if actionTypes.contains(.levelDelta) || actionTypes.contains(.levelMove) {
+            models.append(batteryPowerSwitchBrightnessLevelModel)
+        }
+        if actionTypes.contains(.sceneRecall) {
+            models.append(sceneModel)
+        }
+        if actionTypes.contains(.lightnessSet) {
+            models.append(lightnessModel)
+        }
+        if actionTypes.contains(.lightCtrlOnOff) {
+            models.append(lightLCModel)
+        }
+        if actionTypes.contains(.ctlSet) {
+            models.append(ctlModel)
+        }
+        if actionTypes.contains(.ctlTemperatureSet) {
+            models.append(temperatureModel)
+        }
+
+        return uniqueBatteryPowerSwitchModels(models.compactMap { $0 })
     }
 
-    func getBatteryPowerSwitchSubscriptionMessageHandles(switchGroup: Group, includeExisting: Bool = false) -> [MeshMessageHandle] {
-        let cleanupHandles = batteryPowerSwitchObsoleteTargetModels
-            .filter { $0.isSubscribed(to: switchGroup) }
-            .compactMap { batteryPowerSwitchUnsubscriptionMessageHandle(model: $0, switchGroup: switchGroup) }
+    private func batteryPowerSwitchTargetModelLogDescription(_ models: [Model]) -> String {
+        models.map {
+            let elementAddress = $0.parentElement?.unicastAddress.hex ?? "nil"
+            return "\(elementAddress)/\($0.modelIdentifier.hex)"
+        }.joined(separator: ",")
+    }
 
-        let addHandles = batteryPowerSwitchTargetCapabilityModels
+    func getBatteryPowerSwitchSubscriptionMessageHandles(
+        switchData: PJEightKeySwitchData,
+        switchGroup: Group,
+        includeExisting: Bool = false
+    ) -> [MeshMessageHandle] {
+        let desiredModels = batteryPowerSwitchTargetCapabilityModels(for: switchData)
+        #if DEBUG
+        let actionTypes = switchData.batteryPowerSwitchKeyConfigurations(appKeyIndex: MeshNetworkManager.instance.currentApplicationKey.index).map { $0.type.rawValue.description }.joined(separator: ",")
+        print("[BPS Target] subscribe node=\(primaryUnicastAddress.hex), group=\(switchGroup.address.address.hex), actions=\(actionTypes), desired=\(batteryPowerSwitchTargetModelLogDescription(desiredModels))")
+        #endif
+
+        return desiredModels
             .filter { includeExisting || !$0.isSubscribed(to: switchGroup) }
             .compactMap { batteryPowerSwitchSubscriptionMessageHandle(model: $0, switchGroup: switchGroup) }
-
-        return cleanupHandles + addHandles
     }
 
-    func getBatteryPowerSwitchUnsubscriptionMessageHandles(switchGroup: Group, includeMissing: Bool = false) -> [MeshMessageHandle] {
-        uniqueBatteryPowerSwitchModels(batteryPowerSwitchTargetCapabilityModels + batteryPowerSwitchObsoleteTargetModels)
+    func getBatteryPowerSwitchRestoreTargetSubscriptionMessageHandles(
+        switchData: DeviceSwitchData,
+        includeExisting: Bool = false
+    ) -> [MeshMessageHandle] {
+        guard let batteryPowerSwitchData = switchData.batteryPowerSwitchData,
+              let switchGroup = switchData.linkGroup else {
+            return []
+        }
+        let linkGroupAddress = switchGroup.address.address
+        guard let snapshots = batteryPowerSwitchRestoreTargetSubscriptionSnapshots?[linkGroupAddress],
+              !snapshots.isEmpty else {
+            #if DEBUG
+            print("[BPS Target] restore skip node=\(primaryUnicastAddress.hex), group=\(linkGroupAddress.hex), reason=no-old-snapshot")
+            #endif
+            return []
+        }
+
+        let desiredModels = batteryPowerSwitchTargetCapabilityModels(for: batteryPowerSwitchData)
+        let restoredModels = desiredModels.filter { model in
+            guard let elementAddress = model.parentElement?.unicastAddress,
+                  elementAddress >= primaryUnicastAddress else {
+                return false
+            }
+            let snapshot = BatteryPowerSwitchTargetSubscriptionSnapshot(
+                linkGroupAddress: linkGroupAddress,
+                elementOffset: elementAddress - primaryUnicastAddress,
+                modelIdentifier: model.modelIdentifier,
+                companyIdentifier: model.companyIdentifier
+            )
+            return snapshots.contains(snapshot)
+        }
+
+        #if DEBUG
+        print("[BPS Target] restore subscribe node=\(primaryUnicastAddress.hex), group=\(linkGroupAddress.hex), old=\(snapshots.count), desired=\(batteryPowerSwitchTargetModelLogDescription(desiredModels)), matched=\(batteryPowerSwitchTargetModelLogDescription(restoredModels))")
+        #endif
+
+        return restoredModels
+            .filter { includeExisting || !$0.isSubscribed(to: switchGroup) }
+            .compactMap { batteryPowerSwitchSubscriptionMessageHandle(model: $0, switchGroup: switchGroup) }
+    }
+
+    func getBatteryPowerSwitchUnsubscriptionMessageHandles(
+        switchData: PJEightKeySwitchData,
+        switchGroup: Group,
+        includeMissing: Bool = false
+    ) -> [MeshMessageHandle] {
+        batteryPowerSwitchTargetCapabilityModels(for: switchData)
             .filter { includeMissing || $0.isSubscribed(to: switchGroup) }
             .compactMap { batteryPowerSwitchUnsubscriptionMessageHandle(model: $0, switchGroup: switchGroup) }
     }
@@ -1775,19 +1989,73 @@ extension Node {
         includeExisting: Bool = false,
         includeMissing: Bool = false
     ) -> [MeshMessageHandle] {
-        guard switchData.batteryPowerSwitchData != nil,
+        guard let batteryPowerSwitchData = switchData.batteryPowerSwitchData,
               let switchGroup = switchData.linkGroup else {
             return []
         }
         if unsubscribe {
-            return getBatteryPowerSwitchUnsubscriptionMessageHandles(switchGroup: switchGroup, includeMissing: includeMissing)
+            return getBatteryPowerSwitchUnsubscriptionMessageHandles(switchData: batteryPowerSwitchData, switchGroup: switchGroup, includeMissing: includeMissing)
         }
-        return getBatteryPowerSwitchSubscriptionMessageHandles(switchGroup: switchGroup, includeExisting: includeExisting)
+        return getBatteryPowerSwitchSubscriptionMessageHandles(switchData: batteryPowerSwitchData, switchGroup: switchGroup, includeExisting: includeExisting)
+    }
+
+    func getSunSmartSubscribeToGroupMessageHandles(
+        _ group: Group,
+        continuous: Bool? = nil
+    ) -> [MeshMessageHandle] {
+        if let switchData = MeshNetworkManager.instance.batteryPowerSwitchData(linkGroupAddress: group.address.address) {
+            return getBatteryPowerSwitchSubscriptionMessageHandles(switchData: switchData, switchGroup: group)
+        }
+
+        return getSubscribeToGroupMessages(group).map { message in
+            let handle = MeshMessageHandle(message: message, address: primaryUnicastAddress)
+            if let continuous {
+                handle.continuous = continuous
+            }
+            return handle
+        }
+    }
+
+    func filterSunSmartBatteryPowerSwitchSubscriptionMessageHandles(
+        _ handles: [MeshMessageHandle]
+    ) -> [MeshMessageHandle] {
+        handles.filter { shouldSendSunSmartBatteryPowerSwitchSubscriptionMessage($0.message) }
     }
 
     private func uniqueBatteryPowerSwitchModels(_ models: [Model]) -> [Model] {
         var identifiers = Set<ObjectIdentifier>()
         return models.filter { identifiers.insert(ObjectIdentifier($0)).inserted }
+    }
+
+    private func shouldSendSunSmartBatteryPowerSwitchSubscriptionMessage(_ message: MeshMessage) -> Bool {
+        guard let target = batteryPowerSwitchTargetSubscription(from: message),
+              let switchData = MeshNetworkManager.instance.batteryPowerSwitchData(linkGroupAddress: target.groupAddress) else {
+            return true
+        }
+
+        let allowed = batteryPowerSwitchTargetCapabilityModels(for: switchData).contains { model in
+            model.parentElement?.unicastAddress == target.elementAddress
+                && model.modelIdentifier == target.modelIdentifier
+                && model.companyIdentifier == target.companyIdentifier
+        }
+
+        #if DEBUG
+        if !allowed {
+            print("[BPS Target] skip stale restore subscription node=\(primaryUnicastAddress.hex), group=\(target.groupAddress.hex), model=\(target.elementAddress.hex)/\(target.modelIdentifier.hex)")
+        }
+        #endif
+
+        return allowed
+    }
+
+    private func batteryPowerSwitchTargetSubscription(from message: MeshMessage) -> (groupAddress: Address, elementAddress: Address, modelIdentifier: UInt16, companyIdentifier: UInt16?)? {
+        if let message = message as? ConfigModelSubscriptionAdd {
+            return (message.address, message.elementAddress, message.modelIdentifier, message.companyIdentifier)
+        }
+        if let message = message as? ConfigModelSubscriptionVirtualAddressAdd {
+            return (MeshAddress(message.virtualLabel).address, message.elementAddress, message.modelIdentifier, message.companyIdentifier)
+        }
+        return nil
     }
 
     private func batteryPowerSwitchSubscriptionMessageHandle(model: Model, switchGroup: Group) -> MeshMessageHandle? {
@@ -1922,7 +2190,10 @@ extension Node {
         guard self.sunricherVendorModel != nil, self.productIdentifier != nil else {
             return false
         }
-        if self.deviceType == .dongle || self.deviceType == .gateway || self.deviceType == .emergencyController {
+        if self.deviceType == .switches ||
+            self.deviceType == .dongle ||
+            self.deviceType == .gateway ||
+            self.deviceType == .emergencyController {
             return false
         }
         return true

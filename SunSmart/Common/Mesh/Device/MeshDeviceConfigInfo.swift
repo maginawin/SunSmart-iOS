@@ -32,6 +32,9 @@ struct MeshDeviceConfigInfo {
     }
 
     var offlineIconName: String {
+        if iconCategory == "ACPowerSwitch" {
+            return "device_ACPowerSwitch_offline"
+        }
         return "device_offline_\(iconCategory)"
     }
 
