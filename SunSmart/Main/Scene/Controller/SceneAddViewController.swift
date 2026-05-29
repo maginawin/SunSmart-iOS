@@ -260,19 +260,28 @@ class SceneAddViewController: UIViewController {
             return
         }
         groups.forEach({
-            if let data = $0.executeSceneData, $0.nodes.count > 0 {
-                // 判断组内是否有色温灯
-                let effectiveCctCount = $0.nodes.filter({ $0.effectiveSupportCct }).count
-                if effectiveCctCount > 0 {
-                    MeshAPI.setGroupCTLState(address: $0.address.address, lightness: Node.getLightness(lightness100: data.lightness), temperature: $0.clampEffectiveCct(UInt16(data.cct)))
-                }
-                // 判断组内是否有仅支持调光灯
-                if effectiveCctCount < $0.lightnessNodes.count {
-                    MeshAPI.setGroupLightnessState(address: $0.address.address, lightness: Node.getLightness(lightness100: data.lightness))
-                }
+            if let data = $0.executeSceneData {
+                previewSceneData(data, for: $0)
             }
         })
         
+    }
+    
+    private func previewSceneData(_ data: ExecuteSceneData, for group: Group) {
+        guard group.nodes.count > 0 else { return }
+        guard data.isOn else {
+            MeshAPI.setGroupOnOffState(address: group.address.address, isOn: false)
+            return
+        }
+        // 判断组内是否有色温灯
+        let effectiveCctCount = group.nodes.filter({ $0.effectiveSupportCct }).count
+        if effectiveCctCount > 0 {
+            MeshAPI.setGroupCTLState(address: group.address.address, lightness: Node.getLightness(lightness100: data.lightness), temperature: group.clampEffectiveCct(UInt16(data.cct)))
+        }
+        // 判断组内是否有仅支持调光灯
+        if effectiveCctCount < group.lightnessNodes.count {
+            MeshAPI.setGroupLightnessState(address: group.address.address, lightness: Node.getLightness(lightness100: data.lightness))
+        }
     }
     
     /// 创建场景
@@ -309,7 +318,8 @@ class SceneAddViewController: UIViewController {
             let selectGroups = groups.filter({ $0.isSelected })
             selectGroups.forEach({
                 if let data = $0.executeSceneData {
-                    let executeData = SceneExecuteData(sceneNumber: scene.number, isOn: data.lightness > 0, lightness: Node.getLightness(lightness100: data.lightness), cct: $0.clampEffectiveCct(UInt16(data.cct)))
+                    let lightness = data.isOn ? Node.getLightness(lightness100: data.lightness) : 0
+                    let executeData = SceneExecuteData(sceneNumber: scene.number, isOn: data.isOn, lightness: lightness, cct: $0.clampEffectiveCct(UInt16(data.cct)))
                     $0.info.sceneExecuteDatas.append(executeData)
                     $0.info.save()
                     $0.updateGroupSyncState()
@@ -843,7 +853,7 @@ extension SceneAddViewController: UICollectionViewDataSource, UICollectionViewDe
                 return
             }
             let data = sceneDatas[index]
-            group.executeSceneData = .init(lightness: data.lightness, cct: Int(group.clampEffectiveCct(UInt16(data.cct))))
+            group.executeSceneData = .init(isOn: data.isOn, lightness: data.lightness, cct: Int(group.clampEffectiveCct(UInt16(data.cct))))
             group.sceneDataIndex = index
             group.isSelected = true
         }
@@ -930,7 +940,7 @@ extension SceneAddViewController: SceneAddTemplateInfoSectionViewDelegate {
         var valueEdit = false
         if sceneDatas.count == defalutSceneDatas.count {
             for (index, data) in sceneDatas.enumerated() {
-                if defalutSceneDatas[index].lightness != data.lightness || defalutSceneDatas[index].cct != data.cct {
+                if defalutSceneDatas[index].isOn != data.isOn || defalutSceneDatas[index].lightness != data.lightness || defalutSceneDatas[index].cct != data.cct {
                     valueEdit = true
                     break
                 }
@@ -1000,9 +1010,10 @@ extension SceneAddViewController: SceneAddDataListViewCellDelegate {
             return
         }
         let data = sceneDatas[index]
-        SceneExecuteDataPickerView.show(lightness: data.lightness, cct: data.cct, cctRange: sceneDataCctRange) {[weak self] lightness, cct in
+        SceneExecuteDataPickerView.show(lightness: data.lightness, isOn: data.isOn, cct: data.cct, cctRange: sceneDataCctRange) {[weak self] isOn, lightness, cct in
             guard let self = self else { return }
-            data.lightness = lightness
+            data.isOn = isOn
+            data.lightness = isOn ? lightness : 0
             data.cct = cct
 //            let data = SceneExecuteData(lightness: lightness, cct: cct)
 //            self.sceneDatas.replaceSubrange(index...index, with: [data])
@@ -1021,8 +1032,8 @@ extension SceneAddViewController: SceneAddDataListViewCellDelegate {
     /// 新增数据回调
     func cellDidAddAction(_ cell: SceneAddDataListViewCell) {
         
-        SceneExecuteDataPickerView.show(cctRange: sceneDataCctRange, showDelete: false) {[weak self] lightness, cct in
-            let data = ExecuteSceneData(lightness: lightness, cct: cct)
+        SceneExecuteDataPickerView.show(cctRange: sceneDataCctRange, showDelete: false) {[weak self] isOn, lightness, cct in
+            let data = ExecuteSceneData(isOn: isOn, lightness: lightness, cct: cct)
             self?.sceneDatas.append(data)
             self?.collectionView.reloadItems(at: [IndexPath(item: 0, section: 0)])
         }
@@ -1092,18 +1103,22 @@ extension SceneAddViewController: SceneAddGroupEmptyCellDelegate {
 }
 
 class ExecuteSceneData {
+    /// 是否开启
+    var isOn: Bool
     /// 亮度 0~100
     var lightness: Int
     /// 色温
     var cct: Int
     
-    init(lightness: Int, cct: Int) {
-        self.lightness = lightness
+    init(isOn: Bool = true, lightness: Int, cct: Int) {
+        self.isOn = isOn
+        self.lightness = isOn ? lightness : 0
         self.cct = cct
     }
     
     init(data: SceneExecuteData) {
-        self.lightness = Node.getLightness100(lightness: data.lightness)
+        self.isOn = data.isOn
+        self.lightness = data.isOn ? Node.getLightness100(lightness: data.lightness) : 0
         self.cct = Int(data.cct)
     }
 }
