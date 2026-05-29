@@ -805,6 +805,7 @@
 "invalid_invitation_code_message" = "Possible reasons\n\n1. The Invitation Code in the server has been deleted;\n2. The Invitation Code is from another server;";
 "invalid_qr_code_message" = "Possible reasons\n\n1. The QR code in the server has been deleted;\n2. The QR code is from another server;";
 "current_target_version" = "Current target version";
+"battery_power_switch_ota_hint" = "Battery-powered devices need to be activated before the upgrade can be performed.Press 'Button 2'and 'Button ON' on the device to wake it up for the update. Then click refresh.The device has a 60s activation time.Activation and upgrade must be completed within this timeframe.";
 "total" = "Total";
 "upgraded" = "Upgraded";
 "UPGRADE" = "UPGRADE";
