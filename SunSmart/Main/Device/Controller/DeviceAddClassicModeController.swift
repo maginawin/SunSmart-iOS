@@ -51,6 +51,8 @@ class DeviceAddClassicModeController: UIViewController {
     /// 添加成功的节点
     private var addSuccessNodes: [Node] = []
     private var pendingBatteryPowerSwitchInitialBatteryReads: [BatteryPowerSwitchAddConfiguration.InitialBatteryReadRequest] = []
+    private var pendingGroupDeferredSyncPlans: [(node: Node, group: Group, plan: DeviceGroupDeferredSyncPlan)] = []
+    private var pendingGroupDeferredSyncSuccessDevices: [ProvisioningDevice] = []
     private var batteryPowerSwitchAddConfigurations: [Address: PJEightKeySwitchData] = [:]
     private var failedBatteryPowerSwitchAddConfigurationAddresses: Set<Address> = []
     private var failedBatteryPowerSwitchAddConfigurationReasons: [Address: String] = [:]
@@ -352,6 +354,31 @@ class DeviceAddClassicModeController: UIViewController {
             requests,
             fallbackDisconnectNodes: addSuccessNodes
         )
+    }
+
+    private func finishGroupDeferredSyncPlans(completion: @escaping () -> Void) {
+        let plans = pendingGroupDeferredSyncPlans
+        pendingGroupDeferredSyncPlans.removeAll()
+        DeviceGroupDeferredSyncPlanner.run(plans: plans) { [weak self] in
+            DispatchQueue.main.async {
+                self?.markPendingGroupDeferredSyncDevicesSucceeded()
+                completion()
+            }
+        }
+    }
+
+    private func markPendingGroupDeferredSyncDevicesSucceeded() {
+        let devices = pendingGroupDeferredSyncSuccessDevices
+        pendingGroupDeferredSyncSuccessDevices.removeAll()
+        guard !devices.isEmpty else {
+            return
+        }
+
+        devices.forEach { device in
+            device.addState = .success
+            reloadDeviceState(device)
+        }
+        updateUIState()
     }
 
     private func finalizeBatteryPowerSwitchAddConfiguration(
@@ -1111,10 +1138,15 @@ class DeviceAddClassicModeController: UIViewController {
                     }
                 }
                 
-                let syncDatas = node.getSyncData(type: .group(group))
-                syncDatas.forEach({
-                    appendMessages.append(contentsOf: $0.getMessageHandles(node: node))
-                })
+                if node.deviceType == .light {
+                    let plan = DeviceGroupDeferredSyncPlanner.makePlan(node: node, group: group)
+                    appendMessages.append(contentsOf: plan.immediateMessageHandles)
+                } else {
+                    let syncDatas = node.getSyncData(type: .group(group))
+                    syncDatas.forEach({
+                        appendMessages.append(contentsOf: $0.getMessageHandles(node: node))
+                    })
+                }
 //                appendMessages.append(contentsOf: group.getNodeAddMessageHandles(node: node))
             }else {
                 if shouldApplyLightingDefaults {
@@ -1205,9 +1237,7 @@ class DeviceAddClassicModeController: UIViewController {
             }
         } addSuccess: {[weak self] addDevice in
             guard let self = self else { return }
-            addDevice.addState = .success
-            self.reloadDeviceState(addDevice)
-            self.updateUIState()
+            var shouldShowSuccessAfterGroupDeferredSync = false
             if let node = MeshNetworkManager.instance.meshNetwork?.node(withAddress: addDevice.address) {
                 if let repalceNode = addDevice.repalceNode { // 删除被替换节点的缓存数据
                     repalceNode.deleteExtension()
@@ -1219,11 +1249,25 @@ class DeviceAddClassicModeController: UIViewController {
                         node.save()
                     }
                 }
+                if node.deviceType == .light, let group = self.addToGroup {
+                    let plan = DeviceGroupDeferredSyncPlanner.makePlan(node: node, group: group)
+                    if plan.hasDeferredTasks {
+                        self.pendingGroupDeferredSyncPlans.append((node: node, group: group, plan: plan))
+                        self.pendingGroupDeferredSyncSuccessDevices.append(addDevice)
+                        shouldShowSuccessAfterGroupDeferredSync = true
+                    }
+                }
                 if node.isPowerSwitch,
                    let request = finalizeBatteryPowerSwitchAddConfiguration(for: node) {
                     pendingBatteryPowerSwitchInitialBatteryReads.append(request)
                 }
                 self.addSuccessNodes.append(node)
+            }
+            guard shouldShowSuccessAfterGroupDeferredSync else {
+                addDevice.addState = .success
+                self.reloadDeviceState(addDevice)
+                self.updateUIState()
+                return
             }
         } addFail: {[weak self] addDevice, error in
             guard let self = self else { return }
@@ -1264,27 +1308,30 @@ class DeviceAddClassicModeController: UIViewController {
 //            if MeshLibManager.manager.currentProxy?.node == nil, let node = successNodes.last {
 //                MeshLibManager.manager.currentProxy?.nodeAddress = node.primaryUnicastAddress
 //            }
-            self.deviceStateCallback?(false)
-            self.deviceAddCallback?(self.addSuccessNodes)
-            
-            self.space.deviceCount = MeshNetworkManager.instance.realNodes.count
-            self.space.luminairesCount = MeshNetworkManager.instance.realNodes.filter({ $0.deviceType == .light }).count //MeshNetworkManager.instance.lightNodes.count
-            self.space.switchesCount = MeshNetworkManager.instance.switchs.count
-            self.space.save()
-            // 通知space数据修改
-//            NotificationCenter.default.post(name: .init(spaceDataChangedNotificaitonName), object: SpaceChangeDataType.device)
-            NotificationCenter.default.post(name: .init(spaceDataChangedNotificaitonName), object: SpaceChangeDataType.network(type: .address))
-            NotificationCenter.default.post(name: .init(devicesAddNotificationName), object: nil)
-            if self.addSuccessNodes.contains(where: { [.dongle, .gateway, .emergencyController, .unknown].contains($0.deviceType) }) {
-                NotificationCenter.default.post(name: .init(deviceOthersRefreshNotificationName), object: nil)
+            self.finishGroupDeferredSyncPlans { [weak self] in
+                guard let self = self else { return }
+                self.deviceStateCallback?(false)
+                self.deviceAddCallback?(self.addSuccessNodes)
+
+                self.space.deviceCount = MeshNetworkManager.instance.realNodes.count
+                self.space.luminairesCount = MeshNetworkManager.instance.realNodes.filter({ $0.deviceType == .light }).count //MeshNetworkManager.instance.lightNodes.count
+                self.space.switchesCount = MeshNetworkManager.instance.switchs.count
+                self.space.save()
+                // 通知space数据修改
+                //                NotificationCenter.default.post(name: .init(spaceDataChangedNotificaitonName), object: SpaceChangeDataType.device)
+                NotificationCenter.default.post(name: .init(spaceDataChangedNotificaitonName), object: SpaceChangeDataType.network(type: .address))
+                NotificationCenter.default.post(name: .init(devicesAddNotificationName), object: nil)
+                if self.addSuccessNodes.contains(where: { [.dongle, .gateway, .emergencyController, .unknown].contains($0.deviceType) }) {
+                    NotificationCenter.default.post(name: .init(deviceOthersRefreshNotificationName), object: nil)
+                }
+                if self.addSuccessNodes.contains(where: { $0.deviceType == .emergencyController }) {
+                    NotificationCenter.default.post(name: .deviceEmerFireDataDidChange, object: nil)
+                }
+                if self.addSuccessNodes.contains(where: { $0.isPowerSwitch }) {
+                    NotificationCenter.default.post(name: .init(switchsRefreshNotificationName), object: nil)
+                }
+                self.finishBatteryPowerSwitchInitialBatteryReadsAndDisconnect()
             }
-            if self.addSuccessNodes.contains(where: { $0.deviceType == .emergencyController }) {
-                NotificationCenter.default.post(name: .deviceEmerFireDataDidChange, object: nil)
-            }
-            if self.addSuccessNodes.contains(where: { $0.isPowerSwitch }) {
-                NotificationCenter.default.post(name: .init(switchsRefreshNotificationName), object: nil)
-            }
-            self.finishBatteryPowerSwitchInitialBatteryReadsAndDisconnect()
             
 //            self.addSuccessNodes.append(contentsOf: successNodes)
         }
