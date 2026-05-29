@@ -1556,7 +1556,8 @@ class DeviceRestoreViewController: UIViewController {
         node: Node,
         messageHandles: [MeshMessageHandle]
     ) {
-        if statusMessage is LightLightnessStatus
+        if statusMessage is GenericOnOffStatus
+            || statusMessage is LightLightnessStatus
             || statusMessage is LightCTLTemperatureStatus
             || statusMessage is LightCTLStatus
             || statusMessage is LightHSLStatus,
@@ -1564,6 +1565,10 @@ class DeviceRestoreViewController: UIViewController {
             let address = handle.address ?? handle.model?.parentElement?.unicastAddress ?? node.primaryUnicastAddress
             let targetNode = MeshNetworkManager.instance.meshNetwork?.node(withAddress: address) ?? node
             targetNode.updateNodeStatus(message: statusMessage, source: address)
+            if let onOffStatus = statusMessage as? GenericOnOffStatus,
+               !(onOffStatus.targetState ?? onOffStatus.isOn) {
+                targetNode.lightness = 0
+            }
         }
     }
 

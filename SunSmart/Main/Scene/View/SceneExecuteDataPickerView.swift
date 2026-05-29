@@ -10,11 +10,12 @@ import NordicSigMeshSDK
 
 class SceneExecuteDataPickerView: UIView {
     
-    typealias DataPickerCallback = ((Int, Int)->Void)
+    typealias DataPickerCallback = ((Bool, Int, Int)->Void)
     typealias DeleteCallback = (()->Void)
     
     private var shadeView: UIView!
     private var contentView: UIView!
+    private var offBtn: UIButton!
     private var lightnessLabel: UILabel!
     private var lightnessSliderView: DeviceSliderFunctionView!
     private var cctLabel: UILabel!
@@ -27,6 +28,7 @@ class SceneExecuteDataPickerView: UIView {
     
     private var showDelete: Bool = true
     private var showCct: Bool = true
+    private var isOn: Bool = true
     private var lightness: Int = 30
     private var cct: Int = 5500
     private var cctRange: ClosedRange<UInt16> = NodeAbsoluteCctRange.defaultRange
@@ -34,11 +36,16 @@ class SceneExecuteDataPickerView: UIView {
     private var pickerCallback: DataPickerCallback?
     private var deleteCallback: DeleteCallback?
     
-    static func show(lightness: Int = 100, cct: Int = 4500, lightnessLimitRange: ClosedRange<Int>? = nil, cctRange: ClosedRange<UInt16> = NodeAbsoluteCctRange.defaultRange, showCct: Bool = true, showDelete: Bool = true, picker: DataPickerCallback?, delete: DeleteCallback? = nil) {
+    private var maximumLightness: Int {
+        lightnessLimitRange?.upperBound ?? 100
+    }
+    
+    static func show(lightness: Int = 100, isOn: Bool? = nil, cct: Int = 4500, lightnessLimitRange: ClosedRange<Int>? = nil, cctRange: ClosedRange<UInt16> = NodeAbsoluteCctRange.defaultRange, showCct: Bool = true, showDelete: Bool = true, picker: DataPickerCallback?, delete: DeleteCallback? = nil) {
         
         let pickerView = SceneExecuteDataPickerView(frame: UIScreen.main.bounds)
         pickerView.showDelete = showDelete
         pickerView.showCct = showCct
+        pickerView.isOn = isOn ?? (lightness > 0)
         pickerView.lightness = lightness
         pickerView.cctRange = cctRange
         pickerView.lightnessLimitRange = lightnessLimitRange
@@ -86,6 +93,33 @@ class SceneExecuteDataPickerView: UIView {
         return min(Int(cctRange.upperBound), max(Int(cctRange.lowerBound), cct))
     }
     
+    private var selectedIsOn: Bool {
+        lightnessSliderView.value > 0
+    }
+    
+    private func updateOffButtonState() {
+        let isOff = !isOn
+        offBtn.backgroundColor = isOff ? RGB(102, 103, 171) : .white
+        offBtn.setTitleColor(isOff ? .white : RGB(102, 103, 171), for: .normal)
+        offBtn.layer.borderWidth = isOff ? 0 : 1
+        offBtn.layer.borderColor = RGB(147, 148, 196).cgColor
+    }
+    
+    private func setLightnessValue(_ value: Int) {
+        lightnessSliderView.value = value
+        lightnessLabel.text = "\(lightnessSliderView.value)%"
+        isOn = lightnessSliderView.value > 0
+        updateOffButtonState()
+    }
+    
+    @objc private func offBtnAction() {
+        if isOn {
+            setLightnessValue(0)
+        } else {
+            setLightnessValue(maximumLightness)
+        }
+    }
+    
     @objc private func deleteBtnAction() {
         deleteCallback?()
         dismiss()
@@ -95,7 +129,7 @@ class SceneExecuteDataPickerView: UIView {
         
         let lightness = lightnessSliderView.value
         let cct = selectedCct
-        pickerCallback?(lightness, cct)
+        pickerCallback?(selectedIsOn, lightness, cct)
         
         dismiss()
     }
@@ -105,7 +139,7 @@ class SceneExecuteDataPickerView: UIView {
 //        if !showConfirm { // 没有确认按键，关闭则确认修改
             let lightness = lightnessSliderView.value
             let cct = selectedCct
-            pickerCallback?(lightness, cct)
+            pickerCallback?(selectedIsOn, lightness, cct)
 //        }
         dismiss()
     }
@@ -175,7 +209,7 @@ class SceneExecuteDataPickerView: UIView {
         contentView.backgroundColor = .white
         contentView.layer.cornerRadius = SCRYFrom(15)
         addSubview(contentView)
-        let contentHeight = showCct ? SCRYFrom(220) : SCRYFrom(120)
+        let contentHeight = showCct ? SCRYFrom(244) : SCRYFrom(146)
         contentView.snp.makeConstraints { make in
             make.left.equalTo(SCRXFrom(8))
             make.right.equalTo(SCRXFrom(-8))
@@ -187,16 +221,31 @@ class SceneExecuteDataPickerView: UIView {
             make.height.equalTo(contentHeight)
         }
         
-        var lightnessValue = lightness
+        offBtn = UIButton(title: "OFF", titleSize: 12, titleWeight: .medium, titleColor: RGB(102, 103, 171), target: self, action: #selector(offBtnAction))
+        offBtn.layer.cornerRadius = SCRYFrom(10)
+        offBtn.layer.borderWidth = 1
+        offBtn.layer.borderColor = RGB(147, 148, 196).cgColor
+        contentView.addSubview(offBtn)
+        offBtn.snp.makeConstraints { make in
+            make.left.equalTo(SCRXFrom(20))
+            make.top.equalTo(SCRYFrom(16))
+            make.width.equalTo(SCRXFrom(52))
+            make.height.equalTo(SCRYFrom(32))
+        }
+        
+        var lightnessValue = isOn ? lightness : 0
         if let range = lightnessLimitRange {
             lightnessValue = max(range.lowerBound, min(range.upperBound, lightnessValue))
+        }
+        if lightnessValue == 0 {
+            isOn = false
         }
         
         lightnessLabel = UILabel(text: "\(lightnessValue)%", textColor: TextBlack_Color, fontSize: 14, fontWeight: .light)
         contentView.addSubview(lightnessLabel)
         lightnessLabel.snp.makeConstraints { make in
             make.right.equalTo(SCRXFrom(-67))
-            make.top.equalTo(SCRYFrom(24))
+            make.top.equalTo(SCRYFrom(48))
         }
         
      
@@ -209,6 +258,8 @@ class SceneExecuteDataPickerView: UIView {
         lightnessSliderView.titleLabel.isHidden = true
         lightnessSliderView.valueChangedCallback = {[weak self] value in
             self?.lightnessLabel.text = "\(value)%"
+            self?.isOn = value > 0
+            self?.updateOffButtonState()
         }
         contentView.addSubview(lightnessSliderView)
         lightnessSliderView.snp.makeConstraints { make in
@@ -230,6 +281,7 @@ class SceneExecuteDataPickerView: UIView {
             make.right.equalTo(SCRXFrom(-47))
             make.top.bottom.equalToSuperview()
         }
+        updateOffButtonState()
         
         guard showCct else {
             return

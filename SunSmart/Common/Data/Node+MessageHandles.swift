@@ -22,7 +22,9 @@ extension Scene {
             // 设备是否支持色温model
             let targetData = data.deviceTarget(for: node)
             let lightness = targetData.lightness
-            if let ctlModel = node.ctlModel, node.effectiveSupportCct {
+            if !targetData.isOn, let onoffModel = node.onoffModel {
+                messageHandles.append(MeshMessageHandle(message: GenericOnOffSet(false), model: onoffModel))
+            }else if let ctlModel = node.ctlModel, node.effectiveSupportCct {
                 messageHandles.append(MeshMessageHandle(message: LightCTLSet(lightness: lightness, temperature: targetData.cct, deltaUV: 0, transitionTime: .immediate, delay: 0), model: ctlModel))
             }else if let lightnessModel = node.lightnessModel { // 不支持色温则只设置亮度
                 messageHandles.append(MeshMessageHandle(message: LightLightnessSet(lightness: lightness, transitionTime: .immediate, delay: 0), model: lightnessModel))

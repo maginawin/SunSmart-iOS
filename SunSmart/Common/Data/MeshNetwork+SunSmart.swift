@@ -1413,7 +1413,7 @@ extension SceneExecuteData {
         let data = SceneExecuteData(
             sceneNumber: sceneNumber,
             isOn: isOn,
-            lightness: lightness,
+            lightness: isOn ? lightness : 0,
             cct: node.effectiveSupportCct ? node.clampEffectiveCct(cct) : cct,
             lightControlData: lightControlData
         )
@@ -1424,13 +1424,18 @@ extension SceneExecuteData {
     }
 
     /// 判断设备缓存的场景数据是否已达到组场景在该设备上的实际目标。
-    /// 不支持 CCT 的设备只比较场景、开关、亮度和状态，不让 CCT 字段影响同步结果。
+    /// OFF 场景只比较开关状态，不让未下发的亮度和色温字段影响同步结果。
     func isSynced(with groupSceneData: SceneExecuteData, for node: Node) -> Bool {
         let target = groupSceneData.deviceTarget(for: node)
         guard sceneNumber == target.sceneNumber,
               isOn == target.isOn,
-              lightness == target.lightness,
               state == target.state else {
+            return false
+        }
+        guard target.isOn else {
+            return true
+        }
+        guard lightness == target.lightness else {
             return false
         }
         guard node.effectiveSupportCct else {
@@ -2732,7 +2737,8 @@ extension Node {
                     }
                 }
                 
-                let sceneData = SceneExecuteData(sceneNumber: sceneId, isOn: lightness > 0, lightness: lightness, cct: clampEffectiveCct(cct))
+                let isOn = groupSceneData?.isOn ?? (lightness > 0)
+                let sceneData = SceneExecuteData(sceneNumber: sceneId, isOn: isOn, lightness: isOn ? lightness : 0, cct: clampEffectiveCct(cct))
     //            let sceneData = self.sceneExecuteDatas.first(where: { $0.sceneNumber == sceneId })
                 if let sceneIndex = self.sceneExecuteDatas.firstIndex(where: { $0.sceneNumber == sceneId }) {
                     self.sceneExecuteDatas.replaceSubrange(sceneIndex...sceneIndex, with: [sceneData])
