@@ -35,6 +35,14 @@ class FirmwareUpdateTypeData {
     
     /// 是否展开
     var isShow: Bool = false
+    /// Battery Power Switch OTA提示是否展开
+    var isBatteryPowerSwitchOTAHintExpanded: Bool = false
+    
+    /// 是否为Battery Power Switch类型
+    var isBatteryPowerSwitchType: Bool {
+        return nodes.contains(where: { $0.isBatteryPowerSwitch })
+    }
+    
     /// 类别名称
     var categoryName: String? {
         return MeshLibManager.manager.supportDeviceInfos.first(where: { $0.productId == self.productId })?.categoryName

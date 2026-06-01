@@ -7,6 +7,7 @@
 
 import UIKit
 import NordicSigMeshSDK
+import SnapKit
 
 protocol BleFirmwareTypeUpdateViewCellDelegate: AnyObject {
     
@@ -58,6 +59,13 @@ class BleFirmwareTypeUpdateViewCell: UICollectionViewCell {
     private var totalNumberLabel: UILabel!
     private var upgradedLabel: UILabel!
     var upgradedNumberLabel: UILabel!
+    /// Battery Power Switch OTA提示
+    private var batteryPowerSwitchOTAHintContainerView: UIView!
+    private var batteryPowerSwitchOTAHintLabel: UILabel!
+    private var batteryPowerSwitchOTAHintButton: UIButton!
+    private var batteryPowerSwitchOTAHintHeightConstraint: Constraint?
+    private var batteryPowerSwitchOTAHintBottomSpacingConstraint: Constraint?
+    private var sizingContentWidth: CGFloat = 0
     
     /// 设备列表
     var deviceTableView: UITableView!
@@ -118,13 +126,89 @@ class BleFirmwareTypeUpdateViewCell: UICollectionViewCell {
         fatalError("init(coder:) has not been implemented")
     }
     
+    override func preferredLayoutAttributesFitting(_ layoutAttributes: UICollectionViewLayoutAttributes) -> UICollectionViewLayoutAttributes {
+        let attributes = super.preferredLayoutAttributesFitting(layoutAttributes)
+        let targetWidth = layoutAttributes.frame.width > 0 ? layoutAttributes.frame.width : SCREEN_WIDTH - SCRXFrom(32)
+        sizingContentWidth = targetWidth
+        contentView.bounds.size.width = targetWidth
+        updateBatteryPowerSwitchOTAHintLayout()
+        setNeedsLayout()
+        layoutIfNeeded()
+        
+        let fittingSize = contentView.systemLayoutSizeFitting(
+            CGSize(width: targetWidth, height: UIView.layoutFittingCompressedSize.height),
+            withHorizontalFittingPriority: .required,
+            verticalFittingPriority: .fittingSizeLevel
+        )
+        attributes.frame.size = CGSize(width: targetWidth, height: ceil(fittingSize.height))
+        return attributes
+    }
+    
     // MARK: - Action
     /// 当前版本
     @objc private func targetVersionAction() {
         delegate?.cell(self, viewCurrentTargetVersion: firmwareTypeData)
     }
     
+    private var batteryPowerSwitchOTAHintContentWidth: CGFloat {
+        if sizingContentWidth > 0 {
+            return sizingContentWidth
+        }
+        if contentView.bounds.width > 0 {
+            return contentView.bounds.width
+        }
+        if bounds.width > 0 {
+            return bounds.width
+        }
+        return SCREEN_WIDTH - SCRXFrom(32)
+    }
+    
+    private var batteryPowerSwitchOTAHintTextWidth: CGFloat {
+        return max(1, batteryPowerSwitchOTAHintContentWidth - SCRXFrom(24) - SCRXFrom(20) - SCRXFrom(50))
+    }
+    
+    private var batteryPowerSwitchOTAHintHeight: CGFloat {
+        guard firmwareTypeData?.isBatteryPowerSwitchOTAHintExpanded == true else {
+            return SCRYFrom(50)
+        }
+        let text = "battery_power_switch_ota_hint".localizedString as NSString
+        let paragraphStyle = NSMutableParagraphStyle()
+        paragraphStyle.minimumLineHeight = SCRYFrom(20)
+        paragraphStyle.maximumLineHeight = SCRYFrom(20)
+        let textHeight = text.boundingRect(
+            with: CGSize(width: batteryPowerSwitchOTAHintTextWidth, height: CGFloat.greatestFiniteMagnitude),
+            options: [.usesLineFragmentOrigin, .usesFontLeading],
+            attributes: [
+                .font: UIFont.systemFont(ofSize: FontFit(13), weight: .light),
+                .paragraphStyle: paragraphStyle
+            ],
+            context: nil
+        ).height
+        return max(SCRYFrom(50), ceil(textHeight) + SCRYFrom(32))
+    }
+    
+    private func updateBatteryPowerSwitchOTAHintLayout() {
+        guard firmwareTypeData != nil else {
+            return
+        }
+        let showsBatteryPowerSwitchOTAHint = firmwareTypeData.isShow && firmwareTypeData.isBatteryPowerSwitchType
+        batteryPowerSwitchOTAHintContainerView.isHidden = !showsBatteryPowerSwitchOTAHint
+        if firmwareTypeData.isBatteryPowerSwitchOTAHintExpanded {
+            batteryPowerSwitchOTAHintLabel.numberOfLines = 0
+            batteryPowerSwitchOTAHintLabel.lineBreakMode = .byWordWrapping
+        }else {
+            batteryPowerSwitchOTAHintLabel.numberOfLines = 1
+            batteryPowerSwitchOTAHintLabel.lineBreakMode = .byTruncatingTail
+        }
+        batteryPowerSwitchOTAHintLabel.preferredMaxLayoutWidth = batteryPowerSwitchOTAHintTextWidth
+        batteryPowerSwitchOTAHintButton.setImage(UIImage(named: firmwareTypeData.isBatteryPowerSwitchOTAHintExpanded ? "arrow_fold_up" : "arrow_fold_down"), for: .normal)
+        batteryPowerSwitchOTAHintHeightConstraint?.update(offset: showsBatteryPowerSwitchOTAHint ? batteryPowerSwitchOTAHintHeight : 0)
+        batteryPowerSwitchOTAHintBottomSpacingConstraint?.update(offset: showsBatteryPowerSwitchOTAHint ? SCRYFrom(8) : 0)
+    }
+    
     func reload() {
+        updateBatteryPowerSwitchOTAHintLayout()
+        
         if firmwareTypeData.isShow {
             
             if firmwareTypeData.nodes.count > 4 {
@@ -212,6 +296,16 @@ class BleFirmwareTypeUpdateViewCell: UICollectionViewCell {
 //        }
         
         self.delegate?.cell(self, didShowDevices: firmwareTypeData.isShow)
+    }
+    
+    /// Battery Power Switch OTA提示展开/收起
+    @objc private func batteryPowerSwitchOTAHintAction() {
+        guard firmwareTypeData.isBatteryPowerSwitchType, firmwareTypeData.isShow else {
+            return
+        }
+        firmwareTypeData.isBatteryPowerSwitchOTAHintExpanded.toggle()
+        reload()
+        delegate?.cell(self, didShowDevices: firmwareTypeData.isShow)
     }
     
     // MARK: - UI
@@ -349,6 +443,52 @@ class BleFirmwareTypeUpdateViewCell: UICollectionViewCell {
             make.centerY.equalTo(upgradedNumberLabel)
         }
         
+        batteryPowerSwitchOTAHintContainerView = UIView()
+        batteryPowerSwitchOTAHintContainerView.backgroundColor = RGB(255, 243, 227)
+        batteryPowerSwitchOTAHintContainerView.layer.cornerRadius = SCRYFrom(15)
+        batteryPowerSwitchOTAHintContainerView.layer.masksToBounds = true
+        batteryPowerSwitchOTAHintContainerView.isHidden = true
+        batteryPowerSwitchOTAHintContainerView.addGestureRecognizer(UITapGestureRecognizer(target: self, action: #selector(batteryPowerSwitchOTAHintAction)))
+        contentView.addSubview(batteryPowerSwitchOTAHintContainerView)
+        batteryPowerSwitchOTAHintContainerView.snp.makeConstraints { make in
+            make.left.equalTo(SCRXFrom(12))
+            make.right.equalTo(SCRXFrom(-12))
+            make.top.equalTo(deviceNumberView.snp.bottom)
+            batteryPowerSwitchOTAHintHeightConstraint = make.height.equalTo(0).constraint
+        }
+        
+        let paragraphStyle = NSMutableParagraphStyle()
+        paragraphStyle.minimumLineHeight = SCRYFrom(20)
+        paragraphStyle.maximumLineHeight = SCRYFrom(20)
+        batteryPowerSwitchOTAHintLabel = UILabel(text: "battery_power_switch_ota_hint".localizedString, textColor: RGB(100, 116, 139), fontSize: 13, fontWeight: .light)
+        batteryPowerSwitchOTAHintLabel.attributedText = NSAttributedString(
+            string: "battery_power_switch_ota_hint".localizedString,
+            attributes: [
+                .font: UIFont.systemFont(ofSize: FontFit(13), weight: .light),
+                .foregroundColor: RGB(100, 116, 139),
+                .paragraphStyle: paragraphStyle
+            ]
+        )
+        batteryPowerSwitchOTAHintLabel.numberOfLines = 1
+        batteryPowerSwitchOTAHintLabel.lineBreakMode = .byTruncatingTail
+        batteryPowerSwitchOTAHintLabel.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
+        batteryPowerSwitchOTAHintLabel.setContentHuggingPriority(.defaultLow, for: .horizontal)
+        batteryPowerSwitchOTAHintContainerView.addSubview(batteryPowerSwitchOTAHintLabel)
+        batteryPowerSwitchOTAHintLabel.snp.makeConstraints { make in
+            make.left.equalTo(SCRXFrom(20))
+            make.right.equalTo(SCRXFrom(-50))
+            make.top.equalTo(SCRYFrom(16))
+            make.bottom.lessThanOrEqualTo(SCRYFrom(-16))
+        }
+        
+        batteryPowerSwitchOTAHintButton = UIButton(normalImageName: "arrow_fold_down", target: self, action: #selector(batteryPowerSwitchOTAHintAction))
+        batteryPowerSwitchOTAHintContainerView.addSubview(batteryPowerSwitchOTAHintButton)
+        batteryPowerSwitchOTAHintButton.snp.makeConstraints { make in
+            make.right.equalTo(SCRXFrom(-8))
+            make.top.equalTo(SCRYFrom(10))
+            make.width.height.equalTo(SCRYFrom(30))
+        }
+        
         deviceTableView = UITableView(frame: .zero, style: .grouped)
         deviceTableView.backgroundColor = Background_Color
         deviceTableView.layer.cornerRadius = SCRYFrom(8)
@@ -361,7 +501,7 @@ class BleFirmwareTypeUpdateViewCell: UICollectionViewCell {
         contentView.addSubview(deviceTableView)
         deviceTableView.snp.makeConstraints { make in
             make.left.right.equalToSuperview()
-            make.top.equalTo(deviceNumberView.snp.bottom)
+            batteryPowerSwitchOTAHintBottomSpacingConstraint = make.top.equalTo(batteryPowerSwitchOTAHintContainerView.snp.bottom).offset(0).constraint
             make.height.equalTo(0).priority(.low)
         }
         
