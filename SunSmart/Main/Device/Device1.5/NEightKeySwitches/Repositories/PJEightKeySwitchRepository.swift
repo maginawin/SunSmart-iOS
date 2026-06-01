@@ -284,6 +284,20 @@ final class PJEightKeySwitchRepository {
     }
 
     func metadata(for switchData: DeviceSwitchData, meshUUID: String? = nil, networkId: String? = nil) -> Metadata? {
+        metadata(
+            for: switchData,
+            meshUUID: meshUUID,
+            networkId: networkId,
+            inferredPowerSwitchKind: switchData.proxyNode?.powerSwitchKind
+        )
+    }
+
+    func metadata(
+        for switchData: DeviceSwitchData,
+        meshUUID: String? = nil,
+        networkId: String? = nil,
+        inferredPowerSwitchKind: PJEightKeyPowerSwitchKind?
+    ) -> Metadata? {
         guard let uuid = meshUUID ?? MeshNetworkManager.instance.meshNetwork?.uuid.uuidString else { return nil }
         let subNetworkKey = networkId ?? MeshNetworkManager.instance.currentNetworkKey.networkId.hex
         let filter = Self.table.filter(
@@ -306,7 +320,6 @@ final class PJEightKeySwitchRepository {
         )
         let syncState = PJEightKeySwitchSyncState(rawValue: row[ExpressionKey.syncState]) ?? .synced
         let storedPowerSwitchKind = PJEightKeyPowerSwitchKind(rawValue: row[ExpressionKey.powerSwitchKind]) ?? .battery
-        let inferredPowerSwitchKind = switchData.proxyNode?.powerSwitchKind
         let powerSwitchKind = inferredPowerSwitchKind ?? storedPowerSwitchKind
         let batteryLevel: UInt8? = {
             guard let value = row[ExpressionKey.batteryLevel],
@@ -358,5 +371,228 @@ final class PJEightKeySwitchRepository {
             ExpressionKey.subNetworkKey == networkId
         )
         _ = try? SunSmartDataManager.shared.db?.run(filter.delete())
+    }
+}
+
+struct PJEightKeySwitchSharePayload {
+
+    static let key = "powerSwitch"
+
+    private enum PayloadKey {
+        static let schemaVersion = "schemaVersion"
+        static let powerSwitchKind = "powerSwitchKind"
+        static let eightKeyPanelType = "eightKeyPanelType"
+        static let moreSettings = "moreSettings"
+        static let periodicReporting = "periodicReporting"
+        static let ledIndicatorEnabled = "ledIndicatorEnabled"
+        static let sync = "sync"
+        static let syncState = "syncState"
+        static let desiredConfigVersion = "desiredConfigVersion"
+        static let desiredConfigHash = "desiredConfigHash"
+        static let appliedConfigHash = "appliedConfigHash"
+        static let lastSyncFailedReason = "lastSyncFailedReason"
+        static let lastSyncedAt = "lastSyncedAt"
+        static let battery = "battery"
+        static let batteryLevel = "level"
+        static let batteryLastUpdateTime = "lastUpdateTime"
+        static let applied = "applied"
+        static let txEnabled = "txEnabled"
+        static let appliedLEDIndicatorEnabled = "ledIndicatorEnabled"
+    }
+
+    static func dictionary(
+        for switchData: DeviceSwitchData,
+        meshUUID: String,
+        networkId: String,
+        proxyNode: Node?
+    ) -> [String: Any]? {
+        guard let metadata = PJEightKeySwitchRepository.shared.metadata(
+            for: switchData,
+            meshUUID: meshUUID,
+            networkId: networkId,
+            inferredPowerSwitchKind: proxyNode?.powerSwitchKind
+        ) else {
+            return nil
+        }
+
+        if let proxyNode {
+            guard proxyNode.isPowerSwitch else {
+                return nil
+            }
+            if let nodeKind = proxyNode.powerSwitchKind,
+               nodeKind != metadata.powerSwitchKind {
+                return nil
+            }
+        }
+
+        let moreSettings: [String: Any] = [
+            PayloadKey.periodicReporting: metadata.moreSettingsState.periodicReporting.rawValue,
+            PayloadKey.ledIndicatorEnabled: metadata.moreSettingsState.ledIndicatorEnabled
+        ]
+
+        var sync: [String: Any] = [
+            PayloadKey.syncState: metadata.syncState.rawValue,
+            PayloadKey.desiredConfigVersion: metadata.desiredConfigVersion,
+            PayloadKey.desiredConfigHash: metadata.desiredConfigHash,
+            PayloadKey.appliedConfigHash: metadata.appliedConfigHash
+        ]
+        if let lastSyncFailedReason = metadata.lastSyncFailedReason {
+            sync[PayloadKey.lastSyncFailedReason] = lastSyncFailedReason
+        }
+        if let lastSyncedAt = metadata.lastSyncedAt {
+            sync[PayloadKey.lastSyncedAt] = lastSyncedAt
+        }
+
+        var battery: [String: Any] = [:]
+        if let batteryLevel = metadata.batteryLevel {
+            battery[PayloadKey.batteryLevel] = Int(batteryLevel)
+        }
+        if let batteryLastUpdateTime = metadata.batteryLastUpdateTime {
+            battery[PayloadKey.batteryLastUpdateTime] = batteryLastUpdateTime
+        }
+
+        var applied: [String: Any] = [:]
+        if let appliedTxEnabled = metadata.appliedTxEnabled {
+            applied[PayloadKey.txEnabled] = appliedTxEnabled
+        }
+        if let appliedLEDIndicatorEnabled = metadata.appliedLEDIndicatorEnabled {
+            applied[PayloadKey.appliedLEDIndicatorEnabled] = appliedLEDIndicatorEnabled
+        }
+
+        return [
+            PayloadKey.schemaVersion: 1,
+            PayloadKey.powerSwitchKind: metadata.powerSwitchKind.rawValue,
+            PayloadKey.eightKeyPanelType: metadata.panelType.shareIdentifier,
+            PayloadKey.moreSettings: moreSettings,
+            PayloadKey.sync: sync,
+            PayloadKey.battery: battery,
+            PayloadKey.applied: applied
+        ]
+    }
+
+    static func metadata(
+        from dictionary: [String: Any],
+        proxyNode: Node?
+    ) -> PJEightKeySwitchRepository.Metadata? {
+        guard let powerSwitchKindRawValue = intValue(dictionary[PayloadKey.powerSwitchKind]),
+              let powerSwitchKind = PJEightKeyPowerSwitchKind(rawValue: powerSwitchKindRawValue),
+              let panelTypeIdentifier = dictionary[PayloadKey.eightKeyPanelType] as? String,
+              let panelType = PJEightKeySwitchPanelDefinition.PanelType(shareIdentifier: panelTypeIdentifier),
+              let moreSettingsDictionary = dictionary[PayloadKey.moreSettings] as? [String: Any],
+              let periodicReportingRawValue = intValue(moreSettingsDictionary[PayloadKey.periodicReporting]),
+              let periodicReporting = PJEightKeySwitchMoreSettingsViewModel.PeriodicReportingOption(rawValue: periodicReportingRawValue),
+              let ledIndicatorEnabled = boolValue(moreSettingsDictionary[PayloadKey.ledIndicatorEnabled]),
+              let syncDictionary = dictionary[PayloadKey.sync] as? [String: Any],
+              let syncStateRawValue = intValue(syncDictionary[PayloadKey.syncState]),
+              let syncState = PJEightKeySwitchSyncState(rawValue: syncStateRawValue),
+              let desiredConfigVersion = intValue(syncDictionary[PayloadKey.desiredConfigVersion]),
+              let desiredConfigHash = syncDictionary[PayloadKey.desiredConfigHash] as? String,
+              let appliedConfigHash = syncDictionary[PayloadKey.appliedConfigHash] as? String else {
+            return nil
+        }
+
+        if let proxyNode {
+            guard proxyNode.isPowerSwitch else {
+                return nil
+            }
+            if let nodeKind = proxyNode.powerSwitchKind,
+               nodeKind != powerSwitchKind {
+                return nil
+            }
+        }
+
+        let batteryDictionary = dictionary[PayloadKey.battery] as? [String: Any]
+        let batteryLevel = batteryLevelValue(batteryDictionary?[PayloadKey.batteryLevel])
+        let appliedDictionary = dictionary[PayloadKey.applied] as? [String: Any]
+        let moreSettingsState = PJEightKeySwitchMoreSettingsViewModel.State(
+            periodicReporting: periodicReporting,
+            ledIndicatorEnabled: ledIndicatorEnabled
+        )
+
+        return PJEightKeySwitchRepository.Metadata(
+            panelType: panelType,
+            powerSwitchKind: powerSwitchKind,
+            moreSettingsState: moreSettingsState,
+            syncState: syncState,
+            desiredConfigVersion: desiredConfigVersion,
+            desiredConfigHash: desiredConfigHash,
+            appliedConfigHash: appliedConfigHash,
+            lastSyncFailedReason: syncDictionary[PayloadKey.lastSyncFailedReason] as? String,
+            lastSyncedAt: int64Value(syncDictionary[PayloadKey.lastSyncedAt]),
+            batteryLevel: batteryLevel,
+            batteryLastUpdateTime: int64Value(batteryDictionary?[PayloadKey.batteryLastUpdateTime]),
+            appliedTxEnabled: boolValue(appliedDictionary?[PayloadKey.txEnabled]),
+            appliedLEDIndicatorEnabled: boolValue(appliedDictionary?[PayloadKey.appliedLEDIndicatorEnabled])
+        )
+    }
+
+    private static func intValue(_ value: Any?) -> Int? {
+        switch value {
+        case let value as Int:
+            return value
+        case let value as Int64:
+            return Int(value)
+        case let value as UInt8:
+            return Int(value)
+        case let value as NSNumber:
+            return value.intValue
+        default:
+            return nil
+        }
+    }
+
+    private static func int64Value(_ value: Any?) -> Int64? {
+        switch value {
+        case let value as Int64:
+            return value
+        case let value as Int:
+            return Int64(value)
+        case let value as NSNumber:
+            return value.int64Value
+        default:
+            return nil
+        }
+    }
+
+    private static func boolValue(_ value: Any?) -> Bool? {
+        switch value {
+        case let value as Bool:
+            return value
+        case let value as NSNumber:
+            return value.boolValue
+        default:
+            return nil
+        }
+    }
+
+    private static func batteryLevelValue(_ value: Any?) -> UInt8? {
+        guard let intValue = intValue(value),
+              (0...100).contains(intValue) else {
+            return nil
+        }
+        return UInt8(intValue)
+    }
+}
+
+private extension PJEightKeySwitchPanelDefinition.PanelType {
+
+    var shareIdentifier: String {
+        switch self {
+        case .scene8Key:
+            return "scene8Key"
+        case .brightness8Key:
+            return "brightness8Key"
+        }
+    }
+
+    init?(shareIdentifier: String) {
+        switch shareIdentifier {
+        case "scene8Key":
+            self = .scene8Key
+        case "brightness8Key":
+            self = .brightness8Key
+        default:
+            return nil
+        }
     }
 }

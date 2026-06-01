@@ -576,6 +576,15 @@ extension SpaceData {
                 if let enOceanSecurityKey = switchData.enOceanSecurityKey {
                     dict.updateValue(enOceanSecurityKey, forKey: "enOceanSecurityKey")
                 }
+                let proxyNode = switchData.proxyNodeAddress.flatMap { meshNetwork.node(withAddress: $0) }
+                if let powerSwitch = PJEightKeySwitchSharePayload.dictionary(
+                    for: switchData,
+                    meshUUID: meshUUID,
+                    networkId: self.meshNetworkId,
+                    proxyNode: proxyNode
+                ) {
+                    dict.updateValue(powerSwitch, forKey: PJEightKeySwitchSharePayload.key)
+                }
                 
                 return dict
             }

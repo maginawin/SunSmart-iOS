@@ -419,7 +419,12 @@ class DeviceSwitchesViewController: UIViewController {
         if let indexPath = collectionView.indexPathForItem(at: point), indexPath.item < MeshNetworkManager.instance.switchs.count {
             let switche = MeshNetworkManager.instance.switchs[indexPath.item]
             if let eightKeySwitch = eightKeySwitchData(for: switche) {
+                guard space.deviceOperates.contains(.edit) else {
+                    XWHUDManager.showTipHUD("no_permission".localizedString, isLineFeed: true)
+                    return
+                }
                 let vc = PJPreAddEightKeySwitchesVC(space: space, switchData: eightKeySwitch)
+                vc.editable = space.deviceOperates.contains(.edit)
                 vc.deleteSwitchAction = { [weak self] switchData, source in
                     guard let self else { return }
                     self.deleteConfirmedSwitch(switchData, source: source)
