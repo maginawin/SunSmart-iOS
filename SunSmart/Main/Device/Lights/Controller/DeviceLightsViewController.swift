@@ -971,6 +971,9 @@ extension DeviceLightsViewController: UICollectionViewDataSource, UICollectionVi
             }
         }else { // 设备点击
             let node = devices[indexPath.row - 1]
+            guard !node.isEmergencySignController else {
+                return
+            }
             guard !showEmergencyControlBlockedIfNeeded(node: node) else {
                 return
             }

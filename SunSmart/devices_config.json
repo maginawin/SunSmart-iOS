@@ -1238,5 +1238,14 @@
         "iconCategory": "Gateway",
         "deviceCategory": "Gateway",
         "modelName": "SR-BL9036T-GW-WP4G"
+    },
+    {
+        "companyId": "0A78",
+        "productId": "24C1",
+        "categoryName": "EL Controller",
+        "elementCount": 3,
+        "iconCategory": "EMSign",
+        "deviceCategory": "Lighting",
+        "modelName": "SR-BL9036T-PCBA"
     }
 ]

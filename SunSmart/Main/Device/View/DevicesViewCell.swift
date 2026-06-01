@@ -53,10 +53,16 @@ class DevicesViewCell: UICollectionViewCell {
                     
 //                    progressView.isHidden = false
                     iconImageView.snp.updateConstraints { make in
-                        make.top.equalTo(SCRYFrom(12))
+                        make.top.equalTo(device.isEmergencySignController ? SCRYFrom(24) : SCRYFrom(12))
                     }
                     
-                    if device.isOn {
+                    if device.isEmergencySignController {
+                        nameLabel.textColor = Title_Color
+                        backgroundColor = .white
+                        progressView.isHidden = true
+                        progressView.setProgress(0, animated: false)
+                        device.lastLightness = 0
+                    }else if device.isOn {
                         nameLabel.textColor = Title_Color
                         var lightness100 = Node.getLightness100(lightness: device.lightness)
                         if device.isOn, device.lightness == 0, let trunOffLightness = device.trunOffLightness { // 开灯并且亮度0，设备亮度未上报；先显示设备关灯前的亮度值
@@ -75,7 +81,7 @@ class DevicesViewCell: UICollectionViewCell {
                         backgroundColor = RGB(226, 226, 226)
                         progress = 0
                     }
-                    progressView.isHidden = !device.supportDimming
+                    progressView.isHidden = device.isEmergencySignController || !device.supportDimming
                     progressView.setProgress(Int(progress), animated: progressAnimation)
 
                     if device.effectiveSupportCct {

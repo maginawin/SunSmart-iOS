@@ -1,0 +1,306 @@
+{
+    "UUID": "dc38db1a-efd1-4f4a-a3c7-24e5102e10b5",
+    "unicastAddress": "109C",
+    "deviceKey": "7c523134a040b12bd6b0a1d52e37ab6f",
+    "security": "secure",
+    "netKeys": [
+        {
+            "index": 0,
+            "updated": false
+        }
+    ],
+    "appKeys": [
+        {
+            "index": 0,
+            "updated": false
+        }
+    ],
+    "configComplete": true,
+    "name": "24C1",
+    "cid": "0A78",
+    "pid": "24C1",
+    "vid": "0003",
+    "crpl": "0200",
+    "features": {
+        "relay": 2,
+        "proxy": 2,
+        "friend": 2,
+        "lowPower": 0
+    },
+    "defaultTTL": 7,
+    "elements": [
+        {
+            "index": 0,
+            "location": "0000",
+            "models": [
+                {
+                    "modelId": "0000",
+                    "subscribe": [],
+                    "bind": []
+                },
+                {
+                    "modelId": "0002",
+                    "subscribe": [],
+                    "bind": [
+                        0
+                    ]
+                },
+                {
+                    "modelId": "1002",
+                    "subscribe": [],
+                    "bind": [
+                        0
+                    ]
+                },
+                {
+                    "modelId": "1000",
+                    "subscribe": [],
+                    "bind": [
+                        0
+                    ]
+                },
+                {
+                    "modelId": "1004",
+                    "subscribe": [],
+                    "bind": [
+                        0
+                    ]
+                },
+                {
+                    "modelId": "1006",
+                    "subscribe": [],
+                    "bind": [
+                        0
+                    ]
+                },
+                {
+                    "modelId": "1007",
+                    "subscribe": [],
+                    "bind": [
+                        0
+                    ]
+                },
+                {
+                    "modelId": "1300",
+                    "subscribe": [],
+                    "bind": [
+                        0
+                    ]
+                },
+                {
+                    "modelId": "1301",
+                    "subscribe": [],
+                    "bind": [
+                        0
+                    ]
+                },
+                {
+                    "modelId": "1203",
+                    "subscribe": [],
+                    "bind": [
+                        0
+                    ]
+                },
+                {
+                    "modelId": "1204",
+                    "subscribe": [],
+                    "bind": [
+                        0
+                    ]
+                },
+                {
+                    "modelId": "1206",
+                    "subscribe": [],
+                    "bind": [
+                        0
+                    ]
+                },
+                {
+                    "modelId": "1207",
+                    "subscribe": [],
+                    "bind": [
+                        0
+                    ]
+                },
+                {
+                    "modelId": "1200",
+                    "subscribe": [],
+                    "bind": [
+                        0
+                    ]
+                },
+                {
+                    "modelId": "1201",
+                    "subscribe": [],
+                    "bind": [
+                        0
+                    ]
+                },
+                {
+                    "modelId": "100C",
+                    "subscribe": [],
+                    "bind": [
+                        0
+                    ]
+                },
+                {
+                    "modelId": "1003",
+                    "subscribe": [],
+                    "bind": [
+                        0
+                    ]
+                },
+                {
+                    "modelId": "1001",
+                    "subscribe": [],
+                    "bind": [
+                        0
+                    ]
+                },
+                {
+                    "modelId": "1311",
+                    "subscribe": [],
+                    "bind": [
+                        0
+                    ]
+                },
+                {
+                    "modelId": "1205",
+                    "subscribe": [],
+                    "bind": [
+                        0
+                    ]
+                },
+                {
+                    "modelId": "1401",
+                    "subscribe": [],
+                    "bind": [
+                        0
+                    ]
+                },
+                {
+                    "modelId": "1403",
+                    "subscribe": [],
+                    "bind": [
+                        0
+                    ]
+                },
+                {
+                    "modelId": "1400",
+                    "subscribe": [],
+                    "bind": [
+                        0
+                    ]
+                },
+                {
+                    "modelId": "1404",
+                    "subscribe": [],
+                    "bind": [
+                        0
+                    ]
+                },
+                {
+                    "modelId": "0A780001",
+                    "subscribe": [],
+                    "bind": [
+                        0
+                    ]
+                }
+            ]
+        },
+        {
+            "index": 1,
+            "location": "0000",
+            "models": [
+                {
+                    "modelId": "1203",
+                    "subscribe": [],
+                    "bind": [
+                        0
+                    ]
+                },
+                {
+                    "modelId": "1204",
+                    "subscribe": [],
+                    "bind": [
+                        0
+                    ]
+                },
+                {
+                    "modelId": "1206",
+                    "subscribe": [],
+                    "bind": [
+                        0
+                    ]
+                },
+                {
+                    "modelId": "1207",
+                    "subscribe": [],
+                    "bind": [
+                        0
+                    ]
+                },
+                {
+                    "modelId": "1000",
+                    "subscribe": [],
+                    "bind": [
+                        0
+                    ]
+                },
+                {
+                    "modelId": "130F",
+                    "subscribe": [],
+                    "bind": [
+                        0
+                    ]
+                },
+                {
+                    "modelId": "1310",
+                    "subscribe": [],
+                    "bind": [
+                        0
+                    ]
+                },
+                {
+                    "modelId": "1400",
+                    "subscribe": [],
+                    "bind": [
+                        0
+                    ]
+                },
+                {
+                    "modelId": "1402",
+                    "subscribe": [],
+                    "bind": [
+                        0
+                    ]
+                }
+            ]
+        },
+        {
+            "index": 2,
+            "location": "0000",
+            "models": [
+                {
+                    "modelId": "1100",
+                    "subscribe": [],
+                    "bind": [
+                        0
+                    ]
+                },
+                {
+                    "modelId": "1101",
+                    "subscribe": [],
+                    "bind": [
+                        0
+                    ]
+                }
+            ]
+        }
+    ],
+    "excluded": false,
+    "cloudSyncedAt": null,
+    "localModifiedAt": "2026-06-01T09:13:10.912297",
+    "macAddress": "E5178FA51D1F",
+    "firmwareID": "0100010000000000"
+}

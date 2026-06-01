@@ -611,6 +611,9 @@ extension GroupMembersViewController: UICollectionViewDataSource, UICollectionVi
     
     func collectionView(_ collectionView: UICollectionView, didSelectItemAt indexPath: IndexPath) {
         let node = nodes[indexPath.item]
+        guard !node.isEmergencySignController else {
+            return
+        }
         if !node.isKeybindComplete {
             repair(node: node)
             return

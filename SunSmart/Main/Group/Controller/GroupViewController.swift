@@ -1310,6 +1310,9 @@ extension GroupViewController: UICollectionViewDataSource, UICollectionViewDeleg
     
     func collectionView(_ collectionView: UICollectionView, didSelectItemAt indexPath: IndexPath) {
         let node = group.nodes[indexPath.item]
+        guard !node.isEmergencySignController else {
+            return
+        }
         guard !showEmergencyControlBlockedIfNeeded() else {
             return
         }

@@ -24,7 +24,7 @@ class GroupDeviceViewCell: DevicesViewCell {
             
             if device.isKeybindComplete && device.state {
                 iconImageView.snp.updateConstraints { make in
-                    make.top.equalTo(SCRYFrom(10))
+                    make.top.equalTo(device.isEmergencySignController ? SCRYFrom(17) : SCRYFrom(10))
                 }
             }else {
                 iconImageView.snp.updateConstraints { make in

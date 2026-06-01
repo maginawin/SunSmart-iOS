@@ -1694,6 +1694,17 @@ extension Node {
     static func isPowerSwitch(companyIdentifier: UInt16?, productIdentifier: UInt16?) -> Bool {
         powerSwitchKind(companyIdentifier: companyIdentifier, productIdentifier: productIdentifier) != nil
     }
+
+    private static let emergencySignControllerCompanyIdentifier: UInt16 = 0x0A78
+    private static let emergencySignControllerProductIdentifiers: Set<UInt16> = [0x24C1]
+
+    static func isEmergencySignController(companyIdentifier: UInt16?, productIdentifier: UInt16?) -> Bool {
+        guard companyIdentifier == emergencySignControllerCompanyIdentifier,
+              let productIdentifier else {
+            return false
+        }
+        return emergencySignControllerProductIdentifiers.contains(productIdentifier)
+    }
     
     /// 设备类型
     enum DeviceType {
@@ -1798,6 +1809,14 @@ extension Node {
 
     var isPowerSwitch: Bool {
         return Node.isPowerSwitch(companyIdentifier: companyIdentifier, productIdentifier: productIdentifier)
+    }
+
+    var isEmergencySignController: Bool {
+        return Node.isEmergencySignController(companyIdentifier: companyIdentifier, productIdentifier: productIdentifier)
+    }
+
+    var isSupportVendorIdentify: Bool {
+        return true 
     }
 
     var batteryPowerSwitchPanelType: PJEightKeySwitchPanelDefinition.PanelType? {
@@ -2114,6 +2133,9 @@ extension Node {
     
     /// 默认的设备名称类型
     var defaultNameCategory: String? {
+        if isEmergencySignController {
+            return "EM"
+        }
         switch self.deviceType {
         case .light:
             return "L"
@@ -2193,6 +2215,9 @@ extension Node {
     /// 是否支持设置参数
     var supportSetParameter: Bool {
         guard self.sunricherVendorModel != nil, self.productIdentifier != nil else {
+            return false
+        }
+        if isEmergencySignController {
             return false
         }
         if self.deviceType == .switches ||
