@@ -56,6 +56,8 @@ class SyncDevicesViewController: UIViewController {
     private var syncNodes: [Node] = []
     /// SAVE Profile 期间临时禁用/恢复组内 PIR 传感器
     var profileSensorProtectionContext: ProfileSensorProtectionContext?
+    /// Group profile switch context. Only applies to normal group profile SAVE, not member add/remove flows.
+    var groupProfileSyncContext: GroupProfileSyncContext?
     private var batteryPowerSwitchActivationFlow: PJEightKeySwitchActivationFlow?
     private var batteryPowerSwitchOwnConfigurationFailed = false
     private var batteryPowerSwitchKeyConfigurationCompleted = false
@@ -146,6 +148,7 @@ class SyncDevicesViewController: UIViewController {
                     !remainingNodes.contains(node)
                 }
                 let effectiveMemberCount = remainingNodes.count + addedNodes.count
+                let profileSyncContext = (inNodes == nil && outNodes == nil) ? groupProfileSyncContext : nil
                 
                 outNodes?.forEach({ node in
                     let result = self.getSyncDeviceModel(group: group, node: node, effectiveMemberCount: effectiveMemberCount)
@@ -165,7 +168,12 @@ class SyncDevicesViewController: UIViewController {
                 })
                 
                 group.nodes.filter({ node in !(outNodes?.contains(node) ?? false) }).forEach { node in
-                    let result = self.getSyncDeviceModel(group: group, node: node, effectiveMemberCount: effectiveMemberCount)
+                    let result = self.getSyncDeviceModel(
+                        group: group,
+                        node: node,
+                        effectiveMemberCount: effectiveMemberCount,
+                        profileSyncContext: profileSyncContext
+                    )
                     if let removceDevice = result.removeDevice {
                         removeSection.devices.append(removceDevice)
                     }
@@ -1107,7 +1115,12 @@ class SyncDevicesViewController: UIViewController {
     ///   - node: 设备
     ///   - exitGroup: 是否退组
     /// - Returns: 需要配置的model，需要删除的model
-    private func getSyncDeviceModel(group: Group?, node: Node, effectiveMemberCount: Int? = nil) -> (configturationDevice: SyncDevicesModel?, removeDevice: SyncDevicesModel?) {
+    private func getSyncDeviceModel(
+        group: Group?,
+        node: Node,
+        effectiveMemberCount: Int? = nil,
+        profileSyncContext: GroupProfileSyncContext? = nil
+    ) -> (configturationDevice: SyncDevicesModel?, removeDevice: SyncDevicesModel?) {
         
         /// 删除操作
         var deleteSteps: [SyncDeviceStepModel] = []
@@ -1123,7 +1136,10 @@ class SyncDevicesViewController: UIViewController {
         
         var syncDataTypes: [NodeSyncData] = []
         if group != nil {
-            syncDataTypes = node.getSyncData(type: .group(group, effectiveMemberCount: effectiveMemberCount))
+            syncDataTypes = node.getSyncData(
+                type: .group(group, effectiveMemberCount: effectiveMemberCount),
+                profileSyncContext: profileSyncContext
+            )
             // 排序，如同步组按照优先级高到低排序同步数据
             if syncDataTypes.contains(where: { data in
                 if case .subscribeGroup = data { return true }

@@ -483,7 +483,7 @@ extension ProfileType {
             if let controlSceneModel = node.lightLCSceneModel {
                 messageHandles.append(MeshMessageHandle(message: SceneDelete(sceneNumber), model: controlSceneModel))
             }
-        case .profileDayToggleTriggerConditionLux(let id, let minLux, let maxLux, let useCalibrationValues, let destination, let sceneNumber), .profileNightToggleTriggerConditionLux(let id, let minLux, let maxLux, let useCalibrationValues, let destination, let sceneNumber):
+        case .profileDayToggleTriggerConditionLux(let id, let minLux, let maxLux, let useCalibrationValues, let destination, let sceneNumber, let forceFullSet), .profileNightToggleTriggerConditionLux(let id, let minLux, let maxLux, let useCalibrationValues, let destination, let sceneNumber, let forceFullSet):
             if let vendorModel = node.sunricherVendorModel {
                 if node.capabilities.contains(.lightSensorConditionSegmentSet) { // 是否支持分段设置
                     // 是否配置lux阈值
@@ -493,7 +493,7 @@ extension ProfileType {
                     // 设置使用校准值
                     var setUseCalibrationValues = true
                     
-                    if let condition = node.lightControlLuxTriggerConditions.first(where: { $0.index == id }) {
+                    if !forceFullSet, let condition = node.lightControlLuxTriggerConditions.first(where: { $0.index == id }) {
                         if condition.minLux == minLux && condition.maxLux == maxLux {
                             setLuxThreshold = false
                         }

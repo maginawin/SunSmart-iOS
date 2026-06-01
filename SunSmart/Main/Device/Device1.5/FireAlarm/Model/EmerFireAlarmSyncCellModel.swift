@@ -633,9 +633,9 @@ extension ProfileType {
             return true
         case .lightControlDelete(let sceneNumber):
             return !node.lightControlSceneExecuteDatas.contains(where: { $0.sceneNumber == sceneNumber })
-        case .profileDayToggleTriggerConditionLux(let id, _, _, _, _, _):
+        case .profileDayToggleTriggerConditionLux(let id, _, _, _, _, _, _):
             return node.lightControlLuxTriggerConditions.contains(where: { $0.index == id })
-        case .profileNightToggleTriggerConditionLux(let id, _, _, _, _, _):
+        case .profileNightToggleTriggerConditionLux(let id, _, _, _, _, _, _):
             return node.lightControlLuxTriggerConditions.contains(where: { $0.index == id })
         case .profileToggleTriggerConditionLuxDelete(let id):
             return !node.lightControlLuxTriggerConditions.contains(where: { $0.index == id })

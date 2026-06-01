@@ -244,6 +244,13 @@ class ProfileSettingsViewController: UIViewController, KeyboardScrollable {
         }
         
         let previousProfile = group?.info.profile
+        let groupProfileSyncContext = group.flatMap { group -> GroupProfileSyncContext? in
+            guard let previousProfile = previousProfile,
+                  previousProfile.type != selectProfile.type else {
+                return nil
+            }
+            return GroupProfileSyncContext(previousProfileType: previousProfile.type, savedProfileType: selectProfile.type)
+        }
         let sensorProtectionContext = group.flatMap { group -> ProfileSensorProtectionContext? in
             guard let previousProfile = previousProfile else {
                 return nil
@@ -254,9 +261,11 @@ class ProfileSettingsViewController: UIViewController, KeyboardScrollable {
         
         saveActionCallback?(selectProfile)
      
-        if let group = group, group.nodes.contains(where: { $0.needSync }) {
+        if let group = group,
+           group.nodes.contains(where: { $0.needSync }) || (groupProfileSyncContext?.shouldForceFullProfileSync == true && !group.nodes.isEmpty) {
             let vc = SyncDevicesViewController(type: .group(group, inNodes: nil, outNodes: nil))
             vc.profileSensorProtectionContext = sensorProtectionContext
+            vc.groupProfileSyncContext = groupProfileSyncContext
             vc.syncSuccessCallback = {[weak self] _ in
                 XWHUDManager.showSuccessTipHUD("done!".localizedString)
                 guard let self = self else { return }

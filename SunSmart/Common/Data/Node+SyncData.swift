@@ -8,6 +8,16 @@
 import Foundation
 import NordicSigMeshSDK
 
+/// Context for group profile synchronization that needs behavior beyond normal diff-based sync.
+struct GroupProfileSyncContext {
+    let previousProfileType: Profile.ProfileType
+    let savedProfileType: Profile.ProfileType
+
+    var shouldForceFullProfileSync: Bool {
+        previousProfileType != savedProfileType
+    }
+}
+
 /// 节点同步类型
 enum NodeSyncType {
     /// 组
@@ -182,9 +192,9 @@ enum ProfileType {
     /// 删除灯光控制场景
     case lightControlDelete(sceneNumber: SceneNumber)
     /// 根据lux切换白天profile条件配置
-    case profileDayToggleTriggerConditionLux(id: UInt8, minLux: UInt16, maxLux: UInt16, useCalibrationValues: Bool, destination: Address, sceneNumber: SceneNumber)
+    case profileDayToggleTriggerConditionLux(id: UInt8, minLux: UInt16, maxLux: UInt16, useCalibrationValues: Bool, destination: Address, sceneNumber: SceneNumber, forceFullSet: Bool)
     /// 根据lux切换晚上profile条件配置
-    case profileNightToggleTriggerConditionLux(id: UInt8, minLux: UInt16, maxLux: UInt16, useCalibrationValues: Bool, destination: Address, sceneNumber: SceneNumber)
+    case profileNightToggleTriggerConditionLux(id: UInt8, minLux: UInt16, maxLux: UInt16, useCalibrationValues: Bool, destination: Address, sceneNumber: SceneNumber, forceFullSet: Bool)
     /// 删除lux切换profile条件配置
     case profileToggleTriggerConditionLuxDelete(id: UInt8)
     /// 光照传感器lux条件触发锁定 delay: 锁定时间
@@ -366,7 +376,7 @@ extension Node {
     /// 获取设备需要同步的数据
     /// - Parameter type: 同步数据类型
     /// - Returns: 数据同步项list
-    func getSyncData(type: NodeSyncType) -> [NodeSyncData] {
+    func getSyncData(type: NodeSyncType, profileSyncContext: GroupProfileSyncContext? = nil) -> [NodeSyncData] {
         
         var syncDatas: [NodeSyncData] = []
         switch type {
@@ -390,7 +400,11 @@ extension Node {
             }
             
             // profile
-            let syncProfiles = getNodeSyncProfiles(group: group, effectiveMemberCount: effectiveMemberCount)
+            let syncProfiles = getNodeSyncProfiles(
+                group: group,
+                effectiveMemberCount: effectiveMemberCount,
+                profileSyncContext: profileSyncContext
+            )
             if syncProfiles.count > 0 {
                 syncDatas.append(.profile(types: syncProfiles))
             }
@@ -714,11 +728,11 @@ extension Node {
             let dayCondition = self.lightControlLuxTriggerConditions.first(where: { $0.index == dayData.id })
             
             if nightCondition == nil || nightCondition!.maxLux != nightTargetLux || nightCondition!.useCalibrationValues != nightData.useCalibrationValues || nightCondition!.destination != sceneDestination || nightCondition!.sceneNumber != nightData.sceneData.sceneNumber {
-                profileTypes.append(.profileNightToggleTriggerConditionLux(id: nightData.id, minLux: 0, maxLux: nightTargetLux, useCalibrationValues: nightData.useCalibrationValues, destination: sceneDestination, sceneNumber: nightData.sceneData.sceneNumber))
+                profileTypes.append(.profileNightToggleTriggerConditionLux(id: nightData.id, minLux: 0, maxLux: nightTargetLux, useCalibrationValues: nightData.useCalibrationValues, destination: sceneDestination, sceneNumber: nightData.sceneData.sceneNumber, forceFullSet: false))
             }
             
             if dayCondition == nil || dayCondition!.minLux != dayTargetLux || dayCondition!.useCalibrationValues != dayData.useCalibrationValues || dayCondition!.destination != sceneDestination || dayCondition!.sceneNumber != dayData.sceneData.sceneNumber {
-                profileTypes.append(.profileDayToggleTriggerConditionLux(id: dayData.id, minLux: dayTargetLux, maxLux: .max, useCalibrationValues: dayData.useCalibrationValues, destination: sceneDestination, sceneNumber: dayData.sceneData.sceneNumber))
+                profileTypes.append(.profileDayToggleTriggerConditionLux(id: dayData.id, minLux: dayTargetLux, maxLux: .max, useCalibrationValues: dayData.useCalibrationValues, destination: sceneDestination, sceneNumber: dayData.sceneData.sceneNumber, forceFullSet: false))
             }
             
         }
@@ -726,7 +740,11 @@ extension Node {
     }
     
     /// 获取需要同步的profile
-    func getNodeSyncProfiles(group: Group? = nil, effectiveMemberCount: Int? = nil) -> [ProfileType] {
+    func getNodeSyncProfiles(
+        group: Group? = nil,
+        effectiveMemberCount: Int? = nil,
+        profileSyncContext: GroupProfileSyncContext? = nil
+    ) -> [ProfileType] {
         
         var syncProfile: [ProfileType] = []
         
@@ -743,6 +761,7 @@ extension Node {
         }
         
         let groupProfile = group.info.profile
+        let forceFullProfileSync = profileSyncContext?.shouldForceFullProfileSync == true
         
         // 启用的传感器model
         var enableSensorModels: [Model] = []
@@ -835,7 +854,7 @@ extension Node {
                 let minLightness = Node.getLightness100(lightness: lightnessRange.lowerBound)
                 let maxLightness = Node.getLightness100(lightness: lightnessRange.upperBound)
                 
-                if lightnessSetupModel != nil && (groupLightnessRange.lowerBound != minLightness || groupLightnessRange.upperBound != maxLightness) {
+                if lightnessSetupModel != nil && (forceFullProfileSync || groupLightnessRange.lowerBound != minLightness || groupLightnessRange.upperBound != maxLightness) {
                     syncProfile.append(.highLowEndTrim(range: groupLightnessRange))
                 }
                 
@@ -878,8 +897,8 @@ extension Node {
                         if self.ambientLightSensorModel != nil && self.sunricherVendorModel != nil {
                             let coodition = self.lightControlLuxTriggerConditions.first(where: { $0.index == nightData.id })
                             let targetLux = preConfiguration.nightProfileStartsBelowLux ?? nightData.startsBelowLux
-                            if coodition == nil || coodition!.maxLux != targetLux || coodition!.useCalibrationValues != nightData.useCalibrationValues || coodition!.destination != sceneDestination || coodition!.sceneNumber != nightData.sceneData.sceneNumber {
-                                syncSceneProfiles.insert(.profileNightToggleTriggerConditionLux(id: nightData.id, minLux: 0, maxLux: targetLux, useCalibrationValues: nightData.useCalibrationValues, destination: sceneDestination, sceneNumber: nightData.sceneData.sceneNumber), at: 0)
+                            if forceFullProfileSync || coodition == nil || coodition!.maxLux != targetLux || coodition!.useCalibrationValues != nightData.useCalibrationValues || coodition!.destination != sceneDestination || coodition!.sceneNumber != nightData.sceneData.sceneNumber {
+                                syncSceneProfiles.insert(.profileNightToggleTriggerConditionLux(id: nightData.id, minLux: 0, maxLux: targetLux, useCalibrationValues: nightData.useCalibrationValues, destination: sceneDestination, sceneNumber: nightData.sceneData.sceneNumber, forceFullSet: forceFullProfileSync), at: 0)
                             }
                         }
                     }
@@ -896,8 +915,8 @@ extension Node {
                         if self.ambientLightSensorModel != nil && self.sunricherVendorModel != nil {
                             let coodition = self.lightControlLuxTriggerConditions.first(where: { $0.index == dayData.id })
                             let targetLux = preConfiguration.dayProfileStartsAboveLux ?? dayData.startsBelowLux
-                            if coodition == nil || coodition!.minLux != targetLux || coodition!.useCalibrationValues != dayData.useCalibrationValues || coodition!.destination != sceneDestination || coodition!.sceneNumber != dayData.sceneData.sceneNumber {
-                                syncSceneProfiles.insert(.profileDayToggleTriggerConditionLux(id: dayData.id, minLux: targetLux, maxLux: .max, useCalibrationValues: dayData.useCalibrationValues, destination: sceneDestination, sceneNumber: dayData.sceneData.sceneNumber), at: 0)
+                            if forceFullProfileSync || coodition == nil || coodition!.minLux != targetLux || coodition!.useCalibrationValues != dayData.useCalibrationValues || coodition!.destination != sceneDestination || coodition!.sceneNumber != dayData.sceneData.sceneNumber {
+                                syncSceneProfiles.insert(.profileDayToggleTriggerConditionLux(id: dayData.id, minLux: targetLux, maxLux: .max, useCalibrationValues: dayData.useCalibrationValues, destination: sceneDestination, sceneNumber: dayData.sceneData.sceneNumber, forceFullSet: forceFullProfileSync), at: 0)
                             }
                         }
                     }
@@ -916,7 +935,12 @@ extension Node {
                         lightLCProperty = self.lightLCProperty
                     }
                     
-                    let lightSyncProfiles = getNodeLightDataSyncProfiles(group: group, groupLightData: lightControlData, lightLCProperty: lightLCProperty)
+                    let lightSyncProfiles = getNodeLightDataSyncProfiles(
+                        group: group,
+                        groupLightData: lightControlData,
+                        lightLCProperty: lightLCProperty,
+                        forceFullProfileSync: forceFullProfileSync
+                    )
                     if lightSyncProfiles.count > 0 {
                         syncSceneProfiles.append(contentsOf: lightSyncProfiles)
                         // 是否修改control数据
@@ -988,18 +1012,18 @@ extension Node {
             
             switch groupProfile.powerUpState {
             case .off:
-                if powerUpState != .off {
+                if forceFullProfileSync || powerUpState != .off {
                     syncProfile.append(.powerOnState(state: .off))
                 }
             case .restore:
-                if powerUpState != .restore {
+                if forceFullProfileSync || powerUpState != .restore {
                     syncProfile.append(.powerOnState(state: .restore))
                 }
             case .definedLightLevel(let level):
                 let profileType = ProfileType.powerOnState(state: .definedLightLevel(level), cct: groupProfile.powerUpCct)
                 let targetCct = profileType.targetPowerUpCct(for: self)
                 let setCct = targetCct.map { $0 != self.defaultCct } ?? false
-                if powerUpState != .default || Node.getLightness(lightness100: Int(level)) != defalutLightness || setCct {
+                if forceFullProfileSync || powerUpState != .default || Node.getLightness(lightness100: Int(level)) != defalutLightness || setCct {
                     if let targetCct = targetCct {
                         syncProfile.append(.powerOnState(state: .definedLightLevel(level), cct: targetCct))
                     }else {
@@ -1012,7 +1036,7 @@ extension Node {
             if occupancyType || groupProfile.type == .proximityLighting || groupProfile.type == .proximityLightingWithPhotocell, self.presenceDetectedSensorModel != nil {
                 // profile 0~100% => 0~255
                 let resultValue = groupProfile.sensitivity.value16
-                if self.motionSensitivity != resultValue {
+                if forceFullProfileSync || self.motionSensitivity != resultValue {
                     syncProfile.append(.sensitivity(value: resultValue))
                 }
             }
@@ -1085,7 +1109,12 @@ extension Node {
         return syncProfile
     }
     
-    func getNodeLightDataSyncProfiles(group: Group, groupLightData: Profile.LightControlData, lightLCProperty: LightLCProperty) -> [ProfileType] {
+    func getNodeLightDataSyncProfiles(
+        group: Group,
+        groupLightData: Profile.LightControlData,
+        lightLCProperty: LightLCProperty,
+        forceFullProfileSync: Bool = false
+    ) -> [ProfileType] {
         
         let groupProfile = group.info.profile
         // 光照类型
@@ -1102,16 +1131,16 @@ extension Node {
         
         
         var syncProfile: [ProfileType] = []
-        if lightLCProperty.mode == nil || !lightLCProperty.mode! {
+        if forceFullProfileSync || lightLCProperty.mode == nil || !lightLCProperty.mode! {
             syncProfile.append(.mode(enabled: true))
         }
         
         if groupProfile.type == .occupancy_daylight || groupProfile.type == .occupancy || groupProfile.type == .proximityLighting || groupProfile.type == .proximityLightingWithPhotocell {
-            if lightLCProperty.occupancyMode == nil || !lightLCProperty.occupancyMode! {
+            if forceFullProfileSync || lightLCProperty.occupancyMode == nil || !lightLCProperty.occupancyMode! {
                 syncProfile.append(.occupancyMode(enabled: true))
             }
         }else {
-            if lightLCProperty.occupancyMode == nil || lightLCProperty.occupancyMode! {
+            if forceFullProfileSync || lightLCProperty.occupancyMode == nil || lightLCProperty.occupancyMode! {
                 syncProfile.append(.occupancyMode(enabled: false))
             }
         }
@@ -1130,29 +1159,29 @@ extension Node {
             manualOverrideState = .on
         }
         // 手动控制后延时开启灯光控制
-        if lightLCProperty.manualOverrideEnabled == nil || !lightLCProperty.manualOverrideEnabled! || lightLCProperty.manualOverrideTimeout != manualOverrideTimeout ||  lightLCProperty.manualControlState != manualOverrideState {
+        if forceFullProfileSync || lightLCProperty.manualOverrideEnabled == nil || !lightLCProperty.manualOverrideEnabled! || lightLCProperty.manualOverrideTimeout != manualOverrideTimeout ||  lightLCProperty.manualControlState != manualOverrideState {
             syncProfile.append(.manualOverrideTimeout(enabled: true, manualOverrideState: manualOverrideState, second: groupProfile.manualOverrideTimeout))
         }
         
         // 手动控制后进入第一阶段
         //               let vacancyType = groupProfile.type == .vacancy_daylight || groupProfile.type == .vacancy || groupProfile.type == .manualControl
         if groupProfile.type == .manualControl {
-            if lightLCProperty.manualControlMode == nil || !lightLCProperty.manualControlMode! {
+            if forceFullProfileSync || lightLCProperty.manualControlMode == nil || !lightLCProperty.manualControlMode! {
                 syncProfile.append(.manualControl(enabled: true))
             }
         }else {
-            if lightLCProperty.manualControlMode ?? true {
+            if forceFullProfileSync || (lightLCProperty.manualControlMode ?? true) {
                 syncProfile.append(.manualControl(enabled: false))
             }
         }
         
         if self.sunricherVendorModel != nil {
             if daylightType && daylightEnabled {
-                if lightLCProperty.lightAutoAdjustEnabled == nil || !lightLCProperty.lightAutoAdjustEnabled! {
+                if forceFullProfileSync || lightLCProperty.lightAutoAdjustEnabled == nil || !lightLCProperty.lightAutoAdjustEnabled! {
                     syncProfile.append(.lightAutoAdujustEnabled(enabled: true))
                 }
             }else {
-                if lightLCProperty.lightAutoAdjustEnabled == nil || lightLCProperty.lightAutoAdjustEnabled! {
+                if forceFullProfileSync || lightLCProperty.lightAutoAdjustEnabled == nil || lightLCProperty.lightAutoAdjustEnabled! {
                     syncProfile.append(.lightAutoAdujustEnabled(enabled: false))
                 }
             }
@@ -1171,31 +1200,31 @@ extension Node {
                 break
             case .occupancyLevel(let level):
                 if daylightType {
-                    if lightLCProperty.luxLevelOn == nil || lightLCProperty.luxLevelOn! != level {
+                    if forceFullProfileSync || lightLCProperty.luxLevelOn == nil || lightLCProperty.luxLevelOn! != level {
                         syncProfile.append(.occupancyLux(lux: level))
                     }
                 }else {
-                    if lightLCProperty.lightnessOn == nil || lightLCProperty.lightnessOn! != Node.getLightness(lightness100: level) {
+                    if forceFullProfileSync || lightLCProperty.lightnessOn == nil || lightLCProperty.lightnessOn! != Node.getLightness(lightness100: level) {
                         syncProfile.append(.occupancyLevel(value: level))
                     }
                 }
             case .vacantLevel(let level):
                 if daylightType {
-                    if lightLCProperty.luxLevelProlong == nil || lightLCProperty.luxLevelProlong! != level {
+                    if forceFullProfileSync || lightLCProperty.luxLevelProlong == nil || lightLCProperty.luxLevelProlong! != level {
                         syncProfile.append(.vacantLux(lux: level))
                     }
                 }else {
-                    if lightLCProperty.lightnessProlong == nil || lightLCProperty.lightnessProlong! != Node.getLightness(lightness100: level) {
+                    if forceFullProfileSync || lightLCProperty.lightnessProlong == nil || lightLCProperty.lightnessProlong! != Node.getLightness(lightness100: level) {
                         syncProfile.append(.vacantLevel(value: level))
                     }
                 }
             case .standbyLevel(let level):
                 if daylightType {
-                    if lightLCProperty.luxLevelStandby == nil || lightLCProperty.luxLevelStandby! != level {
+                    if forceFullProfileSync || lightLCProperty.luxLevelStandby == nil || lightLCProperty.luxLevelStandby! != level {
                         syncProfile.append(.standbyLux(lux: level))
                     }
                 }else {
-                    if lightLCProperty.lightnessStandby == nil || lightLCProperty.lightnessStandby! != Node.getLightness(lightness100: level) {
+                    if forceFullProfileSync || lightLCProperty.lightnessStandby == nil || lightLCProperty.lightnessStandby! != Node.getLightness(lightness100: level) {
                         syncProfile.append(.standbyLevel(value: level))
                     }
                 }
@@ -1209,26 +1238,26 @@ extension Node {
                     let level = enabled ? value : 0
                     
                     if daylightEnabled {
-                        if lightLCProperty.lightnessOn == nil || lightLCProperty.lightnessOn! != Node.getLightness(lightness100: level) {
+                        if forceFullProfileSync || lightLCProperty.lightnessOn == nil || lightLCProperty.lightnessOn! != Node.getLightness(lightness100: level) {
                             syncProfile.append(.occupancyLevel(value: level))
                         }
-                        if lightLCProperty.lightnessProlong == nil || lightLCProperty.lightnessProlong! != Node.getLightness(lightness100: level) {
+                        if forceFullProfileSync || lightLCProperty.lightnessProlong == nil || lightLCProperty.lightnessProlong! != Node.getLightness(lightness100: level) {
                             syncProfile.append(.vacantLevel(value: level))
                         }
-                        if lightLCProperty.lightnessStandby == nil || lightLCProperty.lightnessStandby! != Node.getLightness(lightness100: level) {
+                        if forceFullProfileSync || lightLCProperty.lightnessStandby == nil || lightLCProperty.lightnessStandby! != Node.getLightness(lightness100: level) {
                             syncProfile.append(.standbyLevel(value: level))
                         }
                     }else if occupancyType { // 日光感应并且存在占用感应profile，未校准时阶段启用默认百分比调光
                         let occupancyLevel = 100
                         let vacantLevel = 50
                         let standbyLevel = 0
-                        if lightLCProperty.lightnessOn == nil || lightLCProperty.lightnessOn! != Node.getLightness(lightness100: occupancyLevel) {
+                        if forceFullProfileSync || lightLCProperty.lightnessOn == nil || lightLCProperty.lightnessOn! != Node.getLightness(lightness100: occupancyLevel) {
                             syncProfile.append(.occupancyLevel(value: occupancyLevel))
                         }
-                        if lightLCProperty.lightnessProlong == nil || lightLCProperty.lightnessProlong! != Node.getLightness(lightness100: vacantLevel) {
+                        if forceFullProfileSync || lightLCProperty.lightnessProlong == nil || lightLCProperty.lightnessProlong! != Node.getLightness(lightness100: vacantLevel) {
                             syncProfile.append(.vacantLevel(value: vacantLevel))
                         }
-                        if lightLCProperty.lightnessStandby == nil || lightLCProperty.lightnessStandby! != Node.getLightness(lightness100: standbyLevel) {
+                        if forceFullProfileSync || lightLCProperty.lightnessStandby == nil || lightLCProperty.lightnessStandby! != Node.getLightness(lightness100: standbyLevel) {
                             syncProfile.append(.standbyLevel(value: standbyLevel))
                         }
                     }
@@ -1236,15 +1265,15 @@ extension Node {
                 
             case .taskLevel(let level):
                 if daylightType {
-                    if lightLCProperty.luxLevelOn == nil || lightLCProperty.luxLevelOn! != level { // 设置占用阶段无限长，维持该照度
+                    if forceFullProfileSync || lightLCProperty.luxLevelOn == nil || lightLCProperty.luxLevelOn! != level { // 设置占用阶段无限长，维持该照度
                         syncProfile.append(.occupancyLux(lux: level))
                     }
                 }else {
-                    if lightLCProperty.lightnessOn == nil || lightLCProperty.lightnessOn! != Node.getLightness(lightness100: level) { // 设置占用阶段无限长，维持该亮度
+                    if forceFullProfileSync || lightLCProperty.lightnessOn == nil || lightLCProperty.lightnessOn! != Node.getLightness(lightness100: level) { // 设置占用阶段无限长，维持该亮度
                         syncProfile.append(.occupancyLevel(value: level))
                     }
                 }
-                if lightLCProperty.timeRunOn != 0xFFFFFE {
+                if forceFullProfileSync || lightLCProperty.timeRunOn != 0xFFFFFE {
                     syncProfile.append(.t2(second: 0xFFFFFE))
                 }
             }
@@ -1253,23 +1282,23 @@ extension Node {
         lightData.times.forEach { time in
             switch time {
             case .t1(let second):
-                if lightLCProperty.timeFadeOn == nil || lightLCProperty.timeFadeOn! != min(second * 1000, 0xFFFFFE) {
+                if forceFullProfileSync || lightLCProperty.timeFadeOn == nil || lightLCProperty.timeFadeOn! != min(second * 1000, 0xFFFFFE) {
                     syncProfile.append(.t1(second: second))
                 }
             case .t2(let second):
-                if lightLCProperty.timeRunOn == nil || lightLCProperty.timeRunOn! != min(second * 1000, 0xFFFFFE) {
+                if forceFullProfileSync || lightLCProperty.timeRunOn == nil || lightLCProperty.timeRunOn! != min(second * 1000, 0xFFFFFE) {
                     syncProfile.append(.t2(second: second))
                 }
             case .t3(let second):
-                if lightLCProperty.timeFade == nil || lightLCProperty.timeFade! != min(second * 1000, 0xFFFFFE) {
+                if forceFullProfileSync || lightLCProperty.timeFade == nil || lightLCProperty.timeFade! != min(second * 1000, 0xFFFFFE) {
                     syncProfile.append(.t3(second: second))
                 }
             case .t4(let second):
-                if lightLCProperty.timeProlong == nil || lightLCProperty.timeProlong! != min(second * 1000, 0xFFFFFE) {
+                if forceFullProfileSync || lightLCProperty.timeProlong == nil || lightLCProperty.timeProlong! != min(second * 1000, 0xFFFFFE) {
                     syncProfile.append(.t4(second: second))
                 }
             case .t5(let second):
-                if lightLCProperty.timeFadeStandbyAuto == nil || lightLCProperty.timeFadeStandbyAuto! != min(second * 1000, 0xFFFFFE) {
+                if forceFullProfileSync || lightLCProperty.timeFadeStandbyAuto == nil || lightLCProperty.timeFadeStandbyAuto! != min(second * 1000, 0xFFFFFE) {
                     syncProfile.append(.t5(second: second))
                 }
             }
@@ -1279,7 +1308,8 @@ extension Node {
             // 调节速率
             let speedValue = groupProfile.adjustSpeed
             let regulatorData = Node.getLightRegulator(speed: speedValue)
-            if lightLCProperty.regulatorKid == nil || lightLCProperty.regulatorKid!.roundf2 != regulatorData.regulatorKid.roundf2 ||
+            if forceFullProfileSync ||
+                lightLCProperty.regulatorKid == nil || lightLCProperty.regulatorKid!.roundf2 != regulatorData.regulatorKid.roundf2 ||
                 lightLCProperty.regulatorKiu == nil || lightLCProperty.regulatorKiu!.roundf2 != regulatorData.regulatorKiu.roundf2 ||
                 lightLCProperty.regulatorKpd == nil || lightLCProperty.regulatorKpd!.roundf2 != regulatorData.regulatorKpd.roundf2 ||
                 lightLCProperty.regulatorKpu == nil || lightLCProperty.regulatorKpu!.roundf2 != regulatorData.regulatorKpu.roundf2 ||
