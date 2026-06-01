@@ -197,7 +197,7 @@ class DeviceLightViewController: UIViewController {
                 
                 let progress = CGFloat(Float(lightness100) / 100.0) * 0.5
                 var alpha = 0.5 + progress
-                if self.node.effectiveSupportCct {
+                if self.node.singleDeviceDisplaySupportCct {
                     let temperature100 = self.node.getEffectiveTemperature100(temperature: self.node.temperature)
                     lightBgView.image = UIImage(named: "device_light_bg")?.withTintColor(Node.getCctMixColor(temperature100: temperature100))
                     
@@ -826,7 +826,7 @@ class DeviceLightViewController: UIViewController {
     
     private func updateUI() {
         
-        if node.effectiveSupportCct {
+        if node.singleDeviceDisplaySupportCct {
             cctSlider.isHidden = false
             cctView.isHidden = false
         }else {
@@ -837,7 +837,7 @@ class DeviceLightViewController: UIViewController {
         if node.supportDimming {
             lightnessSlider.isHidden = false
             brightnessView.isHidden = false
-            if node.effectiveSupportCct {
+            if node.singleDeviceDisplaySupportCct {
                 brightnessView.snp.remakeConstraints { make in
                     make.right.equalTo(view.snp.centerX).offset(SCRXFrom(-42))
                     make.top.equalTo(lightBgView.snp.bottom).offset(SCRYFit(28))
