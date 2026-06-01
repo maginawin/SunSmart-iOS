@@ -64,7 +64,7 @@ class DaliMasterViewController: DeviceBaseViewController {
     private func setupUI() {
         
         var lightType: DaliMasterSingleControlView.LightType!
-        if node.effectiveSupportCct {
+        if node.singleDeviceDisplaySupportCct {
             lightType = .cct(range: node.effectiveCctRange)
         }else if node.lightnessModel != nil {
             lightType = .lightness
@@ -109,7 +109,7 @@ class DaliMasterViewController: DeviceBaseViewController {
                 
                 let progress = CGFloat(Float(lightness100) / 100.0) * 0.5
                 var alpha = 0.5 + progress
-                if self.node.effectiveSupportCct {
+                if self.node.singleDeviceDisplaySupportCct {
                     let temperature100 = self.node.getEffectiveTemperature100(temperature: self.node.temperature)
                     singleControlView.lightBgView.image = UIImage(named: "device_light_bg")?.withTintColor(Node.getCctMixColor(temperature100: temperature100))
                     

@@ -344,7 +344,7 @@ extension DeviceLightBasicController: UITableViewDataSource, UITableViewDelegate
         let sectionType = sections[section]
         switch sectionType {
         case .control:
-            return node.effectiveSupportCct ? 2 : 1
+            return node.singleDeviceDisplaySupportCct ? 2 : 1
         case .deviceInfo:
             let isShow = sectionShowMap[sectionType] ?? false
             return isShow ? deviceInfoModels.count : 0
@@ -480,7 +480,7 @@ extension DeviceLightBasicController: UITableViewDataSource, UITableViewDelegate
                     if sceneData.lightness == 0 {
                         cell.contentLabel.text = "off".localizedString
                     }else {
-                        if node.effectiveSupportCct {
+                        if node.singleDeviceDisplaySupportCct {
                             let cct100 = node.getEffectiveTemperature100(temperature: UInt16(sceneData.cct))
                             cell.contentLabel.text = "\("brightness".localizedString)-\(sceneData.lightness)%.\("cct".localizedString)-\(cct100)%"
                         }else {

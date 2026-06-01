@@ -31,6 +31,7 @@ class DeviceLightViewController: UIViewController {
     private var pwmPeriodLabel: UILabel!
     
     private var luxLabel: UILabel?
+    private var emergencySignIdentifyButton: UIButton?
     
     private weak var lastMessageDelegate: MeshLibManagerMessageDelegate?
     
@@ -71,20 +72,24 @@ class DeviceLightViewController: UIViewController {
 //        node.lightCTLTemperatureRange = 2700...6500
         // 初始化UI
         setupUI()
-        // 根据设备类型显示UI
-        updateUI()
-        // 绑定事件
-        bindSliderAction()
+        if node.isEmergencySignController {
+            setupEmergencySignUI()
+        } else {
+            // 根据设备类型显示UI
+            updateUI()
+            // 绑定事件
+            bindSliderAction()
+        }
         // 获取设备数据
         getNodeState()
         
 //#if DEBUG
-        relaySwitch.isHidden = false
-        relayLabel.isHidden = false
+        relaySwitch.isHidden = node.isEmergencySignController
+        relayLabel.isHidden = node.isEmergencySignController
         // 获取节点转发功能是否启用
         MeshAPI.getReplyState(address: node.primaryUnicastAddress, result: nil)
 //        #if DEBUG
-        if node.ambientLightSensorModel != nil {
+        if !node.isEmergencySignController, node.ambientLightSensorModel != nil {
             luxLabel = UILabel(text: "", textColor: TextBlack_Color, fontSize: 14)
             luxLabel?.isHidden = !node.preConfiguration.displayLux
             view.addSubview(luxLabel!)
@@ -111,9 +116,11 @@ class DeviceLightViewController: UIViewController {
         MeshLibManager.manager.messageDelegate = self
         // 更新数据
         updateData()
-        updateSliderValue()
+        if !node.isEmergencySignController {
+            updateSliderValue()
+        }
         
-        if node.ambientLightSensorModel != nil {
+        if !node.isEmergencySignController, node.ambientLightSensorModel != nil {
             getNodeAmbientSensorLux()
         }
     }
@@ -163,6 +170,10 @@ class DeviceLightViewController: UIViewController {
     
     /// 更新UI数据
     private func updateData() {
+        if node.isEmergencySignController {
+            updateEmergencySignData()
+            return
+        }
         
         self.relaySwitch.isOn = node.features?.relay == .enabled
         
@@ -186,7 +197,7 @@ class DeviceLightViewController: UIViewController {
                 
                 let progress = CGFloat(Float(lightness100) / 100.0) * 0.5
                 var alpha = 0.5 + progress
-                if self.node.effectiveSupportCct {
+                if self.node.singleDeviceDisplaySupportCct {
                     let temperature100 = self.node.getEffectiveTemperature100(temperature: self.node.temperature)
                     lightBgView.image = UIImage(named: "device_light_bg")?.withTintColor(Node.getCctMixColor(temperature100: temperature100))
                     
@@ -300,8 +311,8 @@ class DeviceLightViewController: UIViewController {
             }
         }))
         items.append(.init(icon: UIImage(named: "menu_information"), title: "identify".localizedString, tapItemBack: {[weak self] _ in
-            guard let self = self, let vendorModel = self.node.sunricherVendorModel else { return }
-            MeshAPI.sendMessage(message: SunricherVendorSet(function: .identify(mode: .breathe(count: 1, period: 1500))), model: vendorModel)
+            guard let self = self else { return }
+            self.sendIdentifyCommand()
 //            let appkey = MeshNetworkManager.instance.meshNetwork?.applicationKeys.first
 //            try? MeshNetworkManager.instance.send(AttentionSet(attentionTimer: 5), to: MeshAddress(self.node.primaryUnicastAddress), using:  MeshNetworkManager.instance.currentApplicationKey)
             
@@ -616,6 +627,9 @@ class DeviceLightViewController: UIViewController {
     // MARK: - Action
     
     @objc private func onoffAction(sender: UIButton) {
+        guard !node.isEmergencySignController else {
+            return
+        }
         node.isOn = !node.isOn
         if node.isOn {
             node.lightness = node.trunOffLightness ?? node.lightnessRange.upperBound
@@ -626,6 +640,138 @@ class DeviceLightViewController: UIViewController {
         MeshAPI.setNodeOnOffState(address: node.primaryUnicastAddress, isOn: node.isOn, ack: true)
         updateData()
         updateSliderValue()
+    }
+
+    private func setupEmergencySignUI() {
+        lightImageBtn.setImage(UIImage(named: "device_center_EMSign"), for: .normal)
+        lightImageBtn.setImage(UIImage(named: "device_center_EMSign"), for: .selected)
+        lightImageBtn.removeTarget(self, action: #selector(onoffAction), for: .touchUpInside)
+        lightImageBtn.isUserInteractionEnabled = false
+        lightImageBtn.isSelected = true
+        lightImageBtn.snp.remakeConstraints { make in
+            make.center.equalTo(lightBgView)
+            make.width.height.equalTo(SCRYFit(48))
+        }
+
+        lightBgView.image = UIImage(named: "device_light_bg")
+        lightBgView.alpha = 1
+        lightGrayBgView.alpha = 0
+
+        brightnessView.isHidden = true
+        cctView.isHidden = true
+        lightnessSlider.isHidden = true
+        cctSlider.isHidden = true
+        onoffBtn.isHidden = true
+        relaySwitch.isHidden = true
+        relayLabel.isHidden = true
+
+        let identifyButton = UIButton(normalImageName: "EMSign_identify", target: self, action: #selector(emergencySignIdentifyAction))
+        identifyButton.imageView?.contentMode = .scaleAspectFit
+        identifyButton.addTarget(self, action: #selector(emergencySignIdentifyTouchDown(_:)), for: .touchDown)
+        identifyButton.addTarget(self, action: #selector(emergencySignIdentifyTouchDown(_:)), for: .touchDragEnter)
+        identifyButton.addTarget(self, action: #selector(emergencySignIdentifyTouchUp(_:)), for: .touchUpInside)
+        identifyButton.addTarget(self, action: #selector(emergencySignIdentifyTouchUp(_:)), for: .touchUpOutside)
+        identifyButton.addTarget(self, action: #selector(emergencySignIdentifyTouchUp(_:)), for: .touchCancel)
+        identifyButton.addTarget(self, action: #selector(emergencySignIdentifyTouchUp(_:)), for: .touchDragExit)
+        view.addSubview(identifyButton)
+        identifyButton.snp.makeConstraints { make in
+            make.centerX.equalToSuperview()
+            make.top.equalTo(lightBgView.snp.bottom).offset(SCRYFit(160))
+            make.width.height.equalTo(isIPad ? 56 : 40)
+        }
+        emergencySignIdentifyButton = identifyButton
+    }
+
+    private func updateEmergencySignData() {
+        brightnessView.isHidden = true
+        cctView.isHidden = true
+        lightnessSlider.isHidden = true
+        cctSlider.isHidden = true
+        onoffBtn.isHidden = true
+        relaySwitch.isHidden = true
+        relayLabel.isHidden = true
+
+        if node.isKeybindComplete {
+            view.hideEmptyDataView()
+
+            guard node.state else {
+                emergencySignIdentifyButton?.isHidden = true
+                view.showEmptyDataView(imageName: "device_state_offline", title: "device_offline_message".localizedString, backgroundColor: Background_Color)
+                return
+            }
+
+            view.hideEmptyDataView()
+            emergencySignIdentifyButton?.isHidden = false
+            emergencySignIdentifyButton?.isEnabled = true
+            emergencySignIdentifyButton?.alpha = 1
+            lightImageBtn.isSelected = true
+            lightBgView.image = UIImage(named: "device_light_bg")
+            lightBgView.alpha = 1
+            lightGrayBgView.alpha = 0
+        } else {
+            emergencySignIdentifyButton?.isHidden = true
+            if view.emptyView == nil {
+                view.showEmptyDataView(imageName: "device_state_offline", title: "device_repair_message".localizedString, backgroundColor: Background_Color, buttonText: "repair".localizedString, buttomWidth: SCRXFrom(216), bottomMargin: SCRYFit(-78)) { [weak self] in
+                    self?.repairBtnClick()
+                }
+                if let emptyView = view.emptyView {
+                    if space.deviceOperates.contains(.edit) {
+                        emptyView.button.snp.updateConstraints { make in
+                            make.top.equalTo(emptyView.titleLabel.snp.bottom).offset(SCRYFrom(78))
+                        }
+                    } else {
+                        emptyView.button.isHidden = true
+                    }
+                }
+            }
+        }
+    }
+
+    private func sendIdentifyCommand() {
+        if node.isSupportVendorIdentify {
+            guard let vendorModel = node.sunricherVendorModel else { return }
+            MeshAPI.sendMessage(message: SunricherVendorSet(function: .identify(mode: .breathe(count: 1, period: 1500))), model: vendorModel)
+            return
+        }
+
+        MeshAPI.identify(address: node.primaryUnicastAddress)
+    }
+
+    @objc private func emergencySignIdentifyAction() {
+        guard node.isKeybindComplete, node.state else {
+            XWHUDManager.showTipHUD("device_offline_message".localizedString, isLineFeed: true)
+            return
+        }
+        sendIdentifyCommand()
+    }
+
+    @objc private func emergencySignIdentifyTouchDown(_ sender: UIButton) {
+        setEmergencySignIdentifyButton(sender, pressed: true)
+    }
+
+    @objc private func emergencySignIdentifyTouchUp(_ sender: UIButton) {
+        setEmergencySignIdentifyButton(sender, pressed: false)
+    }
+
+    private func setEmergencySignIdentifyButton(_ button: UIButton, pressed: Bool) {
+        if pressed {
+            UIView.animate(withDuration: 0.12, delay: 0, options: [.beginFromCurrentState, .curveEaseOut]) {
+                button.transform = CGAffineTransform(scaleX: 0.94, y: 0.94)
+                button.alpha = 0.72
+            }
+            return
+        }
+
+        UIView.animate(
+            withDuration: 0.28,
+            delay: 0,
+            usingSpringWithDamping: 0.72,
+            initialSpringVelocity: 0.45,
+            options: [.beginFromCurrentState, .curveEaseOut]
+        ) {
+            button.transform = .identity
+            button.alpha = button.isEnabled ? 1 : 0.45
+        }
     }
     
     private func bindSliderAction() {
@@ -680,7 +826,7 @@ class DeviceLightViewController: UIViewController {
     
     private func updateUI() {
         
-        if node.effectiveSupportCct {
+        if node.singleDeviceDisplaySupportCct {
             cctSlider.isHidden = false
             cctView.isHidden = false
         }else {
@@ -691,7 +837,7 @@ class DeviceLightViewController: UIViewController {
         if node.supportDimming {
             lightnessSlider.isHidden = false
             brightnessView.isHidden = false
-            if node.effectiveSupportCct {
+            if node.singleDeviceDisplaySupportCct {
                 brightnessView.snp.remakeConstraints { make in
                     make.right.equalTo(view.snp.centerX).offset(SCRXFrom(-42))
                     make.top.equalTo(lightBgView.snp.bottom).offset(SCRYFit(28))
@@ -893,7 +1039,9 @@ extension DeviceLightViewController: MeshLibManagerMessageDelegate {
     func meshNetworkManager(_ manager: MeshNetworkManager, deviceDataUpdate node: Node) {
         if node.primaryUnicastAddress == self.node.primaryUnicastAddress {
             updateData()
-            updateSliderValue()
+            if !self.node.isEmergencySignController {
+                updateSliderValue()
+            }
         }
     }
     
@@ -917,7 +1065,9 @@ extension DeviceLightViewController: MeshLibManagerMessageDelegate {
             node.updateData(message: message)
             if node.primaryUnicastAddress == self.node.primaryUnicastAddress {
                 updateData()
-                updateSliderValue()
+                if !self.node.isEmergencySignController {
+                    updateSliderValue()
+                }
             }
         }
     }

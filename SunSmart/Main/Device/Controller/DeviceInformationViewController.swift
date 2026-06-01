@@ -298,7 +298,7 @@ extension DeviceInformationViewController: UITableViewDataSource, UITableViewDel
                 if sceneData.lightness == 0 {
                     cell.contentLabel.text = "off".localizedString
                 }else {
-                    if node.effectiveSupportCct {
+                    if node.singleDeviceDisplaySupportCct {
                         let cct100 = node.getEffectiveTemperature100(temperature: UInt16(sceneData.cct))
                         cell.contentLabel.text = "\("brightness".localizedString)-\(Node.getLightness100(lightness: sceneData.lightness))%.\("cct".localizedString)-\(cct100)%"
                     }else {
