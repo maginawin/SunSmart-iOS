@@ -28,6 +28,7 @@ final class PJPreAddEightKeySwitchesVC: UIViewController {
     
     var deleteSwitchAction: ((DeviceSwitchData, UIViewController) -> Void)?
     var switchSavedAction: ((PJEightKeySwitchData) -> Void)?
+    var editable = true
     
     private var viewModel: PJPreAddEightKeySwitchesViewModel
     private var initialSnapshot: Snapshot?
@@ -135,10 +136,12 @@ final class PJPreAddEightKeySwitchesVC: UIViewController {
     }
     
     @objc private func saveBarButtonAction() {
+        guard ensureEditable() else { return }
         submitAction()
     }
     
     @objc private func linkAction() {
+        guard ensureEditable() else { return }
         guard let switchData = prepareSwitchDataForLink() else {
             return
         }
@@ -199,6 +202,7 @@ final class PJPreAddEightKeySwitchesVC: UIViewController {
     }
     
     @objc private func moreSettingsAction() {
+        guard ensureEditable() else { return }
         let vc = PJEightKeySwitchMoreSettingsController(state: viewModel.moreSettings)
         vc.settingsChanged = { [weak self] state in
             self?.viewModel.moreSettings = state
@@ -208,6 +212,7 @@ final class PJPreAddEightKeySwitchesVC: UIViewController {
     }
     
     private func selectPanelAction() {
+        guard ensureEditable() else { return }
         let vc = PJEightKeySwitchSelectPanelController(selectedPanelType: viewModel.selectedPanelType)
         vc.selectPanelTypeCallback = { [weak self] (type: PJEightKeySwitchPanelDefinition.PanelType) in
             guard let self else { return }
@@ -226,6 +231,7 @@ final class PJPreAddEightKeySwitchesVC: UIViewController {
     }
     
     private func selectGroupsAction() {
+        guard ensureEditable() else { return }
         let vc = PJDeviceGroupSelectionViewController(
             context: .init(
                 title: "select_group(s)".localizedString,
@@ -244,6 +250,7 @@ final class PJPreAddEightKeySwitchesVC: UIViewController {
     }
     
     private func selectScenesAction() {
+        guard ensureEditable() else { return }
         if SRAlertView.isVisible() {
             return
         }
@@ -262,6 +269,7 @@ final class PJPreAddEightKeySwitchesVC: UIViewController {
     }
     
     private func submitAction() {
+        guard ensureEditable() else { return }
         view.endEditing(true)
         guard validateEditorInput() else {
             return
@@ -313,6 +321,7 @@ final class PJPreAddEightKeySwitchesVC: UIViewController {
     }
     
     private func deleteAction() {
+        guard ensureDeletable() else { return }
         guard let switchData = viewModel.sourceSwitchData else { return }
         guard switchData.proxyNode?.isBatteryPowerSwitch == true else {
             deleteSwitchAction?(switchData, self)
@@ -350,7 +359,7 @@ final class PJPreAddEightKeySwitchesVC: UIViewController {
             navigationItem.leftBarButtonItem = nil
         } else {
             navigationItem.leftBarButtonItem = backBarButtonItem
-            navigationItem.rightBarButtonItem = saveBarButtonItem
+            navigationItem.rightBarButtonItem = canEdit ? saveBarButtonItem : nil
         }
     }
     
@@ -403,6 +412,7 @@ final class PJPreAddEightKeySwitchesVC: UIViewController {
         updateLinkActionButtonState()
         updateSceneRowVisibility()
         initialSnapshot = makeSnapshot()
+        applyEditableState()
         updateSaveBarButtonState()
     }
     
@@ -414,7 +424,7 @@ final class PJPreAddEightKeySwitchesVC: UIViewController {
         guard viewModel.sourceSwitchData != nil else { return }
         let nameValid = !(viewModel.deviceName.isAllInputTextEmpty()
             || MeshNetworkManager.instance.isSwitchTautonym(name: viewModel.deviceName) && viewModel.deviceName != viewModel.sourceSwitchData?.name)
-        saveBarButtonItem.isEnabled = nameValid
+        saveBarButtonItem.isEnabled = canEdit && nameValid
     }
     
     private func updatePanelPreviewHeight() {
@@ -432,6 +442,41 @@ final class PJPreAddEightKeySwitchesVC: UIViewController {
 
     private var isEditMode: Bool {
         viewModel.sourceSwitchData != nil
+    }
+
+    private var canEdit: Bool {
+        editable && viewModel.space.deviceOperates.contains(.edit)
+    }
+
+    private var canDelete: Bool {
+        editable && viewModel.space.deviceOperates.contains(.delete)
+    }
+
+    private func ensureEditable() -> Bool {
+        guard canEdit else {
+            XWHUDManager.showTipHUD("no_permission".localizedString, isLineFeed: true)
+            return false
+        }
+        return true
+    }
+
+    private func ensureDeletable() -> Bool {
+        guard canDelete else {
+            XWHUDManager.showTipHUD("no_permission".localizedString, isLineFeed: true)
+            return false
+        }
+        return true
+    }
+
+    private func applyEditableState() {
+        editorView.nameTextField.isEnabled = canEdit
+        editorView.clearNameButton.isEnabled = canEdit
+        editorView.enableRowView.switchControl.isEnabled = canEdit
+        editorView.panelRowView.isUserInteractionEnabled = canEdit
+        editorView.groupRowView.isUserInteractionEnabled = canEdit
+        editorView.sceneRowView.isUserInteractionEnabled = canEdit
+        editorView.moreSettingsRowView.isUserInteractionEnabled = canEdit
+        editorView.bottomActionView.isUserInteractionEnabled = canEdit || canDelete
     }
 
     private var isPushedInNavigationStack: Bool {
@@ -476,7 +521,7 @@ final class PJPreAddEightKeySwitchesVC: UIViewController {
     }
     
     private func updateLinkActionButtonState() {
-        let isEditing = viewModel.sourceSwitchData != nil
+        let isEditing = viewModel.sourceSwitchData != nil && canEdit
         editorView.linkActionButton.isHidden = !isEditing
         
         if isRealDeviceLinked {

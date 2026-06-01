@@ -1514,6 +1514,9 @@ extension SpaceData {
                         if let proxyAddress = switcheJson["proxyNodeAddress"].string {
                             switchData.proxyNodeAddress = Address(hex: proxyAddress)
                         }
+                        if let deleteProxyAddress = switcheJson["deleteProxyNodeAddress"].string {
+                            switchData.deleteProxyNodeAddress = Address(hex: deleteProxyAddress)
+                        }
                         
                         if let bindGroupAddresseStrings = switcheJson["bindGroupAddresses"].arrayObject as? [String] {
                             switchData.bindGroupAddresses = bindGroupAddresseStrings.compactMap({ Address(hex: $0) })
@@ -1527,6 +1530,16 @@ extension SpaceData {
                         if let enOceanSecurityKey = switcheJson["enOceanSecurityKey"].string {
                             switchData.enOceanSecurityKey = enOceanSecurityKey
                         }
+                        if let powerSwitchDictionary = switcheJson[PJEightKeySwitchSharePayload.key].dictionaryObject {
+                            let proxyNode = switchData.proxyNodeAddress.flatMap { network.node(withAddress: $0) }
+                            if let metadata = PJEightKeySwitchSharePayload.metadata(
+                                from: powerSwitchDictionary,
+                                proxyNode: proxyNode
+                            ) {
+                                switches.append(PJEightKeySwitchData(baseSwitchData: switchData, metadata: metadata))
+                                return
+                            }
+                        }
                         switches.append(switchData)
                     }
                 }
@@ -1534,6 +1547,13 @@ extension SpaceData {
             DeviceSwitchData.deleteSwitchs(meshUUID: meshUUID, networkId: self.meshNetworkId)
             switches.forEach { switchData in
                 switchData.save(meshUUID: meshUUID, networkId: self.meshNetworkId)
+                if let powerSwitchData = switchData as? PJEightKeySwitchData {
+                    PJEightKeySwitchRepository.shared.save(
+                        powerSwitchData,
+                        meshUUID: meshUUID,
+                        networkId: self.meshNetworkId
+                    )
+                }
             }
 
             DeviceEmerFireData.deleteAll(meshUUID: meshUUID, networkId: self.meshNetworkId)
