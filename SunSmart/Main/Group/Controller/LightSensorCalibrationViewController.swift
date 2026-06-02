@@ -768,18 +768,23 @@ extension LightSensorCalibrationViewController: LightSensorCalibrationSelectView
 //        }
     }
     
-    /// 选择传感器回调
-    /// - Parameters:
-    ///   - view: self
-    ///   - selectSensor: 选中的传感器
-    ///   - lastSelectSensor: 上一个选中的传感器
-    func view(_ view: LightSensorCalibrationSelectView, didSelectDaylightSensor selectSensor: Node, lastSelectSensor: Node?) {
-        
-        view.endEditing(true)
-        if group.ambientLightSensorNodes.contains(where: { $0.selectState == .loading }) {
-            return
-        }
-        
+    private func showExternalLightSensorConnectionAlert(for sensor: Node, in view: LightSensorCalibrationSelectView, confirmHandler: @escaping () -> Void) {
+        SRAlertView(
+            title: "external_light_sensor_capable_luminaire_calibration_title".localizedString,
+            message: "external_light_sensor_capable_luminaire_calibration_message".localizedString,
+            actions: [
+                SRAlertAction(title: "external_light_sensor_capable_luminaire_calibration_cancel".localizedString, style: .cancel, actionHandler: { [weak view] _ in
+                    sensor.selectState = .switchOff
+                    view?.reloadSensorCell(sensor: sensor)
+                }),
+                SRAlertAction(title: "external_light_sensor_capable_luminaire_calibration_confirm".localizedString, actionHandler: { _ in
+                    confirmHandler()
+                })
+            ]
+        ).show()
+    }
+
+    private func enableDaylightSensor(_ selectSensor: Node, lastSelectSensor: Node?, in view: LightSensorCalibrationSelectView) {
         var lastSelectSensorUnPublish: Bool = false
         var selectSensorPublish: Bool = false
         
@@ -867,7 +872,29 @@ extension LightSensorCalibrationViewController: LightSensorCalibrationSelectView
                 self.updateManualCorrectionBtn()
             }
         }
+    }
+
+    /// 选择传感器回调
+    /// - Parameters:
+    ///   - view: self
+    ///   - selectSensor: 选中的传感器
+    ///   - lastSelectSensor: 上一个选中的传感器
+    func view(_ view: LightSensorCalibrationSelectView, didSelectDaylightSensor selectSensor: Node, lastSelectSensor: Node?) {
+
+        view.endEditing(true)
+        if group.ambientLightSensorNodes.contains(where: { $0.selectState == .loading }) {
+            return
+        }
         
+        guard selectSensor.isExternalLightSensorCapableLuminaire else {
+            enableDaylightSensor(selectSensor, lastSelectSensor: lastSelectSensor, in: view)
+            return
+        }
+
+        showExternalLightSensorConnectionAlert(for: selectSensor, in: view) { [weak self, weak view] in
+            guard let self, let view else { return }
+            self.enableDaylightSensor(selectSensor, lastSelectSensor: lastSelectSensor, in: view)
+        }
     }
     
     /// 取消选择传感器回调

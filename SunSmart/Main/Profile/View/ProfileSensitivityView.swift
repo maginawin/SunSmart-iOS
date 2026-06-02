@@ -29,6 +29,7 @@ class ProfileSensitivityView: UIView {
     /// 滑条
     var sensitivitySlider: PowerUpLightSliderView!
     private var helpBtn: UIButton!
+    private var lackSensitivityLabel: UILabel!
     
     weak var delegate: ProfileSensitivityViewDelegate?
     
@@ -44,6 +45,13 @@ class ProfileSensitivityView: UIView {
     var editable: Bool = true {
         didSet {
             sensitivitySlider.editable = editable
+        }
+    }
+    
+    /// 是否显示部分设备缺少灵敏度提示
+    var showLackSensitivityNotice: Bool = false {
+        didSet {
+            lackSensitivityLabel.isHidden = !showLackSensitivityNotice
         }
     }
     
@@ -67,6 +75,8 @@ class ProfileSensitivityView: UIView {
     private func setupUI() {
         
         titleLabel = UILabel(text: "relative_sensitivity".localizedString, textColor: TextBlack_Color, fontSize: 16, fontWeight: .light)
+        titleLabel.setContentCompressionResistancePriority(.required, for: .horizontal)
+        titleLabel.setContentHuggingPriority(.required, for: .horizontal)
         addSubview(titleLabel)
         titleLabel.snp.makeConstraints { make in
             make.left.equalTo(SCRXFrom(16))
@@ -74,9 +84,24 @@ class ProfileSensitivityView: UIView {
         }
         
         helpBtn = UIButton(normalImageName: "help", target: self, action: #selector(helpBtnAction))
+        helpBtn.setContentCompressionResistancePriority(.required, for: .horizontal)
+        helpBtn.setContentHuggingPriority(.required, for: .horizontal)
         addSubview(helpBtn)
         helpBtn.snp.makeConstraints { make in
             make.left.equalTo(titleLabel.snp.right).offset(SCRXFrom(8))
+            make.centerY.equalTo(titleLabel)
+        }
+        
+        lackSensitivityLabel = UILabel(text: "profile_some_devices_lack_sensitivity".localizedString, textColor: RGB(255, 167, 44), fontSize: 12, fontWeight: .regular, fit: false)
+        lackSensitivityLabel.textAlignment = .right
+        lackSensitivityLabel.numberOfLines = 0
+        lackSensitivityLabel.isHidden = true
+        lackSensitivityLabel.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
+        lackSensitivityLabel.setContentHuggingPriority(.defaultLow, for: .horizontal)
+        addSubview(lackSensitivityLabel)
+        lackSensitivityLabel.snp.makeConstraints { make in
+            make.left.greaterThanOrEqualTo(helpBtn.snp.right).offset(SCRXFrom(8))
+            make.right.equalTo(SCRXFrom(-16))
             make.centerY.equalTo(titleLabel)
         }
         

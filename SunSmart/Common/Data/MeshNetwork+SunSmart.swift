@@ -1697,6 +1697,17 @@ extension Node {
 
     private static let emergencySignControllerCompanyIdentifier: UInt16 = 0x0A78
     private static let emergencySignControllerProductIdentifiers: Set<UInt16> = [0x24C1]
+    private static let externalLightSensorCapableLuminaireCompanyIdentifier: UInt16 = 0x0A78
+    private static let externalLightSensorCapableLuminaireProductIdentifiers: Set<UInt16> = [
+        0x2121,
+        0x2122,
+        0x2132,
+        0x2133,
+        0x2491,
+        0x2492,
+        0x2493,
+        0x2494
+    ]
 
     static func isEmergencySignController(companyIdentifier: UInt16?, productIdentifier: UInt16?) -> Bool {
         guard companyIdentifier == emergencySignControllerCompanyIdentifier,
@@ -1704,6 +1715,14 @@ extension Node {
             return false
         }
         return emergencySignControllerProductIdentifiers.contains(productIdentifier)
+    }
+
+    static func isExternalLightSensorCapableLuminaire(companyIdentifier: UInt16?, productIdentifier: UInt16?) -> Bool {
+        guard companyIdentifier == externalLightSensorCapableLuminaireCompanyIdentifier,
+              let productIdentifier else {
+            return false
+        }
+        return externalLightSensorCapableLuminaireProductIdentifiers.contains(productIdentifier)
     }
     
     /// 设备类型
@@ -1813,6 +1832,13 @@ extension Node {
 
     var isEmergencySignController: Bool {
         return Node.isEmergencySignController(companyIdentifier: companyIdentifier, productIdentifier: productIdentifier)
+    }
+
+    var isExternalLightSensorCapableLuminaire: Bool {
+        return Node.isExternalLightSensorCapableLuminaire(
+            companyIdentifier: companyIdentifier,
+            productIdentifier: productIdentifier
+        )
     }
 
     var isSupportVendorIdentify: Bool {

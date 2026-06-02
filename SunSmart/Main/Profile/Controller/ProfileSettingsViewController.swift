@@ -664,6 +664,7 @@ class ProfileSettingsViewController: UIViewController, KeyboardScrollable {
         adjustSpeedView.isHidden = !showLightAdjustSpeed
         timeoutView.isHidden = !showTimeout
         sensitivityView.isHidden = !showSensitivity
+        sensitivityView.showLackSensitivityNotice = showSensitivity && (group?.nodes.contains { $0.isExternalLightSensorCapableLuminaire } == true)
         if !showSensitivity {
             sensitivityView.snp.removeConstraints()
         }

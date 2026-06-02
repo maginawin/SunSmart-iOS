@@ -1379,6 +1379,7 @@
 "device_add_stop_scan_message" = "停止扫描以添加设备";
 
 "relative_sensitivity" = "相对灵敏度";
+"profile_some_devices_lack_sensitivity" = "部分设备缺少灵敏度";
 "absolute_sensitivity" = "绝对灵敏度";
 "absolute_sensitivity_messsage" = "注意：1. 绝对灵敏度是设备所能支持的最大范围。其作用是针对设备进行个别调整，以避免由于元件误差引起的误触发。不同于相对灵敏度，相对灵敏度的最大值 100% 对应于此处的调整值。\n2.默认范围为调整后无误触发的范围。如果调整的话，有很大的可能会误触发，所以请注意这一点。";
 "absolute_sensitivity_instructions_1" = "绝对灵敏度是设备所能支持的最大范围。其作用是针对设备进行个别调整，以避免由于元件误差引起的误触发。";
@@ -1551,6 +1552,10 @@
 "calibration_light_point" = "校准光点";
 "sensor_calibration_disable_failed_message" = "无法启用光照传感器。之前的光照传感器离线或故障。需要将其恢复到在线状态或强制复位，然后再删除该设备。";
 "sensor_calibration_minimum_version_message" = "你的固件版本较低，请升级到%@或更高的版本后再校准。";
+"external_light_sensor_capable_luminaire_calibration_title" = "Notification";
+"external_light_sensor_capable_luminaire_calibration_message" = "This device has the ability to connect to an external light sensor. Before calibration, please ensure that the sensor is connected.";
+"external_light_sensor_capable_luminaire_calibration_cancel" = "CANCEL";
+"external_light_sensor_capable_luminaire_calibration_confirm" = "CONFIRM";
 
 
 "click_add_gateway" = "点击添加网关";
