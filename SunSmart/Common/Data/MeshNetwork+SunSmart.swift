@@ -1816,7 +1816,7 @@ extension Node {
     }
 
     var isSupportVendorIdentify: Bool {
-        return true 
+        return !isEmergencySignController
     }
 
     var batteryPowerSwitchPanelType: PJEightKeySwitchPanelDefinition.PanelType? {
