@@ -10,11 +10,20 @@ import NordicSigMeshSDK
 
 /// Context for group profile synchronization that needs behavior beyond normal diff-based sync.
 struct GroupProfileSyncContext {
-    let previousProfileType: Profile.ProfileType
-    let savedProfileType: Profile.ProfileType
+    enum Reason {
+        case profileTypeChanged(previous: Profile.ProfileType, saved: Profile.ProfileType)
+        case memberAdded
+    }
+
+    let reason: Reason
 
     var shouldForceFullProfileSync: Bool {
-        previousProfileType != savedProfileType
+        switch reason {
+        case .profileTypeChanged(let previous, let saved):
+            return previous != saved
+        case .memberAdded:
+            return true
+        }
     }
 }
 

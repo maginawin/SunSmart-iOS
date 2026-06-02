@@ -249,7 +249,9 @@ class ProfileSettingsViewController: UIViewController, KeyboardScrollable {
                   previousProfile.type != selectProfile.type else {
                 return nil
             }
-            return GroupProfileSyncContext(previousProfileType: previousProfile.type, savedProfileType: selectProfile.type)
+            return GroupProfileSyncContext(
+                reason: .profileTypeChanged(previous: previousProfile.type, saved: selectProfile.type)
+            )
         }
         let sensorProtectionContext = group.flatMap { group -> ProfileSensorProtectionContext? in
             guard let previousProfile = previousProfile else {
