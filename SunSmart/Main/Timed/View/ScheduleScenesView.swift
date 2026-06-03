@@ -44,7 +44,11 @@ class ScheduleScenesView: UIView {
         super.init(frame: UIScreen.main.bounds)
         
         if let schedule = self.schedule {
-            if let scene = schedule.scene, scene.info.groups.contains(where: { $0.nodes.contains(where: { $0.schedulerActions[schedule.id] == nil || !($0.schedulerActions[schedule.id]! == schedule.schedulerEntry ) }) }) {
+            if let scene = schedule.scene, scene.info.groups.contains(where: { group in
+                group.nodes.contains(where: { node in
+                    schedule.needsSync(on: node, contextGroup: group) || schedule.needsDelete(from: node, contextGroup: group)
+                })
+            }) {
                 syncScenes.append(scene)
             }
             syncScenes.append(contentsOf: schedule.needDeleteScenes)

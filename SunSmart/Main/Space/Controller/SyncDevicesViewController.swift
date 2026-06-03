@@ -149,6 +149,7 @@ class SyncDevicesViewController: UIViewController {
                 }
                 let effectiveMemberCount = remainingNodes.count + addedNodes.count
                 let profileSyncContext = (inNodes == nil && outNodes == nil) ? groupProfileSyncContext : nil
+                let addedMemberProfileSyncContext: GroupProfileSyncContext? = addedNodes.isEmpty ? nil : .init(reason: .memberAdded)
                 
                 outNodes?.forEach({ node in
                     let result = self.getSyncDeviceModel(group: group, node: node, effectiveMemberCount: effectiveMemberCount)
@@ -158,7 +159,13 @@ class SyncDevicesViewController: UIViewController {
                 })
                 
                 inNodes?.forEach({ node in
-                    let result = self.getSyncDeviceModel(group: group, node: node, effectiveMemberCount: effectiveMemberCount)
+                    let memberProfileSyncContext = addedNodes.contains(node) ? addedMemberProfileSyncContext : nil
+                    let result = self.getSyncDeviceModel(
+                        group: group,
+                        node: node,
+                        effectiveMemberCount: effectiveMemberCount,
+                        profileSyncContext: memberProfileSyncContext
+                    )
                     if let removceDevice = result.removeDevice {
                         removeSection.devices.append(removceDevice)
                     }
