@@ -1395,14 +1395,7 @@ extension Node {
         }
         /// 待同步的日程
         return schedules.filter({ schedule in
-            // 判断日程是否存在该设备
-            if schedule.nodes.contains(self) || (group != nil && (schedule.groups.contains(group!) || schedule.scene?.info.groups.contains(group!) ?? false)) {
-                // 判断日程数据是否需同步
-                if self.schedulerActions[schedule.id] == nil || !(self.schedulerActions[schedule.id]! == schedule.schedulerEntry) {
-                    return true
-                }
-            }
-            return false
+            schedule.needsSync(on: self, contextGroup: group)
         })
     }
     
@@ -1423,16 +1416,7 @@ extension Node {
         }
         /// 待删除的日程
         return schedules.filter({ schedule in
-            // 日程是否关联设备
-            let isBindNode = schedule.nodeAddresses.contains(self.primaryUnicastAddress) || schedule.groups.contains(where: { $0.nodes.contains(self) }) || schedule.scene?.info.groups.contains(where: { $0.nodes.contains(self) }) ?? false
-            // 判断日程待删除设备中是否存在该设备
-            if !isBindNode, schedule.needDeleteNodes.contains(self) || (group != nil && ((groupState == .exitFailure) || (schedule.needDeleteGroups.contains(group!) || schedule.needDeleteScenes.contains(where: { scene in scene.info.groups.contains(group!) })))) {
-                // 判断日程数据是否存在
-                if self.schedulerActions[schedule.id] != nil {
-                    return true
-                }
-            }
-            return false
+            schedule.needsDelete(from: self, contextGroup: group)
         })
     }
     

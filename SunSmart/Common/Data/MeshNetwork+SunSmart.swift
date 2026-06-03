@@ -1221,9 +1221,10 @@ extension Group {
         
         // 待删除的组,获取组内待删除的设备
         if schedule.needDeleteGroups.contains(self) {
-            needDeleteNodes = self.nodes.filter({ $0.schedulerSetupModel != nil && $0.schedulerActions.keys.contains(schedule.id) })
+            needDeleteNodes = self.nodes.filter({ schedule.needsDelete(from: $0, contextGroup: self) })
         }else { // 待同步，获取组内待同步的设备
-            needSyncNodes = self.nodes.filter({ $0.schedulerSetupModel != nil && !$0.schedulerActions.keys.contains(schedule.id) || !($0.schedulerActions[schedule.id]! == schedule.schedulerEntry) })
+            needSyncNodes = self.nodes.filter({ schedule.needsSync(on: $0, contextGroup: self) })
+            needDeleteNodes = self.nodes.filter({ schedule.needsDelete(from: $0, contextGroup: self) })
         }
         return (needSyncNodes, needDeleteNodes)
     }
@@ -1458,6 +1459,52 @@ extension SceneExecuteData {
 
 extension Schedule {
     
+    /// 当前日程是否应该作用到指定节点。
+    /// contextGroup 用于新增组成员时，节点刚进入组但 group.nodes 可能尚未稳定反映成员关系。
+    func targets(node: Node, contextGroup: Group? = nil) -> Bool {
+        if nodeAddresses.contains(node.primaryUnicastAddress) {
+            return true
+        }
+        
+        let canUseGroupContext = node.groupState != .exitFailure
+        if canUseGroupContext {
+            if groups.contains(where: { $0.nodes.contains(node) }) {
+                return true
+            }
+            if let contextGroup = contextGroup, groups.contains(contextGroup) {
+                return true
+            }
+            
+            if let scene = scene {
+                if scene.info.groups.contains(where: { $0.nodes.contains(node) }) {
+                    return true
+                }
+                if let contextGroup = contextGroup, scene.info.groups.contains(contextGroup) {
+                    return true
+                }
+            }
+        }
+        
+        return false
+    }
+    
+    func needsSync(on node: Node, contextGroup: Group? = nil) -> Bool {
+        guard node.schedulerSetupModel != nil, targets(node: node, contextGroup: contextGroup) else {
+            return false
+        }
+        guard let nodeEntry = node.schedulerActions[id] else {
+            return true
+        }
+        return !(nodeEntry == schedulerEntry)
+    }
+    
+    func needsDelete(from node: Node, contextGroup: Group? = nil) -> Bool {
+        guard node.schedulerSetupModel != nil, node.schedulerActions[id] != nil else {
+            return false
+        }
+        return !targets(node: node, contextGroup: contextGroup)
+    }
+    
     /// 获取日程需要同步/删除的数据
     /// nodes：add/remove  【Node】
     /// groups：add/remove 【(group: [Node])】
@@ -1476,43 +1523,45 @@ extension Schedule {
         
         switch selectTargetType {
         case .devices:
-            syncNodes = nodes.filter({ $0.schedulerActions[id] == nil || !($0.schedulerActions[id]! == schedulerEntry) })
+            syncNodes = nodes.filter({ needsSync(on: $0) })
             allSyncNodes.append(contentsOf: nodes)
         case .groups:
-            groups.forEach({
-                let groupSyncNodes = $0.nodes.filter({ $0.schedulerSetupModel != nil && ($0.schedulerActions[id] == nil || !($0.schedulerActions[id]! == schedulerEntry)) })
+            groups.forEach({ group in
+                let groupTargetNodes = group.nodes.filter({ node in targets(node: node, contextGroup: group) })
+                let groupSyncNodes = groupTargetNodes.filter({ node in needsSync(on: node, contextGroup: group) })
                 if groupSyncNodes.count > 0 {
-                    syncGroupData.updateValue(groupSyncNodes, forKey: $0)
+                    syncGroupData.updateValue(groupSyncNodes, forKey: group)
                 }
-                allSyncNodes.append(contentsOf: $0.nodes)
+                allSyncNodes.append(contentsOf: groupTargetNodes)
             })
         case .scene:
-            scene?.info.groups.forEach({
-                let groupSyncNodes = $0.nodes.filter({ $0.schedulerSetupModel != nil && ($0.schedulerActions[id] == nil || !($0.schedulerActions[id]! == schedulerEntry)) })
+            scene?.info.groups.forEach({ group in
+                let groupTargetNodes = group.nodes.filter({ node in targets(node: node, contextGroup: group) })
+                let groupSyncNodes = groupTargetNodes.filter({ node in needsSync(on: node, contextGroup: group) })
                 if groupSyncNodes.count > 0 {
-                    syncGroupData.updateValue(groupSyncNodes, forKey: $0)
+                    syncGroupData.updateValue(groupSyncNodes, forKey: group)
                 }
-                allSyncNodes.append(contentsOf: $0.nodes)
+                allSyncNodes.append(contentsOf: groupTargetNodes)
             })
         case .profile:
             break
         }
         
-        let deleteNodes = needDeleteNodes.filter({ !allSyncNodes.contains($0) })
+        var deleteNodes = needDeleteNodes.filter({ needsDelete(from: $0) && !allSyncNodes.contains($0) })
         
         var deleteGroupData: [Group: [Node]] = [:]
-        needDeleteGroups.forEach({
-            let groupDeleteNodes = $0.nodes.filter({ $0.schedulerSetupModel != nil && $0.schedulerActions[id] != nil && !allSyncNodes.contains($0) && !deleteNodes.contains($0) })
+        needDeleteGroups.forEach({ group in
+            let groupDeleteNodes = group.nodes.filter({ node in needsDelete(from: node, contextGroup: group) && !allSyncNodes.contains(node) && !deleteNodes.contains(node) })
             // ((!allSyncNodes.contains($0) && !allDeleteNodes.contains($0)) || !nodes.contains($0))
             if groupDeleteNodes.count > 0 {
-                deleteGroupData.updateValue(groupDeleteNodes, forKey: $0)
+                deleteGroupData.updateValue(groupDeleteNodes, forKey: group)
 //                allDeleteNodes.append(contentsOf: groupDeleteNodes)
             }
         })
 
         needDeleteScenes.forEach({ scene in
             scene.info.groups.forEach { group in
-                let groupDeleteNodes = group.nodes.filter({ $0.schedulerSetupModel != nil && $0.schedulerActions[id] != nil && !allSyncNodes.contains($0) && !deleteNodes.contains($0) })
+                let groupDeleteNodes = group.nodes.filter({ node in needsDelete(from: node, contextGroup: group) && !allSyncNodes.contains(node) && !deleteNodes.contains(node) })
                 // && !allSyncNodes.contains($0)) && !allDeleteNodes.contains($0)
                 if groupDeleteNodes.count > 0 {
                     deleteGroupData.updateValue(groupDeleteNodes, forKey: group)
@@ -1520,6 +1569,15 @@ extension Schedule {
                 }
             }
         })
+        
+        let groupedDeleteNodes = deleteGroupData.values.flatMap({ $0 })
+        let orphanDeleteNodes = MeshNetworkManager.instance.realNodes.filter({
+            needsDelete(from: $0) &&
+            !allSyncNodes.contains($0) &&
+            !deleteNodes.contains($0) &&
+            !groupedDeleteNodes.contains($0)
+        })
+        deleteNodes.append(contentsOf: orphanDeleteNodes)
         
         let data = ScheduleSyncData(syncNodes: syncNodes, deleteNodes: deleteNodes, syncGroups: syncGroupData, deleteGroups: deleteGroupData)
         return data
