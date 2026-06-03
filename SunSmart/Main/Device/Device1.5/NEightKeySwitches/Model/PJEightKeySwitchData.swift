@@ -304,9 +304,15 @@ private extension PJEightKeySwitchData {
 
     func sceneRecallConfigurations(address: Address, appKeyIndex: UInt16) -> [BatteryPowerSwitchKeyConfiguration] {
         let sceneNumbers = [sceneANumber, sceneBNumber, sceneCNumber, sceneDNumber]
-        return sceneNumbers.enumerated().compactMap { index, sceneNumber in
+        return sceneNumbers.enumerated().map { index, sceneNumber in
             guard let sceneNumber else {
-                return nil
+                return BatteryPowerSwitchKeyConfiguration(
+                    button: UInt8(index),
+                    trigger: .click,
+                    type: .disabled,
+                    address: address,
+                    appKeyIndex: appKeyIndex
+                )
             }
             return BatteryPowerSwitchKeyConfiguration(
                 button: UInt8(index),
