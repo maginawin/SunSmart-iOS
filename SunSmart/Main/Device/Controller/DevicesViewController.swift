@@ -436,7 +436,6 @@ class DevicesViewController: WMPageController {
             DispatchQueue.main.async {
                 let address = String(format: "0x%04X", node.primaryUnicastAddress)
                 print("[TimeSetDebug] TimeSet result node=\(node.name ?? "") address=\(address) success=\(success)")
-                XWHUDManager.showTipHUD("TimeSet \(address): \(success ? "success" : "failed")")
             }
         }
     }
