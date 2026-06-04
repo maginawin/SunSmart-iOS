@@ -1257,7 +1257,7 @@ extension Node {
                             syncProfile.append(.standbyLevel(value: level))
                         }
                     }else if occupancyType { // 日光感应并且存在占用感应profile，未校准时阶段启用默认百分比调光
-                        let occupancyLevel = 100
+                        let occupancyLevel = daylightType ? groupLightData.highEndTrim : 100
                         let vacantLevel = 50
                         let standbyLevel = 0
                         if forceFullProfileSync || lightLCProperty.lightnessOn == nil || lightLCProperty.lightnessOn! != Node.getLightness(lightness100: occupancyLevel) {
@@ -1273,7 +1273,12 @@ extension Node {
                 }
                 
             case .taskLevel(let level):
-                if daylightType {
+                if groupProfile.type == .daylight && !daylightEnabled {
+                    let fallbackLevel = groupLightData.highEndTrim
+                    if forceFullProfileSync || lightLCProperty.lightnessOn == nil || lightLCProperty.lightnessOn! != Node.getLightness(lightness100: fallbackLevel) {
+                        syncProfile.append(.occupancyLevel(value: fallbackLevel))
+                    }
+                }else if daylightType {
                     if forceFullProfileSync || lightLCProperty.luxLevelOn == nil || lightLCProperty.luxLevelOn! != level { // 设置占用阶段无限长，维持该照度
                         syncProfile.append(.occupancyLux(lux: level))
                     }
