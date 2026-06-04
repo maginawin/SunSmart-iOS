@@ -38,6 +38,13 @@ class DeviceAddBottomView: UIView {
     required init?(coder: NSCoder) {
         fatalError("init(coder:) has not been implemented")
     }
+
+    func setBatchControlsHidden(_ hidden: Bool) {
+        selectAllBtn.isHidden = hidden
+        selectAllLabel.isHidden = hidden
+        selectCountLabel.isHidden = hidden
+        addSelectedBtn.isHidden = hidden
+    }
     
     private func setupUI() {
         

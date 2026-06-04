@@ -102,6 +102,17 @@ final class MeshBatteryPowerSwitchTxEnableSender: PJEightKeySwitchTxEnableSendin
     }
 }
 
+protocol PJEightKeySwitchIdentifySending: AnyObject {
+    func sendIdentify(to node: Node)
+}
+
+final class MeshBatteryPowerSwitchIdentifySender: PJEightKeySwitchIdentifySending {
+
+    func sendIdentify(to node: Node) {
+        MeshAPI.identify(address: node.primaryUnicastAddress, attentionTimer: 6)
+    }
+}
+
 final class PJEightKeySwitchActivationFlow {
 
     private enum State {
@@ -279,6 +290,216 @@ final class PJEightKeySwitchActivationFlow {
         countdownTimer = nil
         probeTimer?.invalidate()
         probeTimer = nil
+    }
+}
+
+final class PJEightKeySwitchIdentifyFlow {
+
+    private enum State {
+        case idle
+        case waiting
+        case detected
+        case identifying
+        case noResponse
+        case cancelled
+    }
+
+    private weak var presenter: UIViewController?
+    private let switchData: PJEightKeySwitchData
+    private let detector: PJEightKeySwitchActivationDetecting
+    private let sender: PJEightKeySwitchIdentifySending
+    private let onFinished: () -> Void
+    private let titleText = "neightkeyswitches_identify_title".localizedString
+    private var alertController: PJEightKeySwitchActivationAlertController?
+    private var countdownTimer: Timer?
+    private var probeTimer: Timer?
+    private var identifyTimer: Timer?
+    private var startIdentifyWorkItem: DispatchWorkItem?
+    private var remainingSeconds = 60
+    private var generation = UUID()
+    private var state: State = .idle
+
+    init(
+        presenter: UIViewController,
+        switchData: PJEightKeySwitchData,
+        detector: PJEightKeySwitchActivationDetecting = MeshBatteryPowerSwitchActivationDetector(),
+        sender: PJEightKeySwitchIdentifySending = MeshBatteryPowerSwitchIdentifySender(),
+        onFinished: @escaping () -> Void
+    ) {
+        self.presenter = presenter
+        self.switchData = switchData
+        self.detector = detector
+        self.sender = sender
+        self.onFinished = onFinished
+    }
+
+    deinit {
+        stopTimers()
+        startIdentifyWorkItem?.cancel()
+    }
+
+    func start() {
+        let controller = PJEightKeySwitchActivationAlertController()
+        controller.actionHandler = { [weak self] index in
+            self?.handleAction(at: index)
+        }
+        alertController = controller
+        controller.apply(content: waitingContent())
+        presenter?.present(controller, animated: true) { [weak self] in
+            self?.startWaiting()
+        }
+    }
+
+    func cancel() {
+        state = .cancelled
+        generation = UUID()
+        stopTimers()
+        startIdentifyWorkItem?.cancel()
+        alertController?.dismiss(animated: true) { [weak self] in
+            self?.onFinished()
+        }
+    }
+
+    private func startWaiting() {
+        generation = UUID()
+        state = .waiting
+        remainingSeconds = 60
+        startIdentifyWorkItem?.cancel()
+        stopTimers()
+        applyWaitingContent()
+        sendActivationProbe(for: generation)
+        countdownTimer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] _ in
+            self?.tickCountdown()
+        }
+        probeTimer = Timer.scheduledTimer(withTimeInterval: 3, repeats: true) { [weak self] _ in
+            guard let self else { return }
+            self.sendActivationProbe(for: self.generation)
+        }
+    }
+
+    private func tickCountdown() {
+        guard case .waiting = state else { return }
+        remainingSeconds -= 1
+        if remainingSeconds <= 0 {
+            showNoResponse()
+        } else {
+            applyWaitingContent()
+        }
+    }
+
+    private func sendActivationProbe(for flowGeneration: UUID) {
+        guard case .waiting = state, let node = switchData.proxyNode else { return }
+        detector.sendActivationProbe(to: node) { [weak self] detected in
+            DispatchQueue.main.async {
+                guard let self,
+                      detected,
+                      self.generation == flowGeneration,
+                      case .waiting = self.state else {
+                    return
+                }
+                self.showDetected()
+            }
+        }
+    }
+
+    private func showDetected() {
+        state = .detected
+        generation = UUID()
+        stopTimers()
+        alertController?.apply(content: .init(
+            title: titleText,
+            message: switchData.eightKeyPanelType.activationInstruction,
+            statusText: "neightkeyswitches_activation_detected".localizedString,
+            statusStyle: .success,
+            actions: [.init(title: "cancel".localizedString.uppercased(), style: .normal)]
+        ))
+        let workItem = DispatchWorkItem { [weak self] in
+            self?.startIdentifying()
+        }
+        startIdentifyWorkItem = workItem
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0, execute: workItem)
+    }
+
+    private func startIdentifying() {
+        guard case .detected = state else { return }
+        state = .identifying
+        generation = UUID()
+        stopTimers()
+        applyIdentifyingContent()
+        sendIdentify()
+        identifyTimer = Timer.scheduledTimer(withTimeInterval: 3, repeats: true) { [weak self] _ in
+            self?.sendIdentify()
+        }
+    }
+
+    private func sendIdentify() {
+        guard case .identifying = state, let node = switchData.proxyNode else { return }
+        sender.sendIdentify(to: node)
+    }
+
+    private func showNoResponse() {
+        state = .noResponse
+        generation = UUID()
+        stopTimers()
+        startIdentifyWorkItem?.cancel()
+        alertController?.apply(content: .init(
+            title: titleText,
+            message: switchData.eightKeyPanelType.activationInstruction,
+            statusText: "neightkeyswitches_activation_timeout".localizedString,
+            statusStyle: .failure,
+            actions: [
+                .init(title: "cancel".localizedString.uppercased(), style: .normal),
+                .init(title: "try_again".localizedString.uppercased(), style: .primary)
+            ]
+        ))
+    }
+
+    private func applyWaitingContent() {
+        alertController?.apply(content: waitingContent())
+    }
+
+    private func applyIdentifyingContent() {
+        alertController?.apply(content: .init(
+            title: titleText,
+            message: switchData.eightKeyPanelType.activationInstruction,
+            statusText: "neightkeyswitches_identifying".localizedString,
+            statusStyle: .loading,
+            actions: [.init(title: "cancel".localizedString.uppercased(), style: .normal)]
+        ))
+    }
+
+    private func waitingContent() -> PJEightKeySwitchActivationAlertView.Content {
+        .init(
+            title: titleText,
+            message: switchData.eightKeyPanelType.activationInstruction,
+            statusText: String(format: "neightkeyswitches_activation_waiting_format".localizedString, remainingSeconds),
+            statusStyle: .loading,
+            actions: [.init(title: "cancel".localizedString.uppercased(), style: .normal)]
+        )
+    }
+
+    private func handleAction(at index: Int) {
+        switch state {
+        case .waiting, .detected, .identifying:
+            cancel()
+        case .noResponse:
+            if index == 0 {
+                cancel()
+            } else {
+                startWaiting()
+            }
+        case .idle, .cancelled:
+            cancel()
+        }
+    }
+
+    private func stopTimers() {
+        countdownTimer?.invalidate()
+        countdownTimer = nil
+        probeTimer?.invalidate()
+        probeTimer = nil
+        identifyTimer?.invalidate()
+        identifyTimer = nil
     }
 }
 

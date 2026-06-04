@@ -12,6 +12,8 @@ import NordicSigMeshSDK
 enum DeviceAddTargetSelection {
     case space
     case group(Group)
+    case batteryPowerSwitch(PJEightKeySwitchData)
+    case acPowerSwitch(PJEightKeySwitchData)
     case emergencyFire(DeviceEmerFireData)
     case dongle(DeviceDongleData)
 }
@@ -22,12 +24,16 @@ final class DeviceAddTargetSelectView: UIView {
         case space
         case header(SectionKind)
         case group(Group)
+        case batteryPowerSwitch(PJEightKeySwitchData)
+        case acPowerSwitch(PJEightKeySwitchData)
         case emergencyFire(DeviceEmerFireData)
         case dongle(DeviceDongleData)
     }
 
     private enum SectionKind: CaseIterable {
         case group
+        case batteryPowerSwitch
+        case acPowerSwitch
         case emergencyFire
         case dongle
 
@@ -35,6 +41,10 @@ final class DeviceAddTargetSelectView: UIView {
             switch self {
             case .group:
                 return "\("group".localizedString):"
+            case .batteryPowerSwitch:
+                return "Battery Power Switch:"
+            case .acPowerSwitch:
+                return "AC Power Switch:"
             case .emergencyFire:
                 return "\("Emergency Controller".localizedString):"
             case .dongle:
@@ -44,6 +54,8 @@ final class DeviceAddTargetSelectView: UIView {
     }
 
     private let groups: [Group]
+    private let batteryPowerSwitches: [PJEightKeySwitchData]
+    private let acPowerSwitches: [PJEightKeySwitchData]
     private let emergencyFireDevices: [DeviceEmerFireData]
     private let dongles: [DeviceDongleData]
     private let selectedTarget: DeviceAddTargetSelection
@@ -83,12 +95,16 @@ final class DeviceAddTargetSelectView: UIView {
     init(
         anchorPoint: CGPoint,
         groups: [Group],
+        batteryPowerSwitches: [PJEightKeySwitchData],
+        acPowerSwitches: [PJEightKeySwitchData],
         emergencyFireDevices: [DeviceEmerFireData],
         dongles: [DeviceDongleData],
         selectedTarget: DeviceAddTargetSelection,
         selectionHandler: @escaping (DeviceAddTargetSelection) -> Void
     ) {
         self.groups = groups
+        self.batteryPowerSwitches = batteryPowerSwitches
+        self.acPowerSwitches = acPowerSwitches
         self.emergencyFireDevices = emergencyFireDevices
         self.dongles = dongles
         self.selectedTarget = selectedTarget
@@ -105,6 +121,8 @@ final class DeviceAddTargetSelectView: UIView {
     static func show(
         anchorPoint: CGPoint,
         groups: [Group],
+        batteryPowerSwitches: [PJEightKeySwitchData],
+        acPowerSwitches: [PJEightKeySwitchData],
         emergencyFireDevices: [DeviceEmerFireData],
         dongles: [DeviceDongleData],
         selectedTarget: DeviceAddTargetSelection,
@@ -113,6 +131,8 @@ final class DeviceAddTargetSelectView: UIView {
         let view = DeviceAddTargetSelectView(
             anchorPoint: anchorPoint,
             groups: groups,
+            batteryPowerSwitches: batteryPowerSwitches,
+            acPowerSwitches: acPowerSwitches,
             emergencyFireDevices: emergencyFireDevices,
             dongles: dongles,
             selectedTarget: selectedTarget,
@@ -128,7 +148,7 @@ final class DeviceAddTargetSelectView: UIView {
             make.edges.equalToSuperview()
         }
 
-        let menuWidth = SCRXFrom(192)
+        let menuWidth = SCRXFrom(220)
         let left = min(max(SCRXFrom(16), anchorPoint.x), SCREEN_WIDTH - menuWidth - SCRXFrom(16))
         addSubview(contentView)
         contentView.snp.makeConstraints { make in
@@ -165,6 +185,14 @@ final class DeviceAddTargetSelectView: UIView {
         if expandedSections.contains(.group) {
             rows.append(contentsOf: groups.map { .group($0) })
         }
+        appendRows(for: .batteryPowerSwitch, itemsIsEmpty: batteryPowerSwitches.isEmpty)
+        if expandedSections.contains(.batteryPowerSwitch) {
+            rows.append(contentsOf: batteryPowerSwitches.map { .batteryPowerSwitch($0) })
+        }
+        appendRows(for: .acPowerSwitch, itemsIsEmpty: acPowerSwitches.isEmpty)
+        if expandedSections.contains(.acPowerSwitch) {
+            rows.append(contentsOf: acPowerSwitches.map { .acPowerSwitch($0) })
+        }
         appendRows(for: .emergencyFire, itemsIsEmpty: emergencyFireDevices.isEmpty)
         if expandedSections.contains(.emergencyFire) {
             rows.append(contentsOf: emergencyFireDevices.map { .emergencyFire($0) })
@@ -174,7 +202,7 @@ final class DeviceAddTargetSelectView: UIView {
             rows.append(contentsOf: dongles.map { .dongle($0) })
         }
 
-        let maxHeight = SCREEN_HEIGHT - SCRYFrom(120)
+        let maxHeight = SCREEN_HEIGHT / 2
         let height = min(CGFloat(rows.count) * tableView.rowHeight, maxHeight)
         contentHeightConstraint?.update(offset: height)
         tableView.isScrollEnabled = CGFloat(rows.count) * tableView.rowHeight > maxHeight
@@ -192,6 +220,10 @@ final class DeviceAddTargetSelectView: UIView {
             return true
         case (.group(let lhs), .group(let rhs)):
             return lhs.address == rhs.address
+        case (.batteryPowerSwitch(let lhs), .batteryPowerSwitch(let rhs)):
+            return lhs.id == rhs.id
+        case (.acPowerSwitch(let lhs), .acPowerSwitch(let rhs)):
+            return lhs.id == rhs.id
         case (.emergencyFire(let lhs), .emergencyFire(let rhs)):
             return lhs.id == rhs.id
         case (.dongle(let lhs), .dongle(let rhs)):
@@ -209,6 +241,10 @@ final class DeviceAddTargetSelectView: UIView {
             return section.title
         case .group(let group):
             return group.name
+        case .batteryPowerSwitch(let switchData):
+            return switchData.name
+        case .acPowerSwitch(let switchData):
+            return switchData.name
         case .emergencyFire(let device):
             return device.name
         case .dongle(let dongle):
@@ -254,6 +290,12 @@ extension DeviceAddTargetSelectView: UITableViewDataSource, UITableViewDelegate 
             reloadRows()
         case .group(let group):
             selectionHandler(.group(group))
+            dismiss()
+        case .batteryPowerSwitch(let switchData):
+            selectionHandler(.batteryPowerSwitch(switchData))
+            dismiss()
+        case .acPowerSwitch(let switchData):
+            selectionHandler(.acPowerSwitch(switchData))
             dismiss()
         case .emergencyFire(let device):
             selectionHandler(.emergencyFire(device))

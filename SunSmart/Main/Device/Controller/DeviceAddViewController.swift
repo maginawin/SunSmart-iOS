@@ -68,7 +68,8 @@ enum AddDeviceBindTarget {
         case .emergencyFire:
             return device.deviceType == .emergencyController
         case .batteryPowerSwitch(let switchData):
-            return device.powerSwitchKind == switchData.powerSwitchKind
+            return device.powerSwitchKind == switchData.powerSwitchKind &&
+                device.powerSwitchPanelType == switchData.eightKeyPanelType
         }
     }
 
@@ -77,8 +78,34 @@ enum AddDeviceBindTarget {
         case .emergencyFire:
             return node.deviceType == .emergencyController
         case .batteryPowerSwitch(let switchData):
-            return node.powerSwitchKind == switchData.powerSwitchKind
+            return node.powerSwitchKind == switchData.powerSwitchKind &&
+                node.batteryPowerSwitchPanelType == switchData.eightKeyPanelType
         }
+    }
+}
+
+extension DeviceSwitchData {
+    var addDeviceEightKeySwitchTargetData: PJEightKeySwitchData? {
+        if let eightKeySwitch = self as? PJEightKeySwitchData {
+            return eightKeySwitch
+        }
+        return PJEightKeySwitchRepository.shared.makeEightKeySwitch(from: self)
+    }
+}
+
+extension Sequence where Element == DeviceSwitchData {
+    func unboundVirtualPowerSwitchAddTargets(kind: PJEightKeyPowerSwitchKind) -> [PJEightKeySwitchData] {
+        compactMap { $0.addDeviceEightKeySwitchTargetData }
+            .filter {
+                $0.isUnboundVirtualPowerSwitchAddTarget &&
+                    $0.powerSwitchKind == kind
+            }
+    }
+}
+
+extension PJEightKeySwitchData {
+    var isUnboundVirtualPowerSwitchAddTarget: Bool {
+        displayStatus.isVirtualSwitch
     }
 }
 

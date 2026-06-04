@@ -25,6 +25,7 @@ class DeviceInformationViewController: UIViewController {
     private let emptyGroupText: String
     private let groupTextOverride: String?
     private let sceneTextOverride: String?
+    private let nameOverride: String?
     private let deviceInfoDisplayMode: DeviceInfoDisplayMode
     
     init(
@@ -33,12 +34,14 @@ class DeviceInformationViewController: UIViewController {
         showsSceneSection: Bool = true,
         groupTextOverride: String? = nil,
         sceneTextOverride: String? = nil,
+        nameOverride: String? = nil,
         showsFullDeviceInfo: Bool = false
     ) {
         self.node = node
         self.emptyGroupText = emptyGroupText ?? "device_not_added_group".localizedString
         self.groupTextOverride = groupTextOverride
         self.sceneTextOverride = sceneTextOverride
+        self.nameOverride = nameOverride
         self.deviceInfoDisplayMode = showsFullDeviceInfo ? .full : .standard
         self.sections = showsSceneSection ? [.deviceInfo, .group, .scene] : [.deviceInfo, .group]
         super.init(nibName: nil, bundle: nil)
@@ -119,8 +122,10 @@ class DeviceInformationViewController: UIViewController {
     
     /// 设备数据
     private func setupDeviceInfoDataSource() {
-        var name = node.name ?? ""
-        if let group = node.group, SpaceViewController.currentSpace()?.displayDeviceNamePrefix ?? false {
+        var name = nameOverride ?? node.name ?? ""
+        if nameOverride == nil,
+           let group = node.group,
+           SpaceViewController.currentSpace()?.displayDeviceNamePrefix ?? false {
             name = "\(group.name)-\(name)"
         }
         let nameModel = CustomCellModel(title: "name".localizedString, content: name, style: .none)

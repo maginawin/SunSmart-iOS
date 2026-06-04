@@ -1876,6 +1876,8 @@
 "neightkeyswitches_activation_waiting_format" = "等待开关激活（%d秒）...";
 "neightkeyswitches_activation_detected" = "已检测到设备激活";
 "neightkeyswitches_activation_timeout" = "未检测到响应";
+"neightkeyswitches_identify_title" = "识别设备";
+"neightkeyswitches_identifying" = "正在识别...";
 "The device has been disabled; please configure it in the settings." = "该设备已被禁用；请在设置中进行配置。";
 "Not executed. Please link a device first." = "未执行。请先关联设备。";
 "Not executed. No devices in associated groups." = "未执行。关联的组中没有设备。";

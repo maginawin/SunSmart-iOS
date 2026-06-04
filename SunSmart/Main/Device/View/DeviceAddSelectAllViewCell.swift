@@ -36,6 +36,12 @@ class DeviceAddSelectAllViewCell: UITableViewCell {
     required init?(coder: NSCoder) {
         fatalError("init(coder:) has not been implemented")
     }
+
+    func setSelectionControlsHidden(_ hidden: Bool) {
+        selectBtn.isHidden = hidden
+        selectAllLabel.isHidden = hidden
+        countLabel.isHidden = hidden
+    }
     
     @objc private func selectBtnAction(sender: UIButton) {
         

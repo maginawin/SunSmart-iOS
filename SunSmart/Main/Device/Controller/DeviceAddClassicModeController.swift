@@ -101,11 +101,47 @@ class DeviceAddClassicModeController: UIViewController {
         return nil
     }
 
+    private var isVirtualAddTarget: Bool {
+        bindTarget != nil || bindToDongle != nil
+    }
+
+    private var hidesBatchSelectionControls: Bool {
+        isVirtualAddTarget
+    }
+
+    private var lockedCategoryIndexForCurrentTarget: Int? {
+        if bindToBatteryPowerSwitch != nil {
+            return 1
+        }
+        if bindToEmerFire != nil || bindToDongle != nil {
+            return 3
+        }
+        return nil
+    }
+
+    private var unboundBatteryPowerSwitches: [PJEightKeySwitchData] {
+        MeshNetworkManager.instance.switchs
+            .unboundVirtualPowerSwitchAddTargets(kind: .battery)
+    }
+
+    private var unboundACPowerSwitches: [PJEightKeySwitchData] {
+        MeshNetworkManager.instance.switchs
+            .unboundVirtualPowerSwitchAddTargets(kind: .ac)
+    }
+
+    private var unboundEmergencyFireDevices: [DeviceEmerFireData] {
+        DeviceEmerFireStore.shared.devices(in: space).filter { $0.bindNodeAddress == nil }
+    }
+
+    private var unboundDongles: [DeviceDongleData] {
+        MeshNetworkManager.instance.dongles.filter { $0.bindNodeAddress == nil }
+    }
+
     private var currentTargetName: String {
         if let bindTarget {
             return bindTarget.name
         }
-        if showDeviceTypes.contains(.dongle), let dongleName = bindToDongle?.name {
+        if let dongleName = bindToDongle?.name {
             return dongleName
         }
         if let groupName = addToGroup?.name {
@@ -115,6 +151,11 @@ class DeviceAddClassicModeController: UIViewController {
     }
 
     private var currentTargetSelection: DeviceAddTargetSelection {
+        if let bindToBatteryPowerSwitch {
+            return bindToBatteryPowerSwitch.powerSwitchKind == .ac
+                ? .acPowerSwitch(bindToBatteryPowerSwitch)
+                : .batteryPowerSwitch(bindToBatteryPowerSwitch)
+        }
         if let bindToEmerFire {
             return .emergencyFire(bindToEmerFire)
         }
@@ -144,6 +185,34 @@ class DeviceAddClassicModeController: UIViewController {
         }
         return addToGroup != nil || bindToDongle != nil
     }
+
+    private var isAddingToGroupTarget: Bool {
+        addToGroup != nil
+    }
+
+    private func shouldBlockDeviceTypeForGroupTarget(_ deviceType: Node.DeviceType) -> Bool {
+        guard isAddingToGroupTarget else {
+            return false
+        }
+        switch deviceType {
+        case .switches, .dongle, .gateway, .emergencyController, .unknown:
+            return true
+        default:
+            return false
+        }
+    }
+
+    private func shouldRestoreDeviceTypeAfterLeavingGroupTarget(_ deviceType: Node.DeviceType) -> Bool {
+        guard !isAddingToGroupTarget else {
+            return false
+        }
+        switch deviceType {
+        case .switches, .dongle, .gateway, .emergencyController:
+            return true
+        default:
+            return false
+        }
+    }
     
     init(space: SpaceData) {
         self.space = space
@@ -171,9 +240,9 @@ class DeviceAddClassicModeController: UIViewController {
         setupUI()
 
         
-        if forceBindToDongle != nil {
-            showDeviceTypes = [.dongle, .unknown]
-            categoryView.selectItem(at: 3)
+        if let lockedCategoryIndexForCurrentTarget {
+            showDeviceTypes = deviceTypes(forCategoryIndex: lockedCategoryIndexForCurrentTarget)
+            categoryView.selectItem(at: lockedCategoryIndexForCurrentTarget)
         } else if let initialIndex = initialCategoryIndex {
             showDeviceTypes = deviceTypes(forCategoryIndex: initialIndex)
             categoryView.selectItem(at: initialIndex)
@@ -213,10 +282,12 @@ class DeviceAddClassicModeController: UIViewController {
     }
 
     private func showAddBehaviorTip() {
-        guard let tip = addBehavior?.forbiddenSelectionTip, !tip.isEmpty else {
-            return
-        }
-        XWHUDManager.showTipHUD(tip, isLineFeed: true)
+        XWHUDManager.showTipHUD(forbiddenSelectionTip, isLineFeed: true)
+    }
+
+    private var forbiddenSelectionTip: String {
+        let tip = addBehavior?.forbiddenSelectionTip ?? ""
+        return tip.isEmpty ? "You can't choose other devices." : tip
     }
 
     private func showInvalidDeviceTypeTip() {
@@ -230,6 +301,12 @@ class DeviceAddClassicModeController: UIViewController {
         if let bindTarget {
             return !bindTarget.allowedDeviceTypes.contains(deviceType)
         }
+        if bindToDongle != nil {
+            return deviceType != .dongle
+        }
+        if shouldBlockDeviceTypeForGroupTarget(deviceType) {
+            return true
+        }
         if shouldBlockEmergencyControllerForCurrentTarget, deviceType == .emergencyController {
             return true
         }
@@ -239,6 +316,9 @@ class DeviceAddClassicModeController: UIViewController {
     private func isAllowedDeviceType(_ deviceType: Node.DeviceType) -> Bool {
         if let bindTarget {
             return bindTarget.allowedDeviceTypes.contains(deviceType)
+        }
+        if bindToDongle != nil {
+            return deviceType == .dongle
         }
         guard let addBehavior else {
             return true
@@ -262,6 +342,9 @@ class DeviceAddClassicModeController: UIViewController {
         if let bindTarget {
             return bindTarget.allows(device)
         }
+        if bindToDongle != nil {
+            return device.deviceType == .dongle
+        }
         let deviceType = device.deviceType
         return isAllowedDeviceType(deviceType)
     }
@@ -269,6 +352,9 @@ class DeviceAddClassicModeController: UIViewController {
     private func isBlockedDevice(_ device: ProvisioningDevice) -> Bool {
         if let bindTarget {
             return !bindTarget.allows(device)
+        }
+        if bindToDongle != nil {
+            return device.deviceType != .dongle
         }
         let deviceType = device.deviceType
         return isBlockedDeviceType(deviceType)
@@ -285,7 +371,15 @@ class DeviceAddClassicModeController: UIViewController {
             device.selectedState = .disabled
             return
         }
-        guard addBehavior != nil || bindTarget != nil else {
+        if addBehavior == nil,
+           bindTarget == nil,
+           bindToDongle == nil,
+           device.selectedState == .disabled,
+           shouldRestoreDeviceTypeAfterLeavingGroupTarget(device.deviceType) {
+            device.selectedState = .unselected
+            return
+        }
+        guard addBehavior != nil || bindTarget != nil || bindToDongle != nil || isAddingToGroupTarget else {
             return
         }
         if device.addState == .wait || device.addState == .adding || device.addState == .addConnecting || device.addState == .success {
@@ -294,6 +388,9 @@ class DeviceAddClassicModeController: UIViewController {
         // 这里仅收敛外部注入的设备范围，不改变默认展示与 identify 行为。
         if isSelectableDevice(device) {
             if device.selectedState == .disabled {
+                device.selectedState = .unselected
+            }
+            if hidesBatchSelectionControls, device.selectedState == .selected {
                 device.selectedState = .unselected
             }
         } else {
@@ -440,6 +537,9 @@ class DeviceAddClassicModeController: UIViewController {
     }
 
     private func shouldAllowCategorySelection(at index: Int) -> Bool {
+        if let lockedCategoryIndexForCurrentTarget {
+            return index == lockedCategoryIndexForCurrentTarget
+        }
         guard let addBehavior else {
             return true
         }
@@ -450,6 +550,64 @@ class DeviceAddClassicModeController: UIViewController {
             return false
         }
         return index == initialCategoryIndex
+    }
+
+    private func clearSelectedDevicesForVirtualTargetIfNeeded(previousWasVirtual: Bool) {
+        guard isVirtualAddTarget, !previousWasVirtual else {
+            return
+        }
+        scanDevices.forEach {
+            if $0.selectedState == .selected {
+                $0.selectedState = .unselected
+            }
+        }
+        showDevices.forEach {
+            if $0.selectedState == .selected {
+                $0.selectedState = .unselected
+            }
+        }
+    }
+
+    private func applyTargetSelection(_ selection: DeviceAddTargetSelection) {
+        let previousWasVirtual = isVirtualAddTarget
+
+        switch selection {
+        case .space:
+            addToGroup = nil
+            bindToDongle = nil
+            bindTarget = nil
+        case .group(let group):
+            addToGroup = group
+            bindToDongle = nil
+            bindTarget = nil
+        case .batteryPowerSwitch(let switchData), .acPowerSwitch(let switchData):
+            addToGroup = nil
+            bindToDongle = nil
+            bindTarget = .batteryPowerSwitch(switchData)
+        case .emergencyFire(let device):
+            addToGroup = nil
+            bindToDongle = nil
+            bindTarget = .emergencyFire(device)
+        case .dongle(let dongle):
+            addToGroup = nil
+            bindToDongle = dongle
+            bindTarget = nil
+        }
+
+        clearSelectedDevicesForVirtualTargetIfNeeded(previousWasVirtual: previousWasVirtual)
+        normalizeSelectionForCurrentTarget()
+        applyLockedCategoryForCurrentTarget()
+    }
+
+    private func applyLockedCategoryForCurrentTarget() {
+        guard let lockedCategoryIndexForCurrentTarget else {
+            return
+        }
+        showDeviceTypes = deviceTypes(forCategoryIndex: lockedCategoryIndexForCurrentTarget)
+        showDevices = scanDevices.filter {
+            selectRSSIRange.contains($0.rssi.intValue) && showDeviceTypes.contains($0.deviceType)
+        }
+        categoryView.selectItem(at: lockedCategoryIndexForCurrentTarget)
     }
 
     private func applySingleSelectionIfNeeded(for device: ProvisioningDevice) {
@@ -755,6 +913,9 @@ class DeviceAddClassicModeController: UIViewController {
     
     /// 全选/取消全选
     @objc private func selectAllBtnClick(sender: UIButton) {
+        guard !hidesBatchSelectionControls else {
+            return
+        }
         // 单选模式下不进入全选逻辑，保持关联页一次只选一个设备。
         guard !isSingleSelectionMode else {
             let canAddDevice = showDevices.first(where: { $0.selectedState != .disabled && !($0.addState == .wait || $0.addState == .adding || $0.addState == .addConnecting) })
@@ -800,7 +961,10 @@ class DeviceAddClassicModeController: UIViewController {
     
     /// 批量添加
     @objc private func addSelectedBtnClick() {
-        let selectedDevices = showDevices.filter({ $0.selectedState == .selected })
+        guard !hidesBatchSelectionControls else {
+            return
+        }
+        let selectedDevices = showDevices.filter({ $0.selectedState == .selected && isSelectableDevice($0) })
         let selectDevices = isSingleSelectionMode ? Array(selectedDevices.prefix(1)) : selectedDevices
         
         let dongleDevices = selectDevices.filter({ $0.deviceType == .dongle })
@@ -842,7 +1006,6 @@ class DeviceAddClassicModeController: UIViewController {
     
     /// 添加目标选择事件
     @objc private func addDeviceTargetBtnClick(sender: UIButton) {
-        
         if state == .adding {
             return
         }
@@ -851,110 +1014,35 @@ class DeviceAddClassicModeController: UIViewController {
             showAddBehaviorTip()
             return
         }
-        
-        var titles: [String] = [space.name]
-        var selectIndex = 0
+
+        if forceBindToDongle != nil {
+            XWHUDManager.showTipHUD("dongle_cannot_select_message".localizedString, isLineFeed: true)
+            return
+        }
+
+        if appointGroup != nil {
+            XWHUDManager.showTipHUD("group_cannot_select_message".localizedString, isLineFeed: true)
+            return
+        }
         
         let touchPoint = CGPoint(x: sender.x, y: sender.frame.maxY + SCRYFrom(2))
         let menuPoint = view.convert(touchPoint, to: UIApplication.shared.keyWindow())
 
-        if canSelectEmergencyFireVirtualTarget {
-            let groups = MeshNetworkManager.instance.groups
-            let virtualEmerFireDevices = DeviceEmerFireStore.shared.devices(in: space).filter { $0.bindNodeAddress == nil }
-            DeviceAddTargetSelectView.show(
-                anchorPoint: menuPoint,
-                groups: groups,
-                emergencyFireDevices: virtualEmerFireDevices,
-                dongles: dongles,
-                selectedTarget: currentTargetSelection
-            ) { [weak self] selection in
-                guard let self else { return }
-                switch selection {
-                case .space:
-                    self.addToGroup = nil
-                    self.bindToDongle = nil
-                    self.bindTarget = nil
-                case .group(let group):
-                    self.addToGroup = group
-                    self.bindToDongle = nil
-                    self.bindTarget = nil
-                case .emergencyFire(let device):
-                    self.addToGroup = nil
-                    self.bindToDongle = nil
-                    self.bindTarget = .emergencyFire(device)
-                case .dongle(let dongle):
-                    self.addToGroup = nil
-                    self.bindToDongle = dongle
-                    self.bindTarget = nil
-                }
-                self.normalizeSelectionForCurrentTarget()
-                sender.setTitle(self.currentTargetName, for: .normal)
-                self.tableView.reloadData()
-                self.updateFooterViewState()
-            }
-            return
-        }
-        
-        if showDeviceTypes.contains(.dongle), !canSelectEmergencyFireVirtualTarget { // 选择dongle
-            if forceBindToDongle != nil { // 固定智能绑定该dongle数据
-                XWHUDManager.showTipHUD("dongle_cannot_select_message".localizedString, isLineFeed: true)
-                return
-            }
-            
-            for dongle in dongles {
-                titles.append(dongle.name)
-            }
-
-            if let selectDongle = bindToDongle, let index = dongles.firstIndex(where: { $0.id == selectDongle.id }) {
-                selectIndex = index + 1
-            }
-            
-            TitleSelectView.show(titles: titles, anchorPoint: menuPoint, selectIndex: selectIndex) {[weak self] index in
-                guard let self = self else { return }
-                if index == 0 {
-                    self.bindToDongle = nil
-                }else {
-                    self.bindToDongle = self.dongles[index - 1]
-                }
-                sender.setTitle(titles[index], for: .normal)
-            }
-            
-        }else { // 选择组
-            if appointGroup != nil {
-                XWHUDManager.showTipHUD("group_cannot_select_message".localizedString, isLineFeed: true)
-                return
-            }
-            
-            let groups = MeshNetworkManager.instance.groups
-            for group in groups {
-                titles.append(group.name)
-            }
-            let virtualEmerFireDevices = canSelectEmergencyFireVirtualTarget ? DeviceEmerFireStore.shared.devices(in: space).filter { $0.bindNodeAddress == nil } : []
-            virtualEmerFireDevices.forEach { titles.append($0.name) }
-            var selectIndex = 0
-            if let selectGroup = addToGroup, let index = groups.firstIndex(where: { $0.address == selectGroup.address }) {
-                selectIndex = index + 1
-            } else if let bindToEmerFire, let index = virtualEmerFireDevices.firstIndex(where: { $0.id == bindToEmerFire.id }) {
-                selectIndex = groups.count + index + 1
-            }
-            
-            TitleSelectView.show(titles: titles, anchorPoint: menuPoint, selectIndex: selectIndex) {[weak self] index in
-                guard let self = self else { return }
-                if index == 0 {
-                    self.addToGroup = nil
-                    self.bindTarget = nil
-                } else if index <= groups.count {
-                    self.addToGroup = groups[index - 1]
-                    self.bindTarget = nil
-                } else {
-                    self.addToGroup = nil
-                    self.bindTarget = .emergencyFire(virtualEmerFireDevices[index - groups.count - 1])
-                }
-                self.normalizeSelectionForCurrentTarget()
-                sender.setTitle(self.currentTargetName, for: .normal)
-                self.tableView.reloadData()
-                self.updateFooterViewState()
-            }
+        DeviceAddTargetSelectView.show(
+            anchorPoint: menuPoint,
+            groups: MeshNetworkManager.instance.groups,
+            batteryPowerSwitches: unboundBatteryPowerSwitches,
+            acPowerSwitches: unboundACPowerSwitches,
+            emergencyFireDevices: unboundEmergencyFireDevices,
+            dongles: unboundDongles,
+            selectedTarget: currentTargetSelection
+        ) { [weak self] selection in
+            guard let self else { return }
+            self.applyTargetSelection(selection)
+            sender.setTitle(self.currentTargetName, for: .normal)
+            self.tableView.reloadData()
+            self.updateFooterViewState()
+            self.updateUIState()
         }
     }
     
@@ -1471,6 +1559,7 @@ class DeviceAddClassicModeController: UIViewController {
     private func reloadDeviceState(_ device: ProvisioningDevice) {
         if let index = showDevices.firstIndex(of: device) {
             if let cell = tableView.cellForRow(at: IndexPath(row: index, section: 0)) as? DeviceAddViewCell {
+                cell.hidesSelectionControl = hidesBatchSelectionControls
                 cell.device = device
             }else {
                 tableView.reloadRows(at: [IndexPath(row: index, section: 0)], with: .none)
@@ -1480,6 +1569,12 @@ class DeviceAddClassicModeController: UIViewController {
     
     /// 更新底部view数量状态
     private func updateFooterViewState() {
+        footerView.setBatchControlsHidden(hidesBatchSelectionControls)
+        guard !hidesBatchSelectionControls else {
+            footerView.selectAllBtn.isSelected = false
+            footerView.addSelectedBtn.isEnabled = false
+            return
+        }
         let selectDevices = showDevices.filter({ $0.selectedState == .selected })
         let enableDevices = showDevices.filter({ $0.selectedState != .disabled })
         footerView.selectCountLabel.text = "\(selectDevices.count)/\(enableDevices.count)"
@@ -1882,6 +1977,7 @@ extension DeviceAddClassicModeController: UITableViewDataSource, UITableViewDele
         let cell = tableView.dequeueReusableCell(withIdentifier: "cell", for: indexPath) as! DeviceAddViewCell
         cell.selectionStyle = .none
         let device = showDevices[indexPath.row]
+        cell.hidesSelectionControl = hidesBatchSelectionControls
         cell.device = device
         cell.delegate = self
         return cell
@@ -1890,6 +1986,9 @@ extension DeviceAddClassicModeController: UITableViewDataSource, UITableViewDele
     func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
         
         let device = showDevices[indexPath.row]
+        guard !hidesBatchSelectionControls else {
+            return
+        }
         if device.selectedState == .disabled {
             showDisabledDeviceTip(device)
             return

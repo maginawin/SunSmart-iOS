@@ -267,7 +267,7 @@ final class PJEightKeySwitchData: DeviceSwitchData {
         if let node = proxyNode, !node.isKeybindComplete {
             return .repairRequiredMode
         }
-        let isBound = proxyNodeAddress != nil || !(enOceanMacAddress?.isEmpty ?? true)
+        let isBound = proxyNode?.isPowerSwitch == true || !(enOceanMacAddress?.isEmpty ?? true)
         let needsSync = proxyNode?.isPowerSwitch == true ? needsBatteryPowerSwitchSync : needSyncData
         if isBound && needsSync {
             return .syncIssueBoundSwitch

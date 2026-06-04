@@ -42,6 +42,8 @@ class DeviceAddViewCell: UITableViewCell {
     var activityTimer: Timer?
     
     weak var delegate: DeviceAddViewCellDelegate?
+
+    var hidesSelectionControl: Bool = false
     
     var device: ProvisioningDevice! {
         didSet {
@@ -68,13 +70,18 @@ class DeviceAddViewCell: UITableViewCell {
                 stateImageView.layer.removeAnimation(forKey: "loading")
             }
             
-            switch device.selectedState {
-            case .unselected:
-                selectImageView.image = UIImage(named: "device_select_un")
-            case .selected:
-                selectImageView.image = UIImage(named: "device_select")
-            case .disabled:
-                selectImageView.image = UIImage(named: "device_select_disable")
+            if hidesSelectionControl {
+                selectImageView.isHidden = true
+            } else {
+                selectImageView.isHidden = false
+                switch device.selectedState {
+                case .unselected:
+                    selectImageView.image = UIImage(named: "device_select_un")
+                case .selected:
+                    selectImageView.image = UIImage(named: "device_select")
+                case .disabled:
+                    selectImageView.image = UIImage(named: "device_select_disable")
+                }
             }
             
          
@@ -88,7 +95,7 @@ class DeviceAddViewCell: UITableViewCell {
                     identifyBtn.layer.borderColor = RGB(156, 163, 175, 0.5).cgColor
                 }else {
                     identifyBtn.isEnabled = true
-                    addBtn.isEnabled = device.deviceType != .unknown
+                    addBtn.isEnabled = device.deviceType != .unknown && device.selectedState != .disabled
                     identifyBtn.layer.borderColor = Bar_Color.cgColor
                 }
                 

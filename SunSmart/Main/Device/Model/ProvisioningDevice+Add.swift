@@ -152,6 +152,10 @@ extension ProvisioningDevice {
         return PJEightKeyPowerSwitchKind.make(companyIdentifier: cid, productIdentifier: pid)
     }
 
+    var powerSwitchPanelType: PJEightKeySwitchPanelDefinition.PanelType? {
+        return PJEightKeyPowerSwitchKind.panelType(productIdentifier: pid)
+    }
+
     var isACPowerSwitch: Bool {
         return powerSwitchKind == .ac
     }

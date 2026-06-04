@@ -61,6 +61,22 @@ class DeviceAddCandidateDeviceListView: UIView {
     
     /// 展示的设备类型
     private var showDeviceTypes: [Node.DeviceType] = [.light]
+
+    var hidesSelectionControls: Bool = false {
+        didSet {
+            guard hidesSelectionControls != oldValue else { return }
+            updateFooterViewState()
+            tableView.reloadData()
+        }
+    }
+
+    var lockedCategoryIndex: Int? {
+        didSet {
+            applyLockedCategoryIfNeeded()
+        }
+    }
+
+    var lockedCategorySelectionTip: String = "You can't choose other devices."
     
     let space: SpaceData
     
@@ -252,6 +268,9 @@ class DeviceAddCandidateDeviceListView: UIView {
     
     /// 全选/取消全选
     @objc private func selectAllBtnClick(sender: UIButton) {
+        guard !hidesSelectionControls else {
+            return
+        }
         
         // space只能添加200个设备
         let existNodeCount = MeshNetworkManager.instance.realNodes.count + candidateDevices.filter({ $0.addState == .wait || $0.addState == .adding || $0.addState == .addConnecting }).count
@@ -279,6 +298,9 @@ class DeviceAddCandidateDeviceListView: UIView {
     
     /// 批量添加
     @objc private func addSelectedBtnClick() {
+        guard !hidesSelectionControls else {
+            return
+        }
         let selectDevices = showDevices.filter({ $0.selectedState == .selected })
         
         let dongleDevices = selectDevices.filter({ $0.deviceType == .dongle })
@@ -353,7 +375,11 @@ class DeviceAddCandidateDeviceListView: UIView {
         pauseBtn.isEnabled = true
         revokeBtn.isHidden = !(state == .scanning && (isRefresh || lightSeningMode))
         revokeBtn.isEnabled = showDevices.contains(where: { $0.selectedState == .selected })
-        footerView.addSelectedBtn.isHidden = !revokeBtn.isHidden
+        if hidesSelectionControls {
+            footerView.setBatchControlsHidden(true)
+        } else {
+            footerView.addSelectedBtn.isHidden = !revokeBtn.isHidden
+        }
         promptView?.promptLabel.text = lightSeningMode ? "device_add_stop_scan_message".localizedString : "device_add_pause_message".localizedString
         
         pauseBtn.isHidden = isIPad || state != .scanning
@@ -418,6 +444,12 @@ class DeviceAddCandidateDeviceListView: UIView {
     
     /// 更新底部view数量状态
     private func updateFooterViewState() {
+        footerView.setBatchControlsHidden(hidesSelectionControls)
+        guard !hidesSelectionControls else {
+            footerView.selectAllBtn.isSelected = false
+            footerView.addSelectedBtn.isEnabled = false
+            return
+        }
         let selectDevices = showDevices.filter({ $0.selectedState == .selected })
         let enableDevices = showDevices.filter({ $0.selectedState != .disabled })
         footerView.selectCountLabel.text = "\(selectDevices.count)/\(enableDevices.count)"
@@ -439,9 +471,39 @@ class DeviceAddCandidateDeviceListView: UIView {
         
         if let indexPath = indexPath {
             if let cell = tableView.cellForRow(at: indexPath) as? DeviceAddViewCell {
+                cell.hidesSelectionControl = hidesSelectionControls
                 cell.device = device
             }
         }
+    }
+
+    private func deviceTypes(forCategoryIndex index: Int) -> [Node.DeviceType] {
+        switch index {
+        case 0:
+            return [.light]
+        case 1:
+            return [.switches]
+        case 2:
+            return [.sensor]
+        case 3:
+            return [.dongle, .gateway, .emergencyController, .unknown]
+        default:
+            return [.light]
+        }
+    }
+
+    private func applyLockedCategoryIfNeeded() {
+        guard let lockedCategoryIndex else {
+            return
+        }
+        showDeviceTypes = deviceTypes(forCategoryIndex: lockedCategoryIndex)
+        showDevices = candidateDevices.filter {
+            showDeviceTypes.contains($0.deviceType) && $0.addState != .success
+        }
+        categoryView.selectItem(at: lockedCategoryIndex)
+        updateAddTargetTitle()
+        updateFooterViewState()
+        tableView.reloadData()
     }
     
     private func updateCandidateUI() {
@@ -708,13 +770,17 @@ extension DeviceAddCandidateDeviceListView: WMMenuViewDataSource, WMMenuViewDele
         return SCRXFrom(10)
     }
     
-//    func menuView(_ menu: WMMenuView!, shouldSelesctedIndex index: Int) -> Bool {
-//        if forceBindToDongle != nil && index != 3 {
-//            XWHUDManager.showTipHUD("dongle_cannot_select_message".localizedString, isLineFeed: true)
-//            return false
-//        }
-//        return true
-//    }
+    func menuView(_ menu: WMMenuView!, shouldSelesctedIndex index: Int) -> Bool {
+        guard let lockedCategoryIndex else {
+            return true
+        }
+        guard index == lockedCategoryIndex else {
+            let tip = lockedCategorySelectionTip.isEmpty ? "You can't choose other devices." : lockedCategorySelectionTip
+            XWHUDManager.showTipHUD(tip, isLineFeed: true)
+            return false
+        }
+        return true
+    }
     
     func menuView(_ menu: WMMenuView!, didSelectedIndex index: Int, currentIndex: Int) {
         
@@ -729,18 +795,7 @@ extension DeviceAddCandidateDeviceListView: WMMenuViewDataSource, WMMenuViewDele
         let lastItem = menu.item(at: currentIndex)
         lastItem?.backgroundColor = .white
         
-        switch index {
-        case 0:
-            showDeviceTypes = [.light]
-        case 1:
-            showDeviceTypes = [.switches]
-        case 2:
-            showDeviceTypes = [.sensor]
-        case 3:
-            showDeviceTypes = [.dongle, .gateway, .emergencyController, .unknown]
-        default:
-            showDeviceTypes = [.light]
-        }
+        showDeviceTypes = deviceTypes(forCategoryIndex: index)
         
         self.showDevices = candidateDevices.filter({ showDeviceTypes.contains($0.deviceType) && $0.addState != .success })
         tableView.reloadData()
@@ -748,17 +803,7 @@ extension DeviceAddCandidateDeviceListView: WMMenuViewDataSource, WMMenuViewDele
         updateUIState()
         
         // 更新设备添加到哪UI
-        var name = space.name
-        if showDeviceTypes.contains(.dongle) {
-            if case .dongle(let dongle) = addTarget {
-                name = dongle.name
-            }
-        }else {
-            if case .group(let group) = addTarget {
-                name = group.name
-            }
-        }
-        addDeviceTargetBtn.setTitle(name, for: .normal)
+        updateAddTargetTitle()
     }
     
     func menuView(_ menu: WMMenuView!, initialMenuItem: WMMenuItem!, at index: Int) -> WMMenuItem! {
@@ -786,6 +831,7 @@ extension DeviceAddCandidateDeviceListView: UITableViewDataSource, UITableViewDe
             cell.backgroundColor = .clear
         }
         let device = showDevices[indexPath.row]
+        cell.hidesSelectionControl = hidesSelectionControls
         cell.device = device
         if state == .scanning && (isRefresh || lightSeningMode) {
             cell.addBtn.setImage(UIImage(named: "device_add_revoke"), for: .normal)
@@ -794,6 +840,9 @@ extension DeviceAddCandidateDeviceListView: UITableViewDataSource, UITableViewDe
             cell.addBtn.setImage(UIImage(named: "device_add"), for: .normal)
             cell.addBtn.setImage(UIImage(named: "device_add_disable"), for: .disabled)
         }
+        if device.selectedState == .disabled {
+            cell.addBtn.isEnabled = false
+        }
         cell.delegate = self
         return cell
     }
@@ -801,6 +850,12 @@ extension DeviceAddCandidateDeviceListView: UITableViewDataSource, UITableViewDe
     func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
         
         let device = showDevices[indexPath.row]
+        guard !hidesSelectionControls else {
+            return
+        }
+        if device.selectedState == .disabled {
+            return
+        }
         guard device.selectedState == .unselected || device.selectedState == .selected else {
             return
         }
@@ -904,6 +959,9 @@ extension DeviceAddCandidateDeviceListView: DeviceAddViewCellDelegate {
     
     /// 设备添加点击事件回调
     func cell(_ cell: DeviceAddViewCell, deviceAdd device: ProvisioningDevice) {
+        guard device.selectedState != .disabled else {
+            return
+        }
         if state == .scanning && (isRefresh || lightSeningMode) {
             delegate?.candidateView(self, candidateRevoke: [device])
 //            candidateDevices.removeAll(where: { $0.macAddress == device.macAddress })

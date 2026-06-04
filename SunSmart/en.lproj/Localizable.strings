@@ -1861,6 +1861,8 @@
 "neightkeyswitches_activation_waiting_format" = "Waiting for switch activation (%ds)...";
 "neightkeyswitches_activation_detected" = "Device Activation Detected";
 "neightkeyswitches_activation_timeout" = "No response detected";
+"neightkeyswitches_identify_title" = "Identify Device";
+"neightkeyswitches_identifying" = "Identifying...";
 "The device has been disabled; please configure it in the settings." = "The device has been disabled; please configure it in the settings.";
 "Not executed. Please link a device first." = "Not executed. Please link a device first.";
 "Not executed. No devices in associated groups." = "Not executed. No devices in associated groups.";

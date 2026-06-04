@@ -22,6 +22,7 @@ final class PJEightKeySwitchMonitorVC: UIViewController {
     private var activationFlow: PJEightKeySwitchActivationFlow?
     private var batteryRefreshFlow: PJEightKeySwitchBatteryRefreshFlow?
     private var txEnableFlow: PJEightKeySwitchTxEnableFlow?
+    private var identifyFlow: PJEightKeySwitchIdentifyFlow?
     private var pendingEnabledValue: Bool?
     private let virtualGroupControlSender = PJEightKeySwitchVirtualGroupControlSender()
     private var lastKeyTapTimes: [Int: Date] = [:]
@@ -84,10 +85,20 @@ final class PJEightKeySwitchMonitorVC: UIViewController {
     }
 
     private func identifyAction() {
-        guard let node = viewModel.informationNode else {
+        guard viewModel.informationNode != nil else {
+            XWHUDManager.showTipHUD("failed".localizedString, isLineFeed: false)
             return
         }
-        MeshAPI.identify(address: node.primaryUnicastAddress, attentionTimer: 6)
+
+        let flow = PJEightKeySwitchIdentifyFlow(
+            presenter: self,
+            switchData: viewModel.switchData,
+            onFinished: { [weak self] in
+                self?.identifyFlow = nil
+            }
+        )
+        identifyFlow = flow
+        flow.start()
     }
 
     private func setupNavigation() {
@@ -278,6 +289,7 @@ final class PJEightKeySwitchMonitorVC: UIViewController {
     deinit {
         batteryRefreshFlow?.cancel()
         txEnableFlow?.cancel()
+        identifyFlow?.cancel()
         activationFlow = nil
     }
 
@@ -396,6 +408,7 @@ final class PJEightKeySwitchMonitorVC: UIViewController {
             showsSceneSection: viewModel.showsInformationSceneSection,
             groupTextOverride: groupText,
             sceneTextOverride: sceneText,
+            nameOverride: viewModel.title,
             showsFullDeviceInfo: true
         )
         navigationController?.pushViewController(vc, animated: true)

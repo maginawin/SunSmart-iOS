@@ -628,6 +628,7 @@ extension MeshNetworkManager {
             })
             
             self.switchs = DeviceSwitchData.load(meshUUID: uuid, meshNetworkId: subNetworkId)
+            self.normalizeInvalidBatteryPowerSwitchProxyLinks()
             self.dongles = DeviceDongleData.load(meshUUID: uuid, meshNetworkId: subNetworkId)
 
             DispatchQueue.main.async {
@@ -866,6 +867,59 @@ extension MeshNetworkManager {
         newSwitch.save()
         PJEightKeySwitchRepository.shared.save(newSwitch)
         return newSwitch
+    }
+
+    @discardableResult
+    func normalizeInvalidBatteryPowerSwitchProxyLinks(notify: Bool = false) -> Bool {
+        guard let meshNetwork else {
+            return false
+        }
+
+        var didChange = false
+
+        for index in self.switchs.indices {
+            let currentSwitch = self.switchs[index]
+            let batteryPowerSwitch: PJEightKeySwitchData?
+            if let eightKeySwitch = currentSwitch as? PJEightKeySwitchData {
+                batteryPowerSwitch = eightKeySwitch
+            } else {
+                batteryPowerSwitch = PJEightKeySwitchRepository.shared.makeEightKeySwitch(from: currentSwitch)
+            }
+
+            guard let batteryPowerSwitch,
+                  batteryPowerSwitch.powerSwitchKind == .battery,
+                  let proxyNodeAddress = batteryPowerSwitch.proxyNodeAddress else {
+                continue
+            }
+
+            let proxyNode = meshNetwork.node(withAddress: proxyNodeAddress)
+            guard proxyNode?.isBatteryPowerSwitch != true else {
+                if !(currentSwitch is PJEightKeySwitchData) {
+                    self.switchs[index] = batteryPowerSwitch
+                }
+                continue
+            }
+
+            batteryPowerSwitch.proxyNodeAddress = nil
+            guard PJEightKeySwitchRepository.shared.save(batteryPowerSwitch),
+                  batteryPowerSwitch.save() else {
+                continue
+            }
+
+            self.switchs[index] = batteryPowerSwitch
+            didChange = true
+        }
+
+        guard didChange, notify else {
+            return didChange
+        }
+
+        NotificationCenter.default.post(name: .init(switchsRefreshNotificationName), object: nil)
+        NotificationCenter.default.post(
+            name: .init(spaceDataChangedNotificaitonName),
+            object: SpaceChangeDataType.common
+        )
+        return didChange
     }
     
     /// 删除动能开关

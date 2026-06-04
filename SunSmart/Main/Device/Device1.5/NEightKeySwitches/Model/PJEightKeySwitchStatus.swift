@@ -33,13 +33,17 @@ enum PJEightKeySwitchStatus: Int, CaseIterable {
         }
     }
 
-    var needsDashedBorder: Bool {
+    var isVirtualSwitch: Bool {
         switch self {
         case .unboundEnabled, .unboundDisabled:
             return true
         default:
             return false
         }
+    }
+
+    var needsDashedBorder: Bool {
+        isVirtualSwitch
     }
 
     var needsDimmedBackground: Bool {

@@ -210,6 +210,7 @@ class DeviceSwitchesViewController: UIViewController {
     
     private func updateUI() {
         
+        MeshNetworkManager.instance.normalizeInvalidBatteryPowerSwitchProxyLinks()
         footerView.countBtn.setTitle("\(MeshNetworkManager.instance.switchs.count)/16", for: .normal)
         updateRefreshControlAvailability()
         

@@ -82,7 +82,8 @@ enum BatteryPowerSwitchAddConfiguration {
         guard isSupportedAddNode(node) else {
             return .failure(.unsupportedNode)
         }
-        guard node.powerSwitchKind == sourceSwitchData.powerSwitchKind else {
+        guard node.powerSwitchKind == sourceSwitchData.powerSwitchKind,
+              node.batteryPowerSwitchPanelType == sourceSwitchData.eightKeyPanelType else {
             return .failure(.unsupportedNode)
         }
 
@@ -117,7 +118,8 @@ enum BatteryPowerSwitchAddConfiguration {
         guard isSupportedAddNode(node) else {
             return .failure(.unsupportedNode)
         }
-        guard node.powerSwitchKind == sourceSwitchData.powerSwitchKind else {
+        guard node.powerSwitchKind == sourceSwitchData.powerSwitchKind,
+              node.batteryPowerSwitchPanelType == sourceSwitchData.eightKeyPanelType else {
             return .failure(.unsupportedNode)
         }
 
