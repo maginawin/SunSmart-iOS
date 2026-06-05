@@ -646,6 +646,9 @@
 		C87EB44E2BA07E7E00F9285B /* GroupSwitchsHeaderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C87EB44D2BA07E7E00F9285B /* GroupSwitchsHeaderView.swift */; };
 		C87EB4502BA0822E00F9285B /* GroupSwitchPanelViewCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = C87EB44F2BA0822E00F9285B /* GroupSwitchPanelViewCell.swift */; };
 		C87EB4532BA0856700F9285B /* GroupSwitch.swift in Sources */ = {isa = PBXBuildFile; fileRef = C87EB4522BA0856700F9285B /* GroupSwitch.swift */; };
+		C8BE7F69DA4DC8EA37C5763C /* GroupPowerSwitchCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = C897B311461F95CC1204CFB1 /* GroupPowerSwitchCell.swift */; };
+		C8FF8A7E146827711D87F57C /* GroupPowerSwitchesViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8BE099331EBF36DB4714884 /* GroupPowerSwitchesViewController.swift */; };
+		C8F11B20959EC4093FFC9390 /* GroupPowerSwitchesViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8DDDEEA0487D9E098DB078F /* GroupPowerSwitchesViewModel.swift */; };
 		C87EB4552BA13BA400F9285B /* EnOceanProxyViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C87EB4542BA13BA400F9285B /* EnOceanProxyViewController.swift */; };
 		C87EB4572BA1500500F9285B /* SwitchSelectSceneViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C87EB4562BA1500500F9285B /* SwitchSelectSceneViewController.swift */; };
 		C87EB4622BA17D3F00F9285B /* CodeScan.bundle in Resources */ = {isa = PBXBuildFile; fileRef = C87EB45A2BA17D3E00F9285B /* CodeScan.bundle */; };
@@ -741,6 +744,8 @@
 		C88554002DE6B44C00C8B688 /* SiteEditViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A099FC2AC134C30068C814 /* SiteEditViewController.swift */; };
 		C88554012DE6B44C00C8B688 /* AttributedTextViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A16F6E2C8568F600FB50BD /* AttributedTextViewController.swift */; };
 		C88554022DE6B44C00C8B688 /* GroupSwitchPanelViewCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = C87EB44F2BA0822E00F9285B /* GroupSwitchPanelViewCell.swift */; };
+		C81EB9D84928F87940B7B24C /* GroupPowerSwitchCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = C897B311461F95CC1204CFB1 /* GroupPowerSwitchCell.swift */; };
+		C869ED42D86CF9D971A59476 /* GroupPowerSwitchesViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8DDDEEA0487D9E098DB078F /* GroupPowerSwitchesViewModel.swift */; };
 		C88554032DE6B44C00C8B688 /* DeviceDongleScheduleViewCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8DF845B2DB65ADF0070CBD9 /* DeviceDongleScheduleViewCell.swift */; };
 		C88554042DE6B44C00C8B688 /* SpaceData.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8AADF002A973DA600238C1C /* SpaceData.swift */; };
 		C88554052DE6B44C00C8B688 /* GroupAddHeaderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8BF085A2B27146B00144BAC /* GroupAddHeaderView.swift */; };
@@ -966,6 +971,7 @@
 		C88554E12DE6B44C00C8B688 /* ProfileSensitivityView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8B707072DCF349D0002133E /* ProfileSensitivityView.swift */; };
 		C88554E22DE6B44C00C8B688 /* SceneSettingsViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C898F7012B3A810E008B4124 /* SceneSettingsViewController.swift */; };
 		C88554E32DE6B44C00C8B688 /* GroupSwitchsViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C87EB44B2BA07D1800F9285B /* GroupSwitchsViewController.swift */; };
+		C86FD24A1F7497BCD7CBF70C /* GroupPowerSwitchesViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8BE099331EBF36DB4714884 /* GroupPowerSwitchesViewController.swift */; };
 		C88554E42DE6B44C00C8B688 /* GroupSensorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C82AE2EA2B95756600FA4BDB /* GroupSensorView.swift */; };
 		C88554E52DE6B44C00C8B688 /* AlignCenterFlowLayout.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8BF084D2B26F84800144BAC /* AlignCenterFlowLayout.swift */; };
 		C88554E62DE6B44C00C8B688 /* SwitchSelectPanelTypeController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8CAE8E42D76EF9500FCCA5A /* SwitchSelectPanelTypeController.swift */; };
@@ -1112,6 +1118,8 @@
 		C886E0512E30DE4900D0C3A6 /* SiteEditViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A099FC2AC134C30068C814 /* SiteEditViewController.swift */; };
 		C886E0522E30DE4900D0C3A6 /* AttributedTextViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A16F6E2C8568F600FB50BD /* AttributedTextViewController.swift */; };
 		C886E0532E30DE4900D0C3A6 /* GroupSwitchPanelViewCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = C87EB44F2BA0822E00F9285B /* GroupSwitchPanelViewCell.swift */; };
+		C8C4BE7222BCF6C13E9CB18F /* GroupPowerSwitchCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = C897B311461F95CC1204CFB1 /* GroupPowerSwitchCell.swift */; };
+		C896FE75CC379E7D64E3CC86 /* GroupPowerSwitchesViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8DDDEEA0487D9E098DB078F /* GroupPowerSwitchesViewModel.swift */; };
 		C886E0542E30DE4900D0C3A6 /* DeviceDongleScheduleViewCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8DF845B2DB65ADF0070CBD9 /* DeviceDongleScheduleViewCell.swift */; };
 		C886E0552E30DE4900D0C3A6 /* SpaceData.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8AADF002A973DA600238C1C /* SpaceData.swift */; };
 		C886E0562E30DE4900D0C3A6 /* GroupAddHeaderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8BF085A2B27146B00144BAC /* GroupAddHeaderView.swift */; };
@@ -1347,6 +1355,7 @@
 		C886E13C2E30DE4900D0C3A6 /* ProfileSensitivityView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8B707072DCF349D0002133E /* ProfileSensitivityView.swift */; };
 		C886E13D2E30DE4900D0C3A6 /* SceneSettingsViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C898F7012B3A810E008B4124 /* SceneSettingsViewController.swift */; };
 		C886E13E2E30DE4900D0C3A6 /* GroupSwitchsViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C87EB44B2BA07D1800F9285B /* GroupSwitchsViewController.swift */; };
+		C8CE7DF01894297033EBC6CF /* GroupPowerSwitchesViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8BE099331EBF36DB4714884 /* GroupPowerSwitchesViewController.swift */; };
 		C886E13F2E30DE4900D0C3A6 /* GroupSensorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C82AE2EA2B95756600FA4BDB /* GroupSensorView.swift */; };
 		C886E1402E30DE4900D0C3A6 /* DeviceParameterAbsoluteSensitivityViewCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8C0E44A2E28869F0024E77E /* DeviceParameterAbsoluteSensitivityViewCell.swift */; };
 		C886E1412E30DE4900D0C3A6 /* AlignCenterFlowLayout.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8BF084D2B26F84800144BAC /* AlignCenterFlowLayout.swift */; };
@@ -1841,6 +1850,8 @@
 		C8BB66092ED3F056000C63EE /* SiteEditViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A099FC2AC134C30068C814 /* SiteEditViewController.swift */; };
 		C8BB660A2ED3F056000C63EE /* AttributedTextViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A16F6E2C8568F600FB50BD /* AttributedTextViewController.swift */; };
 		C8BB660B2ED3F056000C63EE /* GroupSwitchPanelViewCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = C87EB44F2BA0822E00F9285B /* GroupSwitchPanelViewCell.swift */; };
+		C85CFF76696BC2EE803E817B /* GroupPowerSwitchCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = C897B311461F95CC1204CFB1 /* GroupPowerSwitchCell.swift */; };
+		C8DE791ACB736AB07BBC9C56 /* GroupPowerSwitchesViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8DDDEEA0487D9E098DB078F /* GroupPowerSwitchesViewModel.swift */; };
 		C8BB660C2ED3F056000C63EE /* DeviceDongleScheduleViewCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8DF845B2DB65ADF0070CBD9 /* DeviceDongleScheduleViewCell.swift */; };
 		C8BB660D2ED3F056000C63EE /* SpaceData.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8AADF002A973DA600238C1C /* SpaceData.swift */; };
 		C8BB660E2ED3F056000C63EE /* GroupAddHeaderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8BF085A2B27146B00144BAC /* GroupAddHeaderView.swift */; };
@@ -2113,6 +2124,7 @@
 		C8BB67192ED3F056000C63EE /* ProfileSensitivityView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8B707072DCF349D0002133E /* ProfileSensitivityView.swift */; };
 		C8BB671A2ED3F056000C63EE /* SceneSettingsViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C898F7012B3A810E008B4124 /* SceneSettingsViewController.swift */; };
 		C8BB671B2ED3F056000C63EE /* GroupSwitchsViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C87EB44B2BA07D1800F9285B /* GroupSwitchsViewController.swift */; };
+		C826963BB2B36ED1418055DC /* GroupPowerSwitchesViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8BE099331EBF36DB4714884 /* GroupPowerSwitchesViewController.swift */; };
 		C8BB671C2ED3F056000C63EE /* GroupSensorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C82AE2EA2B95756600FA4BDB /* GroupSensorView.swift */; };
 		C8BB671D2ED3F056000C63EE /* DeviceForceResetDeviceInstructionsController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8B95FA32E502F25000576F5 /* DeviceForceResetDeviceInstructionsController.swift */; };
 		C8BB671E2ED3F056000C63EE /* DeviceParameterAbsoluteSensitivityViewCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8C0E44A2E28869F0024E77E /* DeviceParameterAbsoluteSensitivityViewCell.swift */; };
@@ -2635,6 +2647,9 @@
 		C87EB44D2BA07E7E00F9285B /* GroupSwitchsHeaderView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GroupSwitchsHeaderView.swift; sourceTree = "<group>"; };
 		C87EB44F2BA0822E00F9285B /* GroupSwitchPanelViewCell.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GroupSwitchPanelViewCell.swift; sourceTree = "<group>"; };
 		C87EB4522BA0856700F9285B /* GroupSwitch.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GroupSwitch.swift; sourceTree = "<group>"; };
+		C897B311461F95CC1204CFB1 /* GroupPowerSwitchCell.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GroupPowerSwitchCell.swift; sourceTree = "<group>"; };
+		C8BE099331EBF36DB4714884 /* GroupPowerSwitchesViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GroupPowerSwitchesViewController.swift; sourceTree = "<group>"; };
+		C8DDDEEA0487D9E098DB078F /* GroupPowerSwitchesViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GroupPowerSwitchesViewModel.swift; sourceTree = "<group>"; };
 		C87EB4542BA13BA400F9285B /* EnOceanProxyViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EnOceanProxyViewController.swift; sourceTree = "<group>"; };
 		C87EB4562BA1500500F9285B /* SwitchSelectSceneViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SwitchSelectSceneViewController.swift; sourceTree = "<group>"; };
 		C87EB45A2BA17D3E00F9285B /* CodeScan.bundle */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.plug-in"; path = CodeScan.bundle; sourceTree = "<group>"; };
@@ -3842,6 +3857,7 @@
 			children = (
 				C87EB44D2BA07E7E00F9285B /* GroupSwitchsHeaderView.swift */,
 				C87EB44F2BA0822E00F9285B /* GroupSwitchPanelViewCell.swift */,
+				C897B311461F95CC1204CFB1 /* GroupPowerSwitchCell.swift */,
 				C87D8B262BA818AA00F930F9 /* GroupSwitchEnOceanProxyHeaderView.swift */,
 			);
 			path = View;
@@ -3851,6 +3867,7 @@
 			isa = PBXGroup;
 			children = (
 				C87EB44B2BA07D1800F9285B /* GroupSwitchsViewController.swift */,
+				C8BE099331EBF36DB4714884 /* GroupPowerSwitchesViewController.swift */,
 				C87EB4542BA13BA400F9285B /* EnOceanProxyViewController.swift */,
 				C8CAE8E62D76FE1500FCCA5A /* SwitchSelectScenePageController.swift */,
 				C87EB4562BA1500500F9285B /* SwitchSelectSceneViewController.swift */,
@@ -3862,6 +3879,7 @@
 			isa = PBXGroup;
 			children = (
 				C87EB4522BA0856700F9285B /* GroupSwitch.swift */,
+				C8DDDEEA0487D9E098DB078F /* GroupPowerSwitchesViewModel.swift */,
 			);
 			path = Model;
 			sourceTree = "<group>";
@@ -5538,6 +5556,7 @@
 				C88553C02DE6B44C00C8B688 /* ServerSelectionViewController.swift in Sources */,
 				C88553C12DE6B44C00C8B688 /* ImagesPickerViewController.swift in Sources */,
 				C88553C22DE6B44C00C8B688 /* GroupSwitch.swift in Sources */,
+				C869ED42D86CF9D971A59476 /* GroupPowerSwitchesViewModel.swift in Sources */,
 				C88553C32DE6B44C00C8B688 /* MeshFirmwareListViewCell.swift in Sources */,
 				C8B95F9D2E4DDEF2000576F5 /* DeviceForceResetDevicePageController.swift in Sources */,
 				C88553C42DE6B44C00C8B688 /* WebViewController.swift in Sources */,
@@ -5640,6 +5659,7 @@
 				C88554002DE6B44C00C8B688 /* SiteEditViewController.swift in Sources */,
 				C88554012DE6B44C00C8B688 /* AttributedTextViewController.swift in Sources */,
 				C88554022DE6B44C00C8B688 /* GroupSwitchPanelViewCell.swift in Sources */,
+				C81EB9D84928F87940B7B24C /* GroupPowerSwitchCell.swift in Sources */,
 				C88554032DE6B44C00C8B688 /* DeviceDongleScheduleViewCell.swift in Sources */,
 				C88554042DE6B44C00C8B688 /* SpaceData.swift in Sources */,
 				C88554052DE6B44C00C8B688 /* GroupAddHeaderView.swift in Sources */,
@@ -6011,6 +6031,7 @@
 				C88554E12DE6B44C00C8B688 /* ProfileSensitivityView.swift in Sources */,
 				C88554E22DE6B44C00C8B688 /* SceneSettingsViewController.swift in Sources */,
 				C88554E32DE6B44C00C8B688 /* GroupSwitchsViewController.swift in Sources */,
+				C86FD24A1F7497BCD7CBF70C /* GroupPowerSwitchesViewController.swift in Sources */,
 				C88554E42DE6B44C00C8B688 /* GroupSensorView.swift in Sources */,
 				8C1DA7CB2FAC8A890073F100 /* PJDeviceGroupSelectionContext.swift in Sources */,
 				C8B95FA42E502F25000576F5 /* DeviceForceResetDeviceInstructionsController.swift in Sources */,
@@ -6120,6 +6141,7 @@
 				C886E0102E30DE4900D0C3A6 /* ServerSelectionViewController.swift in Sources */,
 				C886E0112E30DE4900D0C3A6 /* ImagesPickerViewController.swift in Sources */,
 				C886E0122E30DE4900D0C3A6 /* GroupSwitch.swift in Sources */,
+				C896FE75CC379E7D64E3CC86 /* GroupPowerSwitchesViewModel.swift in Sources */,
 				C886E0132E30DE4900D0C3A6 /* MeshFirmwareListViewCell.swift in Sources */,
 				C8B95F9E2E4DDEF2000576F5 /* DeviceForceResetDevicePageController.swift in Sources */,
 				C886E0142E30DE4900D0C3A6 /* WebViewController.swift in Sources */,
@@ -6222,6 +6244,7 @@
 				C886E0512E30DE4900D0C3A6 /* SiteEditViewController.swift in Sources */,
 				C886E0522E30DE4900D0C3A6 /* AttributedTextViewController.swift in Sources */,
 				C886E0532E30DE4900D0C3A6 /* GroupSwitchPanelViewCell.swift in Sources */,
+				C8C4BE7222BCF6C13E9CB18F /* GroupPowerSwitchCell.swift in Sources */,
 				C886E0542E30DE4900D0C3A6 /* DeviceDongleScheduleViewCell.swift in Sources */,
 				C886E0552E30DE4900D0C3A6 /* SpaceData.swift in Sources */,
 				C886E0562E30DE4900D0C3A6 /* GroupAddHeaderView.swift in Sources */,
@@ -6594,6 +6617,7 @@
 				C886E13C2E30DE4900D0C3A6 /* ProfileSensitivityView.swift in Sources */,
 				C886E13D2E30DE4900D0C3A6 /* SceneSettingsViewController.swift in Sources */,
 				C886E13E2E30DE4900D0C3A6 /* GroupSwitchsViewController.swift in Sources */,
+				C8CE7DF01894297033EBC6CF /* GroupPowerSwitchesViewController.swift in Sources */,
 				C886E13F2E30DE4900D0C3A6 /* GroupSensorView.swift in Sources */,
 				8C1DA7CA2FAC8A890073F100 /* PJDeviceGroupSelectionContext.swift in Sources */,
 				C8B95FA52E502F25000576F5 /* DeviceForceResetDeviceInstructionsController.swift in Sources */,
@@ -6702,6 +6726,7 @@
 				C86B0AB82C106BE00038F669 /* ServerSelectionViewController.swift in Sources */,
 				C8A130CF2B32EE220008C353 /* ImagesPickerViewController.swift in Sources */,
 				C87EB4532BA0856700F9285B /* GroupSwitch.swift in Sources */,
+				C8F11B20959EC4093FFC9390 /* GroupPowerSwitchesViewModel.swift in Sources */,
 				C89BAB212C4F3EC8000A4173 /* MeshFirmwareListViewCell.swift in Sources */,
 				C8B95F9C2E4DDEF2000576F5 /* DeviceForceResetDevicePageController.swift in Sources */,
 				C89FEF482ABD6A6300DCCFB6 /* WebViewController.swift in Sources */,
@@ -6803,6 +6828,7 @@
 				C8A099FD2AC134C30068C814 /* SiteEditViewController.swift in Sources */,
 				C8A16F6F2C8568F700FB50BD /* AttributedTextViewController.swift in Sources */,
 				C87EB4502BA0822E00F9285B /* GroupSwitchPanelViewCell.swift in Sources */,
+				C8BE7F69DA4DC8EA37C5763C /* GroupPowerSwitchCell.swift in Sources */,
 				8CBEC6452F961B93003859AB /* EmerFireToggleCell.swift in Sources */,
 				8CF15F832F9628FA0044FCF3 /* EmerFireStepperCell.swift in Sources */,
 				C8DF845C2DB65ADF0070CBD9 /* DeviceDongleScheduleViewCell.swift in Sources */,
@@ -7191,6 +7217,7 @@
 				C898F7022B3A810E008B4124 /* SceneSettingsViewController.swift in Sources */,
 				8C7788D22F970F99000887FE /* EmerFireAlarmMoniCell.swift in Sources */,
 				C87EB44C2BA07D1800F9285B /* GroupSwitchsViewController.swift in Sources */,
+				C8FF8A7E146827711D87F57C /* GroupPowerSwitchesViewController.swift in Sources */,
 				C82AE2EB2B95756600FA4BDB /* GroupSensorView.swift in Sources */,
 				8C7788E12F972591000887FE /* EmerFireAlarmStatusItemCell.swift in Sources */,
 				C8B95FA62E502F25000576F5 /* DeviceForceResetDeviceInstructionsController.swift in Sources */,
@@ -7286,6 +7313,7 @@
 				C8BB65BD2ED3F056000C63EE /* ServerSelectionViewController.swift in Sources */,
 				C8BB65BE2ED3F056000C63EE /* ImagesPickerViewController.swift in Sources */,
 				C8BB65BF2ED3F056000C63EE /* GroupSwitch.swift in Sources */,
+				C8DE791ACB736AB07BBC9C56 /* GroupPowerSwitchesViewModel.swift in Sources */,
 				C8BB65C02ED3F056000C63EE /* MeshFirmwareListViewCell.swift in Sources */,
 				C8BB65C12ED3F056000C63EE /* DeviceForceResetDevicePageController.swift in Sources */,
 				C8BB65C22ED3F056000C63EE /* WebViewController.swift in Sources */,
@@ -7388,6 +7416,7 @@
 				C8BB66092ED3F056000C63EE /* SiteEditViewController.swift in Sources */,
 				C8BB660A2ED3F056000C63EE /* AttributedTextViewController.swift in Sources */,
 				C8BB660B2ED3F056000C63EE /* GroupSwitchPanelViewCell.swift in Sources */,
+				C85CFF76696BC2EE803E817B /* GroupPowerSwitchCell.swift in Sources */,
 				C8BB660C2ED3F056000C63EE /* DeviceDongleScheduleViewCell.swift in Sources */,
 				C8BB660D2ED3F056000C63EE /* SpaceData.swift in Sources */,
 				C8BB660E2ED3F056000C63EE /* GroupAddHeaderView.swift in Sources */,
@@ -7760,6 +7789,7 @@
 				C8BB67192ED3F056000C63EE /* ProfileSensitivityView.swift in Sources */,
 				C8BB671A2ED3F056000C63EE /* SceneSettingsViewController.swift in Sources */,
 				C8BB671B2ED3F056000C63EE /* GroupSwitchsViewController.swift in Sources */,
+				C826963BB2B36ED1418055DC /* GroupPowerSwitchesViewController.swift in Sources */,
 				C8BB671C2ED3F056000C63EE /* GroupSensorView.swift in Sources */,
 				8C1DA7C92FAC8A890073F100 /* PJDeviceGroupSelectionContext.swift in Sources */,
 				C8BB671D2ED3F056000C63EE /* DeviceForceResetDeviceInstructionsController.swift in Sources */,

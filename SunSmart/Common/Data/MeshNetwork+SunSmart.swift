@@ -879,34 +879,41 @@ extension MeshNetworkManager {
 
         for index in self.switchs.indices {
             let currentSwitch = self.switchs[index]
-            let batteryPowerSwitch: PJEightKeySwitchData?
+            let powerSwitch: PJEightKeySwitchData?
             if let eightKeySwitch = currentSwitch as? PJEightKeySwitchData {
-                batteryPowerSwitch = eightKeySwitch
+                powerSwitch = eightKeySwitch
             } else {
-                batteryPowerSwitch = PJEightKeySwitchRepository.shared.makeEightKeySwitch(from: currentSwitch)
+                powerSwitch = PJEightKeySwitchRepository.shared.makeEightKeySwitch(from: currentSwitch)
             }
 
-            guard let batteryPowerSwitch,
-                  batteryPowerSwitch.powerSwitchKind == .battery,
-                  let proxyNodeAddress = batteryPowerSwitch.proxyNodeAddress else {
+            guard let powerSwitch,
+                  let proxyNodeAddress = powerSwitch.proxyNodeAddress else {
                 continue
             }
 
             let proxyNode = meshNetwork.node(withAddress: proxyNodeAddress)
-            guard proxyNode?.isBatteryPowerSwitch != true else {
+            let proxyMatchesKind: Bool
+            switch powerSwitch.powerSwitchKind {
+            case .battery:
+                proxyMatchesKind = proxyNode?.isBatteryPowerSwitch == true
+            case .ac:
+                proxyMatchesKind = proxyNode?.isACPowerSwitch == true
+            }
+
+            guard !proxyMatchesKind else {
                 if !(currentSwitch is PJEightKeySwitchData) {
-                    self.switchs[index] = batteryPowerSwitch
+                    self.switchs[index] = powerSwitch
                 }
                 continue
             }
 
-            batteryPowerSwitch.proxyNodeAddress = nil
-            guard PJEightKeySwitchRepository.shared.save(batteryPowerSwitch),
-                  batteryPowerSwitch.save() else {
+            powerSwitch.proxyNodeAddress = nil
+            guard PJEightKeySwitchRepository.shared.save(powerSwitch),
+                  powerSwitch.save() else {
                 continue
             }
 
-            self.switchs[index] = batteryPowerSwitch
+            self.switchs[index] = powerSwitch
             didChange = true
         }
 

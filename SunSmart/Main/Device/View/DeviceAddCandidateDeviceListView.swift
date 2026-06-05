@@ -70,6 +70,13 @@ class DeviceAddCandidateDeviceListView: UIView {
         }
     }
 
+    var virtualTargetAddLocked: Bool = false {
+        didSet {
+            guard virtualTargetAddLocked != oldValue else { return }
+            tableView.reloadData()
+        }
+    }
+
     var lockedCategoryIndex: Int? {
         didSet {
             applyLockedCategoryIfNeeded()
@@ -843,6 +850,9 @@ extension DeviceAddCandidateDeviceListView: UITableViewDataSource, UITableViewDe
         if device.selectedState == .disabled {
             cell.addBtn.isEnabled = false
         }
+        if virtualTargetAddLocked && !device.addState.blocksVirtualTargetSingleAdd {
+            cell.addBtn.isEnabled = false
+        }
         cell.delegate = self
         return cell
     }
@@ -969,6 +979,9 @@ extension DeviceAddCandidateDeviceListView: DeviceAddViewCellDelegate {
 //            if let index = self.tableView.indexPath(for: cell)?.row {
 //                tableView.deleteRows(at: [IndexPath(row: index, section: 0)], with: .automatic)
 //            }
+            return
+        }
+        guard !virtualTargetAddLocked else {
             return
         }
         // space只能添加200个设备

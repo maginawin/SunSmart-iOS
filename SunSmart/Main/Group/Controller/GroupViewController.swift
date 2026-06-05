@@ -1052,10 +1052,26 @@ class GroupViewController: UIViewController {
     
     /// 开关
     @objc private func pushToSwitch() {
-        
-        let vc = GroupSwitchsViewController(group: group)
-        vc.editable = space.groupOperates.contains(.edit)
-        navigationController?.pushViewController(vc, animated: true)
+        let controller = PJSwitchesTypesVC.makePopupViewController(
+            onBack: nil,
+            onKineticSwitch: { [weak self] in
+                guard let self else { return }
+                let vc = GroupSwitchsViewController(group: self.group)
+                vc.editable = self.space.groupOperates.contains(.edit)
+                self.navigationController?.pushViewController(vc, animated: true)
+            },
+            onBatterySwitch: { [weak self] in
+                guard let self else { return }
+                let vc = GroupPowerSwitchesViewController(group: self.group, kind: .battery, editable: self.space.groupOperates.contains(.edit))
+                self.navigationController?.pushViewController(vc, animated: true)
+            },
+            onACSwitch: { [weak self] in
+                guard let self else { return }
+                let vc = GroupPowerSwitchesViewController(group: self.group, kind: .ac, editable: self.space.groupOperates.contains(.edit))
+                self.navigationController?.pushViewController(vc, animated: true)
+            }
+        )
+        present(controller, animated: false)
     }
     
     /// 分页页码编辑回调

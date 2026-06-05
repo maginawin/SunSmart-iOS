@@ -58,6 +58,15 @@ extension ProvisioningDevice {
         case failed
         /// 同步失败
         case syncFailed
+
+        var blocksVirtualTargetSingleAdd: Bool {
+            switch self {
+            case .wait, .addConnecting, .adding, .success:
+                return true
+            default:
+                return false
+            }
+        }
     }
     
     /// 设备添加状态

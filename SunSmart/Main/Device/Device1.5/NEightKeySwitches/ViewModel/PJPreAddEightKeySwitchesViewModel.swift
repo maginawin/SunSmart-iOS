@@ -65,12 +65,12 @@ struct PJPreAddEightKeySwitchesViewModel {
 
     var groupTitle: String {
         let names = selectedGroups.map(\.name)
-        return names.isEmpty ? "N/A" : names.joined(separator: ",")
+        return names.isEmpty ? "N/A" : names.joined(separator: ", ")
     }
 
     var sceneTitle: String {
         let names = sceneDatas.compactMap(\.scene?.name)
-        return names.isEmpty ? "N/A" : names.joined(separator: ",")
+        return names.isEmpty ? "N/A" : names.joined(separator: ", ")
     }
 
     var showsSceneRow: Bool {

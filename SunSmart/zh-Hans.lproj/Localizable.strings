@@ -501,6 +501,8 @@
 
 "group_not_proxy_message" = "您的分组尚未添加设备，请先添加设备。";
 "add_switch" = "添加开关";
+"add_virtual_switch" = "添加虚拟开关";
+"not_linked_to_switch" = "未关联开关";
 "select_scene" = "选择场景";
 "scene_a" = "场景A";
 "scene_b" = "场景B";

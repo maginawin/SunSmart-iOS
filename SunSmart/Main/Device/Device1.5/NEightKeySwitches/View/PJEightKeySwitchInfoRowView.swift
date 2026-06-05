@@ -22,12 +22,18 @@ final class PJEightKeySwitchInfoRowView: UIView {
     private let accessoryStyle: AccessoryStyle
 
     private lazy var titleLabel: UILabel = {
-        UILabel(text: title, textColor: Title_Color, fontSize: 14, fontWeight: .light)
+        let label = UILabel(text: title, textColor: Title_Color, fontSize: 14, fontWeight: .light)
+        label.setContentHuggingPriority(.required, for: .horizontal)
+        label.setContentCompressionResistancePriority(.required, for: .horizontal)
+        return label
     }()
 
     private lazy var valueLabel: UILabel = {
         let label = UILabel(text: nil, textColor: SubText_Color, fontSize: 14, fontWeight: .light)
         label.textAlignment = .right
+        label.numberOfLines = 1
+        label.lineBreakMode = .byTruncatingTail
+        label.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
         return label
     }()
 
@@ -105,7 +111,7 @@ final class PJEightKeySwitchInfoRowView: UIView {
             valueLabel.snp.makeConstraints { make in
                 make.right.equalTo(arrowImageView.snp.left).offset(SCRXFrom(-12))
                 make.centerY.equalToSuperview()
-                make.left.greaterThanOrEqualTo(titleLabel.snp.right).offset(SCRXFrom(16))
+                make.left.greaterThanOrEqualTo(titleLabel.snp.right).offset(SCRXFrom(8))
             }
             addGestureRecognizer(UITapGestureRecognizer(target: self, action: #selector(handleTap)))
         case .none:
@@ -113,7 +119,7 @@ final class PJEightKeySwitchInfoRowView: UIView {
             valueLabel.snp.makeConstraints { make in
                 make.right.equalTo(SCRXFrom(-16))
                 make.centerY.equalToSuperview()
-                make.left.greaterThanOrEqualTo(titleLabel.snp.right).offset(SCRXFrom(16))
+                make.left.greaterThanOrEqualTo(titleLabel.snp.right).offset(SCRXFrom(8))
             }
         }
     }

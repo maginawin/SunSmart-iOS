@@ -493,6 +493,8 @@
 "enocean_proxy" = "Kinetic Switch Proxy";
 "group_not_proxy_message" = "Your group does not yet have a device, please add a device first.";
 "add_switch" = "ADD SWITCH";
+"add_virtual_switch" = "ADD VIRTUAL SWITCH";
+"not_linked_to_switch" = "Not linked to switch";
 "select_scene" = "Select scene";
 "scene_a" = "Scene A";
 "scene_b" = "Scene B";

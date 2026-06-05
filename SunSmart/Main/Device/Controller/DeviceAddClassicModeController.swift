@@ -109,6 +109,20 @@ class DeviceAddClassicModeController: UIViewController {
         isVirtualAddTarget
     }
 
+    private var virtualTargetAddLocked: Bool {
+        guard isVirtualAddTarget else {
+            return false
+        }
+        return scanDevices.contains { $0.addState.blocksVirtualTargetSingleAdd }
+    }
+
+    private func canStartVirtualTargetAdd() -> Bool {
+        guard isVirtualAddTarget else {
+            return true
+        }
+        return !virtualTargetAddLocked
+    }
+
     private var lockedCategoryIndexForCurrentTarget: Int? {
         if bindToBatteryPowerSwitch != nil {
             return 1
@@ -1645,6 +1659,19 @@ class DeviceAddClassicModeController: UIViewController {
             addResultView.failedCountLabel.text = "\(failedCount)"
             
         }
+
+        tableView.visibleCells.forEach { cell in
+            guard let cell = cell as? DeviceAddViewCell,
+                  let indexPath = tableView.indexPath(for: cell),
+                  let device = showDevices[safe: indexPath.row] else {
+                return
+            }
+            cell.hidesSelectionControl = hidesBatchSelectionControls
+            cell.device = device
+            if virtualTargetAddLocked && !device.addState.blocksVirtualTargetSingleAdd {
+                cell.addBtn.isEnabled = false
+            }
+        }
     }
     
     /// 更新设备类型数量
@@ -1979,6 +2006,9 @@ extension DeviceAddClassicModeController: UITableViewDataSource, UITableViewDele
         let device = showDevices[indexPath.row]
         cell.hidesSelectionControl = hidesBatchSelectionControls
         cell.device = device
+        if virtualTargetAddLocked && !device.addState.blocksVirtualTargetSingleAdd {
+            cell.addBtn.isEnabled = false
+        }
         cell.delegate = self
         return cell
     }
@@ -2063,6 +2093,9 @@ extension DeviceAddClassicModeController: DeviceAddViewCellDelegate {
         }
         if state == .scanning {
             XWHUDManager.showTipHUD(inView: "device_scaning_disable_add".localizedString)
+            return
+        }
+        guard canStartVirtualTargetAdd() else {
             return
         }
         // space只能添加200个设备

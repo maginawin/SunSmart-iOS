@@ -179,6 +179,22 @@ class DeviceAddProfessionalModeController: UIViewController {
         isVirtualAddTarget
     }
 
+    private var virtualTargetAddLocked: Bool {
+        guard isVirtualAddTarget else {
+            return false
+        }
+        return (scanDevices + candidateDevices).contains {
+            $0.addState.blocksVirtualTargetSingleAdd
+        }
+    }
+
+    private func canStartVirtualTargetAdd() -> Bool {
+        guard isVirtualAddTarget else {
+            return true
+        }
+        return !virtualTargetAddLocked
+    }
+
     private var lockedCategoryIndexForCurrentTarget: Int? {
         if bindToBatteryPowerSwitch != nil {
             return 1
@@ -235,6 +251,31 @@ class DeviceAddProfessionalModeController: UIViewController {
 
     private var isSingleSelectionMode: Bool {
         bindTarget != nil || addBehavior?.selectionMode == .single
+    }
+
+    private var displayedCandidateDevices: [ProvisioningDevice] {
+        candidateDevices.filter { isVisibleDeviceInCurrentAddMode($0) }
+    }
+
+    private var displayedCandidateCount: Int {
+        displayedCandidateDevices.filter { $0.addState != .success }.count
+    }
+
+    private func isVisibleDeviceInCurrentAddMode(_ device: ProvisioningDevice) -> Bool {
+        switch addMode {
+        case .motionSensing, .lightSening:
+            return device.deviceType == .light || device.deviceType == .sensor
+        case .manual, .rssiRange:
+            return true
+        }
+    }
+
+    private func syncCandidateDevicesForCurrentAddMode() {
+        guard candidateView != nil else {
+            return
+        }
+        candidateView.candidateDevices = displayedCandidateDevices
+        candidateCountLabel?.text = "\(displayedCandidateCount)"
     }
 
     private func canSelectEmergencyFireVirtualTarget(for deviceTypes: [Node.DeviceType]) -> Bool {
@@ -651,9 +692,10 @@ class DeviceAddProfessionalModeController: UIViewController {
         candidateView.addTarget = addTarget
         candidateView.addTargetNameOverride = addTargetNameOverride
         candidateView.hidesSelectionControls = hidesBatchSelectionControls
+        candidateView.virtualTargetAddLocked = virtualTargetAddLocked
         candidateView.lockedCategorySelectionTip = forbiddenSelectionTip
         candidateView.lockedCategoryIndex = lockedCategoryIndexForCurrentTarget
-        candidateView.candidateDevices = candidateDevices
+        candidateView.candidateDevices = displayedCandidateDevices
         candidateView.state = state
         candidateView.isRefresh = isRefresh
     }
@@ -725,7 +767,7 @@ class DeviceAddProfessionalModeController: UIViewController {
         inRSSIDevices.removeAll()
         remainingRSSIDevices.removeAll()
 //        sectionTypes.removeAll()
-        candidateView.candidateDevices = candidateDevices
+        syncCandidateDevicesForCurrentAddMode()
         candidateView.state = state
         tableView.reloadData()
     }
@@ -762,8 +804,8 @@ class DeviceAddProfessionalModeController: UIViewController {
 
         scanDevices.removeAll()
         candidateDevices.removeAll()
-        candidateCountLabel?.text = "\(candidateDevices.filter({ $0.addState != .success }).count)"
-        candidateView.candidateDevices = candidateDevices
+        candidateCountLabel?.text = "\(displayedCandidateCount)"
+        syncCandidateDevicesForCurrentAddMode()
         candidateView.state = state
         inRSSIDevices.removeAll()
         remainingRSSIDevices.removeAll()
@@ -844,6 +886,7 @@ class DeviceAddProfessionalModeController: UIViewController {
                 if self.isRefresh {
                     if newDevice.selectedState != .disabled,
                        self.isSelectableDevice(newDevice),
+                       self.isVisibleDeviceInCurrentAddMode(newDevice),
                        !self.candidateDevices.contains(where: { $0.peripheral.identifier.uuidString == newDevice.peripheral.identifier.uuidString }),
                        self.selectRSSIRange.contains(newDevice.rssi.intValue) {
                         switch addMode {
@@ -981,10 +1024,40 @@ class DeviceAddProfessionalModeController: UIViewController {
         }
         
         candidateView.state = state
+        candidateView.virtualTargetAddLocked = virtualTargetAddLocked
         
-        candidateCountLabel?.text = "\(candidateDevices.filter({ $0.addState != .success }).count)"
+        candidateCountLabel?.text = "\(displayedCandidateCount)"
+        refreshVisibleDeviceAddRows()
         
        
+    }
+
+    private func refreshVisibleDeviceAddRows() {
+        tableView.visibleCells.forEach { cell in
+            guard let cell = cell as? DeviceAddViewCell,
+                  let indexPath = tableView.indexPath(for: cell),
+                  indexPath.row > 0,
+                  let type = sectionTypes[safe: indexPath.section] else {
+                return
+            }
+            let device: ProvisioningDevice?
+            switch type {
+            case .inRSSI:
+                device = inRSSIDevices[safe: indexPath.row - 1]
+            case .remainingRSSI:
+                device = remainingRSSIDevices[safe: indexPath.row - 1]
+            }
+            guard let device else {
+                return
+            }
+            cell.hidesSelectionControl = hidesBatchSelectionControls
+            cell.device = device
+            cell.addBtn.setImage(UIImage(named: "device_add_candidate"), for: .normal)
+            cell.addBtn.setImage(nil, for: .disabled)
+            if virtualTargetAddLocked && !device.addState.blocksVirtualTargetSingleAdd {
+                cell.addBtn.isEnabled = false
+            }
+        }
     }
     
     /// 设备identify
@@ -1549,15 +1622,15 @@ class DeviceAddProfessionalModeController: UIViewController {
         // Device1.5 的通用限制在这里统一映射成禁选态，不改变默认扫描结果组织方式。
         scanDevices.forEach { applySelectableState(to: $0) }
         
-        inRSSIDevices = scanDevices.filter({ device in selectRSSIRange.contains(device.rssi.intValue) && !candidateDevices.contains(where: { device.peripheral.identifier == $0.peripheral.identifier }) })
-        remainingRSSIDevices = scanDevices.filter({ device in !selectRSSIRange.contains(device.rssi.intValue) && !candidateDevices.contains(where: { device.peripheral.identifier == $0.peripheral.identifier }) })
+        let displayedScanDevices = scanDevices.filter { isVisibleDeviceInCurrentAddMode($0) }
+        inRSSIDevices = displayedScanDevices.filter({ device in selectRSSIRange.contains(device.rssi.intValue) && !candidateDevices.contains(where: { device.peripheral.identifier == $0.peripheral.identifier }) })
+        remainingRSSIDevices = displayedScanDevices.filter({ device in !selectRSSIRange.contains(device.rssi.intValue) && !candidateDevices.contains(where: { device.peripheral.identifier == $0.peripheral.identifier }) })
         
         inRSSIDevices.sort(by: { $0.rssi.intValue >= $1.rssi.intValue })
         remainingRSSIDevices.sort(by: { $0.rssi.intValue >= $1.rssi.intValue })
         
         self.candidateDevices.sort(by: { $0.rssi.intValue >= $1.rssi.intValue })
-        self.candidateView?.candidateDevices = self.candidateDevices
-        self.candidateCountLabel?.text = "\(candidateDevices.filter({ $0.addState != .success }).count)"
+        self.syncCandidateDevicesForCurrentAddMode()
         
         
 //        if !sectionTypes.contains(.inRSSI) {
@@ -1716,8 +1789,8 @@ class DeviceAddProfessionalModeController: UIViewController {
                 // 筛选出满足预选条件的设备
                 let devices = self.scanDevices.filter({ device in device.selectedState != .disabled && self.isSelectableDevice(device) && !self.candidateDevices.contains(where: { $0.peripheral.identifier.uuidString == device.peripheral.identifier.uuidString }) && self.selectRSSIRange.contains(device.rssi.intValue) })
                 self.candidateDevices.append(contentsOf: devices)
-                self.candidateCountLabel?.text = "\(self.candidateDevices.count)"
             }
+            self.setupDevicesData()
         }
         
     }
@@ -1888,7 +1961,7 @@ class DeviceAddProfessionalModeController: UIViewController {
         }
         
         addModeBtn = UIButton(title: addMode.title, titleSize: 12, titleWeight: .medium, titleColor: ImportantText_Color, normalImageName: "arrow_down_black", target: self, action: #selector(addModeBtnAction))
-        addModeBtn.titleLabel?.lineBreakMode = .byTruncatingHead
+        addModeBtn.titleLabel?.lineBreakMode = .byTruncatingTail
         addModeBtn.setImagePosition(position: .right, spacing: -5, btnMaxWidth: self.addModeBtnMaxWidth)
         headerView.addSubview(addModeBtn)
         addModeBtn.snp.makeConstraints { make in
@@ -2137,7 +2210,7 @@ class DeviceAddProfessionalModeController: UIViewController {
         }
         
         addModeBtn = UIButton(title: addMode.title, titleSize: 12, titleWeight: .medium, titleColor: ImportantText_Color, normalImageName: "arrow_down_black", target: self, action: #selector(addModeBtnAction))
-        addModeBtn.titleLabel?.lineBreakMode = .byTruncatingHead
+        addModeBtn.titleLabel?.lineBreakMode = .byTruncatingTail
         addModeBtn.setImagePosition(position: .right, spacing: SCRXFrom(-2), btnMaxWidth: self.addModeBtnMaxWidth)
         devicesFoundView!.addSubview(addModeBtn)
         addModeBtn.snp.makeConstraints { make in
@@ -2187,7 +2260,7 @@ class DeviceAddProfessionalModeController: UIViewController {
         }
         
         candidateView = DeviceAddCandidateDeviceListView(frame: .zero, space: space)
-        candidateView.candidateDevices = candidateDevices
+        candidateView.candidateDevices = displayedCandidateDevices
         candidateView.addTarget = addTarget
         candidateView.addTargetNameOverride = addTargetNameOverride
         candidateView.isRefresh = isRefresh
@@ -2267,6 +2340,9 @@ extension DeviceAddProfessionalModeController: UITableViewDataSource, UITableVie
             cell.selectionStyle = .none
             cell.addBtn.setImage(UIImage(named: "device_add_candidate"), for: .normal)
             cell.addBtn.setImage(nil, for: .disabled)
+            if virtualTargetAddLocked && !device.addState.blocksVirtualTargetSingleAdd {
+                cell.addBtn.isEnabled = false
+            }
             cell.delegate = self
             if type == .inRSSI && !isIPad {
                 cell.configureCell(isFirst: false, isLast: indexPath.row == tableView.numberOfRows(inSection: indexPath.section) - 1)
@@ -2399,6 +2475,9 @@ extension DeviceAddProfessionalModeController: DeviceAddViewCellDelegate {
             showDisabledDeviceTip(device)
             return
         }
+        guard canStartVirtualTargetAdd() else {
+            return
+        }
         // 单选模式下候选列表只保留一个设备，默认业务仍复用原有候选流程。
         if isSingleSelectionMode {
             applySingleSelectionIfNeeded(for: device)
@@ -2484,9 +2563,9 @@ extension DeviceAddProfessionalModeController: DeviceAddSelectAllViewCellDelegat
                 } else {
                     candidateDevices.removeAll()
                 }
-                self.candidateCountLabel?.text = "\(candidateDevices.filter({ $0.addState != .success }).count)"
+                self.candidateCountLabel?.text = "\(displayedCandidateCount)"
                 if self.candidateView.window != nil {
-                    self.candidateView.candidateDevices = candidateDevices
+                    self.candidateView.candidateDevices = displayedCandidateDevices
                 }
                 DispatchQueue.main.async {
                     self.tableView.reloadData()
@@ -2501,9 +2580,9 @@ extension DeviceAddProfessionalModeController: DeviceAddSelectAllViewCellDelegat
                 candidateDevices.append(contentsOf: remainingRSSIDevices.filter({ $0.selectedState == .selected }))
                 remainingRSSIDevices.removeAll(where: { $0.selectedState == .selected })
             }
-            self.candidateCountLabel?.text = "\(candidateDevices.filter({ $0.addState != .success }).count)"
+            self.candidateCountLabel?.text = "\(displayedCandidateCount)"
             if self.candidateView.window != nil {
-                self.candidateView.candidateDevices = candidateDevices
+                self.candidateView.candidateDevices = displayedCandidateDevices
             }
             DispatchQueue.main.async {
                 self.tableView.reloadData()
@@ -2537,19 +2616,21 @@ extension DeviceAddProfessionalModeController: DeviceAddCandidateDeviceListViewD
     func candidateView(_ view: DeviceAddCandidateDeviceListView, candidateRevoke devices: [ProvisioningDevice]) {
         reloadDataing = true
         candidateDevices.removeAll(where: { device in devices.contains(where: { device.macAddress == $0.macAddress }) })
-        view.candidateDevices = candidateDevices
+        view.candidateDevices = displayedCandidateDevices
         devices.forEach { device in
             device.addState = .none
-            if selectRSSIRange.contains(device.rssi.intValue) {
-                inRSSIDevices.append(device)
-            }else {
-                remainingRSSIDevices.append(device)
+            if isVisibleDeviceInCurrentAddMode(device) {
+                if selectRSSIRange.contains(device.rssi.intValue) {
+                    inRSSIDevices.append(device)
+                }else {
+                    remainingRSSIDevices.append(device)
+                }
             }
             let cacheDevice = scanDevices.first(where: { scanDevice in scanDevice.macAddress == device.macAddress  })
             cacheDevice?.addState = .none
         }
        
-        self.candidateCountLabel?.text = "\(candidateDevices.count)"
+        self.candidateCountLabel?.text = "\(displayedCandidateCount)"
         DispatchQueue.main.async {
             self.tableView.reloadData()
         }
@@ -2580,6 +2661,9 @@ extension DeviceAddProfessionalModeController: DeviceAddCandidateDeviceListViewD
     func candidateView(_ view: DeviceAddCandidateDeviceListView, startAdd devices: [ProvisioningDevice]) {
         let selectableDevices = devices.filter { $0.selectedState != .disabled && isSelectableDevice($0) }
         let devicesToAdd = isSingleSelectionMode ? Array(selectableDevices.prefix(1)) : selectableDevices
+        guard canStartVirtualTargetAdd() else {
+            return
+        }
         guard !devicesToAdd.isEmpty else {
             return
         }

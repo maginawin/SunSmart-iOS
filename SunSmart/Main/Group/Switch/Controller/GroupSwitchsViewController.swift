@@ -39,13 +39,13 @@ class GroupSwitchsViewController: UIViewController {
     override func viewDidLoad() {
         super.viewDidLoad()
 
-        self.title = "switch".localizedString
+        self.title = "kinetic_switch".localizedString
         view.backgroundColor = Background_Color
         
         self.isModalInPresentation = true
         navigationController?.setNavigationBarBackgroundColor(color: Background_Color)
         
-        copySwitchs = group.info.switchs.map({ $0.copy() })
+        copySwitchs = kineticSwitches(in: group).map { $0.copy() }
         
         setupUI()
         
@@ -98,6 +98,18 @@ class GroupSwitchsViewController: UIViewController {
             tableView.emptyView?.backgroundColor = .clear
         }else {
             tableView.hideEmptyDataView()
+        }
+    }
+
+    private func kineticSwitches(in group: Group) -> [DeviceSwitchData] {
+        group.info.switchs.filter { switchData in
+            guard switchData.bindGroupAddresses.contains(group.address.address) else {
+                return false
+            }
+            if switchData is PJEightKeySwitchData {
+                return false
+            }
+            return PJEightKeySwitchRepository.shared.makeEightKeySwitch(from: switchData) == nil
         }
     }
     
@@ -444,7 +456,7 @@ class GroupSwitchsViewController: UIViewController {
             make.height.equalTo(SCRYFrom(56) + (isIPad ? 0 : kSafeAreaBottomHeight))
         }
         
-        addSwitchBtn = UIButton(title: "add_switch".localizedString, titleSize: 15, titleWeight: .light, titleColor: Title_Color, target: self, action: #selector(addSwitchBtnAction))
+        addSwitchBtn = UIButton(title: "add_virtual_switch".localizedString, titleSize: 15, titleWeight: .light, titleColor: Title_Color, target: self, action: #selector(addSwitchBtnAction))
         bottomView.addSubview(addSwitchBtn)
         addSwitchBtn.snp.makeConstraints { make in
             make.left.right.top.equalToSuperview()
