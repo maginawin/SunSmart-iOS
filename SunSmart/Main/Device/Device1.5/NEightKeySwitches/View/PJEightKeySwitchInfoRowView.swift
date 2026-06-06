@@ -66,6 +66,13 @@ final class PJEightKeySwitchInfoRowView: UIView {
         valueLabel.text = value
     }
 
+    private func makeKineticArrowConstraints() {
+        arrowImageView.snp.makeConstraints { make in
+            make.right.equalTo(SCRXFrom(-8))
+            make.centerY.equalToSuperview()
+        }
+    }
+
     private func setupUI() {
         backgroundColor = .clear
 
@@ -93,23 +100,15 @@ final class PJEightKeySwitchInfoRowView: UIView {
             }
         case .arrow:
             addSubview(arrowImageView)
-            arrowImageView.snp.makeConstraints { make in
-                make.right.equalTo(SCRXFrom(-12))
-                make.centerY.equalToSuperview()
-                make.width.height.equalTo(SCRXFrom(16))
-            }
+            makeKineticArrowConstraints()
             addGestureRecognizer(UITapGestureRecognizer(target: self, action: #selector(handleTap)))
         case .valueWithArrow:
             addSubview(arrowImageView)
-            arrowImageView.snp.makeConstraints { make in
-                make.right.equalTo(SCRXFrom(-12))
-                make.centerY.equalToSuperview()
-                make.width.height.equalTo(SCRXFrom(16))
-            }
+            makeKineticArrowConstraints()
 
             addSubview(valueLabel)
             valueLabel.snp.makeConstraints { make in
-                make.right.equalTo(arrowImageView.snp.left).offset(SCRXFrom(-12))
+                make.right.equalTo(SCRXFrom(-36))
                 make.centerY.equalToSuperview()
                 make.left.greaterThanOrEqualTo(titleLabel.snp.right).offset(SCRXFrom(8))
             }
