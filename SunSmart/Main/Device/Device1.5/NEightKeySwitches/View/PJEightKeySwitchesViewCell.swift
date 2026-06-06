@@ -36,9 +36,15 @@ final class PJEightKeySwitchesViewCell: UICollectionViewCell {
     func configure(with switchData: DeviceSwitchData, eightKeySwitch: PJEightKeySwitchData, editing: Bool) {
         self.switchData = switchData
         nameLabel.text = switchData.name
-        iconImageView.image = UIImage(named: eightKeySwitch.displayIconAssetName)
+        let status = eightKeySwitch.displayStatus
+        switch status {
+        case .syncIssueBoundSwitch, .repairRequiredMode:
+            iconImageView.image = UIImage(named: status.iconAssetName)
+        default:
+            iconImageView.image = UIImage(named: eightKeySwitch.displayIconAssetName)
+        }
         deleteBtn.isHidden = !editing
-        applyStatus(eightKeySwitch.displayStatus)
+        applyStatus(status)
     }
 
     override init(frame: CGRect) {

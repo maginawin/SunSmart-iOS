@@ -1646,13 +1646,17 @@ class SyncDevicesViewController: UIViewController {
             
             sections.forEach({
                 $0.allModels.forEach({
-                    if $0.state == .wait  {//|| $0.state == .none
+                    if $0.state == .none || $0.state == .wait || $0.state == .inSettings {
                         $0.state = .failed
                         ($0 as? SyncDevicesModel)?.failedCount += 1
                         ($0 as? SyncDeviceStepTaskModel)?.failedCount += 1
                     }
                 })
             })
+            if batteryPowerSwitchDataForSync != nil {
+                batteryPowerSwitchOwnConfigurationFailed = true
+                markBatteryPowerSwitchOwnConfigurationTasksFailed()
+            }
             tableView.reloadData()
             syncState = .syncFailure
             finishEmergencyFireControllerSyncIfNeeded(success: false)
@@ -2020,7 +2024,7 @@ class SyncDevicesViewController: UIViewController {
                     (model as? SyncDevicesModel)?.failedCount += 1
                     (model as? SyncDeviceStepTaskModel)?.failedCount += 1
                     self.batteryPowerSwitchOwnConfigurationFailed = true
-                    self.markPendingBatteryPowerSwitchOwnConfigurationTasksFailed()
+                    self.markBatteryPowerSwitchOwnConfigurationTasksFailed()
                     self.updateCell(model: model)
                     continue
                 }
@@ -2031,6 +2035,9 @@ class SyncDevicesViewController: UIViewController {
                 
                 let isBatteryPowerSwitchKeyConfigModel = self.isBatteryPowerSwitchKeyConfigConfiguration(model)
                 MeshProxyMessageCommand.shared.addMessage(messageHandles: messageHandles, ackMessageTimeout: self.ackTimeout(for: model), progressBack: nil, successfulBack: { handle, statusMessage in
+                    guard self.isActiveSyncRun(syncRunIdentifier) else {
+                        return
+                    }
                     // 判断如果是设备初始化消息，则需要再初始化完成后完成基本配置
                     if statusMessage is ConfigCompositionDataStatus || statusMessage is ConfigAppKeyStatus {
                         if let address = handle.address ?? handle.model?.parentElement?.unicastAddress, let node = MeshNetworkManager.instance.meshNetwork?.node(withAddress: address), node.isInitialize {
@@ -2076,6 +2083,9 @@ class SyncDevicesViewController: UIViewController {
                         }
                     }
                 }, failedBack: { handle in
+                    guard self.isActiveSyncRun(syncRunIdentifier) else {
+                        return
+                    }
                     if let vendorSetMessage = handle.message as? SunricherVendorSet, case .dimmerPowerCalibrate = vendorSetMessage.function { // 功率校准超时
                         if let address = handle.address ?? handle.model?.parentElement?.unicastAddress, let node = MeshNetworkManager.instance.meshNetwork?.node(withAddress: address) {
                             node.powerCalibrateError = .timeout
@@ -2083,6 +2093,10 @@ class SyncDevicesViewController: UIViewController {
                     }
                 }) {[weak self] resultMessageHandles in
                     guard let self = self else { return }
+                    guard self.isActiveSyncRun(syncRunIdentifier) else {
+                        semaphore.signal()
+                        return
+                    }
                     resultMessageHandles.forEach { handle in
                         if let address = handle.address ?? handle.model?.parentElement?.unicastAddress, let node = MeshNetworkManager.instance.meshNetwork?.node(withAddress: address) {
                             node.updateData(message: handle.message, isSuccess: handle.isSuccessful)
@@ -2103,7 +2117,6 @@ class SyncDevicesViewController: UIViewController {
                         messageHandles: messageHandles
                     ) || self.isEmergencyFireControllerDeleteCleanup(model) {
                         model.state = .successful
-                        self.markBatteryPowerSwitchOwnSettingSucceededIfNeeded(for: model)
                         self.clearEmergencyFireControllerPendingIfNeeded(for: model)
                         if isBatteryPowerSwitchKeyConfigModel {
                             self.batteryPowerSwitchKeyConfigurationCompleted = true
@@ -2128,7 +2141,7 @@ class SyncDevicesViewController: UIViewController {
                         (model as? SyncDeviceStepTaskModel)?.failedCount += 1
                         if self.isBatteryPowerSwitchOwnConfiguration(model) {
                             self.batteryPowerSwitchOwnConfigurationFailed = true
-                            self.markPendingBatteryPowerSwitchOwnConfigurationTasksFailed()
+                            self.markBatteryPowerSwitchOwnConfigurationTasksFailed()
                         }
                     }
                     self.updateCell(model: model)
@@ -2274,56 +2287,21 @@ class SyncDevicesViewController: UIViewController {
         guard batteryPowerSwitchDataForSync != nil else {
             return false
         }
-        switch operationType {
-        case .configuration(_, let actionType):
-            switch actionType {
-            case .batteryPowerSwitchKeyConfig, .batteryPowerSwitchTxEnable, .batteryPowerSwitchLEDIndicator:
-                return true
-            case .batteryPowerSwitchTargetSubscription:
-                return false
-            default:
-                return false
-            }
-        default:
-            return false
-        }
+        return operationType.isPowerSwitchOwnConfigurationOperation
     }
     
     private func isBatteryPowerSwitchOwnConfigurationOperation(_ operationType: DeviceOperationType) -> Bool {
         guard batteryPowerSwitchDataForSync != nil else {
             return false
         }
-        switch operationType {
-        case .configuration(_, let actionType):
-            switch actionType {
-            case .batteryPowerSwitchKeyConfig, .batteryPowerSwitchTxEnable, .batteryPowerSwitchLEDIndicator:
-                return true
-            default:
-                return false
-            }
-        default:
-            return false
-        }
+        return operationType.isPowerSwitchOwnConfigurationOperation
     }
 
     private func isBatteryPowerSwitchSyncOperation(_ operationType: DeviceOperationType) -> Bool {
         guard batteryPowerSwitchDataForSync != nil else {
             return false
         }
-        switch operationType {
-        case .configuration(_, let actionType), .delete(_, let actionType):
-            switch actionType {
-            case .batteryPowerSwitchKeyConfig,
-                 .batteryPowerSwitchTxEnable,
-                 .batteryPowerSwitchLEDIndicator,
-                 .batteryPowerSwitchTargetSubscription:
-                return true
-            default:
-                return false
-            }
-        default:
-            return false
-        }
+        return operationType.isPowerSwitchSyncOperation
     }
     
     private func operationType(for model: SyncCellModel) -> DeviceOperationType? {
@@ -2445,19 +2423,6 @@ class SyncDevicesViewController: UIViewController {
         return !messageHandles.isEmpty && resultSuccessful
     }
 
-    private func markBatteryPowerSwitchOwnSettingSucceededIfNeeded(for model: SyncCellModel) {
-        guard let operationType = operationType(for: model) else { return }
-        guard case .configuration(_, let actionType) = operationType else { return }
-        switch actionType {
-        case .batteryPowerSwitchTxEnable(let switchData):
-            switchData.markBatteryPowerSwitchTxEnableSucceeded()
-        case .batteryPowerSwitchLEDIndicator(let switchData):
-            switchData.markBatteryPowerSwitchLEDIndicatorSucceeded()
-        default:
-            break
-        }
-    }
-    
     private func resetBatteryPowerSwitchConfigurationForResync() {
         batteryPowerSwitchOwnConfigurationFailed = false
         sections.forEach { section in
@@ -2549,34 +2514,36 @@ class SyncDevicesViewController: UIViewController {
         }
     }
     
-    private func markPendingBatteryPowerSwitchOwnConfigurationTasksFailed() {
+    private func markBatteryPowerSwitchOwnConfigurationTasksFailed() {
         sections.forEach { section in
-            section.devices.forEach { markPendingBatteryPowerSwitchOwnConfigurationTasksFailed(in: $0) }
+            section.devices.forEach { markBatteryPowerSwitchOwnConfigurationTasksFailed(in: $0) }
             section.groups.forEach { group in
-                group.deviceModels.forEach { markPendingBatteryPowerSwitchOwnConfigurationTasksFailed(in: $0) }
+                group.deviceModels.forEach { markBatteryPowerSwitchOwnConfigurationTasksFailed(in: $0) }
             }
         }
     }
     
-    private func markPendingBatteryPowerSwitchOwnConfigurationTasksFailed(in device: SyncDevicesModel) {
+    private func markBatteryPowerSwitchOwnConfigurationTasksFailed(in device: SyncDevicesModel) {
         guard containsBatteryPowerSwitchConfiguration(device) else {
             return
         }
         if let operationType = device.operationType,
-           isBatteryPowerSwitchOwnConfigurationOperation(operationType),
-           device.state == .none || device.state == .wait {
+           isBatteryPowerSwitchOwnConfigurationOperation(operationType) {
+            if device.state != .failed {
+                device.failedCount += 1
+            }
             device.state = .failed
-            device.failedCount += 1
             return
         }
         device.steps.forEach { step in
             step.tasks.forEach { task in
-                guard isBatteryPowerSwitchOwnConfigurationOperation(task.operationType),
-                      task.state == .none || task.state == .wait else {
+                guard isBatteryPowerSwitchOwnConfigurationOperation(task.operationType) else {
                     return
                 }
+                if task.state != .failed {
+                    task.failedCount += 1
+                }
                 task.state = .failed
-                task.failedCount += 1
             }
         }
     }

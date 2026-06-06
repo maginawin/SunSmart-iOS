@@ -180,6 +180,39 @@ private extension Node {
 /// 操作类型
 enum DeviceOperationType {
     
+    var isPowerSwitchOwnConfigurationOperation: Bool {
+        switch self {
+        case .configuration(_, let type):
+            switch type {
+            case .batteryPowerSwitchKeyConfig,
+                 .batteryPowerSwitchTxEnable,
+                 .batteryPowerSwitchLEDIndicator:
+                return true
+            default:
+                return false
+            }
+        default:
+            return false
+        }
+    }
+
+    var isPowerSwitchSyncOperation: Bool {
+        switch self {
+        case .configuration(_, let type), .delete(_, let type):
+            switch type {
+            case .batteryPowerSwitchKeyConfig,
+                 .batteryPowerSwitchTxEnable,
+                 .batteryPowerSwitchLEDIndicator,
+                 .batteryPowerSwitchTargetSubscription:
+                return true
+            default:
+                return false
+            }
+        default:
+            return false
+        }
+    }
+    
     /// 操作是否成功
     var isSuccessful: Bool {
         

@@ -639,7 +639,7 @@ final class PJPreAddEightKeySwitchesVC: UIViewController {
             guard let self else { return }
             let failedOperationTypes = result.flatMap(\.failedOperationTypes)
             let successOperationTypes = result.flatMap(\.successOperationTypes)
-            if self.containsBatteryPowerSwitchOwnConfiguration(failedOperationTypes) {
+            if self.containsPowerSwitchSyncOperation(failedOperationTypes) {
                 switchData.markBatteryPowerSwitchSyncFailed(reason: "sync_failed".localizedString)
                 if let snapshot = self.pendingBatteryPowerSwitchOwnStateSnapshot {
                     switchData.enabled = snapshot.enabled
@@ -661,17 +661,11 @@ final class PJPreAddEightKeySwitchesVC: UIViewController {
     }
 
     private func containsBatteryPowerSwitchOwnConfiguration(_ operationTypes: [DeviceOperationType]) -> Bool {
-        operationTypes.contains { operationType in
-            guard case .configuration(_, let syncData) = operationType else {
-                return false
-            }
-            switch syncData {
-            case .batteryPowerSwitchReset, .batteryPowerSwitchKeyConfig, .batteryPowerSwitchTxEnable, .batteryPowerSwitchLEDIndicator:
-                return true
-            default:
-                return false
-            }
-        }
+        operationTypes.contains { $0.isPowerSwitchOwnConfigurationOperation }
+    }
+    
+    private func containsPowerSwitchSyncOperation(_ operationTypes: [DeviceOperationType]) -> Bool {
+        operationTypes.contains { $0.isPowerSwitchSyncOperation }
     }
 
     private func needsBatteryPowerSwitchConfigurationSync(_ switchData: PJEightKeySwitchData, desiredHash: String) -> Bool {
