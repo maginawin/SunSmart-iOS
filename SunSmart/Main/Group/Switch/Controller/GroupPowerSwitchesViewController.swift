@@ -166,7 +166,7 @@ final class GroupPowerSwitchesViewController: UIViewController {
 
     @objc private func addSwitchButtonAction() {
         guard editable else {
-            XWHUDManager.showTipHUD("no_permission".localizedString + "！")
+            showNoPermissionTip()
             return
         }
         guard let switchData = viewModel.makeVirtualSwitch() else {
@@ -193,6 +193,10 @@ final class GroupPowerSwitchesViewController: UIViewController {
         updateEmptyUI()
     }
 
+    private func showNoPermissionTip() {
+        XWHUDManager.showTipHUD("No permission!", isLineFeed: true)
+    }
+
     private func toggleExpanded(id: String) {
         if expandedSwitchIDs.contains(id) {
             expandedSwitchIDs.remove(id)
@@ -204,7 +208,7 @@ final class GroupPowerSwitchesViewController: UIViewController {
 
     private func startEnableUpdate(id: String, enabled: Bool) {
         guard editable else {
-            XWHUDManager.showTipHUD("no_permission".localizedString + "！")
+            showNoPermissionTip()
             return
         }
         guard !pendingEnableSwitchIDs.contains(id),
@@ -298,7 +302,7 @@ final class GroupPowerSwitchesViewController: UIViewController {
 
     private func selectPanel(id: String) {
         guard editable else {
-            XWHUDManager.showTipHUD("no_permission".localizedString + "！")
+            showNoPermissionTip()
             return
         }
         guard let switchData = switchData(id: id) else { return }
@@ -312,6 +316,10 @@ final class GroupPowerSwitchesViewController: UIViewController {
     }
 
     private func showGroups(id: String) {
+        guard editable else {
+            showNoPermissionTip()
+            return
+        }
         guard let switchData = switchData(id: id) else { return }
         let vc = SwitchSelectGroupsViewController(groups: switchData.bindGroups, selectGroups: switchData.bindGroups)
         vc.editable = false
@@ -320,7 +328,7 @@ final class GroupPowerSwitchesViewController: UIViewController {
 
     private func selectScenes(id: String) {
         guard editable else {
-            XWHUDManager.showTipHUD("no_permission".localizedString + "！")
+            showNoPermissionTip()
             return
         }
         guard let switchData = switchData(id: id),
@@ -348,7 +356,7 @@ final class GroupPowerSwitchesViewController: UIViewController {
 
     private func moreSettings(id: String) {
         guard editable else {
-            XWHUDManager.showTipHUD("no_permission".localizedString + "！")
+            showNoPermissionTip()
             return
         }
         guard let switchData = switchData(id: id) else { return }
@@ -363,7 +371,7 @@ final class GroupPowerSwitchesViewController: UIViewController {
 
     private func deleteSwitch(id: String) {
         guard editable else {
-            XWHUDManager.showTipHUD("no_permission".localizedString + "！")
+            showNoPermissionTip()
             return
         }
         guard let switchData = switchData(id: id) else { return }
@@ -403,7 +411,7 @@ final class GroupPowerSwitchesViewController: UIViewController {
 
     private func saveSwitch(id: String) {
         guard editable else {
-            XWHUDManager.showTipHUD("no_permission".localizedString + "！")
+            showNoPermissionTip()
             return
         }
         guard let switchData = switchData(id: id),

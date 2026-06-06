@@ -60,7 +60,7 @@ final class GroupPowerSwitchHeaderView: UITableViewHeaderFooterView {
         detailLabel.text = state.detailText
         enableSwitch.isOn = state.isEnabled
         enableSwitch.alpha = state.isEnablePending ? 0.45 : 1
-        enableButton.isEnabled = state.isEditable && !state.isEnablePending
+        enableButton.isEnabled = !state.isEnablePending
         arrowImageView.image = UIImage(named: state.isExpanded ? "arrow_up" : "arrow_down")
     }
 
@@ -157,9 +157,10 @@ final class GroupPowerSwitchPanelCell: UITableViewCell {
 
     func configure(definition: PJEightKeySwitchPanelDefinition, isEditable: Bool, isSaveEnabled: Bool) {
         panelPreviewView.configure(definition: definition, mode: .preview)
-        deleteButton.isEnabled = isEditable
+        deleteButton.isEnabled = true
         deleteButton.alpha = isEditable ? 1 : 0.35
-        saveButton.isEnabled = isEditable && isSaveEnabled
+        saveButton.isEnabled = isEditable ? isSaveEnabled : true
+        saveButton.alpha = isEditable ? 1 : 0.35
         saveButton.setImage(UIImage(named: isSaveEnabled ? "switch_save" : "switch_save_un"), for: .normal)
     }
 
