@@ -17,13 +17,25 @@ final class GroupPowerSwitchesViewController: UIViewController {
     private var activationFlow: PJEightKeySwitchActivationFlow?
     private var txEnableFlows: [String: PJEightKeySwitchTxEnableFlow] = [:]
 
+    private enum Row: Equatable {
+        case panel
+        case group
+        case scene
+        case moreSettings
+        case panelPreview
+        case actions
+    }
+
     private let tableView: UITableView = {
         let tableView = UITableView(frame: .zero, style: .plain)
         tableView.backgroundColor = Background_Color
         tableView.separatorStyle = .none
         tableView.rowHeight = UITableView.automaticDimension
         tableView.estimatedRowHeight = SCRYFrom(80)
-        tableView.register(GroupPowerSwitchCell.self, forCellReuseIdentifier: "powerSwitch")
+        tableView.register(CustomTableViewCell.self, forCellReuseIdentifier: "info")
+        tableView.register(GroupPowerSwitchPanelPreviewCell.self, forCellReuseIdentifier: "panelPreview")
+        tableView.register(GroupPowerSwitchActionCell.self, forCellReuseIdentifier: "actions")
+        tableView.register(GroupPowerSwitchHeaderView.self, forHeaderFooterViewReuseIdentifier: "header")
         return tableView
     }()
 
@@ -174,10 +186,10 @@ final class GroupPowerSwitchesViewController: UIViewController {
 
         expandedSwitchIDs.insert(switchData.id)
         let index = max(viewModel.switchDatas.count - 1, 0)
-        tableView.insertRows(at: [IndexPath(row: index, section: 0)], with: .top)
+        tableView.insertSections(IndexSet(integer: index), with: .top)
         DispatchQueue.main.async { [weak self] in
             guard let self else { return }
-            self.tableView.scrollToRow(at: IndexPath(row: index, section: 0), at: .top, animated: true)
+            self.tableView.scrollToRow(at: IndexPath(row: 0, section: index), at: .top, animated: true)
         }
         postSwitchDataChangedNotifications()
         updateEmptyUI()
@@ -573,12 +585,52 @@ final class GroupPowerSwitchesViewController: UIViewController {
         viewModel.switchDatas.first(where: { $0.id == id })
     }
 
+    private func switchData(section: Int) -> PJEightKeySwitchData {
+        viewModel.switchData(at: section)
+    }
+
+    private func rows(for switchData: PJEightKeySwitchData) -> [Row] {
+        var rows: [Row] = [.panel, .group]
+        if viewModel.showsSceneRow(for: switchData) {
+            rows.append(.scene)
+        }
+        rows.append(contentsOf: [.moreSettings, .panelPreview, .actions])
+        return rows
+    }
+
+    private func configureInfoCell(_ cell: CustomTableViewCell, row: Row, switchData: PJEightKeySwitchData) {
+        cell.selectionStyle = .none
+        cell.titleLabel.font = UIFont.systemFont(ofSize: SCRYFrom(14), weight: .light)
+        cell.contentLabel.font = UIFont.systemFont(ofSize: SCRYFrom(14), weight: .light)
+        cell.lineView.backgroundColor = RGB(243, 243, 243, 0.7)
+        cell.lineView.isHidden = false
+        cell.cellStyle = .arrow
+        cell.titleX = SCRXFrom(32)
+
+        switch row {
+        case .panel:
+            cell.titleLabel.text = "panel".localizedString
+            cell.contentLabel.text = switchData.eightKeyPanelType.title
+        case .group:
+            cell.titleLabel.text = "group".localizedString
+            cell.contentLabel.text = viewModel.groupTitle(for: switchData)
+        case .scene:
+            cell.titleLabel.text = "scene".localizedString
+            cell.contentLabel.text = viewModel.sceneTitle(for: switchData)
+        case .moreSettings:
+            cell.titleLabel.text = "neightkeyswitches_more_settings".localizedString
+            cell.contentLabel.text = nil
+        case .panelPreview, .actions:
+            break
+        }
+    }
+
     private func reloadSwitch(id: String, animation: UITableView.RowAnimation = .none) {
         guard let index = viewModel.switchDatas.firstIndex(where: { $0.id == id }) else {
             tableView.reloadData()
             return
         }
-        tableView.reloadRows(at: [IndexPath(row: index, section: 0)], with: animation)
+        tableView.reloadSections(IndexSet(integer: index), with: animation)
     }
 
     private func removeSwitchRow(id: String) {
@@ -590,7 +642,7 @@ final class GroupPowerSwitchesViewController: UIViewController {
         expandedSwitchIDs.remove(id)
         pendingEnableSwitchIDs.remove(id)
         viewModel.removeLocalSwitchData(id: id)
-        tableView.deleteRows(at: [IndexPath(row: index, section: 0)], with: .fade)
+        tableView.deleteSections(IndexSet(integer: index), with: .fade)
     }
 }
 
@@ -611,59 +663,99 @@ extension GroupPowerSwitchesViewController: NavigationViewControllerDelegate {
 
 extension GroupPowerSwitchesViewController: UITableViewDataSource, UITableViewDelegate {
 
-    func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
+    func numberOfSections(in tableView: UITableView) -> Int {
         viewModel.switchDatas.count
     }
 
+    func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
+        let switchData = switchData(section: section)
+        return expandedSwitchIDs.contains(switchData.id) ? rows(for: switchData).count : 0
+    }
+
     func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
-        let cell = tableView.dequeueReusableCell(withIdentifier: "powerSwitch", for: indexPath) as! GroupPowerSwitchCell
-        let switchData = viewModel.switchData(at: indexPath.row)
+        let switchData = switchData(section: indexPath.section)
+        let row = rows(for: switchData)[indexPath.row]
+
+        switch row {
+        case .panel, .group, .scene, .moreSettings:
+            let cell = tableView.dequeueReusableCell(withIdentifier: "info", for: indexPath) as! CustomTableViewCell
+            configureInfoCell(cell, row: row, switchData: switchData)
+            return cell
+        case .panelPreview:
+            let cell = tableView.dequeueReusableCell(withIdentifier: "panelPreview", for: indexPath) as! GroupPowerSwitchPanelPreviewCell
+            cell.configure(definition: PJEightKeySwitchPanelDefinition.make(type: switchData.eightKeyPanelType))
+            return cell
+        case .actions:
+            let cell = tableView.dequeueReusableCell(withIdentifier: "actions", for: indexPath) as! GroupPowerSwitchActionCell
+            let switchID = switchData.id
+            cell.configure(isEditable: editable, isSaveEnabled: viewModel.hasSaveChanges(switchData))
+            cell.deleteAction = { [weak self] in self?.deleteSwitch(id: switchID) }
+            cell.saveAction = { [weak self] in self?.saveSwitch(id: switchID) }
+            return cell
+        }
+    }
+
+    func tableView(_ tableView: UITableView, viewForHeaderInSection section: Int) -> UIView? {
+        let headerView = tableView.dequeueReusableHeaderFooterView(withIdentifier: "header") as! GroupPowerSwitchHeaderView
+        let switchData = switchData(section: section)
         let switchID = switchData.id
-        let isExpanded = expandedSwitchIDs.contains(switchID)
-        cell.configure(state: .init(
+        headerView.configure(state: .init(
             name: switchData.name,
             detailText: viewModel.detailText(for: switchData),
             isEnabled: switchData.enabled,
-            isExpanded: isExpanded,
+            isExpanded: expandedSwitchIDs.contains(switchID),
             isEditable: editable,
-            isEnablePending: pendingEnableSwitchIDs.contains(switchID),
-            panelTitle: switchData.eightKeyPanelType.title,
-            groupTitle: viewModel.groupTitle(for: switchData),
-            sceneTitle: viewModel.sceneTitle(for: switchData),
-            moreSettingsTitle: viewModel.moreSettingsTitle(for: switchData),
-            showsSceneRow: viewModel.showsSceneRow(for: switchData),
-            panelDefinition: PJEightKeySwitchPanelDefinition.make(type: switchData.eightKeyPanelType),
-            isSaveEnabled: viewModel.hasSaveChanges(switchData)
+            isEnablePending: pendingEnableSwitchIDs.contains(switchID)
         ))
-        cell.expandAction = { [weak self] in
+        headerView.expandAction = { [weak self] in
             self?.toggleExpanded(id: switchID)
         }
-        cell.enableAction = { [weak self] enabled in
+        headerView.enableAction = { [weak self] enabled in
             self?.startEnableUpdate(id: switchID, enabled: enabled)
         }
-        cell.panelAction = { [weak self] in
-            self?.selectPanel(id: switchID)
+        return headerView
+    }
+
+    func tableView(_ tableView: UITableView, heightForHeaderInSection section: Int) -> CGFloat {
+        SCRYFrom(64)
+    }
+
+    func tableView(_ tableView: UITableView, heightForRowAt indexPath: IndexPath) -> CGFloat {
+        let switchData = switchData(section: indexPath.section)
+        let row = rows(for: switchData)[indexPath.row]
+        switch row {
+        case .panelPreview:
+            return SCRYFrom(84) + SCRXFrom(288)
+        case .actions:
+            return SCRYFrom(64)
+        case .panel, .group, .scene, .moreSettings:
+            return SCRYFrom(44)
         }
-        cell.groupAction = { [weak self] in
-            self?.showGroups(id: switchID)
-        }
-        cell.sceneAction = { [weak self] in
-            self?.selectScenes(id: switchID)
-        }
-        cell.moreSettingsAction = { [weak self] in
-            self?.moreSettings(id: switchID)
-        }
-        cell.deleteAction = { [weak self] in
-            self?.deleteSwitch(id: switchID)
-        }
-        cell.saveAction = { [weak self] in
-            self?.saveSwitch(id: switchID)
-        }
-        return cell
+    }
+
+    func tableView(_ tableView: UITableView, heightForFooterInSection section: Int) -> CGFloat {
+        0.01
+    }
+
+    func tableView(_ tableView: UITableView, viewForFooterInSection section: Int) -> UIView? {
+        UIView()
     }
 
     func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
-        let switchData = viewModel.switchData(at: indexPath.row)
-        toggleExpanded(id: switchData.id)
+        let switchData = switchData(section: indexPath.section)
+        let row = rows(for: switchData)[indexPath.row]
+
+        switch row {
+        case .panel:
+            selectPanel(id: switchData.id)
+        case .group:
+            showGroups(id: switchData.id)
+        case .scene:
+            selectScenes(id: switchData.id)
+        case .moreSettings:
+            moreSettings(id: switchData.id)
+        case .panelPreview, .actions:
+            break
+        }
     }
 }
