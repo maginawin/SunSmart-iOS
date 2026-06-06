@@ -115,8 +115,18 @@ final class PJEightKeySwitchMonitorViewModel {
         switchData.proxyNode?.isPowerSwitch == true && switchData.needsBatteryPowerSwitchSync
     }
 
+    var canEditPowerSwitch: Bool {
+        space.deviceOperates.contains(.edit)
+    }
+
+    var isEffectiveVisitor: Bool {
+        !canEditPowerSwitch
+    }
+
     var canRefreshBattery: Bool {
-        switchData.powerSwitchKind == .battery && switchData.proxyNode?.isBatteryPowerSwitch == true && space.permission != .visitor
+        switchData.powerSwitchKind == .battery &&
+            switchData.proxyNode?.isBatteryPowerSwitch == true &&
+            canEditPowerSwitch
     }
 
     var panelDefinition: PJEightKeySwitchPanelDefinition {

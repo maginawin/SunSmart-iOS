@@ -53,25 +53,35 @@ final class PJEightKeySwitchMonitorVC: UIViewController {
 
     @objc private func moreAction() {
         var items: [MenuPopView.MenuItem] = []
-        if viewModel.space.deviceOperates.contains(.edit) {
-            items.append(.init(icon: UIImage(named: "menu_edit"), title: "edit".localizedString, tapItemBack: { [weak self] _ in
-                self?.pushEditor()
+
+        if viewModel.isEffectiveVisitor {
+            guard viewModel.isRealBatteryPowerSwitch else {
+                return
+            }
+            items.append(.init(icon: UIImage(named: "menu_information"), title: "information".localizedString, tapItemBack: { [weak self] _ in
+                self?.pushInformation()
             }))
-        }
-        if viewModel.space.deviceOperates.contains(.delete) {
-            items.append(.init(icon: UIImage(named: "menu_delete"), title: "delete".localizedString, tapItemBack: { [weak self] _ in
-                self?.deleteCurrentSwitch()
-            }))
-        }
-        if !viewModel.isUnlinkedVirtualBatteryPowerSwitch {
-            if viewModel.isRealBatteryPowerSwitch {
-                items.append(.init(icon: UIImage(named: "menu_information"), title: "information".localizedString, tapItemBack: { [weak self] _ in
-                    self?.pushInformation()
+        } else {
+            if viewModel.space.deviceOperates.contains(.edit) {
+                items.append(.init(icon: UIImage(named: "menu_edit"), title: "edit".localizedString, tapItemBack: { [weak self] _ in
+                    self?.pushEditor()
                 }))
             }
-            items.append(.init(icon: UIImage(named: "Identify_gateway"), title: "Identify", tapItemBack: { [weak self] _ in
-                self?.identifyAction()
-            }))
+            if viewModel.space.deviceOperates.contains(.delete) {
+                items.append(.init(icon: UIImage(named: "menu_delete"), title: "delete".localizedString, tapItemBack: { [weak self] _ in
+                    self?.deleteCurrentSwitch()
+                }))
+            }
+            if !viewModel.isUnlinkedVirtualBatteryPowerSwitch {
+                if viewModel.isRealBatteryPowerSwitch {
+                    items.append(.init(icon: UIImage(named: "menu_information"), title: "information".localizedString, tapItemBack: { [weak self] _ in
+                        self?.pushInformation()
+                    }))
+                }
+                items.append(.init(icon: UIImage(named: "Identify_gateway"), title: "Identify", tapItemBack: { [weak self] _ in
+                    self?.identifyAction()
+                }))
+            }
         }
 
         guard !items.isEmpty else {
@@ -84,7 +94,15 @@ final class PJEightKeySwitchMonitorVC: UIViewController {
         MenuPopView.show(items: items, anchorPoint: windowPoint, menuWidth: SCRXFrom(114))
     }
 
+    private func showNoPermissionTip() {
+        XWHUDManager.showTipHUD("No permission!", isLineFeed: true)
+    }
+
     private func identifyAction() {
+        guard viewModel.canEditPowerSwitch else {
+            showNoPermissionTip()
+            return
+        }
         guard viewModel.informationNode != nil else {
             XWHUDManager.showTipHUD("failed".localizedString, isLineFeed: false)
             return
@@ -232,6 +250,11 @@ final class PJEightKeySwitchMonitorVC: UIViewController {
 
     private func refreshMonitor() {
         guard !isRefreshing else { return }
+        guard viewModel.canEditPowerSwitch else {
+            showNoPermissionTip()
+            updateUI()
+            return
+        }
         guard viewModel.switchData.powerSwitchKind == .battery else {
             return
         }
@@ -302,6 +325,11 @@ final class PJEightKeySwitchMonitorVC: UIViewController {
     }
 
     private func startTxEnableUpdate(_ isEnabled: Bool) {
+        guard viewModel.canEditPowerSwitch else {
+            showNoPermissionTip()
+            updateUI()
+            return
+        }
         guard pendingEnabledValue == nil else {
             updateUI()
             return
@@ -481,6 +509,10 @@ final class PJEightKeySwitchMonitorVC: UIViewController {
     }
 
     private func pushEditor() {
+        guard viewModel.canEditPowerSwitch else {
+            showNoPermissionTip()
+            return
+        }
         let vc = PJPreAddEightKeySwitchesVC(space: viewModel.space, switchData: viewModel.switchData)
         vc.deleteSwitchAction = deleteSwitchAction
         vc.switchSavedAction = { [weak self] switchData in
@@ -503,6 +535,10 @@ final class PJEightKeySwitchMonitorVC: UIViewController {
     }
 
     private func deleteCurrentSwitch() {
+        guard viewModel.space.deviceOperates.contains(.delete) else {
+            showNoPermissionTip()
+            return
+        }
         guard !viewModel.isUnlinkedVirtualBatteryPowerSwitch else {
             deleteUnlinkedVirtualSwitch()
             return
