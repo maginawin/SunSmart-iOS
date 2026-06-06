@@ -121,7 +121,10 @@ final class GroupPowerSwitchHeaderView: UITableViewHeaderFooterView {
     }
 }
 
-final class GroupPowerSwitchPanelPreviewCell: UITableViewCell {
+final class GroupPowerSwitchPanelCell: UITableViewCell {
+
+    var deleteAction: (() -> Void)?
+    var saveAction: (() -> Void)?
 
     private let panelContainerView: UIView = {
         let view = UIView()
@@ -133,18 +136,31 @@ final class GroupPowerSwitchPanelPreviewCell: UITableViewCell {
     }()
 
     private let panelPreviewView = PJEightKeySwitchPanelView()
+    private let deleteButton = UIButton(normalImageName: "switch_delete")
+    private let saveButton = UIButton(normalImageName: "switch_save")
 
     override init(style: UITableViewCell.CellStyle, reuseIdentifier: String?) {
         super.init(style: style, reuseIdentifier: reuseIdentifier)
         setupUI()
+        bindActions()
     }
 
     required init?(coder: NSCoder) {
         fatalError("init(coder:) has not been implemented")
     }
 
-    func configure(definition: PJEightKeySwitchPanelDefinition) {
+    override func prepareForReuse() {
+        super.prepareForReuse()
+        deleteAction = nil
+        saveAction = nil
+    }
+
+    func configure(definition: PJEightKeySwitchPanelDefinition, isEditable: Bool, isSaveEnabled: Bool) {
         panelPreviewView.configure(definition: definition, mode: .preview)
+        deleteButton.isEnabled = isEditable
+        deleteButton.alpha = isEditable ? 1 : 0.35
+        saveButton.isEnabled = isEditable && isSaveEnabled
+        saveButton.setImage(UIImage(named: isSaveEnabled ? "switch_save" : "switch_save_un"), for: .normal)
     }
 
     private func setupUI() {
@@ -171,49 +187,11 @@ final class GroupPowerSwitchPanelPreviewCell: UITableViewCell {
                 )
             )
         }
-    }
-}
-
-final class GroupPowerSwitchActionCell: UITableViewCell {
-
-    var deleteAction: (() -> Void)?
-    var saveAction: (() -> Void)?
-
-    private let deleteButton = UIButton(normalImageName: "switch_delete")
-    private let saveButton = UIButton(normalImageName: "switch_save")
-
-    override init(style: UITableViewCell.CellStyle, reuseIdentifier: String?) {
-        super.init(style: style, reuseIdentifier: reuseIdentifier)
-        setupUI()
-        bindActions()
-    }
-
-    required init?(coder: NSCoder) {
-        fatalError("init(coder:) has not been implemented")
-    }
-
-    override func prepareForReuse() {
-        super.prepareForReuse()
-        deleteAction = nil
-        saveAction = nil
-    }
-
-    func configure(isEditable: Bool, isSaveEnabled: Bool) {
-        deleteButton.isEnabled = isEditable
-        deleteButton.alpha = isEditable ? 1 : 0.35
-        saveButton.isEnabled = isEditable && isSaveEnabled
-        saveButton.setImage(UIImage(named: isSaveEnabled ? "switch_save" : "switch_save_un"), for: .normal)
-    }
-
-    private func setupUI() {
-        selectionStyle = .none
-        backgroundColor = Background_Color
-        contentView.backgroundColor = Background_Color
 
         contentView.addSubview(deleteButton)
         deleteButton.snp.makeConstraints { make in
             make.left.equalTo(SCRXFrom(56))
-            make.top.equalTo(SCRYFrom(16))
+            make.top.equalTo(panelContainerView.snp.bottom).offset(SCRYFrom(16))
             make.height.equalTo(40)
         }
 

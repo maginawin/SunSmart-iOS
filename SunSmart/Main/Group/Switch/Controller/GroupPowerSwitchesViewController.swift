@@ -23,7 +23,6 @@ final class GroupPowerSwitchesViewController: UIViewController {
         case scene
         case moreSettings
         case panelPreview
-        case actions
     }
 
     private let tableView: UITableView = {
@@ -33,8 +32,7 @@ final class GroupPowerSwitchesViewController: UIViewController {
         tableView.rowHeight = UITableView.automaticDimension
         tableView.estimatedRowHeight = SCRYFrom(80)
         tableView.register(CustomTableViewCell.self, forCellReuseIdentifier: "info")
-        tableView.register(GroupPowerSwitchPanelPreviewCell.self, forCellReuseIdentifier: "panelPreview")
-        tableView.register(GroupPowerSwitchActionCell.self, forCellReuseIdentifier: "actions")
+        tableView.register(GroupPowerSwitchPanelCell.self, forCellReuseIdentifier: "panel")
         tableView.register(GroupPowerSwitchHeaderView.self, forHeaderFooterViewReuseIdentifier: "header")
         return tableView
     }()
@@ -594,7 +592,7 @@ final class GroupPowerSwitchesViewController: UIViewController {
         if viewModel.showsSceneRow(for: switchData) {
             rows.append(.scene)
         }
-        rows.append(contentsOf: [.moreSettings, .panelPreview, .actions])
+        rows.append(contentsOf: [.moreSettings, .panelPreview])
         return rows
     }
 
@@ -620,7 +618,7 @@ final class GroupPowerSwitchesViewController: UIViewController {
         case .moreSettings:
             cell.titleLabel.text = "neightkeyswitches_more_settings".localizedString
             cell.contentLabel.text = nil
-        case .panelPreview, .actions:
+        case .panelPreview:
             break
         }
     }
@@ -682,13 +680,13 @@ extension GroupPowerSwitchesViewController: UITableViewDataSource, UITableViewDe
             configureInfoCell(cell, row: row, switchData: switchData)
             return cell
         case .panelPreview:
-            let cell = tableView.dequeueReusableCell(withIdentifier: "panelPreview", for: indexPath) as! GroupPowerSwitchPanelPreviewCell
-            cell.configure(definition: PJEightKeySwitchPanelDefinition.make(type: switchData.eightKeyPanelType))
-            return cell
-        case .actions:
-            let cell = tableView.dequeueReusableCell(withIdentifier: "actions", for: indexPath) as! GroupPowerSwitchActionCell
+            let cell = tableView.dequeueReusableCell(withIdentifier: "panel", for: indexPath) as! GroupPowerSwitchPanelCell
             let switchID = switchData.id
-            cell.configure(isEditable: editable, isSaveEnabled: viewModel.hasSaveChanges(switchData))
+            cell.configure(
+                definition: PJEightKeySwitchPanelDefinition.make(type: switchData.eightKeyPanelType),
+                isEditable: editable,
+                isSaveEnabled: viewModel.hasSaveChanges(switchData)
+            )
             cell.deleteAction = { [weak self] in self?.deleteSwitch(id: switchID) }
             cell.saveAction = { [weak self] in self?.saveSwitch(id: switchID) }
             return cell
@@ -726,8 +724,6 @@ extension GroupPowerSwitchesViewController: UITableViewDataSource, UITableViewDe
         switch row {
         case .panelPreview:
             return SCRYFrom(84) + SCRXFrom(288)
-        case .actions:
-            return SCRYFrom(64)
         case .panel, .group, .scene, .moreSettings:
             return SCRYFrom(44)
         }
@@ -754,7 +750,7 @@ extension GroupPowerSwitchesViewController: UITableViewDataSource, UITableViewDe
             selectScenes(id: switchData.id)
         case .moreSettings:
             moreSettings(id: switchData.id)
-        case .panelPreview, .actions:
+        case .panelPreview:
             break
         }
     }
