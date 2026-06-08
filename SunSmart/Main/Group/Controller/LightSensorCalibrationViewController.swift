@@ -157,6 +157,19 @@ class LightSensorCalibrationViewController: UIViewController {
         NotificationCenter.default.post(name: .init(groupDataUpdateNotificationName), object: self.group)
     }
     
+    private var shouldRestoreAutoAfterDaylightCalibration: Bool {
+        let type = group.info.profile.type
+        return type == .occupancy_daylight || type == .vacancy_daylight || type == .daylight
+    }
+    
+    private func restoreGroupAutoAfterDaylightCalibration() {
+        guard shouldRestoreAutoAfterDaylightCalibration else { return }
+        MeshAPI.sendMessage(
+            message: LightLCLightOnOffSetUnacknowledged(true, transitionTime: .default, delay: 0),
+            address: group.address.address
+        )
+    }
+    
     /// 更新修改校准按钮
     private func updateManualCorrectionBtn() {
         
@@ -367,13 +380,14 @@ class LightSensorCalibrationViewController: UIViewController {
     
     
     /// 开始配置
-    private func configuring(lightNodes: [Node]) {
+    private func configuring(lightNodes: [Node], completion: ((Bool) -> Void)? = nil) {
         
         // 判断哪些需要设置的灯
         let setLightNodes = lightNodes.filter({ $0.getNodeSyncProfiles().count > 0 })
         if setLightNodes.isEmpty {
             DispatchQueue.main.async {
                 SRAlertView.hide()
+                completion?(true)
             }
             return
         }
@@ -424,9 +438,11 @@ class LightSensorCalibrationViewController: UIViewController {
                 NotificationCenter.default.post(name: .init(spaceDataChangedNotificaitonName), object: SpaceChangeDataType.device)
                 self.group.updateGroupSyncState()
                 if failedNodes.count > 0 {
-                    self.showCheckingCorrectFailure(total: successNodes.count + failedNodes.count, successCount: successNodes.count, failedNodes: failedNodes)
+                    self.showCheckingCorrectFailure(total: successNodes.count + failedNodes.count, successCount: successNodes.count, failedNodes: failedNodes, completion: completion)
+                    completion?(false)
                 }else {
                     SRAlertView.hide()
+                    completion?(true)
                 }
             }
         }
@@ -523,10 +539,10 @@ class LightSensorCalibrationViewController: UIViewController {
     /// - Parameters:
     ///   - total: 配置设备总数
     ///   - successCount: 成功数量
-    private func showCheckingCorrectFailure(total: Int, successCount: Int, failedNodes: [Node]) {
+    private func showCheckingCorrectFailure(total: Int, successCount: Int, failedNodes: [Node], completion: ((Bool) -> Void)? = nil) {
         SRAlertView(title: "configuring".localizedString, titleColor: TextBlack_Color, titleFont: FONTS(SCRYFrom(15)), message: String(format: "calibration_configuring_failed".localizedString, successCount, total, total - successCount), messageColor: TextBlack_Color, messageFont: UIFont.systemFont(ofSize: 15, weight: .light), actions: [SRAlertAction(title: "cancel".localizedString, titleFont: UIFont.systemFont(ofSize: 15, weight: .light), style: .cancel), SRAlertAction(title: "RETRY".localizedString, titleFont: UIFont.systemFont(ofSize: 15, weight: .light), actionHandler: {[weak self] _ in
             
-            self?.configuring(lightNodes: failedNodes)
+            self?.configuring(lightNodes: failedNodes, completion: completion)
         })]).show()
     }
     
@@ -551,7 +567,10 @@ class LightSensorCalibrationViewController: UIViewController {
         if ambientLightSensorModel.publish?.publicationAddress == self.group.address {
             result?(true)
             DispatchQueue.main.async {
-                self.configuring(lightNodes: self.group.nodes)
+                self.configuring(lightNodes: self.group.nodes) { [weak self] success in
+                    guard success else { return }
+                    self?.restoreGroupAutoAfterDaylightCalibration()
+                }
             }
             return
         }
@@ -568,7 +587,10 @@ class LightSensorCalibrationViewController: UIViewController {
                 result?(true)
                 DispatchQueue.main.async {
                     self.updateGroupLightSensor()
-                    self.configuring(lightNodes: self.group.nodes)
+                    self.configuring(lightNodes: self.group.nodes) { [weak self] success in
+                        guard success else { return }
+                        self?.restoreGroupAutoAfterDaylightCalibration()
+                    }
                 }
             }else {
                 result?(false)
