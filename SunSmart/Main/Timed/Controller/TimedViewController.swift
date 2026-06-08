@@ -19,7 +19,7 @@ class TimedViewController: UIViewController {
     private var scheduleCollectionView: UICollectionView!
     private var selectTypeView: TimedSelectTypeView!
     
-//    private var schedules: [Schedule] = []
+    private var schedules: [Schedule] = []
     private var refreshData = false
     
     let space: SpaceData
@@ -178,7 +178,8 @@ class TimedViewController: UIViewController {
     
     private func updateUI() {
   
-        footerView.countBtn.setTitle("\(MeshNetworkManager.instance.schedules.count)/16", for: .normal)
+        schedules = MeshNetworkManager.instance.schedules
+        footerView.countBtn.setTitle("\(schedules.count)/16", for: .normal)
         
         footerView.addBtn.isEnabled = space.scheduleOperates.contains(.add)
         
@@ -190,7 +191,7 @@ class TimedViewController: UIViewController {
     
     private func updateEmptyUI() {
         
-        if MeshNetworkManager.instance.schedules.isEmpty {
+        if schedules.isEmpty {
             scheduleCollectionView.showEmptyDataView(title: "no_schedules".localizedString, tipText: "no_schedules_message".localizedString, position: .center, bottomMargin: SCRYFit(27))
             if let emptyView = scheduleCollectionView.emptyView {
                 emptyView.titleLabel.font = FONTS(SCRYFrom(15))
@@ -202,11 +203,27 @@ class TimedViewController: UIViewController {
     }
     
     private func reloadCollectionItem(schedule: Schedule) {
-        if let index = MeshNetworkManager.instance.schedules.firstIndex(where: {$0.id == schedule.id}) {
-            CATransaction.setDisableActions(true)
-            scheduleCollectionView.reloadItems(at: [IndexPath(row: index, section: 0)])
-            CATransaction.commit()
+        let latestSchedules = MeshNetworkManager.instance.schedules
+        guard view.window != nil else {
+            refreshData = true
+            schedules = latestSchedules
+            return
         }
+        guard let oldIndex = schedules.firstIndex(where: { $0.id == schedule.id }),
+              let newIndex = latestSchedules.firstIndex(where: { $0.id == schedule.id }),
+              oldIndex == newIndex,
+              schedules.count == latestSchedules.count,
+              scheduleCollectionView.numberOfSections > 0,
+              scheduleCollectionView.numberOfItems(inSection: 0) == schedules.count,
+              oldIndex < scheduleCollectionView.numberOfItems(inSection: 0) else {
+            updateUI()
+            return
+        }
+        schedules = latestSchedules
+        CATransaction.begin()
+        CATransaction.setDisableActions(true)
+        scheduleCollectionView.reloadItems(at: [IndexPath(row: oldIndex, section: 0)])
+        CATransaction.commit()
     }
 
 #if DEBUG
@@ -297,12 +314,15 @@ class TimedViewController: UIViewController {
 extension TimedViewController: UICollectionViewDataSource, UICollectionViewDelegateFlowLayout {
     
     func collectionView(_ collectionView: UICollectionView, numberOfItemsInSection section: Int) -> Int {
-        return MeshNetworkManager.instance.schedules.count
+        return schedules.count
     }
     
     func collectionView(_ collectionView: UICollectionView, cellForItemAt indexPath: IndexPath) -> UICollectionViewCell {
         let cell = collectionView.dequeueReusableCell(withReuseIdentifier: "cell", for: indexPath) as! SchedulesViewCell
-        let schedule = MeshNetworkManager.instance.schedules[indexPath.item]
+        guard indexPath.item < schedules.count else {
+            return cell
+        }
+        let schedule = schedules[indexPath.item]
         cell.schedule = schedule
         cell.enabledActionCallback = {[weak self] enabled in
             guard let self = self else {
@@ -320,7 +340,10 @@ extension TimedViewController: UICollectionViewDataSource, UICollectionViewDeleg
     func collectionView(_ collectionView: UICollectionView, layout collectionViewLayout: UICollectionViewLayout, sizeForItemAt indexPath: IndexPath) -> CGSize {
         var itemW = collectionView.width - collectionView.contentInset.left - collectionView.contentInset.right - scheduleFlowLayout.sectionInset.left - scheduleFlowLayout.sectionInset.right
         itemW = CGFloat(floorf(Float(itemW) * 100) / 100.0)
-        let schedule = MeshNetworkManager.instance.schedules[indexPath.item]
+        guard indexPath.item < schedules.count else {
+            return CGSize(width: itemW, height: SCRYFrom(isIPad ? 84 : 64))
+        }
+        let schedule = schedules[indexPath.item]
         
         return CGSize(width: itemW, height: schedule.enabled ? SCRYFrom(isIPad ? 130 : 114) : SCRYFrom(isIPad ? 84 : 64))
     }
@@ -332,7 +355,10 @@ extension TimedViewController: UICollectionViewDataSource, UICollectionViewDeleg
             return
         }
         
-        let schedule = MeshNetworkManager.instance.schedules[indexPath.item]
+        guard indexPath.item < schedules.count else {
+            return
+        }
+        let schedule = schedules[indexPath.item]
         
         let vc = ScheduleAddViewController(space: space, schedule: schedule)
         if isIPad {
@@ -347,7 +373,7 @@ extension TimedViewController: SpaceFunctionFooterViewDelegate {
     
     /// 点击添加回调
     func functionDidClickAdd(view: SpaceFunctionFooterView) {
-        guard MeshNetworkManager.instance.schedules.count < 16 else {
+        guard schedules.count < 16 else {
             SRAlertView(title: "notification".localizedString, message: "schedules_overrun_message".localizedString, actions: [SRAlertAction(title: "GOT_IT".localizedString)]).show()
             return
         }

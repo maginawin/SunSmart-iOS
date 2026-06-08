@@ -43,6 +43,7 @@ class ScenesViewController: UIViewController {
     private var collectionViewMargin: CGFloat = isIPad ? SCRXFrom(24) : SCRXFrom(12)
     /// item间距
     private var itemMargin: CGFloat = isIPad ? SCRXFrom(30) : SCRXFrom(16)
+    private var scenes: [Scene] = []
     private var visibleScenes: [Scene] {
         MeshNetworkManager.instance.scenes.filter { !DeviceEmerFireData.reservedSceneNumbers.contains($0.number) }
     }
@@ -125,7 +126,6 @@ class ScenesViewController: UIViewController {
             return
         }
         let point = sender.location(in: collectionView)
-        let scenes = visibleScenes
         if let indexPath = collectionView.indexPathForItem(at: point), indexPath.item < scenes.count {
             let scene = scenes[indexPath.item]
             let sceneVc = SceneViewController(space: space, scene: scene)
@@ -223,6 +223,7 @@ class ScenesViewController: UIViewController {
     private func updateUI() {
         
         let scenes = visibleScenes
+        self.scenes = scenes
         if isEdit && scenes.isEmpty {
             isEdit = false
         }
@@ -253,7 +254,7 @@ class ScenesViewController: UIViewController {
     /// 更新空页面UI
     private func updateScenesEmptyUI() {
         
-        if visibleScenes.isEmpty {
+        if scenes.isEmpty {
             if collectionView.frame.isEmpty {
                 view.layoutIfNeeded()
             }
@@ -312,13 +313,29 @@ class ScenesViewController: UIViewController {
     }
     
     private func reloadCollectionItem(scene: Scene) {
-        guard !DeviceEmerFireData.reservedSceneNumbers.contains(scene.number),
-              let index = visibleScenes.firstIndex(where: {$0.number == scene.number}),
-              index < collectionView.numberOfItems(inSection: 0) else {
+        guard !DeviceEmerFireData.reservedSceneNumbers.contains(scene.number) else {
             return
         }
+        let latestScenes = visibleScenes
+        guard view.window != nil else {
+            refreshData = true
+            scenes = latestScenes
+            return
+        }
+        guard let oldIndex = scenes.firstIndex(where: { $0.number == scene.number }),
+              let newIndex = latestScenes.firstIndex(where: { $0.number == scene.number }),
+              oldIndex == newIndex,
+              scenes.count == latestScenes.count,
+              collectionView.numberOfSections > 0,
+              collectionView.numberOfItems(inSection: 0) == scenes.count,
+              oldIndex < collectionView.numberOfItems(inSection: 0) else {
+            updateUI()
+            return
+        }
+        scenes = latestScenes
+        CATransaction.begin()
         CATransaction.setDisableActions(true)
-        collectionView.reloadItems(at: [IndexPath(row: index, section: 0)])
+        collectionView.reloadItems(at: [IndexPath(row: oldIndex, section: 0)])
         CATransaction.commit()
 //            if let item = collectionView.cellForItem(at: IndexPath(item: index, section: 0)) as? GroupsViewCell {
 //                item. = group
@@ -382,12 +399,15 @@ class ScenesViewController: UIViewController {
 extension ScenesViewController: UICollectionViewDataSource, UICollectionViewDelegateFlowLayout {
     
     public func collectionView(_ collectionView: UICollectionView, numberOfItemsInSection section: Int) -> Int {
-        return visibleScenes.count
+        return scenes.count
     }
     
     public func collectionView(_ collectionView: UICollectionView, cellForItemAt indexPath: IndexPath) -> UICollectionViewCell {
         let cell = collectionView.dequeueReusableCell(withReuseIdentifier: "cell", for: indexPath) as! ScenesViewCell
-        let scene = visibleScenes[indexPath.item]
+        guard indexPath.item < scenes.count else {
+            return cell
+        }
+        let scene = scenes[indexPath.item]
         cell.scene = scene
         cell.deleteBtn.isHidden = !isEdit
         cell.deleteActionCallback = {[weak self] in
@@ -405,7 +425,10 @@ extension ScenesViewController: UICollectionViewDataSource, UICollectionViewDele
     
     func collectionView(_ collectionView: UICollectionView, didSelectItemAt indexPath: IndexPath) {
         
-        let scene = visibleScenes[indexPath.item]
+        guard indexPath.item < scenes.count else {
+            return
+        }
+        let scene = scenes[indexPath.item]
         if scene.nodes.count > 0 && !MeshLibManager.manager.isMeshNetworkConnected {
             XWHUDManager.showTipHUD("device_notconnect_message".localizedString, isLineFeed: true)
             return
@@ -458,7 +481,7 @@ extension ScenesViewController: SpaceFunctionFooterViewDelegate {
     /// 点击添加回调
     func functionDidClickAdd(view: SpaceFunctionFooterView) {
         
-        guard visibleScenes.count < 16 else {
+        guard scenes.count < 16 else {
             SRAlertView(title: "notification".localizedString, message: "scenes_overrun_message".localizedString, actions: [SRAlertAction(title: "GOT_IT".localizedString)]).show()
             return
         }
@@ -466,9 +489,7 @@ extension ScenesViewController: SpaceFunctionFooterViewDelegate {
         let vc = SceneAddViewController(space: space)
         vc.createSceneCallback = {[weak self] _ in
             guard let self = self else { return }
-            self.collectionView.reloadData()
-            self.space.sceneCount = self.visibleScenes.count
-            self.space.save()
+            self.updateUI()
         }
         if isIPad {
             vc.preferredContentSize = iPadPreferredContentSize

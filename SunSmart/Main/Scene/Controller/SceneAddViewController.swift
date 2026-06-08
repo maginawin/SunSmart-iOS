@@ -376,13 +376,13 @@ class SceneAddViewController: UIViewController {
             DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {[weak self] in
                 self?.backHandle(close: true)
             }
-            NotificationCenter.default.post(name: .init(sceneDataUpdateNotificationName), object: scene)
+            NotificationCenter.default.post(name: .init(scenesRefreshNotificationName), object: nil)
         }
         vc.backActionCallback = {[weak self] _ in
 //                self?.dismiss(animated: true)
             guard let self = self else { return }
             self.backHandle(close: true)
-            NotificationCenter.default.post(name: .init(sceneDataUpdateNotificationName), object: scene)
+            NotificationCenter.default.post(name: .init(scenesRefreshNotificationName), object: nil)
         }
         navigationController?.pushViewController(vc, animated: true)
     }
