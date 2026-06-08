@@ -64,7 +64,7 @@ class SyncDevicesViewController: UIViewController {
     private var batteryPowerSwitchKeyConfigEarliestDate: Date?
     private var syncRunIdentifier = UUID()
 
-    private static let batteryPowerSwitchKeyConfigInitialDelay: TimeInterval = 3
+    private static let batteryPowerSwitchKeyConfigInitialDelay: TimeInterval = 1
     private static let batteryPowerSwitchPostKeyConfigProcessingDelay: TimeInterval = 0.5
     
     private var deviceBlinkMode: DeviceBlinkMode = .none

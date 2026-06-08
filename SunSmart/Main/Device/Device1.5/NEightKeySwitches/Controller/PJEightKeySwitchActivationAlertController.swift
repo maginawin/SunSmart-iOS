@@ -63,17 +63,7 @@ final class MeshBatteryPowerSwitchActivationDetector: PJEightKeySwitchActivation
             return
         }
 
-        MeshAPI.sendMessage(
-            message: SunricherVendorGet(function: .batteryPowerSwitchCapability),
-            model: vendorModel,
-            timeout: 1.5
-        ) { response in
-            guard let status = response as? SunricherVendorStatus else {
-                completion(false)
-                return
-            }
-            completion(status.status.isSuccessful && status.status.code == .batteryPowerSwitchCapability)
-        }
+        MeshAPI.sendBatteryPowerSwitchActivationProbe(model: vendorModel, timeout: 1.5, result: completion)
     }
 }
 
@@ -135,6 +125,7 @@ final class PJEightKeySwitchActivationFlow {
     private var remainingSeconds = 60
     private var generation = UUID()
     private var state: State = .idle
+    private var isProbePending = false
 
     init(
         presenter: UIViewController,
@@ -169,6 +160,7 @@ final class PJEightKeySwitchActivationFlow {
         generation = UUID()
         state = .waiting
         remainingSeconds = 60
+        isProbePending = false
         autoProceedWorkItem?.cancel()
         stopTimers()
         applyWaitingContent()
@@ -193,10 +185,13 @@ final class PJEightKeySwitchActivationFlow {
     }
 
     private func sendProbe(for probeGeneration: UUID) {
-        guard case .waiting = state, let node = switchData.proxyNode else { return }
+        guard case .waiting = state, !isProbePending, let node = switchData.proxyNode else { return }
+        isProbePending = true
         detector.sendActivationProbe(to: node) { [weak self] detected in
             DispatchQueue.main.async {
-                guard let self,
+                guard let self else { return }
+                self.isProbePending = false
+                guard
                       detected,
                       self.generation == probeGeneration,
                       case .waiting = self.state else {
@@ -280,6 +275,7 @@ final class PJEightKeySwitchActivationFlow {
     private func cancel() {
         state = .cancelled
         generation = UUID()
+        isProbePending = false
         stopTimers()
         autoProceedWorkItem?.cancel()
         alertController?.dismiss(animated: true)
@@ -318,6 +314,7 @@ final class PJEightKeySwitchIdentifyFlow {
     private var remainingSeconds = 60
     private var generation = UUID()
     private var state: State = .idle
+    private var isProbePending = false
 
     init(
         presenter: UIViewController,
@@ -353,6 +350,7 @@ final class PJEightKeySwitchIdentifyFlow {
     func cancel() {
         state = .cancelled
         generation = UUID()
+        isProbePending = false
         stopTimers()
         startIdentifyWorkItem?.cancel()
         alertController?.dismiss(animated: true) { [weak self] in
@@ -364,6 +362,7 @@ final class PJEightKeySwitchIdentifyFlow {
         generation = UUID()
         state = .waiting
         remainingSeconds = 60
+        isProbePending = false
         startIdentifyWorkItem?.cancel()
         stopTimers()
         applyWaitingContent()
@@ -388,10 +387,13 @@ final class PJEightKeySwitchIdentifyFlow {
     }
 
     private func sendActivationProbe(for flowGeneration: UUID) {
-        guard case .waiting = state, let node = switchData.proxyNode else { return }
+        guard case .waiting = state, !isProbePending, let node = switchData.proxyNode else { return }
+        isProbePending = true
         detector.sendActivationProbe(to: node) { [weak self] detected in
             DispatchQueue.main.async {
-                guard let self,
+                guard let self else { return }
+                self.isProbePending = false
+                guard
                       detected,
                       self.generation == flowGeneration,
                       case .waiting = self.state else {
@@ -530,6 +532,7 @@ final class PJEightKeySwitchTxEnableFlow {
     private var remainingSeconds = 60
     private var generation = UUID()
     private var state: State = .idle
+    private var isProbePending = false
 
     init(
         presenter: UIViewController,
@@ -569,6 +572,7 @@ final class PJEightKeySwitchTxEnableFlow {
     func cancel() {
         state = .cancelled
         generation = UUID()
+        isProbePending = false
         stopTimers()
         dismissWorkItem?.cancel()
         alertController?.dismiss(animated: true) { [weak self] in
@@ -580,6 +584,7 @@ final class PJEightKeySwitchTxEnableFlow {
         generation = UUID()
         state = .waiting
         remainingSeconds = 60
+        isProbePending = false
         dismissWorkItem?.cancel()
         stopTimers()
         applyWaitingContent()
@@ -622,10 +627,13 @@ final class PJEightKeySwitchTxEnableFlow {
     }
 
     private func sendActivationProbe(for flowGeneration: UUID) {
-        guard case .waiting = state, let node = switchData.proxyNode else { return }
+        guard case .waiting = state, !isProbePending, let node = switchData.proxyNode else { return }
+        isProbePending = true
         detector.sendActivationProbe(to: node) { [weak self] detected in
             DispatchQueue.main.async {
-                guard let self,
+                guard let self else { return }
+                self.isProbePending = false
+                guard
                       detected,
                       self.generation == flowGeneration,
                       case .waiting = self.state else {
