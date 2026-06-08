@@ -233,6 +233,10 @@ class LightSensorCalibrationViewController: UIViewController {
             
             return
         }
+        guard onLux > offLux else {
+            showCalibrationFailed(message: "sensor_calibration_on_lux_must_exceed_off_lux".localizedString)
+            return
+        }
         
         /// 是否支持校准，检查固件版本
         guard sensor.supportSensorCalibration else {

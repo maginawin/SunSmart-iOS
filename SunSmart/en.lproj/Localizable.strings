@@ -1540,6 +1540,7 @@
 "sensor_calibration_on_lux_note" = "After turning on the lights, please enter the illuminance meter reading at the calibration point.";
 "sensor_calibration_off_lux" = "OFF - Calibration Point LUX";
 "sensor_calibration_off_lux_note" = "After turning off the lights, please enter the illuminance meter reading at the calibration point.";
+"sensor_calibration_on_lux_must_exceed_off_lux" = "The ON reading needs to be higher than the OFF reading. Please check both lux values and try again.";
 "manual_correction" = "Manual Correction";
 "manual_correction_note" = "You can manually adjust the ratio to correct the reading and make it consistent with the lux meter, thus reducing errors.";
 "calibration_point_title" = "Illuminance value at calibration point";

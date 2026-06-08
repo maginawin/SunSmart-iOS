@@ -1545,6 +1545,7 @@
 "sensor_calibration_on_lux_note" = "开灯后，请输入校准点的照度计读数。";
 "sensor_calibration_off_lux" = "关闭 - 校准点照度值";
 "sensor_calibration_off_lux_note" = "关灯后，请输入校准点的照度计读数。";
+"sensor_calibration_on_lux_must_exceed_off_lux" = "开灯后的照度读数需要高于关灯后的读数。请检查两个照度值后再试。";
 "manual_correction" = "手动校正";
 "manual_correction_note" = "您可以手动调整比例来校正读数，使其与照度计保持一致，从而减少误差。";
 "calibration_point_title" = "校准点照度值";
