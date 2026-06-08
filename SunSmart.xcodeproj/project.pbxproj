@@ -3,7 +3,7 @@
 	archiveVersion = 1;
 	classes = {
 	};
-	objectVersion = 56;
+	objectVersion = 60;
 	objects = {
 
 /* Begin PBXBuildFile section */
@@ -19,7 +19,7 @@
 		39FE1B9D3CB748E99E153094 /* EmerFireAlarmMonitorViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0FB5C2C5870049F0AC8546FD /* EmerFireAlarmMonitorViewModel.swift */; };
 		4D4A0F032EE24DA7965F1B78 /* EmergencyFireControllerIconName.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3AB43138D1CA4C21AFA5232A /* EmergencyFireControllerIconName.swift */; };
 		59406AF3301C4F9EA72AE09D /* EmerFireAlarmMonitorRouting.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5CAC8D9C0CD4494B961439D5 /* EmerFireAlarmMonitorRouting.swift */; };
-		6116D0D0F05DFA292964E9B9 /* BuildFile in Frameworks */ = {isa = PBXBuildFile; };
+		6116D0D0F05DFA292964E9B9 /* (null) in Frameworks */ = {isa = PBXBuildFile; };
 		641FEC57DE5645609932974D /* EmerFireAlarmMonitorDelegates.swift in Sources */ = {isa = PBXBuildFile; fileRef = E4B67A9E7E2941BBBD518363 /* EmerFireAlarmMonitorDelegates.swift */; };
 		7119A2FC8208465ABF6EF1D3 /* EmergencyFireControllerIconName.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3AB43138D1CA4C21AFA5232A /* EmergencyFireControllerIconName.swift */; };
 		7A97BDEC9C6E47B78123C040 /* EmerFireAlarmMonitorViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0FB5C2C5870049F0AC8546FD /* EmerFireAlarmMonitorViewModel.swift */; };
@@ -133,6 +133,10 @@
 		8C1DA7CE2FAC8A890073F100 /* PJDeviceGroupSelectionViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C1DA7CC2FAC8A890073F100 /* PJDeviceGroupSelectionViewController.swift */; };
 		8C1DA7CF2FAC8A890073F100 /* PJDeviceGroupSelectionViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C1DA7CC2FAC8A890073F100 /* PJDeviceGroupSelectionViewController.swift */; };
 		8C1DA7D02FAC8A890073F100 /* PJDeviceGroupSelectionViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C1DA7CC2FAC8A890073F100 /* PJDeviceGroupSelectionViewController.swift */; };
+		8C2605202A010002000887FE /* BatteryPowerSwitchAddConfiguration.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C2605202A010001000887FE /* BatteryPowerSwitchAddConfiguration.swift */; };
+		8C2605202A010003000887FE /* BatteryPowerSwitchAddConfiguration.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C2605202A010001000887FE /* BatteryPowerSwitchAddConfiguration.swift */; };
+		8C2605202A010004000887FE /* BatteryPowerSwitchAddConfiguration.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C2605202A010001000887FE /* BatteryPowerSwitchAddConfiguration.swift */; };
+		8C2605202A010005000887FE /* BatteryPowerSwitchAddConfiguration.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C2605202A010001000887FE /* BatteryPowerSwitchAddConfiguration.swift */; };
 		8C7788CC2F97099D000887FE /* EmerFireAlarmMonitorVC.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C7788CB2F97099D000887FE /* EmerFireAlarmMonitorVC.swift */; };
 		8C7788CD2F97099D000887FE /* EmerFireAlarmMonitorVC.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C7788CB2F97099D000887FE /* EmerFireAlarmMonitorVC.swift */; };
 		8C7788CE2F97099D000887FE /* EmerFireAlarmMonitorVC.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C7788CB2F97099D000887FE /* EmerFireAlarmMonitorVC.swift */; };
@@ -337,10 +341,6 @@
 		8C778BF02FA2153E000887FE /* PJEightKeySwitchData.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C778BEE2FA2153E000887FE /* PJEightKeySwitchData.swift */; };
 		8C778BF12FA2153E000887FE /* PJEightKeySwitchData.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C778BEE2FA2153E000887FE /* PJEightKeySwitchData.swift */; };
 		8C778BF22FA2153E000887FE /* PJEightKeySwitchData.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C778BEE2FA2153E000887FE /* PJEightKeySwitchData.swift */; };
-		8C2605202A010002000887FE /* BatteryPowerSwitchAddConfiguration.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C2605202A010001000887FE /* BatteryPowerSwitchAddConfiguration.swift */; };
-		8C2605202A010003000887FE /* BatteryPowerSwitchAddConfiguration.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C2605202A010001000887FE /* BatteryPowerSwitchAddConfiguration.swift */; };
-		8C2605202A010004000887FE /* BatteryPowerSwitchAddConfiguration.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C2605202A010001000887FE /* BatteryPowerSwitchAddConfiguration.swift */; };
-		8C2605202A010005000887FE /* BatteryPowerSwitchAddConfiguration.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C2605202A010001000887FE /* BatteryPowerSwitchAddConfiguration.swift */; };
 		8C778BF42FA2153E000887FE /* PJEightKeySwitchesViewCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C778BF32FA2153E000887FE /* PJEightKeySwitchesViewCell.swift */; };
 		8C778BF52FA2153E000887FE /* PJEightKeySwitchesViewCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C778BF32FA2153E000887FE /* PJEightKeySwitchesViewCell.swift */; };
 		8C778BF62FA2153E000887FE /* PJEightKeySwitchesViewCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C778BF32FA2153E000887FE /* PJEightKeySwitchesViewCell.swift */; };
@@ -517,6 +517,7 @@
 		C81DB7842EFAC3D000D65664 /* ProfileDeviceDayNightLuxViewCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = C81DB7822EFAC3D000D65664 /* ProfileDeviceDayNightLuxViewCell.swift */; };
 		C81DB7852EFAC3D000D65664 /* ProfileDeviceDayNightLuxViewCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = C81DB7822EFAC3D000D65664 /* ProfileDeviceDayNightLuxViewCell.swift */; };
 		C81DB7862EFAC3D000D65664 /* ProfileDeviceDayNightLuxViewCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = C81DB7822EFAC3D000D65664 /* ProfileDeviceDayNightLuxViewCell.swift */; };
+		C81EB9D84928F87940B7B24C /* GroupPowerSwitchCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = C897B311461F95CC1204CFB1 /* GroupPowerSwitchCell.swift */; };
 		C8219F6A2E585F3500253A9A /* RoundProgressView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8219F692E585F3500253A9A /* RoundProgressView.swift */; };
 		C8219F6B2E585F3500253A9A /* RoundProgressView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8219F692E585F3500253A9A /* RoundProgressView.swift */; };
 		C8219F6C2E585F3500253A9A /* RoundProgressView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8219F692E585F3500253A9A /* RoundProgressView.swift */; };
@@ -579,6 +580,7 @@
 		C82605160000010400000009 /* SpaceDebugUARTMessageCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8260516000000010000000A /* SpaceDebugUARTMessageCell.swift */; };
 		C8260516000001040000000A /* SpaceDebugUARTLogExporter.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8260516000000010000000B /* SpaceDebugUARTLogExporter.swift */; };
 		C8260516000001040000000B /* SpaceDebugUARTManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8260516000000010000000C /* SpaceDebugUARTManager.swift */; };
+		C826963BB2B36ED1418055DC /* GroupPowerSwitchesViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8BE099331EBF36DB4714884 /* GroupPowerSwitchesViewController.swift */; };
 		C82AE2EB2B95756600FA4BDB /* GroupSensorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C82AE2EA2B95756600FA4BDB /* GroupSensorView.swift */; };
 		C82AE2ED2B96EC6600FA4BDB /* Profile.swift in Sources */ = {isa = PBXBuildFile; fileRef = C82AE2EC2B96EC6600FA4BDB /* Profile.swift */; };
 		C82F99F22DBE10A90019C3FB /* EnergyDataViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C82F99F12DBE10A90019C3FB /* EnergyDataViewController.swift */; };
@@ -621,6 +623,7 @@
 		C85BC5F02C3BBE39002D4CB6 /* Device+Extension.swift in Sources */ = {isa = PBXBuildFile; fileRef = C85BC5EF2C3BBE39002D4CB6 /* Device+Extension.swift */; };
 		C85BC5F22C3BEEF8002D4CB6 /* UserSettingsViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C85BC5F12C3BEEF8002D4CB6 /* UserSettingsViewController.swift */; };
 		C85CB5F92BB6BE8E006598C0 /* DeviceInformationViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C85CB5F82BB6BE8E006598C0 /* DeviceInformationViewController.swift */; };
+		C85CFF76696BC2EE803E817B /* GroupPowerSwitchCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = C897B311461F95CC1204CFB1 /* GroupPowerSwitchCell.swift */; };
 		C85D550F2E6182DC00BFEEDA /* broadcast_loading.gif in Resources */ = {isa = PBXBuildFile; fileRef = C85D550E2E6182DC00BFEEDA /* broadcast_loading.gif */; };
 		C85D55102E6182DC00BFEEDA /* broadcast_loading.gif in Resources */ = {isa = PBXBuildFile; fileRef = C85D550E2E6182DC00BFEEDA /* broadcast_loading.gif */; };
 		C85D55112E6182DC00BFEEDA /* broadcast_loading.gif in Resources */ = {isa = PBXBuildFile; fileRef = C85D550E2E6182DC00BFEEDA /* broadcast_loading.gif */; };
@@ -636,8 +639,10 @@
 		C86760A52C37F4B4006AD978 /* SitesTransferredView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C86760A42C37F4B4006AD978 /* SitesTransferredView.swift */; };
 		C8699DB72C09661700424A60 /* ShareAuthorityFilterView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8699DB62C09661700424A60 /* ShareAuthorityFilterView.swift */; };
 		C8699DB92C0978F300424A60 /* UserData.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8699DB82C0978F300424A60 /* UserData.swift */; };
+		C869ED42D86CF9D971A59476 /* GroupPowerSwitchesViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8DDDEEA0487D9E098DB078F /* GroupPowerSwitchesViewModel.swift */; };
 		C86B0AB82C106BE00038F669 /* ServerSelectionViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C86B0AB72C106BE00038F669 /* ServerSelectionViewController.swift */; };
 		C86B0ABA2C11434C0038F669 /* ServerSelectionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C86B0AB92C11434C0038F669 /* ServerSelectionView.swift */; };
+		C86FD24A1F7497BCD7CBF70C /* GroupPowerSwitchesViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8BE099331EBF36DB4714884 /* GroupPowerSwitchesViewController.swift */; };
 		C87141B62DB24C86007A64B4 /* DevicePwmFrequencySelectView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C87141B52DB24C86007A64B4 /* DevicePwmFrequencySelectView.swift */; };
 		C87415DD2ADFD1510020E3C2 /* PopGestureScrollView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C87415DC2ADFD1510020E3C2 /* PopGestureScrollView.swift */; };
 		C87B2D2F2BCFC6CD0034E9C2 /* SpaceNewCreationProcessController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C87B2D2E2BCFC6CD0034E9C2 /* SpaceNewCreationProcessController.swift */; };
@@ -646,9 +651,6 @@
 		C87EB44E2BA07E7E00F9285B /* GroupSwitchsHeaderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C87EB44D2BA07E7E00F9285B /* GroupSwitchsHeaderView.swift */; };
 		C87EB4502BA0822E00F9285B /* GroupSwitchPanelViewCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = C87EB44F2BA0822E00F9285B /* GroupSwitchPanelViewCell.swift */; };
 		C87EB4532BA0856700F9285B /* GroupSwitch.swift in Sources */ = {isa = PBXBuildFile; fileRef = C87EB4522BA0856700F9285B /* GroupSwitch.swift */; };
-		C8BE7F69DA4DC8EA37C5763C /* GroupPowerSwitchCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = C897B311461F95CC1204CFB1 /* GroupPowerSwitchCell.swift */; };
-		C8FF8A7E146827711D87F57C /* GroupPowerSwitchesViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8BE099331EBF36DB4714884 /* GroupPowerSwitchesViewController.swift */; };
-		C8F11B20959EC4093FFC9390 /* GroupPowerSwitchesViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8DDDEEA0487D9E098DB078F /* GroupPowerSwitchesViewModel.swift */; };
 		C87EB4552BA13BA400F9285B /* EnOceanProxyViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C87EB4542BA13BA400F9285B /* EnOceanProxyViewController.swift */; };
 		C87EB4572BA1500500F9285B /* SwitchSelectSceneViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C87EB4562BA1500500F9285B /* SwitchSelectSceneViewController.swift */; };
 		C87EB4622BA17D3F00F9285B /* CodeScan.bundle in Resources */ = {isa = PBXBuildFile; fileRef = C87EB45A2BA17D3E00F9285B /* CodeScan.bundle */; };
@@ -744,8 +746,6 @@
 		C88554002DE6B44C00C8B688 /* SiteEditViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A099FC2AC134C30068C814 /* SiteEditViewController.swift */; };
 		C88554012DE6B44C00C8B688 /* AttributedTextViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A16F6E2C8568F600FB50BD /* AttributedTextViewController.swift */; };
 		C88554022DE6B44C00C8B688 /* GroupSwitchPanelViewCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = C87EB44F2BA0822E00F9285B /* GroupSwitchPanelViewCell.swift */; };
-		C81EB9D84928F87940B7B24C /* GroupPowerSwitchCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = C897B311461F95CC1204CFB1 /* GroupPowerSwitchCell.swift */; };
-		C869ED42D86CF9D971A59476 /* GroupPowerSwitchesViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8DDDEEA0487D9E098DB078F /* GroupPowerSwitchesViewModel.swift */; };
 		C88554032DE6B44C00C8B688 /* DeviceDongleScheduleViewCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8DF845B2DB65ADF0070CBD9 /* DeviceDongleScheduleViewCell.swift */; };
 		C88554042DE6B44C00C8B688 /* SpaceData.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8AADF002A973DA600238C1C /* SpaceData.swift */; };
 		C88554052DE6B44C00C8B688 /* GroupAddHeaderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8BF085A2B27146B00144BAC /* GroupAddHeaderView.swift */; };
@@ -971,7 +971,6 @@
 		C88554E12DE6B44C00C8B688 /* ProfileSensitivityView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8B707072DCF349D0002133E /* ProfileSensitivityView.swift */; };
 		C88554E22DE6B44C00C8B688 /* SceneSettingsViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C898F7012B3A810E008B4124 /* SceneSettingsViewController.swift */; };
 		C88554E32DE6B44C00C8B688 /* GroupSwitchsViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C87EB44B2BA07D1800F9285B /* GroupSwitchsViewController.swift */; };
-		C86FD24A1F7497BCD7CBF70C /* GroupPowerSwitchesViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8BE099331EBF36DB4714884 /* GroupPowerSwitchesViewController.swift */; };
 		C88554E42DE6B44C00C8B688 /* GroupSensorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C82AE2EA2B95756600FA4BDB /* GroupSensorView.swift */; };
 		C88554E52DE6B44C00C8B688 /* AlignCenterFlowLayout.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8BF084D2B26F84800144BAC /* AlignCenterFlowLayout.swift */; };
 		C88554E62DE6B44C00C8B688 /* SwitchSelectPanelTypeController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8CAE8E42D76EF9500FCCA5A /* SwitchSelectPanelTypeController.swift */; };
@@ -1118,8 +1117,6 @@
 		C886E0512E30DE4900D0C3A6 /* SiteEditViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A099FC2AC134C30068C814 /* SiteEditViewController.swift */; };
 		C886E0522E30DE4900D0C3A6 /* AttributedTextViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A16F6E2C8568F600FB50BD /* AttributedTextViewController.swift */; };
 		C886E0532E30DE4900D0C3A6 /* GroupSwitchPanelViewCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = C87EB44F2BA0822E00F9285B /* GroupSwitchPanelViewCell.swift */; };
-		C8C4BE7222BCF6C13E9CB18F /* GroupPowerSwitchCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = C897B311461F95CC1204CFB1 /* GroupPowerSwitchCell.swift */; };
-		C896FE75CC379E7D64E3CC86 /* GroupPowerSwitchesViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8DDDEEA0487D9E098DB078F /* GroupPowerSwitchesViewModel.swift */; };
 		C886E0542E30DE4900D0C3A6 /* DeviceDongleScheduleViewCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8DF845B2DB65ADF0070CBD9 /* DeviceDongleScheduleViewCell.swift */; };
 		C886E0552E30DE4900D0C3A6 /* SpaceData.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8AADF002A973DA600238C1C /* SpaceData.swift */; };
 		C886E0562E30DE4900D0C3A6 /* GroupAddHeaderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8BF085A2B27146B00144BAC /* GroupAddHeaderView.swift */; };
@@ -1355,7 +1352,6 @@
 		C886E13C2E30DE4900D0C3A6 /* ProfileSensitivityView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8B707072DCF349D0002133E /* ProfileSensitivityView.swift */; };
 		C886E13D2E30DE4900D0C3A6 /* SceneSettingsViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C898F7012B3A810E008B4124 /* SceneSettingsViewController.swift */; };
 		C886E13E2E30DE4900D0C3A6 /* GroupSwitchsViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C87EB44B2BA07D1800F9285B /* GroupSwitchsViewController.swift */; };
-		C8CE7DF01894297033EBC6CF /* GroupPowerSwitchesViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8BE099331EBF36DB4714884 /* GroupPowerSwitchesViewController.swift */; };
 		C886E13F2E30DE4900D0C3A6 /* GroupSensorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C82AE2EA2B95756600FA4BDB /* GroupSensorView.swift */; };
 		C886E1402E30DE4900D0C3A6 /* DeviceParameterAbsoluteSensitivityViewCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8C0E44A2E28869F0024E77E /* DeviceParameterAbsoluteSensitivityViewCell.swift */; };
 		C886E1412E30DE4900D0C3A6 /* AlignCenterFlowLayout.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8BF084D2B26F84800144BAC /* AlignCenterFlowLayout.swift */; };
@@ -1447,6 +1443,7 @@
 		C896BD3F2A930C3A00217512 /* XWHUDManager_info@2x.png in Resources */ = {isa = PBXBuildFile; fileRef = C896BB8F2A930C3800217512 /* XWHUDManager_info@2x.png */; };
 		C896BD402A930C3A00217512 /* XWHUDManager_tip@3x.png in Resources */ = {isa = PBXBuildFile; fileRef = C896BB902A930C3800217512 /* XWHUDManager_tip@3x.png */; };
 		C896BD432A930C3A00217512 /* XWHUDManager_tip@2x.png in Resources */ = {isa = PBXBuildFile; fileRef = C896BB932A930C3800217512 /* XWHUDManager_tip@2x.png */; };
+		C896FE75CC379E7D64E3CC86 /* GroupPowerSwitchesViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8DDDEEA0487D9E098DB078F /* GroupPowerSwitchesViewModel.swift */; };
 		C898D1D02B59134A00B2033B /* ScheduleServer.swift in Sources */ = {isa = PBXBuildFile; fileRef = C898D1CF2B59134A00B2033B /* ScheduleServer.swift */; };
 		C898E2D52AB7E46300C71315 /* Localizable.strings in Resources */ = {isa = PBXBuildFile; fileRef = C898E2D72AB7E46300C71315 /* Localizable.strings */; };
 		C898E2DC2AB7E62100C71315 /* String+Localized.swift in Sources */ = {isa = PBXBuildFile; fileRef = C898E2DB2AB7E62100C71315 /* String+Localized.swift */; };
@@ -1850,8 +1847,6 @@
 		C8BB66092ED3F056000C63EE /* SiteEditViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A099FC2AC134C30068C814 /* SiteEditViewController.swift */; };
 		C8BB660A2ED3F056000C63EE /* AttributedTextViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A16F6E2C8568F600FB50BD /* AttributedTextViewController.swift */; };
 		C8BB660B2ED3F056000C63EE /* GroupSwitchPanelViewCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = C87EB44F2BA0822E00F9285B /* GroupSwitchPanelViewCell.swift */; };
-		C85CFF76696BC2EE803E817B /* GroupPowerSwitchCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = C897B311461F95CC1204CFB1 /* GroupPowerSwitchCell.swift */; };
-		C8DE791ACB736AB07BBC9C56 /* GroupPowerSwitchesViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8DDDEEA0487D9E098DB078F /* GroupPowerSwitchesViewModel.swift */; };
 		C8BB660C2ED3F056000C63EE /* DeviceDongleScheduleViewCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8DF845B2DB65ADF0070CBD9 /* DeviceDongleScheduleViewCell.swift */; };
 		C8BB660D2ED3F056000C63EE /* SpaceData.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8AADF002A973DA600238C1C /* SpaceData.swift */; };
 		C8BB660E2ED3F056000C63EE /* GroupAddHeaderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8BF085A2B27146B00144BAC /* GroupAddHeaderView.swift */; };
@@ -2124,7 +2119,6 @@
 		C8BB67192ED3F056000C63EE /* ProfileSensitivityView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8B707072DCF349D0002133E /* ProfileSensitivityView.swift */; };
 		C8BB671A2ED3F056000C63EE /* SceneSettingsViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C898F7012B3A810E008B4124 /* SceneSettingsViewController.swift */; };
 		C8BB671B2ED3F056000C63EE /* GroupSwitchsViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C87EB44B2BA07D1800F9285B /* GroupSwitchsViewController.swift */; };
-		C826963BB2B36ED1418055DC /* GroupPowerSwitchesViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8BE099331EBF36DB4714884 /* GroupPowerSwitchesViewController.swift */; };
 		C8BB671C2ED3F056000C63EE /* GroupSensorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C82AE2EA2B95756600FA4BDB /* GroupSensorView.swift */; };
 		C8BB671D2ED3F056000C63EE /* DeviceForceResetDeviceInstructionsController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8B95FA32E502F25000576F5 /* DeviceForceResetDeviceInstructionsController.swift */; };
 		C8BB671E2ED3F056000C63EE /* DeviceParameterAbsoluteSensitivityViewCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8C0E44A2E28869F0024E77E /* DeviceParameterAbsoluteSensitivityViewCell.swift */; };
@@ -2243,6 +2237,7 @@
 		C8BE62272EC488E90075ED42 /* LightSensorManualCorrectionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8BE62262EC488E90075ED42 /* LightSensorManualCorrectionView.swift */; };
 		C8BE62282EC488E90075ED42 /* LightSensorManualCorrectionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8BE62262EC488E90075ED42 /* LightSensorManualCorrectionView.swift */; };
 		C8BE62292EC488E90075ED42 /* LightSensorManualCorrectionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8BE62262EC488E90075ED42 /* LightSensorManualCorrectionView.swift */; };
+		C8BE7F69DA4DC8EA37C5763C /* GroupPowerSwitchCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = C897B311461F95CC1204CFB1 /* GroupPowerSwitchCell.swift */; };
 		C8BEA9FF2EAC5FC5006D0F32 /* DeviceMeshNetworkResetConfiguredController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8BEA9FE2EAC5FC5006D0F32 /* DeviceMeshNetworkResetConfiguredController.swift */; };
 		C8BEAA002EAC5FC5006D0F32 /* DeviceMeshNetworkResetConfiguredController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8BEA9FE2EAC5FC5006D0F32 /* DeviceMeshNetworkResetConfiguredController.swift */; };
 		C8BEAA012EAC5FC5006D0F32 /* DeviceMeshNetworkResetConfiguredController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8BEA9FE2EAC5FC5006D0F32 /* DeviceMeshNetworkResetConfiguredController.swift */; };
@@ -2296,6 +2291,7 @@
 		C8C3A1642E37705500876028 /* GatewayInformationHeaderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8C3A1632E37705500876028 /* GatewayInformationHeaderView.swift */; };
 		C8C3A1652E37705500876028 /* GatewayInformationHeaderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8C3A1632E37705500876028 /* GatewayInformationHeaderView.swift */; };
 		C8C3A1662E37705500876028 /* GatewayInformationHeaderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8C3A1632E37705500876028 /* GatewayInformationHeaderView.swift */; };
+		C8C4BE7222BCF6C13E9CB18F /* GroupPowerSwitchCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = C897B311461F95CC1204CFB1 /* GroupPowerSwitchCell.swift */; };
 		C8C663E62C199DCF0058A5F5 /* CustomActivityItemSource.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8C663E52C199DCF0058A5F5 /* CustomActivityItemSource.swift */; };
 		C8C8137C2EA60E8C008B3515 /* FlashlightSwingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8C8137B2EA60E8C008B3515 /* FlashlightSwingView.swift */; };
 		C8C8137D2EA60E8C008B3515 /* FlashlightSwingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8C8137B2EA60E8C008B3515 /* FlashlightSwingView.swift */; };
@@ -2331,16 +2327,13 @@
 		C8CD5C2B2DDB0F9200F09467 /* GroupPathSequencePathHeaderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8CD5C2A2DDB0F9200F09467 /* GroupPathSequencePathHeaderView.swift */; };
 		C8CD5C2D2DDB6CD900F09467 /* GroupPathSequencePathLayout.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8CD5C2C2DDB6CD900F09467 /* GroupPathSequencePathLayout.swift */; };
 		C8CD5C302DDC6E9700F09467 /* GroupPathSequenceSelectData.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8CD5C2F2DDC6E9700F09467 /* GroupPathSequenceSelectData.swift */; };
+		C8CE7DF01894297033EBC6CF /* GroupPowerSwitchesViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8BE099331EBF36DB4714884 /* GroupPowerSwitchesViewController.swift */; };
 		C8D22E002E010A47001A2BDA /* GatewayViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8D22DFF2E010A47001A2BDA /* GatewayViewController.swift */; };
 		C8D22E012E010A47001A2BDA /* GatewayViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8D22DFF2E010A47001A2BDA /* GatewayViewController.swift */; };
 		C8D22E1D2E04100D001A2BDA /* DeviceAddProfessionalModeController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8D22E1C2E04100D001A2BDA /* DeviceAddProfessionalModeController.swift */; };
 		C8D22E1E2E04100D001A2BDA /* DeviceAddProfessionalModeController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8D22E1C2E04100D001A2BDA /* DeviceAddProfessionalModeController.swift */; };
 		C8D22E202E041020001A2BDA /* DeviceAddClassicModeController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8D22E1F2E041020001A2BDA /* DeviceAddClassicModeController.swift */; };
 		C8D22E212E041020001A2BDA /* DeviceAddClassicModeController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8D22E1F2E041020001A2BDA /* DeviceAddClassicModeController.swift */; };
-		C8EFC1022FBD000000000001 /* DeviceGroupDeferredSyncPlanner.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8EFC1012FBD000000000001 /* DeviceGroupDeferredSyncPlanner.swift */; };
-		C8EFC1032FBD000000000001 /* DeviceGroupDeferredSyncPlanner.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8EFC1012FBD000000000001 /* DeviceGroupDeferredSyncPlanner.swift */; };
-		C8EFC1042FBD000000000001 /* DeviceGroupDeferredSyncPlanner.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8EFC1012FBD000000000001 /* DeviceGroupDeferredSyncPlanner.swift */; };
-		C8EFC1052FBD000000000001 /* DeviceGroupDeferredSyncPlanner.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8EFC1012FBD000000000001 /* DeviceGroupDeferredSyncPlanner.swift */; };
 		C8D3ADB02EFD3599003D15CB /* ProfileDayNightLuxDevicesViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8D3ADAF2EFD3599003D15CB /* ProfileDayNightLuxDevicesViewController.swift */; };
 		C8D3ADB12EFD3599003D15CB /* ProfileDayNightLuxDevicesViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8D3ADAF2EFD3599003D15CB /* ProfileDayNightLuxDevicesViewController.swift */; };
 		C8D3ADB22EFD3599003D15CB /* ProfileDayNightLuxDevicesViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8D3ADAF2EFD3599003D15CB /* ProfileDayNightLuxDevicesViewController.swift */; };
@@ -2384,6 +2377,7 @@
 		C8DA6A252DB8E6D600E32092 /* Date+Extension.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8DA6A242DB8E6D600E32092 /* Date+Extension.swift */; };
 		C8DC673F2D95523E00C2BC22 /* BleFirmwareUpdateRestoreView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8DC673E2D95523E00C2BC22 /* BleFirmwareUpdateRestoreView.swift */; };
 		C8DCD0FC2CC8E0DE00B8671E /* SiteAddressDataHeaderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8DCD0FB2CC8E0DE00B8671E /* SiteAddressDataHeaderView.swift */; };
+		C8DE791ACB736AB07BBC9C56 /* GroupPowerSwitchesViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8DDDEEA0487D9E098DB078F /* GroupPowerSwitchesViewModel.swift */; };
 		C8DF84572DB639960070CBD9 /* DeviceDongleViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8DF84562DB639960070CBD9 /* DeviceDongleViewController.swift */; };
 		C8DF845A2DB6464E0070CBD9 /* DeviceDongleData.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8DF84592DB6464E0070CBD9 /* DeviceDongleData.swift */; };
 		C8DF845C2DB65ADF0070CBD9 /* DeviceDongleScheduleViewCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8DF845B2DB65ADF0070CBD9 /* DeviceDongleScheduleViewCell.swift */; };
@@ -2399,6 +2393,11 @@
 		C8EC4BAF2EAA1FF00082892D /* DeviceMeshNetworkResetHandle.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8EC4BAC2EAA1FF00082892D /* DeviceMeshNetworkResetHandle.swift */; };
 		C8ED59F92DD743960074A5BB /* GroupPathSequencePageController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8ED59F82DD743960074A5BB /* GroupPathSequencePageController.swift */; };
 		C8EF54742C1AFA53008389CE /* NetworkLoggerPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8EF54732C1AFA53008389CE /* NetworkLoggerPlugin.swift */; };
+		C8EFC1022FBD000000000001 /* DeviceGroupDeferredSyncPlanner.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8EFC1012FBD000000000001 /* DeviceGroupDeferredSyncPlanner.swift */; };
+		C8EFC1032FBD000000000001 /* DeviceGroupDeferredSyncPlanner.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8EFC1012FBD000000000001 /* DeviceGroupDeferredSyncPlanner.swift */; };
+		C8EFC1042FBD000000000001 /* DeviceGroupDeferredSyncPlanner.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8EFC1012FBD000000000001 /* DeviceGroupDeferredSyncPlanner.swift */; };
+		C8EFC1052FBD000000000001 /* DeviceGroupDeferredSyncPlanner.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8EFC1012FBD000000000001 /* DeviceGroupDeferredSyncPlanner.swift */; };
+		C8F11B20959EC4093FFC9390 /* GroupPowerSwitchesViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8DDDEEA0487D9E098DB078F /* GroupPowerSwitchesViewModel.swift */; };
 		C8F1A0012F0A000100123456 /* GroupPathSequenceAddDescriptionController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8F1A0052F0A000100123456 /* GroupPathSequenceAddDescriptionController.swift */; };
 		C8F1A0022F0A000100123456 /* GroupPathSequenceAddDescriptionController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8F1A0052F0A000100123456 /* GroupPathSequenceAddDescriptionController.swift */; };
 		C8F1A0032F0A000100123456 /* GroupPathSequenceAddDescriptionController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8F1A0052F0A000100123456 /* GroupPathSequenceAddDescriptionController.swift */; };
@@ -2417,6 +2416,7 @@
 		C8FC6B9F2E7502F6004EE2BA /* DaliDeviceInformationController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8FC6B9D2E7502F6004EE2BA /* DaliDeviceInformationController.swift */; };
 		C8FC6BA02E7502F6004EE2BA /* DaliDeviceInformationController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8FC6B9D2E7502F6004EE2BA /* DaliDeviceInformationController.swift */; };
 		C8FDE9A72DD595A30002394B /* GroupProximityLightingData.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8FDE9A62DD595A30002394B /* GroupProximityLightingData.swift */; };
+		C8FF8A7E146827711D87F57C /* GroupPowerSwitchesViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8BE099331EBF36DB4714884 /* GroupPowerSwitchesViewController.swift */; };
 		C8FFD7D52E7D03B20074CC6A /* Pods_Common_SunSmart.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = C8FFD7D42E7D03B20074CC6A /* Pods_Common_SunSmart.framework */; };
 		DC176B45FDD04BF2B211C2D1 /* EmerFireAlarmMonitorRendering.swift in Sources */ = {isa = PBXBuildFile; fileRef = D8AA0EDFE6C84FD4BF944A23 /* EmerFireAlarmMonitorRendering.swift */; };
 		E4EABB296C324CDB9BF69468 /* EmerFireAlarmMonitorState.swift in Sources */ = {isa = PBXBuildFile; fileRef = FDFE09FFC9994D668569EAC2 /* EmerFireAlarmMonitorState.swift */; };
@@ -2459,6 +2459,7 @@
 		8C1DA7BF2FAC22BF0073F100 /* PJNGatewayWiFiDFUHistoryViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PJNGatewayWiFiDFUHistoryViewController.swift; sourceTree = "<group>"; };
 		8C1DA7C72FAC8A890073F100 /* PJDeviceGroupSelectionContext.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PJDeviceGroupSelectionContext.swift; sourceTree = "<group>"; };
 		8C1DA7CC2FAC8A890073F100 /* PJDeviceGroupSelectionViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PJDeviceGroupSelectionViewController.swift; sourceTree = "<group>"; };
+		8C2605202A010001000887FE /* BatteryPowerSwitchAddConfiguration.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BatteryPowerSwitchAddConfiguration.swift; sourceTree = "<group>"; };
 		8C7788CB2F97099D000887FE /* EmerFireAlarmMonitorVC.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EmerFireAlarmMonitorVC.swift; sourceTree = "<group>"; };
 		8C7788D02F970F99000887FE /* EmerFireAlarmMoniCell.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EmerFireAlarmMoniCell.swift; sourceTree = "<group>"; };
 		8C7788D52F9719AF000887FE /* EmerFireAlarmMoniView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EmerFireAlarmMoniView.swift; sourceTree = "<group>"; };
@@ -2510,7 +2511,6 @@
 		8C778BE32FA20E1D000887FE /* PJEightKeySwitchMoreSettingsController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PJEightKeySwitchMoreSettingsController.swift; sourceTree = "<group>"; };
 		8C778BE82FA2102D000887FE /* PJEightKeySwitchStatus.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PJEightKeySwitchStatus.swift; sourceTree = "<group>"; };
 		8C778BEE2FA2153E000887FE /* PJEightKeySwitchData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PJEightKeySwitchData.swift; sourceTree = "<group>"; };
-		8C2605202A010001000887FE /* BatteryPowerSwitchAddConfiguration.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BatteryPowerSwitchAddConfiguration.swift; sourceTree = "<group>"; };
 		8C778BF32FA2153E000887FE /* PJEightKeySwitchesViewCell.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PJEightKeySwitchesViewCell.swift; sourceTree = "<group>"; };
 		8C778BFD2FA2155D000887FE /* PJEightKeySwitchRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PJEightKeySwitchRepository.swift; sourceTree = "<group>"; };
 		8C778C022FA2FFA6000887FE /* PJEightKeySwitchActivationAlertController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PJEightKeySwitchActivationAlertController.swift; sourceTree = "<group>"; };
@@ -2647,9 +2647,6 @@
 		C87EB44D2BA07E7E00F9285B /* GroupSwitchsHeaderView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GroupSwitchsHeaderView.swift; sourceTree = "<group>"; };
 		C87EB44F2BA0822E00F9285B /* GroupSwitchPanelViewCell.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GroupSwitchPanelViewCell.swift; sourceTree = "<group>"; };
 		C87EB4522BA0856700F9285B /* GroupSwitch.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GroupSwitch.swift; sourceTree = "<group>"; };
-		C897B311461F95CC1204CFB1 /* GroupPowerSwitchCell.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GroupPowerSwitchCell.swift; sourceTree = "<group>"; };
-		C8BE099331EBF36DB4714884 /* GroupPowerSwitchesViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GroupPowerSwitchesViewController.swift; sourceTree = "<group>"; };
-		C8DDDEEA0487D9E098DB078F /* GroupPowerSwitchesViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GroupPowerSwitchesViewModel.swift; sourceTree = "<group>"; };
 		C87EB4542BA13BA400F9285B /* EnOceanProxyViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EnOceanProxyViewController.swift; sourceTree = "<group>"; };
 		C87EB4562BA1500500F9285B /* SwitchSelectSceneViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SwitchSelectSceneViewController.swift; sourceTree = "<group>"; };
 		C87EB45A2BA17D3E00F9285B /* CodeScan.bundle */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.plug-in"; path = CodeScan.bundle; sourceTree = "<group>"; };
@@ -2700,6 +2697,7 @@
 		C896BB8F2A930C3800217512 /* XWHUDManager_info@2x.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "XWHUDManager_info@2x.png"; sourceTree = "<group>"; };
 		C896BB902A930C3800217512 /* XWHUDManager_tip@3x.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "XWHUDManager_tip@3x.png"; sourceTree = "<group>"; };
 		C896BB932A930C3800217512 /* XWHUDManager_tip@2x.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "XWHUDManager_tip@2x.png"; sourceTree = "<group>"; };
+		C897B311461F95CC1204CFB1 /* GroupPowerSwitchCell.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GroupPowerSwitchCell.swift; sourceTree = "<group>"; };
 		C898D1CF2B59134A00B2033B /* ScheduleServer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScheduleServer.swift; sourceTree = "<group>"; };
 		C898E2D82AB7E46600C71315 /* en */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = en; path = en.lproj/Localizable.strings; sourceTree = "<group>"; };
 		C898E2D92AB7E48300C71315 /* zh-Hans */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = "zh-Hans"; path = "zh-Hans.lproj/Localizable.strings"; sourceTree = "<group>"; };
@@ -2953,6 +2951,7 @@
 		C8BC95E12E04FC830058D41E /* RangeSlider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RangeSlider.swift; sourceTree = "<group>"; };
 		C8BC95E72E055C540058D41E /* DeviceSignalStrengthView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceSignalStrengthView.swift; sourceTree = "<group>"; };
 		C8BCDB3A2EFA748600D35DA5 /* ProfileLightSensorTemplateDevicesController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileLightSensorTemplateDevicesController.swift; sourceTree = "<group>"; };
+		C8BE099331EBF36DB4714884 /* GroupPowerSwitchesViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GroupPowerSwitchesViewController.swift; sourceTree = "<group>"; };
 		C8BE621D2EC4624C0075ED42 /* LightSensorCalibrationPointLuxView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LightSensorCalibrationPointLuxView.swift; sourceTree = "<group>"; };
 		C8BE62222EC467510075ED42 /* LightSensorCalibrationAdjustSpeedView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LightSensorCalibrationAdjustSpeedView.swift; sourceTree = "<group>"; };
 		C8BE62262EC488E90075ED42 /* LightSensorManualCorrectionView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LightSensorManualCorrectionView.swift; sourceTree = "<group>"; };
@@ -3008,7 +3007,6 @@
 		C8D22DFF2E010A47001A2BDA /* GatewayViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GatewayViewController.swift; sourceTree = "<group>"; };
 		C8D22E1C2E04100D001A2BDA /* DeviceAddProfessionalModeController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceAddProfessionalModeController.swift; sourceTree = "<group>"; };
 		C8D22E1F2E041020001A2BDA /* DeviceAddClassicModeController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceAddClassicModeController.swift; sourceTree = "<group>"; };
-		C8EFC1012FBD000000000001 /* DeviceGroupDeferredSyncPlanner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceGroupDeferredSyncPlanner.swift; sourceTree = "<group>"; };
 		C8D3ADAF2EFD3599003D15CB /* ProfileDayNightLuxDevicesViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileDayNightLuxDevicesViewController.swift; sourceTree = "<group>"; };
 		C8D5314D2F7630B90069C71B /* SpacePathTriggerZoneController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpacePathTriggerZoneController.swift; sourceTree = "<group>"; };
 		C8D58F652C1D34090066B770 /* CloudSynchronizationManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CloudSynchronizationManager.swift; sourceTree = "<group>"; };
@@ -3056,6 +3054,7 @@
 		C8DA6A242DB8E6D600E32092 /* Date+Extension.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Date+Extension.swift"; sourceTree = "<group>"; };
 		C8DC673E2D95523E00C2BC22 /* BleFirmwareUpdateRestoreView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BleFirmwareUpdateRestoreView.swift; sourceTree = "<group>"; };
 		C8DCD0FB2CC8E0DE00B8671E /* SiteAddressDataHeaderView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SiteAddressDataHeaderView.swift; sourceTree = "<group>"; };
+		C8DDDEEA0487D9E098DB078F /* GroupPowerSwitchesViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GroupPowerSwitchesViewModel.swift; sourceTree = "<group>"; };
 		C8DF84562DB639960070CBD9 /* DeviceDongleViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceDongleViewController.swift; sourceTree = "<group>"; };
 		C8DF84592DB6464E0070CBD9 /* DeviceDongleData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceDongleData.swift; sourceTree = "<group>"; };
 		C8DF845B2DB65ADF0070CBD9 /* DeviceDongleScheduleViewCell.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceDongleScheduleViewCell.swift; sourceTree = "<group>"; };
@@ -3066,6 +3065,7 @@
 		C8EC4BAC2EAA1FF00082892D /* DeviceMeshNetworkResetHandle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceMeshNetworkResetHandle.swift; sourceTree = "<group>"; };
 		C8ED59F82DD743960074A5BB /* GroupPathSequencePageController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GroupPathSequencePageController.swift; sourceTree = "<group>"; };
 		C8EF54732C1AFA53008389CE /* NetworkLoggerPlugin.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NetworkLoggerPlugin.swift; sourceTree = "<group>"; };
+		C8EFC1012FBD000000000001 /* DeviceGroupDeferredSyncPlanner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceGroupDeferredSyncPlanner.swift; sourceTree = "<group>"; };
 		C8F1A0052F0A000100123456 /* GroupPathSequenceAddDescriptionController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GroupPathSequenceAddDescriptionController.swift; sourceTree = "<group>"; };
 		C8F8373F2E3B52560003B292 /* GatewaySectionHeaderView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GatewaySectionHeaderView.swift; sourceTree = "<group>"; };
 		C8F89D372E3B6F8500FA1544 /* GatewayAPNMenuView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GatewayAPNMenuView.swift; sourceTree = "<group>"; };
@@ -3103,7 +3103,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				C88555142DE6B44C00C8B688 /* NordicSigMeshSDK in Frameworks */,
-				6116D0D0F05DFA292964E9B9 /* BuildFile in Frameworks */,
+				6116D0D0F05DFA292964E9B9 /* (null) in Frameworks */,
 				C8D3BC5211D39346ECD5E3AF /* Pods_Common_Archipelago.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -5234,7 +5234,7 @@
 			);
 			mainGroup = C896B99B2A930BA800217512;
 			packageReferences = (
-				C8D5314A2F76294A0069C71B /* XCLocalSwiftPackageReference "nordic-sig-mesh-sdk" */,
+				C8D5314A2F76294A0069C71B /* XCLocalSwiftPackageReference "/Users/maginawin/Developer/iOS/YKH/nordic-sig-mesh-sdk" */,
 			);
 			productRefGroup = C896B9A52A930BA800217512 /* Products */;
 			projectDirPath = "";
@@ -5425,9 +5425,13 @@
 			inputFileListPaths = (
 				"${PODS_ROOT}/Target Support Files/Pods-Common-SunSmart/Pods-Common-SunSmart-frameworks-${CONFIGURATION}-input-files.xcfilelist",
 			);
+			inputPaths = (
+			);
 			name = "[CP] Embed Pods Frameworks";
 			outputFileListPaths = (
 				"${PODS_ROOT}/Target Support Files/Pods-Common-SunSmart/Pods-Common-SunSmart-frameworks-${CONFIGURATION}-output-files.xcfilelist",
+			);
+			outputPaths = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
@@ -5486,9 +5490,13 @@
 			inputFileListPaths = (
 				"${PODS_ROOT}/Target Support Files/Pods-Common-SylSmart/Pods-Common-SylSmart-frameworks-${CONFIGURATION}-input-files.xcfilelist",
 			);
+			inputPaths = (
+			);
 			name = "[CP] Embed Pods Frameworks";
 			outputFileListPaths = (
 				"${PODS_ROOT}/Target Support Files/Pods-Common-SylSmart/Pods-Common-SylSmart-frameworks-${CONFIGURATION}-output-files.xcfilelist",
+			);
+			outputPaths = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
@@ -5503,9 +5511,13 @@
 			inputFileListPaths = (
 				"${PODS_ROOT}/Target Support Files/Pods-Common-Archipelago/Pods-Common-Archipelago-frameworks-${CONFIGURATION}-input-files.xcfilelist",
 			);
+			inputPaths = (
+			);
 			name = "[CP] Embed Pods Frameworks";
 			outputFileListPaths = (
 				"${PODS_ROOT}/Target Support Files/Pods-Common-Archipelago/Pods-Common-Archipelago-frameworks-${CONFIGURATION}-output-files.xcfilelist",
+			);
+			outputPaths = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
@@ -5520,9 +5532,13 @@
 			inputFileListPaths = (
 				"${PODS_ROOT}/Target Support Files/Pods-Common-SLG Sync Plus/Pods-Common-SLG Sync Plus-frameworks-${CONFIGURATION}-input-files.xcfilelist",
 			);
+			inputPaths = (
+			);
 			name = "[CP] Embed Pods Frameworks";
 			outputFileListPaths = (
 				"${PODS_ROOT}/Target Support Files/Pods-Common-SLG Sync Plus/Pods-Common-SLG Sync Plus-frameworks-${CONFIGURATION}-output-files.xcfilelist",
+			);
+			outputPaths = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
@@ -8054,6 +8070,7 @@
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = F10000000000000000000003 /* Debug.xcconfig */;
 			buildSettings = {
+				MARKETING_VERSION = 1.0.16;
 			};
 			name = Debug;
 		};
@@ -8061,6 +8078,7 @@
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = F10000000000000000000004 /* Release.xcconfig */;
 			buildSettings = {
+				MARKETING_VERSION = 1.0.16;
 			};
 			name = Release;
 		};
@@ -8137,7 +8155,7 @@
 /* End XCConfigurationList section */
 
 /* Begin XCLocalSwiftPackageReference section */
-		C8D5314A2F76294A0069C71B /* XCLocalSwiftPackageReference "nordic-sig-mesh-sdk" */ = {
+		C8D5314A2F76294A0069C71B /* XCLocalSwiftPackageReference "/Users/maginawin/Developer/iOS/YKH/nordic-sig-mesh-sdk" */ = {
 			isa = XCLocalSwiftPackageReference;
 			relativePath = "/Users/maginawin/Developer/iOS/YKH/nordic-sig-mesh-sdk";
 		};
@@ -8146,22 +8164,22 @@
 /* Begin XCSwiftPackageProductDependency section */
 		C88553AE2DE6B44C00C8B688 /* NordicSigMeshSDK */ = {
 			isa = XCSwiftPackageProductDependency;
-			package = C8D5314A2F76294A0069C71B /* XCLocalSwiftPackageReference "nordic-sig-mesh-sdk" */;
+			package = C8D5314A2F76294A0069C71B /* XCLocalSwiftPackageReference "/Users/maginawin/Developer/iOS/YKH/nordic-sig-mesh-sdk" */;
 			productName = NordicSigMeshSDK;
 		};
 		C886DFFE2E30DE4900D0C3A6 /* NordicSigMeshSDK */ = {
 			isa = XCSwiftPackageProductDependency;
-			package = C8D5314A2F76294A0069C71B /* XCLocalSwiftPackageReference "nordic-sig-mesh-sdk" */;
+			package = C8D5314A2F76294A0069C71B /* XCLocalSwiftPackageReference "/Users/maginawin/Developer/iOS/YKH/nordic-sig-mesh-sdk" */;
 			productName = NordicSigMeshSDK;
 		};
 		C8BB65AC2ED3F056000C63EE /* NordicSigMeshSDK */ = {
 			isa = XCSwiftPackageProductDependency;
-			package = C8D5314A2F76294A0069C71B /* XCLocalSwiftPackageReference "nordic-sig-mesh-sdk" */;
+			package = C8D5314A2F76294A0069C71B /* XCLocalSwiftPackageReference "/Users/maginawin/Developer/iOS/YKH/nordic-sig-mesh-sdk" */;
 			productName = NordicSigMeshSDK;
 		};
 		C8D5314B2F76294A0069C71B /* NordicSigMeshSDK */ = {
 			isa = XCSwiftPackageProductDependency;
-			package = C8D5314A2F76294A0069C71B /* XCLocalSwiftPackageReference "nordic-sig-mesh-sdk" */;
+			package = C8D5314A2F76294A0069C71B /* XCLocalSwiftPackageReference "/Users/maginawin/Developer/iOS/YKH/nordic-sig-mesh-sdk" */;
 			productName = NordicSigMeshSDK;
 		};
 /* End XCSwiftPackageProductDependency section */

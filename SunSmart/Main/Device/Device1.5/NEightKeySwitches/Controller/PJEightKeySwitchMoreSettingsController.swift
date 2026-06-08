@@ -70,7 +70,7 @@ final class PJEightKeySwitchMoreSettingsController: UIViewController {
     }()
 
     init(state: PJEightKeySwitchMoreSettingsViewModel.State) {
-        self.viewModel = PJEightKeySwitchMoreSettingsViewModel(state: state)
+        self.viewModel = PJEightKeySwitchMoreSettingsViewModel(state: state.reservingPeriodicReportingDisabled)
         super.init(nibName: nil, bundle: nil)
     }
 
@@ -142,7 +142,7 @@ final class PJEightKeySwitchMoreSettingsController: UIViewController {
     private func bindActions() {}
 
     @objc private func doneAction() {
-        settingsChanged?(viewModel.state)
+        settingsChanged?(viewModel.state.reservingPeriodicReportingDisabled)
         navigationController?.popViewController(animated: true)
     }
 

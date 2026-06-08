@@ -39,7 +39,13 @@ struct PJEightKeySwitchMoreSettingsViewModel {
         var periodicReporting: PeriodicReportingOption
         var ledIndicatorEnabled: Bool
 
-        static let `default` = State(periodicReporting: .fifteenMinutes, ledIndicatorEnabled: true)
+        static let `default` = State(periodicReporting: .disabled, ledIndicatorEnabled: true)
+
+        var reservingPeriodicReportingDisabled: State {
+            var state = self
+            state.periodicReporting = .disabled
+            return state
+        }
     }
 
     var state: State

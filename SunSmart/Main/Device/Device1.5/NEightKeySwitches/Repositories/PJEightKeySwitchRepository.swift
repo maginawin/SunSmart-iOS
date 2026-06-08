@@ -185,14 +185,15 @@ final class PJEightKeySwitchRepository {
     func save(_ switchData: PJEightKeySwitchData, meshUUID: String? = nil, networkId: String? = nil) -> Bool {
         guard let uuid = meshUUID ?? MeshNetworkManager.instance.meshNetwork?.uuid.uuidString else { return false }
         let subNetworkKey = networkId ?? MeshNetworkManager.instance.currentNetworkKey.networkId.hex
+        let moreSettingsState = switchData.moreSettingsState.reservingPeriodicReportingDisabled
         let insert = Self.table.insert(or: .replace, [
             ExpressionKey.meshUUID <- uuid,
             ExpressionKey.subNetworkKey <- subNetworkKey,
             ExpressionKey.switchId <- switchData.id,
             ExpressionKey.panelType <- PanelTypeStorage(panelType: switchData.eightKeyPanelType).rawValue,
             ExpressionKey.powerSwitchKind <- switchData.powerSwitchKind.rawValue,
-            ExpressionKey.periodicReporting <- switchData.moreSettingsState.periodicReporting.rawValue,
-            ExpressionKey.ledIndicatorEnabled <- switchData.moreSettingsState.ledIndicatorEnabled,
+            ExpressionKey.periodicReporting <- moreSettingsState.periodicReporting.rawValue,
+            ExpressionKey.ledIndicatorEnabled <- moreSettingsState.ledIndicatorEnabled,
             ExpressionKey.syncState <- switchData.syncState.rawValue,
             ExpressionKey.desiredConfigVersion <- switchData.desiredConfigVersion,
             ExpressionKey.desiredConfigHash <- switchData.desiredConfigHash,
@@ -317,7 +318,7 @@ final class PJEightKeySwitchRepository {
         let state = PJEightKeySwitchMoreSettingsViewModel.State(
             periodicReporting: periodicReporting,
             ledIndicatorEnabled: row[ExpressionKey.ledIndicatorEnabled]
-        )
+        ).reservingPeriodicReportingDisabled
         let syncState = PJEightKeySwitchSyncState(rawValue: row[ExpressionKey.syncState]) ?? .synced
         let storedPowerSwitchKind = PJEightKeyPowerSwitchKind(rawValue: row[ExpressionKey.powerSwitchKind]) ?? .battery
         let powerSwitchKind = inferredPowerSwitchKind ?? storedPowerSwitchKind
@@ -507,7 +508,7 @@ struct PJEightKeySwitchSharePayload {
         let moreSettingsState = PJEightKeySwitchMoreSettingsViewModel.State(
             periodicReporting: periodicReporting,
             ledIndicatorEnabled: ledIndicatorEnabled
-        )
+        ).reservingPeriodicReportingDisabled
 
         return PJEightKeySwitchRepository.Metadata(
             panelType: panelType,

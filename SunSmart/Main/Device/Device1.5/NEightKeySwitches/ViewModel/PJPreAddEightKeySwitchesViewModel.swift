@@ -46,7 +46,7 @@ struct PJPreAddEightKeySwitchesViewModel {
         self.isEnabled = switchData.enabled
         self.selectedPanelType = switchData.eightKeyPanelType
         self.selectedGroups = switchData.bindGroups
-        self.moreSettings = switchData.moreSettingsState
+        self.moreSettings = switchData.moreSettingsState.reservingPeriodicReportingDisabled
         self.sceneDatas = [
             .init(type: .sceneA, scene: switchData.sceneA),
             .init(type: .sceneB, scene: switchData.sceneB),
@@ -125,7 +125,7 @@ struct PJPreAddEightKeySwitchesViewModel {
         switchData.maxKeyCount = 8
         switchData.panelType = selectedPanelType == .scene8Key ? .scenes_4key : .default_4key
         switchData.eightKeyPanelType = selectedPanelType
-        switchData.moreSettingsState = moreSettings
+        switchData.moreSettingsState = moreSettings.reservingPeriodicReportingDisabled
         if let powerSwitchKind {
             switchData.powerSwitchKind = powerSwitchKind
         }
