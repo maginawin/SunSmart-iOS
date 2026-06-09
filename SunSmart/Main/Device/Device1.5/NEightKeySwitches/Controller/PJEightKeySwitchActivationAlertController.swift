@@ -311,6 +311,7 @@ final class PJEightKeySwitchIdentifyFlow {
     private var probeTimer: Timer?
     private var identifyTimer: Timer?
     private var startIdentifyWorkItem: DispatchWorkItem?
+    private var identifyAutoStopWorkItem: DispatchWorkItem?
     private var remainingSeconds = 60
     private var generation = UUID()
     private var state: State = .idle
@@ -432,11 +433,36 @@ final class PJEightKeySwitchIdentifyFlow {
         identifyTimer = Timer.scheduledTimer(withTimeInterval: 3, repeats: true) { [weak self] _ in
             self?.sendIdentify()
         }
+        startIdentifyAutoStop(for: generation)
     }
 
     private func sendIdentify() {
         guard case .identifying = state, let node = switchData.proxyNode else { return }
         sender.sendIdentify(to: node)
+    }
+
+    private func startIdentifyAutoStop(for flowGeneration: UUID) {
+        cancelIdentifyAutoStopWorkItem()
+        let workItem = DispatchWorkItem { [weak self] in
+            guard let self,
+                  self.generation == flowGeneration,
+                  case .identifying = self.state else {
+                return
+            }
+            self.finishIdentifying()
+        }
+        identifyAutoStopWorkItem = workItem
+        DispatchQueue.main.asyncAfter(deadline: .now() + 60, execute: workItem)
+    }
+
+    private func finishIdentifying() {
+        state = .cancelled
+        generation = UUID()
+        stopTimers()
+        startIdentifyWorkItem?.cancel()
+        alertController?.dismiss(animated: true) { [weak self] in
+            self?.onFinished()
+        }
     }
 
     private func showNoResponse() {
@@ -502,6 +528,12 @@ final class PJEightKeySwitchIdentifyFlow {
         probeTimer = nil
         identifyTimer?.invalidate()
         identifyTimer = nil
+        cancelIdentifyAutoStopWorkItem()
+    }
+
+    private func cancelIdentifyAutoStopWorkItem() {
+        identifyAutoStopWorkItem?.cancel()
+        identifyAutoStopWorkItem = nil
     }
 }
 
