@@ -123,13 +123,31 @@ extension Group {
     
 }
 
+enum SensorPublicationSyncMode {
+    case strictTarget
+    case legacyCompatible
+}
+
 extension Model {
     
-    func isSensorServerPublicationConfigured(publishAddress: Address, retransmit: Publish.Retransmit) -> Bool {
+    func isSensorServerPublicationConfigured(
+        publishAddress: Address,
+        retransmit: Publish.Retransmit,
+        syncMode: SensorPublicationSyncMode = .strictTarget
+    ) -> Bool {
         guard modelIdentifier == .sensorServerModelId, let publication = self.publish else {
             return false
         }
-        return publication.publicationAddress.address == publishAddress && publication.retransmit == retransmit
+        guard publication.publicationAddress.address == publishAddress else {
+            return false
+        }
+
+        switch syncMode {
+        case .strictTarget:
+            return publication.retransmit == retransmit
+        case .legacyCompatible:
+            return publication.retransmit == retransmit || publication.retransmit == .disabled
+        }
     }
     
 }
@@ -606,7 +624,7 @@ extension Node {
         }
         
         // profile
-        let syncProfiles = getNodeSyncProfiles(group: group)
+        let syncProfiles = getNodeSyncProfiles(group: group, sensorPublicationSyncMode: .legacyCompatible)
         if syncProfiles.count > 0 {
             return true
         }
@@ -752,7 +770,8 @@ extension Node {
     func getNodeSyncProfiles(
         group: Group? = nil,
         effectiveMemberCount: Int? = nil,
-        profileSyncContext: GroupProfileSyncContext? = nil
+        profileSyncContext: GroupProfileSyncContext? = nil,
+        sensorPublicationSyncMode: SensorPublicationSyncMode = .strictTarget
     ) -> [ProfileType] {
         
         var syncProfile: [ProfileType] = []
@@ -801,7 +820,7 @@ extension Node {
             if daylightType {
                 if group.info.ambientLightSensorNode?.primaryUnicastAddress == primaryUnicastAddress,
                    let model = ambientLightSensorModel,
-                   !model.isSensorServerPublicationConfigured(publishAddress: publishAddress, retransmit: publishRetransmit) { //光照传感器并且已校准
+                   !model.isSensorServerPublicationConfigured(publishAddress: publishAddress, retransmit: publishRetransmit, syncMode: sensorPublicationSyncMode) { //光照传感器并且已校准
                     enableSensorModels.append(model)
                 }
             }else {
@@ -812,7 +831,7 @@ extension Node {
             
             if occupancyType {
                 if let model = presenceDetectedSensorModel,
-                   !model.isSensorServerPublicationConfigured(publishAddress: publishAddress, retransmit: publishRetransmit) {
+                   !model.isSensorServerPublicationConfigured(publishAddress: publishAddress, retransmit: publishRetransmit, syncMode: sensorPublicationSyncMode) {
                     enableSensorModels.append(model)
                 }
             }else {

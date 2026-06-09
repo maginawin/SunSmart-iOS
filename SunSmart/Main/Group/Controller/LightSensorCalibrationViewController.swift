@@ -580,7 +580,8 @@ class LightSensorCalibrationViewController: UIViewController {
         }
         
         
-        let publishMessage = ConfigModelPublicationSet(Publish(to: self.group.address, using: MeshNetworkManager.instance.currentApplicationKey, usingFriendshipMaterial: false, ttl: MeshNetworkManager.instance.networkParameters.defaultTtl, period: .disabled, retransmit: .disabled), to: ambientLightSensorModel)!
+        let retransmit = group.sensorServerPublicationRetransmit()
+        let publishMessage = ConfigModelPublicationSet(Publish(to: self.group.address, using: MeshNetworkManager.instance.currentApplicationKey, usingFriendshipMaterial: false, ttl: MeshNetworkManager.instance.networkParameters.defaultTtl, period: .disabled, retransmit: retransmit), to: ambientLightSensorModel)!
         
         MeshProxyMessageCommand.shared.addMessage(messageHandles: [MeshMessageHandle(message: publishMessage, address: sensor.primaryUnicastAddress)]) {[weak self] resultHandles in
             guard let self = self else { return }
