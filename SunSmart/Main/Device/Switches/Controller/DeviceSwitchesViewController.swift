@@ -39,6 +39,14 @@ class DeviceSwitchesViewController: UIViewController {
     
     let space: SpaceData
 
+    private var canEditSwitches: Bool {
+        space.deviceOperates.contains(.edit)
+    }
+
+    private var canDeleteSwitches: Bool {
+        space.deviceOperates.contains(.delete)
+    }
+
     private var acPowerSwitchNodes: [Node] {
         var addressSet: Set<Address> = []
         return MeshNetworkManager.instance.switchs.compactMap { switchData in
@@ -204,12 +212,15 @@ class DeviceSwitchesViewController: UIViewController {
         }else {
 //            headerView.isHidden = false
             collectionView.hideEmptyDataView()
-            footerView.editBtn.isEnabled = !isEdit
+            footerView.editBtn.isEnabled = !isEdit && canEditSwitches
         }
     }
     
     private func updateUI() {
         
+        if isEdit, !canEditSwitches {
+            isEdit = false
+        }
         MeshNetworkManager.instance.normalizeInvalidBatteryPowerSwitchProxyLinks()
         footerView.countBtn.setTitle("\(MeshNetworkManager.instance.switchs.count)/16", for: .normal)
         updateRefreshControlAvailability()
@@ -226,7 +237,7 @@ class DeviceSwitchesViewController: UIViewController {
         }
         
         footerView.addBtn.isEnabled = space.deviceOperates.contains(.add)
-        footerView.editBtn.isEnabled = space.deviceOperates.contains(.edit)
+        footerView.editBtn.isEnabled = canEditSwitches
         
         self.updateDevicesEmptyUI()
         
@@ -391,6 +402,11 @@ class DeviceSwitchesViewController: UIViewController {
     }
 
     private func requestDeleteSwitch(_ switchData: DeviceSwitchData) {
+        guard canDeleteSwitches else {
+            XWHUDManager.showTipHUD("no_permission".localizedString, isLineFeed: true)
+            return
+        }
+
         if isUnlinkedVirtualBatteryPowerSwitch(switchData) {
             deleteCache(switchData: switchData)
             XWHUDManager.showSuccessTipHUD("done!".localizedString)
@@ -403,6 +419,11 @@ class DeviceSwitchesViewController: UIViewController {
     }
 
     private func deleteConfirmedSwitch(_ switchData: DeviceSwitchData, source: UIViewController? = nil) {
+        guard canDeleteSwitches else {
+            XWHUDManager.showTipHUD("no_permission".localizedString, isLineFeed: true)
+            return
+        }
+
         guard !switchData.getNeedSyncDatas(deleteSwitch: true).isEmpty() else {
             completeConfirmedSwitchDelete(switchData, source: source)
             return
@@ -513,6 +534,10 @@ extension DeviceSwitchesViewController: SpaceFunctionFooterViewDelegate {
     /// 点击添加回调
     func functionDidClickAdd(view: SpaceFunctionFooterView) {
         
+        guard space.deviceOperates.contains(.add) else {
+            return
+        }
+
         let point = CGPoint(x: view.addBtn.center.x, y: SCREEN_HEIGHT - footerView.height)
         (self.parent as? DevicesViewController)?.addAction(point: point)
     }
@@ -520,8 +545,13 @@ extension DeviceSwitchesViewController: SpaceFunctionFooterViewDelegate {
     /// 编辑/取消编辑状态修改  editing：是否正在编辑
     func function(view: SpaceFunctionFooterView, editStateChanged editing: Bool) {
         
+        guard canEditSwitches else {
+            view.isEditing = false
+            return
+        }
+
         view.isEditing = false
-        isEdit = true
+        isEdit = editing
         updateUI()
     }
 }
