@@ -46,6 +46,20 @@ final class PJEightKeySwitchEditorView: UIView {
         return button
     }()
 
+    let syncFailedButton: UIButton = {
+        let button = UIButton(
+            title: "devices_not_synced".localizedString,
+            titleSize: 14,
+            titleWeight: .light,
+            titleColor: Red_Color,
+            fit: false,
+            normalImageName: "schedule_sync_failed"
+        )
+        button.isHidden = true
+        button.setImagePosition(position: .left, spacing: SCRXFrom(4))
+        return button
+    }()
+
     let settingsContainerView: UIView = {
         let view = UIView()
         view.backgroundColor = .white
@@ -154,6 +168,12 @@ final class PJEightKeySwitchEditorView: UIView {
         nameSectionLabel.snp.makeConstraints { make in
             make.top.equalTo(SCRYFrom(12))
             make.left.equalTo(SCRXFrom(16))
+        }
+
+        contentView.addSubview(syncFailedButton)
+        syncFailedButton.snp.makeConstraints { make in
+            make.right.equalTo(SCRXFrom(-16))
+            make.centerY.equalTo(nameSectionLabel)
         }
 
         contentView.addSubview(nameContainerView)

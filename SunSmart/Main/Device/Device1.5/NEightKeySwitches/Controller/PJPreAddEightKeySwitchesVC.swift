@@ -139,6 +139,16 @@ final class PJPreAddEightKeySwitchesVC: UIViewController {
         guard ensureEditable() else { return }
         submitAction()
     }
+
+    @objc private func syncFailedButtonAction() {
+        view.endEditing(true)
+        guard let switchData = currentEightKeySwitchData,
+              switchData.needsBatteryPowerSwitchSync else {
+            updateSyncFailedButtonVisibility()
+            return
+        }
+        pushBatteryPowerSwitchSync(switchData)
+    }
     
     @objc private func linkAction() {
         guard ensureEditable() else { return }
@@ -373,6 +383,7 @@ final class PJPreAddEightKeySwitchesVC: UIViewController {
         editorView.nameTextField.delegate = self
         editorView.nameTextField.addTarget(self, action: #selector(nameDidChange(_:)), for: .editingChanged)
         editorView.clearNameButton.addTarget(self, action: #selector(clearNameAction), for: .touchUpInside)
+        editorView.syncFailedButton.addTarget(self, action: #selector(syncFailedButtonAction), for: .touchUpInside)
         editorView.linkActionButton.addTarget(self, action: #selector(linkAction), for: .touchUpInside)
         
         editorView.bottomActionView.createAction = { [weak self] in
@@ -414,6 +425,7 @@ final class PJPreAddEightKeySwitchesVC: UIViewController {
         initialSnapshot = makeSnapshot()
         applyEditableState()
         updateSaveBarButtonState()
+        updateSyncFailedButtonVisibility()
     }
     
     private func updateNameClearButtonState() {
@@ -425,6 +437,15 @@ final class PJPreAddEightKeySwitchesVC: UIViewController {
         let nameValid = !(viewModel.deviceName.isAllInputTextEmpty()
             || MeshNetworkManager.instance.isSwitchTautonym(name: viewModel.deviceName) && viewModel.deviceName != viewModel.sourceSwitchData?.name)
         saveBarButtonItem.isEnabled = canEdit && nameValid
+    }
+
+    private func updateSyncFailedButtonVisibility() {
+        guard isEditMode,
+              let switchData = currentEightKeySwitchData else {
+            editorView.syncFailedButton.isHidden = true
+            return
+        }
+        editorView.syncFailedButton.isHidden = !switchData.needsBatteryPowerSwitchSync
     }
     
     private func updatePanelPreviewHeight() {
@@ -630,6 +651,7 @@ final class PJPreAddEightKeySwitchesVC: UIViewController {
             }
             self.switchSavedAction?(switchData)
             self.postSwitchDataChangedNotifications()
+            self.refreshEditingStateFromCurrentSwitchData()
             XWHUDManager.showSuccessTipHUD("done!".localizedString)
             DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) { [weak self] in
                 self?.popBackAfterBatteryPowerSwitchSync(animated: true)
@@ -655,6 +677,7 @@ final class PJPreAddEightKeySwitchesVC: UIViewController {
             }
             self.switchSavedAction?(switchData)
             self.postSwitchDataChangedNotifications()
+            self.refreshEditingStateFromCurrentSwitchData()
             self.popBackAfterBatteryPowerSwitchSync(animated: true)
         }
         navigationController?.pushViewController(vc, animated: true)
