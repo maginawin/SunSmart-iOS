@@ -156,6 +156,7 @@ class SitesViewController: UIViewController {
     
     override func viewDidAppear(_ animated: Bool) {
         super.viewDidAppear(animated)
+        stopResidualSpacePresenceTracking()
         // pop手势返回，回到menu页面
         if showMenu {
             showMenu = false
@@ -185,6 +186,15 @@ class SitesViewController: UIViewController {
 //        (navigationController as? NavigationViewController)?.navigationDelegate = nil
     }
     
+    private func stopResidualSpacePresenceTracking() {
+        guard let navigationController else {
+            return
+        }
+        navigationController.viewControllers
+            .compactMap({ $0 as? SpaceViewController })
+            .forEach({ $0.stopSpacePresenceTrackingForSitesCleanup() })
+    }
+
     /// KVO监听
     override func observeValue(forKeyPath keyPath: String?, of object: Any?, change: [NSKeyValueChangeKey : Any]?, context: UnsafeMutableRawPointer?) {
         if keyPath == "networkable" { // 手机网络连接状态
@@ -1481,4 +1491,3 @@ extension SitesViewController: CloudSynchronizationManagerDelegate {
         updateSyncState()
     }
 }
-

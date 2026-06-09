@@ -57,6 +57,13 @@ enum SpaceChangeDataType {
     case network(type: NetworkDataType)
 }
 
+private enum SpacePresenceStopReason: String {
+    case leavingSpaceFlow
+    case permissionLoss
+    case deallocated
+    case sitesVisibleCleanup
+}
+
 extension SpaceViewController {
     
     /// 当前显示的space控制器
@@ -100,10 +107,14 @@ class SpaceViewController: WMPageController {
     private var exitSyncSpace: Bool = false
     /// 心跳定时器
     private var heartbeatTimer: Timer?
+    /// 是否已停止当前 Space 的在线/编辑占用跟踪
+    private var hasStoppedPresenceTracking: Bool = false
     /// 是否已处理空间权限失效，避免失效心跳重复弹窗
     private var hasHandledPermissionLoss: Bool = false
     /// mesh网络内用户查询定时器
     private var userAskTimer: Timer?
+    /// 是否由当前 Space 页面接管 mesh 权限探测回调
+    private var isHandlingExternalVendorMessages: Bool = false
     /// 是否进行云端权限校验
     private var cloudPermissionValidation: Bool = false
     /// 是否进行mesh权限校验
@@ -265,8 +276,17 @@ class SpaceViewController: WMPageController {
         ConfigurationFlowGuidanceView.current()?.hide()
     }
 
+    override func viewDidDisappear(_ animated: Bool) {
+        super.viewDidDisappear(animated)
+
+        if isMovingFromParent || !(navigationController?.viewControllers.contains(self) ?? false) {
+            stopSpacePresenceTracking(reason: .leavingSpaceFlow)
+        }
+    }
+
     
     deinit {
+        stopSpacePresenceTracking(reason: .deallocated)
         
         if MeshNetworkManager.instance.meshNetwork?.uuid.uuidString == space.meshUUID && MeshNetworkManager.instance.currentNetworkKey.networkId.hex == space.meshNetworkId {
             MeshLibManager.manager.meshNetworkDisconnect()
@@ -278,8 +298,6 @@ class SpaceViewController: WMPageController {
         networkableObservation = nil
         meshNetworkConnectedObservation = nil
         print("dealloc")
-        stopHeartbeatTimer()
-        stopUserAskTimer()
         stopAutoTestTimer()
         emergencyFireControllerSceneEventManager?.deactivate()
         emergencyFireControllerSceneEventManager = nil
@@ -410,6 +428,7 @@ class SpaceViewController: WMPageController {
                     // 如果未完成mesh权限校验，有space编辑权限的用户进入空间连接网络后需判定是否有其他的编辑用户
                     if !self.meshPermissionValidation && (self.space.permission == .owner || self.space.permission == .editor) {
                         MeshLibManager.manager.externalVendorMessageDelegate = self
+                        self.isHandlingExternalVendorMessages = true
                         MeshAPI.sendMessage(message: ExternalVendorMessage(operation: .userPermission(.ask)), address: .localClientGroupAddress)
                         self.startUserAskTimer()
                     }
@@ -722,6 +741,9 @@ class SpaceViewController: WMPageController {
                     self.cloudPermissionValidation = true
                     // 判断空间内是否存在编辑权限用户
                     if userInfos.contains(where: { ($0.permission == .owner || $0.permission == .editor) && $0.userId != UserData.currentUserId }) {
+                        #if DEBUG
+                        print("Space active editor conflict: siteId=\(self.space.siteId), spaceId=\(self.space.id), permission=\(self.space.permission.dataString)")
+                        #endif
 //                        NSObject.cancelPreviousPerformRequests(withTarget: self, selector: #selector(userPermissionAskTimeout), object: nil)
                         self.stopUserAskTimer()
                         // 提示是否关闭用户编辑权限
@@ -779,7 +801,7 @@ class SpaceViewController: WMPageController {
     
     /// 开始发送心跳
     private func startHeartbeatTimer() {
-        guard space.state == .normal, !hasHandledPermissionLoss else {
+        guard space.state == .normal, !hasHandledPermissionLoss, !hasStoppedPresenceTracking else {
             return
         }
         
@@ -787,6 +809,9 @@ class SpaceViewController: WMPageController {
             heartbeatTimer?.invalidate()
         }
         
+        #if DEBUG
+        print("Space heartbeat started: siteId=\(space.siteId), spaceId=\(space.id), permission=\(space.permission.dataString)")
+        #endif
         heartbeatTimer = LCWeakTimer.scheduledTimer(timeInterval: 30, aTarget: self, selector: #selector(heartbeatRequest), userInfo: nil, repeats: true)
         
         heartbeatTimer?.fire()
@@ -799,10 +824,30 @@ class SpaceViewController: WMPageController {
         heartbeatTimer?.invalidate()
         heartbeatTimer = nil
     }
+
+    func stopSpacePresenceTrackingForSitesCleanup() {
+        stopSpacePresenceTracking(reason: .sitesVisibleCleanup)
+    }
+
+    private func stopSpacePresenceTracking(reason: SpacePresenceStopReason) {
+        guard !hasStoppedPresenceTracking else {
+            return
+        }
+        hasStoppedPresenceTracking = true
+        stopHeartbeatTimer()
+        stopUserAskTimer()
+        if isHandlingExternalVendorMessages, MeshLibManager.manager.externalVendorMessageDelegate === self {
+            MeshLibManager.manager.externalVendorMessageDelegate = nil
+        }
+        isHandlingExternalVendorMessages = false
+        #if DEBUG
+        print("Space presence stopped: siteId=\(space.siteId), spaceId=\(space.id), permission=\(space.permission.dataString), reason=\(reason.rawValue)")
+        #endif
+    }
     
     /// 心跳请求
     @objc private func heartbeatRequest() {
-        guard space.state == .normal, !hasHandledPermissionLoss else {
+        guard space.state == .normal, !hasHandledPermissionLoss, !hasStoppedPresenceTracking else {
             stopHeartbeatTimer()
             return
         }
@@ -819,7 +864,7 @@ class SpaceViewController: WMPageController {
 //                }
                 switch error {
                 case .noSitePermission: // 被回收权限/转让site
-                    self.stopHeartbeatTimer()
+                    self.stopSpacePresenceTracking(reason: .permissionLoss)
                     XWHUDManager.showErrorTipHUD(error.localizedDescription)
                     if self.site.permission == .owner {
                         NotificationCenter.default.post(name: .init(SiteStateChangeNotificationName), object: nil)
@@ -861,7 +906,7 @@ class SpaceViewController: WMPageController {
             return
         }
         hasHandledPermissionLoss = true
-        stopHeartbeatTimer()
+        stopSpacePresenceTracking(reason: .permissionLoss)
         space.state = .waitDeleted
         space.save()
         NotificationCenter.default.post(name: .init(spacesRefreshChangeNotificationName), object: true)
@@ -899,6 +944,9 @@ class SpaceViewController: WMPageController {
     /// 关闭用户编辑权限
     private func disableEditorPermission() {
         self.space.disableEditorPermission = true
+        #if DEBUG
+        print("Space editor permission disabled for current session: siteId=\(space.siteId), spaceId=\(space.id), permission=\(space.permission.dataString)")
+        #endif
         NotificationCenter.default.post(name: .init(spacePermissionChangedNotificaitonName), object: nil)
     }
     
