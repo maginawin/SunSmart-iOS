@@ -725,7 +725,7 @@ extension GroupPowerSwitchesViewController: UITableViewDataSource, UITableViewDe
         let row = rows(for: switchData)[indexPath.row]
         switch row {
         case .panelPreview:
-            return SCRYFrom(84) + SCRXFrom(288)
+            return PJEightKeySwitchPanelView.kineticBaselinePreviewActionCellHeight
         case .panel, .group, .scene, .moreSettings:
             return SCRYFrom(44)
         }

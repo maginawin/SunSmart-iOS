@@ -234,7 +234,7 @@ final class PJEightKeySwitchEditorView: UIView {
         panelPreviewView.snp.makeConstraints { make in
             make.top.equalTo(settingsContainerView.snp.bottom).offset(SCRYFrom(16))
             make.left.right.equalTo(nameContainerView)
-            make.height.equalTo(SCRYFrom(320))
+            make.height.equalTo(PJEightKeySwitchPanelView.kineticBaselinePreviewHeight)
         }
 
         contentView.addSubview(linkActionButton)

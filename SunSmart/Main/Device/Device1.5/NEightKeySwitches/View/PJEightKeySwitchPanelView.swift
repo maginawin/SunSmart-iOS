@@ -9,6 +9,18 @@ import UIKit
 
 final class PJEightKeySwitchPanelView: UIView {
 
+    static var kineticBaselinePreviewHeight: CGFloat {
+        SCRXFrom(288)
+    }
+
+    static var kineticBaselinePreviewCellHeight: CGFloat {
+        kineticBaselinePreviewHeight + SCRYFrom(8)
+    }
+
+    static var kineticBaselinePreviewActionCellHeight: CGFloat {
+        kineticBaselinePreviewHeight + SCRYFrom(84)
+    }
+
     enum Mode {
         case preview
         case interactive(action: (PJEightKeySwitchPanelDefinition.ActionKind) -> Void)
@@ -102,14 +114,8 @@ final class PJEightKeySwitchPanelView: UIView {
         apply(items: definition.zoneItems[.rightBottom] ?? [], to: rightBottomStack)
     }
 
-    func preferredHeight(for width: CGFloat) -> CGFloat {
-        if let definition = currentDefinition,
-           case .preview = mode,
-           let image = UIImage(named: definition.previewImageName),
-           image.size.width > 0 {
-            return width * image.size.height / image.size.width
-        }
-        return max(SCRYFrom(320), width * 0.72)
+    func preferredHeight(for _: CGFloat) -> CGFloat {
+        Self.kineticBaselinePreviewHeight
     }
 
     private func setupUI() {

@@ -174,7 +174,7 @@ final class GroupPowerSwitchPanelCell: UITableViewCell {
             make.left.equalTo(SCRXFrom(16))
             make.right.equalTo(SCRXFrom(-16))
             make.top.equalTo(SCRYFrom(8))
-            make.height.equalTo(SCRYFrom(288))
+            make.height.equalTo(PJEightKeySwitchPanelView.kineticBaselinePreviewHeight)
         }
 
         panelContainerView.addSubview(panelPreviewView)

@@ -38,7 +38,7 @@ final class PJEightKeySwitchSelectPanelCell: UITableViewCell {
         panelView.layer.borderColor = selected ? Bar_Color.cgColor : UIColor.clear.cgColor
     }
 
-    func preferredHeight(for width: CGFloat) -> CGFloat {
-        panelView.preferredHeight(for: width - SCRXFrom(32)) + SCRYFrom(8)
+    func preferredHeight(for _: CGFloat) -> CGFloat {
+        PJEightKeySwitchPanelView.kineticBaselinePreviewCellHeight
     }
 }

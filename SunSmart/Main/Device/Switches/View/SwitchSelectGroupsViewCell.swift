@@ -41,20 +41,23 @@ class SwitchSelectGroupsViewCell: UITableViewCell {
         
         nameLabel = UILabel(text: "", textColor: TextBlack_Color, fontSize: 15, fontWeight: .light)
         contentView.addSubview(nameLabel)
-        nameLabel.snp.makeConstraints { make in
-            make.left.equalTo(selectImageView.snp.right).offset(SCRXFrom(8))
-            make.centerY.equalToSuperview()
-            make.width.lessThanOrEqualTo(SCRXFrom(200))
-        }
         
         onoffBtn = UIButton(normalImageName: "scene_group_off", selectedImageName: "scene_group_on", target: self, action: #selector(onoffBtnAction))
 //        onoffBtn.setImage(UIImage(named: "scene_group_disable"), for: .disabled)
+        onoffBtn.setContentCompressionResistancePriority(.required, for: .horizontal)
+        onoffBtn.setContentHuggingPriority(.required, for: .horizontal)
         contentView.addSubview(onoffBtn)
         onoffBtn.snp.makeConstraints { make in
             make.right.equalTo(SCRXFrom(-8))
             make.centerY.equalToSuperview()
         }
         
+        nameLabel.snp.makeConstraints { make in
+            make.left.equalTo(selectImageView.snp.right).offset(SCRXFrom(8))
+            make.right.lessThanOrEqualTo(onoffBtn.snp.left).offset(SCRXFrom(-8))
+            make.centerY.equalToSuperview()
+        }
+
         lineView = UIView()
         lineView.backgroundColor = Line_Color
         contentView.addSubview(lineView)
