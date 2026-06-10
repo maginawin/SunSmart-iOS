@@ -973,6 +973,21 @@ extension SpaceData {
             self.lastUpdate = json["updateTimestamp"].int64Value
             //            if self.lastUploadCloudTimestamp == nil {
             self.lastUploadCloudTimestamp = self.lastUpdate
+            if let value = json["displayDeviceNamePrefix"].bool {
+                self.displayDeviceNamePrefix = value
+            }else {
+                self.displayDeviceNamePrefix = true
+            }
+            if let value = json["showCCTQuickButtons"].bool {
+                self.showCCTQuickButtons = value
+            }else {
+                self.showCCTQuickButtons = false
+            }
+            if let value = json["controlType"].string, let type = SpaceControlType(rawValue: value) {
+                self.controlType = type
+            }else {
+                self.controlType = .simple
+            }
             // 配置设备完成后行为
             if let value = json["deviceBlinkMode"].int, let mode = DeviceBlinkMode(rawValue: value) {
                 self.deviceBlinkMode = mode

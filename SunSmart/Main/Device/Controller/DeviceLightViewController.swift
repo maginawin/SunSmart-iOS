@@ -10,6 +10,8 @@ import NordicSigMeshSDK
 
 class DeviceLightViewController: UIViewController {
 
+    private let scrollView = UIScrollView()
+    private let contentView = UIView()
     private var lightGrayBgView: UIImageView!
     private var lightBgView: UIImageView!
     private var lightImageBtn: UIButton!
@@ -23,8 +25,7 @@ class DeviceLightViewController: UIViewController {
     private var cctLabel: UILabel!
     
     private var onoffBtn: UIButton!
-    private var lightnessSlider: BuoySliderView!
-    private var cctSlider: BuoySliderView!
+    private var controlPanelView: DeviceLightControlPanelView!
     
     private var relayLabel: UILabel!
     private var relaySwitch: UISwitch!
@@ -92,7 +93,7 @@ class DeviceLightViewController: UIViewController {
         if !node.isEmergencySignController, node.ambientLightSensorModel != nil {
             luxLabel = UILabel(text: "", textColor: TextBlack_Color, fontSize: 14)
             luxLabel?.isHidden = !node.preConfiguration.displayLux
-            view.addSubview(luxLabel!)
+            contentView.addSubview(luxLabel!)
             luxLabel!.snp.makeConstraints { make in
                 make.left.equalTo(cctView.snp.right).offset(SCRXFrom(30))
                 make.centerY.equalTo(brightnessLabel)
@@ -116,10 +117,7 @@ class DeviceLightViewController: UIViewController {
         MeshLibManager.manager.messageDelegate = self
         // 更新数据
         updateData()
-        if !node.isEmergencySignController {
-            updateSliderValue()
-        }
-        
+
         if !node.isEmergencySignController, node.ambientLightSensorModel != nil {
             getNodeAmbientSensorLux()
         }
@@ -169,7 +167,7 @@ class DeviceLightViewController: UIViewController {
     }
     
     /// 更新UI数据
-    private func updateData() {
+    private func updateData(refreshControlPanel: Bool = true) {
         if node.isEmergencySignController {
             updateEmergencySignData()
             return
@@ -231,8 +229,9 @@ class DeviceLightViewController: UIViewController {
             
             brightnessLabel.text = lightnessText
             cctLabel.text = "\(node.temperature)K"
-            
-            lightnessSlider.slider.limitRange = Node.getLightness100(lightness: node.lightnessRange.lowerBound)...Node.getLightness100(lightness: node.lightnessRange.upperBound)
+            if refreshControlPanel {
+                updateControlPanel()
+            }
             
 //            pwmPeriodLabel.text = node.pwmPeriod != nil ? "pwm: \(node.pwmPeriod!)" : nil
             
@@ -255,9 +254,19 @@ class DeviceLightViewController: UIViewController {
         }
     }
     
-    private func updateSliderValue() {
-        lightnessSlider.value = Node.getLightness100(lightness: node.lightness)
-        cctSlider.value = Int(node.clampEffectiveCct(node.temperature))
+    private func updateControlPanel() {
+        let cctRange = node.effectiveCctRange
+        let brightnessRange = Node.getLightness100(lightness: node.lightnessRange.lowerBound)...Node.getLightness100(lightness: node.lightnessRange.upperBound)
+        controlPanelView.configure(.init(
+            controlType: space.controlType,
+            showCCTQuickButtons: space.showCCTQuickButtons,
+            showsBrightness: node.supportDimming,
+            showsCCT: node.singleDeviceDisplaySupportCct,
+            brightnessValue: Node.getLightness100(lightness: node.lightness),
+            brightnessRange: brightnessRange,
+            cctValue: Int(node.clampEffectiveCct(node.temperature)),
+            cctRange: Int(cctRange.lowerBound)...Int(cctRange.upperBound)
+        ))
     }
     
     @objc private func backAction() {
@@ -638,8 +647,8 @@ class DeviceLightViewController: UIViewController {
             node.lightness = 0
         }
         MeshAPI.setNodeOnOffState(address: node.primaryUnicastAddress, isOn: node.isOn, ack: true)
-        updateData()
-        updateSliderValue()
+        updateData(refreshControlPanel: false)
+        updateControlPanel()
     }
 
     private func setupEmergencySignUI() {
@@ -659,8 +668,7 @@ class DeviceLightViewController: UIViewController {
 
         brightnessView.isHidden = true
         cctView.isHidden = true
-        lightnessSlider.isHidden = true
-        cctSlider.isHidden = true
+        controlPanelView.isHidden = true
         onoffBtn.isHidden = true
         relaySwitch.isHidden = true
         relayLabel.isHidden = true
@@ -673,11 +681,12 @@ class DeviceLightViewController: UIViewController {
         identifyButton.addTarget(self, action: #selector(emergencySignIdentifyTouchUp(_:)), for: .touchUpOutside)
         identifyButton.addTarget(self, action: #selector(emergencySignIdentifyTouchUp(_:)), for: .touchCancel)
         identifyButton.addTarget(self, action: #selector(emergencySignIdentifyTouchUp(_:)), for: .touchDragExit)
-        view.addSubview(identifyButton)
+        contentView.addSubview(identifyButton)
         identifyButton.snp.makeConstraints { make in
             make.centerX.equalToSuperview()
             make.top.equalTo(lightBgView.snp.bottom).offset(SCRYFit(160))
             make.width.height.equalTo(isIPad ? 56 : 40)
+            make.bottom.lessThanOrEqualToSuperview().offset(SCRYFit(-8))
         }
         emergencySignIdentifyButton = identifyButton
     }
@@ -685,8 +694,7 @@ class DeviceLightViewController: UIViewController {
     private func updateEmergencySignData() {
         brightnessView.isHidden = true
         cctView.isHidden = true
-        lightnessSlider.isHidden = true
-        cctSlider.isHidden = true
+        controlPanelView.isHidden = true
         onoffBtn.isHidden = true
         relaySwitch.isHidden = true
         relayLabel.isHidden = true
@@ -776,36 +784,111 @@ class DeviceLightViewController: UIViewController {
     
     private func bindSliderAction() {
         
-        lightnessSlider.valueChangedCallback = {[weak self] value in
+        controlPanelView.brightnessValueChanged = {[weak self] value in
             guard let self = self else { return }
-            
-            let lightness = Node.getLightness(lightness100: value)
-            
-            if value == 0 {
-                self.node.trunOffLightness = self.node.lightness
-            }
-            
-            self.node.lightness = lightness
-            self.node.isOn = lightness > 0
-            self.updateData()
+            self.applyBrightnessValue(value)
         }
-        lightnessSlider.valueThrottleChangedCallback = {[weak self] (value, ended) in
+        controlPanelView.brightnessThrottleValueChanged = {[weak self] value, ended in
             guard let self = self else { return }
             let lightness = Node.getLightness(lightness100: value)
             MeshAPI.setNodeLightnessState(address: self.node.primaryUnicastAddress, lightness: lightness, ack: ended)
            
         }
         
-        cctSlider.valueChangedCallback = {[weak self] value in
+        controlPanelView.cctValueChanged = {[weak self] value in
             guard let self = self else { return }
-            self.node.temperature = self.node.clampEffectiveCct(UInt16(value))
-            self.updateData()
+            self.applyCCTValue(value)
         }
-        cctSlider.valueThrottleChangedCallback = {[weak self] (value, ended) in
+        controlPanelView.cctThrottleValueChanged = {[weak self] value, ended in
             guard let self = self else { return }
             let temperature = self.node.clampEffectiveCct(UInt16(value))
             MeshAPI.setNodeColorTemperatureState(address: self.node.primaryUnicastAddress, temperature: temperature, ack: ended)
         }
+        controlPanelView.cctQuickButtonValueSelected = { [weak self] value in
+            self?.applyCCTQuickButtonValue(value)
+        }
+        controlPanelView.editBrightnessRequested = { [weak self] in
+            self?.showBrightnessInputAlert()
+        }
+        controlPanelView.editCCTRequested = { [weak self] in
+            self?.showCCTInputAlert()
+        }
+    }
+
+    private func applyBrightnessValue(_ value: Int) {
+        let lightness = Node.getLightness(lightness100: value)
+
+        if value == 0 {
+            node.trunOffLightness = node.lightness
+        }
+
+        node.lightness = lightness
+        node.isOn = lightness > 0
+        updateData(refreshControlPanel: false)
+    }
+
+    private func applyCCTValue(_ value: Int) {
+        node.temperature = node.clampEffectiveCct(UInt16(value))
+        updateData(refreshControlPanel: false)
+    }
+
+    private func applyCCTQuickButtonValue(_ value: Int) {
+        let range = controlPanelView.currentCCTRange
+        let clampedValue = max(range.lowerBound, min(range.upperBound, value))
+        if clampedValue != value {
+            XWHUDManager.showTipHUD("cct_limit_reached_message".localizedString, isLineFeed: true)
+        }
+        controlPanelView.setCCTValue(clampedValue)
+        applyCCTValue(clampedValue)
+        MeshAPI.setNodeColorTemperatureState(address: node.primaryUnicastAddress, temperature: UInt16(clampedValue), ack: true)
+    }
+
+    private func showBrightnessInputAlert() {
+        let range = controlPanelView.currentBrightnessRange
+        showIntegerInputAlert(
+            title: "brightness".localizedString,
+            range: range
+        ) { [weak self] value in
+            guard let self = self else { return }
+            self.controlPanelView.setBrightnessValue(value)
+            self.applyBrightnessValue(value)
+            MeshAPI.setNodeLightnessState(
+                address: self.node.primaryUnicastAddress,
+                lightness: Node.getLightness(lightness100: value),
+                ack: true
+            )
+        }
+    }
+
+    private func showCCTInputAlert() {
+        let range = controlPanelView.currentCCTRange
+        showIntegerInputAlert(
+            title: "color_temp".localizedString,
+            range: range
+        ) { [weak self] value in
+            guard let self = self else { return }
+            let temperature = self.node.clampEffectiveCct(UInt16(value))
+            self.controlPanelView.setCCTValue(Int(temperature))
+            self.applyCCTValue(Int(temperature))
+            MeshAPI.setNodeColorTemperatureState(address: self.node.primaryUnicastAddress, temperature: temperature, ack: true)
+        }
+    }
+
+    private func showIntegerInputAlert(title: String, range: ClosedRange<Int>, confirm: @escaping (Int) -> Void) {
+        SRAlertView(
+            title: title,
+            inputText: nil,
+            inputFieldStyle: .init(keyboardType: .numberPad, maxInputLength: 5, textAlignment: .center, showClear: true),
+            actions: [.cancelAction, SRAlertAction(title: "COMFIRM".localizedString, style: .default)],
+            textValueChangedBack: nil
+        ) { text in
+            guard let value = Int(text) else {
+                XWHUDManager.showTipHUD("illegal_input".localizedString, isLineFeed: true)
+                return
+            }
+            let clamped = max(range.lowerBound, min(range.upperBound, value))
+            confirm(clamped)
+        }.show()
     }
     
     @objc private func relaySwitchValueChanged(sender: UISwitch) {
@@ -827,51 +910,79 @@ class DeviceLightViewController: UIViewController {
     private func updateUI() {
         
         if node.singleDeviceDisplaySupportCct {
-            cctSlider.isHidden = false
             cctView.isHidden = false
         }else {
-            cctSlider.isHidden = true
             cctView.isHidden = true
         }
         
         if node.supportDimming {
-            lightnessSlider.isHidden = false
             brightnessView.isHidden = false
             if node.singleDeviceDisplaySupportCct {
                 brightnessView.snp.remakeConstraints { make in
-                    make.right.equalTo(view.snp.centerX).offset(SCRXFrom(-42))
+                    make.right.equalTo(contentView.snp.centerX).offset(SCRXFrom(-42))
                     make.top.equalTo(lightBgView.snp.bottom).offset(SCRYFit(28))
                     make.height.equalTo(SCRYFrom(20))
                 }
             }
         }else {
-            lightnessSlider.isHidden = true
             brightnessView.isHidden = true
         }
+        controlPanelView.isHidden = !node.supportDimming && !node.singleDeviceDisplaySupportCct
         
     }
     
     private func setupUI() {
         
+        view.addSubview(scrollView)
+        scrollView.alwaysBounceVertical = false
+        scrollView.delaysContentTouches = false
+        scrollView.showsVerticalScrollIndicator = false
+        scrollView.snp.makeConstraints { make in
+            make.edges.equalToSuperview()
+        }
+
+        scrollView.addSubview(contentView)
+        contentView.snp.makeConstraints { make in
+            make.edges.equalToSuperview()
+            make.width.equalTo(scrollView)
+        }
+
+        relaySwitch = UISwitch()
+        relaySwitch.onTintColor = Bar_Color
+        relaySwitch.tintColor = RGB(207, 207, 207)
+        relaySwitch.addTarget(self, action: #selector(relaySwitchValueChanged), for: .valueChanged)
+        contentView.addSubview(relaySwitch)
+        relaySwitch.snp.makeConstraints { make in
+            make.right.equalTo(SCRXFrom(-16))
+            make.top.equalTo(SCRYFit(16))
+        }
+
+        relayLabel = UILabel(text: "Relay", textColor: TextBlack_Color, fontSize: 13)
+        relayLabel.isHidden = true
+        contentView.addSubview(relayLabel)
+        relayLabel.snp.makeConstraints { make in
+            make.centerY.equalTo(relaySwitch)
+            make.right.equalTo(relaySwitch.snp.left).offset(SCRXFrom(-6))
+        }
+
         lightGrayBgView = UIImageView(image: UIImage(named: "device_light_gray_bg"))
         lightGrayBgView.alpha = 0
-        view.addSubview(lightGrayBgView)
+        contentView.addSubview(lightGrayBgView)
         lightGrayBgView.snp.makeConstraints { make in
-            
+
             make.centerX.equalToSuperview()
 //            make.width.equalTo(lightBgView.snp.height)
             if isIPad {
-                make.top.equalTo(SCRYFit(198))
                 make.width.height.equalTo(SCRYFit(238))
             }else {
-                make.top.equalTo(SCRYFit(108))
                 make.width.height.equalTo(SCRYFit(200))
             }
-            
+            make.top.equalTo(relaySwitch.snp.bottom).offset(SCRYFit(20))
+
         }
         
         lightBgView = UIImageView(image: UIImage(named: "device_light_bg"))
-        view.addSubview(lightBgView)
+        contentView.addSubview(lightBgView)
         lightBgView.snp.makeConstraints { make in
 //            make.top.equalTo(SCRYFit(108))
             make.centerX.equalToSuperview()
@@ -881,7 +992,7 @@ class DeviceLightViewController: UIViewController {
         }
         
         lightImageBtn = UIButton(normalImageName: "device_light_control_off", selectedImageName: "device_light_control_on", target: self, action: #selector(onoffAction))
-        view.addSubview(lightImageBtn)
+        contentView.addSubview(lightImageBtn)
         lightImageBtn.snp.makeConstraints { make in
             make.center.equalTo(lightBgView)
             if isIPad {
@@ -890,7 +1001,7 @@ class DeviceLightViewController: UIViewController {
         }
         
         brightnessView = UIView()
-        view.addSubview(brightnessView)
+        contentView.addSubview(brightnessView)
         brightnessView.snp.makeConstraints { make in
             make.centerX.equalToSuperview()
             make.top.equalTo(lightBgView.snp.bottom).offset(SCRYFit(isIPad ? 68 : 28))
@@ -923,9 +1034,9 @@ class DeviceLightViewController: UIViewController {
         }
         
         cctView = UIView()
-        view.addSubview(cctView)
+        contentView.addSubview(cctView)
         cctView.snp.makeConstraints { make in
-            make.left.equalTo(view.snp.centerX).offset(SCRXFrom(22))
+            make.left.equalTo(contentView.snp.centerX).offset(SCRXFrom(22))
             make.centerY.height.equalTo(brightnessView)
         }
         
@@ -945,7 +1056,7 @@ class DeviceLightViewController: UIViewController {
             make.width.equalTo(1)
             make.height.equalTo(SCRYFrom(12))
         }
-        cctLabel = UILabel(text: "4500K", textColor: TextBlack_Color, fontSize: 14)
+        cctLabel = UILabel(text: "4000K", textColor: TextBlack_Color, fontSize: 14)
         cctView.addSubview(cctLabel)
         cctLabel.sizeToFit()
         cctLabel.snp.makeConstraints { make in
@@ -954,35 +1065,8 @@ class DeviceLightViewController: UIViewController {
             make.width.greaterThanOrEqualTo(cctLabel.width)
         }
         
-        let cctRange = self.node.effectiveCctRange
-        cctSlider = BuoySliderView(frame: .zero, functionType: .cct(min: Int(cctRange.lowerBound), max: Int(cctRange.upperBound)))
-        cctSlider.slider.interval = 0.3
-        cctSlider.slider.step = 10
-//        Node.getTemperature100(temperature: UInt16(group.cct))
-//        cctSlider.isHidden = !group.supportCct
-        cctSlider.isHidden = true
-        view.addSubview(cctSlider)
-        cctSlider.snp.makeConstraints { make in
-            if isIPad {
-                make.left.equalTo(SCRXFrom(107))
-                make.right.equalTo(SCRXFrom(-107))
-                make.bottom.equalTo(SCRYFit(-102) - kSafeAreaBottomHeight)
-            }else {
-                make.left.equalTo(SCRXFrom(30))
-                make.right.equalTo(SCRXFrom(-29))
-                make.bottom.equalTo(SCRYFit(-52) - kSafeAreaBottomHeight)
-            }
-            make.height.equalTo(76)
-        }
-        
-        lightnessSlider = BuoySliderView(frame: .zero, functionType: .level())
-        lightnessSlider.slider.interval = 0.3
-//        lightnessSlider.isHidden = !group.supportLightness
-        view.addSubview(lightnessSlider)
-        lightnessSlider.snp.makeConstraints { make in
-            make.left.right.height.equalTo(cctSlider)
-            make.bottom.equalTo(cctSlider.snp.top).offset(SCRYFit(2))
-        }
+        controlPanelView = DeviceLightControlPanelView()
+        contentView.addSubview(controlPanelView)
         
         var offImageName = "device_control_off"
         var onImageName = "device_control_on"
@@ -995,33 +1079,25 @@ class DeviceLightViewController: UIViewController {
         
         onoffBtn = UIButton(normalImageName: offImageName, selectedImageName: onImageName, target: self, action: #selector(onoffAction))
         onoffBtn.setImage(UIImage(named: disableImageName), for: .disabled)
-        view.addSubview(onoffBtn)
+        contentView.addSubview(onoffBtn)
         onoffBtn.snp.makeConstraints { make in
             make.centerX.equalToSuperview()
             if isIPad {
                 make.width.height.equalTo(56)
-                make.bottom.equalTo(lightnessSlider.snp.top).offset(SCRYFit(-28))
-            }else {
-                make.bottom.equalTo(lightnessSlider.snp.top).offset(SCRYFit(-8))
             }
+            make.top.equalTo(lightImageBtn.snp.bottom).offset(SCRYFit(isIPad ? 250 : 190))
         }
-        
-        relaySwitch = UISwitch()
-        relaySwitch.onTintColor = Bar_Color
-        relaySwitch.tintColor = RGB(207, 207, 207)
-        relaySwitch.addTarget(self, action: #selector(relaySwitchValueChanged), for: .valueChanged)
-        view.addSubview(relaySwitch)
-        relaySwitch.snp.makeConstraints { make in
-            make.right.equalTo(SCRXFrom(-16))
-            make.bottom.equalTo(lightBgView.snp.top)
-        }
-        
-        relayLabel = UILabel(text: "Relay", textColor: TextBlack_Color, fontSize: 13)
-        relayLabel.isHidden = true
-        view.addSubview(relayLabel)
-        relayLabel.snp.makeConstraints { make in
-            make.centerY.equalTo(relaySwitch)
-            make.right.equalTo(relaySwitch.snp.left).offset(SCRXFrom(-6))
+
+        controlPanelView.snp.makeConstraints { make in
+            make.top.equalTo(onoffBtn.snp.bottom).offset(SCRYFit(isIPad ? 80 : 30))
+            make.bottom.equalToSuperview().offset(SCRYFit(-8))
+            if isIPad {
+                make.left.equalTo(SCRXFrom(107))
+                make.right.equalTo(SCRXFrom(-107))
+            }else {
+                make.left.equalTo(SCRXFrom(30))
+                make.right.equalTo(SCRXFrom(-29))
+            }
         }
         
 //        pwmPeriodLabel = UILabel(text: nil, textColor: TextBlack_Color, fontSize: 14)
@@ -1039,9 +1115,6 @@ extension DeviceLightViewController: MeshLibManagerMessageDelegate {
     func meshNetworkManager(_ manager: MeshNetworkManager, deviceDataUpdate node: Node) {
         if node.primaryUnicastAddress == self.node.primaryUnicastAddress {
             updateData()
-            if !self.node.isEmergencySignController {
-                updateSliderValue()
-            }
         }
     }
     
@@ -1065,9 +1138,6 @@ extension DeviceLightViewController: MeshLibManagerMessageDelegate {
             node.updateData(message: message)
             if node.primaryUnicastAddress == self.node.primaryUnicastAddress {
                 updateData()
-                if !self.node.isEmergencySignController {
-                    updateSliderValue()
-                }
             }
         }
     }

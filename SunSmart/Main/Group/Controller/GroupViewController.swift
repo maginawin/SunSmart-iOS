@@ -631,11 +631,7 @@ class GroupViewController: UIViewController {
     }
     
     private func updataSensorAutoStateUI() {
-        if group.info.profile.type == .daylight {
-            sensorView?.controlStateImageView.isHidden = !(group.info.ambientLightSensorNode?.lightControlOn ?? false)
-        }else {
-            sensorView?.controlStateImageView.isHidden = true
-        }
+        sensorView?.controlStateImageView.isHidden = true
     }
     
     @objc private func moreClick() {
