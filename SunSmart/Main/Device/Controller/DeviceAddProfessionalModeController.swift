@@ -121,6 +121,9 @@ class DeviceAddProfessionalModeController: UIViewController {
     private var pendingBatteryPowerSwitchInitialBatteryReads: [BatteryPowerSwitchAddConfiguration.InitialBatteryReadRequest] = []
     private var pendingGroupDeferredSyncPlans: [(node: Node, group: Group, plan: DeviceGroupDeferredSyncPlan)] = []
     private var pendingGroupDeferredSyncSuccessDevices: [ProvisioningDevice] = []
+    private var groupMemberAddedProfileSyncContext: GroupProfileSyncContext {
+        GroupProfileSyncContext(reason: .memberAdded)
+    }
     private var batteryPowerSwitchAddConfigurations: [Address: PJEightKeySwitchData] = [:]
     private var failedBatteryPowerSwitchAddConfigurationAddresses: Set<Address> = []
     private var failedBatteryPowerSwitchAddConfigurationReasons: [Address: String] = [:]
@@ -228,6 +231,13 @@ class DeviceAddProfessionalModeController: UIViewController {
 
     private var addTargetNameOverride: String? {
         bindTarget?.name
+    }
+
+    private var currentAddGroup: Group? {
+        if case .group(let group) = addTarget {
+            return group
+        }
+        return nil
     }
 
     private var currentTargetSelection: DeviceAddTargetSelection {
@@ -540,26 +550,74 @@ class DeviceAddProfessionalModeController: UIViewController {
         )
     }
 
-    private func finishGroupDeferredSyncPlans(completion: @escaping () -> Void) {
+    private func appendMissingGroupDeferredSyncPlans(successDevices: [ProvisioningDevice]) {
+        guard let group = currentAddGroup else {
+            return
+        }
+
+        var plannedNodeAddresses = Set(pendingGroupDeferredSyncPlans.map { $0.node.primaryUnicastAddress })
+        var pendingSuccessDeviceAddresses = Set(pendingGroupDeferredSyncSuccessDevices.map { $0.address })
+        let successfulNodes = addSuccessNodes + successDevices.compactMap { device in
+            MeshNetworkManager.instance.meshNetwork?.node(withAddress: device.address)
+        }
+        var handledNodeAddresses: Set<Address> = []
+
+        successfulNodes.forEach { node in
+            guard node.deviceType == .light,
+                  node.group == group,
+                  !plannedNodeAddresses.contains(node.primaryUnicastAddress),
+                  !handledNodeAddresses.contains(node.primaryUnicastAddress) else {
+                return
+            }
+
+            let plan = DeviceGroupDeferredSyncPlanner.makePlan(
+                node: node,
+                group: group,
+                profileSyncContext: groupMemberAddedProfileSyncContext
+            )
+            guard plan.hasDeferredTasks else {
+                return
+            }
+
+            pendingGroupDeferredSyncPlans.append((node: node, group: group, plan: plan))
+            plannedNodeAddresses.insert(node.primaryUnicastAddress)
+            handledNodeAddresses.insert(node.primaryUnicastAddress)
+
+            if let device = successDevices.first(where: { $0.address == node.primaryUnicastAddress }),
+               !pendingSuccessDeviceAddresses.contains(device.address) {
+                if !addSuccessNodes.contains(where: { $0.primaryUnicastAddress == node.primaryUnicastAddress }) {
+                    addSuccessNodes.append(node)
+                }
+                pendingGroupDeferredSyncSuccessDevices.append(device)
+                pendingSuccessDeviceAddresses.insert(device.address)
+            }
+        }
+    }
+
+    private func finishGroupDeferredSyncPlans(successDevices: [ProvisioningDevice], completion: @escaping () -> Void) {
+        appendMissingGroupDeferredSyncPlans(successDevices: successDevices)
         let plans = pendingGroupDeferredSyncPlans
         pendingGroupDeferredSyncPlans.removeAll()
-        DeviceGroupDeferredSyncPlanner.run(plans: plans) { [weak self] in
+        DeviceGroupDeferredSyncPlanner.run(plans: plans, maxRetryCount: 2) { [weak self] results in
             DispatchQueue.main.async {
-                self?.markPendingGroupDeferredSyncDevicesSucceeded()
+                self?.markPendingGroupDeferredSyncDevicesFinished(results: results)
                 completion()
             }
         }
     }
 
-    private func markPendingGroupDeferredSyncDevicesSucceeded() {
+    private func markPendingGroupDeferredSyncDevicesFinished(
+        results: [DeviceGroupDeferredSyncPlanResult]
+    ) {
         let devices = pendingGroupDeferredSyncSuccessDevices
         pendingGroupDeferredSyncSuccessDevices.removeAll()
         guard !devices.isEmpty else {
             return
         }
 
+        let succeededAddresses = Set(results.filter { $0.succeeded }.map { $0.node.primaryUnicastAddress })
         devices.forEach { device in
-            device.addState = .success
+            device.addState = succeededAddresses.contains(device.address) ? .success : .syncFailed
             reloadDeviceState(device)
         }
         updateUIState()
@@ -1257,7 +1315,11 @@ class DeviceAddProfessionalModeController: UIViewController {
                     }
                 }
                 if node.deviceType == .light {
-                    let plan = DeviceGroupDeferredSyncPlanner.makePlan(node: node, group: group)
+                    let plan = DeviceGroupDeferredSyncPlanner.makePlan(
+                        node: node,
+                        group: group,
+                        profileSyncContext: groupMemberAddedProfileSyncContext
+                    )
                     appendMessages.append(contentsOf: plan.immediateMessageHandles)
                 } else {
                     let syncDatas = node.getSyncData(type: .group(group))
@@ -1382,7 +1444,11 @@ class DeviceAddProfessionalModeController: UIViewController {
                     }
                 }
                 if node.deviceType == .light, case .group(let group) = self.addTarget {
-                    let plan = DeviceGroupDeferredSyncPlanner.makePlan(node: node, group: group)
+                    let plan = DeviceGroupDeferredSyncPlanner.makePlan(
+                        node: node,
+                        group: group,
+                        profileSyncContext: groupMemberAddedProfileSyncContext
+                    )
                     if plan.hasDeferredTasks {
                         self.pendingGroupDeferredSyncPlans.append((node: node, group: group, plan: plan))
                         self.pendingGroupDeferredSyncSuccessDevices.append(addDevice)
@@ -1403,7 +1469,9 @@ class DeviceAddProfessionalModeController: UIViewController {
 //                if let name = self?.space.getNextNodeName() {
 //                    node.name = name
 //                }
-                self.addSuccessNodes.append(node)
+                if !self.addSuccessNodes.contains(where: { $0.primaryUnicastAddress == node.primaryUnicastAddress }) {
+                    self.addSuccessNodes.append(node)
+                }
             }
             guard shouldShowSuccessAfterGroupDeferredSync else {
                 addDevice.addState = .success
@@ -1440,7 +1508,7 @@ class DeviceAddProfessionalModeController: UIViewController {
         } addFinish: {[weak self] successList, failList in
             guard let self = self else { return }
 
-            self.finishGroupDeferredSyncPlans { [weak self] in
+            self.finishGroupDeferredSyncPlans(successDevices: successList) { [weak self] in
                 guard let self = self else { return }
                 self.deviceAddCallback?(self.addSuccessNodes)
                 self.deviceStateCallback?(false)

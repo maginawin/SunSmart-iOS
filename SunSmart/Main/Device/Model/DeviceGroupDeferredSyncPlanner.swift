@@ -10,6 +10,10 @@ struct DeviceGroupDeferredSyncTask {
     let operationType: DeviceOperationType
     let messageHandles: [MeshMessageHandle]
     let filteredSceneRecallCount: Int
+
+    func makeMessageHandles() -> [MeshMessageHandle] {
+        operationType.messageHandles.filter { !($0.message is SceneRecall) }
+    }
 }
 
 struct DeviceGroupDeferredSyncPlan {
@@ -21,10 +25,20 @@ struct DeviceGroupDeferredSyncPlan {
     }
 }
 
+struct DeviceGroupDeferredSyncPlanResult {
+    let node: Node
+    let group: Group
+    let succeeded: Bool
+}
+
 enum DeviceGroupDeferredSyncPlanner {
 
-    static func makePlan(node: Node, group: Group) -> DeviceGroupDeferredSyncPlan {
-        let syncDatas = node.getSyncData(type: .group(group))
+    static func makePlan(
+        node: Node,
+        group: Group,
+        profileSyncContext: GroupProfileSyncContext? = nil
+    ) -> DeviceGroupDeferredSyncPlan {
+        let syncDatas = node.getSyncData(type: .group(group), profileSyncContext: profileSyncContext)
         var immediateHandles: [MeshMessageHandle] = []
         var deferredTasks: [DeviceGroupDeferredSyncTask] = []
 
@@ -60,9 +74,10 @@ enum DeviceGroupDeferredSyncPlanner {
 
     static func run(
         plans: [(node: Node, group: Group, plan: DeviceGroupDeferredSyncPlan)],
-        completion: @escaping () -> Void
+        maxRetryCount: Int = 2,
+        completion: @escaping ([DeviceGroupDeferredSyncPlanResult]) -> Void
     ) {
-        runPlans(plans, index: 0, completion: completion)
+        runPlans(plans, index: 0, maxRetryCount: maxRetryCount, results: [], completion: completion)
     }
 }
 
@@ -152,16 +167,39 @@ private extension DeviceGroupDeferredSyncPlanner {
     static func runPlans(
         _ plans: [(node: Node, group: Group, plan: DeviceGroupDeferredSyncPlan)],
         index: Int,
-        completion: @escaping () -> Void
+        maxRetryCount: Int,
+        results: [DeviceGroupDeferredSyncPlanResult],
+        completion: @escaping ([DeviceGroupDeferredSyncPlanResult]) -> Void
     ) {
         guard index < plans.count else {
-            completion()
+            completion(results)
             return
         }
 
         let item = plans[index]
-        runTasks(item.plan.deferredTasks, index: 0, node: item.node, group: item.group, hadFailure: false) { _ in
-            runPlans(plans, index: index + 1, completion: completion)
+        runTasks(
+            item.plan.deferredTasks,
+            index: 0,
+            node: item.node,
+            group: item.group,
+            maxRetryCount: maxRetryCount,
+            hadFailure: false
+        ) { planSucceeded in
+            var nextResults = results
+            nextResults.append(
+                DeviceGroupDeferredSyncPlanResult(
+                    node: item.node,
+                    group: item.group,
+                    succeeded: planSucceeded
+                )
+            )
+            runPlans(
+                plans,
+                index: index + 1,
+                maxRetryCount: maxRetryCount,
+                results: nextResults,
+                completion: completion
+            )
         }
     }
 
@@ -170,6 +208,7 @@ private extension DeviceGroupDeferredSyncPlanner {
         index: Int,
         node: Node,
         group: Group,
+        maxRetryCount: Int,
         hadFailure: Bool,
         completion: @escaping (Bool) -> Void
     ) {
@@ -178,18 +217,59 @@ private extension DeviceGroupDeferredSyncPlanner {
                 node.clearSyncStateCache()
                 group.updateGroupSyncState()
             }
-            completion(hadFailure)
+            completion(!hadFailure)
             return
         }
 
         let task = tasks[index]
-        let messageHandles = task.messageHandles
+        let messageHandles = task.makeMessageHandles()
         guard !messageHandles.isEmpty else {
-            runTasks(tasks, index: index + 1, node: node, group: group, hadFailure: hadFailure, completion: completion)
+            runTasks(
+                tasks,
+                index: index + 1,
+                node: node,
+                group: group,
+                maxRetryCount: maxRetryCount,
+                hadFailure: hadFailure,
+                completion: completion
+            )
             return
         }
 
-        MeshProxyMessageCommand.shared.addMessage(messageHandles: messageHandles, progressBack: nil, successfulBack: { handle, statusMessage in
+        runTaskAttempt(
+            task,
+            attempt: 0,
+            maxRetryCount: maxRetryCount,
+            node: node,
+            group: group
+        ) { taskSucceeded in
+            runTasks(
+                tasks,
+                index: index + 1,
+                node: node,
+                group: group,
+                maxRetryCount: maxRetryCount,
+                hadFailure: hadFailure || !taskSucceeded,
+                completion: completion
+            )
+        }
+    }
+
+    static func runTaskAttempt(
+        _ task: DeviceGroupDeferredSyncTask,
+        attempt: Int,
+        maxRetryCount: Int,
+        node: Node,
+        group: Group,
+        completion: @escaping (Bool) -> Void
+    ) {
+        let messageHandles = task.makeMessageHandles()
+        guard !messageHandles.isEmpty else {
+            completion(true)
+            return
+        }
+
+        MeshProxyMessageCommand.shared.addMessage(messageHandles: messageHandles, ackMessageTimeout: 15, progressBack: nil, successfulBack: { handle, statusMessage in
             if statusMessage is LightLightnessStatus
                 || statusMessage is LightCTLTemperatureStatus
                 || statusMessage is LightCTLStatus
@@ -200,27 +280,68 @@ private extension DeviceGroupDeferredSyncPlanner {
                 targetNode.updateNodeStatus(message: statusMessage, source: address)
             }
         }, failedBack: nil) { resultMessageHandles in
-            var taskFailed = false
             resultMessageHandles.forEach { handle in
                 let address = handle.address ?? handle.model?.parentElement?.unicastAddress ?? node.primaryUnicastAddress
                 let targetNode = MeshNetworkManager.instance.meshNetwork?.node(withAddress: address) ?? node
                 targetNode.updateData(message: handle.message, isSuccess: handle.isSuccessful)
                 targetNode.clearSyncStateCache()
-                if !handle.isSuccessful {
-                    taskFailed = true
-                }
             }
-            if taskFailed {
-                group.updateGroupSyncState()
-            }
-            runTasks(
-                tasks,
-                index: index + 1,
+
+            let resultSuccessful = !resultMessageHandles.contains { !$0.isSuccessful }
+            let operationSuccessful = task.operationType.isSuccessful
+            let taskSucceeded = resultSuccessful && operationSuccessful
+            logTaskAttempt(
+                task,
                 node: node,
-                group: group,
-                hadFailure: hadFailure || taskFailed,
-                completion: completion
+                attempt: attempt,
+                maxRetryCount: maxRetryCount,
+                resultSuccessful: resultSuccessful,
+                operationSuccessful: operationSuccessful
             )
+
+            if taskSucceeded {
+                completion(true)
+                return
+            }
+
+            if attempt < maxRetryCount {
+                runTaskAttempt(
+                    task,
+                    attempt: attempt + 1,
+                    maxRetryCount: maxRetryCount,
+                    node: node,
+                    group: group,
+                    completion: completion
+                )
+                return
+            }
+
+            node.clearSyncStateCache()
+            group.updateGroupSyncState()
+            completion(false)
         }
+    }
+
+    static func logTaskAttempt(
+        _ task: DeviceGroupDeferredSyncTask,
+        node: Node,
+        attempt: Int,
+        maxRetryCount: Int,
+        resultSuccessful: Bool,
+        operationSuccessful: Bool
+    ) {
+        #if DEBUG
+        print("[GroupDeferredSync] node=\(node.primaryUnicastAddress) attempt=\(attempt + 1)/\(maxRetryCount + 1) resultSuccessful=\(resultSuccessful) operationSuccessful=\(operationSuccessful) operation=\(task.operationType)")
+
+        if case .configuration(_, let type) = task.operationType,
+           case .profile(let profileType) = type,
+           case .sensorEnabled(let sensorModels, let publishAddress, _, let retransmit) = profileType {
+            sensorModels.forEach { model in
+                let currentAddress = model.publish?.publicationAddress.address
+                let currentRetransmit = model.publish?.retransmit
+                print("[GroupDeferredSync] sensorPublication node=\(node.primaryUnicastAddress) expected=\(publishAddress) current=\(currentAddress.map { String($0) } ?? "<nil>") expectedRetransmit=\(retransmit) currentRetransmit=\(currentRetransmit.map { "\($0)" } ?? "<nil>")")
+            }
+        }
+        #endif
     }
 }
