@@ -1010,6 +1010,8 @@
 "switchs_overrun_message" = "The number of kinetic switches has been exceeded. A single space is limited to 16 switches.";
 "switch_delete_message" = "The kinetic switch has a bound agent. Are you sure you want to remove it?";
 "switchs_delete_message" = "Are you sure to delete the kinetic switch?";
+"power_switch_battery_delete_message" = "Are you sure to delete the battery power switch?";
+"power_switch_ac_delete_message" = "Are you sure to delete the AC power switch?";
 "switchs_not_saved" = "The kinetic switch \"%@\" has not been saved. ";
 "Finish" = "Finish";
 "GOT_IT" = "GOT IT";

@@ -1032,6 +1032,8 @@
 "switchs_overrun_message" = "动能开关数量超限，单一空间最多16个。";
 "switch_delete_message" = "该动能开关已绑定代理，确定移除？";
 "switchs_delete_message" = "确定删除该动能开关？";
+"power_switch_battery_delete_message" = "确定删除该电池供电开关？";
+"power_switch_ac_delete_message" = "确定删除该 AC 供电开关？";
 "switchs_not_saved" = "动能开关 \"%@\" 尚未保存。";
 "Finish" = "完成";
 "GOT_IT" = "知道了";

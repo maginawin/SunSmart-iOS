@@ -49,6 +49,15 @@ enum PJEightKeyPowerSwitchKind: Int {
             return "device_ACPowerSwitch"
         }
     }
+
+    var deleteConfirmationMessage: String {
+        switch self {
+        case .battery:
+            return "power_switch_battery_delete_message".localizedString
+        case .ac:
+            return "power_switch_ac_delete_message".localizedString
+        }
+    }
 }
 
 final class PJEightKeySwitchData: DeviceSwitchData {

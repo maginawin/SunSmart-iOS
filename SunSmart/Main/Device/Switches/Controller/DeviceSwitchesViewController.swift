@@ -407,9 +407,23 @@ class DeviceSwitchesViewController: UIViewController {
             return
         }
 
-        if isUnlinkedVirtualBatteryPowerSwitch(switchData) {
-            deleteCache(switchData: switchData)
-            XWHUDManager.showSuccessTipHUD("done!".localizedString)
+        if let eightKeySwitch = eightKeySwitchData(for: switchData) {
+            SRAlertView(
+                title: "notification".localizedString,
+                message: eightKeySwitch.powerSwitchKind.deleteConfirmationMessage,
+                actions: [
+                    .cancelAction,
+                    SRAlertAction(title: "confirm".localizedString, style: .destructive, actionHandler: { [weak self] _ in
+                        guard let self else { return }
+                        if self.isUnlinkedVirtualBatteryPowerSwitch(switchData) {
+                            self.deleteCache(switchData: switchData)
+                            XWHUDManager.showSuccessTipHUD("done!".localizedString)
+                        } else {
+                            self.deleteConfirmedSwitch(switchData)
+                        }
+                    })
+                ]
+            ).show()
             return
         }
 
