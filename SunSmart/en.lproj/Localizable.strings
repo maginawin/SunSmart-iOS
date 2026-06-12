@@ -78,6 +78,7 @@
 "color_temperature" = "Color Temperature";
 "color_temp" = "Color Temp";
 "cct_limit_reached_message" = "The device has reached its color temperature limit.";
+"group_cct_limit_reached_message" = "Some devices have reached their color temperature limit.";
 
 "devices_delete_message" = "Deleting the device(s) will restore the factory settings, whether to continue?";
 "device_delete_message" = "Deleting the device will restore the factory settings, whether to continue?";

@@ -76,6 +76,7 @@
 "color_temperature" = "色温";
 "color_temp" = "色温";
 "cct_limit_reached_message" = "设备已达到色温限制。";
+"group_cct_limit_reached_message" = "部分设备已达到色温限制。";
 
 "devices_delete_message" = "删除设备将恢复出厂设置，是否继续？";
 "device_delete_message" = "删除该设备将恢复出厂设置，是否继续？";

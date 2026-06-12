@@ -15,13 +15,14 @@ class GroupViewController: UIViewController {
         case progress
     }
     
+    private let scrollView = UIScrollView()
+    private let contentView = UIView()
     private var collectionView: UICollectionView!
     private var flowLayout: AlignCenterFlowLayout!
     private var deviceCountLabel: UILabel!
     private var onoffBtn: UIButton!
     private var autoBtn: UIButton!
-    private var lightnessSlider: BuoySliderView!
-    private var cctSlider: BuoySliderView!
+    private var controlPanelView: DeviceLightControlPanelView!
     private var pageControl: UIPageControl!
     
     private var calibrateLabel: UILabel!
@@ -68,6 +69,38 @@ class GroupViewController: UIViewController {
     
     let space: SpaceData
     var group: Group
+
+    private var collapsedSensorViewHeight: CGFloat {
+        SCRYFrom(40) + kSafeAreaBottomHeight
+    }
+
+    private var currentGroupBrightnessRange: ClosedRange<Int> {
+        let data = group.info.profile.lightControlData
+        return data.lowEndTrim...data.highEndTrim
+    }
+
+    private var groupControlCCTNodes: [Node] {
+        group.nodes.filter { $0.rawSupportCct && $0.effectiveChangeControlPage == .tunableWhite }
+    }
+
+    private var showsGroupControlCCT: Bool {
+        !groupControlCCTNodes.isEmpty
+    }
+
+    private var currentGroupCCTRange: ClosedRange<Int> {
+        let ranges = groupControlCCTNodes.map { $0.effectiveCctRange }
+        guard let first = ranges.first else {
+            return Int(NodeAbsoluteCctRange.defaultRange.lowerBound)...Int(NodeAbsoluteCctRange.defaultRange.upperBound)
+        }
+        let range = ranges.reduce(first) { result, range in
+            min(result.lowerBound, range.lowerBound)...max(result.upperBound, range.upperBound)
+        }
+        return Int(range.lowerBound)...Int(range.upperBound)
+    }
+
+    private var showsGroupControlPanel: Bool {
+        group.supportLightness || showsGroupControlCCT
+    }
     
     //    private var devices: [String] = []
     //    private var isGroupUpdateData = false
@@ -526,16 +559,7 @@ class GroupViewController: UIViewController {
         onoffBtn.isEnabled = MeshLibManager.manager.isMeshNetworkConnected && group.nodes.contains(where: { $0.state })
         onoffBtn.isSelected = group.isOn
         
-        let data = group.info.profile.lightControlData
-        lightnessSlider.slider.limitRange = data.lowEndTrim...data.highEndTrim
-        lightnessSlider.value = Node.getLightness100(lightness: group.lightness)
-        if group.effectiveSupportCct {
-            cctSlider.updateCctRange(group.effectiveCctRange)
-            cctSlider.value = Int(group.clampEffectiveCct(UInt16(group.cct)))
-            cctSlider.isHidden = false
-        }else {
-            cctSlider.isHidden = true
-        }
+        updateControlPanel()
         
         let profileType = group.info.profile.type
         // 提示校准
@@ -586,6 +610,26 @@ class GroupViewController: UIViewController {
         deviceCountLabel.text = "(\(group.nodes.count))"
         
         collectionView.reloadData()
+    }
+
+    private func updateControlPanel() {
+        controlPanelView.isHidden = !showsGroupControlPanel
+        guard showsGroupControlPanel else {
+            return
+        }
+
+        let brightnessValue = group.isOn ? Node.getLightness100(lightness: group.lightness) : 0
+        let cctRange = currentGroupCCTRange
+        controlPanelView.configure(.init(
+            controlType: space.controlType,
+            showCCTQuickButtons: space.showCCTQuickButtons,
+            showsBrightness: group.supportLightness,
+            showsCCT: showsGroupControlCCT,
+            brightnessValue: brightnessValue,
+            brightnessRange: currentGroupBrightnessRange,
+            cctValue: max(cctRange.lowerBound, min(cctRange.upperBound, group.cct)),
+            cctRange: cctRange
+        ))
     }
     
     private func updateEmptyUI() {
@@ -760,7 +804,7 @@ class GroupViewController: UIViewController {
         group.nodes.forEach({
             $0.isOn = group.isOn
         })
-        lightnessSlider.value = group.isOn ? Node.getLightness100(lightness: group.lightness) : 0
+        controlPanelView.setBrightnessValue(group.isOn ? Node.getLightness100(lightness: group.lightness) : 0)
         collectionView.reloadData()
         
         refreshAutoState()
@@ -797,9 +841,6 @@ class GroupViewController: UIViewController {
 //            })
 //            collectionView.reloadData()
 //            
-//            if group.isOn != onoffBtn.isSelected {
-//                lightnessSlider.value = Node.getLightness100(lightness: group.lightness)
-//            }
 //            onoffBtn.isSelected = group.isOn
 //        }
         // daylight harvesting校准后无效
@@ -816,7 +857,7 @@ class GroupViewController: UIViewController {
             collectionView.reloadData()
                 
             if group.isOn != onoffBtn.isSelected {
-                lightnessSlider.value = Node.getLightness100(lightness: group.lightness)
+                controlPanelView.setBrightnessValue(Node.getLightness100(lightness: group.lightness))
             }
             onoffBtn.isSelected = group.isOn
             
@@ -841,54 +882,176 @@ class GroupViewController: UIViewController {
     }
     
     private func bindSliderAciton() {
-        lightnessSlider.valueThrottleChangedCallback = {[weak self] (value, ended) in
-            print("lightness: \(value)")
-            guard let self = self else { return }
+        controlPanelView.brightnessValueChanged = { [weak self] value in
+            guard let self else { return }
             guard !self.showEmergencyControlBlockedIfNeeded() else {
+                self.updateControlPanel()
                 return
             }
-            let lightness = Node.getLightness(lightness100: value)
-            self.group.lightness = lightness
-            self.group.isOn = lightness > 0
-            self.onoffBtn.isSelected = self.group.isOn
-            MeshAPI.setGroupLightnessState(address: self.group.address.address, lightness: lightness)
-            group.nodes.forEach({
-                $0.isOn = lightness > 0
-                $0.lightness = lightness
-//                self.reloadCollectionItem(node: $0)
-            })
-//            collectionView.reloadData()
-            if ended {
-                CATransaction.setDisableActions(true)
-                collectionView.reloadItems(at: collectionView.indexPathsForVisibleItems)
-                CATransaction.commit()
-            }
-            self.refreshAutoState()
-//            self.isGroupUpdateData = true
+            self.applyGroupBrightnessValue(value)
         }
-        
-        cctSlider.valueThrottleChangedCallback = {[weak self] (value, ended) in
-            print("cct: \(value)")
-            guard let self = self else { return }
+
+        controlPanelView.brightnessThrottleValueChanged = { [weak self] value, ended in
+            guard let self else { return }
             guard !self.showEmergencyControlBlockedIfNeeded() else {
+                self.updateControlPanel()
                 return
             }
-            let temperature = self.group.clampEffectiveCct(UInt16(value))
-            self.group.cct = Int(temperature)
+            self.sendGroupBrightnessValue(value, ended: ended)
+        }
+
+        controlPanelView.cctValueChanged = { [weak self] value in
+            guard let self else { return }
+            guard !self.showEmergencyControlBlockedIfNeeded() else {
+                self.updateControlPanel()
+                return
+            }
+            _ = self.applyGroupCCTValue(value)
+        }
+
+        controlPanelView.cctThrottleValueChanged = { [weak self] value, ended in
+            guard let self else { return }
+            guard !self.showEmergencyControlBlockedIfNeeded() else {
+                self.updateControlPanel()
+                return
+            }
+            let temperature = self.applyGroupCCTValue(value)
             MeshAPI.setGroupColorTemperatureState(address: self.group.address.address, temperature: temperature)
-            group.nodes.filter({ $0.effectiveSupportCct }).forEach({
-                $0.temperature = $0.clampEffectiveCct(temperature)
-//                self.reloadCollectionItem(node: $0)
-            })
             if ended {
-                CATransaction.setDisableActions(true)
-                collectionView.reloadItems(at: collectionView.indexPathsForVisibleItems)
-                CATransaction.commit()
+                self.reloadVisibleGroupDeviceItems()
+                self.showGroupCCTLimitMessageIfNeeded(target: value)
             }
             self.refreshAutoState()
-//            collectionView.reloadData()
-//            self.isGroupUpdateData = true
         }
+
+        controlPanelView.cctQuickButtonValueSelected = { [weak self] value in
+            self?.applyGroupCCTQuickButtonValue(value)
+        }
+
+        controlPanelView.editBrightnessRequested = { [weak self] in
+            self?.showGroupBrightnessInputAlert()
+        }
+
+        controlPanelView.editCCTRequested = { [weak self] in
+            self?.showGroupCCTInputAlert()
+        }
+    }
+
+    private func applyGroupBrightnessValue(_ value: Int) {
+        let clampedValue = max(currentGroupBrightnessRange.lowerBound, min(currentGroupBrightnessRange.upperBound, value))
+        let lightness = Node.getLightness(lightness100: clampedValue)
+        group.lightness = lightness
+        group.isOn = lightness > 0
+        onoffBtn.isSelected = group.isOn
+        group.nodes.forEach {
+            $0.isOn = lightness > 0
+            $0.lightness = lightness
+        }
+    }
+
+    private func sendGroupBrightnessValue(_ value: Int, ended: Bool) {
+        applyGroupBrightnessValue(value)
+        let clampedValue = max(currentGroupBrightnessRange.lowerBound, min(currentGroupBrightnessRange.upperBound, value))
+        let lightness = Node.getLightness(lightness100: clampedValue)
+        MeshAPI.setGroupLightnessState(address: group.address.address, lightness: lightness)
+        if ended {
+            reloadVisibleGroupDeviceItems()
+        }
+        refreshAutoState()
+    }
+
+    @discardableResult
+    private func applyGroupCCTValue(_ value: Int) -> UInt16 {
+        let range = currentGroupCCTRange
+        let clampedValue = max(range.lowerBound, min(range.upperBound, value))
+        let temperature = UInt16(clampedValue)
+        group.cct = Int(temperature)
+        groupControlCCTNodes.forEach {
+            $0.temperature = $0.clampEffectiveCct(temperature)
+        }
+        return temperature
+    }
+
+    private func applyGroupCCTQuickButtonValue(_ value: Int) {
+        guard !showEmergencyControlBlockedIfNeeded() else {
+            updateControlPanel()
+            return
+        }
+        let temperature = applyGroupCCTValue(value)
+        controlPanelView.setCCTValue(Int(temperature))
+        MeshAPI.setGroupColorTemperatureState(address: group.address.address, temperature: temperature)
+        reloadVisibleGroupDeviceItems()
+        showGroupCCTLimitMessageIfNeeded(target: value)
+        refreshAutoState()
+    }
+
+    private func showGroupCCTLimitMessageIfNeeded(target: Int) {
+        let hasLimitedDevice = groupControlCCTNodes.contains { node in
+            target < Int(node.effectiveCctRange.lowerBound) || target > Int(node.effectiveCctRange.upperBound)
+        }
+        guard hasLimitedDevice else {
+            return
+        }
+        XWHUDManager.showTipHUD("group_cct_limit_reached_message".localizedString, isLineFeed: true)
+    }
+
+    private func reloadVisibleGroupDeviceItems() {
+        CATransaction.setDisableActions(true)
+        collectionView.reloadItems(at: collectionView.indexPathsForVisibleItems)
+        CATransaction.commit()
+    }
+
+    private func showGroupBrightnessInputAlert() {
+        guard !showEmergencyControlBlockedIfNeeded() else {
+            updateControlPanel()
+            return
+        }
+        showIntegerInputAlert(
+            title: "brightness".localizedString,
+            range: currentGroupBrightnessRange
+        ) { [weak self] _, clampedValue in
+            guard let self else { return }
+            self.controlPanelView.setBrightnessValue(clampedValue)
+            self.applyGroupBrightnessValue(clampedValue)
+            self.sendGroupBrightnessValue(clampedValue, ended: true)
+        }
+    }
+
+    private func showGroupCCTInputAlert() {
+        guard !showEmergencyControlBlockedIfNeeded() else {
+            updateControlPanel()
+            return
+        }
+        showIntegerInputAlert(
+            title: "color_temp".localizedString,
+            range: currentGroupCCTRange
+        ) { [weak self] rawValue, _ in
+            guard let self else { return }
+            let normalizedValue = DeviceLightControlPanelView.normalizedCCTInputValue(rawValue, range: self.currentGroupCCTRange)
+            let temperature = self.applyGroupCCTValue(normalizedValue)
+            self.controlPanelView.setCCTValue(Int(temperature))
+            MeshAPI.setGroupColorTemperatureState(address: self.group.address.address, temperature: temperature)
+            self.reloadVisibleGroupDeviceItems()
+            self.showGroupCCTLimitMessageIfNeeded(target: Int(temperature))
+            self.refreshAutoState()
+        }
+    }
+
+    private func showIntegerInputAlert(title: String, range: ClosedRange<Int>, confirm: @escaping (_ rawValue: Int, _ clampedValue: Int) -> Void) {
+        SRAlertView(
+            title: title,
+            inputText: nil,
+            inputFieldStyle: .init(keyboardType: .numberPad, maxInputLength: 5, textAlignment: .center, showClear: true),
+            actions: [.cancelAction, SRAlertAction(title: "COMFIRM".localizedString, style: .default)],
+            textValueChangedBack: nil
+        ) { text in
+            guard let value = Int(text) else {
+                XWHUDManager.showTipHUD("illegal_input".localizedString, isLineFeed: true)
+                return
+            }
+            let clamped = max(range.lowerBound, min(range.upperBound, value))
+            confirm(value, clamped)
+        }.show()
     }
     
     /// 添加设备
@@ -1090,10 +1253,10 @@ class GroupViewController: UIViewController {
         
         onoffBtn.isEnabled = MeshLibManager.manager.isMeshNetworkConnected && group.nodes.contains(where: { $0.state })
         if group.isOn != onoffBtn.isSelected {
-            lightnessSlider.value = Node.getLightness100(lightness: group.lightness)
+            controlPanelView.setBrightnessValue(Node.getLightness100(lightness: group.lightness))
         }
         onoffBtn.isSelected = group.isOn
-//        cctSlider.value = group.cct
+        updateControlPanel()
     }
     
     /// 长按事件，跳转到设备详情
@@ -1119,6 +1282,22 @@ class GroupViewController: UIViewController {
 
     
     private func setupUI() {
+        view.addSubview(scrollView)
+        scrollView.alwaysBounceVertical = false
+        scrollView.delaysContentTouches = false
+        scrollView.showsVerticalScrollIndicator = false
+        scrollView.contentInsetAdjustmentBehavior = .never
+        scrollView.snp.makeConstraints { make in
+            make.left.right.bottom.equalToSuperview()
+            make.top.equalTo(view.safeAreaLayoutGuide)
+        }
+
+        scrollView.addSubview(contentView)
+        contentView.clipsToBounds = false
+        contentView.snp.makeConstraints { make in
+            make.edges.equalToSuperview()
+            make.width.equalTo(scrollView)
+        }
         
         flowLayout = AlignCenterFlowLayout()
         flowLayout.minimumLineSpacing = itemMargin
@@ -1140,21 +1319,21 @@ class GroupViewController: UIViewController {
         let longPress = UILongPressGestureRecognizer(target: self, action: #selector(collectionLongPressAction))
         longPress.minimumPressDuration = 0.5
         collectionView.addGestureRecognizer(longPress)
-        view.addSubview(collectionView)
+        contentView.addSubview(collectionView)
         collectionView.snp.makeConstraints { make in
             make.left.equalTo(SCRXFrom(30))
             make.right.equalTo(SCRXFrom(-29))
             if isIPad {
-                make.top.equalTo(view.safeAreaLayoutGuide).offset(SCRYFit(60))
-                make.height.equalTo(SCRYFrom(498))
+                make.top.equalToSuperview().offset(SCRYFit(60))
+                make.height.equalTo(SCRYFrom(478))
             }else {
-                make.top.equalTo(view.safeAreaLayoutGuide).offset(SCRYFit(40))
-                make.height.equalTo(SCRYFrom(340))
+                make.top.equalToSuperview().offset(SCRYFit(40))
+                make.height.equalTo(SCRYFrom(320))
             }
         }
         
         deviceCountLabel = UILabel(text: "", textColor: Bar_Color, fontSize: 14, fontWeight: .light)
-        view.addSubview(deviceCountLabel)
+        contentView.addSubview(deviceCountLabel)
         deviceCountLabel.snp.makeConstraints { make in
             make.left.equalTo(collectionView).offset(SCRXFrom(20))
             make.top.equalTo(collectionView).offset(SCRYFrom(13))
@@ -1165,7 +1344,7 @@ class GroupViewController: UIViewController {
         pageControl.pageIndicatorTintColor = RGB(216, 216, 216)
         pageControl.addTarget(self, action: #selector(pageControlValueChanged), for: .valueChanged)
         pageControl.hidesForSinglePage = true
-        view.addSubview(pageControl)
+        contentView.addSubview(pageControl)
         pageControl.snp.makeConstraints { make in
             make.bottom.equalTo(collectionView)
             make.centerX.equalToSuperview()
@@ -1184,15 +1363,15 @@ class GroupViewController: UIViewController {
         onoffBtn = UIButton(normalImageName: offImageName, selectedImageName: onImageName, target: self, action: #selector(onoffBtnClick))
         
 //        onoffBtn.setImage(UIImage(named: offImageName), for: .disabled)
-        view.addSubview(onoffBtn)
+        contentView.addSubview(onoffBtn)
         onoffBtn.snp.makeConstraints { make in
             if isIPad {
                 make.width.height.equalTo(56)
-                make.right.equalTo(view.snp.centerX).offset(SCRXFrom(-40))
+                make.right.equalTo(contentView.snp.centerX).offset(SCRXFrom(-40))
                 make.top.equalTo(collectionView.snp.bottom).offset(SCRYFit(64))
             }else {
                 make.centerX.equalToSuperview().offset(SCRXFrom(-40))
-                make.top.equalTo(collectionView.snp.bottom).offset(SCRYFit(32))
+                make.top.equalTo(collectionView.snp.bottom).offset(SCRYFit(20))
             }
         }
         
@@ -1201,7 +1380,7 @@ class GroupViewController: UIViewController {
 //        autoBtn.addTarget(self, action: #selector(btnTouchCancelAction), for: .touchCancel)
 //        UIButton(title: "AUTO".localizedString, titleSize: 13, titleColor: Bar_Color, fit: false, target: self, action: #selector(autoBtnAction))
 //        autoBtn.setBackgroundImage(UIImage(named: "auto_btn_border"), for: .normal)
-        view.addSubview(autoBtn)
+        contentView.addSubview(autoBtn)
         autoBtn.snp.makeConstraints { make in
             make.centerY.equalTo(onoffBtn)
             if isIPad {
@@ -1211,12 +1390,11 @@ class GroupViewController: UIViewController {
                 make.left.equalTo(onoffBtn.snp.right).offset(SCRXFrom(40))
             }
         }
-        
-        lightnessSlider = BuoySliderView(frame: .zero, functionType: .level())
-        lightnessSlider.slider.interval = 0.5
-//        lightnessSlider.isHidden = !group.supportLightness
-        view.addSubview(lightnessSlider)
-        lightnessSlider.snp.makeConstraints { make in
+
+        controlPanelView = DeviceLightControlPanelView()
+        controlPanelView.clipsToBounds = false
+        contentView.addSubview(controlPanelView)
+        controlPanelView.snp.makeConstraints { make in
             if isIPad {
                 make.left.equalTo(SCRXFrom(107))
                 make.right.equalTo(SCRXFrom(-107))
@@ -1224,39 +1402,27 @@ class GroupViewController: UIViewController {
                 make.left.right.equalTo(collectionView)
             }
             make.top.equalTo(onoffBtn.snp.bottom).offset(SCRYFit(8))
-            make.height.equalTo(SCRYFrom(76))
-        }
-        
-        let cctRange = group.effectiveCctRange
-        cctSlider = BuoySliderView(frame: .zero, functionType: .cct(min: Int(cctRange.lowerBound), max: Int(cctRange.upperBound)))
-        cctSlider.slider.interval = 0.5
-        cctSlider.slider.step = 10
-//        Node.getTemperature100(temperature: UInt16(group.cct))
-//        cctSlider.isHidden = !group.supportCct
-        view.addSubview(cctSlider)
-        cctSlider.snp.makeConstraints { make in
-            make.left.right.height.equalTo(lightnessSlider)
-            make.top.equalTo(lightnessSlider.snp.bottom).offset(SCRYFit(2))
+            make.bottom.equalToSuperview().offset(-(collapsedSensorViewHeight + SCRYFit(20)))
         }
         
         calibrateBtn = UIButton(title: "CALIBRATE".localizedString, titleSize: 14, titleWeight: .light, titleColor: .white, target: self, action: #selector(calibrateBtnAction))
         calibrateBtn.backgroundColor = Bar_Color
         calibrateBtn.layer.cornerRadius = SCRYFrom(15)
         calibrateBtn.isHidden = true
-        view.addSubview(calibrateBtn)
+        contentView.addSubview(calibrateBtn)
         calibrateBtn.snp.makeConstraints { make in
             make.right.equalTo(collectionView)
-            make.top.equalTo(view.safeAreaLayoutGuide)
+            make.top.equalToSuperview()
             make.width.equalTo(SCRXFrom(88))
             make.height.equalTo(SCRYFrom(32))
         }
         
         calibrateLabel = UILabel(text: "not_calibrated".localizedString, textColor: SubText_Color, fontSize: 14, fontWeight: .light)
         calibrateLabel.isHidden = true
-        view.addSubview(calibrateLabel)
+        contentView.addSubview(calibrateLabel)
         calibrateLabel.snp.makeConstraints { make in
             make.left.equalTo(collectionView)
-            make.top.equalTo(view.safeAreaLayoutGuide)
+            make.top.equalToSuperview()
             make.centerY.equalTo(calibrateBtn)
 //            make.bottom.equalTo(collectionView.snp.top).offset(SCRYFit(-16))
         }
@@ -1265,7 +1431,7 @@ class GroupViewController: UIViewController {
         setPathBtn.backgroundColor = Bar_Color
         setPathBtn.layer.cornerRadius = SCRYFrom(15)
         setPathBtn.isHidden = true
-        view.addSubview(setPathBtn)
+        contentView.addSubview(setPathBtn)
         setPathBtn.snp.makeConstraints { make in
             make.right.equalTo(collectionView)
             make.width.height.centerY.equalTo(calibrateBtn)
@@ -1273,7 +1439,7 @@ class GroupViewController: UIViewController {
         
         setPathLabel = UILabel(text: "group_set_the_path_sequence".localizedString, textColor: SubText_Color, fontSize: 14, fontWeight: .light)
         setPathLabel.isHidden = true
-        view.addSubview(setPathLabel)
+        contentView.addSubview(setPathLabel)
         setPathLabel.snp.makeConstraints { make in
             make.left.equalTo(collectionView)
             make.centerY.equalTo(setPathBtn)
@@ -1282,7 +1448,7 @@ class GroupViewController: UIViewController {
         
         profileTypeBtn = UIButton(title: "", titleSize: 14, titleWeight: .light, titleColor: SubText_Color, fit: false, target: self, action: #selector(profileTypeBtnAction))
         profileTypeBtn.isHidden = true
-        view.addSubview(profileTypeBtn)
+        contentView.addSubview(profileTypeBtn)
         profileTypeBtn.snp.makeConstraints { make in
             make.centerY.equalTo(setPathLabel)
             make.centerX.equalToSuperview()
@@ -1424,9 +1590,10 @@ extension GroupViewController: MeshLibManagerMessageDelegate {
                     if isSwitchAction {
                         collectionView.reloadData()
                         if group.isOn != onoffBtn.isSelected {
-                            lightnessSlider.value = Node.getLightness100(lightness: group.lightness)
+                            controlPanelView.setBrightnessValue(Node.getLightness100(lightness: group.lightness))
                         }
                         onoffBtn.isSelected = group.isOn
+                        updateControlPanel()
                     }else {
                         reloadCollectionItem(node: node)
                     }

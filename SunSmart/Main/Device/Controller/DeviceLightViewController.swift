@@ -867,7 +867,8 @@ class DeviceLightViewController: UIViewController {
             range: range
         ) { [weak self] value in
             guard let self = self else { return }
-            let temperature = self.node.clampEffectiveCct(UInt16(value))
+            let normalizedValue = DeviceLightControlPanelView.normalizedCCTInputValue(value, range: range)
+            let temperature = self.node.clampEffectiveCct(UInt16(normalizedValue))
             self.controlPanelView.setCCTValue(Int(temperature))
             self.applyCCTValue(Int(temperature))
             MeshAPI.setNodeColorTemperatureState(address: self.node.primaryUnicastAddress, temperature: temperature, ack: true)

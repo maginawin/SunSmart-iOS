@@ -9,6 +9,8 @@ import UIKit
 
 final class DeviceLightControlPanelView: UIView {
 
+    private static let cctInputStep = 10
+
     struct Configuration: Equatable {
         var controlType: SpaceControlType
         var showCCTQuickButtons: Bool
@@ -63,6 +65,11 @@ final class DeviceLightControlPanelView: UIView {
     
     var currentCCTRange: ClosedRange<Int> {
         configuration?.cctRange ?? 2700...6500
+    }
+
+    static func normalizedCCTInputValue(_ value: Int, range: ClosedRange<Int>) -> Int {
+        let rounded = Int((Double(value) / Double(cctInputStep)).rounded()) * cctInputStep
+        return max(range.lowerBound, min(range.upperBound, rounded))
     }
 
     override init(frame: CGRect) {
@@ -355,10 +362,20 @@ private final class DetailedControlSliderView: UIView {
 
     private func bindActions() {
         sliderView.valueChangedCallback = { [weak self] value in
+            self?.setSliderOverlayActive(true)
             self?.valueChanged?(value)
         }
         sliderView.valueThrottleChangedCallback = { [weak self] value, ended in
+            self?.setSliderOverlayActive(!ended)
             self?.throttleValueChanged?(value, ended)
+        }
+    }
+
+    private func setSliderOverlayActive(_ active: Bool) {
+        if active {
+            bringSubviewToFront(sliderView)
+        } else {
+            insertSubview(sliderView, at: 0)
         }
     }
 
