@@ -10,19 +10,39 @@ import UIKit
 class ContentDisplayViewController: UIViewController {
 
     enum Options {
-        /// 标题、禁用后图片、启用后图片、描述、功能标题
-        var data: (title: String, hideImageName: String, displayImageName: String, note: String, content: String) {
+        case deviceNameDisplay
+        case cctQuickButtons
+        case controlStyle
+
+        var title: String {
             switch self {
             case .deviceNameDisplay:
-                return ("device_name_display".localizedString, "device_name_prefixes_hide", "device_name_prefixes_display", "device_name_display_note".localizedString, "display_device_name_prefix".localizedString)
+                return "device_name_display".localizedString
+            case .cctQuickButtons:
+                return "cct_quick_buttons".localizedString
+            case .controlStyle:
+                return "control_style".localizedString
             }
         }
-        
-        case deviceNameDisplay
+
+        var reuseIdentifier: String {
+            switch self {
+            case .deviceNameDisplay:
+                return "deviceNameDisplayCell"
+            case .cctQuickButtons:
+                return "switchCell"
+            case .controlStyle:
+                return "controlStyleCell"
+            }
+        }
     }
     
     private var tableView: UITableView!
-    private let options: [Options] = [.deviceNameDisplay]
+    private let options: [Options] = [.deviceNameDisplay, .cctQuickButtons, .controlStyle]
+
+    private var isEditable: Bool {
+        space.permission == .owner || space.permission == .editor
+    }
         
     let space: SpaceData
     
@@ -61,7 +81,9 @@ class ContentDisplayViewController: UIViewController {
         
         tableView = UITableView()
         tableView.backgroundColor = Background_Color
-        tableView.register(ContentDisplayViewCell.classForCoder(), forCellReuseIdentifier: "cell")
+        tableView.register(ContentDisplayViewCell.classForCoder(), forCellReuseIdentifier: Options.deviceNameDisplay.reuseIdentifier)
+        tableView.register(ContentDisplaySwitchViewCell.classForCoder(), forCellReuseIdentifier: Options.cctQuickButtons.reuseIdentifier)
+        tableView.register(ContentDisplayControlStyleViewCell.classForCoder(), forCellReuseIdentifier: Options.controlStyle.reuseIdentifier)
         tableView.separatorStyle = .none
         tableView.dataSource = self
         tableView.delegate = self
@@ -72,6 +94,13 @@ class ContentDisplayViewController: UIViewController {
             make.left.right.bottom.equalToSuperview()
         }
         
+    }
+
+    private func notifyContentDisplayChanged() {
+        NotificationCenter.default.post(
+            name: .init(spaceDataChangedNotificaitonName),
+            object: SpaceChangeDataType.common
+        )
     }
 
 }
@@ -86,25 +115,54 @@ extension ContentDisplayViewController: UITableViewDataSource, UITableViewDelega
         
         let option = options[indexPath.row]
         
-        let cell = tableView.dequeueReusableCell(withIdentifier: "cell", for: indexPath) as! ContentDisplayViewCell
-        
-        let data = option.data
-        cell.titleLabel.text = data.title
-        cell.disableModeImageView.image = UIImage(named: data.hideImageName)
-        cell.enableModeImageView.image = UIImage(named: data.displayImageName)
-        cell.note = data.note
-        cell.optionsLabel.text = data.content
-        
         switch option {
         case .deviceNameDisplay:
+            let cell = tableView.dequeueReusableCell(withIdentifier: option.reuseIdentifier, for: indexPath) as! ContentDisplayViewCell
+            cell.titleLabel.text = option.title
+            cell.disableModeImageView.image = UIImage(named: "device_name_prefixes_hide")
+            cell.enableModeImageView.image = UIImage(named: "device_name_prefixes_display")
+            cell.note = "device_name_display_note".localizedString
+            cell.optionsLabel.text = "display_device_name_prefix".localizedString
             cell.enableSwitch.isOn = space.displayDeviceNamePrefix
-            cell.switchValueCallback = {[weak self] isOn in
-                guard let self = self else { return }
+            cell.isEditable = isEditable
+            cell.switchValueCallback = { [weak self] isOn in
+                guard let self = self, self.isEditable else { return }
+                guard self.space.displayDeviceNamePrefix != isOn else { return }
                 self.space.displayDeviceNamePrefix = isOn
-                self.space.save()
+                self.notifyContentDisplayChanged()
             }
+            return cell
+
+        case .cctQuickButtons:
+            let cell = tableView.dequeueReusableCell(withIdentifier: option.reuseIdentifier, for: indexPath) as! ContentDisplaySwitchViewCell
+            cell.titleLabel.text = option.title
+            cell.note = "cct_quick_buttons_note".localizedString
+            cell.optionTitle = "show_cct_quick_buttons".localizedString
+            cell.isOn = space.showCCTQuickButtons
+            cell.isEditable = isEditable
+            cell.switchValueCallback = { [weak self] isOn in
+                guard let self = self, self.isEditable else { return }
+                guard self.space.showCCTQuickButtons != isOn else { return }
+                self.space.showCCTQuickButtons = isOn
+                self.notifyContentDisplayChanged()
+            }
+            return cell
+
+        case .controlStyle:
+            let cell = tableView.dequeueReusableCell(withIdentifier: option.reuseIdentifier, for: indexPath) as! ContentDisplayControlStyleViewCell
+            cell.titleLabel.text = option.title
+            cell.note = "control_style_note".localizedString
+            cell.selectedType = space.controlType
+            cell.isEditable = isEditable
+            cell.selectionCallback = { [weak self, weak cell] type in
+                guard let self = self, self.isEditable else { return }
+                guard self.space.controlType != type else { return }
+                self.space.controlType = type
+                cell?.selectedType = type
+                self.notifyContentDisplayChanged()
+            }
+            return cell
         }
-        return cell
     }
     
 }

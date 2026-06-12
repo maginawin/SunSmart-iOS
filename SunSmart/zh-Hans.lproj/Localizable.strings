@@ -74,6 +74,9 @@
 "light_level" = "调光水平";
 "brightness" = "亮度";
 "color_temperature" = "色温";
+"color_temp" = "色温";
+"cct_limit_reached_message" = "设备已达到色温限制。";
+"group_cct_limit_reached_message" = "部分设备已达到色温限制。";
 
 "devices_delete_message" = "删除设备将恢复出厂设置，是否继续？";
 "device_delete_message" = "删除该设备将恢复出厂设置，是否继续？";
@@ -1492,6 +1495,15 @@
 "device_name_display" = "设备名称显示";
 "display_device_name_prefix" = "显示设备名前缀";
 "device_name_display_note" = "显示前缀有助于清晰区分设备。\n- 只有加入群组的设备才会有前缀。\n- 未加入群组的设备前缀为空。";
+"cct_quick_buttons" = "CCT 快捷按钮";
+"cct_quick_buttons_note" = "在支持色温的设备和群组页面显示 CCT 预设快捷按钮。";
+"show_cct_quick_buttons" = "显示 CCT 快捷按钮";
+"control_style" = "控制样式";
+"control_style_note" = "选择设备和群组页面中滑块控件的显示方式。";
+"simple_control_style" = "简洁";
+"simple_control_style_note" = "仅滑块";
+"detailed_control_style" = "详细";
+"detailed_control_style_note" = "标签 + 数值";
 
 "flashing_frequency_range" = "闪烁频率范围";
 "flashing_frequency_range_tip" = "(大于此频率生效)";

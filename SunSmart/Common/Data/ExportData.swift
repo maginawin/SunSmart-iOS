@@ -167,6 +167,9 @@ extension SpaceData {
 //            spaceJsonData.updateValue(self.isFavourite, forKey: "favourite")
             spaceJsonData.updateValue(Int64(self.create) , forKey: "createTimestamp")
             spaceJsonData.updateValue(Int64(self.lastUpdate) , forKey: "updateTimestamp")
+            spaceJsonData.updateValue(self.displayDeviceNamePrefix, forKey: "displayDeviceNamePrefix")
+            spaceJsonData.updateValue(self.showCCTQuickButtons, forKey: "showCCTQuickButtons")
+            spaceJsonData.updateValue(self.controlType.rawValue, forKey: "controlType")
             spaceJsonData.updateValue(self.deviceBlinkMode.rawValue, forKey: "deviceBlinkMode")
             if !self.triggerZones.isEmpty,
                let data = try? jsonEncoder.encode(self.triggerZones),

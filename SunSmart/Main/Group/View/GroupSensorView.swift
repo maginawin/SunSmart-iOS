@@ -154,7 +154,7 @@ class GroupSensorView: UIView {
                     lightLuxLabel.text = "\(sensor.steadyDaylightLux!)lx"
                     lightLuxLabel.backgroundColor = RGB(245, 245, 245)
                     
-                    controlStateImageView.isHidden = !sensor.lightControlOn
+                    controlStateImageView.isHidden = true
                     startUpdateLuxTimer()
                 }else {
                     controlStateImageView.isHidden = true
@@ -462,6 +462,7 @@ class GroupSensorView: UIView {
         }
         
         controlStateImageView = UIImageView(image: UIImage(named: "group_auto")?.withTintColor(.black))
+        controlStateImageView.isHidden = true
         topView.addSubview(controlStateImageView)
         controlStateImageView.snp.makeConstraints { make in
             make.right.equalTo(lightImageView.snp.left).offset(SCRXFrom(-16))
