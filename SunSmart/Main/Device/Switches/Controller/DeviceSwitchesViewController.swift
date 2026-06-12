@@ -351,7 +351,10 @@ class DeviceSwitchesViewController: UIViewController {
                 }
             }
         }
-        vc.backActionCallback = { _ in }
+        vc.backActionCallback = { [weak self, weak vc] _ in
+            guard let vc else { return }
+            self?.closeSwitchDeleteSyncController(vc)
+        }
 
         if let source, let navigationController = source.navigationController {
             navigationController.pushViewController(vc, animated: true)
@@ -360,6 +363,19 @@ class DeviceSwitchesViewController: UIViewController {
                 vc.preferredContentSize = iPadPreferredContentSize
             }
             present(NavigationViewController(rootViewController: vc), animated: true)
+        }
+    }
+
+    private func closeSwitchDeleteSyncController(_ syncController: UIViewController) {
+        if let navigationController = syncController.navigationController {
+            if navigationController.viewControllers.first === syncController,
+               navigationController.presentingViewController != nil {
+                navigationController.dismiss(animated: true)
+            } else {
+                navigationController.popViewController(animated: true)
+            }
+        } else {
+            syncController.dismiss(animated: true)
         }
     }
     
