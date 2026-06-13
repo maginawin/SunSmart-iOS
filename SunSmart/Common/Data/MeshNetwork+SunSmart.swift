@@ -1827,6 +1827,18 @@ extension Node {
         0x2493,
         0x2494
     ]
+    private static let unsupportedMotionSensitivityCompanyIdentifier: UInt16 = 0x0A78
+    private static let unsupportedMotionSensitivityProductIdentifiers: Set<UInt16> = [
+        0x2121,
+        0x2122,
+        0x2131,
+        0x2132,
+        0x2133,
+        0x2491,
+        0x2492,
+        0x2493,
+        0x2494
+    ]
 
     static func isEmergencySignController(companyIdentifier: UInt16?, productIdentifier: UInt16?) -> Bool {
         guard companyIdentifier == emergencySignControllerCompanyIdentifier,
@@ -2393,6 +2405,11 @@ extension Node {
     /// 是否支持移动感应灵敏度
     var supportMotionSensitivity: Bool {
         guard self.sunricherVendorModel != nil else {
+            return false
+        }
+        if self.companyIdentifier == Self.unsupportedMotionSensitivityCompanyIdentifier,
+           let productIdentifier = self.productIdentifier,
+           Self.unsupportedMotionSensitivityProductIdentifiers.contains(productIdentifier) {
             return false
         }
         return self.presenceDetectedSensorModel != nil
