@@ -3162,6 +3162,7 @@ extension Node.PreConfiguration {
         static let resetDaylightCalibration = Expression<Bool?>("resetDaylightCalibration")
         static let occupancyEnable = Expression<Bool>("occupancyEnable")
         static let displayLux = Expression<Bool>("displayLux")
+        static let upRatio = Expression<Int?>("upRatio")
     }
     
     /// 初始化Node业务数据扩展表
@@ -3178,6 +3179,7 @@ extension Node.PreConfiguration {
             builder.column(ExpressionKey.resetDaylightCalibration)
 //            builder.column(ExpressionKey.occupancyEnable)
             builder.column(ExpressionKey.displayLux)
+            builder.column(ExpressionKey.upRatio)
             builder.unique(ExpressionKey.meshUUID, ExpressionKey.nodeAddress)
         }))
         
@@ -3203,6 +3205,10 @@ extension Node.PreConfiguration {
             // 是否存在”displayLux“属性
             if !columns.contains(where: { $0.name == "displayLux" }) {
                 _ = try? SunSmartDataManager.shared.db?.run(Node.PreConfiguration.nodePreConfigurationTable.addColumn(ExpressionKey.displayLux, defaultValue: false))
+            }
+            // 是否存在”upRatio“属性
+            if !columns.contains(where: { $0.name == "upRatio" }) {
+                _ = try? SunSmartDataManager.shared.db?.run(Node.PreConfiguration.nodePreConfigurationTable.addColumn(ExpressionKey.upRatio, defaultValue: 50))
             }
             
         }
@@ -3238,6 +3244,7 @@ extension Node.PreConfiguration {
         }
         preConfiguration.resetDaylightCalibration = row[ExpressionKey.resetDaylightCalibration]
         preConfiguration.displayLux = row[ExpressionKey.displayLux]
+        preConfiguration.upRatio = row[ExpressionKey.upRatio]
         return preConfiguration
     }
     
@@ -3262,7 +3269,8 @@ extension Node.PreConfiguration {
             ExpressionKey.nightProfileStartsBelowLux <- self.nightProfileStartsBelowLux != nil ? Int(self.nightProfileStartsBelowLux!) : nil,
             ExpressionKey.nightProfileLightData <- nightLightData,
             ExpressionKey.resetDaylightCalibration <- self.resetDaylightCalibration,
-            ExpressionKey.displayLux <- self.displayLux
+            ExpressionKey.displayLux <- self.displayLux,
+            ExpressionKey.upRatio <- self.upRatio.map { max(0, min(100, $0)) }
         ])
         do {
             try SunSmartDataManager.shared.db?.run(insertOrUpdate)

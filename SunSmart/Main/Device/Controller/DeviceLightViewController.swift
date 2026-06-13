@@ -15,6 +15,7 @@ class DeviceLightViewController: UIViewController {
     private var lightGrayBgView: UIImageView!
     private var lightBgView: UIImageView!
     private var lightImageBtn: UIButton!
+    private var upDownLightView: UpDownLightView!
     private var brightnessView: UIView!
     private var brightnessImageView: UIImageView!
     private var brightnessLineView: UIView!
@@ -26,6 +27,7 @@ class DeviceLightViewController: UIViewController {
     
     private var onoffBtn: UIButton!
     private var controlPanelView: DeviceLightControlPanelView!
+    private var upDownRatioView: DeviceUpDownRatioControlView!
     
     private var relayLabel: UILabel!
     private var relaySwitch: UISwitch!
@@ -187,48 +189,14 @@ class DeviceLightViewController: UIViewController {
 
             let lightness100 = node.isOn ? Node.getLightness100(lightness: node.lightness) : 0
             let isLightOn = node.isOn && node.lightness > 0
+            let topLightOn = node.supportsUpDownRatioControl ? node.isOn : isLightOn
             let lightnessText = isLightOn && lightness100 == 0 ? "<1%" : "\(lightness100)%"
             
-            if isLightOn {
-                lightImageBtn.isSelected = true
-                onoffBtn.isSelected = true
-                
-                let progress = CGFloat(Float(lightness100) / 100.0) * 0.5
-                var alpha = 0.5 + progress
-                if self.node.singleDeviceDisplaySupportCct {
-                    let temperature100 = self.node.getEffectiveTemperature100(temperature: self.node.temperature)
-                    lightBgView.image = UIImage(named: "device_light_bg")?.withTintColor(Node.getCctMixColor(temperature100: temperature100))
-                    
-                    var garyBgAlpha: CGFloat = 0
-                    if temperature100 >= 45 && temperature100 <= 55 {
-                        garyBgAlpha = 0.5
-                        alpha = 1
-                    }
-                    if garyBgAlpha != lightGrayBgView.alpha {
-                        UIView.animate(withDuration: 0.25) {
-                            self.lightGrayBgView.alpha = garyBgAlpha
-                        }
-                    }
-                    
-                }else {
-                    lightBgView.image = UIImage(named: "device_light_bg")
-                }
-                lightBgView.alpha = alpha
-                
-            }else {
-                lightImageBtn.isSelected = false
-                onoffBtn.isSelected = false
-                lightBgView.image = UIImage(named: "device_light_off_bg")
-                lightBgView.alpha = 1
-                if lightGrayBgView.alpha != 0 {
-                    UIView.animate(withDuration: 0.25) {
-                        self.lightGrayBgView.alpha = 0
-                    }
-                }
-            }
+            updateTopLightView(lightness100: lightness100, isLightOn: topLightOn)
             
             brightnessLabel.text = lightnessText
             cctLabel.text = "\(node.temperature)K"
+            upDownRatioView.upValue = node.upRatio
             if refreshControlPanel {
                 updateControlPanel()
             }
@@ -267,6 +235,70 @@ class DeviceLightViewController: UIViewController {
             cctValue: Int(node.clampEffectiveCct(node.temperature)),
             cctRange: Int(cctRange.lowerBound)...Int(cctRange.upperBound)
         ))
+    }
+
+    private func updateTopLightView(lightness100: Int, isLightOn: Bool) {
+        if node.supportsUpDownRatioControl {
+            lightGrayBgView.isHidden = true
+            lightBgView.isHidden = true
+            lightImageBtn.isHidden = true
+            upDownLightView.isHidden = false
+            onoffBtn.isSelected = isLightOn
+
+            let temperature100 = node.singleDeviceDisplaySupportCct ? node.getEffectiveTemperature100(temperature: node.temperature) : 50
+            upDownLightView.configure(.init(
+                isOn: isLightOn,
+                brightnessPercent: lightness100,
+                temperaturePercent: temperature100,
+                supportsCCT: node.singleDeviceDisplaySupportCct,
+                upRatio: node.upRatio,
+                downRatio: node.downRatio
+            ))
+            return
+        }
+
+        lightGrayBgView.isHidden = false
+        lightBgView.isHidden = false
+        lightImageBtn.isHidden = false
+        upDownLightView.isHidden = true
+
+        if isLightOn {
+            lightImageBtn.isSelected = true
+            onoffBtn.isSelected = true
+
+            let progress = CGFloat(Float(lightness100) / 100.0) * 0.5
+            var alpha = 0.5 + progress
+            if self.node.singleDeviceDisplaySupportCct {
+                let temperature100 = self.node.getEffectiveTemperature100(temperature: self.node.temperature)
+                lightBgView.image = UIImage(named: "device_light_bg")?.withTintColor(Node.getCctMixColor(temperature100: temperature100))
+
+                var garyBgAlpha: CGFloat = 0
+                if temperature100 >= 45 && temperature100 <= 55 {
+                    garyBgAlpha = 0.5
+                    alpha = 1
+                }
+                if garyBgAlpha != lightGrayBgView.alpha {
+                    UIView.animate(withDuration: 0.25) {
+                        self.lightGrayBgView.alpha = garyBgAlpha
+                    }
+                }
+
+            }else {
+                lightBgView.image = UIImage(named: "device_light_bg")
+            }
+            lightBgView.alpha = alpha
+
+        }else {
+            lightImageBtn.isSelected = false
+            onoffBtn.isSelected = false
+            lightBgView.image = UIImage(named: "device_light_off_bg")
+            lightBgView.alpha = 1
+            if lightGrayBgView.alpha != 0 {
+                UIView.animate(withDuration: 0.25) {
+                    self.lightGrayBgView.alpha = 0
+                }
+            }
+        }
     }
     
     @objc private func backAction() {
@@ -635,15 +667,18 @@ class DeviceLightViewController: UIViewController {
     
     // MARK: - Action
     
-    @objc private func onoffAction(sender: UIButton) {
+    @objc private func onoffAction(sender: UIControl) {
         guard !node.isEmergencySignController else {
             return
         }
         node.isOn = !node.isOn
         if node.isOn {
-            node.lightness = node.trunOffLightness ?? node.lightnessRange.upperBound
+            let restoredLightness = node.trunOffLightness ?? node.lightnessRange.upperBound
+            node.lightness = restoredLightness > 0 ? restoredLightness : node.lightnessRange.upperBound
         }else {
-            node.trunOffLightness = node.lightness
+            if node.lightness > 0 {
+                node.trunOffLightness = node.lightness
+            }
             node.lightness = 0
         }
         MeshAPI.setNodeOnOffState(address: node.primaryUnicastAddress, isOn: node.isOn, ack: true)
@@ -669,6 +704,7 @@ class DeviceLightViewController: UIViewController {
         brightnessView.isHidden = true
         cctView.isHidden = true
         controlPanelView.isHidden = true
+        upDownRatioView.isHidden = true
         onoffBtn.isHidden = true
         relaySwitch.isHidden = true
         relayLabel.isHidden = true
@@ -695,6 +731,7 @@ class DeviceLightViewController: UIViewController {
         brightnessView.isHidden = true
         cctView.isHidden = true
         controlPanelView.isHidden = true
+        upDownRatioView.isHidden = true
         onoffBtn.isHidden = true
         relaySwitch.isHidden = true
         relayLabel.isHidden = true
@@ -813,12 +850,25 @@ class DeviceLightViewController: UIViewController {
         controlPanelView.editCCTRequested = { [weak self] in
             self?.showCCTInputAlert()
         }
+        upDownRatioView.valueChanging = { [weak self] value in
+            guard let self = self else { return }
+            self.node.upRatio = value
+            self.updateData(refreshControlPanel: false)
+        }
+        upDownRatioView.valueChanged = { [weak self] value in
+            guard let self = self else { return }
+            self.node.upRatio = value
+            self.updateData(refreshControlPanel: false)
+            if let meshUUID = self.node.network?.uuid.uuidString {
+                self.node.preConfiguration.save(meshUUID: meshUUID, nodeAddress: self.node.primaryUnicastAddress)
+            }
+        }
     }
 
     private func applyBrightnessValue(_ value: Int) {
         let lightness = Node.getLightness(lightness100: value)
 
-        if value == 0 {
+        if value == 0 && node.lightness > 0 {
             node.trunOffLightness = node.lightness
         }
 
@@ -928,6 +978,12 @@ class DeviceLightViewController: UIViewController {
         }else {
             brightnessView.isHidden = true
         }
+        upDownRatioView.isHidden = !node.supportsUpDownRatioControl
+        let usesUpDownLightView = node.supportsUpDownRatioControl
+        upDownLightView.isHidden = !usesUpDownLightView
+        lightGrayBgView.isHidden = usesUpDownLightView
+        lightBgView.isHidden = usesUpDownLightView
+        lightImageBtn.isHidden = usesUpDownLightView
         controlPanelView.isHidden = !node.supportDimming && !node.singleDeviceDisplaySupportCct
         
     }
@@ -978,7 +1034,7 @@ class DeviceLightViewController: UIViewController {
             }else {
                 make.width.height.equalTo(SCRYFit(200))
             }
-            make.top.equalTo(relaySwitch.snp.bottom).offset(SCRYFit(20))
+            make.top.equalTo(relaySwitch.snp.bottom)
 
         }
         
@@ -999,6 +1055,17 @@ class DeviceLightViewController: UIViewController {
             if isIPad {
                 make.width.height.equalTo(67)
             }
+        }
+
+        upDownLightView = UpDownLightView()
+        upDownLightView.isHidden = true
+        upDownLightView.addTarget(self, action: #selector(onoffAction), for: .touchUpInside)
+        contentView.addSubview(upDownLightView)
+        upDownLightView.snp.makeConstraints { make in
+            make.centerX.equalTo(lightBgView)
+            make.top.equalTo(lightGrayBgView)
+            make.width.equalTo(UpDownLightView.preferredSize.width)
+            make.height.equalTo(UpDownLightView.preferredSize.height)
         }
         
         brightnessView = UIView()
@@ -1068,6 +1135,10 @@ class DeviceLightViewController: UIViewController {
         
         controlPanelView = DeviceLightControlPanelView()
         contentView.addSubview(controlPanelView)
+
+        upDownRatioView = DeviceUpDownRatioControlView()
+        upDownRatioView.isHidden = true
+        contentView.addSubview(upDownRatioView)
         
         var offImageName = "device_control_off"
         var onImageName = "device_control_on"
@@ -1086,11 +1157,30 @@ class DeviceLightViewController: UIViewController {
             if isIPad {
                 make.width.height.equalTo(56)
             }
-            make.top.equalTo(lightImageBtn.snp.bottom).offset(SCRYFit(isIPad ? 250 : 190))
+            if node.supportsUpDownRatioControl {
+                make.top.equalTo(upDownRatioView.snp.bottom).offset(SCRYFit(isIPad ? 40 : 20))
+            } else {
+                if isIPad {
+                    make.top.equalTo(lightImageBtn.snp.bottom).offset(SCRYFit(250))
+                } else {
+                    make.top.equalTo(brightnessView.snp.bottom).offset(SCRYFit(40))
+                }
+            }
+        }
+
+        upDownRatioView.snp.makeConstraints { make in
+            make.top.equalTo(brightnessView.snp.bottom).offset(SCRYFit(20))
+            if isIPad {
+                make.left.equalTo(SCRXFrom(107))
+                make.right.equalTo(SCRXFrom(-107))
+            }else {
+                make.left.equalTo(SCRXFrom(30))
+                make.right.equalTo(SCRXFrom(-29))
+            }
         }
 
         controlPanelView.snp.makeConstraints { make in
-            make.top.equalTo(onoffBtn.snp.bottom).offset(SCRYFit(isIPad ? 80 : 30))
+            make.top.equalTo(onoffBtn.snp.bottom).offset(isIPad ? (node.supportsUpDownRatioControl ? 16 : 80) : node.supportsUpDownRatioControl ? 4 : 16)
             make.bottom.equalToSuperview().offset(SCRYFit(-8))
             if isIPad {
                 make.left.equalTo(SCRXFrom(107))

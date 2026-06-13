@@ -20,13 +20,15 @@ class BuoySliderView: UIView {
     
     /// 进度条更新回调（限流发送间隔）  value： level 0~100 cct：2700~6500      ended：是否停止修改
     var valueThrottleChangedCallback: ((_ value: Int, _ ended: Bool)->())?
+
+    var valueTextProvider: ((Int) -> String)?
     
     var value: Int {
         get {
             return Int(slider.value)
         }set {
             slider.value = Float(newValue)
-            valueLabel.text = "\(Int(slider.value))\(unit)"
+            valueLabel.text = valueText(Int(slider.value))
         }
     }
     
@@ -59,6 +61,10 @@ class BuoySliderView: UIView {
         slider.minimumValue = Float(range.lowerBound)
         slider.maximumValue = Float(range.upperBound)
         value = min(Int(range.upperBound), max(Int(range.lowerBound), value))
+    }
+
+    private func valueText(_ value: Int) -> String {
+        valueTextProvider?(value) ?? "\(value)\(unit)"
     }
     
     private func setupUI() {
@@ -110,10 +116,9 @@ class BuoySliderView: UIView {
     
     @objc private func sliderTouchDownAction() {
         UIView.animate(withDuration: 0.3) {
-//            self.buoyImageView.isHidden = false
             self.buoyImageView.alpha = 1
         }
-        valueLabel.text = "\(Int(slider.value))%"
+        valueLabel.text = valueText(Int(slider.value))
     }
     
     @objc private func sliderTouchExitAction() {
@@ -141,7 +146,7 @@ extension BuoySliderView: CustomDeviceSliderDelegate {
     
     func slider(_ slider: CustomDeviceSlider, valueChanged value: Float, ended: Bool) {
         
-        valueLabel.text = "\(Int(value))\(unit)"
+        valueLabel.text = valueText(Int(value))
         let progress = (value - slider.minimumValue) / (slider.maximumValue - slider.minimumValue)
         var x = slider.width * CGFloat(progress)
         

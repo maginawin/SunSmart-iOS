@@ -363,6 +363,7 @@ enum DeviceReadParameterType {
 extension Node {
     
     static var preConfigurationKey: UInt8 = 0
+    private static let defaultUpRatio = 50
     
     /// 设备预配置数据
     class PreConfiguration: Codable {
@@ -378,6 +379,8 @@ extension Node {
         var resetDaylightCalibration: Bool?
         /// 是否显示lux（光感设备在设备页面）
         var displayLux: Bool = false
+        /// Up/Down Ratio 中 up 的比例，本地永久存储，不参与云同步。
+        var upRatio: Int?
     }
     
     /// 设备预配置数据
@@ -399,6 +402,20 @@ extension Node {
         }
     }
     
+    var upRatio: Int {
+        get {
+            let value = preConfiguration.upRatio ?? Self.defaultUpRatio
+            return max(0, min(100, value))
+        }
+        set {
+            preConfiguration.upRatio = max(0, min(100, newValue))
+        }
+    }
+
+    var downRatio: Int {
+        100 - upRatio
+    }
+
     
     /// 获取设备需要同步的数据
     /// - Parameter type: 同步数据类型
