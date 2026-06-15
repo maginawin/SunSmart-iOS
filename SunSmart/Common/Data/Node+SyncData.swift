@@ -921,6 +921,7 @@ extension Node {
                     var nightDayCooditionId: UInt8?
                     
                     var syncSceneProfiles: [ProfileType] = []
+                    var forcedRecallConditionProfile: ProfileType?
                     // 固定的待机亮度
                     var fixedStandbyLevel: Int?
                     
@@ -942,8 +943,10 @@ extension Node {
                         if self.ambientLightSensorModel != nil && self.sunricherVendorModel != nil {
                             let coodition = self.lightControlLuxTriggerConditions.first(where: { $0.index == nightData.id })
                             let targetLux = preConfiguration.nightProfileStartsBelowLux ?? nightData.startsBelowLux
+                            let conditionProfile = ProfileType.profileNightToggleTriggerConditionLux(id: nightData.id, minLux: 0, maxLux: targetLux, useCalibrationValues: nightData.useCalibrationValues, destination: sceneDestination, sceneNumber: nightData.sceneData.sceneNumber, forceFullSet: true)
+                            forcedRecallConditionProfile = conditionProfile
                             if forceFullProfileSync || coodition == nil || coodition!.maxLux != targetLux || coodition!.useCalibrationValues != nightData.useCalibrationValues || coodition!.destination != sceneDestination || coodition!.sceneNumber != nightData.sceneData.sceneNumber {
-                                syncSceneProfiles.insert(.profileNightToggleTriggerConditionLux(id: nightData.id, minLux: 0, maxLux: targetLux, useCalibrationValues: nightData.useCalibrationValues, destination: sceneDestination, sceneNumber: nightData.sceneData.sceneNumber, forceFullSet: forceFullProfileSync), at: 0)
+                                syncSceneProfiles.insert(conditionProfile, at: 0)
                             }
                         }
                     }
@@ -960,8 +963,10 @@ extension Node {
                         if self.ambientLightSensorModel != nil && self.sunricherVendorModel != nil {
                             let coodition = self.lightControlLuxTriggerConditions.first(where: { $0.index == dayData.id })
                             let targetLux = preConfiguration.dayProfileStartsAboveLux ?? dayData.startsBelowLux
+                            let conditionProfile = ProfileType.profileDayToggleTriggerConditionLux(id: dayData.id, minLux: targetLux, maxLux: .max, useCalibrationValues: dayData.useCalibrationValues, destination: sceneDestination, sceneNumber: dayData.sceneData.sceneNumber, forceFullSet: true)
+                            forcedRecallConditionProfile = conditionProfile
                             if forceFullProfileSync || coodition == nil || coodition!.minLux != targetLux || coodition!.useCalibrationValues != dayData.useCalibrationValues || coodition!.destination != sceneDestination || coodition!.sceneNumber != dayData.sceneData.sceneNumber {
-                                syncSceneProfiles.insert(.profileDayToggleTriggerConditionLux(id: dayData.id, minLux: targetLux, maxLux: .max, useCalibrationValues: dayData.useCalibrationValues, destination: sceneDestination, sceneNumber: dayData.sceneData.sceneNumber, forceFullSet: forceFullProfileSync), at: 0)
+                                syncSceneProfiles.insert(conditionProfile, at: 0)
                             }
                         }
                     }
@@ -987,21 +992,32 @@ extension Node {
                         forceFullProfileSync: forceFullProfileSync
                     )
                     if lightSyncProfiles.count > 0 {
-                        syncSceneProfiles.append(contentsOf: lightSyncProfiles)
+                        let daylightRecallConditionId: UInt8? = {
+                            guard self.sunricherVendorModel != nil,
+                                  self.ambientLightSensorModel != nil,
+                                  self.capabilities.contains(.lightSensorConditionRecall),
+                                  let id = nightDayCooditionId,
+                                  self.lightControlLuxTriggerConditions.contains(where: { $0.index == id }) else {
+                                return nil
+                            }
+                            return id
+                        }()
+                        // Lux trigger conditions must exist on the device before recalling them.
+                        if daylightRecallConditionId != nil, syncSceneProfiles.isEmpty, let forcedRecallConditionProfile = forcedRecallConditionProfile {
+                            syncProfile.append(forcedRecallConditionProfile)
+                        }
+                        syncProfile.append(contentsOf: syncSceneProfiles)
                         // 是否修改control数据
                         if self.supportLightLCScene {
                             // 切换到对应场景
-                            if self.sunricherVendorModel != nil,
-                               self.ambientLightSensorModel != nil,
-                               self.capabilities.contains(.lightSensorConditionRecall),
-                               let id = nightDayCooditionId, self.lightControlLuxTriggerConditions.contains(where: { $0.index == id }) { // 使用光感模块激活对应场景
+                            if let id = daylightRecallConditionId { // 使用光感模块激活对应场景
                                 syncProfile.append(.daylightSensorConditionRecall(id: id))
                             }else {
                                 syncProfile.append(.lightControlSwitch(sceneNumber: profileScene.sceneNumber))
                             }
                         }
                         // 设置profile数据
-                        syncProfile.append(contentsOf: syncSceneProfiles)
+                        syncProfile.append(contentsOf: lightSyncProfiles)
                         // 保存场景
                         if self.supportLightLCScene {
                             syncProfile.append(.lightControlStore(sceneNumber: profileScene.sceneNumber))
