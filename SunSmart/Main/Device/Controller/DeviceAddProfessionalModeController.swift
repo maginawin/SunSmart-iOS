@@ -119,8 +119,9 @@ class DeviceAddProfessionalModeController: UIViewController {
     /// 添加成功的节点
     private var addSuccessNodes: [Node] = []
     private var pendingBatteryPowerSwitchInitialBatteryReads: [BatteryPowerSwitchAddConfiguration.InitialBatteryReadRequest] = []
-    private var pendingGroupDeferredSyncPlans: [(node: Node, group: Group, plan: DeviceGroupDeferredSyncPlan)] = []
-    private var pendingGroupDeferredSyncSuccessDevices: [ProvisioningDevice] = []
+    private var fastAddGroupSyncPlans: [Address: DeviceGroupFastAddSyncPlan] = [:]
+    private var failedFastAddGroupSyncNodeAddresses: Set<Address> = []
+    private var fastAddGroupEffectiveMemberCount: Int?
     private var groupMemberAddedProfileSyncContext: GroupProfileSyncContext {
         GroupProfileSyncContext(reason: .memberAdded)
     }
@@ -533,6 +534,7 @@ class DeviceAddProfessionalModeController: UIViewController {
     }
 
     private func restoreDevicesForAddRetry(_ devices: [ProvisioningDevice]) {
+        resetFastAddGroupSyncBatch()
         devices.forEach {
             $0.addState = .none
             $0.selectedState = .selected
@@ -550,77 +552,49 @@ class DeviceAddProfessionalModeController: UIViewController {
         )
     }
 
-    private func appendMissingGroupDeferredSyncPlans(successDevices: [ProvisioningDevice]) {
+    private func prepareFastAddGroupSyncBatch(devices: [ProvisioningDevice]) {
+        resetFastAddGroupSyncBatch()
         guard let group = currentAddGroup else {
             return
         }
-
-        var plannedNodeAddresses = Set(pendingGroupDeferredSyncPlans.map { $0.node.primaryUnicastAddress })
-        var pendingSuccessDeviceAddresses = Set(pendingGroupDeferredSyncSuccessDevices.map { $0.address })
-        let successfulNodes = addSuccessNodes + successDevices.compactMap { device in
-            MeshNetworkManager.instance.meshNetwork?.node(withAddress: device.address)
-        }
-        var handledNodeAddresses: Set<Address> = []
-
-        successfulNodes.forEach { node in
-            guard node.deviceType == .light,
-                  node.group == group,
-                  !plannedNodeAddresses.contains(node.primaryUnicastAddress),
-                  !handledNodeAddresses.contains(node.primaryUnicastAddress) else {
-                return
-            }
-
-            let plan = DeviceGroupDeferredSyncPlanner.makePlan(
-                node: node,
-                group: group,
-                profileSyncContext: groupMemberAddedProfileSyncContext
-            )
-            guard plan.hasDeferredTasks else {
-                return
-            }
-
-            pendingGroupDeferredSyncPlans.append((node: node, group: group, plan: plan))
-            plannedNodeAddresses.insert(node.primaryUnicastAddress)
-            handledNodeAddresses.insert(node.primaryUnicastAddress)
-
-            if let device = successDevices.first(where: { $0.address == node.primaryUnicastAddress }),
-               !pendingSuccessDeviceAddresses.contains(device.address) {
-                if !addSuccessNodes.contains(where: { $0.primaryUnicastAddress == node.primaryUnicastAddress }) {
-                    addSuccessNodes.append(node)
-                }
-                pendingGroupDeferredSyncSuccessDevices.append(device)
-                pendingSuccessDeviceAddresses.insert(device.address)
-            }
-        }
+        fastAddGroupEffectiveMemberCount = group.nodes.count + devices.count
     }
 
-    private func finishGroupDeferredSyncPlans(successDevices: [ProvisioningDevice], completion: @escaping () -> Void) {
-        appendMissingGroupDeferredSyncPlans(successDevices: successDevices)
-        let plans = pendingGroupDeferredSyncPlans
-        pendingGroupDeferredSyncPlans.removeAll()
-        DeviceGroupDeferredSyncPlanner.run(plans: plans, maxRetryCount: 2) { [weak self] results in
-            DispatchQueue.main.async {
-                self?.markPendingGroupDeferredSyncDevicesFinished(results: results)
-                completion()
-            }
-        }
+    private func resetFastAddGroupSyncBatch() {
+        fastAddGroupSyncPlans.removeAll()
+        failedFastAddGroupSyncNodeAddresses.removeAll()
+        fastAddGroupEffectiveMemberCount = nil
     }
 
-    private func markPendingGroupDeferredSyncDevicesFinished(
-        results: [DeviceGroupDeferredSyncPlanResult]
-    ) {
-        let devices = pendingGroupDeferredSyncSuccessDevices
-        pendingGroupDeferredSyncSuccessDevices.removeAll()
-        guard !devices.isEmpty else {
-            return
+    private func registerFastAddGroupSyncPlan(_ plan: DeviceGroupFastAddSyncPlan) {
+        fastAddGroupSyncPlans[plan.nodeAddress] = plan
+        failedFastAddGroupSyncNodeAddresses.remove(plan.nodeAddress)
+    }
+
+    private func fastAddGroupSyncPlan(containing messageHandle: MeshMessageHandle) -> DeviceGroupFastAddSyncPlan? {
+        fastAddGroupSyncPlans.values.first { $0.contains(messageHandle) }
+    }
+
+    private func recordFastAddGroupSyncFailure(_ plan: DeviceGroupFastAddSyncPlan) {
+        failedFastAddGroupSyncNodeAddresses.insert(plan.nodeAddress)
+        if let node = MeshNetworkManager.instance.meshNetwork?.node(withAddress: plan.nodeAddress) {
+            node.clearSyncStateCache()
+        }
+        plan.group.updateGroupSyncState()
+    }
+
+    private func resolveFastAddGroupSyncFailed(for node: Node) -> Bool {
+        guard let plan = fastAddGroupSyncPlans.removeValue(forKey: node.primaryUnicastAddress) else {
+            return false
         }
 
-        let succeededAddresses = Set(results.filter { $0.succeeded }.map { $0.node.primaryUnicastAddress })
-        devices.forEach { device in
-            device.addState = succeededAddresses.contains(device.address) ? .success : .syncFailed
-            reloadDeviceState(device)
+        let failed = failedFastAddGroupSyncNodeAddresses.contains(node.primaryUnicastAddress)
+            || plan.hasVerificationFailure
+        if failed {
+            recordFastAddGroupSyncFailure(plan)
         }
-        updateUIState()
+        failedFastAddGroupSyncNodeAddresses.remove(node.primaryUnicastAddress)
+        return failed
     }
 
     private func finalizeBatteryPowerSwitchAddConfiguration(
@@ -1297,35 +1271,34 @@ class DeviceAddProfessionalModeController: UIViewController {
             if shouldApplyLightingDefaults, let model = node.lightnessModel {
                 appendMessages.append(MeshMessageHandle(message: LightLightnessSetUnacknowledged(lightness: .max), model: model))
             }
-            if shouldApplyLightingDefaults, case .group(let group) = self.addTarget {
+            if case .group(let group) = self.addTarget {
                 // 判断组是否有关联动能开关，如果动能开关还未分配地址则提前分配地址以订阅设备
-                let emptySwitchs = group.info.switchs.filter({ $0.linkGroup == nil })
-                emptySwitchs.forEach { switchData in
-                    
-                    // 判断组地址是否足够分配
-                    if MeshAPI.getAvailableGroupAddresses(meshUUID: self.space.meshUUID, subnetworkId: self.space.meshNetworkId).count >= switchData.panelType.usedAddressesNumber, switchData.linkGroupAddress == nil {
-                        
-                        let linkGroup = try? MeshAPI.createGroup(name: switchData.name + "-Group", isVirtual: true)
-                        let subLinkGroup = try? MeshAPI.createGroup(name: switchData.name + "-Group_1", isVirtual: true)
-                        
-                        switchData.linkGroupAddress = linkGroup?.address.address
-                        switchData.subLinkGroupAddress = subLinkGroup?.address.address
-                        switchData.save()
-                        //                        print("创建动能开关组")
+                if shouldApplyLightingDefaults {
+                    let emptySwitchs = group.info.switchs.filter({ $0.linkGroup == nil })
+                    emptySwitchs.forEach { switchData in
+
+                        // 判断组地址是否足够分配
+                        if MeshAPI.getAvailableGroupAddresses(meshUUID: self.space.meshUUID, subnetworkId: self.space.meshNetworkId).count >= switchData.panelType.usedAddressesNumber, switchData.linkGroupAddress == nil {
+
+                            let linkGroup = try? MeshAPI.createGroup(name: switchData.name + "-Group", isVirtual: true)
+                            let subLinkGroup = try? MeshAPI.createGroup(name: switchData.name + "-Group_1", isVirtual: true)
+
+                            switchData.linkGroupAddress = linkGroup?.address.address
+                            switchData.subLinkGroupAddress = subLinkGroup?.address.address
+                            switchData.save()
+                            //                        print("创建动能开关组")
+                        }
                     }
                 }
-                if node.deviceType == .light {
-                    let plan = DeviceGroupDeferredSyncPlanner.makePlan(
-                        node: node,
-                        group: group,
-                        profileSyncContext: groupMemberAddedProfileSyncContext
-                    )
-                    appendMessages.append(contentsOf: plan.immediateMessageHandles)
-                } else {
-                    let syncDatas = node.getSyncData(type: .group(group))
-                    syncDatas.forEach({
-                        appendMessages.append(contentsOf: $0.getMessageHandles(node: node))
-                    })
+                let profileSyncContext = node.deviceType == .light ? groupMemberAddedProfileSyncContext : nil
+                if let plan = DeviceGroupFastAddSyncPlanner.makePlan(
+                    node: node,
+                    group: group,
+                    effectiveMemberCount: fastAddGroupEffectiveMemberCount,
+                    profileSyncContext: profileSyncContext
+                ) {
+                    appendMessages.append(contentsOf: plan.appendMessageHandles)
+                    self.registerFastAddGroupSyncPlan(plan)
                 }
                 //                appendMessages.append(contentsOf: group.getNodeAddMessageHandles(node: node))
             }else {
@@ -1408,15 +1381,22 @@ class DeviceAddProfessionalModeController: UIViewController {
             //                appendMessages.append(MeshMessageHandle(message: SensorGet(), model: sensorModel))
             //            }
             //            return appendMessages
-        } appendMessageSuccessBack: { messageHandle in
+        } appendMessageSuccessBack: { [weak self] messageHandle in
             // 发送扩展消息成功更新缓存数据
             if let address = messageHandle.model?.parentElement?.unicastAddress ?? messageHandle.address, let node = MeshNetworkManager.instance.meshNetwork?.node(withAddress: address) {
-                DispatchQueue.global().async {
+                if self?.fastAddGroupSyncPlan(containing: messageHandle) != nil {
                     node.updateData(message: messageHandle.message)
+                } else {
+                    DispatchQueue.global().async {
+                        node.updateData(message: messageHandle.message)
+                    }
                 }
             }
         } appendMessageFailedBack: { [weak self] messageHandle in
             guard let self = self else { return }
+            if let plan = self.fastAddGroupSyncPlan(containing: messageHandle) {
+                self.recordFastAddGroupSyncFailure(plan)
+            }
             guard let address = messageHandle.model?.parentElement?.unicastAddress ?? messageHandle.address else {
                 return
             }
@@ -1426,7 +1406,7 @@ class DeviceAddProfessionalModeController: UIViewController {
             }
         } addSuccess: {[weak self] addDevice in
             guard let self = self else { return }
-            var shouldShowSuccessAfterGroupDeferredSync = false
+            var groupSyncFailed = false
             if let node = MeshNetworkManager.instance.meshNetwork?.node(withAddress: addDevice.address) {
                 if let repalceNode = addDevice.repalceNode { // 删除被替换节点的缓存数据
                     repalceNode.deleteExtension()
@@ -1443,17 +1423,8 @@ class DeviceAddProfessionalModeController: UIViewController {
                         node.save()
                     }
                 }
-                if node.deviceType == .light, case .group(let group) = self.addTarget {
-                    let plan = DeviceGroupDeferredSyncPlanner.makePlan(
-                        node: node,
-                        group: group,
-                        profileSyncContext: groupMemberAddedProfileSyncContext
-                    )
-                    if plan.hasDeferredTasks {
-                        self.pendingGroupDeferredSyncPlans.append((node: node, group: group, plan: plan))
-                        self.pendingGroupDeferredSyncSuccessDevices.append(addDevice)
-                        shouldShowSuccessAfterGroupDeferredSync = true
-                    }
+                if case .group = self.addTarget {
+                    groupSyncFailed = self.resolveFastAddGroupSyncFailed(for: node)
                 }
                 if node.isPowerSwitch,
                    let request = finalizeBatteryPowerSwitchAddConfiguration(for: node) {
@@ -1473,12 +1444,9 @@ class DeviceAddProfessionalModeController: UIViewController {
                     self.addSuccessNodes.append(node)
                 }
             }
-            guard shouldShowSuccessAfterGroupDeferredSync else {
-                addDevice.addState = .success
-                self.reloadDeviceState(addDevice)
-                self.updateUIState()
-                return
-            }
+            addDevice.addState = groupSyncFailed ? .syncFailed : .success
+            self.reloadDeviceState(addDevice)
+            self.updateUIState()
         } addFail: {[weak self] addDevice, error in
             guard let self = self else { return }
             addDevice.addState = .failed
@@ -1508,30 +1476,28 @@ class DeviceAddProfessionalModeController: UIViewController {
         } addFinish: {[weak self] successList, failList in
             guard let self = self else { return }
 
-            self.finishGroupDeferredSyncPlans(successDevices: successList) { [weak self] in
-                guard let self = self else { return }
-                self.deviceAddCallback?(self.addSuccessNodes)
-                self.deviceStateCallback?(false)
+            self.deviceAddCallback?(self.addSuccessNodes)
+            self.deviceStateCallback?(false)
 
-                self.space.deviceCount = MeshNetworkManager.instance.realNodes.count
-                self.space.luminairesCount = MeshNetworkManager.instance.realNodes.filter({ $0.deviceType == .light }).count //MeshNetworkManager.instance.lightNodes.count
-                self.space.switchesCount = MeshNetworkManager.instance.switchs.count
-                self.space.save()
-                // 通知space数据修改
-                //                NotificationCenter.default.post(name: .init(spaceDataChangedNotificaitonName), object: SpaceChangeDataType.device)
-                NotificationCenter.default.post(name: .init(spaceDataChangedNotificaitonName), object: SpaceChangeDataType.network(type: .address))
-                NotificationCenter.default.post(name: .init(devicesAddNotificationName), object: nil)
-                if self.addSuccessNodes.contains(where: { [.dongle, .gateway, .emergencyController, .unknown].contains($0.deviceType) }) {
-                    NotificationCenter.default.post(name: .init(deviceOthersRefreshNotificationName), object: nil)
-                }
-                if self.addSuccessNodes.contains(where: { $0.deviceType == .emergencyController }) {
-                    NotificationCenter.default.post(name: .deviceEmerFireDataDidChange, object: nil)
-                }
-                if self.addSuccessNodes.contains(where: { $0.isPowerSwitch }) {
-                    NotificationCenter.default.post(name: .init(switchsRefreshNotificationName), object: nil)
-                }
-                self.finishBatteryPowerSwitchInitialBatteryReadsAndDisconnect()
+            self.space.deviceCount = MeshNetworkManager.instance.realNodes.count
+            self.space.luminairesCount = MeshNetworkManager.instance.realNodes.filter({ $0.deviceType == .light }).count //MeshNetworkManager.instance.lightNodes.count
+            self.space.switchesCount = MeshNetworkManager.instance.switchs.count
+            self.space.save()
+            // 通知space数据修改
+            //                NotificationCenter.default.post(name: .init(spaceDataChangedNotificaitonName), object: SpaceChangeDataType.device)
+            NotificationCenter.default.post(name: .init(spaceDataChangedNotificaitonName), object: SpaceChangeDataType.network(type: .address))
+            NotificationCenter.default.post(name: .init(devicesAddNotificationName), object: nil)
+            if self.addSuccessNodes.contains(where: { [.dongle, .gateway, .emergencyController, .unknown].contains($0.deviceType) }) {
+                NotificationCenter.default.post(name: .init(deviceOthersRefreshNotificationName), object: nil)
             }
+            if self.addSuccessNodes.contains(where: { $0.deviceType == .emergencyController }) {
+                NotificationCenter.default.post(name: .deviceEmerFireDataDidChange, object: nil)
+            }
+            if self.addSuccessNodes.contains(where: { $0.isPowerSwitch }) {
+                NotificationCenter.default.post(name: .init(switchsRefreshNotificationName), object: nil)
+            }
+            self.resetFastAddGroupSyncBatch()
+            self.finishBatteryPowerSwitchInitialBatteryReadsAndDisconnect()
         }
         
     }
@@ -1542,6 +1508,8 @@ class DeviceAddProfessionalModeController: UIViewController {
         guard validateBatteryPowerSwitchLimit(for: devices) else {
             return
         }
+
+        prepareFastAddGroupSyncBatch(devices: devices)
         
         let bleConnectCount = max(candidateDevices.filter({ $0.addState == .adding || $0.addState == .addConnecting }).count, MeshLibManager.manager.getConnectedPeripherals().count)
         for (index, device) in devices.enumerated() {
