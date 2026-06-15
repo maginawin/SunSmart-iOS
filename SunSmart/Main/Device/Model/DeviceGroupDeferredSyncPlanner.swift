@@ -31,14 +31,82 @@ struct DeviceGroupDeferredSyncPlanResult {
     let succeeded: Bool
 }
 
+struct DeviceGroupFastAddSyncPlan {
+    let nodeAddress: Address
+    let group: Group
+    let appendMessageHandles: [MeshMessageHandle]
+    let verificationOperations: [DeviceOperationType]
+
+    func contains(_ messageHandle: MeshMessageHandle) -> Bool {
+        appendMessageHandles.contains { $0 === messageHandle }
+    }
+
+    var hasVerificationFailure: Bool {
+        verificationOperations.contains { !$0.isSuccessful }
+    }
+}
+
+enum DeviceGroupFastAddSyncPlanner {
+
+    static func makePlan(
+        node: Node,
+        group: Group,
+        effectiveMemberCount: Int? = nil,
+        profileSyncContext: GroupProfileSyncContext? = nil
+    ) -> DeviceGroupFastAddSyncPlan? {
+        switch node.deviceType {
+        case .light:
+            let syncDatas = node.getSyncData(
+                type: .group(group, effectiveMemberCount: effectiveMemberCount),
+                profileSyncContext: profileSyncContext
+            )
+            let plan = DeviceGroupDeferredSyncPlanner.makePlan(
+                node: node,
+                group: group,
+                effectiveMemberCount: effectiveMemberCount,
+                profileSyncContext: profileSyncContext
+            )
+            let appendMessageHandles = plan.immediateMessageHandles
+                + plan.deferredTasks.flatMap { $0.makeMessageHandles() }
+            guard !appendMessageHandles.isEmpty else {
+                return nil
+            }
+            return DeviceGroupFastAddSyncPlan(
+                nodeAddress: node.primaryUnicastAddress,
+                group: group,
+                appendMessageHandles: appendMessageHandles,
+                verificationOperations: makeVerificationOperations(syncDatas: syncDatas, node: node)
+            )
+        case .sensor:
+            let syncDatas = node.getSyncData(type: .group(group, effectiveMemberCount: effectiveMemberCount))
+            let appendMessageHandles = syncDatas.flatMap { $0.getMessageHandles(node: node) }
+            guard !appendMessageHandles.isEmpty else {
+                return nil
+            }
+            return DeviceGroupFastAddSyncPlan(
+                nodeAddress: node.primaryUnicastAddress,
+                group: group,
+                appendMessageHandles: appendMessageHandles,
+                verificationOperations: makeVerificationOperations(syncDatas: syncDatas, node: node)
+            )
+        default:
+            return nil
+        }
+    }
+}
+
 enum DeviceGroupDeferredSyncPlanner {
 
     static func makePlan(
         node: Node,
         group: Group,
+        effectiveMemberCount: Int? = nil,
         profileSyncContext: GroupProfileSyncContext? = nil
     ) -> DeviceGroupDeferredSyncPlan {
-        let syncDatas = node.getSyncData(type: .group(group), profileSyncContext: profileSyncContext)
+        let syncDatas = node.getSyncData(
+            type: .group(group, effectiveMemberCount: effectiveMemberCount),
+            profileSyncContext: profileSyncContext
+        )
         var immediateHandles: [MeshMessageHandle] = []
         var deferredTasks: [DeviceGroupDeferredSyncTask] = []
 
@@ -343,6 +411,128 @@ private extension DeviceGroupDeferredSyncPlanner {
             }
         }
         #endif
+    }
+}
+
+private extension DeviceGroupFastAddSyncPlanner {
+
+    static func makeVerificationOperations(
+        syncDatas: [NodeSyncData],
+        node: Node
+    ) -> [DeviceOperationType] {
+        var operationTypes: [DeviceOperationType] = []
+
+        syncDatas.forEach { syncData in
+            switch syncData {
+            case .deviceInitialize:
+                operationTypes.append(.configuration(node: node, type: .deviceInitialize))
+            case .subscribeGroup(let group):
+                operationTypes.append(.configuration(node: node, type: .group(group: group)))
+            case .unsubscribeGroup(let group):
+                operationTypes.append(.delete(node: node, type: .group(group: group)))
+            case .profile(let types):
+                types.forEach {
+                    operationTypes.append(.configuration(node: node, type: .profile(type: $0)))
+                }
+            case .syncScenes(let datas):
+                datas.forEach { scene, data in
+                    operationTypes.append(.configuration(node: node, type: .scene(sceneId: scene.number, executeData: data)))
+                }
+            case .deleteScenes(let scenes):
+                scenes.forEach { scene in
+                    operationTypes.append(.delete(node: node, type: .scene(sceneId: scene.number, executeData: nil)))
+                }
+            case .syncSchedules(let schedules):
+                schedules.forEach { schedule in
+                    operationTypes.append(.configuration(node: node, type: .schedule(schedule: schedule)))
+                }
+            case .deleteSchedules(let schedules):
+                schedules.forEach { schedule in
+                    operationTypes.append(.delete(node: node, type: .schedule(schedule: schedule)))
+                }
+            case .syncSwitchProxy(let switchData):
+                operationTypes.append(.configuration(node: node, type: .enOceanProxy(switchData: switchData)))
+            case .deleteSwitchProxy(let switchData):
+                operationTypes.append(.delete(node: node, type: .enOceanProxy(switchData: switchData)))
+            case .syncSwitchs(let switchDatas):
+                switchDatas.forEach { switchData in
+                    operationTypes.append(.configuration(node: node, type: .enOceanSwitch(switchData: switchData)))
+                }
+            case .deleteSwitchs(let switchDatas):
+                switchDatas.forEach { switchData in
+                    operationTypes.append(.delete(node: node, type: .enOceanSwitch(switchData: switchData)))
+                }
+            case .deviceParameterTypes(let types):
+                types.forEach { type in
+                    operationTypes.append(.configuration(node: node, type: .deviceParameters(parameterType: type)))
+                }
+            case .syncCollectionSchedules(let schedules):
+                schedules.forEach { index, entry in
+                    operationTypes.append(.configuration(node: node, type: .collectionSchedule(index: index, entry: entry)))
+                }
+            case .deleteCollectionSchedules(let scheduleIds):
+                scheduleIds.forEach { index in
+                    operationTypes.append(.delete(node: node, type: .collectionSchedule(index: index, entry: SchedulerRegistryEntry())))
+                }
+            case .proximityLightingEnabled(let enabled):
+                operationTypes.append(.configuration(node: node, type: .proximityLightingEnabled(enabled: enabled)))
+            case .proximityLightingRelayNumber(let relayNumber):
+                operationTypes.append(.configuration(node: node, type: .proximityLightingRelayNumber(relayNumber: relayNumber)))
+            case .proximityLightingNeighbor(let relayNumber, let neighborAddresses):
+                operationTypes.append(
+                    .configuration(
+                        node: node,
+                        type: .proximityLightingNeighbor(
+                            relayNumber: relayNumber,
+                            neighborAddresses: neighborAddresses
+                        )
+                    )
+                )
+            case .syncGatewaySIMAPN(let apn):
+                operationTypes.append(.configuration(node: node, type: .gatewaySIMAPN(apn: apn)))
+            case .syncGatewayMQTTInformation(let mqttInformation):
+                operationTypes.append(.configuration(node: node, type: .gatewayMQTTInformation(mqttInformation: mqttInformation)))
+            case .syncGatewayProjectId(let projectId):
+                operationTypes.append(.configuration(node: node, type: .gatewayAssociationProjectId(projectId: projectId)))
+            case .syncGatewaySubnetAppkeyIndexs(let appkeyIndexs):
+                operationTypes.append(.configuration(node: node, type: .gatewaySubnetAppkeyIndexs(appkeyIndexs: appkeyIndexs)))
+            case .gatewayAssociatedSpaces(let datas, let activate):
+                datas.forEach { data in
+                    operationTypes.append(
+                        .configuration(
+                            node: node,
+                            type: .gatewayAssociatedSpace(
+                                networkKey: data.networkKey,
+                                applicationKey: data.applicationKey,
+                                activate: activate
+                            )
+                        )
+                    )
+                }
+            case .gatewayUnbindAssociatedSpaces(let datas, let activate):
+                datas.forEach { data in
+                    operationTypes.append(
+                        .configuration(
+                            node: node,
+                            type: .gatewayUnbindAssociatedSpace(
+                                networkKey: data.networkKey,
+                                applicationKey: data.applicationKey,
+                                activate: activate
+                            )
+                        )
+                    )
+                }
+            case .pirEnabled(let enabled):
+                operationTypes.append(.configuration(node: node, type: .pirEnabled(enabled)))
+            case .addNetworkKey,
+                 .removeNetworkKey,
+                 .addApplicationkey,
+                 .removeApplicationkey:
+                break
+            }
+        }
+
+        return operationTypes
     }
 }
 

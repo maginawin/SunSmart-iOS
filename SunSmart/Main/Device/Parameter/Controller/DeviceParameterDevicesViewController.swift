@@ -173,27 +173,29 @@ class DeviceParameterDevicesViewController: UIViewController {
 //            node.tempPwm = node.pwmPeriod
 
 //            deviceParameterDatas.updateValue((node.pwmPeriod, nil), forKey: node.primaryUnicastAddress)
-            if let pwm = node.tempPwm, !pwmValues.contains(pwm) {
+            if nodeSupportsFilter(node, type: .pwm), let pwm = node.tempPwm, !pwmValues.contains(pwm) {
                 pwmValues.append(pwm)
             }
             // 功率
-            if node.tempRatedPowerPhases.count > 0 {
+            if nodeSupportsFilter(node, type: .ratedPower), node.tempRatedPowerPhases.count > 0 {
                 if !ratedPowers.contains(node.tempRatedPowerPhases) {
                     ratedPowers.append(node.tempRatedPowerPhases)
                 }
             }
             // 灵敏度范围
-            if let range = node.tempSensitivityRange, !absoluteSensitivitys.contains(range) {
+            if nodeSupportsFilter(node, type: .absoluteSensitivity), let range = node.tempSensitivityRange, !absoluteSensitivitys.contains(range) {
                 absoluteSensitivitys.append(range)
             }
             // 过渡时间
-            if node.supportDefaultTransitionTime, let transitionTime = node.tempTransitionTime, !transitionTimes.contains(where: { $0.interval == transitionTime.interval }) {
+            if nodeSupportsFilter(node, type: .transitionTime), let transitionTime = node.tempTransitionTime, !transitionTimes.contains(where: { $0.interval == transitionTime.interval }) {
                 transitionTimes.append(transitionTime)
             }
-            if node.rawSupportCct {
+            if nodeSupportsFilter(node, type: .changeControlPage) {
                 if !changeControlPages.contains(node.tempChangeControlPage) {
                     changeControlPages.append(node.tempChangeControlPage)
                 }
+            }
+            if nodeSupportsFilter(node, type: .absoluteCctRange) {
                 if !absoluteCctRanges.contains(node.tempAbsoluteCctRange) {
                     absoluteCctRanges.append(node.tempAbsoluteCctRange)
                 }
@@ -201,6 +203,31 @@ class DeviceParameterDevicesViewController: UIViewController {
 
         })
 
+    }
+
+    private func devicesSupportingFilter(_ type: ParameterFilterData.ParameterType) -> [Node] {
+        devices.filter { nodeSupportsFilter($0, type: type) }
+    }
+
+    private func nodeSupportsFilter(_ node: Node, type: ParameterFilterData.ParameterType) -> Bool {
+        switch type {
+        case .pwm:
+            return node.supportPwmFrequency
+        case .ratedPower:
+            return true
+        case .absoluteSensitivity:
+            return node.supportMotionSensitivity
+        case .transitionTime:
+            return node.supportDefaultTransitionTime
+        case .changeControlPage, .absoluteCctRange:
+            return node.rawSupportCct
+        }
+    }
+
+    private func normalizeFilterState(_ state: inout FilterSelectionState, isAvailable: Bool, selectIndex: Int?) {
+        if !isAvailable || (state.rawValue != FilterSelectionState.unselected.rawValue && selectIndex == nil) {
+            state = .unselected
+        }
     }
 
     deinit {
@@ -627,8 +654,15 @@ extension DeviceParameterDevicesViewController: DeviceParameterPromptViewDelegat
     /// 筛选
     func promptViewFilterAction(_ view: DeviceParameterPromptView) {
 
+        let pwmDevices = devicesSupportingFilter(.pwm)
+        let ratedPowerDevices = devicesSupportingFilter(.ratedPower)
+        let sensitivityDevices = devicesSupportingFilter(.absoluteSensitivity)
+        let transitionTimeDevices = devicesSupportingFilter(.transitionTime)
+        let changeControlPageDevices = devicesSupportingFilter(.changeControlPage)
+        let absoluteCctRangeDevices = devicesSupportingFilter(.absoluteCctRange)
+
         var pwmContents: [(name: String, value: UInt16?)] = pwmValues.map({ ("\($0) Hz", $0) })
-        if devices.contains(where: { $0.tempPwm == nil }) {
+        if pwmDevices.contains(where: { $0.tempPwm == nil }) {
             pwmContents.insert(("--", nil), at: 0)
         }
         var pwmSelectIndex: Int?
@@ -644,7 +678,7 @@ extension DeviceParameterDevicesViewController: DeviceParameterPromptViewDelegat
         }
 
         var powerDatas: [(name: String, value: [NodePhaseEnergyConsumption])] = ratedPowers.map({ (getRatedPowerStr(list: $0), $0) })
-        if devices.contains(where: { $0.tempRatedPowerPhases.isEmpty }) {
+        if ratedPowerDevices.contains(where: { $0.tempRatedPowerPhases.isEmpty }) {
             powerDatas.insert(("--", []), at: 0)
         }
         var retedPowerSelectIndex: Int?
@@ -660,7 +694,7 @@ extension DeviceParameterDevicesViewController: DeviceParameterPromptViewDelegat
         }
 
         var sensitivityContents: [(name: String, value: ClosedRange<UInt16>?)] = absoluteSensitivitys.map({ range in ("\(range.lowerBound.percentageFloat)%~\(range.upperBound.percentageFloat)%", range) })
-        if devices.contains(where: { $0.tempSensitivityRange == nil }) {
+        if sensitivityDevices.contains(where: { $0.tempSensitivityRange == nil }) {
             sensitivityContents.insert(("--", nil), at: 0)
         }
         var sensitivitySelectIndex: Int?
@@ -677,7 +711,7 @@ extension DeviceParameterDevicesViewController: DeviceParameterPromptViewDelegat
 
 
         var transitionTimeDatas: [(name: String, value: TransitionTime?)] = transitionTimes.map({ time in (DeviceParameterData.transitionTimeDatas.first(where: { $0.timeInterval == time.interval })?.timeStr ?? "\(time.interval ?? 0)s", time) })
-        if devices.contains(where: { $0.tempTransitionTime == nil }) {
+        if transitionTimeDevices.contains(where: { $0.tempTransitionTime == nil }) {
             transitionTimeDatas.insert(("--", nil), at: 0)
         }
         var transitionTimSelectIndex: Int?
@@ -718,26 +752,34 @@ extension DeviceParameterDevicesViewController: DeviceParameterPromptViewDelegat
             break
         }
 
+        normalizeFilterState(&filterPwmValue, isAvailable: !pwmDevices.isEmpty && pwmContents.count > 0, selectIndex: pwmSelectIndex)
+        normalizeFilterState(&filterRatedPower, isAvailable: !ratedPowerDevices.isEmpty && powerDatas.count > 0, selectIndex: retedPowerSelectIndex)
+        normalizeFilterState(&filterAbsoluteSensitivityRange, isAvailable: !sensitivityDevices.isEmpty && sensitivityContents.count > 0, selectIndex: sensitivitySelectIndex)
+        normalizeFilterState(&filterTransitionTime, isAvailable: !transitionTimeDevices.isEmpty && transitionTimeDatas.count > 0, selectIndex: transitionTimSelectIndex)
+        normalizeFilterState(&filterChangeControlPage, isAvailable: !changeControlPageDevices.isEmpty && changeControlPageContents.count > 0, selectIndex: changeControlPageSelectIndex)
+        normalizeFilterState(&filterAbsoluteCctRange, isAvailable: !absoluteCctRangeDevices.isEmpty && absoluteCctRangeContents.count > 0, selectIndex: absoluteCctRangeSelectIndex)
+        headerView.filterBtn.isSelected = filterPwmValue.rawValue != FilterSelectionState.unselected.rawValue || filterRatedPower.rawValue != FilterSelectionState.unselected.rawValue || filterAbsoluteSensitivityRange.rawValue != FilterSelectionState.unselected.rawValue || filterTransitionTime.rawValue != FilterSelectionState.unselected.rawValue || filterChangeControlPage.rawValue != FilterSelectionState.unselected.rawValue || filterAbsoluteCctRange.rawValue != FilterSelectionState.unselected.rawValue
+
         var filterDatas: [ParameterFilterData] = []
 
-        if pwmContents.count > 0 {
+        if !pwmDevices.isEmpty && pwmContents.count > 0 {
             filterDatas.append(.init(type: .pwm, isShow: pwmSelectIndex != nil, contents: pwmContents.map({ $0.name }), selectIndex: pwmSelectIndex))
         }
-        if powerDatas.count > 0 {
+        if !ratedPowerDevices.isEmpty && powerDatas.count > 0 {
             filterDatas.append(.init(type: .ratedPower, isShow: retedPowerSelectIndex != nil, contents: powerDatas.map({ $0.name }), selectIndex: retedPowerSelectIndex))
         }
 
-        if sensitivityContents.count > 0 {
+        if !sensitivityDevices.isEmpty && sensitivityContents.count > 0 {
             filterDatas.append(.init(type: .absoluteSensitivity, isShow: sensitivitySelectIndex != nil, contents: sensitivityContents.map({ $0.name }), selectIndex: sensitivitySelectIndex))
         }
 
-        if transitionTimeDatas.count > 0 {
+        if !transitionTimeDevices.isEmpty && transitionTimeDatas.count > 0 {
             filterDatas.append(.init(type: .transitionTime, isShow: transitionTimSelectIndex != nil, contents: transitionTimeDatas.map({ $0.name }), selectIndex: transitionTimSelectIndex))
         }
-        if changeControlPageContents.count > 0 {
+        if !changeControlPageDevices.isEmpty && changeControlPageContents.count > 0 {
             filterDatas.append(.init(type: .changeControlPage, isShow: changeControlPageSelectIndex != nil, contents: changeControlPageContents.map({ $0.name }), selectIndex: changeControlPageSelectIndex))
         }
-        if absoluteCctRangeContents.count > 0 {
+        if !absoluteCctRangeDevices.isEmpty && absoluteCctRangeContents.count > 0 {
             filterDatas.append(.init(type: .absoluteCctRange, isShow: absoluteCctRangeSelectIndex != nil, contents: absoluteCctRangeContents.map({ $0.name }), selectIndex: absoluteCctRangeSelectIndex))
         }
 
@@ -758,47 +800,47 @@ extension DeviceParameterDevicesViewController: DeviceParameterPromptViewDelegat
                     let data = pwmContents[selectIndex]
                     if let value = data.value {
                         self.filterPwmValue = .selected(value: value, name: data.name)
-                        showDevices = showDevices.filter({ $0.tempPwm == data.value })
+                        showDevices = showDevices.filter({ self.nodeSupportsFilter($0, type: .pwm) && $0.tempPwm == data.value })
                     }else {
                         self.filterPwmValue = .emptySelection
-                        showDevices = showDevices.filter({ $0.tempPwm == nil })
+                        showDevices = showDevices.filter({ self.nodeSupportsFilter($0, type: .pwm) && $0.tempPwm == nil })
                     }
                 case .ratedPower:
                     let data = powerDatas[selectIndex]
                     if data.value.isEmpty {
                         self.filterRatedPower = .emptySelection
-                        showDevices = showDevices.filter({ $0.tempRatedPowerPhases.isEmpty })
+                        showDevices = showDevices.filter({ self.nodeSupportsFilter($0, type: .ratedPower) && $0.tempRatedPowerPhases.isEmpty })
                     }else {
                         self.filterRatedPower = .selected(value: data.value, name: data.name)
-                        showDevices = showDevices.filter({ $0.tempRatedPowerPhases == data.value })
+                        showDevices = showDevices.filter({ self.nodeSupportsFilter($0, type: .ratedPower) && $0.tempRatedPowerPhases == data.value })
                     }
                 case .absoluteSensitivity:
 
                     let data = sensitivityContents[selectIndex]
                     if let value = data.value {
                         self.filterAbsoluteSensitivityRange = .selected(value: value, name: data.name)
-                        showDevices = showDevices.filter({ $0.tempSensitivityRange == value })
+                        showDevices = showDevices.filter({ self.nodeSupportsFilter($0, type: .absoluteSensitivity) && $0.tempSensitivityRange == value })
                     }else {
                         self.filterAbsoluteSensitivityRange = .emptySelection
-                        showDevices = showDevices.filter({ $0.tempSensitivityRange == nil })
+                        showDevices = showDevices.filter({ self.nodeSupportsFilter($0, type: .absoluteSensitivity) && $0.tempSensitivityRange == nil })
                     }
                 case .transitionTime:
                     let data = transitionTimeDatas[selectIndex]
                     if let value = data.value {
                         self.filterTransitionTime = .selected(value: value, name: data.name)
-                        showDevices = showDevices.filter({ $0.tempTransitionTime?.rawValue == value.rawValue })
+                        showDevices = showDevices.filter({ self.nodeSupportsFilter($0, type: .transitionTime) && $0.tempTransitionTime?.rawValue == value.rawValue })
                     }else {
                         self.filterTransitionTime = .emptySelection
-                        showDevices = showDevices.filter({ $0.tempTransitionTime == nil })
+                        showDevices = showDevices.filter({ self.nodeSupportsFilter($0, type: .transitionTime) && $0.tempTransitionTime == nil })
                     }
                 case .changeControlPage:
                     let data = changeControlPageContents[selectIndex]
                     self.filterChangeControlPage = .selected(value: data.value, name: data.name)
-                    showDevices = showDevices.filter({ $0.rawSupportCct && $0.tempChangeControlPage == data.value })
+                    showDevices = showDevices.filter({ self.nodeSupportsFilter($0, type: .changeControlPage) && $0.tempChangeControlPage == data.value })
                 case .absoluteCctRange:
                     let data = absoluteCctRangeContents[selectIndex]
                     self.filterAbsoluteCctRange = .selected(value: data.value, name: data.name)
-                    showDevices = showDevices.filter({ $0.rawSupportCct && $0.tempAbsoluteCctRange == data.value })
+                    showDevices = showDevices.filter({ self.nodeSupportsFilter($0, type: .absoluteCctRange) && $0.tempAbsoluteCctRange == data.value })
                 }
             }
 

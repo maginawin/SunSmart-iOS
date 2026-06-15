@@ -539,19 +539,19 @@ final class PJEightKeySwitchMonitorVC: UIViewController {
             showNoPermissionTip()
             return
         }
-        guard !viewModel.isUnlinkedVirtualBatteryPowerSwitch else {
-            deleteUnlinkedVirtualSwitch()
-            return
-        }
 
         SRAlertView(
             title: "notification".localizedString,
-            message: "switchs_delete_message".localizedString,
+            message: viewModel.switchData.powerSwitchKind.deleteConfirmationMessage,
             actions: [
                 .cancelAction,
                 SRAlertAction(title: "confirm".localizedString, style: .destructive, actionHandler: { [weak self] _ in
                     guard let self else { return }
-                    self.deleteSwitchAction?(self.viewModel.switchData, self)
+                    if self.viewModel.isUnlinkedVirtualBatteryPowerSwitch {
+                        self.deleteUnlinkedVirtualSwitch()
+                    } else {
+                        self.deleteSwitchAction?(self.viewModel.switchData, self)
+                    }
                 })
             ]
         ).show()

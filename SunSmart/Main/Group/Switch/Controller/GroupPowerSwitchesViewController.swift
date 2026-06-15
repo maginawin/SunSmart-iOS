@@ -375,19 +375,19 @@ final class GroupPowerSwitchesViewController: UIViewController {
             return
         }
         guard let switchData = switchData(id: id) else { return }
-        guard viewModel.isRealSwitch(switchData) else {
-            detachVirtualSwitch(switchData)
-            return
-        }
 
         SRAlertView(
             title: "notification".localizedString,
-            message: "alert_delete_message".localizedString,
+            message: switchData.powerSwitchKind.deleteConfirmationMessage,
             actions: [
                 .cancelAction,
                 SRAlertAction(title: "confirm".localizedString, style: .destructive, actionHandler: { [weak self, weak switchData] _ in
                     guard let self, let switchData else { return }
-                    self.detachRealSwitch(switchData)
+                    if self.viewModel.isRealSwitch(switchData) {
+                        self.detachRealSwitch(switchData)
+                    } else {
+                        self.detachVirtualSwitch(switchData)
+                    }
                 })
             ]
         ).show()

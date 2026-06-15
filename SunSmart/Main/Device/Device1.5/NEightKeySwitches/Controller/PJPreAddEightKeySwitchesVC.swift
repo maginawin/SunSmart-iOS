@@ -333,13 +333,9 @@ final class PJPreAddEightKeySwitchesVC: UIViewController {
     private func deleteAction() {
         guard ensureDeletable() else { return }
         guard let switchData = viewModel.sourceSwitchData else { return }
-        guard switchData.proxyNode?.isBatteryPowerSwitch == true else {
-            deleteSwitchAction?(switchData, self)
-            return
-        }
         SRAlertView(
             title: "notification".localizedString,
-            message: "switchs_delete_message".localizedString,
+            message: switchData.powerSwitchKind.deleteConfirmationMessage,
             actions: [
                 .cancelAction,
                 SRAlertAction(title: "confirm".localizedString, style: .destructive, actionHandler: { [weak self] _ in
