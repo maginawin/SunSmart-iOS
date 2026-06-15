@@ -535,3 +535,81 @@ private extension DeviceGroupFastAddSyncPlanner {
         return operationTypes
     }
 }
+
+enum UpDownLightDefaultCctStepsReader {
+
+    static func readAfterProvisioning(
+        devices: [ProvisioningDevice],
+        completion: @escaping () -> Void
+    ) {
+        let nodes = devices.compactMap {
+            MeshNetworkManager.instance.meshNetwork?.node(withAddress: $0.address)
+        }
+        readAfterProvisioning(nodes: nodes, completion: completion)
+    }
+
+    static func readAfterProvisioning(
+        nodes: [Node],
+        completion: @escaping () -> Void
+    ) {
+        let supportedNodes = nodes.filter { $0.supportsUpDownRatioControl }
+        guard !supportedNodes.isEmpty else {
+            DispatchQueue.main.async {
+                completion()
+            }
+            return
+        }
+
+        read(nodes: supportedNodes, index: 0, completion: completion)
+    }
+}
+
+private extension UpDownLightDefaultCctStepsReader {
+
+    static func read(
+        nodes: [Node],
+        index: Int,
+        completion: @escaping () -> Void
+    ) {
+        guard index < nodes.count else {
+            DispatchQueue.main.async {
+                completion()
+            }
+            return
+        }
+
+        let node = nodes[index]
+        guard let vendorModel = node.sunricherVendorModel else {
+            save(steps: 5, for: node)
+            read(nodes: nodes, index: index + 1, completion: completion)
+            return
+        }
+
+        MeshAPI.sendMessage(
+            message: SunricherVendorGet(function: .upDownLightDefaultCctSteps),
+            model: vendorModel,
+            timeout: 7
+        ) { response in
+            let steps = normalizedSteps(from: response)
+            DispatchQueue.main.async {
+                save(steps: steps, for: node)
+                read(nodes: nodes, index: index + 1, completion: completion)
+            }
+        }
+    }
+
+    static func normalizedSteps(from response: StaticMeshResponse?) -> UInt8 {
+        guard let status = response as? SunricherVendorStatus,
+              status.status.isSuccessful,
+              case .upDownLightDefaultCctSteps(let steps) = status.status.parameters,
+              steps == 6 else {
+            return 5
+        }
+        return 6
+    }
+
+    static func save(steps: UInt8, for node: Node) {
+        node.upDownLightDefaultCctSteps = steps
+        _ = node.savePropertys()
+    }
+}

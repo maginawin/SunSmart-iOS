@@ -63,6 +63,7 @@ class SyncDevicesViewController: UIViewController {
     private var batteryPowerSwitchKeyConfigurationCompleted = false
     private var batteryPowerSwitchKeyConfigEarliestDate: Date?
     private var syncRunIdentifier = UUID()
+    private var daylightConditionRecallRecoveryKeys: Set<String> = []
 
     private static let batteryPowerSwitchKeyConfigInitialDelay: TimeInterval = 1
     private static let batteryPowerSwitchPostKeyConfigProcessingDelay: TimeInterval = 0.5
@@ -2080,6 +2081,9 @@ class SyncDevicesViewController: UIViewController {
                             if let address = handle.address ?? handle.model?.parentElement?.unicastAddress, let node = MeshNetworkManager.instance.meshNetwork?.node(withAddress: address) {
                                 node.daylightRecallConditionId = UInt8(index)
                             }
+                        }else if self.attemptDaylightConditionRecallRecovery(handle: handle, status: vendorStatusMessage, syncModel: model) {
+                            handle.respondAddresss = handle.allAddresss
+                            handle.notRespondAddresss = []
                         }
                     }
                 }, failedBack: { handle in
@@ -2237,6 +2241,7 @@ class SyncDevicesViewController: UIViewController {
     private func beginSyncRun() -> UUID {
         let identifier = UUID()
         syncRunIdentifier = identifier
+        daylightConditionRecallRecoveryKeys.removeAll()
         if batteryPowerSwitchDataForSync?.requiresActivationBeforeOwnConfiguration == true {
             batteryPowerSwitchKeyConfigEarliestDate = Date().addingTimeInterval(Self.batteryPowerSwitchKeyConfigInitialDelay)
         } else {
@@ -2959,7 +2964,89 @@ extension SyncDevicesViewController: SyncDeviceStepViewCellDelegate {
         updateSyncStateUI()
         startSync()
     }
+
+}
+
+private extension SyncDevicesViewController {
+
+    func attemptDaylightConditionRecallRecovery(handle: MeshMessageHandle, status: SunricherVendorStatus, syncModel: SyncCellModel) -> Bool {
+        guard !status.status.isSuccessful,
+              status.status.code == .daylightConditionRecall,
+              status.status.errorCode == 2,
+              let vendorSet = handle.message as? SunricherVendorSet,
+              case .daylightConditionRecall(let index) = vendorSet.function,
+              let node = handle.model?.parentElement?.parentNode,
+              let vendorModel = node.sunricherVendorModel else {
+            return false
+        }
+        let recoveryKey = "\(node.primaryUnicastAddress)-\(index)"
+        guard !daylightConditionRecallRecoveryKeys.contains(recoveryKey),
+              let recoveryHandles = daylightConditionRecallRecoveryMessageHandles(node: node, index: index, syncModel: syncModel, vendorModel: vendorModel),
+              !recoveryHandles.isEmpty else {
+            return false
+        }
+        daylightConditionRecallRecoveryKeys.insert(recoveryKey)
+        MeshProxyMessageCommand.shared.addMessage(messageHandles: recoveryHandles, ackMessageTimeout: ackTimeout(for: syncModel), finishedBack: nil)
+        return true
+    }
+
+    func daylightConditionRecallRecoveryMessageHandles(node: Node, index: UInt8, syncModel: SyncCellModel, vendorModel: Model) -> [MeshMessageHandle]? {
+        guard let conditionProfile = daylightConditionRecallRecoveryProfile(node: node, index: index, syncModel: syncModel) else {
+            return nil
+        }
+        var messageHandles = conditionProfile.getMessageHandles(node: node)
+        messageHandles.forEach { $0.continuous = false }
+        let recallHandle = MeshMessageHandle(message: SunricherVendorSet(function: .daylightConditionRecall(index: index)), model: vendorModel)
+        recallHandle.continuous = false
+        messageHandles.append(recallHandle)
+        return messageHandles
+    }
+
+    func daylightConditionRecallRecoveryProfile(node: Node, index: UInt8, syncModel: SyncCellModel) -> ProfileType? {
+        if let taskModel = syncModel as? SyncDeviceStepTaskModel,
+           let profile = daylightConditionRecallRecoveryProfile(index: index, taskModels: taskModel.parentStepModel?.tasks ?? []) {
+            return profile
+        }
+        return daylightConditionRecallRecoveryProfileFromGroup(node: node, index: index)
+    }
+
+    func daylightConditionRecallRecoveryProfile(index: UInt8, taskModels: [SyncDeviceStepTaskModel]) -> ProfileType? {
+        for task in taskModels {
+            guard case .configuration(_, let actionType) = task.operationType,
+                  case .profile(let profileType) = actionType else {
+                continue
+            }
+            switch profileType {
+            case .profileDayToggleTriggerConditionLux(let id, let minLux, let maxLux, let useCalibrationValues, let destination, let sceneNumber, _):
+                if id == index {
+                    return .profileDayToggleTriggerConditionLux(id: id, minLux: minLux, maxLux: maxLux, useCalibrationValues: useCalibrationValues, destination: destination, sceneNumber: sceneNumber, forceFullSet: true)
+                }
+            case .profileNightToggleTriggerConditionLux(let id, let minLux, let maxLux, let useCalibrationValues, let destination, let sceneNumber, _):
+                if id == index {
+                    return .profileNightToggleTriggerConditionLux(id: id, minLux: minLux, maxLux: maxLux, useCalibrationValues: useCalibrationValues, destination: destination, sceneNumber: sceneNumber, forceFullSet: true)
+                }
+            default:
+                continue
+            }
+        }
+        return nil
+    }
     
+    func daylightConditionRecallRecoveryProfileFromGroup(node: Node, index: UInt8) -> ProfileType? {
+        guard case .group(let group, _, _) = type else {
+            return nil
+        }
+        let sceneDestination = node.lightLCSceneModel?.parentElement?.unicastAddress ?? node.lightLCModel?.parentElement?.unicastAddress ?? node.primaryUnicastAddress
+        if let nightData = group.info.profile.nightData, nightData.id == index {
+            let targetLux = node.preConfiguration.nightProfileStartsBelowLux ?? nightData.startsBelowLux
+            return .profileNightToggleTriggerConditionLux(id: nightData.id, minLux: 0, maxLux: targetLux, useCalibrationValues: nightData.useCalibrationValues, destination: sceneDestination, sceneNumber: nightData.sceneData.sceneNumber, forceFullSet: true)
+        }
+        if let dayData = group.info.profile.dayData, dayData.id == index {
+            let targetLux = node.preConfiguration.dayProfileStartsAboveLux ?? dayData.startsBelowLux
+            return .profileDayToggleTriggerConditionLux(id: dayData.id, minLux: targetLux, maxLux: .max, useCalibrationValues: dayData.useCalibrationValues, destination: sceneDestination, sceneNumber: dayData.sceneData.sceneNumber, forceFullSet: true)
+        }
+        return nil
+    }
 }
 
 extension SyncDevicesViewController {
@@ -3050,7 +3137,11 @@ extension SyncDeviceStepTaskModel {
             relevanceTaskModels = self.relevanceTaskModels.filter { task in
                 if case .configuration(_, let actionType) = task.operationType, case .profile(let profileType) = actionType {
                     switch profileType {
-                    case .profileToggleTriggerConditionLuxLock, .lightControlSwitch, .daylightSensorConditionRecall:
+                    case .profileToggleTriggerConditionLuxLock,
+                            .profileDayToggleTriggerConditionLux,
+                            .profileNightToggleTriggerConditionLux,
+                            .lightControlSwitch,
+                            .daylightSensorConditionRecall:
                         return true
                     default:
                         return false

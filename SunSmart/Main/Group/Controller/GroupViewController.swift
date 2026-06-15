@@ -22,6 +22,11 @@ class GroupViewController: UIViewController {
     private var deviceCountLabel: UILabel!
     private var onoffBtn: UIButton!
     private var autoBtn: UIButton!
+    private let controlButtonsStackView = UIStackView()
+    private var upDownRatioModeBtn: UIButton!
+    private var upDownRatioControlView: DeviceUpDownRatioControlView!
+    private var isUpDownRatioModeSelected = false
+    private var groupUpRatioValue = 50
     private var controlPanelView: DeviceLightControlPanelView!
     private var pageControl: UIPageControl!
     
@@ -101,6 +106,14 @@ class GroupViewController: UIViewController {
     private var showsGroupControlPanel: Bool {
         group.supportLightness || showsGroupControlCCT
     }
+
+    private var upDownRatioNodes: [Node] {
+        group.nodes.filter { $0.supportsUpDownRatioControl }
+    }
+
+    private var showsUpDownRatioModeButton: Bool {
+        !upDownRatioNodes.isEmpty
+    }
     
     //    private var devices: [String] = []
     //    private var isGroupUpdateData = false
@@ -178,6 +191,7 @@ class GroupViewController: UIViewController {
         
         let previousGroup = MeshNetworkManager.instance.groups[index - 1]
         self.group = previousGroup
+        resetGroupUpDownRatioState()
 //        updateUI()
       
         view.layer.addMoveInAnimation(duration: 0.4, animationOrientation: .fromLeft)
@@ -204,6 +218,7 @@ class GroupViewController: UIViewController {
         
         let nextGroup = MeshNetworkManager.instance.groups[index + 1]
         self.group = nextGroup
+        resetGroupUpDownRatioState()
         view.layer.addMoveInAnimation(duration: 0.4, animationOrientation: .fromRight)
 //        UIView.transition(with: view, duration: 0.6, options: [.transitionCrossDissolve, .curveEaseInOut], animations: {
             self.updateUI()
@@ -547,6 +562,35 @@ class GroupViewController: UIViewController {
         }
 
     }
+
+    private func resetGroupUpDownRatioState() {
+        isUpDownRatioModeSelected = false
+        groupUpRatioValue = 50
+    }
+
+    private func applyGroupUpRatioValue(_ value: Int) {
+        let clampedValue = max(0, min(100, value))
+        groupUpRatioValue = clampedValue
+        upDownRatioNodes.forEach { node in
+            node.upRatio = clampedValue
+        }
+        upDownRatioControlView.upValue = clampedValue
+    }
+
+    private func saveGroupUpRatioValue(_ value: Int) {
+        let clampedValue = max(0, min(100, value))
+        MeshAPI.sendMessage(
+            message: SunricherVendorSet(function: .upDownLightUpRatio(UInt8(clampedValue))),
+            address: group.address.address
+        )
+
+        applyGroupUpRatioValue(clampedValue)
+        upDownRatioNodes.forEach { node in
+            if let meshUUID = node.network?.uuid.uuidString {
+                node.preConfiguration.save(meshUUID: meshUUID, nodeAddress: node.primaryUnicastAddress)
+            }
+        }
+    }
     
     private func updateUI() {
         
@@ -560,6 +604,7 @@ class GroupViewController: UIViewController {
         onoffBtn.isSelected = group.isOn
         
         updateControlPanel()
+        updateUpDownRatioUI()
         
         let profileType = group.info.profile.type
         // 提示校准
@@ -805,6 +850,7 @@ class GroupViewController: UIViewController {
             $0.isOn = group.isOn
         })
         controlPanelView.setBrightnessValue(group.isOn ? Node.getLightness100(lightness: group.lightness) : 0)
+        updateUpDownRatioUI()
         collectionView.reloadData()
         
         refreshAutoState()
@@ -860,11 +906,60 @@ class GroupViewController: UIViewController {
                 controlPanelView.setBrightnessValue(Node.getLightness100(lightness: group.lightness))
             }
             onoffBtn.isSelected = group.isOn
+            updateUpDownRatioUI()
             
         }
         
         refreshAutoState()
        
+    }
+
+    @objc private func upDownRatioModeBtnClick(sender: UIButton) {
+        isUpDownRatioModeSelected.toggle()
+        updateUpDownRatioUI()
+    }
+
+    private func controlButtonImage(named imageName: String, matching size: CGSize) -> UIImage? {
+        guard let image = UIImage(named: imageName) else {
+            return nil
+        }
+        guard image.size != size else {
+            return image
+        }
+
+        return UIGraphicsImageRenderer(size: size).image { _ in
+            image.draw(in: CGRect(origin: .zero, size: size))
+        }
+    }
+
+    private func updateUpDownRatioUI() {
+        let showsModeButton = showsUpDownRatioModeButton
+        if !showsModeButton {
+            isUpDownRatioModeSelected = false
+            groupUpRatioValue = 50
+        }
+
+        upDownRatioModeBtn.isHidden = !showsModeButton
+        upDownRatioModeBtn.isSelected = showsModeButton && isUpDownRatioModeSelected
+
+        let showsRatioControl = showsModeButton && isUpDownRatioModeSelected
+        upDownRatioControlView.isHidden = !showsRatioControl
+        upDownRatioControlView.upValue = groupUpRatioValue
+
+        controlPanelView.snp.remakeConstraints { make in
+            if isIPad {
+                make.left.equalTo(SCRXFrom(107))
+                make.right.equalTo(SCRXFrom(-107))
+            }else {
+                make.left.right.equalTo(collectionView)
+            }
+            if showsRatioControl {
+                make.top.equalTo(upDownRatioControlView.snp.bottom).offset(SCRYFit(isIPad ? 16 : 8))
+            }else {
+                make.top.equalTo(controlButtonsStackView.snp.bottom).offset(SCRYFit(8))
+            }
+            make.bottom.equalToSuperview().offset(-(collapsedSensorViewHeight + SCRYFit(20)))
+        }
     }
     
     /// 按键按下回调
@@ -935,6 +1030,16 @@ class GroupViewController: UIViewController {
         controlPanelView.editCCTRequested = { [weak self] in
             self?.showGroupCCTInputAlert()
         }
+
+        upDownRatioControlView.valueChanging = { [weak self] value in
+            guard let self else { return }
+            self.applyGroupUpRatioValue(value)
+        }
+
+        upDownRatioControlView.valueChanged = { [weak self] value in
+            guard let self else { return }
+            self.saveGroupUpRatioValue(value)
+        }
     }
 
     private func applyGroupBrightnessValue(_ value: Int) {
@@ -947,6 +1052,7 @@ class GroupViewController: UIViewController {
             $0.isOn = lightness > 0
             $0.lightness = lightness
         }
+        updateUpDownRatioUI()
     }
 
     private func sendGroupBrightnessValue(_ value: Int, ended: Bool) {
@@ -969,6 +1075,7 @@ class GroupViewController: UIViewController {
         groupControlCCTNodes.forEach {
             $0.temperature = $0.clampEffectiveCct(temperature)
         }
+        updateUpDownRatioUI()
         return temperature
     }
 
@@ -1257,6 +1364,7 @@ class GroupViewController: UIViewController {
         }
         onoffBtn.isSelected = group.isOn
         updateControlPanel()
+        updateUpDownRatioUI()
     }
     
     /// 长按事件，跳转到设备详情
@@ -1351,6 +1459,16 @@ class GroupViewController: UIViewController {
 //            make.width.equalTo(SCRXFrom(40))
 //            make.height.equalTo(4)
         }
+
+        controlButtonsStackView.axis = .horizontal
+        controlButtonsStackView.alignment = .center
+        controlButtonsStackView.distribution = .equalSpacing
+        controlButtonsStackView.spacing = isIPad ? SCRXFrom(60) : SCRXFrom(40)
+        contentView.addSubview(controlButtonsStackView)
+        controlButtonsStackView.snp.makeConstraints { make in
+            make.centerX.equalToSuperview()
+            make.top.equalTo(collectionView.snp.bottom).offset(SCRYFit(isIPad ? 64 : 20))
+        }
         
         var offImageName = "group_off"
         var onImageName = "group_on"
@@ -1363,16 +1481,9 @@ class GroupViewController: UIViewController {
         onoffBtn = UIButton(normalImageName: offImageName, selectedImageName: onImageName, target: self, action: #selector(onoffBtnClick))
         
 //        onoffBtn.setImage(UIImage(named: offImageName), for: .disabled)
-        contentView.addSubview(onoffBtn)
+        controlButtonsStackView.addArrangedSubview(onoffBtn)
         onoffBtn.snp.makeConstraints { make in
-            if isIPad {
-                make.width.height.equalTo(56)
-                make.right.equalTo(contentView.snp.centerX).offset(SCRXFrom(-40))
-                make.top.equalTo(collectionView.snp.bottom).offset(SCRYFit(64))
-            }else {
-                make.centerX.equalToSuperview().offset(SCRXFrom(-40))
-                make.top.equalTo(collectionView.snp.bottom).offset(SCRYFit(20))
-            }
+            make.width.height.equalTo(isIPad ? 56 : 40)
         }
         
         autoBtn = UIButton(normalImageName: isIPad ? "auto_big" : "auto", target: self, action: #selector(autoBtnAction))
@@ -1380,20 +1491,44 @@ class GroupViewController: UIViewController {
 //        autoBtn.addTarget(self, action: #selector(btnTouchCancelAction), for: .touchCancel)
 //        UIButton(title: "AUTO".localizedString, titleSize: 13, titleColor: Bar_Color, fit: false, target: self, action: #selector(autoBtnAction))
 //        autoBtn.setBackgroundImage(UIImage(named: "auto_btn_border"), for: .normal)
-        contentView.addSubview(autoBtn)
+        controlButtonsStackView.addArrangedSubview(autoBtn)
         autoBtn.snp.makeConstraints { make in
-            make.centerY.equalTo(onoffBtn)
-            if isIPad {
-                make.width.height.equalTo(56)
-                make.left.equalTo(onoffBtn.snp.right).offset(SCRXFrom(60))
-            }else {
-                make.left.equalTo(onoffBtn.snp.right).offset(SCRXFrom(40))
-            }
+            make.width.height.equalTo(isIPad ? 56 : 40)
+        }
+
+        upDownRatioModeBtn = UIButton(
+            normalImageName: "up down ratio button - unselected",
+            selectedImageName: "up down ratio button - selected",
+            target: self,
+            action: #selector(upDownRatioModeBtnClick)
+        )
+        upDownRatioModeBtn.isHidden = true
+        if let autoButtonImageSize = autoBtn.image(for: .normal)?.size {
+            upDownRatioModeBtn.setImage(controlButtonImage(named: "up down ratio button - unselected", matching: autoButtonImageSize), for: .normal)
+            upDownRatioModeBtn.setImage(controlButtonImage(named: "up down ratio button - selected", matching: autoButtonImageSize), for: .selected)
+        }
+        controlButtonsStackView.addArrangedSubview(upDownRatioModeBtn)
+        upDownRatioModeBtn.snp.makeConstraints { make in
+            make.width.height.equalTo(isIPad ? 56 : 40)
         }
 
         controlPanelView = DeviceLightControlPanelView()
         controlPanelView.clipsToBounds = false
         contentView.addSubview(controlPanelView)
+
+        upDownRatioControlView = DeviceUpDownRatioControlView()
+        upDownRatioControlView.isHidden = true
+        contentView.addSubview(upDownRatioControlView)
+        upDownRatioControlView.snp.makeConstraints { make in
+            if isIPad {
+                make.left.equalTo(SCRXFrom(107))
+                make.right.equalTo(SCRXFrom(-107))
+            }else {
+                make.left.right.equalTo(collectionView)
+            }
+            make.top.equalTo(controlButtonsStackView.snp.bottom).offset(SCRYFit(20))
+        }
+
         controlPanelView.snp.makeConstraints { make in
             if isIPad {
                 make.left.equalTo(SCRXFrom(107))
@@ -1401,7 +1536,7 @@ class GroupViewController: UIViewController {
             }else {
                 make.left.right.equalTo(collectionView)
             }
-            make.top.equalTo(onoffBtn.snp.bottom).offset(SCRYFit(8))
+            make.top.equalTo(controlButtonsStackView.snp.bottom).offset(SCRYFit(8))
             make.bottom.equalToSuperview().offset(-(collapsedSensorViewHeight + SCRYFit(20)))
         }
         
@@ -1594,6 +1729,7 @@ extension GroupViewController: MeshLibManagerMessageDelegate {
                         }
                         onoffBtn.isSelected = group.isOn
                         updateControlPanel()
+                        updateUpDownRatioUI()
                     }else {
                         reloadCollectionItem(node: node)
                     }

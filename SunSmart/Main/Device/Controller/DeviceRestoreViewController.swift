@@ -1827,7 +1827,10 @@ class DeviceRestoreViewController: UIViewController {
         } addFinish: {[weak self] successList, failList in
             guard let self = self else { return }
             self.runDeferredRestoreIfNeeded(successList: successList) { [weak self] in
-                self?.finishDeviceRestoreAdd(successList: successList, failList: failList)
+                guard let self = self else { return }
+                UpDownLightDefaultCctStepsReader.readAfterProvisioning(nodes: self.restoreNodes) { [weak self] in
+                    self?.finishDeviceRestoreAdd(successList: successList, failList: failList)
+                }
             }
         }
     }

@@ -42,5 +42,9 @@ extension Node {
             capability.supportedVersionId <= vid
         }
     }
+
+    var supportsUpDownRatioControl: Bool {
+        companyIdentifier == 0x0A78 && productIdentifier == 0x2491
+    }
     
 }
