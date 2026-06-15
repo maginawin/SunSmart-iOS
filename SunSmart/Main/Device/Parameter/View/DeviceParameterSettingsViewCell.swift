@@ -646,6 +646,7 @@ final class DeviceParameterAbsoluteCctRangeViewCell: UITableViewCell {
 
     private var lowerBound: UInt16 = NodeAbsoluteCctRange.defaultRange.lowerBound
     private var upperBound: UInt16 = NodeAbsoluteCctRange.defaultRange.upperBound
+    private var resetEnabled = true
 
     weak var delegate: DeviceParameterAbsoluteCctRangeViewCellDelegate?
 
@@ -662,7 +663,8 @@ final class DeviceParameterAbsoluteCctRangeViewCell: UITableViewCell {
         fatalError("init(coder:) has not been implemented")
     }
 
-    func configure(range: ClosedRange<UInt16>, enabled: Bool) {
+    func configure(range: ClosedRange<UInt16>, enabled: Bool, resetEnabled: Bool = true) {
+        self.resetEnabled = resetEnabled
         lowerBound = range.lowerBound
         upperBound = range.upperBound
         normalizeRange()
@@ -673,7 +675,7 @@ final class DeviceParameterAbsoluteCctRangeViewCell: UITableViewCell {
 
     private func updateParameterEnable(enable: Bool) {
         enableSwitch.isOn = enable
-        resetBtn.isHidden = !enable
+        resetBtn.isHidden = !enable || !resetEnabled
         sliderContentView.isHidden = !enable
         noteLabel.isHidden = !enable
 

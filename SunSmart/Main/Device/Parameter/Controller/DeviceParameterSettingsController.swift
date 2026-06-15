@@ -61,6 +61,13 @@ class DeviceParameterSettingsController: UIViewController {
     private var defaultCctRangeDataForSelection: DeviceParameterCctRangeData {
         DeviceParameterCctRangeData(range: devices.first?.defaultAbsoluteCctRange ?? NodeAbsoluteCctRange.defaultRange)
     }
+
+    private var allowsAbsoluteCctRangeReset: Bool {
+        guard let firstRange = devices.first?.defaultAbsoluteCctRange else {
+            return true
+        }
+        return devices.allSatisfy { $0.defaultAbsoluteCctRange == firstRange }
+    }
     
     private var changeControlPageMessageForSelection: String {
         if devices.first?.isSingleWhiteDefaultCctProduct == true {
@@ -621,7 +628,7 @@ extension DeviceParameterSettingsController: UITableViewDataSource, UITableViewD
             case .absoluteCctRange:
                 let cell = tableView.dequeueReusableCell(withIdentifier: "absoluteCctRangeCell", for: indexPath) as! DeviceParameterAbsoluteCctRangeViewCell
                 let range = (parameterData.data as? DeviceParameterCctRangeData)?.range ?? defaultCctRangeDataForSelection.range
-                cell.configure(range: range, enabled: parameterData.enable)
+                cell.configure(range: range, enabled: parameterData.enable, resetEnabled: allowsAbsoluteCctRangeReset)
                 cell.delegate = self
                 return cell
             default:
@@ -854,7 +861,7 @@ extension DeviceParameterSettingsController: DeviceParameterAbsoluteCctRangeView
             let value = uniformValue(devices.map({ DeviceParameterCctRangeData(range: $0.effectiveCctRange) }), defaultValue: defaultCctRangeDataForSelection)
             absoluteCctRangeData = value
             data.data = value
-            cell.configure(range: value.range, enabled: true)
+            cell.configure(range: value.range, enabled: true, resetEnabled: allowsAbsoluteCctRangeReset)
         }
         updateSetupBtnState()
         tableView.performBatchUpdates(nil)
@@ -874,10 +881,13 @@ extension DeviceParameterSettingsController: DeviceParameterAbsoluteCctRangeView
         guard let indexPath = tableView.indexPath(for: cell) else {
             return
         }
+        guard allowsAbsoluteCctRangeReset else {
+            return
+        }
         let data = defaultCctRangeDataForSelection
         absoluteCctRangeData = data
         parameterDatas[indexPath.row].data = data
-        cell.configure(range: data.range, enabled: true)
+        cell.configure(range: data.range, enabled: true, resetEnabled: true)
         updateSetupBtnState()
     }
 
