@@ -10,28 +10,25 @@ import Foundation
 enum LinkedEmerFireEditRow: Int, CaseIterable {
     case name
     case reportToGateway
-    case powerLossEmergency
-    case powerLossGroups
-    case powerLossInstructions
-    case powerLossBrightness
-    case powerRestoreInstructions
-    case powerLossResuming
-    case powerLossSendCount
-    case fireAlarmEmergency
-    case fireAlarmGroups
-    case fireAlarmInstructions
+    case associatedGroups
+    case eventOccursHeader
     case fireAlarmBrightness
-    case fireAlarmStopInstructions
-    case fireAlarmResuming
-    case fireAlarmSendCount
+    case powerLossBrightness
+    case triggerInterval
+    case eventEndsHeader
+    case restoreAction
+    case restoreBrightness
+    case restoreResuming
+    case restoreSendCount
 }
 
 extension LinkedEmerFireEditRow {
     enum CardGroup {
         case name
         case report
-        case powerLoss
-        case fireAlarm
+        case associatedGroups
+        case eventOccurs
+        case eventEnds
     }
 
     var cardGroup: CardGroup {
@@ -40,22 +37,19 @@ extension LinkedEmerFireEditRow {
             return .name
         case .reportToGateway:
             return .report
-        case .powerLossEmergency,
-             .powerLossGroups,
-             .powerLossInstructions,
-             .powerLossBrightness,
-             .powerRestoreInstructions,
-             .powerLossResuming,
-             .powerLossSendCount:
-            return .powerLoss
-        case .fireAlarmEmergency,
-             .fireAlarmGroups,
-             .fireAlarmInstructions,
+        case .associatedGroups:
+            return .associatedGroups
+        case .eventOccursHeader,
              .fireAlarmBrightness,
-             .fireAlarmStopInstructions,
-             .fireAlarmResuming,
-             .fireAlarmSendCount:
-            return .fireAlarm
+             .powerLossBrightness,
+             .triggerInterval:
+            return .eventOccurs
+        case .eventEndsHeader,
+             .restoreAction,
+             .restoreBrightness,
+             .restoreResuming,
+             .restoreSendCount:
+            return .eventEnds
         }
     }
 }
@@ -65,4 +59,9 @@ struct LinkedEmerFireStepperConfiguration {
     let value: Int
     let range: ClosedRange<Int>
     let suffix: String
+}
+
+struct LinkedEmerFireRestoreActionOption {
+    let title: String
+    let type: EmergencyFireRestoreActionType
 }

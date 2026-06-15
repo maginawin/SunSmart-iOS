@@ -356,11 +356,7 @@ class DeviceEmerFireData: Copyable {
     func clearMonitoringConfiguration() {
         isSynced = true
         reportToGateway = true
-        configuration = EmergencyFireControllerConfiguration(
-            workMode: .allDisabled,
-            powerLossSettings: .defaultValue,
-            fireAlarmSettings: .defaultValue
-        )
+        configuration = .defaultValue
         lastUpdate = Int64(Date().timeIntervalSince1970)
     }
 }

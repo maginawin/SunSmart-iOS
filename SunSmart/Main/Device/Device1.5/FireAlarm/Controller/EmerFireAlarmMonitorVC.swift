@@ -167,10 +167,6 @@ class EmerFireAlarmMonitorVC: UIViewController, DeviceProtocol {
     }
     
     func configureActions() {
-        let actionIcons = viewModel.actionIconNames()
-        let emergencyActionBorderColor = currentWorkMode == .fireAlarmEmergency
-        ? UIColor(red: 1, green: 0.635, blue: 0.602, alpha: 0.2)
-            : nil
         var actions: [EmerFireAlarmMoniView.ActionItem] = [
             .init(
                 image: UIImage(named: EmergencyFireControllerIconName.Monitor.Action.identify),
@@ -180,22 +176,6 @@ class EmerFireAlarmMonitorVC: UIViewController, DeviceProtocol {
                 }
             )
         ]
-        if canOperateEmergencyActions {
-            actions.append(.init(
-                image: UIImage(named: actionIcons.trigger),
-                borderColor: emergencyActionBorderColor,
-                action: { [weak self] in
-                    self?.triggerAction() ?? false
-                }
-            ))
-            actions.append(.init(
-                image: UIImage(named: actionIcons.stop),
-                borderColor: emergencyActionBorderColor,
-                action: { [weak self] in
-                    self?.stopAction() ?? false
-                }
-            ))
-        }
         moniView.configure(actions: actions)
         statusSetView.headerActionHandler = { [weak self] action in
             guard let self else { return }
@@ -328,11 +308,7 @@ class EmerFireAlarmMonitorVC: UIViewController, DeviceProtocol {
             XWHUDManager.showTipHUD("Not executed. No devices in associated groups.".localizedString, isLineFeed: true)
             return false
         }
-        guard let sceneNumber = viewModel.activeTriggerSceneNumber() else {
-            XWHUDManager.showTipHUD("failed".localizedString + " !", isLineFeed: true)
-            return false
-        }
-        return recallEmergencyScene(sceneNumber)
+        return recallEmergencyScene(viewModel.activeTriggerSceneNumber())
     }
 
     @discardableResult
@@ -362,7 +338,7 @@ class EmerFireAlarmMonitorVC: UIViewController, DeviceProtocol {
             return false
         }
         let message = SceneRecallUnacknowledged(sceneNumber)
-        print("[EFC] recall scene=\(String(format: "0x%04X", sceneNumber)), publishGroup=\(String(format: "0x%04X", publishGroupAddress)), mode=\(currentWorkMode)")
+        print("[EFC] recall scene=\(String(format: "0x%04X", sceneNumber)), publishGroup=\(String(format: "0x%04X", publishGroupAddress))")
         MeshAPI.sendMessage(message: message, address: publishGroupAddress)
         return true
     }
@@ -376,7 +352,7 @@ class EmerFireAlarmMonitorVC: UIViewController, DeviceProtocol {
         guard let publishGroupAddress = publishGroupAddressForAction() else {
             return false
         }
-        print("[EFC] light LC ON publishGroup=\(String(format: "0x%04X", publishGroupAddress)), mode=\(currentWorkMode)")
+        print("[EFC] light LC ON publishGroup=\(String(format: "0x%04X", publishGroupAddress))")
         MeshAPI.sendMessage(message: LightLCLightOnOffSetUnacknowledged(true), address: publishGroupAddress)
         return true
     }

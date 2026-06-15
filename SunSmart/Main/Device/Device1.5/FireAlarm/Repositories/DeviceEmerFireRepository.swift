@@ -62,7 +62,6 @@ private var emerFireJSONDecoder: JSONDecoder {
 extension DeviceEmerFireData {
 
     private static let tableName = "emergencyFireControllers"
-    private static let legacyMockTableName = "deviceEmerFireDatas"
     private static let table = Table(tableName)
 
     struct ExpressionKey {
@@ -113,72 +112,7 @@ extension DeviceEmerFireData {
                 _ = try? SunSmartDataManager.shared.db?.run(DeviceEmerFireData.table.addColumn(ExpressionKey.configurationData))
             }
             migrateMissingColumns(columnNames)
-            if columnNames.contains("powerLossEmergencyEnabled") || columnNames.contains("fireAlarmEmergencyEnabled") {
-                rebuildCleanTable()
-                return
-            }
         }
-
-        _ = try? SunSmartDataManager.shared.db?.run("DROP TABLE IF EXISTS \(legacyMockTableName)")
-    }
-
-    private static func rebuildCleanTable() {
-        let cleanTableName = "\(tableName)_clean"
-        let db = SunSmartDataManager.shared.db
-        _ = try? db?.run("DROP TABLE IF EXISTS \(cleanTableName)")
-        _ = try? db?.run("""
-        CREATE TABLE IF NOT EXISTS \(cleanTableName) (
-            id INTEGER PRIMARY KEY NOT NULL,
-            meshUUID TEXT NOT NULL,
-            subNetworkKey TEXT NOT NULL,
-            controllerId TEXT NOT NULL,
-            spaceId TEXT NOT NULL DEFAULT '',
-            name TEXT NOT NULL,
-            bindNodeAddress INTEGER,
-            publishGroupAddress INTEGER,
-            isSynced INTEGER NOT NULL DEFAULT 0,
-            reportToGateway INTEGER NOT NULL DEFAULT 1,
-            configurationData BLOB,
-            createTime INTEGER NOT NULL,
-            lastUpdate INTEGER NOT NULL,
-            UNIQUE(meshUUID, subNetworkKey, controllerId)
-        )
-        """)
-        _ = try? db?.run("""
-        INSERT OR REPLACE INTO \(cleanTableName) (
-            id,
-            meshUUID,
-            subNetworkKey,
-            controllerId,
-            spaceId,
-            name,
-            bindNodeAddress,
-            publishGroupAddress,
-            isSynced,
-            reportToGateway,
-            configurationData,
-            createTime,
-            lastUpdate
-        )
-        SELECT
-            id,
-            meshUUID,
-            subNetworkKey,
-            controllerId,
-            COALESCE(spaceId, ''),
-            name,
-            bindNodeAddress,
-            publishGroupAddress,
-            COALESCE(isSynced, 0),
-            COALESCE(reportToGateway, 1),
-            configurationData,
-            COALESCE(createTime, CAST(strftime('%s', 'now') AS INTEGER)),
-            COALESCE(lastUpdate, CAST(strftime('%s', 'now') AS INTEGER))
-        FROM \(tableName)
-        """)
-        _ = try? db?.run("DROP TABLE IF EXISTS \(tableName)")
-        _ = try? db?.run("ALTER TABLE \(cleanTableName) RENAME TO \(tableName)")
-        _ = try? db?.run("DROP TABLE IF EXISTS \(legacyMockTableName)")
     }
 
     static func load(

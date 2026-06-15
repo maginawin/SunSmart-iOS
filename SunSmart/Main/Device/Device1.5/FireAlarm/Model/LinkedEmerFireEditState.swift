@@ -10,34 +10,6 @@ import NordicSigMeshSDK
 
 final class LinkedEmerFireEditState {
 
-    enum EmergencyMode {
-        case powerLoss
-        case fireAlarm
-    }
-
-    let powerLossInstructions = [
-        "linked_power_loss_instruction_1".localizedString,
-        "linked_power_loss_instruction_2".localizedString
-    ]
-
-    let powerRestoreInstructions = [
-        "linked_power_restore_instruction_1".localizedString,
-        "linked_power_restore_instruction_2".localizedString,
-        "linked_power_restore_instruction_3".localizedString
-    ]
-
-    let fireAlarmInstructions = [
-        "linked_fire_alarm_instruction_1".localizedString,
-        "linked_fire_alarm_instruction_2".localizedString
-        
-    ]
-
-    let fireAlarmStopInstructions = [
-        "linked_fire_alarm_stop_instruction_1".localizedString,
-        "linked_fire_alarm_stop_instruction_2".localizedString,
-        "linked_fire_alarm_stop_instruction_3".localizedString
-    ]
-
     var editable = true
     var deviceId: String?
     var spaceId: String?
@@ -49,21 +21,15 @@ final class LinkedEmerFireEditState {
     var reportToGateway = true
     var publishGroupAddress: Address?
     var configuration = EmergencyFireControllerConfiguration.defaultValue
-    var enablePowerLossEmergency = true
-    var enableFireAlarmEmergency = false
 
-    var powerLossGroupIndex = 1
-    var fireAlarmGroupIndex = 1
-    var powerLossGroupAddresses: [UInt16] = []
-    var fireAlarmGroupAddresses: [UInt16] = []
-
-    var powerLossBrightness = 100
-    var powerLossResuming = 2
-    var powerLossSendCount = 2
-
+    var associatedGroupAddresses: [UInt16] = []
     var fireAlarmBrightness = 100
-    var fireAlarmResuming = 2
-    var fireAlarmSendCount = 2
+    var powerLossBrightness = 10
+    var triggerIntervalSeconds = 5
+    var restoreActionType: EmergencyFireRestoreActionType = .restoreAuto
+    var restoreBrightness = 100
+    var restoreResumingSeconds = 2
+    var restoreSendCount = 2
 
     convenience init(config: LinkedEmerFireConfig) {
         self.init()
@@ -80,98 +46,42 @@ final class LinkedEmerFireEditState {
         reportToGateway = config.reportToGateway
         publishGroupAddress = config.publishGroupAddress
         configuration = config.configuration
-        enablePowerLossEmergency = configuration.workMode == .powerLossEmergency
-        enableFireAlarmEmergency = configuration.workMode == .fireAlarmEmergency
-        powerLossGroupAddresses = configuration.powerLossSettings.associateGroupAddresses
-        fireAlarmGroupAddresses = configuration.fireAlarmSettings.associateGroupAddresses
-        powerLossBrightness = configuration.powerLossSettings.triggerBrightness
-        powerLossResuming = Int(configuration.powerLossSettings.restoreDelaySeconds)
-        powerLossSendCount = Int(configuration.powerLossSettings.stopCount)
+        associatedGroupAddresses = Array(configuration.activeLightLCGroupAddresses).sorted()
         fireAlarmBrightness = configuration.fireAlarmSettings.triggerBrightness
-        fireAlarmResuming = Int(configuration.fireAlarmSettings.restoreDelaySeconds)
-        fireAlarmSendCount = Int(configuration.fireAlarmSettings.stopCount)
+        powerLossBrightness = configuration.powerLossSettings.triggerBrightness
+        triggerIntervalSeconds = Int(configuration.powerLossSettings.triggerIntervalSeconds)
+        restoreActionType = configuration.restoreSettings.actionType
+        restoreBrightness = configuration.restoreSettings.brightness
+        restoreResumingSeconds = Int(configuration.restoreSettings.resumingSeconds)
+        restoreSendCount = Int(configuration.restoreSettings.sendCount)
         normalizeStepperValues()
     }
 
-    func updateEmergencySelection(for row: LinkedEmerFireEditRow, value: Bool) {
-        switch row {
-        case .powerLossEmergency:
-            enablePowerLossEmergency = value
-            if value {
-                enableFireAlarmEmergency = false
-                configuration.workMode = .powerLossEmergency
-                clearAssociatedGroups(for: .fireAlarmEmergency)
-            } else {
-                clearAssociatedGroups(for: .powerLossEmergency)
-                configuration.workMode = enableFireAlarmEmergency ? .fireAlarmEmergency : .allDisabled
-            }
-        case .fireAlarmEmergency:
-            enableFireAlarmEmergency = value
-            if value {
-                enablePowerLossEmergency = false
-                configuration.workMode = .fireAlarmEmergency
-                clearAssociatedGroups(for: .powerLossEmergency)
-            } else {
-                clearAssociatedGroups(for: .fireAlarmEmergency)
-                configuration.workMode = enablePowerLossEmergency ? .powerLossEmergency : .allDisabled
-            }
-        default:
-            break
-        }
-    }
-
     private func normalizeStepperValues() {
-        powerLossSendCount = min(max(powerLossSendCount, 1), 5)
-        fireAlarmSendCount = min(max(fireAlarmSendCount, 1), 5)
+        fireAlarmBrightness = min(max(fireAlarmBrightness, 10), 100)
+        powerLossBrightness = min(max(powerLossBrightness, 1), 100)
+        triggerIntervalSeconds = min(max(triggerIntervalSeconds, 1), 10)
+        restoreBrightness = min(max(restoreBrightness, 1), 100)
+        restoreResumingSeconds = min(max(restoreResumingSeconds, 0), 120)
+        restoreSendCount = min(max(restoreSendCount, 1), 5)
     }
 
-    func groupText(for row: LinkedEmerFireEditRow) -> String {
-        switch row {
-        case .powerLossGroups:
-            return groupNames(for: powerLossGroupAddresses)
-        case .fireAlarmGroups:
-            return groupNames(for: fireAlarmGroupAddresses)
-        default:
-            return ""
-        }
+    func groupText() -> String {
+        groupNames(for: associatedGroupAddresses)
     }
 
-    func selectedGroupAddresses(for row: LinkedEmerFireEditRow) -> [UInt16] {
-        switch row {
-        case .powerLossGroups:
-            return powerLossGroupAddresses
-        case .fireAlarmGroups:
-            return fireAlarmGroupAddresses
-        default:
-            return []
-        }
+    func selectedGroupAddresses() -> [UInt16] {
+        associatedGroupAddresses
     }
 
-    func updateSelectedGroupAddresses(for row: LinkedEmerFireEditRow, addresses: [UInt16]) {
+    func updateSelectedGroupAddresses(_ addresses: [UInt16]) {
         let sortedAddresses = addresses.sorted()
-        switch row {
-        case .powerLossGroups:
-            powerLossGroupAddresses = sortedAddresses
-            configuration.powerLossSettings.associateGroupAddresses = sortedAddresses
-        case .fireAlarmGroups:
-            fireAlarmGroupAddresses = sortedAddresses
-            configuration.fireAlarmSettings.associateGroupAddresses = sortedAddresses
-        default:
-            break
-        }
+        associatedGroupAddresses = sortedAddresses
+        configuration.powerLossSettings.associateGroupAddresses = sortedAddresses
+        configuration.fireAlarmSettings.associateGroupAddresses = sortedAddresses
     }
 
-    func disabledGroupAddresses(for row: LinkedEmerFireEditRow) -> Set<UInt16> {
-        let mode: EmergencyMode
-        switch row {
-        case .powerLossGroups:
-            mode = .powerLoss
-        case .fireAlarmGroups:
-            mode = .fireAlarm
-        default:
-            return []
-        }
-
+    func disabledAssociatedGroupAddresses() -> Set<UInt16> {
         guard let meshUUID, let meshNetworkId else { return [] }
         let devices = DeviceEmerFireStore.shared.loadDevices(meshUUID: meshUUID, meshNetworkId: meshNetworkId)
         let scopedDevices = devices.filter { device in
@@ -184,38 +94,15 @@ final class LinkedEmerFireEditState {
         return Set(
             scopedDevices
                 .filter { $0.id != deviceId }
-                .filter {
-                    switch mode {
-                    case .powerLoss:
-                        return $0.configuration.workMode == .powerLossEmergency
-                    case .fireAlarm:
-                        return $0.configuration.workMode == .fireAlarmEmergency
-                    }
-                }
                 .flatMap {
-                    switch mode {
-                    case .powerLoss:
-                        return $0.configuration.powerLossSettings.associateGroupAddresses
-                    case .fireAlarm:
-                        return $0.configuration.fireAlarmSettings.associateGroupAddresses
-                    }
+                    $0.configuration.powerLossSettings.associateGroupAddresses +
+                    $0.configuration.fireAlarmSettings.associateGroupAddresses
                 }
         )
     }
 
     func conflictingAssociatedGroupNames() -> [String] {
-        var conflictAddresses = Set<UInt16>()
-
-        if enablePowerLossEmergency {
-            let disabledPowerLossAddresses = disabledGroupAddresses(for: .powerLossGroups)
-            conflictAddresses.formUnion(disabledPowerLossAddresses.intersection(powerLossGroupAddresses))
-        }
-
-        if enableFireAlarmEmergency {
-            let disabledFireAlarmAddresses = disabledGroupAddresses(for: .fireAlarmGroups)
-            conflictAddresses.formUnion(disabledFireAlarmAddresses.intersection(fireAlarmGroupAddresses))
-        }
-
+        let conflictAddresses = disabledAssociatedGroupAddresses().intersection(associatedGroupAddresses)
         return conflictAddresses
             .sorted()
             .compactMap { address in
@@ -232,18 +119,18 @@ final class LinkedEmerFireEditState {
 
     func updateStepperValue(for row: LinkedEmerFireEditRow, delta: Int) {
         switch row {
-        case .powerLossBrightness:
-            setStepperValue(for: row, value: powerLossBrightness + delta)
-        case .powerLossResuming:
-            setStepperValue(for: row, value: powerLossResuming + delta)
-        case .powerLossSendCount:
-            setStepperValue(for: row, value: powerLossSendCount + delta)
         case .fireAlarmBrightness:
             setStepperValue(for: row, value: fireAlarmBrightness + delta)
-        case .fireAlarmResuming:
-            setStepperValue(for: row, value: fireAlarmResuming + delta)
-        case .fireAlarmSendCount:
-            setStepperValue(for: row, value: fireAlarmSendCount + delta)
+        case .powerLossBrightness:
+            setStepperValue(for: row, value: powerLossBrightness + delta)
+        case .triggerInterval:
+            setStepperValue(for: row, value: triggerIntervalSeconds + delta)
+        case .restoreBrightness:
+            setStepperValue(for: row, value: restoreBrightness + delta)
+        case .restoreResuming:
+            setStepperValue(for: row, value: restoreResumingSeconds + delta)
+        case .restoreSendCount:
+            setStepperValue(for: row, value: restoreSendCount + delta)
         default:
             break
         }
@@ -251,50 +138,56 @@ final class LinkedEmerFireEditState {
 
     func setStepperValue(for row: LinkedEmerFireEditRow, value: Int) {
         switch row {
-        case .powerLossBrightness:
-            powerLossBrightness = min(max(value, 0), 100)
-            configuration.powerLossSettings.triggerBrightness = powerLossBrightness
-        case .powerLossResuming:
-            powerLossResuming = min(max(value, 0), 120)
-            configuration.powerLossSettings.restoreDelaySeconds = UInt8(powerLossResuming)
-        case .powerLossSendCount:
-            powerLossSendCount = min(max(value, 1), 5)
-            configuration.powerLossSettings.stopCount = UInt16(powerLossSendCount)
         case .fireAlarmBrightness:
-            fireAlarmBrightness = min(max(value, 0), 100)
+            fireAlarmBrightness = min(max(value, 10), 100)
             configuration.fireAlarmSettings.triggerBrightness = fireAlarmBrightness
-        case .fireAlarmResuming:
-            fireAlarmResuming = min(max(value, 0), 120)
-            configuration.fireAlarmSettings.restoreDelaySeconds = UInt8(fireAlarmResuming)
-        case .fireAlarmSendCount:
-            fireAlarmSendCount = min(max(value, 1), 5)
-            configuration.fireAlarmSettings.stopCount = UInt16(fireAlarmSendCount)
+        case .powerLossBrightness:
+            powerLossBrightness = min(max(value, 1), 100)
+            configuration.powerLossSettings.triggerBrightness = powerLossBrightness
+        case .triggerInterval:
+            triggerIntervalSeconds = min(max(value, 1), 10)
+            configuration.powerLossSettings.triggerIntervalSeconds = UInt16(triggerIntervalSeconds)
+            configuration.fireAlarmSettings.triggerIntervalSeconds = UInt16(triggerIntervalSeconds)
+        case .restoreBrightness:
+            restoreBrightness = min(max(value, 1), 100)
+            configuration.restoreSettings.brightness = restoreBrightness
+        case .restoreResuming:
+            restoreResumingSeconds = min(max(value, 0), 120)
+            configuration.restoreSettings.resumingSeconds = UInt8(restoreResumingSeconds)
+        case .restoreSendCount:
+            restoreSendCount = min(max(value, 1), 5)
+            configuration.restoreSettings.sendCount = UInt16(restoreSendCount)
         default:
             break
         }
     }
 
+    func updateRestoreActionType(_ actionType: EmergencyFireRestoreActionType) {
+        restoreActionType = actionType
+        configuration.restoreSettings.actionType = actionType
+    }
+
     func stepperConfiguration(for row: LinkedEmerFireEditRow) -> LinkedEmerFireStepperConfiguration {
         switch row {
-        case .powerLossBrightness:
-            return .init(title: "linked_set_brightness_to".localizedString, value: powerLossBrightness, range: 0...100, suffix: "%")
-        case .powerLossResuming:
-            return .init(title: "linked_resuming".localizedString, value: powerLossResuming, range: 0...120, suffix: "s")
-        case .powerLossSendCount:
-            return .init(title: "linked_send_count_per_5_seconds".localizedString, value: powerLossSendCount, range: 1...5, suffix: "")
         case .fireAlarmBrightness:
-            return .init(title: "linked_set_brightness_to".localizedString, value: fireAlarmBrightness, range: 0...100, suffix: "%")
-        case .fireAlarmResuming:
-            return .init(title: "linked_resuming".localizedString, value: fireAlarmResuming, range: 0...120, suffix: "s")
-        case .fireAlarmSendCount:
-            return .init(title: "linked_send_count_per_5_seconds".localizedString, value: fireAlarmSendCount, range: 1...5, suffix: "")
+            return .init(title: "Fire Alarm Emergency", value: fireAlarmBrightness, range: 10...100, suffix: "%")
+        case .powerLossBrightness:
+            return .init(title: "Power Loss Emergency", value: powerLossBrightness, range: 1...100, suffix: "%")
+        case .triggerInterval:
+            return .init(title: "Repeatedly Send Emergency Control Every", value: triggerIntervalSeconds, range: 1...10, suffix: "s")
+        case .restoreBrightness:
+            return .init(title: "Set Brightness to", value: restoreBrightness, range: 1...100, suffix: "%")
+        case .restoreResuming:
+            return .init(title: "Resuming in:", value: restoreResumingSeconds, range: 0...120, suffix: "s")
+        case .restoreSendCount:
+            return .init(title: "Send Count (5-second interval):", value: restoreSendCount, range: 1...5, suffix: "")
         default:
             return .init(title: "", value: 0, range: 0...0, suffix: "")
         }
     }
 
     func makeConfig() -> LinkedEmerFireConfig {
-        syncConfigurationWorkMode()
+        syncConfiguration()
         return LinkedEmerFireConfig(
             deviceId: deviceId,
             spaceId: spaceId,
@@ -308,33 +201,17 @@ final class LinkedEmerFireEditState {
         )
     }
 
-    private func syncConfigurationWorkMode() {
-        if enablePowerLossEmergency {
-            if enableFireAlarmEmergency {
-                enableFireAlarmEmergency = false
-            }
-            configuration.workMode = .powerLossEmergency
-            clearAssociatedGroups(for: .fireAlarmEmergency)
-        } else if enableFireAlarmEmergency {
-            configuration.workMode = .fireAlarmEmergency
-            clearAssociatedGroups(for: .powerLossEmergency)
-        } else {
-            clearAssociatedGroups(for: .powerLossEmergency)
-            clearAssociatedGroups(for: .fireAlarmEmergency)
-            configuration.workMode = .allDisabled
-        }
-    }
-
-    private func clearAssociatedGroups(for mode: EmergencyFireControllerWorkMode) {
-        switch mode {
-        case .powerLossEmergency:
-            powerLossGroupAddresses = []
-            configuration.powerLossSettings.associateGroupAddresses = []
-        case .fireAlarmEmergency:
-            fireAlarmGroupAddresses = []
-            configuration.fireAlarmSettings.associateGroupAddresses = []
-        case .allDisabled:
-            break
-        }
+    private func syncConfiguration() {
+        normalizeStepperValues()
+        configuration.powerLossSettings.associateGroupAddresses = associatedGroupAddresses
+        configuration.fireAlarmSettings.associateGroupAddresses = associatedGroupAddresses
+        configuration.powerLossSettings.triggerBrightness = powerLossBrightness
+        configuration.fireAlarmSettings.triggerBrightness = fireAlarmBrightness
+        configuration.powerLossSettings.triggerIntervalSeconds = UInt16(triggerIntervalSeconds)
+        configuration.fireAlarmSettings.triggerIntervalSeconds = UInt16(triggerIntervalSeconds)
+        configuration.restoreSettings.actionType = restoreActionType
+        configuration.restoreSettings.brightness = restoreBrightness
+        configuration.restoreSettings.resumingSeconds = UInt8(restoreResumingSeconds)
+        configuration.restoreSettings.sendCount = UInt16(restoreSendCount)
     }
 }

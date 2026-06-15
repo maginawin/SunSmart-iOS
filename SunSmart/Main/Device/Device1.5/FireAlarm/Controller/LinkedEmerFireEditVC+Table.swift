@@ -14,32 +14,20 @@ extension LinkedEmerFireEditVC: UITableViewDataSource, UITableViewDelegate {
         var rows: [LinkedEmerFireEditRow] = [
             .name,
             .reportToGateway,
-            .powerLossEmergency
+            .associatedGroups,
+            .eventOccursHeader,
+            .fireAlarmBrightness,
+            .powerLossBrightness,
+            .triggerInterval,
+            .eventEndsHeader,
+            .restoreAction
         ]
 
-        if state.enablePowerLossEmergency {
-            rows.append(contentsOf: [
-                .powerLossGroups,
-                .powerLossInstructions,
-                .powerLossBrightness,
-                .powerRestoreInstructions,
-                .powerLossResuming,
-                .powerLossSendCount
-            ])
+        if state.restoreActionType == .setBrightness {
+            rows.append(.restoreBrightness)
         }
 
-        rows.append(.fireAlarmEmergency)
-
-        if state.enableFireAlarmEmergency {
-            rows.append(contentsOf: [
-                .fireAlarmGroups,
-                .fireAlarmInstructions,
-                .fireAlarmBrightness,
-                .fireAlarmStopInstructions,
-                .fireAlarmResuming,
-                .fireAlarmSendCount
-            ])
-        }
+        rows.append(contentsOf: [.restoreResuming, .restoreSendCount])
 
         return rows
     }
@@ -87,46 +75,33 @@ extension LinkedEmerFireEditVC: UITableViewDataSource, UITableViewDelegate {
                 XWHUDManager.showTipHUD(statusText, isLineFeed: false)
             }
             return cell
-        case .powerLossEmergency, .fireAlarmEmergency:
-            let cell: EmerFireToggleCell = tableView.dequeueReusableCell(for: indexPath)
-            let title: String
-            let isOn: Bool
-            switch row {
-            case .powerLossEmergency:
-                title = "Enable Power Loss Emergency".localizedString
-                isOn = state.enablePowerLossEmergency
-            default:
-                title = "Enable Fire Alarm Emergency".localizedString
-                isOn = state.enableFireAlarmEmergency
-            }
-            cell.configure(title: title, isOn: isOn, cardPosition: cardPosition(for: row))
-            cell.switchValueDidChange = { [weak self] value in
+        case .associatedGroups:
+            let cell: EmerFireSelectionCell = tableView.dequeueReusableCell(for: indexPath)
+            cell.configure(title: "Associate With Group(s)".localizedString, value: state.groupText(), cardPosition: cardPosition(for: row))
+            return cell
+        case .eventOccursHeader:
+            let cell: EmerFireInfoCell = tableView.dequeueReusableCell(for: indexPath)
+            cell.configure(title: "When The Emergency Event Occurs", lines: [], cardPosition: cardPosition(for: row))
+            return cell
+        case .eventEndsHeader:
+            let cell: EmerFireInfoCell = tableView.dequeueReusableCell(for: indexPath)
+            cell.configure(title: "When The Emergency Event Ends", lines: [], cardPosition: cardPosition(for: row))
+            return cell
+        case .restoreAction:
+            let cell: EmerFireRestoreActionCell = tableView.dequeueReusableCell(for: indexPath)
+            cell.configure(options: restoreActionOptions, selectedType: state.restoreActionType, cardPosition: cardPosition(for: row))
+            cell.actionDidChange = { [weak self] actionType in
                 guard let self else { return }
-                self.state.updateEmergencySelection(for: row, value: value)
+                self.state.updateRestoreActionType(actionType)
                 self.tableView.reloadData()
             }
             return cell
-        case .powerLossGroups, .fireAlarmGroups:
-            let cell: EmerFireSelectionCell = tableView.dequeueReusableCell(for: indexPath)
-            cell.configure(title: "Associate With Group(s)".localizedString, value: state.groupText(for: row), cardPosition: cardPosition(for: row))
-            return cell
-        case .powerLossInstructions:
-            let cell: EmerFireInfoCell = tableView.dequeueReusableCell(for: indexPath)
-            cell.configure(title: "When normal power supply fails:", lines: state.powerLossInstructions, cardPosition: cardPosition(for: row))
-            return cell
-        case .powerRestoreInstructions:
-            let cell: EmerFireInfoCell = tableView.dequeueReusableCell(for: indexPath)
-            cell.configure(title: "When normal power is restored:", lines: state.powerRestoreInstructions, cardPosition: cardPosition(for: row))
-            return cell
-        case .fireAlarmInstructions:
-            let cell: EmerFireInfoCell = tableView.dequeueReusableCell(for: indexPath)
-            cell.configure(title: "When Fire Alarm Occurs:", lines: state.fireAlarmInstructions, cardPosition: cardPosition(for: row))
-            return cell
-        case .fireAlarmStopInstructions:
-            let cell: EmerFireInfoCell = tableView.dequeueReusableCell(for: indexPath)
-            cell.configure(title: "When Fire Alarm Stops:", lines: state.fireAlarmStopInstructions, cardPosition: cardPosition(for: row))
-            return cell
-        case .powerLossBrightness, .powerLossResuming, .powerLossSendCount, .fireAlarmBrightness, .fireAlarmResuming, .fireAlarmSendCount:
+        case .fireAlarmBrightness,
+             .powerLossBrightness,
+             .triggerInterval,
+             .restoreBrightness,
+             .restoreResuming,
+             .restoreSendCount:
             let cell: EmerFireStepperCell = tableView.dequeueReusableCell(for: indexPath)
             let config = state.stepperConfiguration(for: row)
             cell.configure(title: config.title, value: config.value, range: config.range, suffix: config.suffix, cardPosition: cardPosition(for: row))
@@ -143,31 +118,17 @@ extension LinkedEmerFireEditVC: UITableViewDataSource, UITableViewDelegate {
         guard indexPath.row < visibleRows.count else { return }
         let row = visibleRows[indexPath.row]
         switch row {
-        case .powerLossGroups:
+        case .associatedGroups:
             let controller = PJDeviceGroupSelectionViewController(
                 context: .init(
                     title: "select_group(s)".localizedString,
                     groups: DeviceEmerFireStore.shared.selectableGroups(),
-                    selectedGroupAddresses: state.selectedGroupAddresses(for: row),
-                    disabledGroupAddresses: state.disabledGroupAddresses(for: row),
+                    selectedGroupAddresses: state.selectedGroupAddresses(),
+                    disabledGroupAddresses: state.disabledAssociatedGroupAddresses(),
                     disabledSelectionTip: "Not selectable. This group is already associated with a device of the same type.".localizedString
                 )
             ) { [weak self] addresses in
-                self?.state.updateSelectedGroupAddresses(for: row, addresses: addresses)
-                self?.tableView.reloadRows(at: [indexPath], with: .none)
-            }
-            navigationController?.pushViewController(controller, animated: true)
-        case .fireAlarmGroups:
-            let controller = PJDeviceGroupSelectionViewController(
-                context: .init(
-                    title: "select_group(s)".localizedString,
-                    groups: DeviceEmerFireStore.shared.selectableGroups(),
-                    selectedGroupAddresses: state.selectedGroupAddresses(for: row),
-                    disabledGroupAddresses: state.disabledGroupAddresses(for: row),
-                    disabledSelectionTip: "Not selectable. This group is already associated with a device of the same type.".localizedString
-                )
-            ) { [weak self] addresses in
-                self?.state.updateSelectedGroupAddresses(for: row, addresses: addresses)
+                self?.state.updateSelectedGroupAddresses(addresses)
                 self?.tableView.reloadRows(at: [indexPath], with: .none)
             }
             navigationController?.pushViewController(controller, animated: true)
@@ -183,20 +144,16 @@ extension LinkedEmerFireEditVC: UITableViewDataSource, UITableViewDelegate {
         case .name:
             return SCRYFrom(80)
         case .reportToGateway,
-             .powerLossEmergency,
-             .fireAlarmEmergency,
-             .powerLossGroups,
-             .fireAlarmGroups,
-             .powerLossInstructions,
-             .powerRestoreInstructions,
-             .fireAlarmInstructions,
-             .fireAlarmStopInstructions,
+             .associatedGroups,
+             .eventOccursHeader,
+             .eventEndsHeader,
+             .restoreAction,
              .powerLossBrightness,
-             .powerLossResuming,
-             .powerLossSendCount,
              .fireAlarmBrightness,
-             .fireAlarmResuming,
-             .fireAlarmSendCount:
+             .triggerInterval,
+             .restoreBrightness,
+             .restoreResuming,
+             .restoreSendCount:
             return UITableView.automaticDimension
         }
     }
@@ -207,13 +164,20 @@ extension LinkedEmerFireEditVC: UITableViewDataSource, UITableViewDelegate {
         switch row {
         case .name:
             return SCRYFrom(80)
-        case .reportToGateway, .powerLossEmergency, .fireAlarmEmergency:
+        case .reportToGateway:
             return SCRYFrom(56)
-        case .powerLossGroups, .fireAlarmGroups:
+        case .associatedGroups:
             return SCRYFrom(78)
-        case .powerLossInstructions, .powerRestoreInstructions, .fireAlarmInstructions, .fireAlarmStopInstructions:
-            return SCRYFrom(110)
-        case .powerLossBrightness, .powerLossResuming, .powerLossSendCount, .fireAlarmBrightness, .fireAlarmResuming, .fireAlarmSendCount:
+        case .eventOccursHeader, .eventEndsHeader:
+            return SCRYFrom(58)
+        case .restoreAction:
+            return SCRYFrom(136)
+        case .powerLossBrightness,
+             .fireAlarmBrightness,
+             .triggerInterval,
+             .restoreBrightness,
+             .restoreResuming,
+             .restoreSendCount:
             return SCRYFrom(84)
         }
     }
@@ -248,5 +212,13 @@ extension LinkedEmerFireEditVC: UITableViewDataSource, UITableViewDelegate {
         case (false, false):
             return .middle
         }
+    }
+
+    private var restoreActionOptions: [LinkedEmerFireRestoreActionOption] {
+        [
+            .init(title: "Restore AUTO", type: .restoreAuto),
+            .init(title: "Set Brightness to", type: .setBrightness),
+            .init(title: "None", type: .none)
+        ]
     }
 }

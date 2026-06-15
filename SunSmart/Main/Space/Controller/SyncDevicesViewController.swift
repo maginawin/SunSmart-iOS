@@ -992,20 +992,14 @@ class SyncDevicesViewController: UIViewController {
     ) -> String {
         switch task.kind {
         case .resend:
-            if let settings = data.activeModeSettings {
-                return "Send Count \(settings.stopCount)"
+            if task.title.hasPrefix(EmergencyFireControllerState.restore.taskTitle) {
+                return "Send Count \(data.configuration.restoreSettings.sendCount)"
             }
-            return "Send Count"
+            return task.title
         case .restoreDelay:
-            if let settings = data.activeModeSettings {
-                return "Resuming in \(settings.restoreDelaySeconds)s"
-            }
-            return "Resuming in"
+            return "Resuming in \(data.configuration.restoreSettings.resumingSeconds)s"
         case .triggerScene:
-            if let brightness = data.activeModeSettings?.triggerBrightness {
-                return "\("linked_set_brightness_to".localizedString) \(brightness)%"
-            }
-            return "linked_set_brightness_to".localizedString
+            return task.title
         case .autoRestore:
             return "AUTO"
         default:

@@ -49,6 +49,7 @@ final class LinkedEmerFireEditVC: UIViewController {
         tableView.register(EmerFireToggleCell.self)
         tableView.register(EmerFireStatusTextCell.self)
         tableView.register(EmerFireSelectionCell.self)
+        tableView.register(EmerFireRestoreActionCell.self)
         tableView.register(EmerFireInfoCell.self)
         tableView.register(EmerFireStepperCell.self)
         return tableView
@@ -309,7 +310,7 @@ final class LinkedEmerFireEditVC: UIViewController {
     }
 
     private func setupNavigation() {
-        title = isCreateMode ? "Create" : "Edit"
+        title = "Emer&Fire Controler"
         navigationItem.leftBarButtonItem = UIBarButtonItem(
             image: UIImage(named: "navigation_back")?.withRenderingMode(.alwaysOriginal),
             style: .plain,

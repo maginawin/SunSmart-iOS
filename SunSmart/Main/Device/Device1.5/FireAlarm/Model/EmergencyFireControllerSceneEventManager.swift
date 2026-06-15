@@ -12,12 +12,11 @@ let emergencyFireControllerSceneEventNotificationName = "emergencyFireController
 let emergencyFireControllerManualControlStateDidChangeNotificationName = "emergencyFireControllerManualControlStateDidChangeNotification"
 
 /// EFC 场景事件的业务态。
-/// 控制器实际发出来的是 SceneRecall，这里根据保留场景号和当前 workMode 翻译成页面能理解的状态。
+/// 控制器实际发出来的是 SceneRecall，这里根据 v2 保留场景号翻译成页面能理解的状态。
 enum EmergencyFireControllerSceneEventState: Equatable {
     case powerLossTriggered
-    case powerLossStopped
     case fireAlarmTriggered
-    case fireAlarmStopped
+    case restored
     case clear
 }
 
@@ -152,7 +151,7 @@ final class EmergencyFireControllerSceneEventManager {
             source: source,
             destination: destination,
             sceneNumber: sceneNumber,
-            state: Self.eventState(sceneNumber: sceneNumber, workMode: controller.configuration.workMode)
+            state: Self.eventState(sceneNumber: sceneNumber)
         )
         Self.updateActiveEmergencyControllers(with: event)
         // 监控页通过这个通知进入 triggered/resuming/normal 等显示态。
@@ -198,29 +197,15 @@ final class EmergencyFireControllerSceneEventManager {
         return nil
     }
 
-    static func eventState(sceneNumber: SceneNumber, workMode: EmergencyFireControllerWorkMode) -> EmergencyFireControllerSceneEventState {
-        // 相同 SceneRecall 在不同 workMode 下语义不同。
-        // 比如 power loss 模式只认 powerLossTrigger/Stop，fire 模式只认 fireAlarmTrigger/Stop。
-        switch workMode {
-        case .powerLossEmergency:
-            switch sceneNumber {
-            case DeviceEmerFireData.powerLossTriggerSceneNumber:
-                return .powerLossTriggered
-            case DeviceEmerFireData.powerLossStopSceneNumber:
-                return .powerLossStopped
-            default:
-                return .clear
-            }
-        case .fireAlarmEmergency:
-            switch sceneNumber {
-            case DeviceEmerFireData.fireAlarmTriggerSceneNumber:
-                return .fireAlarmTriggered
-            case DeviceEmerFireData.fireAlarmStopSceneNumber:
-                return .fireAlarmStopped
-            default:
-                return .clear
-            }
-        case .allDisabled:
+    static func eventState(sceneNumber: SceneNumber) -> EmergencyFireControllerSceneEventState {
+        switch sceneNumber {
+        case DeviceEmerFireData.powerLossTriggerSceneNumber:
+            return .powerLossTriggered
+        case DeviceEmerFireData.fireAlarmTriggerSceneNumber:
+            return .fireAlarmTriggered
+        case DeviceEmerFireData.restoreSceneNumber:
+            return .restored
+        default:
             return .clear
         }
     }
@@ -262,7 +247,7 @@ final class EmergencyFireControllerSceneEventManager {
         switch event.state {
         case .powerLossTriggered, .fireAlarmTriggered:
             activeEmergencyControllerIds.insert(event.controllerId)
-        case .powerLossStopped, .fireAlarmStopped, .clear:
+        case .restored, .clear:
             activeEmergencyControllerIds.remove(event.controllerId)
         }
         notifyManualControlStateDidChangeIfNeeded(oldIds: oldIds)
@@ -270,7 +255,7 @@ final class EmergencyFireControllerSceneEventManager {
 
     private static func activeEmergencyControllers(in manager: EmergencyFireControllerSceneEventManager) -> [DeviceEmerFireData] {
         manager.controllersProvider().filter {
-            activeEmergencyControllerIds.contains($0.id) && $0.configuration.workMode != .allDisabled
+            activeEmergencyControllerIds.contains($0.id)
         }
     }
 

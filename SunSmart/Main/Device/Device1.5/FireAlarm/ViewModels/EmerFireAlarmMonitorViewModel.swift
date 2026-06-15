@@ -24,20 +24,16 @@ final class EmerFireAlarmMonitorViewModel {
         self.currentConfig = config
     }
 
-    var currentWorkMode: EmergencyFireControllerWorkMode {
-        currentConfig?.configuration.workMode ?? currentDevice?.configuration.workMode ?? .allDisabled
-    }
-
     var canConfigureDevice: Bool {
         space?.deviceOperates.contains(.edit) ?? false
     }
 
     var canOperateEmergencyActions: Bool {
-        !isAllEmergencyFunctionsDisabled && canConfigureDevice
+        canConfigureDevice
     }
 
     var isAllEmergencyFunctionsDisabled: Bool {
-        currentWorkMode == .allDisabled
+        false
     }
 
     var isEmergencySituation: Bool {
@@ -90,25 +86,25 @@ final class EmerFireAlarmMonitorViewModel {
     }
 
     func actionIconNames() -> (trigger: String, stop: String) {
-        EmerFireAlarmMonitorStateMapper.actionIconNames(for: currentWorkMode)
+        EmerFireAlarmMonitorStateMapper.actionIconNames()
     }
 
-    func activeTriggerSceneNumber() -> SceneNumber? {
-        EmerFireAlarmMonitorStateMapper.triggerSceneNumber(for: currentWorkMode)
+    func activeTriggerSceneNumber() -> SceneNumber {
+        EmerFireAlarmMonitorStateMapper.triggerSceneNumber()
     }
 
     func activeAssociatedGroupAddresses() -> [UInt16] {
         let configuration = currentConfig?.configuration ?? currentDevice?.configuration
-        return EmerFireAlarmMonitorStateMapper.associatedGroupAddresses(configuration: configuration, workMode: currentWorkMode)
+        return EmerFireAlarmMonitorStateMapper.associatedGroupAddresses(configuration: configuration)
     }
 
-    func monitorDisplayState(mode: EmergencyControllerMode, active: Bool) -> EmerFireAlarmMonitorDisplayState {
-        // 真实设备上报的是 vendor mode + active，页面显示态统一交给 mapper 转换。
-        EmerFireAlarmMonitorStateMapper.displayState(mode: mode, active: active)
+    func monitorDisplayState(status: EmergencyFireComprehensiveStatus) -> EmerFireAlarmMonitorDisplayState {
+        // 真实设备上报的是 v2 comprehensive status，页面显示态统一交给 mapper 转换。
+        EmerFireAlarmMonitorStateMapper.displayState(status: status)
     }
 
     func configuredNormalState() -> EmerFireAlarmMonitorDisplayState {
-        EmerFireAlarmMonitorStateMapper.normalState(for: currentWorkMode)
+        EmerFireAlarmMonitorStateMapper.normalState()
     }
 
     func normalState(afterResuming state: EmerFireAlarmMonitorDisplayState) -> EmerFireAlarmMonitorDisplayState? {

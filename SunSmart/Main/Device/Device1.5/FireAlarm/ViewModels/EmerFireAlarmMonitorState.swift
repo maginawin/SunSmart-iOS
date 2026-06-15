@@ -26,28 +26,21 @@ enum EmerFireAlarmMonitorDisplayState: Equatable {
 }
 
 enum EmerFireAlarmMonitorStateMapper {
-    static func displayState(mode: EmergencyControllerMode, active: Bool) -> EmerFireAlarmMonitorDisplayState {
-        switch mode {
-        case .disabled:
+    static func displayState(status: EmergencyFireComprehensiveStatus) -> EmerFireAlarmMonitorDisplayState {
+        guard status.enabled else {
             return .disabled
-        case .emergency:
-            return active ? .emergencyTriggered : .emergencyNormal
-        case .fire:
-            return active ? .fireTriggered : .fireNormal
-        @unknown default:
-            return .offline
         }
+        if status.fireActive {
+            return .fireTriggered
+        }
+        if status.emergencyActive {
+            return .emergencyTriggered
+        }
+        return normalState()
     }
 
-    static func normalState(for workMode: EmergencyFireControllerWorkMode) -> EmerFireAlarmMonitorDisplayState {
-        switch workMode {
-        case .powerLossEmergency:
-            return .emergencyNormal
-        case .fireAlarmEmergency:
-            return .fireNormal
-        case .allDisabled:
-            return .disabled
-        }
+    static func normalState() -> EmerFireAlarmMonitorDisplayState {
+        .emergencyNormal
     }
 
     static func normalState(afterResuming state: EmerFireAlarmMonitorDisplayState) -> EmerFireAlarmMonitorDisplayState? {
@@ -64,51 +57,31 @@ enum EmerFireAlarmMonitorStateMapper {
     static func restoreDelaySeconds(configuration: EmergencyFireControllerConfiguration?, for state: EmerFireAlarmMonitorDisplayState) -> TimeInterval? {
         switch state {
         case .emergencyResuming:
-            return TimeInterval(configuration?.powerLossSettings.restoreDelaySeconds ?? EmergencyFireControllerModeSettings.defaultValue.restoreDelaySeconds)
+            return TimeInterval(configuration?.restoreDelaySeconds() ?? EmergencyFireControllerRestoreSettings.defaultValue.resumingSeconds)
         case .fireResuming:
-            return TimeInterval(configuration?.fireAlarmSettings.restoreDelaySeconds ?? EmergencyFireControllerModeSettings.defaultValue.restoreDelaySeconds)
+            return TimeInterval(configuration?.restoreDelaySeconds() ?? EmergencyFireControllerRestoreSettings.defaultValue.resumingSeconds)
         case .loading, .repair, .offline, .disabled, .emergencyTriggered, .emergencyNormal, .fireTriggered, .fireNormal:
             return nil
         }
     }
 
-    static func triggerSceneNumber(for workMode: EmergencyFireControllerWorkMode) -> SceneNumber? {
-        switch workMode {
-        case .powerLossEmergency:
-            return DeviceEmerFireData.powerLossTriggerSceneNumber
-        case .fireAlarmEmergency:
-            return DeviceEmerFireData.fireAlarmTriggerSceneNumber
-        case .allDisabled:
-            return nil
-        }
+    static func triggerSceneNumber() -> SceneNumber {
+        DeviceEmerFireData.powerLossTriggerSceneNumber
     }
 
-    static func actionIconNames(for workMode: EmergencyFireControllerWorkMode) -> (trigger: String, stop: String) {
-        switch workMode {
-        case .fireAlarmEmergency:
-            return (EmergencyFireControllerIconName.Monitor.Action.fireTrigger, EmergencyFireControllerIconName.Monitor.Action.fireStop)
-        case .powerLossEmergency, .allDisabled:
-            return (EmergencyFireControllerIconName.Monitor.Action.powerLossTrigger, EmergencyFireControllerIconName.Monitor.Action.powerLossStop)
-        }
+    static func actionIconNames() -> (trigger: String, stop: String) {
+        (EmergencyFireControllerIconName.Monitor.Action.powerLossTrigger, EmergencyFireControllerIconName.Monitor.Action.powerLossStop)
     }
 
-    static func associatedGroupAddresses(configuration: EmergencyFireControllerConfiguration?, workMode: EmergencyFireControllerWorkMode) -> [UInt16] {
-        switch workMode {
-        case .powerLossEmergency:
-            return configuration?.powerLossSettings.associateGroupAddresses ?? []
-        case .fireAlarmEmergency:
-            return configuration?.fireAlarmSettings.associateGroupAddresses ?? []
-        case .allDisabled:
-            return []
-        }
+    static func associatedGroupAddresses(configuration: EmergencyFireControllerConfiguration?) -> [UInt16] {
+        Array(configuration?.activeLightLCGroupAddresses ?? []).sorted()
     }
 
     static func displayGroups(from config: LinkedEmerFireConfig) -> [EmerFireAlarmAssociatedGroupItem] {
         var displayGroups: [EmerFireAlarmAssociatedGroupItem] = []
         var addedAddresses: Set<Address> = []
         let addresses = associatedGroupAddresses(
-            configuration: config.configuration,
-            workMode: config.configuration.workMode
+            configuration: config.configuration
         ).sorted()
 
         addresses.forEach { address in
@@ -126,39 +99,32 @@ enum EmerFireAlarmMonitorStateMapper {
     static func statusItems(for config: LinkedEmerFireConfig) -> [EmerFireAlarmStatusSetView.ItemViewModel] {
         let powerLossSettings = config.configuration.powerLossSettings
         let fireAlarmSettings = config.configuration.fireAlarmSettings
-        switch config.configuration.workMode {
-        case .powerLossEmergency:
-            return [
-                .init(
-                    kind: .powerLossTrigger,
-                    title: "power_supply_fails".localizedString,
-                    subtitle: "set_brightness_to".localizedString,
-                    value: "\(powerLossSettings.triggerBrightness)%"
-                ),
-                .init(
-                    kind: .powerLossStop,
-                    title: "power_is_restored".localizedString,
-                    subtitle: "resuming_in".localizedString,
-                    value: "\(powerLossSettings.restoreDelaySeconds)s"
-                )
-            ]
-        case .fireAlarmEmergency:
-            return [
-                .init(
-                    kind: .fireTrigger,
-                    title: "fire_alarm_occurs".localizedString,
-                    subtitle: "set_brightness_to".localizedString,
-                    value: "\(fireAlarmSettings.triggerBrightness)%"
-                ),
-                .init(
-                    kind: .fireStop,
-                    title: "fire_alarm_stops".localizedString,
-                    subtitle: "resuming_in".localizedString,
-                    value: "\(fireAlarmSettings.restoreDelaySeconds)s"
-                )
-            ]
-        case .allDisabled:
-            return []
-        }
+        let restoreDelay = config.configuration.restoreSettings.resumingSeconds
+        return [
+            .init(
+                kind: .powerLossTrigger,
+                title: "power_supply_fails".localizedString,
+                subtitle: "set_brightness_to".localizedString,
+                value: "\(powerLossSettings.triggerBrightness)%"
+            ),
+            .init(
+                kind: .powerLossStop,
+                title: "power_is_restored".localizedString,
+                subtitle: "resuming_in".localizedString,
+                value: "\(restoreDelay)s"
+            ),
+            .init(
+                kind: .fireTrigger,
+                title: "fire_alarm_occurs".localizedString,
+                subtitle: "set_brightness_to".localizedString,
+                value: "\(fireAlarmSettings.triggerBrightness)%"
+            ),
+            .init(
+                kind: .fireStop,
+                title: "fire_alarm_stops".localizedString,
+                subtitle: "resuming_in".localizedString,
+                value: "\(restoreDelay)s"
+            )
+        ]
     }
 }

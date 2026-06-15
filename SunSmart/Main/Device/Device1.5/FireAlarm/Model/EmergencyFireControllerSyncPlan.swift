@@ -11,9 +11,10 @@ import NordicSigMeshSDK
 enum EmergencyFireControllerSyncTaskKind: String {
     case publication = "Publication"
     case lightLCClientPublication = "LC Publication"
-    case workMode = "Mode"
+    case enabled = "Enable"
     case resend = "Resend"
     case restoreDelay = "Restore Delay"
+    case actionConfig = "Action Config"
     case sceneSubscription = "Scene Group"
     case lightLCSubscription = "LC Group"
     case lightLCCleanup = "LC Cleanup"
@@ -29,7 +30,7 @@ final class EmergencyFireControllerSyncTask {
     let address: Address
     let messageHandles: [MeshMessageHandle]
     let isUnsupported: Bool
-    let pendingModes: [EmergencyFireControllerWorkMode]
+    let pendingFunctions: [EmergencyFireControllerFunction]
     let pendingGroupAddress: Address?
     let clearsUnassociatePending: Bool
     let changedOnly: Bool
@@ -42,7 +43,7 @@ final class EmergencyFireControllerSyncTask {
         address: Address,
         messageHandles: [MeshMessageHandle],
         isUnsupported: Bool = false,
-        pendingModes: [EmergencyFireControllerWorkMode] = [],
+        pendingFunctions: [EmergencyFireControllerFunction] = [],
         pendingGroupAddress: Address? = nil,
         clearsUnassociatePending: Bool = false,
         changedOnly: Bool = false
@@ -52,7 +53,7 @@ final class EmergencyFireControllerSyncTask {
         self.address = address
         self.messageHandles = messageHandles
         self.isUnsupported = isUnsupported
-        self.pendingModes = pendingModes
+        self.pendingFunctions = pendingFunctions
         self.pendingGroupAddress = pendingGroupAddress
         self.clearsUnassociatePending = clearsUnassociatePending
         self.changedOnly = changedOnly

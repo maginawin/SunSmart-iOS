@@ -13,45 +13,33 @@ extension DeviceEmerFireData {
     /// EFC 联动灯时使用的保留场景号。
     /// 这些场景号只给应急火警内部使用，后续如果接手人调整场景逻辑，要避开普通用户场景。
     static let powerLossTriggerSceneNumber: SceneNumber = 0xFF20
-    static let powerLossStopSceneNumber: SceneNumber = 0xFF21
-    static let fireAlarmTriggerSceneNumber: SceneNumber = 0xFF22
-    static let fireAlarmStopSceneNumber: SceneNumber = 0xFF23
+    static let fireAlarmTriggerSceneNumber: SceneNumber = 0xFF21
+    static let restoreSceneNumber: SceneNumber = 0xFF22
     static let reservedSceneNumbers: Set<SceneNumber> = [
         powerLossTriggerSceneNumber,
-        powerLossStopSceneNumber,
         fireAlarmTriggerSceneNumber,
-        fireAlarmStopSceneNumber
+        restoreSceneNumber
     ]
 
-    var activeModeSettings: EmergencyFireControllerModeSettings? {
-        settings(for: configuration.workMode)
-    }
-
     var hasSyncableConfiguration: Bool {
-        !configuration.activeLightLCGroupAddresses.isEmpty ||
-        !configuration.powerLossSettings.pendingUnassociateGroupAddresses.isEmpty ||
-        !configuration.fireAlarmSettings.pendingUnassociateGroupAddresses.isEmpty
+        configuration.hasSyncIntent
     }
 
-    func settings(for mode: EmergencyFireControllerWorkMode) -> EmergencyFireControllerModeSettings? {
-        switch mode {
+    func settings(for function: EmergencyFireControllerFunction) -> EmergencyFireControllerModeSettings {
+        switch function {
         case .powerLossEmergency:
             return configuration.powerLossSettings
         case .fireAlarmEmergency:
             return configuration.fireAlarmSettings
-        case .allDisabled:
-            return nil
         }
     }
 
-    func updateSettings(_ settings: EmergencyFireControllerModeSettings, for mode: EmergencyFireControllerWorkMode) {
-        switch mode {
+    func updateSettings(_ settings: EmergencyFireControllerModeSettings, for function: EmergencyFireControllerFunction) {
+        switch function {
         case .powerLossEmergency:
             configuration.powerLossSettings = settings
         case .fireAlarmEmergency:
             configuration.fireAlarmSettings = settings
-        case .allDisabled:
-            break
         }
     }
 
@@ -79,20 +67,20 @@ extension DeviceEmerFireData {
     }
 
     func clearPending(for task: EmergencyFireControllerSyncTask, meshUUID: String, subnetworkId: String) {
-        guard !task.pendingModes.isEmpty else {
+        guard !task.pendingFunctions.isEmpty else {
             return
         }
 
-        task.pendingModes.forEach { mode in
-            guard let groupAddress = task.pendingGroupAddress,
-                  var settings = settings(for: mode) else {
+        task.pendingFunctions.forEach { function in
+            guard let groupAddress = task.pendingGroupAddress else {
                 return
             }
 
+            var settings = settings(for: function)
             if task.clearsUnassociatePending {
                 settings.pendingUnassociateGroupAddresses.removeAll { $0 == groupAddress }
             }
-            updateSettings(settings, for: mode)
+            updateSettings(settings, for: function)
         }
         save(meshUUID: meshUUID, networkId: subnetworkId)
     }
@@ -204,70 +192,75 @@ extension DeviceEmerFireData {
             tasks.append(EmergencyFireControllerSyncTask(title: "LC Publication", kind: .lightLCClientPublication, address: node.primaryUnicastAddress, messageHandles: lightLCPublicationHandles))
         }
 
-        if oldConfiguration == nil || oldConfiguration?.workMode != configuration.workMode {
+        if oldConfiguration == nil || oldConfiguration?.enabled != configuration.enabled {
             tasks.append(EmergencyFireControllerSyncTask(
-                title: "Mode",
-                kind: .workMode,
+                title: "Enable",
+                kind: .enabled,
                 address: node.primaryUnicastAddress,
-                messageHandles: [MeshMessageHandle(message: SunricherVendorSet(function: .emergencyMode(configuration.workMode.vendorMode)), model: vendorModel)],
+                messageHandles: [MeshMessageHandle(message: SunricherVendorSet(function: .emergencyEnabled(configuration.enabled)), model: vendorModel)],
                 changedOnly: onlyChangedKeyParameters
             ))
         }
 
-        if let settings = activeModeSettings {
-            let oldSettings = oldConfiguration.flatMap { oldConfiguration in
-                oldConfiguration.workMode == configuration.workMode ? modeSettings(for: oldConfiguration.workMode, in: oldConfiguration) : nil
-            }
-            // resend/restoreDelay 属于 EFC 控制器自身参数，不是灯组参数。
-            // 灯组关联和订阅清理由 EmergencyFireControllerSyncPlanner 负责。
-            let resend = EmergencyControllerResendParameters(
-                triggerIntervalSeconds: settings.triggerIntervalSeconds,
-                triggerCount: settings.triggerCount,
-                stopIntervalSeconds: settings.stopIntervalSeconds,
-                stopCount: settings.stopCount
-            )
-            if oldConfiguration == nil ||
-                oldSettings?.triggerIntervalSeconds != settings.triggerIntervalSeconds ||
-                oldSettings?.triggerCount != settings.triggerCount ||
-                oldSettings?.stopIntervalSeconds != settings.stopIntervalSeconds ||
-                oldSettings?.stopCount != settings.stopCount {
+        EmergencyFireControllerState.allCases.forEach { state in
+            let resend = configuration.resendParameters(for: state)
+            let oldResend = oldConfiguration?.resendParameters(for: state)
+            if oldConfiguration == nil || !resendParametersEqual(oldResend, resend) {
                 tasks.append(EmergencyFireControllerSyncTask(
-                    title: "Resend",
+                    title: "\(state.taskTitle) Resend",
                     kind: .resend,
                     address: node.primaryUnicastAddress,
                     messageHandles: [MeshMessageHandle(message: SunricherVendorSet(function: .emergencyResendParameters(resend)), model: vendorModel)],
                     changedOnly: onlyChangedKeyParameters
                 ))
             }
-            if oldConfiguration == nil || oldSettings?.restoreDelaySeconds != settings.restoreDelaySeconds {
+
+            let actionConfig = configuration.actionConfig(
+                for: state,
+                targetAddress: publishGroupAddress,
+                appKeyIndex: MeshNetworkManager.instance.currentApplicationKey.index,
+                ttl: MeshNetworkManager.instance.networkParameters.defaultTtl
+            )
+            let oldActionConfig = oldConfiguration?.actionConfig(
+                for: state,
+                targetAddress: publishGroupAddress,
+                appKeyIndex: MeshNetworkManager.instance.currentApplicationKey.index,
+                ttl: MeshNetworkManager.instance.networkParameters.defaultTtl
+            )
+            if oldConfiguration == nil || oldActionConfig != actionConfig {
                 tasks.append(EmergencyFireControllerSyncTask(
-                    title: "Restore Delay",
-                    kind: .restoreDelay,
+                    title: "\(state.taskTitle) Action",
+                    kind: .actionConfig,
                     address: node.primaryUnicastAddress,
-                    messageHandles: [MeshMessageHandle(message: SunricherVendorSet(function: .emergencyRestoreDelay(seconds: settings.restoreDelaySeconds)), model: vendorModel)],
+                    messageHandles: [MeshMessageHandle(message: SunricherVendorSet(function: .emergencyActionConfig(actionConfig)), model: vendorModel)],
                     changedOnly: onlyChangedKeyParameters
                 ))
             }
         }
+
+        if oldConfiguration == nil || oldConfiguration?.restoreDelaySeconds() != configuration.restoreDelaySeconds() {
+            tasks.append(EmergencyFireControllerSyncTask(
+                title: "Restore Delay",
+                kind: .restoreDelay,
+                address: node.primaryUnicastAddress,
+                messageHandles: [MeshMessageHandle(message: SunricherVendorSet(function: .emergencyRestoreDelay(seconds: configuration.restoreDelaySeconds())), model: vendorModel)],
+                changedOnly: onlyChangedKeyParameters
+            ))
+        }
         return tasks
     }
 
-    private func modeSettings(
-        for mode: EmergencyFireControllerWorkMode,
-        in configuration: EmergencyFireControllerConfiguration
-    ) -> EmergencyFireControllerModeSettings? {
-        switch mode {
-        case .powerLossEmergency:
-            return configuration.powerLossSettings
-        case .fireAlarmEmergency:
-            return configuration.fireAlarmSettings
-        case .allDisabled:
-            return nil
+    private func resendParametersEqual(_ lhs: EmergencyFireResendParameters?, _ rhs: EmergencyFireResendParameters) -> Bool {
+        guard let lhs else {
+            return false
         }
+        return lhs.stateIndex == rhs.stateIndex &&
+            lhs.intervalSeconds == rhs.intervalSeconds &&
+            lhs.count == rhs.count
     }
 
     private func mergePendingChanges(
-        for mode: EmergencyFireControllerWorkMode,
+        for function: EmergencyFireControllerFunction,
         oldSettings: EmergencyFireControllerModeSettings,
         newSettings: EmergencyFireControllerModeSettings,
         newDesiredGroups: Set<Address>,
@@ -289,6 +282,6 @@ extension DeviceEmerFireData {
         }
         // 如果这个组又被当前配置重新选中，就不再需要清理。
         settings.pendingUnassociateGroupAddresses.removeAll { newDesiredGroups.contains($0) }
-        updateSettings(settings, for: mode)
+        updateSettings(settings, for: function)
     }
 }

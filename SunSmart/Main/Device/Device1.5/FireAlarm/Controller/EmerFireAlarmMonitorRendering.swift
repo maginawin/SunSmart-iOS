@@ -80,23 +80,6 @@ extension EmerFireAlarmMonitorVC {
             view.layoutIfNeeded()
         }
 
-        if isAllEmergencyFunctionsDisabled {
-            deviceCountLabel.isHidden = true
-            collectionView.showEmptyDataView(frame: collectionView.bounds, imageName: "device_state_offline", title: "Emergency & Fire Alarm are all disabled".localizedString, buttonText: "Setting".localizedString, position: .center) { [weak self] in
-                self?.openEditSettings()
-            }
-            if let emptyView = collectionView.emptyView {
-                emptyView.button.backgroundColor = .clear
-                emptyView.button.titleLabel?.font = FONTS(16)
-                emptyView.button.setTitleColor(Bar_Color, for: .normal)
-                emptyView.button.snp.updateConstraints { make in
-                    make.top.equalTo(emptyView.titleLabel.snp.bottom).offset(SCRYFrom(24))
-                }
-                emptyView.button.isHidden = !canConfigureDevice
-            }
-            return
-        }
-
         if groups.isEmpty {
             deviceCountLabel.isHidden = true
             collectionView.hideEmptyDataView()
@@ -219,9 +202,6 @@ extension EmerFireAlarmMonitorVC {
     }
 
     func handleSceneEvent(_ event: EmergencyFireControllerSceneEvent) {
-        guard !isAllEmergencyFunctionsDisabled else {
-            return
-        }
         let matchesNode = currentDevice?.bindNodeAddress.map { $0 == event.nodeAddress } ?? false
         guard event.controllerId == currentDevice?.id || matchesNode else {
             return
@@ -231,13 +211,18 @@ extension EmerFireAlarmMonitorVC {
         case .powerLossTriggered:
             resumeTransitionCoordinator.cancel()
             renderRealState(.emergencyTriggered)
-        case .powerLossStopped:
-            renderResumingState(.emergencyResuming)
         case .fireAlarmTriggered:
             resumeTransitionCoordinator.cancel()
             renderRealState(.fireTriggered)
-        case .fireAlarmStopped:
-            renderResumingState(.fireResuming)
+        case .restored:
+            switch currentState {
+            case .fireTriggered:
+                renderResumingState(.fireResuming)
+            case .emergencyTriggered:
+                renderResumingState(.emergencyResuming)
+            case .loading, .repair, .offline, .disabled, .emergencyNormal, .emergencyResuming, .fireNormal, .fireResuming:
+                renderConfiguredNormalState()
+            }
         case .clear:
             resumeTransitionCoordinator.cancel()
             renderConfiguredNormalState()
@@ -272,11 +257,6 @@ extension EmerFireAlarmMonitorVC {
         requestGeneration += 1
         let generation = requestGeneration
 
-        guard currentWorkMode != .allDisabled else {
-            renderRealState(.disabled)
-            return
-        }
-
         guard let currentDevice else {
             renderRealState(.offline)
             return
@@ -299,38 +279,34 @@ extension EmerFireAlarmMonitorVC {
         }
 
         renderRealState(.loading)
-        loadCurrentModeStatus(vendorModel: vendorModel, retryCount: 0, generation: generation)
+        loadComprehensiveStatus(vendorModel: vendorModel, retryCount: 0, generation: generation)
     }
 
-    func loadCurrentModeStatus(vendorModel: Model, retryCount: Int, generation: Int) {
+    func loadComprehensiveStatus(vendorModel: Model, retryCount: Int, generation: Int) {
         guard generation == requestGeneration else { return }
-        MeshAPI.sendMessage(message: SunricherVendorGet(function: .emergencyCurrentModeStatus), model: vendorModel, timeout: 5) { [weak self] response in
+        MeshAPI.sendMessage(message: SunricherVendorGet(function: .emergencyComprehensiveStatus), model: vendorModel, timeout: 5) { [weak self] response in
             guard let self, generation == self.requestGeneration else { return }
             guard let statusMessage = response as? SunricherVendorStatus,
                   statusMessage.status.isSuccessful,
-                  case .emergencyCurrentModeStatus(let status)? = statusMessage.status.parameters else {
-                self.handleModeStatusFailure(vendorModel: vendorModel, retryCount: retryCount, generation: generation)
+                  case .emergencyComprehensiveStatus(let status)? = statusMessage.status.parameters else {
+                self.handleComprehensiveStatusFailure(vendorModel: vendorModel, retryCount: retryCount, generation: generation)
                 return
             }
-            self.renderRealState(self.viewModel.monitorDisplayState(mode: status.mode, active: status.active))
+            self.renderRealState(self.viewModel.monitorDisplayState(status: status))
         }
     }
 
-    func handleModeStatusFailure(vendorModel: Model, retryCount: Int, generation: Int) {
+    func handleComprehensiveStatusFailure(vendorModel: Model, retryCount: Int, generation: Int) {
         guard generation == requestGeneration else { return }
         guard retryCount < 2 else {
             renderRealState(.offline)
             return
         }
-        loadCurrentModeStatus(vendorModel: vendorModel, retryCount: retryCount + 1, generation: generation)
+        loadComprehensiveStatus(vendorModel: vendorModel, retryCount: retryCount + 1, generation: generation)
     }
 
     func renderConfiguredNormalState() {
         renderRealState(viewModel.configuredNormalState())
-    }
-
-    var currentWorkMode: EmergencyFireControllerWorkMode {
-        viewModel.currentWorkMode
     }
 
     func renderRealState(_ state: EmerFireAlarmMonitorDisplayState) {
@@ -389,35 +365,26 @@ extension EmerFireAlarmMonitorVC {
     func updateStatusSetRows(for state: EmerFireAlarmMonitorDisplayState) {
         let disabled: EmerFireAlarmStatusSetView.RowStatus = .disabled
         let inactive: EmerFireAlarmStatusSetView.RowStatus = .inactive
-        var powerLossTrigger = disabled
-        var powerLossStop = disabled
-        var fireTrigger = disabled
-        var fireStop = disabled
+        var powerLossTrigger = inactive
+        var powerLossStop = inactive
+        var fireTrigger = inactive
+        var fireStop = inactive
 
-        switch currentWorkMode {
-        case .powerLossEmergency:
-            powerLossTrigger = inactive
-            powerLossStop = inactive
-            switch state {
-            case .emergencyTriggered:
-                powerLossStop = .triggered
-            case .emergencyResuming:
-                powerLossStop = .resume
-            case .loading, .repair, .offline, .disabled, .emergencyNormal, .fireTriggered, .fireNormal, .fireResuming:
-                break
-            }
-        case .fireAlarmEmergency:
-            fireTrigger = inactive
-            fireStop = inactive
-            switch state {
-            case .fireTriggered:
-                fireStop = .triggered
-            case .fireResuming:
-                fireStop = .resume
-            case .loading, .repair, .offline, .disabled, .emergencyTriggered, .emergencyNormal, .emergencyResuming, .fireNormal:
-                break
-            }
-        case .allDisabled:
+        switch state {
+        case .emergencyTriggered:
+            powerLossStop = .triggered
+        case .emergencyResuming:
+            powerLossStop = .resume
+        case .fireTriggered:
+            fireStop = .triggered
+        case .fireResuming:
+            fireStop = .resume
+        case .loading, .repair, .offline, .disabled:
+            powerLossTrigger = disabled
+            powerLossStop = disabled
+            fireTrigger = disabled
+            fireStop = disabled
+        case .emergencyNormal, .fireNormal:
             break
         }
 
@@ -431,7 +398,6 @@ extension EmerFireAlarmMonitorVC {
 
     func renderNodeAvailabilityChange(_ node: Node) {
         guard node.primaryUnicastAddress == currentDevice?.bindNodeAddress else { return }
-        guard !isAllEmergencyFunctionsDisabled else { return }
 
         if !node.isKeybindComplete {
             requestGeneration += 1

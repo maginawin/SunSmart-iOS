@@ -12,7 +12,7 @@ import NordicSigMeshSDK
 /// 只负责把 desired configuration 转成同步页面可执行的任务，不直接发送 Mesh message。
 /// 任务分为三类：
 /// 1. EFC 控制器自身 publication/vendor 参数；
-/// 2. 当前激活模式的灯组关联；
+/// 2. Power Loss / Fire Alarm 两个功能的灯组关联；
 /// 3. 旧配置遗留灯组的订阅清理。
 struct EmergencyFireControllerSyncPlanner {
     let data: DeviceEmerFireData
@@ -50,7 +50,7 @@ struct EmergencyFireControllerSyncPlanner {
 
     static func makeGroupMutationItems(group: Group, addNodes: [Node], exitNodes: [Node], space: SpaceData) -> [EmergencyFireControllerSyncItem] {
         controllersAffecting(group: group, in: space).flatMap { controller -> [EmergencyFireControllerSyncItem] in
-            guard controller.configuration.workMode != .allDisabled,
+            guard controller.configuration.hasSyncIntent,
                   let publishGroupAddress = try? controller.ensurePublishGroup(meshUUID: space.meshUUID, subnetworkId: space.meshNetworkId),
                   let publishGroup = MeshNetworkManager.instance.meshNetwork?.group(withAddress: MeshAddress(publishGroupAddress)) else {
                 return []
@@ -60,23 +60,21 @@ struct EmergencyFireControllerSyncPlanner {
             let activeDesiredGroups = controller.configuration.activeLightLCGroupAddresses
             let groupAddress = group.address.address
             let groupIsActiveDesired = activeDesiredGroups.contains(groupAddress)
-            let pendingModes = planner.pendingCleanupModes(for: groupAddress)
+            let pendingFunctions = planner.pendingCleanupFunctions(for: groupAddress)
 
             var tasks: [EmergencyFireControllerSyncTask] = []
-            if groupIsActiveDesired,
-               let settings = controller.activeModeSettings,
-               let mode = planner.activeMode {
-                let triggerScene = planner.triggerSceneNumber(for: mode)
+            if groupIsActiveDesired {
+                let associations = planner.associatedFunctions(for: groupAddress)
                 // 新进组的灯需要补齐 EFC 内部组订阅和触发场景。
                 tasks.append(contentsOf: addNodes.flatMap {
-                    planner.makeAssociateTasks(node: $0, group: group, publishGroup: publishGroup, triggerScene: triggerScene, brightness: settings.triggerBrightness)
+                    planner.makeAssociateTasks(node: $0, group: group, publishGroup: publishGroup, associations: associations)
                 })
             }
 
-            if groupIsActiveDesired || !pendingModes.isEmpty {
+            if groupIsActiveDesired || !pendingFunctions.isEmpty {
                 // 退出组或等待清理的灯，需要取消对 EFC 内部 publish group 的订阅。
                 tasks.append(contentsOf: exitNodes.flatMap {
-                    planner.makeLightLCCleanupTasks(node: $0, group: group, publishGroup: publishGroup, pendingModes: pendingModes)
+                    planner.makeLightLCCleanupTasks(node: $0, group: group, publishGroup: publishGroup, pendingFunctions: pendingFunctions)
                 })
             }
             guard !tasks.isEmpty else { return [] }
@@ -95,8 +93,8 @@ struct EmergencyFireControllerSyncPlanner {
             items.append(EmergencyFireControllerSyncItem(name: data.name, iconName: EmergencyFireControllerIconName.main, address: node.primaryUnicastAddress, tasks: controllerTasks, controller: data))
         }
 
-        items.append(contentsOf: try makeActiveModeAssociateItems())
-        items.append(contentsOf: try makeActiveModeCleanupItems())
+        items.append(contentsOf: try makeAssociatedGroupItems())
+        items.append(contentsOf: try makeCleanupItems())
         return items
     }
 
@@ -144,26 +142,28 @@ struct EmergencyFireControllerSyncPlanner {
         return items
     }
 
-    func makeActiveModeAssociateItems() throws -> [EmergencyFireControllerSyncItem] {
-        guard let mode = activeMode, let settings = data.activeModeSettings, let publishGroup = data.publishGroup else {
+    func makeAssociatedGroupItems() throws -> [EmergencyFireControllerSyncItem] {
+        guard let publishGroup = data.publishGroup else {
             return []
         }
-        let triggerScene = triggerSceneNumber(for: mode)
 
-        return settings.associateGroupAddresses.compactMap { address in
+        return data.configuration.activeLightLCGroupAddresses.sorted().compactMap { address in
             guard let group = MeshNetworkManager.instance.meshNetwork?.group(withAddress: MeshAddress(address)) else {
                 return nil
             }
-            // 当前模式关联的每个灯组都展开为组内每个灯的同步任务。
+            // 每个关联灯组都展开为组内每个灯的同步任务。
+            let associations = associatedFunctions(for: address)
             var tasks = group.nodes.flatMap {
-                makeAssociateTasks(node: $0, group: group, publishGroup: publishGroup, triggerScene: triggerScene, brightness: settings.triggerBrightness)
+                makeAssociateTasks(node: $0, group: group, publishGroup: publishGroup, associations: associations)
             }
-            tasks.append(makeAutoRestoreTask(group: group))
+            if data.configuration.restoreSettings.actionType == .restoreAuto {
+                tasks.append(makeAutoRestoreTask(group: group))
+            }
             return EmergencyFireControllerSyncItem(name: group.name, iconName: "device_light", address: group.address.address, tasks: tasks)
         }
     }
 
-    func makeActiveModeCleanupItems() throws -> [EmergencyFireControllerSyncItem] {
+    func makeCleanupItems() throws -> [EmergencyFireControllerSyncItem] {
         guard let publishGroup = data.publishGroup else {
             return []
         }
@@ -174,29 +174,37 @@ struct EmergencyFireControllerSyncPlanner {
 
         return pendingGroups.map { pending in
             guard let group = MeshNetworkManager.instance.meshNetwork?.group(withAddress: MeshAddress(pending.address)) else {
-                let task = makeLocalCleanupPendingTask(groupAddress: pending.address, pendingModes: pending.modes)
+                let task = makeLocalCleanupPendingTask(groupAddress: pending.address, pendingFunctions: pending.functions)
                 return EmergencyFireControllerSyncItem(name: String(format: "%04X", pending.address), iconName: "device_light", address: pending.address, tasks: [task])
             }
 
             var tasks = group.nodes.flatMap {
-                makeLightLCCleanupTasks(node: $0, group: group, publishGroup: publishGroup, pendingModes: pending.modes)
+                makeLightLCCleanupTasks(node: $0, group: group, publishGroup: publishGroup, pendingFunctions: pending.functions)
             }
             if tasks.isEmpty {
-                tasks.append(makeLocalCleanupPendingTask(groupAddress: group.address.address, pendingModes: pending.modes))
+                tasks.append(makeLocalCleanupPendingTask(groupAddress: group.address.address, pendingFunctions: pending.functions))
             }
             return EmergencyFireControllerSyncItem(name: group.name, iconName: "device_light", address: group.address.address, tasks: tasks)
         }
     }
 
-    func makeAssociateTasks(node: Node, group: Group, publishGroup: Group, triggerScene: SceneNumber, brightness: Int) -> [EmergencyFireControllerSyncTask] {
+    func makeAssociateTasks(
+        node: Node,
+        group: Group,
+        publishGroup: Group,
+        associations: [(function: EmergencyFireControllerFunction, settings: EmergencyFireControllerModeSettings)]
+    ) -> [EmergencyFireControllerSyncTask] {
         var tasks: [EmergencyFireControllerSyncTask] = []
         // Scene Server 订阅用于接收 EFC 触发/停止场景。
         if let sceneTask = makeSceneServerSubscriptionTask(node: node, group: group, publishGroup: publishGroup) {
             tasks.append(sceneTask)
         }
         // 这里会写入 EFC 保留场景。注意：该步骤会改变灯的当前亮度，后续如果补 profile 逻辑要考虑恢复现场。
-        if let triggerTask = makeTriggerSceneStoreTask(node: node, triggerScene: triggerScene, brightness: brightness) {
-            tasks.append(triggerTask)
+        associations.forEach { association in
+            let triggerScene = triggerSceneNumber(for: association.function)
+            if let triggerTask = makeTriggerSceneStoreTask(node: node, function: association.function, triggerScene: triggerScene, brightness: association.settings.triggerBrightness) {
+                tasks.append(triggerTask)
+            }
         }
         // Light LC 订阅用于 EFC 直接让关联灯进入 Light LC On/恢复链路。
         if let lightLCTask = makeLightLCSubscriptionTask(node: node, group: group, publishGroup: publishGroup) {
@@ -217,48 +225,47 @@ struct EmergencyFireControllerSyncPlanner {
         )
     }
 
-    func makeLightLCCleanupTasks(node: Node, group: Group, publishGroup: Group, pendingModes: [EmergencyFireControllerWorkMode]) -> [EmergencyFireControllerSyncTask] {
+    func makeLightLCCleanupTasks(node: Node, group: Group, publishGroup: Group, pendingFunctions: [EmergencyFireControllerFunction]) -> [EmergencyFireControllerSyncTask] {
         let handles = makeCleanupMessageHandles(node: node, publishGroup: publishGroup)
         guard !handles.isEmpty else {
             return []
         }
-        return [EmergencyFireControllerSyncTask(title: node.name ?? group.name, kind: .lightLCCleanup, address: node.primaryUnicastAddress, messageHandles: handles, pendingModes: pendingModes, pendingGroupAddress: group.address.address, clearsUnassociatePending: !pendingModes.isEmpty)]
+        return [EmergencyFireControllerSyncTask(title: node.name ?? group.name, kind: .lightLCCleanup, address: node.primaryUnicastAddress, messageHandles: handles, pendingFunctions: pendingFunctions, pendingGroupAddress: group.address.address, clearsUnassociatePending: !pendingFunctions.isEmpty)]
     }
 
-    var activeMode: EmergencyFireControllerWorkMode? {
-        switch data.configuration.workMode {
-        case .powerLossEmergency, .fireAlarmEmergency:
-            return data.configuration.workMode
-        case .allDisabled:
-            return nil
-        }
-    }
-
-    func triggerSceneNumber(for mode: EmergencyFireControllerWorkMode) -> SceneNumber {
-        switch mode {
+    func triggerSceneNumber(for function: EmergencyFireControllerFunction) -> SceneNumber {
+        switch function {
         case .powerLossEmergency:
             return DeviceEmerFireData.powerLossTriggerSceneNumber
         case .fireAlarmEmergency:
             return DeviceEmerFireData.fireAlarmTriggerSceneNumber
-        case .allDisabled:
-            return DeviceEmerFireData.powerLossTriggerSceneNumber
         }
     }
 
-    func pendingCleanupModes(for groupAddress: Address) -> [EmergencyFireControllerWorkMode] {
-        [EmergencyFireControllerWorkMode.powerLossEmergency, .fireAlarmEmergency].filter { mode in
-            data.settings(for: mode)?.pendingUnassociateGroupAddresses.contains(groupAddress) ?? false
+    func associatedFunctions(for groupAddress: Address) -> [(function: EmergencyFireControllerFunction, settings: EmergencyFireControllerModeSettings)] {
+        EmergencyFireControllerFunction.allCases.compactMap { function in
+            let settings = data.settings(for: function)
+            guard settings.associateGroupAddresses.contains(groupAddress) else {
+                return nil
+            }
+            return (function, settings)
         }
     }
 
-    private func pendingCleanupGroups() -> [(address: Address, modes: [EmergencyFireControllerWorkMode])] {
-        var groups: [Address: [EmergencyFireControllerWorkMode]] = [:]
-        [EmergencyFireControllerWorkMode.powerLossEmergency, .fireAlarmEmergency].forEach { mode in
-            data.settings(for: mode)?.pendingUnassociateGroupAddresses.forEach { address in
-                groups[address, default: []].append(mode)
+    func pendingCleanupFunctions(for groupAddress: Address) -> [EmergencyFireControllerFunction] {
+        EmergencyFireControllerFunction.allCases.filter { function in
+            data.settings(for: function).pendingUnassociateGroupAddresses.contains(groupAddress)
+        }
+    }
+
+    private func pendingCleanupGroups() -> [(address: Address, functions: [EmergencyFireControllerFunction])] {
+        var groups: [Address: [EmergencyFireControllerFunction]] = [:]
+        EmergencyFireControllerFunction.allCases.forEach { function in
+            data.settings(for: function).pendingUnassociateGroupAddresses.forEach { address in
+                groups[address, default: []].append(function)
             }
         }
-        return groups.map { (address: $0.key, modes: $0.value) }.sorted { $0.address < $1.address }
+        return groups.map { (address: $0.key, functions: $0.value) }.sorted { $0.address < $1.address }
     }
 
     private func makeSceneServerSubscriptionTask(node: Node, group: Group, publishGroup: Group) -> EmergencyFireControllerSyncTask? {
@@ -272,14 +279,21 @@ struct EmergencyFireControllerSyncPlanner {
         return EmergencyFireControllerSyncTask(title: node.name ?? group.name, kind: .sceneSubscription, address: node.primaryUnicastAddress, messageHandles: [MeshMessageHandle(message: message, address: node.primaryUnicastAddress)])
     }
 
-    private func makeTriggerSceneStoreTask(node: Node, triggerScene: SceneNumber, brightness: Int) -> EmergencyFireControllerSyncTask? {
+    private func makeTriggerSceneStoreTask(node: Node, function: EmergencyFireControllerFunction, triggerScene: SceneNumber, brightness: Int) -> EmergencyFireControllerSyncTask? {
         guard let lightnessModel = node.lightnessModel,
               let sceneSetupModel = node.sceneSetupModel else {
             return nil
         }
         let lightness = Node.getLightness(lightness100: brightness)
+        let title: String
+        switch function {
+        case .powerLossEmergency:
+            title = "\("Power Loss Emergency".localizedString) \(brightness)%"
+        case .fireAlarmEmergency:
+            title = "\("Fire Alarm Emergency".localizedString) \(brightness)%"
+        }
         return EmergencyFireControllerSyncTask(
-            title: "Trigger Scene",
+            title: title,
             kind: .triggerScene,
             address: node.primaryUnicastAddress,
             messageHandles: [
@@ -298,10 +312,10 @@ struct EmergencyFireControllerSyncPlanner {
         return EmergencyFireControllerSyncTask(title: node.name ?? group.name, kind: .lightLCSubscription, address: node.primaryUnicastAddress, messageHandles: [MeshMessageHandle(message: message, address: node.primaryUnicastAddress)])
     }
 
-    private func makeLocalCleanupPendingTask(groupAddress: Address, pendingModes: [EmergencyFireControllerWorkMode]) -> EmergencyFireControllerSyncTask {
+    private func makeLocalCleanupPendingTask(groupAddress: Address, pendingFunctions: [EmergencyFireControllerFunction]) -> EmergencyFireControllerSyncTask {
         // 找不到组或组内没有可下发节点时，也需要一个 local-only task 来清 pending 标记。
         // 这种任务没有 messageHandles，删除/清理流程不能要求 Mesh 在线。
-        EmergencyFireControllerSyncTask(title: "LC Cleanup", kind: .lightLCCleanup, address: groupAddress, messageHandles: [], pendingModes: pendingModes, pendingGroupAddress: groupAddress, clearsUnassociatePending: true)
+        EmergencyFireControllerSyncTask(title: "LC Cleanup", kind: .lightLCCleanup, address: groupAddress, messageHandles: [], pendingFunctions: pendingFunctions, pendingGroupAddress: groupAddress, clearsUnassociatePending: true)
     }
 
     private func makeDeleteCleanupMessageHandles(node: Node, publishGroup: Group) -> [MeshMessageHandle] {
@@ -330,18 +344,17 @@ struct EmergencyFireControllerSyncPlanner {
     }
 
     private func makeDisableControllerItems() -> [EmergencyFireControllerSyncItem] {
-        guard data.configuration.workMode != .allDisabled,
-              let node = data.bindNode,
+        guard let node = data.bindNode,
               node.isKeybindComplete,
               node.state,
               let vendorModel = node.sunricherVendorModel else {
             return []
         }
         let task = EmergencyFireControllerSyncTask(
-            title: "Mode",
-            kind: .workMode,
+            title: "Enable",
+            kind: .enabled,
             address: node.primaryUnicastAddress,
-            messageHandles: [MeshMessageHandle(message: SunricherVendorSet(function: .emergencyMode(.disabled)), model: vendorModel)]
+            messageHandles: [MeshMessageHandle(message: SunricherVendorSet(function: .emergencyEnabled(false)), model: vendorModel)]
         )
         return [EmergencyFireControllerSyncItem(name: data.name, iconName: EmergencyFireControllerIconName.main, address: node.primaryUnicastAddress, tasks: [task], controller: data)]
     }

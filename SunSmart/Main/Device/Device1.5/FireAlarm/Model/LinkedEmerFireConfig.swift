@@ -8,27 +8,94 @@
 import Foundation
 import NordicSigMeshSDK
 
-/// 应急火警控制器的业务工作模式。
-/// 这里的枚举是 App 本地语义，真正下发到设备时会映射成 vendor 协议里的 EmergencyControllerMode。
-enum EmergencyFireControllerWorkMode: String, Codable, Equatable {
+enum EmergencyFireControllerFunction: String, Codable, CaseIterable, Equatable {
     case powerLossEmergency
     case fireAlarmEmergency
-    case allDisabled
+}
 
-    var vendorMode: EmergencyControllerMode {
+enum EmergencyFireRestoreActionType: String, Codable, Equatable {
+    case restoreAuto
+    case setBrightness
+    case none
+}
+
+enum EmergencyFireControllerState: String, Codable, CaseIterable, Equatable {
+    case emergencyTrigger
+    case fireTrigger
+    case restore
+
+    var sdkStateIndex: EmergencyFireStateIndex {
         switch self {
-        case .powerLossEmergency:
-            return .emergency
-        case .fireAlarmEmergency:
-            return .fire
-        case .allDisabled:
-            return .disabled
+        case .emergencyTrigger:
+            return .emergencyTrigger
+        case .fireTrigger:
+            return .fireTrigger
+        case .restore:
+            return .restore
+        }
+    }
+
+    var taskTitle: String {
+        switch self {
+        case .emergencyTrigger:
+            return "Emergency"
+        case .fireTrigger:
+            return "Fire"
+        case .restore:
+            return "Restore"
         }
     }
 }
 
-/// 单个应急模式下的配置。
-/// power loss 和 fire alarm 两套配置共用这个结构，切换模式时只会激活当前 workMode 对应的一套。
+enum EmergencyFireControllerActionPreset: Codable, Equatable {
+    case onOff(UInt8)
+    case levelDelta(Int32)
+    case levelMove(Int16)
+    case sceneRecall(SceneNumber)
+    case lightControlOnOff(UInt8)
+    case lightness(UInt16)
+    case ctl(lightness: UInt16, temperature: UInt16, deltaUV: Int16)
+    case ctlTemperature(temperature: UInt16, deltaUV: Int16)
+    case hsl(lightness: UInt16, hue: UInt16, saturation: UInt16)
+    case hslHue(UInt16)
+    case hslSaturation(UInt16)
+    case powerLevel(UInt16)
+    case invalid
+
+    var sdkAction: EmergencyFireAction {
+        switch self {
+        case .onOff(let value):
+            return .onOff(value)
+        case .levelDelta(let delta):
+            return .levelDelta(delta)
+        case .levelMove(let delta):
+            return .levelMove(delta)
+        case .sceneRecall(let sceneNumber):
+            return .sceneRecall(sceneNumber)
+        case .lightControlOnOff(let value):
+            return .lightControlOnOff(value)
+        case .lightness(let lightness):
+            return .lightness(lightness)
+        case .ctl(let lightness, let temperature, let deltaUV):
+            return .ctl(lightness: lightness, temperature: temperature, deltaUV: deltaUV)
+        case .ctlTemperature(let temperature, let deltaUV):
+            return .ctlTemperature(temperature: temperature, deltaUV: deltaUV)
+        case .hsl(let lightness, let hue, let saturation):
+            return .hsl(lightness: lightness, hue: hue, saturation: saturation)
+        case .hslHue(let hue):
+            return .hslHue(hue)
+        case .hslSaturation(let saturation):
+            return .hslSaturation(saturation)
+        case .powerLevel(let power):
+            return .powerLevel(power)
+        case .invalid:
+            return .invalid
+        }
+    }
+}
+
+/// 单个应急功能的触发配置。
+/// Power Loss 和 Fire Alarm 两套配置同时有效；恢复动作使用独立的 restore settings。
 struct EmergencyFireControllerModeSettings: Codable, Equatable {
     /// 当前模式希望联动的灯组地址。同步时会让组内灯订阅 EFC 的内部 publish group。
     var associateGroupAddresses: [UInt16]
@@ -37,34 +104,27 @@ struct EmergencyFireControllerModeSettings: Codable, Equatable {
     /// EFC 触发命令重发参数，最终通过 vendor message 下发给控制器。
     var triggerIntervalSeconds: UInt16
     var triggerCount: UInt16
-    /// EFC 停止/恢复命令重发参数。
-    var stopIntervalSeconds: UInt16
-    var stopCount: UInt16
-    /// 设备从 emergency/fire active 恢复到 normal UI 状态前等待的秒数。
-    var restoreDelaySeconds: UInt8
+    /// v2 action_type 高级配置入口。当前 UI 未暴露时为 nil，并由默认规则派生。
+    var triggerActionPreset: EmergencyFireControllerActionPreset?
     /// 已从配置里移除、但灯节点还需要取消订阅内部 publish group 的组。
     /// 这个字段不能随意清空，否则旧灯组会残留订阅，后续仍可能被 EFC 控制。
     var pendingUnassociateGroupAddresses: [UInt16]
 
-    private enum CodingKeys: String, CodingKey {
-        case associateGroupAddresses
-        case triggerBrightness
-        case triggerIntervalSeconds
-        case triggerCount
-        case stopIntervalSeconds
-        case stopCount
-        case restoreDelaySeconds
-        case pendingUnassociateGroupAddresses
-    }
+    static let powerLossDefaultValue = EmergencyFireControllerModeSettings(
+        associateGroupAddresses: [],
+        triggerBrightness: 10,
+        triggerIntervalSeconds: 5,
+        triggerCount: 0xFFFF,
+        triggerActionPreset: nil,
+        pendingUnassociateGroupAddresses: []
+    )
 
-    static let defaultValue = EmergencyFireControllerModeSettings(
+    static let fireAlarmDefaultValue = EmergencyFireControllerModeSettings(
         associateGroupAddresses: [],
         triggerBrightness: 100,
         triggerIntervalSeconds: 5,
         triggerCount: 0xFFFF,
-        stopIntervalSeconds: 5,
-        stopCount: 2,
-        restoreDelaySeconds: 2,
+        triggerActionPreset: nil,
         pendingUnassociateGroupAddresses: []
     )
 
@@ -73,62 +133,55 @@ struct EmergencyFireControllerModeSettings: Codable, Equatable {
         triggerBrightness: Int,
         triggerIntervalSeconds: UInt16,
         triggerCount: UInt16,
-        stopIntervalSeconds: UInt16,
-        stopCount: UInt16,
-        restoreDelaySeconds: UInt8,
+        triggerActionPreset: EmergencyFireControllerActionPreset? = nil,
         pendingUnassociateGroupAddresses: [UInt16]
     ) {
         self.associateGroupAddresses = associateGroupAddresses
         self.triggerBrightness = triggerBrightness
         self.triggerIntervalSeconds = triggerIntervalSeconds
         self.triggerCount = triggerCount
-        self.stopIntervalSeconds = stopIntervalSeconds
-        self.stopCount = stopCount
-        self.restoreDelaySeconds = restoreDelaySeconds
+        self.triggerActionPreset = triggerActionPreset
         self.pendingUnassociateGroupAddresses = pendingUnassociateGroupAddresses
     }
+}
 
-    init(from decoder: Decoder) throws {
-        let container = try decoder.container(keyedBy: CodingKeys.self)
-        let defaults = Self.defaultValue
-        associateGroupAddresses = try container.decodeIfPresent([UInt16].self, forKey: .associateGroupAddresses) ?? defaults.associateGroupAddresses
-        triggerBrightness = try container.decodeIfPresent(Int.self, forKey: .triggerBrightness) ?? defaults.triggerBrightness
-        triggerIntervalSeconds = try container.decodeIfPresent(UInt16.self, forKey: .triggerIntervalSeconds) ?? defaults.triggerIntervalSeconds
-        triggerCount = try container.decodeIfPresent(UInt16.self, forKey: .triggerCount) ?? defaults.triggerCount
-        stopIntervalSeconds = try container.decodeIfPresent(UInt16.self, forKey: .stopIntervalSeconds) ?? defaults.stopIntervalSeconds
-        stopCount = try container.decodeIfPresent(UInt16.self, forKey: .stopCount) ?? defaults.stopCount
-        restoreDelaySeconds = try container.decodeIfPresent(UInt8.self, forKey: .restoreDelaySeconds) ?? defaults.restoreDelaySeconds
-        pendingUnassociateGroupAddresses = try container.decodeIfPresent([UInt16].self, forKey: .pendingUnassociateGroupAddresses) ?? []
-    }
+struct EmergencyFireControllerRestoreSettings: Codable, Equatable {
+    var actionType: EmergencyFireRestoreActionType
+    var brightness: Int
+    var resumingSeconds: UInt8
+    var sendCount: UInt16
+
+    static let defaultValue = EmergencyFireControllerRestoreSettings(
+        actionType: .restoreAuto,
+        brightness: 100,
+        resumingSeconds: 2,
+        sendCount: 2
+    )
 }
 
 /// EFC 的 desired configuration。
 /// 数据库存的是这份配置，真实 Mesh 设备是否已经对齐要看 isSynced 和同步流程结果。
 struct EmergencyFireControllerConfiguration: Codable, Equatable {
-    var workMode: EmergencyFireControllerWorkMode
     var powerLossSettings: EmergencyFireControllerModeSettings
     var fireAlarmSettings: EmergencyFireControllerModeSettings
+    var restoreSettings: EmergencyFireControllerRestoreSettings
 
     static let defaultValue = EmergencyFireControllerConfiguration(
-        workMode: .powerLossEmergency,
-        powerLossSettings: .defaultValue,
-        fireAlarmSettings: .defaultValue
+        powerLossSettings: .powerLossDefaultValue,
+        fireAlarmSettings: .fireAlarmDefaultValue,
+        restoreSettings: .defaultValue
     )
 }
 
 extension EmergencyFireControllerConfiguration {
 
-    /// 当前激活模式下真正应该被 EFC 控制的灯组。
-    /// allDisabled 时返回空，但 pending cleanup 仍然可能存在，不能因此跳过清理。
+    var enabled: Bool {
+        true
+    }
+
+    /// 两种应急功能下真正应该被 EFC 控制的灯组。
     var activeLightLCGroupAddresses: Set<Address> {
-        switch workMode {
-        case .powerLossEmergency:
-            return Set(powerLossSettings.associateGroupAddresses)
-        case .fireAlarmEmergency:
-            return Set(fireAlarmSettings.associateGroupAddresses)
-        case .allDisabled:
-            return []
-        }
+        Set(powerLossSettings.associateGroupAddresses + fireAlarmSettings.associateGroupAddresses)
     }
 
     /// 是否还有待清理订阅。用于删除、导入、同步态判断。
@@ -140,9 +193,86 @@ extension EmergencyFireControllerConfiguration {
     /// 导入后重新判断同步态使用的业务意图。
     /// 不要盲信外部 JSON 的 isSynced；只要还有绑定、publish group 或配置意图，就应该让同步流程重新对齐。
     var hasSyncIntent: Bool {
-        workMode != .allDisabled ||
-        !activeLightLCGroupAddresses.isEmpty ||
-        hasPendingCleanup
+        !activeLightLCGroupAddresses.isEmpty || hasPendingCleanup
+    }
+
+    func settings(for function: EmergencyFireControllerFunction) -> EmergencyFireControllerModeSettings {
+        switch function {
+        case .powerLossEmergency:
+            return powerLossSettings
+        case .fireAlarmEmergency:
+            return fireAlarmSettings
+        }
+    }
+
+    func resendParameters(for state: EmergencyFireControllerState) -> EmergencyFireResendParameters {
+        switch state {
+        case .emergencyTrigger, .fireTrigger:
+            let settings = state == .emergencyTrigger ? powerLossSettings : fireAlarmSettings
+            return .init(
+                stateIndex: state.sdkStateIndex,
+                intervalSeconds: settings.triggerIntervalSeconds,
+                count: settings.triggerCount
+            )
+        case .restore:
+            return .init(
+                stateIndex: state.sdkStateIndex,
+                intervalSeconds: 5,
+                count: restoreSettings.sendCount
+            )
+        }
+    }
+
+    func restoreDelaySeconds() -> UInt8 {
+        restoreSettings.resumingSeconds
+    }
+
+    func actionConfig(
+        for state: EmergencyFireControllerState,
+        targetAddress: Address?,
+        appKeyIndex: UInt16,
+        ttl: UInt8,
+        transitionTime: UInt8 = 0,
+        delay: UInt8 = 0
+    ) -> EmergencyFireActionConfig {
+        guard enabled,
+              let targetAddress,
+              !activeLightLCGroupAddresses.isEmpty,
+              let action = action(for: state) else {
+            return .init(stateIndex: state.sdkStateIndex, action: .invalid)
+        }
+        return .init(
+            stateIndex: state.sdkStateIndex,
+            action: action,
+            stage1Target: targetAddress,
+            stage2Target: targetAddress,
+            appKeyIndex: appKeyIndex,
+            ttl: ttl,
+            transitionTime: transitionTime,
+            delay: delay
+        )
+    }
+
+    private func action(for state: EmergencyFireControllerState) -> EmergencyFireAction? {
+        switch state {
+        case .emergencyTrigger:
+            return powerLossSettings.triggerActionPreset?.sdkAction ?? .lightness(Self.lightness(from: powerLossSettings.triggerBrightness))
+        case .fireTrigger:
+            return fireAlarmSettings.triggerActionPreset?.sdkAction ?? .lightness(Self.lightness(from: fireAlarmSettings.triggerBrightness))
+        case .restore:
+            switch restoreSettings.actionType {
+            case .restoreAuto:
+                return .lightControlOnOff(1)
+            case .setBrightness:
+                return .lightness(Self.lightness(from: restoreSettings.brightness))
+            case .none:
+                return .invalid
+            }
+        }
+    }
+
+    private static func lightness(from percent: Int) -> UInt16 {
+        Node.getLightness(lightness100: min(max(percent, 0), 100))
     }
 }
 

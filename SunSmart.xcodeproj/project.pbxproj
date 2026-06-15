@@ -19,7 +19,7 @@
 		39FE1B9D3CB748E99E153094 /* EmerFireAlarmMonitorViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0FB5C2C5870049F0AC8546FD /* EmerFireAlarmMonitorViewModel.swift */; };
 		4D4A0F032EE24DA7965F1B78 /* EmergencyFireControllerIconName.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3AB43138D1CA4C21AFA5232A /* EmergencyFireControllerIconName.swift */; };
 		59406AF3301C4F9EA72AE09D /* EmerFireAlarmMonitorRouting.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5CAC8D9C0CD4494B961439D5 /* EmerFireAlarmMonitorRouting.swift */; };
-		6116D0D0F05DFA292964E9B9 /* (null) in Frameworks */ = {isa = PBXBuildFile; };
+		6116D0D0F05DFA292964E9B9 /* BuildFile in Frameworks */ = {isa = PBXBuildFile; };
 		641FEC57DE5645609932974D /* EmerFireAlarmMonitorDelegates.swift in Sources */ = {isa = PBXBuildFile; fileRef = E4B67A9E7E2941BBBD518363 /* EmerFireAlarmMonitorDelegates.swift */; };
 		7119A2FC8208465ABF6EF1D3 /* EmergencyFireControllerIconName.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3AB43138D1CA4C21AFA5232A /* EmergencyFireControllerIconName.swift */; };
 		7A97BDEC9C6E47B78123C040 /* EmerFireAlarmMonitorViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0FB5C2C5870049F0AC8546FD /* EmerFireAlarmMonitorViewModel.swift */; };
@@ -704,11 +704,6 @@
 		C88553D62DE6B44C00C8B688 /* DeviceParameterDeviceCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A0116A2DA8F8010058E7E7 /* DeviceParameterDeviceCell.swift */; };
 		C88553D72DE6B44C00C8B688 /* EnergyFileData.swift in Sources */ = {isa = PBXBuildFile; fileRef = C83D8C4F2DD1A0C300A59AFA /* EnergyFileData.swift */; };
 		C88553D82DE6B44C00C8B688 /* DeviceLightControlViewCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = C88B257D2ADE594600CF1AE4 /* DeviceLightControlViewCell.swift */; };
-		C8D1C0112F10000000000001 /* DeviceUpDownRatioControlView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8D1C0102F10000000000001 /* DeviceUpDownRatioControlView.swift */; };
-		C8D1C0212F10000000000001 /* UpDownLightView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8D1C0202F10000000000001 /* UpDownLightView.swift */; };
-		C8D1C0222F10000000000001 /* UpDownLightView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8D1C0202F10000000000001 /* UpDownLightView.swift */; };
-		C8D1C0232F10000000000001 /* UpDownLightView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8D1C0202F10000000000001 /* UpDownLightView.swift */; };
-		C8D1C0242F10000000000001 /* UpDownLightView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8D1C0202F10000000000001 /* UpDownLightView.swift */; };
 		C88553D92DE6B44C00C8B688 /* UIImage+Extension.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8ACF12C2AA1B2BA00E24B4A /* UIImage+Extension.swift */; };
 		C88553DA2DE6B44C00C8B688 /* LBXScanViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C87EB45D2BA17D3E00F9285B /* LBXScanViewController.swift */; };
 		C88553DB2DE6B44C00C8B688 /* SceneAddTemplateTitleHeaderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A130C52B32C2EC0008C353 /* SceneAddTemplateTitleHeaderView.swift */; };
@@ -1079,7 +1074,6 @@
 		C886E0262E30DE4900D0C3A6 /* DeviceParameterDeviceCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A0116A2DA8F8010058E7E7 /* DeviceParameterDeviceCell.swift */; };
 		C886E0272E30DE4900D0C3A6 /* EnergyFileData.swift in Sources */ = {isa = PBXBuildFile; fileRef = C83D8C4F2DD1A0C300A59AFA /* EnergyFileData.swift */; };
 		C886E0282E30DE4900D0C3A6 /* DeviceLightControlViewCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = C88B257D2ADE594600CF1AE4 /* DeviceLightControlViewCell.swift */; };
-		C8D1C0122F10000000000001 /* DeviceUpDownRatioControlView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8D1C0102F10000000000001 /* DeviceUpDownRatioControlView.swift */; };
 		C886E0292E30DE4900D0C3A6 /* UIImage+Extension.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8ACF12C2AA1B2BA00E24B4A /* UIImage+Extension.swift */; };
 		C886E02A2E30DE4900D0C3A6 /* LBXScanViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C87EB45D2BA17D3E00F9285B /* LBXScanViewController.swift */; };
 		C886E02B2E30DE4900D0C3A6 /* SceneAddTemplateTitleHeaderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A130C52B32C2EC0008C353 /* SceneAddTemplateTitleHeaderView.swift */; };
@@ -1430,7 +1424,6 @@
 		C88B25762ADD399C00CF1AE4 /* DeviceLightBasicController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C88B25752ADD399C00CF1AE4 /* DeviceLightBasicController.swift */; };
 		C88B257A2ADE1D2100CF1AE4 /* DeviceLightHeaderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C88B25792ADE1D2100CF1AE4 /* DeviceLightHeaderView.swift */; };
 		C88B257E2ADE594600CF1AE4 /* DeviceLightControlViewCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = C88B257D2ADE594600CF1AE4 /* DeviceLightControlViewCell.swift */; };
-		C8D1C0132F10000000000001 /* DeviceUpDownRatioControlView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8D1C0102F10000000000001 /* DeviceUpDownRatioControlView.swift */; };
 		C88CCD8E2DD442CA003D5754 /* CirclePieMarkerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C88CCD8D2DD442CA003D5754 /* CirclePieMarkerView.swift */; };
 		C88CCD932DD480B9003D5754 /* GroupPathSequenceViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C88CCD922DD480B9003D5754 /* GroupPathSequenceViewController.swift */; };
 		C88CCD972DD4A552003D5754 /* ProfileProximityLightingStepView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C88CCD962DD4A552003D5754 /* ProfileProximityLightingStepView.swift */; };
@@ -1803,7 +1796,6 @@
 		C8BB65D62ED3F056000C63EE /* DeviceParameterDeviceCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A0116A2DA8F8010058E7E7 /* DeviceParameterDeviceCell.swift */; };
 		C8BB65D72ED3F056000C63EE /* EnergyFileData.swift in Sources */ = {isa = PBXBuildFile; fileRef = C83D8C4F2DD1A0C300A59AFA /* EnergyFileData.swift */; };
 		C8BB65D82ED3F056000C63EE /* DeviceLightControlViewCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = C88B257D2ADE594600CF1AE4 /* DeviceLightControlViewCell.swift */; };
-		C8D1C0142F10000000000001 /* DeviceUpDownRatioControlView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8D1C0102F10000000000001 /* DeviceUpDownRatioControlView.swift */; };
 		C8BB65D92ED3F056000C63EE /* UIImage+Extension.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8ACF12C2AA1B2BA00E24B4A /* UIImage+Extension.swift */; };
 		C8BB65DA2ED3F056000C63EE /* LBXScanViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C87EB45D2BA17D3E00F9285B /* LBXScanViewController.swift */; };
 		C8BB65DB2ED3F056000C63EE /* SceneAddTemplateTitleHeaderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A130C52B32C2EC0008C353 /* SceneAddTemplateTitleHeaderView.swift */; };
@@ -2348,6 +2340,14 @@
 		C8D1C0022F10000000000001 /* DeviceLightControlPanelView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8D1C0002F10000000000001 /* DeviceLightControlPanelView.swift */; };
 		C8D1C0032F10000000000001 /* DeviceLightControlPanelView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8D1C0002F10000000000001 /* DeviceLightControlPanelView.swift */; };
 		C8D1C0042F10000000000001 /* DeviceLightControlPanelView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8D1C0002F10000000000001 /* DeviceLightControlPanelView.swift */; };
+		C8D1C0112F10000000000001 /* DeviceUpDownRatioControlView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8D1C0102F10000000000001 /* DeviceUpDownRatioControlView.swift */; };
+		C8D1C0122F10000000000001 /* DeviceUpDownRatioControlView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8D1C0102F10000000000001 /* DeviceUpDownRatioControlView.swift */; };
+		C8D1C0132F10000000000001 /* DeviceUpDownRatioControlView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8D1C0102F10000000000001 /* DeviceUpDownRatioControlView.swift */; };
+		C8D1C0142F10000000000001 /* DeviceUpDownRatioControlView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8D1C0102F10000000000001 /* DeviceUpDownRatioControlView.swift */; };
+		C8D1C0212F10000000000001 /* UpDownLightView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8D1C0202F10000000000001 /* UpDownLightView.swift */; };
+		C8D1C0222F10000000000001 /* UpDownLightView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8D1C0202F10000000000001 /* UpDownLightView.swift */; };
+		C8D1C0232F10000000000001 /* UpDownLightView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8D1C0202F10000000000001 /* UpDownLightView.swift */; };
+		C8D1C0242F10000000000001 /* UpDownLightView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8D1C0202F10000000000001 /* UpDownLightView.swift */; };
 		C8D22E002E010A47001A2BDA /* GatewayViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8D22DFF2E010A47001A2BDA /* GatewayViewController.swift */; };
 		C8D22E012E010A47001A2BDA /* GatewayViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8D22DFF2E010A47001A2BDA /* GatewayViewController.swift */; };
 		C8D22E1D2E04100D001A2BDA /* DeviceAddProfessionalModeController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8D22E1C2E04100D001A2BDA /* DeviceAddProfessionalModeController.swift */; };
@@ -2694,8 +2694,6 @@
 		C88B25752ADD399C00CF1AE4 /* DeviceLightBasicController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceLightBasicController.swift; sourceTree = "<group>"; };
 		C88B25792ADE1D2100CF1AE4 /* DeviceLightHeaderView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceLightHeaderView.swift; sourceTree = "<group>"; };
 		C88B257D2ADE594600CF1AE4 /* DeviceLightControlViewCell.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = DeviceLightControlViewCell.swift; sourceTree = "<group>"; };
-		C8D1C0102F10000000000001 /* DeviceUpDownRatioControlView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceUpDownRatioControlView.swift; sourceTree = "<group>"; };
-		C8D1C0202F10000000000001 /* UpDownLightView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UpDownLightView.swift; sourceTree = "<group>"; };
 		C88CCD8D2DD442CA003D5754 /* CirclePieMarkerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CirclePieMarkerView.swift; sourceTree = "<group>"; };
 		C88CCD922DD480B9003D5754 /* GroupPathSequenceViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GroupPathSequenceViewController.swift; sourceTree = "<group>"; };
 		C88CCD962DD4A552003D5754 /* ProfileProximityLightingStepView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileProximityLightingStepView.swift; sourceTree = "<group>"; };
@@ -3029,6 +3027,8 @@
 		C8D001002FCE000100ABCDEF /* ContentDisplaySwitchViewCell.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentDisplaySwitchViewCell.swift; sourceTree = "<group>"; };
 		C8D001012FCE000100ABCDEF /* ContentDisplayControlStyleViewCell.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentDisplayControlStyleViewCell.swift; sourceTree = "<group>"; };
 		C8D1C0002F10000000000001 /* DeviceLightControlPanelView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceLightControlPanelView.swift; sourceTree = "<group>"; };
+		C8D1C0102F10000000000001 /* DeviceUpDownRatioControlView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceUpDownRatioControlView.swift; sourceTree = "<group>"; };
+		C8D1C0202F10000000000001 /* UpDownLightView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UpDownLightView.swift; sourceTree = "<group>"; };
 		C8D22DFF2E010A47001A2BDA /* GatewayViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GatewayViewController.swift; sourceTree = "<group>"; };
 		C8D22E1C2E04100D001A2BDA /* DeviceAddProfessionalModeController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceAddProfessionalModeController.swift; sourceTree = "<group>"; };
 		C8D22E1F2E041020001A2BDA /* DeviceAddClassicModeController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceAddClassicModeController.swift; sourceTree = "<group>"; };
@@ -3128,7 +3128,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				C88555142DE6B44C00C8B688 /* NordicSigMeshSDK in Frameworks */,
-				6116D0D0F05DFA292964E9B9 /* (null) in Frameworks */,
+				6116D0D0F05DFA292964E9B9 /* BuildFile in Frameworks */,
 				C8D3BC5211D39346ECD5E3AF /* Pods_Common_Archipelago.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -5264,7 +5264,7 @@
 			);
 			mainGroup = C896B99B2A930BA800217512;
 			packageReferences = (
-				C8D5314A2F76294A0069C71B /* XCLocalSwiftPackageReference "/Users/maginawin/Developer/iOS/YKH/nordic-sig-mesh-sdk" */,
+				C8D5314A2F76294A0069C71B /* XCLocalSwiftPackageReference "nordic-sig-mesh-sdk" */,
 			);
 			productRefGroup = C896B9A52A930BA800217512 /* Products */;
 			projectDirPath = "";
@@ -5455,13 +5455,9 @@
 			inputFileListPaths = (
 				"${PODS_ROOT}/Target Support Files/Pods-Common-SunSmart/Pods-Common-SunSmart-frameworks-${CONFIGURATION}-input-files.xcfilelist",
 			);
-			inputPaths = (
-			);
 			name = "[CP] Embed Pods Frameworks";
 			outputFileListPaths = (
 				"${PODS_ROOT}/Target Support Files/Pods-Common-SunSmart/Pods-Common-SunSmart-frameworks-${CONFIGURATION}-output-files.xcfilelist",
-			);
-			outputPaths = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
@@ -5520,13 +5516,9 @@
 			inputFileListPaths = (
 				"${PODS_ROOT}/Target Support Files/Pods-Common-SylSmart/Pods-Common-SylSmart-frameworks-${CONFIGURATION}-input-files.xcfilelist",
 			);
-			inputPaths = (
-			);
 			name = "[CP] Embed Pods Frameworks";
 			outputFileListPaths = (
 				"${PODS_ROOT}/Target Support Files/Pods-Common-SylSmart/Pods-Common-SylSmart-frameworks-${CONFIGURATION}-output-files.xcfilelist",
-			);
-			outputPaths = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
@@ -5541,13 +5533,9 @@
 			inputFileListPaths = (
 				"${PODS_ROOT}/Target Support Files/Pods-Common-Archipelago/Pods-Common-Archipelago-frameworks-${CONFIGURATION}-input-files.xcfilelist",
 			);
-			inputPaths = (
-			);
 			name = "[CP] Embed Pods Frameworks";
 			outputFileListPaths = (
 				"${PODS_ROOT}/Target Support Files/Pods-Common-Archipelago/Pods-Common-Archipelago-frameworks-${CONFIGURATION}-output-files.xcfilelist",
-			);
-			outputPaths = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
@@ -5562,13 +5550,9 @@
 			inputFileListPaths = (
 				"${PODS_ROOT}/Target Support Files/Pods-Common-SLG Sync Plus/Pods-Common-SLG Sync Plus-frameworks-${CONFIGURATION}-input-files.xcfilelist",
 			);
-			inputPaths = (
-			);
 			name = "[CP] Embed Pods Frameworks";
 			outputFileListPaths = (
 				"${PODS_ROOT}/Target Support Files/Pods-Common-SLG Sync Plus/Pods-Common-SLG Sync Plus-frameworks-${CONFIGURATION}-output-files.xcfilelist",
-			);
-			outputPaths = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
@@ -8207,7 +8191,7 @@
 /* End XCConfigurationList section */
 
 /* Begin XCLocalSwiftPackageReference section */
-		C8D5314A2F76294A0069C71B /* XCLocalSwiftPackageReference "/Users/maginawin/Developer/iOS/YKH/nordic-sig-mesh-sdk" */ = {
+		C8D5314A2F76294A0069C71B /* XCLocalSwiftPackageReference "nordic-sig-mesh-sdk" */ = {
 			isa = XCLocalSwiftPackageReference;
 			relativePath = "/Users/maginawin/Developer/iOS/YKH/nordic-sig-mesh-sdk";
 		};
@@ -8216,22 +8200,22 @@
 /* Begin XCSwiftPackageProductDependency section */
 		C88553AE2DE6B44C00C8B688 /* NordicSigMeshSDK */ = {
 			isa = XCSwiftPackageProductDependency;
-			package = C8D5314A2F76294A0069C71B /* XCLocalSwiftPackageReference "/Users/maginawin/Developer/iOS/YKH/nordic-sig-mesh-sdk" */;
+			package = C8D5314A2F76294A0069C71B /* XCLocalSwiftPackageReference "nordic-sig-mesh-sdk" */;
 			productName = NordicSigMeshSDK;
 		};
 		C886DFFE2E30DE4900D0C3A6 /* NordicSigMeshSDK */ = {
 			isa = XCSwiftPackageProductDependency;
-			package = C8D5314A2F76294A0069C71B /* XCLocalSwiftPackageReference "/Users/maginawin/Developer/iOS/YKH/nordic-sig-mesh-sdk" */;
+			package = C8D5314A2F76294A0069C71B /* XCLocalSwiftPackageReference "nordic-sig-mesh-sdk" */;
 			productName = NordicSigMeshSDK;
 		};
 		C8BB65AC2ED3F056000C63EE /* NordicSigMeshSDK */ = {
 			isa = XCSwiftPackageProductDependency;
-			package = C8D5314A2F76294A0069C71B /* XCLocalSwiftPackageReference "/Users/maginawin/Developer/iOS/YKH/nordic-sig-mesh-sdk" */;
+			package = C8D5314A2F76294A0069C71B /* XCLocalSwiftPackageReference "nordic-sig-mesh-sdk" */;
 			productName = NordicSigMeshSDK;
 		};
 		C8D5314B2F76294A0069C71B /* NordicSigMeshSDK */ = {
 			isa = XCSwiftPackageProductDependency;
-			package = C8D5314A2F76294A0069C71B /* XCLocalSwiftPackageReference "/Users/maginawin/Developer/iOS/YKH/nordic-sig-mesh-sdk" */;
+			package = C8D5314A2F76294A0069C71B /* XCLocalSwiftPackageReference "nordic-sig-mesh-sdk" */;
 			productName = NordicSigMeshSDK;
 		};
 /* End XCSwiftPackageProductDependency section */
