@@ -1135,13 +1135,14 @@ extension DeviceLightsViewController: DeviceLightControlViewDelegate {
         
         let temperature = UInt16(cct)
         let cctNodes = devices.filter({ $0.effectiveSupportCct })
+        MeshAPI.sendMessage(
+            message: LightCTLTemperatureSetUnacknowledged(temperature: temperature, deltaUV: 0),
+            address: .subElementBroadcastGroupAddress
+        )
         cctNodes.forEach({
             let nodeTemperature = $0.clampEffectiveCct(temperature)
-            MeshAPI.setNodeColorTemperatureState(address: $0.primaryUnicastAddress, temperature: nodeTemperature)
             $0.temperature = nodeTemperature
         })
-//        MeshAPI.setAllNodesCTLState(lightness: ligheness, temperature: UInt16(cct))
-//        MeshAPI.setAllColorTemperatureState(temperature: UInt16(cct), ack: ended)
         updateAllOnOffItemUI()
         self.collectionView.reloadData()
     }
