@@ -932,6 +932,10 @@ class GroupViewController: UIViewController {
         }
     }
 
+    private var upDownRatioUnselectedImageName: String {
+        isIPad ? "up down ratio button - unselected" : "up down ratio button iphone - unselected"
+    }
+
     private func updateUpDownRatioUI() {
         let showsModeButton = showsUpDownRatioModeButton
         if !showsModeButton {
@@ -1497,14 +1501,14 @@ class GroupViewController: UIViewController {
         }
 
         upDownRatioModeBtn = UIButton(
-            normalImageName: "up down ratio button - unselected",
+            normalImageName: upDownRatioUnselectedImageName,
             selectedImageName: "up down ratio button - selected",
             target: self,
             action: #selector(upDownRatioModeBtnClick)
         )
         upDownRatioModeBtn.isHidden = true
         if let autoButtonImageSize = autoBtn.image(for: .normal)?.size {
-            upDownRatioModeBtn.setImage(controlButtonImage(named: "up down ratio button - unselected", matching: autoButtonImageSize), for: .normal)
+            upDownRatioModeBtn.setImage(controlButtonImage(named: upDownRatioUnselectedImageName, matching: autoButtonImageSize), for: .normal)
             upDownRatioModeBtn.setImage(controlButtonImage(named: "up down ratio button - selected", matching: autoButtonImageSize), for: .selected)
         }
         controlButtonsStackView.addArrangedSubview(upDownRatioModeBtn)
