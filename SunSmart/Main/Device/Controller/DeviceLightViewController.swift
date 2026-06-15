@@ -28,6 +28,8 @@ class DeviceLightViewController: UIViewController {
     private var onoffBtn: UIButton!
     private var controlPanelView: DeviceLightControlPanelView!
     private var upDownRatioView: DeviceUpDownRatioControlView!
+    private var confirmedUpRatioValue = 50
+    private var hasEditedUpRatioValue = false
     
     private var relayLabel: UILabel!
     private var relaySwitch: UISwitch!
@@ -44,6 +46,7 @@ class DeviceLightViewController: UIViewController {
     init(space: SpaceData, node: Node) {
         self.space = space
         self.node = node
+        self.confirmedUpRatioValue = node.upRatio
         super.init(nibName: nil, bundle: nil)
     }
     
@@ -82,6 +85,7 @@ class DeviceLightViewController: UIViewController {
             updateUI()
             // 绑定事件
             bindSliderAction()
+            getInitialUpRatioValue()
         }
         // 获取设备数据
         getNodeState()
@@ -851,16 +855,89 @@ class DeviceLightViewController: UIViewController {
             self?.showCCTInputAlert()
         }
         upDownRatioView.valueChanging = { [weak self] value in
-            guard let self = self else { return }
-            self.node.upRatio = value
-            self.updateData(refreshControlPanel: false)
+            self?.hasEditedUpRatioValue = true
+            self?.applyLocalUpRatioValue(value)
         }
         upDownRatioView.valueChanged = { [weak self] value in
-            guard let self = self else { return }
-            self.node.upRatio = value
-            self.updateData(refreshControlPanel: false)
-            if let meshUUID = self.node.network?.uuid.uuidString {
-                self.node.preConfiguration.save(meshUUID: meshUUID, nodeAddress: self.node.primaryUnicastAddress)
+            self?.hasEditedUpRatioValue = true
+            self?.sendUpRatioValue(value)
+        }
+    }
+
+    private func getInitialUpRatioValue() {
+        guard node.supportsUpDownRatioControl, let vendorModel = node.sunricherVendorModel else {
+            return
+        }
+
+        MeshAPI.sendMessage(
+            message: SunricherVendorGet(function: .upDownLightUpRatio),
+            model: vendorModel,
+            timeout: 7
+        ) { [weak self] response in
+            DispatchQueue.main.async {
+                guard let self = self, !self.hasEditedUpRatioValue else { return }
+                guard let status = response as? SunricherVendorStatus,
+                      status.status.isSuccessful,
+                      case .upDownLightUpRatio(let value) = status.status.parameters else {
+                    return
+                }
+
+                let upRatio = Int(value)
+                self.confirmedUpRatioValue = upRatio
+                self.saveLocalUpRatioValue(upRatio)
+                self.upDownRatioView.upValue = upRatio
+                self.updateData(refreshControlPanel: false)
+            }
+        }
+    }
+
+    private func applyLocalUpRatioValue(_ value: Int) {
+        let clampedValue = max(0, min(100, value))
+        node.upRatio = clampedValue
+        updateData(refreshControlPanel: false)
+    }
+
+    private func saveLocalUpRatioValue(_ value: Int) {
+        node.upRatio = max(0, min(100, value))
+        if let meshUUID = node.network?.uuid.uuidString {
+            node.preConfiguration.save(meshUUID: meshUUID, nodeAddress: node.primaryUnicastAddress)
+        }
+    }
+
+    private func rollbackUpRatioValue() {
+        node.upRatio = confirmedUpRatioValue
+        upDownRatioView.upValue = confirmedUpRatioValue
+        updateData(refreshControlPanel: false)
+    }
+
+    private func sendUpRatioValue(_ value: Int) {
+        let clampedValue = max(0, min(100, value))
+        applyLocalUpRatioValue(clampedValue)
+
+        guard let vendorModel = node.sunricherVendorModel else {
+            rollbackUpRatioValue()
+            ToastStatusView.show(in: view, message: "configuration_failed".localizedString, type: .failure)
+            return
+        }
+
+        MeshAPI.sendMessage(
+            message: SunricherVendorSet(function: .upDownLightUpRatio(UInt8(clampedValue))),
+            model: vendorModel,
+            timeout: 7
+        ) { [weak self] response in
+            DispatchQueue.main.async {
+                guard let self = self else { return }
+                guard let status = response as? SunricherVendorStatus,
+                      status.status.isSuccessful,
+                      status.status.code == .upDownLightUpRatio else {
+                    self.rollbackUpRatioValue()
+                    ToastStatusView.show(in: self.view, message: "configuration_failed".localizedString, type: .failure)
+                    return
+                }
+
+                self.confirmedUpRatioValue = clampedValue
+                self.saveLocalUpRatioValue(clampedValue)
+                self.updateData(refreshControlPanel: false)
             }
         }
     }

@@ -137,7 +137,7 @@ private final class UpDownRatioQuickButtonsView: UIView {
     var valueSelected: ((Int) -> Void)?
 
     private let stackView = UIStackView()
-    private let values = [100, 75, 50, 25, 0]
+    private let values = [100, 70, 50, 30, 0]
     private var buttons: [UIButton] = []
     private var selectedValue: Int?
 

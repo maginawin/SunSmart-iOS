@@ -1473,27 +1473,30 @@ class DeviceAddClassicModeController: UIViewController {
 //            }
             self.finishGroupDeferredSyncPlans(successDevices: successList) { [weak self] in
                 guard let self = self else { return }
-                self.deviceStateCallback?(false)
-                self.deviceAddCallback?(self.addSuccessNodes)
+                UpDownLightDefaultCctStepsReader.readAfterProvisioning(devices: successList) { [weak self] in
+                    guard let self = self else { return }
+                    self.deviceStateCallback?(false)
+                    self.deviceAddCallback?(self.addSuccessNodes)
 
-                self.space.deviceCount = MeshNetworkManager.instance.realNodes.count
-                self.space.luminairesCount = MeshNetworkManager.instance.realNodes.filter({ $0.deviceType == .light }).count //MeshNetworkManager.instance.lightNodes.count
-                self.space.switchesCount = MeshNetworkManager.instance.switchs.count
-                self.space.save()
-                // 通知space数据修改
-                //                NotificationCenter.default.post(name: .init(spaceDataChangedNotificaitonName), object: SpaceChangeDataType.device)
-                NotificationCenter.default.post(name: .init(spaceDataChangedNotificaitonName), object: SpaceChangeDataType.network(type: .address))
-                NotificationCenter.default.post(name: .init(devicesAddNotificationName), object: nil)
-                if self.addSuccessNodes.contains(where: { [.dongle, .gateway, .emergencyController, .unknown].contains($0.deviceType) }) {
-                    NotificationCenter.default.post(name: .init(deviceOthersRefreshNotificationName), object: nil)
+                    self.space.deviceCount = MeshNetworkManager.instance.realNodes.count
+                    self.space.luminairesCount = MeshNetworkManager.instance.realNodes.filter({ $0.deviceType == .light }).count //MeshNetworkManager.instance.lightNodes.count
+                    self.space.switchesCount = MeshNetworkManager.instance.switchs.count
+                    self.space.save()
+                    // 通知space数据修改
+                    //                NotificationCenter.default.post(name: .init(spaceDataChangedNotificaitonName), object: SpaceChangeDataType.device)
+                    NotificationCenter.default.post(name: .init(spaceDataChangedNotificaitonName), object: SpaceChangeDataType.network(type: .address))
+                    NotificationCenter.default.post(name: .init(devicesAddNotificationName), object: nil)
+                    if self.addSuccessNodes.contains(where: { [.dongle, .gateway, .emergencyController, .unknown].contains($0.deviceType) }) {
+                        NotificationCenter.default.post(name: .init(deviceOthersRefreshNotificationName), object: nil)
+                    }
+                    if self.addSuccessNodes.contains(where: { $0.deviceType == .emergencyController }) {
+                        NotificationCenter.default.post(name: .deviceEmerFireDataDidChange, object: nil)
+                    }
+                    if self.addSuccessNodes.contains(where: { $0.isPowerSwitch }) {
+                        NotificationCenter.default.post(name: .init(switchsRefreshNotificationName), object: nil)
+                    }
+                    self.finishBatteryPowerSwitchInitialBatteryReadsAndDisconnect()
                 }
-                if self.addSuccessNodes.contains(where: { $0.deviceType == .emergencyController }) {
-                    NotificationCenter.default.post(name: .deviceEmerFireDataDidChange, object: nil)
-                }
-                if self.addSuccessNodes.contains(where: { $0.isPowerSwitch }) {
-                    NotificationCenter.default.post(name: .init(switchsRefreshNotificationName), object: nil)
-                }
-                self.finishBatteryPowerSwitchInitialBatteryReadsAndDisconnect()
             }
             
 //            self.addSuccessNodes.append(contentsOf: successNodes)
