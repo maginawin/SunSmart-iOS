@@ -15,6 +15,36 @@ private var jsonDecoder: JSONDecoder {
     return decoder
 }
 
+private struct SpaceImportSummary: Equatable {
+    let deviceCount: Int
+    let groupCount: Int
+    let sceneCount: Int
+    let scheduleCount: Int
+    let switchesCount: Int
+
+    init(space: SpaceData) {
+        self.deviceCount = space.deviceCount
+        self.groupCount = space.groupCount
+        self.sceneCount = space.sceneCount
+        self.scheduleCount = space.scheheduleCount
+        self.switchesCount = space.switchesCount
+    }
+
+    init(
+        nodeDicts: [[String: Any]],
+        groupDicts: [[String: Any]],
+        sceneDicts: [[String: Any]],
+        scheduleDicts: [[String: Any]],
+        switchesDicts: [[String: Any]]
+    ) {
+        self.deviceCount = nodeDicts.count
+        self.groupCount = groupDicts.filter { !JSON($0)["isVirtual"].boolValue }.count
+        self.sceneCount = sceneDicts.count
+        self.scheduleCount = scheduleDicts.count
+        self.switchesCount = switchesDicts.count
+    }
+}
+
 #if DEBUG
 private func debugArrayCount(_ json: JSON, key: String) -> String {
     guard json[key].exists() else {
@@ -865,6 +895,17 @@ extension SpaceData {
                 continuation.resume()
                 return
             }
+            let switchesDicts = json["switches"].arrayObject as? [[String: Any]] ?? []
+            let remoteSummary = SpaceImportSummary(
+                nodeDicts: nodeDicts,
+                groupDicts: groupDicts,
+                sceneDicts: sceneDicts,
+                scheduleDicts: scheduleDicts,
+                switchesDicts: switchesDicts
+            )
+            let localSummary = SpaceImportSummary(space: self)
+            let summaryDiffers = remoteSummary != localSummary
+            let localNeedsUpload = self.needUploadCloud
 #if DEBUG
             printSpaceCountProbe(phase: "received", json: json, space: self, initialize: initialize)
 #endif
@@ -974,10 +1015,14 @@ extension SpaceData {
             }
             
             let lastUpdate = json["updateTimestamp"].int64Value
+            let sameTimestampSummaryDiffers = lastUpdate == self.lastUpdate && summaryDiffers
+            let serverSummaryDiffersNote = localNeedsUpload ? "serverSummaryDiffersButLocalNeedsUpload" : "serverSummaryDiffers"
+            let shouldApplyServerData = lastUpdate > self.lastUpdate || initialize || (sameTimestampSummaryDiffers && !localNeedsUpload)
             // 服务器最后更新时间比本地时间新才覆盖本地数据
-            guard lastUpdate > self.lastUpdate || initialize else {
+            guard shouldApplyServerData else {
 #if DEBUG
-                printSpaceCountProbe(phase: "skipped", json: json, space: self, initialize: initialize, note: "serverUpdateTimestampNotNewer")
+                let skipNote = sameTimestampSummaryDiffers ? serverSummaryDiffersNote : "serverUpdateTimestampNotNewer"
+                printSpaceCountProbe(phase: "skipped", json: json, space: self, initialize: initialize, note: skipNote)
 #endif
                 //                return
                 continuation.resume()
@@ -1670,7 +1715,7 @@ extension SpaceData {
             self.scheheduleCount = schedules.count
             self.switchesCount = switches.count
 #if DEBUG
-            printSpaceCountProbe(phase: "applied", json: json, space: self, initialize: initialize)
+            printSpaceCountProbe(phase: "applied", json: json, space: self, initialize: initialize, note: sameTimestampSummaryDiffers ? serverSummaryDiffersNote : nil)
 #endif
             self.save()
             continuation.resume()
