@@ -1070,6 +1070,16 @@ class GroupViewController: UIViewController {
         refreshAutoState()
     }
 
+    private func sendGroupManualBrightnessValue(_ value: Int) {
+        let clampedValue = max(currentGroupBrightnessRange.lowerBound, min(currentGroupBrightnessRange.upperBound, value))
+        let lightness = Node.getLightness(lightness100: clampedValue)
+        let address = group.address.address
+        MeshAPI.setGroupLightnessState(address: address, lightness: lightness, ack: false)
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+            MeshAPI.setGroupLightnessState(address: address, lightness: lightness, ack: false)
+        }
+    }
+
     @discardableResult
     private func applyGroupCCTValue(_ value: Int) -> UInt16 {
         let range = currentGroupCCTRange
@@ -1094,6 +1104,14 @@ class GroupViewController: UIViewController {
         reloadVisibleGroupDeviceItems()
         showGroupCCTLimitMessageIfNeeded(target: value)
         refreshAutoState()
+    }
+
+    private func sendGroupManualCCTValue(_ temperature: UInt16) {
+        let address = group.address.address
+        MeshAPI.setGroupColorTemperatureState(address: address, temperature: temperature, ack: false)
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+            MeshAPI.setGroupColorTemperatureState(address: address, temperature: temperature, ack: false)
+        }
     }
 
     private func showGroupCCTLimitMessageIfNeeded(target: Int) {
@@ -1124,7 +1142,9 @@ class GroupViewController: UIViewController {
             guard let self else { return }
             self.controlPanelView.setBrightnessValue(clampedValue)
             self.applyGroupBrightnessValue(clampedValue)
-            self.sendGroupBrightnessValue(clampedValue, ended: true)
+            self.sendGroupManualBrightnessValue(clampedValue)
+            self.reloadVisibleGroupDeviceItems()
+            self.refreshAutoState()
         }
     }
 
@@ -1141,7 +1161,7 @@ class GroupViewController: UIViewController {
             let normalizedValue = DeviceLightControlPanelView.normalizedCCTInputValue(rawValue, range: self.currentGroupCCTRange)
             let temperature = self.applyGroupCCTValue(normalizedValue)
             self.controlPanelView.setCCTValue(Int(temperature))
-            MeshAPI.setGroupColorTemperatureState(address: self.group.address.address, temperature: temperature)
+            self.sendGroupManualCCTValue(temperature)
             self.reloadVisibleGroupDeviceItems()
             self.showGroupCCTLimitMessageIfNeeded(target: Int(temperature))
             self.refreshAutoState()
