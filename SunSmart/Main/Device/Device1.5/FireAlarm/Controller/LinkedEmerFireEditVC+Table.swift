@@ -11,7 +11,7 @@ import NordicSigMeshSDK
 extension LinkedEmerFireEditVC: UITableViewDataSource, UITableViewDelegate {
 
     private var visibleRows: [LinkedEmerFireEditRow] {
-        var rows: [LinkedEmerFireEditRow] = [
+        let rows: [LinkedEmerFireEditRow] = [
             .name,
             .reportToGateway,
             .associatedGroups,
@@ -20,14 +20,9 @@ extension LinkedEmerFireEditVC: UITableViewDataSource, UITableViewDelegate {
             .powerLossBrightness,
             .triggerInterval,
             .eventEndsHeader,
-            .restoreAction
+            .restoreAction,
+            .restoreTiming
         ]
-
-        if state.restoreActionType == .setBrightness {
-            rows.append(.restoreBrightness)
-        }
-
-        rows.append(contentsOf: [.restoreResuming, .restoreSendCount])
 
         return rows
     }
@@ -81,19 +76,49 @@ extension LinkedEmerFireEditVC: UITableViewDataSource, UITableViewDelegate {
             return cell
         case .eventOccursHeader:
             let cell: EmerFireInfoCell = tableView.dequeueReusableCell(for: indexPath)
-            cell.configure(title: "When The Emergency Event Occurs", lines: [], cardPosition: cardPosition(for: row))
+            cell.configure(
+                title: "When The Emergency Event Occurs:",
+                lines: ["Fire emergency take higher priority."],
+                cardPosition: cardPosition(for: row)
+            )
             return cell
         case .eventEndsHeader:
             let cell: EmerFireInfoCell = tableView.dequeueReusableCell(for: indexPath)
-            cell.configure(title: "When The Emergency Event Ends", lines: [], cardPosition: cardPosition(for: row))
+            cell.configure(
+                title: "When The Emergency Event Ends:",
+                lines: ["Execution will only begin after all emergency events have ceased."],
+                cardPosition: cardPosition(for: row)
+            )
             return cell
         case .restoreAction:
             let cell: EmerFireRestoreActionCell = tableView.dequeueReusableCell(for: indexPath)
-            cell.configure(options: restoreActionOptions, selectedType: state.restoreActionType, cardPosition: cardPosition(for: row))
+            cell.configure(
+                options: restoreActionOptions,
+                selectedType: state.restoreActionType,
+                brightness: state.restoreBrightness,
+                brightnessRange: 1...100,
+                cardPosition: cardPosition(for: row)
+            )
             cell.actionDidChange = { [weak self] actionType in
                 guard let self else { return }
                 self.state.updateRestoreActionType(actionType)
                 self.tableView.reloadData()
+            }
+            cell.brightnessDidChange = { [weak self] value in
+                self?.state.setStepperValue(for: .restoreBrightness, value: value)
+            }
+            return cell
+        case .restoreTiming:
+            let cell: EmerFireDualStepperCell = tableView.dequeueReusableCell(for: indexPath)
+            cell.configure(
+                firstRow: .restoreResuming,
+                firstConfiguration: state.stepperConfiguration(for: .restoreResuming),
+                secondRow: .restoreSendCount,
+                secondConfiguration: state.stepperConfiguration(for: .restoreSendCount),
+                cardPosition: cardPosition(for: row)
+            )
+            cell.valueDidChange = { [weak self] row, value in
+                self?.state.setStepperValue(for: row, value: value)
             }
             return cell
         case .fireAlarmBrightness,
@@ -104,7 +129,7 @@ extension LinkedEmerFireEditVC: UITableViewDataSource, UITableViewDelegate {
              .restoreSendCount:
             let cell: EmerFireStepperCell = tableView.dequeueReusableCell(for: indexPath)
             let config = state.stepperConfiguration(for: row)
-            cell.configure(title: config.title, value: config.value, range: config.range, suffix: config.suffix, cardPosition: cardPosition(for: row))
+            cell.configure(title: config.title, fieldTitle: config.fieldTitle, value: config.value, range: config.range, suffix: config.suffix, cardPosition: cardPosition(for: row))
             cell.valueDidChange = { [weak self] value in
                 guard let self else { return }
                 self.state.setStepperValue(for: row, value: value)
@@ -141,9 +166,8 @@ extension LinkedEmerFireEditVC: UITableViewDataSource, UITableViewDelegate {
         guard indexPath.row < visibleRows.count else { return 0 }
         let row = visibleRows[indexPath.row]
         switch row {
-        case .name:
-            return SCRYFrom(80)
-        case .reportToGateway,
+        case .name,
+             .reportToGateway,
              .associatedGroups,
              .eventOccursHeader,
              .eventEndsHeader,
@@ -153,7 +177,8 @@ extension LinkedEmerFireEditVC: UITableViewDataSource, UITableViewDelegate {
              .triggerInterval,
              .restoreBrightness,
              .restoreResuming,
-             .restoreSendCount:
+             .restoreSendCount,
+             .restoreTiming:
             return UITableView.automaticDimension
         }
     }
@@ -163,22 +188,24 @@ extension LinkedEmerFireEditVC: UITableViewDataSource, UITableViewDelegate {
         let row = visibleRows[indexPath.row]
         switch row {
         case .name:
-            return SCRYFrom(80)
+            return SCRYFrom(82)
         case .reportToGateway:
-            return SCRYFrom(56)
+            return SCRYFrom(48)
         case .associatedGroups:
-            return SCRYFrom(78)
+            return SCRYFrom(72)
         case .eventOccursHeader, .eventEndsHeader:
-            return SCRYFrom(58)
+            return SCRYFrom(64)
         case .restoreAction:
-            return SCRYFrom(136)
+            return state.restoreActionType == .setBrightness ? SCRYFrom(240) : SCRYFrom(148)
+        case .restoreTiming:
+            return SCRYFrom(276)
         case .powerLossBrightness,
              .fireAlarmBrightness,
              .triggerInterval,
              .restoreBrightness,
              .restoreResuming,
              .restoreSendCount:
-            return SCRYFrom(84)
+            return SCRYFrom(156)
         }
     }
 
@@ -191,27 +218,7 @@ extension LinkedEmerFireEditVC: UITableViewDataSource, UITableViewDelegate {
     }
 
     private func cardPosition(for row: LinkedEmerFireEditRow) -> EmerFireCardPosition {
-        guard let index = visibleRows.firstIndex(of: row) else {
-            return .single
-        }
-
-        let currentGroup = row.cardGroup
-        let previousGroup = index > 0 ? visibleRows[index - 1].cardGroup : nil
-        let nextGroup = index + 1 < visibleRows.count ? visibleRows[index + 1].cardGroup : nil
-
-        let isFirstInGroup = previousGroup != currentGroup
-        let isLastInGroup = nextGroup != currentGroup
-
-        switch (isFirstInGroup, isLastInGroup) {
-        case (true, true):
-            return .single
-        case (true, false):
-            return .top
-        case (false, true):
-            return .bottom
-        case (false, false):
-            return .middle
-        }
+        .single
     }
 
     private var restoreActionOptions: [LinkedEmerFireRestoreActionOption] {

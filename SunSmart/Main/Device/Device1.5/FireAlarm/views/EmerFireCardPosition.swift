@@ -16,7 +16,7 @@ enum EmerFireCardPosition {
     var topInset: CGFloat {
         switch self {
         case .single, .top:
-            return SCRYFrom(4)
+            return SCRYFrom(8)
         case .middle, .bottom:
             return 0
         }
@@ -25,7 +25,7 @@ enum EmerFireCardPosition {
     var bottomInset: CGFloat {
         switch self {
         case .single, .bottom:
-            return SCRYFrom(4)
+            return SCRYFrom(8)
         case .top, .middle:
             return 0
         }

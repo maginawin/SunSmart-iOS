@@ -20,6 +20,7 @@ enum LinkedEmerFireEditRow: Int, CaseIterable {
     case restoreBrightness
     case restoreResuming
     case restoreSendCount
+    case restoreTiming
 }
 
 extension LinkedEmerFireEditRow {
@@ -48,7 +49,8 @@ extension LinkedEmerFireEditRow {
              .restoreAction,
              .restoreBrightness,
              .restoreResuming,
-             .restoreSendCount:
+             .restoreSendCount,
+             .restoreTiming:
             return .eventEnds
         }
     }
@@ -56,9 +58,18 @@ extension LinkedEmerFireEditRow {
 
 struct LinkedEmerFireStepperConfiguration {
     let title: String
+    let fieldTitle: String?
     let value: Int
     let range: ClosedRange<Int>
     let suffix: String
+
+    init(title: String, fieldTitle: String? = nil, value: Int, range: ClosedRange<Int>, suffix: String) {
+        self.title = title
+        self.fieldTitle = fieldTitle
+        self.value = value
+        self.range = range
+        self.suffix = suffix
+    }
 }
 
 struct LinkedEmerFireRestoreActionOption {

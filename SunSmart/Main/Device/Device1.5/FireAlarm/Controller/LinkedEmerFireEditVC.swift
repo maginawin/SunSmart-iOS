@@ -35,11 +35,11 @@ final class LinkedEmerFireEditVC: UIViewController {
     }
 
     lazy var tableView: UITableView = {
-        let tableView = UITableView(frame: .zero, style: .grouped)
+        let tableView = UITableView(frame: .zero, style: .plain                                                                     )
         tableView.backgroundColor = Background_Color
         tableView.separatorStyle = .none
         tableView.showsVerticalScrollIndicator = false
-        tableView.contentInset = UIEdgeInsets(top: SCRYFrom(8), left: 0, bottom: SCRYFrom(20), right: 0)
+        tableView.contentInset = UIEdgeInsets(top: 0, left: 0, bottom: SCRYFrom(20), right: 0)
         tableView.keyboardDismissMode = .onDrag
         tableView.rowHeight = UITableView.automaticDimension
         tableView.estimatedRowHeight = SCRYFrom(84)
@@ -52,6 +52,7 @@ final class LinkedEmerFireEditVC: UIViewController {
         tableView.register(EmerFireRestoreActionCell.self)
         tableView.register(EmerFireInfoCell.self)
         tableView.register(EmerFireStepperCell.self)
+        tableView.register(EmerFireDualStepperCell.self)
         return tableView
     }()
 
@@ -310,20 +311,33 @@ final class LinkedEmerFireEditVC: UIViewController {
     }
 
     private func setupNavigation() {
-        title = "Emer&Fire Controler"
-        navigationItem.leftBarButtonItem = UIBarButtonItem(
-            image: UIImage(named: "navigation_back")?.withRenderingMode(.alwaysOriginal),
-            style: .plain,
+        title = isCreateMode ? "Emer&Fire Controller" : "Edit"
+        let closeBarButtonItem = UIBarButtonItem(
+            image: UIImage(named: "close")?.withRenderingMode(.alwaysOriginal),
+            style: .done,
             target: self,
             action: #selector(backAction)
         )
-        if state.editable, !isCreateMode {
+        let backBarButtonItem = UIBarButtonItem(
+            image: UIImage(named: "navigation_back")?.withRenderingMode(.alwaysOriginal),
+            style: .done,
+            target: self,
+            action: #selector(backAction)
+        )
+        if isCreateMode {
+            navigationItem.leftBarButtonItem = nil
+            navigationItem.rightBarButtonItem = closeBarButtonItem
+        } else {
+            navigationItem.leftBarButtonItem = backBarButtonItem
             navigationItem.rightBarButtonItem = UIBarButtonItem(
                 title: "save".localizedString,
                 color: Bar_Color,
                 target: self,
                 sel: #selector(saveAction)
             )
+            if !state.editable {
+                navigationItem.rightBarButtonItem = nil
+            }
         }
     }
 }

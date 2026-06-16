@@ -170,9 +170,9 @@ final class LinkedEmerFireEditState {
     func stepperConfiguration(for row: LinkedEmerFireEditRow) -> LinkedEmerFireStepperConfiguration {
         switch row {
         case .fireAlarmBrightness:
-            return .init(title: "Fire Alarm Emergency", value: fireAlarmBrightness, range: 10...100, suffix: "%")
+            return .init(title: "Fire Alarm Emergency", fieldTitle: "Set Brightness To:", value: fireAlarmBrightness, range: 10...100, suffix: "%")
         case .powerLossBrightness:
-            return .init(title: "Power Loss Emergency", value: powerLossBrightness, range: 1...100, suffix: "%")
+            return .init(title: "Power Loss Emergency", fieldTitle: "Set Brightness To:", value: powerLossBrightness, range: 1...100, suffix: "%")
         case .triggerInterval:
             return .init(title: "Repeatedly Send Emergency Control Every", value: triggerIntervalSeconds, range: 1...10, suffix: "s")
         case .restoreBrightness:

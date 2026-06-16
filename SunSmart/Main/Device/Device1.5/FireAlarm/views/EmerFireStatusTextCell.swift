@@ -11,11 +11,11 @@ import SnapKit
 final class EmerFireStatusTextCell: UITableViewCell {
 
     private enum Layout {
-        static let horizontalInset = SCRXFrom(12)
-        static let verticalInset = SCRYFrom(4)
-        static let cardRadius = SCRYFrom(10)
-        static let contentInset = SCRXFrom(16)
-        static let minHeight = SCRYFrom(44)
+        static let horizontalInset = SCRXFrom(16)
+        static let verticalInset = SCRXFrom(8)
+        static let cardRadius = SCRYFrom(5)
+        static let contentInset = SCRXFrom(12)
+        static let minHeight = SCRYFrom(40)
     }
 
     private var topConstraint: Constraint?
@@ -27,12 +27,14 @@ final class EmerFireStatusTextCell: UITableViewCell {
         let view = UIView()
         view.backgroundColor = .white
         view.layer.cornerRadius = Layout.cardRadius
+        view.layer.borderWidth = 0.5
+        view.layer.borderColor = UIColor(red: 151 / 255.0, green: 151 / 255.0, blue: 151 / 255.0, alpha: 0.3).cgColor
         view.layer.masksToBounds = true
         return view
     }()
 
     private lazy var leftLabel: UILabel = {
-        let label = UILabel(text: nil, textColor: Title_Color, fontSize: 14, fontWeight: .light)
+        let label = UILabel(text: nil, textColor: Title_Color, fontSize: 15, fontWeight: .light)
         label.numberOfLines = 0
         label.lineBreakMode = .byWordWrapping
         label.setContentCompressionResistancePriority(.required, for: .vertical)
@@ -41,7 +43,7 @@ final class EmerFireStatusTextCell: UITableViewCell {
     }()
 
     private lazy var rightLabel: UILabel = {
-        let label = UILabel(text: nil, textColor: RGB(247, 99, 95), fontSize: 11, fontWeight: .light)
+        let label = UILabel(text: nil, textColor: RGB(247, 99, 95), fontSize: 13, fontWeight: .light)
         label.numberOfLines = 0
         label.lineBreakMode = .byCharWrapping
         label.textAlignment = .right
@@ -114,15 +116,15 @@ final class EmerFireStatusTextCell: UITableViewCell {
 
         leftLabel.snp.makeConstraints { make in
             make.left.equalToSuperview().offset(Layout.contentInset)
-            make.top.bottom.equalToSuperview().inset(SCRYFrom(10))
+            make.top.bottom.equalToSuperview().inset(SCRYFrom(8))
             make.right.lessThanOrEqualTo(rightLabel.snp.left).offset(-SCRXFrom(12))
         }
 
         rightLabel.snp.makeConstraints { make in
             make.right.equalToSuperview().offset(-Layout.contentInset)
             make.centerY.equalToSuperview()
-            make.top.greaterThanOrEqualToSuperview().offset(SCRYFrom(10))
-            make.bottom.lessThanOrEqualToSuperview().offset(-SCRYFrom(10))
+            make.top.greaterThanOrEqualToSuperview().offset(SCRYFrom(8))
+            make.bottom.lessThanOrEqualToSuperview().offset(-SCRYFrom(8))
         }
     }
 

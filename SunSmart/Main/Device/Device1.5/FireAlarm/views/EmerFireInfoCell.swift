@@ -16,16 +16,13 @@ final class EmerFireInfoCell: UITableViewCell {
     private var detailHeightConstraint: Constraint?
 
     private enum Layout {
-        static let horizontalInset = SCRXFrom(12)
-        static let verticalInset = SCRYFrom(4)
-        static let cardRadius = SCRYFrom(10)
+        static let horizontalInset = SCRXFrom(16)
+        static let verticalInset = SCRXFrom(8)
     }
 
     private lazy var cardView: UIView = {
         let view = UIView()
-        view.backgroundColor = .white
-        view.layer.cornerRadius = Layout.cardRadius
-        view.layer.masksToBounds = true
+        view.backgroundColor = .clear
         return view
     }()
 
@@ -37,7 +34,7 @@ final class EmerFireInfoCell: UITableViewCell {
     }()
 
     private lazy var titleLabel: UILabel = {
-        let label = UILabel(text: nil, textColor: Title_Color, fontSize: 12, fontWeight: .regular)
+        let label = UILabel(text: nil, textColor: RGB(46, 49, 93), fontSize: 16, fontWeight: .light)
         label.numberOfLines = 0
         label.lineBreakMode = .byWordWrapping
         label.setContentCompressionResistancePriority(.required, for: .vertical)
@@ -70,7 +67,7 @@ final class EmerFireInfoCell: UITableViewCell {
 
     override func layoutSubviews() {
         super.layoutSubviews()
-        let preferredWidth = max(cardView.bounds.width - SCRXFrom(32), 0)
+        let preferredWidth = max(cardView.bounds.width, 0)
         if titleLabel.preferredMaxLayoutWidth != preferredWidth {
             titleLabel.preferredMaxLayoutWidth = preferredWidth
         }
@@ -105,15 +102,15 @@ final class EmerFireInfoCell: UITableViewCell {
 
         cardView.addSubview(titleLabel)
         titleLabel.snp.makeConstraints { make in
-            make.left.right.equalToSuperview().inset(SCRXFrom(16))
-            make.top.equalToSuperview().offset(SCRYFrom(14))
+            make.left.right.equalToSuperview()
+            make.top.equalToSuperview()
         }
 
         cardView.addSubview(detailTextView)
         detailTextView.snp.makeConstraints { make in
-            make.left.right.equalToSuperview().inset(SCRXFrom(16))
-            make.top.equalTo(titleLabel.snp.bottom).offset(SCRYFrom(8))
-            make.bottom.equalToSuperview().offset(-SCRYFrom(14))
+            make.left.right.equalToSuperview()
+            make.top.equalTo(titleLabel.snp.bottom).offset(SCRYFrom(4))
+            make.bottom.equalToSuperview()
             detailHeightConstraint = make.height.greaterThanOrEqualTo(0).constraint
         }
 
@@ -126,29 +123,27 @@ final class EmerFireInfoCell: UITableViewCell {
     }
 
     private func applyCardStyle() {
-        cardView.layer.cornerRadius = Layout.cardRadius
-        cardView.layer.maskedCorners = cardPosition.maskedCorners
         separatorView.isHidden = true
     }
 
     private func detailAttributedText(lines: [String]) -> NSAttributedString {
         let paragraphStyle = NSMutableParagraphStyle()
-        paragraphStyle.lineSpacing = SCRYFrom(4)
-        paragraphStyle.paragraphSpacing = SCRYFrom(6)
+        paragraphStyle.minimumLineHeight = SCRYFrom(22)
+        paragraphStyle.maximumLineHeight = SCRYFrom(22)
         paragraphStyle.lineBreakMode = .byCharWrapping
 
         return NSAttributedString(
             string: lines.joined(separator: "\n"),
             attributes: [
-                .font: UIFont.systemFont(ofSize: FontFit(10), weight: .light),
-                .foregroundColor: Message_Color,
+                .font: UIFont.systemFont(ofSize: FontFit(12), weight: .regular),
+                .foregroundColor: RGB(100, 116, 139),
                 .paragraphStyle: paragraphStyle
             ]
         )
     }
 
     private func updateDetailTextViewHeightIfNeeded() {
-        let targetWidth = max(detailTextView.bounds.width, cardView.bounds.width - SCRXFrom(32))
+        let targetWidth = max(detailTextView.bounds.width, cardView.bounds.width)
         guard targetWidth > 0 else { return }
         let fittingSize = detailTextView.sizeThatFits(CGSize(width: targetWidth, height: CGFloat.greatestFiniteMagnitude))
         detailHeightConstraint?.update(offset: ceil(fittingSize.height))

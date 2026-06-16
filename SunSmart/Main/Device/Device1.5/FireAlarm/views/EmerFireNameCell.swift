@@ -10,37 +10,41 @@ import UIKit
 final class EmerFireNameCell: UITableViewCell {
 
     private enum Layout {
-        static let horizontalInset = SCRXFrom(12)
-        static let cardRadius = SCRYFrom(10)
+        static let horizontalInset = SCRXFrom(16)
+        static let cardRadius = SCRYFrom(5)
     }
 
     var nameDidChange: ((String) -> Void)?
     var syncAction: (() -> Void)?
 
     private lazy var titleLabel: UILabel = {
-        UILabel(text: "Name", textColor: Title_Color, fontSize: 12, fontWeight: .light)
-    }()
-
-    private lazy var syncIconView: UIImageView = {
-        let imageView = UIImageView(image: UIImage(named: "group_11"))
-        return imageView
+        let label = UILabel(text: "Name", textColor: Title_Color, fontSize: 14, fontWeight: .light)
+        label.setContentCompressionResistancePriority(.required, for: .horizontal)
+        return label
     }()
 
     private lazy var syncButton: UIButton = {
-        let button = UIButton(title: "devices_not_synced".localizedString, titleSize: 14, titleColor: Error_Red_Color, fit: false, target: self, action: #selector(handleSyncAction))
-        button.contentHorizontalAlignment = .left
-        button.titleLabel?.font = FONTS(14)
+        let button = UIButton(
+            title: "devices_not_synced".localizedString,
+            titleSize: 14,
+            titleWeight: .light,
+            titleColor: Red_Color,
+            fit: false,
+            normalImageName: "schedule_sync_failed",
+            target: self,
+            action: #selector(handleSyncAction)
+        )
+        button.setImagePosition(position: .left, spacing: SCRXFrom(4))
+        button.titleLabel?.lineBreakMode = .byTruncatingTail
         return button
-    }()
-
-    private lazy var syncContainerView: UIView = {
-        UIView()
     }()
 
     private lazy var cardView: UIView = {
         let view = UIView()
         view.backgroundColor = .white
         view.layer.cornerRadius = Layout.cardRadius
+        view.layer.borderWidth = 0.5
+        view.layer.borderColor = UIColor(red: 151 / 255.0, green: 151 / 255.0, blue: 151 / 255.0, alpha: 0.3).cgColor
         view.layer.masksToBounds = true
         return view
     }()
@@ -72,7 +76,6 @@ final class EmerFireNameCell: UITableViewCell {
 
     func configure(name: String, synced: Bool) {
         nameTextField.text = name
-        syncIconView.isHidden = synced
         syncButton.isHidden = synced
     }
 
@@ -90,41 +93,31 @@ final class EmerFireNameCell: UITableViewCell {
         contentView.backgroundColor = .clear
 
         contentView.addSubview(titleLabel)
+        contentView.addSubview(syncButton)
         titleLabel.snp.makeConstraints { make in
             make.left.equalTo(SCRXFrom(16))
-            make.top.equalToSuperview().offset(SCRYFrom(2))
+            make.top.equalToSuperview().offset(SCRYFrom(16))
+            make.right.lessThanOrEqualTo(syncButton.snp.left).offset(-SCRXFrom(8))
         }
 
-        contentView.addSubview(syncContainerView)
-        syncContainerView.snp.makeConstraints { make in
+        syncButton.snp.makeConstraints { make in
             make.centerY.equalTo(titleLabel)
             make.right.equalTo(SCRXFrom(-16))
-        }
-
-        syncContainerView.addSubview(syncIconView)
-        syncIconView.snp.makeConstraints { make in
-            make.left.top.bottom.equalToSuperview()
-            make.width.height.equalTo(SCRXFrom(16))
-        }
-
-        syncContainerView.addSubview(syncButton)
-        syncButton.snp.makeConstraints { make in
-            make.left.equalTo(syncIconView.snp.right).offset(SCRXFrom(4))
-            make.top.bottom.right.equalToSuperview()
         }
 
         contentView.addSubview(cardView)
         cardView.snp.makeConstraints { make in
             make.left.right.equalToSuperview().inset(Layout.horizontalInset)
-            make.top.equalTo(titleLabel.snp.bottom).offset(SCRYFrom(10))
-            make.bottom.equalToSuperview().offset(-SCRYFrom(4))
+            make.top.equalTo(titleLabel.snp.bottom).offset(SCRYFrom(6))
+            make.height.equalTo(SCRYFrom(40))
+            make.bottom.equalToSuperview().offset(-SCRYFrom(8))
         }
 
         cardView.addSubview(nameTextField)
         nameTextField.snp.makeConstraints { make in
-            make.left.equalTo(SCRXFrom(16))
-            make.right.equalTo(SCRXFrom(-16))
-            make.top.bottom.equalToSuperview().inset(SCRYFrom(14))
+            make.left.equalTo(SCRXFrom(10))
+            make.right.equalTo(SCRXFrom(-10))
+            make.top.bottom.equalToSuperview()
         }
     }
 }
