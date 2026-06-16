@@ -15,6 +15,46 @@ private var jsonDecoder: JSONDecoder {
     return decoder
 }
 
+#if DEBUG
+private func debugArrayCount(_ json: JSON, key: String) -> String {
+    guard json[key].exists() else {
+        return "<missing>"
+    }
+    guard let array = json[key].array else {
+        return "<non-array>"
+    }
+    return "\(array.count)"
+}
+
+private func debugIntValue(_ json: JSON, key: String) -> String {
+    guard json[key].exists() else {
+        return "<missing>"
+    }
+    guard let value = json[key].int else {
+        return "<non-int>"
+    }
+    return "\(value)"
+}
+
+private func printSpaceCountProbe(phase: String, json: JSON, space: SpaceData, initialize: Bool, note: String? = nil) {
+    let serverUpdateTimestamp = json["updateTimestamp"].exists() ? "\(json["updateTimestamp"].int64Value)" : "<missing>"
+    print("""
+    [PJSpaceCountProbe]
+    phase=\(phase)
+    siteId=\(space.siteId)
+    spaceId=\(space.id)
+    spaceName=\(json["spaceName"].string ?? space.name)
+    initialize=\(initialize)
+    serverUpdateTimestamp=\(serverUpdateTimestamp)
+    localLastUpdate=\(space.lastUpdate)
+    serverDeviceCount=\(debugIntValue(json, key: "deviceCount"))
+    serverArrayCounts nodes=\(debugArrayCount(json, key: "nodes")), switches=\(debugArrayCount(json, key: "switches")), scenes=\(debugArrayCount(json, key: "scenes")), groups=\(debugArrayCount(json, key: "groups")), schedules=\(debugArrayCount(json, key: "schedules"))
+    localCounts device=\(space.deviceCount), switches=\(space.switchesCount), scenes=\(space.sceneCount), groups=\(space.groupCount), schedules=\(space.scheheduleCount)
+    note=\(note ?? "")
+    """)
+}
+#endif
+
 extension SiteData {
     
     /// 导入site数据
@@ -818,10 +858,16 @@ extension SpaceData {
                   let groupDicts = json["groups"].arrayObject as? [[String: Any]],
                   let sceneDicts = json["scenes"].arrayObject as? [[String: Any]],
                   let scheduleDicts = json["schedules"].arrayObject as? [[String: Any]] else {
+#if DEBUG
+                printSpaceCountProbe(phase: "invalidPayload", json: json, space: self, initialize: initialize, note: "missingRequiredArray")
+#endif
                 //                return
                 continuation.resume()
                 return
             }
+#if DEBUG
+            printSpaceCountProbe(phase: "received", json: json, space: self, initialize: initialize)
+#endif
             
             // 分享id
             if let shareId = json["shareId"].string {
@@ -930,6 +976,9 @@ extension SpaceData {
             let lastUpdate = json["updateTimestamp"].int64Value
             // 服务器最后更新时间比本地时间新才覆盖本地数据
             guard lastUpdate > self.lastUpdate || initialize else {
+#if DEBUG
+                printSpaceCountProbe(phase: "skipped", json: json, space: self, initialize: initialize, note: "serverUpdateTimestampNotNewer")
+#endif
                 //                return
                 continuation.resume()
                 self.save()
@@ -1620,6 +1669,9 @@ extension SpaceData {
             self.sceneCount = scenes.count
             self.scheheduleCount = schedules.count
             self.switchesCount = switches.count
+#if DEBUG
+            printSpaceCountProbe(phase: "applied", json: json, space: self, initialize: initialize)
+#endif
             self.save()
             continuation.resume()
         }
