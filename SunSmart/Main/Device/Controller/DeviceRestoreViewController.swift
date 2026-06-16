@@ -58,6 +58,9 @@ class DeviceRestoreViewController: UIViewController {
     private var successfulBatteryPowerSwitchRestoreLinkGroupAddresses: Set<Address> = []
     private var successfulBatteryPowerSwitchTargetSubscriptions: Set<BatteryPowerSwitchTargetSubscriptionKey> = []
     private var deferredRestoreSyncDatasByAddress: [Address: [NodeSyncData]] = [:]
+    private var emergencyFireRestoreControllersByAddress: [Address: DeviceEmerFireData] = [:]
+    private var emergencyFireRestoreMessageHandlesByAddress: [Address: [MeshMessageHandle]] = [:]
+    private var failedEmergencyFireRestoreControllerAddresses: Set<Address> = []
     private let deferredRestoreTaskMaxRetryCount = 1
     private let deferredRestoreTaskRetryDelay: TimeInterval = 1.5
     
@@ -1606,6 +1609,85 @@ class DeviceRestoreViewController: UIViewController {
         updateUIState()
     }
 
+    private func emergencyFireRestoreSpace(oldNode: Node, newNode: Node) -> SpaceData? {
+        if let space {
+            return space
+        }
+        if let subNetworkId = newNode.subNetworkId ?? oldNode.subNetworkId {
+            return SpaceData.load(subNetworkId: subNetworkId)
+        }
+        return SpaceData.load(subNetworkId: site.meshNetworkId)
+    }
+
+    @discardableResult
+    private func restoreEmergencyFireControllerIfNeeded(oldNode: Node, newNode: Node) -> DeviceEmerFireData? {
+        guard oldNode.deviceType == .emergencyController || newNode.deviceType == .emergencyController,
+              let restoreSpace = emergencyFireRestoreSpace(oldNode: oldNode, newNode: newNode) else {
+            return nil
+        }
+        let controller = DeviceEmerFireStore.shared.restoreDevice(replacing: oldNode, with: newNode, in: restoreSpace)
+        if let controller {
+            emergencyFireRestoreControllersByAddress[newNode.primaryUnicastAddress] = controller
+        }
+        return controller
+    }
+
+    private func prepareEmergencyFireControllerRestoreMessages(
+        oldNode: Node,
+        newNode: Node,
+        appendMessages: inout [MeshMessageHandle]
+    ) {
+        guard let controller = restoreEmergencyFireControllerIfNeeded(oldNode: oldNode, newNode: newNode) else {
+            return
+        }
+
+        do {
+            let planner = EmergencyFireControllerSyncPlanner(
+                data: controller,
+                meshUUID: controller.meshUUID,
+                subnetworkId: controller.meshNetworkId,
+                changedFromConfiguration: nil
+            )
+            let items = try planner.makeItems()
+            let tasks = items.flatMap { $0.tasks }
+            failedEmergencyFireRestoreControllerAddresses.remove(newNode.primaryUnicastAddress)
+            if tasks.contains(where: { $0.isUnsupported }) {
+                failedEmergencyFireRestoreControllerAddresses.insert(newNode.primaryUnicastAddress)
+            }
+            tasks
+                .filter { $0.messageHandles.isEmpty && !$0.isUnsupported }
+                .forEach { controller.clearPending(for: $0, meshUUID: controller.meshUUID, subnetworkId: controller.meshNetworkId) }
+
+            let handles = tasks.flatMap { $0.messageHandles }
+            guard !handles.isEmpty else {
+                return
+            }
+            emergencyFireRestoreMessageHandlesByAddress[newNode.primaryUnicastAddress, default: []].append(contentsOf: handles)
+            appendMessages.append(contentsOf: handles)
+        } catch {
+            failedEmergencyFireRestoreControllerAddresses.insert(newNode.primaryUnicastAddress)
+            print("[DeviceRestore] Failed to prepare EFC restore sync node=\(newNode.primaryUnicastAddress.hex), error=\(error.localizedDescription)")
+        }
+    }
+
+    private func emergencyFireRestoreControllerAddress(containing messageHandle: MeshMessageHandle) -> Address? {
+        emergencyFireRestoreMessageHandlesByAddress.first { _, handles in
+            handles.contains { $0 === messageHandle }
+        }?.key
+    }
+
+    private func resolveEmergencyFireRestoreSyncFailed(for node: Node) -> Bool {
+        guard let controller = emergencyFireRestoreControllersByAddress.removeValue(forKey: node.primaryUnicastAddress) else {
+            return false
+        }
+        let failed = failedEmergencyFireRestoreControllerAddresses.contains(node.primaryUnicastAddress)
+        emergencyFireRestoreMessageHandlesByAddress.removeValue(forKey: node.primaryUnicastAddress)
+        failedEmergencyFireRestoreControllerAddresses.remove(node.primaryUnicastAddress)
+        controller.isSynced = !failed
+        DeviceEmerFireStore.shared.save(controller)
+        return failed
+    }
+
     // MARK: - Device Restore
     /// 添加设备
     private func addDevice(_ deviceData: DeviceRestoreData) {
@@ -1670,13 +1752,16 @@ class DeviceRestoreViewController: UIViewController {
                 gatewayModel.save()
             }
             // 新添加的设备支持最新功能绑定要求
-            node.requiredFunctionTypes = [.lightLCScene, .lightLCScheduler]
+            if addDevice.deviceType != .emergencyController {
+                node.requiredFunctionTypes = [.lightLCScene, .lightLCScheduler]
+            }
             
             // 恢复数据
             node.updateResoreData(oldNode: oldNode, resoreGroup: addToGroup)
             node.batteryPowerSwitchRestoreTargetSubscriptionSnapshots = oldNode.makeBatteryPowerSwitchRestoreTargetSubscriptionSnapshots(
                 group: addToGroup
             )
+            restoreEmergencyFireControllerIfNeeded(oldNode: oldNode, newNode: node)
             
         } appendMessagesBack: {[weak self] addDevice, appendCompletion in
             guard let self = self, let newNode = MeshNetworkManager.instance.meshNetwork?.node(withAddress: addDevice.address) else {
@@ -1715,6 +1800,14 @@ class DeviceRestoreViewController: UIViewController {
                     newNode: newNode,
                     appendMessages: &appendMessages
                 )
+                if let healthModel = newNode.healthModel {
+                    appendMessages.append(MeshMessageHandle(message: AttentionSet(attentionTimer: 6), model: healthModel))
+                }
+                appendCompletion(appendMessages)
+                return
+            }
+            if addDevice.deviceType == .emergencyController || newNode.deviceType == .emergencyController {
+                prepareEmergencyFireControllerRestoreMessages(oldNode: oldNode, newNode: newNode, appendMessages: &appendMessages)
                 if let healthModel = newNode.healthModel {
                     appendMessages.append(MeshMessageHandle(message: AttentionSet(attentionTimer: 6), model: healthModel))
                 }
@@ -1771,6 +1864,9 @@ class DeviceRestoreViewController: UIViewController {
                 }
             }
         } appendMessageFailedBack: { [weak self] messageHandle in
+            if let controllerAddress = self?.emergencyFireRestoreControllerAddress(containing: messageHandle) {
+                self?.failedEmergencyFireRestoreControllerAddresses.insert(controllerAddress)
+            }
             self?.markBatteryPowerSwitchRestoreConfigurationFailedIfNeeded(messageHandle)
         } addSuccess: {[weak self] addDevice in
             guard let self = self else { return }
@@ -1789,8 +1885,11 @@ class DeviceRestoreViewController: UIViewController {
                 if let request = finalizeBatteryPowerSwitchRestoreConfiguration(for: node) {
                     pendingBatteryPowerSwitchInitialBatteryReads.append(request)
                 }
+                let emergencyFireRestoreSyncFailed = resolveEmergencyFireRestoreSyncFailed(for: node)
                 if self.hasDeferredRestoreSyncData(for: node) {
                     addDevice.addState = .adding
+                } else if emergencyFireRestoreSyncFailed {
+                    addDevice.addState = .syncFailed
                 } else if shouldMarkRestoredNodeSyncFailed(node, phase: .deviceSuccess) {
                     addDevice.addState = .syncFailed
                 }

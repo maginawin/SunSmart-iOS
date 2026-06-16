@@ -26,6 +26,7 @@ final class PJDevicesFireAlarmAddContainerController: PJDevicesLegacyContainerCo
         let vc = DeviceAddViewController(space: context.space)
         vc.title = context.title
         vc.appointGroup = context.appointGroup
+        vc.bindTarget = context.bindTarget
         vc.addBehavior = context.addBehavior
         configureLegacyAddController(vc)
         embedLegacyController(vc)

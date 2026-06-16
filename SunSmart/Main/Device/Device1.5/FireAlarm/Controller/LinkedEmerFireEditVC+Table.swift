@@ -6,7 +6,6 @@
 //
 
 import UIKit
-import NordicSigMeshSDK
 
 extension LinkedEmerFireEditVC: UITableViewDataSource, UITableViewDelegate {
 

@@ -214,11 +214,25 @@ final class LinkedEmerFireEditVC: UIViewController {
                 self.tableView.reloadData()
                 NotificationCenter.default.post(name: .init(deviceOthersRefreshNotificationName), object: nil)
                 NotificationCenter.default.post(name: .deviceEmerFireDataDidChange, object: nil)
-                self.dismiss(animated: true)
+                self.dismiss(animated: true) { [weak self] in
+                    self?.openSyncAfterLinkedDeviceIfNeeded()
+                }
             }
         }
 
         present(NavigationViewController(rootViewController: controller), animated: true)
+    }
+
+    @discardableResult
+    private func openSyncAfterLinkedDeviceIfNeeded() -> Bool {
+        guard let device = viewModel.currentDevice(),
+              device.bindNode != nil,
+              device.hasSyncableConfiguration else {
+            return false
+        }
+        let controller = SyncDevicesViewController(type: .emergencyFire(data: device, items: nil, persistsSyncResult: true, changedFromConfiguration: nil))
+        navigationController?.pushViewController(controller, animated: true)
+        return true
     }
 
     private func finishAfterSuccessfulSaveSync() {

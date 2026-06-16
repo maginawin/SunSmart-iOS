@@ -121,6 +121,8 @@ class DeviceAddProfessionalModeController: UIViewController {
     private var pendingBatteryPowerSwitchInitialBatteryReads: [BatteryPowerSwitchAddConfiguration.InitialBatteryReadRequest] = []
     private var fastAddGroupSyncPlans: [Address: DeviceGroupFastAddSyncPlan] = [:]
     private var failedFastAddGroupSyncNodeAddresses: Set<Address> = []
+    private var emergencyFireGroupMutationMessageHandles: [Address: [MeshMessageHandle]] = [:]
+    private var failedEmergencyFireGroupMutationNodeAddresses: Set<Address> = []
     private var fastAddGroupEffectiveMemberCount: Int?
     private var groupMemberAddedProfileSyncContext: GroupProfileSyncContext {
         GroupProfileSyncContext(reason: .memberAdded)
@@ -563,6 +565,8 @@ class DeviceAddProfessionalModeController: UIViewController {
     private func resetFastAddGroupSyncBatch() {
         fastAddGroupSyncPlans.removeAll()
         failedFastAddGroupSyncNodeAddresses.removeAll()
+        emergencyFireGroupMutationMessageHandles.removeAll()
+        failedEmergencyFireGroupMutationNodeAddresses.removeAll()
         fastAddGroupEffectiveMemberCount = nil
     }
 
@@ -585,15 +589,51 @@ class DeviceAddProfessionalModeController: UIViewController {
 
     private func resolveFastAddGroupSyncFailed(for node: Node) -> Bool {
         guard let plan = fastAddGroupSyncPlans.removeValue(forKey: node.primaryUnicastAddress) else {
-            return false
+            return resolveEmergencyFireGroupMutationFailed(for: node)
         }
 
         let failed = failedFastAddGroupSyncNodeAddresses.contains(node.primaryUnicastAddress)
             || plan.hasVerificationFailure
+            || resolveEmergencyFireGroupMutationFailed(for: node)
         if failed {
             recordFastAddGroupSyncFailure(plan)
         }
         failedFastAddGroupSyncNodeAddresses.remove(node.primaryUnicastAddress)
+        return failed
+    }
+
+    private func appendEmergencyFireControllerGroupMutationMessages(
+        node: Node,
+        group: Group,
+        appendMessages: inout [MeshMessageHandle]
+    ) {
+        let items = EmergencyFireControllerSyncPlanner.makeGroupMutationItems(
+            group: group,
+            addNodes: [node],
+            exitNodes: [],
+            space: space
+        )
+        let handles = items.flatMap { $0.tasks.flatMap { $0.messageHandles } }
+        guard !handles.isEmpty else {
+            return
+        }
+        appendMessages.append(contentsOf: handles)
+        emergencyFireGroupMutationMessageHandles[node.primaryUnicastAddress, default: []].append(contentsOf: handles)
+        failedEmergencyFireGroupMutationNodeAddresses.remove(node.primaryUnicastAddress)
+    }
+
+    private func emergencyFireGroupMutationNodeAddress(containing messageHandle: MeshMessageHandle) -> Address? {
+        emergencyFireGroupMutationMessageHandles.first { _, handles in
+            handles.contains { $0 === messageHandle }
+        }?.key
+    }
+
+    private func resolveEmergencyFireGroupMutationFailed(for node: Node) -> Bool {
+        guard emergencyFireGroupMutationMessageHandles.removeValue(forKey: node.primaryUnicastAddress) != nil else {
+            return false
+        }
+        let failed = failedEmergencyFireGroupMutationNodeAddresses.contains(node.primaryUnicastAddress)
+        failedEmergencyFireGroupMutationNodeAddresses.remove(node.primaryUnicastAddress)
         return failed
     }
 
@@ -1300,6 +1340,7 @@ class DeviceAddProfessionalModeController: UIViewController {
                     appendMessages.append(contentsOf: plan.appendMessageHandles)
                     self.registerFastAddGroupSyncPlan(plan)
                 }
+                appendEmergencyFireControllerGroupMutationMessages(node: node, group: group, appendMessages: &appendMessages)
                 //                appendMessages.append(contentsOf: group.getNodeAddMessageHandles(node: node))
             }else {
                 if shouldApplyLightingDefaults {
@@ -1396,6 +1437,9 @@ class DeviceAddProfessionalModeController: UIViewController {
             guard let self = self else { return }
             if let plan = self.fastAddGroupSyncPlan(containing: messageHandle) {
                 self.recordFastAddGroupSyncFailure(plan)
+            }
+            if let nodeAddress = self.emergencyFireGroupMutationNodeAddress(containing: messageHandle) {
+                self.failedEmergencyFireGroupMutationNodeAddresses.insert(nodeAddress)
             }
             guard let address = messageHandle.model?.parentElement?.unicastAddress ?? messageHandle.address else {
                 return

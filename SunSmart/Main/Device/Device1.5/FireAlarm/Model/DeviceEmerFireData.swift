@@ -110,6 +110,31 @@ final class DeviceEmerFireStore {
         return target
     }
 
+    @discardableResult
+    func restoreDevice(replacing oldNode: Node, with newNode: Node, in space: SpaceData) -> DeviceEmerFireData? {
+        guard oldNode.deviceType == .emergencyController || newNode.deviceType == .emergencyController else {
+            return nil
+        }
+
+        let storedDevices = devices(in: space)
+        let target = storedDevices.first { $0.bindNodeAddress == oldNode.primaryUnicastAddress }
+            ?? storedDevices.first { $0.bindNodeAddress == newNode.primaryUnicastAddress }
+            ?? DeviceEmerFireData.default(space: space)
+
+        if target.bindNodeAddress == nil {
+            target.name = oldNode.name ?? newNode.name ?? target.name
+        }
+        target.bindNodeAddress = newNode.primaryUnicastAddress
+        target.isSynced = false
+        save(target)
+
+        storedDevices
+            .filter { $0.id != target.id && $0.bindNodeAddress == newNode.primaryUnicastAddress }
+            .forEach { delete($0) }
+
+        return target
+    }
+
     func save(_ device: DeviceEmerFireData) {
         _ = repository.save(device)
         mergeCache(with: [device])
