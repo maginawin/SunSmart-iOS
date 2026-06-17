@@ -1075,12 +1075,12 @@ extension SpaceData {
             if let value = json["showCCTQuickButtons"].bool {
                 self.showCCTQuickButtons = value
             }else {
-                self.showCCTQuickButtons = false
+                self.showCCTQuickButtons = SpaceContentDisplayDefaults.showCCTQuickButtons
             }
             if let value = json["controlType"].string, let type = SpaceControlType(rawValue: value) {
                 self.controlType = type
             }else {
-                self.controlType = .simple
+                self.controlType = SpaceContentDisplayDefaults.controlType
             }
             // 配置设备完成后行为
             if let value = json["deviceBlinkMode"].int, let mode = DeviceBlinkMode(rawValue: value) {

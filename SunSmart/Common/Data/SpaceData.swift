@@ -40,6 +40,24 @@ enum SpaceControlType: String {
     case detailed
 }
 
+enum SpaceContentDisplayDefaults {
+    static var showCCTQuickButtons: Bool {
+        #if SLGSync
+        return true
+        #else
+        return false
+        #endif
+    }
+
+    static var controlType: SpaceControlType {
+        #if SLGSync
+        return .detailed
+        #else
+        return .simple
+        #endif
+    }
+}
+
 class SpaceData: Copyable {
     
     /// 空间名称
@@ -191,10 +209,10 @@ class SpaceData: Copyable {
     
     /// 是否显示设备前缀（默认true）  true：【group name - device name】 false：device name
     var displayDeviceNamePrefix: Bool = true
-    /// 是否在色温控制控件中展示快捷按钮（默认false）
-    var showCCTQuickButtons: Bool = false
-    /// 控制控件类型（默认simple）
-    var controlType: SpaceControlType = .simple
+    /// 是否在色温控制控件中展示快捷按钮
+    var showCCTQuickButtons: Bool = SpaceContentDisplayDefaults.showCCTQuickButtons
+    /// 控制控件类型
+    var controlType: SpaceControlType = SpaceContentDisplayDefaults.controlType
     /// 设备配置成功行为
     var deviceBlinkMode: DeviceBlinkMode = .none
     /// space级触发区域数据

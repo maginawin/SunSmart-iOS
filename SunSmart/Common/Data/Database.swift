@@ -452,8 +452,8 @@ extension SpaceData {
             builder.column(ExpressionKey.editor)
             builder.column(ExpressionKey.vistors)
             builder.column(ExpressionKey.displayDeviceNamePrefix, defaultValue: true)
-            builder.column(ExpressionKey.showCCTQuickButtons, defaultValue: false)
-            builder.column(ExpressionKey.controlType, defaultValue: SpaceControlType.simple.rawValue)
+            builder.column(ExpressionKey.showCCTQuickButtons, defaultValue: SpaceContentDisplayDefaults.showCCTQuickButtons)
+            builder.column(ExpressionKey.controlType, defaultValue: SpaceContentDisplayDefaults.controlType.rawValue)
             builder.column(ExpressionKey.deviceBlinkMode, defaultValue: DeviceBlinkMode.breathing.rawValue)
             builder.column(ExpressionKey.triggerZones)
         }))
@@ -480,11 +480,11 @@ extension SpaceData {
             }
             // 是否存在”showCCTQuickButtons“属性
             if !columns.contains(where: { $0.name == "showCCTQuickButtons" }) {
-                _ = try? SunSmartDataManager.shared.db?.run(SpaceData.spacesTable.addColumn(ExpressionKey.showCCTQuickButtons, defaultValue: false))
+                _ = try? SunSmartDataManager.shared.db?.run(SpaceData.spacesTable.addColumn(ExpressionKey.showCCTQuickButtons, defaultValue: SpaceContentDisplayDefaults.showCCTQuickButtons))
             }
             // 是否存在”controlType“属性
             if !columns.contains(where: { $0.name == "controlType" }) {
-                _ = try? SunSmartDataManager.shared.db?.run(SpaceData.spacesTable.addColumn(ExpressionKey.controlType, defaultValue: SpaceControlType.simple.rawValue))
+                _ = try? SunSmartDataManager.shared.db?.run(SpaceData.spacesTable.addColumn(ExpressionKey.controlType, defaultValue: SpaceContentDisplayDefaults.controlType.rawValue))
             }
             // 是否存在”deviceBlinkMode“属性
             if !columns.contains(where: { $0.name == "deviceBlinkMode" }) {
@@ -556,7 +556,7 @@ extension SpaceData {
                 space.releaseAddress = row[ExpressionKey.isReleaseAddress] ?? false
                 space.displayDeviceNamePrefix = row[ExpressionKey.displayDeviceNamePrefix]
                 space.showCCTQuickButtons = row[ExpressionKey.showCCTQuickButtons]
-                space.controlType = SpaceControlType(rawValue: row[ExpressionKey.controlType]) ?? .simple
+                space.controlType = SpaceControlType(rawValue: row[ExpressionKey.controlType]) ?? SpaceContentDisplayDefaults.controlType
                 space.deviceBlinkMode = DeviceBlinkMode(rawValue: row[ExpressionKey.deviceBlinkMode]) ?? .breathing
                 if let triggerZonesData = row[ExpressionKey.triggerZones] {
                     space.triggerZones = (try? jsonDecoder.decode([SpaceTriggerZone].self, from: triggerZonesData)) ?? []
@@ -612,7 +612,7 @@ extension SpaceData {
                 newSpace.releaseAddress = row[ExpressionKey.isReleaseAddress] ?? false
                 newSpace.displayDeviceNamePrefix = row[ExpressionKey.displayDeviceNamePrefix]
                 newSpace.showCCTQuickButtons = row[ExpressionKey.showCCTQuickButtons]
-                newSpace.controlType = SpaceControlType(rawValue: row[ExpressionKey.controlType]) ?? .simple
+                newSpace.controlType = SpaceControlType(rawValue: row[ExpressionKey.controlType]) ?? SpaceContentDisplayDefaults.controlType
                 newSpace.deviceBlinkMode = DeviceBlinkMode(rawValue: row[ExpressionKey.deviceBlinkMode]) ?? .breathing
                 if let triggerZonesData = row[ExpressionKey.triggerZones] {
                     newSpace.triggerZones = (try? jsonDecoder.decode([SpaceTriggerZone].self, from: triggerZonesData)) ?? []
